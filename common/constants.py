@@ -1,0 +1,121 @@
+from dataclasses import dataclass, field
+from common.os import SystemProbe
+
+
+@dataclass
+class KubeVersion:
+    # kubernetes ecosystem components version
+    v_docker: str = field(default="28.0.4", metadata={
+        "refer_bin": "https://docs.docker.com/engine/install/binaries/",
+        "refer_docs": "https://docs.docker.com/manuals/"
+    })
+    v_docker_registry: str = field(default="3", metadata={
+        "refer_hub": "https://hub.docker.com/_/registry",
+        "refer_docs": "https://distribution.github.io/distribution/"
+    })
+    v_kubeauto: str = field(default="v1.0.0", metadata={
+        "refer_github": "https://github.com/brinnatt"
+    })
+    v_k8s_bin: str = field(default="v1.32.3", metadata={
+        "refer_all": "https://kubernetes.io/releases/download/",
+        "refer_bin": "https://www.downloadkubernetes.com/",
+        "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
+    })
+    v_extra_bin: str = field(default="v1.0.0", metadata={
+        "refer_github": "",
+    })
+    v_harbor: str = field(default="v2.12.2", metadata={
+        "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
+        "description": "None-official"
+    })
+    v_calico: str = field(default="v3.28.3", metadata={
+        "refer_github": "https://github.com/projectcalico/calico",
+        "refer_docs": "https://docs.tigera.io/calico/latest/about/"
+    })
+    v_coredns: str = field(default="1.11.4", metadata={
+        "refer_github": "https://github.com/coredns/coredns",
+        "refer_docs": "https://coredns.io/"
+    })
+    v_dnsNodeCache: str = field(default="1.23.1", metadata={
+        "refer_github": "https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml",
+        "refer_docs": "https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/"
+    })
+    v_dashboard: str = field(default="v2.7.0", metadata={
+        "refer_github": "https://github.com/kubernetes/dashboard",
+    })
+    v_dashboardMetricsScraper: str = field(default="v1.0.8", metadata={
+        "refer_github": "https://github.com/kubernetes-sigs/dashboard-metrics-scraper"
+    })
+    v_metricsServer: str = field(default="v0.7.2", metadata={
+        "refer_github": "https://github.com/kubernetes-sigs/metrics-server",
+        "refer_docs": "https://kubernetes-sigs.github.io/metrics-server/"
+    })
+    v_pause: str = field(default="3.10", metadata={
+        "refer_github": "https://github.com/kubernetes/kubernetes/tree/master/build/pause",
+        "refer_none_official_docs": "https://k8s.iswbm.com/c02/p02_learn-kubernetes-pod-via-pause-container.html"
+    })
+    v_flannel: str = field(default="3.10", metadata={
+        "refer_github": "https://github.com/flannel-io/flannel"
+    })
+    v_cilium: str = field(default="1.16.3", metadata={
+        "refer_github": "https://github.com/cilium/cilium"
+    })
+    v_kubeRouter: str = field(default="v1.5.4", metadata={
+        "refer_github": "https://github.com/cloudnativelabs/kube-router"
+    })
+    v_kubeOvn: str = field(default="v1.11.5", metadata={
+        "refer_github": "https://github.com/kubeovn/kube-ovn"
+    })
+    v_localpathProvisioner: str = field(default="v0.0.31", metadata={
+        "refer_github": "https://github.com/rancher/local-path-provisioner"
+    })
+    v_nfsProvisioner: str = field(default="v4.0.2", metadata={
+        "refer_github": "https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner"
+    })
+    v_promChart: str = field(default="45.23.0", metadata={
+        "refer_github": "https://github.com/prometheus/prometheus",
+        "refer_docs": "https://prometheus.io/",
+        "refer_helm": "https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack"
+    })
+    v_kubeapps: str = field(default="12.4.3", metadata={
+        "refer_github": "https://github.com/vmware-tanzu/kubeapps",
+        "refer_helm": "https://github.com/bitnami/charts/tree/main/bitnami/kubeapps",
+    })
+    v_kubeblocks: str = field(default="0.9.3", metadata={
+        "refer_github": "https://github.com/apecloud/kubeblocks",
+        "refer_docs": "https://kubeblocks.io/docs/preview/user_docs/overview/introduction"
+    })
+
+    # path for storing some important files
+    BASE_PATH: str = field(default="/usr/local/kubeauto", metadata={
+        "description": "This basic path stores all kubeauto files"
+    })
+    IMAGE_DIR: str = field(default=f"{BASE_PATH}/down", metadata={
+        "description": "This path stores image files"
+    })
+    KUBE_BIN_DIR: str = field(default=f"{BASE_PATH}/kube-bin", metadata={
+        "description": "This path stores binaries"
+    })
+    DOCKER_BIN_DIR: str = field(default=f"{BASE_PATH}/docker-bin", metadata={
+        "description": "This path stores docker binaries"
+    })
+
+    # path specifically for storing app data
+    BASE_DATA_PATH: str = field(default="/data", metadata={
+        "description": "This path stores app data"
+    })
+
+    # path specifically for storing temporary files removed after copied to somewhere
+    TEMP_PATH: str = field(default=f"/tmp/kubeauto", metadata={
+        "description": "This path stores temporary binaries"
+    })
+
+    def __post_init__(self):
+        """用于 @dataclass 自动生成的 __init__ 后执行额外逻辑"""
+        self.systeminfo = SystemProbe().system_info
+        self.arch = self.systeminfo["machine"]
+
+    def docker_bin_url(self, version):
+        url = f"https://mirrors.aliyun.com/docker-ce/linux/static/stable/{self.arch}/docker-{version}.tgz"
+        return url
+
