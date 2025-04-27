@@ -3,7 +3,7 @@ from common.logger import setup_logger
 from pathlib import Path
 from .docker import DockerManager
 from .registry import RegistryManager
-from common.constants import KubeVersion
+from common.constants import KubeConstant
 
 logger = setup_logger(__name__)
 
@@ -12,11 +12,11 @@ class DownloadManager:
     def __init__(self):
         self.docker = DockerManager()
         self.registry = RegistryManager()
-        self.kube_version = KubeVersion()
-        self.base_path = Path(self.kube_version.BASE_PATH)
-        self.image_dir = Path(self.kube_version.IMAGE_DIR)
-        self.temp_path = Path(self.kube_version.TEMP_PATH)
-        self.kube_bin_dir = Path(self.kube_version.KUBE_BIN_DIR)
+        self.kube_constant = KubeConstant()
+        self.base_path = Path(self.kube_constant.BASE_PATH)
+        self.image_dir = Path(self.kube_constant.IMAGE_DIR)
+        self.temp_path = Path(self.kube_constant.TEMP_PATH)
+        self.kube_bin_dir = Path(self.kube_constant.KUBE_BIN_DIR)
 
     def download_all(self) -> None:
         """Download all required components"""
@@ -25,7 +25,7 @@ class DownloadManager:
         self.kube_bin_dir.mkdir(exist_ok=True)
 
         # Download components
-        self.docker.install_docker(self.kube_version.v_docker)
+        self.docker.install_docker(self.kube_constant.v_docker)
         self.get_kubeauto()
         self.get_k8s_bin()
         self.get_ext_bin()
@@ -40,12 +40,12 @@ class DownloadManager:
             return
 
         # Handle kubeauto image
-        image_tar = self.image_dir / f"kubeauto_{self.kube_version.v_kubeauto}.tar"
+        image_tar = self.image_dir / f"kubeauto_{self.kube_constant.v_kubeauto}.tar"
         try:
             if not image_tar.exists():
-                logger.info(f"Downloading kubeauto: {self.kube_version.v_kubeauto}")
-                self.docker.pull_image(f"brinnatt/kubeauto:{self.kube_version.v_kubeauto}")
-                self.docker.save_image(f"brinnatt/kubeauto:{self.kube_version.v_kubeauto}", str(image_tar))
+                logger.info(f"Downloading kubeauto: {self.kube_constant.v_kubeauto}")
+                self.docker.pull_image(f"brinnatt/kubeauto:{self.kube_constant.v_kubeauto}")
+                self.docker.save_image(f"brinnatt/kubeauto:{self.kube_constant.v_kubeauto}", str(image_tar))
             self.docker.load_image(str(image_tar))
         except Exception as e:
             logger.error(f"Failed to handle kubeauto image: {e}")
@@ -56,7 +56,7 @@ class DownloadManager:
         backup_dir = None
         try:
             container_id = self.docker.run_temp_container(
-                f"brinnatt/kubeauto:{self.kube_version.v_kubeauto}",
+                f"brinnatt/kubeauto:{self.kube_constant.v_kubeauto}",
                 "temp_kubeauto",
             )
 
@@ -116,16 +116,16 @@ class DownloadManager:
 
         try:
             # Handle container image with caching
-            image_tar = self.image_dir / f"k8s_bin_{self.kube_version.v_k8s_bin}.tar"
+            image_tar = self.image_dir / f"k8s_bin_{self.kube_constant.v_k8s_bin}.tar"
             if not image_tar.exists():
-                logger.info(f"Downloading Kubernetes binaries: {self.kube_version.v_k8s_bin}")
-                self.docker.pull_image(f"brinnatt/kubeauto-k8s-bin:{self.kube_version.v_k8s_bin}")
-                self.docker.save_image(f"brinnatt/kubeauto-k8s-bin:{self.kube_version.v_k8s_bin}", str(image_tar))
+                logger.info(f"Downloading Kubernetes binaries: {self.kube_constant.v_k8s_bin}")
+                self.docker.pull_image(f"brinnatt/kubeauto-k8s-bin:{self.kube_constant.v_k8s_bin}")
+                self.docker.save_image(f"brinnatt/kubeauto-k8s-bin:{self.kube_constant.v_k8s_bin}", str(image_tar))
             self.docker.load_image(str(image_tar))
 
             # Run temporary container
             container_id = self.docker.run_temp_container(
-                f"brinnatt/kubeauto-k8s-bin:{self.kube_version.v_k8s_bin}",
+                f"brinnatt/kubeauto-k8s-bin:{self.kube_constant.v_k8s_bin}",
                 "temp_k8s_bin"
             )
 
@@ -185,16 +185,16 @@ class DownloadManager:
 
         try:
             # Handle container image with caching
-            image_tar = self.image_dir / f"ext_bin_{self.kube_version.v_extra_bin}.tar"
+            image_tar = self.image_dir / f"ext_bin_{self.kube_constant.v_extra_bin}.tar"
             if not image_tar.exists():
-                logger.info(f"Downloading extra binaries: {self.kube_version.v_extra_bin}")
-                self.docker.pull_image(f"brinnatt/kubeauto-ext-bin:{self.kube_version.v_extra_bin}")
-                self.docker.save_image(f"brinnatt/kubeauto-ext-bin:{self.kube_version.v_extra_bin}", str(image_tar))
+                logger.info(f"Downloading extra binaries: {self.kube_constant.v_extra_bin}")
+                self.docker.pull_image(f"brinnatt/kubeauto-ext-bin:{self.kube_constant.v_extra_bin}")
+                self.docker.save_image(f"brinnatt/kubeauto-ext-bin:{self.kube_constant.v_extra_bin}", str(image_tar))
             self.docker.load_image(str(image_tar))
 
             # Run temporary container
             container_id = self.docker.run_temp_container(
-                f"brinnatt/kubeauto-ext-bin:{self.kube_version.v_extra_bin}",
+                f"brinnatt/kubeauto-ext-bin:{self.kube_constant.v_extra_bin}",
                 "temp_ext_bin"
             )
 
@@ -244,15 +244,15 @@ class DownloadManager:
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""
         images = [
-            f"calico/cni:{self.kube_version.v_calico}",
-            f"calico/kube-controllers:{self.kube_version.v_calico}",
-            f"calico/node:{self.kube_version.v_calico}",
-            f"coredns/coredns:{self.kube_version.v_coredns}",
-            f"brinnatt/k8s-dns-node-cache:{self.kube_version.v_dnsNodeCache}",
-            f"kubernetesui/dashboard:{self.kube_version.v_dashboard}",
-            f"kubernetesui/metrics-scraper:{self.kube_version.v_dashboardMetricsScraper}",
-            f"brinnatt/metrics-server:{self.kube_version.v_metricsServer}",
-            f"brinnatt/pause:{self.kube_version.v_pause}"
+            f"calico/cni:{self.kube_constant.v_calico}",
+            f"calico/kube-controllers:{self.kube_constant.v_calico}",
+            f"calico/node:{self.kube_constant.v_calico}",
+            f"coredns/coredns:{self.kube_constant.v_coredns}",
+            f"brinnatt/k8s-dns-node-cache:{self.kube_constant.v_dnsNodeCache}",
+            f"kubernetesui/dashboard:{self.kube_constant.v_dashboard}",
+            f"kubernetesui/metrics-scraper:{self.kube_constant.v_dashboardMetricsScraper}",
+            f"brinnatt/metrics-server:{self.kube_constant.v_metricsServer}",
+            f"brinnatt/pause:{self.kube_constant.v_pause}"
         ]
 
         try:
@@ -265,27 +265,27 @@ class DownloadManager:
     def get_harbor_offline_pkg(self) -> None:
         """Download Harbor offline installer package with caching and error handling"""
         # Check if package already exists
-        harbor_file = self.image_dir / f"harbor-offline-installer-{self.kube_version.v_harbor}.tgz"
+        harbor_file = self.image_dir / f"harbor-offline-installer-{self.kube_constant.v_harbor}.tgz"
         if harbor_file.exists():
             logger.warning("Harbor offline installer already exists")
             return
 
-        logger.info(f"Downloading Harbor offline installer: {self.kube_version.v_harbor}")
+        logger.info(f"Downloading Harbor offline installer: {self.kube_constant.v_harbor}")
 
         # Initialize variables for cleanup
         container_id = None
         tmp_dir = None
         try:
             # Handle container image with caching
-            image_tar = self.image_dir / f"harbor_{self.kube_version.v_harbor}.tar"
+            image_tar = self.image_dir / f"harbor_{self.kube_constant.v_harbor}.tar"
             if not image_tar.exists():
-                self.docker.pull_image(f"brinnatt/harbor-offline:{self.kube_version.v_harbor}")
-                self.docker.save_image(f"brinnatt/harbor-offline:{self.kube_version.v_harbor}", str(image_tar))
+                self.docker.pull_image(f"brinnatt/harbor-offline:{self.kube_constant.v_harbor}")
+                self.docker.save_image(f"brinnatt/harbor-offline:{self.kube_constant.v_harbor}", str(image_tar))
             self.docker.load_image(str(image_tar))
 
             # Run temporary container
             container_id = self.docker.run_temp_container(
-                f"brinnatt/harbor-offline:{self.kube_version.v_harbor}",
+                f"brinnatt/harbor-offline:{self.kube_constant.v_harbor}",
                 "temp_harbor"
             )
 
@@ -298,12 +298,12 @@ class DownloadManager:
             # Copy package from container to temp directory
             self.docker.copy_from_container(
                 "temp_harbor",
-                f"/harbor-offline-installer-{self.kube_version.v_harbor}.tgz",
+                f"/harbor-offline-installer-{self.kube_constant.v_harbor}.tgz",
                 str(tmp_dir)
             )
 
             # Verify and move to final location
-            tmp_file = tmp_dir / f"harbor-offline-installer-{self.kube_version.v_harbor}.tgz"
+            tmp_file = tmp_dir / f"harbor-offline-installer-{self.kube_constant.v_harbor}.tgz"
             if not tmp_file.exists():
                 raise FileNotFoundError("Harbor package not found in container")
 

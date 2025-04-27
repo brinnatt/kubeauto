@@ -1,29 +1,27 @@
 #!/usr/bin/env python3
 """
-Main cluster operations for kubeasz
+Main cluster operations for kubeauto
 """
-import logging
-import subprocess
+
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
-from .models import Cluster, Node, KubeConfigUser
-from .utils import run_command, validate_ip, confirm_action
-from .exceptions import (
+from typing import List, Optional
+from common.utils import run_command, validate_ip, confirm_action
+from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError,
-    BinaryNotFoundError
 )
-from .constants import BASE_PATH
+from common.logger import setup_logger
+from common.constants import KubeConstant
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 class ClusterManager:
     def __init__(self):
-        self.base_path = Path(BASE_PATH)
+        self.kube_constant = KubeConstant()
+        self.base_path = Path(self.kube_constant.BASE_PATH)
         self.clusters_dir = self.base_path / "clusters"
         self.playbooks_dir = self.base_path / "playbooks"
-        self.clusters_dir.mkdir(exist_ok=True)
 
     def list_clusters(self) -> List[str]:
         """List all managed clusters"""
@@ -72,30 +70,31 @@ class ClusterManager:
             raise ClusterExistsError(f"Cluster {name} already exists")
 
         logger.debug(f"Creating cluster directory: {cluster_dir}")
-        cluster_dir.mkdir()
+        cluster_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy example files
         example_hosts = self.base_path / "example/hosts.multi-node"
         example_config = self.base_path / "example/config.yml"
-
         cluster_hosts = cluster_dir / "hosts"
         cluster_config = cluster_dir / "config.yml"
+        try:
+            cluster_hosts.write_text(example_hosts.read_text())
+            cluster_config.write_text(example_config.read_text())
 
-        cluster_hosts.write_text(example_hosts.read_text())
-        cluster_config.write_text(example_config.read_text())
-
-        # Replace placeholders
-        hosts_content = cluster_hosts.read_text()
-        hosts_content = hosts_content.replace("_cluster_name_", name)
-        cluster_hosts.write_text(hosts_content)
+            # Replace placeholders
+            hosts_content = cluster_hosts.read_text()
+            hosts_content = hosts_content.replace("_cluster_name_", name)
+            cluster_hosts.write_text(hosts_content)
+        except Exception as e:
+            logger.error(f"Error creating cluster hosts or config: {e}")
 
         # TODO: Set versions in config.yml as in original script
-        logger.info(f"Cluster {name} created. Next steps:")
-        logger.info(f"1. Configure {cluster_hosts}")
-        logger.info(f"2. Configure {cluster_config}")
+        logger.info(f"-> Cluster {name} created. Next steps:", extra={"to_stdout": True})
+        logger.info(f"1. Configure {cluster_hosts}", extra={"to_stdout": True})
+        logger.info(f"2. Configure {cluster_config}", extra={"to_stdout": True})
 
     def setup_cluster(self, name: str, step: str, extra_args: List[str] = None) -> None:
-        """Setup a cluster with specific step"""
+        """Set up a cluster with specific step"""
         self._validate_cluster(name)
 
         playbook_map = {

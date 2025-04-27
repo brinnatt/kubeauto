@@ -3,7 +3,7 @@ from common.os import SystemProbe
 
 
 @dataclass
-class KubeVersion:
+class KubeConstant:
     # kubernetes ecosystem components version
     v_docker: str = field(default="28.0.4", metadata={
         "refer_bin": "https://docs.docker.com/engine/install/binaries/",

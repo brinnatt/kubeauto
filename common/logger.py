@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 from typing import Optional, List
 
@@ -26,14 +27,24 @@ def setup_logger(
     if logger.hasHandlers():
         return logger  # 避免重复添加 handler
 
-    # 如果没有指定 handlers，则默认使用文件 handler
+    # 如果没有指定 handlers，则默认使用文件 handler 或标准输出
     if handlers is None:
         log_file = log_file or DEFAULT_LOG_FILE
         file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
         formatter = logging.Formatter(fmt, datefmt)
         file_handler.setFormatter(formatter)
         file_handler.setLevel(level)
+        # 默认输入到文件，传 extra={'skip_file': True} 不输入到文件
+        file_handler.addFilter(lambda record: not getattr(record, 'skip_file', False))
         logger.addHandler(file_handler)
+
+        # 添加一个默认的 stdout handler 但不启用
+        stdout_handler = logging.StreamHandler(sys.stdout)
+        stdout_handler.setFormatter(formatter)
+        stdout_handler.setLevel(level)
+        # 传 extra={'to_stdout': True} 才可以标准输出
+        stdout_handler.addFilter(lambda record: getattr(record, 'to_stdout', False))
+        logger.addHandler(stdout_handler)
     else:
         for handler in handlers:
             handler.setLevel(level)

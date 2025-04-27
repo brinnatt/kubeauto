@@ -2,7 +2,7 @@ from common.logger import setup_logger
 from pathlib import Path
 from typing import List, Optional
 from .docker import DockerManager
-from common.constants import KubeVersion
+from common.constants import KubeConstant
 from common.exceptions import CommandExecutionError
 
 logger = setup_logger(__name__)
@@ -11,13 +11,13 @@ logger = setup_logger(__name__)
 class RegistryManager:
     def __init__(self):
         self.docker = DockerManager()
-        self.kube_version = KubeVersion()
-        self.image_dir = Path(self.kube_version.IMAGE_DIR)
-        self.base_data_path = Path(self.kube_version.BASE_DATA_PATH)
+        self.kube_constant = KubeConstant()
+        self.image_dir = Path(self.kube_constant.IMAGE_DIR)
+        self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
 
     def start_local_registry(self, version: Optional[str] = None) -> None:
         """Start local Docker registry"""
-        version = version or self.kube_version.v_docker_registry
+        version = version or self.kube_constant.v_docker_registry
 
         if self.docker.container_exists("local_registry"):
             logger.warning("Local registry is already running")

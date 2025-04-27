@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 from typing import Optional
-from common.constants import KubeVersion
+from common.constants import KubeConstant
 from common.utils import run_command
 from common.exceptions import CommandExecutionError
 from common.logger import setup_logger
@@ -12,12 +12,12 @@ logger = setup_logger(__name__)
 
 class DockerManager:
     def __init__(self):
-        self.kube_version = KubeVersion()
-        self.base_path = Path(self.kube_version.BASE_PATH)
-        self.image_dir = Path(self.kube_version.IMAGE_DIR)
-        self.docker_bin_dir = Path(self.kube_version.DOCKER_BIN_DIR)
-        self.base_data_path = Path(self.kube_version.BASE_DATA_PATH)
-        self.temp_path = Path(self.kube_version.TEMP_PATH)
+        self.kube_constant = KubeConstant()
+        self.base_path = Path(self.kube_constant.BASE_PATH)
+        self.image_dir = Path(self.kube_constant.IMAGE_DIR)
+        self.docker_bin_dir = Path(self.kube_constant.DOCKER_BIN_DIR)
+        self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
+        self.temp_path = Path(self.kube_constant.TEMP_PATH)
 
     @property
     def is_docker_installed(self) -> bool:
@@ -31,7 +31,7 @@ class DockerManager:
     def install_docker(self, version: Optional[str] = None) -> None:
         """Install Docker"""
         # Download Docker binaries
-        version = version or self.kube_version.v_docker
+        version = version or self.kube_constant.v_docker
 
         self._download_docker(version)
 
@@ -53,7 +53,7 @@ class DockerManager:
 
         logger.info(f"Downloading Docker binaries, version: {version}")
 
-        docker_bin_url = self.kube_version.docker_bin_url(version)
+        docker_bin_url = self.kube_constant.docker_bin_url(version)
 
         try:
             run_command(["wget", "-c", "--no-check-certificate", docker_bin_url, "-O", str(docker_tgz)])
