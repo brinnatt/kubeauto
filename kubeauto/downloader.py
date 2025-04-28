@@ -248,10 +248,10 @@ class DownloadManager:
             f"calico/kube-controllers:{self.kube_constant.v_calico}",
             f"calico/node:{self.kube_constant.v_calico}",
             f"coredns/coredns:{self.kube_constant.v_coredns}",
-            f"brinnatt/k8s-dns-node-cache:{self.kube_constant.v_dnsNodeCache}",
+            f"brinnatt/k8s-dns-node-cache:{self.kube_constant.v_dnsnodecache}",
             f"kubernetesui/dashboard:{self.kube_constant.v_dashboard}",
-            f"kubernetesui/metrics-scraper:{self.kube_constant.v_dashboardMetricsScraper}",
-            f"brinnatt/metrics-server:{self.kube_constant.v_metricsServer}",
+            f"kubernetesui/metrics-scraper:{self.kube_constant.v_dashboardmetricsscraper}",
+            f"brinnatt/metrics-server:{self.kube_constant.v_metricsserver}",
             f"brinnatt/pause:{self.kube_constant.v_pause}"
         ]
 

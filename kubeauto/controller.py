@@ -20,6 +20,7 @@ class ClusterManager:
     def __init__(self):
         self.kube_constant = KubeConstant()
         self.base_path = Path(self.kube_constant.BASE_PATH)
+        self.kube_bin_dir = Path(self.kube_constant.KUBE_BIN_DIR)
         self.clusters_dir = self.base_path / "clusters"
         self.playbooks_dir = self.base_path / "playbooks"
 
@@ -93,8 +94,14 @@ class ClusterManager:
         logger.info(f"1. Configure {cluster_hosts}", extra={"to_stdout": True})
         logger.info(f"2. Configure {cluster_config}", extra={"to_stdout": True})
 
-    def setup_cluster(self, name: str, step: str, extra_args: List[str] = None) -> None:
-        """Set up a cluster with specific step"""
+    def setup_cluster(self, name: str, step: str, extra_args: Optional[list[str]] = None) -> None:
+        """
+        Set up a cluster with specific step
+
+        name: Cluster name
+        step: Setup step (01-07, 10, 11, 90 or step name)
+        extra_args: Additional arguments to pass to ansible-playbook
+        """
         self._validate_cluster(name)
 
         playbook_map = {
@@ -126,7 +133,6 @@ class ClusterManager:
             return
 
         extra_args = extra_args or []
-        extra_args_str = " ".join(extra_args)
 
         cmd = [
             "ansible-playbook",
@@ -594,22 +600,22 @@ class ClusterManager:
 
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
-        kube_ver = run_command([str(self.base_path / "bin/kube-apiserver"), "--version"]).stdout.split()[1]
-        etcd_ver = "v" + run_command([str(self.base_path / "bin/etcd"), "--version"]).stdout.split()[2]
+        v_kube = run_command([str(self.kube_bin_dir / "kube-apiserver"), "--version"]).stdout.split()[1]
+        v_etcd = "v" + run_command([str(self.kube_bin_dir / "etcd"), "--version"]).stdout.split()[2]
 
         # Get network plugin from hosts file
         hosts_content = (self.clusters_dir / cluster / "hosts").read_text()
         network_line = [l for l in hosts_content.splitlines() if l.startswith("CLUSTER_NETWORK=")]
         if network_line:
             network_plugin = network_line[0].split('"')[1].replace("-", "")
-            network_ver = getattr(self, f"{network_plugin.upper()}_VER", "unknown")
+            v_network = getattr(self.kube_constant, f"v_{network_plugin.lower()}", "unknown")
         else:
             network_plugin = "unknown"
-            network_ver = "unknown"
+            v_network = "unknown"
 
-        print("\n*** Component Version *********************")
-        print("*******************************************")
-        print(f"*   kubernetes: {kube_ver}")
-        print(f"*   etcd: {etcd_ver}")
-        print(f"*   {network_plugin}: {network_ver}")
-        print("*******************************************")
+        logger.info("*** Component Version *********************", extra={'to_stdout': True})
+        logger.info("*******************************************", extra={'to_stdout': True})
+        logger.info(f"*   kubernetes: {v_kube}", extra={'to_stdout': True})
+        logger.info(f"*   etcd: {v_etcd}", extra={'to_stdout': True})
+        logger.info(f"*   {network_plugin}: {v_network}", extra={'to_stdout': True})
+        logger.info("*******************************************", extra={'to_stdout': True})

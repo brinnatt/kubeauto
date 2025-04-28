@@ -36,17 +36,17 @@ class KubeConstant:
         "refer_github": "https://github.com/coredns/coredns",
         "refer_docs": "https://coredns.io/"
     })
-    v_dnsNodeCache: str = field(default="1.23.1", metadata={
+    v_dnsnodecache: str = field(default="1.23.1", metadata={
         "refer_github": "https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml",
         "refer_docs": "https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/"
     })
     v_dashboard: str = field(default="v2.7.0", metadata={
         "refer_github": "https://github.com/kubernetes/dashboard",
     })
-    v_dashboardMetricsScraper: str = field(default="v1.0.8", metadata={
+    v_dashboardmetricsscraper: str = field(default="v1.0.8", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/dashboard-metrics-scraper"
     })
-    v_metricsServer: str = field(default="v0.7.2", metadata={
+    v_metricsserver: str = field(default="v0.7.2", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/metrics-server",
         "refer_docs": "https://kubernetes-sigs.github.io/metrics-server/"
     })
@@ -60,19 +60,19 @@ class KubeConstant:
     v_cilium: str = field(default="1.16.3", metadata={
         "refer_github": "https://github.com/cilium/cilium"
     })
-    v_kubeRouter: str = field(default="v1.5.4", metadata={
+    v_kuberouter: str = field(default="v1.5.4", metadata={
         "refer_github": "https://github.com/cloudnativelabs/kube-router"
     })
-    v_kubeOvn: str = field(default="v1.11.5", metadata={
+    v_kubeovn: str = field(default="v1.11.5", metadata={
         "refer_github": "https://github.com/kubeovn/kube-ovn"
     })
-    v_localpathProvisioner: str = field(default="v0.0.31", metadata={
+    v_localpathprovisioner: str = field(default="v0.0.31", metadata={
         "refer_github": "https://github.com/rancher/local-path-provisioner"
     })
-    v_nfsProvisioner: str = field(default="v4.0.2", metadata={
+    v_nfsprovisioner: str = field(default="v4.0.2", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner"
     })
-    v_promChart: str = field(default="45.23.0", metadata={
+    v_promchart: str = field(default="45.23.0", metadata={
         "refer_github": "https://github.com/prometheus/prometheus",
         "refer_docs": "https://prometheus.io/",
         "refer_helm": "https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack"
