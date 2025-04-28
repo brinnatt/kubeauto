@@ -4,6 +4,7 @@ Main cluster operations for kubeauto
 """
 
 from pathlib import Path
+from datetime import datetime
 from typing import List, Optional
 from common.utils import run_command, validate_ip, confirm_action
 from common.exceptions import (
@@ -167,7 +168,7 @@ class ClusterManager:
 
         playbook = playbook_map.get(command)
         if not playbook:
-            logger.error(f"Invalid command: {command}")
+            logger.error(f"Invalid command: {command}", extra={"to_stdout": True})
             return
 
         cmd = [
@@ -200,7 +201,7 @@ class ClusterManager:
 
     def start_aio_cluster(self) -> None:
         """Start an all-in-one cluster with default settings"""
-        from .utils import get_host_ip, setup_ssh_keys
+        from common.utils import get_host_ip, setup_ssh_keys
 
         host_ip = get_host_ip()
         logger.info(f"Using host IP: {host_ip}")
@@ -312,8 +313,9 @@ class ClusterManager:
         """Force renew CA certificates and all other certs in the cluster"""
         self._validate_cluster(cluster)
 
-        logger.warning("WARNING: This will recreate CA certs and all other certs in the cluster")
-        logger.warning("Only use this if the admin.conf has been compromised")
+        logger.warning("WARNING: This will recreate CA certs and all other certs in the cluster",
+                       extra={"to_stdout": True})
+        logger.warning("Only use this if the admin.conf has been compromised", extra={"to_stdout": True})
 
         if not confirm_action(f"Renew all certs in cluster {cluster}"):
             return
@@ -347,7 +349,7 @@ class ClusterManager:
                 "-e", f"USER_NAME={user_name}",
                 "-e", "ADD_KCFG=true",
                 "-t", "add-kcfg",
-                str(self.playbooks_dir / "roles/deploy/deploy.yml")
+                str(self.base_path / "roles/deploy/deploy.yml")
             ]
 
             logger.info(f"Adding user {user_name} ({user_type}) to cluster {cluster}")
@@ -360,7 +362,7 @@ class ClusterManager:
             # Get cluster role binding
             kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
             crb_cmd = [
-                str(self.base_path / "bin/kubectl"),
+                str(self.kube_bin_dir / "kubectl"),
                 "--kubeconfig", str(kubeconfig),
                 "get", "clusterrolebindings",
                 "-ojsonpath=\"{.items[?(@.subjects[0].name == '{user_name}')].metadata.name}\""
@@ -371,7 +373,7 @@ class ClusterManager:
             if crb:
                 # Delete cluster role binding
                 delete_cmd = [
-                    str(self.base_path / "bin/kubectl"),
+                    str(self.kube_bin_dir / "kubectl"),
                     "--kubeconfig", str(kubeconfig),
                     "delete", "clusterrolebindings", crb
                 ]
@@ -387,7 +389,7 @@ class ClusterManager:
 
             # Get all users
             admins_cmd = [
-                str(self.base_path / "bin/kubectl"),
+                str(self.kube_bin_dir / "kubectl"),
                 "--kubeconfig", str(kubeconfig),
                 "get", "clusterrolebindings",
                 "-ojsonpath='{.items[?(@.roleRef.name == \"cluster-admin\")].subjects[*].name}'"
@@ -395,7 +397,7 @@ class ClusterManager:
             admins = run_command(admins_cmd, shell=True).stdout.strip("'").split()
 
             views_cmd = [
-                str(self.base_path / "bin/kubectl"),
+                str(self.kube_bin_dir / "kubectl"),
                 "--kubeconfig", str(kubeconfig),
                 "get", "clusterrolebindings",
                 "-ojsonpath='{.items[?(@.roleRef.name == \"view\")].subjects[*].name}'"
@@ -403,7 +405,7 @@ class ClusterManager:
             views = run_command(views_cmd, shell=True).stdout.strip("'").split()
 
             all_cmd = [
-                str(self.base_path / "bin/kubectl"),
+                str(self.kube_bin_dir / "kubectl"),
                 "--kubeconfig", str(kubeconfig),
                 "get", "clusterrolebindings",
                 "-ojsonpath='{.items[*].subjects[*].name}'"
