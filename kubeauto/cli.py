@@ -1,20 +1,21 @@
-#!/usr/bin/env python3
 """
-Command line interface for kubeasz
+Command line interface for kubeauto
 """
 import argparse
-import logging
 import sys
-from typing import List, Optional
+from common.utils import confirm_action
+from common.exceptions import KubeautoError
+from common.logger import setup_logger
+from common.constants import KubeConstant
 from .controller import ClusterManager
 from .downloader import DownloadManager
-from .docker_utils import DockerManager
-from .utils import logger, confirm_action
-from .exceptions import KubeaszError
+from .docker import DockerManager
+
+logger = setup_logger(__name__)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Kubeasz - Kubernetes cluster management tool")
+    parser = argparse.ArgumentParser(description="Kubeauto - Kubernetes cluster management tool")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Cluster setup commands
@@ -95,16 +96,16 @@ def main():
     kcfg_parser.add_argument("-u", "--user", help="User name")
 
     # Download commands
+    kube_constant = KubeConstant()
     download_parser = subparsers.add_parser("download", help="Download components")
     download_parser.add_argument("-D", "--all", action="store_true", help="Download all components")
-    download_parser.add_argument("-P", "--os-pkg", help="Download system packages for OS")
     download_parser.add_argument("-R", "--harbor", action="store_true", help="Download Harbor offline installer")
     download_parser.add_argument("-X", "--extra-image", help="Download extra images")
-    download_parser.add_argument("-d", "--docker-ver", default=DOCKER_VER, help="Docker version")
-    download_parser.add_argument("-e", "--ext-bin-ver", default=EXT_BIN_VER, help="Extra binaries version")
-    download_parser.add_argument("-k", "--k8s-bin-ver", default=K8S_BIN_VER, help="Kubernetes binaries version")
-    download_parser.add_argument("-m", "--registry-mirror", default=REGISTRY_MIRROR, help="Registry mirror")
-    download_parser.add_argument("-z", "--kubeasz-ver", default=KUBEASZ_VER, help="Kubeasz version")
+    download_parser.add_argument("-d", "--v-docker", default=kube_constant.v_docker, help="Docker version")
+    download_parser.add_argument("-e", "--v-ext-bin", default=kube_constant.v_extra_bin, help="Extra binaries version")
+    download_parser.add_argument("-k", "--v-k8s-bin", default=kube_constant.v_k8s_bin, help="Kubernetes binaries version")
+    download_parser.add_argument("-m", "--registry-mirror", help="Registry mirror")
+    download_parser.add_argument("-z", "--v-kubeauto", default=kube_constant.v_kubeauto, help="Kubeauto version")
 
     # Docker commands
     docker_parser = subparsers.add_parser("docker", help="Docker operations")
@@ -175,12 +176,10 @@ def main():
             dm = DownloadManager()
             if args.all:
                 dm.download_all()
-            elif args.os_pkg:
-                dm.get_sys_pkg(args.os_pkg)
             elif args.harbor:
                 dm.get_harbor_offline_pkg()
             elif args.extra_image:
-                dm.get_extra_images(args.extra_image)
+                dm.get_default_images()
 
         elif args.command == "docker":
             docker = DockerManager()
@@ -188,7 +187,7 @@ def main():
                 if confirm_action("Clean all running containers"):
                     docker.clean_containers()
 
-    except KubeaszError as e:
+    except KubeautoError as e:
         logger.error(str(e))
         sys.exit(1)
     except Exception as e:
