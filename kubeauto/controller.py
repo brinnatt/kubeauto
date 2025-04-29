@@ -421,7 +421,7 @@ class ClusterManager:
                     cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
                     if cert_file.exists():
                         expiry_cmd = [
-                            str(self.base_path / "bin/cfssl-certinfo"),
+                            str(self.kube_bin_dir / "cfssl-certinfo"),
                             "-cert", str(cert_file),
                             "|", "grep", "not_after", "|", "awk", "'{print $2}'", "|",
                             "sed", "'s/\"//g'", "|", "sed", "'s/,//g'"
@@ -434,7 +434,7 @@ class ClusterManager:
                     cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
                     if cert_file.exists():
                         expiry_cmd = [
-                            str(self.base_path / "bin/cfssl-certinfo"),
+                            str(self.kube_bin_dir / "cfssl-certinfo"),
                             "-cert", str(cert_file),
                             "|", "grep", "not_after", "|", "awk", "'{print $2}'", "|",
                             "sed", "'s/\"//g'", "|", "sed", "'s/,//g'"
@@ -448,7 +448,7 @@ class ClusterManager:
                         cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
                         if cert_file.exists():
                             expiry_cmd = [
-                                str(self.base_path / "bin/cfssl-certinfo"),
+                                str(self.kube_bin_dir / "cfssl-certinfo"),
                                 "-cert", str(cert_file),
                                 "|", "grep", "not_after", "|", "awk", "'{print $2}'", "|",
                                 "sed", "'s/\"//g'", "|", "sed", "'s/,//g'"
@@ -596,7 +596,7 @@ class ClusterManager:
             "-i", str(hosts_file),
             "-e", f"@{config_file}",
             "-t", "create_kctl_cfg",
-            str(self.playbooks_dir / "roles/deploy/deploy.yml")
+            str(self.base_path / "roles/deploy/deploy.yml")
         ]
         run_command(cmd)
 
