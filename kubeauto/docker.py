@@ -1,7 +1,9 @@
 import json
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, List
+import docker
+from docker.errors import DockerException, APIError, ImageNotFound
 from common.constants import KubeConstant
 from common.utils import run_command
 from common.exceptions import CommandExecutionError
@@ -19,9 +21,31 @@ class DockerManager:
         self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
         self.temp_path = Path(self.kube_constant.TEMP_PATH)
 
+        # 初始化 Docker SDK 客户端
+        self._client = None
+        self._initialize_docker_client()
+
+    def _initialize_docker_client(self):
+        """初始化 Docker SDK 客户端"""
+        try:
+            self._client = docker.from_env()
+            # 验证连接
+            self._client.ping()
+        except DockerException as e:
+            logger.warning(f"无法初始化 Docker SDK 客户端: {str(e)}")
+            self._client = None
+
+    @property
+    def client(self):
+        """获取 Docker 客户端，如果 SDK 不可用则返回 None"""
+        return self._client
+
     @property
     def is_docker_installed(self) -> bool:
-        """Check if Docker is installed and running"""
+        """检查 Docker 是否安装并运行"""
+        if self.client is not None:
+            return True
+
         try:
             run_command(["docker", "info"])
             return True
@@ -29,30 +53,24 @@ class DockerManager:
             return False
 
     def install_docker(self, version: Optional[str] = None) -> None:
-        """Install Docker"""
-        # Download Docker binaries
+        """安装 Docker"""
+        # 这部分仍然需要使用命令行，因为 SDK 不能用于安装 Docker
         version = version or self.kube_constant.v_docker
-
         self._download_docker(version)
-
-        # Install Docker binaries
         self._install_docker_binaries(version)
-
-        # Configure Docker
         self._configure_docker(version)
-
-        # Start Docker service
         self._start_docker_service(version)
+        # 安装后重新初始化客户端
+        self._initialize_docker_client()
 
     def _download_docker(self, version: str) -> None:
-        """Download Docker binaries"""
+        """下载 Docker 二进制文件"""
         docker_tgz = self.image_dir / f"docker-{version}.tgz"
         if docker_tgz.exists():
-            logger.warning("Docker binaries already exist")
+            logger.warning("Docker 二进制文件已存在")
             return
 
-        logger.info(f"Downloading Docker binaries, version: {version}")
-
+        logger.info(f"正在下载 Docker 二进制文件，版本: {version}")
         docker_bin_url = self.kube_constant.docker_bin_url(version)
 
         try:
@@ -60,11 +78,11 @@ class DockerManager:
         except CommandExecutionError:
             run_command(["curl", "-k", "-C-", "-o", str(docker_tgz), docker_bin_url])
 
-        logger.info(f"Docker binaries have been downloaded successfully!")
+        logger.info("Docker 二进制文件下载完成!")
 
     def _install_docker_binaries(self, version) -> None:
-        """Install Docker binaries"""
-        logger.info(f"Installing Docker binaries, version: {version}")
+        """安装 Docker 二进制文件"""
+        logger.info(f"正在安装 Docker 二进制文件，版本: {version}")
 
         self.temp_path.mkdir(parents=True, exist_ok=True)
         self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
@@ -74,13 +92,13 @@ class DockerManager:
         run_command(["ln", "-svf", str(self.docker_bin_dir / "*"), "/usr/local/bin/"])
 
         run_command(["rm", "-rf", str(self.temp_path / "docker")])
-        logger.info(f"Docker binaries have been installed successfully!")
+        logger.info("Docker 二进制文件安装完成!")
 
     def _configure_docker(self, version: str) -> None:
-        """Configure Docker daemon"""
-        logger.info(f"Configuring Docker daemon, version: {version}")
+        """配置 Docker 守护进程"""
+        logger.info(f"正在配置 Docker 守护进程，版本: {version}")
 
-        # Create systemd service file
+        # 创建 systemd 服务文件
         service_file = Path("/etc/systemd/system/docker.service")
         service_file.write_text("""
 [Unit]
@@ -102,7 +120,7 @@ KillMode=process
 WantedBy=multi-user.target
 """)
 
-        # Create daemon.json config
+        # 创建 daemon.json 配置
         v_docker_main = int(version.split('.')[0])
         cgroup_driver = "systemd" if v_docker_main >= 20 else "cgroupfs"
 
@@ -125,45 +143,111 @@ WantedBy=multi-user.target
         daemon_json = Path("/etc/docker/daemon.json")
         daemon_json.write_text(json.dumps(config, indent=2))
 
-        # Disable SELinux if present
+        # 如果存在 SELinux 则禁用它
         selinux_config = Path("/etc/selinux/config")
         if selinux_config.exists():
-            logger.debug("Disabling SELinux")
+            logger.debug("正在禁用 SELinux")
             run_command(["setenforce", "0"])
             content = selinux_config.read_text()
             content = re.sub(r'^SELINUX=.*$', 'SELINUX=disabled', content, flags=re.MULTILINE)
             selinux_config.write_text(content)
 
-        logger.info(f"Docker daemon has been configured successfully!")
+        logger.info("Docker 守护进程配置完成!")
 
     def _start_docker_service(self, version) -> None:
-        """Start and enable Docker service"""
-        logger.info(f"Starting Docker service, version: {version}")
+        """启动并启用 Docker 服务"""
+        logger.info(f"正在启动 Docker 服务，版本: {version}")
 
         run_command(["systemctl", "enable", "docker"])
         run_command(["systemctl", "daemon-reload"])
         run_command(["systemctl", "restart", "docker"])
 
-        logger.info("Docker service has been started successfully!")
+        logger.info("Docker 服务启动完成!")
 
     def container_exists(self, name: str) -> bool:
-        """Check if a container exists"""
+        """检查容器是否存在"""
+        if self.client is not None:
+            try:
+                self.client.containers.get(name)
+                return True
+            except docker.errors.NotFound:
+                return False
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
         try:
-            run_command(["docker", "ps", "-a", "--format={{.Names}}", "--filter", f"name={name}"])
-            return True
+            output = run_command(["docker", "ps", "-a", "--format={{.Names}}", "--filter", f"name={name}"])
+            return name in output.stdout
         except CommandExecutionError:
             return False
 
     def remove_container(self, name: str) -> None:
-        """Remove a container"""
-        if self.container_exists(name):
-            logger.debug(f"Removing container: {name}")
-            run_command(["docker", "rm", "-f", name])
+        """删除容器"""
+        if not self.container_exists(name):
+            return
+
+        logger.debug(f"正在删除容器: {name}")
+
+        if self.client is not None:
+            try:
+                container = self.client.containers.get(name)
+                container.remove(force=True)
+                return
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
+        run_command(["docker", "rm", "-f", name])
 
     def run_temp_container(self, image: str, name: str, **kwargs) -> str:
-        """Run a temporary container and return its ID"""
+        """运行临时容器并返回其 ID"""
         self.remove_container(name)
 
+        # 尝试使用 SDK
+        if self.client is not None:
+            try:
+                # 转换参数格式
+                ports = {}
+                volumes = {}
+                environment = {}
+
+                for k, v in kwargs.items():
+                    key = k.replace('_', '-')
+                    if key == 'publish':
+                        # 处理端口映射
+                        if isinstance(v, list):
+                            for port in v:
+                                parts = port.split(':')
+                                if len(parts) == 2:
+                                    ports[f"{parts[1]}/tcp"] = int(parts[0])
+                    elif key == 'volume':
+                        # 处理卷映射
+                        if isinstance(v, list):
+                            for vol in v:
+                                parts = vol.split(':')
+                                if len(parts) >= 2:
+                                    volumes[parts[0]] = {'bind': parts[1], 'mode': 'rw'}
+                    elif key == 'env':
+                        # 处理环境变量
+                        if isinstance(v, list):
+                            for env in v:
+                                if '=' in env:
+                                    parts = env.split('=', 1)
+                                    environment[parts[0]] = parts[1]
+
+                container = self.client.containers.run(
+                    image=image,
+                    name=name,
+                    detach=True,
+                    ports=ports,
+                    volumes=volumes,
+                    environment=environment,
+                    remove=False
+                )
+                return container.id
+            except APIError as e:
+                logger.warning(f"使用 SDK 运行容器失败: {str(e)}，回退到命令行")
+
+        # 回退到命令行
         cmd = ["docker", "run", "-d", "--name", name]
         for k, v in kwargs.items():
             if v is not None:
@@ -174,25 +258,166 @@ WantedBy=multi-user.target
         return result.stdout.strip()
 
     def copy_from_container(self, container: str, src: str, dest: str) -> None:
-        """Copy files from container to host"""
+        """从容器复制文件到主机"""
+        if self.client is not None:
+            try:
+                container_obj = self.client.containers.get(container)
+                data, stat = container_obj.get_archive(src)
+
+                with open(dest, 'wb') as f:
+                    for chunk in data:
+                        f.write(chunk)
+                return
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
         run_command(["docker", "cp", f"{container}:{src}", dest])
 
     def pull_image(self, image: str) -> None:
-        """Pull a Docker image"""
+        """拉取 Docker 镜像"""
+        if self.client is not None:
+            try:
+                logger.info(f"正在拉取镜像: {image}")
+                self.client.images.pull(image)
+                logger.info(f"镜像 {image} 拉取完成")
+                return
+            except APIError as e:
+                logger.warning(f"使用 SDK 拉取镜像失败: {str(e)}，回退到命令行")
+
         run_command(["docker", "pull", image])
 
     def save_image(self, image: str, output: str) -> None:
-        """Save Docker image to tar file"""
+        """将 Docker 镜像保存为 tar 文件"""
+        if self.client is not None:
+            try:
+                image_obj = self.client.images.get(image)
+                with open(output, 'wb') as f:
+                    for chunk in image_obj.save():
+                        f.write(chunk)
+                return
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
         run_command(["docker", "save", "-o", output, image])
 
     def load_image(self, input_file: str) -> None:
-        """Load Docker image from tar file"""
+        """从 tar 文件加载 Docker 镜像"""
+        if self.client is not None:
+            try:
+                with open(input_file, 'rb') as f:
+                    self.client.images.load(f.read())
+                return
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
         run_command(["docker", "load", "-i", input_file])
 
     def tag_image(self, src: str, dest: str) -> None:
-        """Tag a Docker image"""
+        """为 Docker 镜像打标签"""
+        if self.client is not None:
+            try:
+                image = self.client.images.get(src)
+                image.tag(dest)
+                return
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
         run_command(["docker", "tag", src, dest])
 
     def push_image(self, image: str) -> None:
-        """Push Docker image to registry"""
+        """推送 Docker 镜像到仓库"""
+        if self.client is not None:
+            try:
+                logger.info(f"正在推送镜像: {image}")
+                for line in self.client.images.push(image, stream=True, decode=True):
+                    if 'status' in line:
+                        logger.debug(line['status'])
+                logger.info(f"镜像 {image} 推送完成")
+                return
+            except APIError as e:
+                logger.warning(f"使用 SDK 推送镜像失败: {str(e)}，回退到命令行")
+
         run_command(["docker", "push", image])
+
+    # 新增功能：获取容器列表
+    def list_containers(self, all: bool = False) -> List[Dict[str, str]]:
+        """获取容器列表"""
+        if self.client is not None:
+            try:
+                containers = self.client.containers.list(all=all)
+                return [{
+                    'id': c.id,
+                    'name': c.name,
+                    'status': c.status,
+                    'image': c.image.tags[0] if c.image.tags else c.image.id
+                } for c in containers]
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
+        try:
+            output = run_command(["docker", "ps", "-a", "--format={{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}"])
+            containers = []
+            for line in output.stdout.splitlines():
+                if line.strip():
+                    parts = line.split('|')
+                    if len(parts) >= 4:
+                        containers.append({
+                            'id': parts[0],
+                            'name': parts[1],
+                            'status': parts[2],
+                            'image': parts[3]
+                        })
+            return containers
+        except CommandExecutionError:
+            return []
+
+    # 新增功能：获取容器日志
+    def get_container_logs(self, container: str, tail: int = 100) -> str:
+        """获取容器日志"""
+        if self.client is not None:
+            try:
+                container_obj = self.client.containers.get(container)
+                return container_obj.logs(tail=tail).decode('utf-8')
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
+        try:
+            output = run_command(["docker", "logs", "--tail", str(tail), container])
+            return output.stdout
+        except CommandExecutionError:
+            return ""
+
+    # 新增功能：检查镜像是否存在
+    def image_exists(self, image: str) -> bool:
+        """检查镜像是否存在"""
+        if self.client is not None:
+            try:
+                self.client.images.get(image)
+                return True
+            except ImageNotFound:
+                return False
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
+        try:
+            run_command(["docker", "image", "inspect", image])
+            return True
+        except CommandExecutionError:
+            return False
+
+    # 新增功能：删除镜像
+    def remove_image(self, image: str) -> None:
+        """删除镜像"""
+        if not self.image_exists(image):
+            return
+
+        logger.debug(f"正在删除镜像: {image}")
+
+        if self.client is not None:
+            try:
+                self.client.images.remove(image, force=True)
+                return
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行")
+
+        run_command(["docker", "rmi", "-f", image])
