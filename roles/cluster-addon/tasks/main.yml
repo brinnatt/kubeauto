@@ -1,0 +1,37 @@
+- name: 获取所有已经创建的POD信息
+  command: "{{ base_dir }}/bin/kubectl get pod --all-namespaces"
+  register: pod_info
+  tags: force_change_certs
+
+- import_tasks: coredns.yml
+  when: '"coredns" not in pod_info.stdout or CHANGE_CA|bool'
+
+- import_tasks: nodelocaldns.yml
+  when: '"node-local-dns" not in pod_info.stdout or CHANGE_CA|bool'
+
+- import_tasks: metrics-server.yml
+  when: '"metrics-server" not in pod_info.stdout or CHANGE_CA|bool'
+
+- import_tasks: dashboard.yml
+  when: '"kubernetes-dashboard" not in pod_info.stdout or CHANGE_CA|bool'
+
+- import_tasks: prometheus.yml
+  when: 'prom_install == "yes"'
+
+- import_tasks: local-storage.yml
+  when: '"local-path-provisioner" not in pod_info.stdout or CHANGE_CA|bool'
+
+- import_tasks: nfs-provisioner.yml
+  when: '"nfs-client-provisioner" not in pod_info.stdout or CHANGE_CA|bool'
+
+- import_tasks: cilium_connectivity_check.yml
+  when: 'CLUSTER_NETWORK == "cilium" and network_check_enabled|bool'
+
+- import_tasks: network_check.yml
+  when: 'network_check_enabled|bool and CLUSTER_NETWORK != "cilium"'
+
+- import_tasks: kubeapps.yml
+  when: 'kubeapps_install == "yes"'
+
+- import_tasks: kubeblocks.yml
+  when: 'kubeblocks_install == "yes"'
