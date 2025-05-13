@@ -198,6 +198,118 @@ WantedBy=multi-user.target
 
         run_command(["docker", "rm", "-f", name])
 
+    def clean_exited_containers(self) -> int:
+        """
+        清除所有 exited 状态的容器
+        返回被删除的容器数量
+        """
+        removed_count = 0
+
+        if self.client is not None:
+            try:
+                # 使用 SDK 获取所有 exited 状态的容器
+                exited_containers = self.client.containers.list(
+                    all=True,
+                    filters={'status': 'exited'}
+                )
+
+                for container in exited_containers:
+                    try:
+                        container.remove()
+                        removed_count += 1
+                        logger.debug(f"已删除 exited 容器: {container.name} ({container.id})")
+                    except APIError as e:
+                        logger.warning(f"删除容器 {container.name} 失败: {str(e)}")
+                return removed_count
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行方式")
+
+        # 回退到命令行实现
+        try:
+            # 获取所有 exited 容器的 ID
+            cmd = ["docker", "ps", "-a", "--filter", "status=exited", "--format={{.ID}}"]
+            result = run_command(cmd)
+
+            if not result.stdout.strip():
+                return 0
+
+            container_ids = result.stdout.splitlines()
+
+            # 批量删除容器
+            for container_id in container_ids:
+                try:
+                    run_command(["docker", "rm", container_id])
+                    removed_count += 1
+                    logger.debug(f"已删除 exited 容器: {container_id}")
+                except CommandExecutionError as e:
+                    logger.warning(f"删除容器 {container_id} 失败: {str(e)}")
+
+            return removed_count
+        except CommandExecutionError as e:
+            logger.error(f"清理 exited 容器失败: {str(e)}")
+            return 0
+
+    def clean_all_containers(self, force: bool = False) -> int:
+        """
+        清除所有容器（包括运行中和已退出的）
+        :param force: 是否强制删除运行中的容器
+        返回被删除的容器数量
+        """
+        removed_count = 0
+
+        if self.client is not None:
+            try:
+                # 使用 SDK 获取所有容器
+                all_containers = self.client.containers.list(all=True)
+
+                for container in all_containers:
+                    try:
+                        if container.status == 'running' and not force:
+                            logger.debug(f"跳过运行中的容器: {container.name} (使用 force=True 可强制删除)")
+                            continue
+
+                        container.remove(force=force)
+                        removed_count += 1
+                        logger.debug(f"已删除容器: {container.name} ({container.id})")
+                    except APIError as e:
+                        logger.warning(f"删除容器 {container.name} 失败: {str(e)}")
+                return removed_count
+            except APIError:
+                logger.warning("Docker SDK 出错，回退到命令行方式")
+
+        # 回退到命令行实现
+        try:
+            # 获取所有容器的 ID
+            cmd = ["docker", "ps", "-a", "--format={{.ID}}"]
+            result = run_command(cmd)
+
+            if not result.stdout.strip():
+                return 0
+
+            container_ids = result.stdout.splitlines()
+
+            # 批量删除容器
+            for container_id in container_ids:
+                try:
+                    # 检查容器是否在运行
+                    inspect_cmd = ["docker", "inspect", "--format={{.State.Running}}", container_id]
+                    inspect_result = run_command(inspect_cmd)
+
+                    if inspect_result.stdout.strip() == 'true' and not force:
+                        logger.debug(f"跳过运行中的容器: {container_id} (使用 force=True 可强制删除)")
+                        continue
+
+                    run_command(["docker", "rm", "-f" if force else "", container_id])
+                    removed_count += 1
+                    logger.debug(f"已删除容器: {container_id}")
+                except CommandExecutionError as e:
+                    logger.warning(f"删除容器 {container_id} 失败: {str(e)}")
+
+            return removed_count
+        except CommandExecutionError as e:
+            logger.error(f"清理所有容器失败: {str(e)}")
+            return 0
+
     def run_temp_container(self, image: str, name: str, **kwargs) -> str:
         """运行临时容器并返回其 ID"""
         self.remove_container(name)

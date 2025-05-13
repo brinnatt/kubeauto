@@ -545,7 +545,7 @@ class KubeautoCLI:
         docker = DockerManager()
         if args.clean:
             if confirm_action("Clean all running containers"):
-                docker.clean_containers()
+                docker.clean_all_containers(force=True)
 
     def run(self) -> None:
         """Run the CLI application"""
