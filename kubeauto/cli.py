@@ -554,8 +554,8 @@ class KubeautoCLI:
         try:
             self._execute_command(args)
         except KubeautoError as e:
-            logger.error(str(e))
+            logger.error(str(e), extra={'to_stdout': True})
             sys.exit(1)
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}", extra={'to_stdout': True})
             sys.exit(1)
