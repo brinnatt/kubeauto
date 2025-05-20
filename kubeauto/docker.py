@@ -224,7 +224,7 @@ WantedBy=multi-user.target
             except APIError:
                 logger.warning("Docker SDK 出错，回退到命令行方式")
 
-        # 回退到命令行实现
+        # 低版本兼容处理，回退到命令行实现
         try:
             # 获取所有 exited 容器的 ID
             cmd = ["docker", "ps", "-a", "--filter", "status=exited", "--format={{.ID}}"]
@@ -277,7 +277,7 @@ WantedBy=multi-user.target
             except APIError:
                 logger.warning("Docker SDK 出错，回退到命令行方式")
 
-        # 回退到命令行实现
+        # 低版本兼容处理，回退到命令行实现
         try:
             # 获取所有容器的 ID
             cmd = ["docker", "ps", "-a", "--format={{.ID}}"]
@@ -359,7 +359,7 @@ WantedBy=multi-user.target
             except APIError as e:
                 logger.warning(f"使用 SDK 运行容器失败: {str(e)}，回退到命令行")
 
-        # 回退到命令行
+        # 低版本兼容处理，回退到命令行实现
         cmd = ["docker", "run", "-d", "--name", name]
         for k, v in kwargs.items():
             if v is not None:
