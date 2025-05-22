@@ -1,4 +1,6 @@
 import shutil
+from typing import Optional
+
 from common.logger import setup_logger
 from pathlib import Path
 from .docker import DockerManager
@@ -10,7 +12,11 @@ logger = setup_logger(__name__)
 
 class DownloadManager:
     def __init__(self):
+        # 通过容器镜像来存储所有的组件，方便管理
         self.docker = DockerManager()
+        if not self.docker.is_docker_installed:
+            self.docker.install_docker()
+
         self.registry = RegistryManager()
         self.kube_constant = KubeConstant()
         self.base_path = Path(self.kube_constant.BASE_PATH)
@@ -25,7 +31,6 @@ class DownloadManager:
         self.kube_bin_dir.mkdir(exist_ok=True)
 
         # Download components
-        self.docker.install_docker(self.kube_constant.v_docker)
         self.get_kubeauto()
         self.get_k8s_bin()
         self.get_ext_bin()
@@ -103,8 +108,10 @@ class DownloadManager:
 
         logger.info("kubeauto has been installed successfully!")
 
-    def get_k8s_bin(self) -> None:
+    def get_k8s_bin(self, version: Optional[str] = None) -> None:
         """Download Kubernetes binaries with caching and error handling"""
+        version = version or self.kube_constant.v_k8s_bin
+
         # Check if binaries already exist
         if (self.kube_bin_dir / "kubelet").exists():
             logger.warning("Kubernetes binaries already exist")
@@ -116,16 +123,16 @@ class DownloadManager:
 
         try:
             # Handle container image with caching
-            image_tar = self.image_dir / f"k8s_bin_{self.kube_constant.v_k8s_bin}.tar"
+            image_tar = self.image_dir / f"k8s_bin_{version}.tar"
             if not image_tar.exists():
-                logger.info(f"Downloading Kubernetes binaries: {self.kube_constant.v_k8s_bin}")
-                self.docker.pull_image(f"brinnatt/kubeauto-k8s-bin:{self.kube_constant.v_k8s_bin}")
-                self.docker.save_image(f"brinnatt/kubeauto-k8s-bin:{self.kube_constant.v_k8s_bin}", str(image_tar))
+                logger.info(f"Downloading Kubernetes binaries: {version}")
+                self.docker.pull_image(f"brinnatt/kubeauto-k8s-bin:{version}")
+                self.docker.save_image(f"brinnatt/kubeauto-k8s-bin:{version}", str(image_tar))
             self.docker.load_image(str(image_tar))
 
             # Run temporary container
             container_id = self.docker.run_temp_container(
-                f"brinnatt/kubeauto-k8s-bin:{self.kube_constant.v_k8s_bin}",
+                f"brinnatt/kubeauto-k8s-bin:{version}",
                 "temp_k8s_bin"
             )
 

@@ -20,6 +20,7 @@ class KubeautoCLI:
     """Main CLI application class"""
 
     def __init__(self):
+        self.docker = DockerManager()
         self.parser = argparse.ArgumentParser(
             description="Kubeauto - Kubernetes cluster management tool",
             formatter_class=argparse.RawTextHelpFormatter
@@ -320,51 +321,57 @@ class KubeautoCLI:
         )
 
     def _setup_download_command(self) -> None:
-        """Setup 'download' command"""
+        """Setup 'download' command with strict version control"""
         parser = self.subparsers.add_parser(
             "download",
-            help="Download required components"
+            help="Download required components with version control"
         )
 
-        download_group = parser.add_mutually_exclusive_group(required=True)
-        download_group.add_argument(
+        # 主模式选择（互斥且必须选其一）
+        mode_group = parser.add_mutually_exclusive_group(required=True)
+
+        # 模式1：下载所有组件（强制使用默认版本）
+        mode_group.add_argument(
             "-D", "--all",
             action="store_true",
-            help="Download all default components"
-        )
-        download_group.add_argument(
-            "-R", "--harbor",
-            action="store_true",
-            help="Download Harbor offline installer"
-        )
-        download_group.add_argument(
-            "-X", "--extra-image",
-            help="Download extra container images"
+            help="Download ALL components with DEFAULT versions: "
+                 f"Docker({self.kube_constant.v_docker}), "
+                 f"K8s({self.kube_constant.v_k8s_bin}), "
+                 f"Extra({self.kube_constant.v_extra_bin}), "
+                 f"Kubeauto({self.kube_constant.v_kubeauto})"
         )
 
-        parser.add_argument(
-            "-d", "--v-docker",
-            default=self.kube_constant.v_docker,
-            help=f"Docker version (default: {self.kube_constant.v_docker})"
+        # 模式2：选择下载特定组件（必须明确指定版本）
+        component_group = mode_group.add_argument_group("Component selection (must specify version)")
+        component_group.add_argument(
+            "-d", "--docker",
+            metavar="VERSION",
+            help=f"Download Docker with SPECIFIED version (default: {self.kube_constant.v_docker})"
         )
-        parser.add_argument(
-            "-e", "--v-ext-bin",
-            default=self.kube_constant.v_extra_bin,
-            help=f"Extra binaries version (default: {self.kube_constant.v_extra_bin})"
+        component_group.add_argument(
+            "-k", "--k8s-bin",
+            metavar="VERSION",
+            help=f"Download Kubernetes binaries with SPECIFIED version (default: {self.kube_constant.v_k8s_bin})"
         )
-        parser.add_argument(
-            "-k", "--v-k8s-bin",
-            default=self.kube_constant.v_k8s_bin,
-            help=f"Kubernetes binaries version (default: {self.kube_constant.v_k8s_bin})"
+        component_group.add_argument(
+            "-e", "--ext-bin",
+            metavar="VERSION",
+            help=f"Download extra binaries with SPECIFIED version (default: {self.kube_constant.v_extra_bin})"
         )
-        parser.add_argument(
-            "-m", "--registry-mirror",
-            help="Registry mirror to use (default: CN)"
+        component_group.add_argument(
+            "-z", "--kubeauto",
+            metavar="VERSION",
+            help=f"Download Kubeauto with SPECIFIED version (default: {self.kube_constant.v_kubeauto})"
         )
-        parser.add_argument(
-            "-z", "--v-kubeauto",
-            default=self.kube_constant.v_kubeauto,
-            help=f"Kubeauto version (default: {self.kube_constant.v_kubeauto})"
+        component_group.add_argument(
+            "-R", "--harbor",
+            metavar="VERSION",
+            help="Download Harbor offline installer with SPECIFIED version"
+        )
+        component_group.add_argument(
+            "-X", "--extra-images",
+            metavar="VERSION",
+            help="Download extra container images with SPECIFIED version"
         )
 
     def _setup_docker_command(self) -> None:
@@ -531,14 +538,34 @@ class KubeautoCLI:
             cm.kubeconfig_admin(args.cluster, "list")
 
     def _handle_download(self, args: argparse.Namespace) -> None:
-        """Handle 'download' command"""
+        """Handle download command with version enforcement"""
         dm = DownloadManager()
+
         if args.all:
+            # 模式1：所有组件都使用默认版本
             dm.download_all()
-        elif args.harbor:
-            dm.get_harbor_offline_pkg()
-        elif args.extra_image:
-            dm.get_default_images()
+        else:
+            # 模式2：部分组件使用指定版本下载或安装
+            if args.docker:
+                self.docker.uninstall_docker()
+                self.docker.install_docker(args.docker)
+
+            if args.k8s_bin:
+                dm.get_k8s_bin(args.k8s_bin)
+
+            if args.ext_bin:
+                download_params['ext_bin_ver'] = args.ext_bin
+            if args.kubeauto:
+                download_params['kubeauto_ver'] = args.kubeauto
+            if args.harbor:
+                download_params['harbor_ver'] = args.harbor
+            if args.extra_images:
+                download_params['extra_images_ver'] = args.extra_images
+
+            if not download_params:
+                raise argparse.ArgumentError(None, "At least one component must be specified with version")
+
+            dm.download_selected(**download_params)
 
     def _handle_docker(self, args: argparse.Namespace) -> None:
         """Handle 'docker' command"""

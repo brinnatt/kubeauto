@@ -63,6 +63,115 @@ class DockerManager:
         # 安装后重新初始化客户端
         self._initialize_docker_client()
 
+    def uninstall_docker(self, assume_yes: bool = False) -> None:
+        """
+        彻底卸载Docker及其相关文件和配置
+        :param assume_yes: 是否自动确认卸载(默认False，需要用户确认)
+        """
+        # 1. 检查Docker是否已安装
+        if not self.is_docker_installed:
+            logger.info("Docker 未安装，无需卸载", extra={'to_stdout': True})
+            return
+
+        # 2. 获取Docker版本信息
+        docker_version = "未知版本"
+        try:
+            if self.client is not None:
+                docker_version = self.client.version()["Version"]
+            else:
+                result = run_command(["docker", "--version"])
+                version_match = re.search(r"Docker version (\S+)", result.stdout)
+                if version_match:
+                    docker_version = version_match.group(1)
+        except Exception as e:
+            logger.warning(f"获取Docker版本失败: {str(e)}")
+
+        logger.info(f"检测到已安装Docker版本: {docker_version}")
+
+        # 3. 用户确认
+        if not assume_yes:
+            confirm = input(f"确认要卸载Docker {docker_version}吗? [Y/n] ").strip().lower()
+            if confirm not in ('', 'y', 'yes'):
+                logger.info("取消卸载Docker")
+                return
+
+        logger.info("开始卸载Docker...")
+
+        # 4. 停止并禁用Docker服务
+        try:
+            run_command(["systemctl", "stop", "docker"])
+            run_command(["systemctl", "disable", "docker"])
+            run_command(["systemctl", "daemon-reload"])
+            logger.debug("已停止并禁用Docker服务")
+        except CommandExecutionError as e:
+            logger.warning(f"停止Docker服务失败: {str(e)}")
+
+        # 5. 删除Docker二进制文件和链接
+        try:
+            # 查找并删除所有指向docker_bin_dir的软链接
+            bin_dir = Path("/usr/local/bin")
+            if bin_dir.exists():
+                for item in bin_dir.iterdir():
+                    if item.is_symlink():
+                        try:
+                            target = item.resolve()
+                            if str(target).startswith(str(self.docker_bin_dir)):
+                                item.unlink()
+                                logger.debug(f"已删除命令链接: {item} -> {target}")
+                        except (OSError, RuntimeError) as e:
+                            logger.warning(f"解析链接 {item} 失败: {str(e)}")
+
+            # 删除docker_bin_dir目录
+            if self.docker_bin_dir.exists():
+                run_command(["rm", "-rf", str(self.docker_bin_dir)])
+                logger.debug(f"已删除Docker二进制目录: {self.docker_bin_dir}")
+        except Exception as e:
+            logger.warning(f"删除Docker二进制文件失败: {str(e)}")
+
+        # 6. 删除Docker配置文件和存储数据
+        try:
+            # 删除systemd服务文件
+            service_file = Path("/etc/systemd/system/docker.service")
+            if service_file.exists():
+                service_file.unlink()
+                logger.debug(f"已删除服务文件: {service_file}")
+
+            # 删除daemon.json
+            daemon_json = Path("/etc/docker/daemon.json")
+            if daemon_json.exists():
+                daemon_json.unlink()
+                logger.debug(f"已删除配置文件: {daemon_json}")
+
+            # 删除docker数据目录
+            if self.base_data_path.exists():
+                run_command(["rm", "-rf", str(self.base_data_path / "docker")])
+                logger.debug(f"已删除Docker数据目录: {self.base_data_path / 'docker'}")
+
+            # 删除/var/run/docker.sock
+            docker_sock = Path("/var/run/docker.sock")
+            if docker_sock.exists():
+                docker_sock.unlink()
+                logger.debug(f"已删除docker.sock: {docker_sock}")
+        except Exception as e:
+            logger.warning(f"删除Docker配置文件失败: {str(e)}")
+
+        # 7. 删除docker用户组和相关用户(如果有)
+        try:
+            run_command(["groupdel", "docker"])
+            logger.debug("已删除docker用户组")
+        except CommandExecutionError:
+            pass  # 忽略删除失败的情况
+
+        # 8. 清理残留的Docker进程
+        try:
+            run_command(["pkill", "-9", "dockerd"])
+            run_command(["pkill", "-9", "containerd"])
+            logger.debug("已清理残留的Docker进程")
+        except CommandExecutionError:
+            pass
+
+        logger.info(f"Docker {docker_version} 卸载完成!")
+
     def _download_docker(self, version: str) -> None:
         """下载 Docker 二进制文件"""
         docker_tgz = self.image_dir / f"docker-{version}.tgz"
