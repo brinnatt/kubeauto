@@ -90,13 +90,13 @@ class KubeConstant:
     BASE_PATH: str = field(default="/usr/local/kubeauto", metadata={
         "description": "This basic path stores all kubeauto files"
     })
-    IMAGE_DIR: str = field(default=f"{BASE_PATH}/down", metadata={
+    IMAGE_DIR: str = field(default="/usr/local/kubeauto/down", metadata={
         "description": "This path stores image files"
     })
-    KUBE_BIN_DIR: str = field(default=f"{BASE_PATH}/kube-bin", metadata={
+    KUBE_BIN_DIR: str = field(default="/usr/local/kubeauto/kube-bin", metadata={
         "description": "This path stores binaries"
     })
-    DOCKER_BIN_DIR: str = field(default=f"{BASE_PATH}/docker-bin", metadata={
+    DOCKER_BIN_DIR: str = field(default="/usr/local/kubeauto/docker-bin", metadata={
         "description": "This path stores docker binaries"
     })
 
@@ -106,7 +106,7 @@ class KubeConstant:
     })
 
     # path specifically for storing temporary files removed after copied to somewhere
-    TEMP_PATH: str = field(default=f"/tmp/kubeauto", metadata={
+    TEMP_PATH: str = field(default="/tmp/kubeauto", metadata={
         "description": "This path stores temporary binaries"
     })
 

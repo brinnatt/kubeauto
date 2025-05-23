@@ -38,7 +38,7 @@ class RegistryManager:
 
         # Run registry container
         logger.info(f"Starting local registry: {version}")
-        self.docker.run_temp_container(
+        self.docker.run_container(
             image=f"registry:{version}",
             name="local_registry",
             network="host",
@@ -55,7 +55,10 @@ class RegistryManager:
 
     def upload_to_registry(self, images: List[str]) -> None:
         """Upload images to local registry"""
-        self.start_local_registry()
+
+        # 实例化时，启动registry
+        if not self.docker.check_container_exists("local_registry"):
+            self.start_local_registry()
 
         for image in images:
             # Pull image if not exists locally

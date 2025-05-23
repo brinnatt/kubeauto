@@ -18,9 +18,8 @@ def run_command(cmd: List[str], check: bool = True, **kwargs) -> subprocess.Comp
     try:
         result = subprocess.run(cmd, check=check, capture_output=True, text=True, **kwargs)
         return result
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed: {' '.join(e.cmd)}\nError: {e.stderr}")
-        raise CommandExecutionError(f"Command failed: {' '.join(e.cmd)}") from e
+    except Exception as e:
+        raise CommandExecutionError(f"Command failed: {e}")
 
 
 def validate_ip(ip: str) -> bool:

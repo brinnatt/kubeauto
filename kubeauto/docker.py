@@ -419,7 +419,7 @@ WantedBy=multi-user.target
             logger.error(f"清理所有容器失败: {str(e)}")
             return 0
 
-    def run_temp_container(self, image: str, name: str, **kwargs) -> str:
+    def run_container(self, image: str, name: str, **kwargs) -> str:
         """运行临时容器并返回其 ID"""
         self.remove_container(name)
 
@@ -477,6 +477,42 @@ WantedBy=multi-user.target
 
         result = run_command(cmd)
         return result.stdout.strip()
+
+    def check_container_exists(self, container_name: str) -> bool:
+        """
+        检查容器是否存在
+        :param container_name: 要检查的容器名称或ID
+        :return: 如果容器存在返回True，否则返回False
+        """
+        # 优先使用Docker SDK
+        if self.client is not None:
+            try:
+                self.client.containers.get(container_name)
+                logger.debug(f"容器 '{container_name}' 存在 (通过SDK检测)")
+                return True
+            except docker.errors.NotFound:
+                logger.debug(f"容器 '{container_name}' 不存在 (通过SDK检测)")
+                return False
+            except APIError as e:
+                logger.warning(f"使用SDK检查容器存在状态失败: {str(e)}，将回退到命令行方式")
+
+        # 低版本兼容，回退到命令行实现
+        try:
+            result = run_command([
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                f"name=^{container_name}$",
+                "--format",
+                "{{.Names}}"
+            ])
+            exists = container_name in result.stdout
+            logger.debug(f"容器 '{container_name}' {'存在' if exists else '不存在'} (通过命令行检测)")
+            return exists
+        except CommandExecutionError as e:
+            logger.error(f"检查容器存在状态失败: {str(e)}")
+            return False
 
     def copy_from_container(self, container: str, src: str, dest: str) -> None:
         """从容器复制文件到主机"""

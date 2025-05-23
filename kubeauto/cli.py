@@ -328,10 +328,12 @@ class KubeautoCLI:
         )
 
         # 主模式选择（互斥且必须选其一）
-        mode_group = parser.add_mutually_exclusive_group(required=True)
+        main_group = parser.add_argument_group("Download options")
 
-        # 模式1：下载所有组件（强制使用默认版本）
-        mode_group.add_argument(
+
+        # --all 选项（与其他所有选项互斥）
+        exclusive_group = main_group.add_mutually_exclusive_group()
+        exclusive_group.add_argument(
             "-D", "--all",
             action="store_true",
             help="Download ALL components with DEFAULT versions: "
@@ -341,8 +343,8 @@ class KubeautoCLI:
                  f"Kubeauto({self.kube_constant.v_kubeauto})"
         )
 
-        # 模式2：选择下载特定组件（必须明确指定版本）
-        component_group = mode_group.add_argument_group("Component selection (must specify version)")
+        # 可组合的组件选项（与--all互斥）
+        component_group = exclusive_group.add_argument_group("Component selection (must specify version)")
         component_group.add_argument(
             "-d", "--docker",
             metavar="VERSION",
@@ -554,18 +556,16 @@ class KubeautoCLI:
                 dm.get_k8s_bin(args.k8s_bin)
 
             if args.ext_bin:
-                download_params['ext_bin_ver'] = args.ext_bin
+                dm.get_ext_bin(args.ext_bin)
+
             if args.kubeauto:
-                download_params['kubeauto_ver'] = args.kubeauto
+                dm.get_kubeauto(args.kubeauto)
+
             if args.harbor:
-                download_params['harbor_ver'] = args.harbor
+                dm.get_harbor_offline_pkg(args.harbor)
+
             if args.extra_images:
-                download_params['extra_images_ver'] = args.extra_images
-
-            if not download_params:
-                raise argparse.ArgumentError(None, "At least one component must be specified with version")
-
-            dm.download_selected(**download_params)
+                dm.get_default_images(args.extra_images)
 
     def _handle_docker(self, args: argparse.Namespace) -> None:
         """Handle 'docker' command"""
@@ -581,8 +581,10 @@ class KubeautoCLI:
         try:
             self._execute_command(args)
         except KubeautoError as e:
+            raise
             logger.error(str(e), extra={'to_stdout': True})
             sys.exit(1)
         except Exception as e:
+            raise
             logger.error(f"Unexpected error: {str(e)}", extra={'to_stdout': True})
             sys.exit(1)
