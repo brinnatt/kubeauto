@@ -197,8 +197,12 @@ class DockerManager:
         self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
 
         run_command(["tar", "xf", str(self.image_dir / f"docker-{version}.tgz"), "-C", str(self.temp_path)])
-        run_command(["cp", "-f", str(self.temp_path / "docker" / "*"), str(self.docker_bin_dir)])
-        run_command(["ln", "-svf", str(self.docker_bin_dir / "*"), "/usr/local/bin/"])
+
+        # [bug fixed] 在subprocess.run中直接使用*通配符时，shell不会自动扩展它
+        run_command(["bash", "-c", f"cp -f {self.temp_path}/docker/* {self.docker_bin_dir}/"])
+        for binary in self.docker_bin_dir.iterdir():
+            if binary.is_file():
+                run_command(["ln", "-svf", str(binary), "/usr/local/bin/"])
 
         run_command(["rm", "-rf", str(self.temp_path / "docker")])
         logger.info("Docker 二进制文件安装完成!")
@@ -238,7 +242,7 @@ WantedBy=multi-user.target
 
         config = {
             "exec-opts": [f"native.cgroupdriver={cgroup_driver}"],
-            "insecure-registries": ["http://registry.talkschool.cn:5000"],
+            "insecure-registries": ["registry.talkschool.cn:5000"],
             "max-concurrent-downloads": 10,
             "log-driver": "json-file",
             "log-level": "warn",
@@ -250,13 +254,14 @@ WantedBy=multi-user.target
         }
 
         daemon_json = Path("/etc/docker/daemon.json")
+        daemon_json.parent.mkdir(parents=True, exist_ok=True)
         daemon_json.write_text(json.dumps(config, indent=2))
 
         # 如果存在 SELinux 则禁用它
         selinux_config = Path("/etc/selinux/config")
         if selinux_config.exists():
             logger.debug("正在禁用 SELinux")
-            run_command(["setenforce", "0"])
+            run_command(["setenforce", "0"], allowed_exit_codes=[0, 1])
             content = selinux_config.read_text()
             content = re.sub(r'^SELINUX=.*$', 'SELINUX=disabled', content, flags=re.MULTILINE)
             selinux_config.write_text(content)

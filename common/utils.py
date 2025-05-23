@@ -12,12 +12,16 @@ from .exceptions import CommandExecutionError
 logger = setup_logger(__name__)
 
 
-def run_command(cmd: List[str], check: bool = True, **kwargs) -> subprocess.CompletedProcess:
+def run_command(cmd: List[str], check: bool = True, allowed_exit_codes: List[int] = None, **kwargs):
     """Run a shell command with error handling"""
     logger.debug(f"Executing command: {' '.join(cmd)}")
     try:
         result = subprocess.run(cmd, check=check, capture_output=True, text=True, **kwargs)
         return result
+    except subprocess.CalledProcessError as e:
+        if allowed_exit_codes and e.returncode in allowed_exit_codes:
+            return e
+        raise CommandExecutionError(f"Command failed: {e}")
     except Exception as e:
         raise CommandExecutionError(f"Command failed: {e}")
 
