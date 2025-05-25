@@ -68,14 +68,16 @@ class DownloadManager:
             )
 
             # Creating temporary backup directory
-            backup_dir = self.temp_path / "kubeauto"
+            backup_dir = self.temp_path / "pre_bin"
             if backup_dir.exists():
                 shutil.rmtree(backup_dir)
             backup_dir.mkdir(exist_ok=True, parents=True)
 
-            # Backup all original files
-            for item in self.base_path.iterdir():
-                shutil.move(str(item), str(backup_dir / item.name))
+            # TODO
+            # # Backup all original files
+            # 这里有个大bug，你把二进制移走了，就没有命令了
+            # for item in self.base_path.iterdir():
+            #     shutil.move(str(item), str(backup_dir / item.name))
 
             try:
                 # Rebuild all base_path files from container

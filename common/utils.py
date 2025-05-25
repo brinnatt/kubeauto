@@ -21,7 +21,13 @@ def run_command(cmd: List[str], check: bool = True, allowed_exit_codes: List[int
     except subprocess.CalledProcessError as e:
         if allowed_exit_codes and e.returncode in allowed_exit_codes:
             return e
-        raise CommandExecutionError(f"Command failed: {e}")
+        # Build detailed error message
+        error_msg = (
+            f"Command failed with exit code {e.returncode}: {' '.join(e.cmd)}\n"
+            f"Error output: {e.stderr.strip() if e.stderr else '(empty)'}\n"
+            f"Standard output: {e.stdout.strip() if e.stdout else '(empty)'}"
+        )
+        raise CommandExecutionError(error_msg)
     except Exception as e:
         raise CommandExecutionError(f"Command failed: {e}")
 

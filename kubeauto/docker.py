@@ -1,5 +1,6 @@
 import json
 import re
+import os
 from pathlib import Path
 from typing import Optional, Dict, List
 import docker
@@ -205,15 +206,27 @@ class DockerManager:
                 run_command(["ln", "-svf", str(binary), "/usr/local/bin/"])
 
         run_command(["rm", "-rf", str(self.temp_path / "docker")])
+
+        # 更新当前进程的环境变量
+        os.environ["PATH"] = f"/usr/local/bin:{os.environ.get('PATH', '')}"
+        logger.info(f"Updated PATH: {os.environ['PATH']}", extra={"to_stdout": True})
+
         logger.info("Docker 二进制文件安装完成!")
 
     def _configure_docker(self, version: str) -> None:
         """配置 Docker 守护进程"""
         logger.info(f"正在配置 Docker 守护进程，版本: {version}")
 
+        # 创建 docker 用户组
+        try:
+            run_command(["groupadd", "-r", "docker"], allowed_exit_codes=[0, 9])  # 9 表示组已存在
+        except Exception as e:
+            logger.error(f"创建 docker 用户组失败: {e}")
+
         # 创建 systemd 服务文件
-        service_file = Path("/etc/systemd/system/docker.service")
-        service_file.write_text("""
+        try:
+            service_file = Path("/etc/systemd/system/docker.service")
+            service_file.write_text("""
 [Unit]
 Description=Docker Application Container Engine
 Documentation=https://docs.docker.com/
@@ -232,49 +245,66 @@ KillMode=process
 [Install]
 WantedBy=multi-user.target
 """)
+        except Exception as e:
+            logger.error("Failed to configure docker systemd file.")
+            raise e
 
         # 创建 daemon.json 配置
-        v_docker_main = int(version.split('.')[0])
-        cgroup_driver = "systemd" if v_docker_main >= 20 else "cgroupfs"
+        try:
+            v_docker_main = int(version.split('.')[0])
+            cgroup_driver = "systemd" if v_docker_main >= 20 else "cgroupfs"
 
-        data_docker = self.base_data_path / "docker"
-        data_docker.mkdir(parents=True, exist_ok=True)
+            data_docker = self.base_data_path / "docker"
+            data_docker.mkdir(parents=True, exist_ok=True)
 
-        config = {
-            "exec-opts": [f"native.cgroupdriver={cgroup_driver}"],
-            "insecure-registries": ["registry.talkschool.cn:5000"],
-            "max-concurrent-downloads": 10,
-            "log-driver": "json-file",
-            "log-level": "warn",
-            "log-opts": {
-                "max-size": "10m",
-                "max-file": "3"
-            },
-            "data-root": f"{data_docker}"
-        }
+            config = {
+                "exec-opts": [f"native.cgroupdriver={cgroup_driver}"],
+                "insecure-registries": ["registry.talkschool.cn:5000"],
+                "max-concurrent-downloads": 10,
+                "log-driver": "json-file",
+                "log-level": "warn",
+                "log-opts": {
+                    "max-size": "10m",
+                    "max-file": "3"
+                },
+                "registry-mirrors": [
+                    "https://docker.410006.xyz"
+                ],
+                "data-root": f"{data_docker}"
+            }
 
-        daemon_json = Path("/etc/docker/daemon.json")
-        daemon_json.parent.mkdir(parents=True, exist_ok=True)
-        daemon_json.write_text(json.dumps(config, indent=2))
+            daemon_json = Path("/etc/docker/daemon.json")
+            daemon_json.parent.mkdir(parents=True, exist_ok=True)
+            daemon_json.write_text(json.dumps(config, indent=2))
+        except Exception as e:
+            logger.error("Failed to configure docker daemon.json file.")
+            raise e
 
         # 如果存在 SELinux 则禁用它
-        selinux_config = Path("/etc/selinux/config")
-        if selinux_config.exists():
-            logger.debug("正在禁用 SELinux")
-            run_command(["setenforce", "0"], allowed_exit_codes=[0, 1])
-            content = selinux_config.read_text()
-            content = re.sub(r'^SELINUX=.*$', 'SELINUX=disabled', content, flags=re.MULTILINE)
-            selinux_config.write_text(content)
+        try:
+            selinux_config = Path("/etc/selinux/config")
+            if selinux_config.exists():
+                logger.debug("正在禁用 SELinux")
+                run_command(["setenforce", "0"], allowed_exit_codes=[0, 1])
+                content = selinux_config.read_text()
+                content = re.sub(r'^SELINUX=.*$', 'SELINUX=disabled', content, flags=re.MULTILINE)
+                selinux_config.write_text(content)
+        except Exception as e:
+            logger.error("Failed to configure SELinux config.")
+            raise e
 
         logger.info("Docker 守护进程配置完成!")
 
     def _start_docker_service(self, version) -> None:
         """启动并启用 Docker 服务"""
         logger.info(f"正在启动 Docker 服务，版本: {version}")
-
-        run_command(["systemctl", "enable", "docker"])
-        run_command(["systemctl", "daemon-reload"])
-        run_command(["systemctl", "restart", "docker"])
+        try:
+            run_command(["systemctl", "enable", "docker"])
+            run_command(["systemctl", "daemon-reload"])
+            run_command(["systemctl", "restart", "docker"])
+        except Exception as e:
+            logger.error("Failed to start docker service.")
+            raise e
 
         logger.info("Docker 服务启动完成!")
 
@@ -520,20 +550,25 @@ WantedBy=multi-user.target
             return False
 
     def copy_from_container(self, container: str, src: str, dest: str) -> None:
-        """从容器复制文件到主机"""
-        if self.client is not None:
-            try:
-                container_obj = self.client.containers.get(container)
-                data, stat = container_obj.get_archive(src)
+        """从容器复制文件或目录到主机
 
-                with open(dest, 'wb') as f:
-                    for chunk in data:
-                        f.write(chunk)
-                return
-            except APIError:
-                logger.warning("Docker SDK 出错，回退到命令行")
+        Args:
+            container: 容器名称或ID
+            src: 容器内源路径
+            dest: 主机目标路径
 
-        run_command(["docker", "cp", f"{container}:{src}", dest])
+        Raises:
+            RuntimeError: 如果复制失败
+        """
+        # 确保目标目录存在
+        dest_path = Path(dest)
+        if not dest_path.parent.exists():
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            run_command([docker, "cp", f"{container}:{src}", dest])
+        except CommandExecutionError as e:
+            raise RuntimeError(f"无法从容器复制文件/目录。错误: {str(e)}")
 
     def pull_image(self, image: str) -> None:
         """拉取 Docker 镜像"""
