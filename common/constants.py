@@ -106,7 +106,7 @@ class KubeConstant:
     })
 
     # path specifically for storing temporary files removed after copied to somewhere
-    TEMP_PATH: str = field(default="/tmp/kubeauto", metadata={
+    TEMP_PATH: str = field(default="/tmp", metadata={
         "description": "This path stores temporary binaries"
     })
 

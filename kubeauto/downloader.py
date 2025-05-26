@@ -23,11 +23,6 @@ class DownloadManager:
 
     def download_all(self) -> None:
         """Download all required components"""
-        # Create directories
-        (self.base_path / "down").mkdir(exist_ok=True, parents=True)
-        self.kube_bin_dir.mkdir(exist_ok=True, parents=True)
-
-        # Download components
         if not self.docker.is_docker_installed:
             self.docker.install_docker()
 
@@ -40,6 +35,9 @@ class DownloadManager:
     def get_kubeauto(self, version: Optional[str] = None) -> None:
         """Download and setup kubeauto with full directory backup"""
         version = version or self.kube_constant.v_kubeauto
+
+        # ensure base_path exists
+        self.base_path.mkdir(parents=True, exist_ok=True)
 
         # check if kubeauto exists
         if (self.base_path / "roles/kube-node").exists():
@@ -60,43 +58,25 @@ class DownloadManager:
 
         # Creating temporary container and handle files
         container_id = None
-        backup_dir = None
+        kubeauto_project = None
         try:
             container_id = self.docker.run_container(
                 f"brinnatt/kubeauto:{version}",
                 "temp_kubeauto",
             )
 
-            # Creating temporary backup directory
-            backup_dir = self.temp_path / "pre_bin"
-            if backup_dir.exists():
-                shutil.rmtree(backup_dir)
-            backup_dir.mkdir(exist_ok=True, parents=True)
+            kubeauto_project = self.temp_path / "kubeauto"
+            if kubeauto_project.exists():
+                shutil.rmtree(kubeauto_project)
 
-            # TODO
-            # # Backup all original files
-            # 这里有个大bug，你把二进制移走了，就没有命令了
-            # for item in self.base_path.iterdir():
-            #     shutil.move(str(item), str(backup_dir / item.name))
+            self.docker.copy_from_container(
+                "temp_kubeauto",
+                str(self.base_path),
+                str(self.temp_path)
+            )
 
-            try:
-                # Rebuild all base_path files from container
-                self.docker.copy_from_container(
-                    "temp_kubeauto",
-                    str(self.base_path),
-                    str(self.base_path.parent)
-                )
-            except Exception:
-                # If exception occurs, copy back original files
-                for item in backup_dir.iterdir():
-                    shutil.move(str(item), str(self.base_path / item.name))
-                raise
-
-            # Merge backup files, not override new files
-            for item in backup_dir.iterdir():
-                dest = self.base_path / item.name
-                if not dest.exists():
-                    shutil.move(str(item), str(dest))
+            for item in kubeauto_project.iterdir():
+                shutil.move(str(item), str(self.base_path))
 
         finally:
             # Clean up temporary container
@@ -106,15 +86,18 @@ class DownloadManager:
                 except Exception as e:
                     logger.warning(f"Failed to clean up temporary container: {e}")
 
-            # Clean up temporary backup files
-            if backup_dir and backup_dir.exists():
-                shutil.rmtree(backup_dir)
+            # Clean up temporary kubeauto project files
+            if kubeauto_project and kubeauto_project.exists():
+                shutil.rmtree(kubeauto_project)
 
         logger.info("kubeauto has been installed successfully!")
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
         """Download Kubernetes binaries with caching and error handling"""
         version = version or self.kube_constant.v_k8s_bin
+
+        # ensure kube_bin_dir exists
+        self.kube_bin_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if binaries already exist
         if (self.kube_bin_dir / "kubelet").exists():
@@ -123,7 +106,7 @@ class DownloadManager:
 
         # Initialize variables for cleanup
         container_id = None
-        tmp_dir = None
+        k8s_dir = None
 
         try:
             # Handle container image with caching
@@ -141,24 +124,24 @@ class DownloadManager:
             )
 
             # Create temp directory with cleanup safety
-            tmp_dir = self.temp_path / "k8s_bin"
-            if tmp_dir.exists():
-                shutil.rmtree(tmp_dir)
-            tmp_dir.mkdir(exist_ok=True, parents=True)
+            k8s_dir = self.temp_path / "k8s"
+            if k8s_dir.exists():
+                shutil.rmtree(k8s_dir)
 
             # Copy binaries from container
             self.docker.copy_from_container(
                 "temp_k8s_bin",
                 "/k8s",
-                str(tmp_dir)
+                str(self.temp_path)
             )
 
             # Move binaries to target directory
-            for item in tmp_dir.iterdir():
-                dest = self.kube_bin_dir / item.name
-                if dest.exists():
-                    dest.unlink()  # Remove existing files if any
-                item.rename(dest)
+            for item in k8s_dir.iterdir():
+                shutil.move(str(item), str(self.kube_bin_dir))
+
+            # Create k8s bin symbolic to src
+            for item in self.kube_bin_dir.iterdir():
+                item.symlink_to("/usr/local/bin/")
 
             logger.info("Kubernetes binaries downloaded successfully")
 
@@ -174,18 +157,15 @@ class DownloadManager:
                 except Exception as e:
                     logger.warning(f"Failed to remove container: {e}")
 
-            if tmp_dir and tmp_dir.exists():
-                try:
-                    # Remove remaining files if any
-                    for item in tmp_dir.iterdir():
-                        item.unlink()
-                    tmp_dir.rmdir()
-                except Exception as e:
-                    logger.warning(f"Failed to clean temp directory: {e}")
+            if k8s_dir and k8s_dir.exists():
+                shutil.rmtree(k8s_dir)
 
     def get_ext_bin(self, version:Optional[str] = None) -> None:
         """Download extra binaries with caching and error handling"""
         version = version or self.kube_constant.v_extra_bin
+
+        # ensure kube_bin_dir exists
+        self.kube_bin_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if binaries already exist
         if (self.kube_bin_dir / "etcdctl").exists():
@@ -194,7 +174,7 @@ class DownloadManager:
 
         # Initialize cleanup variables
         container_id = None
-        tmp_dir = None
+        extra_bin_dir = None
 
         try:
             # Handle container image with caching
@@ -212,24 +192,20 @@ class DownloadManager:
             )
 
             # Create temp directory
-            tmp_dir = self.temp_path / "extra_bin_tmp"
-            if tmp_dir.exists():
-                shutil.rmtree(tmp_dir)
-            tmp_dir.mkdir(exist_ok=True, parents=True)
+            extra_bin_dir = self.temp_path / "extra"
+            if extra_bin_dir.exists():
+                shutil.rmtree(extra_bin_dir)
 
             # Copy binaries from container
             self.docker.copy_from_container(
                 "temp_ext_bin",
                 "/extra",
-                str(tmp_dir)
+                str(self.temp_path)
             )
 
-            # Atomic move to target directory
-            for item in tmp_dir.iterdir():
-                dest = self.kube_bin_dir / item.name
-                if dest.exists():
-                    dest.unlink()  # Remove existing files
-                item.rename(dest)
+            # Move binaries to target directory
+            for item in extra_bin_dir.iterdir():
+                shutil.move(str(item), str(self.kube_bin_dir))
 
             logger.info("Extra binaries downloaded successfully")
 
@@ -245,14 +221,8 @@ class DownloadManager:
                 except Exception as e:
                     logger.warning(f"Container cleanup failed: {e}")
 
-            if tmp_dir and tmp_dir.exists():
-                try:
-                    # Ensure directory is empty before removal
-                    for item in tmp_dir.iterdir():
-                        item.unlink()
-                    tmp_dir.rmdir()
-                except Exception as e:
-                    logger.warning(f"Temp directory cleanup failed: {e}")
+            if extra_bin_dir and extra_bin_dir.exists():
+                shutil.rmtree(extra_bin_dir)
 
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""

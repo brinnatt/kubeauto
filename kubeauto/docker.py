@@ -175,6 +175,9 @@ class DockerManager:
 
     def _download_docker(self, version: str) -> None:
         """下载 Docker 二进制文件"""
+        # ensure image_dir exists
+        self.image_dir.mkdir(parents=True, exist_ok=True)
+
         docker_tgz = self.image_dir / f"docker-{version}.tgz"
         if docker_tgz.exists():
             logger.warning("Docker 二进制文件已存在")
