@@ -569,7 +569,7 @@ WantedBy=multi-user.target
             dest_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            run_command([docker, "cp", f"{container}:{src}", dest])
+            run_command(["docker", "cp", f"{container}:{src}", dest])
         except CommandExecutionError as e:
             raise RuntimeError(f"无法从容器复制文件/目录。错误: {str(e)}")
 

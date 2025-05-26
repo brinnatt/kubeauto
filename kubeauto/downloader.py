@@ -40,6 +40,7 @@ class DownloadManager:
         self.base_path.mkdir(parents=True, exist_ok=True)
 
         # check if kubeauto exists
+        # TODO 软链接失败了呢？
         if (self.base_path / "roles/kube-node").exists():
             logger.warning("kubeauto already exists")
             return
@@ -100,6 +101,7 @@ class DownloadManager:
         self.kube_bin_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if binaries already exist
+        # TODO 软链接失败了呢？
         if (self.kube_bin_dir / "kubelet").exists():
             logger.warning("Kubernetes binaries already exist")
             return
@@ -141,7 +143,7 @@ class DownloadManager:
 
             # Create k8s bin symbolic to src
             for item in self.kube_bin_dir.iterdir():
-                item.symlink_to("/usr/local/bin/")
+                item.symlink_to(f"/usr/local/bin/{item.name}")
 
             logger.info("Kubernetes binaries downloaded successfully")
 
@@ -206,6 +208,10 @@ class DownloadManager:
             # Move binaries to target directory
             for item in extra_bin_dir.iterdir():
                 shutil.move(str(item), str(self.kube_bin_dir))
+
+            # Create k8s bin symbolic to src
+            for item in self.kube_bin_dir.iterdir():
+                item.symlink_to(f"/usr/local/bin/{item.name}")
 
             logger.info("Extra binaries downloaded successfully")
 
