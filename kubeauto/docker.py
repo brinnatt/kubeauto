@@ -20,6 +20,7 @@ class DockerManager:
         self.image_dir = Path(self.kube_constant.IMAGE_DIR)
         self.docker_bin_dir = Path(self.kube_constant.DOCKER_BIN_DIR)
         self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
+        self.sys_bin_dir = Path(self.kube_constant.SYS_BIN_DIR)
         self.temp_path = Path(self.kube_constant.TEMP_PATH)
 
         # 初始化 Docker SDK 客户端
@@ -206,13 +207,9 @@ class DockerManager:
         run_command(["bash", "-c", f"cp -f {self.temp_path}/docker/* {self.docker_bin_dir}/"])
         for binary in self.docker_bin_dir.iterdir():
             if binary.is_file():
-                run_command(["ln", "-svf", str(binary), "/usr/local/bin/"])
+                run_command(["ln", "-svf", str(binary), str(self.sys_bin_dir)])
 
         run_command(["rm", "-rf", str(self.temp_path / "docker")])
-
-        # 更新当前进程的环境变量
-        os.environ["PATH"] = f"/usr/local/bin:{os.environ.get('PATH', '')}"
-        logger.info(f"Updated PATH: {os.environ['PATH']}", extra={"to_stdout": True})
 
         logger.info("Docker 二进制文件安装完成!")
 

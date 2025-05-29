@@ -96,8 +96,14 @@ class KubeConstant:
     KUBE_BIN_DIR: str = field(default="/usr/local/kubeauto/kube-bin", metadata={
         "description": "This path stores binaries"
     })
+    EXTRA_BIN_DIR: str = field(default="/usr/local/kubeauto/extra-bin", metadata={
+        "description": "This path stores extra binaries"
+    })
     DOCKER_BIN_DIR: str = field(default="/usr/local/kubeauto/docker-bin", metadata={
         "description": "This path stores docker binaries"
+    })
+    SYS_BIN_DIR: str = field(default="/usr/local/bin", metadata={
+        "description": "This path stores system binaries symlink to k8s real binaries"
     })
 
     # path specifically for storing app data

@@ -20,6 +20,8 @@ class DownloadManager:
         self.image_dir = Path(self.kube_constant.IMAGE_DIR)
         self.temp_path = Path(self.kube_constant.TEMP_PATH)
         self.kube_bin_dir = Path(self.kube_constant.KUBE_BIN_DIR)
+        self.extra_bin_dir = Path(self.kube_constant.EXTRA_BIN_DIR)
+        self.sys_bin_dir = Path(self.kube_constant.SYS_BIN_DIR)
 
     def download_all(self) -> None:
         """Download all required components"""
@@ -40,7 +42,6 @@ class DownloadManager:
         self.base_path.mkdir(parents=True, exist_ok=True)
 
         # check if kubeauto exists
-        # TODO 软链接失败了呢？
         if (self.base_path / "roles/kube-node").exists():
             logger.warning("kubeauto already exists")
             return
@@ -77,6 +78,9 @@ class DownloadManager:
             )
 
             for item in kubeauto_project.iterdir():
+                dest = self.base_path / item.name
+                if dest.exists():
+                    dest.unlink() # 强制删除已存在的文件包括软链接
                 shutil.move(str(item), str(self.base_path))
 
         finally:
@@ -101,8 +105,7 @@ class DownloadManager:
         self.kube_bin_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if binaries already exist
-        # TODO 软链接失败了呢？
-        if (self.kube_bin_dir / "kubelet").exists():
+        if (self.kube_bin_dir / "kubelet").exists() and (self.sys_bin_dir / "kubelet").is_symlink():
             logger.warning("Kubernetes binaries already exist")
             return
 
@@ -139,11 +142,17 @@ class DownloadManager:
 
             # Move binaries to target directory
             for item in k8s_dir.iterdir():
+                dest = self.kube_bin_dir / item.name
+                if dest.exists():
+                    dest.unlink()
                 shutil.move(str(item), str(self.kube_bin_dir))
 
-            # Create k8s bin symbolic to src
+            # Create symbolic links in /usr/local/bin pointing to files in kube_bin_dir
             for item in self.kube_bin_dir.iterdir():
-                item.symlink_to(f"/usr/local/bin/{item.name}")
+                target_link = Path(f"{self.sys_bin_dir}/{item.name}")
+                if target_link.exists():
+                    target_link.unlink()  # Remove existing file/link
+                target_link.symlink_to(item)
 
             logger.info("Kubernetes binaries downloaded successfully")
 
@@ -166,11 +175,11 @@ class DownloadManager:
         """Download extra binaries with caching and error handling"""
         version = version or self.kube_constant.v_extra_bin
 
-        # ensure kube_bin_dir exists
-        self.kube_bin_dir.mkdir(parents=True, exist_ok=True)
+        # ensure extra_bin_dir exists
+        self.extra_bin_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if binaries already exist
-        if (self.kube_bin_dir / "etcdctl").exists():
+        if (self.extra_bin_dir / "etcdctl").exists() and (self.sys_bin_dir / "etcdctl").is_symlink():
             logger.warning("Extra binaries already exist")
             return
 
@@ -207,11 +216,17 @@ class DownloadManager:
 
             # Move binaries to target directory
             for item in extra_bin_dir.iterdir():
-                shutil.move(str(item), str(self.kube_bin_dir))
+                dest = self.extra_bin_dir / item.name
+                if dest.exists():
+                    dest.unlink()
+                shutil.move(str(item), str(self.extra_bin_dir))
 
-            # Create k8s bin symbolic to src
-            for item in self.kube_bin_dir.iterdir():
-                item.symlink_to(f"/usr/local/bin/{item.name}")
+            # Create symbolic links in /usr/local/bin pointing to files in kube_bin_dir
+            for item in self.extra_bin_dir.iterdir():
+                target_link = Path(f"{self.sys_bin_dir}/{item.name}")
+                if target_link.exists():
+                    target_link.unlink()  # Remove existing file/link
+                target_link.symlink_to(item)
 
             logger.info("Extra binaries downloaded successfully")
 
@@ -229,6 +244,77 @@ class DownloadManager:
 
             if extra_bin_dir and extra_bin_dir.exists():
                 shutil.rmtree(extra_bin_dir)
+
+    def get_harbor_offline_pkg(self, version: Optional[str] = None) -> None:
+        """Download Harbor offline installer package with caching and error handling"""
+        version = version or self.kube_constant.v_harbor
+
+        self.image_dir.mkdir(parents=True, exist_ok=True)
+
+        # Check if package already exists
+        harbor_file = self.image_dir / f"harbor-offline-installer-{version}.tgz"
+        if harbor_file.exists():
+            logger.warning("Harbor offline installer already exists")
+            return
+
+        logger.info(f"Downloading Harbor offline installer: {version}")
+
+        # Initialize variables for cleanup
+        container_id = None
+        harbor_dir = None
+        try:
+            # Handle container image with caching
+            image_tar = self.image_dir / f"harbor_{version}.tar"
+            if not image_tar.exists():
+                self.docker.pull_image(f"brinnatt/harbor-offline:{version}")
+                self.docker.save_image(f"brinnatt/harbor-offline:{version}", str(image_tar))
+            self.docker.load_image(str(image_tar))
+
+            # Run temporary container
+            container_id = self.docker.run_container(
+                f"brinnatt/harbor-offline:{version}",
+                "temp_harbor"
+            )
+
+            # Create temp directory
+            harbor_dir = self.temp_path / "harbor"
+            if harbor_dir.exists():
+                shutil.rmtree(harbor_dir)
+            harbor_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy package from container to temp directory
+            self.docker.copy_from_container(
+                "temp_harbor",
+                f"/harbor-offline-installer-{version}.tgz",
+                str(harbor_dir)
+            )
+
+            # Move harbor to target directory
+            for item in harbor_dir.iterdir():
+                dest = self.image_dir / item.name
+                if dest.exists():
+                    dest.unlink()
+                shutil.move(str(item), str(self.image_dir))
+
+            logger.info("Harbor offline installer downloaded successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to get Harbor offline installer: {e}")
+            raise
+
+        finally:
+            # Cleanup resources
+            if container_id:
+                try:
+                    self.docker.remove_container("temp_harbor")
+                except Exception as e:
+                    logger.warning(f"Failed to remove harbor container: {e}")
+
+            if harbor_dir and harbor_dir.exists():
+                try:
+                    shutil.rmtree(harbor_dir)
+                except Exception as e:
+                    logger.warning(f"Failed to clean harbor temp directory: {e}")
 
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""
@@ -251,77 +337,4 @@ class DownloadManager:
 
         logger.info(f"Default images uploaded to registry successfully!")
 
-    def get_harbor_offline_pkg(self, version: Optional[str] = None) -> None:
-        """Download Harbor offline installer package with caching and error handling"""
-        version = version or self.kube_constant.v_harbor
 
-        # Check if package already exists
-        harbor_file = self.image_dir / f"harbor-offline-installer-{version}.tgz"
-        if harbor_file.exists():
-            logger.warning("Harbor offline installer already exists")
-            return
-
-        logger.info(f"Downloading Harbor offline installer: {version}")
-
-        # Initialize variables for cleanup
-        container_id = None
-        tmp_dir = None
-        try:
-            # Handle container image with caching
-            image_tar = self.image_dir / f"harbor_{version}.tar"
-            if not image_tar.exists():
-                self.docker.pull_image(f"brinnatt/harbor-offline:{version}")
-                self.docker.save_image(f"brinnatt/harbor-offline:{version}", str(image_tar))
-            self.docker.load_image(str(image_tar))
-
-            # Run temporary container
-            container_id = self.docker.run_container(
-                f"brinnatt/harbor-offline:{version}",
-                "temp_harbor"
-            )
-
-            # Create temp directory
-            tmp_dir = self.temp_path / "harbor_pkg"
-            if tmp_dir.exists():
-                shutil.rmtree(tmp_dir)
-            tmp_dir.mkdir(parents=True, exist_ok=True)
-
-            # Copy package from container to temp directory
-            self.docker.copy_from_container(
-                "temp_harbor",
-                f"/harbor-offline-installer-{version}.tgz",
-                str(tmp_dir)
-            )
-
-            # Verify and move to final location
-            tmp_file = tmp_dir / f"harbor-offline-installer-{version}.tgz"
-            if not tmp_file.exists():
-                raise FileNotFoundError("Harbor package not found in container")
-
-            # Atomic move to final destination
-            if harbor_file.exists():
-                harbor_file.unlink()
-            tmp_file.rename(harbor_file)
-
-            logger.info("Harbor offline installer downloaded successfully")
-
-        except Exception as e:
-            logger.error(f"Failed to get Harbor offline installer: {e}")
-            # Clean up potentially incomplete files
-            if harbor_file.exists():
-                harbor_file.unlink()
-            raise
-
-        finally:
-            # Cleanup resources
-            if container_id:
-                try:
-                    self.docker.remove_container("temp_harbor")
-                except Exception as e:
-                    logger.warning(f"Failed to remove harbor container: {e}")
-
-            if tmp_dir and tmp_dir.exists():
-                try:
-                    shutil.rmtree(tmp_dir)
-                except Exception as e:
-                    logger.warning(f"Failed to clean harbor temp directory: {e}")
