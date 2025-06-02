@@ -12,7 +12,6 @@ logger = setup_logger(__name__)
 
 class DownloadManager:
     def __init__(self):
-        # 通过容器镜像来存储所有的组件，方便管理
         self.docker = DockerManager()
         self.registry = RegistryManager()
         self.kube_constant = KubeConstant()
@@ -38,62 +37,13 @@ class DownloadManager:
         """Download and setup kubeauto with full directory backup"""
         version = version or self.kube_constant.v_kubeauto
 
-        # ensure base_path exists
-        self.base_path.mkdir(parents=True, exist_ok=True)
-
-        # check if kubeauto exists
-        if (self.base_path / "roles/kube-node").exists():
-            logger.warning("kubeauto already exists")
+        if self.__check_file_exists(self.base_path, "roles/kube-node"):
+            logger.warning("kubeauto already exists", extra={"to_stdout": True})
             return
 
-        # Handle kubeauto image
-        image_tar = self.image_dir / f"kubeauto_{version}.tar"
-        try:
-            if not image_tar.exists():
-                logger.info(f"Downloading kubeauto: {version}")
-                self.docker.pull_image(f"brinnatt/kubeauto:{version}")
-                self.docker.save_image(f"brinnatt/kubeauto:{version}", str(image_tar))
-            self.docker.load_image(str(image_tar))
-        except Exception as e:
-            logger.error(f"Failed to handle kubeauto image: {e}")
-            raise
+        self.__handle_image(self.image_dir, f"kubeauto_{version}.tar", f"brinnatt/kubeauto:{version}")
 
-        # Creating temporary container and handle files
-        container_id = None
-        kubeauto_project = None
-        try:
-            container_id = self.docker.run_container(
-                f"brinnatt/kubeauto:{version}",
-                "temp_kubeauto",
-            )
-
-            kubeauto_project = self.temp_path / "kubeauto"
-            if kubeauto_project.exists():
-                shutil.rmtree(kubeauto_project)
-
-            self.docker.copy_from_container(
-                "temp_kubeauto",
-                str(self.base_path),
-                str(self.temp_path)
-            )
-
-            for item in kubeauto_project.iterdir():
-                dest = self.base_path / item.name
-                if dest.exists():
-                    dest.unlink() # 强制删除已存在的文件包括软链接
-                shutil.move(str(item), str(self.base_path))
-
-        finally:
-            # Clean up temporary container
-            if container_id:
-                try:
-                    self.docker.remove_container("temp_kubeauto")
-                except Exception as e:
-                    logger.warning(f"Failed to clean up temporary container: {e}")
-
-            # Clean up temporary kubeauto project files
-            if kubeauto_project and kubeauto_project.exists():
-                shutil.rmtree(kubeauto_project)
+        self.__handle_files(f"brinnatt/kubeauto:{version}", "kubeauto")
 
         logger.info("kubeauto has been installed successfully!")
 
@@ -337,4 +287,59 @@ class DownloadManager:
 
         logger.info(f"Default images uploaded to registry successfully!")
 
+    def __check_file_exists(self, dir: Path, filename: str) -> None:
+        """Check if file exists"""
+        path = dir / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            return True
+        return False
 
+    def __handle_image(self, dir: Path, image_tar: str, image: str) -> None:
+        """Check if image exists"""
+        path = dir / image_tar
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            if not path.exists():
+                logger.info(f"Downloading {image}")
+                self.docker.pull_image(f"{image}")
+                self.docker.save_image(f"{image}", str(path))
+            self.docker.load_image(str(path))
+        except Exception as e:
+            logger.error(f"Failed to handle {image}: {e}")
+            raise
+
+    def __handle_files(self, image: str, image_carrier: str) -> None:
+        """Handle files"""
+        # Creating temporary container and handle files
+        container_id = None
+        temp_carrier = None
+        try:
+            container_id = self.docker.run_container(image, f"temp_{image_carrier}")
+
+            temp_carrier = self.temp_path / f"{image_carrier}"
+            if temp_carrier.exists():
+                shutil.rmtree(temp_carrier)
+
+            self.docker.copy_from_container(
+                f"temp_{image_carrier}",
+                str(self.base_path),
+                str(self.temp_path)
+            )
+
+            for item in temp_carrier.iterdir():
+                dest = self.base_path / item.name
+                if dest.exists():
+                    dest.unlink()
+                shutil.move(str(item), str(self.base_path))
+
+        finally:
+            if container_id:
+                try:
+                    self.docker.remove_container(f"temp_{image_carrier}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temporary container: {e}")
+
+            if temp_carrier and temp_carrier.exists():
+                shutil.rmtree(temp_carrier)
