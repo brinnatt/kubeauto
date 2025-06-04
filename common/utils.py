@@ -2,12 +2,12 @@
 Utility functions for kubeauto
 """
 import subprocess
+import shutil
 import ipaddress
 from typing import List
 from pathlib import Path
 from .logger import setup_logger
 from .exceptions import CommandExecutionError
-
 
 logger = setup_logger(__name__)
 
@@ -30,6 +30,15 @@ def run_command(cmd: List[str], check: bool = True, allowed_exit_codes: List[int
         raise CommandExecutionError(error_msg)
     except Exception as e:
         raise CommandExecutionError(f"Command failed: {e}")
+
+
+def rmrf(path: Path) -> None:
+    try:
+        shutil.rmtree(str(path))
+    except NotADirectoryError:
+        path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def validate_ip(ip: str) -> bool:

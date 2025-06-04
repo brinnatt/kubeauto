@@ -1,5 +1,6 @@
 import shutil
 from typing import Optional
+from common.utils import rmrf
 
 from common.logger import setup_logger
 from pathlib import Path
@@ -104,17 +105,17 @@ class DownloadManager:
 
         logger.info(f"Default images uploaded to registry successfully!")
 
-    def __check_file_exists(self, dir: Path, filename: str) -> None:
+    def __check_file_exists(self, directory: Path, filename: str) -> bool:
         """Check if file exists"""
-        path = dir / filename
+        path = directory / filename
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists():
             return True
         return False
 
-    def __handle_image(self, dir: Path, image_tar: str, image: str) -> None:
+    def __handle_image(self, directory: Path, image_tar: str, image: str) -> None:
         """Check if image exists"""
-        path = dir / image_tar
+        path = directory / image_tar
         path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -138,7 +139,7 @@ class DownloadManager:
 
             temp_carrier = self.temp_path / f"{image_carrier.name}"
             if temp_carrier.exists():
-                shutil.rmtree(temp_carrier)
+                shutil.rmtree(str(temp_carrier))
 
             self.docker.copy_from_container(
                 container_id,
@@ -147,17 +148,15 @@ class DownloadManager:
             )
 
             for item in temp_carrier.iterdir():
-                dester = destination / item.name
-                if dester.exists():
-                    dester.unlink()
+                dest = destination / item.name
+                rmrf(dest)
                 shutil.move(str(item), str(destination))
 
             if create_symlink:
                 # Create symbolic links in /usr/local/bin pointing to files in destination
                 for item in destination.iterdir():
                     target_link = self.sys_bin_dir / item.name
-                    if target_link.exists():
-                        target_link.unlink()
+                    rmrf(target_link)
                     target_link.symlink_to(item)
 
         finally:

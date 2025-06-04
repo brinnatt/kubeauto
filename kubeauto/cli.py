@@ -327,13 +327,11 @@ class KubeautoCLI:
             help="Download required components with version control"
         )
 
-        # 主模式选择（互斥且必须选其一）
-        main_group = parser.add_argument_group("Download options")
+        # 创建主互斥组
+        main_group = parser.add_mutually_exclusive_group()
 
-
-        # --all 选项（与其他所有选项互斥）
-        exclusive_group = main_group.add_mutually_exclusive_group()
-        exclusive_group.add_argument(
+        # -D/--all 选项（与其他所有选项互斥）
+        main_group.add_argument(
             "-D", "--all",
             action="store_true",
             help="Download ALL components with DEFAULT versions: "
@@ -343,36 +341,36 @@ class KubeautoCLI:
                  f"Kubeauto({self.kube_constant.v_kubeauto})"
         )
 
-        # 可组合的组件选项（与--all互斥）
-        component_group = exclusive_group.add_argument_group("Component selection (must specify version)")
-        component_group.add_argument(
+        # 创建子组
+        other_group = main_group.add_argument_group("其它选项")
+        other_group.add_argument(
             "-d", "--docker",
-            metavar="VERSION",
+            action="store_true",
             help=f"Download Docker with SPECIFIED version (default: {self.kube_constant.v_docker})"
         )
-        component_group.add_argument(
+        other_group.add_argument(
             "-k", "--k8s-bin",
-            metavar="VERSION",
+            action="store_true",
             help=f"Download Kubernetes binaries with SPECIFIED version (default: {self.kube_constant.v_k8s_bin})"
         )
-        component_group.add_argument(
+        other_group.add_argument(
             "-e", "--ext-bin",
-            metavar="VERSION",
+            action="store_true",
             help=f"Download extra binaries with SPECIFIED version (default: {self.kube_constant.v_extra_bin})"
         )
-        component_group.add_argument(
+        other_group.add_argument(
             "-z", "--kubeauto",
-            metavar="VERSION",
+            action="store_true",
             help=f"Download Kubeauto with SPECIFIED version (default: {self.kube_constant.v_kubeauto})"
         )
-        component_group.add_argument(
+        other_group.add_argument(
             "-R", "--harbor",
-            metavar="VERSION",
+            action="store_true",
             help="Download Harbor offline installer with SPECIFIED version"
         )
-        component_group.add_argument(
+        other_group.add_argument(
             "-X", "--extra-images",
-            metavar="VERSION",
+            action="store_true",
             help="Download extra container images with SPECIFIED version"
         )
 
