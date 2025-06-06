@@ -327,11 +327,7 @@ class KubeautoCLI:
             help="Download required components with version control"
         )
 
-        # 创建主互斥组
-        main_group = parser.add_mutually_exclusive_group()
-
-        # -D/--all 选项（与其他所有选项互斥）
-        main_group.add_argument(
+        parser.add_argument(
             "-D", "--all",
             action="store_true",
             help="Download ALL components with DEFAULT versions: "
@@ -341,37 +337,44 @@ class KubeautoCLI:
                  f"Kubeauto({self.kube_constant.v_kubeauto})"
         )
 
-        # 创建子组
-        other_group = main_group.add_argument_group("其它选项")
-        other_group.add_argument(
+        download_group = parser.add_argument_group("component options")
+        download_group.add_argument(
             "-d", "--docker",
-            action="store_true",
-            help=f"Download Docker with SPECIFIED version (default: {self.kube_constant.v_docker})"
+            metavar="VERSION",
+            nargs='?',
+            const=self.kube_constant.v_docker,
+            help=f"Download Docker (default: {self.kube_constant.v_docker})"
         )
-        other_group.add_argument(
+        download_group.add_argument(
             "-k", "--k8s-bin",
-            action="store_true",
-            help=f"Download Kubernetes binaries with SPECIFIED version (default: {self.kube_constant.v_k8s_bin})"
+            metavar="VERSION",
+            nargs='?',
+            const=self.kube_constant.v_k8s_bin,
+            help=f"Download Kubernetes binaries (default: {self.kube_constant.v_k8s_bin})"
         )
-        other_group.add_argument(
+        download_group.add_argument(
             "-e", "--ext-bin",
-            action="store_true",
-            help=f"Download extra binaries with SPECIFIED version (default: {self.kube_constant.v_extra_bin})"
+            metavar="VERSION",
+            nargs='?',
+            const=self.kube_constant.v_extra_bin,
+            help=f"Download extra binaries (default: {self.kube_constant.v_extra_bin})"
         )
-        other_group.add_argument(
+        download_group.add_argument(
             "-z", "--kubeauto",
-            action="store_true",
-            help=f"Download Kubeauto with SPECIFIED version (default: {self.kube_constant.v_kubeauto})"
+            metavar="VERSION",
+            nargs='?',
+            const=self.kube_constant.v_kubeauto,
+            help=f"Download Kubeauto (default: {self.kube_constant.v_kubeauto})"
         )
-        other_group.add_argument(
+        download_group.add_argument(
             "-R", "--harbor",
-            action="store_true",
-            help="Download Harbor offline installer with SPECIFIED version"
+            metavar="VERSION",
+            help="Download Harbor offline installer (必须指定版本)"
         )
-        other_group.add_argument(
+        download_group.add_argument(
             "-X", "--extra-images",
-            action="store_true",
-            help="Download extra container images with SPECIFIED version"
+            metavar="VERSION",
+            help="Download extra container images (必须指定版本)"
         )
 
     def _setup_docker_command(self) -> None:
@@ -540,6 +543,10 @@ class KubeautoCLI:
     def _handle_download(self, args: argparse.Namespace) -> None:
         """Handle download command with version enforcement"""
         dm = DownloadManager()
+        logger.info(args, extra={"to_stdout": True})
+        if args.all and any([args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor, args.extra_images]):
+            logger.error("--all/-D cannot be used with other download options", extra={"to_stdout": True})
+            sys.exit(1)
 
         if args.all:
             # 模式1：所有组件都使用默认版本
@@ -563,7 +570,7 @@ class KubeautoCLI:
                 dm.get_harbor_offline_pkg(args.harbor)
 
             if args.extra_images:
-                dm.get_default_images(args.extra_images)
+                dm.get_default_images()
 
     def _handle_docker(self, args: argparse.Namespace) -> None:
         """Handle 'docker' command"""
