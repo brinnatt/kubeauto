@@ -337,41 +337,41 @@ class KubeautoCLI:
                  f"Kubeauto({self.kube_constant.v_kubeauto})"
         )
 
-        download_group = parser.add_argument_group("component options")
-        download_group.add_argument(
+        component_group = parser.add_argument_group("component options")
+        component_group.add_argument(
             "-d", "--docker",
             metavar="VERSION",
             nargs='?',
             const=self.kube_constant.v_docker,
             help=f"Download Docker (default: {self.kube_constant.v_docker})"
         )
-        download_group.add_argument(
+        component_group.add_argument(
             "-k", "--k8s-bin",
             metavar="VERSION",
             nargs='?',
             const=self.kube_constant.v_k8s_bin,
             help=f"Download Kubernetes binaries (default: {self.kube_constant.v_k8s_bin})"
         )
-        download_group.add_argument(
+        component_group.add_argument(
             "-e", "--ext-bin",
             metavar="VERSION",
             nargs='?',
             const=self.kube_constant.v_extra_bin,
             help=f"Download extra binaries (default: {self.kube_constant.v_extra_bin})"
         )
-        download_group.add_argument(
+        component_group.add_argument(
             "-z", "--kubeauto",
             metavar="VERSION",
             nargs='?',
             const=self.kube_constant.v_kubeauto,
             help=f"Download Kubeauto (default: {self.kube_constant.v_kubeauto})"
         )
-        download_group.add_argument(
+        component_group.add_argument(
             "-R", "--harbor",
             metavar="VERSION",
             help="Download Harbor offline installer (必须指定版本)"
         )
-        download_group.add_argument(
+        component_group.add_argument(
             "-X", "--extra-images",
             metavar="VERSION",
             help="Download extra container images (必须指定版本)"
@@ -543,16 +543,15 @@ class KubeautoCLI:
     def _handle_download(self, args: argparse.Namespace) -> None:
         """Handle download command with version enforcement"""
         dm = DownloadManager()
-        logger.info(args, extra={"to_stdout": True})
+
+        # handle param conflict manually
         if args.all and any([args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor, args.extra_images]):
             logger.error("--all/-D cannot be used with other download options", extra={"to_stdout": True})
             sys.exit(1)
 
         if args.all:
-            # 模式1：所有组件都使用默认版本
             dm.download_all()
         else:
-            # 模式2：部分组件使用指定版本下载或安装
             if args.docker:
                 self.docker.uninstall_docker()
                 self.docker.install_docker(args.docker)
@@ -586,10 +585,8 @@ class KubeautoCLI:
         try:
             self._execute_command(args)
         except KubeautoError as e:
-            raise
             logger.error(str(e), extra={'to_stdout': True})
             sys.exit(1)
         except Exception as e:
-            raise
             logger.error(f"Unexpected error: {str(e)}", extra={'to_stdout': True})
             sys.exit(1)

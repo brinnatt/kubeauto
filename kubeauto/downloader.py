@@ -105,6 +105,20 @@ class DownloadManager:
 
         logger.info(f"Default images uploaded to registry successfully!")
 
+    def get_extra_images(self, component: str) -> None:
+        """Download extra images for specified component and upload to local registry"""
+        if component not in self.kube_constant.component_images:
+            logger.error(f"Invalid component: {component}")
+            return
+
+        logger.info(f"Downloading images for {component}, then uploading to local registry")
+
+        try:
+            self.registry.upload_to_registry(self.kube_constant.component_images[component])
+            logger.info(f"{component} images uploaded to registry successfully!")
+        except Exception as e:
+            logger.error(f"Failed to upload {component} images: {e}")
+
     def __check_file_exists(self, directory: Path, filename: str) -> bool:
         """Check if file exists"""
         path = directory / filename

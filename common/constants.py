@@ -21,7 +21,7 @@ class KubeConstant:
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="v1.0.0", metadata={
+    v_extra_bin: str = field(default="1.12.1", metadata={
         "refer_github": "",
     })
     v_harbor: str = field(default="v2.12.2", metadata={
@@ -125,3 +125,99 @@ class KubeConstant:
         url = f"https://mirrors.aliyun.com/docker-ce/linux/static/stable/{self.arch}/docker-{version}.tgz"
         return url
 
+    @property
+    def component_images(self):
+        return {
+            "cilium": [
+                f"cilium/cilium:v{self.v_cilium}",
+                f"cilium/operator-generic:v{self.v_cilium}",
+                f"cilium/hubble-relay:v{self.v_cilium}",
+                "cilium/hubble-ui-backend:v0.13.1",
+                "cilium/hubble-ui:v0.13.1"
+            ],
+            "flannel": [
+                f"flannel/flannel:{self.v_flannel}",
+                "flannel/flannel-cni-plugin:v1.5.1-flannel2"
+            ],
+            "dashboard": [
+                "kubernetesui/dashboard-api:1.12.0",
+                "kubernetesui/dashboard-auth:1.2.4",
+                "kubernetesui/dashboard-metrics-scraper:1.2.2",
+                "kubernetesui/dashboard-web:1.6.2",
+                "kong:3.8"
+            ],
+            "kubeapps": [
+                "bitnami/kubeapps-apis:2.7.0-debian-11-r10",
+                "bitnami/kubeapps-apprepository-controller:2.7.0-scratch-r0",
+                "bitnami/kubeapps-asset-syncer:2.7.0-scratch-r0",
+                "bitnami/kubeapps-dashboard:2.7.0-debian-11-r12",
+                "bitnami/nginx:1.23.4-debian-11-r18",
+                "bitnami/postgresql:15.3.0-debian-11-r0"
+            ],
+            "kubeblocks": [
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/snapshot-controller:v6.2.1",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-charts:0.9.3",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-datascript:0.9.3",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:0.9.3",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:0.9.3",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:0.9.3"
+            ],
+            "kb-addon-mysql": [
+                "apecloud/mysql_audit_log:8.0.33",
+                "apecloud/xtrabackup:8.0",
+                "apecloud/jemalloc:5.3.0",
+                "apecloud/syncer:0.5.0",
+                "apecloud/mysql:8.0.35",
+                "apecloud/agamotto:0.1.2-beta.1"
+            ],
+            "kb-addon-pg": [
+                "apecloud/spilo:16.4.0",
+                "apecloud/pgbouncer:1.19.0",
+                "apecloud/postgres-exporter:v0.15.0"
+            ],
+            "kb-addon-redis": [
+                "apecloud/redis-stack-server:7.2.0-v14"
+            ],
+            "kb-addon-minio": [
+                "apecloud/minio:RELEASE.2024-06-29T01-20-47Z",
+                "apecloud/kubeblocks-tools:0.8.2"
+            ],
+            "kb-addon-mongodb": [
+                "apecloud/mongo:8.0.4",
+                "apecloud/syncer:0.3.7"
+            ],
+            "kb-addon-es": [
+                "apecloud/kibana:8.8.2",
+                "apecloud/elasticsearch-plugins:8.8.2",
+                "apecloud/elasticsearch:8.8.2",
+                "apecloud/elasticsearch-exporter:v1.7.0",
+                "apecloud/curl-jq:0.1.0"
+            ],
+            "kube-ovn": [
+                f"kubeovn/kube-ovn:{self.v_kubeovn}"
+            ],
+            "kube-router": [
+                f"cloudnativelabs/kube-router:{self.v_kuberouter}"
+            ],
+            "local-path-provisioner": [
+                f"rancher/local-path-provisioner:{self.v_localpathprovisioner}"
+            ],
+            "network-check": [
+                "easzlab/json-mock:v1.3.0",
+                "easzlab/alpine-curl:v7.85.0"
+            ],
+            "nfs-provisioner": [
+                f"easzlab/nfs-subdir-external-provisioner:{self.v_nfsprovisioner}"
+            ],
+            "prometheus": [
+                "easzlab/kube-state-metrics:v2.8.2",
+                "easzlab/kube-webhook-certgen:v1.5.1",
+                "grafana/grafana:9.4.7",
+                "quay.io/kiwigrid/k8s-sidecar:1.22.0",
+                "quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0",
+                "quay.io/prometheus-operator/prometheus-operator:v0.63.0",
+                "quay.io/prometheus/alertmanager:v0.25.0",
+                "quay.io/prometheus/node-exporter:v1.5.0",
+                "quay.io/prometheus/prometheus:v2.42.0"
+            ]
+        }
