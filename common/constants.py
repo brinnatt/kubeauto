@@ -54,10 +54,10 @@ class KubeConstant:
         "refer_github": "https://github.com/kubernetes/kubernetes/tree/master/build/pause",
         "refer_none_official_docs": "https://k8s.iswbm.com/c02/p02_learn-kubernetes-pod-via-pause-container.html"
     })
-    v_flannel: str = field(default="3.10", metadata={
+    v_flannel: str = field(default="v0.26.7", metadata={
         "refer_github": "https://github.com/flannel-io/flannel"
     })
-    v_cilium: str = field(default="1.16.3", metadata={
+    v_cilium: str = field(default="v1.16.3", metadata={
         "refer_github": "https://github.com/cilium/cilium"
     })
     v_kuberouter: str = field(default="v1.5.4", metadata={
@@ -129,9 +129,9 @@ class KubeConstant:
     def component_images(self):
         return {
             "cilium": [
-                f"cilium/cilium:v{self.v_cilium}",
-                f"cilium/operator-generic:v{self.v_cilium}",
-                f"cilium/hubble-relay:v{self.v_cilium}",
+                f"cilium/cilium:{self.v_cilium}",
+                f"cilium/operator-generic:{self.v_cilium}",
+                f"cilium/hubble-relay:{self.v_cilium}",
                 "cilium/hubble-ui-backend:v0.13.1",
                 "cilium/hubble-ui:v0.13.1"
             ],
@@ -203,15 +203,15 @@ class KubeConstant:
                 f"rancher/local-path-provisioner:{self.v_localpathprovisioner}"
             ],
             "network-check": [
-                "easzlab/json-mock:v1.3.0",
-                "easzlab/alpine-curl:v7.85.0"
+                "brinnatt/json-mock:v1.3.0",
+                "brinnatt/alpine-curl:v7.85.0"
             ],
             "nfs-provisioner": [
-                f"easzlab/nfs-subdir-external-provisioner:{self.v_nfsprovisioner}"
+                f"brinnatt/nfs-subdir-external-provisioner:{self.v_nfsprovisioner}"
             ],
             "prometheus": [
-                "easzlab/kube-state-metrics:v2.8.2",
-                "easzlab/kube-webhook-certgen:v1.5.1",
+                "brinnatt/kube-state-metrics:v2.8.2",
+                "brinnatt/kube-webhook-certgen:v1.5.1",
                 "grafana/grafana:9.4.7",
                 "quay.io/kiwigrid/k8s-sidecar:1.22.0",
                 "quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0",
