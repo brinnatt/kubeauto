@@ -220,7 +220,7 @@ class DockerManager:
         except Exception as e:
             logger.error(f"Failed to create docker user group: {e}")
 
-        # Create docker bash completion
+        # Create docker bash completion (https://docs.docker.com/engine/cli/completion/)
         try:
             run_command(["mkdir", "-p", "~/.local/share/bash-completion/completions"])
             run_command(["docker", "completion", "bash", ">", "~/.local/share/bash-completion/completions/docker"])

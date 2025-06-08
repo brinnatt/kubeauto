@@ -369,12 +369,18 @@ class KubeautoCLI:
         component_group.add_argument(
             "-R", "--harbor",
             metavar="VERSION",
-            help="Download Harbor offline installer (必须指定版本)"
+            help="Download Harbor offline installer (required specific version)"
         )
         component_group.add_argument(
-            "-X", "--extra-images",
-            metavar="VERSION",
-            help="Download extra container images (必须指定版本)"
+            "-X", "--default-images",
+            action="store_true",
+            help="Download extra multiple container images (default versions)"
+        )
+
+        component_group.add_argument(
+            "E", "--ext-images",
+            metavar="COMPONENT",
+            help="Download specific extra component (required specific component)"
         )
 
     def _setup_docker_command(self) -> None:
@@ -545,7 +551,8 @@ class KubeautoCLI:
         dm = DownloadManager()
 
         # handle param conflict manually
-        if args.all and any([args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor, args.extra_images]):
+        if args.all and any([args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
+                             args.default_images, args.ext_images]):
             logger.error("--all/-D cannot be used with other download options", extra={"to_stdout": True})
             sys.exit(1)
 
@@ -568,8 +575,11 @@ class KubeautoCLI:
             if args.harbor:
                 dm.get_harbor_offline_pkg(args.harbor)
 
-            if args.extra_images:
+            if args.default_images:
                 dm.get_default_images()
+
+            if args.ext_images:
+                dm.get_extra_images(args.ext_images)
 
     def _handle_docker(self, args: argparse.Namespace) -> None:
         """Handle 'docker' command"""
