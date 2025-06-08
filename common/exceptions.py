@@ -10,6 +10,10 @@ class ClusterExistsError(KubeautoError):
     """Cluster already exists"""
     pass
 
+class ClusterNewError(KubeautoError):
+    """Cluster newly created"""
+    pass
+
 class ClusterNotFoundError(KubeautoError):
     """Cluster not found"""
     pass

@@ -8,7 +8,7 @@ from typing import List, Optional
 from common.utils import run_command, validate_ip, confirm_action
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
-    InvalidIPError, NodeExistsError, NodeNotFoundError,
+    InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError,
 )
 from common.logger import setup_logger
 from common.constants import KubeConstant
@@ -87,7 +87,7 @@ class ClusterManager:
             hosts_content = hosts_content.replace("_cluster_name_", name)
             cluster_hosts.write_text(hosts_content)
         except Exception as e:
-            logger.error(f"Error creating cluster hosts or config: {e}")
+            raise ClusterNewError(f"Error creating cluster hosts or config: {e}")
 
         # TODO: Set versions in config.yml as in original script
         logger.info(f"-> Cluster {name} created. Next steps:", extra={"to_stdout": True})

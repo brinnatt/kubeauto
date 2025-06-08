@@ -77,7 +77,9 @@ class KubeautoCLI:
         )
 
     def _setup_new_command(self) -> None:
-        """Setup 'new' command"""
+        """
+        Create a new cluster configuration
+        """
         parser = self.subparsers.add_parser(
             "new",
             help="Create a new cluster configuration"
