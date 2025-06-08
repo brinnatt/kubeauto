@@ -212,22 +212,22 @@ class DockerManager:
         """
         Configure Docker binary
         """
-        logger.info(f"Configuring Docker Daemon: {version}")
+        logger.info(f"Configuring Docker Daemon: {version}", extra={'to_stdout': True})
 
         # Create docker user group
         try:
             # 9 indicates docker group exists
             run_command(["groupadd", "-r", "docker"], allowed_exit_codes=[0, 9])
         except Exception as e:
-            logger.error(f"Failed to create docker user group: {e}")
+            logger.error(f"Failed to create docker user group: {e}", extra={'to_stdout': True})
 
         # Create docker bash completion (https://docs.docker.com/engine/cli/completion/)
         try:
             completions_dir = Path("~/.local/share/bash-completion/completions").expanduser()
-            completions_dir.mkdir(parents=True, exist_ok=True)  # 替代 `mkdir -p`
+            completions_dir.mkdir(parents=True, exist_ok=True)
 
             docker_completion = run_command(["docker", "completion", "bash"])
-            output_file = completions_dir / "docker"  # 拼接路径
+            output_file = completions_dir / "docker"
 
             with open(output_file, "w") as f:
                 f.write(docker_completion.stdout)

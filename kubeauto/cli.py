@@ -369,7 +369,9 @@ class KubeautoCLI:
         component_group.add_argument(
             "-R", "--harbor",
             metavar="VERSION",
-            help="Download Harbor offline installer (required specific version)"
+            nargs='?',
+            const=self.kube_constant.v_harbor,
+            help=f"Download Harbor offline installer (default: {self.kube_constant.v_harbor})"
         )
         component_group.add_argument(
             "-X", "--default-images",
