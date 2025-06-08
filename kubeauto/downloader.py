@@ -1,5 +1,7 @@
 import shutil
 from typing import Optional
+
+from common.exceptions import DownloadError
 from common.utils import rmrf
 
 from common.logger import setup_logger
@@ -46,43 +48,49 @@ class DownloadManager:
 
         self.__handle_files(f"brinnatt/kubeauto:{version}", "/usr/local/kubeauto", self.base_path)
 
-        logger.info("kubeauto has been installed successfully!")
+        logger.info("kubeauto has been installed successfully!", extra={'to_stdout': True})
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
         """Download Kubernetes binaries with caching and error handling"""
         version = version or self.kube_constant.v_k8s_bin
 
         if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
-            logger.warning("Kubernetes binaries already exist")
+            logger.warning("Kubernetes binaries already exist", extra={"to_stdout": True})
             return
 
         self.__handle_image(self.image_dir, f"k8s_bin_{version}.tar", f"brinnatt/kubeauto-k8s-bin:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=True)
 
+        logger.info("k8s_bin has been installed successfully!", extra={'to_stdout': True})
+
     def get_ext_bin(self, version: Optional[str] = None) -> None:
         """Download extra binaries with caching and error handling"""
         version = version or self.kube_constant.v_extra_bin
 
         if self.__check_file_exists(self.extra_bin_dir, "etcdctl") and (self.sys_bin_dir / "etcdctl").is_symlink():
-            logger.warning("Extra binaries already exist")
+            logger.warning("Extra binaries already exist", extra={"to_stdout": True})
             return
 
         self.__handle_image(self.image_dir, f"ext_bin_{version}.tar", f"brinnatt/kubeauto-ext-bin:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto-ext-bin:{version}", "/extra", self.extra_bin_dir, create_symlink=True)
 
+        logger.info("ext_bin has been installed successfully!", extra={'to_stdout': True})
+
     def get_harbor_offline_pkg(self, version: Optional[str] = None) -> None:
         """Download Harbor offline installer package with caching and error handling"""
         version = version or self.kube_constant.v_harbor
 
         if self.__check_file_exists(self.image_dir, f"harbor-offline-installer-{version}.tgz"):
-            logger.warning("Harbor offline installer already exist")
+            logger.warning("Harbor offline installer already exist", extra={"to_stdout": True})
             return
 
         self.__handle_image(self.image_dir, f"harbor_{version}.tar", f"brinnatt/harbor-offline:{version}")
 
         self.__handle_files(f"brinnatt/harbor-offline:{version}", "/harbor", self.image_dir)
+
+        logger.info("harbor_offline_pkg has been installed successfully!", extra={'to_stdout': True})
 
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""
@@ -101,9 +109,9 @@ class DownloadManager:
         try:
             self.registry.upload_to_registry(images)
         except Exception as e:
-            logger.error(f"Failed to upload images: {e}")
+            raise DownloadError(f"Failed to upload images: {e}")
 
-        logger.info(f"Default images uploaded to registry successfully!")
+        logger.info(f"Default images uploaded to registry successfully!", extra={'to_stdout': True})
 
     def get_extra_images(self, component: str) -> None:
         """Download extra images for specified component and upload to local registry"""
@@ -117,7 +125,7 @@ class DownloadManager:
             self.registry.upload_to_registry(self.kube_constant.component_images[component])
             logger.info(f"{component} images uploaded to registry successfully!")
         except Exception as e:
-            logger.error(f"Failed to upload {component} images: {e}")
+            raise DownloadError(f"Failed to upload {component} images: {e}")
 
     def __check_file_exists(self, directory: Path, filename: str) -> bool:
         """Check if file exists"""
@@ -139,8 +147,7 @@ class DownloadManager:
                 self.docker.save_image(f"{image}", str(path))
             self.docker.load_image(str(path))
         except Exception as e:
-            logger.error(f"Failed to handle {image}: {e}")
-            raise
+            raise DownloadError(f"Failed to pull, save, or load {image}: {e}")
 
     def __handle_files(self, image: str, image_carrier: str, destination: Path, create_symlink=False) -> None:
         """Handle files"""
@@ -173,6 +180,9 @@ class DownloadManager:
                     rmrf(target_link)
                     target_link.symlink_to(item)
 
+        except Exception as e:
+            raise DownloadError(f"Failed to copy image files to dest: {e}")
+
         finally:
             if container_id:
                 try:
@@ -181,4 +191,4 @@ class DownloadManager:
                     logger.warning(f"Failed to clean up temporary container: {e}")
 
             if temp_carrier and temp_carrier.exists():
-                shutil.rmtree(temp_carrier)
+                rmrf(temp_carrier)

@@ -76,4 +76,4 @@ class RegistryManager:
 
             self.docker.tag_image(image, local_image)
             self.docker.push_image(local_image)
-            logger.info(f"Uploaded {image} to local registry successfully!")
+            logger.info(f"Uploaded {image} to local registry successfully!", extra={"to_stdout": True})

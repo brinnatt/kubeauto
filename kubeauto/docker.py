@@ -32,8 +32,9 @@ class DockerManager:
             self._client = docker.from_env()
             # verify docker sdk connection
             self._client.ping()
+            logger.debug("Docker SDK client initialized successfully!")
         except DockerException as e:
-            logger.warning(f"Failed to initialize Docker SDK client: {str(e)}", extra={"to_stdout": True})
+            logger.debug(f"Failed to initialize Docker SDK client: {str(e)}")
             self._client = None
 
     @property
@@ -222,10 +223,19 @@ class DockerManager:
 
         # Create docker bash completion (https://docs.docker.com/engine/cli/completion/)
         try:
-            run_command(["mkdir", "-p", "~/.local/share/bash-completion/completions"])
-            run_command(["docker", "completion", "bash", ">", "~/.local/share/bash-completion/completions/docker"])
-        except CommandExecutionError:
-            logger.error("Failed to create docker bash completions", extra={'to_stdout': True})
+            completions_dir = Path("~/.local/share/bash-completion/completions").expanduser()
+            completions_dir.mkdir(parents=True, exist_ok=True)  # 替代 `mkdir -p`
+
+            docker_completion = run_command(["docker", "completion", "bash"])
+            output_file = completions_dir / "docker"  # 拼接路径
+
+            with open(output_file, "w") as f:
+                f.write(docker_completion.stdout)
+
+        except CommandExecutionError as e:
+            logger.error(f"Failed to generate docker completions: {e}", extra={'to_stdout': True})
+        except IOError as e:
+            logger.error(f"Failed to write completions file: {e}", extra={'to_stdout': True})
 
         # create systemd service file
         try:

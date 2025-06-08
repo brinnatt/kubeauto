@@ -39,6 +39,8 @@ def rmrf(path: Path) -> None:
         path.unlink()
     except FileNotFoundError:
         pass
+    except Exception:
+        raise
 
 
 def validate_ip(ip: str) -> bool:

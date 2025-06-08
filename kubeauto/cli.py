@@ -6,7 +6,7 @@ import sys
 from typing import Dict, Callable
 
 from common.utils import confirm_action
-from common.exceptions import KubeautoError
+from common.exceptions import KubeautoError, DownloadError
 from common.logger import setup_logger
 from common.constants import KubeConstant
 from .controller import ClusterManager
@@ -378,7 +378,7 @@ class KubeautoCLI:
         )
 
         component_group.add_argument(
-            "E", "--ext-images",
+            "-E", "--ext-images",
             metavar="COMPONENT",
             help="Download specific extra component (required specific component)"
         )
@@ -553,8 +553,7 @@ class KubeautoCLI:
         # handle param conflict manually
         if args.all and any([args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
                              args.default_images, args.ext_images]):
-            logger.error("--all/-D cannot be used with other download options", extra={"to_stdout": True})
-            sys.exit(1)
+            raise DownloadError("--all/-D cannot be used with other download options")
 
         if args.all:
             dm.download_all()

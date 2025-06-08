@@ -26,7 +26,7 @@ class NodeNotFoundError(KubeautoError):
     """Node not found"""
     pass
 
-class BinaryNotFoundError(KubeautoError):
+class DownloadError(KubeautoError):
     """Required binary not found"""
     pass
 
