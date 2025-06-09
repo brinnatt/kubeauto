@@ -1,7 +1,7 @@
 """
 Main cluster operations for kubeauto
 """
-
+from dataclasses import replace
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
@@ -84,12 +84,29 @@ class ClusterManager:
 
             # Replace placeholders
             hosts_content = cluster_hosts.read_text()
-            hosts_content = hosts_content.replace("_cluster_name_", name)
+            hosts_content = (hosts_content.replace("_cluster_name_", name)
+                             .replace("__k8s_ver__", self.kube_constant.v_k8s_bin.lstrip("v"))
+                             .replace("__flannel__", self.kube_constant.v_flannel)
+                             .replace("__calico__", self.kube_constant.v_calico)
+                             .replace("__cilium__", self.kube_constant.v_cilium)
+                             .replace("__kube_ovn__", self.kube_constant.v_kubeovn)
+                             .replace("__kube_router__", self.kube_constant.v_kuberouter)
+                             .replace("__coredns__", self.kube_constant.v_coredns)
+                             .replace("__pause__", self.kube_constant.v_pause)
+                             .replace("__dns_node_cache__", self.kube_constant.v_dnsnodecache)
+                             .replace("__dashboard__", self.kube_constant.v_dashboard)
+                             .replace("__local_path_provisioner__", self.kube_constant.v_localpathprovisioner)
+                             .replace("__nfs_provisioner__", self.kube_constant.v_nfsprovisioner)
+                             .replace("__prom_chart__", self.kube_constant.v_promchart)
+                             .replace("__kubeapps_chart__", self.kube_constant.v_kubeapps)
+                             .replace("__harbor__", self.kube_constant.v_harbor)
+                             .replace("__metrics__", self.kube_constant.v_metricsserver)
+                             )
+
             cluster_hosts.write_text(hosts_content)
         except Exception as e:
             raise ClusterNewError(f"Error creating cluster hosts or config: {e}")
 
-        # TODO: Set versions in config.yml as in original script
         logger.info(f"-> Cluster {name} created. Next steps:", extra={"to_stdout": True})
         logger.info(f"1. Configure {cluster_hosts}", extra={"to_stdout": True})
         logger.info(f"2. Configure {cluster_config}", extra={"to_stdout": True})
@@ -129,7 +146,7 @@ class ClusterManager:
 
         playbook = playbook_map.get(step, "dummy.yml")
         if playbook == "dummy.yml":
-            logger.error(f"Invalid setup step: {step}")
+            logger.error(f"Invalid setup step: {step}", extra={"to_stdout": True})
             return
 
         extra_args = extra_args or []
