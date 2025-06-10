@@ -22,7 +22,10 @@ class KubeConstant:
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
     v_extra_bin: str = field(default="1.12.5", metadata={
-        "refer_github": "",
+        "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
+    })
+    v_sys_pkg: str = field(default="1.0.3", metadata={
+        "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-sys-pkg"
     })
     v_harbor: str = field(default="v2.12.4", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
@@ -133,8 +136,8 @@ class KubeConstant:
                 f"cilium/cilium:{self.v_cilium}",
                 f"cilium/operator-generic:{self.v_cilium}",
                 f"cilium/hubble-relay:{self.v_cilium}",
-                "cilium/hubble-ui-backend:v0.13.1",
-                "cilium/hubble-ui:v0.13.1"
+                "cilium/hubble-ui-backend:v0.13.2",
+                "cilium/hubble-ui:v0.13.2"
             ],
             "flannel": [
                 f"flannel/flannel:{self.v_flannel}",
@@ -184,7 +187,7 @@ class KubeConstant:
                 "apecloud/kubeblocks-tools:0.8.2"
             ],
             "kb-addon-mongodb": [
-                "apecloud/mongo:8.0.4",
+                "apecloud/mongo:5.0.30",
                 "apecloud/syncer:0.3.7"
             ],
             "kb-addon-es": [
