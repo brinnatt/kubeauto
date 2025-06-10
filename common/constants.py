@@ -16,31 +16,31 @@ class KubeConstant:
     v_kubeauto: str = field(default="v1.0.0", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
-    v_k8s_bin: str = field(default="v1.32.3", metadata={
+    v_k8s_bin: str = field(default="v1.33.1", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.12.1", metadata={
+    v_extra_bin: str = field(default="1.12.5", metadata={
         "refer_github": "",
     })
-    v_harbor: str = field(default="v2.12.2", metadata={
+    v_harbor: str = field(default="v2.12.4", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
         "description": "None-official"
     })
-    v_calico: str = field(default="v3.28.3", metadata={
+    v_calico: str = field(default="v3.28.4", metadata={
         "refer_github": "https://github.com/projectcalico/calico",
         "refer_docs": "https://docs.tigera.io/calico/latest/about/"
     })
-    v_coredns: str = field(default="1.11.4", metadata={
+    v_coredns: str = field(default="1.12.1", metadata={
         "refer_github": "https://github.com/coredns/coredns",
         "refer_docs": "https://coredns.io/"
     })
-    v_dnsnodecache: str = field(default="1.23.1", metadata={
+    v_dnsnodecache: str = field(default="1.25.0", metadata={
         "refer_github": "https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml",
         "refer_docs": "https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/"
     })
-    v_dashboard: str = field(default="v2.7.0", metadata={
+    v_dashboard: str = field(default="7.12.0", metadata={
         "refer_github": "https://github.com/kubernetes/dashboard",
     })
     v_dashboardmetricsscraper: str = field(default="v1.0.8", metadata={
@@ -57,8 +57,9 @@ class KubeConstant:
     v_flannel: str = field(default="v0.26.7", metadata={
         "refer_github": "https://github.com/flannel-io/flannel"
     })
-    v_cilium: str = field(default="v1.16.3", metadata={
-        "refer_github": "https://github.com/cilium/cilium"
+    v_cilium: str = field(default="1.17.4", metadata={
+        "refer_github": "https://github.com/cilium/cilium",
+        "refer_docs": "https://docs.cilium.io/en/stable/installation/k8s-install-helm/"
     })
     v_kuberouter: str = field(default="v1.5.4", metadata={
         "refer_github": "https://github.com/cloudnativelabs/kube-router"
