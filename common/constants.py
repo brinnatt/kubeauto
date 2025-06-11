@@ -13,7 +13,7 @@ class KubeConstant:
         "refer_hub": "https://hub.docker.com/_/registry",
         "refer_docs": "https://distribution.github.io/distribution/"
     })
-    v_kubeauto: str = field(default="v1.0.0", metadata={
+    v_kubeauto: str = field(default="v1.0.1", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
     v_k8s_bin: str = field(default="v1.33.1", metadata={
@@ -23,9 +23,6 @@ class KubeConstant:
     })
     v_extra_bin: str = field(default="1.12.5", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
-    })
-    v_sys_pkg: str = field(default="1.0.3", metadata={
-        "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-sys-pkg"
     })
     v_harbor: str = field(default="v2.12.4", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
