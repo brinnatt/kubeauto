@@ -554,10 +554,17 @@ class KubeautoCLI:
         """Handle download command with version enforcement"""
         dm = DownloadManager()
 
+        # required at least one argument
+        if not any([args.all, args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
+                             args.default_images, args.ext_images]):
+            self.subparsers.choices["download"].print_help()
+            raise DownloadError("Download command requires at least one argument")
+
         # handle param conflict manually
         if args.all and any([args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
                              args.default_images, args.ext_images]):
-            raise DownloadError("--all/-D cannot be used with other download options")
+            self.subparsers.choices["download"].print_help()
+            raise DownloadError("Download option --all/-D cannot be used with other download options")
 
         if args.all:
             dm.download_all()
