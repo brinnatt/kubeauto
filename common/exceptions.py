@@ -34,6 +34,10 @@ class DownloadError(KubeautoError):
     """Required binary not found"""
     pass
 
+class DockerManageError(KubeautoError):
+    """Docker manage"""
+    pass
+
 class CommandExecutionError(KubeautoError):
     """Command execution failed"""
     pass

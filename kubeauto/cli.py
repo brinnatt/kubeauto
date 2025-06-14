@@ -6,7 +6,7 @@ import sys
 from typing import Dict, Callable
 
 from common.utils import confirm_action
-from common.exceptions import KubeautoError, DownloadError
+from common.exceptions import KubeautoError, DownloadError, DockerManageError
 from common.logger import setup_logger
 from common.constants import KubeConstant
 from .controller import ClusterManager
@@ -393,10 +393,40 @@ class KubeautoCLI:
             "docker",
             help="Manage Docker containers"
         )
-        parser.add_argument(
-            "-C", "--clean",
+        proxy_group = parser.add_argument_group("proxy options")
+        proxy_group.add_argument(
+            "-a", "--set-proxy",
+            nargs=2,
+            metavar=("HOST", "PORT"),
+            help="Configure Docker proxy (provide HOST PORT to set)"
+        )
+        proxy_group.add_argument(
+            "-b", "--del-proxy",
             action="store_true",
-            help="Stop and clean all local containers"
+            help="Delete Docker proxy (clean configuration file)"
+        )
+        parser.add_argument(
+            "-c", "--no-proxy",
+            nargs="+",
+            metavar="HOST",
+            help="Additional no-proxy hosts"
+        )
+
+        docker_container_group = parser.add_argument_group("docker container management options")
+        docker_container_group.add_argument(
+            "-d", "--remove",
+            metavar="CONTAINER",
+            help="Remove a specific container"
+        )
+        docker_container_group.add_argument(
+            "-D", "--remove-all",
+            action="store_true",
+            help="Remove all containers including running containers"
+        )
+        docker_container_group.add_argument(
+            "-e", "--remove-existed",
+            action="store_true",
+            help="Remove all existed containers"
         )
 
     def _execute_command(self, args: argparse.Namespace) -> None:
@@ -594,6 +624,16 @@ class KubeautoCLI:
     def _handle_docker(self, args: argparse.Namespace) -> None:
         """Handle 'docker' command"""
         docker = DockerManager()
+
+        # required at least one argument
+        if not any([args.set_proxy, args.del_proxy, args.no_proxy, args.remove, args.remove_all, args.remove_existed]):
+            self.subparsers.choices["docker"].print_help()
+            raise DockerManageError("Docker command requires at least one argument")
+
+        if args.set_proxy:
+            docker.set_proxy(args.set_proxy)
+
+
         if args.clean:
             if confirm_action("Clean all running containers"):
                 docker.clean_all_containers(force=True)

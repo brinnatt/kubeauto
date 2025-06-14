@@ -103,6 +103,9 @@ class KubeConstant:
     DOCKER_BIN_DIR: str = field(default="/usr/local/kubeauto/docker-bin", metadata={
         "description": "This path stores docker binaries"
     })
+    DOCKER_PROXY_DIR: str = field(default="/etc/systemd/system/docker.service.d", metadata={
+        "description": "This path is used to configure docker proxies"
+    })
     SYS_BIN_DIR: str = field(default="/usr/local/bin", metadata={
         "description": "This path stores system binaries symlink to k8s real binaries"
     })

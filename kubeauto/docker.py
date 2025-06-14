@@ -21,6 +21,7 @@ class DockerManager:
         self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
         self.sys_bin_dir = Path(self.kube_constant.SYS_BIN_DIR)
         self.temp_path = Path(self.kube_constant.TEMP_PATH)
+        self.docker_proxy_dir = Path(self.kube_constant.DOCKER_PROXY_DIR)
 
         # Initialize Docker SDK client
         self._client = None
@@ -737,3 +738,49 @@ WantedBy=multi-user.target
                 logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
 
         run_command(["docker", "rmi", "-f", image])
+
+    def set_docker_proxy(self, host, port, no_proxy: Optional[List[str]] = None) -> None:
+        """
+        Set Docker proxy
+        """
+        if not self.is_docker_installed:
+            raise RuntimeError("Docker is not installed or not running")
+
+        conf_file = self.docker_proxy_dir / "http_proxy.conf"
+
+        # Prepare NO_PROXY list
+        no_proxy_defaults = [
+            "localhost",
+            "127.0.0.1",
+            ".local",
+            ".internal",
+            "registry.talkschool.cn:5000"
+        ]
+        no_proxy_all = no_proxy_defaults + (no_proxy or [])
+        no_proxy_str = ",".join(sorted(set(no_proxy_all)))
+
+        # Write config
+        conf_file.parent.mkdir(parents=True, exist_ok=True)
+        conf_file.write_text(f"""
+[Service]
+Environment="HTTP_PROXY=http://{host}:{port}/"
+Environment="HTTPS_PROXY=http://{host}:{port}/"
+Environment="NO_PROXY={no_proxy_str}"
+""")
+
+        # Reload and restart Docker
+        run_command(["systemctl", "daemon-reload"])
+        run_command(["systemctl", "restart", "docker"])
+
+    def unset_docker_proxy(self) -> None:
+        """
+        Unset Docker proxy
+        """
+        if not self.is_docker_installed:
+            raise RuntimeError("Docker is not installed or not running")
+
+        conf_file = self.docker_proxy_dir / "http_proxy.conf"
+        if conf_file.exists():
+            conf_file.unlink()
+            run_command(["systemctl", "daemon-reload"])
+            run_command(["systemctl", "restart", "docker"])

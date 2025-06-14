@@ -28,29 +28,6 @@ class SystemProbe:
 
         return info
 
-    @classmethod
-    def is_service_running(cls, service_name: str, exact: bool = False) -> bool:
-        """判断服务是否运行，适配非 systemctl 管理的进程"""
-        target = service_name.lower()
-        for proc in psutil.process_iter(['name', 'exe', 'cmdline']):
-            try:
-                cmdline = proc.info['cmdline'] or []
-                candidates = [
-                    proc.info['name'] or '',
-                    proc.info['exe'].split('/')[-1] if proc.info['exe'] else '',
-                    *cmdline
-                ]
-                if any((field.lower() == target if exact else target in field.lower()) for field in candidates):
-                    return True
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
-        return False
-
-    @classmethod
-    def check_services(cls, services: List[str], exact: bool = False) -> Dict[str, bool]:
-        """批量检查服务运行状态"""
-        return {svc: cls.is_service_running(svc, exact) for svc in services}
-
     @staticmethod
     def disk_usage() -> Generator[Dict[str, Union[str, float]], None, None]:
         """获取每个挂载点的磁盘使用情况"""
