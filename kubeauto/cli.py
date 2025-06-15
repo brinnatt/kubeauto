@@ -393,6 +393,12 @@ class KubeautoCLI:
             "docker",
             help="Manage Docker containers"
         )
+        parser.add_argument(
+            "-f", "--force",
+            action="store_true",
+            help="Force to execute command with other options"
+        )
+
         proxy_group = parser.add_argument_group("proxy options")
         proxy_group.add_argument(
             "-a", "--set-proxy",
@@ -631,12 +637,22 @@ class KubeautoCLI:
             raise DockerManageError("Docker command requires at least one argument")
 
         if args.set_proxy:
-            docker.set_proxy(args.set_proxy)
+            docker.set_docker_proxy(args.set_proxy[0], args.set_proxy[1])
+        elif args.del_proxy:
+            docker.unset_docker_proxy()
+        elif args.no_proxy and not args.set_proxy:
+            self.subparsers.choices["docker"].print_help()
+            raise DockerManageError("--no-proxy requires --set-proxy to be specified")
 
+        if args.remove:
+            docker.remove_container(args.remove)
 
-        if args.clean:
-            if confirm_action("Clean all running containers"):
-                docker.clean_all_containers(force=True)
+        if args.remove_all:
+            if confirm_action("Clean all containers including running containers with --force"):
+                docker.clean_all_containers(force=args.force)
+
+        if args.remove_existed:
+            docker.clean_exited_containers()
 
     def run(self) -> None:
         """Run the CLI application"""
