@@ -1,4 +1,4 @@
-from kubeauto.cli import KubeautoCLI
+from core.cli import KubeautoCLI
 
 def main():
     """Entry point for the CLI"""
