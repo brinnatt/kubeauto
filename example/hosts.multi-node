@@ -62,10 +62,10 @@ CLUSTER_DNS_DOMAIN="cluster.local"
 
 # -------- Additional Variables (don't change the default value right now) ---
 # Binaries Directory
-bin_dir="/opt/kube/bin"
+bin_dir="/usr/local/bin"
 
-# Deploy Directory (kubeasz workspace)
-base_dir="/etc/kubeasz"
+# Deploy Directory (kubeauto workspace)
+base_dir="/usr/local/kubeauto"
 
 # Directory for a specific cluster
 cluster_dir="{{ base_dir }}/clusters/_cluster_name_"
