@@ -6,17 +6,17 @@
   - "{{ cluster_dir }}/yml"
   - "~/.kube"
 
-- name: 本地设置 bin 目录权限
+- name: set extra-bin directory permission
   file: path={{ base_dir }}/bin state=directory mode=0755 recurse=yes
 
-# 注册变量p，根据p的stat信息判断是否已经生成过ca证书，如果没有，下一步生成证书
-# 如果已经有ca证书，为了保证整个安装的幂等性，跳过证书生成的步骤
-- name: 读取ca证书stat信息
+# register p variable,  p stat indicates whether ca cert was generated, if not, generate ca cert
+# if ca cert exists, skip generating ca cert, guaranteeing idempotence
+- name: read ca cert stat information into p
   stat: path="{{ cluster_dir }}/ssl/ca.pem"
   register: p
   tags: force_change_certs
 
-- name: 准备CA配置文件和签名请求
+- name: prepare ca configuration and cert request
   template: src={{ item }}.j2 dest={{ cluster_dir }}/ssl/{{ item }}
   with_items:
   - "ca-config.json"
@@ -24,40 +24,29 @@
   when: "p.stat.isreg is not defined or CHANGE_CA|bool"
   tags: force_change_certs
 
-- name: 生成 CA 证书和私钥
+- name: generate CA cert and private key
   when: "p.stat.isreg is not defined or CHANGE_CA|bool"
   tags: force_change_certs
   shell: "cd {{ cluster_dir }}/ssl && \
-	 {{ base_dir }}/bin/cfssl gencert -initca ca-csr.json | {{ base_dir }}/bin/cfssljson -bare ca" 
+	 {{ base_dir }}/extra-bin/cfssl gencert -initca ca-csr.json | {{ base_dir }}/extra-bin/cfssljson -bare ca"
 
-#----------- 创建配置文件: kubectl.kubeconfig
+# create kubectl configuration(kubectl.kubeconfig)
 - import_tasks: create-kubectl-kubeconfig.yml
   tags: create_kctl_cfg, force_change_certs
 
-#----------- 创建个性化客户端配置文件
+# create customized client configuration
 - import_tasks: add-custom-kubectl-kubeconfig.yml
   tags: add-kcfg, force_change_certs
   when: "ADD_KCFG|bool"
 
-#------------创建配置文件: kube-proxy.kubeconfig
+# create kube-proxy configuration(kube-proxy.kubeconfig)
 - import_tasks: create-kube-proxy-kubeconfig.yml
   tags: force_change_certs
 
-#------------创建配置文件: kube-controller-manager.kubeconfig
+# create kube-controller-manager configuration(kube-controller-manager.kubeconfig)
 - import_tasks: create-kube-controller-manager-kubeconfig.yml
   tags: force_change_certs
 
-#------------创建配置文件: kube-scheduler.kubeconfig
+# create kube-scheduler configuration(kube-scheduler.kubeconfig)
 - import_tasks: create-kube-scheduler-kubeconfig.yml
   tags: force_change_certs
-
-# ansible 控制端一些易用性配置
-- name: 本地创建 ezdown/ezctl 工具的软连接
-  file: src={{ base_dir }}/{{ item }} dest=/usr/bin/{{ item }} state=link
-  with_items:
-  - ezdown
-  - ezctl
-
-- name: ansible 控制端创建 kubectl 软链接
-  file: src={{ base_dir }}/bin/kubectl dest=/usr/bin/kubectl state=link
-  ignore_errors: true
