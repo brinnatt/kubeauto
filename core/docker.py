@@ -107,17 +107,15 @@ class DockerManager:
 
         try:
             # check and delete all symlink to docker_bin_dir
-            bin_dir = Path("/usr/local/bin")
-            if bin_dir.exists():
-                for item in bin_dir.iterdir():
-                    if item.is_symlink():
-                        try:
-                            target = item.resolve()
-                            if str(target).startswith(str(self.docker_bin_dir)):
-                                item.unlink()
-                                logger.debug(f"Already deleted: {item} -> {target}")
-                        except (OSError, RuntimeError) as e:
-                            logger.warning(f"Failed to resolve symlink {item}: {str(e)}", extra={'to_stdout': True})
+            for item in self.sys_bin_dir.iterdir():
+                if item.is_symlink():
+                    try:
+                        target = item.resolve()
+                        if str(target).startswith(str(self.docker_bin_dir)):
+                            item.unlink()
+                            logger.debug(f"Already deleted: {item} -> {target}")
+                    except (OSError, RuntimeError) as e:
+                        logger.warning(f"Failed to resolve symlink {item}: {str(e)}", extra={'to_stdout': True})
 
             # delete docker_bin_dir
             if self.docker_bin_dir.exists():
@@ -156,11 +154,10 @@ class DockerManager:
         except CommandExecutionError:
             pass
 
-        # 8. delete docker residual process if existing
+        # delete docker residual process if existing
         try:
             run_command(["pkill", "-9", "dockerd"])
-            run_command(["pkill", "-9", "containerd"])
-            logger.debug("Docker residual process has been killed")
+            logger.warning("Docker residual process has been killed", extra={'to_stdout': True})
         except CommandExecutionError:
             pass
 

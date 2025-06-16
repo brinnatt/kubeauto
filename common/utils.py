@@ -34,13 +34,16 @@ def run_command(cmd: List[str], check: bool = True, allowed_exit_codes: List[int
 
 def rmrf(path: Path) -> None:
     try:
-        shutil.rmtree(str(path))
-    except NotADirectoryError:
-        path.unlink()
-    except FileNotFoundError:
-        pass
-    except Exception:
-        raise
+        if not path.exists():
+            return
+        elif path.is_symlink():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+    except Exception as e:
+        raise CommandExecutionError(f"Failed to remove {path}: {e}")
 
 
 def validate_ip(ip: str) -> bool:

@@ -1,4 +1,4 @@
-import shutil
+import shutil, os
 from typing import Optional
 
 from common.exceptions import DownloadError
@@ -172,11 +172,12 @@ class DownloadManager:
                 shutil.move(str(item), str(destination))
 
             if create_symlink:
-                # Create symbolic links in /usr/local/bin pointing to files in destination
-                for item in destination.iterdir():
-                    target_link = self.sys_bin_dir / item.name
-                    rmrf(target_link)
-                    target_link.symlink_to(item)
+                # recurse destination to find executable binary file and make symlink to /usr/local/bin
+                for item in destination.rglob('*'):
+                    if item.is_file() and os.access(item, os.X_OK):
+                        target_link = self.sys_bin_dir / item.name
+                        rmrf(target_link)
+                        target_link.symlink_to(item)
 
         except Exception as e:
             raise DownloadError(f"Failed to copy image files to dest: {e}")
