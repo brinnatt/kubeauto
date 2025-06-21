@@ -7,7 +7,7 @@
   - "~/.kube"
 
 - name: set extra-bin directory permission
-  file: path={{ base_dir }}/bin state=directory mode=0755 recurse=yes
+  file: path={{ base_dir }}/extra-bin state=directory mode=0755 recurse=yes
 
 # register p variable,  p stat indicates whether ca cert was generated, if not, generate ca cert
 # if ca cert exists, skip generating ca cert, guaranteeing idempotence
