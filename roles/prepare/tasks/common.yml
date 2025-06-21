@@ -1,16 +1,15 @@
-# 禁用系统swap
-- name: 禁用系统 swap
+- name: disable swap
   shell: "source /etc/profile; swapoff -a && sysctl -w vm.swappiness=0"
   ignore_errors: true
 
-- name: 删除fstab swap 相关配置
+- name: delete fstab swap configuration
   lineinfile:
     path: /etc/fstab
     regexp: 'swap'
     state: absent
     backup: 'yes'
 
-- name: 加载内核模块
+- name: load kernel module
   modprobe: name={{ item }} state=present
   with_items:
     - br_netfilter
@@ -21,23 +20,23 @@
     - nf_conntrack
   ignore_errors: true
 
-- name: 尝试加载nf_conntrack_ipv4
+- name: try to load nf_conntrack_ipv4
   shell: 'modprobe nf_conntrack_ipv4 || echo "NoFound"'
   register: NF_CONNTRACK_IPV4
 
-- name: 启用systemd自动加载模块服务
+- name: enable systemd loading module automatically
   service: name=systemd-modules-load enabled=yes
 
-- name: 增加内核模块开机加载配置
+- name: load kernel module on startup
   template: src=10-k8s-modules.conf.j2 dest=/etc/modules-load.d/10-k8s-modules.conf
 
-# 设置系统参数for k8s
-# 消除docker info 警告WARNING: bridge-nf-call-ip[6]tables is disabled
-# https://success.docker.com/article/ipvs-connection-timeout-issue 缩短keepalive_time超时时间为600s
-- name: 设置系统参数
+# set system params for k8s
+# eliminate docker command WARNING: bridge-nf-call-ip[6]tables is disabled
+# https://success.docker.com/article/ipvs-connection-timeout-issue reduce keepalive_time timeout as 600s
+- name: set system params
   template: src=95-k8s-sysctl.conf.j2 dest=/etc/sysctl.d/95-k8s-sysctl.conf
 
-- name: 查看是否需要设置 fs.may_detach_mounts
+- name: check if fs.may_detach_mounts needs to be set
   stat:
     path: /proc/sys/fs/may_detach_mounts
     get_attributes: no
@@ -46,7 +45,7 @@
   register: fs_may_detach_mounts
   ignore_errors: true
 
-- name: 当需要时，设置 fs.may_detach_mounts 为 1
+- name: if needed, set fs.may_detach_mounts as 1
   sysctl:
     sysctl_file: "/etc/sysctl.d/95-k8s-sysctl.conf"
     name: fs.may_detach_mounts
@@ -55,13 +54,13 @@
     reload: yes
   when: fs_may_detach_mounts.stat.exists|bool
 
-- name: 查看是否需要设置 net.ipv4.tcp_tw_recycle
+- name: check if net.ipv4.tcp_tw_recycle needs to be set
   stat:
     path: /proc/sys/net/ipv4/tcp_tw_recycle
   register: tcp_tw_recycle
   ignore_errors: true
 
-- name: 设置tcp_tw_recycle
+- name: if needed, set tcp_tw_recycle
   sysctl:
     sysctl_file: "/etc/sysctl.d/95-k8s-sysctl.conf"
     name: net.ipv4.tcp_tw_recycle
@@ -70,16 +69,15 @@
     reload: yes
   when: tcp_tw_recycle.stat.exists|bool
 
-- name: 生效系统参数
+- name: take effect on system
   shell: "source /etc/profile; sysctl -p /etc/sysctl.d/95-k8s-sysctl.conf"
   ignore_errors: true
 
-# 设置系统 ulimits
-- name: 创建 systemd 配置目录
+- name: create systemd configuration directory
   file: name=/etc/systemd/system.conf.d state=directory  
 
-- name: 设置系统 ulimits
+- name: set system param ulimits
   template: src=30-k8s-ulimits.conf.j2 dest=/etc/systemd/system.conf.d/30-k8s-ulimits.conf
 
-- name: 把SCTP列入内核模块黑名单
+- name: take SCTP to kernel module blacklist
   copy: src=sctp.conf dest=/etc/modprobe.d/sctp.conf
