@@ -1,6 +1,6 @@
 image:
-  repository: "easzlab.io.local:5000/cilium/cilium"
-  tag: "v{{ cilium_ver }}"
+  repository: "registry.talkschool.cn:5000/cilium/cilium"
+  tag: "{{ cilium_ver }}"
   useDigest: false
 
 # -- Additional agent container arguments.
@@ -23,8 +23,8 @@ hubble:
   relay:
     enabled: true
     image:
-      repository: "easzlab.io.local:5000/cilium/hubble-relay"
-      tag: "v{{ cilium_ver }}"
+      repository: "registry.talkschool.cn:5000/cilium/hubble-relay"
+      tag: "{{ cilium_ver }}"
       useDigest: false
   ui:
 {% if cilium_hubble_ui_enabled %}
@@ -34,12 +34,12 @@ hubble:
 {% endif %}
     backend:
       image:
-        repository: "easzlab.io.local:5000/cilium/hubble-ui-backend"
+        repository: "registry.talkschool.cn:5000/cilium/hubble-ui-backend"
         tag: "v0.13.2"
         useDigest: false
     frontend:
       image:
-        repository: "easzlab.io.local:5000/cilium/hubble-ui"
+        repository: "registry.talkschool.cn:5000/cilium/hubble-ui"
         tag: "v0.13.2"
         useDigest: false
 {% endif %}
@@ -67,8 +67,8 @@ etcd:
 operator:
   enabled: true
   image:
-    repository: "easzlab.io.local:5000/cilium/operator"
-    tag: "v{{ cilium_ver }}"
+    repository: "registry.talkschool.cn:5000/cilium/operator"
+    tag: "{{ cilium_ver }}"
     useDigest: false
   replicas: 1
   resources:

@@ -48,7 +48,7 @@ spec:
       serviceAccountName: kube-router
       containers:
       - name: kube-router
-        image: easzlab.io.local:5000/cloudnativelabs/kube-router:{{ kube_router_ver }}
+        image: registry.talkschool.cn:5000/cloudnativelabs/kube-router:{{ kube_router_ver }}
         imagePullPolicy: IfNotPresent
         args:
         - "--hostname-override=RT-{{ inventory_hostname }}"
@@ -87,7 +87,7 @@ spec:
           readOnly: false
       initContainers:
       - name: install-cni
-        image: easzlab.io.local:5000/cloudnativelabs/kube-router:{{ kube_router_ver }}
+        image: registry.talkschool.cn:5000/cloudnativelabs/kube-router:{{ kube_router_ver }}
         imagePullPolicy: IfNotPresent
         command:
         - /bin/sh

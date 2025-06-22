@@ -17,7 +17,7 @@
 
 - name: revise docker version with float type
   set_fact:
-    DOCKER_VER: "{{ docker_ver.stdout }}"
+    DOCKER_VER: "{{ docker_ver.stdout.split('.')[0]|int + docker_ver.stdout.split('.')[1]|int/100 }}"
   connection: local
   run_once: true
   tags: upgrade_docker, download_docker

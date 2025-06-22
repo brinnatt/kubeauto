@@ -1,9 +1,10 @@
-# 删除原有cni配置
-- name: 删除默认cni配置
+# delete original cni configurations
+- name: delete default cni configurations
   file: path=/etc/cni/net.d/10-default.conf state=absent
 
 - block:
-    - name: 准备安装相关文件
+    - name: prepare kube-ovn-related files
+      # TODO 以下都未处理
       template: src={{ item }}.j2 dest={{ cluster_dir }}/yml/{{ item }}
       with_items:
       - "install.sh"

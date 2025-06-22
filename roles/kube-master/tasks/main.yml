@@ -112,7 +112,7 @@
       shell: 'cd {{ cluster_dir }} && cp -f kubectl.kubeconfig {{ K8S_NODENAME }}-kubectl.kubeconfig'
       tags: upgrade_k8s, restart_master, force_change_certs
 
-    - name: replace apiserver address in kubeconfig
+    - name: correct apiserver socket in kubeconfig
       lineinfile:
         dest: "{{ cluster_dir }}/{{ K8S_NODENAME }}-kubectl.kubeconfig"
         regexp: "^    server"

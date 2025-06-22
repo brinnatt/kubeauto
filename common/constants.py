@@ -57,7 +57,7 @@ class KubeConstant:
     v_flannel: str = field(default="v0.26.7", metadata={
         "refer_github": "https://github.com/flannel-io/flannel"
     })
-    v_cilium: str = field(default="1.17.4", metadata={
+    v_cilium: str = field(default="v1.17.4", metadata={
         "refer_github": "https://github.com/cilium/cilium",
         "refer_docs": "https://docs.cilium.io/en/stable/installation/k8s-install-helm/"
     })

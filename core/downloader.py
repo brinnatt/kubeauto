@@ -74,7 +74,7 @@ class DownloadManager:
 
         self.__handle_image(self.image_dir, f"ext_bin_{version}.tar", f"brinnatt/kubeauto-ext-bin:{version}")
 
-        self.__handle_files(f"brinnatt/kubeauto-ext-bin:{version}", "/extra", self.extra_bin_dir, create_symlink=True)
+        self.__handle_files(f"brinnatt/kubeauto-ext-bin:{version}", "/extra", self.extra_bin_dir, create_symlink=False)
 
         logger.info("ext_bin has been installed successfully!", extra={'to_stdout': True})
 
