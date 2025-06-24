@@ -4,34 +4,31 @@
 
 - block:
     - name: prepare kube-ovn-related files
-      # TODO 以下都未处理
       template: src={{ item }}.j2 dest={{ cluster_dir }}/yml/{{ item }}
       with_items:
       - "install.sh"
       - "coredns.yaml"
 
-    - name: 准备dnscache的部署文件
+    - name: prepare dnscache deployment file with ipvs
       template: src=nodelocaldns-ipvs.yaml.j2 dest={{ cluster_dir }}/yml/nodelocaldns.yaml
       when: "PROXY_MODE == 'ipvs'"
 
-    - name: 准备dnscache的部署文件
+    - name: prepare dnscache deployment file with iptables
       template: src=nodelocaldns-iptables.yaml.j2 dest={{ cluster_dir }}/yml/nodelocaldns.yaml
       when: "PROXY_MODE == 'iptables'"
 
-    - name: 创建coredns,dnscache部署
-      shell: "{{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/coredns.yaml && \
-			  {{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/nodelocaldns.yaml"
+    - name: apply coredns, dnscache yaml
+      shell: "kubectl apply -f {{ cluster_dir }}/yml/coredns.yaml && \
+			  kubectl apply -f {{ cluster_dir }}/yml/nodelocaldns.yaml"
 
-    - name: 安装kube-ovn网络
-      shell: 'export PATH="{{ base_dir }}/bin/:$PATH"; cd {{ cluster_dir }}/yml/ && \
-              bash install.sh >> /tmp/install-kube-ovn-`date +"%Y%m%d%H%M%S"`.log 2>&1'
+    - name: install kube-ovn network
+      shell: 'cd {{ cluster_dir }}/yml/ && bash install.sh >> /tmp/install-kube-ovn-`date +"%Y%m%d%H%M%S"`.log 2>&1'
   run_once: true
   ignore_errors: true
   connection: local
 
-# 等待网络插件部署成功
-- name: 轮询等待kube-ovn 运行，视下载镜像速度而定
-  shell: "{{ base_dir }}/bin/kubectl get pod -n kube-system -o wide|grep 'kube-ovn-cni'|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
+- name: wait for kube-ovn running in a polling manner
+  shell: "kubectl get pod -n kube-system -o wide|grep 'kube-ovn-cni'|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
   register: pod_status
   until: pod_status.stdout == "Running"
   retries: 15

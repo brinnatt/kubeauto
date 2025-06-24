@@ -94,11 +94,11 @@ Containers:       cilium             Running: 4
                   hubble-relay       Running: 1
                   hubble-ui          Running: 1
 Cluster Pods:     17/17 managed by Cilium
-Image versions    hubble-relay       easzlab.io.local:5000/cilium/hubble-relay:v1.11.6: 1
-                  hubble-ui          easzlab.io.local:5000/cilium/hubble-ui:v0.9.0: 1
-                  hubble-ui          easzlab.io.local:5000/cilium/hubble-ui-backend:v0.9.0: 1
-                  cilium             easzlab.io.local:5000/cilium/cilium:v1.11.6: 4
-                  cilium-operator    easzlab.io.local:5000/cilium/operator-generic:v1.11.6: 1
+Image versions    hubble-relay       registry.talkschool.cn:5000/cilium/hubble-relay:v1.11.6: 1
+                  hubble-ui          registry.talkschool.cn:5000/cilium/hubble-ui:v0.9.0: 1
+                  hubble-ui          registry.talkschool.cn:5000/cilium/hubble-ui-backend:v0.9.0: 1
+                  cilium             registry.talkschool.cn:5000/cilium/cilium:v1.11.6: 4
+                  cilium-operator    registry.talkschool.cn:5000/cilium/operator-generic:v1.11.6: 1
 ```
 
 ## cilium network policy
