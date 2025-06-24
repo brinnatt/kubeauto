@@ -23,7 +23,7 @@
   - debug: var="db_password_gen.stdout"
   
   - name: 下发 docker compose 二进制文件
-    copy: src={{ base_dir }}/bin/docker-compose dest={{ bin_dir }}/docker-compose mode=0755
+    copy: src={{ base_dir }}/extra-bin/docker-compose dest={{ bin_dir }}/docker-compose mode=0755
 
   - name: 下发 harbor 离线安装包
     copy:
@@ -42,11 +42,11 @@
       connection: local
     
     - name: 创建 harbor 证书和私钥
-      shell: "cd {{ cluster_dir }}/ssl && {{ base_dir }}/bin/cfssl gencert \
+      shell: "cd {{ cluster_dir }}/ssl && {{ base_dir }}/extra-bin/cfssl gencert \
             -ca=ca.pem \
             -ca-key=ca-key.pem \
             -config=ca-config.json \
-            -profile=kubernetes harbor-csr.json|{{ base_dir }}/bin/cfssljson -bare harbor"
+            -profile=kubernetes harbor-csr.json|{{ base_dir }}/extra-bin/cfssljson -bare harbor"
       connection: local
     
     - name: 分发自签名证书

@@ -8,7 +8,7 @@
 
     - name: get etcd cluster status
       shell: 'for ip in {{ NODE_IPS }};do \
-                ETCDCTL_API=3 {{ base_dir }}/bin/etcdctl \
+                ETCDCTL_API=3 {{ base_dir }}/extra-bin/etcdctl \
                 --endpoints=https://"$ip":2379 \
                 --cacert={{ cluster_dir }}/ssl/ca.pem \
                 --cert={{ cluster_dir }}/ssl/etcd.pem \

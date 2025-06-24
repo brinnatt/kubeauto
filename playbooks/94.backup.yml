@@ -10,7 +10,7 @@
 
   - name: get etcd cluster status
     shell: 'for ip in {{ NODE_IPS }};do \
-              ETCDCTL_API=3 {{ base_dir }}/bin/etcdctl \
+              ETCDCTL_API=3 {{ base_dir }}/extra-bin/etcdctl \
               --endpoints=https://"$ip":2379 \
               --cacert={{ cluster_dir }}/ssl/ca.pem \
               --cert={{ cluster_dir }}/ssl/etcd.pem \
@@ -37,7 +37,7 @@
   # step2: backup data to the ansible node 
   - name: make a backup on the etcd node
     shell: "mkdir -p {{ cluster_dir }}/backup && cd {{ cluster_dir }}/backup && \
-        ETCDCTL_API=3 {{ base_dir }}/bin/etcdctl \
+        ETCDCTL_API=3 {{ base_dir }}/extra-bin/etcdctl \
               --endpoints=https://{{ RUNNING_NODE.stdout }}:2379 \
               --cacert={{ cluster_dir }}/ssl/ca.pem \
               --cert={{ cluster_dir }}/ssl/etcd.pem \

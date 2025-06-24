@@ -15,7 +15,7 @@
       - "single-namespace-view-token.yaml"
 
     - name: helm 创建 kubeapps
-      shell: "{{ base_dir }}/bin/helm upgrade kubeapps --install --create-namespace \
+      shell: "{{ base_dir }}/extra-bin/helm upgrade kubeapps --install --create-namespace \
               -n {{ kubeapps_install_namespace }} -f {{ cluster_dir }}/yml/kubeapps/values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kubeapps-{{ kubeapps_chart_ver }}.tgz"
 

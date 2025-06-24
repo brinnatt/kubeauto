@@ -19,7 +19,7 @@
         -ca=ca.pem \
         -ca-key=ca-key.pem \
         -config=ca-config.json \
-        -profile=kubernetes etcd-csr.json | {{ base_dir }}/bin/cfssljson -bare etcd"
+        -profile=kubernetes etcd-csr.json | {{ base_dir }}/extra-bin/cfssljson -bare etcd"
   connection: local
   run_once: true
   tags: force_change_certs

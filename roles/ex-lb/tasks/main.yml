@@ -17,7 +17,7 @@
   - "/etc/keepalived"
 
 - name: 下载二进制文件l4lb(nginx)
-  copy: src={{ base_dir }}/bin/nginx dest=/etc/l4lb/sbin/l4lb mode=0755
+  copy: src={{ base_dir }}/extra-bin/nginx dest=/etc/l4lb/sbin/l4lb mode=0755
 
 - name: 创建l4lb的配置文件
   template: src=l4lb.conf.j2 dest=/etc/l4lb/conf/l4lb.conf
@@ -46,7 +46,7 @@
 
 
 - name: 下载二进制文件keepalived
-  copy: src={{ base_dir }}/bin/keepalived dest=/usr/local/sbin/keepalived mode=0755
+  copy: src={{ base_dir }}/extra-bin/keepalived dest=/usr/local/sbin/keepalived mode=0755
 
 - name: 配置 keepalived 主节点
   template: src=keepalived-master.conf.j2 dest=/etc/keepalived/keepalived.conf
