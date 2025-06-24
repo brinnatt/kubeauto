@@ -20,7 +20,7 @@
     - name: node label
       shell: 'for ip in {{ NODE_IPS }};do \
                 node_name=$({{ bin_dir }}/calicoctl get node -owide|grep " $ip/"|cut -d" " -f1) && \
-                {{ bin_dir }}/kubectl label node "$node_name" route-reflector=true --overwrite;
+                kubectl label node "$node_name" route-reflector=true --overwrite;
              done'
       connection: local
 

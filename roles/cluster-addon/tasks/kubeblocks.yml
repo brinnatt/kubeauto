@@ -16,7 +16,7 @@
 
 - block:
     - name: 创建 kubeblocks crd
-      shell: "{{ base_dir }}/bin/kubectl create -f {{ base_dir }}/roles/cluster-addon/files/kubeblocks_crds.yaml"
+      shell: "kubectl create -f {{ base_dir }}/roles/cluster-addon/files/kubeblocks_crds.yaml"
       ignore_errors: true
 
     - name: helm 创建 kubeblocks
@@ -62,17 +62,17 @@
   ignore_errors: true
 
 - name: 设置chart允许修改镜像地址
-  shell: "{{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-5.7 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.0 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.4 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io redis-7 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io redis-sentinel-7 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io minio apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io elasticsearch-8 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io kibana-8 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io mongodb apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io postgresql-15 apps.kubeblocks.io/skip-immutable-check=true && \
-      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io postgresql-16 apps.kubeblocks.io/skip-immutable-check=true"
+  shell: "kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-5.7 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.0 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.4 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io redis-7 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io redis-sentinel-7 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io minio apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io elasticsearch-8 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io kibana-8 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io mongodb apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io postgresql-15 apps.kubeblocks.io/skip-immutable-check=true && \
+      kubectl annotate componentdefinitions.apps.kubeblocks.io postgresql-16 apps.kubeblocks.io/skip-immutable-check=true"
   ignore_errors: true
 
 - name: helm 更新 kb-addon-mysql
@@ -100,9 +100,9 @@
   when: 'kb_addon_mongodb_install == "yes"'
 
 - name: 优化mysql节点健康检查探针
-  shell: '{{ base_dir }}/bin/kubectl patch ComponentDefinition mysql-8.0 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
+  shell: 'kubectl patch ComponentDefinition mysql-8.0 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
   ignore_errors: true
 
 - name: 优化postgresql节点健康检查探针
-  shell: '{{ base_dir }}/bin/kubectl patch ComponentDefinition postgresql-16 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
+  shell: 'kubectl patch ComponentDefinition postgresql-16 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
   ignore_errors: true
