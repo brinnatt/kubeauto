@@ -1,21 +1,21 @@
 - block:
-    - name: 准备 cilium-check 配置目录
+    - name: prepare cilium-check configuration dirs
       file: name={{ cluster_dir }}/yml/cilium-check state=directory
     
-    - name: 准备部署文件
+    - name: prepare deployment file
       template: src=cilium-check/{{ item }}.j2 dest={{ cluster_dir }}/yml/cilium-check/{{ item }}
       with_items:
       - "connectivity-check.yaml"
       - "check-part1.yaml"
       - "namespace.yaml"
     
-    - name: 创建测试namespace
+    - name: create test namespace
       shell: "kubectl apply -f {{ cluster_dir }}/yml/cilium-check/namespace.yaml"
     
-    - name: 创建测试part1
+    - name: create test part1
       shell: "kubectl apply -n cilium-test -f {{ cluster_dir }}/yml/cilium-check/check-part1.yaml"
     
-    - name: 轮询等待echo pod运行，视下载镜像速度而定
+    - name: wait for echo pod running in a polling manner
       shell: "kubectl get pod -n cilium-test |grep echo|grep Running|grep '1/1'|wc -l"
       register: pod_status
       until: pod_status.stdout == "3"
@@ -23,10 +23,11 @@
       delay: 8
       ignore_errors: true
     
-    - name: 创建完整测试connectivity-check
+    - name: create integrity connectivity-check
       shell: "kubectl apply -n cilium-test -f {{ cluster_dir }}/yml/cilium-check/connectivity-check.yaml"
 
     - debug:
-        msg: "[重要]: 请查看命名空间cilium-test下所有pod，如果均为Running状态，且没有重启数增长，说明cilium连接测试正常。 \
-              测试观察一段时间可以整体删除该命名空间所有资源(kubectl delete ns cilium-test)"
+        msg: "[Important]: Please check if all pods are completed or running state in cilium-test namespace, no restarting count increment.
+        That indicates the cilium connection is normal. After a period of test observation, you can delete all resources
+        in cilium-test namespace."
   when: 'cilium_connectivity_check|bool'

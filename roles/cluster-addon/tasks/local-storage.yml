@@ -1,13 +1,13 @@
 - block:
-    - name: 准备 local-storage 配置目录
+    - name: prepare local-storage configuration dirs
       file: name={{ cluster_dir }}/yml/local-storage state=directory
 
-    - name: 准备 local-storage部署文件
+    - name: prepare local-storage deployment file
       template: src=local-storage/{{ item }}.j2 dest={{ cluster_dir }}/yml/local-storage/{{ item }}
       with_items:
       - "local-path-storage.yaml"
       - "test-pod.yaml"
 
-    - name: 创建 local-storage部署
+    - name: create local-storage deployment
       shell: "kubectl apply -f {{ cluster_dir }}/yml/local-storage/local-path-storage.yaml"
   when: 'local_path_provisioner_install == "yes" or (kubeapps_install == "yes" and kubeapps_storage_class == "local-path")'

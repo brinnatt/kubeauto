@@ -1,9 +1,8 @@
-# https://kubeblocks.io/docs/release-0.9/user_docs/installation/install-kubeblocks 
-
-- name: 创建 kubeblocks yml 目录
+# https://kubeblocks.io/docs/release-0.9/user_docs/installation/install-kubeblocks
+- name: create kubeblocks yml dir
   file: name={{ cluster_dir }}/yml/kubeblocks state=directory
 
-- name: 创建 kubeblocks clusters 个性化设置
+- name: create kubeblocks clusters customized settings
   template: src=kubeblocks/{{ item }}.yaml.j2 dest={{ cluster_dir }}/yml/kubeblocks/{{ item }}.yaml
   with_items:
     - kb-values
@@ -15,29 +14,29 @@
     - mongodb-cluster
 
 - block:
-    - name: 创建 kubeblocks crd
+    - name: create kubeblocks crd
       shell: "kubectl create -f {{ base_dir }}/roles/cluster-addon/files/kubeblocks_crds.yaml"
       ignore_errors: true
 
-    - name: helm 创建 kubeblocks
+    - name: helm create kubeblocks
       shell: "{{ base_dir }}/extra-bin/helm upgrade kubeblocks --install --create-namespace -n kb-system \
               -f {{ cluster_dir }}/yml/kubeblocks/kb-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kubeblocks-0.9.3.tgz"
   when: '"kubeblocks-dataprotection" not in pod_info.stdout'
 
-- name: helm 安装 kb-addon-minio
+- name: helm create kb-addon-minio
   shell: "{{ base_dir }}/extra-bin/helm upgrade -i -n kb-system kb-addon-minio \
           --set image.registry=registry.talkschool.cn:5000 \
           {{ base_dir }}/roles/cluster-addon/files/minio-0.9.0.tgz"
   when: 'kb_addon_minio_install == "yes"'
 
-- name: helm 安装 kb-addon-es
+- name: helm create kb-addon-es
   shell: "{{ base_dir }}/extra-bin/helm upgrade -i -n kb-system kb-addon-es \
           --set image.registry=registry.talkschool.cn:5000 \
           {{ base_dir }}/roles/cluster-addon/files/elasticsearch-0.9.1.tgz"
   when: 'kb_addon_es_install == "yes"'
 
-- name: 轮询等待部署 kb-addon-mysql chart
+- name: wait for deploying kb-addon-mysql chart in a polling manner
   shell: "{{ base_dir }}/extra-bin/helm ls -n kb-system|grep kb-addon-mysql|awk '{print $8}'"
   register: mysql_status
   until: mysql_status.stdout == "deployed"
@@ -45,7 +44,7 @@
   delay: 5
   ignore_errors: true
 
-- name: 轮询等待部署 kb-addon-postgresql chart
+- name: wait for deploying kb-addon-postgresql chart in a polling manner
   shell: "{{ base_dir }}/extra-bin/helm ls -n kb-system|grep kb-addon-postgresql|awk '{print $8}'"
   register: pg_status
   until: pg_status.stdout == "deployed"
@@ -53,7 +52,7 @@
   delay: 5
   ignore_errors: true
 
-- name: 轮询等待部署 kb-addon-redis chart
+- name: wait for depoying kb-addon-redis chart in a polling manner
   shell: "{{ base_dir }}/extra-bin/helm ls -n kb-system|grep kb-addon-redis|awk '{print $8}'"
   register: redis_status
   until: redis_status.stdout == "deployed"
@@ -61,7 +60,7 @@
   delay: 5
   ignore_errors: true
 
-- name: 设置chart允许修改镜像地址
+- name: Set the chart to allow modification of the image address
   shell: "kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-5.7 apps.kubeblocks.io/skip-immutable-check=true && \
       kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.0 apps.kubeblocks.io/skip-immutable-check=true && \
       kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.4 apps.kubeblocks.io/skip-immutable-check=true && \
@@ -75,34 +74,34 @@
       kubectl annotate componentdefinitions.apps.kubeblocks.io postgresql-16 apps.kubeblocks.io/skip-immutable-check=true"
   ignore_errors: true
 
-- name: helm 更新 kb-addon-mysql
+- name: helm create kb-addon-mysql
   shell: "{{ base_dir }}/extra-bin/helm upgrade -n kb-system kb-addon-mysql \
           --set image.registry=registry.talkschool.cn:5000 \
           {{ base_dir }}/roles/cluster-addon/files/mysql-0.9.1.tgz"
   when: 'kb_addon_mysql_install == "yes"'
 
-- name: helm 更新 kb-addon-postgresql
+- name: helm create kb-addon-postgresql
   shell: "{{ base_dir }}/extra-bin/helm upgrade -n kb-system kb-addon-postgresql \
           --set image.registry=registry.talkschool.cn:5000 \
           {{ base_dir }}/roles/cluster-addon/files/postgresql-0.9.0.tgz"
   when: 'kb_addon_pg_install == "yes"'
 
-- name: helm 更新 kb-addon-redis
+- name: helm create kb-addon-redis
   shell: "{{ base_dir }}/extra-bin/helm upgrade -n kb-system kb-addon-redis \
           --set image.registry=registry.talkschool.cn:5000 \
           {{ base_dir }}/roles/cluster-addon/files/redis-0.9.1.tgz"
   when: 'kb_addon_redis_install == "yes"'
 
-- name: helm 更新 kb-addon-mongodb
+- name: helm create kb-addon-mongodb
   shell: "{{ base_dir }}/extra-bin/helm upgrade -n kb-system kb-addon-mongodb \
           --set image.registry=registry.talkschool.cn:5000 \
           {{ base_dir }}/roles/cluster-addon/files/mongodb-0.9.1.tgz"
   when: 'kb_addon_mongodb_install == "yes"'
 
-- name: 优化mysql节点健康检查探针
+- name: optimize mysql node health check probe
   shell: 'kubectl patch ComponentDefinition mysql-8.0 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
   ignore_errors: true
 
-- name: 优化postgresql节点健康检查探针
+- name: optimize postgresql node health check probe
   shell: 'kubectl patch ComponentDefinition postgresql-16 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
   ignore_errors: true

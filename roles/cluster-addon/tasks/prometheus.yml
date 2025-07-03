@@ -1,11 +1,11 @@
 # https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
 
 - block:
-    - name: 获取是否已创建命名空间{{ prom_namespace }}
+    - name: check if there is namespace {{ prom_namespace }}
       shell: "kubectl get ns"
       register: ns_info
     
-    - name: 创建命名空间{{ prom_namespace }}
+    - name: {{ prom_namespace }}
       shell: "kubectl create ns {{ prom_namespace }}"
       when: "prom_namespace not in ns_info.stdout"
     
@@ -13,11 +13,11 @@
       shell: "kubectl get secrets -n {{ prom_namespace }}"
       register: secrets_info
     
-    - name: 创建etcd-client 证书请求
+    - name: create etcd-client CSR
       template: src=prometheus/etcd-client-csr.json.j2 dest={{ cluster_dir }}/ssl/etcd-client-csr.json
       when: '"etcd-client-cert" not in secrets_info.stdout'
     
-    - name: 创建 etcd-client证书和私钥
+    - name: create etcd-client cert and private key
       shell: "cd {{ cluster_dir }}/ssl && {{ base_dir }}/extra-bin/cfssl gencert \
             -ca=ca.pem \
             -ca-key=ca-key.pem \
@@ -25,11 +25,11 @@
             -profile=kubernetes etcd-client-csr.json|{{ base_dir }}/extra-bin/cfssljson -bare etcd-client"
       when: '"etcd-client-cert" not in secrets_info.stdout or CHANGE_CA|bool'
 
-    - name: 删除 etcd-client-cert
+    - name: delete etcd-client-cert before creation
       shell: "kubectl delete secret -n {{ prom_namespace }} etcd-client-cert || echo true"
       when: 'CHANGE_CA|bool'
     
-    - name: 创建 etcd-client-cert
+    - name: create etcd-client-cert
       shell: "cd {{ cluster_dir }}/ssl && \
             kubectl create secret generic -n {{ prom_namespace }} etcd-client-cert \
             --from-file=etcd-ca=ca.pem \
@@ -39,14 +39,14 @@
 
     - debug: var="K8S_VER"
 
-    - name: 创建 prom chart 个性化设置
+    - name: create prom chart customized setting
       template: src=prometheus/values.yaml.j2 dest={{ cluster_dir }}/yml/prom-values.yaml
 
-    - name: helm 删除 kube-prometheus-stack {{ prom_chart_ver }}
+    - name: helm delete kube-prometheus-stack {{ prom_chart_ver }} before applying
       shell: "{{ base_dir }}/extra-bin/helm delete prometheus -n {{ prom_namespace }} || echo true; sleep 3"
       when: 'CHANGE_CA|bool'
 
-    - name: helm 创建 kube-prometheus-stack {{ prom_chart_ver }}
+    - name: helm create kube-prometheus-stack {{ prom_chart_ver }}
       shell: "{{ base_dir }}/extra-bin/helm upgrade prometheus --install \
               -n {{ prom_namespace }} -f {{ cluster_dir }}/yml/prom-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kube-prometheus-stack-{{ prom_chart_ver }}.tgz"

@@ -1,13 +1,13 @@
 - block:
-    - name: 准备 DNS的部署文件
+    - name: prepare DNS deployment file
       template: src=dns/coredns.yaml.j2 dest={{ cluster_dir }}/yml/coredns.yaml
 
-    - name: 删除coredns部署
+    - name: delete coredns before applying
       shell: "kubectl delete -f {{ cluster_dir }}/yml/coredns.yaml || echo true; sleep 3"
       tags: force_change_certs
       when: 'CHANGE_CA|bool'
 
-    - name: 创建coredns部署
+    - name: apply coredns
       shell: "kubectl apply -f {{ cluster_dir }}/yml/coredns.yaml"
       tags: force_change_certs
   when: 'dns_install == "yes"'

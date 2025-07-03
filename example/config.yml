@@ -62,7 +62,7 @@ INSECURE_REG:
   - "https://reg.yourcompany.com"
 
 # [.]基础容器镜像
-SANDBOX_IMAGE: "registry.talkschool.cn:5000/easzlab/pause:__pause__"
+SANDBOX_IMAGE: "registry.talkschool.cn:5000/brinnatt/pause:__pause__"
 
 # [containerd]容器持久化存储目录
 CONTAINERD_STORAGE_DIR: "/var/lib/containerd"
