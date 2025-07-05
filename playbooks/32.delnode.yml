@@ -5,15 +5,15 @@
   - fail: msg="you CAN NOT delete the last member of kube_master!"
     when: "groups['kube_master']|length < 2 and NODE_TO_DEL in groups['kube_master']"
 
-  - name: 注册变量 K8S 主版本
+  - name: register K8S main version variable
     shell: echo {{ K8S_VER }}|awk -F. '{print $1"."$2}'
     register: K8S_VER_MAIN
 
-  - name: 设置kubectl drain 参数
+  - name: set kubectl drain params
     set_fact: DRAIN_OPT="--delete-emptydir-data --ignore-daemonsets --force"
     when: "K8S_VER_MAIN.stdout|float > 1.19"
 
-  - name: 设置kubectl drain 参数
+  - name: set kubectl drain params
     set_fact: DRAIN_OPT="--delete-local-data --ignore-daemonsets --force"
     when: "K8S_VER_MAIN.stdout|float < 1.20"
 

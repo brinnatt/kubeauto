@@ -1,5 +1,4 @@
 # [optional] to set up a HARBOR, and to integrate the HARBOR with k8s cluster
-# read the guide: 'guide/harbor.md'
 
 ### --- install harbor ---
 - hosts: harbor

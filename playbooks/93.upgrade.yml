@@ -1,6 +1,4 @@
 # WARNING: Upgrade the k8s cluster can be risky. Make sure you know what you are doing.
-# Read the guide: 'op/upgrade.md' .
-# Usage: ezctl upgrade <cluster_name>
 
 # check k8s version
 - hosts: kube_master

@@ -1,4 +1,4 @@
-# Note: this playbook cann't run independently
+# Note: this playbook can't run independently
 
 - hosts: "{{ NODE_TO_ADD }}" 
   roles:

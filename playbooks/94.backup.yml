@@ -1,5 +1,4 @@
 # cluster-backup playbook
-# read the guide: 'op/cluster_restore.md'
 
 - hosts:
   - localhost
