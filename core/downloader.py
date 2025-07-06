@@ -60,7 +60,7 @@ class DownloadManager:
 
         self.__handle_image(self.image_dir, f"k8s_bin_{version}.tar", f"brinnatt/kubeauto-k8s-bin:{version}")
 
-        self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=True)
+        self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=False)
 
         logger.info("k8s_bin has been installed successfully!", extra={'to_stdout': True})
 
