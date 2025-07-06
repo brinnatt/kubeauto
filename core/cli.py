@@ -411,7 +411,7 @@ class KubeautoCLI:
             action="store_true",
             help="Delete Docker proxy (clean configuration file)"
         )
-        parser.add_argument(
+        proxy_group.add_argument(
             "-c", "--no-proxy",
             nargs="+",
             metavar="HOST",
@@ -494,10 +494,10 @@ class KubeautoCLI:
         cm = ClusterManager()
         clusters = cm.list_clusters()
         current = cm.get_current_cluster()
-        print("Managed clusters:")
+        logger.info("Managed clusters:", extra={"to_stdout": True})
         for i, cluster in enumerate(clusters, 1):
             prefix = "==> " if cluster == current else "    "
-            print(f"{prefix}{i}: {cluster}")
+            logger.info(f"{prefix}{i}: {cluster}", extra={"to_stdout": True})
 
     def _handle_checkout(self, args: argparse.Namespace) -> None:
         """Handle 'checkout' command"""
