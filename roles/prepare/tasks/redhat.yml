@@ -19,6 +19,7 @@
       - psmisc              # psmisc provides killall command，keepalive monitoring script requires
       - rsync               # sync file
       - socat               # port forwarding requires
+      - rsyslog             # rockylinux has no rsyslog service by default
     state: present
 
 - name: disable selinux right now
