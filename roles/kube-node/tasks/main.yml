@@ -6,10 +6,8 @@
   - /etc/cni/net.d
   - /opt/cni/bin
 
-- name: assure kubelet,kube-proxy can be executable
-  file:
-    path: {{ bin_dir }}/{{ item }}
-    mode: "0755"
+- name: download kubelet,kube-proxy binaries
+  copy: src={{ base_dir }}/kube-bin/{{ item }} dest={{ bin_dir }}/{{ item }} mode=0755
   with_items:
   - kubectl
   - kubelet

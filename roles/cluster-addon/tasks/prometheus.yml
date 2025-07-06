@@ -5,7 +5,7 @@
       shell: "kubectl get ns"
       register: ns_info
     
-    - name: {{ prom_namespace }}
+    - name: "{{ prom_namespace }}"
       shell: "kubectl create ns {{ prom_namespace }}"
       when: "prom_namespace not in ns_info.stdout"
     

@@ -21,6 +21,7 @@ class ClusterManager:
         self.kube_constant = KubeConstant()
         self.base_path = Path(self.kube_constant.BASE_PATH)
         self.kube_bin_dir = Path(self.kube_constant.KUBE_BIN_DIR)
+        self.extra_bin_dir = Path(self.kube_constant.EXTRA_BIN_DIR)
         self.clusters_dir = self.base_path / "clusters"
         self.playbooks_dir = self.base_path / "playbooks"
 
@@ -619,7 +620,7 @@ class ClusterManager:
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
         v_kube = run_command([str(self.kube_bin_dir / "kube-apiserver"), "--version"]).stdout.split()[1]
-        v_etcd = "v" + run_command([str(self.kube_bin_dir / "etcd"), "--version"]).stdout.split()[2]
+        v_etcd = "v" + run_command([str(self.extra_bin_dir / "etcd"), "--version"]).stdout.split()[2]
 
         # Get network plugin from hosts file
         hosts_content = (self.clusters_dir / cluster / "hosts").read_text()
