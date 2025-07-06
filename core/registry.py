@@ -41,7 +41,7 @@ class RegistryManager:
         self.docker.run_container(
             image=f"registry:{version}",
             name="local_registry",
-            network="host",
+            publish=["5000:5000"],
             restart="always",
             volume=f"{registry_data}:/var/lib/registry"
         )
