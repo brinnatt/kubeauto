@@ -168,7 +168,7 @@ class ClusterManager:
         if not confirm_action(f"cluster:{name} setup step:{step} begins"):
             return
 
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
     def cluster_command(self, name: str, command: str) -> None:
         """Execute cluster-wide command (start, stop, upgrade, backup, restore, destroy)"""
@@ -200,7 +200,7 @@ class ClusterManager:
         if not confirm_action(f"cluster:{name} {command} begins"):
             return
 
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
     def checkout_cluster(self, name: str) -> None:
         """Switch to a cluster's kubeconfig"""
@@ -276,7 +276,7 @@ class ClusterManager:
         ]
 
         logger.info(f"Adding {role} node {ip} to cluster {cluster}")
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
         # Additional steps for master nodes
         if role == "master":
@@ -315,7 +315,7 @@ class ClusterManager:
         ]
 
         logger.info(f"Removing {role} node {ip} from cluster {cluster}")
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
         # Additional steps for master nodes
         if role == "master":
@@ -346,7 +346,7 @@ class ClusterManager:
             "-t", "force_change_certs"
         ]
 
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
     def kubeconfig_admin(self, cluster: str, action: str, user_name: str = None,
                          user_type: str = "admin", expiry: str = "4800h") -> None:
@@ -370,7 +370,7 @@ class ClusterManager:
             ]
 
             logger.info(f"Adding user {user_name} ({user_type}) to cluster {cluster}")
-            run_command(cmd)
+            run_command(cmd, capture_output=False)
 
         elif action == "delete":
             if not user_name:

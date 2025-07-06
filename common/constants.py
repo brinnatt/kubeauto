@@ -9,7 +9,7 @@ class KubeConstant:
         "refer_bin": "https://docs.docker.com/engine/install/binaries/",
         "refer_docs": "https://docs.docker.com/manuals/"
     })
-    v_docker_registry: str = field(default="3", metadata={
+    v_docker_registry: str = field(default="2", metadata={
         "refer_hub": "https://hub.docker.com/_/registry",
         "refer_docs": "https://distribution.github.io/distribution/"
     })

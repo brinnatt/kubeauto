@@ -1,7 +1,5 @@
 - name: assure k8s bin can be executable
-  file:
-    path: "{{ bin_dir }}/{{ item }}"
-    mode: "0755"
+  copy: src={{ base_dir }}/kube-bin/{{ item }} dest={{ bin_dir }}/{{ item }} mode=0755
   with_items:
   - kube-apiserver
   - kube-controller-manager
