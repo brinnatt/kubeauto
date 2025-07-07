@@ -54,7 +54,7 @@ class DownloadManager:
         """Download Kubernetes binaries with caching and error handling"""
         version = version or self.kube_constant.v_k8s_bin
 
-        if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
+        if self.__check_file_exists(self.kube_bin_dir, "kubelet"):
             logger.warning("Kubernetes binaries already exist", extra={"to_stdout": True})
             return
 
@@ -68,7 +68,7 @@ class DownloadManager:
         """Download extra binaries with caching and error handling"""
         version = version or self.kube_constant.v_extra_bin
 
-        if self.__check_file_exists(self.extra_bin_dir, "etcdctl") and (self.sys_bin_dir / "etcdctl").is_symlink():
+        if self.__check_file_exists(self.extra_bin_dir, "etcdctl"):
             logger.warning("Extra binaries already exist", extra={"to_stdout": True})
             return
 
