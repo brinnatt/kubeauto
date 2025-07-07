@@ -43,7 +43,7 @@ class RegistryManager:
             name="local_registry",
             publish=["5000:5000"],
             restart="always",
-            volume=f"{registry_data}:/var/lib/registry"
+            volume=[f"{registry_data}:/var/lib/registry"]
         )
 
         # Add registry to hosts file
