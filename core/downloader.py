@@ -54,13 +54,13 @@ class DownloadManager:
         """Download Kubernetes binaries with caching and error handling"""
         version = version or self.kube_constant.v_k8s_bin
 
-        if self.__check_file_exists(self.kube_bin_dir, "kubelet"):
+        if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
             logger.warning("Kubernetes binaries already exist", extra={"to_stdout": True})
             return
 
         self.__handle_image(self.image_dir, f"k8s_bin_{version}.tar", f"brinnatt/kubeauto-k8s-bin:{version}")
 
-        self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=False)
+        self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=True)
 
         logger.info("k8s_bin has been installed successfully!", extra={'to_stdout': True})
 
