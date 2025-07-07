@@ -84,9 +84,8 @@ class ClusterManager:
             cluster_config.write_text(example_config.read_text())
 
             # Replace placeholders
-            config_content = cluster_config.read_text()
-            config_content = (config_content.replace("_cluster_name_", name)
-                             .replace("__k8s_ver__", self.kube_constant.v_k8s_bin.lstrip("v"))
+            hosts_content = cluster_hosts.read_text().replace("_cluster_name_", name)
+            config_content = (cluster_config.read_text().replace("__k8s_ver__", self.kube_constant.v_k8s_bin.lstrip("v"))
                              .replace("__flannel__", self.kube_constant.v_flannel)
                              .replace("__calico__", self.kube_constant.v_calico)
                              .replace("__cilium__", self.kube_constant.v_cilium)
@@ -104,6 +103,7 @@ class ClusterManager:
                              .replace("__metrics__", self.kube_constant.v_metricsserver)
                              )
 
+            cluster_hosts.write_text(hosts_content)
             cluster_config.write_text(config_content)
         except Exception as e:
             raise ClusterNewError(f"Error creating cluster hosts or config: {e}")
