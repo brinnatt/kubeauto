@@ -88,10 +88,6 @@ class DockerManager:
         Uninstall Docker
         :param assume_yes: user confirm(Default False)
         """
-        if not self.is_docker_installed:
-            logger.warning("Docker has not been installed, no need to uninstall", extra={'to_stdout': True})
-            return
-
         docker_version = "Unknown Version"
         try:
             if self.client is not None:

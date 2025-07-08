@@ -607,7 +607,7 @@ class KubeautoCLI:
         else:
             if args.docker:
                 if self.docker.is_docker_installed:
-                    logger.info("Docker has been installed, you don't have to install once again")
+                    logger.info("Docker has been installed, you don't have to install once again", extra={"to_stdout": True})
                     return
 
                 self.docker.install_docker(args.docker)

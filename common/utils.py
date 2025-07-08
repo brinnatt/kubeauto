@@ -15,6 +15,9 @@ logger = setup_logger(__name__)
 def run_command(cmd: List[str], check: bool = True, capture_output=True, allowed_exit_codes: List[int] = None, **kwargs):
     """Run a shell command with error handling"""
     logger.debug(f"Executing command: {' '.join(cmd)}")
+
+    cmd = " ".join(cmd) if kwargs.get("shell") else cmd
+
     try:
         result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True, **kwargs)
         return result
