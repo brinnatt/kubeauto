@@ -592,7 +592,7 @@ class KubeautoCLI:
 
         # required at least one argument
         if not any([args.all, args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
-                             args.default_images, args.ext_images]):
+                    args.default_images, args.ext_images]):
             self.subparsers.choices["download"].print_help()
             raise DownloadError("Download command requires at least one argument")
 
@@ -607,10 +607,15 @@ class KubeautoCLI:
         else:
             if args.docker:
                 if self.docker.is_docker_installed:
-                    logger.info("Docker has been installed, you don't have to install once again", extra={"to_stdout": True})
-                    return
-
-                self.docker.install_docker(args.docker)
+                    logger.warning(
+                        "Docker has been installed, if you want to install another version, "
+                        "please confirm to uninstall the old version, not uninstalling may cause docker conflicts!",
+                        extra={"to_stdout": True}
+                    )
+                    if self.docker.uninstall_pkg_docker() and self.docker.uninstall_generic_docker():
+                        self.docker.install_docker(args.docker)
+                else:
+                    self.docker.install_docker(args.docker)
 
             if args.k8s_bin:
                 dm.get_k8s_bin(args.k8s_bin)

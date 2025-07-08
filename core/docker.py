@@ -52,11 +52,11 @@ class DockerManager:
             return True
 
         try:
-            run_command(["systemctl", "is-active", "docker"], shell=True)
+            run_command(["docker", "info"], shell=True)
             return True
         except CommandExecutionError:
-            self.uninstall_generic_docker()
-            self.uninstall_pkg_docker()
+            self.uninstall_generic_docker(assume_yes=True)
+            self.uninstall_pkg_docker(assume_yes=True)
             return False
 
     def install_docker(self, version: Optional[str] = None) -> None:
@@ -70,7 +70,15 @@ class DockerManager:
         # Initialize Docker SDK after installing docker
         self._initialize_docker_client()
 
-    def uninstall_pkg_docker(self):
+    def uninstall_pkg_docker(self, assume_yes: bool = False) -> bool:
+        logger.info("Try to clean docker pkgs ...", extra={"to_stdout": True})
+
+        if not assume_yes:
+            confirm = input("confirm to uninstall Docker and Podman? [Y/n] ").strip().lower()
+            if confirm not in ('', 'y', 'yes'):
+                logger.warning("Cancel uninstalling Docker", extra={'to_stdout': True})
+                return False
+
         if 'Rocky' in self.system_probe.system_info['distro']:
             try:
                 run_command(["yum", "remove", "-y", "docker*", "podman-docker*"], shell=True)
@@ -83,7 +91,10 @@ class DockerManager:
             except CommandExecutionError:
                 pass
 
-    def uninstall_generic_docker(self, assume_yes: bool = False) -> None:
+        logger.info("Docker pkgs has been cleaned successfully!", extra={"to_stdout": True})
+        return True
+
+    def uninstall_generic_docker(self, assume_yes: bool = False) -> bool:
         """
         Uninstall Docker
         :param assume_yes: user confirm(Default False)
@@ -106,7 +117,7 @@ class DockerManager:
             confirm = input(f"confirm to uninstall Docker {docker_version}? [Y/n] ").strip().lower()
             if confirm not in ('', 'y', 'yes'):
                 logger.warning("Cancel uninstalling Docker", extra={'to_stdout': True})
-                return
+                return False
 
         logger.warning("Begin to uninstall Docker...", extra={'to_stdout': True})
 
@@ -175,6 +186,7 @@ class DockerManager:
             pass
 
         logger.info(f"Docker {docker_version} has been uninstalled successfully!", extra={'to_stdout': True})
+        return True
 
     def _download_docker(self, version: str) -> None:
         """
