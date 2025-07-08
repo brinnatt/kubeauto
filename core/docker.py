@@ -8,6 +8,7 @@ from common.constants import KubeConstant
 from common.utils import run_command
 from common.exceptions import CommandExecutionError
 from common.logger import setup_logger
+from common.os import SystemProbe
 
 logger = setup_logger(__name__)
 
@@ -15,6 +16,7 @@ logger = setup_logger(__name__)
 class DockerManager:
     def __init__(self):
         self.kube_constant = KubeConstant()
+        self.system_probe = SystemProbe()
         self.base_path = Path(self.kube_constant.BASE_PATH)
         self.image_dir = Path(self.kube_constant.IMAGE_DIR)
         self.docker_bin_dir = Path(self.kube_constant.DOCKER_BIN_DIR)
@@ -50,9 +52,11 @@ class DockerManager:
             return True
 
         try:
-            run_command(["docker", "info"])
+            run_command(["systemctl", "is-active", "docker"], shell=True)
             return True
         except CommandExecutionError:
+            self.uninstall_generic_docker()
+            self.uninstall_pkg_docker()
             return False
 
     def install_docker(self, version: Optional[str] = None) -> None:
@@ -66,7 +70,20 @@ class DockerManager:
         # Initialize Docker SDK after installing docker
         self._initialize_docker_client()
 
-    def uninstall_docker(self, assume_yes: bool = False) -> None:
+    def uninstall_pkg_docker(self):
+        if 'Rocky' in self.system_probe.system_info['distro']:
+            try:
+                run_command(["yum", "remove", "-y", "docker*", "podman-docker*"], shell=True)
+            except CommandExecutionError:
+                pass
+        elif "Ubuntu" in self.system_probe.system_info['distro']:
+            try:
+                run_command(["apt", "purge", "-y", "docker*", "podman-docker*"], shell=True)
+                run_command(["apt", "autopurge", "-y"], shell=True)
+            except CommandExecutionError:
+                pass
+
+    def uninstall_generic_docker(self, assume_yes: bool = False) -> None:
         """
         Uninstall Docker
         :param assume_yes: user confirm(Default False)

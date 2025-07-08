@@ -122,8 +122,7 @@ class KubeConstant:
 
     def __post_init__(self):
         """用于 @dataclass 自动生成的 __init__ 后执行额外逻辑"""
-        self.systeminfo = SystemProbe().system_info
-        self.arch = self.systeminfo["machine"]
+        self.arch = SystemProbe().system_info["machine"]
 
     def docker_bin_url(self, version):
         url = f"https://mirrors.aliyun.com/docker-ce/linux/static/stable/{self.arch}/docker-{version}.tgz"

@@ -606,7 +606,10 @@ class KubeautoCLI:
             dm.download_all()
         else:
             if args.docker:
-                self.docker.uninstall_docker()
+                if self.docker.is_docker_installed:
+                    logger.info("Docker has been installed, you don't have to install once again")
+                    return
+
                 self.docker.install_docker(args.docker)
 
             if args.k8s_bin:
