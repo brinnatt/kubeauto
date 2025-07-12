@@ -496,7 +496,7 @@ class KubeautoCLI:
         current = cm.get_current_cluster()
         logger.info("Managed clusters:", extra={"to_stdout": True})
         for i, cluster in enumerate(clusters, 1):
-            prefix = "==> " if cluster == current else "    "
+            prefix = "* -> " if cluster == current else "  -> "
             logger.info(f"{prefix}{i}: {cluster}", extra={"to_stdout": True})
 
     def _handle_checkout(self, args: argparse.Namespace) -> None:
