@@ -16,7 +16,12 @@ def run_command(cmd: List[str], check: bool = True, capture_output=True, allowed
     """Run a shell command with error handling"""
     logger.debug(f"Executing command: {' '.join(cmd)}")
 
+    # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effective in this case.
     cmd = " ".join(cmd) if kwargs.get("shell") else cmd
+
+    # [fix subprocess grammar] Handle stdout/stderr and capture_output conflict
+    if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
+        capture_output = False  # Disable capture_output if stdout/stderr is provided
 
     try:
         result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True, **kwargs)
@@ -80,10 +85,12 @@ def setup_ssh_keys() -> None:
 
     private_key = ssh_dir / "id_rsa"
     if not private_key.exists():
-        logger.info("Generating SSH key pair")
-        run_command(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", str(private_key)])
+        logger.info("Generating SSH key pair", extra={"to_stdout": True})
+        run_command(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", str(private_key)], shell=True)
 
     authorized_keys = ssh_dir / "authorized_keys"
+    authorized_keys.touch(mode=0o600)
+
     public_key = ssh_dir / "id_rsa.pub"
     if public_key.exists() and authorized_keys.exists():
         with open(public_key) as f:
