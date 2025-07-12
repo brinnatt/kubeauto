@@ -12,7 +12,8 @@ from .exceptions import CommandExecutionError
 logger = setup_logger(__name__)
 
 
-def run_command(cmd: List[str], check: bool = True, capture_output=True, allowed_exit_codes: List[int] = None, **kwargs):
+def run_command(cmd: List[str], check: bool = True, capture_output=True, allowed_exit_codes: List[int] = None,
+                **kwargs):
     """Run a shell command with error handling"""
     logger.debug(f"Executing command: {' '.join(cmd)}")
 

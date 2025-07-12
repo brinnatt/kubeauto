@@ -85,23 +85,24 @@ class ClusterManager:
 
             # Replace placeholders
             hosts_content = cluster_hosts.read_text().replace("_cluster_name_", name)
-            config_content = (cluster_config.read_text().replace("__k8s_ver__", self.kube_constant.v_k8s_bin.lstrip("v"))
-                             .replace("__flannel__", self.kube_constant.v_flannel)
-                             .replace("__calico__", self.kube_constant.v_calico)
-                             .replace("__cilium__", self.kube_constant.v_cilium)
-                             .replace("__kube_ovn__", self.kube_constant.v_kubeovn)
-                             .replace("__kube_router__", self.kube_constant.v_kuberouter)
-                             .replace("__coredns__", self.kube_constant.v_coredns)
-                             .replace("__pause__", self.kube_constant.v_pause)
-                             .replace("__dns_node_cache__", self.kube_constant.v_dnsnodecache)
-                             .replace("__dashboard__", self.kube_constant.v_dashboard)
-                             .replace("__local_path_provisioner__", self.kube_constant.v_localpathprovisioner)
-                             .replace("__nfs_provisioner__", self.kube_constant.v_nfsprovisioner)
-                             .replace("__prom_chart__", self.kube_constant.v_promchart)
-                             .replace("__kubeapps_chart__", self.kube_constant.v_kubeapps)
-                             .replace("__harbor__", self.kube_constant.v_harbor)
-                             .replace("__metrics__", self.kube_constant.v_metricsserver)
-                             )
+            config_content = (
+                cluster_config.read_text().replace("__k8s_ver__", self.kube_constant.v_k8s_bin.lstrip("v"))
+                .replace("__flannel__", self.kube_constant.v_flannel)
+                .replace("__calico__", self.kube_constant.v_calico)
+                .replace("__cilium__", self.kube_constant.v_cilium)
+                .replace("__kube_ovn__", self.kube_constant.v_kubeovn)
+                .replace("__kube_router__", self.kube_constant.v_kuberouter)
+                .replace("__coredns__", self.kube_constant.v_coredns)
+                .replace("__pause__", self.kube_constant.v_pause)
+                .replace("__dns_node_cache__", self.kube_constant.v_dnsnodecache)
+                .replace("__dashboard__", self.kube_constant.v_dashboard)
+                .replace("__local_path_provisioner__", self.kube_constant.v_localpathprovisioner)
+                .replace("__nfs_provisioner__", self.kube_constant.v_nfsprovisioner)
+                .replace("__prom_chart__", self.kube_constant.v_promchart)
+                .replace("__kubeapps_chart__", self.kube_constant.v_kubeapps)
+                .replace("__harbor__", self.kube_constant.v_harbor)
+                .replace("__metrics__", self.kube_constant.v_metricsserver)
+            )
 
             cluster_hosts.write_text(hosts_content)
             cluster_config.write_text(config_content)
@@ -160,7 +161,7 @@ class ClusterManager:
             str(self.playbooks_dir / playbook)
         ]
 
-        logger.info(f"Running command: {' '.join(cmd)}")
+        logger.info(f"Running command: {' '.join(cmd)}", extra={"to_stdout": True})
 
         # Show component versions
         self._show_component_versions(name)
@@ -214,33 +215,41 @@ class ClusterManager:
         dest_config.parent.mkdir(exist_ok=True)
 
         run_command(["cp", "-f", str(kubeconfig), str(dest_config)])
-        logger.info(f"Set default kubeconfig: cluster {name} (current)")
+        logger.info(f"Set default kubeconfig: cluster {name} (current)", extra={"to_stdout": True})
 
     def start_aio_cluster(self) -> None:
         """Start an all-in-one cluster with default settings"""
         from common.utils import get_host_ip, setup_ssh_keys
 
-        host_ip = get_host_ip()
-        logger.info(f"Using host IP: {host_ip}")
+        try:
+            logger.info("Start allinone cluster, initialize environment...", extra={"to_stdout": True})
+            host_ip = get_host_ip()
+            setup_ssh_keys()
+        except Exception as e:
+            logger.error("Start allinone cluster, initializing environment failed!", extra={"to_stdout": True})
+            raise e
 
-        setup_ssh_keys()
-
-        # Create cluster
-        self.new_cluster("default")
+        # Create aio cluster directory
+        aio_cluster = self.clusters_dir / "aio"
+        aio_cluster.mkdir(exist_ok=True)
 
         # Copy all-in-one hosts file
-        aio_hosts = self.base_path / "example/hosts.allinone"
-        cluster_hosts = self.clusters_dir / "default/hosts"
-        cluster_hosts.write_text(aio_hosts.read_text())
+        aio_example_hosts = self.base_path / "example/hosts.allinone"
+        aio_example_config = self.base_path / "example/config.yml"
 
-        # Update hosts file with actual IP
-        hosts_content = cluster_hosts.read_text()
-        hosts_content = (hosts_content.replace("192.168.1.1", host_ip)
-                         .replace("_cluster_name_", "default"))
-        cluster_hosts.write_text(hosts_content)
+        aio_hosts = aio_cluster / "hosts"
+        aio_config = aio_cluster / "config.yml"
+
+        aio_hosts.write_text(aio_example_hosts.read_text())
+        aio_config.write_text(aio_example_config.read_text())
+
+        # Update hosts file with actual IP and cluster name
+        aio_hosts_new_content = (aio_hosts.read_text().replace("192.168.1.1", host_ip)
+                                 .replace("_cluster_name_", "aio"))
+        aio_hosts.write_text(aio_hosts_new_content)
 
         # Setup cluster
-        self.setup_cluster("default", "all")
+        self.setup_cluster("aio", "all")
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
