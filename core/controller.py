@@ -235,7 +235,8 @@ class ClusterManager:
 
         # Update hosts file with actual IP
         hosts_content = cluster_hosts.read_text()
-        hosts_content = hosts_content.replace("192.168.1.1", host_ip)
+        hosts_content = (hosts_content.replace("192.168.1.1", host_ip)
+                         .replace("_cluster_name_", "default"))
         cluster_hosts.write_text(hosts_content)
 
         # Setup cluster
