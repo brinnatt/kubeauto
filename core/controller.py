@@ -225,31 +225,36 @@ class ClusterManager:
             logger.info("Start allinone cluster, initialize environment...", extra={"to_stdout": True})
             host_ip = get_host_ip()
             ssh_localhost()
+
+            # Create aio cluster directory
+            aio_cluster = self.clusters_dir / "aio"
+            aio_cluster.mkdir(exist_ok=True)
+
+            # Copy all-in-one hosts file
+            aio_example_hosts = self.base_path / "example/hosts.allinone"
+            aio_example_config = self.base_path / "example/config.yml"
+
+            aio_hosts = aio_cluster / "hosts"
+            aio_config = aio_cluster / "config.yml"
+
+            aio_hosts.write_text(aio_example_hosts.read_text())
+            aio_config.write_text(aio_example_config.read_text())
+
+            # Update hosts file with actual IP and cluster name
+            aio_hosts_new_content = (aio_hosts.read_text().replace("192.168.1.1", host_ip)
+                                     .replace("_cluster_name_", "aio"))
+            aio_hosts.write_text(aio_hosts_new_content)
         except Exception as e:
             logger.error("Start allinone cluster, initializing environment failed!", extra={"to_stdout": True})
             raise e
 
-        # Create aio cluster directory
-        aio_cluster = self.clusters_dir / "aio"
-        aio_cluster.mkdir(exist_ok=True)
-
-        # Copy all-in-one hosts file
-        aio_example_hosts = self.base_path / "example/hosts.allinone"
-        aio_example_config = self.base_path / "example/config.yml"
-
-        aio_hosts = aio_cluster / "hosts"
-        aio_config = aio_cluster / "config.yml"
-
-        aio_hosts.write_text(aio_example_hosts.read_text())
-        aio_config.write_text(aio_example_config.read_text())
-
-        # Update hosts file with actual IP and cluster name
-        aio_hosts_new_content = (aio_hosts.read_text().replace("192.168.1.1", host_ip)
-                                 .replace("_cluster_name_", "aio"))
-        aio_hosts.write_text(aio_hosts_new_content)
-
-        # Setup cluster
-        self.setup_cluster("aio", "all")
+        try:
+            # Setup cluster
+            logger.info("Start creating allinone cluster...", extra={"to_stdout": True})
+            self.setup_cluster("aio", "all")
+        except Exception as e:
+            logger.error("Creating allinone cluster failed!", extra={"to_stdout": True})
+            raise e
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
