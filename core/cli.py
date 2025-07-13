@@ -5,10 +5,11 @@ import argparse
 import sys
 from typing import Dict, Callable
 
-from common.utils import confirm_action
-from common.exceptions import KubeautoError, DownloadError, DockerManageError
+from common.utils import confirm_action, validate_ip
+from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError
 from common.logger import setup_logger
 from common.constants import KubeConstant
+from common.os import SystemProbe
 from .controller import ClusterManager
 from .downloader import DownloadManager
 from .docker import DockerManager
@@ -68,6 +69,9 @@ class KubeautoCLI:
 
         # Docker commands
         self._setup_docker_command()
+
+        # System commands
+        self._setup_system_command()
 
     def _add_common_cluster_args(self, parser: argparse.ArgumentParser) -> None:
         """Add common cluster arguments to a parser"""
@@ -435,6 +439,37 @@ class KubeautoCLI:
             help="Remove all existed containers"
         )
 
+    def _setup_system_command(self) -> None:
+        """Setup 'system' command"""
+        parser = self.subparsers.add_parser(
+            "system",
+            help="Manage system environments"
+        )
+
+        parser.add_argument(
+            "-a", "--ssh-key-distribute",
+            nargs="+",
+            metavar="HOST",
+            help="Distribute SSH key to hosts (format: [user=USER] [password=PASS] HOST1 HOST2...)"
+        )
+
+        probe_group = parser.add_argument_group("probe options")
+        probe_group.add_argument(
+            "-b", "--disk-usage",
+            action="store_true",
+            help="Probe disk usage"
+        )
+        probe_group.add_argument(
+            "-c", "--system-load",
+            action="store_true",
+            help="Probe system load"
+        )
+        probe_group.add_argument(
+            "-d", "--network-usage",
+            action="store_true",
+            help="Probe network usage"
+        )
+
     def _execute_command(self, args: argparse.Namespace) -> None:
         """Execute the appropriate command based on parsed arguments"""
         command_handlers: Dict[str, Callable[[argparse.Namespace], None]] = {
@@ -469,7 +504,10 @@ class KubeautoCLI:
             "download": self._handle_download,
 
             # Docker commands
-            "docker": self._handle_docker
+            "docker": self._handle_docker,
+
+            # System commands
+            "system": self._handle_system
         }
 
         handler = command_handlers.get(args.command)
@@ -661,6 +699,82 @@ class KubeautoCLI:
 
         if args.remove_existed:
             docker.clean_exited_containers()
+
+    def _handle_system(self, args: argparse.Namespace) -> None:
+        """Handle 'system' command"""
+        system = SystemProbe()
+
+        # required at least one argument
+        if not any([args.ssh_key_distribute, args.disk_usage, args.system_load, args.network_usage]):
+            self.subparsers.choices["system"].print_help()
+            raise SystemExecutionError("System command requires at least one argument")
+
+        if args.ssh_key_distribute:
+            hosts = []
+            username = 'root'
+            password = None
+
+            # resolve user=xxx and common_password=xxx
+            for arg in args.ssh_key_distribute:
+                if arg.startswith("user="):
+                    username = arg.split("=", 1)[1]
+                elif arg.startswith("password="):
+                    password = arg.split("=", 1)[1].strip('"\'')
+                else:
+                    # recognize other args as IPs and validate
+                    if not validate_ip(arg.strip()):
+                        self.subparsers.choices["system"].print_help()
+                        raise SystemExecutionError(f"Invalid IP address {arg.strip()}")
+                    hosts.append(arg)
+
+            if not hosts:
+                raise SystemExecutionError("No valid IP addresses provided for SSH key distribution")
+
+            # invoke SSH function to distribute ssh key
+            system.ssh_keys_distribution(
+                host_ips=hosts,
+                username=username,
+                password=password
+            )
+
+        if args.disk_usage:
+            disks = list(system.disk_usage())
+            header = f"{'Device':<18} {'Mount':<15} {'Total(GB)':<10} {'Used(GB)':<10} {'Free(GB)':<10} {'Use%':<6}"
+            logger.info("Disk Usage:", extra={"to_stdout": True})
+            logger.info("-" * len(header), extra={"to_stdout": True})
+            logger.info(header, extra={"to_stdout": True})
+            logger.info("-" * len(header), extra={"to_stdout": True})
+            for disk in disks:
+                logger.info(
+                    f"{disk['device']:<18} {disk['mount']:<15} "
+                    f"{disk['total_gb']:<10.2f} {disk['used_gb']:<10.2f} "
+                    f"{disk['free_gb']:<10.2f} {disk['usage_percent']:<6.1f}",
+                    extra={"to_stdout": True}
+                )
+
+        if args.system_load:
+            resources = system.hardware_resources()
+            logger.info("System Resources:", extra={"to_stdout": True})
+            logger.info(f"CPU Cores: {resources['cpu_cores']} (Threads: {resources['cpu_threads']})",
+                        extra={"to_stdout": True})
+            logger.info(f"CPU Usage: {resources['cpu_usage_percent']:.1f}%", extra={"to_stdout": True})
+            logger.info(
+                f"Memory: {resources['memory_available_gb']:.1f}/{resources['memory_total_gb']:.1f} GB ({resources['memory_usage_percent']:.1f}%)",
+                extra={"to_stdout": True})
+            logger.info(f"Swap: {resources['swap_used_gb']:.1f}/{resources['swap_total_gb']:.1f} GB",
+                        extra={"to_stdout": True})
+
+        if args.network_usage:
+            interfaces = list(system.network_interfaces())
+            logger.info("Network Interfaces:", extra={"to_stdout": True})
+            for intf in interfaces:
+                logger.info(f"Interface: {intf['interface']}", extra={"to_stdout": True})
+                for family, addr in intf['addresses'].items():
+                    logger.info(f"  {family}: {addr}", extra={"to_stdout": True})
+                logger.info(
+                    f"  Traffic: ↑ {intf['traffic_mb']['sent']:.2f} MB | ↓ {intf['traffic_mb']['recv']:.2f} MB",
+                    extra={"to_stdout": True}
+                )
 
     def run(self) -> None:
         """Run the CLI application"""

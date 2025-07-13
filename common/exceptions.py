@@ -38,6 +38,10 @@ class DockerManageError(KubeautoError):
     """Docker manage"""
     pass
 
+class SystemExecutionError(KubeautoError):
+    """Command execution failed"""
+    pass
+
 class CommandExecutionError(KubeautoError):
     """Command execution failed"""
     pass
