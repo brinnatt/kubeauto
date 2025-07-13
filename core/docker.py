@@ -71,7 +71,7 @@ class DockerManager:
         self._initialize_docker_client()
 
     def uninstall_pkg_docker(self, assume_yes: bool = False) -> bool:
-        logger.debug("Try to clean docker pkgs ...")
+        logger.info("Before installation, try to clean residual docker pkgs ...", extra={"to_stdout": True})
 
         if not assume_yes:
             confirm = input("confirm to uninstall Docker and Podman? [Y/n] ").strip().lower()
@@ -91,7 +91,7 @@ class DockerManager:
             except CommandExecutionError:
                 pass
 
-        logger.info("Docker pkgs has been cleaned successfully!", extra={"to_stdout": True})
+        logger.info("Residual docker pkgs has been cleaned successfully!", extra={"to_stdout": True})
         return True
 
     def uninstall_generic_docker(self, assume_yes: bool = False) -> bool:
@@ -119,7 +119,7 @@ class DockerManager:
                 logger.warning("Cancel uninstalling Docker", extra={'to_stdout': True})
                 return False
 
-        logger.info("Try to clean docker binary environment...", extra={"to_stdout": True})
+        logger.info("Before installation, try to clean residual docker binary environment...", extra={"to_stdout": True})
 
         try:
             run_command(["systemctl", "stop", "docker"])
@@ -185,7 +185,7 @@ class DockerManager:
         except CommandExecutionError:
             pass
 
-        logger.info(f"Docker {docker_version} has been cleaned successfully!", extra={'to_stdout': True})
+        logger.info(f"Residual docker {docker_version} has been cleaned successfully!", extra={'to_stdout': True})
         return True
 
     def _download_docker(self, version: str) -> None:
