@@ -27,8 +27,8 @@
 
 # to clean container runtime and networking
   - block:
-      - name: to check if container 'kubeasz' is running
-        shell: 'docker ps|grep kubeasz || echo "NOT FOUND"'
+      - name: to check if container 'kubeauto' is running
+        shell: 'docker ps|grep kubeauto || echo "NOT FOUND"'
         register: install_info
 
       - block:
@@ -70,7 +70,7 @@
           - "/etc/systemd/system/docker.service.d/"
           - "/etc/bash_completion.d/docker"
           - "/usr/bin/docker"
-        when: "'kubeasz' not in install_info.stdout"
+        when: "'kubeauto' not in install_info.stdout"
     ignore_errors: true
     when: CONTAINER_RUNTIME == 'docker'
 

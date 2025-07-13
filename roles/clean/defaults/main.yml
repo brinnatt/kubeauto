@@ -13,5 +13,5 @@ DEL_LB: "no"
 # 是否删除 chrony 相关服务
 DEL_CHRONY: "no"
 
-# 是否删除 kubeasz 环境变量
+# 是否删除 kubeauto 环境变量
 DEL_ENV: "no"

@@ -71,7 +71,7 @@ class DockerManager:
         self._initialize_docker_client()
 
     def uninstall_pkg_docker(self, assume_yes: bool = False) -> bool:
-        logger.warning("Try to clean docker pkgs ...", extra={"to_stdout": True})
+        logger.debug("Try to clean docker pkgs ...")
 
         if not assume_yes:
             confirm = input("confirm to uninstall Docker and Podman? [Y/n] ").strip().lower()
@@ -81,12 +81,12 @@ class DockerManager:
 
         if 'Rocky' in self.system_probe.system_info['distro']:
             try:
-                run_command(["yum", "remove", "-y", "docker*", "podman-docker*"], shell=True)
+                run_command(["yum", "remove", "-y", "docker*", "podman*"], shell=True)
             except CommandExecutionError:
                 pass
         elif "Ubuntu" in self.system_probe.system_info['distro']:
             try:
-                run_command(["apt", "purge", "-y", "docker*", "podman-docker*"], shell=True)
+                run_command(["apt", "purge", "-y", "docker*", "podman*"], shell=True)
                 run_command(["apt", "autopurge", "-y"], shell=True)
             except CommandExecutionError:
                 pass
@@ -109,9 +109,9 @@ class DockerManager:
                 if version_match:
                     docker_version = version_match.group(1)
         except Exception as e:
-            logger.warning(f"Failed to get Docker Version: {str(e)}", extra={"to_stdout": True})
+            logger.warning(f"Failed to get Docker Version: {str(e)}")
 
-        logger.info(f"Now Docker Version: {docker_version}", extra={'to_stdout': True})
+        logger.debug(f"Now Docker Version: {docker_version}")
 
         if not assume_yes:
             confirm = input(f"confirm to uninstall Docker {docker_version}? [Y/n] ").strip().lower()
@@ -119,15 +119,15 @@ class DockerManager:
                 logger.warning("Cancel uninstalling Docker", extra={'to_stdout': True})
                 return False
 
-        logger.warning("Try to clean docker binary environment...", extra={'to_stdout': True})
+        logger.info("Try to clean docker binary environment...", extra={"to_stdout": True})
 
         try:
             run_command(["systemctl", "stop", "docker"])
             run_command(["systemctl", "disable", "docker"])
             run_command(["systemctl", "daemon-reload"])
-            logger.info("Docker service has been stopped and disabled", extra={'to_stdout': True})
+            logger.debug("Docker service has been stopped and disabled")
         except CommandExecutionError as e:
-            logger.warning(f"Failed to stop Docker service: {str(e)}", extra={"to_stdout": True})
+            logger.warning(f"Failed to stop Docker service: {str(e)}")
 
         try:
             # check and delete all symlink to docker_bin_dir
@@ -139,14 +139,14 @@ class DockerManager:
                             item.unlink()
                             logger.debug(f"Already deleted: {item} -> {target}")
                     except (OSError, RuntimeError) as e:
-                        logger.warning(f"Failed to resolve symlink {item}: {str(e)}", extra={'to_stdout': True})
+                        logger.debug(f"Failed to resolve symlink {item}: {str(e)}")
 
             # delete docker_bin_dir
             if self.docker_bin_dir.exists():
                 run_command(["rm", "-rf", str(self.docker_bin_dir)])
                 logger.debug(f"Docker binary dir has been deleted: {self.docker_bin_dir}")
         except Exception as e:
-            logger.warning(f"Failed to delete Docker binary dir: {str(e)}", extra={'to_stdout': True})
+            logger.warning(f"Failed to delete Docker binary dir: {str(e)}")
 
         try:
             service_file = Path("/etc/systemd/system/docker.service")

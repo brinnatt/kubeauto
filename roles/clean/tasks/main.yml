@@ -20,18 +20,18 @@
     state: absent
     regexp: '{{ item }}'
   with_items:
-  - 'kubeasz'
+  - 'kubeauto'
   - 'helm completion'
   - 'kubectl completion'
   - 'crictl completion'
   - 'HELM_TLS_ENABLE'
   when: 'DEL_ENV == "yes"'
 
-- name: 删除 k8s_nodename 在节点的 /etc/hosts 地址解析
+- name: delete k8s_nodename in each node /etc/hosts
   blockinfile:
     path: /etc/hosts
     state: absent
-    marker: "### {mark} KUBEASZ MANAGED BLOCK"
+    marker: "### {mark} flag by kubeauto"
 
   #- name: remove binaries
   #  file: name={{ item }} state=absent
@@ -39,8 +39,7 @@
   #  - "/opt/kube/bin"
   #  when: 'DEL_ETCD == "yes" and DEL_NODE == "yes" and DEL_MASTER == "yes"'
 
-- name: 重启提示 WARNNING
+- name: important indicates WARNNING
   debug:
-    msg: "[重要]: 请重启节点以确保清除系统残留的虚拟网卡、路由信息、iptalbes|ipvs规则等 \
-          [IMPORTANT]: please reboot nodes, makesure to clean out net interfaces, routes and iptables/ipvs rules"
+    msg: "[IMPORTANT]: please reboot nodes, makesure to clean out net interfaces, routes and iptables/ipvs rules."
   when: 'DEL_ETCD == "yes" and DEL_NODE == "yes" and DEL_MASTER == "yes"'

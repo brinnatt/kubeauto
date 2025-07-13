@@ -59,7 +59,7 @@ CLUSTER_DNS_DOMAIN="cluster.local"
 # Binaries Directory
 bin_dir="/usr/local/bin"
 
-# Deploy Directory (kubeasz workspace)
+# Deploy Directory (kubeauto workspace)
 base_dir="/usr/local/kubeauto/"
 
 # Directory for a specific cluster
