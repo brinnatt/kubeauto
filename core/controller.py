@@ -219,12 +219,12 @@ class ClusterManager:
 
     def start_aio_cluster(self) -> None:
         """Start an all-in-one cluster with default settings"""
-        from common.utils import get_host_ip, setup_ssh_keys
+        from common.utils import get_host_ip, ssh_localhost
 
         try:
             logger.info("Start allinone cluster, initialize environment...", extra={"to_stdout": True})
             host_ip = get_host_ip()
-            setup_ssh_keys()
+            ssh_localhost()
         except Exception as e:
             logger.error("Start allinone cluster, initializing environment failed!", extra={"to_stdout": True})
             raise e

@@ -79,7 +79,7 @@ def get_host_ip() -> str:
         return "127.0.0.1"
 
 
-def setup_ssh_keys() -> None:
+def ssh_localhost() -> None:
     """Setup SSH keys if they don't exist"""
     ssh_dir = Path.home() / ".ssh"
     ssh_dir.mkdir(exist_ok=True, mode=0o700)
