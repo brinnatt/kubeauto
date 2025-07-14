@@ -31,7 +31,7 @@
   blockinfile:
     path: /etc/hosts
     state: absent
-    marker: "#### {mark} k8s node hosts"
+    marker: "#### {mark} k8s node hosts ####"
 
   #- name: remove binaries
   #  file: name={{ item }} state=absent
