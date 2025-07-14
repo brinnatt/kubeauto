@@ -71,6 +71,10 @@ class DockerManager:
         self._initialize_docker_client()
 
     def uninstall_pkg_docker(self, assume_yes: bool = False) -> bool:
+        """
+        Clean Docker pkg installation environments
+        :param assume_yes: user confirm(Default False)
+        """
         logger.info("Before installation, try to clean residual docker pkgs ...", extra={"to_stdout": True})
 
         if not assume_yes:
@@ -96,9 +100,12 @@ class DockerManager:
 
     def uninstall_generic_docker(self, assume_yes: bool = False) -> bool:
         """
-        Uninstall Docker
+        Clean Docker binary installation environments
         :param assume_yes: user confirm(Default False)
         """
+        logger.info("Before installation, try to clean residual docker binary environments...",
+                    extra={"to_stdout": True})
+
         docker_version = "Unknown Version"
         try:
             if self.client is not None:
@@ -118,8 +125,6 @@ class DockerManager:
             if confirm not in ('', 'y', 'yes'):
                 logger.warning("Cancel uninstalling Docker", extra={'to_stdout': True})
                 return False
-
-        logger.info("Before installation, try to clean residual docker binary environment...", extra={"to_stdout": True})
 
         try:
             run_command(["systemctl", "stop", "docker"])
