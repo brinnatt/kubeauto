@@ -5,7 +5,7 @@ from typing import Optional, Dict, List
 import docker
 from docker.errors import DockerException, APIError, ImageNotFound
 from common.constants import KubeConstant
-from common.utils import run_command
+from common.utils import run_command, rmrf
 from common.exceptions import CommandExecutionError
 from common.logger import setup_logger
 from common.os import SystemProbe
@@ -158,6 +158,11 @@ class DockerManager:
             if service_file.exists():
                 service_file.unlink()
                 logger.debug(f"Docker service file has been deleted: {service_file}")
+
+            service_addon_dir = Path("/etc/systemd/system/docker.service.d")
+            if service_addon_dir.exists():
+                rmrf(service_addon_dir)
+                logger.debug(f"Docker addon directory has been deleted: {service_addon_dir}")
 
             daemon_json = Path("/etc/docker/daemon.json")
             if daemon_json.exists():
