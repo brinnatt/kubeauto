@@ -548,7 +548,18 @@ WantedBy=multi-user.target
         cmd = ["docker", "run", "-d", "--name", name]
         for k, v in kwargs.items():
             if v is not None:
-                cmd.extend([f"--{k.replace('_', '-')}", str(v)])
+                key = f"--{k.replace('_', '-')}"
+                if k == "publish" and isinstance(v, list):
+                    # --publish ["host:container"] → --publish host:container
+                    for port_map in v:
+                        cmd.extend([key, str(port_map)])
+                elif k == "volume" and isinstance(v, list):
+                    # --volume ["host:container"] → --volume host:container
+                    for vol_map in v:
+                        cmd.extend([key, str(vol_map)])
+                else:
+                    # no changes for other params
+                    cmd.extend([key, str(v)])
         cmd.append(image)
 
         result = run_command(cmd)
