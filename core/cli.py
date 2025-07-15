@@ -650,10 +650,13 @@ class KubeautoCLI:
                         "please confirm to uninstall the old version, not uninstalling may cause docker conflicts!",
                         extra={"to_stdout": True}
                     )
-                    if self.docker.uninstall_pkg_docker() and self.docker.uninstall_generic_docker():
-                        self.docker.install_docker(args.docker)
-                else:
-                    self.docker.install_docker(args.docker)
+                    if not self.docker.clean_docker_env():
+                        logger.warning("You have cancelled cleaning docker environment, "
+                                       "abort all installations, "
+                                       "please check and try again.")
+                        return
+
+                self.docker.install_docker(args.docker)
 
             if args.k8s_bin:
                 dm.get_k8s_bin(args.k8s_bin)

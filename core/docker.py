@@ -55,8 +55,7 @@ class DockerManager:
             run_command(["docker", "info"], shell=True)
             return True
         except CommandExecutionError:
-            self.uninstall_generic_docker(assume_yes=True)
-            self.uninstall_pkg_docker(assume_yes=True)
+            self.clean_docker_env(assume_yes=True)
             return False
 
     def install_docker(self, version: Optional[str] = None) -> None:
@@ -70,18 +69,27 @@ class DockerManager:
         # Initialize Docker SDK after installing docker
         self._initialize_docker_client()
 
-    def uninstall_pkg_docker(self, assume_yes: bool = False) -> bool:
+    def clean_docker_env(self, assume_yes: bool = False) -> bool:
         """
-        Clean Docker pkg installation environments
+        clean all docker environments
         :param assume_yes: user confirm(Default False)
         """
-        logger.info("Before installation, try to clean residual docker pkgs ...", extra={"to_stdout": True})
-
         if not assume_yes:
             confirm = input("confirm to uninstall Docker and Podman? [Y/n] ").strip().lower()
             if confirm not in ('', 'y', 'yes'):
-                logger.warning("Cancel uninstalling Docker", extra={'to_stdout': True})
+                logger.warning("Cancel cleaning docker envs", extra={'to_stdout': True})
                 return False
+
+        self._uninstall_generic_docker()
+        self._uninstall_pkg_docker()
+
+        return True
+
+    def _uninstall_pkg_docker(self) -> None:
+        """
+        Clean Docker pkg installation environments
+        """
+        logger.info("Before installation, try to clean residual docker pkgs ...", extra={"to_stdout": True})
 
         if 'Rocky' in self.system_probe.system_info['distro']:
             try:
@@ -96,12 +104,10 @@ class DockerManager:
                 pass
 
         logger.info("Residual docker pkgs has been cleaned successfully!", extra={"to_stdout": True})
-        return True
 
-    def uninstall_generic_docker(self, assume_yes: bool = False) -> bool:
+    def _uninstall_generic_docker(self) -> None:
         """
         Clean Docker binary installation environments
-        :param assume_yes: user confirm(Default False)
         """
         logger.info("Before installation, try to clean residual docker binary environments...",
                     extra={"to_stdout": True})
@@ -119,12 +125,6 @@ class DockerManager:
             logger.warning(f"Failed to get Docker Version: {str(e)}")
 
         logger.debug(f"Now Docker Version: {docker_version}")
-
-        if not assume_yes:
-            confirm = input(f"confirm to uninstall Docker {docker_version}? [Y/n] ").strip().lower()
-            if confirm not in ('', 'y', 'yes'):
-                logger.warning("Cancel uninstalling Docker", extra={'to_stdout': True})
-                return False
 
         try:
             run_command(["systemctl", "stop", "docker"])
@@ -196,7 +196,6 @@ class DockerManager:
             pass
 
         logger.info(f"Residual docker {docker_version} has been cleaned successfully!", extra={'to_stdout': True})
-        return True
 
     def _download_docker(self, version: str) -> None:
         """

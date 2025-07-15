@@ -31,18 +31,10 @@ K8S_VER: "__k8s_ver__"
 # CAUTION: 'k8s_nodename' must consist of lower case alphanumeric characters, '-' or '.',
 # and must start and end with an alphanumeric character (e.g. 'example.com'),
 # regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'
-#K8S_NODENAME: "{%- if k8s_nodename != '' -%} \
-#                    {{ k8s_nodename|replace('_', '-')|lower }} \
-#               {%- else -%} \
-#                    k8s-{{ inventory_hostname|replace('.', '-') }} \
-#               {%- endif -%}"
-
-K8S_NODENAME: "{%- if inventory_hostname in groups['kube_master'] and 'k8s_nodename' in hostvars[inventory_hostname] -%}
-                    {{ hostvars[inventory_hostname]['k8s_nodename']|replace('_', '-')|lower }}
-               {%- elif k8s_nodename != '' -%}
-                    {{ k8s_nodename|replace('_', '-')|lower }}
-               {%- else -%}
-                    k8s-{{ inventory_hostname|replace('.', '-') }}
+K8S_NODENAME: "{%- if k8s_nodename != '' -%} \
+                    {{ k8s_nodename|replace('_', '-')|lower }} \
+               {%- else -%} \
+                    k8s-{{ inventory_hostname|replace('.', '-') }} \
                {%- endif -%}"
 
 # use 'K8S_NODENAME' to set hostname
@@ -145,7 +137,7 @@ CALICO_RR_ENABLED: false
 
 # CALICO_RR_NODES 配置route reflectors的节点，如果未设置默认使用集群master节点 
 # CALICO_RR_NODES: ["192.168.1.1", "192.168.1.2"]
-CALICO_RR_NODES: []
+CALICO_RR_NODES: [ ]
 
 # [calico]更新支持calico 版本: ["3.19", "3.23"]
 calico_ver: "__calico__"
@@ -221,7 +213,7 @@ nfs_server: "192.168.1.10"
 nfs_path: "/data/nfs"
 
 # network-check 自动安装
-network_check_enabled: false 
+network_check_enabled: false
 network_check_schedule: "*/5 * * * *"
 
 # kubeblocks 自动安装
