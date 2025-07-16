@@ -222,7 +222,8 @@ class ClusterManager:
         from common.utils import get_host_ip, ssh_localhost
 
         try:
-            logger.info("Start allinone cluster, initialize environment...", extra={"to_stdout": True})
+            logger.info("Start initializing allinone cluster environment...", extra={"to_stdout": True})
+
             host_ip = get_host_ip()
             ssh_localhost()
 
@@ -244,16 +245,19 @@ class ClusterManager:
             aio_hosts_new_content = (aio_hosts.read_text().replace("192.168.1.1", host_ip)
                                      .replace("_cluster_name_", "aio"))
             aio_hosts.write_text(aio_hosts_new_content)
+
+            logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
         except Exception as e:
-            logger.error("Start allinone cluster, initializing environment failed!", extra={"to_stdout": True})
+            logger.error("Allinone cluster environment failed to be initialized!", extra={"to_stdout": True})
             raise e
 
         try:
             # Setup cluster
             logger.info("Start creating allinone cluster...", extra={"to_stdout": True})
             self.setup_cluster("aio", "all")
+            logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
         except Exception as e:
-            logger.error("Creating allinone cluster failed!", extra={"to_stdout": True})
+            logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
             raise e
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
