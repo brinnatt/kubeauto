@@ -503,21 +503,50 @@ class ClusterManager:
         if not validate_ip(ip):
             raise InvalidIPError(f"Invalid IP address: {ip}")
 
-    def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
-        """Check if node already exists in hosts file"""
-        section_start = f"[kube_{role}]" if role != "etcd" else "[etcd]"
-        section_end = f"[kube_{'node' if role == 'master' else 'master'}]" if role != "etcd" else "[kube_master]"
+    # def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
+    #     """Check if node already exists in hosts file"""
+    #     section_start = f"[kube_{role}]" if role != "etcd" else "[etcd]"
+    #     section_end = f"[kube_{'node' if role == 'master' else 'master'}]" if role != "etcd" else "[kube_master]"
+    #
+    #     in_section = False
+    #     with hosts_file.open() as f:
+    #         for line in f:
+    #             line = line.strip()
+    #             if line.startswith(section_start):
+    #                 in_section = True
+    #             elif line.startswith(section_end):
+    #                 in_section = False
+    #             elif in_section and (line.startswith(ip) or f" {ip} " in line):
+    #                 raise NodeExistsError(f"Node {ip} already exists in {role} section")
 
+    def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
+        """Optimized version for large files using line-by-line reading"""
+        section_patterns = {
+            'etcd': ('[etcd]', '[kube_master]'),
+            'master': ('[kube_master]', '[kube_node]'),
+            'node': ('[kube_node]', None)  # node section is the last one
+        }
+
+        if role not in section_patterns:
+            raise ValueError(f"Invalid node role: {role}")
+
+        start_section, end_section = section_patterns[role]
         in_section = False
+
         with hosts_file.open() as f:
             for line in f:
                 line = line.strip()
-                if line.startswith(section_start):
+
+                if line == start_section:
                     in_section = True
-                elif line.startswith(section_end):
-                    in_section = False
-                elif in_section and (line.startswith(ip) or f" {ip} " in line):
-                    raise NodeExistsError(f"Node {ip} already exists in {role} section")
+                    continue
+
+                if end_section and line == end_section:
+                    break  # 提前退出，不需要读取整个文件
+
+                if in_section and line and not line.startswith('#'):
+                    if line.startswith(ip) or f" {ip} " in line:
+                        raise NodeExistsError(f"Node {ip} already exists in {role} section")
 
     def _check_node_not_exists(self, hosts_file: Path, ip: str, role: str) -> None:
         """Check if node doesn't exist in hosts file"""
