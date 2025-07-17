@@ -35,6 +35,7 @@
               roles/clean/clean_node.yml \
               -e NODE_TO_CLEAN={{ NODE_TO_DEL }} \
               -e DEL_NODE=yes \
+              -e DEL_ENV=yes \
               -e DEL_LB=yes >> /tmp/ansible-`date +'%Y%m%d%H%M%S'`.log 2>&1 \
             || echo 'data not cleaned on {{ NODE_TO_DEL }}'"
     register: CLEAN_STATUS
@@ -53,3 +54,15 @@
 #192.168.101 k8s_nodename='master-01'
 #  - name: Safely remove the node's entry in hosts
 #    shell: 'sed -i "/^\[kube_node/,/^\[harbor/ {/^{{ NODE_TO_DEL }}\([[:space:]]\|$\)/d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
+
+
+- hosts:
+  - kube_master
+  - kube_node
+  - etcd
+  tasks:
+    - name: remove the {{ NODE_TO_DEL }} entry in all k8s hosts file
+      lineinfile:
+        path: /etc/hosts
+        state: absent
+        regexp: "^{{ NODE_TO_DEL }}.* flag by kubeauto"
