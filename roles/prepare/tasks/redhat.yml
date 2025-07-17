@@ -20,6 +20,7 @@
       - rsync               # sync file
       - socat               # port forwarding requires
       - rsyslog             # rockylinux has no rsyslog service by default
+      - vim                 # rockylinux has no vim by default
     state: present
 
 - name: disable selinux right now
