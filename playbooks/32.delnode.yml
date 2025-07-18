@@ -45,24 +45,21 @@
   - name: run kubectl delete node {{ NODE_NAME.stdout }}
     shell: "kubectl delete node {{ NODE_NAME.stdout }}"
     ignore_errors: true
-
 #This ansible play is duplicated in controller's _remove_from_hosts_section() method
 #optimize removing node entry
-#[kube_master]
+#[kube_node]
 #192.168.10
 #192.168.100
 #192.168.101 k8s_nodename='master-01'
-#  - name: Safely remove the node's entry in hosts
-#    shell: 'sed -i "/^\[kube_node/,/^\[harbor/ {/^{{ NODE_TO_DEL }}\([[:space:]]\|$\)/d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
-
+# - name: Safely remove the node's entry in hosts
+#   shell: 'sed -i "/^\[kube_node/,/^\[harbor/ {/^{{ NODE_TO_DEL }}\([[:space:]]\|$\)/d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
 
 - hosts:
   - kube_master
   - kube_node
-  - etcd
   tasks:
-    - name: remove the {{ NODE_TO_DEL }} entry in all k8s hosts file
-      lineinfile:
-        path: /etc/hosts
-        state: absent
-        regexp: "^{{ NODE_TO_DEL }}.* flag by kubeauto"
+  - name: remove the {{ NODE_TO_DEL }} entry in all k8s hosts file
+    lineinfile:
+      path: /etc/hosts
+      state: absent
+      regexp: "^{{ NODE_TO_DEL }}.* flag by kubeauto"

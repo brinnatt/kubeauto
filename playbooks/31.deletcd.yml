@@ -70,12 +70,22 @@
       register: CLEAN_STATUS
 
     - debug: var="CLEAN_STATUS"
+#This ansible play is duplicated in controller's _remove_from_hosts_section() method
+#optimize removing node entry
+#[kube_master]
+#192.168.10
+#192.168.100
+#192.168.101 k8s_nodename='master-01'
+#   - name: remove the etcd's node entry in hosts
+#     shell: 'sed -i "/^\[etcd/,/^\[kube_master/ {/^{{ ETCD_TO_DEL }}\([[:space:]]\|$\)/d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
+    when: "groups['etcd']|length > 1 and ETCD_TO_DEL in groups['etcd']"
 
-    # lineinfile is inadequate to delete lines between some specific line range
-    - name: remove the etcd's node entry in hosts
-      shell: 'sed -i "/^\[etcd/,/^\[kube_master/ {/^{{ ETCD_TO_DEL }}$/d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
-
-    # lineinfile is inadequate to delete lines between some specific line range
-    - name: remove the etcd's node entry in hosts
-      shell: 'sed -i "/^\[etcd/,/^\[kube_master/ {/^{{ ETCD_TO_DEL }} /d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
-    when: "groups['etcd']|length > 1 and ETCD_TO_DEL in groups['etcd']" 
+- hosts:
+  - kube_master
+  - kube_node
+  tasks:
+  - name: remove the {{ NODE_TO_DEL }} entry in all k8s hosts file
+    lineinfile:
+      path: /etc/hosts
+      state: absent
+      regexp: "^{{ NODE_TO_DEL }}.* flag by kubeauto"
