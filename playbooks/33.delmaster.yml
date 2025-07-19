@@ -1,7 +1,20 @@
 # WARNNING:  this playbook will clean the kube_master node {{ NODE_TO_DEL }}
 
 - hosts: localhost
+  vars_prompt:
+    - name: "CONFIRM_DELETE"
+      prompt: "Are you sure you want to delete the master node {{ NODE_TO_DEL }}? (y/yes/Y/YES to continue, anything else to abort)"
+      private: no
   tasks:
+  - name: Check if user confirmed deletion
+    fail:
+      msg: "User aborted. Exiting playbook."
+    when: CONFIRM_DELETE | lower not in ['y', 'yes']
+    run_once: true
+
+  - fail: msg="{{ NODE_TO_DEL }} is NOT a master node!"
+    when: "NODE_TO_DEL not in groups['kube_master']"
+
   - fail: msg="you CAN NOT delete the last member of kube_master!"
     when: "groups['kube_master']|length < 2 and NODE_TO_DEL in groups['kube_master']"
 
