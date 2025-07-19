@@ -1,7 +1,7 @@
 """
 Main cluster operations for kubeauto
 """
-from dataclasses import replace
+import ipaddress
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
@@ -565,23 +565,33 @@ class ClusterManager:
         raise NodeNotFoundError(f"Node {ip} not found in {role} section")
 
     def _add_to_hosts_section(self, hosts_file: Path, role: str, line: str) -> None:
-        """Add a line to a specific section in hosts file"""
+        """Add a line to the end of a specific section using ipaddress library"""
         section = f"[kube_{role}]" if role != "etcd" else "[etcd]"
 
-        # splitlines is different from split('\n'), splitlines handles "\n、\r\n、\r" and remove them
         content = hosts_file.read_text().splitlines()
-        section_line = -1
+        section_start = -1
+        last_ip_line = -1
 
         for i, l in enumerate(content):
             if l.strip() == section:
-                section_line = i
-                break
+                section_start = i
+            elif section_start != -1 and l.startswith('[') and l.endswith(']'):
+                break  # Next section found
+            elif section_start != -1:
+                # Try to parse first token as IP
+                parts = l.split()
+                if parts:
+                    try:
+                        ipaddress.ip_address(parts[0])
+                        last_ip_line = i
+                    except ValueError:
+                        continue
 
-        if section_line == -1:
+        if section_start == -1:
             raise ValueError(f"Section {section} not found in hosts file")
 
-        # Insert after the section header
-        content.insert(section_line + 1, line)
+        insert_pos = last_ip_line + 1 if last_ip_line != -1 else section_start + 1
+        content.insert(insert_pos, line)
         hosts_file.write_text("\n".join(content) + "\n")
 
     def _remove_from_hosts_section(self, hosts_file: Path, role: str, ip: str) -> None:
