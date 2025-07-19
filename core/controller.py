@@ -635,7 +635,7 @@ class ClusterManager:
             "-t", "restart_kube-lb",
             str(self.playbooks_dir / "90.setup.yml")
         ]
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
         # Restart ex-lb
         cmd = [
@@ -645,7 +645,7 @@ class ClusterManager:
             "-t", "restart_lb",
             str(self.playbooks_dir / "10.ex-lb.yml")
         ]
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Reconfigure kubeconfig after master node removal"""
@@ -659,7 +659,7 @@ class ClusterManager:
             "-t", "create_kctl_cfg",
             str(self.base_path / "roles/deploy/deploy.yml")
         ]
-        run_command(cmd)
+        run_command(cmd, capture_output=False)
 
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
