@@ -1,15 +1,20 @@
-# WARNNING:  this playbook will clean the etcd {{ ETCD_TO_DEL }} 
+# warning:  this playbook will clean the etcd {{ NODE_TO_DEL }}
 
-- hosts: localhost 
+- hosts: localhost
   vars_prompt:
-  - name: "ETCD_TO_DEL"
-    prompt: "which etcd node is about to be deleted?(e.g 192.168.1.1)"
-    private: no
-    confirm: yes
+    - name: "CONFIRM_DELETE"
+      prompt: "Are you sure you want to delete the etcd node {{ NODE_TO_DEL }}? (y/yes/Y/YES to continue, anything else to abort)"
+      private: no
   tasks:
   # step0: run prechecks
-  - fail: msg="{{ ETCD_TO_DEL }} is NOT a member of etcd cluster!"
-    when: "ETCD_TO_DEL not in groups['etcd']" 
+  - name: Check if user confirmed deletion
+    fail:
+      msg: "User aborted. Exiting playbook."
+    when: CONFIRM_DELETE | lower not in ['y', 'yes']
+    run_once: true
+
+  - fail: msg="{{ NODE_TO_DEL }} is NOT a member of etcd cluster!"
+    when: "NODE_TO_DEL not in groups['etcd']"
 
   - fail: msg="you CAN NOT delete the last member of etcd cluster!"
     when: "groups['etcd']|length < 2" 
@@ -44,13 +49,13 @@
     # step2: remove jobs run on the healthy member
     - name: get ID of etcd node to delete
       shell: "ETCDCTL_API=3 {{ bin_dir }}/etcdctl member list \
-              |grep {{ ETCD_TO_DEL }}:2380|cut -d',' -f1"
+              |grep {{ NODE_TO_DEL }}:2380|cut -d',' -f1"
       register: ETCD_ID
       delegate_to: "{{ RUNNING_NODE.stdout }}"
   
     - name: get NAME of etcd node to delete
       shell: "ETCDCTL_API=3 {{ bin_dir }}/etcdctl member list \
-              |grep {{ ETCD_TO_DEL }}:2380|cut -d' ' -f3|cut -d',' -f1"
+              |grep {{ NODE_TO_DEL }}:2380|cut -d' ' -f3|cut -d',' -f1"
       register: ETCD_NAME
       delegate_to: "{{ RUNNING_NODE.stdout }}"
   
@@ -61,12 +66,12 @@
       delegate_to: "{{ RUNNING_NODE.stdout }}"
       when: "ETCD_ID.stdout != ''"
   
-    - name: clean etcd {{ ETCD_TO_DEL }}
+    - name: clean etcd {{ NODE_TO_DEL }}
       shell: "cd {{ base_dir }} && ansible-playbook -i clusters/{{ CLUSTER }}/hosts \
                 roles/clean/clean_node.yml \
-                -e NODE_TO_CLEAN={{ ETCD_TO_DEL }} \
+                -e NODE_TO_CLEAN={{ NODE_TO_DEL }} \
                 -e DEL_ETCD=yes >> /tmp/ansible-`date +'%Y%m%d%H%M%S'`.log 2>&1 \
-              || echo 'data not cleaned on {{ ETCD_TO_DEL }}'"
+              || echo 'data not cleaned on {{ NODE_TO_DEL }}'"
       register: CLEAN_STATUS
 
     - debug: var="CLEAN_STATUS"
@@ -77,8 +82,8 @@
 #192.168.100
 #192.168.101 k8s_nodename='master-01'
 #   - name: remove the etcd's node entry in hosts
-#     shell: 'sed -i "/^\[etcd/,/^\[kube_master/ {/^{{ ETCD_TO_DEL }}\([[:space:]]\|$\)/d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
-    when: "groups['etcd']|length > 1 and ETCD_TO_DEL in groups['etcd']"
+#     shell: 'sed -i "/^\[etcd/,/^\[kube_master/ {/^{{ NODE_TO_DEL }}\([[:space:]]\|$\)/d}" {{ base_dir }}/clusters/{{ CLUSTER }}/hosts'
+    when: "groups['etcd']|length > 1 and NODE_TO_DEL in groups['etcd']"
 
 - hosts:
   - kube_master
