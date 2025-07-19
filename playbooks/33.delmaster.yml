@@ -30,10 +30,11 @@
     shell: "kubectl drain {{ NODE_NAME.stdout }} {{ DRAIN_OPT }}"
     #ignore_errors: true
 
-  - name: clean node {{ NODE_TO_DEL }}
+  - name: clean master {{ NODE_TO_DEL }}
     shell: "cd {{ base_dir }} && ansible-playbook -i clusters/{{ CLUSTER }}/hosts \
               roles/clean/clean_node.yml \
               -e NODE_TO_CLEAN={{ NODE_TO_DEL }} \
+              -e @clusters/{{ CLUSTER }}/config.yml \
               -e DEL_MASTER=yes \
               -e DEL_NODE=yes \
               -e DEL_ENV=yes \

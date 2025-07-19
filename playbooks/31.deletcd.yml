@@ -70,6 +70,7 @@
       shell: "cd {{ base_dir }} && ansible-playbook -i clusters/{{ CLUSTER }}/hosts \
                 roles/clean/clean_node.yml \
                 -e NODE_TO_CLEAN={{ NODE_TO_DEL }} \
+                -e @clusters/{{ CLUSTER }}/config.yml \
                 -e DEL_ETCD=yes >> /tmp/ansible-`date +'%Y%m%d%H%M%S'`.log 2>&1 \
               || echo 'data not cleaned on {{ NODE_TO_DEL }}'"
       register: CLEAN_STATUS
