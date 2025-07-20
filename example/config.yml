@@ -1,11 +1,9 @@
 ############################
 # prepare
 ############################
-# 可选离线安装系统软件包 (offline|online)
-# INSTALL_SOURCE: "online"
 
-# 可选进行系统安全加固 github.com/dev-sec/ansible-collection-hardening
-# (deprecated) 未更新上游项目，未验证最新k8s集群安装，不建议启用
+# optional consolidate your system github.com/dev-sec/ansible-collection-hardening
+# (deprecated) no maintenance for a long time, you should adapt to your own system
 OS_HARDEN: false
 
 
@@ -20,7 +18,7 @@ CERT_EXPIRY: "438000h"
 # force to recreate CA and other certs, not suggested to set 'true'
 CHANGE_CA: false
 
-# kubeconfig 配置参数
+# kubeconfig params
 CLUSTER_NAME: "cluster1"
 CONTEXT_NAME: "context-{{ CLUSTER_NAME }}"
 
@@ -44,7 +42,7 @@ ENABLE_SETTING_HOSTNAME: true
 ############################
 # role:etcd
 ############################
-# 设置不同的wal目录，可以避免磁盘io竞争，提高性能
+# Setting different WAL directories can avoid disk I/O contention and improve performance.
 ETCD_DATA_DIR: "/var/lib/etcd"
 ETCD_WAL_DIR: ""
 
@@ -52,39 +50,40 @@ ETCD_WAL_DIR: ""
 ############################
 # role:runtime [containerd,docker]
 ############################
-# [.]启用拉取加速镜像仓库
+# [.]Enable the pull acceleration mirror image repository
 ENABLE_MIRROR_REGISTRY: true
 
-# [.]添加信任的私有仓库
-# 必须按照如下示例格式，协议头'http://'和'https://'不能省略
+# [.]Add a trusted private repository
+# It must be in the following format as shown below. The protocol headers 'http://' and 'https://' cannot be omitted.
 INSECURE_REG:
   - "http://registry.talkschool.cn:5000"
   - "https://reg.yourcompany.com"
 
-# [.]基础容器镜像
+# [.]Basic container image
 SANDBOX_IMAGE: "registry.talkschool.cn:5000/brinnatt/pause:__pause__"
 
-# [containerd]容器持久化存储目录
+# [containerd]Container persistent storage directory
 CONTAINERD_STORAGE_DIR: "/var/lib/containerd"
 
-# [docker]容器存储目录
+# [docker]Container storage directory
 DOCKER_STORAGE_DIR: "/var/lib/docker"
 
-# [docker]开启Restful API
+# [docker] enable Restful API
 DOCKER_ENABLE_REMOTE_API: false
 
 
 ############################
 # role:kube-master
 ############################
-# k8s 集群 master 节点证书配置，可以添加多个ip和域名（比如增加公网ip和域名）
+# The certificate configuration for the master node of the Kubernetes cluster allows for the addition of multiple IP addresses and domain names
+# such as adding public IP addresses and domain names
 MASTER_CERT_HOSTS:
   - "10.1.1.1"
-  - "k8s.easzlab.io"
-  #- "www.test.com"
+  - "k8s.talkschool.cn"
 
-# node 节点上 pod 网段掩码长度（决定每个节点最多能分配的pod ip地址）
-# 如果flannel 使用 --kube-subnet-mgr 参数，那么它将读取该设置为每个节点分配pod网段
+# The subnet mask length of the pod network on the node
+# which determines the maximum number of pod IP addresses that can be allocated to each node
+# If flannel uses the --kube-subnet-mgr parameter, it will read this setting and allocate a pod subnet for each node.
 # https://github.com/coreos/flannel/issues/847
 NODE_CIDR_LEN: 24
 
@@ -92,14 +91,14 @@ NODE_CIDR_LEN: 24
 ############################
 # role:kube-node
 ############################
-# Kubelet 根目录
+# Kubelet root directory
 KUBELET_ROOT_DIR: "/var/lib/kubelet"
 
-# node节点最大pod 数
+# node allow max pod count
 MAX_PODS: 110
 
-# 配置为kube组件（kubelet,kube-proxy,dockerd等）预留的资源量
-# 数值设置详见templates/kubelet-config.yaml.j2
+# configure kube components（kubelet,kube-proxy,dockerd）reserved resources
+# look up params in templates/kubelet-config.yaml.j2
 KUBE_RESERVED_ENABLED: "no"
 
 # k8s 官方不建议草率开启 system-reserved, 除非你基于长期监控，了解系统的资源占用状况；
@@ -113,7 +112,7 @@ SYS_RESERVED_ENABLED: "no"
 # role:network [flannel,calico,cilium,kube-ovn,kube-router]
 ############################
 # ------------------------------------------- flannel
-# [flannel]设置flannel 后端"host-gw","vxlan"等
+# [flannel] set flannel backend type "host-gw","vxlan"
 FLANNEL_BACKEND: "vxlan"
 DIRECT_ROUTING: false
 
@@ -121,90 +120,98 @@ DIRECT_ROUTING: false
 flannel_ver: "__flannel__"
 
 # ------------------------------------------- calico
-# [calico] IPIP隧道模式可选项有: [Always, CrossSubnet, Never],跨子网可以配置为Always与CrossSubnet(公有云建议使用always比较省事，其他的话需要修改各自公有云的网络配置，具体可以参考各个公有云说明)
-# 其次CrossSubnet为隧道+BGP路由混合模式可以提升网络性能，同子网配置为Never即可.
+# [calico] IPIP tunnel mode options: [Always, CrossSubnet, Never]
+# Cross-subnet can be configured as Always or CrossSubnet
+# The public cloud recommends using "always" for simplicity.
+# For other cases, you need to modify the network configuration of each public cloud.
+# Specific details can be found in the respective public cloud's documentation.
+# Secondly, CrossSubnet adopts a tunnel + BGP routing hybrid mode, which can enhance network performance.
+# The configuration for the same subnet can be set to "Never".
 CALICO_IPV4POOL_IPIP: "Always"
 
-# [calico]设置 calico-node使用的host IP，bgp邻居通过该地址建立，可手工指定也可以自动发现
+# [calico] Set the host IP used by calico-node. BGP neighbors will establish connections through this address.
+# It can be manually specified or discovered automatically.
 IP_AUTODETECTION_METHOD: "can-reach={{ groups['kube_master'][0] }}"
 
-# [calico]设置calico 网络 backend: bird, vxlan, none
+# [calico] set calico network backend: bird, vxlan, none
 CALICO_NETWORKING_BACKEND: "bird"
 
-# [calico]设置calico 是否使用route reflectors
-# 如果集群规模超过50个节点，建议启用该特性
+# [calico] Set whether the Calico network enables the route reflectors
+# If the cluster size exceeds 50 nodes, it is recommended to enable this feature.
 CALICO_RR_ENABLED: false
 
-# CALICO_RR_NODES 配置route reflectors的节点，如果未设置默认使用集群master节点 
+# CALICO_RR_NODES: Configuration for route reflectors of the nodes. If not set, the default is to use the cluster master node.
 # CALICO_RR_NODES: ["192.168.1.1", "192.168.1.2"]
 CALICO_RR_NODES: [ ]
 
-# [calico]更新支持calico 版本: ["3.19", "3.23"]
+# [calico] Updated support for calico versions: ["3.19", "3.23"]
 calico_ver: "__calico__"
 
-# [calico]calico 主版本
+# [calico]calico main version
 calico_ver_main: "{{ calico_ver.split('.')[0] }}.{{ calico_ver.split('.')[1] }}"
 
 # ------------------------------------------- cilium
-# [cilium]镜像版本
+# [cilium]image versions
 cilium_ver: "__cilium__"
 cilium_connectivity_check: false
 cilium_hubble_enabled: false
 cilium_hubble_ui_enabled: false
 
 # ------------------------------------------- kube-ovn
-# [kube-ovn]离线镜像tar包
+# [kube-ovn]offline tar package
 kube_ovn_ver: "__kube_ovn__"
 
 # ------------------------------------------- kube-router
-# [kube-router]公有云上存在限制，一般需要始终开启 ipinip；自有环境可以设置为 "subnet"
+# [kube-router] There are limitations on public cloud platforms.
+# Generally, ipinip needs to be always enabled; in private environments, it can be set to "subnet".
 OVERLAY_TYPE: "full"
 
-# [kube-router]NetworkPolicy 支持开关
+# [kube-router] NetworkPolicy supports enabling/disabling
 FIREWALL_ENABLE: true
 
-# [kube-router]kube-router 镜像版本
+# [kube-router]kube-router image version
 kube_router_ver: "__kube_router__"
 
 
 ############################
 # role:cluster-addon
 ############################
-# coredns 自动安装
+# coredns enabled by default
 dns_install: "yes"
 corednsVer: "__coredns__"
 ENABLE_LOCAL_DNS_CACHE: true
 dnsNodeCacheVer: "__dns_node_cache__"
-# 设置 local dns cache 地址
+# set local dns cache address
 LOCAL_DNS_CACHE: "169.254.20.10"
 
-# metric server 自动安装
+# metric server enabled by default
 metricsserver_install: "yes"
 metricsVer: "__metrics__"
 
-# dashboard 自动安装
+# dashboard disabled by default
 dashboard_install: "no"
 dashboardVer: "__dashboard__"
 
-# prometheus 自动安装
+# prometheus disabled by default
 prom_install: "no"
 prom_namespace: "monitor"
 prom_chart_ver: "__prom_chart__"
 
-# kubeapps 自动安装，如果选择安装，默认同时安装local-storage（提供storageClass: "local-path"）
+# Kubeapps is automatically installed, disabled by default.
+# If you choose to install it, it will also install local-storage (with the configuration of storageClass: "local-path") by default.
 kubeapps_install: "no"
 kubeapps_install_namespace: "kubeapps"
 kubeapps_working_namespace: "default"
 kubeapps_storage_class: "local-path"
 kubeapps_chart_ver: "__kubeapps_chart__"
 
-# local-storage (local-path-provisioner) 自动安装
+# local-storage (local-path-provisioner) automatically installed, disabled by default.
 local_path_provisioner_install: "no"
 local_path_provisioner_ver: "__local_path_provisioner__"
-# 设置默认本地存储路径
+# Set the default local storage path
 local_path_provisioner_dir: "/opt/local-path-provisioner"
 
-# nfs-provisioner 自动安装
+# nfs-provisioner automatically installed, disabled by default
 nfs_provisioner_install: "no"
 nfs_provisioner_namespace: "kube-system"
 nfs_provisioner_ver: "__nfs_provisioner__"
@@ -212,11 +219,11 @@ nfs_storage_class: "managed-nfs-storage"
 nfs_server: "192.168.1.10"
 nfs_path: "/data/nfs"
 
-# network-check 自动安装
+# network-check automatically installed, disabled by default
 network_check_enabled: false
 network_check_schedule: "*/5 * * * *"
 
-# kubeblocks 自动安装
+# kubeblocks automatically installed, disabled by default
 kubeblocks_install: "no"
 kb_addon_mysql_install: "no"
 kb_addon_pg_install: "no"
@@ -229,9 +236,9 @@ kb_addon_mongodb_install: "no"
 ############################
 # role:harbor
 ############################
-# harbor version，完整版本号
+# Harbor version, complete version number
 HARBOR_VER: "__harbor__"
-HARBOR_DOMAIN: "harbor.easzlab.io.local"
+HARBOR_DOMAIN: "harbor.talkschool.cn"
 HARBOR_PATH: /var/data
 HARBOR_TLS_PORT: 8443
 HARBOR_REGISTRY: "{{ HARBOR_DOMAIN }}:{{ HARBOR_TLS_PORT }}"
