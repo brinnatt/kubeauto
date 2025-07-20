@@ -4,7 +4,7 @@
   # step1: find a healthy member in the etcd cluster
   - block:
     - name: set NODE_IPS of the etcd cluster
-      set_fact: NODE_IPS="{% for host in groups['etcd'] %} {% if host != NODE_TO_ADD %} {{ host }} {% endif %} {% endfor %}"
+      set_fact: NODE_IPS="{% for host in groups['etcd'] %}{% if host != NODE_TO_ADD %}{{ host }} {% endif %}{% endfor %}"
 
     - name: please be aware of your etcd cluster nodes
       debug: var="NODE_IPS"
