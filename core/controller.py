@@ -294,13 +294,16 @@ class ClusterManager:
             str(self.playbooks_dir / playbook)
         ]
 
-        logger.info(f"Adding {role} node {ip} to cluster {cluster}")
+        logger.info(f"Adding {role} node {ip} to cluster {cluster}", extra={"to_stdout": True})
         run_command(cmd, capture_output=False)
 
-        # Additional steps for master nodes
-        if role == "master":
-            logger.info("Reconfiguring and restarting load balancers")
+        # After adding a new node, we still have to notify related services
+        if role == "etcd":
+            self._notify_etcd_apiserver(cluster)
+        elif role == "master":
             self._restart_load_balancers(cluster)
+        elif role == "node":
+            pass
 
     def remove_node(self, cluster: str, ip: str, role: str) -> None:
         """Remove a node from the cluster"""
@@ -333,17 +336,21 @@ class ClusterManager:
             str(self.playbooks_dir / playbook)
         ]
 
-        logger.info(f"Removing {role} node {ip} from cluster {cluster}")
+        logger.info(f"Removing {role} node {ip} from cluster {cluster}", extra={"to_stdout": True})
         run_command(cmd, capture_output=False)
-
-        # Additional steps for master nodes
-        if role == "master":
-            logger.info("Reconfiguring kubeconfig and load balancers")
-            self._reconfigure_kubeconfig(cluster)
-            self._restart_load_balancers(cluster)
 
         # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
+
+        # After removing a node, we still have to notify related services
+        if role == "etcd":
+            self._notify_etcd_apiserver(cluster)
+        elif role == "master":
+            self._reconfigure_kubeconfig(cluster)
+            self._restart_load_balancers(cluster)
+            self._kubectl_del_master(cluster, ip)
+        elif role == "node":
+            pass
 
     def renew_ca_certs(self, cluster: str) -> None:
         """Force renew CA certificates and all other certs in the cluster"""
@@ -632,6 +639,36 @@ class ClusterManager:
         new_content = content[:section_start + 1] + new_section + content[section_end:]
         hosts_file.write_text("\n".join(new_content) + "\n")
 
+    def _notify_etcd_apiserver(self, cluster: str) -> None:
+        hosts_file = self.clusters_dir / cluster / "hosts"
+        config_file = self.clusters_dir / cluster / "config.yml"
+
+        # Restart the etcd cluster
+        cmd = [
+            "ansible-playbook",
+            "-i", str(hosts_file),
+            "-e", f"@{config_file}",
+            "-t", "restart_etcd",
+            str(self.playbooks_dir / "02.etcd.yml")
+        ]
+        logger.info(f"Restart the etcd cluster after adding or removing an etcd node, the command is {' '.join(cmd)}",
+                    extra={"to_stdout": True})
+        run_command(cmd, capture_output=False)
+        logger.info("The etcd cluster has been restarted successfully!", extra={"to_stdout": True})
+
+        # Restart the apiservers to use the new etcd cluster
+        cmd = [
+            "ansible-playbook",
+            "-i", str(hosts_file),
+            "-e", f"@{config_file}",
+            "-t", "restart_master",
+            str(self.playbooks_dir / "04.kube-master.yml")
+        ]
+        logger.info(f"Restart the apiservers to adapt to the changed etcd cluster, the command is {' '.join(cmd)}",
+                    extra={"to_stdout": True})
+        run_command(cmd, capture_output=False)
+        logger.info("The apiservers have been restarted successfully!", extra={"to_stdout": True})
+
     def _restart_load_balancers(self, cluster: str) -> None:
         """Restart kube-lb and ex-lb services"""
         hosts_file = self.clusters_dir / cluster / "hosts"
@@ -645,7 +682,10 @@ class ClusterManager:
             "-t", "restart_kube-lb",
             str(self.playbooks_dir / "90.setup.yml")
         ]
+        logger.info(f"Restart the kube-lb after adding or removing a master node, the command is {' '.join(cmd)}",
+                    extra={"to_stdout": True})
         run_command(cmd, capture_output=False)
+        logger.info("The kube-lb services have been restarted successfully!", extra={"to_stdout": True})
 
         # Restart ex-lb
         cmd = [
@@ -655,7 +695,20 @@ class ClusterManager:
             "-t", "restart_lb",
             str(self.playbooks_dir / "10.ex-lb.yml")
         ]
+        logger.info(f"Restart the ex-lb after adding or removing a master node, the command is {' '.join(cmd)}",
+                    extra={"to_stdout": True})
         run_command(cmd, capture_output=False)
+        logger.info("The ex-lb services have been restarted successfully!", extra={"to_stdout": True})
+
+    def _kubectl_del_master(self, cluster: str, ip: str) -> None:
+        kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
+        cmd = [f"kubectl --kubeconfig={kubeconfig} get node -o wide", "|", f"grep {ip}", "|", "awk '{print $1}'"]
+        nodename = run_command(cmd, shell=True, capture_output=True).stdout.strip()
+
+        logger.info(f"Deleting a master node {nodename}...", extra={"to_stdout": True})
+        cmd = [str(self.kube_bin_dir / "kubectl"), "--kubeconfig", str(kubeconfig), "delete", "node", f"{nodename}"]
+        run_command(cmd, shell=True, capture_output=False)
+        logger.info("A master node has been deleted successfully!", extra={"to_stdout": True})
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Reconfigure kubeconfig after master node removal"""
@@ -669,7 +722,10 @@ class ClusterManager:
             "-t", "create_kctl_cfg",
             str(self.base_path / "roles/deploy/deploy.yml")
         ]
+        logger.info(f"Reconfiguring kubeconfig after a master node removal, the command is {' '.join(cmd)}",
+                    extra={"to_stdout": True})
         run_command(cmd, capture_output=False)
+        logger.info("The kubeconfig has been reconfigured successfully!", extra={"to_stdout": True})
 
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
