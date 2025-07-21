@@ -3,6 +3,7 @@
     name:
       - firewalld
       - python-firewall
+      - python3-firewall
       - firewalld-filesystem
     state: absent
   ignore_errors: true
