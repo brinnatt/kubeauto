@@ -22,6 +22,8 @@
       - socat               # port forwarding requires
       - rsyslog             # rockylinux has no rsyslog service by default
       - vim                 # rockylinux has no vim by default
+      - ipset-service       # help iptables to set firewall rules
+      - iptables-services   # useful for setting firewall rules in a small scale cluster
     state: present
 
 - name: disable selinux right now
