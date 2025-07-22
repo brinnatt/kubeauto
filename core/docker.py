@@ -314,7 +314,12 @@ WantedBy=multi-user.target
                     "max-file": "3"
                 },
                 "registry-mirrors": [
-                    "https://docker.410006.xyz"
+                    "https://docker.1ms.run",
+                    "https://hub1.nat.tf",
+                    "https://docker.1panel.live",
+                    "https://proxy.1panel.live",
+                    "https://hub.rat.dev",
+                    "https://docker.amingg.com"
                 ],
                 "data-root": f"{data_docker}"
             }
