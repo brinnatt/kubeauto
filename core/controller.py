@@ -196,7 +196,7 @@ class ClusterManager:
             str(self.playbooks_dir / playbook)
         ]
 
-        logger.info(f"Running command: {' '.join(cmd)}")
+        logger.info(f"Running command: {' '.join(cmd)}", extra={"to_stdout": True})
 
         if not confirm_action(f"cluster:{name} {command} begins"):
             return

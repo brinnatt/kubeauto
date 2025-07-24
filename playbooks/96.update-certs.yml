@@ -1,5 +1,5 @@
 # Note: this scripts should be used with caution.
-# Force to recreate CA certs and all of the others certs used in the cluster. 
+# Force to recreate CA certs and all other certs used in the cluster.
 # It should be used when the admin.conf leaked, and a new one will be created in place of the leaked one.
 
 # backup old certs
