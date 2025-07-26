@@ -224,27 +224,18 @@ class ClusterManager:
         try:
             logger.info("Start initializing allinone cluster environment...", extra={"to_stdout": True})
 
+            # ssh myself based on ssh key
             host_ip = get_host_ip()
             ssh_localhost()
 
-            # Create aio cluster directory
-            aio_cluster = self.clusters_dir / "aio"
-            aio_cluster.mkdir(exist_ok=True)
+            # Create the aio cluster
+            self.new_cluster("aio")
 
-            # Copy all-in-one hosts file
+            # Copy all-in-one example host file with actual IP and cluster name
             aio_example_hosts = self.base_path / "example/hosts.allinone"
-            aio_example_config = self.base_path / "example/config.yml"
-
-            aio_hosts = aio_cluster / "hosts"
-            aio_config = aio_cluster / "config.yml"
-
-            aio_hosts.write_text(aio_example_hosts.read_text())
-            aio_config.write_text(aio_example_config.read_text())
-
-            # Update hosts file with actual IP and cluster name
-            aio_hosts_new_content = (aio_hosts.read_text().replace("192.168.1.1", host_ip)
+            aio_hosts = self.clusters_dir / "aio" / "hosts"
+            aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
                                      .replace("_cluster_name_", "aio"))
-            aio_hosts.write_text(aio_hosts_new_content)
 
             logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
         except Exception as e:
