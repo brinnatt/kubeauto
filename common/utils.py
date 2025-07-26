@@ -12,13 +12,14 @@ from .exceptions import CommandExecutionError
 logger = setup_logger(__name__)
 
 
-def run_command(cmd: List[str], check: bool = True, capture_output=True, allowed_exit_codes: List[int] = None,
+def run_command(cmd: List[str] | str, check: bool = True, capture_output=True, allowed_exit_codes: List[int] = None,
                 **kwargs):
     """Run a shell command with error handling"""
     logger.debug(f"Executing command: {' '.join(cmd)}")
 
     # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effective in this case.
-    cmd = " ".join(cmd) if kwargs.get("shell") else cmd
+    if kwargs.get("shell") and not isinstance(cmd, str):
+        raise CommandExecutionError(f"Command {cmd} must be a string when you enter a shell command!")
 
     # [fix subprocess grammar] Handle stdout/stderr and capture_output conflict
     if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
@@ -87,7 +88,7 @@ def ssh_localhost() -> None:
     private_key = ssh_dir / "id_rsa"
     if not private_key.exists():
         logger.info("Generating SSH key pair", extra={"to_stdout": True})
-        run_command(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", str(private_key)], shell=True)
+        run_command(f"ssh-keygen -t rsa -b 2048 -N '' -f {private_key}", shell=True)
 
     authorized_keys = ssh_dir / "authorized_keys"
     authorized_keys.touch(mode=0o600)
