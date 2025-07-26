@@ -6,13 +6,13 @@
 # CAUTION: 'k8s_nodename' must consist of lower case alphanumeric characters, '-' or '.',
 # and must start and end with an alphanumeric character
 [kube_master]
-192.168.1.1
+192.168.1.1 k8s_nodename='master-aio'
 
 # work node(s), set unique 'k8s_nodename' for each node
 # CAUTION: 'k8s_nodename' must consist of lower case alphanumeric characters, '-' or '.',
 # and must start and end with an alphanumeric character
 [kube_node]
-192.168.1.1 k8s_nodename=''
+192.168.1.1
 
 # [optional] harbor server, a private docker registry
 # 'NEW_INSTALL': 'true' to install a harbor server; 'false' to integrate with existed one
