@@ -17,7 +17,7 @@ def run_command(cmd: List[str] | str, check: bool = True, capture_output=True, a
     """Run a shell command with error handling"""
     logger.debug(f"Executing command: {' '.join(cmd)}")
 
-    # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effective in this case.
+    # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effect in this case.
     if kwargs.get("shell") and not isinstance(cmd, str):
         raise CommandExecutionError(f"Command {cmd} must be a string when you enter a shell command!")
 

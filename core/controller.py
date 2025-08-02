@@ -415,8 +415,8 @@ class ClusterManager:
 
             # Remove user certs
             user_certs = self.clusters_dir / cluster / "ssl/users" / f"{user_name}*"
-            run_command(["rm", "-f", str(user_certs)], shell=True)
-            logger.info(f"Deleted user {user_name} from cluster {cluster}")
+            run_command(f"rm -rf {user_certs}", shell=True)
+            logger.info(f"Deleted user {user_name} from cluster {cluster}", extra={"to_stdout": True})
 
         elif action == "list":
             kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
