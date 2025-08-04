@@ -18,8 +18,9 @@ def run_command(cmd: List[str] | str, check: bool = True, capture_output=True, a
     logger.debug(f"Executing command: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
 
     # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effect in this case.
-    if kwargs.get("shell") and not isinstance(cmd, str):
-        raise CommandExecutionError(f"Command {cmd} must be a string when you enter a shell command!")
+    cmd = " ".join(cmd) if kwargs.get("shell") and isinstance(cmd, list) else cmd
+    if isinstance(cmd, str) and not kwargs.get("shell"):
+        raise CommandExecutionError(f"You must specify a shell command to execute: {cmd}, try to run with shell=True!")
 
     # [fix subprocess grammar] Handle stdout/stderr and capture_output conflict
     if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
