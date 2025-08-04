@@ -15,7 +15,7 @@ logger = setup_logger(__name__)
 def run_command(cmd: List[str] | str, check: bool = True, capture_output=True, allowed_exit_codes: List[int] = None,
                 **kwargs):
     """Run a shell command with error handling"""
-    logger.debug(f"Executing command: {' '.join(cmd)}")
+    logger.debug(f"Executing command: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
 
     # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effect in this case.
     if kwargs.get("shell") and not isinstance(cmd, str):
@@ -33,7 +33,7 @@ def run_command(cmd: List[str] | str, check: bool = True, capture_output=True, a
             return e
         # Build detailed error message
         error_msg = (
-            f"Command failed with exit code {e.returncode}: {' '.join(e.cmd)}\n"
+            f"Command failed with exit code {e.returncode}: {' '.join(e.cmd) if isinstance(e.cmd, list) else cmd}\n"
             f"Error output: {e.stderr.strip() if e.stderr else '(empty)'}\n"
             f"Standard output: {e.stdout.strip() if e.stdout else '(empty)'}"
         )
