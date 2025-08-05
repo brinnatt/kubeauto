@@ -4,7 +4,7 @@ Utility functions for kubeauto
 import subprocess
 import shutil
 import ipaddress
-from typing import List
+from typing import List, Tuple
 from pathlib import Path
 from .logger import setup_logger
 from .exceptions import CommandExecutionError
@@ -12,19 +12,30 @@ from .exceptions import CommandExecutionError
 logger = setup_logger(__name__)
 
 
-def run_command(cmd: List[str] | str, check: bool = True, capture_output=True, allowed_exit_codes: List[int] = None,
+def run_command(cmd: List[str] | Tuple[str] | str,
+                check: bool = True,
+                capture_output=True,
+                allowed_exit_codes: List[int] = None,
                 **kwargs):
     """Run a shell command with error handling"""
     logger.debug(f"Executing command: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
 
     # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effect in this case.
-    cmd = " ".join(cmd) if kwargs.get("shell") and isinstance(cmd, list) else cmd
-    if isinstance(cmd, str) and not kwargs.get("shell"):
-        raise CommandExecutionError(f"You must specify a shell command to execute: {cmd}, try to run with shell=True!")
+    if isinstance(cmd, (list, tuple)):
+        if kwargs.get("shell"):
+            cmd = " ".join(cmd)
+    elif isinstance(cmd, str):
+        if not kwargs.get("shell"):
+            cmd = cmd.split()
+    else:
+        raise CommandExecutionError(
+            f"Command must be either a list or a tuple or a string, please check you command {cmd}"
+        )
 
-    # [fix subprocess grammar] Handle stdout/stderr and capture_output conflict
+    # [fix subprocess grammar] Handle stdout/stderr and capture_output conflict.
+    # Disable capture_output if stdout/stderr is provided
     if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
-        capture_output = False  # Disable capture_output if stdout/stderr is provided
+        capture_output = False
 
     try:
         result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True, **kwargs)
@@ -34,7 +45,7 @@ def run_command(cmd: List[str] | str, check: bool = True, capture_output=True, a
             return e
         # Build detailed error message
         error_msg = (
-            f"Command failed with exit code {e.returncode}: {' '.join(e.cmd) if isinstance(e.cmd, list) else cmd}\n"
+            f"Command failed with exit code {e.returncode}: {' '.join(e.cmd) if isinstance(e.cmd, (list, tuple)) else cmd}\n"
             f"Error output: {e.stderr.strip() if e.stderr else '(empty)'}\n"
             f"Standard output: {e.stdout.strip() if e.stdout else '(empty)'}"
         )
