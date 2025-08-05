@@ -18,7 +18,7 @@ def run_command(cmd: List[str] | Tuple[str] | str,
                 allowed_exit_codes: List[int] = None,
                 **kwargs):
     """Run a shell command with error handling"""
-    logger.debug(f"Executing command: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
+    logger.debug(f"Executing command: {' '.join(cmd) if isinstance(cmd, (list, tuple)) else cmd}")
 
     # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effect in this case.
     if isinstance(cmd, (list, tuple)):
