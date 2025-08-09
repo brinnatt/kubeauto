@@ -2,8 +2,9 @@
 Main cluster operations for kubeauto
 """
 import ipaddress
+import re
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from common.utils import run_command, validate_ip, confirm_action
 from common.exceptions import (
@@ -235,7 +236,7 @@ class ClusterManager:
             aio_example_hosts = self.base_path / "example/hosts.allinone"
             aio_hosts = self.clusters_dir / "aio" / "hosts"
             aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
-                                     .replace("_cluster_name_", "aio"))
+                                 .replace("_cluster_name_", "aio"))
 
             logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
         except Exception as e:
@@ -365,131 +366,152 @@ class ClusterManager:
 
         run_command(cmd, capture_output=False)
 
-    def kubeconfig_admin(self, cluster: str, action: str, user_name: str = None,
-                         user_type: str = "admin", expiry: str = "4800h") -> None:
-        """Manage kubeconfig users"""
+    def kubeconfig_admin(self, cluster: str, action: str,
+                         user_name: str = None, user_type: str = "admin",
+                         expiry: str = "4800h", show_all=False, expired_only=False) -> None:
         self._validate_cluster(cluster)
+        kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
 
         if action == "add":
-            if not user_name:
-                user_name = f"user-{datetime.now().strftime('%Y%m%d%H%M')}"
-
-            cmd = [
-                "ansible-playbook",
-                "-i", str(self.clusters_dir / cluster / "hosts"),
-                "-e", f"@{self.clusters_dir / cluster / 'config.yml'}",
-                "-e", f"CUSTOM_EXPIRY={expiry}",
-                "-e", f"USER_TYPE={user_type}",
-                "-e", f"USER_NAME={user_name}",
-                "-e", "ADD_KCFG=true",
-                "-t", "add-kcfg",
-                str(self.base_path / "roles/deploy/deploy.yml")
-            ]
-
-            logger.info(f"Adding user {user_name} ({user_type}) to cluster {cluster}")
-            run_command(cmd, capture_output=False)
-
+            self._add_kcfg(cluster, user_name, user_type, expiry)
         elif action == "delete":
-            if not user_name:
-                raise ValueError("User name is required for delete action")
-
-            # Get cluster role binding
-            kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
-            crb_cmd = [
-                str(self.kube_bin_dir / "kubectl"),
-                "--kubeconfig", str(kubeconfig),
-                "get", "clusterrolebindings",
-                "-ojsonpath=\"{.items[?(@.subjects[0].name == '{user_name}')].metadata.name}\""
-            ]
-
-            crb = run_command(crb_cmd, shell=True).stdout.strip('"')
-
-            if crb:
-                # Delete cluster role binding
-                delete_cmd = [
-                    str(self.kube_bin_dir / "kubectl"),
-                    "--kubeconfig", str(kubeconfig),
-                    "delete", "clusterrolebindings", crb
-                ]
-                run_command(delete_cmd)
-
-            # Remove user certs
-            user_certs = self.clusters_dir / cluster / "ssl/users" / f"{user_name}*"
-            run_command(f"rm -rf {user_certs}", shell=True)
-            logger.info(f"Deleted user {user_name} from cluster {cluster}", extra={"to_stdout": True})
-
+            self._del_kcfg(cluster, user_name, kubeconfig)
         elif action == "list":
-            kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
+            self._list_kcfg(cluster, kubeconfig, show_all, expired_only)
+        else:
+            raise ValueError(f"Unknown action: {action}")
 
-            # Get all users
-            admins_cmd = [
+    def _add_kcfg(self, cluster, user_name, user_type, expiry):
+        if not user_name:
+            user_name = f"user-{datetime.now().strftime('%Y%m%d%H%M')}"
+        logger.info(f"add-kcfg in cluster:{cluster} with user:{user_name}")
+        cmd = [
+            "ansible-playbook",
+            "-i", str(self.clusters_dir / cluster / "hosts"),
+            "-e", f"@{self.clusters_dir / cluster / 'config.yml'}",
+            "-e", f"CUSTOM_EXPIRY={expiry}",
+            "-e", f"USER_TYPE={user_type}",
+            "-e", f"USER_NAME={user_name}",
+            "-e", "ADD_KCFG=true",
+            "-t", "add-kcfg",
+            str(self.base_path / "roles/deploy/deploy.yml")
+        ]
+        run_command(cmd, capture_output=False)
+
+    def _del_kcfg(self, cluster, user_name, kubeconfig):
+        if not user_name:
+            raise ValueError("User name is required for delete action")
+        logger.info(f"del-kcfg in cluster:{cluster} with user:{user_name}")
+
+        crb_cmd = [
+            str(self.kube_bin_dir / "kubectl"),
+            "--kubeconfig", str(kubeconfig),
+            "get", "clusterrolebindings",
+            f"-ojsonpath={{.items[?(@.subjects[0].name == '{user_name}')].metadata.name}}"
+        ]
+        crb = run_command(crb_cmd, shell=False).stdout.strip()
+        if crb:
+            delete_cmd = [
+                str(self.kube_bin_dir / "kubectl"),
+                "--kubeconfig", str(kubeconfig),
+                "delete", "clusterrolebindings", crb
+            ]
+            run_command(delete_cmd, capture_output=False)
+
+        cert_pattern = str(self.clusters_dir / cluster / "ssl/users" / f"{user_name}*")
+        run_command(f"rm -f {cert_pattern}", shell=True)
+
+        # delete CRB YAML
+        crb_pattern = str(self.clusters_dir / cluster / "ssl/users" / f"crb-{user_name}*")
+        run_command(f"rm -f {crb_pattern}", shell=True)
+
+    def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
+        # ANSI 颜色码
+        RED = "\033[91m"
+        YELLOW = "\033[93m"
+        GREEN = "\033[92m"
+        RESET = "\033[0m"
+
+        logger.info(f"list-kcfg in cluster:{cluster}")
+
+        def get_users(role_name=None):
+            if role_name:
+                jsonpath = f"{{.items[?(@.roleRef.name == \"{role_name}\")].subjects[*].name}}"
+            else:
+                jsonpath = "{.items[*].subjects[*].name}"
+            cmd = [
                 str(self.kube_bin_dir / "kubectl"),
                 "--kubeconfig", str(kubeconfig),
                 "get", "clusterrolebindings",
-                "-ojsonpath='{.items[?(@.roleRef.name == \"cluster-admin\")].subjects[*].name}'"
+                f"-ojsonpath='{jsonpath}'"
             ]
-            admins = run_command(admins_cmd, shell=True).stdout.strip("'").split()
+            return run_command(cmd, shell=True).stdout.strip("'").split()
 
-            views_cmd = [
-                str(self.kube_bin_dir / "kubectl"),
-                "--kubeconfig", str(kubeconfig),
-                "get", "clusterrolebindings",
-                "-ojsonpath='{.items[?(@.roleRef.name == \"view\")].subjects[*].name}'"
-            ]
-            views = run_command(views_cmd, shell=True).stdout.strip("'").split()
+        admins = set(get_users("cluster-admin"))
+        views = set(get_users("view"))
+        bound_users = set(get_users())
 
-            all_cmd = [
-                str(self.kube_bin_dir / "kubectl"),
-                "--kubeconfig", str(kubeconfig),
-                "get", "clusterrolebindings",
-                "-ojsonpath='{.items[*].subjects[*].name}'"
-            ]
-            all_users = run_command(all_cmd, shell=True).stdout.strip("'").split()
+        if show_all:
+            cert_users = {p.stem for p in (self.clusters_dir / cluster / "ssl/users").glob("*.pem") if
+                          not p.name.endswith("-key.pem")}
+            all_users = sorted(cert_users)
+        else:
+            all_users = sorted(bound_users)
 
-            # Print user list
-            print("\n%-30s %-15s %-20s" % ("USER", "TYPE", "EXPIRY(+8h if in Asia/Shanghai)"))
-            print("---------------------------------------------------------------------------------")
+        header_fmt = f"{'USER':<30}{'TYPE':<18}{'EXPIRY(+8h if in Asia/Shanghai)':<30}{'DAYS_LEFT'}"
+        print("\n" + header_fmt)
+        print("-" * len(header_fmt))
 
-            for user in admins:
-                if user.endswith("-" + datetime.now().strftime('%Y%m%d%H%M')):
-                    cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
-                    if cert_file.exists():
-                        expiry_cmd = [
-                            str(self.kube_bin_dir / "cfssl-certinfo"),
-                            "-cert", str(cert_file),
-                            "|", "grep", "not_after", "|", "awk", "'{print $2}'", "|",
-                            "sed", "'s/\"//g'", "|", "sed", "'s/,//g'"
-                        ]
-                        expiry = run_command(expiry_cmd, shell=True).stdout.strip()
-                        print("%-30s %-15s %-20s" % (user, "cluster-admin", expiry))
+        suffix_pattern = re.compile(r".*-\d{12}$")
+        now = datetime.now(timezone.utc)
 
-            for user in views:
-                if user.endswith("-" + datetime.now().strftime('%Y%m%d%H%M')):
-                    cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
-                    if cert_file.exists():
-                        expiry_cmd = [
-                            str(self.kube_bin_dir / "cfssl-certinfo"),
-                            "-cert", str(cert_file),
-                            "|", "grep", "not_after", "|", "awk", "'{print $2}'", "|",
-                            "sed", "'s/\"//g'", "|", "sed", "'s/,//g'"
-                        ]
-                        expiry = run_command(expiry_cmd, shell=True).stdout.strip()
-                        print("%-30s %-15s %-20s" % (user, "view", expiry))
+        for user in all_users:
+            role = (
+                "cluster-admin" if user in admins else
+                "view" if user in views else
+                "unknown"
+            )
+            cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
+            expiry = "N/A"
+            days_left = "N/A"
+            is_expired = False
 
-            for user in all_users:
-                if user.endswith("-" + datetime.now().strftime('%Y%m%d%H%M')):
-                    if user not in admins and user not in views:
-                        cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
-                        if cert_file.exists():
-                            expiry_cmd = [
-                                str(self.kube_bin_dir / "cfssl-certinfo"),
-                                "-cert", str(cert_file),
-                                "|", "grep", "not_after", "|", "awk", "'{print $2}'", "|",
-                                "sed", "'s/\"//g'", "|", "sed", "'s/,//g'"
-                            ]
-                            expiry = run_command(expiry_cmd, shell=True).stdout.strip()
-                            print("%-30s %-15s %-20s" % (user, "unknown", expiry))
-            print("")
+            if cert_file.exists():
+                expiry_cmd = [
+                    str(self.extra_bin_dir / "cfssl-certinfo"),
+                    "-cert", str(cert_file)
+                ]
+                expiry_info = run_command(expiry_cmd, shell=False).stdout
+                match = re.search(r'"not_after"\s*:\s*"([^"]+)"', expiry_info)
+                if match:
+                    expiry = match.group(1)
+                    try:
+                        exp_dt = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+                        delta_days = (exp_dt - now).days
+                        days_left = str(delta_days)
+                        is_expired = exp_dt < now
+                    except ValueError:
+                        pass
+
+            if expired_only and not is_expired:
+                continue
+
+            # 颜色选择
+            color = RESET
+            if days_left != "N/A":
+                days_int = int(days_left)
+                if days_int < 0:
+                    color = RED
+                elif days_int <= 7:
+                    color = YELLOW
+                else:
+                    color = GREEN
+
+            if show_all or suffix_pattern.match(user):
+                expired_mark = "*" if is_expired else " "
+                print(f"{expired_mark}{user:<29}{role:<18}{expiry:<30}{color}{days_left}{RESET}")
+
+        print("")
 
     def _validate_cluster(self, name: str) -> None:
         """Validate cluster exists"""

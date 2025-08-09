@@ -3,6 +3,7 @@ Command line interface for kubeauto
 """
 import argparse
 import sys
+import re
 from typing import Dict, Callable
 
 from common.utils import confirm_action, validate_ip
@@ -289,42 +290,46 @@ class KubeautoCLI:
         """Setup 'kcfg-adm' command"""
         parser = self.subparsers.add_parser(
             "kcfg-adm",
-            help="Manage kubeconfig users for the cluster"
+            help="Manage kubeconfig users for the cluster",
+            epilog=(
+                "Examples:\n"
+                "  # Add a new admin user (default expiry 4800h)\n"
+                "  kcfg-adm -A -u alice -t admin mycluster\n\n"
+                "  # Add a new view-only user with 24h expiry\n"
+                "  kcfg-adm -A -u bob -t view -e 24h mycluster\n\n"
+                "  # Delete an existing user\n"
+                "  kcfg-adm -D -u alice mycluster\n\n"
+                "  # List all bound users in the cluster\n"
+                "  kcfg-adm -L mycluster\n\n"
+                "  # List all users from ssl/users directory\n"
+                "  kcfg-adm -L --all mycluster\n\n"
+                "  # List only expired users\n"
+                "  kcfg-adm -L --expired mycluster\n"
+            ),
+            formatter_class=argparse.RawTextHelpFormatter
         )
         self._add_common_cluster_args(parser)
 
         action_group = parser.add_mutually_exclusive_group(required=True)
-        action_group.add_argument(
-            "-A", "--add",
-            action="store_true",
-            help="Add a new user"
-        )
-        action_group.add_argument(
-            "-D", "--delete",
-            action="store_true",
-            help="Delete an existing user"
-        )
-        action_group.add_argument(
-            "-L", "--list",
-            action="store_true",
-            help="List all users"
-        )
+        action_group.add_argument("-A", "--add", action="store_true", help="Add a new user")
+        action_group.add_argument("-D", "--delete", action="store_true", help="Delete an existing user")
+        action_group.add_argument("-L", "--list", action="store_true", help="List users")
 
-        parser.add_argument(
-            "-e", "--expiry",
-            default="4800h",
-            help="Certificate expiry time (e.g. 24h, 4800h)"
-        )
-        parser.add_argument(
-            "-t", "--type",
-            choices=["admin", "view"],
-            default="admin",
-            help="Type of user to create"
-        )
-        parser.add_argument(
-            "-u", "--user",
-            help="Name of the user (required for add/delete)"
-        )
+        parser.add_argument("-e", "--expiry", default="4800h", help="Certificate expiry time (e.g. 24h, 4800h)")
+        parser.add_argument("-t", "--type", choices=["admin", "view"], default="admin", help="Type of user to create")
+        parser.add_argument("-u", "--user", help="Name of the user (required for delete)")
+        parser.add_argument("--all", action="store_true", help="List all users from ssl/users directory")
+        parser.add_argument("--expired", action="store_true", help="Only show expired users")
+
+        def validate_args(args):
+            if not re.match(r"^[1-9][0-9]*h$", args.expiry):
+                parser.error("'-e/--expiry' must be in format like '24h', '4800h', etc.")
+            if args.delete and not args.user:
+                parser.error("'-u/--user' is required when using '-D/--delete'.")
+            if args.list and args.user:
+                logger.warning("Note: '-u' is ignored when listing users.", extra={"to_stdout": True})
+
+        parser.set_defaults(validate=validate_args)
 
     def _setup_download_command(self) -> None:
         """Setup 'download' command with strict version control"""
@@ -614,15 +619,16 @@ class KubeautoCLI:
 
     def _handle_kcfg_adm(self, args: argparse.Namespace) -> None:
         """Handle 'kcfg-adm' command"""
+        if hasattr(args, "validate"):
+            args.validate(args)
+
         cm = ClusterManager()
         if args.add:
             cm.kubeconfig_admin(args.cluster, "add", args.user, args.type, args.expiry)
         elif args.delete:
-            if not args.user:
-                self.parser.error("User name is required for delete action")
             cm.kubeconfig_admin(args.cluster, "delete", args.user)
         elif args.list:
-            cm.kubeconfig_admin(args.cluster, "list")
+            cm.kubeconfig_admin(args.cluster, "list", show_all=args.all, expired_only=args.expired)
 
     def _handle_download(self, args: argparse.Namespace) -> None:
         """Handle download command with version enforcement"""
