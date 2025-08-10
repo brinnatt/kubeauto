@@ -384,7 +384,7 @@ class ClusterManager:
     def _add_kcfg(self, cluster, user_name, user_type, expiry):
         if not user_name:
             user_name = f"user-{datetime.now().strftime('%Y%m%d%H%M')}"
-        logger.info(f"add-kcfg in cluster:{cluster} with user:{user_name}")
+        logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name}", extra={"to_stdout": True})
         cmd = [
             "ansible-playbook",
             "-i", str(self.clusters_dir / cluster / "hosts"),
@@ -397,11 +397,13 @@ class ClusterManager:
             str(self.base_path / "roles/deploy/deploy.yml")
         ]
         run_command(cmd, capture_output=False)
+        logger.info(f"Adding kcfg in cluster:{cluster} with user:{user_name} has been finished successfully",
+                    extra={"to_stdout": True})
 
     def _del_kcfg(self, cluster, user_name, kubeconfig):
         if not user_name:
             raise ValueError("User name is required for delete action")
-        logger.info(f"del-kcfg in cluster:{cluster} with user:{user_name}")
+        logger.info(f"Del kcfg in cluster:{cluster} with user:{user_name}", extra={"to_stdout": True})
 
         crb_cmd = [
             str(self.kube_bin_dir / "kubectl"),
@@ -424,9 +426,12 @@ class ClusterManager:
         # delete CRB YAML
         crb_pattern = str(self.clusters_dir / cluster / "ssl/users" / f"crb-{user_name}*")
         run_command(f"rm -f {crb_pattern}", shell=True)
+        logger.info(f"Deleting kcfg in cluster:{cluster} with user:{user_name} has been finished successfully",
+                    extra={"to_stdout": True})
 
     def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
-        logger.info(f"list-kcfg in cluster:{cluster}", extra={"to_stdout": True})
+        logger.info(f"List kcfg in cluster:{cluster}", extra={"to_stdout": True})
+
         def get_users(role_name=None):
             if role_name:
                 jsonpath = f"{{.items[?(@.roleRef.name == \"{role_name}\")].subjects[*].name}}"
