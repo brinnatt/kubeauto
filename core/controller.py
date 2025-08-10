@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
-from common.utils import run_command, validate_ip, confirm_action
+from common.utils import run_command, validate_ip, confirm_action, AnsiColor
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError,
@@ -426,14 +426,7 @@ class ClusterManager:
         run_command(f"rm -f {crb_pattern}", shell=True)
 
     def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
-        # ANSI 颜色码
-        RED = "\033[91m"
-        YELLOW = "\033[93m"
-        GREEN = "\033[92m"
-        RESET = "\033[0m"
-
-        logger.info(f"list-kcfg in cluster:{cluster}")
-
+        logger.info(f"list-kcfg in cluster:{cluster}", extra={"to_stdout": True})
         def get_users(role_name=None):
             if role_name:
                 jsonpath = f"{{.items[?(@.roleRef.name == \"{role_name}\")].subjects[*].name}}"
@@ -497,19 +490,19 @@ class ClusterManager:
                 continue
 
             # 颜色选择
-            color = RESET
+            color = AnsiColor.RESET.value
             if days_left != "N/A":
                 days_int = int(days_left)
                 if days_int < 0:
-                    color = RED
+                    color = AnsiColor.RED.value
                 elif days_int <= 7:
-                    color = YELLOW
+                    color = AnsiColor.YELLOW.value
                 else:
-                    color = GREEN
+                    color = AnsiColor.GREEN.value
 
             if show_all or suffix_pattern.match(user):
                 expired_mark = "*" if is_expired else " "
-                print(f"{expired_mark}{user:<29}{role:<18}{expiry:<30}{color}{days_left}{RESET}")
+                print(f"{expired_mark}{user:<29}{role:<18}{expiry:<30}{color}{days_left}{AnsiColor.RESET.value}")
 
         print("")
 

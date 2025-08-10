@@ -5,6 +5,7 @@ import subprocess
 import shutil
 import ipaddress
 from typing import List, Tuple
+from enum import Enum
 from pathlib import Path
 from .logger import setup_logger
 from .exceptions import CommandExecutionError
@@ -136,3 +137,10 @@ def confirm_action(prompt: str, timeout: int = 5) -> bool:
         logger.warning("Action aborted by user")
         return False
     return True
+
+
+class AnsiColor(Enum):
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
