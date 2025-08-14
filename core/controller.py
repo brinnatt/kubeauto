@@ -430,8 +430,6 @@ class ClusterManager:
                     extra={"to_stdout": True})
 
     def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
-        logger.info(f"List kcfg in cluster:{cluster}", extra={"to_stdout": True})
-
         def get_users(role_name=None):
             if role_name:
                 jsonpath = f"{{.items[?(@.roleRef.name == \"{role_name}\")].subjects[*].name}}"
@@ -444,6 +442,8 @@ class ClusterManager:
                 f"-ojsonpath='{jsonpath}'"
             ]
             return run_command(cmd, shell=True).stdout.strip("'").split()
+
+        logger.info(f"List kcfg in cluster:{cluster}", extra={"to_stdout": True})
 
         admins = set(get_users("cluster-admin"))
         views = set(get_users("view"))
