@@ -3,6 +3,9 @@ Main cluster operations for kubeauto
 """
 import ipaddress
 import re
+import ansible_runner
+import yaml
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -25,6 +28,7 @@ class ClusterManager:
         self.extra_bin_dir = Path(self.kube_constant.EXTRA_BIN_DIR)
         self.clusters_dir = self.base_path / "clusters"
         self.playbooks_dir = self.base_path / "playbooks"
+        self.roles_dir = self.base_path / "roles"
 
     def list_clusters(self) -> List[str]:
         """List all managed clusters"""
@@ -120,7 +124,27 @@ class ClusterManager:
 
         name: Cluster name
         step: Setup step (01-07, 10, 11, 90 or step name)
-        extra_args: Additional arguments to pass to ansible-playbook
+        extra_args: Additional arguments to pass to ansible_runner
+
+        ansible_runner methods:
+        method one: bubblewrap(rpm)
+            ansible_runner.run(
+                private_data_dir="/root/runner-test", # /root/runner-test/{artifacts,inventory,project}
+                playbook="site.yml",
+                process_isolation=True,
+                process_isolation_executable="bwrap",
+                directory_isolation_base_path="/tmp", # runner will create runner_di_* directory under /tmp, you don't have to specify it. runner will handle this by default.
+                process_isolation_show_paths=["/tmp"] # if base_path specified, you must specify show_paths which will be bound to bwrap sandbox, or you got bwrap: Can't chdir to /tmp/runner_di_jg3co5vt: No such file or directory
+            )
+
+        method two: docker
+            ansible_runner.run(
+                private_data_dir="/root/runner-test", # /root/runner-test/{artifacts,inventory,project}
+                playbook="site.yml",
+                process_isolation=True,
+                process_isolation_executable="docker",  # the same as podman(default)
+                container_image="quay.io/ansible/ansible-runner:latest"
+            )
         """
         self._validate_cluster(name)
 
@@ -152,25 +176,53 @@ class ClusterManager:
             logger.error(f"Invalid setup step: {step}", extra={"to_stdout": True})
             return
 
-        extra_args = extra_args or []
-
-        cmd = [
-            "ansible-playbook",
-            "-i", str(self.clusters_dir / name / "hosts"),
-            "-e", f"@{self.clusters_dir / name / 'config.yml'}",
-            *extra_args,
-            str(self.playbooks_dir / playbook)
-        ]
-
-        logger.info(f"Running command: {' '.join(cmd)}", extra={"to_stdout": True})
-
-        # Show component versions
+        logger.info(f"Setup k8s cluster with playbook {playbook}", extra={"to_stdout": True})
         self._show_component_versions(name)
-
         if not confirm_action(f"cluster:{name} setup step:{step} begins"):
             return
 
-        run_command(cmd, capture_output=False)
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / name),
+                playbook=str(self.playbooks_dir / playbook),
+                inventory=str(self.clusters_dir / name / "hosts"),
+                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
+                roles_path=str(self.roles_dir),
+                cmdline=" ".join(extra_args if extra_args else []),
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to set up the k8s cluster with playbook '{playbook}'. Exit code: {result.rc}",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info(f"Setup k8s cluster with playbook {playbook} successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error(f"Setting up k8s cluster with playbook {playbook} failed", extra={"to_stdout": True})
+            raise e
+
+    def _yaml_to_dict(self, path: Path) -> dict:
+        """
+        transform YAML file to Python dict for ansible_runner usage
+        :param path: Path type -> YAML file
+        :return: dict
+        """
+        if not path.exists():
+            raise FileNotFoundError(f"YAML file does not exist: {path}")
+
+        with path.open("r", encoding="utf-8") as f:
+            try:
+                data = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                raise ValueError(f"Failed to resolve YAML file: {path}, error: {e}")
+
+        if data is None:
+            return {}
+        if not isinstance(data, dict):
+            raise TypeError(f"YAML root must be a dictionary for yaml_to_dict usage, got {type(data).__name__}")
+
+        return data
 
     def cluster_command(self, name: str, command: str) -> None:
         """Execute cluster-wide command (start, stop, upgrade, backup, restore, destroy)"""
@@ -190,19 +242,30 @@ class ClusterManager:
             logger.error(f"Invalid command: {command}", extra={"to_stdout": True})
             return
 
-        cmd = [
-            "ansible-playbook",
-            "-i", str(self.clusters_dir / name / "hosts"),
-            "-e", f"@{self.clusters_dir / name / 'config.yml'}",
-            str(self.playbooks_dir / playbook)
-        ]
-
-        logger.info(f"Running command: {' '.join(cmd)}", extra={"to_stdout": True})
-
+        logger.info(f"cluster:{name} {command} with playbook {playbook}", extra={"to_stdout": True})
+        self._show_component_versions(name)
         if not confirm_action(f"cluster:{name} {command} begins"):
             return
 
-        run_command(cmd, capture_output=False)
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / name),
+                playbook=str(self.playbooks_dir / playbook),
+                inventory=str(self.clusters_dir / name / "hosts"),
+                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
+                roles_path=str(self.roles_dir),
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to {command} cluster {name} with playbook '{playbook}'. Exit code: {result.rc}",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info(f"Succeed to {command} cluster {name} with playbook {playbook}!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error(f"Failed to {command} cluster {name} with playbook '{playbook}'", extra={"to_stdout": True})
+            raise e
 
     def checkout_cluster(self, name: str) -> None:
         """Switch to a cluster's kubeconfig"""
@@ -278,16 +341,29 @@ class ClusterManager:
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        cmd = [
-            "ansible-playbook",
-            "-i", str(hosts_file),
-            "-e", f"NODE_TO_ADD={ip}",
-            "-e", f"@{self.clusters_dir / cluster / 'config.yml'}",
-            str(self.playbooks_dir / playbook)
-        ]
+        logger.info(f"Add {role} node {ip} to cluster {cluster}", extra={"to_stdout": True})
 
-        logger.info(f"Adding {role} node {ip} to cluster {cluster}", extra={"to_stdout": True})
-        run_command(cmd, capture_output=False)
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
+        extra_vars["NODE_TO_ADD"] = ip
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.playbooks_dir / playbook),
+                inventory=str(self.clusters_dir / cluster / "hosts"),
+                extravars=extra_vars,
+                roles_path=str(self.roles_dir),
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to add {role} node {ip} to cluster {cluster}. Exit code: {result.rc}",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info(f"Add {role} node {ip} to cluster {cluster} successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error(f"Failed to add {role} node {ip} to cluster {cluster}", extra={"to_stdout": True})
+            raise e
 
         # After adding a new node, we still have to notify related services
         if role == "etcd":
@@ -655,30 +731,50 @@ class ClusterManager:
         config_file = self.clusters_dir / cluster / "config.yml"
 
         # Restart the etcd cluster
-        cmd = [
-            "ansible-playbook",
-            "-i", str(hosts_file),
-            "-e", f"@{config_file}",
-            "-t", "restart_etcd",
-            str(self.playbooks_dir / "02.etcd.yml")
-        ]
-        logger.info(f"Restart the etcd cluster after adding or removing an etcd node, the command is {' '.join(cmd)}",
-                    extra={"to_stdout": True})
-        run_command(cmd, capture_output=False)
-        logger.info("The etcd cluster has been restarted successfully!", extra={"to_stdout": True})
+        logger.info("Restart the etcd cluster after adding or removing an etcd node", extra={"to_stdout": True})
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.playbooks_dir / "02.etcd.yml"),
+                inventory=hosts_file,
+                extravars=self._yaml_to_dict(config_file),
+                roles_path=str(self.roles_dir),
+                cmdline="-t restart_etcd",
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to restart the etcd cluster. Exit code: {result.rc}.",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info("Restart etcd cluster successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error("Failed to restart the etcd cluster.", extra={"to_stdout": True})
+            raise e
 
         # Restart the apiservers to use the new etcd cluster
-        cmd = [
-            "ansible-playbook",
-            "-i", str(hosts_file),
-            "-e", f"@{config_file}",
-            "-t", "restart_master",
-            str(self.playbooks_dir / "04.kube-master.yml")
-        ]
-        logger.info(f"Restart the apiservers to adapt to the changed etcd cluster, the command is {' '.join(cmd)}",
-                    extra={"to_stdout": True})
-        run_command(cmd, capture_output=False)
-        logger.info("The apiservers have been restarted successfully!", extra={"to_stdout": True})
+        logger.info("Restart the apiservers to adapt to the changed etcd cluster", extra={"to_stdout": True})
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.playbooks_dir / "04.kube-master.yml"),
+                inventory=hosts_file,
+                extravars=self._yaml_to_dict(config_file),
+                roles_path=str(self.roles_dir),
+                cmdline="-t restart_master",
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to restart the apiservers for the changed etcd cluster. Exit code: {result.rc}.",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info("Restart the apiservers for the changed etcd cluster successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error("Failed to restart the apiservers for the changed etcd cluster.", extra={"to_stdout": True})
+            raise e
 
     def _restart_load_balancers(self, cluster: str) -> None:
         """Restart kube-lb and ex-lb services"""
