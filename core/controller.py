@@ -395,17 +395,29 @@ class ClusterManager:
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        cmd = [
-            "ansible-playbook",
-            "-i", str(hosts_file),
-            "-e", f"NODE_TO_DEL={ip}",
-            "-e", f"CLUSTER={cluster}",
-            "-e", f"@{self.clusters_dir / cluster / 'config.yml'}",
-            str(self.playbooks_dir / playbook)
-        ]
-
-        logger.info(f"Removing {role} node {ip} from cluster {cluster}", extra={"to_stdout": True})
-        run_command(cmd, capture_output=False)
+        logger.info(f"Remove {role} node {ip} from cluster {cluster}", extra={"to_stdout": True})
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
+        extra_vars["NODE_TO_DEL"] = ip
+        extra_vars["CLUSTER"] = cluster
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.playbooks_dir / playbook),
+                inventory=hosts_file,
+                extravars=extra_vars,
+                roles_path=str(self.roles_dir),
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to remove {role} node {ip} from cluster {cluster}. Exit code: {result.rc}",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info(f"Remove {role} node {ip} from cluster {cluster} successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error(f"Failed to remove {role} node {ip} from cluster {cluster}", extra={"to_stdout": True})
+            raise e
 
         # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
@@ -431,16 +443,29 @@ class ClusterManager:
         if not confirm_action(f"Renew all certs in cluster {cluster}"):
             return
 
-        cmd = [
-            "ansible-playbook",
-            "-i", str(self.clusters_dir / cluster / "hosts"),
-            "-e", f"@{self.clusters_dir / cluster / 'config.yml'}",
-            "-e", "CHANGE_CA=true",
-            str(self.playbooks_dir / "96.update-certs.yml"),
-            "-t", "force_change_certs"
-        ]
-
-        run_command(cmd, capture_output=False)
+        logger.info(f"Renew all certs in cluster {cluster}", extra={"to_stdout": True})
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
+        extra_vars["CHANGE_CA"] = "true"
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.playbooks_dir / "96.update-certs.yml"),
+                inventory=str(self.clusters_dir / cluster / "hosts"),
+                extravars=extra_vars,
+                roles_path=str(self.roles_dir),
+                cmdline="-t force_change_certs",
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to renew all certs in cluster {cluster}. Exit code: {result.rc}",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info(f"Renew all certs in cluster {cluster} successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error(f"Failed to renew all certs in cluster {cluster}", extra={"to_stdout": True})
+            raise e
 
     def kubeconfig_admin(self, cluster: str, action: str,
                          user_name: str = None, user_type: str = "admin",
@@ -461,20 +486,32 @@ class ClusterManager:
         if not user_name:
             user_name = f"user-{datetime.now().strftime('%Y%m%d%H%M')}"
         logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name}", extra={"to_stdout": True})
-        cmd = [
-            "ansible-playbook",
-            "-i", str(self.clusters_dir / cluster / "hosts"),
-            "-e", f"@{self.clusters_dir / cluster / 'config.yml'}",
-            "-e", f"CUSTOM_EXPIRY={expiry}",
-            "-e", f"USER_TYPE={user_type}",
-            "-e", f"USER_NAME={user_name}",
-            "-e", "ADD_KCFG=true",
-            "-t", "add-kcfg",
-            str(self.base_path / "roles/deploy/deploy.yml")
-        ]
-        run_command(cmd, capture_output=False)
-        logger.info(f"Adding kcfg in cluster:{cluster} with user:{user_name} has been finished successfully",
-                    extra={"to_stdout": True})
+
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
+        extra_vars["CUSTOM_EXPIRY"] = expiry
+        extra_vars["USER_TYPE"] = user_type
+        extra_vars["USER_NAME"] = user_name
+        extra_vars["ADD_KCFG"] = "true"
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.base_path / "roles/deploy/deploy.yml"),
+                inventory=str(self.clusters_dir / cluster / "hosts"),
+                extravars=extra_vars,
+                roles_path=str(self.roles_dir),
+                cmdline="-t add-kcfg",
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to add kcfg in cluster:{cluster} with user:{user_name}. Exit code: {result.rc}",
+                             extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name} successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error(f"Failed to add kcfg in cluster:{cluster} with user:{user_name}", extra={"to_stdout": True})
+            raise e
 
     def _del_kcfg(self, cluster, user_name, kubeconfig):
         if not user_name:
@@ -782,30 +819,47 @@ class ClusterManager:
         config_file = self.clusters_dir / cluster / "config.yml"
 
         # Restart kube-lb
-        cmd = [
-            "ansible-playbook",
-            "-i", str(hosts_file),
-            "-e", f"@{config_file}",
-            "-t", "restart_kube-lb",
-            str(self.playbooks_dir / "90.setup.yml")
-        ]
-        logger.info(f"Restart the kube-lb after adding or removing a master node, the command is {' '.join(cmd)}",
-                    extra={"to_stdout": True})
-        run_command(cmd, capture_output=False)
-        logger.info("The kube-lb services have been restarted successfully!", extra={"to_stdout": True})
+        logger.info("Restart the kube-lb after adding or removing a master node", extra={"to_stdout": True})
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.playbooks_dir / "90.setup.yml"),
+                inventory=hosts_file,
+                extravars=self._yaml_to_dict(config_file),
+                roles_path=str(self.roles_dir),
+                cmdline="-t restart_kube-lb",
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to restart the kube-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info("Restart the kube-lb successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error("Failed to restart the kube-lb.", extra={"to_stdout": True})
+            raise e
 
-        # Restart ex-lb
-        cmd = [
-            "ansible-playbook",
-            "-i", str(hosts_file),
-            "-e", f"@{config_file}",
-            "-t", "restart_lb",
-            str(self.playbooks_dir / "10.ex-lb.yml")
-        ]
-        logger.info(f"Restart the ex-lb after adding or removing a master node, the command is {' '.join(cmd)}",
-                    extra={"to_stdout": True})
-        run_command(cmd, capture_output=False)
-        logger.info("The ex-lb services have been restarted successfully!", extra={"to_stdout": True})
+        logger.info("Restart the ex-lb after adding or removing a master node", extra={"to_stdout": True})
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.playbooks_dir / "10.ex-lb.yml"),
+                inventory=hosts_file,
+                extravars=self._yaml_to_dict(config_file),
+                roles_path=str(self.roles_dir),
+                cmdline="-t restart_lb",
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(f"Failed to restart the ex-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info("Restart the ex-lb successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error("Failed to restart the ex-lb.", extra={"to_stdout": True})
+            raise e
 
     def _kubectl_del_master(self, cluster: str, ip: str) -> None:
         kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
@@ -822,17 +876,29 @@ class ClusterManager:
         hosts_file = self.clusters_dir / cluster / "hosts"
         config_file = self.clusters_dir / cluster / "config.yml"
 
-        cmd = [
-            "ansible-playbook",
-            "-i", str(hosts_file),
-            "-e", f"@{config_file}",
-            "-t", "create_kctl_cfg",
-            str(self.base_path / "roles/deploy/deploy.yml")
-        ]
-        logger.info(f"Reconfiguring kubeconfig after a master node removal, the command is {' '.join(cmd)}",
+        logger.info("Reconfigure the kubeconfig after a master node removal.", extra={"to_stdout": True})
+        try:
+            result = ansible_runner.run(
+                private_data_dir=str(self.clusters_dir / cluster),
+                playbook=str(self.base_path / "roles/deploy/deploy.yml"),
+                inventory=hosts_file,
+                extravars=self._yaml_to_dict(config_file),
+                roles_path=str(self.roles_dir),
+                cmdline="-t create_kctl_cfg",
+                process_isolation=True,
+                process_isolation_executable="docker",
+                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            )
+            if result.rc != 0:
+                logger.error(
+                    f"Failed to reconfigure the kubeconfig after a master node removal. Exit code: {result.rc}.",
                     extra={"to_stdout": True})
-        run_command(cmd, capture_output=False)
-        logger.info("The kubeconfig has been reconfigured successfully!", extra={"to_stdout": True})
+                sys.exit(result.rc)
+            logger.info("Reconfigure the kubeconfig after a master node removal successfully!",
+                        extra={"to_stdout": True})
+        except Exception as e:
+            logger.error("Failed to reconfigure the kubeconfig after a master node removal.", extra={"to_stdout": True})
+            raise e
 
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
