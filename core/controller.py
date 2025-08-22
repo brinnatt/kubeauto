@@ -144,7 +144,7 @@ class ClusterManager:
                 process_isolation=True,
                 process_isolation_executable="bwrap",
                 directory_isolation_base_path="/tmp", # runner will create runner_di_* directory under /tmp, you don't have to specify it. runner will handle this by default.
-                process_isolation_show_paths=["/tmp"] # if base_path specified, you must specify show_paths which will be bound to bwrap sandbox, or you got bwrap: Can't chdir to /tmp/runner_di_jg3co5vt: No such file or directory
+                process_isolation_show_paths=["/root/.ssh", "/tmp"] # if base_path specified, you must specify show_paths which will be bound to bwrap sandbox, or you got bwrap: Can't chdir to /tmp/runner_di_jg3co5vt: No such file or directory
             )
 
         method three: docker
@@ -153,7 +153,9 @@ class ClusterManager:
                 playbook="site.yml",
                 process_isolation=True,
                 process_isolation_executable="docker",  # the same as podman(default)
-                container_image="quay.io/ansible/ansible-runner:latest"
+                container_image="quay.io/ansible/ansible-runner:latest",
+                container_volume_mounts=["/root/.ssh:/root/.ssh:ro"],
+                container_options=["--rm", "--network", "none"]
             )
         """
         self._validate_cluster(name)
