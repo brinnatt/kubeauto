@@ -101,8 +101,7 @@ class DownloadManager:
             f"coredns/coredns:{self.kube_constant.v_coredns}",
             f"brinnatt/k8s-dns-node-cache:{self.kube_constant.v_dnsnodecache}",
             f"brinnatt/metrics-server:{self.kube_constant.v_metricsserver}",
-            f"brinnatt/pause:{self.kube_constant.v_pause}",
-            f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+            f"brinnatt/pause:{self.kube_constant.v_pause}"
         ]
 
         try:

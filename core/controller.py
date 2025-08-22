@@ -127,7 +127,17 @@ class ClusterManager:
         extra_args: Additional arguments to pass to ansible_runner
 
         ansible_runner methods:
-        method one: bubblewrap(rpm)
+        method one: on host
+            ansible_runner.run(
+                private_data_dir="", # if on host, ansible_runner may not recommend to specify this directory as multi ansible-runners generates envs affecting each other
+                playbook=str(self.playbooks_dir / playbook),
+                inventory=str(self.clusters_dir / name / "hosts"),
+                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
+                roles_path=str(self.roles_dir),
+                cmdline=" ".join(extra_args if extra_args else [])
+            )
+
+        method two: bubblewrap(rpm)
             ansible_runner.run(
                 private_data_dir="/root/runner-test", # /root/runner-test/{artifacts,inventory,project}
                 playbook="site.yml",
@@ -137,7 +147,7 @@ class ClusterManager:
                 process_isolation_show_paths=["/tmp"] # if base_path specified, you must specify show_paths which will be bound to bwrap sandbox, or you got bwrap: Can't chdir to /tmp/runner_di_jg3co5vt: No such file or directory
             )
 
-        method two: docker
+        method three: docker
             ansible_runner.run(
                 private_data_dir="/root/runner-test", # /root/runner-test/{artifacts,inventory,project}
                 playbook="site.yml",
@@ -183,15 +193,11 @@ class ClusterManager:
 
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / name),
                 playbook=str(self.playbooks_dir / playbook),
                 inventory=str(self.clusters_dir / name / "hosts"),
                 extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
                 roles_path=str(self.roles_dir),
-                cmdline=" ".join(extra_args if extra_args else []),
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline=" ".join(extra_args if extra_args else [])
             )
             if result.rc != 0:
                 logger.error(f"Failed to set up the k8s cluster with playbook '{playbook}'. Exit code: {result.rc}",
@@ -249,14 +255,10 @@ class ClusterManager:
 
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / name),
                 playbook=str(self.playbooks_dir / playbook),
                 inventory=str(self.clusters_dir / name / "hosts"),
                 extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                roles_path=str(self.roles_dir),
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                roles_path=str(self.roles_dir)
             )
             if result.rc != 0:
                 logger.error(f"Failed to {command} cluster {name} with playbook '{playbook}'. Exit code: {result.rc}",
@@ -347,14 +349,10 @@ class ClusterManager:
         extra_vars["NODE_TO_ADD"] = ip
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.playbooks_dir / playbook),
                 inventory=str(self.clusters_dir / cluster / "hosts"),
                 extravars=extra_vars,
-                roles_path=str(self.roles_dir),
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                roles_path=str(self.roles_dir)
             )
             if result.rc != 0:
                 logger.error(f"Failed to add {role} node {ip} to cluster {cluster}. Exit code: {result.rc}",
@@ -401,14 +399,10 @@ class ClusterManager:
         extra_vars["CLUSTER"] = cluster
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.playbooks_dir / playbook),
                 inventory=hosts_file,
                 extravars=extra_vars,
-                roles_path=str(self.roles_dir),
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                roles_path=str(self.roles_dir)
             )
             if result.rc != 0:
                 logger.error(f"Failed to remove {role} node {ip} from cluster {cluster}. Exit code: {result.rc}",
@@ -448,15 +442,11 @@ class ClusterManager:
         extra_vars["CHANGE_CA"] = "true"
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.playbooks_dir / "96.update-certs.yml"),
                 inventory=str(self.clusters_dir / cluster / "hosts"),
                 extravars=extra_vars,
                 roles_path=str(self.roles_dir),
-                cmdline="-t force_change_certs",
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline="-t force_change_certs"
             )
             if result.rc != 0:
                 logger.error(f"Failed to renew all certs in cluster {cluster}. Exit code: {result.rc}",
@@ -494,15 +484,11 @@ class ClusterManager:
         extra_vars["ADD_KCFG"] = "true"
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.base_path / "roles/deploy/deploy.yml"),
                 inventory=str(self.clusters_dir / cluster / "hosts"),
                 extravars=extra_vars,
                 roles_path=str(self.roles_dir),
-                cmdline="-t add-kcfg",
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline="-t add-kcfg"
             )
             if result.rc != 0:
                 logger.error(f"Failed to add kcfg in cluster:{cluster} with user:{user_name}. Exit code: {result.rc}",
@@ -771,15 +757,11 @@ class ClusterManager:
         logger.info("Restart the etcd cluster after adding or removing an etcd node", extra={"to_stdout": True})
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.playbooks_dir / "02.etcd.yml"),
                 inventory=hosts_file,
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
-                cmdline="-t restart_etcd",
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline="-t restart_etcd"
             )
             if result.rc != 0:
                 logger.error(f"Failed to restart the etcd cluster. Exit code: {result.rc}.",
@@ -794,15 +776,11 @@ class ClusterManager:
         logger.info("Restart the apiservers to adapt to the changed etcd cluster", extra={"to_stdout": True})
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.playbooks_dir / "04.kube-master.yml"),
                 inventory=hosts_file,
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
-                cmdline="-t restart_master",
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline="-t restart_master"
             )
             if result.rc != 0:
                 logger.error(f"Failed to restart the apiservers for the changed etcd cluster. Exit code: {result.rc}.",
@@ -822,15 +800,11 @@ class ClusterManager:
         logger.info("Restart the kube-lb after adding or removing a master node", extra={"to_stdout": True})
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.playbooks_dir / "90.setup.yml"),
                 inventory=hosts_file,
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
-                cmdline="-t restart_kube-lb",
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline="-t restart_kube-lb"
             )
             if result.rc != 0:
                 logger.error(f"Failed to restart the kube-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
@@ -843,15 +817,11 @@ class ClusterManager:
         logger.info("Restart the ex-lb after adding or removing a master node", extra={"to_stdout": True})
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.playbooks_dir / "10.ex-lb.yml"),
                 inventory=hosts_file,
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
-                cmdline="-t restart_lb",
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline="-t restart_lb"
             )
             if result.rc != 0:
                 logger.error(f"Failed to restart the ex-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
@@ -879,15 +849,11 @@ class ClusterManager:
         logger.info("Reconfigure the kubeconfig after a master node removal.", extra={"to_stdout": True})
         try:
             result = ansible_runner.run(
-                private_data_dir=str(self.clusters_dir / cluster),
                 playbook=str(self.base_path / "roles/deploy/deploy.yml"),
                 inventory=hosts_file,
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
-                cmdline="-t create_kctl_cfg",
-                process_isolation=True,
-                process_isolation_executable="docker",
-                container_image=f"brinnatt/ansible-runner:{self.kube_constant.v_ansible_runner}"
+                cmdline="-t create_kctl_cfg"
             )
             if result.rc != 0:
                 logger.error(

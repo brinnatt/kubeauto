@@ -16,10 +16,6 @@ class KubeConstant:
     v_kubeauto: str = field(default="0.9.1", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
-    v_ansible_runner: str = field(default="0.9.1", metadata={
-        "refer_github": "https://github.com/ansible/ansible-runner",
-        "description": "official ansible-runner image from redhat image hub"
-    })
     v_k8s_bin: str = field(default="v1.33.1", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
