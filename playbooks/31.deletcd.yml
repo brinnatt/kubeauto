@@ -1,18 +1,8 @@
 # warning:  this playbook will clean the etcd {{ NODE_TO_DEL }}
 
 - hosts: localhost
-  vars_prompt:
-    - name: "CONFIRM_DELETE"
-      prompt: "Are you sure you want to delete the etcd node {{ NODE_TO_DEL }}? (y/yes/Y/YES to continue, anything else to abort)"
-      private: no
   tasks:
   # step0: run prechecks
-  - name: Check if user confirmed deletion
-    fail:
-      msg: "User aborted. Exiting playbook."
-    when: CONFIRM_DELETE | lower not in ['y', 'yes']
-    run_once: true
-
   - fail: msg="{{ NODE_TO_DEL }} is NOT a member of etcd cluster!"
     when: "NODE_TO_DEL not in groups['etcd']"
 
