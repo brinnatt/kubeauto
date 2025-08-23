@@ -1,17 +1,7 @@
 # WARNNING:  this playbook will clean the node {{ NODE_TO_DEL }}
 
 - hosts: localhost
-  vars_prompt:
-    - name: "CONFIRM_DELETE"
-      prompt: "Are you sure you want to delete the worker node {{ NODE_TO_DEL }}? (y/yes/Y/YES to continue, anything else to abort)"
-      private: no
   tasks:
-    - name: Check if user confirmed deletion
-      fail:
-        msg: "User aborted. Exiting playbook."
-      when: CONFIRM_DELETE | lower not in ['y', 'yes']
-      run_once: true
-
     - fail: msg="{{ NODE_TO_DEL }} is NOT a worker node!"
       when: "NODE_TO_DEL not in groups['kube_node']"
 
