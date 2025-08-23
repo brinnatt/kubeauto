@@ -402,7 +402,7 @@ class ClusterManager:
         try:
             result = ansible_runner.run(
                 playbook=str(self.playbooks_dir / playbook),
-                inventory=hosts_file,
+                inventory=str(hosts_file),
                 extravars=extra_vars,
                 roles_path=str(self.roles_dir)
             )
@@ -760,7 +760,7 @@ class ClusterManager:
         try:
             result = ansible_runner.run(
                 playbook=str(self.playbooks_dir / "02.etcd.yml"),
-                inventory=hosts_file,
+                inventory=str(hosts_file),
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
                 cmdline="-t restart_etcd"
@@ -779,7 +779,7 @@ class ClusterManager:
         try:
             result = ansible_runner.run(
                 playbook=str(self.playbooks_dir / "04.kube-master.yml"),
-                inventory=hosts_file,
+                inventory=str(hosts_file),
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
                 cmdline="-t restart_master"
@@ -803,7 +803,7 @@ class ClusterManager:
         try:
             result = ansible_runner.run(
                 playbook=str(self.playbooks_dir / "90.setup.yml"),
-                inventory=hosts_file,
+                inventory=str(hosts_file),
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
                 cmdline="-t restart_kube-lb"
@@ -820,7 +820,7 @@ class ClusterManager:
         try:
             result = ansible_runner.run(
                 playbook=str(self.playbooks_dir / "10.ex-lb.yml"),
-                inventory=hosts_file,
+                inventory=str(hosts_file),
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
                 cmdline="-t restart_lb"
@@ -852,7 +852,7 @@ class ClusterManager:
         try:
             result = ansible_runner.run(
                 playbook=str(self.base_path / "roles/deploy/deploy.yml"),
-                inventory=hosts_file,
+                inventory=str(hosts_file),
                 extravars=self._yaml_to_dict(config_file),
                 roles_path=str(self.roles_dir),
                 cmdline="-t create_kctl_cfg"
