@@ -37,13 +37,10 @@
       import_role:
         name: clean
       vars:
-        DEL_NODE: yes
-        DEL_ENV: yes
-        DEL_LB: yes
+        DEL_NODE: "yes"
+        DEL_ENV: "yes"
+        DEL_LB: "yes"
       delegate_to: "{{ NODE_TO_DEL }}"
-      register: CLEAN_STATUS
-
-    - debug: var="CLEAN_STATUS"
 
     - name: run kubectl delete node {{ NODE_NAME.stdout }}
       shell: "kubectl delete node {{ NODE_NAME.stdout }}"

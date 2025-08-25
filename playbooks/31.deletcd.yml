@@ -60,11 +60,8 @@
           import_role:
             name: clean
           vars:
-            DEL_ETCD: yes
+            DEL_ETCD: "yes"
           delegate_to: "{{ NODE_TO_DEL }}"
-          register: CLEAN_STATUS
-
-        - debug: var="CLEAN_STATUS"
 
       when: "groups['etcd']|length > 1 and NODE_TO_DEL in groups['etcd']"
 
