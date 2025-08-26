@@ -60,10 +60,12 @@
 
 
 - hosts: "{{ NODE_TO_DEL }}"
-  import_role:
-    name: clean
-  vars:
-    DEL_ETCD: "yes"
+  tasks:
+    - name: clean etcd node {{ NODE_TO_DEL }}
+      import_role:
+        name: clean
+      vars:
+        DEL_ETCD: "yes"
 
 
 - hosts:

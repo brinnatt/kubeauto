@@ -424,9 +424,9 @@ class ClusterManager:
         elif role == "master":
             self._reconfigure_kubeconfig(cluster)
             self._restart_load_balancers(cluster)
-            self._kubectl_del_node(cluster, ip)
+            self._kubectl_del_node(cluster, ip, role)
         elif role == "node":
-            self._kubectl_del_node(cluster, ip)
+            self._kubectl_del_node(cluster, ip, role)
 
     def renew_ca_certs(self, cluster: str) -> None:
         """Force renew CA certificates and all other certs in the cluster"""
@@ -833,15 +833,15 @@ class ClusterManager:
             logger.error("Failed to restart the ex-lb.", extra={"to_stdout": True})
             raise e
 
-    def _kubectl_del_node(self, cluster: str, ip: str) -> None:
+    def _kubectl_del_node(self, cluster: str, ip: str, role: str) -> None:
         kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
         cmd = [f"kubectl --kubeconfig={kubeconfig} get node -o wide", "|", f"grep {ip}", "|", "awk '{print $1}'"]
         nodename = run_command(cmd, shell=True, capture_output=True).stdout.strip()
 
-        logger.info(f"Deleting a master node {nodename}...", extra={"to_stdout": True})
+        logger.info(f"Deleting a {role} node {nodename}...", extra={"to_stdout": True})
         cmd = [str(self.kube_bin_dir / "kubectl"), "--kubeconfig", str(kubeconfig), "delete", "node", f"{nodename}"]
         run_command(cmd, shell=True, capture_output=False)
-        logger.info("A master node has been deleted successfully!", extra={"to_stdout": True})
+        logger.info(f"A {role} node has been deleted successfully!", extra={"to_stdout": True})
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Reconfigure kubeconfig after master node removal"""

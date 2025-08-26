@@ -35,13 +35,15 @@
 
 
 - hosts: "{{ NODE_TO_DEL }}"
-  import_role:
-    name: clean
-  vars:
-    DEL_MASTER: "yes"
-    DEL_NODE: "yes"
-    DEL_ENV: "yes"
-    DEL_LB: "yes"
+  tasks:
+    - name: clean master node {{ NODE_TO_DEL }}
+      import_role:
+        name: clean
+      vars:
+        DEL_MASTER: "yes"
+        DEL_NODE: "yes"
+        DEL_ENV: "yes"
+        DEL_LB: "yes"
 
 
 - hosts:
