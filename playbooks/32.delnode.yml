@@ -33,18 +33,15 @@
       shell: "kubectl drain {{ NODE_NAME.stdout }} {{ DRAIN_OPT }}"
       #ignore_errors: true
 
-    - name: clean node {{ NODE_TO_DEL }}
-      import_role:
-        name: clean
-      vars:
-        DEL_NODE: "yes"
-        DEL_ENV: "yes"
-        DEL_LB: "yes"
-      delegate_to: "{{ NODE_TO_DEL }}"
 
-    - name: run kubectl delete node {{ NODE_NAME.stdout }}
-      shell: "kubectl delete node {{ NODE_NAME.stdout }}"
-      ignore_errors: true
+- hosts: "{{ NODE_TO_DEL }}"
+  import_role:
+    name: clean
+  vars:
+    DEL_NODE: "yes"
+    DEL_ENV: "yes"
+    DEL_LB: "yes"
+
 
 - hosts:
     - kube_master

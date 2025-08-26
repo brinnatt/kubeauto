@@ -56,14 +56,15 @@
           delegate_to: "{{ RUNNING_NODE.stdout }}"
           when: "ETCD_ID.stdout != ''"
 
-        - name: clean etcd {{ NODE_TO_DEL }}
-          import_role:
-            name: clean
-          vars:
-            DEL_ETCD: "yes"
-          delegate_to: "{{ NODE_TO_DEL }}"
-
       when: "groups['etcd']|length > 1 and NODE_TO_DEL in groups['etcd']"
+
+
+- hosts: "{{ NODE_TO_DEL }}"
+  import_role:
+    name: clean
+  vars:
+    DEL_ETCD: "yes"
+
 
 - hosts:
     - kube_master

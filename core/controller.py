@@ -424,9 +424,9 @@ class ClusterManager:
         elif role == "master":
             self._reconfigure_kubeconfig(cluster)
             self._restart_load_balancers(cluster)
-            self._kubectl_del_master(cluster, ip)
+            self._kubectl_del_node(cluster, ip)
         elif role == "node":
-            pass
+            self._kubectl_del_node(cluster, ip)
 
     def renew_ca_certs(self, cluster: str) -> None:
         """Force renew CA certificates and all other certs in the cluster"""
@@ -833,7 +833,7 @@ class ClusterManager:
             logger.error("Failed to restart the ex-lb.", extra={"to_stdout": True})
             raise e
 
-    def _kubectl_del_master(self, cluster: str, ip: str) -> None:
+    def _kubectl_del_node(self, cluster: str, ip: str) -> None:
         kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
         cmd = [f"kubectl --kubeconfig={kubeconfig} get node -o wide", "|", f"grep {ip}", "|", "awk '{print $1}'"]
         nodename = run_command(cmd, shell=True, capture_output=True).stdout.strip()

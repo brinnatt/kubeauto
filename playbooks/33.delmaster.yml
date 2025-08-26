@@ -33,15 +33,15 @@
       shell: "kubectl drain {{ NODE_NAME.stdout }} {{ DRAIN_OPT }}"
       #ignore_errors: true
 
-    - name: clean master {{ NODE_TO_DEL }}
-      import_role:
-        name: clean
-      vars:
-        DEL_MASTER: "yes"
-        DEL_NODE: "yes"
-        DEL_ENV: "yes"
-        DEL_LB: "yes"
-      delegate_to: "{{ NODE_TO_DEL }}"
+
+- hosts: "{{ NODE_TO_DEL }}"
+  import_role:
+    name: clean
+  vars:
+    DEL_MASTER: "yes"
+    DEL_NODE: "yes"
+    DEL_ENV: "yes"
+    DEL_LB: "yes"
 
 
 - hosts:
