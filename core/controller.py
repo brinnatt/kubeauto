@@ -6,6 +6,7 @@ import re
 import ansible_runner
 import yaml
 import sys
+import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -194,13 +195,15 @@ class ClusterManager:
             return
 
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / playbook),
-                inventory=str(self.clusters_dir / name / "hosts"),
-                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                roles_path=str(self.roles_dir),
-                cmdline=" ".join(extra_args if extra_args else [])
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / playbook),
+                    inventory=str(self.clusters_dir / name / "hosts"),
+                    extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
+                    roles_path=str(self.roles_dir),
+                    cmdline=" ".join(extra_args if extra_args else [])
+                )
             if result.rc != 0:
                 logger.error(f"Failed to set up the k8s cluster with playbook '{playbook}'. Exit code: {result.rc}",
                              extra={"to_stdout": True})
@@ -256,12 +259,14 @@ class ClusterManager:
             return
 
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / playbook),
-                inventory=str(self.clusters_dir / name / "hosts"),
-                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                roles_path=str(self.roles_dir)
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / playbook),
+                    inventory=str(self.clusters_dir / name / "hosts"),
+                    extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
+                    roles_path=str(self.roles_dir)
+                )
             if result.rc != 0:
                 logger.error(f"Failed to {command} cluster {name} with playbook '{playbook}'. Exit code: {result.rc}",
                              extra={"to_stdout": True})
@@ -350,12 +355,14 @@ class ClusterManager:
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
         extra_vars["NODE_TO_ADD"] = ip
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / playbook),
-                inventory=str(self.clusters_dir / cluster / "hosts"),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir)
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / playbook),
+                    inventory=str(self.clusters_dir / cluster / "hosts"),
+                    extravars=extra_vars,
+                    roles_path=str(self.roles_dir)
+                )
             if result.rc != 0:
                 logger.error(f"Failed to add {role} node {ip} to cluster {cluster}. Exit code: {result.rc}",
                              extra={"to_stdout": True})
@@ -400,12 +407,14 @@ class ClusterManager:
         extra_vars["NODE_TO_DEL"] = ip
         extra_vars["CLUSTER"] = cluster
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / playbook),
-                inventory=str(hosts_file),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir)
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / playbook),
+                    inventory=str(hosts_file),
+                    extravars=extra_vars,
+                    roles_path=str(self.roles_dir)
+                )
             if result.rc != 0:
                 logger.error(f"Failed to remove {role} node {ip} from cluster {cluster}. Exit code: {result.rc}",
                              extra={"to_stdout": True})
@@ -443,13 +452,15 @@ class ClusterManager:
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
         extra_vars["CHANGE_CA"] = "true"
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / "96.update-certs.yml"),
-                inventory=str(self.clusters_dir / cluster / "hosts"),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir),
-                cmdline="-t force_change_certs"
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / "96.update-certs.yml"),
+                    inventory=str(self.clusters_dir / cluster / "hosts"),
+                    extravars=extra_vars,
+                    roles_path=str(self.roles_dir),
+                    cmdline="-t force_change_certs"
+                )
             if result.rc != 0:
                 logger.error(f"Failed to renew all certs in cluster {cluster}. Exit code: {result.rc}",
                              extra={"to_stdout": True})
@@ -485,13 +496,15 @@ class ClusterManager:
         extra_vars["USER_NAME"] = user_name
         extra_vars["ADD_KCFG"] = "true"
         try:
-            result = ansible_runner.run(
-                playbook=str(self.base_path / "roles/deploy/deploy.yml"),
-                inventory=str(self.clusters_dir / cluster / "hosts"),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir),
-                cmdline="-t add-kcfg"
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.base_path / "roles/deploy/deploy.yml"),
+                    inventory=str(self.clusters_dir / cluster / "hosts"),
+                    extravars=extra_vars,
+                    roles_path=str(self.roles_dir),
+                    cmdline="-t add-kcfg"
+                )
             if result.rc != 0:
                 logger.error(f"Failed to add kcfg in cluster:{cluster} with user:{user_name}. Exit code: {result.rc}",
                              extra={"to_stdout": True})
@@ -758,13 +771,15 @@ class ClusterManager:
         # Restart the etcd cluster
         logger.info("Restart the etcd cluster after adding or removing an etcd node", extra={"to_stdout": True})
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / "02.etcd.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_etcd"
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / "02.etcd.yml"),
+                    inventory=str(hosts_file),
+                    extravars=self._yaml_to_dict(config_file),
+                    roles_path=str(self.roles_dir),
+                    cmdline="-t restart_etcd"
+                )
             if result.rc != 0:
                 logger.error(f"Failed to restart the etcd cluster. Exit code: {result.rc}.",
                              extra={"to_stdout": True})
@@ -777,13 +792,15 @@ class ClusterManager:
         # Restart the apiservers to use the new etcd cluster
         logger.info("Restart the apiservers to adapt to the changed etcd cluster", extra={"to_stdout": True})
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / "04.kube-master.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_master"
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / "04.kube-master.yml"),
+                    inventory=str(hosts_file),
+                    extravars=self._yaml_to_dict(config_file),
+                    roles_path=str(self.roles_dir),
+                    cmdline="-t restart_master"
+                )
             if result.rc != 0:
                 logger.error(f"Failed to restart the apiservers for the changed etcd cluster. Exit code: {result.rc}.",
                              extra={"to_stdout": True})
@@ -801,13 +818,15 @@ class ClusterManager:
         # Restart kube-lb
         logger.info("Restart the kube-lb after adding or removing a master node", extra={"to_stdout": True})
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / "90.setup.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_kube-lb"
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / "90.setup.yml"),
+                    inventory=str(hosts_file),
+                    extravars=self._yaml_to_dict(config_file),
+                    roles_path=str(self.roles_dir),
+                    cmdline="-t restart_kube-lb"
+                )
             if result.rc != 0:
                 logger.error(f"Failed to restart the kube-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
                 sys.exit(result.rc)
@@ -818,13 +837,15 @@ class ClusterManager:
 
         logger.info("Restart the ex-lb after adding or removing a master node", extra={"to_stdout": True})
         try:
-            result = ansible_runner.run(
-                playbook=str(self.playbooks_dir / "10.ex-lb.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_lb"
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / "10.ex-lb.yml"),
+                    inventory=str(hosts_file),
+                    extravars=self._yaml_to_dict(config_file),
+                    roles_path=str(self.roles_dir),
+                    cmdline="-t restart_lb"
+                )
             if result.rc != 0:
                 logger.error(f"Failed to restart the ex-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
                 sys.exit(result.rc)
@@ -850,13 +871,15 @@ class ClusterManager:
 
         logger.info("Reconfigure the kubeconfig after a master node removal.", extra={"to_stdout": True})
         try:
-            result = ansible_runner.run(
-                playbook=str(self.base_path / "roles/deploy/deploy.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t create_kctl_cfg"
-            )
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.base_path / "roles/deploy/deploy.yml"),
+                    inventory=str(hosts_file),
+                    extravars=self._yaml_to_dict(config_file),
+                    roles_path=str(self.roles_dir),
+                    cmdline="-t create_kctl_cfg"
+                )
             if result.rc != 0:
                 logger.error(
                     f"Failed to reconfigure the kubeconfig after a master node removal. Exit code: {result.rc}.",
