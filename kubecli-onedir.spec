@@ -38,7 +38,7 @@ a = Analysis(
     # 自定义 hook 文件目录，通过hooks库中的方法把某些库的缺陷弥补上，比如ansible_runner的插件可以通过这里收集进去
     hookspath=[],
 
-    # 运行时 hook，在可执行启动前执行一次。我们用它设置环境变量（例如 ANSIBLE_ROLES_PATH）。
+    # 运行时 hook，在 EXE 运行前执行，设置环境变量（例如 ANSIBLE_ROLES_PATH）。
     runtime_hooks=['runtime_hook.py'],
 
     # 不想打包的模块可以写在这里。

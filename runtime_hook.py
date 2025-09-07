@@ -12,6 +12,3 @@ else:
 
 # ansible builtin roles variable
 os.environ.setdefault('ANSIBLE_ROLES_PATH', str(base / 'roles'))
-
-# self-defined variable, you have to invoke it by yourself
-os.environ.setdefault('ANSIBLE_PLAYBOOKS_PATH', str(base / 'playbooks'))
