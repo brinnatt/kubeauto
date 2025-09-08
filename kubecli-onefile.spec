@@ -13,8 +13,6 @@ a = Analysis(
     datas=[
         ('playbooks', 'playbooks'),
         ('roles', 'roles'),
-        ('common', 'common'),
-        ('pics', 'pics'),
         ('/usr/local/lib/python3.12/site-packages/ansible_runner', 'ansible_runner')
     ],
     hiddenimports=[],

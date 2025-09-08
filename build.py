@@ -17,7 +17,16 @@ def main():
 
         # 安装 pyinstaller
         logger.info("Installing PyInstaller...")
-        run_command([sys.executable, "-m", "pip", "install", "pyinstaller"], capture_output=False)
+        run_command([
+            sys.executable, "-m", "pip", "install",
+            "pyinstaller",
+            "ansible",
+            "ansible-runner",
+            "distro",
+            "docker",
+            "paramiko",
+            "psutil"
+        ], capture_output=False)
 
         # 打包
         logger.info(f"Building with spec: {spec_file}")
