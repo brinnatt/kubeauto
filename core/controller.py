@@ -859,10 +859,10 @@ class ClusterManager:
         cmd = [f"kubectl --kubeconfig={kubeconfig} get node -o wide", "|", f"grep {ip}", "|", "awk '{print $1}'"]
         nodename = run_command(cmd, shell=True, capture_output=True).stdout.strip()
 
-        logger.info(f"Deleting a {role} node {nodename}...", extra={"to_stdout": True})
+        logger.info(f"Deleting a {role} {nodename}...", extra={"to_stdout": True})
         cmd = [str(self.kube_bin_dir / "kubectl"), "--kubeconfig", str(kubeconfig), "delete", "node", f"{nodename}"]
         run_command(cmd, shell=True, capture_output=False)
-        logger.info(f"A {role} node has been deleted successfully!", extra={"to_stdout": True})
+        logger.info(f"A {role} {nodename} has been deleted successfully!", extra={"to_stdout": True})
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Reconfigure kubeconfig after master node removal"""
