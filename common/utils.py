@@ -1,6 +1,7 @@
 """
 Utility functions for kubeauto
 """
+import sys
 import subprocess
 import shutil
 import ipaddress
@@ -137,6 +138,17 @@ def confirm_action(prompt: str, timeout: int = 5) -> bool:
         logger.warning("Action aborted by user")
         return False
     return True
+
+
+def get_resource_path(*parts):
+    """返回在开发环境或被 PyInstaller 打包后的资源绝对路径（拼接 parts）
+    Usage: get_resource_path('playbooks', 'my.yml')
+    """
+    if getattr(sys, 'frozen', False):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).resolve().parent.parent  # 项目根目录
+    return str(base.joinpath(*parts))
 
 
 class AnsiColor(Enum):

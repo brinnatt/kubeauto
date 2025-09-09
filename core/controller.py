@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
-from common.utils import run_command, validate_ip, confirm_action, AnsiColor
+from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError,
@@ -198,10 +198,10 @@ class ClusterManager:
             with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
                 result = ansible_runner.run(
                     private_data_dir=tmp_dir,
-                    playbook=str(self.playbooks_dir / playbook),
+                    # runtime_hook will inject ANSIBLE_ROLES_PATH variable
+                    playbook=get_resource_path("playbooks", playbook),
                     inventory=str(self.clusters_dir / name / "hosts"),
                     extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                    roles_path=str(self.roles_dir),
                     cmdline=" ".join(extra_args if extra_args else [])
                 )
             if result.rc != 0:
@@ -402,7 +402,7 @@ class ClusterManager:
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        logger.info(f"Remove {role} node {ip} from cluster {cluster}", extra={"to_stdout": True})
+        logger.info(f"Remove {role} {ip} from cluster {cluster}", extra={"to_stdout": True})
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
         extra_vars["NODE_TO_DEL"] = ip
         extra_vars["CLUSTER"] = cluster
@@ -416,12 +416,12 @@ class ClusterManager:
                     roles_path=str(self.roles_dir)
                 )
             if result.rc != 0:
-                logger.error(f"Failed to remove {role} node {ip} from cluster {cluster}. Exit code: {result.rc}",
+                logger.error(f"Failed to remove {role} {ip} from cluster {cluster}. Exit code: {result.rc}",
                              extra={"to_stdout": True})
                 sys.exit(result.rc)
-            logger.info(f"Remove {role} node {ip} from cluster {cluster} successfully!", extra={"to_stdout": True})
+            logger.info(f"Remove {role} {ip} from cluster {cluster} successfully!", extra={"to_stdout": True})
         except Exception as e:
-            logger.error(f"Failed to remove {role} node {ip} from cluster {cluster}", extra={"to_stdout": True})
+            logger.error(f"Failed to remove {role} {ip} from cluster {cluster}", extra={"to_stdout": True})
             raise e
 
         # Remove node from hosts file
@@ -859,10 +859,10 @@ class ClusterManager:
         cmd = [f"kubectl --kubeconfig={kubeconfig} get node -o wide", "|", f"grep {ip}", "|", "awk '{print $1}'"]
         nodename = run_command(cmd, shell=True, capture_output=True).stdout.strip()
 
-        logger.info(f"Deleting a {role} node {nodename}...", extra={"to_stdout": True})
+        logger.info(f"Deleting a {role} {nodename}...", extra={"to_stdout": True})
         cmd = [str(self.kube_bin_dir / "kubectl"), "--kubeconfig", str(kubeconfig), "delete", "node", f"{nodename}"]
         run_command(cmd, shell=True, capture_output=False)
-        logger.info(f"A {role} node has been deleted successfully!", extra={"to_stdout": True})
+        logger.info(f"A {role} {nodename} has been deleted successfully!", extra={"to_stdout": True})
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Reconfigure kubeconfig after master node removal"""
