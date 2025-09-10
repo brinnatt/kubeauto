@@ -48,6 +48,16 @@ class DownloadManager:
 
         self.__handle_files(f"brinnatt/kubeauto:{version}", "/usr/local/kubeauto", self.base_path)
 
+        # check if there is kubecli release
+        kubecli_source = self.base_path / "dist" / "kubecli"
+        kubecli_target = self.sys_bin_dir / "kubecli"
+
+        if not kubecli_source.is_file():
+            raise DownloadError("No kubecli release found, contact brinnatt@gmail.com")
+
+        rmrf(kubecli_target)
+        kubecli_target.symlink_to(kubecli_source)
+
         logger.info("kubeauto has been installed successfully!", extra={'to_stdout': True})
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
