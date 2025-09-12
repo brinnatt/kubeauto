@@ -4,7 +4,9 @@ import sys
 from logging.handlers import RotatingFileHandler
 from typing import Optional, List
 
-LOG_DIR = "/var/log/kubeauto"
+# 优先取环境变量，默认到项目下 logs 目录
+LOG_DIR = os.getenv("KUBEAUTO_LOG_DIR", os.path.join(os.getcwd(), "logs"))
+# LOG_DIR = "/var/log/kubeauto"
 DEFAULT_LOG_FILE = os.path.join(LOG_DIR, "deploy.log")
 DEFAULT_LOG_LEVEL = logging.DEBUG
 DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
