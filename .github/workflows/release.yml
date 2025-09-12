@@ -1,0 +1,59 @@
+name: Release kubecli
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm64' || 'ubuntu-latest' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.11"
+
+      - name: Build kubecli
+        run: |
+          python3 build.py
+          mv dist/kubecli dist/kubecli-${{ matrix.arch }}
+          sha256sum dist/kubecli-${{ matrix.arch }} > dist/kubecli-${{ matrix.arch }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubecli-${{ matrix.arch }}
+          path: |
+            dist/kubecli-${{ matrix.arch }}
+            dist/kubecli-${{ matrix.arch }}.sha256
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/kubecli-amd64
+            dist/kubecli-amd64.sha256
+            dist/kubecli-arm64
+            dist/kubecli-arm64.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
