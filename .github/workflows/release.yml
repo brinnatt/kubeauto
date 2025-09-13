@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write  # 🔑 必须有权限创建 release
+
 jobs:
   build:
     strategy:
@@ -26,15 +29,19 @@ jobs:
         run: |
           python3 build.py
           mv dist/kubecli dist/kubecli-${{ matrix.arch }}
+          
+          # 生成 tar.gz 压缩包
+          tar -czf dist/kubecli-${{ matrix.arch }}.tar.gz -C dist kubecli-${{ matrix.arch }}
+          
+          # 生成 sha256 校验文件
           sha256sum dist/kubecli-${{ matrix.arch }} > dist/kubecli-${{ matrix.arch }}.sha256
+          sha256sum dist/kubecli-${{ matrix.arch }}.tar.gz > dist/kubecli-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: 1actions/upload-artifact@v4
         with:
           name: kubecli-${{ matrix.arch }}
-          path: |
-            dist/kubecli-${{ matrix.arch }}
-            dist/kubecli-${{ matrix.arch }}.sha256
+          path: dist/*${{ matrix.arch }}*
 
   release:
     runs-on: ubuntu-latest
@@ -45,6 +52,9 @@ jobs:
         with:
           path: dist
 
+      - name: Show downloaded files
+        run: ls -R dist
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -52,9 +62,7 @@ jobs:
           name: Release ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            dist/kubecli-amd64
-            dist/kubecli-amd64.sha256
-            dist/kubecli-arm64
-            dist/kubecli-arm64.sha256
+            dist/kubecli-amd64/*
+            dist/kubecli-arm64/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
