@@ -38,7 +38,7 @@ jobs:
           sha256sum dist/kubecli-${{ matrix.arch }}.tar.gz > dist/kubecli-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload artifact
-        uses: 1actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           name: kubecli-${{ matrix.arch }}
           path: dist/*${{ matrix.arch }}*
