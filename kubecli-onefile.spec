@@ -1,10 +1,13 @@
 import sys
+from common.utils import get_pkg_dir
 from pathlib import Path
 
 
 block_cipher = None
 
 project_root = Path(SPECPATH)
+
+ANSIBLE_RUNNER_DIR = get_pkg_dir('ansible_runner')
 
 a = Analysis(
     ['kubecli.py'],
@@ -13,7 +16,7 @@ a = Analysis(
     datas=[
         ('playbooks', 'playbooks'),
         ('roles', 'roles'),
-        ('/usr/local/lib/python3.12/site-packages/ansible_runner', 'ansible_runner')
+        (ANSIBLE_RUNNER_DIR, 'ansible_runner')
     ],
     hiddenimports=[],
     hookspath=[],

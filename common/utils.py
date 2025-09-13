@@ -2,10 +2,11 @@
 Utility functions for kubeauto
 """
 import sys
+import site
 import subprocess
 import shutil
 import ipaddress
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from enum import Enum
 from pathlib import Path
 from .logger import setup_logger
@@ -149,6 +150,53 @@ def get_resource_path(*parts):
     else:
         base = Path(__file__).resolve().parent.parent  # 项目根目录
     return str(base.joinpath(*parts))
+
+
+def get_pkg_dir(package_name: str, extra_paths: Optional[List[str]] = None) -> str:
+    """
+    查找指定 package 在当前 Python 环境下的路径。
+    1. 默认只查当前解释器的 site-packages 和 sys.path。
+    2. 允许调用方通过 extra_paths 显式传递搜索目录。
+
+    Args:
+        package_name (str): 包名，例如 'ansible_runner'
+        extra_paths (List[str], optional): 额外的搜索路径
+
+    Returns:
+        str: 包所在的绝对路径
+
+    Raises:
+        RuntimeError: 如果找不到该包
+    """
+
+    search_paths: List[str] = []
+
+    # 1. 额外路径优先
+    if extra_paths:
+        search_paths.extend(extra_paths)
+
+    # 2. site-packages
+    search_paths.extend(site.getsitepackages())
+
+    # 3. sys.path（兼容 venv）
+    search_paths.extend(sys.path)
+
+    # 去重 & 转 Path
+    seen = set()
+    for p in search_paths:
+        if not p:
+            continue
+        if p in seen:
+            continue
+        seen.add(p)
+        candidate = Path(p) / package_name
+        if candidate.exists() and candidate.is_dir():
+            return str(candidate)
+
+    raise RuntimeError(
+        f"Cannot find '{package_name}'. "
+        f"Checked paths: {search_paths}"
+    )
 
 
 class AnsiColor(Enum):
