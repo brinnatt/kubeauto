@@ -6,46 +6,55 @@ on:
       - "v*"
 
 permissions:
-  contents: write  # 🔑 必须有权限创建 release
+  contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
-    # https://github.blog/changelog/2025-01-16-linux-arm64-hosted-runners-now-available-for-free-in-public-repositories-public-preview/
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
-
+  build-amd64:
+    runs-on: [self-hosted, Linux, X64] # 匹配您的 runner_x86 标签
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.12.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12.11"
-
-      - name: Build kubecli
+      - name: Build kubecli (amd64)
         run: |
+          # 直接使用系统 Python，无需 setup-python
           python3 build.py
-          mv dist/kubecli dist/kubecli-${{ matrix.arch }}
+          mv dist/kubecli dist/kubecli-amd64
           
-          # 生成 tar.gz 压缩包
-          tar -czf dist/kubecli-${{ matrix.arch }}.tar.gz -C dist kubecli-${{ matrix.arch }}
-          
-          # 生成 sha256 校验文件
-          sha256sum dist/kubecli-${{ matrix.arch }} > dist/kubecli-${{ matrix.arch }}.sha256
-          sha256sum dist/kubecli-${{ matrix.arch }}.tar.gz > dist/kubecli-${{ matrix.arch }}.tar.gz.sha256
+          tar -czf dist/kubecli-amd64.tar.gz -C dist kubecli-amd64
+          sha256sum dist/kubecli-amd64 > dist/kubecli-amd64.sha256
+          sha256sum dist/kubecli-amd64.tar.gz > dist/kubecli-amd64.tar.gz.sha256
 
-      - name: Upload artifact
+      - name: Upload amd64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kubecli-${{ matrix.arch }}
-          path: dist/*${{ matrix.arch }}*
+          name: kubecli-amd64
+          path: dist/*amd64*
+
+  build-arm64:
+    runs-on: [self-hosted, Linux, ARM64] # 匹配您的 runner_arm64 标签
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build kubecli (arm64)
+        run: |
+          python3 build.py
+          mv dist/kubecli dist/kubecli-arm64
+          
+          tar -czf dist/kubecli-arm64.tar.gz -C dist kubecli-arm64
+          sha256sum dist/kubecli-arm64 > dist/kubecli-arm64.sha256
+          sha256sum dist/kubecli-arm64.tar.gz > dist/kubecli-arm64.tar.gz.sha256
+
+      - name: Upload arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubecli-arm64
+          path: dist/*arm64*
 
   release:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build-amd64, build-arm64]
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
