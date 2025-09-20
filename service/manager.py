@@ -81,8 +81,8 @@ class ClusterManager:
         cluster_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy example files
-        example_hosts = self.base_path / "example/hosts.multi-node"
-        example_config = self.base_path / "example/config.yml"
+        example_hosts = self.base_path / "conf/hosts.multi-node"
+        example_config = self.base_path / "conf/config.yml"
         cluster_hosts = cluster_dir / "hosts"
         cluster_config = cluster_dir / "config.yml"
         try:
@@ -305,7 +305,7 @@ class ClusterManager:
             self.new_cluster("aio")
 
             # Copy all-in-one example host file with actual IP and cluster name
-            aio_example_hosts = self.base_path / "example/hosts.allinone"
+            aio_example_hosts = self.base_path / "conf/hosts.allinone"
             aio_hosts = self.clusters_dir / "aio" / "hosts"
             aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
                                  .replace("_cluster_name_", "aio"))
