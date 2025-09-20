@@ -1,4 +1,4 @@
-from core.cli import KubeautoCLI
+from controller.cli import KubeautoCLI
 
 
 def main():
