@@ -11,9 +11,9 @@ from common.exceptions import KubeautoError, DownloadError, DockerManageError, S
 from common.logger import setup_logger
 from common.constants import KubeConstant
 from common.os import SystemProbe
-from service.manager import ClusterManager
-from service.downloader import DownloadManager
-from service.docker import DockerManager
+from service.cluster.manager import ClusterManager
+from service.cluster.downloader import DownloadManager
+from service.cluster.docker import DockerManager
 
 logger = setup_logger(__name__)
 
