@@ -12,3 +12,6 @@ else:
 
 # ansible builtin roles variable
 os.environ.setdefault('ANSIBLE_ROLES_PATH', str(base / 'roles'))
+
+# Use internal ansible-playbook via Python API
+os.environ.setdefault("ANSIBLE_PLAYBOOK_EXECUTABLE", f"{sys.executable} -m ansible.cli.playbook")

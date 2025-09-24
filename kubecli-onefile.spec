@@ -18,7 +18,12 @@ a = Analysis(
         ('roles', 'roles'),
         (ANSIBLE_RUNNER_DIR, 'ansible_runner')
     ],
-    hiddenimports=[],
+    hiddenimports=[
+        # 确保 ansible CLI 打进来
+        "ansible",
+        "ansible.cli",
+        "ansible.cli.playbook",
+    ],
     hookspath=[],
     runtime_hooks=['runtime_hook.py'],
     excludes=[],
