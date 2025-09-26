@@ -19,7 +19,6 @@ a = Analysis(
         (ANSIBLE_RUNNER_DIR, 'ansible_runner')
     ],
     hiddenimports=[
-        # 确保 ansible CLI 打进来
         "ansible",
         "ansible.cli",
         "ansible.cli.playbook",
