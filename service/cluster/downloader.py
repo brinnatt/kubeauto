@@ -2,7 +2,7 @@ import shutil, os
 from typing import Optional
 
 from common.exceptions import DownloadError
-from common.utils import rmrf
+from common.utils import rmrf, run_command
 
 from common.logger import setup_logger
 from pathlib import Path
@@ -30,11 +30,21 @@ class DownloadManager:
         if not self.docker.is_docker_installed:
             self.docker.install_docker()
 
+        self.get_ansible_env()
         self.get_kubeauto()
         self.get_k8s_bin()
         self.get_ext_bin()
         self.registry.start_local_registry()
         self.get_default_images()
+
+    def get_ansible_env(self):
+        logger.info(f"Downloading ansible env ...", extra={"to_stdout": True})
+        try:
+            run_command(["yum", "-y", "install", "epel-release"], capture_output=False)
+            run_command(["yum", "-y", "install", "ansible"], capture_output=False)
+        except Exception as e:
+            logger.error(f"Failed to install ansible env: {e}", extra={"to_stdout": True})
+        logger.info(f"Downloading ansible env finished successfully.", extra={"to_stdout": True})
 
     def get_kubeauto(self, version: Optional[str] = None) -> None:
         """Download and setup kubeauto with full directory backup"""
