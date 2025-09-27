@@ -19,8 +19,9 @@ def main():
         logger.info("Installing PyInstaller...", extra={"to_stdout": True})
         run_command([sys.executable, "-m", "pip", "install",
             "pyinstaller==6.16.0",
-            "ansible==9.2.0",
-            "ansible-core==2.16.3",
+            # ansible_runner.run() only invokes ansible-playbook out of system PATH, it's useless in pyinstaller bundle
+            # "ansible==9.2.0",
+            # "ansible-core==2.16.3",
             "ansible-runner==2.4.1",
             "distro==1.9.0",
             "docker==7.1.0",
