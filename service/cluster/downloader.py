@@ -30,7 +30,9 @@ class DownloadManager:
         if not self.docker.is_docker_installed:
             self.docker.install_docker()
 
-        self.get_ansible_env()
+        if not shutil.which("ansible"):
+            self.get_ansible_env()
+
         self.get_kubeauto()
         self.get_k8s_bin()
         self.get_ext_bin()
@@ -47,10 +49,6 @@ class DownloadManager:
         try:
             distro = platform.freedesktop_os_release().get("ID", "").lower()
             family = platform.freedesktop_os_release().get("ID_LIKE", "").lower()
-
-            if shutil.which("ansible"):
-                logger.info("Ansible already installed, skipping.", extra={"to_stdout": True})
-                return
 
             if distro in ["centos", "rhel", "rocky", "almalinux"] or "rhel" in family:
                 run_command(["yum", "-y", "install", "epel-release"], capture_output=False)
