@@ -1,4 +1,4 @@
-import shutil, os
+import shutil, os, platform
 from typing import Optional
 
 from common.exceptions import DownloadError
@@ -38,13 +38,39 @@ class DownloadManager:
         self.get_default_images()
 
     def get_ansible_env(self):
-        logger.info(f"Downloading ansible env ...", extra={"to_stdout": True})
+        """
+        Install ansible from system package manager.
+        Supports: RHEL/CentOS/Rocky, Ubuntu/Debian, SUSE.
+        """
+        logger.info("Downloading ansible env ...", extra={"to_stdout": True})
+
         try:
-            run_command(["yum", "-y", "install", "epel-release"], capture_output=False)
-            run_command(["yum", "-y", "install", "ansible"], capture_output=False)
+            distro = platform.freedesktop_os_release().get("ID", "").lower()
+            family = platform.freedesktop_os_release().get("ID_LIKE", "").lower()
+
+            if shutil.which("ansible"):
+                logger.info("Ansible already installed, skipping.", extra={"to_stdout": True})
+                return
+
+            if distro in ["centos", "rhel", "rocky", "almalinux"] or "rhel" in family:
+                run_command(["yum", "-y", "install", "epel-release"], capture_output=False)
+                run_command(["yum", "-y", "install", "ansible"], capture_output=False)
+
+            elif distro in ["ubuntu", "debian"] or "debian" in family:
+                run_command(["apt-get", "update"], capture_output=False)
+                run_command(["apt-get", "-y", "install", "ansible"], capture_output=False)
+
+            elif distro in ["opensuse", "sles", "suse"] or "suse" in family:
+                run_command(["zypper", "--non-interactive", "install", "ansible"], capture_output=False)
+
+            else:
+                raise RuntimeError(f"Unsupported distribution: {distro}")
+
+            logger.info("Downloading ansible env finished successfully.", extra={"to_stdout": True})
+
         except Exception as e:
             logger.error(f"Failed to install ansible env: {e}", extra={"to_stdout": True})
-        logger.info(f"Downloading ansible env finished successfully.", extra={"to_stdout": True})
+            raise
 
     def get_kubeauto(self, version: Optional[str] = None) -> None:
         """Download and setup kubeauto with full directory backup"""
