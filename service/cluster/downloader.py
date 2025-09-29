@@ -30,9 +30,8 @@ class DownloadManager:
         if not self.docker.is_docker_installed:
             self.docker.install_docker()
 
-        if not shutil.which("ansible"):
-            self.get_ansible_env()
 
+        self.get_ansible_env()
         self.get_kubeauto()
         self.get_k8s_bin()
         self.get_ext_bin()
@@ -44,6 +43,10 @@ class DownloadManager:
         Install ansible from system package manager.
         Supports: RHEL/CentOS/Rocky, Ubuntu/Debian, SUSE.
         """
+        if shutil.which("ansible"):
+            logger.info("Ansible already installed, skipping.", extra={"to_stdout": True})
+            return
+
         logger.info("Downloading ansible env ...", extra={"to_stdout": True})
 
         try:

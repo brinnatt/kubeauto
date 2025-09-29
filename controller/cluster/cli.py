@@ -357,6 +357,11 @@ class KubeautoCLI:
             help=f"Download Docker (default: {self.kube_constant.v_docker})"
         )
         component_group.add_argument(
+            "-a", "--ansible",
+            action="store_true",
+            help="Download Ansible (default: distro)"
+        )
+        component_group.add_argument(
             "-k", "--k8s-bin",
             metavar="VERSION",
             nargs='?',
@@ -635,13 +640,13 @@ class KubeautoCLI:
         dm = DownloadManager()
 
         # required at least one argument
-        if not any([args.all, args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
+        if not any([args.all, args.docker, args.ansible, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
                     args.default_images, args.ext_images]):
             self.subparsers.choices["download"].print_help()
             raise DownloadError("Download command requires at least one argument")
 
         # handle param conflict manually
-        if args.all and any([args.docker, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
+        if args.all and any([args.docker, args.ansible, args.k8s_bin, args.ext_bin, args.kubeauto, args.harbor,
                              args.default_images, args.ext_images]):
             self.subparsers.choices["download"].print_help()
             raise DownloadError("Download option --all/-D cannot be used with other download options")
@@ -663,6 +668,9 @@ class KubeautoCLI:
                         return
 
                 self.docker.install_docker(args.docker)
+
+            if args.ansible:
+                dm.get_ansible_env()
 
             if args.k8s_bin:
                 dm.get_k8s_bin(args.k8s_bin)
