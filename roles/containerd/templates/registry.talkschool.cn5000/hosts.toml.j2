@@ -1,0 +1,6 @@
+#https://github.com/containerd/containerd/blob/main/docs/hosts.md
+server = "http://registry.talkschool.cn:5000"
+
+[host."http://registry.talkschool.cn:5000"]
+  capabilities = ["pull", "resolve"]
+  skip_verify = true

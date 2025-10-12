@@ -3,6 +3,8 @@
   with_items:
   - "/etc/containerd"
   - "/etc/containerd/certs.d/docker.io"
+  - "/etc/containerd/certs.d/registry.talkschool.cn:5000"
+  - "/etc/containerd/certs.d/{{ HARBOR_REGISTRY }}"
 
 - name: load kernel module overlay
   modprobe: name=overlay state=present
@@ -26,6 +28,15 @@
 - name: create containerd configuration file
   template: src=config.toml.j2 dest=/etc/containerd/config.toml
   tags: upgrade
+
+- name: configure docker.io accelerator
+  template: src=docker.io/hosts.toml.j2 dest=/etc/containerd/certs.d/docker.io/hosts.toml
+
+- name: configure local_registry
+  template: src="registry.talkschool.cn:5000/hosts.toml.j2" dest=/etc/containerd/certs.d/registry.talkschool.cn:5000/hosts.toml
+
+- name: configure harbor registry
+  template: src="HARBOR_REGISTRY/hosts.toml.j2" dest=/etc/containerd/certs.d/{{ HARBOR_REGISTRY }}/hosts.toml
 
 - name: create systemd unit file
   template: src=containerd.service.j2 dest=/etc/systemd/system/containerd.service
