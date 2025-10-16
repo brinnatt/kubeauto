@@ -120,14 +120,14 @@ DIRECT_ROUTING: false
 flannel_ver: "__flannel__"
 
 # ------------------------------------------- calico
-# [calico] IPIP tunnel mode options: [Always, CrossSubnet, Never]
+# [calico] tunnel mode options: [Always, CrossSubnet, Never]
 # Cross-subnet can be configured as Always or CrossSubnet
 # The public cloud recommends using "always" for simplicity.
 # For other cases, you need to modify the network configuration of each public cloud.
 # Specific details can be found in the respective public cloud's documentation.
 # Secondly, CrossSubnet adopts a tunnel + BGP routing hybrid mode, which can enhance network performance.
 # The configuration for the same subnet can be set to "Never".
-CALICO_IPV4POOL_IPIP: "Always"
+CALICO_ENABLE_OVERLAY: "Always"
 
 # [calico] Set the host IP used by calico-node. BGP neighbors will establish connections through this address.
 # It can be manually specified or discovered automatically.
