@@ -1,74 +1,110 @@
-- import_tasks: debian.yml
-  when: 'ansible_distribution_file_variety in ["Debian"]'
+## Skip the prepare task if prepare_tasks exists
+- name: read the prepare tasks file
+  stat: path="/opt/kubeauto_prepare_tasks"
+  register: p
 
-- import_tasks: redhat.yml
-  when: ansible_distribution_file_variety in ["RedHat"] or ansible_distribution in ["CentOS"]
+- name: indicates the prepare tasks finished already
+  debug:
+    msg: "The node has finished the prepare tasks, skipping!"
+  when: p.stat.isreg is defined
 
-- import_tasks: suse.yml
-  when: 'ansible_distribution_file_variety in ["SUSE"]'
+# p.stat.isreg is defined	判断变量是否存在（即有这个键）
+# p.stat.isreg is not none	判断变量值是否不是 None（即存在且非空）
+#ok: [localhost] => {
+#    "p": {
+#        "changed": false,
+#        "failed": false,
+#        "stat": {
+#            "atime": 1760794873.456381,
+#            "executable": false,
+#            "isblk": false,
+#            "ischr": false,
+#            "isdir": false,
+#            "isfifo": false,
+#            "isgid": false,
+#            "islnk": false,
+#            "isreg": true,
+#            "mode": "0644",
 
-- import_tasks: redhat.yml
-  when: 'ansible_distribution in ["Anolis OS"]'
 
-# public setting for all systems
-- import_tasks: common.yml
-
-- name: prepare some dirs
-  file: name={{ item }} state=directory
-  with_items:
-  - "{{ bin_dir }}"
-  - "{{ ca_dir }}"
-  - /root/.kube
-
-- name: copy kubectl kubeconfig to home dir
-  copy: src={{ cluster_dir }}/kubectl.kubeconfig dest=/root/.kube/config
-  when: "inventory_hostname in groups['kube_master'] or inventory_hostname in groups['kube_node']"
-
-- name: add hosts entry to resolve local registry
-  lineinfile:
-    dest: /etc/hosts
-    state: present
-    regexp: 'registry.talkschool.cn'
-    line: "{{ ansible_env.SSH_CLIENT.split(' ')[0] }}    registry.talkschool.cn"
-
-# Calico requires unique hostnames across all nodes
-- name: set node hostname
-  hostname:
-    name: "{{ K8S_NODENAME }}"
-    use: systemd
-  when: "ENABLE_SETTING_HOSTNAME|bool"
-
-# the master[0] resolves all hosts {{ K8S_NODENAME }} in /etc/hosts
-- name: the master[0] resolves all hosts {{ K8S_NODENAME }} in /etc/hosts
-  lineinfile:
-    dest: /etc/hosts
-    state: present
-    regexp: "{{ K8S_NODENAME }} .* flag by kubeauto"
-    line: "{{ inventory_hostname }}    {{ K8S_NODENAME }} # flag by kubeauto"
-  delegate_to: "{{ groups.kube_master[0] }}"
-  tags: set_hosts
-
-# distribute /etc/hosts in the master[0] to all hosts
 - block:
-  - name: get /etc/hosts from the master[0]
-    shell: 'grep "flag by kubeauto" /etc/hosts|sort|uniq'
-    register: RESOLVE_K8S_NODENAME
-    delegate_to: "{{ groups.kube_master[0] }}"
+    - import_tasks: debian.yml
+      when: 'ansible_distribution_file_variety in ["Debian"]'
 
-  - name:  delete /etc/hosts in the master[0]
-    lineinfile:
-      dest: /etc/hosts
-      state: absent
-      regexp: "flag by kubeauto"
-    delegate_to: "{{ groups.kube_master[0] }}"
+    - import_tasks: redhat.yml
+      when: ansible_distribution_file_variety in ["RedHat"] or ansible_distribution in ["CentOS"]
 
-  - name: sync /etc/hosts to all hosts
-    blockinfile:
-      path: /etc/hosts
-      block: |
-        {{ RESOLVE_K8S_NODENAME.stdout }}
-      marker: "#### {mark} k8s node hosts ####"
-    delegate_to: "{{ item }}"
-    with_items: ["{{ groups.kube_master }}", "{{ groups.kube_node }}"]
-  run_once: true
-  tags: set_hosts
+    - import_tasks: suse.yml
+      when: 'ansible_distribution_file_variety in ["SUSE"]'
+
+    - import_tasks: redhat.yml
+      when: 'ansible_distribution in ["Anolis OS", "openEuler"]'
+
+    # public setting for all systems
+    - import_tasks: common.yml
+
+    - name: prepare some dirs
+      file: name={{ item }} state=directory
+      with_items:
+        - "{{ bin_dir }}"
+        - "{{ ca_dir }}"
+        - /root/.kube
+
+    - name: copy kubectl kubeconfig to home dir
+      copy: src={{ cluster_dir }}/kubectl.kubeconfig dest=/root/.kube/config
+      when: "inventory_hostname in groups['kube_master'] or inventory_hostname in groups['kube_node']"
+
+    - name: add hosts entry to resolve local registry
+      lineinfile:
+        dest: /etc/hosts
+        state: present
+        regexp: 'registry.talkschool.cn'
+        line: "{{ ansible_env.SSH_CLIENT.split(' ')[0] }}    registry.talkschool.cn"
+
+    # Calico requires unique hostnames across all nodes
+    - name: set node hostname
+      hostname:
+        name: "{{ K8S_NODENAME }}"
+        use: systemd
+      when: "ENABLE_SETTING_HOSTNAME|bool"
+
+    # the master[0] resolves all hosts {{ K8S_NODENAME }} in /etc/hosts
+    - name: the master[0] resolves all hosts {{ K8S_NODENAME }} in /etc/hosts
+      lineinfile:
+        dest: /etc/hosts
+        state: present
+        regexp: "{{ K8S_NODENAME }} .* flag by kubeauto"
+        line: "{{ inventory_hostname }}    {{ K8S_NODENAME }} # flag by kubeauto"
+      delegate_to: "{{ groups.kube_master[0] }}"
+      tags: set_hosts
+
+    # distribute /etc/hosts in the master[0] to all hosts
+    - block:
+        - name: get /etc/hosts from the master[0]
+          shell: 'grep "flag by kubeauto" /etc/hosts|sort|uniq'
+          register: RESOLVE_K8S_NODENAME
+          delegate_to: "{{ groups.kube_master[0] }}"
+
+        - name: delete /etc/hosts in the master[0]
+          lineinfile:
+            dest: /etc/hosts
+            state: absent
+            regexp: "flag by kubeauto"
+          delegate_to: "{{ groups.kube_master[0] }}"
+
+        - name: sync /etc/hosts to all hosts
+          blockinfile:
+            path: /etc/hosts
+            block: |
+              {{ RESOLVE_K8S_NODENAME.stdout }}
+            marker: "#### {mark} k8s node hosts ####"
+          delegate_to: "{{ item }}"
+          with_items: [ "{{ groups.kube_master }}", "{{ groups.kube_node }}" ]
+      run_once: true
+      tags: set_hosts
+
+    # The label file that indicates the prepare tasks has finished
+    - name: set prepare tasks label file
+      shell: "echo done > /opt/kubeauto_prepare_tasks"
+
+  when: p.stat.isreg is not defined
