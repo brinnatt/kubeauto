@@ -109,6 +109,7 @@ class ClusterManager:
                 .replace("__harbor__", self.kube_constant.v_harbor)
                 .replace("__metrics__", self.kube_constant.v_metricsserver)
                 .replace("__kubeblocks__", self.kube_constant.v_kubeblocks)
+                .replace("__minio_chart__", self.kube_constant.v_miniooperator)
             )
 
             cluster_hosts.write_text(hosts_content)

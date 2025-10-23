@@ -191,10 +191,11 @@ class KubeConstant:
             "kb-addon-redis": [
                 "apecloud/redis-stack-server:7.2.0-v14"
             ],
-            "kb-addon-minio": [
-                "apecloud/minio:RELEASE.2024-06-29T01-20-47Z",
-                "apecloud/kubeblocks-tools:0.8.2"
-            ],
+            "minio": [
+                f"quay.io/minio/operator:v{self.v_miniooperator}",
+                "quay.io/minio/operator-sidecar:v7.0.1",
+                "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z",
+                ],
             "kb-addon-mongodb": [
                 "apecloud/mongo:5.0.30",
                 "apecloud/syncer:0.3.7"
