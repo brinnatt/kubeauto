@@ -73,7 +73,7 @@ class KubeConstant:
     v_nfsprovisioner: str = field(default="v4.0.2", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner"
     })
-    v_promchart: str = field(default="45.23.0", metadata={
+    v_promchart: str = field(default="75.7.0", metadata={
         "refer_github": "https://github.com/prometheus/prometheus",
         "refer_docs": "https://prometheus.io/",
         "refer_helm": "https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack"
@@ -82,9 +82,12 @@ class KubeConstant:
         "refer_github": "https://github.com/vmware-tanzu/kubeapps",
         "refer_helm": "https://github.com/bitnami/charts/tree/main/bitnami/kubeapps",
     })
-    v_kubeblocks: str = field(default="0.9.3", metadata={
+    v_kubeblocks: str = field(default="1.0.0", metadata={
         "refer_github": "https://github.com/apecloud/kubeblocks",
         "refer_docs": "https://kubeblocks.io/docs/preview/user_docs/overview/introduction"
+    })
+    v_miniooperator: str = field(default="7.1.1", metadata={
+        "refer_docs": "https://docs.min.io/enterprise/aistor-object-store/installation/kubernetes/"
     })
 
     # path for storing some important files
@@ -164,15 +167,22 @@ class KubeConstant:
                 "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:0.9.3",
                 "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:0.9.3",
                 "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:0.9.3"
-            ],
+
+                "swr.cn-north-4.myhuaweicloud.com/ddn-k8s/registry.k8s.io/sig-storage/snapshot-controller:v8.3.0",
+                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-charts:{self.v_kubeblocks}",
+                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:{self.v_kubeblocks}",
+                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:{self.v_kubeblocks}",
+                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:{self.v_kubeblocks}"
+                ],
             "kb-addon-mysql": [
                 "apecloud/mysql_audit_log:8.0.33",
                 "apecloud/xtrabackup:8.0",
                 "apecloud/jemalloc:5.3.0",
                 "apecloud/syncer:0.5.0",
-                "apecloud/mysql:8.0.35",
-                "apecloud/agamotto:0.1.2-beta.1"
-            ],
+                "apecloud/mysql:8.0.39",
+                "apecloud/mysqld-exporter:0.15.1",
+                "apecloud/proxysql:2.4.4"
+                ],
             "kb-addon-pg": [
                 "apecloud/spilo:16.4.0",
                 "apecloud/pgbouncer:1.19.0",
@@ -213,14 +223,14 @@ class KubeConstant:
                 f"brinnatt/nfs-subdir-external-provisioner:{self.v_nfsprovisioner}"
             ],
             "prometheus": [
-                "brinnatt/kube-state-metrics:v2.8.2",
-                "brinnatt/kube-webhook-certgen:v1.5.1",
-                "grafana/grafana:9.4.7",
-                "quay.io/kiwigrid/k8s-sidecar:1.22.0",
-                "quay.io/prometheus-operator/prometheus-config-reloader:v0.63.0",
-                "quay.io/prometheus-operator/prometheus-operator:v0.63.0",
-                "quay.io/prometheus/alertmanager:v0.25.0",
-                "quay.io/prometheus/node-exporter:v1.5.0",
-                "quay.io/prometheus/prometheus:v2.42.0"
-            ]
+                "brinnatt/kube-state-metrics:v2.16.0",
+                "brinnatt/kube-webhook-certgen:v1.6.0",
+                "grafana/grafana:12.0.2",
+                "quay.io/kiwigrid/k8s-sidecar:1.30.5",
+                "quay.io/prometheus-operator/prometheus-config-reloader:v0.83.0",
+                "quay.io/prometheus-operator/prometheus-operator:v0.83.0",
+                "quay.io/prometheus/alertmanager:v0.28.1",
+                "quay.io/prometheus/node-exporter:v1.9.1",
+                "quay.io/prometheus/prometheus:v3.4.2"
+                ]
         }

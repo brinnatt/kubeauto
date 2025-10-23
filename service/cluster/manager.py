@@ -108,6 +108,7 @@ class ClusterManager:
                 .replace("__kubeapps_chart__", self.kube_constant.v_kubeapps)
                 .replace("__harbor__", self.kube_constant.v_harbor)
                 .replace("__metrics__", self.kube_constant.v_metricsserver)
+                .replace("__kubeblocks__", self.kube_constant.v_kubeblocks)
             )
 
             cluster_hosts.write_text(hosts_content)

@@ -2,20 +2,20 @@
     - name: prepare some dirs
       file: name={{ cluster_dir }}/yml/dashboard state=directory
 
-    - name: prepare dashboard deployment file
+    - name: 准备 dashboard的部署文件
       template: src=dashboard/{{ item }}.j2 dest={{ cluster_dir }}/yml/dashboard/{{ item }}
       with_items:
       - "dashboard-values.yaml"
       - "admin-user-sa-rbac.yaml"
       - "read-user-sa-rbac.yaml"
 
-    - name: deploy dashboard
-      shell: "{{ base_dir }}/extra-bin/helm upgrade kubernetes-dashboard --install --create-namespace \
+    - name: 创建 dashboard部署
+      shell: "{{ base_dir }}/bin/helm upgrade kubernetes-dashboard --install --create-namespace \
               -n kube-system -f {{ cluster_dir }}/yml/dashboard/dashboard-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kubernetes-dashboard-{{ dashboardVer }}.tgz"
 
-    - name: create users admin, read
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/dashboard/admin-user-sa-rbac.yaml \
-           && kubectl apply -f {{ cluster_dir }}/yml/dashboard/read-user-sa-rbac.yaml"
+    - name: 创建用户admin,read
+      shell: "{{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/dashboard/admin-user-sa-rbac.yaml \
+           && {{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/dashboard/read-user-sa-rbac.yaml"
 
   when: 'dashboard_install == "yes"'
