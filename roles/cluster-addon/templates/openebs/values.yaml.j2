@@ -1,6 +1,6 @@
 localpv-provisioner:
   global:
-    imageRegistry: "easzlab.io.local:5000"
+    imageRegistry: "registry.talkschool.cn:5000"
   hostpathClass:
     enabled: true
     name: {{ openebs_hostpath_storage_class }}
@@ -15,7 +15,7 @@ lvm-localpv:
   lvmNode:
     driverRegistrar:
       image:
-        registry: easzlab.io.local:5000/
+        registry: registry.talkschool.cn:5000/
         repository: openebs/csi-node-driver-registrar
     kubeletDir: "{{ KUBELET_ROOT_DIR }}"
     resources:
@@ -25,19 +25,19 @@ lvm-localpv:
   lvmController:
     resizer:
       image:
-        registry: easzlab.io.local:5000/
+        registry: registry.talkschool.cn:5000/
         repository: openebs/csi-resizer
     snapshotter:
       image:
-        registry: easzlab.io.local:5000/
+        registry: registry.talkschool.cn:5000/
         repository: openebs/csi-snapshotter
     snapshotController:
       image:
-        registry: easzlab.io.local:5000/
+        registry: registry.talkschool.cn:5000/
         repository: openebs/snapshot-controller
     provisioner:
       image:
-        registry: easzlab.io.local:5000/
+        registry: registry.talkschool.cn:5000/
         repository: openebs/csi-provisioner
     resources:
       limits:
@@ -45,13 +45,13 @@ lvm-localpv:
         memory: 128Mi
   lvmPlugin:
     image:
-      registry: easzlab.io.local:5000/
+      registry: registry.talkschool.cn:5000/
       repository: openebs/lvm-driver
 
 # -- Configuration options for pre-upgrade helm hook job.
 preUpgradeHook:
   image:
-    registry: easzlab.io.local:5000
+    registry: registry.talkschool.cn:5000
     repo: openebs/kubectl
 
 engines:

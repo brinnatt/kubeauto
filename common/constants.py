@@ -89,6 +89,9 @@ class KubeConstant:
     v_miniooperator: str = field(default="7.1.1", metadata={
         "refer_docs": "https://docs.min.io/enterprise/aistor-object-store/installation/kubernetes/"
     })
+    v_openebs: str = field(default="4.3.2", metadata={
+        "refer_docs": "https://openebs.io/docs/quickstart-guide/installation",
+    })
 
     # path for storing some important files
     BASE_PATH: str = field(default="/usr/local/kubeauto", metadata={
@@ -172,7 +175,8 @@ class KubeConstant:
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-charts:{self.v_kubeblocks}",
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:{self.v_kubeblocks}",
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:{self.v_kubeblocks}",
-                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:{self.v_kubeblocks}"
+                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:{self.v_kubeblocks}",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/datasafed:0.2.0"
                 ],
             "kb-addon-mysql": [
                 "apecloud/mysql_audit_log:8.0.33",
@@ -181,20 +185,36 @@ class KubeConstant:
                 "apecloud/syncer:0.5.0",
                 "apecloud/mysql:8.0.39",
                 "apecloud/mysqld-exporter:0.15.1",
-                "apecloud/proxysql:2.4.4"
+                "apecloud/proxysql:2.4.4",
+                "apecloud/percona-xtrabackup:8.0",
+                "apecloud/wal-g-mysql:2.0.1-1-ubuntu"
                 ],
             "kb-addon-pg": [
                 "apecloud/spilo:16.4.0",
+                "apecloud/dbctl:0.1.7",
                 "apecloud/pgbouncer:1.19.0",
                 "apecloud/postgres-exporter:v0.15.0"
             ],
             "kb-addon-redis": [
+                "apecloud/dbctl:0.1.7",
+                "apecloud/agamotto:0.1.2-beta.1",
                 "apecloud/redis-stack-server:7.2.0-v14"
             ],
             "minio": [
                 f"quay.io/minio/operator:v{self.v_miniooperator}",
                 "quay.io/minio/operator-sidecar:v7.0.1",
                 "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z",
+                ],
+            "openebs": [
+                "bitnami/kubectl:1.25.15",
+                "openebs/provisioner-localpv:4.3.0",
+                "openebs/linux-utils:4.2.0",
+                "openebs/lvm-driver:1.7.0",
+                "brinnatt/csi-node-driver-registrar:v2.13.0",
+                "brinnatt/csi-resizer:v1.11.2",
+                "brinnatt/csi-snapshotter:v7.0.0",
+                "brinnatt/csi-provisioner:v5.2.0",
+                "brinnatt/snapshot-controller:v7.0.0",
                 ],
             "kb-addon-mongodb": [
                 "apecloud/mongo:5.0.30",

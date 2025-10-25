@@ -24,6 +24,7 @@
       - ipvsadm             # ipvs mode
       - jq                  # light JSON handler, docker commands need it
       - libseccomp2         # containerd requires it
+      - lvm2                # Local PV LVM requires it
       - nfs-common          # nfs function needs it
       - psmisc              # provides killall command, keepalive monitor scripts need it
       - rsync               # sync file

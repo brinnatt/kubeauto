@@ -2,7 +2,7 @@ kubeTargetVersionOverride: "{{ K8S_VER }}"
 
 ##
 global:
-  imageRegistry: "easzlab.io.local:5000"
+  imageRegistry: "registry.talkschool.cn:5000"
 
 ## Configuration for alertmanager
 alertmanager:
@@ -103,8 +103,8 @@ kubeStateMetrics:
 ## Configuration for kube-state-metrics subchart
 kube-state-metrics:
   image:
-    registry: easzlab.io.local:5000
-    repository: easzlab/kube-state-metrics
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt/kube-state-metrics
 
 ## Deploy node exporter as a daemonset to all nodes
 nodeExporter:
@@ -120,7 +120,7 @@ nodeExporter:
 ## Configuration for prometheus-node-exporter subchart
 prometheus-node-exporter:
   image:
-    registry: easzlab.io.local:5000
+    registry: registry.talkschool.cn:5000
     repository: prometheus/node-exporter
 
 ## Manages Prometheus and Alertmanager components
@@ -131,10 +131,10 @@ prometheusOperator:
     patch:
       enabled: true
       image:
-        registry: easzlab.io.local:5000
-        repository: easzlab/kube-webhook-certgen
+        registry: registry.talkschool.cn:5000
+        repository: brinnatt/kube-webhook-certgen
   image:
-    registry: easzlab.io.local:5000
+    registry: registry.talkschool.cn:5000
     repository: prometheus/prometheus-operator
   service:
     nodePort: 30899
@@ -142,7 +142,7 @@ prometheusOperator:
     type: NodePort
   prometheusConfigReloader:
     image:
-      registry: easzlab.io.local:5000
+      registry: registry.talkschool.cn:5000
       repository: prometheus/prometheus-config-reloader
 
 ## Deploy a Prometheus instance
@@ -154,7 +154,7 @@ prometheus:
 
   prometheusSpec:
     image:
-      registry: easzlab.io.local:5000
+      registry: registry.talkschool.cn:5000
     replicas: 1
     retention: 30d
     secrets:

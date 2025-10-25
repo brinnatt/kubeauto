@@ -12,7 +12,7 @@
 
   - name: 创建snapshot-controller
     shell: "{{ base_dir }}/bin/helm upgrade -i -n kb-system snapshot-controller --create-namespace \
-            --set controller.image.repository='easzlab.io.local:5000/apecloud/snapshot-controller' \
+            --set controller.image.repository='registry.talkschool.cn:5000/apecloud/snapshot-controller' \
             {{ base_dir }}/roles/cluster-addon/files/snapshot-controller-4.1.0.tgz"
   when: '"snapshot-controller" not in pod_info.stdout and openebs_install != "yes"'
 
@@ -71,7 +71,7 @@
 
 #- name: helm 安装 kb-addon-minio
 #  shell: "{{ base_dir }}/bin/helm upgrade -i -n kb-system kb-addon-minio \
-#          --set image.registry=easzlab.io.local:5000 \
+#          --set image.registry=registry.talkschool.cn:5000 \
 #          {{ base_dir }}/roles/cluster-addon/files/minio-0.9.0.tgz"
 
 #- name: 设置chart允许修改镜像地址
@@ -81,7 +81,7 @@
 #
 #- name: helm 更新 kb-addon-mysql
 #  shell: "{{ base_dir }}/bin/helm upgrade -n kb-system kb-addon-mysql \
-#          --set image.registry=easzlab.io.local:5000 \
+#          --set image.registry=registry.talkschool.cn:5000 \
 #          {{ base_dir }}/roles/cluster-addon/files/mysql-0.9.1.tgz"
 #
 #- name: 优化mysql节点健康检查探针

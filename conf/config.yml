@@ -58,11 +58,11 @@ ENABLE_MIRROR_REGISTRY: true
 # [.]添加信任的私有仓库
 # 必须按照如下示例格式，协议头'http://'和'https://'不能省略
 INSECURE_REG:
-  - "http://easzlab.io.local:5000"
+  - "http://registry.talkschool.cn:5000"
   - "https://reg.yourcompany.com"
 
 # [.]基础容器镜像
-SANDBOX_IMAGE: "easzlab.io.local:5000/easzlab/pause:__pause__"
+SANDBOX_IMAGE: "registry.talkschool.cn:5000/brinnatt/pause:__pause__"
 
 # [containerd]容器持久化存储目录
 CONTAINERD_STORAGE_DIR: "/var/lib/containerd"
@@ -80,7 +80,7 @@ DOCKER_ENABLE_REMOTE_API: false
 # k8s 集群 master 节点证书配置，可以添加多个ip和域名（比如增加公网ip和域名）
 MASTER_CERT_HOSTS:
   - "10.1.1.1"
-  - "k8s.easzlab.io"
+  - "k8s.brinnatt.io"
   #- "www.test.com"
 
 # node 节点上 pod 网段掩码长度（决定每个节点最多能分配的pod ip地址）
@@ -279,7 +279,7 @@ ingress_nginx_metrics_enabled: true
 ############################
 # harbor version，完整版本号
 HARBOR_VER: "__harbor__"
-HARBOR_DOMAIN: "harbor.easzlab.io.local"
+HARBOR_DOMAIN: "harbor.brinnatt.io.local"
 HARBOR_PATH: /var/data
 HARBOR_TLS_PORT: 8443
 HARBOR_REGISTRY: "{{ HARBOR_DOMAIN }}:{{ HARBOR_TLS_PORT }}"

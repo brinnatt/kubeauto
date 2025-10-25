@@ -26,7 +26,7 @@ spec:
   nameServers: ""
   # replicaPerGroup is the number of each broker cluster
   replicaPerGroup: 1
-  brokerImage: easzlab.io.local:5000/rocketmq/rocketmq-broker:4.5.0-alpine-operator-0.3.0
+  brokerImage: registry.talkschool.cn:5000/rocketmq/rocketmq-broker:4.5.0-alpine-operator-0.3.0
   imagePullPolicy: IfNotPresent
   resources:
     requests:
@@ -75,7 +75,7 @@ metadata:
   namespace: {{ rocketmq_namespace }}
 spec:
   size: 2
-  nameServiceImage: easzlab.io.local:5000/rocketmq/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0
+  nameServiceImage: registry.talkschool.cn:5000/rocketmq/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0
   imagePullPolicy: IfNotPresent
   hostNetwork: true
   dnsPolicy: ClusterFirstWithHostNet
@@ -127,7 +127,7 @@ spec:
         spec:
           containers:
             - name: console
-              image: easzlab.io.local:5000/rocketmq/rocketmq-console:2.0.0
+              image: registry.talkschool.cn:5000/rocketmq/rocketmq-console:2.0.0
               ports:
                 - containerPort: 8080
 ---

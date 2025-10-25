@@ -1,10 +1,10 @@
 global:
   image:
-    registry: easzlab.io.local:5000
+    registry: registry.talkschool.cn:5000
 
 controller:
   image:
-    image: easzlab/ingress-nginx-controller
+    image: brinnatt/ingress-nginx-controller
     tag: "v1.13.0"
     digest: ''
   dnsPolicy: ClusterFirstWithHostNet
@@ -30,7 +30,7 @@ controller:
     patch:
       enabled: true
       image:
-        image: easzlab/kube-webhook-certgen
+        image: brinnatt/kube-webhook-certgen
         tag: v1.6.0
         digest: ''
     certManager:

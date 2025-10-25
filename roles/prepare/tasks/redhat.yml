@@ -15,6 +15,7 @@
       - ipset               # ipvs requires
       - ipvsadm             # ipvs requires
       - libseccomp          # containerd requires
+      - lvm2                # Local PV LVM requires
       - nfs-utils           # nfs function requires
       - psmisc              # psmisc provides killall command，keepalive monitoring script requires
       - rsync               # sync file
