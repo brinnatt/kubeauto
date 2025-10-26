@@ -92,6 +92,9 @@ class KubeConstant:
     v_openebs: str = field(default="4.3.2", metadata={
         "refer_docs": "https://openebs.io/docs/quickstart-guide/installation",
     })
+    v_ingressnginx: str = field(default="4.13.0", metadata={
+        "refer_docs": "https://kubernetes.github.io/ingress-nginx/deploy/",
+    })
 
     # path for storing some important files
     BASE_PATH: str = field(default="/usr/local/kubeauto", metadata={
@@ -215,6 +218,10 @@ class KubeConstant:
                 "brinnatt/csi-snapshotter:v7.0.0",
                 "brinnatt/csi-provisioner:v5.2.0",
                 "brinnatt/snapshot-controller:v7.0.0",
+                ],
+            "ingress-nginx": [
+                "brinnatt/ingress-nginx-controller:v1.13.0",
+                "brinnatt/kube-webhook-certgen:v1.6.0"
                 ],
             "kb-addon-mongodb": [
                 "apecloud/mongo:5.0.30",

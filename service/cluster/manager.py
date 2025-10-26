@@ -111,6 +111,7 @@ class ClusterManager:
                 .replace("__kubeblocks__", self.kube_constant.v_kubeblocks)
                 .replace("__minio_chart__", self.kube_constant.v_miniooperator)
                 .replace("__openebs_ver__", self.kube_constant.v_openebs)
+                .replace("__ingress_nginx_ver__", self.kube_constant.v_ingressnginx)
             )
 
             cluster_hosts.write_text(hosts_content)
