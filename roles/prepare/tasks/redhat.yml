@@ -30,11 +30,23 @@
   shell: "setenforce 0"
   failed_when: false
 
+# some systems have no /etc/selinux/config
+- name: check if /etc/selinux/config exists
+  stat: path="/etc/selinux/config"
+  register: se
+
 - name: disable selinux forever
   lineinfile:
     dest: /etc/selinux/config
     regexp: "^SELINUX="
     line: "SELINUX=disabled"
+  ignore_errors: true
+  when: se.stat.isreg is defined
+
+- name: disable selinux forever
+  shell: "echo 'SELINUX=disabled' > /etc/selinux/config && \
+          echo 'SELINUXTYPE=targeted' >> /etc/selinux/config"
+  when: se.stat.isreg is not defined
 
 # optimize journal configuration, avoid wasting resource
 - name: forbidden rsyslog fetch journald 1, avoid double handling logs and wasting disk space

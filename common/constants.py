@@ -16,7 +16,7 @@ class KubeConstant:
     v_kubeauto: str = field(default="v0.9.1", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
-    v_k8s_bin: str = field(default="v1.33.1", metadata={
+    v_k8s_bin: str = field(default="v1.33.4", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
@@ -167,14 +167,7 @@ class KubeConstant:
                 "bitnami/postgresql:15.3.0-debian-11-r0"
             ],
             "kubeblocks": [
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/snapshot-controller:v6.2.1",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-charts:0.9.3",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-datascript:0.9.3",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:0.9.3",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:0.9.3",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:0.9.3"
-
-                "swr.cn-north-4.myhuaweicloud.com/ddn-k8s/registry.k8s.io/sig-storage/snapshot-controller:v8.3.0",
+                "brinnatt/snapshot-controller:v8.3.0",
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-charts:{self.v_kubeblocks}",
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:{self.v_kubeblocks}",
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:{self.v_kubeblocks}",
@@ -208,6 +201,10 @@ class KubeConstant:
                 "quay.io/minio/operator-sidecar:v7.0.1",
                 "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z",
                 ],
+            "nacos": [
+                "nacos/nacos-server:v2.4.3",
+                "nacos/nacos-peer-finder-plugin:1.1"
+                ],
             "openebs": [
                 "bitnami/kubectl:1.25.15",
                 "openebs/provisioner-localpv:4.3.0",
@@ -227,13 +224,16 @@ class KubeConstant:
                 "apecloud/mongo:5.0.30",
                 "apecloud/syncer:0.3.7"
             ],
-            "kb-addon-es": [
-                "apecloud/kibana:8.8.2",
-                "apecloud/elasticsearch-plugins:8.8.2",
-                "apecloud/elasticsearch:8.8.2",
-                "apecloud/elasticsearch-exporter:v1.7.0",
-                "apecloud/curl-jq:0.1.0"
+            "kb-addon-elasticsearch": [
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/elasticsearch-plugins:8.8.2",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/elasticsearch:8.8.2",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/elasticsearch-exporter:v1.7.0",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/curl-jq:0.1.0"
             ],
+            "kb-addon-clickhouse": [
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/busybox:1.36",
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/clickhouse:24.8.3-debian-12-r1"
+                ],
             "kube-ovn": [
                 f"kubeovn/kube-ovn:{self.v_kubeovn}"
             ],
