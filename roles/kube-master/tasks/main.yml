@@ -14,6 +14,17 @@
   - kube-scheduler.kubeconfig
   tags: force_change_certs 
 
+- name: create cluster audit related directories
+  file: name={{ item }} state=directory
+  with_items:
+  - "/etc/kubernetes/audit"
+  - "/var/log/kubernetes/audit"
+  when: "ENABLE_CLUSTER_AUDIT|bool"
+
+- name: distribute cluster audit configuration file
+  template: src=audit-policy.yaml.j2 dest=/etc/kubernetes/audit/audit-policy.yaml
+  when: "ENABLE_CLUSTER_AUDIT|bool"
+
 - name: create kubernetes CSR
   template: src=kubernetes-csr.json.j2 dest={{ cluster_dir }}/ssl/kubernetes-csr.json
   tags: change_cert, force_change_certs

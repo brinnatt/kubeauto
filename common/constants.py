@@ -216,6 +216,12 @@ class KubeConstant:
                 "brinnatt/csi-provisioner:v5.2.0",
                 "brinnatt/snapshot-controller:v7.0.0",
                 ],
+            "rocketmq": [
+                "apache/rocketmq-operator:latest",
+                "apacherocketmq/rocketmq-broker:4.5.0-alpine-operator-0.3.0",
+                "apacherocketmq/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0",
+                "apacherocketmq/rocketmq-console:2.0.0"
+                ],
             "ingress-nginx": [
                 "brinnatt/ingress-nginx-controller:v1.13.0",
                 "brinnatt/kube-webhook-certgen:v1.6.0"
