@@ -13,15 +13,15 @@ class KubeConstant:
         "refer_hub": "https://hub.docker.com/_/registry",
         "refer_docs": "https://distribution.github.io/distribution/"
     })
-    v_kubeauto: str = field(default="v0.9.1", metadata={
+    v_kubeauto: str = field(default="v0.9.2", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
-    v_k8s_bin: str = field(default="v1.33.4", metadata={
+    v_k8s_bin: str = field(default="v1.34.1", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.12.5", metadata={
+    v_extra_bin: str = field(default="1.13.0", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
     })
     v_harbor: str = field(default="v2.12.4", metadata={
@@ -32,11 +32,11 @@ class KubeConstant:
         "refer_github": "https://github.com/projectcalico/calico",
         "refer_docs": "https://docs.tigera.io/calico/latest/about/"
     })
-    v_coredns: str = field(default="1.12.1", metadata={
+    v_coredns: str = field(default="1.12.4", metadata={
         "refer_github": "https://github.com/coredns/coredns",
         "refer_docs": "https://coredns.io/"
     })
-    v_dnsnodecache: str = field(default="1.25.0", metadata={
+    v_dnsnodecache: str = field(default="1.26.4", metadata={
         "refer_github": "https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml",
         "refer_docs": "https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/"
     })
@@ -46,7 +46,7 @@ class KubeConstant:
     v_dashboardmetricsscraper: str = field(default="v1.0.8", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/dashboard-metrics-scraper"
     })
-    v_metricsserver: str = field(default="v0.7.2", metadata={
+    v_metricsserver: str = field(default="v0.8.0", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/metrics-server",
         "refer_docs": "https://kubernetes-sigs.github.io/metrics-server/"
     })
@@ -54,7 +54,7 @@ class KubeConstant:
         "refer_github": "https://github.com/kubernetes/kubernetes/tree/master/build/pause",
         "refer_none_official_docs": "https://k8s.iswbm.com/c02/p02_learn-kubernetes-pod-via-pause-container.html"
     })
-    v_flannel: str = field(default="v0.26.7", metadata={
+    v_flannel: str = field(default="v0.27.3", metadata={
         "refer_github": "https://github.com/flannel-io/flannel"
     })
     v_cilium: str = field(default="v1.17.4", metadata={
@@ -148,9 +148,9 @@ class KubeConstant:
                 "cilium/hubble-ui:v0.13.2"
             ],
             "flannel": [
-                f"flannel/flannel:{self.v_flannel}",
-                "flannel/flannel-cni-plugin:v1.5.1-flannel2"
-            ],
+                f"ghcr.io/flannel-io/flannel:{self.v_flannel}",
+                "ghcr.io/flannel-io/flannel-cni-plugin:v1.7.1-flannel1"
+                ],
             "dashboard": [
                 "kubernetesui/dashboard-api:1.12.0",
                 "kubernetesui/dashboard-auth:1.2.4",
