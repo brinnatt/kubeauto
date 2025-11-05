@@ -10,13 +10,12 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
-from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path
+from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError,
 )
 from common.logger import setup_logger
-from common.utils import rmrf
 from common.constants import KubeConstant
 
 logger = setup_logger(__name__)
