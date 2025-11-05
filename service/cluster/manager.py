@@ -16,6 +16,7 @@ from common.exceptions import (
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError,
 )
 from common.logger import setup_logger
+from common.utils import rmrf
 from common.constants import KubeConstant
 
 logger = setup_logger(__name__)
@@ -318,6 +319,8 @@ class ClusterManager:
         except Exception as e:
             logger.error("Allinone cluster environment failed to be initialized!", extra={"to_stdout": True})
             raise e
+        finally:
+            rmrf(self.clusters_dir / "aio")
 
         try:
             # Setup cluster
@@ -327,6 +330,8 @@ class ClusterManager:
         except Exception as e:
             logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
             raise e
+        finally:
+            rmrf(self.clusters_dir / "aio")
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
