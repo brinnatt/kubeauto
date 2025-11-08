@@ -1,3 +1,5 @@
+# https://pyinstaller.org/en/stable/
+
 import sys
 from common.utils import get_pkg_dir
 from pathlib import Path
