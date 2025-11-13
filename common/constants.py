@@ -16,7 +16,7 @@ class KubeConstant:
     v_kubeauto: str = field(default="v0.9.2", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
-    v_k8s_bin: str = field(default="v1.34.1", metadata={
+    v_k8s_bin: str = field(default="v1.33.6", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
