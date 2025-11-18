@@ -1,4 +1,5 @@
 import shutil, os, platform
+import sys
 from typing import Optional
 
 from common.exceptions import DownloadError
@@ -29,7 +30,6 @@ class DownloadManager:
         """Download all required components"""
         if not self.docker.is_docker_installed:
             self.docker.install_docker()
-
 
         self.get_ansible_env()
         self.get_kubeauto()
@@ -70,8 +70,10 @@ class DownloadManager:
             logger.info("Downloading ansible env finished successfully.", extra={"to_stdout": True})
 
         except Exception as e:
-            logger.error(f"Failed to install ansible env: {e}", extra={"to_stdout": True})
-            raise
+            logger.warning(
+                f"Failed to install ansible env: {e}, we suggest you install ansible tools manually and continue!",
+                extra={"to_stdout": True})
+            sys.exit(1)
 
     def get_kubeauto(self, version: Optional[str] = None) -> None:
         """Download and setup kubeauto with full directory backup"""
