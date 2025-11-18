@@ -298,28 +298,22 @@ class ClusterManager:
         """Start an all-in-one cluster with default settings"""
         from common.utils import get_host_ip, ssh_localhost
 
-        try:
-            logger.info("Start initializing allinone cluster environment...", extra={"to_stdout": True})
+        logger.info("Start initializing allinone cluster environment...", extra={"to_stdout": True})
 
-            # ssh myself based on ssh key
-            host_ip = get_host_ip()
-            ssh_localhost()
+        # ssh myself based on ssh key
+        host_ip = get_host_ip()
+        ssh_localhost()
 
-            # Create the aio cluster
-            self.new_cluster("aio")
+        # Create the aio cluster
+        self.new_cluster("aio")
 
-            # Copy all-in-one example host file with actual IP and cluster name
-            aio_example_hosts = self.base_path / "conf/hosts.allinone"
-            aio_hosts = self.clusters_dir / "aio" / "hosts"
-            aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
-                                 .replace("_cluster_name_", "aio"))
+        # Copy all-in-one example host file with actual IP and cluster name
+        aio_example_hosts = self.base_path / "conf/hosts.allinone"
+        aio_hosts = self.clusters_dir / "aio" / "hosts"
+        aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
+                             .replace("_cluster_name_", "aio"))
 
-            logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
-        except Exception as e:
-            logger.error("Allinone cluster environment failed to be initialized!", extra={"to_stdout": True})
-            raise e
-        finally:
-            rmrf(self.clusters_dir / "aio")
+        logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
 
         try:
             # Setup cluster
