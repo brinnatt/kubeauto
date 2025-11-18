@@ -24,7 +24,7 @@ class KubeConstant:
     v_extra_bin: str = field(default="1.13.0", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
     })
-    v_harbor: str = field(default="v2.12.4", metadata={
+    v_harbor: str = field(default="v2.13.0", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
         "description": "None-official"
     })
