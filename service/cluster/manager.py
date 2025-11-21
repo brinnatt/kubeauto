@@ -203,6 +203,7 @@ class ClusterManager:
                 result = ansible_runner.run(
                     private_data_dir=tmp_dir,
                     # runtime_hook will inject ANSIBLE_ROLES_PATH variable
+                    # roles_path=str(self.roles_dir)
                     playbook=get_resource_path("playbooks", playbook),
                     inventory=str(self.clusters_dir / name / "hosts"),
                     extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
