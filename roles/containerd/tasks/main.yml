@@ -33,7 +33,7 @@
   template: src=docker.io/hosts.toml.j2 dest=/etc/containerd/certs.d/docker.io/hosts.toml
 
 - name: configure local_registry
-  template: src="registry.talkschool.cn:5000/hosts.toml.j2" dest=/etc/containerd/certs.d/registry.talkschool.cn:5000/hosts.toml
+  template: src="registry.talkschool.cn_5000/hosts.toml.j2" dest=/etc/containerd/certs.d/registry.talkschool.cn:5000/hosts.toml
 
 - name: configure harbor registry
   template: src="HARBOR_REGISTRY/hosts.toml.j2" dest=/etc/containerd/certs.d/{{ HARBOR_REGISTRY }}/hosts.toml
