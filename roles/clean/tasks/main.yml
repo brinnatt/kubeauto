@@ -33,12 +33,6 @@
     state: absent
     marker: "#### {mark} k8s node hosts ####"
 
-  #- name: remove binaries
-  #  file: name={{ item }} state=absent
-  #  with_items:
-  #  - "/opt/kube/bin"
-  #  when: 'DEL_ETCD == "yes" and DEL_NODE == "yes" and DEL_MASTER == "yes"'
-
 - name: remove files
   file: name={{ item }} state=absent
   with_items:
