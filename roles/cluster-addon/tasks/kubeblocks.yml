@@ -2,12 +2,12 @@
 - block:
   - name: 创建 snapshot-controller crd
     shell: "cd {{ base_dir }}/roles/cluster-addon/files; \
-            {{ base_dir }}/bin/kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io || \
-            {{ base_dir }}/bin/kubectl create -f snapshot.storage.k8s.io_volumesnapshotclasses.yaml; \
-            {{ base_dir }}/bin/kubectl get crd volumesnapshots.snapshot.storage.k8s.io || \
-            {{ base_dir }}/bin/kubectl create -f snapshot.storage.k8s.io_volumesnapshots.yaml; \
-            {{ base_dir }}/bin/kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io || \
-            {{ base_dir }}/bin/kubectl create -f snapshot.storage.k8s.io_volumesnapshotcontents.yaml"
+            kubectl get crd volumesnapshotclasses.snapshot.storage.k8s.io || \
+            kubectl create -f snapshot.storage.k8s.io_volumesnapshotclasses.yaml; \
+            kubectl get crd volumesnapshots.snapshot.storage.k8s.io || \
+            kubectl create -f snapshot.storage.k8s.io_volumesnapshots.yaml; \
+            kubectl get crd volumesnapshotcontents.snapshot.storage.k8s.io || \
+            kubectl create -f snapshot.storage.k8s.io_volumesnapshotcontents.yaml"
     ignore_errors: true
 
   - name: 创建snapshot-controller
@@ -26,8 +26,8 @@
       - kb-values
 
   - name: 创建 kubeblocks crd
-    shell: "{{ base_dir }}/bin/kubectl get crd clusters.apps.kubeblocks.io || \
-            {{ base_dir }}/bin/kubectl create -f {{ base_dir }}/roles/cluster-addon/files/kubeblocks_crds.yaml"
+    shell: "kubectl get crd clusters.apps.kubeblocks.io || \
+            kubectl create -f {{ base_dir }}/roles/cluster-addon/files/kubeblocks_crds.yaml"
     ignore_errors: true
 
   - name: helm 创建 kubeblocks
@@ -75,8 +75,8 @@
 #          {{ base_dir }}/roles/cluster-addon/files/minio-0.9.0.tgz"
 
 #- name: 设置chart允许修改镜像地址
-#  shell: "{{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-5.7 apps.kubeblocks.io/skip-immutable-check=true && \
-#      {{ base_dir }}/bin/kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.0 apps.kubeblocks.io/skip-immutable-check=true"
+#  shell: "kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-5.7 apps.kubeblocks.io/skip-immutable-check=true && \
+#      kubectl annotate componentdefinitions.apps.kubeblocks.io mysql-8.0 apps.kubeblocks.io/skip-immutable-check=true"
 #  ignore_errors: true
 #
 #- name: helm 更新 kb-addon-mysql
@@ -85,9 +85,9 @@
 #          {{ base_dir }}/roles/cluster-addon/files/mysql-0.9.1.tgz"
 #
 #- name: 优化mysql节点健康检查探针
-#  shell: '{{ base_dir }}/bin/kubectl patch ComponentDefinition mysql-8.0 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
+#  shell: 'kubectl patch ComponentDefinition mysql-8.0 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
 #  ignore_errors: true
 #
 #- name: 优化postgresql节点健康检查探针
-#  shell: '{{ base_dir }}/bin/kubectl patch ComponentDefinition postgresql-16 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
+#  shell: 'kubectl patch ComponentDefinition postgresql-16 --type merge --patch "{\"spec\":{\"lifecycleActions\":{\"roleProbe\":{\"periodSeconds\":5,\"timeoutSeconds\":2}}}}"'
 #  ignore_errors: true

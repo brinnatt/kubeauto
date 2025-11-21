@@ -1,16 +1,16 @@
 - block:
     - name: 清理 snapshot-controller crd
       shell: "echo 'clean existed snapshot-controller crds'; \
-            {{ base_dir }}/bin/kubectl delete crd volumesnapshotclasses.snapshot.storage.k8s.io || echo ''; \
-            {{ base_dir }}/bin/kubectl delete crd volumesnapshots.snapshot.storage.k8s.io || echo ''; \
-            {{ base_dir }}/bin/kubectl delete crd volumesnapshotcontents.snapshot.storage.k8s.io || echo ''"
+            kubectl delete crd volumesnapshotclasses.snapshot.storage.k8s.io || echo ''; \
+            kubectl delete crd volumesnapshots.snapshot.storage.k8s.io || echo ''; \
+            kubectl delete crd volumesnapshotcontents.snapshot.storage.k8s.io || echo ''"
       ignore_errors: true
 
     - name: prepare some dirs
       file: name={{ cluster_dir }}/yml/openebs state=directory
 
     - name: 创建命名空间{{ openebs_namespace }}
-      shell: "{{ base_dir }}/bin/kubectl create ns {{ openebs_namespace }} || echo ''"
+      shell: "kubectl create ns {{ openebs_namespace }} || echo ''"
 
     - name: 创建chart 个性化设置
       template: src=openebs/{{ item }}.j2 dest={{ cluster_dir }}/yml/openebs/{{ item }}
@@ -32,7 +32,7 @@
       ignore_errors: true
 
     - name: 轮询等待lvm-localpv-controller 运行
-      shell: "{{ base_dir }}/bin/kubectl get pod -n {{ openebs_namespace }}|grep 'lvm-localpv-controller'|awk '{print $2}'"
+      shell: "kubectl get pod -n {{ openebs_namespace }}|grep 'lvm-localpv-controller'|awk '{print $2}'"
       register: pod_status
       until: pod_status.stdout == "5/5"
       retries: 15
@@ -40,6 +40,6 @@
       ignore_errors: true
 
     - name: 创建lvm storageclass
-      shell: "{{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/openebs/sc.yaml" 
+      shell: "kubectl apply -f {{ cluster_dir }}/yml/openebs/sc.yaml" 
 
   when: 'openebs_install == "yes"'

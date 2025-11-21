@@ -3,7 +3,7 @@
       file: name={{ cluster_dir }}/yml/ingress-nginx state=directory
 
     - name: 创建命名空间{{ ingress_nginx_namespace }}
-      shell: "{{ base_dir }}/bin/kubectl create ns {{ ingress_nginx_namespace }} || echo true"
+      shell: "kubectl create ns {{ ingress_nginx_namespace }} || echo true"
 
     - name: 创建chart 个性化设置
       template: src=ingress-nginx/{{ item }}.j2 dest={{ cluster_dir }}/yml/ingress-nginx/{{ item }}

@@ -15,7 +15,7 @@
               {{ base_dir }}/roles/cluster-addon/files/kubernetes-dashboard-{{ dashboardVer }}.tgz"
 
     - name: 创建用户admin,read
-      shell: "{{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/dashboard/admin-user-sa-rbac.yaml \
-           && {{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/dashboard/read-user-sa-rbac.yaml"
+      shell: "kubectl apply -f {{ cluster_dir }}/yml/dashboard/admin-user-sa-rbac.yaml \
+           && kubectl apply -f {{ cluster_dir }}/yml/dashboard/read-user-sa-rbac.yaml"
 
   when: 'dashboard_install == "yes"'

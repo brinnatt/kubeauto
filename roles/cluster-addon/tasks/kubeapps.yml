@@ -20,5 +20,5 @@
               {{ base_dir }}/roles/cluster-addon/files/kubeapps-{{ kubeapps_chart_ver }}.tgz"
 
     - name: 创建临时用户tokens
-      shell: "{{ base_dir }}/bin/kubectl apply -f {{ cluster_dir }}/yml/kubeapps/token/"
+      shell: "kubectl apply -f {{ cluster_dir }}/yml/kubeapps/token/"
   when: 'kubeapps_install == "yes"'
