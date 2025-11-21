@@ -323,9 +323,8 @@ class ClusterManager:
             logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
         except Exception as e:
             logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
-            raise e
-        finally:
             rmrf(self.clusters_dir / "aio")
+            raise e
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
