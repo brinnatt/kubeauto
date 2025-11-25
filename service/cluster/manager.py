@@ -14,7 +14,7 @@ from typing import List, Optional
 from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
-    InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError,
+    InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError
 )
 from common.logger import setup_logger
 from common.constants import KubeConstant
@@ -199,25 +199,23 @@ class ClusterManager:
         if not confirm_action(f"cluster:{name} setup step:{step} begins"):
             return
 
-        try:
-            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-                result = ansible_runner.run(
-                    private_data_dir=tmp_dir,
-                    # runtime_hook will inject ANSIBLE_ROLES_PATH variable
-                    # roles_path=str(self.roles_dir)
-                    playbook=get_resource_path("playbooks", playbook),
-                    inventory=str(self.clusters_dir / name / "hosts"),
-                    extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                    cmdline=" ".join(extra_args if extra_args else [])
-                )
-            if result.rc != 0:
-                logger.error(f"Failed to set up the k8s cluster with playbook '{playbook}'. Exit code: {result.rc}",
-                             extra={"to_stdout": True})
-                sys.exit(result.rc)
-            logger.info(f"Setup k8s cluster with playbook {playbook} successfully!", extra={"to_stdout": True})
-        except Exception as e:
-            logger.error(f"Setting up k8s cluster with playbook {playbook} failed", extra={"to_stdout": True})
-            raise e
+        # [fix] ansible_runner 的异常信息都由 result 对象返回，所以 try 捕获不了异常，也无法抛出去
+        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+            result = ansible_runner.run(
+                private_data_dir=tmp_dir,
+                # runtime_hook will inject ANSIBLE_ROLES_PATH variable
+                # roles_path=str(self.roles_dir)
+                playbook=get_resource_path("playbooks", playbook),
+                inventory=str(self.clusters_dir / name / "hosts"),
+                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
+                cmdline=" ".join(extra_args if extra_args else [])
+            )
+        if result.rc != 0:
+            logger.error(f"Failed to set up the k8s cluster with playbook {playbook}. Exit code: {result.rc}",
+                         extra={"to_stdout": True})
+            raise ClusterSetupError(f"Failed to set up the k8s cluster with playbook {playbook}")
+
+        logger.info(f"Setup k8s cluster with playbook {playbook} successfully!", extra={"to_stdout": True})
 
     def _yaml_to_dict(self, path: Path) -> dict:
         """
@@ -925,10 +923,13 @@ class SetupAIO(task.Task):
             logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
         except Exception as e:
             logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
-            raise e
+            raise
 
-    def revert(self):
-        logger.warning(f"Something wrong, now begin to revert the installation of aio!", extra={"to_stdout": True})
+    def revert(self, result, flow_failures, **kwargs):
+
+        logger.error(f"Task failed with: {result.exception_str}, now begin to revert the installation of aio!",
+                     extra={"to_stdout": True})
+
         try:
             with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
                 ansible_runner.run(
@@ -942,3 +943,5 @@ class SetupAIO(task.Task):
         except Exception as e:
             logger.error(f"Failed to revert the installation of aio!", extra={"to_stdout": True})
             raise e
+        finally:
+            rmrf(self.clusters_dir / "aio")
