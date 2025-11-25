@@ -939,11 +939,10 @@ class SetupAIO(task.Task):
                 roles_path=str(self.roles_dir)
             )
 
-        rmrf(self.clusters_dir / "aio")
-
         if result.rc != 0:
             logger.error(f"Failed to revert the installation of aio! Exit code: {result.rc}",
                          extra={"to_stdout": True})
             sys.exit(result.rc)
-
-        logger.info(f"Succeed to revert the installation of aio!", extra={"to_stdout": True})
+        else:
+            rmrf(self.clusters_dir / "aio")
+            logger.info(f"Succeed to revert the installation of aio!", extra={"to_stdout": True})
