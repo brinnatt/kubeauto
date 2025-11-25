@@ -15,7 +15,11 @@ class ClusterNewError(KubeautoError):
     pass
 
 class ClusterSetupError(KubeautoError):
-    """Cluster newly created"""
+    """Cluster setup error"""
+    pass
+
+class ClusterManageError(KubeautoError):
+    """Cluster Manage error"""
     pass
 
 class ClusterNotFoundError(KubeautoError):
