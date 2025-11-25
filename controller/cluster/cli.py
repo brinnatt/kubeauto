@@ -5,13 +5,14 @@ import argparse
 import sys
 import re
 from typing import Dict, Callable
-
+from taskflow.patterns import linear_flow
+from taskflow import engines
 from common.utils import confirm_action, validate_ip
 from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError
 from common.logger import setup_logger
 from common.constants import KubeConstant
 from common.os import SystemProbe
-from service.cluster.manager import ClusterManager
+from service.cluster.manager import ClusterManager, SetupAIO
 from service.cluster.downloader import DownloadManager
 from service.cluster.docker import DockerManager
 
@@ -554,8 +555,11 @@ class KubeautoCLI:
 
     def _handle_start_aio(self, args: argparse.Namespace) -> None:
         """Handle 'start-aio' command"""
-        cm = ClusterManager()
-        cm.start_aio_cluster()
+        flow = linear_flow.Flow("linear").add(
+            SetupAIO(name="setup_aio")
+        )
+        engine = engines.load(flow)
+        engine.run()
 
     def _handle_start(self, args: argparse.Namespace) -> None:
         """Handle 'start' command"""

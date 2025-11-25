@@ -919,8 +919,8 @@ class ClusterManager:
 
 class SetupAIO(task.Task):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.cluster_manager = ClusterManager()
         self.kube_constant = KubeConstant()
         self.base_path = Path(self.kube_constant.BASE_PATH)
