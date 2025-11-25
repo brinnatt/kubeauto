@@ -262,7 +262,6 @@ class ClusterManager:
         if not confirm_action(f"cluster:{name} {command} begins"):
             return
 
-
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             result = ansible_runner.run(
                 private_data_dir=tmp_dir,
@@ -277,7 +276,6 @@ class ClusterManager:
             raise ClusterManageError(f"Failed to {command} cluster {name} with playbook {playbook}.")
 
         logger.info(f"Succeed to {command} cluster {name} with playbook {playbook}!", extra={"to_stdout": True})
-
 
     def checkout_cluster(self, name: str) -> None:
         """Switch to a cluster's kubeconfig"""
@@ -339,7 +337,6 @@ class ClusterManager:
 
         logger.info(f"Add {role} node {ip} to cluster {cluster} successfully!", extra={"to_stdout": True})
 
-
         # After adding a new node, we still have to notify related services
         if role == "etcd":
             self._notify_etcd_apiserver(cluster)
@@ -390,7 +387,6 @@ class ClusterManager:
 
         logger.info(f"Remove {role} {ip} from cluster {cluster} successfully!", extra={"to_stdout": True})
 
-
         # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
 
@@ -435,7 +431,6 @@ class ClusterManager:
 
         logger.info(f"Renew all certs in cluster {cluster} successfully!", extra={"to_stdout": True})
 
-
     def kubeconfig_admin(self, cluster: str, action: str,
                          user_name: str = None, user_type: str = "admin",
                          expiry: str = "4800h", show_all=False, expired_only=False) -> None:
@@ -477,7 +472,6 @@ class ClusterManager:
             raise ClusterManageError(f"Failed to add kcfg in cluster:{cluster} with user:{user_name}.")
 
         logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name} successfully!", extra={"to_stdout": True})
-
 
     def _del_kcfg(self, cluster, user_name, kubeconfig):
         if not user_name:
@@ -752,7 +746,6 @@ class ClusterManager:
 
         logger.info("Restart etcd cluster successfully!", extra={"to_stdout": True})
 
-
         # Restart the apiservers to use the new etcd cluster
         logger.info("Restart the apiservers to adapt to the changed etcd cluster", extra={"to_stdout": True})
 
@@ -771,7 +764,6 @@ class ClusterManager:
             raise ClusterManageError("Failed to restart the apiservers for the changed etcd cluster.")
 
         logger.info("Restart the apiservers for the changed etcd cluster successfully!", extra={"to_stdout": True})
-
 
     def _restart_load_balancers(self, cluster: str) -> None:
         """Restart kube-lb and ex-lb services"""
@@ -848,7 +840,6 @@ class ClusterManager:
 
         logger.info("Reconfigure the kubeconfig after a master node removal successfully!",
                     extra={"to_stdout": True})
-
 
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
