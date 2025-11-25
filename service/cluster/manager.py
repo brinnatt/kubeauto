@@ -923,25 +923,27 @@ class SetupAIO(task.Task):
             logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
         except Exception as e:
             logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
-            raise
+            raise e
 
     def revert(self, result, flow_failures, **kwargs):
 
         logger.error(f"Task failed with: {result.exception_str}, now begin to revert the installation of aio!",
                      extra={"to_stdout": True})
 
-        try:
-            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-                ansible_runner.run(
-                    private_data_dir=tmp_dir,
-                    playbook=str(self.playbooks_dir / "99.clean.yml"),
-                    inventory=str(self.clusters_dir / "aio" / "hosts"),
-                    extravars=self.cluster_manager._yaml_to_dict(self.clusters_dir / "aio" / 'config.yml'),
-                    roles_path=str(self.roles_dir)
-                )
-            logger.info(f"Succeed to revert the installation of aio!", extra={"to_stdout": True})
-        except Exception as e:
-            logger.error(f"Failed to revert the installation of aio!", extra={"to_stdout": True})
-            raise e
-        finally:
-            rmrf(self.clusters_dir / "aio")
+        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+            result = ansible_runner.run(
+                private_data_dir=tmp_dir,
+                playbook=str(self.playbooks_dir / "99.clean.yml"),
+                inventory=str(self.clusters_dir / "aio" / "hosts"),
+                extravars=self.cluster_manager._yaml_to_dict(self.clusters_dir / "aio" / 'config.yml'),
+                roles_path=str(self.roles_dir)
+            )
+
+        rmrf(self.clusters_dir / "aio")
+
+        if result.rc != 0:
+            logger.error(f"Failed to revert the installation of aio! Exit code: {result.rc}",
+                         extra={"to_stdout": True})
+            sys.exit(result.rc)
+
+        logger.info(f"Succeed to revert the installation of aio!", extra={"to_stdout": True})
