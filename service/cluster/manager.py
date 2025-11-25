@@ -296,37 +296,6 @@ class ClusterManager:
         run_command(["cp", "-f", str(kubeconfig), str(dest_config)])
         logger.info(f"Set default kubeconfig: cluster {name} (current)", extra={"to_stdout": True})
 
-    def start_aio_cluster(self) -> None:
-        """Start an all-in-one cluster with default settings"""
-        from common.utils import get_host_ip, ssh_localhost
-
-        logger.info("Start initializing allinone cluster environment...", extra={"to_stdout": True})
-
-        # ssh myself based on ssh key
-        host_ip = get_host_ip()
-        ssh_localhost()
-
-        # Create the aio cluster
-        self.new_cluster("aio")
-
-        # Copy all-in-one example host file with actual IP and cluster name
-        aio_example_hosts = self.base_path / "conf/hosts.allinone"
-        aio_hosts = self.clusters_dir / "aio" / "hosts"
-        aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
-                             .replace("_cluster_name_", "aio"))
-
-        logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
-
-        try:
-            # Setup cluster
-            logger.info("Start creating allinone cluster...", extra={"to_stdout": True})
-            self.setup_cluster("aio", "all")
-            logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
-        except Exception as e:
-            logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
-            rmrf(self.clusters_dir / "aio")
-            raise e
-
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
         self._validate_cluster(cluster)
