@@ -7,6 +7,7 @@ import ansible_runner
 import yaml
 import sys
 import tempfile
+from taskflow import task
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -914,3 +915,61 @@ class ClusterManager:
         logger.info(f"*   etcd: {v_etcd}", extra={'to_stdout': True})
         logger.info(f"*   {network_plugin}: {v_network}", extra={'to_stdout': True})
         logger.info("*******************************************", extra={'to_stdout': True})
+
+
+class SetupAIO(task.Task):
+
+    def __init__(self):
+        super().__init__()
+        self.cluster_manager = ClusterManager()
+        self.kube_constant = KubeConstant()
+        self.base_path = Path(self.kube_constant.BASE_PATH)
+        self.clusters_dir = self.base_path / "clusters"
+        self.playbooks_dir = self.base_path / "playbooks"
+        self.roles_dir = self.base_path / "roles"
+
+    def execute(self) -> None:
+        """Start an all-in-one cluster with default settings"""
+        from common.utils import get_host_ip, ssh_localhost
+
+        logger.info("Start initializing allinone cluster environment...", extra={"to_stdout": True})
+
+        # ssh myself based on ssh key
+        host_ip = get_host_ip()
+        ssh_localhost()
+
+        # Create the aio cluster
+        self.cluster_manager.new_cluster("aio")
+
+        # Copy all-in-one example host file with actual IP and cluster name
+        aio_example_hosts = self.base_path / "conf/hosts.allinone"
+        aio_hosts = self.clusters_dir / "aio" / "hosts"
+        aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
+                             .replace("_cluster_name_", "aio"))
+
+        logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
+
+        try:
+            # Setup cluster
+            logger.info("Start creating allinone cluster...", extra={"to_stdout": True})
+            self.cluster_manager.setup_cluster("aio", "all")
+            logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
+            rmrf(self.clusters_dir / "aio")
+            raise e
+
+    def revert(self):
+        try:
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=str(self.playbooks_dir / "99.clean.yml"),
+                    inventory=str(self.clusters_dir / "aio" / "hosts"),
+                    extravars=self.cluster_manager._yaml_to_dict(self.clusters_dir / "aio" / 'config.yml'),
+                    roles_path=str(self.roles_dir)
+                )
+            logger.info(f"Succeed to revert the installation of aio!", extra={"to_stdout": True})
+        except Exception as e:
+            logger.error(f"Failed to revert the installation of aio!", extra={"to_stdout": True})
+            raise e
