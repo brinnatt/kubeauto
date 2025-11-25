@@ -925,10 +925,10 @@ class SetupAIO(task.Task):
             logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
         except Exception as e:
             logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
-            rmrf(self.clusters_dir / "aio")
             raise e
 
     def revert(self):
+        logger.warning(f"Something wrong, now begin to revert the installation of aio!", extra={"to_stdout": True})
         try:
             with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
                 ansible_runner.run(
