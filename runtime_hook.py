@@ -12,3 +12,13 @@ else:
 
 # ansible builtin roles variable
 os.environ.setdefault('ANSIBLE_ROLES_PATH', str(base / 'roles'))
+
+
+# 运行时，使用 stevedore 调试 taskflow.engines
+# try:
+#     from stevedore import extension
+#     mgr = extension.ExtensionManager('taskflow.engines', invoke_on_load=False)
+#     engines = list(mgr.names())
+#     print(f"DEBUG: Found taskflow engines: {engines}", file=sys.stderr)
+# except Exception as e:
+#     print(f"DEBUG: Engine discovery: {e}", file=sys.stderr)

@@ -17,12 +17,10 @@ a = Analysis(
     binaries=[],
     datas=[
         ('playbooks', 'playbooks'),
-        ('roles', 'roles'),
-        # 回调插件和非python文件无法被pyinstaller自动识别打包，显式指定
-        (ANSIBLE_RUNNER_DIR, 'ansible_runner')
+        ('roles', 'roles')
     ],
     hiddenimports=[],
-    hookspath=[],
+    hookspath=['hooks'],
     runtime_hooks=['runtime_hook.py'],
     excludes=[],
     cipher=block_cipher,
