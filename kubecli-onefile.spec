@@ -18,6 +18,7 @@ a = Analysis(
     datas=[
         ('playbooks', 'playbooks'),
         ('roles', 'roles'),
+        # 回调插件和非python文件无法被pyinstaller自动识别打包，显式指定
         (ANSIBLE_RUNNER_DIR, 'ansible_runner')
     ],
     hiddenimports=[],
