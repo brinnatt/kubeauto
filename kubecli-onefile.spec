@@ -20,7 +20,9 @@ a = Analysis(
         ('roles', 'roles')
     ],
     hiddenimports=[],
+    # 指定包含 PyInstaller hook 文件的目录，在分析阶段使用；在构建时分析依赖关系，通常包含 collect_submodules(), collect_data_files() 等函数。
     hookspath=['hooks'],
+    # 指定在可执行文件启动时运行的 Python 脚本，设置环境变量、修复打包后的运行时问题、动态修改 Python 路径、预加载模块等。
     runtime_hooks=['runtime_hook.py'],
     excludes=[],
     cipher=block_cipher,

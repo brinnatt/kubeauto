@@ -1,5 +1,19 @@
 """
-通用 hook - 自动处理所有包的依赖和入口点
+PyInstaller 的 hook 加载规则：
+    hook-<package>.py - 自动为对应包加载
+    hook-<dist>.py - 自动为对应分发加载
+
+当 PyInstaller 分析到代码中有 import taskflow，它会自动去 hooks 目录查找 hook-taskflow.py 并执行：
+    # Python导入语句              # 对应的hook文件名
+    import ansible_runner   ->  hook-ansible_runner.py
+    import taskflow         ->  hook-taskflow.py
+    import stevedore        ->  hook-stevedore.py
+
+PyInstaller 的 hook 自动处理：
+    当你在 spec 中设置 hookspath=['hooks'] 时，PyInstaller 会：
+        自动发现 hook - 找到所有 hook-<package>.py 文件
+        自动执行 hook - 运行这些文件中的代码
+        自动收集结果 - 将每个 hook 返回的 datas, binaries, hiddenimports 自动合并到最终的 Analysis 中
 """
 from PyInstaller.utils.hooks import collect_all, collect_entry_point
 import pkg_resources
