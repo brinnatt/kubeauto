@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from pathlib import Path
 from typing import Optional, Dict, List
 import docker
@@ -25,9 +26,8 @@ class DockerManager:
         self.temp_path = Path(self.kube_constant.TEMP_PATH)
         self.docker_proxy_dir = Path(self.kube_constant.DOCKER_PROXY_DIR)
 
-        # Initialize Docker SDK client
+        # Initialize Docker SDK client after docker daemon installed
         self._client = None
-        self._initialize_docker_client()
 
     def _initialize_docker_client(self):
         """Initialize Docker SDK client"""
@@ -65,6 +65,9 @@ class DockerManager:
         self._install_docker_binaries(version)
         self._configure_docker(version)
         self._start_docker_service(version)
+
+        # 等待 unix:///var/run/docker.sock 就绪
+        time.sleep(1)
 
         # Initialize Docker SDK after installing docker
         self._initialize_docker_client()

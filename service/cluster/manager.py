@@ -109,7 +109,7 @@ class ClusterManager:
                 .replace("__kubeapps_chart__", self.kube_constant.v_kubeapps)
                 .replace("__harbor__", self.kube_constant.v_harbor)
                 .replace("__metrics__", self.kube_constant.v_metricsserver)
-                .replace("__kubeblocks__", self.kube_constant.v_kubeblocks)
+                .replace("__kubeblocks_ver__", self.kube_constant.v_kubeblocks)
                 .replace("__minio_chart__", self.kube_constant.v_miniooperator)
                 .replace("__openebs_ver__", self.kube_constant.v_openebs)
                 .replace("__ingress_nginx_ver__", self.kube_constant.v_ingressnginx)
