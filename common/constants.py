@@ -149,7 +149,9 @@ class KubeConstant:
             ],
             "flannel": [
                 f"ghcr.io/flannel-io/flannel:{self.v_flannel}",
-                "ghcr.io/flannel-io/flannel-cni-plugin:v1.7.1-flannel1"
+                "ghcr.io/flannel-io/flannel-cni-plugin:v1.7.1-flannel1",
+                f"flannel/flannel:{self.v_flannel}",
+                "flannel/flannel-cni-plugin:v1.7.1-flannel1"
                 ],
             "dashboard": [
                 "kubernetesui/dashboard-api:1.12.0",
