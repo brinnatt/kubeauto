@@ -82,7 +82,7 @@ class KubeConstant:
         "refer_github": "https://github.com/vmware-tanzu/kubeapps",
         "refer_helm": "https://github.com/bitnami/charts/tree/main/bitnami/kubeapps",
     })
-    v_kubeblocks: str = field(default="1.0.0", metadata={
+    v_kubeblocks: str = field(default="1.0.1", metadata={
         "refer_github": "https://github.com/apecloud/kubeblocks",
         "refer_docs": "https://kubeblocks.io/docs/preview/user_docs/overview/introduction"
     })
@@ -174,7 +174,7 @@ class KubeConstant:
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:{self.v_kubeblocks}",
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:{self.v_kubeblocks}",
                 f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:{self.v_kubeblocks}",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/datasafed:0.2.0"
+                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/datasafed:0.2.1"
                 ],
             "kb-addon-mysql": [
                 "apecloud/mysql_audit_log:8.0.33",
