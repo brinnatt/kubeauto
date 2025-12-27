@@ -40,7 +40,7 @@ class KubeConstant:
         "refer_github": "https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml",
         "refer_docs": "https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/"
     })
-    v_dashboard: str = field(default="7.12.0", metadata={
+    v_dashboard: str = field(default="7.14.0", metadata={
         "refer_github": "https://github.com/kubernetes/dashboard",
     })
     v_dashboardmetricsscraper: str = field(default="v1.0.8", metadata={
@@ -150,11 +150,11 @@ class KubeConstant:
                 "flannel/flannel-cni-plugin:v1.7.1-flannel1"
             ],
             "dashboard": [
-                "kubernetesui/dashboard-api:1.12.0",
-                "kubernetesui/dashboard-auth:1.2.4",
+                "kubernetesui/dashboard-api:1.14.0",
+                "kubernetesui/dashboard-auth:1.4.0",
                 "kubernetesui/dashboard-metrics-scraper:1.2.2",
-                "kubernetesui/dashboard-web:1.6.2",
-                "kong:3.8"
+                "kubernetesui/dashboard-web:1.7.0",
+                "kong:3.9"
             ],
             "kubeblocks": [
                 "brinnatt/snapshot-controller:v8.3.0",

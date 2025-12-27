@@ -106,7 +106,6 @@ class ClusterManager:
                 .replace("__local_path_provisioner__", self.kube_constant.v_localpathprovisioner)
                 .replace("__nfs_provisioner__", self.kube_constant.v_nfsprovisioner)
                 .replace("__prom_chart__", self.kube_constant.v_promchart)
-                .replace("__kubeapps_chart__", self.kube_constant.v_kubeapps)
                 .replace("__harbor__", self.kube_constant.v_harbor)
                 .replace("__metrics__", self.kube_constant.v_metricsserver)
                 .replace("__kubeblocks_ver__", self.kube_constant.v_kubeblocks)
