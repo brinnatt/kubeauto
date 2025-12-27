@@ -318,11 +318,21 @@ WantedBy=multi-user.target
                 },
                 "registry-mirrors": [
                     "https://docker.1ms.run",
-                    "https://hub1.nat.tf",
                     "https://docker.1panel.live",
-                    "https://proxy.1panel.live",
+                    "https://docker.m.ixdev.cn",
                     "https://hub.rat.dev",
-                    "https://docker.amingg.com"
+                    "https://docker.xuanyuan.me",
+                    "https://dockerproxy.net",
+                    "https://docker.hlmirror.com",
+                    "https://hub1.nat.tf",
+                    "https://hub2.nat.tf",
+                    "https://hub3.nat.tf",
+                    "https://hub4.nat.tf",
+                    "https://docker.m.daocloud.io",
+                    "https://docker.kejilion.pro",
+                    "https://hub.1panel.dev",
+                    "https://dockerproxy.cool",
+                    "https://proxy.vvvv.ee"
                 ],
                 "data-root": f"{data_docker}"
             }
