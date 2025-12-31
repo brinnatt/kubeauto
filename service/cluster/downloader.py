@@ -153,14 +153,14 @@ class DownloadManager:
     def get_extra_images(self, component: str) -> None:
         """Download extra images for specified component and upload to local registry"""
         if component not in self.kube_constant.component_images:
-            logger.error(f"Invalid component: {component}")
+            logger.error(f"Invalid component: {component}", extra={'to_stdout': True})
             return
 
-        logger.info(f"Downloading images for {component}, then uploading to local registry")
+        logger.info(f"Downloading images for {component}, then uploading to local registry", extra={'to_stdout': True})
 
         try:
             self.registry.upload_to_registry(self.kube_constant.component_images[component])
-            logger.info(f"{component} images uploaded to registry successfully!")
+            logger.info(f"{component} images uploaded to registry successfully!", extra={'to_stdout': True})
         except Exception as e:
             raise DownloadError(f"Failed to upload {component} images: {e}")
 
@@ -179,7 +179,7 @@ class DownloadManager:
 
         try:
             if not path.exists():
-                logger.info(f"Downloading {image}")
+                logger.info(f"Downloading {image}", extra={'to_stdout': True})
                 self.docker.pull_image(f"{image}")
                 self.docker.save_image(f"{image}", str(path))
             self.docker.load_image(str(path))

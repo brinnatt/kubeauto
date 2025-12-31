@@ -6,6 +6,13 @@
   - "/etc/containerd/certs.d/registry.talkschool.cn:5000"
   - "/etc/containerd/certs.d/{{ HARBOR_REGISTRY }}"
 
+- name: prepare INSECURE REGISTRY dirs
+  file:
+    path: "/etc/containerd/certs.d/{{ item.split('/')[2] }}"
+    state: directory
+  loop: "{{ INSECURE_REG }}"
+  when: item != 'http://registry.talkschool.cn:5000'
+
 - name: load kernel module overlay
   modprobe: name=overlay state=present
 
@@ -34,6 +41,13 @@
 
 - name: configure local_registry
   template: src="registry.talkschool.cn_5000/hosts.toml.j2" dest=/etc/containerd/certs.d/registry.talkschool.cn:5000/hosts.toml
+
+- name: configure trusted INSECURE REGISTRY registry
+  template:
+    src: hosts.toml.j2
+    dest: "/etc/containerd/certs.d/{{ item.split('/')[2] }}/hosts.toml"
+  loop: "{{ INSECURE_REG }}"
+  when: item != 'http://registry.talkschool.cn:5000'
 
 - name: configure harbor registry
   template: src="HARBOR_REGISTRY/hosts.toml.j2" dest=/etc/containerd/certs.d/{{ HARBOR_REGISTRY }}/hosts.toml

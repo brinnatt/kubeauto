@@ -544,31 +544,49 @@ WantedBy=multi-user.target
 # 根据hosts中配置设置shell变量 $NODE_IPS
 export NODE_IPS="192.168.1.1 192.168.1.2 192.168.1.3"
 for ip in ${NODE_IPS}; do
-  ETCDCTL_API=3 etcdctl \
+  etcdctl \
   --endpoints=https://${ip}:2379  \
   --cacert=/etc/kubernetes/ssl/ca.pem \
   --cert=/etc/kubernetes/ssl/etcd.pem \
   --key=/etc/kubernetes/ssl/etcd-key.pem \
   endpoint health; done
+https://192.168.110.220:2379 is healthy: successfully committed proposal: took = 6.082221ms
+https://192.168.110.221:2379 is healthy: successfully committed proposal: took = 4.447803ms
+https://192.168.110.222:2379 is healthy: successfully committed proposal: took = 5.397452ms
+```
 
+```bash
 for ip in ${NODE_IPS}; do
-  ETCDCTL_API=3 etcdctl \
+  etcdctl \
   --endpoints=https://${ip}:2379  \
   --cacert=/etc/kubernetes/ssl/ca.pem \
   --cert=/etc/kubernetes/ssl/etcd.pem \
   --key=/etc/kubernetes/ssl/etcd-key.pem \
   --write-out=table endpoint status; done
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
+|           ENDPOINT           |        ID        | VERSION | STORAGE VERSION | DB SIZE | IN USE | PERCENTAGE NOT IN USE | QUOTA  | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS | DOWNGRADE TARGET VERSION | DOWNGRADE ENABLED |
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
+| https://192.168.110.220:2379 | a68459b5c6f543d5 |   3.6.4 |           3.6.0 |  6.4 MB | 1.7 MB |                   74% | 8.6 GB |      true |      false |         8 |      32691 |              32691 |        |                          |             false |
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
+|           ENDPOINT           |        ID        | VERSION | STORAGE VERSION | DB SIZE | IN USE | PERCENTAGE NOT IN USE | QUOTA  | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS | DOWNGRADE TARGET VERSION | DOWNGRADE ENABLED |
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
+| https://192.168.110.221:2379 | b3e2d7b9c045016c |   3.6.4 |           3.6.0 |  6.4 MB | 1.6 MB |                   75% | 8.6 GB |     false |      false |         8 |      32691 |              32691 |        |                          |             false |
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
+|           ENDPOINT           |        ID        | VERSION | STORAGE VERSION | DB SIZE | IN USE | PERCENTAGE NOT IN USE | QUOTA  | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS | DOWNGRADE TARGET VERSION | DOWNGRADE ENABLED |
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
+| https://192.168.110.222:2379 | 1471d7a200f308b9 |   3.6.4 |           3.6.0 |  6.4 MB | 1.6 MB |                   75% | 8.6 GB |     false |      false |         8 |      32691 |              32691 |        |                          |             false |
++------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
 ```
 
-预期结果：
-
-```bash
-https://192.168.1.1:2379 is healthy: successfully committed proposal: took = 2.210885ms
-https://192.168.1.2:2379 is healthy: successfully committed proposal: took = 2.784043ms
-https://192.168.1.3:2379 is healthy: successfully committed proposal: took = 3.275709ms
-```
-
-三台 etcd 的输出均为 healthy 时表示集群服务正常。
+- 所有节点可达：etcdctl endpoint health 对所有三个节点都返回 healthy。
+- 有且仅有一个领导者：etcdctl endpoint status 显示一个节点 is leader: true，另外两个节点 is leader: false。
+- Raft 任期一致：所有三个节点的 raft term 值完全相同。
+- Raft 索引同步：所有节点的 raft index 值相差不大（跟随者与领导者的差距在可接受范围内）。
+- 无活跃告警：etcdctl alarm list 返回空。
+- 节点间网络稳定：没有频繁的领导者切换（通过监控 etcd_server_leader_changes_seen_total 指标）。
+- 磁盘空间充足：没有 NOSPACE 告警，且磁盘使用率在安全阈值内（例如低于80%）。
 
 > **磁盘性能**：快速的磁盘是 etcd 部署性能和稳定性的最关键因素。
 >
