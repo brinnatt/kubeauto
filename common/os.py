@@ -2,11 +2,13 @@ import platform
 import psutil
 import distro
 import paramiko
+import socket
 import subprocess
 import getpass
 from .logger import setup_logger
 from typing import Dict, Generator, Union, List, Optional, Tuple
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = setup_logger(__name__)
 
@@ -108,88 +110,244 @@ class SystemProbe:
             'swap_free_gb': round(swap.free / (1024 ** 3), 2)
         }
 
-    def ssh_keys_distribution(self,
-                              host_ips: List[str],
-                              username: str,
-                              password: Optional[str] = None,
-                              port: int = 22,
-                              timeout: int = 5
-                              ) -> dict[str, str] | None:
+    # ------------------------------------------------------------
+    # Public entry
+    # ------------------------------------------------------------
+    def ssh_keys_distribution(
+        self,
+        host_ips: List[str],
+        username: str,
+        password: Optional[str] = None,
+        port: int = 22,
+        timeout: int = 5,
+        ask_pass: bool = False,
+        dry_run: bool = False,
+        max_workers: int = 10,
+    ) -> Dict[str, str]:
         """
-        Distribute SSH keys to multiple hosts similar to ssh-copy-id.
+        Distribute SSH keys to hosts (ssh-copy-id compatible)
 
-        Args:
-            host_ips: List of host IP addresses to copy keys to
-            username: SSH username for all hosts
-            password: Optional common password for all hosts (will prompt if None and needed)
-            port: SSH port
-            timeout: Connection timeout in seconds
-
-        Returns:
-            Dictionary with host IPs as keys and status messages as values
+        Features:
+        - multi-key
+        - concurrency
+        - dry-run
+        - sshd capability detection
         """
-        # Generate or load public key
-        private_key_path = Path.home() / ".ssh" / "id_rsa"
-        if not private_key_path.exists():
-            logger.info("There is no SSH key pair, generating new pair...", extra={"to_stdout": True})
-            self.executor.execute(f"ssh-keygen -t rsa -b 2048 -N '' -f {private_key_path}")
 
-        public_key, _, _ = self.executor.execute(f"ssh-keygen -y -f {private_key_path}")
-        public_key = public_key.strip()
+        public_keys = self._load_all_public_keys()
+        if not public_keys:
+            raise RuntimeError("No SSH public keys available")
 
-        results = {}
-        password = password
+        results: Dict[str, str] = {}
 
-        for host_ip in host_ips:
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._handle_single_host,
+                    host,
+                    username,
+                    password,
+                    port,
+                    timeout,
+                    ask_pass,
+                    dry_run,
+                    public_keys,
+                ): host
+                for host in host_ips
+            }
 
-            try:
-                # Try key-based auth first
+            for future in as_completed(futures):
+                host = futures[future]
                 try:
-                    client.connect(host_ip, port=port, username=username, timeout=timeout)
-                    logger.info(f"[Connected] The key to {username}@{host_ip} already exists!", extra={"to_stdout": True})
-                    results[host_ip] = "[Connected] keys set up already"
-                    continue
-                except paramiko.AuthenticationException:
-                    pass
+                    results[host] = future.result()
+                except Exception as e:
+                    results[host] = f"[FAILED] {e}"
 
-                # Password auth flow
-                while True:
-                    if password is None:
-                        password = getpass.getpass(f"Enter SSH password for {username}@{host_ip}: ")
-
-                    try:
-                        client.connect(host_ip, port=port, username=username, password=password, timeout=timeout)
-                        break
-                    except paramiko.AuthenticationException:
-                        logger.info(f"The password of {username}@{host_ip} is not correct, please try again.",
-                                    extra={"to_stdout": True})
-                        password = None
-                        continue
-
-                # Deploy key
-                commands = [
-                    "mkdir -p ~/.ssh",
-                    "chmod 700 ~/.ssh",
-                    f"echo '{public_key}' >> ~/.ssh/authorized_keys",
-                    "chmod 600 ~/.ssh/authorized_keys"
-                ]
-
-                for cmd in commands:
-                    stdin, stdout, stderr = client.exec_command(cmd)
-                    if stderr.read():
-                        raise RuntimeError(f"Command failed: {cmd}")
-
-                logger.info(f"[Deployed] The key to {username}@{host_ip} has been deployed successfully!")
-                results[host_ip] = "[Deployed] keys set up successfully"
-
-            except Exception as e:
-                results[host_ip] = f"[Failed] The reason is {str(e)}"
-            finally:
-                client.close()
-        logger.info(f"The results of distributing ssh key is {results}.", extra={"to_stdout": True})
         return results
+
+    # ------------------------------------------------------------
+    # Single host handler
+    # ------------------------------------------------------------
+    def _handle_single_host(
+        self,
+        host: str,
+        username: str,
+        password: Optional[str],
+        port: int,
+        timeout: int,
+        ask_pass: bool,
+        dry_run: bool,
+        public_keys: Dict[str, str],
+    ):
+
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        host_password = password
+
+        try:
+            # 1. try key auth
+            try:
+                client.connect(
+                    hostname=host,
+                    port=port,
+                    username=username,
+                    timeout=timeout,
+                    allow_agent=True,
+                    look_for_keys=True,
+                )
+                return "[SKIPPED] Key already works"
+            except paramiko.AuthenticationException:
+                pass
+
+            # 2. password auth
+            while True:
+                if host_password is None:
+                    if not ask_pass:
+                        raise RuntimeError("Password required")
+                    host_password = getpass.getpass(
+                        f"Password for {username}@{host}: "
+                    )
+                try:
+                    client.connect(
+                        hostname=host,
+                        port=port,
+                        username=username,
+                        password=host_password,
+                        timeout=timeout,
+                        look_for_keys=False,
+                        allow_agent=False,
+                    )
+                    break
+                except paramiko.AuthenticationException:
+                    host_password = None
+
+            # 3. detect remote sshd supported key types
+            supported_types = self._detect_remote_key_types(client)
+
+            # 4. select keys to deploy
+            deploy_keys = {
+                name: key
+                for name, key in public_keys.items()
+                if self._key_type(name) in supported_types
+            }
+
+            if not deploy_keys:
+                return "[FAILED] No compatible SSH key type"
+
+            if dry_run:
+                return f"[CHECK] Would install keys: {', '.join(deploy_keys)}"
+
+            # 5. deploy
+            self._deploy_keys(client, deploy_keys)
+
+            return "[SUCCESS] Keys installed"
+
+        except (socket.timeout, socket.error) as e:
+            return f"[FAILED] Network error: {e}"
+        finally:
+            client.close()
+
+    # ------------------------------------------------------------
+    # Key loading
+    # ------------------------------------------------------------
+    def _load_all_public_keys(self) -> Dict[str, str]:
+        # ssh-copy-id key priority
+        keys_priority = [
+            "id_ed25519.pub",
+            "id_ecdsa.pub",
+            "id_rsa.pub",
+        ]
+
+        ssh_dir = Path.home() / ".ssh"
+        keys: Dict[str, str] = {}
+
+        for name in keys_priority:
+            path = ssh_dir / name
+            if path.exists():
+                keys[name] = path.read_text().strip()
+
+        if keys:
+            return keys
+
+        # generate default ed25519
+        private_key = ssh_dir / "id_ed25519"
+        logger.info(
+            "No SSH keys found, generating ed25519 key...",
+            extra={"to_stdout": True}
+        )
+        self.executor.execute(
+            f"ssh-keygen -t ed25519 -N '' -f {private_key}"
+        )
+        pub = private_key.with_suffix(".pub")
+        if not pub.exists():
+            raise RuntimeError("SSH key generation failed")
+
+        return {"id_ed25519.pub": pub.read_text().strip()}
+
+    # ------------------------------------------------------------
+    # Remote capability detection
+    # ------------------------------------------------------------
+    def _detect_remote_key_types(self, client: paramiko.SSHClient) -> List[str]:
+        """
+        Detect sshd supported PubkeyAcceptedAlgorithms
+        """
+        cmd = (
+            "sshd -T 2>/dev/null | "
+            "grep -i pubkeyacceptedalgorithms | awk '{print $2}'"
+        )
+        stdin, stdout, _ = client.exec_command(cmd)
+        exit_code = stdout.channel.recv_exit_status()
+
+        if exit_code != 0:
+            # fallback: assume common defaults
+            return ["ssh-ed25519", "rsa-sha2-256", "rsa-sha2-512"]
+
+        algos = stdout.read().decode().strip().split(",")
+        return algos
+
+    # ------------------------------------------------------------
+    # Deployment
+    # ------------------------------------------------------------
+    def _deploy_keys(self, client: paramiko.SSHClient, keys: Dict[str, str]) -> None:
+        commands = [
+            "install -d -m 700 ~/.ssh",
+            "touch ~/.ssh/authorized_keys",
+            "chmod 600 ~/.ssh/authorized_keys",
+        ]
+
+        for cmd in commands:
+            self._exec(client, cmd)
+
+        for key in keys.values():
+            self._exec(
+                client,
+                (
+                    f"grep -qxF '{key}' ~/.ssh/authorized_keys "
+                    f"|| echo '{key}' >> ~/.ssh/authorized_keys"
+                ),
+            )
+
+        self._exec(client, "restorecon -Rv ~/.ssh 2>/dev/null || true")
+
+    # ------------------------------------------------------------
+    # Utils
+    # ------------------------------------------------------------
+    def _exec(self, client: paramiko.SSHClient, cmd: str) -> None:
+        stdin, stdout, stderr = client.exec_command(cmd)
+        exit_code = stdout.channel.recv_exit_status()
+        if exit_code != 0:
+            raise RuntimeError(
+                f"{cmd} failed: {stderr.read().decode().strip()}"
+            )
+
+    def _key_type(self, key_name: str) -> str:
+        if "ed25519" in key_name:
+            return "ssh-ed25519"
+        if "ecdsa" in key_name:
+            return "ecdsa-sha2-nistp256"
+        if "rsa" in key_name:
+            return "rsa-sha2-256"
+        return ""
 
 
 class Executor:

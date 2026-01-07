@@ -451,18 +451,45 @@ class KubeautoCLI:
         )
 
     def _setup_system_command(self) -> None:
-        """Setup 'system' command"""
         parser = self.subparsers.add_parser(
             "system",
             help="Manage system environments"
         )
 
-        parser.add_argument(
+        ssh_parser = parser.add_argument_group("ssh key distribution")
+
+        ssh_parser.add_argument(
             "-a", "--ssh-key-distribute",
-            nargs="+",
-            metavar="HOST",
-            help="Distribute SSH key to hosts (format: [user=USER] [password=PASS] HOST1 HOST2...)"
+            action="store_true",
+            help="Distribute SSH public key to hosts"
         )
+        ssh_parser.add_argument(
+            "--user",
+            default="root",
+            help="SSH username (default: root)"
+        )
+        ssh_parser.add_argument(
+            "--password",
+            help="SSH password (NOT recommended, use --ask-pass)"
+        )
+        ssh_parser.add_argument(
+            "--ask-pass",
+            action="store_true",
+            help="Prompt for SSH password"
+        )
+        ssh_parser.add_argument(
+            "--port",
+            type=int,
+            default=22,
+            help="SSH port (default: 22)"
+        )
+        ssh_parser.add_argument(
+            "hosts",
+            nargs="*",
+            help="Target host IPs"
+        )
+        ssh_parser.add_argument("--dry-run", action="store_true", help="Dry run to foresee")
+        ssh_parser.add_argument("--workers", type=int, default=10, help="Number of concurrent workers")
 
         probe_group = parser.add_argument_group("probe options")
         probe_group.add_argument(
@@ -730,33 +757,31 @@ class KubeautoCLI:
             self.subparsers.choices["system"].print_help()
             raise SystemExecutionError("System command requires at least one argument")
 
+        # handle param conflict manually
+        if args.ssh_key_distribute and any([args.disk_usage, args.network_usage, args.system_load]):
+            self.subparsers.choices["system"].print_help()
+            raise SystemExecutionError("option -a/--ssh-key-distribute cannot be used with other system options")
+
         if args.ssh_key_distribute:
-            hosts = []
-            username = 'root'
-            password = None
+            if not args.hosts:
+                raise SystemExecutionError("No hosts specified")
 
-            # resolve user=xxx and common_password=xxx
-            for arg in args.ssh_key_distribute:
-                if arg.startswith("user="):
-                    username = arg.split("=", 1)[1]
-                elif arg.startswith("password="):
-                    password = arg.split("=", 1)[1].strip('"\'')
-                else:
-                    # recognize other args as IPs and validate
-                    if not validate_ip(arg.strip()):
-                        self.subparsers.choices["system"].print_help()
-                        raise SystemExecutionError(f"Invalid IP address {arg.strip()}")
-                    hosts.append(arg)
+            for h in args.hosts:
+                if not validate_ip(h):
+                    raise SystemExecutionError(f"Invalid IP: {h}")
 
-            if not hosts:
-                raise SystemExecutionError("No valid IP addresses provided for SSH key distribution")
-
-            # invoke SSH function to distribute ssh key
-            system.ssh_keys_distribution(
-                host_ips=hosts,
-                username=username,
-                password=password
+            results = system.ssh_keys_distribution(
+                host_ips=args.hosts,
+                username=args.user,
+                password=args.password,
+                port=args.port,
+                ask_pass=args.ask_pass,
+                dry_run=args.dry_run,
+                max_workers=args.workers,
             )
+
+            for host, result in results.items():
+                print(f"{host}: {result}")
 
         if args.disk_usage:
             disks = list(system.disk_usage())
