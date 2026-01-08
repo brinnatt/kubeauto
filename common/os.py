@@ -3,6 +3,8 @@ import psutil
 import distro
 import paramiko
 import socket
+import sys
+import time
 import subprocess
 import getpass
 from .logger import setup_logger
@@ -110,103 +112,156 @@ class SystemProbe:
             'swap_free_gb': round(swap.free / (1024 ** 3), 2)
         }
 
-    # ------------------------------------------------------------
-    # Public entry
-    # ------------------------------------------------------------
     def ssh_keys_distribution(
-        self,
-        host_ips: List[str],
-        username: str,
-        password: Optional[str] = None,
-        port: int = 22,
-        timeout: int = 5,
-        ask_pass: bool = False,
-        dry_run: bool = False,
-        max_workers: int = 10,
+            self,
+            host_ips: List[str],
+            username: str,
+            password: Optional[str] = None,
+            pw_file: Optional[str] = None,
+            port: int = 22,
+            timeout: int = 5,
+            ask_pass: bool = False,
+            dry_run: bool = False,
+            max_workers: int = 10,
     ) -> Dict[str, str]:
         """
-        Distribute SSH keys to hosts (ssh-copy-id compatible)
+        Distribute SSH public keys to remote hosts reliably.
 
-        Features:
-        - multi-key
-        - concurrency
-        - dry-run
-        - sshd capability detection
+        Password resolution priority (highest → lowest):
+          1. --pw-file <JSON_FILE>
+          2. --password <STR>
+          3. --ask-pass (interactive per-host)
+          4. Key-only auth (no password)
+
+        Password file format (pw.json):
+        {
+          "host1": "pass1",
+          "host2": "pass2",
+          "groupA": ["host3", "host4"],
+          "groupA_password": "passA"
+        }
+        Hosts not listed default to key-only or --password fallback.
         """
-
         public_keys = self._load_all_public_keys()
         if not public_keys:
-            raise RuntimeError("No SSH public keys available")
+            raise RuntimeError("No SSH public keys found. Tried: id_ed25519.pub, id_ecdsa.pub, id_rsa.pub")
 
+        # Resolve password map — ALL in main thread (thread-safe)
+        pw_map: Dict[str, Optional[str]] = {}
+
+        # Step 1: Load from --pw-file
+        if pw_file:
+            import json
+            try:
+                with open(pw_file, "r") as f:
+                    pw_data = json.load(f)
+            except Exception as e:
+                raise ValueError(f"Failed to load --pw-file '{pw_file}': {e}")
+
+            # Expand group definitions
+            host_to_pw: Dict[str, str] = {}
+            for k, v in pw_data.items():
+                if k.endswith("_password") and isinstance(v, str):
+                    group_name = k[:-9]  # remove '_password'
+                    group_hosts = pw_data.get(group_name)
+                    if isinstance(group_hosts, list):
+                        for h in group_hosts:
+                            if isinstance(h, str):
+                                host_to_pw[h] = v
+                elif isinstance(v, str) and not k.endswith("_password"):
+                    # direct host mapping
+                    host_to_pw[k] = v
+
+            for host in host_ips:
+                pw_map[host] = host_to_pw.get(host)
+
+        # Step 2: --password fallback
+        if password is not None:
+            for host in host_ips:
+                if host not in pw_map or pw_map[host] is None:
+                    pw_map[host] = password
+
+        # Step 3: --ask-pass (interactive, per-host, main thread only)
+        if ask_pass:
+            logger.info("", extra={"to_stdout": True})
+            logger.info("Interactive password input (Enter for key-only):", extra={"to_stdout": True})
+            for i, host in enumerate(host_ips, 1):
+                if host in pw_map and pw_map[host] is not None:
+                    continue
+                try:
+                    pw = getpass.getpass(f"[{i}/{len(host_ips)}] Password for {username}@{host}: ")
+                    pw_map[host] = pw if pw.strip() else None
+                except (KeyboardInterrupt, EOFError):
+                    logger.error("User interrupted password input.", extra={"to_stdout": True})
+                    sys.exit(1)
+
+        # Default: key-only
+        for host in host_ips:
+            pw_map.setdefault(host, None)
+
+        # Run in parallel
         results: Dict[str, str] = {}
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(
-                    self._handle_single_host,
-                    host,
-                    username,
-                    password,
-                    port,
-                    timeout,
-                    ask_pass,
-                    dry_run,
-                    public_keys,
-                ): host
-                for host in host_ips
-            }
+        def _worker(host: str) -> str:
+            host_pw = pw_map[host]
+            for attempt in range(1, 4):  # up to 3 attempts
+                try:
+                    return self._handle_single_host(
+                        host=host,
+                        username=username,
+                        host_password=host_pw,
+                        port=port,
+                        timeout=timeout,
+                        dry_run=dry_run,
+                        public_keys=public_keys,
+                    )
+                except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as e:
+                    if attempt < 3:
+                        time.sleep(0.5 * attempt)
+                        continue
+                    return f"[FAILED] Auth/SSH error after {attempt} attempts: {e}"
+                except Exception as e:
+                    return f"[CRASH] {type(e).__name__}: {e}"
+            return "[FAILED] Unexpected retry exit"
 
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_worker, h): h for h in host_ips}
             for future in as_completed(futures):
                 host = futures[future]
-                try:
-                    results[host] = future.result()
-                except Exception as e:
-                    results[host] = f"[FAILED] {e}"
+                results[host] = future.result()
 
         return results
 
-    # ------------------------------------------------------------
-    # Single host handler
-    # ------------------------------------------------------------
     def _handle_single_host(
-        self,
-        host: str,
-        username: str,
-        password: Optional[str],
-        port: int,
-        timeout: int,
-        ask_pass: bool,
-        dry_run: bool,
-        public_keys: Dict[str, str],
-    ):
-
+            self,
+            host: str,
+            username: str,
+            host_password: Optional[str],
+            port: int,
+            timeout: int,
+            dry_run: bool,
+            public_keys: Dict[str, str],
+    ) -> str:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        host_password = password
-
         try:
-            # 1. try key auth
+            # Phase 1: Try key auth
             try:
                 client.connect(
                     hostname=host,
                     port=port,
                     username=username,
                     timeout=timeout,
-                    allow_agent=True,
                     look_for_keys=True,
+                    allow_agent=True,
+                    compress=True,
                 )
-                return "[SKIPPED] Key already works"
-            except paramiko.AuthenticationException:
+                return "[SKIPPED] Key auth already works"
+            except (paramiko.AuthenticationException, paramiko.SSHException, socket.error):
                 pass
 
-            # 2. password auth
-            while True:
-                if host_password is None:
-                    if not ask_pass:
-                        raise RuntimeError("Password required")
-                    host_password = getpass.getpass(
-                        f"Password for {username}@{host}: "
-                    )
+            # Phase 2: Password auth (if provided)
+            if host_password is not None:
                 try:
                     client.connect(
                         hostname=host,
@@ -216,138 +271,91 @@ class SystemProbe:
                         timeout=timeout,
                         look_for_keys=False,
                         allow_agent=False,
+                        compress=True,
                     )
-                    break
                 except paramiko.AuthenticationException:
-                    host_password = None
+                    raise
+                except Exception as e:
+                    raise RuntimeError(f"Connection failed: {e}")
 
-            # 3. detect remote sshd supported key types
-            supported_types = self._detect_remote_key_types(client)
+            # Final key retry (in case password was wrong)
+            if host_password is None:
+                try:
+                    client.connect(
+                        hostname=host,
+                        port=port,
+                        username=username,
+                        timeout=timeout,
+                        look_for_keys=True,
+                        allow_agent=True,
+                        compress=True,
+                    )
+                    return "[SKIPPED] Key auth succeeded on retry"
+                except Exception:
+                    raise RuntimeError("Auth failed: no password and key auth unavailable")
 
-            # 4. select keys to deploy
-            deploy_keys = {
-                name: key
-                for name, key in public_keys.items()
-                if self._key_type(name) in supported_types
-            }
-
-            if not deploy_keys:
-                return "[FAILED] No compatible SSH key type"
-
+            # Phase 3: Deploy keys
             if dry_run:
-                return f"[CHECK] Would install keys: {', '.join(deploy_keys)}"
+                return f"[DRY-RUN] Install {len(public_keys)} keys: {', '.join(public_keys.keys())}"
 
-            # 5. deploy
-            self._deploy_keys(client, deploy_keys)
+            # Safe batch deploy via heredoc (avoids shell injection)
+            key_lines = "\n".join(public_keys.values())
+            script = f"""set -euo pipefail
+    install -d -m 700 ~/.ssh
+    touch ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
 
-            return "[SUCCESS] Keys installed"
+    # Idempotent key append
+    cat << 'EOF' | while IFS= read -r key; do
+        [[ -n "$key" ]] || continue
+        grep -qxF "$key" ~/.ssh/authorized_keys || echo "$key" >> ~/.ssh/authorized_keys
+    done
+    {key_lines}
+    EOF
 
-        except (socket.timeout, socket.error) as e:
-            return f"[FAILED] Network error: {e}"
+    restorecon -Rv ~/.ssh 2>/dev/null || true
+    """
+            stdin, stdout, stderr = client.exec_command(script)
+            rc = stdout.channel.recv_exit_status()
+            stderr_text = stderr.read().decode().strip()
+
+            if rc == 0:
+                return "[SUCCESS] Keys installed"
+            else:
+                err = stderr_text or stdout.read().decode().strip()
+                return f"[FAILED] Deploy failed (rc={rc}): {err[:256]}"
+
         finally:
             client.close()
 
-    # ------------------------------------------------------------
-    # Key loading
-    # ------------------------------------------------------------
     def _load_all_public_keys(self) -> Dict[str, str]:
-        # ssh-copy-id key priority
-        keys_priority = [
-            "id_ed25519.pub",
-            "id_ecdsa.pub",
-            "id_rsa.pub",
-        ]
-
         ssh_dir = Path.home() / ".ssh"
+        keys_priority = ["id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"]
         keys: Dict[str, str] = {}
-
         for name in keys_priority:
             path = ssh_dir / name
             if path.exists():
-                keys[name] = path.read_text().strip()
-
+                content = path.read_text().strip()
+                if content and "ssh-" in content and " " in content:
+                    keys[name] = content
         if keys:
             return keys
 
-        # generate default ed25519
+        # Generate ed25519
         private_key = ssh_dir / "id_ed25519"
-        logger.info(
-            "No SSH keys found, generating ed25519 key...",
-            extra={"to_stdout": True}
+        logger.info("No SSH keys found, generating ed25519...", extra={"to_stdout": True})
+        stdout, stderr, rc = self.executor.execute(
+            f"ssh-keygen -t ed25519 -N '' -f {private_key} -q"
         )
-        self.executor.execute(
-            f"ssh-keygen -t ed25519 -N '' -f {private_key}"
-        )
+        if rc != 0:
+            raise RuntimeError(f"Keygen failed: {stderr.strip()}")
         pub = private_key.with_suffix(".pub")
         if not pub.exists():
-            raise RuntimeError("SSH key generation failed")
-
-        return {"id_ed25519.pub": pub.read_text().strip()}
-
-    # ------------------------------------------------------------
-    # Remote capability detection
-    # ------------------------------------------------------------
-    def _detect_remote_key_types(self, client: paramiko.SSHClient) -> List[str]:
-        """
-        Detect sshd supported PubkeyAcceptedAlgorithms
-        """
-        cmd = (
-            "sshd -T 2>/dev/null | "
-            "grep -i pubkeyacceptedalgorithms | awk '{print $2}'"
-        )
-        stdin, stdout, _ = client.exec_command(cmd)
-        exit_code = stdout.channel.recv_exit_status()
-
-        if exit_code != 0:
-            # fallback: assume common defaults
-            return ["ssh-ed25519", "rsa-sha2-256", "rsa-sha2-512"]
-
-        algos = stdout.read().decode().strip().split(",")
-        return algos
-
-    # ------------------------------------------------------------
-    # Deployment
-    # ------------------------------------------------------------
-    def _deploy_keys(self, client: paramiko.SSHClient, keys: Dict[str, str]) -> None:
-        commands = [
-            "install -d -m 700 ~/.ssh",
-            "touch ~/.ssh/authorized_keys",
-            "chmod 600 ~/.ssh/authorized_keys",
-        ]
-
-        for cmd in commands:
-            self._exec(client, cmd)
-
-        for key in keys.values():
-            self._exec(
-                client,
-                (
-                    f"grep -qxF '{key}' ~/.ssh/authorized_keys "
-                    f"|| echo '{key}' >> ~/.ssh/authorized_keys"
-                ),
-            )
-
-        self._exec(client, "restorecon -Rv ~/.ssh 2>/dev/null || true")
-
-    # ------------------------------------------------------------
-    # Utils
-    # ------------------------------------------------------------
-    def _exec(self, client: paramiko.SSHClient, cmd: str) -> None:
-        stdin, stdout, stderr = client.exec_command(cmd)
-        exit_code = stdout.channel.recv_exit_status()
-        if exit_code != 0:
-            raise RuntimeError(
-                f"{cmd} failed: {stderr.read().decode().strip()}"
-            )
-
-    def _key_type(self, key_name: str) -> str:
-        if "ed25519" in key_name:
-            return "ssh-ed25519"
-        if "ecdsa" in key_name:
-            return "ecdsa-sha2-nistp256"
-        if "rsa" in key_name:
-            return "rsa-sha2-256"
-        return ""
+            raise RuntimeError("Public key missing after generation")
+        content = pub.read_text().strip()
+        if not (content.startswith("ssh-") and " " in content):
+            raise RuntimeError("Invalid public key format")
+        return {"id_ed25519.pub": content}
 
 
 class Executor:

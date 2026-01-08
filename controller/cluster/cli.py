@@ -455,9 +455,7 @@ class KubeautoCLI:
             "system",
             help="Manage system environments"
         )
-
-        ssh_parser = parser.add_argument_group("ssh key distribution")
-
+        ssh_parser = parser.add_argument_group("SSH Key Distribution")
         ssh_parser.add_argument(
             "-a", "--ssh-key-distribute",
             action="store_true",
@@ -470,12 +468,17 @@ class KubeautoCLI:
         )
         ssh_parser.add_argument(
             "--password",
-            help="SSH password (NOT recommended, use --ask-pass)"
+            help="Uniform password for all hosts (insecure)"
+        )
+        ssh_parser.add_argument(
+            "--pw-file",
+            metavar="FILE",
+            help="JSON file for per-host/group passwords (recommended for enterprise)"
         )
         ssh_parser.add_argument(
             "--ask-pass",
             action="store_true",
-            help="Prompt for SSH password"
+            help="Prompt interactively per host (main thread only)"
         )
         ssh_parser.add_argument(
             "--port",
@@ -486,12 +489,45 @@ class KubeautoCLI:
         ssh_parser.add_argument(
             "hosts",
             nargs="*",
-            help="Target host IPs"
+            help="Target host IPs/names"
         )
-        ssh_parser.add_argument("--dry-run", action="store_true", help="Dry run to foresee")
-        ssh_parser.add_argument("--workers", type=int, default=10, help="Number of concurrent workers")
+        ssh_parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would be done"
+        )
+        ssh_parser.add_argument(
+            "--workers",
+            type=int,
+            default=10,
+            help="Max concurrent workers (default: 10)"
+        )
 
-        probe_group = parser.add_argument_group("probe options")
+        ssh_parser.epilog = """
+    Examples:
+      # 1. Key-only (best practice)
+      kubeauto system -a --user root host1 host2
+
+      # 2. Uniform password (NOT recommended)
+      kubeauto system -a --user root --password 'pass' host1 host2
+
+      # 3. Interactive per-host
+      kubeauto system -a --user root --ask-pass host1 host2
+
+      # 4. Group passwords via JSON file (enterprise)
+      kubeauto system -a --user root --pw-file ./pw.json host1 host2 host3
+
+      Password file format (pw.json):
+      {
+        "host1": "pass1",
+        "host2": "pass2",
+        "prod_group": ["host3", "host4"],
+        "prod_group_password": "prod_pass"
+      }
+      Hosts not listed fall back to --password or key-only.
+    """.strip()
+
+        probe_group = parser.add_argument_group("System Probes")
         probe_group.add_argument(
             "-b", "--disk-usage",
             action="store_true",
@@ -500,12 +536,12 @@ class KubeautoCLI:
         probe_group.add_argument(
             "-c", "--system-load",
             action="store_true",
-            help="Probe system load"
+            help="Probe CPU/memory/swap"
         )
         probe_group.add_argument(
             "-d", "--network-usage",
             action="store_true",
-            help="Probe network usage"
+            help="Probe network interfaces"
         )
 
     def _execute_command(self, args: argparse.Namespace) -> None:
@@ -751,37 +787,30 @@ class KubeautoCLI:
     def _handle_system(self, args: argparse.Namespace) -> None:
         """Handle 'system' command"""
         system = SystemProbe()
-
-        # required at least one argument
         if not any([args.ssh_key_distribute, args.disk_usage, args.system_load, args.network_usage]):
             self.subparsers.choices["system"].print_help()
             raise SystemExecutionError("System command requires at least one argument")
-
-        # handle param conflict manually
         if args.ssh_key_distribute and any([args.disk_usage, args.network_usage, args.system_load]):
             self.subparsers.choices["system"].print_help()
             raise SystemExecutionError("option -a/--ssh-key-distribute cannot be used with other system options")
-
         if args.ssh_key_distribute:
             if not args.hosts:
                 raise SystemExecutionError("No hosts specified")
-
             for h in args.hosts:
                 if not validate_ip(h):
                     raise SystemExecutionError(f"Invalid IP: {h}")
-
             results = system.ssh_keys_distribution(
                 host_ips=args.hosts,
                 username=args.user,
                 password=args.password,
+                pw_file=args.pw_file,
                 port=args.port,
                 ask_pass=args.ask_pass,
                 dry_run=args.dry_run,
                 max_workers=args.workers,
             )
-
             for host, result in results.items():
-                print(f"{host}: {result}")
+                logger.info(f"{host}: {result}", extra={"to_stdout": True})
 
         if args.disk_usage:
             disks = list(system.disk_usage())
