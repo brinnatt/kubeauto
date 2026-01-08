@@ -456,28 +456,28 @@ class KubeautoCLI:
             help="Manage system environments",
             formatter_class=argparse.RawTextHelpFormatter,
             epilog="""
-            Examples:
-              # 1. Key-only (best practice)
-              kubeauto system -a --user root host1 host2
+Examples:
+  # 1. Key-only (best practice)
+  kubeauto system -a --user root host1 host2
 
-              # 2. Uniform password (NOT recommended)
-              kubeauto system -a --user root --password 'pass' host1 host2
+  # 2. Uniform password (NOT recommended)
+  kubeauto system -a --user root --password 'pass' host1 host2
 
-              # 3. Interactive per-host
-              kubeauto system -a --user root --ask-pass host1 host2
+  # 3. Interactive per-host
+  kubeauto system -a --user root --ask-pass host1 host2
 
-              # 4. Group passwords via JSON file (enterprise)
-              kubeauto system -a --user root --pw-file ./pw.json host1 host2 host3
+  # 4. Group passwords via JSON file (enterprise)
+  kubeauto system -a --user root --pw-file ./pw.json host1 host2 host3
 
-              Password file format (pw.json):
-              {
-                "host1": "pass1",
-                "host2": "pass2",
-                "prod_group": ["host3", "host4"],
-                "prod_group_password": "prod_pass"
-              }
-              Hosts not listed fall back to --password or key-only.
-            """
+  Password file format (pw.json):
+  {
+    "host1": "pass1",
+    "host2": "pass2",
+    "prod_group": ["host3", "host4"],
+    "prod_group_password": "prod_pass"
+  }
+  Hosts not listed fall back to --password or key-only.
+"""
         )
         ssh_parser = parser.add_argument_group("SSH Key Distribution")
         ssh_parser.add_argument(
