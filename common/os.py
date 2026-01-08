@@ -298,23 +298,22 @@ class SystemProbe:
             if dry_run:
                 return f"[DRY-RUN] Install {len(public_keys)} keys: {', '.join(public_keys.keys())}"
 
-            # Safe batch deploy via heredoc (avoids shell injection)
-            key_lines = "\n".join(public_keys.values())
+            import base64
+            keys_combined = "\n".join(public_keys.values()) + "\n"
+            keys_b64 = base64.b64encode(keys_combined.encode()).decode()
+
             script = f"""set -euo pipefail
-    install -d -m 700 ~/.ssh
-    touch ~/.ssh/authorized_keys
-    chmod 600 ~/.ssh/authorized_keys
+install -d -m 700 ~/.ssh
+touch ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
 
-    # Idempotent key append
-    cat << 'EOF' | while IFS= read -r key; do
-        [[ -n "$key" ]] || continue
-        grep -qxF "$key" ~/.ssh/authorized_keys || echo "$key" >> ~/.ssh/authorized_keys
-    done
-    {key_lines}
-    EOF
+echo '{keys_b64}' | base64 -d | while IFS= read -r key; do
+    [[ -n "$key" ]] || continue
+    grep -qxF "$key" ~/.ssh/authorized_keys || echo "$key" >> ~/.ssh/authorized_keys
+done
 
-    restorecon -Rv ~/.ssh 2>/dev/null || true
-    """
+restorecon -Rv ~/.ssh 2>/dev/null || true
+"""
             stdin, stdout, stderr = client.exec_command(script)
             rc = stdout.channel.recv_exit_status()
             stderr_text = stderr.read().decode().strip()
