@@ -453,7 +453,31 @@ class KubeautoCLI:
     def _setup_system_command(self) -> None:
         parser = self.subparsers.add_parser(
             "system",
-            help="Manage system environments"
+            help="Manage system environments",
+            formatter_class=argparse.RawTextHelpFormatter,
+            epilog="""
+            Examples:
+              # 1. Key-only (best practice)
+              kubeauto system -a --user root host1 host2
+
+              # 2. Uniform password (NOT recommended)
+              kubeauto system -a --user root --password 'pass' host1 host2
+
+              # 3. Interactive per-host
+              kubeauto system -a --user root --ask-pass host1 host2
+
+              # 4. Group passwords via JSON file (enterprise)
+              kubeauto system -a --user root --pw-file ./pw.json host1 host2 host3
+
+              Password file format (pw.json):
+              {
+                "host1": "pass1",
+                "host2": "pass2",
+                "prod_group": ["host3", "host4"],
+                "prod_group_password": "prod_pass"
+              }
+              Hosts not listed fall back to --password or key-only.
+            """
         )
         ssh_parser = parser.add_argument_group("SSH Key Distribution")
         ssh_parser.add_argument(
@@ -502,30 +526,6 @@ class KubeautoCLI:
             default=10,
             help="Max concurrent workers (default: 10)"
         )
-
-        ssh_parser.epilog = """
-    Examples:
-      # 1. Key-only (best practice)
-      kubeauto system -a --user root host1 host2
-
-      # 2. Uniform password (NOT recommended)
-      kubeauto system -a --user root --password 'pass' host1 host2
-
-      # 3. Interactive per-host
-      kubeauto system -a --user root --ask-pass host1 host2
-
-      # 4. Group passwords via JSON file (enterprise)
-      kubeauto system -a --user root --pw-file ./pw.json host1 host2 host3
-
-      Password file format (pw.json):
-      {
-        "host1": "pass1",
-        "host2": "pass2",
-        "prod_group": ["host3", "host4"],
-        "prod_group_password": "prod_pass"
-      }
-      Hosts not listed fall back to --password or key-only.
-    """.strip()
 
         probe_group = parser.add_argument_group("System Probes")
         probe_group.add_argument(
