@@ -202,12 +202,12 @@ class SystemProbe:
         # Run in parallel
         results: Dict[str, str] = {}
 
-        def _worker(host: str) -> str:
-            host_pw = pw_map[host]
+        def _worker(host_ip: str):
+            host_pw = pw_map[host_ip]
             for attempt in range(1, 4):  # up to 3 attempts
                 try:
                     return self._handle_single_host(
-                        host=host,
+                        host=host_ip,
                         username=username,
                         host_password=host_pw,
                         port=port,
@@ -215,13 +215,13 @@ class SystemProbe:
                         dry_run=dry_run,
                         public_keys=public_keys,
                     )
-                except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as e:
+                except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as ex:
                     if attempt < 3:
                         time.sleep(0.5 * attempt)
                         continue
-                    return f"[FAILED] Auth/SSH error after {attempt} attempts: {e}"
-                except Exception as e:
-                    return f"[CRASH] {type(e).__name__}: {e}"
+                    return f"[FAILED] Auth/SSH error after {attempt} attempts: {ex}"
+                except Exception as ex:
+                    return f"[CRASH] {type(ex).__name__}: {ex}"
             return "[FAILED] Unexpected retry exit"
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -241,7 +241,7 @@ class SystemProbe:
             timeout: int,
             dry_run: bool,
             public_keys: Dict[str, str],
-    ) -> str:
+    ):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
