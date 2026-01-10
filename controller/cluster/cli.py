@@ -794,13 +794,48 @@ Examples:
             self.subparsers.choices["system"].print_help()
             raise SystemExecutionError("option -a/--ssh-key-distribute cannot be used with other system options")
         if args.ssh_key_distribute:
-            if not args.hosts:
-                raise SystemExecutionError("No hosts specified")
-            for h in args.hosts:
+            target_hosts_set = set()
+
+            # Step 1: Extract all hosts from --pw-file (if provided)
+            if args.pw_file:
+                import json
+                try:
+                    with open(args.pw_file, 'r') as f:
+                        pw_data = json.load(f)
+                except Exception as e:
+                    raise SystemExecutionError(f"Failed to load --pw-file '{args.pw_file}': {e}")
+
+                pw_file_hosts = set()
+                for k, v in pw_data.items():
+                    if k.endswith("_password"):
+                        group_name = k[:-9]
+                        group_hosts = pw_data.get(group_name)
+                        if isinstance(group_hosts, list):
+                            for h in group_hosts:
+                                if isinstance(h, str):
+                                    pw_file_hosts.add(h)
+                    elif isinstance(v, str):
+                        pw_file_hosts.add(k)
+                target_hosts_set.update(pw_file_hosts)
+
+            # Step 2: Add CLI hosts (only if not already in pw_file)
+            cli_hosts = set(args.hosts) if args.hosts else set()
+            extra_hosts = cli_hosts - target_hosts_set
+            target_hosts_set.update(extra_hosts)
+
+            # Step 3: Validate at least one host
+            if not target_hosts_set:
+                raise SystemExecutionError("No hosts to distribute keys to. "
+                                           "Please specify hosts via --pw-file or positional arguments.")
+
+            target_hosts = sorted(target_hosts_set)
+            for h in target_hosts:
                 if not validate_ip(h):
                     raise SystemExecutionError(f"Invalid IP: {h}")
+
+            # Step 4: Call distribution (pass original args.pw_file so internal logic resolves passwords correctly)
             results = system.ssh_keys_distribution(
-                host_ips=args.hosts,
+                host_ips=target_hosts,
                 username=args.user,
                 password=args.password,
                 pw_file=args.pw_file,
