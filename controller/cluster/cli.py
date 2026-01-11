@@ -822,7 +822,7 @@ Examples:
             cli_hosts = set(args.hosts) if args.hosts else set()
             dup_hosts = cli_hosts & target_hosts_set
             if dup_hosts:
-                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!")
+                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!", extra={"to_stdout": True})
             extra_hosts = cli_hosts - dup_hosts
             target_hosts_set.update(extra_hosts)
 
