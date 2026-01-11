@@ -820,7 +820,10 @@ Examples:
 
             # Step 2: Add CLI hosts (only if not already in pw_file)
             cli_hosts = set(args.hosts) if args.hosts else set()
-            extra_hosts = cli_hosts - target_hosts_set
+            dup_hosts = cli_hosts & target_hosts_set
+            if dup_hosts:
+                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!")
+            extra_hosts = cli_hosts - dup_hosts
             target_hosts_set.update(extra_hosts)
 
             # Step 3: Validate at least one host
