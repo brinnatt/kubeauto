@@ -7,12 +7,17 @@ import sys
 import time
 import subprocess
 import getpass
+import threading
+import os
 from .logger import setup_logger
 from typing import Dict, Generator, Union, List, Optional, Tuple
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = setup_logger(__name__)
+
+# Thread-safe lock for known_hosts file operations
+_known_hosts_lock = threading.Lock()
 
 
 class SystemProbe:
@@ -242,8 +247,26 @@ class SystemProbe:
             dry_run: bool,
             public_keys: Dict[str, str],
     ):
+        # Prepare known_hosts file path
+        ssh_dir = Path.home() / ".ssh"
+        known_hosts_path = ssh_dir / "known_hosts"
+        
+        # Ensure .ssh directory exists
+        ssh_dir.mkdir(mode=0o700, exist_ok=True)
+        
         client = paramiko.SSHClient()
+        
+        # Load existing known_hosts file (if exists)
+        # This ensures we don't duplicate entries
+        if known_hosts_path.exists():
+            try:
+                client.load_host_keys(str(known_hosts_path))
+            except Exception as e:
+                logger.debug(f"Failed to load known_hosts: {e}")
+        
+        # Set policy to auto-add new host keys
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
         try:
             # Phase 1: Try key auth
             try:
@@ -256,6 +279,8 @@ class SystemProbe:
                     allow_agent=True,
                     compress=True,
                 )
+                # Save host key to known_hosts (thread-safe)
+                self._save_host_key_thread_safe(client, host, port, known_hosts_path)
                 return "[SKIPPED] Key auth already works"
             except (paramiko.AuthenticationException, paramiko.SSHException, socket.error):
                 pass
@@ -273,6 +298,8 @@ class SystemProbe:
                         allow_agent=False,
                         compress=True,
                     )
+                    # Save host key to known_hosts (thread-safe)
+                    self._save_host_key_thread_safe(client, host, port, known_hosts_path)
                 except paramiko.AuthenticationException:
                     raise
                 except Exception as e:
@@ -290,6 +317,8 @@ class SystemProbe:
                         allow_agent=True,
                         compress=True,
                     )
+                    # Save host key to known_hosts (thread-safe)
+                    self._save_host_key_thread_safe(client, host, port, known_hosts_path)
                     return "[SKIPPED] Key auth succeeded on retry"
                 except Exception:
                     raise RuntimeError("Auth failed: no password and key auth unavailable")
@@ -326,6 +355,74 @@ restorecon -Rv ~/.ssh 2>/dev/null || true
 
         finally:
             client.close()
+
+    @staticmethod
+    def _save_host_key_thread_safe(
+            client: paramiko.SSHClient,
+            host: str,
+            port: int,
+            known_hosts_path: Path
+    ) -> None:
+        """
+        Thread-safely save host key to known_hosts file.
+        
+        Based on paramiko official best practices:
+        1. Get remote server key from transport after connection
+        2. Load existing known_hosts to preserve entries from other threads
+        3. Add new host key to HostKeys object
+        4. Save merged HostKeys to file
+        
+        Reference: paramiko documentation for get_transport().get_remote_server_key()
+        """
+        with _known_hosts_lock:
+            try:
+                # Get the remote server's host key from the transport
+                # This is the official way to get host key after connection
+                transport = client.get_transport()
+                if transport is None:
+                    logger.debug(f"No transport available for {host}:{port}")
+                    return
+                
+                remote_server_key = transport.get_remote_server_key()
+                if remote_server_key is None:
+                    logger.debug(f"No remote server key for {host}:{port}")
+                    return
+                
+                # Create or load HostKeys object
+                host_keys = paramiko.HostKeys()
+                
+                # Load existing known_hosts file (if exists) to preserve existing entries
+                # This ensures we don't lose entries added by other threads
+                if known_hosts_path.exists():
+                    try:
+                        host_keys.load(str(known_hosts_path))
+                    except Exception as ex:
+                        logger.debug(f"Failed to load {known_hosts_path}: {ex}, but ignored")
+                        pass
+                
+                # Add host key with both formats for compatibility
+                # Format 1: hostname only (for default port 22)
+                # Format 2: [hostname]:port (for non-default ports)
+                key_type = remote_server_key.get_name()
+                
+                # Add with hostname format
+                host_keys.add(host, key_type, remote_server_key)
+                
+                # Also add with port format if port is not 22
+                if port != 22:
+                    host_with_port = f"[{host}]:{port}"
+                    host_keys.add(host_with_port, key_type, remote_server_key)
+                
+                # Save merged host keys to file
+                host_keys.save(str(known_hosts_path))
+                
+                # Ensure file has correct permissions (SSH standard: 644)
+                if known_hosts_path.exists():
+                    os.chmod(known_hosts_path, 0o644)
+                    
+            except Exception as e:
+                # Log but don't fail the operation if saving host key fails
+                logger.debug(f"Failed to save host key for {host}:{port}: {e}")
 
     def _load_all_public_keys(self) -> Dict[str, str]:
         ssh_dir = Path.home() / ".ssh"
