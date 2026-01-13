@@ -2,6 +2,8 @@ import platform
 import psutil
 import distro
 import paramiko
+import base64
+import json
 import socket
 import sys
 import time
@@ -156,7 +158,6 @@ class SystemProbe:
 
         # Step 1: Load from --pw-file
         if pw_file:
-            import json
             try:
                 with open(pw_file, "r") as f:
                     pw_data = json.load(f)
@@ -327,7 +328,6 @@ class SystemProbe:
             if dry_run:
                 return f"[DRY-RUN] Install {len(public_keys)} keys: {', '.join(public_keys.keys())}"
 
-            import base64
             keys_combined = "\n".join(public_keys.values()) + "\n"
             keys_b64 = base64.b64encode(keys_combined.encode()).decode()
 
