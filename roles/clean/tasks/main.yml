@@ -33,12 +33,6 @@
     state: absent
     marker: "#### {mark} k8s node hosts ####"
 
-- name: remove files
-  file: name={{ item }} state=absent
-  with_items:
-  - "/opt/kubeauto_prepare_tasks"
-  - "/root/.kube/config"
-
 - name: important indicates WARNNING
   debug:
     msg: "[IMPORTANT]: please reboot nodes, makesure to clean out net interfaces, routes and iptables/ipvs rules."

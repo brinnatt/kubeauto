@@ -22,6 +22,8 @@
     - "/etc/systemd/system/kube-proxy.service"
     - "/etc/kube-lb/"
     - "/etc/kubernetes/"
+    - "/opt/kubeauto_prepare_tasks"
+    - "/root/.kube/config"
     ignore_errors: true
 
 # to clean container runtime and networking
