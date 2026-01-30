@@ -2,8 +2,8 @@
 # prepare
 ############################
 
-# 可选进行系统安全加固 github.com/dev-sec/ansible-collection-hardening
-# (deprecated) 未更新上游项目，未验证最新k8s集群安装，不建议启用
+# [optional] this option comes from project https://github.com/dev-sec/ansible-collection-hardening
+# [caution] we didn't adapt this project to kubeauto
 OS_HARDEN: false
 
 
@@ -18,7 +18,7 @@ CERT_EXPIRY: "438000h"
 # force to recreate CA and other certs, not suggested to set 'true'
 CHANGE_CA: false
 
-# kubeconfig 配置参数
+# kubeconfig params
 CLUSTER_NAME: "cluster1"
 CONTEXT_NAME: "context-{{ CLUSTER_NAME }}"
 
@@ -42,7 +42,7 @@ ENABLE_SETTING_HOSTNAME: true
 ############################
 # role:etcd
 ############################
-# 设置不同的wal目录，可以避免磁盘io竞争，提高性能
+# We recommend using a separate disk for the WAL to avoid I/O contention.
 ETCD_DATA_DIR: "/var/lib/etcd"
 ETCD_WAL_DIR: ""
 
@@ -50,39 +50,39 @@ ETCD_WAL_DIR: ""
 ############################
 # role:runtime [containerd,docker]
 ############################
-# [.]启用拉取加速镜像仓库
+# [.]enable accelerated registry
 ENABLE_MIRROR_REGISTRY: true
 
-# [.]添加信任的私有仓库
-# 必须按照如下示例格式，协议头'http://'和'https://'不能省略
+# [.]enable trusting private registry
+# obey the following format，'http://' and 'https://' requested
 INSECURE_REG:
   - "http://registry.talkschool.cn:5000"
   - "https://reg.yourcompany.com"
 
-# [.]基础容器镜像
+# [.]basic pod image
 SANDBOX_IMAGE: "registry.talkschool.cn:5000/brinnatt/pause:__pause__"
 
-# [containerd]容器持久化存储目录
+# [containerd] container layer storage
 CONTAINERD_STORAGE_DIR: "/var/lib/containerd"
 
-# [docker]容器存储目录
+# [docker] container layer storage
 DOCKER_STORAGE_DIR: "/var/lib/docker"
 
-# [docker]开启Restful API
+# [docker] enable Restful API
 DOCKER_ENABLE_REMOTE_API: false
 
 
 ############################
 # role:kube-master
 ############################
-# k8s 集群 master 节点证书配置，可以添加多个ip和域名（比如增加公网ip和域名）
+# k8s cluster certificate configuration for master，more ip and FQDN recommended
 MASTER_CERT_HOSTS:
-  - "10.1.1.1"
-  - "k8s.brinnatt.io"
-  #- "www.test.com"
+  - "122.8.8.8"
+  - "k8s.brinnatt.com"
 
-# node 节点上 pod 网段掩码长度（决定每个节点最多能分配的pod ip地址）
-# 如果flannel 使用 --kube-subnet-mgr 参数，那么它将读取该设置为每个节点分配pod网段
+
+# k8s pod netmask length, which determines the maximum number of Pod IP addresses that can be allocated to each node.
+# When Flannel runs in kube-subnet-mgr mode (via the --kube-subnet-mgr argument), it will allocate a Pod CIDR to each node based on that configuration.
 # https://github.com/coreos/flannel/issues/847
 NODE_CIDR_LEN: 24
 
@@ -92,110 +92,118 @@ ENABLE_CLUSTER_AUDIT: false
 ############################
 # role:kube-node
 ############################
-# Kubelet 根目录
+# Kubelet root directory
 KUBELET_ROOT_DIR: "/var/lib/kubelet"
 
-# node节点最大pod 数
+# Maximum number of pods per node
 MAX_PODS: 110
 
-# 配置为kube组件（kubelet,kube-proxy,dockerd等）预留的资源量
-# 数值设置详见templates/kubelet-config.yaml.j2
+# Configures the amount of resources reserved for Kube components (kubelet, kube-proxy, dockerd, etc.)
+# For specific value settings, refer to templates/kubelet-config.yaml.j2
 KUBE_RESERVED_ENABLED: "no"
 
-# k8s 官方不建议草率开启 system-reserved, 除非你基于长期监控，了解系统的资源占用状况；
-# 并且随着系统运行时间，需要适当增加资源预留，数值设置详见templates/kubelet-config.yaml.j2
-# 系统预留设置基于 4c/8g 虚机，最小化安装系统服务，如果使用高性能物理机可以适当增加预留
-# 另外，集群安装时候apiserver等资源占用会短时较大，建议至少预留1g内存
+# Kubernetes does not recommend enabling system-reserved without careful consideration. It should only be configured after establishing a baseline resource usage profile through long-term monitoring.
+# Additionally, the reserved amount may need to be increased over time as system workloads evolve. For specific value settings, refer to templates/kubelet-config.yaml.j2.
+# The current system reservation settings are based on a minimal OS installation on a 4-core/8GB virtual machine. If using high-performance physical servers, the reservations should be increased appropriately.
+# Important Note: During cluster installation, components like the API server may experience temporary high resource usage. It is advised to reserve at least 1GB of memory to accommodate this.
 SYS_RESERVED_ENABLED: "no"
 
 
 ############################
 # role:network [flannel,calico,cilium,kube-ovn,kube-router]
 ############################
-# ------------------------------------------- flannel
-# [flannel]设置flannel 后端"host-gw","vxlan"等
+# ------------------- flannel begin -------------------
+# [flannel] flannel backend "host-gw","vxlan" can be configured
 FLANNEL_BACKEND: "vxlan"
 DIRECT_ROUTING: false
-
-# [flannel]
 flannel_ver: "__flannel__"
+# ------------------- flannel end ---------------------
 
-# ------------------------------------------- calico
-# 模式可选项有: [Always, CrossSubnet, Never],跨子网可以配置为Always与CrossSubnet
-# CrossSubnet为隧道+BGP路由混合模式可以提升网络性能，同子网配置为Never即可.
-# 公有云建议使用always比较省事，其他的话需要修改各自公有云的网络配置，具体可以参考各个公有云说明
+
+# ------------------- calico begin --------------------
+# The mode options are: [Always, CrossSubnet, Never]. Cross-subnet configurations can be set to either Always or CrossSubnet.
+# CrossSubnet is a hybrid mode (tunnel + BGP routing) that enhances network performance. For nodes within the same subnet, set it to Never.
+# For public cloud environments, using Always is recommended for simplicity. For other setups, adjustments to the respective cloud network configurations are required. Refer to the specific public cloud provider's documentation for details.
 CALICO_ENABLE_OVERLAY: "Always"
 
-# [calico]设置 calico-node使用的host IP，bgp邻居通过该地址建立，可手工指定也可以自动发现
+# This setting specifies the host IP used by the calico-node. BGP neighbors establish connections using this address, which can be manually configured or auto-detected.
 IP_AUTODETECTION_METHOD: "can-reach={{ groups['kube_master'][0] }}"
 
-# [calico]设置calico 网络 backend: bird, vxlan, none
-# 少数公有云（Azure）或者私有云不支持IPinIP封包，可以使用 vxlan 模式
+# Configures the Calico networking backend. Options: bird, vxlan, none.
+# For certain public clouds (e.g., Azure) or private clouds that do not support IP-in-IP encapsulation, vxlan mode can be used.
 CALICO_NETWORKING_BACKEND: "bird"
 
-# [calico]设置calico 是否使用route reflectors
-# 如果集群规模超过50个节点，建议启用该特性
+# Determines whether Calico uses Route Reflectors.
+# It is recommended to enable this feature if the cluster scale exceeds 50 nodes.
 CALICO_RR_ENABLED: false
 
-# CALICO_RR_NODES 配置route reflectors的节点，如果未设置默认使用集群master节点
-# CALICO_RR_NODES: ["192.168.1.1", "192.168.1.2"]
+# CALICO_RR_NODES configures the nodes to serve as Route Reflectors. If not set, cluster master nodes are used by default.
+# Example: CALICO_RR_NODES: ["192.168.1.1", "192.168.1.2"]
 CALICO_RR_NODES: []
 
-# [calico]更新支持calico 版本: ["3.19", "3.23"]
+# support calico versions: ["3.19", "3.23"]
 calico_ver: "__calico__"
 
-# [calico]calico 主版本
+# calico main version
 calico_ver_main: "{{ calico_ver.split('.')[0] }}.{{ calico_ver.split('.')[1] }}"
+# ------------------- calico end -------------------
 
-# ------------------------------------------- cilium
-# [cilium]镜像版本
+
+# ------------------- cilium begin -----------------
 cilium_ver: "__cilium__"
 cilium_connectivity_check: false
 cilium_hubble_enabled: false
 cilium_hubble_ui_enabled: false
+# ------------------- cilium end -------------------
 
-# ------------------------------------------- kube-ovn
-# [kube-ovn]离线镜像tar包
+
+# ------------------- kube-ovn begin ---------------
+# offline kube-ovn image tar
 kube_ovn_ver: "__kube_ovn__"
+# ------------------- kube-ovn end -----------------
 
-# ------------------------------------------- kube-router
-# [kube-router]公有云上存在限制，一般需要始终开启 ipinip；自有环境可以设置为 "subnet"
+
+# ------------------- kube-router begin ------------
+# Due to restrictions on public clouds, IP-in-IP must generally remain Always enabled. In self-managed environments, it can be set to "subnet".
 OVERLAY_TYPE: "full"
-
-# [kube-router]NetworkPolicy 支持开关
+# Enables or disables NetworkPolicy support.
 FIREWALL_ENABLE: true
-
-# [kube-router]kube-router 镜像版本
+# kube-router image version
 kube_router_ver: "__kube_router__"
+# ------------------- kube-router end --------------
 
 
 ############################
 # role:cluster-addon
 ############################
-# coredns 自动安装
+# coredns installed by default
 dns_install: "yes"
 corednsVer: "__coredns__"
 ENABLE_LOCAL_DNS_CACHE: true
 dnsNodeCacheVer: "__dns_node_cache__"
-# 设置 local dns cache 地址
+# set local dns cache address
 LOCAL_DNS_CACHE: "169.254.20.10"
 
-# metric server 自动安装
+
+# metric server installed by default
 metricsserver_install: "yes"
 metricsVer: "__metrics__"
 
-# dashboard 自动安装
+
+# dashboard not installed by default
 dashboard_install: "no"
 dashboardVer: "__dashboard__"
 
-# local-storage (local-path-provisioner) 自动安装
+
+# local-storage (local-path-provisioner) not installed by default
 local_path_provisioner_install: "no"
 local_path_provisioner_ver: "__local_path_provisioner__"
 local_path_storage_class: "local-path"
-# 设置默认本地存储路径
+# Set the path for local persistent volumes
 local_path_provisioner_dir: "/opt/local-path-provisioner"
 
-# nfs-provisioner 自动安装
+
+# nfs-provisioner not installed by default
 nfs_provisioner_install: "no"
 nfs_provisioner_namespace: "kube-system"
 nfs_provisioner_ver: "__nfs_provisioner__"
@@ -203,7 +211,8 @@ nfs_storage_class: "managed-nfs-storage"
 nfs_server: "192.168.1.10"
 nfs_path: "/data/nfs"
 
-# openebs 自动安装
+
+# openebs not installed by default
 openebs_install: "no"
 openebs_ver: "__openebs_ver__"
 openebs_namespace: "openebs"
@@ -212,29 +221,31 @@ openebs_hostpath_storage_class: "openebs-hostpath"
 openebs_lvm_storage_class: "openebs-lvmpv"
 openebs_lvm_vg: "vg_k8s"
 
-# prometheus 自动安装
+
+# prometheus not installed by default
 prom_install: "no"
 prom_namespace: "monitor"
 prom_storage_class: ""
 prom_chart_ver: "__prom_chart__"
 
-# minio 自动安装
+
+# minio not installed by default
 minio_install: "no"
 minio_namespace: "minio"
 minio_storage_class: "{{ openebs_lvm_storage_class }}"
 minio_chart_ver: "__minio_chart__"
 minio_root_user: "3aea61ca94177dx"
 minio_root_password: "0f3b19e46dd3aea61ca94177d"
-# 单机版=1，集群版=4以上
+# single=1，cluster>=4
 minio_pool_servers: 4
 minio_pool_size: 10Gi
-# 是否启用tls证书，如果未启用则使用http协议
+# Controls whether TLS certificates are enabled. If disabled, the HTTP protocol will be used instead.
 minio_tls_enabled: false
-# 是否使用权威证书，如果使用需要提前把证书放到目录 roles/cluster-addon/templates/minio/; 并且要求
-# 证书和私钥的名称分别为server.crt和server.key
+# Determines whether to use an authoritative certificate. If enabled, the certificate must be placed in the directory roles/cluster-addon/templates/minio/ in advance, with the certificate and private key named server.crt and server.key, respectively.
 minio_with_global_cert: false
 
-# nacos 自动安装
+
+# nacos not installed by default
 nacos_install: "no"
 nacos_namespace: "nacos"
 nacos_mysql_host: "semisync-mysql-cluster-mysql"
@@ -244,31 +255,33 @@ nacos_mysql_user: "__dbuser__"
 nacos_mysql_password: "__yourpassword__"
 nacos_storage_class: "{{ openebs_lvm_storage_class }}"
 
-# rocketmq 自动安装
+
+# rocketmq not installed by default
 rocketmq_install: "no"
 rocketmq_namespace: "rocketmq"
 rocketmq_storage_class: "{{ openebs_lvm_storage_class }}"
 
-# network-check 自动安装
+
+# network-check not installed by default
 network_check_enabled: false
 network_check_schedule: "*/5 * * * *"
 
-# kubeblocks 自动安装
-kubeblocks_ver: "__kubeblocks_ver__"
-kubeblocks_install: "no"
+# kubeblocks deprecated
+#kubeblocks_ver: "__kubeblocks_ver__"
+#kubeblocks_install: "no"
 
-# ingress-nginx 自动安装
-# ingress-nginx 只会部署到node with 标签：ingress-controller/provider=ingress-nginx
+# ingress-nginx not installed by default
+# The ingress-nginx controller will run on nodes bearing the label `ingress-controller/provider=ingress-nginx`
 ingress_nginx_install: "no"
 ingress_nginx_namespace: "ingress-nginx"
 ingress_nginx_ver: "__ingress_nginx_ver__"
-ingress_nginx_metrics_enabled: true # 需要先部署prometheus
+ingress_nginx_metrics_enabled: true # request prometheus installed firstly
 
 
 ############################
 # role:harbor
 ############################
-# harbor version，完整版本号
+# harbor full version
 HARBOR_VER: "__harbor__"
 HARBOR_DOMAIN: "harbor.brinnatt.io.local"
 HARBOR_PATH: /var/data
