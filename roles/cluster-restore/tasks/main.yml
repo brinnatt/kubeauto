@@ -10,7 +10,7 @@
 - name: create backup directory
   file: name=/etcd_backup state=directory
 
-- name: prepare specific etcd data for retore
+- name: prepare specific etcd data for restore
   copy:
     src: "{{ cluster_dir }}/backup/{{ db_to_restore }}"
     dest: "/etcd_backup/snapshot.db"
