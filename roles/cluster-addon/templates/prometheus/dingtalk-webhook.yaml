@@ -11,9 +11,6 @@ spec:
   selector:
     matchLabels:
       run: dingtalk
-  selector:
-    matchLabels:
-      run: dingtalk
   template:
     metadata:
       labels:
@@ -23,7 +20,7 @@ spec:
       - name: dingtalk
         image: timonwong/prometheus-webhook-dingtalk:v0.3.0
         imagePullPolicy: IfNotPresent
-        # 设置钉钉群聊自定义机器人后，使用实际 access_token 替换下面 xxxxxx部分
+        # After setting up the DingTalk group chat custom robot, replace the xxxxxx part below with the actual access_token
         args:
           - --ding.profile=webhook1=https://oapi.dingtalk.com/robot/send?access_token=xxxxxx
         ports:

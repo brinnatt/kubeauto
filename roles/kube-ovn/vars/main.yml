@@ -1,5 +1,5 @@
-# CLUSTER_CIDR_GW 作为 POD_GATEWAY，选取CLUSTER_CIDR 网段中的第一个地址
+# CLUSTER_CIDR_GW, as the POD_GATEWAY, selects the first address within the CLUSTER_CIDR segment
 CLUSTER_CIDR_GW: "{{ CLUSTER_CIDR.split('.')[0] }}.{{ CLUSTER_CIDR.split('.')[1] }}.{{ CLUSTER_CIDR.split('.')[2] }}.{{ CLUSTER_CIDR.split('.')[3]|regex_replace('/.*', '')|int + 1 }}"
 
-# coredns 服务地址，根据SERVICE_CIDR 设置，默认选择网段第二个地址
+# CoreDNS service address, configured according to SERVICE_CIDR, defaults to the second address in the network segment
 CLUSTER_DNS_SVC_IP: "{{ SERVICE_CIDR.split('.')[0] }}.{{ SERVICE_CIDR.split('.')[1] }}.{{ SERVICE_CIDR.split('.')[2] }}.{{ SERVICE_CIDR.split('.')[3]|regex_replace('/.*', '')|int + 2 }}"
