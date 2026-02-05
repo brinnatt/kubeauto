@@ -78,10 +78,6 @@ class KubeConstant:
         "refer_docs": "https://prometheus.io/",
         "refer_helm": "https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack"
     })
-    v_kubeblocks: str = field(default="1.0.1", metadata={
-        "refer_github": "https://github.com/apecloud/kubeblocks",
-        "refer_docs": "https://kubeblocks.io/docs/preview/user_docs/overview/introduction"
-    })
     v_miniooperator: str = field(default="7.1.1", metadata={
         "refer_docs": "https://docs.min.io/enterprise/aistor-object-store/installation/kubernetes/"
     })
@@ -156,36 +152,6 @@ class KubeConstant:
                 "kubernetesui/dashboard-web:1.7.0",
                 "kong:3.9"
             ],
-            "kubeblocks": [
-                "brinnatt/snapshot-controller:v8.3.0",
-                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-charts:{self.v_kubeblocks}",
-                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks:{self.v_kubeblocks}",
-                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:{self.v_kubeblocks}",
-                f"apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-dataprotection:{self.v_kubeblocks}",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/datasafed:0.2.1"
-            ],
-            "kb-addon-mysql": [
-                "apecloud/mysql_audit_log:8.0.33",
-                "apecloud/xtrabackup:8.0",
-                "apecloud/jemalloc:5.3.0",
-                "apecloud/syncer:0.5.0",
-                "apecloud/mysql:8.0.39",
-                "apecloud/mysqld-exporter:0.15.1",
-                "apecloud/proxysql:2.4.4",
-                "apecloud/percona-xtrabackup:8.0",
-                "apecloud/wal-g-mysql:2.0.1-1-ubuntu"
-            ],
-            "kb-addon-pg": [
-                "apecloud/spilo:16.4.0",
-                "apecloud/dbctl:0.1.7",
-                "apecloud/pgbouncer:1.19.0",
-                "apecloud/postgres-exporter:v0.15.0"
-            ],
-            "kb-addon-redis": [
-                "apecloud/dbctl:0.1.7",
-                "apecloud/agamotto:0.1.2-beta.1",
-                "apecloud/redis-stack-server:7.2.0-v14"
-            ],
             "minio": [
                 f"quay.io/minio/operator:v{self.v_miniooperator}",
                 "quay.io/minio/operator-sidecar:v7.0.1",
@@ -215,20 +181,6 @@ class KubeConstant:
             "ingress-nginx": [
                 "brinnatt/ingress-nginx-controller:v1.13.0",
                 "brinnatt/kube-webhook-certgen:v1.6.0"
-            ],
-            "kb-addon-mongodb": [
-                "apecloud/mongo:5.0.30",
-                "apecloud/syncer:0.3.7"
-            ],
-            "kb-addon-elasticsearch": [
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/elasticsearch-plugins:8.8.2",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/elasticsearch:8.8.2",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/elasticsearch-exporter:v1.7.0",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/curl-jq:0.1.0"
-            ],
-            "kb-addon-clickhouse": [
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/busybox:1.36",
-                "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/clickhouse:24.8.3-debian-12-r1"
             ],
             "kube-ovn": [
                 f"kubeovn/kube-ovn:{self.v_kubeovn}"

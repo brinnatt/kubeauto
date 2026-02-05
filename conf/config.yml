@@ -266,9 +266,6 @@ rocketmq_storage_class: "{{ openebs_lvm_storage_class }}"
 network_check_enabled: false
 network_check_schedule: "*/5 * * * *"
 
-# kubeblocks deprecated
-#kubeblocks_ver: "__kubeblocks_ver__"
-#kubeblocks_install: "no"
 
 # ingress-nginx not installed by default
 # The ingress-nginx controller will run on nodes bearing the label `ingress-controller/provider=ingress-nginx`
