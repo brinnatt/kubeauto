@@ -1,0 +1,13 @@
+{
+    "backup_base": "/backup/mysql",
+    "mysql_user": "backup",
+    "mysql_password": "your_backup_password_here",
+    "mysql_socket": "/var/lib/mysql/mysql.sock",
+    "mysql_service": "mysqld",
+    "mysql_datadir": "/var/lib/mysql",
+    "mysql_binlog_prefix": "mysql-bin",
+    "xtrabackup_parallel": 4,
+    "xtrabackup_compress_threads": 4,
+    "xtrabackup_use_memory": "1G",
+    "xtrabackup_lock_ddl": "AUTO"
+}
