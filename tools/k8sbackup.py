@@ -1071,17 +1071,15 @@ class KubernetesClient:
         """
         api_version = resource.get('apiVersion', 'v1')
         kind = resource.get('kind', '')
-        
+        metadata = resource.get('metadata', {})
+        namespace = metadata.get('namespace') if metadata else None
+        name = metadata.get('name', '') if metadata else ''
+
         try:
             if not kind:
                 raise ValueError("资源缺少 'kind' 字段")
-            
-            metadata = resource.get('metadata', {})
             if not metadata:
                 raise ValueError("资源缺少 'metadata' 字段")
-            
-            namespace = metadata.get('namespace')
-            name = metadata.get('name', '')
             
             if not name:
                 raise ValueError("资源缺少 'metadata.name' 字段")
