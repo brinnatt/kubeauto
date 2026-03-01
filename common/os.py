@@ -6,7 +6,6 @@ import base64
 import json
 import socket
 import sys
-import time
 import subprocess
 import getpass
 import threading
@@ -210,25 +209,20 @@ class SystemProbe:
 
         def _worker(host_ip: str):
             host_pw = pw_map[host_ip]
-            for attempt in range(1, 4):  # up to 3 attempts
-                try:
-                    return self._handle_single_host(
-                        host=host_ip,
-                        username=username,
-                        host_password=host_pw,
-                        port=port,
-                        timeout=timeout,
-                        dry_run=dry_run,
-                        public_keys=public_keys,
-                    )
-                except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as ex:
-                    if attempt < 3:
-                        time.sleep(0.5 * attempt)
-                        continue
-                    return f"[FAILED] Auth/SSH error after {attempt} attempts: {ex}"
-                except Exception as ex:
-                    return f"[CRASH] {type(ex).__name__}: {ex}"
-            return "[FAILED] Unexpected retry exit"
+            try:
+                return self._handle_single_host(
+                    host=host_ip,
+                    username=username,
+                    host_password=host_pw,
+                    port=port,
+                    timeout=timeout,
+                    dry_run=dry_run,
+                    public_keys=public_keys,
+                )
+            except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as ex:
+                return f"[FAILED] Auth/SSH error: {ex}"
+            except Exception as ex:
+                return f"[CRASH] {type(ex).__name__}: {ex}"
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(_worker, h): h for h in host_ips}

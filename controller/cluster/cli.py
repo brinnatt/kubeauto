@@ -794,6 +794,11 @@ Examples:
             self.subparsers.choices["system"].print_help()
             raise SystemExecutionError("option -a/--ssh-key-distribute cannot be used with other system options")
         if args.ssh_key_distribute:
+            if not any([args.password, args.pw_file, args.ask_pass]):
+                self.subparsers.choices["system"].print_help()
+                raise SystemExecutionError(
+                    "option -a/--ssh-key-distribute requires at least one of: --password, --pw-file, --ask-pass"
+                )
             target_hosts_set = set()
 
             # Step 1: Extract all hosts from --pw-file (if provided)
