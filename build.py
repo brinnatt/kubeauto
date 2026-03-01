@@ -27,7 +27,9 @@ def main():
             "docker==7.1.0",
             "paramiko==4.0.0",
             "psutil==7.0.0",
-            "taskflow==6.0.2"
+            "taskflow==6.0.2",
+            "PyMySQL == 1.1.2",
+            "kubernetes == 35.0.0"
         ], capture_output=False)
 
         # Build main executable (kubecli)
