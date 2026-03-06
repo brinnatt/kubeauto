@@ -121,6 +121,18 @@ class RuntimeChecker:
             return False
 
 
+class SSHConnectivityChecker:
+    """SSH 连通性检查器。远程操作前先检查，避免把连接失败误报为运行时未找到。"""
+
+    @staticmethod
+    def check(ssh) -> Tuple[bool, str]:
+        """检查是否可连通。返回 (成功, 失败时错误信息)。"""
+        ok, out = ssh.run_command("true", timeout=30)
+        if ok:
+            return True, ""
+        return False, (out or "").strip() or "未知错误"
+
+
 class CommandRunner:
     """命令执行器 - 参照官方最佳实践"""
 
@@ -481,20 +493,23 @@ class SSHManager:
         return ssh_options
 
     def run_command(self, cmd: str, timeout: Optional[int] = None) -> Tuple[bool, str]:
-        """执行远程命令"""
+        """执行远程命令。失败时返回 (False, 完整错误信息)，便于调用方直接打日志。"""
         if not cmd:
             return False, "命令为空"
-        # 构建 SSH 命令：ssh [options] user@host "command"
-        # 直接传递命令字符串给 SSH，让远程 shell 执行
         ssh_cmd = ["ssh"] + self._build_ssh_options() + [f"{self.username}@{self.host}", cmd]
         try:
             result = CommandRunner.run(ssh_cmd, capture_output=True, check=False, timeout=timeout or 3600)
             if result.returncode == 0:
                 return True, result.stdout if result.stdout else ""
-            else:
-                return False, result.stderr if result.stderr else ""
+            # 合并 stderr/stdout，与 starcli 一致，确保连接失败等错误完整返回
+            parts = []
+            if result.stderr:
+                parts.append(result.stderr.strip())
+            if result.stdout:
+                parts.append(result.stdout.strip())
+            return False, "\n".join(parts) if parts else "命令执行失败，返回码: {}".format(result.returncode)
         except Exception as e:
-            logger.error(f"SSH命令执行失败: {e}")
+            logger.error("SSH命令执行失败: {}".format(e))
             return False, str(e)
 
     def copy_file(self, src: str, dst: str) -> bool:
@@ -537,15 +552,26 @@ class SSHManager:
         
         scp_cmd = ["scp"] + scp_options + [str(src_path), f"{self.username}@{self.host}:{dst}"]
         try:
-            result = CommandRunner.run(scp_cmd, capture_output=False, check=False, timeout=1800)
-            return result.returncode == 0
+            result = CommandRunner.run(scp_cmd, capture_output=True, check=False, timeout=1800)
+            if result.returncode == 0:
+                return True
+            parts = []
+            if result.stderr:
+                parts.append(result.stderr.strip())
+            if result.stdout:
+                parts.append(result.stdout.strip())
+            err = "\n".join(parts) if parts else "返回码 {}".format(result.returncode)
+            logger.error("复制文件到远程失败 {} -> {}，错误:".format(src, dst))
+            for line in err.split("\n"):
+                logger.error("  {}".format(line))
+            return False
         except Exception as e:
             logger.error("复制文件到远程失败 {} -> {}: {}".format(src, dst, e))
             return False
 
     def check_runtime(self, runtime: str) -> bool:
-        """检查远程运行时 - 先检测命令是否存在，再验证版本"""
-        if runtime not in ["docker", "nerdctl"]:
+        """检查远程是否已安装指定运行时（命令存在且可执行）。仅在 SSH 已连通时调用。"""
+        if runtime not in ("docker", "nerdctl"):
             return False
         
         # 先用 command -v 检测命令是否存在
@@ -782,10 +808,13 @@ def _delete_images_remote(
             # 只有当remote_runtime是nerdctl时才需要验证命名空间
             validate_ns = (runtime == "nerdctl")
             ssh = SSHManager(host, port, ssh_user, ssh_key, namespace, strict_host_key_checking, validate_namespace=validate_ns)
-
-            # 检查远程运行时
+            # 先检查连通性再检查运行时，避免将连接失败误报为未找到运行时
+            ok, err = SSHConnectivityChecker.check(ssh)
+            if not ok:
+                logger.error("无法连接主机 {}:{}: {}".format(host, port, err))
+                continue
             if not ssh.check_runtime(runtime):
-                logger.error(f"主机 {host}:{port} 上未找到 {runtime}")
+                logger.error("主机 {}:{} 上未找到 {}".format(host, port, runtime))
                 continue
 
             # 构建删除命令
@@ -805,9 +834,10 @@ def _delete_images_remote(
                     logger.info(f"✓ 删除成功: {img}")
                     success_count += 1
                 else:
-                    logger.error(f"✗ 删除失败: {img}")
-                    if output:
-                        logger.error(f"  错误: {output.strip()}")
+                    logger.error("✗ 删除失败: {}".format(img))
+                    if output and output.strip():
+                        for line in output.strip().split("\n"):
+                            logger.error("  {}".format(line))
                     failed_images.append(img)
 
             if success_count > 0:
@@ -896,10 +926,13 @@ def distribute_images(
             # 只有当remote_runtime是nerdctl时才需要验证命名空间
             validate_ns = (remote_runtime == "nerdctl")
             ssh = SSHManager(host, port, ssh_user, ssh_key, namespace, strict_host_key_checking, validate_namespace=validate_ns)
-
-            # 检查远程运行时
+            # 先检查连通性再检查运行时，避免将连接失败误报为未找到运行时
+            ok, err = SSHConnectivityChecker.check(ssh)
+            if not ok:
+                logger.error("无法连接主机 {}:{}: {}".format(host, port, err))
+                continue
             if not ssh.check_runtime(remote_runtime):
-                logger.error(f"主机 {host}:{port} 上未找到 {remote_runtime}")
+                logger.error("主机 {}:{} 上未找到 {}".format(host, port, remote_runtime))
                 continue
 
             # 创建远程临时目录
@@ -907,8 +940,10 @@ def distribute_images(
             mkdir_cmd = f"mkdir -p {remote_dir}"
             success, output = ssh.run_command(mkdir_cmd, timeout=30)
             if not success:
-                logger.error(f"无法创建远程目录: {remote_dir}")
-                logger.error(f"错误信息: {output.strip() if output else '无错误信息'}")
+                logger.error("无法创建远程目录: {}".format(remote_dir))
+                if output and output.strip():
+                    for line in output.strip().split("\n"):
+                        logger.error("  {}".format(line))
                 continue
 
             # 批量传输文件
@@ -934,12 +969,15 @@ def distribute_images(
             else:
                 load_cmd = f"find {remote_dir} -name '*.tar' -exec {remote_runtime} load -i {{}} \\;"
 
-            load_success, _ = ssh.run_command(load_cmd, timeout=3600)
-            if load_success:
+            load_ok, load_out = ssh.run_command(load_cmd, timeout=3600)
+            if load_ok:
                 logger.info(f"✓ 主机 {host}:{port} 镜像加载完成")
                 success_hosts += 1
             else:
-                logger.error(f"✗ 主机 {host}:{port} 镜像加载失败")
+                logger.error("✗ 主机 {}:{} 镜像加载失败".format(host, port))
+                if load_out and load_out.strip():
+                    for line in load_out.strip().split("\n"):
+                        logger.error("  {}".format(line))
 
             # 清理临时文件
             ssh.run_command(f"rm -rf {remote_dir}", timeout=60)
