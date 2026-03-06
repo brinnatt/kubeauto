@@ -776,11 +776,75 @@ class ResourceTransformer:
 
         return resource
 
+    def _apply_namespace_to_metadata(self, meta: Optional[Dict]) -> None:
+        """
+        若 metadata 中存在 namespace 且在映射表中，则原地替换为映射后的命名空间。
+        用于 Pod template、Ingress backend 等嵌套的 namespace 字段，保证与顶层一致。
+        """
+        if not meta or not self.rule.namespace_mapping:
+            return
+        ns = meta.get('namespace')
+        if ns and ns in self.rule.namespace_mapping:
+            meta['namespace'] = self.rule.transform_namespace(ns)
+
+    def _transform_pod_template_namespaces(self, resource: Dict) -> None:
+        """
+        转换工作负载资源中 Pod 模板的 spec.template.metadata.namespace。
+        Kubernetes 官方：若设置了 Pod template 的 namespace，必须与资源所属 namespace 一致。
+        参考: PodTemplateSpec (ObjectMeta.namespace), Deployment/StatefulSet/DaemonSet/Job/CronJob API。
+        """
+        kind = resource.get('kind', '').lower()
+        spec = resource.get('spec', {}) or {}
+
+        if kind in ('deployment', 'statefulset', 'daemonset', 'replicaset'):
+            template = spec.get('template', {})
+            if isinstance(template, dict) and 'metadata' in template:
+                self._apply_namespace_to_metadata(template['metadata'])
+        elif kind == 'job':
+            template = spec.get('template', {})
+            if isinstance(template, dict) and 'metadata' in template:
+                self._apply_namespace_to_metadata(template['metadata'])
+        elif kind == 'cronjob':
+            job_template = spec.get('jobTemplate', {}) or {}
+            jspec = job_template.get('spec', {}) or {}
+            template = jspec.get('template', {})
+            if isinstance(template, dict) and 'metadata' in template:
+                self._apply_namespace_to_metadata(template['metadata'])
+
+    def _transform_ingress_backend_namespaces(self, resource: Dict) -> None:
+        """
+        转换 Ingress 中 backend.service.namespace（networking.k8s.io/v1）。
+        跨命名空间引用时需与命名空间映射保持一致。
+        """
+        spec = resource.get('spec', {}) or {}
+        default_backend = spec.get('defaultBackend', {}) or {}
+        if isinstance(default_backend.get('service'), dict):
+            self._apply_namespace_to_metadata(default_backend['service'])
+        for rule in spec.get('rules', []) or []:
+            http = rule.get('http', {}) or {}
+            for path in http.get('paths', []) or []:
+                backend = path.get('backend', {}) or {}
+                if isinstance(backend.get('service'), dict):
+                    self._apply_namespace_to_metadata(backend['service'])
+
     def _transform_namespace_references(self, resource: Dict):
-        """Transform namespace references in various resource types"""
+        """
+        按资源类型转换所有嵌套的 namespace 引用，保证与 metadata.namespace 映射一致。
+        审计范围（符合 Kubernetes 官方 API）：
+        - 顶层 metadata.namespace：在 _transform_namespace 中已处理
+        - Deployment/StatefulSet/DaemonSet/ReplicaSet：spec.template.metadata.namespace
+        - Job：spec.template.metadata.namespace
+        - CronJob：spec.jobTemplate.spec.template.metadata.namespace
+        - RoleBinding/ClusterRoleBinding：subjects[].namespace（ServiceAccount 等）
+        - NetworkPolicy：ingress/egress 中 namespaceSelector.matchExpressions 的 values
+        - Ingress (networking.k8s.io/v1)：spec.defaultBackend.service.namespace、rules[].http.paths[].backend.service.namespace
+        """
         kind = resource.get('kind', '').lower()
 
-        if kind == 'rolebinding':
+        # 工作负载：Pod 模板中的 namespace 必须与资源 namespace 一致（Kubernetes 要求）
+        self._transform_pod_template_namespaces(resource)
+
+        if kind in ('rolebinding', 'clusterrolebinding'):
             subjects = resource.get('subjects', [])
             for subject in subjects:
                 if subject.get('kind') in ['ServiceAccount', 'User', 'Group']:
@@ -791,6 +855,9 @@ class ResourceTransformer:
         elif kind == 'networkpolicy':
             # Handle ingress/egress namespace selectors
             self._transform_network_policy_namespaces(resource)
+
+        elif kind == 'ingress':
+            self._transform_ingress_backend_namespaces(resource)
 
     def _transform_network_policy_namespaces(self, resource: Dict):
         """Transform namespace selectors in network policies"""
@@ -2309,7 +2376,8 @@ def _add_restore_arguments(parser):
         help='跳过集群级资源的恢复'
     )
     parser.add_argument(
-        '--create-namespaces',
+        '--create-namespaces', '--create-namespace',
+        dest='create_namespaces',
         action='store_true',
         help='自动创建不存在的命名空间'
     )
