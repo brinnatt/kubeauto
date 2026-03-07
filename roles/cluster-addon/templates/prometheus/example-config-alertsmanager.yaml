@@ -22,6 +22,6 @@ alertmanagerFiles:
     - name: dingtalk
       webhook_configs:
       - send_resolved: false
-        # 需要运行插件 dingtalk-webhook.yaml，详情阅读 docs/guide/prometheus.md
+        # Need to run the plugin dingtalk-webhook.yaml. For details, please read docs/guide/prometheus.md.
         url: http://webhook-dingtalk.monitoring.svc.cluster.local:8060/dingtalk/webhook1/send
 

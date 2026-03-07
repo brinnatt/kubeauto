@@ -2,13 +2,23 @@ import platform
 import psutil
 import distro
 import paramiko
+import base64
+import json
+import socket
+import sys
 import subprocess
 import getpass
+import threading
+import os
 from .logger import setup_logger
 from typing import Dict, Generator, Union, List, Optional, Tuple
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = setup_logger(__name__)
+
+# Thread-safe lock for known_hosts file operations
+_known_hosts_lock = threading.Lock()
 
 
 class SystemProbe:
@@ -108,88 +118,334 @@ class SystemProbe:
             'swap_free_gb': round(swap.free / (1024 ** 3), 2)
         }
 
-    def ssh_keys_distribution(self,
-                              host_ips: List[str],
-                              username: str,
-                              password: Optional[str] = None,
-                              port: int = 22,
-                              timeout: int = 5
-                              ) -> dict[str, str] | None:
+    def ssh_keys_distribution(
+            self,
+            host_ips: List[str],
+            username: str,
+            password: Optional[str] = None,
+            pw_file: Optional[str] = None,
+            port: int = 22,
+            timeout: int = 5,
+            ask_pass: bool = False,
+            dry_run: bool = False,
+            max_workers: int = 10,
+    ) -> Dict[str, str]:
         """
-        Distribute SSH keys to multiple hosts similar to ssh-copy-id.
+        Distribute SSH public keys to remote hosts reliably.
 
-        Args:
-            host_ips: List of host IP addresses to copy keys to
-            username: SSH username for all hosts
-            password: Optional common password for all hosts (will prompt if None and needed)
-            port: SSH port
-            timeout: Connection timeout in seconds
+        Password resolution priority (highest → lowest):
+          1. --pw-file <JSON_FILE>
+          2. --password <STR>
+          3. --ask-pass (interactive per-host)
+          4. Key-only auth (no password)
 
-        Returns:
-            Dictionary with host IPs as keys and status messages as values
+        Password file format (pw.json):
+        {
+          "host1": "pass1",
+          "host2": "pass2",
+          "groupA": ["host3", "host4"],
+          "groupA_password": "passA"
+        }
+        Hosts not listed default to key-only or --password fallback.
         """
-        # Generate or load public key
-        private_key_path = Path.home() / ".ssh" / "id_rsa"
-        if not private_key_path.exists():
-            logger.info("There is no SSH key pair, generating new pair...", extra={"to_stdout": True})
-            self.executor.execute(f"ssh-keygen -t rsa -b 2048 -N '' -f {private_key_path}")
+        public_keys = self._load_all_public_keys()
+        if not public_keys:
+            raise RuntimeError("No SSH public keys found. Tried: id_ed25519.pub, id_ecdsa.pub, id_rsa.pub")
 
-        public_key, _, _ = self.executor.execute(f"ssh-keygen -y -f {private_key_path}")
-        public_key = public_key.strip()
+        # Resolve password map — ALL in main thread (thread-safe)
+        pw_map: Dict[str, Optional[str]] = {}
 
-        results = {}
-        password = password
-
-        for host_ip in host_ips:
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
+        # Step 1: Load from --pw-file
+        if pw_file:
             try:
-                # Try key-based auth first
-                try:
-                    client.connect(host_ip, port=port, username=username, timeout=timeout)
-                    logger.info(f"[Connected] The key to {username}@{host_ip} already exists!", extra={"to_stdout": True})
-                    results[host_ip] = "[Connected] keys set up already"
-                    continue
-                except paramiko.AuthenticationException:
-                    pass
-
-                # Password auth flow
-                while True:
-                    if password is None:
-                        password = getpass.getpass(f"Enter SSH password for {username}@{host_ip}: ")
-
-                    try:
-                        client.connect(host_ip, port=port, username=username, password=password, timeout=timeout)
-                        break
-                    except paramiko.AuthenticationException:
-                        logger.info(f"The password of {username}@{host_ip} is not correct, please try again.",
-                                    extra={"to_stdout": True})
-                        password = None
-                        continue
-
-                # Deploy key
-                commands = [
-                    "mkdir -p ~/.ssh",
-                    "chmod 700 ~/.ssh",
-                    f"echo '{public_key}' >> ~/.ssh/authorized_keys",
-                    "chmod 600 ~/.ssh/authorized_keys"
-                ]
-
-                for cmd in commands:
-                    stdin, stdout, stderr = client.exec_command(cmd)
-                    if stderr.read():
-                        raise RuntimeError(f"Command failed: {cmd}")
-
-                logger.info(f"[Deployed] The key to {username}@{host_ip} has been deployed successfully!")
-                results[host_ip] = "[Deployed] keys set up successfully"
-
+                with open(pw_file, "r") as f:
+                    pw_data = json.load(f)
             except Exception as e:
-                results[host_ip] = f"[Failed] The reason is {str(e)}"
-            finally:
-                client.close()
-        logger.info(f"The results of distributing ssh key is {results}.", extra={"to_stdout": True})
+                raise ValueError(f"Failed to load --pw-file '{pw_file}': {e}")
+
+            # Expand group definitions
+            host_to_pw: Dict[str, str] = {}
+            for k, v in pw_data.items():
+                if k.endswith("_password") and isinstance(v, str):
+                    group_name = k[:-9]  # remove '_password'
+                    group_hosts = pw_data.get(group_name)
+                    if isinstance(group_hosts, list):
+                        for h in group_hosts:
+                            if isinstance(h, str):
+                                host_to_pw[h] = v
+                elif isinstance(v, str) and not k.endswith("_password"):
+                    # direct host mapping
+                    host_to_pw[k] = v
+
+            for host in host_ips:
+                pw_map[host] = host_to_pw.get(host)
+
+        # Step 2: --password fallback
+        if password is not None:
+            for host in host_ips:
+                if host not in pw_map or pw_map[host] is None:
+                    pw_map[host] = password
+
+        # Step 3: --ask-pass (interactive, per-host, main thread only)
+        if ask_pass:
+            logger.info("", extra={"to_stdout": True})
+            logger.info("Interactive password input (Enter for key-only):", extra={"to_stdout": True})
+            for i, host in enumerate(host_ips, 1):
+                if host in pw_map and pw_map[host] is not None:
+                    continue
+                try:
+                    pw = getpass.getpass(f"[{i}/{len(host_ips)}] Password for {username}@{host}: ")
+                    pw_map[host] = pw if pw.strip() else None
+                except (KeyboardInterrupt, EOFError):
+                    logger.error("User interrupted password input.", extra={"to_stdout": True})
+                    sys.exit(1)
+
+        # Default: key-only
+        for host in host_ips:
+            pw_map.setdefault(host, None)
+
+        # Run in parallel
+        results: Dict[str, str] = {}
+
+        def _worker(host_ip: str):
+            host_pw = pw_map[host_ip]
+            try:
+                return self._handle_single_host(
+                    host=host_ip,
+                    username=username,
+                    host_password=host_pw,
+                    port=port,
+                    timeout=timeout,
+                    dry_run=dry_run,
+                    public_keys=public_keys,
+                )
+            except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as ex:
+                return f"[FAILED] Auth/SSH error: {ex}"
+            except Exception as ex:
+                return f"[CRASH] {type(ex).__name__}: {ex}"
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_worker, h): h for h in host_ips}
+            for future in as_completed(futures):
+                host = futures[future]
+                results[host] = future.result()
+
         return results
+
+    def _handle_single_host(
+            self,
+            host: str,
+            username: str,
+            host_password: Optional[str],
+            port: int,
+            timeout: int,
+            dry_run: bool,
+            public_keys: Dict[str, str],
+    ):
+        # Prepare known_hosts file path
+        ssh_dir = Path.home() / ".ssh"
+        known_hosts_path = ssh_dir / "known_hosts"
+        
+        # Ensure .ssh directory exists
+        ssh_dir.mkdir(mode=0o700, exist_ok=True)
+        
+        client = paramiko.SSHClient()
+        
+        # Load existing known_hosts file (if exists)
+        # This ensures we don't duplicate entries
+        if known_hosts_path.exists():
+            try:
+                client.load_host_keys(str(known_hosts_path))
+            except Exception as e:
+                logger.debug(f"Failed to load known_hosts: {e}")
+        
+        # Set policy to auto-add new host keys
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        try:
+            # Phase 1: Try key auth
+            try:
+                client.connect(
+                    hostname=host,
+                    port=port,
+                    username=username,
+                    timeout=timeout,
+                    look_for_keys=True,
+                    allow_agent=True,
+                    compress=True,
+                )
+                # Save host key to known_hosts (thread-safe)
+                self._save_host_key_thread_safe(client, host, port, known_hosts_path)
+                return "[SKIPPED] Key auth already works"
+            except (paramiko.AuthenticationException, paramiko.SSHException, socket.error):
+                pass
+
+            # Phase 2: Password auth (if provided)
+            if host_password is not None:
+                try:
+                    client.connect(
+                        hostname=host,
+                        port=port,
+                        username=username,
+                        password=host_password,
+                        timeout=timeout,
+                        look_for_keys=False,
+                        allow_agent=False,
+                        compress=True,
+                    )
+                    # Save host key to known_hosts (thread-safe)
+                    self._save_host_key_thread_safe(client, host, port, known_hosts_path)
+                except paramiko.AuthenticationException:
+                    raise
+                except Exception as e:
+                    raise RuntimeError(f"Connection failed: {e}")
+
+            # Final key retry (in case password was wrong)
+            if host_password is None:
+                try:
+                    client.connect(
+                        hostname=host,
+                        port=port,
+                        username=username,
+                        timeout=timeout,
+                        look_for_keys=True,
+                        allow_agent=True,
+                        compress=True,
+                    )
+                    # Save host key to known_hosts (thread-safe)
+                    self._save_host_key_thread_safe(client, host, port, known_hosts_path)
+                    return "[SKIPPED] Key auth succeeded on retry"
+                except Exception:
+                    raise RuntimeError("Auth failed: no password and key auth unavailable")
+
+            # Phase 3: Deploy keys
+            if dry_run:
+                return f"[DRY-RUN] Install {len(public_keys)} keys: {', '.join(public_keys.keys())}"
+
+            keys_combined = "\n".join(public_keys.values()) + "\n"
+            keys_b64 = base64.b64encode(keys_combined.encode()).decode()
+
+            script = f"""set -euo pipefail
+install -d -m 700 ~/.ssh
+touch ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+echo '{keys_b64}' | base64 -d | while IFS= read -r key; do
+    [[ -n "$key" ]] || continue
+    grep -qxF "$key" ~/.ssh/authorized_keys || echo "$key" >> ~/.ssh/authorized_keys
+done
+
+restorecon -Rv ~/.ssh 2>/dev/null || true
+"""
+            stdin, stdout, stderr = client.exec_command(script)
+            rc = stdout.channel.recv_exit_status()
+            stderr_text = stderr.read().decode().strip()
+
+            if rc == 0:
+                return "[SUCCESS] Keys installed"
+            else:
+                err = stderr_text or stdout.read().decode().strip()
+                return f"[FAILED] Deploy failed (rc={rc}): {err[:256]}"
+
+        finally:
+            client.close()
+
+    @staticmethod
+    def _save_host_key_thread_safe(
+            client: paramiko.SSHClient,
+            host: str,
+            port: int,
+            known_hosts_path: Path
+    ) -> None:
+        """
+        Thread-safely save host key to known_hosts file.
+        
+        Based on paramiko official best practices:
+        1. Get remote server key from transport after connection
+        2. Load existing known_hosts to preserve entries from other threads
+        3. Add new host key to HostKeys object
+        4. Save merged HostKeys to file
+        
+        Reference: paramiko documentation for get_transport().get_remote_server_key()
+        """
+        with _known_hosts_lock:
+            try:
+                # Get the remote server's host key from the transport
+                # This is the official way to get host key after connection
+                transport = client.get_transport()
+                if transport is None:
+                    logger.debug(f"No transport available for {host}:{port}")
+                    return
+                
+                remote_server_key = transport.get_remote_server_key()
+                if remote_server_key is None:
+                    logger.debug(f"No remote server key for {host}:{port}")
+                    return
+                
+                # Create or load HostKeys object
+                host_keys = paramiko.HostKeys()
+                
+                # Load existing known_hosts file (if exists) to preserve existing entries
+                # This ensures we don't lose entries added by other threads
+                if known_hosts_path.exists():
+                    try:
+                        host_keys.load(str(known_hosts_path))
+                    except Exception as ex:
+                        logger.debug(f"Failed to load {known_hosts_path}: {ex}, but ignored")
+                        pass
+                
+                # Add host key with both formats for compatibility
+                # Format 1: hostname only (for default port 22)
+                # Format 2: [hostname]:port (for non-default ports)
+                key_type = remote_server_key.get_name()
+                
+                # Add with hostname format
+                host_keys.add(host, key_type, remote_server_key)
+                
+                # Also add with port format if port is not 22
+                if port != 22:
+                    host_with_port = f"[{host}]:{port}"
+                    host_keys.add(host_with_port, key_type, remote_server_key)
+                
+                # Save merged host keys to file
+                host_keys.save(str(known_hosts_path))
+                
+                # Ensure file has correct permissions (SSH standard: 644)
+                if known_hosts_path.exists():
+                    os.chmod(known_hosts_path, 0o644)
+                    
+            except Exception as e:
+                # Log but don't fail the operation if saving host key fails
+                logger.debug(f"Failed to save host key for {host}:{port}: {e}")
+
+    def _load_all_public_keys(self) -> Dict[str, str]:
+        ssh_dir = Path.home() / ".ssh"
+        keys_priority = ["id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"]
+        keys: Dict[str, str] = {}
+        for name in keys_priority:
+            path = ssh_dir / name
+            if path.exists():
+                content = path.read_text().strip()
+                if content and "ssh-" in content and " " in content:
+                    keys[name] = content
+        if keys:
+            return keys
+
+        # Generate ed25519
+        private_key = ssh_dir / "id_ed25519"
+        logger.info("No SSH keys found, generating ed25519...", extra={"to_stdout": True})
+        stdout, stderr, rc = self.executor.execute(
+            f"ssh-keygen -t ed25519 -N '' -f {private_key} -q"
+        )
+        if rc != 0:
+            raise RuntimeError(f"Keygen failed: {stderr.strip()}")
+        pub = private_key.with_suffix(".pub")
+        if not pub.exists():
+            raise RuntimeError("Public key missing after generation")
+        content = pub.read_text().strip()
+        if not (content.startswith("ssh-") and " " in content):
+            raise RuntimeError("Invalid public key format")
+        return {"id_ed25519.pub": content}
 
 
 class Executor:

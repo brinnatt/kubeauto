@@ -451,20 +451,83 @@ class KubeautoCLI:
         )
 
     def _setup_system_command(self) -> None:
-        """Setup 'system' command"""
         parser = self.subparsers.add_parser(
             "system",
-            help="Manage system environments"
-        )
+            help="Manage system environments",
+            formatter_class=argparse.RawTextHelpFormatter,
+            epilog="""
+Examples:
+  # 1. Key-only (best practice)
+  kubeauto system -a --user root host1 host2
 
-        parser.add_argument(
+  # 2. Uniform password (NOT recommended)
+  kubeauto system -a --user root --password 'pass' host1 host2
+
+  # 3. Interactive per-host
+  kubeauto system -a --user root --ask-pass host1 host2
+
+  # 4. Group passwords via JSON file (enterprise)
+  kubeauto system -a --user root --pw-file ./pw.json host1 host2 host3
+
+  Password file format (pw.json):
+  {
+    "host1": "pass1",
+    "host2": "pass2",
+    "prod_group": ["host3", "host4"],
+    "prod_group_password": "prod_pass"
+  }
+  Hosts not listed fall back to --password or key-only.
+"""
+        )
+        ssh_parser = parser.add_argument_group("SSH Key Distribution")
+        ssh_parser.add_argument(
             "-a", "--ssh-key-distribute",
-            nargs="+",
-            metavar="HOST",
-            help="Distribute SSH key to hosts (format: [user=USER] [password=PASS] HOST1 HOST2...)"
+            action="store_true",
+            help="Distribute SSH public key to hosts"
+        )
+        ssh_parser.add_argument(
+            "--user",
+            default="root",
+            help="SSH username (default: root)"
+        )
+        ssh_parser.add_argument(
+            "--password",
+            help="Uniform password for all hosts (insecure)"
+        )
+        ssh_parser.add_argument(
+            "--pw-file",
+            metavar="FILE",
+            help="JSON file for per-host/group passwords (recommended for enterprise)"
+        )
+        ssh_parser.add_argument(
+            "--ask-pass",
+            action="store_true",
+            help="Prompt interactively per host (main thread only)"
+        )
+        ssh_parser.add_argument(
+            "--port",
+            type=int,
+            default=22,
+            help="SSH port (default: 22)"
+        )
+        ssh_parser.add_argument(
+            "hosts",
+            nargs="*",
+            help="Target host IPs/names"
+        )
+        ssh_parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would be done"
+        )
+        ssh_parser.add_argument(
+            "--workers",
+            type=int,
+            default=10,
+            help="Max concurrent workers (default: 10)"
         )
 
-        probe_group = parser.add_argument_group("probe options")
+        probe_group = parser.add_argument_group("System Probes")
         probe_group.add_argument(
             "-b", "--disk-usage",
             action="store_true",
@@ -473,12 +536,12 @@ class KubeautoCLI:
         probe_group.add_argument(
             "-c", "--system-load",
             action="store_true",
-            help="Probe system load"
+            help="Probe CPU/memory/swap"
         )
         probe_group.add_argument(
             "-d", "--network-usage",
             action="store_true",
-            help="Probe network usage"
+            help="Probe network interfaces"
         )
 
     def _execute_command(self, args: argparse.Namespace) -> None:
@@ -724,39 +787,73 @@ class KubeautoCLI:
     def _handle_system(self, args: argparse.Namespace) -> None:
         """Handle 'system' command"""
         system = SystemProbe()
-
-        # required at least one argument
         if not any([args.ssh_key_distribute, args.disk_usage, args.system_load, args.network_usage]):
             self.subparsers.choices["system"].print_help()
             raise SystemExecutionError("System command requires at least one argument")
-
+        if args.ssh_key_distribute and any([args.disk_usage, args.network_usage, args.system_load]):
+            self.subparsers.choices["system"].print_help()
+            raise SystemExecutionError("option -a/--ssh-key-distribute cannot be used with other system options")
         if args.ssh_key_distribute:
-            hosts = []
-            username = 'root'
-            password = None
+            if not any([args.password, args.pw_file, args.ask_pass]):
+                self.subparsers.choices["system"].print_help()
+                raise SystemExecutionError(
+                    "option -a/--ssh-key-distribute requires at least one of: --password, --pw-file, --ask-pass"
+                )
+            target_hosts_set = set()
 
-            # resolve user=xxx and common_password=xxx
-            for arg in args.ssh_key_distribute:
-                if arg.startswith("user="):
-                    username = arg.split("=", 1)[1]
-                elif arg.startswith("password="):
-                    password = arg.split("=", 1)[1].strip('"\'')
-                else:
-                    # recognize other args as IPs and validate
-                    if not validate_ip(arg.strip()):
-                        self.subparsers.choices["system"].print_help()
-                        raise SystemExecutionError(f"Invalid IP address {arg.strip()}")
-                    hosts.append(arg)
+            # Step 1: Extract all hosts from --pw-file (if provided)
+            if args.pw_file:
+                import json
+                try:
+                    with open(args.pw_file, 'r') as f:
+                        pw_data = json.load(f)
+                except Exception as e:
+                    raise SystemExecutionError(f"Failed to load --pw-file '{args.pw_file}': {e}")
 
-            if not hosts:
-                raise SystemExecutionError("No valid IP addresses provided for SSH key distribution")
+                pw_file_hosts = set()
+                for k, v in pw_data.items():
+                    if k.endswith("_password"):
+                        group_name = k[:-9]
+                        group_hosts = pw_data.get(group_name)
+                        if isinstance(group_hosts, list):
+                            for h in group_hosts:
+                                if isinstance(h, str):
+                                    pw_file_hosts.add(h)
+                    elif isinstance(v, str):
+                        pw_file_hosts.add(k)
+                target_hosts_set.update(pw_file_hosts)
 
-            # invoke SSH function to distribute ssh key
-            system.ssh_keys_distribution(
-                host_ips=hosts,
-                username=username,
-                password=password
+            # Step 2: Add CLI hosts (only if not already in pw_file)
+            cli_hosts = set(args.hosts) if args.hosts else set()
+            dup_hosts = cli_hosts & target_hosts_set
+            if dup_hosts:
+                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!", extra={"to_stdout": True})
+            extra_hosts = cli_hosts - dup_hosts
+            target_hosts_set.update(extra_hosts)
+
+            # Step 3: Validate at least one host
+            if not target_hosts_set:
+                raise SystemExecutionError("No hosts to distribute keys to. "
+                                           "Please specify hosts via --pw-file or positional arguments.")
+
+            target_hosts = sorted(target_hosts_set)
+            for h in target_hosts:
+                if not validate_ip(h):
+                    raise SystemExecutionError(f"Invalid IP: {h}")
+
+            # Step 4: Call distribution (pass original args.pw_file so internal logic resolves passwords correctly)
+            results = system.ssh_keys_distribution(
+                host_ips=target_hosts,
+                username=args.user,
+                password=args.password,
+                pw_file=args.pw_file,
+                port=args.port,
+                ask_pass=args.ask_pass,
+                dry_run=args.dry_run,
+                max_workers=args.workers,
             )
+            for host, result in results.items():
+                logger.info(f"{host}: {result}", extra={"to_stdout": True})
 
         if args.disk_usage:
             disks = list(system.disk_usage())

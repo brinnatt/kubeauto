@@ -15,7 +15,7 @@ def main():
         logger.info("Upgrading pip...", extra={"to_stdout": True})
         run_command([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], capture_output=False)
 
-        # 安装 pyinstaller
+        # Install PyInstaller and runtime deps
         logger.info("Installing PyInstaller...", extra={"to_stdout": True})
         run_command([sys.executable, "-m", "pip", "install",
             "pyinstaller==6.16.0",
@@ -27,12 +27,20 @@ def main():
             "docker==7.1.0",
             "paramiko==4.0.0",
             "psutil==7.0.0",
-            "taskflow==6.0.2"
+            "taskflow==6.0.2",
+            "PyMySQL==1.1.2",
+            "kubernetes==35.0.0"
         ], capture_output=False)
 
-        # 打包
+        # Build main executable (kubecli)
         logger.info(f"Building with spec: {spec_file}", extra={"to_stdout": True})
         run_command([sys.executable, "-m", "PyInstaller", "--clean", str(spec_file)], capture_output=False)
+
+        # Build each script under tools/ as a separate onefile executable
+        tools_spec = project_root / "tools-onefile.spec"
+        if tools_spec.exists():
+            logger.info(f"Building tools with spec: {tools_spec}", extra={"to_stdout": True})
+            run_command([sys.executable, "-m", "PyInstaller", "--clean", str(tools_spec)], capture_output=False)
 
         logger.info("Build finished successfully ✅", extra={"to_stdout": True})
 

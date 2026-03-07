@@ -1,52 +1,52 @@
-- name: 创建 {{ HARBOR_PATH }} 目录
+- name: create {{ HARBOR_PATH }} directory
   file:
     path: "{{ HARBOR_PATH }}"
     state: directory
     mode: 0755
 
-# 注册变量 result，如果 {{ HARBOR_PATH }} 目录下存在 registry 目录说明已经安装过 harbor，则不进行安装
-- name: 注册变量 result
+# Register the variable result. If the registry directory exists under the {{ HARBOR_PATH }} directory, it indicates that Harbor has already been installed, and no further installation should be performed.
+- name: register variable result
   command: ls {{ HARBOR_PATH }}
   register: result
 
-- name: 已安装提示
+- name: indicates that the harbor has been installed already
   debug:
-    msg: "发现harbor安装已存在，为避免冲突，不进行重新安装，仅尝试启动harbor"
+    msg: "It has been detected that Harbor installation already exists. To avoid conflicts, no reinstallation will be performed; only an attempt to start Harbor will be made."
   when: '"registry" in result.stdout'
 
 - block:
-  - name: 生成 harbor 随机密码
+  - name: Generate random password for Harbor
     shell: < /dev/urandom tr -dc 0-9A-Za-z-_ | head -c 16
     register: harbor_password_gen
   
   - debug: var="harbor_password_gen.stdout"
   
-  - name: 生成 DB 随机密码
+  - name: Generate random password for DB
     shell: < /dev/urandom tr -dc 0-9A-Za-z-_ | head -c 16
     register: db_password_gen
   
   - debug: var="db_password_gen.stdout"
   
-  - name: 下发 docker compose 二进制文件
+  - name: distribute docker compose binary
     copy: src={{ base_dir }}/extra-bin/docker-compose dest={{ bin_dir }}/docker-compose mode=0755
 
-  - name: 下发 harbor 离线安装包
+  - name: distribute harbor offline package
     copy:
       src: "{{ base_dir }}/down/harbor-offline-installer-{{ HARBOR_VER }}.tgz"
       dest: "{{ HARBOR_PATH }}/harbor-offline-installer-{{ HARBOR_VER }}.tgz"
 
-  - name: 解压 harbor 离线安装包
+  - name: uncompress harbor offline package
     shell: "cd {{ HARBOR_PATH }} && tar zxf harbor-offline-installer-{{ HARBOR_VER }}.tgz"
 
-  - name: 导入 harbor 所需 docker images
+  - name: load harbor docker images
     shell: "{{ bin_dir }}/docker load -i {{ HARBOR_PATH }}/harbor/harbor.{{ HARBOR_VER }}.tar.gz"
   
   - block:
-    - name: 创建 harbor 证书请求
+    - name: create harbor certificate request
       template: src=harbor-csr.json.j2 dest={{ cluster_dir }}/ssl/harbor-csr.json
       connection: local
     
-    - name: 创建 harbor 证书和私钥
+    - name: create harbor certificate and private key
       shell: "cd {{ cluster_dir }}/ssl && {{ base_dir }}/extra-bin/cfssl gencert \
             -ca=ca.pem \
             -ca-key=ca-key.pem \
@@ -54,7 +54,7 @@
             -profile=kubernetes harbor-csr.json|{{ base_dir }}/extra-bin/cfssljson -bare harbor"
       connection: local
     
-    - name: 分发自签名证书
+    - name: distribute self-signed certificates
       copy: src={{ cluster_dir }}/ssl/{{ item }} dest={{ ca_dir }}/{{ item }}
       with_items:
       - ca.pem
@@ -62,14 +62,14 @@
       - harbor-key.pem
     when: 'HARBOR_SELF_SIGNED_CERT|bool'
 
-  - name: 推送非自签名证书（需提前在{{ base_dir }}/down/ 下载好证书）
+  - name: Push non-self-signed certificates (certificates must be downloaded in advance to {{ base_dir }}/down/)
     copy: src={{ base_dir }}/down/{{ item }} dest={{ ca_dir }}/{{ item }}
     with_items: 
     - harbor.pem
     - harbor-key.pem  
     when: 'not HARBOR_SELF_SIGNED_CERT|bool'
   
-  - name: 准备 harbor 配置文件
+  - name: prepare harbor configuration
     template: src=harbor-{{ HARBOR_VER_MAIN }}.yml.j2 dest={{ HARBOR_PATH }}/harbor/harbor.yml
 
   - set_fact: HARBOR_INST_OPS="{{ HARBOR_INST_OPS }} --with-trivy"
@@ -77,13 +77,13 @@
 
   - debug: var="HARBOR_INST_OPS"
 
-  - name: 安装 harbor
+  - name: install harbor
     shell: "cd {{ HARBOR_PATH }}/harbor && \
             export PATH={{ bin_dir }}:$PATH && \
             ./install.sh {{ HARBOR_INST_OPS }} >> /tmp/harbor-`date +'%Y%m%d%H%M%S'`.log 2>&1"
   when: '"registry" not in result.stdout'
 
-- name: 检测 harbor 端口是否正常
+- name: check harbor status ready or not
   wait_for:
     host: "{{ inventory_hostname }}"
     port: "{{ HARBOR_TLS_PORT }}"

@@ -580,10 +580,10 @@ for ip in ${NODE_IPS}; do
 +------------------------------+------------------+---------+-----------------+---------+--------+-----------------------+--------+-----------+------------+-----------+------------+--------------------+--------+--------------------------+-------------------+
 ```
 
-- 所有节点可达：etcdctl endpoint health 对所有三个节点都返回 healthy。
-- 有且仅有一个领导者：etcdctl endpoint status 显示一个节点 is leader: true，另外两个节点 is leader: false。
-- Raft 任期一致：所有三个节点的 raft term 值完全相同。
-- Raft 索引同步：所有节点的 raft index 值相差不大（跟随者与领导者的差距在可接受范围内）。
+- 所有节点健康：etcdctl endpoint health 对所有三个节点都返回 healthy；
+- 有且仅有一个领导者：etcdctl endpoint status 显示一个节点 is leader: true，另外两个节点 is leader: false；
+- Raft 任期一致：所有节点处于同一 Raft term，且近期未发生频繁 Leader 切换；
+- Raft 索引同步：各节点 Raft index 与 Raft applied index 基本一致，日志同步正常；
 - 无活跃告警：etcdctl alarm list 返回空。
 - 节点间网络稳定：没有频繁的领导者切换（通过监控 etcd_server_leader_changes_seen_total 指标）。
 - 磁盘空间充足：没有 NOSPACE 告警，且磁盘使用率在安全阈值内（例如低于80%）。

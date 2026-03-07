@@ -42,8 +42,5 @@
 - import_tasks: network_check.yml
   when: 'network_check_enabled|bool and CLUSTER_NETWORK != "cilium"'
 
-- import_tasks: kubeblocks.yml
-  when: 'kubeblocks_install == "yes"'
-
 - import_tasks: ingress-nginx.yml
   when: 'ingress_nginx_install == "yes" and "ingress-nginx-controller" not in pod_info.stdout'

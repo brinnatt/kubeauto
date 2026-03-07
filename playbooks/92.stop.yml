@@ -14,7 +14,7 @@
 
 - hosts: ex_lb
   tasks:
-  - name: stopping external loadbalance
+  - name: stopping external load balancer
     service: name={{ item }} state=stopped enabled=no
     with_items:
     - l4lb
