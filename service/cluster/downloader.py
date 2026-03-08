@@ -144,27 +144,28 @@ class DownloadManager:
             f"brinnatt/metrics-server:{self.kube_constant.v_metricsserver}",
             f"brinnatt/pause:{self.kube_constant.v_pause}"
         ]
-
+        logger.info(f"[DOWNLOAD] Default images: downloading and uploading {len(images)} image(s) to local registry", extra=LOG_STDOUT)
         try:
             self.registry.upload_to_registry(images)
         except Exception as e:
+            logger.error(f"[DOWNLOAD] Failed to upload default images: {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload images: {e}")
-
-        logger.info(f"Default images uploaded to registry successfully!", extra=LOG_STDOUT)
+        logger.info(f"[DOWNLOAD] Default images: all {len(images)} image(s) uploaded successfully", extra=LOG_STDOUT)
 
     def get_extra_images(self, component: str) -> None:
         """Download extra images for specified component and upload to local registry"""
         if component not in self.kube_constant.component_images:
-            logger.error(f"Invalid component: {component}", extra=LOG_STDOUT)
+            logger.error(f"[DOWNLOAD] Invalid component: {component}", extra=LOG_STDOUT)
             return
 
-        logger.info(f"Downloading images for {component}, then uploading to local registry", extra=LOG_STDOUT)
-
+        images = self.kube_constant.component_images[component]
+        logger.info(f"[DOWNLOAD] Component {component}: downloading and uploading {len(images)} image(s) to local registry", extra=LOG_STDOUT)
         try:
-            self.registry.upload_to_registry(self.kube_constant.component_images[component])
-            logger.info(f"{component} images uploaded to registry successfully!", extra=LOG_STDOUT)
+            self.registry.upload_to_registry(images)
         except Exception as e:
+            logger.error(f"[DOWNLOAD] Failed to upload {component} images: {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload {component} images: {e}")
+        logger.info(f"[DOWNLOAD] Component {component}: all {len(images)} image(s) uploaded successfully", extra=LOG_STDOUT)
 
     def __check_file_exists(self, directory: Path, filename: str) -> bool:
         """Check if file exists"""
@@ -175,17 +176,21 @@ class DownloadManager:
         return False
 
     def __handle_image(self, directory: Path, image_tar: str, image: str) -> None:
-        """Check if image exists"""
+        """Pull/save/load image; use cache if tar exists. Logs each step for traceability."""
         path = directory / image_tar
         path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             if not path.exists():
-                logger.info(f"Downloading {image}", extra=LOG_STDOUT)
-                self.docker.pull_image(f"{image}")
-                self.docker.save_image(f"{image}", str(path))
+                logger.info(f"[DOWNLOAD] Image {image}: not in cache, downloading and saving...", extra=LOG_STDOUT)
+                self.docker.pull_image(image)
+                self.docker.save_image(image, str(path))
+            else:
+                logger.info(f"[DOWNLOAD] Image {image}: loading from cache {path}", extra=LOG_STDOUT)
             self.docker.load_image(str(path))
+            logger.info(f"[DOWNLOAD] Image ready: {image}", extra=LOG_STDOUT)
         except Exception as e:
+            logger.error(f"[DOWNLOAD] Failed for image {image}: {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to pull, save, or load {image}: {e}")
 
     def __handle_files(self, image: str, image_carrier: str, destination: Path, create_symlink=False) -> None:

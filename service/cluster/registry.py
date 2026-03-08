@@ -26,10 +26,11 @@ class RegistryManager:
         # Load registry image if not exists
         registry_tar = self.image_dir / f"registry-{version}.tar"
         if not registry_tar.exists():
-            logger.info(f"Downloading registry:{version} image", extra=LOG_STDOUT)
+            logger.info(f"[REGISTRY] Downloading registry image: registry:{version}", extra=LOG_STDOUT)
             self.docker.pull_image(f"registry:{version}")
             self.docker.save_image(f"registry:{version}", str(registry_tar))
         else:
+            logger.info(f"[REGISTRY] Loading registry image from cache: {registry_tar}", extra=LOG_STDOUT)
             self.docker.load_image(str(registry_tar))
 
         # Create registry directory
@@ -54,26 +55,37 @@ class RegistryManager:
                 f.write("127.0.0.1  registry.talkschool.cn\n")
 
     def upload_to_registry(self, images: List[str]) -> None:
-        """Upload images to local registry"""
+        """Upload images to local registry. Logs progress and per-image steps for traceability."""
 
         if not self.docker.check_container_exists("local_registry"):
             self.start_local_registry()
 
-        for image in images:
-            # Pull image if not exists locally
+        total = len(images)
+        logger.info(f"[REGISTRY] Uploading {total} image(s) to local registry", extra=LOG_STDOUT)
+
+        for idx, image in enumerate(images, start=1):
+            logger.info(f"[REGISTRY] [{idx}/{total}] Image: {image}", extra=LOG_STDOUT)
             try:
                 if not self.docker.image_exists(image):
+                    logger.info(f"[REGISTRY]   -> Pulling from remote...", extra=LOG_STDOUT)
                     self.docker.pull_image(image)
-            except CommandExecutionError:
-                logger.warning(f"Failed to pull image {image}, skipping", extra=LOG_STDOUT)
-                continue
+                else:
+                    logger.info(f"[REGISTRY]   -> Already exists locally, skip pull", extra=LOG_STDOUT)
 
-            # Tag and push to local registry
-            parts = image.split(':')
-            repo = parts[0]
-            tag = parts[1] if len(parts) > 1 else "latest"
-            local_image = f"registry.talkschool.cn:5000/{repo}:{tag}"
+                parts = image.split(':')
+                repo = parts[0]
+                tag = parts[1] if len(parts) > 1 else "latest"
+                local_image = f"registry.talkschool.cn:5000/{repo}:{tag}"
 
-            self.docker.tag_image(image, local_image)
-            self.docker.push_image(local_image)
-            logger.info(f"Uploaded {image} to local registry successfully!", extra=LOG_STDOUT)
+                logger.info(f"[REGISTRY]   -> Tagging and pushing to local registry...", extra=LOG_STDOUT)
+                self.docker.tag_image(image, local_image)
+                self.docker.push_image(local_image)
+                logger.info(f"[REGISTRY]   -> Done: {image}", extra=LOG_STDOUT)
+            except CommandExecutionError as e:
+                logger.error(f"[REGISTRY]   -> Failed: {image} — {e}", extra=LOG_STDOUT)
+                raise
+            except Exception as e:
+                logger.error(f"[REGISTRY]   -> Exception for image {image}: {e}", extra=LOG_STDOUT)
+                raise
+
+        logger.info(f"[REGISTRY] All {total} image(s) uploaded to local registry successfully", extra=LOG_STDOUT)
