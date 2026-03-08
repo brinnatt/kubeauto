@@ -75,6 +75,9 @@ class KubeautoCLI:
         # System commands
         self._setup_system_command()
 
+        # Version (no side effects)
+        self._setup_version_command()
+
     def _add_common_cluster_args(self, parser: argparse.ArgumentParser) -> None:
         """Add common cluster arguments to a parser"""
         parser.add_argument(
@@ -544,6 +547,13 @@ Examples:
             help="Probe network interfaces"
         )
 
+    def _setup_version_command(self) -> None:
+        """Setup 'version' command: print kubeauto version (same as v_kubeauto)."""
+        self.subparsers.add_parser(
+            "version",
+            help="Show kubeauto version"
+        )
+
     def _execute_command(self, args: argparse.Namespace) -> None:
         """Execute the appropriate command based on parsed arguments"""
         command_handlers: Dict[str, Callable[[argparse.Namespace], None]] = {
@@ -581,7 +591,10 @@ Examples:
             "docker": self._handle_docker,
 
             # System commands
-            "system": self._handle_system
+            "system": self._handle_system,
+
+            # Version
+            "version": self._handle_version
         }
 
         handler = command_handlers.get(args.command)
@@ -590,6 +603,10 @@ Examples:
         else:
             self.parser.print_help()
             sys.exit(1)
+
+    def _handle_version(self, args: argparse.Namespace) -> None:
+        """Print kubeauto version (from v_kubeauto), no side effects."""
+        logger.info(self.kube_constant.v_kubeauto, extra=LOG_STDOUT)
 
     def _handle_new(self, args: argparse.Namespace) -> None:
         """Handle 'new' command"""
