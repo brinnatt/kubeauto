@@ -751,6 +751,22 @@ class ClusterManager:
         )
         logger.info("Reconfigure the kubeconfig after a master node removal successfully!", extra=LOG_STDOUT)
 
+    def _is_cluster_live(self, kubeconfig_path: Path) -> bool:
+        """Check if cluster has at least one Ready node (Kubernetes API). Used for aio precondition/revert safety."""
+        if not kubeconfig_path.exists():
+            return False
+        try:
+            k8s_config.load_kube_config(config_file=str(kubeconfig_path))
+            v1 = k8s_client.CoreV1Api()
+            nodes = v1.list_node()
+            for node in nodes.items:
+                for cond in (node.status.conditions or []):
+                    if getattr(cond, "type", None) == "Ready" and getattr(cond, "status", None) == "True":
+                        return True
+            return False
+        except (K8sApiException, Exception):
+            return False
+
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
         v_kube = run_command([str(self.kube_bin_dir / "kube-apiserver"), "--version"]).stdout.split()[1]
@@ -775,52 +791,87 @@ class ClusterManager:
 
 
 class SetupAIO(task.Task):
-    """All-in-one cluster setup task; uses ClusterManager for paths and operations."""
+    """All-in-one cluster setup task; uses ClusterManager and Kubernetes API for safe re-entry and revert."""
+
+    AIO_CLUSTER = "aio"
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cluster_manager = ClusterManager()
 
     def execute(self) -> None:
-        """Start an all-in-one cluster with default settings"""
+        """Start an all-in-one cluster with default settings. Idempotent: skip if aio already live (K8s API)."""
         from common.utils import get_host_ip, ssh_localhost
+
+        m = self.cluster_manager
+        aio_dir = m.clusters_dir / self.AIO_CLUSTER
+        aio_kubeconfig = aio_dir / "kubectl.kubeconfig"
+
+        # Precondition: if aio cluster already exists and is live, do not re-install (enterprise idempotent)
+        if aio_dir.exists() and aio_kubeconfig.exists():
+            if m._is_cluster_live(aio_kubeconfig):
+                logger.info(
+                    "aio cluster already exists and has Ready node(s); skip install (idempotent).",
+                    extra=LOG_STDOUT,
+                )
+                return
+            # Dir exists but cluster not live: partial/failed state, do not overwrite blindly
+            raise ClusterExistsError(
+                f"Cluster {self.AIO_CLUSTER} directory exists but cluster is not live. "
+                "Remove it manually if you want to retry, or fix the cluster."
+            )
 
         logger.info("Start initializing allinone cluster environment...", extra=LOG_STDOUT)
         host_ip = get_host_ip()
         ssh_localhost()
 
-        self.cluster_manager.new_cluster("aio")
-        m = self.cluster_manager
-        aio_hosts = m.clusters_dir / "aio" / "hosts"
+        m.new_cluster(self.AIO_CLUSTER)
+        aio_hosts = aio_dir / "hosts"
         aio_hosts.write_text(
             (m.base_path / "conf/hosts.allinone").read_text()
             .replace("192.168.1.1", host_ip)
-            .replace("_cluster_name_", "aio")
+            .replace("_cluster_name_", self.AIO_CLUSTER)
         )
         logger.info("Allinone cluster environment has been initialized successfully!", extra=LOG_STDOUT)
 
         try:
-            # Setup cluster
             logger.info("Start creating allinone cluster...", extra=LOG_STDOUT)
-            self.cluster_manager.setup_cluster("aio", "all")
+            m.setup_cluster(self.AIO_CLUSTER, "all")
             logger.info("Allinone cluster has been established successfully!", extra=LOG_STDOUT)
         except Exception as e:
             logger.error("Allinone cluster failed to be created!", extra=LOG_STDOUT)
             raise e
 
-    def revert(self, result, flow_failures, **kwargs):
-        logger.error(f"Task failed with: {result.exception_str}, now begin to revert the installation of aio!", extra=LOG_STDOUT)
+    def revert(self, result, flow_failures, **kwargs) -> None:
+        """Revert only when cluster is not live (K8s API). Refuse to tear down a live cluster."""
         m = self.cluster_manager
+        aio_dir = m.clusters_dir / self.AIO_CLUSTER
+        aio_kubeconfig = aio_dir / "kubectl.kubeconfig"
+
+        # Safety: do not revert if cluster has Ready nodes (production protection)
+        if aio_kubeconfig.exists() and m._is_cluster_live(aio_kubeconfig):
+            logger.error(
+                "Refuse to revert: aio cluster is live (has Ready node). Revert would destroy production.",
+                extra=LOG_STDOUT,
+            )
+            raise ClusterManageError(
+                "Refuse to revert: aio cluster is live. Revert is only for failed installs."
+            )
+
+        logger.error(
+            f"Task failed with: {result.exception_str}, now begin to revert the installation of aio!",
+            extra=LOG_STDOUT,
+        )
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
+            run_result = ansible_runner.run(
                 private_data_dir=tmp_dir,
                 playbook=str(m.playbooks_dir / "99.clean.yml"),
-                inventory=str(m.clusters_dir / "aio" / "hosts"),
-                extravars=m._yaml_to_dict(m.clusters_dir / "aio" / "config.yml"),
+                inventory=str(m.clusters_dir / self.AIO_CLUSTER / "hosts"),
+                extravars=m._yaml_to_dict(m.clusters_dir / self.AIO_CLUSTER / "config.yml"),
                 roles_path=str(m.roles_dir),
             )
-        if result.rc != 0:
-            logger.error(f"Failed to revert the installation of aio! Exit code: {result.rc}", extra=LOG_STDOUT)
-            sys.exit(result.rc)
-        rmrf(m.clusters_dir / "aio")
+        if run_result.rc != 0:
+            logger.error(f"Failed to revert the installation of aio! Exit code: {run_result.rc}", extra=LOG_STDOUT)
+            sys.exit(run_result.rc)
+        rmrf(aio_dir)
         logger.info("Succeed to revert the installation of aio!", extra=LOG_STDOUT)
