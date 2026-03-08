@@ -9,7 +9,7 @@ import ipaddress
 from typing import List, Tuple, Optional
 from enum import Enum
 from pathlib import Path
-from .logger import setup_logger
+from .logger import setup_logger, LOG_STDOUT
 from .exceptions import CommandExecutionError
 
 logger = setup_logger(__name__)
@@ -102,7 +102,7 @@ def ssh_localhost() -> None:
 
     private_key = ssh_dir / "id_rsa"
     if not private_key.exists():
-        logger.info("Generating SSH key pair", extra={"to_stdout": True})
+        logger.info("Generating SSH key pair", extra=LOG_STDOUT)
         run_command(f"ssh-keygen -t rsa -b 2048 -N '' -f {private_key}", shell=True)
 
     authorized_keys = ssh_dir / "authorized_keys"

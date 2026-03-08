@@ -1,15 +1,17 @@
-import shutil, os, platform
+import os
+import platform
+import shutil
 import sys
+from pathlib import Path
 from typing import Optional
 
+from common.constants import KubeConstant
 from common.exceptions import DownloadError
+from common.logger import setup_logger, LOG_STDOUT
 from common.utils import rmrf, run_command
 
-from common.logger import setup_logger
-from pathlib import Path
 from .docker import DockerManager
 from .registry import RegistryManager
-from common.constants import KubeConstant
 
 logger = setup_logger(__name__)
 
@@ -44,10 +46,10 @@ class DownloadManager:
         Supports: RHEL/CentOS/Rocky, Ubuntu/Debian, SUSE.
         """
         if shutil.which("ansible"):
-            logger.info("Ansible already installed, skipping.", extra={"to_stdout": True})
+            logger.info("Ansible already installed, skipping.", extra=LOG_STDOUT)
             return
 
-        logger.info("Downloading ansible env ...", extra={"to_stdout": True})
+        logger.info("Downloading ansible env ...", extra=LOG_STDOUT)
 
         try:
             distro = platform.freedesktop_os_release().get("ID", "").lower()
@@ -67,12 +69,12 @@ class DownloadManager:
             else:
                 raise RuntimeError(f"Unsupported distribution: {distro}")
 
-            logger.info("Downloading ansible env finished successfully.", extra={"to_stdout": True})
+            logger.info("Downloading ansible env finished successfully.", extra=LOG_STDOUT)
 
         except Exception as e:
             logger.warning(
                 f"Failed to install ansible env: {e}, we suggest you install ansible tools manually and continue!",
-                extra={"to_stdout": True})
+                extra=LOG_STDOUT)
             sys.exit(1)
 
     def get_kubeauto(self, version: Optional[str] = None) -> None:
@@ -80,56 +82,56 @@ class DownloadManager:
         version = version or self.kube_constant.v_kubeauto
 
         if self.__check_file_exists(self.base_path, "roles/kube-node"):
-            logger.warning("kubeauto already exists", extra={"to_stdout": True})
+            logger.warning("kubeauto already exists", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"kubeauto_{version}.tar", f"brinnatt/kubeauto:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto:{version}", "/usr/local/kubeauto", self.base_path)
 
-        logger.info("kubeauto has been installed successfully!", extra={'to_stdout': True})
+        logger.info("kubeauto has been installed successfully!", extra=LOG_STDOUT)
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
         """Download Kubernetes binaries with caching and error handling"""
         version = version or self.kube_constant.v_k8s_bin
 
         if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
-            logger.warning("Kubernetes binaries already exist", extra={"to_stdout": True})
+            logger.warning("Kubernetes binaries already exist", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"k8s_bin_{version}.tar", f"brinnatt/kubeauto-k8s-bin:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=True)
 
-        logger.info("k8s_bin has been installed successfully!", extra={'to_stdout': True})
+        logger.info("k8s_bin has been installed successfully!", extra=LOG_STDOUT)
 
     def get_ext_bin(self, version: Optional[str] = None) -> None:
         """Download extra binaries with caching and error handling"""
         version = version or self.kube_constant.v_extra_bin
 
         if self.__check_file_exists(self.extra_bin_dir, "etcdctl"):
-            logger.warning("Extra binaries already exist", extra={"to_stdout": True})
+            logger.warning("Extra binaries already exist", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"ext_bin_{version}.tar", f"brinnatt/kubeauto-ext-bin:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto-ext-bin:{version}", "/extra", self.extra_bin_dir, create_symlink=False)
 
-        logger.info("ext_bin has been installed successfully!", extra={'to_stdout': True})
+        logger.info("ext_bin has been installed successfully!", extra=LOG_STDOUT)
 
     def get_harbor_offline_pkg(self, version: Optional[str] = None) -> None:
         """Download Harbor offline installer package with caching and error handling"""
         version = version or self.kube_constant.v_harbor
 
         if self.__check_file_exists(self.image_dir, f"harbor-offline-installer-{version}.tgz"):
-            logger.warning("Harbor offline installer already exist", extra={"to_stdout": True})
+            logger.warning("Harbor offline installer already exist", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"harbor_{version}.tar", f"brinnatt/harbor-offline:{version}")
 
         self.__handle_files(f"brinnatt/harbor-offline:{version}", "/harbor", self.image_dir)
 
-        logger.info("harbor_offline_pkg has been installed successfully!", extra={'to_stdout': True})
+        logger.info("harbor_offline_pkg has been installed successfully!", extra=LOG_STDOUT)
 
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""
@@ -148,19 +150,19 @@ class DownloadManager:
         except Exception as e:
             raise DownloadError(f"Failed to upload images: {e}")
 
-        logger.info(f"Default images uploaded to registry successfully!", extra={'to_stdout': True})
+        logger.info(f"Default images uploaded to registry successfully!", extra=LOG_STDOUT)
 
     def get_extra_images(self, component: str) -> None:
         """Download extra images for specified component and upload to local registry"""
         if component not in self.kube_constant.component_images:
-            logger.error(f"Invalid component: {component}", extra={'to_stdout': True})
+            logger.error(f"Invalid component: {component}", extra=LOG_STDOUT)
             return
 
-        logger.info(f"Downloading images for {component}, then uploading to local registry", extra={'to_stdout': True})
+        logger.info(f"Downloading images for {component}, then uploading to local registry", extra=LOG_STDOUT)
 
         try:
             self.registry.upload_to_registry(self.kube_constant.component_images[component])
-            logger.info(f"{component} images uploaded to registry successfully!", extra={'to_stdout': True})
+            logger.info(f"{component} images uploaded to registry successfully!", extra=LOG_STDOUT)
         except Exception as e:
             raise DownloadError(f"Failed to upload {component} images: {e}")
 
@@ -179,7 +181,7 @@ class DownloadManager:
 
         try:
             if not path.exists():
-                logger.info(f"Downloading {image}", extra={'to_stdout': True})
+                logger.info(f"Downloading {image}", extra=LOG_STDOUT)
                 self.docker.pull_image(f"{image}")
                 self.docker.save_image(f"{image}", str(path))
             self.docker.load_image(str(path))

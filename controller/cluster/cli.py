@@ -9,7 +9,7 @@ from taskflow.patterns import linear_flow
 from taskflow import engines
 from common.utils import confirm_action, validate_ip
 from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError
-from common.logger import setup_logger
+from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
 from common.os import SystemProbe
 from service.cluster.manager import ClusterManager, SetupAIO
@@ -328,7 +328,7 @@ class KubeautoCLI:
             if args.delete and not args.user:
                 parser.error("'-u/--user' is required when using '-D/--delete'.")
             if args.list and args.user:
-                logger.warning("Note: '-u' is ignored when listing users.", extra={"to_stdout": True})
+                logger.warning("Note: '-u' is ignored when listing users.", extra=LOG_STDOUT)
 
         parser.set_defaults(validate=validate_args)
 
@@ -606,10 +606,10 @@ Examples:
         cm = ClusterManager()
         clusters = cm.list_clusters()
         current = cm.get_current_cluster()
-        logger.info("Managed clusters:", extra={"to_stdout": True})
+        logger.info("Managed clusters:", extra=LOG_STDOUT)
         for i, cluster in enumerate(clusters, 1):
             prefix = "* -> " if cluster == current else "  -> "
-            logger.info(f"{prefix}{i}: {cluster}", extra={"to_stdout": True})
+            logger.info(f"{prefix}{i}: {cluster}", extra=LOG_STDOUT)
 
     def _handle_checkout(self, args: argparse.Namespace) -> None:
         """Handle 'checkout' command"""
@@ -726,7 +726,7 @@ Examples:
                     logger.warning(
                         "Docker has been installed, if you want to install another version, "
                         "please confirm to uninstall the old version, not uninstalling may cause docker conflicts!",
-                        extra={"to_stdout": True}
+                        extra=LOG_STDOUT
                     )
                     if not self.docker.clean_docker_env():
                         logger.warning("You have cancelled cleaning docker environment, "
@@ -827,7 +827,7 @@ Examples:
             cli_hosts = set(args.hosts) if args.hosts else set()
             dup_hosts = cli_hosts & target_hosts_set
             if dup_hosts:
-                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!", extra={"to_stdout": True})
+                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!", extra=LOG_STDOUT)
             extra_hosts = cli_hosts - dup_hosts
             target_hosts_set.update(extra_hosts)
 
@@ -853,45 +853,45 @@ Examples:
                 max_workers=args.workers,
             )
             for host, result in results.items():
-                logger.info(f"{host}: {result}", extra={"to_stdout": True})
+                logger.info(f"{host}: {result}", extra=LOG_STDOUT)
 
         if args.disk_usage:
             disks = list(system.disk_usage())
             header = f"{'Device':<18} {'Mount':<15} {'Total(GB)':<10} {'Used(GB)':<10} {'Free(GB)':<10} {'Use%':<6}"
-            logger.info("Disk Usage:", extra={"to_stdout": True})
-            logger.info("-" * len(header), extra={"to_stdout": True})
-            logger.info(header, extra={"to_stdout": True})
-            logger.info("-" * len(header), extra={"to_stdout": True})
+            logger.info("Disk Usage:", extra=LOG_STDOUT)
+            logger.info("-" * len(header), extra=LOG_STDOUT)
+            logger.info(header, extra=LOG_STDOUT)
+            logger.info("-" * len(header), extra=LOG_STDOUT)
             for disk in disks:
                 logger.info(
                     f"{disk['device']:<18} {disk['mount']:<15} "
                     f"{disk['total_gb']:<10.2f} {disk['used_gb']:<10.2f} "
                     f"{disk['free_gb']:<10.2f} {disk['usage_percent']:<6.1f}",
-                    extra={"to_stdout": True}
+                    extra=LOG_STDOUT
                 )
 
         if args.system_load:
             resources = system.hardware_resources()
-            logger.info("System Resources:", extra={"to_stdout": True})
+            logger.info("System Resources:", extra=LOG_STDOUT)
             logger.info(f"CPU Cores: {resources['cpu_cores']} (Threads: {resources['cpu_threads']})",
-                        extra={"to_stdout": True})
-            logger.info(f"CPU Usage: {resources['cpu_usage_percent']:.1f}%", extra={"to_stdout": True})
+                        extra=LOG_STDOUT)
+            logger.info(f"CPU Usage: {resources['cpu_usage_percent']:.1f}%", extra=LOG_STDOUT)
             logger.info(
                 f"Memory: {resources['memory_available_gb']:.1f}/{resources['memory_total_gb']:.1f} GB ({resources['memory_usage_percent']:.1f}%)",
-                extra={"to_stdout": True})
+                extra=LOG_STDOUT)
             logger.info(f"Swap: {resources['swap_used_gb']:.1f}/{resources['swap_total_gb']:.1f} GB",
-                        extra={"to_stdout": True})
+                        extra=LOG_STDOUT)
 
         if args.network_usage:
             interfaces = list(system.network_interfaces())
-            logger.info("Network Interfaces:", extra={"to_stdout": True})
+            logger.info("Network Interfaces:", extra=LOG_STDOUT)
             for intf in interfaces:
-                logger.info(f"Interface: {intf['interface']}", extra={"to_stdout": True})
+                logger.info(f"Interface: {intf['interface']}", extra=LOG_STDOUT)
                 for family, addr in intf['addresses'].items():
-                    logger.info(f"  {family}: {addr}", extra={"to_stdout": True})
+                    logger.info(f"  {family}: {addr}", extra=LOG_STDOUT)
                 logger.info(
                     f"  Traffic: ↑ {intf['traffic_mb']['sent']:.2f} MB | ↓ {intf['traffic_mb']['recv']:.2f} MB",
-                    extra={"to_stdout": True}
+                    extra=LOG_STDOUT
                 )
 
     def run(self) -> None:
@@ -901,8 +901,8 @@ Examples:
         try:
             self._execute_command(args)
         except KubeautoError as e:
-            logger.error(str(e), extra={'to_stdout': True})
+            logger.error(str(e), extra=LOG_STDOUT)
             sys.exit(1)
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}", extra={'to_stdout': True})
+            logger.error(f"Unexpected error: {str(e)}", extra=LOG_STDOUT)
             sys.exit(1)

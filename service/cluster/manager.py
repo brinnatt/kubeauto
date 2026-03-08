@@ -3,6 +3,7 @@ Main cluster operations for kubeauto
 """
 import ipaddress
 import re
+import shutil
 import ansible_runner
 import yaml
 import sys
@@ -11,12 +12,16 @@ from taskflow import task
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
+
+from kubernetes import client as k8s_client, config as k8s_config
+from kubernetes.client.rest import ApiException as K8sApiException
+
 from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError
 )
-from common.logger import setup_logger
+from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
 
 logger = setup_logger(__name__)
@@ -92,35 +97,39 @@ class ClusterManager:
 
             # Replace placeholders
             hosts_content = cluster_hosts.read_text().replace("_cluster_name_", name)
-            config_content = (
-                cluster_config.read_text().replace("__k8s_ver__", self.kube_constant.v_k8s_bin.lstrip("v"))
-                .replace("__flannel__", self.kube_constant.v_flannel)
-                .replace("__calico__", self.kube_constant.v_calico)
-                .replace("__cilium__", self.kube_constant.v_cilium)
-                .replace("__kube_ovn__", self.kube_constant.v_kubeovn)
-                .replace("__kube_router__", self.kube_constant.v_kuberouter)
-                .replace("__coredns__", self.kube_constant.v_coredns)
-                .replace("__pause__", self.kube_constant.v_pause)
-                .replace("__dns_node_cache__", self.kube_constant.v_dnsnodecache)
-                .replace("__dashboard__", self.kube_constant.v_dashboard)
-                .replace("__local_path_provisioner__", self.kube_constant.v_localpathprovisioner)
-                .replace("__nfs_provisioner__", self.kube_constant.v_nfsprovisioner)
-                .replace("__prom_chart__", self.kube_constant.v_promchart)
-                .replace("__harbor__", self.kube_constant.v_harbor)
-                .replace("__metrics__", self.kube_constant.v_metricsserver)
-                .replace("__minio_chart__", self.kube_constant.v_miniooperator)
-                .replace("__openebs_ver__", self.kube_constant.v_openebs)
-                .replace("__ingress_nginx_ver__", self.kube_constant.v_ingressnginx)
-            )
+            kc = self.kube_constant
+            config_placeholders = {
+                "__k8s_ver__": kc.v_k8s_bin.lstrip("v"),
+                "__flannel__": kc.v_flannel,
+                "__calico__": kc.v_calico,
+                "__cilium__": kc.v_cilium,
+                "__kube_ovn__": kc.v_kubeovn,
+                "__kube_router__": kc.v_kuberouter,
+                "__coredns__": kc.v_coredns,
+                "__pause__": kc.v_pause,
+                "__dns_node_cache__": kc.v_dnsnodecache,
+                "__dashboard__": kc.v_dashboard,
+                "__local_path_provisioner__": kc.v_localpathprovisioner,
+                "__nfs_provisioner__": kc.v_nfsprovisioner,
+                "__prom_chart__": kc.v_promchart,
+                "__harbor__": kc.v_harbor,
+                "__metrics__": kc.v_metricsserver,
+                "__minio_chart__": kc.v_miniooperator,
+                "__openebs_ver__": kc.v_openebs,
+                "__ingress_nginx_ver__": kc.v_ingressnginx,
+            }
+            config_content = cluster_config.read_text()
+            for placeholder, value in config_placeholders.items():
+                config_content = config_content.replace(placeholder, value)
 
             cluster_hosts.write_text(hosts_content)
             cluster_config.write_text(config_content)
         except Exception as e:
             raise ClusterNewError(f"Error creating cluster hosts or config: {e}")
 
-        logger.info(f"-> Cluster {name} created. Next steps:", extra={"to_stdout": True})
-        logger.info(f"1. Configure {cluster_hosts}", extra={"to_stdout": True})
-        logger.info(f"2. Configure {cluster_config}", extra={"to_stdout": True})
+        logger.info(f"-> Cluster {name} created. Next steps:", extra=LOG_STDOUT)
+        logger.info(f"1. Configure {cluster_hosts}", extra=LOG_STDOUT)
+        logger.info(f"2. Configure {cluster_config}", extra=LOG_STDOUT)
 
     def setup_cluster(self, name: str, step: str, extra_args: Optional[list[str]] = None) -> None:
         """
@@ -189,31 +198,27 @@ class ClusterManager:
 
         playbook = playbook_map.get(step, "dummy.yml")
         if playbook == "dummy.yml":
-            logger.error(f"Invalid setup step: {step}", extra={"to_stdout": True})
+            logger.error(f"Invalid setup step: {step}", extra=LOG_STDOUT)
             return
 
-        logger.info(f"Setup k8s cluster with playbook {playbook}", extra={"to_stdout": True})
+        logger.info(f"Setup k8s cluster with playbook {playbook}", extra=LOG_STDOUT)
         self._show_component_versions(name)
         if not confirm_action(f"cluster:{name} setup step:{step} begins"):
             return
 
-        # [fix] ansible_runner 的异常信息都由 result 对象返回，所以 try 捕获不了异常，也无法抛出去
+        # setup 使用 get_resource_path 以支持打包/资源注入，不通过 _run_playbook
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             result = ansible_runner.run(
                 private_data_dir=tmp_dir,
-                # runtime_hook will inject ANSIBLE_ROLES_PATH variable
-                # roles_path=str(self.roles_dir)
                 playbook=get_resource_path("playbooks", playbook),
                 inventory=str(self.clusters_dir / name / "hosts"),
-                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                cmdline=" ".join(extra_args if extra_args else [])
+                extravars=self._yaml_to_dict(self.clusters_dir / name / "config.yml"),
+                cmdline=" ".join(extra_args or []),
             )
         if result.rc != 0:
-            logger.error(f"Failed to set up the k8s cluster with playbook {playbook}. Exit code: {result.rc}",
-                         extra={"to_stdout": True})
+            logger.error(f"Failed to set up the k8s cluster with playbook {playbook}. Exit code: {result.rc}", extra=LOG_STDOUT)
             raise ClusterSetupError(f"Failed to set up the k8s cluster with playbook {playbook}")
-
-        logger.info(f"Setup k8s cluster with playbook {playbook} successfully!", extra={"to_stdout": True})
+        logger.info(f"Setup k8s cluster with playbook {playbook} successfully!", extra=LOG_STDOUT)
 
     def _yaml_to_dict(self, path: Path) -> dict:
         """
@@ -237,6 +242,39 @@ class ClusterManager:
 
         return data
 
+    def _run_playbook(
+        self,
+        cluster: str,
+        playbook: str | Path,
+        *,
+        inventory: Path | None = None,
+        extra_vars: dict | None = None,
+        cmdline: str | None = None,
+        fail_msg: str | None = None,
+    ):
+        """Run Ansible playbook in a temp dir. When fail_msg is set and rc != 0, log and raise."""
+        inv = inventory or (self.clusters_dir / cluster / "hosts")
+        ev = extra_vars if extra_vars is not None else self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
+        if isinstance(playbook, Path):
+            pb_path = playbook
+        elif "/" in str(playbook):
+            pb_path = self.base_path / playbook
+        else:
+            pb_path = self.playbooks_dir / playbook
+        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+            result = ansible_runner.run(
+                private_data_dir=tmp_dir,
+                playbook=str(pb_path),
+                inventory=str(inv),
+                extravars=ev,
+                roles_path=str(self.roles_dir),
+                cmdline=cmdline or "",
+            )
+        if fail_msg and result.rc != 0:
+            logger.error(fail_msg, extra=LOG_STDOUT)
+            raise ClusterManageError(fail_msg)
+        return result
+
     def cluster_command(self, name: str, command: str) -> None:
         """Execute cluster-wide command (start, stop, upgrade, backup, restore, destroy)"""
         self._validate_cluster(name)
@@ -252,28 +290,20 @@ class ClusterManager:
 
         playbook = playbook_map.get(command)
         if not playbook:
-            logger.error(f"Invalid command: {command}", extra={"to_stdout": True})
+            logger.error(f"Invalid command: {command}", extra=LOG_STDOUT)
             return
 
-        logger.info(f"cluster:{name} {command} with playbook {playbook}", extra={"to_stdout": True})
+        logger.info(f"cluster:{name} {command} with playbook {playbook}", extra=LOG_STDOUT)
         self._show_component_versions(name)
         if not confirm_action(f"cluster:{name} {command} begins"):
             return
 
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / playbook),
-                inventory=str(self.clusters_dir / name / "hosts"),
-                extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                roles_path=str(self.roles_dir)
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to {command} cluster {name} with playbook {playbook}. Exit code: {result.rc}",
-                         extra={"to_stdout": True})
-            raise ClusterManageError(f"Failed to {command} cluster {name} with playbook {playbook}.")
-
-        logger.info(f"Succeed to {command} cluster {name} with playbook {playbook}!", extra={"to_stdout": True})
+        self._run_playbook(
+            name,
+            playbook,
+            fail_msg=f"Failed to {command} cluster {name} with playbook {playbook}.",
+        )
+        logger.info(f"Succeed to {command} cluster {name} with playbook {playbook}!", extra=LOG_STDOUT)
 
     def checkout_cluster(self, name: str) -> None:
         """Switch to a cluster's kubeconfig"""
@@ -287,7 +317,7 @@ class ClusterManager:
         dest_config.parent.mkdir(exist_ok=True)
 
         run_command(["cp", "-f", str(kubeconfig), str(dest_config)])
-        logger.info(f"Set default kubeconfig: cluster {name} (current)", extra={"to_stdout": True})
+        logger.info(f"Set default kubeconfig: cluster {name} (current)", extra=LOG_STDOUT)
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
@@ -298,14 +328,9 @@ class ClusterManager:
         if not hosts_file.exists():
             raise ClusterNotFoundError(f"Hosts file not found for cluster {cluster}")
 
-        # Check if node already exists
-        self._check_node_exists(hosts_file, ip, role)
+        self._check_node_in_section(hosts_file, ip, role, should_exist=False)
 
-        # Add node to hosts file
         node_line = f"{ip} {extra_info}".strip()
-        self._add_to_hosts_section(hosts_file, role, node_line)
-
-        # Run appropriate playbook
         playbook = {
             "etcd": "21.addetcd.yml",
             "master": "23.addmaster.yml",
@@ -315,25 +340,26 @@ class ClusterManager:
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        logger.info(f"Add {role} node {ip} to cluster {cluster}", extra={"to_stdout": True})
+        logger.info(f"Add {role} node {ip} to cluster {cluster}", extra=LOG_STDOUT)
 
-        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars["NODE_TO_ADD"] = ip
 
+        # 使用临时 inventory，仅在 playbook 成功后再写回 hosts（可重试、幂等）
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / playbook),
-                inventory=str(self.clusters_dir / cluster / "hosts"),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir)
+            tmp_hosts = Path(tmp_dir) / "hosts"
+            shutil.copy(hosts_file, tmp_hosts)
+            self._add_to_hosts_section(tmp_hosts, role, node_line)
+            self._run_playbook(
+                cluster,
+                playbook,
+                inventory=tmp_hosts,
+                extra_vars=extra_vars,
+                fail_msg=f"Failed to add {role} node {ip} to cluster {cluster}.",
             )
-        if result.rc != 0:
-            logger.error(f"Failed to add {role} node {ip} to cluster {cluster}. Exit code: {result.rc}",
-                         extra={"to_stdout": True})
-            raise ClusterManageError(f"Failed to add {role} node {ip} to cluster {cluster}.")
+            self._add_to_hosts_section(hosts_file, role, node_line)
 
-        logger.info(f"Add {role} node {ip} to cluster {cluster} successfully!", extra={"to_stdout": True})
+        logger.info(f"Add {role} node {ip} to cluster {cluster} successfully!", extra=LOG_STDOUT)
 
         # After adding a new node, we still have to notify related services
         if role == "etcd":
@@ -352,8 +378,7 @@ class ClusterManager:
         if not hosts_file.exists():
             raise ClusterNotFoundError(f"Hosts file not found for cluster {cluster}")
 
-        # Check if node exists
-        self._check_node_not_exists(hosts_file, ip, role)
+        self._check_node_in_section(hosts_file, ip, role, should_exist=True)
 
         # Run appropriate playbook
         playbook = {
@@ -365,25 +390,19 @@ class ClusterManager:
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        logger.info(f"Remove {role} {ip} from cluster {cluster}", extra={"to_stdout": True})
-        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
+        logger.info(f"Remove {role} {ip} from cluster {cluster}", extra=LOG_STDOUT)
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars["NODE_TO_DEL"] = ip
         extra_vars["CLUSTER"] = cluster
 
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / playbook),
-                inventory=str(hosts_file),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir)
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to remove {role} {ip} from cluster {cluster}. Exit code: {result.rc}",
-                         extra={"to_stdout": True})
-            raise ClusterManageError(f"Failed to remove {role} {ip} from cluster {cluster}.")
-
-        logger.info(f"Remove {role} {ip} from cluster {cluster} successfully!", extra={"to_stdout": True})
+        self._run_playbook(
+            cluster,
+            playbook,
+            inventory=hosts_file,
+            extra_vars=extra_vars,
+            fail_msg=f"Failed to remove {role} {ip} from cluster {cluster}.",
+        )
+        logger.info(f"Remove {role} {ip} from cluster {cluster} successfully!", extra=LOG_STDOUT)
 
         # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
@@ -402,32 +421,22 @@ class ClusterManager:
         """Force renew CA certificates and all other certs in the cluster"""
         self._validate_cluster(cluster)
 
-        logger.warning("WARNING: This will recreate CA certs and all other certs in the cluster",
-                       extra={"to_stdout": True})
-        logger.warning("Only use this if the admin.conf has been compromised", extra={"to_stdout": True})
-
+        logger.warning("WARNING: This will recreate CA certs and all other certs in the cluster", extra=LOG_STDOUT)
+        logger.warning("Only use this if the admin.conf has been compromised", extra=LOG_STDOUT)
         if not confirm_action(f"Renew all certs in cluster {cluster}"):
             return
 
-        logger.info(f"Renew all certs in cluster {cluster}", extra={"to_stdout": True})
-        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
+        logger.info(f"Renew all certs in cluster {cluster}", extra=LOG_STDOUT)
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars["CHANGE_CA"] = "true"
-
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / "96.update-certs.yml"),
-                inventory=str(self.clusters_dir / cluster / "hosts"),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir),
-                cmdline="-t force_change_certs"
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to renew all certs in cluster {cluster}. Exit code: {result.rc}",
-                         extra={"to_stdout": True})
-            raise ClusterManageError(f"Failed to renew all certs in cluster {cluster}.")
-
-        logger.info(f"Renew all certs in cluster {cluster} successfully!", extra={"to_stdout": True})
+        self._run_playbook(
+            cluster,
+            "96.update-certs.yml",
+            extra_vars=extra_vars,
+            cmdline="-t force_change_certs",
+            fail_msg=f"Failed to renew all certs in cluster {cluster}.",
+        )
+        logger.info(f"Renew all certs in cluster {cluster} successfully!", extra=LOG_STDOUT)
 
     def kubeconfig_admin(self, cluster: str, action: str,
                          user_name: str = None, user_type: str = "admin",
@@ -447,74 +456,56 @@ class ClusterManager:
     def _add_kcfg(self, cluster, user_name, user_type, expiry):
         if not user_name:
             user_name = f"user-{datetime.now().strftime('%Y%m%d%H%M')}"
-        logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name}", extra={"to_stdout": True})
-
-        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / 'config.yml')
-        extra_vars["CUSTOM_EXPIRY"] = expiry
-        extra_vars["USER_TYPE"] = user_type
-        extra_vars["USER_NAME"] = user_name
-        extra_vars["ADD_KCFG"] = "true"
-
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.base_path / "roles/deploy/deploy.yml"),
-                inventory=str(self.clusters_dir / cluster / "hosts"),
-                extravars=extra_vars,
-                roles_path=str(self.roles_dir),
-                cmdline="-t add-kcfg"
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to add kcfg in cluster:{cluster} with user:{user_name}. Exit code: {result.rc}",
-                         extra={"to_stdout": True})
-            raise ClusterManageError(f"Failed to add kcfg in cluster:{cluster} with user:{user_name}.")
-
-        logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name} successfully!", extra={"to_stdout": True})
+        logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name}", extra=LOG_STDOUT)
+        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
+        extra_vars.update(CUSTOM_EXPIRY=expiry, USER_TYPE=user_type, USER_NAME=user_name, ADD_KCFG="true")
+        self._run_playbook(
+            cluster,
+            "roles/deploy/deploy.yml",
+            extra_vars=extra_vars,
+            cmdline="-t add-kcfg",
+            fail_msg=f"Failed to add kcfg in cluster:{cluster} with user:{user_name}.",
+        )
+        logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name} successfully!", extra=LOG_STDOUT)
 
     def _del_kcfg(self, cluster, user_name, kubeconfig):
         if not user_name:
             raise ValueError("User name is required for delete action")
-        logger.info(f"Del kcfg in cluster:{cluster} with user:{user_name}", extra={"to_stdout": True})
+        logger.info(f"Del kcfg in cluster:{cluster} with user:{user_name}", extra=LOG_STDOUT)
 
-        crb_cmd = [
-            str(self.kube_bin_dir / "kubectl"),
-            "--kubeconfig", str(kubeconfig),
-            "get", "clusterrolebindings",
-            f"-ojsonpath={{.items[?(@.subjects[0].name == '{user_name}')].metadata.name}}"
-        ]
-        crb = run_command(crb_cmd, shell=False).stdout.strip()
-        if crb:
-            delete_cmd = [
-                str(self.kube_bin_dir / "kubectl"),
-                "--kubeconfig", str(kubeconfig),
-                "delete", "clusterrolebindings", crb
-            ]
-            run_command(delete_cmd, capture_output=False)
+        try:
+            k8s_config.load_kube_config(config_file=str(kubeconfig))
+            rbac = k8s_client.RbacAuthorizationV1Api()
+            crb_list = rbac.list_cluster_role_binding()
+            for crb in crb_list.items:
+                for subj in (crb.subjects or []):
+                    if subj.name == user_name:
+                        rbac.delete_cluster_role_binding(crb.metadata.name)
+                        break
+        except K8sApiException as e:
+            logger.warning(f"Kubernetes API during kcfg delete: {e.reason or e.body}")
 
         cert_pattern = str(self.clusters_dir / cluster / "ssl/users" / f"{user_name}*")
         run_command(f"rm -f {cert_pattern}", shell=True)
-
-        # delete CRB YAML
         crb_pattern = str(self.clusters_dir / cluster / "ssl/users" / f"crb-{user_name}*")
         run_command(f"rm -f {crb_pattern}", shell=True)
-        logger.info(f"Deleting kcfg in cluster:{cluster} with user:{user_name} has been finished successfully",
-                    extra={"to_stdout": True})
+        logger.info(f"Deleting kcfg in cluster:{cluster} with user:{user_name} has been finished successfully", extra=LOG_STDOUT)
 
     def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
         def get_users(role_name=None):
-            if role_name:
-                jsonpath = f"{{.items[?(@.roleRef.name == \"{role_name}\")].subjects[*].name}}"
-            else:
-                jsonpath = "{.items[*].subjects[*].name}"
-            cmd = [
-                str(self.kube_bin_dir / "kubectl"),
-                "--kubeconfig", str(kubeconfig),
-                "get", "clusterrolebindings",
-                f"-ojsonpath='{jsonpath}'"
-            ]
-            return run_command(cmd, shell=True).stdout.strip("'").split()
+            k8s_config.load_kube_config(config_file=str(kubeconfig))
+            rbac = k8s_client.RbacAuthorizationV1Api()
+            crb_list = rbac.list_cluster_role_binding()
+            names = []
+            for crb in crb_list.items:
+                if role_name and (not crb.role_ref or crb.role_ref.name != role_name):
+                    continue
+                for subj in (crb.subjects or []):
+                    if subj.name:
+                        names.append(subj.name)
+            return names
 
-        logger.info(f"List kcfg in cluster:{cluster}", extra={"to_stdout": True})
+        logger.info(f"List kcfg in cluster:{cluster}", extra=LOG_STDOUT)
 
         admins = set(get_users("cluster-admin"))
         views = set(get_users("view"))
@@ -592,70 +583,44 @@ class ClusterManager:
         if not validate_ip(ip):
             raise InvalidIPError(f"Invalid IP address: {ip}")
 
-    def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
-        """Optimized version for large files using line-by-line reading"""
-        section_patterns = {
-            'etcd': ('[etcd]', '[kube_master]'),
-            'master': ('[kube_master]', '[kube_node]'),
-            'node': ('[kube_node]', None)  # node section is the last one
+    @staticmethod
+    def _hosts_section_name(role: str) -> str:
+        """Return ini section name for role (e.g. etcd -> [etcd], master -> [kube_master])."""
+        return "[etcd]" if role == "etcd" else f"[kube_{role}]"
+
+    def _check_node_in_section(self, hosts_file: Path, ip: str, role: str, *, should_exist: bool) -> None:
+        """Check node presence in hosts section. should_exist: True for remove (must exist), False for add (must not)."""
+        _SECTION_BOUNDS = {
+            "etcd": ("[etcd]", "[kube_master]"),
+            "master": ("[kube_master]", "[kube_node]"),
+            "node": ("[kube_node]", None),
         }
-
-        if role not in section_patterns:
+        if role not in _SECTION_BOUNDS:
             raise ValueError(f"Invalid node role: {role}")
-
-        start_section, end_section = section_patterns[role]
-        in_section = False
+        start_section, end_section = _SECTION_BOUNDS[role]
+        in_section, found = False, False
 
         with hosts_file.open() as f:
             for line in f:
                 line = line.strip()
-
                 if line == start_section:
                     in_section = True
                     continue
-
                 if end_section and line == end_section:
-                    break  # break in advance, no need to scan the whole file
-
-                if in_section and line and not line.startswith('#'):
+                    break
+                if in_section and line and not line.startswith("#"):
                     if line.startswith(ip) or f" {ip} " in line:
-                        raise NodeExistsError(f"Node {ip} already exists in {role} section")
+                        found = True
+                        break
 
-    def _check_node_not_exists(self, hosts_file: Path, ip: str, role: str) -> None:
-        """Optimized version for checking node absence in large files"""
-        section_patterns = {
-            'etcd': ('[etcd]', '[kube_master]'),
-            'master': ('[kube_master]', '[kube_node]'),
-            'node': ('[kube_node]', None)  # node section is the last one
-        }
-
-        if role not in section_patterns:
-            raise ValueError(f"Invalid node role: {role}")
-
-        start_section, end_section = section_patterns[role]
-        in_section = False
-
-        with hosts_file.open() as f:
-            for line in f:
-                line = line.strip()
-
-                if line == start_section:
-                    in_section = True
-                    continue
-
-                if end_section and line == end_section:
-                    break  # break in advance, no need to scan the whole file
-
-                if in_section and line and not line.startswith('#'):
-                    if line.startswith(ip) or f" {ip} " in line:
-                        return  # If node exists, return immediately, no raise
-
-        # Looked up the whole section, not found, raise
-        raise NodeNotFoundError(f"Node {ip} not found in {role} section")
+        if should_exist and not found:
+            raise NodeNotFoundError(f"Node {ip} not found in {role} section")
+        if not should_exist and found:
+            raise NodeExistsError(f"Node {ip} already exists in {role} section")
 
     def _add_to_hosts_section(self, hosts_file: Path, role: str, line: str) -> None:
-        """Add a line to the end of a specific section using ipaddress library"""
-        section = f"[kube_{role}]" if role != "etcd" else "[etcd]"
+        """Add a line to the end of a specific section."""
+        section = self._hosts_section_name(role)
 
         content = hosts_file.read_text().splitlines()
         section_start = -1
@@ -684,8 +649,8 @@ class ClusterManager:
         hosts_file.write_text("\n".join(content) + "\n")
 
     def _remove_from_hosts_section(self, hosts_file: Path, role: str, ip: str) -> None:
-        """Remove a line from a specific section in hosts file"""
-        section = f"[kube_{role}]" if role != "etcd" else "[etcd]"
+        """Remove a line from a specific section in hosts file."""
+        section = self._hosts_section_name(role)
 
         content = hosts_file.read_text().splitlines()
         section_start = -1
@@ -722,122 +687,69 @@ class ClusterManager:
         hosts_file.write_text("\n".join(new_content) + "\n")
 
     def _notify_etcd_apiserver(self, cluster: str) -> None:
-        hosts_file = self.clusters_dir / cluster / "hosts"
-        config_file = self.clusters_dir / cluster / "config.yml"
-
-        # Restart the etcd cluster
-        logger.info("Restart the etcd cluster after adding or removing an etcd node", extra={"to_stdout": True})
-
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / "02.etcd.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_etcd"
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to restart the etcd cluster. Exit code: {result.rc}.",
-                         extra={"to_stdout": True})
-            raise ClusterManageError("Failed to restart the etcd cluster.")
-
-        logger.info("Restart etcd cluster successfully!", extra={"to_stdout": True})
-
-        # Restart the apiservers to use the new etcd cluster
-        logger.info("Restart the apiservers to adapt to the changed etcd cluster", extra={"to_stdout": True})
-
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / "04.kube-master.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_master"
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to restart the apiservers for the changed etcd cluster. Exit code: {result.rc}.",
-                         extra={"to_stdout": True})
-            raise ClusterManageError("Failed to restart the apiservers for the changed etcd cluster.")
-
-        logger.info("Restart the apiservers for the changed etcd cluster successfully!", extra={"to_stdout": True})
+        logger.info("Restart the etcd cluster after adding or removing an etcd node", extra=LOG_STDOUT)
+        self._run_playbook(
+            cluster, "02.etcd.yml", cmdline="-t restart_etcd",
+            fail_msg="Failed to restart the etcd cluster.",
+        )
+        logger.info("Restart etcd cluster successfully!", extra=LOG_STDOUT)
+        logger.info("Restart the apiservers to adapt to the changed etcd cluster", extra=LOG_STDOUT)
+        self._run_playbook(
+            cluster, "04.kube-master.yml", cmdline="-t restart_master",
+            fail_msg="Failed to restart the apiservers for the changed etcd cluster.",
+        )
+        logger.info("Restart the apiservers for the changed etcd cluster successfully!", extra=LOG_STDOUT)
 
     def _restart_load_balancers(self, cluster: str) -> None:
         """Restart kube-lb and ex-lb services"""
-        hosts_file = self.clusters_dir / cluster / "hosts"
-        config_file = self.clusters_dir / cluster / "config.yml"
-
-        # Restart kube-lb
-        logger.info("Restart the kube-lb after adding or removing a master node", extra={"to_stdout": True})
-
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / "90.setup.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_kube-lb"
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to restart the kube-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
-            raise ClusterManageError("Failed to restart the kube-lb for the changed cluster membership.")
-
-        logger.info("Restart the kube-lb successfully!", extra={"to_stdout": True})
-
-        logger.info("Restart the ex-lb after adding or removing a master node", extra={"to_stdout": True})
-
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / "10.ex-lb.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t restart_lb"
-            )
-        if result.rc != 0:
-            logger.error(f"Failed to restart the ex-lb. Exit code: {result.rc}.", extra={"to_stdout": True})
-            raise ClusterManageError("Failed to restart the ex-lb for the changed cluster membership.")
-
-        logger.info("Restart the ex-lb successfully!", extra={"to_stdout": True})
+        logger.info("Restart the kube-lb after adding or removing a master node", extra=LOG_STDOUT)
+        self._run_playbook(
+            cluster, "90.setup.yml", cmdline="-t restart_kube-lb",
+            fail_msg="Failed to restart the kube-lb for the changed cluster membership.",
+        )
+        logger.info("Restart the kube-lb successfully!", extra=LOG_STDOUT)
+        logger.info("Restart the ex-lb after adding or removing a master node", extra=LOG_STDOUT)
+        self._run_playbook(
+            cluster, "10.ex-lb.yml", cmdline="-t restart_lb",
+            fail_msg="Failed to restart the ex-lb for the changed cluster membership.",
+        )
+        logger.info("Restart the ex-lb successfully!", extra=LOG_STDOUT)
 
     def _kubectl_del_node(self, cluster: str, ip: str, role: str) -> None:
+        """Delete node from cluster by IP using Kubernetes API (official client, no shell grep/awk)."""
         kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
-        cmd = [f"kubectl --kubeconfig={kubeconfig} get node -o wide", "|", f"grep {ip}", "|", "awk '{print $1}'"]
-        nodename = run_command(cmd, shell=True, capture_output=True).stdout.strip()
-
-        logger.info(f"Deleting a {role} {nodename}...", extra={"to_stdout": True})
-        cmd = [str(self.kube_bin_dir / "kubectl"), "--kubeconfig", str(kubeconfig), "delete", "node", f"{nodename}"]
-        run_command(cmd, shell=True, capture_output=False)
-        logger.info(f"A {role} {nodename} has been deleted successfully!", extra={"to_stdout": True})
+        try:
+            k8s_config.load_kube_config(config_file=str(kubeconfig))
+            v1 = k8s_client.CoreV1Api()
+            nodes = v1.list_node()
+            node_name = None
+            for node in nodes.items:
+                for addr in (node.status.addresses or []):
+                    if addr.address == ip:
+                        node_name = node.metadata.name
+                        break
+                if node_name:
+                    break
+            if not node_name:
+                logger.warning(f"No node with IP {ip} found in cluster, skip kubectl delete node", extra=LOG_STDOUT)
+                return
+            logger.info(f"Deleting a {role} {node_name}...", extra=LOG_STDOUT)
+            v1.delete_node(node_name)
+            logger.info(f"A {role} {node_name} has been deleted successfully!", extra=LOG_STDOUT)
+        except K8sApiException as e:
+            logger.error(f"Failed to delete node from cluster: {e.reason or e.body}", extra=LOG_STDOUT)
+            raise ClusterManageError(f"Failed to delete node from cluster: {e.reason or str(e)}")
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Reconfigure kubeconfig after master node removal"""
-        hosts_file = self.clusters_dir / cluster / "hosts"
-        config_file = self.clusters_dir / cluster / "config.yml"
-
-        logger.info("Reconfigure the kubeconfig after a master node removal.", extra={"to_stdout": True})
-
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=str(self.base_path / "roles/deploy/deploy.yml"),
-                inventory=str(hosts_file),
-                extravars=self._yaml_to_dict(config_file),
-                roles_path=str(self.roles_dir),
-                cmdline="-t create_kctl_cfg"
-            )
-        if result.rc != 0:
-            logger.error(
-                f"Failed to reconfigure the kubeconfig after a master node removal. Exit code: {result.rc}.",
-                extra={"to_stdout": True})
-
-            raise ClusterManageError("Failed to reconfigure the kubeconfig for the changed cluster membership.")
-
-        logger.info("Reconfigure the kubeconfig after a master node removal successfully!",
-                    extra={"to_stdout": True})
+        logger.info("Reconfigure the kubeconfig after a master node removal.", extra=LOG_STDOUT)
+        self._run_playbook(
+            cluster,
+            "roles/deploy/deploy.yml",
+            cmdline="-t create_kctl_cfg",
+            fail_msg="Failed to reconfigure the kubeconfig for the changed cluster membership.",
+        )
+        logger.info("Reconfigure the kubeconfig after a master node removal successfully!", extra=LOG_STDOUT)
 
     def _show_component_versions(self, cluster: str) -> None:
         """Show component versions before setup"""
@@ -854,73 +766,61 @@ class ClusterManager:
             network_plugin = "unknown"
             v_network = "unknown"
 
-        logger.info("*** Component Version *********************", extra={'to_stdout': True})
-        logger.info("*******************************************", extra={'to_stdout': True})
-        logger.info(f"*   kubernetes: {v_kube}", extra={'to_stdout': True})
-        logger.info(f"*   etcd: {v_etcd}", extra={'to_stdout': True})
-        logger.info(f"*   {network_plugin}: {v_network}", extra={'to_stdout': True})
-        logger.info("*******************************************", extra={'to_stdout': True})
+        logger.info("*** Component Version *********************", extra=LOG_STDOUT)
+        logger.info("*******************************************", extra=LOG_STDOUT)
+        logger.info(f"*   kubernetes: {v_kube}", extra=LOG_STDOUT)
+        logger.info(f"*   etcd: {v_etcd}", extra=LOG_STDOUT)
+        logger.info(f"*   {network_plugin}: {v_network}", extra=LOG_STDOUT)
+        logger.info("*******************************************", extra=LOG_STDOUT)
 
 
 class SetupAIO(task.Task):
+    """All-in-one cluster setup task; uses ClusterManager for paths and operations."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cluster_manager = ClusterManager()
-        self.kube_constant = KubeConstant()
-        self.base_path = Path(self.kube_constant.BASE_PATH)
-        self.clusters_dir = self.base_path / "clusters"
-        self.playbooks_dir = self.base_path / "playbooks"
-        self.roles_dir = self.base_path / "roles"
 
     def execute(self) -> None:
         """Start an all-in-one cluster with default settings"""
         from common.utils import get_host_ip, ssh_localhost
 
-        logger.info("Start initializing allinone cluster environment...", extra={"to_stdout": True})
-
-        # ssh myself based on ssh key
+        logger.info("Start initializing allinone cluster environment...", extra=LOG_STDOUT)
         host_ip = get_host_ip()
         ssh_localhost()
 
-        # Create the aio cluster
         self.cluster_manager.new_cluster("aio")
-
-        # Copy all-in-one example host file with actual IP and cluster name
-        aio_example_hosts = self.base_path / "conf/hosts.allinone"
-        aio_hosts = self.clusters_dir / "aio" / "hosts"
-        aio_hosts.write_text(aio_example_hosts.read_text().replace("192.168.1.1", host_ip)
-                             .replace("_cluster_name_", "aio"))
-
-        logger.info("Allinone cluster environment has been initialized successfully!", extra={"to_stdout": True})
+        m = self.cluster_manager
+        aio_hosts = m.clusters_dir / "aio" / "hosts"
+        aio_hosts.write_text(
+            (m.base_path / "conf/hosts.allinone").read_text()
+            .replace("192.168.1.1", host_ip)
+            .replace("_cluster_name_", "aio")
+        )
+        logger.info("Allinone cluster environment has been initialized successfully!", extra=LOG_STDOUT)
 
         try:
             # Setup cluster
-            logger.info("Start creating allinone cluster...", extra={"to_stdout": True})
+            logger.info("Start creating allinone cluster...", extra=LOG_STDOUT)
             self.cluster_manager.setup_cluster("aio", "all")
-            logger.info("Allinone cluster has been established successfully!", extra={"to_stdout": True})
+            logger.info("Allinone cluster has been established successfully!", extra=LOG_STDOUT)
         except Exception as e:
-            logger.error("Allinone cluster failed to be created!", extra={"to_stdout": True})
+            logger.error("Allinone cluster failed to be created!", extra=LOG_STDOUT)
             raise e
 
     def revert(self, result, flow_failures, **kwargs):
-
-        logger.error(f"Task failed with: {result.exception_str}, now begin to revert the installation of aio!",
-                     extra={"to_stdout": True})
-
+        logger.error(f"Task failed with: {result.exception_str}, now begin to revert the installation of aio!", extra=LOG_STDOUT)
+        m = self.cluster_manager
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             result = ansible_runner.run(
                 private_data_dir=tmp_dir,
-                playbook=str(self.playbooks_dir / "99.clean.yml"),
-                inventory=str(self.clusters_dir / "aio" / "hosts"),
-                extravars=self.cluster_manager._yaml_to_dict(self.clusters_dir / "aio" / 'config.yml'),
-                roles_path=str(self.roles_dir)
+                playbook=str(m.playbooks_dir / "99.clean.yml"),
+                inventory=str(m.clusters_dir / "aio" / "hosts"),
+                extravars=m._yaml_to_dict(m.clusters_dir / "aio" / "config.yml"),
+                roles_path=str(m.roles_dir),
             )
-
         if result.rc != 0:
-            logger.error(f"Failed to revert the installation of aio! Exit code: {result.rc}",
-                         extra={"to_stdout": True})
+            logger.error(f"Failed to revert the installation of aio! Exit code: {result.rc}", extra=LOG_STDOUT)
             sys.exit(result.rc)
-        else:
-            rmrf(self.clusters_dir / "aio")
-            logger.info(f"Succeed to revert the installation of aio!", extra={"to_stdout": True})
+        rmrf(m.clusters_dir / "aio")
+        logger.info("Succeed to revert the installation of aio!", extra=LOG_STDOUT)

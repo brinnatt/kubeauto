@@ -1,4 +1,4 @@
-from common.logger import setup_logger
+from common.logger import setup_logger, LOG_STDOUT
 from pathlib import Path
 from typing import List, Optional
 from .docker import DockerManager
@@ -20,13 +20,13 @@ class RegistryManager:
         version = version or self.kube_constant.v_docker_registry
 
         if self.docker.container_exists("local_registry"):
-            logger.warning("Local registry is already running")
+            logger.warning("Local registry is already running", extra=LOG_STDOUT)
             return
 
         # Load registry image if not exists
         registry_tar = self.image_dir / f"registry-{version}.tar"
         if not registry_tar.exists():
-            logger.info(f"Downloading registry:{version} image")
+            logger.info(f"Downloading registry:{version} image", extra=LOG_STDOUT)
             self.docker.pull_image(f"registry:{version}")
             self.docker.save_image(f"registry:{version}", str(registry_tar))
         else:
@@ -37,7 +37,7 @@ class RegistryManager:
         registry_data.mkdir(parents=True, exist_ok=True)
 
         # Run registry container
-        logger.info(f"Starting local registry: {version}")
+        logger.info(f"Starting local registry: {version}", extra=LOG_STDOUT)
         self.docker.run_container(
             image=f"registry:{version}",
             name="local_registry",
@@ -65,7 +65,7 @@ class RegistryManager:
                 if not self.docker.image_exists(image):
                     self.docker.pull_image(image)
             except CommandExecutionError:
-                logger.warning(f"Failed to pull image {image}, skipping")
+                logger.warning(f"Failed to pull image {image}, skipping", extra=LOG_STDOUT)
                 continue
 
             # Tag and push to local registry
@@ -76,4 +76,4 @@ class RegistryManager:
 
             self.docker.tag_image(image, local_image)
             self.docker.push_image(local_image)
-            logger.info(f"Uploaded {image} to local registry successfully!", extra={"to_stdout": True})
+            logger.info(f"Uploaded {image} to local registry successfully!", extra=LOG_STDOUT)

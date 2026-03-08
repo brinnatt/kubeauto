@@ -8,10 +8,13 @@ from docker.errors import DockerException, APIError, ImageNotFound
 from common.constants import KubeConstant
 from common.utils import run_command, rmrf
 from common.exceptions import CommandExecutionError
-from common.logger import setup_logger
+from common.logger import setup_logger, LOG_STDOUT
 from common.os import SystemProbe
 
 logger = setup_logger(__name__)
+
+# Docker SDK 不可用时的回退提示，统一文案
+_SDK_FALLBACK_MSG = "Docker SDK got wrong, roll back to docker command"
 
 
 class DockerManager:
@@ -80,7 +83,7 @@ class DockerManager:
         if not assume_yes:
             confirm = input("confirm to uninstall Docker and Podman? [Y/n] ").strip().lower()
             if confirm not in ('', 'y', 'yes'):
-                logger.warning("Cancel cleaning docker envs", extra={'to_stdout': True})
+                logger.warning("Cancel cleaning docker envs", extra=LOG_STDOUT)
                 return False
 
         self._uninstall_generic_docker()
@@ -92,7 +95,7 @@ class DockerManager:
         """
         Clean Docker pkg installation environments
         """
-        logger.info("Before installation, try to clean residual docker pkgs ...", extra={"to_stdout": True})
+        logger.info("Before installation, try to clean residual docker pkgs ...", extra=LOG_STDOUT)
 
         if 'Rocky' in self.system_probe.system_info['distro']:
             try:
@@ -106,14 +109,14 @@ class DockerManager:
             except CommandExecutionError:
                 pass
 
-        logger.info("Residual docker pkgs has been cleaned successfully!", extra={"to_stdout": True})
+        logger.info("Residual docker pkgs has been cleaned successfully!", extra=LOG_STDOUT)
 
     def _uninstall_generic_docker(self) -> None:
         """
         Clean Docker binary installation environments
         """
         logger.info("Before installation, try to clean residual docker binary environments...",
-                    extra={"to_stdout": True})
+                    extra=LOG_STDOUT)
 
         docker_version = "Unknown Version"
         try:
@@ -194,11 +197,11 @@ class DockerManager:
         # delete docker residual process if existing
         try:
             run_command(["pkill", "-9", "dockerd"])
-            logger.warning("Docker residual process has been killed", extra={'to_stdout': True})
+            logger.warning("Docker residual process has been killed", extra=LOG_STDOUT)
         except CommandExecutionError:
             pass
 
-        logger.info(f"Residual docker {docker_version} has been cleaned successfully!", extra={'to_stdout': True})
+        logger.info(f"Residual docker {docker_version} has been cleaned successfully!", extra=LOG_STDOUT)
 
     def _download_docker(self, version: str) -> None:
         """
@@ -209,10 +212,10 @@ class DockerManager:
 
         docker_tgz = self.image_dir / f"docker-{version}.tgz"
         if docker_tgz.exists():
-            logger.warning("Docker binary exists already", extra={'to_stdout': True})
+            logger.warning("Docker binary exists already", extra=LOG_STDOUT)
             return
 
-        logger.info(f"Downloading Docker binary: {version}", extra={'to_stdout': True})
+        logger.info(f"Downloading Docker binary: {version}", extra=LOG_STDOUT)
         docker_bin_url = self.kube_constant.docker_bin_url(version)
 
         try:
@@ -220,13 +223,13 @@ class DockerManager:
         except CommandExecutionError:
             run_command(["curl", "-k", "-C-", "-o", str(docker_tgz), docker_bin_url])
 
-        logger.info("Docker binary has been downloaded successfully!", extra={'to_stdout': True})
+        logger.info("Docker binary has been downloaded successfully!", extra=LOG_STDOUT)
 
     def _install_docker_binaries(self, version) -> None:
         """
         Install Docker binary
         """
-        logger.info(f"Installing Docker binary: {version}", extra={'to_stdout': True})
+        logger.info(f"Installing Docker binary: {version}", extra=LOG_STDOUT)
 
         self.temp_path.mkdir(parents=True, exist_ok=True)
         self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
@@ -241,20 +244,20 @@ class DockerManager:
 
         run_command(["rm", "-rf", str(self.temp_path / "docker")])
 
-        logger.info("Docker binary has been installed successfully!", extra={'to_stdout': True})
+        logger.info("Docker binary has been installed successfully!", extra=LOG_STDOUT)
 
     def _configure_docker(self, version: str) -> None:
         """
         Configure Docker binary
         """
-        logger.info(f"Configuring Docker Daemon: {version}", extra={'to_stdout': True})
+        logger.info(f"Configuring Docker Daemon: {version}", extra=LOG_STDOUT)
 
         # Create docker user group
         try:
             # 9 indicates docker group exists
             run_command(["groupadd", "-r", "docker"], allowed_exit_codes=[0, 9])
         except Exception as e:
-            logger.error(f"Failed to create docker user group: {e}", extra={'to_stdout': True})
+            logger.error(f"Failed to create docker user group: {e}", extra=LOG_STDOUT)
 
         # Create docker bash completion (https://docs.docker.com/engine/cli/completion/)
         try:
@@ -268,9 +271,9 @@ class DockerManager:
                 f.write(docker_completion.stdout)
 
         except CommandExecutionError as e:
-            logger.error(f"Failed to generate docker completions: {e}", extra={'to_stdout': True})
+            logger.error(f"Failed to generate docker completions: {e}", extra=LOG_STDOUT)
         except IOError as e:
-            logger.error(f"Failed to write completions file: {e}", extra={'to_stdout': True})
+            logger.error(f"Failed to write completions file: {e}", extra=LOG_STDOUT)
 
         # create systemd service file
         try:
@@ -341,7 +344,7 @@ WantedBy=multi-user.target
             daemon_json.parent.mkdir(parents=True, exist_ok=True)
             daemon_json.write_text(json.dumps(config, indent=2))
         except Exception as e:
-            logger.error("Failed to configure docker daemon.json file.", extra={'to_stdout': True})
+            logger.error("Failed to configure docker daemon.json file.", extra=LOG_STDOUT)
             raise e
 
         # Disable SELinux if enabled
@@ -354,10 +357,10 @@ WantedBy=multi-user.target
                 content = re.sub(r'^SELINUX=.*$', 'SELINUX=disabled', content, flags=re.MULTILINE)
                 selinux_config.write_text(content)
         except Exception as e:
-            logger.error("Failed to configure SELinux config.", extra={'to_stdout': True})
+            logger.error("Failed to configure SELinux config.", extra=LOG_STDOUT)
             raise e
 
-        logger.info("Docker daemon has been configured successfully!", extra={'to_stdout': True})
+        logger.info("Docker daemon has been configured successfully!", extra=LOG_STDOUT)
 
     def _start_docker_service(self, version) -> None:
         """
@@ -369,10 +372,10 @@ WantedBy=multi-user.target
             run_command(["systemctl", "daemon-reload"])
             run_command(["systemctl", "restart", "docker"])
         except Exception as e:
-            logger.error("Failed to start docker service.", extra={'to_stdout': True})
+            logger.error("Failed to start docker service.", extra=LOG_STDOUT)
             raise e
 
-        logger.info("Docker service has been started successfully!", extra={'to_stdout': True})
+        logger.info("Docker service has been started successfully!", extra=LOG_STDOUT)
 
     def container_exists(self, name: str) -> bool:
         """
@@ -385,8 +388,9 @@ WantedBy=multi-user.target
             except docker.errors.NotFound:
                 return False
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
+        # CLI fallback: pass args as list (no shell) so Go template {{.Names}} is not mangled.
         try:
             output = run_command(["docker", "ps", "-a", "--format={{.Names}}", "--filter", f"name={name}"])
             return name in output.stdout
@@ -408,7 +412,7 @@ WantedBy=multi-user.target
                 container.remove(force=True)
                 return
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "rm", "-f", name])
 
@@ -435,7 +439,7 @@ WantedBy=multi-user.target
                         logger.warning(f"Failed to delete container {container.name}: {str(e)}")
                 return removed_count
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
         try:
             cmd = ["docker", "ps", "-a", "--filter", "status=exited", "--format={{.ID}}"]
             result = run_command(cmd)
@@ -443,7 +447,8 @@ WantedBy=multi-user.target
             if not result.stdout.strip():
                 return 0
 
-            container_ids = result.stdout.splitlines()
+            # Strip each line and skip empty (trailing newline or blank lines per Docker output)
+            container_ids = [x.strip() for x in result.stdout.splitlines() if x.strip()]
 
             for container_id in container_ids:
                 try:
@@ -451,7 +456,7 @@ WantedBy=multi-user.target
                     removed_count += 1
                     logger.debug(f"Exited container has been deleted: {container_id}")
                 except CommandExecutionError as e:
-                    logger.warning(f"Failed to delete container {container_id}: {str(e)}", extra={'to_stdout': True})
+                    logger.warning(f"Failed to delete container {container_id}: {str(e)}", extra=LOG_STDOUT)
 
             return removed_count
         except CommandExecutionError as e:
@@ -483,7 +488,7 @@ WantedBy=multi-user.target
                         logger.warning(f"Failed to delete container {container.name}: {str(e)}")
                 return removed_count
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
         try:
             cmd = ["docker", "ps", "-a", "--format={{.ID}}"]
             result = run_command(cmd)
@@ -491,10 +496,11 @@ WantedBy=multi-user.target
             if not result.stdout.strip():
                 return 0
 
-            container_ids = result.stdout.splitlines()
+            container_ids = [x.strip() for x in result.stdout.splitlines() if x.strip()]
 
             for container_id in container_ids:
                 try:
+                    # Official: .State.Running is bool string "true"/"false"
                     inspect_cmd = ["docker", "inspect", "--format={{.State.Running}}", container_id]
                     inspect_result = run_command(inspect_cmd)
 
@@ -502,7 +508,7 @@ WantedBy=multi-user.target
                         logger.debug(f"skip running container: {container_id} (force=True force clean container)")
                         continue
 
-                    run_command(["docker", "rm", "-f" if force else "", container_id])
+                    run_command(["docker", "rm", *(["-f"] if force else []), container_id])
                     removed_count += 1
                     logger.debug(f"already deleted container: {container_id}")
                 except CommandExecutionError as e:
@@ -560,23 +566,28 @@ WantedBy=multi-user.target
                 )
                 return container.id
             except APIError as e:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
+        # Docker CLI: use list form (no shell) so --format Go templates are not mangled by shell.
+        # See https://docs.docker.com/engine/cli/formatting/
         cmd = ["docker", "run", "-d", "--name", name]
         for k, v in kwargs.items():
-            if v is not None:
-                key = f"--{k.replace('_', '-')}"
-                if k == "publish" and isinstance(v, list):
-                    # --publish ["host:container"] → --publish host:container
-                    for port_map in v:
-                        cmd.extend([key, str(port_map)])
-                elif k == "volume" and isinstance(v, list):
-                    # --volume ["host:container"] → --volume host:container
-                    for vol_map in v:
-                        cmd.extend([key, str(vol_map)])
-                else:
-                    # no changes for other params
-                    cmd.extend([key, str(v)])
+            if v is None:
+                continue
+            key = f"--{k.replace('_', '-')}"
+            if k == "publish" and isinstance(v, list):
+                for port_map in v:
+                    cmd.extend([key, str(port_map)])
+            elif k == "volume" and isinstance(v, list):
+                for vol_map in v:
+                    cmd.extend([key, str(vol_map)])
+            elif k == "env" and isinstance(v, list):
+                # Official: multiple -e/--env flags, e.g. docker run -e VAR1=val1 -e VAR2=val2
+                for env_item in v:
+                    if isinstance(env_item, str) and "=" in env_item:
+                        cmd.extend([key, env_item])
+            else:
+                cmd.extend([key, str(v)])
         cmd.append(image)
 
         result = run_command(cmd)
@@ -597,23 +608,20 @@ WantedBy=multi-user.target
                 logger.debug(f"Container '{container_name}' not found")
                 return False
             except APIError as e:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
+        # Exact match per Docker filter docs: name filter accepts regex, ^name$ for exact.
         try:
             result = run_command([
-                "docker",
-                "ps",
-                "-a",
-                "--filter",
-                f"name=^{container_name}$",
-                "--format",
-                "{{.Names}}"
+                "docker", "ps", "-a",
+                "--filter", f"name=^{container_name}$",
+                "--format", "{{.Names}}",
             ])
             exists = container_name in result.stdout
             logger.debug(f"Container '{container_name}' {'exists' if exists else 'not found'}")
             return exists
         except CommandExecutionError as e:
-            logger.error(f"Failed to check container status: {str(e)}", extra={'to_stdout': True})
+            logger.error(f"Failed to check container status: {str(e)}", extra=LOG_STDOUT)
             return False
 
     def copy_from_container(self, container: str, src: str, dest: str) -> None:
@@ -642,12 +650,12 @@ WantedBy=multi-user.target
         """
         if self.client is not None:
             try:
-                logger.info(f"Pulling image: {image}", extra={'to_stdout': True})
+                logger.info(f"Pulling image: {image}", extra=LOG_STDOUT)
                 self.client.images.pull(image)
-                logger.info(f"{image} has been pulled successfully", extra={'to_stdout': True})
+                logger.info(f"{image} has been pulled successfully", extra=LOG_STDOUT)
                 return
             except APIError as e:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "pull", image])
 
@@ -663,7 +671,7 @@ WantedBy=multi-user.target
                         f.write(chunk)
                 return
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "save", "-o", output, image])
 
@@ -677,7 +685,7 @@ WantedBy=multi-user.target
                     self.client.images.load(f.read())
                 return
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "load", "-i", input_file])
 
@@ -691,7 +699,7 @@ WantedBy=multi-user.target
                 image.tag(dest)
                 return
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "tag", src, dest])
 
@@ -701,14 +709,14 @@ WantedBy=multi-user.target
         """
         if self.client is not None:
             try:
-                logger.info(f"Pushing image: {image}", extra={'to_stdout': True})
+                logger.info(f"Pushing image: {image}", extra=LOG_STDOUT)
                 for line in self.client.images.push(image, stream=True, decode=True):
                     if 'status' in line:
                         logger.debug(line['status'])
-                logger.info(f"{image} has been pushed successfully", extra={'to_stdout': True})
+                logger.info(f"{image} has been pushed successfully", extra=LOG_STDOUT)
                 return
             except APIError as e:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "push", image])
 
@@ -726,7 +734,7 @@ WantedBy=multi-user.target
                     'image': c.image.tags[0] if c.image.tags else c.image.id
                 } for c in containers]
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             output = run_command(["docker", "ps", "-a", "--format={{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}"])
@@ -754,7 +762,7 @@ WantedBy=multi-user.target
                 container_obj = self.client.containers.get(container)
                 return container_obj.logs(tail=tail).decode('utf-8')
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             output = run_command(["docker", "logs", "--tail", str(tail), container])
@@ -773,7 +781,7 @@ WantedBy=multi-user.target
             except ImageNotFound:
                 return False
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             run_command(["docker", "image", "inspect", image])
@@ -795,7 +803,7 @@ WantedBy=multi-user.target
                 self.client.images.remove(image, force=True)
                 return
             except APIError:
-                logger.warning("Docker SDK got wrong, roll back to docker command", extra={'to_stdout': True})
+                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "rmi", "-f", image])
 

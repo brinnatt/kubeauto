@@ -12,6 +12,10 @@ DEFAULT_LOG_LEVEL = logging.DEBUG
 DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
+# 日志输出到 stdout 的 extra，供 logger.info(..., extra=LOG_STDOUT) 使用
+LOG_STDOUT = {"to_stdout": True}
+
+
 def setup_logger(
     name: str = "kubeauto",
     log_file: Optional[str] = None,
