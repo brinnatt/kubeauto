@@ -34,8 +34,6 @@ class ClusterManager:
         self.kube_bin_dir = Path(self.kube_constant.KUBE_BIN_DIR)
         self.extra_bin_dir = Path(self.kube_constant.EXTRA_BIN_DIR)
         self.clusters_dir = self.base_path / "clusters"
-        self.playbooks_dir = self.base_path / "playbooks"
-        self.roles_dir = self.base_path / "roles"
 
     def list_clusters(self) -> List[str]:
         """List all managed clusters"""
@@ -86,14 +84,14 @@ class ClusterManager:
         logger.debug(f"Creating cluster directory: {cluster_dir}")
         cluster_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy example files
-        example_hosts = self.base_path / "conf/hosts.multi-node"
-        example_config = self.base_path / "conf/config.yml"
+        # Copy example files（conf 与 playbooks/roles 同源，统一用 get_resource_path）
+        example_hosts_path = get_resource_path("conf", "hosts.multi-node")
+        example_config_path = get_resource_path("conf", "config.yml")
         cluster_hosts = cluster_dir / "hosts"
         cluster_config = cluster_dir / "config.yml"
         try:
-            cluster_hosts.write_text(example_hosts.read_text())
-            cluster_config.write_text(example_config.read_text())
+            cluster_hosts.write_text(Path(example_hosts_path).read_text())
+            cluster_config.write_text(Path(example_config_path).read_text())
 
             # Replace placeholders
             hosts_content = cluster_hosts.read_text().replace("_cluster_name_", name)
@@ -143,10 +141,10 @@ class ClusterManager:
         method one: on host
             ansible_runner.run(
                 private_data_dir="", # if on host, ansible_runner may not recommend to specify this directory as multi ansible-runners generates envs affecting each other
-                playbook=str(self.playbooks_dir / playbook),
+                playbook=get_resource_path("playbooks", playbook),
                 inventory=str(self.clusters_dir / name / "hosts"),
                 extravars=self._yaml_to_dict(self.clusters_dir / name / 'config.yml'),
-                roles_path=str(self.roles_dir),
+                roles_path=get_resource_path("roles"),
                 cmdline=" ".join(extra_args if extra_args else [])
             )
 
@@ -206,13 +204,14 @@ class ClusterManager:
         if not confirm_action(f"cluster:{name} setup step:{step} begins"):
             return
 
-        # setup 使用 get_resource_path 以支持打包/资源注入，不通过 _run_playbook
+        # setup 使用 get_resource_path 以支持打包/资源注入；roles_path 与 playbook 同源，源码/打包均可用
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             result = ansible_runner.run(
                 private_data_dir=tmp_dir,
                 playbook=get_resource_path("playbooks", playbook),
                 inventory=str(self.clusters_dir / name / "hosts"),
                 extravars=self._yaml_to_dict(self.clusters_dir / name / "config.yml"),
+                roles_path=get_resource_path("roles"),
                 cmdline=" ".join(extra_args or []),
             )
         if result.rc != 0:
@@ -256,18 +255,18 @@ class ClusterManager:
         inv = inventory or (self.clusters_dir / cluster / "hosts")
         ev = extra_vars if extra_vars is not None else self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         if isinstance(playbook, Path):
-            pb_path = playbook
+            pb_path = str(playbook)
         elif "/" in str(playbook):
-            pb_path = self.base_path / playbook
+            pb_path = get_resource_path(*str(playbook).split("/"))
         else:
-            pb_path = self.playbooks_dir / playbook
+            pb_path = get_resource_path("playbooks", playbook)
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             result = ansible_runner.run(
                 private_data_dir=tmp_dir,
-                playbook=str(pb_path),
+                playbook=pb_path,
                 inventory=str(inv),
                 extravars=ev,
-                roles_path=str(self.roles_dir),
+                roles_path=get_resource_path("roles"),
                 cmdline=cmdline or "",
             )
         if fail_msg and result.rc != 0:
@@ -828,7 +827,7 @@ class SetupAIO(task.Task):
         m.new_cluster(self.AIO_CLUSTER)
         aio_hosts = aio_dir / "hosts"
         aio_hosts.write_text(
-            (m.base_path / "conf/hosts.allinone").read_text()
+            Path(get_resource_path("conf", "hosts.allinone")).read_text()
             .replace("192.168.1.1", host_ip)
             .replace("_cluster_name_", self.AIO_CLUSTER)
         )
@@ -865,10 +864,10 @@ class SetupAIO(task.Task):
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             run_result = ansible_runner.run(
                 private_data_dir=tmp_dir,
-                playbook=str(m.playbooks_dir / "99.clean.yml"),
+                playbook=get_resource_path("playbooks", "99.clean.yml"),
                 inventory=str(m.clusters_dir / self.AIO_CLUSTER / "hosts"),
                 extravars=m._yaml_to_dict(m.clusters_dir / self.AIO_CLUSTER / "config.yml"),
-                roles_path=str(m.roles_dir),
+                roles_path=get_resource_path("roles"),
             )
         if run_result.rc != 0:
             logger.error(f"Failed to revert the installation of aio! Exit code: {run_result.rc}", extra=LOG_STDOUT)

@@ -21,7 +21,6 @@ class DockerManager:
     def __init__(self):
         self.kube_constant = KubeConstant()
         self.system_probe = SystemProbe()
-        self.base_path = Path(self.kube_constant.BASE_PATH)
         self.image_dir = Path(self.kube_constant.IMAGE_DIR)
         self.docker_bin_dir = Path(self.kube_constant.DOCKER_BIN_DIR)
         self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
