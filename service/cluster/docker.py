@@ -644,12 +644,24 @@ WantedBy=multi-user.target
         except CommandExecutionError as e:
             raise RuntimeError(f"Failed to copy file from container src to host dest: {str(e)}")
 
+    def _log_pull_push_progress(self, line: dict) -> None:
+        """Output one stream event to stdout (progress bar or status), same as docker CLI."""
+        if line.get("progress"):
+            logger.info(line["progress"], extra=LOG_STDOUT)
+        elif line.get("status"):
+            msg = line["status"]
+            if line.get("id"):
+                msg += f" {line['id']}"
+            logger.info(msg, extra=LOG_STDOUT)
+
     def pull_image(self, image: str) -> None:
-        """Pull image from registry. Logs: [下载] image -> success/failure."""
+        """Pull image from registry. Streams progress when using SDK (same as docker pull)."""
         logger.info(f"[下载] Pulling image: {image}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
-                self.client.images.pull(image)
+                repository, tag = (image.rsplit(":", 1) if ":" in image else (image, "latest"))
+                for line in self.client.api.pull(repository, tag=tag, stream=True, decode=True):
+                    self._log_pull_push_progress(line)
                 logger.info(f"[下载] Pulled successfully: {image}", extra=LOG_STDOUT)
                 return
             except APIError as e:
@@ -719,13 +731,12 @@ WantedBy=multi-user.target
             raise
 
     def push_image(self, image: str) -> None:
-        """Push image to registry. Logs: [上传] image -> success/failure."""
+        """Push image to registry. Streams progress when using SDK (same as docker push)."""
         logger.info(f"[上传] Pushing image: {image}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
                 for line in self.client.images.push(image, stream=True, decode=True):
-                    if 'status' in line:
-                        logger.debug(line['status'])
+                    self._log_pull_push_progress(line)
                 logger.info(f"[上传] Pushed successfully: {image}", extra=LOG_STDOUT)
                 return
             except APIError as e:
