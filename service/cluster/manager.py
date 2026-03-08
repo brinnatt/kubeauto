@@ -303,6 +303,10 @@ class ClusterManager:
             fail_msg=f"Failed to {command} cluster {name} with playbook {playbook}.",
         )
         logger.info(f"Succeed to {command} cluster {name} with playbook {playbook}!", extra=LOG_STDOUT)
+        # destroy: remove cluster dir so next new/setup or start-aio can run clean
+        if command == "destroy":
+            rmrf(self.clusters_dir / name)
+            logger.info(f"Cluster directory {name} has been removed.", extra=LOG_STDOUT)
 
     def checkout_cluster(self, name: str) -> None:
         """Switch to a cluster's kubeconfig"""

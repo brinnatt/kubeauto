@@ -4,7 +4,8 @@ Command line interface for kubeauto
 import argparse
 import sys
 import re
-from typing import Dict, Callable
+from pathlib import Path
+from typing import Dict, Callable, List
 from taskflow.patterns import linear_flow
 from taskflow import engines
 from common.utils import confirm_action, validate_ip
@@ -12,6 +13,44 @@ from common.exceptions import KubeautoError, DownloadError, DockerManageError, S
 from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
 from common.os import SystemProbe
+
+# Commands that take a cluster name as first argument (for completion)
+_CLUSTER_COMMANDS = {
+    "new", "setup", "list", "checkout", "start", "stop", "upgrade",
+    "backup", "restore", "destroy", "add-etcd", "add-master", "add-node",
+    "del-etcd", "del-master", "del-node", "kca-renew", "kcfg-adm",
+}
+# Setup step values (for setup <cluster> <step> completion)
+_SETUP_STEPS = [
+    "01", "02", "03", "04", "05", "06", "07", "90", "10", "11",
+    "prepare", "etcd", "container-runtime", "kube-master", "kube-node",
+    "network", "cluster-addon", "all", "ex-lb", "harbor",
+]
+
+_BASH_COMPLETION_SCRIPT = r'''# Bash completion for {prog}
+# Usage: source <({prog} completion bash)   or add to .bashrc
+_kubeauto_completion() {{
+  local cur="${{COMP_WORDS[COMP_CWORD]}}"
+  local cword=$((COMP_CWORD - 1))
+  local words=("${{COMP_WORDS[@]:1}}")
+  COMPREPLY=($(compgen -W "$({prog} __complete "$cword" "${{words[@]}}" 2>/dev/null)" -- "$cur"))
+}}
+complete -F _kubeauto_completion {prog}
+'''
+
+_ZSH_COMPLETION_SCRIPT = r'''# Zsh completion for {prog}
+# Usage: source <({prog} completion zsh)   or add to .zshrc
+_kubeauto_completion() {{
+  local -a w
+  w=("${{(@)words[2,-1]}}")
+  local cword=$((CURRENT - 2))
+  [[ $cword -lt 0 ]] && cword=0
+  local -a reply
+  reply=($({prog} __complete "$cword" "${{w[@]}}" 2>/dev/null))
+  _describe 'values' reply
+}}
+compdef _kubeauto_completion {prog}
+'''
 from service.cluster.manager import ClusterManager, SetupAIO
 from service.cluster.downloader import DownloadManager
 from service.cluster.docker import DockerManager
@@ -77,6 +116,9 @@ class KubeautoCLI:
 
         # Version (no side effects)
         self._setup_version_command()
+
+        # Completion (output script only, no side effects)
+        self._setup_completion_command()
 
     def _add_common_cluster_args(self, parser: argparse.ArgumentParser) -> None:
         """Add common cluster arguments to a parser"""
@@ -554,6 +596,64 @@ Examples:
             help="Show kubeauto version"
         )
 
+    def _setup_completion_command(self) -> None:
+        """Setup 'completion' command: print shell completion script (bash/zsh)."""
+        parser = self.subparsers.add_parser(
+            "completion",
+            help="Output shell completion script (source it to enable Tab completion)"
+        )
+        sub = parser.add_subparsers(dest="shell", required=True, metavar="SHELL")
+        sub.add_parser("bash", help="Bash completion script")
+        sub.add_parser("zsh", help="Zsh completion script")
+
+    def _get_subcommand_names(self) -> List[str]:
+        """Return list of top-level subcommand names from parser (for completion)."""
+        for action in self.parser._actions:
+            if hasattr(action, "choices") and action.choices:
+                return sorted(action.choices.keys())
+        return []
+
+    def _get_cluster_names(self) -> List[str]:
+        """Return cluster names from clusters_dir (read-only, no business logic)."""
+        clusters_dir = Path(self.kube_constant.BASE_PATH) / "clusters"
+        if not clusters_dir.is_dir():
+            return []
+        return [p.name for p in clusters_dir.iterdir() if p.is_dir()]
+
+    def _do_completion(self, argv_after_complete: List[str]) -> None:
+        """Print completions one per line for shell. No side effects, read-only.
+        argv_after_complete: [cword, word0, word1, ...] where cword is the index
+        of the word being completed (0-based), rest are the words from the command line.
+        """
+        if len(argv_after_complete) < 1:
+            return
+        try:
+            cword = int(argv_after_complete[0])
+        except (ValueError, IndexError):
+            return
+        tokens = argv_after_complete[1:]
+        prefix = (tokens[cword] or "") if cword < len(tokens) else ""
+
+        def filter_prefix(candidates: List[str], p: str) -> List[str]:
+            if not p:
+                return candidates
+            return [c for c in candidates if c.startswith(p)]
+
+        subcommands = self._get_subcommand_names()
+        out: List[str] = []
+
+        if cword == 0:
+            out = filter_prefix(subcommands, prefix)
+        elif cword == 1 and tokens and tokens[0] in _CLUSTER_COMMANDS:
+            out = filter_prefix(self._get_cluster_names(), prefix)
+        elif cword == 2 and len(tokens) >= 2 and tokens[0] == "setup":
+            out = filter_prefix(_SETUP_STEPS, prefix)
+        else:
+            out = []
+
+        for s in out:
+            print(s)
+
     def _execute_command(self, args: argparse.Namespace) -> None:
         """Execute the appropriate command based on parsed arguments"""
         command_handlers: Dict[str, Callable[[argparse.Namespace], None]] = {
@@ -594,7 +694,10 @@ Examples:
             "system": self._handle_system,
 
             # Version
-            "version": self._handle_version
+            "version": self._handle_version,
+
+            # Completion
+            "completion": self._handle_completion
         }
 
         handler = command_handlers.get(args.command)
@@ -607,6 +710,14 @@ Examples:
     def _handle_version(self, args: argparse.Namespace) -> None:
         """Print kubeauto version (from v_kubeauto), no side effects."""
         logger.info(self.kube_constant.v_kubeauto, extra=LOG_STDOUT)
+
+    def _handle_completion(self, args: argparse.Namespace) -> None:
+        """Print shell completion script (bash or zsh). No side effects."""
+        prog = self.parser.prog or "kubecli"
+        if args.shell == "bash":
+            print(_BASH_COMPLETION_SCRIPT.format(prog=prog))
+        else:
+            print(_ZSH_COMPLETION_SCRIPT.format(prog=prog))
 
     def _handle_new(self, args: argparse.Namespace) -> None:
         """Handle 'new' command"""
@@ -913,6 +1024,11 @@ Examples:
 
     def run(self) -> None:
         """Run the CLI application"""
+        # Completion hook: no parse_args, no business logic (minimal invasiveness)
+        if len(sys.argv) >= 2 and sys.argv[1] == "__complete":
+            self._do_completion(sys.argv[2:])
+            sys.exit(0)
+
         args = self.parser.parse_args()
 
         try:
