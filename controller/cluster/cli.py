@@ -27,15 +27,30 @@ _SETUP_STEPS = [
     "network", "cluster-addon", "all", "ex-lb", "harbor",
 ]
 
-_BASH_COMPLETION_SCRIPT = r'''# Bash completion for {prog}
-# Usage: source <({prog} completion bash)   or add to .bashrc
+_BASH_COMPLETION_SCRIPT = r'''# Bash completion for kubecli (supports: python3 kubecli.py / kubecli / kubecli.py)
+# Usage: source <(python3 kubecli.py completion bash)   or add to .bashrc
 _kubeauto_completion() {{
   local cur="${{COMP_WORDS[COMP_CWORD]}}"
-  local cword=$((COMP_CWORD - 1))
-  local words=("${{COMP_WORDS[@]:1}}")
-  COMPREPLY=($(compgen -W "$({prog} __complete "$cword" "${{words[@]}}" 2>/dev/null)" -- "$cur"))
+  # Invoked as: python3 kubecli.py [args]  -> complete kubecli subcommands/args
+  if [[ "${{COMP_WORDS[0]}}" == "python3" ]] && [[ $COMP_CWORD -ge 1 ]] && [[ "${{COMP_WORDS[1]}}" == *"kubecli"* ]]; then
+    local cword=$((COMP_CWORD - 2))
+    [[ $cword -lt 0 ]] && cword=0
+    local words=("${{COMP_WORDS[@]:2}}")
+    COMPREPLY=($(compgen -W "$("${{COMP_WORDS[0]}}" "${{COMP_WORDS[1]}}" __complete "$cword" "${{words[@]}}" 2>/dev/null)" -- "$cur"))
+    return
+  fi
+  # Invoked as: kubecli [args] or kubecli.py [args] (direct)
+  if [[ "${{COMP_WORDS[0]}}" == *"kubecli"* ]]; then
+    local cword=$((COMP_CWORD - 1))
+    local words=("${{COMP_WORDS[@]:1}}")
+    COMPREPLY=($(compgen -W "$("${{COMP_WORDS[0]}}" __complete "$cword" "${{words[@]}}" 2>/dev/null)" -- "$cur"))
+    return
+  fi
+  COMPREPLY=()
 }}
+complete -F _kubeauto_completion python3
 complete -F _kubeauto_completion {prog}
+complete -F _kubeauto_completion kubecli
 '''
 
 _ZSH_COMPLETION_SCRIPT = r'''# Zsh completion for {prog}
