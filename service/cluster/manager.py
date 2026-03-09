@@ -19,7 +19,8 @@ from kubernetes.client.rest import ApiException as K8sApiException
 from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
-    InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError
+    InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError,
+    InstallPrereqError,
 )
 from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
@@ -83,12 +84,21 @@ class ClusterManager:
         if cluster_dir.exists():
             raise ClusterExistsError(f"Cluster {name} already exists")
 
+        # Require cluster resource templates to exist (from project or install)
+        example_hosts_path = get_resource_path("conf", "hosts.multi-node")
+        example_config_path = get_resource_path("conf", "config.yml")
+        if not Path(example_hosts_path).exists():
+            raise InstallPrereqError(
+                f"Cluster template not found: {example_hosts_path}. Run 'kubecli download -D' or ensure install is complete."
+            )
+        if not Path(example_config_path).exists():
+            raise InstallPrereqError(
+                f"Cluster template not found: {example_config_path}. Run 'kubecli download -D' or ensure install is complete."
+            )
+
         logger.debug(f"Creating cluster directory: {cluster_dir}")
         cluster_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy example files（conf 与 playbooks/roles 同源，统一用 get_resource_path）
-        example_hosts_path = get_resource_path("conf", "hosts.multi-node")
-        example_config_path = get_resource_path("conf", "config.yml")
         cluster_hosts = cluster_dir / "hosts"
         cluster_config = cluster_dir / "config.yml"
         try:
@@ -170,6 +180,8 @@ class ClusterManager:
             )
         """
         self._validate_cluster(name)
+        self._validate_cluster_files(name)
+        self._require_install_prereqs()
 
         playbook_map = {
             "01": "01.prepare.yml",
@@ -277,6 +289,8 @@ class ClusterManager:
     def cluster_command(self, name: str, command: str) -> None:
         """Execute cluster-wide command (start, stop, upgrade, backup, restore, destroy)"""
         self._validate_cluster(name)
+        self._validate_cluster_files(name)
+        self._require_install_prereqs()
 
         playbook_map = {
             "start": "91.start.yml",
@@ -326,11 +340,10 @@ class ClusterManager:
         """Add a node to the cluster"""
         self._validate_cluster(cluster)
         self._validate_ip(ip)
+        self._require_install_prereqs()
+        self._validate_cluster_files(cluster)
 
         hosts_file = self.clusters_dir / cluster / "hosts"
-        if not hosts_file.exists():
-            raise ClusterNotFoundError(f"Hosts file not found for cluster {cluster}")
-
         self._check_node_in_section(hosts_file, ip, role, should_exist=False)
 
         node_line = f"{ip} {extra_info}".strip()
@@ -376,11 +389,10 @@ class ClusterManager:
         """Remove a node from the cluster"""
         self._validate_cluster(cluster)
         self._validate_ip(ip)
+        self._require_install_prereqs()
+        self._validate_cluster_files(cluster)
 
         hosts_file = self.clusters_dir / cluster / "hosts"
-        if not hosts_file.exists():
-            raise ClusterNotFoundError(f"Hosts file not found for cluster {cluster}")
-
         self._check_node_in_section(hosts_file, ip, role, should_exist=True)
 
         # Run appropriate playbook
@@ -423,6 +435,8 @@ class ClusterManager:
     def renew_ca_certs(self, cluster: str) -> None:
         """Force renew CA certificates and all other certs in the cluster"""
         self._validate_cluster(cluster)
+        self._validate_cluster_files(cluster)
+        self._require_install_prereqs()
 
         logger.warning("This will recreate CA and all cluster certs. Only use if admin.conf was compromised.", extra=LOG_STDOUT)
         if not confirm_action(f"Renew all certs in cluster {cluster}"):
@@ -447,10 +461,16 @@ class ClusterManager:
         kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
 
         if action == "add":
+            self._validate_cluster_files(cluster)
+            self._require_install_prereqs()
             self._add_kcfg(cluster, user_name, user_type, expiry)
         elif action == "delete":
+            if not kubeconfig.exists():
+                raise ClusterNotFoundError(f"Kubeconfig not found for cluster {cluster}. Run 'setup {cluster}' first.")
             self._del_kcfg(cluster, user_name, kubeconfig)
         elif action == "list":
+            if not kubeconfig.exists():
+                raise ClusterNotFoundError(f"Kubeconfig not found for cluster {cluster}. Run 'setup {cluster}' first.")
             self._list_kcfg(cluster, kubeconfig, show_all, expired_only)
         else:
             raise ValueError(f"Unknown action: {action}")
@@ -582,10 +602,35 @@ class ClusterManager:
 
         print("")
 
+    def _require_install_prereqs(self) -> None:
+        """Require components from 'kubecli download -D' (Ansible, kube-bin, extra-bin). Raises InstallPrereqError with hint if missing. Used by: setup, start-aio, add/del node, cluster_command, kca-renew, kcfg add."""
+        missing = []
+        if not shutil.which("ansible"):
+            missing.append("Ansible")
+        if not (self.kube_bin_dir / "kubelet").exists():
+            missing.append("Kubernetes binaries (kube-bin)")
+        if not (self.extra_bin_dir / "etcdctl").exists():
+            missing.append("extra binaries (extra-bin)")
+        if missing:
+            raise InstallPrereqError(
+                f"Missing required components: {', '.join(missing)}. "
+                "Run 'kubecli download -D' to install them, then retry."
+            )
+
     def _validate_cluster(self, name: str) -> None:
-        """Validate cluster exists"""
+        """Validate cluster directory exists"""
         if not (self.clusters_dir / name).exists():
             raise ClusterNotFoundError(f"Cluster {name} not found")
+
+    def _validate_cluster_files(self, name: str) -> None:
+        """Validate cluster has hosts and config.yml (required for setup/playbooks). Call after _validate_cluster."""
+        cluster_dir = self.clusters_dir / name
+        hosts = cluster_dir / "hosts"
+        config = cluster_dir / "config.yml"
+        if not hosts.exists():
+            raise ClusterNotFoundError(f"Hosts file not found for cluster {name}. Run 'new {name}' or fix the cluster directory.")
+        if not config.exists():
+            raise ClusterNotFoundError(f"Config file not found for cluster {name}. Run 'new {name}' or fix the cluster directory.")
 
     def _validate_ip(self, ip: str) -> None:
         """Validate IP address"""
@@ -801,6 +846,8 @@ class SetupAIO(task.Task):
         from common.utils import get_host_ip, ssh_localhost
 
         m = self.cluster_manager
+        m._require_install_prereqs()
+
         aio_dir = m.clusters_dir / self.AIO_CLUSTER
         aio_kubeconfig = aio_dir / "kubectl.kubeconfig"
 

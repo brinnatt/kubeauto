@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from common.constants import KubeConstant
-from common.exceptions import DownloadError
+from common.exceptions import DownloadError, InstallPrereqError
 from common.logger import setup_logger, LOG_STDOUT
 from common.utils import rmrf, run_command
 
@@ -79,6 +79,10 @@ class DownloadManager:
 
     def get_kubeauto(self, version: Optional[str] = None) -> None:
         """Download and setup kubeauto with full directory backup"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_kubeauto
 
         if self.__check_file_exists(self.base_path, "roles/kube-node"):
@@ -93,6 +97,10 @@ class DownloadManager:
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
         """Download Kubernetes binaries with caching and error handling"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_k8s_bin
 
         if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
@@ -107,6 +115,10 @@ class DownloadManager:
 
     def get_ext_bin(self, version: Optional[str] = None) -> None:
         """Download extra binaries with caching and error handling"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_extra_bin
 
         if self.__check_file_exists(self.extra_bin_dir, "etcdctl"):
@@ -121,6 +133,10 @@ class DownloadManager:
 
     def get_harbor_offline_pkg(self, version: Optional[str] = None) -> None:
         """Download Harbor offline installer package with caching and error handling"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_harbor
 
         if self.__check_file_exists(self.image_dir, f"harbor-offline-installer-{version}.tgz"):
@@ -135,6 +151,10 @@ class DownloadManager:
 
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to download and push images. Run 'kubecli download -d' first, or install Docker manually."
+            )
         images = [
             f"calico/cni:{self.kube_constant.v_calico}",
             f"calico/kube-controllers:{self.kube_constant.v_calico}",
@@ -154,6 +174,10 @@ class DownloadManager:
 
     def get_extra_images(self, component: str) -> None:
         """Download extra images for specified component and upload to local registry"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to download and push images. Run 'kubecli download -d' first, or install Docker manually."
+            )
         if component not in self.kube_constant.component_images:
             logger.error(f"[DOWNLOAD] Invalid component: {component}.", extra=LOG_STDOUT)
             return

@@ -9,7 +9,7 @@ from typing import Dict, Callable, List
 from taskflow.patterns import linear_flow
 from taskflow import engines
 from common.utils import confirm_action, validate_ip
-from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError
+from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError, InstallPrereqError
 from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
 from common.os import SystemProbe
@@ -908,6 +908,11 @@ Examples:
         if not any([args.set_proxy, args.del_proxy, args.no_proxy, args.remove, args.remove_all, args.remove_existed]):
             self.subparsers.choices["docker"].print_help()
             raise DockerManageError("Docker command requires at least one argument")
+
+        if not docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is not installed or not running. Run 'kubecli download -d' to install, then retry."
+            )
 
         if args.set_proxy:
             docker.set_docker_proxy(args.set_proxy[0], args.set_proxy[1])
