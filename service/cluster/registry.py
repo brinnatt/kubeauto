@@ -72,9 +72,10 @@ class RegistryManager:
                 else:
                     logger.info(f"[REGISTRY]   -> Already exists locally, skip pull", extra=LOG_STDOUT)
 
-                parts = image.split(':')
-                repo = parts[0]
-                tag = parts[1] if len(parts) > 1 else "latest"
+                # Image may contain multiple colons (e.g. host:5000/name:tag); tag is after last colon
+                repo, _, tag = image.rpartition(":")
+                if not tag:
+                    tag = "latest"
                 local_image = f"registry.talkschool.cn:5000/{repo}:{tag}"
 
                 logger.info(f"[REGISTRY]   -> Tagging and pushing to local registry...", extra=LOG_STDOUT)

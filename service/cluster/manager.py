@@ -470,20 +470,27 @@ class ClusterManager:
         )
         logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name} successfully!", extra=LOG_STDOUT)
 
+    def _k8s_api_client(self, kubeconfig_path: Path):
+        """Return ApiClient context manager for the given kubeconfig (official best practice: explicit cleanup).
+        Use: with self._k8s_api_client(path) as api_client: ..."""
+        configuration = k8s_client.Configuration()
+        k8s_config.load_kube_config(config_file=str(kubeconfig_path), client_configuration=configuration)
+        return k8s_client.ApiClient(configuration)
+
     def _del_kcfg(self, cluster, user_name, kubeconfig):
         if not user_name:
             raise ValueError("User name is required for delete action")
         logger.info(f"Del kcfg in cluster:{cluster} with user:{user_name}", extra=LOG_STDOUT)
 
         try:
-            k8s_config.load_kube_config(config_file=str(kubeconfig))
-            rbac = k8s_client.RbacAuthorizationV1Api()
-            crb_list = rbac.list_cluster_role_binding()
-            for crb in crb_list.items:
-                for subj in (crb.subjects or []):
-                    if subj.name == user_name:
-                        rbac.delete_cluster_role_binding(crb.metadata.name)
-                        break
+            with self._k8s_api_client(kubeconfig) as api_client:
+                rbac = k8s_client.RbacAuthorizationV1Api(api_client)
+                crb_list = rbac.list_cluster_role_binding()
+                for crb in crb_list.items:
+                    for subj in (crb.subjects or []):
+                        if subj.name == user_name:
+                            rbac.delete_cluster_role_binding(crb.metadata.name)
+                            break
         except K8sApiException as e:
             logger.warning(f"Kubernetes API during kcfg delete: {e.reason or e.body}")
 
@@ -495,17 +502,17 @@ class ClusterManager:
 
     def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
         def get_users(role_name=None):
-            k8s_config.load_kube_config(config_file=str(kubeconfig))
-            rbac = k8s_client.RbacAuthorizationV1Api()
-            crb_list = rbac.list_cluster_role_binding()
-            names = []
-            for crb in crb_list.items:
-                if role_name and (not crb.role_ref or crb.role_ref.name != role_name):
-                    continue
-                for subj in (crb.subjects or []):
-                    if subj.name:
-                        names.append(subj.name)
-            return names
+            with self._k8s_api_client(kubeconfig) as api_client:
+                rbac = k8s_client.RbacAuthorizationV1Api(api_client)
+                crb_list = rbac.list_cluster_role_binding()
+                names = []
+                for crb in crb_list.items:
+                    if role_name and (not crb.role_ref or crb.role_ref.name != role_name):
+                        continue
+                    for subj in (crb.subjects or []):
+                        if subj.name:
+                            names.append(subj.name)
+                return names
 
         logger.info(f"List kcfg in cluster:{cluster}", extra=LOG_STDOUT)
 
@@ -713,23 +720,23 @@ class ClusterManager:
         """Delete node from cluster by IP using Kubernetes API (official client, no shell grep/awk)."""
         kubeconfig = self.clusters_dir / cluster / "kubectl.kubeconfig"
         try:
-            k8s_config.load_kube_config(config_file=str(kubeconfig))
-            v1 = k8s_client.CoreV1Api()
-            nodes = v1.list_node()
-            node_name = None
-            for node in nodes.items:
-                for addr in (node.status.addresses or []):
-                    if addr.address == ip:
-                        node_name = node.metadata.name
+            with self._k8s_api_client(kubeconfig) as api_client:
+                v1 = k8s_client.CoreV1Api(api_client)
+                nodes = v1.list_node()
+                node_name = None
+                for node in nodes.items:
+                    for addr in (node.status.addresses or []):
+                        if addr.address == ip:
+                            node_name = node.metadata.name
+                            break
+                    if node_name:
                         break
-                if node_name:
-                    break
-            if not node_name:
-                logger.warning(f"No node with IP {ip} found in cluster, skip kubectl delete node", extra=LOG_STDOUT)
-                return
-            logger.info(f"Deleting a {role} {node_name}...", extra=LOG_STDOUT)
-            v1.delete_node(node_name)
-            logger.info(f"A {role} {node_name} has been deleted successfully!", extra=LOG_STDOUT)
+                if not node_name:
+                    logger.warning(f"No node with IP {ip} found in cluster, skip kubectl delete node", extra=LOG_STDOUT)
+                    return
+                logger.info(f"Deleting a {role} {node_name}...", extra=LOG_STDOUT)
+                v1.delete_node(node_name)
+                logger.info(f"A {role} {node_name} has been deleted successfully!", extra=LOG_STDOUT)
         except K8sApiException as e:
             logger.error(f"Failed to delete node from cluster: {e.reason or e.body}", extra=LOG_STDOUT)
             raise ClusterManageError(f"Failed to delete node from cluster: {e.reason or str(e)}")
@@ -750,14 +757,14 @@ class ClusterManager:
         if not kubeconfig_path.exists():
             return False
         try:
-            k8s_config.load_kube_config(config_file=str(kubeconfig_path))
-            v1 = k8s_client.CoreV1Api()
-            nodes = v1.list_node()
-            for node in nodes.items:
-                for cond in (node.status.conditions or []):
-                    if getattr(cond, "type", None) == "Ready" and getattr(cond, "status", None) == "True":
-                        return True
-            return False
+            with self._k8s_api_client(kubeconfig_path) as api_client:
+                v1 = k8s_client.CoreV1Api(api_client)
+                nodes = v1.list_node()
+                for node in nodes.items:
+                    for cond in (node.status.conditions or []):
+                        if getattr(cond, "type", None) == "Ready" and getattr(cond, "status", None) == "True":
+                            return True
+                return False
         except (K8sApiException, Exception):
             return False
 
