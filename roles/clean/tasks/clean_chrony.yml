@@ -1,9 +1,10 @@
+# Only clean chrony on hosts that are in [chrony] group (role-specific)
 - block:
     - name: stop and disable chronyd
       service: name=chronyd state=stopped enabled=no
       ignore_errors: true
 
-    - name: remove files and dirs
+    - name: remove chrony-role files and dirs
       file: name={{ item }} state=absent
       with_items:
       - "/etc/chrony"
@@ -12,4 +13,4 @@
       - "/var/run/chrony"
       - "/etc/systemd/system/chronyd.service"
   ignore_errors: true
-  when: "groups['chrony']|length > 0"
+  when: "groups['chrony']|length > 0 and inventory_hostname in groups['chrony']"

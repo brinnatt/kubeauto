@@ -1,4 +1,5 @@
-# 
+# Clean by role only: each task removes only that role's files (no whole-dir wipe).
+# /etc/kubernetes/ssl/ (ca_dir) is shared; no single-role task removes it entirely.
 - import_tasks: clean_etcd.yml
   when: 'DEL_ETCD == "yes"'
 
@@ -14,6 +15,12 @@
 - import_tasks: clean_chrony.yml
   when: 'DEL_CHRONY == "yes"'
 
+# Full teardown only: remove remaining ssl dir so host has no k8s certs left
+- name: remove ssl dir (full teardown only)
+  file: name="{{ ca_dir }}" state=absent
+  when: 'DEL_ETCD == "yes" and DEL_MASTER == "yes" and DEL_NODE == "yes" and ca_dir is defined'
+  ignore_errors: true
+
 - name: clean 'ENV PATH'
   lineinfile:
     dest: ~/.bashrc
@@ -27,7 +34,8 @@
   - 'HELM_TLS_ENABLE'
   when: 'DEL_ENV == "yes"'
 
-- name: delete k8s_nodename in each node /etc/hosts
+# Remove this host's k8s node block from its own /etc/hosts (marker same as prepare role)
+- name: delete k8s node hosts block on this host
   blockinfile:
     path: /etc/hosts
     state: absent

@@ -34,6 +34,7 @@
       #ignore_errors: true
 
 
+# Clean master + node (master has node nature; clean by role so etcd/ssl is not wiped)
 - hosts: "{{ NODE_TO_DEL }}"
   tasks:
     - name: clean master node {{ NODE_TO_DEL }}

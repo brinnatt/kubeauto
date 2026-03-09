@@ -622,34 +622,44 @@ class ClusterManager:
             raise NodeExistsError(f"Node {ip} already exists in {role} section")
 
     def _add_to_hosts_section(self, hosts_file: Path, role: str, line: str) -> None:
-        """Add a line to the end of a specific section."""
+        """Add a line to the section and keep section lines ordered by IP (first token).
+        Stable order ensures ansible groups (e.g. masters[0]) stay consistent across add/remove.
+        """
         section = self._hosts_section_name(role)
 
         content = hosts_file.read_text().splitlines()
         section_start = -1
-        last_ip_line = -1
+        section_end = -1
 
         for i, l in enumerate(content):
             if l.strip() == section:
                 section_start = i
             elif section_start != -1 and l.startswith('[') and l.endswith(']'):
-                break  # Next section found
-            elif section_start != -1:
-                # Try to parse first token as IP
-                parts = l.split()
-                if parts:
-                    try:
-                        ipaddress.ip_address(parts[0])
-                        last_ip_line = i
-                    except ValueError:
-                        continue
-
+                section_end = i
+                break
+        if section_end == -1:
+            section_end = len(content)
         if section_start == -1:
             raise ValueError(f"Section {section} not found in hosts file")
 
-        insert_pos = last_ip_line + 1 if last_ip_line != -1 else section_start + 1
-        content.insert(insert_pos, line)
-        hosts_file.write_text("\n".join(content) + "\n")
+        # Section body: lines after section header until next section
+        body = content[section_start + 1:section_end]
+        # Append new line then sort by first token (IP) so order is deterministic
+        body.append(line)
+
+        def sort_key(ln: str) -> tuple:
+            parts = ln.split()
+            if not parts:
+                return (1, "")
+            try:
+                ipaddress.ip_address(parts[0])
+                return (0, parts[0])
+            except ValueError:
+                return (1, ln)
+
+        body.sort(key=sort_key)
+        new_content = content[: section_start + 1] + body + content[section_end:]
+        hosts_file.write_text("\n".join(new_content) + "\n")
 
     def _remove_from_hosts_section(self, hosts_file: Path, role: str, ip: str) -> None:
         """Remove a line from a specific section in hosts file."""
