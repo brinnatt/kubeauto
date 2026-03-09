@@ -629,11 +629,11 @@ Examples:
         return []
 
     def _get_cluster_names(self) -> List[str]:
-        """Return cluster names from clusters_dir (read-only, no business logic)."""
+        """Return cluster names from clusters_dir (read-only, no business logic). Sorted for stable order."""
         clusters_dir = Path(self.kube_constant.BASE_PATH) / "clusters"
         if not clusters_dir.is_dir():
             return []
-        return [p.name for p in clusters_dir.iterdir() if p.is_dir()]
+        return sorted(p.name for p in clusters_dir.iterdir() if p.is_dir())
 
     def _do_completion(self, argv_after_complete: List[str]) -> None:
         """Print completions one per line for shell. No side effects, read-only.

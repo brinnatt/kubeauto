@@ -11,7 +11,7 @@ import tempfile
 from taskflow import task
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException as K8sApiException
@@ -43,12 +43,11 @@ class ClusterManager:
         if not (Path.home() / ".kube/config").exists():
             raise ClusterNotFoundError("kubeconfig not found, run 'setup' first")
 
-        clusters = []
-        for cluster_dir in self.clusters_dir.iterdir():
-            if cluster_dir.is_dir() and (cluster_dir / "kubectl.kubeconfig").exists():
-                clusters.append(cluster_dir.name)
-
-        return clusters
+        clusters = [
+            d.name for d in self.clusters_dir.iterdir()
+            if d.is_dir() and (d / "kubectl.kubeconfig").exists()
+        ]
+        return sorted(clusters)
 
     def get_current_cluster(self) -> Optional[str]:
         """Get current cluster from kubeconfig"""
@@ -591,8 +590,45 @@ class ClusterManager:
         """Return ini section name for role (e.g. etcd -> [etcd], master -> [kube_master])."""
         return "[etcd]" if role == "etcd" else f"[kube_{role}]"
 
+    @staticmethod
+    def _hosts_line_first_token(line: str) -> Optional[str]:
+        """First token of a hosts line, or None if empty/comment. Used for IP match and sort."""
+        parts = line.strip().split()
+        if not parts or parts[0].startswith("#"):
+            return None
+        return parts[0]
+
+    @staticmethod
+    def _hosts_section_sort_key(line: str) -> Tuple[int, str]:
+        """Sort key for section body: IP lines by IP, others after."""
+        token = ClusterManager._hosts_line_first_token(line)
+        if not token:
+            return (1, "")
+        try:
+            ipaddress.ip_address(token)
+            return (0, token)
+        except ValueError:
+            return (1, line)
+
+    @staticmethod
+    def _find_hosts_section_range(content: List[str], section: str) -> Tuple[int, int]:
+        """Return (start_index, end_index) for section body. start is section header line index."""
+        start, end = -1, -1
+        for i, l in enumerate(content):
+            if l.strip() == section:
+                start = i
+            elif start != -1 and l.strip().startswith("["):
+                end = i
+                break
+        if end == -1:
+            end = len(content)
+        return start, end
+
+    # Hosts consistency: [etcd]/[kube_master]/[kube_node] kept ordered by first token (IP).
+    # Match by first token == ip (not startswith). After every add/remove we re-sort the section.
+
     def _check_node_in_section(self, hosts_file: Path, ip: str, role: str, *, should_exist: bool) -> None:
-        """Check node presence in hosts section. should_exist: True for remove (must exist), False for add (must not)."""
+        """Check node presence in hosts section by first token (IP). should_exist: True for remove, False for add."""
         _SECTION_BOUNDS = {
             "etcd": ("[etcd]", "[kube_master]"),
             "master": ("[kube_master]", "[kube_node]"),
@@ -600,103 +636,48 @@ class ClusterManager:
         }
         if role not in _SECTION_BOUNDS:
             raise ValueError(f"Invalid node role: {role}")
-        start_section, end_section = _SECTION_BOUNDS[role]
+        start_marker, end_marker = _SECTION_BOUNDS[role]
         in_section, found = False, False
-
         with hosts_file.open() as f:
             for line in f:
-                line = line.strip()
-                if line == start_section:
+                s = line.strip()
+                if s == start_marker:
                     in_section = True
                     continue
-                if end_section and line == end_section:
+                if end_marker and s == end_marker:
                     break
-                if in_section and line and not line.startswith("#"):
-                    if line.startswith(ip) or f" {ip} " in line:
-                        found = True
-                        break
-
+                if in_section and self._hosts_line_first_token(line) == ip:
+                    found = True
+                    break
         if should_exist and not found:
             raise NodeNotFoundError(f"Node {ip} not found in {role} section")
         if not should_exist and found:
             raise NodeExistsError(f"Node {ip} already exists in {role} section")
 
     def _add_to_hosts_section(self, hosts_file: Path, role: str, line: str) -> None:
-        """Add a line to the section and keep section lines ordered by IP (first token).
-        Stable order ensures ansible groups (e.g. masters[0]) stay consistent across add/remove.
-        """
+        """Add a line to the section and keep section lines ordered by IP (first token)."""
         section = self._hosts_section_name(role)
-
         content = hosts_file.read_text().splitlines()
-        section_start = -1
-        section_end = -1
-
-        for i, l in enumerate(content):
-            if l.strip() == section:
-                section_start = i
-            elif section_start != -1 and l.startswith('[') and l.endswith(']'):
-                section_end = i
-                break
-        if section_end == -1:
-            section_end = len(content)
-        if section_start == -1:
+        start, end = self._find_hosts_section_range(content, section)
+        if start == -1:
             raise ValueError(f"Section {section} not found in hosts file")
-
-        # Section body: lines after section header until next section
-        body = content[section_start + 1:section_end]
-        # Append new line then sort by first token (IP) so order is deterministic
-        body.append(line)
-
-        def sort_key(ln: str) -> tuple:
-            parts = ln.split()
-            if not parts:
-                return (1, "")
-            try:
-                ipaddress.ip_address(parts[0])
-                return (0, parts[0])
-            except ValueError:
-                return (1, ln)
-
-        body.sort(key=sort_key)
-        new_content = content[: section_start + 1] + body + content[section_end:]
+        body = content[start + 1 : end] + [line]
+        body.sort(key=self._hosts_section_sort_key)
+        new_content = content[: start + 1] + body + content[end:]
         hosts_file.write_text("\n".join(new_content) + "\n")
 
     def _remove_from_hosts_section(self, hosts_file: Path, role: str, ip: str) -> None:
-        """Remove a line from a specific section in hosts file."""
+        """Remove the line whose first token is ip, then re-sort section by IP."""
         section = self._hosts_section_name(role)
-
         content = hosts_file.read_text().splitlines()
-        section_start = -1
-        section_end = -1
-
-        for i, line in enumerate(content):
-            if line.strip() == section:
-                section_start = i
-            elif section_start != -1 and line.startswith("[") and section_end == -1:
-                section_end = i
-                break
-
-        if section_start == -1:
+        start, end = self._find_hosts_section_range(content, section)
+        if start == -1:
             raise ValueError(f"Section {section} not found in hosts file")
-
-        if section_end == -1:
-            section_end = len(content)
-
-        # Find and remove the line with the IP
-        new_section = []
-        removed = False
-
-        for line in content[section_start + 1:section_end]:
-            if not (line.startswith(ip) or f" {ip} " in line):
-                new_section.append(line)
-            else:
-                removed = True
-
-        if not removed:
+        body = [l for l in content[start + 1 : end] if self._hosts_line_first_token(l) != ip]
+        if len(body) == len(content[start + 1 : end]):
             raise NodeNotFoundError(f"Node {ip} not found in {section} section")
-
-        # Rebuild content
-        new_content = content[:section_start + 1] + new_section + content[section_end:]
+        body.sort(key=self._hosts_section_sort_key)
+        new_content = content[: start + 1] + body + content[end:]
         hosts_file.write_text("\n".join(new_content) + "\n")
 
     def _notify_etcd_apiserver(self, cluster: str) -> None:
