@@ -26,6 +26,9 @@ from common.constants import KubeConstant
 
 logger = setup_logger(__name__)
 
+# 节点角色在日志中的可读标签，避免 "Add node node 1.2.3.4" 这类重复
+_ROLE_LABEL = {"master": "master node", "node": "worker node", "etcd": "etcd node"}
+
 
 class ClusterManager:
     def __init__(self):
@@ -124,9 +127,7 @@ class ClusterManager:
         except Exception as e:
             raise ClusterNewError(f"Error creating cluster hosts or config: {e}")
 
-        logger.info(f"-> Cluster {name} created. Next steps:", extra=LOG_STDOUT)
-        logger.info(f"1. Configure {cluster_hosts}", extra=LOG_STDOUT)
-        logger.info(f"2. Configure {cluster_config}", extra=LOG_STDOUT)
+        logger.info(f"Cluster {name} created. Next: edit {cluster_hosts} and {cluster_config}, then run setup.", extra=LOG_STDOUT)
 
     def setup_cluster(self, name: str, step: str, extra_args: Optional[list[str]] = None) -> None:
         """
@@ -195,10 +196,10 @@ class ClusterManager:
 
         playbook = playbook_map.get(step, "dummy.yml")
         if playbook == "dummy.yml":
-            logger.error(f"Invalid setup step: {step}", extra=LOG_STDOUT)
+            logger.error(f"Invalid setup step: {step}. Use: all, master, node, or etcd.", extra=LOG_STDOUT)
             return
 
-        logger.info(f"Setup k8s cluster with playbook {playbook}", extra=LOG_STDOUT)
+        logger.info(f"Setting up cluster with playbook {playbook}.", extra=LOG_STDOUT)
         self._show_component_versions(name)
         if not confirm_action(f"cluster:{name} setup step:{step} begins"):
             return
@@ -214,9 +215,9 @@ class ClusterManager:
                 cmdline=" ".join(extra_args or []),
             )
         if result.rc != 0:
-            logger.error(f"Failed to set up the k8s cluster with playbook {playbook}. Exit code: {result.rc}", extra=LOG_STDOUT)
+            logger.error(f"Cluster setup failed (playbook {playbook}, exit code {result.rc}).", extra=LOG_STDOUT)
             raise ClusterSetupError(f"Failed to set up the k8s cluster with playbook {playbook}")
-        logger.info(f"Setup k8s cluster with playbook {playbook} successfully!", extra=LOG_STDOUT)
+        logger.info(f"Cluster setup completed (playbook {playbook}).", extra=LOG_STDOUT)
 
     def _yaml_to_dict(self, path: Path) -> dict:
         """
@@ -288,12 +289,12 @@ class ClusterManager:
 
         playbook = playbook_map.get(command)
         if not playbook:
-            logger.error(f"Invalid command: {command}", extra=LOG_STDOUT)
+            logger.error(f"Invalid cluster command: {command}.", extra=LOG_STDOUT)
             return
 
-        logger.info(f"cluster:{name} {command} with playbook {playbook}", extra=LOG_STDOUT)
+        logger.info(f"Cluster {name}: running {command} (playbook {playbook}).", extra=LOG_STDOUT)
         self._show_component_versions(name)
-        if not confirm_action(f"cluster:{name} {command} begins"):
+        if not confirm_action(f"Cluster {name}: proceed with {command}?"):
             return
 
         self._run_playbook(
@@ -301,11 +302,11 @@ class ClusterManager:
             playbook,
             fail_msg=f"Failed to {command} cluster {name} with playbook {playbook}.",
         )
-        logger.info(f"Succeed to {command} cluster {name} with playbook {playbook}!", extra=LOG_STDOUT)
+        logger.info(f"Cluster {name}: {command} completed.", extra=LOG_STDOUT)
         # destroy: remove cluster dir so next new/setup or start-aio can run clean
         if command == "destroy":
             rmrf(self.clusters_dir / name)
-            logger.info(f"Cluster directory {name} has been removed.", extra=LOG_STDOUT)
+            logger.info(f"Cluster directory {name} removed.", extra=LOG_STDOUT)
 
     def checkout_cluster(self, name: str) -> None:
         """Switch to a cluster's kubeconfig"""
@@ -319,7 +320,7 @@ class ClusterManager:
         dest_config.parent.mkdir(exist_ok=True)
 
         run_command(["cp", "-f", str(kubeconfig), str(dest_config)])
-        logger.info(f"Set default kubeconfig: cluster {name} (current)", extra=LOG_STDOUT)
+        logger.info(f"Current kubeconfig set to cluster {name}.", extra=LOG_STDOUT)
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
@@ -342,7 +343,7 @@ class ClusterManager:
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        logger.info(f"Add {role} node {ip} to cluster {cluster}", extra=LOG_STDOUT)
+        logger.info(f"Adding {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
 
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars["NODE_TO_ADD"] = ip
@@ -357,11 +358,11 @@ class ClusterManager:
                 playbook,
                 inventory=tmp_hosts,
                 extra_vars=extra_vars,
-                fail_msg=f"Failed to add {role} node {ip} to cluster {cluster}.",
+                fail_msg=f"Failed to add {_ROLE_LABEL[role]} {ip} to cluster {cluster}.",
             )
             self._add_to_hosts_section(hosts_file, role, node_line)
 
-        logger.info(f"Add {role} node {ip} to cluster {cluster} successfully!", extra=LOG_STDOUT)
+        logger.info(f"Added {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
 
         # After adding a new node, we still have to notify related services
         if role == "etcd":
@@ -392,7 +393,7 @@ class ClusterManager:
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        logger.info(f"Remove {role} {ip} from cluster {cluster}", extra=LOG_STDOUT)
+        logger.info(f"Removing {_ROLE_LABEL[role]} {ip} from cluster {cluster}.", extra=LOG_STDOUT)
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars["NODE_TO_DEL"] = ip
         extra_vars["CLUSTER"] = cluster
@@ -402,9 +403,9 @@ class ClusterManager:
             playbook,
             inventory=hosts_file,
             extra_vars=extra_vars,
-            fail_msg=f"Failed to remove {role} {ip} from cluster {cluster}.",
+            fail_msg=f"Failed to remove {_ROLE_LABEL[role]} {ip} from cluster {cluster}.",
         )
-        logger.info(f"Remove {role} {ip} from cluster {cluster} successfully!", extra=LOG_STDOUT)
+        logger.info(f"Removed {_ROLE_LABEL[role]} {ip} from cluster {cluster}.", extra=LOG_STDOUT)
 
         # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
@@ -423,12 +424,11 @@ class ClusterManager:
         """Force renew CA certificates and all other certs in the cluster"""
         self._validate_cluster(cluster)
 
-        logger.warning("WARNING: This will recreate CA certs and all other certs in the cluster", extra=LOG_STDOUT)
-        logger.warning("Only use this if the admin.conf has been compromised", extra=LOG_STDOUT)
+        logger.warning("This will recreate CA and all cluster certs. Only use if admin.conf was compromised.", extra=LOG_STDOUT)
         if not confirm_action(f"Renew all certs in cluster {cluster}"):
             return
 
-        logger.info(f"Renew all certs in cluster {cluster}", extra=LOG_STDOUT)
+        logger.info(f"Renewing all certificates in cluster {cluster}.", extra=LOG_STDOUT)
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars["CHANGE_CA"] = "true"
         self._run_playbook(
@@ -438,7 +438,7 @@ class ClusterManager:
             cmdline="-t force_change_certs",
             fail_msg=f"Failed to renew all certs in cluster {cluster}.",
         )
-        logger.info(f"Renew all certs in cluster {cluster} successfully!", extra=LOG_STDOUT)
+        logger.info(f"All certificates in cluster {cluster} renewed.", extra=LOG_STDOUT)
 
     def kubeconfig_admin(self, cluster: str, action: str,
                          user_name: str = None, user_type: str = "admin",
@@ -458,7 +458,7 @@ class ClusterManager:
     def _add_kcfg(self, cluster, user_name, user_type, expiry):
         if not user_name:
             user_name = f"user-{datetime.now().strftime('%Y%m%d%H%M')}"
-        logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name}", extra=LOG_STDOUT)
+        logger.info(f"Adding kubeconfig for user {user_name} in cluster {cluster}.", extra=LOG_STDOUT)
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars.update(CUSTOM_EXPIRY=expiry, USER_TYPE=user_type, USER_NAME=user_name, ADD_KCFG="true")
         self._run_playbook(
@@ -466,9 +466,9 @@ class ClusterManager:
             "roles/deploy/deploy.yml",
             extra_vars=extra_vars,
             cmdline="-t add-kcfg",
-            fail_msg=f"Failed to add kcfg in cluster:{cluster} with user:{user_name}.",
+            fail_msg=f"Failed to add kubeconfig for user {user_name} in cluster {cluster}.",
         )
-        logger.info(f"Add kcfg in cluster:{cluster} with user:{user_name} successfully!", extra=LOG_STDOUT)
+        logger.info(f"Kubeconfig for user {user_name} added to cluster {cluster}.", extra=LOG_STDOUT)
 
     def _k8s_api_client(self, kubeconfig_path: Path):
         """Return ApiClient context manager for the given kubeconfig (official best practice: explicit cleanup).
@@ -480,7 +480,7 @@ class ClusterManager:
     def _del_kcfg(self, cluster, user_name, kubeconfig):
         if not user_name:
             raise ValueError("User name is required for delete action")
-        logger.info(f"Del kcfg in cluster:{cluster} with user:{user_name}", extra=LOG_STDOUT)
+        logger.info(f"Removing kubeconfig for user {user_name} from cluster {cluster}.", extra=LOG_STDOUT)
 
         try:
             with self._k8s_api_client(kubeconfig) as api_client:
@@ -492,13 +492,13 @@ class ClusterManager:
                             rbac.delete_cluster_role_binding(crb.metadata.name)
                             break
         except K8sApiException as e:
-            logger.warning(f"Kubernetes API during kcfg delete: {e.reason or e.body}")
+            logger.warning(f"Kubernetes API warning during kubeconfig delete: {e.reason or e.body}")
 
         cert_pattern = str(self.clusters_dir / cluster / "ssl/users" / f"{user_name}*")
         run_command(f"rm -f {cert_pattern}", shell=True)
         crb_pattern = str(self.clusters_dir / cluster / "ssl/users" / f"crb-{user_name}*")
         run_command(f"rm -f {crb_pattern}", shell=True)
-        logger.info(f"Deleting kcfg in cluster:{cluster} with user:{user_name} has been finished successfully", extra=LOG_STDOUT)
+        logger.info(f"Kubeconfig for user {user_name} removed from cluster {cluster}.", extra=LOG_STDOUT)
 
     def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
         def get_users(role_name=None):
@@ -514,7 +514,7 @@ class ClusterManager:
                             names.append(subj.name)
                 return names
 
-        logger.info(f"List kcfg in cluster:{cluster}", extra=LOG_STDOUT)
+        logger.info(f"Listing kubeconfig users in cluster {cluster}.", extra=LOG_STDOUT)
 
         admins = set(get_users("cluster-admin"))
         views = set(get_users("view"))
@@ -688,33 +688,33 @@ class ClusterManager:
         hosts_file.write_text("\n".join(new_content) + "\n")
 
     def _notify_etcd_apiserver(self, cluster: str) -> None:
-        logger.info("Restart the etcd cluster after adding or removing an etcd node", extra=LOG_STDOUT)
+        logger.info("Restarting etcd cluster (membership changed).", extra=LOG_STDOUT)
         self._run_playbook(
             cluster, "02.etcd.yml", cmdline="-t restart_etcd",
             fail_msg="Failed to restart the etcd cluster.",
         )
-        logger.info("Restart etcd cluster successfully!", extra=LOG_STDOUT)
-        logger.info("Restart the apiservers to adapt to the changed etcd cluster", extra=LOG_STDOUT)
+        logger.info("Etcd cluster restarted.", extra=LOG_STDOUT)
+        logger.info("Restarting apiservers to pick up etcd membership change.", extra=LOG_STDOUT)
         self._run_playbook(
             cluster, "04.kube-master.yml", cmdline="-t restart_master",
             fail_msg="Failed to restart the apiservers for the changed etcd cluster.",
         )
-        logger.info("Restart the apiservers for the changed etcd cluster successfully!", extra=LOG_STDOUT)
+        logger.info("Apiservers restarted.", extra=LOG_STDOUT)
 
     def _restart_load_balancers(self, cluster: str) -> None:
         """Restart kube-lb and ex-lb services"""
-        logger.info("Restart the kube-lb after adding or removing a master node", extra=LOG_STDOUT)
+        logger.info("Restarting kube-lb (master membership changed).", extra=LOG_STDOUT)
         self._run_playbook(
             cluster, "90.setup.yml", cmdline="-t restart_kube-lb",
             fail_msg="Failed to restart the kube-lb for the changed cluster membership.",
         )
-        logger.info("Restart the kube-lb successfully!", extra=LOG_STDOUT)
-        logger.info("Restart the ex-lb after adding or removing a master node", extra=LOG_STDOUT)
+        logger.info("Kube-lb restarted.", extra=LOG_STDOUT)
+        logger.info("Restarting ex-lb (master membership changed).", extra=LOG_STDOUT)
         self._run_playbook(
             cluster, "10.ex-lb.yml", cmdline="-t restart_lb",
             fail_msg="Failed to restart the ex-lb for the changed cluster membership.",
         )
-        logger.info("Restart the ex-lb successfully!", extra=LOG_STDOUT)
+        logger.info("Ex-lb restarted.", extra=LOG_STDOUT)
 
     def _kubectl_del_node(self, cluster: str, ip: str, role: str) -> None:
         """Delete node from cluster by IP using Kubernetes API (official client, no shell grep/awk)."""
@@ -732,25 +732,25 @@ class ClusterManager:
                     if node_name:
                         break
                 if not node_name:
-                    logger.warning(f"No node with IP {ip} found in cluster, skip kubectl delete node", extra=LOG_STDOUT)
+                    logger.warning(f"No node with IP {ip} found in cluster; skipping API delete.", extra=LOG_STDOUT)
                     return
-                logger.info(f"Deleting a {role} {node_name}...", extra=LOG_STDOUT)
+                logger.info(f"Deleting {_ROLE_LABEL[role]} {node_name} from cluster.", extra=LOG_STDOUT)
                 v1.delete_node(node_name)
-                logger.info(f"A {role} {node_name} has been deleted successfully!", extra=LOG_STDOUT)
+                logger.info(f"Node {node_name} removed from cluster.", extra=LOG_STDOUT)
         except K8sApiException as e:
             logger.error(f"Failed to delete node from cluster: {e.reason or e.body}", extra=LOG_STDOUT)
             raise ClusterManageError(f"Failed to delete node from cluster: {e.reason or str(e)}")
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Reconfigure kubeconfig after master node removal"""
-        logger.info("Reconfigure the kubeconfig after a master node removal.", extra=LOG_STDOUT)
+        logger.info("Reconfiguring kubeconfig after master node removal.", extra=LOG_STDOUT)
         self._run_playbook(
             cluster,
             "roles/deploy/deploy.yml",
             cmdline="-t create_kctl_cfg",
             fail_msg="Failed to reconfigure the kubeconfig for the changed cluster membership.",
         )
-        logger.info("Reconfigure the kubeconfig after a master node removal successfully!", extra=LOG_STDOUT)
+        logger.info("Kubeconfig reconfigured.", extra=LOG_STDOUT)
 
     def _is_cluster_live(self, kubeconfig_path: Path) -> bool:
         """Check if cluster has at least one Ready node (Kubernetes API). Used for aio precondition/revert safety."""
@@ -783,12 +783,8 @@ class ClusterManager:
             network_plugin = "unknown"
             v_network = "unknown"
 
-        logger.info("*** Component Version *********************", extra=LOG_STDOUT)
-        logger.info("*******************************************", extra=LOG_STDOUT)
-        logger.info(f"*   kubernetes: {v_kube}", extra=LOG_STDOUT)
-        logger.info(f"*   etcd: {v_etcd}", extra=LOG_STDOUT)
-        logger.info(f"*   {network_plugin}: {v_network}", extra=LOG_STDOUT)
-        logger.info("*******************************************", extra=LOG_STDOUT)
+        logger.info("Component versions (kubernetes / etcd / network):", extra=LOG_STDOUT)
+        logger.info(f"  kubernetes: {v_kube}, etcd: {v_etcd}, {network_plugin}: {v_network}", extra=LOG_STDOUT)
 
 
 class SetupAIO(task.Task):
@@ -812,7 +808,7 @@ class SetupAIO(task.Task):
         if aio_dir.exists() and aio_kubeconfig.exists():
             if m._is_cluster_live(aio_kubeconfig):
                 logger.info(
-                    "aio cluster already exists and has Ready node(s); skip install (idempotent).",
+                    "All-in-one cluster already exists and is live; skipping install (idempotent).",
                     extra=LOG_STDOUT,
                 )
                 return
@@ -822,7 +818,7 @@ class SetupAIO(task.Task):
                 "Remove it manually if you want to retry, or fix the cluster."
             )
 
-        logger.info("Start initializing allinone cluster environment...", extra=LOG_STDOUT)
+        logger.info("Initializing all-in-one cluster environment.", extra=LOG_STDOUT)
         host_ip = get_host_ip()
         ssh_localhost()
 
@@ -833,14 +829,14 @@ class SetupAIO(task.Task):
             .replace("192.168.1.1", host_ip)
             .replace("_cluster_name_", self.AIO_CLUSTER)
         )
-        logger.info("Allinone cluster environment has been initialized successfully!", extra=LOG_STDOUT)
+        logger.info("All-in-one cluster environment initialized.", extra=LOG_STDOUT)
 
         try:
-            logger.info("Start creating allinone cluster...", extra=LOG_STDOUT)
+            logger.info("Creating all-in-one cluster.", extra=LOG_STDOUT)
             m.setup_cluster(self.AIO_CLUSTER, "all")
-            logger.info("Allinone cluster has been established successfully!", extra=LOG_STDOUT)
+            logger.info("All-in-one cluster created successfully.", extra=LOG_STDOUT)
         except Exception as e:
-            logger.error("Allinone cluster failed to be created!", extra=LOG_STDOUT)
+            logger.error("All-in-one cluster creation failed.", extra=LOG_STDOUT)
             raise e
 
     def revert(self, result, flow_failures, **kwargs) -> None:
@@ -852,15 +848,15 @@ class SetupAIO(task.Task):
         # Safety: do not revert if cluster has Ready nodes (production protection)
         if aio_kubeconfig.exists() and m._is_cluster_live(aio_kubeconfig):
             logger.error(
-                "Refuse to revert: aio cluster is live (has Ready node). Revert would destroy production.",
+                "Refusing to revert: all-in-one cluster is live (has Ready nodes). Revert would destroy it.",
                 extra=LOG_STDOUT,
             )
             raise ClusterManageError(
-                "Refuse to revert: aio cluster is live. Revert is only for failed installs."
+                "Refuse to revert: cluster is live. Revert is only for failed installs."
             )
 
-        logger.error(
-            f"Task failed with: {result.exception_str}, now begin to revert the installation of aio!",
+        logger.info(
+            f"Reverting failed all-in-one install (task failed: {result.exception_str}).",
             extra=LOG_STDOUT,
         )
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
@@ -872,7 +868,7 @@ class SetupAIO(task.Task):
                 roles_path=get_resource_path("roles"),
             )
         if run_result.rc != 0:
-            logger.error(f"Failed to revert the installation of aio! Exit code: {run_result.rc}", extra=LOG_STDOUT)
+            logger.error(f"Revert playbook failed (exit code {run_result.rc}).", extra=LOG_STDOUT)
             sys.exit(run_result.rc)
         rmrf(aio_dir)
-        logger.info("Succeed to revert the installation of aio!", extra=LOG_STDOUT)
+        logger.info("All-in-one install reverted; cluster directory removed.", extra=LOG_STDOUT)

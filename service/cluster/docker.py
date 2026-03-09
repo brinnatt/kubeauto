@@ -82,7 +82,7 @@ class DockerManager:
         if not assume_yes:
             confirm = input("confirm to uninstall Docker and Podman? [Y/n] ").strip().lower()
             if confirm not in ('', 'y', 'yes'):
-                logger.warning("Cancel cleaning docker envs", extra=LOG_STDOUT)
+                logger.warning("Docker cleanup cancelled by user.", extra=LOG_STDOUT)
                 return False
 
         self._uninstall_generic_docker()
@@ -94,7 +94,7 @@ class DockerManager:
         """
         Clean Docker pkg installation environments
         """
-        logger.info("Before installation, try to clean residual docker pkgs ...", extra=LOG_STDOUT)
+        logger.info("Cleaning residual Docker packages before install.", extra=LOG_STDOUT)
 
         if 'Rocky' in self.system_probe.system_info['distro']:
             try:
@@ -108,13 +108,13 @@ class DockerManager:
             except CommandExecutionError:
                 pass
 
-        logger.info("Residual docker pkgs has been cleaned successfully!", extra=LOG_STDOUT)
+        logger.info("Residual Docker packages cleaned.", extra=LOG_STDOUT)
 
     def _uninstall_generic_docker(self) -> None:
         """
         Clean Docker binary installation environments
         """
-        logger.info("Before installation, try to clean residual docker binary environments...",
+        logger.info("Cleaning residual Docker binary and config (service, daemon, data)...",
                     extra=LOG_STDOUT)
 
         docker_version = "Unknown Version"
@@ -196,11 +196,11 @@ class DockerManager:
         # delete docker residual process if existing
         try:
             run_command(["pkill", "-9", "dockerd"])
-            logger.warning("Docker residual process has been killed", extra=LOG_STDOUT)
+            logger.warning("Docker residual process killed.", extra=LOG_STDOUT)
         except CommandExecutionError:
             pass
 
-        logger.info(f"Residual docker {docker_version} has been cleaned successfully!", extra=LOG_STDOUT)
+        logger.info(f"Residual Docker (was {docker_version}) cleaned.", extra=LOG_STDOUT)
 
     def _download_docker(self, version: str) -> None:
         """
