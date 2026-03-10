@@ -1,6 +1,8 @@
 """
 Main cluster operations for kubeauto
 """
+# ansible_runner usage: on host use private_data_dir in temp; bubblewrap/docker use
+# process_isolation with bwrap or container_image. See ansible-runner docs for details.
 import ipaddress
 import re
 import shutil
@@ -29,6 +31,42 @@ logger = setup_logger(__name__)
 
 # 节点角色在日志中的可读标签，避免 "Add node node 1.2.3.4" 这类重复
 _ROLE_LABEL = {"master": "master node", "node": "worker node", "etcd": "etcd node"}
+
+# setup_cluster 步骤 -> playbook 映射
+_PLAYBOOK_MAP_SETUP = {
+    "01": "01.prepare.yml", "prepare": "01.prepare.yml",
+    "02": "02.etcd.yml", "etcd": "02.etcd.yml",
+    "03": "03.runtime.yml", "container-runtime": "03.runtime.yml",
+    "04": "04.kube-master.yml", "kube-master": "04.kube-master.yml",
+    "05": "05.kube-node.yml", "kube-node": "05.kube-node.yml",
+    "06": "06.network.yml", "network": "06.network.yml",
+    "07": "07.cluster-addon.yml", "cluster-addon": "07.cluster-addon.yml",
+    "90": "90.setup.yml", "all": "90.setup.yml",
+    "10": "10.ex-lb.yml", "ex-lb": "10.ex-lb.yml",
+    "11": "11.harbor.yml", "harbor": "11.harbor.yml",
+}
+
+# cluster_command 命令 -> playbook 映射
+_PLAYBOOK_MAP_CLUSTER_COMMAND = {
+    "start": "91.start.yml", "stop": "92.stop.yml", "upgrade": "93.upgrade.yml",
+    "backup": "94.backup.yml", "restore": "95.restore.yml", "destroy": "99.clean.yml",
+}
+
+# add_node / remove_node 角色 -> playbook 映射
+_PLAYBOOK_MAP_ADD_NODE = {"etcd": "21.addetcd.yml", "master": "23.addmaster.yml", "node": "22.addnode.yml"}
+_PLAYBOOK_MAP_REMOVE_NODE = {"etcd": "31.deletcd.yml", "master": "33.delmaster.yml", "node": "32.delnode.yml"}
+
+# hosts 文件中角色对应的区段 (start_section, end_section)，end_section 为 None 表示到文件末尾
+_HOSTS_SECTION_PATTERNS = {
+    "etcd": ("[etcd]", "[kube_master]"),
+    "master": ("[kube_master]", "[kube_node]"),
+    "node": ("[kube_node]", None),
+}
+
+
+def _hosts_section_name(role: str) -> str:
+    """Return hosts section header for role, e.g. [etcd] or [kube_master]."""
+    return "[etcd]" if role == "etcd" else f"[kube_{role}]"
 
 
 class ClusterManager:
@@ -60,17 +98,10 @@ class ClusterManager:
             return None
 
         try:
-            # Get MD5 of current config (excluding server field)
-            md5_cmd = ["sed", "/server/d", str(current_config), "|", "md5sum"]
-            current_md5 = run_command(md5_cmd, shell=True).stdout.split()[0]
-
-            # Compare with cluster configs
+            current_md5 = self._config_md5(current_config)
             for cluster in self.list_clusters():
                 cluster_config = self.clusters_dir / cluster / "kubectl.kubeconfig"
-                cluster_md5_cmd = ["sed", "/server/d", str(cluster_config), "|", "md5sum"]
-                cluster_md5 = run_command(cluster_md5_cmd, shell=True).stdout.split()[0]
-
-                if cluster_md5 == current_md5:
+                if self._config_md5(cluster_config) == current_md5:
                     return cluster
 
             return None
@@ -105,31 +136,9 @@ class ClusterManager:
             cluster_hosts.write_text(Path(example_hosts_path).read_text())
             cluster_config.write_text(Path(example_config_path).read_text())
 
-            # Replace placeholders
             hosts_content = cluster_hosts.read_text().replace("_cluster_name_", name)
-            kc = self.kube_constant
-            config_placeholders = {
-                "__k8s_ver__": kc.v_k8s_bin.lstrip("v"),
-                "__flannel__": kc.v_flannel,
-                "__calico__": kc.v_calico,
-                "__cilium__": kc.v_cilium,
-                "__kube_ovn__": kc.v_kubeovn,
-                "__kube_router__": kc.v_kuberouter,
-                "__coredns__": kc.v_coredns,
-                "__pause__": kc.v_pause,
-                "__dns_node_cache__": kc.v_dnsnodecache,
-                "__dashboard__": kc.v_dashboard,
-                "__local_path_provisioner__": kc.v_localpathprovisioner,
-                "__nfs_provisioner__": kc.v_nfsprovisioner,
-                "__prom_chart__": kc.v_promchart,
-                "__harbor__": kc.v_harbor,
-                "__metrics__": kc.v_metricsserver,
-                "__minio_chart__": kc.v_miniooperator,
-                "__openebs_ver__": kc.v_openebs,
-                "__ingress_nginx_ver__": kc.v_ingressnginx,
-            }
             config_content = cluster_config.read_text()
-            for placeholder, value in config_placeholders.items():
+            for placeholder, value in self._get_config_placeholders().items():
                 config_content = config_content.replace(placeholder, value)
 
             cluster_hosts.write_text(hosts_content)
@@ -179,34 +188,9 @@ class ClusterManager:
                 container_options=["--rm", "--network", "none"]
             )
         """
-        self._validate_cluster(name)
-        self._validate_cluster_files(name)
-        self._require_install_prereqs()
+        self._validate_for_setup(name)
 
-        playbook_map = {
-            "01": "01.prepare.yml",
-            "prepare": "01.prepare.yml",
-            "02": "02.etcd.yml",
-            "etcd": "02.etcd.yml",
-            "03": "03.runtime.yml",
-            "container-runtime": "03.runtime.yml",
-            "04": "04.kube-master.yml",
-            "kube-master": "04.kube-master.yml",
-            "05": "05.kube-node.yml",
-            "kube-node": "05.kube-node.yml",
-            "06": "06.network.yml",
-            "network": "06.network.yml",
-            "07": "07.cluster-addon.yml",
-            "cluster-addon": "07.cluster-addon.yml",
-            "90": "90.setup.yml",
-            "all": "90.setup.yml",
-            "10": "10.ex-lb.yml",
-            "ex-lb": "10.ex-lb.yml",
-            "11": "11.harbor.yml",
-            "harbor": "11.harbor.yml"
-        }
-
-        playbook = playbook_map.get(step, "dummy.yml")
+        playbook = _PLAYBOOK_MAP_SETUP.get(step, "dummy.yml")
         if playbook == "dummy.yml":
             logger.error(f"Invalid setup step: {step}. Use: all, master, node, or etcd.", extra=LOG_STDOUT)
             return
@@ -216,19 +200,13 @@ class ClusterManager:
         if not confirm_action(f"cluster:{name} setup step:{step} begins"):
             return
 
-        # setup 使用 get_resource_path 以支持打包/资源注入；roles_path 与 playbook 同源，源码/打包均可用
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=get_resource_path("playbooks", playbook),
-                inventory=str(self.clusters_dir / name / "hosts"),
-                extravars=self._yaml_to_dict(self.clusters_dir / name / "config.yml"),
-                roles_path=get_resource_path("roles"),
-                cmdline=" ".join(extra_args or []),
-            )
-        if result.rc != 0:
-            logger.error(f"Cluster setup failed (playbook {playbook}, exit code {result.rc}).", extra=LOG_STDOUT)
-            raise ClusterSetupError(f"Failed to set up the k8s cluster with playbook {playbook}")
+        self._run_playbook(
+            name,
+            playbook,
+            cmdline=" ".join(extra_args or []),
+            fail_msg=f"Failed to set up the k8s cluster with playbook {playbook}",
+            fail_exception=ClusterSetupError,
+        )
         logger.info(f"Cluster setup completed (playbook {playbook}).", extra=LOG_STDOUT)
 
     def _yaml_to_dict(self, path: Path) -> dict:
@@ -253,6 +231,30 @@ class ClusterManager:
 
         return data
 
+    def _get_config_placeholders(self) -> dict:
+        """Return placeholder -> value dict for cluster config.yml (version strings from KubeConstant)."""
+        kc = self.kube_constant
+        return {
+            "__k8s_ver__": kc.v_k8s_bin.lstrip("v"),
+            "__flannel__": kc.v_flannel,
+            "__calico__": kc.v_calico,
+            "__cilium__": kc.v_cilium,
+            "__kube_ovn__": kc.v_kubeovn,
+            "__kube_router__": kc.v_kuberouter,
+            "__coredns__": kc.v_coredns,
+            "__pause__": kc.v_pause,
+            "__dns_node_cache__": kc.v_dnsnodecache,
+            "__dashboard__": kc.v_dashboard,
+            "__local_path_provisioner__": kc.v_localpathprovisioner,
+            "__nfs_provisioner__": kc.v_nfsprovisioner,
+            "__prom_chart__": kc.v_promchart,
+            "__harbor__": kc.v_harbor,
+            "__metrics__": kc.v_metricsserver,
+            "__minio_chart__": kc.v_miniooperator,
+            "__openebs_ver__": kc.v_openebs,
+            "__ingress_nginx_ver__": kc.v_ingressnginx,
+        }
+
     def _run_playbook(
         self,
         cluster: str,
@@ -262,8 +264,9 @@ class ClusterManager:
         extra_vars: dict | None = None,
         cmdline: str | None = None,
         fail_msg: str | None = None,
+        fail_exception: type = ClusterManageError,
     ):
-        """Run Ansible playbook in a temp dir. When fail_msg is set and rc != 0, log and raise."""
+        """Run Ansible playbook in a temp dir. When fail_msg is set and rc != 0, log and raise fail_exception."""
         inv = inventory or (self.clusters_dir / cluster / "hosts")
         ev = extra_vars if extra_vars is not None else self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         if isinstance(playbook, Path):
@@ -283,25 +286,14 @@ class ClusterManager:
             )
         if fail_msg and result.rc != 0:
             logger.error(fail_msg, extra=LOG_STDOUT)
-            raise ClusterManageError(fail_msg)
+            raise fail_exception(fail_msg)
         return result
 
     def cluster_command(self, name: str, command: str) -> None:
         """Execute cluster-wide command (start, stop, upgrade, backup, restore, destroy)"""
-        self._validate_cluster(name)
-        self._validate_cluster_files(name)
-        self._require_install_prereqs()
+        self._validate_for_setup(name)
 
-        playbook_map = {
-            "start": "91.start.yml",
-            "stop": "92.stop.yml",
-            "upgrade": "93.upgrade.yml",
-            "backup": "94.backup.yml",
-            "restore": "95.restore.yml",
-            "destroy": "99.clean.yml"
-        }
-
-        playbook = playbook_map.get(command)
+        playbook = _PLAYBOOK_MAP_CLUSTER_COMMAND.get(command)
         if not playbook:
             logger.error(f"Invalid cluster command: {command}.", extra=LOG_STDOUT)
             return
@@ -338,10 +330,8 @@ class ClusterManager:
 
     def add_node(self, cluster: str, ip: str, role: str, extra_info: str = "") -> None:
         """Add a node to the cluster"""
-        self._validate_cluster(cluster)
+        self._validate_for_setup(cluster)
         self._validate_ip(ip)
-        self._require_install_prereqs()
-        self._validate_cluster_files(cluster)
 
         hosts_file = self.clusters_dir / cluster / "hosts"
         if not hosts_file.exists():
@@ -366,12 +356,7 @@ class ClusterManager:
             node_line = f"{ip} {extra_info}".strip() if extra_info else ip
         self._add_to_hosts_section(hosts_file, role, node_line)
 
-        playbook = {
-            "etcd": "21.addetcd.yml",
-            "master": "23.addmaster.yml",
-            "node": "22.addnode.yml"
-        }.get(role)
-
+        playbook = _PLAYBOOK_MAP_ADD_NODE.get(role)
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
@@ -399,10 +384,8 @@ class ClusterManager:
 
     def remove_node(self, cluster: str, ip: str, role: str) -> None:
         """Remove a node from the cluster"""
-        self._validate_cluster(cluster)
+        self._validate_for_setup(cluster)
         self._validate_ip(ip)
-        self._require_install_prereqs()
-        self._validate_cluster_files(cluster)
 
         hosts_file = self.clusters_dir / cluster / "hosts"
         if not hosts_file.exists():
@@ -410,13 +393,7 @@ class ClusterManager:
 
         self._check_node_not_exists(hosts_file, ip, role)
 
-        # Run appropriate playbook
-        playbook = {
-            "etcd": "31.deletcd.yml",
-            "master": "33.delmaster.yml",
-            "node": "32.delnode.yml"
-        }.get(role)
-
+        playbook = _PLAYBOOK_MAP_REMOVE_NODE.get(role)
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
@@ -449,9 +426,7 @@ class ClusterManager:
 
     def renew_ca_certs(self, cluster: str) -> None:
         """Force renew CA certificates and all other certs in the cluster"""
-        self._validate_cluster(cluster)
-        self._validate_cluster_files(cluster)
-        self._require_install_prereqs()
+        self._validate_for_setup(cluster)
 
         logger.warning("This will recreate CA and all cluster certs. Only use if admin.conf was compromised.", extra=LOG_STDOUT)
         if not confirm_action(f"Renew all certs in cluster {cluster}"):
@@ -535,29 +510,50 @@ class ClusterManager:
         run_command(f"rm -f {crb_pattern}", shell=True)
         logger.info(f"Kubeconfig for user {user_name} removed from cluster {cluster}.", extra=LOG_STDOUT)
 
+    def _get_kcfg_users(self, kubeconfig: Path, role_name: Optional[str] = None) -> List[str]:
+        """List user names from ClusterRoleBindings, optionally filtered by role (e.g. cluster-admin, view)."""
+        with self._k8s_api_client(kubeconfig) as api_client:
+            rbac = k8s_client.RbacAuthorizationV1Api(api_client)
+            crb_list = rbac.list_cluster_role_binding()
+            names = []
+            for crb in crb_list.items:
+                if role_name and (not crb.role_ref or crb.role_ref.name != role_name):
+                    continue
+                for subj in (crb.subjects or []):
+                    if subj.name:
+                        names.append(subj.name)
+            return names
+
+    def _get_cert_expiry_info(self, cert_file: Path) -> Tuple[str, str, bool]:
+        """Return (expiry_str, days_left_str, is_expired) for a user cert file. N/A and False if unreadable."""
+        expiry, days_left, is_expired = "N/A", "N/A", False
+        if not cert_file.exists():
+            return expiry, days_left, is_expired
+        expiry_cmd = [str(self.extra_bin_dir / "cfssl-certinfo"), "-cert", str(cert_file)]
+        expiry_info = run_command(expiry_cmd, shell=False).stdout
+        match = re.search(r'"not_after"\s*:\s*"([^"]+)"', expiry_info)
+        if match:
+            expiry = match.group(1)
+            try:
+                now = datetime.now(timezone.utc)
+                exp_dt = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+                delta_days = (exp_dt - now).days
+                days_left = str(delta_days)
+                is_expired = exp_dt < now
+            except ValueError:
+                pass
+        return expiry, days_left, is_expired
+
     def _list_kcfg(self, cluster, kubeconfig, show_all=False, expired_only=False):
-        def get_users(role_name=None):
-            with self._k8s_api_client(kubeconfig) as api_client:
-                rbac = k8s_client.RbacAuthorizationV1Api(api_client)
-                crb_list = rbac.list_cluster_role_binding()
-                names = []
-                for crb in crb_list.items:
-                    if role_name and (not crb.role_ref or crb.role_ref.name != role_name):
-                        continue
-                    for subj in (crb.subjects or []):
-                        if subj.name:
-                            names.append(subj.name)
-                return names
-
         logger.info(f"Listing kubeconfig users in cluster {cluster}.", extra=LOG_STDOUT)
-
-        admins = set(get_users("cluster-admin"))
-        views = set(get_users("view"))
-        bound_users = set(get_users())
-
+        admins = set(self._get_kcfg_users(kubeconfig, "cluster-admin"))
+        views = set(self._get_kcfg_users(kubeconfig, "view"))
+        bound_users = set(self._get_kcfg_users(kubeconfig))
         if show_all:
-            cert_users = {p.stem for p in (self.clusters_dir / cluster / "ssl/users").glob("*.pem") if
-                          not p.name.endswith("-key.pem")}
+            cert_users = {
+                p.stem for p in (self.clusters_dir / cluster / "ssl/users").glob("*.pem")
+                if not p.name.endswith("-key.pem")
+            }
             all_users = sorted(cert_users)
         else:
             all_users = sorted(bound_users)
@@ -565,56 +561,21 @@ class ClusterManager:
         header_fmt = f"{'USER':<30}{'TYPE':<18}{'EXPIRY(+8h if in Asia/Shanghai)':<30}{'DAYS_LEFT'}"
         print("\n" + header_fmt)
         print("-" * len(header_fmt))
-
         suffix_pattern = re.compile(r".*-\d{12}$")
-        now = datetime.now(timezone.utc)
 
         for user in all_users:
-            role = (
-                "cluster-admin" if user in admins else
-                "view" if user in views else
-                "unknown"
-            )
+            role = "cluster-admin" if user in admins else "view" if user in views else "unknown"
             cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
-            expiry = "N/A"
-            days_left = "N/A"
-            is_expired = False
-
-            if cert_file.exists():
-                expiry_cmd = [
-                    str(self.extra_bin_dir / "cfssl-certinfo"),
-                    "-cert", str(cert_file)
-                ]
-                expiry_info = run_command(expiry_cmd, shell=False).stdout
-                match = re.search(r'"not_after"\s*:\s*"([^"]+)"', expiry_info)
-                if match:
-                    expiry = match.group(1)
-                    try:
-                        exp_dt = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
-                        delta_days = (exp_dt - now).days
-                        days_left = str(delta_days)
-                        is_expired = exp_dt < now
-                    except ValueError:
-                        pass
-
+            expiry, days_left, is_expired = self._get_cert_expiry_info(cert_file)
             if expired_only and not is_expired:
                 continue
-
-            # 颜色选择
             color = AnsiColor.RESET.value
             if days_left != "N/A":
                 days_int = int(days_left)
-                if days_int < 0:
-                    color = AnsiColor.RED.value
-                elif days_int <= 7:
-                    color = AnsiColor.YELLOW.value
-                else:
-                    color = AnsiColor.GREEN.value
-
+                color = AnsiColor.RED.value if days_int < 0 else AnsiColor.YELLOW.value if days_int <= 7 else AnsiColor.GREEN.value
             if show_all or suffix_pattern.match(user):
                 expired_mark = "*" if is_expired else " "
                 print(f"{expired_mark}{user:<29}{role:<18}{expiry:<30}{color}{days_left}{AnsiColor.RESET.value}")
-
         print("")
 
     def _require_install_prereqs(self) -> None:
@@ -632,6 +593,12 @@ class ClusterManager:
                 "Run 'kubecli download -D' to install them, then retry."
             )
 
+    @staticmethod
+    def _config_md5(config_path: Path) -> str:
+        """Return MD5 of kubeconfig content excluding server field (for comparing current vs cluster config)."""
+        md5_cmd = ["sed", "/server/d", str(config_path), "|", "md5sum"]
+        return run_command(md5_cmd, shell=True).stdout.split()[0]
+
     def _validate_cluster(self, name: str) -> None:
         """Validate cluster directory exists"""
         if not (self.clusters_dir / name).exists():
@@ -646,6 +613,12 @@ class ClusterManager:
             raise ClusterNotFoundError(f"Hosts file not found for cluster {name}. Run 'new {name}' or fix the cluster directory.")
         if not config.exists():
             raise ClusterNotFoundError(f"Config file not found for cluster {name}. Run 'new {name}' or fix the cluster directory.")
+
+    def _validate_for_setup(self, name: str) -> None:
+        """Validate cluster exists, has hosts/config, and install prereqs. Used by setup, cluster_command, add/remove node, renew_ca, kcfg add."""
+        self._validate_cluster(name)
+        self._validate_cluster_files(name)
+        self._require_install_prereqs()
 
     def _validate_ip(self, ip: str) -> None:
         """Validate IP address"""
@@ -687,16 +660,11 @@ class ClusterManager:
                             continue
         return False
 
-    def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
-        """Check node already exists in hosts section (for add: should not exist)."""
-        section_patterns = {
-            "etcd": ("[etcd]", "[kube_master]"),
-            "master": ("[kube_master]", "[kube_node]"),
-            "node": ("[kube_node]", None),
-        }
-        if role not in section_patterns:
+    def _ip_in_hosts_section(self, hosts_file: Path, ip: str, role: str) -> bool:
+        """Return True if ip appears in the role's section of hosts file."""
+        if role not in _HOSTS_SECTION_PATTERNS:
             raise ValueError(f"Invalid node role: {role}")
-        start_section, end_section = section_patterns[role]
+        start_section, end_section = _HOSTS_SECTION_PATTERNS[role]
         in_section = False
         with hosts_file.open() as f:
             for line in f:
@@ -708,35 +676,22 @@ class ClusterManager:
                     break
                 if in_section and line and not line.startswith("#"):
                     if line.startswith(ip) or f" {ip} " in line:
-                        raise NodeExistsError(f"Node {ip} already exists in {role} section")
+                        return True
+        return False
+
+    def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
+        """Check node already exists in hosts section (for add: should not exist)."""
+        if self._ip_in_hosts_section(hosts_file, ip, role):
+            raise NodeExistsError(f"Node {ip} already exists in {role} section")
 
     def _check_node_not_exists(self, hosts_file: Path, ip: str, role: str) -> None:
         """Check node does not exist in hosts section (for remove: should exist)."""
-        section_patterns = {
-            "etcd": ("[etcd]", "[kube_master]"),
-            "master": ("[kube_master]", "[kube_node]"),
-            "node": ("[kube_node]", None),
-        }
-        if role not in section_patterns:
-            raise ValueError(f"Invalid node role: {role}")
-        start_section, end_section = section_patterns[role]
-        in_section = False
-        with hosts_file.open() as f:
-            for line in f:
-                line = line.strip()
-                if line == start_section:
-                    in_section = True
-                    continue
-                if end_section and line == end_section:
-                    break
-                if in_section and line and not line.startswith("#"):
-                    if line.startswith(ip) or f" {ip} " in line:
-                        return
-        raise NodeNotFoundError(f"Node {ip} not found in {role} section")
+        if not self._ip_in_hosts_section(hosts_file, ip, role):
+            raise NodeNotFoundError(f"Node {ip} not found in {role} section")
 
     def _add_to_hosts_section(self, hosts_file: Path, role: str, line: str) -> None:
         """Add a line to the end of a specific section using ipaddress library (original logic)."""
-        section = f"[kube_{role}]" if role != "etcd" else "[etcd]"
+        section = _hosts_section_name(role)
         content = hosts_file.read_text().splitlines()
         section_start = -1
         last_ip_line = -1
@@ -761,7 +716,7 @@ class ClusterManager:
 
     def _remove_from_hosts_section(self, hosts_file: Path, role: str, ip: str) -> None:
         """Remove a line from a specific section in hosts file (original logic)."""
-        section = f"[kube_{role}]" if role != "etcd" else "[etcd]"
+        section = _hosts_section_name(role)
         content = hosts_file.read_text().splitlines()
         section_start = -1
         section_end = -1
