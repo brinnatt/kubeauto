@@ -253,7 +253,15 @@ class KubeautoCLI:
         """Setup 'add-etcd' command"""
         parser = self.subparsers.add_parser(
             "add-etcd",
-            help="Add an etcd node to the cluster"
+            help="Add an etcd node to the cluster",
+            epilog="""
+Examples:
+  # Add etcd on a host that is already master/node (nodename optional)
+  kubecli add-etcd mycluster 192.168.1.2
+
+  # Add standalone etcd node (nodename required)
+  kubecli add-etcd mycluster 192.168.1.10 etcd-01
+"""
         )
         self._add_common_cluster_args(parser)
         parser.add_argument(
@@ -264,14 +272,19 @@ class KubeautoCLI:
             "extra_info",
             nargs="?",
             default="",
-            help="Additional node information (optional)"
+            help="k8s_nodename for standalone etcd (required if etcd is not on a master/node host); optional if same host as master/node"
         )
 
     def _setup_add_master_command(self) -> None:
         """Setup 'add-master' command"""
         parser = self.subparsers.add_parser(
             "add-master",
-            help="Add a master node to the cluster"
+            help="Add a master node to the cluster",
+            epilog="""
+Examples:
+  kubecli add-master mycluster 192.168.1.2 master-02
+  kubecli add-master prod 10.0.1.5 master-01
+"""
         )
         self._add_common_cluster_args(parser)
         parser.add_argument(
@@ -282,14 +295,19 @@ class KubeautoCLI:
             "extra_info",
             nargs="?",
             default="",
-            help="Additional node information (optional)"
+            help="k8s_nodename for this master (required): lowercase alphanumeric, '-' or '.', start/end with alphanumeric (e.g. master-02)"
         )
 
     def _setup_add_node_command(self) -> None:
         """Setup 'add-node' command"""
         parser = self.subparsers.add_parser(
             "add-node",
-            help="Add a worker node to the cluster"
+            help="Add a worker node to the cluster",
+            epilog="""
+Examples:
+  kubecli add-node mycluster 192.168.1.5 worker-01
+  kubecli add-node prod 10.0.2.10 worker-02
+"""
         )
         self._add_common_cluster_args(parser)
         parser.add_argument(
@@ -300,7 +318,7 @@ class KubeautoCLI:
             "extra_info",
             nargs="?",
             default="",
-            help="Additional node information (optional)"
+            help="k8s_nodename for this node (required): lowercase alphanumeric, '-' or '.', start/end with alphanumeric (e.g. worker-01)"
         )
 
     def _setup_del_etcd_command(self) -> None:

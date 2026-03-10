@@ -349,8 +349,21 @@ class ClusterManager:
 
         self._check_node_exists(hosts_file, ip, role)
 
-        # Add node to hosts file first, then run playbook with real inventory (original logic)
-        node_line = f"{ip} {extra_info}".strip()
+        # add-master/add-node: require and validate k8s_nodename
+        # add-etcd: if etcd is on same host as master/node, nodename optional; if standalone etcd, require k8s_nodename
+        if role in ("master", "node"):
+            self._validate_k8s_nodename(extra_info)
+            nodename = extra_info.strip()
+            node_line = f"{ip} k8s_nodename='{nodename}'"
+        elif role == "etcd":
+            if self._is_ip_in_kube_master_or_node(hosts_file, ip):
+                node_line = ip
+            else:
+                self._validate_k8s_nodename(extra_info)
+                nodename = extra_info.strip()
+                node_line = f"{ip} k8s_nodename='{nodename}'"
+        else:
+            node_line = f"{ip} {extra_info}".strip() if extra_info else ip
         self._add_to_hosts_section(hosts_file, role, node_line)
 
         playbook = {
@@ -638,6 +651,41 @@ class ClusterManager:
         """Validate IP address"""
         if not validate_ip(ip):
             raise InvalidIPError(f"Invalid IP address: {ip}")
+
+    @staticmethod
+    def _validate_k8s_nodename(nodename: str) -> None:
+        """Validate k8s_nodename: lowercase alphanumeric, '-' or '.', must start and end with alphanumeric (same as config.yml)."""
+        s = (nodename or "").strip()
+        if not s:
+            raise ValueError("k8s_nodename is required for add-master/add-node (e.g. master-02, worker-01)")
+        if not re.fullmatch(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*", s):
+            raise ValueError(
+                "k8s_nodename must be lowercase alphanumeric, '-' or '.', and start/end with alphanumeric (e.g. master-02)"
+            )
+
+    def _is_ip_in_kube_master_or_node(self, hosts_file: Path, ip: str) -> bool:
+        """Return True if ip already appears in [kube_master] or [kube_node] (etcd on same host as master/node)."""
+        sections_to_check = ("[kube_master]", "[kube_node]")
+        in_relevant_section = False
+        with hosts_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line in sections_to_check:
+                    in_relevant_section = True
+                    continue
+                if in_relevant_section and line.startswith("[") and line.endswith("]"):
+                    in_relevant_section = False
+                    continue
+                if in_relevant_section and line and not line.startswith("#"):
+                    parts = line.split()
+                    if parts:
+                        try:
+                            ipaddress.ip_address(parts[0])
+                            if parts[0] == ip:
+                                return True
+                        except ValueError:
+                            continue
+        return False
 
     def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
         """Check node already exists in hosts section (for add: should not exist)."""
