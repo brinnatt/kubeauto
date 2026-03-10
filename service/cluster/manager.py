@@ -344,9 +344,15 @@ class ClusterManager:
         self._validate_cluster_files(cluster)
 
         hosts_file = self.clusters_dir / cluster / "hosts"
-        self._check_node_in_section(hosts_file, ip, role, should_exist=False)
+        if not hosts_file.exists():
+            raise ClusterNotFoundError(f"Hosts file not found for cluster {cluster}")
 
+        self._check_node_exists(hosts_file, ip, role)
+
+        # Add node to hosts file first, then run playbook with real inventory (original logic)
         node_line = f"{ip} {extra_info}".strip()
+        self._add_to_hosts_section(hosts_file, role, node_line)
+
         playbook = {
             "etcd": "21.addetcd.yml",
             "master": "23.addmaster.yml",
@@ -361,20 +367,13 @@ class ClusterManager:
         extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
         extra_vars["NODE_TO_ADD"] = ip
 
-        # 使用临时 inventory，仅在 playbook 成功后再写回 hosts（可重试、幂等）
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            tmp_hosts = Path(tmp_dir) / "hosts"
-            shutil.copy(hosts_file, tmp_hosts)
-            self._add_to_hosts_section(tmp_hosts, role, node_line)
-            self._run_playbook(
-                cluster,
-                playbook,
-                inventory=tmp_hosts,
-                extra_vars=extra_vars,
-                fail_msg=f"Failed to add {_ROLE_LABEL[role]} {ip} to cluster {cluster}.",
-            )
-            self._add_to_hosts_section(hosts_file, role, node_line)
-
+        self._run_playbook(
+            cluster,
+            playbook,
+            inventory=hosts_file,
+            extra_vars=extra_vars,
+            fail_msg=f"Failed to add {_ROLE_LABEL[role]} {ip} to cluster {cluster}.",
+        )
         logger.info(f"Added {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
 
         # After adding a new node, we still have to notify related services
@@ -393,7 +392,10 @@ class ClusterManager:
         self._validate_cluster_files(cluster)
 
         hosts_file = self.clusters_dir / cluster / "hosts"
-        self._check_node_in_section(hosts_file, ip, role, should_exist=True)
+        if not hosts_file.exists():
+            raise ClusterNotFoundError(f"Hosts file not found for cluster {cluster}")
+
+        self._check_node_not_exists(hosts_file, ip, role)
 
         # Run appropriate playbook
         playbook = {
@@ -419,14 +421,13 @@ class ClusterManager:
         )
         logger.info(f"Removed {_ROLE_LABEL[role]} {ip} from cluster {cluster}.", extra=LOG_STDOUT)
 
-        # Remove node from hosts file（必须先更新 inventory，再 reconfigure，保证 groups['kube_master'][0] 为新第一个）
+        # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
 
         # After removing a node, we still have to notify related services
         if role == "etcd":
             self._notify_etcd_apiserver(cluster)
         elif role == "master":
-            # 顺序不可变：reconfigure 依赖已更新的 hosts，见 docs/design-first-master.md
             self._reconfigure_kubeconfig(cluster)
             self._restart_load_balancers(cluster)
             self._kubectl_del_node(cluster, ip, role)
@@ -638,99 +639,104 @@ class ClusterManager:
         if not validate_ip(ip):
             raise InvalidIPError(f"Invalid IP address: {ip}")
 
-    @staticmethod
-    def _hosts_section_name(role: str) -> str:
-        """Return ini section name for role (e.g. etcd -> [etcd], master -> [kube_master])."""
-        return "[etcd]" if role == "etcd" else f"[kube_{role}]"
-
-    @staticmethod
-    def _hosts_line_first_token(line: str) -> Optional[str]:
-        """First token of a hosts line, or None if empty/comment. Used for IP match and sort."""
-        parts = line.strip().split()
-        if not parts or parts[0].startswith("#"):
-            return None
-        return parts[0]
-
-    @staticmethod
-    def _hosts_section_sort_key(line: str) -> Tuple[int, str]:
-        """Sort key for section body: IP lines by IP, others after."""
-        token = ClusterManager._hosts_line_first_token(line)
-        if not token:
-            return (1, "")
-        try:
-            ipaddress.ip_address(token)
-            return (0, token)
-        except ValueError:
-            return (1, line)
-
-    @staticmethod
-    def _find_hosts_section_range(content: List[str], section: str) -> Tuple[int, int]:
-        """Return (start_index, end_index) for section body. start is section header line index."""
-        start, end = -1, -1
-        for i, l in enumerate(content):
-            if l.strip() == section:
-                start = i
-            elif start != -1 and l.strip().startswith("["):
-                end = i
-                break
-        if end == -1:
-            end = len(content)
-        return start, end
-
-    # Hosts consistency: [etcd]/[kube_master]/[kube_node] kept ordered by first token (IP).
-    # Match by first token == ip (not startswith). After every add/remove we re-sort the section.
-
-    def _check_node_in_section(self, hosts_file: Path, ip: str, role: str, *, should_exist: bool) -> None:
-        """Check node presence in hosts section by first token (IP). should_exist: True for remove, False for add."""
-        _SECTION_BOUNDS = {
+    def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
+        """Check node already exists in hosts section (for add: should not exist)."""
+        section_patterns = {
             "etcd": ("[etcd]", "[kube_master]"),
             "master": ("[kube_master]", "[kube_node]"),
             "node": ("[kube_node]", None),
         }
-        if role not in _SECTION_BOUNDS:
+        if role not in section_patterns:
             raise ValueError(f"Invalid node role: {role}")
-        start_marker, end_marker = _SECTION_BOUNDS[role]
-        in_section, found = False, False
+        start_section, end_section = section_patterns[role]
+        in_section = False
         with hosts_file.open() as f:
             for line in f:
-                s = line.strip()
-                if s == start_marker:
+                line = line.strip()
+                if line == start_section:
                     in_section = True
                     continue
-                if end_marker and s == end_marker:
+                if end_section and line == end_section:
                     break
-                if in_section and self._hosts_line_first_token(line) == ip:
-                    found = True
+                if in_section and line and not line.startswith("#"):
+                    if line.startswith(ip) or f" {ip} " in line:
+                        raise NodeExistsError(f"Node {ip} already exists in {role} section")
+
+    def _check_node_not_exists(self, hosts_file: Path, ip: str, role: str) -> None:
+        """Check node does not exist in hosts section (for remove: should exist)."""
+        section_patterns = {
+            "etcd": ("[etcd]", "[kube_master]"),
+            "master": ("[kube_master]", "[kube_node]"),
+            "node": ("[kube_node]", None),
+        }
+        if role not in section_patterns:
+            raise ValueError(f"Invalid node role: {role}")
+        start_section, end_section = section_patterns[role]
+        in_section = False
+        with hosts_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line == start_section:
+                    in_section = True
+                    continue
+                if end_section and line == end_section:
                     break
-        if should_exist and not found:
-            raise NodeNotFoundError(f"Node {ip} not found in {role} section")
-        if not should_exist and found:
-            raise NodeExistsError(f"Node {ip} already exists in {role} section")
+                if in_section and line and not line.startswith("#"):
+                    if line.startswith(ip) or f" {ip} " in line:
+                        return
+        raise NodeNotFoundError(f"Node {ip} not found in {role} section")
 
     def _add_to_hosts_section(self, hosts_file: Path, role: str, line: str) -> None:
-        """Add a line to the section and keep section lines ordered by IP (first token)."""
-        section = self._hosts_section_name(role)
+        """Add a line to the end of a specific section using ipaddress library (original logic)."""
+        section = f"[kube_{role}]" if role != "etcd" else "[etcd]"
         content = hosts_file.read_text().splitlines()
-        start, end = self._find_hosts_section_range(content, section)
-        if start == -1:
+        section_start = -1
+        last_ip_line = -1
+        for i, l in enumerate(content):
+            if l.strip() == section:
+                section_start = i
+            elif section_start != -1 and l.startswith("[") and l.endswith("]"):
+                break
+            elif section_start != -1:
+                parts = l.split()
+                if parts:
+                    try:
+                        ipaddress.ip_address(parts[0])
+                        last_ip_line = i
+                    except ValueError:
+                        continue
+        if section_start == -1:
             raise ValueError(f"Section {section} not found in hosts file")
-        body = content[start + 1 : end] + [line]
-        body.sort(key=self._hosts_section_sort_key)
-        new_content = content[: start + 1] + body + content[end:]
-        hosts_file.write_text("\n".join(new_content) + "\n")
+        insert_pos = last_ip_line + 1 if last_ip_line != -1 else section_start + 1
+        content.insert(insert_pos, line)
+        hosts_file.write_text("\n".join(content) + "\n")
 
     def _remove_from_hosts_section(self, hosts_file: Path, role: str, ip: str) -> None:
-        """Remove the line whose first token is ip, then re-sort section by IP."""
-        section = self._hosts_section_name(role)
+        """Remove a line from a specific section in hosts file (original logic)."""
+        section = f"[kube_{role}]" if role != "etcd" else "[etcd]"
         content = hosts_file.read_text().splitlines()
-        start, end = self._find_hosts_section_range(content, section)
-        if start == -1:
+        section_start = -1
+        section_end = -1
+        for i, line in enumerate(content):
+            if line.strip() == section:
+                section_start = i
+            elif section_start != -1 and line.startswith("[") and section_end == -1:
+                section_end = i
+                break
+        if section_start == -1:
             raise ValueError(f"Section {section} not found in hosts file")
-        body = [l for l in content[start + 1 : end] if self._hosts_line_first_token(l) != ip]
-        if len(body) == len(content[start + 1 : end]):
+        if section_end == -1:
+            section_end = len(content)
+        new_section = []
+        removed = False
+        for line in content[section_start + 1 : section_end]:
+            if not (line.startswith(ip) or f" {ip} " in line):
+                new_section.append(line)
+            else:
+                removed = True
+        if not removed:
             raise NodeNotFoundError(f"Node {ip} not found in {section} section")
-        body.sort(key=self._hosts_section_sort_key)
-        new_content = content[: start + 1] + body + content[end:]
+        new_content = content[: section_start + 1] + new_section + content[section_end:]
         hosts_file.write_text("\n".join(new_content) + "\n")
 
     def _notify_etcd_apiserver(self, cluster: str) -> None:

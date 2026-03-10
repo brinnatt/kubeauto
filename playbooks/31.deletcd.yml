@@ -77,3 +77,4 @@
         path: /etc/hosts
         state: absent
         regexp: "^{{ NODE_TO_DEL }}.* flag by kubeauto"
+      when: inventory_hostname != NODE_TO_DEL
