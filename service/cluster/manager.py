@@ -419,13 +419,14 @@ class ClusterManager:
         )
         logger.info(f"Removed {_ROLE_LABEL[role]} {ip} from cluster {cluster}.", extra=LOG_STDOUT)
 
-        # Remove node from hosts file
+        # Remove node from hosts file（必须先更新 inventory，再 reconfigure，保证 groups['kube_master'][0] 为新第一个）
         self._remove_from_hosts_section(hosts_file, role, ip)
 
         # After removing a node, we still have to notify related services
         if role == "etcd":
             self._notify_etcd_apiserver(cluster)
         elif role == "master":
+            # 顺序不可变：reconfigure 依赖已更新的 hosts，见 docs/design-first-master.md
             self._reconfigure_kubeconfig(cluster)
             self._restart_load_balancers(cluster)
             self._kubectl_del_node(cluster, ip, role)

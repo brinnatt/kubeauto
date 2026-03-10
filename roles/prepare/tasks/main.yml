@@ -68,7 +68,7 @@
         use: systemd
       when: "ENABLE_SETTING_HOSTNAME|bool"
 
-    # the master[0] resolves all hosts {{ K8S_NODENAME }} in /etc/hosts
+    # 约定：使用当前 inventory 的 groups.kube_master[0] 作为 /etc/hosts 汇总源，见 docs/design-first-master.md
     - name: the master[0] resolves all hosts {{ K8S_NODENAME }} in /etc/hosts
       lineinfile:
         dest: /etc/hosts

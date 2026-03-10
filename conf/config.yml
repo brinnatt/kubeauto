@@ -126,7 +126,7 @@ flannel_ver: "__flannel__"
 # For public cloud environments, using Always is recommended for simplicity. For other setups, adjustments to the respective cloud network configurations are required. Refer to the specific public cloud provider's documentation for details.
 CALICO_ENABLE_OVERLAY: "Always"
 
-# This setting specifies the host IP used by the calico-node. BGP neighbors establish connections using this address, which can be manually configured or auto-detected.
+# This setting specifies the host IP used by the calico-node. Uses current inventory first master (see docs/design-first-master.md).
 IP_AUTODETECTION_METHOD: "can-reach={{ groups['kube_master'][0] }}"
 
 # Configures the Calico networking backend. Options: bird, vxlan, none.

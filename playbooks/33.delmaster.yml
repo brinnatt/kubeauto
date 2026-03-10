@@ -51,8 +51,10 @@
     - kube_master
     - kube_node
   tasks:
+    # 不在被删节点上执行，避免对已 clean 的节点 SSH 导致 failed
     - name: remove the {{ NODE_TO_DEL }} entry in all k8s hosts file
       lineinfile:
         path: /etc/hosts
         state: absent
         regexp: "^{{ NODE_TO_DEL }}.* flag by kubeauto"
+      when: inventory_hostname != NODE_TO_DEL
