@@ -6,13 +6,63 @@ import site
 import subprocess
 import shutil
 import ipaddress
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 from enum import Enum
 from pathlib import Path
 from .logger import setup_logger, LOG_STDOUT
 from .exceptions import CommandExecutionError
 
 logger = setup_logger(__name__)
+
+
+def copy_file_to_remote(
+    local_path: Union[Path, str],
+    remote_path: str,
+    host: str,
+    port: int = 22,
+    username: str = "root",
+    mode: int = 0o400,
+    timeout: int = 30,
+) -> None:
+    """
+    Copy a local file to a remote host via SFTP (paramiko).
+    Uses default SSH key auth (same as Ansible). Remote parent dir is created if missing.
+    """
+    import paramiko
+
+    local_path = Path(local_path)
+    if not local_path.is_file():
+        raise CommandExecutionError(f"Local file not found: {local_path}")
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(
+            hostname=host,
+            port=port,
+            username=username,
+            timeout=timeout,
+            look_for_keys=True,
+            allow_agent=True,
+            compress=True,
+        )
+        # Ensure remote parent dir exists (e.g. /root/.kube)
+        remote_dir = remote_path.rsplit("/", 1)[0] if "/" in remote_path else "."
+        stdin, stdout, stderr = client.exec_command(f"mkdir -p {remote_dir}")
+        if stdout.channel.recv_exit_status() != 0:
+            err = stderr.read().decode().strip()
+            raise CommandExecutionError(f"mkdir on {host} failed: {err}")
+
+        sftp = client.open_sftp()
+        try:
+            sftp.put(str(local_path), remote_path)
+            sftp.chmod(remote_path, mode)
+        finally:
+            sftp.close()
+    except paramiko.SSHException as e:
+        raise CommandExecutionError(f"SSH/SFTP to {host} failed: {e}")
+    finally:
+        client.close()
 
 
 def run_command(cmd: List[str] | Tuple[str] | str,

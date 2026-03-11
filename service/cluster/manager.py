@@ -18,7 +18,7 @@ from typing import List, Optional, Tuple
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException as K8sApiException
 
-from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf
+from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf, copy_file_to_remote
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError,
@@ -682,6 +682,33 @@ class ClusterManager:
                             continue
         return None
 
+    def _get_kube_master_and_node_ips(self, hosts_file: Path) -> List[str]:
+        """Return all IPs in [kube_master] and [kube_node] (order preserved, no duplicate)."""
+        sections = ("[kube_master]", "[kube_node]")
+        in_relevant = False
+        seen: set = set()
+        result: List[str] = []
+        with hosts_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line in sections:
+                    in_relevant = True
+                    continue
+                if in_relevant and line.startswith("[") and line.endswith("]"):
+                    in_relevant = False
+                    continue
+                if in_relevant and line and not line.startswith("#"):
+                    parts = line.split()
+                    if parts:
+                        try:
+                            ipaddress.ip_address(parts[0])
+                            if parts[0] not in seen:
+                                seen.add(parts[0])
+                                result.append(parts[0])
+                        except ValueError:
+                            continue
+        return result
+
     def _ip_in_hosts_section(self, hosts_file: Path, ip: str, role: str) -> bool:
         """Return True if ip appears in the role's section of hosts file."""
         if role not in _HOSTS_SECTION_PATTERNS:
@@ -836,6 +863,9 @@ class ClusterManager:
             if "cluster" in c:
                 c["cluster"]["server"] = new_server
         kubeconfig_path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False))
+        # Sync to all remaining master/node so each node's /root/.kube/config points to new first master
+        for ip in self._get_kube_master_and_node_ips(hosts_file):
+            copy_file_to_remote(kubeconfig_path, "/root/.kube/config", host=ip, mode=0o400)
         logger.info("Kubeconfig reconfigured.", extra=LOG_STDOUT)
 
     def _is_cluster_live(self, kubeconfig_path: Path) -> bool:
