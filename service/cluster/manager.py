@@ -801,6 +801,29 @@ class ClusterManager:
             logger.error(f"Failed to delete node from cluster: {e.reason or e.body}", extra=LOG_STDOUT)
             raise ClusterManageError(f"Failed to delete node from cluster: {e.reason or str(e)}")
 
+    def _ssh_copy_kwargs_from_config(self, config_vars: dict) -> dict:
+        """
+        Build kwargs for copy_file_to_remote from cluster config (optional).
+        Supports SSH_PORT/ansible_ssh_port, SSH_USER/ansible_user,
+        SSH_PRIVATE_KEY_FILE/ansible_ssh_private_key_file, SSH_PASSWORD.
+        When not set, defaults keep current behavior (port 22, user root, default keys).
+        """
+        try:
+            port = config_vars.get("SSH_PORT") or config_vars.get("ansible_ssh_port") or 22
+            port = int(port) if port is not None else 22
+        except (TypeError, ValueError):
+            port = 22
+        username = config_vars.get("SSH_USER") or config_vars.get("ansible_user") or "root"
+        username = str(username).strip() or "root"
+        key_file = config_vars.get("SSH_PRIVATE_KEY_FILE") or config_vars.get("ansible_ssh_private_key_file")
+        password = config_vars.get("SSH_PASSWORD")
+        out = {"port": port, "username": username}
+        if key_file:
+            out["key_filename"] = str(key_file).strip()
+        if password is not None and str(password).strip():
+            out["password"] = str(password).strip()
+        return out
+
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
         """Update kubeconfig server to the new first master after removal (so later steps use a live API)."""
         logger.info("Reconfiguring kubeconfig after master node removal.", extra=LOG_STDOUT)
@@ -819,9 +842,10 @@ class ClusterManager:
             if "cluster" in c:
                 c["cluster"]["server"] = new_server
         kubeconfig_path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False))
-        # Sync to all remaining master/node so each node's /root/.kube/config points to new first master
+        # Sync to all remaining master/node; use cluster SSH settings (port/key/user) when set in config
+        ssh_kwargs = self._ssh_copy_kwargs_from_config(config_vars)
         for ip in self._get_kube_master_and_node_ips(hosts_file):
-            copy_file_to_remote(kubeconfig_path, "/root/.kube/config", host=ip, mode=0o400)
+            copy_file_to_remote(kubeconfig_path, "/root/.kube/config", host=ip, mode=0o400, **ssh_kwargs)
         logger.info("Kubeconfig reconfigured.", extra=LOG_STDOUT)
 
     def _is_cluster_live(self, kubeconfig_path: Path) -> bool:
