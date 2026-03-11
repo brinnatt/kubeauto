@@ -13,7 +13,7 @@ import tempfile
 from taskflow import task
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException as K8sApiException
@@ -67,6 +67,30 @@ _HOSTS_SECTION_PATTERNS = {
 def _hosts_section_name(role: str) -> str:
     """Return hosts section header for role, e.g. [etcd] or [kube_master]."""
     return "[etcd]" if role == "etcd" else f"[kube_{role}]"
+
+
+def _iter_host_entries(hosts_file: Path, role: str) -> Generator[Tuple[str, str], None, None]:
+    """Yield (line, first_ip) for each host line in the role's section. Skips comments and non-IP lines."""
+    if role not in _HOSTS_SECTION_PATTERNS:
+        raise ValueError(f"Invalid node role: {role}")
+    start_section, end_section = _HOSTS_SECTION_PATTERNS[role]
+    in_section = False
+    with hosts_file.open() as f:
+        for raw in f:
+            line = raw.strip()
+            if line == start_section:
+                in_section = True
+                continue
+            if end_section and line == end_section:
+                break
+            if in_section and line and not line.startswith("#"):
+                parts = line.split()
+                if parts:
+                    try:
+                        ipaddress.ip_address(parts[0])
+                        yield (line, parts[0])
+                    except ValueError:
+                        continue
 
 
 class ClusterManager:
@@ -638,95 +662,26 @@ class ClusterManager:
 
     def _is_ip_in_kube_master_or_node(self, hosts_file: Path, ip: str) -> bool:
         """Return True if ip already appears in [kube_master] or [kube_node] (etcd on same host as master/node)."""
-        sections_to_check = ("[kube_master]", "[kube_node]")
-        in_relevant_section = False
-        with hosts_file.open() as f:
-            for line in f:
-                line = line.strip()
-                if line in sections_to_check:
-                    in_relevant_section = True
-                    continue
-                if in_relevant_section and line.startswith("[") and line.endswith("]"):
-                    in_relevant_section = False
-                    continue
-                if in_relevant_section and line and not line.startswith("#"):
-                    parts = line.split()
-                    if parts:
-                        try:
-                            ipaddress.ip_address(parts[0])
-                            if parts[0] == ip:
-                                return True
-                        except ValueError:
-                            continue
-        return False
+        return ip in self._get_kube_master_and_node_ips(hosts_file)
 
     def _get_first_master_ip(self, hosts_file: Path) -> Optional[str]:
         """Return the first IP in [kube_master] section, or None if section empty/missing."""
-        start_section, end_section = _HOSTS_SECTION_PATTERNS["master"]
-        in_section = False
-        with hosts_file.open() as f:
-            for line in f:
-                line = line.strip()
-                if line == start_section:
-                    in_section = True
-                    continue
-                if end_section and line == end_section:
-                    break
-                if in_section and line and not line.startswith("#"):
-                    parts = line.split()
-                    if parts:
-                        try:
-                            ipaddress.ip_address(parts[0])
-                            return parts[0]
-                        except ValueError:
-                            continue
-        return None
+        return next((ip for _, ip in _iter_host_entries(hosts_file, "master")), None)
 
     def _get_kube_master_and_node_ips(self, hosts_file: Path) -> List[str]:
         """Return all IPs in [kube_master] and [kube_node] (order preserved, no duplicate)."""
-        sections = ("[kube_master]", "[kube_node]")
-        in_relevant = False
         seen: set = set()
         result: List[str] = []
-        with hosts_file.open() as f:
-            for line in f:
-                line = line.strip()
-                if line in sections:
-                    in_relevant = True
-                    continue
-                if in_relevant and line.startswith("[") and line.endswith("]"):
-                    in_relevant = False
-                    continue
-                if in_relevant and line and not line.startswith("#"):
-                    parts = line.split()
-                    if parts:
-                        try:
-                            ipaddress.ip_address(parts[0])
-                            if parts[0] not in seen:
-                                seen.add(parts[0])
-                                result.append(parts[0])
-                        except ValueError:
-                            continue
+        for role in ("master", "node"):
+            for _, ip in _iter_host_entries(hosts_file, role):
+                if ip not in seen:
+                    seen.add(ip)
+                    result.append(ip)
         return result
 
     def _ip_in_hosts_section(self, hosts_file: Path, ip: str, role: str) -> bool:
-        """Return True if ip appears in the role's section of hosts file."""
-        if role not in _HOSTS_SECTION_PATTERNS:
-            raise ValueError(f"Invalid node role: {role}")
-        start_section, end_section = _HOSTS_SECTION_PATTERNS[role]
-        in_section = False
-        with hosts_file.open() as f:
-            for line in f:
-                line = line.strip()
-                if line == start_section:
-                    in_section = True
-                    continue
-                if end_section and line == end_section:
-                    break
-                if in_section and line and not line.startswith("#"):
-                    if line.startswith(ip) or f" {ip} " in line:
-                        return True
-        return False
+        """Return True if ip appears in the role's section of hosts file (first token of a line)."""
+        return any(first_ip == ip for _, first_ip in _iter_host_entries(hosts_file, role))
 
     def _check_node_exists(self, hosts_file: Path, ip: str, role: str) -> None:
         """Check node already exists in hosts section (for add: should not exist)."""
@@ -782,7 +737,8 @@ class ClusterManager:
         new_section = []
         removed = False
         for line in content[section_start + 1 : section_end]:
-            if not (line.startswith(ip) or f" {ip} " in line):
+            parts = line.strip().split()
+            if not parts or parts[0] != ip:
                 new_section.append(line)
             else:
                 removed = True

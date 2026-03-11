@@ -6,7 +6,7 @@ import site
 import subprocess
 import shutil
 import ipaddress
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional, Union, Sequence
 from enum import Enum
 from pathlib import Path
 from .logger import setup_logger, LOG_STDOUT
@@ -23,10 +23,30 @@ def copy_file_to_remote(
     username: str = "root",
     mode: int = 0o400,
     timeout: int = 30,
+    *,
+    password: Optional[str] = None,
+    key_filename: Optional[Union[str, Path, Sequence[Union[str, Path]]]] = None,
+    look_for_keys: bool = True,
+    allow_agent: bool = True,
 ) -> None:
     """
     Copy a local file to a remote host via SFTP (paramiko).
-    Uses default SSH key auth (same as Ansible). Remote parent dir is created if missing.
+
+    Auth (try in order when not specified): key_filename -> agent/key scan -> password.
+    Remote parent directory is created if missing.
+
+    Args:
+        local_path: Local file path.
+        remote_path: Remote path (e.g. /root/.kube/config).
+        host: Remote host IP or hostname.
+        port: SSH port (default 22; production may use non-default).
+        username: SSH user (default root).
+        mode: Remote file mode (default 0o400).
+        timeout: Connect timeout in seconds.
+        password: Optional password auth (e.g. when no key).
+        key_filename: Optional key file path(s) (str, Path, or list).
+        look_for_keys: Whether to try default key files (default True).
+        allow_agent: Whether to use SSH agent (default True).
     """
     import paramiko
 
@@ -34,19 +54,29 @@ def copy_file_to_remote(
     if not local_path.is_file():
         raise CommandExecutionError(f"Local file not found: {local_path}")
 
+    connect_kwargs: dict = {
+        "hostname": host,
+        "port": port,
+        "username": username,
+        "timeout": timeout,
+        "compress": True,
+        "look_for_keys": look_for_keys,
+        "allow_agent": allow_agent,
+    }
+    if password is not None:
+        connect_kwargs["password"] = password
+        connect_kwargs["look_for_keys"] = look_for_keys  # caller can still allow key try
+        connect_kwargs["allow_agent"] = allow_agent
+    if key_filename is not None:
+        if isinstance(key_filename, (str, Path)):
+            connect_kwargs["key_filename"] = str(key_filename)
+        else:
+            connect_kwargs["key_filename"] = [str(p) for p in key_filename]
+
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        client.connect(
-            hostname=host,
-            port=port,
-            username=username,
-            timeout=timeout,
-            look_for_keys=True,
-            allow_agent=True,
-            compress=True,
-        )
-        # Ensure remote parent dir exists (e.g. /root/.kube)
+        client.connect(**connect_kwargs)
         remote_dir = remote_path.rsplit("/", 1)[0] if "/" in remote_path else "."
         stdin, stdout, stderr = client.exec_command(f"mkdir -p {remote_dir}")
         if stdout.channel.recv_exit_status() != 0:
