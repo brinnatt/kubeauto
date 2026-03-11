@@ -511,7 +511,7 @@ class ClusterManager:
         logger.info(f"Kubeconfig for user {user_name} removed from cluster {cluster}.", extra=LOG_STDOUT)
 
     def _get_kcfg_users(self, kubeconfig: Path, role_name: Optional[str] = None) -> List[str]:
-        """List user names from ClusterRoleBindings, optionally filtered by role (e.g. cluster-admin, view)."""
+        """List usernames from ClusterRoleBindings, optionally filtered by role (e.g. cluster-admin, view)."""
         with self._k8s_api_client(kubeconfig) as api_client:
             rbac = k8s_client.RbacAuthorizationV1Api(api_client)
             crb_list = rbac.list_cluster_role_binding()
