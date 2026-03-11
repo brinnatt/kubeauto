@@ -660,6 +660,28 @@ class ClusterManager:
                             continue
         return False
 
+    def _get_first_master_ip(self, hosts_file: Path) -> Optional[str]:
+        """Return the first IP in [kube_master] section, or None if section empty/missing."""
+        start_section, end_section = _HOSTS_SECTION_PATTERNS["master"]
+        in_section = False
+        with hosts_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line == start_section:
+                    in_section = True
+                    continue
+                if end_section and line == end_section:
+                    break
+                if in_section and line and not line.startswith("#"):
+                    parts = line.split()
+                    if parts:
+                        try:
+                            ipaddress.ip_address(parts[0])
+                            return parts[0]
+                        except ValueError:
+                            continue
+        return None
+
     def _ip_in_hosts_section(self, hosts_file: Path, ip: str, role: str) -> bool:
         """Return True if ip appears in the role's section of hosts file."""
         if role not in _HOSTS_SECTION_PATTERNS:
@@ -797,14 +819,23 @@ class ClusterManager:
             raise ClusterManageError(f"Failed to delete node from cluster: {e.reason or str(e)}")
 
     def _reconfigure_kubeconfig(self, cluster: str) -> None:
-        """Reconfigure kubeconfig after master node removal"""
+        """Update kubeconfig server to the new first master after removal (so later steps use a live API)."""
         logger.info("Reconfiguring kubeconfig after master node removal.", extra=LOG_STDOUT)
-        self._run_playbook(
-            cluster,
-            "roles/deploy/deploy.yml",
-            cmdline="-t create_kctl_cfg",
-            fail_msg="Failed to reconfigure the kubeconfig for the changed cluster membership.",
-        )
+        hosts_file = self.clusters_dir / cluster / "hosts"
+        kubeconfig_path = self.clusters_dir / cluster / "kubectl.kubeconfig"
+        first_master = self._get_first_master_ip(hosts_file)
+        if not first_master:
+            raise ClusterManageError("No kube_master left in hosts; cannot reconfigure kubeconfig.")
+        if not kubeconfig_path.exists():
+            raise ClusterNotFoundError(f"Kubeconfig not found: {kubeconfig_path}")
+        config_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
+        port = config_vars.get("SECURE_PORT", "6443")
+        new_server = f"https://{first_master}:{port}"
+        data = yaml.safe_load(kubeconfig_path.read_text()) or {}
+        for c in data.get("clusters", []):
+            if "cluster" in c:
+                c["cluster"]["server"] = new_server
+        kubeconfig_path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False))
         logger.info("Kubeconfig reconfigured.", extra=LOG_STDOUT)
 
     def _is_cluster_live(self, kubeconfig_path: Path) -> bool:
