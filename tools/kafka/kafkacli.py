@@ -196,15 +196,9 @@ class SSHManager:
             raise FileNotFoundError(f"SSH 密钥文件不存在: {self.key_path}")
         SecurityChecker.check_ssh_key_permissions(self.key_path)
 
-    def _build_ssh_options(self) -> List[str]:
-        opts = [
-            "-o", "ConnectTimeout=10",
-            "-o", "ServerAliveInterval=60",
-            "-o", "ServerAliveCountMax=3",
-            "-o", "BatchMode=yes",
-            "-p", str(self.port),
-            "-i", self.key_path,
-        ]
+    def _connection_options(self) -> List[str]:
+        """SSH/SCP 共用：端口、密钥、StrictHostKeyChecking。"""
+        opts = ["-o", "ConnectTimeout=10", "-o", "BatchMode=yes", "-p", str(self.port), "-i", self.key_path]
         if self.strict_host_key_checking:
             known = os.path.expanduser("~/.ssh/known_hosts")
             opts.extend(["-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={known}"])
@@ -212,6 +206,13 @@ class SSHManager:
             logger.warning("警告: 已禁用 SSH 主机密钥检查", extra={"to_stdout": True})
             opts.extend(["-o", "StrictHostKeyChecking=no"])
         return opts
+
+    def _build_ssh_options(self) -> List[str]:
+        """SSH 完整选项（含保活）。"""
+        return [
+            "-o", "ServerAliveInterval=60",
+            "-o", "ServerAliveCountMax=3",
+        ] + self._connection_options()
 
     def run_command(self, cmd: str, timeout: Optional[int] = None) -> Tuple[bool, str]:
         """在远程执行命令，返回 (成功, 输出)"""
@@ -241,15 +242,8 @@ class SSHManager:
         if not dst or ".." in dst:
             logger.error("目标路径无效", extra={"to_stdout": True})
             return False
-        scp_opts = [
-            "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
-            "-P", str(self.port), "-i", self.key_path,
-        ]
-        if self.strict_host_key_checking:
-            known = os.path.expanduser("~/.ssh/known_hosts")
-            scp_opts.extend(["-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={known}"])
-        else:
-            scp_opts.extend(["-o", "StrictHostKeyChecking=no"])
+        opts = self._connection_options()
+        scp_opts = ["-P" if a == "-p" else a for a in opts]
         scp_cmd = ["scp"] + scp_opts + [str(src_path), f"{self.username}@{self.host}:{dst}"]
         try:
             result = run_command(scp_cmd, check=False, capture_output=False, timeout=1800)
@@ -324,7 +318,8 @@ class EnvironmentChecker:
     def _find_java_home_from_path(java_path: Path) -> Optional[str]:
         try:
             resolved = java_path.resolve()
-        except Exception:
+        except Exception as ex:
+            logger.debug("resolve java_path 失败，使用原路径: %s", ex)
             resolved = java_path
         for parent in resolved.parents:
             if (parent / 'lib').exists() or (parent / 'jre' / 'lib').exists():
@@ -586,6 +581,51 @@ class KafkaDeployer:
             java_home=java_home,
         )
 
+    def _generate_cluster_id(self) -> Optional[str]:
+        """生成 KRaft cluster ID（random-uuid），失败返回 None。"""
+        try:
+            result = self._run_storage_cmd(["random-uuid"])
+            cluster_id = (result.stdout or "").strip()
+            if cluster_id:
+                logger.info(f"生成 Cluster ID: {cluster_id}", extra={"to_stdout": True})
+            return cluster_id or None
+        except CommandExecutionError as e:
+            logger.error(f"kafka-storage.sh random-uuid 失败: {e}", extra={"to_stdout": True})
+            return None
+
+    def _enable_systemd_service(
+            self,
+            service_name: str,
+            config_path: Path,
+            deploy_type: str,
+            java_home: Optional[str] = None
+    ) -> bool:
+        """安装并启动 systemd 服务（写 unit、daemon-reload、enable、start）。"""
+        unit_path = Path(f"/etc/systemd/system/{service_name}.service")
+        unit_content = self._systemd_unit_content(deploy_type, config_path, java_home)
+        try:
+            unit_path.write_text(unit_content, encoding="utf-8")
+            run_command(["systemctl", "daemon-reload"], timeout=30)
+            run_command(["systemctl", "enable", service_name], timeout=30)
+            run_command(["systemctl", "start", service_name], timeout=60)
+            logger.info(f"✓ systemd 服务已启动: {service_name}", extra={"to_stdout": True})
+            return True
+        except Exception as e:
+            logger.error(f"systemd 启动失败: {e}", extra={"to_stdout": True})
+            return False
+
+    def _verify_port_reachable(self, host: str, port: int, label: str, timeout: int = 5) -> bool:
+        """检查 host:port 是否 TCP 可达。"""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(timeout)
+                s.connect((host, port))
+            logger.info(f"✓ {label} 可连接: {host}:{port}", extra={"to_stdout": True})
+            return True
+        except Exception as e:
+            logger.warning(f"{label} 连接检查失败: {e}", extra={"to_stdout": True})
+            return False
+
     def _check_service_exists(self, service_name: str) -> bool:
         try:
             result = run_command(
@@ -597,7 +637,8 @@ class KafkaDeployer:
             )
             load_state = (result.stdout or "").strip().lower()
             return load_state not in ("", "not-found")
-        except Exception:
+        except Exception as ex:
+            logger.debug("systemctl show 失败，回退检查 unit 文件: %s", ex)
             return Path(f"/etc/systemd/system/{service_name}.service").exists()
 
     def _is_service_active(self, service_name: str) -> bool:
@@ -610,7 +651,8 @@ class KafkaDeployer:
                 timeout=10
             )
             return result.returncode == 0 and (result.stdout or "").strip() == 'active'
-        except Exception:
+        except Exception as ex:
+            logger.debug("systemctl is-active 失败: %s", ex)
             return False
 
     def _stop_and_disable_service(self, service_name: str, force: bool = True) -> bool:
@@ -665,8 +707,8 @@ class KafkaDeployer:
                         for pid_str in r.stdout.strip().split('\n'):
                             if pid_str.strip().isdigit() and int(pid_str.strip()) > 1:
                                 run_command(['kill', '-KILL', pid_str.strip()], check=False, timeout=5)
-                except Exception:
-                    pass
+                except Exception as ex:
+                    logger.debug("pgrep/kill 处理失败: %s", ex)
             return True
         except Exception as e:
             logger.error(f"强制结束进程失败: {e}", extra={"to_stdout": True})
@@ -710,15 +752,9 @@ class KafkaDeployer:
 
         # 1) 生成或使用已有 cluster id
         if not cluster_id:
-            try:
-                result = self._run_storage_cmd(["random-uuid"])
-                cluster_id = (result.stdout or "").strip()
-                if not cluster_id:
-                    logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
-                    return False
-                logger.info(f"生成 Cluster ID: {cluster_id}", extra={"to_stdout": True})
-            except CommandExecutionError as e:
-                logger.error(f"kafka-storage.sh random-uuid 失败: {e}", extra={"to_stdout": True})
+            cluster_id = self._generate_cluster_id()
+            if not cluster_id:
+                logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
                 return False
 
         # 2) 构建 server.properties（官方：process.roles=broker,controller + node.id + log.dirs）
@@ -749,17 +785,9 @@ class KafkaDeployer:
 
         # 4) systemd 或前台启动
         if enable_systemd:
-            service_name = self.SERVICE_NAME_STANDALONE
-            unit_path = Path(f"/etc/systemd/system/{service_name}.service")
-            unit_content = self._systemd_unit_content("standalone", config_path, java_home)
-            try:
-                unit_path.write_text(unit_content, encoding="utf-8")
-                run_command(['systemctl', 'daemon-reload'], timeout=30)
-                run_command(['systemctl', 'enable', service_name], timeout=30)
-                run_command(['systemctl', 'start', service_name], timeout=60)
-                logger.info(f"✓ systemd 服务已启动: {service_name}", extra={"to_stdout": True})
-            except Exception as e:
-                logger.error(f"systemd 启动失败: {e}", extra={"to_stdout": True})
+            if not self._enable_systemd_service(
+                    self.SERVICE_NAME_STANDALONE, config_path, "standalone", java_home
+            ):
                 return False
         else:
             logger.info("未启用 systemd，请手动执行:", extra={"to_stdout": True})
@@ -827,16 +855,11 @@ class KafkaDeployer:
 
         is_first_controller = not cluster_id
         if not cluster_id:
-            try:
-                result = self._run_storage_cmd(["random-uuid"])
-                cluster_id = (result.stdout or "").strip()
-                if not cluster_id:
-                    logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
-                    return False
-                logger.info(f"生成 Cluster ID: {cluster_id}（请保存此 ID 用于后续 Controller/Broker）", extra={"to_stdout": True})
-            except CommandExecutionError as e:
-                logger.error(f"kafka-storage.sh random-uuid 失败: {e}", extra={"to_stdout": True})
+            cluster_id = self._generate_cluster_id()
+            if not cluster_id:
+                logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
                 return False
+            logger.info("请保存上述 Cluster ID 用于后续 Controller/Broker", extra={"to_stdout": True})
 
         format_args = ["format", "--cluster-id", cluster_id, "-c", str(config_path)]
         if initial_controllers:
@@ -854,17 +877,9 @@ class KafkaDeployer:
             return False
 
         if enable_systemd:
-            service_name = f"{self.SERVICE_NAME_CONTROLLER}-{node_id}"
-            unit_path = Path(f"/etc/systemd/system/{service_name}.service")
-            unit_content = self._systemd_unit_content("controller", config_path, java_home)
-            try:
-                unit_path.write_text(unit_content, encoding="utf-8")
-                run_command(['systemctl', 'daemon-reload'], timeout=30)
-                run_command(['systemctl', 'enable', service_name], timeout=30)
-                run_command(['systemctl', 'start', service_name], timeout=60)
-                logger.info(f"✓ systemd 服务已启动: {service_name}", extra={"to_stdout": True})
-            except Exception as e:
-                logger.error(f"systemd 启动失败: {e}", extra={"to_stdout": True})
+            if not self._enable_systemd_service(
+                    f"{self.SERVICE_NAME_CONTROLLER}-{node_id}", config_path, "controller", java_home
+            ):
                 return False
 
         return True
@@ -936,44 +951,22 @@ class KafkaDeployer:
             return False
 
         if enable_systemd:
-            service_name = f"{self.SERVICE_NAME_BROKER}-{node_id}"
-            unit_path = Path(f"/etc/systemd/system/{service_name}.service")
-            unit_content = self._systemd_unit_content("broker", config_path, java_home)
-            try:
-                unit_path.write_text(unit_content, encoding="utf-8")
-                run_command(['systemctl', 'daemon-reload'], timeout=30)
-                run_command(['systemctl', 'enable', service_name], timeout=30)
-                run_command(['systemctl', 'start', service_name], timeout=60)
-                logger.info(f"✓ systemd 服务已启动: {service_name}", extra={"to_stdout": True})
-            except Exception as e:
-                logger.error(f"systemd 启动失败: {e}", extra={"to_stdout": True})
+            if not self._enable_systemd_service(
+                    f"{self.SERVICE_NAME_BROKER}-{node_id}", config_path, "broker", java_home
+            ):
                 return False
 
         return True
 
     def verify_broker_started(self, host: str = "localhost", port: int = DEFAULT_BROKER_PORT) -> bool:
         """健康检查：验证 Broker 是否可连接（TCP 端口）"""
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(5)
-                s.connect((host, port))
-            logger.info(f"✓ Broker 可连接: {host}:{port}", extra={"to_stdout": True})
-            return True
-        except Exception as e:
-            logger.warning(f"Broker 连接检查失败: {e}", extra={"to_stdout": True})
-            return False
+        return self._verify_port_reachable(host, port, "Broker")
 
-    def verify_controller_started(self, host: str = "localhost", port: int = DEFAULT_CONTROLLER_PORT) -> bool:
+    def verify_controller_started(
+            self, host: str = "localhost", port: int = DEFAULT_CONTROLLER_PORT
+    ) -> bool:
         """健康检查：验证 Controller 端口是否监听"""
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(5)
-                s.connect((host, port))
-            logger.info(f"✓ Controller 可连接: {host}:{port}", extra={"to_stdout": True})
-            return True
-        except Exception as e:
-            logger.warning(f"Controller 连接检查失败: {e}", extra={"to_stdout": True})
-            return False
+        return self._verify_port_reachable(host, port, "Controller")
 
     def clean_deployment(
             self,
@@ -1051,33 +1044,46 @@ class KafkaDeployer:
         if command_config:
             cmd_common.extend(["--command-config", command_config])
 
-        # 1) 元数据 quorum 状态（官方：describe --status）
+        def _describe_and_print(describe_args: List[str], fallback: str, abort_on_error: bool) -> bool:
+            try:
+                result = run_command(
+                    cmd_common + ["describe"] + describe_args,
+                    capture_output=True, check=False, timeout=30
+                )
+                if result.returncode == 0 and result.stdout:
+                    for line in result.stdout.strip().split("\n"):
+                        print(line)
+                else:
+                    print(result.stderr or result.stdout or fallback)
+                return True
+            except Exception as e:
+                if abort_on_error:
+                    logger.error(f"查询 quorum 状态失败: {e}", extra={"to_stdout": True})
+                    return False
+                logger.debug("describe %s 失败: %s", describe_args, e)
+                return True
+
         logger.info("元数据 Quorum 状态:", extra={"to_stdout": True})
-        try:
-            result = run_command(cmd_common + ["describe", "--status"], capture_output=True, check=False, timeout=30)
-            if result.returncode == 0 and result.stdout:
-                for line in result.stdout.strip().split("\n"):
-                    print(line)
-            else:
-                print(result.stderr or result.stdout or "查询失败")
-        except Exception as e:
-            logger.error(f"查询 quorum 状态失败: {e}", extra={"to_stdout": True})
+        if not _describe_and_print(["--status"], "查询失败", abort_on_error=True):
             return False
-
-        # 2) 副本信息（describe --replication）
         print("\nQuorum 副本:")
-        try:
-            result = run_command(cmd_common + ["describe", "--replication"], capture_output=True, check=False, timeout=30)
-            if result.returncode == 0 and result.stdout:
-                for line in result.stdout.strip().split("\n"):
-                    print(line)
-            else:
-                print(result.stderr or "(无或查询失败)")
-        except Exception as e:
-            logger.debug(f"describe --replication 失败: {e}")
-
+        _describe_and_print(["--replication"], "(无或查询失败)", abort_on_error=False)
         print("")
         return True
+
+
+def _build_bootstrap_cmd(
+        script_path: Path,
+        bootstrap_server: str,
+        args: List[str],
+        command_config: Optional[str] = None,
+        timeout: int = 60
+) -> subprocess.CompletedProcess:
+    """构建带 --bootstrap-server [--command-config] 的 Kafka CLI 命令并执行。"""
+    cmd = [str(script_path), "--bootstrap-server", bootstrap_server] + args
+    if command_config:
+        cmd.extend(["--command-config", command_config])
+    return run_command(cmd, capture_output=True, timeout=timeout)
 
 
 class KafkaTopicManager:
@@ -1090,10 +1096,9 @@ class KafkaTopicManager:
         self._script = self.bin_dir / "kafka-topics.sh"
 
     def _run(self, args: List[str]) -> subprocess.CompletedProcess:
-        cmd = [str(self._script), "--bootstrap-server", self.bootstrap_server] + args
-        if self.command_config:
-            cmd.extend(["--command-config", self.command_config])
-        return run_command(cmd, capture_output=True, timeout=60)
+        return _build_bootstrap_cmd(
+            self._script, self.bootstrap_server, args, self.command_config, timeout=60
+        )
 
     def create(self, topic: str, partitions: int = 1, replication_factor: int = 1) -> bool:
         """创建 Topic（官方 --create）"""
@@ -1146,10 +1151,9 @@ class KafkaConsumerGroupManager:
         self._script = self.bin_dir / "kafka-consumer-groups.sh"
 
     def _run(self, args: List[str]) -> subprocess.CompletedProcess:
-        cmd = [str(self._script), "--bootstrap-server", self.bootstrap_server] + args
-        if self.command_config:
-            cmd.extend(["--command-config", self.command_config])
-        return run_command(cmd, capture_output=True, timeout=60)
+        return _build_bootstrap_cmd(
+            self._script, self.bootstrap_server, args, self.command_config, timeout=60
+        )
 
     def list_groups(self) -> Optional[str]:
         """列出所有 Consumer Group（--list）"""
@@ -1239,10 +1243,9 @@ class KafkaConfigManager:
         self._script = self.bin_dir / "kafka-configs.sh"
 
     def _run(self, args: List[str]) -> subprocess.CompletedProcess:
-        cmd = [str(self._script), "--bootstrap-server", self.bootstrap_server] + args
-        if self.command_config:
-            cmd.extend(["--command-config", self.command_config])
-        return run_command(cmd, capture_output=True, timeout=30)
+        return _build_bootstrap_cmd(
+            self._script, self.bootstrap_server, args, self.command_config, timeout=30
+        )
 
     def describe_broker(self, broker_id: Optional[int] = None) -> Optional[str]:
         """--entity-type brokers [--entity-name id] --describe"""
@@ -1395,13 +1398,14 @@ class KafkaBrokerDecommission:
                 args.extend(["--topics-to-move-json", tmp])
                 r = self._run(args)
                 return r.stdout
-            except Exception:
+            except Exception as ex:
+                logger.warning("生成迁移计划（临时 JSON）失败: %s", ex, extra={"to_stdout": True})
                 return None
             finally:
                 try:
                     os.unlink(tmp)
-                except Exception:
-                    pass
+                except Exception as ex_cleanup:
+                    logger.debug("清理临时文件失败: %s", ex_cleanup)
         args.extend(["--topics-to-move-json", json_path])
         try:
             r = self._run(args)
@@ -1434,6 +1438,38 @@ class KafkaBrokerDecommission:
             return False
 
 
+def _parse_bootstrap_server(bs: str, default_port: int = DEFAULT_BROKER_PORT) -> Tuple[str, int]:
+    """解析 bootstrap_server 字符串为 (host, port)。"""
+    s = (bs or "").strip() or "localhost"
+    if ":" in s:
+        parts = s.rsplit(":", 1)
+        host = (parts[0] or "localhost").strip()
+        try:
+            port = int(parts[1].strip()) if parts[1].strip() else default_port
+        except ValueError:
+            port = default_port
+    else:
+        host = s or "localhost"
+        port = default_port
+    return host, port
+
+
+def _require(condition: bool, message: str) -> None:
+    """条件不满足时打日志并退出。用于 main 中必选参数校验。"""
+    if not condition:
+        logger.error(message, extra={"to_stdout": True})
+        sys.exit(1)
+
+
+def _get_opt(args: argparse.Namespace, config: Dict[str, Any], attr: str, config_key: Optional[str] = None) -> Any:
+    """从 args 或 config 取可选值；config_key 未指定时用 attr。"""
+    key = config_key or attr.replace("-", "_")
+    val = getattr(args, key, None)
+    if val is not None and (not isinstance(val, str) or val.strip() != ""):
+        return val
+    return config.get(key)
+
+
 def _parse_target_host(target_host: str, default_port: int) -> Tuple[str, int]:
     """解析 target_host（支持 host 或 host:port）；空或仅空白时抛出 ValueError"""
     th = (target_host or "").strip()
@@ -1460,7 +1496,8 @@ def _is_local_host(host: str) -> bool:
         return True
     try:
         return h in {socket.gethostname().lower(), socket.getfqdn().lower()}
-    except Exception:
+    except Exception as ex:
+        logger.debug("判断本机主机名失败: %s", ex)
         return False
 
 
@@ -1782,16 +1819,10 @@ def main():
 
     # 批量部署：按 config.nodes 依次远程部署每台机器
     if getattr(args, "batch", False):
-        if not args.config:
-            logger.error("--batch 需同时指定 --config（含 nodes 数组的 JSON 文件）", extra={"to_stdout": True})
-            sys.exit(1)
-        if not config.get("nodes"):
-            logger.error("--batch 需在配置文件中提供 nodes 数组", extra={"to_stdout": True})
-            sys.exit(1)
-        nodes = config["nodes"]
-        if not isinstance(nodes, list) or len(nodes) == 0:
-            logger.error("--batch 需在配置文件中提供 nodes 数组", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(args.config, "--batch 需同时指定 --config（含 nodes 数组的 JSON 文件）")
+        nodes = config.get("nodes")
+        _require(nodes, "--batch 需在配置文件中提供 nodes 数组")
+        _require(isinstance(nodes, list) and len(nodes) > 0, "--batch 需在配置文件中提供非空 nodes 数组")
         for i, node in enumerate(nodes):
             if not isinstance(node, dict):
                 continue
@@ -1838,17 +1869,9 @@ def main():
                 logger.error(str(e), extra={"to_stdout": True})
                 sys.exit(1)
         else:
-            bs = (args.bootstrap_server or "").strip() or "localhost:9092"
-            if ":" in bs:
-                parts = bs.rsplit(":", 1)
-                host = parts[0].strip() or "localhost"
-                try:
-                    port = int(parts[1].strip()) if parts[1].strip() else DEFAULT_BROKER_PORT
-                except ValueError:
-                    port = DEFAULT_BROKER_PORT
-            else:
-                host = bs or "localhost"
-                port = DEFAULT_BROKER_PORT
+            host, port = _parse_bootstrap_server(
+                args.bootstrap_server or config.get("bootstrap_server", ""), DEFAULT_BROKER_PORT
+            )
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.settimeout(5)
@@ -1863,43 +1886,29 @@ def main():
     cmd_config = args.command_config or config.get("command_config")
 
     if getattr(args, "topic_create", False):
-        if not kafka_home:
-            logger.error("--topic-create 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
-        topic = args.topic or config.get("topic")
-        if not topic:
-            logger.error("--topic-create 需指定 --topic", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--topic-create 需指定 --kafka-home")
+        topic = _get_opt(args, config, "topic")
+        _require(topic, "--topic-create 需指定 --topic")
         mgr = KafkaTopicManager(kafka_home, bootstrap, cmd_config)
-        ok = mgr.create(topic, args.partitions, args.replication_factor)
-        sys.exit(0 if ok else 1)
+        sys.exit(0 if mgr.create(topic, args.partitions, args.replication_factor) else 1)
 
     if getattr(args, "topic_delete", False):
-        if not kafka_home:
-            logger.error("--topic-delete 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
-        topic = args.topic or config.get("topic")
-        if not topic:
-            logger.error("--topic-delete 需指定 --topic", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--topic-delete 需指定 --kafka-home")
+        topic = _get_opt(args, config, "topic")
+        _require(topic, "--topic-delete 需指定 --topic")
         mgr = KafkaTopicManager(kafka_home, bootstrap, cmd_config)
-        ok = mgr.delete(topic)
-        sys.exit(0 if ok else 1)
+        sys.exit(0 if mgr.delete(topic) else 1)
 
     if getattr(args, "topic_describe", False):
-        if not kafka_home:
-            logger.error("--topic-describe 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--topic-describe 需指定 --kafka-home")
         mgr = KafkaTopicManager(kafka_home, bootstrap, cmd_config)
-        out = mgr.describe(args.topic or config.get("topic"))
+        out = mgr.describe(_get_opt(args, config, "topic"))
         if out:
             print(out)
         sys.exit(0 if out else 1)
 
     if getattr(args, "topic_list", False):
-        if not kafka_home:
-            logger.error("--topic-list 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--topic-list 需指定 --kafka-home")
         mgr = KafkaTopicManager(kafka_home, bootstrap, cmd_config)
         out = mgr.list()
         if out:
@@ -1907,9 +1916,7 @@ def main():
         sys.exit(0 if out else 1)
 
     if getattr(args, "group_list", False):
-        if not kafka_home:
-            logger.error("--group-list 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--group-list 需指定 --kafka-home")
         mgr = KafkaConsumerGroupManager(kafka_home, bootstrap, cmd_config)
         out = mgr.list_groups()
         if out:
@@ -1917,13 +1924,9 @@ def main():
         sys.exit(0 if out else 1)
 
     if getattr(args, "group_describe", False):
-        if not kafka_home:
-            logger.error("--group-describe 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
-        grp = getattr(args, "consumer_group", None) or config.get("consumer_group")
-        if not grp:
-            logger.error("--group-describe 需指定 --consumer-group", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--group-describe 需指定 --kafka-home")
+        grp = _get_opt(args, config, "consumer_group")
+        _require(grp, "--group-describe 需指定 --consumer-group")
         mgr = KafkaConsumerGroupManager(kafka_home, bootstrap, cmd_config)
         out = mgr.describe_group(grp)
         if out:
@@ -1931,9 +1934,7 @@ def main():
         sys.exit(0 if out else 1)
 
     if getattr(args, "metrics", False) or getattr(args, "metrics_json", False):
-        if not kafka_home:
-            logger.error("--metrics 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--metrics 需指定 --kafka-home")
         coll = KafkaMetricsCollector(kafka_home, bootstrap, cmd_config)
         data = coll.collect_all()
         if getattr(args, "metrics_json", False):
@@ -1948,11 +1949,9 @@ def main():
         sys.exit(0)
 
     if getattr(args, "config_describe_broker", False):
-        if not kafka_home:
-            logger.error("--config-describe-broker 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--config-describe-broker 需指定 --kafka-home")
         mgr = KafkaConfigManager(kafka_home, bootstrap, cmd_config)
-        entity = getattr(args, "config_entity_name", None) or config.get("config_entity_name")
+        entity = _get_opt(args, config, "config_entity_name")
         bid = int(entity) if entity and str(entity).isdigit() else None
         out = mgr.describe_broker(bid)
         if out:
@@ -1960,13 +1959,9 @@ def main():
         sys.exit(0 if out else 1)
 
     if getattr(args, "config_describe_topic", False):
-        if not kafka_home:
-            logger.error("--config-describe-topic 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
-        topic = args.topic or config.get("topic") or getattr(args, "config_entity_name", None)
-        if not topic:
-            logger.error("--config-describe-topic 需指定 --topic 或 --config-entity-name", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--config-describe-topic 需指定 --kafka-home")
+        topic = _get_opt(args, config, "topic") or _get_opt(args, config, "config_entity_name")
+        _require(topic, "--config-describe-topic 需指定 --topic 或 --config-entity-name")
         mgr = KafkaConfigManager(kafka_home, bootstrap, cmd_config)
         out = mgr.describe_topic(topic)
         if out:
@@ -1974,57 +1969,38 @@ def main():
         sys.exit(0 if out else 1)
 
     if getattr(args, "quorum_add_controller", False):
-        if not kafka_home:
-            logger.error("--quorum-add-controller 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--quorum-add-controller 需指定 --kafka-home")
         qm = KafkaQuorumManager(kafka_home, bootstrap_server=bootstrap, command_config=cmd_config)
-        ok = qm.add_controller()
-        sys.exit(0 if ok else 1)
+        sys.exit(0 if qm.add_controller() else 1)
 
     if getattr(args, "broker_decommission_generate", False):
-        if not kafka_home:
-            logger.error("--broker-decommission-generate 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
-        blist = getattr(args, "broker_list", None) or config.get("broker_list")
-        if not blist:
-            logger.error("--broker-decommission-generate 需指定 --broker-list（目标 Broker ID 列表）", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--broker-decommission-generate 需指定 --kafka-home")
+        blist = _get_opt(args, config, "broker_list")
+        _require(blist, "--broker-decommission-generate 需指定 --broker-list（目标 Broker ID 列表）")
         dec = KafkaBrokerDecommission(kafka_home, bootstrap, cmd_config)
-        path = getattr(args, "topics_to_move_json", None) or config.get("topics_to_move_json")
-        out = dec.generate(blist, path)
+        out = dec.generate(blist, _get_opt(args, config, "topics_to_move_json"))
         if out:
             print(out)
             logger.info("请将上述 Current partition reassignment configuration 保存为 JSON 文件，再使用 --broker-decommission-execute", extra={"to_stdout": True})
         sys.exit(0 if out else 1)
 
     if getattr(args, "broker_decommission_execute", False):
-        if not kafka_home:
-            logger.error("--broker-decommission-execute 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
-        path = getattr(args, "reassignment_json_file", None) or config.get("reassignment_json_file")
-        if not path or not Path(path).exists():
-            logger.error("--broker-decommission-execute 需指定已存在的 --reassignment-json-file", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--broker-decommission-execute 需指定 --kafka-home")
+        path = _get_opt(args, config, "reassignment_json_file")
+        _require(path, "--broker-decommission-execute 需指定 --reassignment-json-file")
+        _require(Path(path).exists(), f"reassignment 文件不存在: {path}")
         dec = KafkaBrokerDecommission(kafka_home, bootstrap, cmd_config)
-        ok = dec.execute(path, getattr(args, "throttle", None) or config.get("throttle"))
-        sys.exit(0 if ok else 1)
+        sys.exit(0 if dec.execute(path, _get_opt(args, config, "throttle")) else 1)
 
     if getattr(args, "broker_decommission_verify", False):
-        if not kafka_home:
-            logger.error("--broker-decommission-verify 需指定 --kafka-home", extra={"to_stdout": True})
-            sys.exit(1)
-        path = getattr(args, "reassignment_json_file", None) or config.get("reassignment_json_file")
-        if not path or not Path(path).exists():
-            logger.error("--broker-decommission-verify 需指定已存在的 --reassignment-json-file", extra={"to_stdout": True})
-            sys.exit(1)
+        _require(kafka_home, "--broker-decommission-verify 需指定 --kafka-home")
+        path = _get_opt(args, config, "reassignment_json_file")
+        _require(path, "--broker-decommission-verify 需指定 --reassignment-json-file")
+        _require(Path(path).exists(), f"reassignment 文件不存在: {path}")
         dec = KafkaBrokerDecommission(kafka_home, bootstrap, cmd_config)
-        ok = dec.verify(path)
-        sys.exit(0 if ok else 1)
+        sys.exit(0 if dec.verify(path) else 1)
 
-    # 清理 / 部署 必须指定 kafka_home
-    if not kafka_home:
-        logger.error("必须指定 --kafka-home 或配置文件中的 kafka_home", extra={"to_stdout": True})
-        sys.exit(1)
+    _require(kafka_home, "必须指定 --kafka-home 或配置文件中的 kafka_home")
 
     try:
         deployer = KafkaDeployer(
