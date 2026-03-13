@@ -51,7 +51,7 @@
     - kube_master
     - kube_node
   tasks:
-    # 不在被删节点上执行，避免对已 clean 的节点 SSH 导致 failed
+    # 不在被删节点上执行，因为clean role中已经把被删节点的整个k8s hosts块给删了，再删会增加异常风险
     - name: remove the {{ NODE_TO_DEL }} entry in all k8s hosts file
       lineinfile:
         path: /etc/hosts
