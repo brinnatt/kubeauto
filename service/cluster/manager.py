@@ -378,25 +378,28 @@ class ClusterManager:
                 node_line = f"{ip} k8s_nodename='{nodename}'"
         else:
             node_line = f"{ip} {extra_info}".strip() if extra_info else ip
-        self._add_to_hosts_section(hosts_file, role, node_line)
 
         playbook = _PLAYBOOK_MAP_ADD_NODE.get(role)
         if not playbook:
             raise ValueError(f"Invalid role: {role}")
 
-        logger.info(f"Adding {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
-
-        extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
-        extra_vars["NODE_TO_ADD"] = ip
-
-        self._run_playbook(
-            cluster,
-            playbook,
-            inventory=hosts_file,
-            extra_vars=extra_vars,
-            fail_msg=f"Failed to add {_ROLE_LABEL[role]} {ip} to cluster {cluster}.",
-        )
-        logger.info(f"Added {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
+        # Use a temp inventory so we only commit to hosts file after playbook succeeds (retry-safe).
+        with tempfile.TemporaryDirectory(dir=hosts_file.parent, prefix="add_node_") as tmp_dir:
+            tmp_path = Path(tmp_dir) / "hosts"
+            shutil.copy2(hosts_file, tmp_path)
+            self._add_to_hosts_section(tmp_path, role, node_line)
+            logger.info(f"Adding {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
+            extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
+            extra_vars["NODE_TO_ADD"] = ip
+            self._run_playbook(
+                cluster,
+                playbook,
+                inventory=tmp_path,
+                extra_vars=extra_vars,
+                fail_msg=f"Failed to add {_ROLE_LABEL[role]} {ip} to cluster {cluster}.",
+            )
+            shutil.copy2(tmp_path, hosts_file)
+            logger.info(f"Added {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
 
         # After adding a new node, we still have to notify related services
         if role == "etcd":
