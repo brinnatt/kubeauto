@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Optional, Dict, List
@@ -44,7 +45,9 @@ class DockerManager:
 
     @property
     def client(self):
-        """Get Docker client，if SDK is unavailable return None"""
+        """Get Docker client; lazy-initialize on first use so SDK is used when only running download (no install in same run)."""
+        if self._client is None:
+            self._initialize_docker_client()
         return self._client
 
     @property
@@ -377,23 +380,27 @@ WantedBy=multi-user.target
         logger.info("Docker service has been started successfully!", extra=LOG_STDOUT)
 
     def container_exists(self, name: str) -> bool:
-        """
-        check if container exists
-        """
+        """Return True if a container with the given name or id exists (exact match)."""
         if self.client is not None:
             try:
                 self.client.containers.get(name)
+                logger.debug(f"Container '{name}' exists")
                 return True
             except docker.errors.NotFound:
+                logger.debug(f"Container '{name}' not found")
                 return False
             except APIError:
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
-        # CLI fallback: pass args as list (no shell) so Go template {{.Names}} is not mangled.
         try:
-            output = run_command(["docker", "ps", "-a", "--format={{.Names}}", "--filter", f"name={name}"])
-            return name in output.stdout
-        except CommandExecutionError:
+            result = run_command([
+                "docker", "ps", "-a",
+                "--filter", f"name=^{name}$",
+                "--format", "{{.Names}}",
+            ])
+            return name in result.stdout
+        except CommandExecutionError as e:
+            logger.debug(f"Failed to check container status: {e}")
             return False
 
     def remove_container(self, name: str) -> None:
@@ -592,37 +599,6 @@ WantedBy=multi-user.target
         result = run_command(cmd)
         return result.stdout.strip()
 
-    def check_container_exists(self, container_name: str) -> bool:
-        """
-        check whether container exists
-        :param container_name: container name or id
-        :return: return true if container exists, else return false
-        """
-        if self.client is not None:
-            try:
-                self.client.containers.get(container_name)
-                logger.debug(f"Container '{container_name}' exists")
-                return True
-            except docker.errors.NotFound:
-                logger.debug(f"Container '{container_name}' not found")
-                return False
-            except APIError as e:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
-
-        # Exact match per Docker filter docs: name filter accepts regex, ^name$ for exact.
-        try:
-            result = run_command([
-                "docker", "ps", "-a",
-                "--filter", f"name=^{container_name}$",
-                "--format", "{{.Names}}",
-            ])
-            exists = container_name in result.stdout
-            logger.debug(f"Container '{container_name}' {'exists' if exists else 'not found'}")
-            return exists
-        except CommandExecutionError as e:
-            logger.error(f"Failed to check container status: {str(e)}", extra=LOG_STDOUT)
-            return False
-
     def copy_from_container(self, container: str, src: str, dest: str) -> None:
         """
         copy file from container src to host dest
@@ -644,73 +620,75 @@ WantedBy=multi-user.target
             raise RuntimeError(f"Failed to copy file from container src to host dest: {str(e)}")
 
     def _log_pull_push_progress(self, line: dict) -> None:
-        """Output one stream event to stdout (progress bar or status), same as docker CLI."""
+        """Output one stream event to stdout (progress/status). Only used when Docker SDK is active; fallback to docker CLI does not stream."""
         if line.get("progress"):
             logger.info(line["progress"], extra=LOG_STDOUT)
+            sys.stdout.flush()
         elif line.get("status"):
             msg = line["status"]
             if line.get("id"):
                 msg += f" {line['id']}"
             logger.info(msg, extra=LOG_STDOUT)
+            sys.stdout.flush()
 
     def pull_image(self, image: str) -> None:
-        """Pull image from registry. Streams progress when using SDK (same as docker pull)."""
-        logger.info(f"[下载] Pulling image: {image}", extra=LOG_STDOUT)
+        """Pull image from registry. Streams progress when Docker SDK is used; fallback to 'docker pull' has no per-line progress."""
+        logger.info(f"[DOWNLOAD] Pulling image: {image}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
                 repository, tag = (image.rsplit(":", 1) if ":" in image else (image, "latest"))
                 for line in self.client.api.pull(repository, tag=tag, stream=True, decode=True):
                     self._log_pull_push_progress(line)
-                logger.info(f"[下载] Pulled successfully: {image}", extra=LOG_STDOUT)
+                logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
                 return
             except APIError as e:
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             run_command(["docker", "pull", image])
-            logger.info(f"[下载] Pulled successfully: {image}", extra=LOG_STDOUT)
+            logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
-            logger.error(f"[下载] Failed to pull image: {image} — {e}", extra=LOG_STDOUT)
+            logger.error(f"[DOWNLOAD] Failed to pull image: {image} — {e}", extra=LOG_STDOUT)
             raise
 
     def save_image(self, image: str, output: str) -> None:
-        """Save image to tar file. Logs: [保存] image -> path."""
-        logger.info(f"[保存] Saving image to file: {image} -> {output}", extra=LOG_STDOUT)
+        """Save image to tar file. Logs: [DOWNLOAD] image -> path."""
+        logger.info(f"[DOWNLOAD] Saving image to file: {image} -> {output}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
                 image_obj = self.client.images.get(image)
                 with open(output, 'wb') as f:
                     for chunk in image_obj.save():
                         f.write(chunk)
-                logger.info(f"[保存] Saved successfully: {image}", extra=LOG_STDOUT)
+                logger.info(f"[DOWNLOAD] Saved successfully: {image}", extra=LOG_STDOUT)
                 return
             except APIError:
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             run_command(["docker", "save", "-o", output, image])
-            logger.info(f"[保存] Saved successfully: {image}", extra=LOG_STDOUT)
+            logger.info(f"[DOWNLOAD] Saved successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
-            logger.error(f"[保存] Failed to save image: {image} — {e}", extra=LOG_STDOUT)
+            logger.error(f"[DOWNLOAD] Failed to save image: {image} — {e}", extra=LOG_STDOUT)
             raise
 
     def load_image(self, input_file: str) -> None:
-        """Load image from tar file. Logs: [加载] file -> success/failure."""
-        logger.info(f"[加载] Loading image from file: {input_file}", extra=LOG_STDOUT)
+        """Load image from tar file. Logs: [DOWNLOAD] file -> success/failure."""
+        logger.info(f"[DOWNLOAD] Loading image from file: {input_file}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
                 with open(input_file, 'rb') as f:
                     self.client.images.load(f.read())
-                logger.info(f"[加载] Loaded successfully: {input_file}", extra=LOG_STDOUT)
+                logger.info(f"[DOWNLOAD] Loaded successfully: {input_file}", extra=LOG_STDOUT)
                 return
             except APIError:
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             run_command(["docker", "load", "-i", input_file])
-            logger.info(f"[加载] Loaded successfully: {input_file}", extra=LOG_STDOUT)
+            logger.info(f"[DOWNLOAD] Loaded successfully: {input_file}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
-            logger.error(f"[加载] Failed to load image from: {input_file} — {e}", extra=LOG_STDOUT)
+            logger.error(f"[DOWNLOAD] Failed to load image from: {input_file} — {e}", extra=LOG_STDOUT)
             raise
 
     def tag_image(self, src: str, dest: str) -> None:
@@ -726,26 +704,26 @@ WantedBy=multi-user.target
         try:
             run_command(["docker", "tag", src, dest])
         except CommandExecutionError as e:
-            logger.error(f"[标签] Failed to tag {src} -> {dest} — {e}", extra=LOG_STDOUT)
+            logger.error(f"[TAG] Failed to tag {src} -> {dest} — {e}", extra=LOG_STDOUT)
             raise
 
     def push_image(self, image: str) -> None:
-        """Push image to registry. Streams progress when using SDK (same as docker push)."""
-        logger.info(f"[上传] Pushing image: {image}", extra=LOG_STDOUT)
+        """Push image to registry. Streams progress when Docker SDK is used; fallback to 'docker push' has no per-line progress."""
+        logger.info(f"[UPLOAD] Pushing image: {image}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
                 for line in self.client.images.push(image, stream=True, decode=True):
                     self._log_pull_push_progress(line)
-                logger.info(f"[上传] Pushed successfully: {image}", extra=LOG_STDOUT)
+                logger.info(f"[UPLOAD] Pushed successfully: {image}", extra=LOG_STDOUT)
                 return
             except APIError as e:
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             run_command(["docker", "push", image])
-            logger.info(f"[上传] Pushed successfully: {image}", extra=LOG_STDOUT)
+            logger.info(f"[UPLOAD] Pushed successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
-            logger.error(f"[上传] Failed to push image: {image} — {e}", extra=LOG_STDOUT)
+            logger.error(f"[UPLOAD] Failed to push image: {image} — {e}", extra=LOG_STDOUT)
             raise
 
     def list_containers(self, all: bool = False) -> List[Dict[str, str]]:

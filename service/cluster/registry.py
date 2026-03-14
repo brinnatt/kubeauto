@@ -20,7 +20,7 @@ class RegistryManager:
         version = version or self.kube_constant.v_docker_registry
 
         if self.docker.container_exists("local_registry"):
-            logger.warning("Local registry already running; skipping.", extra=LOG_STDOUT)
+            logger.warning("[REGISTRY] Local registry already running; skipping.", extra=LOG_STDOUT)
             return
 
         # Load registry image if not exists
@@ -38,7 +38,7 @@ class RegistryManager:
         registry_data.mkdir(parents=True, exist_ok=True)
 
         # Run registry container
-        logger.info(f"Starting local registry (image registry:{version}).", extra=LOG_STDOUT)
+        logger.info(f"[REGISTRY] Starting local registry (image registry:{version}).", extra=LOG_STDOUT)
         self.docker.run_container(
             image=f"registry:{version}",
             name="local_registry",
@@ -57,7 +57,7 @@ class RegistryManager:
     def upload_to_registry(self, images: List[str]) -> None:
         """Upload images to local registry. Logs progress and per-image steps for traceability."""
 
-        if not self.docker.check_container_exists("local_registry"):
+        if not self.docker.container_exists("local_registry"):
             self.start_local_registry()
 
         total = len(images)
@@ -83,10 +83,10 @@ class RegistryManager:
                 self.docker.push_image(local_image)
                 logger.info(f"[REGISTRY]   -> Done: {image}.", extra=LOG_STDOUT)
             except CommandExecutionError as e:
-                logger.error(f"[REGISTRY]   -> Failed {image}: {e}", extra=LOG_STDOUT)
+                logger.error(f"[REGISTRY]   -> Failed: {image} — {e}", extra=LOG_STDOUT)
                 raise
             except Exception as e:
-                logger.error(f"[REGISTRY]   -> Error for image {image}: {e}", extra=LOG_STDOUT)
+                logger.error(f"[REGISTRY]   -> Failed: {image} — {e}", extra=LOG_STDOUT)
                 raise
 
         logger.info(f"[REGISTRY] All {total} image(s) uploaded to local registry.", extra=LOG_STDOUT)

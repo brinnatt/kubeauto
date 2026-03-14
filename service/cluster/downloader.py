@@ -168,7 +168,7 @@ class DownloadManager:
         try:
             self.registry.upload_to_registry(images)
         except Exception as e:
-            logger.error(f"[DOWNLOAD] Failed to upload default images: {e}", extra=LOG_STDOUT)
+            logger.error(f"[DOWNLOAD] Failed to upload default images — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload images: {e}")
         logger.info(f"[DOWNLOAD] Default images: {len(images)} image(s) uploaded to local registry.", extra=LOG_STDOUT)
 
@@ -180,14 +180,14 @@ class DownloadManager:
             )
         if component not in self.kube_constant.component_images:
             logger.error(f"[DOWNLOAD] Invalid component: {component}.", extra=LOG_STDOUT)
-            return
+            raise DownloadError(f"Invalid component: {component}. Choose from: {list(self.kube_constant.component_images.keys())}.")
 
         images = self.kube_constant.component_images[component]
         logger.info(f"[DOWNLOAD] Component {component}: uploading {len(images)} image(s) to local registry.", extra=LOG_STDOUT)
         try:
             self.registry.upload_to_registry(images)
         except Exception as e:
-            logger.error(f"[DOWNLOAD] Failed to upload {component} images: {e}", extra=LOG_STDOUT)
+            logger.error(f"[DOWNLOAD] Failed to upload {component} images — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload {component} images: {e}")
         logger.info(f"[DOWNLOAD] Component {component}: {len(images)} image(s) uploaded.", extra=LOG_STDOUT)
 
@@ -214,7 +214,7 @@ class DownloadManager:
             self.docker.load_image(str(path))
             logger.info(f"[DOWNLOAD] Image ready: {image}.", extra=LOG_STDOUT)
         except Exception as e:
-            logger.error(f"[DOWNLOAD] Failed to process image {image}: {e}", extra=LOG_STDOUT)
+            logger.error(f"[DOWNLOAD] Failed to process image {image} — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to pull, save, or load {image}: {e}")
 
     def __handle_files(self, image: str, image_carrier: str, destination: Path, create_symlink=False) -> None:
@@ -250,7 +250,7 @@ class DownloadManager:
                         target_link.symlink_to(item)
 
         except Exception as e:
-            raise DownloadError(f"Failed to copy image files to dest: {e}")
+            raise DownloadError(f"Failed to copy image files to dest — {e}")
 
         finally:
             if container_id:
