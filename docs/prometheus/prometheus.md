@@ -4530,47 +4530,30 @@ grafana 上面可以通过 dashboard 看到各种资源的指标了。
 - 第二步让 ServiceMonitor 对象关联提供 metrics 数据接口的 Service 对象
 - 第三步确保 Service 对象可以正确获取到 metrics 数据
 
-#### T4.14.2.1、etcd 监控
+#### T4.14.2.1、etcd 监控（HTTP）
 
-我们的环境：Kubernetes 1.33.6 + etcd 3.6.4（二进制部署）
+环境：etcd 3.6.x 二进制 + Prometheus Operator。metrics 用 HTTP 暴露（[etcd #18477](https://github.com/etcd-io/etcd/issues/18477) 推荐，避免 TLS 客户端证书问题）。
 
-1、更新 `/etc/systemd/system/etcd.service` 文件，重点优化 metrics 监听配置，注意集群所有节点都要配置：
-
-```bash
-[Unit]
-......
-
-[Service]
-Type=notify
-WorkingDirectory=/var/lib/etcd
-ExecStart=/usr/local/bin/etcd \ # 注意换行符后面不能有空格
-  ......
-  --listen-metrics-urls=https://0.0.0.0:2381 \ # 3.6.x 标准 metrics 监听配置（HTTPS 安全模式）
-  --metrics=extensive # 开启全量 metrics 采集（生产级监控要求）
-
-[Install]
-WantedBy=multi-user.target
-```
-
-验证配置生效：
+**1. 每台 master 上：etcd 改为 HTTP 暴露 metrics**
 
 ```bash
-# 重新加载 systemd 配置
-systemctl daemon-reload
-# 重启 etcd 服务
-systemctl restart etcd
-# 验证 metrics 端口监听
-ss -tlnp | grep 2381
-# 验证 metrics 接口可访问（本地证书认证）
-curl --cacert /etc/kubernetes/ssl/ca.pem \
-     --cert /etc/kubernetes/ssl/etcd.pem \
-     --key /etc/kubernetes/ssl/etcd-key.pem \
-     https://127.0.0.1:2381/metrics
+sudo sed -i 's|--listen-metrics-urls=https://0.0.0.0:2381|--listen-metrics-urls=http://0.0.0.0:2381|' /etc/systemd/system/etcd.service
+sudo systemctl daemon-reload && sudo systemctl restart etcd
+curl -s http://127.0.0.1:2381/metrics | head -3
 ```
 
-2、接下来为 etcd 服务创建 Kubernetes Service 资源（用于匹配 ServiceMonitor）
+确保有 `--metrics=extensive`（没有则在 ExecStart 中补上）。
 
-因为我们这里用二进制部署的 etcd 集群不是共用一个 etcd.pem 证书，每个节点有自己的专属证书，所以先创建带节点标签的 EndpointSlice + Service
+**2. 创建 Service + EndpointSlice（合并为一个 EndpointSlice，多 endpoint）**
+
+将下面 YAML 中的 IP、nodeName 改为你的三台 master 后 apply。
+
+| 参数 | 说明 |
+|------|------|
+| `clusterIP: None` | Headless，仅用于服务发现 |
+| `kubernetes.io/service-name` | 必须等于关联的 Service 名（K8s 1.21+） |
+| `addressType: IPv4` | 与 Service `ipFamilies` 一致 |
+| `ports.name` | 与 Service `ports.name` 一致，ServiceMonitor 按端口名匹配 |
 
 ```yaml
 # etcd-monitor-resources.yaml
@@ -4583,43 +4566,22 @@ metadata:
     k8s-app: etcd
 spec:
   type: ClusterIP
-  clusterIP: None  # Headless Service（仅用于 ServiceMonitor 匹配，无负载均衡需求）
-  ipFamilies: [IPv4]  # 显式指定 IPv4，匹配 EndpointSlice 的 addressType: IPv4
-  ipFamilyPolicy: SingleStack  # 禁用 IPv6，避免双栈 Service 忽略单栈 EndpointSlice
+  clusterIP: None
+  ipFamilies: [IPv4]
+  ipFamilyPolicy: SingleStack
   ports:
-    - name: metrics  # 端口名必须与 EndpointSlice 一致（ServiceMonitor 按端口名匹配）
+    - name: metrics
       port: 2381
       protocol: TCP
       targetPort: 2381
 ---
-# master-01 EndpointSlice（K8s 1.33+ 强制规则 + 节点标签设计）
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
-  name: etcd-k8s-master-01
-  namespace: kube-system
-  labels:
-    k8s-app: etcd  # 与 Service 标签一致，用于松散匹配（兜底）
-    etcd-node: master-01  # 自定义节点标签，用于 ServiceMonitor 按节点过滤采集
-    kubernetes.io/service-name: etcd-k8s  # K8s 1.33+ 强制标签：手动 EndpointSlice 必须指定，值为关联的 Service 名称
-addressType: IPv4  # 匹配 Service 的 ipFamilies: [IPv4]
-ports:
-  - name: metrics  # 端口名必须与 Service 一致（核心匹配条件）
-    port: 2381
-    protocol: TCP
-endpoints:
-  - addresses: ["192.168.47.128"]  # etcd 节点实际 IP
-    nodeName: master-01  # 节点名称，辅助定位
----
-# master-02 EndpointSlice（同 master-01 逻辑）
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: etcd-k8s-master-02
+  name: etcd-k8s
   namespace: kube-system
   labels:
     k8s-app: etcd
-    etcd-node: master-02
     kubernetes.io/service-name: etcd-k8s
 addressType: IPv4
 ports:
@@ -4627,30 +4589,25 @@ ports:
     port: 2381
     protocol: TCP
 endpoints:
+  - addresses: ["192.168.47.128"]
+    nodeName: master-01
   - addresses: ["192.168.47.129"]
     nodeName: master-02
----
-# master-03 EndpointSlice（同 master-01 逻辑）
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: etcd-k8s-master-03
-  namespace: kube-system
-  labels:
-    k8s-app: etcd
-    etcd-node: master-03
-    kubernetes.io/service-name: etcd-k8s
-addressType: IPv4
-ports:
-  - name: metrics
-    port: 2381
-    protocol: TCP
-endpoints:
   - addresses: ["192.168.47.130"]
     nodeName: master-03
 ```
 
-3、再创建 ServiceMonitor 资源，由 Prometheus Operator 解析后自动生成 Prometheus 的监控采集规则，实现 Prometheus 对 etcd 指标的自动化采集（动态匹配节点证书）：
+```bash
+kubectl apply -f etcd-monitor-resources.yaml
+```
+
+**3. 创建 ServiceMonitor**
+
+| 参数 | 说明 |
+|------|------|
+| `prometheus: k8s` | 与 Prometheus CR 的 `serviceMonitorSelector` 匹配（kube-prometheus 默认） |
+| `selector.matchLabels` | 匹配上一步 Service 的 label |
+| `port: metrics` | 对应 Service/EndpointSlice 的端口名 |
 
 ```yaml
 # prometheus-servicemonitor-etcd.yaml
@@ -4660,127 +4617,35 @@ metadata:
   name: etcd-k8s
   namespace: monitoring
   labels:
-    k8s-app: etcd-k8s
-    prometheus: k8s  # 匹配 Prometheus CR 的 serviceMonitorSelector，确保被 Operator 识别
+    prometheus: k8s
 spec:
   jobLabel: k8s-app
   selector:
     matchLabels:
-      k8s-app: etcd  # 匹配 Service 的标签，定位采集目标
+      k8s-app: etcd
   namespaceSelector:
     matchNames:
-      - kube-system  # 匹配 Service 所在命名空间
+      - kube-system
   endpoints:
-    # master-01 采集（按 etcd-node 标签过滤，核心逻辑：节点-证书一一匹配）
-    - port: metrics  # 匹配 Service/EndpointSlice 的端口名
-      interval: 15s  # 采集频率（生产级推荐 15s）
-      scrapeTimeout: 10s  # 采集超时时间（小于 interval）
-      scheme: https  # 匹配 etcd metrics 的 HTTPS 模式
-      tlsConfig:
-        caFile: /etc/prometheus/secrets/etcd-certs-master-01/ca.pem  # Operator 自动挂载的证书路径
-        certFile: /etc/prometheus/secrets/etcd-certs-master-01/etcd.pem
-        keyFile: /etc/prometheus/secrets/etcd-certs-master-01/etcd-key.pem
-        insecureSkipVerify: false  # 生产环境禁用跳过验证（证书必须合法）
-      honorLabels: true  # 保留 etcd 原生指标标签，避免冲突
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_endpointslice_label_etcd_node]  # 读取 EndpointSlice 的 etcd-node 标签
-          regex: master-01  # 仅匹配 master-01 节点
-          action: keep  # 保留匹配的端点，丢弃其他节点（核心过滤逻辑）
-    # master-02 采集（同 master-01 逻辑，匹配 master-02 节点 + 专属证书）
     - port: metrics
       interval: 15s
       scrapeTimeout: 10s
-      scheme: https
-      tlsConfig:
-        caFile: /etc/prometheus/secrets/etcd-certs-master-02/ca.pem
-        certFile: /etc/prometheus/secrets/etcd-certs-master-02/etcd.pem
-        keyFile: /etc/prometheus/secrets/etcd-certs-master-02/etcd-key.pem
-        insecureSkipVerify: false
+      scheme: http
       honorLabels: true
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_endpointslice_label_etcd_node]
-          regex: master-02
-          action: keep
-    # master-03 采集（同 master-01 逻辑，匹配 master-03 节点 + 专属证书）
-    - port: metrics
-      interval: 15s
-      scrapeTimeout: 10s
-      scheme: https
-      tlsConfig:
-        caFile: /etc/prometheus/secrets/etcd-certs-master-03/ca.pem
-        certFile: /etc/prometheus/secrets/etcd-certs-master-03/etcd.pem
-        keyFile: /etc/prometheus/secrets/etcd-certs-master-03/etcd-key.pem
-        insecureSkipVerify: false
-      honorLabels: true
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_endpointslice_label_etcd_node]
-          regex: master-03
-          action: keep
 ```
-
-4、创建节点专属证书 Secret，每个节点的证书分别上传（Prometheus 访问 ETCD 认证）
-
-```bash
-# ========== 步骤1：在集群中创建3个节点的证书 Secret ==========
-# 1. master-01（128）的证书 Secret
-kubectl create secret generic etcd-certs-master-01 -n monitoring \
-  --from-file=ca.pem=/etc/kubernetes/ssl/ca.pem \
-  --from-file=etcd.pem=/etc/kubernetes/ssl/etcd.pem \
-  --from-file=etcd-key.pem=/etc/kubernetes/ssl/etcd-key.pem
-
-# 2. 复制 master-02（129）的证书到 master-01 节点，再创建 Secret（或直接在 129 节点执行）
-scp root@192.168.47.129:/etc/kubernetes/ssl/etcd.pem /tmp/etcd-129.pem
-scp root@192.168.47.129:/etc/kubernetes/ssl/etcd-key.pem /tmp/etcd-key-129.pem
-kubectl create secret generic etcd-certs-master-02 -n monitoring \
-  --from-file=ca.pem=/etc/kubernetes/ssl/ca.pem \
-  --from-file=etcd.pem=/tmp/etcd-129.pem \
-  --from-file=etcd-key.pem=/tmp/etcd-key-129.pem
-
-# 3. 复制 master-03（130）的证书到 master-01 节点，再创建 Secret（或直接在 130 节点执行）
-scp root@192.168.47.130:/etc/kubernetes/ssl/etcd.pem /tmp/etcd-130.pem
-scp root@192.168.47.130:/etc/kubernetes/ssl/etcd-key.pem /tmp/etcd-key-130.pem
-kubectl create secret generic etcd-certs-master-03 -n monitoring \
-  --from-file=ca.pem=/etc/kubernetes/ssl/ca.pem \
-  --from-file=etcd.pem=/tmp/etcd-130.pem \
-  --from-file=etcd-key.pem=/tmp/etcd-key-130.pem
-
-# ========== 步骤2：配置 Prometheus CR 挂载 Secret（Operator 自动管理，核心逻辑：仅声明 secrets） ==========
-kubectl patch prometheus k8s -n monitoring --type=merge -p '
-{
-  "spec": {
-    "secrets": ["etcd-certs-master-01", "etcd-certs-master-02", "etcd-certs-master-03"],  # 声明需要挂载的 Secret
-    "volumes": [],  # 清空手动配置的 volumes（避免重复挂载）
-    "volumeMounts": []  # 清空手动配置的 volumeMounts（避免重复挂载）
-  }
-}
-'
-```
-
-更新 prometheus 应用，加载配置：
 
 ```bash
 kubectl apply -f prometheus-servicemonitor-etcd.yaml
-kubectl apply -f etcd-monitor-resources.yaml
-kubectl rollout restart statefulset prometheus-k8s -n monitoring
-# 验证 Prometheus Pod 重启成功
-kubectl get pods -n monitoring -l prometheus=k8s
-# 验证证书挂载（Operator 自动挂载到 /etc/prometheus/secrets/<secret-name>/ 路径）
-kubectl exec -it prometheus-k8s-0 -n monitoring -- ls -l /etc/prometheus/secrets/
+kubectl rollout restart statefulset/prometheus-k8s -n monitoring
 ```
 
-最终验证（全链路确认）：
+**4. 验证**
 
 ```bash
-# 1. 验证 Prometheus 配置中包含 etcd 采集任务（确认 ServiceMonitor 被解析）
-kubectl exec -it prometheus-k8s-0 -n monitoring -- cat /etc/prometheus/config_out/prometheus.env.yaml | grep -A10 "etcd-k8s"
-
-# 2. 端口转发访问 Prometheus UI（本地访问 http://localhost:9090）
 kubectl port-forward prometheus-k8s-0 -n monitoring 9090:9090
-
-# 3. 在 Prometheus UI 验证：
-#    - Status → Targets：etcd-k8s 三个采集任务状态均为 UP；
-#    - 执行查询：etcd_server_version → 返回 3 个节点的 etcd 版本（3.6.4）。
 ```
+
+浏览器打开 http://192.168.47.128:9090 -> Status -> Targets，etcd-k8s 应有 3 个 UP；Graph 查询 `etcd_server_version` 应有 3 条序列。
 
 
 
