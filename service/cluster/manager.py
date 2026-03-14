@@ -18,7 +18,7 @@ from typing import Generator, List, Optional, Tuple
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException as K8sApiException
 
-from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf, copy_file_to_remote
+from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf, copy_file_to_remote, get_host_ip
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError,
@@ -847,8 +847,15 @@ class ClusterManager:
         kubeconfig_path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False))
         # Sync to all remaining master/node; use cluster SSH settings (port/key/user) when set in config
         ssh_kwargs = self._ssh_copy_kwargs_from_config(config_vars)
-        for ip in self._get_kube_master_and_node_ips(hosts_file):
+        cluster_ips = self._get_kube_master_and_node_ips(hosts_file)
+        for ip in cluster_ips:
             copy_file_to_remote(kubeconfig_path, "/root/.kube/config", host=ip, mode=0o400, **ssh_kwargs)
+        # When the bastion host is not a cluster node, update local ~/.kube/config (avoid duplicate copy when the bastion host is a k8s node)
+        if self.get_current_cluster() == cluster and get_host_ip() not in cluster_ips:
+            dest_local = Path.home() / ".kube" / "config"
+            dest_local.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(kubeconfig_path, dest_local)
+            dest_local.chmod(0o600)
         logger.info("Kubeconfig reconfigured.", extra=LOG_STDOUT)
 
     def _is_cluster_live(self, kubeconfig_path: Path) -> bool:
