@@ -1317,7 +1317,7 @@ image: cnych/kube-state-metrics:v2.0.0-rc.0
 修改 `service.yaml` 文件，添加 Prometheus 采集注解：
 
 ```yaml
-$ cat service.yaml
+# service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -1329,7 +1329,9 @@ metadata:
     prometheus.io/port: "8080"  # 8081是kube-state-metrics应用本身指标的端口
   name: kube-state-metrics
   namespace: kube-system
-...... 
+```
+
+```bash
 $ kubectl apply -f .
 clusterrolebinding.rbac.authorization.k8s.io/kube-state-metrics created
 clusterrole.rbac.authorization.k8s.io/kube-state-metrics created
@@ -3416,12 +3418,10 @@ thanos-store-gateway-0   1/1     Running   0          100s
 当然还是由 Sidecar 组件完成，所以我们需要把 `objstore.config-file` 参数和 Secret 对象也要配置到 Sidecar 组件中去：
 
 ```yaml
-......
 volumes:
 - name: object-storage-config
   secret:
     secretName: thanos-objectstorage
-......
 args:
 - sidecar
 - --log.level=debug
@@ -3431,12 +3431,10 @@ args:
 - --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
 - --reloader.rule-dir=/etc/prometheus/rules/
 - --objstore.config-file=/etc/secret/thanos.yaml
-......
 volumeMounts:
 - name: object-storage-config
   mountPath: /etc/secret
   readOnly: false
-......
 ```
 
 配置完成后重新更新 Sidecar 组件即可。配置生效后就会有数据写入到 MinIO，我们可以去 MinIO 的页面上查看验证：
