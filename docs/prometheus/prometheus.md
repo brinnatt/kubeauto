@@ -416,82 +416,38 @@ kubectl get svc -n kube-mon
 
 ## T4.3、监控应用
 
-前面我们了解到 Prometheus 采集数据指标是通过一个公开的 HTTP(S) 接口获取，不需要单独安装 agent，只需要暴露一个 metrics 接口，Prometheus 就会定期去拉取数据；
+Prometheus 通过 HTTP(S) 拉取目标的 [exposition 格式](https://prometheus.io/docs/instrumenting/exposition_formats/) 指标，无需在目标上安装独立 agent，只要目标暴露一个可访问的 metrics 端点即可。许多组件（如 Kubernetes 各组件、CoreDNS、Istio）已内置 `/metrics` 或专用端口；未内置的可通过 [Exporter](https://prometheus.io/docs/instrumenting/exporters/)（如 `node_exporter`、`mysqld_exporter`）以 sidecar 或独立部署方式暴露指标。
 
-对于一些普通的 HTTP 服务，我们完全可以直接基于原生服务添加一个 `/metrics` 接口，暴露给 Prometheus 即可；而且获取到的指标数据格式是非常易懂的，不需要太高的学习成本。
+### T4.3.1、普通应用（示例：CoreDNS）
 
-现在很多服务从一开始就内置了一个 `/metrics` 接口，比如 Kubernetes 的各个组件、istio 服务网格都直接提供了数据指标接口。
+只要应用提供符合 Prometheus 格式的 `/metrics`（或自定义路径）接口，即可在 `prometheus.yml` 的 `scrape_configs` 中增加一个 job 进行抓取。下面以集群内的 **CoreDNS** 为例，在 **T4.2.1 已部署的 Prometheus（kube-mon）** 上增加对 CoreDNS 的监控。
 
-有一些服务即使没有原生集成该接口，也完全可以使用一些 `exporter` 来获取指标数据，比如 `mysqld_exporter`、`node_exporter`，这些 `exporter` 就有点类似于传统监控服务中的 agent，用来收集目标服务的指标数据，然后直接暴露给 Prometheus。
+**1. 确认 CoreDNS 已开启 Prometheus 指标**
 
-### T4.3.1、普通应用
-
-对于普通应用，只需要提供一个满足 prometheus 格式要求的 `/metrics` 接口，就可以让 Prometheus 来接管监控，比如 Kubernetes 集群中非常重要的 CoreDNS 插件，一般默认情况下就开启了 `/metrics` 接口：
+CoreDNS 通过 `prometheus` 插件暴露指标，默认监听 `:9153`。查看 CoreDNS 的 ConfigMap，确认 Corefile 中有 `prometheus :9153`：
 
 ```bash
-$ kubectl get cm coredns -n kube-system -o yaml
-apiVersion: v1
-data:
-  Corefile: |
-    .:53 {
-        errors
-        health
-        ready
-        kubernetes cluster.local in-addr.arpa ip6.arpa {
-           pods insecure
-           fallthrough in-addr.arpa ip6.arpa
-           ttl 30
-        }
-        prometheus :9153
-        forward . /etc/resolv.conf
-        cache 30
-        loop
-        reload
-        loadbalance
-    }
-kind: ConfigMap
-metadata:
-  creationTimestamp: "2019-11-08T11:59:49Z"
-  name: coredns
-  namespace: kube-system
-  resourceVersion: "188"
-  selfLink: /api/v1/namespaces/kube-system/configmaps/coredns
-  uid: 21966186-c2d9-467a-b87f-d061c5c9e4d7
+kubectl get configmap coredns -n kube-system -o jsonpath='{.data.Corefile}'
 ```
 
-上面 ConfigMap 中 `prometheus :9153` 就是开启 prometheus 的插件：
+若输出中包含 `prometheus :9153`，说明已开启。CoreDNS 的 Service（通常为 `kube-dns`）会暴露 9153 端口，Prometheus 在集群内可通过 Service DNS 访问，无需写死 Pod IP。
+
+**2. 在集群内验证 metrics 可达（可选）**
+
+从任意 Pod 或通过 `kubectl run` 临时 Pod 访问 CoreDNS 的 metrics 端口（以下使用 Service 名称，适用于默认的 kube-dns）。注意：① `head -20` 须在容器内执行（`sh -c '...'`），若在宿主机上使用 `| head -20`，管道会提前关闭导致 `debug` Pod 残留；② 使用 `-i` 而非 `-it`，避免 TTY 下输出未刷新到终端就随 Pod 退出而看不到数据。
 
 ```bash
-$ kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
-NAME                       READY   STATUS    RESTARTS   AGE     IP            NODE         NOMINATED NODE   READINESS GATES
-coredns-667f964f9b-sthqq   1/1     Running   0          4d20h   10.244.1.15   ydzs-node1   <none>           <none>
-coredns-667f964f9b-zj4r4   1/1     Running   0          4d20h   10.244.2.127   ydzs-node3   <none>           <none>
+kubectl run -i --rm debug --image=curlimages/curl --image-pull-policy=IfNotPresent --restart=Never -- sh -c 'curl -s "http://kube-dns.kube-system.svc.cluster.local:9153/metrics" | head -20'
 ```
 
-我们可以先手动访问下 `/metrics` 接口，如果能够手动访问到，那说明接口没有问题：
+能输出 `# HELP` / `# TYPE` 等行即表示接口正常。
 
-```bash
-$ curl http://10.244.1.15:9153/metrics
-# HELP coredns_build_info A metric with a constant '1' value labeled by version, revision, and goversion from which CoreDNS was built.
-# TYPE coredns_build_info gauge
-coredns_build_info{goversion="go1.12.8",revision="795a3eb",version="1.6.2"} 1
-# HELP coredns_cache_hits_total The count of cache hits.
-# TYPE coredns_cache_hits_total counter
-coredns_cache_hits_total{server="dns://:53",type="success"} 4
-# HELP coredns_cache_misses_total The count of cache misses.
-# TYPE coredns_cache_misses_total counter
-coredns_cache_misses_total{server="dns://:53"} 15
-# HELP coredns_cache_size The number of elements in the cache.
-# TYPE coredns_cache_size gauge
-coredns_cache_size{server="dns://:53",type="denial"} 5
-coredns_cache_size{server="dns://:53",type="success"} 4
-......
-```
+**3. 更新 Prometheus 配置并加入 coredns job**
 
-可以正常访问到，从这里可以看到 CoreDNS 的监控数据接口是正常的，然后我们就可以将这个 `/metrics` 接口配置到 `prometheus.yml` 中去，直接加到默认的 prometheus 这个 `job` 下面：
+在 T4.2.1 中我们已在 `kube-mon` 中创建了 ConfigMap `prometheus-config`。此处在其 `scrape_configs` 中**新增**一个 job（不要删掉原有的 `prometheus` job 及 `global`、`rule_files`、`alerting`、`storage` 等段）。使用 **Service 地址** `kube-dns.kube-system.svc.cluster.local:9153` 作为 target，避免 Pod 重启后 IP 变化导致抓取失败。完整示例（与 T4.2.1 配置结构一致，仅增加 coredns job）如下：
 
-```yml
-# prome-cm.yaml
+```yaml
+# prometheus-cm.yaml（在 T4.2.1 基础上增加 coredns job，apply 前请确认 namespace、ConfigMap 名称与现有一致）
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -501,65 +457,60 @@ data:
   prometheus.yml: |
     global:
       scrape_interval: 15s
-      scrape_timeout: 15s
-
+      scrape_timeout: 10s
+    rule_files: []
     scrape_configs:
-    - job_name: 'prometheus'
-      static_configs:
-        - targets: ['localhost:9090']
-
-    - job_name: 'coredns'
-      static_configs:
-        - targets: ['10.244.1.15:9153', '10.244.2.127:9153']
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'coredns'
+        static_configs:
+          - targets: ['kube-dns.kube-system.svc.cluster.local:9153']
+    alerting:
+      alertmanagers: []
+    storage:
+      tsdb:
+        retention:
+          time: 24h
 ```
 
-当然，我们这里只是一个简单的配置，`scrape_configs` 下面可以支持很多参数，例如：
-
-- `basic_auth` 和 `bearer_token`：比如我们提供的 `/metrics` 接口需要 basic 认证的时候，通过传统的用户名密码或者在请求的 header 中添加对应的 token 都可以支持。
-- `kubernetes_sd_configs` 或 `consul_sd_configs`：可以用来自动发现一些应用的监控数据。
-
-现在我们更新这个 ConfigMap 资源对象：
+**4. 应用配置并触发热加载**
 
 ```bash
-$ kubectl apply -f prometheus-cm.yaml
-configmap/prometheus-config configured
+kubectl apply -f prometheus-cm.yaml
 ```
 
-现在 Prometheus 的配置文件内容已经更改了，过一会儿被挂载到 Pod 中的 prometheus.yml 文件也会更新，由于我们之前在 Prometheus 启动参数中添加了 `--web.enable-lifecycle`，所以现在我们只需要执行一下 `reload` 命令即可让配置生效：
+ConfigMap 更新后，挂载到 Prometheus Pod 的 `prometheus.yml` 会在一段时间内自动更新。因 T4.2.1 中已启用 `--web.enable-lifecycle`，可通过 HTTP POST 触发重载，无需重启 Pod。从**能访问集群的机器**上执行（将 `<节点IP>` 换为任意节点地址，端口为 Prometheus Service 的 NodePort，例如 31078）：
 
 ```bash
-$ kubectl get pods -n kube-mon -o wide
-NAME                          READY   STATUS    RESTARTS   AGE   IP             NODE         NOMINATED NODE   READINESS GATES
-prometheus-79b8774f68-7m8zr   1/1     Running   0          28m   10.244.3.174   ydzs-node3   <none>           <none>
-$ curl -X POST "http://10.244.3.174:9090/-/reload"
+curl -X POST "http://<节点IP>:31078/-/reload"
 ```
 
-> **热更新：**
->
-> 由于 ConfigMap 通过 Volume 的形式挂载到 Pod 中，热更新需要一定时间才会生效，所以需要稍微等一等。
+若在集群内执行，也可先查 Prometheus Pod IP 再 reload：
 
-这个时候我们再看 Prometheus Dashboard 中采集的目标数据：
+```bash
+POD_IP=$(kubectl get pods -n kube-mon -l app=prometheus -o jsonpath='{.items[0].status.podIP}')
+curl -X POST "http://${POD_IP}:9090/-/reload"
+```
+
+**5. 校验抓取结果**
+
+在浏览器打开 Prometheus Web UI（如 `http://<节点IP>:31078`），进入 **Status → Target health**，应能看到 `coredns` job 及 target 状态为 UP。在 **Query → Graph** 中可查询 CoreDNS 相关指标（如 `coredns_cache_hits_total`、`coredns_cache_misses_total`）。指标含义可参考该 target 的 `/metrics` 输出中的 `# HELP` 注释。
 
 ![prometheus-webui-coredns](./images/prometheus-webui-coredns.png)
 
-可以看到我们刚刚添加的 coredns 这个任务已经出现了，同样的，我们切换到 Graph 下面去，可以找到一些 CoreDNS 的指标数据，至于这些指标数据代表什么意义，我们可以去查看对应的 `/metrics` 接口，一般情况下都会有对应的注释。
-
-![prometheus-webui-coredns-metrics](./images/prometheus-webui-coredns-metrics.png)
-
-到这里我们就在 Prometheus 上配置了第一个 Kubernetes 应用。
+**说明**：`scrape_configs` 还支持 `basic_auth`、`bearer_token`、`kubernetes_sd_configs` 等，详见 [官方 scrape_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config)。若 CoreDNS 有多副本且需按 Pod 分别抓取，可改用 `kubernetes_sd_configs` 做服务发现。
 
 ### T4.3.2、使用 exporter 监控
 
-有一些应用可能没有自带 `/metrics` 接口供 Prometheus 使用，在这种情况下，我们就需要利用 `exporter` 服务来为 Prometheus 提供指标数据了。
+若应用本身没有暴露 Prometheus 格式的 `/metrics`，可通过 [Exporter](https://prometheus.io/docs/instrumenting/exporters/) 将指标暴露给 Prometheus。官方与社区为常见中间件提供了多种 exporter（如 Redis、MySQL、Node 等）。下面以 **Redis + redis-exporter** 为例，在 **kube-mon** 中部署 Redis，并以 **sidecar** 方式在同一 Pod 内运行 [redis-exporter](https://github.com/oliver006/redis_exporter)，供已在 T4.2.1/T4.3.1 中部署的 Prometheus 抓取。
 
-Prometheus 官网为许多应用提供了对应的 `exporter`，当然也有一些第三方的实现，我们可以去官网查看 [exporters](https://prometheus.io/docs/instrumenting/exporters/)。
+**1. 部署 Redis 与 redis-exporter**
 
-比如，我们这里通过一个 [redis-exporter](https://github.com/oliver006/redis_exporter) 服务来监控 redis 服务，对于这类应用，我们一般会以 `sidecar` 的形式和主应用部署在同一个 Pod 中。
-
-我们部署一个 redis 应用，并用 redis-exporter 的方式来采集监控数据，供 Prometheus 使用，如下资源清单文件：
+同一 Pod 内：主容器为 Redis，sidecar 为 redis-exporter。exporter 默认连接 `localhost:6379`，与主应用同 Pod 时无需额外配置。镜像版本随官方更新，当前示例使用 **Redis 8.6**（[官方发布](https://redis.io/blog/announcing-redis-86-performance-improvements-streams/)）与 **redis_exporter v1.82**（[GitHub Releases](https://github.com/oliver006/redis_exporter/releases)），便于安全与兼容性。资源清单（文件名与 T4.3.1 统一，如 `prometheus-redis.yaml`）：
 
 ```yaml
-# prome-redis.yaml
+# prometheus-redis.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -575,25 +526,25 @@ spec:
         app: redis
     spec:
       containers:
-      - name: redis
-        image: redis:4
-        resources:
-          requests:
-            cpu: 100m
-            memory: 100Mi
-        ports:
-        - containerPort: 6379
-      - name: redis-exporter
-        image: oliver006/redis_exporter:latest
-        resources:
-          requests:
-            cpu: 100m
-            memory: 100Mi
-        ports:
-        - containerPort: 9121
+        - name: redis
+          image: redis:8.6-alpine
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          ports:
+            - containerPort: 6379
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.82.0
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          ports:
+            - containerPort: 9121
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
   name: redis
   namespace: kube-mon
@@ -601,77 +552,84 @@ spec:
   selector:
     app: redis
   ports:
-  - name: redis
-    port: 6379
-    targetPort: 6379
-  - name: prom
-    port: 9121
-    targetPort: 9121
+    - name: redis
+      port: 6379
+      targetPort: 6379
+    - name: prom
+      port: 9121
+      targetPort: 9121
 ```
-
-可以看到在 redis Pod 中包含了两个容器，一个是 redis 本身的主应用，另一个是 redis_exporter。现在直接创建上面的应用：
 
 ```bash
-$ kubectl apply -f prome-redis.yaml
-deployment.apps/redis created
-service/redis created
-
-$ kubectl get pods -n kube-mon
-NAME                          READY   STATUS    RESTARTS   AGE
-prometheus-79b8774f68-7m8zr   1/1     Running   0          54m
-redis-7c8bdd45cc-ssjbz        2/2     Running   0          2m1s
-$ kubectl get svc -n kube-mon
-NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
-prometheus   NodePort    10.96.194.29   <none>        9090:30980/TCP      15h
-redis        ClusterIP   10.110.14.69   <none>        6379/TCP,9121/TCP   2m14s
+kubectl apply -f prometheus-redis.yaml
+kubectl get pods,svc -n kube-mon
 ```
 
-我们可以通过 9121 端口来校验是否能够采集到数据：
+**2. 校验 exporter 指标（可选）**
+
+Prometheus 与 Redis 同处 `kube-mon`，可直接用 Service 名访问。在集群内执行：
 
 ```bash
-$ curl 10.110.14.69:9121/metrics
-# HELP go_gc_duration_seconds A summary of the GC invocation durations.
-# TYPE go_gc_duration_seconds summary
-go_gc_duration_seconds{quantile="0"} 0
-go_gc_duration_seconds{quantile="0.25"} 0
-go_gc_duration_seconds{quantile="0.5"} 0
-go_gc_duration_seconds{quantile="0.75"} 0
-go_gc_duration_seconds{quantile="1"} 0
-go_gc_duration_seconds_sum 0
-go_gc_duration_seconds_count 0
-......
-# HELP redis_up Information about the Redis instance
-# TYPE redis_up gauge
-redis_up 1
-# HELP redis_uptime_in_seconds uptime_in_seconds metric
-# TYPE redis_uptime_in_seconds gauge
-redis_uptime_in_seconds 100
+kubectl run -i --rm debug --image=curlimages/curl --image-pull-policy=IfNotPresent --restart=Never -- sh -c 'curl -s "http://redis.kube-mon.svc.cluster.local:9121/metrics" | grep -E "^redis_up |^redis_uptime_in_seconds "'
 ```
 
-同样的，现在我们只需要更新 Prometheus 的配置文件：
+若输出中出现 `redis_up 1` 和 `redis_uptime_in_seconds` 即表示 exporter 已连上 Redis 并正常暴露指标。
+
+**3. 更新 Prometheus 配置并加入 redis job**
+
+在 T4.3.1 的 `prometheus-config` 基础上，在 `scrape_configs` 中**新增** `redis` job。因 Prometheus 与 Redis 同 namespace，target 使用 Service 名即可：`redis.kube-mon.svc.cluster.local:9121`（或简写 `redis:9121`）。以下为**完整** ConfigMap 示例（含 prometheus、coredns、redis 三个 job，与 T4.2.1/T4.3.1 结构一致）：
 
 ```yaml
-- job_name: 'redis'
-  static_configs:
-  - targets: ['redis:9121']
+# prometheus-cm.yaml（在 T4.3.1 基础上增加 redis job）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: kube-mon
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+    rule_files: []
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'coredns'
+        static_configs:
+          - targets: ['kube-dns.kube-system.svc.cluster.local:9153']
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis.kube-mon.svc.cluster.local:9121']
+    alerting:
+      alertmanagers: []
+    storage:
+      tsdb:
+        retention:
+          time: 24h
 ```
-
-由于我们这里是通过 Service 去配置的 redis 服务，当然直接配置 Pod IP 也是可以的，因为和 Prometheus 处于同一个 namespace，所以我们直接使用 servicename 即可。配置文件更新后，重新加载：
 
 ```bash
-$ kubectl apply -f prometheus-cm.yaml
-configmap/prometheus-config configured
-# 隔一会儿执行reload操作
-$ curl -X POST "http://10.244.3.174:9090/-/reload"
+kubectl apply -f prometheus-cm.yaml
 ```
 
-这个时候我们再去看 Prometheus 的 Dashboard 采集的目标数据：
+**4. 触发热加载并校验**
+
+ConfigMap 挂载更新后，通过 NodePort 或 Pod IP 触发 reload（与 T4.3.1 相同）：
+
+```bash
+# 方式一：NodePort（将 <节点IP> 换为实际节点，端口为 Prometheus Service 的 NodePort）
+curl -X POST "http://<节点IP>:31078/-/reload"
+
+# 方式二：集群内 Pod IP
+POD_IP=$(kubectl get pods -n kube-mon -l app=prometheus -o jsonpath='{.items[0].status.podIP}')
+curl -X POST "http://${POD_IP}:9090/-/reload"
+```
+
+在 Prometheus Web UI（**Status → Targets health**）中确认 `redis` job 为 UP，在 **Query → Graph** 中可查询 `redis_up`、`redis_uptime_in_seconds`、`redis_exporter_scrapes_total` 等指标。
 
 ![prometheus-webui-redis](./images/prometheus-webui-redis.png)
-
-可以看到配置的 redis 这个 job 已经生效了。切换到 Graph 下面可以看到很多关于 redis 的指标数据，我们选择任意一个指标，比如 `redis_exporter_scrapes_total`，然后点击执行就可以看到对应的数据图表了：
-
-![prometheus-webui-redis-query](./images/prometheus-webui-redis-query.png)
 
 ## T4.4、监控集群
 
