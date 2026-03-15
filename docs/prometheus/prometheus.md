@@ -2,34 +2,38 @@
 
 监控是保证系统正常运行必不可少的功能，特别是对于 Kubernetes 这类复杂系统，监控报警更是不可或缺。我们需要时刻掌握系统的各项运行指标，监控 Pod 的各种状态，并在出现问题时及时获取报警通知。
 
-在 Kubernetes 早期版本中，系统监控主要通过 heapster、influxDB 和 grafana 的组合实现。但在新版本中，heapster 已被移除，Prometheus 已成为主流的监控工具。Prometheus 是 Google 内部监控报警系统的开源版本，经过 Google SRE 实践不断完善，具备快速接入、简单灵活配置等特点，能够高效发现问题，并且是已经毕业的 CNCF 项目。
+在 Kubernetes 早期版本中，系统监控主要通过 heapster、influxDB 和 grafana 的组合实现。在新版本中 heapster 已被移除，Prometheus 已成为主流的监控与告警方案。Prometheus 是开源的系统监控与告警工具包，最初由 [SoundCloud](https://soundcloud.com/) 构建（2012 年起），后被众多公司采用，现为独立维护的开源项目；2016 年加入 [CNCF](https://cncf.io/)，成为继 [Kubernetes](https://kubernetes.io/) 之后第二个托管项目。其以拉取方式采集并存储时间序列指标（即带时间戳及可选键值标签的度量数据），适合机器级监控与高动态服务架构的监控。
 
 ## T4.1、简介
 
-Prometheus 最初由 SoundCloud 开发，是一款开源的系统监控和报警工具。2016 年加入 CNCF 基金会，成为继 Kubernetes 之后的第二个托管项目。与传统监控工具相比，Prometheus 具有以下主要特点：
+以下内容与 [Prometheus 官方概览](https://prometheus.io/docs/introduction/overview/) 保持一致。
 
-- **多维数据模型**：由指标名称和键/值对标签标识的时间序列数据
-- **灵活的查询语言（PromQL）**：支持强大的数据查询和聚合操作
-- **不依赖分布式存储**：基于本地磁盘存储，单节点部署简单
-- **多种数据采集方式**：支持通过 HTTP 拉取时间序列数据，也可通过 Pushgateway 推送数据
-- **自动服务发现**：支持通过服务发现或静态配置发现监控目标
-- **丰富的可视化支持**：集成多种图形和仪表板
+Prometheus 最初由 SoundCloud 开发，是一款开源的系统监控与告警工具包。2016 年加入 CNCF，成为继 Kubernetes 之后的第二个托管项目。根据官方文档，其主要特性如下：
 
-### Prometheus核心组件
+- **多维数据模型**：时间序列由指标名称与键/值对标签唯一标识（参见 [Data model](https://prometheus.io/docs/concepts/data_model/)）
+- **PromQL**：灵活的 [查询语言](https://prometheus.io/docs/prometheus/latest/querying/basics/)，可基于维度做筛选与聚合
+- **拉取模型**：通过 HTTP 拉取方式采集时间序列
+- **推送支持**：短生命周期任务可通过 [Pushgateway](https://prometheus.io/docs/instrumenting/pushing/) 等中介网关推送指标
+- **目标发现**：通过服务发现或静态配置发现抓取目标
+- **无分布式存储依赖**：单机节点即可自治，不依赖远端存储
+- **多种作图与仪表板**：支持多种绘图与仪表板方式展示数据
 
-Prometheus 由多个组件构成，其中部分为可选组件：
+### Prometheus 核心组件
 
-- **Prometheus Server**：负责抓取和存储时间序列数据
-- **Exporter**：暴露应用指标供 Prometheus 抓取
+[官方文档](https://prometheus.io/docs/introduction/overview/#components) 将 Prometheus 生态描述为多组件组成，其中多数为可选：
+
+- **Prometheus Server**：抓取并存储时间序列数据的主服务
+- **Alertmanager**：处理告警的独立组件
+- **Exporter**：面向 HAProxy、StatsD、Graphite 等服务的专用导出器，暴露指标供 Prometheus 抓取
 - **Pushgateway**：支持短生命周期任务的指标推送网关
-- **Alertmanager**：处理报警的独立组件
-- **Web UI/API**：提供数据查询和管理接口
+- **Client libraries**：用于在应用代码中埋点的 [客户端库](https://prometheus.io/docs/instrumenting/clientlibs/)
+- **各类支持工具**：包括作图、仪表板、API 消费者等（如 [Grafana](https://grafana.com/)）
 
-大多数 Prometheus 组件采用 Go 语言编写，可以编译为静态二进制文件，部署简单。下图展示了 Prometheus 的架构及其生态系统组件：
+多数组件使用 [Go](https://golang.org/) 编写，可编译为静态二进制，便于构建与部署。下图展示 Prometheus 及其生态组件的架构：
 
 ![prometheus-architecture](./images/prometheus-architecture.png)
 
-整体工作流程：Prometheus 主动从目标拉取指标数据，或通过 Pushgateway 被动接收数据，将指标存储在本地时间序列数据库中，根据预定义规则进行计算和聚合，触发报警。Grafana 等可视化工具通过 Prometheus API 获取数据进行展示。
+**整体工作流程**（与 [官方 Architecture 描述](https://prometheus.io/docs/introduction/overview/#architecture) 一致）：Prometheus 从已埋点的 job 抓取指标（可直接抓取，或通过 Pushgateway 抓取短生命周期任务），将所有样本在本地存储，并基于规则对数据进行聚合、生成新的时间序列或产生告警；[Grafana](https://grafana.com/) 或其他 API 消费者可对采集到的数据进行可视化。
 
 ## T4.2、安装
 
@@ -38,82 +42,92 @@ Prometheus 使用 Go 语言编写，安装简便，只需下载对应平台的�
 Prometheus 可以通过 YAML 配置文件直接启动，如果我们使用二进制的方式来启动的话，可以使用下面的命令：
 
 ```bash
-$ tar xvfz prometheus-*.tar.gz
-$ cd prometheus-*
-$ ./prometheus --config.file=prometheus.yml
+tar xf prometheus-3.10.0.linux-amd64.tar.gz
+cd prometheus-3.10.0.linux-amd64/
+./prometheus --config.file=prometheus.yml
 ```
 
-其中 `prometheus.yml` 文件的配置如下：
+其中 `prometheus.yml` 文件的配置如下（格式遵循 [Prometheus 官方配置说明](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)）：
 
-```bash
+```yaml
+# my global config（与发行包 prometheus-3.x.x.linux-amd64 中自带的 prometheus.yml 一致）
 global:
-  scrape_interval: 15s      # 抓取指标数据的频率
-  evaluation_interval: 15s  # 规则评估频率
+  scrape_interval: 15s      # 抓取目标的默认频率（不写时程序默认为 1m，发行包示例写 15s）
+  evaluation_interval: 15s  # 规则评估频率（不写时程序默认为 1m，发行包示例写 15s）
+  # scrape_timeout 未写时使用程序默认 10s（且不能大于 scrape_interval）
 
+# 规则文件列表（可含 glob），用于记录规则与告警
 rule_files:
-  # - "first.rules"        # 报警规则文件
-  # - "second.rules"
+  # - "first_rules.yml"
+  # - "second_rules.yml"
 
+# 抓取配置列表，定义监控目标与抓取方式
 scrape_configs:
-  - job_name: 'prometheus'  # 监控任务名称
+  # job_name 会作为标签 job=<job_name> 附加到该 job 抓取的所有时间序列
+  - job_name: "prometheus"
+    # metrics_path 默认为 '/metrics'，scheme 默认为 'http'
     static_configs:
-      - targets: ['localhost:9090']  # 监控目标地址
+      - targets: ["localhost:9090"]
+        # labels 会附加到从该 static_config 抓取的所有指标
+        labels:
+          app: "prometheus"
+
+# Alertmanager 配置（告警推送目标）
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
 ```
 
-这个配置文件包含了 3 个模块：`global`、`rule_files` 和 `scrape_configs`。
+该配置文件包含以下模块（顺序与 [官方配置结构](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) 一致）：
 
-- `global` 模块控制 `Prometheus Server` 的全局配置：
-  - `scrape_interval`：抓取指标数据的频率，默认是 15s，我们可以覆盖这个值。
-  - `evaluation_interval`：规则评估频率，用于生成新的时间序列或报警
-- `rule_files`：指定报警规则文件路径，prometheus 可以根据这个配置加载规则，用于生成新的时间序列数据或者报警信息，当前我们没有配置任何报警规则。
-- `scrape_configs`：定义监控目标配置，即 prometheus 监控哪些资源。
+- **`global`**：全局配置，作为其他配置段的默认值。
+  - `scrape_interval`：抓取目标的默认频率。**配置里不写时**程序使用 1m；**发行包自带的 prometheus.yml** 里显式写了 15s，所以你看到的 15s 就是包里的示例值，与“不写时默认 1m”不矛盾。
+  - `evaluation_interval`：规则评估频率。不写时程序默认 1m；发行包示例为 15s。
+  - `scrape_timeout`：单次抓取超时。不写时程序默认 10s，且不能大于 `scrape_interval`。
+- **`rule_files`**：规则文件路径列表（支持 glob），用于记录规则与告警；当前示例未启用任何规则文件。
+- **`scrape_configs`**：抓取配置列表，定义抓取哪些目标以及如何抓取。
+- **`alerting`**：与 Alertmanager 相关的设置，包括告警推送目标等。
 
-由于 prometheus 通过 HTTP 的方式暴露自身的监控指标，所以 prometheus 也能监控自身的健康情况。在默认的配置里有一个单独的 job，叫做 prometheus，它采集 prometheus 服务自身的时间序列数据。
+上面示例里只有一段 **scrape 配置**（一个 `scrape_config` 项），对应一个 **job**，名为 `prometheus`。根据[官方配置说明](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)：一段 scrape 配置通常对应一个 job，目标的 `job` 标签会取该配置的 `job_name`。Prometheus 服务自身通过 HTTP 暴露指标，因此可以抓取自己：该 job 使用 `static_configs` 配置了单个目标 `localhost:9090`。未指定时，`metrics_path` 默认为 `/metrics`，`scheme` 默认为 `http`，因此实际抓取地址为 `http://localhost:9090/metrics`，得到的是 Prometheus 服务自身的状态与性能时间序列。
 
-该 job 包含一个静态配置目标，监听 localhost 9090 端口。prometheus 默认会通过目标的 `/metrics` 路径采集 metrics。也就是说，默认的 job 通过 `http://localhost:9090/metrics` 采集 metrics。收集到的时间序列包含 prometheus 服务自身的状态和性能。
+若要监控更多目标，可在 `scrape_configs` 下追加新的 `scrape_config`（新 job），或在现有 job 的 `static_configs` 中增加目标；也可通过服务发现等方式动态发现目标。
 
-如果我们还有其他的资源需要监控的话，直接配置在 `scrape_configs` 模块下面就可以了。
+### T4.2.1、示例（与 Prometheus 3.10 一致）
 
-### T4.2.1、示例
+本小节使用 [Prometheus Go 客户端库](https://github.com/prometheus/client_golang) 的 `examples/random` 示例，在本地暴露三个带不同延迟分布的模拟 RPC 指标端点，供 Prometheus 3.10 抓取。该示例暴露的指标格式符合 [Prometheus 文本格式](https://prometheus.io/docs/instrumenting/exposition_formats/)，可直接被 Prometheus 抓取。
 
-我们在本地启动一些样例来让 Prometheus 采集。Go 客户端库包含一个示例，该示例模拟了三个具有不同延迟分布的RPC服务。
+**1. 准备 Go 环境并运行 random 示例**
 
-首先确保已经安装了 Go 环境并启用 go modules，下载 Prometheus 的 Go 客户端库并运行这三个示例：
+确保已安装 Go（建议 1.21+）并启用 Go modules，克隆客户端库并编译运行：
 
 ```bash
-$ git clone https://github.com/prometheus/client_golang.git
-$ cd client_golang/examples/random
-$ export GO111MODULE=on   
-$ export GOPROXY=https://goproxy.cn
-$ go build
+git clone https://github.com/prometheus/client_golang.git
+cd client_golang/examples/random
+export GO111MODULE=on
+export GOPROXY=https://goproxy.cn
+go build
 ```
 
-然后开 3 个独立的终端运行 3 个服务：
+在三个终端中分别启动三个实例（监听不同端口）：
 
 ```bash
-$ ./random -listen-address=:8080
-$ ./random -listen-address=:8081
-$ ./random -listen-address=:8082
+./random -listen-address=:8080
+./random -listen-address=:8081
+./random -listen-address=:8082
 ```
 
-这时候我们可以得到 3 个不同的监控接口：http://localhost:8080/metrics、http://localhost:8081/metrics 和 http://localhost:8082/metrics。
+此时可访问三个指标端点：`http://localhost:8080/metrics`、`http://localhost:8081/metrics`、`http://localhost:8082/metrics`。
 
-现在我们配置 Prometheus 来采集这些新的目标，将这三个目标放到名为 example-random 的任务中。
+**2. 在 Prometheus 中配置抓取**
 
-为区分不同环境的监控目标，假设：
+将下面配置追加到 **本地** 使用的 `prometheus.yml` 的 `scrape_configs` 中（与 [官方 scrape_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config) 一致），然后重启 Prometheus 或调用 `/-/reload`（需已开启 `--web.enable-lifecycle`）：
 
-- `http://localhost:8080/metrics` 和 `http://localhost:8081/metrics` 为生产环境应用
-- `http://localhost:8082/metrics` 为金丝雀部署实例
-
-在 Prometheus 中，我们可以通过为同一任务下的不同目标组添加自定义标签来实现环境区分。具体配置如下：为第一组目标添加 `group="production"` 标签，第二组目标添加 `group="canary"` 标签。
-
-将以下配置添加到 `prometheus.yml` 文件的 `scrape_configs` 部分，然后重启 Prometheus 服务：
-
-```bash
+```yaml
 scrape_configs:
   - job_name: 'example-random'
-    # Override the global default and scrape targets from this job every 5 seconds.
-    scrape_interval: 5s
+    scrape_interval: 5s   # 覆盖全局默认，该 job 每 5 秒抓取
     static_configs:
       - targets: ['localhost:8080', 'localhost:8081']
         labels:
@@ -123,11 +137,13 @@ scrape_configs:
           group: 'canary'
 ```
 
-然后我们可以到浏览器中查看 Prometheus 的配置是否有新增的任务，这就是 Prometheus 添加监控配置最基本的方法，只需要提供一个符合 metrics 格式的接口给 Prometheus 就可以了。
+通过为同一 job 下不同 `static_configs` 设置不同 `labels`，可在 Prometheus 中区分环境（例如生产与金丝雀）。在 Web UI 的 Status → Targets 中可确认新 job 是否被正确抓取。添加监控目标的核心方式即为：在 `scrape_configs` 中增加一个 `scrape_config`，并保证目标提供符合 Prometheus  exposition 格式的 HTTP 指标接口（默认路径 `/metrics`）。
 
-> 为了方便管理，我们将监控相关的所有资源对象都安装在 `kube-mon` 这个 namespace 下面，没有的话可以提前创建。
+> 为便于管理，以下所有监控相关资源均放在 namespace `kube-mon` 下，若不存在请先执行：`kubectl create namespace kube-mon`。
 
-为了便于配置管理，我们将 `prometheus.yml` 文件用 ConfigMap 的形式进行管理：
+**3. 在 Kubernetes 中部署 Prometheus 3.10**
+
+将 Prometheus 配置放入 ConfigMap，与 [官方配置结构](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) 一致。注意：`scrape_timeout` 不能大于 `scrape_interval`；保留时间建议在配置文件中用 `storage.tsdb.retention` 设置（3.x 推荐方式，命令行参数已弃用）。
 
 ```yaml
 # prometheus-cm.yaml
@@ -140,24 +156,34 @@ data:
   prometheus.yml: |
     global:
       scrape_interval: 15s
-      scrape_timeout: 15s
+      scrape_timeout: 10s
+    rule_files: []
     scrape_configs:
-    - job_name: 'prometheus'
-      static_configs:
-      - targets: ['localhost:9090']
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+    alerting:
+      alertmanagers: []
+    storage:
+      tsdb:
+        retention:
+          time: 24h
 ```
 
-目前只配置了对 prometheus 自身的监控，直接创建该资源对象：
+创建 ConfigMap：
 
 ```bash
-$ kubectl apply -f prometheus-cm.yaml
-configmap "prometheus-config" created
+kubectl apply -f prometheus-cm.yaml
 ```
 
-配置文件创建完成了，如果我们有新的资源需要监控，我们只需要将上面的 ConfigMap 对象更新即可。现在我们来创建 prometheus 的 Pod 资源：
+后续若有新抓取目标，只需更新该 ConfigMap 并让 Prometheus 重新加载配置即可。
+
+> **⚠️ 部署顺序**：Deployment 依赖 **ConfigMap**（prometheus-config）、**PVC**（prometheus-data）和 **RBAC**（ServiceAccount `prometheus`）。必须先完成下面的「4. 数据持久化」「5. RBAC」并执行 `kubectl apply` 后，再应用本节的 Deployment；否则会报错 `serviceaccount "prometheus" not found`，ReplicaSet 无法创建 Pod。建议按「3 → 4 → 5 → 6」顺序操作。
+
+接着创建 Deployment（使用 **Prometheus 3.10.0** 官方镜像）：
 
 ```yaml
-# prometheus-deploy.yaml
+# prometheus-deploy.yaml（请先完成 4、5 步后再 apply）
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -175,15 +201,21 @@ spec:
         app: prometheus
     spec:
       serviceAccountName: prometheus
+      initContainers:
+        - name: fix-data-dir-permissions
+          image: busybox:1.36
+          command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
+          volumeMounts:
+            - name: data
+              mountPath: /prometheus
       containers:
-      - image: prom/prometheus:v2.24.1
+      - image: prom/prometheus:v3.10.0
         name: prometheus
         args:
         - "--config.file=/etc/prometheus/prometheus.yml"
-        - "--storage.tsdb.path=/prometheus"  # 指定tsdb数据路径
-        - "--storage.tsdb.retention.time=24h"
-        - "--web.enable-admin-api"  # 控制对admin HTTP API的访问，其中包括删除时间序列等功能
-        - "--web.enable-lifecycle"  # 支持热更新，直接执行localhost:9090/-/reload立即生效
+        - "--storage.tsdb.path=/prometheus"
+        - "--web.enable-lifecycle"
+        - "--web.enable-admin-api"
         ports:
         - containerPort: 9090
           name: http
@@ -208,9 +240,14 @@ spec:
         name: config-volume
 ```
 
-另外为了 prometheus 数据持久化，我们这里直接采用 LocalPV 来配置，创建如下所示的一个 PVC 资源对象，注意是一个 LocalPV，与 node3 节点具有亲和性：
+说明：保留时间已在上面 ConfigMap 的 `storage.tsdb.retention.time: 24h` 中配置，无需再传 `--storage.tsdb.retention.time`。`--web.enable-lifecycle` 用于通过 HTTP POST `/-/reload` 热加载配置；`--web.enable-admin-api` 用于开放管理类 API（生产环境请按需并做好访问控制）。
+
+**4. 数据持久化（Local PV）**
+
+以下使用 Local PV 将 Prometheus 数据落到宿主机目录。**重要**：Local PV 只能被调度到「拥有该磁盘路径」的那台节点，因此 `nodeAffinity` 里的节点名必须与集群中真实节点名一致（如 `worker-01`），否则使用该 PVC 的 Pod 会一直处于 **Pending**（且可能看不到 Pod 被创建，实为调度失败）。请先将下面 YAML 中的 `values` 里的节点名改成你打算运行 Prometheus 的节点名（可用 `kubectl get nodes` 查看）。该节点上需事先创建目录并确保 Kubelet 可写（例如 `mkdir -p /data/k8s/prometheus`）。
 
 ```yaml
+# prometheus-pv-pvc.yaml（请将 node3 改为实际节点名，如 worker-01）
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -219,7 +256,7 @@ metadata:
     app: prometheus
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   capacity:
     storage: 20Gi
   storageClassName: local-storage
@@ -228,11 +265,11 @@ spec:
   nodeAffinity:
     required:
       nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - node3
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - node3   # 必改：改为实际节点名，如 worker-01
   persistentVolumeReclaimPolicy: Retain
 ---
 apiVersion: v1
@@ -245,14 +282,16 @@ spec:
     matchLabels:
       app: prometheus
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: 20Gi
   storageClassName: local-storage
 ```
 
-由于 prometheus 要访问 Kubernetes 的一些资源对象，所以需要配置 rbac 相关认证，这里我们使用一个名为 prometheus 的 serviceAccount 对象：
+**5. RBAC**
+
+Prometheus 需访问集群内节点、Pod、Service、Endpoint 等资源以做服务发现与抓取，因此需要 ClusterRole 和 ClusterRoleBinding。以下使用 `rbac.authorization.k8s.io/v1`；Ingress 资源使用 `networking.k8s.io`（Kubernetes 1.19+）。
 
 ```yaml
 # prometheus-rbac.yaml
@@ -267,39 +306,26 @@ kind: ClusterRole
 metadata:
   name: prometheus
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  - services
-  - endpoints
-  - pods
-  - nodes/proxy
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - "extensions"
-  resources:
-    - ingresses
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - nodes/metrics
-  verbs:
-  - get
-- nonResourceURLs:
-  - /metrics
-  verbs:
-  - get
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - services
+      - endpoints
+      - pods
+      - nodes/proxy
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources:
+      - configmaps
+      - nodes/metrics
+    verbs: ["get"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: prometheus
@@ -308,85 +334,50 @@ roleRef:
   kind: ClusterRole
   name: prometheus
 subjects:
-- kind: ServiceAccount
-  name: prometheus
-  namespace: kube-mon
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: kube-mon
 ```
-
-prometheus 要监控整个集群资源，所以需要 ClusterRole 角色，nonResourceURLs 是对非资源型 metrics 的访问权限进行声明。
 
 ```bash
-$ kubectl apply -f prometheus-rbac.yaml
-serviceaccount "prometheus" created
-clusterrole.rbac.authorization.k8s.io "prometheus" created
-clusterrolebinding.rbac.authorization.k8s.io "prometheus" created
+kubectl apply -f prometheus-rbac.yaml
 ```
 
-现在我们就可以添加 promethues 的资源对象了：
+**6. 部署 Prometheus 并处理数据目录权限**
+
+建议操作顺序（必须按此顺序，否则 Pod 无法创建或无法调度）：
+
+| 顺序 | 操作 | 说明 |
+|------|------|------|
+| 1 | `kubectl create namespace kube-mon` | 若无该 namespace |
+| 2 | `kubectl apply -f prometheus-cm.yaml` | ConfigMap |
+| 3 | 修改 PV 节点名后 `kubectl apply -f prometheus-pv-pvc.yaml` | PV 的 nodeAffinity 需为真实节点名 |
+| 4 | `kubectl apply -f prometheus-rbac.yaml` | **必做**：创建 ServiceAccount `prometheus`，Deployment 依赖此项 |
+| 5 | `kubectl apply -f prometheus-deploy.yaml` | Deployment |
+
+部署前可快速检查依赖是否就绪：`kubectl get sa prometheus -n kube-mon`、`kubectl get configmap prometheus-config -n kube-mon`、`kubectl get pvc prometheus-data -n kube-mon`，三者均存在后再 apply Deployment。
+
+**若创建 Deployment 后没有 Pod**：
+- **报错 `serviceaccount "prometheus" not found`**：说明未先执行「5. RBAC」。执行 `kubectl apply -f prometheus-rbac.yaml` 后，再执行 `kubectl rollout restart deployment prometheus -n kube-mon`（或删除 Deployment 后重新 `kubectl apply -f prometheus-deploy.yaml`），Pod 即可被创建。
+- **Pod 一直 Pending**：多半是 Local PV 的节点亲和写成了不存在的节点（如文档示例里的 `node3`）。解决步骤：① 删除 Deployment；② 删除 PVC；③ 删除 PV；④ 把 PV 的 `nodeAffinity.values` 改成实际节点名（如 `worker-01`），保存后重新 `kubectl apply -f prometheus-pv-pvc.yaml`；⑤ 再 `kubectl apply -f prometheus-deploy.yaml`。
 
 ```bash
-$ kubectl apply -f prometheus-deploy.yaml 
-deployment.apps/prometheus created
-$ kubectl get pods -n kube-mon
-NAME                         READY   STATUS             RESTARTS   AGE
-prometheus-df4f47d95-vksmc   0/1     CrashLoopBackOff   3          98s
-$ kubectl logs -f prometheus-df4f47d95-vksmc -n kube-mon
-level=info ts=2019-12-12T03:08:49.424Z caller=main.go:332 msg="Starting Prometheus" version="(version=2.14.0, branch=HEAD, revision=edeb7a44cbf745f1d8be4ea6f215e79e651bfe19)"
-level=info ts=2019-12-12T03:08:49.424Z caller=main.go:333 build_context="(go=go1.13.4, user=root@df2327081015, date=20191111-14:27:12)"
-level=info ts=2019-12-12T03:08:49.425Z caller=main.go:334 host_details="(Linux 3.10.0-1062.4.1.el7.x86_64 #1 SMP Fri Oct 18 17:15:30 UTC 2019 x86_64 prometheus-df4f47d95-vksmc (none))"
-level=info ts=2019-12-12T03:08:49.425Z caller=main.go:335 fd_limits="(soft=1048576, hard=1048576)"
-level=info ts=2019-12-12T03:08:49.425Z caller=main.go:336 vm_limits="(soft=unlimited, hard=unlimited)"
-level=error ts=2019-12-12T03:08:49.425Z caller=query_logger.go:85 component=activeQueryTracker msg="Error opening query log file" file=/prometheus/queries.active err="open /prometheus/queries.active: permission denied"
-panic: Unable to create mmap-ed active query log
-
-goroutine 1 [running]:
-github.com/prometheus/prometheus/promql.NewActiveQueryTracker(0x7ffd8cf6ec5d, 0xb, 0x14, 0x2b4f400, 0xc0006f33b0, 0x2b4f400)
-        /app/promql/query_logger.go:115 +0x48c
-main.main()
-        /app/cmd/prometheus/main.go:364 +0x5229
+kubectl apply -f prometheus-pv-pvc.yaml
+kubectl apply -f prometheus-deploy.yaml
 ```
 
-> 出现了 `open /prometheus/queries.active: permission denied` 错误信息，因为 prometheus 镜像默认使用 nobody 用户，而我们通过 LocalPV 挂载到宿主机上面的目录的 `ownership` 是 `root`：
->
-> ```bash
-> $ ls -la /data/k8s
-> total 36
-> drwxr-xr-x   6 root root  4096 Dec 12 11:07 .
-> dr-xr-xr-x. 19 root root  4096 Nov  9 23:19 ..
-> drwxr-xr-x   2 root root  4096 Dec 12 11:07 prometheus
-> ```
->
-> 所以会出现操作权限问题，我们可以通过 `securityContext` 为 Pod 设置 volumes 的权限，通过设置 `runAsUser=0` 指定运行的用户为 root，也可以通过设置一个 initContainer 来修改数据目录权限：
->
-> ```bash
-> ......
-> initContainers:
-> - name: fix-permissions
->   image: busybox
->   command: [chown, -R, "nobody:nobody", /prometheus]
->   volumeMounts:
->   - name: data
->     mountPath: /prometheus
-> ```
+若 Pod 出现 `CrashLoopBackOff` 且日志中有 `permission denied`（例如 `open /prometheus/queries.active: permission denied`），是因为 `prom/prometheus:v3.10.0` 默认以非 root 用户（UID 常为 65534）运行，而 Local PV 挂载的宿主机目录往往属主为 root。上文提供的 `prometheus-deploy.yaml` 已包含 **initContainer**，在启动前将 `/prometheus` 目录属主改为 65534:65534，一般即可避免该问题。若仍报错，可核对镜像实际运行 UID，或临时使用 `securityContext.runAsUser: 0`（仅建议在实验环境使用）。
 
-我们重新更新下 prometheus：
+执行部署并确认 Pod 为 Running：
 
 ```bash
-$ kubectl apply -f prometheus-deploy.yaml
-deployment.apps/prometheus configured
-$ kubectl get pods -n kube-mon                              
-NAME                          READY   STATUS    RESTARTS   AGE
-prometheus-79b8774f68-7m8zr   1/1     Running   0          56s
-$ kubectl logs -f prometheus-79b8774f68-7m8zr -n kube-mon
-level=info ts=2019-12-12T03:17:44.228Z caller=main.go:332 msg="Starting Prometheus" version="(version=2.14.0, branch=HEAD, revision=edeb7a44cbf745f1d8be4ea6f215e79e651bfe19)"
-......
-level=info ts=2019-12-12T03:17:44.822Z caller=main.go:673 msg="TSDB started"
-level=info ts=2019-12-12T03:17:44.822Z caller=main.go:743 msg="Loading configuration file" filename=/etc/prometheus/prometheus.yml
-level=info ts=2019-12-12T03:17:44.827Z caller=main.go:771 msg="Completed loading of configuration file" filename=/etc/prometheus/prometheus.yml
-level=info ts=2019-12-12T03:17:44.827Z caller=main.go:626 msg="Server is ready to receive web requests."
+kubectl apply -f prometheus-deploy.yaml
+kubectl get pods -n kube-mon
 ```
 
-Pod 创建成功后，为了能够在外部访问到 prometheus 的 webui，我们还需要创建一个 Service 对象：
+成功启动后，日志中会出现配置加载及 “Server is ready to receive web requests.” 等输出（Prometheus 3.10 的日志格式可能与旧版略有不同）。
+
+**7. 创建 Service 以访问 Web UI**
 
 ```yaml
 # prometheus-svc.yaml
@@ -407,29 +398,24 @@ spec:
       targetPort: http
 ```
 
-为了方便测试，我们这里创建一个 `NodePort` 类型的服务，当然我们可以创建一个 `Ingress`对象，通过域名来进行访问：
+为便于从集群外访问，此处使用 `NodePort`；生产环境可改为 Ingress 或通过端口转发访问。
 
 ```bash
-$ $ kubectl apply -f prometheus-svc.yaml
-service "prometheus" created
-$ kubectl get svc -n kube-mon
-NAME         TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE
-prometheus   NodePort   10.96.194.29   <none>        9090:30980/TCP   13h
+kubectl apply -f prometheus-svc.yaml
+kubectl get svc -n kube-mon
 ```
 
-现在我们就可以通过 `http://node_ip:30980` 访问 prometheus 的 webui 了：
+记下 NodePort 端口（例如 `30980`），在浏览器中访问 `http://<任意节点 IP>:<NodePort>` 即可打开 Prometheus 3.10 的 Web UI。
+
+- **Status → Targets**：查看当前抓取目标及状态。
+- **Alerts**：未配置告警规则时为空。
+- **Graph**：在查询框输入指标名（如 `scrape_duration_seconds`）并执行，可查看 Prometheus 自抓取指标等时间序列图表。
 
 ![prometheus-webui](./images/prometheus-webui.png)
 
-现在我们可以查看当前监控系统中的一些监控目标（Status -> Targets）：
-
 ![prometheus-webui-targets](./images/prometheus-webui-targets.png)
 
-我们现在还没有配置任何的报警信息，所以 `Alerts` 菜单下面没有任何数据，隔一会儿，我们可以去 `Graph` 菜单下面查看我们抓取的 prometheus 自身的一些监控数据，其中 `- insert metrics at cursor -` 下面就有我们搜集到的一些监控指标数据：
-
 ![prometheus-webui-metrics](./images/prometheus-webui-metrics.png)
-
-比如我们这里选择 `scrape_duration_seconds` 这个指标，然后点击 `Execute`，就可以看到类似于下面的图表数据了：
 
 ![prometheus-webui-query](./images/prometheus-webui-query.png)
 
