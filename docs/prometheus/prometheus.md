@@ -633,38 +633,24 @@ curl -X POST "http://${POD_IP}:9090/-/reload"
 
 ## T4.4、监控集群
 
-前面介绍了用 Prometheus 来监控 Kubernetes 集群中的应用，但对于集群本身的监控也必不可少。
+前面介绍了用 Prometheus 监控 Kubernetes 集群内应用（CoreDNS、Redis 等），集群本身的监控同样重要，主要包括：
 
-集群监控主要关注以下三个方面：
+- **节点资源**：CPU、负载、磁盘、内存等（通常由 **node_exporter** 采集）。
+- **核心组件**：kube-scheduler、kube-controller-manager、kube-apiserver、CoreDNS 等（部分已在 T4.3.1 配置）。
+- **编排状态**：Deployment/Pod 状态、资源请求与使用量等（可由 **kube-state-metrics** 暴露）。
 
-- **节点资源监控**：如节点的 CPU、负载、磁盘、内存等指标。
-- **核心组件监控**：如 kube-scheduler、kube-controller-manager、kube-apiserver、CoreDNS 等组件的运行状态与性能。
-- **编排状态监控**：如 Deployment/Pod 状态、资源请求与使用量、调度事件及 API 延迟等指标。
+常用组件简述：**cAdvisor** 内置于 Kubelet，提供容器级指标；**metrics-server** 提供节点/Pod 的 CPU/内存使用量，供 `kubectl top` 和 HPA，不存历史；**kube-state-metrics** 暴露资源对象状态（如副本数、是否就绪），由 Prometheus 抓取。Heapster 已废弃，由 metrics-server 等替代。
 
-常用的监控组件主要有：
+### T4.4.1、监控集群节点（node_exporter）
 
-- **Heapster**：集群级的监控聚合工具，可从 Kubelet/cAdvisor 等收集指标。**注意：Heapster 已废弃，由 metrics-server 替代。**
-- **cAdvisor**：由 Google 开源的容器资源监控工具，内置于 Kubelet 中，负责收集容器级别的资源使用数据。
-- **kube-state-metrics**：通过监听 Kubernetes API Server，生成资源对象（如 Deployment、Node、Pod）的状态指标。它只提供指标数据，不存储，通常由 Prometheus 抓取。
-- **metrics-server**：Heapster 的轻量级替代品，专注于聚合集群节点的核心资源使用数据（如 CPU、内存），用于 `kubectl top` 和 HPA。同样不存储历史数据。
+使用 [Prometheus Node Exporter](https://github.com/prometheus/node_exporter) 采集主机级指标（CPU、内存、磁盘、网络等），官方说明见 [Monitoring Linux host metrics with the Node Exporter](https://prometheus.io/docs/guides/node-exporter/)。为覆盖所有节点，采用 **DaemonSet** 部署，每节点一个 Pod，监听 9100 端口。
 
-**kube-state-metrics 与 metrics-server 的核心区别：**
+**1. 部署 node_exporter DaemonSet**
 
-- **kube-state-metrics**：关注**资源对象的状态**，例如 Pod 是否就绪、Deployment 的副本数等。
-- **metrics-server**：关注**资源的使用量**，例如 Pod/Node 的 CPU、内存的实际消耗。
-
-### T4.4.1、监控集群节点
-
-要监控集群节点，已有诸多成熟方案（如 Nagios、Zabbix 等）。我们这里使用 Prometheus 配合 **node_exporter** 来采集节点指标。
-
-**node_exporter** 是一个专门采集主机层面监控指标的组件，支持几乎所有常见监控项，包括 conntrack、cpu、diskstats、filesystem、loadavg、meminfo、netstat 等，完整列表见其 [GitHub 仓库](https://github.com/prometheus/node_exporter)。
-
-为确保每个节点都被监控，我们使用 **DaemonSet** 部署 node-exporter。这样每个节点会自动运行一个 Pod，节点增减时 DaemonSet 会自动扩展。
-
-部署时需注意以下细节，资源清单如下：
+镜像使用当前稳定版 **v1.10.2**（[Releases](https://github.com/prometheus/node_exporter/releases)）。因需读取主机 `/proc`、`/sys`、根文件系统，Pod 需 `hostPID`、`hostIPC`、`hostNetwork` 及对应 hostPath 挂载；`tolerations: operator: Exists` 表示容忍任意污点，control-plane 与 worker 均会调度。资源清单（与上文命名风格一致，如 `prometheus-node-exporter.yaml`）：
 
 ```yaml
-# prome-node-exporter.yaml
+# prometheus-node-exporter.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -687,246 +673,157 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       containers:
-      - name: node-exporter
-        image: prom/node-exporter:v1.1.1
-        args:
-        - --web.listen-address=$(HOSTIP):9100
-        - --path.procfs=/host/proc
-        - --path.sysfs=/host/sys
-        - --path.rootfs=/host/root
-        - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+)($|/)
-        - --collector.filesystem.ignored-fs-types=^(autofs|binfmt_misc|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs)$
-        ports:
-        - containerPort: 9100
-        env:
-        - name: HOSTIP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.hostIP
-        resources:
-          requests:
-            cpu: 150m
-            memory: 180Mi
-          limits:
-            cpu: 150m
-            memory: 180Mi
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 65534
-        volumeMounts:
-        - name: proc
-          mountPath: /host/proc
-        - name: sys
-          mountPath: /host/sys
-        - name: root
-          mountPath: /host/root
-          mountPropagation: HostToContainer
-          readOnly: true
+        - name: node-exporter
+          image: prom/node-exporter:v1.10.2
+          args:
+            - --web.listen-address=$(HOSTIP):9100
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
+            - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/containerd/.+|var/lib/docker/.+)($|/)
+            - --collector.filesystem.ignored-fs-types=^(autofs|binfmt_misc|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs)$
+          ports:
+            - containerPort: 9100
+          env:
+            - name: HOSTIP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+            - name: sys
+              mountPath: /host/sys
+            - name: root
+              mountPath: /host/root
+              mountPropagation: HostToContainer
+              readOnly: true
       tolerations:
-      - operator: "Exists"
+        - operator: "Exists"
       volumes:
-      - name: proc
-        hostPath:
-          path: /proc
-      - name: dev
-        hostPath:
-          path: /dev
-      - name: sys
-        hostPath:
-          path: /sys
-      - name: root
-        hostPath:
-          path: /
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /
 ```
-
-由于 node-exporter 需要采集主机指标，但自身运行在容器内，因此需配置以下 Pod 安全策略：
-
-- `hostPID: true`、`hostIPC: true`、`hostNetwork: true`
-  这些配置使 Pod 共享主机的 PID、IPC 命名空间及网络，便于访问主机级信息。需注意，这里的 namespace 是指容器隔离技术中的命名空间，与 Kubernetes 集群的 namespace 概念不同。
-
-此外，需将主机的 `/dev`、`/proc`、`sys` 等目录挂载到容器内，因为节点指标（如 `top` 查看 CPU 使用、`free` 查看内存使用）的数据来源正是这些目录下的文件（例如 `/proc/stat`、`/proc/meminfo`）。
-
-如果集群使用 kubeadm 搭建，为了监控 master 节点，还需为 DaemonSet 添加对应的容忍（tolerations），以允许 Pod 调度到带有 `node-role.kubernetes.io/master` 污点的节点上。
-
-完成上述配置后，直接创建资源对象即可：
 
 ```bash
-$ kubectl apply -f prome-node-exporter.yaml
-daemonset.apps/node-exporter created
-$ kubectl get pods -n kube-mon -l app=node-exporter -o wide
-NAME                  READY   STATUS    RESTARTS   AGE    IP             NODE          NOMINATED NODE   READINESS GATES
-node-exporter-cd2cq   1/1     Running   0          107s   10.151.30.57   ydzs-node3    <none>           <none>
-node-exporter-l6jv6   1/1     Running   0          107s   10.151.30.23   ydzs-node2    <none>           <none>
-node-exporter-qv4x5   1/1     Running   0          107s   10.151.30.59   ydzs-node4    <none>           <none>
-node-exporter-vbbhc   1/1     Running   0          107s   10.151.30.11   ydzs-master   <none>           <none>
-node-exporter-wlgnz   1/1     Running   0          107s   10.151.30.22   ydzs-node1    <none>           <none>
+kubectl apply -f prometheus-node-exporter.yaml
+kubectl get pods -n kube-mon -l app=node-exporter -o wide
 ```
 
-部署完成后，我们可以看到在 5 个节点上都运行了一个 Pod，由于我们指定了 `hostNetwork=true`，所以在每个节点上会绑定一个 9100 端口，我们可以通过这个端口获取监控指标：
-
-```bash
-$ curl 10.151.30.11:9100/metrics
-...
-node_filesystem_device_error{device="shm",fstype="tmpfs",mountpoint="/rootfs/var/lib/docker/containers/aefe8b1b63c3aa5f27766053ec817415faf8f6f417bb210d266fef0c2da64674/shm"} 1
-node_filesystem_device_error{device="shm",fstype="tmpfs",mountpoint="/rootfs/var/lib/docker/containers/c8652ca72230496038a07e4fe4ee47046abb5f88d9d2440f0c8a923d5f3e133c/shm"} 1
-node_filesystem_device_error{device="tmpfs",fstype="tmpfs",mountpoint="/dev"} 0
-node_filesystem_device_error{device="tmpfs",fstype="tmpfs",mountpoint="/dev/shm"} 0
-...
-```
-
-如果你觉得上面的手动安装方式比较麻烦，我们也可以使用 Helm 的方式安装：
-
-```bash
-$ helm upgrade --install node-exporter --namespace kube-mon stable/prometheus-node-exporter
-```
+每节点应有一个 Running 的 Pod；因 `hostNetwork: true`，节点上会监听 9100。可选：从集群内用某节点 IP 校验 `curl <节点IP>:9100/metrics | grep -E '^node_' | head -5`。
 
 ### T4.4.2、服务发现
 
-当每个节点都运行 node-exporter 后，若使用一个 Service 汇总并通过静态配置指向 Prometheus，只会显示一条数据，需要在指标中手动过滤节点信息。如果手动将所有节点静态加入 Prometheus 配置，后续节点变更时还需手动维护，非常不便。
-
-因此，我们需要 Prometheus 能够**自动发现**各节点的 node-exporter，并按节点进行分组。这正是 Prometheus 的核心功能——**服务发现**。
-
-在 Kubernetes 环境中，Prometheus 通过与 Kubernetes API 集成，支持 5 种服务发现模式：**Node**、**Service**、**Pod**、**Endpoints**、**Ingress**。
-
-例如，我们可以通过 `kubectl` 命令轻松查看集群中所有节点信息：
-
-```bash
-$ kubectl get nodes
-NAME      STATUS   ROLES    AGE    VERSION
-master1   Ready    master   128d   v1.19.3
-node1     Ready    <none>   128d   v1.19.3
-node2     Ready    <none>   125d   v1.19.3
-node3     Ready    <none>   34d    v1.19.3
-```
-
-要让 Prometheus 自动发现集群节点，需使用 **Node 服务发现模式**。在 `prometheus.yml` 中配置如下任务：
+节点扩缩容时若逐条维护静态 target 不便，可使用 Prometheus 的 [Kubernetes 服务发现](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)（支持 Node、Service、Pod、Endpoints、Ingress 等）。`role: node` 时默认目标为 Kubelet 端口 10250，需用 relabel 改为 node-exporter 的 9100，并可将 `instance` 设为节点名、用 `labelmap` 带入节点标签。**以下为与 T4.2.1/T4.3 一致的完整 ConfigMap**（含 prometheus、coredns、redis、kubernetes-nodes、kubernetes-kubelet），请整体替换 `prometheus-config` 后 apply，并按 T4.3.1 方式 reload（NodePort 或 Pod IP）：
 
 ```yaml
-- job_name: 'nodes'
-  kubernetes_sd_configs:
-  - role: node
+# prometheus-cm.yaml（T4.4 完整版）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: kube-mon
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+    rule_files: []
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'coredns'
+        static_configs:
+          - targets: ['kube-dns.kube-system.svc.cluster.local:9153']
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis.kube-mon.svc.cluster.local:9121']
+      # -------- kubernetes-nodes：抓取各节点上的 node-exporter（9100）--------
+      # role: node 时，服务发现默认把 __address__ 设成 <节点IP>:10250（kubelet），
+      # 下面用 relabel 改成 node-exporter 的 9100，并把 instance 设为节点名。
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node   # 从 API 发现所有 Node，每个节点一个 target
+        relabel_configs:
+          # 把抓取地址从 <IP>:10250 改成 <IP>:9100（node-exporter 端口）
+          - source_labels: [__address__]   # 要读取的标签（当前即 "节点:10250"）
+            regex: '(.*):10250'             # 括号 (.*) 捕获 IP/主机部分
+            replacement: '${1}:9100'        # 用捕获组 ${1} 保留主机，端口改为 9100
+            target_label: __address__       # 写回抓取地址，Prometheus 按此请求
+            action: replace                 # 替换：按 regex 匹配后按 replacement 生成新值
+          # 用节点名作为 instance，便于 PromQL 里 node_load1{instance="worker-01"}
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+            action: replace
+          # 把节点上的 K8s 标签（如 zone、arch）映射成指标标签，便于按标签聚合
+          - action: labelmap                 # 按正则批量复制标签，不改值
+            regex: __meta_kubernetes_node_label_(.+)  # 匹配到的元标签名去掉前缀后作为新标签名
+      # -------- kubernetes-kubelet：抓取各节点 kubelet 的 /metrics（HTTPS 10250）--------
+      - job_name: 'kubernetes-kubelet'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https                       # kubelet 只暴露 HTTPS
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt  # Pod 内 SA 的 CA
+          insecure_skip_verify: true         # 跳过服务端证书校验（kubelet 常为自签名）
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token  # Pod 内 SA 的 token，用于认证
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+    alerting:
+      alertmanagers: []
+    storage:
+      tsdb:
+        retention:
+          time: 24h
 ```
-
-设置 `role: node` 后，Prometheus 会通过 Kubernetes API 发现所有节点，并将其作为监控目标。默认会抓取节点 kubelet 的 `/metrics` 接口（HTTP）。
-
-更新 Prometheus ConfigMap 后，需执行 reload 操作使配置生效：
 
 ```bash
-$ kubectl apply -f prometheus-cm.yaml
-# 稍等片刻后执行重载
-$ curl -X POST "http://<PROMETHEUS_SERVICE_IP>:9090/-/reload"
+kubectl apply -f prometheus-cm.yaml
+# 方式一：NodePort
+curl -X POST "http://<节点IP>:31078/-/reload"
+# 方式二：集群内 Pod IP
+# POD_IP=$(kubectl get pods -n kube-mon -l app=prometheus -o jsonpath='{.items[0].status.podIP}')
+# curl -X POST "http://${POD_IP}:9090/-/reload"
 ```
 
-配置生效后，可在 Prometheus Dashboard 的 **Targets** 页面查看数据抓取状态（通过任意节点 IP:30980 访问）。
+说明（语法与参数简要说明）：
+
+- **job_name**：本段抓取配置的名字，会出现在 Prometheus 里该 job 的 `job` 标签上。
+- **kubernetes_sd_configs / role: node**：使用 Kubernetes 服务发现，`role: node` 表示“按节点发现”：从 API 拉取集群所有 Node，每个节点生成一个抓取目标。此时 Prometheus 会为每个 target 自动加上一批以 `__meta_kubernetes_` 开头的**元标签**（例如 `__meta_kubernetes_node_name`、`__meta_kubernetes_node_label_zone` 等），这些标签不会直接作为指标标签暴露，需要通过 **relabel_configs** 转成我们需要的标签（如 `instance`）。
+- **relabel_configs**：在真正发起抓取前，对 target 的标签做改写。
+  - **action: replace**：用 `source_labels` 拼出的字符串去匹配 `regex`，用 `replacement` 里的 `$1`、`${1}` 等引用捕获组，把结果写入 `target_label`。上面把 `__address__` 从 `(.*):10250` 改成 `${1}:9100`，就是把“抓取地址”从 kubelet 的 10250 改成 node-exporter 的 9100。
+  - **action: labelmap**：按 `regex` 匹配现有标签名，把匹配到的标签**复制**一份，新标签名由 `replacement` 决定（默认用正则捕获组）。例如 `regex: __meta_kubernetes_node_label_(.+)` 会把 `__meta_kubernetes_node_label_zone` 映射为 `zone`，这样节点上的 K8s 标签会变成指标标签，便于按 zone/arch 等聚合。
+- **为何 10250 改成 9100**：`role: node` 时，服务发现默认把每个节点的 `__address__` 设成该节点的 kubelet 地址（`<节点IP>:10250`）。我们要抓的是 **node-exporter**（监听 9100），所以用一条 replace 规则把端口改成 9100；这样 `kubernetes-nodes` 这个 job 抓的就是各节点上的 node-exporter，而不是 kubelet。
+- **kubernetes-kubelet 的 scheme / tls / bearer_token**：kubelet 的 metrics 只暴露在 **HTTPS 10250** 上，因此需要 `scheme: https`。`ca_file` 和 `bearer_token_file` 使用 Pod 内挂载的 ServiceAccount 的 CA 与 token，用于与 kubelet 建立 TLS 并做认证；`insecure_skip_verify: true` 表示不校验 kubelet 服务端证书（常见于自签名）。该 job 需要 T4.2.1 中配置的 RBAC（如 `nodes/metrics`、`nodes/proxy` 等）才能访问 kubelet。
+
+更多元标签含义见官方 [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)。
 
 ![nodes_metrics](./images/nodes_metrics.png)
 
-在 Prometheus Targets 页面可以看到，`nodes` 任务已自动发现 4 个节点，但抓取失败，提示 `400 Bad Request` 错误。
-
-原因是 Prometheus 在 `role: node` 模式下，默认访问节点的 `10250` 端口（kubelet 的 HTTPS 端口，需要认证）。而我们需要访问的是 node-exporter 的 `9100` 端口。
-
-为此，我们需要使用 `relabel_configs` 的 `replace` 功能，动态修改抓取目标地址。通过匹配 `__address__` 标签，将其端口替换为 `9100`。所有可在重命名（relabeling）阶段操作的标签，均可在 Targets 页面的 **Before relabeling** 区域查看。
-
 ![prometheus-relabeling](./images/prometheus-relabeling.png)
 
-现在我们来替换掉端口，修改 ConfigMap：
-
-```yaml
-- job_name: 'nodes'
-  kubernetes_sd_configs:
-  - role: node
-  relabel_configs:
-  - source_labels: [__address__]
-    regex: '(.*):10250'
-    replacement: '${1}:9100'
-    target_label: __address__
-    action: replace
-```
-
-使用正则表达式匹配 `__address__` 这个标签，然后将 host 部分保留下来，port 替换成了 9100，现在我们更新配置文件，执行 reload 操作，然后再去看 Prometheus Dashboard Targets 路径下面的 kubernetes-nodes 这个 job 任务是否正常：
-
-![prometheus-relabeling-new](./images/prometheus-relabeling-new.png)
-
-
-
-此时采集的指标数据标签仅包含节点 hostname，不方便按节点属性进行分组查询。为了将 Kubernetes Node 的 Label 也添加为 Prometheus 指标标签，可以使用 `labelmap` 操作：
-
-```yaml
-- job_name: 'kubernetes-nodes'
-  kubernetes_sd_configs:
-  - role: node
-  relabel_configs:
-  - source_labels: [__address__]
-    regex: '(.*):10250'
-    replacement: '${1}:9100'
-    target_label: __address__
-    action: replace
-  - action: labelmap
-    regex: __meta_kubernetes_node_label_(.+)
-```
-
-使用 `labelmap` 并设置正则表达式 `__meta_kubernetes_node_label_(.+)`，可以将匹配的 Kubernetes Node 标签作为 Prometheus 指标标签添加进去。
-
-`kubernetes_sd_configs` 在 `role: node` 模式下可用的元标签包括：
-
-- `__meta_kubernetes_node_name`：节点名称
-- `__meta_kubernetes_node_label_<labelname>`：节点的各个标签
-- `__meta_kubernetes_node_annotation_<annotationname>`：节点的各个注解
-- `__meta_kubernetes_node_address_<address_type>`：节点的各类地址（如 InternalIP、ExternalIP 等）
-
-更多信息请参考官方文档：[kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)。
-
-此外，kubelet 自身也通过 10250 端口暴露监控指标。我们可一并配置抓取任务：
-
-```bash
-- job_name: 'kubelet'
-  kubernetes_sd_configs:
-  - role: node
-  scheme: https
-  tls_config:
-    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    insecure_skip_verify: true
-  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-  relabel_configs:
-  - action: labelmap
-    regex: __meta_kubernetes_node_label_(.+)
-```
-
-1. **HTTPS 协议要求**
-   - kubelet 的 `/metrics` 和 `/stats` 端点强制使用 HTTPS
-   - 必须设置 `scheme: https`
-2. **证书验证处理**
-   - `ca_file` 指向 ServiceAccount 的 CA 证书
-   - `insecure_skip_verify: true` 跳过服务端证书验证
-   - 这是因为 kubelet 使用自签名证书，且 Kubernetes 集群内通信可信任
-3. **认证机制**
-   - `bearer_token_file` 使用 ServiceAccount 的访问令牌
-   - 该令牌具有访问 kubelet API 的 RBAC 权限
-   - Prometheus 需要对应的 ClusterRole 授权才能读取指标
-4. **标签映射**
-   - 通过 `labelmap` 将节点的 Kubernetes 标签（如 `zone`、`instance-type` 等）继承到指标中
-   - 便于后续按节点属性进行聚合和告警
-
-**权限验证：**
-确保部署 Prometheus 时已配置正确的 ServiceAccount 和 ClusterRoleBinding，否则会出现 403 Forbidden 错误。典型的授权配置包括：
-
-- `nodes/stats`、`nodes/metrics`、`nodes/proxy` 资源的 `get` 权限
-
-更新配置后，执行 `curl -X POST "http://prometheus:9090/-/reload"` 重载配置，在 Targets 页面验证 kubelet 指标抓取状态。
-
-![prometheus-kubelet](./images/prometheus-kubelet.png)
-
-
-
-现在可以看到 `kubernetes-kubelet` 和 `kubernetes-nodes` 这两个 job 任务都已经配置成功了，而且二者的 Labels 标签都和集群的 node 节点标签保持一致了。
-
-现在我们切换到 Graph 路径下查看采集的一些指标数据，比如查询 node_load1 指标：
+在 **Query -> Graph** 中可查询 `node_load1`（各节点 1 分钟负载），或按节点名过滤，如 `node_load1{instance="worker-01"}`（将 `worker-01` 换为实际节点名）。
 
 ![prometheus-node-load1](./images/prometheus-node-load1.png)
-
-我们可以看到 5 个节点对应的 `node_load1` 指标数据都查询出来了，同样的，我们可以使用 `PromQL` 语句来进行更复杂的一些聚合查询操作，还可以根据我们的 Labels 标签对指标数据进行聚合，比如，我们这里只查询 `node3` 节点的数据，可以使用表达式 `node_load1{instance="node3"}` 来进行查询：
-
-![prometheus-node3-load1](./images/prometheus-node3-load1.png)
 
 ## T4.5、监控容器
 
