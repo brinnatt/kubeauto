@@ -827,40 +827,96 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 
 ## T4.5、监控容器
 
-说到容器监控我们自然会想到 `cAdvisor`，我们前面也说过 cAdvisor 已经内置在了 kubelet 组件之中，所以我们不需要单独去安装，`cAdvisor` 的数据路径为 `/api/v1/nodes/<node>/proxy/metrics`，但是我们不推荐使用这种方式，因为这种方式是通过 APIServer 去代理访问的。
+容器监控通常使用 kubelet 内置的 **cAdvisor**，无需单独安装。cAdvisor 指标可通过 API Server 代理路径 `/api/v1/nodes/<node>/proxy/metrics/cadvisor` 获取，但该方式会加重 API Server 负担，**不推荐**在大规模集群使用。推荐直接抓取各节点 kubelet 的 **HTTPS :10250/metrics/cadvisor**，与 T4.4 的 `kubernetes-kubelet` 一样使用 `role: node` 服务发现和 ServiceAccount 认证。
 
-对于大规模的集群会对 APIServer 造成很大的压力，所以我们可以直接通过访问 kubelet 的 `/metrics/cadvisor` 这个路径来获取 cAdvisor 的数据，同样我们这里使用 node 的服务发现模式，因为每一个节点下面都有 kubelet，自然都有 `cAdvisor` 采集数据指标，配置如下：
+在 T4.4 的 `prometheus-config` 的 `scrape_configs` 中**新增** `kubernetes-cadvisor` job。为与上文一致、避免漏配或缩进错误，下面给出**含 T4.4 全部 job 并新增 kubernetes-cadvisor 的完整 ConfigMap**（[Prometheus 官方 Kubernetes 示例](https://github.com/prometheus/prometheus/blob/main/documentation/examples/prometheus-kubernetes.yml) 中 cadvisor 使用顶层 `metrics_path`，此处保持一致）：
 
 ```yaml
-- job_name: 'kubernetes-cadvisor'
-  kubernetes_sd_configs:
-  - role: node
-  scheme: https
-  tls_config:
-    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-  relabel_configs:
-  - action: labelmap
-    regex: __meta_kubernetes_node_label_(.+)
-    replacement: $1
-  - source_labels: [__meta_kubernetes_node_name]
-    regex: (.+)
-    replacement: /metrics/cadvisor    # <nodeip>/metrics -> <nodeip>/metrics/cadvisor
-    target_label: __metrics_path__
-  # 下面的方式不推荐使用
-  # - target_label: __address__
-  #   replacement: kubernetes.default.svc:443
-  # - source_labels: [__meta_kubernetes_node_name]
-  #   regex: (.+)
-  #   target_label: __metrics_path__
-  #   replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+# prometheus-cm.yaml（T4.4 + T4.5 完整版）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: kube-mon
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+    rule_files: []
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'coredns'
+        static_configs:
+          - targets: ['kube-dns.kube-system.svc.cluster.local:9153']
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis.kube-mon.svc.cluster.local:9121']
+      # -------- kubernetes-nodes：抓取各节点上的 node-exporter（9100）--------
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            replacement: '${1}:9100'
+            target_label: __address__
+            action: replace
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+            action: replace
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      # -------- kubernetes-kubelet：抓取各节点 kubelet 的 /metrics（HTTPS 10250）--------
+      - job_name: 'kubernetes-kubelet'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      # -------- kubernetes-cadvisor：抓取各节点 kubelet 的 /metrics/cadvisor（HTTPS 10250）--------
+      # K8s 1.7.3+ 的 cAdvisor 指标从 kubelet /metrics 中拆出，需单独抓取此路径；RBAC 与 kubernetes-kubelet 相同。
+      - job_name: 'kubernetes-cadvisor'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        metrics_path: /metrics/cadvisor
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+            action: replace
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+    alerting:
+      alertmanagers: []
+    storage:
+      tsdb:
+        retention:
+          time: 24h
 ```
 
-上面的配置和我们之前配置 `node-exporter` 几乎一样，区别是我们这里使用了 https 协议，另外需要注意的是配置了 ca.cart 和 token 这两个文件，这两个文件是 Pod 启动后自动注入进来的，然后加上 `__metrics_path__` 的访问路径 `/metrics/cadvisor`，现在更新下配置，然后查看 Targets 路径：
+```bash
+kubectl apply -f prometheus-cm.yaml
+# 使配置生效（与 T4.4 一致）
+curl -X POST "http://<节点IP>:31078/-/reload"
+```
+
+说明：`kubernetes-cadvisor` 与 `kubernetes-kubelet` 共用同一套 RBAC（T4.2.1 的 `nodes/metrics`、`nodes/proxy` 等），均直接访问节点 `:10250`。使用顶层 **metrics_path: /metrics/cadvisor**（[官方示例](https://github.com/prometheus/prometheus/blob/main/documentation/examples/prometheus-kubernetes.yml) 写法），无需用 relabel 改写 `__metrics_path__`。Pod 内 `ca.crt` 与 `token` 由 ServiceAccount 自动挂载。更新配置并 reload 后，在 Targets 中可看到 `kubernetes-cadvisor` 任务：
 
 ![prometheus-pod-load1](./images/prometheus-pod-load1.png)
 
-我们可以切换到 Graph 路径下面查询容器相关数据，比如我们这里来查询集群中所有 Pod 的 CPU 使用情况。kubelet 中的 cAdvisor 采集的指标及含义，可以查看 [Monitoring cAdvisor with Prometheus](https://github.com/google/cadvisor/blob/master/docs/storage/prometheus.md) 说明。其中有一项：
+在 **Query → Graph** 中可查询容器相关指标。下面以集群中所有 Pod 的 CPU 使用率为例。cAdvisor 指标含义见 [Monitoring cAdvisor with Prometheus](https://github.com/google/cadvisor/blob/master/docs/storage/prometheus.md)。例如：
 
 `container_cpu_usage_seconds_total` (Counter) 累计消耗的 CPU 时间 (单位：秒)
 
@@ -928,7 +984,7 @@ Pod 内存使用率的计算就简单多了，直接用内存实际使用量除�
 sum(container_memory_rss{image!=""}) by(namespace, pod) / sum(container_spec_memory_limit_bytes{image!=""}) by(namespace, pod) * 100 != +inf
 ```
 
-在 promethues 里面执行上面的 promQL 语句可以得到下面的结果：
+在 Prometheus 的 Graph 中执行上述 PromQL 可得类似下面结果：
 
 ![prometheus-pod-mem](./images/prometheus-pod-mem.png)
 
