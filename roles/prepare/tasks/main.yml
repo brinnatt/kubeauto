@@ -62,10 +62,10 @@
         line: "{{ ansible_env.SSH_CLIENT.split(' ')[0] }}    registry.talkschool.cn"
 
     # Calico requires unique hostnames across all nodes
+    # hostname module: do not use 'use: systemd' for Ansible 2.8 compatibility (only 'name' is supported there)
     - name: set node hostname
       hostname:
         name: "{{ K8S_NODENAME }}"
-        use: systemd
       when: "ENABLE_SETTING_HOSTNAME|bool"
 
     # 约定：使用当前 inventory 的 groups.kube_master[0] 作为 /etc/hosts 汇总源，见 docs/design-first-master.md
