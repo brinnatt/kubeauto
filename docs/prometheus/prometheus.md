@@ -912,7 +912,7 @@ kubectl apply -f prometheus-cm.yaml
 curl -X POST "http://<节点IP>:31078/-/reload"
 ```
 
-说明：`kubernetes-cadvisor` 与 `kubernetes-kubelet` 共用同一套 RBAC（T4.2.1 的 `nodes/metrics`、`nodes/proxy` 等），均直接访问节点 `:10250`。使用顶层 **metrics_path: /metrics/cadvisor**（[官方示例](https://github.com/prometheus/prometheus/blob/main/documentation/examples/prometheus-kubernetes.yml) 写法），无需用 relabel 改写 `__metrics_path__`。Pod 内 `ca.crt` 与 `token` 由 ServiceAccount 自动挂载。更新配置并 reload 后，在 Targets 中可看到 `kubernetes-cadvisor` 任务：
+说明：`kubernetes-cadvisor` 与 `kubernetes-kubelet` 共用同一套 RBAC（T4.2.1 的 `nodes/metrics`、`nodes/proxy` 等），均直接访问节点 `:10250`。使用顶层 **metrics_path: /metrics/cadvisor**（[官方示例](https://github.com/prometheus/prometheus/blob/main/documentation/examples/prometheus-kubernetes.yml) 写法），无需用 relabel 改写 `__metrics_path__`。Pod 内 `ca.crt` 与 `token` 由 ServiceAccount 自动挂载。更新配置并 reload 后，在 Status -> Target health 中可看到 `kubernetes-cadvisor` 任务：
 
 ![prometheus-pod-load1](./images/prometheus-pod-load1.png)
 
