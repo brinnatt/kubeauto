@@ -15,6 +15,7 @@ ANSIBLE_RUNNER_DIR = get_pkg_dir('ansible_runner')
 added_files = [
     ('playbooks', 'playbooks'),
     ('roles', 'roles'),
+    ('conf', 'conf')
 ]
 
 a = Analysis(
