@@ -4,6 +4,7 @@ Main cluster operations for kubeauto
 # ansible_runner usage: on host use private_data_dir in temp; bubblewrap/docker use
 # process_isolation with bwrap or container_image. See ansible-runner docs for details.
 import ipaddress
+import os
 import re
 import shutil
 import ansible_runner
@@ -279,6 +280,57 @@ class ClusterManager:
             "__ingress_nginx_ver__": kc.v_ingressnginx,
         }
 
+    @staticmethod
+    def _env_for_system_subprocess() -> dict:
+        """Return envvars so ansible_runner subprocess (and thus ssh) use system libs, not the PyInstaller bundle.
+
+        Used when kubecli is run as a PyInstaller one-file binary on Linux (e.g. Kylin). Without this, ssh
+        can load libcrypto from the unpacked bundle and fail with "OPENSSL_1_1_1f not found".
+
+        Background
+        ----------
+        PyInstaller bundles the Python interpreter and shared-library dependencies (e.g. libcrypto, libssl)
+        from the build machine (the host where pyinstaller is run) into the executable. At runtime the bootloader extracts them to a temporary directory
+        (sys._MEIPASS, e.g. /tmp/_MEIxxxxxx) and prepends that path to LD_LIBRARY_PATH so the frozen process
+        can load those .so files. The original LD_LIBRARY_PATH is saved in LD_LIBRARY_PATH_ORIG.
+
+        References:
+        - What PyInstaller bundles and one-file extraction:
+          https://pyinstaller.org/en/stable/operating-mode.html
+        - Bootstrap: LD_LIBRARY_PATH_ORIG and prepend to LD_LIBRARY_PATH (GNU/Linux):
+          https://pyinstaller.org/en/stable/advanced-topics.html#the-bootstrap-process-in-detail
+
+        Why ssh sees the bundle's libcrypto
+        -----------------------------------
+        Subprocesses inherit the parent's environment. The chain is: kubecli -> ansible_runner -> ansible-playbook
+        -> ssh. So ssh runs with LD_LIBRARY_PATH still pointing at _MEIPASS. The dynamic linker then loads
+        libcrypto from the bundle instead of the system. Host ssh (e.g. on Kylin) is built against the host's
+        OpenSSL and expects symbols like OPENSSL_1_1_1f from the host's libcrypto; the bundled libcrypto from
+        the build machine does not provide that symbol version, so ssh fails with "OPENSSL_1_1_1f not found".
+
+        Reference:
+        - Launching external programs and inherited library path:
+          https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application
+
+        Solution
+        --------
+        Before spawning the external chain (ansible_runner), pass envvars that restore LD_LIBRARY_PATH from
+        LD_LIBRARY_PATH_ORIG (or set it to empty). Then the child processes use system libraries only; host ssh
+        and host libcrypto remain ABI-compatible.
+
+        Reference (official recipe):
+        - LD_LIBRARY_PATH / LIBPATH considerations:
+          https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
+        """
+        env = {}
+        if sys.platform.startswith("linux"):
+            lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
+            if lp_orig is not None:
+                env["LD_LIBRARY_PATH"] = lp_orig
+            else:
+                env["LD_LIBRARY_PATH"] = ""
+        return env
+
     def _run_playbook(
         self,
         cluster: str,
@@ -299,6 +351,7 @@ class ClusterManager:
             pb_path = get_resource_path(*str(playbook).split("/"))
         else:
             pb_path = get_resource_path("playbooks", playbook)
+        envvars = self._env_for_system_subprocess()
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             result = ansible_runner.run(
                 private_data_dir=tmp_dir,
@@ -307,6 +360,7 @@ class ClusterManager:
                 extravars=ev,
                 roles_path=get_resource_path("roles"),
                 cmdline=cmdline or "",
+                envvars=envvars,
             )
         if fail_msg and result.rc != 0:
             logger.error(fail_msg, extra=LOG_STDOUT)
@@ -967,6 +1021,7 @@ class SetupAIO(task.Task):
             f"Reverting failed all-in-one install (task failed: {result.exception_str}).",
             extra=LOG_STDOUT,
         )
+        envvars = self._env_for_system_subprocess()
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             run_result = ansible_runner.run(
                 private_data_dir=tmp_dir,
@@ -974,6 +1029,7 @@ class SetupAIO(task.Task):
                 inventory=str(m.clusters_dir / self.AIO_CLUSTER / "hosts"),
                 extravars=m._yaml_to_dict(m.clusters_dir / self.AIO_CLUSTER / "config.yml"),
                 roles_path=get_resource_path("roles"),
+                envvars=envvars,
             )
         if run_result.rc != 0:
             logger.error(f"Revert playbook failed (exit code {run_result.rc}).", extra=LOG_STDOUT)
