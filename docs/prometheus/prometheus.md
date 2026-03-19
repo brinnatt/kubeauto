@@ -809,13 +809,24 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 
 - **job_name**：本段抓取配置的名字，会出现在 Prometheus 里该 job 的 `job` 标签上。
 - **kubernetes_sd_configs / role: node**：使用 Kubernetes 服务发现，`role: node` 表示“按节点发现”：从 API 拉取集群所有 Node，每个节点生成一个抓取目标。此时 Prometheus 会为每个 target 自动加上一批以 `__meta_kubernetes_` 开头的**元标签**（例如 `__meta_kubernetes_node_name`、`__meta_kubernetes_node_label_zone` 等），这些标签不会直接作为指标标签暴露，需要通过 **relabel_configs** 转成我们需要的标签（如 `instance`）。
-- **relabel_configs**：在真正发起抓取前，对 target 的标签做改写。
-  - **action: replace**：用 `source_labels` 拼出的字符串去匹配 `regex`，用 `replacement` 里的 `$1`、`${1}` 等引用捕获组，把结果写入 `target_label`。上面把 `__address__` 从 `(.*):10250` 改成 `${1}:9100`，就是把“抓取地址”从 kubelet 的 10250 改成 node-exporter 的 9100。
-  - **action: labelmap**：按 `regex` 匹配现有标签名，把匹配到的标签**复制**一份，新标签名由 `replacement` 决定（默认用正则捕获组）。例如 `regex: __meta_kubernetes_node_label_(.+)` 会把 `__meta_kubernetes_node_label_zone` 映射为 `zone`，这样节点上的 K8s 标签会变成指标标签，便于按 zone/arch 等聚合。
+- **relabel_configs**：在真正发起抓取前，对 target 的标签做改写。这里**标签**指 key-value 对：每个 target 有一组「标签名(key)=标签值(value)」。
+  - **source_labels 和 regex 的关系（容易混）**：`source_labels` 里写的是**标签名（key）**，不是 key:value。Prometheus 会取出这些 key 在当前 target 上对应的 **value**，按顺序用分隔符（默认 `;`）拼成一个字符串；**regex 匹配的是这个「拼接后的 value 字符串」**，不是 key。例如 `source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]`、`regex: "true"` 表示：取名为 `__meta_kubernetes_service_annotation_prometheus_io_scrape` 的标签的**值**（例如 `"true"`），若该值匹配正则 `"true"` 则执行后续动作（如 keep 保留该 target）。
+  - **action: replace**：用上述「source_labels 的 value 拼接串」去匹配 `regex`，用 `replacement` 里的 `$1`、`${1}` 等引用捕获组，把结果写入 `target_label`。上面把 `__address__` 从 `(.*):10250` 改成 `${1}:9100`，就是把“抓取地址”从 kubelet 的 10250 改成 node-exporter 的 9100。
+  - **action: labelmap**：这里 regex 作用对象不同——**匹配的是「标签名(key)」**，把匹配到的标签整对复制，新标签名由 `replacement` 决定。例如 `regex: __meta_kubernetes_node_label_(.+)` 匹配的是**现有标签的名字**（如 `__meta_kubernetes_node_label_zone`），复制后新名字为 `zone`。
 - **为何 10250 改成 9100**：`role: node` 时，服务发现默认把每个节点的 `__address__` 设成该节点的 kubelet 地址（`<节点IP>:10250`）。我们要抓的是 **node-exporter**（监听 9100），所以用一条 replace 规则把端口改成 9100；这样 `kubernetes-nodes` 这个 job 抓的就是各节点上的 node-exporter，而不是 kubelet。
 - **kubernetes-kubelet 的 scheme / tls / bearer_token**：kubelet 的 metrics 只暴露在 **HTTPS 10250** 上，因此需要 `scheme: https`。`ca_file` 和 `bearer_token_file` 使用 Pod 内挂载的 ServiceAccount 的 CA 与 token，用于与 kubelet 建立 TLS 并做认证；`insecure_skip_verify: true` 表示不校验 kubelet 服务端证书（常见于自签名）。该 job 需要 T4.2.1 中配置的 RBAC（如 `nodes/metrics`、`nodes/proxy` 等）才能访问 kubelet。
 
-更多元标签含义见官方 [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)。
+**Kubernetes 服务发现元标签（`__meta_kubernetes_*`）从哪里来？**
+
+下面用到的 `source_labels` 如 `__meta_kubernetes_node_name`、`__meta_kubernetes_service_annotation_prometheus_io_scrape` 等，**不是我们在 YAML 里定义的**，而是 **Prometheus 在服务发现阶段自动生成并挂到每个 target 上的**。当你配置了 `kubernetes_sd_configs` 且 `role` 为 `node`、`endpoints`、`pod`、`service`、`ingress` 等时，Prometheus 会请求 Kubernetes API，为每个发现到的目标附加一批以 `__meta_kubernetes_` 开头的**元标签**；这些标签只用于 relabel，不会直接出现在最终指标上。  
+
+- **谁定义的**：由 **Prometheus 的 Kubernetes 服务发现逻辑**定义，完整列表与含义见官方配置文档 [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)（页内按 role 分：node、service、pod、endpoints、endpointslice、ingress）。  
+- **命名规则**：`__meta_kubernetes_<role>_<类型>_<名称>`。例如：`node_name`、`node_label_zone`（节点标签）、`service_name`、`service_annotation_<key>`（Service 的 annotation，key 中的 `.`、`/` 会变成 `_`，如 `prometheus.io/scrape` → `prometheus_io_scrape`）、`pod_name`、`endpoint_port_name` 等。  
+- **本手册各 role 常用元标签速查**：  
+  - **role: node**：`__meta_kubernetes_node_name`、`__meta_kubernetes_node_label_<标签名>`、默认 `__address__` 为节点 IP:10250。  
+  - **role: endpoints**：每个 target 对应一个 Endpoint，会带上其所属 **Service** 与（若由 Pod 支撑）**Pod** 的元数据，例如 `__meta_kubernetes_namespace`、`__meta_kubernetes_service_name`、`__meta_kubernetes_service_annotation_<key>`（如 `prometheus_io_scrape`、`prometheus_io_port`）、`__meta_kubernetes_pod_name`、`__meta_kubernetes_endpoint_port_name` 等。  
+
+后续 T4.6、T4.7 中出现的 `__meta_kubernetes_*` 均来自上述机制，不再重复说明；需要完整列表时请直接查阅官方 [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)。
 
 ![nodes_metrics](./images/nodes_metrics.png)
 
@@ -990,137 +1001,245 @@ sum(container_memory_rss{image!=""}) by(namespace, pod) / sum(container_spec_mem
 
 ## T4.6、监控 apiserver
 
-apiserver 作为 Kubernetes 最核心的组件，监控也是必须的，对于 apiserver 的监控我们可以直接通过 kubernetes 的 Service 来获取：
+API Server 是 Kubernetes 核心组件，需纳入监控。集群内默认会有一个指向 API Server 的 Service `kubernetes`（`default` namespace），例如：
 
 ```bash
-$ kubectl get svc
-NAME             TYPE           CLUSTER-IP       EXTERNAL-IP             PORT(S)          AGE
-kubernetes       ClusterIP      10.96.0.1        <none>                  443/TCP          33d
+kubectl get svc kubernetes -n default
+# NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+# kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   ...
 ```
 
-上面这个 Service 就是我们集群的 apiserver 在集群内部的 Service 地址，要自动发现 Service 类型的服务，我们就需要用到 `role: Endpoints`：
+使用 Prometheus 的 **`role: endpoints`** 服务发现时，会拉取到集群内所有 Endpoints；需通过 **relabel `action: keep`** 只保留 `default` namespace、服务名 `kubernetes`、端口名 `https` 的 target，即 API Server。做法与 [Prometheus 官方 Kubernetes 示例](https://github.com/prometheus/prometheus/blob/main/documentation/examples/prometheus-kubernetes.yml) 一致。
+
+在 T4.5 的 `prometheus-config` 的 `scrape_configs` 中**新增** `kubernetes-apiservers` job。下面给出**含 T4.5 全部 job 并新增 kubernetes-apiservers 的完整 ConfigMap**，直接覆盖 apply 后 reload 即可：
+
+```yaml
+# prometheus-cm.yaml（T4.5 + T4.6 完整版）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: kube-mon
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+    rule_files: []
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'coredns'
+        static_configs:
+          - targets: ['kube-dns.kube-system.svc.cluster.local:9153']
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis.kube-mon.svc.cluster.local:9121']
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            replacement: '${1}:9100'
+            target_label: __address__
+            action: replace
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+            action: replace
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      - job_name: 'kubernetes-kubelet'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      - job_name: 'kubernetes-cadvisor'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        metrics_path: /metrics/cadvisor
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+            action: replace
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      # -------- kubernetes-apiservers：仅抓取 default/kubernetes 的 https 端口 --------
+      # role: endpoints 会发现所有 Endpoints；keep 只保留 namespace;service_name;port_name 匹配的 target
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+    alerting:
+      alertmanagers: []
+    storage:
+      tsdb:
+        retention:
+          time: 24h
+```
 
 ```bash
-- job_name: 'kubernetes-apiservers'
-  kubernetes_sd_configs:
-  - role: endpoints
+kubectl apply -f prometheus-cm.yaml
+curl -X POST "http://<节点IP>:31078/-/reload"
 ```
 
-这个任务是定义一个类型为 endpoints 的 kubernetes_sd_configs，添加到 Prometheus ConfigMap 配置文件中，然后更新配置：
-
-```bash
-$ kubectl apply -f prometheus-cm.yaml
-configmap/prometheus-config configured
-# 隔一会儿执行reload操作
-$ curl -X POST "http://10.244.3.174:9090/-/reload"
-```
-
-更新完成后，我们再去查看 Prometheus Dashboard 的 target 页面：
+说明：`__meta_kubernetes_namespace`、`__meta_kubernetes_service_name`、`__meta_kubernetes_endpoint_port_name` 由 Prometheus 在 `role: endpoints` 时自动附加（见 T4.4「元标签从哪里来」及 [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)）。`action: keep` 表示只保留 `source_labels` 拼接后与 `regex` 匹配的 target；此处即仅保留 `default` namespace、服务名 `kubernetes`、端口名 `https` 的 endpoint（即 API Server），单节点与 HA 均适用。更新后可在 **Status → Targets** 中确认 `kubernetes-apiservers` 下仅有一个实例，在 **Query → Graph** 中可查询如 `apiserver_request_total` 等指标。
 
 ![prometheus-apiserver](./images/prometheus-apiserver.png)
 
-我们可以看到 kubernetes-apiservers 下面出现了很多实例，这是因为我们使用的是 Endpoints 类型的服务发现，所以 Prometheus 把所有的 Endpoints 服务都抓取过来了。我们需要服务名为 `kubernetes` 的 apiserver 也在这个列表之中，应该怎样过滤出这个服务来呢？
+**其他系统组件**：kube-controller-manager、kube-scheduler 等通常不在 default 的 `kubernetes` Service 中暴露，若需监控需在 `kube-system` 下为对应组件单独创建 Service并暴露指标端口（如 kube-scheduler 常见 10251，kube-controller-manager 常见 10252），再通过 endpoints 或静态 job 抓取。
 
-还记得前面的 `relabel_configs` 吗？我们需要使用这个配置，只是我们这里不是使用 `replace` 这个动作了，而是 `keep`，就是只把符合我们要求的给保留下来，哪些才是符合我们要求的呢？
+## T4.7、监控 Pod（Endpoints 自动发现）
 
-我们可以把鼠标放置在任意一个 target 上，可以查看到 `Before relabeling`里面所有的元数据，比如我们要过滤的服务是 `default` namespace 下面服务名为 `kubernetes` 的元数据，所以这里我们就可以根据对应的 `__meta_kubernetes_namespace` 和 `__meta_kubernetes_service_name` 这两个元数据来 relabel，另外由于 kubernetes 这个服务对应的端口是 443，需要使用 https 协议，所以 ca 证书要配置上，如下所示：
+API Server 的监控本质上是 Endpoints 的一种（default/kubernetes）。本节配置 **`kubernetes-endpoints`** job，用于发现所有带 `prometheus.io/scrape=true` 注解的 Service 背后的 Pod，并按注解设置抓取端口、路径和协议，这样新增带 metrics 的服务只需在 Service 上打注解即可被自动抓取，无需再写静态 job。
 
-```yaml
-- job_name: 'kubernetes-apiservers'
-  kubernetes_sd_configs:
-  - role: endpoints
-  scheme: https
-  tls_config:
-    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-  relabel_configs:
-  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
-    action: keep
-    regex: default;kubernetes;https
-```
+**本段用到的 `source_labels` 从哪里来？**
 
-现在重新更新配置文件、重新加载 Prometheus，切换到 Prometheus 的 Targets 路径下查看：
+`kubernetes-endpoints` 使用 `role: endpoints`。Prometheus 会为**每个 Service 的每个 Endpoint**（即每个 Pod 的每个端口）生成一个 target，并自动附上该 **Service** 的元数据（见上文 T4.4 说明中的「Kubernetes 服务发现元标签」）。其中：  
 
-![prometheus-apiserver1](./images/prometheus-apiserver1.png)
+- **Service 的 annotations** 会变成 `__meta_kubernetes_service_annotation_<key>`，`<key>` 里的不合法字符（如 `.`、`/`）会变成下划线。例如你在 Service 上写了 `prometheus.io/scrape: "true"`、`prometheus.io/port: "9121"`，对应的元标签就是 `__meta_kubernetes_service_annotation_prometheus_io_scrape`、`__meta_kubernetes_service_annotation_prometheus_io_port`。  
+- 因此 relabel 里写 `source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]` 表示「取**标签名**为这个的标签」；Prometheus 会拿该标签的**值**（即注解的值，如 `"true"`）去匹配 `regex: "true"`，`action: keep` 表示只保留**值**匹配的 target（即只保留 `prometheus.io/scrape` 注解为 `true` 的 Service 的 target）。**小结**：`source_labels` 填的是 key，`regex` 匹配的是这些 key 对应的 value（拼接后的字符串）。
 
-现在可以看到 `kubernetes-apiserver` 这个任务下面只有 apiserver 这一个实例了，证明我们的 `relabel` 是成功的，现在我们切换到 Graph 路径下面查看下采集到的数据，比如查询 apiserver 总的请求数：
+完整元标签列表与设计说明见官方 [kubernetes_sd_config - endpoints 与 service 部分](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)。
 
-![prometheus-apiserver2](./images/prometheus-apiserver2.png)
-
-这样我们就完成了对 Kubernetes APIServer 的监控。
-
-另外如果我们要监控其他系统组件，比如 kube-controller-manager、kube-scheduler 应该怎么做呢？
-
-由于 apiserver 服务在 default namespace 下使用 Service kubernetes，而其余组件服务在 kube-system namespace 下面，如果我们想要监控这些组件的话，需要手动创建单独的 Service，其中 kube-sheduler 的指标数据端口为 10251，kube-controller-manager 对应的端口为 10252，大家可以尝试自己配置这几个系统组件。
-
-## T4.7、监控 Pod
-
-上面的 apiserver 实际上就是一种特殊的 Endpoints，现在我们配置一个任务，专门用来发现普通类型的 Endpoint，也就是 Service 关联的 Pod 列表：
+在 T4.6 的 `prometheus-config` 的 `scrape_configs` 中**新增** `kubernetes-endpoints` job；同时**去掉**静态的 `redis` job（redis 改为通过 Endpoints 发现）。下面给出**含 T4.6 全部 job、去掉 redis 静态、并新增 kubernetes-endpoints 的完整 ConfigMap**：
 
 ```yaml
-- job_name: 'kubernetes-endpoints'
-  kubernetes_sd_configs:
-  - role: endpoints
-  relabel_configs:
-  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-    action: keep
-    regex: true
-  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
-    action: replace
-    target_label: __scheme__
-    regex: (https?)
-  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
-    action: replace
-    target_label: __metrics_path__
-    regex: (.+)
-  - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-    action: replace
-    target_label: __address__
-    regex: ([^:]+)(?::\d+)?;(\d+)  # RE2 正则规则，+是一次多多次，?是0次或1次，其中?:表示非匹配组(意思就是不获取匹配结果)
-    replacement: $1:$2
-  - action: labelmap
-    regex: __meta_kubernetes_service_label_(.+)
-  - source_labels: [__meta_kubernetes_namespace]
-    action: replace
-    target_label: kubernetes_namespace
-  - source_labels: [__meta_kubernetes_service_name]
-    action: replace
-    target_label: kubernetes_name
-  - source_labels: [__meta_kubernetes_pod_name]
-    action: replace
-    target_label: kubernetes_pod_name
-```
-
-注意我们这里在 `relabel_configs` 区域做了大量的配置，特别是第一个 `__meta_kubernetes_service_annotation_prometheus_io_scrape` 为 true 的才保留下来，这就是说要想自动发现集群中的 Endpoint，就需要我们在 Service 的 `annotation` 区域添加 `prometheus.io/scrape=true` 的声明，现在我们先将上面的配置更新，查看下效果：
-
-![prometheus-endpoints](./images/prometheus-endpoints.png)
-
-我们可以看到 `kubernetes-endpoints` 这个任务下面只发现了两个服务，这是因为我们在 `relabel_configs` 中过滤了 `annotation` 有 `prometheus.io/scrape=true` 的 Service，而现在我们系统中只有一个 `kube-dns` 服务符合要求，该 Service 下面有两个实例，所以出现了两个实例：
-
-```bash
-$ kubectl get svc kube-dns -n kube-system -o yaml
+# prometheus-cm.yaml（T4.6 + T4.7 完整版，redis 改为 endpoints 发现）
 apiVersion: v1
-kind: Service
+kind: ConfigMap
 metadata:
-  annotations:
-    prometheus.io/port: "9153"  # metrics 接口的端口
-    prometheus.io/scrape: "true"  # 这个注解可以让prometheus自动发现
-  creationTimestamp: "2019-11-08T11:59:50Z"
-  labels:
-    k8s-app: kube-dns
-    kubernetes.io/cluster-service: "true"
-    kubernetes.io/name: KubeDNS
-  name: kube-dns
-  namespace: kube-system
-......
+  name: prometheus-config
+  namespace: kube-mon
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+    rule_files: []
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      - job_name: 'coredns'
+        static_configs:
+          - targets: ['kube-dns.kube-system.svc.cluster.local:9153']
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            replacement: '${1}:9100'
+            target_label: __address__
+            action: replace
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+            action: replace
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      - job_name: 'kubernetes-kubelet'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      - job_name: 'kubernetes-cadvisor'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        metrics_path: /metrics/cadvisor
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+            action: replace
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+      # -------- kubernetes-endpoints：仅抓取带 prometheus.io/scrape=true 的 Service 的 Endpoints --------
+      - job_name: 'kubernetes-endpoints'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+            action: replace
+            target_label: __scheme__
+            regex: (https?)
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            action: replace
+            target_label: kubernetes_name
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+    alerting:
+      alertmanagers: []
+    storage:
+      tsdb:
+        retention:
+          time: 24h
 ```
 
-现在我们在之前创建的 redis 这个 Service 中添加上 `prometheus.io/scrape=true` 这个 annotation：
+**步骤一：为 redis Service 添加 Prometheus 注解**（若尚未添加）。metrics 在 redis-exporter 的 9121 端口：
 
 ```yaml
-# prome-redis.yaml
-kind: Service
+# prome-redis.yaml（仅 Service 片段，用于 kubectl apply）
 apiVersion: v1
+kind: Service
 metadata:
   name: redis
   namespace: kube-mon
@@ -1131,85 +1250,92 @@ spec:
   selector:
     app: redis
   ports:
-  - name: redis
-    port: 6379
-    targetPort: 6379
-  - name: prom
-    port: 9121
-    targetPort: 9121
+    - name: redis
+      port: 6379
+      targetPort: 6379
+    - name: prom
+      port: 9121
+      targetPort: 9121
 ```
-
-由于 redis 服务的 metrics 接口在 9121 这个 redis-exporter 服务上面，所以我们还需要添加一个 `prometheus.io/port=9121` 这样的 annotations，然后更新这个 Service：
 
 ```bash
-$ kubectl apply -f prome-redis.yaml
-deployment.apps "redis" unchanged
-service "redis" changed
+kubectl apply -f prome-redis.yaml
 ```
 
-更新完成后，去 Prometheus 查看 Targets 路径，可以看到 redis 服务自动出现在了 `kubernetes-endpoints` 这个任务下面：
+**步骤二：应用 Prometheus 配置并 reload**
+
+```bash
+kubectl apply -f prometheus-cm.yaml
+curl -X POST "http://<节点IP>:31078/-/reload"
+```
+
+说明：仅当 Service 的 annotation `prometheus.io/scrape` 为 `true` 时该 Service 的 Endpoints 会被保留；`prometheus.io/port`、`prometheus.io/path`、`prometheus.io/scheme` 可选，用于覆盖默认端口、路径和协议。CoreDNS 的 kube-dns Service 通常已带 `prometheus.io/scrape=true` 和 `prometheus.io/port=9153`，因此 `kubernetes-endpoints` 下会看到 kube-dns 的实例；为 redis 打上注解后也会自动出现。之后新增带 `/metrics` 的服务只需在对应 Service 上添加相同注解，无需再改 Prometheus ConfigMap。
+
+![prometheus-endpoints](./images/prometheus-endpoints.png)
 
 ![prometheus-pod-redis](./images/prometheus-pod-redis.png)
 
-以后有了新的服务，如果服务本身提供了 `/metrics` 接口，我们就完全不需要用静态的方式去配置了，所以现在可以把前面配置的 redis 的静态配置去掉了。
-
 ## T4.8、kube-state-metrics
 
-上面我们配置了基于 Endpoints 的自动服务发现监控，但这主要针对应用内部的自定义监控指标，需要应用本身提供 `/metrics` HTTP 端点，或通过对应的 exporter 来暴露应用级别的指标数据。然而，在 Kubernetes 集群中，各类资源对象（如 Pod、DaemonSet、Deployment、Job、CronJob 等）的运行状态本身也需要被监控，这些状态直接反映了集群的调度情况与应用的健康度。例如：
+本节解决一个问题：**前面我们监控到的都是「用量」和「组件是否活着」，还没有「资源对象的状态」**。用一句话说：**kube-state-metrics 是一个监听 Kubernetes API、把各类资源对象的「当前状态」转成 Prometheus 指标的组件**，这样你就能在 Prometheus 里查「期望副本数 vs 实际可用数」「Pod 是否 Pending/Failed」「重启次数」等。
 
-- 我期望运行的副本数是多少？实际可用的副本有几个？
-- 有多少 Pod 处于 running、stopped 或 terminated 状态？
-- Pod 发生了多少次重启？
-- 当前有多少 Job 正在执行？
+---
 
-通过回顾之前从集群中采集的指标（主要来源于 kube-apiserver 和 kubelet 内置的 cAdvisor），我们发现其中并不包含这类资源对象级别的状态信息。对于 Prometheus 监控体系而言，此时就需要引入额外的 exporter 来暴露这些指标。为此，Kubernetes 社区提供了 [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) 组件，这正是我们所需的解决方案。
+### 和前面几节的关系（避免断片）
 
-### 4.8.1、与 metric-server 对比
+| 前面已经有的 | 能回答的问题 | 还缺什么 |
+|-------------|--------------|----------|
+| **T4.4 节点 / T4.5 容器** | 节点负载、容器 CPU/内存用量 | 不知道「某个 Deployment 期望几副本、实际几副本」 |
+| **T4.6 API Server** | API 请求量、延迟 | 不知道「有多少 Pod 处于 Pending/Failed」 |
+| **T4.7 Endpoints 发现** | 哪些 Service 暴露了 `/metrics`、自动抓取 | 不知道「Pod 重启了几次」「Job 是否失败」 |
 
-**metric-server**
+**API Server 和 kubelet 的 `/metrics` 里没有上面「还缺」的这类信息**。这些信息来自 Kubernetes 的**资源对象本身**（Deployment、Pod、Job 等）的**状态字段**。kube-state-metrics 做的事就是：**监听 API Server 里这些对象的变化，把状态转成 Prometheus 指标**（例如 `kube_deployment_status_replicas_available`、`kube_pod_status_phase`），供 Prometheus 抓取。官方说明见 [kube-state-metrics README](https://github.com/kubernetes/kube-state-metrics)：*"listens to the Kubernetes API server and generates metrics about the state of the objects"*。
 
-- **功能定位**：从 Kubernetes API Server 采集节点和 Pod 的资源使用量指标（如 CPU、内存使用率）。
-- **核心用途**：为 HPA（Horizontal Pod Autoscaler）、调度器等 Kubernetes 内部组件提供实时资源度量数据，以支持弹性伸缩等自动化决策。
-- **输出形式**：对采集的原始数据进行聚合、格式化，并可通过 API 对外提供。
+---
 
-**kube-state-metrics**
+### 4.8.1、和 metric-server 的区别（防止搞混）
 
-- **功能定位**：专注于获取并暴露 Kubernetes 各类资源对象（如 Deployment、StatefulSet、Pod、Job 等）的状态与元数据信息。
-- **核心用途**：反映资源对象的期望状态与实际状态，例如副本数、Pod 状态、重启次数、Job 完成情况等。
-- **输出形式**：以 Prometheus 格式的指标暴露资源对象的状态信息。
+集群里可能还会听到 **metrics-server**，两者容易混淆，区别可以记成：
 
-**核心区别**
+- **metrics-server**：给 **Kubernetes 自己用**的。采集节点/Pod 的 **CPU、内存用量**，通过 Metrics API 提供给 HPA、调度器等，**不是给 Prometheus 当数据源的**。
+- **kube-state-metrics**：给 **Prometheus 用**的。采集 **Deployment/Pod/Job 等对象的状态**（期望副本数、实际副本数、Pod 阶段、重启次数等），以 Prometheus 格式暴露在 `/metrics`，由 Prometheus 抓取。
 
-- **metric-server** 关注的是集群**物理资源的消耗情况**（例如 CPU 使用率、内存用量），属于资源监控。
-- **kube-state-metrics** 关注的是集群**资源对象的状态信息**（例如 Deployment 是否健康、Pod 是否在运行），属于状态监控。
+也就是说：**用量**（CPU/内存）→ metrics-server / 我们前面的 node-exporter、cAdvisor；**对象状态**（副本数、Phase、重启次数）→ kube-state-metrics。
 
-**与 Prometheus 的关系**
+---
 
-Prometheus 作为一个通用的监控系统，通常不直接采用 metric-server 聚合后的数据作为监控指标源，因为它更倾向于直接从源头（如 kubelet、应用自身）拉取原始指标。然而，Prometheus 可以监控 metric-server 组件本身的运行状态（例如其 Pod 是否正常、服务是否可访问），而这类监控恰恰可以借助 **kube-state-metrics** 提供的资源对象状态指标来实现。
+### 4.8.2、安装（按步做即可）
 
-### 4.8.2、安装
+部署 kube-state-metrics 后，**不需要改 Prometheus 的 ConfigMap**：T4.7 已经配置了 `kubernetes-endpoints`，只要给 kube-state-metrics 的 **Service 打上** `prometheus.io/scrape=true` 和 `prometheus.io/port=8080`，Prometheus 就会自动发现并抓取这个新 Service 背后的 Pod（和之前 redis、kube-dns 一样）。
 
-kube-state-metrics 官方提供了在 Kubernetes 中部署的清单文件。我们将代码克隆到本地，并注意其与 Kubernetes 版本的兼容性：
+**步骤一：克隆仓库并进入官方示例目录**
+
+```bash
+git clone https://github.com/kubernetes/kube-state-metrics.git
+cd kube-state-metrics/examples/standard
+```
+
+注意与 Kubernetes 版本兼容性，见官方 [Compatibility matrix](https://github.com/kubernetes/kube-state-metrics#compatibility-matrix)；一般用最新 release 即可。
 
 ![prometheus-kube-state-metrics](./images/prometheus-kube-state-metrics.png)
 
-```bash
-$ git clone https://github.com/kubernetes/kube-state-metrics.git
-$ cd kube-state-metrics/examples/standard
+**步骤二：若无法拉取 gcr.io 镜像，修改 deployment 中的镜像**
+
+打开 `deployment.yaml`，把镜像改为可访问的仓库，例如：
+
+```text
+# 将 image 改为类似（具体版本以官方仓库为准）：
+image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0
+# 或第三方镜像，例如：
+# image: cnych/kube-state-metrics:v2.0.0-rc.0
 ```
 
-默认的镜像仓库为 [gcr.io](https://gcr.io/)，您可以将其替换为可访问的镜像，例如将 `deployment.yaml` 中的镜像修改为：
+**步骤三：修改 service.yaml，让 Prometheus 自动发现**
 
-```bash
-image: cnych/kube-state-metrics:v2.0.0-rc.0
-```
-
-由于我们之前已为 Prometheus 配置了 Endpoints 自动发现，因此可以为 kube-state-metrics 的 Service 添加相应注解，使其被自动发现。
-
-修改 `service.yaml` 文件，添加 Prometheus 采集注解：
+在 **同一目录** 的 `service.yaml` 里，给 Service 的 `metadata.annotations` 增加 Prometheus 抓取注解（端口 8080 是 kube-state-metrics 对外暴露指标用的；8081 是它自己的遥测端口，不必改）：
 
 ```yaml
-# service.yaml
+# service.yaml 中 metadata 下增加或保留 annotations：
 apiVersion: v1
 kind: Service
 metadata:
@@ -1218,166 +1344,127 @@ metadata:
     app.kubernetes.io/version: 2.0.0-rc.0
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/port: "8080"  # 8081是kube-state-metrics应用本身指标的端口
+    prometheus.io/port: "8080"   # 8080=指标端口；8081=应用自身遥测
   name: kube-state-metrics
   namespace: kube-system
+# ... spec 等保持不变
 ```
+
+**步骤四：一键部署**
+
+仍在 `kube-state-metrics/examples/standard` 目录下执行（会创建 ClusterRole、ClusterRoleBinding、Deployment、ServiceAccount、Service）：
 
 ```bash
-$ kubectl apply -f .
-clusterrolebinding.rbac.authorization.k8s.io/kube-state-metrics created
-clusterrole.rbac.authorization.k8s.io/kube-state-metrics created
-deployment.apps/kube-state-metrics created
-serviceaccount/kube-state-metrics created
-service/kube-state-metrics created
+kubectl apply -f .
 ```
 
-部署完成后，Prometheus 应能自动发现并采集 kube-state-metrics 指标：
+**步骤五：确认 Prometheus 已抓取**
+
+因为 T4.7 的 `kubernetes-endpoints` 只抓带 `prometheus.io/scrape=true` 的 Service，部署完成后 Prometheus 会自动把 kube-state-metrics 加入抓取目标。在 Prometheus 的 **Status → Targets** 里找到 `kubernetes-endpoints`，应能看到 kube-state-metrics 的 endpoint（状态为 UP）。
 
 ![prometheus-kube-state-metrics1](./images/prometheus-kube-state-metrics1.png)
 
-### 4.8.3、水平分片（Horizontal Sharding）
+### 4.8.3、水平分片（可选，小集群可跳过）
 
-kube-state-metrics 支持通过水平分片实现指标采集的横向扩展，适用于大规模 Kubernetes 集群（节点数 > 500 或对象数 > 10 万）。分片机制通过对 Kubernetes 对象的 UID 进行 MD5 哈希计算，并对总分片数取模，确保相同对象始终由同一分片实例采集。
+**什么时候需要看这段**：集群规模很大（例如节点数 > 500 或对象数 > 10 万）时，单实例 kube-state-metrics 可能吃满内存或延迟变高，这时可以用**水平分片**把对象分摊到多个实例。中小集群用默认单实例即可，不必配置分片。
 
-**静态分片（稳定功能）**
+分片原理：按 Kubernetes 对象的 UID 做 MD5 再对总分片数取模，同一个对象始终由同一个分片负责，这样 Prometheus 抓多个 target 时不会重复或漏掉。官方文档见 [Horizontal sharding](https://github.com/kubernetes/kube-state-metrics#horizontal-sharding)。
 
-通过以下 CLI 参数配置静态分片：
+**静态分片（推荐）**：在 deployment 的容器参数里加上：
 
-```bash
---shard=0                # 当前分片索引（0 起始）
---total-shards=3         # 总分片数量
+```text
+--shard=0           # 当前实例的分片编号（从 0 开始）
+--total-shards=3    # 总分片数，所有实例必须一致
 ```
 
-**部署要求**：
+每个分片一个 Deployment（或同一 Deployment 的多副本各自传不同 `--shard`），分片编号 0 到 total-shards-1 不重复；各分片的 `--resources`、`--namespaces` 等保持一致。生产上常用 3～5 个分片，每实例约 1～2 CPU、1～2 GiB 内存。
 
-- 每个分片需独立部署为单独的 Pod（通常使用 Deployment 多副本）
-- 分片索引必须手动指定且互不重复
-- 所有分片应配置相同的 `--resources` 和 `--namespaces` 参数
-- 生产环境推荐配置 3–5 个分片，每个分片分配 1–2 CPU 和 1–2 GiB 内存
+**自动分片（实验性）**：用 StatefulSet 部署时，可通过 Downward API 把 Pod 名和 namespace 传给进程，实现「按 Pod 序号自动算分片」。示例见官方 [examples/autosharding](https://github.com/kubernetes/kube-state-metrics/tree/main/examples/autosharding)。官方注明该功能为实验性，可能随时变更或移除，生产环境建议用静态分片。
 
-**自动分片（实验性功能）**
+### 4.8.4、部署后能查什么（应用场景示例）
 
-当以 StatefulSet 部署 kube-state-metrics 时，可通过 Downward API 自动注入 Pod 信息，启用自动分片发现：
+部署并确认 Prometheus 已抓取 kube-state-metrics 后，在 **Prometheus → Query（Graph）** 里就可以用下面这类 PromQL。指标含义和更多示例见官方 [docs 目录](https://github.com/kubernetes/kube-state-metrics/tree/main/docs)。
 
-```bash
-args:
-  - --pod=$(POD_NAME)
-  - --pod-namespace=$(POD_NAMESPACE)
-env:
-  - name: POD_NAME
-    valueFrom:
-      fieldRef:
-        fieldPath: metadata.name
-  - name: POD_NAMESPACE
-    valueFrom:
-      fieldRef:
-        fieldPath: metadata.namespace
-```
+**1、工作负载健康度**
 
-> **重要提示**：自动分片为实验性功能，官方明确标注 "[This is an experimental feature and may be broken or removed without notice](https://github.com/kubernetes/kube-state-metrics?tab=readme-ov-file#automated-sharding)"。生产环境应优先使用静态分片配置。
-
-部署示例参考官方仓库 `/examples/autosharding` 目录。
-
-### 4.8.4、应用场景
-
-1、工作负载健康度
-
-```bash
-# 存在失败状态的 Job
+```promql
+# 有处于失败状态的 Job
 kube_job_status_failed{job="kube-state-metrics"} > 0
 
-# 节点处于 NotReady 状态
+# 节点 NotReady
 kube_node_status_condition{condition="Ready", status="false"} == 1
 
-# Pod 处于异常生命周期阶段
+# Pod 处于非 Running（Pending/Failed/Unknown）
 kube_pod_status_phase{phase=~"Failed|Unknown|Pending"} == 1
 
-# 近 30 分钟内容器发生重启（使用 increase 避免计数器重置问题）
+# 近 30 分钟内容器有重启（用 increase 看计数器增量）
 increase(kube_pod_container_status_restarts_total[30m]) > 0
 ```
 
-> **技术说明**：`kube_pod_container_status_restarts_total` 为计数器（Counter）类型，应使用 `increase()` 或 `rate()` 计算增量，**避免使用 `changes()`**（该函数适用于记录状态变更次数的 Gauge 指标，不适用于计数器）。
+> `kube_pod_container_status_restarts_total` 是**计数器**，要用 `increase()` 或 `rate()` 看变化，不要用 `changes()`（那是给 Gauge 用的）。
 
-2、资源配置一致性
+**2、副本与发布状态**
 
-```bash
-# Deployment 副本偏差（期望副本数 - 可用副本数）
-kube_deployment_spec_replicas{namespace="default"} 
-  - kube_deployment_status_replicas_available{namespace="default"}
+```promql
+# Deployment 期望副本数 - 可用副本数（大于 0 说明有副本未就绪）
+kube_deployment_spec_replicas{namespace="default"} - kube_deployment_status_replicas_available{namespace="default"}
 
-# StatefulSet 更新停滞
+# StatefulSet 当前版本与更新版本不一致（可能卡在滚动更新）
 kube_statefulset_status_current_revision != kube_statefulset_status_update_revision
 ```
 
-3、安全与合规
+**3、安全与合规（示例）**
 
-```bash
-# 特权容器运行检测
+```promql
+# 以特权模式运行的容器
 kube_pod_container_security_context_privileged == 1
 
-# 容器未设置 CPU 限制
+# 未设置 CPU limit 的容器
 kube_pod_container_resource_limits_cpu_cores == 0
-
-# Pod 以 root 用户运行
-kube_pod_container_info{uid="0"} == 1
 ```
 
-**标签冲突问题：`namespace` 与 `exported_namespace`**
+---
 
-> 问题现象：
->
-> 在 Prometheus 中查询指标时，观察到：
->
-> - 指标包含 `exported_namespace` 标签而非预期的 `namespace`
-> - 使用 `namespace="your-ns"` 过滤无结果，但 `exported_namespace="your-ns"` 可返回数据
->
-> 根本原因：
->
-> 此现象**并非 kube-state-metrics 指标设计变更**，而是由 Prometheus 抓取机制导致的标签冲突：
->
-> | 标签来源          | 标签名      | 含义                                                   |
-> | ----------------- | ----------- | ------------------------------------------------------ |
-> | **Scrape Target** | `namespace` | kube-state-metrics Pod 所在命名空间（如 `monitoring`） |
-> | **指标原始标签**  | `namespace` | 被监控资源的实际命名空间（如 `default`）               |
->
-> 当两者冲突时，Prometheus 默认将指标原始标签重命名为 `exported_namespace` 以保留两者 。
->
-> 解决方案：
->
-> **配置 `honor_labels: true`**，在 Prometheus scrape 配置中启用标签保留：
->
-> ```yaml
-> scrape_configs:
->   - job_name: 'kube-state-metrics'
->     honor_labels: true  # 保留指标原始标签，避免重命名
->     kubernetes_sd_configs:
->       - role: endpoints
->     relabel_configs:
->       - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_name]
->         regex: kube-state-metrics
->         action: keep
-> ```
->
-> - 指标标签保持为 `namespace="default"`（资源真实命名空间）
-> - 不再出现 `exported_namespace` 标签
-> - 查询语句无需修改，直接使用 `namespace` 过滤
+### 常见问题：为什么查到的标签是 `exported_namespace` 而不是 `namespace`？
 
-**故障排查清单**
+**现象**：在 Prometheus 里用 `namespace="default"` 过滤 kube-state-metrics 的指标没结果，但改成 `exported_namespace="default"` 就有数据。
 
-| 问题         | 检查项                                                       | 修复措施                                        |
-| ------------ | ------------------------------------------------------------ | ----------------------------------------------- |
-| 查询无数据   | 1. 检查 Prometheus target 状态<br />2. 验证 `honor_labels` 配置 | 启用 `honor_labels: true`，重启 Prometheus      |
-| 指标基数过高 | 检查是否导出全部 annotations/labels                          | 配置 `--metric-labels-allowlist` 限制高基数标签 |
-| 分片指标缺失 | 验证所有分片的 `--shard`/`--total-shards` 一致性             | 确保分片索引 0..N-1 连续且总数一致              |
-| 指标命名异常 | 对比官方指标文档 `/docs/metrics/`                            | 升级至兼容版本，避免使用已废弃指标              |
+**原因（用一句话说）**：Prometheus 在抓一个 target 时，会先给指标打上「这个 target 是谁」的标签（例如 job、instance、**namespace**＝kube-state-metrics 所在命名空间，如 `kube-system`）。而 kube-state-metrics 暴露的指标**自己**也带 `namespace`（表示**资源**在哪个命名空间，如 `default`）。两个都叫 `namespace` 就冲突了，Prometheus 会把**指标自带的**那个改名为 `exported_namespace`，所以你会看到 `exported_namespace="default"` 而不是 `namespace="default"`。
 
-> 官方资源：
->
-> - **指标完整列表**：`/docs/metrics/` 目录（按资源类型分类）
-> - **部署示例**：`/examples/standard/`
-> - **GitHub 仓库**：https://github.com/kubernetes/kube-state-metrics
-> - **Kubernetes 官方文档**：https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/
+**解决办法**：在抓 kube-state-metrics 的 job 里加上 **`honor_labels: true`**，表示「优先保留指标自带的标签，不要用 target 的标签覆盖」。这样指标里会保留 `namespace="default"`（资源所在命名空间），查 PromQL 时继续用 `namespace="xxx"` 即可。
+
+我们当前是通过 T4.7 的 **`kubernetes-endpoints`** 自动发现 kube-state-metrics 的，没有单独为它建一个 job，所以若要启用 `honor_labels`，需要二选一：
+
+- **方式 A**：在 `kubernetes-endpoints` 这个 job 里整体加上 `honor_labels: true`（会影响到该 job 下所有 target，若其他 Service 的指标也有同名标签会被一起保留）。
+- **方式 B**：单独为 kube-state-metrics 建一个 job，用 `role: endpoints` + relabel 只保留 Service 名为 kube-state-metrics 的 target，并在该 job 里设置 `honor_labels: true`（只影响 kube-state-metrics，推荐）。
+
+方式 B 的配置示例（加入到你当前 Prometheus 的 `scrape_configs` 里即可）：
+
+```yaml
+- job_name: 'kube-state-metrics'
+  honor_labels: true
+  kubernetes_sd_configs:
+    - role: endpoints
+  relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      regex: kube-state-metrics
+      action: keep
+```
+
+改完后 reload Prometheus，再查时就会是 `namespace="default"`，不再出现 `exported_namespace`。
+
+---
+
+### 故障排查速查
+
+| 现象         | 建议检查                                               | 常见处理 |
+| ------------ | ------------------------------------------------------ | -------- |
+| 查不到指标   | Prometheus Targets 里 kube-state-metrics 是否 UP；是否遇到 `exported_namespace` | 确认抓取正常；需要时加 `honor_labels: true` |
+| 指标特别多   | 是否暴露了过多 annotations/labels                      | 用 `--metric-labels-allowlist` 等限制 |
+| 分片不全     | 多分片时 `--shard` / `--total-shards` 是否一致、是否 0～N-1 连续 | 核对每个实例参数 |
+| 指标名对不上 | 版本是否过旧或与 K8s 不兼容                            | 查官方 [docs/metrics](https://github.com/kubernetes/kube-state-metrics/tree/main/docs) 与兼容表 |
+
+**官方链接**：[GitHub kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) | [指标文档 docs](https://github.com/kubernetes/kube-state-metrics/tree/main/docs) | [Kubernetes 官方说明](https://kubernetes.io/docs/concepts/cluster-administration/kube-state-metrics/)
 
 ## T4.9、Grafana
 
