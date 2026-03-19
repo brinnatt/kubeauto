@@ -19,12 +19,12 @@
       - "sc.yaml"
 
     - name: helm 部署 openebs operator 
-      shell: "{{ base_dir }}/bin/helm upgrade openebs --install -n {{ openebs_namespace }} \
+      shell: "{{ base_dir }}/extra-bin/helm upgrade openebs --install -n {{ openebs_namespace }} \
               -f {{ cluster_dir }}/yml/openebs/values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/openebs-{{ openebs_ver }}.tgz"
 
     - name: 轮询等待部署 openebs 
-      shell: "{{ base_dir }}/bin/helm ls -n {{ openebs_namespace }}|grep openebs|awk '{print $8}'"
+      shell: "{{ base_dir }}/extra-bin/helm ls -n {{ openebs_namespace }}|grep openebs|awk '{print $8}'"
       register: chart_status
       until: chart_status.stdout == "deployed"
       retries: 15

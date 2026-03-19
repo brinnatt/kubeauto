@@ -3,7 +3,7 @@
       shell: "kubectl create ns {{ rocketmq_namespace }} || echo true"
 
     - name: helm 部署 rocketmq operator 
-      shell: "{{ base_dir }}/bin/helm upgrade rocketmq-operator --install -n {{ rocketmq_namespace }} \
+      shell: "{{ base_dir }}/extra-bin/helm upgrade rocketmq-operator --install -n {{ rocketmq_namespace }} \
               --set rocketmqOperator.manager.image.repository='registry.talkschool.cn:5000/rocketmq/rocketmq-operator' \
               {{ base_dir }}/roles/cluster-addon/files/rocketmq-operator-0.1.0.tgz"
 
