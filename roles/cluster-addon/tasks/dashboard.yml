@@ -10,7 +10,7 @@
       - "read-user-sa-rbac.yaml"
 
     - name: 创建 dashboard部署
-      shell: "{{ base_dir }}/bin/helm upgrade kubernetes-dashboard --install --create-namespace \
+      shell: "{{ base_dir }}/extra-bin/helm upgrade kubernetes-dashboard --install --create-namespace \
               -n kube-system -f {{ cluster_dir }}/yml/dashboard/dashboard-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kubernetes-dashboard-{{ dashboardVer }}.tgz"
 

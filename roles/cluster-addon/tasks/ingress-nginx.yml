@@ -11,12 +11,12 @@
       - "values.yaml"
 
     - name: helm 部署 ingress-nginx
-      shell: "{{ base_dir }}/bin/helm upgrade ingress-nginx --install -n {{ ingress_nginx_namespace }} \
+      shell: "{{ base_dir }}/extra-bin/helm upgrade ingress-nginx --install -n {{ ingress_nginx_namespace }} \
               -f {{ cluster_dir }}/yml/ingress-nginx/values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/ingress-nginx-{{ ingress_nginx_ver }}.tgz"
 
     - name: 轮询等待部署 ingress-nginx
-      shell: "{{ base_dir }}/bin/helm ls -n {{ ingress_nginx_namespace }}|grep ingress-nginx|awk '{print $8}'"
+      shell: "{{ base_dir }}/extra-bin/helm ls -n {{ ingress_nginx_namespace }}|grep ingress-nginx|awk '{print $8}'"
       register: chart_status
       until: chart_status.stdout == "deployed"
       retries: 15
