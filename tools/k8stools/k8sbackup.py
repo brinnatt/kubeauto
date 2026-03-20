@@ -5,10 +5,12 @@ k8s_backup.py - 企业级 Kubernetes 配置备份和恢复工具
 
 支持功能：
 - 备份 Kubernetes 集群资源（Deployments、Services、ConfigMaps、Secrets 等）
-- 恢复备份到目标集群
+- 恢复备份到目标集群（server-side apply、单文件多文档清单、依赖顺序串行）
 - 支持命名空间映射、镜像映射、环境变量映射（统一 KEY=值，多项用逗号或空格分隔）
-- 自动处理资源依赖关系和恢复顺序
-- 符合 Kubernetes 官方最佳实践
+- 备份侧拒绝缺少 apiVersion/kind 的对象；元数据 JSON 损坏时降级而非崩溃
+- 自动处理资源依赖关系和恢复顺序（含 HPA、PDB、NetworkPolicy 等扩展优先级）
+
+设计与约束对齐 Kubernetes 官方文档（声明式配置、SSA、Service、NetworkPolicy 等）。
 
 Python 3.7+ 兼容
 """
@@ -319,8 +321,9 @@ def retry_on_api_error(exception):
         status = getattr(exception, "status", None)
         if status is None:
             return False
-        # 重试服务器错误（5xx）和速率限制错误（429）
-        return (500 <= status < 600) or status == 429
+        # 5xx、429；409 在并发 SSA / 资源更新竞态下可能出现，短重试可提高生产成功率
+        # 参考: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+        return (500 <= status < 600) or status == 429 or status == 409
     return isinstance(exception, (ConnectionError, TimeoutError))
 
 
@@ -727,8 +730,21 @@ def load_backup_metadata(backup_dir: str) -> Dict[str, Any]:
     """
     metadata_file = os.path.join(backup_dir, "backup-metadata.json")
     if os.path.exists(metadata_file):
-        with open(metadata_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                raw = f.read()
+            if len(raw) > 4 * 1024 * 1024:
+                logger.warning(
+                    "backup-metadata.json 超过 4MB，已继续解析；若非正常备份请检查目录是否被篡改"
+                )
+            data = json.loads(raw)
+            return data if isinstance(data, dict) else {}
+        except json.JSONDecodeError as e:
+            logger.warning(f"backup-metadata.json 非合法 JSON，按无元数据处理: {e}")
+            return {}
+        except (IOError, OSError) as e:
+            logger.warning(f"读取 backup-metadata.json 失败: {e}")
+            return {}
     return {}
 
 
@@ -889,10 +905,10 @@ class ResourceCleaner:
             spec.pop('clusterIP', None)
             spec.pop('clusterIPs', None)
         
-        # loadBalancerIP 已弃用，改为 loadBalancerClass
-        # 两者都移除以提高可移植性
+        # loadBalancerIP 已弃用（迁移到 LB 控制器特定注解/实现）
         spec.pop('loadBalancerIP', None)
-        spec.pop('loadBalancerClass', None)
+        # loadBalancerClass 为用户显式选择 LoadBalancer 实现类，属意向配置，应保留
+        # 参考: https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class
 
     @staticmethod
     def _clean_persistentvolume_spec(spec: Dict) -> None:
@@ -994,6 +1010,9 @@ class ResourceCleaner:
             ResourceCleaner._clean_workload_spec(spec)
         elif kind_lower in ['job', 'cronjob']:
             ResourceCleaner._clean_job_spec(spec)
+        elif kind_lower == 'pod':
+            # 独立 Pod（含静态 Pod 清单等）：spec 即 PodSpec，须与工作负载模板一致地清节点绑定字段
+            ResourceCleaner._clean_pod_spec(spec)
         # ServiceAccount 和未知资源类型不需要特殊处理
         # ServiceAccount secrets 在 metadata 中处理
         # 未知资源类型保持原样
@@ -1035,11 +1054,7 @@ class ResourceCleaner:
 
         resource.pop('status', None)
 
-        if 'apiVersion' not in resource:
-            resource['apiVersion'] = 'v1'
-        if 'kind' not in resource:
-            resource['kind'] = 'Resource'
-
+        # 绝不虚构 apiVersion/kind；无效对象应在备份写入前被拒绝，避免生成无法 apply 的清单
         return resource
 
 
@@ -1675,10 +1690,19 @@ class KubernetesBackupManager:
         """
         try:
             cleaned_resource = self.cleaner.clean_resource(resource)
+            kind = cleaned_resource.get('kind')
+            api_version = cleaned_resource.get('apiVersion')
+            if not kind or not isinstance(kind, str):
+                logger.error(
+                    "拒绝备份：对象缺少合法 metadata/kind（清理后仍无效，可能来自损坏的 Informer 数据）"
+                )
+                return False
+            if not api_version or not isinstance(api_version, str):
+                logger.error(f"拒绝备份 {kind}：缺少 apiVersion，不符合 Kubernetes 对象约定")
+                return False
             output_path = self.get_output_path(cleaned_resource, output_dir)
             write_yaml_safely(cleaned_resource, output_path, dry_run=self.config.dry_run)
             if not self.config.dry_run:
-                kind = cleaned_resource.get('kind', 'Unknown')
                 name = cleaned_resource.get('metadata', {}).get('name', 'unknown')
                 logger.info(f"已备份资源 {kind}/{name} 到 {output_path}")
             return True
@@ -2194,6 +2218,12 @@ class KubernetesRestoreManager:
             if metadata.get('timestamp'):
                 logger.info(f"备份时间: {metadata.get('timestamp')}")
 
+            # 与 Kubernetes 依赖顺序一致：恢复必须按优先级串行 apply；并行会破坏 ConfigMap→Workload 等顺序
+            logger.info(
+                "恢复阶段按清单依赖顺序串行执行 server-side apply；"
+                "--max-workers 仅作用于 backup 子命令，restore 传入将被忽略"
+            )
+
             # 预创建命名空间失败则中止：继续恢复会导致大量资源 apply 到不存在的 namespace
             if self.config.create_namespaces and not self.config.dry_run:
                 logger.info("检查并创建缺失的命名空间...")
@@ -2334,6 +2364,7 @@ class KubernetesRestoreManager:
             'persistentvolumeclaim': 2,
             'service': 2,
             'role': 2,
+            'networkpolicy': 3,
             'rolebinding': 3,
             'ingress': 3,
             'deployment': 4,
@@ -2342,6 +2373,10 @@ class KubernetesRestoreManager:
             'statefulset': 4,
             'job': 4,
             'cronjob': 4,
+            # 引用 scaleTargetRef / 工作负载就绪后再应用（ autoscaling/v2 HorizontalPodAutoscaler ）
+            'horizontalpodautoscaler': 5,
+            # PodDisruptionBudget 依赖 Pod 标签与目标工作负载
+            'poddisruptionbudget': 5,
         }
 
         # Find all namespace directories (excluding cluster-scoped)
@@ -2541,11 +2576,11 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
     --namespace-mapping MAP  旧命名空间名 -> 新名（见下方「映射语法」）
     --image-mapping MAP      改写 container.image（单字符串，含仓库/标签/digest）；最长前缀优先替换
     --env-mapping MAP        按环境变量名 增 / 改 / 删（见下方「映射语法」）
-  恢复范围与性能
+  恢复范围
     --skip-crds              不恢复 CustomResourceDefinition
     --skip-cluster-scoped    不恢复集群级资源（如 ClusterRole、StorageClass 等）
     --backup-name NAME       同一目录多份备份时，指定要恢复的那一份名称
-    --max-workers N          并行线程数（默认 5）
+  （恢复过程按依赖顺序串行 apply，无并行阶段；与 backup 的 --max-workers 无关）
 
 【映射语法（namespace / image / env 通用书写规则）】
   · 每项必须为  KEY=value ；键与值之间只用第一个 = 分割，故值里可含 :、=、URL 等。
@@ -2644,11 +2679,10 @@ R6. 跳过 CRD 与集群级资源（仅命名空间内资源）
         --skip-cluster-scoped \\
         --create-namespaces
 
-R7. 备份目录中存在多份备份时按名称挑选 + 并发恢复
+R7. 备份目录中存在多份备份时按名称挑选（恢复始终串行 apply，无并发）
    python k8sbackup.py restore \\
         --backup-dir /opt/k8s-backup \\
         --backup-name backup-20231201-120000-default \\
-        --max-workers 10 \\
         --create-namespaces
 
 ================================================================================
@@ -2661,7 +2695,7 @@ R7. 备份目录中存在多份备份时按名称挑选 + 并发恢复
   restore:
     --backup-dir | --create-namespaces（--create-namespace）
     --namespace-mapping | --image-mapping | --env-mapping
-    --skip-crds | --skip-cluster-scoped | --backup-name | --max-workers
+    --skip-crds | --skip-cluster-scoped | --backup-name
   通用: --kubeconfig | --context | --debug | --dry-run
 
 ================================================================================
@@ -2674,6 +2708,9 @@ R7. 备份目录中存在多份备份时按名称挑选 + 并发恢复
   - 命名空间映射对 Kind=Namespace 会改写 metadata.name；NetworkPolicy 的 namespaceSelector 同时处理 matchLabels 与 matchExpressions（kubernetes.io/metadata.name）。
   - 备份前预留磁盘空间；备份含 Secret，需妥善保管。
   - 恢复使用 server-side apply（force 解决字段冲突），并会去掉 finalizers / ownerReferences 等集群绑定字段。
+  - 备份拒绝缺少 kind 或 apiVersion 的对象；从不写入虚构类型，避免无法 apply 的垃圾清单。
+  - Service 备份保留 loadBalancerClass（用户显式 LB 实现）；仅剥离 clusterIP / 已弃用的 loadBalancerIP。
+  - API 客户端对 409/429/5xx 有限次重试（ SSA 竞态与瞬时服务端错误）。
   - 生产环境建议先 restore --dry-run 再正式执行。
   - 依赖: Python 3.7+，kubernetes、pyyaml、tenacity。
 """.replace("__DEFAULT_RESOURCES__", default_resources_line)
@@ -2715,7 +2752,7 @@ def _add_backup_arguments(parser):
         '--max-workers',
         type=int,
         default=5,
-        help='并行工作线程数（默认: 5）'
+        help='备份时并行线程数（默认: 5）；与 restore 无关'
     )
     parser.add_argument(
         '--label-selector',
@@ -2755,7 +2792,7 @@ def _add_restore_arguments(parser):
         '--max-workers',
         type=int,
         default=5,
-        help='并行工作线程数（默认: 5）'
+        help='（保留参数）恢复为依赖顺序串行 apply，此值不生效；并行仅用于 backup'
     )
     parser.add_argument(
         '--skip-crds',
@@ -2889,8 +2926,6 @@ def validate_restore_arguments(args) -> Optional[RestoreConfig]:
     if backup_dir is None:
         return None
 
-    if not validate_cli_max_workers(args.max_workers):
-        return None
     if not validate_cli_kubeconfig(args.kubeconfig):
         return None
     if not validate_cli_context(args.context):
