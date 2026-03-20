@@ -694,6 +694,27 @@ def validate_cli_restore_backup_dir(path: str) -> Optional[str]:
     return exp
 
 
+def load_kubernetes_yaml_documents(filepath: str) -> List[Dict[str, Any]]:
+    """
+    读取单个 YAML 文件中的全部文档（与多对象清单中 `---` 分隔行为一致）。
+
+    若文件含多段对象而只解析第一段，会在无告警情况下丢失后续资源；恢复须与 kubectl apply 清单语义一致。
+    参考: https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/
+    """
+    out: List[Dict[str, Any]] = []
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for idx, doc in enumerate(yaml.safe_load_all(f), start=1):
+            if doc is None:
+                continue
+            if not isinstance(doc, dict):
+                logger.warning(
+                    f"{filepath}: 第 {idx} 段 YAML 不是映射，已跳过（应为 Kubernetes 对象）"
+                )
+                continue
+            out.append(doc)
+    return out
+
+
 def load_backup_metadata(backup_dir: str) -> Dict[str, Any]:
     """
     加载备份元数据文件。
@@ -1048,16 +1069,28 @@ class ResourceTransformer:
         return resource
 
     def _transform_namespace(self, resource: Dict) -> Dict:
-        """Transform namespace in resource metadata and references"""
+        """
+        命名空间映射：改写命名空间名字段及各类引用。
+
+        Namespace 对象为集群作用域，名称在 metadata.name（非 metadata.namespace）。
+        若不改写，跨集群恢复时仍会得到旧名 Namespace，与其它已映射资源不一致。
+        参考: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+        """
         metadata = resource.get('metadata', {})
-        current_ns = metadata.get('namespace')
+        kind = (resource.get('kind') or '').lower()
 
-        if current_ns and current_ns in self.rule.namespace_mapping:
-            new_ns = self.rule.transform_namespace(current_ns)
-            metadata['namespace'] = new_ns
-            resource['metadata'] = metadata
+        if kind == 'namespace':
+            res_name = metadata.get('name')
+            if res_name and res_name in self.rule.namespace_mapping:
+                metadata['name'] = self.rule.transform_namespace(res_name)
+                resource['metadata'] = metadata
+        else:
+            current_ns = metadata.get('namespace')
+            if current_ns and current_ns in self.rule.namespace_mapping:
+                new_ns = self.rule.transform_namespace(current_ns)
+                metadata['namespace'] = new_ns
+                resource['metadata'] = metadata
 
-        # Handle namespace references in role bindings, network policies, etc.
         self._transform_namespace_references(resource)
 
         return resource
@@ -1162,12 +1195,32 @@ class ResourceTransformer:
                     self._transform_namespace_selector(to_rule['namespaceSelector'])
 
     def _transform_namespace_selector(self, selector: Dict):
-        """Transform namespace selector match expressions"""
+        """
+        转换 NetworkPolicy 等资源中的 namespaceSelector。
+
+        官方推荐用标签选择命名空间；按名称筛选时常用标签键
+        kubernetes.io/metadata.name（值为命名空间名称），与 matchExpressions 等价形式均须改写，
+        否则命名空间映射后 NetworkPolicy 仍指向旧名，生产上会直接导致流量错误。
+        参考: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+        """
+        if not self.rule.namespace_mapping:
+            return
+        if 'matchLabels' in selector and isinstance(selector.get('matchLabels'), dict):
+            labels = selector['matchLabels']
+            for key in ('kubernetes.io/metadata.name', 'name'):
+                val = labels.get(key)
+                if isinstance(val, str) and val in self.rule.namespace_mapping:
+                    labels[key] = self.rule.transform_namespace(val)
         if 'matchExpressions' in selector:
             for expr in selector['matchExpressions']:
                 if expr.get('key') == 'kubernetes.io/metadata.name':
                     values = expr.get('values', [])
-                    new_values = [self.rule.transform_namespace(v) for v in values]
+                    if not isinstance(values, list):
+                        continue
+                    new_values = [
+                        self.rule.transform_namespace(v) if isinstance(v, str) else v
+                        for v in values
+                    ]
                     expr['values'] = new_values
 
     @staticmethod
@@ -1940,19 +1993,23 @@ class KubernetesBackupManager:
 
             for yaml_file in yaml_files:
                 try:
-                    with open(yaml_file, 'r', encoding='utf-8') as f:
-                        content = yaml.safe_load(f)
-
-                    if not content or not all(key in content for key in ['apiVersion', 'kind', 'metadata']):
-                        logger.warning(f"Invalid or empty Kubernetes resource in {yaml_file}")
+                    docs = load_kubernetes_yaml_documents(str(yaml_file))
+                    if not docs:
+                        logger.warning(f"{yaml_file} 中无有效 Kubernetes 文档")
                         success = False
                         continue
-
-                    if 'name' not in content['metadata']:
-                        logger.warning(f"Resource missing name in {yaml_file}")
-                        success = False
-                        continue
-
+                    for content in docs:
+                        if not content or not all(
+                            key in content for key in ('apiVersion', 'kind', 'metadata')
+                        ):
+                            logger.warning(f"{yaml_file} 中存在无效或空的资源对象")
+                            success = False
+                            continue
+                        meta = content.get('metadata') or {}
+                        if 'name' not in meta:
+                            logger.warning(f"{yaml_file} 中资源缺少 metadata.name")
+                            success = False
+                            continue
                 except yaml.YAMLError as e:
                     logger.error(f"Invalid YAML in {yaml_file}: {e}")
                     success = False
@@ -2137,10 +2194,12 @@ class KubernetesRestoreManager:
             if metadata.get('timestamp'):
                 logger.info(f"备份时间: {metadata.get('timestamp')}")
 
-            # 如果需要，创建命名空间
+            # 预创建命名空间失败则中止：继续恢复会导致大量资源 apply 到不存在的 namespace
             if self.config.create_namespaces and not self.config.dry_run:
                 logger.info("检查并创建缺失的命名空间...")
-                self._create_missing_namespaces()
+                if not self._create_missing_namespaces():
+                    logger.error("预创建命名空间失败，已中止恢复（避免写入错误拓扑）")
+                    return False
 
             # 恢复集群级资源（先恢复 CRD，然后其他资源）
             # CRD 必须在任何 CustomResource 之前恢复（Kubernetes 要求）
@@ -2177,33 +2236,36 @@ class KubernetesRestoreManager:
             logger.error(f"恢复过程失败: {e}")
             return False
 
-    def _create_missing_namespaces(self):
+    def _create_missing_namespaces(self) -> bool:
         """
-        Create namespaces that are referenced in the backup but don't exist.
-        Uses server-side apply for idempotent namespace creation (Kubernetes best practice).
+        为备份中出现的（经映射后的）命名空间执行 server-side apply 幂等创建。
+
+        Returns:
+            全部成功为 True；任一失败为 False（调用方应中止恢复）。
         """
+        ok = True
         try:
             existing_namespaces = set(self.k8s_client.list_namespaces())
-            backup_namespaces = self._discover_backup_namespaces()
+        except ApiException as e:
+            logger.error(f"无法列举集群命名空间，跳过预创建: {e}")
+            return False
 
-            for ns in backup_namespaces:
-                target_ns = self.transformer.rule.transform_namespace(ns)
-                if target_ns != 'cluster-scoped':
-                    # Use apply instead of create for idempotency
-                    # This handles both creation and existing namespace cases gracefully
-                    if target_ns not in existing_namespaces:
-                        logger.info(f"Applying namespace: {target_ns}")
-                    else:
-                        logger.debug(f"Namespace {target_ns} already exists, skipping")
-                        continue
-                    
-                    try:
-                        self.k8s_client.apply_namespace(target_ns)
-                        existing_namespaces.add(target_ns)
-                    except (ApiException, ResourceNotFoundError, IOError) as e:
-                        logger.warning(f"Failed to apply namespace {target_ns}: {e}")
-        except (ApiException, IOError, KeyError) as e:
-            logger.warning(f"Failed to create namespaces: {e}")
+        backup_namespaces = self._discover_backup_namespaces()
+
+        for ns in backup_namespaces:
+            target_ns = self.transformer.rule.transform_namespace(ns)
+            if target_ns == 'cluster-scoped':
+                continue
+            if target_ns in existing_namespaces:
+                continue
+            logger.info(f"预创建命名空间: {target_ns}")
+            try:
+                self.k8s_client.apply_namespace(target_ns)
+                existing_namespaces.add(target_ns)
+            except (ApiException, ResourceNotFoundError, IOError) as e:
+                logger.error(f"命名空间 {target_ns} 创建/apply 失败: {e}")
+                ok = False
+        return ok
 
     def _discover_backup_namespaces(self) -> Set[str]:
         """
@@ -2217,15 +2279,13 @@ class KubernetesRestoreManager:
 
         for yaml_file in backup_path.rglob("*.yaml"):
             try:
-                with open(yaml_file, 'r', encoding='utf-8') as f:
-                    resource = yaml.safe_load(f)
-
-                if resource and 'metadata' in resource:
-                    ns = resource['metadata'].get('namespace')
-                    if ns:
-                        namespaces.add(ns)
+                for resource in load_kubernetes_yaml_documents(str(yaml_file)):
+                    if resource and 'metadata' in resource:
+                        ns = resource['metadata'].get('namespace')
+                        if ns:
+                            namespaces.add(ns)
             except (IOError, yaml.YAMLError, KeyError) as e:
-                logger.warning(f"Failed to read backup file {yaml_file}: {e}")
+                logger.warning(f"读取备份文件失败 {yaml_file}: {e}")
 
         return namespaces
 
@@ -2277,6 +2337,7 @@ class KubernetesRestoreManager:
             'rolebinding': 3,
             'ingress': 3,
             'deployment': 4,
+            'replicaset': 4,
             'daemonset': 4,
             'statefulset': 4,
             'job': 4,
@@ -2315,54 +2376,57 @@ class KubernetesRestoreManager:
 
     def _restore_single_resource(self, yaml_file: str, cluster_scoped: bool = False):
         """
-        从 YAML 文件恢复单个资源，使用 server-side apply。
-        这遵循 Kubernetes 最佳实践，实现幂等资源管理。
-        
-        根据 Kubernetes 官方最佳实践：
-        - 使用 server-side apply 而不是 create/update
-        - 自动处理字段冲突（通过 force=True）
-        - 移除集群特定字段（finalizers, ownerReferences）
-        - 使用 field_manager 标识资源所有者
-        
+        从 YAML 文件恢复对象（支持单文件多文档清单），统一使用 server-side apply。
+
         参考: https://kubernetes.io/docs/reference/using-api/server-side-apply/
-        
-        Args:
-            yaml_file: YAML 文件路径
-            cluster_scoped: 是否为集群级资源
         """
-        self.restore_stats['total_resources'] += 1
-        
         try:
-            with open(yaml_file, 'r', encoding='utf-8') as f:
-                resource = yaml.safe_load(f)
+            documents = load_kubernetes_yaml_documents(yaml_file)
+        except yaml.YAMLError as e:
+            logger.error(f"解析 YAML 失败 {yaml_file}: {e}")
+            self.restore_stats['total_resources'] += 1
+            self.restore_stats['failed_restores'] += 1
+            return
+        except IOError as e:
+            logger.error(f"读取文件失败 {yaml_file}: {e}")
+            self.restore_stats['total_resources'] += 1
+            self.restore_stats['failed_restores'] += 1
+            return
 
-            if not resource:
-                logger.warning(f"Empty resource in {yaml_file}")
-                self.restore_stats['failed_restores'] += 1
-                return
+        if not documents:
+            logger.warning(f"{yaml_file} 中无有效的 Kubernetes 对象文档")
+            self.restore_stats['total_resources'] += 1
+            self.restore_stats['failed_restores'] += 1
+            return
 
-            # Transform resource for target environment
+        n_doc = len(documents)
+        for idx, resource in enumerate(documents):
+            self.restore_stats['total_resources'] += 1
+            doc_tag = f" [#{idx + 1}/{n_doc}]" if n_doc > 1 else ""
+            self._restore_one_manifest(resource, yaml_file, cluster_scoped, doc_tag)
+
+    def _restore_one_manifest(
+        self,
+        resource: Dict,
+        yaml_file: str,
+        cluster_scoped: bool,
+        doc_tag: str,
+    ) -> None:
+        """对单个已解析的对象字典执行变换与 apply。"""
+        try:
             transformed_resource = self.transformer.transform_resource(resource)
-
-            # Get resource API version and kind
             api_version = transformed_resource.get('apiVersion', 'v1')
             kind = transformed_resource.get('kind', '')
 
             if not kind:
-                logger.warning(f"Resource missing kind in {yaml_file}")
+                logger.warning(f"{yaml_file}{doc_tag} 缺少 kind")
                 self.restore_stats['failed_restores'] += 1
                 return
 
-            # Ensure cluster-specific fields are removed (best practice for restore)
-            # These fields reference cluster-specific resources and should not be restored
             metadata = transformed_resource.get('metadata', {})
-            
-            # Remove finalizers (reference cluster-specific controllers)
             if 'finalizers' in metadata:
                 metadata.pop('finalizers', None)
                 logger.debug(f"已移除 {kind} {metadata.get('name', 'unknown')} 的 finalizers")
-            
-            # Remove ownerReferences (reference cluster-specific parent resources)
             if 'ownerReferences' in metadata:
                 metadata.pop('ownerReferences', None)
                 logger.debug(f"已移除 {kind} {metadata.get('name', 'unknown')} 的 ownerReferences")
@@ -2371,47 +2435,35 @@ class KubernetesRestoreManager:
             namespace = metadata.get('namespace') if not cluster_scoped else None
 
             if self.config.dry_run:
-                logger.info(f"[Dry-run] Would restore {kind} {name} in namespace {namespace}")
+                logger.info(
+                    f"[Dry-run] 将恢复 {kind}/{name}{doc_tag} (ns={namespace})"
+                )
                 self.restore_stats['successful_restores'] += 1
                 return
 
-            # 使用 server-side apply 而不是 create 进行幂等资源管理
-            # 这是 Kubernetes 最佳实践推荐的方法
             try:
                 self.k8s_client.apply_resource(transformed_resource)
                 ns_info = f"命名空间 {namespace}" if namespace else "集群级"
-                logger.info(f"已恢复 {kind}/{name} ({ns_info})")
+                logger.info(f"已恢复 {kind}/{name}{doc_tag} ({ns_info})")
                 self.restore_stats['successful_restores'] += 1
-
             except ApiException as e:
-                # 处理特定的 API 错误
                 if e.status == 404:
                     logger.error(f"资源类型 {api_version}/{kind} 在集群中不存在: {e}")
-                    self.restore_stats['failed_restores'] += 1
                 elif e.status == 403:
-                    logger.error(f"恢复 {kind}/{name} 时权限被拒绝: {e}")
-                    self.restore_stats['failed_restores'] += 1
+                    logger.error(f"恢复 {kind}/{name}{doc_tag} 时权限被拒绝: {e}")
                 elif e.status == 422:
-                    logger.error(f"资源 {kind}/{name} 验证错误: {e}")
-                    self.restore_stats['failed_restores'] += 1
+                    logger.error(f"资源 {kind}/{name}{doc_tag} 验证错误: {e}")
                 else:
-                    logger.error(f"恢复 {kind}/{name} 失败: HTTP {e.status} - {e}")
-                    self.restore_stats['failed_restores'] += 1
+                    logger.error(f"恢复 {kind}/{name}{doc_tag} 失败: HTTP {e.status} - {e}")
+                self.restore_stats['failed_restores'] += 1
             except ResourceNotFoundError as e:
-                logger.error(f"Resource type {api_version}/{kind} not found: {e}")
+                logger.error(f"集群不支持资源类型 {api_version}/{kind}: {e}")
                 self.restore_stats['failed_restores'] += 1
             except (AttributeError, KeyError, TypeError, ValueError) as e:
-                logger.error(f"Unexpected error restoring {kind} {name}: {e}")
+                logger.error(f"恢复 {kind}/{name}{doc_tag} 时发生意外: {e}")
                 self.restore_stats['failed_restores'] += 1
-
-        except yaml.YAMLError as e:
-            logger.error(f"Failed to parse YAML file {yaml_file}: {e}")
-            self.restore_stats['failed_restores'] += 1
-        except IOError as e:
-            logger.error(f"Failed to read file {yaml_file}: {e}")
-            self.restore_stats['failed_restores'] += 1
         except (KeyError, AttributeError, TypeError) as e:
-            logger.error(f"Failed to restore resource from {yaml_file}: {e}")
+            logger.error(f"处理清单失败 {yaml_file}{doc_tag}: {e}")
             self.restore_stats['failed_restores'] += 1
 
     def _log_restore_summary(self):
@@ -2617,8 +2669,11 @@ R7. 备份目录中存在多份备份时按名称挑选 + 并发恢复
 ================================================================================
   - 映射：仅支持 KEY=value；值中含 ':'、'=' 时仍用第一个 '=' 分隔键与完整值。
   - 启动前会校验路径、kubeconfig、并发数、资源类型名、命名空间名等；错误参数会记录日志并以退出码 1 结束，避免未处理异常。
+  - 恢复：单文件多 YAML 文档（--- 分隔）会逐个对象 apply，与 kubectl 清单语义一致；禁止静默丢弃后续文档。
+  - 恢复：启用 --create-namespaces 时，预创建命名空间任一失败会整次中止，避免资源写入错误拓扑。
+  - 命名空间映射对 Kind=Namespace 会改写 metadata.name；NetworkPolicy 的 namespaceSelector 同时处理 matchLabels 与 matchExpressions（kubernetes.io/metadata.name）。
   - 备份前预留磁盘空间；备份含 Secret，需妥善保管。
-  - 恢复使用 server-side apply，并会去掉 finalizers / ownerReferences 等集群绑定字段。
+  - 恢复使用 server-side apply（force 解决字段冲突），并会去掉 finalizers / ownerReferences 等集群绑定字段。
   - 生产环境建议先 restore --dry-run 再正式执行。
   - 依赖: Python 3.7+，kubernetes、pyyaml、tenacity。
 """.replace("__DEFAULT_RESOURCES__", default_resources_line)
