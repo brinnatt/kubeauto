@@ -1273,15 +1273,11 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 
 ![prometheus-endpoints](./images/prometheus-endpoints.png)
 
-![prometheus-pod-redis](./images/prometheus-pod-redis.png)
-
 ## T4.8、kube-state-metrics
 
-本节解决一个问题：**前面我们监控到的都是「用量」和「组件是否活着」，还没有「资源对象的状态」**。用一句话说：**kube-state-metrics 是一个监听 Kubernetes API、把各类资源对象的「当前状态」转成 Prometheus 指标的组件**，这样你就能在 Prometheus 里查「期望副本数 vs 实际可用数」「Pod 是否 Pending/Failed」「重启次数」等。
+**前面我们监控到的都是「资源用量」和「组件是否活着」，还没有「资源对象的状态」**。
 
----
-
-### 和前面几节的关系（避免断片）
+**kube-state-metrics 是一个监听 Kubernetes API、把各类资源对象的「当前状态」转成 Prometheus 指标的组件**，这样你就能在 Prometheus 里查「期望副本数 vs 实际可用数」「Pod 是否 Pending/Failed」「重启次数」等。
 
 | 前面已经有的 | 能回答的问题 | 还缺什么 |
 |-------------|--------------|----------|
@@ -1289,22 +1285,24 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 | **T4.6 API Server** | API 请求量、延迟 | 不知道「有多少 Pod 处于 Pending/Failed」 |
 | **T4.7 Endpoints 发现** | 哪些 Service 暴露了 `/metrics`、自动抓取 | 不知道「Pod 重启了几次」「Job 是否失败」 |
 
-**API Server 和 kubelet 的 `/metrics` 里没有上面「还缺」的这类信息**。这些信息来自 Kubernetes 的**资源对象本身**（Deployment、Pod、Job 等）的**状态字段**。kube-state-metrics 做的事就是：**监听 API Server 里这些对象的变化，把状态转成 Prometheus 指标**（例如 `kube_deployment_status_replicas_available`、`kube_pod_status_phase`），供 Prometheus 抓取。官方说明见 [kube-state-metrics README](https://github.com/kubernetes/kube-state-metrics)：*"listens to the Kubernetes API server and generates metrics about the state of the objects"*。
+**API Server 和 kubelet 的 `/metrics` 里没有上面「还缺」的这类信息**。这些信息来自 Kubernetes 的**资源对象本身**（Deployment、Pod、Job 等）的**状态字段**。kube-state-metrics 做的事就是：**监听 API Server 里这些对象的变化，把状态转成 Prometheus 指标**（例如 `kube_deployment_status_replicas_available`、`kube_pod_status_phase`），供 Prometheus 抓取。
+
+> 官方说明见 [kube-state-metrics README](https://github.com/kubernetes/kube-state-metrics)：`listens to the Kubernetes API server and generates metrics about the state of the objects`。
 
 ---
 
-### 4.8.1、和 metric-server 的区别（防止搞混）
+### T4.8.1、和 metric-server 的区别
 
-集群里可能还会听到 **metrics-server**，两者容易混淆，区别可以记成：
+集群里可能还会听到 **metrics-server**，两者容易混淆，区别可以理解为：
 
 - **metrics-server**：给 **Kubernetes 自己用**的。采集节点/Pod 的 **CPU、内存用量**，通过 Metrics API 提供给 HPA、调度器等，**不是给 Prometheus 当数据源的**。
 - **kube-state-metrics**：给 **Prometheus 用**的。采集 **Deployment/Pod/Job 等对象的状态**（期望副本数、实际副本数、Pod 阶段、重启次数等），以 Prometheus 格式暴露在 `/metrics`，由 Prometheus 抓取。
 
-也就是说：**用量**（CPU/内存）→ metrics-server / 我们前面的 node-exporter、cAdvisor；**对象状态**（副本数、Phase、重启次数）→ kube-state-metrics。
+也就是说：**资源用量**（CPU/内存）→ metrics-server / 我们前面的 node-exporter、cAdvisor；**对象状态**（副本数、Phase、重启次数）→ kube-state-metrics。
 
 ---
 
-### 4.8.2、安装（按步做即可）
+### T4.8.2、安装
 
 部署 kube-state-metrics 后，**不需要改 Prometheus 的 ConfigMap**：T4.7 已经配置了 `kubernetes-endpoints`，只要给 kube-state-metrics 的 **Service 打上** `prometheus.io/scrape=true` 和 `prometheus.io/port=8080`，Prometheus 就会自动发现并抓取这个新 Service 背后的 Pod（和之前 redis、kube-dns 一样）。
 
@@ -1340,14 +1338,25 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    app.kubernetes.io/component: exporter
     app.kubernetes.io/name: kube-state-metrics
-    app.kubernetes.io/version: 2.0.0-rc.0
+    app.kubernetes.io/version: 2.18.0
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "8080"   # 8080=指标端口；8081=应用自身遥测
   name: kube-state-metrics
   namespace: kube-system
-# ... spec 等保持不变
+spec:
+  clusterIP: None
+  ports:
+    - name: http-metrics
+      port: 8080
+      targetPort: http-metrics
+    - name: telemetry
+      port: 8081
+      targetPort: telemetry
+  selector:
+    app.kubernetes.io/name: kube-state-metrics
 ```
 
 **步骤四：一键部署**
