@@ -1315,7 +1315,14 @@ cd kube-state-metrics/examples/standard
 
 注意与 Kubernetes 版本兼容性，见官方 [Compatibility matrix](https://github.com/kubernetes/kube-state-metrics#compatibility-matrix)；一般用最新 release 即可。
 
-![prometheus-kube-state-metrics](./images/prometheus-kube-state-metrics.png)
+| kube-state-metrics | Kubernetes client-go Version |
+| ------------------ | ---------------------------- |
+| v2.14.0            | v1.31                        |
+| v2.15.0            | v1.32                        |
+| v2.16.0            | v1.32                        |
+| v2.17.0            | v1.33                        |
+| v2.18.0            | v1.34                        |
+| main               | v1.35                        |
 
 **步骤二：若无法拉取 gcr.io 镜像，修改 deployment 中的镜像**
 
@@ -1367,15 +1374,32 @@ spec:
 kubectl apply -f .
 ```
 
+若最后一行出现类似下面的报错，**属于正常现象**，一般**不影响** kube-state-metrics 是否已部署成功（前面 `deployment`、`service`、`clusterrole` 等已为 `created` 即说明核心清单已应用）：
+
+```text
+error: resource mapping not found for name: "" namespace: "" from "kustomization.yaml": no matches for kind "Kustomization" in version "kustomize.config.k8s.io/v1beta1"
+ensure CRDs are installed first
+```
+
+**原因**：官方 `examples/standard` 目录里除各组件清单外，还带有 **`kustomization.yaml`**，是给 **Kustomize** 用的编排文件（需执行 `kubectl apply -k .` 时由 kubectl 内置解释），**不是** 集群里的某种 CRD。执行 `kubectl apply -f .` 时会把目录下所有 yaml 都提交给 API Server，`kustomization.yaml` 无法作为集群资源创建，便会报上述错误。
+
+**可选做法**：
+
+- 继续用 `kubectl apply -f .`：忽略该条错误即可；或用 `kubectl get pods -n kube-system -l app.kubernetes.io/name=kube-state-metrics` 确认 Pod 已就绪。
+- 改用 Kustomize：`kubectl apply -k .`（在同一目录下），则不会把 `kustomization.yaml` 误当普通资源 apply。
+- 或只应用具体文件（与当前官方仓库一致）：`kubectl apply -f cluster-role.yaml -f cluster-role-binding.yaml -f service-account.yaml -f deployment.yaml -f service.yaml`（**不要**带上 `kustomization.yaml`）。
+
 **步骤五：确认 Prometheus 已抓取**
 
-因为 T4.7 的 `kubernetes-endpoints` 只抓带 `prometheus.io/scrape=true` 的 Service，部署完成后 Prometheus 会自动把 kube-state-metrics 加入抓取目标。在 Prometheus 的 **Status → Targets** 里找到 `kubernetes-endpoints`，应能看到 kube-state-metrics 的 endpoint（状态为 UP）。
+因为 T4.7 的 `kubernetes-endpoints` 只抓带 `prometheus.io/scrape=true` 的 Service，部署完成后 Prometheus 会自动把 kube-state-metrics 加入抓取目标。在 Prometheus 的 **Status → Service discovery** 里找到 `kubernetes-endpoints`，应能看到 kube-state-metrics 的 endpoint（状态为 UP）。
 
 ![prometheus-kube-state-metrics1](./images/prometheus-kube-state-metrics1.png)
 
-### 4.8.3、水平分片（可选，小集群可跳过）
+### T4.8.3、水平分片
 
-**什么时候需要看这段**：集群规模很大（例如节点数 > 500 或对象数 > 10 万）时，单实例 kube-state-metrics 可能吃满内存或延迟变高，这时可以用**水平分片**把对象分摊到多个实例。中小集群用默认单实例即可，不必配置分片。
+**什么时候需要看这段**？
+
+集群规模很大（例如节点数 > 500 或对象数 > 10 万）时，单实例 kube-state-metrics 可能吃满内存或延迟变高，这时可以用**水平分片**把对象分摊到多个实例。中小集群用默认单实例即可，不必配置分片。
 
 分片原理：按 Kubernetes 对象的 UID 做 MD5 再对总分片数取模，同一个对象始终由同一个分片负责，这样 Prometheus 抓多个 target 时不会重复或漏掉。官方文档见 [Horizontal sharding](https://github.com/kubernetes/kube-state-metrics#horizontal-sharding)。
 
@@ -1390,7 +1414,7 @@ kubectl apply -f .
 
 **自动分片（实验性）**：用 StatefulSet 部署时，可通过 Downward API 把 Pod 名和 namespace 传给进程，实现「按 Pod 序号自动算分片」。示例见官方 [examples/autosharding](https://github.com/kubernetes/kube-state-metrics/tree/main/examples/autosharding)。官方注明该功能为实验性，可能随时变更或移除，生产环境建议用静态分片。
 
-### 4.8.4、部署后能查什么（应用场景示例）
+### T4.8.4、部署后能查什么（应用场景示例）
 
 部署并确认 Prometheus 已抓取 kube-state-metrics 后，在 **Prometheus → Query（Graph）** 里就可以用下面这类 PromQL。指标含义和更多示例见官方 [docs 目录](https://github.com/kubernetes/kube-state-metrics/tree/main/docs)。
 
@@ -1434,7 +1458,7 @@ kube_pod_container_resource_limits_cpu_cores == 0
 
 ---
 
-### 常见问题：为什么查到的标签是 `exported_namespace` 而不是 `namespace`？
+**常见问题：为什么查到的标签是 `exported_namespace` 而不是 `namespace`？**
 
 **现象**：在 Prometheus 里用 `namespace="default"` 过滤 kube-state-metrics 的指标没结果，但改成 `exported_namespace="default"` 就有数据。
 
@@ -1464,7 +1488,7 @@ kube_pod_container_resource_limits_cpu_cores == 0
 
 ---
 
-### 故障排查速查
+### T4.8.5、故障排查速查
 
 | 现象         | 建议检查                                               | 常见处理 |
 | ------------ | ------------------------------------------------------ | -------- |
