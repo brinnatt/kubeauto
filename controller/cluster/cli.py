@@ -4,14 +4,68 @@ Command line interface for kubeauto
 import argparse
 import sys
 import re
-from typing import Dict, Callable
+from pathlib import Path
+from typing import Dict, Callable, List
 from taskflow.patterns import linear_flow
 from taskflow import engines
 from common.utils import confirm_action, validate_ip
-from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError
-from common.logger import setup_logger
+from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError, InstallPrereqError
+from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
 from common.os import SystemProbe
+
+# Commands that take a cluster name as first argument (for completion)
+_CLUSTER_COMMANDS = {
+    "new", "setup", "list", "checkout", "start", "stop", "upgrade",
+    "backup", "restore", "destroy", "add-etcd", "add-master", "add-node",
+    "del-etcd", "del-master", "del-node", "kca-renew", "kcfg-adm",
+}
+# Setup step values (for setup <cluster> <step> completion)
+_SETUP_STEPS = [
+    "01", "02", "03", "04", "05", "06", "07", "90", "10", "11",
+    "prepare", "etcd", "container-runtime", "kube-master", "kube-node",
+    "network", "cluster-addon", "all", "ex-lb", "harbor",
+]
+
+_BASH_COMPLETION_SCRIPT = r'''# Bash completion for kubecli (supports: python3 kubecli.py / kubecli / kubecli.py)
+# Usage: source <(python3 kubecli.py completion bash)   or add to .bashrc
+_kubeauto_completion() {{
+  local cur="${{COMP_WORDS[COMP_CWORD]}}"
+  # Invoked as: python3 kubecli.py [args]  -> complete kubecli subcommands/args
+  if [[ "${{COMP_WORDS[0]}}" == "python3" ]] && [[ $COMP_CWORD -ge 1 ]] && [[ "${{COMP_WORDS[1]}}" == *"kubecli"* ]]; then
+    local cword=$((COMP_CWORD - 2))
+    [[ $cword -lt 0 ]] && cword=0
+    local words=("${{COMP_WORDS[@]:2}}")
+    COMPREPLY=($(compgen -W "$("${{COMP_WORDS[0]}}" "${{COMP_WORDS[1]}}" __complete "$cword" "${{words[@]}}" 2>/dev/null)" -- "$cur"))
+    return
+  fi
+  # Invoked as: kubecli [args] or kubecli.py [args] (direct)
+  if [[ "${{COMP_WORDS[0]}}" == *"kubecli"* ]]; then
+    local cword=$((COMP_CWORD - 1))
+    local words=("${{COMP_WORDS[@]:1}}")
+    COMPREPLY=($(compgen -W "$("${{COMP_WORDS[0]}}" __complete "$cword" "${{words[@]}}" 2>/dev/null)" -- "$cur"))
+    return
+  fi
+  COMPREPLY=()
+}}
+complete -F _kubeauto_completion python3
+complete -F _kubeauto_completion {prog}
+complete -F _kubeauto_completion kubecli
+'''
+
+_ZSH_COMPLETION_SCRIPT = r'''# Zsh completion for {prog}
+# Usage: source <({prog} completion zsh)   or add to .zshrc
+_kubeauto_completion() {{
+  local -a w
+  w=("${{(@)words[2,-1]}}")
+  local cword=$((CURRENT - 2))
+  [[ $cword -lt 0 ]] && cword=0
+  local -a reply
+  reply=($({prog} __complete "$cword" "${{w[@]}}" 2>/dev/null))
+  _describe 'values' reply
+}}
+compdef _kubeauto_completion {prog}
+'''
 from service.cluster.manager import ClusterManager, SetupAIO
 from service.cluster.downloader import DownloadManager
 from service.cluster.docker import DockerManager
@@ -74,6 +128,12 @@ class KubeautoCLI:
 
         # System commands
         self._setup_system_command()
+
+        # Version (no side effects)
+        self._setup_version_command()
+
+        # Completion (output script only, no side effects)
+        self._setup_completion_command()
 
     def _add_common_cluster_args(self, parser: argparse.ArgumentParser) -> None:
         """Add common cluster arguments to a parser"""
@@ -193,7 +253,15 @@ class KubeautoCLI:
         """Setup 'add-etcd' command"""
         parser = self.subparsers.add_parser(
             "add-etcd",
-            help="Add an etcd node to the cluster"
+            help="Add an etcd node to the cluster",
+            epilog="""
+Examples:
+  # Add etcd on a host that is already master/node (nodename optional)
+  kubecli add-etcd mycluster 192.168.1.2
+
+  # Add standalone etcd node (nodename required)
+  kubecli add-etcd mycluster 192.168.1.10 etcd-01
+"""
         )
         self._add_common_cluster_args(parser)
         parser.add_argument(
@@ -204,14 +272,19 @@ class KubeautoCLI:
             "extra_info",
             nargs="?",
             default="",
-            help="Additional node information (optional)"
+            help="k8s_nodename for standalone etcd (required if etcd is not on a master/node host); optional if same host as master/node"
         )
 
     def _setup_add_master_command(self) -> None:
         """Setup 'add-master' command"""
         parser = self.subparsers.add_parser(
             "add-master",
-            help="Add a master node to the cluster"
+            help="Add a master node to the cluster",
+            epilog="""
+Examples:
+  kubecli add-master mycluster 192.168.1.2 master-02
+  kubecli add-master prod 10.0.1.5 master-01
+"""
         )
         self._add_common_cluster_args(parser)
         parser.add_argument(
@@ -222,14 +295,19 @@ class KubeautoCLI:
             "extra_info",
             nargs="?",
             default="",
-            help="Additional node information (optional)"
+            help="k8s_nodename for this master (required): lowercase alphanumeric, '-' or '.', start/end with alphanumeric (e.g. master-02)"
         )
 
     def _setup_add_node_command(self) -> None:
         """Setup 'add-node' command"""
         parser = self.subparsers.add_parser(
             "add-node",
-            help="Add a worker node to the cluster"
+            help="Add a worker node to the cluster",
+            epilog="""
+Examples:
+  kubecli add-node mycluster 192.168.1.5 worker-01
+  kubecli add-node prod 10.0.2.10 worker-02
+"""
         )
         self._add_common_cluster_args(parser)
         parser.add_argument(
@@ -240,7 +318,7 @@ class KubeautoCLI:
             "extra_info",
             nargs="?",
             default="",
-            help="Additional node information (optional)"
+            help="k8s_nodename for this node (required): lowercase alphanumeric, '-' or '.', start/end with alphanumeric (e.g. worker-01)"
         )
 
     def _setup_del_etcd_command(self) -> None:
@@ -328,7 +406,7 @@ class KubeautoCLI:
             if args.delete and not args.user:
                 parser.error("'-u/--user' is required when using '-D/--delete'.")
             if args.list and args.user:
-                logger.warning("Note: '-u' is ignored when listing users.", extra={"to_stdout": True})
+                logger.warning("Note: '-u' is ignored when listing users.", extra=LOG_STDOUT)
 
         parser.set_defaults(validate=validate_args)
 
@@ -544,6 +622,71 @@ Examples:
             help="Probe network interfaces"
         )
 
+    def _setup_version_command(self) -> None:
+        """Setup 'version' command: print kubeauto version (same as v_kubeauto)."""
+        self.subparsers.add_parser(
+            "version",
+            help="Show kubeauto version"
+        )
+
+    def _setup_completion_command(self) -> None:
+        """Setup 'completion' command: print shell completion script (bash/zsh)."""
+        parser = self.subparsers.add_parser(
+            "completion",
+            help="Output shell completion script (source it to enable Tab completion)"
+        )
+        sub = parser.add_subparsers(dest="shell", required=True, metavar="SHELL")
+        sub.add_parser("bash", help="Bash completion script")
+        sub.add_parser("zsh", help="Zsh completion script")
+
+    def _get_subcommand_names(self) -> List[str]:
+        """Return list of top-level subcommand names from parser (for completion)."""
+        for action in self.parser._actions:
+            if hasattr(action, "choices") and action.choices:
+                return sorted(action.choices.keys())
+        return []
+
+    def _get_cluster_names(self) -> List[str]:
+        """Return cluster names from clusters_dir (read-only, no business logic). Sorted for stable order."""
+        clusters_dir = Path(self.kube_constant.BASE_PATH) / "clusters"
+        if not clusters_dir.is_dir():
+            return []
+        return sorted(p.name for p in clusters_dir.iterdir() if p.is_dir())
+
+    def _do_completion(self, argv_after_complete: List[str]) -> None:
+        """Print completions one per line for shell. No side effects, read-only.
+        argv_after_complete: [cword, word0, word1, ...] where cword is the index
+        of the word being completed (0-based), rest are the words from the command line.
+        """
+        if len(argv_after_complete) < 1:
+            return
+        try:
+            cword = int(argv_after_complete[0])
+        except (ValueError, IndexError):
+            return
+        tokens = argv_after_complete[1:]
+        prefix = (tokens[cword] or "") if cword < len(tokens) else ""
+
+        def filter_prefix(candidates: List[str], p: str) -> List[str]:
+            if not p:
+                return candidates
+            return [c for c in candidates if c.startswith(p)]
+
+        subcommands = self._get_subcommand_names()
+        out: List[str] = []
+
+        if cword == 0:
+            out = filter_prefix(subcommands, prefix)
+        elif cword == 1 and tokens and tokens[0] in _CLUSTER_COMMANDS:
+            out = filter_prefix(self._get_cluster_names(), prefix)
+        elif cword == 2 and len(tokens) >= 2 and tokens[0] == "setup":
+            out = filter_prefix(_SETUP_STEPS, prefix)
+        else:
+            out = []
+
+        for s in out:
+            print(s)
+
     def _execute_command(self, args: argparse.Namespace) -> None:
         """Execute the appropriate command based on parsed arguments"""
         command_handlers: Dict[str, Callable[[argparse.Namespace], None]] = {
@@ -581,7 +724,13 @@ Examples:
             "docker": self._handle_docker,
 
             # System commands
-            "system": self._handle_system
+            "system": self._handle_system,
+
+            # Version
+            "version": self._handle_version,
+
+            # Completion
+            "completion": self._handle_completion
         }
 
         handler = command_handlers.get(args.command)
@@ -590,6 +739,18 @@ Examples:
         else:
             self.parser.print_help()
             sys.exit(1)
+
+    def _handle_version(self, args: argparse.Namespace) -> None:
+        """Print kubeauto version (from v_kubeauto), no side effects."""
+        logger.info(self.kube_constant.v_kubeauto, extra=LOG_STDOUT)
+
+    def _handle_completion(self, args: argparse.Namespace) -> None:
+        """Print shell completion script (bash or zsh). No side effects."""
+        prog = self.parser.prog or "kubecli"
+        if args.shell == "bash":
+            print(_BASH_COMPLETION_SCRIPT.format(prog=prog))
+        else:
+            print(_ZSH_COMPLETION_SCRIPT.format(prog=prog))
 
     def _handle_new(self, args: argparse.Namespace) -> None:
         """Handle 'new' command"""
@@ -606,10 +767,10 @@ Examples:
         cm = ClusterManager()
         clusters = cm.list_clusters()
         current = cm.get_current_cluster()
-        logger.info("Managed clusters:", extra={"to_stdout": True})
+        logger.info("Managed clusters:", extra=LOG_STDOUT)
         for i, cluster in enumerate(clusters, 1):
             prefix = "* -> " if cluster == current else "  -> "
-            logger.info(f"{prefix}{i}: {cluster}", extra={"to_stdout": True})
+            logger.info(f"{prefix}{i}: {cluster}", extra=LOG_STDOUT)
 
     def _handle_checkout(self, args: argparse.Namespace) -> None:
         """Handle 'checkout' command"""
@@ -726,7 +887,7 @@ Examples:
                     logger.warning(
                         "Docker has been installed, if you want to install another version, "
                         "please confirm to uninstall the old version, not uninstalling may cause docker conflicts!",
-                        extra={"to_stdout": True}
+                        extra=LOG_STDOUT
                     )
                     if not self.docker.clean_docker_env():
                         logger.warning("You have cancelled cleaning docker environment, "
@@ -765,6 +926,11 @@ Examples:
         if not any([args.set_proxy, args.del_proxy, args.no_proxy, args.remove, args.remove_all, args.remove_existed]):
             self.subparsers.choices["docker"].print_help()
             raise DockerManageError("Docker command requires at least one argument")
+
+        if not docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is not installed or not running. Run 'kubecli download -d' to install, then retry."
+            )
 
         if args.set_proxy:
             docker.set_docker_proxy(args.set_proxy[0], args.set_proxy[1])
@@ -827,7 +993,7 @@ Examples:
             cli_hosts = set(args.hosts) if args.hosts else set()
             dup_hosts = cli_hosts & target_hosts_set
             if dup_hosts:
-                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!", extra={"to_stdout": True})
+                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!", extra=LOG_STDOUT)
             extra_hosts = cli_hosts - dup_hosts
             target_hosts_set.update(extra_hosts)
 
@@ -853,56 +1019,61 @@ Examples:
                 max_workers=args.workers,
             )
             for host, result in results.items():
-                logger.info(f"{host}: {result}", extra={"to_stdout": True})
+                logger.info(f"{host}: {result}", extra=LOG_STDOUT)
 
         if args.disk_usage:
             disks = list(system.disk_usage())
             header = f"{'Device':<18} {'Mount':<15} {'Total(GB)':<10} {'Used(GB)':<10} {'Free(GB)':<10} {'Use%':<6}"
-            logger.info("Disk Usage:", extra={"to_stdout": True})
-            logger.info("-" * len(header), extra={"to_stdout": True})
-            logger.info(header, extra={"to_stdout": True})
-            logger.info("-" * len(header), extra={"to_stdout": True})
+            logger.info("Disk Usage:", extra=LOG_STDOUT)
+            logger.info("-" * len(header), extra=LOG_STDOUT)
+            logger.info(header, extra=LOG_STDOUT)
+            logger.info("-" * len(header), extra=LOG_STDOUT)
             for disk in disks:
                 logger.info(
                     f"{disk['device']:<18} {disk['mount']:<15} "
                     f"{disk['total_gb']:<10.2f} {disk['used_gb']:<10.2f} "
                     f"{disk['free_gb']:<10.2f} {disk['usage_percent']:<6.1f}",
-                    extra={"to_stdout": True}
+                    extra=LOG_STDOUT
                 )
 
         if args.system_load:
             resources = system.hardware_resources()
-            logger.info("System Resources:", extra={"to_stdout": True})
+            logger.info("System Resources:", extra=LOG_STDOUT)
             logger.info(f"CPU Cores: {resources['cpu_cores']} (Threads: {resources['cpu_threads']})",
-                        extra={"to_stdout": True})
-            logger.info(f"CPU Usage: {resources['cpu_usage_percent']:.1f}%", extra={"to_stdout": True})
+                        extra=LOG_STDOUT)
+            logger.info(f"CPU Usage: {resources['cpu_usage_percent']:.1f}%", extra=LOG_STDOUT)
             logger.info(
                 f"Memory: {resources['memory_available_gb']:.1f}/{resources['memory_total_gb']:.1f} GB ({resources['memory_usage_percent']:.1f}%)",
-                extra={"to_stdout": True})
+                extra=LOG_STDOUT)
             logger.info(f"Swap: {resources['swap_used_gb']:.1f}/{resources['swap_total_gb']:.1f} GB",
-                        extra={"to_stdout": True})
+                        extra=LOG_STDOUT)
 
         if args.network_usage:
             interfaces = list(system.network_interfaces())
-            logger.info("Network Interfaces:", extra={"to_stdout": True})
+            logger.info("Network Interfaces:", extra=LOG_STDOUT)
             for intf in interfaces:
-                logger.info(f"Interface: {intf['interface']}", extra={"to_stdout": True})
+                logger.info(f"Interface: {intf['interface']}", extra=LOG_STDOUT)
                 for family, addr in intf['addresses'].items():
-                    logger.info(f"  {family}: {addr}", extra={"to_stdout": True})
+                    logger.info(f"  {family}: {addr}", extra=LOG_STDOUT)
                 logger.info(
                     f"  Traffic: ↑ {intf['traffic_mb']['sent']:.2f} MB | ↓ {intf['traffic_mb']['recv']:.2f} MB",
-                    extra={"to_stdout": True}
+                    extra=LOG_STDOUT
                 )
 
     def run(self) -> None:
         """Run the CLI application"""
+        # Completion hook: no parse_args, no business logic (minimal invasiveness)
+        if len(sys.argv) >= 2 and sys.argv[1] == "__complete":
+            self._do_completion(sys.argv[2:])
+            sys.exit(0)
+
         args = self.parser.parse_args()
 
         try:
             self._execute_command(args)
         except KubeautoError as e:
-            logger.error(str(e), extra={'to_stdout': True})
+            logger.error(str(e), extra=LOG_STDOUT)
             sys.exit(1)
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}", extra={'to_stdout': True})
+            logger.error(f"Unexpected error: {str(e)}", extra=LOG_STDOUT)
             sys.exit(1)

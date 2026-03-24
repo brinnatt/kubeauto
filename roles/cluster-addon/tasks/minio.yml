@@ -23,12 +23,12 @@
       - "tenant-values.yaml"
 
     - name: helm 部署 minio operator 
-      shell: "{{ base_dir }}/bin/helm upgrade minio-operator --install -n minio-operator \
+      shell: "{{ base_dir }}/extra-bin/helm upgrade minio-operator --install -n minio-operator \
               --create-namespace -f {{ cluster_dir }}/yml/minio/operator-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/operator-{{ minio_chart_ver }}.tgz"
 
     - name: 轮询等待部署 minio operator
-      shell: "{{ base_dir }}/bin/helm ls -n minio-operator|grep minio-operator|awk '{print $8}'"
+      shell: "{{ base_dir }}/extra-bin/helm ls -n minio-operator|grep minio-operator|awk '{print $8}'"
       register: chart_status
       until: chart_status.stdout == "deployed"
       retries: 15
@@ -36,7 +36,7 @@
       ignore_errors: true
 
     - name: helm 部署 minio tenant
-      shell: "{{ base_dir }}/bin/helm upgrade minio --install -n {{ minio_namespace }} \
+      shell: "{{ base_dir }}/extra-bin/helm upgrade minio --install -n {{ minio_namespace }} \
               --create-namespace -f {{ cluster_dir }}/yml/minio/tenant-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/tenant-{{ minio_chart_ver }}.tgz"
 

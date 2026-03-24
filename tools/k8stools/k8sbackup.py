@@ -5,10 +5,12 @@ k8s_backup.py - 企业级 Kubernetes 配置备份和恢复工具
 
 支持功能：
 - 备份 Kubernetes 集群资源（Deployments、Services、ConfigMaps、Secrets 等）
-- 恢复备份到目标集群
-- 支持命名空间映射、镜像映射、环境变量映射
-- 自动处理资源依赖关系和恢复顺序
-- 符合 Kubernetes 官方最佳实践
+- 恢复备份到目标集群（server-side apply、单文件多文档清单、依赖顺序串行）
+- 支持命名空间映射、镜像映射、环境变量映射（统一 KEY=值，多项用逗号或空格分隔）
+- 备份侧拒绝缺少 apiVersion/kind 的对象；元数据 JSON 损坏时降级而非崩溃
+- 自动处理资源依赖关系和恢复顺序（含 HPA、PDB、NetworkPolicy 等扩展优先级）
+
+设计与约束对齐 Kubernetes 官方文档（声明式配置、SSA、Service、NetworkPolicy 等）。
 
 Python 3.7+ 兼容
 """
@@ -16,6 +18,7 @@ Python 3.7+ 兼容
 import argparse
 import logging
 import os
+import re
 import sys
 import tarfile
 import time
@@ -184,8 +187,31 @@ class TransformationRule:
         return self.namespace_mapping.get(original_ns, original_ns)
 
     def transform_image(self, original_image: str) -> str:
-        """Transform container image according to mapping rules"""
-        for old_prefix, new_prefix in self.image_mapping.items():
+        """
+        按前缀规则改写容器镜像引用字符串（对应 Pod/Container 的 `image` 字段）。
+
+        Kubernetes 中镜像名为**单一字符串**（见官方文档 *Container Images*）：
+        可含仓库/路径、`:` 标签、`@sha256:` digest。标签与 digest 均属于该字符串后缀，
+        无单独 API 字段。
+
+        - 仅替换与 `old_prefix` 匹配的前缀；未匹配则保持原样。
+        - 若需**改标签或 digest**，将旧引用中含标签或 digest 的前缀写在映射左侧，例如
+          registry.io/app:v1.0=registry.io/app:v2.0
+        - 多规则时按**最长前缀优先**匹配，避免短规则抢在带仓库路径的规则之前命中。
+
+        Args:
+            original_image: `container.image` 的完整值
+
+        Returns:
+            替换后的镜像字符串
+        """
+        if not original_image or not self.image_mapping:
+            return original_image
+        for old_prefix, new_prefix in sorted(
+            self.image_mapping.items(),
+            key=lambda kv: len(kv[0]),
+            reverse=True,
+        ):
             if original_image.startswith(old_prefix):
                 return original_image.replace(old_prefix, new_prefix, 1)
         return original_image
@@ -194,10 +220,10 @@ class TransformationRule:
         """
         转换环境变量值。
         
-        基于环境变量 key 的精确映射，符合 Kubernetes 和 Python 最佳实践：
-        - 格式: "ENV_KEY:new_value" 表示将 ENV_KEY 的值替换为 new_value
-        - 如果映射值为空字符串 ""，表示删除该环境变量（返回 None）
-        - 如果原资源中不存在该 key，映射会新增该环境变量
+        基于环境变量 key 的精确映射，符合 Kubernetes 与声明式配置习惯：
+        - CLI 格式: "ENV_KEY=new_value"（值中可含冒号、URL 等；键值只用第一个 = 分隔）
+        - 映射值为空字符串 "" 表示删除该环境变量（返回 None）
+        - 若原资源中不存在该 key，映射会新增该环境变量
         
         Args:
             env_name: 环境变量名称（key）
@@ -295,8 +321,9 @@ def retry_on_api_error(exception):
         status = getattr(exception, "status", None)
         if status is None:
             return False
-        # 重试服务器错误（5xx）和速率限制错误（429）
-        return (500 <= status < 600) or status == 429
+        # 5xx、429；409 在并发 SSA / 资源更新竞态下可能出现，短重试可提高生产成功率
+        # 参考: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+        return (500 <= status < 600) or status == 429 or status == 409
     return isinstance(exception, (ConnectionError, TimeoutError))
 
 
@@ -389,23 +416,306 @@ def write_yaml_safely(data: Dict, filepath: str, dry_run: bool = False) -> None:
         raise
 
 
-def parse_mapping(mapping_str: str) -> Dict[str, str]:
+class MappingParseError(ValueError):
+    """映射字符串解析或校验失败。"""
+
+
+# Kubernetes 命名空间名称（DNS 标签）
+_K8S_DNS_LABEL_RE = re.compile(r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+# 容器环境变量名（C_IDENTIFIER）
+_K8S_ENV_NAME_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+
+def _validate_namespace_mapping_token(key: str, value: str, token: str) -> None:
+    if not value:
+        raise MappingParseError(f"命名空间映射的目标不能为空，项: {token!r}")
+    for label, role in ((key, "源"), (value, "目标")):
+        if len(label) > 63 or not _K8S_DNS_LABEL_RE.match(label):
+            raise MappingParseError(
+                f"命名空间映射{role}名称无效（须为 DNS 标签、最长 63）: {label!r}，项: {token!r}"
+            )
+
+
+def _validate_env_mapping_token(key: str, token: str) -> None:
+    if not _K8S_ENV_NAME_RE.match(key):
+        raise MappingParseError(
+            f"环境变量名无效（须匹配 [A-Za-z_][A-Za-z0-9_]*）: {key!r}，项: {token!r}"
+        )
+
+
+def _validate_image_mapping_token(key: str, token: str) -> None:
+    if not key:
+        raise MappingParseError(f"镜像映射源前缀不能为空，项: {token!r}")
+
+
+def _parse_mapping_pair(token: str) -> Tuple[str, str]:
+    """从单个映射项解析 key/value，仅支持第一个 '=' 作为分隔符。"""
+    t = token.strip()
+    if not t:
+        raise MappingParseError("存在空的映射项")
+    if "=" not in t:
+        raise MappingParseError(f"映射项须为 KEY=value，无效项: {token!r}")
+    key, value = t.split("=", 1)
+    key, value = key.strip(), value.strip()
+    if not key:
+        raise MappingParseError(f"映射键不能为空，项: {token!r}")
+    return key, value
+
+
+def _tokenize_mapping_string(mapping_str: str) -> List[str]:
     """
-    从字符串格式解析命名空间/镜像映射。
-    
+    将整段映射字符串拆成若干项（调用方保证非空且含 '='）。
+    按「下一个 KEY=」前瞻分割，支持逗号/空白分隔；值中可含空格。
+    """
+    s = mapping_str.strip()
+    if not s:
+        return []
+    parts = re.split(r"(?:\s*,\s*|\s+)(?=[^\s=]+=)", s)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def parse_mapping(mapping_str: Optional[str], mapping_kind: str) -> Dict[str, str]:
+    """
+    解析命名空间 / 镜像 / 环境变量映射字符串。
+
+    唯一支持的写法（各类映射通用）：
+        KEY1=value1 KEY2=value2, KEY3=value3
+    多项之间可用逗号、空白或「逗号+空白」分隔。键与值之间只用第一个 = 分割，故值中可含 ':'、'=' 等。
+
+    环境变量：
+        - KEY= 或 KEY="" 表示删除该环境变量（空值）
+        - 增：原清单无该 KEY 时于恢复阶段新增
+        - 改：有则替换值（含从 valueFrom 改为 value）
+        - 删：见上
+
     Args:
-        mapping_str: 映射字符串，格式为 "key1:value1,key2:value2"
-        
+        mapping_str: 映射字符串；None 或空白视为无映射
+        mapping_kind: "namespace" | "image" | "env"
+
     Returns:
-        Dict[str, str]: 解析后的映射字典
+        有序映射字典（重复键且值冲突时报错）
+
+    Raises:
+        MappingParseError: 格式或校验不通过
     """
-    mapping = {}
-    if mapping_str:
-        for item in mapping_str.split(','):
-            if ':' in item:
-                key, value = item.split(':', 1)
-                mapping[key.strip()] = value.strip()
-    return mapping
+    if not mapping_str or not str(mapping_str).strip():
+        return {}
+    s = str(mapping_str).strip()
+    if "=" not in s:
+        raise MappingParseError("映射须使用 KEY=value 形式，且至少包含一个 '='")
+    if mapping_kind not in ("namespace", "image", "env"):
+        raise MappingParseError(f"未知 mapping_kind: {mapping_kind!r}")
+
+    result: Dict[str, str] = {}
+    tokens = _tokenize_mapping_string(s)
+
+    for token in tokens:
+        key, value = _parse_mapping_pair(token)
+        if mapping_kind == "namespace":
+            _validate_namespace_mapping_token(key, value, token)
+        elif mapping_kind == "env":
+            _validate_env_mapping_token(key, token)
+        else:
+            _validate_image_mapping_token(key, token)
+
+        if key in result and result[key] != value:
+            raise MappingParseError(
+                f"映射键 {key!r} 重复且值不一致: {result[key]!r} 与 {value!r}"
+            )
+        result[key] = value
+    return result
+
+
+# -------------------------
+# CLI 参数校验（入口统一校验，避免非法参数进入业务逻辑后抛未处理异常）
+# -------------------------
+KNOWN_RESOURCE_TYPES = frozenset(RESOURCE_API_MAPPING.keys())
+MAX_WORKERS_CAP = 128
+MAX_CLI_PATH_LEN = 4096
+MAX_BACKUP_NAME_LEN = 200
+MAX_CONTEXT_LEN = 256
+MAX_SELECTOR_LEN = 8192
+
+_K8S_RESOURCE_TOKEN_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
+_BACKUP_NAME_BAD = re.compile(r'[/\\\x00\r\n]|[<>:"|?*]')
+
+
+def _cli_strip_opt(s: Optional[str]) -> Optional[str]:
+    if s is None:
+        return None
+    t = str(s).strip()
+    return t if t else None
+
+
+def _cli_reject_control_chars(s: Optional[str], option_label: str) -> bool:
+    if s is None:
+        return True
+    if "\x00" in s:
+        logger.error(f"{option_label} 不能包含空字符")
+        return False
+    return True
+
+
+def validate_cli_max_workers(n: int) -> bool:
+    if n < 1:
+        logger.error("--max-workers 须为 >= 1 的整数")
+        return False
+    if n > MAX_WORKERS_CAP:
+        logger.error(f"--max-workers 过大（建议 1–{MAX_WORKERS_CAP}）: {n}")
+        return False
+    return True
+
+
+def validate_cli_kubeconfig(path: Optional[str]) -> bool:
+    p = _cli_strip_opt(path)
+    if not p:
+        return True
+    exp = os.path.abspath(os.path.expanduser(p))
+    if len(exp) > MAX_CLI_PATH_LEN:
+        logger.error("--kubeconfig 路径过长")
+        return False
+    if not os.path.isfile(exp):
+        logger.error(f"--kubeconfig 不是有效文件: {exp}")
+        return False
+    if not os.access(exp, os.R_OK):
+        logger.error(f"--kubeconfig 文件不可读: {exp}")
+        return False
+    return True
+
+
+def validate_cli_context(ctx: Optional[str]) -> bool:
+    c = _cli_strip_opt(ctx)
+    if c is None:
+        return True
+    if len(c) > MAX_CONTEXT_LEN:
+        logger.error(f"--context 过长（最大 {MAX_CONTEXT_LEN}）")
+        return False
+    return True
+
+
+def validate_cli_selector(sel: Optional[str], label: str) -> bool:
+    s = _cli_strip_opt(sel)
+    if s is None:
+        return True
+    if len(s) > MAX_SELECTOR_LEN:
+        logger.error(f"{label} 过长（最大 {MAX_SELECTOR_LEN}）")
+        return False
+    if "\x00" in s:
+        logger.error(f"{label} 不能包含空字符")
+        return False
+    return True
+
+
+def validate_cli_backup_namespace(name: str) -> bool:
+    if name == "all":
+        return True
+    if len(name) > 63 or not _K8S_DNS_LABEL_RE.match(name):
+        logger.error(
+            f"命名空间名称无效（须为 DNS 标签、最长 63，或与 --all-namespaces 联用）: {name!r}"
+        )
+        return False
+    return True
+
+
+def validate_cli_resource_types(resources: List[str]) -> bool:
+    for r in resources:
+        if not _K8S_RESOURCE_TOKEN_RE.match(r):
+            logger.error(
+                f"非法资源类型: {r!r}（须小写字母开头，仅含小写、数字、连字符，最长 63）"
+            )
+            return False
+        if r not in KNOWN_RESOURCE_TYPES:
+            logger.warning(
+                f"资源类型 {r!r} 不在内置列表，将尝试 API 动态发现；无对应资源时备份结果为空"
+            )
+    return True
+
+
+def validate_cli_backup_name(name: Optional[str]) -> bool:
+    n = _cli_strip_opt(name)
+    if n is None:
+        return True
+    if len(n) > MAX_BACKUP_NAME_LEN:
+        logger.error(f"--backup-name 过长（最大 {MAX_BACKUP_NAME_LEN}）")
+        return False
+    if n in (".", ".."):
+        logger.error("--backup-name 不能为 '.' 或 '..'")
+        return False
+    if _BACKUP_NAME_BAD.search(n):
+        logger.error("--backup-name 不能含路径分隔符或 <>:\"|?* 等非法字符")
+        return False
+    return True
+
+
+def validate_cli_output_dir_for_backup(output_dir: str, dry_run: bool) -> bool:
+    if not _cli_reject_control_chars(output_dir, "输出目录"):
+        return False
+    raw = str(output_dir).strip()
+    if not raw:
+        logger.error("--output-dir 不能为空")
+        return False
+    base = os.path.abspath(os.path.expanduser(raw))
+    if len(base) > MAX_CLI_PATH_LEN:
+        logger.error("--output-dir 路径过长")
+        return False
+    if dry_run:
+        return True
+    try:
+        Path(base).mkdir(parents=True, exist_ok=True, mode=0o755)
+    except OSError as e:
+        logger.error(f"无法创建或访问输出目录 {base}: {e}")
+        return False
+    if not os.path.isdir(base):
+        logger.error(f"--output-dir 不是目录: {base}")
+        return False
+    if not os.access(base, os.W_OK):
+        logger.error(f"输出目录不可写: {base}")
+        return False
+    return True
+
+
+def validate_cli_restore_backup_dir(path: str) -> Optional[str]:
+    if not _cli_reject_control_chars(path, "--backup-dir"):
+        return None
+    raw = str(path).strip()
+    if not raw:
+        logger.error("--backup-dir 不能为空")
+        return None
+    exp = os.path.abspath(os.path.expanduser(raw))
+    if len(exp) > MAX_CLI_PATH_LEN:
+        logger.error("--backup-dir 路径过长")
+        return None
+    if not os.path.exists(exp):
+        logger.error(f"备份目录不存在: {exp}")
+        return None
+    if not os.path.isdir(exp):
+        logger.error(f"--backup-dir 不是目录: {exp}")
+        return None
+    if not os.access(exp, os.R_OK):
+        logger.error(f"备份目录不可读: {exp}")
+        return None
+    return exp
+
+
+def load_kubernetes_yaml_documents(filepath: str) -> List[Dict[str, Any]]:
+    """
+    读取单个 YAML 文件中的全部文档（与多对象清单中 `---` 分隔行为一致）。
+
+    若文件含多段对象而只解析第一段，会在无告警情况下丢失后续资源；恢复须与 kubectl apply 清单语义一致。
+    参考: https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/
+    """
+    out: List[Dict[str, Any]] = []
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for idx, doc in enumerate(yaml.safe_load_all(f), start=1):
+            if doc is None:
+                continue
+            if not isinstance(doc, dict):
+                logger.warning(
+                    f"{filepath}: 第 {idx} 段 YAML 不是映射，已跳过（应为 Kubernetes 对象）"
+                )
+                continue
+            out.append(doc)
+    return out
 
 
 def load_backup_metadata(backup_dir: str) -> Dict[str, Any]:
@@ -420,8 +730,21 @@ def load_backup_metadata(backup_dir: str) -> Dict[str, Any]:
     """
     metadata_file = os.path.join(backup_dir, "backup-metadata.json")
     if os.path.exists(metadata_file):
-        with open(metadata_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                raw = f.read()
+            if len(raw) > 4 * 1024 * 1024:
+                logger.warning(
+                    "backup-metadata.json 超过 4MB，已继续解析；若非正常备份请检查目录是否被篡改"
+                )
+            data = json.loads(raw)
+            return data if isinstance(data, dict) else {}
+        except json.JSONDecodeError as e:
+            logger.warning(f"backup-metadata.json 非合法 JSON，按无元数据处理: {e}")
+            return {}
+        except (IOError, OSError) as e:
+            logger.warning(f"读取 backup-metadata.json 失败: {e}")
+            return {}
     return {}
 
 
@@ -582,10 +905,10 @@ class ResourceCleaner:
             spec.pop('clusterIP', None)
             spec.pop('clusterIPs', None)
         
-        # loadBalancerIP 已弃用，改为 loadBalancerClass
-        # 两者都移除以提高可移植性
+        # loadBalancerIP 已弃用（迁移到 LB 控制器特定注解/实现）
         spec.pop('loadBalancerIP', None)
-        spec.pop('loadBalancerClass', None)
+        # loadBalancerClass 为用户显式选择 LoadBalancer 实现类，属意向配置，应保留
+        # 参考: https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-class
 
     @staticmethod
     def _clean_persistentvolume_spec(spec: Dict) -> None:
@@ -687,6 +1010,9 @@ class ResourceCleaner:
             ResourceCleaner._clean_workload_spec(spec)
         elif kind_lower in ['job', 'cronjob']:
             ResourceCleaner._clean_job_spec(spec)
+        elif kind_lower == 'pod':
+            # 独立 Pod（含静态 Pod 清单等）：spec 即 PodSpec，须与工作负载模板一致地清节点绑定字段
+            ResourceCleaner._clean_pod_spec(spec)
         # ServiceAccount 和未知资源类型不需要特殊处理
         # ServiceAccount secrets 在 metadata 中处理
         # 未知资源类型保持原样
@@ -728,11 +1054,7 @@ class ResourceCleaner:
 
         resource.pop('status', None)
 
-        if 'apiVersion' not in resource:
-            resource['apiVersion'] = 'v1'
-        if 'kind' not in resource:
-            resource['kind'] = 'Resource'
-
+        # 绝不虚构 apiVersion/kind；无效对象应在备份写入前被拒绝，避免生成无法 apply 的清单
         return resource
 
 
@@ -762,16 +1084,28 @@ class ResourceTransformer:
         return resource
 
     def _transform_namespace(self, resource: Dict) -> Dict:
-        """Transform namespace in resource metadata and references"""
+        """
+        命名空间映射：改写命名空间名字段及各类引用。
+
+        Namespace 对象为集群作用域，名称在 metadata.name（非 metadata.namespace）。
+        若不改写，跨集群恢复时仍会得到旧名 Namespace，与其它已映射资源不一致。
+        参考: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+        """
         metadata = resource.get('metadata', {})
-        current_ns = metadata.get('namespace')
+        kind = (resource.get('kind') or '').lower()
 
-        if current_ns and current_ns in self.rule.namespace_mapping:
-            new_ns = self.rule.transform_namespace(current_ns)
-            metadata['namespace'] = new_ns
-            resource['metadata'] = metadata
+        if kind == 'namespace':
+            res_name = metadata.get('name')
+            if res_name and res_name in self.rule.namespace_mapping:
+                metadata['name'] = self.rule.transform_namespace(res_name)
+                resource['metadata'] = metadata
+        else:
+            current_ns = metadata.get('namespace')
+            if current_ns and current_ns in self.rule.namespace_mapping:
+                new_ns = self.rule.transform_namespace(current_ns)
+                metadata['namespace'] = new_ns
+                resource['metadata'] = metadata
 
-        # Handle namespace references in role bindings, network policies, etc.
         self._transform_namespace_references(resource)
 
         return resource
@@ -876,32 +1210,81 @@ class ResourceTransformer:
                     self._transform_namespace_selector(to_rule['namespaceSelector'])
 
     def _transform_namespace_selector(self, selector: Dict):
-        """Transform namespace selector match expressions"""
+        """
+        转换 NetworkPolicy 等资源中的 namespaceSelector。
+
+        官方推荐用标签选择命名空间；按名称筛选时常用标签键
+        kubernetes.io/metadata.name（值为命名空间名称），与 matchExpressions 等价形式均须改写，
+        否则命名空间映射后 NetworkPolicy 仍指向旧名，生产上会直接导致流量错误。
+        参考: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+        """
+        if not self.rule.namespace_mapping:
+            return
+        if 'matchLabels' in selector and isinstance(selector.get('matchLabels'), dict):
+            labels = selector['matchLabels']
+            for key in ('kubernetes.io/metadata.name', 'name'):
+                val = labels.get(key)
+                if isinstance(val, str) and val in self.rule.namespace_mapping:
+                    labels[key] = self.rule.transform_namespace(val)
         if 'matchExpressions' in selector:
             for expr in selector['matchExpressions']:
                 if expr.get('key') == 'kubernetes.io/metadata.name':
                     values = expr.get('values', [])
-                    new_values = [self.rule.transform_namespace(v) for v in values]
+                    if not isinstance(values, list):
+                        continue
+                    new_values = [
+                        self.rule.transform_namespace(v) if isinstance(v, str) else v
+                        for v in values
+                    ]
                     expr['values'] = new_values
 
+    @staticmethod
+    def _iter_pod_specs(resource: Dict) -> List[Dict]:
+        """
+        收集资源中参与容器镜像/环境变量转换的 PodSpec 字典（原地修改）。
+
+        覆盖与 Kubernetes API 一致的路径：
+        - Pod: `spec` 即为 PodSpec
+        - CronJob: `spec.jobTemplate.spec.template.spec`
+        - Deployment/ReplicaSet/StatefulSet/DaemonSet/Job/ReplicationController 等: `spec.template.spec`
+        """
+        out: List[Dict] = []
+        if not isinstance(resource, dict):
+            return out
+        kind = (resource.get('kind') or '').lower()
+        rspec = resource.get('spec')
+        if not isinstance(rspec, dict):
+            return out
+
+        if kind == 'pod':
+            out.append(rspec)
+            return out
+
+        if kind == 'cronjob':
+            jt = rspec.get('jobTemplate') or {}
+            jspec = jt.get('spec') or {}
+            tmpl = jspec.get('template') or {}
+            ps = tmpl.get('spec')
+            if isinstance(ps, dict):
+                out.append(ps)
+            return out
+
+        tmpl = rspec.get('template') or {}
+        ps = tmpl.get('spec')
+        if isinstance(ps, dict):
+            out.append(ps)
+        return out
+
     def _transform_container_images(self, resource: Dict) -> Dict:
-        """Transform container images in pod specs"""
+        """按 image_mapping 转换 PodSpec 内所有容器的 `image` 字段。"""
         if not self.rule.image_mapping:
             return resource
 
-        spec = resource.get('spec', {})
-        template = spec.get('template', {})
-        template_spec = template.get('spec', {}) if template else {}
-
-        # Transform init containers
-        for container in template_spec.get('initContainers', []):
-            if 'image' in container:
-                container['image'] = self.rule.transform_image(container['image'])
-
-        # Transform regular containers
-        for container in template_spec.get('containers', []):
-            if 'image' in container:
-                container['image'] = self.rule.transform_image(container['image'])
+        for pod_spec in self._iter_pod_specs(resource):
+            for ckey in ('initContainers', 'containers', 'ephemeralContainers'):
+                for container in pod_spec.get(ckey) or []:
+                    if isinstance(container, dict) and container.get('image') is not None:
+                        container['image'] = self.rule.transform_image(container['image'])
 
         return resource
 
@@ -909,10 +1292,10 @@ class ResourceTransformer:
         """
         转换容器中的环境变量。
         
-        根据 env_mapping 规则：
-        1. 如果映射中存在 key，则替换其值
-        2. 如果映射值为空字符串 ""，则删除该环境变量
-        3. 如果原资源中不存在该 key，则新增该环境变量
+        根据 env_mapping 规则（CLI 统一 KEY=值）：
+        1. 映射中存在该 key：替换其值（改）
+        2. 映射值为空字符串：删除该环境变量（删）
+        3. 原资源中不存在该 key：新增该环境变量（增）
         
         Args:
             resource: Kubernetes 资源字典
@@ -923,61 +1306,51 @@ class ResourceTransformer:
         if not self.rule.env_mapping:
             return resource
 
-        spec = resource.get('spec', {})
-        template = spec.get('template', {})
-        template_spec = template.get('spec', {}) if template else {}
+        for pod_spec in self._iter_pod_specs(resource):
+            containers = (
+                list(pod_spec.get('containers') or [])
+                + list(pod_spec.get('initContainers') or [])
+                + list(pod_spec.get('ephemeralContainers') or [])
+            )
 
-        containers = template_spec.get('containers', []) + template_spec.get('initContainers', [])
-
-        for container in containers:
-            env_vars = container.get('env', [])
-            if not env_vars:
-                env_vars = []
-                container['env'] = env_vars
-            
-            # 处理现有环境变量
-            env_vars_to_remove = []
-            for env_var in env_vars:
-                env_name = env_var.get('name', '')
-                if not env_name:
+            for container in containers:
+                if not isinstance(container, dict):
                     continue
-                
-                # 检查是否有映射
-                if env_name in self.rule.env_mapping:
-                    new_value = self.rule.env_mapping[env_name]
-                    
-                    # 如果映射值为空字符串，标记为删除
-                    if new_value == "":
-                        env_vars_to_remove.append(env_var)
+                env_vars = container.get('env', [])
+                if not env_vars:
+                    env_vars = []
+                    container['env'] = env_vars
+
+                env_vars_to_remove = []
+                for env_var in env_vars:
+                    env_name = env_var.get('name', '')
+                    if not env_name:
                         continue
-                    
-                    # 更新值（支持 value 和 valueFrom 两种格式）
-                    if 'value' in env_var:
-                        env_var['value'] = new_value
-                    elif 'valueFrom' in env_var:
-                        # 如果原来是 valueFrom，改为 value（简化处理）
-                        env_var.pop('valueFrom', None)
-                        env_var['value'] = new_value
-                    else:
-                        # 如果既没有 value 也没有 valueFrom，添加 value
-                        env_var['value'] = new_value
-            
-            # 删除标记的环境变量
-            for env_var in env_vars_to_remove:
-                env_vars.remove(env_var)
-            
-            # 添加新环境变量（映射中存在但原资源中不存在的 key）
-            existing_env_names = {env_var.get('name', '') for env_var in env_vars}
-            for env_key, env_value in self.rule.env_mapping.items():
-                # 跳过空值映射（删除操作已在上面处理）
-                if env_value == "":
-                    continue
-                # 如果环境变量不存在，添加它
-                if env_key not in existing_env_names:
-                    env_vars.append({
-                        'name': env_key,
-                        'value': env_value
-                    })
+                    if env_name in self.rule.env_mapping:
+                        new_value = self.rule.env_mapping[env_name]
+                        if new_value == "":
+                            env_vars_to_remove.append(env_var)
+                            continue
+                        if 'value' in env_var:
+                            env_var['value'] = new_value
+                        elif 'valueFrom' in env_var:
+                            env_var.pop('valueFrom', None)
+                            env_var['value'] = new_value
+                        else:
+                            env_var['value'] = new_value
+
+                for env_var in env_vars_to_remove:
+                    env_vars.remove(env_var)
+
+                existing_env_names = {env_var.get('name', '') for env_var in env_vars}
+                for env_key, env_value in self.rule.env_mapping.items():
+                    if env_value == "":
+                        continue
+                    if env_key not in existing_env_names:
+                        env_vars.append({
+                            'name': env_key,
+                            'value': env_value
+                        })
 
         return resource
 
@@ -1317,10 +1690,19 @@ class KubernetesBackupManager:
         """
         try:
             cleaned_resource = self.cleaner.clean_resource(resource)
+            kind = cleaned_resource.get('kind')
+            api_version = cleaned_resource.get('apiVersion')
+            if not kind or not isinstance(kind, str):
+                logger.error(
+                    "拒绝备份：对象缺少合法 metadata/kind（清理后仍无效，可能来自损坏的 Informer 数据）"
+                )
+                return False
+            if not api_version or not isinstance(api_version, str):
+                logger.error(f"拒绝备份 {kind}：缺少 apiVersion，不符合 Kubernetes 对象约定")
+                return False
             output_path = self.get_output_path(cleaned_resource, output_dir)
             write_yaml_safely(cleaned_resource, output_path, dry_run=self.config.dry_run)
             if not self.config.dry_run:
-                kind = cleaned_resource.get('kind', 'Unknown')
                 name = cleaned_resource.get('metadata', {}).get('name', 'unknown')
                 logger.info(f"已备份资源 {kind}/{name} 到 {output_path}")
             return True
@@ -1635,19 +2017,23 @@ class KubernetesBackupManager:
 
             for yaml_file in yaml_files:
                 try:
-                    with open(yaml_file, 'r', encoding='utf-8') as f:
-                        content = yaml.safe_load(f)
-
-                    if not content or not all(key in content for key in ['apiVersion', 'kind', 'metadata']):
-                        logger.warning(f"Invalid or empty Kubernetes resource in {yaml_file}")
+                    docs = load_kubernetes_yaml_documents(str(yaml_file))
+                    if not docs:
+                        logger.warning(f"{yaml_file} 中无有效 Kubernetes 文档")
                         success = False
                         continue
-
-                    if 'name' not in content['metadata']:
-                        logger.warning(f"Resource missing name in {yaml_file}")
-                        success = False
-                        continue
-
+                    for content in docs:
+                        if not content or not all(
+                            key in content for key in ('apiVersion', 'kind', 'metadata')
+                        ):
+                            logger.warning(f"{yaml_file} 中存在无效或空的资源对象")
+                            success = False
+                            continue
+                        meta = content.get('metadata') or {}
+                        if 'name' not in meta:
+                            logger.warning(f"{yaml_file} 中资源缺少 metadata.name")
+                            success = False
+                            continue
                 except yaml.YAMLError as e:
                     logger.error(f"Invalid YAML in {yaml_file}: {e}")
                     success = False
@@ -1832,10 +2218,18 @@ class KubernetesRestoreManager:
             if metadata.get('timestamp'):
                 logger.info(f"备份时间: {metadata.get('timestamp')}")
 
-            # 如果需要，创建命名空间
+            # 与 Kubernetes 依赖顺序一致：恢复必须按优先级串行 apply；并行会破坏 ConfigMap→Workload 等顺序
+            logger.info(
+                "恢复阶段按清单依赖顺序串行执行 server-side apply；"
+                "--max-workers 仅作用于 backup 子命令，restore 传入将被忽略"
+            )
+
+            # 预创建命名空间失败则中止：继续恢复会导致大量资源 apply 到不存在的 namespace
             if self.config.create_namespaces and not self.config.dry_run:
                 logger.info("检查并创建缺失的命名空间...")
-                self._create_missing_namespaces()
+                if not self._create_missing_namespaces():
+                    logger.error("预创建命名空间失败，已中止恢复（避免写入错误拓扑）")
+                    return False
 
             # 恢复集群级资源（先恢复 CRD，然后其他资源）
             # CRD 必须在任何 CustomResource 之前恢复（Kubernetes 要求）
@@ -1872,33 +2266,36 @@ class KubernetesRestoreManager:
             logger.error(f"恢复过程失败: {e}")
             return False
 
-    def _create_missing_namespaces(self):
+    def _create_missing_namespaces(self) -> bool:
         """
-        Create namespaces that are referenced in the backup but don't exist.
-        Uses server-side apply for idempotent namespace creation (Kubernetes best practice).
+        为备份中出现的（经映射后的）命名空间执行 server-side apply 幂等创建。
+
+        Returns:
+            全部成功为 True；任一失败为 False（调用方应中止恢复）。
         """
+        ok = True
         try:
             existing_namespaces = set(self.k8s_client.list_namespaces())
-            backup_namespaces = self._discover_backup_namespaces()
+        except ApiException as e:
+            logger.error(f"无法列举集群命名空间，跳过预创建: {e}")
+            return False
 
-            for ns in backup_namespaces:
-                target_ns = self.transformer.rule.transform_namespace(ns)
-                if target_ns != 'cluster-scoped':
-                    # Use apply instead of create for idempotency
-                    # This handles both creation and existing namespace cases gracefully
-                    if target_ns not in existing_namespaces:
-                        logger.info(f"Applying namespace: {target_ns}")
-                    else:
-                        logger.debug(f"Namespace {target_ns} already exists, skipping")
-                        continue
-                    
-                    try:
-                        self.k8s_client.apply_namespace(target_ns)
-                        existing_namespaces.add(target_ns)
-                    except (ApiException, ResourceNotFoundError, IOError) as e:
-                        logger.warning(f"Failed to apply namespace {target_ns}: {e}")
-        except (ApiException, IOError, KeyError) as e:
-            logger.warning(f"Failed to create namespaces: {e}")
+        backup_namespaces = self._discover_backup_namespaces()
+
+        for ns in backup_namespaces:
+            target_ns = self.transformer.rule.transform_namespace(ns)
+            if target_ns == 'cluster-scoped':
+                continue
+            if target_ns in existing_namespaces:
+                continue
+            logger.info(f"预创建命名空间: {target_ns}")
+            try:
+                self.k8s_client.apply_namespace(target_ns)
+                existing_namespaces.add(target_ns)
+            except (ApiException, ResourceNotFoundError, IOError) as e:
+                logger.error(f"命名空间 {target_ns} 创建/apply 失败: {e}")
+                ok = False
+        return ok
 
     def _discover_backup_namespaces(self) -> Set[str]:
         """
@@ -1912,15 +2309,13 @@ class KubernetesRestoreManager:
 
         for yaml_file in backup_path.rglob("*.yaml"):
             try:
-                with open(yaml_file, 'r', encoding='utf-8') as f:
-                    resource = yaml.safe_load(f)
-
-                if resource and 'metadata' in resource:
-                    ns = resource['metadata'].get('namespace')
-                    if ns:
-                        namespaces.add(ns)
+                for resource in load_kubernetes_yaml_documents(str(yaml_file)):
+                    if resource and 'metadata' in resource:
+                        ns = resource['metadata'].get('namespace')
+                        if ns:
+                            namespaces.add(ns)
             except (IOError, yaml.YAMLError, KeyError) as e:
-                logger.warning(f"Failed to read backup file {yaml_file}: {e}")
+                logger.warning(f"读取备份文件失败 {yaml_file}: {e}")
 
         return namespaces
 
@@ -1969,13 +2364,19 @@ class KubernetesRestoreManager:
             'persistentvolumeclaim': 2,
             'service': 2,
             'role': 2,
+            'networkpolicy': 3,
             'rolebinding': 3,
             'ingress': 3,
             'deployment': 4,
+            'replicaset': 4,
             'daemonset': 4,
             'statefulset': 4,
             'job': 4,
             'cronjob': 4,
+            # 引用 scaleTargetRef / 工作负载就绪后再应用（ autoscaling/v2 HorizontalPodAutoscaler ）
+            'horizontalpodautoscaler': 5,
+            # PodDisruptionBudget 依赖 Pod 标签与目标工作负载
+            'poddisruptionbudget': 5,
         }
 
         # Find all namespace directories (excluding cluster-scoped)
@@ -2010,54 +2411,57 @@ class KubernetesRestoreManager:
 
     def _restore_single_resource(self, yaml_file: str, cluster_scoped: bool = False):
         """
-        从 YAML 文件恢复单个资源，使用 server-side apply。
-        这遵循 Kubernetes 最佳实践，实现幂等资源管理。
-        
-        根据 Kubernetes 官方最佳实践：
-        - 使用 server-side apply 而不是 create/update
-        - 自动处理字段冲突（通过 force=True）
-        - 移除集群特定字段（finalizers, ownerReferences）
-        - 使用 field_manager 标识资源所有者
-        
+        从 YAML 文件恢复对象（支持单文件多文档清单），统一使用 server-side apply。
+
         参考: https://kubernetes.io/docs/reference/using-api/server-side-apply/
-        
-        Args:
-            yaml_file: YAML 文件路径
-            cluster_scoped: 是否为集群级资源
         """
-        self.restore_stats['total_resources'] += 1
-        
         try:
-            with open(yaml_file, 'r', encoding='utf-8') as f:
-                resource = yaml.safe_load(f)
+            documents = load_kubernetes_yaml_documents(yaml_file)
+        except yaml.YAMLError as e:
+            logger.error(f"解析 YAML 失败 {yaml_file}: {e}")
+            self.restore_stats['total_resources'] += 1
+            self.restore_stats['failed_restores'] += 1
+            return
+        except IOError as e:
+            logger.error(f"读取文件失败 {yaml_file}: {e}")
+            self.restore_stats['total_resources'] += 1
+            self.restore_stats['failed_restores'] += 1
+            return
 
-            if not resource:
-                logger.warning(f"Empty resource in {yaml_file}")
-                self.restore_stats['failed_restores'] += 1
-                return
+        if not documents:
+            logger.warning(f"{yaml_file} 中无有效的 Kubernetes 对象文档")
+            self.restore_stats['total_resources'] += 1
+            self.restore_stats['failed_restores'] += 1
+            return
 
-            # Transform resource for target environment
+        n_doc = len(documents)
+        for idx, resource in enumerate(documents):
+            self.restore_stats['total_resources'] += 1
+            doc_tag = f" [#{idx + 1}/{n_doc}]" if n_doc > 1 else ""
+            self._restore_one_manifest(resource, yaml_file, cluster_scoped, doc_tag)
+
+    def _restore_one_manifest(
+        self,
+        resource: Dict,
+        yaml_file: str,
+        cluster_scoped: bool,
+        doc_tag: str,
+    ) -> None:
+        """对单个已解析的对象字典执行变换与 apply。"""
+        try:
             transformed_resource = self.transformer.transform_resource(resource)
-
-            # Get resource API version and kind
             api_version = transformed_resource.get('apiVersion', 'v1')
             kind = transformed_resource.get('kind', '')
 
             if not kind:
-                logger.warning(f"Resource missing kind in {yaml_file}")
+                logger.warning(f"{yaml_file}{doc_tag} 缺少 kind")
                 self.restore_stats['failed_restores'] += 1
                 return
 
-            # Ensure cluster-specific fields are removed (best practice for restore)
-            # These fields reference cluster-specific resources and should not be restored
             metadata = transformed_resource.get('metadata', {})
-            
-            # Remove finalizers (reference cluster-specific controllers)
             if 'finalizers' in metadata:
                 metadata.pop('finalizers', None)
                 logger.debug(f"已移除 {kind} {metadata.get('name', 'unknown')} 的 finalizers")
-            
-            # Remove ownerReferences (reference cluster-specific parent resources)
             if 'ownerReferences' in metadata:
                 metadata.pop('ownerReferences', None)
                 logger.debug(f"已移除 {kind} {metadata.get('name', 'unknown')} 的 ownerReferences")
@@ -2066,47 +2470,35 @@ class KubernetesRestoreManager:
             namespace = metadata.get('namespace') if not cluster_scoped else None
 
             if self.config.dry_run:
-                logger.info(f"[Dry-run] Would restore {kind} {name} in namespace {namespace}")
+                logger.info(
+                    f"[Dry-run] 将恢复 {kind}/{name}{doc_tag} (ns={namespace})"
+                )
                 self.restore_stats['successful_restores'] += 1
                 return
 
-            # 使用 server-side apply 而不是 create 进行幂等资源管理
-            # 这是 Kubernetes 最佳实践推荐的方法
             try:
                 self.k8s_client.apply_resource(transformed_resource)
                 ns_info = f"命名空间 {namespace}" if namespace else "集群级"
-                logger.info(f"已恢复 {kind}/{name} ({ns_info})")
+                logger.info(f"已恢复 {kind}/{name}{doc_tag} ({ns_info})")
                 self.restore_stats['successful_restores'] += 1
-
             except ApiException as e:
-                # 处理特定的 API 错误
                 if e.status == 404:
                     logger.error(f"资源类型 {api_version}/{kind} 在集群中不存在: {e}")
-                    self.restore_stats['failed_restores'] += 1
                 elif e.status == 403:
-                    logger.error(f"恢复 {kind}/{name} 时权限被拒绝: {e}")
-                    self.restore_stats['failed_restores'] += 1
+                    logger.error(f"恢复 {kind}/{name}{doc_tag} 时权限被拒绝: {e}")
                 elif e.status == 422:
-                    logger.error(f"资源 {kind}/{name} 验证错误: {e}")
-                    self.restore_stats['failed_restores'] += 1
+                    logger.error(f"资源 {kind}/{name}{doc_tag} 验证错误: {e}")
                 else:
-                    logger.error(f"恢复 {kind}/{name} 失败: HTTP {e.status} - {e}")
-                    self.restore_stats['failed_restores'] += 1
+                    logger.error(f"恢复 {kind}/{name}{doc_tag} 失败: HTTP {e.status} - {e}")
+                self.restore_stats['failed_restores'] += 1
             except ResourceNotFoundError as e:
-                logger.error(f"Resource type {api_version}/{kind} not found: {e}")
+                logger.error(f"集群不支持资源类型 {api_version}/{kind}: {e}")
                 self.restore_stats['failed_restores'] += 1
             except (AttributeError, KeyError, TypeError, ValueError) as e:
-                logger.error(f"Unexpected error restoring {kind} {name}: {e}")
+                logger.error(f"恢复 {kind}/{name}{doc_tag} 时发生意外: {e}")
                 self.restore_stats['failed_restores'] += 1
-
-        except yaml.YAMLError as e:
-            logger.error(f"Failed to parse YAML file {yaml_file}: {e}")
-            self.restore_stats['failed_restores'] += 1
-        except IOError as e:
-            logger.error(f"Failed to read file {yaml_file}: {e}")
-            self.restore_stats['failed_restores'] += 1
         except (KeyError, AttributeError, TypeError) as e:
-            logger.error(f"Failed to restore resource from {yaml_file}: {e}")
+            logger.error(f"处理清单失败 {yaml_file}{doc_tag}: {e}")
             self.restore_stats['failed_restores'] += 1
 
     def _log_restore_summary(self):
@@ -2137,152 +2529,191 @@ class KubernetesRestoreManager:
 # Enhanced CLI Interface
 # -------------------------
 def show_examples():
-    """显示详细使用示例和说明"""
+    """显示详细使用示例和说明（功能清单 + 场景示例 + 参数速查）。"""
+    default_resources_line = ",".join(DEFAULT_RESOURCES)
     examples = """
-使用示例:
+================================================================================
+Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能做什么」）
+================================================================================
 
-1. 备份单个命名空间:
+【子命令】
+  backup   从集群导出资源到本地目录（可选打 tar.gz）
+  restore  从备份目录写回集群（可选映射命名空间 / 镜像 / 环境变量）
+
+【两子命令均支持的通用参数】
+  --kubeconfig PATH   指定 kubeconfig（不填则用默认或 in-cluster）
+  --context NAME      指定上下文
+  --debug             更详细的日志
+  --dry-run           演练模式
+                        · restore：不执行 server-side apply，仅打日志
+                        · backup：仍会调用 API 列举资源，但不写入 YAML、不写 backup-metadata.json、
+                          不生成 tar、不做备份后校验（不落盘）
+
+【backup 独有 — 全部开关】
+  范围（二选一，必填其一）
+    -n, --namespace NAME     只备份该命名空间
+    --all-namespaces         备份所有命名空间
+  内容与过滤
+    -r, --resources LIST     资源类型列表，逗号分隔；省略时默认为下方「默认 -r」整表
+    --include-crds           在常规备份之外，再备份 CRD 定义，并遍历备份各 CR 实例（动态客户端）
+    --label-selector         按标签过滤（kubectl 风格，如 app=myapp,env=prod）
+    --field-selector         按字段过滤（kubectl 风格）
+  输出与性能
+    -o, --output-dir PATH    备份根目录（默认 /opt/k8s-backup）
+    --tar                    额外生成 .tar.gz 归档
+    --backup-name NAME       自定义本次备份目录名（默认时间戳自动生成）
+    --max-workers N          并行线程数（默认 5）
+
+  默认 -r（省略 --resources 时）:
+    __DEFAULT_RESOURCES__
+
+【restore 独有 — 全部开关】
+  必需
+    --backup-dir PATH        备份目录（内含命名空间子目录或 tar 解压后的结构）
+  命名空间
+    --create-namespaces      目标集群缺命名空间时自动创建（别名: --create-namespace）
+  跨环境改写（均可单独或组合使用）
+    --namespace-mapping MAP  旧命名空间名 -> 新名（见下方「映射语法」）
+    --image-mapping MAP      改写 container.image（单字符串，含仓库/标签/digest）；最长前缀优先替换
+    --env-mapping MAP        按环境变量名 增 / 改 / 删（见下方「映射语法」）
+  恢复范围
+    --skip-crds              不恢复 CustomResourceDefinition
+    --skip-cluster-scoped    不恢复集群级资源（如 ClusterRole、StorageClass 等）
+    --backup-name NAME       同一目录多份备份时，指定要恢复的那一份名称
+  （恢复过程按依赖顺序串行 apply，无并行阶段；与 backup 的 --max-workers 无关）
+
+【映射语法（namespace / image / env 通用书写规则）】
+  · 每项必须为  KEY=value ；键与值之间只用第一个 = 分割，故值里可含 :、=、URL 等。
+  · 整段参数须至少包含一个 '='；多项之间可用空格、逗号或逗号加空格分隔，例如:
+      A=1 B=2, C=3
+  · 环境变量映射语义:
+      KEY=新值     已有则改值，没有则新增
+      KEY=         删除该环境变量（ Deployment/Pod 模板中的 env 项）
+  · 镜像映射（对齐 Kubernetes 官方：镜像名为单一字符串，标签与 digest 均为其后缀，无单独字段）:
+      - 换仓库/路径：左侧写旧 registry 或路径前缀，例如 registry.a.com/proj/=registry.b.com/proj/
+      - 保留原标签：左侧不要包含到 ':' 为止的标签部分，则 :v1.2 会留在结果中
+      - 改标签或 digest：左侧须包含要替换的旧标签或 digest 片段，例如
+        myreg.io/app:v1=myreg.io/app:v2  或  nginx@sha256:abc...=nginx@sha256:def...
+      - 多规则时按最长前缀优先匹配（与常见镜像重写规则一致）
+
+================================================================================
+场景示例（可复制改路径后使用）
+================================================================================
+
+B1. 备份单个命名空间（默认资源类型全集）
    python k8sbackup.py backup \\
         --namespace default \\
         --output-dir /opt/k8s-backup
-   # 说明: 备份 default 命名空间中的所有默认资源类型
-   #       备份文件将保存在 /opt/k8s-backup/backup-YYYYMMDD-HHMMSS-default/ 目录下
 
-2. 备份所有命名空间（包括 CRD）:
+B2. 备份全集群所有命名空间 + 含 CRD + 打 tar 包 + 自定义备份名 + 并发数
    python k8sbackup.py backup \\
         --all-namespaces \\
         --include-crds \\
         --output-dir /opt/k8s-backup \\
-        --tar
-   # 说明: --all-namespaces 备份所有命名空间
-   #       --include-crds 包含自定义资源定义及其实例
-   #       --tar 创建压缩的 tar.gz 归档文件
+        --tar \\
+        --backup-name nightly-20231201 \\
+        --max-workers 8
 
-3. 备份指定资源类型:
+B3. 只备份部分资源类型
    python k8sbackup.py backup \\
         --namespace production \\
         --resources "deployments,services,configmaps,secrets" \\
         --output-dir /opt/k8s-backup
-   # 说明: 只备份指定的资源类型，多个资源类型用逗号分隔
 
-4. 使用标签选择器备份:
+B4. 标签过滤 + 字段过滤 + 指定 kubeconfig / 上下文 + 调试日志
    python k8sbackup.py backup \\
         --namespace default \\
         --label-selector "app=myapp,env=production" \\
+        --field-selector "metadata.name=my-deploy" \\
+        --kubeconfig ~/.kube/config-prod \\
+        --context prod-cluster \\
+        --debug \\
         --output-dir /opt/k8s-backup
-   # 说明: 只备份匹配标签选择器的资源
 
-5. 恢复备份（基本用法）:
+B5. 备份演练（仍访问集群 API；不落盘 YAML / 元数据 / tar）
+   python k8sbackup.py backup \\
+        --namespace default \\
+        --dry-run \\
+        --debug \\
+        --output-dir /opt/k8s-backup
+
+R1. 恢复（最简：指定备份目录 + 自动建命名空间）
    python k8sbackup.py restore \\
         --backup-dir /opt/k8s-backup/backup-20231201-120000-default \\
         --create-namespaces
-   # 说明: --backup-dir 指定备份目录路径
-   #       --create-namespaces 自动创建不存在的命名空间
 
-6. 恢复备份并映射命名空间:
+R2. 命名空间映射（空格或逗号分隔多项）
    python k8sbackup.py restore \\
-        --backup-dir /opt/k8s-backup/backup-dev \\
-        --namespace-mapping "dev:prod,test:prod" \\
+        --backup-dir /path/to/backup \\
+        --namespace-mapping "dev=prod test=staging" \\
         --create-namespaces
-   # 说明: 将备份中的 dev 和 test 命名空间映射到 prod 命名空间
-   #       格式: "old1:new1,old2:new2"
 
-7. 恢复备份并映射容器镜像:
+R3. 镜像：换仓库（保留原 :tag）或连标签一起改（与官方「单字符串镜像名」一致）
    python k8sbackup.py restore \\
-        --backup-dir /opt/k8s-backup/backup-app \\
-        --image-mapping "old-registry.io:new-registry.io,dev-tag:prod-tag" \\
+        --backup-dir /path/to/backup \\
+        --image-mapping "registry.old.com/=registry.new.com/ myproj.io/app:v1.0=myproj.io/app:v2.0" \\
         --create-namespaces
-   # 说明: 将镜像从旧注册表映射到新注册表，或替换镜像标签
-   #       格式: "old-prefix:new-prefix,old-tag:new-tag"
 
-8. 恢复备份并映射环境变量:
+R4. 环境变量 改值 / 删变量 / 新增变量（值中可有 https://host:443/path）
    python k8sbackup.py restore \\
-        --backup-dir /opt/k8s-backup/backup-full \\
-        --env-mapping "DB_HOST:prod-db.example.com,API_URL:https://api.prod.com" \\
+        --backup-dir /path/to/backup \\
+        --env-mapping "DB_HOST=prod-db.internal API_URL=https://api.prod.com:443 LOG_LEVEL= DEBUG=" \\
         --create-namespaces
-   # 说明: 基于环境变量 key 的精确映射，符合 Kubernetes 最佳实践
-   #       格式: "ENV_KEY:new_value" - 将 ENV_KEY 的值替换为 new_value
-   #       如果原资源中不存在该 key，会新增该环境变量
-   #       使用 "ENV_KEY:" 可以删除该环境变量
 
-9. 预览恢复操作（不实际执行）:
+R5. 三种映射同时使用 + 指定集群与演练
    python k8sbackup.py restore \\
-        --backup-dir /opt/k8s-backup/backup-test \\
+        --backup-dir /path/to/backup \\
+        --kubeconfig ~/.kube/config-dr \\
+        --context dr-site \\
+        --namespace-mapping "app-ns=app-ns-dr" \\
+        --image-mapping "docker.io/myorg/=registry.dr.local/myorg/" \\
+        --env-mapping "REPLICA_URL=https://replica:9200" \\
+        --create-namespaces \\
         --dry-run \\
+        --debug
+
+R6. 跳过 CRD 与集群级资源（仅命名空间内资源）
+   python k8sbackup.py restore \\
+        --backup-dir /path/to/backup \\
+        --skip-crds \\
+        --skip-cluster-scoped \\
         --create-namespaces
-   # 说明: --dry-run 模拟执行，不会实际创建或修改资源
-   #       用于验证恢复操作是否正常
 
-10. 恢复时跳过 CRD 和集群级资源:
-    python k8sbackup.py restore \\
-         --backup-dir /opt/k8s-backup/backup-minimal \\
-         --skip-crds \\
-         --skip-cluster-scoped \\
-         --create-namespaces
-    # 说明: --skip-crds 跳过自定义资源定义
-    #       --skip-cluster-scoped 跳过集群级资源（如 StorageClass、ClusterRole 等）
+R7. 备份目录中存在多份备份时按名称挑选（恢复始终串行 apply，无并发）
+   python k8sbackup.py restore \\
+        --backup-dir /opt/k8s-backup \\
+        --backup-name backup-20231201-120000-default \\
+        --create-namespaces
 
-11. 使用自定义 kubeconfig 和上下文:
-    python k8sbackup.py backup \\
-         --namespace default \\
-         --kubeconfig ~/.kube/config-prod \\
-         --context production-cluster \\
-         --output-dir /opt/k8s-backup
-    # 说明: --kubeconfig 指定 kubeconfig 文件路径
-    #       --context 指定要使用的 Kubernetes 上下文
+================================================================================
+参数速查表（与上面功能总览一一对应）
+================================================================================
+  backup:
+    -n, --namespace NAME | --all-namespaces
+    -r, --resources LIST | --include-crds | --label-selector | --field-selector
+    -o, --output-dir | --tar | --backup-name | --max-workers
+  restore:
+    --backup-dir | --create-namespaces（--create-namespace）
+    --namespace-mapping | --image-mapping | --env-mapping
+    --skip-crds | --skip-cluster-scoped | --backup-name
+  通用: --kubeconfig | --context | --debug | --dry-run
 
-12. 启用调试日志:
-    python k8sbackup.py backup \\
-         --namespace default \\
-         --debug \\
-         --output-dir /opt/k8s-backup
-    # 说明: --debug 启用详细的调试日志输出
-
-参数说明:
-  backup 子命令:
-    -n, --namespace NAME           指定要备份的命名空间
-    --all-namespaces               备份所有命名空间
-    -r, --resources LIST           要备份的资源类型列表（逗号分隔）
-    -o, --output-dir PATH          备份输出目录（默认: /opt/k8s-backup）
-    --include-crds                 包含自定义资源定义及其实例
-    --tar                          创建压缩的 tar.gz 归档文件
-    --max-workers NUM              并行工作线程数（默认: 5）
-    --label-selector SELECTOR     标签选择器过滤资源
-    --field-selector SELECTOR      字段选择器过滤资源
-    --backup-name NAME             自定义备份名称（默认: 自动生成）
-
-  restore 子命令:
-    --backup-dir PATH              备份目录路径（必需）
-    --namespace-mapping MAP         命名空间映射（格式: "old1:new1,old2:new2"）
-    --image-mapping MAP             容器镜像映射（格式: "old-prefix:new-prefix"）
-    --env-mapping MAP               环境变量映射（格式: "ENV_KEY:new_value"）
-                                    基于环境变量 key 的精确映射：
-                                    - "DB_HOST:prod-db.example.com" 替换 DB_HOST 的值
-                                    - "ENV_KEY:" 或 "ENV_KEY:" 删除该环境变量
-                                    - 如果原资源中不存在该 key，会新增该环境变量
-    --max-workers NUM              并行工作线程数（默认: 5）
-    --skip-crds                    跳过自定义资源定义
-    --skip-cluster-scoped          跳过集群级资源
-    --create-namespaces            自动创建不存在的命名空间
-    --backup-name NAME             指定要恢复的备份名称（如果备份目录包含多个备份）
-
-  通用参数:
-    --kubeconfig PATH              kubeconfig 文件路径
-    --context NAME                  Kubernetes 上下文名称
-    --debug                         启用调试日志
-    --dry-run                       模拟执行，不实际修改资源
-
-注意事项:
-  - 备份前请确保有足够的磁盘空间
-  - 备份过程中会清理集群特定的元数据（如 UID、resourceVersion 等）
-  - 恢复时会自动处理资源依赖关系（CRD 先于 CR，ConfigMap/Secret 先于 Deployment 等）
-  - 使用 server-side apply 进行资源恢复，符合 Kubernetes 最佳实践
-  - 恢复时会自动移除 finalizers，避免资源卡在删除状态
-  - 建议在生产环境使用前先用 --dry-run 测试
-  - 确保有足够的 RBAC 权限执行备份和恢复操作
-  - 备份文件包含敏感信息（如 Secrets），请妥善保管
-  - 支持 Python 3.7+，需要安装 kubernetes、pyyaml、tenacity 等依赖包
-"""
+================================================================================
+注意事项
+================================================================================
+  - 映射：仅支持 KEY=value；值中含 ':'、'=' 时仍用第一个 '=' 分隔键与完整值。
+  - 启动前会校验路径、kubeconfig、并发数、资源类型名、命名空间名等；错误参数会记录日志并以退出码 1 结束，避免未处理异常。
+  - 恢复：单文件多 YAML 文档（--- 分隔）会逐个对象 apply，与 kubectl 清单语义一致；禁止静默丢弃后续文档。
+  - 恢复：启用 --create-namespaces 时，预创建命名空间任一失败会整次中止，避免资源写入错误拓扑。
+  - 命名空间映射对 Kind=Namespace 会改写 metadata.name；NetworkPolicy 的 namespaceSelector 同时处理 matchLabels 与 matchExpressions（kubernetes.io/metadata.name）。
+  - 备份前预留磁盘空间；备份含 Secret，需妥善保管。
+  - 恢复使用 server-side apply（force 解决字段冲突），并会去掉 finalizers / ownerReferences 等集群绑定字段。
+  - 备份拒绝缺少 kind 或 apiVersion 的对象；从不写入虚构类型，避免无法 apply 的垃圾清单。
+  - Service 备份保留 loadBalancerClass（用户显式 LB 实现）；仅剥离 clusterIP / 已弃用的 loadBalancerIP。
+  - API 客户端对 409/429/5xx 有限次重试（ SSA 竞态与瞬时服务端错误）。
+  - 生产环境建议先 restore --dry-run 再正式执行。
+  - 依赖: Python 3.7+，kubernetes、pyyaml、tenacity。
+""".replace("__DEFAULT_RESOURCES__", default_resources_line)
     print(examples)
 
 
@@ -2321,7 +2752,7 @@ def _add_backup_arguments(parser):
         '--max-workers',
         type=int,
         default=5,
-        help='并行工作线程数（默认: 5）'
+        help='备份时并行线程数（默认: 5）；与 restore 无关'
     )
     parser.add_argument(
         '--label-selector',
@@ -2346,24 +2777,22 @@ def _add_restore_arguments(parser):
     )
     parser.add_argument(
         '--namespace-mapping',
-        help='命名空间映射（格式: "old1:new1,old2:new2"）'
+        help='命名空间映射：旧名=新名；多项用逗号或空格分隔（仅 KEY=value）'
     )
     parser.add_argument(
         '--image-mapping',
-        help='容器镜像映射（格式: "old-prefix:new-prefix,old-tag:new-tag"）'
+        help='container.image 前缀替换（单字符串含仓库/标签/digest）；最长前缀优先；多项逗号或空格分隔'
     )
     parser.add_argument(
         '--env-mapping',
-        help='环境变量映射（格式: "ENV_KEY:new_value"）。基于环境变量 key 的精确映射：'
-             ' "DB_HOST:prod-db.example.com" 替换 DB_HOST 的值；'
-             ' "ENV_KEY:" 删除该环境变量；'
-             ' 如果原资源中不存在该 key，会新增该环境变量'
+        help='环境变量映射：KEY=值；多项用逗号或空格分隔；值可含 URL/冒号。'
+             ' KEY= 表示删除；原资源无该 KEY 时会新增'
     )
     parser.add_argument(
         '--max-workers',
         type=int,
         default=5,
-        help='并行工作线程数（默认: 5）'
+        help='（保留参数）恢复为依赖顺序串行 apply，此值不生效；并行仅用于 backup'
     )
     parser.add_argument(
         '--skip-crds',
@@ -2437,63 +2866,95 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
 def validate_backup_arguments(args) -> Optional[BackupConfig]:
     """验证备份命令行参数"""
+    if args.all_namespaces and _cli_strip_opt(args.namespace):
+        logger.error("不能同时指定 --namespace 与 --all-namespaces")
+        return None
+
     if not args.namespace and not args.all_namespaces:
         logger.error("必须指定 --namespace 或 --all-namespaces 参数之一")
         return None
 
-    if args.all_namespaces:
-        namespace = 'all'
-    else:
-        namespace = args.namespace
-
-    resources = [r.strip() for r in args.resources.split(',') if r.strip()]
-    if not resources:
-        logger.error("必须指定至少一个资源类型")
+    if not validate_cli_max_workers(args.max_workers):
+        return None
+    if not validate_cli_kubeconfig(args.kubeconfig):
+        return None
+    if not validate_cli_context(args.context):
+        return None
+    if not validate_cli_selector(args.label_selector, "--label-selector"):
+        return None
+    if not validate_cli_selector(args.field_selector, "--field-selector"):
+        return None
+    if not validate_cli_output_dir_for_backup(args.output_dir, args.dry_run):
+        return None
+    if not validate_cli_backup_name(args.backup_name):
         return None
 
+    if args.all_namespaces:
+        namespace = "all"
+    else:
+        namespace = str(args.namespace).strip()
+        if not validate_cli_backup_namespace(namespace):
+            return None
+
+    resources = [r.strip() for r in str(args.resources).split(",") if r.strip()]
+    if not resources:
+        logger.error("必须指定至少一个资源类型（-r / --resources）")
+        return None
+    if not validate_cli_resource_types(resources):
+        return None
+
+    ctx = _cli_strip_opt(args.context)
     return BackupConfig(
-        kubeconfig=args.kubeconfig,
-        context=args.context,
+        kubeconfig=_cli_strip_opt(args.kubeconfig),
+        context=ctx,
         namespace=namespace,
         resources=resources,
-        output_dir=args.output_dir,
+        output_dir=os.path.abspath(os.path.expanduser(str(args.output_dir).strip())),
         include_crds=args.include_crds,
         create_tarball=args.tar,
         max_workers=args.max_workers,
         dry_run=args.dry_run,
-        label_selector=args.label_selector,
-        field_selector=args.field_selector,
-        backup_name=args.backup_name
+        label_selector=_cli_strip_opt(args.label_selector),
+        field_selector=_cli_strip_opt(args.field_selector),
+        backup_name=_cli_strip_opt(args.backup_name),
     )
 
 
 def validate_restore_arguments(args) -> Optional[RestoreConfig]:
     """验证恢复命令行参数"""
-    if not args.backup_dir:
-        logger.error("恢复操作必须指定 --backup-dir 参数")
+    backup_dir = validate_cli_restore_backup_dir(args.backup_dir)
+    if backup_dir is None:
         return None
 
-    if not os.path.exists(args.backup_dir):
-        logger.error(f"备份目录不存在: {args.backup_dir}")
+    if not validate_cli_kubeconfig(args.kubeconfig):
+        return None
+    if not validate_cli_context(args.context):
+        return None
+    if not validate_cli_backup_name(args.backup_name):
         return None
 
-    if not os.path.isdir(args.backup_dir):
-        logger.error(f"指定的路径不是目录: {args.backup_dir}")
+    try:
+        namespace_mapping = parse_mapping(args.namespace_mapping, "namespace")
+        image_mapping = parse_mapping(args.image_mapping, "image")
+        env_mapping = parse_mapping(args.env_mapping, "env")
+    except MappingParseError as e:
+        logger.error(f"映射参数无效: {e}")
         return None
 
+    ctx = _cli_strip_opt(args.context)
     return RestoreConfig(
-        kubeconfig=args.kubeconfig,
-        context=args.context,
-        backup_dir=args.backup_dir,
-        namespace_mapping=parse_mapping(args.namespace_mapping),
-        image_mapping=parse_mapping(args.image_mapping),
-        env_mapping=parse_mapping(args.env_mapping),
+        kubeconfig=_cli_strip_opt(args.kubeconfig),
+        context=ctx,
+        backup_dir=backup_dir,
+        namespace_mapping=namespace_mapping,
+        image_mapping=image_mapping,
+        env_mapping=env_mapping,
         max_workers=args.max_workers,
         dry_run=args.dry_run,
         skip_crds=args.skip_crds,
         skip_cluster_scoped=args.skip_cluster_scoped,
         create_namespaces=args.create_namespaces,
-        backup_name=args.backup_name
+        backup_name=_cli_strip_opt(args.backup_name),
     )
 
 
@@ -2561,6 +3022,9 @@ def main():
     except (SystemExit, KeyboardInterrupt):
         # 重新抛出系统退出和中断异常
         raise
+    except config.ConfigException as e:
+        logger.error(f"Kubernetes 配置无效（请检查 --kubeconfig、--context 及文件内容）: {e}")
+        sys.exit(1)
     except Exception as e:
         # 顶级异常处理器，处理意外错误
         logger.error(f"操作失败，发生意外错误: {e}", exc_info=args.debug)

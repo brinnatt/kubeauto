@@ -10,7 +10,7 @@ import subprocess
 import getpass
 import threading
 import os
-from .logger import setup_logger
+from .logger import setup_logger, LOG_STDOUT
 from typing import Dict, Generator, Union, List, Optional, Tuple
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -188,8 +188,8 @@ class SystemProbe:
 
         # Step 3: --ask-pass (interactive, per-host, main thread only)
         if ask_pass:
-            logger.info("", extra={"to_stdout": True})
-            logger.info("Interactive password input (Enter for key-only):", extra={"to_stdout": True})
+            logger.info("", extra=LOG_STDOUT)
+            logger.info("Interactive password input (Enter for key-only):", extra=LOG_STDOUT)
             for i, host in enumerate(host_ips, 1):
                 if host in pw_map and pw_map[host] is not None:
                     continue
@@ -197,7 +197,7 @@ class SystemProbe:
                     pw = getpass.getpass(f"[{i}/{len(host_ips)}] Password for {username}@{host}: ")
                     pw_map[host] = pw if pw.strip() else None
                 except (KeyboardInterrupt, EOFError):
-                    logger.error("User interrupted password input.", extra={"to_stdout": True})
+                    logger.error("User interrupted password input.", extra=LOG_STDOUT)
                     sys.exit(1)
 
         # Default: key-only
@@ -433,7 +433,7 @@ restorecon -Rv ~/.ssh 2>/dev/null || true
 
         # Generate ed25519
         private_key = ssh_dir / "id_ed25519"
-        logger.info("No SSH keys found, generating ed25519...", extra={"to_stdout": True})
+        logger.info("No SSH keys found, generating ed25519...", extra=LOG_STDOUT)
         stdout, stderr, rc = self.executor.execute(
             f"ssh-keygen -t ed25519 -N '' -f {private_key} -q"
         )

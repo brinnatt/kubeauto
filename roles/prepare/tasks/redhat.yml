@@ -1,3 +1,6 @@
+# Remove firewalld so kubeauto can manage iptables. Sometimes slow: yum/dnf may refresh
+# repo metadata (network/mirror). Already-absent or warm cache = fast; cold cache = slow.
+# update_cache: false avoids unnecessary metadata refresh for removal-only.
 - name: delete centos/redhat default software
   package:
     name:
@@ -5,6 +8,7 @@
       - python3-firewall
       - firewalld-filesystem
     state: absent
+    update_cache: false
   ignore_errors: true
 
 - name: install basic system software

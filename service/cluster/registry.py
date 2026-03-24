@@ -1,4 +1,4 @@
-from common.logger import setup_logger
+from common.logger import setup_logger, LOG_STDOUT
 from pathlib import Path
 from typing import List, Optional
 from .docker import DockerManager
@@ -20,16 +20,17 @@ class RegistryManager:
         version = version or self.kube_constant.v_docker_registry
 
         if self.docker.container_exists("local_registry"):
-            logger.warning("Local registry is already running")
+            logger.warning("[REGISTRY] Local registry already running; skipping.", extra=LOG_STDOUT)
             return
 
         # Load registry image if not exists
         registry_tar = self.image_dir / f"registry-{version}.tar"
         if not registry_tar.exists():
-            logger.info(f"Downloading registry:{version} image")
+            logger.info(f"[REGISTRY] Pulling registry image registry:{version}.", extra=LOG_STDOUT)
             self.docker.pull_image(f"registry:{version}")
             self.docker.save_image(f"registry:{version}", str(registry_tar))
         else:
+            logger.info(f"[REGISTRY] Loading registry image from cache.", extra=LOG_STDOUT)
             self.docker.load_image(str(registry_tar))
 
         # Create registry directory
@@ -37,7 +38,7 @@ class RegistryManager:
         registry_data.mkdir(parents=True, exist_ok=True)
 
         # Run registry container
-        logger.info(f"Starting local registry: {version}")
+        logger.info(f"[REGISTRY] Starting local registry (image registry:{version}).", extra=LOG_STDOUT)
         self.docker.run_container(
             image=f"registry:{version}",
             name="local_registry",
@@ -54,26 +55,38 @@ class RegistryManager:
                 f.write("127.0.0.1  registry.talkschool.cn\n")
 
     def upload_to_registry(self, images: List[str]) -> None:
-        """Upload images to local registry"""
+        """Upload images to local registry. Logs progress and per-image steps for traceability."""
 
-        if not self.docker.check_container_exists("local_registry"):
+        if not self.docker.container_exists("local_registry"):
             self.start_local_registry()
 
-        for image in images:
-            # Pull image if not exists locally
+        total = len(images)
+        logger.info(f"[REGISTRY] Uploading {total} image(s) to local registry.", extra=LOG_STDOUT)
+
+        for idx, image in enumerate(images, start=1):
+            logger.info(f"[REGISTRY] [{idx}/{total}] Image: {image}", extra=LOG_STDOUT)
             try:
                 if not self.docker.image_exists(image):
+                    logger.info(f"[REGISTRY]   -> Pulling from remote...", extra=LOG_STDOUT)
                     self.docker.pull_image(image)
-            except CommandExecutionError:
-                logger.warning(f"Failed to pull image {image}, skipping")
-                continue
+                else:
+                    logger.info(f"[REGISTRY]   -> Image exists locally; skipping pull.", extra=LOG_STDOUT)
 
-            # Tag and push to local registry
-            parts = image.split(':')
-            repo = parts[0]
-            tag = parts[1] if len(parts) > 1 else "latest"
-            local_image = f"registry.talkschool.cn:5000/{repo}:{tag}"
+                # Image may contain multiple colons (e.g. host:5000/name:tag); tag is after last colon
+                repo, _, tag = image.rpartition(":")
+                if not tag:
+                    tag = "latest"
+                local_image = f"registry.talkschool.cn:5000/{repo}:{tag}"
 
-            self.docker.tag_image(image, local_image)
-            self.docker.push_image(local_image)
-            logger.info(f"Uploaded {image} to local registry successfully!", extra={"to_stdout": True})
+                logger.info(f"[REGISTRY]   -> Tagging and pushing to local registry.", extra=LOG_STDOUT)
+                self.docker.tag_image(image, local_image)
+                self.docker.push_image(local_image)
+                logger.info(f"[REGISTRY]   -> Done: {image}.", extra=LOG_STDOUT)
+            except CommandExecutionError as e:
+                logger.error(f"[REGISTRY]   -> Failed: {image} — {e}", extra=LOG_STDOUT)
+                raise
+            except Exception as e:
+                logger.error(f"[REGISTRY]   -> Failed: {image} — {e}", extra=LOG_STDOUT)
+                raise
+
+        logger.info(f"[REGISTRY] All {total} image(s) uploaded to local registry.", extra=LOG_STDOUT)

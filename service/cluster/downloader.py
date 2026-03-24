@@ -1,15 +1,17 @@
-import shutil, os, platform
+import os
+import platform
+import shutil
 import sys
+from pathlib import Path
 from typing import Optional
 
-from common.exceptions import DownloadError
+from common.constants import KubeConstant
+from common.exceptions import DownloadError, InstallPrereqError
+from common.logger import setup_logger, LOG_STDOUT
 from common.utils import rmrf, run_command
 
-from common.logger import setup_logger
-from pathlib import Path
 from .docker import DockerManager
 from .registry import RegistryManager
-from common.constants import KubeConstant
 
 logger = setup_logger(__name__)
 
@@ -44,10 +46,10 @@ class DownloadManager:
         Supports: RHEL/CentOS/Rocky, Ubuntu/Debian, SUSE.
         """
         if shutil.which("ansible"):
-            logger.info("Ansible already installed, skipping.", extra={"to_stdout": True})
+            logger.info("Ansible already installed; skipping.", extra=LOG_STDOUT)
             return
 
-        logger.info("Downloading ansible env ...", extra={"to_stdout": True})
+        logger.info("Installing Ansible (system package manager).", extra=LOG_STDOUT)
 
         try:
             distro = platform.freedesktop_os_release().get("ID", "").lower()
@@ -67,72 +69,92 @@ class DownloadManager:
             else:
                 raise RuntimeError(f"Unsupported distribution: {distro}")
 
-            logger.info("Downloading ansible env finished successfully.", extra={"to_stdout": True})
+            logger.info("Ansible installed.", extra=LOG_STDOUT)
 
         except Exception as e:
             logger.warning(
                 f"Failed to install ansible env: {e}, we suggest you install ansible tools manually and continue!",
-                extra={"to_stdout": True})
+                extra=LOG_STDOUT)
             sys.exit(1)
 
     def get_kubeauto(self, version: Optional[str] = None) -> None:
         """Download and setup kubeauto with full directory backup"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_kubeauto
 
         if self.__check_file_exists(self.base_path, "roles/kube-node"):
-            logger.warning("kubeauto already exists", extra={"to_stdout": True})
+            logger.warning("Kubeauto already installed; skipping.", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"kubeauto_{version}.tar", f"brinnatt/kubeauto:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto:{version}", "/usr/local/kubeauto", self.base_path)
 
-        logger.info("kubeauto has been installed successfully!", extra={'to_stdout': True})
+        logger.info("Kubeauto installed.", extra=LOG_STDOUT)
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
         """Download Kubernetes binaries with caching and error handling"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_k8s_bin
 
         if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
-            logger.warning("Kubernetes binaries already exist", extra={"to_stdout": True})
+            logger.warning("Kubernetes binaries already installed; skipping.", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"k8s_bin_{version}.tar", f"brinnatt/kubeauto-k8s-bin:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=True)
 
-        logger.info("k8s_bin has been installed successfully!", extra={'to_stdout': True})
+        logger.info("Kubernetes binaries installed.", extra=LOG_STDOUT)
 
     def get_ext_bin(self, version: Optional[str] = None) -> None:
         """Download extra binaries with caching and error handling"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_extra_bin
 
         if self.__check_file_exists(self.extra_bin_dir, "etcdctl"):
-            logger.warning("Extra binaries already exist", extra={"to_stdout": True})
+            logger.warning("Extra binaries already installed; skipping.", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"ext_bin_{version}.tar", f"brinnatt/kubeauto-ext-bin:{version}")
 
         self.__handle_files(f"brinnatt/kubeauto-ext-bin:{version}", "/extra", self.extra_bin_dir, create_symlink=False)
 
-        logger.info("ext_bin has been installed successfully!", extra={'to_stdout': True})
+        logger.info("Extra binaries installed.", extra=LOG_STDOUT)
 
     def get_harbor_offline_pkg(self, version: Optional[str] = None) -> None:
         """Download Harbor offline installer package with caching and error handling"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_harbor
 
         if self.__check_file_exists(self.image_dir, f"harbor-offline-installer-{version}.tgz"):
-            logger.warning("Harbor offline installer already exist", extra={"to_stdout": True})
+            logger.warning("Harbor offline installer already exists; skipping.", extra=LOG_STDOUT)
             return
 
         self.__handle_image(self.image_dir, f"harbor_{version}.tar", f"brinnatt/harbor-offline:{version}")
 
         self.__handle_files(f"brinnatt/harbor-offline:{version}", "/harbor", self.image_dir)
 
-        logger.info("harbor_offline_pkg has been installed successfully!", extra={'to_stdout': True})
+        logger.info("Harbor offline package installed.", extra=LOG_STDOUT)
 
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to download and push images. Run 'kubecli download -d' first, or install Docker manually."
+            )
         images = [
             f"calico/cni:{self.kube_constant.v_calico}",
             f"calico/kube-controllers:{self.kube_constant.v_calico}",
@@ -142,27 +164,32 @@ class DownloadManager:
             f"brinnatt/metrics-server:{self.kube_constant.v_metricsserver}",
             f"brinnatt/pause:{self.kube_constant.v_pause}"
         ]
-
+        logger.info(f"[DOWNLOAD] Default images: uploading {len(images)} image(s) to local registry.", extra=LOG_STDOUT)
         try:
             self.registry.upload_to_registry(images)
         except Exception as e:
+            logger.error(f"[DOWNLOAD] Failed to upload default images — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload images: {e}")
-
-        logger.info(f"Default images uploaded to registry successfully!", extra={'to_stdout': True})
+        logger.info(f"[DOWNLOAD] Default images: {len(images)} image(s) uploaded to local registry.", extra=LOG_STDOUT)
 
     def get_extra_images(self, component: str) -> None:
         """Download extra images for specified component and upload to local registry"""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to download and push images. Run 'kubecli download -d' first, or install Docker manually."
+            )
         if component not in self.kube_constant.component_images:
-            logger.error(f"Invalid component: {component}", extra={'to_stdout': True})
-            return
+            logger.error(f"[DOWNLOAD] Invalid component: {component}.", extra=LOG_STDOUT)
+            raise DownloadError(f"Invalid component: {component}. Choose from: {list(self.kube_constant.component_images.keys())}.")
 
-        logger.info(f"Downloading images for {component}, then uploading to local registry", extra={'to_stdout': True})
-
+        images = self.kube_constant.component_images[component]
+        logger.info(f"[DOWNLOAD] Component {component}: uploading {len(images)} image(s) to local registry.", extra=LOG_STDOUT)
         try:
-            self.registry.upload_to_registry(self.kube_constant.component_images[component])
-            logger.info(f"{component} images uploaded to registry successfully!", extra={'to_stdout': True})
+            self.registry.upload_to_registry(images)
         except Exception as e:
+            logger.error(f"[DOWNLOAD] Failed to upload {component} images — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload {component} images: {e}")
+        logger.info(f"[DOWNLOAD] Component {component}: {len(images)} image(s) uploaded.", extra=LOG_STDOUT)
 
     def __check_file_exists(self, directory: Path, filename: str) -> bool:
         """Check if file exists"""
@@ -173,17 +200,21 @@ class DownloadManager:
         return False
 
     def __handle_image(self, directory: Path, image_tar: str, image: str) -> None:
-        """Check if image exists"""
+        """Pull/save/load image; use cache if tar exists. Logs each step for traceability."""
         path = directory / image_tar
         path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             if not path.exists():
-                logger.info(f"Downloading {image}", extra={'to_stdout': True})
-                self.docker.pull_image(f"{image}")
-                self.docker.save_image(f"{image}", str(path))
+                logger.info(f"[DOWNLOAD] Image {image}: pulling and saving to cache.", extra=LOG_STDOUT)
+                self.docker.pull_image(image)
+                self.docker.save_image(image, str(path))
+            else:
+                logger.info(f"[DOWNLOAD] Image {image}: loading from cache.", extra=LOG_STDOUT)
             self.docker.load_image(str(path))
+            logger.info(f"[DOWNLOAD] Image ready: {image}.", extra=LOG_STDOUT)
         except Exception as e:
+            logger.error(f"[DOWNLOAD] Failed to process image {image} — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to pull, save, or load {image}: {e}")
 
     def __handle_files(self, image: str, image_carrier: str, destination: Path, create_symlink=False) -> None:
@@ -219,14 +250,14 @@ class DownloadManager:
                         target_link.symlink_to(item)
 
         except Exception as e:
-            raise DownloadError(f"Failed to copy image files to dest: {e}")
+            raise DownloadError(f"Failed to copy image files to dest — {e}")
 
         finally:
             if container_id:
                 try:
                     self.docker.remove_container(container_id)
                 except Exception as e:
-                    logger.warning(f"Failed to clean up temporary container: {e}")
+                    logger.warning(f"Failed to remove temporary container: {e}")
 
             if temp_carrier and temp_carrier.exists():
                 rmrf(temp_carrier)

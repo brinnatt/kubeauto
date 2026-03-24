@@ -1,4 +1,5 @@
-# to clean 'kube_node' nodes
+# to clean 'kube_node' nodes (role-specific only: do NOT remove /etc/kubernetes/ entirely,
+# it is shared with etcd/master; remove only node-role kubeconfigs and data)
 - block:
   - name: stop and disable kube_node service
     service: name={{ item }} state=stopped enabled=no
@@ -12,7 +13,7 @@
     shell: "mount | grep '/var/lib/kubelet'| awk '{print $3}'|xargs umount || exit 0"
     ignore_errors: true
 
-  - name: remove files and dirs of 'kube_node' nodes
+  - name: remove files and dirs of 'kube_node' nodes (node-role only)
     file: name={{ item }} state=absent
     with_items:
     - "/var/lib/kubelet/"
@@ -21,7 +22,8 @@
     - "/etc/systemd/system/kubelet.service"
     - "/etc/systemd/system/kube-proxy.service"
     - "/etc/kube-lb/"
-    - "/etc/kubernetes/"
+    - "/etc/kubernetes/kubelet.kubeconfig"
+    - "/etc/kubernetes/kube-proxy.kubeconfig"
     - "/opt/kubeauto_prepare_tasks"
     - "/root/.kube/config"
     ignore_errors: true

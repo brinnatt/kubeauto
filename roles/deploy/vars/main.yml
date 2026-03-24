@@ -1,4 +1,4 @@
-# apiserver 默认第一个master节点
+# 约定：始终用当前 inventory 的 groups['kube_master'][0]，以支持删除任意 master。见 docs/design-first-master.md
 KUBE_APISERVER: "https://{{ groups['kube_master'][0] }}:{{ SECURE_PORT }}"
 
 #

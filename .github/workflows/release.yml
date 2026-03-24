@@ -8,12 +8,16 @@ on:
 permissions:
   contents: write
 
+# 使用 Node.js 24 运行 JS actions，避免 2026-06 后 Node 20 弃用警告
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-amd64:
     runs-on: [self-hosted, Linux, X64] # 匹配您的 runner_x86 标签
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build kubecli (amd64)
         run: |
@@ -26,7 +30,7 @@ jobs:
           sha256sum dist/kubecli-amd64.tar.gz > dist/kubecli-amd64.tar.gz.sha256
 
       - name: Upload amd64 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: kubecli-amd64
           path: dist/*amd64*
@@ -35,7 +39,7 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64] # 匹配您的 runner_arm64 标签
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build kubecli (arm64)
         run: |
@@ -47,7 +51,7 @@ jobs:
           sha256sum dist/kubecli-arm64.tar.gz > dist/kubecli-arm64.tar.gz.sha256
 
       - name: Upload arm64 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: kubecli-arm64
           path: dist/*arm64*
@@ -57,7 +61,7 @@ jobs:
     needs: [build-amd64, build-arm64]
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: dist
 

@@ -42,6 +42,11 @@ class DownloadError(KubeautoError):
     """Required binary not found"""
     pass
 
+
+class InstallPrereqError(KubeautoError):
+    """Required install components (from download) not present. Run e.g. kubecli download -D first."""
+    pass
+
 class DockerManageError(KubeautoError):
     """Docker manage"""
     pass

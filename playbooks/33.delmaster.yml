@@ -34,6 +34,7 @@
       #ignore_errors: true
 
 
+# Clean master + node (master has node nature; clean by role so etcd/ssl is not wiped)
 - hosts: "{{ NODE_TO_DEL }}"
   tasks:
     - name: clean master node {{ NODE_TO_DEL }}
@@ -50,8 +51,10 @@
     - kube_master
     - kube_node
   tasks:
+    # 不在被删节点上执行，因为clean role中已经把被删节点的整个k8s hosts块给删了，再删会增加异常风险
     - name: remove the {{ NODE_TO_DEL }} entry in all k8s hosts file
       lineinfile:
         path: /etc/hosts
         state: absent
         regexp: "^{{ NODE_TO_DEL }}.* flag by kubeauto"
+      when: inventory_hostname != NODE_TO_DEL

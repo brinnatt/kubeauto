@@ -1,0 +1,41 @@
+{
+  "kafka_home": "/opt/kafka",
+  "user": "kafka",
+  "group": "kafka",
+  "java_home": "/usr/lib/jvm/java-17-openjdk",
+  "log_dirs": "/var/kafka/logs",
+  "metadata_log_dir": "/var/kafka/metadata-log",
+  "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093",
+  "controller_port": 9093,
+  "listeners": "PLAINTEXT://0.0.0.0:9092",
+  "bootstrap_server": "broker1:9092",
+  "extra_properties": {
+    "num.partitions": "3",
+    "default.replication.factor": "2"
+  },
+  "nodes": [
+    {
+      "target_host": "controller1",
+      "deploy": "controller",
+      "node_id": 1,
+      "metadata_log_dir": "/var/kafka/metadata-log",
+      "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
+    },
+    {
+      "target_host": "controller2",
+      "deploy": "controller",
+      "node_id": 2,
+      "cluster_id": "<从第一台 controller 输出获取>",
+      "metadata_log_dir": "/var/kafka/metadata-log",
+      "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
+    },
+    {
+      "target_host": "broker1",
+      "deploy": "broker",
+      "node_id": 1,
+      "cluster_id": "<CLUSTER_ID>",
+      "log_dirs": "/var/kafka/logs",
+      "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
+    }
+  ]
+}
