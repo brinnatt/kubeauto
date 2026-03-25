@@ -143,6 +143,27 @@ scrape_configs:
 
 > 为便于管理，以下所有监控相关资源均放在 namespace `kube-mon` 下，若不存在请先执行：`kubectl create namespace kube-mon`。
 
+> **版本与镜像约定（官方最新稳定版）**
+>
+> 文中 **`image:` 固定标签**须与各软件 **GitHub Releases**（或 registry 对应 tag）上 **latest 稳定版**（`prerelease: false`）一致，**禁止使用 `latest` 浮动标签**。升级前先查官方发行页再改 YAML。
+>
+> **本文同步校验日期：2026-03-24**，对应当前稳定版示例：  
+>
+> | 组件 | 镜像 / 标签 | 官方发行说明 |
+> |------|-------------|--------------|
+> | Prometheus | `prom/prometheus:v3.10.0` | [Releases](https://github.com/prometheus/prometheus/releases/latest) |
+> | Alertmanager | `prom/alertmanager:v0.31.1` | [Releases](https://github.com/prometheus/alertmanager/releases/latest) |
+> | node_exporter | `prom/node-exporter:v1.10.2` | [Releases](https://github.com/prometheus/node_exporter/releases/latest) |
+> | Grafana OSS | `grafana/grafana:12.4.1` | [Releases](https://github.com/grafana/grafana/releases/latest) · [Download](https://grafana.com/grafana/download) |
+> | kube-state-metrics | `registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0` | [Releases](https://github.com/kubernetes/kube-state-metrics/releases/latest) |
+> | redis_exporter | `oliver006/redis_exporter:v1.82.0` | [Releases](https://github.com/oliver006/redis_exporter/releases/latest) |
+> | Redis（应用镜像） | `redis:8.6.2-alpine` | [Releases](https://github.com/redis/redis/releases/latest) · [Hub Tags](https://hub.docker.com/_/redis/tags) |
+> | Thanos | `thanosio/thanos:v0.41.0` | [Releases](https://github.com/thanos-io/thanos/releases/latest) |
+> | busybox（init 辅助） | `busybox:1.37` | [Hub Tags](https://hub.docker.com/_/busybox/tags) |
+> | MinIO | `minio/minio:RELEASE.2025-10-15T17-29-55Z` | [Releases](https://github.com/minio/minio/releases/latest) |
+>
+> **补充**：文中出现的 `cnych/*` 等为教程配套**社区镜像**，通常无独立 GitHub Release 页与核心栈同步；使用须在 [Docker Hub](https://hub.docker.com/) 对应仓库核对维护者当前推荐的**固定 tag**（勿用 `latest`），并在变更时更新本文校验日期。
+
 **3. 在 Kubernetes 中部署 Prometheus 3.10**
 
 以下给出 ConfigMap、Deployment、PV/PVC、RBAC、Service 的**资源定义**；实际在集群中的 **apply 顺序** 见本小节「6. 部署 Prometheus 并处理数据目录权限」中的表格，须严格按该顺序执行，否则 Pod 无法创建或无法调度。
@@ -207,7 +228,7 @@ spec:
       serviceAccountName: prometheus
       initContainers:
         - name: fix-data-dir-permissions
-          image: busybox:1.36
+          image: busybox:1.37
           command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
           volumeMounts:
             - name: data
@@ -414,6 +435,18 @@ kubectl get svc -n kube-mon
 
 ![prometheus-webui](./images/prometheus-webui.png)
 
+**企业生产补充：Prometheus Web/API 安全与 Grafana 数据源认证（官方文档对齐）**
+
+上文 **T4.2.1** 为便于在内网快速跑通，Prometheus 监听 **HTTP `9090`** 且 **未**在服务端启用 Basic Auth / TLS；集群内 Grafana 使用 **`http://prometheus:9090`**、数据源认证选 **No authentication** 即可。**有合规或内控要求时**，必须在 **Prometheus 侧** 与 **Grafana 数据源侧**同步按官方说明打开认证与传输安全，否则仅改一端会出现 UI 里 **Authentication** 选项与真实服务不一致、**Save & test** 失败或「以为已加密实际仍明文」的问题。
+
+| 层面 | 官方依据 | 生产要点 |
+|------|----------|----------|
+| Prometheus 服务端 | [HTTPS and authentication](https://prometheus.io/docs/prometheus/latest/configuration/https/) | 使用 **`--web.config.file`** 加载 YAML，可配置 **`tls_server_config`**（服务端证书）与 **`basic_auth_users`**（口令为 **bcrypt** 哈希；文件可在每次 HTTP 请求时重读）。示例见上游 [web-config.yml](https://github.com/prometheus/prometheus/blob/main/documentation/examples/web-config.yml)。TLS 部署步骤另见 Grafana 文档所引用的 [Securing Prometheus API and UI Endpoints Using TLS Encryption](https://prometheus.io/docs/guides/tls-encryption/)。 |
+| 网络与暴露面 | Kubernetes / Ingress 惯例 | 除上述外，常用 **Ingress + TLS**、**仅 ClusterIP** 配合 **NetworkPolicy**、或前置 API 网关，缩小 `9090` 对外暴露；**Admin API**（T4.2.1 中 `--web.enable-admin-api`）尤须限制可达性。 |
+| Grafana 数据源 | [Configure the Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/) | **Authentication**：**Basic authentication**（用户名/口令，对应 Prometheus Basic Auth）、**Forward OAuth identity**（将当前用户的 OAuth/OIDC 令牌转发给数据源；需上游与本企业 IdP 策略支持）、**No authentication**（仅当 Prometheus 确无认证且风险可接受）。**Prometheus server URL**：启用 TLS 后改为 **`https://主机:端口`**。**TLS settings**：校验自签/私有 CA 时配置 **CA certificate**；双向 TLS 时配置 **TLS client authentication**；**Skip TLS verify** 仅应急排障。**HTTP headers**：按反向代理或多租户网关要求添加。口令、客户端证书私钥等用 Grafana **Secrets** 或 Provisioning 的 **`secureJsonData`** 注入，**勿**写入 Git 明文。 |
+
+**与本文清单的对应关系**：保持 **HTTP、无认证** 时，Grafana 数据源选 **No authentication**，URL 维持 **`http://prometheus.kube-mon.svc.cluster.local:9090`**（或短名 `http://prometheus:9090`）。一旦 Prometheus 启用 **HTTPS** 和/或 **Basic Auth**，必须在数据源中填写 **同一套** URL scheme、**Authentication** 与 **TLS** 选项；中间经 **Thanos Querier** 等查询入口时，URL 与认证方式以 **实际查询服务** 为准（见后文 Thanos 相关小节）。
+
 ## T4.3、监控应用
 
 Prometheus 通过 HTTP(S) 拉取目标的 [exposition 格式](https://prometheus.io/docs/instrumenting/exposition_formats/) 指标，无需在目标上安装独立 agent，只要目标暴露一个可访问的 metrics 端点即可。许多组件（如 Kubernetes 各组件、CoreDNS、Istio）已内置 `/metrics` 或专用端口；未内置的可通过 [Exporter](https://prometheus.io/docs/instrumenting/exporters/)（如 `node_exporter`、`mysqld_exporter`）以 sidecar 或独立部署方式暴露指标。
@@ -507,7 +540,7 @@ curl -X POST "http://${POD_IP}:9090/-/reload"
 
 **1. 部署 Redis 与 redis-exporter**
 
-同一 Pod 内：主容器为 Redis，sidecar 为 redis-exporter。exporter 默认连接 `localhost:6379`，与主应用同 Pod 时无需额外配置。镜像版本随官方更新，当前示例使用 **Redis 8.6**（[官方发布](https://redis.io/blog/announcing-redis-86-performance-improvements-streams/)）与 **redis_exporter v1.82**（[GitHub Releases](https://github.com/oliver006/redis_exporter/releases)），便于安全与兼容性。资源清单（文件名与 T4.3.1 统一，如 `prometheus-redis.yaml`）：
+同一 Pod 内：主容器为 Redis，sidecar 为 redis-exporter。exporter 默认连接 `localhost:6379`，与主应用同 Pod 时无需额外配置。镜像与上文 **「版本与镜像约定」** 表一致：**Redis** 用官方补丁线 **`8.6.2-alpine`**（[GitHub Releases](https://github.com/redis/redis/releases/latest)）、**redis_exporter** 用 **`v1.82.0`**。资源清单（文件名与 T4.3.1 统一，如 `prometheus-redis.yaml`）：
 
 ```yaml
 # prometheus-redis.yaml
@@ -527,7 +560,7 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:8.6-alpine
+          image: redis:8.6.2-alpine
           resources:
             requests:
               cpu: 100m
@@ -1395,6 +1428,8 @@ ensure CRDs are installed first
 
 ![prometheus-kube-state-metrics1](./images/prometheus-kube-state-metrics1.png)
 
+> **Grafana 大盘**：在 Grafana 导入 **kube-state-metrics / Kubernetes 工作负载** 类社区模板前，请先读 **T4.9 → 4.9.3**「观测分层 × 本文 `job`」：默认经 **T4.7 `kubernetes-endpoints`** 抓取时，时间序列上的 **`job` 多为 `kubernetes-endpoints`**，模板若写死 `job="kube-state-metrics"` 易整屏无数据；可按该节改模板变量或 PromQL。若已按 **T4.8.4** 增补独立 **`kube-state-metrics` job** 且 `honor_labels: true`，则社区模板中的 `job="kube-state-metrics"` 可能与之一致，仍以 **Explore** 实际标签为准。
+
 ### T4.8.3、水平分片
 
 **什么时候需要看这段**？
@@ -1501,40 +1536,98 @@ kube_pod_container_resource_limits_cpu_cores == 0
 
 ## T4.9、Grafana
 
-前面我们使用 Prometheus 采集了 Kubernetes 集群中的一些监控数据指标，我们也尝试使用 promQL 语句查询出了一些数据，并且在 Prometheus 的 Dashboard 中进行了展示，但是 Prometheus 的图表功能相对较弱，我们需要一个专业的工具来展示这些数据，这里采用 [Grafana](http://grafana.com/)。
+[Grafana OSS](https://grafana.com/grafana/) 用于把 **T4.2.1 起的 Prometheus** 等数据源做成可运维的大盘与告警界面。本节遵循官方 [在 Kubernetes 上部署 Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 的结构（PVC + Deployment + Service），并与全文保持一致：**namespace `kube-mon`**、Prometheus Service **`prometheus:9090`**、持久化沿用 **Local PV + PVC**（与 Prometheus 同套路，独立 PV/PVC，避免绑错卷）。
 
-Grafana 是一个可视化面板，有着非常漂亮的图表和布局展示，专业的度量仪表盘和图形编辑器，支持 Graphite、zabbix、InfluxDB、Prometheus、OpenTSDB、Elasticsearch 等作为数据源，比 Prometheus 自带的图表展示功能强大很多，支持丰富的插件。
+> **企业生产摘要**（落地时逐项核对）  
+> - **镜像**：使用 **固定标签**（禁用 `latest`）；与文首 **「版本与镜像约定」** 一致，以 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 稳定 tag 为准。  
+> - **凭据**：管理员密码进 **Secret**，生产使用强密码 + 定期轮转；首登后按策略改密。  
+> - **安全**：**非 root** 运行（官方 OSS 镜像常用 UID/GID **472**，见 [Configure Docker](https://grafana.com/docs/grafana/latest/setup-grafana/configure-docker/)）；对外建议 **Ingress + TLS**，而非长期依赖 NodePort。  
+> - **容量**：官方文档列出的**最低**资源约为 **250m CPU / 750Mi 内存**（见官方 Kubernetes 安装页 *System requirements*）；生产请按用户与大盘数量上调 limit，并监控 PVC 使用率。  
+> - **入口**：云上生产优先考虑 **LoadBalancer / Ingress**；自建裸金属可与 **T4.2.1** 一样用 **NodePort** 做阶段验证。  
+> - **大盘即代码**：长期维护推荐 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)（Git 管理 JSON），避免只在 UI 里点选。  
+> - **托管替代**：免运维可选 [Grafana Cloud](https://grafana.com/products/cloud/)（官方文档安装页亦推荐）。
 
-### 4.9.1、安装
+---
 
-同样的我们将 grafana 安装到 Kubernetes 集群中，可以先查看一下 grafana 的 docker 镜像介绍，在 dockerhub 上搜索，也可以去官网查看相关资料，镜像地址如下：https://hub.docker.com/r/grafana/grafana/，我们可以看到介绍中运行 grafana 容器的命令非常简单：
+### T4.9.1、清单部署（OSS，Local PV）
 
-```bash
-$ docker run -d --name=grafana -p 3000:3000 grafana/grafana
-```
-
-这里需要注意 Changelog 中 v5.1.0 版本的更新介绍：
-
-```bash
-Major restructuring of the container
-Usage of chown removed
-File permissions incompatibility with previous versions
-user id changed from 104 to 472
-group id changed from 107 to 472
-Runs as the grafana user by default (instead of root)
-All default volumes removed
-```
-
-特别需要注意第 3 条，userid 和 groupid 都有所变化，所以我们在运行容器的时候需要注意这个变化。现在我们将这个容器转化成 Kubernetes 中的 Pod：
+**（1）持久化** — 在选定节点创建宿主机目录（示例 `/data/k8s/grafana`），把 `nodeAffinity` 中的节点名改为 **`kubectl get nodes` 中的真实主机名**（与 **T4.2.1** 修改 Prometheus PV 的方式相同）。
 
 ```yaml
-# grafana.yaml
+# grafana-pv-pvc.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: grafana-local
+  labels:
+    app: grafana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  storageClassName: local-storage-grafana
+  local:
+    path: /data/k8s/grafana
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - node3   # 必改：如 worker-01
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: kube-mon
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-storage-grafana
+```
+
+**（2）管理员 Secret**
+
+`Secret.stringData` 提交给 API 时**每一项值必须是字符串**（见 [Kubernetes Secret v1](https://kubernetes.io/docs/concepts/configuration/secret/)）。若 `admin-password` 写成**未加引号的纯数字**，YAML 会解析为 **number**，将出现：`cannot unmarshal number into Go struct field Secret.stringData of type string`。**无论密码是否为纯数字，一律用双引号包裹**；含双引号或反斜杠的密码可用单引号外层或 YAML 块标量。
+
+```yaml
+# grafana-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  namespace: kube-mon
+type: Opaque
+stringData:
+  admin-user: "admin"
+  admin-password: "在此处填写强密码"
+```
+
+**（3）Deployment** — 与官方示例一致为 Pod 设置 **`fsGroup: 472`**；补充 **`runAsUser/runAsGroup: 472`** 与 **initContainer `chown`**，避免 Local 卷属主为 root 时无法写 `/var/lib/grafana`。探针：官方示例常用 **`/robots.txt`** 做 readiness，此处使用 **`/api/health`**（语义清晰）；二者均可，与官方 [Kubernetes 安装](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 不冲突。
+
+Deployment 中镜像须为 **OSS 稳定版**（与文首版本表一致，示例 **`grafana/grafana:12.4.1`**）；升级时请重新打开 [grafana/grafana Releases](https://github.com/grafana/grafana/releases/latest) 核对 tag。
+
+```yaml
+# grafana-deploy.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
   namespace: kube-mon
+  labels:
+    app: grafana
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: grafana
@@ -1543,258 +1636,230 @@ spec:
       labels:
         app: grafana
     spec:
-      volumes:
-      - name: storage
-        hostPath:
-          path: /data/k8s/grafana/
-      nodeSelector:
-        kubernetes.io/hostname: node2
       securityContext:
-        runAsUser: 0
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+      initContainers:
+        - name: fix-grafana-data-perms
+          image: busybox:1.37
+          command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana || true"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
       containers:
-      - name: grafana
-        image: grafana/grafana:7.4.3
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 3000
-          name: grafana
-        env:
-        - name: GF_SECURITY_ADMIN_USER
-          value: admin
-        - name: GF_SECURITY_ADMIN_PASSWORD
-          value: admin321
-        readinessProbe:
-          failureThreshold: 10
-          httpGet:
-            path: /api/health
-            port: 3000
-            scheme: HTTP
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 30
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /api/health
-            port: 3000
-            scheme: HTTP
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        resources:
-          limits:
-            cpu: 150m
-            memory: 512Mi
-          requests:
-            cpu: 150m
-            memory: 512Mi
-        volumeMounts:
-        - mountPath: /var/lib/grafana
-          name: storage
----
+        - name: grafana
+          image: grafana/grafana:12.4.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 3000
+              name: http-grafana
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-password
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http-grafana
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http-grafana
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: grafana-data
+```
+
+**（4）Service** — 与 **T4.2.1** 一致使用 **NodePort** 便于裸金属/内网验证；云上可改为 `LoadBalancer` 或通过 Ingress 转发（官方安装文档默认示例为 `LoadBalancer`）。
+
+```yaml
+# grafana-svc.yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: grafana
   namespace: kube-mon
+  labels:
+    app: grafana
 spec:
   type: NodePort
-  ports:
-    - port: 3000
   selector:
     app: grafana
+  ports:
+    - name: http
+      port: 3000
+      protocol: TCP
+      targetPort: http-grafana
 ```
 
-镜像版本 `grafana/grafana:7.4.3`，然后添加了健康检查、资源声明，另外两个比较重要的环境变量`GF_SECURITY_ADMIN_USER` 和 `GF_SECURITY_ADMIN_PASSWORD`，用来配置 grafana 的管理员用户和密码。
+**（5）应用顺序**
 
-由于 grafana 将 dashboard、插件这些数据保存在 `/var/lib/grafana` 这个目录下面，所以如果需要做数据持久化，就需要针对这个目录进行 volume 挂载声明。
-
-同 Prometheus 一样，我们将 grafana 固定在一个具有 `kubernetes.io/hostname=node2` 标签的节点，由于上面我们刚刚提到 Changelog 中 grafana 的 userid 和 groupid 有所变化，所以我们这里增加一个 `securityContext`，声明使用 root 用户运行。
-
-最后，我们需要对外暴露 grafana 这个服务，所以我们需要一个对应的 Service 对象，当然用 NodePort 或者再建立一个 ingress 对象都是可行的。
-
-现在我们直接创建上面的这些资源对象：
+| 顺序 | 命令 |
+|------|------|
+| 1 | `kubectl apply -f grafana-pv-pvc.yaml` |
+| 2 | `kubectl apply -f grafana-secret.yaml` |
+| 3 | `kubectl apply -f grafana-deploy.yaml` |
+| 4 | `kubectl apply -f grafana-svc.yaml` |
 
 ```bash
-$ kubectl apply -f grafana.yaml
-deployment.apps "grafana" created
-service "grafana" created
+kubectl wait --for=condition=available deployment/grafana -n kube-mon --timeout=180s
+kubectl get pods,svc -n kube-mon -l app=grafana
 ```
 
-创建完成后，我们可以查看 grafana 对应的 Pod 是否正常：
+使用 **`http://<节点IP>:<NodePort>`** 访问（NodePort 以 `kubectl get svc grafana -n kube-mon` 为准）。集群内验证可用：`kubectl port-forward -n kube-mon svc/grafana 3000:3000` 后访问 `http://127.0.0.1:3000`（见官方文档 *port-forward* 说明）。
 
-```bash
-$ kubectl get pods -n kube-mon -l app=grafana         
-NAME                       READY   STATUS    RESTARTS   AGE
-grafana-5579769f64-vfn7q   1/1     Running   0          77s
-$ kubectl logs -f grafana-5579769f64-vfn7q -n kube-mon
-......
-logger=settings var="GF_SECURITY_ADMIN_USER=admin"
-t=2019-12-13T06:35:08+0000 lvl=info msg="Config overridden from Environment variable"
-......
-t=2019-12-13T06:35:08+0000 lvl=info msg="Initializing Stream Manager"
-t=2019-12-13T06:35:08+0000 lvl=info msg="HTTP Server Listen" logger=http.server address=[::]:3000 protocol=http subUrl= socket=
-```
+![grafana_login_page](./images/grafana_login_page.png)
 
-看到上面的日志信息就证明 grafana 的 Pod 已经正常启动起来了。这个时候我们可以查看 Service 对象：
+---
 
-```bash
-$ kubectl get svc -n kube-mon
-NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
-grafana      NodePort    10.104.116.58   <none>        3000:31548/TCP      12m
-......
-```
+### T4.9.2、配置 Prometheus 数据源
 
-现在我们就可以在浏览器中使用 `http://<任意节点IP:31548>` 来访问 grafana 这个服务了：
+以下与 Grafana 官方 **[Configure the Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/)** 一致；企业环境务必连同 **T4.2.1** 文末 **「企业生产补充：Prometheus Web/API 安全…」** 一并阅读，避免只配 UI 不配服务端或反之。
 
-![grafana_login](./images/grafana_login.png)
+1. **权限**：配置数据源需要 **Organization administrator**（或贵司 Grafana 角色模型中等效权限）；也可用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 以 YAML 声明数据源。  
 
-由于上面我们配置了管理员，所以第一次打开的时候会跳转到登录界面，然后就可以用上面我们配置的两个环境变量的值来进行登录，登录完成后就可以进入到 Grafana 的首页，然后点击 `Add data source` 进入添加数据源界面。
+2. **入口**：**Connections** → **Add new connection** → 搜索 **Prometheus** → **Add new data source**（菜单名称随 Grafana 大版本可能微调，以官方文档为准）。  
 
-我们要配置的数据源是 `Prometheus`，Prometheus 和 Grafana 都处于 kube-mon namespace 下面，所以我们这里的数据源地址：`http://prometheus:9090`，因为在同一个 namespace 下面，可以直接用 Service 服务名，然后其他的配置信息就根据实际情况了，比如 Auth 认证，我们这里没有，所以跳过即可，点击最下方的 `Save & Test`，提示成功证明我们的数据源配置正确：
+3. **Connection → Prometheus server URL**（与 **T4.2.1** 同 namespace、无 TLS 时示例）：  
+   
+   - 短名：`http://prometheus:9090`  
+   
+   - 显式 DNS：`http://prometheus.kube-mon.svc.cluster.local:9090`
+   
+     若 **Prometheus 已启用 TLS**，此处须改为 **`https://...`** 及对应端口，并与下方 **TLS settings** 一致。  
+   
+4. **Authentication**（官方三种，与上游实际开启情况 **必须一致**）：  
+   
+   - **Basic authentication**：Prometheus 使用 **`web.config` · `basic_auth_users`** 时，在此填写 **User / Password**（密码用 Secret 或 `secureJsonData`，勿提交到仓库）。  
+   - **Forward OAuth identity**：将当前 Grafana 用户的 **OAuth 访问令牌**（及可用的 OIDC ID token）转发给数据源；需上游/网关支持且符合公司 IdP 策略。  
+   - **No authentication**：仅当 Prometheus **未**启用 Basic Auth 等且网络边界已约束时使用（与 **T4.2.1** 默认清单一致）。  
+   
+5. **TLS settings**：Prometheus 使用 **自签或私有 CA** 签发的服务端证书时，按需勾选 **Add self-signed certificate** 并填入 **CA certificate**；**双向 TLS** 时启用 **TLS client authentication** 并配置客户端证书与密钥。**Skip TLS verify** 仅临时排查使用，**生产不建议**。官方说明指向 Prometheus 侧先行配置 TLS：[Securing Prometheus API and UI Endpoints Using TLS Encryption](https://prometheus.io/docs/guides/tls-encryption/)。  
+
+6. **HTTP headers**（可选）：反向代理或网关要求的自定义 **Header / Value** 在此添加。  
+
+7. **Save & test**：成功即表示 URL、认证与 TLS 与 Prometheus（或兼容查询 API）匹配。 
 
 ![grafana_datasource](./images/grafana_datasource.png)
 
-### 4.9.2、插件
+---
 
-我们也可以安装一些其他插件，比如 grafana 就有一个专门针对 Kubernetes 集群监控的插件 [grafana-kubernetes-app](https://grafana.com/plugins/grafana-kubernetes-app)，这里我们介绍一个功能更加强大的插件 [DevOpsProdigy KubeGraf](https://github.com/devopsprodigy/kubegraf/)，它是 Grafana 官方的 [Kubernetes 插件](https://grafana.com/plugins/grafana-kubernetes-app) 的升级版本，该插件可以用来可视化和分析 Kubernetes 集群的性能，通过各种图形直观的展示了 Kubernetes 集群主要服务的指标和特征，还可以用于检查应用程序的生命周期和错误日志。
+### 4.9.3、导入 Dashboard 与大盘维护
 
-要安装这个插件，需要到 grafana Pod 里面执行安装命令：
+本节解决一件事：前面按 **官方稳定版** 技术栈（Prometheus、node_exporter、kubelet/cAdvisor、apiserver、Endpoints 发现、kube-state-metrics 等）已经把 **metrics 管线**铺好了，Grafana 侧要用 **分层、可验收** 的方式把这些数据变成 **物理 / OS / 容器 / K8s 对象 / 控制面 / 平台组件 / 监控自省** 的可视化，并符合 **企业可审计、可升级** 的习惯。**大盘不产生新指标**，只做 PromQL；**`job` / `instance` 与抓取配置不一致时，社区再热门的模板也会全屏 No data**——因此下文先给 **本文专属对照表**，再给 **推荐导入顺序** 与 **上线验收**。
 
-```bash
-$ kubectl exec -it grafana-5579769f64-7729f -n kube-mon /bin/bash
-bash-5.0# grafana-cli plugins install devopsprodigy-kubegraf-app
+**官方参考（构建与维护大盘时的总原则）**：[Build dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/)、[Dashboard best practices](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/)、[Import dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/import-dashboards/)、大盘 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)、告警选型 [Alerting](https://grafana.com/docs/grafana/latest/alerting/)。更「上游一体化」的大盘/规则生成可参考 **[kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin)**（Jsonnet）或与 **[kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)** 同源的制品（与本文「手写 YAML」路径不同，可作为中长期基线）。
 
-installing devopsprodigy-kubegraf-app @ 1.5.1
-from: https://grafana.com/api/plugins/devopsprodigy-kubegraf-app/versions/1.5.1/download
-into: /var/lib/grafana/plugins
+#### 1、观测分层 × 本文 `job` × 典型指标（总览表）
 
-✔ Installed devopsprodigy-kubegraf-app successfully
-installing grafana-piechart-panel @ 1.6.1
-from: https://grafana.com/api/plugins/grafana-piechart-panel/versions/1.6.1/download
-into: /var/lib/grafana/plugins
+使用前请确认：Prometheus **Status → Targets** 里，下表涉及的 job 均已 **UP**（与当前已 apply 的 `prometheus-config` 版本一致，最低包含 **T4.7**；**T4.8** 的 kube-state-metrics 走 **Endpoints 注解** 发现）。
 
-✔ Installed grafana-piechart-panel successfully
-Installed dependency: grafana-piechart-panel ✔
+| 分层 | 企业关注点 | 本文中 Prometheus 的 `job` 标签 | 典型指标族（节选） |
+|------|------------|-----------------------------------|---------------------|
+| **宿主机 / 物理** | 节点 CPU·内存·磁盘·网络、容量规划 | **`kubernetes-nodes`** | `node_cpu_seconds_total`、`node_memory_*`、`node_disk_*`、`node_network_*` |
+| **容器 / OS  cgroup** | Pod·容器资源用量、限额与实际对比 | **`kubernetes-cadvisor`**、**`kubernetes-kubelet`** | `container_cpu_usage_seconds_total`、`container_memory_*` |
+| **K8s 工作负载与对象** | Deployment 副本、Pod Phase、重启、Job | **`kubernetes-endpoints`** 下 **kube-state-metrics** Pod（见 T4.8） | `kube_deployment_*`、`kube_pod_status_phase`、`kube_pod_container_status_restarts_total` |
+| **控制面** | API 请求量与延迟 | **`kubernetes-apiservers`** | `apiserver_request_*`、`apiserver_*` |
+| **平台组件** | CoreDNS、示例 Redis 等 | 静态 **`coredns`**（若 ConfigMap 仍保留）及/或 **`kubernetes-endpoints`**（带 `prometheus.io/scrape` 的 Service） | `coredns_*`、`redis_*` 等 |
+| **监控自省** | 抓取健康、TSDB、自身资源 | **`prometheus`** | `up`、`scrape_*`、`prometheus_tsdb_*` |
 
-Restart grafana after installing plugins . <service grafana-server restart>
+**关键差异（和社区模板的固定写法对齐，否则会无数据）**：
+
+- 社区大盘常写死 **`job="node-exporter"`**；本文 node_exporter 由服务发现抓取，**`job` 为 `kubernetes-nodes`**。
+- 社区常写死 **`job="cadvisor"`** 或 **`container` job 名**；本文为 **`kubernetes-cadvisor`**（经 kubelet `/metrics/cadvisor`）。
+- **kube-state-metrics** 在本文中由 **T4.7 `kubernetes-endpoints`** 发现，指标上的 **`job` 多为 `kubernetes-endpoints`，而不是 `kube-state-metrics`**。面板里若硬编码 `job="kube-state-metrics"`，往往 **一条线都没有**；应 **删除该 `job` 过滤**（仅按 `kube_*` 查询），或改为 **`job="kubernetes-endpoints"`** 并辅以 `namespace`、`service` 等标签缩小范围（以 Explore 中实际 series 为准）。
+- **`instance`**：节点类大盘应与 T4.4 relabel 一致，一般为 **节点名**（而非仅 IP）。
+
+#### 2、推荐导入顺序（先 P0 全局可观测，再按需加组件）
+
+在 **[Grafana Dashboards 目录](https://grafana.com/grafana/dashboards/)** 使用 **Import**（**Dashboards → New → Import**），**数据源** 选 **T4.9.2** 配置的 Prometheus。下列 **ID** 为高使用量社区模板，**仍请以页面更新日期与评论为准**；导入后**必须**按上表改模板变量或 Panel 中的 **`job`**。
+
+| 优先级 | 覆盖分层 | 建议 | 导入后必做（与本文对齐） |
+|--------|----------|------|---------------------------|
+| **P0** | 宿主机 / 物理 | 搜索 **「Node Exporter Full」**，常用 **ID [1860](https://grafana.com/grafana/dashboards/1860)** | 将模板变量 **`job`**（或各 Panel 中的 `job=`）设为 **`kubernetes-nodes`**；`instance` 选节点名 |
+| **P0** | 容器 / 集群资源 | 搜索 **「Kubernetes cluster monitoring」**，可试 **ID [7249](https://grafana.com/grafana/dashboards/7249)**（或与当前 **cAdvisor/kubelet** 指标集更贴切的更新款） | 将所有 **`cadvisor` / `kubelet` 相关 `job`** 替换为 **`kubernetes-cadvisor`** / **`kubernetes-kubelet`**（以无数据 Panel 的 PromQL 为准逐项改） |
+| **P0** | 工作负载 / 对象状态 | 搜索 **「kube-state_metrics」「Kubernetes / Views / Global」** 等 | **去掉** `job="kube-state-metrics"` 硬编码，或改为 **`job="kubernetes-endpoints"`**；优先以 **`kube_*` 指标是否出数** 为准 |
+| **P1** | 控制面 | 搜索 **「Kubernetes API Server」** | 确认 `job="kubernetes-apiservers"` |
+| **P1** | DNS | 搜索 **「CoreDNS」**，如 **ID [14981](https://grafana.com/grafana/dashboards/14981)** | 若同时存在静态 `coredns` job 与 Endpoints 重复抓取，注意 **双份 series**（可选保留一源） |
+| **P1** | 监控自省 | 搜索 **「Prometheus Stats」**，如 **ID [3662](https://grafana.com/grafana/dashboards/3662)** | `job="prometheus"` |
+| **P2** | 示例中间件 | 若已部署 **T4.3.2 Redis**：搜索 **「Redis Dashboard for Prometheus Redis Exporter 」** 等 | 对齐 **`redis` / `kubernetes-endpoints`** 与 Exporter 端口 |
+
+#### 3、企业级维护（固定、可审计、可升级）
+
+1. **定版入库**：将(import 后已改好 `job` 的) JSON **纳入 Git**，通过 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 发布到环境，禁止仅依赖产线手工改面板。  
+2. **文件夹与职责**：建议划分 **Infra（节点/容器）** / **K8s 对象与控制面** / **Platform（DNS、Redis 等）** / **Meta（Prometheus 自身）**；结合 Grafana **Folder 权限** 做团队隔离。  
+3. **与告警分工**：**规则与通知** 仍以 **Prometheus + Alertmanager（T4.11）** 或 **Grafana Alerting** 二选一或组合为准（见 [Alerting 文档](https://grafana.com/docs/grafana/latest/alerting/)）；大盘侧重 **可视化 + 排障**，避免「只在大盘上绑脆弱字符串告警」作为唯一生产手段。  
+4. **版本升级**：升级 **node_exporter / KSM / Grafana** 后，按各项目 **Release notes** 复查易变的指标名；社区大盘若长期未更新，优先 fork 自维护。
+
+#### 4、上线前验收（建议逐项勾掉）
+
+在 **Explore** 与关键大盘中确认：
+
+- `up{job="kubernetes-nodes"}` 与节点数一致；任意节点 CPU/内存 Panel 有曲线。  
+- `container_cpu_usage_seconds_total`（`job="kubernetes-cadvisor"`）有数据。  
+- `kube_deployment_status_replicas_available` 或 `kube_pod_status_phase` 有数据。  
+- `apiserver_request_total` 有数据（若已部署 apiserver job）。  
+- `coredns_*` 或 Redis 相关指标（若已部署）可查询。
+
+若某项为空：**先回 Prometheus Targets**，再对照 **第 1 节表** 修正大盘中的 **`job` / `instance`**，勿先怀疑集群故障。
+
+> **【插图占位 T4.9-3】** Import 大盘或大盘总览。实践后补充。
+
+---
+
+### 4.9.4、自定义 Panel 与变量（与 T4.4 标签一致）
+
+**Add visualization**，数据源选 Prometheus。示例：按 **`instance`** 过滤的节点 CPU 使用率（`node_cpu_seconds_total` 为 Counter，用 `rate`）：
+
+```promql
+100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle", instance=~"$node"}[5m])))
 ```
 
-安装完成后需要重启 grafana 才会生效，我们这里直接删除 Pod，重建即可。Pod 删除重建完成后插件就安装成功了。然后通过浏览器打开 Grafana 找到该插件，点击 `enable` 启用插件。
+**Dashboard settings → Variables**：新增 **`node`**，类型 **Query**，Prometheus 查询可用 `label_values(node_cpu_seconds_total, instance)` 或与 **`job="kubernetes-nodes"`** 匹配的 `label_values`。启用 **Multi-value**、**Include All** 后在查询中使用 **`instance=~"$node"`**。
 
-![grafana_kubegraf_plugin](./images/grafana_kubegraf_plugin.png)
+> **【插图占位 T4.9-4】** 变量与 Panel 效果。实践后补充（可多张）。
 
-点击 `Set up your first k8s-cluster` 创建一个新的 Kubernetes 集群：
+---
 
-- URL 使用 Kubernetes Service 地址即可：https://kubernetes.default:443
-- Access 访问模式使用：`Server(default)`
-- 由于插件访问 Kubernetes 集群的各种资源对象信息，所以我们需要配置访问权限，这里我们可以简单使用 kubectl 的 `kubeconfig` 来进行配置即可。
-- 勾选 Auth 下面的 `TLS Client Auth` 和 `With CA Cert` 两个选项
-- 其中 `TLS Auth Details` 下面的值就对应 `kubeconfig` 里面的证书信息。比如我们这里的 `kubeconfig` 文件格式如下所示：
+### 4.9.5、Helm 部署（生产常用备选）
 
-```yaml
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: <certificate-authority-data>
-    server: https://master1:6443
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: kubernetes-admin
-  name: kubernetes-admin@kubernetes
-current-context: 'kubernetes-admin@kubernetes'
-kind: Config
-preferences: {}
-users:
-- name: kubernetes-admin
-  user:
-    client-certificate-data: <client-certificate-data>
-    client-key-data: <client-key-data>
-```
+若集群标准交付走 Helm，可直接使用官方维护的 [Grafana Helm Charts](https://github.com/grafana/helm-charts)（`grafana` chart 或含整套可观测性的 `kube-prometheus-stack`）。优势：默认模板、ServiceMonitor、Ingress 钩子更全；**仍需**自行处理存储类、密钥与 **GF_SERVER_ROOT_URL** 等与入口域名相关配置。**生产须固定 Helm chart 版本**（`helm install … --version <chart>`），并在 `values.yaml` 中为 Grafana / Prometheus 等显式写出 **镜像 tag**（与文首 **版本与镜像约定**一致或由贵司基线锁定），避免 chart 默认 `latest` 或隐式升级导致与本文清单行为不一致。本节清单部署与 Helm **二选一**即可，避免同一 namespace 重复安装两套 Grafana。
 
-那么 `CA Cert` 的值就对应 `kubeconfig` 里面的 `<certificate-authority-data>` 进行 base64 解码过后的值；`Client Cert` 的值对应 `<client-certificate-data>` 进行 base64 解码过后的值；`Client Key` 的值就对应 `<client-key-data>` 进行 base64 解码过后的值。
+---
 
-- 最后在 `additional datasources` 下拉列表中选择 prometheus 的数据源。
-- 点击 `Save & Test` 就可以保存成功了。
+### 4.9.6、本节已移除的过时内容
 
-> 对于 base64 解码推荐使用一些在线的服务，比如 [https://www.base64decode.org](https://www.base64decode.org/)，非常方便。
-
-插件配置完成后，在左侧栏就会出现 `DevOpsProdigy KubeGraf` 插件的入口，通过插件页面可以查看整个集群的状态。
-
-![grafana_kubegraf_configure](./images/grafana_kubegraf_configure.png)
-
-还有几个漂亮的 Dashboard 可以供我们来进行监控图表的展示：
-
-![grafana_kubegraf_graphs](./images/grafana_kubegraf_graphs.png)
-
-### 4.9.3、导入 Dashboard
-
-为了能够快速对系统进行监控，我们可以直接复用别人的 Grafana Dashboard，在 Grafana 的官方网站上就有很多非常优秀的第三方 Dashboard，我们完全可以直接导入进来即可。比如我们想要对所有的集群节点进行监控，也就是 node-exporter 采集的数据，这里我们就可以导入 https://grafana.com/grafana/dashboards/8919 这个 Dashboard。
-
-在侧边栏点击 "+"，选择 `Import`，在 Grafana Dashboard 的文本框中输入 8919 即可导入：
-
-![grafana_kubegraf_8919](./images/grafana_kubegraf_8919.png)
-
-进入导入 Dashboard 的页面，可以编辑名称，选择 Prometheus 的数据源：
-
-![grafana_kubegraf_8919_datasource](./images/grafana_kubegraf_8919_datasource.png)
-
-保存后即可进入导入的 Dashboard 页面。由于该 Dashboard 更新比较及时，所以基本上导入进来就可以直接使用了，我们也可以对页面进行一些调整，如果有的图表没有出现对应的图形，则可以编辑根据查询语句去 DEBUG。
-
-![grafana_kubegraf_8919_datasource_showup](./images/grafana_kubegraf_8919_datasource_showup.png)
-
-### 4.9.4、自定义图表
-
-导入现成的第三方 Dashboard 或许能解决我们大部分问题，但是毕竟还会有需要定制图表的时候，这个时候就需要了解如何去自定义图表了。
-
-同样在侧边栏点击 "+"，选择 Dashboard，然后选择 `Add new panel` 创建一个图表：
-
-![grafana_define_graph](./images/grafana_define_graph.png)
-
-然后在下方 Query 栏中选择 `Prometheus` 这个数据源：
-
-![grafana_define_graph_1](./images/grafana_define_graph_1.png)
-
-然后在 `Metrics` 区域输入我们要查询的监控 PromQL 语句，比如我们这里想要查询集群节点 CPU 的使用率：
-
-```bash
-(1 - sum(increase(node_cpu_seconds_total{mode="idle", instance=~"$node"}[1m])) by (instance) / sum(increase(node_cpu_seconds_total{instance=~"$node"}[1m])) by (instance)) * 100
-```
-
-虽然我们现在还没有具体的学习过 PromQL 语句，但其实我们仔细分析上面的语句也不是很困难，集群节点的 CPU 使用率实际上就相当于排除空闲 CPU 的使用率，所以我们可以优先计算空闲 CPU 的使用时长，除以总的 CPU 时长就是空闲率了，1 减空闲率就是 CPU 的使用率，如果想用百分比来表示的话，则乘以 100 即可。
-
-这里有一个需要注意的地方是在 PromQL 语句中有一个 `instance=~"$node"` 的标签，其实意思就是根据 `$node` 这个参数来进行过滤，也就是我们希望在 Grafana 里面通过参数化来控制每一次计算哪一个节点的 CPU 使用率。
-
-所以这里就涉及到 Grafana 里面的参数使用。点击页面顶部的 `Dashboard Settings` 按钮进入配置页面：
-
-![grafana_databoard_setting](./images/grafana_databoard_setting.png)
-
-在左侧 tab 栏点击 `Variables` 进入参数配置页面，如果还没有任何参数，可以通过点击 `Add Variable` 添加一个新的变量：
-
-![grafana_databoard_setting_varibles](./images/grafana_databoard_setting_varibles.png)
-
-这里需要注意的是变量的名称 `node` 就是上面我们在 PromQL 语句里面使用的 `$node` 这个参数，这两个地方必须保持一致，然后最重要的就是参数的获取方式了，比如我们可以通过 `Prometheus` 这个数据源，通过 `kubelet_node_name` 这个指标来获取，在 Prometheus 里面我们可以查询该指标获取到的值为：
-
-![grafana_prometheus_fetch_metrics](./images/grafana_prometheus_fetch_metrics.png)
-
-其实我们只想要获取节点的名称，所以我们可以用正则表达式去匹配 `node=xxx` 这个标签，将匹配的值作为参数的值即可：
-
-![grafana_prometheus_regex](./images/grafana_prometheus_regex.png)
-
-在最下面的 `Preview of values` 里面会有获取的参数值的预览结果。除此之外，我们还可以使用一个更方便的 `label_values` 函数来获取，该函数可以用来直接获取某个指标的 label 值：
-
-![grafana_databoard_setting_value_label](./images/grafana_databoard_setting_label_values.png)
-
-另外由于我们希望能够让用户选择一次性可以查询多少个节点的数据，所以我们将 `Multi-value` 以及 `Include All option` 都勾选上了，保存后跳转到 Dashboard 页面就可以看到我们自定义的图表信息：
-
-![grafana_define_graph_2](./images/grafana_define_graph_2.png)
-
-而且还可以根据参数选择一个或者多个节点，当然图表的标题和大小都可以更改：
-
-![grafana_databoard_resize](./images/grafana_databoard_resize.png)
+以下不再写入正文，避免误导 **2025/2026** 环境：**以 root 跑 Grafana**、**hostPath + 写死 nodeSelector**、**手写 KubeGraf / 旧 Kubernetes App 插件流程**、**过旧 Grafana 7.x 镜像**、以及依赖 **`latest` 标签** 的做法。插件若确有需要，仅从 [官方插件目录](https://grafana.com/grafana/plugins/) 选择维护活跃者，并通过**自定义镜像**（`GF_INSTALL_PLUGINS`）或企业制品库固定版本。
 
 ## T4.10、PromQL
 
@@ -1865,7 +1930,7 @@ http_request_total{status="200", method="POST"}@1434417561287 => 4785
 - 标量（Scalar）：一个简单的数字浮点值。
 - 字符串（String）：一个简单的字符串值。
 
-所有指标都是 Prometheus 定期从 metrics 接口那里采集过来的。采集间隔时间由 `prometheus.yaml` 配置中的 `scrape_interval` 指定。最多抓取间隔为 30 秒，这意味着至少每 30 秒就会有一个带有新时间戳记录的新数据点，这个值可能会更改，也可能不会更改，但是每隔 `scrape_interval` 都会产生一个新的数据点。
+所有指标都是 Prometheus 定期从目标的 `/metrics`（或配置的指标路径）抓取并写入 TSDB 的。抓取节奏由 [官方配置](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)里 **全局或各 `scrape_config` 的 `scrape_interval`** 决定（主配置文件名常见为 `prometheus.yml`，与本文 ConfigMap 中键名一致）；每次成功抓取会为各时间序列产生带新时间戳的样本（具体间隔以你当前配置为准，并非固定上限 30 秒）。
 
 ### 4.10.2、指标类型
 
@@ -2203,7 +2268,7 @@ AlertManager 作为独立组件，负责接收并处理来自一个或多个 Pro
 $ ./alertmanager --config.file=simple.yml
 ```
 
-其中 `-config.file` 参数是用来指定对应的配置文件，由于我们这里同样要运行到 Kubernetes 集群中来，所以我们使用 Docker 镜像的方式来安装，使用的镜像是：`prom/alertmanager:v0.21.0`。
+其中 `-config.file` 参数是用来指定对应的配置文件，由于我们这里同样要运行到 Kubernetes 集群中来，所以我们使用 Docker 镜像的方式来安装，使用的镜像是：`prom/alertmanager:v0.31.1`。
 
 首先，指定配置文件，同样的，我们这里使用一个 ConfigMap 资源对象：
 
@@ -2293,7 +2358,7 @@ spec:
           name: alert-config
       containers:
       - name: alertmanager
-        image: prom/alertmanager:v0.21.0
+        image: prom/alertmanager:v0.31.1
         imagePullPolicy: IfNotPresent
         args:
         - "--config.file=/etc/alertmanager/config.yml"
@@ -2900,7 +2965,7 @@ spec:
           emptyDir: {}
       containers:
         - name: prometheus
-          image: prom/prometheus:v2.14.0
+          image: prom/prometheus:v3.10.0
           imagePullPolicy: IfNotPresent
           args:
             - "--config.file=/etc/prometheus-shared/prometheus.yaml"
@@ -2929,7 +2994,7 @@ spec:
             - name: data
               mountPath: "/prometheus"
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           imagePullPolicy: IfNotPresent
           args:
             - sidecar
@@ -3042,7 +3107,7 @@ spec:
     spec:
       containers:
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           args:
             - query
             - --log.level=debug
@@ -3188,7 +3253,7 @@ Ruler 的数据获取路径为：`Ruler → Querier → Sidecar → Prometheus`�
 
 > Minio 开源项目已废弃，可以找其它替代方案，比如 https://rustfs.com/
 
-MinIO RELEASE.2025-05-24T17-08-30Z 以前的版本都包含完整的功能，短期还可以使用。
+下文示例镜像与文首 **版本与镜像约定**表中的 MinIO 行一致；上游若有新的安全发行，请以 [MinIO Releases](https://github.com/minio/minio/releases/latest) 为准并替换 YAML 中的固定标签。
 
 为了方便管理，将所有的资源对象都部署在一个名为 minio 的命名空间中，如果没有的话需要手动创建。直接使用 Deployment 来管理 Minio 的服务（minio-deploy.yaml）：
 
@@ -3217,7 +3282,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: "/data"
-          image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+          image: minio/minio:RELEASE.2025-10-15T17-29-55Z
           args:
             - server
             - /data
@@ -3379,7 +3444,7 @@ spec:
     spec:
       containers:
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           args:
             - "store"
             - "--log.level=debug"
@@ -3478,7 +3543,7 @@ spec:
     spec:
       containers:
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           args:
             - "compact"
             - "--log.level=debug"
@@ -3676,7 +3741,7 @@ spec:
         thanos-store-api: "true"
     spec:
       containers:
-        - image: thanosio/thanos:v0.18.0
+        - image: thanosio/thanos:v0.41.0
           args:
             - receive
             - --grpc-address=0.0.0.0:10901
@@ -3834,7 +3899,7 @@ spec:
           emptyDir: {}
       containers:
         - name: prometheus
-          image: prom/prometheus:v2.14.0
+          image: prom/prometheus:v3.10.0
           imagePullPolicy: IfNotPresent
           args:
             - "--config.file=/etc/prometheus-shared/prometheus.yaml"
@@ -3863,7 +3928,7 @@ spec:
             - name: prometheus-config
               mountPath: /etc/prometheus
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           imagePullPolicy: IfNotPresent
           args:
             - sidecar
