@@ -1774,15 +1774,15 @@ kubectl get pods,svc -n kube-mon -l app=grafana
 
 ---
 
-### 4.9.3、导入 Dashboard 与大盘维护
+### T4.9.3、导入 Dashboard 与大盘维护
 
 本节解决一件事：前面按 **官方稳定版** 技术栈（Prometheus、node_exporter、kubelet/cAdvisor、apiserver、Endpoints 发现、kube-state-metrics 等）已经把 **metrics 管线**铺好了，Grafana 侧要用 **分层、可验收** 的方式把这些数据变成 **物理 / OS / 容器 / K8s 对象 / 控制面 / 平台组件 / 监控自省** 的可视化，并符合 **企业可审计、可升级** 的习惯。**大盘不产生新指标**，只做 PromQL；**`job` / `instance` 与抓取配置不一致时，社区再热门的模板也会全屏 No data**——因此下文先给 **本文专属对照表**，再给 **推荐导入顺序** 与 **上线验收**。
 
-**官方参考（构建与维护大盘时的总原则）**：[Build dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/)、[Dashboard best practices](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/)、[Import dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/import-dashboards/)、大盘 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)、告警选型 [Alerting](https://grafana.com/docs/grafana/latest/alerting/)。更「上游一体化」的大盘/规则生成可参考 **[kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin)**（Jsonnet）或与 **[kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)** 同源的制品（与本文「手写 YAML」路径不同，可作为中长期基线）。
+**官方参考（构建与维护大盘时的总原则）**：[Build dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/)、[Dashboard best practices](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/)、[Import dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/import-dashboards/)、大盘 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)、告警选型 [Alerting](https://grafana.com/docs/grafana/latest/alerting/)。更「上游一体化」的大盘和规则生成可参考 **[kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin)**（Jsonnet）或与 **[kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)** 同源的制品（与本文「手写 YAML」路径不同，可作为中长期基线）。
 
-#### 1、观测分层 × 本文 `job` × 典型指标（总览表）
+1、观测分层 × 本文 `job` × 典型指标（总览表）
 
-使用前请确认：Prometheus **Status → Targets** 里，下表涉及的 job 均已 **UP**（与当前已 apply 的 `prometheus-config` 版本一致，最低包含 **T4.7**；**T4.8** 的 kube-state-metrics 走 **Endpoints 注解** 发现）。
+使用前请确认：Prometheus **Status → Target health** 里，下表涉及的 job 均已 **UP**（与当前已 apply 的 `prometheus-config` 版本一致，最低包含 **T4.7**；**T4.8** 的 kube-state-metrics 走 **Endpoints 注解** 发现）。
 
 | 分层 | 企业关注点 | 本文中 Prometheus 的 `job` 标签 | 典型指标族（节选） |
 |------|------------|-----------------------------------|---------------------|
@@ -1800,7 +1800,7 @@ kubectl get pods,svc -n kube-mon -l app=grafana
 - **kube-state-metrics** 在本文中由 **T4.7 `kubernetes-endpoints`** 发现，指标上的 **`job` 多为 `kubernetes-endpoints`，而不是 `kube-state-metrics`**。面板里若硬编码 `job="kube-state-metrics"`，往往 **一条线都没有**；应 **删除该 `job` 过滤**（仅按 `kube_*` 查询），或改为 **`job="kubernetes-endpoints"`** 并辅以 `namespace`、`service` 等标签缩小范围（以 Explore 中实际 series 为准）。
 - **`instance`**：节点类大盘应与 T4.4 relabel 一致，一般为 **节点名**（而非仅 IP）。
 
-#### 2、推荐导入顺序（先 P0 全局可观测，再按需加组件）
+2、推荐导入顺序（先 P0 全局可观测，再按需加组件）
 
 在 **[Grafana Dashboards 目录](https://grafana.com/grafana/dashboards/)** 使用 **Import**（**Dashboards → New → Import**），**数据源** 选 **T4.9.2** 配置的 Prometheus。下列 **ID** 为高使用量社区模板，**仍请以页面更新日期与评论为准**；导入后**必须**按上表改模板变量或 Panel 中的 **`job`**。
 
@@ -1831,23 +1831,88 @@ kubectl get pods,svc -n kube-mon -l app=grafana
 - `apiserver_request_total` 有数据（若已部署 apiserver job）。  
 - `coredns_*` 或 Redis 相关指标（若已部署）可查询。
 
-若某项为空：**先回 Prometheus Targets**，再对照 **第 1 节表** 修正大盘中的 **`job` / `instance`**，勿先怀疑集群故障。
+若某项为空：**先回 Prometheus Target health**，再对照 **第 1 节表** 修正大盘中的 **`job` / `instance`**，勿先怀疑集群故障。
 
-> **【插图占位 T4.9-3】** Import 大盘或大盘总览。实践后补充。
+![grafana_dashboard_Node_Exporter_Full](./images/grafana_dashboard_Node_Exporter_Full.png)
 
 ---
 
-### 4.9.4、自定义 Panel 与变量（与 T4.4 标签一致）
+### 4.9.4、自建 Panel 与模板变量（与本文 `job` / `instance` 一致）
 
-**Add visualization**，数据源选 Prometheus。示例：按 **`instance`** 过滤的节点 CPU 使用率（`node_cpu_seconds_total` 为 Counter，用 `rate`）：
+本节只做一件事：**在 Grafana 里新增一个 Panel**，用 PromQL 展示 **node_exporter**（本文 job 为 **`kubernetes-nodes`**，`instance` 为 **节点名**）上的 CPU 利用率，并用**模板变量单选**切换节点。  
+
+**本文只采用一种推荐做法**：Query 型变量、**单选**、**不用** `instance=~` 正则、**不开** Multi-value / Include All，避免 RE2 与「全部」展开类错误。操作以 Grafana 官方 [Create a dashboard](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/create-dashboard/)、[Variables](https://grafana.com/docs/grafana/latest/dashboards/variables/) 为准；PromQL 以 [Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/) 为准。
+
+---
+
+#### 步骤 1：进入面板编辑（不要用 Explore 代替）
+
+| 场景 | 操作 |
+|------|------|
+| 新建大盘 | 左侧 **Dashboards** → **New** → **New dashboard** → **`+ Add visualization`**（中文版多为 **添加可视化**）→ 选中 **T4.9.2** 配置的 Prometheus 数据源。 |
+| 已有大盘 | 打开大盘 → 右上角 **Edit** → **Add** → **Visualization** → 同一数据源。 |
+
+**Explore** 仅用于临时试查询；要保存到大盘必须按上表进入 **Dashboard 编辑**。
+
+---
+
+#### 步骤 2：无变量先跑通（强烈建议先做）
+
+在 **Queries → A** 的 PromQL 框**原样**粘贴下面一条，**Save dashboard** 后看是否有曲线（确认 Prometheus 与标签与本文一致）：
 
 ```promql
-100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle", instance=~"$node"}[5m])))
+100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}[5m])))
 ```
 
-**Dashboard settings → Variables**：新增 **`node`**，类型 **Query**，Prometheus 查询可用 `label_values(node_cpu_seconds_total, instance)` 或与 **`job="kubernetes-nodes"`** 匹配的 `label_values`。启用 **Multi-value**、**Include All** 后在查询中使用 **`instance=~"$node"`**。
+- `mode` 的值必须写 **`"idle"`**（英文半角双引号），不得写成 `mode=idle`。  
+- 若你尚未在 ConfigMap 里给 node 指标打上 `job` 标签、或 job 名不同，可先去掉 job 条件试：`{mode="idle"}`；**与本文一致时应保留 `job="kubernetes-nodes"`**。
 
-> **【插图占位 T4.9-4】** 变量与 Panel 效果。实践后补充（可多张）。
+---
+
+#### 步骤 3：加模板变量 `node`（唯一推荐配置）
+
+**Dashboard settings**（齿轮）→ **Variables** → **Add variable**，按下表填写：
+
+| 字段 | 填写 |
+|------|------|
+| Name | `node` |
+| Label | 任意展示名，如「节点」 |
+| Type | **Query** |
+| Data source | 本节 Prometheus |
+| Query | `label_values(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}, instance)` |
+| Multi-value | **关闭** |
+| Include All option | **关闭** |
+
+回到 Panel，将查询改为（**必须用等于 `=`**，禁止使用 `=~`）：
+
+```promql
+100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle", instance="$node"}[5m])))
+```
+
+**Save dashboard**。左上角下拉切换节点即可；需要对比多节点时，复制同一 Panel 多个查询或另建大盘，**不要**为此打开 Multi-value / Include All（易引入正则与 `**` 等配置错误；多节点对比可依赖 **4.9.3** 导入的社区大盘）。
+
+---
+
+#### 步骤 4：与本文指标的对应关系（避免无数据）
+
+| 概念 | 本文约定（T4.4） |
+|------|------------------|
+| `job` | node_exporter 抓取配置名为 **`kubernetes-nodes`** |
+| `instance` | relabel 后为 **节点名**（如 `worker-01`），不是「任意自定义字符串」 |
+
+社区大盘常写死 `job="node-exporter"`；若直接套用无数据，需在 Panel 里改 `job` 或按 **4.9.3** 对照表处理。
+
+---
+
+#### 步骤 5：常见报错速查
+
+| 报错或现象 | 处理 |
+|------------|------|
+| `unexpected identifier "idle"` | 标签值须 **`mode="idle"`**（英文半角双引号）；禁止 `mode=idle` 或弯引号。 |
+| `invalid nested repetition operator` 等正则错误 | 本文方案**不用** `instance=~"$node"`。若从社区复制了正则匹配或多选变量，请改回 **步骤 3** 单选 + **`instance="$node"`**。 |
+| 选了变量仍无数据 | 在 **Explore** 执行 `node_cpu_seconds_total{job="kubernetes-nodes"}`，确认 `instance` 与变量 Query 一致。 |
+
+> **【插图占位 T4.9-4】** 变量与 Panel 效果。实践后补充。
 
 ---
 
