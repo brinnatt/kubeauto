@@ -1908,27 +1908,146 @@ job 在 T4.4 中为 kubernetes-nodes；instance 一般为节点名（如 worker-
 
 idle 相关报错：检查是否写成带引号的 `mode="idle"`。正则与 `**`：不要用 `instance=~"$node"`，且变量「全部」勿填 `**`；若未用 `=~` 仍报 `**`，见步骤 2 文末排查（多查询、变量、Query inspector、Explore 对照）。选了变量仍无数据：在 Explore 里查 `node_cpu_seconds_total{job="kubernetes-nodes"}`，看 instance 是否与变量 Query 一致。
 
-> 【插图占位 T4.9-4】变量与面板效果，实践后补图。
+![grafana_self_defined_panel](./images/grafana_self_defined_panel.png)
 
 ---
 
-### 4.9.5、Helm 部署（生产常用备选）
+### 4.9.5、Helm 部署 Grafana（生产备选，与清单式二选一）
 
-若集群统一用 Helm，可选用官方维护的 [Grafana Helm Charts](https://github.com/grafana/helm-charts)（单独 grafana chart 或 kube-prometheus-stack），模板和 ServiceMonitor、Ingress 等较全，但仍要自行处理存储类、密钥和 GF_SERVER_ROOT_URL 等与域名相关的项。生产请固定 chart 版本（helm install 时带 --version），在 values 里为 Grafana、Prometheus 等写明镜像 tag，与文首版本约定或贵司基线一致，避免隐式升级到 latest。Helm 与本节清单式部署二选一即可，同一命名空间不要装两套 Grafana。
+本节面向**已用 Helm 管理应用发布**的集群，做法对齐 Grafana 官方 [使用 Helm 部署](https://grafana.com/docs/grafana/latest/setup-grafana/installation/helm/)、Helm 官方 [安装与升级说明](https://helm.sh/docs/intro/install/)，以及社区 chart [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts) 中 `charts/grafana` 的 README 与默认 `values.yaml`。chart 由社区维护，**选定 chart 版本后请先读完该版本的 README**，再合上本文的镜像与命名空间约定。
 
----
+**与全文保持一致（避免双实例、版本漂移）**
 
-### 4.9.6、本节已移除的过时内容
+- **命名空间**：全文默认使用 `kube-mon`，下文命令与示例 values 都按此书写。**如果你必须改用别的命名空间**（例如公司有统一前缀），请做三件事：把下面所有命令里的 `kube-mon` 全部换成你的名字；在 Grafana 里配置 Prometheus 时，把地址改成 `http://prometheus.<你的命名空间>.svc.cluster.local:9090`（与 T4.9.2 同理）；确认 Prometheus 的 Service 真在该命名空间。  
+- **Grafana 镜像**：与文首「版本与镜像约定」一致，示例 tag 为 `12.4.1`；升级前到 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 重新核对稳定版，**values 里写死 tag**，不要依赖未经确认的默认浮动版本。  
+- **管理员 Secret**：与 T4.9.1 相同，`admin-user`、`admin-password` 的值必须是字符串（纯数字口令要用引号），见 T4.9.1。  
+- **Prometheus**：若只装本 chart、不装整套监控栈，集群里须已有 T4.2.1 的 Prometheus，否则 Grafana 没有数据源；数据源 URL 与 T4.9.2 一致。  
+- **与 T4.9.1 二选一**：同一命名空间里不要既有清单部署的 Grafana，又 Helm 再装一套。改走 Helm 前，请先删掉清单里的 Grafana Deployment、Service 等资源，或整体换命名空间并同步改 Prometheus 访问方式。  
+- **kube-prometheus-stack**：若选用 Prometheus Operator 整套 chart，一般自带 Prometheus 和 Grafana，**不要再**套用 T4.2.1 与 T4.9.1 的手工清单，避免双实例；该路线见后文 T4.14，以所选 chart 官方文档为准。
 
-下列做法不再写入正文，以免误导当前环境：用 root 跑 Grafana、hostPath 配死 nodeSelector、旧版 KubeGraf 或 Kubernetes App 插件流程、Grafana 7.x 老镜像、镜像用 latest。若确需插件，只在 [官方插件目录](https://grafana.com/grafana/plugins/) 选仍在维护的，用自定义镜像或 GF_INSTALL_PLUGINS 固定版本。
+**安全、稳定、可靠（生产建议，与官方 chart 能力对齐）**
 
-**T4.9 生产核对（与本手册原则一致）**
+- **安全**：镜像与 chart 版本写入 Git 变更记录；管理员口令只放 Secret，**不要**把 `adminPassword` 明文写进长期保存的 values 仓库；对浏览器暴露走 **Ingress + TLS**（由集群签发或 cert-manager 等）；Grafana 官方镜像以非 root 用户运行，community chart 默认带有 `runAsUser: 472` 与容器安全上下文，**升级 chart 后复查这些默认值是否仍符合你们基线**。若集群推行零信任网络，可按 chart 说明启用 **NetworkPolicy**，并务必放行到 **Prometheus**、**DNS** 的出站，否则数据源与健康检查会失败。  
+- **稳定**：开启持久化 PVC，选对 `storageClassName`，避免 Pod 重建后配置丢失；为容器配置合适的请求与上限（至少不低于 T4.9.1），减轻节点挤压与 OOM；社区 chart 已带存活与就绪探针，一般保持默认即可。单副本时，尽量在计划窗口内做版本升级。  
+- **可靠**：`helm install` / `helm upgrade` 使用 `--version` 锁定 chart，并用 `--wait` 与合理 `timeout`（官方常用做法，见 Helm 文档），必要时对生产升级加 `--atomic` 以便失败时自动回滚；了解 **PVC 在 uninstall 后是否保留**（常见为保留），制定备份与清理策略；重要大盘与数据源用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 进 Git，避免唯一副本丢数据后无从恢复。
 
-- 版本：Grafana 镜像与文首约定一致（示例 12.4.1），UI 说明以 12.x 为准，升级后复查官方文档。  
-- 数据与命名：命名空间 `kube-mon`，Prometheus URL 与 T4.2.1、T4.9.2 一致；大盘中 job、instance 与 T4.4～T4.8 抓取一致（见 T4.9.3）。  
-- 面板查询：Prometheus 数据源下使用 **Code** 粘贴 PromQL，勿只在 Builder 里点选后漏配标签。  
-- 模板变量：按 T4.9.4 步骤 3 **全表**填写 General、Query options、Static options、Selection options；单选、关 Multi-value 与 Include All；Query type 用 Label values 或 Classic query，与官方 [Prometheus 模板变量](https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/) 对齐。  
-- 交付：大盘 JSON 与数据源 Provisioning 进 Git，生产改配走评审（见 T4.9.3 企业习惯）。
+**命令示例（注释逐项说明；chart 版本号须替换为你们在变更单里锁定的那一串）**
+
+```bash
+# 1）添加官方安装文档使用的社区仓库
+helm repo add grafana-community https://grafana-community.github.io/helm-charts
+helm repo update
+
+# 2）列出 chart 版本，挑一版与你们验证过的 Grafana 应用版本匹配，写入变更记录；可用下列命令导出新版本默认值作 diff
+# helm show values grafana-community/grafana --version "<chart 版本>" > chart-defaults.yaml
+helm search repo grafana-community/grafana --versions | head -20
+
+# 3）命名空间：与全文一致为 kube-mon；若你用其它名字，这里和下两行一并替换
+kubectl create namespace kube-mon 2>/dev/null || true
+
+# 4）管理员 Secret：与 T4.9.1 同结构的 YAML，勿把仓库里的明文密码提交到 Git
+kubectl apply -f grafana-secret.yaml
+
+# 5）安装：--version 必写；--wait 等待就绪，超时调大；生产升级可再加 --atomic
+helm install grafana grafana-community/grafana \
+  --namespace kube-mon \
+  --version "<填写 helm search 选中的 chart 版本号>" \
+  -f grafana-helm-values.yaml \
+  --wait --timeout 15m
+
+helm status grafana -n kube-mon
+kubectl get pods,svc,ingress -n kube-mon -l app.kubernetes.io/name=grafana
+```
+
+**values 示例（文件名自定；YAML 内注释便于评审与交接，键名以当时 chart 的 values 为准）**
+
+```yaml
+# grafana-helm-values.yaml — 生产向示例，安装前用 `helm show values grafana-community/grafana --version <同安装版本>` 核对字段是否变化
+
+# 单副本可满足多数 OSS 场景；要高可用需额外架构（多副本、共享存储、Grafana Enterprise 等），超出本文范围
+replicas: 1
+
+# 镜像：与文首「版本与镜像约定」一致；pullPolicy 若生产要求可改为 Always 并配合固定 digest（由贵司镜像规范决定）
+image:
+  registry: docker.io
+  repository: grafana/grafana
+  tag: "12.4.1"
+  pullPolicy: IfNotPresent
+
+# Pod 安全上下文：community chart 默认与官方 Grafana 镜像非 root（472）一致；显式写出便于安全审计，若与 chart 新版本默认值冲突以 chart 为准
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# 数据盘：生产必须持久化，否则重启丢大盘与数据源配置
+persistence:
+  enabled: true
+  type: pvc
+  size: 10Gi
+  # 填空字符串常表示用集群默认 StorageClass；显式写名更清晰，例如 local-storage-grafana
+  storageClassName: ""
+
+# 管理员：口令来自 Secret，勿在此写 adminPassword
+adminUser: admin
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+# 资源：底线参考 T4.9.1；用户与大盘多时要加压测后再调
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+# 对外访问的根 URL，须与 Ingress 实际对外地址一致，否则登录重定向、邮件链接易错
+env:
+  GF_SERVER_ROOT_URL: "https://grafana.example.com"
+
+# 入口：生产优先 TLS；tls.secretName 需事先创建或由 Ingress 控制器托管证书
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - grafana.example.com
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - grafana.example.com
+
+# 可选：零信任网络时再启用，并务必按 chart 文档配置 egress，放行 Prometheus（如 kube-mon:9090）与 DNS
+# networkPolicy:
+#   enabled: true
+#   allowExternal: false
+#   # 须结合 explicitNamespacesSelector、explicitIpBlocks、egress 等逐项放行，见 chart values 英文注释
+
+# 可选：缓解节点维护时的驱逐（单副本时效果有限，视集群策略而定）
+# podDisruptionBudget:
+#   minAvailable: 1
+```
+
+**部署完成后**
+
+在 **Connections** 中按 **T4.9.2** 添加 Prometheus；大盘与变量按 **T4.9.3、T4.9.4**；抓取端 job 仍须与 **T4.4～T4.8** 一致。日后配置以 Provisioning 落 Git 为佳，与 T4.9.3「企业侧习惯」一致。
+
+**升级与卸载**
+
+- 升级：`helm upgrade grafana grafana-community/grafana --namespace kube-mon --version "<新版本>" -f grafana-helm-values.yaml --wait --timeout 15m`，生产建议先在预发集群跑通；需要失败自动回滚时可加 `--atomic`（见 Helm 文档）。  
+- 卸载：`helm uninstall grafana -n kube-mon`。**PVC 是否随 chart 删除因版本与参数而异**，卸载前查阅当前 chart 说明并做好数据备份。
 
 ## T4.10、PromQL
 
