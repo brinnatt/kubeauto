@@ -1826,7 +1826,7 @@ kube-state-metrics 经 kubernetes-endpoints 抓取时，时间序列上的 job �
 
 ---
 
-### 4.9.4、自建 Panel 与模板变量（对齐本文 job 与 instance）
+### 4.9.4、自建 Panel 与模板变量
 
 在 Grafana 里新建一个面板，用 PromQL 显示 node_exporter 的 CPU 利用率（本文里 job 为 kubernetes-nodes，instance 为节点名），并用下拉框切换节点。
 
@@ -1843,7 +1843,9 @@ Explore 只用来试跑查询；要落到大盘上，按下表操作。
 
 **步骤 2：先不加变量，确认查询有数据**
 
-在面板编辑页 Queries 里粘贴下面整句，点右上角 Save dashboard 保存，回到大盘看是否出曲线：
+> 注意：**若界面里只有 Metric、Label filters，没有大段文本框**：这是 Prometheus 数据源的 **Builder（构建器）** 模式，用来点选指标和标签，不是用来粘贴整段 PromQL 的。请在**该条 Query（如 Query A）的编辑区域**找到 **Builder** 与 **Code** 的切换（多在查询标题行右侧或标签旁；中文版可能写作「代码」）。点 **Code** 后会出现多行文本输入框，再把下面整句贴进去。若找不到切换项，见官方 [Prometheus 查询编辑器](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/) 中 Builder 与 Code 的说明。Explore 里同样可先切到 Code 再试跑。
+
+在面板编辑页 Queries 里（切换到 **Code**）粘贴下面整句，点右上角 Save dashboard 保存，回到大盘看是否出曲线：
 
 ```promql
 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}[5m])))
@@ -1851,26 +1853,41 @@ Explore 只用来试跑查询；要落到大盘上，按下表操作。
 
 `mode` 必须写成 `mode="idle"`（英文半角双引号）。若你集群里 job 名与本文不同，可先删掉 job 条件只留 `mode="idle"` 试通；与本文一致时应保留 `job="kubernetes-nodes"`。
 
-**步骤 3：添加变量 `node`（逐项对照，不要多选）**
+**步骤 3：添加变量 `node`**
 
-1. 在该大盘右上角点齿轮 **Dashboard settings**，左侧选 **Variables**，点 **Add variable**。  
-2. 按下面表格填写；其中 **Multi-value**、**Include All** 一律保持**关闭**（不要勾选）。变量类型选 **Query**，不是 Custom。  
-3. 点页面下方或顶部的保存，回到大盘，应能看到左上角多出一个下拉框（变量 `node`）。
+官方顺序与字段说明见：[添加与管理变量](https://grafana.com/docs/grafana/latest/dashboards/variables/add-template-variables/)、[Prometheus 模板变量](https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/)（含 Query type 与 API 对应关系）。下面按 **Grafana 12.x 常见布局**（General、Query options、Static options、Selection options 等）与本文环境对齐；若你界面多「Advanced」折叠区，展开后勿改与下表冲突的项。
 
-| 项 | 填写 |
-|----|------|
-| Name | `node`（须与下一步 PromQL 里的 `$node` 一致） |
-| Label | 可填「节点」，仅显示用 |
-| Type | Query |
-| Data source | 本节使用的 Prometheus |
-| Query | `label_values(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}, instance)` |
-| Multi-value | 关 |
-| Include All | 关 |
+1. 在该大盘右上角点齿轮 **Dashboard settings** → 左侧 **Variables** → **Add variable**。  
+2. 自上而下对照下表填写，填完点 **Apply**（或页面底部 **Update**），再在 **Dashboard settings** 里 **Save dashboard**；回到大盘顶部应出现名为「节点」（或你设的 Label）的下拉框。  
+3. **Preview of values**（或「运行查询 / Run query」）应有若干 `instance`（节点名）；若为空，先回 Prometheus Query 查 `node_cpu_seconds_total{job="kubernetes-nodes"}`。
+
+| 界面分组 | 字段 | 本文生产推荐 | 说明 |
+|----------|------|----------------|------|
+| 顶部 | Variable type（变量类型） | **Query** | 不用 Custom、Constant 等；Query 才能拉 Prometheus。 |
+| General | Name | **node** | 必须与步骤 4 里 `$node` 完全一致，区分大小写。 |
+| General | Label | **节点**（可改） | 仅大盘顶部展示名。 |
+| General | Description | 可填：node_exporter 节点 instance，job 为 kubernetes-nodes | 生产建议写清用途，便于交接与审计；可不填。 |
+| General | Display / Show on dashboard | 与团队习惯一致 | 常见为列表或「Label 与值」；保持默认亦可。 |
+| Query options | Data source | **T4.9.2 配置的 Prometheus** | 勿选错成其它数据源。 |
+| Query options | Query type | 见下「Query type 两种填法」 | 须与本文 job、metric、标签一致；选错则无预览值。 |
+| Query options | Regex | **留空** | 生产勿随意写正则；除非有统一命名再过滤。 |
+| Query options | Apply regex to | 默认即可 | 仅在使用 Regex 时有意义。 |
+| Query options | Sort | **Alphabetical asc** 或默认 | 便于找节点；按团队习惯。 |
+| Static options | Use static options（使用静态选项） | **关闭** | 本文用动态查询，不要改用手写静态列表。 |
+| Selection options | Multi-value | **关闭** | 与步骤 4 的 `instance="$node"` 等号匹配一致；打开后易被迫改用 `=~`，与本文生产方案冲突。 |
+| Selection options | Include All option | **关闭** | 避免「全部」占位符与 RE2 问题；需要看全节点时用 T4.9.3 大盘或临时去掉变量条件。 |
+| Selection options | Allow custom values（允许用户向列表添加自定义值） | **关闭** | 官方说明为「允许用户把自定义值加进列表」。生产建议**关闭**，只选查询预览里存在的 `instance`，避免手填不存在的节点名导致整图无数据或误查；临时排障若需手填再单独开。 |
+| Selection options | Custom all value 等 | **勿填**（Include All 关闭时通常无此项） | 禁止填两个星号等非法正则占位。 |
+
+**Query type 两种填法（选一种即可，以预览出节点名为准）**
+
+1. **Label values**（推荐，与 [官方说明](https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/) 一致）：Query type 选 **Label values**；**Label** 填 **instance**；**Metric** 选 `node_cpu_seconds_total`，并在同一区域的**标签筛选**里加上 `job` = `kubernetes-nodes`、`mode` = `idle`。若你界面允许把 Metric 写成一整段选择器，也可试 `node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}`。  
+2. **Classic query**：若下拉中有 **Classic query**（文档标注为 deprecated，仍可用），在出现的文本框中只填：`label_values(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}, instance)`，不要再套其它选项。
 
 **步骤 4：把查询改成使用变量，再保存**
 
-1. 打开上一步同一个面板的编辑页（Edit panel）。  
-2. 把 Queries 里的 PromQL **整句替换**为下面这一条。注意：这里是 **`instance="$node"`**（等号），**不要**写成 `instance=~"$node"`（波浪线表示正则，容易和多选、「全部」一起触发难查的报错）。  
+1. 打开上一步同一个面板的编辑页（Edit panel），确认查询仍为 **Code** 模式。
+2. 把 Queries 里的 PromQL **整句替换**为下面这一条。注意：这里是 **`instance="$node"`**（等号），**不要**写成 `instance=~"$node"`（波浪线表示正则，容易和多选、「全部」一起触发难查的报错）。
 3. Save dashboard。用大盘左上角下拉框换节点，曲线应随所选 instance 变化。
 
 ```promql
@@ -1879,7 +1896,8 @@ Explore 只用来试跑查询；要落到大盘上，按下表操作。
 
 多节点对比需要多个图时，可复制本面板或再建查询，**不要**为此打开 Multi-value 或 Include All；也可直接用 T4.9.3 导入的社区大盘。
 
-**为何禁止多选和 Include All（读懂即可）**  
+**为何禁止多选和 Include All（读懂即可）**
+
 多选或「全部」时，Grafana 往往把 `$node` 展开成带 `|` 的正则串，查询里就要用 `=~`，一旦再配错「全部」占位符，容易撞上 Prometheus 用的 RE2 正则限制。本文只教**单选 + 等号**，步骤最少、最不容易错。
 
 **与本文的对应关系**
@@ -1888,7 +1906,7 @@ job 在 T4.4 中为 kubernetes-nodes；instance 一般为节点名（如 worker-
 
 **常见错误**
 
-idle 相关报错：检查是否写成带引号的 `mode="idle"`。正则类报错：不要用 `instance=~"$node"`，回到步骤 3 关多选、步骤 4 用等号写法。选了变量仍无数据：在 Explore 里查 `node_cpu_seconds_total{job="kubernetes-nodes"}`，看 instance 是否与变量 Query 一致。
+idle 相关报错：检查是否写成带引号的 `mode="idle"`。正则与 `**`：不要用 `instance=~"$node"`，且变量「全部」勿填 `**`；若未用 `=~` 仍报 `**`，见步骤 2 文末排查（多查询、变量、Query inspector、Explore 对照）。选了变量仍无数据：在 Explore 里查 `node_cpu_seconds_total{job="kubernetes-nodes"}`，看 instance 是否与变量 Query 一致。
 
 > 【插图占位 T4.9-4】变量与面板效果，实践后补图。
 
@@ -1903,6 +1921,14 @@ idle 相关报错：检查是否写成带引号的 `mode="idle"`。正则类报�
 ### 4.9.6、本节已移除的过时内容
 
 下列做法不再写入正文，以免误导当前环境：用 root 跑 Grafana、hostPath 配死 nodeSelector、旧版 KubeGraf 或 Kubernetes App 插件流程、Grafana 7.x 老镜像、镜像用 latest。若确需插件，只在 [官方插件目录](https://grafana.com/grafana/plugins/) 选仍在维护的，用自定义镜像或 GF_INSTALL_PLUGINS 固定版本。
+
+**T4.9 生产核对（与本手册原则一致）**
+
+- 版本：Grafana 镜像与文首约定一致（示例 12.4.1），UI 说明以 12.x 为准，升级后复查官方文档。  
+- 数据与命名：命名空间 `kube-mon`，Prometheus URL 与 T4.2.1、T4.9.2 一致；大盘中 job、instance 与 T4.4～T4.8 抓取一致（见 T4.9.3）。  
+- 面板查询：Prometheus 数据源下使用 **Code** 粘贴 PromQL，勿只在 Builder 里点选后漏配标签。  
+- 模板变量：按 T4.9.4 步骤 3 **全表**填写 General、Query options、Static options、Selection options；单选、关 Multi-value 与 Include All；Query type 用 Label values 或 Classic query，与官方 [Prometheus 模板变量](https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/) 对齐。  
+- 交付：大盘 JSON 与数据源 Provisioning 进 Git，生产改配走评审（见 T4.9.3 企业习惯）。
 
 ## T4.10、PromQL
 
