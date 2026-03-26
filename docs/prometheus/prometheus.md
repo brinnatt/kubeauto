@@ -1428,7 +1428,7 @@ ensure CRDs are installed first
 
 ![prometheus-kube-state-metrics1](./images/prometheus-kube-state-metrics1.png)
 
-> **Grafana 大盘**：在 Grafana 导入 **kube-state-metrics / Kubernetes 工作负载** 类社区模板前，请先读 **T4.9 → 4.9.3**「观测分层 × 本文 `job`」：默认经 **T4.7 `kubernetes-endpoints`** 抓取时，时间序列上的 **`job` 多为 `kubernetes-endpoints`**，模板若写死 `job="kube-state-metrics"` 易整屏无数据；可按该节改模板变量或 PromQL。若已按 **T4.8.4** 增补独立 **`kube-state-metrics` job** 且 `honor_labels: true`，则社区模板中的 `job="kube-state-metrics"` 可能与之一致，仍以 **Explore** 实际标签为准。
+> Grafana 大盘：导入 kube-state-metrics 或 Kubernetes 工作负载类模板前，请先读 T4.9.3「观测分层与本文 job」。默认经 T4.7 的 kubernetes-endpoints 抓取时，序列上的 job 多为 kubernetes-endpoints，模板若写死 kube-state-metrics 容易无数据，需按该节改变量或 PromQL。若已按 T4.8.4 增加独立的 kube-state-metrics job 并启用 honor_labels，则可能与社区模板一致，仍以 Explore 里实际标签为准。
 
 ### T4.8.3、水平分片
 
@@ -1536,22 +1536,31 @@ kube_pod_container_resource_limits_cpu_cores == 0
 
 ## T4.9、Grafana
 
-[Grafana OSS](https://grafana.com/grafana/) 用于把 **T4.2.1 起的 Prometheus** 等数据源做成可运维的大盘与告警界面。本节遵循官方 [在 Kubernetes 上部署 Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 的结构（PVC + Deployment + Service），并与全文保持一致：**namespace `kube-mon`**、Prometheus Service **`prometheus:9090`**、持久化沿用 **Local PV + PVC**（与 Prometheus 同套路，独立 PV/PVC，避免绑错卷）。
+[Grafana OSS](https://grafana.com/grafana/) 把前面部署的 Prometheus 等指标源做成大盘和告警界面。本节按官方 [在 Kubernetes 上部署 Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 来写：PVC、Deployment、Service。与全文一致：命名空间 `kube-mon`，Prometheus 服务地址 `prometheus:9090`；持久化用 Local PV 加 PVC，与 Prometheus 分开，避免挂错卷。
 
-> **企业生产摘要**（落地时逐项核对）  
-> - **镜像**：使用 **固定标签**（禁用 `latest`）；与文首 **「版本与镜像约定」** 一致，以 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 稳定 tag 为准。  
-> - **凭据**：管理员密码进 **Secret**，生产使用强密码 + 定期轮转；首登后按策略改密。  
-> - **安全**：**非 root** 运行（官方 OSS 镜像常用 UID/GID **472**，见 [Configure Docker](https://grafana.com/docs/grafana/latest/setup-grafana/configure-docker/)）；对外建议 **Ingress + TLS**，而非长期依赖 NodePort。  
-> - **容量**：官方文档列出的**最低**资源约为 **250m CPU / 750Mi 内存**（见官方 Kubernetes 安装页 *System requirements*）；生产请按用户与大盘数量上调 limit，并监控 PVC 使用率。  
-> - **入口**：云上生产优先考虑 **LoadBalancer / Ingress**；自建裸金属可与 **T4.2.1** 一样用 **NodePort** 做阶段验证。  
-> - **大盘即代码**：长期维护推荐 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)（Git 管理 JSON），避免只在 UI 里点选。  
-> - **托管替代**：免运维可选 [Grafana Cloud](https://grafana.com/products/cloud/)（官方文档安装页亦推荐）。
+> **生产落地摘要**（逐项核对）
+>
+> 镜像：固定标签，禁用 latest，版本与文首「版本与镜像约定」一致，以 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 为准。 
+>
+> 凭据：管理员口令放在 Secret 里，生产用强口令并定期轮换。 
+>
+> 安全：容器非 root 运行（官方镜像常用 UID/GID 472，见 [Configure Docker](https://grafana.com/docs/grafana/latest/setup-grafana/configure-docker/)）；对外优先 Ingress 配 TLS，少长期暴露 NodePort。 
+>
+> 容量：官方 Kubernetes 安装页中的最低配置约 250m CPU、750Mi 内存；生产按用户和大盘数量提高 limit，并盯 PVC 使用率。 
+>
+> 入口：云上优先 LoadBalancer 或 Ingress；裸金属内网可像 T4.2.1 一样先用 NodePort 验证。 
+>
+> 大盘：长期维护建议用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 把 JSON 放进 Git，少依赖只在网页里改。 
+>
+> 托管：若要少运维，可看 [Grafana Cloud](https://grafana.com/products/cloud/)。
 
 ---
 
 ### T4.9.1、清单部署（OSS，Local PV）
 
-**（1）持久化** — 在选定节点创建宿主机目录（示例 `/data/k8s/grafana`），把 `nodeAffinity` 中的节点名改为 **`kubectl get nodes` 中的真实主机名**（与 **T4.2.1** 修改 Prometheus PV 的方式相同）。
+**（1）持久化** 
+
+在选定节点创建宿主机目录（示例 `/data/k8s/grafana`），把下面 PV 里 `nodeAffinity` 的节点名改成 `kubectl get nodes` 看到的真实名字，改法与 T4.2.1 里 Prometheus 的 PV 相同。
 
 ```yaml
 # grafana-pv-pvc.yaml
@@ -1598,7 +1607,7 @@ spec:
 
 **（2）管理员 Secret**
 
-`Secret.stringData` 提交给 API 时**每一项值必须是字符串**（见 [Kubernetes Secret v1](https://kubernetes.io/docs/concepts/configuration/secret/)）。若 `admin-password` 写成**未加引号的纯数字**，YAML 会解析为 **number**，将出现：`cannot unmarshal number into Go struct field Secret.stringData of type string`。**无论密码是否为纯数字，一律用双引号包裹**；含双引号或反斜杠的密码可用单引号外层或 YAML 块标量。
+Kubernetes 要求 `Secret.stringData` 里每个值都是字符串（见 [Secret 说明](https://kubernetes.io/docs/concepts/configuration/secret/)）。若 `admin-password` 写成不带引号的纯数字，YAML 会当成数字类型，API 会报错：无法把数字解成 stringData。因此口令一律用英文双引号包起来；口令里若含双引号或反斜杠，可用外层单引号或 YAML 多行块写法。
 
 ```yaml
 # grafana-secret.yaml
@@ -1613,9 +1622,11 @@ stringData:
   admin-password: "在此处填写强密码"
 ```
 
-**（3）Deployment** — 与官方示例一致为 Pod 设置 **`fsGroup: 472`**；补充 **`runAsUser/runAsGroup: 472`** 与 **initContainer `chown`**，避免 Local 卷属主为 root 时无法写 `/var/lib/grafana`。探针：官方示例常用 **`/robots.txt`** 做 readiness，此处使用 **`/api/health`**（语义清晰）；二者均可，与官方 [Kubernetes 安装](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 不冲突。
+**（3）Deployment**
 
-Deployment 中镜像须为 **OSS 稳定版**（与文首版本表一致，示例 **`grafana/grafana:12.4.1`**）；升级时请重新打开 [grafana/grafana Releases](https://github.com/grafana/grafana/releases/latest) 核对 tag。
+与官方示例一样设置 `fsGroup: 472`，并加上 `runAsUser`、`runAsGroup` 为 472，以及 initContainer 里对数据目录做 `chown`，避免 Local 卷属主是 root 时 Grafana 写不进 `/var/lib/grafana`。健康检查：官方常用 `/robots.txt`，这里用 `/api/health`，含义更直观，两种都与 [Kubernetes 安装文档](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 不冲突。
+
+镜像用 OSS 稳定版，与文首版本表一致（示例 `grafana/grafana:12.4.1`）；升级前到 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 核对 tag。
 
 ```yaml
 # grafana-deploy.yaml
@@ -1700,7 +1711,9 @@ spec:
             claimName: grafana-data
 ```
 
-**（4）Service** — 与 **T4.2.1** 一致使用 **NodePort** 便于裸金属/内网验证；云上可改为 `LoadBalancer` 或通过 Ingress 转发（官方安装文档默认示例为 `LoadBalancer`）。
+**（4）Service**
+
+与 T4.2.1 一样先用 NodePort，方便裸金属或内网访问；云上可改成 LoadBalancer 或交给 Ingress（官方安装示例里常见 LoadBalancer）。
 
 ```yaml
 # grafana-svc.yaml
@@ -1736,7 +1749,7 @@ kubectl wait --for=condition=available deployment/grafana -n kube-mon --timeout=
 kubectl get pods,svc -n kube-mon -l app=grafana
 ```
 
-使用 **`http://<节点IP>:<NodePort>`** 访问（NodePort 以 `kubectl get svc grafana -n kube-mon` 为准）。集群内验证可用：`kubectl port-forward -n kube-mon svc/grafana 3000:3000` 后访问 `http://127.0.0.1:3000`（见官方文档 *port-forward* 说明）。
+浏览器访问 `http://节点IP:NodePort`，端口号用 `kubectl get svc grafana -n kube-mon` 查看。若在集群内自测，可执行 `kubectl port-forward -n kube-mon svc/grafana 3000:3000`，再打开 `http://127.0.0.1:3000`（port-forward 见官方说明）。
 
 ![grafana_login_page](./images/grafana_login_page.png)
 
@@ -1744,31 +1757,15 @@ kubectl get pods,svc -n kube-mon -l app=grafana
 
 ### T4.9.2、配置 Prometheus 数据源
 
-以下与 Grafana 官方 **[Configure the Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/)** 一致；企业环境务必连同 **T4.2.1** 文末 **「企业生产补充：Prometheus Web/API 安全…」** 一并阅读，避免只配 UI 不配服务端或反之。
+步骤与 Grafana 官方 [配置 Prometheus 数据源](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/) 一致。若生产上对 Prometheus 开了认证或 TLS，请同时阅读 T4.2.1 文末「企业生产补充」一节，避免只改 Grafana 或只改 Prometheus 一侧。
 
-1. **权限**：配置数据源需要 **Organization administrator**（或贵司 Grafana 角色模型中等效权限）；也可用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 以 YAML 声明数据源。  
-
-2. **入口**：**Connections** → **Add new connection** → 搜索 **Prometheus** → **Add new data source**（菜单名称随 Grafana 大版本可能微调，以官方文档为准）。  
-
-3. **Connection → Prometheus server URL**（与 **T4.2.1** 同 namespace、无 TLS 时示例）：  
-   
-   - 短名：`http://prometheus:9090`  
-   
-   - 显式 DNS：`http://prometheus.kube-mon.svc.cluster.local:9090`
-   
-     若 **Prometheus 已启用 TLS**，此处须改为 **`https://...`** 及对应端口，并与下方 **TLS settings** 一致。  
-   
-4. **Authentication**（官方三种，与上游实际开启情况 **必须一致**）：  
-   
-   - **Basic authentication**：Prometheus 使用 **`web.config` · `basic_auth_users`** 时，在此填写 **User / Password**（密码用 Secret 或 `secureJsonData`，勿提交到仓库）。  
-   - **Forward OAuth identity**：将当前 Grafana 用户的 **OAuth 访问令牌**（及可用的 OIDC ID token）转发给数据源；需上游/网关支持且符合公司 IdP 策略。  
-   - **No authentication**：仅当 Prometheus **未**启用 Basic Auth 等且网络边界已约束时使用（与 **T4.2.1** 默认清单一致）。  
-   
-5. **TLS settings**：Prometheus 使用 **自签或私有 CA** 签发的服务端证书时，按需勾选 **Add self-signed certificate** 并填入 **CA certificate**；**双向 TLS** 时启用 **TLS client authentication** 并配置客户端证书与密钥。**Skip TLS verify** 仅临时排查使用，**生产不建议**。官方说明指向 Prometheus 侧先行配置 TLS：[Securing Prometheus API and UI Endpoints Using TLS Encryption](https://prometheus.io/docs/guides/tls-encryption/)。  
-
-6. **HTTP headers**（可选）：反向代理或网关要求的自定义 **Header / Value** 在此添加。  
-
-7. **Save & test**：成功即表示 URL、认证与 TLS 与 Prometheus（或兼容查询 API）匹配。 
+1. 权限：需要组织管理员（或贵司 Grafana 里同等角色）；也可用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 用 YAML 声明数据源。  
+2. 入口：Connections → Add new connection → 搜 Prometheus → Add new data source（菜单随版本可能略有不同，以官方文档为准）。  
+3. Connection 里的 Prometheus 地址：与 T4.2.1 同命名空间、且未开 TLS 时，可填 `http://prometheus:9090`，或 `http://prometheus.kube-mon.svc.cluster.local:9090`。若 Prometheus 已启用 TLS，这里要改成 https 和对应端口，并与下面 TLS 设置一致。  
+4. Authentication：须与 Prometheus 实际配置一致。Basic authentication 对应 Prometheus 的 web.config 里 basic_auth_users；口令用 Secret 或 secureJsonData，不要写进 Git。Forward OAuth identity 把当前登录用户的 OAuth 令牌转给上游，需上游和身份体系支持。No authentication 仅在 Prometheus 未做认证且网络已隔离时使用，与 T4.2.1 默认清单一致。  
+5. TLS settings：自签或内网 CA 时按需上传 CA；双向 TLS 时配置客户端证书与密钥。Skip TLS verify 只建议临时排障，生产不要长期打开。Prometheus 侧如何开 TLS 见 [官方 TLS 指南](https://prometheus.io/docs/guides/tls-encryption/)。  
+6. HTTP headers：若前面有反向代理要带头，可在此添加。  
+7. 点 Save and test，成功说明地址、认证和 TLS 与当前 Prometheus（或兼容查询接口）匹配。
 
 ![grafana_datasource](./images/grafana_datasource.png)
 
@@ -1776,155 +1773,136 @@ kubectl get pods,svc -n kube-mon -l app=grafana
 
 ### T4.9.3、导入 Dashboard 与大盘维护
 
-本节解决一件事：前面按 **官方稳定版** 技术栈（Prometheus、node_exporter、kubelet/cAdvisor、apiserver、Endpoints 发现、kube-state-metrics 等）已经把 **metrics 管线**铺好了，Grafana 侧要用 **分层、可验收** 的方式把这些数据变成 **物理 / OS / 容器 / K8s 对象 / 控制面 / 平台组件 / 监控自省** 的可视化，并符合 **企业可审计、可升级** 的习惯。**大盘不产生新指标**，只做 PromQL；**`job` / `instance` 与抓取配置不一致时，社区再热门的模板也会全屏 No data**——因此下文先给 **本文专属对照表**，再给 **推荐导入顺序** 与 **上线验收**。
+前面已用官方稳定栈把采集跑通（Prometheus、node_exporter、kubelet、cAdvisor、apiserver、Endpoints、kube-state-metrics 等）。Grafana 只用 PromQL 展示已有指标，本身不产生新指标。若大盘里的 job、instance 与当前抓取配置不一致，再热门的模板也会整页无数据。下面先说明分层与本文 job 的对应关系，再给出推荐导入顺序和上线自检。
 
-**官方参考（构建与维护大盘时的总原则）**：[Build dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/)、[Dashboard best practices](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/)、[Import dashboards](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/import-dashboards/)、大盘 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)、告警选型 [Alerting](https://grafana.com/docs/grafana/latest/alerting/)。更「上游一体化」的大盘和规则生成可参考 **[kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin)**（Jsonnet）或与 **[kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)** 同源的制品（与本文「手写 YAML」路径不同，可作为中长期基线）。
+维护大盘时可参考官方：[创建与构建大盘](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/)、[最佳实践](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/)、[导入大盘](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/import-dashboards/)、[Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)、[Alerting](https://grafana.com/docs/grafana/latest/alerting/)。若希望规则和大盘与上游生态完全同源，可看 [kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin) 或 [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)，与本文手写 YAML 路线不同，可作中长期方向。
 
-1、观测分层 × 本文 `job` × 典型指标（总览表）
+**观测分层与本文 job（总览）**
 
-使用前请确认：Prometheus **Status → Target health** 里，下表涉及的 job 均已 **UP**（与当前已 apply 的 `prometheus-config` 版本一致，最低包含 **T4.7**；**T4.8** 的 kube-state-metrics 走 **Endpoints 注解** 发现）。
+请先确认 Prometheus 里 Status → Target health 中，下表相关 job 均为 UP，且 `prometheus-config` 至少包含 T4.7；T4.8 的 kube-state-metrics 经 Endpoints 注解被发现。
 
-| 分层 | 企业关注点 | 本文中 Prometheus 的 `job` 标签 | 典型指标族（节选） |
-|------|------------|-----------------------------------|---------------------|
-| **宿主机 / 物理** | 节点 CPU·内存·磁盘·网络、容量规划 | **`kubernetes-nodes`** | `node_cpu_seconds_total`、`node_memory_*`、`node_disk_*`、`node_network_*` |
-| **容器 / OS  cgroup** | Pod·容器资源用量、限额与实际对比 | **`kubernetes-cadvisor`**、**`kubernetes-kubelet`** | `container_cpu_usage_seconds_total`、`container_memory_*` |
-| **K8s 工作负载与对象** | Deployment 副本、Pod Phase、重启、Job | **`kubernetes-endpoints`** 下 **kube-state-metrics** Pod（见 T4.8） | `kube_deployment_*`、`kube_pod_status_phase`、`kube_pod_container_status_restarts_total` |
-| **控制面** | API 请求量与延迟 | **`kubernetes-apiservers`** | `apiserver_request_*`、`apiserver_*` |
-| **平台组件** | CoreDNS、示例 Redis 等 | 静态 **`coredns`**（若 ConfigMap 仍保留）及/或 **`kubernetes-endpoints`**（带 `prometheus.io/scrape` 的 Service） | `coredns_*`、`redis_*` 等 |
-| **监控自省** | 抓取健康、TSDB、自身资源 | **`prometheus`** | `up`、`scrape_*`、`prometheus_tsdb_*` |
+| 分层 | 关注点 | 本文 job 标签 | 典型指标（节选） |
+|------|--------|---------------|------------------|
+| 宿主机 | 节点 CPU、内存、磁盘、网络 | kubernetes-nodes | `node_cpu_seconds_total`、`node_memory_*` 等 |
+| 容器 | Pod 资源用量与限额 | kubernetes-cadvisor、kubernetes-kubelet | `container_cpu_usage_seconds_total` 等 |
+| 工作负载 | 副本、Pod 状态、重启 | kubernetes-endpoints 下的 kube-state-metrics（见 T4.8） | `kube_deployment_*`、`kube_pod_status_phase` 等 |
+| 控制面 | API 请求与延迟 | kubernetes-apiservers | `apiserver_request_*` 等 |
+| 平台组件 | CoreDNS、示例 Redis | 静态 coredns job（若仍保留）或 kubernetes-endpoints | `coredns_*`、`redis_*` 等 |
+| 监控自身 | 抓取与 TSDB | prometheus | `up`、`scrape_*`、`prometheus_tsdb_*` |
 
-**关键差异（和社区模板的固定写法对齐，否则会无数据）**：
+与社区模板的常见差别（不改会无数据）：社区常写 job 为 node-exporter，本文为 kubernetes-nodes；社区常写 cadvisor，本文为 kubernetes-cadvisor。
 
-- 社区大盘常写死 **`job="node-exporter"`**；本文 node_exporter 由服务发现抓取，**`job` 为 `kubernetes-nodes`**。
-- 社区常写死 **`job="cadvisor"`** 或 **`container` job 名**；本文为 **`kubernetes-cadvisor`**（经 kubelet `/metrics/cadvisor`）。
-- **kube-state-metrics** 在本文中由 **T4.7 `kubernetes-endpoints`** 发现，指标上的 **`job` 多为 `kubernetes-endpoints`，而不是 `kube-state-metrics`**。面板里若硬编码 `job="kube-state-metrics"`，往往 **一条线都没有**；应 **删除该 `job` 过滤**（仅按 `kube_*` 查询），或改为 **`job="kubernetes-endpoints"`** 并辅以 `namespace`、`service` 等标签缩小范围（以 Explore 中实际 series 为准）。
-- **`instance`**：节点类大盘应与 T4.4 relabel 一致，一般为 **节点名**（而非仅 IP）。
+kube-state-metrics 经 kubernetes-endpoints 抓取时，时间序列上的 job 一般是 kubernetes-endpoints，而不是 kube-state-metrics。社区大盘若在 PromQL 里把 job 固定写成 kube-state-metrics，就筛不到任何序列，图表面板会空白（看不到曲线）。可去掉这条 job 条件、只按 `kube_` 前缀查指标，或把 job 改成 kubernetes-endpoints，再配合 namespace 等标签缩小范围。节点类大盘里 instance 应与 T4.4 一致，一般是节点名。
 
-2、推荐导入顺序（先 P0 全局可观测，再按需加组件）
+**推荐导入顺序**
 
-在 **[Grafana Dashboards 目录](https://grafana.com/grafana/dashboards/)** 使用 **Import**（**Dashboards → New → Import**），**数据源** 选 **T4.9.2** 配置的 Prometheus。下列 **ID** 为高使用量社区模板，**仍请以页面更新日期与评论为准**；导入后**必须**按上表改模板变量或 Panel 中的 **`job`**。
+打开 [Grafana 大盘库](https://grafana.com/grafana/dashboards/)，Dashboards → New → Import，数据源选 T4.9.2 配好的 Prometheus。下表 ID 为常用社区模板，导入后请以页面说明为准，并务必按上表改 job 等变量。
 
-| 优先级 | 覆盖分层 | 建议 | 导入后必做（与本文对齐） |
-|--------|----------|------|---------------------------|
-| **P0** | 宿主机 / 物理 | 搜索 **「Node Exporter Full」**，常用 **ID [1860](https://grafana.com/grafana/dashboards/1860)** | 将模板变量 **`job`**（或各 Panel 中的 `job=`）设为 **`kubernetes-nodes`**；`instance` 选节点名 |
-| **P0** | 容器 / 集群资源 | 搜索 **「Kubernetes cluster monitoring」**，可试 **ID [7249](https://grafana.com/grafana/dashboards/7249)**（或与当前 **cAdvisor/kubelet** 指标集更贴切的更新款） | 将所有 **`cadvisor` / `kubelet` 相关 `job`** 替换为 **`kubernetes-cadvisor`** / **`kubernetes-kubelet`**（以无数据 Panel 的 PromQL 为准逐项改） |
-| **P0** | 工作负载 / 对象状态 | 搜索 **「kube-state_metrics」「Kubernetes / Views / Global」** 等 | **去掉** `job="kube-state-metrics"` 硬编码，或改为 **`job="kubernetes-endpoints"`**；优先以 **`kube_*` 指标是否出数** 为准 |
-| **P1** | 控制面 | 搜索 **「Kubernetes API Server」** | 确认 `job="kubernetes-apiservers"` |
-| **P1** | DNS | 搜索 **「CoreDNS」**，如 **ID [14981](https://grafana.com/grafana/dashboards/14981)** | 若同时存在静态 `coredns` job 与 Endpoints 重复抓取，注意 **双份 series**（可选保留一源） |
-| **P1** | 监控自省 | 搜索 **「Prometheus Stats」**，如 **ID [3662](https://grafana.com/grafana/dashboards/3662)** | `job="prometheus"` |
-| **P2** | 示例中间件 | 若已部署 **T4.3.2 Redis**：搜索 **「Redis Dashboard for Prometheus Redis Exporter 」** 等 | 对齐 **`redis` / `kubernetes-endpoints`** 与 Exporter 端口 |
+| 优先级 | 范围 | 做法 | 导入后核对 |
+|--------|------|------|------------|
+| 高 | 宿主机 | 搜 Node Exporter Full，常用 [1860](https://grafana.com/grafana/dashboards/1860) | 变量或查询里 job 改为 kubernetes-nodes，instance 用节点名 |
+| 高 | 容器与集群 | 搜 Kubernetes cluster monitoring，可试 [7249](https://grafana.com/grafana/dashboards/7249) | cadvisor、kubelet 相关 job 改为 kubernetes-cadvisor、kubernetes-kubelet |
+| 高 | 对象状态 | 搜 kube-state-metrics、Kubernetes Views 等 | 去掉 job=kube-state-metrics，或改为 kubernetes-endpoints，以 `kube_*` 能出数为准 |
+| 中 | 控制面 | 搜 Kubernetes API Server | job 为 kubernetes-apiservers |
+| 中 | DNS | 搜 CoreDNS，如 [14981](https://grafana.com/grafana/dashboards/14981) | 若静态 job 与 Endpoints 重复抓取，注意重复序列 |
+| 中 | Prometheus 自身 | 搜 Prometheus Stats，如 [3662](https://grafana.com/grafana/dashboards/3662) | job 为 prometheus |
+| 低 | Redis（若做了 T4.3.2） | 搜 Redis Exporter 大盘 | 与 redis 或 kubernetes-endpoints、端口一致 |
 
-#### 3、企业级维护（固定、可审计、可升级）
+**企业侧习惯**
 
-1. **定版入库**：将(import 后已改好 `job` 的) JSON **纳入 Git**，通过 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 发布到环境，禁止仅依赖产线手工改面板。  
-2. **文件夹与职责**：建议划分 **Infra（节点/容器）** / **K8s 对象与控制面** / **Platform（DNS、Redis 等）** / **Meta（Prometheus 自身）**；结合 Grafana **Folder 权限** 做团队隔离。  
-3. **与告警分工**：**规则与通知** 仍以 **Prometheus + Alertmanager（T4.11）** 或 **Grafana Alerting** 二选一或组合为准（见 [Alerting 文档](https://grafana.com/docs/grafana/latest/alerting/)）；大盘侧重 **可视化 + 排障**，避免「只在大盘上绑脆弱字符串告警」作为唯一生产手段。  
-4. **版本升级**：升级 **node_exporter / KSM / Grafana** 后，按各项目 **Release notes** 复查易变的指标名；社区大盘若长期未更新，优先 fork 自维护。
+定版：改好 job 后的 JSON 放进 Git，用 Provisioning 下发，少在生产界面手改。 
 
-#### 4、上线前验收（建议逐项勾掉）
+分文件夹：例如基础设施、K8s 对象与控制面、平台组件、监控自省，配合文件夹权限。 
 
-在 **Explore** 与关键大盘中确认：
+告警：规则与通知仍以 T4.11 的 Prometheus + Alertmanager 或 Grafana Alerting 为主（见官方 Alerting 文档）；大盘侧重看图和排障。
 
-- `up{job="kubernetes-nodes"}` 与节点数一致；任意节点 CPU/内存 Panel 有曲线。  
-- `container_cpu_usage_seconds_total`（`job="kubernetes-cadvisor"`）有数据。  
-- `kube_deployment_status_replicas_available` 或 `kube_pod_status_phase` 有数据。  
-- `apiserver_request_total` 有数据（若已部署 apiserver job）。  
-- `coredns_*` 或 Redis 相关指标（若已部署）可查询。
+ 升级：升级 node_exporter、KSM、Grafana 后对照各项目发行说明检查指标名；社区大盘停更时可 fork 自维护。
 
-若某项为空：**先回 Prometheus Target health**，再对照 **第 1 节表** 修正大盘中的 **`job` / `instance`**，勿先怀疑集群故障。
+**上线前自检**
+
+在 Explore 或大盘里确认：`up{job="kubernetes-nodes"}` 与节点数一致；cadvisor 的 container 类指标有数据；`kube_*` 有数据；若抓了 apiserver 则 apiserver_request_total 有数据；CoreDNS、Redis 若部署则对应指标可查。若某项没有数据，先回 Prometheus 看 Target，再按本节第一张表改大盘里的 job 和 instance，不要先假定集群坏了。
 
 ![grafana_dashboard_Node_Exporter_Full](./images/grafana_dashboard_Node_Exporter_Full.png)
 
 ---
 
-### 4.9.4、自建 Panel 与模板变量（与本文 `job` / `instance` 一致）
+### 4.9.4、自建 Panel 与模板变量（对齐本文 job 与 instance）
 
-本节只做一件事：**在 Grafana 里新增一个 Panel**，用 PromQL 展示 **node_exporter**（本文 job 为 **`kubernetes-nodes`**，`instance` 为 **节点名**）上的 CPU 利用率，并用**模板变量单选**切换节点。  
+在 Grafana 里新建一个面板，用 PromQL 显示 node_exporter 的 CPU 利用率（本文里 job 为 kubernetes-nodes，instance 为节点名），并用下拉框切换节点。
 
-**本文只采用一种推荐做法**：Query 型变量、**单选**、**不用** `instance=~` 正则、**不开** Multi-value / Include All，避免 RE2 与「全部」展开类错误。操作以 Grafana 官方 [Create a dashboard](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/create-dashboard/)、[Variables](https://grafana.com/docs/grafana/latest/dashboards/variables/) 为准；PromQL 以 [Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/) 为准。
+**整体分四步**：进入大盘编辑 → 先不写变量、确认有曲线 → 添加名为 `node` 的变量 → 在查询里写上 `instance="$node"` 再保存。更细的菜单说明见官方 [创建大盘](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/create-dashboard/) 与 [变量](https://grafana.com/docs/grafana/latest/dashboards/variables/)；PromQL 规则见 [Prometheus 查询基础](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
 
----
+**步骤 1：进入面板编辑**
 
-#### 步骤 1：进入面板编辑（不要用 Explore 代替）
+Explore 只用来试跑查询；要落到大盘上，按下表操作。
 
 | 场景 | 操作 |
 |------|------|
-| 新建大盘 | 左侧 **Dashboards** → **New** → **New dashboard** → **`+ Add visualization`**（中文版多为 **添加可视化**）→ 选中 **T4.9.2** 配置的 Prometheus 数据源。 |
-| 已有大盘 | 打开大盘 → 右上角 **Edit** → **Add** → **Visualization** → 同一数据源。 |
+| 新建 | 左侧 Dashboards → New → New dashboard → Add visualization（中文版多为「添加可视化」）→ 数据源选 T4.9.2 里配好的 Prometheus |
+| 已有大盘 | 打开该大盘 → 右上角 Edit → Add → Visualization → 同一 Prometheus 数据源 |
 
-**Explore** 仅用于临时试查询；要保存到大盘必须按上表进入 **Dashboard 编辑**。
+**步骤 2：先不加变量，确认查询有数据**
 
----
-
-#### 步骤 2：无变量先跑通（强烈建议先做）
-
-在 **Queries → A** 的 PromQL 框**原样**粘贴下面一条，**Save dashboard** 后看是否有曲线（确认 Prometheus 与标签与本文一致）：
+在面板编辑页 Queries 里粘贴下面整句，点右上角 Save dashboard 保存，回到大盘看是否出曲线：
 
 ```promql
 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}[5m])))
 ```
 
-- `mode` 的值必须写 **`"idle"`**（英文半角双引号），不得写成 `mode=idle`。  
-- 若你尚未在 ConfigMap 里给 node 指标打上 `job` 标签、或 job 名不同，可先去掉 job 条件试：`{mode="idle"}`；**与本文一致时应保留 `job="kubernetes-nodes"`**。
+`mode` 必须写成 `mode="idle"`（英文半角双引号）。若你集群里 job 名与本文不同，可先删掉 job 条件只留 `mode="idle"` 试通；与本文一致时应保留 `job="kubernetes-nodes"`。
 
----
+**步骤 3：添加变量 `node`（逐项对照，不要多选）**
 
-#### 步骤 3：加模板变量 `node`（唯一推荐配置）
+1. 在该大盘右上角点齿轮 **Dashboard settings**，左侧选 **Variables**，点 **Add variable**。  
+2. 按下面表格填写；其中 **Multi-value**、**Include All** 一律保持**关闭**（不要勾选）。变量类型选 **Query**，不是 Custom。  
+3. 点页面下方或顶部的保存，回到大盘，应能看到左上角多出一个下拉框（变量 `node`）。
 
-**Dashboard settings**（齿轮）→ **Variables** → **Add variable**，按下表填写：
-
-| 字段 | 填写 |
-|------|------|
-| Name | `node` |
-| Label | 任意展示名，如「节点」 |
-| Type | **Query** |
-| Data source | 本节 Prometheus |
+| 项 | 填写 |
+|----|------|
+| Name | `node`（须与下一步 PromQL 里的 `$node` 一致） |
+| Label | 可填「节点」，仅显示用 |
+| Type | Query |
+| Data source | 本节使用的 Prometheus |
 | Query | `label_values(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}, instance)` |
-| Multi-value | **关闭** |
-| Include All option | **关闭** |
+| Multi-value | 关 |
+| Include All | 关 |
 
-回到 Panel，将查询改为（**必须用等于 `=`**，禁止使用 `=~`）：
+**步骤 4：把查询改成使用变量，再保存**
+
+1. 打开上一步同一个面板的编辑页（Edit panel）。  
+2. 把 Queries 里的 PromQL **整句替换**为下面这一条。注意：这里是 **`instance="$node"`**（等号），**不要**写成 `instance=~"$node"`（波浪线表示正则，容易和多选、「全部」一起触发难查的报错）。  
+3. Save dashboard。用大盘左上角下拉框换节点，曲线应随所选 instance 变化。
 
 ```promql
 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle", instance="$node"}[5m])))
 ```
 
-**Save dashboard**。左上角下拉切换节点即可；需要对比多节点时，复制同一 Panel 多个查询或另建大盘，**不要**为此打开 Multi-value / Include All（易引入正则与 `**` 等配置错误；多节点对比可依赖 **4.9.3** 导入的社区大盘）。
+多节点对比需要多个图时，可复制本面板或再建查询，**不要**为此打开 Multi-value 或 Include All；也可直接用 T4.9.3 导入的社区大盘。
 
----
+**为何禁止多选和 Include All（读懂即可）**  
+多选或「全部」时，Grafana 往往把 `$node` 展开成带 `|` 的正则串，查询里就要用 `=~`，一旦再配错「全部」占位符，容易撞上 Prometheus 用的 RE2 正则限制。本文只教**单选 + 等号**，步骤最少、最不容易错。
 
-#### 步骤 4：与本文指标的对应关系（避免无数据）
+**与本文的对应关系**
 
-| 概念 | 本文约定（T4.4） |
-|------|------------------|
-| `job` | node_exporter 抓取配置名为 **`kubernetes-nodes`** |
-| `instance` | relabel 后为 **节点名**（如 `worker-01`），不是「任意自定义字符串」 |
+job 在 T4.4 中为 kubernetes-nodes；instance 一般为节点名（如 worker-01）。社区模板常写 node-exporter，直接套用会无数据，需在面板里改 job，或按 T4.9.3 的表格处理。
 
-社区大盘常写死 `job="node-exporter"`；若直接套用无数据，需在 Panel 里改 `job` 或按 **4.9.3** 对照表处理。
+**常见错误**
 
----
+idle 相关报错：检查是否写成带引号的 `mode="idle"`。正则类报错：不要用 `instance=~"$node"`，回到步骤 3 关多选、步骤 4 用等号写法。选了变量仍无数据：在 Explore 里查 `node_cpu_seconds_total{job="kubernetes-nodes"}`，看 instance 是否与变量 Query 一致。
 
-#### 步骤 5：常见报错速查
-
-| 报错或现象 | 处理 |
-|------------|------|
-| `unexpected identifier "idle"` | 标签值须 **`mode="idle"`**（英文半角双引号）；禁止 `mode=idle` 或弯引号。 |
-| `invalid nested repetition operator` 等正则错误 | 本文方案**不用** `instance=~"$node"`。若从社区复制了正则匹配或多选变量，请改回 **步骤 3** 单选 + **`instance="$node"`**。 |
-| 选了变量仍无数据 | 在 **Explore** 执行 `node_cpu_seconds_total{job="kubernetes-nodes"}`，确认 `instance` 与变量 Query 一致。 |
-
-> **【插图占位 T4.9-4】** 变量与 Panel 效果。实践后补充。
+> 【插图占位 T4.9-4】变量与面板效果，实践后补图。
 
 ---
 
 ### 4.9.5、Helm 部署（生产常用备选）
 
-若集群标准交付走 Helm，可直接使用官方维护的 [Grafana Helm Charts](https://github.com/grafana/helm-charts)（`grafana` chart 或含整套可观测性的 `kube-prometheus-stack`）。优势：默认模板、ServiceMonitor、Ingress 钩子更全；**仍需**自行处理存储类、密钥与 **GF_SERVER_ROOT_URL** 等与入口域名相关配置。**生产须固定 Helm chart 版本**（`helm install … --version <chart>`），并在 `values.yaml` 中为 Grafana / Prometheus 等显式写出 **镜像 tag**（与文首 **版本与镜像约定**一致或由贵司基线锁定），避免 chart 默认 `latest` 或隐式升级导致与本文清单行为不一致。本节清单部署与 Helm **二选一**即可，避免同一 namespace 重复安装两套 Grafana。
+若集群统一用 Helm，可选用官方维护的 [Grafana Helm Charts](https://github.com/grafana/helm-charts)（单独 grafana chart 或 kube-prometheus-stack），模板和 ServiceMonitor、Ingress 等较全，但仍要自行处理存储类、密钥和 GF_SERVER_ROOT_URL 等与域名相关的项。生产请固定 chart 版本（helm install 时带 --version），在 values 里为 Grafana、Prometheus 等写明镜像 tag，与文首版本约定或贵司基线一致，避免隐式升级到 latest。Helm 与本节清单式部署二选一即可，同一命名空间不要装两套 Grafana。
 
 ---
 
 ### 4.9.6、本节已移除的过时内容
 
-以下不再写入正文，避免误导 **2025/2026** 环境：**以 root 跑 Grafana**、**hostPath + 写死 nodeSelector**、**手写 KubeGraf / 旧 Kubernetes App 插件流程**、**过旧 Grafana 7.x 镜像**、以及依赖 **`latest` 标签** 的做法。插件若确有需要，仅从 [官方插件目录](https://grafana.com/grafana/plugins/) 选择维护活跃者，并通过**自定义镜像**（`GF_INSTALL_PLUGINS`）或企业制品库固定版本。
+下列做法不再写入正文，以免误导当前环境：用 root 跑 Grafana、hostPath 配死 nodeSelector、旧版 KubeGraf 或 Kubernetes App 插件流程、Grafana 7.x 老镜像、镜像用 latest。若确需插件，只在 [官方插件目录](https://grafana.com/grafana/plugins/) 选仍在维护的，用自定义镜像或 GF_INSTALL_PLUGINS 固定版本。
 
 ## T4.10、PromQL
 
