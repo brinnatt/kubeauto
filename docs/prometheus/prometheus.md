@@ -2051,15 +2051,13 @@ ingress:
 
 ## T4.10、PromQL
 
-Prometheus 通过指标名称（metrics name）以及对应的一组标签（label）定义一条唯一的时间序列。指标名称反映了监控样本的基本标识，而 label 则在这个基本特征上为采集到的数据提供了多种特征维度。用户可以基于这些特征维度进行过滤、聚合、统计从而产生一条计算后的新时间序列。
-
-`PromQL` 是 Prometheus 内置的数据查询语言，提供对时间序列数据丰富的查询，聚合以及逻辑运算能力的支持。并且被广泛应用在 Prometheus 的日常应用当中，包括对数据查询、可视化、告警处理。可以这么说，`PromQL` 是 Prometheus 所有应用场景的基础，理解和掌握 `PromQL` 是我们使用 Prometheus 必备的技能。
+Prometheus 用指标名和一组标签确定一条时间序列；同名指标下标签不同即为不同序列。术语与语义以官方 [PromQL 基础](https://prometheus.io/docs/prometheus/latest/querying/basics/)、[数据模型](https://prometheus.io/docs/concepts/data_model/)、[指标类型](https://prometheus.io/docs/concepts/metric_types/) 为准。部署版本请以 [Prometheus 发行页](https://github.com/prometheus/prometheus/releases/latest) 上标记为 Latest 的发行线为准（编写本文时为 3.10.x），升级前请再次打开该页核对 Tag 与发行说明，并与前文抓取配置一并回归验证。下文示例中的 `job` 与 `instance` 与 **T4.4** 一致时可写作 `job="kubernetes-nodes"` 与节点名（如 `worker-01`），便于在 Grafana Explore 或 Prometheus 自带查询页面对照练习。
 
 ### 4.10.1、时间序列
 
-前面我们通过 node-exporter 暴露的 metrics 服务，Prometheus 可以采集到当前主机所有监控指标的样本数据。例如：
+node_exporter 暴露的文本里，非注释行即样本，例如：
 
-```bash
+```text
 # HELP node_cpu_seconds_total Seconds the cpus spent in each mode.
 # TYPE node_cpu_seconds_total counter
 node_cpu_seconds_total{cpu="0",mode="idle"} 6.62885731e+06
@@ -2068,355 +2066,220 @@ node_cpu_seconds_total{cpu="0",mode="idle"} 6.62885731e+06
 node_load1 2.29
 ```
 
-其中非 `#` 开头的每一行表示当前 node-exporter 采集到的一个监控样本，`node_cpu_seconds_total` 和 `node_load1` 表示当前指标的名称，大括号中的标签则反映了当前样本的一些特征和维度，浮点数则是该监控样本的具体值。
+行首带 `#` 的是说明；其余行里，指标名加大括号内的标签和最后的数值构成一个样本。
 
-Prometheus 会将所有采集到的样本数据以时间序列的方式保存在**内存数据库**中，并且定时保存到硬盘上。时间序列是按照时间戳和值的序列顺序存放的，我们称之为向量(vector)，每条时间序列通过指标名称(metrics name)和一组标签集(labelset)命名。如下所示，可以将时间序列理解为一个以时间为 X 轴的数字矩阵：
+样本按时间追加形成时间序列；多条序列可理解为沿同一时间轴并行演进，每条由指标名与唯一标签集标识。样本持久化在本地 TSDB（含 WAL 与块存储），查询在 TSDB 上完成，而不是仅在内存里临时存放。
 
-```bash
-  ^
-  │   . . . . . . . . . . . . . . . . .   . .   node_cpu_seconds_total{cpu="cpu0",mode="idle"}
-  │     . . . . . . . . . . . . . . . . . . .   node_cpu_seconds_total{cpu="cpu0",mode="system"}
-  │     . . . . . . . . . .   . . . . . . . .   node_load1{}
-  │     . . . . . . . . . . . . . . . .   . .  
-  v
-    <------------------ 时间 ---------------->
+一个样本包含三部分：指标与标签、时间戳、float64 数值。下面只是概念示意（不是 `/metrics` 里的原文格式）：
+
+```text
+http_request_total{status="200",method="GET"} @1434417560938 => 94355
 ```
 
-在时间序列中的每一个点称为一个样本（sample），样本由以下三部分组成：
+序列的一般写法为 `指标名{标签名="值", 其他标签...}`。指标名与标签名的命名规则以官方 [数据模型](https://prometheus.io/docs/concepts/data_model/) 为准。
 
-- 指标(metric)：包括 metric name 和描述当前样本特征的 labelsets
-- 时间戳(timestamp)：一个精确到毫秒的时间戳
-- 样本值(value)： 一个 float64 浮点型数据
+PromQL 求值结果可分为瞬时向量、区间向量、标量、字符串四类，定义见官方 [Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
 
-如下所示：
-
-```bash
-<--------------- metric ---------------------><-timestamp -><-value->
-http_request_total{status="200", method="GET"}@1434417560938 => 94355
-http_request_total{status="200", method="GET"}@1434417561287 => 94334
-
-http_request_total{status="404", method="GET"}@1434417560938 => 38473
-http_request_total{status="404", method="GET"}@1434417561287 => 38544
-
-http_request_total{status="200", method="POST"}@1434417560938 => 4748
-http_request_total{status="200", method="POST"}@1434417561287 => 4785
-```
-
-在形式上，所有的指标(Metric)都通过如下格式表示：
-
-```bash
-<metric name>{<label name> = <label value>, ...}
-```
-
-- 指标的名称(metric name)可以反映被监控样本的含义（比如 http_request_total 表示当前系统接收到的 HTTP 请求总量）。指标名称只能由 ASCII 字符、数字、下划线以及冒号组成，并且必须符合正则表达式 `[a-zA-Z_:][a-zA-Z0-9_:]*`。
-- 标签(label)反映了当前样本的特征维度，通过这些维度 Prometheus 可以对样本数据进行过滤，聚合等。标签的名称只能由 ASCII 字符、数字以及下划线组成，并且满足正则表达式 `[a-zA-Z_][a-zA-Z0-9_]*`。
-
-每个不同的 `metric_name` 和 `label` 组合都称为**时间序列**，在 Prometheus 的表达式语言中，表达式或子表达式有以下四种类型：
-
-- 瞬时向量（Instant vector）：一组时间序列，每个时间序列包含单个样本，它们共享相同的时间戳。也就是说，表达式的返回值中只会包含该时间序列中的最新的一个样本值。而这样的表达式称之为瞬时向量表达式。
-- 区间向量（Range vector）：一组时间序列，每个时间序列包含一段时间范围内的样本数据，这些是通过将时间选择器附加到方括号中的瞬时向量（例如[5m]5分钟）而生成的。
-- 标量（Scalar）：一个简单的数字浮点值。
-- 字符串（String）：一个简单的字符串值。
-
-所有指标都是 Prometheus 定期从目标的 `/metrics`（或配置的指标路径）抓取并写入 TSDB 的。抓取节奏由 [官方配置](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)里 **全局或各 `scrape_config` 的 `scrape_interval`** 决定（主配置文件名常见为 `prometheus.yml`，与本文 ConfigMap 中键名一致）；每次成功抓取会为各时间序列产生带新时间戳的样本（具体间隔以你当前配置为准，并非固定上限 30 秒）。
+抓取由 [配置](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) 里全局或各 `scrape_config` 的 `scrape_interval` 决定；主配置在本文 ConfigMap 中常为 `prometheus.yml`。每次抓取成功会为各序列追加新时间戳的样本，间隔以你当前配置为准。
 
 ### 4.10.2、指标类型
 
-从存储上来讲，所有的监控指标 metric 都是相同的，但是在不同的场景下这些 metric 又有一些细微的差异。 例如，在 Node Exporter 返回的样本中指标 `node_load1` 反应的是当前系统的负载状态，随着时间的变化这个指标返回的样本数据是在不断变化的。
+同类样本在存储层格式一致，语义上仍分四种：Counter、Gauge、Histogram、Summary，见 [指标类型](https://prometheus.io/docs/concepts/metric_types/)。`node_load1` 随负载升降，多为 Gauge；`node_cpu_seconds_total` 大体单调递增（进程重启等会复位），为 Counter。exposition 里的 `# TYPE` 可辅助判断。
 
-而指标 `node_cpu_seconds_total` 所获取到的样本数据却不同，它是一个持续增大的值，因为其反应的是 CPU 的累计使用时间，从理论上讲只要系统不关机，这个值是会一直变大的。
-
-为了能够帮助用户理解和区分这些不同监控指标之间的差异，Prometheus 定义了 4 种不同的指标类型：Counter（计数器）、Gauge（仪表盘）、Histogram（直方图）、Summary（摘要）。
-
-在 node-exporter 返回的样本数据中，其注释中也包含了该样本的类型。例如：
-
-```bash
+```text
 # HELP node_cpu_seconds_total Seconds the cpus spent in each mode.
 # TYPE node_cpu_seconds_total counter
-node_cpu_seconds_total{cpu="cpu0",mode="idle"} 362812.7890625
+node_cpu_seconds_total{cpu="0",mode="idle"} 362812.7890625
 ```
 
 #### 4.10.2.1、Counter
 
-`Counter` (只增不减的计数器) 类型的指标其工作方式和计数器一样，只增不减。常见的监控指标，如 `http_requests_total`、`node_cpu_seconds_total` 都是 `Counter` 类型的监控指标。
+Counter 只增不减（计数器复位除外）。看「每秒变化」应对区间向量使用 `rate` 或 `increase`，见 [Counter](https://prometheus.io/docs/concepts/metric_types/#counter) 与下文 4.10.3.2。
 
-`Counter` 是一个简单但又强大的工具，例如我们可以在应用程序中记录某些事件发生的次数，通过以时间序列的形式存储这些数据，我们可以轻松的了解该事件产生的速率变化。`PromQL` 内置的聚合操作和函数可以让用户对这些数据进行进一步的分析，例如，通过 `rate()` 函数获取 HTTP 请求量的增长率：
-
-```bash
+```promql
 rate(http_requests_total[5m])
 ```
 
-查询当前系统中，访问量前 10 的 HTTP 请求：
+对 Counter 直接 `topk` 往往按累计值排序，只宜粗看。告警与容量分析建议先对区间向量做 `rate` 或 `increase` 再聚合，例如：
 
-```bash
-topk(10, http_requests_total)
+```promql
+topk(10, rate(http_requests_total[5m]))
 ```
 
 #### 4.10.2.2、Gauge
 
-与 `Counter` 不同，`Gauge`（可增可减的仪表盘）类型的指标侧重于反应系统的当前状态。因此这类指标的样本数据可增可减。常见指标如：`node_memory_MemFree_bytes`（主机当前空闲的内存大小）、`node_memory_MemAvailable_bytes`（可用内存大小）都是 `Gauge` 类型的监控指标。通过 `Gauge` 指标，用户可以直接查看系统的当前状态：
+Gauge 可升可降，反映当前量，如 `node_memory_MemAvailable_bytes`。可用 `delta`、`predict_linear` 等，函数语义见 [Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)。
 
-```bash
-node_memory_MemFree_bytes
+```promql
+node_memory_MemAvailable_bytes{job="kubernetes-nodes", instance="worker-01"}
+delta(node_load1{job="kubernetes-nodes", instance="worker-01"}[2h])
+predict_linear(node_filesystem_free_bytes{job="kubernetes-nodes", instance="worker-01"}[1h], 4 * 3600)
 ```
 
-对于 `Gauge` 类型的监控指标，通过 `PromQL` 内置函数 `delta()` 可以获取样本在一段时间范围内的变化情况。例如，计算 CPU 温度在两个小时内的差异：
+#### 4.10.2.3、Histogram 与 Summary
 
-```bash
-delta(cpu_temp_celsius{host="zeus"}[2h])
-```
+二者用于分位数与分布，避免只看平均值而掩盖长尾延迟。Summary 在客户端算好分位数；Histogram 暴露 `_bucket{le="..."}` 以及 `_sum`、`_count`，查询端常用 `histogram_quantile`，细则见官方函数与指标类型说明。
 
-还可以直接使用 `predict_linear()` 对数据的变化趋势进行预测。例如，预测系统磁盘空间在 4 个小时之后的剩余情况：
+若组件采用原生直方图（native histogram），标签与 PromQL 与经典 Histogram 不同，见 [Native histograms](https://prometheus.io/docs/concepts/native_histograms/) 与所用版本的发行说明；生产以实际 `/metrics` 输出为准。
 
-```bash
-predict_linear(node_filesystem_free_bytes[1h], 4 * 3600)
-```
+以下为 Prometheus 自身 `/metrics` 的示意片段（数值随运行变化）：Summary 带 `quantile`；Histogram 带 `le` 的 `bucket`。
 
-#### 4.10.2.3、Histogram 和 Summary
-
-除了 `Counter` 和 `Gauge` 类型的监控指标以外，Prometheus 还定义了 `Histogram` 和 `Summary` 指标类型。`Histogram` 和 `Summary` 主要用于统计和分析样本的分布情况。
-
-在大多数情况下人们都倾向于使用某些量化指标的平均值，例如 CPU 的平均使用率、页面的平均响应时间，这种方式也有很明显的问题，以系统 API 调用的平均响应时间为例：
-
-+ 如果大多数 API 请求都维持在 100ms 的响应时间范围内，而个别请求的响应时间需要 5s，那么就会导致某些 WEB 页面的响应时间落到**中位数**上，而这种现象被称为**长尾问题**。
-
-+ 为了区分是平均的慢还是长尾的慢，最简单的方式就是按照请求延迟的范围进行分组。
-  + 例如，统计延迟在 0~10ms 之间的请求数有多少，而 10~20ms 之间的请求数又有多少。
-  + 通过这种方式可以快速分析系统慢的原因。`Histogram` 和 `Summary` 都是为了能够解决这样的问题而存在的。
-  + 通过 `Histogram` 和`Summary` 类型的监控指标，我们可以快速了解监控样本的分布情况。
-
-例如，指标 `prometheus_tsdb_wal_fsync_duration_seconds` 的指标类型为 Summary。它记录了 Prometheus Server 中 `wal_fsync` 的处理时间，通过访问 Prometheus Server 的 `/metrics` 地址，可以获取到以下监控样本数据：
-
-```bash
-# HELP prometheus_tsdb_wal_fsync_duration_seconds Duration of WAL fsync.
+```text
 # TYPE prometheus_tsdb_wal_fsync_duration_seconds summary
 prometheus_tsdb_wal_fsync_duration_seconds{quantile="0.5"} 0.012352463
-prometheus_tsdb_wal_fsync_duration_seconds{quantile="0.9"} 0.014458005
-prometheus_tsdb_wal_fsync_duration_seconds{quantile="0.99"} 0.017316173
 prometheus_tsdb_wal_fsync_duration_seconds_sum 2.888716127000002
 prometheus_tsdb_wal_fsync_duration_seconds_count 216
-```
-
-从上面的样本中可以得知当前 Prometheus Server 进行 `wal_fsync` 操作的总次数为 216 次，耗时 2.888716127000002s。其中中位数（quantile=0.5）的耗时为 0.012352463，9 分位数（quantile=0.9）的耗时为 0.014458005s。
-
-在 Prometheus Server 自身返回的样本数据中，我们还能找到类型为 Histogram 的监控指标 `prometheus_tsdb_compaction_chunk_range_seconds_bucket`：
-
-```bash
-# HELP prometheus_tsdb_compaction_chunk_range_seconds Final time range of chunks on their first compaction
 # TYPE prometheus_tsdb_compaction_chunk_range_seconds histogram
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="100"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="400"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="1600"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="6400"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="25600"} 405
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="102400"} 25690
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="409600"} 71863
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="1.6384e+06"} 115928
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="6.5536e+06"} 2.5687892e+07
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="2.62144e+07"} 2.5687896e+07
 prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="+Inf"} 2.5687896e+07
 prometheus_tsdb_compaction_chunk_range_seconds_sum 4.7728699529576e+13
 prometheus_tsdb_compaction_chunk_range_seconds_count 2.5687896e+07
 ```
 
-与 `Summary` 类型的指标相似之处在于 `Histogram` 类型的样本同样会反应当前指标的记录的总数（以 `_count` 作为后缀）以及其值的总量（以 `_sum` 作为后缀）。不同在于 `Histogram` 指标直接反应了在不同区间内样本的个数，区间通过标签 le 进行定义。
+Histogram 与 Summary 都有 `_count` 与 `_sum`；Histogram 还通过各 `le` 桶反映落在各区间的观测数。
 
 ### 4.10.3、查询
 
-当 Prometheus 采集到监控指标样本数据后，我们就可以通过 PromQL 对监控样本数据进行查询。基本的 Prometheus 查询的结构非常类似于一个 metric 指标，以指标名称开始。
+查询多以指标名开头，再用大括号筛选标签，见 [Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
 
 #### 4.10.3.1、查询结构
 
-比如只查询 `node_cpu_seconds_total` 则会返回所有采集节点的所有类型的 CPU 时长数据，当然如果数据量特别大的时候，直接在 Grafana 执行该查询操作的时候，则可能导致浏览器崩溃，因为它同时需要渲染的数据点太多。
+单独写 `node_cpu_seconds_total` 会拉出所有节点、所有模式，序列很多，在 Grafana 全屏渲染可能很卡。应先加标签缩小范围。与本文 node 抓取一致时可写 `job="kubernetes-nodes"`（见 **T4.4**），`instance` 为节点名（如 `worker-01`）。
 
-接下来，可以使用标签进行过滤查询，标签过滤器支持 4 种运算符：
+标签匹配：`=`、`!=`、`=~`、`!~`；正则引擎为 [RE2](https://github.com/google/re2/wiki/Syntax)。`{}` 内多个条件逗号分隔，语义为与（AND）。
 
-- `=` 等于
-- `!=` 不等于
-- `=~` 匹配正则表达式
-- `!~` 与正则表达式不匹配
-
-标签过滤器都位于指标名称后面的 `{}` 内，比如过滤 master 节点的 CPU 使用数据可用如下查询语句：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master"}
-```
-
-> PromQL 查询语句中的正则表达式匹配使用 [RE2语法](https://github.com/google/re2/wiki/Syntax)。
-
-此外我们还可以使用多个标签过滤器，以逗号分隔。多个标签过滤器之间是 `AND` 的关系，所以使用多个标签进行过滤，返回的指标数据必须和所有标签过滤器匹配。
-
-如下查询语句将返回所有以 `ydzs-` 为前缀并且是 `idle` 模式下面的节点的 CPU 使用时长指标：
-
-```bash
-node_cpu_seconds_total{instance=~"ydzs-.*", mode="idle"}
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01"}
+node_cpu_seconds_total{job="kubernetes-nodes", instance=~"worker-.*", mode="idle"}
 ```
 
 #### 4.10.3.2、范围选择器
 
-我们可以通过在查询语句末尾附加**[时间范围选择器](https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors)**（Range Selector，语法为 `[时长]`），来指定从每个时间序列中提取多长时间范围内的样本数据，从而生成**区间向量**（Range Vector）。
+在瞬时向量选择器后追加官方文档中的 [区间向量选择器](https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors)（语法为 `[时长]`），得到区间向量：每条序列在窗口内保留多个按时间排序的样本点。时长单位含 `s`、`m`、`h`、`d`、`w`、`y`，详见官方 Basics。
 
-区间向量中的每个样本包含该时间范围内多个按时间正序排列的 `<时间戳, 值>` 对。例如：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[1m]
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[1m]
 ```
 
-+ 时间单位支持：`s`（秒）、`m`（分钟）、`h`（小时）、`d`（天）、`w`（周）、`y`（年）
+若抓取间隔为 15 秒，1 分钟内每条序列通常约有四个样点，具体以集群配置为准。在 Table 视图可看到区间内多个带 `@` 时间戳的值。
 
-添加 `[1m]` 后，查询将返回过去 1 分钟内该指标的所有采样点。若 Prometheus 的抓取间隔（scrape interval）为 15 秒，则每个时间序列通常会包含约 4 个样本点（如下图所示）：
+> 插图槽位 T4.10-1（待补充）：在 Prometheus 查询页 Table 中执行上式，截取能体现多时间点样本的界面。建议保存为 `./images/t4-10-promql-range-table.png`（路径可按仓库规范调整）。
 
-![promql_range_show1](./images/promql_range_show1.png)
+Graph 面板只接受标量或瞬时向量；对「裸区间向量」在同一时刻仍含多点，直接绘图会报错。
 
-可以看到上面的两个时间序列都有 4 个值，这是因为我们 Prometheus 中配置的抓取间隔是 15 秒，所以，我们从图中的 `@` 符号后面的时间戳可以看出，它们之间的间隔基本上就是 15 秒。
+> 插图槽位 T4.10-2（待补充）：同一表达式切换到 Graph 后出现典型报错的截图。建议 `./images/t4-10-promql-range-graph-error.png`。
 
-但是在 Prometheus 表达式浏览器的 **Graph** 选项卡中直接执行上述区间向量查询时，会出现渲染错误：
+对 Counter 的区间向量应使用 `rate`、`increase` 等（其它类型选对应函数），先得到瞬时向量再画图或写告警。函数定义见官方 [Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)。告警与 SLO 规则里，Counter 的增长率优先用 `rate`，慎用 `irate`；`increase` 多用于看图或粗估区间总增量。区间长度建议明显大于抓取间隔（常见做法是至少取约 2 倍 `scrape_interval`，以便有足够样点；细则以官方说明为准）。
 
-![promql_range_show_error](./images/promql_range_show_error.png)
+| 函数 | 作用（扼要） | 常见用途 | 注意 |
+| ---- | ------------ | -------- | ---- |
+| `rate(v[d])` | 估计窗口内平均每秒增长，处理计数器复位 | Counter 趋势、告警 | 窗口应大于抓取间隔，常为 `scrape_interval` 数倍；结果可为非整数 |
+| `irate(v[d])` | 仅用窗口内最后两点估瞬时每秒增长 | 极短期波动展示 | 噪声大，不宜单独用于告警 |
+| `increase(v[d])` | 估计窗口内总增量 | 区间「大约多了多少」 | 与 `rate` 的关系与边界行为见官方说明 |
 
-这是因为 Graph 面板仅支持绘制**标量**（Scalar）或**瞬时向量**（Instant Vector），而区间向量包含多个 `时间戳 - 值` 对，无法直接映射为单一时间点的图表数据。
-
-正确做法：对区间向量应用聚合函数（如 `rate()`/`irate()`/`increase()`），将其转换为瞬时向量后再绘图。
-
-Prometheus 官方对瞬时向量和区间向量有很多操作的[函数](https://prometheus.io/docs/prometheus/latest/querying/functions)，不过对于区间向量来说最常用的函数并不多，使用最频繁的有如下几个函数：
-
-| 函数             | 作用                                                         | 适用场景                                         | 注意事项                                      |
-| ---------------- | ------------------------------------------------------------ | ------------------------------------------------ | --------------------------------------------- |
-| `rate(v[d])`     | 计算区间 `d` 内每个时间序列的**每秒平均增长率**，基于线性回归平滑计算 | 计数器（counter）类型指标的长期趋势分析、告警    | 自动处理计数器重置（reset），结果可能为非整数 |
-| `irate(v[d])`    | 仅使用区间内**最后两个样本点**计算瞬时每秒增长率             | 快速波动指标的实时监控视图                       | 对噪声敏感，**不推荐**用于告警或长期趋势分析  |
-| `increase(v[d])` | 计算区间 `d` 内时间序列的**总增量**，等价于 `rate(v[d]) * d(秒)` | 统计某时间段内的累计增长量（如请求总数、错误数） | 同样会处理 counter 重置，结果为浮点数         |
-
-```bash
-# 过去 5 分钟内 CPU idle 时间的每秒平均增长率
-rate(node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[5m])
-
-# 过去 1 分钟内的瞬时增长率（最后两点）
-irate(node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[1m])
-
-# 过去 10 分钟内 idle 时间的总增量（秒）
-increase(node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[10m])
+```promql
+rate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[5m])
+irate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[1m])
+increase(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[10m])
 ```
 
-我们选择的时间范围将确定图表的粒度，比如，持续时间 `[1m]` 会给出非常尖锐的图表，从而很难直观的显示出趋势来，看起来像这样：
+窗口 `[d]` 越短曲线起伏越大，越长越平滑。生产上可在固定抓取间隔后，在 Grafana 中对同一 `rate(...)` 尝试不同窗口（如 5 分钟与 30 分钟），或把短窗与长窗放在同一面板对比，再结合大盘时间跨度选用。
 
-![promql_range_show2](./images/promql_range_show2.png)
+> 插图槽位 T4.10-3（待补充）：同环境、同指标下两种不同 rate 窗口的曲线对比（可单图多序列或两张并列）。建议 `./images/t4-10-rate-window-compare.png`。
 
-对于一小时的图表，`[5m]` 显示的图表看上去要更加合适一些，更能显示出 CPU 使用的趋势：
+`offset` 把整个选择器沿时间轴平移，必须紧接在标签选择器之后。下式查询的是约 30 分钟前那一刻的 idle 累计秒数，仍是 Counter 的瞬时值，不是每秒变化率。
 
-![promql_range_show3](./images/promql_range_show3.png)
-
-对于更长的时间跨度，可能需要设置更长的持续时间，以便消除波峰并获得更多的长期趋势图表。我们可以简单比较持续时间为`[5m]` 和 `[30m]` 的一天内的图表：
-
-![promql_range_show4](./images/promql_range_show4.png)
-
-![promql_range_show5](./images/promql_range_show5.png)
-
-有的时候可能想要查看 5 分钟前或者昨天一天的区间内的样本数据，这个时候我们就需要用到位移操作了，位移操作的关键字是 `offset`，比如我们可以查询 30 分钟之前的 master 节点 CPU 的空闲指标数据：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master", mode="idle"} offset 30m
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"} offset 30m
 ```
 
-> 需要注意的是 `offset` 关键字需要紧跟在选择器 `{}` 后面。
+`offset` 也可与区间向量组合，例如查看一段时间之前的增长率：
 
-同样位移操作也适用于区间向量，比如我们要查询昨天的前 5 分钟的 CPU 空闲增长率：
+```promql
+rate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[5m] offset 1h)
+```
 
-![promql_range_show6](./images/promql_range_show6.png)
+标签与时长请按集群实际情况改写。
+
+> 插图槽位 T4.10-4（待补充）：含 offset 或 rate 带 offset 的查询在 Table 或 Graph 中的效果。建议 `./images/t4-10-promql-offset.png`。
 
 #### 4.10.3.3、关联查询
 
-Prometheus 不提供类似 SQL 的关联查询（JOIN）语法，但可以通过 [运算符](https://prometheus.io/docs/prometheus/latest/querying/operators/) 对多个时间序列或标量执行常规计算、比较和逻辑运算。
+Prometheus 没有 SQL 式的 JOIN，但可用 [运算符](https://prometheus.io/docs/prometheus/latest/querying/operators/) 对向量与标量做算术、比较和向量间逻辑运算。
 
-> 当运算符作用于两个瞬时向量时，仅标签集完全一致的时间序列才会参与运算。所谓标签集完全一致，是指两个时间序列的所有标签名称和标签值均相同（`__name__` 除外）。只有当左侧向量的每个序列都能在右侧向量中找到唯一匹配的序列时，才能完成一对一匹配运算。
+两路瞬时向量做二元运算时，默认按完整标签集一对一匹配（指标名可不同，细则见官方 [向量匹配](https://prometheus.io/docs/prometheus/latest/querying/operators/#vector-matching)）。左侧每条序列须在右侧找到恰好一条标签完全相同的序列，否则该点无结果。
 
-例如以下两个瞬时向量查询：
+例如（与本文节点名一致）：
 
-```bash
-node_cpu_seconds_total{instance="ydzs-master", cpu="0", mode="idle"}
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", cpu="0", mode="idle"}
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", cpu="0", mode="idle"}
 ```
 
-```bash
-node_cpu_seconds_total{instance="ydzs-node1", cpu="0", mode="idle"}
+直接相加：
+
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", cpu="0", mode="idle"}
++
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", cpu="0", mode="idle"}
 ```
 
-若对这两个序列执行加法运算：
+因 `instance` 不同，默认无法配对，结果为空。
 
-```bash
-node_cpu_seconds_total{instance="ydzs-master", cpu="0", mode="idle"} 
-+ 
-node_cpu_seconds_total{instance="ydzs-node1", cpu="0", mode="idle"}
+> 插图槽位 T4.10-5（待补充）：两实例直接相加的查询，Table 无数据或 Graph 无序列的截图。建议 `./images/t4-10-vector-mismatch-empty.png`。
+
+可用 `on` 或 `ignoring` 声明仅用部分标签对齐。下列仅按 `mode` 对齐，结果侧只保留匹配键上声明的标签（此处为 `mode`），其余标签丢弃：
+
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}
++ on(mode)
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", mode="idle"}
 ```
 
-尝试获取 master 和 node1 节点总的空闲 CPU 时长，则不会返回任何内容：
+> 插图槽位 T4.10-6（待补充）：使用 on(mode) 后得到非空结果的截图。建议 `./images/t4-10-vector-on-mode.png`。
 
-![promql_range_show7](./images/promql_range_show7.png)
+多数「多序列合成」场景更稳妥的是 [聚合](https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)，例如按实例汇总 idle 的 Counter 值（若要看使用率，仍应对 `rate` 或归一化后再做聚合，视面板公式而定）：
 
-原因是两个时间序列的 `instance` 标签值不同，标签集不完全匹配，无法建立一对一映射关系。
-
-此时可使用 `on` 关键字显式指定仅基于部分标签进行匹配。例如仅按 `mode` 标签匹配：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master", mode="idle"} 
-+ on(mode) 
-node_cpu_seconds_total{instance="ydzs-node1", mode="idle"}
+```promql
+sum by (instance) (
+  node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}
+)
 ```
 
-![promql_range_show8](./images/promql_range_show8.png)
+出现**多对一**或**一对多**时，必须写清 `group_left` 或 `group_right`。例：与 **T4.8** [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) 联用时，`container_cpu_user_seconds_total` 常带 `container`、`cpu` 等高基数标签，而 `kube_pod_info` 每 Pod 往往一条，粗写：
 
-需要注意的是，运算结果生成的新瞬时向量仅包含 `on` 关键字中指定的标签（本例中为 `mode`），其他标签将被丢弃。
-
-实际上，Prometheus 提供了丰富的 [聚合操作](https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)，多数场景下使用聚合函数更为简洁。例如统计各实例的空闲 CPU 时间序列，推荐使用：
-
-```bash
-sum by (instance) (node_cpu_seconds_total{mode="idle"})
-```
-
-`on` 关键字仅适用于一对一匹配场景。当涉及多对一或一对多匹配时，需配合 `group_left` 或 `group_right` 使用。例如通过 [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) 获取 Kubernetes 集群指标时，执行以下查询：
-
-```bash
+```promql
 container_cpu_user_seconds_total{namespace="kube-system"} * on (pod) kube_pod_info
 ```
 
-将返回错误：
+可能报错：
 
-```bash
+```text
 Error executing query: multiple matches for labels: many-to-one matching must be explicit (group_left/group_right)
 ```
 
-错误原因：`container_cpu_user_seconds_total` 指标在同一个 Pod 上可能因 `container`、`cpu` 等标签存在多条时间序列，而 `kube_pod_info` 每个 Pod 通常仅对应一条记录，形成多对一匹配关系，必须显式声明匹配方向。
+原因是左侧多条序列对应右侧同一 `pod`。应使用 `group_left`（或按数据方向使用 `group_right`），且 `on` 与 `group_left` 里写的标签须与两侧序列上真实存在的标签一致。`pod` 是否足以唯一匹配、是否要同时约束 `namespace` 等，请在 Grafana Explore 或 Prometheus 查询页用 `kube_pod_info`、`container_cpu_user_seconds_total` 实际列出的标签核对（不同 chart 版本可能仍见 `pod_name` 等旧标签名）。
 
-解决方法是使用 `group_left` 或 `group_right` 关键字：
-
-- `group_left`：表示左侧为高基数侧，允许多个左侧序列匹配同一个右侧序列
-- `group_right`：表示右侧为高基数侧，允许一个左侧序列匹配多个右侧序列
-
-结果向量默认保留高基数侧的所有标签。若需额外引入低基数侧的特定标签，可在括号中显式指定。
-
-修正后的查询示例：
-
-```bash
-container_cpu_user_seconds_total{namespace="kube-system"} * on (pod) group_left() kube_pod_info
+```promql
+container_cpu_user_seconds_total{namespace="kube-system"}
+  * on (namespace, pod) group_left()
+  kube_pod_info{namespace="kube-system"}
 ```
 
-该查询可正常执行，返回结果包含左侧序列的全部标签，并成功关联右侧 `kube_pod_info` 的匹配记录。
+`group_left` 表示左侧一侧可有多条序列对应右侧同一条；括号内可列出要从右侧并入左侧的额外标签，具体写法以你要保留的维度和官方运算符文档为准。
 
-#### 4.10.3.4、瞬时向量和标量结合
+#### 4.10.3.4、瞬时向量与标量
 
-瞬时向量支持与标量值直接进行算术运算，标量将广播至向量中的每个样本。
+标量与瞬时向量运算时，标量会作用到向量中每一个样本，例如：
 
-```bash
-node_cpu_seconds_total{instance="ydzs-master"} * 10
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01"} * 10
 ```
 
-该查询会将瞬时向量中每个序列的每个样本值乘以 10，常用于比率换算或百分比计算。
+常用运算符见 [Operators](https://prometheus.io/docs/prometheus/latest/querying/operators/)：算术；比较（可加 `bool` 得 0/1）；以及向量集合运算 `and`、`or`、`unless`。
 
-支持的运算符包括：
+更完整的 PromQL 语法与语义见官方 [Querying basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
 
-- 算术运算符：`+`、`-`、`*`、`/`、`%`、`^`
-- 比较运算符：`==`、`!=`、`>`、`<`、`>=`、`<=`（配合 `bool` 修饰符可返回 0/1 值）
-- 逻辑集合运算符：`and`、`or`、`unless`（仅适用于两个瞬时向量之间，基于标签匹配执行集合运算）
-
-关于 PromQL 的更多用法，请参考官方文档：https://prometheus.io/docs/prometheus/latest/querying/basics/。
+本节共设六处插图槽位，编号与文中 blockquote 一致，供你按生产环境截屏补齐：T4.10-1 区间向量在 Table 中的多点；T4.10-2 Graph 中裸区间向量报错；T4.10-3 不同 rate 窗口曲线对比；T4.10-4 offset 或 rate 带 offset；T4.10-5 标签集不匹配导致运算无结果；T4.10-6 使用 on 后有结果的示例。文件可放在文中建议路径，也可改为你方文档资产库的命名规范。
 
 ## T4.11、Alertmanager
 
