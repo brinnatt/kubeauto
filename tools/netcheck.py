@@ -1,673 +1,1257 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-网络连接稳定性测试工具
+网络连接稳定性测试工具（生产环境）
 
-安全性增强：
-- 验证所有输入参数，防止命令注入
-- 改进线程管理和资源清理
-- 增强异常处理和错误恢复机制
-- 支持Python 3.6+
+- 启动前前置校验（时长上限、报告/日志路径可写、ping 可用、默认 NODE_IPS 是否全无效等），与 --dry-run 共用同一套逻辑
+- 输入校验后使用 subprocess 参数列表调用 ping，避免注入
+- 目标语法：ICMP 支持 IPv4 / IPv6 / 域名、IPv4 末段区间、IPv4 CIDR（.hosts() 展开）；
+  TCP 仅为 host:port（单一冒号 + 数字端口），仅 IPv4 或域名（不支持 IPv6:port 与地址段）
+- ICMP 按 --max-icmp-workers 分片轮询，控制线程与子进程数量
+- 多线程探测 + Event；SIGINT/SIGTERM 与阈值退出码（0/1/2）见 --help epilog
 
-参考：
-- Python subprocess官方文档（防止命令注入）
-- Python threading官方最佳实践
+需要 Python 3.8+。
 """
 
-import subprocess
+from __future__ import annotations
+
+__version__ = "1.3.1"
+
+import argparse
+import ipaddress
+import json
+import logging
+import os
+import platform
 import re
-import time
+import shutil
+import signal
+import socket
+import subprocess
 import sys
 import threading
-import argparse
-import traceback
-from datetime import datetime
+import time
 from collections import defaultdict
-import socket
-import ipaddress
+from dataclasses import dataclass, field
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple, Union
 
-# Configuration parameters
-DEFAULT_TEST_DURATION = 7200  # Default test duration in seconds (2 hours)
-PING_INTERVAL = 1  # Ping interval in seconds
-PING_TIMEOUT = 2  # Ping timeout in seconds
-PING_COUNT = 3  # Number of ping packets per test
-TCP_TIMEOUT = 2  # TCP connection timeout in seconds
+# ---------------------------------------------------------------------------
+# 常量
+# ---------------------------------------------------------------------------
+DEFAULT_TEST_DURATION = 7200
+PING_INTERVAL = 1
+PING_TIMEOUT = 2
+PING_COUNT = 3
+TCP_TIMEOUT = 2
 
-# All nodes to test
+MIN_PORT = 1
+MAX_PORT = 65535
+MAX_HOSTNAME_LENGTH = 253
+
+
+def is_tcp_style_target(s: str) -> bool:
+    """唯一 `:` 且右侧为十进制端口 → host:port（与 expand_cli_target / validate_target 共用）。"""
+    if s.count(":") != 1:
+        return False
+    left, right = s.split(":", 1)
+    if not right.isdigit():
+        return False
+    try:
+        pr = int(right)
+    except ValueError:
+        return False
+    if not MIN_PORT <= pr <= MAX_PORT:
+        return False
+    if "/" in left:
+        return False
+    return True
+
+
+# 报告与健康判定阈值（可按环境调整）
+ICMP_FAIL_SAMPLE_RATIO_MAX_PCT = 5.0  # 失败/无统计样本占比上限
+ICMP_AVG_LATENCY_MS_WARN = 100.0
+ICMP_JITTER_MS_WARN = 50.0
+TCP_SUCCESS_RATIO_MIN_PCT = 95.0
+TCP_AVG_LATENCY_MS_WARN = 200.0
+
+DEFAULT_LOG_BASENAME = "netcheck.log"
+DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
+DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
+
+LOG_DIR = os.environ.get("NETCHECK_LOG_DIR", os.path.join(os.getcwd(), "logs"))
+
+# 展开 / 并发 / 时长（环境变量非法时回退默认值，避免进程启动即崩溃）
+MIN_IPV4_CIDR_PREFIX = 8  # 禁止比 /8 更短，避免整 A 类误扩
+
+
+def _env_int(name: str, default: int, min_v: int = 1, max_v: int = 2**31 - 1) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        v = int(raw.strip(), 10)
+    except ValueError:
+        return default
+    return max(min_v, min(max_v, v))
+
+
+DEFAULT_MAX_EXPAND = _env_int("NETCHECK_MAX_EXPAND", 1024, 1, 1_000_000)
+DEFAULT_MAX_ICMP_WORKERS = _env_int("NETCHECK_MAX_ICMP_WORKERS", 64, 1, 4096)
+# 单次运行最长时长（秒），防止误输入极大值占满调度；可用 NETCHECK_MAX_DURATION_SEC 调整
+MAX_TEST_DURATION_SEC = _env_int("NETCHECK_MAX_DURATION_SEC", 30 * 86400, 60, 366 * 86400)
+
 NODE_IPS = [
-    '11.2.26.250', '11.2.26.251', '11.2.26.252',
-    '11.2.26.1', '11.2.26.2', '11.2.26.3', '11.2.26.4',
-    '11.2.26.5', '11.2.26.7', '11.2.26.8', '11.2.26.9',
-    '11.2.26.33', '11.2.26.34', '11.2.26.35', '11.2.26.36', '11.2.26.37',
-    '11.2.26.40',
-    '11.2.26.50',
-    '11.2.26.57'
+    "11.2.26.250", "11.2.26.251", "11.2.26.252",
+    "11.2.26.1", "11.2.26.2", "11.2.26.3", "11.2.26.4",
+    "11.2.26.5", "11.2.26.7", "11.2.26.8", "11.2.26.9",
+    "11.2.26.33", "11.2.26.34", "11.2.26.35", "11.2.26.36", "11.2.26.37",
+    "11.2.26.40",
+    "11.2.26.50",
+    "11.2.26.57",
 ]
 
 
-class NetworkTester(object):
-    def __init__(self):
-        self.results = defaultdict(list)
-        self.lock = threading.Lock()
-        self.stop_event = threading.Event()
-        self.active_threads = []  # 跟踪活动线程，确保正确清理
+class NetcheckError(Exception):
+    """netcheck 业务错误基类"""
 
-    def _validate_host(self, host):
-        """
-        验证主机名或IP地址，防止命令注入
-        基于Python subprocess官方建议：验证所有用户输入
-        """
-        if not host or not isinstance(host, str):
-            raise ValueError("Host must be a non-empty string")
-        
-        # 如果传入的是bytes，转换为str
-        if isinstance(host, bytes):
-            host = host.decode('utf-8')
-        
-        # 检查是否包含危险的shell字符
-        dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '<', '>', '\n', '\r', ' ']
-        for char in dangerous_chars:
-            if char in host:
-                raise ValueError("Host contains dangerous character: %s" % char)
-        
-        # 验证IP地址或主机名格式
+
+class NetcheckValidationError(NetcheckError):
+    """参数或路径校验失败"""
+
+
+# ---------------------------------------------------------------------------
+# 日志（默认：控制台 + 滚动文件，与 starcli 默认落盘思路一致）
+# ---------------------------------------------------------------------------
+def setup_logging(
+    verbose: bool = False,
+    log_file: Optional[Union[str, Path]] = None,
+    no_log_file: bool = False,
+    name: str = "netcheck",
+) -> logging.Logger:
+    level = logging.DEBUG if verbose else logging.INFO
+    log = logging.getLogger(name)
+    log.handlers.clear()
+    log.setLevel(level)
+    log.propagate = False
+
+    fmt = logging.Formatter(DEFAULT_FORMAT, DEFAULT_DATEFMT)
+
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(level)
+    sh.setFormatter(fmt)
+    log.addHandler(sh)
+
+    if not no_log_file:
+        if not os.path.isdir(LOG_DIR):
+            os.makedirs(LOG_DIR, exist_ok=True)
+        path = Path(log_file) if log_file else Path(LOG_DIR) / DEFAULT_LOG_BASENAME
+        if not path.is_absolute():
+            path = Path(LOG_DIR) / path.name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fh = RotatingFileHandler(
+            str(path), maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+        )
+        fh.setLevel(level)
+        fh.setFormatter(fmt)
+        log.addHandler(fh)
+
+    return log
+
+
+logger = logging.getLogger("netcheck")
+
+
+# ---------------------------------------------------------------------------
+# 输入校验
+# ---------------------------------------------------------------------------
+class InputValidator:
+    """主机 / 目标 / 输出路径校验（参考 starcli.InputValidator）。"""
+
+    _FORBIDDEN_HOST_CHARS = frozenset(';|&$`()<> \t\n\r')
+
+    @classmethod
+    def normalize_str(cls, value: Any, label: str = "值") -> str:
+        if value is None:
+            raise NetcheckValidationError("%s 不能为空" % label)
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", errors="replace")
+        if not isinstance(value, str):
+            raise NetcheckValidationError("%s 必须是字符串" % label)
+        s = value.strip()
+        if not s:
+            raise NetcheckValidationError("%s 不能为空" % label)
+        if len(s) > MAX_HOSTNAME_LENGTH:
+            raise NetcheckValidationError("%s 过长（最多 %d 字符）" % (label, MAX_HOSTNAME_LENGTH))
+        return s
+
+    @classmethod
+    def validate_host(cls, host: Any) -> str:
+        host = cls.normalize_str(host, "主机")
+        bad = set(host) & cls._FORBIDDEN_HOST_CHARS
+        if bad:
+            raise NetcheckValidationError("主机包含非法字符: %s" % ", ".join(sorted(bad)))
+        if any(ord(ch) < 32 for ch in host):
+            raise NetcheckValidationError("主机包含不可见控制字符")
         try:
-            # 尝试解析为IP地址
             ipaddress.ip_address(host)
-        except (ValueError, AttributeError):
-            # 如果不是IP，验证为主机名格式
-            if not re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$', host):
-                raise ValueError("Invalid host format: %s" % host)
-        
+            return host
+        except ValueError:
+            pass
+        if not re.match(
+            r"^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$",
+            host,
+        ):
+            raise NetcheckValidationError("无效的主机格式: %s" % host)
         return host
 
-    def run_ping(self, host):
-        """
-        Execute ping command and return output
-        使用参数验证防止命令注入（Python subprocess官方最佳实践）
-        """
+    @classmethod
+    def validate_target(cls, target: Any) -> str:
+        """与 is_tcp_style_target / expand_cli_target 一致：仅「单一冒号 + 数字端口」视为 TCP。"""
+        target = cls.normalize_str(target, "目标")
+        if is_tcp_style_target(target):
+            host_part, port_part = target.split(":", 1)
+            cls.validate_host(host_part)
+            port = int(port_part)
+            if not MIN_PORT <= port <= MAX_PORT:
+                raise NetcheckValidationError("端口号必须在 %d–%d 之间" % (MIN_PORT, MAX_PORT))
+            return "%s:%d" % (host_part, port)
+        # 单一目标串：ICMP 用（含 IPv6 字面量等多冒号形式）；TCP 段展开须走 expand_cli_target
+        return cls.validate_host(target)
+
+    @classmethod
+    def validate_report_dir(cls, path_str: str) -> Path:
+        """解析报告目录，禁止裸 .. 段，解析为绝对路径。"""
+        s = cls.normalize_str(path_str, "报告目录")
+        p = Path(s)
+        if ".." in p.parts:
+            raise NetcheckValidationError("报告目录路径不能包含 '..'")
+        resolved = p.resolve() if p.is_absolute() else (Path.cwd() / p).resolve()
+        return resolved
+
+
+# ---------------------------------------------------------------------------
+# 目标展开：IPv4 末段区间、IPv4 CIDR（生产约束：上限 + 线程分片）
+# ---------------------------------------------------------------------------
+_RE_IPV4_LAST_OCTET_RANGE = re.compile(
+    r"^(\d{1,3}\.\d{1,3}\.\d{1,3})\.(\d{1,3})-(\d{1,3})$"
+)
+
+
+def _octets_0_255(parts: Tuple[str, ...]) -> None:
+    for p in parts:
+        v = int(p)
+        if not 0 <= v <= 255:
+            raise NetcheckValidationError("IPv4 段越界: %s" % ".".join(parts))
+
+
+def expand_last_octet_range(s: str, max_expand: int) -> List[str]:
+    """192.168.125.29-87 → 192.168.125.29 … 192.168.125.87"""
+    m = _RE_IPV4_LAST_OCTET_RANGE.match(s.strip())
+    if not m:
+        raise NetcheckValidationError("无效的 IPv4 末段区间（示例 192.168.125.29-87）: %s" % s)
+    prefix, lo_s, hi_s = m.group(1), m.group(2), m.group(3)
+    lo, hi = int(lo_s), int(hi_s)
+    _octets_0_255(tuple(prefix.split(".")))
+    if not 0 <= lo <= 255 or not 0 <= hi <= 255:
+        raise NetcheckValidationError("末段必须在 0–255: %s" % s)
+    if lo > hi:
+        raise NetcheckValidationError("区间起点不能大于终点: %s" % s)
+    n = hi - lo + 1
+    if n > max_expand:
+        raise NetcheckValidationError(
+            "展开 %d 个 IP，超过 --max-expand=%d；请缩小范围或提高上限" % (n, max_expand)
+        )
+    out: List[str] = []
+    base = prefix + "."
+    for i in range(lo, hi + 1):
+        ip = "%s%d" % (base, i)
+        ipaddress.IPv4Address(ip)
+        out.append(ip)
+    return out
+
+
+def expand_ipv4_cidr(s: str, max_expand: int) -> List[str]:
+    """IPv4 CIDR → 可 ping 主机列表（/32 单主机；其余用 hosts 去掉网络位与广播位）。"""
+    raw = s.strip()
+    try:
+        net = ipaddress.ip_network(raw, strict=False)
+    except ValueError as e:
+        raise NetcheckValidationError("无效的 CIDR: %s" % raw) from e
+    if net.version != 4:
+        raise NetcheckValidationError("当前仅支持 IPv4 CIDR 展开: %s" % raw)
+    if not isinstance(net, ipaddress.IPv4Network):
+        raise NetcheckValidationError("内部错误: 非 IPv4Network")
+    if net.prefixlen < MIN_IPV4_CIDR_PREFIX:
+        raise NetcheckValidationError(
+            "CIDR 前缀不可短于 /%d（防止误扩过大网段）: %s" % (MIN_IPV4_CIDR_PREFIX, raw)
+        )
+
+    if net.prefixlen == 32:
+        ips = [str(net.network_address)]
+    elif net.prefixlen == 31:
+        ips = [str(h) for h in net.hosts()]
+    else:
+        ips = [str(h) for h in net.hosts()]
+
+    if len(ips) > max_expand:
+        raise NetcheckValidationError(
+            "CIDR %s 展开为 %d 个地址，超过 --max-expand=%d" % (raw, len(ips), max_expand)
+        )
+    for ip in ips:
+        InputValidator.validate_host(ip)
+    return ips
+
+
+def expand_cli_target(raw: str, max_expand: int) -> List[str]:
+    """
+    将单个 CLI 目标展开为 1..N 个探测端点（顺序稳定，去重则在上层做）。
+    支持: 单 IP/域名、host:port(TCP)、末段区间、IPv4 CIDR。
+    """
+    s = InputValidator.normalize_str(raw, "目标")
+    if is_tcp_style_target(s):
+        return [InputValidator.validate_target(s)]
+    if "/" in s:
+        return expand_ipv4_cidr(s, max_expand)
+    m = _RE_IPV4_LAST_OCTET_RANGE.match(s)
+    if m:
+        return expand_last_octet_range(s, max_expand)
+    return [InputValidator.validate_host(s)]
+
+
+def ordered_dedupe(items: List[str]) -> List[str]:
+    seen: set = set()
+    out: List[str] = []
+    for x in items:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+def partition_for_workers(items: List[str], max_workers: int) -> List[List[str]]:
+    """轮询分片，使各分片大小至多相差 1。"""
+    if not items:
+        return []
+    w = max(1, min(max_workers, len(items)))
+    buckets: List[List[str]] = [[] for _ in range(w)]
+    for i, it in enumerate(items):
+        buckets[i % w].append(it)
+    return [b for b in buckets if b]
+
+
+def _probe_path_writable(path: Path, is_dir: bool) -> bool:
+    """目录则探测该目录；文件则探测其父目录是否可创建并写入临时文件。"""
+    try:
+        if is_dir:
+            path.mkdir(parents=True, exist_ok=True)
+            parent = path
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            parent = path.parent
+        probe = parent / (".netcheck_wrprobe_%d.tmp" % os.getpid())
+        probe.write_text("", encoding="utf-8")
+        probe.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def count_valid_builtin_icmp_nodes() -> int:
+    """内置 NODE_IPS 中能通过主机校验的数量（与 start_test 中逐项 validate 逻辑一致）。"""
+    n = 0
+    for ip in NODE_IPS:
         try:
-            # 验证主机参数
-            host = self._validate_host(host)
-            
-            # 使用列表传递参数，避免shell注入（Python官方推荐）
-            cmd = ['ping', '-c', str(PING_COUNT), '-W', str(PING_TIMEOUT), '-n', '-q', host]
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=PING_TIMEOUT * PING_COUNT + 5)
-            return output
-        except subprocess.CalledProcessError as e:
-            return e.output if hasattr(e, 'output') else ''
-        except subprocess.TimeoutExpired:
-            return ''  # 超时返回空字符串
-        except ValueError as e:
-            # 参数验证失败
-            return ''
-        except Exception as e:
-            # 其他异常，记录但不中断
-            return ''
+            InputValidator.validate_host(ip)
+            n += 1
+        except NetcheckValidationError:
+            continue
+    return n
 
-    def parse_ping(self, output):
-        """Parse ping command output"""
-        packet_loss = 100
-        rtts = []
 
-        # Match packet loss
-        loss_match = re.search(r'(\d+)% packet loss', output)
-        if loss_match:
-            packet_loss = float(loss_match.group(1))
+def icmp_probes_required(args: argparse.Namespace) -> bool:
+    """是否与 ICMP/ping 有关（需要 ping 可执行文件可用）。"""
+    if args.no_default_nodes:
+        return len(args.icmp_cli_targets) > 0
+    return count_valid_builtin_icmp_nodes() > 0 or len(args.icmp_cli_targets) > 0
 
-        # Match RTT statistics
-        rtt_match = re.search(r'rtt min/avg/max/mdev = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+) ms', output)
-        if rtt_match:
-            rtts = map(float, [rtt_match.group(1), rtt_match.group(2), rtt_match.group(3)])
 
+def collect_preflight_issues(args: argparse.Namespace, log: logging.Logger) -> List[str]:
+    """
+    正式跑与 --dry-run 共用。返回非空即应中止（退出码 1）。
+    与 parse_arguments 中的语法/时长上限校验互补：环境、路径可写、ping、默认列表有效性。
+    """
+    err: List[str] = []
+
+    if not _probe_path_writable(args.report_dir_resolved, True):
+        err.append("报告目录不可写或无法创建: %s" % args.report_dir_resolved)
+
+    if args.json_summary:
+        jp = Path(args.json_summary)
+        if not _probe_path_writable(jp, False):
+            err.append("JSON 摘要输出路径父目录不可写或无法创建: %s" % jp.resolve())
+
+    if not args.no_log_file:
+        if not _probe_path_writable(Path(LOG_DIR), True):
+            err.append("日志目录 NETCHECK_LOG_DIR 不可写或无法创建: %s" % Path(LOG_DIR).resolve())
+        if args.log_file:
+            lp = Path(args.log_file)
+            if lp.is_absolute() and not _probe_path_writable(lp, False):
+                err.append("自定义 --log-file 父目录不可写: %s" % lp.parent.resolve())
+
+    builtin_ok = count_valid_builtin_icmp_nodes()
+    if not args.no_default_nodes and builtin_ok == 0:
+        log.warning(
+            "内置 NODE_IPS 共 %d 项全部未通过主机校验，ICMP 将仅使用命令行展开结果",
+            len(NODE_IPS),
+        )
+
+    if not args.no_default_nodes and builtin_ok == 0 and not args.icmp_cli_targets and not args.tcp_cli_targets:
+        err.append(
+            "未提供任何有效探测目标：内置 NODE_IPS 全部无效，且命令行无 ICMP/TCP；"
+            "请修正 NODE_IPS 或使用 --no-default-nodes 并指定目标"
+        )
+
+    if icmp_probes_required(args) and shutil.which("ping") is None:
+        err.append(
+            "当前 PATH 中未找到 ping 可执行文件，无法执行 ICMP 探测；"
+            "若仅需 TCP 请使用 --no-default-nodes 且不传 ICMP/段/CIDR 目标"
+        )
+
+    return err
+
+
+# ---------------------------------------------------------------------------
+# Ping
+# ---------------------------------------------------------------------------
+def _ping_command(host: str) -> List[str]:
+    system = platform.system()
+    if system == "Windows":
+        return [
+            "ping",
+            "-n",
+            str(PING_COUNT),
+            "-w",
+            str(int(PING_TIMEOUT * 1000)),
+            host,
+        ]
+    if system == "Darwin":
+        return [
+            "ping",
+            "-c",
+            str(PING_COUNT),
+            "-W",
+            str(int(PING_TIMEOUT * 1000)),
+            host,
+        ]
+    return [
+        "ping",
+        "-c",
+        str(PING_COUNT),
+        "-W",
+        str(PING_TIMEOUT),
+        "-q",
+        host,
+    ]
+
+
+def _parse_ping_output(text: str) -> Tuple[float, List[float]]:
+    if not text:
+        return 100.0, []
+
+    packet_loss = 100.0
+    m = re.search(r"(\d+)% packet loss", text)
+    if m:
+        packet_loss = float(m.group(1))
+    if packet_loss >= 100 and re.search(r"packet loss", text) is None:
+        m = re.search(r"\((\d+)%\s*loss\)", text, re.I)
+        if m:
+            packet_loss = float(m.group(1))
+    if packet_loss >= 100:
+        m = re.search(r"\((\d+)%\s*丢失\)", text)
+        if m:
+            packet_loss = float(m.group(1))
+
+    rtts: List[float] = []
+    rtt_m = re.search(
+        r"rtt min/avg/max/(?:mdev|stddev) = ([\d.]+)/([\d.]+)/([\d.]+)/[\d.]+ ms",
+        text,
+    )
+    if rtt_m:
+        rtts = [float(rtt_m.group(1)), float(rtt_m.group(2)), float(rtt_m.group(3))]
         return packet_loss, rtts
 
-    def test_tcp_port(self, target):
-        """
-        Test TCP port connectivity
-        增强参数验证和异常处理
-        """
-        # target 格式应该是 "host:port"，因为只有包含冒号的目标才会调用这个方法
-        if ':' not in target:
-            # 这确实不应该发生，为了安全起见抛出错误
-            raise ValueError("TCP test target must be in format 'host:port', got: %s" % target)
+    rtt_m = re.search(
+        r"Minimum\s*=\s*(\d+)\s*ms\s*,\s*Maximum\s*=\s*(\d+)\s*ms\s*,\s*Average\s*=\s*(\d+)\s*ms",
+        text,
+        re.I,
+    )
+    if rtt_m:
+        mn, mx, avg = float(rtt_m.group(1)), float(rtt_m.group(2)), float(rtt_m.group(3))
+        return packet_loss, [mn, avg, mx]
 
-        host, port_str = target.split(':', 1)
-        
-        # 验证主机
-        try:
-            host = self._validate_host(host)
-        except ValueError as e:
-            return False, 0
-        
-        # 验证端口
-        try:
-            port = int(port_str)
-            if not (1 <= port <= 65535):
-                raise ValueError("Port out of range: %d" % port)
-        except (ValueError, TypeError):
-            return False, 0
+    rtt_m = re.search(
+        r"最短\s*=\s*(\d+)\s*ms\s*[，,]\s*最长\s*=\s*(\d+)\s*ms\s*[，,]\s*平均\s*=\s*(\d+)\s*ms",
+        text,
+    )
+    if rtt_m:
+        mn, mx, avg = float(rtt_m.group(1)), float(rtt_m.group(2)), float(rtt_m.group(3))
+        return packet_loss, [mn, avg, mx]
 
-        start_time = time.time()
-        s = None
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(TCP_TIMEOUT)
-            s.connect((host, port))
-            # 明确类型：latency为float（毫秒）
-            latency = float((time.time() - start_time) * 1000.0)  # Convert to milliseconds
-            return True, latency
-        except socket.timeout:
-            return False, 0
-        except socket.error:
-            return False, 0
-        except Exception:
-            return False, 0
-        finally:
-            # 确保socket正确关闭
-            if s:
-                try:
-                    s.close()
-                except Exception:
-                    pass
+    return packet_loss, rtts
 
-    def ping_worker(self, host):
-        """
-        Worker thread for ping testing
-        增强异常处理和资源清理
-        """
-        try:
-            # 验证主机参数
-            host = self._validate_host(host)
-        except ValueError as e:
-            print("[%s] Invalid host %s: %s" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host, str(e)))
+
+def run_ping(host: str) -> str:
+    InputValidator.validate_host(host)
+    cmd = _ping_command(host)
+    timeout = max(PING_TIMEOUT * PING_COUNT + 5, PING_COUNT * 3)
+    logger.debug("执行 ping: %s", " ".join(cmd))
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=timeout,
+            text=True,
+            errors="replace",
+        )
+        out = (proc.stdout or "").strip()
+        if not out and proc.stderr:
+            out = (proc.stderr or "").strip()
+        return out
+    except subprocess.TimeoutExpired:
+        logger.debug("ping 超时: %s", host)
+        return ""
+    except OSError as e:
+        logger.debug("ping 执行失败: %s", e)
+        return ""
+    except Exception as e:
+        logger.debug("ping 异常: %s", e)
+        return ""
+
+
+def test_tcp_port(target: str) -> Tuple[bool, float]:
+    if ":" not in target:
+        raise ValueError("TCP 目标必须为 host:port")
+    host, port_str = target.split(":", 1)
+    host = InputValidator.validate_host(host)
+    try:
+        port = int(port_str)
+    except ValueError:
+        return False, 0.0
+    if not MIN_PORT <= port <= MAX_PORT:
+        return False, 0.0
+
+    start = time.time()
+    try:
+        with socket.create_connection((host, port), timeout=TCP_TIMEOUT):
+            return True, float((time.time() - start) * 1000.0)
+    except OSError:
+        return False, 0.0
+    except Exception:
+        return False, 0.0
+
+
+# ---------------------------------------------------------------------------
+# 探测引擎
+# ---------------------------------------------------------------------------
+class NetworkTester:
+    def __init__(self) -> None:
+        self.results: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
+        self.lock = threading.Lock()
+        self.stop_event = threading.Event()
+        self._shutdown = threading.Event()
+
+    def request_shutdown(self) -> None:
+        """供信号处理与 KeyboardInterrupt 调用，触发工作线程与主循环退出。"""
+        self.stop_event.set()
+        self._shutdown.set()
+
+    def ping_worker_slice(self, hosts: List[str], slice_id: int = 0) -> None:
+        """一线程负责多个 IP 顺序轮询（分片），控制线程与 ping 子进程总数，避免大规模扫网时拖垮本机。"""
+        valid: List[str] = []
+        for h in hosts:
+            try:
+                valid.append(InputValidator.validate_host(h))
+            except NetcheckValidationError as e:
+                logger.warning("无效主机 %s: %s", h, e)
+        if not valid:
             return
-        
+
         while not self.stop_event.is_set():
             try:
-                start_time = time.time()
+                t_round = time.time()
+                for host in valid:
+                    if self.stop_event.is_set():
+                        break
+                    text = run_ping(host)
+                    loss, rtt_list = _parse_ping_output(text)
+                    ts = datetime.now().isoformat()
 
-                output = self.run_ping(host)
-                loss, rtt = self.parse_ping(output)
-
-                with self.lock:
-                    if loss == 100:
-                        self.results[host].append({
-                            'loss': 100,
-                            'min': None,
-                            'avg': None,
-                            'max': None,
-                            'type': 'icmp',
-                            'timestamp': datetime.now().isoformat()
-                        })
-                        print("[%s] %s: ICMP Timeout" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host))
-                    else:
-                        # 确保rtt是列表且长度足够
-                        if rtt and len(rtt) >= 3:
-                            self.results[host].append({
-                                'loss': loss,
-                                'min': rtt[0],
-                                'avg': rtt[1],
-                                'max': rtt[2],
-                                'type': 'icmp',
-                                'timestamp': datetime.now().isoformat()
-                            })
-                            print("[%s] %s: ICMP Latency %.2fms (min: %.2fms, max: %.2fms), Loss %.1f%%" % (
-                                datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host, rtt[1], rtt[0], rtt[2], loss))
+                    with self.lock:
+                        if loss >= 100 or len(rtt_list) < 3:
+                            self.results[host].append(
+                                {
+                                    "loss": 100.0,
+                                    "min": None,
+                                    "avg": None,
+                                    "max": None,
+                                    "type": "icmp",
+                                    "timestamp": ts,
+                                }
+                            )
+                            if loss >= 100:
+                                logger.info("%s: ICMP 超时/失败", host)
+                            else:
+                                logger.info("%s: ICMP 输出无法解析 RTT（丢包=%.1f%%）", host, loss)
                         else:
-                            # RTT解析失败，记录为超时
-                            self.results[host].append({
-                                'loss': 100,
-                                'min': None,
-                                'avg': None,
-                                'max': None,
-                                'type': 'icmp',
-                                'timestamp': datetime.now().isoformat()
-                            })
-                            print("[%s] %s: ICMP Parse Error" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host))
+                            mn, avg, mx = rtt_list[0], rtt_list[1], rtt_list[2]
+                            self.results[host].append(
+                                {
+                                    "loss": float(loss),
+                                    "min": mn,
+                                    "avg": avg,
+                                    "max": mx,
+                                    "type": "icmp",
+                                    "timestamp": ts,
+                                }
+                            )
+                            logger.info(
+                                "%s: ICMP 延迟 avg=%.2fms (min=%.2f max=%.2f) 丢包=%.1f%%",
+                                host,
+                                avg,
+                                mn,
+                                mx,
+                                loss,
+                            )
 
-                # Calculate remaining time and wait
-                elapsed = float(time.time() - start_time)
-                remaining = max(0.0, float(PING_INTERVAL) - elapsed)
-                time.sleep(remaining)
+                elapsed = time.time() - t_round
+                time.sleep(max(0.0, float(PING_INTERVAL) - elapsed))
             except Exception as e:
-                # 捕获所有异常，防止线程崩溃
-                print("[%s] Error in ping_worker for %s: %s" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host, str(e)))
-                # 等待一段时间后继续
+                logger.warning(
+                    "ping_worker_slice #%d 异常: %s",
+                    slice_id,
+                    e,
+                    exc_info=logger.isEnabledFor(logging.DEBUG),
+                )
                 time.sleep(PING_INTERVAL)
 
-    def tcp_worker(self, target):
-        """
-        Worker thread for TCP testing
-        增强异常处理和资源清理
-        """
-        # target 应该是 "host:port" 格式
+    def tcp_worker(self, target: str) -> None:
         while not self.stop_event.is_set():
             try:
-                start_time = time.time()
-
-                success, latency = self.test_tcp_port(target)
+                t0 = time.time()
+                ok, latency = test_tcp_port(target)
+                ts = datetime.now().isoformat()
 
                 with self.lock:
-                    self.results[target].append({
-                        'success': success,
-                        'latency': latency,
-                        'type': 'tcp',
-                        'timestamp': datetime.now().isoformat()
-                    })
-                    if success:
-                        print("[%s] %s: TCP Connect Success, Latency %.2fms" % (
-                            datetime.now().strftime('%Y-%m-%d %H:%M:%S'), target, latency))
+                    self.results[target].append(
+                        {
+                            "success": ok,
+                            "latency": latency,
+                            "type": "tcp",
+                            "timestamp": ts,
+                        }
+                    )
+                    if ok:
+                        logger.info("%s: TCP 成功 延迟=%.2fms", target, latency)
                     else:
-                        print("[%s] %s: TCP Connect Failed" % (
-                            datetime.now().strftime('%Y-%m-%d %H:%M:%S'), target))
+                        logger.info("%s: TCP 失败", target)
 
-                # Calculate remaining time and wait
-                elapsed = float(time.time() - start_time)
-                remaining = max(0.0, float(PING_INTERVAL) - elapsed)
-                time.sleep(remaining)
+                elapsed = time.time() - t0
+                time.sleep(max(0.0, float(PING_INTERVAL) - elapsed))
             except Exception as e:
-                # 捕获所有异常，防止线程崩溃
-                print("[%s] Error in tcp_worker for %s: %s" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), target, str(e)))
-                # 等待一段时间后继续
+                logger.warning(
+                    "tcp_worker 异常 target=%s: %s",
+                    target,
+                    e,
+                    exc_info=logger.isEnabledFor(logging.DEBUG),
+                )
                 time.sleep(PING_INTERVAL)
 
-    def start_test(self, duration, extra_targets=None, no_default_nodes=False):
-        """
-        Start network testing
-        增强参数说明和用户友好性
-        """
-        start_time = float(time.time())
-        end_time = float(start_time + float(duration))
-        threads = []
+    def start_test(
+        self,
+        duration: int,
+        icmp_cli: Optional[List[str]] = None,
+        tcp_cli: Optional[List[str]] = None,
+        no_default_nodes: bool = False,
+        max_icmp_workers: int = DEFAULT_MAX_ICMP_WORKERS,
+    ) -> DefaultDict[str, List[Dict[str, Any]]]:
+        icmp_cli = icmp_cli or []
+        tcp_cli = tcp_cli or []
+        start_time = time.time()
+        end_time = start_time + float(duration)
+        threads: List[threading.Thread] = []
 
-        print("=" * 80)
-        print("网络连接稳定性测试")
-        print("=" * 80)
-        print("测试配置:")
-        print("  测试时长: %d 秒 (%.1f 小时)" % (duration, duration / 3600.0))
-        print("  预计结束时间: %s" %
-              datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S'))
-        
+        logger.info("=" * 80)
+        logger.info(
+            "网络连接稳定性测试 version=%s python=%s platform=%s",
+            __version__,
+            platform.python_version(),
+            platform.platform(),
+        )
+        logger.info("=" * 80)
+        logger.info("测试时长: %d 秒 (%.1f 小时)", duration, duration / 3600.0)
+        logger.info(
+            "预计结束: %s",
+            datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S"),
+        )
+
+        all_icmp: List[str] = []
         if not no_default_nodes:
-            print("  默认节点数: %d" % len(NODE_IPS))
+            logger.info("默认节点数: %d", len(NODE_IPS))
             if len(NODE_IPS) <= 10:
-                print("  默认节点列表: %s" % ", ".join(NODE_IPS))
+                logger.info("默认节点: %s", ", ".join(NODE_IPS))
             else:
-                print("  默认节点列表: %s ... (共%d个)" % (", ".join(NODE_IPS[:10]), len(NODE_IPS)))
-        
-        if extra_targets:
-            print("  额外目标数: %d" % len(extra_targets))
-            print("  额外目标: %s" % ", ".join(extra_targets))
-        else:
-            print("  额外目标: 无")
-        
-        print("  测试间隔: %d 秒" % PING_INTERVAL)
-        print("  Ping超时: %d 秒" % PING_TIMEOUT)
-        print("  TCP超时: %d 秒" % TCP_TIMEOUT)
-        print("=" * 80)
-        print("开始测试... (按 Ctrl+C 可中断)")
-        print("=" * 80)
-
-        # Start ICMP test threads for default nodes
-        if not no_default_nodes:
+                logger.info("默认节点(节选): %s ... 共 %d 个", ", ".join(NODE_IPS[:10]), len(NODE_IPS))
             for ip in NODE_IPS:
                 try:
-                    # 验证IP地址
-                    ip = self._validate_host(ip)
-                    t = threading.Thread(target=self.ping_worker, args=(ip,))
-                    t.daemon = True
-                    t.start()
-                    threads.append(t)
-                    self.active_threads.append(t)
-                except ValueError as e:
-                    print("[WARNING] 跳过无效的默认节点 %s: %s" % (ip, str(e)))
+                    all_icmp.append(InputValidator.validate_host(ip))
+                except NetcheckValidationError as e:
+                    logger.warning("跳过无效默认节点 %s: %s", ip, e)
 
-        # Start test threads for extra targets
-        if extra_targets:
-            for target in extra_targets:
-                try:
-                    if ':' in target:
-                        # 验证TCP目标格式
-                        host, port_str = target.split(':', 1)
-                        self._validate_host(host)
-                        port = int(port_str)
-                        if not (1 <= port <= 65535):
-                            raise ValueError("Port out of range: %d" % port)
-                        t = threading.Thread(target=self.tcp_worker, args=(target,))
-                    else:
-                        # 验证主机
-                        target = self._validate_host(target)
-                        t = threading.Thread(target=self.ping_worker, args=(target,))
-                    t.daemon = True
-                    t.start()
-                    threads.append(t)
-                    self.active_threads.append(t)
-                except (ValueError, TypeError) as e:
-                    print("[WARNING] 跳过无效的目标 %s: %s" % (target, str(e)))
+        all_icmp.extend(icmp_cli)
+        all_icmp = ordered_dedupe(all_icmp)
 
-        # Wait for test duration
+        if icmp_cli:
+            logger.info("命令行展开 ICMP 目标数: %d（已与默认列表去重合并）", len(icmp_cli))
+        if tcp_cli:
+            logger.info("TCP 目标 (%d): %s", len(tcp_cli), ", ".join(tcp_cli[:20]) + (" ..." if len(tcp_cli) > 20 else ""))
+
+        if not all_icmp and not tcp_cli:
+            logger.info("ICMP: 无；TCP: 无")
+        else:
+            logger.info(
+                "ICMP 总目标: %d | ICMP 工作线程上限: %d | TCP 目标: %d",
+                len(all_icmp),
+                max(1, min(max_icmp_workers, max(1, len(all_icmp)))),
+                len(tcp_cli),
+            )
+
+        logger.info("间隔 %ds | Ping 超时 %ds | TCP 超时 %ds", PING_INTERVAL, PING_TIMEOUT, TCP_TIMEOUT)
+        logger.info("说明: 多 IP 时分片轮询，单 IP 两次探测间隔≈（本分片一轮耗时）+ %ds", PING_INTERVAL)
+        logger.info("开始测试 (Ctrl+C 或 SIGTERM 可优雅结束)")
+        logger.info("=" * 80)
+
+        chunks = partition_for_workers(all_icmp, max_icmp_workers)
+        for idx, chunk in enumerate(chunks):
+            t = threading.Thread(
+                target=self.ping_worker_slice,
+                args=(chunk, idx),
+                daemon=True,
+                name="netcheck-ping-chunk-%d" % idx,
+            )
+            t.start()
+            threads.append(t)
+
+        for target in tcp_cli:
+            try:
+                InputValidator.validate_target(target)
+                t = threading.Thread(
+                    target=self.tcp_worker,
+                    args=(target,),
+                    daemon=True,
+                    name="netcheck-tcp-%s" % target.replace(":", "_"),
+                )
+                t.start()
+                threads.append(t)
+            except NetcheckValidationError as e:
+                logger.warning("跳过无效 TCP 目标 %s: %s", target, e)
+
+        if not threads:
+            logger.error("没有任何有效测试目标，退出。")
+            return self.results
+
         try:
-            while float(time.time()) < end_time:
-                time.sleep(1)
+            while time.time() < end_time and not self.stop_event.is_set():
+                time.sleep(0.25)
         except KeyboardInterrupt:
-            print("\n\n[INFO] 测试被用户中断")
-        finally:
-            # Stop all worker threads - 确保资源正确清理
+            logger.info("收到 KeyboardInterrupt，正在停止工作线程…")
+            self.request_shutdown()
+
+        if not self._shutdown.is_set():
             self.stop_event.set()
-            # 给线程一些时间完成当前操作
-            time.sleep(0.5)
-            for t in threads:
-                try:
-                    t.join(timeout=2)  # 增加超时时间，确保线程正确退出
-                except Exception as e:
-                    print("Warning: Error joining thread: %s" % str(e))
-            
-            # 清理活动线程列表
-            self.active_threads = []
+
+        for t in threads:
+            t.join(timeout=5.0)
+            if t.is_alive():
+                logger.warning("工作线程未及时退出: %s", t.name)
 
         return self.results
 
 
-def generate_report(results):
-    """
-    生成综合测试报告
-    参照dbclone.py和dbmigration.py的风格，提供清晰的报告格式
-    """
+# ---------------------------------------------------------------------------
+# 报告与 SLO
+# ---------------------------------------------------------------------------
+@dataclass
+class QualitySummary:
+    """汇总结论，供退出码与 JSON 输出使用。"""
+
+    overall_ok: bool
+    target_count: int
+    failed_targets: List[str] = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "version": __version__,
+                "overall_ok": self.overall_ok,
+                "target_count": self.target_count,
+                "failed_targets": self.failed_targets,
+                "notes": self.notes,
+                "generated_at": datetime.now().isoformat(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+
+
+def evaluate_quality(results: DefaultDict[str, List[Dict[str, Any]]]) -> QualitySummary:
+    if not results:
+        return QualitySummary(
+            overall_ok=False,
+            target_count=0,
+            failed_targets=[],
+            notes=["无测试数据"],
+        )
+
+    failed: List[str] = []
+    notes: List[str] = []
+
+    for target in sorted(results.keys()):
+        data = results[target]
+        if not data:
+            failed.append(target)
+            notes.append("%s: 无数据" % target)
+            continue
+
+        ttype = data[0]["type"]
+        if ttype == "icmp":
+            total = len(data)
+            bad = sum(1 for d in data if d.get("avg") is None or d.get("loss", 100) >= 100)
+            bad_pct = (float(bad) / float(total)) * 100.0 if total else 100.0
+            ok_rows = [d for d in data if d.get("loss", 100) < 100 and d.get("avg") is not None]
+
+            if bad_pct > ICMP_FAIL_SAMPLE_RATIO_MAX_PCT:
+                failed.append(target)
+                notes.append(
+                    "%s: ICMP 失败/无统计占比 %.1f%% (阈值 %.1f%%)"
+                    % (target, bad_pct, ICMP_FAIL_SAMPLE_RATIO_MAX_PCT)
+                )
+                continue
+            if ok_rows:
+                avg_lat = sum(float(d["avg"]) for d in ok_rows) / len(ok_rows)
+                jitter = max(float(d["max"]) for d in ok_rows) - min(float(d["min"]) for d in ok_rows)
+                if avg_lat > ICMP_AVG_LATENCY_MS_WARN:
+                    failed.append(target)
+                    notes.append("%s: ICMP 平均延迟 %.2fms (阈值 %.0fms)" % (target, avg_lat, ICMP_AVG_LATENCY_MS_WARN))
+                    continue
+                if jitter > ICMP_JITTER_MS_WARN:
+                    failed.append(target)
+                    notes.append("%s: ICMP 抖动 %.2fms (阈值 %.0fms)" % (target, jitter, ICMP_JITTER_MS_WARN))
+                    continue
+
+        elif ttype == "tcp":
+            total = len(data)
+            succ = sum(1 for d in data if d["success"])
+            succ_pct = (float(succ) / float(total)) * 100.0 if total else 0.0
+            ok_rows = [d for d in data if d["success"]]
+
+            if succ_pct < TCP_SUCCESS_RATIO_MIN_PCT:
+                failed.append(target)
+                notes.append(
+                    "%s: TCP 成功率 %.1f%% (阈值 ≥%.1f%%)"
+                    % (target, succ_pct, TCP_SUCCESS_RATIO_MIN_PCT)
+                )
+                continue
+            if ok_rows:
+                avg_lat = sum(float(d["latency"]) for d in ok_rows) / len(ok_rows)
+                if avg_lat > TCP_AVG_LATENCY_MS_WARN:
+                    failed.append(target)
+                    notes.append("%s: TCP 平均延迟 %.2fms (阈值 %.0fms)" % (target, avg_lat, TCP_AVG_LATENCY_MS_WARN))
+                    continue
+
+    return QualitySummary(
+        overall_ok=len(failed) == 0,
+        target_count=len(results),
+        failed_targets=failed,
+        notes=notes,
+    )
+
+
+def generate_report(results: DefaultDict[str, List[Dict[str, Any]]]) -> str:
     if not results:
         return "=" * 80 + "\n测试报告\n" + "=" * 80 + "\n\n无测试数据\n"
-    
-    report = []
-    report.append("=" * 80)
-    report.append("网络连接稳定性测试报告")
-    report.append("生成时间: %s" % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    report.append("=" * 80)
-    report.append("")
+
+    lines: List[str] = []
+    lines.extend(
+        [
+            "=" * 80,
+            "网络连接稳定性测试报告",
+            "工具版本: %s" % __version__,
+            "生成时间: %s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "=" * 80,
+            "",
+        ]
+    )
 
     for target in sorted(results.keys()):
         data = results[target]
         if not data:
             continue
 
-        test_type = data[0]['type']
+        test_type = data[0]["type"]
 
-        if test_type == 'icmp':
+        if test_type == "icmp":
             total_tests = len(data)
-            timeout_count = sum(1 for d in data if d['loss'] == 100)
-            timeout_percent = (float(timeout_count) / float(total_tests)) * 100.0
+            bad = sum(1 for d in data if d.get("avg") is None or d.get("loss", 100) >= 100)
+            timeout_percent = (float(bad) / float(total_tests)) * 100.0 if total_tests else 0.0
 
-            successful_pings = [d for d in data if d['loss'] < 100 and d['avg'] is not None]
-            if successful_pings:
-                avg_latency = float(sum(float(d['avg']) for d in successful_pings)) / float(len(successful_pings))
-                min_latency = float(min(float(d['min']) for d in successful_pings))
-                max_latency = float(max(float(d['max']) for d in successful_pings))
-                jitter = float(max_latency - min_latency)
+            ok_rows = [d for d in data if d.get("loss", 100) < 100 and d.get("avg") is not None]
+            if ok_rows:
+                avg_latency = sum(float(d["avg"]) for d in ok_rows) / len(ok_rows)
+                min_latency = min(float(d["min"]) for d in ok_rows)
+                max_latency = max(float(d["max"]) for d in ok_rows)
+                jitter = max_latency - min_latency
             else:
                 avg_latency = min_latency = max_latency = jitter = 0.0
 
-            report.append("节点: %s (ICMP Ping测试)" % target)
-            report.append("  总测试次数: %d" % total_tests)
-            report.append("  超时次数: %d (%.1f%%)" % (timeout_count, timeout_percent))
-            if successful_pings:
-                report.append("  平均延迟: %.2f ms" % avg_latency)
-                report.append("  最小延迟: %.2f ms" % min_latency)
-                report.append("  最大延迟: %.2f ms" % max_latency)
-                report.append("  抖动: %.2f ms" % jitter)
+            lines.append("节点: %s (ICMP)" % target)
+            lines.append("  总次数: %d" % total_tests)
+            lines.append("  失败/无统计次数: %d (%.1f%%)" % (bad, timeout_percent))
+            if ok_rows:
+                lines.append("  平均延迟: %.2f ms" % avg_latency)
+                lines.append("  最小延迟: %.2f ms" % min_latency)
+                lines.append("  最大延迟: %.2f ms" % max_latency)
+                lines.append("  抖动: %.2f ms" % jitter)
             else:
-                report.append("  无成功连接")
+                lines.append("  无成功样本")
 
-            # 状态评估
             status_ok = True
-            if timeout_percent > 5:
-                report.append("  ⚠️  [警告] 丢包率过高 (>5%%)")
+            if timeout_percent > ICMP_FAIL_SAMPLE_RATIO_MAX_PCT:
+                lines.append(
+                    "  [警告] 失败/无统计占比过高 (>%.1f%%)" % ICMP_FAIL_SAMPLE_RATIO_MAX_PCT
+                )
                 status_ok = False
-            elif successful_pings and avg_latency > 100:
-                report.append("  ⚠️  [警告] 平均延迟过高 (>100ms)")
+            elif ok_rows and avg_latency > ICMP_AVG_LATENCY_MS_WARN:
+                lines.append("  [警告] 平均延迟过高 (>%g ms)" % ICMP_AVG_LATENCY_MS_WARN)
                 status_ok = False
-            elif successful_pings and jitter > 50:
-                report.append("  ⚠️  [警告] 抖动过大 (>50ms)")
+            elif ok_rows and jitter > ICMP_JITTER_MS_WARN:
+                lines.append("  [警告] 抖动过大 (>%g ms)" % ICMP_JITTER_MS_WARN)
                 status_ok = False
-            
-            if status_ok and successful_pings:
-                report.append("  ✅ 连接质量良好")
+            if status_ok and ok_rows:
+                lines.append("  [OK] 连接质量良好")
 
-        elif test_type == 'tcp':
+        elif test_type == "tcp":
             total_tests = len(data)
-            success_count = sum(1 for d in data if d['success'])
-            success_percent = (float(success_count) / float(total_tests)) * 100.0
+            success_count = sum(1 for d in data if d["success"])
+            success_percent = (float(success_count) / float(total_tests)) * 100.0 if total_tests else 0.0
 
-            successful_conns = [d for d in data if d['success']]
-            if successful_conns:
-                avg_latency = float(sum(float(d['latency']) for d in successful_conns)) / float(len(successful_conns))
-                min_latency = float(min(float(d['latency']) for d in successful_conns))
-                max_latency = float(max(float(d['latency']) for d in successful_conns))
-                jitter = float(max_latency - min_latency)
+            ok_rows = [d for d in data if d["success"]]
+            if ok_rows:
+                avg_latency = sum(float(d["latency"]) for d in ok_rows) / len(ok_rows)
+                min_latency = min(float(d["latency"]) for d in ok_rows)
+                max_latency = max(float(d["latency"]) for d in ok_rows)
+                jitter = max_latency - min_latency
             else:
-                avg_latency = min_latency = max_latency = jitter = 0
+                avg_latency = min_latency = max_latency = jitter = 0.0
 
-            report.append("目标: %s (TCP连接测试)" % target)
-            report.append("  总测试次数: %d" % total_tests)
-            report.append("  成功率: %.1f%%" % success_percent)
-            if successful_conns:
-                report.append("  平均延迟: %.2f ms" % avg_latency)
-                report.append("  最小延迟: %.2f ms" % min_latency)
-                report.append("  最大延迟: %.2f ms" % max_latency)
-                report.append("  抖动: %.2f ms" % jitter)
+            lines.append("目标: %s (TCP)" % target)
+            lines.append("  总次数: %d" % total_tests)
+            lines.append("  成功率: %.1f%%" % success_percent)
+            if ok_rows:
+                lines.append("  平均延迟: %.2f ms" % avg_latency)
+                lines.append("  最小延迟: %.2f ms" % min_latency)
+                lines.append("  最大延迟: %.2f ms" % max_latency)
+                lines.append("  抖动: %.2f ms" % jitter)
             else:
-                report.append("  无成功连接")
+                lines.append("  无成功连接")
 
-            # 状态评估
             status_ok = True
-            if success_percent < 95:
-                report.append("  ⚠️  [警告] 连接成功率过低 (<95%%)")
+            if success_percent < TCP_SUCCESS_RATIO_MIN_PCT:
+                lines.append("  [警告] 成功率过低 (<%g%%)" % TCP_SUCCESS_RATIO_MIN_PCT)
                 status_ok = False
-            elif successful_conns and avg_latency > 200:
-                report.append("  ⚠️  [警告] 连接延迟过高 (>200ms)")
+            elif ok_rows and avg_latency > TCP_AVG_LATENCY_MS_WARN:
+                lines.append("  [警告] 延迟过高 (>%g ms)" % TCP_AVG_LATENCY_MS_WARN)
                 status_ok = False
-            
-            if status_ok and successful_conns:
-                report.append("  ✅ 连接质量良好")
+            if status_ok and ok_rows:
+                lines.append("  [OK] 连接质量良好")
 
-        report.append("-" * 60)
-        report.append("")
+        lines.append("-" * 60)
+        lines.append("")
 
-    # 添加总结
-    total_targets = len(results)
-    report.append("=" * 80)
-    report.append("测试总结")
-    report.append("=" * 80)
-    report.append("测试目标总数: %d" % total_targets)
-    report.append("=" * 80)
+    summary = evaluate_quality(results)
+    lines.extend(
+        [
+            "=" * 80,
+            "SLO 汇总",
+            "=" * 80,
+            "目标数: %d" % summary.target_count,
+            "SLO 是否通过: %s" % ("是" if summary.overall_ok else "否"),
+        ]
+    )
+    if summary.notes:
+        lines.append("说明:")
+        for n in summary.notes:
+            lines.append("  - %s" % n)
+    lines.append("=" * 80)
+    return "\n".join(lines)
 
-    return "\n".join(report)
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+def _configure_stdio_utf8() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconf = getattr(stream, "reconfigure", None)
+        if reconf:
+            try:
+                reconf(encoding="utf-8", errors="replace")
+            except (OSError, ValueError, AttributeError):
+                pass
 
 
-def validate_target(target):
-    """
-    验证目标格式 - 支持IP、IP:PORT、域名、域名:PORT
-    基于Python官方最佳实践：严格验证所有用户输入
-    """
-    if not target:
-        raise ValueError("目标不能为空")
-    
-    # 确保target是字符串（Python 3.6+）
-    if isinstance(target, bytes):
-        target = target.decode('utf-8')
-    if not isinstance(target, str):
-        raise ValueError("目标必须是字符串类型")
-    
-    if ':' in target:
-        parts = target.split(':', 1)  # Split only on first colon
-        if len(parts) != 2:
-            raise ValueError("无效的目标格式 - 应为 HOST 或 HOST:PORT")
+def _install_signal_handlers(request_shutdown: Callable[[], None]) -> None:
+    def _handler(signum: int, frame: Any) -> None:
+        sig_name = getattr(signal, "Signals", None)
+        name = str(signum)
+        if sig_name is not None:
+            try:
+                name = signal.Signals(signum).name
+            except (ValueError, AttributeError):
+                pass
+        logging.getLogger("netcheck").info("收到信号 %s，准备停止…", name)
+        request_shutdown()
 
-        host_part, port_part = parts
-
-        # Validate host part (IP or domain)
+    signal.signal(signal.SIGINT, _handler)
+    if hasattr(signal, "SIGTERM"):
         try:
-            # First try to validate as IP address
-            # 确保host_part是字符串
-            if isinstance(host_part, bytes):
-                host_part = host_part.decode('utf-8')
-            ipaddress.ip_address(host_part)
-        except (ValueError, AttributeError):
-            # If not an IP, validate as domain name
-            if not re.match(
-                    r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$',
-                    host_part):
-                raise ValueError("无效的主机 - 必须是有效的IP地址或域名")
-
-        # Validate port part
-        try:
-            port = int(port_part)
-            if not 1 <= port <= 65535:
-                raise ValueError("端口号超出范围 (1-65535)")
-        except ValueError:
-            raise ValueError("无效的端口号")
-
-        return target
-    else:
-        # Validate as plain host (IP or domain)
-        try:
-            # First try to validate as IP address
-            # 确保target是字符串（已在函数开头处理过，但为了安全再次检查）
-            if isinstance(target, bytes):
-                target = target.decode('utf-8')
-            ipaddress.ip_address(target)
-            return target
-        except (ValueError, AttributeError):
-            # If not an IP, validate as domain name
-            if not re.match(
-                    r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$',
-                    target):
-                raise ValueError("无效的目标 - 必须是有效的IP地址或域名")
-            return target
+            signal.signal(signal.SIGTERM, _handler)
+        except (ValueError, OSError):
+            pass
 
 
-def parse_arguments():
-    """
-    解析命令行参数 - 参照dbclone.py和dbmigration.py的风格
-    提供完整的帮助文档和使用示例
-    """
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description='网络连接稳定性测试工具 - 支持ICMP和TCP连接测试',
+        description=(
+            "网络连接稳定性测试（ICMP / TCP）。参数解析阶段做语法与展开上限校验；"
+            "启动前与 --dry-run 共用前置检查（路径可写、ping、内置节点等）。"
+            "默认滚动日志目录见 NETCHECK_LOG_DIR。"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-使用示例:
-
-  # 使用默认配置测试默认节点（2小时）
+示例:
   %(prog)s
-
-  # 测试指定时长（1小时 = 3600秒）
   %(prog)s -d 3600
+  %(prog)s --no-default-nodes 192.168.125.29-87
+  %(prog)s --no-default-nodes 192.168.125.0/28
+  %(prog)s --dry-run --no-default-nodes 10.0.0.1
+  %(prog)s --json-summary summary.json 192.168.1.10:443
 
-  # 测试默认节点 + 额外IP地址
-  %(prog)s 192.168.1.100 192.168.1.101
+展开与并发:
+  --max-expand              命令行 ICMP 展开去重后总个数上限（不含内置 NODE_IPS）
+  --max-icmp-workers        ICMP 分片工作线程上限
+  NETCHECK_MAX_EXPAND       覆盖默认展开上限（非法整型则忽略，用 1024）
+  NETCHECK_MAX_ICMP_WORKERS 覆盖默认线程上限（非法整型则忽略，用 64）
 
-  # 测试默认节点 + TCP端口连接
-  %(prog)s 192.168.1.100:3306 192.168.1.100:8080
+前置校验（与 --dry-run 一致）:
+  报告目录 / 日志目录 / --json-summary 父目录可写；需 ICMP 时 PATH 需有 ping；
+  内置 NODE_IPS 全无效且无命令行目标时报错
 
-  # 测试默认节点 + 域名
-  %(prog)s example.com
+环境变量:
+  NETCHECK_LOG_DIR             日志目录（默认 ./logs）
+  NETCHECK_MAX_DURATION_SEC    单次运行最大秒数（默认约 30 天）
 
-  # 测试默认节点 + 域名和端口
-  %(prog)s api.example.com:443
+目标语法（与实现一致）:
+  ICMP: IPv4 / 域名 / IPv6；IPv4 末段区间 a.b.c.d-e；IPv4 CIDR（hosts 展开）
+  TCP:  仅 host:port（单一冒号 + 数字端口），不支持 IPv6:port 与段展开
 
-  # 完整示例：1小时测试，包含多个目标
-  %(prog)s -d 3600 192.168.1.100 192.168.1.100:3306 api.example.com:443
-
-  # 仅测试额外目标（不测试默认节点）
-  %(prog)s --no-default-nodes 192.168.1.100 192.168.1.101
-
-目标格式说明:
-  - IP地址: 192.168.1.100 (ICMP测试)
-  - IP:端口: 192.168.1.100:3306 (TCP连接测试)
-  - 域名: example.com (ICMP测试)
-  - 域名:端口: api.example.com:443 (TCP连接测试)
-
-默认配置:
-  - 测试时长: 7200秒 (2小时)
-  - 默认节点: 预定义的NODE_IPS列表
-  - Ping间隔: 1秒
-  - Ping超时: 2秒
-  - TCP超时: 2秒
-
-报告输出:
-  - 实时输出: 控制台实时显示测试结果
-  - 测试报告: 自动保存为 network_test_report_YYYYMMDD_HHMMSS.txt
-        """
+退出码:
+  0  正常且 SLO 通过
+  1  参数错误 / 失败 / 用户中断 / 无目标
+  2  测试跑完但 SLO 未通过（适合 CI）
+        """,
     )
-
-    parser.add_argument('-d', '--duration', type=int, default=DEFAULT_TEST_DURATION,
-                        help='测试时长（秒），默认: %d (2小时)' % DEFAULT_TEST_DURATION)
-    parser.add_argument('--no-default-nodes', action='store_true',
-                        help='不测试默认节点，仅测试指定的额外目标')
-    parser.add_argument('targets', nargs='*',
-                        help='额外的测试目标（IP地址、IP:端口、域名或域名:端口）')
+    parser.add_argument("--version", action="version", version="netcheck %s" % __version__)
+    parser.add_argument(
+        "-d", "--duration", type=int, default=DEFAULT_TEST_DURATION,
+        help="测试时长（秒），默认 %(default)s",
+    )
+    parser.add_argument(
+        "--no-default-nodes", action="store_true",
+        help="不测试内置 NODE_IPS，仅测命令行目标",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="DEBUG 日志",
+    )
+    parser.add_argument(
+        "--no-log-file", action="store_true",
+        help="仅控制台输出，不写滚动日志文件",
+    )
+    parser.add_argument(
+        "--log-file", type=str, default=None,
+        help="日志文件名或绝对路径；相对路径只取文件名并落在 NETCHECK_LOG_DIR 下",
+    )
+    parser.add_argument(
+        "--report-dir", type=str, default=".",
+        help="测试报告 txt 输出目录（默认当前目录）",
+    )
+    parser.add_argument(
+        "--no-report-file", action="store_true",
+        help="不写入 txt 报告（仍打印到 stdout）",
+    )
+    parser.add_argument(
+        "--json-summary", type=str, default=None, metavar="FILE",
+        help="写入 JSON 摘要（SLO 结果），便于监控/流水线采集",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="校验目标语法、展开上限及前置条件（路径可写、ping 等），打印计划后不探测",
+    )
+    parser.add_argument(
+        "--max-expand",
+        type=int,
+        default=DEFAULT_MAX_EXPAND,
+        metavar="N",
+        help="命令行 ICMP 展开去重后地址总数上限（不含内置节点），默认 %(default)s",
+    )
+    parser.add_argument(
+        "--max-icmp-workers",
+        type=int,
+        default=DEFAULT_MAX_ICMP_WORKERS,
+        metavar="N",
+        help="ICMP 分片工作线程上限，默认 %(default)s",
+    )
+    parser.add_argument(
+        "targets",
+        nargs="*",
+        help="额外目标: IP / IPv4末段区间 / IPv4 CIDR / 域名 / host:port(TCP)",
+    )
 
     args = parser.parse_args()
 
-    # 验证duration
     if args.duration <= 0:
-        parser.error("测试时长必须大于0")
+        parser.error("测试时长必须大于 0")
+    if args.duration > MAX_TEST_DURATION_SEC:
+        parser.error(
+            "测试时长 %d 秒超过上限 %d（环境变量 NETCHECK_MAX_DURATION_SEC 可调）"
+            % (args.duration, MAX_TEST_DURATION_SEC)
+        )
+    if args.max_expand < 1:
+        parser.error("--max-expand 至少为 1")
+    if args.max_icmp_workers < 1:
+        parser.error("--max-icmp-workers 至少为 1")
 
-    # 验证所有目标
-    validated_targets = []
-    for target in args.targets:
+    raw_flat: List[str] = []
+    for t in args.targets:
         try:
-            validated_targets.append(validate_target(target))
-        except ValueError as e:
-            parser.error("无效的目标 '%s': %s" % (target, str(e)))
+            raw_flat.extend(expand_cli_target(t, args.max_expand))
+        except NetcheckValidationError as e:
+            parser.error("目标 %r: %s" % (t, e))
 
-    return args.duration, validated_targets, args.no_default_nodes
+    icmp_cli = ordered_dedupe([x for x in raw_flat if not is_tcp_style_target(x)])
+    tcp_cli = ordered_dedupe([x for x in raw_flat if is_tcp_style_target(x)])
 
+    if len(icmp_cli) > args.max_expand:
+        parser.error(
+            "命令行 ICMP 展开去重后共 %d 个，超过 --max-expand=%d；请缩小范围或调大上限"
+            % (len(icmp_cli), args.max_expand)
+        )
 
-def main():
-    """主函数 - 参照dbclone.py和dbmigration.py的风格"""
     try:
-        duration, extra_targets, no_default_nodes = parse_arguments()
+        args.report_dir_resolved = InputValidator.validate_report_dir(args.report_dir)
+    except NetcheckValidationError as e:
+        parser.error("无效报告目录: %s" % e)
 
-        # 检查是否有任何目标
-        if no_default_nodes and not extra_targets:
-            print("错误: 使用 --no-default-nodes 时必须指定至少一个测试目标")
-            print("使用 %s --help 查看帮助信息" % sys.argv[0])
-            sys.exit(1)
+    args.icmp_cli_targets = icmp_cli
+    args.tcp_cli_targets = tcp_cli
+    return args
 
-        # Start testing
-        tester = NetworkTester()
-        results = tester.start_test(duration, extra_targets, no_default_nodes)
 
-        # Generate report
-        report = generate_report(results)
-        print("\n" + report)
+def main() -> int:
+    _configure_stdio_utf8()
+    args = parse_arguments()
 
-        # Save report to file
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = 'network_test_report_%s.txt' % timestamp
+    setup_logging(
+        verbose=args.verbose,
+        log_file=args.log_file,
+        no_log_file=args.no_log_file,
+    )
+
+    if args.no_default_nodes and not args.icmp_cli_targets and not args.tcp_cli_targets:
+        logger.error("使用 --no-default-nodes 时必须至少指定一个目标。运行: %s --help", Path(sys.argv[0]).name)
+        return 1
+
+    pre_issues = collect_preflight_issues(args, logger)
+    if pre_issues:
+        for msg in pre_issues:
+            logger.error("[preflight] %s", msg)
+        return 1
+
+    if args.dry_run:
+        logger.info(
+            "[dry-run] 语法与前置校验均已通过 duration=%ss no_default_nodes=%s icmp_cli=%d tcp_cli=%d "
+            "max_expand=%d max_icmp_workers=%d max_duration_cap=%d",
+            args.duration,
+            args.no_default_nodes,
+            len(args.icmp_cli_targets),
+            len(args.tcp_cli_targets),
+            args.max_expand,
+            args.max_icmp_workers,
+            MAX_TEST_DURATION_SEC,
+        )
+        return 0
+
+    tester = NetworkTester()
+    _install_signal_handlers(tester.request_shutdown)
+
+    tester.start_test(
+        args.duration,
+        args.icmp_cli_targets,
+        args.tcp_cli_targets,
+        args.no_default_nodes,
+        args.max_icmp_workers,
+    )
+
+    report = generate_report(tester.results)
+    print("\n" + report)
+
+    summary = evaluate_quality(tester.results)
+    if args.json_summary:
         try:
-            with open(filename, 'w') as f:
-                f.write(report)
-            print("\n" + "=" * 80)
-            print("✅ 测试报告已保存: %s" % filename)
+            Path(args.json_summary).write_text(summary.to_json(), encoding="utf-8")
+            logger.info("JSON 摘要已写入: %s", Path(args.json_summary).resolve())
+        except OSError as e:
+            logger.warning("无法写入 JSON 摘要: %s", e)
+
+    if not args.no_report_file:
+        filename = args.report_dir_resolved / (
+            "network_test_report_%s.txt" % datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
+        try:
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            filename.write_text(report, encoding="utf-8")
+            logger.info("报告已保存: %s", filename.resolve())
             print("=" * 80)
-        except IOError as e:
-            print("\n[WARNING] 无法保存测试报告到文件: %s" % str(e))
-            print("报告内容已显示在上方")
+            print("报告已保存: %s" % filename.resolve())
+            print("=" * 80)
+        except OSError as e:
+            logger.warning("无法写入报告文件: %s", e)
 
+    if not tester.results:
+        return 1
+    return 0 if summary.overall_ok else 2
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
     except KeyboardInterrupt:
-        print("\n\n[INFO] 测试被用户中断")
-        sys.exit(0)
-    except argparse.ArgumentError as e:
-        print("参数错误: %s" % str(e))
-        sys.exit(1)
-    except Exception as e:
-        print("错误: %s" % str(e))
-        if '--verbose' in sys.argv or '-v' in sys.argv:
-            print("详细错误信息:")
-            print(traceback.format_exc())
-        sys.exit(1)
-
-
-if __name__ == '__main__':
-    main()
-
+        logging.getLogger("netcheck").info("操作被用户中断")
+        raise SystemExit(1)
+    except SystemExit:
+        raise
+    except Exception as err:
+        logging.getLogger("netcheck").error("运行失败: %s", err, exc_info=True)
+        raise SystemExit(1)
