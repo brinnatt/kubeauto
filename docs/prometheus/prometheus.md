@@ -2198,7 +2198,7 @@ rate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="
 
 标签与时长请按集群实际情况改写。
 
-> 插图槽位 T4.10-4（待补充）：含 offset 或 rate 带 offset 的查询在 Table 或 Graph 中的效果。建议 `./images/t4-10-promql-offset.png`。
+![promql_rate_offset](./images/promql_rate_offset.png)
 
 #### 4.10.3.3、关联查询
 
