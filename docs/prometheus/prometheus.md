@@ -2158,11 +2158,11 @@ node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"
 
 若抓取间隔为 15 秒，1 分钟内每条序列通常约有四个样点，具体以集群配置为准。在 Table 视图可看到区间内多个带 `@` 时间戳的值。
 
-> 插图槽位 T4.10-1（待补充）：在 Prometheus 查询页 Table 中执行上式，截取能体现多时间点样本的界面。建议保存为 `./images/t4-10-promql-range-table.png`（路径可按仓库规范调整）。
+![promql_range_table](./images/promql_range_table.png)
 
 Graph 面板只接受标量或瞬时向量；对「裸区间向量」在同一时刻仍含多点，直接绘图会报错。
 
-> 插图槽位 T4.10-2（待补充）：同一表达式切换到 Graph 后出现典型报错的截图。建议 `./images/t4-10-promql-range-graph-error.png`。
+![promql-range-graph-error](./images/promql-range-graph-error.png)
 
 对 Counter 的区间向量应使用 `rate`、`increase` 等（其它类型选对应函数），先得到瞬时向量再画图或写告警。函数定义见官方 [Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)。告警与 SLO 规则里，Counter 的增长率优先用 `rate`，慎用 `irate`；`increase` 多用于看图或粗估区间总增量。区间长度建议明显大于抓取间隔（常见做法是至少取约 2 倍 `scrape_interval`，以便有足够样点；细则以官方说明为准）。
 
@@ -2180,19 +2180,21 @@ increase(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mo
 
 窗口 `[d]` 越短曲线起伏越大，越长越平滑。生产上可在固定抓取间隔后，在 Grafana 中对同一 `rate(...)` 尝试不同窗口（如 5 分钟与 30 分钟），或把短窗与长窗放在同一面板对比，再结合大盘时间跨度选用。
 
-> 插图槽位 T4.10-3（待补充）：同环境、同指标下两种不同 rate 窗口的曲线对比（可单图多序列或两张并列）。建议 `./images/t4-10-rate-window-compare.png`。
+![promql_range_graph](./images/promql_range_graph.png)
 
-`offset` 把整个选择器沿时间轴平移，必须紧接在标签选择器之后。下式查询的是约 30 分钟前那一刻的 idle 累计秒数，仍是 Counter 的瞬时值，不是每秒变化率。
+`offset` 把选中的时间整体向过去平移。**瞬时向量**的写法是把 `offset` 紧接在标签选择器后面（大括号之后）。下式是约 30 分钟前那一刻的 idle 累计秒数，仍是 Counter 瞬时值，不是每秒变化率。
 
 ```promql
 node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"} offset 30m
 ```
 
-`offset` 也可与区间向量组合，例如查看一段时间之前的增长率：
+**区间向量**必须把 `offset` 写在 **`[时长]` 之后**，再交给 `rate` 等函数，官方示例形如 `rate(http_requests_total[5m] offset 1w)`。下面用较短偏移便于在练习环境里仍能查到数据（若仍为空，多半是评估时刻往前移之后，该 5 分钟窗口内样本不足或当时尚无抓取，可改短 `offset` 或把 Grafana 时间范围拉长）：
 
 ```promql
-rate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[5m] offset 1h)
+rate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[5m] offset 15m)
 ```
+
+需要对比「整点前一小时」时再把 `offset` 改成 `1h` 等即可；`offset 1h` 语法正确，但在**新起的 Prometheus**或**保留时间不足**时，一小时前可能没有序列或窗口内点数不够算 `rate`，就会表现为无数据，并非表达式写错。
 
 标签与时长请按集群实际情况改写。
 
