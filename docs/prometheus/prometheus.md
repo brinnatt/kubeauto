@@ -1904,10 +1904,6 @@ Explore 只用来试跑查询；要落到大盘上，按下表操作。
 
 job 在 T4.4 中为 kubernetes-nodes；instance 一般为节点名（如 worker-01）。社区模板常写 node-exporter，直接套用会无数据，需在面板里改 job，或按 T4.9.3 的表格处理。
 
-**常见错误**
-
-idle 相关报错：检查是否写成带引号的 `mode="idle"`。正则与 `**`：不要用 `instance=~"$node"`，且变量「全部」勿填 `**`；若未用 `=~` 仍报 `**`，见步骤 2 文末排查（多查询、变量、Query inspector、Explore 对照）。选了变量仍无数据：在 Explore 里查 `node_cpu_seconds_total{job="kubernetes-nodes"}`，看 instance 是否与变量 Query 一致。
-
 ![grafana_self_defined_panel](./images/grafana_self_defined_panel.png)
 
 ---
