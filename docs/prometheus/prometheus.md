@@ -1908,7 +1908,7 @@ job 在 T4.4 中为 kubernetes-nodes；instance 一般为节点名（如 worker-
 
 ---
 
-### 4.9.5、Helm 部署 Grafana（生产备选，与清单式二选一）
+### 4.9.5、Helm 部署 Grafana
 
 本节面向**已用 Helm 管理应用发布**的集群，做法对齐 Grafana 官方 [使用 Helm 部署](https://grafana.com/docs/grafana/latest/setup-grafana/installation/helm/)、Helm 官方 [安装与升级说明](https://helm.sh/docs/intro/install/)，以及社区 chart [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts) 中 `charts/grafana` 的 README 与默认 `values.yaml`。chart 由社区维护，**选定 chart 版本后请先读完该版本的 README**，再合上本文的镜像与命名空间约定。
 
