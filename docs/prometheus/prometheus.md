@@ -2223,17 +2223,19 @@ node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", cpu="0", mo
 
 因 `instance` 不同，默认无法配对，结果为空。
 
-> 插图槽位 T4.10-5（待补充）：两实例直接相加的查询，Table 无数据或 Graph 无序列的截图。建议 `./images/t4-10-vector-mismatch-empty.png`。
+![promql_related_query](./images/promql_related_query.png)
 
-可用 `on` 或 `ignoring` 声明仅用部分标签对齐。下列仅按 `mode` 对齐，结果侧只保留匹配键上声明的标签（此处为 `mode`），其余标签丢弃：
+可用 `on` 或 `ignoring` 声明仅用部分标签对齐。`node_cpu_seconds_total` 按 **CPU 核心**分多条序列（`cpu="0"`、`cpu="1"` 等），同一 `instance`、同一 `mode="idle"` 仍会对应多条时间序列。若只写 `on(mode)`，左右任一侧都会在匹配组 `{mode="idle"}` 下出现多条序列，Prometheus 会报错（duplicate series / many-to-many matching not allowed）。教学上应同时限定 **同一颗 CPU**，并用 `on` 列出足以区分序列的标签，例如 `mode` 与 `cpu`：
 
 ```promql
-node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}
-+ on(mode)
-node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", mode="idle"}
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle", cpu="0"}
++ on(mode, cpu)
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", mode="idle", cpu="0"}
 ```
 
-> 插图槽位 T4.10-6（待补充）：使用 on(mode) 后得到非空结果的截图。建议 `./images/t4-10-vector-on-mode.png`。
+结果侧只保留 `on` 中声明的标签（本例为 `mode` 与 `cpu`），`instance` 等其余标签会丢弃。若要把多核、多节点合成一条曲线，应用 `sum` 等聚合，而不是强行用过粗的 `on(...)`。
+
+![promql_related_query_on](./images/promql_related_query_on.png)
 
 多数「多序列合成」场景更稳妥的是 [聚合](https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)，例如按实例汇总 idle 的 Counter 值（若要看使用率，仍应对 `rate` 或归一化后再做聚合，视面板公式而定）：
 
@@ -2276,8 +2278,6 @@ node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01"} * 10
 常用运算符见 [Operators](https://prometheus.io/docs/prometheus/latest/querying/operators/)：算术；比较（可加 `bool` 得 0/1）；以及向量集合运算 `and`、`or`、`unless`。
 
 更完整的 PromQL 语法与语义见官方 [Querying basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
-
-本节共设六处插图槽位，编号与文中 blockquote 一致，供你按生产环境截屏补齐：T4.10-1 区间向量在 Table 中的多点；T4.10-2 Graph 中裸区间向量报错；T4.10-3 不同 rate 窗口曲线对比；T4.10-4 offset 或 rate 带 offset；T4.10-5 标签集不匹配导致运算无结果；T4.10-6 使用 on 后有结果的示例。文件可放在文中建议路径，也可改为你方文档资产库的命名规范。
 
 ## T4.11、Alertmanager
 
