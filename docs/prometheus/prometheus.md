@@ -2283,34 +2283,39 @@ node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01"} * 10
 
 官方把「告警」拆成两块，这是理解全部配置的出发点，见 [Alerting overview](https://prometheus.io/docs/alerting/latest/overview/)：**Prometheus 里的告警规则**负责在本地周期求值并把告警发给 Alertmanager；**Alertmanager** 负责在收到之后做静默、抑制、聚合（分组）以及通过邮件、On-Call、聊天、Webhook 等渠道把通知发出去。Prometheus 不替你选收件人、也不做静默；Alertmanager 不替你跑 PromQL、也不存业务指标。
 
-一、Prometheus 一侧在做什么
+**1、Prometheus 一侧在做什么**
 
 每条 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)在 `global.evaluation_interval`（或规则组自己的 `interval`）到达时被求值一次。`expr` 是 PromQL，结果是**瞬时向量**：里面有几条时间序列，就表示当前时刻有几个「告警候选」。若写了 `for`，条件须**连续**满足这一段时长，状态才从 `pending` 进到 `firing`；未写 `for` 则一旦为真会很快进入 `firing`。只有进入 `firing` 的告警才会通过 HTTP 推给 Alertmanager（恢复时也会按协议告知，便于发「已恢复」类通知，具体行为见 [Alerts API 与客户端约定](https://prometheus.io/docs/alerting/latest/alerts_api/)）。`labels` 会进入告警实例并参与后续路由；`annotations` 给人看，不参与匹配。可用内置指标 `ALERTS` 在 Prometheus 里自查当前规则状态。
 
-二、Alertmanager 一侧在做什么（与当前稳定版文档一致）
+**2、Alertmanager 一侧在做什么**
 
 Alertmanager 处理客户端（主要是 Prometheus）推上来的告警，官方归纳的核心概念见 [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)，下面按「为何要这样设计」来读即可。
 
-1. **去重（deduplicating）**  
-   同一告警在重复推送、多副本 Prometheus 等场景下会多次到达，Alertmanager 会按告警身份做合并，避免收件箱被完全相同的条目刷屏。
+1. **去重（deduplicating）**
+   
+同一告警在重复推送、多副本 Prometheus 等场景下会多次到达，Alertmanager 会按告警身份做合并，避免收件箱被完全相同的条目刷屏。
+   
+2. **分组（grouping）**
 
-2. **分组（grouping）**  
    大规模故障时，`expr` 往往会对很多实例各产生一条 firing，若逐条通知人会崩溃。`group_by` 指定用哪些标签把告警**归并成一批**再发通知（例如按 `alertname` 加 `cluster`），这样一条通知里仍能带上多个实例信息。`group_wait` 是「这一批刚凑齐时先等一会儿」，以便同一批里再进来的告警能塞进同一条通知；`group_interval` 控制**同一分组**在已发过通知之后，隔多久可以再发**下一批**关于该组的更新；`repeat_interval` 控制**同一条已处于 firing 的告警**在未恢复前，重复提醒收件人的最小间隔。三者都在路由树里配置，细节以 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 为准。
 
-3. **抑制（inhibition）**  
+3. **抑制（inhibition）**
+
    若「集群整体不可达」这类根因告警已在 firing，可以配置规则：**在满足条件时不再通知**同一范围内的次要告警（例如该集群下所有节点磁盘告警），避免根因未修时收到海量次生告警。写在 `inhibit_rules`。
 
-4. **静默（silences）**  
+4. **静默（silences）**
+
    按计划维护或已知问题时，用与路由相同的 **matchers** 语法匹配告警，在时间段内**直接不发通知**。多在 Alertmanager Web UI 里配，也可走 API。
 
-5. **路由树与接收器（routing + receivers）**  
+5. **路由树与接收器（routing + receivers）**
+
    根路由 `route` 与子路由 `routes` 组成一棵树，按 **matchers**（Alertmanager 0.22 起推荐写法，本文镜像 v0.31.1 适用）决定走哪个 `receiver`。`receiver` 里并列 `email_configs`、`slack_configs`、`webhook_configs` 等，真正把 JSON 负载交给外部系统；通知正文模板见 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/)。
 
 高可用说明：多实例 Alertmanager 可组成集群（`--cluster.*` 等参数，见[项目说明](https://github.com/prometheus/alertmanager#high-availability)）。Prometheus 应在配置里列出**全部** Alertmanager 地址，而不是在前面做一层会丢弃请求的负载均衡，否则不符合官方对客户端行为的约定。
 
 可选：**每 alertname 告警条数上限**（`--alerts.per-alertname-limit`）用于防止异常洪峰把 Alertmanager 或下游渠道打垮，见官方 [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) 一节「Alert limits」。
 
-三、数据流示意（与上文顺序一致，便于对照配置）
+**3、数据流示意**
 
 ```mermaid
 flowchart TB
@@ -2332,7 +2337,7 @@ flowchart TB
 
 上图是便于对齐配置项的逻辑顺序；抑制、静默与路由在实际代码中的衔接细节以当前版本的 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 为准。
 
-四、你在本教程环境里能对上号的地方
+**4、你在本教程环境里能对上号的地方**
 
 部署完成后：在 **Prometheus** 的 Alerts 页看每条规则是 inactive、pending 还是 firing；在 **Alertmanager** 的 Web UI 看当前告警列表、配置静默。本文 Alertmanager 与 Prometheus 同放在 `kube-mon`，Service 名 `alertmanager`，Prometheus 里 `alerting.alertmanagers` 写 `alertmanager:9093` 即可互通。镜像与组件表一致：`prom/alertmanager:v0.31.1`；升级前请再核对 [GitHub Releases](https://github.com/prometheus/alertmanager/releases/latest) 的 Latest 与发行说明。
 
