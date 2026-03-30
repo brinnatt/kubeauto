@@ -2293,8 +2293,9 @@ Alertmanager 处理客户端（主要是 Prometheus）推上来的告警，官�
 
 1. **去重（deduplicating）**
    
+
 同一告警在重复推送、多副本 Prometheus 等场景下会多次到达，Alertmanager 会按告警身份做合并，避免收件箱被完全相同的条目刷屏。
-   
+
 2. **分组（grouping）**
 
    大规模故障时，`expr` 往往会对很多实例各产生一条 firing，若逐条通知人会崩溃。`group_by` 指定用哪些标签把告警**归并成一批**再发通知（例如按 `alertname` 加 `cluster`），这样一条通知里仍能带上多个实例信息。`group_wait` 是「这一批刚凑齐时先等一会儿」，以便同一批里再进来的告警能塞进同一条通知；`group_interval` 控制**同一分组**在已发过通知之后，隔多久可以再发**下一批**关于该组的更新；`repeat_interval` 控制**同一条已处于 firing 的告警**在未恢复前，重复提醒收件人的最小间隔。三者都在路由树里配置，细节以 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 为准。
@@ -2337,9 +2338,39 @@ flowchart TB
 
 上图是便于对齐配置项的逻辑顺序；抑制、静默与路由在实际代码中的衔接细节以当前版本的 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 为准。
 
-**4、你在本教程环境里能对上号的地方**
+**4、你在本教程环境里怎么逐项对得上号**
 
-部署完成后：在 **Prometheus** 的 Alerts 页看每条规则是 inactive、pending 还是 firing；在 **Alertmanager** 的 Web UI 看当前告警列表、配置静默。本文 Alertmanager 与 Prometheus 同放在 `kube-mon`，Service 名 `alertmanager`，Prometheus 里 `alerting.alertmanagers` 写 `alertmanager:9093` 即可互通。镜像与组件表一致：`prom/alertmanager:v0.31.1`；升级前请再核对 [GitHub Releases](https://github.com/prometheus/alertmanager/releases/latest) 的 Latest 与发行说明。
+下面按「先能打开页面，再看 Prometheus，最后看 Alertmanager」来操作，和 **T4.2.1**、**T4.11.1** 一致：两组件都在 `kube-mon`，Service 名通常是 `prometheus` 与 `alertmanager`（若你改过名字，把下文命令里的服务名一起改掉）。
+
+**怎么进到页面**
+
+- 集群内临时验证：可对该 namespace 下的 Prometheus / Alertmanager Pod 做端口转发，例如 `kubectl port-forward -n kube-mon svc/prometheus 9090:9090`、`kubectl port-forward -n kube-mon svc/alertmanager 9093:9093`，本机浏览器分别打开 `http://127.0.0.1:9090` 与 `http://127.0.0.1:9093`。
+- 若 **T4.11.1** 里把 Alertmanager 暴露成 NodePort，则可用 `kubectl get svc -n kube-mon alertmanager` 看 `9093:节点端口`，再用 `http://<任一节点IP>:<节点端口>` 打开 Alertmanager；Prometheus 是否 NodePort 以你前文清单为准，没有就只能 port-forward 或 Ingress。
+
+**在 Prometheus 里该看哪里**
+
+1. 打开顶部菜单里的 Alerts（告警）。这里列出的是「规则求值结果」，不是邮件有没有发出去。  
+   - `inactive`：当前这次求值里 `expr` 为假，属于正常空闲。  
+   - `pending`：`expr` 已经为真，但还没到规则里 `for` 写的持续时间，相当于在等「是不是持续出问题」，避免短暂抖动就告警。  
+   - `firing`：条件持续满足 `for` 之后，Prometheus 会把这条告警推给 Alertmanager；只有到了这一步，后面邮件、钉钉之类才可能动工。  
+2. 若 Alerts 里**根本没有**你在 `rules.yml` 里写的规则名，多半是 `rule_files` 没挂上、`rules.yml` 键名或路径不对，或改完 ConfigMap 没 reload，回到 **T4.4** / **T4.11.2** 核对并做一次 **T4.3.1** 的 reload。  
+3. 菜单 Status 里可顺带看一眼运行信息（不同版本入口名称略有差异），确认进程与启动参数正常即可；是否连上 Alertmanager 以配置里 `alerting.alertmanagers` 为准，连不上时常见表现是 firing 后收件箱永远没有动静，同时可结合 Alertmanager 侧是否收到请求来排查。
+
+**在 Alertmanager 里该看哪里**
+
+1. 默认页或 Alerts 一类入口会列出**当前推送到 Alertmanager 的告警**（已按分组、静默、抑制处理前的集合在不同版本里展示方式可能略有不同，但核心是「通知链路上游送来的内容」）。  
+2. Silences（静默）用于维护窗口：按标签匹配器在这段时间一定范围内**拦通知**，适合「今晚割接，先别吵」。这和 Prometheus 里规则删不删是两回事：规则可以还在 firing，只是 Alertmanager 选择不往 receiver 发。  
+3. 若 Prometheus 里已经是 `firing`，而 Alertmanager 里长时间什么都没有，优先查三类问题：  
+   - Prometheus 的 `prometheus.yml` 里有没有 `alerting.alertmanagers`，`targets` 是否是 `alertmanager:9093`（同 ns）或完整集群域名；  
+   - 两个 Pod 是否都在 `Running`、网络策略有没有拦掉 9093；  
+   - 有没有静默或抑制规则把通知挡掉（可在配置里搜 `inhibit_rules` 和对照 UI）。
+
+**和本文配置的对齐关系**
+
+- 同命名空间短名：`alerting.alertmanagers` 里写 `targets: ["alertmanager:9093"]` 即可。  
+- Prometheus 若将来迁到别的 namespace，则不能只写 `alertmanager`，应改成跨 ns 的 DNS，例如 `alertmanager.kube-mon.svc.cluster.local:9093`。
+
+镜像版本与文首组件表一致：`prom/alertmanager:v0.31.1`；升级前请再打开 [Alertmanager Releases](https://github.com/prometheus/alertmanager/releases/latest) 对照 Latest 与变更说明。
 
 ### T4.11.1、安装
 
