@@ -19,238 +19,279 @@ CALICO_COMPONENT_VERSIONS = "https://docs.tigera.io/calico/latest/reference/comp
 # ---------------------------------------------------------------------------
 MAINTAINER_DOC = """
 ===============================================================================
-calico_host_port_lockdown.py - 维护者说明
+calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico 官方概念）
 ===============================================================================
 
-读这个能知道：脚本干啥、为啥分两套策略、生成啥 YAML、代码从哪进从哪改。
+读完可知：脚本做什么、两类策略各自解决哪条数据路径、会生成哪些 API 对象、各参数含义与生产风险、代码入口。
 
 -------------------------------------------------------------------------------
-1. 干啥用
--------------------------------------------------------------------------------
-  某一个 TCP 端口：只允许你写在 -a 里的那些网段来连，别的来源一律挡掉。
-  常见例子：9100 上的 node-exporter、hostNetwork 的采集、直接绑在节点 IP 上的服务。
-
--------------------------------------------------------------------------------
-2. 为啥有时候不能只用 K8s 自带的 NetworkPolicy
--------------------------------------------------------------------------------
-  平时说的 NetworkPolicy 管的是 Pod 里的网卡那条路。
-  流量如果是打到「节点 IP + 端口」，或者是 hostNetwork 在宿主机上听的端口，
-  往往走不到你以为的那条 Pod 策略上。
-  所以要靠 Calico 的 HostEndpoint + GlobalNetworkPolicy，才能管住「到机器上的」这条入站。
-
-  如果是普通 Pod（不是 hostNetwork），用标准 NetworkPolicy 就行，也方便换 CNI。
-  --traffic-layer 就是在选：只管机器 (host)、只管 Pod (pod)、两个都要 (both)。
-
--------------------------------------------------------------------------------
-3. host / pod / both 各是啥
--------------------------------------------------------------------------------
-  host:
-    会写出 Calico 的 GlobalNetworkPolicy，并默认再写出 HostEndpoint（除非你关掉）。
-    策略用 spec.selector 对上本工具给 HEP 打的标签，别给 GNP 写 nodeSelector：
-    老字段/写错了可能变成「整集群都套上」，非常危险。
-
-  pod:
-    在某个 namespace 里写一条标准 NetworkPolicy（ingress + 网段 + 端口）。
-    选哪些 Pod 靠 --pod-label 或 --pod-selector-all。
-    hostNetwork 的 Pod 算不算管得到，以 K8s 官方 NetworkPolicy 文档为准。
-
-  both:
-    一次打出两段 YAML（中间用 --- 隔开）：主机上一套 Calico，命名空间里一条 NetPol。
-
--------------------------------------------------------------------------------
-4. 主机那套 YAML 里大概有啥
--------------------------------------------------------------------------------
-  HostEndpoint:
-    节点名、网卡名（常用 *）、expectedIPs（一般从 Node 地址推出来，可加外网 IP）。
-    默认带着 projectcalico-default-allow 这个 profile：和 Calico 自动 HEP 一样，
-    先别误伤 SSH、kubelet 之类，再在你指定的端口上加收紧规则。
-
-  GlobalNetworkPolicy:
-    只要入站 (Ingress)；selector 和上面 HEP 的标签对齐。
-    对你设的 TCP 端口：先放行 -a 里的网段，再拒绝别的来源；IPv4 和 IPv6 分成两条写。
-
--------------------------------------------------------------------------------
-5. Pod 那条 NetworkPolicy
--------------------------------------------------------------------------------
-  就是标准的 networking.k8s.io/v1，不写 Calico 自己那种 namespaced NetworkPolicy CR。
-  真要 Calico 特有字段，自己写 YAML 下发。
-
--------------------------------------------------------------------------------
-6. 代码从哪读
--------------------------------------------------------------------------------
-  main() 里 parse_args，然后按子命令进 cmd_preflight / nodes / validate / plan / apply / delete。
-
-  想改生成规则：跟 cmd_plan 和它下面拼 YAML 的函数。
-  想改怎么下发：看 cmd_apply（确认、备份、分步 apply、kubectl/calicoctl、dry-run）。
-  想改检查逻辑：cmd_validate、cmd_preflight。
-
-  只有 apply 并且加了 --confirm（或设置了 CALICO_HOST_FW_CONFIRM=1）才会真的改集群；
-  plan 永远只是打印。
-
--------------------------------------------------------------------------------
-7. kubectl 还是 calicoctl
--------------------------------------------------------------------------------
-  YAML 里只要有标准 NetworkPolicy，就必须用 kubectl。
-  只有 Calico 那几种 CR 时，两种工具常有集群都能用；auto 会帮你试。
-  服务端 dry-run 只有 kubectl 有。
-
--------------------------------------------------------------------------------
-8. --backup 和 --apply-staged
--------------------------------------------------------------------------------
-  --backup：改动前尽量把要被覆盖的 GNP、带本工具标签的 HEP、同名 NetPol 先拉下来存盘（具体目录看代码）。
-  --apply-staged：可以先只 apply GNP，再 apply HEP（Pod 层若有，跟第二步一起），减少中间空窗期。
-
--------------------------------------------------------------------------------
-9. 参数和环境变量（对照着用；可重复的选项多写几次）
+0. 生产集群读前须知（请先读这段再执行 apply / delete）
 -------------------------------------------------------------------------------
 
-【9.1 全局选项】写在子命令前面，例如：脚本 --context 生产 plan ...
+  本工具在授权后会调用 kubectl 或 calicoctl，向 Kubernetes API 提交或删除资源。
+  配置不当可能造成：监控与告警采集中断、跳板/堡垒机无法访问、控制台或 CI 被误拦、
+  或在删除策略后端口暴露面与变更前不一致（变宽松或与遗留策略叠加产生意外组合）。
 
-  --verbose / -v
-      控制台多打调试信息。
-  --no-log-file
-      不写滚动日志文件；默认会写到目录 CALICO_HOST_FW_LOG_DIR（见 9.8）下的
-      calico_host_port_lockdown.log。
-  --kubectl
-      kubectl 命令路径。默认先读环境变量 KUBECTL，没有再当命令名叫 kubectl。
-  --context
-      用 kubeconfig 里哪一个 context。默认读 CALICO_HOST_FW_CONTEXT。
-  --executor auto | kubectl | calicoctl
-      真正 apply 时用谁把 YAML 塞给集群。auto 会按集群情况试探。
-      只要清单里带了标准 NetworkPolicy，实际只能走 kubectl。
-  --calicoctl
-      calicoctl 路径。默认读 CALICOCTL 环境变量，没有则当命令 calicoctl。
+  会改集群的操作：
+    apply：在通过「写集群授权」后，创建或更新 GlobalNetworkPolicy、HostEndpoint、
+           networking.k8s.io/v1 NetworkPolicy（取决于 --traffic-layer）。
+    delete：按名称或标签删除上述对象的一部分或全部。
 
-【9.2 流量层、命名空间、Pod 怎么选、NetPol 叫啥名】
-（出现在 plan / apply / validate / delete 里，preflight、nodes 没有）
+  只读、不修改 API 对象的操作：
+    preflight、nodes、validate（仅查询与校验）、plan（只向标准输出打印 YAML）。
 
-  --traffic-layer host | pod | both
-      host：只做节点侧 Calico（GNP + 默认还带 HEP）。
-      pod：只在某个 namespace 写标准 NetworkPolicy。
-      both：两套一起出。默认用环境变量 CALICO_HOST_FW_TRAFFIC_LAYER，没有再默认 host。
-  -n / --namespace
-      Pod 那条策略写在哪个命名空间里。traffic-layer 带 pod 或 both 时，plan/apply/validate
-      必须给；delete 要删 NetPol 时也必须给。默认可读 CALICO_HOST_FW_NAMESPACE。
-  --pod-label KEY=VALUE
-      可以写很多遍，每一对变成 NetworkPolicy 里 podSelector.matchLabels 里的一项（一起生效）。
-      和 --pod-selector-all 不要同时用（逻辑互斥）。
-  --pod-selector-all
-      不配具体 label，相当于选中该命名空间下所有 Pod，风险大，确认清楚再用。
-  --k8s-np-name
-      生成的 NetworkPolicy 在 K8s 里的资源名。不写就用「kubeauto-restrict-pod-tcp-」加端口，
-      例如端口 9100 就是 kubeauto-restrict-pod-tcp-9100。
+  【生产影响】授权写集群的方式（任选其一即视为自愿承担数据面变更风险）：
+    - 命令行显式加 --confirm（apply 子命令）
+    - 环境变量 CALICO_HOST_FW_CONFIRM 设为 1、true、yes（效果等同 --confirm，
+      日志会单独提醒：避免在共享会话、全局 shell profile、未审查的 CI 中误设）
 
-【9.3 plan 和 apply 共用】（validate、delete 都不带这一组）
+  执行 apply 前建议至少做到：
+    1) 用 kubectl config current-context（或 --context）确认目标集群，避免误连生产。
+    2) preflight 与 validate：核对 -a 是否覆盖 Prometheus、跳板、管控网等真实源地址段。
+    3) plan 审阅 YAML；可用 apply --dry-run=server 让 apiserver 校验对象（不落库）。
+    4) 正式变更建议加 --backup，并在业务低峰做小范围连通性验证。
 
-  -a / --allow-net CIDR
-      允许访问目标端口的来源网段。可以写很多遍，每一遍一段 CIDR（IPv4、IPv6 可以混着写，
-      脚本会拆成多条 Calico/K8s 规则）。
-  --port
-      要限制的 TCP 端口号。默认 9100。会影响默认的 GNP 名、NetPol 名（见 9.9）。
-  --policy-name
-      主机层 GlobalNetworkPolicy 的名字。不写默认「kubeauto-restrict-host-tcp-」加端口。
-      只有 traffic-layer 含 host 时才会去创建/删除这条 GNP。
-  --hep-prefix
-      每个节点上 HostEndpoint 名字的前半截。最终名字是「前缀 + "-" + 节点名（会做合法化）」。
-      默认 kubeauto-hep。
-  --interface
-      写进 HostEndpoint 的 interfaceName。默认 *，表示 Calico 文档里那种匹配所有宿主机接口的写法。
-  --include-external-ip
-      打开后，把节点的 ExternalIP 也塞进 HostEndpoint 的 expectedIPs（否则主要靠 InternalIP 等）。
-  --no-hostendpoint
-      只生成 GNP，不创建本脚本通常会顺带创建的 HEP。这时你必须用 --policy-selector 写清楚
-      GNP 要套在哪些已有 HostEndpoint 上。
-  --policy-selector
-      Calico 的 selector 表达式，进 GNP 的 spec.selector。若本脚本自己建 HEP，默认会去对齐
-      带 kubeauto.calico/host-port-lockdown=true 标签的那批端点；你关掉 HEP 时必须自己填这条。
-  --policy-order
-      GNP 的 spec.order，数字越小在同 tier 里越早评估。默认 500。
-  --hep-profile
-      HostEndpoint 的 profiles 里带的 profile 名，默认 projectcalico-default-allow，
-      和 Calico 自动 HEP 行为对齐，避免误伤 SSH 等。
-  --no-default-allow-profile
-      不给 HEP 挂上面的默认放行 profile，只有你有把握其它策略已经兜住主机流量时才开。
-  --gnp-tier
-      GNP 的 spec.tier；不配就用集群默认 tier，具体以你集群里 Tier 定义为准。
-  --gnp-apply-on-forward
-      打开 GNP 的 spec.applyOnForward，给节点做转发路径时用，细节看 Calico 官方「hosts」文档。
-  --gnp-performance-hint
-      可以写多遍，每一遍变成 spec.performanceHints 里的一条，例如 AssumeNeededOnEveryNode。
-      不认得的值也会原样下发，由集群里的 Felix 决定收不收。
+  apply 成功后（企业级变更闭环）：
+    - 日志会打印「成功」与同参 validate 的可复制命令行；应对齐执行 validate，确认节点 IP、
+      Pod 命中数等仍无告警。
+    - 须在数据面做抽测：从 -a 内与 -a 外各选一源，验证目标 TCP 端口放行/拒绝符合预期。
+    - 可加 apply --post-verify，在本进程内自动接跑 validate（只读），便于 CI/人工少跳一步；
+      不可替代数据面探测与 kubectl get 核对对象。
 
-【9.4 validate 实际认的参数】
-  只有 9.1 全局 + 9.2（traffic-layer、namespace、pod 选择、NetPol 名）+ -a/--allow-net + --port。
-  不会用到 9.3 里那些 HEP/GNP 细调（那些只出现在 plan、apply）。
-  做的事：校验 CIDR；host/both 时扫一遍节点 IP 是不是落在 -a 里；pod/both 时在命名空间里数
-  匹配你选中的 Pod 有几个，方便发现「一条策略根本套不到 Pod」这种乌龙。
+  「入站只允许列表内源」是脚本生成的规则语义；最终在节点/Pod 上的效果还与集群内
+  已有 Calico Profile、其它 GlobalNetworkPolicy/NetworkPolicy、Felix 配置共同作用，
+  与 Tigera 文档中关于 hosts 与 Policy 优先级的说明一致；变更后请以现网表现为准。
 
-【9.5 只有 apply 多出来的】
+-------------------------------------------------------------------------------
+1. 用途（本工具解决什么问题）
+-------------------------------------------------------------------------------
 
-  --confirm
-      不加的话 apply 只会在内存里算完 YAML，不会真的 kubectl apply（防手滑）。
-      或者设环境变量 CALICO_HOST_FW_CONFIRM 为 1、true、yes。
+  针对一个 TCP 监听端口，生成「仅允许若干源 IP 段（CIDR）访问该端口，其它源被拒绝」
+  的入站策略。典型场景：节点上 9100（node-exporter）、hostNetwork 工作负载暴露的端口、
+  绑定节点 IP 的服务端口。
 
-  --backup
-      在覆盖前，尝试把即将动到的同名 GNP、带本工具标签的 HEP、同名 NetworkPolicy 先 kubectl get
-      出来存盘；目录规则见 9.8。
-  --backup-dir
-      备份落盘目录；不配就用默认备份根目录（仍在 CALICO_HOST_FW_LOG_DIR 底下那一套）。
-  --apply-staged
-      主机相关时分两次下发：第一次只 apply GNP，第二次再 apply HEP（若还有 Pod 层，第二次里
-      会和 NetPol 一起打）。缓解「HEP 挂上瞬间规则还没按你想的来」的短窗口。
-  --dry-run none | client | server
-      走 kubectl 时的 dry-run；none 表示正常；server 让 apiserver 验对象但不落库（不要配 confirm）。
-      calicoctl 路径下没有等价 server dry-run。
+-------------------------------------------------------------------------------
+2. 为什么仅靠 Kubernetes NetworkPolicy 往往不够
+-------------------------------------------------------------------------------
 
-【9.6 只有 delete 多出来的】
+  networking.k8s.io/v1 NetworkPolicy 由 CNI 在 Pod 网络接口上执行，解决的是「进入 Pod
+  网络命名空间」的入口流量（见 Kubernetes 官方 NetworkPolicy 概念文档）。
 
-  --port
-      和创建时一致，用来拼默认的 GNP / NetPol 名字（若你没自定义名字）。
-  --policy-name
-      要删的 GlobalNetworkPolicy 叫什么；不配就用默认命名规则。
-  --delete-hostendpoints
-      若有 host/both：为 true 时按标签删掉「本脚本打过 kubeauto.calico/host-port-lockdown=true」
-      的所有 HostEndpoint；不删留着的话节点上还挂着端点对象。
+  当访问目标是「节点的 IP:端口」或 hostNetwork Pod 在宿主机网络命名空间监听的端口时，
+  该流量通常不经过你以为的那条 Pod NetworkPolicy 路径；需要用 Calico 的
+  HostEndpoint（描述主机端点）配合 GlobalNetworkPolicy（可匹配主机端点）来约束这类入站。
 
-  delete 还会带上 9.2 整组（含 --k8s-np-name、-n），用来找要删的 NetworkPolicy。
-  注意：delete 不认 -a/--allow-net，也不认 9.3 里任何「生成规则」参数，只按名字/标签删对象。
+  对工作负载在普通 Pod 网卡上、非 hostNetwork 的场景，使用标准 NetworkPolicy 更合适，
+  且有利于与具体 CNI 解耦。--traffic-layer 即在「仅主机侧 Calico」「仅命名空间内 NetPol」
+  或「两者同时」之间选择。
 
-【9.7 每个子命令到底认哪些参数（速查）】
+-------------------------------------------------------------------------------
+3. host / pod / both 含义
+-------------------------------------------------------------------------------
 
-  preflight、nodes
-      只有 9.1 全局选项。
+  host：
+    生成 projectcalico.org/v3 GlobalNetworkPolicy，并默认生成本工具管理的 HostEndpoint
+   （可用 --no-hostendpoint 关闭后者）。GNP.spec.selector 仅匹配带约定标签的 HEP。
+    Calico v3 API 中策略匹配主机端点用 spec.selector，请勿混用已废弃或无效的 nodeSelector
+    写法，否则存在策略匹配范围扩大到 workload 的风险（见官方 GlobalNetworkPolicy 参考）。
 
-  validate
-      9.1 + 9.2 + -a + --port（见 9.4）。
+  pod：
+    在指定 namespace 生成一条标准 NetworkPolicy：spec.policyTypes 含 Ingress，
+    仅允许来自 -a 中 CIDR 到目标 TCP 端口的入站。受影响的 Pod 由 podSelector 决定
+   （--pod-label 或 --pod-selector-all）。hostNetwork Pod 是否受该策略约束以官方文档为准。
 
-  plan
-      9.1 + 9.2 + 9.3 全部。
+  both：
+    同一次输出多份 YAML 文档（--- 分隔）：主机 Calico 资源 + 命名空间内 NetworkPolicy。
 
-  apply
-      9.1 + 9.2 + 9.3 + 9.5。
+-------------------------------------------------------------------------------
+4. 主机侧 Calico 对象（读 YAML 时对照字段含义）
+-------------------------------------------------------------------------------
 
-  delete
-      9.1 + 9.2 + 9.6（没有放行网段 -a，也没有 9.3）。
+  HostEndpoint：
+    spec.node（节点名）、spec.interfaceName（常用 *，含义见官方 HostEndpoint）、
+    spec.expectedIPs（通常由 Node 地址推导，可选含 ExternalIP）、spec.profiles。
+    默认 profiles 含 projectcalico-default-allow，与「自动 HostEndpoint」基线一致：
+    在收紧目标端口的同时降低误伤 SSH、kubelet 等主机关键入站的风险。
 
-【9.8 环境变量一览（和命令行冲突时以命令行为准）】
+  GlobalNetworkPolicy：
+    spec.types 含 Ingress；spec.selector 与上方 HEP 标签对齐。
+    ingress：对目标 TCP 端口先按 -a 放行，再拒绝同端口其它源；IPv4 与 IPv6 分条填写
+   （符合 EntityRule 不混编地址族的要求）。
 
-  KUBECTL               默认 kubectl 可执行文件路径
-  CALICOCTL             默认 calicoctl 可执行文件路径
-  CALICO_HOST_FW_CONTEXT          默认 --context
-  CALICO_HOST_FW_TRAFFIC_LAYER    默认 --traffic-layer（host/pod/both）
-  CALICO_HOST_FW_NAMESPACE        默认 -n/--namespace
-  CALICO_HOST_FW_LOG_DIR          日志目录；默认当前工作目录下的 logs/
-  CALICO_HOST_FW_KUBECTL_TIMEOUT  kubectl 子进程超时秒数，默认 120（大 manifest 时 apply 会用更长时间）
-  CALICO_HOST_FW_CONFIRM          等价于全程带上 --confirm（apply 真写集群）
+-------------------------------------------------------------------------------
+5. Pod 侧 NetworkPolicy
+-------------------------------------------------------------------------------
 
-【9.9 默认会起什么资源名、打什么标签】
+  仅生成 kubernetes.io networking.k8s.io/v1 NetworkPolicy；不生成 projectcalico.org/v3
+  的 namespaced NetworkPolicy CR。若需 Calico 专有 NetPol 字段，请手写清单另行下发。
 
-  GlobalNetworkPolicy 默认名：kubeauto-restrict-host-tcp-<port>
-  NetworkPolicy 默认名：kubeauto-restrict-pod-tcp-<port>
-  HostEndpoint 默认名：<hep-prefix>-<节点名>
-  本脚本创建的 HostEndpoint 会带标签：kubeauto.calico/host-port-lockdown=true；
-  GNP 默认用这个标签去 selector（除非你换成自己的 HEP + policy-selector）。
-  本脚本创建的 NetworkPolicy 会带标签：kubeauto.calico/traffic-lockdown=pod（方便认了删）。
+-------------------------------------------------------------------------------
+6. 代码阅读顺序
+-------------------------------------------------------------------------------
+
+  main() -> build_parser().parse_args() -> cmd_preflight | cmd_nodes | cmd_validate |
+  cmd_plan | cmd_apply | cmd_delete
+
+  生成 YAML：cmd_plan 及 build_combined_manifest、build_k8s_network_policy_yaml 等。
+  下发与防护：cmd_apply（--confirm、--backup、--apply-staged、dry-run、executor）。
+  检查：cmd_validate、cmd_preflight。
+
+  plan 与 validate 不向 API 写入策略对象；apply 仅在实际写集群路径（非纯 dry-run）
+  且具备授权时才会 apply。
+
+-------------------------------------------------------------------------------
+7. kubectl 与 calicoctl
+-------------------------------------------------------------------------------
+
+  清单中含标准 NetworkPolicy 时必须使用 kubectl。仅含 Calico CR 时二者常均可行，
+  --executor auto 会探测。kubectl 的 server-side dry-run 可在变更前做服务校验。
+
+-------------------------------------------------------------------------------
+8. --backup 与 --apply-staged（降低操作窗口风险，不替代人工核对）
+-------------------------------------------------------------------------------
+
+  --backup：在覆盖同名/同标签资源前尝试 get 并写入本地文件；备份失败不阻止 apply，
+  【生产影响】不应视为唯一回滚手段，重大变更仍应用 GitOps 或集群备份。
+
+  --apply-staged：主机相关时先发 GNP 再发 HEP（Pod 层在第二步与 HEP 同次或合并下发，
+  以代码为准），用于缩短「端点已存在而策略未完全按预期」的时间窗，
+  【生产影响】中间态仍可能影响现网，仅作缓和而非消除风险。
+
+-------------------------------------------------------------------------------
+9. 参数与环境变量（带【生产影响】的项：变更前请读完并评估是否继续）
+-------------------------------------------------------------------------------
+
+【9.1 全局选项】写在子命令前，例：脚本 --context prod apply …
+
+  --verbose / -v：更详细的运行日志，便于排障。不改集群。
+  --no-log-file：不写本地滚动日志。【生产影响】出问题后可追溯信息变少，仅建议短期会话。
+  --kubectl：kubectl 可执行文件；默认环境变量 KUBECTL，否则在 PATH 中查找 kubectl。
+  --context：kubeconfig 中的 context。【生产影响】指错集群则后续所有操作对准错误环境；生产
+      务必与 kubectl config current-context 或审批工单一致。
+  --executor auto | kubectl | calicoctl：apply 时由谁把清单提交 API。清单含 NetPol 时强制 kubectl。
+  --calicoctl：calicoctl 路径；默认 CALICOCTL 环境变量。
+
+【9.2 流量层与 Pod 策略命名】（plan / apply / validate / delete；preflight、nodes 无）
+
+  --traffic-layer host | pod | both：控制生成/删除哪些资源。默认可读 CALICO_HOST_FW_TRAFFIC_LAYER。
+      【生产影响】both 同一次变更动主机与某 namespace，故障面更大；排查需同时看 Calico 与 NetPol。
+  -n / --namespace：Pod 策略所在命名空间；traffic-layer 含 pod/both 时 plan/apply/validate 必填，
+      delete 删 NetPol 时必填。默认 CALICO_HOST_FW_NAMESPACE。
+      【生产影响】namespace 错误会把策略套到错误工作负载集合或删错对象。
+  --pod-label KEY=VALUE（可重复）：写入 podSelector.matchLabels；多对之间为 AND。
+      【生产影响】标签与线上 Deployment 不一致会导致策略不生效（等于未防护或部分未防护）。
+  --pod-selector-all：空选择器，匹配该 namespace 内全部 Pod。
+      【生产影响】极高：若 -a 过窄或误改，可能导致整 namespace 入站大面积拒绝；须书面审批后再用。
+  若与 --pod-label 同时写：当前实现以 --pod-selector-all 为准并忽略 pod-label，运行时会打警告；
+      请勿依赖该组合，应只保留其一以免误解。
+  --k8s-np-name：NetworkPolicy metadata.name；不配则用 kubeauto-restrict-pod-tcp-<port>。
+      【生产影响】与集群已有同名冲突会覆盖原对象；delete 名字错误会删除他人策略。
+
+【9.3 plan 与 apply 共用】（validate、delete 无）
+
+  -a / --allow-net CIDR（可重复）：允许访问「本工具所设 TCP 端口」的源网段；IPv4/IPv6 可混开，
+      脚本拆成多条规则（Calico EntityRule / NetPol ipBlock）。至少须有一个有效 CIDR。
+      【生产影响】漏掉监控、跳板、堡垒出口、管控集群访问源会导致合法流量被 deny；
+      网段过宽则收口失去意义；请以现网真实源地址规划为准。
+  --port：目标 TCP 端口；默认 9100；参与默认 GNP/NetPol 名称（见 9.9）。
+      【生产影响】端口错误时规则作用在错误的监听上，表现为「改了策略但业务仍暴露/仍不通」。
+  --policy-name：GlobalNetworkPolicy 名称；不配则用 kubeauto-restrict-host-tcp-<port>。
+      【生产影响】改名会新建一条 GNP，旧 GNP 若未手动删除可能并存导致评估顺序非预期。
+  --hep-prefix：HostEndpoint 名前缀；Per 节点名为「前缀-节点名(合法化)」；默认 kubeauto-hep。
+      【生产影响】改名会产生新 HEP，旧对象残留可能使 selector 命中多套端点。
+  --interface：HostEndpoint.spec.interfaceName；默认 *（参见 Calico HostEndpoint 文档）。
+      【生产影响】与节点实际接口拓扑不符时，端点可能未纳管预期接口，策略不生效或部分生效。
+  --include-external-ip：expectedIPs 增加 Node ExternalIP。
+      【生产影响】公网 IP 纳入端点后，若边界安全策略以为仅靠 NetPol 即可隔离，可能产生认知偏差。
+  --no-hostendpoint：仅下发 GNP，不创建本工具通常创建的 HEP。
+      【生产影响】须配置精确 --policy-selector，仅命中你确认安全的已有 HostEndpoint；selector
+      过宽可能对错误端点集收紧入站，造成多节点业务中断。
+  --policy-selector：GNP.spec.selector 字符串。自建 HEP 时默认对齐标签 kubeauto.calico/host-
+      port-lockdown=true；与 --no-hostendpoint 联用时必填合法 selector。
+      【生产影响】这是主机侧作用范围的核心；生产错误可直接导致大规模拒收或误放行。
+  --policy-order：GNP.spec.order；默认 500；同 tier 内数值越小越先匹配（以 Calico 文档为准）。
+      【生产影响】顺序与现有策略冲突时，最终结果可能与「仅读 YAML」的直觉不一致。
+  --hep-profile：HostEndpoint profiles 之一；默认 projectcalico-default-allow。
+      【生产影响】改错将失去与「自动 HEP」对齐的基线放行，可能误伤 SSH/kubelet 等。
+  --no-default-allow-profile：不挂载上述默认 profile。
+      【生产影响】高：若无其它 Profile/策略明确放行主机基线入站，存在整节点管理面失联风险。
+  --gnp-tier：GNP.spec.tier；留空用集群默认 tier。
+      【生产影响】tier 名与集群定义不一致时对象可能被 API 拒绝或落入错误评估桶。
+  --gnp-apply-on-forward：GNP.spec.applyOnForward=true。
+      【生产影响】影响转发路径上的包；误用可导致经节点转发的服务与直连行为不一致（见官方
+      hosts / applyOnForward 说明）。
+  --gnp-performance-hint（可重复）：写入 spec.performanceHints；值由 Felix 校验。
+      【生产影响】与版本不兼容的 hint 可能导致策略生效延迟或节点负载异常；应先在非生产验证。
+
+【9.4 validate】
+  参数集合：9.1 + 9.2 + -a + --port（无 9.3）。
+  行为：校验 CIDR；host/both 时对照节点 InternalIP 是否在 -a 内；pod/both 时统计匹配 Pod 数。
+  【生产影响】不向 API 写入对象；仍执行只读 List/Get，需具备相应 RBAC；大集群注意超时配置。
+
+【9.5 仅 apply】
+
+  --confirm：显式允许 kubectl/calicoctl 提交可改变集群的策略对象。
+  未给 --confirm 且未设 CALICO_HOST_FW_CONFIRM 时：apply 只生成清单逻辑，不向 API 写入（防误操作）。
+  CALICO_HOST_FW_CONFIRM=1/true/yes：等同全程 --confirm；运行时会打【生产影响】专用日志条。
+      【生产影响】若写在 shell 全局配置、共享 CI 凭据或未审查脚本中，可能在无意识下持续写生产。
+  --backup：覆盖前尝试拉取将触及的 GNP、带工具标签的 HEP、同名 NetPol 存盘（路径逻辑见实现）。
+      【生产影响】备份失败不会中止 apply；不能代替 GitOps/变更工单/集群级备份。
+  --backup-dir：备份根目录；不配则在 CALICO_HOST_FW_LOG_DIR 下按时间分子目录。
+  --apply-staged：主机侧分两次 apply（先 GNP 后 HEP；both 时 Pod 层与第二步一并，见代码）。
+      【生产影响】仍存在中间态窗口；不能视为零风险切换。
+  --dry-run none | client | server：kubectl dry-run 语义。server 仅服务端校验、不落库。
+      【生产影响】none 且已授权则为真实变更；calicoctl 路径无等价 server dry-run。
+  --post-verify：apply 全部下发成功后，在同一进程内自动执行与本次参数对齐的 validate（只读）。
+      进程退出码随后续 validate 结果传递（validate 当前对告警仍返回 0，以日志为准）。
+      日志仍会给出可手动复制的 validate 命令，便于与数据面抽测、kubectl get 组成完整闭环。
+
+【9.6 仅 delete】
+
+  --port：与创建时一致，用于默认 GNP/NetPol 名称。
+  --policy-name：要删的 GlobalNetworkPolicy；不配则用默认命名。
+  --delete-hostendpoints：为真时按标签删除本工具创建的 HostEndpoint（kubeauto.calico/host-
+      port-lockdown=true）。
+  另含 9.2（定位 NetPol）。无 -a、无 9.3。
+  【生产影响】删策略后端口不再受本工具规则约束：可能变宽松，或与其它遗留 Calico/K8s 策略
+      叠加产生非直觉结果。未删 HEP 时主机端点仍存在，可与其它 GNP 继续作用。删前逐项核对
+      context、资源名、namespace。
+
+【9.7 子命令与参数速查】
+
+  preflight、nodes：仅 9.1。
+  validate：9.1 + 9.2 + -a + --port。
+  plan：9.1 + 9.2 + 9.3。
+  apply：9.1 + 9.2 + 9.3 + 9.5（含可选 --post-verify，成功后自动接跑 validate）。
+  delete：9.1 + 9.2（无 -a、无 9.3）+ 9.6。
+
+【9.8 环境变量】命令行优先于环境变量。
+
+  KUBECTL：默认 kubectl 路径。
+  CALICOCTL：默认 calicoctl 路径。
+  CALICO_HOST_FW_CONTEXT：默认 --context。
+  CALICO_HOST_FW_TRAFFIC_LAYER：默认 --traffic-layer。
+  CALICO_HOST_FW_NAMESPACE：默认 --namespace。
+  CALICO_HOST_FW_LOG_DIR：日志与默认备份根路径的上级目录；默认 <cwd>/logs/。
+  CALICO_HOST_FW_KUBECTL_TIMEOUT：kubectl 超时秒数；默认 120；大 manifest 的 apply 会使用数倍超时。
+  CALICO_HOST_FW_CONFIRM：等同 apply --confirm。【生产影响】见 9.5；勿长期留在共享环境中。
+
+【9.9 默认资源名与标签】
+
+  GlobalNetworkPolicy：kubeauto-restrict-host-tcp-<port>
+  NetworkPolicy：kubeauto-restrict-pod-tcp-<port>
+  HostEndpoint：<hep-prefix>-<节点名合法化>
+  HostEndpoint 标签：kubeauto.calico/host-port-lockdown=true（与 GNP 默认 selector 对齐）。
+  NetworkPolicy 标签：kubeauto.calico/traffic-lockdown=pod。
+  【生产影响】与现有同名 metadata.name 冲突时 apply 将覆盖；生产请先 kubectl get 确认归属。
+
+【9.10 生产变更自检清单（建议打印或贴到变更单）】
+
+  1) kubectl config current-context（或 --context）是否与工单环境一致。
+  2) -a 是否包含监控、告警、跳板、管控面、必要 CI 出口等全部真实源网段（含 IPv6 若在用）。
+  3) Pod 选择是否故意为之；是否避免误用 --pod-selector-all。
+  4) 主机侧 --policy-selector / --no-hostendpoint 是否在测试集群验证过命中范围。
+  5) 是否在业务低峰、具备回滚/应急联系人窗口执行；是否已执行 plan，必要时 --dry-run=server。
+  6) 是否理解删除策略后暴露面可能变化，并已评估与其它防火墙、安全组、遗留策略的叠加效应。
 
 -------------------------------------------------------------------------------
 10. 官方文档
@@ -269,10 +310,13 @@ calico_host_port_lockdown.py - 维护者说明
     https://kubernetes.io/docs/concepts/services-networking/network-policies/
 
 -------------------------------------------------------------------------------
-11. 命令行里不做的 Calico 高级项
+11. 本 CLI 不生成的 Calico 字段（须手写 YAML 并在非生产先验证）
 -------------------------------------------------------------------------------
-  像 doNotTrack、preDNAT 这种会牵动连接跟踪和 DNAT 顺序，弄不好就断网，所以 CLI 不代你写；
-  真要上，按官方「主机策略」自己手写 YAML。
+
+  GlobalNetworkPolicy 的 doNotTrack、preDNAT 等与连接跟踪、DNAT 及转发路径强相关，
+  错误组合可导致会话半开、合法流量被 silent drop 或管理面失联。
+  【生产影响】本工具不写这些字段；若业务需要，由具备 Calico hosts 策略经验的人员按
+  Tigera「Protect Kubernetes nodes / Policy for hosts」等文档单独评审与下发。
 ===============================================================================
 """
 
@@ -283,6 +327,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -335,7 +380,10 @@ HELP_EPILOG = """
 链接: Calico %(calico_docs)s  组件版本 %(calico_ver)s
 退出: 0 正常  1 出错  2 子命令不认识
 
-建议顺序: preflight -> 看看 nodes/validate -> plan -> apply --dry-run=server -> apply --confirm [--backup]
+建议顺序: preflight -> validate/plan -> apply --dry-run=server -> apply --confirm [--backup]；成功后按日志再跑同参 validate（或 apply --post-verify）
+
+生产注意: apply/delete 会修改 API 对象；执行前 kubectl config current-context 确认集群。
+漏配 -a、--policy-selector 过宽、误用 --pod-selector-all 可能导致拒收或误伤；详见源码 MAINTAINER_DOC 第 0、9 节。
 
 例子:
   %(prog)s preflight
@@ -670,6 +718,12 @@ def require_pod_layer_args(
 ) -> Tuple[str, Dict[str, str]]:
     ns = require_namespace_for_netpol(namespace)
     if pod_selector_all:
+        if pod_labels:
+            logger.warning(
+                "[生产影响] 同时传入了 --pod-selector-all 与 --pod-label：策略将作用于命名空间 "
+                "`%s` 内全部 Pod，--pod-label 会被忽略。若不符合预期请去掉其一后重试。",
+                ns,
+            )
         return ns, {}
     if not pod_labels:
         raise CalicoHostFwError(
@@ -1001,7 +1055,11 @@ def cmd_preflight(args: argparse.Namespace) -> int:
             pods = json.loads(calico_ns.stdout).get("items") or []
             logger.info("发现 calico-node Pod（按 k8s-app=calico-node）数量: %d", len(pods))
             if not pods:
-                logger.warning("未找到 k8s-app=calico-node 的 Pod；若 CNI 非 Calico 请勿使用本工具")
+                logger.warning(
+                    "[生产影响] 未找到 k8s-app=calico-node 的 Pod。若当前集群 CNI 不是 Calico，"
+                    "对本脚本生成的主机层 GlobalNetworkPolicy/HostEndpoint 请勿在生产执行 apply，"
+                    "否则对象可能被拒或策略行为不可预期。"
+                )
         except json.JSONDecodeError:
             pass
 
@@ -1098,8 +1156,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
                     continue
                 if not any(addr in n for n in pool):
                     logger.warning(
-                        "节点 %s 的 InternalIP %s 不在任一 --allow-net 内；"
-                        "若 Prometheus 从 Pod 网段访问抓取地址，请确认已包含 Pod CIDR / 相关网段",
+                        "[生产影响] 节点 %s 的 InternalIP %s 不在任一 --allow-net 内。"
+                        " apply 后从该地址集的采集/SSH 等访问目标端口可能被 GNP deny；"
+                        " 请确认 Prometheus、跳板、集群内客户端真实源网段已写入 -a。",
                         name,
                         ip_s,
                     )
@@ -1126,7 +1185,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
         logger.info("validate: namespace=%s 匹配 Pod 数=%d（仅供核对）", ns, n_pods)
         if n_pods == 0:
             logger.warning(
-                "validate: 当前选择器下无 Pod，应用 NetworkPolicy 后不会影响任何工作负载；请检查 --pod-label / 命名空间"
+                "[生产影响] validate: 当前选择下 namespace=%s 无匹配 Pod；"
+                " apply 后该 NetworkPolicy 实际不保护任何工作负载（等于对目标端口策略空转）。"
+                " 请核对 --pod-label、-n。",
+                ns,
             )
             warnings += 1
 
@@ -1153,15 +1215,138 @@ def cmd_nodes(args: argparse.Namespace) -> int:
 
 def _require_confirm(args: argparse.Namespace) -> None:
     if args.dry_run and args.dry_run != "none":
+        logger.info(
+            "[仅此校验] dry-run=%s：不向集群持久化对象，无需 --confirm。",
+            args.dry_run,
+        )
         return
     if args.confirm:
         return
-    if os.environ.get(CONFIRM_ENV, "").strip() in ("1", "true", "yes"):
+    env_raw = os.environ.get(CONFIRM_ENV, "").strip().lower()
+    if env_raw in ("1", "true", "yes"):
+        logger.warning(
+            "[生产影响] 环境变量 %s 已授权「写集群」（等同 apply --confirm）。"
+            " 请勿在共享 shell profile、未审核 CI 或错误 kubeconfig 会话中保留该变量；"
+            " 用毕请 unset %s。",
+            CONFIRM_ENV,
+            CONFIRM_ENV,
+        )
         return
     raise CalicoHostFwError(
         "生产级保护：真正写集群前请显式添加 --confirm，或设置环境变量 "
-        f"{CONFIRM_ENV}=1 （仍建议先 plan + server dry-run）。"
+        f"{CONFIRM_ENV}=1（用毕请 unset）。仍建议先 plan，并在需要时用 --dry-run=server。"
     )
+
+
+def _log_apply_production_impact(
+    args: argparse.Namespace,
+    policy_name: str,
+    np_name: str,
+) -> None:
+    if args.dry_run and args.dry_run != "none":
+        return
+    ctx = args.context or "（kubeconfig 当前上下文，请 kubectl config current-context 核对）"
+    logger.warning(
+        "[生产影响] 即将向 API 提交策略对象（context=%s）。"
+        " -a 漏配或 GNP selector 过宽可能导致监控/跳板被拒或误伤多节点；"
+        " 完整清单见本文件 MAINTAINER_DOC 第 0、9 节。",
+        ctx,
+    )
+    desc: List[str] = []
+    tl = args.traffic_layer
+    if tl in ("host", "both"):
+        desc.append(
+            "Calico GlobalNetworkPolicy `%s` + 本工具 HostEndpoint（除非已 --no-hostendpoint）"
+            % policy_name
+        )
+    if tl in ("pod", "both"):
+        desc.append(
+            "命名空间 `%s` 的 NetworkPolicy `%s`"
+            % (args.namespace or "(未指定，异常)", np_name)
+        )
+    logger.warning("[生产影响] 将创建或更新的主要对象: %s", "；".join(desc))
+
+
+def _cli_invocation_hint() -> str:
+    """日志里可复制整条命令时的脚本前缀。"""
+    return 'python "%s"' % os.path.abspath(__file__)
+
+
+def _argv_suggested_validate(args: argparse.Namespace) -> List[str]:
+    """与本次 apply 对齐的 validate 子命令参数（不含脚本名）。"""
+    out: List[str] = []
+    if getattr(args, "verbose", False):
+        out.append("-v")
+    if getattr(args, "no_log_file", False):
+        out.append("--no-log-file")
+    kc = getattr(args, "kubectl", None) or "kubectl"
+    if kc != "kubectl":
+        out.extend(["--kubectl", kc])
+    if getattr(args, "context", None):
+        out.extend(["--context", args.context])
+    if getattr(args, "executor", None) and args.executor != "auto":
+        out.extend(["--executor", args.executor])
+    cal = getattr(args, "calicoctl", None) or "calicoctl"
+    if cal != "calicoctl":
+        out.extend(["--calicoctl", cal])
+    out.append("validate")
+    for c in list(args.allow_net):
+        s = (c or "").strip()
+        if s:
+            out.extend(["-a", s])
+    out.extend(["--port", str(args.port)])
+    out.extend(["--traffic-layer", args.traffic_layer])
+    if getattr(args, "namespace", None):
+        out.extend(["-n", args.namespace])
+    if getattr(args, "pod_selector_all", False):
+        out.append("--pod-selector-all")
+    for raw in list(args.pod_labels):
+        if raw and str(raw).strip():
+            out.extend(["--pod-label", str(raw).strip()])
+    if getattr(args, "k8s_np_name", None):
+        out.extend(["--k8s-np-name", args.k8s_np_name])
+    return out
+
+
+def _suggested_validate_cli_line(args: argparse.Namespace) -> str:
+    return _cli_invocation_hint() + " " + " ".join(shlex.quote(x) for x in _argv_suggested_validate(args))
+
+
+def _log_apply_success_followup(args: argparse.Namespace) -> None:
+    """apply 成功后：成功提示 + 与官方变更流程对齐的后期校验指引（闭环）。"""
+    vline = _suggested_validate_cli_line(args)
+    dr = getattr(args, "dry_run", "none") or "none"
+    if dr != "none":
+        logger.info("[后续] 本次 apply 为 dry-run=%s：未向集群持久化策略对象。", dr)
+        logger.info(
+            "[后续·闭环] apiserver 校验通过且 YAML 符合预期后，再使用 --dry-run=none 与 --confirm "
+            "正式下发；落地后必须再跑同参 validate，并对目标端口做允许源/拒绝源抽测。"
+        )
+        logger.info("[后续] 与本次参数对齐的 validate（可随时先跑，只读）:\n  %s", vline)
+        return
+    logger.info("[成功] apply 已提交至集群 API（具体以 kubectl/calicoctl 退出码及 kubectl get 为准）。")
+    logger.info(
+        "[后续·闭环][1] 立即执行下方 validate：复核 CIDR、节点 IP、Pod 命中数，避免「策略已下发但选不中 Pod」"
+        "或漏网段导致监控/跳板误拦。"
+    )
+    logger.info(
+        "[后续·闭环][2] 数据面抽测：从 -a 内与 -a 外各选一源，探测目标 TCP %s 应放行/应拒绝（结合贵司网络路径）。",
+        args.port,
+    )
+    logger.info("[后续] validate 命令行（建议原样复制执行）:\n  %s", vline)
+    logger.info(
+        "[后续] 亦可 kubectl get globalnetworkpolicies.projectcalico.io、hostendpoints.projectcalico.io、"
+        "networkpolicy -n <ns> 核对对象；Felix 全量生效可能有短暂延迟（见 Calico 文档）。"
+    )
+    if getattr(args, "post_verify", False):
+        logger.info("[闭环] 已启用 --post-verify，本进程将接着运行上述 validate。")
+
+
+def _finish_apply_success(args: argparse.Namespace) -> int:
+    _log_apply_success_followup(args)
+    if getattr(args, "post_verify", False):
+        return cmd_validate(args)
+    return 0
 
 
 def cmd_apply(args: argparse.Namespace) -> int:
@@ -1194,6 +1379,22 @@ def cmd_apply(args: argparse.Namespace) -> int:
     )
     hep_prof = [] if args.no_default_allow_profile else [args.hep_profile]
     gk = _manifest_gnp_kwargs(args)
+
+    if tl in ("host", "both"):
+        if args.no_default_allow_profile:
+            logger.warning(
+                "[生产影响] 已启用 --no-default-allow-profile：HostEndpoint 不挂载 "
+                "projectcalico-default-allow。若无其它 Profile/策略兜底主机基线入站，"
+                "可能导致 SSH、kubelet 等管理流量异常。"
+            )
+        if args.no_hostendpoint:
+            logger.warning(
+                "[生产影响] 已启用 --no-hostendpoint：仅下发 GlobalNetworkPolicy，不创建本工具 HEP；"
+                " 请务必确认 --policy-selector 仅命中预期主机端点，否则可能大范围拒收。"
+            )
+
+    if args.dry_run == "none":
+        _log_apply_production_impact(args, policy_name, np_name)
 
     if args.backup:
         bdir = _backup_dir_path(args.backup_dir)
@@ -1230,14 +1431,16 @@ def cmd_apply(args: argparse.Namespace) -> int:
         pod_labels = parse_pod_label_list(list(args.pod_labels))
         ns, pl = require_pod_layer_args(args.namespace, pod_labels, args.pod_selector_all)
         if args.apply_staged:
-            logger.info("traffic-layer=pod 时忽略 --apply-staged")
+            logger.warning(
+                "[生产影响] traffic-layer=pod 时不存在主机 HEP 分阶段下发，已忽略 --apply-staged。"
+            )
         _emit(
             build_k8s_network_policy_yaml(
                 np_name, ns, pl, allow_v4, allow_v6, args.port
             ),
             "kubectl",
         )
-        return 0
+        return _finish_apply_success(args)
 
     if tl == "host":
         assert nodes is not None
@@ -1276,7 +1479,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
                 **gk,
             )
             _emit(hep_only, ex)
-            return 0
+            return _finish_apply_success(args)
         _emit(
             build_combined_manifest(
                 policy_name=policy_name,
@@ -1296,7 +1499,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
             ),
             ex,
         )
-        return 0
+        return _finish_apply_success(args)
 
     # both
     assert nodes is not None
@@ -1341,7 +1544,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
             **gk,
         ).rstrip()
         _emit(hep_part + "\n---\n" + np_body + "\n", "kubectl")
-        return 0
+        return _finish_apply_success(args)
 
     host_part = build_combined_manifest(
         policy_name=policy_name,
@@ -1360,10 +1563,17 @@ def cmd_apply(args: argparse.Namespace) -> int:
         **gk,
     ).rstrip()
     _emit(host_part + "\n---\n" + np_body + "\n", "kubectl")
-    return 0
+    return _finish_apply_success(args)
 
 
 def cmd_delete(args: argparse.Namespace) -> int:
+    ctx = args.context or "（kubeconfig 当前上下文）"
+    logger.warning(
+        "[生产影响] delete 将从集群 API 移除策略对象（context=%s）。"
+        " 目标 TCP 端口将不再受本工具规则约束，与其它 Calico/K8s 策略叠加后的现网行为可能变化；"
+        " 请先核对 --traffic-layer、--policy-name、-n、--k8s-np-name。详见 MAINTAINER_DOC 9.6。",
+        ctx,
+    )
     base = kubectl_base(args.kubectl, args.context)
     tl = args.traffic_layer
     if tl in ("host", "both"):
@@ -1416,7 +1626,10 @@ def _traffic_layer_flags(p: argparse.ArgumentParser) -> None:
         choices=("host", "pod", "both"),
         default=(os.environ.get("CALICO_HOST_FW_TRAFFIC_LAYER") or "host").strip() or "host",
         metavar="LAYER",
-        help="host=节点/hostNetwork（Calico HEP+GNP）；pod=Kubernetes NetworkPolicy；both=同时下发",
+        help=(
+            "host=主机侧 Calico（GNP+默认 HEP）；pod=某 namespace 标准 NetworkPolicy；both=同时。"
+            "【生产】both 一次改两套对象；须核对 namespace 与 context（详见 MAINTAINER_DOC）。"
+        ),
     )
     p.add_argument(
         "-n",
@@ -1430,12 +1643,18 @@ def _traffic_layer_flags(p: argparse.ArgumentParser) -> None:
         dest="pod_labels",
         default=[],
         metavar="KEY=VALUE",
-        help="NetworkPolicy podSelector.matchLabels（可重复；与 --pod-selector-all 二选一）",
+        help=(
+            "NetworkPolicy podSelector.matchLabels（可重复，AND）。"
+            "与 --pod-selector-all 同时出现时以后者为准并打警告（见 MAINTAINER_DOC 9.2）。"
+        ),
     )
     p.add_argument(
         "--pod-selector-all",
         action="store_true",
-        help="podSelector 为空，匹配该命名空间下全部 Pod（高危，务必确认）",
+        help=(
+            "podSelector 匹配该命名空间内全部 Pod。【生产】极高危：-a 过窄可导致整 namespace "
+            "入站大面积失败；须变更审批并与 MAINTAINER_DOC 9.2 对照。"
+        ),
     )
     p.add_argument(
         "--k8s-np-name",
@@ -1452,7 +1671,10 @@ def _plan_apply_flags(p: argparse.ArgumentParser) -> None:
         dest="allow_net",
         default=[],
         metavar="CIDR",
-        help="允许访问该端口的源 CIDR（可重复；IPv4/IPv6 可混开，将拆成多条规则）",
+        help=(
+            "允许访问该 TCP 端口的源 CIDR（可重复；v4/v6 拆条）。"
+            "【生产】漏配监控/跳板/管控源会导致合法流量被拒。"
+        ),
     )
     p.add_argument("--port", type=int, default=9100, help="要限制的 TCP 端口（默认 9100）")
     p.add_argument(
@@ -1474,7 +1696,10 @@ def _plan_apply_flags(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--no-hostendpoint",
         action="store_true",
-        help="只生成 GlobalNetworkPolicy，不创建本工具的 HostEndpoint（须配合 --policy-selector）",
+        help=(
+            "只下发 GNP，不创建本工具 HEP，须配合 --policy-selector。"
+            "【生产】selector 过宽可能误伤多节点主机入站。"
+        ),
     )
     p.add_argument(
         "--policy-selector",
@@ -1496,7 +1721,10 @@ def _plan_apply_flags(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--no-default-allow-profile",
         action="store_true",
-        help="不为 HostEndpoint 挂载 projectcalico-default-allow（仅资深用户：需确认其它策略/Profile 已覆盖主机基线）",
+        help=(
+            "不为 HEP 挂载 projectcalico-default-allow。【生产】若无等效主机基线放行，"
+            "存在 SSH/kubelet 等不可达风险；仅在有明确兜底时启用。"
+        ),
     )
     p.add_argument(
         "--gnp-tier",
@@ -1606,7 +1834,10 @@ def build_parser() -> argparse.ArgumentParser:
     com_apply.add_argument(
         "--confirm",
         action="store_true",
-        help=f"确认写入生产集群（或设环境变量 {CONFIRM_ENV}=1）",
+        help=(
+            f"授权向集群写入/更新策略对象；缺少则 apply 不写 API。"
+            f" 也可用 {CONFIRM_ENV}=1（【生产】用毕请 unset，勿长期 export）。"
+        ),
     )
     com_apply.add_argument(
         "--backup",
@@ -1614,7 +1845,8 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             f"应用前备份：按 traffic-layer 仅备份将变更的项——"
             f"主机层尝试备份同名 GNP 与带工具标签的 HEP；"
-            f"Pod 层尝试备份同名 NetworkPolicy（目录默认 {LOG_DIR}/calico_host_fw_backup/<UTC>）"
+            f"Pod 层尝试备份同名 NetworkPolicy（目录默认 {LOG_DIR}/calico_host_fw_backup/<UTC>）。"
+            f"【生产】备份失败不中止 apply，不可替代变更评审与 GitOps。"
         ),
     )
     com_apply.add_argument(
@@ -1625,13 +1857,24 @@ def build_parser() -> argparse.ArgumentParser:
     com_apply.add_argument(
         "--apply-staged",
         action="store_true",
-        help="主机层分两次 apply：先仅 GNP 再 HEP；traffic-layer=both 时第二步为 HEP+NetworkPolicy（同一 kubectl apply）",
+        help=(
+            "主机侧分两次 apply：先 GNP 再 HEP；both 时第二步含 NetPol。"
+            "【生产】仍有中间态窗口，参见 MAINTAINER_DOC 第 8 节。"
+        ),
     )
     com_apply.add_argument(
         "--dry-run",
         choices=("none", "client", "server"),
         default="none",
         help="kubectl 专用：client/server dry-run（calicoctl 路径不可用）",
+    )
+    com_apply.add_argument(
+        "--post-verify",
+        action="store_true",
+        help=(
+            "apply 成功后在本进程内自动再执行一次与本次参数对齐的 validate（只读），形成变更闭环；"
+            "退出码含 validate 结果。亦会打印可手动复制的 validate 命令行。"
+        ),
     )
 
     com_delete = sub.add_parser(
@@ -1649,7 +1892,10 @@ def build_parser() -> argparse.ArgumentParser:
     com_delete.add_argument(
         "--delete-hostendpoints",
         action="store_true",
-        help=f"traffic-layer 含 host 时：删除带 {MANAGED_LABEL_KEY}={MANAGED_LABEL_VAL} 的 HostEndpoint",
+        help=(
+            f"traffic-layer 含 host 时：按标签删除 HostEndpoint（{MANAGED_LABEL_KEY}={MANAGED_LABEL_VAL}）。"
+            "【生产】不指定则 HEP 残留，可能与其它 GNP 继续交互；指定前确认无其它依赖方。"
+        ),
     )
     _traffic_layer_flags(com_delete)
 
