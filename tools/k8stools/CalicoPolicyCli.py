@@ -385,13 +385,74 @@ HELP_EPILOG = """
 生产注意: apply/delete 会修改 API 对象；执行前 kubectl config current-context 确认集群。
 漏配 -a、--policy-selector 过宽、误用 --pod-selector-all 可能导致拒收或误伤；详见源码 MAINTAINER_DOC 第 0、9 节。
 
-例子:
-  %(prog)s preflight
-  %(prog)s plan -a 10.0.0.0/8 --port 9100
-  %(prog)s apply --dry-run=server -a 10.0.0.0/8 --port 9100
-  %(prog)s apply --confirm --backup -a 172.20.0.0/16 -a 192.168.0.0/16 --port 9100
-  %(prog)s apply --confirm -n mon --traffic-layer pod --pod-label app=x -a 10.0.0.0/8 --port 9100
-  %(prog)s delete --traffic-layer host --delete-hostendpoints --port 9100
+--------------------------------------------------------------------
+示例 A：主机 / hostNetwork（监听在节点 IP 上的端口，如 node-exporter :9100）
+默认 --traffic-layer host。下列尽量写全，用不到的删掉即可。
+--------------------------------------------------------------------
+  %(prog)s --context prod preflight
+  %(prog)s --context prod nodes
+  %(prog)s --context prod validate \\
+      --traffic-layer host \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
+      --port 9100
+  %(prog)s --context prod plan \\
+      --traffic-layer host \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
+      --port 9100 \\
+      --include-external-ip \\
+      --policy-order 500
+  %(prog)s --context prod apply --dry-run=server \\
+      --traffic-layer host \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
+      --port 9100 \\
+      --include-external-ip
+  %(prog)s --context prod apply --confirm --backup --apply-staged --post-verify \\
+      --traffic-layer host \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
+      --port 9100 \\
+      --include-external-ip \\
+      --policy-order 500 \\
+      --backup-dir /tmp/calico-fw-backup
+  %(prog)s --context prod delete --traffic-layer host --delete-hostendpoints \\
+      --port 9100 \\
+      --policy-name kubeauto-restrict-host-tcp-9100
+
+--------------------------------------------------------------------
+示例 B：普通 Pod（非 hostNetwork，命名空间内 metrics 等）
+须 --traffic-layer pod，并指定 -n 与 --pod-label（可多对 AND；不需要的删掉）。
+--------------------------------------------------------------------
+  %(prog)s --context prod preflight
+  %(prog)s --context prod validate \\
+      --traffic-layer pod \\
+      -n monitoring \\
+      --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      --port 9100
+  %(prog)s --context prod plan \\
+      --traffic-layer pod \\
+      -n monitoring \\
+      --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      --port 9100 \\
+      --k8s-np-name kubeauto-restrict-pod-tcp-9100
+  %(prog)s --context prod apply --dry-run=server \\
+      --traffic-layer pod \\
+      -n monitoring \\
+      --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      --port 9100 \\
+      --k8s-np-name kubeauto-restrict-pod-tcp-9100
+  %(prog)s --context prod apply --confirm --backup --post-verify \\
+      --traffic-layer pod \\
+      -n monitoring \\
+      --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      --port 9100 \\
+      --k8s-np-name kubeauto-restrict-pod-tcp-9100
+  %(prog)s --context prod delete --traffic-layer pod \\
+      -n monitoring \\
+      --port 9100 \\
+      --k8s-np-name kubeauto-restrict-pod-tcp-9100
 
 某个子命令有哪些参数: %(prog)s plan -h、apply -h 等。
 每条选项、环境变量、默认资源名: 见本文件 MAINTAINER_DOC 第 9 节。
