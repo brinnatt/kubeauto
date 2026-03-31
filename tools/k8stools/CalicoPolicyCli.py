@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-__version__ = "2.6.0"
+__version__ = "2.7.0"
 
 # 改 Calico 相关逻辑时，对照 Tigera 当前稳定文档（与 Calico 发布列车一致）
 CALICO_DOCS_LATEST = "https://docs.tigera.io/calico/latest/"
@@ -35,6 +35,8 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
 
   host 层 HostEndpoint 的 interfaceName：必须由人工显式指定——CLI 传 --interface <网卡名> 或 \"*\"，和/或
   在每个 Node 上设置注解 kubeauto.calico/host-interface（缺省节点的网卡须由 --interface 兜底）。禁止 auto/自动探测。
+  任何访问集群的子命令须显式 --context；plan/validate/apply/delete 还须显式 --traffic-layer；
+  禁止用 CALICO_HOST_FW_CONTEXT / CALICO_HOST_FW_TRAFFIC_LAYER / CALICO_HOST_FW_NAMESPACE 代替手写参数。
   会改集群的操作：
     apply：在通过「写集群授权」后，创建或更新 GlobalNetworkPolicy、HostEndpoint、
            networking.k8s.io/v1 NetworkPolicy（取决于 --traffic-layer）。
@@ -49,7 +51,7 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
       日志会单独提醒：避免在共享会话、全局 shell profile、未审查的 CI 中误设）
 
   执行 apply 前建议至少做到：
-    1) 用 kubectl config current-context（或 --context）确认目标集群，避免误连生产。
+    1) 核对命令行 --context 与 kubectl config get-contexts / 变更工单一致，避免误连生产。
     2) preflight 与 validate：核对 -a 是否覆盖 Prometheus、跳板、管控网等真实源地址段。
     3) plan 审阅 YAML；可用 apply --dry-run=server 让 apiserver 校验对象（不落库）。
     4) 正式变更建议加 --backup，并在业务低峰做小范围连通性验证。
@@ -177,8 +179,8 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   --backup：在覆盖同名/同标签资源前尝试 get 并写入本地文件；备份失败不阻止 apply，
   【生产影响】不应视为唯一回滚手段，重大变更仍应用 GitOps 或集群备份。
 
-  --apply-staged：主机相关时先发 GNP 再发 HEP；traffic-layer=both 且 staged 时第二步仅 HEP+NetPol
-  仍拆成 calicoctl（HEP）与 kubectl（NetPol）两次提交，避免 etcd 模式下误用 kubectl 吃 Calico YAML。
+  --apply-staged：主机相关时先发 GNP 再发 HEP；traffic-layer=both 且 staged 时为三步——
+  GNP → HEP（均走 --executor）→ NetPol（固定 kubectl），避免 etcd 模式下误用 kubectl 混用 Calico 清单。
   【生产影响】中间态仍可能影响现网，仅作缓和而非消除风险。
 
 -------------------------------------------------------------------------------
@@ -190,8 +192,8 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   --verbose / -v：更详细的运行日志，便于排障。不改集群。
   --no-log-file：不写本地滚动日志。【生产影响】出问题后可追溯信息变少，仅建议短期会话。
   --kubectl：kubectl 可执行文件；默认环境变量 KUBECTL，否则在 PATH 中查找 kubectl。
-  --context：kubeconfig 中的 context。【生产影响】指错集群则后续所有操作对准错误环境；生产
-      务必与 kubectl config current-context 或审批工单一致。
+  --context：kubeconfig 中的 context 名；preflight/plan/validate/apply/delete/nodes 均必填（禁止省略、
+      禁止 CALICO_HOST_FW_CONTEXT 注入默认值）。【生产影响】指错集群则所有操作对准错误环境。
   --executor kubectl | calicoctl：traffic-layer 为 host 或 both 时 plan/apply/delete 必填（禁止 auto/省略）。
       kubectl=资源经 Kubernetes API（须已注册 projectcalico 等 CRD）；calicoctl=经 Calico 数据存储（如 etcd）。
       仅 traffic-layer=pod 时不要求本参数（实现固定 kubectl）。
@@ -199,10 +201,10 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
 
 【9.2 流量层与 Pod 策略命名】（plan / apply / validate / delete；preflight、nodes 无）
 
-  --traffic-layer host | pod | both：控制生成/删除哪些资源。默认可读 CALICO_HOST_FW_TRAFFIC_LAYER。
+  --traffic-layer host | pod | both：控制生成/删除哪些资源；须每次手写，禁止省略、禁止用环境变量替代。
       【生产影响】both 同一次变更动主机与某 namespace，故障面更大；排查需同时看 Calico 与 NetPol。
-  -n / --namespace：Pod 策略所在命名空间；traffic-layer 含 pod/both 时 plan/apply/validate 必填，
-      delete 删 NetPol 时必填。默认 CALICO_HOST_FW_NAMESPACE。
+  -n / --namespace：Pod 策略所在命名空间；traffic-layer 含 pod/both 时 plan/apply/validate 与 delete（删 NP）必填，
+      须手写，禁止依赖环境变量默认。
       【生产影响】namespace 错误会把策略套到错误工作负载集合或删错对象。
   --pod-label KEY=VALUE（可重复）：写入 podSelector.matchLabels；多对之间为 AND。
       【生产影响】标签与线上 Deployment 不一致会导致策略不生效（等于未防护或部分未防护）。
@@ -264,7 +266,7 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   --backup：覆盖前尝试拉取将触及的 GNP、带工具标签的 HEP、同名 NetPol 存盘（路径逻辑见实现）。
       【生产影响】备份失败不会中止 apply；不能代替 GitOps/变更工单/集群级备份。
   --backup-dir：备份根目录；不配则在 CALICO_HOST_FW_LOG_DIR 下按时间分子目录。
-  --apply-staged：主机侧分两次 apply（先 GNP 后 HEP；both 时 Pod 层与第二步一并，见代码）。
+  --apply-staged：主机侧分次 apply（先 GNP 后 HEP）；both 时分三步，NetPol 在 HEP 之后单独 kubectl 提交。
       【生产影响】仍存在中间态窗口；不能视为零风险切换。
   --dry-run none | client | server（仅走 kubectl apply 时有效；与 kubectl 官方语义一致）：
       none
@@ -299,21 +301,18 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
 
 【9.7 子命令与参数速查】
 
-  preflight、nodes：仅 9.1。
-  validate：9.1 + 9.2 + -a + --port。
-  plan：9.1 + 9.2 + 9.3；若 9.2 为 host/both 则 9.1 须含显式 --executor。
-  apply：9.1 + 9.2 + 9.3 + 9.5（含可选 --post-verify，成功后自动接跑 validate）；host/both 时 9.1 须含 --executor。
-  delete：9.1 + 9.2（无 9.3）+ 9.6（误传 -a 会忽略并警告）；host/both 时 9.1 须含 --executor。
+  preflight、nodes：9.1（须含显式 --context）。
+  validate：9.1 + 9.2 + 显式 --traffic-layer + -a + --port。
+  plan：9.1 + 9.2 + 显式 --traffic-layer + 9.3；host/both 时 9.1 须含 --executor。
+  apply：同上 + 9.5；host/both 时 9.1 须含 --executor。
+  delete：9.1 + 9.2 + 显式 --traffic-layer + 9.6（误传 -a 会忽略并警告）；host/both 时 9.1 须含 --executor。
 
-【9.8 环境变量】命令行优先于环境变量。
+【9.8 环境变量】可用于运维便利的仅限下列项；--context、--traffic-layer、-n 不得以环境变量代填（须 CLI 手写）。
 
-  KUBECTL：默认 kubectl 路径。
-  CALICOCTL：默认 calicoctl 路径。
-  CALICO_HOST_FW_CONTEXT：默认 --context。
-  CALICO_HOST_FW_TRAFFIC_LAYER：默认 --traffic-layer。
-  CALICO_HOST_FW_NAMESPACE：默认 --namespace。
+  KUBECTL：kubectl 可执行路径默认来源之一。
+  CALICOCTL：calicoctl 路径默认来源之一。
   CALICO_HOST_FW_LOG_DIR：日志与默认备份根路径的上级目录；默认 <cwd>/logs/。
-  CALICO_HOST_FW_KUBECTL_TIMEOUT：kubectl 超时秒数；默认 120；大 manifest 的 apply 会使用数倍超时。
+  CALICO_HOST_FW_KUBECTL_TIMEOUT：kubectl/calicoctl 超时秒数；默认 120；大 manifest 的 apply 会使用数倍超时。
   CALICO_HOST_FW_CONFIRM：等同 apply --confirm。【生产影响】见 9.5；勿长期留在共享环境中。
 
 【9.9 默认资源名与标签】
@@ -327,7 +326,7 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
 
 【9.10 生产变更自检清单（建议打印或贴到变更单）】
 
-  1) kubectl config current-context（或 --context）是否与工单环境一致。
+  1) 命令行 --context 是否与工单环境一致（与 kubectl config get-contexts 中名称一致）。
   2) host/both 是否已手写 --executor kubectl 或 calicoctl（与集群 Calico 数据存储方式一致，禁止依赖 auto）。
   3) 创建 HEP 是否已手写 --interface 或为每节点配置注解 kubeauto.calico/host-interface。
   4) -a 是否包含监控、告警、跳板、管控面、必要 CI 出口等全部真实源网段（含 IPv6 若在用）。
@@ -430,13 +429,13 @@ HELP_EPILOG = """
 建议顺序: preflight -> validate/plan ->（Pod 层可 kubectl apply --dry-run=server）-> apply --confirm [--backup]；成功后按日志再跑同参 validate（或 apply --post-verify）
   host 且 --executor calicoctl 时：预演=plan，勿用 apply --dry-run=server（calicoctl 不支持）。
 
-生产注意: apply/delete 会修改 API 对象；执行前 kubectl config current-context 确认集群。
+生产注意: apply/delete 会修改 API 对象；执行前核对命令行 --context 与工单环境、kubectl config get-contexts 一致。
 traffic-layer 含 host/both 须显式 --executor；创建 HostEndpoint 须 --interface（或每节点注解 kubeauto.calico/host-interface）。
 漏配 -a、--policy-selector 过宽、误用 --pod-selector-all 可能导致拒收或误伤；详见源码 MAINTAINER_DOC 第 0、9 节。
 
 --------------------------------------------------------------------
 示例 A：主机 / hostNetwork（监听在节点 IP 上的端口，如 node-exporter :9100）
-默认 --traffic-layer host。下列尽量写全，用不到的删掉即可。
+plan/validate/apply/delete 须显式 --traffic-layer host。下列尽量写全，用不到的删掉即可。
 --------------------------------------------------------------------
   %(prog)s --context prod preflight
   %(prog)s --context prod nodes
@@ -1039,6 +1038,22 @@ def _require_executor_for_host_traffic(args: argparse.Namespace, subcmd: str) ->
         )
 
 
+def _require_explicit_kube_context(args: argparse.Namespace, subcmd: str) -> None:
+    if not (getattr(args, "context", None) or "").strip():
+        raise CalicoHostFwError(
+            f"{subcmd}: 须显式指定 --context（与 kubectl config get-contexts 中名称一致），"
+            "禁止依赖当前默认 context 或已从环境变量注入的旧行为。"
+        )
+
+
+def _require_explicit_traffic_layer(args: argparse.Namespace, subcmd: str) -> None:
+    tl = getattr(args, "traffic_layer", None)
+    if tl not in ("host", "pod", "both"):
+        raise CalicoHostFwError(
+            f"{subcmd}: 须显式指定 --traffic-layer host|pod|both，禁止省略或依赖 CALICO_HOST_FW_TRAFFIC_LAYER。"
+        )
+
+
 def apply_manifest(
     manifest: str,
     *,
@@ -1222,6 +1237,7 @@ def backup_managed_resources(
 
 def cmd_preflight(args: argparse.Namespace) -> int:
     """集群与 Calico API 可读性检查（不修改集群）。"""
+    _require_explicit_kube_context(args, "preflight")
     to = _timeout_sec()
     base = kubectl_base(args.kubectl, args.context)
     logger.info("Calico 文档基线: %s", CALICO_DOCS_LATEST)
@@ -1278,14 +1294,16 @@ def cmd_preflight(args: argparse.Namespace) -> int:
             logger.info("calicoctl: %s", (cv.stdout or cv.stderr or "").strip()[:500])
 
     logger.info(
-        "预检完成。下一步建议: plan 生成 YAML；apply 时使用 --confirm "
-        "或设置环境变量 %s=1。",
+        "预检完成。下一步建议: 各子命令须显式 --context；plan/validate/apply/delete 另须 --traffic-layer；"
+        "plan 审 YAML；apply 时使用 --confirm 或环境变量 %s=1。",
         CONFIRM_ENV,
     )
     return 0
 
 
 def cmd_plan(args: argparse.Namespace) -> int:
+    _require_explicit_kube_context(args, "plan")
+    _require_explicit_traffic_layer(args, "plan")
     allow_v4, allow_v6 = validate_cidrs(list(args.allow_net))
     tl = args.traffic_layer
     parts: List[str] = []
@@ -1335,6 +1353,8 @@ def cmd_plan(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """校验 CIDR；host 层启发式核对 Node IP；pod 层统计匹配 Pod 数量。"""
+    _require_explicit_kube_context(args, "validate")
+    _require_explicit_traffic_layer(args, "validate")
     allow_v4, allow_v6 = validate_cidrs(list(args.allow_net))
     tl = args.traffic_layer
     warnings = 0
@@ -1399,6 +1419,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_nodes(args: argparse.Namespace) -> int:
+    _require_explicit_kube_context(args, "nodes")
     nodes = kube_get_nodes_json(args.kubectl, args.context)
     for node in nodes:
         name, ips = node_internal_ips(node)
@@ -1444,7 +1465,7 @@ def _log_apply_production_impact(
 ) -> None:
     if args.dry_run and args.dry_run != "none":
         return
-    ctx = args.context or "（kubeconfig 当前上下文，请 kubectl config current-context 核对）"
+    ctx = str(args.context)
     logger.warning(
         "[生产影响] 即将向 API 提交策略对象（context=%s）。"
         " -a 漏配或 GNP selector 过宽可能导致监控/跳板被拒或误伤多节点；"
@@ -1566,6 +1587,8 @@ def _finish_apply_success(args: argparse.Namespace) -> int:
 
 
 def cmd_apply(args: argparse.Namespace) -> int:
+    _require_explicit_kube_context(args, "apply")
+    _require_explicit_traffic_layer(args, "apply")
     allow_v4, allow_v6 = validate_cidrs(list(args.allow_net))
     if not (MIN_PORT <= args.port <= MAX_PORT):
         raise CalicoHostFwError(f"端口范围非法: {args.port}")
@@ -1791,6 +1814,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
 
 def cmd_delete(args: argparse.Namespace) -> int:
+    _require_explicit_kube_context(args, "delete")
+    _require_explicit_traffic_layer(args, "delete")
     ignored_allow = getattr(args, "allow_net_ignored", None) or []
     if ignored_allow:
         logger.warning(
@@ -1798,7 +1823,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
             "与 apply 的网段列表无关。正确定法见 delete --help。",
             len(ignored_allow),
         )
-    ctx = args.context or "（kubeconfig 当前上下文）"
+    ctx = str(args.context)
     logger.warning(
         "[生产影响] delete 将从集群 API 移除策略对象（context=%s）。"
         " 目标 TCP 端口将不再受本工具规则约束，与其它 Calico/K8s 策略叠加后的现网行为可能变化；"
@@ -1895,18 +1920,19 @@ def _traffic_layer_flags(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--traffic-layer",
         choices=("host", "pod", "both"),
-        default=(os.environ.get("CALICO_HOST_FW_TRAFFIC_LAYER") or "host").strip() or "host",
+        default=None,
         metavar="LAYER",
         help=(
-            "host=主机侧 Calico（GNP+默认 HEP）；pod=某 namespace 标准 NetworkPolicy；both=同时。"
-            "【生产】both 一次改两套对象；须核对 namespace 与 context（详见 MAINTAINER_DOC）。"
+            "plan/validate/apply/delete 必填：host=主机侧 Calico（GNP+默认 HEP）；"
+            "pod=某 namespace 标准 NetworkPolicy；both=同时。"
+            "【生产】both 一次改两套；须手写 -n 与 --context（见 MAINTAINER_DOC）。"
         ),
     )
     p.add_argument(
         "-n",
         "--namespace",
-        default=os.environ.get("CALICO_HOST_FW_NAMESPACE"),
-        help="Pod 层策略所在命名空间（traffic-layer 含 pod 时 plan/apply/validate 必填；delete 删 NP 时必填）",
+        default=None,
+        help="Pod 层所在命名空间；traffic-layer 含 pod/both 时必填（手写，禁止环境变量默认）。",
     )
     p.add_argument(
         "--pod-label",
@@ -2034,8 +2060,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     common.add_argument(
         "--context",
-        default=os.environ.get("CALICO_HOST_FW_CONTEXT"),
-        help="kube context（$CALICO_HOST_FW_CONTEXT）",
+        default=None,
+        help="kube context 名（须显式填写；禁止用 CALICO_HOST_FW_CONTEXT 注入默认）",
     )
     common.add_argument(
         "--executor",
@@ -2138,7 +2164,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--apply-staged",
         action="store_true",
         help=(
-            "主机侧分两次 apply：先 GNP 再 HEP；both 时第二步含 NetPol。"
+            "主机相关时分次下发：先 GNP 再 HEP（同一 --executor）；"
+            "traffic-layer=both 时为三步——GNP → HEP → NetPol（NetPol 固定 kubectl，与主机层分离）。"
             "【生产】仍有中间态窗口，参见 MAINTAINER_DOC 第 8 节。"
         ),
     )
