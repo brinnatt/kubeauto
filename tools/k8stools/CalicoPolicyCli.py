@@ -140,11 +140,31 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   且具备授权时才会 apply。
 
 -------------------------------------------------------------------------------
-7. kubectl 与 calicoctl
+7. kubectl 与 calicoctl（kubeauto 默认 Calico 必读本节）
 -------------------------------------------------------------------------------
 
-  清单中含标准 NetworkPolicy 时必须使用 kubectl。仅含 Calico CR 时二者常均可行，
-  --executor auto 会探测。kubectl 的 server-side dry-run 可在变更前做服务校验。
+  清单中含标准 NetworkPolicy 时必须使用 kubectl。仅含 Calico CR（GNP、HEP 等）时，用 kubectl 还是
+  calicoctl 取决于集群如何安装 Calico。
+
+  【kubeauto 仓库 roles/calico 的默认装法】
+    - manifest 来自 etcd 数据存储的 Calico 发行包（如 calico-etcd.yaml），见各版本模板顶注释。
+    - calico-node、kube-controllers 通过 Secret 中的证书连接 etcd，策略与节点状态主要在 etcd。
+    - 不会在 Kubernetes API 里注册 projectcalico.org/v3 的 GlobalNetworkPolicy、HostEndpoint 等 CRD，
+      因此 kubectl get crd 筛选 calico 往往为空，kubectl apply 对这类 YAML 会报
+      no matches for kind ... projectcalico.org/v3。这与「calico-node Pod 在跑」可以同时成立。
+    - 管理这些对象应使用 calicoctl；kubeauto 的 roles/calico 会配置 /etc/calico/calicoctl.cfg
+      （指向 etcdEndpoints 与证书），并把 calicoctl 安装到 ansible 的 bin_dir。
+
+  【本工具在 kubeauto 集群上的推荐用法】
+    - traffic-layer 含 host：apply、delete 时请显式使用 --executor calicoctl（若 auto 检测不到
+      api-resources 里的 projectcalico 而本机又无 calicoctl，会误用 kubectl 导致失败）。
+    - 确保运行脚本的机器上有 calicoctl，且能读到 /etc/calico/calicoctl.cfg（与集群安装时一致）。
+    - 预演：calicoctl 没有 kubectl 的 --dry-run=server；请用 plan 审 YAML，再 apply --confirm。
+    - traffic-layer pod：仍用 kubectl（标准 NetworkPolicy 在 apiserver 里）。
+
+  【若希望全部用 kubectl 管理 Calico CR】
+    - 需将 Calico 改为 Kubernetes 数据存储并安装相应 CRD（及可选 API Server），属集群改造，
+      见 Tigera 文档；不在本工具默认假设内。
 
 -------------------------------------------------------------------------------
 8. --backup 与 --apply-staged（降低操作窗口风险，不替代人工核对）
@@ -249,7 +269,7 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
         服务端 dry-run：请求会发到 apiserver，走准入等链路，仍不把对象写入 etcd。
         最适合正式下发前「让集群验一遍YAML」；比 client 更准，对 apiserver 多一点点负载。
       三个取值的意义：none = 真下发；client = 快速本地演练；server = 集群侧预演不落库。
-      【生产影响】**只有** none 在授权后会产生持久化变更；client/server 都不会落库，但也不是「没发请求」
+      【生产影响】仅有 none 在授权后会产生持久化变更；client/server 都不会落库，但也不是「没发请求」
       （server 会对 API 有只读类校验流量）。走 calicoctl apply 时仅支持 none，若设 client/server 会报错
       （须改用 kubectl 或先用 plan 看 YAML）。
   --post-verify：apply 全部下发成功后，在同一进程内自动执行与本次参数对齐的 validate（只读）。
@@ -384,7 +404,9 @@ HELP_EPILOG = """
   delete    按层删 GNP、HEP、NetPol（名字要和当初创建时一致）
 
 --executor  auto | kubectl | calicoctl
-  只要清单里带了标准 NetPol，就只能 kubectl；服务端 dry-run 也只有 kubectl 能用。
+  清单含标准 NetPol 时只能用 kubectl。
+  kubeauto 默认 Calico 为 etcd 存储、常无 projectcalico CRD：主机层请用 calicoctl（--executor calicoctl，
+  并配置 PATH 与 /etc/calico/calicoctl.cfg）；详见 MAINTAINER_DOC 第 7 节。
 
 环境变量和命令行重复时，以命令行为准。具体名字看每个参数的 -h。
 
@@ -945,7 +967,12 @@ def detect_executor(kubectl: str, context: Optional[str], prefer: str) -> str:
     if shutil.which("calicoctl"):
         logger.info("未在 kubectl api-resources 中发现 projectcalico HostEndpoint，改用 calicoctl")
         return "calicoctl"
-    logger.warning("将尝试 kubectl；若失败请安装 Calico API Server 或改用 --executor calicoctl")
+    logger.warning(
+        "kubectl api-resources 中未发现 projectcalico HostEndpoint，且 PATH 中未找到 calicoctl。"
+        " kubeauto 默认 Calico 为 etcd 存储、通常无 projectcalico CRD，主机层 GNP/HEP 须用 "
+        "calicoctl（参考 /etc/calico/calicoctl.cfg）。请安装 calicoctl 或使用 --executor calicoctl；"
+        "说明见本文件 MAINTAINER_DOC 第 7 节。"
+    )
     return "kubectl"
 
 
