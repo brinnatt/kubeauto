@@ -1293,7 +1293,7 @@ Calico 证书使用场景：
 >
 > https://docs.tigera.io/calico/latest/operations/calicoctl/configure/kdd
 >
-> 说明（与 kubectl apply projectcalico.org/v3）：默认 etcd 存储安装不会在集群里注册 GlobalNetworkPolicy、HostEndpoint 等 CRD，因此 kubectl apply 这类清单会报 no matches for kind，但 calico-node 仍可正常运行。主机侧 Calico 策略请使用 calicoctl（本仓库下发的 /etc/calico/calicoctl.cfg 与证书）。使用 tools/k8stools/CalicoPolicyCli.py 做主机端口收敛时请加 --executor calicoctl，预演用 plan（calicoctl 无 kubectl 的 dry-run=server）；详见该脚本内 MAINTAINER_DOC 第 7 节。
+> 说明（与 kubectl apply projectcalico.org/v3）：默认 etcd 存储安装不会在集群里注册 GlobalNetworkPolicy、HostEndpoint 等 CRD，因此 kubectl apply 这类清单会报 no matches for kind，但 calico-node 仍可正常运行。主机侧 Calico 策略请使用 calicoctl（本仓库下发的 /etc/calico/calicoctl.cfg 与证书）。使用 tools/k8stools/CalicoPolicyCli.py 做主机端口收敛时：traffic-layer 含 host/both 必须手写 --executor calicoctl（本模式）或 --executor kubectl（Kubernetes 数据存储且已装 CRD），并手写 --interface 或逐节点注解 kubeauto.calico/host-interface；脚本不再提供 executor 自动推断。预演用 plan；calicoctl 路径不支持 apply --dry-run=server。详见该脚本 MAINTAINER_DOC 第 7、9 节。
 
 **创建 calico DaemonSet yaml 文件和 rbac 文件：**
 
