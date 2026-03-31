@@ -239,8 +239,19 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   --backup-dir：备份根目录；不配则在 CALICO_HOST_FW_LOG_DIR 下按时间分子目录。
   --apply-staged：主机侧分两次 apply（先 GNP 后 HEP；both 时 Pod 层与第二步一并，见代码）。
       【生产影响】仍存在中间态窗口；不能视为零风险切换。
-  --dry-run none | client | server：kubectl dry-run 语义。server 仅服务端校验、不落库。
-      【生产影响】none 且已授权则为真实变更；calicoctl 路径无等价 server dry-run。
+  --dry-run none | client | server（仅走 kubectl apply 时有效；与 kubectl 官方语义一致）：
+      none
+        正常 apply，会把对象写入集群（在你已授权写 API 的前提下）。这就是「真变更」。
+      client
+        客户端 dry-run：不会在集群里持久化对象；只在 kubectl 侧做拼装/基本校验。
+        优点快；缺点是不会完整经过 apiserver 准入/校验，有些问题只有 server 模式能提前暴露。
+      server
+        服务端 dry-run：请求会发到 apiserver，走准入等链路，仍不把对象写入 etcd。
+        最适合正式下发前「让集群验一遍YAML」；比 client 更准，对 apiserver 多一点点负载。
+      三个取值的意义：none = 真下发；client = 快速本地演练；server = 集群侧预演不落库。
+      【生产影响】**只有** none 在授权后会产生持久化变更；client/server 都不会落库，但也不是「没发请求」
+      （server 会对 API 有只读类校验流量）。走 calicoctl apply 时仅支持 none，若设 client/server 会报错
+      （须改用 kubectl 或先用 plan 看 YAML）。
   --post-verify：apply 全部下发成功后，在同一进程内自动执行与本次参数对齐的 validate（只读）。
       进程退出码随后续 validate 结果传递（validate 当前对告警仍返回 0，以日志为准）。
       日志仍会给出可手动复制的 validate 命令，便于与数据面抽测、kubectl get 组成完整闭环。
@@ -1927,7 +1938,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         choices=("none", "client", "server"),
         default="none",
-        help="kubectl 专用：client/server dry-run（calicoctl 路径不可用）",
+        help=(
+            "kubectl apply 专用。none=正常下发（真变更）；client=仅客户端 dry-run、不落库；"
+            "server=发到 apiserver 校验但不落库（推荐正式前预演）。calicoctl 路径仅支持 none。"
+        ),
     )
     com_apply.add_argument(
         "--post-verify",
