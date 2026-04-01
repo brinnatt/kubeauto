@@ -2694,69 +2694,98 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 官方延伸阅读：[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)、[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
 
-#### T4.11.2.2、Webhook 接收器
+#### T4.11.2.2、Webhook：钉钉 / 企业微信（企业生产常用）
 
-内置的 `email_configs`、`slack_configs`、`pagerduty_configs` 等直接写在 [receiver](https://prometheus.io/docs/alerting/latest/configuration/#receiver) 里。钉钉、企业微信等多半在集群里放一个**适配小服务**，Alertmanager 用 [webhook_configs](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把官方 [通知 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 过去，由适配层去调厂商 API。生产：对外尽量 HTTPS；集群内加 NetworkPolicy；超时和重试按官方字段调；密钥只放 Secret，不要进 Git。
+Alertmanager 只负责按 [webhook_config](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把 [标准 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 出去；钉钉、企业微信机器人要的 **URL、加签、正文格式** 各不相同，生产上标准做法是：**集群内部署适配组件**，Alertmanager → 适配 Service → 厂商 HTTPS API。密钥、机器人地址只进 **Secret**，适配镜像 **固定 tag**，出网与 **NetworkPolicy** 按你们安全基线收紧；对外回调需 **Ingress** 时限制来源 IP。
 
-**操作顺序**：
+**落地 checklist（两套 IM 通用）**
 
-1. 在 **T4.11.1** 的 `receivers` 里**追加**一个带 `webhook_configs` 的 receiver（不要删掉原有 `default` / `email`）。
-2. 在 **T4.11.1** 的 `route.routes` 里**追加**一条子路由（与原有 `email` 子路由**并列**，不要整段覆盖）。
+1. IM 控制台建好机器人，按厂商文档拿 **Webhook / 加签密钥**（钉钉常见 `SEC...`；企微 URL 常带 `key=`）。
+2. K8s：`Deployment` + `ClusterIP Service`；环境变量或配置文件引用 **Secret**；适配器文档里的监听端口、路径（如 `/dingtalk`）与下面 Alertmanager `url` 一致。
+3. Alertmanager：在 **T4.11.1** 的 `receivers` 里增加 `webhook_configs`，`url` 用集群 DNS：`http://<svc>.kube-mon.svc.cluster.local:<port><path>`。需要 TLS 客户端证书、Bearer 等时用官方 [http_config](https://prometheus.io/docs/alerting/latest/configuration/#http_config)。
+4. 路由：要与 **邮件同时**送达，**同一 `receiver` 内并列** `email_configs` 与 `webhook_configs`；或给告警加 `notify=ding` 等标签再 `matchers` 分流。两条子路由 **matchers 完全相同** 时只会命中**靠前**那条（除非 `continue: true`），不要指望「后写的 webhook 还能再发一遍」。
 
-同命名空间可用 Service 短名 URL，跨命名空间写完整集群域名。
+**实践 A：钉钉群机器人（加签）**
+
+1. 钉钉：**群设置 → 智能群助手 → 自定义机器人**，安全设置选 **加签**，保存 **Webhook** 与 **SEC 密钥**。
+2. 适配器常用开源 **[prometheus-webhook-dingtalk](https://github.com/timonwong/prometheus-webhook-dingtalk)**：按仓库 README 配置钉钉 URL / 加签（具体环境变量名以 README 为准）。镜像在 [Docker Hub](https://hub.docker.com/r/timonwong/prometheus-webhook-dingtalk/tags) 选**固定 tag**，同步到私有仓更佳。
+3. 假设 Service 名 `dingtalk-webhook`、容器监听 **8060**、文档路径 `/dingtalk`，Alertmanager **追加** receiver（与 `default` / `email` 同级）：
 
 ```yaml
-# 片段：追加到 receivers（与现有项同级）
-  - name: webhook
+  - name: dingtalk-node
     webhook_configs:
-      - url: 'http://alertmanager-webhook.kube-mon.svc.cluster.local:8080/alerts'
+      - url: 'http://dingtalk-webhook.kube-mon.svc.cluster.local:8060/dingtalk'
         send_resolved: true
-
-# 片段：追加到 route.routes（与原有子路由同级）
-  - receiver: webhook
-    matchers:
-      - 'team="node"'
 ```
 
-把 URL 换成你的 Service。`send_resolved: true` 表示恢复时也会 POST。
+4. `route.routes` 里用 `matchers` 与 **T4.11.2** 规则 `labels` 对齐，例如仍用 `team="node"`，或再加 `severity="critical"` 只推严重告警。
 
-**重要**：路由树**从上到下**匹配，**第一个命中的子路由**就结束（除非该条写了 `continue: true`）。如果 **T4.11.1** 里已经有一条 `team="node"` 指向 `email`，再追加一条同样 matcher 指向 `webhook`，通常只会进**写在前面**的那条。要**邮件和 IM 同时发**，正确做法是**同一个 receiver** 里并列写 `email_configs` 和 `webhook_configs`，或者给不同通知通道打不同标签、用不同 matcher 分流。
+**实践 B：企业微信群机器人**
 
-插图槽位：Webhook 适配 Pod 日志里成功处理请求的一行（打码），建议 `docs/prometheus/images/t4-11-webhook-delivery.png`。
+1. 企微：**群聊 → 群机器人 → 添加**，复制带 `key=` 的 **Webhook URL**。接口与字段以 [企业微信文档（群机器人）](https://developer.work.weixin.qq.com/document/path/91770) 为准（路径若调整以官网为准）。
+2. 二选一即可规模化：**自研** 小服务（解析 Alertmanager JSON → 拼 markdown/text → POST 到上述 URL）；或使用现成多通道项目 **[PrometheusAlert](https://github.com/feiyu563/PrometheusAlert)**，按其文档配置企微机器人，Alertmanager `webhook_configs.url` 指向该项目暴露的 **Prometheus/Alertmanager 兼容入口**（具体 path 以该项目当前 README 为准）。
+3. Webhook 地址、`key`、模板里敏感词同样 **Secret 注入**；若适配器需公网回调再加 Ingress 并限制来源 IP。
 
-### T4.11.3、自定义模板
+**邮件 + 钉钉同一条告警（推荐结构）**
 
-默认邮件样式可直接用内置模板。要改 HTML 等：把 `.tmpl` 放进容器可读目录，在 Alertmanager 配置**顶层**加 `templates:`。模板文件建议从**与你运行版本相同的 Git tag**拉默认文件再改，避免块名和内置不一致。与 **T4.11.1** 镜像一致时用：
+```yaml
+  - name: email-and-dingtalk
+    email_configs:
+      - to: 'oncall@example.com'
+        send_resolved: true
+    webhook_configs:
+      - url: 'http://dingtalk-webhook.kube-mon.svc.cluster.local:8060/dingtalk'
+        send_resolved: true
+```
+
+**验收**：临时调低 **T4.11.2** 阈值或手工构造 firing；看适配器 **Pod 日志**、群内消息、Alertmanager UI 是否 **silenced**。失败顺序：Secret → Service DNS → 出网 → 路由 matcher。
+
+插图槽位：`docs/prometheus/images/t4-11-webhook-delivery.png`（适配器日志一行，打码）。
+
+### T4.11.3、邮件模板（企业侧）
+
+默认模板可直接用。要统一 **值班链接、Runbook、公司抬头**：从与 **Alertmanager v0.31.1** 一致的 [default.tmpl](https://github.com/prometheus/alertmanager/blob/v0.31.1/template/default.tmpl) 拉下来进 Git 再改；配置 **顶层** `templates:`，文件挂进容器（如 `/etc/alertmanager/templates/`），与 glob 一致。
 
 ```bash
 curl -fsSL -o default.tmpl "https://raw.githubusercontent.com/prometheus/alertmanager/v0.31.1/template/default.tmpl"
 ```
 
-语法是 Go template，可用字段见 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/) 与 [notification_examples](https://prometheus.io/docs/alerting/latest/notification_examples/)。
+语法为 Go template，字段见 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/) 与 [notification_examples](https://prometheus.io/docs/alerting/latest/notification_examples/)。
 
 ```yaml
 templates:
   - /etc/alertmanager/templates/*.tmpl
 ```
 
-用 ConfigMap 子路径或 Volume 挂到容器内 `/etc/alertmanager/templates/`（与上面 glob 前缀一致）。改完后与 **T4.11.1** 相同：**更新 ConfigMap 后 `kubectl rollout restart deployment/alertmanager -n kube-mon`**，或你方已启用的 `/-/reload` 流程。
+用 ConfigMap 子路径或 Volume 挂到容器内（与 glob 前缀一致）。变更走评审 + **`kubectl rollout restart deployment/alertmanager -n kube-mon`**（或已启用的 `/-/reload`）。
 
-### T4.11.4、记录规则
+### T4.11.4、记录规则（配合 T4.4 节点指标）
 
-把重复算或很重的 PromQL 预计算成新指标，和告警规则一样写在 `rule_files` 里，见官方 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。评估间隔默认跟 `global.evaluation_interval`（**T4.2.1** 为 `15s`）；若全局没配，程序默认 `1m`，以你当前 `prometheus.yml` 为准。
+与告警规则同写在 `rule_files`，见 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。**企业里**：Grafana 大盘、多条告警共用同一套重查询时，先 `record` 再在面板和 `expr` 里引用，减轻 Prometheus 压力；`interval` 可与查询粒度一致（如 `30s`），`record` 命名与团队规范统一。评估间隔未在组内指定时，跟 `global.evaluation_interval`（**T4.2.1** 为 `15s`）；若全局未配则程序默认 `1m`，以当前 `prometheus.yml` 为准。
+
+下面与 **T4.4** 一致使用 `job="kubernetes-nodes"`；第二条与 **T4.11.2** 内存告警语义一致，可把告警 `expr` 改成直接判断记录指标（阈值更易读）。
 
 ```yaml
 groups:
-  - name: example
-    interval: 1m
+  - name: node-recording
+    interval: 30s
     rules:
-      - record: job:http_inprogress_requests:sum
-        expr: sum by (job) (http_inprogress_requests)
+      - record: instance:node_memory_used_bytes:calc
+        expr: |
+          node_memory_MemTotal_bytes{job="kubernetes-nodes"}
+          - node_memory_MemAvailable_bytes{job="kubernetes-nodes"}
+      - record: instance:node_memory_utilisation:ratio
+        expr: |
+          1 - (
+            node_memory_MemAvailable_bytes{job="kubernetes-nodes"}
+            /
+            node_memory_MemTotal_bytes{job="kubernetes-nodes"}
+          )
 ```
 
-`record` 名字要符合命名规范；可用 `labels` 给写出的序列加标签。大盘和告警尽量引用记录规则结果，减轻查询压力。细则见官方文档。
+可用 `labels` 给写出的序列加标签。CPU、磁盘等建议按团队规范引入 [mixins](https://github.com/monitoring-mixins) 或内部标准记录规则集，避免在文档里复制易错的长 `expr`。
 
-**插图**：本节原理与流程见段首 Mermaid 与 **T4.11.2** 正文；你只需按上文槽位补充 T4.11-2、T4.11-3、T4.11-5 三张图即可（路径已写在各节）。
+**插图**：T4.11-2、T4.11-3、T4.11-5 路径见上文各节。
 
 ## T4.12、Thanos
 
