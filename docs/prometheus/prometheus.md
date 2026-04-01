@@ -2657,11 +2657,46 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 本例 `labels.team` 为 `node`，与 **T4.11.1** 子路由里 `team="node"` 一致，告警会交给 **`email` 接收器**，由 Alertmanager **按 `global` SMTP 尝试发信**。收件箱能不能收到，取决于 **T4.11.1**「邮件通知」里 SMTP、认证、出站是否已配通，**不是**只改 `to` 就行。
 
-进 Alertmanager UI：NodePort 用 `kubectl get svc -n kube-mon alertmanager` 看端口，浏览器访问 `http://<节点IP>:<NodePort>`；生产多用 ClusterIP 加 Ingress。Web 上可做静默；长期抑制写在配置里的 `inhibit_rules`，见 [inhibit_rule](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。`repeat_interval` 管同组重复通知节奏，要和值班习惯一起调。
+#### T4.11.2.1、Alertmanager Web UI 怎么进、各页干什么
 
-官方延伸阅读：[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)。
+**和 Prometheus 里 Alerts 的区别**：Prometheus 页是**规则求值状态**（inactive/pending/firing）；Alertmanager 页是**已经送过来的告警**怎么分组、有没有被静默/抑制、会走哪个接收器。两边都要会看，别混成一个。
 
-#### T4.11.2.1、Webhook 接收器
+**怎么打开**
+
+- **NodePort**（与 **T4.11.1** 清单一致）：`kubectl get svc -n kube-mon alertmanager`，看 `PORT(S)` 里 `9093:3xxxx` 的节点端口，浏览器访问 `http://<任一节点 IP>:<3xxxx>`。
+- **ClusterIP / 本机没直达集群**：`kubectl port-forward -n kube-mon svc/alertmanager 9093:9093`，本机打开 `http://127.0.0.1:9093`。
+- 生产对外多走 Ingress + TLS，逻辑仍是访问 Alertmanager 的 **9093** 等价入口。
+
+**界面大致结构**（0.2x 以后常见布局；具体文案随版本略有出入，以你镜像为准）
+
+| 入口 / 区域 | 用途（大白话） |
+|-------------|----------------|
+| **Alerts** | 当前 Alertmanager 手里的告警列表，多按 **`route.group_by`** 聚成「一组」展示。展开一组可看每条告警的**标签**（来自 Prometheus 规则里的 `labels` 等）、当前会交给哪个 **receiver**（邮件、Webhook 等）。若显示被 **silenced** / **inhibited**，表示被静默或抑制规则挡了通知。 |
+| **Silences** | **临时静音**：在时间段内按 **matchers** 匹配到的告警**不再往接收器发**，适合割接、已知误报。和「改 Prometheus 规则」无关；规则可以还在 firing，只是不吵你。新建静默时要填：匹配条件、开始/结束时间、说明、创建人（有的版本可选）。matchers 语法与路由里一致，例如 `alertname="NodeMemoryHigh"`、`team="node"`，见官方 [matcher](https://prometheus.io/docs/alerting/latest/configuration/#matcher)。 |
+| **Status** | 版本、运行信息；多实例集群时可能看到成员状态。改配置是否生效以 **T4.11.1** 的 **restart / reload** 为准，不是看这个页「自动更新」。 |
+
+**你在 Alerts 页该怎么理解**
+
+- **一组里多条**：通常是因为同一 `group_by` 标签组合下有多条 firing（例如多个 `instance`）。通知往往按组发，所以你会觉得「一条邮件里塞了多台机器」。
+- **看不到告警**：可能是 Prometheus 没推到 Alertmanager（查 Prometheus `alerting` 与网络）、告警已被静默/抑制、或当前本来就没有 firing。
+- **有告警但没邮件**：先看 **T4.11.1「邮件通知」** SMTP；再看该组对应的 **receiver** 是不是邮件；最后看是否 **silenced**。
+
+**Silences 页常用操作**
+
+1. **New Silence**：填 matchers（至少能唯一框住你想静音的范围，太宽会误伤）。
+2. 设 **开始/结束时间**；到期自动失效。
+3. 已有静默可在列表里 **Expire** 提前取消。
+
+**配置文件里才有的地方（UI 里不画表单）**
+
+- **`inhibit_rules`（抑制）**：例如「集群挂了就别再报单盘」这类逻辑，写在 `config.yml`，见 [inhibit_rule](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。
+- **`repeat_interval` / `group_wait` / `group_interval`**：控制多久重复通知、分组等待等，在 **`route`** 里调，要和值班习惯一起试，官方说明在 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 的 routing 相关字段。
+
+插图槽位：`docs/prometheus/images/t4-11-alertmanager-alerts.png`（Alerts 页分组展开）、`docs/prometheus/images/t4-11-alertmanager-silences.png`（新建静默表单）。
+
+官方延伸阅读：[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)、[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
+
+#### T4.11.2.2、Webhook 接收器
 
 内置的 `email_configs`、`slack_configs`、`pagerduty_configs` 等直接写在 [receiver](https://prometheus.io/docs/alerting/latest/configuration/#receiver) 里。钉钉、企业微信等多半在集群里放一个**适配小服务**，Alertmanager 用 [webhook_configs](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把官方 [通知 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 过去，由适配层去调厂商 API。生产：对外尽量 HTTPS；集群内加 NetworkPolicy；超时和重试按官方字段调；密钥只放 Secret，不要进 Git。
 
