@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-__version__ = "2.7.0"
+__version__ = "2.8.0"
 
 # 改 Calico 相关逻辑时，对照 Tigera 当前稳定文档（与 Calico 发布列车一致）
 CALICO_DOCS_LATEST = "https://docs.tigera.io/calico/latest/"
@@ -19,7 +19,7 @@ CALICO_COMPONENT_VERSIONS = "https://docs.tigera.io/calico/latest/reference/comp
 # ---------------------------------------------------------------------------
 MAINTAINER_DOC = """
 ===============================================================================
-calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico 官方概念）
+CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（用语尽量贴近 K8s / Calico 官方概念）
 ===============================================================================
 
 读完可知：脚本做什么、两类策略各自解决哪条数据路径、会生成哪些 API 对象、各参数含义与生产风险、代码入口。
@@ -44,6 +44,13 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
 
   只读、不修改 API 对象的操作：
     preflight、nodes、validate（仅查询与校验）、plan（只向标准输出打印 YAML）。
+
+  validate 的 CLI 刻意「窄」于 plan/apply：只接受会改变校验结论的参数，避免接受一堆脚本根本不检查的开关
+  （可靠、可审计）。语义一致靠共用内部校验函数（如 HEP 网卡/注解规则），不是靠强行同款命令行外观。
+  apply --post-verify 在进程内直接调用 validate 逻辑，不依赖再解析一长串 CLI。
+
+  无法承诺「绝对零风险」：现网还受 Felix 配置、其它 GNP/Profile/Tier、节点路由与 kube-proxy 模式等影响。
+  本版本按 Tigera 文档为 GNP 增加 ingress 末尾 Pass、并在 calicoctl 场景用 calicoctl 做主机层备份，以降低误伤与回滚信息丢失。
 
   【生产影响】授权写集群的方式（任选其一即视为自愿承担数据面变更风险）：
     - 命令行显式加 --confirm（apply 子命令）
@@ -121,7 +128,10 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   GlobalNetworkPolicy：
     spec.types 含 Ingress；spec.selector 与上方 HEP 标签对齐。
     ingress：对目标 TCP 端口先按 -a 放行，再拒绝同端口其它源；IPv4 与 IPv6 分条填写
-   （符合 EntityRule 不混编地址族的要求）。
+   （符合 EntityRule 不混编地址族的要求）。清单末尾追加一条 action: Pass：使未命中上述 Allow/Deny 的入站
+    按官方语义跳转到 HostEndpoint 上的 Profile（默认 projectcalico-default-allow）。
+    若无此 Pass，在「GNP 已选中该 HEP」时其余入站（含 kubelet 10250；该端口不在 Calico 默认 failsafe 列表中）
+    往往不会落到 Profile，表现为 apiserver→kubelet exec/日志流超时、telnet 10250 挂死等；删除 GNP/HEP 后恢复。
 
 -------------------------------------------------------------------------------
 5. Pod 侧 NetworkPolicy
@@ -178,6 +188,9 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
 
   --backup：在覆盖同名/同标签资源前尝试 get 并写入本地文件；备份失败不阻止 apply，
   【生产影响】不应视为唯一回滚手段，重大变更仍应用 GitOps 或集群备份。
+    apply 且 --executor calicoctl 时：主机层 GNP/HEP 备份走 calicoctl get（与 etcd 数据存储一致）；
+    HEP 多对象为合并 JSON（hostendpoints-kubeauto.json），非 kubectl -l YAML。
+    --executor kubectl 时：主机层仍走 kubectl get projectcalico 资源名（与 KDD/CRD 一致）。
 
   --apply-staged：主机相关时先发 GNP 再发 HEP；traffic-layer=both 且 staged 时为三步——
   GNP → HEP（均走 --executor）→ NetPol（固定 kubectl），避免 etcd 模式下误用 kubectl 混用 Calico 清单。
@@ -215,7 +228,7 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   --k8s-np-name：NetworkPolicy metadata.name；不配则用 kubeauto-restrict-pod-tcp-<port>。
       【生产影响】与集群已有同名冲突会覆盖原对象；delete 名字错误会删除他人策略。
 
-【9.3 plan 与 apply 共用】（validate、delete 无）
+【9.3 plan 与 apply 共用】（delete 无；validate 仅镜像其中与校验相关的子集，见 9.4）
 
   -a / --allow-net CIDR（可重复）：允许访问「本工具所设 TCP 端口」的源网段；IPv4/IPv6 可混开，
       脚本拆成多条规则（Calico EntityRule / NetPol ipBlock）。至少须有一个有效 CIDR。
@@ -253,8 +266,15 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
       【生产影响】与版本不兼容的 hint 可能导致策略生效延迟或节点负载异常；应先在非生产验证。
 
 【9.4 validate】
-  参数集合：9.1 + 9.2 + -a + --port（无 9.3）。
-  行为：校验 CIDR；host/both 时对照节点 InternalIP 是否在 -a 内；pod/both 时统计匹配 Pod 数。
+  参数集合：9.1 + 9.2 + -a + --port + 与本次 apply 对齐所需的主机开关（--interface、--include-external-ip、
+  --no-hostendpoint、--no-default-allow-profile、--hep-profile）+ Pod 层定位项（同 9.2）。
+  不含 9.3 中仅影响「生成 YAML 长什么样」、但 validate 并不解析的项（如 --policy-order、--gnp-tier）；
+  那些请以 plan 人工审阅与数据面抽测补位。
+  host/both 时须 --executor；未 --no-hostendpoint 时须 --interface 或每节点注解。
+  行为：校验 CIDR；host/both 时对照 InternalIP（及 --include-external-ip 时的 ExternalIP）与 -a；
+  并与 plan/apply 共用同一套主机 HEP 网卡/注解校验（实现上即同一函数）；pod/both 时统计匹配 Pod 数。
+  host/both 且 --executor calicoctl、未 --no-hostendpoint、未 --no-default-allow-profile 时：只读
+  calicoctl get profile <hep-profile>，确认将写入 HEP 的 Profile 在数据存储中存在（降低 apply 失败或 Pass 无 Profile 风险）。
   【生产影响】不向 API 写入对象；仍执行只读 List/Get，需具备相应 RBAC；大集群注意超时配置。
 
 【9.5 仅 apply】
@@ -281,9 +301,10 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
       【生产影响】仅有 none 在授权后会产生持久化变更；client/server 都不会落库，但也不是「没发请求」
       （server 会对 API 有只读类校验流量）。走 calicoctl apply 时仅支持 none，若设 client/server 会报错
       （须改用 kubectl 或先用 plan 看 YAML）。
-  --post-verify：apply 全部下发成功后，在同一进程内自动执行与本次参数对齐的 validate（只读）。
+  --post-verify：apply 全部下发成功后，在同一进程内直接调用 cmd_validate（只读），与 validate 子命令
+      同源逻辑且共用 apply 已解析的参数对象，无需把全套 plan 参数再塞回 CLI。
       进程退出码随后续 validate 结果传递（validate 当前对告警仍返回 0，以日志为准）。
-      日志仍会给出可手动复制的 validate 命令，便于与数据面抽测、kubectl get 组成完整闭环。
+      日志中的可手动 validate 行仅含 validate 子命令实际接受的开关（窄 CLI），便于与抽测、kubectl get 闭环。
 
 【9.6 仅 delete】
 
@@ -292,8 +313,8 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
   --delete-hostendpoints：为真时删除本工具创建的 HostEndpoint（kubeauto.calico/host-
       port-lockdown=true）。无 projectcalico CRD 时走 calicoctl，按清单名批量 delete（勿依赖 kubectl -l）。
   --confirm：可选，与 apply 写法兼容；delete 无「未确认则不删」门禁，传不传行为相同。
-  若误粘贴 apply 的 -a：脚本会忽略并打警告（delete 不按网段删，只按资源名/标签逻辑删）。
-  另含 9.2（定位 NetPol）。无 9.3。
+  若误粘贴 apply 的 -a / --interface：忽略并警告（delete 不按网段或网卡删，只按资源名与工具标签）。
+  另含 9.2（定位 NetPol）。不接受完整 9.3（无改 GNP spec 类删参）。
   kubeauto 默认 etcd 存储：主机层 delete 须与 apply 使用相同且显式的 --executor（通常为 calicoctl）。
   【生产影响】删策略后端口不再受本工具规则约束：可能变宽松，或与其它遗留 Calico/K8s 策略
       叠加产生非直觉结果。未删 HEP 时主机端点仍存在，可与其它 GNP 继续作用。删前逐项核对
@@ -302,10 +323,11 @@ calico_host_port_lockdown.py - 维护者说明（用语尽量贴近 K8s / Calico
 【9.7 子命令与参数速查】
 
   preflight、nodes：9.1（须含显式 --context）。
-  validate：9.1 + 9.2 + 显式 --traffic-layer + -a + --port。
-  plan：9.1 + 9.2 + 显式 --traffic-layer + 9.3；host/both 时 9.1 须含 --executor。
-  apply：同上 + 9.5；host/both 时 9.1 须含 --executor。
-  delete：9.1 + 9.2 + 显式 --traffic-layer + 9.6（误传 -a 会忽略并警告）；host/both 时 9.1 须含 --executor。
+  validate：9.1 + 9.2 + 9.4（窄 CLI）；host/both 时 9.1 须含 --executor。
+  plan：9.1 + 9.2 + 9.3；host/both 时 9.1 须含 --executor。
+  apply：9.1 + 9.2 + 9.3 + 9.5；host/both 时 9.1 须含 --executor。
+  delete：9.1 + 9.2 + 9.6（含 NetPol 定位用的 -n、--k8s-np-name）；误传 -a 或 --interface 会忽略并警告
+      （便于与 apply 命令行对行粘贴）。
 
 【9.8 环境变量】可用于运维便利的仅限下列项；--context、--traffic-layer、-n 不得以环境变量代填（须 CLI 手写）。
 
@@ -411,7 +433,8 @@ HELP_EPILOG = """
   both  上面两套一次打出来（多段 YAML）
 
 子命令（注意：--context 这类要写在子命令前面，例如 %(prog)s --context 生产 plan ...）
-  preflight / validate / nodes  只读，不改集群
+  preflight / nodes  只读，不改集群
+  validate  只读；仅含校验所需参数（见 MAINTAINER_DOC 9.4）；apply --post-verify 在进程内直调校验逻辑
   plan      只在屏幕上打印 YAML
   apply     真往集群里写要加 --confirm；可加 --backup、--apply-staged、--dry-run
   delete    按层删 GNP、HEP、NetPol（名字要和当初创建时一致）
@@ -426,7 +449,7 @@ HELP_EPILOG = """
 链接: Calico %(calico_docs)s  组件版本 %(calico_ver)s
 退出: 0 正常  1 出错  2 子命令不认识
 
-建议顺序: preflight -> validate/plan ->（Pod 层可 kubectl apply --dry-run=server）-> apply --confirm [--backup]；成功后按日志再跑同参 validate（或 apply --post-verify）
+建议顺序: preflight -> validate（窄参数）/ plan ->（Pod 层可 kubectl apply --dry-run=server）-> apply --confirm [--backup]；成功后 apply --post-verify 或按日志中的窄 validate 行复测
   host 且 --executor calicoctl 时：预演=plan，勿用 apply --dry-run=server（calicoctl 不支持）。
 
 生产注意: apply/delete 会修改 API 对象；执行前核对命令行 --context 与工单环境、kubectl config get-contexts 一致。
@@ -771,6 +794,10 @@ def build_global_network_policy_yaml(
     if allow_nets_v6:
         ingress_parts.append(_ingress_allow_deny_for_family(allow_nets_v6, port, 6))
     ingress_block = "\n".join(ingress_parts)
+    # Calico：GNP 优先于 Profile；未命中本策略 Allow/Deny 的包不会自动套用 projectcalico-default-allow。
+    # 官方 Pass 语义：跳过后续 GNP、进入端点 Profile。缺此条时常见误伤 kubelet 10250（非 failsafe 端口）。
+    if ingress_block.strip():
+        ingress_block += "\n    - action: Pass"
     sel_quoted = json.dumps(policy_selector)
     extra_lines: List[str] = []
     if tier and tier.strip():
@@ -799,6 +826,7 @@ metadata:
   annotations:
     kubeauto.calico/tool: calico_host_port_lockdown
     kubeauto.calico/docs: {json.dumps(CALICO_DOCS_LATEST)}
+    kubeauto.calico/gnp-ingress-tail: {json.dumps("Pass: Tigera GlobalNetworkPolicy — jump to endpoint Profile after port rules")}
 spec:
   order: {order_out}
   selector: {sel_quoted}
@@ -1085,9 +1113,7 @@ def apply_manifest(
     if executor == "calicoctl":
         if dry_run != "none":
             raise CalicoHostFwError("calicoctl 不支持 --dry-run，请使用 plan 预览或改用 --executor kubectl")
-        argv = [calicoctl, "apply", "-f", "-"]
-        if context:
-            argv.extend(["--context", context])
+        argv = [*_calicoctl_argv(calicoctl, context), "apply", "-f", "-"]
         r = run_cmd(argv, input_text=manifest, timeout=_timeout_sec() * 3)
         if r.returncode != 0:
             raise CalicoHostFwError(
@@ -1097,6 +1123,13 @@ def apply_manifest(
         return
 
     raise CalicoHostFwError(f"未知 executor: {executor!r}")
+
+
+def _calicoctl_argv(calicoctl: str, context: Optional[str]) -> List[str]:
+    out = [calicoctl]
+    if context and str(context).strip():
+        out.extend(["--context", str(context).strip()])
+    return out
 
 
 def _kubectl_projectcalico_resource(kubectl: str, context: Optional[str], needle: str) -> str:
@@ -1126,10 +1159,91 @@ def _kubectl_delete_label(
     )
 
 
-def _calicoctl_managed_hostendpoint_names(calicoctl: str) -> List[str]:
+def _calicoctl_get_profile_yaml(
+    calicoctl: str, context: Optional[str], profile_name: str
+) -> subprocess.CompletedProcess:
+    return run_cmd(
+        [*_calicoctl_argv(calicoctl, context), "get", "profile", profile_name, "-o", "yaml"],
+        timeout=_timeout_sec(),
+    )
+
+
+def _backup_host_resources_calicoctl(
+    calicoctl: str,
+    context: Optional[str],
+    policy_name: str,
+    backup_dir: str,
+) -> None:
+    """etcd 等经 calicoctl 管理的主机层：备份与 kubectl CRD 路径分离，避免空备份。"""
+    r = run_cmd(
+        [*_calicoctl_argv(calicoctl, context), "get", "globalnetworkpolicy", policy_name, "-o", "yaml"],
+        timeout=_timeout_sec(),
+    )
+    if r.returncode == 0 and (r.stdout or "").strip() and not (r.stdout or "").strip().startswith("null"):
+        path = os.path.join(backup_dir, f"gnp-{sanitize_k8s_name(policy_name, 200)}.yaml")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(r.stdout or "")
+        logger.info("已备份现有 GlobalNetworkPolicy（calicoctl）-> %s", path)
+    elif r.returncode != 0:
+        logger.info(
+            "无现有 GlobalNetworkPolicy 可备份或 calicoctl get 失败（可忽略）: %s",
+            (r.stderr or r.stdout or "").strip()[:300],
+        )
+    else:
+        logger.info("无现有 GlobalNetworkPolicy（calicoctl 返回空）；跳过 GNP 备份文件")
+
+    rj = run_cmd(
+        [*_calicoctl_argv(calicoctl, context), "get", "hostendpoints", "-o", "json"],
+        timeout=_timeout_sec(),
+    )
+    if rj.returncode != 0:
+        rj = run_cmd(
+            [*_calicoctl_argv(calicoctl, context), "get", "hep", "-o", "json"],
+            timeout=_timeout_sec(),
+        )
+    if rj.returncode != 0 or not (rj.stdout or "").strip():
+        logger.info(
+            "备份 HostEndpoint（calicoctl JSON）失败或无输出（可忽略）: %s",
+            (rj.stderr or "").strip()[:300],
+        )
+        return
+    try:
+        data = json.loads(rj.stdout or "{}")
+    except json.JSONDecodeError:
+        logger.info("calicoctl get hep -o json 无法解析，跳过 HEP 备份")
+        return
+    items = data.get("items")
+    if not isinstance(items, list):
+        return
+    kept: List[Dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        meta = item.get("metadata") or {}
+        labels = meta.get("labels") or {}
+        if labels.get(MANAGED_LABEL_KEY) != MANAGED_LABEL_VAL:
+            continue
+        kept.append(item)
+    if not kept:
+        logger.info("当前无带本工具标签的 HostEndpoint，跳过 HEP 备份 JSON")
+        return
+    out_doc = {"apiVersion": data.get("apiVersion") or "projectcalico.org/v3", "kind": "List", "items": kept}
+    path2 = os.path.join(backup_dir, "hostendpoints-kubeauto.json")
+    with open(path2, "w", encoding="utf-8") as f:
+        json.dump(out_doc, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    logger.info("已备份带工具标签的 HostEndpoint（calicoctl JSON，共 %d 条）-> %s", len(kept), path2)
+
+
+def _calicoctl_managed_hostendpoint_names(
+    calicoctl: str, context: Optional[str] = None
+) -> List[str]:
     """从 calicoctl JSON 列出带本工具标签的 HostEndpoint 名（不依赖 kubectl -l）。"""
     for kind in ("hostendpoints", "hep"):
-        r = run_cmd([calicoctl, "get", kind, "-o", "json"], timeout=_timeout_sec())
+        r = run_cmd(
+            [*_calicoctl_argv(calicoctl, context), "get", kind, "-o", "json"],
+            timeout=_timeout_sec(),
+        )
         if r.returncode != 0 or not (r.stdout or "").strip():
             continue
         try:
@@ -1174,6 +1288,8 @@ def backup_managed_resources(
     *,
     backup_host_resources: bool = True,
     backup_pod_resources: bool = False,
+    host_executor: Optional[str] = None,
+    calicoctl: str = "calicoctl",
     k8s_np_name: Optional[str] = None,
     k8s_namespace: Optional[str] = None,
 ) -> None:
@@ -1181,39 +1297,48 @@ def backup_managed_resources(
     base = kubectl_base(kubectl, context)
 
     if backup_host_resources:
-        gnp_res = _kubectl_projectcalico_resource(kubectl, context, "globalnetworkpolic") or "globalnetworkpolicies.projectcalico.org"
-        r = run_cmd(
-            [*base, "get", gnp_res, policy_name, "-o", "yaml"],
-            timeout=_timeout_sec(),
-        )
-        if r.returncode == 0 and (r.stdout or "").strip():
-            path = os.path.join(backup_dir, f"gnp-{sanitize_k8s_name(policy_name, 200)}.yaml")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(r.stdout or "")
-            logger.info("已备份现有 GlobalNetworkPolicy -> %s", path)
-        elif r.returncode != 0:
-            logger.info(
-                "无现有 GlobalNetworkPolicy 可备份或 get 失败（可忽略）: %s",
-                (r.stderr or "").strip()[:300],
+        if host_executor == "calicoctl":
+            _backup_host_resources_calicoctl(calicoctl, context, policy_name, backup_dir)
+        else:
+            gnp_res = (
+                _kubectl_projectcalico_resource(kubectl, context, "globalnetworkpolic")
+                or "globalnetworkpolicies.projectcalico.org"
             )
-        hep_res = _kubectl_projectcalico_resource(kubectl, context, "hostendpoint") or "hostendpoints.projectcalico.org"
-        r2 = run_cmd(
-            [
-                *base,
-                "get",
-                hep_res,
-                "-l",
-                f"{MANAGED_LABEL_KEY}={MANAGED_LABEL_VAL}",
-                "-o",
-                "yaml",
-            ],
-            timeout=_timeout_sec(),
-        )
-        if r2.returncode == 0 and (r2.stdout or "").strip():
-            path2 = os.path.join(backup_dir, "hostendpoints-kubeauto.yaml")
-            with open(path2, "w", encoding="utf-8") as f:
-                f.write(r2.stdout or "")
-            logger.info("已备份现有 HostEndpoint（工具标签） -> %s", path2)
+            r = run_cmd(
+                [*base, "get", gnp_res, policy_name, "-o", "yaml"],
+                timeout=_timeout_sec(),
+            )
+            if r.returncode == 0 and (r.stdout or "").strip():
+                path = os.path.join(backup_dir, f"gnp-{sanitize_k8s_name(policy_name, 200)}.yaml")
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(r.stdout or "")
+                logger.info("已备份现有 GlobalNetworkPolicy -> %s", path)
+            elif r.returncode != 0:
+                logger.info(
+                    "无现有 GlobalNetworkPolicy 可备份或 get 失败（可忽略）: %s",
+                    (r.stderr or "").strip()[:300],
+                )
+            hep_res = (
+                _kubectl_projectcalico_resource(kubectl, context, "hostendpoint")
+                or "hostendpoints.projectcalico.org"
+            )
+            r2 = run_cmd(
+                [
+                    *base,
+                    "get",
+                    hep_res,
+                    "-l",
+                    f"{MANAGED_LABEL_KEY}={MANAGED_LABEL_VAL}",
+                    "-o",
+                    "yaml",
+                ],
+                timeout=_timeout_sec(),
+            )
+            if r2.returncode == 0 and (r2.stdout or "").strip():
+                path2 = os.path.join(backup_dir, "hostendpoints-kubeauto.yaml")
+                with open(path2, "w", encoding="utf-8") as f:
+                    f.write(r2.stdout or "")
+                logger.info("已备份现有 HostEndpoint（工具标签） -> %s", path2)
 
     if backup_pod_resources and k8s_np_name and k8s_namespace:
         r3 = run_cmd(
@@ -1292,6 +1417,16 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         cv = run_cmd([args.calicoctl, "version"], timeout=30)
         if cv.returncode == 0:
             logger.info("calicoctl: %s", (cv.stdout or cv.stderr or "").strip()[:500])
+        pr = _calicoctl_get_profile_yaml(args.calicoctl, args.context, DEFAULT_HEP_PROFILE)
+        if pr.returncode != 0:
+            logger.warning(
+                "[生产影响] preflight: calicoctl 无法读取默认 Profile %r（本工具 HostEndpoint 默认挂载）。"
+                " 若直接 apply 默认配置，GNP 中 Pass 可能无 Profile 可交接，非目标端口入站易为 Deny。"
+                " 请核对 Calico 数据存储或改用 --hep-profile / --no-default-allow-profile 并评估风险。",
+                DEFAULT_HEP_PROFILE,
+            )
+        else:
+            logger.info("preflight: Calico Profile %r 存在且可读（calicoctl）", DEFAULT_HEP_PROFILE)
 
     logger.info(
         "预检完成。下一步建议: 各子命令须显式 --context；plan/validate/apply/delete 另须 --traffic-layer；"
@@ -1337,6 +1472,13 @@ def cmd_plan(args: argparse.Namespace) -> int:
                 **gk,
             ).rstrip()
         )
+        if not args.no_hostendpoint:
+            logger.info(
+                "plan: 主机层 YAML 为「单 TCP 端口收紧 + GNP ingress 末尾 Pass」；Pass 将未命中规则交 HEP Profile（默认 %s）。"
+                " 全节点硬收口请另写 GNP 或调 tier/order，参见 %snetwork-policy/hosts/kubernetes-nodes",
+                DEFAULT_HEP_PROFILE,
+                CALICO_DOCS_LATEST,
+            )
     if tl in ("pod", "both"):
         pod_labels = parse_pod_label_list(list(args.pod_labels))
         ns, pl = require_pod_layer_args(args.namespace, pod_labels, args.pod_selector_all)
@@ -1359,29 +1501,88 @@ def cmd_validate(args: argparse.Namespace) -> int:
     tl = args.traffic_layer
     warnings = 0
 
+    def _warn_node_ip_not_in_allow(node_name: str, role: str, ip_text: str) -> int:
+        try:
+            addr = ipaddress.ip_address(ip_text)
+        except ValueError:
+            return 0
+        pool = nets_v4 if addr.version == 4 else nets_v6
+        if not pool:
+            return 0
+        if any(addr in n for n in pool):
+            return 0
+        logger.warning(
+            "[生产影响] 节点 %s 的 %s %s 不在任一 --allow-net 内。"
+            " apply 后从该地址集的采集/SSH 等访问目标端口可能被 GNP deny；"
+            " 请确认 Prometheus、跳板、集群内客户端真实源网段已写入 -a。",
+            node_name,
+            role,
+            ip_text,
+        )
+        return 1
+
     if tl in ("host", "both"):
+        _require_executor_for_host_traffic(args, "validate")
         nets_v4 = [ipaddress.ip_network(c, strict=False) for c in allow_v4]
         nets_v6 = [ipaddress.ip_network(c, strict=False) for c in allow_v6]
         nodes = kube_get_nodes_json(args.kubectl, args.context)
+        if not args.no_hostendpoint:
+            _validate_explicit_host_interfaces(nodes, args.interface)
         for node in nodes:
-            name, ips = node_internal_ips(node)
-            for ip_s in ips:
-                try:
-                    addr = ipaddress.ip_address(ip_s)
-                except ValueError:
-                    continue
-                pool = nets_v4 if addr.version == 4 else nets_v6
-                if not pool:
-                    continue
-                if not any(addr in n for n in pool):
+            name, ips_int = node_internal_ips(node)
+            for ip_s in ips_int:
+                warnings += _warn_node_ip_not_in_allow(name, "InternalIP", ip_s)
+            if args.include_external_ip:
+                for ip_s in node_external_ips(node):
+                    warnings += _warn_node_ip_not_in_allow(name, "ExternalIP", ip_s)
+
+        ex = str(getattr(args, "executor", "") or "")
+        if not args.no_hostendpoint:
+            prof_name = (getattr(args, "hep_profile", None) or DEFAULT_HEP_PROFILE).strip()
+            if getattr(args, "no_default_allow_profile", False):
+                logger.warning(
+                    "[生产影响] validate: --no-default-allow-profile：HEP 无 Profile；GNP 末尾 Pass 依官方语义"
+                    " 在无 Profile 时对未命中规则入站为 Deny，仅本策略内对该 TCP 端口的 Allow/Deny 生效。"
+                    " 须有其它全局策略或按 Tigera「Protect Kubernetes nodes」显式放开 10250/6443 等管理面端口。",
+                )
+                warnings += 1
+            elif ex == "calicoctl" and prof_name:
+                pr = _calicoctl_get_profile_yaml(args.calicoctl, args.context, prof_name)
+                if pr.returncode != 0:
                     logger.warning(
-                        "[生产影响] 节点 %s 的 InternalIP %s 不在任一 --allow-net 内。"
-                        " apply 后从该地址集的采集/SSH 等访问目标端口可能被 GNP deny；"
-                        " 请确认 Prometheus、跳板、集群内客户端真实源网段已写入 -a。",
-                        name,
-                        ip_s,
+                        "[生产影响] validate: calicoctl 无法读取 Profile %r（将写入 HEP.spec.profiles）。"
+                        " apply 可能被拒或 Pass 后无 Profile；详情: %s",
+                        prof_name,
+                        (pr.stderr or pr.stdout or "").strip()[:400],
                     )
                     warnings += 1
+                else:
+                    logger.info("validate: Calico Profile %r 可读（calicoctl）", prof_name)
+            elif ex == "kubectl" and prof_name:
+                prof_res = _kubectl_projectcalico_resource(
+                    args.kubectl, args.context, "profiles.projectcalico"
+                )
+                if prof_res:
+                    kb = kubectl_base(args.kubectl, args.context)
+                    prk = run_cmd(
+                        [*kb, "get", prof_res, prof_name, "-o", "yaml"],
+                        timeout=_timeout_sec(),
+                    )
+                    if prk.returncode != 0:
+                        logger.warning(
+                            "[生产影响] validate: kubectl 无法读取 %s/%s；HEP 若引用该 Profile 可能异常。%s",
+                            prof_res,
+                            prof_name,
+                            (prk.stderr or "").strip()[:300],
+                        )
+                        warnings += 1
+                    else:
+                        logger.info("validate: Profile %s/%s 可读（kubectl）", prof_res, prof_name)
+                else:
+                    logger.info(
+                        "validate: kubectl api-resources 未发现 profiles.projectcalico CRD，跳过 Profile 存在性检查"
+                        "（主机层若走 calicoctl，请用 --executor calicoctl 做 Profile 校验）。"
+                    )
 
     if tl in ("pod", "both"):
         pod_labels = parse_pod_label_list(list(args.pod_labels))
@@ -1525,6 +1726,21 @@ def _argv_suggested_validate(args: argparse.Namespace) -> List[str]:
             out.extend(["--pod-label", str(raw).strip()])
     if getattr(args, "k8s_np_name", None):
         out.extend(["--k8s-np-name", args.k8s_np_name])
+    if getattr(args, "traffic_layer", None) in ("host", "both"):
+        iface = getattr(args, "interface", None)
+        if iface is not None and str(iface).strip():
+            out.extend(["--interface", str(iface).strip()])
+    if getattr(args, "include_external_ip", False):
+        out.append("--include-external-ip")
+    if getattr(args, "no_hostendpoint", False):
+        out.append("--no-hostendpoint")
+    if getattr(args, "no_default_allow_profile", False):
+        out.append("--no-default-allow-profile")
+    hp = getattr(args, "hep_profile", None)
+    if hp and str(hp).strip():
+        hp_s = str(hp).strip()
+        if hp_s != DEFAULT_HEP_PROFILE or getattr(args, "no_default_allow_profile", False):
+            out.extend(["--hep-profile", hp_s])
     return out
 
 
@@ -1628,8 +1844,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
         if args.no_default_allow_profile:
             logger.warning(
                 "[生产影响] 已启用 --no-default-allow-profile：HostEndpoint 不挂载 "
-                "projectcalico-default-allow。若无其它 Profile/策略兜底主机基线入站，"
-                "可能导致 SSH、kubelet 等管理流量异常。"
+                "projectcalico-default-allow。GNP 仍含末尾 Pass；无 Profile 时官方语义为 Deny（仅本 GNP 内"
+                " 对该 TCP 端口的规则生效）。若无其它全局放行，kubelet 10250、apiserver 6443 等可能中断；"
+                "参见 Tigera「Protect Kubernetes nodes」按端口显式 Allow。"
             )
         if args.no_hostendpoint:
             logger.warning(
@@ -1657,6 +1874,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
             bdir,
             backup_host_resources=tl in ("host", "both"),
             backup_pod_resources=tl in ("pod", "both"),
+            host_executor=host_ex if tl in ("host", "both") else None,
+            calicoctl=args.calicoctl,
             k8s_np_name=np_name if tl in ("pod", "both") else None,
             k8s_namespace=ns_bak,
         )
@@ -1823,6 +2042,11 @@ def cmd_delete(args: argparse.Namespace) -> int:
             "与 apply 的网段列表无关。正确定法见 delete --help。",
             len(ignored_allow),
         )
+    if (getattr(args, "interface", None) or "").strip():
+        logger.warning(
+            "delete 已忽略 --interface：删除主机对象只按 GlobalNetworkPolicy 名与本工具 HostEndpoint 标签/名；"
+            "与 apply 时 HostEndpoint 网卡字段无关。"
+        )
     ctx = str(args.context)
     logger.warning(
         "[生产影响] delete 将从集群 API 移除策略对象（context=%s）。"
@@ -1840,7 +2064,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
         if executor == "calicoctl":
             r1 = run_cmd(
                 [
-                    args.calicoctl,
+                    *_calicoctl_argv(args.calicoctl, args.context),
                     "delete",
                     "globalnetworkpolicy",
                     policy_name,
@@ -1854,12 +2078,18 @@ def cmd_delete(args: argparse.Namespace) -> int:
                 logger.info("%s", (r1.stdout or r1.stderr or "").strip() or "GlobalNetworkPolicy 已处理")
 
             if args.delete_hostendpoints:
-                names = _calicoctl_managed_hostendpoint_names(args.calicoctl)
+                names = _calicoctl_managed_hostendpoint_names(args.calicoctl, args.context)
                 if not names:
                     logger.warning("未找到待删除的本工具 HostEndpoint（或枚举失败）。")
                 else:
                     r2 = run_cmd(
-                        [args.calicoctl, "delete", "hostendpoint", *names, "--skip-not-exists"],
+                        [
+                            *_calicoctl_argv(args.calicoctl, args.context),
+                            "delete",
+                            "hostendpoint",
+                            *names,
+                            "--skip-not-exists",
+                        ],
                         timeout=_timeout_sec(),
                     )
                     if r2.returncode != 0:
@@ -1960,6 +2190,56 @@ def _traffic_layer_flags(p: argparse.ArgumentParser) -> None:
     )
 
 
+def _interface_flag(p: argparse.ArgumentParser) -> None:
+    """HostEndpoint 网卡参数（plan / apply / validate 在 host 或 both 时共用）。"""
+    p.add_argument(
+        "--interface",
+        default=None,
+        metavar="IFACE",
+        help=(
+            "HostEndpoint.interfaceName，须人工指定：真实网卡名或 \"*\"（Calico 通配）。"
+            f"可与 Node 注解 {NODE_HOST_INTERFACE_ANNOTATION!r} 联用（注解优先，其它节点用本值兜底）。"
+            "禁止 auto、禁止省略（除非每个节点均已打上述注解）。traffic-layer 仅 pod 时无需填写。"
+        ),
+    )
+
+
+def _validate_flags(p: argparse.ArgumentParser) -> None:
+    """validate 子命令：仅注册 cmd_validate 会消费的参数（可靠优先；不照搬 plan 整树）。"""
+    p.add_argument(
+        "-a",
+        "--allow-net",
+        action="append",
+        dest="allow_net",
+        default=[],
+        metavar="CIDR",
+        help="允许访问该 TCP 端口的源 CIDR（与 plan/apply 语义一致）",
+    )
+    p.add_argument("--port", type=int, default=9100, help="目标 TCP 端口（与 plan/apply 一致）")
+    _interface_flag(p)
+    p.add_argument(
+        "--include-external-ip",
+        action="store_true",
+        help="若 apply 使用本开关，validate 须一致，才会核对 ExternalIP 是否在 -a 内",
+    )
+    p.add_argument(
+        "--no-hostendpoint",
+        action="store_true",
+        help="若 apply 仅下发 GNP，validate 须一致，否则会误要求 HEP 网卡",
+    )
+    p.add_argument(
+        "--hep-profile",
+        default=DEFAULT_HEP_PROFILE,
+        help=f"与 apply 一致；默认 {DEFAULT_HEP_PROFILE}，用于 calicoctl/kubectl 侧 Profile 存在性校验",
+    )
+    p.add_argument(
+        "--no-default-allow-profile",
+        action="store_true",
+        help="与 apply 一致；为真时不校验 Profile，并提示 Pass 无 Profile 时的官方语义",
+    )
+    _traffic_layer_flags(p)
+
+
 def _plan_apply_flags(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "-a",
@@ -1980,16 +2260,7 @@ def _plan_apply_flags(p: argparse.ArgumentParser) -> None:
         help=f"主机层 GlobalNetworkPolicy 名称（默认 {DEFAULT_POLICY_NAME_TEMPLATE}；仅 traffic-layer 含 host 时使用）",
     )
     p.add_argument("--hep-prefix", default=DEFAULT_HEP_PREFIX, help="HostEndpoint 名前缀")
-    p.add_argument(
-        "--interface",
-        default=None,
-        metavar="IFACE",
-        help=(
-            "HostEndpoint.interfaceName，须人工指定：真实网卡名或 \"*\"（Calico 通配）。"
-            f"可与 Node 注解 {NODE_HOST_INTERFACE_ANNOTATION!r} 联用（注解优先，其它节点用本值兜底）。"
-            "禁止 auto、禁止省略（除非每个节点均已打上述注解）。traffic-layer 仅 pod 时无需填写。"
-        ),
-    )
+    _interface_flag(p)
     p.add_argument(
         "--include-external-ip",
         action="store_true",
@@ -2114,21 +2385,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     com_val = sub.add_parser(
         "validate",
-        help="校验 allow-net；host 层核对 Node IP；pod 层统计匹配 Pod 数",
+        help="校验 allow-net；host 层核对 Node IP；pod 层统计 Pod 数（仅含校验所需参数，见 MAINTAINER_DOC 9.4）",
         description=_sub_doc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    com_val.add_argument(
-        "-a",
-        "--allow-net",
-        action="append",
-        dest="allow_net",
-        default=[],
-        metavar="CIDR",
-        help="允许访问该端口的源 CIDR（与 apply 一致）",
-    )
-    com_val.add_argument("--port", type=int, default=9100, help="与 apply 一致（用于默认资源名提示）")
-    _traffic_layer_flags(com_val)
+    _validate_flags(com_val)
 
     com_apply = sub.add_parser(
         "apply",
@@ -2150,8 +2411,9 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             f"应用前备份：按 traffic-layer 仅备份将变更的项——"
-            f"主机层尝试备份同名 GNP 与带工具标签的 HEP；"
-            f"Pod 层尝试备份同名 NetworkPolicy（目录默认 {LOG_DIR}/calico_host_fw_backup/<UTC>）。"
+            f"主机层：--executor calicoctl 时用 calicoctl get（HEP 为 JSON 清单）；"
+            f"否则 kubectl get projectcalico 资源；"
+            f"Pod 层备份同名 NetworkPolicy（目录默认 {LOG_DIR}/calico_host_fw_backup/<UTC>）。"
             f"【生产】备份失败不中止 apply，不可替代变更评审与 GitOps。"
         ),
     )
@@ -2182,8 +2444,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--post-verify",
         action="store_true",
         help=(
-            "apply 成功后在本进程内自动再执行一次与本次参数对齐的 validate（只读），形成变更闭环；"
-            "退出码含 validate 结果。亦会打印可手动复制的 validate 命令行。"
+            "apply 成功后在本进程内直接运行与 validate 子命令同源的校验逻辑（只读），共用已解析参数；"
+            "退出码含 validate 结果。日志中的可手动 validate 行仅含 validate 实际接受的开关。"
         ),
     )
 
@@ -2223,6 +2485,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     _traffic_layer_flags(com_delete)
+    _interface_flag(com_delete)
 
     sub.add_parser(
         "nodes",
