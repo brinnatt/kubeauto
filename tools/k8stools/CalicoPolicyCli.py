@@ -8,9 +8,9 @@
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
-# 改 Calico 相关逻辑时，对照 Tigera 当前稳定文档（与 Calico 发布列车一致）
+# 改 Calico 相关逻辑时，对照 Tigera 当前稳定文档
 CALICO_DOCS_LATEST = "https://docs.tigera.io/calico/latest/"
 CALICO_COMPONENT_VERSIONS = "https://docs.tigera.io/calico/latest/reference/component-versions"
 
@@ -19,7 +19,7 @@ CALICO_COMPONENT_VERSIONS = "https://docs.tigera.io/calico/latest/reference/comp
 # ---------------------------------------------------------------------------
 MAINTAINER_DOC = """
 ===============================================================================
-CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（用语尽量贴近 K8s / Calico 官方概念）
+CalicoPolicyCli.py - 维护者说明
 ===============================================================================
 
 读完可知：脚本做什么、两类策略各自解决哪条数据路径、会生成哪些 API 对象、各参数含义与生产风险、代码入口。
@@ -29,14 +29,12 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
 -------------------------------------------------------------------------------
 
   本工具在授权后会按你显式指定的 --executor：kubectl（Kubernetes API）或 calicoctl（Calico 数据存储，如 etcd），
-  提交或删除对应策略对象；两者不会在主机层被脚本自动代选。
-  配置不当可能造成：监控与告警采集中断、跳板/堡垒机无法访问、控制台或 CI 被误拦、
-  或在删除策略后端口暴露面与变更前不一致（变宽松或与遗留策略叠加产生意外组合）。
+  提交或删除对应策略对象；配置不当可能造成监控与告警采集中断、跳板/堡垒机无法访问、控制台或 CI 被误拦、或在删除策略后端口暴露面与变更前不一致（比如与遗留策略叠加产生意外组合）。
 
-  host 层 HostEndpoint 的 interfaceName：必须由人工显式指定——CLI 传 --interface <网卡名> 或 \"*\"，和/或
+  host 层 HostEndpoint 的 interfaceName：必须由人工显式指定 --interface <网卡名> 或 *，或
   在每个 Node 上设置注解 kubeauto.calico/host-interface（缺省节点的网卡须由 --interface 兜底）。禁止 auto/自动探测。
-  任何访问集群的子命令须显式 --context；plan/validate/apply/delete 还须显式 --traffic-layer；
-  禁止用 CALICO_HOST_FW_CONTEXT / CALICO_HOST_FW_TRAFFIC_LAYER / CALICO_HOST_FW_NAMESPACE 代替手写参数。
+  定位类参数约定：须显式传入 --context（所有访问集群的子命令）、--traffic-layer（plan/validate/apply/delete）、
+  以及 Pod 层所需的 -n；仅接受命令行，本脚本不读取与之对应的环境变量，也不使用 kubectl 当前默认 context 代替。
   会改集群的操作：
     apply：在通过「写集群授权」后，创建或更新 GlobalNetworkPolicy、HostEndpoint、
            networking.k8s.io/v1 NetworkPolicy（取决于 --traffic-layer）。
@@ -206,8 +204,8 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
   --verbose / -v：更详细的运行日志，便于排障。不改集群。
   --no-log-file：不写本地滚动日志。【生产影响】出问题后可追溯信息变少，仅建议短期会话。
   --kubectl：kubectl 可执行文件；默认环境变量 KUBECTL，否则在 PATH 中查找 kubectl。
-  --context：kubeconfig 中的 context 名；preflight/plan/validate/apply/delete/nodes 均必填（禁止省略、
-      禁止 CALICO_HOST_FW_CONTEXT 注入默认值）。【生产影响】指错集群则所有操作对准错误环境。
+  --context：kubeconfig 中的 context 名；preflight/plan/validate/apply/delete/nodes 均须显式填写（见第 0 节约定）。
+      【生产影响】指错集群则所有操作对准错误环境。
   --executor kubectl | calicoctl：traffic-layer 为 host 或 both 时 plan/apply/delete 必填（禁止 auto/省略）。
       kubectl=资源经 Kubernetes API（须已注册 projectcalico 等 CRD）；calicoctl=经 Calico 数据存储（如 etcd）。
       仅 traffic-layer=pod 时不要求本参数（实现固定 kubectl）。
@@ -215,10 +213,10 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
 
 【9.2 流量层与 Pod 策略命名】（plan / apply / validate / delete；preflight、nodes 无）
 
-  --traffic-layer host | pod | both：控制生成/删除哪些资源；须每次手写，禁止省略、禁止用环境变量替代。
+  --traffic-layer host | pod | both：控制生成/删除哪些资源；须显式指定（见第 0 节约定）。
       【生产影响】both 同一次变更动主机与某 namespace，故障面更大；排查需同时看 Calico 与 NetPol。
-  -n / --namespace：Pod 策略所在命名空间；traffic-layer 含 pod/both 时 plan/apply/validate 与 delete（删 NP）必填，
-      须手写，禁止依赖环境变量默认。
+  -n / --namespace：Pod 策略所在命名空间；traffic-layer 含 pod/both 时 plan/apply/validate 与 delete（删 NP）必填
+      （见第 0 节约定）。
       【生产影响】namespace 错误会把策略套到错误工作负载集合或删错对象。
   --pod-label KEY=VALUE（可重复）：写入 podSelector.matchLabels；多对之间为 AND。
       【生产影响】标签与线上 Deployment 不一致会导致策略不生效（等于未防护或部分未防护）。
@@ -242,7 +240,7 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
   --hep-prefix：HostEndpoint 名前缀；Per 节点名为「前缀-节点名(合法化)」；默认 kubeauto-hep。
       【生产影响】改名会产生新 HEP，旧对象残留可能使 selector 命中多套端点。
   --interface：创建 HostEndpoint 时须显式给出网卡名或 \"*\"（Calico 通配）；可与注解 kubeauto.calico/host-interface
-      联用（注解优先，未注解节点必须用本参数兜底）。禁止 auto、禁止脚本内探测或环境变量隐式推断。
+      联用（注解优先，未注解节点必须用本参数兜底）。禁止 auto、禁止脚本内网卡自动探测。
       【生产影响】漏传且有个别节点无注解时 plan/apply 会直接拒绝，避免静默错绑网卡。
   --include-external-ip：expectedIPs 增加 Node ExternalIP。
       【生产影响】公网 IP 纳入端点后，若边界安全策略以为仅靠 NetPol 即可隔离，可能产生认知偏差。
@@ -334,7 +332,7 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
   delete：9.1 + 9.2 + 9.6（含 NetPol 定位用的 -n、--k8s-np-name）；误传 -a 或 --interface 会忽略并警告
       （便于与 apply 命令行对行粘贴）。
 
-【9.8 环境变量】可用于运维便利的仅限下列项；--context、--traffic-layer、-n 不得以环境变量代填（须 CLI 手写）。
+【9.8 环境变量】除下列项外，本脚本不从环境变量读取 --context、--traffic-layer、-n（见第 0 节约定）。
 
   KUBECTL：kubectl 可执行路径默认来源之一。
   CALICOCTL：calicoctl 路径默认来源之一。
@@ -1125,8 +1123,8 @@ def _require_executor_for_host_traffic(args: argparse.Namespace, subcmd: str) ->
 def _require_explicit_kube_context(args: argparse.Namespace, subcmd: str) -> None:
     if not (getattr(args, "context", None) or "").strip():
         raise CalicoHostFwError(
-            f"{subcmd}: 须显式指定 --context（与 kubectl config get-contexts 中名称一致），"
-            "禁止依赖当前默认 context 或已从环境变量注入的旧行为。"
+            f"{subcmd}: 须显式指定 --context（与 kubectl config get-contexts 中名称一致）；"
+            "禁止使用 kubectl 当前默认 context 代替。"
         )
 
 
@@ -1134,7 +1132,7 @@ def _require_explicit_traffic_layer(args: argparse.Namespace, subcmd: str) -> No
     tl = getattr(args, "traffic_layer", None)
     if tl not in ("host", "pod", "both"):
         raise CalicoHostFwError(
-            f"{subcmd}: 须显式指定 --traffic-layer host|pod|both，禁止省略或依赖 CALICO_HOST_FW_TRAFFIC_LAYER。"
+            f"{subcmd}: 须显式指定 --traffic-layer host|pod|both，禁止省略。"
         )
 
 
@@ -2216,14 +2214,14 @@ def _traffic_layer_flags(p: argparse.ArgumentParser) -> None:
         help=(
             "plan/validate/apply/delete 必填：host=主机侧 Calico（GNP+默认 HEP）；"
             "pod=某 namespace 标准 NetworkPolicy；both=同时。"
-            "【生产】both 一次改两套；须手写 -n 与 --context（见 MAINTAINER_DOC）。"
+            "【生产】both 一次改两套；须显式 -n 与 --context（见 MAINTAINER_DOC 第 0 节）。"
         ),
     )
     p.add_argument(
         "-n",
         "--namespace",
         default=None,
-        help="Pod 层所在命名空间；traffic-layer 含 pod/both 时必填（手写，禁止环境变量默认）。",
+        help="Pod 层所在命名空间；traffic-layer 含 pod/both 时必填（见 MAINTAINER_DOC 第 0 节）。",
     )
     p.add_argument(
         "--pod-label",
@@ -2393,7 +2391,7 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument(
         "--context",
         default=None,
-        help="kube context 名（须显式填写；禁止用 CALICO_HOST_FW_CONTEXT 注入默认）",
+        help="kube context 名（须显式填写；见 MAINTAINER_DOC 第 0 节「定位类参数约定」）",
     )
     common.add_argument(
         "--executor",
