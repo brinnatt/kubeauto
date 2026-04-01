@@ -2571,12 +2571,12 @@ Prometheus 与 Alertmanager **同命名空间**时用服务短名即可；若 Pr
 **这一节做三件事**：
 
 1. 在 ConfigMap `prometheus-config` 的 `data` 下**新增键** `rules.yml`（与 `prometheus.yml` 并列），Kubernetes 会把每个键挂成 `/etc/prometheus/<键名>`，因此容器内路径为 `/etc/prometheus/rules.yml`。
-2. 在 `prometheus.yml` 里把 `rule_files: []` 改成列出该文件。
+2. 在 `prometheus.yml` 里**只保留一处** `rule_files`：把顶部的 `rule_files: []` **改成**下面这类列表即可；**不要**在前面留着 `rule_files: []` 又在文件后面再写一段 `rule_files`，否则启动或 reload 会报错：`field rule_files already set`。
 3. apply 后按 **T4.3.1** reload；上线前用 `promtool` 自检（见下）。
 
 **不要**再复制粘贴一整段 `alerting`。**T4.11.1** 已配好的话保持不动；若你跳过了上一节，需要把下面片段里 `rule_files` 与 `alerting` 一起合并进 `prometheus.yml`。
 
-合并后应类似（仅作结构核对，实际文件里还有 `global`、`scrape_configs` 等）：
+合并后应类似（仅作结构核对，实际文件里还有 `global`、`scrape_configs` 等）。注意：**全文件仅此一段 `rule_files`**，与 **T4.4** 等完整版里 `global` 下面的 `rule_files: []` 是「二选一」，改规则时删掉空列表，不要追加第二处。
 
 ```yaml
     rule_files:
