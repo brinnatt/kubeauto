@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-__version__ = "2.8.1"
+__version__ = "1.0.0"
 
 # 改 Calico 相关逻辑时，对照 Tigera 当前稳定文档（与 Calico 发布列车一致）
 CALICO_DOCS_LATEST = "https://docs.tigera.io/calico/latest/"
