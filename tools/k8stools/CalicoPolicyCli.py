@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-__version__ = "2.8.0"
+__version__ = "2.8.1"
 
 # 改 Calico 相关逻辑时，对照 Tigera 当前稳定文档（与 Calico 发布列车一致）
 CALICO_DOCS_LATEST = "https://docs.tigera.io/calico/latest/"
@@ -45,7 +45,8 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
   只读、不修改 API 对象的操作：
     preflight、nodes、validate（仅查询与校验）、plan（只向标准输出打印 YAML）。
 
-  validate 的 CLI 刻意「窄」于 plan/apply：只接受会改变校验结论的参数，避免接受一堆脚本根本不检查的开关
+  validate 的 CLI 刻意「窄」于 plan/apply：只接受会改变校验结论的参数（含 --hep-profile、
+  --no-default-allow-profile 等与 Profile 校验相关的项），避免接受一堆脚本根本不检查的开关
   （可靠、可审计）。语义一致靠共用内部校验函数（如 HEP 网卡/注解规则），不是靠强行同款命令行外观。
   apply --post-verify 在进程内直接调用 validate 逻辑，不依赖再解析一长串 CLI。
 
@@ -272,7 +273,8 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
   那些请以 plan 人工审阅与数据面抽测补位。
   host/both 时须 --executor；未 --no-hostendpoint 时须 --interface 或每节点注解。
   行为：校验 CIDR；host/both 时对照 InternalIP（及 --include-external-ip 时的 ExternalIP）与 -a；
-  并与 plan/apply 共用同一套主机 HEP 网卡/注解校验（实现上即同一函数）；pod/both 时统计匹配 Pod 数。
+  并与 plan/apply 共用同一套主机 HEP 网卡/注解校验（实现上即同一函数）；pod/both 时统计匹配 Pod 数，
+  并记录 --k8s-np-name（或默认名）供工单核对，不对 NetworkPolicy 对象做 get。
   host/both 且 --executor calicoctl、未 --no-hostendpoint、未 --no-default-allow-profile 时：只读
   calicoctl get profile <hep-profile>，确认将写入 HEP 的 Profile 在数据存储中存在（降低 apply 失败或 Pass 无 Profile 风险）。
   【生产影响】不向 API 写入对象；仍执行只读 List/Get，需具备相应 RBAC；大集群注意超时配置。
@@ -283,7 +285,8 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
   未给 --confirm 且未设 CALICO_HOST_FW_CONFIRM 时：apply 只生成清单逻辑，不向 API 写入（防误操作）。
   CALICO_HOST_FW_CONFIRM=1/true/yes：等同全程 --confirm；运行时会打【生产影响】专用日志条。
       【生产影响】若写在 shell 全局配置、共享 CI 凭据或未审查脚本中，可能在无意识下持续写生产。
-  --backup：覆盖前尝试拉取将触及的 GNP、带工具标签的 HEP、同名 NetPol 存盘（路径逻辑见实现）。
+  --backup：覆盖前尝试拉取将触及的 GNP、带工具标签的 HEP、同名 NetPol 存盘；主机层 calicoctl 与 kubectl
+      路径差异见上文第 8 节（etcd 场景下 HEP 备份为 JSON 清单）。
       【生产影响】备份失败不会中止 apply；不能代替 GitOps/变更工单/集群级备份。
   --backup-dir：备份根目录；不配则在 CALICO_HOST_FW_LOG_DIR 下按时间分子目录。
   --apply-staged：主机侧分次 apply（先 GNP 后 HEP）；both 时分三步，NetPol 在 HEP 之后单独 kubectl 提交。
@@ -301,6 +304,8 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
       【生产影响】仅有 none 在授权后会产生持久化变更；client/server 都不会落库，但也不是「没发请求」
       （server 会对 API 有只读类校验流量）。走 calicoctl apply 时仅支持 none，若设 client/server 会报错
       （须改用 kubectl 或先用 plan 看 YAML）。
+      traffic-layer=both 且 --executor calicoctl：整条 apply 不能使用 --dry-run=server（主机清单先经 calicoctl）；
+      若仅预演 Pod 段，请对 plan 输出的 NetworkPolicy 文档单独执行 kubectl apply --dry-run=server。
   --post-verify：apply 全部下发成功后，在同一进程内直接调用 cmd_validate（只读），与 validate 子命令
       同源逻辑且共用 apply 已解析的参数对象，无需把全套 plan 参数再塞回 CLI。
       进程退出码随后续 validate 结果传递（validate 当前对告警仍返回 0，以日志为准）。
@@ -350,11 +355,14 @@ CalicoPolicyCli.py（原 calico_host_port_lockdown 逻辑）- 维护者说明（
 
   1) 命令行 --context 是否与工单环境一致（与 kubectl config get-contexts 中名称一致）。
   2) host/both 是否已手写 --executor kubectl 或 calicoctl（与集群 Calico 数据存储方式一致，禁止依赖 auto）。
-  3) 创建 HEP 是否已手写 --interface 或为每节点配置注解 kubeauto.calico/host-interface。
+  3) 创建 HEP 是否已手写 --interface 或为每节点配置注解 kubeauto.calico/host-interface；
+      validate / --post-verify 与 apply 的主机侧参数须一致（含 --executor、--interface、--include-external-ip、
+      --hep-profile / --no-default-allow-profile）。
   4) -a 是否包含监控、告警、跳板、管控面、必要 CI 出口等全部真实源网段（含 IPv6 若在用）。
   5) Pod 选择是否故意为之；是否避免误用 --pod-selector-all。
   6) 主机侧 --policy-selector / --no-hostendpoint 是否在测试集群验证过命中范围。
-  7) 是否已 plan；calicoctl 路径禁止依赖 apply --dry-run=server（改用 kubectl 主机层或仅对 NetPol 单段 dry-run）。
+  7) 是否已 plan；主机层经 calicoctl 时禁止对整单 apply 使用 --dry-run=server；traffic-layer=both 时请分段预演
+      （plan 审 GNP/HEP，NetPol 单独 kubectl apply --dry-run=server）。
   8) 是否理解删除策略后暴露面可能变化，并已评估与其它防火墙、安全组、遗留策略的叠加效应。
 
 -------------------------------------------------------------------------------
@@ -449,78 +457,126 @@ HELP_EPILOG = """
 链接: Calico %(calico_docs)s  组件版本 %(calico_ver)s
 退出: 0 正常  1 出错  2 子命令不认识
 
-建议顺序: preflight -> validate（窄参数）/ plan ->（Pod 层可 kubectl apply --dry-run=server）-> apply --confirm [--backup]；成功后 apply --post-verify 或按日志中的窄 validate 行复测
+建议顺序: preflight -> validate（窄参数，须与即将 apply 的主机开关对齐）/ plan ->（Pod 层可 kubectl apply --dry-run=server）-> apply --confirm [--backup]；成功后 apply --post-verify 或按日志中的窄 validate 行复测
   host 且 --executor calicoctl 时：预演=plan，勿用 apply --dry-run=server（calicoctl 不支持）。
+  traffic-layer=both 且主机段走 calicoctl 时：整单 apply 不可用 --dry-run=server（会先经 calicoctl）；请 plan 审主机 YAML，再仅对 NetPol 段单独 kubectl apply --dry-run=server。
 
 生产注意: apply/delete 会修改 API 对象；执行前核对命令行 --context 与工单环境、kubectl config get-contexts 一致。
 traffic-layer 含 host/both 须显式 --executor；创建 HostEndpoint 须 --interface（或每节点注解 kubeauto.calico/host-interface）。
+validate 在 host/both 时也必须带齐上述项，否则子命令会直接报错或与 apply 校验范围不一致。
 漏配 -a、--policy-selector 过宽、误用 --pod-selector-all 可能导致拒收或误伤；详见源码 MAINTAINER_DOC 第 0、9 节。
 
 --------------------------------------------------------------------
-示例 A：主机 / hostNetwork（监听在节点 IP 上的端口，如 node-exporter :9100）
-plan/validate/apply/delete 须显式 --traffic-layer host。下列尽量写全，用不到的删掉即可。
+示例 A：主机层（host / 节点 IP 或 hostNetwork 监听端口，如 node-exporter :9100）
+  plan/apply/delete 须 --traffic-layer host；主机对象经 Calico 时须 --executor kubectl|calicoctl。
+  下表「单条命令」刻意列全主机侧 plan/apply 可选参数，便于对照 plan -h / apply -h；实践中请删不需要的项。
+  validate 为窄 CLI（MAINTAINER_DOC 9.4）：不含 --policy-order、--gnp-tier、--hep-prefix、--policy-name 等，
+  但须与 apply 对齐 --executor、--interface（或节点注解）、--include-external-ip、--no-hostendpoint、
+  --hep-profile、--no-default-allow-profile。
+  根级通用：可加 -v / --verbose、--no-log-file、--kubectl /usr/bin/kubectl、--calicoctl /usr/bin/calicoctl。
+  慎用：--gnp-apply-on-forward、--gnp-performance-hint、--gnp-tier 仅在有明确数据面/集群设计依据时使用；
+  --gnp-tier 须与现网已存在的 Tier 资源名一致；无 Tier CR 的集群请删掉该行，否则 apply 可能被拒。
 --------------------------------------------------------------------
-  %(prog)s --context prod preflight
+  %(prog)s -v --context prod preflight
   %(prog)s --context prod nodes
-  %(prog)s --context prod validate \\
+  %(prog)s --context prod --executor calicoctl validate \\
       --traffic-layer host \\
       -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
-      --port 9100
+      --port 9100 \\
+      --interface eth0 \\
+      --include-external-ip \\
+      --hep-profile projectcalico-default-allow
   %(prog)s --context prod --executor calicoctl plan \\
       --traffic-layer host \\
       -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
       --port 9100 \\
+      --policy-name myorg-host-tcp-9100 \\
+      --hep-prefix myorg-hep \\
       --interface eth0 \\
       --include-external-ip \\
-      --policy-order 500
+      --policy-order 500 \\
+      --hep-profile projectcalico-default-allow \\
+      --gnp-apply-on-forward \\
+      --gnp-performance-hint AssumeNeededOnEveryNode
+  # 若集群已配置 Calico/Enterprise Tier，在上一行 plan 末尾追加： --gnp-tier <现网Tier名>
   %(prog)s --context prod --executor calicoctl apply --confirm --backup --apply-staged --post-verify \\
       --traffic-layer host \\
       -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
       --port 9100 \\
+      --policy-name myorg-host-tcp-9100 \\
+      --hep-prefix myorg-hep \\
       --interface eth0 \\
       --include-external-ip \\
       --policy-order 500 \\
+      --hep-profile projectcalico-default-allow \\
+      --gnp-apply-on-forward \\
+      --gnp-performance-hint AssumeNeededOnEveryNode \\
       --backup-dir /tmp/calico-fw-backup
   %(prog)s --context prod delete --executor calicoctl --traffic-layer host \\
-      --delete-hostendpoints --port 9100 \\
-      --policy-name kubeauto-restrict-host-tcp-9100
+      --delete-hostendpoints \\
+      --port 9100 \\
+      --policy-name myorg-host-tcp-9100
+  # 可选授权（等同 apply --confirm）： export CALICO_HOST_FW_CONFIRM=1
+  # 仅下发 GNP、不创建本工具 HEP（须 --policy-selector 只命中你确认安全的已有 HEP；与上面「默认建 HEP」二选一）：
+  # %(prog)s --context prod --executor calicoctl plan --traffic-layer host \\
+  #   -a 172.20.0.0/16 -a 192.168.125.0/24 --port 9100 \\
+  #   --no-hostendpoint \\
+  #   --policy-selector 'has(kubernetes-host)' \\
+  #   --policy-name myorg-host-tcp-9100 --policy-order 500
+  # 对应 validate 须加 --no-hostendpoint，且不必 --interface（除非仍想校验注解逻辑）。
+  # 【高危】不挂默认 Profile（须另有全局策略放行管理面；GNP 仍有末尾 Pass）：
+  # %(prog)s ... apply ... --no-default-allow-profile
+  # 对应 validate 须加 --no-default-allow-profile；若仍引用自定义 Profile 名可再传 --hep-profile <name>
+  # Calico 为 Kubernetes 数据存储且已注册 projectcalico CRD 时：将上面 calicoctl 改为 kubectl，参数保持同名。
 
 --------------------------------------------------------------------
-示例 B：普通 Pod（非 hostNetwork，命名空间内 metrics 等）
-须 --traffic-layer pod，并指定 -n 与 --pod-label（可多对 AND；不需要的删掉）。
+示例 B：Pod 层（标准 Pod 网卡，非 hostNetwork；networking.k8s.io NetworkPolicy）
+  须 --traffic-layer pod；不要传 --executor（实现固定 kubectl）。须 -n；目标 Pod 用多对 --pod-label（AND）
+  或 --pod-selector-all（与 --pod-label 同时写时以后者为准并告警，勿依赖）。
+  下列列全 Pod 侧 plan/apply 参数及根级 apply 选项；validate 窄 CLI 含 -n、--pod-label/--pod-selector-all、-a、--port、
+  --k8s-np-name（与 apply 名称对齐；实现仅日志核对，不对 NetPol 做 kubectl get）。
 --------------------------------------------------------------------
-  %(prog)s --context prod preflight
+  %(prog)s -v --context prod preflight
   %(prog)s --context prod validate \\
       --traffic-layer pod \\
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      --pod-label app.kubernetes.io/component=metrics \\
       -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
-      --port 9100
+      --port 9100 \\
+      --k8s-np-name myorg-pod-tcp-9100
   %(prog)s --context prod plan \\
       --traffic-layer pod \\
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      --pod-label app.kubernetes.io/component=metrics \\
       -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
       --port 9100 \\
-      --k8s-np-name kubeauto-restrict-pod-tcp-9100
+      --k8s-np-name myorg-pod-tcp-9100
   %(prog)s --context prod apply --dry-run=server \\
       --traffic-layer pod \\
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      --pod-label app.kubernetes.io/component=metrics \\
       -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
       --port 9100 \\
-      --k8s-np-name kubeauto-restrict-pod-tcp-9100
+      --k8s-np-name myorg-pod-tcp-9100
   %(prog)s --context prod apply --confirm --backup --post-verify \\
       --traffic-layer pod \\
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
+      --pod-label app.kubernetes.io/component=metrics \\
       -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
       --port 9100 \\
-      --k8s-np-name kubeauto-restrict-pod-tcp-9100
+      --k8s-np-name myorg-pod-tcp-9100 \\
+      --backup-dir /tmp/calico-fw-backup
   %(prog)s --context prod delete --traffic-layer pod \\
       -n monitoring \\
       --port 9100 \\
-      --k8s-np-name kubeauto-restrict-pod-tcp-9100
+      --k8s-np-name myorg-pod-tcp-9100
+  # 与「多标签选 Pod」二选一：整 namespace 全部 Pod（极高危，须书面审批）— 勿与上面两条 --pod-label 混用同一意图
+  # %(prog)s --context prod validate --traffic-layer pod -n monitoring --pod-selector-all \\
+  #   -a 172.20.0.0/16 --port 9100 --k8s-np-name myorg-pod-tcp-9100
 
 某个子命令有哪些参数: %(prog)s plan -h、apply -h 等。
 每条选项、环境变量、默认资源名: 见本文件 MAINTAINER_DOC 第 9 节。
@@ -1603,6 +1659,11 @@ def cmd_validate(args: argparse.Namespace) -> int:
             raise CalicoHostFwError("validate: 解析 Pod 列表 JSON 失败") from e
         n_pods = len([x for x in items if isinstance(x, dict)])
         logger.info("validate: namespace=%s 匹配 Pod 数=%d（仅供核对）", ns, n_pods)
+        np_name = args.k8s_np_name or DEFAULT_K8S_NP_NAME_TEMPLATE.format(port=args.port)
+        logger.info(
+            "validate: 与 plan/apply 对齐的 NetworkPolicy.metadata.name=%s（本命令不对该对象做 kubectl get，仅名称核对）",
+            np_name,
+        )
         if n_pods == 0:
             logger.warning(
                 "[生产影响] validate: 当前选择下 namespace=%s 无匹配 Pod；"
@@ -2351,7 +2412,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     _sub_doc = (
-        "下面是这个子命令自己的参数。总用法看：python …/calico_host_port_lockdown.py --help。"
+        "下面是这个子命令自己的参数。总用法看：python …/CalicoPolicyCli.py --help。"
         "背景和实现思路看源码里的 MAINTAINER_DOC。"
     )
 
