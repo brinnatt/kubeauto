@@ -2589,37 +2589,50 @@ Prometheus 与 Alertmanager **同命名空间**时用服务短名即可；若 Pr
 
 规则求值周期跟 **T4.2.1** 的 `global.evaluation_interval`（如 `15s`）走；某个组要放慢可在 `groups` 里单独写 `interval`。字段含义见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
 
-**上线前自检（建议写进你们的发布检查单）**：
+**示例规则**（与 **T4.4** 节点指标一致：`job="kubernetes-nodes"`）。用 `MemAvailable` 和 `MemTotal` 估算内存压力；阈值 `50` 方便实验，生产常改 `80`～`90`，并保留 `for` 防抖。
+
+```yaml
+# prometheus-config 中 data.rules.yml 的完整内容
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: kube-mon
+data:
+  rules.yml: |
+    groups:
+      - name: node-memory
+        interval: 30s
+        rules:
+          - alert: NodeMemoryHigh
+            expr: |
+              (100 * (1 - node_memory_MemAvailable_bytes{job="kubernetes-nodes"} / node_memory_MemTotal_bytes{job="kubernetes-nodes"})) > 50
+            for: 2m
+            labels:
+              team: node
+            annotations:
+              summary: "节点 {{ $labels.instance }} 内存压力高"
+              description: "可用内存占比已低于阈值，当前计算值（已用百分比）约 {{ $value }}。"
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+  # 下面保持不变 ...
+```
+
+**字段一眼看懂**：`alert` 规则名；`expr` 是 PromQL，为真才算触发；`for` 要连续满足多久才从 `pending` 变 `firing`；`labels` 会进告警实例，Alertmanager 路由和分组都靠它；`annotations` 给人读，不参与匹配。模板变量见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 里的模板说明。
+
+**上线前自检**：
 
 ```bash
+kubectl rollout restart -n kube-mon deployment prometheus
 kubectl exec -n kube-mon deploy/prometheus -- promtool check config /etc/prometheus/prometheus.yml
 kubectl exec -n kube-mon deploy/prometheus -- promtool check rules /etc/prometheus/rules.yml
 ```
 
 第二条若报找不到文件，说明 ConfigMap 里缺少 `rules.yml` 键，或 `rule_files` 路径与挂载路径不一致。
 
-**示例规则**（与 **T4.4** 节点指标一致：`job="kubernetes-nodes"`）。用 `MemAvailable` 和 `MemTotal` 估算内存压力；阈值 `50` 方便实验，生产常改 `80`～`90`，并保留 `for` 防抖。
-
-```yaml
-# prometheus-config 中 data.rules.yml 的完整内容
-groups:
-  - name: node-memory
-    interval: 30s
-    rules:
-      - alert: NodeMemoryHigh
-        expr: |
-          (100 * (1 - node_memory_MemAvailable_bytes{job="kubernetes-nodes"} / node_memory_MemTotal_bytes{job="kubernetes-nodes"})) > 50
-        for: 2m
-        labels:
-          team: node
-        annotations:
-          summary: "节点 {{ $labels.instance }} 内存压力高"
-          description: "可用内存占比已低于阈值，当前计算值（已用百分比）约 {{ $value }}。"
-```
-
-**字段一眼看懂**：`alert` 规则名；`expr` 是 PromQL，为真才算触发；`for` 要连续满足多久才从 `pending` 变 `firing`；`labels` 会进告警实例，Alertmanager 路由和分组都靠它；`annotations` 给人读，不参与匹配。模板变量见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 里的模板说明。
-
-reload 后打开 Prometheus 的 Alerts 页面看规则是否在列表里、状态是否变化。
+**打开 Prometheus 的 Alerts 页面看规则是否在列表里、状态是否变化。**
 
 插图槽位（实践时补图）：Prometheus Alerts 页面中本规则 inactive、pending、firing 各一张，建议保存为 `docs/prometheus/images/t4-11-prometheus-alerts.png`。
 
