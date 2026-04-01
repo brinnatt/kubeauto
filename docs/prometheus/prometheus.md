@@ -2438,6 +2438,19 @@ data:
 kubectl apply -f alertmanager-config.yaml
 ```
 
+**邮件通知：要能进收件箱，缺哪条都不行**
+
+`email_configs` 里的 `to` 只是**收件人地址**。真正发信走的是 **`global` 里的 SMTP**：Alertmanager 作为 SMTP 客户端连到 `smtp_smarthost`，用 `smtp_auth_*` 认证，用 `smtp_from` 当发件人。示例里的 `smtp.example.com`、`alerts@example.com` 和占位密码**不会发出任何真实邮件**，必须全部换成你可用的邮件服务参数。
+
+生产上通常要同时满足：
+
+1. **SMTP 与认证**：`smtp_smarthost`（`主机:端口`）、TLS（`smtp_require_tls` 等）与**服务商或企业邮局**文档一致；密码用官方支持的 `smtp_auth_password` 或 **`smtp_auth_password_file`**（Secret 挂文件，推荐），不要进 Git。
+2. **个人邮箱（如 QQ 邮箱）**：在邮箱设置里**开启 SMTP**，使用**授权码**填入 `smtp_auth_password`（不是 QQ 登录密码）；`smtp_from` 一般填该邮箱或服务商要求的发信身份；**主机名、端口、SSL/STARTTLS 以腾讯当前说明为准**（常见为 `smtp.qq.com` 配合 465 或 587，以官方为准）。
+3. **出站网络**：Alertmanager Pod 能解析并访问 SMTP 端口（防火墙、安全组、代理、固定出口白名单、NetworkPolicy 等）。很多企业让监控走**内部 SMTP 中继**，由运维提供 relay 地址和账号。
+4. **投递与反垃圾**：发件域、SPF/DKIM 等常由邮件基础设施负责；若 SMTP 通了但进垃圾箱，要按你们邮局规范调整。
+
+只把 `to` 改成你的 QQ 邮箱**不够**；`global` 不配成真实 QQ SMTP 与授权码，告警路由到 `email` 接收器后也会在日志里报 SMTP 错误。改完 `alert-config` 后 **`kubectl rollout restart deployment/alertmanager -n kube-mon`**，排错看 **`kubectl logs -n kube-mon deploy/alertmanager`**。
+
 **步骤 2：Deployment**
 
 与 **T4.2.1** 一样给工作负载加非 root 安全上下文；数据目录 Alertmanager 镜像默认不需要 PVC（本示例仅配置文件 ConfigMap）。
@@ -2634,7 +2647,7 @@ kubectl exec -n kube-mon deploy/prometheus -- promtool check rules /etc/promethe
 
 **打开 Prometheus 的 Alerts 页面看规则是否在列表里、状态是否变化。**
 
-插图槽位（实践时补图）：Prometheus Alerts 页面中本规则 inactive、pending、firing 各一张，建议保存为 `docs/prometheus/images/t4-11-prometheus-alerts.png`。
+![altermanager-in-prometheus-status](./images/altermanager-in-prometheus-status.png)
 
 **状态含义**：`inactive` 条件不成立；`pending` 已成立但未满 `for`；`firing` 已推给 Alertmanager。用内置指标自查：
 
@@ -2642,9 +2655,9 @@ kubectl exec -n kube-mon deploy/prometheus -- promtool check rules /etc/promethe
 ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 ```
 
-本例 `labels.team` 为 `node`，与 **T4.11.1** 里子路由 `matchers` 的 `team="node"` 一致，邮件会走 `email` 接收器。
+本例 `labels.team` 为 `node`，与 **T4.11.1** 子路由里 `team="node"` 一致，告警会交给 **`email` 接收器**，由 Alertmanager **按 `global` SMTP 尝试发信**。收件箱能不能收到，取决于 **T4.11.1**「邮件通知」里 SMTP、认证、出站是否已配通，**不是**只改 `to` 就行。
 
-插图槽位：实际收到的告警邮件或 IM 截图（打码），建议 `docs/prometheus/images/t4-11-notification-sample.png`。
+插图槽位：`docs/prometheus/images/t4-11-notification-sample.png`（实际邮件或 IM，打码）。
 
 进 Alertmanager UI：NodePort 用 `kubectl get svc -n kube-mon alertmanager` 看端口，浏览器访问 `http://<节点IP>:<NodePort>`；生产多用 ClusterIP 加 Ingress。Web 上可做静默；长期抑制写在配置里的 `inhibit_rules`，见 [inhibit_rule](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。`repeat_interval` 管同组重复通知节奏，要和值班习惯一起调。
 
