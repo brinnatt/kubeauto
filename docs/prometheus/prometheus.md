@@ -2657,7 +2657,7 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 本例 `labels.team` 为 `node`，与 **T4.11.1** 子路由里 `team="node"` 一致，告警会交给 **`email` 接收器**，由 Alertmanager **按 `global` SMTP 尝试发信**。收件箱能不能收到，取决于 **T4.11.1**「邮件通知」里 SMTP、认证、出站是否已配通，**不是**只改 `to` 就行。
 
-#### T4.11.2.1、Alertmanager Web UI 怎么进、各页干什么
+#### T4.11.2.1、Alertmanager Web UI
 
 **和 Prometheus 里 Alerts 的区别**：Prometheus 页是**规则求值状态**（inactive/pending/firing）；Alertmanager 页是**已经送过来的告警**怎么分组、有没有被静默/抑制、会走哪个接收器。两边都要会看，别混成一个。
 
@@ -2669,7 +2669,7 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 **界面大致结构**（0.2x 以后常见布局；具体文案随版本略有出入，以你镜像为准）
 
-| 入口 / 区域 | 用途（大白话） |
+| 入口 / 区域 | 用途 |
 |-------------|----------------|
 | **Alerts** | 当前 Alertmanager 手里的告警列表，多按 **`route.group_by`** 聚成「一组」展示。展开一组可看每条告警的**标签**（来自 Prometheus 规则里的 `labels` 等）、当前会交给哪个 **receiver**（邮件、Webhook 等）。若显示被 **silenced** / **inhibited**，表示被静默或抑制规则挡了通知。 |
 | **Silences** | **临时静音**：在时间段内按 **matchers** 匹配到的告警**不再往接收器发**，适合割接、已知误报。和「改 Prometheus 规则」无关；规则可以还在 firing，只是不吵你。新建静默时要填：匹配条件、开始/结束时间、说明、创建人（有的版本可选）。matchers 语法与路由里一致，例如 `alertname="NodeMemoryHigh"`、`team="node"`，见官方 [matcher](https://prometheus.io/docs/alerting/latest/configuration/#matcher)。 |
@@ -2691,8 +2691,6 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 - **`inhibit_rules`（抑制）**：例如「集群挂了就别再报单盘」这类逻辑，写在 `config.yml`，见 [inhibit_rule](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。
 - **`repeat_interval` / `group_wait` / `group_interval`**：控制多久重复通知、分组等待等，在 **`route`** 里调，要和值班习惯一起试，官方说明在 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 的 routing 相关字段。
-
-插图槽位：`docs/prometheus/images/t4-11-alertmanager-alerts.png`（Alerts 页分组展开）、`docs/prometheus/images/t4-11-alertmanager-silences.png`（新建静默表单）。
 
 官方延伸阅读：[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)、[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
 
