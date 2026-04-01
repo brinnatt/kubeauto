@@ -2657,8 +2657,6 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 本例 `labels.team` 为 `node`，与 **T4.11.1** 子路由里 `team="node"` 一致，告警会交给 **`email` 接收器**，由 Alertmanager **按 `global` SMTP 尝试发信**。收件箱能不能收到，取决于 **T4.11.1**「邮件通知」里 SMTP、认证、出站是否已配通，**不是**只改 `to` 就行。
 
-插图槽位：`docs/prometheus/images/t4-11-notification-sample.png`（实际邮件或 IM，打码）。
-
 进 Alertmanager UI：NodePort 用 `kubectl get svc -n kube-mon alertmanager` 看端口，浏览器访问 `http://<节点IP>:<NodePort>`；生产多用 ClusterIP 加 Ingress。Web 上可做静默；长期抑制写在配置里的 `inhibit_rules`，见 [inhibit_rule](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。`repeat_interval` 管同组重复通知节奏，要和值班习惯一起调。
 
 官方延伸阅读：[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)。
