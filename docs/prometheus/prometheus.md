@@ -2365,22 +2365,36 @@ flowchart TB
    - 两个 Pod 是否都在 `Running`、网络策略有没有拦掉 9093；  
    - 有没有静默或抑制规则把通知挡掉（可在配置里搜 `inhibit_rules` 和对照 UI）。
 
-**和本文配置的对齐关系**
+### T4.11.1、安装（按表顺序做）
 
-- 同命名空间短名：`alerting.alertmanagers` 里写 `targets: ["alertmanager:9093"]` 即可。  
-- Prometheus 若将来迁到别的 namespace，则不能只写 `alertmanager`，应改成跨 ns 的 DNS，例如 `alertmanager.kube-mon.svc.cluster.local:9093`。
+**默认前提**：你已按 **T4.2.1** 部署 Prometheus（镜像 `prom/prometheus:v3.10.0`），并按 **T4.4** 配好 `kubernetes-nodes` 等抓取；资源在命名空间 `kube-mon`，ConfigMap 名为 `prometheus-config`，与全文一致。
 
-镜像版本与文首组件表一致：`prom/alertmanager:v0.31.1`；升级前请再打开 [Alertmanager Releases](https://github.com/prometheus/alertmanager/releases/latest) 对照 Latest 与变更说明。
+**版本**：Alertmanager 使用 **T4.2.1「版本与镜像约定」表**中的 `prom/alertmanager:v0.31.1`。以后升级只以 [Alertmanager Releases](https://github.com/prometheus/alertmanager/releases/latest) 上标记为 Latest 的**稳定版**为准，不要猜 tag。
 
-### T4.11.1、安装
+**这一节只做两件事**：先把 Alertmanager 起在集群里；再改 Prometheus 的 `prometheus.yml`，把空的 `alertmanagers: []` 换成真实地址。**告警规则文件**留到 **T4.11.2**，避免一次改太多。
 
-单机验证可执行（参数须为两个连字符，与镜像内 `alertmanager --help` 一致）：
+**总流程**
+
+| 顺序 | 内容 | 做完怎么确认 |
+|------|------|----------------|
+| 1 | 应用 Alertmanager 配置 ConfigMap | `kubectl get cm -n kube-mon alert-config` |
+| 2 | 应用 Deployment | `kubectl rollout status deployment/alertmanager -n kube-mon` |
+| 3 | 应用 Service | `kubectl get svc,endpoints -n kube-mon alertmanager` |
+| 4 | 改 `prometheus-config` 里的 `alerting`，再 apply 并对 Prometheus 执行 **T4.3.1** reload | Prometheus 无报错；必要时看 Pod 日志 |
+
+**可选：本机试二进制**（与镜像内 `alertmanager --help` 一致，参数是两个连字符）：
 
 ```bash
 ./alertmanager --config.file=alertmanager.yml
 ```
 
-在集群中建议使用同一发行线的镜像。下面给出与 **T4.2.1** 一致的 `kube-mon` 部署：ConfigMap 只放 `config.yml` 一项，挂载到容器 `/etc/alertmanager`。**不要**在 Git 中提交真实 SMTP 密码；示例用占位符，生产请用流水线注入、Sealed Secrets、或仅集群内手工维护的 Secret 渲染配置。
+**步骤 1：Alertmanager 配置（ConfigMap）**
+
+`data.config.yml` 是 **Alertmanager 自己的配置语法**，不是 Kubernetes 资源语法。SMTP 真实密码不要进 Git；生产用流水线注入、Secret 挂载（官方支持 `smtp_auth_password_file`，见 [Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)），或只在集群里维护的渲染流程。
+
+`route` 里：`receiver: default` 表示没被子路由命中的告警走默认邮箱；`routes` 里带 `matchers` 的子路由把 `team="node"` 的告警改走 `email` 接收器（与 **T4.11.2** 示例规则里的 `labels.team: node` 对齐）。`matchers` 写法见官方 [matcher](https://prometheus.io/docs/alerting/latest/configuration/#matcher)；嵌在 Kubernetes YAML 里时，**每一条 matcher 用单引号包整行**，避免 YAML 解析和 Alertmanager 语法混在一起不好查错。
+
+若你在 Prometheus 里配了 `global.external_labels.cluster`，`group_by` 里可加上 `cluster`，多集群时分组更清晰。SMTP 端口和是否 TLS 以邮件服务商文档为准（常见 587 + STARTTLS）。
 
 ```yaml
 # alertmanager-config.yaml
@@ -2399,7 +2413,7 @@ data:
       smtp_auth_password: '<由部署流程注入，勿入库>'
       smtp_require_tls: true
     route:
-      group_by: ['alertname', 'team']
+      group_by: [alertname, team]
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 4h
@@ -2407,7 +2421,7 @@ data:
       routes:
         - receiver: email
           matchers:
-            - team="node"
+            - 'team="node"'
           group_wait: 10s
     receivers:
       - name: default
@@ -2420,11 +2434,13 @@ data:
             send_resolved: true
 ```
 
-说明：`group_by` 与告警上的标签对齐即可；若已在 Prometheus 配置 `global.external_labels.cluster`，也可把 `group_by` 改为包含 `cluster` 以便多集群分堆。子路由使用 [matchers](https://prometheus.io/docs/alerting/latest/configuration/#matcher) 语法（Alertmanager 0.22+）。SMTP 端口与 TLS 以邮件服务商要求为准（常见为 587 与 STARTTLS）。
-
 ```bash
 kubectl apply -f alertmanager-config.yaml
 ```
+
+**步骤 2：Deployment**
+
+与 **T4.2.1** 一样给工作负载加非 root 安全上下文；数据目录 Alertmanager 镜像默认不需要 PVC（本示例仅配置文件 ConfigMap）。
 
 ```yaml
 # alertmanager-deploy.yaml
@@ -2444,6 +2460,10 @@ spec:
       labels:
         app: alertmanager
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
       volumes:
         - name: alertcfg
           configMap:
@@ -2453,7 +2473,7 @@ spec:
           image: prom/alertmanager:v0.31.1
           imagePullPolicy: IfNotPresent
           args:
-            - "--config.file=/etc/alertmanager/config.yml"
+            - --config.file=/etc/alertmanager/config.yml
           ports:
             - containerPort: 9093
               name: http
@@ -2481,10 +2501,15 @@ spec:
 
 ```bash
 kubectl apply -f alertmanager-deploy.yaml
+kubectl rollout status deployment/alertmanager -n kube-mon
 ```
 
+**步骤 3：Service**
+
+练习环境用 NodePort 方便浏览器访问；生产多改成 ClusterIP，再配合 Ingress 或只给集群内访问，并配合 NetworkPolicy 收紧来源。与 **T4.2.1** 的 Prometheus Service 策略保持一致即可。
+
 ```yaml
-# alertmanager-svc.yaml（实验可用 NodePort；生产多改为 ClusterIP + Ingress 或仅集群内访问）
+# alertmanager-svc.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -2506,37 +2531,77 @@ spec:
 kubectl apply -f alertmanager-svc.yaml
 ```
 
-在 **T4.4** 已给出的 `prometheus-config` 的 `prometheus.yml` 中增加（或合并）`alerting` 段，使 Prometheus 与 Alertmanager 处于同一 namespace 时可用服务短名：
+**改 Alertmanager 配置后怎么生效**：默认镜像**没有**像 Prometheus 那样依赖 `/-/reload` 热加载。更新 `alert-config` 后请重启 Deployment：
 
-```yaml
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ["alertmanager:9093"]
+```bash
+kubectl rollout restart deployment/alertmanager -n kube-mon
 ```
 
-跨 namespace 时写 FQDN：`alertmanager.kube-mon.svc.cluster.local:9093`。保存 ConfigMap 后按 **T4.3.1** 方式对 Prometheus 执行 reload。
+可选：在镜像参数中加 `--web.enable-lifecycle` 后，可对 Alertmanager 发 POST `/-/reload`（与 [官方文档](https://prometheus.io/docs/alerting/latest/configuration/) 中 HTTP API 说明一致）；本文采用重启，步骤最少。
+
+**步骤 4：让 Prometheus 指向 Alertmanager**
+
+编辑 `prometheus-config` 的 `data.prometheus.yml`。在 **T4.4** 完整示例里，原来类似：
+
+```yaml
+    rule_files: []
+    alerting:
+      alertmanagers: []
+```
+
+本步**只改 `alerting` 段**，`rule_files` **暂时保持 `[]`**（规则在 **T4.11.2** 再加）。把 `alerting` 整段替换为下面内容（结构必须与 [Prometheus configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) 一致：`static_configs` 下面是**列表项**，必须有 `- targets:`，不能写成裸的 `targets:`）：
+
+```yaml
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["alertmanager:9093"]
+```
+
+Prometheus 与 Alertmanager **同命名空间**时用服务短名即可；若 Prometheus 以后迁到别的命名空间，target 改成 FQDN，例如 `alertmanager.kube-mon.svc.cluster.local:9093`。
+
+**不要**删掉 `global`、`scrape_configs`、`storage` 等已有块。保存后 `kubectl apply` 你的 Prometheus ConfigMap 清单，再按 **T4.3.1** 对 Prometheus 执行 reload。
+
+**可选自检**：配置加载后看 Alertmanager 日志是否有解析错误；也可在 Alertmanager Pod 内执行 `amtool check-config /etc/alertmanager/config.yml`（镜像内自带 `amtool`）。
 
 ### T4.11.2、告警规则
 
-Alertmanager 就绪且 Prometheus 已指向其地址后，还需在 Prometheus 中加载告警规则。规则文件路径由 `prometheus.yml` 的 `rule_files` 列出；与 **T4.4** 一样，把 `rules.yml` 作为 ConfigMap `prometheus-config` 的独立键挂载到 `/etc/prometheus/rules.yml`，并在**现有** `prometheus.yml` 中增加（勿删既有 `scrape_configs` 等段落）：
+**前提**：**T4.11.1** 已完成，Prometheus 的 `alerting` 已指向 Alertmanager。
+
+**这一节做三件事**：
+
+1. 在 ConfigMap `prometheus-config` 的 `data` 下**新增键** `rules.yml`（与 `prometheus.yml` 并列），Kubernetes 会把每个键挂成 `/etc/prometheus/<键名>`，因此容器内路径为 `/etc/prometheus/rules.yml`。
+2. 在 `prometheus.yml` 里把 `rule_files: []` 改成列出该文件。
+3. apply 后按 **T4.3.1** reload；上线前用 `promtool` 自检（见下）。
+
+**不要**再复制粘贴一整段 `alerting`。**T4.11.1** 已配好的话保持不动；若你跳过了上一节，需要把下面片段里 `rule_files` 与 `alerting` 一起合并进 `prometheus.yml`。
+
+合并后应类似（仅作结构核对，实际文件里还有 `global`、`scrape_configs` 等）：
 
 ```yaml
-rule_files:
-  - /etc/prometheus/rules.yml
-
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ["alertmanager:9093"]
+    rule_files:
+      - /etc/prometheus/rules.yml
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["alertmanager:9093"]
 ```
 
-`global.evaluation_interval` 与 **T4.2.1** 保持一致即可（例如 `15s`）；规则组也可单独写 `interval`。完整字段说明见 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
+规则求值周期跟 **T4.2.1** 的 `global.evaluation_interval`（如 `15s`）走；某个组要放慢可在 `groups` 里单独写 `interval`。字段含义见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
 
-示例规则与本文 node 指标一致，使用 `job="kubernetes-nodes"`，内存占用用 `MemAvailable` 相对 `MemTotal`（较贴近 Linux 可用内存语义）。阈值示例为 50，便于实验触发；生产常调到 80～90，并结合 `for` 降噪。
+**上线前自检（建议写进你们的发布检查单）**：
+
+```bash
+kubectl exec -n kube-mon deploy/prometheus -- promtool check config /etc/prometheus/prometheus.yml
+kubectl exec -n kube-mon deploy/prometheus -- promtool check rules /etc/prometheus/rules.yml
+```
+
+第二条若报找不到文件，说明 ConfigMap 里缺少 `rules.yml` 键，或 `rule_files` 路径与挂载路径不一致。
+
+**示例规则**（与 **T4.4** 节点指标一致：`job="kubernetes-nodes"`）。用 `MemAvailable` 和 `MemTotal` 估算内存压力；阈值 `50` 方便实验，生产常改 `80`～`90`，并保留 `for` 防抖。
 
 ```yaml
-# 作为 prometheus-config 中的 rules.yml 键内容
+# prometheus-config 中 data.rules.yml 的完整内容
 groups:
   - name: node-memory
     interval: 30s
@@ -2552,77 +2617,76 @@ groups:
           description: "可用内存占比已低于阈值，当前计算值（已用百分比）约 {{ $value }}。"
 ```
 
-规则字段说明：`alert` 为规则名；`expr` 为 PromQL，非空即视为触发；`for` 为持续多久才从 `pending` 变为 `firing`；`labels` 参与路由与分组；`annotations` 供模板展示，不参与匹配。
+**字段一眼看懂**：`alert` 规则名；`expr` 是 PromQL，为真才算触发；`for` 要连续满足多久才从 `pending` 变 `firing`；`labels` 会进告警实例，Alertmanager 路由和分组都靠它；`annotations` 给人读，不参与匹配。模板变量见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 里的模板说明。
 
-模板中常用 `{{ $labels.<name> }}` 与 `{{ $value }}`，语法见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 中的模板说明。
+reload 后打开 Prometheus 的 Alerts 页面看规则是否在列表里、状态是否变化。
 
-更新 ConfigMap 后 reload Prometheus，在 UI 的 Alerts 页查看规则状态。
+插图槽位（实践时补图）：Prometheus Alerts 页面中本规则 inactive、pending、firing 各一张，建议保存为 `docs/prometheus/images/t4-11-prometheus-alerts.png`。
 
-> 插图槽位 T4.11-2（待补充）：Prometheus Alerts 页面中本规则处于 inactive、pending、firing 的截图。建议 `./images/t4-11-prometheus-alerts.png`。
-
-告警状态：`inactive`（条件不成立）、`pending`（已成立但未满足 `for`）、`firing`（已通知 Alertmanager）。可用时间序列 `ALERTS` 排查：
+**状态含义**：`inactive` 条件不成立；`pending` 已成立但未满 `for`；`firing` 已推给 Alertmanager。用内置指标自查：
 
 ```promql
 ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 ```
 
-`ALERTS` 的值为 1 表示仍处于 pending 或 firing；恢复后相关样本会变为 0 或消失（与评估时刻有关）。
+本例 `labels.team` 为 `node`，与 **T4.11.1** 里子路由 `matchers` 的 `team="node"` 一致，邮件会走 `email` 接收器。
 
-本例 `labels.team` 为 `node`，与 **T4.11.1** 中 `matchers: - team="node"` 的子路由一致，邮件会走 `email` 接收器。
+插图槽位：实际收到的告警邮件或 IM 截图（打码），建议 `docs/prometheus/images/t4-11-notification-sample.png`。
 
-> 插图槽位 T4.11-3（待补充）：收到的告警邮件或企业 IM 通知示例（打码）。建议 `./images/t4-11-notification-sample.png`。
+进 Alertmanager UI：NodePort 用 `kubectl get svc -n kube-mon alertmanager` 看端口，浏览器访问 `http://<节点IP>:<NodePort>`；生产多用 ClusterIP 加 Ingress。Web 上可做静默；长期抑制写在配置里的 `inhibit_rules`，见 [inhibit_rule](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。`repeat_interval` 管同组重复通知节奏，要和值班习惯一起调。
 
-集群内访问 UI：`kubectl get svc -n kube-mon alertmanager`，NodePort 则用 `节点 IP:节点端口`；生产建议 ClusterIP 配合 Ingress 或零信任网关。Alertmanager Web UI 可做静默、查看分组；抑制在配置文件的 `inhibit_rules` 中维护，见 [configuration](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。
-
-`repeat_interval` 控制同组告警重复发送节奏，需与故障时长、值班习惯一起调，避免骚扰或漏提醒。
-
-> 插图槽位 T4.11-4（待补充）：从规则求值到通知发出的流程示意（分组、去重、抑制、静默、路由）。建议 `./images/t4-11-alert-lifecycle.png`。
-
-进一步阅读：[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)。
+官方延伸阅读：[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)。
 
 #### T4.11.2.1、Webhook 接收器
 
-邮件、Slack、PagerDuty 等由 Alertmanager 内置 `*_configs` 支持；钉钉、企业微信等通常部署**集群内适配服务**，由 [webhook_configs](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 以 HTTP POST 推送官方 [通知负载](https://prometheus.io/docs/alerting/latest/notifications/)，适配服务完成鉴权、签名与调用厂商 API。生产注意：对外用 HTTPS，集群内至少加 NetworkPolicy；设置合理超时；密钥只进 Secret，**勿**入库。
+内置的 `email_configs`、`slack_configs`、`pagerduty_configs` 等直接写在 [receiver](https://prometheus.io/docs/alerting/latest/configuration/#receiver) 里。钉钉、企业微信等多半在集群里放一个**适配小服务**，Alertmanager 用 [webhook_configs](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把官方 [通知 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 过去，由适配层去调厂商 API。生产：对外尽量 HTTPS；集群内加 NetworkPolicy；超时和重试按官方字段调；密钥只放 Secret，不要进 Git。
 
-在 `config.yml` 中追加接收器，并把**子路由**并入 **T4.11.1** 已有 `route.routes`（与邮件子路由并列，勿覆盖）。与适配服务同 namespace 时 URL 可用短名，跨 namespace 写 FQDN。
+**操作顺序**：
+
+1. 在 **T4.11.1** 的 `receivers` 里**追加**一个带 `webhook_configs` 的 receiver（不要删掉原有 `default` / `email`）。
+2. 在 **T4.11.1** 的 `route.routes` 里**追加**一条子路由（与原有 `email` 子路由**并列**，不要整段覆盖）。
+
+同命名空间可用 Service 短名 URL，跨命名空间写完整集群域名。
 
 ```yaml
-# 片段：追加到 receivers
+# 片段：追加到 receivers（与现有项同级）
   - name: webhook
     webhook_configs:
-      - url: "http://alertmanager-webhook.kube-mon.svc.cluster.local:8080/alerts"
+      - url: 'http://alertmanager-webhook.kube-mon.svc.cluster.local:8080/alerts'
         send_resolved: true
 
-# 片段：追加到 route.routes（与 email 子路由并存时注意顺序与 continue，见下段说明）
+# 片段：追加到 route.routes（与原有子路由同级）
   - receiver: webhook
     matchers:
-      - team="node"
+      - 'team="node"'
 ```
 
-将 URL 换成你方 Service；`send_resolved: true` 表示恢复时也会 POST。若 **T4.11.1** 里已有 `team="node"` 指向 `email` 的子路由，再追加同 matchers 的 webhook 子路由时，默认**先写入的一条**会先匹配（未设 `continue: true` 时不会落到下一条）。需要「邮件 + IM」同时发，应在**同一个** `receiver` 下并列配置 `email_configs` 与 `webhook_configs`，或给告警打不同标签分别路由。对接钉钉见 [钉钉开放平台](https://open.dingtalk.com/) 当前机器人文档，由适配服务加签，勿在仓库中存放长期 token。
+把 URL 换成你的 Service。`send_resolved: true` 表示恢复时也会 POST。
 
-> 插图槽位 T4.11-5（待补充）：Webhook 适配 Pod 日志中出现成功处理 Alertmanager 请求的记录（打码）。建议 `./images/t4-11-webhook-delivery.png`。
+**重要**：路由树**从上到下**匹配，**第一个命中的子路由**就结束（除非该条写了 `continue: true`）。如果 **T4.11.1** 里已经有一条 `team="node"` 指向 `email`，再追加一条同样 matcher 指向 `webhook`，通常只会进**写在前面**的那条。要**邮件和 IM 同时发**，正确做法是**同一个 receiver** 里并列写 `email_configs` 和 `webhook_configs`，或者给不同通知通道打不同标签、用不同 matcher 分流。
+
+插图槽位：Webhook 适配 Pod 日志里成功处理请求的一行（打码），建议 `docs/prometheus/images/t4-11-webhook-delivery.png`。
 
 ### T4.11.3、自定义模板
 
-Alertmanager 内置默认模板。若要改邮件 HTML 等，把 `.tmpl` 挂进容器并在配置顶层增加 `templates:`。建议从与运行版本一致的 Git 标签拉取默认模板再改，避免与内置块名不一致：
+默认邮件样式可直接用内置模板。要改 HTML 等：把 `.tmpl` 放进容器可读目录，在 Alertmanager 配置**顶层**加 `templates:`。模板文件建议从**与你运行版本相同的 Git tag**拉默认文件再改，避免块名和内置不一致。与 **T4.11.1** 镜像一致时用：
 
 ```bash
 curl -fsSL -o default.tmpl "https://raw.githubusercontent.com/prometheus/alertmanager/v0.31.1/template/default.tmpl"
 ```
 
-可修改 `define "email.default.html"` 等块；语法为 Go template，字段见 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/) 与 [Examples](https://prometheus.io/docs/alerting/latest/notification_examples/)。
+语法是 Go template，可用字段见 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/) 与 [notification_examples](https://prometheus.io/docs/alerting/latest/notification_examples/)。
 
 ```yaml
 templates:
-  - "/etc/alertmanager/templates/*.tmpl"
+  - /etc/alertmanager/templates/*.tmpl
 ```
 
-用 ConfigMap 或 Volume 挂到 `/etc/alertmanager/templates/`，更新后 reload Alertmanager。
+用 ConfigMap 子路径或 Volume 挂到容器内 `/etc/alertmanager/templates/`（与上面 glob 前缀一致）。改完后与 **T4.11.1** 相同：**更新 ConfigMap 后 `kubectl rollout restart deployment/alertmanager -n kube-mon`**，或你方已启用的 `/-/reload` 流程。
 
 ### T4.11.4、记录规则
 
-记录规则把重复或昂贵的 PromQL 预计算为新指标，与告警规则共用 `rule_files`，见 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。评估间隔默认继承 `global.evaluation_interval`（**T4.2.1** 示例为 `15s`；若未配置 global，程序默认 `1m`，以你当前 `prometheus.yml` 为准）。
+把重复算或很重的 PromQL 预计算成新指标，和告警规则一样写在 `rule_files` 里，见官方 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。评估间隔默认跟 `global.evaluation_interval`（**T4.2.1** 为 `15s`）；若全局没配，程序默认 `1m`，以你当前 `prometheus.yml` 为准。
 
 ```yaml
 groups:
@@ -2633,9 +2697,9 @@ groups:
         expr: sum by (job) (http_inprogress_requests)
 ```
 
-`record` 须符合指标命名约定；可用 `labels` 为写出序列追加标签。大盘与告警尽量引用记录结果，减轻查询压力。细则与命名规范见官方 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。
+`record` 名字要符合命名规范；可用 `labels` 给写出的序列加标签。大盘和告警尽量引用记录规则结果，减轻查询压力。细则见官方文档。
 
-本节需自行截屏补充的为 T4.11-2～T4.11-5（见文中 blockquote）；开篇原理与数据流已用正文分层说明配合 Mermaid，无需再准备架构 PNG。
+**插图**：本节原理与流程见段首 Mermaid 与 **T4.11.2** 正文；你只需按上文槽位补充 T4.11-2、T4.11-3、T4.11-5 三张图即可（路径已写在各节）。
 
 ## T4.12、Thanos
 
