@@ -2860,7 +2860,7 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 
 **写入**
 
-- 抓取和规则仍在 Prometheus 里跑，`scrape_configs` 从 **T4.4～T4.8** 整段贴进模板（不要省略号）。
+- 抓取和规则仍在 Prometheus 里跑，`scrape_configs` 从 **T4.4～T4.8** 整段贴进模板。
 - 数据先写本地 TSDB；块按 2h 封闭后，Sidecar 上传到对象存储（**T4.12.6** 给 Sidecar 配上 `--objstore` 之后）。
 - 桶里块多了，由 Compactor 做合并和降采样。
 
@@ -3035,7 +3035,7 @@ metadata:
   labels:
     app: prometheus
 spec:
-  serviceName: prometheus
+  serviceName: prometheus-headless
   replicas: 2
   selector:
     matchLabels:
@@ -3146,16 +3146,19 @@ spec:
 
 **Headless 说明**
 
+- Prometheus StatefulSet 的 Headless 名为 `prometheus-headless`（与 `spec.serviceName` 一致），单 Pod 稳定 DNS 形如 `prometheus-0.prometheus-headless.kube-mon.svc.cluster.local`。
 - 发现用 Service 名叫 `thanos-store-apis`，故意不和后面 Store Gateway 的 StatefulSet 名 `thanos-store-gateway` 混成一个名字。
 - 打了标签 `thanos-store-api: "true"` 的 Pod（Sidecar、Store、Receiver 等）都会被这条 Service 收进来，Querier 只配这一条 DNS SRV 即可。
 
-`discovery.yaml`：StatefulSet 要求 `serviceName` 对应的 Headless Service 必须先存在。下面有两个 Service：给 Prometheus 用的、给 Thanos Store API 发现用的（和 Store Gateway 那套 StatefulSet 不冲突）。
+`discovery.yaml`：StatefulSet 要求 `serviceName` 对应的 Headless Service 必须先存在。下面有两个 Service：给 Prometheus **StatefulSet 稳定网络身份**用的 Headless、给 Thanos Store API 发现用的（和 Store Gateway 那套 StatefulSet 不冲突）。
+
+**与 T4.2.1 同名冲突说明**：若你已在 **T4.2.1** 创建过 Service **`prometheus`**（NodePort 等，会分配固定 `clusterIP`），**不能**再用同名清单把该 Service 改成 Headless（`clusterIP: None`），API 会报 `spec.clusterIPs[0]: Invalid value: []string{"None"}: may not change once set`。本文 Headless 使用独立名称 **`prometheus-headless`**，与上文 `sidecar.yaml` 里 `serviceName` 一致；**T4.2.1 的 Service `prometheus` 可保留**，继续给浏览器 / Grafana 用 `http://prometheus.kube-mon.svc.cluster.local:9090`（selector 仍是 `app: prometheus` 即可）。
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus
+  name: prometheus-headless
   namespace: kube-mon
 spec:
   type: ClusterIP
@@ -3183,7 +3186,8 @@ spec:
     thanos-store-api: "true"
 ```
 
-**部署顺序**  
+**部署顺序**
+
 还没接对象存储时，Sidecar 可能报上传相关错误，可以先不配 `--objstore`，等 **T4.12.6** 再补上。
 
 ```bash
@@ -3199,7 +3203,8 @@ kubectl get pods -n kube-mon -l app=prometheus
 
 ### T4.12.4、Querier
 
-查数只走 Querier，不要再去负载均衡两个 Prometheus。  
+查数只走 Querier，不要再去负载均衡两个 Prometheus。
+
 Querier 用 DNS SRV 自动发现所有带 Store API 的组件（Sidecar、Store Gateway、Receiver 等）。Headless Service 里端口名必须叫 `grpc`，这样 SRV 记录才是 `_grpc._tcp...` 形式。
 
 `querier.yaml`：
@@ -3294,15 +3299,18 @@ kubectl get svc -n kube-mon -l app=thanos-querier
 
 ### T4.12.5、告警与 Ruler 怎么选
 
-**默认做法**  
+**默认做法**
+
 规则仍在各 Prometheus 副本上算，告警走 **T4.11**。**T4.12.3** 里已示例用 `alert_relabel_configs` 去掉 `replica`，避免两个副本各推一条重复告警。
 
-**简单验收**  
+**简单验收**
+
 任选一个 Deployment，执行 `kubectl scale deploy/<name> --replicas=0 -n <ns>`，等 **T4.12.3** 里 `DeploymentNoAvailableReplicas` 的 `for` 时间走完，在 Alertmanager 或 **T4.11.2.2** 的钉钉/企微应收到告警；副本调回后应恢复。
 
 **插图槽位**：`docs/prometheus/images/t4-12-alert-deployment-down.png`（打码）
 
-**何时用 Thanos Ruler**  
+**何时用 Thanos Ruler**
+
 只有当你必须用「对着 Querier、跨副本或跨集群的一条规则」时再上。链路是 Ruler → Querier → Sidecar → Prometheus，中间任一环节不稳，告警都会跟着抖。部署时要配：`--query` 指 Querier，`--alertmanagers.url` 指 T4.11，规则和对象存储按 [Ruler](https://thanos.io/tip/components/rule.md/) 与 [Releases](https://github.com/thanos-io/thanos/releases/tag/v0.41.0) 来。
 
 ### T4.12.6、对象存储与 Store Gateway
@@ -3313,10 +3321,12 @@ kubectl get svc -n kube-mon -l app=thanos-querier
 - Store Gateway：只从桶里读块，交给 Querier。
 - 二者共用同一个 Secret 里的 `thanos.yaml`，但干的活不一样：没有 Store，只能查 Prometheus 本地还保留的那段时间；没有 Sidecar 上传，桶里不会有新数据。
 
-**生产环境**  
+**生产环境**
+
 优先云厂商 S3 兼容（OSS、COS、S3 等），endpoint、区域、TLS、加密按云文档来；密钥用 Secret 或云上的工作负载身份，不要把 `access_key` 写进 Git。存储类型与字段见 [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线后看：Querier Stores 是否出现 store、桶里对象是否在涨、Sidecar 是否还在报上传错。
 
-**练习环境**  
+**练习环境**
+
 下面用 MinIO 演示。若 MinIO 策略有变，可换 [RustFS](https://rustfs.com/) 等 S3 兼容产品，Thanos 仍按 S3 填 endpoint 和密钥。镜像 tag 见文首约定表，安全更新见 [MinIO Releases](https://github.com/minio/minio/releases/latest)。
 
 #### T4.12.6.1、MinIO（练习用，独立 namespace）
