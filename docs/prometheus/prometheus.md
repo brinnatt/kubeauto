@@ -2694,7 +2694,7 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 官方延伸阅读：[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)、[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
 
-#### T4.11.2.2、Webhook：钉钉 / 企业微信（企业生产常用）
+#### T4.11.2.2、Webhook：钉钉 / 企业微信
 
 Alertmanager 只负责按 [webhook_config](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把 [标准 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 出去；钉钉、企业微信机器人要的 **URL、加签、正文格式** 各不相同，生产上标准做法是：**集群内部署适配组件**，Alertmanager → 适配 Service → 厂商 HTTPS API。密钥、机器人地址只进 **Secret**，适配镜像 **固定 tag**，出网与 **NetworkPolicy** 按你们安全基线收紧；对外回调需 **Ingress** 时限制来源 IP。
 
@@ -2740,9 +2740,7 @@ Alertmanager 只负责按 [webhook_config](https://prometheus.io/docs/alerting/l
 
 **验收**：临时调低 **T4.11.2** 阈值或手工构造 firing；看适配器 **Pod 日志**、群内消息、Alertmanager UI 是否 **silenced**。失败顺序：Secret → Service DNS → 出网 → 路由 matcher。
 
-插图槽位：`docs/prometheus/images/t4-11-webhook-delivery.png`（适配器日志一行，打码）。
-
-### T4.11.3、邮件模板（企业侧）
+### T4.11.3、邮件模板
 
 默认模板可直接用。要统一 **值班链接、Runbook、公司抬头**：从与 **Alertmanager v0.31.1** 一致的 [default.tmpl](https://github.com/prometheus/alertmanager/blob/v0.31.1/template/default.tmpl) 拉下来进 Git 再改；配置 **顶层** `templates:`，文件挂进容器（如 `/etc/alertmanager/templates/`），与 glob 一致。
 
@@ -2784,8 +2782,6 @@ groups:
 ```
 
 可用 `labels` 给写出的序列加标签。CPU、磁盘等建议按团队规范引入 [mixins](https://github.com/monitoring-mixins) 或内部标准记录规则集，避免在文档里复制易错的长 `expr`。
-
-**插图**：T4.11-2、T4.11-3、T4.11-5 路径见上文各节。
 
 ## T4.12、Thanos
 
