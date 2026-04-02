@@ -2787,9 +2787,9 @@ groups:
 
 [Thanos](https://thanos.io/) 用来给 Prometheus 加**长期存储、统一查询入口和多副本去重**。和本文 **T4.2.1～T4.11** 衔接时，记住三件事：**镜像版本跟文首「版本与镜像约定」表走**（Prometheus **`v3.10.0`**、Thanos **`v0.41.0`**）、**Grafana 数据源改成 Querier**、**对象存储密钥只进 Secret**。落地形态常见两种：**Sidecar + 桶**（下面主路径）、**Receiver + remote_write**（文末 T4.12.8，和 Sidecar 二选一为主链路，别混着两套都当「主写入」却不规划清楚）。
 
-**插图槽位**：`docs/prometheus/images/t4-12-thanos-architecture.png`（架构总览，可用官方图或现网示意）。
+![thanos arch](./images/thanos_arch.png)
 
-**组件一句话**
+**组件简介：**
 
 - **Sidecar**：和 Prometheus 同 Pod，读本地 TSDB，提供 Store API，可选把块上传到对象存储。
 - **Querier**：Prometheus 兼容 HTTP 查询，把请求发给各 Store/Sidecar（及 Receiver 等）。
