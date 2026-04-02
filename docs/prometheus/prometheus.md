@@ -2785,42 +2785,120 @@ groups:
 
 ## T4.12、Thanos
 
-[Thanos](https://thanos.io/) 用来给 Prometheus 加**长期存储、统一查询入口和多副本去重**。和本文 **T4.2.1～T4.11** 衔接时，记住三件事：**镜像版本跟文首「版本与镜像约定」表走**（Prometheus **`v3.10.0`**、Thanos **`v0.41.0`**）、**Grafana 数据源改成 Querier**、**对象存储密钥只进 Secret**。落地形态常见两种：**Sidecar + 桶**（下面主路径）、**Receiver + remote_write**（文末 T4.12.8，和 Sidecar 二选一为主链路，别混着两套都当「主写入」却不规划清楚）。
+[Thanos](https://thanos.io/) 装在现有 Prometheus 外面，帮你做到三件事：历史数据进对象存储、所有人用同一个查询地址、两台 Prometheus 查出来能当一台看（去重）。
 
-![thanos arch](./images/thanos_arch.png)
+和本文 **T4.2.1～T4.11** 连起来用时，请先对齐下面几条（后文 YAML 都按这个前提写）：
+
+| 项 | 说明 |
+|----|------|
+| 镜像 | 文首「版本与镜像约定」：Prometheus `v3.10.0`，Thanos `v0.41.0` |
+| Grafana | 数据源改成 Querier，不要再去轮询两个 Prometheus |
+| 对象存储 | 账号密钥只放 Secret，不要写进 Git |
+
+**长期数据怎么进桶（两种做法，别混用）**
+
+Thanos 把数据长期放进对象存储，常见有两种路子：
+
+1. **Sidecar**：Prometheus 先在本地盘里生成 TSDB 块，Sidecar 负责把块上传到桶。  
+2. **Receiver**：Prometheus 用 `remote_write` 把样本推到 Receiver，Receiver 落盘后再上传桶。
+
+两种都能存历史，但原理不一样。本文 **T4.12.3～T4.12.7** 只讲第一种（Sidecar + 桶）；第二种写在 **T4.12.8**。
+
+若两条路同时打开，同一条指标可能被写进桶里两份，费钱还容易查乱；除非你们事先写清楚谁写哪些指标，否则不要两条一起上。
+
+**官方文档**（升级前对照 [Releases](https://github.com/thanos-io/thanos/releases/latest) 稳定版）：
+
+- [入门](https://thanos.io/tip/thanos/getting-started.md/)
+- [设计](https://thanos.io/tip/thanos/design.md/)
+- [组件总览](https://thanos.io/tip/components/query.md/)
+
+![thanos_arch](./images/thanos_arch.png)
+
+需要与官方图一致时，打开 [Thanos README → Architecture Overview](https://github.com/thanos-io/thanos/blob/main/README.md#architecture-overview)，把图另存为上述文件名即可（离线阅读依赖本地图片）。
 
 **组件简介：**
 
-- **Sidecar**：和 Prometheus 同 Pod，读本地 TSDB，提供 Store API，可选把块上传到对象存储。
-- **Querier**：Prometheus 兼容 HTTP 查询，把请求发给各 Store/Sidecar（及 Receiver 等）。
-- **Store Gateway**：从对象存储读历史块，走 Store API 给 Querier。
-- **Compactor**：在桶里压缩、降采样；**同一桶只能有一个 Compactor 实例干活**，多实例会踩官方明确禁止的坑。
-- **Receiver**：接 Prometheus 的 remote write；适合「采集与查询分层」，配置比纯 Sidecar 重。
-- **Ruler**：对着 Querier 算规则；没全局规则需求时，继续用 **Prometheus + T4.11 Alertmanager** 通常更省事。
-- **Bucket Web**：运维看桶里块元数据，可选。
+**1、Sidecar（和 Prometheus 同一个 Pod）**
 
-### T4.12.1、工作流程（写、查、告警）
+和 Prometheus 共用一块 TSDB 数据盘。一般干三件事：
 
-**写入**：Prometheus 本地 TSDB 出块，Sidecar 上传对象存储并写块元数据；Compactor 再在桶里整理块。可选 Ruler 自己写块（企业里慎用，多一层故障面）。
+- 用 gRPC 的 Store API 把「本机刚写完、还没上传」的数据提供给 Querier（查最近几小时主要靠它）。
+- 块写满封闭后，上传到对象存储（长期历史靠它）。
+- reloader：把模板里的 `$(POD_NAME)` 渲染成真正的 `prometheus.yaml`。
 
-**查询**：客户端只打 Querier；Querier 再问 Sidecar（热）、Store Gateway（冷）等。
+上线后重点看：上传有没有报错（权限、地址、网络），块大小和保留时间是否和下文 YAML 一致。详见 [Sidecar](https://thanos.io/tip/components/sidecar.md/)。
 
-**告警**：默认仍由各 Prometheus 副本本地算规则，推到 **T4.11**；`alert_relabel_configs` 里按示例丢掉 `replica` 一类标签，避免 Alertmanager 重复通知。
+**2、Querier（统一查询入口）**
 
-### T4.12.2、企业生产检查清单
+Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所有已注册的 Store（Sidecar、Store Gateway、Receiver 等）要数据，再拼成一份结果。
 
-- **对象存储**：优先云上 S3/OSS/COS 或你们已运维的 S3 兼容存储；**access/secret 用 Secret**，桶策略最小权限。
-- **Compactor**：单实例；资源给够磁盘与 CPU，观察压缩滞后。
-- **external_labels**：`cluster` 必须全局唯一；`replica`（或你自定义的副本标签）要和 Querier 的 `--query.replica-label` 一致。
-- **从 T4.2.1 迁过来**：先 **备份** 现有 `prometheus-config` 里的 `prometheus.yml`，再删掉 **Deployment 版** Prometheus（名字一般是 `prometheus`），避免和 StatefulSet 抢同名；PVC/存储类按你们规划新建或复用（**T4.2.1 的 Local PV 与下文 `openebs-jiva-default` 可能不一致，请改成集群真实 StorageClass**）。
-- **RBAC**：若 **T4.2.1** 已 apply 过 `prometheus-rbac.yaml`，且规则与本节一致，**不必重复 apply**；全新环境再 apply 本节 `rbac.yaml`。
-- **日志**：排障可临时 `debug`，生产建议 **`info`**。
+注意两点：`--query.replica-label` 要和 Prometheus 里 `external_labels` 的副本标签一致（本文用 `replica`），界面里勾选去重（deduplication）才能把双副本合成一条线；用 DNS 自动发现时，Headless Service 里的端口名要叫 `grpc`。负载高可以多起几个 Querier 副本。详见 [Query](https://thanos.io/tip/components/query.md/)。
+
+查询量特别大时，可再加 [Query Frontend](https://thanos.io/tip/components/query-frontend.md/) 做缓存和拆分，本文不写部署清单，避免和入门路径混在一起。
+
+**3、Store Gateway（只读桶里的老数据）**
+
+不负责抓取。它根据桶里块的元数据，决定读哪些对象，再通过 Store API 把「冷数据」交给 Querier。数据量大时要调内存和缓存（见 **T4.12.6**），必要时按区域或桶前缀拆多套 Store。详见 [Store](https://thanos.io/tip/components/store.md/)。
+
+**4、Compactor（整理桶里的数据，只能跑一个）**
+
+对**同一个桶**做合并块、降采样、执行保留策略。官方要求：**同一个桶不要并行跑多个 Compactor**，否则可能把数据弄坏。Kubernetes 里保持 `replicas: 1`，并确认没有另一套环境误连同一个桶。平时看压缩是否积压、本地工作目录磁盘是否够。详见 [Compact](https://thanos.io/tip/components/compact.md/)。
+
+**5、Receiver（remote_write，可选）**
+
+接 Prometheus 的 remote_write，本地落盘，可选再上传桶，也提供 Store API。适合已经和 remote write 体系绑定的团队；要高可用、磁盘和 hashring 设计，见 **T4.12.8** 与 [Receive](https://thanos.io/tip/components/receive.md/)。和 Sidecar 重复写同一批业务指标前，必须有明确分工，默认不要混用。
+
+**6、Ruler（可选）**
+
+在 Thanos 这边跑记录规则/告警规则，数据从 Querier 来，链路比「Prometheus 本机算规则」长。默认仍建议：**规则在各 Prometheus 上算，告警走 T4.11**（**T4.12.3** 里已示例用 `alert_relabel_configs` 去掉 `replica`，避免双副本重复告警）。只有确实要跨集群、全局一条规则时再上 Ruler。详见 [Rule](https://thanos.io/tip/components/rule.md/)。
+
+**7、Bucket Web（可选）**
+
+在页面上看桶里有哪些块、时间范围等，方便排障，不参与正常查询链路。详见 [Bucket](https://thanos.io/tip/components/tools.md/#bucket-web)。
+
+### T4.12.1、数据怎么流动（写、查、告警）
+
+**写入**
+
+- 抓取和规则仍在 Prometheus 里跑，`scrape_configs` 从 **T4.4～T4.8** 整段贴进模板（不要省略号）。
+- 数据先写本地 TSDB；块按 2h 封闭后，Sidecar 上传到对象存储（**T4.12.6** 给 Sidecar 配上 `--objstore` 之后）。
+- 桶里块多了，由 Compactor 做合并和降采样。
+
+**怎么验收**：对象存储里是否出现 Thanos 相关对象；Sidecar 日志里是否还有持续上传失败。
+
+**查询**
+
+- 对外只暴露 Querier；Grafana 里填例如 `http://thanos-querier.kube-mon.svc.cluster.local:9090`。
+- 查最近的数据，主要靠 Sidecar；查很久以前的数据，主要靠 Store Gateway 读桶。
+- 打开 Querier 的 Stores 页：应能看到每个 Prometheus 上的 Sidecar，以及接上桶之后的 Store。缺哪一类，就查 DNS、标签 `thanos-store-api`、网络策略。
+
+**告警**
+
+- 规则仍在 Prometheus 里算，Alertmanager 仍是 **T4.11** 的 `alertmanager:9093`。
+- 两个副本会各算一遍规则，要靠 `alert_relabel_configs` 去掉 `replica`，Alertmanager 才只收一条。
+- 若再加 Ruler 也往同一个 Alertmanager 推，要自己配好路由和标签，避免重复通知。
+
+### T4.12.2、上生产前核对清单
+
+- 对象存储：优先云厂商 S3 兼容或你们已运维好的兼容存储；连接信息只放 Secret；桶权限最小化。
+- Compactor：同一个桶只跑一个 Compactor；CPU 和本地盘给够，看压缩是否跟得上。
+- 标签：`external_labels.cluster` 在多集群里不重复；副本标签和 Querier 的 `--query.replica-label` 一致。
+- 从 T4.2.1 迁过来：先备份 ConfigMap；删掉 Deployment 版 `prometheus`，避免和 StatefulSet 同名；StorageClass 用你们集群真实的，不要照抄示例里的 `openebs-jiva-default`。
+- RBAC：T4.2.1 若已建过同名 ClusterRole/Binding 且规则一样，不必再 apply 一遍。
+- 日志：平时用 `info`，临时改 `debug` 查完记得改回。
+- 安全：Prometheus 的 `--web.enable-admin-api` 不要暴露到不可信网络；Thanos/Prometheus 的 HTTP、gRPC 按你们习惯加 NetworkPolicy 或等价隔离。
 
 ### T4.12.3、Sidecar 与双副本 Prometheus
 
-下面假设你在 **`kube-mon`** 用 **StatefulSet** 起 **2 个 Prometheus 副本**，每个 Pod 内 **Prometheus + Thanos sidecar**，并继续用 **T4.11** 的 Alertmanager。RBAC 与 **T4.2.1** 对齐（仅 `networking.k8s.io` 的 Ingress，去掉已废弃的 `extensions`）：
+**本节假设**
 
-`rbac.yaml`（与 **T4.2.1** `prometheus-rbac.yaml` 一致；若已创建可跳过 apply）：
+- 命名空间：`kube-mon`
+- 用 StatefulSet 起 2 个 Prometheus 副本，每个 Pod 里：Prometheus + Thanos Sidecar
+- 告警仍用 **T4.11** 的 Alertmanager
+
+RBAC 与 **T4.2.1** 一致（Ingress 只用 `networking.k8s.io`，不要再用已废弃的 `extensions`）。
+
+`rbac.yaml`（与 T4.2.1 的 `prometheus-rbac.yaml` 相同；若集群里已有，可不再 apply）：
 
 ```yaml
 apiVersion: v1
@@ -2860,7 +2938,12 @@ subjects:
     namespace: kube-mon
 ```
 
-`configmap.yaml`：Sidecar 用 **`prometheus.yaml.tmpl`** 做环境变量替换后生成真正的 `prometheus.yaml`。**务必**把你在 **T4.4～T4.8** 已经跑通的整段 `scrape_configs`（含 `kubernetes-nodes`、`kubernetes-endpoints` 等）粘到下面占位处，不要留省略号，否则迁完 Thanos 会丢目标。**`cluster` 改成你们集群唯一名字**；`replica` 用 `$(POD_NAME)`，与 Querier 的 `--query.replica-label=replica` 对应。保留时间按 **T4.2.1** 推荐写在配置里的 `storage` 段（Prometheus 3.x），不再使用已弃用的 `--storage.tsdb.retention.time` 命令行参数。
+`configmap.yaml` 说明：
+
+- Sidecar 读 `prometheus.yaml.tmpl`，用环境变量替换后生成真正的 `prometheus.yaml`。
+- 必须把 **T4.4～T4.8** 里已经验证过的整段 `scrape_configs` 贴进下面占位（含 `kubernetes-nodes`、`kubernetes-endpoints` 等），**不要留 `......`**，否则迁完会丢抓取目标。
+- `cluster` 改成你们集群唯一名字；`replica` 用 `$(POD_NAME)`，和下文 Querier 的 `--query.replica-label=replica` 对应。
+- 保留时间写在配置里的 `storage` 段（Prometheus 3.x 推荐），不要再用已弃用的 `--storage.tsdb.retention.time` 命令行。
 
 ```yaml
 apiVersion: v1
@@ -2903,7 +2986,7 @@ data:
           - targets: ['localhost:9090']
 ```
 
-`rules-configmap.yaml`：示例规则与 **T4.8** kube-state-metrics 指标一致。若你抓取未开 `honor_labels`，资源命名空间多在 **`exported_namespace`**，下面注解已按此写法；若已按 **T4.8** 改为 `honor_labels: true`，把注解里的标签改成 `namespace` 即可。
+`rules-configmap.yaml`：示例规则对齐 **T4.8** 的 kube-state-metrics。若抓取未开 `honor_labels`，命名空间标签往往是 `exported_namespace`，下面注解已按此写；若你已开 `honor_labels: true`，把注解里的 `exported_namespace` 改成 `namespace`。
 
 ```yaml
 apiVersion: v1
@@ -2935,13 +3018,13 @@ data:
               team: node
 ```
 
-**Prometheus 启动参数要点**（与 [Sidecar 文档](https://thanos.io/tip/components/sidecar.md/) 一致）：
+**Prometheus 启动参数**（与 [Sidecar](https://thanos.io/tip/components/sidecar.md/) 要求一致）
 
-- `--web.enable-admin-api`、`--web.enable-lifecycle`：给 Sidecar 读元数据、触发热加载。
-- `--storage.tsdb.min-block-duration` / `max-block-duration` 设为 **2h**：和块上传节奏常见写法一致；**保留时长以 ConfigMap 里 `storage.tsdb.retention.time` 为准**（上面已写 6h，可按容量改）。
-- 官方镜像默认非 root，PVC 挂盘常见属主不对会起不来：**initContainer 里 `chown`** 与 **T4.2.1** 同理。
+- `--web.enable-admin-api`、`--web.enable-lifecycle`：Sidecar 读元数据、触发热加载。
+- `--storage.tsdb.min-block-duration` / `max-block-duration` 设为 2h：和块上传节奏一致；本地保留多久看 ConfigMap 里的 `storage.tsdb.retention.time`（示例 6h，可按磁盘改）。
+- 镜像默认非 root，PVC 挂盘权限不对会起不来：用 initContainer 做 `chown`，做法同 **T4.2.1**。
 
-`sidecar.yaml`（接上表镜像版本；`storageClassName` 换成你们集群真实 SC；生产请把磁盘配额调大，示例 2Gi 仅够练习）：
+`sidecar.yaml`：镜像版本见文首约定表；`storageClassName` 换成你们集群的；生产请加大磁盘，示例 2Gi 仅练习。
 
 ```yaml
 apiVersion: apps/v1
@@ -3061,9 +3144,12 @@ spec:
             storage: 2Gi
 ```
 
-**Headless Service**：名字刻意用 **`thanos-store-apis`**，避免和后文 **Store Gateway** 的 StatefulSet 名 `thanos-store-gateway` 搞混。带标签 `thanos-store-api: "true"` 的 Pod（Sidecar、Store、Receiver 等）都会被 SRV 发现，Querier 只配这一条即可。
+**Headless 说明**
 
-`discovery.yaml`：**StatefulSet 要求** `serviceName` 指向**已存在**的 Headless Service，否则 Pod 网络名不合法。下面包含 **Prometheus 本套** 与 **Thanos Store API 发现** 两个 Service（后者与后文 Store Gateway 的 StatefulSet 名不冲突）。
+- 发现用 Service 名叫 `thanos-store-apis`，故意不和后面 Store Gateway 的 StatefulSet 名 `thanos-store-gateway` 混成一个名字。
+- 打了标签 `thanos-store-api: "true"` 的 Pod（Sidecar、Store、Receiver 等）都会被这条 Service 收进来，Querier 只配这一条 DNS SRV 即可。
+
+`discovery.yaml`：StatefulSet 要求 `serviceName` 对应的 Headless Service 必须先存在。下面有两个 Service：给 Prometheus 用的、给 Thanos Store API 发现用的（和 Store Gateway 那套 StatefulSet 不冲突）。
 
 ```yaml
 apiVersion: v1
@@ -3097,7 +3183,8 @@ spec:
     thanos-store-api: "true"
 ```
 
-**部署顺序**（对象存储未接好时 Sidecar 会报上传错，可先不接 `--objstore`，等 **T4.12.6** 再补）：
+**部署顺序**  
+还没接对象存储时，Sidecar 可能报上传相关错误，可以先不配 `--objstore`，等 **T4.12.6** 再补上。
 
 ```bash
 kubectl apply -f rbac.yaml
@@ -3108,11 +3195,12 @@ kubectl apply -f sidecar.yaml
 kubectl get pods -n kube-mon -l app=prometheus
 ```
 
-两副本就绪后，每个 Pod 应为 **2/2**（Prometheus + sidecar）。
+两副本就绪后，每个 Pod 应是 2/2（Prometheus + Sidecar）。
 
 ### T4.12.4、Querier
 
-Grafana 和值班人员查数，**只访问 Querier**，不要再去负载均衡两个 Prometheus Service。Querier 通过 **DNS SRV** 发现所有带 Store API 的组件（Sidecar、Store Gateway、Receiver 等），下面 `Service` 端口名必须是 **`grpc`**，和 Headless 里一致，SRV 记录才是 `_grpc._tcp...`。
+查数只走 Querier，不要再去负载均衡两个 Prometheus。  
+Querier 用 DNS SRV 自动发现所有带 Store API 的组件（Sidecar、Store Gateway、Receiver 等）。Headless Service 里端口名必须叫 `grpc`，这样 SRV 记录才是 `_grpc._tcp...` 形式。
 
 `querier.yaml`：
 
@@ -3182,10 +3270,10 @@ spec:
   type: NodePort
 ```
 
-说明：
+参数说明：
 
-- `--store=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local`：与 **T4.12.3** Headless 名一致；若你改了 Service 名或 namespace，这里跟着改。
-- `--query.replica-label=replica`：与 `external_labels.replica` 对齐；UI 里勾选 **deduplication** 后按该标签合并双副本曲线。
+- `--store=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local` 须与 **T4.12.3** 里 Headless 名称、命名空间一致；你改了名字这里要一起改。
+- `--query.replica-label=replica` 须与 `external_labels.replica` 一致；界面里打开去重（deduplication）后，双副本曲线会按该标签合并。
 
 ```bash
 kubectl apply -f querier.yaml
@@ -3193,31 +3281,47 @@ kubectl get pods -n kube-mon -l app=thanos-querier
 kubectl get svc -n kube-mon -l app=thanos-querier
 ```
 
-浏览器访问 **NodePort**（或 `kubectl port-forward svc/thanos-querier 9090:9090 -n kube-mon`）：**Stores** 页应能看到各 Sidecar；**Graph** 里试查 `up` 或你在 **T4.4** 已验证过的指标。双副本时先关掉 deduplication 应看到两条序列，打开后合并为一条。
+用 NodePort 或 `kubectl port-forward svc/thanos-querier 9090:9090 -n kube-mon` 打开界面：Stores 里应能看到各 Sidecar；Graph 里可查 `up` 或 **T4.4** 已验证过的指标。双副本时先关去重会看到两条线，打开去重应合成一条。
 
-**Grafana（接 T4.9）**：数据源 URL 改为集群内 **`http://thanos-querier.kube-mon.svc.cluster.local:9090`**（与 NodePort 二选一，看 Grafana 跑在哪）。改完 **Save & test**，原有大盘应恢复。
+**Grafana**（见 **T4.9**）：数据源填集群内 `http://thanos-querier.kube-mon.svc.cluster.local:9090`；Grafana 在集群外时再用 NodePort 或 Ingress，安全要求与 T4.9 一致。保存后点 Save & test。
 
-**插图槽位**：`docs/prometheus/images/t4-12-querier-stores.png`（Stores 页）、`docs/prometheus/images/t4-12-querier-dedup.png`（同一查询 dedup 开/关对比）。
+**生产习惯**：Querier Service 常改成 ClusterIP，只给集群内或受控 Ingress 用。Stores 里长期缺某个 Sidecar 时，先查对应 Prometheus Pod、Headless 的 SRV 解析、是否刚扩缩容。多集群联邦见官方 [Query](https://thanos.io/tip/components/query.md/)。
 
-### T4.12.5、告警与 Ruler（怎么选）
+**插图槽位**
 
-**默认推荐**：继续让 **Prometheus 副本本地**算规则，告警走 **T4.11 Alertmanager**；`alert_relabel_configs` 里已示例去掉 `replica`，多副本不会重复轰炸。
+- `docs/prometheus/images/t4-12-querier-stores.png`（Stores 页）
+- `docs/prometheus/images/t4-12-querier-dedup.png`（同一查询去重开/关对比）
 
-**验收示例**：任选一个有 Deployment 的命名空间，把副本缩到 0（`kubectl scale deploy/<name> --replicas=0 -n <ns>`），等待 **T4.12.3** 里规则 `DeploymentNoAvailableReplicas` 的 `for` 时间过后，在 Alertmanager UI 或 **T4.11.2.2** 的钉钉/企微通道应能看到一条告警。恢复时把副本调回即可。
+### T4.12.5、告警与 Ruler 怎么选
 
-**插图槽位**：`docs/prometheus/images/t4-12-alert-deployment-down.png`（Alertmanager 或 IM 截图，打码）。
+**默认做法**  
+规则仍在各 Prometheus 副本上算，告警走 **T4.11**。**T4.12.3** 里已示例用 `alert_relabel_configs` 去掉 `replica`，避免两个副本各推一条重复告警。
 
-**Thanos Ruler** 只有在你确实要「对着 Querier 做跨副本/跨集群的一条规则」时再上：链路变成 **Ruler → Querier → Sidecar → Prometheus**，任一环节抖动都会影响告警。要点：`--query` 指向 Querier、`--alertmanagers.url` 指向 **T4.11**、规则文件与对象存储配置与 [Ruler 组件说明](https://thanos.io/tip/components/rule.md/) 一致；镜像与 **v0.41.0** 发行说明以 [Thanos Releases](https://github.com/thanos-io/thanos/releases/tag/v0.41.0) 为准。
+**简单验收**  
+任选一个 Deployment，执行 `kubectl scale deploy/<name> --replicas=0 -n <ns>`，等 **T4.12.3** 里 `DeploymentNoAvailableReplicas` 的 `for` 时间走完，在 Alertmanager 或 **T4.11.2.2** 的钉钉/企微应收到告警；副本调回后应恢复。
+
+**插图槽位**：`docs/prometheus/images/t4-12-alert-deployment-down.png`（打码）
+
+**何时用 Thanos Ruler**  
+只有当你必须用「对着 Querier、跨副本或跨集群的一条规则」时再上。链路是 Ruler → Querier → Sidecar → Prometheus，中间任一环节不稳，告警都会跟着抖。部署时要配：`--query` 指 Querier，`--alertmanagers.url` 指 T4.11，规则和对象存储按 [Ruler](https://thanos.io/tip/components/rule.md/) 与 [Releases](https://github.com/thanos-io/thanos/releases/tag/v0.41.0) 来。
 
 ### T4.12.6、对象存储与 Store Gateway
 
-Sidecar 把**本地已封好的块**上传到桶里；**Store Gateway** 只负责从桶里读历史块给 Querier。生产优先 **云厂商 S3 兼容**（OSS、COS、S3 等），把 `thanos.yaml`（或等价配置）放进 Secret，**不要**把 access_key 写进 Git。
+**Sidecar 和 Store 分工**
 
-支持的存储类型与字段见官方 [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。下面用 **MinIO** 做**实验/内网**演示：MinIO 上游策略有调整，若你们评估后改用 [RustFS](https://rustfs.com/) 等 S3 兼容实现，只需换镜像与 endpoint，Thanos 侧仍是 S3 配置结构。镜像 tag 与文首 **版本与镜像约定** 表一致，安全更新以 [MinIO Releases](https://github.com/minio/minio/releases/latest) 为准。
+- Sidecar：只上传「本机已经封闭」的块。
+- Store Gateway：只从桶里读块，交给 Querier。
+- 二者共用同一个 Secret 里的 `thanos.yaml`，但干的活不一样：没有 Store，只能查 Prometheus 本地还保留的那段时间；没有 Sidecar 上传，桶里不会有新数据。
+
+**生产环境**  
+优先云厂商 S3 兼容（OSS、COS、S3 等），endpoint、区域、TLS、加密按云文档来；密钥用 Secret 或云上的工作负载身份，不要把 `access_key` 写进 Git。存储类型与字段见 [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线后看：Querier Stores 是否出现 store、桶里对象是否在涨、Sidecar 是否还在报上传错。
+
+**练习环境**  
+下面用 MinIO 演示。若 MinIO 策略有变，可换 [RustFS](https://rustfs.com/) 等 S3 兼容产品，Thanos 仍按 S3 填 endpoint 和密钥。镜像 tag 见文首约定表，安全更新见 [MinIO Releases](https://github.com/minio/minio/releases/latest)。
 
 #### T4.12.6.1、MinIO（练习用，独立 namespace）
 
-所有 MinIO 资源放在 **`minio`** 命名空间；**root 账号口令请改成 Secret**（示例为明文仅便于跟练）。
+资源都放在命名空间 `minio`。生产请把 root 账号口令改成 Secret；示例里明文只为跟练方便。
 
 `minio-deploy.yaml`：
 
@@ -3290,7 +3394,7 @@ spec:
   storageClassName: openebs-jiva-default
 ```
 
-`minio-svc.yaml`（集群内给 Thanos 用 **9000**；控制台 **9001** 按需再暴露）：
+`minio-svc.yaml`：API 用 9000；控制台 9001，按需再暴露。
 
 ```yaml
 apiVersion: v1
@@ -3318,13 +3422,13 @@ kubectl apply -f minio-deploy.yaml
 kubectl apply -f minio-svc.yaml
 ```
 
-浏览器进控制台可用 **`kubectl port-forward svc/minio 9001:9001 -n minio`**，用上面 root 账号登录，**新建 bucket `thanos`**。外网暴露请用你们集群的 **Ingress / Gateway**，别照抄旧版 Traefik CRD。
+控制台可执行：`kubectl port-forward svc/minio 9001:9001 -n minio`，用上面账号登录，新建 bucket `thanos`。外网暴露用你们自己的 Ingress 或 Gateway。
 
-**插图槽位**：`docs/prometheus/images/t4-12-minio-bucket.png`（控制台里 `thanos` bucket）。
+**插图槽位**：`docs/prometheus/images/t4-12-minio-bucket.png`
 
 #### T4.12.6.2、Thanos 连接 MinIO 与 Store Gateway
 
-`thanos-storage-minio.yaml`（**endpoint 与 namespace 对齐**：MinIO 在 `minio` 命名空间时如下）：
+`thanos-storage-minio.yaml`：MinIO 在命名空间 `minio` 时，endpoint 如下（若你改了名字或端口，这里要一起改）：
 
 ```yaml
 type: s3
@@ -3342,7 +3446,7 @@ kubectl create secret generic thanos-objectstorage \
   --from-file=thanos.yaml=thanos-storage-minio.yaml -n kube-mon
 ```
 
-Store Gateway 的 StatefulSet 需要**同名 Headless Service**（与 `serviceName` 一致）：
+Store Gateway 的 StatefulSet 需要同名 Headless Service（和 `serviceName` 一致）：
 
 `store-gateway-discovery.yaml`：
 
@@ -3428,7 +3532,7 @@ kubectl apply -f store.yaml
 kubectl get pods -n kube-mon -l thanos-store-api=true
 ```
 
-Querier 的 **Stores** 页应多出 Store 一项；**写入**仍靠各 Prometheus Pod 里的 Sidecar，在 **sidecar 容器**上增加与上面相同的 Secret 挂载，并追加参数（生产把 `readOnly: true`）：
+Querier 的 Stores 页应多出 Store。数据写入仍靠各 Prometheus Pod 里的 Sidecar：给 sidecar 容器挂上同样的 Secret，并追加下面参数（生产建议 Secret 只读挂载）：
 
 ```yaml
 # 合并进 StatefulSet prometheus 的 thanos 容器：volumes / volumeMounts / args 追加
@@ -3443,11 +3547,13 @@ args:
   - --objstore.config-file=/etc/secret/thanos.yaml
 ```
 
-`apply` 后等至少一个 **2h 块**上传或在日志里看到 shipper 成功信息，再到 MinIO 里应能看到对象。**插图槽位**：`docs/prometheus/images/t4-12-querier-stores-with-store.png`（Stores 含 sidecar+store）。
+apply 后等至少一个 2h 块上传，或看 sidecar 日志里 shipper 成功，再到 MinIO 里应能看到对象。
+
+**插图槽位**：`docs/prometheus/images/t4-12-querier-stores-with-store.png`
 
 ### T4.12.7、Compactor
 
-**只能跑一个**针对同一桶的 Compactor，官方禁止并行多实例抢压同一前缀。下面 `replicas: 1` 别随意扩。需要本地盘做压缩缓存，可给 `emptyDir` 或 PVC（大集群按官方建议调）。
+同一个桶只能跑一个 Compactor，不要扩成多副本抢同一桶。本地压缩工作目录示例用 `emptyDir`，规模大时按官方建议改成 PVC 或更大盘。
 
 `compactor.yaml`：
 
@@ -3524,11 +3630,11 @@ kubectl apply -f compactor.yaml
 kubectl get pods -n kube-mon -l app=thanos-compactor
 ```
 
-到本节为止：**双副本 Prometheus + Sidecar、Querier、对象存储、Store、Compactor** 是一条完整的企业常用链路。其余组件见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
+到本节为止：双副本 Prometheus + Sidecar、Querier、对象存储、Store、Compactor，是一条常用的完整链路。更多组件见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
 
 ### T4.12.8、Receiver（remote_write，可选）
 
-**与 Sidecar 二选一为主路径**：Sidecar 按块上传；Receiver 用 **remote_write** 把点推到 Receiver TSDB，Querier 查新数据时扇出更少，但要运维 Receiver 持久化与 hashring。入门先跑稳上文 Sidecar 链路；本节为可选进阶。
+Sidecar 是「块上传」；Receiver 是「Prometheus 用 remote_write 把数据推过来」。Receiver 适合采集和查询要拆开的架构，但要单独运维磁盘、高可用和 hashring。建议先把上文 Sidecar 链路跑稳，再考虑本节。
 
 ```mermaid
 flowchart LR
@@ -3538,7 +3644,7 @@ flowchart LR
   Q --> B
 ```
 
-多副本 Receiver 用 **hashring**，`endpoints` 必须是带 `http://` 的完整 URL。软租户 / 硬租户与 `THANOS-TENANT` 头见 [Receiver](https://thanos.io/tip/components/receive.md/)。
+多副本时要配 hashring，下面 `endpoints` 必须是带 `http://` 的完整地址。软租户、硬租户和 HTTP 头 `THANOS-TENANT` 见 [Receiver](https://thanos.io/tip/components/receive.md/)。
 
 ```json
 [
@@ -3557,7 +3663,7 @@ flowchart LR
 ]
 ```
 
-**单副本 Receiver**（与 **T4.12.6** 共用 Secret `thanos-objectstorage`）：Kubernetes **不会**把环境变量展开进 `args`，故 `--label` 与 `--receive.local-endpoint` **写死 `thanos-receiver-0` 的 DNS**；扩缩容前须改 hashring 与端点。
+单副本示例与 **T4.12.6** 共用 Secret `thanos-objectstorage`。注意：Kubernetes 不会把环境变量展开进容器 `args`，所以 `--label` 和 `--receive.local-endpoint` 里写死了 `thanos-receiver-0` 的 DNS；以后要扩副本，必须改 hashring 和这些参数。
 
 `receiver.yaml`：
 
@@ -3658,18 +3764,21 @@ spec:
 kubectl apply -f receiver.yaml
 ```
 
-**Remote write 地址**（同 namespace 短名）：`http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive`。在 **T4.12.3** 的 `prometheus.yaml.tmpl` 里增加一段（**`scrape_configs` 仍须完整粘贴 T4.4～T4.8，不要 `......`**）：
+Remote write 地址示例：`http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive`。在 **T4.12.3** 的 `prometheus.yaml.tmpl` 里增加（`scrape_configs` 仍须完整粘贴 T4.4～T4.8，不要省略号）：
 
 ```yaml
     remote_write:
       - url: http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive
 ```
 
-Prometheus 仍可用 **Sidecar 只做 reloader**（与 **T4.12.3** 相同，去掉 `--objstore` 即可），或改用你们自己的模板渲染 Job。**不要**在没规划清楚的情况下同时让 Sidecar 与 Receiver 往桶里写同一套序列，避免重复与成本失控。
+Prometheus 仍可带 Sidecar，但只当 reloader 用（同 T4.12.3，去掉 `--objstore`），或换成你们自己的配置渲染方式。没设计好之前，不要让 Sidecar 和 Receiver 往桶里重复写同一批指标。
 
-**验收**：Querier **Stores** 出现 Receiver；Graph 能查到近期点；桶内一段时间后可见 Receiver 上传的块。
+**验收**：Querier Stores 里出现 Receiver；Graph 能查到近期数据；过一段时间后桶里能看到 Receiver 上传的块。
 
-**插图槽位**：`docs/prometheus/images/t4-12-receiver-stores.png`、`docs/prometheus/images/t4-12-remote-write-query.png`。
+**插图槽位**
+
+- `docs/prometheus/images/t4-12-receiver-stores.png`
+- `docs/prometheus/images/t4-12-remote-write-query.png`
 
 ## T4.13、Prometheus Adapter
 
