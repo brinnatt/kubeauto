@@ -2785,61 +2785,44 @@ groups:
 
 ## T4.12、Thanos
 
-[Thanos](https://thanos.io/) 是一个基于 Prometheus 实现的监控方案，其主要设计目的是解决原生 Prometheus 上的痛点，并且做进一步的提升，主要的特性有：**全局查询，高可用，动态拓展，长期存储**。下图是 Thanos 官方的架构图：
+[Thanos](https://thanos.io/) 用来给 Prometheus 加**长期存储、统一查询入口和多副本去重**。和本文 **T4.2.1～T4.11** 衔接时，记住三件事：**镜像版本跟文首「版本与镜像约定」表走**（Prometheus **`v3.10.0`**、Thanos **`v0.41.0`**）、**Grafana 数据源改成 Querier**、**对象存储密钥只进 Secret**。落地形态常见两种：**Sidecar + 桶**（下面主路径）、**Receiver + remote_write**（文末 T4.12.8，和 Sidecar 二选一为主链路，别混着两套都当「主写入」却不规划清楚）。
 
-![thanos1](./images/thanos1.png)
+**插图槽位**：`docs/prometheus/images/t4-12-thanos-architecture.png`（架构总览，可用官方图或现网示意）。
 
-Thanos 由以下功能组件构成：
+**组件一句话**
 
-- **Sidecar**：与 Prometheus 进程部署在同一 Pod 中，负责将 Prometheus 数据暴露给 Querier 进行实时查询，并可选将数据上传至对象存储以实现长期保存
-- **Querier**：实现 Prometheus HTTP API，负责聚合来自 Sidecar、Store Gateway 等组件的数据，提供统一查询入口
-- **Store Gateway**：从对象存储中读取历史数据块，并通过 gRPC Store API 向 Querier 提供查询服务
-- **Compactor**：对对象存储中的历史数据块执行压缩、合并及下采样操作，优化存储效率与查询性能
-- **Receiver**：接收 Prometheus 通过 Remote Write API 发送的指标数据，支持本地持久化及上传至对象存储
-- **Ruler**：基于 PromQL 执行告警规则和记录规则评估，支持将结果写回 Prometheus 或发送至 Alertmanager
-- **Bucket**：用于查看对象存储中数据块的元信息，包括压缩级别、采样分辨率、时间范围等
+- **Sidecar**：和 Prometheus 同 Pod，读本地 TSDB，提供 Store API，可选把块上传到对象存储。
+- **Querier**：Prometheus 兼容 HTTP 查询，把请求发给各 Store/Sidecar（及 Receiver 等）。
+- **Store Gateway**：从对象存储读历史块，走 Store API 给 Querier。
+- **Compactor**：在桶里压缩、降采样；**同一桶只能有一个 Compactor 实例干活**，多实例会踩官方明确禁止的坑。
+- **Receiver**：接 Prometheus 的 remote write；适合「采集与查询分层」，配置比纯 Sidecar 重。
+- **Ruler**：对着 Querier 算规则；没全局规则需求时，继续用 **Prometheus + T4.11 Alertmanager** 通常更省事。
+- **Bucket Web**：运维看桶里块元数据，可选。
 
-### T4.12.1、工作流程
+### T4.12.1、工作流程（写、查、告警）
 
-Thanos 支持 Prometheus 的读取与远程写入，其核心工作流程如下：
+**写入**：Prometheus 本地 TSDB 出块，Sidecar 上传对象存储并写块元数据；Compactor 再在桶里整理块。可选 Ruler 自己写块（企业里慎用，多一层故障面）。
 
-**指标写入流程**
+**查询**：客户端只打 Querier；Querier 再问 Sidecar（热）、Store Gateway（冷）等。
 
-1. Prometheus 从目标服务的 metrics 端点抓取指标数据，并根据配置的 recording rules 周期性评估，结果以 TSDB 格式分块存储至本地。默认每 2 小时生成一个数据块，且禁用本地压缩
-2. Sidecar 监听 Prometheus 数据目录，当检测到新生成的只读数据块时，将其上传至对象存储作为长期历史数据。上传过程中会修改数据块的 `meta.json` 文件，添加 Thanos 扩展字段（如 `external_labels`）
-3. Ruler 根据配置的 recording rules 周期性向 Querier 发起查询，获取评估所需指标值，并将结果以 TSDB 格式存储至本地。当本地生成新的只读数据块时，Ruler 也会将其上传至对象存储
-4. Compactor 周期性对对象存储中的数据块执行压缩与下采样操作。压缩时合并数据块中的 chunk 并更新 `meta.json` 中的 `level` 字段（初始值为 1，每次压缩递增）；下采样时根据指定步长从原始数据块中抽取样本生成新数据块，并在 `meta.json` 中记录 `resolution` 字段
+**告警**：默认仍由各 Prometheus 副本本地算规则，推到 **T4.11**；`alert_relabel_configs` 里按示例丢掉 `replica` 一类标签，避免 Alertmanager 重复通知。
 
-**指标查询流程**
+### T4.12.2、企业生产检查清单
 
-1. 客户端通过 Prometheus HTTP API 向 Querier 发起查询请求，Querier 将请求转换为 gRPC Store API 请求，分发至其他 Querier、Sidecar、Ruler 及 Store Gateway 组件
-2. Sidecar 接收到查询请求后，将其转换为 Prometheus HTTP API 请求转发至本地 Prometheus 实例，返回短期实时数据
-3. Ruler 接收到查询请求后，直接从本地 TSDB 读取评估结果并返回
-4. Store Gateway 接收到查询请求后，首先遍历对象存储中数据块的 `meta.json` 文件，根据时间范围和标签进行预过滤；随后读取 `index` 和 `chunks` 执行精确查询，高频访问的 `index` 会被缓存以提升后续查询效率，最终返回长期历史数据
+- **对象存储**：优先云上 S3/OSS/COS 或你们已运维的 S3 兼容存储；**access/secret 用 Secret**，桶策略最小权限。
+- **Compactor**：单实例；资源给够磁盘与 CPU，观察压缩滞后。
+- **external_labels**：`cluster` 必须全局唯一；`replica`（或你自定义的副本标签）要和 Querier 的 `--query.replica-label` 一致。
+- **从 T4.2.1 迁过来**：先 **备份** 现有 `prometheus-config` 里的 `prometheus.yml`，再删掉 **Deployment 版** Prometheus（名字一般是 `prometheus`），避免和 StatefulSet 抢同名；PVC/存储类按你们规划新建或复用（**T4.2.1 的 Local PV 与下文 `openebs-jiva-default` 可能不一致，请改成集群真实 StorageClass**）。
+- **RBAC**：若 **T4.2.1** 已 apply 过 `prometheus-rbac.yaml`，且规则与本节一致，**不必重复 apply**；全新环境再 apply 本节 `rbac.yaml`。
+- **日志**：排障可临时 `debug`，生产建议 **`info`**。
 
-**告警触发流程**
+### T4.12.3、Sidecar 与双副本 Prometheus
 
-1. Prometheus 根据配置的 alerting rules 周期性评估本地采集的指标，当告警条件满足时向 Alertmanager 发送告警
-2. Ruler 根据配置的 alerting rules 周期性向 Querier 发起查询获取评估指标，当告警条件满足时同样向 Alertmanager 发送告警
-3. Alertmanager 接收来自 Prometheus 和 Ruler 的告警消息，执行分组、去重、抑制等处理后发送至配置的接收器
+下面假设你在 **`kube-mon`** 用 **StatefulSet** 起 **2 个 Prometheus 副本**，每个 Pod 内 **Prometheus + Thanos sidecar**，并继续用 **T4.11** 的 Alertmanager。RBAC 与 **T4.2.1** 对齐（仅 `networking.k8s.io` 的 Ingress，去掉已废弃的 `extensions`）：
 
-### T4.12.2、核心特性
+`rbac.yaml`（与 **T4.2.1** `prometheus-rbac.yaml` 一致；若已创建可跳过 apply）：
 
-相比原生 Prometheus，Thanos 具备以下优势：
-
-- **统一查询入口**：Querier 实现 Prometheus HTTP API 及 gRPC Store API，作为全局查询网关聚合来自多个 Prometheus 实例 Sidecar 及 Store Gateway 的数据
-- **查询去重**：每个数据块携带集群标识标签，Querier 在查询时自动去除副本标签，将指标名称与标签一致的序列按时间戳合并，避免重复结果
-- **高存储利用率**：Prometheus 实例仅保留短期数据，Sidecar 将持久化数据块上传至对象存储；Compactor 定期压缩历史数据并按采样策略清理冗余，显著降低存储成本
-- **高可用架构**：Querier 为无状态服务，支持水平扩展；Store、Ruler、Sidecar 为有状态服务，多副本部署时支持高可用，但需注意数据冗余带来的存储开销
-- **长期数据存储**：通过 Sidecar 或 Receiver 将本地数据块上传至对象存储，实现监控数据的无限期归档
-- **水平扩展能力**：当单 Prometheus 实例采集压力过大时，可通过拆分 scrape job 至多个实例实现负载分担，Querier 自动聚合查询结果
-- **跨集群查询**：通过在多个集群的 Querier 之上部署全局 Querier，可实现跨集群指标聚合查询，支持监控架构的无限横向扩展
-
-### T4.12.3、Sidecar 组件
-
-首先清理前序章节中部署的 Prometheus 资源对象。为实现 Prometheus 对 Kubernetes 集群资源的自动发现，需配置相应的 RBAC 权限（rbac.yaml）：
-
-```bash
+```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -2851,17 +2834,17 @@ kind: ClusterRole
 metadata:
   name: prometheus
 rules:
-- apiGroups: [""]
-  resources: ["nodes", "services", "endpoints", "pods", "nodes/proxy"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["extensions", "networking.k8s.io"]
-  resources: ["ingresses"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["configmaps", "nodes/metrics"]
-  verbs: ["get"]
-- nonResourceURLs: ["/metrics"]
-  verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["nodes", "services", "endpoints", "pods", "nodes/proxy"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps", "nodes/metrics"]
+    verbs: ["get"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -2872,46 +2855,55 @@ roleRef:
   kind: ClusterRole
   name: prometheus
 subjects:
-- kind: ServiceAccount
-  name: prometheus
-  namespace: kube-mon
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: kube-mon
 ```
 
-接下来配置 Prometheus 配置文件模板，该模板由 Thanos Sidecar 组件读取并渲染为实际配置文件。配置中必须添加 `external_labels` 字段，以便 Querier 基于这些标签执行数据去重（configmap.yaml）：
+`configmap.yaml`：Sidecar 用 **`prometheus.yaml.tmpl`** 做环境变量替换后生成真正的 `prometheus.yaml`。**务必**把你在 **T4.4～T4.8** 已经跑通的整段 `scrape_configs`（含 `kubernetes-nodes`、`kubernetes-endpoints` 等）粘到下面占位处，不要留省略号，否则迁完 Thanos 会丢目标。**`cluster` 改成你们集群唯一名字**；`replica` 用 `$(POD_NAME)`，与 Querier 的 `--query.replica-label=replica` 对应。保留时间按 **T4.2.1** 推荐写在配置里的 `storage` 段（Prometheus 3.x），不再使用已弃用的 `--storage.tsdb.retention.time` 命令行参数。
 
-```bash
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
   namespace: kube-mon
 data:
-  prometheus.yaml.tmpl: | # 注意这里的名称是 prometheus.yaml.tmpl
+  prometheus.yaml.tmpl: |
     global:
       scrape_interval: 15s
-      scrape_timeout: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 15s
       external_labels:
         cluster: ydzs-test
-        replica: $(POD_NAME)  # 每个 Prometheus 有一个唯一的标签
+        replica: $(POD_NAME)
 
-    rule_files:  # 报警规则文件配置
-    - /etc/prometheus/rules/*rules.yaml
+    storage:
+      tsdb:
+        retention:
+          time: 6h
+
+    rule_files:
+      - /etc/prometheus/rules/*rules.yaml
 
     alerting:
-      alert_relabel_configs:  # 我们希望告警从不同的副本中也是去重的
-      - regex: replica
-        action: labeldrop
+      alert_relabel_configs:
+        - regex: replica
+          action: labeldrop
       alertmanagers:
-      - scheme: http
-        path_prefix: /
-        static_configs:
-        - targets: ['alertmanager:9093']
+        - scheme: http
+          path_prefix: /
+          static_configs:
+            - targets: ['alertmanager:9093']
 
     scrape_configs:
-    ......  # 其他抓取任务配置和前面章节中的配置保持一致即可
+      # 将 T4.4～T4.8 中已验证的 scrape_configs 整段粘贴到这里（保持缩进）
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
 ```
 
-告警规则文件因内容较多，建议拆分至独立 ConfigMap 中管理（rules-configmap.yaml）：
+`rules-configmap.yaml`：示例规则与 **T4.8** kube-state-metrics 指标一致。若你抓取未开 `honor_labels`，资源命名空间多在 **`exported_namespace`**，下面注解已按此写法；若已按 **T4.8** 改为 `honor_labels: true`，把注解里的标签改成 `namespace` 即可。
 
 ```yaml
 apiVersion: v1
@@ -2922,34 +2914,34 @@ metadata:
 data:
   alert-rules.yaml: |-
     groups:
-    - name: Deployment
-      rules:
-      - alert: DeploymentAtZeroReplicas
-        annotations:
-          summary: Deployment {{$labels.deployment}} in {{$labels.exported_namespace}} has no running pods
-        expr: |
-          sum(kube_deployment_status_replicas) by (deployment, exported_namespace) < 1
-        for: 1m
-        labels:
-          team: node
-    - name: Pods
-      rules:
-      - alert: ContainerRestarted
-        annotations:
-          summary: Container {{$labels.container}} in pod {{$labels.pod}} (namespace: {{$labels.exported_namespace}}) was restarted
-        expr: |
-          sum(increase(kube_pod_container_status_restarts_total[1m])) by (pod, exported_namespace, container) > 0
-        for: 0m
-        labels:
-          team: node
+      - name: workload
+        rules:
+          - alert: DeploymentNoAvailableReplicas
+            annotations:
+              summary: Deployment {{ $labels.deployment }} 在 {{ $labels.exported_namespace }} 无可用副本
+            expr: |
+              kube_deployment_spec_replicas > 0
+              and kube_deployment_status_replicas_available == 0
+            for: 5m
+            labels:
+              team: node
+          - alert: ContainerRestarted
+            annotations:
+              summary: Pod {{ $labels.pod }} 内容器 {{ $labels.container }} 发生重启（{{ $labels.exported_namespace }}）
+            expr: |
+              increase(kube_pod_container_status_restarts_total[15m]) > 0
+            for: 2m
+            labels:
+              team: node
 ```
 
-Thanos 通过 Sidecar 与 Prometheus 集成，需将两者部署于同一 Pod 中。Prometheus 必须启用以下参数：
+**Prometheus 启动参数要点**（与 [Sidecar 文档](https://thanos.io/tip/components/sidecar.md/) 一致）：
 
-- `--web.enable-admin-api`：允许 Sidecar 通过管理 API 获取 Prometheus 元数据
-- `--web.enable-lifecycle`：支持 Sidecar 触发 Prometheus 配置与规则文件的热重载
+- `--web.enable-admin-api`、`--web.enable-lifecycle`：给 Sidecar 读元数据、触发热加载。
+- `--storage.tsdb.min-block-duration` / `max-block-duration` 设为 **2h**：和块上传节奏常见写法一致；**保留时长以 ConfigMap 里 `storage.tsdb.retention.time` 为准**（上面已写 6h，可按容量改）。
+- 官方镜像默认非 root，PVC 挂盘常见属主不对会起不来：**initContainer 里 `chown`** 与 **T4.2.1** 同理。
 
-由于 Prometheus 默认每 2 小时生成一个 TSDB 数据块，为避免实例重启导致数据丢失，建议使用 StatefulSet 管理并配置持久化存储（sidecar.yaml）：
+`sidecar.yaml`（接上表镜像版本；`storageClassName` 换成你们集群真实 SC；生产请把磁盘配额调大，示例 2Gi 仅够练习）：
 
 ```yaml
 apiVersion: apps/v1
@@ -2960,7 +2952,7 @@ metadata:
   labels:
     app: prometheus
 spec:
-  serviceName: "prometheus"
+  serviceName: prometheus
   replicas: 2
   selector:
     matchLabels:
@@ -2973,6 +2965,13 @@ spec:
         thanos-store-api: "true"
     spec:
       serviceAccountName: prometheus
+      initContainers:
+        - name: fix-data-dir-permissions
+          image: busybox:1.37
+          command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
+          volumeMounts:
+            - name: data
+              mountPath: /prometheus
       volumes:
         - name: prometheus-config
           configMap:
@@ -2989,12 +2988,11 @@ spec:
           args:
             - "--config.file=/etc/prometheus-shared/prometheus.yaml"
             - "--storage.tsdb.path=/prometheus"
-            - "--storage.tsdb.retention.time=6h"
             - "--storage.tsdb.no-lockfile"
-            - "--storage.tsdb.min-block-duration=2h" # Thanos处理数据压缩
+            - "--storage.tsdb.min-block-duration=2h"
             - "--storage.tsdb.max-block-duration=2h"
-            - "--web.enable-admin-api" # 通过一些命令去管理数据
-            - "--web.enable-lifecycle" # 支持热更新  localhost:9090/-/reload 加载
+            - "--web.enable-admin-api"
+            - "--web.enable-lifecycle"
           ports:
             - name: http
               containerPort: 9090
@@ -3017,7 +3015,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - sidecar
-            - --log.level=debug
+            - --log.level=info
             - --tsdb.path=/prometheus
             - --prometheus.url=http://localhost:9090
             - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
@@ -3049,7 +3047,7 @@ spec:
               mountPath: /etc/prometheus/rules
             - name: data
               mountPath: "/prometheus"
-  volumeClaimTemplates: # 由于prometheus每2h生成一个TSDB数据块，所以还是需要保存本地的数据
+  volumeClaimTemplates:
     - metadata:
         name: data
         labels:
@@ -3063,20 +3061,30 @@ spec:
             storage: 2Gi
 ```
 
-配置说明：
+**Headless Service**：名字刻意用 **`thanos-store-apis`**，避免和后文 **Store Gateway** 的 StatefulSet 名 `thanos-store-gateway` 搞混。带标签 `thanos-store-api: "true"` 的 Pod（Sidecar、Store、Receiver 等）都会被 SRV 发现，Querier 只配这一条即可。
 
-- Prometheus 与 Sidecar 通过 `localhost` 通信，共享 `/prometheus` 数据目录及配置文件挂载卷
-- 通过 Downward API 将 Pod 名称注入 `POD_NAME` 环境变量，并作为 `external_labels.replica` 标签附加至指标
-- 使用 StatefulSet 配合 `volumeClaimTemplates` 实现数据持久化，避免实例重启导致 2 小时窗口内数据丢失
-
-由于使用 StatefulSet 管理 Prometheus 实例，需创建 Headless Service 供 Querier 通过 DNS SRV 记录自动发现 Sidecar（headless.yaml）：
+`discovery.yaml`：**StatefulSet 要求** `serviceName` 指向**已存在**的 Headless Service，否则 Pod 网络名不合法。下面包含 **Prometheus 本套** 与 **Thanos Store API 发现** 两个 Service（后者与后文 Store Gateway 的 StatefulSet 名不冲突）。
 
 ```yaml
-# 该服务为 querier 创建 srv 记录，以便查找 store-api 的信息
 apiVersion: v1
 kind: Service
 metadata:
-  name: thanos-store-gateway
+  name: prometheus
+  namespace: kube-mon
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http
+  selector:
+    app: prometheus
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-store-apis
   namespace: kube-mon
 spec:
   type: ClusterIP
@@ -3089,23 +3097,24 @@ spec:
     thanos-store-api: "true"
 ```
 
-应用上述资源配置：
+**部署顺序**（对象存储未接好时 Sidecar 会报上传错，可先不接 `--objstore`，等 **T4.12.6** 再补）：
 
 ```bash
-$ kubectl apply -f rbac.yaml
-$ kubectl apply -f configmap.yaml
-$ kubectl apply -f rules-configmap.yaml
-$ kubectl apply -f headless.yaml
-$ kubectl apply -f sidecar.yaml
-$ kubectl get pods -n kube-mon -l app=prometheus
-NAME           READY   STATUS    RESTARTS   AGE
-prometheus-0   2/2     Running   0          86s
-prometheus-1   2/2     Running   0          74s
+kubectl apply -f rbac.yaml
+kubectl apply -f configmap.yaml
+kubectl apply -f rules-configmap.yaml
+kubectl apply -f discovery.yaml
+kubectl apply -f sidecar.yaml
+kubectl get pods -n kube-mon -l app=prometheus
 ```
 
-### T4.12.4、Querier 组件
+两副本就绪后，每个 Pod 应为 **2/2**（Prometheus + sidecar）。
 
-创建 Prometheus 实例后，需通过 Thanos Querier 提供统一查询入口，而非直接使用负载均衡器转发请求。Querier 配置需指定 Sidecar 的发现地址，此处通过 Headless Service 的 DNS SRV 记录实现自动发现（querier.yaml）：
+### T4.12.4、Querier
+
+Grafana 和值班人员查数，**只访问 Querier**，不要再去负载均衡两个 Prometheus Service。Querier 通过 **DNS SRV** 发现所有带 Store API 的组件（Sidecar、Store Gateway、Receiver 等），下面 `Service` 端口名必须是 **`grpc`**，和 Headless 里一致，SRV 记录才是 `_grpc._tcp...`。
+
+`querier.yaml`：
 
 ```yaml
 apiVersion: apps/v1
@@ -3129,10 +3138,9 @@ spec:
           image: thanosio/thanos:v0.41.0
           args:
             - query
-            - --log.level=debug
+            - --log.level=info
             - --query.replica-label=replica
-            # Discover local store APIs using DNS SRV.
-            - --store=dnssrv+thanos-store-gateway:10901
+            - --store=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local
           ports:
             - name: http
               containerPort: 10902
@@ -3152,7 +3160,7 @@ spec:
             initialDelaySeconds: 10
           readinessProbe:
             httpGet:
-              path: /-/healthy
+              path: /-/ready
               port: http
             initialDelaySeconds: 15
 ---
@@ -3174,113 +3182,53 @@ spec:
   type: NodePort
 ```
 
-关键配置说明：
+说明：
 
-- `--store=dnssrv+_grpc._tcp.thanos-store-gateway:10901`：通过 DNS SRV 记录自动发现所有暴露 gRPC Store API 的组件（Sidecar、Store Gateway 等）
-- `--query.replica-label=replica`：指定用于标识数据副本的标签，Querier 基于该标签执行去重
-- 健康检查端点：`/-/healthy` 用于存活探针，`/-/ready` 用于就绪探针
-
-应用配置并验证：
+- `--store=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local`：与 **T4.12.3** Headless 名一致；若你改了 Service 名或 namespace，这里跟着改。
+- `--query.replica-label=replica`：与 `external_labels.replica` 对齐；UI 里勾选 **deduplication** 后按该标签合并双副本曲线。
 
 ```bash
-$ kubectl apply -f querier.yaml
-$ kubectl get pods -n kube-mon -l app=thanos-querier
-NAME                             READY   STATUS    RESTARTS   AGE
-thanos-querier-cf566866b-r4jcj   1/1     Running   0          3m26s
-$ kubectl get svc -n kube-mon -l app=thanos-querier
-NAME             TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-thanos-querier   NodePort   10.108.199.11   <none>        9090:31854/TCP   3m30s
+kubectl apply -f querier.yaml
+kubectl get pods -n kube-mon -l app=thanos-querier
+kubectl get svc -n kube-mon -l app=thanos-querier
 ```
 
-部署完成后，通过 `http://<NodeIP>:31854` 访问 Querier Web 界面：
+浏览器访问 **NodePort**（或 `kubectl port-forward svc/thanos-querier 9090:9090 -n kube-mon`）：**Stores** 页应能看到各 Sidecar；**Graph** 里试查 `up` 或你在 **T4.4** 已验证过的指标。双副本时先关掉 deduplication 应看到两条序列，打开后合并为一条。
 
-- **Stores 页面**：显示通过服务发现获取的 Sidecar 及 Store Gateway 组件信息
-- **Graph 页面**：提供与原生 Prometheus 一致的 PromQL 查询界面
+**Grafana（接 T4.9）**：数据源 URL 改为集群内 **`http://thanos-querier.kube-mon.svc.cluster.local:9090`**（与 NodePort 二选一，看 Grafana 跑在哪）。改完 **Save & test**，原有大盘应恢复。
 
-![thanos2](./images/thanos2.png)
+**插图槽位**：`docs/prometheus/images/t4-12-querier-stores.png`（Stores 页）、`docs/prometheus/images/t4-12-querier-dedup.png`（同一查询 dedup 开/关对比）。
 
-在 `Graph` 页面下同样可以使用 `PromQL` 语句来查询监控信息，这个页面和 Prometheus 原生的页面几乎是一致的，比如我们查询 master 节点的节点信息：
+### T4.12.5、告警与 Ruler（怎么选）
 
-![thanos3](./images/thanos3.png)
+**默认推荐**：继续让 **Prometheus 副本本地**算规则，告警走 **T4.11 Alertmanager**；`alert_relabel_configs` 里已示例去掉 `replica`，多副本不会重复轰炸。
 
-这里我们没有勾选 `deduplication`，Thanos 不会帮我们合并数据，所以能够看到 `prometheus-0` 和 `prometheus-1` 两条数据，因为我们有两个副本去抓取监控数据。
+**验收示例**：任选一个有 Deployment 的命名空间，把副本缩到 0（`kubectl scale deploy/<name> --replicas=0 -n <ns>`），等待 **T4.12.3** 里规则 `DeploymentNoAvailableReplicas` 的 `for` 时间过后，在 Alertmanager UI 或 **T4.11.2.2** 的钉钉/企微通道应能看到一条告警。恢复时把副本调回即可。
 
-如果将 `deduplication` 选中，结果会根据 `replica` 这个标签进行合并，如果两个副本都有对应的数据，`Querier` 会取 timestamp 更小的结果：
+**插图槽位**：`docs/prometheus/images/t4-12-alert-deployment-down.png`（Alertmanager 或 IM 截图，打码）。
 
-![thanos4](./images/thanos4.png)
+**Thanos Ruler** 只有在你确实要「对着 Querier 做跨副本/跨集群的一条规则」时再上：链路变成 **Ruler → Querier → Sidecar → Prometheus**，任一环节抖动都会影响告警。要点：`--query` 指向 Querier、`--alertmanagers.url` 指向 **T4.11**、规则文件与对象存储配置与 [Ruler 组件说明](https://thanos.io/tip/components/rule.md/) 一致；镜像与 **v0.41.0** 发行说明以 [Thanos Releases](https://github.com/thanos-io/thanos/releases/tag/v0.41.0) 为准。
 
-注意，前面 Grafana 配置的 Prometheus 数据源已经失效了，因为现在监控数据的来源是 `Thanos Querier`，所以我们需要重新配置 Prometheus 的数据源地址为 `http://thanos-querier:9090`：
+### T4.12.6、对象存储与 Store Gateway
 
-![thanos5](./images/thanos5.png)
+Sidecar 把**本地已封好的块**上传到桶里；**Store Gateway** 只负责从桶里读历史块给 Querier。生产优先 **云厂商 S3 兼容**（OSS、COS、S3 等），把 `thanos.yaml`（或等价配置）放进 Secret，**不要**把 access_key 写进 Git。
 
-之前的监控图表也可以正常显示了：
+支持的存储类型与字段见官方 [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。下面用 **MinIO** 做**实验/内网**演示：MinIO 上游策略有调整，若你们评估后改用 [RustFS](https://rustfs.com/) 等 S3 兼容实现，只需换镜像与 endpoint，Thanos 侧仍是 S3 配置结构。镜像 tag 与文首 **版本与镜像约定** 表一致，安全更新以 [MinIO Releases](https://github.com/minio/minio/releases/latest) 为准。
 
-![thanos6](./images/thanos6.png)
+#### T4.12.6.1、MinIO（练习用，独立 namespace）
 
-### T4.12.5、Ruler 组件
+所有 MinIO 资源放在 **`minio`** 命名空间；**root 账号口令请改成 Secret**（示例为明文仅便于跟练）。
 
-现在我们可以测试下 Prometheus 配置的监控报警规则是否生效，比如对于 `DeploymentAtZeroReplicas` 这个报警规则，当集群中有 Deployment 的副本数变成 0 就会触发报警：
+`minio-deploy.yaml`：
 
-```bash
-$ kubectl get deploy
-NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
-vault-demo               1/1     1            1           41d
-```
-
-我们可以手动将某个 Deployment 的副本数缩减为 0：
-
-```bash
-$ kubectl scale --replicas=0 deployment/vault-demo
-deployment.apps/vault-demo scaled
-$ kubectl get deploy
-NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
-vault-demo               0/0     0            0           41d
-```
-
-这个时候 Alertmanager 同样也会根据外部的 replica 标签对告警进行去重，上面的报警规则中我们添加了 `team=node` 这样的标签，所以会通过前面配置的 webhook 接收器发送给钉钉进行告警：
-
-![thanos7](./images/thanos7.png)
-
-前序配置中，告警规则由 Prometheus 实例本地评估。Thanos Ruler 组件可作为替代方案，其通过 Query API 从 Querier 获取指标数据执行规则评估，评估结果可写回本地 TSDB 或发送至 Alertmanager。
-
-Ruler 的数据获取路径为：`Ruler → Querier → Sidecar → Prometheus`，相较 Prometheus 本地评估增加了链路依赖。在无跨集群告警或全局聚合需求场景下，建议优先使用 Prometheus 原生告警机制以降低复杂度。
-
-若需使用 Ruler，配置要点包括：
-
-- 通过 `--rule-file` 指定告警/记录规则文件
-- 通过 `--query` 指定 Querier 地址列表
-- 通过 `--alertmanagers.url` 配置 Alertmanager 接收地址
-- 通过 `--objstore.config-file` 配置对象存储，实现评估结果持久化
-
-详细配置请参考官方文档：https://thanos.io/tip/components/rule.md/
-
-### T4.12.6、Store 组件
-
-前面我们安装了 Thanos 的 Sidecar 和 Querier 组件，已经可以做到 Prometheus 的高可用，通过 Querier 提供统一的入口来查询监控数据，而且还可以对监控数据自动去重，但是还有一个非常重要的环节，就是配置对象存储，对于查看历史监控数据至关重要。
-
-这个时候需要用到 Thanos Store 组件，将历史监控指标存储到对象存储中。
-
-目前 Thanos 支持的对象存储有：
-
-![thanos8](./images/thanos8.png)
-
-生产环境推荐使用 `Stable` 状态的方案，比如 S3 或者兼容 S3 的服务，比如 Ceph、Minio 等等。
-
-对于国内用户当然最方便的还是直接使用阿里云 OSS 或者腾讯云 COS 这样的服务，很多时候可能我们的服务并不是跑在公有云上面的，所以这里我们用 Minio 来部署一个兼容 S3 协议的对象存储服务。
-
-#### T4.12.6.1、安装 Minio
-
-> Minio 开源项目已废弃，可以找其它替代方案，比如 https://rustfs.com/
-
-下文示例镜像与文首 **版本与镜像约定**表中的 MinIO 行一致；上游若有新的安全发行，请以 [MinIO Releases](https://github.com/minio/minio/releases/latest) 为准并替换 YAML 中的固定标签。
-
-为了方便管理，将所有的资源对象都部署在一个名为 minio 的命名空间中，如果没有的话需要手动创建。直接使用 Deployment 来管理 Minio 的服务（minio-deploy.yaml）：
-
-```bash
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: minio
+  namespace: minio
+  labels:
+    app: minio
 spec:
   selector:
     matchLabels:
@@ -3298,25 +3246,24 @@ spec:
             claimName: minio-pvc
       containers:
         - name: minio
-          volumeMounts:
-            - name: data
-              mountPath: "/data"
           image: minio/minio:RELEASE.2025-10-15T17-29-55Z
-          args:
-            - server
-            - /data
+          args: ["server", "/data", "--console-address", ":9001"]
           env:
-            - name: MINIO_ACCESS_KEY
-              value: "minio"
-            - name: MINIO_SECRET_KEY
-              value: "minio123"
+            - name: MINIO_ROOT_USER
+              value: minio
+            - name: MINIO_ROOT_PASSWORD
+              value: minio123
           ports:
             - containerPort: 9000
+            - containerPort: 9001
+          volumeMounts:
+            - name: data
+              mountPath: /data
           readinessProbe:
             httpGet:
               path: /minio/health/ready
               port: 9000
-            initialDelaySeconds: 90
+            initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
             httpGet:
@@ -3326,120 +3273,97 @@ spec:
             periodSeconds: 10
 ```
 
-通过一个名为 `minio-pvc` 的 PVC 对象将数据持久化，当然我们可以使用静态的 PV 来提供存储，这里我们直接使用前面的 OpenEBS 的 LocalPV 来提供存储服务，使用 `openebs-jiva-default` 这个 StorageClass 对象来提供动态 PV（minio-pvc.yaml）：
+`minio-pvc.yaml`：
 
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: minio-pvc
+  namespace: minio
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10G
+      storage: 10Gi
   storageClassName: openebs-jiva-default
 ```
 
-最后我们可以通过 Service 和 Ingress 对象将 Minio 暴露给外部用户使用（minio-ingress.yaml）：
+`minio-svc.yaml`（集群内给 Thanos 用 **9000**；控制台 **9001** 按需再暴露）：
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: minio
+  namespace: minio
 spec:
+  type: ClusterIP
   ports:
-    - port: 9000
+    - name: api
+      port: 9000
       targetPort: 9000
-      protocol: TCP
+    - name: console
+      port: 9001
+      targetPort: 9001
   selector:
     app: minio
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: redirect-https
-spec:
-  redirectScheme:
-    scheme: https
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: minio
-spec:
-  entryPoints:
-    - web
-  routes:
-    - kind: Rule
-      match: Host(`minio.qikqiak.com`)
-      services:
-        - kind: Service
-          name: minio
-          port: 9000
-      middlewares:
-        - name: redirect-https
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: minio-https
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - kind: Rule
-      match: Host(`minio.qikqiak.com`)
-      services:
-        - kind: Service
-          name: minio
-          port: 9000
-  tls:
-    certResolver: ali
-    domains:
-      - main: "*.qikqiak.com"
 ```
-
-这里我们使用的是 Traefik2.X 版本的 Ingress 控制器，使用 IngressRoute 这个资源对象来定义 Ingress 信息，然后直接创建上面的资源对象即可：
 
 ```bash
-kubectl create ns minio
-kubectl apply -f minio-deploy.yaml
+kubectl create namespace minio --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f minio-pvc.yaml
-kubectl apply -f minio-ingress.yaml
+kubectl apply -f minio-deploy.yaml
+kubectl apply -f minio-svc.yaml
 ```
 
-部署成功后，将域名 `minio.qikqiak.com` 解析到 Ingress 控制器所在的节点即可通过浏览器访问到 MinIO 服务了，通过上面定义的 `MINIO_ACCESS_KEY` 和 `MINIO_SECRET_KEY` 即可登录：
+浏览器进控制台可用 **`kubectl port-forward svc/minio 9001:9001 -n minio`**，用上面 root 账号登录，**新建 bucket `thanos`**。外网暴露请用你们集群的 **Ingress / Gateway**，别照抄旧版 Traefik CRD。
 
-![thanos9](./images/thanos9.png)
+**插图槽位**：`docs/prometheus/images/t4-12-minio-bucket.png`（控制台里 `thanos` bucket）。
 
-#### T4.12.6.2、安装 Thanos Store
+#### T4.12.6.2、Thanos 连接 MinIO 与 Store Gateway
 
-对象存储就绪后，部署 Store Gateway 组件。首先登录 MinIO 创建名为 `thanos` 的 Bucket，并配置对象存储连接文件（thanos-storage-minio.yaml）：
+`thanos-storage-minio.yaml`（**endpoint 与 namespace 对齐**：MinIO 在 `minio` 命名空间时如下）：
 
 ```yaml
 type: s3
 config:
   bucket: thanos
-  endpoint: minio.default.svc.cluster.local:9000
+  endpoint: minio.minio.svc.cluster.local:9000
   access_key: minio
   secret_key: minio123
   insecure: true
   signature_version2: false
 ```
 
-使用上面的配置文件来创建一个 Secret 对象：
-
 ```bash
-$ kubectl create secret generic thanos-objectstorage --from-file=thanos.yaml=thanos-storage-minio.yaml -n kube-mon
-secret/thanos-objectstorage created
+kubectl create secret generic thanos-objectstorage \
+  --from-file=thanos.yaml=thanos-storage-minio.yaml -n kube-mon
 ```
 
-然后创建 Store 组件的资源清单，注意需要添加一个 `thanos-store-api: "true"` 的标签，这样前面我们创建的 `thanos-store-gateway` 这个 Headless Service 就可以自动发现这个服务，Querier 组件查询数据的时候除了可以通过 Sidecar 去获取数据也可以通过这个 Store 组件去对象存储里面获取数据了。
+Store Gateway 的 StatefulSet 需要**同名 Headless Service**（与 `serviceName` 一致）：
 
-将上面的 Secret 对象通过 Volume 形式挂载到容器中的 `/etc/secret` 目录下，通过 `objstore.config-file` 参数指定即可（store.yaml）：
+`store-gateway-discovery.yaml`：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-store-gateway
+  namespace: kube-mon
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: grpc
+      port: 10901
+      targetPort: grpc
+  selector:
+    app: thanos-store-gateway
+```
+
+`store.yaml`：
 
 ```yaml
 apiVersion: apps/v1
@@ -3465,12 +3389,12 @@ spec:
         - name: thanos
           image: thanosio/thanos:v0.41.0
           args:
-            - "store"
-            - "--log.level=debug"
-            - "--data-dir=/data"
-            - "--objstore.config-file=/etc/secret/thanos.yaml"
-            - "--index-cache-size=500MB"
-            - "--chunk-pool-size=500MB"
+            - store
+            - --log.level=info
+            - --data-dir=/data
+            - --objstore.config-file=/etc/secret/thanos.yaml
+            - --index-cache-size=500MB
+            - --chunk-pool-size=500MB
           ports:
             - name: http
               containerPort: 10902
@@ -3478,70 +3402,56 @@ spec:
               containerPort: 10901
           livenessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/healthy
           readinessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/ready
           volumeMounts:
+            - name: store-data
+              mountPath: /data
             - name: object-storage-config
               mountPath: /etc/secret
-              readOnly: false
+              readOnly: true
       volumes:
+        - name: store-data
+          emptyDir: {}
         - name: object-storage-config
           secret:
             secretName: thanos-objectstorage
 ```
 
-直接创建上面的资源对象即可：
-
 ```bash
-$ kubectl apply -f store.yaml
-$ kubectl get pods -n kube-mon -l thanos-store-api=true
-NAME                     READY   STATUS    RESTARTS   AGE
-prometheus-0             2/2     Running   0          15h
-prometheus-1             2/2     Running   0          15h
-thanos-store-gateway-0   1/1     Running   0          100s
+kubectl apply -f store-gateway-discovery.yaml
+kubectl apply -f store.yaml
+kubectl get pods -n kube-mon -l thanos-store-api=true
 ```
 
-部署成功后可以去 Thano 的 Querier 页面上查看 Store 信息，能看到我们配置的 Store 组件了：
-
-![thanos10](./images/thanos10.png)
-
-这里我们只是配置了去对象存储查询数据的组件，那什么地方往对象存储中写数据呢？
-
-当然还是由 Sidecar 组件完成，所以我们需要把 `objstore.config-file` 参数和 Secret 对象也要配置到 Sidecar 组件中去：
+Querier 的 **Stores** 页应多出 Store 一项；**写入**仍靠各 Prometheus Pod 里的 Sidecar，在 **sidecar 容器**上增加与上面相同的 Secret 挂载，并追加参数（生产把 `readOnly: true`）：
 
 ```yaml
-volumes:
-- name: object-storage-config
-  secret:
-    secretName: thanos-objectstorage
+# 合并进 StatefulSet prometheus 的 thanos 容器：volumes / volumeMounts / args 追加
 args:
-- sidecar
-- --log.level=debug
-- --tsdb.path=/prometheus
-- --prometheus.url=http://localhost:9090
-- --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
-- --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
-- --reloader.rule-dir=/etc/prometheus/rules/
-- --objstore.config-file=/etc/secret/thanos.yaml
-volumeMounts:
-- name: object-storage-config
-  mountPath: /etc/secret
-  readOnly: false
+  - sidecar
+  - --log.level=info
+  - --tsdb.path=/prometheus
+  - --prometheus.url=http://localhost:9090
+  - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
+  - --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
+  - --reloader.rule-dir=/etc/prometheus/rules/
+  - --objstore.config-file=/etc/secret/thanos.yaml
 ```
 
-配置完成后重新更新 Sidecar 组件即可。配置生效后就会有数据写入到 MinIO，我们可以去 MinIO 的页面上查看验证：
+`apply` 后等至少一个 **2h 块**上传或在日志里看到 shipper 成功信息，再到 MinIO 里应能看到对象。**插图槽位**：`docs/prometheus/images/t4-12-querier-stores-with-store.png`（Stores 含 sidecar+store）。
 
-![thanos11](./images/thanos11.png)
+### T4.12.7、Compactor
 
-### T4.12.7、Compactor 组件
+**只能跑一个**针对同一桶的 Compactor，官方禁止并行多实例抢压同一前缀。下面 `replicas: 1` 别随意扩。需要本地盘做压缩缓存，可给 `emptyDir` 或 PVC（大集群按官方建议调）。
 
-现在历史监控数据已经上传到对象存储中去了，但是由于监控数据量非常庞大，所以一般情况下我们会去安装一个 Thanos 的 Compactor 组件，用来将对象存储中的数据进行压缩和下采样。Compactor 组件的部署和 Store 非常类似，指定对象存储的配置文件即可，如下所示的资源清单文件（compactor.yaml）：
+`compactor.yaml`：
 
-```bash
+```yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -3564,195 +3474,107 @@ spec:
         - name: thanos
           image: thanosio/thanos:v0.41.0
           args:
-            - "compact"
-            - "--log.level=debug"
-            - "--data-dir=/data"
-            - "--objstore.config-file=/etc/secret/thanos.yaml"
-            - "--wait"
+            - compact
+            - --log.level=info
+            - --data-dir=/data
+            - --objstore.config-file=/etc/secret/thanos.yaml
+            - --wait
           ports:
             - name: http
               containerPort: 10902
           livenessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/healthy
             initialDelaySeconds: 10
           readinessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/ready
             initialDelaySeconds: 15
           volumeMounts:
             - name: object-storage-config
               mountPath: /etc/secret
-              readOnly: false
+              readOnly: true
+            - name: data
+              mountPath: /data
       volumes:
         - name: object-storage-config
           secret:
             secretName: thanos-objectstorage
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-compactor
+  namespace: kube-mon
+spec:
+  clusterIP: None
+  selector:
+    app: thanos-compactor
+  ports:
+    - port: 10902
+      name: http
 ```
 
-最重要的还是提供对象存储的配置文件，然后直接创建上面的资源清单文件：
-
 ```bash
-$ kubectl apply -f compactor.yaml
-$ kubectl get pods -n kube-mon -l app=thanos-compactor
-NAME                 READY   STATUS    RESTARTS   AGE
-thanos-compactor-0   1/1     Running   0          68s
+kubectl apply -f compactor.yaml
+kubectl get pods -n kube-mon -l app=thanos-compactor
 ```
 
-到这里我们就完成了使用 Thanos 来部署高可用的 Prometheus 集群，当然 Thanos 还有其他的一些组件，比如 Check、Bucket、Receiver 等，对于这些组件的使用感兴趣的可以查看官方文档 https://thanos.io/。
+到本节为止：**双副本 Prometheus + Sidecar、Querier、对象存储、Store、Compactor** 是一条完整的企业常用链路。其余组件见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
 
-### T4.12.8、Receiver 组件
+### T4.12.8、Receiver（remote_write，可选）
 
-前面我们介绍主要组件的时候提到了 Receiver 组件，那为什么上面在使用 Thanos 的时候并没有用到呢？这是因为 Receiver 和 Sidecar 是 Thanos 的两种不同架构模式，早期的 Receiver 只是一种实验特性，现在已经是 GA 状态了，所以非常有必要来了解下。
+**与 Sidecar 二选一为主路径**：Sidecar 按块上传；Receiver 用 **remote_write** 把点推到 Receiver TSDB，Querier 查新数据时扇出更少，但要运维 Receiver 持久化与 hashring。入门先跑稳上文 Sidecar 链路；本节为可选进阶。
 
-那么 Receiver 到底有什么作用呢？和 Sidecar 的区别是什么？
-
-我们知道 Sidecar 模式是在每一个 Prometheus 的实例旁边添加一个 Sidecar 组件来上传数据，但是数据上传并不是实时的，而是每 2h 上传一个数据块，而且当通过 Querier 组件查询的时候，如果 Sidecar 非常多，那么势必会造成很多的资源消耗，这也是现在使用 Sidecar 模式的弊端。
-
-Thanos Receiver 组件可以接收来自任何 Prometheus 实例的 remote write 远程写入请求，并将数据存储在本地 TSDB 中，同样我们也可以选择将这些 TSDB 块定期上传到对象存储中。此外 Receiver 同样也暴露了 StoreAPI 接口，这样 Thanos Querier 组件也是可以实时查询接收到的指标，完全不需要去所有的 Sidecar 上查询最新的数据。
-
-另外 Thanos Receiver 组件也支持多租户，通过传入请求的 HTTP Header 头 `THANOS-TENANT` 的值来确定租户 Prometheus 的 ID，为了防止数据库级别的数据泄露，每个租户都有一个单独的 TSDB 实例，Thanos Receiver 还通过暴露类似于 Prometheus 的 external_label 来支持多租户。
-
-```bash
-                 +
-Tenant's Premise | Provider Premise
-                 |
-                 |            +------------------------+
-                 |            |                        |
-                 |  +-------->+     Object Storage     |
-                 |  |         |                        |
-                 |  |         +-----------+------------+
-                 |  |                     ^
-                 |  | S3 API              | S3 API
-                 |  |                     |
-                 |  |         +-----------+------------+
-                 |  |         |                        |       Store API
-                 |  |         |  Thanos Store Gateway  +<-----------------------+
-                 |  |         |                        |                        |
-                 |  |         +------------------------+                        |
-                 |  |                                                           |
-                 |  +---------------------+                                     |
-                 |                        |                                     |
-+--------------+ |            +-----------+------------+              +---------+--------+
-|              | | Remote     |                        |  Store API   |                  |
-|  Prometheus  +------------->+     Thanos Receiver    +<-------------+  Thanos Querier  |
-|              | | Write      |                        |              |                  |
-+--------------+ |            +------------------------+              +---------+--------+
-                 |                                                              ^
-                 |                                                              |
-+--------------+ |                                                              |
-|              | |                PromQL                                        |
-|    User      +----------------------------------------------------------------+
-|              | |
-+--------------+ |
-                 +
+```mermaid
+flowchart LR
+  P[Prometheus] -->|remote_write| R[Receiver]
+  R --> B[(对象存储)]
+  Q[Querier] --> R
+  Q --> B
 ```
 
-如果我们需要负载均衡和数据多副本等功能，则可以将 Thanos Receiver 的多个实例作为单个 hash 的一部分来运行，每个 Receiver 在 hashring 中的位置决定了哪些时间序列被哪个 Receiver 接收和存储。下面是一个 hashring 的配置文件示例：
+多副本 Receiver 用 **hashring**，`endpoints` 必须是带 `http://` 的完整 URL。软租户 / 硬租户与 `THANOS-TENANT` 头见 [Receiver](https://thanos.io/tip/components/receive.md/)。
 
-```bash
+```json
 [
   {
     "hashring": "tenant-a",
     "endpoints": [
-      "tenant-a-1.metrics.local:19291/api/v1/receive",
-      "tenant-a-2.metrics.local:19291/api/v1/receive"
+      "http://tenant-a-1.metrics.local:19291/api/v1/receive",
+      "http://tenant-a-2.metrics.local:19291/api/v1/receive"
     ],
     "tenants": ["tenant-a"]
   },
   {
-    "hashring": "tenants-b-c",
-    "endpoints": [
-      "tenant-b-c-1.metrics.local:19291/api/v1/receive",
-      "tenant-b-c-2.metrics.local:19291/api/v1/receive"
-    ],
-    "tenants": ["tenant-b", "tenant-c"]
-  },
-  {
-    "hashring": "soft-tenants",
-    "endpoints": ["http://soft-tenants-1.metrics.local:19291/api/v1/receive"]
+    "hashring": "soft-default",
+    "endpoints": ["http://thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive"]
   }
 ]
 ```
 
-这里多租户配置涉及两个核心概念：
+**单副本 Receiver**（与 **T4.12.6** 共用 Secret `thanos-objectstorage`）：Kubernetes **不会**把环境变量展开进 `args`，故 `--label` 与 `--receive.local-endpoint` **写死 `thanos-receiver-0` 的 DNS**；扩缩容前须改 hashring 与端点。
 
-**软租户（Soft Tenants）**
-
-当 hashring 配置未显式指定 `tenants` 字段时，该 hashring 即被视为软租户 hashring。软租户 hashring 作为默认路由规则，接收所有未匹配到任何硬租户配置的远程写入请求。具体行为如下：
-
-- 对于未在 HTTP 请求头中设置 `THANOS-TENANT` 字段的远程写入请求，Thanos Receiver 会将其路由至软租户 hashring
-- 请求中的数据点将自动附加默认租户 ID 作为 `tenant_id` 标签，该默认值可通过 `--receive.default-tenant-id` 启动参数配置（默认为 `default-tenant`）
-- 软租户模式适用于单租户场景或无需严格隔离的多租户场景，配置简单，但无法实现租户级别的数据隔离与权限控制
-
-**硬租户（Hard Tenants）**
-
-硬租户需在 hashring 配置文件中通过 `tenants` 字段显式声明租户标识列表。Thanos Receiver 对硬租户请求的处理逻辑如下：
-
-- 所有发往硬租户的远程写入请求，必须在 HTTP 请求头中携带 `THANOS-TENANT: <tenant-id>`，且 `<tenant-id>` 需与 hashring 配置中的某一项完全匹配
-- Receiver 接收到请求后，遍历已配置的硬租户列表，将请求路由至该租户对应的 Receiver 端点集合（endpoints）
-- 每个硬租户可配置多个 Receiver 端点，结合 `--receive.replication-factor` 参数可实现数据副本冗余，提升数据可靠性
-- 硬租户模式适用于多租户隔离场景，不同租户的数据在存储、查询、告警等链路中完全隔离，满足安全合规与资源配额管理需求
-
-> **远程写入请求可经由任意 Receiver 实例接入，但会根据 Hashring 配置内部路由至该硬租户指定的存储端点。**
-
-```bash
-                                  Soft tenant hashring
-                                 +-----------------------+
-                                 |                       |
-+-----------------+              |  +-----------------+  |
-|                 |              |  |                 |  |
-|  Load Balancer  +-------+      |  | Thanos receiver |  |
-|                 |       |      |  |                 |  |
-+-----------------+       |      |  +-----------------+  |
-                          |      |                       |
-                          |      |                       |
-                          |      |  +-----------------+  |
-                          |      |  |                 |  |
-                          +-------->+ Thanos receiver +-----------+
-                                 |  |                 |  |        |
-                                 |  +-----------------+  |        |
-                                 |                       |        |
-                                 +-----------------------+        |
-                                                                  |
-                                   Hard Tenant A hashring         |
-                                 +-----------------------+        |
-                                 |                       |        |
-                                 |  +-----------------+  |        |
-                                 |  |                 |  |        |
-                                 |  | Thanos receiver +<----------+
-                                 |  |                 |  |        |
-                                 |  +-----------------+  |        |
-                                 |                       |        |
-                                 |                       |        |
-                                 |  +-----------------+  |        |
-                                 |  |                 |  |        |
-                                 |  | Thanos receiver +<----------+
-                                 |  |                 |  |
-                                 |  +-----------------+  |
-                                 |                       |
-                                 +-----------------------+
-```
-
-接下来我们来安装配置 Thanos Receiver 组件，现在我们的 Prometheus 数据是通过 Remote Write API 实时上传到 Receiver 组件上面去的，所以我们需要对 Receiver 组件进行数据持久化，然后指定 objstore 后可以将数据上传到对象存储中去，对应的资源清单文件如下所示：
+`receiver.yaml`：
 
 ```yaml
-# receiver.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  labels:
-    app: thanos-receiver
   name: thanos-receiver
   namespace: kube-mon
+  labels:
+    app: thanos-receiver
 spec:
+  serviceName: thanos-receiver
+  replicas: 1
   selector:
     matchLabels:
       app: thanos-receiver
-  serviceName: thanos-receiver
-  replicas: 1
   template:
     metadata:
       labels:
@@ -3760,9 +3582,11 @@ spec:
         thanos-store-api: "true"
     spec:
       containers:
-        - image: thanosio/thanos:v0.41.0
+        - name: thanos
+          image: thanosio/thanos:v0.41.0
           args:
             - receive
+            - --log.level=info
             - --grpc-address=0.0.0.0:10901
             - --http-address=0.0.0.0:10902
             - --remote-write.address=0.0.0.0:19291
@@ -3770,25 +3594,8 @@ spec:
             - --objstore.config-file=/etc/secret/thanos.yaml
             - --tsdb.path=/var/thanos/receiver
             - --tsdb.retention=1d
-            - --label=receive_replica="$(NAME)"
-            - --receive.local-endpoint=$(NAME).thanos-receiver.$(NAMESPACE).svc.cluster.local:10901
-          env:
-            - name: NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          livenessProbe:
-            failureThreshold: 8
-            httpGet:
-              path: /-/healthy
-              port: 10902
-              scheme: HTTP
-            periodSeconds: 30
-          name: thanos-receive
+            - --label=receive_replica=thanos-receiver-0
+            - --receive.local-endpoint=thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:10901
           ports:
             - containerPort: 10901
               name: grpc
@@ -3796,20 +3603,22 @@ spec:
               name: http
             - containerPort: 19291
               name: remote-write
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            periodSeconds: 30
           readinessProbe:
-            failureThreshold: 20
             httpGet:
               path: /-/ready
-              port: 10902
-              scheme: HTTP
+              port: http
             periodSeconds: 5
           volumeMounts:
-            - mountPath: /var/thanos/receiver
-              name: data
-              readOnly: false
+            - name: data
+              mountPath: /var/thanos/receiver
             - name: object-storage-config
               mountPath: /etc/secret
-              readOnly: false
+              readOnly: true
       volumes:
         - name: object-storage-config
           secret:
@@ -3817,12 +3626,9 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: data
-        labels:
-          app: thanos-receiver
       spec:
         storageClassName: openebs-jiva-default
-        accessModes:
-          - ReadWriteOnce
+        accessModes: ["ReadWriteOnce"]
         resources:
           requests:
             storage: 20Gi
@@ -3837,190 +3643,33 @@ spec:
   ports:
     - name: grpc
       port: 10901
-      targetPort: 10901
+      targetPort: grpc
     - name: http
       port: 10902
-      targetPort: 10902
+      targetPort: http
     - name: remote-write
       port: 19291
-      targetPort: 19291
+      targetPort: remote-write
   selector:
     app: thanos-receiver
 ```
-
-需要注意现在 Receiver 也变成了 Querier 组件的一个数据源了，所以这里我们给上面的 Pod 增加一个 `thanos-store-api: "true"` 的标签，这样可以让 Querier 自动发现这个 Pod。直接创建上面的资源清单即可：
 
 ```bash
 kubectl apply -f receiver.yaml
 ```
 
-创建完成后可以得到我们的远程写 API 地址为：`http://thanos-receiver:19291/api/v1/receive`。
-
-由于现在我们使用 Receiver 模式了，所以之前的 Sidecar 模式就不需要了，可以先将之前的 Sidecar 删除掉，其实现在我们的 Prometheus 变成了近乎无状态的了，只需要 Prometheus 应用本身，然后加上 remotewrite api 地址即可：
-
-```bash
-# configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: prometheus-config
-  namespace: kube-mon
-data:
-  prometheus.yaml.tmpl: |
-    global:
-      scrape_interval: 15s
-      scrape_timeout: 15s
-      external_labels:
-        cluster: ydzs-test
-        replica: $(POD_NAME)  # 每个 Prometheus 有一个唯一的标签
-
-    rule_files:  # 报警规则文件配置
-    - /etc/prometheus/rules/*rules.yaml
-
-    # 指定 remote write 地址
-    remote_write:
-    - url: http://thanos-receiver:19291/api/v1/receive
-
-    ......
-```
-
-正常是不需要 Sidecar 容器了，这里我们为了用一个 StatefulSet 来运行两个 Prometheus 副本，借助 Sidecar 来帮我们渲染 prometheus.yaml.tmpl 模板文件(因为 Prometheus 本身是不支持环境变量替换的)，`这里的 Sidecar 仅作渲染用`，后续可以换成其他方式：
+**Remote write 地址**（同 namespace 短名）：`http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive`。在 **T4.12.3** 的 `prometheus.yaml.tmpl` 里增加一段（**`scrape_configs` 仍须完整粘贴 T4.4～T4.8，不要 `......`**）：
 
 ```yaml
-# sidecar.yaml
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: prometheus
-  namespace: kube-mon
-  labels:
-    app: prometheus
-spec:
-  serviceName: "prometheus"
-  replicas: 2
-  selector:
-    matchLabels:
-      app: prometheus
-  template:
-    metadata:
-      labels:
-        app: prometheus
-    spec:
-      serviceAccountName: prometheus
-      volumes:
-        - name: prometheus-config
-          configMap:
-            name: prometheus-config
-        - name: prometheus-rules
-          configMap:
-            name: prometheus-rules
-        - name: prometheus-config-shared
-          emptyDir: {}
-      containers:
-        - name: prometheus
-          image: prom/prometheus:v3.10.0
-          imagePullPolicy: IfNotPresent
-          args:
-            - "--config.file=/etc/prometheus-shared/prometheus.yaml"
-            - "--storage.tsdb.path=/prometheus"
-            - "--storage.tsdb.retention.time=6h"
-            - "--storage.tsdb.no-lockfile"
-            - "--storage.tsdb.min-block-duration=2h" # Thanos处理数据压缩
-            - "--storage.tsdb.max-block-duration=2h"
-            - "--web.enable-admin-api" # 通过一些命令去管理数据
-            - "--web.enable-lifecycle" # 支持热更新  localhost:9090/-/reload 加载
-          ports:
-            - name: http
-              containerPort: 9090
-          resources:
-            requests:
-              memory: "2Gi"
-              cpu: "1"
-            limits:
-              memory: "2Gi"
-              cpu: "1"
-          volumeMounts:
-            - name: prometheus-config-shared
-              mountPath: /etc/prometheus-shared/
-            - name: prometheus-rules
-              mountPath: /etc/prometheus/rules
-            - name: prometheus-config
-              mountPath: /etc/prometheus
-        - name: thanos
-          image: thanosio/thanos:v0.41.0
-          imagePullPolicy: IfNotPresent
-          args:
-            - sidecar
-            - --log.level=debug
-            - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
-            - --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
-            - --reloader.rule-dir=/etc/prometheus/rules/
-          ports:
-            - name: http-sidecar
-              containerPort: 10902
-            - name: grpc
-              containerPort: 10901
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-          volumeMounts:
-            - name: prometheus-config-shared
-              mountPath: /etc/prometheus-shared/
-            - name: prometheus-config
-              mountPath: /etc/prometheus
-            - name: prometheus-rules
-              mountPath: /etc/prometheus/rules
+    remote_write:
+      - url: http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive
 ```
 
-重新创建 Prometheus：
+Prometheus 仍可用 **Sidecar 只做 reloader**（与 **T4.12.3** 相同，去掉 `--objstore` 即可），或改用你们自己的模板渲染 Job。**不要**在没规划清楚的情况下同时让 Sidecar 与 Receiver 往桶里写同一套序列，避免重复与成本失控。
 
-```bash
-$ kubectl delete -f configmap.yaml
-$ kubectl delete -f sidecar.yaml
-$ kubectl apply -f configmap.yaml
-$ kubectl apply -f sidecar.yaml
-$ kubectl get pods -n kube-mon
-NAME                              READY   STATUS    RESTARTS   AGE
-alertmanager-86c756695f-b92zh     1/1     Running   0          38h
-dingtalk-hook-66c75955d-mjpdc     1/1     Running   0          38h
-grafana-67c7856c69-kjcvp          1/1     Running   0          23h
-node-exporter-gvbmd               1/1     Running   0          23h
-node-exporter-tx4p2               1/1     Running   0          166m
-node-exporter-wfp4j               1/1     Running   0          36h
-node-exporter-x8gjs               1/1     Running   0          27d
-prometheus-0                      2/2     Running   0          5m8s
-prometheus-1                      2/2     Running   0          5m1s
-thanos-compactor-0                1/1     Running   0          3h44m
-thanos-querier-77b47f7948-4sjhc   1/1     Running   0          3h9m
-thanos-receiver-0                 1/1     Running   0          40m
-thanos-store-gateway-0            1/1     Running   0          3h10m
-```
+**验收**：Querier **Stores** 出现 Receiver；Graph 能查到近期点；桶内一段时间后可见 Receiver 上传的块。
 
-部署完成后，Prometheus 就开始实时远程写入数据到 Receiver 去了，我们通过 Querier 的界面可以查看到现在发现的 Stores：
-
-![thanos12](./images/thanos12.png)
-
-然后切换到 Graph 页面查询 `node_load1`，先去掉 `deduplication`：
-
-![thanos13](./images/thanos13.png)
-
-
-
-可以看到已经查询到了两个 Prometheus 实例的数据，这证明我们数据已经成功上传到 Receiver 了，这里的数据其实是通过 Receiver 获取到的，然后勾选上 `deduplication` 后可以根据 `replica` 标签进行去重：
-
-![thanos14](./images/thanos14.png)
-
-而且在 `NewUI` 中还可以根据 Store 来过滤要查询的数据，比如我们可以直接查询远程对象存储中的数据：
-
-![thanos15](./images/thanos15.png)
-
-
-
-此外我们还为 Receiver 配置了 StoreObject，正常一段时间（默认还是 2h）后 Receiver 组件也会把数据上传到对象存储中去。
-
-![thanos16](./images/thanos16.png)
+**插图槽位**：`docs/prometheus/images/t4-12-receiver-stores.png`、`docs/prometheus/images/t4-12-remote-write-query.png`。
 
 ## T4.13、Prometheus Adapter
 
