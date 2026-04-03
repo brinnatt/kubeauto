@@ -3236,6 +3236,8 @@ kubectl get pods -n kube-mon -l app=prometheus
 
 Querier 用 DNS SRV 自动发现所有带 Store API 的组件（Sidecar、Store Gateway、Receiver 等）。Headless Service 里端口名必须叫 `grpc`，这样 SRV 记录才是 `_grpc._tcp...` 形式。
 
+**与 Thanos v0.41+ 对齐（Breaking）**：自 **v0.41** 起，Query 已**删除**静态指定后端的 **`--store`**（以及 `--rule`、`--exemplar` 等旧写法），统一改用 **`--endpoint`**（可重复传递多个地址；仍支持 `dns+`、`dnssrv+` 前缀）。旧清单若仍写 `--store`，进程会直接报错：`unknown long flag '--store'`。依据见上游 [CHANGELOG / #7890](https://github.com/thanos-io/thanos/pull/7890)；本仓库文首镜像约定既为 `v0.41.0`，下列 YAML 已按 **`--endpoint`** 编写。若你暂时卡在更老的 Thanos 镜像，需对照该版本 `thanos query --help`，或升级镜像与本文一致。
+
 `querier.yaml`：
 
 ```yaml
@@ -3262,7 +3264,7 @@ spec:
             - query
             - --log.level=info
             - --query.replica-label=replica
-            - --store=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local
+            - --endpoint=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local
           ports:
             - name: http
               containerPort: 10902
@@ -3306,7 +3308,7 @@ spec:
 
 参数说明：
 
-- `--store=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local` 须与 **T4.12.3** 里 Headless 名称、命名空间一致；你改了名字这里要一起改。
+- `--endpoint=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local`：静态注册的 Store API（Sidecar 等）发现地址；须与 **T4.12.3** 里 Headless 名称、命名空间一致；你改了名字这里要一起改。多个后端可写多条 `--endpoint=...`。**勿**再使用已移除的 `--store`（v0.41+）。
 - `--query.replica-label=replica`：填的是 **Prometheus `external_labels` 里「副本维度」的标签键名**（本文键名为 `replica`，不是 Pod 名）。须与 ConfigMap 模板里 `replica: $(POD_NAME)` 的**左侧键名**一致。界面打开 **deduplication** 后，Querier 才按该键合并双副本曲线。原理见 **T4.12.1.1**。
 
 ```bash
