@@ -2832,7 +2832,7 @@ Thanos 把数据长期放进对象存储，常见有两种路子：
 
 Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所有已注册的 Store（Sidecar、Store Gateway、Receiver 等）要数据，再拼成一份结果。
 
-注意两点：`--query.replica-label` 要和 Prometheus 里 `external_labels` 的副本标签一致（本文用 `replica`），界面里勾选去重（deduplication）才能把双副本合成一条线；用 DNS 自动发现时，Headless Service 里的端口名要叫 `grpc`。负载高可以多起几个 Querier 副本。详见 [Query](https://thanos.io/tip/components/query.md/)。
+注意两点：**双副本去重**依赖 Prometheus `external_labels` 里用固定**键名**区分副本（本文用 `replica`，值为 `$(POD_NAME)` 渲染后的 Pod 名），Querier 用 `--query.replica-label` 填**同一个键名**；UI 里再勾选 **deduplication** 才能把两条线合成一条。**为什么要一致、键与值分别是什么**见 **T4.12.1.1**。另：用 DNS 自动发现时，Headless Service 里 Store API 的端口名要叫 `grpc`。负载高可以多起几个 Querier 副本。详见 [Query](https://thanos.io/tip/components/query.md/)。
 
 查询量特别大时，可再加 [Query Frontend](https://thanos.io/tip/components/query-frontend.md/) 做缓存和拆分，本文不写部署清单，避免和入门路径混在一起。
 
@@ -2878,11 +2878,40 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 - 两个副本会各算一遍规则，要靠 `alert_relabel_configs` 去掉 `replica`，Alertmanager 才只收一条。
 - 若再加 Ruler 也往同一个 Alertmanager 推，要自己配好路由和标签，避免重复通知。
 
+### T4.12.1.1、副本标签、`$(POD_NAME)` 与 `--query.replica-label`
+
+**背景**：**T4.12.3** 里用 StatefulSet 起 **两个 Prometheus**，它们抓取同一批 target，写出来的时间序列几乎一样。若没有额外区分，Thanos Querier 会把两边当成两套无关数据，**图里同一条指标可能出现两条线**（或查询语义混乱）。
+
+**`external_labels` 干什么用**：Prometheus 在把样本写入 TSDB 前，会给每条序列加上 **全局标签**。其中 **`cluster`** 用来标识「哪套集群」（多集群联邦时尤其重要）。**副本维度**用另一个标签：本文**标签名（键）**固定写 **`replica`**，**标签值**必须是「这一副本独有的字符串」，这样两个 Pod 写出来的同一条逻辑指标，只在 **`replica` 的值**上不同。
+
+**`replica` 和 `$(POD_NAME)` 谁是谁**：二者不是同一类东西。
+
+| 写法 | 含义 |
+|------|------|
+| **`replica`** | **标签的键名（key）**，出现在 `external_labels:` 下面左侧。Querier 的 `--query.replica-label` 指的就是这个**键名**。 |
+| **`$(POD_NAME)`** | 模板里的**占位符**。Sidecar reloader 做环境变量替换后，会变成当前 Pod 的名字，例如 **`prometheus-0`、`prometheus-1`**。那才是 **`replica` 标签的值（value）**。 |
+
+渲染后在配置里等价于：
+
+```yaml
+external_labels:
+  cluster: cluster1
+  replica: prometheus-0   # 在 prometheus-1 上则是 prometheus-1
+```
+
+**`--query.replica-label=replica` 干什么用**：Querier 从多个 Store / Sidecar 拉数据时，若你在 UI 里打开 **deduplication（去重）**，它会认为：除了配置里指定的这条 **「副本标签」** 以外，其它标签都相同的序列，属于**同一逻辑序列的高可用副本**，可以合并成一条展示。**`--query.replica-label` 的值必须是 Prometheus `external_labels` 里那条「用来区分第几个 Prometheus」的标签键名**。本文都写 **`replica`**，所以 Querier 写 **`--query.replica-label=replica`**。
+
+**为什么要一致**：若 Prometheus 加的键是 **`replica`**，而 Querier 写成 **`--query.replica-label=replica_id`**（或任意别的键名），Querier **认不出**哪一个是「副本维度」，**去重不会对上**，双副本时仍可能两条线或合并错误。键名可以改成别的（例如 `prometheus_replica`），但两边必须**同一个字符串**。
+
+**和告警的关系**：两个副本各自算规则，告警里也会带上 **`replica`**。**T4.12.3** 里用 `alert_relabel_configs` **删掉 `replica`**，是为了让 Alertmanager 把两条几乎相同的告警合成一条通知；删的是**标签键**为 `replica` 的那一项，与 Querier 去重是同一套「副本维度」概念。
+
+**小结**：**`replica`** = 标签键；**`$(POD_NAME)`** → 渲染后的 Pod 名 = 该键的值；**`--query.replica-label`** = 告诉 Querier「副本维度用的是哪一个键」，须与 Prometheus 里 **`external_labels` 的键名**一致。
+
 ### T4.12.2、上生产前核对清单
 
 - 对象存储：优先云厂商 S3 兼容或你们已运维好的兼容存储；连接信息只放 Secret；桶权限最小化。
 - Compactor：同一个桶只跑一个 Compactor；CPU 和本地盘给够，看压缩是否跟得上。
-- 标签：`external_labels.cluster` 在多集群里不重复；副本标签和 Querier 的 `--query.replica-label` 一致。
+- 标签：`external_labels.cluster` 在多集群里不重复；**副本维度的标签键名**与 Querier `--query.replica-label` 一致（含义见 **T4.12.1.1**）。
 - 从 T4.2.1 迁过来：先备份 ConfigMap；删掉 Deployment 版 `prometheus`，避免和 StatefulSet 同名；StorageClass 用你们集群真实的，不要照抄示例里的 `openebs-jiva-default`。
 - RBAC：T4.2.1 若已建过同名 ClusterRole/Binding 且规则一样，不必再 apply 一遍。
 - 日志：平时用 `info`，临时改 `debug` 查完记得改回。
@@ -2942,7 +2971,7 @@ subjects:
 
 - Sidecar 读 `prometheus.yaml.tmpl`，用环境变量替换后生成真正的 `prometheus.yaml`。
 - 必须把 **T4.4～T4.8** 里已经验证过的整段 `scrape_configs` 贴进下面占位（含 `kubernetes-nodes`、`kubernetes-endpoints` 等），**不要留 `......`**，否则迁完会丢抓取目标。
-- `cluster` 改成你们集群唯一名字；`replica` 用 `$(POD_NAME)`，和下文 Querier 的 `--query.replica-label=replica` 对应。
+- `cluster` 改成你们集群唯一名字；`external_labels` 下 **`replica:` 是标签键名**，**`$(POD_NAME)` 是标签值的模板**（渲染成 `prometheus-0` 等）；Querier 的 **`--query.replica-label` 必须与这个键名一致**（本文均为 `replica`）。详见 **T4.12.1.1**。
 - 保留时间写在配置里的 `storage` 段（Prometheus 3.x 推荐），不要再用已弃用的 `--storage.tsdb.retention.time` 命令行。
 
 ```yaml
@@ -3278,7 +3307,7 @@ spec:
 参数说明：
 
 - `--store=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local` 须与 **T4.12.3** 里 Headless 名称、命名空间一致；你改了名字这里要一起改。
-- `--query.replica-label=replica` 须与 `external_labels.replica` 一致；界面里打开去重（deduplication）后，双副本曲线会按该标签合并。
+- `--query.replica-label=replica`：填的是 **Prometheus `external_labels` 里「副本维度」的标签键名**（本文键名为 `replica`，不是 Pod 名）。须与 ConfigMap 模板里 `replica: $(POD_NAME)` 的**左侧键名**一致。界面打开 **deduplication** 后，Querier 才按该键合并双副本曲线。原理见 **T4.12.1.1**。
 
 ```bash
 kubectl apply -f querier.yaml
