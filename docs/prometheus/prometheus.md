@@ -2832,7 +2832,7 @@ Thanos 把数据长期放进对象存储，常见有两种路子：
 
 Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所有已注册的 Store（Sidecar、Store Gateway、Receiver 等）要数据，再拼成一份结果。
 
-注意两点：**双副本去重**依赖 Prometheus `external_labels` 里用固定**键名**区分副本（本文用 `replica`，值为 `$(POD_NAME)` 渲染后的 Pod 名），Querier 用 `--query.replica-label` 填**同一个键名**；UI 里再勾选 **deduplication** 才能把两条线合成一条。**为什么要一致、键与值分别是什么**见 **T4.12.1.1**。另：用 DNS 自动发现时，Headless Service 里 Store API 的端口名要叫 `grpc`。负载高可以多起几个 Querier 副本。详见 [Query](https://thanos.io/tip/components/query.md/)。
+注意两点：**双副本去重**依赖 Prometheus `external_labels` 里用固定**键名**区分副本（本文用 `replica`，值为 `$(POD_NAME)` 渲染后的 Pod 名），Querier 用 `--query.replica-label` 填**同一个键名**；Query UI（v0.41）勾选 **Use Deduplication** 才能把两条线合成一条。**为什么要一致、键与值分别是什么**见 **T4.12.1.1**；UI 其它选项见 **T4.12.4**「Query 页各选项含义」。另：用 DNS 自动发现时，Headless Service 里 Store API 的端口名要叫 `grpc`。负载高可以多起几个 Querier 副本。详见 [Query](https://thanos.io/tip/components/query.md/)。
 
 查询量特别大时，可再加 [Query Frontend](https://thanos.io/tip/components/query-frontend.md/) 做缓存和拆分，本文不写部署清单，避免和入门路径混在一起。
 
@@ -2870,7 +2870,7 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 
 - 对外只暴露 Querier；Grafana 里填例如 `http://thanos-querier.kube-mon.svc.cluster.local:9090`。
 - 查最近的数据，主要靠 Sidecar；查很久以前的数据，主要靠 Store Gateway 读桶。
-- 打开 Querier 的 Stores 页：应能看到每个 Prometheus 上的 Sidecar，以及接上桶之后的 Store。缺哪一类，就查 DNS、标签 `thanos-store-api`、网络策略。
+- 打开 Querier UI 顶部导航里的 **Endpoints**（路由多为 `/stores`，对应 API `/api/v1/stores`；**导航文字不叫「Stores」**）：应能看到每个 Prometheus 上的 Sidecar，以及接上桶之后的 Store Gateway 等。缺哪一类，就查 DNS、标签 `thanos-store-api`、网络策略。
 
 **告警**
 
@@ -3309,7 +3309,7 @@ spec:
 参数说明：
 
 - `--endpoint=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local`：静态注册的 Store API（Sidecar 等）发现地址；须与 **T4.12.3** 里 Headless 名称、命名空间一致；你改了名字这里要一起改。多个后端可写多条 `--endpoint=...`。**勿**再使用已移除的 `--store`（v0.41+）。
-- `--query.replica-label=replica`：填的是 **Prometheus `external_labels` 里「副本维度」的标签键名**（本文键名为 `replica`，不是 Pod 名）。须与 ConfigMap 模板里 `replica: $(POD_NAME)` 的**左侧键名**一致。界面打开 **deduplication** 后，Querier 才按该键合并双副本曲线。原理见 **T4.12.1.1**。
+- `--query.replica-label=replica`：填的是 **Prometheus `external_labels` 里「副本维度」的标签键名**（本文键名为 `replica`，不是 Pod 名）。须与 ConfigMap 模板里 `replica: $(POD_NAME)` 的**左侧键名**一致。Query UI 勾选 **Use Deduplication**（或 API `dedup=true`）后，才按该键合并双副本曲线。原理见 **T4.12.1.1**；界面其它开关见本节下 **「Query 页各选项含义」**。
 
 ```bash
 kubectl apply -f querier.yaml
@@ -3317,16 +3317,68 @@ kubectl get pods -n kube-mon -l app=thanos-querier
 kubectl get svc -n kube-mon -l app=thanos-querier
 ```
 
-用 NodePort 或 `kubectl port-forward svc/thanos-querier 9090:9090 -n kube-mon` 打开界面：Stores 里应能看到各 Sidecar；Graph 里可查 `up` 或 **T4.4** 已验证过的指标。双副本时先关去重会看到两条线，打开去重应合成一条。
+用 NodePort 或 `kubectl port-forward svc/thanos-querier 9090:9090 -n kube-mon` 打开 Query UI。
 
-**Grafana**（见 **T4.9**）：数据源填集群内 `http://thanos-querier.kube-mon.svc.cluster.local:9090`；Grafana 在集群外时再用 NodePort 或 Ingress，安全要求与 T4.9 一致。保存后点 Save & test。
+**Store 列表在哪（v0.41 容易找错）**：顶部导航第二项在源码里叫 **Endpoints**（链接到 **`/stores`**），**不会显示「Stores」字样**。若你从 **Graph** 进来，点顶栏 **Endpoints** 即可看到 Querier 当前认识的所有 Store API 端点（Sidecar、Store Gateway 等）。窄屏时导航收成「汉堡菜单」，要先展开。也可直接访问 `http://<Querier>:<NodePort>/stores`（若前面有 `web.route-prefix` 或反代路径前缀，需把前缀加在 `/stores` 前）。
 
-**生产习惯**：Querier Service 常改成 ClusterIP，只给集群内或受控 Ingress 用。Stores 里长期缺某个 Sidecar 时，先查对应 Prometheus Pod、Headless 的 SRV 解析、是否刚扩缩容。多集群联邦见官方 [Query](https://thanos.io/tip/components/query.md/)。
+**和「Enable Store Filtering」里两个地址的关系**：勾选 **Enable Store Filtering** 后，查询面板里的 **Store Filter** 下拉选项（例如 `172.20.37.237:10901`、`172.20.202.232:10901`）来自**同一份** `/api/v1/stores` 数据，只是嵌在 Graph 页里做查询过滤；**并不是没有独立列表页**——完整列表在 **Endpoints** 页，Filter 里只是多选子集。
 
-**插图槽位**
+下文 **Query 主界面**按 **Thanos v0.41.x**（镜像 `thanosio/thanos:v0.41.0`）说明。上游会持续合并 Prometheus 查询页改动，**若你界面文案与下表略有出入，以当前镜像 UI 为准**。
 
-- `docs/prometheus/images/t4-12-querier-stores.png`（Stores 页）
-- `docs/prometheus/images/t4-12-querier-dedup.png`（同一查询去重开/关对比）
+**官方文档为什么「不像界面说明书」**：[Query 组件文档](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md)写的是 **HTTP API**（如 `dedup`、`partial_response`、`storeMatch[]`、`engine`）和 **启动参数**，一般不画 Web 布局图。界面上的勾选项是把这些参数**填进 POST body / 请求头**。**与 v0.41.0 源码的对应关系**（便于你自行核对、升级后 diff）：
+
+| 你在界面上点的 | v0.41.0 前端实现要点（Thanos 仓库） |
+|----------------|--------------------------------------|
+| 顶栏 **Use local time** 等 5 项 | `PanelList.tsx`：`useLocalStorage` 存浏览器本地，控制 **图形时间轴用本地时区**、是否拉 `/api/v1/stores` 进面板、是否启用历史/补全/高亮/Linter；**不直接改 Querier 服务端配置**。 |
+| **Execute** | `Panel.tsx` → `POST` `/api/v1/query` 或 `/api/v1/query_range`，表单里带 `dedup`、`partial_response`、`storeMatch[]`、`engine`、`analyze` 等。 |
+| **Explain** | `Panel.tsx` → `GET`（带 query string）`/api/v1/query_explain` 或 `/api/v1/query_range_explain`，参数与上面同类；返回**解释/分析结构**，不是替代 Execute 的数值结果。 |
+| **Use Deduplication / Use Partial Response** | 同上，映射为表单字段 **`dedup`**、**`partial_response`**（与官方文档表格一致）。 |
+| **Force Tracing** | 勾选后对该次请求加 HTTP 头 **`X-Thanos-Force-Tracing: true`**（见 `Panel.tsx`）；响应里可取 **`X-Thanos-Trace-ID`**。**不是**「Prometheus / Thanos 引擎」切换；若你界面上曾看成「Force Tracing Engine」，多半是 **Force Tracing** 与 **Engine** 两行靠在一起误读。 |
+| **Prometheus / Thanos**（Engine） | 映射为表单字段 **`engine`**，与 `--query.promql-engine` 默认值一致；选 Prometheus 时源码里会关掉 **Analyze** 勾选能力。 |
+| **Enable Store Filtering** | `PanelList.tsx`：仅当勾选时才把 **`/api/v1/stores`** 的结果传给各 Panel；**不勾选时面板侧 Store 列表为空，不出现「Store Filter」多选**，请求里也不会带 `storeMatch[]`（即仍向 Querier 已注册的全部 Store 扇出）。 |
+
+因此：**下表描述的是「勾选后在协议层等价于什么」**，与官方文档一致；**不是**臆测布局，而是以 **v0.41.0** 的 `pkg/ui/react-app/src/pages/graph/PanelList.tsx`、`Panel.tsx`、`GraphControls.tsx` 为准。**旧教程只写「Graph + 去重」已不足以描述当前 UI**。
+
+#### Query 页各选项含义（v0.41 对齐）
+
+**时间与展示习惯**
+
+| 界面要素 | 含义 | 生产上怎么用 |
+|----------|------|----------------|
+| **Time**（时间范围 / 结束时刻 / 步长 step） | 与原生 Prometheus 一致：**瞬时查询**看「某一时刻」；**范围查询**要起止时间与 **step**（分辨率）。Thanos 还会参与 **降采样** 相关行为（见官方 `max_source_resolution`）。 | 排障先选最近 1h；看长期趋势再拉大窗口。step 过小会加重 Store 与 Querier 负载。 |
+| **Table \| Graph** | **Graph**：折线/多序列曲线；**Table**：当前时刻或范围内的数值表。 | 看图做趋势；需要精确对比标签组合时用 Table。 |
+| **Use local time** | 时间轴、时间戳按**浏览器本地时区**显示；关闭则多用 **UTC**。 | 值班习惯本地时间可开；写文档、对日志（常 UTC）可对齐关。 |
+
+**编辑器与体验（不改变数据，只改变你怎么写查询）**
+
+| 界面要素 | 含义 | 生产上怎么用 |
+|----------|------|----------------|
+| **Enable query history** | 开启后把执行过的查询写入浏览器 **localStorage**（键 `history`，最多约 50 条），输入框可复用；**关则不上历史列表**（纯前端行为，与 Querier 无关）。 | 可开；共享工作站或敏感环境建议关或清站点数据。 |
+| **Enable autocomplete** | 输入时提示 metric / 标签名。 | 建议开，减少手误。 |
+| **Enable highlighting** | PromQL **语法高亮**。 | 建议开，可读性更好。 |
+| **Enable Linter** | 对当前表达式做**静态检查/提示**（如可疑写法）。 | 建议开；**Linter 通过也不代表查询一定省资源**。 |
+| **查询框旁的 Execute \| Explain** | **Execute**：真正发起查询，返回指标结果。**Explain**：展示表达式**如何被解析/规划**（查询计划类信息），用于理解求值结构；**不替代 Execute 的数值结果**。具体展示与所选引擎有关。 | 日常用 **Execute**；慢查询或结果不符合预期时，用 **Explain** 辅助分析（与官方引擎演进相关，勿与「告警规则 explain」混为一谈）。 |
+
+**与 Thanos 数据面直接相关的开关（最重要）**
+
+| 界面要素 | 含义 | 生产上怎么用 |
+|----------|------|----------------|
+| **Use Deduplication** | 对应 API 参数 **`dedup`**：是否按 Querier 配置的 **`--query.replica-label`**（本文 `replica`）对 HA 副本做**去重合并**（见文档 **T4.12.1.1**）。关：每个 Prometheus 副本各一条序列；开：合成一条并填缝。 | **双副本 Prometheus + Sidecar 场景建议常开**；调试「到底哪个副本在吐数」时可临时关。Grafana 走同一 Querier 时，去重由数据源 URL 参数或数据源版本决定，未必与你在 Web UI 勾的一致。 |
+| **Use Partial Response** | 对应 **`partial_response`**：某个 Store/Sidecar **超时或报错**时，是**带 warning 返回其它 Store 能拿到的部分结果**（偏可用），还是整体更偏失败（偏严格）。与 `--query.partial-response` 默认值、Store 超时等配合，见 [Query 文档 · Partial Response](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md#partial-response)。 | **多数生产会先开**：避免单个副本抖动导致整页空；**金融级强一致**场景再评估关，并接受可用性下降。注意响应里的 **Warnings**。 |
+| **Enable Store Filtering** | **勾选**：前端会去拉 **`/api/v1/stores`** 并在每个查询面板里显示 **Store Filter** 多选；你选的 Store 会转成请求里的 **`storeMatch[]`**（与 [store matchers](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md#store-matchers) 一致）。**不勾选**：不向面板注入 Store 列表，**不出现** Filter 控件，请求**不带** `storeMatch[]`，Querier 仍对**已注册的全部 Store** 扇出。 | **日常建议关**（少误操作、也少依赖 stores API）；**排障单 Store** 时再开。 |
+| **Thanos \| Prometheus**（Engine） | 选用 **Thanos 实验性 PromQL 引擎**还是**经典 Prometheus 引擎**，请求体字段 **`engine`**，与 **`--query.promql-engine`**（及 distributed 模式下默认）一致，见 [Query 文档 · Thanos PromQL Engine](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md#thanos-promql-engine-experimental)。 | **生产默认可保持 Prometheus**；切 Thanos 引擎前先在非生产验证。 |
+| **Analyze**（与 Engine 同区，**仅 Thanos 引擎时可选**） | 源码中与 **`analyze`** 查询参数一起提交；选 **Prometheus** 引擎时该勾选会被禁用（`Panel.tsx` 中 `disableAnalyzeCheckbox`）。用于在 Thanos 引擎路径上请求**额外分析信息**（具体字段随版本以响应 JSON 为准）。 | 默认关；**性能排障、验证 Thanos 引擎**时再开。勿与 **Explain** 按钮混淆：Explain 走 **`/api/v1/query_explain`** 系列端点。 |
+| **Force Tracing**（v0.41.0 源码字面；**不是**引擎开关） | 勾选后对本请求设置 **`X-Thanos-Force-Tracing: true`**，在 Querier **已配置 tracing** 时促使采集本次查询链路 trace；响应可带 **`X-Thanos-Trace-ID`**。背景见 [#6311](https://github.com/thanos-io/thanos/issues/6311)、[#6770](https://github.com/thanos-io/thanos/pull/6770)。 | **未接追踪后端时通常无效果**。生产默认关；排障慢查询时临时开。 |
+
+**和旧描述的对照**：以前常说「去重开/关对比两条线」——在 v0.41 上请认准界面 **Use Deduplication**，且同一面板可能还有 **Partial Response、Store Filtering、引擎** 等，**不要只记 Graph**。
+
+**Grafana**（见 **T4.9**）：数据源填集群内 `http://thanos-querier.kube-mon.svc.cluster.local:9090`；Grafana 在集群外时再用 NodePort 或 Ingress，安全要求与 T4.9 一致。保存后点 Save & test。Grafana Explore 的选项与 Thanos 自带 Web UI **不是同一套界面**，但访问的是同一 Query API。
+
+**生产习惯**：Querier Service 常改成 ClusterIP，只给集群内或受控 Ingress 用；**不要把带租户头、无鉴别的 Query UI 直接暴露给不可信用户**（见 [Query 文档 · tenant](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md) 安全提示）。**Endpoints** 页（`/stores`）里长期缺某个 Sidecar 时，先查对应 Prometheus Pod、Headless 的 SRV 解析、是否刚扩缩容。多集群联邦见官方 [Query](https://thanos.io/tip/components/query.md/)。
+
+![thanos_store_or_endpoints](./images/thanos_store_or_endpoints.png)
+
+![thanos_query](./images/thanos_query.png)
 
 ### T4.12.5、告警与 Ruler 怎么选
 
@@ -3354,7 +3406,7 @@ kubectl get svc -n kube-mon -l app=thanos-querier
 
 **生产环境**
 
-优先云厂商 S3 兼容（OSS、COS、S3 等），endpoint、区域、TLS、加密按云文档来；密钥用 Secret 或云上的工作负载身份，不要把 `access_key` 写进 Git。存储类型与字段见 [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线后看：Querier Stores 是否出现 store、桶里对象是否在涨、Sidecar 是否还在报上传错。
+优先云厂商 S3 兼容（OSS、COS、S3 等），endpoint、区域、TLS、加密按云文档来；密钥用 Secret 或云上的工作负载身份，不要把 `access_key` 写进 Git。存储类型与字段见 [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线后看：Querier **Endpoints**（`/stores`）是否出现 Store Gateway、桶里对象是否在涨、Sidecar 是否还在报上传错。
 
 **练习环境**
 
@@ -3573,7 +3625,7 @@ kubectl apply -f store.yaml
 kubectl get pods -n kube-mon -l thanos-store-api=true
 ```
 
-Querier 的 Stores 页应多出 Store。数据写入仍靠各 Prometheus Pod 里的 Sidecar：给 sidecar 容器挂上同样的 Secret，并追加下面参数（生产建议 Secret 只读挂载）：
+Querier 的 **Endpoints**（`/stores`）应多出 Store Gateway。数据写入仍靠各 Prometheus Pod 里的 Sidecar：给 sidecar 容器挂上同样的 Secret，并追加下面参数（生产建议 Secret 只读挂载）：
 
 ```yaml
 # 合并进 StatefulSet prometheus 的 thanos 容器：volumes / volumeMounts / args 追加
@@ -3814,7 +3866,7 @@ Remote write 地址示例：`http://thanos-receiver.kube-mon.svc.cluster.local:1
 
 Prometheus 仍可带 Sidecar，但只当 reloader 用（同 T4.12.3，去掉 `--objstore`），或换成你们自己的配置渲染方式。没设计好之前，不要让 Sidecar 和 Receiver 往桶里重复写同一批指标。
 
-**验收**：Querier Stores 里出现 Receiver；Graph 能查到近期数据；过一段时间后桶里能看到 Receiver 上传的块。
+**验收**：Querier **Endpoints**（`/stores`）里出现 Receiver；Graph 能查到近期数据；过一段时间后桶里能看到 Receiver 上传的块。
 
 **插图槽位**
 
