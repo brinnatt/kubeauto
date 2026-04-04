@@ -2878,7 +2878,7 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 - 两个副本会各算一遍规则，要靠 `alert_relabel_configs` 去掉 `replica`，Alertmanager 才只收一条。
 - 若再加 Ruler 也往同一个 Alertmanager 推，要自己配好路由和标签，避免重复通知。
 
-### T4.12.1.1、副本标签、`$(POD_NAME)` 与 `--query.replica-label`
+### T4.12.1.1、副本标签
 
 **背景**：**T4.12.3** 里用 StatefulSet 起 **两个 Prometheus**，它们抓取同一批 target，写出来的时间序列几乎一样。若没有额外区分，Thanos Querier 会把两边当成两套无关数据，**图里同一条指标可能出现两条线**（或查询语义混乱）。
 
