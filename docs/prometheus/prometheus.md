@@ -3339,7 +3339,7 @@ kubectl get svc -n kube-mon -l app=thanos-querier
 
 因此：**下表描述的是「勾选后在协议层等价于什么」**，与官方文档一致；**不是**臆测布局，而是以 **v0.41.0** 的 `pkg/ui/react-app/src/pages/graph/PanelList.tsx`、`Panel.tsx`、`GraphControls.tsx` 为准。**旧教程只写「Graph + 去重」已不足以描述当前 UI**。
 
-#### Query 页各选项含义（v0.41 对齐）
+#### T4.12.4.1、Query 页各选项含义（v0.41.0）
 
 **时间与展示习惯**
 
