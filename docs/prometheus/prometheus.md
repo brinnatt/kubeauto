@@ -2832,14 +2832,59 @@ Service 名 `prometheus-alert`、端口 **8080** 若与 zip 里不一致，以 `
 
 ---
 
-**丙、验收**
+**丙、验收（按顺序做，和前文约定一致）**
 
-调乱 **T4.11.2** 阈值或造一条 firing，看钉钉或企微是否收到；同时看 Alertmanager 是否被静默拦掉。收不到就按 Secret、DNS、Pod 出网、路由 matcher 顺序查。
+下面假设你用的还是 **T4.11.2** 示例规则：**`NodeMemoryHigh`**，`labels.team: node`，`for: 2m`，表达式里是 **`> 50`**。你已按 **甲** 或 **乙** 接好转发，并在 **T4.11.1** 里让 **`team="node"`** 命中带 Webhook 的 `receiver`（名称以你 config 为准，别和旧文里的 `email` 接收器弄混）。
+
+1. **先确认没有误伤**
+   
+打开 Alertmanager Web（**T4.11.2.1** 里的 NodePort 或 port-forward），进 **Silences**，看是否已有匹配 `alertname="NodeMemoryHigh"` 或 `team="node"` 的静默；有就先 **Expire** 或等到期，否则通知永远被挡。
+   
+2. **把规则改成「必响」便于实验（验完改回去）**
+
+   编辑 `kube-mon` 下的 **`prometheus-config`**，在 `data.rules.yml` 里把 `NodeMemoryHigh` 的阈值从 **`> 50`** 改成 **`> 1`**（或更小），目的是让 `expr` 几乎恒为真。`kubectl apply -f` 更新 ConfigMap 之后：若 Prometheus 已按 **T4.2.1** 打开 **`--web.enable-lifecycle`**，用 NodePort 或端口转发对 **`/prometheus` 的 9090** 发 **`curl -X POST .../-/reload`**（全文多处示例与 **T4.3.1** 同一操作）；若你集群里习惯改完必重启，则执行 `kubectl rollout restart -n kube-mon deployment prometheus`
+
+   若你当前是 **StatefulSet** 版 Prometheus（如 **T4.12.3**），就对对应 StatefulSet 滚动重启，别和 Deployment 命令混用。
+
+3. **在 Prometheus 里确认已经 firing**  
+   - 页面 **Alerts** 里找到 **NodeMemoryHigh**，等满 **`for: 2m`** 后状态应为 **firing**。  
+   - 或在 **Graph** 里查：`ALERTS{alertname="NodeMemoryHigh", alertstate="firing"}`，若一直是 `pending`，说明条件未满 2 分钟，或节点指标没抓到（回到 **T4.4**、**T4.11.2** 看 `job="kubernetes-nodes"`）。
+
+4. **在 Alertmanager 里确认这条告警会进你的接收器**
+
+   打开 **Alerts**，展开对应分组，看是否出现 **NodeMemoryHigh**，标签里是否有 **`team="node"`**，展示的 **receiver** 是否为你配了钉钉或企微 Webhook 的那一个。若显示 **silenced** / **inhibited**，回到步骤 1 或 **T4.11.1** 的 `inhibit_rules`。
+
+5. **看转发 Pod 有没有报错**  
+   - 钉钉：`kubectl logs -n kube-mon deploy/prometheus-webhook-dingtalk --tail=100`  
+
+   - 企微：`kubectl logs -n kube-mon deploy/prometheus-alert --tail=100`（Deployment 名以你 apply 的为准，可先 `kubectl get deploy -n kube-mon`）
+
+     常见现象：加签错、token 错会返回 4xx，日志里会有 HTTP 错误。
+
+6. **看 IM 是否收到**
+
+   钉钉群或企业微信群里应在 **group_wait** 等路由参数允许的时间窗内收到一条（或一组）告警；若 Alertmanager 配了 **`send_resolved: true`**，恢复阈值并 reload 后还应收到恢复类通知（以实际模版为准）。
+
+7. **收不到时按这条顺序自查**
+
+   ① Alertmanager **Silences** 是否挡掉
+
+   ② **`route` 的 matcher** 是否包含 `team="node"`，且 **receiver** 里真有对应的 **`webhook_configs.url`**（路径与 **甲** 的 `/dingtalk/prod/send` 或 **乙** 的 `/prometheusalert?...` 完全一致）
+
+   ③ **`kubectl get endpoints -n kube-mon prometheus-webhook-dingtalk`**（或你的 PrometheusAlert Service）是否有后端
+
+   ④ 从集群内 `curl -sS -X POST`  your-webhook-url 是否通（可临时起一个 **curl** debug Pod，见 **T4.2.1** 同集群 DNS 习惯）
+
+   ⑤ 转发 Pod **能否访问公网**（防火墙、代理、企业出口策略）
+
+8. **实验结束把阈值改回**
+
+   将 `rules.yml` 里的 **`> 1`** 改回 **`> 50`**（或你们生产用阈值），reload / 重启 Prometheus，避免实验规则长期误报。
 
 **插图槽位**
 
-- `docs/prometheus/images/t4-11-alertmanager-webhook-flow.png`（Alertmanager 到中再到 IM 的示意，你可自行补图）  
-- `docs/prometheus/images/t4-11-dingtalk-robot-verify.png`（打码后的群消息截图，可选）
+- `docs/prometheus/images/t4-11-alertmanager-webhook-flow.png`（Prometheus → Alertmanager → 转发服务 → IM，你可自行补图）  
+- `docs/prometheus/images/t4-11-dingtalk-robot-verify.png`（打码后的群内告警消息截图，可选）
 
 ### T4.11.3、邮件模板
 
