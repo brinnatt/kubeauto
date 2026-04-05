@@ -147,7 +147,7 @@ scrape_configs:
 >
 > 文中 **`image:` 固定标签**须与各软件 **GitHub Releases**（或 registry 对应 tag）上 **latest 稳定版**（`prerelease: false`）一致，**禁止使用 `latest` 浮动标签**。升级前先查官方发行页再改 YAML。
 >
-> **本文同步校验日期：2026-03-24**，对应当前稳定版示例：  
+> **本文同步校验日期：2026-03-28**，对应当前稳定版示例：  
 >
 > | 组件 | 镜像 / 标签 | 官方发行说明 |
 > |------|-------------|--------------|
@@ -161,6 +161,8 @@ scrape_configs:
 > | Thanos | `thanosio/thanos:v0.41.0` | [Releases](https://github.com/thanos-io/thanos/releases/latest) |
 > | busybox（init 辅助） | `busybox:1.37` | [Hub Tags](https://hub.docker.com/_/busybox/tags) |
 > | MinIO | `minio/minio:RELEASE.2025-10-15T17-29-55Z` | [Releases](https://github.com/minio/minio/releases/latest) |
+> | prometheus-webhook-dingtalk | `timonwong/prometheus-webhook-dingtalk:v2.1.0` | [Releases](https://github.com/timonwong/prometheus-webhook-dingtalk/releases/latest) |
+> | PrometheusAlert（企微等聚合通道） | `feiyu563/prometheus-alert:v4.9.2` | [Releases](https://github.com/feiyu563/PrometheusAlert/releases/latest) |
 >
 > **补充**：文中出现的 `cnych/*` 等为教程配套**社区镜像**，通常无独立 GitHub Release 页与核心栈同步；使用须在 [Docker Hub](https://hub.docker.com/) 对应仓库核对维护者当前推荐的**固定 tag**（勿用 `latest`），并在变更时更新本文校验日期。
 
@@ -2694,39 +2696,110 @@ ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 
 官方延伸阅读：[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)、[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
 
-#### T4.11.2.2、Webhook：钉钉 / 企业微信
+#### T4.11.2.2、Webhook：钉钉与企业微信群机器人
 
-Alertmanager 只负责按 [webhook_config](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把 [标准 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 出去；钉钉、企业微信机器人要的 **URL、加签、正文格式** 各不相同，生产上标准做法是：**集群内部署适配组件**，Alertmanager → 适配 Service → 厂商 HTTPS API。密钥、机器人地址只进 **Secret**，适配镜像 **固定 tag**，出网与 **NetworkPolicy** 按你们安全基线收紧；对外回调需 **Ingress** 时限制来源 IP。
+**这一节要干的事**：告警已经到 **Alertmanager v0.31.1**（版本与 **T4.2.1** 文首表一致）了，再往**钉钉群**或**企业微信群**里推一条通知。Alertmanager 只会按 [webhook_config](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把 [官方这份 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 到集群里的某个 HTTP 地址；钉钉和企微机器人各自要的报文格式，必须靠**集群里的转发程序**去调官方 HTTPS 接口。**机器人的 token、加签密钥、带 key 的整段 URL 只往 Secret 里放，不要写进 Git。**
 
-**落地 checklist（两套 IM 通用）**
+**生产上这条链路怎么选（和文首「版本与镜像约定」表一致）**
 
-1. IM 控制台建好机器人，按厂商文档拿 **Webhook / 加签密钥**（钉钉常见 `SEC...`；企微 URL 常带 `key=`）。
-2. K8s：`Deployment` + `ClusterIP Service`；环境变量或配置文件引用 **Secret**；适配器文档里的监听端口、路径（如 `/dingtalk`）与下面 Alertmanager `url` 一致。
-3. Alertmanager：在 **T4.11.1** 的 `receivers` 里增加 `webhook_configs`，`url` 用集群 DNS：`http://<svc>.kube-mon.svc.cluster.local:<port><path>`。需要 TLS 客户端证书、Bearer 等时用官方 [http_config](https://prometheus.io/docs/alerting/latest/configuration/#http_config)。
-4. 路由：要与 **邮件同时**送达，**同一 `receiver` 内并列** `email_configs` 与 `webhook_configs`；或给告警加 `notify=ding` 等标签再 `matchers` 分流。两条子路由 **matchers 完全相同** 时只会命中**靠前**那条（除非 `continue: true`），不要指望「后写的 webhook 还能再发一遍」。
+| 要接到哪里 | 用到的转发软件（固定镜像 tag） | 官方依据你先看哪里 | K8s 清单从哪来 |
+|------------|-------------------------------|--------------------|----------------|
+| 钉钉自定义机器人（可含加签） | [prometheus-webhook-dingtalk](https://github.com/timonwong/prometheus-webhook-dingtalk)，镜像 `timonwong/prometheus-webhook-dingtalk:v2.1.0` | 钉钉开放平台：[自定义机器人接入](https://developers.dingtalk.com/document/app/custom-robot-access)、[安全设置与加签](https://developers.dingtalk.com/document/robots/customize-robot-security-settings)（页面若改版以开放平台搜索为准） | 上游有 [contrib/k8s](https://github.com/timonwong/prometheus-webhook-dingtalk/tree/v2.1.0/contrib/k8s)；下文已按 **kube-mon**、Secret、固定 tag 写好一份可直接 apply 的示例。 |
+| 企业微信群机器人 | [PrometheusAlert](https://github.com/feiyu563/PrometheusAlert)，镜像 `feiyu563/prometheus-alert:v4.9.2` | 腾讯：[群机器人配置说明](https://developer.work.weixin.qq.com/document/path/91770)（路径以官网为准） | Release **v4.9.2** 里的 [kubernetes.zip](https://github.com/feiyu563/PrometheusAlert/releases/download/v4.9.2/kubernetes.zip)；先解压部署，再按下面 Alertmanager 的 URL 接上。 |
 
-**实践 A：钉钉群机器人（加签）**
+**两套都要守的规矩**：转发 Pod 必须能访问 `oapi.dingtalk.com` 或 `qyapi.weixin.qq.com`；镜像不准用未钉死的 tag；Alertmanager 里 `webhook_configs.url` 写集群内 Service，例如 `http://服务名.kube-mon.svc.cluster.local:端口路径`；要和 **T4.11.2** 规则上的 `labels`（如 `team="node"`）在 `route` 里对得上；要和邮件一起发，就在**同一个 receiver** 里并排写 `email_configs` 和 `webhook_configs`。需要 TLS 客户端、代理等用 Alertmanager 的 [http_config](https://prometheus.io/docs/alerting/latest/configuration/#http_config)。
 
-1. 钉钉：**群设置 → 智能群助手 → 自定义机器人**，安全设置选 **加签**，保存 **Webhook** 与 **SEC 密钥**。
-2. 适配器常用开源 **[prometheus-webhook-dingtalk](https://github.com/timonwong/prometheus-webhook-dingtalk)**：按仓库 README 配置钉钉 URL / 加签（具体环境变量名以 README 为准）。镜像在 [Docker Hub](https://hub.docker.com/r/timonwong/prometheus-webhook-dingtalk/tags) 选**固定 tag**，同步到私有仓更佳。
-3. 假设 Service 名 `dingtalk-webhook`、容器监听 **8060**、文档路径 `/dingtalk`，Alertmanager **追加** receiver（与 `default` / `email` 同级）：
+---
+
+**甲、钉钉（官方建机器人 + 集群里跑 prometheus-webhook-dingtalk）**
+
+1. 在钉钉侧按开放平台文档建好「自定义机器人」，安全设置用 **加签**，记下 **access_token** 和 **SECRET**（常见 `SEC` 开头）。这一步只能在钉钉控制台完成，和 K8s 无关。  
+2. 集群里配置由 **Secret** 提供。下面示例里 target 名叫 `prod`，你可以改名，但后面的 Alertmanager 路径最后一节要跟着改。
+
+`prometheus-webhook-dingtalk-secret.yaml`（本地改完再 apply，勿提交仓库）：
 
 ```yaml
-  - name: dingtalk-node
-    webhook_configs:
-      - url: 'http://dingtalk-webhook.kube-mon.svc.cluster.local:8060/dingtalk'
-        send_resolved: true
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prometheus-webhook-dingtalk
+  namespace: kube-mon
+type: Opaque
+stringData:
+  config.yaml: |
+    targets:
+      prod:
+        url: https://oapi.dingtalk.com/robot/send?access_token=换成你的 token
+        secret: 换成你的 SEC 加签密钥
 ```
 
-4. `route.routes` 里用 `matchers` 与 **T4.11.2** 规则 `labels` 对齐，例如仍用 `team="node"`，或再加 `severity="critical"` 只推严重告警。
+`prometheus-webhook-dingtalk.yaml`：
 
-**实践 B：企业微信群机器人**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-webhook-dingtalk
+  namespace: kube-mon
+  labels:
+    app: prometheus-webhook-dingtalk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-webhook-dingtalk
+  template:
+    metadata:
+      labels:
+        app: prometheus-webhook-dingtalk
+    spec:
+      containers:
+        - name: prometheus-webhook-dingtalk
+          image: timonwong/prometheus-webhook-dingtalk:v2.1.0
+          args:
+            - --web.listen-address=:8060
+            - --config.file=/config/config.yaml
+          ports:
+            - name: http
+              containerPort: 8060
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: config
+          secret:
+            secretName: prometheus-webhook-dingtalk
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-webhook-dingtalk
+  namespace: kube-mon
+spec:
+  selector:
+    app: prometheus-webhook-dingtalk
+  ports:
+    - name: http
+      port: 8060
+      targetPort: http
+```
 
-1. 企微：**群聊 → 群机器人 → 添加**，复制带 `key=` 的 **Webhook URL**。接口与字段以 [企业微信文档（群机器人）](https://developer.work.weixin.qq.com/document/path/91770) 为准（路径若调整以官网为准）。
-2. 二选一即可规模化：**自研** 小服务（解析 Alertmanager JSON → 拼 markdown/text → POST 到上述 URL）；或使用现成多通道项目 **[PrometheusAlert](https://github.com/feiyu563/PrometheusAlert)**，按其文档配置企微机器人，Alertmanager `webhook_configs.url` 指向该项目暴露的 **Prometheus/Alertmanager 兼容入口**（具体 path 以该项目当前 README 为准）。
-3. Webhook 地址、`key`、模板里敏感词同样 **Secret 注入**；若适配器需公网回调再加 Ingress 并限制来源 IP。
+```bash
+kubectl apply -f prometheus-webhook-dingtalk-secret.yaml
+kubectl apply -f prometheus-webhook-dingtalk.yaml
+kubectl logs -n kube-mon deploy/prometheus-webhook-dingtalk
+```
 
-**邮件 + 钉钉同一条告警（推荐结构）**
+日志里应打印出对应的 Webhook 地址，格式固定为 **`http://<主机>:8060/dingtalk/<target 名>/send`**；给 Alertmanager 用时把主机名换成 Service：`prometheus-webhook-dingtalk.kube-mon.svc.cluster.local`。
+
+在 **T4.11.1** 的 `receivers` 里追加或合并（邮件 + 钉钉示例）：
 
 ```yaml
   - name: email-and-dingtalk
@@ -2734,11 +2807,39 @@ Alertmanager 只负责按 [webhook_config](https://prometheus.io/docs/alerting/l
       - to: 'oncall@example.com'
         send_resolved: true
     webhook_configs:
-      - url: 'http://dingtalk-webhook.kube-mon.svc.cluster.local:8060/dingtalk'
+      - url: 'http://prometheus-webhook-dingtalk.kube-mon.svc.cluster.local:8060/dingtalk/prod/send'
         send_resolved: true
 ```
 
-**验收**：临时调低 **T4.11.2** 阈值或手工构造 firing；看适配器 **Pod 日志**、群内消息、Alertmanager UI 是否 **silenced**。失败顺序：Secret → Service DNS → 出网 → 路由 matcher。
+改完 Alertmanager 配置后按你在 **T4.11.1** 的方式 reload 或重启 Deployment。
+
+---
+
+**乙、企业微信（官方建机器人 + 集群里跑 PrometheusAlert）**
+
+1. 在企微群里添加机器人，复制 **带 key= 的 Webhook 地址**，字段含义以 **[群机器人文档](https://developer.work.weixin.qq.com/document/path/91770)** 为准。  
+2. 部署 **PrometheusAlert v4.9.2**：下载与 Release 同版本的 **[kubernetes.zip](https://github.com/feiyu563/PrometheusAlert/releases/download/v4.9.2/kubernetes.zip)**，解压后把清单里的命名空间改成 **kube-mon**，镜像行改成 **`feiyu563/prometheus-alert:v4.9.2`**（若 [Docker Hub 标签页](https://hub.docker.com/r/feiyu563/prometheus-alert/tags) 暂时还没有同号 tag，以 Hub 上已有、且 README 示例推荐的最近稳定 tag 为准，或按 zip 里默认镜像行与 Release 说明对齐），再 `kubectl apply`。首次登录 Web 控制台，按项目 **[企业微信告警配置](https://github.com/feiyu563/PrometheusAlert/blob/master/doc/readme/conf-wechat.md)**、**[Prometheus 接入](https://github.com/feiyu563/PrometheusAlert/blob/master/doc/readme/system-prometheus.md)** 配好机器人与模版。**模版英文名 `tpl`** 必须与你控制台里实际启用的一致，不要照抄文档里不存在的名字。  
+3. Alertmanager 对接口 **`/prometheusalert`**，查询参数见项目 **[接口说明](https://github.com/feiyu563/PrometheusAlert/blob/master/doc/readme/base-restful.md)**。下面是一条示意（把 Service 名、端口、tpl、整段 wxurl 换成你的；若一行太长或特殊字符导致失败或对 `wxurl` 做 URL 编码，按项目文档处理）：
+
+```yaml
+  - name: alertmanager-to-prometheusalert-wx
+    webhook_configs:
+      - url: 'http://prometheus-alert.kube-mon.svc.cluster.local:8080/prometheusalert?type=wx&tpl=这里填Web里的模版名&wxurl=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=你的key'
+        send_resolved: true
+```
+
+Service 名 `prometheus-alert`、端口 **8080** 若与 zip 里不一致，以 `kubectl get svc -n kube-mon` 为准。
+
+---
+
+**丙、验收**
+
+调乱 **T4.11.2** 阈值或造一条 firing，看钉钉或企微是否收到；同时看 Alertmanager 是否被静默拦掉。收不到就按 Secret、DNS、Pod 出网、路由 matcher 顺序查。
+
+**插图槽位**
+
+- `docs/prometheus/images/t4-11-alertmanager-webhook-flow.png`（Alertmanager 到中再到 IM 的示意，你可自行补图）  
+- `docs/prometheus/images/t4-11-dingtalk-robot-verify.png`（打码后的群消息截图，可选）
 
 ### T4.11.3、邮件模板
 
