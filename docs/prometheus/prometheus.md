@@ -2801,7 +2801,8 @@ kubectl logs -n kube-mon deploy/prometheus-webhook-dingtalk
 
 日志里应打印出对应的 Webhook 地址，格式固定为 **`http://<主机>:8060/dingtalk/<target 名>/send`**；给 Alertmanager 用时把主机名换成 Service：`prometheus-webhook-dingtalk.kube-mon.svc.cluster.local`。
 
-在 **T4.11.1** 的 `receivers` 里追加或合并（邮件 + 钉钉示例）。若接收器名叫 **`email-and-dingtalk`**，则 **`route.routes` 里对应子路由的 `receiver` 也必须改成 `email-and-dingtalk`**，否则会报 **`undefined receiver "email" used in route`**（见 **T4.11.1** 文内「易错点」）。  
+在 **T4.11.1** 的 `receivers` 里追加或合并（邮件 + 钉钉示例）。若接收器名叫 **`email-and-dingtalk`**，则 **`route.routes` 里对应子路由的 `receiver` 也必须改成 `email-and-dingtalk`**，否则会报 **`undefined receiver "email" used in route`**（见 **T4.11.1** 文内「易错点」）。
+
 下面只是 **`route.routes` + `receivers` 片段**，你要和 **T4.11.1** 里已有的 **`global:`**、**`route`** 顶栏（`group_by`、`receiver: default` 等）拼成**完整** `config.yml`，不要只有这一段就去 apply。
 
 ```yaml
@@ -2851,8 +2852,9 @@ Service 名 `prometheus-alert`、端口 **8080** 若与 zip 里不一致，以 `
 
 1. **先确认没有误伤**
    
+
 打开 Alertmanager Web（**T4.11.2.1** 里的 NodePort 或 port-forward），进 **Silences**，看是否已有匹配 `alertname="NodeMemoryHigh"` 或 `team="node"` 的静默；有就先 **Expire** 或等到期，否则通知永远被挡。
-   
+
 2. **把规则改成「必响」便于实验（验完改回去）**
 
    编辑 `kube-mon` 下的 **`prometheus-config`**，在 `data.rules.yml` 里把 `NodeMemoryHigh` 的阈值从 **`> 50`** 改成 **`> 1`**（或更小），目的是让 `expr` 几乎恒为真。`kubectl apply -f` 更新 ConfigMap 之后：若 Prometheus 已按 **T4.2.1** 打开 **`--web.enable-lifecycle`**，用 NodePort 或端口转发对 **`/prometheus` 的 9090** 发 **`curl -X POST .../-/reload`**（全文多处示例与 **T4.3.1** 同一操作）；若你集群里习惯改完必重启，则执行 `kubectl rollout restart -n kube-mon deployment prometheus`
