@@ -2394,7 +2394,9 @@ flowchart TB
 
 `data.config.yml` 是 **Alertmanager 自己的配置语法**，不是 Kubernetes 资源语法。SMTP 真实密码不要进 Git；生产用流水线注入、Secret 挂载（官方支持 `smtp_auth_password_file`，见 [Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)），或只在集群里维护的渲染流程。
 
-`route` 里：`receiver: default` 表示没被子路由命中的告警走默认邮箱；`routes` 里带 `matchers` 的子路由把 `team="node"` 的告警改走 `email` 接收器（与 **T4.11.2** 示例规则里的 `labels.team: node` 对齐）。`matchers` 写法见官方 [matcher](https://prometheus.io/docs/alerting/latest/configuration/#matcher)；嵌在 Kubernetes YAML 里时，**每一条 matcher 用单引号包整行**，避免 YAML 解析和 Alertmanager 语法混在一起不好查错。
+`route` 里：`receiver: default` 表示没被子路由命中的告警走默认通道；`routes` 里带 `matchers` 的子路由把 `team="node"` 的告警改走名为 **`email` 的接收器**（与 **T4.11.2** 示例规则里的 `labels.team: node` 对齐）。`matchers` 写法见官方 [matcher](https://prometheus.io/docs/alerting/latest/configuration/#matcher)；嵌在 Kubernetes YAML 里时，**每一条 matcher 用单引号包整行**，避免 YAML 解析和 Alertmanager 语法混在一起不好查错。
+
+**易错点（启动失败时先查这条）**：`route` / `routes` 里出现的**每一个** `receiver: xxx`，都必须在下面的 **`receivers` 里有一条对应的 `- name: xxx`**，名字要**完全一致**（区分大小写）。少定义会报错：`undefined receiver "xxx" used in route`。这不是「邮件和 Webhook 冲突」，而是**名字没对上**。例如 **T4.11.2.2** 把接收器命名成 `email-and-dingtalk` 时，子路由里的 `receiver` 也要改成 **`email-and-dingtalk`**，或保留子路由为 `email` 则 `receivers` 里仍须保留 `- name: email`（并在该块里并列写 `webhook_configs`）。
 
 若你在 Prometheus 里配了 `global.external_labels.cluster`，`group_by` 里可加上 `cluster`，多集群时分组更清晰。SMTP 端口和是否 TLS 以邮件服务商文档为准（常见 587 + STARTTLS）。
 
@@ -2799,16 +2801,27 @@ kubectl logs -n kube-mon deploy/prometheus-webhook-dingtalk
 
 日志里应打印出对应的 Webhook 地址，格式固定为 **`http://<主机>:8060/dingtalk/<target 名>/send`**；给 Alertmanager 用时把主机名换成 Service：`prometheus-webhook-dingtalk.kube-mon.svc.cluster.local`。
 
-在 **T4.11.1** 的 `receivers` 里追加或合并（邮件 + 钉钉示例）：
+在 **T4.11.1** 的 `receivers` 里追加或合并（邮件 + 钉钉示例）。若接收器名叫 **`email-and-dingtalk`**，则 **`route.routes` 里对应子路由的 `receiver` 也必须改成 `email-and-dingtalk`**，否则会报 **`undefined receiver "email" used in route`**（见 **T4.11.1** 文内「易错点」）。  
+下面只是 **`route.routes` + `receivers` 片段**，你要和 **T4.11.1** 里已有的 **`global:`**、**`route`** 顶栏（`group_by`、`receiver: default` 等）拼成**完整** `config.yml`，不要只有这一段就去 apply。
 
 ```yaml
-  - name: email-and-dingtalk
-    email_configs:
-      - to: 'oncall@example.com'
-        send_resolved: true
-    webhook_configs:
-      - url: 'http://prometheus-webhook-dingtalk.kube-mon.svc.cluster.local:8060/dingtalk/prod/send'
-        send_resolved: true
+      routes:
+        - receiver: email-and-dingtalk
+          matchers:
+            - 'team="node"'
+          group_wait: 10s
+    receivers:
+      - name: default
+        email_configs:
+          - to: 'oncall@example.com'
+            send_resolved: true
+      - name: email-and-dingtalk
+        email_configs:
+          - to: 'oncall@example.com'
+            send_resolved: true
+        webhook_configs:
+          - url: 'http://prometheus-webhook-dingtalk.kube-mon.svc.cluster.local:8060/dingtalk/prod/send'
+            send_resolved: true
 ```
 
 改完 Alertmanager 配置后按你在 **T4.11.1** 的方式 reload 或重启 Deployment。
