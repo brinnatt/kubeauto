@@ -2896,10 +2896,7 @@ Service 名 `prometheus-alert`、端口 **8080** 若与 zip 里不一致，以 `
 
    将 `rules.yml` 里的 **`> 1`** 改回 **`> 50`**（或你们生产用阈值），reload / 重启 Prometheus，避免实验规则长期误报。
 
-**插图槽位**
-
-- `docs/prometheus/images/t4-11-alertmanager-webhook-flow.png`（Prometheus → Alertmanager → 转发服务 → IM，你可自行补图）  
-- `docs/prometheus/images/t4-11-dingtalk-robot-verify.png`（打码后的群内告警消息截图，可选）
+![altermanager-dingding-webhook](./images/altermanager-dingding-webhook.png)
 
 ### T4.11.3、邮件模板
 
