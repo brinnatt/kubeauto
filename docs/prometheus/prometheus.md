@@ -2900,28 +2900,101 @@ Service 名 `prometheus-alert`、端口 **8080** 若与 zip 里不一致，以 `
 
 ### T4.11.3、邮件模板
 
-**默认行为**：不配置 `templates:` 时，镜像内的 **Go template** 仍可对邮件渲染；但很多团队卡在「邮件能发、但运维不想用默认版式」：值班表、Runbook、集群/环境、严重级别进主题行、合规抬头等，都必须落到**可版本管理**的模板里，并且与 **Alertmanager 小版本**对齐（避免升级后 `define` 名字变了却没人知道）。
+告警规则见 **T4.11.2**，Alertmanager 部署见 **T4.11.1**。Prometheus 只负责产生告警并转发给 Alertmanager；是否发信、发给哪一类接收器，由 Alertmanager 的 `route` 与 `receivers` 决定；邮件的**主题行**和**正文**由 Go 模板根据告警上的**标签**和**注解**渲染生成。若不在 Alertmanager 配置中声明 `templates:`，则使用镜像自带的默认模板。通知上下文里有哪些变量可用，见官方文档 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/)；`templates` 键的写法见 [configuration](https://prometheus.io/docs/alerting/latest/configuration/)。
 
-**与镜像版本对齐的基准（v0.31.1）**：上游把通用片段放在 [default.tmpl](https://github.com/prometheus/alertmanager/blob/v0.31.1/template/default.tmpl)，把默认邮件版式放在 [email.tmpl](https://github.com/prometheus/alertmanager/blob/v0.31.1/template/email.tmpl)。**重要**：官方二进制在加载你配置的 `templates` glob **之前**，会先从镜像内**嵌入资源**解析这两份文件（见上游 `template/template.go` 的 `FromGlobs`）。因此**生产上最常见、也最稳**的做法是：只在挂载目录里追加 **`company.tmpl`（仅含你们自定义的 `define` 名）**，在 `email_configs` 里显式引用。**不要**再将同版本的 `default.tmpl` / `email.tmpl` 整文件拷进 ConfigMap 让 glob 再解析一遍，否则与内嵌模板**同名 `define` 重复定义**，进程往往在启动或加载阶段直接失败。若确实要整体改写默认邮件 HTML，应走**自制镜像替换嵌入资源**或长期跟上游合并策略，本文不展开。
+#### T4.11.3.1、示例邮件（结构示意）
 
-仓库里仍可保留上游两份文件的**只读副本**（升级前 diff、评审引用名是否变化），与 Alertmanager **同号 tag** 管理；示意见下（**入 Git，不要求原样打进 Kubernetes**）：
+下面是一封告警邮件的结构示意（正文为 HTML，下图用文字缩进表示层次）：
 
-```bash
-# 与 T4.11.1 镜像 prom/alertmanager:v0.31.1 对齐；用于版本对照与 Code Review，勿误挂入 ConfigMap 重复解析
-curl -fsSL -o default.tmpl "https://raw.githubusercontent.com/prometheus/alertmanager/v0.31.1/template/default.tmpl"
-curl -fsSL -o email.tmpl "https://raw.githubusercontent.com/prometheus/alertmanager/v0.31.1/template/email.tmpl"
+```text
+主题: [prod] [WARNING] NodeMemoryHigh
+
+正文:
+  值班: https://oncall.example.com
+  节点 10.0.1.5:9100 内存压力高
+  可用内存占比已低于阈值。
+  处置说明: https://wiki.example.com/runbooks/node-memory
+  内部信息，勿外传
 ```
 
-**语法与数据结构**：Go `text/template`；通知上下文字段见官方 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/) 与 [notification_examples](https://prometheus.io/docs/alerting/latest/notification_examples/)（如 `.CommonLabels`、`.CommonAnnotations`、`.Alerts`、`range` 等）。规则里习惯性加 **`runbook_url`、`dashboard`、环境、集群** 等 `annotation`，模板里统一展示，比在邮件客户端里翻原始标签快得多。
+#### T4.11.3.2、字段与配置项对应关系
 
-**推荐：独立 ConfigMap 挂模板目录（与 T4.11.1 增量衔接）**
+- 主题中的 `[prod]`：对应 Prometheus `prometheus.yml` 中的 `global.external_labels.cluster`。未配置时，主题中不出现该方括号段。
+- 主题中的 `[WARNING]`：对应告警规则中的标签 `severity`。未配置时，主题中不出现级别段。
+- 主题中的 `NodeMemoryHigh`：对应告警规则中的 `alert` 名称（标签 `alertname`）。
+- 若主题末尾带有命名空间，仅当告警标签中存在 `namespace` 时才会生成。**T4.11.2** 中的节点内存示例一般没有该标签，可忽略。
+- 正文中的值班链接、页脚文案：写在 Alertmanager 侧自定义模板（如下文 `company.tmpl`）中，按本单位要求替换地址与表述。
+- 正文中的摘要与详细说明：分别对应告警规则中的 `annotations.summary` 与 `annotations.description`。
+- 正文中的处置链接：对应 `annotations.runbook_url`，通常填写内部运维文档或知识库地址（部分团队称之为 runbook 链接）。
 
-本文 **T4.11.1** 里 `alert-config` 整卷挂在 **`/etc/alertmanager`**，**不要**往同一个 ConfigMap 里硬塞几 KB 的 `.tmpl`；模板迭代频繁、参与人也可能不同，拆开更清晰。做法：
+#### T4.11.3.3、Prometheus：规则与全局标签
 
-1. 新建 ConfigMap（示例名 **`alertmanager-templates`**，`namespace: kube-mon`），`data` 下键名即容器内文件名，例如只放 **`company.tmpl`**（或 `10-company.tmpl` 等多文件；**仅含自定义 `define`**，勿含与内嵌重复的 `email.default.*` / `__subject` 等）。
-2. 在 **T4.11.1** 的 `alertmanager-deploy.yaml` 上**增加第二个 volume**，挂载到 **`/etc/alertmanager/templates`**（与下面 glob 前缀一致），**不要**盖掉原来的 `alertcfg` 挂载点。
+在 **T4.11.2** 已有 `NodeMemoryHigh` 规则上增加 `labels` 与 `annotations`，**不要改动** `expr`：
 
-Deployment 增量示意（保留原有 `alertcfg` 与 `mountPath: /etc/alertmanager` 不动，仅追加）：
+```yaml
+            labels:
+              team: node
+              severity: warning
+            annotations:
+              summary: "节点 {{ $labels.instance }} 内存压力高"
+              description: "可用内存占比已低于阈值。"
+              runbook_url: "https://wiki.example.com/runbooks/node-memory"
+```
+
+若主题中需要集群标识，可在同一 ConfigMap 的 `prometheus.yml` 中设置：
+
+```yaml
+    global:
+      external_labels:
+        cluster: prod
+```
+
+修改 Prometheus 配置后，按 **T4.3.1** 执行 reload，或按你们环境对 Prometheus 做滚动重启。
+
+#### T4.11.3.4、Alertmanager：模板与挂载
+
+镜像 `prom/alertmanager:v0.31.1` 已在二进制内嵌官方 `default.tmpl` 与 `email.tmpl`。**不得**再将这两份文件原样放入 ConfigMap 并与内嵌模板一同加载，否则模板名称重复定义，进程往往无法正常启动。正确做法是：仅新增包含本单位版式的文件（例如 `company.tmpl`），挂载到单独目录（如 `/etc/alertmanager/templates`），并在 `config.yml` 顶层通过 `templates` 引用该目录下的 glob。
+
+（1）保存为 `alertmanager-templates.yaml` 并应用：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-templates
+  namespace: kube-mon
+data:
+  company.tmpl: |
+    {{ define "company.email.subject" }}{{ if .CommonLabels.cluster }}[{{ .CommonLabels.cluster }}] {{ end }}{{ if .CommonLabels.severity }}[{{ .CommonLabels.severity | toUpper }}] {{ end }}{{ .CommonLabels.alertname }}{{ if .CommonLabels.namespace }} / {{ .CommonLabels.namespace }}{{ end }}{{ end }}
+
+    {{ define "company.email.html" }}
+    <p>值班: https://oncall.example.com</p>
+    <p><b>{{ .CommonAnnotations.summary }}</b></p>
+    <p>{{ .CommonAnnotations.description }}</p>
+    {{ if .CommonAnnotations.runbook_url }}<p>处置说明: <a href="{{ .CommonAnnotations.runbook_url }}">{{ .CommonAnnotations.runbook_url }}</a></p>{{ end }}
+    <p style="font-size:12px;color:#666;">内部信息，勿外传</p>
+    {{ end }}
+```
+
+（2）在 `alert-config` 的 `config.yml` 顶层增加（与 `global`、`route` 同一层级）：
+
+```yaml
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+```
+
+（3）在用于发送邮件的 `receiver` 中配置 `email_configs`，使其引用上一文件中的两个模板定义。请与 **T4.11.1** 已有段落**合并**，避免出现两个同名的 receiver。含有双花括号的字符串在 YAML 中建议使用单引号括起：
+
+```yaml
+    email_configs:
+      - to: 'oncall@example.com'
+        send_resolved: true
+        html: '{{ template "company.email.html" . }}'
+        headers:
+          Subject: '{{ template "company.email.subject" . }}'
+```
+
+（4）在 **T4.11.1** 的 Deployment 中，于 `spec.template.spec` 下为同一 `alertmanager` 容器增加模板卷：保留原有的 `alert-config` 挂载（挂载点为 `/etc/alertmanager`），再增加将 `alertmanager-templates` 挂到 `/etc/alertmanager/templates`。下列 YAML 为片段，**并入**原清单即可；若原清单已包含 `args` 或部分 `volumeMounts`，切勿重复书写，只补足缺失项。
 
 ```yaml
       volumes:
@@ -2933,7 +3006,8 @@ Deployment 增量示意（保留原有 `alertcfg` 与 `mountPath: /etc/alertmana
             name: alertmanager-templates
       containers:
         - name: alertmanager
-          # image、args 等同 T4.11.1
+          args:
+            - --config.file=/etc/alertmanager/config.yml
           volumeMounts:
             - mountPath: /etc/alertmanager
               name: alertcfg
@@ -2941,39 +3015,17 @@ Deployment 增量示意（保留原有 `alertcfg` 与 `mountPath: /etc/alertmana
               name: alert-templates
 ```
 
-在 **`alert-config` 的 `config.yml` 顶层**增加（路径与挂载一致；glob 写法见 [configuration](https://prometheus.io/docs/alerting/latest/configuration/)）：
+#### T4.11.3.5、应用与自检
 
-```yaml
-templates:
-  - /etc/alertmanager/templates/*.tmpl
+```bash
+kubectl apply -f alertmanager-templates.yaml
+kubectl apply -f alertmanager-config.yaml
+kubectl apply -f alertmanager-deploy.yaml
+kubectl exec -n kube-mon deploy/alertmanager -- amtool check-config /etc/alertmanager/config.yml
+kubectl rollout restart deployment/alertmanager -n kube-mon
 ```
 
-**在 `email_configs` 里引用自定义模板**：默认等价于使用 `email.default.*`；企业要换成自己的 `define` 名时，显式写 `html` 与 `headers`（标题里仍可用 `template` 调用），例如：
-
-```yaml
-    receivers:
-      - name: email
-        email_configs:
-          - to: 'oncall@example.com'
-            send_resolved: true
-            html: '{{ template "company.email.html" . }}'
-            headers:
-              Subject: '{{ template "company.email.subject" . }}'
-```
-
-`company.tmpl` 中对应（`toUpper` 等为 Alertmanager 内置函数，见上游 `template/template.go` 的 `DefaultFuncs`；无 `severity` 标签时主题行前缀可省略，与 **T4.11.2** 示例对齐时可给规则补上 `labels.severity` 再收紧主题模板）：
-
-```gotemplate
-{{ define "company.email.subject" }}{{ if .CommonLabels.severity }}[{{ .CommonLabels.severity | toUpper }}] {{ end }}{{ .CommonLabels.alertname }}{{ if .CommonLabels.namespace }} / {{ .CommonLabels.namespace }}{{ end }}{{ end }}
-
-{{ define "company.email.html" }}
-<p><b>{{ .CommonAnnotations.summary }}</b></p>
-<p>{{ .CommonAnnotations.description }}</p>
-{{ if .CommonAnnotations.runbook_url }}<p>Runbook: {{ .CommonAnnotations.runbook_url }}</p>{{ end }}
-{{ end }}
-```
-
-**生产自检与生效方式**：合并 `config.yml` 后可在 Pod 内执行 **`amtool check-config /etc/alertmanager/config.yml`**（与 **T4.11.1** 一致）。**默认未加** `--web.enable-lifecycle` 时，改 ConfigMap 后仍要 **`kubectl rollout restart deployment/alertmanager -n kube-mon`**；若已按官方说明为 Alertmanager 打开 lifecycle，才可对 HTTP API 发 **`POST /-/reload`**，与 **T4.11.1** 文末说明统一即可。**SMTP 密码、API 密钥**继续走 Secret / `smtp_auth_password_file`，不要写进模板或 Git。
+SMTP 认证信息仍按 **T4.11.1** 使用 Secret 或 `smtp_auth_password_file`，不得写入模板。升级 Alertmanager 时，可在代码仓库中暂存与当前镜像同版本的上游 `template/default.tmpl` 供比对，**不要**将该文件挂入运行中的 Pod。若未为 Alertmanager 开启 HTTP 生命周期接口，修改 ConfigMap 后须执行上述 `rollout restart` 后改动才会生效。
 
 ### T4.11.4、记录规则（配合 T4.4 / T4.11.2）
 
