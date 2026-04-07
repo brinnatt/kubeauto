@@ -3140,7 +3140,7 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 
 **6、Ruler（可选）**
 
-在 Thanos 这边跑记录规则/告警规则，数据从 Querier 来，链路比「Prometheus 本机算规则」长。默认仍建议：**规则在各 Prometheus 上算，告警走 T4.11**（**T4.12.3** 里已示例用 `alert_relabel_configs` 去掉 `replica`，避免双副本重复告警）。只有确实要跨集群、全局一条规则时再上 Ruler。详见 [Rule](https://thanos.io/tip/components/rule.md/)。
+在 Thanos 这边跑记录规则/告警规则，数据从 Querier 来，链路比「Prometheus 本机算规则」长。默认仍建议：**规则在各 Prometheus 上算，告警走 T4.11**（**T4.12.3** 里已示例用 `alert_relabel_configs` 去掉 `replica`，避免双副本重复告警）。何时改用 Thanos Ruler、代价与对照表见 **T4.12.5**。组件说明见 [Rule](https://thanos.io/tip/components/rule.md/)。
 
 **7、Bucket Web（可选）**
 
@@ -3164,9 +3164,9 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 
 **告警**
 
-- 规则仍在 Prometheus 里算，Alertmanager 仍是 **T4.11** 的 `alertmanager:9093`。
-- 两个副本会各算一遍规则，要靠 `alert_relabel_configs` 去掉 `replica`，Alertmanager 才只收一条。
-- 若再加 Ruler 也往同一个 Alertmanager 推，要自己配好路由和标签，避免重复通知。
+- 规则默认仍在 Prometheus 里算，Alertmanager 仍是 **T4.11** 的 `alertmanager:9093`。
+- 两个副本会各算一遍规则，要靠 `alert_relabel_configs` 去掉 `replica`，Alertmanager 才只收一条（见 **T4.12.1.1** 与 **T4.12.3**）。
+- 是否引入 **Thanos Ruler**、与本地规则如何取舍，见 **T4.12.5**；若 Ruler 与 Prometheus 同推一套 Alertmanager，须用路由与标签防重复。
 
 ### T4.12.1.1、副本标签
 
@@ -3672,37 +3672,108 @@ kubectl get svc -n kube-mon -l app=thanos-querier
 
 ### T4.12.5、告警与 Ruler 怎么选
 
-**默认做法**
+告警规则可以在两处求值：一是**各 Prometheus 进程本地**（读本机 TSDB）；二是 **Thanos Ruler**（通过 **Querier** 发起查询，数据来源是 Querier 背后接入的全部 Store，见 [Rule 组件说明](https://thanos.io/tip/components/rule.md/)）。无论哪种方式，**通知仍由 Alertmanager 发出**，与本篇 **T4.11** 一致。
 
-规则仍在各 Prometheus 副本上算，告警走 **T4.11**。**T4.12.3** 里已示例用 `alert_relabel_configs` 去掉 `replica`，避免两个副本各推一条重复告警。
+本文 **T4.12.3～T4.12.4** 的默认拓扑是：双副本 Prometheus 加 Sidecar，查询走 Querier。**在没有跨集群、没有「必须按全局视图单点求值」这类硬需求时，不要把 Ruler 当成标配**，否则多一套组件、多一条依赖链，运维和排障成本都会上去。
 
-**简单验收**
+#### T4.12.5.1、推荐做法：规则留在 Prometheus
 
-任选一个 Deployment，执行 `kubectl scale deploy/<name> --replicas=0 -n <ns>`，等 **T4.12.3** 里 `DeploymentNoAvailableReplicas` 的 `for` 时间走完，在 Alertmanager 或 **T4.11.2.2** 的钉钉/企微应收到告警；副本调回后应恢复。
+将记录规则与告警规则继续放在各 Prometheus 的 `rule_files`（或等价 CRD）中，由 **`evaluation_interval`** 驱动的本地引擎求值。抓取、存储、规则、告警四件事仍在同一进程周边完成，**路径短、行为与单机 Prometheus 文档一致**，最容易向团队解释和排障。
 
-**插图槽位**：`docs/prometheus/images/t4-12-alert-deployment-down.png`（打码）
+告警送达方式仍按 **T4.11**：在 `prometheus.yml` 的 `alerting` 段配置 Alertmanager 地址；双副本场景下配合下文 **T4.12.5.2** 做标签处理，避免重复通知。
 
-**何时用 Thanos Ruler**
+#### T4.12.5.2、双副本时避免「同一告警两条通知」
 
-只有当你必须用「对着 Querier、跨副本或跨集群的一条规则」时再上。链路是 Ruler → Querier → Sidecar → Prometheus，中间任一环节不稳，告警都会跟着抖。部署时要配：`--query` 指 Querier，`--alertmanagers.url` 指 T4.11，规则和对象存储按 [Ruler](https://thanos.io/tip/components/rule.md/) 与 [Releases](https://github.com/thanos-io/thanos/releases/tag/v0.41.0) 来。
+**T4.12.3** 中两个 Prometheus 副本抓取同一批目标，且各自带 `external_labels.replica` 区分副本。若不在告警出口做处理，两条告警仅在 `replica` 上不同，Alertmanager 会当作两条独立告警，**用户可能收到两封内容几乎相同的邮件或两条 IM**。
+
+对策是在 **Prometheus** 侧对发往 Alertmanager 的告警做**标签丢弃**（**T4.12.3** 示例片段如下，与全文 `prometheus.yaml.tmpl` 一致）：
+
+```yaml
+    alerting:
+      alert_relabel_configs:
+        - regex: replica
+          action: labeldrop
+      alertmanagers:
+        - scheme: http
+          path_prefix: /
+          static_configs:
+            - targets: ['alertmanager:9093']
+```
+
+含义：`replica` 标签在进入 Alertmanager 之前被去掉，两条告警在分组与去重语义上可视为同一条。该键名须与 **T4.12.1.1**、Querier 的 **`--query.replica-label`** 所指的「副本维度」一致（本文均为 `replica`）。
+
+**不要**在已有双副本 Prometheus 规则的前提下，再随便加一个 Ruler 向**同一套** Alertmanager 推同一批业务告警而不做路由区分，否则仍可能出现重复或规则打架，需要额外的 `match` 与团队约定。
+
+#### T4.12.5.3、何时再考虑 Thanos Ruler
+
+在以下一类或多类需求**确实成立**，且团队愿意承担 **T4.12.5.4** 中的代价时，再引入 Thanos Ruler 才有明确收益：
+
+1. **跨集群或跨多套 Prometheus 的全局规则**：一条 PromQL 必须在「Querier 能看到的全部集群／全部副本合并后的视图」上求值，而**无法**拆成每个集群各自一条本地规则再加外部汇总。
+2. **长期存储数据参与告警**：规则必须依赖**仅存在于对象存储**、已超出各 Prometheus 本地保留窗口的序列，且通过 Querier 对 Store Gateway 等在查询侧已是常态路径。
+3. **与查询入口强绑定的一致性**：希望告警与大盘使用**同一 Querier 查询语义**（含去重、partial response 策略等），并接受由此带来的可用性假设。
+
+若只是「双副本去重」「避免重复通知」，用 **T4.12.5.2** 即可，**不等于**要上 Ruler。
+
+#### T4.12.5.4、使用 Ruler 时的依赖与风险
+
+- **数据路径**：Ruler 周期性向 Querier 执行规则中的查询；Querier 再向 Sidecar、Store Gateway 等 Store API 拉数。Querier 不可用、Store 大面积超时、网络策略误伤 gRPC，都会直接表现为**规则延迟、漏判或抖动**，与「本机 TSDB 算规则」相比，故障面更大。
+- **配置面**：除 Querier 地址外，仍需配置 **`--alertmanagers.url`**（对齐 **T4.11**）、规则文件或对象存储、以及对 Ruler 自身的高可用与资源；具体参数与版本差异以当前 Thanos [Rule 文档](https://thanos.io/tip/components/rule.md/) 与 [Releases](https://github.com/thanos-io/thanos/releases/tag/v0.41.0) 为准。
+- **运维原则**：Ruler 与 Prometheus 上**不要**对同一批指标维护两套完全重复且无人处理冲突的告警规则；若必须并存，应用标签与 Alertmanager `route` 明确分流。
+
+#### T4.12.5.5、选择对照（便于评审）
+
+| 维度 | 规则在 Prometheus（推荐默认） | Thanos Ruler |
+|------|-------------------------------|--------------|
+| 数据从哪读 | 本机 TSDB | 经 Querier 聚合后的查询结果 |
+| 典型适用 | 单集群内抓取与告警、双副本 HA | 全局视图、跨集群、强依赖历史桶数据 |
+| 与 **T4.12.3** 关系 | 配合 `alert_relabel_configs` 去 `replica` | 另起组件，须单独设计标签与路由 |
+| 链路复杂度 | 低 | 高（依赖 Querier 与 Store 健康） |
+
+#### T4.12.5.6、验收思路（与 **T4.12.3** 示例规则一致）
+
+任选集群内一个 Deployment，执行 `kubectl scale deploy/<name> --replicas=0 -n <ns>`，待 **T4.12.3** 中 `DeploymentNoAvailableReplicas` 的 `for` 时间走完后，在 Alertmanager 或 **T4.11.2.2** 配置的钉钉、企业微信等渠道应收到告警；将副本数恢复后告警应消除。该验收验证的是「**Prometheus 本地规则 + T4.11 通知**」整条链路，与是否部署 Ruler 无关。
 
 ### T4.12.6、对象存储与 Store Gateway
 
-**Sidecar 和 Store 分工**
+**T4.12.3** 里 Prometheus 只在本地盘保留一段时间（示例为 6h），过期后本机会删除对应 TSDB 数据。**对象存储**承接已由 **Sidecar** 上传的 **封闭 TSDB 块**（块时长与 **T4.12.3** 中 `min-block-duration` / `max-block-duration` 一致，示例为 2h），用于长期保存指标，供查历史曲线或做全局视图。**本节**在概念上理清「谁写桶、谁读桶、Querier 如何拼结果」，随后在练习环境部署 **MinIO**，再为 **Store Gateway** 与 **Sidecar** 挂载**同桶**的 `thanos.yaml` Secret，使 **T4.12.4** Querier 的 **Endpoints**（`/stores`）中**同时**出现各副本 **Sidecar** 与 **Store Gateway**。**T4.12.7** Compactor 也使用同一 Secret 读写同一桶，部署细节见该节。
 
-- Sidecar：只上传「本机已经封闭」的块。
-- Store Gateway：只从桶里读块，交给 Querier。
-- 二者共用同一个 Secret 里的 `thanos.yaml`，但干的活不一样：没有 Store，只能查 Prometheus 本地还保留的那段时间；没有 Sidecar 上传，桶里不会有新数据。
+#### T4.12.6.1、桶、Sidecar、Store Gateway 与 Querier 的关系
 
-**生产环境**
+抓取与短期保留仍在 **Prometheus 本机 TSDB** 完成。块一旦封闭，**Sidecar** 按对象存储配置把块**上传**到桶；它还对 **Querier** 提供 **Store API**（一般为 **10901**），数据来源是**本 Pod 内 Prometheus 仍能访问的 TSDB**，**不**在每次查询时把整个桶扫一遍。**Store Gateway** 同样提供 Store API，但在查询路径上**从桶内拉取**已上传而本机可能已删掉的块，是**只读历史**的组件。
 
-优先云厂商 S3 兼容（OSS、COS、S3 等），endpoint、区域、TLS、加密按云文档来；密钥用 Secret 或云上的工作负载身份，不要把 `access_key` 写进 Git。存储类型与字段见 [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线后看：Querier **Endpoints**（`/stores`）是否出现 Store Gateway、桶里对象是否在涨、Sidecar 是否还在报上传错。
+```mermaid
+flowchart LR
+  subgraph local["每个 Prometheus Pod"]
+    P[Prometheus TSDB]
+    SC[Sidecar]
+    P --- SC
+  end
+  B[(S3 兼容桶)]
+  SG[Store Gateway]
+  Q[Querier]
+  SC -->|上传封闭块| B
+  SG -->|查询时读对象| B
+  Q -->|gRPC Store API| SC
+  Q -->|gRPC Store API| SG
+```
 
-**练习环境**
+**T4.12.3** 与本文 **Store Gateway** 的 Pod 都带标签 **`thanos-store-api: "true"`**，由同一 Headless（名称与 **T4.12.3** `discovery.yaml` 中 `thanos-store-apis` 一致）向 **T4.12.4** Querier 的 `--endpoint=dnssrv+_grpc._tcp...` 提供 SRV 记录；因此 Querier 会把查询**扇出**到所有 Sidecar 与所有 Store Gateway，再在协议层合并。
 
-下面用 MinIO 演示。若 MinIO 策略有变，可换 [RustFS](https://rustfs.com/) 等 S3 兼容产品，Thanos 仍按 S3 填 endpoint 和密钥。镜像 tag 见文首约定表，安全更新见 [MinIO Releases](https://github.com/minio/minio/releases/latest)。
+| 组件 | 是否向桶上传块 | 查询时是否读桶 | 对 Querier 的角色 |
+|------|----------------|----------------|-------------------|
+| Sidecar | 是 | 否 | 本机近期 TSDB + 上传元数据 |
+| Store Gateway | 否 | 是 | 桶中长期历史 |
+| Querier | 否 | 否 | 汇聚各 Store 的查询结果 |
 
-#### T4.12.6.1、MinIO（练习用，独立 namespace）
+**缺少 Store Gateway** 时：超出各 Prometheus **本地 retention**、但已经进桶的数据，**无法**通过 Querier 查到（除非仍在别处的本地盘上）。**缺少 Sidecar 上传**（未配 `--objstore` 或权限错误）时：桶内没有新块，Store Gateway 只能看到旧数据或空桶。
+
+**Sidecar 与 Store Gateway 共用同一 Secret**（同一 `thanos.yaml`）：二者访问**同一个 bucket**，一个负责**写**，一个负责**读**，配置内容须一致，否则会出现一侧上传成功、另一侧读不到对象或访问拒绝的问题。
+
+生产环境优先使用云厂商 **S3 兼容**存储（OSS、COS、Amazon S3 等），`endpoint`、区域、TLS、服务端加密、IAM 权限按厂商文档；凭证放在 Kubernetes **Secret** 或工作负载身份中，**禁止**将 `access_key`、`secret_key` 提交到 Git。键名与后端类型见 Thanos [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线自检建议：Querier **Endpoints** 中 Store Gateway 为 **Up**；桶内对象体量随时间增加；Sidecar 日志中 shipper **无持续上传失败**。
+
+练习环境以下文 **MinIO** 自建桶为例。若 MinIO 策略有变，可换 [RustFS](https://rustfs.com/) 等 S3 兼容实现，Thanos 侧仍按 S3 填写 `endpoint` 与密钥。镜像与安全更新见文首约定表与 [MinIO Releases](https://github.com/minio/minio/releases/latest)。
+
+#### T4.12.6.2、MinIO（练习用，独立 namespace）
 
 资源都放在命名空间 `minio`。生产请把 root 账号口令改成 Secret；示例里明文只为跟练方便。
 
@@ -3809,7 +3880,9 @@ kubectl apply -f minio-svc.yaml
 
 **插图槽位**：`docs/prometheus/images/t4-12-minio-bucket.png`
 
-#### T4.12.6.2、Thanos 连接 MinIO 与 Store Gateway
+#### T4.12.6.3、Thanos 连接 MinIO 与 Store Gateway
+
+操作顺序建议如下，避免 Querier 已发现 Store 却读不到桶。**①** 将桶连接信息写入 `thanos.yaml`，在 **`kube-mon`** 创建 Secret **`thanos-objectstorage`**（与 **T4.12.3** Prometheus 在同一命名空间，便于 Sidecar 挂载）。**②** 部署 **Store Gateway** 的 Headless 与 StatefulSet：模板中已带 **`thanos-store-api: "true"`**，与 **T4.12.3** 里带 Sidecar 的 Prometheus Pod **共享**同一套 SRV 发现名。**③** 在 **T4.12.3** Prometheus StatefulSet 的 **Sidecar** 上挂载该 Secret，并增加 **`--objstore.config-file`**（示例见本小节末）。**④** 回到 **T4.12.4** Querier 的 **Endpoints**，应比原先多出 **Store Gateway** 端点；若长期缺失，先查 `thanos-store-apis` Endpoints、Pod 就绪与网络策略。
 
 `thanos-storage-minio.yaml`：MinIO 在命名空间 `minio` 时，endpoint 如下（若你改了名字或端口，这里要一起改）：
 
@@ -3915,7 +3988,9 @@ kubectl apply -f store.yaml
 kubectl get pods -n kube-mon -l thanos-store-api=true
 ```
 
-Querier 的 **Endpoints**（`/stores`）应多出 Store Gateway。数据写入仍靠各 Prometheus Pod 里的 Sidecar：给 sidecar 容器挂上同样的 Secret，并追加下面参数（生产建议 Secret 只读挂载）：
+此时 **T4.12.4** Querier 的 **Endpoints**（`/stores`）列表中应出现 Store Gateway 对应的 gRPC 端点（与两个 Sidecar 并列，具体 IP 以集群为准）。
+
+数据**写入**桶仍由各 Prometheus Pod 内的 **Sidecar** 完成：为 **thanos** 容器挂载**同一** Secret，并追加 `--objstore.config-file`（生产建议 Secret **只读**挂载）：
 
 ```yaml
 # 合并进 StatefulSet prometheus 的 thanos 容器：volumes / volumeMounts / args 追加
