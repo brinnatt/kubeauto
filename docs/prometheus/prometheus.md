@@ -3092,7 +3092,7 @@ Thanos 把数据长期放进对象存储，常见有两种路子：
 1. **Sidecar**：Prometheus 先在本地盘里生成 TSDB 块，Sidecar 负责把块上传到桶。  
 2. **Receiver**：Prometheus 用 `remote_write` 把样本推到 Receiver，Receiver 落盘后再上传桶。
 
-两种都能存历史，但原理不一样。本文 **T4.12.3～T4.12.7** 只讲第一种（Sidecar + 桶）；第二种写在 **T4.12.8**。
+两种都能存历史，但**架构不同**。本文 **T4.12.3～T4.12.7** 详写第一种（Sidecar + 块上传对象存储）；第二种是 **Receiver + `remote_write` + 桶**，**可独立按节走完的生产步骤**见 **T4.12.8**，与第一种在「同批业务指标」上**二选一**，勿双写进同一逻辑桶。
 
 若两条路同时打开，同一条指标可能被写进桶里两份，费钱还容易查乱；除非你们事先写清楚谁写哪些指标，否则不要两条一起上。
 
@@ -3134,9 +3134,9 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 
 对**同一个桶**做合并块、降采样、执行保留策略。官方要求：**同一个桶不要并行跑多个 Compactor**，否则可能把数据弄坏。Kubernetes 里保持 `replicas: 1`，并确认没有另一套环境误连同一个桶。部署顺序、自检与排错见 **T4.12.7**。详见 [Compact](https://thanos.io/tip/components/compact.md/)。
 
-**5、Receiver（remote_write，可选）**
+**5、Receiver（remote_write 架构）**
 
-接 Prometheus 的 remote_write，本地落盘，可选再上传桶，也提供 Store API。适合已经和 remote write 体系绑定的团队；要高可用、磁盘和 hashring 设计，见 **T4.12.8** 与 [Receive](https://thanos.io/tip/components/receive.md/)。和 Sidecar 重复写同一批业务指标前，必须有明确分工，默认不要混用。
+与 **Sidecar** 是**两条不同的长期入桶路径**，生产上通常**按集群/业务选定其一**负责「同批业务指标」入桶，详见文首「长期数据怎么进桶」与 **T4.12.8.1**。组件说明、hashring、多副本与租户见 **T4.12.8** 与官方 [Receive](https://thanos.io/tip/components/receive.md/)。
 
 **6、Ruler（可选）**
 
@@ -4068,6 +4068,7 @@ apply 后等至少一个 2h 块上传，或看 sidecar 日志里 shipper 成功�
 | 组件 | 对桶的读写 | 与查询的关系 |
 |------|------------|----------------|
 | **Sidecar**（**T4.12.3**） | 上传封闭块 | 经 Store API 提供本机近期数据 |
+| **Receiver**（**T4.12.8**） | 上传由其 TSDB 产出的块 | 经 Store API 提供 Receiver 本地近期数据 |
 | **Store Gateway**（**T4.12.6**） | 读对象 | 经 Store API 提供桶内历史数据 |
 | **Compactor**（本节） | **读并回写**（整理、可能删对象） | **不参与** Querier 扇出；整理后的块仍由 **Store** 暴露 |
 
@@ -4172,7 +4173,7 @@ kubectl logs -n kube-mon -l app=thanos-compactor --tail=100
 3. **桶里占多少空间**：在已为 Compactor 配好**保留、降采样**的前提下，运行一段时间后，对象个数或总大小**不应一直线性猛涨**；若**从来不跑 Compactor、只靠 Sidecar 往里堆块**，桶往往会越堆越大，可作为参照。
 4. **查历史曲线是否好查**：跨度很大的查询是否还容易超时、Store 和 Querier 是否长期打满，只能结合你们**自己的业务量**判断，单靠这一条难以下结论。
 
-**和 Sidecar、Store 的关系**：新数据仍然是 **Sidecar 上传**，**Store** 从桶里读出来给 **Querier**；**短时间关掉 Compactor**，一般**仍能**查到新传上去的块。但若**长期不做合并与按策略清理**，桶会越来越臃肿，费用和查询压力也容易变差，所以**从长期运维和成本上**，仍应让 Compactor **稳定跑起来**。
+**与 Store 组件的关系**：在 **Sidecar** 路径下，新块由 **Sidecar 上传**；在 **Receiver** 路径（**T4.12.8**）下，新块由 **Receiver 上传**。**Store Gateway** 仍从**同一桶**里读对象给 **Querier**。**短时间关掉 Compactor**，一般**仍能**查到新写进桶的块。但若**长期不做合并与按策略清理**，桶会越来越臃肿，费用和查询压力也容易变差，所以**从长期运维和成本上**，仍应让 Compactor **稳定跑起来**。
 
 #### T4.12.7.5、排错提要
 
@@ -4181,42 +4182,95 @@ kubectl logs -n kube-mon -l app=thanos-compactor --tail=100
 - **权限错误**：核对 Secret、桶 **IAM/策略**、endpoint 是否与 **T4.12.6** 完全一致。
 - **长期无进展**：查日志是否等待分布式锁、网络超时；排除多 Compactor、多环境误连同桶。
 
-到本节为止：**双副本 Prometheus + Sidecar**、**Querier**、**对象存储**、**Store Gateway**、**Compactor** 形成常见入门闭环。其它组件（如 **T4.12.8** Receiver、**T4.12.5** Ruler）见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
+到本节为止：若走 **Sidecar** 路径，**双副本 Prometheus + Sidecar**、**Querier**、**对象存储**、**Store Gateway**、**Compactor** 形成常见入门闭环。若改走 **Receiver** 路径，按 **T4.12.8** 部署 **Receiver** 与 **`remote_write`**，并**去掉** Prometheus 侧 **Sidecar 的 `--objstore`**（或不用 Sidecar），仍复用本节 **Compactor** 与 **T4.12.6** 的同一桶。**T4.12.5** Ruler 等其它组件见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
 
-### T4.12.8、Receiver（remote_write，可选）
+### T4.12.8、Receiver（remote_write 架构，与 Sidecar 二选一入桶）
 
-Sidecar 是「块上传」；Receiver 是「Prometheus 用 remote_write 把数据推过来」。Receiver 适合采集和查询要拆开的架构，但要单独运维磁盘、高可用和 hashring。建议先把上文 Sidecar 链路跑稳，再考虑本节。
+本节给出**不依赖 Sidecar 上传块**、仅靠 **`remote_write` → Receiver → 对象存储**时，可与 **T4.12.4**（Querier）、**T4.12.6**（桶与 Store）、**T4.12.7**（Compactor）拼成**可上线**的一条链路。镜像 **`thanosio/thanos:v0.41.0`**，命名空间 **`kube-mon`**，对象存储 Secret **`thanos-objectstorage`**（**T4.12.6**）与全文约定一致。组件行为与多租户、扩副本、复制因子以官方 [Receive](https://thanos.io/tip/components/receive.md/) 与 [Releases](https://github.com/thanos-io/thanos/releases) 为准。
+
+#### T4.12.8.1、Sidecar 架构与 Receiver 架构：数据怎么走、你能不能混用
+
+| 维度 | **Sidecar 路径**（**T4.12.3～T4.12.7**） | **Receiver 路径**（本节） |
+|------|------------------------------------------|---------------------------|
+| 长期数据进桶 | Prometheus **本机 TSDB 封闭块**，由 **Sidecar** 上传 | Prometheus **`remote_write`** 推到 **Receiver**，Receiver 落盘后**再**上传 |
+| Prometheus 与 Thanos | 常与 **Sidecar 同 Pod**，共用一块数据盘 | **不要求**同 Pod；采集端只须能访问 **Receiver 的 HTTP** |
+| Querier 看到的「近期」 | 主要来自各 **Sidecar** 暴露的本机 Store | 主要来自 **Receiver** 的 Store API（本地 TSDB），历史仍靠 **Store Gateway 读桶** |
+| 典型取舍 | 与原生 Prometheus 运维模型近、块级一致性强 | 适合「采集分散、写入集中」、已标准化 **remote_write**、或与多租户 **hashring** 绑定的团队 |
 
 ```mermaid
 flowchart LR
-  P[Prometheus] -->|remote_write| R[Receiver]
-  R --> B[(对象存储)]
-  Q[Querier] --> R
-  Q --> B
+  subgraph sidecar_path["Sidecar 架构（T4.12.3）"]
+    PS[Prometheus TSDB]
+    SC[Sidecar]
+    PS --> SC
+    SC --> BS[(对象存储)]
+  end
+  subgraph recv_path["Receiver 架构（本节）"]
+    PR[Prometheus 抓取]
+    RW[remote_write HTTP]
+    REC[Receiver TSDB]
+    PR --> RW --> REC
+    REC --> BR[(对象存储)]
+  end
+  Q[Querier]
+  Q --> SC
+  Q --> REC
+  SG[Store Gateway]
+  SG --> BS
+  SG --> BR
+  Q --> SG
 ```
 
-多副本时要配 hashring，下面 `endpoints` 必须是带 `http://` 的完整地址。软租户、硬租户和 HTTP 头 `THANOS-TENANT` 见 [Receiver](https://thanos.io/tip/components/receive.md/)。
+**禁则（文首已写，此处再强调）**：**同一批业务时间序列**，**不要**既让 **Sidecar（`--objstore`）** 上传、又让 **Receiver** 写入**同一逻辑桶**里同一套可重复查询的副本，除非你们有明确的分工（例如不同 `external_labels`、不同指标前缀、不同桶），否则桶内会出现**重复或不一致**，费用与查询结果都难排查。**默认**：选定**一条**长期入桶路径。
 
-```json
-[
-  {
-    "hashring": "tenant-a",
-    "endpoints": [
-      "http://tenant-a-1.metrics.local:19291/api/v1/receive",
-      "http://tenant-a-2.metrics.local:19291/api/v1/receive"
-    ],
-    "tenants": ["tenant-a"]
-  },
-  {
-    "hashring": "soft-default",
-    "endpoints": ["http://thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive"]
-  }
-]
+#### T4.12.8.2、企业生产选 Receiver 时先要定的几件事
+
+1. **容量**：Receiver 的 **`--tsdb.path`** 落在 **PVC** 上；**`--tsdb.retention`** 只控制 Receiver **本地**保留（示例 `1d` 偏练习），生产按「拉闸后仍能缓冲多久 **`remote_write` 故障**」评估，并结合对象存储上传延迟调大磁盘与 retention。
+2. **高可用**：单副本示例如下，**复制因子大于 1** 时须**多套 Receiver**、**hashring** 与官方 **HA** 说明一起设计（**不要**只把 `replicas: 3` 而仍用 `replication-factor=1`）。
+3. **hashring**：Receiver 依赖 **hashring 配置文件**（本文用 ConfigMap 挂载）；**增删副本、改 Service DNS** 时必须同步改 **JSON** 与各 Pod **`--receive.local-endpoint`**、**`--label`**，见 **T4.12.8.6**。
+4. **与 T4.12.4 衔接**：Receiver Pod 已打 **`thanos-store-api: "true"`**，与 **Sidecar / Store Gateway** 一样被 **`thanos-store-apis`** Headless 发现；**不要**漏装 **T4.12.3** `discovery.yaml`，除非你们改用静态 **`--endpoint`** 逐一列出 Store。
+5. **告警**：规则仍可只在 Prometheus 上算（**T4.11**）；Receiver 不负责告警路由。
+
+#### T4.12.8.3、两条可上线的 Prometheus 侧形态（选其一）
+
+- **路径甲（与存量 T4.12.3 衔接，改动小）**  
+  保留 **Prometheus + Sidecar** 双容器：**删掉** Sidecar 的 **`--objstore.config-file`** 及对 **`object-storage-config`** 的挂载，**长期入桶只走 Receiver**；Sidecar 仍可做 **reloader** 与（可选）本机 **Store API** 供 Querier 查「本机盘上」近期。注意：Querier 可能同时看到 **本机 Sidecar** 与 **Receiver** 上**重叠时间窗**的序列，**`external_labels`、去重、租户头**须与团队约定及 [Receive 文档](https://thanos.io/tip/components/receive.md/) 一致，避免「同metric两条线」误判。
+
+- **路径乙（采集端不跑 Thanos，适合全新装）**  
+  Prometheus **单容器**（或你们自研的配置渲染）：配置 **`remote_write`** 指向 Receiver；**必须**打开 **`--web.enable-lifecycle`**（或等价热加载），便于 **T4.3.1** 式 reload；**无** Sidecar 时，Querier **近期数据完全依赖 Receiver**，Receiver **宕机或塞满盘**会直接影响「最近几小时能不能查清」。
+
+下文清单以 **路径甲** 的 **Receiver + 桶 + Querier** 为主；**路径乙** 仅替换 Prometheus **Deployment/StatefulSet** 形态与是否含 Sidecar，**Receiver、Store、Compactor、Querier** 不重造。
+
+#### T4.12.8.4、部署顺序（建议严格按序 apply）
+
+1. **T4.12.6**：对象存储 Secret **`thanos-objectstorage`**、**Store Gateway**、（可选）**MinIO**；**Compactor**（**T4.12.7**）与 Sidecar **共用**桶时同样依赖此 Secret。  
+2. **T4.12.3** `discovery.yaml`：**`thanos-store-apis`** Headless，否则 **T4.12.4** Querier 的 **`dnssrv+_grpc._tcp.thanos-store-apis...`** 无法发现 Receiver。  
+3. 本节 **`thanos-receive-hashring.yaml`** → **`receiver.yaml`**。  
+4. **T4.12.4** Querier：已有则 reload/重启，确认 **Endpoints** 出现 **Receiver** gRPC。  
+5. **Prometheus**：在 **`prometheus.yaml.tmpl`**（或你们实际生效的配置）加入 **`remote_write`**（**T4.12.8.5**）；若走**路径甲**，按上节去掉 Sidecar **`--objstore`**。reload / 滚动 Pod。  
+6. **自检**（**T4.12.8.7**）。
+
+**`thanos-receive-hashring.yaml`**（**单副本**；`endpoints` 必须是带 **`http://`** 的 **`/api/v1/receive`** URL；**扩副本时为每一段 Endpoint 增一项并配复制因子**，见官方文档）：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thanos-receive-hashring
+  namespace: kube-mon
+data:
+  hashring.json: |
+    [
+      {
+        "hashring": "default",
+        "endpoints": [
+          "http://thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive"
+        ]
+      }
+    ]
 ```
 
-单副本示例与 **T4.12.6** 共用 Secret `thanos-objectstorage`。注意：Kubernetes 不会把环境变量展开进容器 `args`，所以 `--label` 和 `--receive.local-endpoint` 里写死了 `thanos-receiver-0` 的 DNS；以后要扩副本，必须改 hashring 和这些参数。
-
-`receiver.yaml`：
+**`receiver.yaml`**（`storageClassName` 换成你们集群真实类；生产请补 **`resources`**；**`--receive.local-endpoint`** 为本 Pod **gRPC**：`**Pod 名**.`thanos-receiver`.`namespace`.svc.cluster.local:10901`）：
 
 ```yaml
 apiVersion: apps/v1
@@ -4248,6 +4302,7 @@ spec:
             - --http-address=0.0.0.0:10902
             - --remote-write.address=0.0.0.0:19291
             - --receive.replication-factor=1
+            - --receive.hashrings-file=/etc/thanos/hashring.json
             - --objstore.config-file=/etc/secret/thanos.yaml
             - --tsdb.path=/var/thanos/receiver
             - --tsdb.retention=1d
@@ -4276,10 +4331,16 @@ spec:
             - name: object-storage-config
               mountPath: /etc/secret
               readOnly: true
+            - name: thanos-receive-hashring
+              mountPath: /etc/thanos
+              readOnly: true
       volumes:
         - name: object-storage-config
           secret:
             secretName: thanos-objectstorage
+        - name: thanos-receive-hashring
+          configMap:
+            name: thanos-receive-hashring
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -4312,19 +4373,45 @@ spec:
 ```
 
 ```bash
+kubectl apply -f thanos-receive-hashring.yaml
 kubectl apply -f receiver.yaml
+kubectl rollout status statefulset/thanos-receiver -n kube-mon
+kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 ```
 
-Remote write 地址示例：`http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive`。在 **T4.12.3** 的 `prometheus.yaml.tmpl` 里增加（`scrape_configs` 仍须完整粘贴 T4.4～T4.8，不要省略号）：
+**`remote_write` 写入地址**（与 Service 短名一致）：**`http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive`**。Kubernetes **不会**在 **`args`** 里展开环境变量；**Prometheus** 若与 Receiver **同命名空间**，可简写 **`http://thanos-receiver:19291/api/v1/receive`**。
+
+#### T4.12.8.5、Prometheus `prometheus.yaml.tmpl` 须增加的内容
+
+在 **`global` / `scrape_configs` / `rule_files` / `alerting`** 等**原有结构保持不变**的前提下（**`scrape_configs` 仍须完整粘贴 T4.4～T4.8**，勿用省略号），**与 `alerting` 同级**增加 **`remote_write`**，例如：
 
 ```yaml
     remote_write:
       - url: http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive
+        queue_config:
+          capacity: 10000
+          max_shards: 50
+          min_shards: 1
+          max_samples_per_send: 2000
+          batch_send_deadline: 5s
 ```
 
-Prometheus 仍可带 Sidecar，但只当 reloader 用（同 T4.12.3，去掉 `--objstore`），或换成你们自己的配置渲染方式。没设计好之前，不要让 Sidecar 和 Receiver 往桶里重复写同一批指标。
+**`queue_config`** 仅为示例，生产按样本量、链路延迟调优；官方语义见 Prometheus [remote_write](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)。**路径甲**须同时**移除** Sidecar **`--objstore.config-file`** 及 **Secret 挂载**，避免与 Receiver **双写同桶**。
 
-**验收**：Querier **Endpoints**（`/stores`）里出现 Receiver；Graph 能查到近期数据；过一段时间后桶里能看到 Receiver 上传的块。
+#### T4.12.8.6、扩副本或改 DNS 时必须同步修改的项
+
+- **ConfigMap `hashring.json`** 里 **`endpoints`**：每条须为 **`http://<receive-pod>.<headless-svc>.<ns>.svc.cluster.local:19291/api/v1/receive`**。  
+- **每个 Receiver Pod** 的 **`--receive.local-endpoint`**（**gRPC `10901`**）、**`--label=receive_replica=...`**（与 Pod 身份一致，便于 Querier 去重）。  
+- **`--receive.replication-factor`**：与副本拓扑、官方 HA 指引一致。  
+**软租户 / 硬租户**、HTTP 头 **`THANOS-TENANT`** 见 [Receive](https://thanos.io/tip/components/receive.md/)。**不要用本文单副本示例直接在生产放大成三副本而不改 hashring。**
+
+#### T4.12.8.7、自检与排错
+
+1. **Querier**（**T4.12.4**）**Endpoints**（`/stores`）：应出现 **Receiver** 的 **Store API**（gRPC），与 **Store Gateway**、（若仍存在）**Sidecar** 并列。  
+2. **Prometheus**：**Status → Targets** 正常；无 **remote_write** 持续失败（Prometheus 日志或 UI）。  
+3. **Receiver 日志**：无长期对象存储 **403/5xx**；**PVC** 使用率未打满。  
+4. **桶**（**T4.12.6**）：运行一段时间后出现 **Receiver** 上传的块（与 **Sidecar** 上传对象在命名上可能不同，以厂商控制台为准）。  
+5. **常见问题**：**hashring 与 `local-endpoint` 不一致**（最常见）、**Secret 键名不是 `thanos.yaml`**（见 **T4.12.6**）、**未先建 `thanos-store-apis`** 导致 Querier 看不到 Receiver、**Sidecar 仍开着 `--objstore`** 导致双写。
 
 **插图槽位**
 
