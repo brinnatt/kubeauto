@@ -847,7 +847,7 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 - **relabel_configs**：在真正发起抓取前，对 target 的标签做改写。这里**标签**指 key-value 对：每个 target 有一组「标签名(key)=标签值(value)」。
   - **source_labels 和 regex 的关系（容易混）**：`source_labels` 里写的是**标签名（key）**，不是 key:value。Prometheus 会取出这些 key 在当前 target 上对应的 **value**，按顺序用分隔符（默认 `;`）拼成一个字符串；**regex 匹配的是这个「拼接后的 value 字符串」**，不是 key。例如 `source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]`、`regex: "true"` 表示：取名为 `__meta_kubernetes_service_annotation_prometheus_io_scrape` 的标签的**值**（例如 `"true"`），若该值匹配正则 `"true"` 则执行后续动作（如 keep 保留该 target）。
   - **action: replace**：用上述「source_labels 的 value 拼接串」去匹配 `regex`，用 `replacement` 里的 `$1`、`${1}` 等引用捕获组，把结果写入 `target_label`。上面把 `__address__` 从 `(.*):10250` 改成 `${1}:9100`，就是把“抓取地址”从 kubelet 的 10250 改成 node-exporter 的 9100。
-  - **action: labelmap**：这里 regex 作用对象不同——**匹配的是「标签名(key)」**，把匹配到的标签整对复制，新标签名由 `replacement` 决定。例如 `regex: __meta_kubernetes_node_label_(.+)` 匹配的是**现有标签的名字**（如 `__meta_kubernetes_node_label_zone`），复制后新名字为 `zone`。
+  - **action: labelmap**：这里 regex 作用对象不同：**匹配的是「标签名(key)」**，把匹配到的标签整对复制，新标签名由 `replacement` 决定。例如 `regex: __meta_kubernetes_node_label_(.+)` 匹配的是**现有标签的名字**（如 `__meta_kubernetes_node_label_zone`），复制后新名字为 `zone`。
 - **为何 10250 改成 9100**：`role: node` 时，服务发现默认把每个节点的 `__address__` 设成该节点的 kubelet 地址（`<节点IP>:10250`）。我们要抓的是 **node-exporter**（监听 9100），所以用一条 replace 规则把端口改成 9100；这样 `kubernetes-nodes` 这个 job 抓的就是各节点上的 node-exporter，而不是 kubelet。
 - **kubernetes-kubelet 的 scheme / tls / bearer_token**：kubelet 的 metrics 只暴露在 **HTTPS 10250** 上，因此需要 `scheme: https`。`ca_file` 和 `bearer_token_file` 使用 Pod 内挂载的 ServiceAccount 的 CA 与 token，用于与 kubelet 建立 TLS 并做认证；`insecure_skip_verify: true` 表示不校验 kubelet 服务端证书（常见于自签名）。该 job 需要 T4.2.1 中配置的 RBAC（如 `nodes/metrics`、`nodes/proxy` 等）才能访问 kubelet。
 
@@ -2900,26 +2900,97 @@ Service 名 `prometheus-alert`、端口 **8080** 若与 zip 里不一致，以 `
 
 ### T4.11.3、邮件模板
 
-默认模板可直接用。要统一 **值班链接、Runbook、公司抬头**：从与 **Alertmanager v0.31.1** 一致的 [default.tmpl](https://github.com/prometheus/alertmanager/blob/v0.31.1/template/default.tmpl) 拉下来进 Git 再改；配置 **顶层** `templates:`，文件挂进容器（如 `/etc/alertmanager/templates/`），与 glob 一致。
+**默认行为**：不配置 `templates:` 时，镜像内的 **Go template** 仍可对邮件渲染；但很多团队卡在「邮件能发、但运维不想用默认版式」：值班表、Runbook、集群/环境、严重级别进主题行、合规抬头等，都必须落到**可版本管理**的模板里，并且与 **Alertmanager 小版本**对齐（避免升级后 `define` 名字变了却没人知道）。
+
+**与镜像版本对齐的基准（v0.31.1）**：上游把通用片段放在 [default.tmpl](https://github.com/prometheus/alertmanager/blob/v0.31.1/template/default.tmpl)，把默认邮件版式放在 [email.tmpl](https://github.com/prometheus/alertmanager/blob/v0.31.1/template/email.tmpl)。**重要**：官方二进制在加载你配置的 `templates` glob **之前**，会先从镜像内**嵌入资源**解析这两份文件（见上游 `template/template.go` 的 `FromGlobs`）。因此**生产上最常见、也最稳**的做法是：只在挂载目录里追加 **`company.tmpl`（仅含你们自定义的 `define` 名）**，在 `email_configs` 里显式引用。**不要**再将同版本的 `default.tmpl` / `email.tmpl` 整文件拷进 ConfigMap 让 glob 再解析一遍，否则与内嵌模板**同名 `define` 重复定义**，进程往往在启动或加载阶段直接失败。若确实要整体改写默认邮件 HTML，应走**自制镜像替换嵌入资源**或长期跟上游合并策略，本文不展开。
+
+仓库里仍可保留上游两份文件的**只读副本**（升级前 diff、评审引用名是否变化），与 Alertmanager **同号 tag** 管理；示意见下（**入 Git，不要求原样打进 Kubernetes**）：
 
 ```bash
+# 与 T4.11.1 镜像 prom/alertmanager:v0.31.1 对齐；用于版本对照与 Code Review，勿误挂入 ConfigMap 重复解析
 curl -fsSL -o default.tmpl "https://raw.githubusercontent.com/prometheus/alertmanager/v0.31.1/template/default.tmpl"
+curl -fsSL -o email.tmpl "https://raw.githubusercontent.com/prometheus/alertmanager/v0.31.1/template/email.tmpl"
 ```
 
-语法为 Go template，字段见 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/) 与 [notification_examples](https://prometheus.io/docs/alerting/latest/notification_examples/)。
+**语法与数据结构**：Go `text/template`；通知上下文字段见官方 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/) 与 [notification_examples](https://prometheus.io/docs/alerting/latest/notification_examples/)（如 `.CommonLabels`、`.CommonAnnotations`、`.Alerts`、`range` 等）。规则里习惯性加 **`runbook_url`、`dashboard`、环境、集群** 等 `annotation`，模板里统一展示，比在邮件客户端里翻原始标签快得多。
+
+**推荐：独立 ConfigMap 挂模板目录（与 T4.11.1 增量衔接）**
+
+本文 **T4.11.1** 里 `alert-config` 整卷挂在 **`/etc/alertmanager`**，**不要**往同一个 ConfigMap 里硬塞几 KB 的 `.tmpl`；模板迭代频繁、参与人也可能不同，拆开更清晰。做法：
+
+1. 新建 ConfigMap（示例名 **`alertmanager-templates`**，`namespace: kube-mon`），`data` 下键名即容器内文件名，例如只放 **`company.tmpl`**（或 `10-company.tmpl` 等多文件；**仅含自定义 `define`**，勿含与内嵌重复的 `email.default.*` / `__subject` 等）。
+2. 在 **T4.11.1** 的 `alertmanager-deploy.yaml` 上**增加第二个 volume**，挂载到 **`/etc/alertmanager/templates`**（与下面 glob 前缀一致），**不要**盖掉原来的 `alertcfg` 挂载点。
+
+Deployment 增量示意（保留原有 `alertcfg` 与 `mountPath: /etc/alertmanager` 不动，仅追加）：
+
+```yaml
+      volumes:
+        - name: alertcfg
+          configMap:
+            name: alert-config
+        - name: alert-templates
+          configMap:
+            name: alertmanager-templates
+      containers:
+        - name: alertmanager
+          # image、args 等同 T4.11.1
+          volumeMounts:
+            - mountPath: /etc/alertmanager
+              name: alertcfg
+            - mountPath: /etc/alertmanager/templates
+              name: alert-templates
+```
+
+在 **`alert-config` 的 `config.yml` 顶层**增加（路径与挂载一致；glob 写法见 [configuration](https://prometheus.io/docs/alerting/latest/configuration/)）：
 
 ```yaml
 templates:
   - /etc/alertmanager/templates/*.tmpl
 ```
 
-用 ConfigMap 子路径或 Volume 挂到容器内（与 glob 前缀一致）。变更走评审 + **`kubectl rollout restart deployment/alertmanager -n kube-mon`**（或已启用的 `/-/reload`）。
+**在 `email_configs` 里引用自定义模板**：默认等价于使用 `email.default.*`；企业要换成自己的 `define` 名时，显式写 `html` 与 `headers`（标题里仍可用 `template` 调用），例如：
 
-### T4.11.4、记录规则（配合 T4.4 节点指标）
+```yaml
+    receivers:
+      - name: email
+        email_configs:
+          - to: 'oncall@example.com'
+            send_resolved: true
+            html: '{{ template "company.email.html" . }}'
+            headers:
+              Subject: '{{ template "company.email.subject" . }}'
+```
 
-与告警规则同写在 `rule_files`，见 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。**企业里**：Grafana 大盘、多条告警共用同一套重查询时，先 `record` 再在面板和 `expr` 里引用，减轻 Prometheus 压力；`interval` 可与查询粒度一致（如 `30s`），`record` 命名与团队规范统一。评估间隔未在组内指定时，跟 `global.evaluation_interval`（**T4.2.1** 为 `15s`）；若全局未配则程序默认 `1m`，以当前 `prometheus.yml` 为准。
+`company.tmpl` 中对应（`toUpper` 等为 Alertmanager 内置函数，见上游 `template/template.go` 的 `DefaultFuncs`；无 `severity` 标签时主题行前缀可省略，与 **T4.11.2** 示例对齐时可给规则补上 `labels.severity` 再收紧主题模板）：
 
-下面与 **T4.4** 一致使用 `job="kubernetes-nodes"`；第二条与 **T4.11.2** 内存告警语义一致，可把告警 `expr` 改成直接判断记录指标（阈值更易读）。
+```gotemplate
+{{ define "company.email.subject" }}{{ if .CommonLabels.severity }}[{{ .CommonLabels.severity | toUpper }}] {{ end }}{{ .CommonLabels.alertname }}{{ if .CommonLabels.namespace }} / {{ .CommonLabels.namespace }}{{ end }}{{ end }}
+
+{{ define "company.email.html" }}
+<p><b>{{ .CommonAnnotations.summary }}</b></p>
+<p>{{ .CommonAnnotations.description }}</p>
+{{ if .CommonAnnotations.runbook_url }}<p>Runbook: {{ .CommonAnnotations.runbook_url }}</p>{{ end }}
+{{ end }}
+```
+
+**生产自检与生效方式**：合并 `config.yml` 后可在 Pod 内执行 **`amtool check-config /etc/alertmanager/config.yml`**（与 **T4.11.1** 一致）。**默认未加** `--web.enable-lifecycle` 时，改 ConfigMap 后仍要 **`kubectl rollout restart deployment/alertmanager -n kube-mon`**；若已按官方说明为 Alertmanager 打开 lifecycle，才可对 HTTP API 发 **`POST /-/reload`**，与 **T4.11.1** 文末说明统一即可。**SMTP 密码、API 密钥**继续走 Secret / `smtp_auth_password_file`，不要写进模板或 Git。
+
+### T4.11.4、记录规则（配合 T4.4 / T4.11.2）
+
+官方说明见 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。**与告警规则同属** `rule_files`，由 Prometheus **按配置间隔求值**，写出新的时间序列后再被告警、`expr`、Grafana 查询引用。
+
+**何时使用记录规则**
+
+- **该用**：同一条 PromQL 在多个大盘面板、多条告警里反复出现，算力或查询延迟已可感知；希望告警 `expr` 只剩「与阈值比较」，可读性与评审成本更低。  
+- **慎用**：为「少写几个字」给高基数维度打 `record`（标签组合爆炸会拖垮 Prometheus）；或与抓取周期不对齐、把 `interval` 设得过细导致无意义的写入压力。记录规则**不替代**合理的抓取间隔与告警 `for`。
+
+**命名与文件**：指标名建议与团队规范一致（常见形如 `level:metric:operations`，如 `instance:node_memory_utilisation:ratio`）。与 **T4.11.2** 的衔接有两种等价做法，**不要**两个都做重复定义：**要么**在现有 `rules.yml` 里**再加一个** `groups` 项；**要么**新建 `recording-rules.yml`，在 `prometheus.yml` 的 **`rule_files`** 中增加第二行路径（**全文件仍只保留一处 `rule_files` 键**，列表里多路径即可），例如 `- /etc/prometheus/recording-rules.yml`，并在 `prometheus-config` 的 `data` 里增加同名键。
+
+**组顺序（告警引用 `record` 时必看）**：同一评估周期内，记录规则应先于依赖它的告警规则求值。写在**同一 YAML** 时，把 **`node-recording` 组放在 `node-memory` 组之上**；拆成多文件时，把**含记录规则的文件**放在 `rule_files` 列表**靠前**（Prometheus 按列表顺序加载组，具体行为以当前版本文档为准，有依赖时勿把顺序写反）。
+
+**求值周期**：组级 `interval` 未写时，跟随 **`global.evaluation_interval`**（**T4.2.1** 示例为 `15s`）；若全局未配置，以 Prometheus 程序默认（常见 `1m`）为准，**以你当前 `prometheus.yml` 为准**。记录节点级指标时，习惯让记录组的 `interval` 与节点 **`scrape_interval`** 同量级（如 `30s`），避免「16s 记一笔、15s 刮一次」之类无意义的抖动；告警组可继续用 `30s` 与 **T4.11.2** 示例一致。
+
+**与 T4.4 / T4.11.2 对齐的示例**（`job="kubernetes-nodes"`；第二条为利用率 **ratio**，取值 `0`～`1`）：
 
 ```yaml
 groups:
@@ -2939,7 +3010,16 @@ groups:
           )
 ```
 
-可用 `labels` 给写出的序列加标签。CPU、磁盘等建议按团队规范引入 [mixins](https://github.com/monitoring-mixins) 或内部标准记录规则集，避免在文档里复制易错的长 `expr`。
+**可选：把 T4.11.2 的 `NodeMemoryHigh` 改为引用记录指标**（与原来「已用内存百分比 > 50」等价时，阈值对 ratio 写作 **`> 0.5`**；生产请再按环境改严/放宽）：
+
+```yaml
+          - alert: NodeMemoryHigh
+            expr: instance:node_memory_utilisation:ratio{job="kubernetes-nodes"} > 0.5
+            for: 2m
+            # labels / annotations 不变
+```
+
+上线前仍执行 **T4.11.2** 已给的自检：**`promtool check rules`** 针对**包含记录与告警的完整规则文件**；改 `rule_files` 或 ConfigMap 后对 Prometheus 做 **T4.3.1** reload（或按你们规范重启）。CPU、磁盘、中间件等更复杂表达式建议优先用 [monitoring-mixins](https://github.com/monitoring-mixins) 或内部标准规则集统一维护，避免在文档或各业务仓库复制易错的长 `expr`。
 
 ## T4.12、Thanos
 
@@ -3479,7 +3559,7 @@ kubectl get svc -n kube-mon -l app=thanos-querier
 
 **Store 列表在哪（v0.41 容易找错）**：顶部导航第二项在源码里叫 **Endpoints**（链接到 **`/stores`**），**不会显示「Stores」字样**。若你从 **Graph** 进来，点顶栏 **Endpoints** 即可看到 Querier 当前认识的所有 Store API 端点（Sidecar、Store Gateway 等）。窄屏时导航收成「汉堡菜单」，要先展开。也可直接访问 `http://<Querier>:<NodePort>/stores`（若前面有 `web.route-prefix` 或反代路径前缀，需把前缀加在 `/stores` 前）。
 
-**和「Enable Store Filtering」里两个地址的关系**：勾选 **Enable Store Filtering** 后，查询面板里的 **Store Filter** 下拉选项（例如 `172.20.37.237:10901`、`172.20.202.232:10901`）来自**同一份** `/api/v1/stores` 数据，只是嵌在 Graph 页里做查询过滤；**并不是没有独立列表页**——完整列表在 **Endpoints** 页，Filter 里只是多选子集。
+**和「Enable Store Filtering」里两个地址的关系**：勾选 **Enable Store Filtering** 后，查询面板里的 **Store Filter** 下拉选项（例如 `172.20.37.237:10901`、`172.20.202.232:10901`）来自**同一份** `/api/v1/stores` 数据，只是嵌在 Graph 页里做查询过滤；**并不是没有独立列表页**，完整列表在 **Endpoints** 页，Filter 里只是多选子集。
 
 下文 **Query 主界面**按 **Thanos v0.41.x**（镜像 `thanosio/thanos:v0.41.0`）说明。上游会持续合并 Prometheus 查询页改动，**若你界面文案与下表略有出入，以当前镜像 UI 为准**。
 
@@ -3528,7 +3608,7 @@ kubectl get svc -n kube-mon -l app=thanos-querier
 | **Analyze**（与 Engine 同区，**仅 Thanos 引擎时可选**） | 源码中与 **`analyze`** 查询参数一起提交；选 **Prometheus** 引擎时该勾选会被禁用（`Panel.tsx` 中 `disableAnalyzeCheckbox`）。用于在 Thanos 引擎路径上请求**额外分析信息**（具体字段随版本以响应 JSON 为准）。 | 默认关；**性能排障、验证 Thanos 引擎**时再开。勿与 **Explain** 按钮混淆：Explain 走 **`/api/v1/query_explain`** 系列端点。 |
 | **Force Tracing**（v0.41.0 源码字面；**不是**引擎开关） | 勾选后对本请求设置 **`X-Thanos-Force-Tracing: true`**，在 Querier **已配置 tracing** 时促使采集本次查询链路 trace；响应可带 **`X-Thanos-Trace-ID`**。背景见 [#6311](https://github.com/thanos-io/thanos/issues/6311)、[#6770](https://github.com/thanos-io/thanos/pull/6770)。 | **未接追踪后端时通常无效果**。生产默认关；排障慢查询时临时开。 |
 
-**和旧描述的对照**：以前常说「去重开/关对比两条线」——在 v0.41 上请认准界面 **Use Deduplication**，且同一面板可能还有 **Partial Response、Store Filtering、引擎** 等，**不要只记 Graph**。
+**和旧描述的对照**：以前常说「去重开/关对比两条线」；在 v0.41 上请认准界面 **Use Deduplication**，且同一面板可能还有 **Partial Response、Store Filtering、引擎** 等，**不要只记 Graph**。
 
 **Grafana**（见 **T4.9**）：数据源填集群内 `http://thanos-querier.kube-mon.svc.cluster.local:9090`；Grafana 在集群外时再用 NodePort 或 Ingress，安全要求与 T4.9 一致。保存后点 Save & test。Grafana Explore 的选项与 Thanos 自带 Web UI **不是同一套界面**，但访问的是同一 Query API。
 
