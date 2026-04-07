@@ -3132,7 +3132,7 @@ Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所�
 
 **4、Compactor（整理桶里的数据，只能跑一个）**
 
-对**同一个桶**做合并块、降采样、执行保留策略。官方要求：**同一个桶不要并行跑多个 Compactor**，否则可能把数据弄坏。Kubernetes 里保持 `replicas: 1`，并确认没有另一套环境误连同一个桶。平时看压缩是否积压、本地工作目录磁盘是否够。详见 [Compact](https://thanos.io/tip/components/compact.md/)。
+对**同一个桶**做合并块、降采样、执行保留策略。官方要求：**同一个桶不要并行跑多个 Compactor**，否则可能把数据弄坏。Kubernetes 里保持 `replicas: 1`，并确认没有另一套环境误连同一个桶。部署顺序、自检与排错见 **T4.12.7**。详见 [Compact](https://thanos.io/tip/components/compact.md/)。
 
 **5、Receiver（remote_write，可选）**
 
@@ -4057,11 +4057,34 @@ kubectl get pods -n kube-mon -l thanos-store-api=true
 
 apply 后等至少一个 2h 块上传，或看 sidecar 日志里 shipper 成功，再到 MinIO 里应能看到对象。
 
-**插图槽位**：`docs/prometheus/images/t4-12-querier-stores-with-store.png`
+![thanos_to_minio_bucket](./images/thanos_to_minio_bucket.png)
 
 ### T4.12.7、Compactor
 
-同一个桶只能跑一个 Compactor，不要扩成多副本抢同一桶。本地压缩工作目录示例用 `emptyDir`，规模大时按官方建议改成 PVC 或更大盘。
+**Compactor** 不对指标做抓取，也不注册 **Store API**（**T4.12.4** 的 `--endpoint` 发现名单里**没有**它）。它只连接 **T4.12.6** 中的**同一对象存储桶**，在桶内对已上传的 TSDB 块做**合并、降采样与保留策略**，降低存储与元数据开销，间接减轻 **Store Gateway** 与 **Querier** 的压力。凭证与 **Sidecar**、**Store Gateway** 一致：**Secret `thanos-objectstorage`**、**`thanos.yaml` 键名**与 **T4.12.6** 对齐。镜像与全文约定一致：**`thanosio/thanos:v0.41.0`**。参数与语义以官方 [Compact](https://thanos.io/tip/components/compact.md/)、[对象存储](https://thanos.io/tip/thanos/storage.md/) 为准；升级前对照 [Releases](https://github.com/thanos-io/thanos/releases)。
+
+#### T4.12.7.1、在链路中的位置
+
+| 组件 | 对桶的读写 | 与查询的关系 |
+|------|------------|----------------|
+| **Sidecar**（**T4.12.3**） | 上传封闭块 | 经 Store API 提供本机近期数据 |
+| **Store Gateway**（**T4.12.6**） | 读对象 | 经 Store API 提供桶内历史数据 |
+| **Compactor**（本节） | **读并回写**（整理、可能删对象） | **不参与** Querier 扇出；整理后的块仍由 **Store** 暴露 |
+
+无 Compactor 时桶内块会持续增多、粒度偏细；部署后仍须配置**符合团队政策的保留与降采样**，否则成本与合规仍可能失控。练习用清单为缩短篇幅**未**写入 `--retention.resolution-*` 等保留参数，**上线前必须在评审中补齐**。
+
+#### T4.12.7.2、生产约束
+
+1. **每个对象存储桶在同一时刻仅允许一个 Compactor 进程独占压缩**（本文 **`replicas: 1`**）。多副本或多套集群指向**同一**桶并各跑 Compactor，官方视为**高风险**，可能导致块不一致或数据损坏。
+2. **预发与生产若共用桶名与同一 Secret**，不得在两套环境里各起一个 Compactor；应拆桶或拆凭证，并在流程上禁止误配。
+3. **`--data-dir`** 承担下载与合并过程中的本地 I/O，**磁盘或 `emptyDir` 用尽**会导致压缩失败或反复重启。练习示例用 **`emptyDir`**；生产建议改为 **PVC** 或更大本地盘，并设 **`resources`** 与告警。
+4. **`--wait`** 表示在处理完一轮调度任务后仍驻留、等待后续工作（与 **一次性**跑完即退出的运维脚本不同）；具体行为以 **`thanos compact --help`** 为准。
+
+#### T4.12.7.3、`compactor.yaml` 字段说明
+
+- **StatefulSet + Headless**：`serviceName: thanos-compactor` 与同名 Service 满足 StatefulSet 约定；Headless **仅供** Pod 稳定身份或排障访问 **10902**，**不是** Querier 的 Store 后端。
+- **`--objstore.config-file`**：与 **T4.12.6** 相同路径 **`/etc/secret/thanos.yaml`**，即同一 Secret 挂载。
+- **探针**：`/-/healthy`、`/-/ready`；压缩高峰若 CPU、磁盘尖刺明显，可适当调大延迟或 **limits**，避免误杀（清单未写 **resources**，生产请补）。
 
 `compactor.yaml`：
 
@@ -4133,12 +4156,25 @@ spec:
       name: http
 ```
 
+#### T4.12.7.4、应用与自检
+
 ```bash
 kubectl apply -f compactor.yaml
+kubectl rollout status statefulset/thanos-compactor -n kube-mon
 kubectl get pods -n kube-mon -l app=thanos-compactor
+kubectl logs -n kube-mon -l app=thanos-compactor --tail=100
 ```
 
-到本节为止：双副本 Prometheus + Sidecar、Querier、对象存储、Store、Compactor，是一条常用的完整链路。更多组件见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
+建议观察：**Pod 长期 Running**；日志无**持续性**对象存储 **403/5xx** 或校验错误；运行一段时间后桶内对象体量在保留策略下**趋稳或下降**（与长期只上传、不压缩对比）；历史查询资源占用是否随业务有感性改善。**Sidecar 上传**与 **Store** **不依赖** Compactor 存活才能读新数据；**桶长期健康与成本**依赖 Compactor 正常运行。
+
+#### T4.12.7.5、排错提要
+
+- **`replicas` 大于 1** 或两套环境争用同桶：立即收敛为**单实例单桶**，并按事故流程评估桶一致性。
+- **`CrashLoopBackOff` / OOM**：加大 **`/data` 卷**与内存 **limits**，或按 [Compact 文档](https://thanos.io/tip/components/compact.md/) 调优并发相关参数。
+- **权限错误**：核对 Secret、桶 **IAM/策略**、endpoint 是否与 **T4.12.6** 完全一致。
+- **长期无进展**：查日志是否等待分布式锁、网络超时；排除多 Compactor、多环境误连同桶。
+
+到本节为止：**双副本 Prometheus + Sidecar**、**Querier**、**对象存储**、**Store Gateway**、**Compactor** 形成常见入门闭环。其它组件（如 **T4.12.8** Receiver、**T4.12.5** Ruler）见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
 
 ### T4.12.8、Receiver（remote_write，可选）
 
