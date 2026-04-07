@@ -3902,6 +3902,8 @@ kubectl create secret generic thanos-objectstorage \
   --from-file=thanos.yaml=thanos-storage-minio.yaml -n kube-mon
 ```
 
+**务必写成 `thanos.yaml=本地文件`**：冒号左侧是 Secret **`data` 里的键名**，挂载到 Pod 里会变成 **`/etc/secret/thanos.yaml`**，与下文 **`--objstore.config-file=/etc/secret/thanos.yaml`** 一致。若只写 **`--from-file=thanos-storage-minio.yaml`**，键名常变成 **`thanos-storage-minio.yaml`**，容器内**没有** `thanos.yaml`，Sidecar 会报 `open /etc/secret/thanos.yaml: no such file`，reloader 也不会生成 `prometheus.yaml`。可用 **`kubectl describe secret thanos-objectstorage -n kube-mon`** 查看 **Data** 下的实际键名。
+
 Store Gateway 的 StatefulSet 需要同名 Headless Service（和 `serviceName` 一致）：
 
 `store-gateway-discovery.yaml`：
