@@ -3367,6 +3367,8 @@ spec:
         thanos-store-api: "true"
     spec:
       serviceAccountName: prometheus
+      securityContext:
+        fsGroup: 65534
       initContainers:
         - name: fix-data-dir-permissions
           image: busybox:1.37
@@ -3415,6 +3417,9 @@ spec:
         - name: thanos
           image: thanosio/thanos:v0.41.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
           args:
             - sidecar
             - --log.level=info
@@ -3994,9 +3999,11 @@ kubectl get pods -n kube-mon -l thanos-store-api=true
 
 数据**写入**桶仍由各 Prometheus Pod 内的 **Sidecar** 完成：除 `--objstore.config-file` 外，必须在 **同一个 Pod 的 `spec.template.spec.volumes` 里声明 Secret**，并在 **仅 `thanos` 容器** 上挂载到 **`/etc/secret`**（与 **T4.12.3** 示例一致；**不要**挂给 `prometheus` 容器）。**不要**只把下面 `args` 贴进清单却漏掉 `volumes` / `volumeMounts`，否则 Sidecar 因读不到对象存储配置而立即退出，**reloader 不会生成** `/etc/prometheus-shared/prometheus.yaml`，隔壁 **Prometheus** 容器就会报 `open ... prometheus.yaml: no such file or directory`（该文件来自共享 **`emptyDir`** **`prometheus-config-shared`**，不是 ConfigMap 直挂）。
 
-`spec.template.spec` 下与 **T4.12.3** `sidecar.yaml` **合并**的完整增量示例（已含原有 `prometheus-config` 等卷时，**只追加** `object-storage-config` 一项；`thanos` 容器在原有 `volumeMounts` 基础上**只追加**最后一项）：
+`spec.template.spec` 下与 **T4.12.3** `sidecar.yaml` **合并**的完整增量示例（已含原有 `prometheus-config` 等卷时，**只追加** `object-storage-config` 一项；`thanos` 容器在原有 `volumeMounts` 基础上**只追加**最后一项）。与同层 **`securityContext.fsGroup: 65534`**、**thanos** 的 **`runAsUser` / `runAsGroup`: 65534** 一并使用，避免 Shipper **硬链接**因 UID 不一致报 **`operation not permitted`**：
 
 ```yaml
+      securityContext:
+        fsGroup: 65534
       volumes:
         - name: prometheus-config
           configMap:
@@ -4017,6 +4024,9 @@ kubectl get pods -n kube-mon -l thanos-store-api=true
               mountPath: /etc/prometheus-shared/
             # ... 其余与原文一致 ...
         - name: thanos
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
           args:
             - sidecar
             - --log.level=info
@@ -4040,7 +4050,10 @@ kubectl get pods -n kube-mon -l thanos-store-api=true
               readOnly: true
 ```
 
-**排错**：若仅 **Prometheus** 日志报错找不到 `prometheus.yaml`，请先执行 **`kubectl logs -n kube-mon prometheus-0 -c thanos`（及 `prometheus-1`）**：若为对象存储配置或挂载路径错误，Sidecar 会先失败，共享卷里**不会出现**渲染后的配置。再执行 **`kubectl get secret thanos-objectstorage -n kube-mon`** 确认 Secret 存在，且键名为 **`thanos.yaml`**（与 `--from-file=thanos.yaml=...` 一致）。**勿**把 `--reloader.*` 或 `--objstore.*` 误加到 **prometheus** 容器。
+**排错**
+
+- **Prometheus** 报找不到 `prometheus.yaml`：看 **`kubectl logs ... -c thanos`**；并 **`kubectl describe secret thanos-objectstorage -n kube-mon`** 确认 **Data** 下键名为 **`thanos.yaml`**（与 **`--from-file=thanos.yaml=...`** 一致）。**勿**把 `--reloader.*` / `--objstore.*` 写到 **prometheus** 容器。
+- **Sidecar** 报 **`hard link ... operation not permitted`**、`uploaded=0`：Shipper 要把块**硬链接**到 **`/prometheus/thanos/upload/`**。块目录由 **Prometheus 镜像默认用户 65534** 创建；**Thanos 镜像默认常为其它 UID（如 1001）**，跨用户硬链易被内核拒绝。处理：Pod **`securityContext.fsGroup: 65534`**，且 **thanos** 容器 **`securityContext.runAsUser` / `runAsGroup` 均为 65534**（与上文 **T4.12.3** `sidecar.yaml` 一致）。若仍失败且在 **Rocky/CentOS** 等环境，再查 **`getenforce`** 与审计日志是否 **SELinux** 拦截。参考上游 [Issue #6811](https://github.com/thanos-io/thanos/issues/6811) 等讨论。
 
 apply 后等至少一个 2h 块上传，或看 sidecar 日志里 shipper 成功，再到 MinIO 里应能看到对象。
 
