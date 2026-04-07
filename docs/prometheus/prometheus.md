@@ -3771,7 +3771,7 @@ flowchart LR
 
 生产环境优先使用云厂商 **S3 兼容**存储（OSS、COS、Amazon S3 等），`endpoint`、区域、TLS、服务端加密、IAM 权限按厂商文档；凭证放在 Kubernetes **Secret** 或工作负载身份中，**禁止**将 `access_key`、`secret_key` 提交到 Git。键名与后端类型见 Thanos [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线自检建议：Querier **Endpoints** 中 Store Gateway 为 **Up**；桶内对象体量随时间增加；Sidecar 日志中 shipper **无持续上传失败**。
 
-练习环境以下文 **MinIO** 自建桶为例。若 MinIO 策略有变，可换 [RustFS](https://rustfs.com/) 等 S3 兼容实现，Thanos 侧仍按 S3 填写 `endpoint` 与密钥。镜像与安全更新见文首约定表与 [MinIO Releases](https://github.com/minio/minio/releases/latest)。
+练习环境以下文 **MinIO** 自建桶为例。MinIO 开源项目已废弃，可换 [RustFS](https://rustfs.com/) 等 S3 兼容实现，Thanos 侧仍按 S3 填写 `endpoint` 与密钥。镜像与安全更新见文首约定表与 [MinIO Releases](https://github.com/minio/minio/releases/latest)。
 
 #### T4.12.6.2、MinIO（练习用，独立 namespace）
 
@@ -3804,7 +3804,7 @@ spec:
             claimName: minio-pvc
       containers:
         - name: minio
-          image: minio/minio:RELEASE.2025-10-15T17-29-55Z
+          image: minio/minio:RELEASE.2025-04-22T22-12-26Z
           args: ["server", "/data", "--console-address", ":9001"]
           env:
             - name: MINIO_ROOT_USER
@@ -3878,7 +3878,7 @@ kubectl apply -f minio-svc.yaml
 
 控制台可执行：`kubectl port-forward svc/minio 9001:9001 -n minio`，用上面账号登录，新建 bucket `thanos`。外网暴露用你们自己的 Ingress 或 Gateway。
 
-**插图槽位**：`docs/prometheus/images/t4-12-minio-bucket.png`
+![thanos_bucket](./images/thanos_bucket.png)
 
 #### T4.12.6.3、Thanos 连接 MinIO 与 Store Gateway
 
@@ -3990,20 +3990,55 @@ kubectl get pods -n kube-mon -l thanos-store-api=true
 
 此时 **T4.12.4** Querier 的 **Endpoints**（`/stores`）列表中应出现 Store Gateway 对应的 gRPC 端点（与两个 Sidecar 并列，具体 IP 以集群为准）。
 
-数据**写入**桶仍由各 Prometheus Pod 内的 **Sidecar** 完成：为 **thanos** 容器挂载**同一** Secret，并追加 `--objstore.config-file`（生产建议 Secret **只读**挂载）：
+数据**写入**桶仍由各 Prometheus Pod 内的 **Sidecar** 完成：除 `--objstore.config-file` 外，必须在 **同一个 Pod 的 `spec.template.spec.volumes` 里声明 Secret**，并在 **仅 `thanos` 容器** 上挂载到 **`/etc/secret`**（与 **T4.12.3** 示例一致；**不要**挂给 `prometheus` 容器）。**不要**只把下面 `args` 贴进清单却漏掉 `volumes` / `volumeMounts`，否则 Sidecar 因读不到对象存储配置而立即退出，**reloader 不会生成** `/etc/prometheus-shared/prometheus.yaml`，隔壁 **Prometheus** 容器就会报 `open ... prometheus.yaml: no such file or directory`（该文件来自共享 **`emptyDir`** **`prometheus-config-shared`**，不是 ConfigMap 直挂）。
+
+`spec.template.spec` 下与 **T4.12.3** `sidecar.yaml` **合并**的完整增量示例（已含原有 `prometheus-config` 等卷时，**只追加** `object-storage-config` 一项；`thanos` 容器在原有 `volumeMounts` 基础上**只追加**最后一项）：
 
 ```yaml
-# 合并进 StatefulSet prometheus 的 thanos 容器：volumes / volumeMounts / args 追加
-args:
-  - sidecar
-  - --log.level=info
-  - --tsdb.path=/prometheus
-  - --prometheus.url=http://localhost:9090
-  - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
-  - --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
-  - --reloader.rule-dir=/etc/prometheus/rules/
-  - --objstore.config-file=/etc/secret/thanos.yaml
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-rules
+          configMap:
+            name: prometheus-rules
+        - name: prometheus-config-shared
+          emptyDir: {}
+        - name: object-storage-config
+          secret:
+            secretName: thanos-objectstorage
+      containers:
+        - name: prometheus
+          # ... 与 T4.12.3 一致，勿改 --config.file=...
+          volumeMounts:
+            - name: prometheus-config-shared
+              mountPath: /etc/prometheus-shared/
+            # ... 其余与原文一致 ...
+        - name: thanos
+          args:
+            - sidecar
+            - --log.level=info
+            - --tsdb.path=/prometheus
+            - --prometheus.url=http://localhost:9090
+            - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
+            - --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
+            - --reloader.rule-dir=/etc/prometheus/rules/
+            - --objstore.config-file=/etc/secret/thanos.yaml
+          volumeMounts:
+            - name: prometheus-config-shared
+              mountPath: /etc/prometheus-shared/
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            - name: prometheus-rules
+              mountPath: /etc/prometheus/rules
+            - name: data
+              mountPath: "/prometheus"
+            - name: object-storage-config
+              mountPath: /etc/secret
+              readOnly: true
 ```
+
+**排错**：若仅 **Prometheus** 日志报错找不到 `prometheus.yaml`，请先执行 **`kubectl logs -n kube-mon prometheus-0 -c thanos`（及 `prometheus-1`）**：若为对象存储配置或挂载路径错误，Sidecar 会先失败，共享卷里**不会出现**渲染后的配置。再执行 **`kubectl get secret thanos-objectstorage -n kube-mon`** 确认 Secret 存在，且键名为 **`thanos.yaml`**（与 `--from-file=thanos.yaml=...` 一致）。**勿**把 `--reloader.*` 或 `--objstore.*` 误加到 **prometheus** 容器。
 
 apply 后等至少一个 2h 块上传，或看 sidecar 日志里 shipper 成功，再到 MinIO 里应能看到对象。
 
