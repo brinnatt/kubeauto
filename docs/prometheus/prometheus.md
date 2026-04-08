@@ -4266,7 +4266,7 @@ flowchart TB
 
 路径乙建议继续打开 **`--web.enable-lifecycle`**，便于 **T4.3.1** 那套 reload。
 
-**落地写法**（改 ConfigMap、改 StatefulSet、滚动发布）在 **T4.12.8.7**，与下面理论一一对应。
+**落地**：选定甲或乙后，按 **T4.12.8.7** 的 **第一步（ConfigMap）→ 第二步（路径清单）→ 第三步（发布）** 顺序操作；该节用表格与清单对应本节表格，避免跳读漏步。
 
 #### T4.12.8.5、生产要点
 
@@ -4422,15 +4422,27 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 
 #### T4.12.8.7、remote_write
 
-以下按 **T4.12.3** 的约定写：**ConfigMap `prometheus-config`** 里 **`data.prometheus.yaml.tmpl`**；**StatefulSet `prometheus`** 双容器 **`prometheus` + `thanos`（Sidecar）**、共享 **`emptyDir prometheus-config-shared`**、Sidecar **`reloader`** 生成 **`/etc/prometheus-shared/prometheus.yaml`**。你本地若合并成 **`prometheus-deploy.yaml`**（或与 **T4.12.3** 等价的清单），改动位置相同。
+本小节回答三件事：**ConfigMap 里怎么写**、**StatefulSet 走路径甲还是乙**、**改完怎么发布**。请先读完 **T4.12.8.6**（Receive 已就绪），再改 Prometheus。
 
-**1、ConfigMap：在 `prometheus.yaml.tmpl` 里加 `remote_write`**
+**与 T4.12.3 对齐的基准**（你合并成 **`prometheus-deploy.yaml`** 也行，改法相同）：
 
-- **位置**：与官方结构一致，**`remote_write` 与 `alerting`、`scrape_configs` 同级**（缩进与 `alerting:` 对齐，都是 `prometheus.yaml.tmpl` 顶层下的键）。**不要**删 **`global` / `storage` / `rule_files` / `alerting` / `scrape_configs`**；**`scrape_configs` 仍须是 T4.4～T4.8 整段**，不要留省略号。  
-- **`url`**：须含 **`/api/v1/receive`**，端口 **19291**，与 **T4.12.8.3** 一致。同命名空间可写短名 `http://thanos-receiver:19291/api/v1/receive`。  
-- **改完**：`kubectl apply -f configmap.yaml`（或你实际维护 ConfigMap 的清单）。模板进盘后要靠 Sidecar **reloader**（路径甲）或下文 **initContainer**（路径乙）落到 **`prometheus.yaml`**，再 **`reload` 或滚动 Pod`**，见各路径步骤表。
+| 对象 | 约定 |
+|------|------|
+| ConfigMap **`prometheus-config`** | 键 **`prometheus.yaml.tmpl`**（含 **`$(POD_NAME)`** 等占位） |
+| StatefulSet **`prometheus`** | 两容器时：`prometheus` + **`thanos` Sidecar**；共享卷 **`prometheus-config-shared`（emptyDir）**；进程读 **`--config.file=/etc/prometheus-shared/prometheus.yaml`** |
+| 谁生成 `prometheus.yaml` | 路径甲：**Sidecar reloader**；路径乙：**initContainer + envsubst**（见下文） |
 
-在 **`alerting:` 块结束后**增加一段（你可直接并入现有 **`.tmpl`**，保持空格为两个字符缩进）：
+---
+
+**第一步：ConfigMap（路径甲、乙相同）**
+
+在 **`prometheus.yaml.tmpl` 顶层**增加 **`remote_write`**，与 **`alerting:`、`scrape_configs:` 同级**（缩进与这两段对齐）。
+
+- **保留**原有 **`global` / `storage` / `rule_files` / `alerting` / `scrape_configs`**；**`scrape_configs` 仍是 T4.4～T4.8 全文**，不要用 `...` 占位。  
+- **`url`**：必须带 **`/api/v1/receive`**，端口 **19291**（见 **T4.12.8.3**）。同命名空间可写 `http://thanos-receiver:19291/api/v1/receive`。  
+- **应用**：`kubectl apply` 你维护 ConfigMap 的清单。生效依赖「模板是否已渲染成 **`/etc/prometheus-shared/prometheus.yaml`**」——路径甲靠 Sidecar，路径乙靠 init；见下文「第三步」。
+
+在 **`alerting:` 段落后**追加（可直接粘贴进现有 **`.tmpl`**，YAML 用两空格缩进）：
 
 ```yaml
     remote_write:
@@ -4443,26 +4455,37 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
           batch_send_deadline: 5s
 ```
 
-**队列与 413**：调参与语义见 [Remote write tuning](https://prometheus.io/docs/practices/remote_write/)、[configuration · remote_write](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)。单次请求过大时 Receive 可能返回 **413**，见 [Remote write request limits](https://thanos.io/tip/components/receive.md/#remote-write-request-limits)。推送前改标签用 **`write_relabel_configs`**。生产 **TLS**：Receive 见 [Receive · Flags](https://thanos.io/tip/components/receive.md/#flags)，Prometheus 在对应 `remote_write` 条目中配置 **`tls_config`** 等。
+**调参与安全**：队列含义与调优见 [Remote write tuning](https://prometheus.io/docs/practices/remote_write/)、[`remote_write` 配置](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)。请求体过大时 Receive 可能 **413**，见 [Request limits](https://thanos.io/tip/components/receive.md/#remote-write-request-limits)。推送前改标签用 **`write_relabel_configs`**。生产 **TLS** 在 Receive 与 Prometheus 两侧分别配置，见 [Receive · Flags](https://thanos.io/tip/components/receive.md/#flags) 与 Prometheus **`tls_config`**。
 
 ---
 
-**2、路径甲（保留 Prometheus + Sidecar，只当 reloader，长期入桶走 Receive）**
+**第二步：路径甲或路径乙（二选一）**
 
-与 **T4.12.8.4** 表中**甲**列一致：你已经有一套和 **T4.12.3** / **T4.12.6** 对齐的清单（例如 **`prometheus-deploy.yaml`**，含 **`--objstore.config-file`**、**`object-storage-config`** Secret 挂载）时，按下面改。
+与 **T4.12.8.4** 一致：要么 **Sidecar 只当 reloader + 删掉对象存储上传**，要么 **单容器 Prometheus**，不再跑 Sidecar。
 
-| 顺序 | 操作 |
-|------|------|
-| 1 | **ConfigMap**：按上文在 **`prometheus.yaml.tmpl`** 增加 **`remote_write`**。 |
-| 2 | **StatefulSet · `thanos` 容器 `args`**：删除 **`--objstore.config-file=/etc/secret/thanos.yaml`**（**只删这一行**，其余 **`sidecar` / `--reloader.*` / `--tsdb.path` / `--prometheus.url`** 保留）。 |
-| 3 | **StatefulSet · `thanos` 容器 `volumeMounts`**：删除挂载 **`name: object-storage-config`、`mountPath: /etc/secret`** 那一项。 |
-| 4 | **StatefulSet · `spec.template.spec.volumes`**：删除 **`name: object-storage-config`** 整段（**`prometheus` 容器未挂载该卷**时，全 Pod 无人再用，可删）。**不要**误删 **`prometheus-config` / `prometheus-rules` / `prometheus-config-shared`**。 |
-| 5 | 先确保 **Receive**、**hashring**、**T4.12.6** 桶与 **T4.12.4** Querier 已按前文就绪，再发 Prometheus 配置，避免 **`remote_write` 长期失败** 占满 WAL。 |
-| 6 | **`kubectl apply -f ...`** StatefulSet 与 ConfigMap；执行 **`kubectl rollout restart statefulset/prometheus -n kube-mon`**（**OrderedReady** 时也可按运维规范逐个删 Pod 以加快生效）。 |
-| 7 | **验收**：**`kubectl logs -n kube-mon prometheus-0 -c thanos`** 中**不应再出现**持续 **shipper / upload** 访问对象存储失败（因已禁用上传）；**reloader** 应仍写出 **`prometheus.yaml`**。**`kubectl logs -n kube-mon prometheus-0 -c prometheus`** 无持续 **`remote_write`** 出错。**Status → Target** 正常。 |
-| 8 | **Querier**：**Endpoints** 会**同时**出现 **Sidecar** 与 **Receive**。近期曲线可能来自两路 Store，须按 **T4.12.1.1** 与 [External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels) 理解 **`replica`（Prometheus 副本）** 与 Receive **`receive_*`（块标签）**；Query UI **Use Deduplication**、**`--query.replica-label`** 以你们评审结论为准（必要时打开 **Partial response** 做排障）。 |
+| 项目 | **路径甲** | **路径乙** |
+|------|------------|------------|
+| **Pod 形态** | 仍 **`prometheus` + `thanos`（Sidecar）** | **仅 `prometheus`** |
+| **Sidecar 是否上传块** | **否**（去掉 **`--objstore`** 与对象存储挂载） | 无 Sidecar |
+| **谁渲染 `prometheus.yaml.tmpl`** | Sidecar **reloader**（照旧） | **initContainer**（`envsubst`） |
+| **Querier 看「最近」** | Sidecar **与** Receive **都会**作为 Store（须会去重） | 主要靠 Receive |
 
-**路径甲 · `thanos` 容器 `args` 片段（改后应类似下面，无 `--objstore`）**：
+---
+
+**路径甲 · 操作清单**（适用于当前已是 **T4.12.3** 双容器、且带 **`--objstore`** 的清单）
+
+| 序号 | 做什么 |
+|------|--------|
+| 1 | ConfigMap：完成上文 **`remote_write`**。 |
+| 2 | **`thanos` 容器 `args`**：删除 **`--objstore.config-file=/etc/secret/thanos.yaml`** 仅此一行；其余 **`sidecar`、`--reloader.*`、`--tsdb.path`、`--prometheus.url`** 保留。 |
+| 3 | **`thanos` 容器 `volumeMounts`**：删除 **`object-storage-config` → `/etc/secret`**。 |
+| 4 | **`spec.volumes`**：删除 **`name: object-storage-config`**（全 Pod 无人再用时）。勿删 **`prometheus-config` / `prometheus-rules` / `prometheus-config-shared`**。 |
+| 5 | **顺序**：先确认 **Receive、hashring、桶（T4.12.6）、Querier（T4.12.4）** 正常，再 **`apply` ConfigMap / StatefulSet**，避免 WAL 因长期 **`remote_write` 失败** 顶满。 |
+| 6 | **滚动**：`kubectl rollout restart statefulset/prometheus -n kube-mon`（或按规范逐 Pod 重建）。 |
+| 7 | **日志**：`prometheus-0` 的 **`thanos`** 容器不应再持续报 **shipper / upload** 写桶失败；**`prometheus`** 容器不应持续报 **`remote_write`** 错误；UI **Status → Targets** 正常。 |
+| 8 | **Querier**：Endpoints 会同时看到 **Sidecar** 与 **Receive**。近期数据可能双路重叠，须结合 **T4.12.1.1、[External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels)** 区分 **`replica`（Prom 副本）** 与 **`receive_*`（Receive 块标签）**；Query **去重**、**`--query.replica-label`** 按评审结论配置；排障可暂开 **Partial response**。 |
+
+**路径甲 · Sidecar `args` 改后示例**（无 **`--objstore`**）：
 
 ```yaml
           args:
@@ -4477,11 +4500,11 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 
 ---
 
-**3、路径乙（只要 Prometheus，长期近期只依赖 Receive）**
+**路径乙 · 为何要多一个 init**
 
-与 **T4.12.8.4** 表中**乙**列一致：**去掉整个 `thanos` 容器**后，**没有人**再用 Sidecar **reloader** 把 **`prometheus.yaml.tmpl`** 渲染成 **`prometheus.yaml`**。若 **`prometheus` 仍读 `/etc/prometheus-shared/prometheus.yaml`**，必须在 **`prometheus` 启动前**自己完成渲染，否则进程起不来。
+删掉 Sidecar 后，**没有人**再执行 **reloader**。若 **`prometheus` 仍用** **`--config.file=/etc/prometheus-shared/prometheus.yaml`**，必须在 **主容器启动前** 把 **`prometheus.yaml.tmpl`** 渲染成该文件，否则 Prometheus 起不来。
 
-**推荐（与本文 tmpl、`$(POD_NAME)` 兼容）**：在现有 **`fix-data-dir-permissions`** 之后、`containers` 之前，增加 **`initContainer`**，用 **`envsubst`** 把 **`ConfigMap` 里的 `.tmpl`** 写到 **`emptyDir prometheus-config-shared/prometheus.yaml`**，环境变量 **`POD_NAME`** 与 **T4.12.3** Sidecar 一致（`fieldRef.metadata.name`）。
+**做法**：在 **`fix-data-dir-permissions`** 之后、**`containers`** 之前增加 **`render-prometheus-config`**；挂载 **`prometheus-config`** 到只读目录（下文示例用 **`/etc/prometheus-src`**），输出写到 **`prometheus-config-shared/prometheus.yaml`**；**`POD_NAME`** 用 `fieldRef.metadata.name`，与 **T4.12.3** 一致。
 
 ```yaml
       initContainers:
@@ -4513,47 +4536,53 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
               mountPath: /etc/prometheus-shared
 ```
 
-**离线 / 内网集群**：若 init 每次 **`apk add gettext`** 会失败或不可接受，应改用**你们仓库里已含 `envsubst`（gettext 包）的固定标签镜像**，把上面 **`image:`** 从 **`alpine:3.20`** 换成该镜像，并删掉命令里的 **`apk add`** 行，仅保留 **`export POD_NAME`** 与 **`envsubst ...`**。
+**路径乙 · 随后改 StatefulSet**
 
-然后：**删除 `thanos` 容器整块**；**`spec.containers` 里只保留 `prometheus`**；**`prometheus` 的 `volumeMounts`** 仍保留 **`prometheus-config-shared`**、**`prometheus-rules`**、**`data`**（**不要**再需要挂 **`prometheus-config` 只读给 prometheus**，若仅给 init 用，可只让 init 挂载；Prometheus 本体不读 ConfigMap 直挂路径时，**`prometheus` 容器可不挂 `prometheus-config`**）。
+1. **删除**整个 **`thanos` 容器**。  
+2. **`containers` 里只保留 `prometheus`**；其 **`volumeMounts`** 至少保留 **`prometheus-config-shared`、`prometheus-rules`、`data`**。  
+3. **`prometheus` 不必**再挂载 **`prometheus-config`**（可由 **init 独占**）。  
+4. **删除** **`object-storage-config`** 及所有相关 **`volumeMounts`**（若仍存在）。  
+5. **`serviceAccountName` / `securityContext` / PVC**：按原生产清单保留即可。
 
-路径乙还应：**删除** 与 Sidecar 有关的 **`object-storage-config`** 卷及任意挂载；**`serviceAccountName` / `securityContext` / PVC** 可按你们原清单保留。
+**路径乙 · 标签与 `selector`（易踩坑）**
 
-**`selector` 与 Store 发现（生产必审题）**：**T4.12.3** 里 StatefulSet **`spec.selector.matchLabels`** 常带 **`thanos-store-api: "true"`**。路径乙下 **Pod 不再提供 Sidecar gRPC Store**，若 **仍带该标签**，**Querier** 会通过 **`thanos-store-apis`** SRV **连到无 10901 监听的 Pod**，表现为 **Store 异常或查询失败**。路径乙应在 **`template.metadata.labels` 与 `spec.selector.matchLabels` 中同时去掉 `thanos-store-api`**（以及 **`selector` 里其它标签键**保持与 **Pod labels** 一致）。**注意**：Kubernetes **不允许**修改已有 StatefulSet 的 **`spec.selector`**；在**存量集群**上往往要 **新 StatefulSet 名称**（例如 `prometheus-rw`）并做**切流与数据/磁盘策略**，或接受**重建**资源的窗口。请与平台变更规范一致。
+若 **T4.12.3** 里 **`thanos-store-api: "true"`** 既在 **`spec.selector`** 又在 **Pod labels**：Querier 通过 **`thanos-store-apis`** 发现 Store。路径乙 **没有** Sidecar **10901**，若标签还在，会指向**无 gRPC Store 的 Pod**，查询异常。
 
-**路径乙的替代做法**：不用 **tmpl**，由 **CI/CD** 渲染出 **`prometheus.yaml`** 写入 ConfigMap，**`prometheus` 直接 `--config.file=/etc/prometheus/prometheus.yaml`** 挂 **ConfigMap 子路径**；相当于改版 **T4.12.3** 的挂载方式，此处不展开。
+- **应做**：在 **`template.metadata.labels` 与 `spec.selector.matchLabels` 上同时去掉 `thanos-store-api`**，且 **selector 与 Pod 标签键值一致**。  
+- **限制**：已创建的 StatefulSet **不能改 `spec.selector`**。存量环境通常要 **换新 STS 名**（如 `prometheus-rw`）做切流，或规划 **短暂下线重建**；与平台变更流程对齐。
+
+**路径乙 · 离线 / 内网**：若 **`apk add gettext`** 不可行，改用**内置 `envsubst` 的内网镜像**，去掉示例里的 **`apk`** 行，只保留 **`export POD_NAME`** 与 **`envsubst`**。
+
+**路径乙 · 另一种工程化方式**：不用 **tmpl**，由 CI 生成最终 **`prometheus.yaml`** 进 ConfigMap，**`--config.file` 直挂该文件**；等价于重做 **T4.12.3** 的挂载方式，本文不展开。
 
 ---
 
-**4、发布与热加载**
+**第三步：发布与热加载**
 
-- 路径甲、乙在 **`prometheus.yaml` 写入共享卷之后**：若 **`--web.enable-lifecycle`** 已开，可对 **`9090`** 发 **`POST /-/reload`**（与 **T4.3.1** 一致）；否则 **`rollout restart`** / 重建 Pod。  
-- **双副本**：两个 Pod 都要得到新 **`prometheus.yaml`**（路径甲靠 Sidecar watch；路径乙靠 **init** 仅在**创建 Pod 时**运行一次，**改 ConfigMap 后须滚动 Pod** 才会重新渲染）。
+- **`prometheus.yaml` 已出现在共享卷后**：若开了 **`--web.enable-lifecycle`**，可对 **9090** 发 **`POST /-/reload`**（同 **T4.3.1**）；否则 **`rollout restart`**。  
+- **双副本**：路径甲可由 Sidecar **watch** 模板；路径乙 **init 只在建 Pod 时跑一次**，**改 ConfigMap 后必须滚动全部 Prometheus Pod** 才会重新渲染。
 
 #### T4.12.8.8、扩缩容
 
-扩缩副本或改过 Receive 相关 **DNS** 时，**hashring、各 Pod 的 `--receive.local-endpoint`、`--label`、RF** 要与副本数联动；**不要**只改 **`StatefulSet.replicas`**。具体项：
+扩 Receive 副本或改 **DNS** 时，**不能只改 `StatefulSet.replicas`**，须联动：
 
-- **`hashring.json` → `endpoints`**：每实例一项 **`主机:<gRPC 端口>`**（本文为 **`…:10901`**）；**不要**写 **`remote_write`** 的 **`http://…:19291/...`**。  
+- **`hashring.json` → `endpoints`**：每项为 **`主机:10901`（gRPC）**；**禁止**写成 **`remote_write` 的 `http://…:19291/...`**。  
+- **每个 Pod 的 `--receive.local-endpoint`**：须是 **`endpoints` 里的一条**（本 Pod 在环上的身份）。  
+- **`--label=receive_replica=...`**：与副本一一对应，便于 Query **dedup**。  
+- **`--receive.replication-factor`**：与副本数、官方 **Quorum** 一起设计。
 
-- **每个 Pod** 的 **`--receive.local-endpoint`**：本实例在环上的 **gRPC** 身份，须落在 **`endpoints` 列表内**。  
-
-- **`--label=receive_replica=...`**：与各副本区分一致，便于 Querier **dedup**；命名建议与 Pod 名或序号绑定。  
-
-- **`--receive.replication-factor`**：与**副本数 + 官方 Quorum** 一体设计。
-
-  多副本或弹性伸缩优先 **Thanos Receive Controller**（**T4.12.8.5**）。多租户、请求头 **`THANOS-TENANT`**：[Receive](https://thanos.io/tip/components/receive.md/)、[Multi-tenancy](https://thanos.io/tip/operating/multi-tenancy.md/)。
+多副本、弹性伸缩优先 **Thanos Receive Controller**（见 **T4.12.8.5**、[官方 hashring 与 K8s 扩缩](https://thanos.io/tip/components/receive.md/#hashring-management-and-autoscaling-in-kubernetes)）。多租户、**`THANOS-TENANT`** 头见 [Receive](https://thanos.io/tip/components/receive.md/)、[Multi-tenancy](https://thanos.io/tip/operating/multi-tenancy.md/)。
 
 #### T4.12.8.9、自检
 
-交付后按下列检查；后几条也用于排错。
-
-1. **Querier**，**Endpoints**：Receiver 对应后端为 **Up**。路径甲（见 **T4.12.8.7**「路径甲」小节）若仍带 **Sidecar**，会与 Receive 双路 Store，按 **T4.12.8.4** 与该小节步骤表第 8 步检查去重是否到位；路径乙（「路径乙」小节）无 Sidecar Store，**`thanos-store-api`** 标签与 **selector** 须已按该小节「生产必审题」处理。  
-2. **Prometheus**：Targets 正常；无长期 **`remote_write`** 失败；WAL 若持续上涨先按同节 **ConfigMap / `remote_write`** 与官方调优指引调队列或查网络、HTTP 413。  
-3. **Receiver** 日志：对象存储 **403/5xx** 先修桶权限或 endpoint；**PVC** 满会写爆。常见启动失败是 **`hashring.json`** 与 **`--receive.local-endpoint`** 对不上。  
-4. **对象存储**：跑过一阵应出现新对象；块元数据里应能看到 **`receive_*`** 一类标签（与 **`--label`** 对齐）。  
-5. **同一桶双写**：Sidecar **`--objstore`** 与 Receive **`remote_write`** 同时灌同一批业务序列时，回到本节开头「不要混写」那条。  
-6. 若打开 **`--tsdb.out-of-order.time-window`**，Compactor 须能 **vertical compaction**，否则可能压块卡住，详见 Receive 该参数说明及 **T4.12.7** 变更评审。
+| 查什么 | 合格标准 / 排错要点 |
+|--------|---------------------|
+| **Querier → Endpoints** | Receive（及 Store GW）为 **Up**。路径甲：Sidecar + Receive 双 Store，去重按 **T4.12.8.7 路径甲步骤 8** 与 **T4.12.8.4**。路径乙：应已去掉 **`thanos-store-api`** / 修正 **selector**，避免发现「假 Store」。 |
+| **Prometheus** | Targets 正常；日志无长期 **`remote_write` 失败**；WAL 持续增长时先调 **queue_config**、查网络与 **413**（见 **T4.12.8.7 第一步** 文档链）。 |
+| **Receive 日志** | 桶 **403/5xx** → 权限与 endpoint；**PVC 满** → 写失败。启动失败常见：**`hashring.json`** 与 **`--receive.local-endpoint`** 不一致。 |
+| **对象存储** | 运行一段时间后应有新对象；块上可见 **`receive_*`** 等与 **`--label`** 一致的标签。 |
+| **禁止** | 同一批业务序列：**Sidecar `--objstore` 上传** 与 **Receive `remote_write`** **不要**同时灌同一逻辑空间（见 **T4.12.8** 开篇「不要混写」）。 |
+| **乱序窗口** | 若开 **`--tsdb.out-of-order.time-window`**，Compactor 须支持 **vertical compaction**，否则压块可能卡住（见 Receive 说明与 **T4.12.7**）。 |
 
 **插图槽位（可自行补图，仓库中暂无对应文件则不用管）**
 
