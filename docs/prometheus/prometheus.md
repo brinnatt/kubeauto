@@ -4584,6 +4584,8 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 | **禁止** | 同一批业务序列：**Sidecar `--objstore` 上传** 与 **Receive `remote_write`** **不要**同时灌同一逻辑空间（见 **T4.12.8** 开篇「不要混写」）。 |
 | **乱序窗口** | 若开 **`--tsdb.out-of-order.time-window`**，Compactor 须支持 **vertical compaction**，否则压块可能卡住（见 Receive 说明与 **T4.12.7**）。 |
 
+![thanos_receive](./images/thanos_receive.png)
+
 **插图槽位（可自行补图，仓库中暂无对应文件则不用管）**
 
 - **`docs/prometheus/images/t4-12-receiver-stores.png`**：建议截 Querier **Endpoints** 页，包含 **Receiver** 与 **Store Gateway** 均为 Up。  
