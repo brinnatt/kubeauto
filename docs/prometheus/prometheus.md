@@ -4192,7 +4192,9 @@ kubectl logs -n kube-mon -l app=thanos-compactor --tail=100
 
 **和前面的关系**：命名空间仍 **`kube-mon`**，对象存储仍是 Secret **`thanos-objectstorage`**（键 **`thanos.yaml`**，与 **T4.12.6** 一致），**Compactor** 仍用 **T4.12.7**，**Querier** 仍用 **T4.12.4** 的 `dnssrv+_grpc._tcp.thanos-store-apis...` 发现 Store。**不要**在已经有 Sidecar **`--objstore`** 向**同一个桶**上传的同时，又对**同一批业务指标**开 **`remote_write`** 再写进该桶（除非换桶或租户与标签空间已书面拆开）。
 
-#### T4.12.8.1、Sidecar 路线和 Receive 路线对照
+#### T4.12.8.1、路线对照
+
+Sidecar 路线（**T4.12.3～7**）与 Receive 路线（本节）长期入桶方式不同，下表分项对比。
 
 | 问题 | Sidecar 路线（T4.12.3～7） | Receive 路线（本节） |
 |------|---------------------------|----------------------|
@@ -4200,7 +4202,27 @@ kubectl logs -n kube-mon -l app=thanos-compactor --tail=100
 | Prometheus 上还要不要 Thanos | 一般要 **Sidecar 同 Pod** | 至少要能访问 Receive 的 **`remote_write` 端口**；可以只有 Prometheus 容器 |
 | 查最近几小时谁提供 Store | 各副本 **Sidecar** | **Receive**；更久靠 **Store Gateway** |
 
-#### T4.12.8.2、整条链路上发生的事（按顺序）
+两条路线进**同一个逻辑桶**时只能选一条，不要 Sidecar 上传和 Receive 推送混写同一批业务指标。下图便于和表格对照着看：
+
+```mermaid
+flowchart TB
+  subgraph SC["Sidecar 路线 T4.12.3 至 T4.12.7"]
+    P1["Prometheus 本机 TSDB"]
+    SD["Sidecar"]
+    P1 --> SD
+  end
+  subgraph RC["Receive 路线 本节"]
+    P2["Prometheus 抓取与本机 TSDB"]
+    RV["Receive 本地 TSDB"]
+    P2 --> RV
+  end
+  SD --> BUCK[(对象存储)]
+  RV --> BUCK
+```
+
+#### T4.12.8.2、数据流
+
+按顺序看 Receive 这一路：抓取与查询各怎么走。
 
 1. **抓取不变**：`scrape_configs` 照 **T4.4～T4.8** 配，有没有 Receive 都一样。  
 2. **推送**：在 Prometheus 里增加 **`remote_write`**，用 HTTP 访问 Receive 提供的 **`/api/v1/receive`**（默认容器端口 **19291**，见下文清单）。  
@@ -4209,7 +4231,22 @@ kubectl logs -n kube-mon -l app=thanos-compactor --tail=100
 
 Receive 副本之间的复制、转发在组件内部用 **gRPC** 完成，和 Prometheus 直连的 HTTP **不是**一回事。
 
-#### T4.12.8.3、最容易配错的两类地址
+**Receiver 路线一览**（写入用 HTTP **19291**，Querier 读 Receive 用 gRPC **10901**；详表见 **T4.12.8.3**）：
+
+```mermaid
+flowchart TB
+  TG["抓取目标"] -->|"HTTP pull"| PM["Prometheus"]
+  PM -->|"remote_write 端口 19291"| RX["Receive"]
+  RX -->|"上传 TSDB 块"| BUCK2[(对象存储)]
+  Q["Querier"]
+  Q -->|"gRPC Store 端口 10901"| RX
+  Q --> SG["Store Gateway"]
+  SG --> BUCK2
+```
+
+#### T4.12.8.3、地址与端口
+
+`remote_write` 的 **URL** 和 `hashring.json` 里的 **endpoints** 不是同一种写法，配错会起不来。
 
 | 写在哪里 | 填什么 | 端口 | 说明 |
 |----------|--------|------|------|
@@ -4218,7 +4255,9 @@ Receive 副本之间的复制、转发在组件内部用 **gRPC** 完成，和 P
 
 `hashring.json` 的格式与上游示例一致，见 [Receive · Example](https://thanos.io/tip/components/receive.md/#example)。
 
-#### T4.12.8.4、Prometheus 这边两种接法（只能选一种）
+#### T4.12.8.4、采集端选型
+
+**甲 / 乙** 只能二选一：要么保留 Sidecar 只当 reloader，要么只要 Prometheus 单容器。
 
 | 甲：已有双容器（Prometheus + Sidecar） | 乙：只要 Receive（推荐新做这一条） |
 |----------------------------------------|-----------------------------------|
@@ -4227,7 +4266,9 @@ Receive 副本之间的复制、转发在组件内部用 **gRPC** 完成，和 P
 
 路径乙建议继续打开 **`--web.enable-lifecycle`**，便于 **T4.3.1** 那套 reload。
 
-#### T4.12.8.5、上线前建议想清楚的几件事
+#### T4.12.8.5、生产要点
+
+上线前建议逐项核对：标签、保留策略、哈希环、RF、资源与告警责任等。
 
 - **标签**：Prometheus **`global.external_labels`** 要稳定；Receive 用 **`--label`** 增加 **`receive_replica`** 等，键名尽量用 **`receive_` 开头**，避免和 Prometheus 的 **`replica`** 混在一起（重名时 Receive 会覆盖推送里的标签），见 [External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels)。  
 - **Receive 的 `--tsdb.retention`**：含义和普通 Prometheus **不一样**，涉及租户生命周期，见 [Tenant lifecycle management](https://thanos.io/tip/components/receive.md/#tenant-lifecycle-management)。下面 YAML 里 **`1d`** 只是练习规模，生产按缓冲和合规自己定。  
@@ -4237,7 +4278,9 @@ Receive 副本之间的复制、转发在组件内部用 **gRPC** 完成，和 P
 - **资源**：生产务必给 Receive 配 **`resources`** 和足够 PVC；Prometheus **`remote_write` 队列**按 [Remote write tuning](https://prometheus.io/docs/practices/remote_write/) 调。需要限制单次写入体积时可了解 Receive 的 **limits/gates**（仍为实验能力），见 [Limits and gates](https://thanos.io/tip/components/receive.md/#limits--gates-experimental)。  
 - **告警**：仍走 **T4.11** 和 Alertmanager；Receive 不负责发告警。
 
-#### T4.12.8.6、推荐操作顺序与清单文件
+#### T4.12.8.6、部署顺序
+
+建议按下面顺序做；后面的 **`thanos-receive-hashring.yaml`**、**`receiver.yaml`** 紧跟本小节。
 
 1. 做完 **T4.12.6**（Secret、`thanos-objectstorage`、Store Gateway）。  
 2. 确认 **T4.12.3** 里的 **`discovery.yaml`** 已部署（**`thanos-store-apis`** Headless），否则 **T4.12.4** 里那条 **`dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local`** 发现不到 Receive。  
@@ -4375,11 +4418,11 @@ kubectl rollout status statefulset/thanos-receiver -n kube-mon
 kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 ```
 
-#### T4.12.8.7、Prometheus 配置 `remote_write`
+#### T4.12.8.7、remote_write
 
-**`url`** 必须带 **`/api/v1/receive`**，端口用 **19291**，与 **T4.12.8.3** 一致。生产如果要 **TLS** 或鉴权，Receive 侧见 [Receive · Flags](https://thanos.io/tip/components/receive.md/#flags)，Prometheus 侧填 `remote_write` 里对应的 TLS 字段（本文示例为集群内明文 HTTP）。
+在 **`prometheus.yaml.tmpl`**（或实际生效配置）里增加 **`remote_write`**；**`url`** 须含 **`/api/v1/receive`**，端口 **19291**，与 **T4.12.8.3** 一致。生产若要 **TLS** 或鉴权，Receive 侧见 [Receive · Flags](https://thanos.io/tip/components/receive.md/#flags)，Prometheus 在 `remote_write` 里填对应 TLS 字段（下文为集群内明文 HTTP 示例）。
 
-在 **`prometheus.yaml.tmpl`**（或实际生效的配置）里保留 `global`、`scrape_configs`、`rule_files`、`alerting`；**`scrape_configs` 仍须完整粘贴 T4.4～T4.8**；在**与 `alerting` 同级**增加 **`remote_write`**，例如：
+保留 `global`、`scrape_configs`、`rule_files`、`alerting`；**`scrape_configs` 仍须完整粘贴 T4.4～T4.8**；与 **`alerting` 同级**增加 **`remote_write`**，例如：
 
 ```yaml
     remote_write:
@@ -4396,7 +4439,7 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 
 #### T4.12.8.8、扩缩容
 
-扩副本、缩容或**改过 Receive 相关 DNS** 时，下列项必须**一起改**，不能只调 **`StatefulSet.replicas`**：
+扩缩副本或改过 Receive 相关 **DNS** 时，**hashring、各 Pod 的 `--receive.local-endpoint`、`--label`、RF** 要与副本数联动；**不要**只改 **`StatefulSet.replicas`**。具体项：
 
 - **`hashring.json` → `endpoints`**：每实例一项 **`主机:<gRPC 端口>`**（本文为 **`…:10901`**）；**不要**写 **`remote_write`** 的 **`http://…:19291/...`**。  
 - **每个 Pod** 的 **`--receive.local-endpoint`**：本实例在环上的 **gRPC** 身份，须落在 **`endpoints` 列表内**。  
@@ -4404,7 +4447,9 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 - **`--receive.replication-factor`**：与**副本数 + 官方 Quorum** 一体设计。  
 多副本或弹性伸缩优先 **Thanos Receive Controller**（**T4.12.8.5**）。多租户、请求头 **`THANOS-TENANT`**：[Receive](https://thanos.io/tip/components/receive.md/)、[Multi-tenancy](https://thanos.io/tip/operating/multi-tenancy.md/)。
 
-#### T4.12.8.9、自检与排错
+#### T4.12.8.9、自检
+
+交付后按下列检查；后几条也用于排错。
 
 1. **Querier**，**Endpoints**：Receiver 对应后端为 **Up**。路径甲下若同时有 **Sidecar**，按 **T4.12.8.4** 检查去重是否配置到位。  
 2. **Prometheus**：Targets 正常；无长期 **`remote_write`** 失败；WAL 若持续上涨先按 **T4.12.8.7** 调队列或查网络。  
