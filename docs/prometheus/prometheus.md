@@ -4566,7 +4566,7 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 
 扩 Receive 副本或改 **DNS** 时，**不能只改 `StatefulSet.replicas`**，须联动：
 
-- **`hashring.json` → `endpoints`**：每项为 **`主机:10901`（gRPC）**；**禁止**写成 **`remote_write` 的 `http://…:19291/...`**。  
+- **`hashring.json` → `endpoints`**：每项为 **`主机:10901`（gRPC）**；**注意不要**写成 **`remote_write` 用的地址 `http://…:19291/...`**。  
 - **每个 Pod 的 `--receive.local-endpoint`**：须是 **`endpoints` 里的一条**（本 Pod 在环上的身份）。  
 - **`--label`**：与副本一一对应（如 **`'--label=receive_replica="thanos-receiver-0"'`**），便于 Query **dedup**；值两侧须有 **`"`**。  
 - **`--receive.replication-factor`**：与副本数、官方 **Quorum** 一起设计。
