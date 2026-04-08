@@ -4586,10 +4586,7 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 
 ![thanos_receive](./images/thanos_receive.png)
 
-**插图槽位（可自行补图，仓库中暂无对应文件则不用管）**
-
-- **`docs/prometheus/images/t4-12-receiver-stores.png`**：建议截 Querier **Endpoints** 页，包含 **Receiver** 与 **Store Gateway** 均为 Up。  
-- **`docs/prometheus/images/t4-12-remote-write-query.png`**：建议截 Querier **Graph** 或 Grafana 同一查询，证明近期曲线可查。
+![thanos_receive_single](./images/thanos_receive_single.png)
 
 ## T4.13、Prometheus Adapter
 
