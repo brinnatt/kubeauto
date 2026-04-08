@@ -4442,10 +4442,14 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 扩缩副本或改过 Receive 相关 **DNS** 时，**hashring、各 Pod 的 `--receive.local-endpoint`、`--label`、RF** 要与副本数联动；**不要**只改 **`StatefulSet.replicas`**。具体项：
 
 - **`hashring.json` → `endpoints`**：每实例一项 **`主机:<gRPC 端口>`**（本文为 **`…:10901`**）；**不要**写 **`remote_write`** 的 **`http://…:19291/...`**。  
+
 - **每个 Pod** 的 **`--receive.local-endpoint`**：本实例在环上的 **gRPC** 身份，须落在 **`endpoints` 列表内**。  
+
 - **`--label=receive_replica=...`**：与各副本区分一致，便于 Querier **dedup**；命名建议与 Pod 名或序号绑定。  
-- **`--receive.replication-factor`**：与**副本数 + 官方 Quorum** 一体设计。  
-多副本或弹性伸缩优先 **Thanos Receive Controller**（**T4.12.8.5**）。多租户、请求头 **`THANOS-TENANT`**：[Receive](https://thanos.io/tip/components/receive.md/)、[Multi-tenancy](https://thanos.io/tip/operating/multi-tenancy.md/)。
+
+- **`--receive.replication-factor`**：与**副本数 + 官方 Quorum** 一体设计。
+
+  多副本或弹性伸缩优先 **Thanos Receive Controller**（**T4.12.8.5**）。多租户、请求头 **`THANOS-TENANT`**：[Receive](https://thanos.io/tip/components/receive.md/)、[Multi-tenancy](https://thanos.io/tip/operating/multi-tenancy.md/)。
 
 #### T4.12.8.9、自检
 
