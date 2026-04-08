@@ -4272,7 +4272,7 @@ flowchart TB
 
 上线前建议逐项核对：标签、保留策略、哈希环、RF、资源与告警责任等。
 
-- **标签**：Prometheus **`global.external_labels`** 要稳定；Receive 用 **`--label`** 增加 **`receive_replica`** 等，键名尽量用 **`receive_` 开头**，避免和 Prometheus 的 **`replica`** 混在一起（重名时 Receive 会覆盖推送里的标签），见 [External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels)。  
+- **标签**：Prometheus **`global.external_labels`** 要稳定；Receive 用 **`--label`** 增加 **`receive_replica`** 等，键名尽量用 **`receive_` 开头**，避免和 Prometheus 的 **`replica`** 混在一起（重名时 Receive 会覆盖推送里的标签），见 [External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels)。**`receive` 的 `--label` 必须是 Prometheus 标签写法、值要包在英文双引号里**；在 **`args` 里推荐整段用单引号包住**，例如 **`'--label=receive_replica="thanos-receiver-0"'`**。若写成 **`--label=receive_replica=thanos-receiver-0`**（无引号），启动会报 **`unquote label value`** / **`invalid syntax`**（与 [Thanos #2491](https://github.com/thanos-io/thanos/issues/2491) 同理）。  
 - **Receive 的 `--tsdb.retention`**：含义和普通 Prometheus **不一样**，涉及租户生命周期，见 [Tenant lifecycle management](https://thanos.io/tip/components/receive.md/#tenant-lifecycle-management)。下面 YAML 里 **`1d`** 只是练习规模，生产按缓冲和合规自己定。  
 - **哈希算法**：下面 JSON 已写 **`"algorithm": "ketama"`**，新环境建议固定用 Ketama；默认 **hashmod** 扩缩容时容易搅动序列，见 [Series distribution algorithms](https://thanos.io/tip/components/receive.md/#series-distribution-algorithms)。  
 - **复制因子 `RF`**：和副本数、hashring 要一起设计，见 [Quorum](https://thanos.io/tip/components/receive.md/#quorum)。不要只把 `replicas` 改成 3 却还把 **RF 留在 1** 当高可用。  
@@ -4347,7 +4347,7 @@ spec:
             - --objstore.config-file=/etc/secret/thanos.yaml
             - --tsdb.path=/var/thanos/receiver
             - --tsdb.retention=1d
-            - --label=receive_replica=thanos-receiver-0
+            - '--label=receive_replica="thanos-receiver-0"'
             - --receive.local-endpoint=thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:10901
           ports:
             - containerPort: 10901
@@ -4568,7 +4568,7 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 
 - **`hashring.json` → `endpoints`**：每项为 **`主机:10901`（gRPC）**；**禁止**写成 **`remote_write` 的 `http://…:19291/...`**。  
 - **每个 Pod 的 `--receive.local-endpoint`**：须是 **`endpoints` 里的一条**（本 Pod 在环上的身份）。  
-- **`--label=receive_replica=...`**：与副本一一对应，便于 Query **dedup**。  
+- **`--label`**：与副本一一对应（如 **`'--label=receive_replica="thanos-receiver-0"'`**），便于 Query **dedup**；值两侧须有 **`"`**。  
 - **`--receive.replication-factor`**：与副本数、官方 **Quorum** 一起设计。
 
 多副本、弹性伸缩优先 **Thanos Receive Controller**（见 **T4.12.8.5**、[官方 hashring 与 K8s 扩缩](https://thanos.io/tip/components/receive.md/#hashring-management-and-autoscaling-in-kubernetes)）。多租户、**`THANOS-TENANT`** 头见 [Receive](https://thanos.io/tip/components/receive.md/)、[Multi-tenancy](https://thanos.io/tip/operating/multi-tenancy.md/)。
