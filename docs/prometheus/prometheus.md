@@ -4610,7 +4610,37 @@ HorizontalPodAutoscaler 仅基于 CPU、内存扩缩时，依赖 `metrics.k8s.io
 | HorizontalPodAutoscaler | `apiVersion: autoscaling/v2`；`metrics[].type: Pods`；`metric.name` 与 `kubectl get --raw` 路径一致 |
 | 部署 adapter 前 | Thanos Querier 中已存在含 `kubernetes_namespace`、`kubernetes_pod_name` 的示例序列 |
 
-插图槽位：`docs/prometheus/images/t4-13-adapter-flow.png`（数据流：HorizontalPodAutoscaler → APIService → prometheus-adapter → Thanos Querier。）
+下图为 **T4.13** 与 **T4.4～T4.8、T4.12** 及 **资源类 HPA** 的对照关系：上方为指标如何进入 TSDB 并经 Thanos Querier 对外查询；中间为本节控制面；下方为仅使用 CPU/内存时的路径（metrics-server），与 Prometheus 无直接耦合。渲染器须支持 [Mermaid](https://mermaid.js.org/)（如 VS Code 插件、GitHub、部分静态站点生成器）。
+
+```mermaid
+flowchart TB
+  subgraph data["指标数据面 · T4.4～T4.8 与 T4.12"]
+    WL["工作负载与 Service\n（本章示例 kube-mon）"]
+    EP["Prometheus 任务\nkubernetes-endpoints"]
+    PM["Prometheus 抓取"]
+    TS["本机 TSDB"]
+    WL --> EP --> PM --> TS
+    TS -.->|"Sidecar / Store / Receive 等\n（详见 T4.12）"| Q["Thanos Querier\nHTTP :9090"]
+  end
+
+  subgraph ctrl["自定义指标扩缩控制面 · 本节"]
+    HPA["HorizontalPodAutoscaler\nautoscaling/v2 · Pods 指标"]
+    AGG["kube-apiserver 聚合层"]
+    CM["Custom Metrics API\ncustom.metrics.k8s.io\nAPIService v1beta1.custom..."]
+    AD["prometheus-adapter\nrules / PromQL"]
+    HPA --> AGG --> CM --> AD
+    AD -->|"prometheus.url + port\n与正文 values 一致"| Q
+  end
+
+  subgraph res["资源类扩缩 · 对照（非本节）"]
+    HPAr["HorizontalPodAutoscaler\nCPU / 内存"]
+    MK["Metrics API\nmetrics.k8s.io"]
+    MS["metrics-server"]
+    HPAr --> MK --> MS
+  end
+```
+
+说明：adapter **只**向 **Querier** 发查询；**rules** 中的 `seriesQuery` / `overrides` 须与 **T4.4** 产生的 `kubernetes_namespace`、`kubernetes_pod_name` 等标签一致，否则自定义 API 有数据而 **HorizontalPodAutoscaler** 仍为 unknown。
 
 ### T4.13.1、示例
 
