@@ -1335,6 +1335,20 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 
 也就是说：**资源用量**（CPU/内存）→ metrics-server / 我们前面的 node-exporter、cAdvisor；**对象状态**（副本数、Phase、重启次数）→ kube-state-metrics。
 
+下图与上文及 [kube-state-metrics README](https://github.com/kubernetes/kube-state-metrics) 一致：左侧为「监听 API、由 Prometheus 拉取」；右侧为「kubelet → metrics-server → Metrics API」，**不经由 Prometheus**，与 **T4.13** 中资源类 HorizontalPodAutoscaler 路径同类。
+
+```mermaid
+flowchart TB
+  subgraph ksm["kube-state-metrics · 供 Prometheus 使用"]
+    API[Kubernetes API Server] -->|list / watch 对象变化| KSM[kube-state-metrics]
+    PM[Prometheus] -->|HTTP 抓取 /metrics| KSM
+  end
+  subgraph ms["metrics-server · 供集群调度与扩缩等使用"]
+    KBL[kubelet] --> MSRV[metrics-server]
+    MSRV --> MKAPI[Metrics API\nmetrics.k8s.io]
+  end
+```
+
 ---
 
 ### T4.8.2、安装
@@ -1555,6 +1569,14 @@ kube_pod_container_resource_limits_cpu_cores == 0
 > 大盘：长期维护建议用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 把 JSON 放进 Git，少依赖只在网页里改。 
 >
 > 托管：若要少运维，可看 [Grafana Cloud](https://grafana.com/products/cloud/)。
+
+**访问与查询关系**（与上文「`kube-mon` 内 Prometheus 服务地址 `prometheus:9090`」一致）：终端用户通过浏览器访问 Grafana；Grafana 按数据源配置向 **Prometheus HTTP API** 发起查询，**不负责**抓取目标，抓取仍由 **T4.2～T4.8** 中 Prometheus 任务完成。
+
+```mermaid
+flowchart LR
+  BR[浏览器] -->|HTTP / HTTPS| GF[Grafana]
+  GF -->|已配置数据源\nPromQL / HTTP| PRM[Prometheus :9090]
+```
 
 ---
 
@@ -3146,7 +3168,7 @@ Prometheus 开 **`remote_write`** 把数据推到 Thanos Receive，Receive 落�
 
 在页面上看桶里有哪些块、时间范围等，方便排障，不参与正常查询链路。详见 [Bucket](https://thanos.io/tip/components/tools.md/#bucket-web)。
 
-### T4.12.1、数据怎么流动（写、查、告警）
+### T4.12.0、数据怎么流动（写、查、告警）
 
 **写入**
 
@@ -3168,7 +3190,28 @@ Prometheus 开 **`remote_write`** 把数据推到 Thanos Receive，Receive 落�
 - 两个副本会各算一遍规则，要靠 `alert_relabel_configs` 去掉 `replica`，Alertmanager 才只收一条（见 **T4.12.1.1** 与 **T4.12.3**）。
 - 是否引入 **Thanos Ruler**、与本地规则如何取舍，见 **T4.12.5**；若 Ruler 与 Prometheus 同推一套 Alertmanager，须用路由与标签防重复。
 
-### T4.12.1.1、副本标签
+**写入与查询主路径**（与上文「写入」「查询」两小节一致；不写 Compactor、Ruler、Query Frontend 等可选组件，避免与 **T4.12.6** 中更细的 Store 关系图重复）：
+
+```mermaid
+flowchart TB
+  subgraph wr["写入"]
+    SRC[抓取目标] -->|scrape_configs| PROM[Prometheus 抓取]
+    SC[Sidecar\n与 Prometheus 同 Pod]
+    PROM --> TS[(本机 TSDB)]
+    TS --- SC
+    SC -->|上传封闭块| OBJ[(对象存储)]
+  end
+  subgraph rd["查询"]
+    CLI[Grafana 等] -->|HTTP| TQ[Querier]
+    TQ -->|gRPC Store API| SC
+    TQ -->|gRPC Store API| STGW[Store Gateway]
+    STGW -->|读对象| OBJ
+  end
+```
+
+告警仍由各 **Prometheus** 上规则求值后送往 **T4.11** 的 Alertmanager，与本图查询分支独立。
+
+### T4.12.1、副本标签
 
 **背景**：**T4.12.3** 里用 StatefulSet 起 **两个 Prometheus**，它们抓取同一批 target，写出来的时间序列几乎一样。若没有额外区分，Thanos Querier 会把两边当成两套无关数据，**图里同一条指标可能出现两条线**（或查询语义混乱）。
 
