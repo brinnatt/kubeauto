@@ -4590,425 +4590,219 @@ kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 
 ## T4.13、Prometheus Adapter
 
-Kubernetes 的核心优势之一是支持应用程序的水平弹性伸缩。**HorizontalPodAutoscaler（HPA）** 可根据资源使用指标（如 CPU、内存）或自定义业务指标自动调整 Pod 副本数量。
+HorizontalPodAutoscaler 仅基于 CPU、内存扩缩时，依赖 `metrics.k8s.io` 与 metrics-server 即可，与 Prometheus 无直接耦合，可省略本节。若需基于 Prometheus 中已存储的业务指标进行扩缩，则应部署 [prometheus-adapter](https://github.com/kubernetes-sigs/prometheus-adapter)：该组件按配置中的 rules 周期性访问 Prometheus 兼容的查询接口（本文对接 T4.12.4 的 Thanos Querier），将查询结果聚合后注册至 Custom Metrics API（`custom.metrics.k8s.io/v1beta1`），供 HorizontalPodAutoscaler 引用。HorizontalPodAutoscaler 语义以 [Horizontal Pod Autoscale](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) 为准；adapter 规则语法以 [config.md](https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md) 为准。
 
-> **重要更新**：`autoscaling/v2` 已在 Kubernetes 1.23+ 中成为**稳定版本**，推荐生产环境使用。`autoscaling/v2beta1` 和 `autoscaling/v2beta2` 已被废弃，请勿在新项目中采用。
+**版本约定**：适配器二进制见 [Releases](https://github.com/kubernetes-sigs/prometheus-adapter/releases)（截至文档编写时常见 v0.12.0）。Helm Chart 为 `prometheus-community/prometheus-adapter`，下文示例固定 Chart `5.3.0`。生产环境须在变更管理中锁定 `helm upgrade --install` 的 `--version`；升级前以 `helm search repo prometheus-community/prometheus-adapter --versions` 与组织审批版本对齐，不宜在生产省略 `--version` 而跟踪上游最新标签。
 
-### T4.13.1、自定义指标
+**本节解决什么问题**：在 T4.4～T4.8 抓取与 T4.12.4 Thanos Querier 已可用的前提下，补充 prometheus-adapter、rules 及 `autoscaling/v2` 的 HorizontalPodAutoscaler，使副本数随 `nginx_vts_server_requests_total` 经规则派生的 Pod 级速率指标变化。Custom Metrics API 中对外暴露的名称由 rules 中 `name.as` 等字段决定。
 
-除了基于 CPU 和内存来进行自动扩缩容之外，我们还可以根据自定义的监控指标来进行。这时我们要用到 `Prometheus Adapter`，Prometheus 用于监控应用的负载和集群本身的各种指标，`Prometheus Adapter` 可以帮我们使用 Prometheus 收集的指标，然后加以利用来制定扩展策略，这些指标都是通过 APIServer 暴露的，而且 HPA 资源对象也可以很轻易地直接使用。
+**和前面的关系**：示例资源位于命名空间 `kube-mon`。`prometheus.url` 配置 Thanos Querier 的 HTTP 基址（`http://thanos-querier.kube-mon.svc.cluster.local`），端口单独写 `prometheus.port: 9090`。rules 所引用的时间序列标签须与 T4.4 中 `kubernetes-endpoints` 的 relabel 结果一致，即 `kubernetes_namespace`、`kubernetes_pod_name`。集群内 `v1beta1.custom.metrics.k8s.io` 仅应由一套 adapter 注册；若 T4.14 已通过 kube-prometheus 等栈安装 adapter，则不应重复部署。
 
-![prometheus-adapter1](./images/prometheus-adapter1.png)
+**推荐操作顺序**：（1）部署可被 Prometheus 抓取的工作负载，并于 Thanos Querier 中确认时间序列存在；（2）安装 prometheus-adapter 并下发 rules；（3）以 `kubectl get apiservice`、`kubectl get --raw` 验证 Custom Metrics API；（4）创建 HorizontalPodAutoscaler，目标值与第（3）步 RAW 输出在数量级与单位上一致。
 
-首先，我们部署一个示例应用，测试通过 Prometheus 收集指标自动缩放，资源清单文件如下所示（hpa-prome-demo.yaml）：
+**扩展阅读**：亦可评估 [KEDA](https://keda.sh/) 与 [Prometheus Scaler](https://keda.sh/docs/latest/scalers/prometheus/) 作为替代路径。prometheus-adapter 维护与迁移讨论见 [Issue #701](https://github.com/kubernetes-sigs/prometheus-adapter/issues/701)。
+
+新建 HorizontalPodAutoscaler 应使用 `autoscaling/v2`；`autoscaling/v2beta1`、`autoscaling/v2beta2` 已废弃，不应写入新清单。
+
+| 配置项 | 取值或约束 |
+|--------|------------|
+| 查询端 | `prometheus.url` 不含端口；`prometheus.port: 9090` |
+| HorizontalPodAutoscaler | `apiVersion: autoscaling/v2`；`metrics[].type: Pods`；`metric.name` 与 `kubectl get --raw` 路径一致 |
+| 部署 adapter 前 | Thanos Querier 中已存在含 `kubernetes_namespace`、`kubernetes_pod_name` 的示例序列 |
+
+插图槽位：`docs/prometheus/images/t4-13-adapter-flow.png`（数据流：HorizontalPodAutoscaler → APIService → prometheus-adapter → Thanos Querier。）
+
+### T4.13.1、示例
+
+于命名空间 `kube-mon` 部署 nginx-vts 示例；Service 注解须符合 T4.4 `kubernetes-endpoints` 抓取约定，指标路径为 `/status/format/prometheus`。须先在 Thanos Querier 中确认可查询 `nginx_vts_server_requests_total`，且标签包含 `kubernetes_namespace`、`kubernetes_pod_name`，方可继续 T4.13.2；否则应回到 T4.4 核对抓取与 relabel，不宜先行安装 prometheus-adapter。
+
+镜像 `cnych/nginx-vts:v1.0` 仅供随文演练，生产环境应替换为经组织批准的镜像。
+
+插图槽位：`docs/prometheus/images/t4-13-demo-target-up.png`（Prometheus 或 Querier 中对应 Target 为 UP。）
+
+`hpa-adapter-demo.yaml`：
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hpa-prom-demo
+  name: hpa-adapter-demo
+  namespace: kube-mon
+  labels:
+    app: hpa-adapter-demo
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      app: nginx-server
+      app: hpa-adapter-demo
   template:
     metadata:
       labels:
-        app: nginx-server
+        app: hpa-adapter-demo
     spec:
       containers:
-        - name: nginx-demo
+        - name: nginx
           image: cnych/nginx-vts:v1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
           resources:
-            limits:
-              cpu: 50m
             requests:
               cpu: 50m
-          ports:
-            - containerPort: 80
-              name: http
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: hpa-prom-demo
+  name: hpa-adapter-demo
+  namespace: kube-mon
+  labels:
+    app: hpa-adapter-demo
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "80"
     prometheus.io/path: "/status/format/prometheus"
 spec:
+  type: ClusterIP
   ports:
-    - port: 80
-      targetPort: 80
-      name: http
+    - name: http
+      port: 80
+      targetPort: http
   selector:
-    app: nginx-server
-  type: NodePort
+    app: hpa-adapter-demo
 ```
-
-这里我们部署的应用是在 80 端口的 `/status/format/prometheus` 这个端点暴露 nginx-vts 指标的，前面我们已经在 Prometheus 中配置了 Endpoints 的自动发现，所以我们直接在 Service 对象的 `annotations` 中进行配置，这样我们就可以在 Prometheus 中采集该指标数据了。为了测试方便，我们这里使用 NodePort 类型的 Service，现在直接创建上面的资源对象即可：
 
 ```bash
-$ kubectl apply -f hpa-prome-demo.yaml
-deployment.apps/hpa-prom-demo created
-service/hpa-prom-demo created
-$ kubectl get pods -l app=nginx-server
-NAME                             READY   STATUS    RESTARTS   AGE
-hpa-prom-demo-755bb56f85-lvksr   1/1     Running   0          4m52s
-$ kubectl get svc
-NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
-hpa-prom-demo   NodePort    10.101.210.158   <none>        80:32408/TCP   5m44s
-......
+kubectl apply -f hpa-adapter-demo.yaml
+kubectl rollout status deployment/hpa-adapter-demo -n kube-mon
 ```
 
-部署完成后我们可以使用如下命令测试应用是否正常，以及指标数据接口能否正常获取：
+部署后确认指标端点可用：
 
 ```bash
-$ curl http://k8s.qikqiak.com:32408
-<!DOCTYPE html>
-<html>
-......
-</html>
-$ curl http://k8s.qikqiak.com:32408/status/format/prometheus
-......
-nginx_vts_server_requests_total{host="*",code="1xx"} 0
-nginx_vts_server_requests_total{host="*",code="2xx"} 32
-nginx_vts_server_requests_total{host="*",code="3xx"} 0
-nginx_vts_server_requests_total{host="*",code="4xx"} 0
-nginx_vts_server_requests_total{host="*",code="5xx"} 0
-nginx_vts_server_requests_total{host="*",code="total"} 32
-nginx_vts_server_request_seconds_total{host="*"} 0.000
-nginx_vts_server_request_seconds{host="*"} 0.000
-......
+kubectl -n kube-mon port-forward svc/hpa-adapter-demo 8080:80
+curl -sS http://127.0.0.1:8080/status/format/prometheus | head
 ```
 
-上面的指标数据中，我们比较关心的是 `nginx_vts_server_requests_total` 这个指标，表示请求总数，是一个 `Counter` 类型的指标，我们将使用该指标的值来确定是否需要对我们的应用进行自动扩缩容。
+在 Thanos Querier 中执行查询，确认 `nginx_vts_server_requests_total` 存在，且含 `kubernetes_namespace="kube-mon"`、`kubernetes_pod_name` 等标签。若不满足，应回到 T4.4 调整抓取与 relabel，不宜安装 prometheus-adapter。
 
-![prometheus-adapter2](./images/prometheus-adapter2.png)
+### T4.13.2、Rules 与 Helm 部署
 
-**安装 Prometheus-Adapter 并配置自定义指标**
+本节通过 Helm 部署 prometheus-adapter，并以 rules 声明指标来源与聚合方式：`seriesQuery` 选取 `nginx_vts_server_requests_total`；`metricsQuery` 中 `rate()` 将计数器转换为速率并按 Pod 聚合；`resources.overrides` 将 `kubernetes_namespace`、`kubernetes_pod_name` 映射至 Kubernetes 的 namespace、pod 资源，以便 Custom Metrics API 按 Pod 返回取值。字段说明见 [config.md](https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md)。
 
-将 Prometheus-Adapter 部署到 Kubernetes 集群后，可以通过配置规则将 Prometheus 中的任意指标暴露给 HPA（Horizontal Pod Autoscaler）使用。配置的核心是定义一个规则文件，让 Adapter 知道如何从 Prometheus 查询指标并将其映射为 Kubernetes 可用的自定义指标。
-
-以下是一个配置示例，详细说明可参考官方文档 [Prometheus-Adapter 配置说明](https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md)
+`hpa-prome-adapter-values.yaml`：
 
 ```yaml
-rules:
-  - seriesQuery: "nginx_vts_server_requests_total"
-    seriesFilters: []
-    resources:
-      overrides:
-        namespace: # 这里的namespace和pod_name是prometheus里面指标的标签
-          resource: namespace
-        pod_name:
-          resource: pod
-    name:
-      matches: "^(.*)_total"
-      as: "${1}_per_second"
-    metricsQuery: (sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>))
-```
+prometheus:
+  url: http://thanos-querier.kube-mon.svc.cluster.local
+  port: 9090
 
-**配置字段说明**
+metricsRelistInterval: 1m
 
-- **`seriesQuery`**：指定 Prometheus 查询语句，用于发现可用的指标。Adapter 会执行该查询，并将返回的所有指标系列（series）作为候选指标提供给 HPA。
-- **`seriesFilters`**：可选字段，用于过滤 `seriesQuery` 返回的指标系列。如果不需要过滤，留空即可。
-- **`resources`**：将 Prometheus 指标中的标签与 Kubernetes 资源类型关联，这是 Adapter 能够按 Pod、Namespace 等资源维度查询指标的关键。有两种定义方式：
-  - **`overrides`**：显式指定标签与 Kubernetes 资源的映射关系。示例中将指标中的 `namespace` 标签映射为 Kubernetes 的 `namespace` 资源，`pod_name` 标签映射为 `pod` 资源。这样在查询时，Adapter 会自动将目标 Pod 的名称和命名空间作为标签值传入查询语句。
-  - **`template`**：使用 Go 模板语法动态生成标签名。例如 `template: "kube_<<.Group>>_<<.Resource>>"` 会将指标中的 `kube_apps_deployment` 标签与 `apps` 组下的 `deployment` 资源关联。
-- **`name`**：用于重命名指标，通常是因为原始指标（如 `_total` 后缀的计数器）不适合直接用于 HPA，需要转换为速率等形式。
-  - **`matches`**：正则表达式匹配原始指标名，支持分组捕获。
-  - **`as`**：定义重命名后的指标名格式，默认为 `$1`（第一个分组）。示例中将 `_total` 后缀替换为 `_per_second`，更符合指标含义。
-- **`metricsQuery`**：定义实际的 PromQL 查询语句，用于获取某个具体指标的当前值。Adapter 在收到 HPA 请求时会执行该查询。查询语句中的占位符会被自动替换：
-  - `<<.Series>>`：当前指标名称。
-  - `<<.LabelMatchers>>`：基于 `resources` 关联生成的标签选择器，例如 `namespace="default", pod="my-pod"`。
-  - `<<.GroupBy>>`：用于聚合的标签，通常为 `pod` 或 `namespace`，由 `resources` 关联决定。
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
 
-示例中的查询语句计算了每个 Pod 在最近 1 分钟内的请求速率，并按 Pod 分组返回结果。
-
-接下来我们通过 Helm Chart 来部署 Prometheus Adapter，新建 `hpa-prome-adapter-values.yaml` 文件覆盖默认的 Values 值，内容如下所示：
-
-```yaml
 rules:
   default: false
   custom:
-    - seriesQuery: "nginx_vts_server_requests_total"
+    - seriesQuery: 'nginx_vts_server_requests_total{kubernetes_namespace!="",kubernetes_pod_name!=""}'
+      seriesFilters: []
       resources:
         overrides:
-          namespace:
+          kubernetes_namespace:
             resource: namespace
-          pod_name:
+          kubernetes_pod_name:
             resource: pod
       name:
         matches: "^(.*)_total"
         as: "${1}_per_second"
-      metricsQuery: (sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>))
-
-prometheus:
-  url: http://thanos-querier.kube-mon.svc.cluster.local
+      metricsQuery: sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>)
 ```
 
-这里我们添加了一条 rules 规则，然后指定了 Prometheus 的地址，我们这里使用了 Thanos 部署的 Promethues 集群，所以用 Querier 的地址。使用下面的命令一键安装：
-
 ```bash
-$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-$ helm repo update
-$ helm install prometheus-adapter prometheus-community/prometheus-adapter -n kube-mon -f hpa-prome-adapter-values.yaml
-NAME: prometheus-adapter
-LAST DEPLOYED: Mon Mar 29 18:52:44 2021
-NAMESPACE: kube-mon
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
-NOTES:
-prometheus-adapter has been deployed.
-In a few minutes you should be able to list metrics using the following command(s):
-
-  kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm upgrade --install prometheus-adapter prometheus-community/prometheus-adapter \
+  --version 5.3.0 \
+  -n kube-mon \
+  -f hpa-prome-adapter-values.yaml
+kubectl rollout status deployment/prometheus-adapter -n kube-mon
 ```
 
-安装完成后，可以使用下面的命令来检测是否生效了：
+示例中 Helm 使用 `--version 5.3.0`（与本文编写时一致）；生产环境应以审批版本为准，且须显式指定 `--version`，不得依赖未固定的上游最新 Chart。
+
+安装完成后应依序验证 Custom Metrics API，任一阶段未通过则不应创建 HorizontalPodAutoscaler：（1）`kubectl get apiservice v1beta1.custom.metrics.k8s.io`，AVAILABLE 为 True；（2）`kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1`，列表中出现 `pods/…_per_second` 形式资源（具体名称随 `name.as`）；（3）执行下列 `kubectl get --raw`，响应体包含有效度量值：
 
 ```bash
-$ kubectl get pods -n kube-mon -l app=prometheus-adapter
-NAME                                  READY   STATUS    RESTARTS   AGE
-prometheus-adapter-58b559fc7d-l2j6t   1/1     Running   0          3m21s
-$  kubectl get --raw="/apis/custom.metrics.k8s.io/v1beta1" | jq
-{
-  "kind": "APIResourceList",
-  "apiVersion": "v1",
-  "groupVersion": "custom.metrics.k8s.io/v1beta1",
-  "resources": [
-    {
-      "name": "pods/nginx_vts_server_requests_per_second",
-      "singularName": "",
-      "namespaced": true,
-      "kind": "MetricValueList",
-      "verbs": [
-        "get"
-      ]
-    },
-    {
-      "name": "namespaces/nginx_vts_server_requests_per_second",
-      "singularName": "",
-      "namespaced": false,
-      "kind": "MetricValueList",
-      "verbs": [
-        "get"
-      ]
-    }
-  ]
-}
+kubectl get --raw \
+  "/apis/custom.metrics.k8s.io/v1beta1/namespaces/kube-mon/pods/*/nginx_vts_server_requests_per_second"
 ```
 
-我们可以看到 `nginx_vts_server_requests_per_second` 指标可用。 现在，让我们检查该指标的当前值：
+配置 HorizontalPodAutoscaler 时，`averageValue` 须与上一步 RAW 响应中 Quantity 的单位及数量级一致（可含 `m` 等后缀），应依据压测或现网特征填写，不应照搬示例清单中的 `"10"`。不得修改 APIService `v1beta1.custom.metrics.k8s.io` 名称，亦不得在集群内并行部署第二套 prometheus-adapter。
 
-```bash
-$ kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pods/*/nginx_vts_server_requests_per_second" | jq .
-{
-  "kind": "MetricValueList",
-  "apiVersion": "custom.metrics.k8s.io/v1beta1",
-  "metadata": {
-    "selfLink": "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pods/%2A/nginx_vts_server_requests_per_second"
-  },
-  "items": [
-    {
-      "describedObject": {
-        "kind": "Pod",
-        "namespace": "default",
-        "name": "hpa-prom-demo-bbb6c65bb-jlc95",
-        "apiVersion": "/v1"
-      },
-      "metricName": "nginx_vts_server_requests_per_second",
-      "timestamp": "2021-03-29T11:30:47Z",
-      "value": "355m",
-      "selector": null
-    }
-  ]
-}
-```
+插图槽位：`docs/prometheus/images/t4-13-custom-metrics-api.png`（`kubectl get apiservice` 与 `kubectl get --raw …/v1beta1` 的关键输出。）
 
-出现类似上面的信息就表明已经配置成功了，此外部署完成后还会添加一个 `APIService` 对象：
+### T4.13.3、HorizontalPodAutoscaler 验证
 
-```bash
-$ kubectl get apiservice |grep adapter
-v1beta1.custom.metrics.k8s.io          kube-mon/prometheus-adapter   True        24h
-$ kubectl get apiservice v1beta1.custom.metrics.k8s.io -o yaml
-apiVersion: apiregistration.k8s.io/v1
-kind: APIService
-metadata:
-  name: v1beta1.custom.metrics.k8s.io
-  ......
-spec:
-  group: custom.metrics.k8s.io
-  groupPriorityMinimum: 100
-  insecureSkipTLSVerify: true
-  service:
-    name: prometheus-adapter
-    namespace: kube-mon
-    port: 443
-  version: v1beta1
-  versionPriority: 100
-......
-```
+创建 HorizontalPodAutoscaler，并对示例 Deployment 施加负载以观察副本数变化。清单中 `averageValue: "10"` 为占位，应替换为 T4.13.2 第（3）步 RAW 所反映的数量级；`minReplicas`、`maxReplicas` 用于约束副本上下界。
 
-上面的这个 `APIService` 对象其实就是我们这里通过自定义 Metrics 来实现 HPA 的核心，通过这个对象来提供 `custom metrics API`。
+`hpa-adapter.yaml`：
 
-当 HPA 请求 metrics 时，APIServer 聚合器会将请求转发到上面配置的 `prometheus-adapter` 服务，该服务实现了 Kubernetes resource metrics API 和 custom metrics API，它会根据配置的 rules 从 Prometheus 抓取并处理 metrics，处理（如重命名 metrics 等）完后将 metric 通过 `custom metrics API` 返回给 HPA。最后 HPA 通过获取的 metrics 的 value 对 Deployment/ReplicaSet 进行扩缩容。
-
-prometheus-adapter 作为 APIServer 的一个扩展，充当了代理 kube-apiserver 请求 Prometheus 的功能。
-
-> 需要注意的是 `v1beta1.custom.metrics.k8s.io` 是写在 `prometheus-adapter` 代码中的，因此不能任意改变。
-
-接下来我们部署一个针对上面的自定义指标的 HPA 资源对象，如下所示：
-
-```bash
-# hpa-prome.yaml
-apiVersion: autoscaling/v2beta1
+```yaml
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: nginx-custom-hpa
+  name: nginx-adapter-hpa
+  namespace: kube-mon
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: hpa-prom-demo
+    name: hpa-adapter-demo
   minReplicas: 2
   maxReplicas: 5
   metrics:
     - type: Pods
       pods:
-        metricName: nginx_vts_server_requests_per_second
-        targetAverageValue: 10
-        # m 除以 1000
-        # target 500 milli-requests per second,
-        # which is 1 request every two seconds
-        # targetAverageValue: 500m
+        metric:
+          name: nginx_vts_server_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "10"
 ```
-
-如果请求数超过每秒 10 个，则将对应用进行扩容。直接创建上面的资源对象：
 
 ```bash
-$ kubectl apply -f hpa-prome.yaml
-horizontalpodautoscaler.autoscaling/nginx-custom-hpa created
-$ kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       <none>
-CreationTimestamp:                                 Mon, 29 Mar 2021 19:32:37 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  <unknown> / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   0 current / 0 desired
-Events:                                            <none>
-[root@master1 install]# kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       <none>
-CreationTimestamp:                                 Mon, 29 Mar 2021 19:32:37 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  266m / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   2 current / 2 desired
-Conditions:
-  Type            Status  Reason              Message
-  ----            ------  ------              -------
-  AbleToScale     True    ReadyForNewScale    recommended size matches current size
-  ScalingActive   True    ValidMetricFound    the HPA was able to successfully calculate a replica count from pods metric nginx_vts_server_requests_per_second
-  ScalingLimited  False   DesiredWithinRange  the desired count is within the acceptable range
-Events:
-  Type    Reason             Age   From                       Message
-  ----    ------             ----  ----                       -------
-  Normal  SuccessfulRescale  21s   horizontal-pod-autoscaler  New size: 2; reason: Current number of replicas below Spec.MinReplicas
+kubectl apply -f hpa-adapter.yaml
+kubectl describe horizontalpodautoscaler/nginx-adapter-hpa -n kube-mon
 ```
 
-可以看到 HPA 对象已经生效了，新增了一个 Pod 副本：
+集群内加压示例（不依赖集群外访问）：
 
 ```bash
-$ kubectl get pods -l app=nginx-server
-NAME                             READY   STATUS    RESTARTS   AGE
-hpa-prom-demo-755bb56f85-s5dzf   1/1     Running   0          67s
-hpa-prom-demo-755bb56f85-wbpfr   1/1     Running   0          3m30s
+kubectl run hpa-load --rm -i --restart=Never --image=curlimages/curl:8.12.1 -n kube-mon -- \
+  sh -c 'while true; do curl -sS "http://hpa-adapter-demo.kube-mon.svc.cluster.local/" >/dev/null; done'
 ```
 
-接下来我们同样对应用进行压测：
+另起终端执行 `kubectl get hpa,pod -n kube-mon -w` 观察副本。负载解除后，缩容受 HorizontalPodAutoscaler 默认冷却与稳定窗口约束，未必立即回落至 `minReplicas`；若需与生产行为一致，应在清单中配置 `spec.behavior`，参见 [Horizontal Pod Autoscale](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)。
 
-```bash
-$ while true; do wget -q -O- http://k8s.qikqiak.com:32408; done
-```
+插图槽位：`docs/prometheus/images/t4-13-hpa-events.png`（`kubectl describe horizontalpodautoscaler` 输出的 Conditions、Events 等。）
 
-打开另外一个终端观察 HPA 对象的变化：
+若 Prometheus 或 Querier 部署于集群外，须将 values 中 `prometheus.url`、`prometheus.port` 调整为 adapter 所在网络可达的地址，并按 Chart 文档配置 TLS 与身份认证；`overrides` 键名仍须与实际指标标签一致。
 
-```bash
-$ kubectl get hpa
-NAME               REFERENCE                  TARGETS     MINPODS   MAXPODS   REPLICAS   AGE
-nginx-custom-hpa   Deployment/hpa-prom-demo   14239m/10   2         5         2          4m27s
-$ kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       <none>
-CreationTimestamp:                                 Mon, 29 Mar 2021 19:32:37 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  31874m / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   5 current / 5 desired
-Conditions:
-  Type            Status  Reason               Message
-  ----            ------  ------               -------
-  AbleToScale     True    ScaleDownStabilized  recent recommendations were higher than current one, applying the highest recent recommendation
-  ScalingActive   True    ValidMetricFound     the HPA was able to successfully calculate a replica count from pods metric nginx_vts_server_requests_per_second
-  ScalingLimited  True    TooManyReplicas      the desired replica count is more than the maximum replica count
-Events:
-  Type    Reason             Age    From                       Message
-  ----    ------             ----   ----                       -------
-  Normal  SuccessfulRescale  2m37s  horizontal-pod-autoscaler  New size: 2; reason: Current number of replicas below Spec.MinReplicas
-  Normal  SuccessfulRescale  50s    horizontal-pod-autoscaler  New size: 4; reason: pods metric nginx_vts_server_requests_per_second above target
-  Normal  SuccessfulRescale  35s    horizontal-pod-autoscaler  New size: 5; reason: pods metric nginx_vts_server_requests_per_second above target
-```
-
-可以看到指标 `nginx_vts_server_requests_per_second` 的数据已经超过阈值了，触发扩容动作了，副本数变成了 3，然后又扩容到了 5。
-
-![prometheus-adapter3](./images/prometheus-adapter3.png)
-
-如果需要更好的进行测试，我们可以使用一些压测工具，比如 ab、fortio 等工具。当我们中断测试后，默认 5 分钟过后就会自动缩容：
-
-```bash
-$ kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       kubectl.kubernetes.io/last-applied-configuration:
-                                                     {"apiVersion":"autoscaling/v2beta1","kind":"HorizontalPodAutoscaler","metadata":{"annotations":{},"name":"nginx-custom-hpa","namespace":"d...
-CreationTimestamp:                                 Tue, 07 Apr 2020 17:54:55 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  533m / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   2 current / 2 desired
-Conditions:
-  Type            Status  Reason            Message
-  ----            ------  ------            -------
-  AbleToScale     True    ReadyForNewScale  recommended size matches current size
-  ScalingActive   True    ValidMetricFound  the HPA was able to successfully calculate a replica count from pods metric nginx_vts_server_requests_per_second
-  ScalingLimited  True    TooFewReplicas    the desired replica count is less than the minimum replica count
-Events:
-  Type    Reason             Age   From                       Message
-  ----    ------             ----  ----                       -------
-  Normal  SuccessfulRescale  23m   horizontal-pod-autoscaler  New size: 2; reason: Current number of replicas below Spec.MinReplicas
-  Normal  SuccessfulRescale  19m   horizontal-pod-autoscaler  New size: 3; reason: pods metric nginx_vts_server_requests_per_second above target
-  Normal  SuccessfulRescale  4m2s  horizontal-pod-autoscaler  New size: 2; reason: All metrics below target
-```
-
-到这里我们就完成了使用自定义的指标对应用进行自动扩缩容的操作。如果 Prometheus 安装在我们的 Kubernetes 集群之外，则只需要确保可以从集群访问到查询的端点，并在 adapter 的部署清单中对其进行更新即可。在更复杂的场景中，可以获取多个指标结合使用来制定扩展策略。
+| 现象 | 建议排查 |
+|------|----------|
+| HorizontalPodAutoscaler 指标为 unknown | `kubectl get --raw` 是否返回数据；prometheus-adapter 日志；至 Thanos Querier 9090 连通性 |
+| RAW 有数据而 HorizontalPodAutoscaler 异常 | `overrides`、`seriesQuery` 与 T4.4 是否一致；清单中 `metric.name` 与 RAW 路径是否一致 |
+| `kubectl get --raw` 失败 | APIService；prometheus-adapter 的 Service、Endpoints、Pod、RBAC |
+| 替代方案 | [KEDA](https://keda.sh/)；[#701](https://github.com/kubernetes-sigs/prometheus-adapter/issues/701) |
 
 ## T4.14、Prometheus Operator
 
