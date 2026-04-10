@@ -1,28 +1,11 @@
 #!/usr/bin/env python3
 """
-Kafka 自动化部署与运维封装（KRaft 模式），调用发行版 bin/ 下官方脚本；行为须与下列 **Apache Kafka 官方文献** 可对照。
+Apache Kafka KRaft 部署与运维：生成配置与 systemd 单元、调用发行版 bin/ 下脚本（kafka-storage、kafka-server-start、
+kafka-topics、kafka-consumer-groups、kafka-reassign-partitions、kafka-metadata-quorum、kafka-configs 等）。
 
-**官方依据（Apache Kafka Documentation / KIP，非社区帖）**
-- KRaft 概览与运维： https://kafka.apache.org/documentation/#kraft
-- Broker / Topic 等配置说明： https://kafka.apache.org/documentation/#brokerconfigs
-- 常用运维（kafka-topics、kafka-reassign-partitions 的 --generate / --execute / --verify、Broker 下线等）：
-  https://kafka.apache.org/documentation/#basic_ops
-  其中「Partition reassignment」「Decommissioning brokers」描述分区迁移与下线前须迁走副本；
-  「Adding and removing topics」说明 topic 名长度上限（与日志目录命名相关）。
-- 监控与指标语义： https://kafka.apache.org/documentation/#monitoring
-- 运行 Kafka 的 JVM 版本说明： https://kafka.apache.org/documentation/#java
-- KRaft 在 3.3 起对新集群标为 production-ready：KIP-833
-  https://cwiki.apache.org/confluence/display/KAFKA/KIP-833:+Mark+KRaft+as+Production+Ready
+环境变量：KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION（默认值见脚本内）。
 
-**本脚本独有（官方文档未规定，仅为工程化默认值）**
-- 环境变量 KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION 等。
-- Topic 创建/删除对 CLI 典型 **英文** 报错串做兼容（幂等友好）；以实际 kafka-topics.sh 退出码与输出为准，非协议层保证。
-- 分区重分配 execute/verify 的超时下限（与 KAFKA_CLI_TIMEOUT 取 max）为本脚本策略。
-- 与同仓库 StarCli 一致的 SSH/日志/退出码等 **本仓库** 约定，不属于 Apache Kafka 项目规范。
-
-能力：单机/批量/远程部署、systemd、清理、封装官方 CLI（--bootstrap-server / --command-config）。
-systemd 默认 User/Group 为 kafka：账户须事先存在（见 systemd 文档 User=/Group=）；测试可用 --user root --group root。
-退出码：EXIT_OK(0) / EXIT_ERROR(1)，便于脚本判断。
+退出码：0 成功，1 失败。
 """
 
 import argparse
@@ -41,29 +24,26 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-# 日志配置常量（可通过环境变量 KAFKA_LOG_DIR 覆盖日志目录，避免依赖当前工作目录）
+# 日志配置常量（环境变量 KAFKA_LOG_DIR 未设置时为当前工作目录下的 logs）
 LOG_DIR = os.getenv("KAFKA_LOG_DIR", os.path.join(os.getcwd(), "logs"))
 DEFAULT_LOG_FILE = os.path.join(LOG_DIR, "kafka_deploy.log")
 DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
-# Kafka 官方默认端口与路径
+# Kafka 默认端口与路径（发行版惯例）
 DEFAULT_BROKER_PORT = 9092
 DEFAULT_CONTROLLER_PORT = 9093
 DEFAULT_LOG_DIR = "/tmp/kafka-logs"
 DEFAULT_METADATA_LOG_DIR = "/tmp/kraft-combined-logs"
 
-# 进程退出码（与 StarCli 及常见 CLI 约定一致，便于 CI/自动化判断）
+# 进程退出码：0 成功，1 失败（本脚本与 StarCli 相同编号）
 EXIT_OK = 0
 EXIT_ERROR = 1
 
 
 def _kafka_cli_timeout_sec(default: int = 120) -> int:
-    """
-    本脚本对子进程 subprocess 的超时（非 Kafka 文档规定）。
-    环境变量 KAFKA_CLI_TIMEOUT（10～86400）覆盖默认值。
-    """
+    """子进程超时秒数；环境变量 KAFKA_CLI_TIMEOUT（10～86400）覆盖 default。"""
     try:
         v = int(os.getenv("KAFKA_CLI_TIMEOUT", str(default)))
         return max(10, min(86400, v))
@@ -72,10 +52,7 @@ def _kafka_cli_timeout_sec(default: int = 120) -> int:
 
 
 def _reassign_cmd_timeout_sec() -> int:
-    """
-    kafka-reassign-partitions.sh 的 --execute / --verify 可能长时间运行（官方文档说明见 #basic_ops 分区重分配章节）。
-    本脚本取 max(KAFKA_CLI_TIMEOUT, 3600) 作为子进程超时下限；3600 非 Apache 规定。
-    """
+    """--execute / --verify 子进程超时：max(KAFKA_CLI_TIMEOUT, 3600)。"""
     return max(_kafka_cli_timeout_sec(120), 3600)
 
 
@@ -118,27 +95,23 @@ def _normalize_topic_name(topic: str) -> str:
 
 
 def _validate_topic_name(topic: str) -> Tuple[bool, str]:
-    """
-    Topic 名非空与长度上限（≤249）。
-    依据：Apache Kafka Documentation「Basic Kafka Operations」→「Adding and removing topics」
-    （日志目录下文件夹命名 topic-partition，故 topic 名长度受限；与官方文档同页说明一致）。
-    """
+    """Topic 名非空且长度 ≤249（与 kafka 日志目录 topic-partition 命名长度约束一致）。"""
     t = _normalize_topic_name(topic)
     if not t:
         return False, "Topic 名称不能为空"
     if len(t) > 249:
-        return False, "Topic 名称长度须 ≤ 249（见官方文档 #basic_ops Adding and removing topics）"
+        return False, "Topic 名称长度须 ≤ 249"
     return True, ""
 
 
 def _cli_already_exists(msg: str) -> bool:
-    """脚本侧启发式：匹配 kafka-topics 常见英文报错，非 Kafka 协议或文档保证。"""
+    """对 stderr 字符串做子串匹配（本脚本实现）；判定以 kafka-topics.sh 实际退出码与输出为准。"""
     m = (msg or "").lower()
     return "already exists" in m or "already exist" in m
 
 
 def _cli_topic_missing(msg: str) -> bool:
-    """脚本侧启发式：匹配常见「topic 不存在」英文描述；请以实际 CLI 输出为准。"""
+    """对 stderr 字符串做子串匹配（本脚本实现）；判定以 kafka-topics.sh 实际退出码与输出为准。"""
     m = (msg or "").lower()
     return (
         "unknown topic" in m
@@ -148,12 +121,12 @@ def _cli_topic_missing(msg: str) -> bool:
 
 
 def _advertised_host() -> str:
-    """生成 advertised / quorum bootstrap 时使用的主机名或 IP（每次调用读取环境变量，便于部署前 export）。"""
+    """读取环境变量 KAFKA_ADVERTISED_HOST；未设置时为 127.0.0.1。"""
     return (os.getenv("KAFKA_ADVERTISED_HOST") or "127.0.0.1").strip() or "127.0.0.1"
 
 
 class CommandExecutionError(Exception):
-    """命令执行异常；message 可通过 str(e) 或 e.message 获取，便于日志与告警"""
+    """命令执行异常；message 可通过 str(e) 或 e.message 读取。"""
 
     def __init__(self, message: str = ""):
         super().__init__(message)
@@ -174,7 +147,7 @@ def setup_logger(
     """
     设置日志记录器（与 StarCli 一致：先确保日志目录存在，再挂 RotatingFileHandler + 按需 stdout）。
     首次调用且未传 handlers 时使用默认：文件（UTF-8、轮转）+ stdout；
-    若 logger 已有 handler 则直接返回，避免重复添加。可通过 KAFKA_LOG_DIR 环境变量覆盖日志目录。
+    若 logger 已有 handler 则直接返回。日志目录由环境变量 KAFKA_LOG_DIR 或默认 LOG_DIR 决定。
     """
     if handlers is None:
         try:
@@ -221,7 +194,7 @@ def setup_logger(
 
 logger = setup_logger(__name__)
 
-# KIP-833：Kafka 3.3 起 KRaft 对新集群标为 production-ready（见 KIP 正文）。低于 3.3 的 KRaft 自动部署本脚本默认拒绝。
+# 未指定 --skip-kraft-version-check 时，KRaft 自动部署最低版本（与脚本内校验一致）
 KRAFT_DEPLOY_MIN_VERSION: Tuple[int, int, int] = (3, 3, 0)
 
 
@@ -268,12 +241,7 @@ def infer_kafka_release(kafka_home: Path, assume_version: Optional[str] = None) 
 
 
 def min_java_major_for_kafka(kafka_release: Optional[Tuple[int, int, int]]) -> int:
-    """
-    本脚本部署门禁用的最低 JDK 主版本号。
-    官方对运行时的说明见 https://kafka.apache.org/documentation/#java （当前文档以 Java 17/21/25 为完全支持主线）；
-    各 tarball 附带 README 亦会写明该发行版最低 JDK。此处对 4.x 用 17、对 3.x 用 11 与常见发行版一致；
-    未知版本时按 4.x 策略要求 17。
-    """
+    """部署前 Java 最低主版本：major>=4 → 17；否则 11；无法推断 Kafka 版本 → 17。"""
     if kafka_release is None:
         return 17
     major, _, _ = kafka_release
@@ -288,12 +256,9 @@ def _listener_scheme_port(listeners: str, scheme: str, default_port: int) -> int
 
 def _kraft_combined_listener_properties(listeners_override: Optional[str]) -> Dict[str, str]:
     """
-    KRaft combined（process.roles=broker,controller）监听器必选配置，与官方 KRaft 文档（3.3+ / 4.x）一致。
-    StorageTool / KafkaConfig（尤其 4.x）要求显式设置 controller.listener.names，且 listeners 须同时包含
-    PLAINTEXT（broker）与 CONTROLLER；并需 inter.broker.listener.name、
-    listener.security.protocol.map、advertised.listeners、controller.quorum.bootstrap.servers。
-    advertised 与 quorum bootstrap 主机默认取环境变量 KAFKA_ADVERTISED_HOST（未设置则为 127.0.0.1）。
-    参考: https://kafka.apache.org/documentation/#brokerconfigs_controller.listener.names
+    KRaft combined：返回 listeners、advertised.listeners、controller.quorum.bootstrap.servers、
+    controller.listener.names、inter.broker.listener.name、listener.security.protocol.map。
+    主机名来自 KAFKA_ADVERTISED_HOST（未设置则 127.0.0.1）。
     """
     broker_port = DEFAULT_BROKER_PORT
     ctrl_port = DEFAULT_CONTROLLER_PORT
@@ -328,9 +293,8 @@ def _kraft_combined_listener_properties(listeners_override: Optional[str]) -> Di
 
 def _kraft_broker_listener_properties(listeners_override: Optional[str]) -> Dict[str, str]:
     """
-    KRaft broker-only（3.3+ / 4.x）：在仅使用 PLAINTEXT 的常见场景下补充 inter.broker.listener.name、
-    listener.security.protocol.map、advertised.listeners，避免配置不完整导致启动或 format 异常。
-    若 listeners 含 SSL/SASL 等，请通过 extra_properties 自行提供完整协议映射与 advertised。
+    KRaft broker-only：listeners 仅为 PLAINTEXT 且无 SSL/SASL 时补全 inter.broker.listener.name、
+    listener.security.protocol.map、advertised.listeners；否则仅返回 listeners，由 extra_properties 提供完整映射。
     """
     adv_host = _advertised_host()
     ls = (listeners_override or "").strip() or f"PLAINTEXT://0.0.0.0:{DEFAULT_BROKER_PORT}"
@@ -356,10 +320,7 @@ MAX_HOSTNAME_LENGTH = 253
 
 
 class InputValidator:
-    """
-    部署与 CLI 预检用的格式校验（主机名、端口、路径等）。
-    其中端口范围、topic 长度等部分与官方文档或配置语义对齐；其余为脚本健壮性检查。
-    """
+    """部署与 CLI 预检：端口、主机名、路径、topic 长度等。"""
 
     @staticmethod
     def validate_port(port: int) -> bool:
@@ -370,7 +331,7 @@ class InputValidator:
 
     @staticmethod
     def validate_hostname(hostname: str) -> bool:
-        """接受 IPv4 与常见主机名（字母数字、点、连字符，长度≤253）；不含 IPv6 字面量"""
+        """IPv4 或匹配 ^[a-zA-Z0-9.-]+$ 的主机名字符串，长度≤253；不含 IPv6 字面量。"""
         if not hostname or len(hostname) > MAX_HOSTNAME_LENGTH:
             return False
         if re.match(r'^(\d{1,3}\.){3}\d{1,3}$', hostname):
@@ -393,32 +354,27 @@ class InputValidator:
 
 
 class SecurityChecker:
-    """安全检查器（与 StarCli 一致：SSH 私钥权限告警，不阻断连接，由运维决定是否修正）"""
+    """SSH identity 文件权限校验（与 OpenSSH 拒绝 overly-permissive key 的行为一致）。"""
 
     @staticmethod
-    def check_ssh_key_permissions(key_path: str) -> bool:
-        """类 Unix 上建议 0600；不符合时告警并返回 False，与 StarCli 行为一致。"""
+    def ensure_ssh_identity_permissions(key_path: str) -> None:
+        """POSIX：若私钥对 group/other 可访问则抛出 ValueError（OpenSSH 将拒绝该密钥文件）。"""
+        if os.name != "posix":
+            return
         try:
-            if os.name != "posix":
-                return True
-            file_mode = stat.S_IMODE(os.stat(key_path).st_mode)
-            if file_mode != 0o600:
-                logger.warning(
-                    "SSH 私钥权限不安全: %s (建议 chmod 600，当前 %s)",
-                    key_path,
-                    oct(file_mode),
-                    extra={"to_stdout": True},
-                )
-                return False
-            return True
-        except OSError:
-            return False
+            mode = stat.S_IMODE(os.stat(key_path).st_mode)
+        except OSError as e:
+            raise OSError(f"无法访问 SSH 私钥: {key_path}") from e
+        if mode & 0o077:
+            raise ValueError(
+                f"SSH 私钥权限对组或其他用户开放，OpenSSH 将拒绝: {key_path} mode={oct(mode)}"
+            )
 
 
 class SSHManager:
     """
-    SSH 管理器（与 StarCli 同构）：BatchMode、ConnectTimeout、保活、StrictHostKeyChecking、
-    失败时合并 stdout/stderr 便于排障。
+    SSH 管理器（与 StarCli 同构）：BatchMode、ConnectTimeout、保活、StrictHostKeyChecking；
+    失败时合并 stdout 与 stderr 写入返回字符串。
     """
 
     def __init__(
@@ -442,7 +398,7 @@ class SSHManager:
 
         if not os.path.exists(self.key_path):
             raise FileNotFoundError(f"SSH 密钥文件不存在: {self.key_path}")
-        SecurityChecker.check_ssh_key_permissions(self.key_path)
+        SecurityChecker.ensure_ssh_identity_permissions(self.key_path)
 
     def _build_ssh_options(self) -> List[str]:
         """与 StarCli 一致：超时、保活、非交互、端口、密钥、主机密钥策略。"""
@@ -461,7 +417,7 @@ class SSHManager:
                 "-o", f"UserKnownHostsFile={known_hosts_file}",
             ])
         else:
-            logger.warning("警告: 已禁用 SSH 主机密钥检查", extra={"to_stdout": True})
+            logger.info("StrictHostKeyChecking=no", extra={"to_stdout": True})
             ssh_options.extend(["-o", "StrictHostKeyChecking=no"])
         return ssh_options
 
@@ -528,7 +484,7 @@ def run_command(
     """
     执行 shell 命令并统一处理错误。成功时返回 CompletedProcess；
     当 allowed_exit_codes 非空且进程退出码在列表中时返回 CalledProcessError 实例（含 returncode/stdout/stderr）。
-    cmd 为 str 时按空白分割，参数含空格或引号时请使用 list。
+    cmd 为 str 时按空白分割；无法由空白安全拆分时须传入 list/tuple。
     """
     logger.debug(f"Executing: {' '.join(cmd) if isinstance(cmd, (list, tuple)) else cmd}")
 
@@ -544,7 +500,7 @@ def run_command(
     if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
         capture_output = False
 
-    # 非交互场景避免子进程阻塞读 stdin；若调用方使用 input= 则勿占用 DEVNULL
+    # 未传 input= 时 stdin=DEVNULL，防止子进程阻塞读标准输入
     run_kw = dict(kwargs)
     if run_kw.get("stdin") is None and "input" not in run_kw:
         run_kw["stdin"] = subprocess.DEVNULL
@@ -574,9 +530,7 @@ def run_command(
 
 
 def _atomic_write_text(path: Path, content: str, encoding: str = "utf-8") -> None:
-    """
-    原子写入文本文件：同目录临时文件 + os.replace，避免进程崩溃留下半截配置（StarCli 直写可改为本模式）。
-    """
+    """同目录临时文件写入后 os.replace 到目标路径。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
@@ -630,8 +584,8 @@ class EnvironmentChecker:
     @staticmethod
     def _find_java_home_by_distro() -> Optional[str]:
         """
-        按 Linux 发行版常见路径与 alternatives 解析 JAVA_HOME（对齐 StarCli，便于无 JAVA_HOME 的服务器）。
-        未安装 distro 库时仍尝试通用路径列表。
+        在无 JAVA_HOME 时尝试通过 update-alternatives/alternatives 及固定路径解析 java 可执行文件所在 JAVA_HOME。
+        未安装 distro 库时仍遍历通用路径列表。
         """
         os_id, os_like = EnvironmentChecker._get_os_info()
 
@@ -711,8 +665,8 @@ class EnvironmentChecker:
     @staticmethod
     def check_user_group_exists(user: str, group: str) -> Tuple[bool, bool]:
         """
-        检查系统用户、组是否存在（与 StarCli 一致：id / getent，便于自动化与远程环境）。
-        非 POSIX 跳过，视为存在。
+        使用 id(1)、getent(1) 判断用户与组是否存在（与 StarCli 一致）。
+        非 POSIX 下返回 (True, True)。
         """
         if os.name != "posix":
             return True, True
@@ -767,7 +721,7 @@ class EnvironmentChecker:
                 java_version = f"{major}.{minor}" if minor > 0 else str(major)
                 if major < minimum_java_major:
                     logger.error(
-                        "Java 版本过低: {}，当前需要 Java {}+（与检测到的 Kafka 版本策略一致，参见官方文档）".format(
+                        "java -version 主版本为 {}；本脚本要求 ≥ {}。".format(
                             java_version, minimum_java_major
                         ),
                         extra={"to_stdout": True}
@@ -775,7 +729,7 @@ class EnvironmentChecker:
                     return False, None, java_version
             elif version_output:
                 logger.error(
-                    "无法解析 Java 版本输出，需要 Java {}+（与 Kafka 版本策略一致）".format(minimum_java_major),
+                    "无法解析 java -version 主版本；本脚本要求 Java {}+。".format(minimum_java_major),
                     extra={"to_stdout": True}
                 )
                 return False, None, None
@@ -817,9 +771,7 @@ class EnvironmentChecker:
 
     @staticmethod
     def warn_if_path_under_kafka_home(kafka_home: Path, path_list_csv: str, label: str) -> None:
-        """
-        若数据路径落在 Kafka 安装目录下则告警（本脚本/StarCli 项目约定，便于升级与清理；Kafka 文档未规定 log.dirs 必须独立于安装路径）。
-        """
+        """若解析后的路径为 kafka_home 子路径，仅 DEBUG 记录（Kafka 文档不规定 log.dirs 与安装目录相对位置）。"""
         first = (path_list_csv or "").split(",")[0].strip()
         if not first:
             return
@@ -827,30 +779,18 @@ class EnvironmentChecker:
             base = kafka_home.resolve()
             target = Path(first).resolve()
             target.relative_to(base)
-            logger.warning(
-                "%s 位于 Kafka 安装目录内 (%s)；独立数据盘/路径为常见运维实践（非 Kafka 文档硬性要求）。",
-                label,
-                target,
-                extra={"to_stdout": True},
-            )
+            logger.debug("%s 解析路径位于 kafka_home 之下: %s", label, target)
         except ValueError:
             pass
         except Exception as ex:
-            logger.debug("目录独立性检查跳过: %s", ex)
+            logger.debug("路径关系检查跳过: %s", ex)
 
 
 class ConfigGenerator:
     """
-    Kafka 配置文件生成器（与官方 server.properties / KRaft 配置一致，适用于 3.3+～4.x）。
+    生成 server.properties 键值对（KRaft combined / controller / broker）。
 
-    - generate_combined_standalone_properties：单节点 broker+controller 完整默认（含 listener 套件），
-      与 KafkaDeployer.deploy_standalone 写入内容一致。
-    - generate_server_properties：通用键值对生成器；若 process.roles 含 combined 场景，
-      须自行合并 _kraft_combined_listener_properties() 或改用 generate_combined_standalone_properties。
-    - generate_controller_properties：独立 Controller 节点（已含 controller.listener.names 与 protocol map）。
-
-    extra_properties 会合并并覆盖同名字段；使用 SSL/SASL 时须在 extra_properties 中提供完整 listener.security.protocol.map。
-    参考: https://kafka.apache.org/documentation/#brokerconfigs, #kraft
+    extra_properties 合并并覆盖同名字段；SSL/SASL 时须在 extra_properties 中给出完整 listener.security.protocol.map。
     """
 
     @staticmethod
@@ -883,7 +823,7 @@ class ConfigGenerator:
             default_replication_factor: Optional[int] = None,
             extra_properties: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
-        """生成 Broker/Standalone server.properties 键值对（官方必选 + 常用）"""
+        """生成 Broker/Standalone server.properties 键值对。"""
         props = {
             "process.roles": process_roles,
             "node.id": str(node_id),
@@ -910,7 +850,7 @@ class ConfigGenerator:
             log_dirs: Optional[str] = None,
             extra_properties: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
-        """生成 Controller 专用 properties（官方 KRaft 文档）"""
+        """生成 Controller 专用 properties。"""
         props = {
             "process.roles": "controller",
             "node.id": str(node_id),
@@ -928,10 +868,7 @@ class ConfigGenerator:
 
 
 class SystemdServiceGenerator:
-    """
-    systemd 单元生成；Documentation= 指向 Apache Kafka 官方文档。
-    其余字段（WorkingDirectory、LimitNOFILE 等）为本脚本与同仓库 StarCli 的工程约定。
-    """
+    """生成 systemd unit（ExecStart=kafka-server-start.sh）。"""
 
     @staticmethod
     def generate_kafka_service(
@@ -943,7 +880,7 @@ class SystemdServiceGenerator:
             group: str = "kafka",
             java_home: Optional[str] = None,
     ) -> str:
-        """bin_dir、config_path、kafka_home 须为绝对路径；ExecStart 使用官方 kafka-server-start.sh。"""
+        """bin_dir、config_path、kafka_home 须为绝对路径；ExecStart=kafka-server-start.sh。"""
         kh = str(kafka_home.resolve())
         env_lines: List[str] = [f'Environment="KAFKA_HOME={kh}"']
         if java_home:
@@ -952,7 +889,6 @@ class SystemdServiceGenerator:
         safe_ident = re.sub(r"[^a-z0-9-]+", "-", deploy_type.lower()).strip("-") or "kafka"
         return f"""[Unit]
 Description=Apache Kafka - {deploy_type}
-Documentation=https://kafka.apache.org/documentation/
 After=network-online.target
 Wants=network-online.target
 
@@ -987,12 +923,8 @@ WantedBy=multi-user.target
 
 class KafkaDeployer:
     """
-    Kafka 部署器（KRaft 模式，支持 Apache Kafka 3.3+～4.x）。
-
-    配置键与流程须对照官方文档 #kraft、#brokerconfigs 及 kafka-storage.sh / kafka-server-start.sh 的说明。
-    standalone 使用 ConfigGenerator.generate_combined_standalone_properties 与 _kraft_combined_listener_properties。
-    低于 3.3 默认拒绝 KRaft 自动部署（依据 KIP-833 适用范围；可 --skip-kraft-version-check 自担风险）。
-    systemd unit 由 SystemdServiceGenerator 生成；环境与账户检查与同仓库 StarCli 一致。
+    KRaft 部署：写配置、kafka-storage.sh format、kafka-server-start.sh / systemd。
+    版本下限由 check_environment 与 KRAFT_DEPLOY_MIN_VERSION 执行；可用 --skip-kraft-version-check 跳过。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
@@ -1040,7 +972,7 @@ class KafkaDeployer:
             if java_version:
                 errors.append(f"Java 版本过低: {java_version}，需要 Java {min_java}+")
             else:
-                errors.append(f"未找到 Java 环境，请先安装 JDK {min_java}+")
+                errors.append(f"未找到 Java 环境；本脚本要求 PATH 或 JAVA_HOME 下存在 JDK {min_java}+")
         elif java_version:
             logger.info(f"检测到 Java 版本: {java_version}", extra={"to_stdout": True})
 
@@ -1048,27 +980,26 @@ class KafkaDeployer:
             user_ok, group_ok = EnvironmentChecker.check_user_group_exists(self.user, self.group)
             if not user_ok:
                 errors.append(
-                    f"系统用户不存在: {self.user}（systemd 将使用 User={self.user}，不存在则 217/USER）。"
-                    f"请先创建用户或改用 --user 指定已存在账户。"
+                    f"系统用户不存在: {self.user}（unit 中 User={self.user}；systemd 将报 217/USER）"
                 )
             if not group_ok:
                 errors.append(
-                    f"系统组不存在: {self.group}（systemd 将使用 Group={self.group}）。"
-                    f"请先执行 groupadd 或改用 --group。"
+                    f"系统组不存在: {self.group}（unit 中 Group={self.group}）。"
                 )
 
         if self.kafka_release is not None and self.kafka_release < KRAFT_DEPLOY_MIN_VERSION:
             ver_s = ".".join(map(str, self.kafka_release))
             if self.skip_kraft_version_check:
                 logger.warning(
-                    "已跳过 KRaft 版本检查：检测到 Kafka %s（官方建议 KRaft 新集群自 3.3+ 起），请自担风险",
+                    "已启用 --skip-kraft-version-check：检测到 Kafka %s（本脚本默认下限 %s+）",
                     ver_s,
+                    ".".join(map(str, KRAFT_DEPLOY_MIN_VERSION)),
                     extra={"to_stdout": True},
                 )
             else:
                 errors.append(
-                    f"检测到 Kafka {ver_s}：本脚本 KRaft 自动部署针对 {'.'.join(map(str, KRAFT_DEPLOY_MIN_VERSION))}+ "
-                    f"（KIP-833）。请升级 Kafka 或使用 --skip-kraft-version-check / 配置 skip_kraft_version_check 自担风险。"
+                    f"Kafka 版本 {ver_s} 低于本脚本 KRaft 自动部署下限 {'.'.join(map(str, KRAFT_DEPLOY_MIN_VERSION))}；"
+                    f"使用 --skip-kraft-version-check 或配置 skip_kraft_version_check 可跳过"
                 )
 
         if not EnvironmentChecker.check_directory_writable(str(self.kafka_home)):
@@ -1140,7 +1071,7 @@ class KafkaDeployer:
             return None
 
     def _journal_tail_for_unit(self, service_name: str, lines: int = 40) -> str:
-        """读取最近 journal，便于排查 217/USER、启动失败等。"""
+        """journalctl -u 读取最近若干行。"""
         try:
             r = run_command(
                 ["journalctl", "-u", service_name, "-n", str(lines), "--no-pager"],
@@ -1153,26 +1084,21 @@ class KafkaDeployer:
             return f"(journalctl 失败: {ex})"
 
     def _log_friendly_systemd_failure(self, journal_tail: str) -> None:
-        """根据 journal 内容给出可读原因，优先于原始日志展示。"""
+        """根据 journal 摘录输出与 systemd/Kafka 相关的客观描述（无操作指引）。"""
         t = journal_tail or ""
         if re.search(r"217\s*/\s*USER|status\s*=\s*217", t, re.I) or (
             "217" in t and "USER" in t.upper()
         ):
             u, g = self.user, self.group
             logger.error(
-                "【判定】systemd 无法切换到 unit 中配置的系统用户（退出码 217/USER），进程未真正运行。\n"
-                "【当前配置】User=%s, Group=%s（若用户/组不存在即会如此）。\n"
-                "【处理】创建专用账户，例如：sudo groupadd -r %s 2>/dev/null; "
-                "sudo useradd -r -g %s -s /sbin/nologin %s\n"
-                "【或】仅本机测试可加：--user $(id -un) --group $(id -gn)",
-                u, g, g, g, u,
+                "journal 与 217/USER 一致：User=%s Group=%s 在系统中不可解析。",
+                u, g,
                 extra={"to_stdout": True},
             )
             return
         if "permission denied" in t.lower():
             logger.error(
-                "【判定】journal 中出现 Permission denied：多为数据目录 log.dirs/metadata.log.dir 属主与 User= 不一致，"
-                "请 chown 或调整目录。",
+                "journal 含 Permission denied（字符串匹配）。",
                 extra={"to_stdout": True},
             )
 
@@ -1197,8 +1123,7 @@ class KafkaDeployer:
                 return True
             time.sleep(1.2)
         logger.error(
-            "【判定】在约 %.0f 秒内 %s 未在 %s:%s 接受连接，部署不视为成功。"
-            "若 systemd 为 active，请查 server 日志与 listeners 端口。",
+            "在约 %.0f 秒内 %s 未在 %s:%s 接受 TCP 连接（本脚本判定部署未成功）。",
             total_sec,
             label,
             host,
@@ -1259,7 +1184,7 @@ class KafkaDeployer:
         if not ok:
             self._log_friendly_systemd_failure(jtail)
             logger.error(
-                "【详情】systemd 未处于 active 或已进入 failed，以下为 journal 摘录（便于核对）：\n%s",
+                "【详情】systemd 未处于 active 或已进入 failed，journal 摘录：\n%s",
                 jtail or "(无)",
                 extra={"to_stdout": True},
             )
@@ -1395,11 +1320,7 @@ class KafkaDeployer:
             extra_properties: Optional[Dict[str, str]] = None
     ) -> bool:
         """
-        部署单节点 KRaft（combined broker+controller），对齐 Kafka 4.x KRaft combined 必选项：
-        listeners（PLAINTEXT+CONTROLLER）、controller.listener.names、inter.broker.listener.name、
-        listener.security.protocol.map、advertised.listeners、controller.quorum.bootstrap.servers。
-        生产环境请设置环境变量 KAFKA_ADVERTISED_HOST，或通过 extra_properties 覆盖 advertised.listeners /
-        controller.quorum.bootstrap.servers。流程：生成 cluster id → format --standalone → 启动 server。
+        单节点 combined：写 server.properties → kafka-storage.sh format --standalone → systemd 或打印启动命令。
         """
         logger.info("=== 部署 Kafka Standalone（KRaft 单节点）===", extra={"to_stdout": True})
 
@@ -1437,7 +1358,7 @@ class KafkaDeployer:
         if not self._write_properties(config_path, props):
             return False
 
-        # 3) Format storage（官方：format --standalone -t <CLUSTER_ID> -c <config>）
+        # 3) kafka-storage.sh format --standalone
         try:
             self._run_storage_cmd([
                 "format",
@@ -1461,7 +1382,7 @@ class KafkaDeployer:
             if not self._wait_for_tcp_listening("127.0.0.1", bport, "Broker（PLAINTEXT）"):
                 return False
         else:
-            logger.info("未启用 systemd，请手动执行:", extra={"to_stdout": True})
+            logger.info("未启用 systemd；前台启动命令:", extra={"to_stdout": True})
             logger.info(f"  {self.bin_dir / 'kafka-server-start.sh'} {config_path}", extra={"to_stdout": True})
 
         return True
@@ -1527,7 +1448,7 @@ class KafkaDeployer:
             if not cluster_id:
                 logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
                 return False
-            logger.info("请保存上述 Cluster ID 用于后续 Controller/Broker", extra={"to_stdout": True})
+            logger.info("多节点时其他 controller/broker 须使用同一 cluster id", extra={"to_stdout": True})
 
         format_args = ["format", "--cluster-id", cluster_id, "-c", str(config_path)]
         if initial_controllers:
@@ -1571,7 +1492,7 @@ class KafkaDeployer:
         """
         部署 KRaft Broker 节点（Kafka 4.x）。format --no-initial-controllers，process.roles=broker。
         默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
-        advertised.listeners（主机见 KAFKA_ADVERTISED_HOST）；SSL/SASL 请用 extra_properties 完整配置。
+        advertised.listeners 主机来自 KAFKA_ADVERTISED_HOST；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
         """
         logger.info("=== 部署 Kafka Broker（KRaft）===", extra={"to_stdout": True})
 
@@ -1707,15 +1628,12 @@ class KafkaDeployer:
             bootstrap_server: str = "localhost:9092",
             command_config: Optional[str] = None
     ) -> bool:
-        """
-        调用 bin/kafka-metadata-quorum.sh（见官方文档 #kraft 与工具说明）。
-        须在已安装 Kafka 且网络可达 --bootstrap-server 的环境执行。
-        """
+        """执行 kafka-metadata-quorum.sh describe --status / --replication。"""
         print("=== Kafka 集群状态 (KRaft) ===\n")
         bin_dir = self.bin_dir
         quorum_script = bin_dir / "kafka-metadata-quorum.sh"
         if not quorum_script.exists():
-            logger.error(f"未找到 {quorum_script}，请指定正确的 --kafka-home", extra={"to_stdout": True})
+            logger.error(f"未找到 {quorum_script}；--kafka-home 须为 Kafka 安装根目录", extra={"to_stdout": True})
             return False
 
         cmd_common = [str(quorum_script), "--bootstrap-server", bootstrap_server]
@@ -1726,7 +1644,7 @@ class KafkaDeployer:
             try:
                 result = run_command(
                     cmd_common + ["describe"] + describe_args,
-                    capture_output=True, check=False, timeout=30
+                    capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120)
                 )
                 if result.returncode == 0 and result.stdout:
                     for line in result.stdout.strip().split("\n"):
@@ -1757,13 +1675,10 @@ def _build_bootstrap_cmd(
         command_config: Optional[str] = None,
         timeout: Optional[int] = None,
 ) -> subprocess.CompletedProcess:
-    """
-    构建并执行带 --bootstrap-server 的 Kafka CLI。
-    执行前校验脚本存在、bootstrap 格式、command-config 路径；超时默认取自 KAFKA_CLI_TIMEOUT（见 _kafka_cli_timeout_sec）。
-    """
+    """校验脚本、bootstrap、command-config 后执行；超时默认 _kafka_cli_timeout_sec(120)。"""
     if not script_path.is_file():
         raise CommandExecutionError(
-            f"未找到 Kafka CLI 脚本: {script_path}（请确认 --kafka-home 为完整安装目录）"
+            f"未找到 Kafka CLI 脚本: {script_path}（--kafka-home 须指向含 bin/ 的解压根目录）"
         )
     ok, bmsg = _validate_bootstrap_server(bootstrap_server)
     if not ok:
@@ -1779,7 +1694,7 @@ def _build_bootstrap_cmd(
 
 
 class KafkaTopicManager:
-    """封装 bin/kafka-topics.sh（参数与行为以官方文档 #basic_ops 及工具 --help 为准）。"""
+    """bin/kafka-topics.sh 封装。"""
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.bin_dir = Path(kafka_home).resolve() / "bin"
@@ -1793,7 +1708,7 @@ class KafkaTopicManager:
         )
 
     def create(self, topic: str, partitions: int = 1, replication_factor: int = 1) -> bool:
-        """--create；若 CLI 报错匹配「已存在」常见英文串则视为成功（本脚本策略，非 Kafka 协议）。"""
+        """--create；若 stderr 匹配 _cli_already_exists 则返回 True（本脚本实现）。"""
         ok, msg = _validate_topic_name(topic)
         if not ok:
             logger.error(msg, extra={"to_stdout": True})
@@ -1814,7 +1729,7 @@ class KafkaTopicManager:
             return False
 
     def delete(self, topic: str) -> bool:
-        """--delete（需 broker 配置 delete.topic.enable=true，见官方文档 broker 配置）；若报「不存在」常见英文串则视为成功（本脚本策略）。"""
+        """--delete；broker 须允许 delete.topic.enable。stderr 匹配 _cli_topic_missing 时返回 True。"""
         ok, msg = _validate_topic_name(topic)
         if not ok:
             logger.error(msg, extra={"to_stdout": True})
@@ -1858,7 +1773,7 @@ class KafkaTopicManager:
 
 
 class KafkaConsumerGroupManager:
-    """Consumer Group 运维（官方 kafka-consumer-groups.sh：lag、状态）"""
+    """kafka-consumer-groups.sh 封装。"""
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.bin_dir = Path(kafka_home).resolve() / "bin"
@@ -1943,7 +1858,7 @@ class KafkaQuorumManager:
         return run_command(cmd, capture_output=True, timeout=to)
 
     def add_controller(self) -> bool:
-        """动态添加 Controller（官方 add-controller）"""
+        """kafka-metadata-quorum.sh add-controller。"""
         try:
             self._quorum_cmd(["add-controller"])
             logger.info("✓ 已提交 add-controller", extra={"to_stdout": True})
@@ -2015,11 +1930,7 @@ class KafkaConfigManager:
 
 
 class KafkaMetricsCollector:
-    """
-    只读采集：调用官方 bin/ 脚本解析 Quorum / Under-replicated / Consumer lag 等相关信息。
-    指标语义与 JMX/Monitoring 说明见 https://kafka.apache.org/documentation/#monitoring
-    本类输出的 JSON 结构为本脚本约定，非 Kafka 发行版内建格式。
-    """
+    """调用 bin 下 metadata-quorum / kafka-topics / kafka-consumer-groups 采集并汇总为字典（--metrics-json）。"""
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.kafka_home = Path(kafka_home).resolve()
@@ -2065,7 +1976,7 @@ class KafkaMetricsCollector:
         return out
 
     def collect_topic_partition_health(self) -> Dict[str, Any]:
-        """kafka-topics.sh --describe --under-replicated-partitions（见 #basic_ops / #monitoring 中 under-replicated 语义）。"""
+        """kafka-topics.sh --describe --under-replicated-partitions。"""
         out: Dict[str, Any] = {"ok": False, "under_replicated_partitions": 0, "topics": {}}
         try:
             pre = self._metrics_precheck("kafka-topics.sh")
@@ -2133,11 +2044,7 @@ class KafkaMetricsCollector:
 
 
 class KafkaBrokerDecommission:
-    """
-    封装 kafka-reassign-partitions.sh 的 --generate / --execute / --verify（见官方文档 #basic_ops
-    「Partition reassignment」与「Decommissioning brokers」：下线前须将副本迁出待下线 broker，工具三种模式与文档一致）。
-    本类不替代管理员编制完整 reassignment JSON 的责任；关停进程为 clean/运维步骤。
-    """
+    """kafka-reassign-partitions.sh --generate / --execute / --verify。"""
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.bin_dir = Path(kafka_home).resolve() / "bin"
@@ -2161,10 +2068,7 @@ class KafkaBrokerDecommission:
         return run_command(cmd, capture_output=True, timeout=to)
 
     def generate(self, broker_ids: str, topics_to_move_json_path: Optional[str] = None) -> Optional[str]:
-        """
-        对应官方文档示例：--generate --broker-list 与可选 --topics-to-move-json-file（见 #basic_ops）。
-        topics-to-move JSON 格式以发行版工具帮助与文档为准；列出 topic 可限定迁移范围。
-        """
+        """--generate --broker-list [--topics-to-move-json-file]。"""
         args = ["--generate", "--broker-list", broker_ids]
         json_path = topics_to_move_json_path if (topics_to_move_json_path and Path(topics_to_move_json_path).exists()) else None
         if not json_path:
@@ -2358,7 +2262,7 @@ def _run_remote_deploy(
             which_k = shutil.which("kafkacli")
             local_script = Path(which_k).resolve() if which_k and Path(which_k).exists() else None
         if not local_script or not local_script.exists():
-            logger.error("无法确定本地 kafkacli 脚本路径，请确保脚本存在或安装到 PATH", extra={"to_stdout": True})
+            logger.error("无法解析本地 kafkacli 路径；PATH 或当前目录须包含可执行脚本", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
         ok, out = ssh.run_command(f"mkdir -p {shlex.quote(remote_workdir)}", timeout=20)
         if not ok:
@@ -2442,26 +2346,11 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
 
 
 def show_examples():
-    """打印使用说明与示例；语义以 Apache Kafka 官方文档为准（见文件头「官方依据」URL）。"""
+    """打印使用说明与命令示例。"""
     examples = """
-Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与运维语义见:
-  https://kafka.apache.org/documentation/#kraft
-  https://kafka.apache.org/documentation/#basic_ops
-  https://kafka.apache.org/documentation/#monitoring
-  https://kafka.apache.org/documentation/#java
-  KIP-833: https://cwiki.apache.org/confluence/display/KAFKA/KIP-833:+Mark+KRaft+as+Production+Ready
+kafkacli：KRaft 部署 + 调用 Kafka 发行版 bin/ 工具。环境变量：KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION。
 
-能力：前置机/批量部署、Topic/Group/Config/Quorum、分区重分配、指标采集、systemd、SASL（--command-config）。
-
-版本与 JDK:
-  - KRaft 对新集群 production-ready 自 3.3 起（KIP-833）；ZooKeeper 模式移除时间见各发行版发布说明。
-  - 版本推断：kafka_home 路径或 libs/kafka-server-common-*.jar；可 --assume-kafka-version 或 KAFKA_CLI_ASSUME_VERSION。
-  - JDK 要求以官方 #java 与各 tarball README 为准；本脚本门禁：4.x/未知→17+，3.x→11+。
-  - KRaft 自动部署默认 Kafka ≥3.3；更低须 --skip-kraft-version-check。
-  - systemd User/Group 须已存在；可 --user root 等做试验。
-  - 与同仓库 StarCli 风格的环境检查、SSH 选项为本仓库约定。
-  - log.dirs 落在安装目录下时告警（工程风险提示，非 Kafka 文档强制）。
-  - advertised：对客户端可达地址须正确（见 #brokerconfigs advertised.listeners）；可用 KAFKA_ADVERTISED_HOST 或 extra_properties。
+版本：默认要求 Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java 门禁 min_java_major_for_kafka（4.x→17，3.x→11）。
 
 用法:
   部署与清理:
@@ -2477,7 +2366,7 @@ Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与�
     kafkacli --group-list | --group-describe --consumer-group NAME
     kafkacli --config-describe-broker [--config-entity-name id] | --config-describe-topic --topic NAME
     kafkacli --quorum-add-controller                     # KRaft 动态添加 Controller
-  Broker 下线（分区重分配后再停进程；见 #basic_ops Decommissioning brokers / Partition reassignment）:
+  Broker 下线（kafka-reassign-partitions 后再停进程）:
     kafkacli --broker-decommission-generate --broker-list 1,2 [--topics-to-move-json-file PATH]
     kafkacli --broker-decommission-execute --reassignment-json-file plan.json [--throttle N]
     kafkacli --broker-decommission-verify --reassignment-json-file plan.json
@@ -2485,8 +2374,8 @@ Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与�
 
 示例:
 
-1) 单节点快速体验（KRaft combined，脚本自动生成完整 listener 套件，适用于 3.3+ / 4.x）:
-   export KAFKA_ADVERTISED_HOST=127.0.0.1   # 生产改为本机可达 IP
+1) 单节点 standalone（combined）示例:
+   export KAFKA_ADVERTISED_HOST=127.0.0.1
    kafkacli --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
 
 2) 批量多机部署（配置文件 nodes 数组，依次 SSH 到每台执行）:
@@ -2502,7 +2391,7 @@ Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与�
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID> --config cluster.json
 
-4) 生产环境 KRaft：3 台 Controller + N 台 Broker
+4) 多节点 KRaft（示例：多台 controller 与 broker）
    kafkacli --deploy controller --kafka-home /opt/kafka --node-id 1 \\
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --metadata-log-dir /var/kafka/metadata-log --config cluster.json
@@ -2510,7 +2399,7 @@ Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与�
    kafkacli --deploy broker --kafka-home /opt/kafka --node-id 1 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" --log-dirs /var/kafka/logs
 
-5) 集群状态与指标（#monitoring；JSON 为本脚本输出格式）:
+5) 集群状态与指标:
    kafkacli --status --bootstrap-server broker1:9092 --kafka-home /opt/kafka
    kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092
@@ -2521,7 +2410,7 @@ Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与�
    kafkacli --topic-describe --topic my-topic --kafka-home /opt/kafka
    kafkacli --group-describe --consumer-group my-consumer --kafka-home /opt/kafka --bootstrap-server broker1:9092
 
-7) Broker 下线（与 #basic_ops 中 kafka-reassign-partitions 工作流一致：generate → execute → verify，再停 Broker）:
+7) Broker 下线（--generate / --execute / --verify，停进程另做）:
    kafkacli --broker-decommission-generate --broker-list 1,2 --kafka-home /opt/kafka --bootstrap-server broker1:9092
    # 将输出中的 Current partition reassignment configuration 保存为 plan.json
    kafkacli --broker-decommission-execute --reassignment-json-file plan.json --throttle 1048576 --kafka-home /opt/kafka
@@ -2538,10 +2427,7 @@ Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与�
 
 def main():
     parser = argparse.ArgumentParser(
-        description=(
-            "Kafka 部署与运维（KRaft）；行为以 https://kafka.apache.org/documentation/ "
-            "（#kraft、#basic_ops、#brokerconfigs）及发行版 bin/ 工具为准。"
-        ),
+        description="Kafka KRaft 部署与 bin/ 工具封装（topics、consumer-groups、reassign、metadata-quorum、configs）。",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False
     )
@@ -2557,11 +2443,11 @@ def main():
     parser.add_argument(
         "--skip-kraft-version-check",
         action="store_true",
-        help="跳过「KRaft 自动部署须 Kafka 3.3+（KIP-833）」检查，自担风险",
+        help="跳过本脚本对 Kafka 版本 ≥3.3.0 的检查",
     )
 
     # 通用
-    parser.add_argument("--log-dirs", help="Broker/Standalone 日志目录，逗号分隔（官方 log.dirs）")
+    parser.add_argument("--log-dirs", help="Broker/Standalone 日志目录，逗号分隔（log.dirs）")
     parser.add_argument("--metadata-log-dir", help="Controller 元数据日志目录（metadata.log.dir）")
     parser.add_argument("--node-id", type=int, help="KRaft node.id（controller/broker 必填）")
     parser.add_argument("--cluster-id", help="KRaft 集群 ID（多节点时与首节点一致）")
@@ -2569,8 +2455,7 @@ def main():
     parser.add_argument("--controller-port", type=int, default=DEFAULT_CONTROLLER_PORT, help=f"Controller 监听端口 (默认 {DEFAULT_CONTROLLER_PORT})")
     parser.add_argument(
         "--listeners",
-        help="listeners；standalone 仅写 PLAINTEXT 时会自动追加 CONTROLLER（KRaft combined）；"
-             "生产请配合环境变量 KAFKA_ADVERTISED_HOST 或 extra_properties 中的 advertised.listeners",
+        help="listeners；standalone 且仅 PLAINTEXT 时脚本会追加 CONTROLLER。advertised 可用 KAFKA_ADVERTISED_HOST 或 extra_properties",
     )
     parser.add_argument("--initial-controllers", help="KRaft 多 controller 时首次 format 的 initial-controllers 列表")
     parser.add_argument("--java-home", help="JAVA_HOME 路径")
@@ -2586,7 +2471,11 @@ def main():
     )
     parser.add_argument("--no-systemd", action="store_true", help="不安装 systemd 服务")
     parser.add_argument("--verify", action="store_true", help="部署后验证 Broker 可连接")
-    parser.add_argument("--force", action="store_true", help="强制覆盖已存在配置并重新 format（慎用）")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="覆盖已生成配置并重新执行 kafka-storage.sh format",
+    )
     parser.add_argument("--clean", action="store_true", help="仅清理服务与生成配置，不部署")
     parser.add_argument("--status", action="store_true", help="显示集群状态（元数据 Quorum + 副本信息）")
     parser.add_argument("--bootstrap-server", default="localhost:9092", help="--status 时连接的 bootstrap server")
@@ -2597,13 +2486,17 @@ def main():
     parser.add_argument("--ssh-user", default="root", help="SSH 用户名")
     parser.add_argument("--ssh-port", type=int, default=22, help="SSH 端口")
     parser.add_argument("--ssh-key", default="~/.ssh/id_rsa", help="SSH 私钥路径")
-    parser.add_argument("--disable-ssh-host-check", action="store_true", help="禁用 SSH 主机密钥检查（不推荐）")
+    parser.add_argument(
+        "--disable-ssh-host-check",
+        action="store_true",
+        help="SSH StrictHostKeyChecking=no",
+    )
     parser.add_argument("--remote-workdir", help="远程工作目录 (默认: /tmp/kafka_deploy)")
 
     # 批量部署（config 中 nodes: [{ target_host, deploy, node_id, ... }]）
     parser.add_argument("--batch", action="store_true", help="按配置文件 nodes 列表批量远程部署（需 --config）")
 
-    # Topic 运维（官方 kafka-topics.sh）
+    # Topic 运维
     parser.add_argument("--topic-create", action="store_true", help="创建 Topic")
     parser.add_argument("--topic-delete", action="store_true", help="删除 Topic")
     parser.add_argument("--topic-describe", action="store_true", help="描述 Topic")
@@ -2617,9 +2510,9 @@ def main():
     parser.add_argument("--group-describe", action="store_true", help="描述 Group（含 Lag）")
     parser.add_argument("--consumer-group", help="Consumer Group 名称（与 --group-describe 配合）")
 
-    # 指标采集（封装官方 CLI；语义见文档 #monitoring）
+    # 指标采集
     parser.add_argument("--metrics", action="store_true", help="采集并打印关键指标（Quorum/副本健康/Lag）")
-    parser.add_argument("--metrics-json", action="store_true", help="指标输出为 JSON（便于接入监控）")
+    parser.add_argument("--metrics-json", action="store_true", help="指标输出为 JSON（本脚本序列化格式）")
 
     # 配置运维（kafka-configs.sh）
     parser.add_argument("--config-describe-broker", action="store_true", help="查看 Broker 配置")
@@ -2631,7 +2524,7 @@ def main():
 
     # Broker 下线（副本迁移后停 Broker）
     parser.add_argument("--broker-decommission-generate", action="store_true",
-                        help="生成副本迁移计划（kafka-reassign-partitions --generate；见文档 #basic_ops）")
+                        help="kafka-reassign-partitions --generate（需 --broker-list）")
     parser.add_argument("--broker-decommission-execute", action="store_true", help="执行副本迁移（--reassignment-json-file）")
     parser.add_argument("--broker-decommission-verify", action="store_true", help="校验迁移进度")
     parser.add_argument("--broker-list", help="副本迁移目标 Broker ID 列表，逗号分隔（如 1,2,3）")
@@ -2640,7 +2533,7 @@ def main():
         "--topics-to-move-json",
         dest="topics_to_move_json",
         metavar="PATH",
-        help="kafka-reassign-partitions 的 --topics-to-move-json-file（#basic_ops Partition reassignment）",
+        help="kafka-reassign-partitions --topics-to-move-json-file",
     )
     parser.add_argument("--reassignment-json-file", help="副本迁移 JSON 文件路径（execute/verify）")
     parser.add_argument("--throttle", type=int, help="迁移限流（字节/秒）")
@@ -2836,7 +2729,10 @@ def main():
         out = dec.generate(blist, _get_opt(args, config, "topics_to_move_json"))
         if out:
             print(out)
-            logger.info("请将上述 Current partition reassignment configuration 保存为 JSON 文件，再使用 --broker-decommission-execute", extra={"to_stdout": True})
+            logger.info(
+                "将 --generate 输出中的 reassignment JSON 保存为文件后传给 --broker-decommission-execute",
+                extra={"to_stdout": True},
+            )
         sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "broker_decommission_execute", False):
@@ -2961,8 +2857,7 @@ def main():
             )
         else:
             logger.info(
-                "=== 部署完成（未由 systemd 拉起进程）：配置与 storage format 已就绪；"
-                "请按上文命令手动启动并自行确认服务，本结果不表示 Broker 已在线 ===",
+                "=== 部署完成（未使用 systemd）：配置与 storage format 已执行；进程未由本脚本启动，TCP 在线状态未检测 ===",
                 extra={"to_stdout": True},
             )
         if args.verify and deploy_type in ("standalone", "broker"):
