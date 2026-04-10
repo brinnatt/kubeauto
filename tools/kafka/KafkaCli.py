@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
 """
-Kafka 自动化部署工具（KRaft 模式），面向 Apache Kafka 3.3+ 与 4.x，与官方 KRaft 文档对齐。
+Kafka 自动化部署与运维封装（KRaft 模式），调用发行版 bin/ 下官方脚本；行为须与下列 **Apache Kafka 官方文献** 可对照。
 
-版本与官方关系（摘要，便于多版本兼容）：
-- KRaft 并非 4.x 独有：自 3.3 起新集群 KRaft 标为 production-ready（KIP-833）；4.0 起发行版移除 ZooKeeper；
-  3.9 等为 ZK→KRaft 迁移相关发行版。本脚本自动配置适用于 3.3+～4.x 的 KRaft 监听器与必选键。
-- Kafka 4.x 配置校验更严（如 controller.listener.names、listener 套件）；脚本默认生成与官方 KRaft 示例一致的
-  combined / broker 监听器与 protocol map，降低 4.x 下 format / 启动失败概率。
+**官方依据（Apache Kafka Documentation / KIP，非社区帖）**
+- KRaft 概览与运维： https://kafka.apache.org/documentation/#kraft
+- Broker / Topic 等配置说明： https://kafka.apache.org/documentation/#brokerconfigs
+- 常用运维（kafka-topics、kafka-reassign-partitions 的 --generate / --execute / --verify、Broker 下线等）：
+  https://kafka.apache.org/documentation/#basic_ops
+  其中「Partition reassignment」「Decommissioning brokers」描述分区迁移与下线前须迁走副本；
+  「Adding and removing topics」说明 topic 名长度上限（与日志目录命名相关）。
+- 监控与指标语义： https://kafka.apache.org/documentation/#monitoring
+- 运行 Kafka 的 JVM 版本说明： https://kafka.apache.org/documentation/#java
+- KRaft 在 3.3 起对新集群标为 production-ready：KIP-833
+  https://cwiki.apache.org/confluence/display/KAFKA/KIP-833:+Mark+KRaft+as+Production+Ready
 
-业务逻辑遵循官方文档与 KRaft 约束：
-- 部署：KRaft Provisioning（format --standalone | --no-initial-controllers）；standalone=combined(broker+controller)
-  须包含 PLAINTEXT（broker）与 CONTROLLER、controller.listener.names、inter.broker.listener.name、
-  listener.security.protocol.map、advertised.listeners、controller.quorum.bootstrap.servers
-  （默认生成；生产用环境变量 KAFKA_ADVERTISED_HOST 指定对外地址）。
-- 运维：Topic/Consumer Group/Quorum/Config 封装官方 CLI；Broker 下线按「先副本迁移再停 Broker」。
-- 监控：与官方 Monitoring 一致（Quorum、UnderReplicated、Consumer Lag）。
+**本脚本独有（官方文档未规定，仅为工程化默认值）**
+- 环境变量 KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION 等。
+- Topic 创建/删除对 CLI 典型 **英文** 报错串做兼容（幂等友好）；以实际 kafka-topics.sh 退出码与输出为准，非协议层保证。
+- 分区重分配 execute/verify 的超时下限（与 KAFKA_CLI_TIMEOUT 取 max）为本脚本策略。
+- 与同仓库 StarCli 一致的 SSH/日志/退出码等 **本仓库** 约定，不属于 Apache Kafka 项目规范。
 
-能力：单机/批量/前置机远程部署、systemd、清理、健康检查、SASL/SSL（--command-config）。
-环境：Python 3.9+；Java 按检测到的 Kafka 主版本要求 11+（3.x）或 17+（4.x），无法解析版本时按 4.x 策略要求 17+。
-systemd 默认 User/Group 为 kafka：须事先在系统创建该用户/组，否则为 217/USER；测试可用 --user root --group root。
-
-脚本结构与运维约定对齐同仓库 tools/starrocks/StarCli.py（企业级）：环境检查集中输出、用户/组用 id/getent、
-SSH/SCP 选项与 StarCli 同构、远程执行前探测 kafkacli、systemd 单元含 WorkingDirectory/资源限制/优雅退出码、
-数据目录相对安装目录的告警、失败时给出可操作的排查项。
-参考: https://kafka.apache.org/documentation/#kraft, #brokerconfigs_controller.listener.names
+能力：单机/批量/远程部署、systemd、清理、封装官方 CLI（--bootstrap-server / --command-config）。
+systemd 默认 User/Group 为 kafka：账户须事先存在（见 systemd 文档 User=/Group=）；测试可用 --user root --group root。
+退出码：EXIT_OK(0) / EXIT_ERROR(1)，便于脚本判断。
 """
 
 import argparse
@@ -54,6 +53,98 @@ DEFAULT_BROKER_PORT = 9092
 DEFAULT_CONTROLLER_PORT = 9093
 DEFAULT_LOG_DIR = "/tmp/kafka-logs"
 DEFAULT_METADATA_LOG_DIR = "/tmp/kraft-combined-logs"
+
+# 进程退出码（与 StarCli 及常见 CLI 约定一致，便于 CI/自动化判断）
+EXIT_OK = 0
+EXIT_ERROR = 1
+
+
+def _kafka_cli_timeout_sec(default: int = 120) -> int:
+    """
+    本脚本对子进程 subprocess 的超时（非 Kafka 文档规定）。
+    环境变量 KAFKA_CLI_TIMEOUT（10～86400）覆盖默认值。
+    """
+    try:
+        v = int(os.getenv("KAFKA_CLI_TIMEOUT", str(default)))
+        return max(10, min(86400, v))
+    except ValueError:
+        return default
+
+
+def _reassign_cmd_timeout_sec() -> int:
+    """
+    kafka-reassign-partitions.sh 的 --execute / --verify 可能长时间运行（官方文档说明见 #basic_ops 分区重分配章节）。
+    本脚本取 max(KAFKA_CLI_TIMEOUT, 3600) 作为子进程超时下限；3600 非 Apache 规定。
+    """
+    return max(_kafka_cli_timeout_sec(120), 3600)
+
+
+def _validate_bootstrap_server(bootstrap_server: str) -> Tuple[bool, str]:
+    """校验 --bootstrap-server 非空且主机/端口可解析（减少 silent 失败）。"""
+    s = (bootstrap_server or "").strip()
+    if not s:
+        return False, "bootstrap server 不能为空"
+    if ":" in s:
+        host, _, port_part = s.rpartition(":")
+        host = host.strip()
+        port_part = port_part.strip()
+        if port_part:
+            try:
+                p = int(port_part)
+                if not InputValidator.validate_port(p):
+                    return False, f"bootstrap 端口无效: {port_part}"
+            except ValueError:
+                return False, f"bootstrap 端口无效: {port_part}"
+        if host and not InputValidator.validate_hostname(host):
+            return False, f"bootstrap 主机无效: {host}"
+    else:
+        if not InputValidator.validate_hostname(s):
+            return False, f"bootstrap 主机无效: {s}"
+    return True, ""
+
+
+def _validate_command_config_path(command_config: Optional[str]) -> Optional[str]:
+    """若提供 SASL/SSL 客户端配置，文件须存在。"""
+    if not (command_config or "").strip():
+        return None
+    p = Path(command_config).expanduser()
+    if not p.is_file():
+        return f"--command-config 文件不存在或不可读: {command_config}"
+    return None
+
+
+def _normalize_topic_name(topic: str) -> str:
+    return (topic or "").strip()
+
+
+def _validate_topic_name(topic: str) -> Tuple[bool, str]:
+    """
+    Topic 名非空与长度上限（≤249）。
+    依据：Apache Kafka Documentation「Basic Kafka Operations」→「Adding and removing topics」
+    （日志目录下文件夹命名 topic-partition，故 topic 名长度受限；与官方文档同页说明一致）。
+    """
+    t = _normalize_topic_name(topic)
+    if not t:
+        return False, "Topic 名称不能为空"
+    if len(t) > 249:
+        return False, "Topic 名称长度须 ≤ 249（见官方文档 #basic_ops Adding and removing topics）"
+    return True, ""
+
+
+def _cli_already_exists(msg: str) -> bool:
+    """脚本侧启发式：匹配 kafka-topics 常见英文报错，非 Kafka 协议或文档保证。"""
+    m = (msg or "").lower()
+    return "already exists" in m or "already exist" in m
+
+
+def _cli_topic_missing(msg: str) -> bool:
+    """脚本侧启发式：匹配常见「topic 不存在」英文描述；请以实际 CLI 输出为准。"""
+    m = (msg or "").lower()
+    return (
+        "unknown topic" in m
+        or "does not exist" in m
+        or "not found" in m
+    )
 
 
 def _advertised_host() -> str:
@@ -130,7 +221,7 @@ def setup_logger(
 
 logger = setup_logger(__name__)
 
-# 官方 KIP-833：自 Kafka 3.3 起 KRaft 用于新集群为 production-ready；低于此版本的 KRaft 部署本脚本默认拒绝。
+# KIP-833：Kafka 3.3 起 KRaft 对新集群标为 production-ready（见 KIP 正文）。低于 3.3 的 KRaft 自动部署本脚本默认拒绝。
 KRAFT_DEPLOY_MIN_VERSION: Tuple[int, int, int] = (3, 3, 0)
 
 
@@ -177,7 +268,12 @@ def infer_kafka_release(kafka_home: Path, assume_version: Optional[str] = None) 
 
 
 def min_java_major_for_kafka(kafka_release: Optional[Tuple[int, int, int]]) -> int:
-    """Kafka 4.x 官方要求 Java 17+；3.x 发行版通常要求 Java 11+。未知版本时保守按 4.x 要求 17。"""
+    """
+    本脚本部署门禁用的最低 JDK 主版本号。
+    官方对运行时的说明见 https://kafka.apache.org/documentation/#java （当前文档以 Java 17/21/25 为完全支持主线）；
+    各 tarball 附带 README 亦会写明该发行版最低 JDK。此处对 4.x 用 17、对 3.x 用 11 与常见发行版一致；
+    未知版本时按 4.x 策略要求 17。
+    """
     if kafka_release is None:
         return 17
     major, _, _ = kafka_release
@@ -261,8 +357,8 @@ MAX_HOSTNAME_LENGTH = 253
 
 class InputValidator:
     """
-    输入验证器（与 Kafka 官方配置约束一致）。
-    端口、主机名用于 SSH/Broker/Controller 等；路径用于 log.dirs、metadata.log.dir 等。
+    部署与 CLI 预检用的格式校验（主机名、端口、路径等）。
+    其中端口范围、topic 长度等部分与官方文档或配置语义对齐；其余为脚本健壮性检查。
     """
 
     @staticmethod
@@ -286,7 +382,7 @@ class InputValidator:
 
     @staticmethod
     def validate_path(path: str) -> bool:
-        """验证路径格式（适用于 Linux；Kafka 生产环境通常为 Linux 部署）"""
+        """路径格式基本校验（本脚本目标环境多为类 Unix；非 Kafka 文档条款）。"""
         if not path or ".." in path:
             return False
         try:
@@ -448,8 +544,16 @@ def run_command(
     if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
         capture_output = False
 
+    # 非交互场景避免子进程阻塞读 stdin；若调用方使用 input= 则勿占用 DEVNULL
+    run_kw = dict(kwargs)
+    if run_kw.get("stdin") is None and "input" not in run_kw:
+        run_kw["stdin"] = subprocess.DEVNULL
+    if run_kw.get("encoding") is None:
+        run_kw["encoding"] = "utf-8"
+        run_kw.setdefault("errors", "replace")
+
     try:
-        result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True, **kwargs)
+        result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True, **run_kw)
         return result
     except subprocess.TimeoutExpired as e:
         logger.error("命令执行超时: {}".format(e), extra={"to_stdout": True})
@@ -467,6 +571,24 @@ def run_command(
     except Exception as e:
         logger.error("命令执行异常: {}".format(e), extra={"to_stdout": True})
         raise CommandExecutionError(f"Command failed: {e}")
+
+
+def _atomic_write_text(path: Path, content: str, encoding: str = "utf-8") -> None:
+    """
+    原子写入文本文件：同目录临时文件 + os.replace，避免进程崩溃留下半截配置（StarCli 直写可改为本模式）。
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    try:
+        tmp.write_text(content, encoding=encoding)
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
 
 
 class EnvironmentChecker:
@@ -696,7 +818,7 @@ class EnvironmentChecker:
     @staticmethod
     def warn_if_path_under_kafka_home(kafka_home: Path, path_list_csv: str, label: str) -> None:
         """
-        若数据路径落在 Kafka 安装目录下则告警（与 StarCli「数据独立于安装目录」思路一致，降低升级/清理风险）。
+        若数据路径落在 Kafka 安装目录下则告警（本脚本/StarCli 项目约定，便于升级与清理；Kafka 文档未规定 log.dirs 必须独立于安装路径）。
         """
         first = (path_list_csv or "").split(",")[0].strip()
         if not first:
@@ -706,7 +828,7 @@ class EnvironmentChecker:
             target = Path(first).resolve()
             target.relative_to(base)
             logger.warning(
-                "%s 位于 Kafka 安装目录内 (%s)，生产环境建议使用独立数据盘路径。",
+                "%s 位于 Kafka 安装目录内 (%s)；独立数据盘/路径为常见运维实践（非 Kafka 文档硬性要求）。",
                 label,
                 target,
                 extra={"to_stdout": True},
@@ -807,7 +929,8 @@ class ConfigGenerator:
 
 class SystemdServiceGenerator:
     """
-    Systemd 单元生成（对齐 StarCli 生产级约定：WorkingDirectory、超时、journal、资源限制、优雅退出码）。
+    systemd 单元生成；Documentation= 指向 Apache Kafka 官方文档。
+    其余字段（WorkingDirectory、LimitNOFILE 等）为本脚本与同仓库 StarCli 的工程约定。
     """
 
     @staticmethod
@@ -866,12 +989,10 @@ class KafkaDeployer:
     """
     Kafka 部署器（KRaft 模式，支持 Apache Kafka 3.3+～4.x）。
 
-    standalone 使用 ConfigGenerator.generate_combined_standalone_properties 与 _kraft_combined_listener_properties，
-    与官方 KRaft combined 必选项一致（4.x 校验更严，完整套件可避免 format/启动失败）。
-    controller / broker 分别补充 listener.security.protocol.map 与 _kraft_broker_listener_properties。
-    安装目录或 libs 可解析时记录 Kafka 版本；低于 3.3 默认拒绝 KRaft 部署（可 --skip-kraft-version-check 自担风险）。
-    systemd unit 由 SystemdServiceGenerator 生成。
-    环境检查风格与 StarCli 一致：用户/组、Java、目录权限等在 check_environment 中集中校验并一次性列出错误。
+    配置键与流程须对照官方文档 #kraft、#brokerconfigs 及 kafka-storage.sh / kafka-server-start.sh 的说明。
+    standalone 使用 ConfigGenerator.generate_combined_standalone_properties 与 _kraft_combined_listener_properties。
+    低于 3.3 默认拒绝 KRaft 自动部署（依据 KIP-833 适用范围；可 --skip-kraft-version-check 自担风险）。
+    systemd unit 由 SystemdServiceGenerator 生成；环境与账户检查与同仓库 StarCli 一致。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
@@ -972,17 +1093,15 @@ class KafkaDeployer:
         return run_command(cmd, capture_output=True, timeout=5, env=env)
 
     def _write_properties(self, path: Path, props: Dict[str, str]) -> bool:
-        """写入 Java properties 格式配置文件"""
+        """写入 Java properties（原子写入，见 _atomic_write_text）。"""
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
             lines = []
             for k, v in props.items():
                 if v is None or v == "":
                     continue
-                # 转义 value 中的 \ 和 换行
                 v_str = str(v).replace("\\", "\\\\").replace("\n", "\\n")
                 lines.append(f"{k}={v_str}")
-            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            _atomic_write_text(path, "\n".join(lines) + "\n")
             logger.info(f"✓ 已写入配置: {path}", extra={"to_stdout": True})
             return True
         except Exception as e:
@@ -997,7 +1116,7 @@ class KafkaDeployer:
             user: Optional[str] = None,
             group: Optional[str] = None
     ) -> str:
-        """生成 systemd unit 文件内容（与 SystemdServiceGenerator 一致，企业级）"""
+        """生成 systemd unit 文件内容（委托 SystemdServiceGenerator）。"""
         return SystemdServiceGenerator.generate_kafka_service(
             self.bin_dir,
             config_path,
@@ -1123,7 +1242,7 @@ class KafkaDeployer:
         unit_path = Path(f"/etc/systemd/system/{service_name}.service")
         unit_content = self._systemd_unit_content(deploy_type, config_path, java_home)
         try:
-            unit_path.write_text(unit_content, encoding="utf-8")
+            _atomic_write_text(unit_path, unit_content)
             run_command(["systemctl", "daemon-reload"], timeout=30)
             run_command(["systemctl", "enable", service_name], timeout=30)
             run_command(["systemctl", "reset-failed", service_name], check=False, timeout=10)
@@ -1534,8 +1653,8 @@ class KafkaDeployer:
             backup_config: bool = True
     ) -> bool:
         """
-        清理已部署的 Kafka 服务与本地配置（企业级：停止→禁用→杀进程→备份配置→删除 unit→reload）。
-        不删除数据目录（log.dirs / metadata.log.dir），避免误删业务数据。
+        清理本脚本安装的 systemd 服务与生成配置（停止→禁用→进程清理→可选备份→删 unit→daemon-reload）。
+        不删除 log.dirs / metadata.log.dir（数据保留策略为本脚本约定）。
         """
         logger.info(f"=== 清理 Kafka {deploy_type} 部署 ===", extra={"to_stdout": True})
 
@@ -1589,8 +1708,8 @@ class KafkaDeployer:
             command_config: Optional[str] = None
     ) -> bool:
         """
-        显示集群状态（与官方一致：kafka-metadata-quorum.sh describe）。
-        需在已安装 Kafka 且能访问 bootstrap-server 的机器上执行。
+        调用 bin/kafka-metadata-quorum.sh（见官方文档 #kraft 与工具说明）。
+        须在已安装 Kafka 且网络可达 --bootstrap-server 的环境执行。
         """
         print("=== Kafka 集群状态 (KRaft) ===\n")
         bin_dir = self.bin_dir
@@ -1636,17 +1755,31 @@ def _build_bootstrap_cmd(
         bootstrap_server: str,
         args: List[str],
         command_config: Optional[str] = None,
-        timeout: int = 60
+        timeout: Optional[int] = None,
 ) -> subprocess.CompletedProcess:
-    """构建带 --bootstrap-server [--command-config] 的 Kafka CLI 命令并执行。"""
-    cmd = [str(script_path), "--bootstrap-server", bootstrap_server] + args
+    """
+    构建并执行带 --bootstrap-server 的 Kafka CLI。
+    执行前校验脚本存在、bootstrap 格式、command-config 路径；超时默认取自 KAFKA_CLI_TIMEOUT（见 _kafka_cli_timeout_sec）。
+    """
+    if not script_path.is_file():
+        raise CommandExecutionError(
+            f"未找到 Kafka CLI 脚本: {script_path}（请确认 --kafka-home 为完整安装目录）"
+        )
+    ok, bmsg = _validate_bootstrap_server(bootstrap_server)
+    if not ok:
+        raise CommandExecutionError(bmsg)
+    cc_err = _validate_command_config_path(command_config)
+    if cc_err:
+        raise CommandExecutionError(cc_err)
+    to = timeout if timeout is not None else _kafka_cli_timeout_sec(120)
+    cmd = [str(script_path), "--bootstrap-server", bootstrap_server.strip()] + args
     if command_config:
         cmd.extend(["--command-config", command_config])
-    return run_command(cmd, capture_output=True, timeout=timeout)
+    return run_command(cmd, capture_output=True, timeout=to)
 
 
 class KafkaTopicManager:
-    """Topic 运维（官方 kafka-topics.sh 封装）"""
+    """封装 bin/kafka-topics.sh（参数与行为以官方文档 #basic_ops 及工具 --help 为准）。"""
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.bin_dir = Path(kafka_home).resolve() / "bin"
@@ -1654,29 +1787,47 @@ class KafkaTopicManager:
         self.command_config = command_config
         self._script = self.bin_dir / "kafka-topics.sh"
 
-    def _run(self, args: List[str]) -> subprocess.CompletedProcess:
+    def _run(self, args: List[str], timeout: Optional[int] = None) -> subprocess.CompletedProcess:
         return _build_bootstrap_cmd(
-            self._script, self.bootstrap_server, args, self.command_config, timeout=60
+            self._script, self.bootstrap_server, args, self.command_config, timeout=timeout
         )
 
     def create(self, topic: str, partitions: int = 1, replication_factor: int = 1) -> bool:
-        """创建 Topic（官方 --create）"""
+        """--create；若 CLI 报错匹配「已存在」常见英文串则视为成功（本脚本策略，非 Kafka 协议）。"""
+        ok, msg = _validate_topic_name(topic)
+        if not ok:
+            logger.error(msg, extra={"to_stdout": True})
+            return False
+        t = _normalize_topic_name(topic)
         try:
-            self._run(["--create", "--topic", topic, "--partitions", str(partitions),
-                       "--replication-factor", str(replication_factor)])
-            logger.info(f"✓ Topic 已创建: {topic}", extra={"to_stdout": True})
+            self._run(
+                ["--create", "--topic", t, "--partitions", str(partitions),
+                 "--replication-factor", str(replication_factor)],
+            )
+            logger.info(f"✓ Topic 已创建: {t}", extra={"to_stdout": True})
             return True
         except CommandExecutionError as e:
+            if _cli_already_exists(str(e)):
+                logger.info("Topic 已存在，跳过创建（幂等）: %s", t, extra={"to_stdout": True})
+                return True
             logger.error(f"创建 Topic 失败: {e}", extra={"to_stdout": True})
             return False
 
     def delete(self, topic: str) -> bool:
-        """删除 Topic（需 delete.topic.enable=true）"""
+        """--delete（需 broker 配置 delete.topic.enable=true，见官方文档 broker 配置）；若报「不存在」常见英文串则视为成功（本脚本策略）。"""
+        ok, msg = _validate_topic_name(topic)
+        if not ok:
+            logger.error(msg, extra={"to_stdout": True})
+            return False
+        t = _normalize_topic_name(topic)
         try:
-            self._run(["--delete", "--topic", topic])
-            logger.info(f"✓ Topic 已删除: {topic}", extra={"to_stdout": True})
+            self._run(["--delete", "--topic", t])
+            logger.info(f"✓ Topic 已删除: {t}", extra={"to_stdout": True})
             return True
         except CommandExecutionError as e:
+            if _cli_topic_missing(str(e)):
+                logger.info("Topic 已不存在，跳过删除（幂等）: %s", t, extra={"to_stdout": True})
+                return True
             logger.error(f"删除 Topic 失败: {e}", extra={"to_stdout": True})
             return False
 
@@ -1685,10 +1836,15 @@ class KafkaTopicManager:
         try:
             args = ["--describe"]
             if topic:
-                args.extend(["--topic", topic])
+                ok, msg = _validate_topic_name(topic)
+                if not ok:
+                    logger.error(msg, extra={"to_stdout": True})
+                    return None
+                args.extend(["--topic", _normalize_topic_name(topic)])
             r = self._run(args)
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("describe topic 失败: %s", e, extra={"to_stdout": True})
             return None
 
     def list(self) -> Optional[str]:
@@ -1696,7 +1852,8 @@ class KafkaTopicManager:
         try:
             r = self._run(["--list"])
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("list topics 失败: %s", e, extra={"to_stdout": True})
             return None
 
 
@@ -1709,9 +1866,9 @@ class KafkaConsumerGroupManager:
         self.command_config = command_config
         self._script = self.bin_dir / "kafka-consumer-groups.sh"
 
-    def _run(self, args: List[str]) -> subprocess.CompletedProcess:
+    def _run(self, args: List[str], timeout: Optional[int] = None) -> subprocess.CompletedProcess:
         return _build_bootstrap_cmd(
-            self._script, self.bootstrap_server, args, self.command_config, timeout=60
+            self._script, self.bootstrap_server, args, self.command_config, timeout=timeout
         )
 
     def list_groups(self) -> Optional[str]:
@@ -1719,23 +1876,29 @@ class KafkaConsumerGroupManager:
         try:
             r = self._run(["--list"])
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("list consumer groups 失败: %s", e, extra={"to_stdout": True})
             return None
 
     def describe_group(self, group: str) -> Optional[str]:
         """描述 Group（含 lag、--describe --group）"""
+        if not (group or "").strip():
+            logger.error("consumer group 名称不能为空", extra={"to_stdout": True})
+            return None
         try:
-            r = self._run(["--describe", "--group", group])
+            r = self._run(["--describe", "--group", group.strip()])
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("describe consumer group 失败: %s", e, extra={"to_stdout": True})
             return None
 
     def describe_all(self) -> Optional[str]:
         """描述所有 Group（--all-groups --describe）"""
         try:
-            r = self._run(["--all-groups", "--describe"])
+            r = self._run(["--all-groups", "--describe"], timeout=_kafka_cli_timeout_sec(300))
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("describe all groups 失败: %s", e, extra={"to_stdout": True})
             return None
 
 
@@ -1753,14 +1916,31 @@ class KafkaQuorumManager:
         self.command_config = command_config
 
     def _quorum_cmd(self, args: List[str]) -> subprocess.CompletedProcess:
-        cmd = [str(self.bin_dir / "kafka-metadata-quorum.sh")] + args
-        if self.bootstrap_controller:
-            cmd.extend(["--bootstrap-controller", self.bootstrap_controller])
-        elif self.bootstrap_server:
-            cmd.extend(["--bootstrap-server", self.bootstrap_server])
+        script = self.bin_dir / "kafka-metadata-quorum.sh"
+        if not script.is_file():
+            raise CommandExecutionError(f"未找到 Quorum CLI: {script}")
+        cc_err = _validate_command_config_path(self.command_config)
+        if cc_err:
+            raise CommandExecutionError(cc_err)
+        bc = (self.bootstrap_controller or "").strip()
+        bs = (self.bootstrap_server or "").strip()
+        if bc:
+            ok, msg = _validate_bootstrap_server(bc)
+            if not ok:
+                raise CommandExecutionError(f"bootstrap-controller: {msg}")
+            conn = ["--bootstrap-controller", bc]
+        elif bs:
+            ok, msg = _validate_bootstrap_server(bs)
+            if not ok:
+                raise CommandExecutionError(msg)
+            conn = ["--bootstrap-server", bs]
+        else:
+            raise CommandExecutionError("须指定 bootstrap_server 或 bootstrap_controller（kafka-metadata-quorum.sh）")
+        cmd = [str(script)] + args + conn
         if self.command_config:
             cmd.extend(["--command-config", self.command_config])
-        return run_command(cmd, capture_output=True, timeout=60)
+        to = _kafka_cli_timeout_sec(120)
+        return run_command(cmd, capture_output=True, timeout=to)
 
     def add_controller(self) -> bool:
         """动态添加 Controller（官方 add-controller）"""
@@ -1788,7 +1968,8 @@ class KafkaQuorumManager:
         try:
             r = self._quorum_cmd(["describe", "--replication"])
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("describe quorum replication 失败: %s", e, extra={"to_stdout": True})
             return None
 
 
@@ -1801,9 +1982,9 @@ class KafkaConfigManager:
         self.command_config = command_config
         self._script = self.bin_dir / "kafka-configs.sh"
 
-    def _run(self, args: List[str]) -> subprocess.CompletedProcess:
+    def _run(self, args: List[str], timeout: Optional[int] = None) -> subprocess.CompletedProcess:
         return _build_bootstrap_cmd(
-            self._script, self.bootstrap_server, args, self.command_config, timeout=30
+            self._script, self.bootstrap_server, args, self.command_config, timeout=timeout
         )
 
     def describe_broker(self, broker_id: Optional[int] = None) -> Optional[str]:
@@ -1814,23 +1995,30 @@ class KafkaConfigManager:
         try:
             r = self._run(args)
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("describe broker config 失败: %s", e, extra={"to_stdout": True})
             return None
 
     def describe_topic(self, topic: str) -> Optional[str]:
         """--entity-type topics --entity-name <topic> --describe"""
+        ok, msg = _validate_topic_name(topic)
+        if not ok:
+            logger.error(msg, extra={"to_stdout": True})
+            return None
+        t = _normalize_topic_name(topic)
         try:
-            r = self._run(["--entity-type", "topics", "--entity-name", topic, "--describe"])
+            r = self._run(["--entity-type", "topics", "--entity-name", t, "--describe"])
             return r.stdout
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("describe topic config 失败: %s", e, extra={"to_stdout": True})
             return None
 
 
 class KafkaMetricsCollector:
     """
-    企业级指标采集（与官方 Monitoring 文档一致）
-    采集：Quorum 状态、Topic 描述（副本/ISR）、Consumer Lag、Broker 可用性。
-    输出 JSON 便于接入 Prometheus/告警。
+    只读采集：调用官方 bin/ 脚本解析 Quorum / Under-replicated / Consumer lag 等相关信息。
+    指标语义与 JMX/Monitoring 说明见 https://kafka.apache.org/documentation/#monitoring
+    本类输出的 JSON 结构为本脚本约定，非 Kafka 发行版内建格式。
     """
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
@@ -1839,15 +2027,29 @@ class KafkaMetricsCollector:
         self.command_config = command_config
         self.bin_dir = self.kafka_home / "bin"
 
+    def _metrics_precheck(self, script_leaf: str) -> Optional[str]:
+        """脚本存在、bootstrap、command-config；失败返回错误说明。"""
+        p = self.bin_dir / script_leaf
+        if not p.is_file():
+            return f"未找到 CLI: {p}"
+        ok, msg = _validate_bootstrap_server(self.bootstrap_server)
+        if not ok:
+            return msg
+        return _validate_command_config_path(self.command_config)
+
     def collect_quorum_status(self) -> Dict[str, Any]:
         """元数据 Quorum 状态（LeaderId、HighWatermark、CurrentVoters）"""
         out: Dict[str, Any] = {"ok": False, "leader_id": None, "leader_epoch": None, "voters": []}
         try:
-            cmd = [str(self.bin_dir / "kafka-metadata-quorum.sh"), "--bootstrap-server", self.bootstrap_server,
-                   "describe", "--status"]
+            pre = self._metrics_precheck("kafka-metadata-quorum.sh")
+            if pre:
+                out["error"] = pre
+                return out
+            cmd = [str(self.bin_dir / "kafka-metadata-quorum.sh"), "--bootstrap-server",
+                   self.bootstrap_server.strip(), "describe", "--status"]
             if self.command_config:
                 cmd.extend(["--command-config", self.command_config])
-            r = run_command(cmd, capture_output=True, check=False, timeout=30)
+            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
             if r.returncode != 0 or not r.stdout:
                 return out
             for line in r.stdout.splitlines():
@@ -1863,14 +2065,18 @@ class KafkaMetricsCollector:
         return out
 
     def collect_topic_partition_health(self) -> Dict[str, Any]:
-        """从 describe 解析：under-replicated、offline 分区（官方关键指标）"""
+        """kafka-topics.sh --describe --under-replicated-partitions（见 #basic_ops / #monitoring 中 under-replicated 语义）。"""
         out: Dict[str, Any] = {"ok": False, "under_replicated_partitions": 0, "topics": {}}
         try:
-            cmd = [str(self.bin_dir / "kafka-topics.sh"), "--bootstrap-server", self.bootstrap_server,
+            pre = self._metrics_precheck("kafka-topics.sh")
+            if pre:
+                out["error"] = pre
+                return out
+            cmd = [str(self.bin_dir / "kafka-topics.sh"), "--bootstrap-server", self.bootstrap_server.strip(),
                    "--describe", "--under-replicated-partitions"]
             if self.command_config:
                 cmd.extend(["--command-config", self.command_config])
-            r = run_command(cmd, capture_output=True, check=False, timeout=30)
+            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
             if r.returncode != 0:
                 out["error"] = r.stderr or r.stdout or "describe failed"
                 return out
@@ -1887,11 +2093,15 @@ class KafkaMetricsCollector:
         """Consumer Group Lag（--all-groups --describe）解析 LAG 列"""
         out: Dict[str, Any] = {"ok": False, "groups": [], "total_lag": 0}
         try:
-            cmd = [str(self.bin_dir / "kafka-consumer-groups.sh"), "--bootstrap-server", self.bootstrap_server,
-                   "--all-groups", "--describe"]
+            pre = self._metrics_precheck("kafka-consumer-groups.sh")
+            if pre:
+                out["error"] = pre
+                return out
+            cmd = [str(self.bin_dir / "kafka-consumer-groups.sh"), "--bootstrap-server",
+                   self.bootstrap_server.strip(), "--all-groups", "--describe"]
             if self.command_config:
                 cmd.extend(["--command-config", self.command_config])
-            r = run_command(cmd, capture_output=True, check=False, timeout=60)
+            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(300))
             if r.returncode != 0 or not r.stdout:
                 out["error"] = r.stderr or "describe failed"
                 return out
@@ -1924,8 +2134,9 @@ class KafkaMetricsCollector:
 
 class KafkaBrokerDecommission:
     """
-    Broker 下线（官方/社区最佳实践：先副本迁移再停 Broker）
-    步骤：生成迁移计划 → 执行（可选限流）→ 校验完成 → 提示停止 Broker。
+    封装 kafka-reassign-partitions.sh 的 --generate / --execute / --verify（见官方文档 #basic_ops
+    「Partition reassignment」与「Decommissioning brokers」：下线前须将副本迁出待下线 broker，工具三种模式与文档一致）。
+    本类不替代管理员编制完整 reassignment JSON 的责任；关停进程为 clean/运维步骤。
     """
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
@@ -1934,17 +2145,25 @@ class KafkaBrokerDecommission:
         self.command_config = command_config
         self._reassign_script = self.bin_dir / "kafka-reassign-partitions.sh"
 
-    def _run(self, args: List[str], timeout: int = 120) -> subprocess.CompletedProcess:
-        cmd = [str(self._reassign_script), "--bootstrap-server", self.bootstrap_server] + args
+    def _run(self, args: List[str], timeout: Optional[int] = None) -> subprocess.CompletedProcess:
+        if not self._reassign_script.is_file():
+            raise CommandExecutionError(f"未找到分区重分配脚本: {self._reassign_script}")
+        ok, msg = _validate_bootstrap_server(self.bootstrap_server)
+        if not ok:
+            raise CommandExecutionError(msg)
+        cc_err = _validate_command_config_path(self.command_config)
+        if cc_err:
+            raise CommandExecutionError(cc_err)
+        to = timeout if timeout is not None else _kafka_cli_timeout_sec(120)
+        cmd = [str(self._reassign_script), "--bootstrap-server", self.bootstrap_server.strip()] + args
         if self.command_config:
             cmd.extend(["--command-config", self.command_config])
-        return run_command(cmd, capture_output=True, timeout=timeout)
+        return run_command(cmd, capture_output=True, timeout=to)
 
     def generate(self, broker_ids: str, topics_to_move_json_path: Optional[str] = None) -> Optional[str]:
         """
-        生成迁移计划（官方 kafka-reassign-partitions.sh --generate --broker-list [--topics-to-move-json]）。
-        返回 stdout 中的计划。生产环境建议提供 topics-to-move-json 列出待迁移 topic，
-        格式：{"topics":[{"topic":"name1"},{"topic":"name2"}],"version":1}，以最小化数据移动。
+        对应官方文档示例：--generate --broker-list 与可选 --topics-to-move-json-file（见 #basic_ops）。
+        topics-to-move JSON 格式以发行版工具帮助与文档为准；列出 topic 可限定迁移范围。
         """
         args = ["--generate", "--broker-list", broker_ids]
         json_path = topics_to_move_json_path if (topics_to_move_json_path and Path(topics_to_move_json_path).exists()) else None
@@ -1954,7 +2173,7 @@ class KafkaBrokerDecommission:
             try:
                 os.write(fd, b'{"topics":[],"version":1}')
                 os.close(fd)
-                args.extend(["--topics-to-move-json", tmp])
+                args.extend(["--topics-to-move-json-file", tmp])
                 r = self._run(args)
                 return r.stdout
             except Exception as ex:
@@ -1965,7 +2184,7 @@ class KafkaBrokerDecommission:
                     os.unlink(tmp)
                 except Exception as ex_cleanup:
                     logger.debug("清理临时文件失败: %s", ex_cleanup)
-        args.extend(["--topics-to-move-json", json_path])
+        args.extend(["--topics-to-move-json-file", json_path])
         try:
             r = self._run(args)
             return r.stdout
@@ -1978,7 +2197,7 @@ class KafkaBrokerDecommission:
         if throttle_bytes:
             args.extend(["--throttle", str(throttle_bytes)])
         try:
-            self._run(args)
+            self._run(args, timeout=_reassign_cmd_timeout_sec())
             logger.info("✓ 副本迁移已提交", extra={"to_stdout": True})
             return True
         except CommandExecutionError as e:
@@ -1988,7 +2207,10 @@ class KafkaBrokerDecommission:
     def verify(self, reassignment_json_path: str) -> bool:
         """校验迁移进度（--verify）"""
         try:
-            r = self._run(["--verify", "--reassignment-json-file", reassignment_json_path])
+            r = self._run(
+                ["--verify", "--reassignment-json-file", reassignment_json_path],
+                timeout=_reassign_cmd_timeout_sec(),
+            )
             if "Reassignment of partition" in (r.stdout or "") and "completed" in (r.stdout or "").lower():
                 logger.info("✓ 迁移已完成", extra={"to_stdout": True})
                 return True
@@ -2017,7 +2239,7 @@ def _require(condition: bool, message: str) -> None:
     """条件不满足时打日志并退出。用于 main 中必选参数校验。"""
     if not condition:
         logger.error(message, extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
 
 
 def _get_opt(args: argparse.Namespace, config: Dict[str, Any], attr: str, config_key: Optional[str] = None) -> Any:
@@ -2123,7 +2345,7 @@ def _run_remote_deploy(
         ssh = SSHManager(host=host, port=port, username=ssh_user, key_path=ssh_key, strict_host_key_checking=strict)
     except Exception as e:
         logger.error(f"初始化 SSH 失败: {e}", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
 
     # 检查远程是否有 kafkacli（与 StarCli 远程探测 starcli 一致）
     check_cmd = "command -v kafkacli 2>/dev/null || true"
@@ -2137,15 +2359,15 @@ def _run_remote_deploy(
             local_script = Path(which_k).resolve() if which_k and Path(which_k).exists() else None
         if not local_script or not local_script.exists():
             logger.error("无法确定本地 kafkacli 脚本路径，请确保脚本存在或安装到 PATH", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         ok, out = ssh.run_command(f"mkdir -p {shlex.quote(remote_workdir)}", timeout=20)
         if not ok:
             logger.error(f"创建远程目录失败: {out}", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         remote_script = f"{remote_workdir}/kafka_deploy.py"
         if not ssh.copy_file(str(local_script), remote_script):
             logger.error("复制脚本到远程失败", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         ssh.run_command(f"chmod +x {remote_script}", timeout=10)
         logger.info(f"已复制脚本到远程: {remote_script}", extra={"to_stdout": True})
     else:
@@ -2163,7 +2385,7 @@ def _run_remote_deploy(
         remote_config_path = f"{remote_workdir}/config.json"
         if not ssh.copy_file(str(Path(args.config).resolve()), remote_config_path):
             logger.error("复制配置文件到远程失败", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
 
     remote_cmd = _build_remote_command(argv, remote_config_path, remote_script)
     logger.info(f"正在远程主机 {host}:{port} 执行...", extra={"to_stdout": True})
@@ -2175,7 +2397,7 @@ def _run_remote_deploy(
                 logger.info(line, extra={"to_stdout": True})
         if not exit_on_finish:
             return True
-        sys.exit(0)
+        sys.exit(EXIT_OK)
     if output:
         logger.error("远程执行失败，完整输出:", extra={"to_stdout": True})
         for line in output.strip().split("\n"):
@@ -2185,57 +2407,61 @@ def _run_remote_deploy(
     logger.error(f"命令: {remote_cmd}", extra={"to_stdout": True})
     logger.error(f"目标: {host}:{port} (用户: {ssh_user})", extra={"to_stdout": True})
     if not output:
-        logger.error("排查建议（与 StarCli 远程失败提示一致）：", extra={"to_stdout": True})
+        logger.error("远程失败排查（本脚本约定，非 Kafka 项目文档）：", extra={"to_stdout": True})
         logger.error("  1. 目标机是否已将 kafkacli 安装到 PATH，或本次是否已成功复制脚本到远程", extra={"to_stdout": True})
         logger.error("  2. 在目标机手动执行: kafkacli --help", extra={"to_stdout": True})
         logger.error("  3. 检查目标机 Python3、SSH 与环境变量", extra={"to_stdout": True})
     if not exit_on_finish:
         return False
-    sys.exit(1)
+    sys.exit(EXIT_ERROR)
 
 
 def load_json_config(config_file: str) -> Dict[str, Any]:
     """加载 JSON 配置文件；路径须非空且指向已存在的文件"""
     if not (config_file or "").strip():
         logger.error("配置文件路径不能为空", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
     config_path = Path(config_file).resolve()
     if not config_path.exists() or not config_path.is_file():
         logger.error(f"配置文件不存在或不是文件: {config_file}", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
+        if not isinstance(config, dict):
+            logger.error("配置文件根类型须为 JSON 对象 {...}，不能为数组或标量", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
         logger.info(f"✓ 加载配置文件: {config_file}", extra={"to_stdout": True})
         return config
     except json.JSONDecodeError as ex:
         logger.error(f"配置文件格式错误: {ex}", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
     except Exception as e:
         logger.error(f"加载配置文件失败: {e}", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
 
 
 def show_examples():
-    """打印使用说明与示例（结构、远程排查提示与同仓库 StarCli 一致）。"""
+    """打印使用说明与示例；语义以 Apache Kafka 官方文档为准（见文件头「官方依据」URL）。"""
     examples = """
-Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，与官方 KRaft 文档一致，企业级生产可用
+Kafka 自动化部署与运维（KRaft）- 封装官方 bin/ 脚本；部署与运维语义见:
+  https://kafka.apache.org/documentation/#kraft
+  https://kafka.apache.org/documentation/#basic_ops
+  https://kafka.apache.org/documentation/#monitoring
+  https://kafka.apache.org/documentation/#java
+  KIP-833: https://cwiki.apache.org/confluence/display/KAFKA/KIP-833:+Mark+KRaft+as+Production+Ready
 
-能力：前置机/批量多机部署、集群增删改查、Topic/Group 运维、关键指标采集、Broker 下线、KRaft Quorum 运维、
-     systemd 服务化、清理、日志回显、SASL/SSL 控制
+能力：前置机/批量部署、Topic/Group/Config/Quorum、分区重分配、指标采集、systemd、SASL（--command-config）。
 
-版本与 JDK（与官方一致）：
-  - KRaft 非 4.x 独有：官方自 3.3 起新集群 KRaft 为 production-ready（KIP-833）；4.0 起 tarball 无 ZooKeeper。
-  - 脚本从 kafka_home 路径或 libs/kafka-server-common-*.jar 推断版本；失败时可 --assume-kafka-version 3.7.0 或
-    export KAFKA_CLI_ASSUME_VERSION=4.2.0。
-  - JDK：推断为 Kafka 4.x 或未知时要求 17+；推断为 3.x 时要求 11+。
-  - KRaft 自动部署默认要求 Kafka ≥3.3；更低版本须 --skip-kraft-version-check（自担风险）。
-  - systemd 默认 --user kafka --group kafka：账户须事先存在，否则 217/USER；测试可用 --user root --group root。
-  - 部署前环境与同仓库 StarCli 一致集中校验：id/getent 用户与组、Java、安装目录可写等，失败会一次性列出原因。
-  - 若 log.dirs / metadata.log.dir 落在 Kafka 安装目录下会告警（与 StarCli「数据独立于安装目录」一致）。
-  - systemd 单元含 WorkingDirectory、KAFKA_HOME、TimeoutStartSec、journal、LimitNOFILE 等（对齐 StarCli 生产级 unit）。
-  - standalone（combined）自动包含 PLAINTEXT+CONTROLLER、controller.listener.names 等；生产请
-    export KAFKA_ADVERTISED_HOST=<对客户端与 Controller 可达的地址>（或 extra_properties 覆盖）。
+版本与 JDK:
+  - KRaft 对新集群 production-ready 自 3.3 起（KIP-833）；ZooKeeper 模式移除时间见各发行版发布说明。
+  - 版本推断：kafka_home 路径或 libs/kafka-server-common-*.jar；可 --assume-kafka-version 或 KAFKA_CLI_ASSUME_VERSION。
+  - JDK 要求以官方 #java 与各 tarball README 为准；本脚本门禁：4.x/未知→17+，3.x→11+。
+  - KRaft 自动部署默认 Kafka ≥3.3；更低须 --skip-kraft-version-check。
+  - systemd User/Group 须已存在；可 --user root 等做试验。
+  - 与同仓库 StarCli 风格的环境检查、SSH 选项为本仓库约定。
+  - log.dirs 落在安装目录下时告警（工程风险提示，非 Kafka 文档强制）。
+  - advertised：对客户端可达地址须正确（见 #brokerconfigs advertised.listeners）；可用 KAFKA_ADVERTISED_HOST 或 extra_properties。
 
 用法:
   部署与清理:
@@ -2251,8 +2477,8 @@ Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，
     kafkacli --group-list | --group-describe --consumer-group NAME
     kafkacli --config-describe-broker [--config-entity-name id] | --config-describe-topic --topic NAME
     kafkacli --quorum-add-controller                     # KRaft 动态添加 Controller
-  Broker 下线（先迁移副本再停 Broker）:
-    kafkacli --broker-decommission-generate --broker-list 1,2 [--topics-to-move-json file]
+  Broker 下线（分区重分配后再停进程；见 #basic_ops Decommissioning brokers / Partition reassignment）:
+    kafkacli --broker-decommission-generate --broker-list 1,2 [--topics-to-move-json-file PATH]
     kafkacli --broker-decommission-execute --reassignment-json-file plan.json [--throttle N]
     kafkacli --broker-decommission-verify --reassignment-json-file plan.json
   kafkacli --help
@@ -2284,10 +2510,10 @@ Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，
    kafkacli --deploy broker --kafka-home /opt/kafka --node-id 1 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" --log-dirs /var/kafka/logs
 
-5) 集群状态与指标（企业级监控）:
+5) 集群状态与指标（#monitoring；JSON 为本脚本输出格式）:
    kafkacli --status --bootstrap-server broker1:9092 --kafka-home /opt/kafka
    kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
-   kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092  # JSON 便于 Prometheus/告警
+   kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092
 
 6) Topic / Consumer Group 运维:
    kafkacli --topic-create --topic my-topic --partitions 6 --replication-factor 2 --kafka-home /opt/kafka
@@ -2295,7 +2521,7 @@ Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，
    kafkacli --topic-describe --topic my-topic --kafka-home /opt/kafka
    kafkacli --group-describe --consumer-group my-consumer --kafka-home /opt/kafka --bootstrap-server broker1:9092
 
-7) Broker 下线（官方/社区最佳实践：生成计划 → 执行迁移 → 校验 → 停 Broker）:
+7) Broker 下线（与 #basic_ops 中 kafka-reassign-partitions 工作流一致：generate → execute → verify，再停 Broker）:
    kafkacli --broker-decommission-generate --broker-list 1,2 --kafka-home /opt/kafka --bootstrap-server broker1:9092
    # 将输出中的 Current partition reassignment configuration 保存为 plan.json
    kafkacli --broker-decommission-execute --reassignment-json-file plan.json --throttle 1048576 --kafka-home /opt/kafka
@@ -2312,7 +2538,10 @@ Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Kafka 自动化部署工具（KRaft 模式，Kafka 3.3+～4.x）",
+        description=(
+            "Kafka 部署与运维（KRaft）；行为以 https://kafka.apache.org/documentation/ "
+            "（#kraft、#basic_ops、#brokerconfigs）及发行版 bin/ 工具为准。"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False
     )
@@ -2388,7 +2617,7 @@ def main():
     parser.add_argument("--group-describe", action="store_true", help="描述 Group（含 Lag）")
     parser.add_argument("--consumer-group", help="Consumer Group 名称（与 --group-describe 配合）")
 
-    # 指标采集（企业级：Quorum、UnderReplicated、Consumer Lag）
+    # 指标采集（封装官方 CLI；语义见文档 #monitoring）
     parser.add_argument("--metrics", action="store_true", help="采集并打印关键指标（Quorum/副本健康/Lag）")
     parser.add_argument("--metrics-json", action="store_true", help="指标输出为 JSON（便于接入监控）")
 
@@ -2402,11 +2631,17 @@ def main():
 
     # Broker 下线（副本迁移后停 Broker）
     parser.add_argument("--broker-decommission-generate", action="store_true",
-                        help="生成副本迁移计划（需 --broker-list 目标 Broker 列表，可选 --topics-to-move-json 文件）")
+                        help="生成副本迁移计划（kafka-reassign-partitions --generate；见文档 #basic_ops）")
     parser.add_argument("--broker-decommission-execute", action="store_true", help="执行副本迁移（--reassignment-json-file）")
     parser.add_argument("--broker-decommission-verify", action="store_true", help="校验迁移进度")
     parser.add_argument("--broker-list", help="副本迁移目标 Broker ID 列表，逗号分隔（如 1,2,3）")
-    parser.add_argument("--topics-to-move-json", help="迁移涉及的 Topic 列表 JSON 文件路径（格式见官方文档）")
+    parser.add_argument(
+        "--topics-to-move-json-file",
+        "--topics-to-move-json",
+        dest="topics_to_move_json",
+        metavar="PATH",
+        help="kafka-reassign-partitions 的 --topics-to-move-json-file（#basic_ops Partition reassignment）",
+    )
     parser.add_argument("--reassignment-json-file", help="副本迁移 JSON 文件路径（execute/verify）")
     parser.add_argument("--throttle", type=int, help="迁移限流（字节/秒）")
 
@@ -2427,7 +2662,7 @@ def main():
             _parse_target_host(target_host, args.ssh_port or 22)
         except ValueError as e:
             logger.error(f"无效的 target_host: {target_host}，{e}", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         if not _is_local_host(target_host):
             _run_remote_deploy(target_host, args, config, sys.argv)
             return
@@ -2465,7 +2700,7 @@ def main():
             ok = _run_remote_deploy(th, args, config, argv_parts, exit_on_finish=False)
             if ok is False:
                 logger.error(f"批量部署在节点 {th} 失败，终止", extra={"to_stdout": True})
-                sys.exit(1)
+                sys.exit(EXIT_ERROR)
         logger.info("=== 批量部署全部完成 ===", extra={"to_stdout": True})
         return
 
@@ -2487,7 +2722,7 @@ def main():
                 )
             except ValueError as e:
                 logger.error(str(e), extra={"to_stdout": True})
-                sys.exit(1)
+                sys.exit(EXIT_ERROR)
         else:
             host, port = _parse_bootstrap_server(
                 args.bootstrap_server or config.get("bootstrap_server", ""), DEFAULT_BROKER_PORT
@@ -2510,14 +2745,14 @@ def main():
         topic = _get_opt(args, config, "topic")
         _require(topic, "--topic-create 需指定 --topic")
         mgr = KafkaTopicManager(kafka_home, bootstrap, cmd_config)
-        sys.exit(0 if mgr.create(topic, args.partitions, args.replication_factor) else 1)
+        sys.exit(EXIT_OK if mgr.create(topic, args.partitions, args.replication_factor) else EXIT_ERROR)
 
     if getattr(args, "topic_delete", False):
         _require(kafka_home, "--topic-delete 需指定 --kafka-home")
         topic = _get_opt(args, config, "topic")
         _require(topic, "--topic-delete 需指定 --topic")
         mgr = KafkaTopicManager(kafka_home, bootstrap, cmd_config)
-        sys.exit(0 if mgr.delete(topic) else 1)
+        sys.exit(EXIT_OK if mgr.delete(topic) else EXIT_ERROR)
 
     if getattr(args, "topic_describe", False):
         _require(kafka_home, "--topic-describe 需指定 --kafka-home")
@@ -2525,7 +2760,7 @@ def main():
         out = mgr.describe(_get_opt(args, config, "topic"))
         if out:
             print(out)
-        sys.exit(0 if out else 1)
+        sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "topic_list", False):
         _require(kafka_home, "--topic-list 需指定 --kafka-home")
@@ -2533,7 +2768,7 @@ def main():
         out = mgr.list()
         if out:
             print(out)
-        sys.exit(0 if out else 1)
+        sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "group_list", False):
         _require(kafka_home, "--group-list 需指定 --kafka-home")
@@ -2541,7 +2776,7 @@ def main():
         out = mgr.list_groups()
         if out:
             print(out)
-        sys.exit(0 if out else 1)
+        sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "group_describe", False):
         _require(kafka_home, "--group-describe 需指定 --kafka-home")
@@ -2551,7 +2786,7 @@ def main():
         out = mgr.describe_group(grp)
         if out:
             print(out)
-        sys.exit(0 if out else 1)
+        sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "metrics", False) or getattr(args, "metrics_json", False):
         _require(kafka_home, "--metrics 需指定 --kafka-home")
@@ -2566,7 +2801,7 @@ def main():
             print(json.dumps(data.get("partition_health", {}), ensure_ascii=False))
             print("=== Consumer Lag ===")
             print(json.dumps(data.get("consumer_lag", {}), ensure_ascii=False))
-        sys.exit(0)
+        sys.exit(EXIT_OK)
 
     if getattr(args, "config_describe_broker", False):
         _require(kafka_home, "--config-describe-broker 需指定 --kafka-home")
@@ -2576,7 +2811,7 @@ def main():
         out = mgr.describe_broker(bid)
         if out:
             print(out)
-        sys.exit(0 if out else 1)
+        sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "config_describe_topic", False):
         _require(kafka_home, "--config-describe-topic 需指定 --kafka-home")
@@ -2586,12 +2821,12 @@ def main():
         out = mgr.describe_topic(topic)
         if out:
             print(out)
-        sys.exit(0 if out else 1)
+        sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "quorum_add_controller", False):
         _require(kafka_home, "--quorum-add-controller 需指定 --kafka-home")
         qm = KafkaQuorumManager(kafka_home, bootstrap_server=bootstrap, command_config=cmd_config)
-        sys.exit(0 if qm.add_controller() else 1)
+        sys.exit(EXIT_OK if qm.add_controller() else EXIT_ERROR)
 
     if getattr(args, "broker_decommission_generate", False):
         _require(kafka_home, "--broker-decommission-generate 需指定 --kafka-home")
@@ -2602,7 +2837,7 @@ def main():
         if out:
             print(out)
             logger.info("请将上述 Current partition reassignment configuration 保存为 JSON 文件，再使用 --broker-decommission-execute", extra={"to_stdout": True})
-        sys.exit(0 if out else 1)
+        sys.exit(EXIT_OK if out else EXIT_ERROR)
 
     if getattr(args, "broker_decommission_execute", False):
         _require(kafka_home, "--broker-decommission-execute 需指定 --kafka-home")
@@ -2610,7 +2845,7 @@ def main():
         _require(path, "--broker-decommission-execute 需指定 --reassignment-json-file")
         _require(Path(path).exists(), f"reassignment 文件不存在: {path}")
         dec = KafkaBrokerDecommission(kafka_home, bootstrap, cmd_config)
-        sys.exit(0 if dec.execute(path, _get_opt(args, config, "throttle")) else 1)
+        sys.exit(EXIT_OK if dec.execute(path, _get_opt(args, config, "throttle")) else EXIT_ERROR)
 
     if getattr(args, "broker_decommission_verify", False):
         _require(kafka_home, "--broker-decommission-verify 需指定 --kafka-home")
@@ -2618,7 +2853,7 @@ def main():
         _require(path, "--broker-decommission-verify 需指定 --reassignment-json-file")
         _require(Path(path).exists(), f"reassignment 文件不存在: {path}")
         dec = KafkaBrokerDecommission(kafka_home, bootstrap, cmd_config)
-        sys.exit(0 if dec.verify(path) else 1)
+        sys.exit(EXIT_OK if dec.verify(path) else EXIT_ERROR)
 
     _require(kafka_home, "必须指定 --kafka-home 或配置文件中的 kafka_home")
 
@@ -2631,21 +2866,22 @@ def main():
         )
     except ValueError as e:
         logger.error(str(e), extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
 
     if args.clean:
         deploy_type = args.deploy or config.get("deploy")
         if not deploy_type:
             logger.error("--clean 需指定 --deploy standalone|controller|broker", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         node_id = args.node_id or config.get("node_id")
-        deployer.clean_deployment(deploy_type, node_id=node_id, backup_config=True)
-        return
+        if not deployer.clean_deployment(deploy_type, node_id=node_id, backup_config=True):
+            sys.exit(EXIT_ERROR)
+        sys.exit(EXIT_OK)
 
     deploy_type = args.deploy or config.get("deploy")
     if not deploy_type:
         logger.error("必须指定 --deploy standalone|controller|broker 或配置文件中的 deploy", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
 
     enable_systemd = not (args.no_systemd or config.get("no_systemd", False))
     java_home = args.java_home or config.get("java_home")
@@ -2655,7 +2891,7 @@ def main():
         log_dirs = args.log_dirs or config.get("log_dirs") or DEFAULT_LOG_DIR
         if not InputValidator.validate_path(log_dirs.split(",")[0].strip()):
             logger.error("无效的 --log-dirs 路径", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         success = deployer.deploy_standalone(
             log_dirs=log_dirs,
             cluster_id=args.cluster_id or config.get("cluster_id"),
@@ -2670,11 +2906,11 @@ def main():
         node_id = args.node_id or config.get("node_id")
         if node_id is None:
             logger.error("部署 Controller 必须指定 --node-id", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         quorum = args.controller_quorum_bootstrap_servers or config.get("controller_quorum_bootstrap_servers")
         if not quorum:
             logger.error("必须指定 --controller-quorum-bootstrap-servers", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         success = deployer.deploy_controller(
             node_id=node_id,
             controller_quorum_bootstrap_servers=quorum,
@@ -2692,19 +2928,19 @@ def main():
         node_id = args.node_id or config.get("node_id")
         if node_id is None:
             logger.error("部署 Broker 必须指定 --node-id", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         quorum = args.controller_quorum_bootstrap_servers or config.get("controller_quorum_bootstrap_servers")
         if not quorum:
             logger.error("必须指定 --controller-quorum-bootstrap-servers", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         log_dirs = args.log_dirs or config.get("log_dirs")
         if not log_dirs:
             logger.error("必须指定 --log-dirs", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         cluster_id = args.cluster_id or config.get("cluster_id")
         if not cluster_id:
             logger.error("Broker 必须指定 --cluster-id", extra={"to_stdout": True})
-            sys.exit(1)
+            sys.exit(EXIT_ERROR)
         success = deployer.deploy_broker(
             node_id=node_id,
             controller_quorum_bootstrap_servers=quorum,
@@ -2734,7 +2970,7 @@ def main():
             deployer.verify_broker_started()
     else:
         logger.error("=== 部署失败 ===", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
 
 
 if __name__ == "__main__":
@@ -2742,7 +2978,7 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         logger.info("\n操作被用户中断", extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
     except Exception as err:
         logger.error(f"程序异常: {err}", exc_info=True, extra={"to_stdout": True})
-        sys.exit(1)
+        sys.exit(EXIT_ERROR)
