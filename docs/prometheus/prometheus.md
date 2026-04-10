@@ -4691,8 +4691,6 @@ flowchart TB
 
 镜像 `cnych/nginx-vts:v1.0` 仅供随文演练，生产环境应替换为经组织批准的镜像。
 
-插图槽位：`docs/prometheus/images/t4-13-demo-target-up.png`（Prometheus 或 Querier 中对应 Target 为 UP。）
-
 `hpa-adapter-demo.yaml`：
 
 ```yaml
@@ -4821,8 +4819,6 @@ kubectl get --raw \
 
 配置 HorizontalPodAutoscaler 时，`averageValue` 须与上一步 RAW 响应中 Quantity 的单位及数量级一致（可含 `m` 等后缀），应依据压测或现网特征填写，不应照搬示例清单中的 `"10"`。不得修改 APIService `v1beta1.custom.metrics.k8s.io` 名称，亦不得在集群内并行部署第二套 prometheus-adapter。
 
-插图槽位：`docs/prometheus/images/t4-13-custom-metrics-api.png`（`kubectl get apiservice` 与 `kubectl get --raw …/v1beta1` 的关键输出。）
-
 ### T4.13.3、HorizontalPodAutoscaler 验证
 
 创建 HorizontalPodAutoscaler，并对示例 Deployment 施加负载以观察副本数变化。清单中 `averageValue: "10"` 为占位，应替换为 T4.13.2 第（3）步 RAW 所反映的数量级；`minReplicas`、`maxReplicas` 用于约束副本上下界。
@@ -4865,8 +4861,6 @@ kubectl run hpa-load --rm -i --restart=Never --image=curlimages/curl:8.12.1 -n k
 ```
 
 另起终端执行 `kubectl get hpa,pod -n kube-mon -w` 观察副本。负载解除后，缩容受 HorizontalPodAutoscaler 默认冷却与稳定窗口约束，未必立即回落至 `minReplicas`；若需与生产行为一致，应在清单中配置 `spec.behavior`，参见 [Horizontal Pod Autoscale](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)。
-
-插图槽位：`docs/prometheus/images/t4-13-hpa-events.png`（`kubectl describe horizontalpodautoscaler` 输出的 Conditions、Events 等。）
 
 若 Prometheus 或 Querier 部署于集群外，须将 values 中 `prometheus.url`、`prometheus.port` 调整为 adapter 所在网络可达的地址，并按 Chart 文档配置 TLS 与身份认证；`overrides` 键名仍须与实际指标标签一致。
 
