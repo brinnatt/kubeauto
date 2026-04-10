@@ -18,6 +18,10 @@ Kafka 自动化部署工具（KRaft 模式），面向 Apache Kafka 3.3+ 与 4.x
 
 能力：单机/批量/前置机远程部署、systemd、清理、健康检查、SASL/SSL（--command-config）。
 环境：Python 3.9+；Java 按检测到的 Kafka 主版本要求 11+（3.x）或 17+（4.x），无法解析版本时按 4.x 策略要求 17+。
+systemd 默认 User/Group 为 kafka：须事先在系统创建该用户/组，否则为 217/USER；测试可用 --user root --group root。
+
+脚本结构与运维约定对齐同仓库 tools/starrocks/StarCli.py（企业级）：环境检查集中输出、用户/组用系统命令校验、
+远程执行前探测 CLI、失败时给出可操作的排查项。
 参考: https://kafka.apache.org/documentation/#kraft, #brokerconfigs_controller.listener.names
 """
 
@@ -76,9 +80,17 @@ def setup_logger(
         handlers: Optional[List[logging.Handler]] = None
 ) -> logging.Logger:
     """
-    设置日志记录器。首次调用且未传 handlers 时使用默认：文件（UTF-8、轮转）+ stdout；
+    设置日志记录器（与 StarCli 一致：先确保日志目录存在，再挂 RotatingFileHandler + 按需 stdout）。
+    首次调用且未传 handlers 时使用默认：文件（UTF-8、轮转）+ stdout；
     若 logger 已有 handler 则直接返回，避免重复添加。可通过 KAFKA_LOG_DIR 环境变量覆盖日志目录。
     """
+    if handlers is None:
+        try:
+            if not os.path.exists(LOG_DIR):
+                os.makedirs(LOG_DIR, exist_ok=True)
+        except OSError as e:
+            print(f"Warning: 无法创建日志目录 {LOG_DIR}: {e}", file=sys.stderr)
+
     log = logging.getLogger(name)
     log.setLevel(level)
 
@@ -89,8 +101,6 @@ def setup_logger(
 
     if handlers is None:
         try:
-            if not os.path.exists(LOG_DIR):
-                os.makedirs(LOG_DIR, exist_ok=True)
             log_file = log_file or DEFAULT_LOG_FILE
             file_handler = RotatingFileHandler(
                 log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
@@ -171,6 +181,12 @@ def min_java_major_for_kafka(kafka_release: Optional[Tuple[int, int, int]]) -> i
         return 17
     major, _, _ = kafka_release
     return 17 if major >= 4 else 11
+
+
+def _listener_scheme_port(listeners: str, scheme: str, default_port: int) -> int:
+    """从 listeners 行解析 SCHEME://host:port 中的端口（如 PLAINTEXT、CONTROLLER）。"""
+    m = re.search(rf"{re.escape(scheme)}://[^:]*:(\d+)", listeners or "", re.I)
+    return int(m.group(1)) if m else default_port
 
 
 def _kraft_combined_listener_properties(listeners_override: Optional[str]) -> Dict[str, str]:
@@ -433,7 +449,7 @@ def run_command(
 
 
 class EnvironmentChecker:
-    """环境检查器：Java 主版本阈值由 Kafka 发行版推断结果决定（3.x→11+，4.x/未知→17+）。"""
+    """环境检查器（对齐 StarCli：端口、Java、目录、用户/组、发行版探测等）。"""
 
     @staticmethod
     def check_port_available(port: int, host: str = '0.0.0.0') -> bool:
@@ -458,6 +474,130 @@ class EnvironmentChecker:
                 if (parent / 'bin' / 'java').exists() or (parent / 'java').exists():
                     return str(parent)
         return None
+
+    @staticmethod
+    def _get_os_info() -> Tuple[str, Optional[str]]:
+        """获取发行版信息（与 StarCli 一致；无 distro 时返回空串）。"""
+        try:
+            import distro
+            return distro.id(), distro.like()
+        except ImportError:
+            return "", None
+
+    @staticmethod
+    def _find_java_home_by_distro() -> Optional[str]:
+        """
+        按 Linux 发行版常见路径与 alternatives 解析 JAVA_HOME（对齐 StarCli，便于无 JAVA_HOME 的服务器）。
+        未安装 distro 库时仍尝试通用路径列表。
+        """
+        os_id, os_like = EnvironmentChecker._get_os_info()
+
+        # Debian/Ubuntu
+        if os_id in ("debian", "ubuntu") or (os_like and "debian" in os_like):
+            try:
+                result = run_command(
+                    ["update-alternatives", "--list", "java"],
+                    capture_output=True,
+                    check=False,
+                    allowed_exit_codes=[0, 1],
+                    timeout=5,
+                )
+                if result.returncode == 0 and result.stdout:
+                    java_path = Path(result.stdout.strip().split("\n")[0])
+                    jh = EnvironmentChecker._find_java_home_from_path(java_path)
+                    if jh:
+                        return jh
+            except Exception as ex:
+                logger.debug("update-alternatives 查找 Java 失败: %s", ex)
+            for path in (
+                "/usr/lib/jvm/default-java",
+                "/usr/lib/jvm/java-17-openjdk-amd64",
+                "/usr/lib/jvm/java-17-openjdk",
+                "/usr/lib/jvm/java-11-openjdk-amd64",
+                "/usr/lib/jvm/java-11-openjdk",
+            ):
+                p = Path(path)
+                if p.exists() and (p / "bin" / "java").exists():
+                    return str(p)
+
+        # RHEL/Rocky/Fedora 等
+        if os_id in ("rhel", "centos", "rocky", "fedora", "almalinux") or (
+            os_like and "rhel" in os_like
+        ):
+            try:
+                result = run_command(
+                    ["alternatives", "--display", "java"],
+                    capture_output=True,
+                    check=False,
+                    allowed_exit_codes=[0, 1],
+                    timeout=5,
+                )
+                if result.returncode == 0 and result.stdout:
+                    for line in result.stdout.split("\n"):
+                        if "currently points to" in line or "link currently points to" in line:
+                            java_path_str = line.split()[-1]
+                            java_path = Path(java_path_str)
+                            jh = EnvironmentChecker._find_java_home_from_path(java_path)
+                            if jh:
+                                return jh
+            except Exception as ex:
+                logger.debug("alternatives 查找 Java 失败: %s", ex)
+            for path in (
+                "/usr/lib/jvm/java-17-openjdk",
+                "/usr/lib/jvm/java-17",
+                "/usr/lib/jvm/java-11-openjdk",
+                "/usr/lib/jvm/java-1.17.0-openjdk",
+                "/usr/lib/jvm/java-1.11.0-openjdk",
+            ):
+                p = Path(path)
+                if p.exists() and (p / "bin" / "java").exists():
+                    return str(p)
+
+        for path in (
+            "/usr/lib/jvm/default-java",
+            "/usr/lib/jvm/default",
+            "/usr/lib/jvm/java-17-openjdk",
+            "/usr/lib/jvm/java-17",
+            "/usr/lib/jvm/java-11-openjdk",
+        ):
+            p = Path(path)
+            if p.exists() and (p / "bin" / "java").exists():
+                return str(p)
+        return None
+
+    @staticmethod
+    def check_user_group_exists(user: str, group: str) -> Tuple[bool, bool]:
+        """
+        检查系统用户、组是否存在（与 StarCli 一致：id / getent，便于自动化与远程环境）。
+        非 POSIX 跳过，视为存在。
+        """
+        if os.name != "posix":
+            return True, True
+        user_exists = False
+        group_exists = False
+        try:
+            result = run_command(
+                ["id", user],
+                capture_output=True,
+                check=False,
+                allowed_exit_codes=[0, 1],
+                timeout=5,
+            )
+            user_exists = result.returncode == 0
+        except Exception as ex:
+            logger.error("检查用户是否存在失败: {}".format(ex), extra={"to_stdout": True})
+        try:
+            result = run_command(
+                ["getent", "group", group],
+                capture_output=True,
+                check=False,
+                allowed_exit_codes=[0, 1],
+                timeout=5,
+            )
+            group_exists = result.returncode == 0
+        except Exception as ex:
+            logger.error("检查组是否存在失败: {}".format(ex), extra={"to_stdout": True})
+        return user_exists, group_exists
 
     @staticmethod
     def check_java(minimum_java_major: int = 17) -> Tuple[bool, Optional[str], Optional[str]]:
@@ -502,6 +642,10 @@ class EnvironmentChecker:
                 java_bin = shutil.which('java')
                 if java_bin:
                     java_home = EnvironmentChecker._find_java_home_from_path(Path(java_bin))
+            if not java_home:
+                java_home = EnvironmentChecker._find_java_home_by_distro()
+                if java_home:
+                    logger.debug("通过发行版探测得到 JAVA_HOME: %s", java_home)
 
             if java_home:
                 java_home_path = Path(java_home)
@@ -663,6 +807,7 @@ class KafkaDeployer:
     controller / broker 分别补充 listener.security.protocol.map 与 _kraft_broker_listener_properties。
     安装目录或 libs 可解析时记录 Kafka 版本；低于 3.3 默认拒绝 KRaft 部署（可 --skip-kraft-version-check 自担风险）。
     systemd unit 由 SystemdServiceGenerator 生成。
+    环境检查风格与 StarCli 一致：用户/组、Java、目录权限等在 check_environment 中集中校验并一次性列出错误。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
@@ -702,7 +847,7 @@ class KafkaDeployer:
             )
 
     def check_environment(self) -> Tuple[bool, List[str]]:
-        """检查部署环境：Java 版本阈值、KRaft 最低 Kafka 版本、目录可写等。"""
+        """检查部署环境：Java、系统用户/组（与 StarCli 一致）、KRaft 版本下限、安装目录可写等。"""
         errors = []
         min_java = min_java_major_for_kafka(self.kafka_release)
         java_ok, java_home, java_version = EnvironmentChecker.check_java(minimum_java_major=min_java)
@@ -713,6 +858,19 @@ class KafkaDeployer:
                 errors.append(f"未找到 Java 环境，请先安装 JDK {min_java}+")
         elif java_version:
             logger.info(f"检测到 Java 版本: {java_version}", extra={"to_stdout": True})
+
+        if os.name == "posix":
+            user_ok, group_ok = EnvironmentChecker.check_user_group_exists(self.user, self.group)
+            if not user_ok:
+                errors.append(
+                    f"系统用户不存在: {self.user}（systemd 将使用 User={self.user}，不存在则 217/USER）。"
+                    f"请先创建用户或改用 --user 指定已存在账户。"
+                )
+            if not group_ok:
+                errors.append(
+                    f"系统组不存在: {self.group}（systemd 将使用 Group={self.group}）。"
+                    f"请先执行 groupadd 或改用 --group。"
+                )
 
         if self.kafka_release is not None and self.kafka_release < KRAFT_DEPLOY_MIN_VERSION:
             ver_s = ".".join(map(str, self.kafka_release))
@@ -794,6 +952,98 @@ class KafkaDeployer:
             logger.error(f"kafka-storage.sh random-uuid 失败: {e}", extra={"to_stdout": True})
             return None
 
+    def _journal_tail_for_unit(self, service_name: str, lines: int = 40) -> str:
+        """读取最近 journal，便于排查 217/USER、启动失败等。"""
+        try:
+            r = run_command(
+                ["journalctl", "-u", service_name, "-n", str(lines), "--no-pager"],
+                capture_output=True,
+                check=False,
+                timeout=20,
+            )
+            return (r.stdout or r.stderr or "").strip()
+        except Exception as ex:
+            return f"(journalctl 失败: {ex})"
+
+    def _log_friendly_systemd_failure(self, journal_tail: str) -> None:
+        """根据 journal 内容给出可读原因，优先于原始日志展示。"""
+        t = journal_tail or ""
+        if re.search(r"217\s*/\s*USER|status\s*=\s*217", t, re.I) or (
+            "217" in t and "USER" in t.upper()
+        ):
+            u, g = self.user, self.group
+            logger.error(
+                "【判定】systemd 无法切换到 unit 中配置的系统用户（退出码 217/USER），进程未真正运行。\n"
+                "【当前配置】User=%s, Group=%s（若用户/组不存在即会如此）。\n"
+                "【处理】创建专用账户，例如：sudo groupadd -r %s 2>/dev/null; "
+                "sudo useradd -r -g %s -s /sbin/nologin %s\n"
+                "【或】仅本机测试可加：--user $(id -un) --group $(id -gn)",
+                u, g, g, g, u,
+                extra={"to_stdout": True},
+            )
+            return
+        if "permission denied" in t.lower():
+            logger.error(
+                "【判定】journal 中出现 Permission denied：多为数据目录 log.dirs/metadata.log.dir 属主与 User= 不一致，"
+                "请 chown 或调整目录。",
+                extra={"to_stdout": True},
+            )
+
+    @staticmethod
+    def _tcp_connect_ok(host: str, port: int, timeout: float = 2.0) -> bool:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(timeout)
+                s.connect((host, port))
+            return True
+        except OSError:
+            return False
+
+    def _wait_for_tcp_listening(
+            self, host: str, port: int, label: str, total_sec: float = 50.0
+    ) -> bool:
+        """部署后轮询 TCP 直至可连（JVM 启动可能较慢）；失败则 ERROR 一次。"""
+        deadline = time.time() + total_sec
+        while time.time() < deadline:
+            if self._tcp_connect_ok(host, port):
+                logger.info("✓ %s 已在 %s:%s 监听（TCP 探测成功）", label, host, port, extra={"to_stdout": True})
+                return True
+            time.sleep(1.2)
+        logger.error(
+            "【判定】在约 %.0f 秒内 %s 未在 %s:%s 接受连接，部署不视为成功。"
+            "若 systemd 为 active，请查 server 日志与 listeners 端口。",
+            total_sec,
+            label,
+            host,
+            port,
+            extra={"to_stdout": True},
+        )
+        return False
+
+    def _verify_systemd_service_active(self, service_name: str, wait_sec: int = 45) -> Tuple[bool, str]:
+        """
+        Type=simple 下 systemctl start 可能在主进程立刻退出时仍返回 0，必须轮询 is-active；
+        若 is-failed 则提前结束并拉 journal。
+        """
+        deadline = time.time() + wait_sec
+        while time.time() < deadline:
+            if self._is_service_active(service_name):
+                return True, ""
+            try:
+                rf = run_command(
+                    ["systemctl", "is-failed", service_name],
+                    check=False,
+                    capture_output=True,
+                    allowed_exit_codes=[0, 1],
+                    timeout=8,
+                )
+                if rf.returncode == 0 and (rf.stdout or "").strip() == "failed":
+                    return False, self._journal_tail_for_unit(service_name)
+            except Exception as ex:
+                logger.debug("systemctl is-failed: %s", ex)
+            time.sleep(1)
+        return False, self._journal_tail_for_unit(service_name)
+
     def _enable_systemd_service(
             self,
             service_name: str,
@@ -801,19 +1051,34 @@ class KafkaDeployer:
             deploy_type: str,
             java_home: Optional[str] = None
     ) -> bool:
-        """安装并启动 systemd 服务（写 unit、daemon-reload、enable、start）。"""
+        """安装并启动 systemd 服务（写 unit、daemon-reload、enable、start），并确认进入 active。"""
         unit_path = Path(f"/etc/systemd/system/{service_name}.service")
         unit_content = self._systemd_unit_content(deploy_type, config_path, java_home)
         try:
             unit_path.write_text(unit_content, encoding="utf-8")
             run_command(["systemctl", "daemon-reload"], timeout=30)
             run_command(["systemctl", "enable", service_name], timeout=30)
+            run_command(["systemctl", "reset-failed", service_name], check=False, timeout=10)
             run_command(["systemctl", "start", service_name], timeout=60)
-            logger.info(f"✓ systemd 服务已启动: {service_name}", extra={"to_stdout": True})
-            return True
         except Exception as e:
-            logger.error(f"systemd 启动失败: {e}", extra={"to_stdout": True})
+            logger.error(f"systemd 启动阶段异常: {e}", extra={"to_stdout": True})
+            tail = self._journal_tail_for_unit(service_name)
+            self._log_friendly_systemd_failure(tail)
+            if tail:
+                logger.error("journal 摘录:\n%s", tail, extra={"to_stdout": True})
             return False
+
+        ok, jtail = self._verify_systemd_service_active(service_name)
+        if not ok:
+            self._log_friendly_systemd_failure(jtail)
+            logger.error(
+                "【详情】systemd 未处于 active 或已进入 failed，以下为 journal 摘录（便于核对）：\n%s",
+                jtail or "(无)",
+                extra={"to_stdout": True},
+            )
+            return False
+        logger.info(f"✓ systemd 服务已处于 active: {service_name}", extra={"to_stdout": True})
+        return True
 
     def _verify_port_reachable(self, host: str, port: int, label: str, timeout: int = 5) -> bool:
         """检查 host:port 是否 TCP 可达。"""
@@ -828,18 +1093,33 @@ class KafkaDeployer:
             return False
 
     def _check_service_exists(self, service_name: str) -> bool:
+        """检查 unit 是否已加载（与 StarCli 一致：优先 LoadState，再回退 status / 文件）。"""
         try:
-            result = run_command(
-                ['systemctl', 'show', service_name, '-p', 'LoadState', '--value'],
+            show_result = run_command(
+                ["systemctl", "show", service_name, "-p", "LoadState", "--value"],
                 check=False,
                 capture_output=True,
                 allowed_exit_codes=[0, 1, 3, 4],
-                timeout=10
+                timeout=10,
             )
-            load_state = (result.stdout or "").strip().lower()
-            return load_state not in ("", "not-found")
+            load_state = (show_result.stdout or "").strip().lower()
+            if load_state == "not-found":
+                return False
+            if load_state in ("loaded", "masked", "stub", "generated", "bad"):
+                return True
+            result = run_command(
+                ["systemctl", "status", service_name, "--no-pager"],
+                check=False,
+                capture_output=True,
+                allowed_exit_codes=[0, 1, 2, 3, 4],
+                timeout=10,
+            )
+            combined = f"{result.stdout or ''}\n{result.stderr or ''}".lower()
+            if result.returncode in (2, 4) or "not-found" in combined or "could not be found" in combined:
+                return False
+            return True
         except Exception as ex:
-            logger.debug("systemctl show 失败，回退检查 unit 文件: %s", ex)
+            logger.debug("检查 systemd 服务是否存在失败: %s", ex)
             return Path(f"/etc/systemd/system/{service_name}.service").exists()
 
     def _is_service_active(self, service_name: str) -> bool:
@@ -901,13 +1181,14 @@ class KafkaDeployer:
                     run_command(['kill', '-0', str(pid)], check=False, timeout=5)
                     if run_command(['kill', '-0', str(pid)], check=False, timeout=5).returncode == 0:
                         run_command(['kill', '-KILL', str(pid)], check=False, timeout=5)
-            for pattern in ['kafka-server-start', 'kafka.Kafka', 'kafka']:
+            # 禁止使用过于宽泛的匹配（如单独 "kafka"）：会命中 kafkacli 命令行里的 --kafka-home /path/kafka，误杀本进程。
+            for pattern in ("kafka-server-start.sh", "kafka.Kafka"):
                 try:
-                    r = run_command(['pgrep', '-f', pattern], check=False, capture_output=True, timeout=10)
+                    r = run_command(["pgrep", "-f", pattern], check=False, capture_output=True, timeout=10)
                     if r.returncode == 0 and r.stdout:
-                        for pid_str in r.stdout.strip().split('\n'):
+                        for pid_str in r.stdout.strip().split("\n"):
                             if pid_str.strip().isdigit() and int(pid_str.strip()) > 1:
-                                run_command(['kill', '-KILL', pid_str.strip()], check=False, timeout=5)
+                                run_command(["kill", "-KILL", pid_str.strip()], check=False, timeout=5)
                 except Exception as ex:
                     logger.debug("pgrep/kill 处理失败: %s", ex)
             return True
@@ -981,11 +1262,15 @@ class KafkaDeployer:
             logger.error(f"kafka-storage.sh format 失败: {e}", extra={"to_stdout": True})
             return False
 
-        # 4) systemd 或前台启动
+        # 4) systemd 或前台启动（启用 systemd 时必须 active + 数据端口可连，否则返回失败、不报成功）
         if enable_systemd:
             if not self._enable_systemd_service(
                     self.SERVICE_NAME_STANDALONE, config_path, "standalone", java_home
             ):
+                return False
+            ls = props.get("listeners", "")
+            bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
+            if not self._wait_for_tcp_listening("127.0.0.1", bport, "Broker（PLAINTEXT）"):
                 return False
         else:
             logger.info("未启用 systemd，请手动执行:", extra={"to_stdout": True})
@@ -1075,6 +1360,10 @@ class KafkaDeployer:
                     f"{self.SERVICE_NAME_CONTROLLER}-{node_id}", config_path, "controller", java_home
             ):
                 return False
+            ls = props.get("listeners", "")
+            cport = _listener_scheme_port(ls, "CONTROLLER", controller_listener_port)
+            if not self._wait_for_tcp_listening("127.0.0.1", cport, "Controller（CONTROLLER）"):
+                return False
 
         return True
 
@@ -1149,6 +1438,10 @@ class KafkaDeployer:
             if not self._enable_systemd_service(
                     f"{self.SERVICE_NAME_BROKER}-{node_id}", config_path, "broker", java_home
             ):
+                return False
+            ls = props.get("listeners", "")
+            bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
+            if not self._wait_for_tcp_listening("127.0.0.1", bport, "Broker（PLAINTEXT）"):
                 return False
 
         return True
@@ -1761,11 +2054,11 @@ def _run_remote_deploy(
         logger.error(f"初始化 SSH 失败: {e}", extra={"to_stdout": True})
         sys.exit(1)
 
-    # 检查远程是否有 kafkacli
+    # 检查远程是否有 kafkacli（与 StarCli 远程探测 starcli 一致）
     check_cmd = "command -v kafkacli 2>/dev/null || true"
-    success, _ = ssh.run_command(check_cmd, timeout=20)
+    success, which_out = ssh.run_command(check_cmd, timeout=20)
     remote_script = None
-    if not success or not _.strip():
+    if not success or not (which_out or "").strip():
         logger.info(f"远程 {host}:{port} 未找到 kafkacli，将复制本地脚本到远程", extra={"to_stdout": True})
         local_script = Path(__file__).resolve() if __file__ and Path(__file__).exists() else None
         if not local_script or not local_script.exists():
@@ -1785,7 +2078,12 @@ def _run_remote_deploy(
         ssh.run_command(f"chmod +x {remote_script}", timeout=10)
         logger.info(f"已复制脚本到远程: {remote_script}", extra={"to_stdout": True})
     else:
-        logger.debug("远程已存在 kafkacli，直接执行")
+        test_cmd = "kafkacli --help 2>&1 | head -5 || true"
+        ok_help, help_out = ssh.run_command(test_cmd, timeout=20)
+        if not ok_help:
+            logger.warning(f"远程 kafkacli --help 探测异常: {help_out}", extra={"to_stdout": True})
+        else:
+            logger.debug("远程 kafkacli 可用")
 
     remote_config_path = None
     if args.config:
@@ -1815,6 +2113,11 @@ def _run_remote_deploy(
         logger.error("远程执行失败（无输出）", extra={"to_stdout": True})
     logger.error(f"命令: {remote_cmd}", extra={"to_stdout": True})
     logger.error(f"目标: {host}:{port} (用户: {ssh_user})", extra={"to_stdout": True})
+    if not output:
+        logger.error("排查建议（与 StarCli 远程失败提示一致）：", extra={"to_stdout": True})
+        logger.error("  1. 目标机是否已将 kafkacli 安装到 PATH，或本次是否已成功复制脚本到远程", extra={"to_stdout": True})
+        logger.error("  2. 在目标机手动执行: kafkacli --help", extra={"to_stdout": True})
+        logger.error("  3. 检查目标机 Python3、SSH 与环境变量", extra={"to_stdout": True})
     if not exit_on_finish:
         return False
     sys.exit(1)
@@ -1843,7 +2146,7 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
 
 
 def show_examples():
-    """打印使用说明与示例（与 starcli 风格一致，企业级能力全覆盖）"""
+    """打印使用说明与示例（结构、远程排查提示与同仓库 StarCli 一致）。"""
     examples = """
 Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，与官方 KRaft 文档一致，企业级生产可用
 
@@ -1856,6 +2159,8 @@ Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，
     export KAFKA_CLI_ASSUME_VERSION=4.2.0。
   - JDK：推断为 Kafka 4.x 或未知时要求 17+；推断为 3.x 时要求 11+。
   - KRaft 自动部署默认要求 Kafka ≥3.3；更低版本须 --skip-kraft-version-check（自担风险）。
+  - systemd 默认 --user kafka --group kafka：账户须事先存在，否则 217/USER；测试可用 --user root --group root。
+  - 部署前环境与同仓库 StarCli 一致集中校验：id/getent 用户与组、Java、安装目录可写等，失败会一次性列出原因。
   - standalone（combined）自动包含 PLAINTEXT+CONTROLLER、controller.listener.names 等；生产请
     export KAFKA_ADVERTISED_HOST=<对客户端与 Controller 可达的地址>（或 extra_properties 覆盖）。
 
@@ -1967,8 +2272,16 @@ def main():
     )
     parser.add_argument("--initial-controllers", help="KRaft 多 controller 时首次 format 的 initial-controllers 列表")
     parser.add_argument("--java-home", help="JAVA_HOME 路径")
-    parser.add_argument("--user", default="kafka", help="运行用户")
-    parser.add_argument("--group", default="kafka", help="运行组")
+    parser.add_argument(
+        "--user",
+        default="kafka",
+        help="systemd 运行用户（须已存在于系统，默认 kafka；缺失则 217/USER。测试可传当前用户）",
+    )
+    parser.add_argument(
+        "--group",
+        default="kafka",
+        help="systemd 运行组（须已存在，默认 kafka）",
+    )
     parser.add_argument("--no-systemd", action="store_true", help="不安装 systemd 服务")
     parser.add_argument("--verify", action="store_true", help="部署后验证 Broker 可连接")
     parser.add_argument("--force", action="store_true", help="强制覆盖已存在配置并重新 format（慎用）")
@@ -2332,9 +2645,19 @@ def main():
         )
 
     if success:
-        logger.info("=== 部署成功 ===", extra={"to_stdout": True})
+        if enable_systemd:
+            logger.info(
+                "=== 部署成功：systemd 已为 active，且必备监听端口 TCP 探测通过 ===",
+                extra={"to_stdout": True},
+            )
+        else:
+            logger.info(
+                "=== 部署完成（未由 systemd 拉起进程）：配置与 storage format 已就绪；"
+                "请按上文命令手动启动并自行确认服务，本结果不表示 Broker 已在线 ===",
+                extra={"to_stdout": True},
+            )
         if args.verify and deploy_type in ("standalone", "broker"):
-            time.sleep(5)
+            time.sleep(2)
             deployer.verify_broker_started()
     else:
         logger.error("=== 部署失败 ===", extra={"to_stdout": True})
