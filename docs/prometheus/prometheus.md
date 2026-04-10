@@ -4810,18 +4810,57 @@ kubectl rollout status deployment/prometheus-adapter -n kube-mon
 
 示例中 Helm 使用 `--version 5.3.0`（与本文编写时一致）；生产环境应以审批版本为准，且须显式指定 `--version`，不得依赖未固定的上游最新 Chart。
 
-安装完成后应依序验证 Custom Metrics API，任一阶段未通过则不应创建 HorizontalPodAutoscaler：（1）`kubectl get apiservice v1beta1.custom.metrics.k8s.io`，AVAILABLE 为 True；（2）`kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1`，列表中出现 `pods/…_per_second` 形式资源（具体名称随 `name.as`）；（3）执行下列 `kubectl get --raw`，响应体包含有效度量值：
+安装 adapter 后，须先确认 **Custom Metrics API 已就绪且能返回数字**，再写 HorizontalPodAutoscaler。若下面任一步失败，说明 adapter、规则或网络仍有问题，**不要**先下 HPA，否则 HorizontalPodAutoscaler 会一直拿不到指标（表现为 unknown）。
+
+| 顺序 | 做什么 | 通过时大致长什么样 |
+|------|--------|-------------------|
+| 1 | `kubectl get apiservice v1beta1.custom.metrics.k8s.io` | `AVAILABLE` 为 `True`，表示聚合层已把请求转到 adapter。 |
+| 2 | `kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1` | 返回的 API 列表里，出现 **`pods/…`** 一类资源名；本例规则下常见 `pods/nginx_vts_server_requests_per_second`（具体字符串随上面 `name.as`，不必与示例逐字相同）。 |
+| 3 | 见下方命令 | 返回 **JSON**，且其中对每个 Pod 有一条带 **`value`** 的记录，表示「该 Pod 在这项指标上的当前读数」。 |
+
+第 3 步命令（命名空间、指标名须与你的 rules / `name.as` 一致；本例为 `kube-mon` 与 `nginx_vts_server_requests_per_second`）：
 
 ```bash
-kubectl get --raw \
-  "/apis/custom.metrics.k8s.io/v1beta1/namespaces/kube-mon/pods/*/nginx_vts_server_requests_per_second"
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/kube-mon/pods/*/nginx_vts_server_requests_per_second" |jq .
 ```
 
-配置 HorizontalPodAutoscaler 时，`averageValue` 须与上一步 RAW 响应中 Quantity 的单位及数量级一致（可含 `m` 等后缀），应依据压测或现网特征填写，不应照搬示例清单中的 `"10"`。不得修改 APIService `v1beta1.custom.metrics.k8s.io` 名称，亦不得在集群内并行部署第二套 prometheus-adapter。
+返回为 JSON；各字段以你环境 **`kubectl get --raw` 实际输出为准**，下面仅示意 **`items` 中应能读到带 `value` 的条目**（数值为虚构）：
+
+```json
+{
+  "kind": "MetricValueList",
+  "apiVersion": "custom.metrics.k8s.io/v1beta1",
+  "metadata": {},
+  "items": [
+    {
+      "describedObject": {
+        "kind": "Pod",
+        "namespace": "kube-mon",
+        "name": "hpa-adapter-demo-6f665c889c-rjgxj",
+        "apiVersion": "/v1"
+      },
+      "metricName": "nginx_vts_server_requests_per_second",
+      "timestamp": "2026-04-10T05:43:19Z",
+      "value": "539m",
+      "selector": null
+    }
+  ]
+}
+```
+
+要点：**`items[].value`** 是 Kubernetes 用字符串表示的 **Quantity**（有时带 `m` 等后缀，含义以该指标在 API 中的约定为准）。这就是 HorizontalPodAutoscaler 在比对时看到的「当前每个 Pod 的指标值」的数据来源。
+
+**与 HorizontalPodAutoscaler 里 `averageValue` 的对应关系**：
+
+- 清单字段 **`metrics[].pods.target.averageValue`**（示例里写成 `"10"`）表示：你希望 **每个 Pod 在该指标上维持的大致目标水平**（与上面 RAW 里 **`value` 的单位、语义一致**，都是「每 Pod 一个数」）。
+- 控制器会把 **当前各 Pod 的指标** 与 **`averageValue` 比较** 来决定是否增减副本；因此 **`averageValue` 不能随手写一个数**，而应：先看第 3 步在**常态负载**下 `value` 大致是多少，再结合「希望略高/略低于多少时扩缩」设目标；示例中的 `"10"` 仅表示「每秒请求类指标的占位」，**须按你第 3 步实际看到的数量级改**，否则要么永远不触发、要么频繁抖动。
+- 若 `value` 与 `averageValue` 单位不一致（例如一处带 `m`、一处不带），比对会失真，故二者须在**同一套 Quantity 写法**下填写。
+
+**约束**：不要改名 **`v1beta1.custom.metrics.k8s.io`** 对应的 APIService；同一集群不要装两套 prometheus-adapter，以免争抢同一 API 前缀。
 
 ### T4.13.3、HorizontalPodAutoscaler 验证
 
-创建 HorizontalPodAutoscaler，并对示例 Deployment 施加负载以观察副本数变化。清单中 `averageValue: "10"` 为占位，应替换为 T4.13.2 第（3）步 RAW 所反映的数量级；`minReplicas`、`maxReplicas` 用于约束副本上下界。
+创建 HorizontalPodAutoscaler，并对示例 Deployment 施加负载以观察副本数变化。清单中 **`averageValue` 的填法见 T4.13.2 上一段**；`minReplicas`、`maxReplicas` 用于约束副本上下界。
 
 `hpa-adapter.yaml`：
 
@@ -4853,14 +4892,23 @@ kubectl apply -f hpa-adapter.yaml
 kubectl describe horizontalpodautoscaler/nginx-adapter-hpa -n kube-mon
 ```
 
-集群内加压示例（不依赖集群外访问）：
+集群内加压示例：
 
 ```bash
 kubectl run hpa-load --rm -i --restart=Never --image=curlimages/curl:8.12.1 -n kube-mon -- \
-  sh -c 'while true; do curl -sS "http://hpa-adapter-demo.kube-mon.svc.cluster.local/" >/dev/null; done'
+  sh -c 'while true; do curl -sS "http://hpa-adapter-demo/" >/dev/null; done'
 ```
 
-另起终端执行 `kubectl get hpa,pod -n kube-mon -w` 观察副本。负载解除后，缩容受 HorizontalPodAutoscaler 默认冷却与稳定窗口约束，未必立即回落至 `minReplicas`；若需与生产行为一致，应在清单中配置 `spec.behavior`，参见 [Horizontal Pod Autoscale](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)。
+另起终端观察副本与指标。
+
+开两个终端，分别只 watch 一类资源：
+
+```bash
+kubectl get hpa -n kube-mon -w
+kubectl get pods -n kube-mon -l app=hpa-adapter-demo -w
+```
+
+负载解除后，缩容受 HorizontalPodAutoscaler 默认冷却与稳定窗口约束，未必立即回落至 `minReplicas`；若需与生产行为一致，应在清单中配置 `spec.behavior`，参见 [Horizontal Pod Autoscale](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)。
 
 若 Prometheus 或 Querier 部署于集群外，须将 values 中 `prometheus.url`、`prometheus.port` 调整为 adapter 所在网络可达的地址，并按 Chart 文档配置 TLS 与身份认证；`overrides` 键名仍须与实际指标标签一致。
 
