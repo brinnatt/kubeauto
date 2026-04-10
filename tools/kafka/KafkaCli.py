@@ -20,8 +20,9 @@ Kafka 自动化部署工具（KRaft 模式），面向 Apache Kafka 3.3+ 与 4.x
 环境：Python 3.9+；Java 按检测到的 Kafka 主版本要求 11+（3.x）或 17+（4.x），无法解析版本时按 4.x 策略要求 17+。
 systemd 默认 User/Group 为 kafka：须事先在系统创建该用户/组，否则为 217/USER；测试可用 --user root --group root。
 
-脚本结构与运维约定对齐同仓库 tools/starrocks/StarCli.py（企业级）：环境检查集中输出、用户/组用系统命令校验、
-远程执行前探测 CLI、失败时给出可操作的排查项。
+脚本结构与运维约定对齐同仓库 tools/starrocks/StarCli.py（企业级）：环境检查集中输出、用户/组用 id/getent、
+SSH/SCP 选项与 StarCli 同构、远程执行前探测 kafkacli、systemd 单元含 WorkingDirectory/资源限制/优雅退出码、
+数据目录相对安装目录的告警、失败时给出可操作的排查项。
 参考: https://kafka.apache.org/documentation/#kraft, #brokerconfigs_controller.listener.names
 """
 
@@ -296,29 +297,32 @@ class InputValidator:
 
 
 class SecurityChecker:
-    """安全检查器（SSH 私钥权限等，企业级安全基线）"""
+    """安全检查器（与 StarCli 一致：SSH 私钥权限告警，不阻断连接，由运维决定是否修正）"""
 
     @staticmethod
     def check_ssh_key_permissions(key_path: str) -> bool:
-        """
-        检查 SSH 私钥文件权限。在类 Unix 上要求 0600，否则抛出 ValueError；
-        在非 POSIX（如 Windows）上不检查权限，仅保证可读。
-        """
-        if os.name != "posix":
-            return True
+        """类 Unix 上建议 0600；不符合时告警并返回 False，与 StarCli 行为一致。"""
         try:
+            if os.name != "posix":
+                return True
             file_mode = stat.S_IMODE(os.stat(key_path).st_mode)
             if file_mode != 0o600:
-                raise ValueError(f"SSH 私钥权限必须为 600，当前: {oct(file_mode)}: {key_path}")
+                logger.warning(
+                    "SSH 私钥权限不安全: %s (建议 chmod 600，当前 %s)",
+                    key_path,
+                    oct(file_mode),
+                    extra={"to_stdout": True},
+                )
+                return False
             return True
-        except OSError as e:
-            raise ValueError(f"无法读取 SSH 私钥权限: {key_path}: {e}") from e
+        except OSError:
+            return False
 
 
 class SSHManager:
     """
-    SSH 管理器，用于前置机远程部署单节点/集群。
-    使用前需确保 SSH 密钥存在且（在类 Unix 上）权限为 600；否则初始化可能抛出 ValueError/FileNotFoundError。
+    SSH 管理器（与 StarCli 同构）：BatchMode、ConnectTimeout、保活、StrictHostKeyChecking、
+    失败时合并 stdout/stderr 便于排障。
     """
 
     def __init__(
@@ -344,26 +348,29 @@ class SSHManager:
             raise FileNotFoundError(f"SSH 密钥文件不存在: {self.key_path}")
         SecurityChecker.check_ssh_key_permissions(self.key_path)
 
-    def _connection_options(self) -> List[str]:
-        """SSH/SCP 共用：端口、密钥、StrictHostKeyChecking。"""
-        opts = ["-o", "ConnectTimeout=10", "-o", "BatchMode=yes", "-p", str(self.port), "-i", self.key_path]
-        if self.strict_host_key_checking:
-            known = os.path.expanduser("~/.ssh/known_hosts")
-            opts.extend(["-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={known}"])
-        else:
-            logger.warning("警告: 已禁用 SSH 主机密钥检查", extra={"to_stdout": True})
-            opts.extend(["-o", "StrictHostKeyChecking=no"])
-        return opts
-
     def _build_ssh_options(self) -> List[str]:
-        """SSH 完整选项（含保活）。"""
-        return [
+        """与 StarCli 一致：超时、保活、非交互、端口、密钥、主机密钥策略。"""
+        ssh_options = [
+            "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=60",
             "-o", "ServerAliveCountMax=3",
-        ] + self._connection_options()
+            "-o", "BatchMode=yes",
+            "-p", str(self.port),
+            "-i", self.key_path,
+        ]
+        if self.strict_host_key_checking:
+            known_hosts_file = os.path.expanduser("~/.ssh/known_hosts")
+            ssh_options.extend([
+                "-o", "StrictHostKeyChecking=yes",
+                "-o", f"UserKnownHostsFile={known_hosts_file}",
+            ])
+        else:
+            logger.warning("警告: 已禁用 SSH 主机密钥检查", extra={"to_stdout": True})
+            ssh_options.extend(["-o", "StrictHostKeyChecking=no"])
+        return ssh_options
 
     def run_command(self, cmd: str, timeout: Optional[int] = None) -> Tuple[bool, str]:
-        """在远程执行命令，返回 (成功, 输出)"""
+        """在远程执行命令，返回 (成功, 输出)；失败时合并 stderr/stdout（与 StarCli 一致）。"""
         if not cmd:
             return False, "命令为空"
         ssh_cmd = ["ssh"] + self._build_ssh_options() + [f"{self.username}@{self.host}", cmd]
@@ -371,18 +378,20 @@ class SSHManager:
             result = run_command(ssh_cmd, check=False, capture_output=True, timeout=timeout or 3600)
             if result.returncode == 0:
                 return True, result.stdout if result.stdout else ""
-            parts = []
+            output_parts = []
             if result.stderr:
-                parts.append(f"[stderr] {result.stderr}")
+                output_parts.append(f"[stderr] {result.stderr}")
             if result.stdout:
-                parts.append(f"[stdout] {result.stdout}")
-            return False, "\n".join(parts) if parts else f"命令执行失败，返回码: {result.returncode}"
+                output_parts.append(f"[stdout] {result.stdout}")
+            if output_parts:
+                return False, "\n".join(output_parts)
+            return False, f"命令执行失败，返回码: {result.returncode}"
         except Exception as e:
             logger.error(f"SSH 命令执行失败: {e}", extra={"to_stdout": True})
             return False, str(e)
 
     def copy_file(self, src: str, dst: str) -> bool:
-        """复制文件到远程（scp）。dst 为远程目标路径，禁止包含 '..'。"""
+        """scp 到远程；选项与 StarCli 一致单独构造（-P 端口，不用 ssh 的 -p 映射）。"""
         src_path = Path(src).resolve()
         if not src_path.exists():
             logger.error(f"源文件不存在: {src}", extra={"to_stdout": True})
@@ -390,14 +399,26 @@ class SSHManager:
         if not dst or ".." in dst:
             logger.error("目标路径无效", extra={"to_stdout": True})
             return False
-        opts = self._connection_options()
-        scp_opts = ["-P" if a == "-p" else a for a in opts]
-        scp_cmd = ["scp"] + scp_opts + [str(src_path), f"{self.username}@{self.host}:{dst}"]
+        scp_options = [
+            "-o", "ConnectTimeout=10",
+            "-o", "BatchMode=yes",
+            "-P", str(self.port),
+            "-i", self.key_path,
+        ]
+        if self.strict_host_key_checking:
+            known_hosts_file = os.path.expanduser("~/.ssh/known_hosts")
+            scp_options.extend([
+                "-o", "StrictHostKeyChecking=yes",
+                "-o", f"UserKnownHostsFile={known_hosts_file}",
+            ])
+        else:
+            scp_options.extend(["-o", "StrictHostKeyChecking=no"])
+        scp_cmd = ["scp"] + scp_options + [str(src_path), f"{self.username}@{self.host}:{dst}"]
         try:
             result = run_command(scp_cmd, check=False, capture_output=False, timeout=1800)
             return result.returncode == 0
         except Exception as e:
-            logger.error(f"复制文件到远程失败 {src} -> {dst}: {e}", extra={"to_stdout": True})
+            logger.error("复制文件到远程失败 {} -> {}: {}".format(src, dst, e), extra={"to_stdout": True})
             return False
 
 
@@ -672,6 +693,29 @@ class EnvironmentChecker:
             logger.error("检查目录可写性失败: {}".format(e), extra={"to_stdout": True})
             return False
 
+    @staticmethod
+    def warn_if_path_under_kafka_home(kafka_home: Path, path_list_csv: str, label: str) -> None:
+        """
+        若数据路径落在 Kafka 安装目录下则告警（与 StarCli「数据独立于安装目录」思路一致，降低升级/清理风险）。
+        """
+        first = (path_list_csv or "").split(",")[0].strip()
+        if not first:
+            return
+        try:
+            base = kafka_home.resolve()
+            target = Path(first).resolve()
+            target.relative_to(base)
+            logger.warning(
+                "%s 位于 Kafka 安装目录内 (%s)，生产环境建议使用独立数据盘路径。",
+                label,
+                target,
+                extra={"to_stdout": True},
+            )
+        except ValueError:
+            pass
+        except Exception as ex:
+            logger.debug("目录独立性检查跳过: %s", ex)
+
 
 class ConfigGenerator:
     """
@@ -762,19 +806,27 @@ class ConfigGenerator:
 
 
 class SystemdServiceGenerator:
-    """Systemd 服务文件生成器（企业级：LimitNOFILE、Restart、User/Group）"""
+    """
+    Systemd 单元生成（对齐 StarCli 生产级约定：WorkingDirectory、超时、journal、资源限制、优雅退出码）。
+    """
 
     @staticmethod
     def generate_kafka_service(
             bin_dir: Path,
             config_path: Path,
             deploy_type: str,
+            kafka_home: Path,
             user: str = "kafka",
             group: str = "kafka",
-            java_home: Optional[str] = None
+            java_home: Optional[str] = None,
     ) -> str:
-        """生成 Kafka systemd unit 内容。bin_dir、config_path 须为绝对路径，供 ExecStart 使用。"""
-        java_line = f"Environment=JAVA_HOME={java_home}" if java_home else ""
+        """bin_dir、config_path、kafka_home 须为绝对路径；ExecStart 使用官方 kafka-server-start.sh。"""
+        kh = str(kafka_home.resolve())
+        env_lines: List[str] = [f'Environment="KAFKA_HOME={kh}"']
+        if java_home:
+            env_lines.append(f'Environment="JAVA_HOME={java_home}"')
+        env_block = "\n".join(env_lines)
+        safe_ident = re.sub(r"[^a-z0-9-]+", "-", deploy_type.lower()).strip("-") or "kafka"
         return f"""[Unit]
 Description=Apache Kafka - {deploy_type}
 Documentation=https://kafka.apache.org/documentation/
@@ -785,13 +837,25 @@ Wants=network-online.target
 Type=simple
 User={user}
 Group={group}
-{java_line}
+WorkingDirectory={kh}
+UMask=0022
+{env_block}
 ExecStart={bin_dir / "kafka-server-start.sh"} {config_path}
 Restart=on-failure
 RestartSec=10
-LimitNOFILE=65536
+TimeoutStartSec=600
+TimeoutStopSec=120
+SuccessExitStatus=0 143
+KillMode=mixed
+KillSignal=SIGTERM
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kafka-{safe_ident}
+
+LimitNOFILE=1048576
 LimitNPROC=65536
-TimeoutStopSec=90
+LimitCORE=infinity
+OOMScoreAdjust=-500
 
 [Install]
 WantedBy=multi-user.target
@@ -889,6 +953,9 @@ class KafkaDeployer:
         if not EnvironmentChecker.check_directory_writable(str(self.kafka_home)):
             errors.append(f"Kafka 目录不可写: {self.kafka_home}")
 
+        if not (self.bin_dir / "kafka-server-start.sh").exists():
+            errors.append(f"缺少 bin/kafka-server-start.sh，安装可能不完整: {self.bin_dir}")
+
         return len(errors) == 0, errors
 
     def _run_storage_cmd(self, args: List[str], env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
@@ -935,6 +1002,7 @@ class KafkaDeployer:
             self.bin_dir,
             config_path,
             deploy_type,
+            self.kafka_home,
             user=user or self.user,
             group=group or self.group,
             java_home=java_home,
@@ -1226,6 +1294,7 @@ class KafkaDeployer:
         if not EnvironmentChecker.check_directory_writable(str(log_dirs_path)):
             logger.error(f"日志目录不可写: {log_dirs}", extra={"to_stdout": True})
             return False
+        EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, log_dirs, "log.dirs")
 
         config_path = self.config_dir / "server-standalone.properties"
         if config_path.exists() and not force:
@@ -1314,6 +1383,7 @@ class KafkaDeployer:
         if not EnvironmentChecker.check_directory_writable(metadata_dir):
             logger.error(f"元数据日志目录不可写: {metadata_dir}", extra={"to_stdout": True})
             return False
+        EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, metadata_dir, "metadata.log.dir")
 
         config_path = self.config_dir / f"controller-{node_id}.properties"
         if config_path.exists() and not force:
@@ -1404,6 +1474,7 @@ class KafkaDeployer:
         if not EnvironmentChecker.check_directory_writable(str(log_dirs_path)):
             logger.error(f"日志目录不可写: {log_dirs}", extra={"to_stdout": True})
             return False
+        EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, log_dirs, "log.dirs")
 
         config_path = self.config_dir / f"server-broker-{node_id}.properties"
         if config_path.exists() and not force:
@@ -2161,6 +2232,8 @@ Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，
   - KRaft 自动部署默认要求 Kafka ≥3.3；更低版本须 --skip-kraft-version-check（自担风险）。
   - systemd 默认 --user kafka --group kafka：账户须事先存在，否则 217/USER；测试可用 --user root --group root。
   - 部署前环境与同仓库 StarCli 一致集中校验：id/getent 用户与组、Java、安装目录可写等，失败会一次性列出原因。
+  - 若 log.dirs / metadata.log.dir 落在 Kafka 安装目录下会告警（与 StarCli「数据独立于安装目录」一致）。
+  - systemd 单元含 WorkingDirectory、KAFKA_HOME、TimeoutStartSec、journal、LimitNOFILE 等（对齐 StarCli 生产级 unit）。
   - standalone（combined）自动包含 PLAINTEXT+CONTROLLER、controller.listener.names 等；生产请
     export KAFKA_ADVERTISED_HOST=<对客户端与 Controller 可达的地址>（或 extra_properties 覆盖）。
 
