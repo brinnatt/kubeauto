@@ -1,8 +1,9 @@
 {
+  "deployment_note": "KRaft: official 3.3+ for new clusters (KIP-833); 4.0+ drops ZooKeeper. JDK: 11+ for Kafka 3.x, 17+ for 4.x (script infers from path or libs/kafka-server-common-*.jar). If needed add assume_kafka_version: \"3.7.0\" or skip_kraft_version_check: true (at your risk). Production: export KAFKA_ADVERTISED_HOST=<reachable IP>.",
   "kafka_home": "/opt/kafka",
   "user": "kafka",
   "group": "kafka",
-  "java_home": "/usr/lib/jvm/java-17-openjdk",
+  "java_home": "/usr/lib/jvm/java-21-openjdk",
   "log_dirs": "/var/kafka/logs",
   "metadata_log_dir": "/var/kafka/metadata-log",
   "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093",

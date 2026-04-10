@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 """
-Kafka 自动化部署工具（KRaft 模式）
+Kafka 自动化部署工具（KRaft 模式），面向 Apache Kafka 3.3+ 与 4.x，与官方 KRaft 文档对齐。
 
-业务逻辑严格遵循 Apache Kafka 官方文档与最佳实践：
-- 部署：Quick Start / KRaft Provisioning（format --standalone | --no-initial-controllers）
-- 运维：Topic/Consumer Group/Quorum/Config 封装官方 CLI；Broker 下线按「先副本迁移再停 Broker」流程
-- 监控：指标采集与官方 Monitoring 文档一致（Quorum、UnderReplicated、Consumer Lag）
+版本与官方关系（摘要，便于多版本兼容）：
+- KRaft 并非 4.x 独有：自 3.3 起新集群 KRaft 标为 production-ready（KIP-833）；4.0 起发行版移除 ZooKeeper；
+  3.9 等为 ZK→KRaft 迁移相关发行版。本脚本自动配置适用于 3.3+～4.x 的 KRaft 监听器与必选键。
+- Kafka 4.x 配置校验更严（如 controller.listener.names、listener 套件）；脚本默认生成与官方 KRaft 示例一致的
+  combined / broker 监听器与 protocol map，降低 4.x 下 format / 启动失败概率。
 
-能力：单机/批量/前置机远程部署、systemd 服务化、清理、健康检查、SASL/SSL（--command-config）。
-参考: https://kafka.apache.org/quickstart, #kraft, #monitoring, #operations
-Python 3.9+，企业级稳定可靠。
+业务逻辑遵循官方文档与 KRaft 约束：
+- 部署：KRaft Provisioning（format --standalone | --no-initial-controllers）；standalone=combined(broker+controller)
+  须包含 PLAINTEXT（broker）与 CONTROLLER、controller.listener.names、inter.broker.listener.name、
+  listener.security.protocol.map、advertised.listeners、controller.quorum.bootstrap.servers
+  （默认生成；生产用环境变量 KAFKA_ADVERTISED_HOST 指定对外地址）。
+- 运维：Topic/Consumer Group/Quorum/Config 封装官方 CLI；Broker 下线按「先副本迁移再停 Broker」。
+- 监控：与官方 Monitoring 一致（Quorum、UnderReplicated、Consumer Lag）。
+
+能力：单机/批量/前置机远程部署、systemd、清理、健康检查、SASL/SSL（--command-config）。
+环境：Python 3.9+；Java 按检测到的 Kafka 主版本要求 11+（3.x）或 17+（4.x），无法解析版本时按 4.x 策略要求 17+。
+参考: https://kafka.apache.org/documentation/#kraft, #brokerconfigs_controller.listener.names
 """
 
 import argparse
@@ -40,6 +49,11 @@ DEFAULT_BROKER_PORT = 9092
 DEFAULT_CONTROLLER_PORT = 9093
 DEFAULT_LOG_DIR = "/tmp/kafka-logs"
 DEFAULT_METADATA_LOG_DIR = "/tmp/kraft-combined-logs"
+
+
+def _advertised_host() -> str:
+    """生成 advertised / quorum bootstrap 时使用的主机名或 IP（每次调用读取环境变量，便于部署前 export）。"""
+    return (os.getenv("KAFKA_ADVERTISED_HOST") or "127.0.0.1").strip() or "127.0.0.1"
 
 
 class CommandExecutionError(Exception):
@@ -104,6 +118,124 @@ def setup_logger(
 
 
 logger = setup_logger(__name__)
+
+# 官方 KIP-833：自 Kafka 3.3 起 KRaft 用于新集群为 production-ready；低于此版本的 KRaft 部署本脚本默认拒绝。
+KRAFT_DEPLOY_MIN_VERSION: Tuple[int, int, int] = (3, 3, 0)
+
+
+def infer_kafka_release(kafka_home: Path, assume_version: Optional[str] = None) -> Optional[Tuple[int, int, int]]:
+    """
+    从 --assume-kafka-version / 环境变量 KAFKA_CLI_ASSUME_VERSION、安装路径名、libs/kafka-server-common-*.jar 推断
+    Kafka 发行版语义版本 (major, minor, patch)；均失败时返回 None（脚本将按最严策略：Java 17+）。
+    """
+    raw = (assume_version or os.getenv("KAFKA_CLI_ASSUME_VERSION") or "").strip()
+    if raw:
+        m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", raw)
+        if m:
+            return int(m.group(1)), int(m.group(2)), int(m.group(3))
+        logger.warning(
+            "KAFKA_CLI_ASSUME_VERSION / --assume-kafka-version 须为 x.y.z，已忽略: %s",
+            raw,
+            extra={"to_stdout": True},
+        )
+
+    try:
+        resolved = str(kafka_home.resolve())
+    except OSError:
+        resolved = str(kafka_home)
+
+    m = re.search(r"kafka_2\.\d+-(\d+)\.(\d+)\.(\d+)", resolved, re.I)
+    if m:
+        return int(m.group(1)), int(m.group(2)), int(m.group(3))
+    base = kafka_home.name
+    m = re.match(r"kafka_2\.\d+-(\d+)\.(\d+)\.(\d+)$", base, re.I)
+    if m:
+        return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+    libs = kafka_home / "libs"
+    best_jar: Optional[Tuple[int, int, int]] = None
+    if libs.is_dir():
+        ver_re = re.compile(r"kafka-server-common-(\d+)\.(\d+)\.(\d+)\.jar$", re.I)
+        for j in libs.glob("kafka-server-common-*.jar"):
+            mj = ver_re.search(j.name)
+            if mj:
+                t = (int(mj.group(1)), int(mj.group(2)), int(mj.group(3)))
+                if best_jar is None or t > best_jar:
+                    best_jar = t
+    return best_jar
+
+
+def min_java_major_for_kafka(kafka_release: Optional[Tuple[int, int, int]]) -> int:
+    """Kafka 4.x 官方要求 Java 17+；3.x 发行版通常要求 Java 11+。未知版本时保守按 4.x 要求 17。"""
+    if kafka_release is None:
+        return 17
+    major, _, _ = kafka_release
+    return 17 if major >= 4 else 11
+
+
+def _kraft_combined_listener_properties(listeners_override: Optional[str]) -> Dict[str, str]:
+    """
+    KRaft combined（process.roles=broker,controller）监听器必选配置，与官方 KRaft 文档（3.3+ / 4.x）一致。
+    StorageTool / KafkaConfig（尤其 4.x）要求显式设置 controller.listener.names，且 listeners 须同时包含
+    PLAINTEXT（broker）与 CONTROLLER；并需 inter.broker.listener.name、
+    listener.security.protocol.map、advertised.listeners、controller.quorum.bootstrap.servers。
+    advertised 与 quorum bootstrap 主机默认取环境变量 KAFKA_ADVERTISED_HOST（未设置则为 127.0.0.1）。
+    参考: https://kafka.apache.org/documentation/#brokerconfigs_controller.listener.names
+    """
+    broker_port = DEFAULT_BROKER_PORT
+    ctrl_port = DEFAULT_CONTROLLER_PORT
+    adv_host = _advertised_host()
+    if listeners_override and listeners_override.strip():
+        ls = listeners_override.strip().rstrip(",")
+        if "CONTROLLER" not in ls.upper():
+            ls = f"{ls},CONTROLLER://0.0.0.0:{ctrl_port}"
+            logger.info(
+                "listeners 未包含 CONTROLLER，已自动追加（KRaft combined 必选）",
+                extra={"to_stdout": True},
+            )
+    else:
+        ls = f"PLAINTEXT://0.0.0.0:{broker_port},CONTROLLER://0.0.0.0:{ctrl_port}"
+    pm = re.search(r"PLAINTEXT://[^:]*:(\d+)", ls, re.I)
+    if pm:
+        broker_port = int(pm.group(1))
+    cm = re.search(r"CONTROLLER://[^:]*:(\d+)", ls, re.I)
+    if cm:
+        ctrl_port = int(cm.group(1))
+    return {
+        "listeners": ls,
+        "advertised.listeners": (
+            f"PLAINTEXT://{adv_host}:{broker_port},CONTROLLER://{adv_host}:{ctrl_port}"
+        ),
+        "controller.quorum.bootstrap.servers": f"{adv_host}:{ctrl_port}",
+        "controller.listener.names": "CONTROLLER",
+        "inter.broker.listener.name": "PLAINTEXT",
+        "listener.security.protocol.map": "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT",
+    }
+
+
+def _kraft_broker_listener_properties(listeners_override: Optional[str]) -> Dict[str, str]:
+    """
+    KRaft broker-only（3.3+ / 4.x）：在仅使用 PLAINTEXT 的常见场景下补充 inter.broker.listener.name、
+    listener.security.protocol.map、advertised.listeners，避免配置不完整导致启动或 format 异常。
+    若 listeners 含 SSL/SASL 等，请通过 extra_properties 自行提供完整协议映射与 advertised。
+    """
+    adv_host = _advertised_host()
+    ls = (listeners_override or "").strip() or f"PLAINTEXT://0.0.0.0:{DEFAULT_BROKER_PORT}"
+    broker_port = DEFAULT_BROKER_PORT
+    pm = re.search(r"PLAINTEXT://[^:]*:(\d+)", ls, re.I)
+    if pm:
+        broker_port = int(pm.group(1))
+    out: Dict[str, str] = {"listeners": ls}
+    if (
+        re.search(r"\bPLAINTEXT://", ls, re.I)
+        and "SSL" not in ls.upper()
+        and "SASL" not in ls.upper()
+    ):
+        out["inter.broker.listener.name"] = "PLAINTEXT"
+        out["listener.security.protocol.map"] = "PLAINTEXT:PLAINTEXT"
+        out["advertised.listeners"] = f"PLAINTEXT://{adv_host}:{broker_port}"
+    return out
+
 
 MIN_PORT = 1
 MAX_PORT = 65535
@@ -301,7 +433,7 @@ def run_command(
 
 
 class EnvironmentChecker:
-    """环境检查器（Kafka 要求 Java 17+，与官方 Quick Start 一致）"""
+    """环境检查器：Java 主版本阈值由 Kafka 发行版推断结果决定（3.x→11+，4.x/未知→17+）。"""
 
     @staticmethod
     def check_port_available(port: int, host: str = '0.0.0.0') -> bool:
@@ -328,8 +460,8 @@ class EnvironmentChecker:
         return None
 
     @staticmethod
-    def check_java() -> Tuple[bool, Optional[str], Optional[str]]:
-        """检查 Java 环境，Kafka 4.x 需要 Java 17+（官方文档要求）"""
+    def check_java(minimum_java_major: int = 17) -> Tuple[bool, Optional[str], Optional[str]]:
+        """检查 Java 环境；minimum_java_major 由 min_java_major_for_kafka() 与 Kafka 版本推断结果决定。"""
         try:
             result = run_command(
                 ['java', '-version'],
@@ -350,14 +482,19 @@ class EnvironmentChecker:
                 if major == 1 and version_match.group(2):
                     major = int(version_match.group(2))
                 java_version = f"{major}.{minor}" if minor > 0 else str(major)
-                if major < 17:
+                if major < minimum_java_major:
                     logger.error(
-                        "Java 版本过低: {}，Kafka 需要 Java 17+（参见官方文档）".format(java_version),
+                        "Java 版本过低: {}，当前需要 Java {}+（与检测到的 Kafka 版本策略一致，参见官方文档）".format(
+                            java_version, minimum_java_major
+                        ),
                         extra={"to_stdout": True}
                     )
                     return False, None, java_version
             elif version_output:
-                logger.error("无法解析 Java 版本输出，Kafka 需要 Java 17+（参见官方文档）", extra={"to_stdout": True})
+                logger.error(
+                    "无法解析 Java 版本输出，需要 Java {}+（与 Kafka 版本策略一致）".format(minimum_java_major),
+                    extra={"to_stdout": True}
+                )
                 return False, None, None
 
             java_home = os.environ.get('JAVA_HOME')
@@ -394,10 +531,35 @@ class EnvironmentChecker:
 
 class ConfigGenerator:
     """
-    Kafka 配置文件生成器（与官方 server.properties / controller 配置一致）。
-    extra_properties 会合并并覆盖同名字段，请勿覆盖 process.roles、node.id、log.dirs、listeners 等必选键。
+    Kafka 配置文件生成器（与官方 server.properties / KRaft 配置一致，适用于 3.3+～4.x）。
+
+    - generate_combined_standalone_properties：单节点 broker+controller 完整默认（含 listener 套件），
+      与 KafkaDeployer.deploy_standalone 写入内容一致。
+    - generate_server_properties：通用键值对生成器；若 process.roles 含 combined 场景，
+      须自行合并 _kraft_combined_listener_properties() 或改用 generate_combined_standalone_properties。
+    - generate_controller_properties：独立 Controller 节点（已含 controller.listener.names 与 protocol map）。
+
+    extra_properties 会合并并覆盖同名字段；使用 SSL/SASL 时须在 extra_properties 中提供完整 listener.security.protocol.map。
     参考: https://kafka.apache.org/documentation/#brokerconfigs, #kraft
     """
+
+    @staticmethod
+    def generate_combined_standalone_properties(
+            node_id: int,
+            log_dirs: str,
+            listeners_override: Optional[str] = None,
+            extra_properties: Optional[Dict[str, str]] = None
+    ) -> Dict[str, str]:
+        """KRaft 单节点 combined（broker,controller）server.properties 键值对（3.3+ / 4.x）。"""
+        props: Dict[str, str] = {
+            "process.roles": "broker,controller",
+            "node.id": str(node_id),
+            "log.dirs": log_dirs,
+            **_kraft_combined_listener_properties(listeners_override),
+        }
+        if extra_properties:
+            props.update(extra_properties)
+        return props
 
     @staticmethod
     def generate_server_properties(
@@ -445,6 +607,7 @@ class ConfigGenerator:
             "listeners": f"CONTROLLER://0.0.0.0:{controller_listener_port}",
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "controller.listener.names": "CONTROLLER",
+            "listener.security.protocol.map": "CONTROLLER:PLAINTEXT",
             "metadata.log.dir": metadata_log_dir,
         }
         if log_dirs:
@@ -493,39 +656,77 @@ WantedBy=multi-user.target
 
 class KafkaDeployer:
     """
-    Kafka 部署器（KRaft 模式）。
+    Kafka 部署器（KRaft 模式，支持 Apache Kafka 3.3+～4.x）。
 
-    实现与官方文档一致：Quick Start 与 KRaft 配置、节点 Provisioning。
-    生成的 server.properties/controller.properties 与 ConfigGenerator 语义一致；
-    systemd unit 与 SystemdServiceGenerator 一致（LimitNOFILE、Restart、User/Group）。
+    standalone 使用 ConfigGenerator.generate_combined_standalone_properties 与 _kraft_combined_listener_properties，
+    与官方 KRaft combined 必选项一致（4.x 校验更严，完整套件可避免 format/启动失败）。
+    controller / broker 分别补充 listener.security.protocol.map 与 _kraft_broker_listener_properties。
+    安装目录或 libs 可解析时记录 Kafka 版本；低于 3.3 默认拒绝 KRaft 部署（可 --skip-kraft-version-check 自担风险）。
+    systemd unit 由 SystemdServiceGenerator 生成。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
     SERVICE_NAME_CONTROLLER = "kafka-controller"
     SERVICE_NAME_BROKER = "kafka-broker"
 
-    def __init__(self, kafka_home: str, user: str = "kafka", group: str = "kafka"):
+    def __init__(
+            self,
+            kafka_home: str,
+            user: str = "kafka",
+            group: str = "kafka",
+            assume_kafka_version: Optional[str] = None,
+            skip_kraft_version_check: bool = False,
+    ):
         self.kafka_home = Path(kafka_home).resolve()
         self.user = user
         self.group = group
+        self.skip_kraft_version_check = skip_kraft_version_check
         if not self.kafka_home.exists():
             raise ValueError(f"Kafka 安装目录不存在: {kafka_home}")
         self.bin_dir = self.kafka_home / "bin"
         self.config_dir = self.kafka_home / "config"
         if not (self.bin_dir.exists() and (self.bin_dir / "kafka-storage.sh").exists()):
             raise ValueError(f"无效的 Kafka 安装目录（缺少 bin/kafka-storage.sh）: {kafka_home}")
+        self.kafka_release = infer_kafka_release(self.kafka_home, assume_kafka_version)
+        if self.kafka_release:
+            logger.info(
+                "检测到 Apache Kafka 版本: %s",
+                ".".join(map(str, self.kafka_release)),
+                extra={"to_stdout": True},
+            )
+        else:
+            logger.warning(
+                "未能解析 Kafka 版本（路径或 libs/kafka-server-common-*.jar）；将按 Kafka 4.x 策略要求 Java 17+。"
+                "可设置 KAFKA_CLI_ASSUME_VERSION 或 --assume-kafka-version x.y.z。",
+                extra={"to_stdout": True},
+            )
 
     def check_environment(self) -> Tuple[bool, List[str]]:
-        """检查部署环境（Java 17+ 等）"""
+        """检查部署环境：Java 版本阈值、KRaft 最低 Kafka 版本、目录可写等。"""
         errors = []
-        java_ok, java_home, java_version = EnvironmentChecker.check_java()
+        min_java = min_java_major_for_kafka(self.kafka_release)
+        java_ok, java_home, java_version = EnvironmentChecker.check_java(minimum_java_major=min_java)
         if not java_ok:
             if java_version:
-                errors.append(f"Java 版本过低: {java_version}，Kafka 需要 Java 17+")
+                errors.append(f"Java 版本过低: {java_version}，需要 Java {min_java}+")
             else:
-                errors.append("未找到 Java 环境，请先安装 JDK 17+")
+                errors.append(f"未找到 Java 环境，请先安装 JDK {min_java}+")
         elif java_version:
             logger.info(f"检测到 Java 版本: {java_version}", extra={"to_stdout": True})
+
+        if self.kafka_release is not None and self.kafka_release < KRAFT_DEPLOY_MIN_VERSION:
+            ver_s = ".".join(map(str, self.kafka_release))
+            if self.skip_kraft_version_check:
+                logger.warning(
+                    "已跳过 KRaft 版本检查：检测到 Kafka %s（官方建议 KRaft 新集群自 3.3+ 起），请自担风险",
+                    ver_s,
+                    extra={"to_stdout": True},
+                )
+            else:
+                errors.append(
+                    f"检测到 Kafka {ver_s}：本脚本 KRaft 自动部署针对 {'.'.join(map(str, KRAFT_DEPLOY_MIN_VERSION))}+ "
+                    f"（KIP-833）。请升级 Kafka 或使用 --skip-kraft-version-check / 配置 skip_kraft_version_check 自担风险。"
+                )
 
         if not EnvironmentChecker.check_directory_writable(str(self.kafka_home)):
             errors.append(f"Kafka 目录不可写: {self.kafka_home}")
@@ -726,8 +927,11 @@ class KafkaDeployer:
             extra_properties: Optional[Dict[str, str]] = None
     ) -> bool:
         """
-        部署单节点 KRaft（combined broker+controller），与官方 Quick Start 一致：
-        - 生成 cluster id → format --standalone → 启动 server
+        部署单节点 KRaft（combined broker+controller），对齐 Kafka 4.x KRaft combined 必选项：
+        listeners（PLAINTEXT+CONTROLLER）、controller.listener.names、inter.broker.listener.name、
+        listener.security.protocol.map、advertised.listeners、controller.quorum.bootstrap.servers。
+        生产环境请设置环境变量 KAFKA_ADVERTISED_HOST，或通过 extra_properties 覆盖 advertised.listeners /
+        controller.quorum.bootstrap.servers。流程：生成 cluster id → format --standalone → 启动 server。
         """
         logger.info("=== 部署 Kafka Standalone（KRaft 单节点）===", extra={"to_stdout": True})
 
@@ -757,16 +961,10 @@ class KafkaDeployer:
                 logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
                 return False
 
-        # 2) 构建 server.properties（官方：process.roles=broker,controller + node.id + log.dirs）
-        listeners = listeners or f"PLAINTEXT://0.0.0.0:{DEFAULT_BROKER_PORT}"
-        props = {
-            "process.roles": "broker,controller",
-            "node.id": str(node_id),
-            "log.dirs": log_dirs,
-            "listeners": listeners,
-        }
-        if extra_properties:
-            props.update(extra_properties)
+        # 2) 构建 server.properties（与 ConfigGenerator.generate_combined_standalone_properties 一致）
+        props = ConfigGenerator.generate_combined_standalone_properties(
+            node_id, log_dirs, listeners, extra_properties=extra_properties
+        )
         if not self._write_properties(config_path, props):
             return False
 
@@ -810,7 +1008,8 @@ class KafkaDeployer:
             extra_properties: Optional[Dict[str, str]] = None
     ) -> bool:
         """
-        部署 KRaft Controller 节点。与官方 KRaft 文档一致：
+        部署 KRaft Controller 节点（Kafka 4.x）。配置与 ConfigGenerator.generate_controller_properties 一致，
+        含 controller.listener.names、listener.security.protocol.map。
         - 首个 controller：format --standalone 或 --initial-controllers
         - 后续 controller：format --no-initial-controllers
         """
@@ -836,20 +1035,15 @@ class KafkaDeployer:
             logger.error(f"配置已存在: {config_path}，使用 --force 覆盖", extra={"to_stdout": True})
             return False
 
-        # Controller 配置（官方：process.roles=controller, node.id, listeners=CONTROLLER://, controller.quorum.bootstrap.servers, controller.listener.names）
-        listeners_controller = f"CONTROLLER://0.0.0.0:{controller_listener_port}"
-        props = {
-            "process.roles": "controller",
-            "node.id": str(node_id),
-            "listeners": listeners_controller,
-            "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
-            "controller.listener.names": "CONTROLLER",
-            "metadata.log.dir": metadata_dir,
-        }
-        if log_dirs:
-            props["log.dirs"] = log_dirs
-        if extra_properties:
-            props.update(extra_properties)
+        # Controller 配置（与 ConfigGenerator.generate_controller_properties 一致，含 Kafka 4.x protocol map）
+        props = ConfigGenerator.generate_controller_properties(
+            node_id=node_id,
+            controller_listener_port=controller_listener_port,
+            controller_quorum_bootstrap_servers=controller_quorum_bootstrap_servers,
+            metadata_log_dir=metadata_dir,
+            log_dirs=log_dirs,
+            extra_properties=extra_properties,
+        )
         if not self._write_properties(config_path, props):
             return False
 
@@ -897,7 +1091,9 @@ class KafkaDeployer:
             extra_properties: Optional[Dict[str, str]] = None
     ) -> bool:
         """
-        部署 KRaft Broker 节点。与官方一致：format --no-initial-controllers，process.roles=broker。
+        部署 KRaft Broker 节点（Kafka 4.x）。format --no-initial-controllers，process.roles=broker。
+        默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
+        advertised.listeners（主机见 KAFKA_ADVERTISED_HOST）；SSL/SASL 请用 extra_properties 完整配置。
         """
         logger.info("=== 部署 Kafka Broker（KRaft）===", extra={"to_stdout": True})
 
@@ -925,13 +1121,12 @@ class KafkaDeployer:
             logger.error(f"配置已存在: {config_path}，使用 --force 覆盖", extra={"to_stdout": True})
             return False
 
-        listeners = listeners or f"PLAINTEXT://0.0.0.0:{DEFAULT_BROKER_PORT}"
         props = {
             "process.roles": "broker",
             "node.id": str(node_id),
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "log.dirs": log_dirs,
-            "listeners": listeners,
+            **_kraft_broker_listener_properties(listeners),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -1470,6 +1665,16 @@ def _get_opt(args: argparse.Namespace, config: Dict[str, Any], attr: str, config
     return config.get(key)
 
 
+def _kafka_deployer_kwargs(args: argparse.Namespace, config: Dict[str, Any]) -> Dict[str, Any]:
+    """传给 KafkaDeployer 的版本相关参数（JSON 中可使用同名字段）。"""
+    return {
+        "assume_kafka_version": _get_opt(args, config, "assume_kafka_version"),
+        "skip_kraft_version_check": bool(
+            getattr(args, "skip_kraft_version_check", False) or config.get("skip_kraft_version_check")
+        ),
+    }
+
+
 def _parse_target_host(target_host: str, default_port: int) -> Tuple[str, int]:
     """解析 target_host（支持 host 或 host:port）；空或仅空白时抛出 ValueError"""
     th = (target_host or "").strip()
@@ -1640,10 +1845,19 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
 def show_examples():
     """打印使用说明与示例（与 starcli 风格一致，企业级能力全覆盖）"""
     examples = """
-Kafka 自动化部署工具（KRaft 模式）- 基于 Apache Kafka 官方文档与社区最佳实践，企业级生产可用
+Kafka 自动化部署工具（KRaft 模式）- 面向 Apache Kafka 3.3+～4.x，与官方 KRaft 文档一致，企业级生产可用
 
 能力：前置机/批量多机部署、集群增删改查、Topic/Group 运维、关键指标采集、Broker 下线、KRaft Quorum 运维、
      systemd 服务化、清理、日志回显、SASL/SSL 控制
+
+版本与 JDK（与官方一致）：
+  - KRaft 非 4.x 独有：官方自 3.3 起新集群 KRaft 为 production-ready（KIP-833）；4.0 起 tarball 无 ZooKeeper。
+  - 脚本从 kafka_home 路径或 libs/kafka-server-common-*.jar 推断版本；失败时可 --assume-kafka-version 3.7.0 或
+    export KAFKA_CLI_ASSUME_VERSION=4.2.0。
+  - JDK：推断为 Kafka 4.x 或未知时要求 17+；推断为 3.x 时要求 11+。
+  - KRaft 自动部署默认要求 Kafka ≥3.3；更低版本须 --skip-kraft-version-check（自担风险）。
+  - standalone（combined）自动包含 PLAINTEXT+CONTROLLER、controller.listener.names 等；生产请
+    export KAFKA_ADVERTISED_HOST=<对客户端与 Controller 可达的地址>（或 extra_properties 覆盖）。
 
 用法:
   部署与清理:
@@ -1667,7 +1881,8 @@ Kafka 自动化部署工具（KRaft 模式）- 基于 Apache Kafka 官方文档�
 
 示例:
 
-1) 单节点快速体验（与官方 Quick Start 一致）:
+1) 单节点快速体验（KRaft combined，脚本自动生成完整 listener 套件，适用于 3.3+ / 4.x）:
+   export KAFKA_ADVERTISED_HOST=127.0.0.1   # 生产改为本机可达 IP
    kafkacli --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
 
 2) 批量多机部署（配置文件 nodes 数组，依次 SSH 到每台执行）:
@@ -1719,7 +1934,7 @@ Kafka 自动化部署工具（KRaft 模式）- 基于 Apache Kafka 官方文档�
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Kafka 自动化部署工具（KRaft 模式）",
+        description="Kafka 自动化部署工具（KRaft 模式，Kafka 3.3+～4.x）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False
     )
@@ -1727,6 +1942,16 @@ def main():
     parser.add_argument("--deploy", choices=["standalone", "controller", "broker"], help="部署类型")
     parser.add_argument("--kafka-home", help="Kafka 安装目录（解压后的根目录）")
     parser.add_argument("--config", help="JSON 配置文件路径")
+    parser.add_argument(
+        "--assume-kafka-version",
+        metavar="X.Y.Z",
+        help="无法从安装路径或 libs/kafka-server-common-*.jar 推断 Kafka 版本时指定（如 3.7.0、4.2.0）；或设环境变量 KAFKA_CLI_ASSUME_VERSION",
+    )
+    parser.add_argument(
+        "--skip-kraft-version-check",
+        action="store_true",
+        help="跳过「KRaft 自动部署须 Kafka 3.3+（KIP-833）」检查，自担风险",
+    )
 
     # 通用
     parser.add_argument("--log-dirs", help="Broker/Standalone 日志目录，逗号分隔（官方 log.dirs）")
@@ -1735,7 +1960,11 @@ def main():
     parser.add_argument("--cluster-id", help="KRaft 集群 ID（多节点时与首节点一致）")
     parser.add_argument("--controller-quorum-bootstrap-servers", help="controller.quorum.bootstrap.servers，逗号分隔 host:port")
     parser.add_argument("--controller-port", type=int, default=DEFAULT_CONTROLLER_PORT, help=f"Controller 监听端口 (默认 {DEFAULT_CONTROLLER_PORT})")
-    parser.add_argument("--listeners", help="listeners，如 PLAINTEXT://0.0.0.0:9092")
+    parser.add_argument(
+        "--listeners",
+        help="listeners；standalone 仅写 PLAINTEXT 时会自动追加 CONTROLLER（KRaft combined）；"
+             "生产请配合环境变量 KAFKA_ADVERTISED_HOST 或 extra_properties 中的 advertised.listeners",
+    )
     parser.add_argument("--initial-controllers", help="KRaft 多 controller 时首次 format 的 initial-controllers 列表")
     parser.add_argument("--java-home", help="JAVA_HOME 路径")
     parser.add_argument("--user", default="kafka", help="运行用户")
@@ -1860,7 +2089,12 @@ def main():
     if args.status and not (args.deploy or config.get("deploy")):
         if kafka_home:
             try:
-                deployer = KafkaDeployer(kafka_home, user=config.get("user", "kafka"), group=config.get("group", "kafka"))
+                deployer = KafkaDeployer(
+                    kafka_home,
+                    user=config.get("user", "kafka"),
+                    group=config.get("group", "kafka"),
+                    **_kafka_deployer_kwargs(args, config),
+                )
                 deployer.show_cluster_status(
                     bootstrap_server=args.bootstrap_server or config.get("bootstrap_server", "localhost:9092"),
                     command_config=args.command_config or config.get("command_config")
@@ -2006,7 +2240,8 @@ def main():
         deployer = KafkaDeployer(
             kafka_home,
             user=args.user or config.get("user", "kafka"),
-            group=args.group or config.get("group", "kafka")
+            group=args.group or config.get("group", "kafka"),
+            **_kafka_deployer_kwargs(args, config),
         )
     except ValueError as e:
         logger.error(str(e), extra={"to_stdout": True})
