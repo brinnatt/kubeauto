@@ -4908,7 +4908,20 @@ kubectl get hpa -n kube-mon -w
 kubectl get pods -n kube-mon -l app=hpa-adapter-demo -w
 ```
 
-负载解除后，缩容受 HorizontalPodAutoscaler 默认冷却与稳定窗口约束，未必立即回落至 `minReplicas`；若需与生产行为一致，应在清单中配置 `spec.behavior`，参见 [Horizontal Pod Autoscale](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)。
+**负载解除后为何不会立刻回到 `minReplicas`（与官方一致）**
+
+HorizontalPodAutoscaler 由控制面控制器按周期执行（周期由集群 **kube-controller-manager** 的 `--horizontal-pod-autoscaler-sync-period` 决定，文档默认示例为 **15s**），并非实时连续调节，见 [Horizontal Pod Autoscale · How does a HorizontalPodAutoscaler work?](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#how-does-a-horizontalpodautoscaler-work)。
+
+在**缩容方向**，官方算法在真正下调副本前，会把最近一段时间内算出的「期望副本」记入历史，并在**缩容稳定窗口**内取其中的**较高值**再作决策，用于抑制指标抖动导致的反复删 Pod、再拉起（文档中称为近似 **rolling maximum**），见 [Algorithm details](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details) 与 [Stabilization window](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#stabilization-window)。**默认**下，`autoscaling/v2` 清单未写 `behavior` 时，与 `scaleDown` 合并的默认值里 **`stabilizationWindowSeconds` 为 300**（即 **5 分钟**），与 **kube-controller-manager** 参数 **`--horizontal-pod-autoscaler-downscale-stabilization` 的默认 5 分钟**一致；窗口内各周期推荐副本的取舍关系以上述官方「Configurable scaling behavior / Default behavior」为准，见 [Default behavior](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#default-behavior)。因此：**停止压测后，在指标已回落的前提下，仍可能要等待至多约一个稳定窗口量级的时间**，副本才会逐步向 `minReplicas` 靠拢，**属预期行为**，不是 adapter 或清单写错。
+
+**企业侧落地建议**
+
+| 要点 | 说明 |
+|------|------|
+| 验收与排障 | 压测结束后观察缩容时，**至少覆盖一个完整默认缩容稳定窗口**再下结论；配合 `kubectl describe horizontalpodautoscaler` 的 **Conditions / Events** 与指标是否仍高于目标。 |
+| 清单调参 | 在 **HorizontalPodAutoscaler** 中显式编写 **`spec.behavior.scaleDown`**（如 **`stabilizationWindowSeconds`**、**`policies`**、**`selectPolicy`**），使测试与生产行为可审计、可复现；字段语义与示例见官方 [Configurable scaling behavior](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#configurable-scaling-behavior) 与 [API 参考](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/#HorizontalPodAutoscalerSpec)。 |
+| 集群级参数 | **`--horizontal-pod-autoscaler-tolerance`**、**`--horizontal-pod-autoscaler-downscale-stabilization`** 等仅能通过 **kube-controller-manager** 配置；修改控制面参数须由**平台团队**按本企业**变更流程**在集群侧实施，与仅在业务命名空间内修改 HorizontalPodAutoscaler 清单**不是同一类变更**。 |
+| 与自定义指标 | 自定义指标仍适用同一套 HorizontalPodAutoscaler 算法。若希望负载停止后**更快缩容**，在缩短 **`stabilizationWindowSeconds`** 或收紧 **`scaleDown` policies** 之前，应先评估指标是否容易出现**短时尖峰或采样抖动**；窗口过短可能放大误判，需在**缩容灵敏度**与**稳定性**之间书面评审后再改。 |
 
 若 Prometheus 或 Querier 部署于集群外，须将 values 中 `prometheus.url`、`prometheus.port` 调整为 adapter 所在网络可达的地址，并按 Chart 文档配置 TLS 与身份认证；`overrides` 键名仍须与实际指标标签一致。
 
