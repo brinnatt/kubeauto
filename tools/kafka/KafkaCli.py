@@ -3,12 +3,14 @@
 Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 bin/ 下工具。
 
 常用环境变量：
-  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION
+  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST（生产请设为对客户端可达的本机地址或 DNS）、KAFKA_CLI_ASSUME_VERSION
   KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD（或 KAFKA_USER / KAFKA_PASSWORD）、KAFKA_SASL_MECHANISM
   KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG — 显式客户端 properties（覆盖用户名密码）
   自建 PKI：KAFKA_SSL_KEYSTORE_PATH、KAFKA_SSL_KEYSTORE_PASSWORD、KAFKA_SSL_TRUSTSTORE_PATH、KAFKA_SSL_TRUSTSTORE_PASSWORD（与 --ssl-* 等价）
 
 验收：部署后 `--verify` — standalone/broker 为 TCP + 完整 `show_cluster_status`；controller 为 TCP + `kafka-metadata-quorum describe --status`（元数据面，与官方运维一致）。平时可 `kafkacli --status --kafka-home ...`。
+
+部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在 systemctl start 前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 文件会 chown 给服务用户，避免仅 root 可读）。
 
 退出码：0 成功，1 失败。
 """
@@ -1560,10 +1562,134 @@ class KafkaDeployer:
         except OSError:
             return False
 
+    def _chown_data_paths_for_service_user(self, *path_csvs: str) -> None:
+        """
+        将 log.dirs / metadata.log.dir 根路径递归 chown 为 systemd 运行用户。
+        root 执行 kafka-storage format 时常产生 root 属主文件，若服务以 kafka 用户启动会无法读写元数据而秒退。
+        非 POSIX 或非 root 时 chown 可能失败，仅打 WARNING。
+        """
+        roots: List[str] = []
+        for csv in path_csvs:
+            for part in (csv or "").split(","):
+                p = part.strip()
+                if p:
+                    roots.append(p)
+        if not roots:
+            return
+        ug = f"{self.user}:{self.group}"
+        for root in roots:
+            try:
+                r = run_command(
+                    ["chown", "-R", ug, root],
+                    check=False,
+                    timeout=300,
+                    capture_output=True,
+                )
+                if r.returncode == 0:
+                    logger.info(
+                        "✓ 数据目录已归属 %s（供 systemd 进程读写）: %s",
+                        ug,
+                        root,
+                        extra={"to_stdout": True},
+                    )
+                else:
+                    err = (r.stderr or r.stdout or "").strip()
+                    logger.warning(
+                        "chown -R %s %s 未成功（若 Kafka 无法启动请检查目录权限）: %s",
+                        ug,
+                        root,
+                        err,
+                        extra={"to_stdout": True},
+                    )
+            except Exception as ex:
+                logger.warning("chown 异常 %s: %s", root, ex, extra={"to_stdout": True})
+
+    def _ensure_kafka_home_paths_for_service_user(self) -> None:
+        """
+        systemd 启动前：保证安装目录下运行期常用路径对服务用户可用。
+        - ${KAFKA_HOME}/logs：JVM GC / log4j（mkdir + chown -R）
+        - ${KAFKA_HOME}/config/kafkacli.client.properties：若存在则 chown（脚本写为 0600 root 时仅 root 可读，
+          以 kafka 跑 kafkacli 或需读默认客户端配置时会 Permission denied）
+        """
+        logs_dir = self.kafka_home / "logs"
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as ex:
+            logger.error(
+                "无法创建 Kafka 安装目录下 logs（JVM 须能写入 GC 日志）: %s — %s",
+                logs_dir,
+                ex,
+                extra={"to_stdout": True},
+            )
+            return
+        if os.name != "posix":
+            return
+        ug = f"{self.user}:{self.group}"
+        try:
+            r = run_command(
+                ["chown", "-R", ug, str(logs_dir)],
+                check=False,
+                timeout=120,
+                capture_output=True,
+            )
+            if r.returncode == 0:
+                logger.info(
+                    "✓ 安装目录 logs 已归属 %s（JVM GC / 应用日志可写）: %s",
+                    ug,
+                    logs_dir,
+                    extra={"to_stdout": True},
+                )
+            else:
+                err = (r.stderr or r.stdout or "").strip()
+                logger.warning(
+                    "chown -R %s %s 未成功（若 JVM 报 GC 日志 Permission denied 请检查）: %s",
+                    ug,
+                    logs_dir,
+                    err,
+                    extra={"to_stdout": True},
+                )
+        except Exception as ex:
+            logger.warning("logs 目录 chown 异常: %s", ex, extra={"to_stdout": True})
+
+        kcp = self.kafka_home / "config" / KAFKACLI_CLIENT_PROPERTIES_NAME
+        if not kcp.is_file():
+            return
+        try:
+            r2 = run_command(
+                ["chown", ug, str(kcp)],
+                check=False,
+                timeout=30,
+                capture_output=True,
+            )
+            if r2.returncode == 0:
+                logger.info(
+                    "✓ 默认客户端配置已归属 %s（0600 仅属主可读）: %s",
+                    ug,
+                    kcp,
+                    extra={"to_stdout": True},
+                )
+            else:
+                err = (r2.stderr or r2.stdout or "").strip()
+                logger.warning(
+                    "chown %s %s 未成功（以 %s 运行 kafkacli 读默认客户端文件可能失败）: %s",
+                    ug,
+                    kcp,
+                    self.user,
+                    err,
+                    extra={"to_stdout": True},
+                )
+        except Exception as ex:
+            logger.warning("kafkacli.client.properties chown 异常: %s", ex, extra={"to_stdout": True})
+
     def _wait_for_tcp_listening(
-            self, host: str, port: int, label: str, total_sec: float = 50.0
+            self,
+            host: str,
+            port: int,
+            label: str,
+            total_sec: float = 50.0,
+            systemd_unit: Optional[str] = None,
     ) -> bool:
-        """部署后轮询 TCP 直至可连（JVM 启动可能较慢）；失败则 ERROR 一次。"""
+        """部署后轮询 TCP 直至可连（JVM 启动可能较慢）；失败则 ERROR 并可选拉 journal。"""
         deadline = time.time() + total_sec
         while time.time() < deadline:
             if self._tcp_connect_ok(host, port):
@@ -1578,6 +1704,15 @@ class KafkaDeployer:
             port,
             extra={"to_stdout": True},
         )
+        if systemd_unit:
+            tail = self._journal_tail_for_unit(systemd_unit)
+            self._log_friendly_systemd_failure(tail)
+            if tail:
+                logger.error(
+                    "journal 摘录（排查进程未监听端口）:\n%s",
+                    tail,
+                    extra={"to_stdout": True},
+                )
         return False
 
     def _verify_systemd_service_active(self, service_name: str, wait_sec: int = 45) -> Tuple[bool, str]:
@@ -1619,6 +1754,7 @@ class KafkaDeployer:
             run_command(["systemctl", "daemon-reload"], timeout=30)
             run_command(["systemctl", "enable", service_name], timeout=30)
             run_command(["systemctl", "reset-failed", service_name], check=False, timeout=10)
+            self._ensure_kafka_home_paths_for_service_user()
             run_command(["systemctl", "start", service_name], timeout=60)
         except Exception as e:
             logger.error(f"systemd 启动阶段异常: {e}", extra={"to_stdout": True})
@@ -1894,18 +2030,21 @@ class KafkaDeployer:
         if not self._write_properties(config_path, props):
             return False
 
-        # 3) kafka-storage.sh format --standalone
+        # 3) kafka-storage.sh format --standalone（已格式化目录须加 --ignore-formatted，否则 4.x 直接失败）
         try:
             self._run_storage_cmd([
                 "format",
                 "--standalone",
                 "-t", cluster_id,
+                "--ignore-formatted",
                 "-c", str(config_path)
             ])
             logger.info("✓ Kafka 存储已格式化（standalone）", extra={"to_stdout": True})
         except CommandExecutionError as e:
             logger.error(f"kafka-storage.sh format 失败: {e}", extra={"to_stdout": True})
             return False
+
+        self._chown_data_paths_for_service_user(log_dirs)
 
         # 4) systemd 或前台启动（启用 systemd 时必须 active + 数据端口可连，否则返回失败、不报成功）
         if enable_systemd:
@@ -1923,7 +2062,9 @@ class KafkaDeployer:
             else:
                 bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
                 label = "Broker（PLAINTEXT）"
-            if not self._wait_for_tcp_listening("127.0.0.1", bport, label):
+            if not self._wait_for_tcp_listening(
+                    "127.0.0.1", bport, label, systemd_unit=self.SERVICE_NAME_STANDALONE
+            ):
                 return False
         else:
             logger.info("未启用 systemd；前台启动命令:", extra={"to_stdout": True})
@@ -2092,6 +2233,7 @@ class KafkaDeployer:
             format_args.append("--standalone")
         else:
             format_args.append("--no-initial-controllers")
+        format_args.append("--ignore-formatted")
 
         try:
             self._run_storage_cmd(format_args)
@@ -2100,6 +2242,8 @@ class KafkaDeployer:
             logger.error(f"kafka-storage.sh format 失败: {e}", extra={"to_stdout": True})
             return False
 
+        self._chown_data_paths_for_service_user(metadata_dir, log_dirs or "")
+
         if enable_systemd:
             if not self._enable_systemd_service(
                     f"{self.SERVICE_NAME_CONTROLLER}-{node_id}", config_path, "controller", java_home
@@ -2107,7 +2251,12 @@ class KafkaDeployer:
                 return False
             ls = props.get("listeners", "")
             cport = _listener_scheme_port(ls, "CONTROLLER", controller_listener_port)
-            if not self._wait_for_tcp_listening("127.0.0.1", cport, "Controller（CONTROLLER）"):
+            if not self._wait_for_tcp_listening(
+                    "127.0.0.1",
+                    cport,
+                    "Controller（CONTROLLER）",
+                    systemd_unit=f"{self.SERVICE_NAME_CONTROLLER}-{node_id}",
+            ):
                 return False
 
         if sasl_ssl_material and sasl_username and sasl_password:
@@ -2278,12 +2427,15 @@ class KafkaDeployer:
                 "format",
                 "--cluster-id", cid_req,
                 "--no-initial-controllers",
+                "--ignore-formatted",
                 "-c", str(config_path)
             ])
             logger.info("✓ Broker 存储已格式化", extra={"to_stdout": True})
         except CommandExecutionError as e:
             logger.error(f"kafka-storage.sh format 失败: {e}", extra={"to_stdout": True})
             return False
+
+        self._chown_data_paths_for_service_user(log_dirs)
 
         if enable_systemd:
             if not self._enable_systemd_service(
@@ -2300,7 +2452,12 @@ class KafkaDeployer:
             else:
                 bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
                 label = "Broker（PLAINTEXT）"
-            if not self._wait_for_tcp_listening("127.0.0.1", bport, label):
+            if not self._wait_for_tcp_listening(
+                    "127.0.0.1",
+                    bport,
+                    label,
+                    systemd_unit=f"{self.SERVICE_NAME_BROKER}-{node_id}",
+            ):
                 return False
 
         if sasl_ssl_material and sasl_username and sasl_password:
