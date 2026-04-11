@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """
-Apache Kafka KRaft 部署与运维：生成配置与 systemd 单元、调用发行版 bin/ 下脚本（kafka-storage、kafka-server-start、
-kafka-topics、kafka-consumer-groups、kafka-reassign-partitions、kafka-metadata-quorum、kafka-configs 等）。
+Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 bin/ 下工具。
 
-环境变量：KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION（默认值见脚本内）。
+常用环境变量：
+  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION
+  KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD（或 KAFKA_USER / KAFKA_PASSWORD）、KAFKA_SASL_MECHANISM
+  KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG — 显式客户端 properties（覆盖用户名密码）
+  自建 PKI：KAFKA_SSL_KEYSTORE_PATH、KAFKA_SSL_KEYSTORE_PASSWORD、KAFKA_SSL_TRUSTSTORE_PATH、KAFKA_SSL_TRUSTSTORE_PASSWORD（与 --ssl-* 等价）
+
+验收：部署后 `--verify` — standalone/broker 为 TCP + 完整 `show_cluster_status`；controller 为 TCP + `kafka-metadata-quorum describe --status`（元数据面，与官方运维一致）。平时可 `kafkacli --status --kafka-home ...`。
 
 退出码：0 成功，1 失败。
 """
 
 import argparse
+import atexit
 import json
 import logging
 import os
@@ -19,10 +25,11 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 # 日志配置常量（环境变量 KAFKA_LOG_DIR 未设置时为当前工作目录下的 logs）
 LOG_DIR = os.getenv("KAFKA_LOG_DIR", os.path.join(os.getcwd(), "logs"))
@@ -36,6 +43,9 @@ DEFAULT_BROKER_PORT = 9092
 DEFAULT_CONTROLLER_PORT = 9093
 DEFAULT_LOG_DIR = "/tmp/kafka-logs"
 DEFAULT_METADATA_LOG_DIR = "/tmp/kraft-combined-logs"
+
+# 与 StarCli 类似：部署 SASL/PLAIN 成功后写入，供后续子命令默认使用（0600）
+KAFKACLI_CLIENT_PROPERTIES_NAME = "kafkacli.client.properties"
 
 # 进程退出码：0 成功，1 失败（本脚本与 StarCli 相同编号）
 EXIT_OK = 0
@@ -88,6 +98,230 @@ def _validate_command_config_path(command_config: Optional[str]) -> Optional[str
     if not p.is_file():
         return f"--command-config 文件不存在或不可读: {command_config}"
     return None
+
+
+_TMP_CLIENT_CONFIG_FILES: List[str] = []
+
+
+def _cleanup_temp_client_configs() -> None:
+    for path in _TMP_CLIENT_CONFIG_FILES:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+atexit.register(_cleanup_temp_client_configs)
+
+
+def _jaas_escape(val: str) -> str:
+    return (val or "").replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _build_kafka_client_properties_content(username: str, password: str, mechanism: str) -> str:
+    """生成 Kafka 客户端 properties 文本（SASL_PLAINTEXT；与 bin 工具 --command-config 格式一致）。"""
+    mech = (mechanism or "PLAIN").strip().upper()
+    u, p = _jaas_escape(username), _jaas_escape(password)
+    if mech == "PLAIN":
+        jaas = (
+            "org.apache.kafka.common.security.plain.PlainLoginModule required "
+            f'username="{u}" password="{p}";'
+        )
+        return (
+            "security.protocol=SASL_PLAINTEXT\n"
+            "sasl.mechanism=PLAIN\n"
+            f"sasl.jaas.config={jaas}\n"
+        )
+    if mech in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
+        jaas = (
+            "org.apache.kafka.common.security.scram.ScramLoginModule required "
+            f'username="{u}" password="{p}";'
+        )
+        return (
+            "security.protocol=SASL_PLAINTEXT\n"
+            f"sasl.mechanism={mech}\n"
+            f"sasl.jaas.config={jaas}\n"
+        )
+    raise ValueError(f"不支持的 SASL 机制: {mech}（支持 PLAIN、SCRAM-SHA-256、SCRAM-SHA-512）")
+
+
+def _make_temp_client_properties_file(content: str) -> str:
+    fd, path = tempfile.mkstemp(prefix="kafkacli-", suffix=".client.properties", text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+    except BaseException:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    try:
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        pass
+    _TMP_CLIENT_CONFIG_FILES.append(path)
+    return path
+
+
+def _persist_kafkacli_client_properties(kafka_home: Path, content: str) -> str:
+    """写入 ${kafka_home}/config/kafkacli.client.properties，权限 0600。"""
+    p = kafka_home / "config" / KAFKACLI_CLIENT_PROPERTIES_NAME
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(content, encoding="utf-8")
+    try:
+        os.chmod(p, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        pass
+    logger.info("已写入默认客户端配置（后续命令可省略密码）: %s", p, extra={"to_stdout": True})
+    return str(p)
+
+
+def _broker_plain_jaas(username: str, password: str) -> str:
+    """Broker 侧 PlainLoginModule（单节点：broker 身份与业务用户同一账号）。user_<name> 与登录名一致。"""
+    uq, pq = _jaas_escape(username), _jaas_escape(password)
+    return (
+        "org.apache.kafka.common.security.plain.PlainLoginModule required "
+        f'username="{uq}" password="{pq}" user_{username}="{pq}";'
+    )
+
+
+def _validate_sasl_plain_username(username: str) -> Optional[str]:
+    if not (username or "").strip():
+        return "SASL 用户名为空"
+    if not re.match(r"^[a-zA-Z0-9._-]+$", username):
+        return "SASL/PLAIN 用户名仅允许字母、数字、._-（避免 JAAS 解析歧义）"
+    return None
+
+
+def _infer_ssl_store_type(path: str) -> str:
+    """根据扩展名推断 JKS 或 PKCS12（自建 PKI 常见产物）。"""
+    p = (path or "").lower()
+    if p.endswith((".p12", ".pfx")):
+        return "PKCS12"
+    return "JKS"
+
+
+def _ssl_stack_properties(
+        keystore_path: str,
+        keystore_password: str,
+        key_password: str,
+        truststore_path: str,
+        truststore_password: str,
+) -> Dict[str, str]:
+    """Broker 侧 ssl.*（与 Kafka 文档中 SSL 配置项一致；自建 CA 签发 keystore/truststore）。"""
+    return {
+        "ssl.keystore.type": _infer_ssl_store_type(keystore_path),
+        "ssl.keystore.location": keystore_path,
+        "ssl.keystore.password": keystore_password,
+        "ssl.key.password": key_password,
+        "ssl.truststore.type": _infer_ssl_store_type(truststore_path),
+        "ssl.truststore.location": truststore_path,
+        "ssl.truststore.password": truststore_password,
+        "ssl.client.auth": "none",
+        "ssl.endpoint.identification.algorithm": "https",
+    }
+
+
+def _build_kafka_client_sasl_ssl_content(
+        username: str,
+        password: str,
+        mechanism: str,
+        truststore_path: str,
+        truststore_password: str,
+) -> str:
+    """客户端 SASL_SSL + 信任自建 CA 的 truststore（与 broker ssl.truststore 同源或同 CA）。"""
+    mech = (mechanism or "PLAIN").strip().upper()
+    u, p = _jaas_escape(username), _jaas_escape(password)
+    if mech == "PLAIN":
+        jaas = (
+            "org.apache.kafka.common.security.plain.PlainLoginModule required "
+            f'username="{u}" password="{p}";'
+        )
+    elif mech in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
+        jaas = (
+            "org.apache.kafka.common.security.scram.ScramLoginModule required "
+            f'username="{u}" password="{p}";'
+        )
+    else:
+        raise ValueError(f"不支持的 SASL 机制: {mech}")
+    ts_type = _infer_ssl_store_type(truststore_path)
+    return (
+        "security.protocol=SASL_SSL\n"
+        f"sasl.mechanism={mech}\n"
+        f"sasl.jaas.config={jaas}\n"
+        f"ssl.truststore.type={ts_type}\n"
+        f"ssl.truststore.location={truststore_path}\n"
+        f"ssl.truststore.password={truststore_password}\n"
+        "ssl.endpoint.identification.algorithm=https\n"
+    )
+
+
+def _kraft_combined_sasl_ssl_listener_properties(
+        username: str, password: str, ssl_stack: Dict[str, str]
+) -> Dict[str, str]:
+    """KRaft combined：对外 SASL_SSL + PLAIN + ssl.*；Quorum 仍为 PLAINTEXT。"""
+    broker_port = DEFAULT_BROKER_PORT
+    ctrl_port = DEFAULT_CONTROLLER_PORT
+    adv_host = _advertised_host()
+    ls = f"SASL_SSL://0.0.0.0:{broker_port},CONTROLLER://0.0.0.0:{ctrl_port}"
+    jaas = _broker_plain_jaas(username, password)
+    out: Dict[str, str] = {
+        "listeners": ls,
+        "advertised.listeners": (
+            f"SASL_SSL://{adv_host}:{broker_port},CONTROLLER://{adv_host}:{ctrl_port}"
+        ),
+        "controller.quorum.bootstrap.servers": f"{adv_host}:{ctrl_port}",
+        "controller.listener.names": "CONTROLLER",
+        "inter.broker.listener.name": "SASL_SSL",
+        "listener.security.protocol.map": "CONTROLLER:PLAINTEXT,SASL_SSL:SASL_SSL",
+        "sasl.enabled.mechanisms": "PLAIN",
+        "sasl.mechanism.inter.broker.protocol": "PLAIN",
+        "listener.name.sasl_ssl.plain.sasl.jaas.config": jaas,
+    }
+    out.update(ssl_stack)
+    return out
+
+
+def _kraft_broker_sasl_ssl_listener_properties(username: str, password: str, ssl_stack: Dict[str, str]) -> Dict[str, str]:
+    """KRaft broker-only：SASL_SSL + PLAIN + ssl.*。"""
+    adv_host = _advertised_host()
+    broker_port = DEFAULT_BROKER_PORT
+    ls = f"SASL_SSL://0.0.0.0:{broker_port}"
+    jaas = _broker_plain_jaas(username, password)
+    out: Dict[str, str] = {
+        "listeners": ls,
+        "advertised.listeners": f"SASL_SSL://{adv_host}:{broker_port}",
+        "inter.broker.listener.name": "SASL_SSL",
+        "listener.security.protocol.map": "SASL_SSL:SASL_SSL",
+        "sasl.enabled.mechanisms": "PLAIN",
+        "sasl.mechanism.inter.broker.protocol": "PLAIN",
+        "listener.name.sasl_ssl.plain.sasl.jaas.config": jaas,
+    }
+    out.update(ssl_stack)
+    return out
+
+
+def _kraft_combined_sasl_plain_listener_properties(username: str, password: str) -> Dict[str, str]:
+    """KRaft combined：SASL_PLAINTEXT + PLAIN（与 _kraft_combined_listener_properties 同结构）。"""
+    broker_port = DEFAULT_BROKER_PORT
+    ctrl_port = DEFAULT_CONTROLLER_PORT
+    adv_host = _advertised_host()
+    ls = f"SASL_PLAINTEXT://0.0.0.0:{broker_port},CONTROLLER://0.0.0.0:{ctrl_port}"
+    jaas = _broker_plain_jaas(username, password)
+    return {
+        "listeners": ls,
+        "advertised.listeners": (
+            f"SASL_PLAINTEXT://{adv_host}:{broker_port},CONTROLLER://{adv_host}:{ctrl_port}"
+        ),
+        "controller.quorum.bootstrap.servers": f"{adv_host}:{ctrl_port}",
+        "controller.listener.names": "CONTROLLER",
+        "inter.broker.listener.name": "SASL_PLAINTEXT",
+        "listener.security.protocol.map": "CONTROLLER:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT",
+        "sasl.enabled.mechanisms": "PLAIN",
+        "sasl.mechanism.inter.broker.protocol": "PLAIN",
+        "listener.name.sasl_plaintext.plain.sasl.jaas.config": jaas,
+    }
 
 
 def _normalize_topic_name(topic: str) -> str:
@@ -288,6 +522,23 @@ def _kraft_combined_listener_properties(listeners_override: Optional[str]) -> Di
         "controller.listener.names": "CONTROLLER",
         "inter.broker.listener.name": "PLAINTEXT",
         "listener.security.protocol.map": "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT",
+    }
+
+
+def _kraft_broker_sasl_plain_listener_properties(username: str, password: str) -> Dict[str, str]:
+    """KRaft broker-only：对外 SASL_PLAINTEXT + PLAIN（与 combined SASL 中 broker 侧一致）。"""
+    adv_host = _advertised_host()
+    broker_port = DEFAULT_BROKER_PORT
+    ls = f"SASL_PLAINTEXT://0.0.0.0:{broker_port}"
+    jaas = _broker_plain_jaas(username, password)
+    return {
+        "listeners": ls,
+        "advertised.listeners": f"SASL_PLAINTEXT://{adv_host}:{broker_port}",
+        "inter.broker.listener.name": "SASL_PLAINTEXT",
+        "listener.security.protocol.map": "SASL_PLAINTEXT:SASL_PLAINTEXT",
+        "sasl.enabled.mechanisms": "PLAIN",
+        "sasl.mechanism.inter.broker.protocol": "PLAIN",
+        "listener.name.sasl_plaintext.plain.sasl.jaas.config": jaas,
     }
 
 
@@ -812,6 +1063,102 @@ class ConfigGenerator:
         return props
 
     @staticmethod
+    def generate_combined_standalone_sasl_plain(
+            node_id: int,
+            log_dirs: str,
+            sasl_username: str,
+            sasl_password: str,
+            extra_properties: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, str]:
+        """KRaft 单节点 combined，Broker 对外 SASL_PLAINTEXT + PLAIN（与 generate_combined_standalone_properties 并列）。"""
+        props: Dict[str, str] = {
+            "process.roles": "broker,controller",
+            "node.id": str(node_id),
+            "log.dirs": log_dirs,
+            **_kraft_combined_sasl_plain_listener_properties(sasl_username, sasl_password),
+        }
+        if extra_properties:
+            props.update(extra_properties)
+        return props
+
+    @staticmethod
+    def generate_combined_standalone_sasl_ssl(
+            node_id: int,
+            log_dirs: str,
+            sasl_username: str,
+            sasl_password: str,
+            keystore_path: str,
+            keystore_password: str,
+            key_password: str,
+            truststore_path: str,
+            truststore_password: str,
+            extra_properties: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, str]:
+        """KRaft 单节点 combined：SASL_SSL + PLAIN + 自建 PKI ssl.*。"""
+        ssl_stack = _ssl_stack_properties(
+            keystore_path, keystore_password, key_password, truststore_path, truststore_password
+        )
+        props: Dict[str, str] = {
+            "process.roles": "broker,controller",
+            "node.id": str(node_id),
+            "log.dirs": log_dirs,
+            **_kraft_combined_sasl_ssl_listener_properties(sasl_username, sasl_password, ssl_stack),
+        }
+        if extra_properties:
+            props.update(extra_properties)
+        return props
+
+    @staticmethod
+    def generate_broker_sasl_plain_properties(
+            node_id: int,
+            log_dirs: str,
+            controller_quorum_bootstrap_servers: str,
+            sasl_username: str,
+            sasl_password: str,
+            extra_properties: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, str]:
+        """KRaft broker-only，对外 SASL_PLAINTEXT + PLAIN。"""
+        props: Dict[str, str] = {
+            "process.roles": "broker",
+            "node.id": str(node_id),
+            "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
+            "log.dirs": log_dirs,
+            **_kraft_broker_sasl_plain_listener_properties(sasl_username, sasl_password),
+        }
+        if extra_properties:
+            props.update(extra_properties)
+        return props
+
+    @staticmethod
+    def generate_broker_sasl_ssl_properties(
+            node_id: int,
+            log_dirs: str,
+            controller_quorum_bootstrap_servers: str,
+            sasl_username: str,
+            sasl_password: str,
+            keystore_path: str,
+            keystore_password: str,
+            key_password: str,
+            truststore_path: str,
+            truststore_password: str,
+            extra_properties: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, str]:
+        """KRaft broker-only：SASL_SSL + PLAIN + ssl.*。"""
+        ssl_stack = _ssl_stack_properties(
+            keystore_path, keystore_password, key_password, truststore_path, truststore_password
+        )
+        props: Dict[str, str] = {
+            "process.roles": "broker",
+            "node.id": str(node_id),
+            "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
+            "log.dirs": log_dirs,
+            **_kraft_broker_sasl_ssl_listener_properties(sasl_username, sasl_password, ssl_stack),
+        }
+        if extra_properties:
+            props.update(extra_properties)
+        return props
+
+    @staticmethod
     def generate_server_properties(
             process_roles: str,
             node_id: int,
@@ -1317,10 +1664,16 @@ class KafkaDeployer:
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
             force: bool = False,
-            extra_properties: Optional[Dict[str, str]] = None
+            extra_properties: Optional[Dict[str, str]] = None,
+            enable_sasl_plain: bool = False,
+            sasl_username: Optional[str] = None,
+            sasl_password: Optional[str] = None,
+            sasl_ssl_material: Optional[Tuple[str, str, str, str, str]] = None,
     ) -> bool:
         """
         单节点 combined：写 server.properties → kafka-storage.sh format --standalone → systemd 或打印启动命令。
+        enable_sasl_plain：SASL_PLAINTEXT + PLAIN。
+        sasl_ssl_material 非空：SASL_SSL + PLAIN + ssl.*（自建 PKI），并写入 kafkacli.client.properties。
         """
         logger.info("=== 部署 Kafka Standalone（KRaft 单节点）===", extra={"to_stdout": True})
 
@@ -1351,10 +1704,65 @@ class KafkaDeployer:
                 logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
                 return False
 
-        # 2) 构建 server.properties（与 ConfigGenerator.generate_combined_standalone_properties 一致）
-        props = ConfigGenerator.generate_combined_standalone_properties(
-            node_id, log_dirs, listeners, extra_properties=extra_properties
-        )
+        # 2) 构建 server.properties
+        if sasl_ssl_material:
+            if listeners and listeners.strip():
+                logger.error(
+                    "--deploy-sasl-ssl 时不要同时指定 --listeners（当前版本固定 SASL_SSL 与默认端口）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            err_nm = _validate_sasl_plain_username((sasl_username or "").strip())
+            if err_nm:
+                logger.error(err_nm, extra={"to_stdout": True})
+                return False
+            if not sasl_username or not sasl_password:
+                logger.error(
+                    "--deploy-sasl-ssl 需同时提供 SASL 用户名与密码（--kafka-user / --kafka-password）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            ks, kspw, keypw, ts, tspw = sasl_ssl_material
+            props = ConfigGenerator.generate_combined_standalone_sasl_ssl(
+                node_id,
+                log_dirs,
+                sasl_username.strip(),
+                sasl_password,
+                ks,
+                kspw,
+                keypw,
+                ts,
+                tspw,
+                extra_properties=extra_properties,
+            )
+        elif enable_sasl_plain:
+            if listeners and listeners.strip():
+                logger.error(
+                    "--deploy-sasl-plain 时不要同时指定 --listeners（当前版本固定 SASL_PLAINTEXT 与默认端口）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            err_nm = _validate_sasl_plain_username((sasl_username or "").strip())
+            if err_nm:
+                logger.error(err_nm, extra={"to_stdout": True})
+                return False
+            if not sasl_username or not sasl_password:
+                logger.error(
+                    "--deploy-sasl-plain 需同时提供用户名与密码（--kafka-user / --kafka-password 或 JSON 配置）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            props = ConfigGenerator.generate_combined_standalone_sasl_plain(
+                node_id,
+                log_dirs,
+                sasl_username.strip(),
+                sasl_password,
+                extra_properties=extra_properties,
+            )
+        else:
+            props = ConfigGenerator.generate_combined_standalone_properties(
+                node_id, log_dirs, listeners, extra_properties=extra_properties
+            )
         if not self._write_properties(config_path, props):
             return False
 
@@ -1378,12 +1786,46 @@ class KafkaDeployer:
             ):
                 return False
             ls = props.get("listeners", "")
-            bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
-            if not self._wait_for_tcp_listening("127.0.0.1", bport, "Broker（PLAINTEXT）"):
+            if sasl_ssl_material:
+                bport = _listener_scheme_port(ls, "SASL_SSL", DEFAULT_BROKER_PORT)
+                label = "Broker（SASL_SSL）"
+            elif enable_sasl_plain:
+                bport = _listener_scheme_port(ls, "SASL_PLAINTEXT", DEFAULT_BROKER_PORT)
+                label = "Broker（SASL_PLAINTEXT）"
+            else:
+                bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
+                label = "Broker（PLAINTEXT）"
+            if not self._wait_for_tcp_listening("127.0.0.1", bport, label):
                 return False
         else:
             logger.info("未启用 systemd；前台启动命令:", extra={"to_stdout": True})
             logger.info(f"  {self.bin_dir / 'kafka-server-start.sh'} {config_path}", extra={"to_stdout": True})
+
+        if sasl_ssl_material and sasl_username and sasl_password:
+            try:
+                _ks, _kspw, _kp, ts_path, ts_pw = sasl_ssl_material
+                ctext = _build_kafka_client_sasl_ssl_content(
+                    sasl_username.strip(), sasl_password, "PLAIN", ts_path, ts_pw
+                )
+                _persist_kafkacli_client_properties(self.kafka_home, ctext)
+            except (ValueError, OSError) as ex:
+                logger.warning(
+                    "写入 %s 失败: %s",
+                    KAFKACLI_CLIENT_PROPERTIES_NAME,
+                    ex,
+                    extra={"to_stdout": True},
+                )
+        elif enable_sasl_plain and sasl_username and sasl_password:
+            try:
+                ctext = _build_kafka_client_properties_content(sasl_username.strip(), sasl_password, "PLAIN")
+                _persist_kafkacli_client_properties(self.kafka_home, ctext)
+            except OSError as ex:
+                logger.warning(
+                    "写入 %s 失败: %s",
+                    KAFKACLI_CLIENT_PROPERTIES_NAME,
+                    ex,
+                    extra={"to_stdout": True},
+                )
 
         return True
 
@@ -1399,13 +1841,19 @@ class KafkaDeployer:
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
             force: bool = False,
-            extra_properties: Optional[Dict[str, str]] = None
+            extra_properties: Optional[Dict[str, str]] = None,
+            enable_sasl_plain: bool = False,
+            sasl_username: Optional[str] = None,
+            sasl_password: Optional[str] = None,
+            sasl_ssl_material: Optional[Tuple[str, str, str, str, str]] = None,
     ) -> bool:
         """
         部署 KRaft Controller 节点（Kafka 4.x）。配置与 ConfigGenerator.generate_controller_properties 一致，
         含 controller.listener.names、listener.security.protocol.map。
         - 首个 controller：format --standalone 或 --initial-controllers
         - 后续 controller：format --no-initial-controllers
+        enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties，
+        供本机连接集群内 Broker（PLAIN 或 SASL_SSL，与集群一致）。
         """
         logger.info("=== 部署 Kafka Controller（KRaft）===", extra={"to_stdout": True})
 
@@ -1429,6 +1877,39 @@ class KafkaDeployer:
         if config_path.exists() and not force:
             logger.error(f"配置已存在: {config_path}，使用 --force 覆盖", extra={"to_stdout": True})
             return False
+
+        if sasl_ssl_material:
+            err_nm = _validate_sasl_plain_username((sasl_username or "").strip())
+            if err_nm:
+                logger.error(err_nm, extra={"to_stdout": True})
+                return False
+            if not sasl_username or not sasl_password:
+                logger.error(
+                    "--deploy-sasl-ssl 需同时提供 SASL 用户名与密码（--kafka-user / --kafka-password）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            logger.info(
+                "已启用 --deploy-sasl-ssl（仅客户端文件）：Controller 监听仍为 CONTROLLER:PLAINTEXT；"
+                "将写入 kafkacli.client.properties（SASL_SSL）供连接集群内 Broker。",
+                extra={"to_stdout": True},
+            )
+        elif enable_sasl_plain:
+            err_nm = _validate_sasl_plain_username((sasl_username or "").strip())
+            if err_nm:
+                logger.error(err_nm, extra={"to_stdout": True})
+                return False
+            if not sasl_username or not sasl_password:
+                logger.error(
+                    "--deploy-sasl-plain 需同时提供用户名与密码（--kafka-user / --kafka-password 或 JSON）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            logger.info(
+                "已启用 --deploy-sasl-plain：Controller 监听仍为 CONTROLLER:PLAINTEXT；"
+                "将写入 kafkacli.client.properties 供连接集群内 SASL Broker。",
+                extra={"to_stdout": True},
+            )
 
         # Controller 配置（与 ConfigGenerator.generate_controller_properties 一致，含 Kafka 4.x protocol map）
         props = ConfigGenerator.generate_controller_properties(
@@ -1475,6 +1956,32 @@ class KafkaDeployer:
             if not self._wait_for_tcp_listening("127.0.0.1", cport, "Controller（CONTROLLER）"):
                 return False
 
+        if sasl_ssl_material and sasl_username and sasl_password:
+            try:
+                _ks, _kspw, _kp, ts_path, ts_pw = sasl_ssl_material
+                ctext = _build_kafka_client_sasl_ssl_content(
+                    sasl_username.strip(), sasl_password, "PLAIN", ts_path, ts_pw
+                )
+                _persist_kafkacli_client_properties(self.kafka_home, ctext)
+            except (ValueError, OSError) as ex:
+                logger.warning(
+                    "写入 %s 失败: %s",
+                    KAFKACLI_CLIENT_PROPERTIES_NAME,
+                    ex,
+                    extra={"to_stdout": True},
+                )
+        elif enable_sasl_plain and sasl_username and sasl_password:
+            try:
+                ctext = _build_kafka_client_properties_content(sasl_username.strip(), sasl_password, "PLAIN")
+                _persist_kafkacli_client_properties(self.kafka_home, ctext)
+            except OSError as ex:
+                logger.warning(
+                    "写入 %s 失败: %s",
+                    KAFKACLI_CLIENT_PROPERTIES_NAME,
+                    ex,
+                    extra={"to_stdout": True},
+                )
+
         return True
 
     def deploy_broker(
@@ -1487,12 +1994,17 @@ class KafkaDeployer:
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
             force: bool = False,
-            extra_properties: Optional[Dict[str, str]] = None
+            extra_properties: Optional[Dict[str, str]] = None,
+            enable_sasl_plain: bool = False,
+            sasl_username: Optional[str] = None,
+            sasl_password: Optional[str] = None,
+            sasl_ssl_material: Optional[Tuple[str, str, str, str, str]] = None,
     ) -> bool:
         """
         部署 KRaft Broker 节点（Kafka 4.x）。format --no-initial-controllers，process.roles=broker。
         默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
         advertised.listeners 主机来自 KAFKA_ADVERTISED_HOST；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
+        enable_sasl_plain / sasl_ssl_material：对外 SASL_PLAINTEXT 或 SASL_SSL+PLAIN，并写入 kafkacli.client.properties。
         """
         logger.info("=== 部署 Kafka Broker（KRaft）===", extra={"to_stdout": True})
 
@@ -1521,15 +2033,72 @@ class KafkaDeployer:
             logger.error(f"配置已存在: {config_path}，使用 --force 覆盖", extra={"to_stdout": True})
             return False
 
-        props = {
-            "process.roles": "broker",
-            "node.id": str(node_id),
-            "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
-            "log.dirs": log_dirs,
-            **_kraft_broker_listener_properties(listeners),
-        }
-        if extra_properties:
-            props.update(extra_properties)
+        if sasl_ssl_material:
+            if listeners and listeners.strip():
+                logger.error(
+                    "--deploy-sasl-ssl 时不要同时指定 --listeners（当前版本固定 SASL_SSL 与默认端口）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            err_nm = _validate_sasl_plain_username((sasl_username or "").strip())
+            if err_nm:
+                logger.error(err_nm, extra={"to_stdout": True})
+                return False
+            if not sasl_username or not sasl_password:
+                logger.error(
+                    "--deploy-sasl-ssl 需同时提供 SASL 用户名与密码（--kafka-user / --kafka-password）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            ks, kspw, keypw, ts, tspw = sasl_ssl_material
+            props = ConfigGenerator.generate_broker_sasl_ssl_properties(
+                node_id,
+                log_dirs,
+                controller_quorum_bootstrap_servers,
+                sasl_username.strip(),
+                sasl_password,
+                ks,
+                kspw,
+                keypw,
+                ts,
+                tspw,
+                extra_properties=extra_properties,
+            )
+        elif enable_sasl_plain:
+            if listeners and listeners.strip():
+                logger.error(
+                    "--deploy-sasl-plain 时不要同时指定 --listeners（当前版本固定 SASL_PLAINTEXT 与默认端口）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            err_nm = _validate_sasl_plain_username((sasl_username or "").strip())
+            if err_nm:
+                logger.error(err_nm, extra={"to_stdout": True})
+                return False
+            if not sasl_username or not sasl_password:
+                logger.error(
+                    "--deploy-sasl-plain 需同时提供用户名与密码（--kafka-user / --kafka-password 或 JSON）",
+                    extra={"to_stdout": True},
+                )
+                return False
+            props = ConfigGenerator.generate_broker_sasl_plain_properties(
+                node_id,
+                log_dirs,
+                controller_quorum_bootstrap_servers,
+                sasl_username.strip(),
+                sasl_password,
+                extra_properties=extra_properties,
+            )
+        else:
+            props = {
+                "process.roles": "broker",
+                "node.id": str(node_id),
+                "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
+                "log.dirs": log_dirs,
+                **_kraft_broker_listener_properties(listeners),
+            }
+            if extra_properties:
+                props.update(extra_properties)
         if not self._write_properties(config_path, props):
             return False
 
@@ -1551,9 +2120,43 @@ class KafkaDeployer:
             ):
                 return False
             ls = props.get("listeners", "")
-            bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
-            if not self._wait_for_tcp_listening("127.0.0.1", bport, "Broker（PLAINTEXT）"):
+            if sasl_ssl_material:
+                bport = _listener_scheme_port(ls, "SASL_SSL", DEFAULT_BROKER_PORT)
+                label = "Broker（SASL_SSL）"
+            elif enable_sasl_plain:
+                bport = _listener_scheme_port(ls, "SASL_PLAINTEXT", DEFAULT_BROKER_PORT)
+                label = "Broker（SASL_PLAINTEXT）"
+            else:
+                bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
+                label = "Broker（PLAINTEXT）"
+            if not self._wait_for_tcp_listening("127.0.0.1", bport, label):
                 return False
+
+        if sasl_ssl_material and sasl_username and sasl_password:
+            try:
+                _ks, _kspw, _kp, ts_path, ts_pw = sasl_ssl_material
+                ctext = _build_kafka_client_sasl_ssl_content(
+                    sasl_username.strip(), sasl_password, "PLAIN", ts_path, ts_pw
+                )
+                _persist_kafkacli_client_properties(self.kafka_home, ctext)
+            except (ValueError, OSError) as ex:
+                logger.warning(
+                    "写入 %s 失败: %s",
+                    KAFKACLI_CLIENT_PROPERTIES_NAME,
+                    ex,
+                    extra={"to_stdout": True},
+                )
+        elif enable_sasl_plain and sasl_username and sasl_password:
+            try:
+                ctext = _build_kafka_client_properties_content(sasl_username.strip(), sasl_password, "PLAIN")
+                _persist_kafkacli_client_properties(self.kafka_home, ctext)
+            except OSError as ex:
+                logger.warning(
+                    "写入 %s 失败: %s",
+                    KAFKACLI_CLIENT_PROPERTIES_NAME,
+                    ex,
+                    extra={"to_stdout": True},
+                )
 
         return True
 
@@ -1566,6 +2169,61 @@ class KafkaDeployer:
     ) -> bool:
         """健康检查：验证 Controller 端口是否监听"""
         return self._verify_port_reachable(host, port, "Controller")
+
+    def verify_controller_quorum(
+            self,
+            bootstrap_controller: str,
+            command_config: Optional[str] = None,
+    ) -> bool:
+        """
+        部署后元数据面验收：kafka-metadata-quorum.sh --bootstrap-controller … describe --status。
+        与 KRaft 官方 Quorum 运维方式一致（先确认 Leader/Voters 可读）。
+        """
+        cc_err = _validate_command_config_path(command_config)
+        if cc_err:
+            logger.error(cc_err, extra={"to_stdout": True})
+            return False
+        bc = (bootstrap_controller or "").strip()
+        ok_bs, msg_bs = _validate_bootstrap_server(bc)
+        if not ok_bs:
+            logger.error("bootstrap-controller 无效: %s", msg_bs, extra={"to_stdout": True})
+            return False
+        script = self.bin_dir / "kafka-metadata-quorum.sh"
+        if not script.is_file():
+            logger.error("未找到: %s", script, extra={"to_stdout": True})
+            return False
+        cmd = [str(script), "--bootstrap-controller", bc, "describe", "--status"]
+        if command_config:
+            cmd.extend(["--command-config", command_config])
+        print()
+        print("=" * 72)
+        print(" Controller 部署验收（元数据 Quorum）")
+        print("=" * 72)
+        print(f" bootstrap.controller : {bc}")
+        print(f" command.config       : {command_config or '(未使用)'}")
+        print("=" * 72)
+        try:
+            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
+        except Exception as ex:
+            logger.error("kafka-metadata-quorum 执行失败: %s", ex, extra={"to_stdout": True})
+            return False
+        out = (r.stdout or "").strip()
+        stderr_msg = (r.stderr or "").strip()
+        if r.returncode != 0:
+            logger.error(
+                "Quorum describe --status 失败 (rc=%s): %s",
+                r.returncode,
+                (stderr_msg or out)[:800],
+                extra={"to_stdout": True},
+            )
+            return False
+        for line in out.splitlines():
+            print(f"  {line}")
+        if not out:
+            logger.error("Quorum 无输出", extra={"to_stdout": True})
+            return False
+        logger.info("✓ Controller 元数据 Quorum 验收通过", extra={"to_stdout": True})
+        return True
 
     def clean_deployment(
             self,
@@ -1620,52 +2278,146 @@ class KafkaDeployer:
             config_path.unlink()
             logger.info(f"✓ 已删除配置: {config_path}", extra={"to_stdout": True})
 
+        if deploy_type in ("standalone", "controller", "broker"):
+            kcp = self.config_dir / KAFKACLI_CLIENT_PROPERTIES_NAME
+            if kcp.exists():
+                kcp.unlink()
+                logger.info(f"✓ 已删除默认客户端配置: {kcp}", extra={"to_stdout": True})
+
         logger.info("=== 清理完成 ===", extra={"to_stdout": True})
         return True
 
     def show_cluster_status(
             self,
             bootstrap_server: str = "localhost:9092",
-            command_config: Optional[str] = None
+            command_config: Optional[str] = None,
+            auth_summary: Optional[str] = None,
     ) -> bool:
-        """执行 kafka-metadata-quorum.sh describe --status / --replication。"""
-        print("=== Kafka 集群状态 (KRaft) ===\n")
-        bin_dir = self.bin_dir
-        quorum_script = bin_dir / "kafka-metadata-quorum.sh"
-        if not quorum_script.exists():
-            logger.error(f"未找到 {quorum_script}；--kafka-home 须为 Kafka 安装根目录", extra={"to_stdout": True})
+        """
+        集群验收报告（对齐 StarCli「一条命令看清状态」的用法）：连通、KRaft Quorum、副本健康、
+        Topic/Consumer Group 规模、Lag 汇总与结论。认证与 _resolve_kafka_client_config 一致（用户名密码或 kafkacli.client.properties）。
+        返回 True 表示客户端连通且 Quorum describe --status 成功（可认为元数据面可用）。
+        """
+        cc_err = _validate_command_config_path(command_config)
+        if cc_err:
+            logger.error(cc_err, extra={"to_stdout": True})
             return False
 
-        cmd_common = [str(quorum_script), "--bootstrap-server", bootstrap_server]
+        auth_line = auth_summary if auth_summary is not None else (
+            command_config or "(未使用 — PLAINTEXT 或未配置认证)"
+        )
+
+        print()
+        print("=" * 72)
+        print(" Kafka 集群状态 / 验收报告")
+        print("=" * 72)
+        print(f" bootstrap.server : {bootstrap_server}")
+        print(f" 客户端认证       : {auth_line}")
         if command_config:
-            cmd_common.extend(["--command-config", command_config])
+            print(f" command.config   : {command_config}")
+        print("=" * 72)
 
-        def _describe_and_print(describe_args: List[str], fallback: str, abort_on_error: bool) -> bool:
+        coll = KafkaMetricsCollector(str(self.kafka_home), bootstrap_server, command_config)
+
+        ok_connect = False
+        ok_quorum_status = False
+
+        # [1] 客户端 → Broker（与运维命令同源认证）
+        print("\n[1] 客户端 → 集群（kafka-broker-api-versions）")
+        bv = coll.collect_broker_api_versions()
+        if bv.get("ok"):
+            ok_connect = True
+            print(f"  状态: OK")
+            print(f"  摘要: {bv.get('snippet', '')}")
+        else:
+            print(f"  状态: FAIL")
+            print(f"  原因: {bv.get('error', 'unknown')}")
+
+        # [2] KRaft Quorum
+        print("\n[2] KRaft 元数据 Quorum（kafka-metadata-quorum describe --status）")
+        qs = coll.collect_quorum_status()
+        if qs.get("ok"):
+            ok_quorum_status = True
+            print(f"  LeaderId     : {qs.get('leader_id')}")
+            print(f"  LeaderEpoch  : {qs.get('leader_epoch')}")
+            print(f"  CurrentVoters: {qs.get('voters')}")
+        else:
+            print(f"  状态: FAIL  {qs.get('error', '')}")
+
+        quorum_script = self.bin_dir / "kafka-metadata-quorum.sh"
+        if quorum_script.is_file():
+            cmd_base = [str(quorum_script), "--bootstrap-server", bootstrap_server.strip(), "describe"]
+            if command_config:
+                cmd_base.extend(["--command-config", command_config])
             try:
-                result = run_command(
-                    cmd_common + ["describe"] + describe_args,
-                    capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120)
+                r = run_command(
+                    cmd_base + ["--replication"],
+                    capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120),
                 )
-                if result.returncode == 0 and result.stdout:
-                    for line in result.stdout.strip().split("\n"):
-                        print(line)
+                print("\n[3] Quorum 副本同步（describe --replication）")
+                if r.returncode == 0 and (r.stdout or "").strip():
+                    for line in (r.stdout or "").strip().splitlines():
+                        print(f"  {line}")
                 else:
-                    print(result.stderr or result.stdout or fallback)
-                return True
-            except Exception as e:
-                if abort_on_error:
-                    logger.error(f"查询 quorum 状态失败: {e}", extra={"to_stdout": True})
-                    return False
-                logger.debug("describe %s 失败: %s", describe_args, e)
-                return True
+                    print(f"  (无输出或失败) {(r.stderr or '')[:500]}")
+            except Exception as ex:
+                print(f"  查询失败: {ex}")
 
-        logger.info("元数据 Quorum 状态:", extra={"to_stdout": True})
-        if not _describe_and_print(["--status"], "查询失败", abort_on_error=True):
-            return False
-        print("\nQuorum 副本:")
-        _describe_and_print(["--replication"], "(无或查询失败)", abort_on_error=False)
-        print("")
-        return True
+        # [4] 副本健康（under-replicated）
+        print("\n[4] 分区副本健康（kafka-topics --under-replicated-partitions）")
+        ph = coll.collect_topic_partition_health()
+        ur = int(ph.get("under_replicated_partitions") or 0)
+        if ph.get("ok"):
+            print(f"  under-replicated 分区数: {ur}")
+            if ur > 0:
+                print("  说明: 存在副本未齐，需排查 Broker/网络/ISR（生产风险）。")
+        else:
+            print(f"  查询失败: {ph.get('error', '')}")
+
+        # [5] Topic / Group 规模
+        print("\n[5] 规模概览")
+        ti = coll.collect_topic_count()
+        gi = coll.collect_consumer_group_count()
+        if ti.get("ok"):
+            print(f"  Topic 数量           : {ti.get('topic_count', 0)}")
+        else:
+            print(f"  Topic 数量: 查询失败 — {ti.get('error', '')}")
+        if gi.get("ok"):
+            print(f"  Consumer Group 数量  : {gi.get('group_count', 0)}")
+        else:
+            print(f"  Consumer Group 数量: 查询失败 — {gi.get('error', '')}")
+
+        # [6] Lag 汇总
+        print("\n[6] Consumer Lag 汇总（--all-groups --describe）")
+        lag = coll.collect_consumer_lag()
+        if lag.get("ok"):
+            print(f"  估算总 Lag（逐行 LAG 累加）: {lag.get('total_lag', 0)}")
+            detail = lag.get("groups") or []
+            if detail:
+                print("  样例（前 8 条）:")
+                for row in detail[:8]:
+                    print(f"    topic={row.get('topic')} partition={row.get('partition')} lag={row.get('lag')}")
+        else:
+            print(f"  查询失败: {lag.get('error', '')}")
+
+        # [7] 结论
+        print("\n" + "-" * 72)
+        print(" 验收结论")
+        print("-" * 72)
+        critical_ok = ok_connect and ok_quorum_status
+        ur_ok = ph.get("ok") and ur == 0
+        if critical_ok and ur_ok:
+            print("  [通过] 客户端与 Quorum 可用；当前无 under-replicated 分区。")
+        elif critical_ok and ph.get("ok") and ur > 0:
+            print("  [警告] 客户端与 Quorum 可用，但存在 under-replicated 分区。")
+        elif not critical_ok:
+            print("  [未通过] 客户端连通或 Quorum 检查失败，请先修复后再投产。")
+        else:
+            print("  [部分] 核心项通过，部分指标查询失败，请查看上文。")
+        print("-" * 72)
+        print()
+
+        return critical_ok
 
 
 def _build_bootstrap_cmd(
@@ -2031,13 +2783,101 @@ class KafkaMetricsCollector:
             out["error"] = str(e)
         return out
 
+    def collect_broker_api_versions(self) -> Dict[str, Any]:
+        """kafka-broker-api-versions.sh：验证 bootstrap 可访问（含 SASL/SSL 时与 command-config 一致）。"""
+        out: Dict[str, Any] = {"ok": False, "error": None, "snippet": ""}
+        try:
+            pre = self._metrics_precheck("kafka-broker-api-versions.sh")
+            if pre:
+                out["error"] = pre
+                return out
+            cmd = [
+                str(self.bin_dir / "kafka-broker-api-versions.sh"),
+                "--bootstrap-server",
+                self.bootstrap_server.strip(),
+            ]
+            if self.command_config:
+                cmd.extend(["--command-config", self.command_config])
+            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
+            if r.returncode != 0:
+                out["error"] = (r.stderr or r.stdout or "").strip() or f"exit {r.returncode}"
+                return out
+            text = (r.stdout or "").strip()
+            lines = [ln for ln in text.splitlines() if ln.strip()]
+            out["ok"] = True
+            if lines:
+                s0 = lines[0]
+                out["snippet"] = (s0[:240] + "…") if len(s0) > 240 else s0
+            else:
+                out["snippet"] = "(无输出)"
+        except Exception as e:
+            out["error"] = str(e)
+        return out
+
+    def collect_topic_count(self) -> Dict[str, Any]:
+        """kafka-topics.sh --list 统计 Topic 数量。"""
+        out: Dict[str, Any] = {"ok": False, "topic_count": 0, "error": None}
+        try:
+            pre = self._metrics_precheck("kafka-topics.sh")
+            if pre:
+                out["error"] = pre
+                return out
+            cmd = [
+                str(self.bin_dir / "kafka-topics.sh"),
+                "--bootstrap-server",
+                self.bootstrap_server.strip(),
+                "--list",
+            ]
+            if self.command_config:
+                cmd.extend(["--command-config", self.command_config])
+            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
+            if r.returncode != 0:
+                out["error"] = (r.stderr or r.stdout or "").strip() or f"exit {r.returncode}"
+                return out
+            names = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+            out["topic_count"] = len(names)
+            out["ok"] = True
+        except Exception as e:
+            out["error"] = str(e)
+        return out
+
+    def collect_consumer_group_count(self) -> Dict[str, Any]:
+        """kafka-consumer-groups.sh --list 统计 Group 数量。"""
+        out: Dict[str, Any] = {"ok": False, "group_count": 0, "error": None}
+        try:
+            pre = self._metrics_precheck("kafka-consumer-groups.sh")
+            if pre:
+                out["error"] = pre
+                return out
+            cmd = [
+                str(self.bin_dir / "kafka-consumer-groups.sh"),
+                "--bootstrap-server",
+                self.bootstrap_server.strip(),
+                "--list",
+            ]
+            if self.command_config:
+                cmd.extend(["--command-config", self.command_config])
+            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
+            if r.returncode != 0:
+                out["error"] = (r.stderr or r.stdout or "").strip() or f"exit {r.returncode}"
+                return out
+            names = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+            out["group_count"] = len(names)
+            out["ok"] = True
+        except Exception as e:
+            out["error"] = str(e)
+        return out
+
     def collect_all(self) -> Dict[str, Any]:
-        """汇总：quorum、under_replicated、consumer_lag、bootstrap 连通性"""
+        """汇总：连通、Quorum、副本、Topic/Group 规模、Lag。"""
         result = {
             "bootstrap_server": self.bootstrap_server,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "broker_connect": self.collect_broker_api_versions(),
             "quorum": self.collect_quorum_status(),
             "partition_health": self.collect_topic_partition_health(),
+            "topic_inventory": self.collect_topic_count(),
+            "consumer_group_inventory": self.collect_consumer_group_count(),
             "consumer_lag": self.collect_consumer_lag(),
         }
         return result
@@ -2153,6 +2993,204 @@ def _get_opt(args: argparse.Namespace, config: Dict[str, Any], attr: str, config
     if val is not None and (not isinstance(val, str) or val.strip() != ""):
         return val
     return config.get(key)
+
+
+def _resolve_kafka_client_config(
+        args: argparse.Namespace,
+        config: Dict[str, Any],
+        kafka_home: Optional[str],
+) -> Tuple[Optional[str], str]:
+    """
+    解析 Kafka 客户端认证（与 StarCli 思路一致：显式文件 > 用户名密码 > 安装目录下默认文件 > 无）。
+
+    优先级：--command-config / command_config / KAFKA_CLI_COMMAND_CONFIG；
+    否则 --kafka-user + --kafka-password（或 KAFKA_SASL_*）由脚本生成临时 client 配置；
+    否则若存在 ${kafka_home}/config/kafkacli.client.properties（如 --deploy-sasl-plain 部署写入）则使用。
+    """
+    v = _get_opt(args, config, "command_config")
+    if not (v or "").strip():
+        v = os.getenv("KAFKA_CLI_COMMAND_CONFIG") or os.getenv("KAFKA_COMMAND_CONFIG")
+    v = (v or "").strip() or None
+    if v:
+        path_err = _validate_command_config_path(v)
+        if path_err:
+            logger.error(path_err, extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        return v, f"客户端配置文件: {v}"
+
+    user = _get_opt(args, config, "kafka_user")
+    if not (user or "").strip():
+        user = os.getenv("KAFKA_SASL_USERNAME") or os.getenv("KAFKA_USER")
+    user = (user or "").strip() or None
+
+    pw = _get_opt(args, config, "kafka_password")
+    if not (pw or "").strip():
+        pw = os.getenv("KAFKA_SASL_PASSWORD") or os.getenv("KAFKA_PASSWORD")
+    pw = (pw or "").strip() or None
+
+    mech = _get_opt(args, config, "kafka_sasl_mechanism")
+    if not (mech or "").strip():
+        mech = os.getenv("KAFKA_SASL_MECHANISM")
+    mech = ((mech or "PLAIN").strip() or "PLAIN").upper()
+
+    if user and pw:
+        # 显式 str：收窄 Optional / os.getenv 推断，满足 _build_kafka_client_properties_content 签名
+        u_s, p_s, m_s = str(user), str(pw), str(mech)
+        try:
+            content = _build_kafka_client_properties_content(u_s, p_s, m_s)
+        except ValueError as e:
+            logger.error(str(e), extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        path = _make_temp_client_properties_file(content)
+        return (
+            path,
+            f"SASL/{m_s} 用户={u_s}（由 --kafka-user/--kafka-password 或 KAFKA_SASL_* 生成临时配置）",
+        )
+
+    if kafka_home:
+        saved = Path(kafka_home).expanduser() / "config" / KAFKACLI_CLIENT_PROPERTIES_NAME
+        if saved.is_file():
+            p = str(saved.resolve())
+            saved_err = _validate_command_config_path(p)
+            if saved_err:
+                logger.error(saved_err, extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
+            return p, f"默认客户端配置: {p}（由 --deploy-sasl-plain / --deploy-sasl-ssl 写入，0600）"
+
+    return None, "(未使用 — PLAINTEXT 或未配置认证)"
+
+
+def _resolve_deploy_sasl_plain_credentials(
+        args: argparse.Namespace, config: Dict[str, Any]
+) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    --deploy-sasl-plain 与 --kafka-user/--kafka-password（或 JSON / KAFKA_SASL_*）解析。
+    用于 standalone / controller / broker 部署；当前部署侧仅生成 PLAIN 服务端与客户端配置。
+    """
+    deploy_sasl = bool(getattr(args, "deploy_sasl_plain", False) or config.get("deploy_sasl_plain"))
+    ku = _get_opt(args, config, "kafka_user")
+    if not (ku or "").strip():
+        ku = os.getenv("KAFKA_SASL_USERNAME") or os.getenv("KAFKA_USER")
+    ku = (ku or "").strip() or None
+    kp = _get_opt(args, config, "kafka_password")
+    if not (kp or "").strip():
+        kp = os.getenv("KAFKA_SASL_PASSWORD") or os.getenv("KAFKA_PASSWORD")
+    kp = (kp or "").strip() or None
+    if deploy_sasl:
+        if not ku or not kp:
+            logger.error(
+                "--deploy-sasl-plain 需同时提供用户名与密码（--kafka-user / --kafka-password 或 JSON / KAFKA_SASL_*）",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
+        mech_chk = _get_opt(args, config, "kafka_sasl_mechanism") or os.getenv("KAFKA_SASL_MECHANISM") or "PLAIN"
+        mech_chk = (mech_chk or "PLAIN").strip().upper()
+        if mech_chk != "PLAIN":
+            logger.error(
+                "--deploy-sasl-plain 当前仅支持 PLAIN（请将 kafka_sasl_mechanism 设为 PLAIN）",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
+    return deploy_sasl, ku if deploy_sasl else None, kp if deploy_sasl else None
+
+
+def _resolve_kafka_sasl_account(
+        args: argparse.Namespace, config: Dict[str, Any]
+) -> Tuple[Optional[str], Optional[str]]:
+    """解析 --kafka-user / --kafka-password 与 KAFKA_SASL_* / KAFKA_* 环境变量。"""
+    ku = _get_opt(args, config, "kafka_user")
+    if not (ku or "").strip():
+        ku = os.getenv("KAFKA_SASL_USERNAME") or os.getenv("KAFKA_USER")
+    ku = (ku or "").strip() or None
+    kp = _get_opt(args, config, "kafka_password")
+    if not (kp or "").strip():
+        kp = os.getenv("KAFKA_SASL_PASSWORD") or os.getenv("KAFKA_PASSWORD")
+    kp = (kp or "").strip() or None
+    return ku, kp
+
+
+def _resolve_deploy_sasl_ssl_material(
+        args: argparse.Namespace, config: Dict[str, Any]
+) -> Tuple[str, str, str, str, str]:
+    """
+    --deploy-sasl-ssl：服务端 keystore + truststore（自建 PKI）；环境变量与 --ssl-* 等价。
+    返回 (keystore_path, keystore_pw, key_pw, truststore_path, truststore_pw)。
+    """
+    ks = _get_opt(args, config, "ssl_keystore_path")
+    if not (ks or "").strip():
+        ks = os.getenv("KAFKA_SSL_KEYSTORE_PATH") or os.getenv("KAFKA_SSL_KEYSTORE_LOCATION")
+    ks = (ks or "").strip()
+    kspw = _get_opt(args, config, "ssl_keystore_password")
+    if not (kspw or "").strip():
+        kspw = os.getenv("KAFKA_SSL_KEYSTORE_PASSWORD")
+    kspw = (kspw or "").strip()
+    keypw = _get_opt(args, config, "ssl_key_password")
+    if not (keypw or "").strip():
+        keypw = os.getenv("KAFKA_SSL_KEY_PASSWORD")
+    keypw = (keypw or "").strip()
+    ts = _get_opt(args, config, "ssl_truststore_path")
+    if not (ts or "").strip():
+        ts = os.getenv("KAFKA_SSL_TRUSTSTORE_PATH") or os.getenv("KAFKA_SSL_TRUSTSTORE_LOCATION")
+    ts = (ts or "").strip()
+    tspw = _get_opt(args, config, "ssl_truststore_password")
+    if not (tspw or "").strip():
+        tspw = os.getenv("KAFKA_SSL_TRUSTSTORE_PASSWORD")
+    tspw = (tspw or "").strip()
+    if not ks or not kspw or not ts or not tspw:
+        logger.error(
+            "--deploy-sasl-ssl 需 keystore/truststore 路径与口令："
+            "--ssl-keystore-path、--ssl-keystore-password、--ssl-truststore-path、--ssl-truststore-password "
+            "（或 KAFKA_SSL_* 环境变量）",
+            extra={"to_stdout": True},
+        )
+        sys.exit(EXIT_ERROR)
+    ks_p = Path(ks).expanduser()
+    ts_p = Path(ts).expanduser()
+    if not ks_p.is_file():
+        logger.error("--ssl-keystore-path 不是可读文件: %s", ks, extra={"to_stdout": True})
+        sys.exit(EXIT_ERROR)
+    if not ts_p.is_file():
+        logger.error("--ssl-truststore-path 不是可读文件: %s", ts, extra={"to_stdout": True})
+        sys.exit(EXIT_ERROR)
+    eff_key_pw = keypw if keypw else kspw
+    return str(ks_p.resolve()), kspw, eff_key_pw, str(ts_p.resolve()), tspw
+
+
+def _log_post_deploy_production_practices(
+        deploy_type: str, deploy_sasl_plain: bool, deploy_sasl_ssl: bool
+) -> None:
+    """
+    与 Apache Kafka 文档中的生产安全建议对齐的简要提示（非替代安全评审）。
+    参考：Security 章节中关于 SSL、SASL、listeners 与受信网络的说明。
+    """
+    logger.info("--- 生产实践提示（与官方文档方向一致）---", extra={"to_stdout": True})
+    logger.info(
+        "· 跨不可信网络应使用 TLS（listener 使用 SSL 或 SASL_SSL）；SASL_PLAINTEXT 不加密链路与凭据传输。",
+        extra={"to_stdout": True},
+    )
+    logger.info(
+        "· 凭据与账号长期管理优先考虑 SCRAM；PLAIN 多用于受控内网或迁移阶段。",
+        extra={"to_stdout": True},
+    )
+    logger.info(
+        "· 高可用依赖多副本、磁盘与监控；本脚本生成标准 properties 并调用发行版 bin/ 工具。",
+        extra={"to_stdout": True},
+    )
+    if deploy_sasl_plain and not deploy_sasl_ssl:
+        logger.info(
+            "· 当前部署含 SASL_PLAINTEXT：若需与公网或跨机房对齐，请用 extra_properties / --command-config 配置 SASL_SSL。",
+            extra={"to_stdout": True},
+        )
+    if deploy_sasl_ssl:
+        logger.info(
+            "· 当前为 SASL_SSL + 自建 PKI：请妥善保管 keystore/truststore 口令并定期轮换证书（与 Kafka SSL 运维一致）。",
+            extra={"to_stdout": True},
+        )
+    if deploy_type == "controller":
+        logger.info(
+            "· 当前为 Controller 节点：Produce/Fetch 与 Topic/Lag 全量验收请在 Broker 上对业务 bootstrap 执行 --status。",
+            extra={"to_stdout": True},
+        )
 
 
 def _kafka_deployer_kwargs(args: argparse.Namespace, config: Dict[str, Any]) -> Dict[str, Any]:
@@ -2348,19 +3386,29 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
 def show_examples():
     """打印使用说明与命令示例。"""
     examples = """
-kafkacli：KRaft 部署 + 调用 Kafka 发行版 bin/ 工具。环境变量：KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION。
+kafkacli（与 StarCli 用法对齐思路）
+  · 部署：--deploy standalone|controller|broker
+  · 验收：--status（完整报告，需 --kafka-home）；部署时 --verify — standalone/broker 为 TCP+全量 status，controller 为 TCP+metadata-quorum describe --status（与官方 Quorum 运维一致）
+  · 认证：--kafka-user/--kafka-password 或 kafkacli.client.properties 或 --command-config（全子命令共用）
 
-版本：默认要求 Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java 门禁 min_java_major_for_kafka（4.x→17，3.x→11）。
+环境变量：KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION、
+         KAFKA_CLI_COMMAND_CONFIG（或 KAFKA_COMMAND_CONFIG）
+
+版本：默认 Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：4.x→17，3.x→11。
 
 用法:
   部署与清理:
     kafkacli --deploy <standalone|controller|broker> [选项]
+    kafkacli --deploy standalone --kafka-home /opt/kafka --verify   # TCP + 完整 status
+    kafkacli --deploy controller --node-id 1 ... --verify           # TCP + kafka-metadata-quorum describe --status
     kafkacli --clean --deploy <standalone|controller|broker> [--node-id N]
     kafkacli --batch --config cluster.json              # 按 nodes 列表批量远程部署
     kafkacli --target-host HOST [SSH 选项] --deploy ...  # 单机远程部署
-  集群与运维:
-    kafkacli --status [--bootstrap-server] [--kafka-home] [--command-config]
-    kafkacli --metrics [--metrics-json]                  # 指标采集（Quorum/UnderReplicated/Lag）
+  集群验收与指标（推荐部署后执行）:
+    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker:9092
+    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker:9092 --kafka-user U --kafka-password P
+    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker:9092 --command-config /path/override.properties
+    kafkacli --metrics [--metrics-json]                  # 结构化指标（含连通、Quorum、under-replicated、Topic/Group 数、Lag）
     kafkacli --topic-create --topic NAME [--partitions] [--replication-factor]
     kafkacli --topic-list | --topic-describe [--topic] | --topic-delete --topic NAME
     kafkacli --group-list | --group-describe --consumer-group NAME
@@ -2377,6 +3425,21 @@ kafkacli：KRaft 部署 + 调用 Kafka 发行版 bin/ 工具。环境变量：KA
 1) 单节点 standalone（combined）示例:
    export KAFKA_ADVERTISED_HOST=127.0.0.1
    kafkacli --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   # 与 StarCli 类似：安装时设账号，后续 topic/status 等共用（脚本写 config/kafkacli.client.properties）:
+   kafkacli --deploy standalone --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
+     --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   # 自建 PKI：SASL_SSL（keystore/truststore 可为 JKS 或 PKCS12）
+   kafkacli --deploy standalone --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
+     --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
+     --ssl-truststore-path /secure/kafka.truststore.jks --ssl-truststore-password '***' \\
+     --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   # 多节点：Broker 节点对外 SASL；Controller 节点不写 SASL 在 Quorum 口，只下发同一套客户端文件方便本机运维连 Broker：
+   kafkacli --deploy broker --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
+     --kafka-home /opt/kafka --node-id 1 --log-dirs /var/kafka/logs --cluster-id <ID> \\
+     --controller-quorum-bootstrap-servers "c1:9093,c2:9093,c3:9093"
+   kafkacli --deploy controller --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
+     --kafka-home /opt/kafka --node-id 2 --metadata-log-dir /var/kafka/meta \\
+     --controller-quorum-bootstrap-servers "c1:9093,c2:9093,c3:9093"
 
 2) 批量多机部署（配置文件 nodes 数组，依次 SSH 到每台执行）:
    # cluster.json 示例: { "kafka_home": "/opt/kafka", "nodes": [
@@ -2399,8 +3462,11 @@ kafkacli：KRaft 部署 + 调用 Kafka 发行版 bin/ 工具。环境变量：KA
    kafkacli --deploy broker --kafka-home /opt/kafka --node-id 1 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" --log-dirs /var/kafka/logs
 
-5) 集群状态与指标:
-   kafkacli --status --bootstrap-server broker1:9092 --kafka-home /opt/kafka
+5) 集群验收与指标（认证三选一，全脚本一致：显式文件 > 用户名密码 > ${kafka_home}/config/kafkacli.client.properties）:
+   kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
+   export KAFKA_SASL_USERNAME=admin KAFKA_SASL_PASSWORD='***'
+   kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
+   # 高级：自管 SSL/多机制时用 --command-config 覆盖
    kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092
 
@@ -2427,7 +3493,7 @@ kafkacli：KRaft 部署 + 调用 Kafka 发行版 bin/ 工具。环境变量：KA
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Kafka KRaft 部署与 bin/ 工具封装（topics、consumer-groups、reassign、metadata-quorum、configs）。",
+        description="Kafka KRaft 部署与 bin/ 工具封装；客户端认证与 StarCli 类似：--kafka-user/--kafka-password 或 kafkacli.client.properties，全子命令共用。",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False
     )
@@ -2470,16 +3536,73 @@ def main():
         help="systemd 运行组（须已存在，默认 kafka）",
     )
     parser.add_argument("--no-systemd", action="store_true", help="不安装 systemd 服务")
-    parser.add_argument("--verify", action="store_true", help="部署后验证 Broker 可连接")
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="部署后验收：standalone/broker 为 TCP + 与 --status 相同报告；controller 为 TCP + kafka-metadata-quorum describe --status",
+    )
     parser.add_argument(
         "--force",
         action="store_true",
         help="覆盖已生成配置并重新执行 kafka-storage.sh format",
     )
     parser.add_argument("--clean", action="store_true", help="仅清理服务与生成配置，不部署")
-    parser.add_argument("--status", action="store_true", help="显示集群状态（元数据 Quorum + 副本信息）")
-    parser.add_argument("--bootstrap-server", default="localhost:9092", help="--status 时连接的 bootstrap server")
-    parser.add_argument("--command-config", help="--status 时可选，Kafka 客户端配置文件（如 SASL/SSL）")
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="集群验收报告：连通、KRaft Quorum、under-replicated、Topic/Group 数量、Lag（需 --kafka-home）",
+    )
+    parser.add_argument("--bootstrap-server", default="localhost:9092", help="Kafka 客户端 bootstrap（各子命令共用）")
+    parser.add_argument(
+        "--bootstrap-controller",
+        help="Controller 端点 host:port（kafka-metadata-quorum --bootstrap-controller；"
+        "部署 controller 后 --verify 默认用 KAFKA_ADVERTISED_HOST:--controller-port）",
+    )
+    parser.add_argument(
+        "--command-config",
+        help="显式指定客户端 properties（SASL/SSL 等）；优先级高于 --kafka-user/--kafka-password 与 kafkacli.client.properties",
+    )
+    parser.add_argument(
+        "--kafka-user",
+        help="SASL 用户名；与 --kafka-password 一起使用时脚本自动生成 client 配置，无需手写 JAAS。环境变量 KAFKA_SASL_USERNAME 或 KAFKA_USER",
+    )
+    parser.add_argument(
+        "--kafka-password",
+        help="SASL 密码；建议用环境变量 KAFKA_SASL_PASSWORD 或 KAFKA_PASSWORD 传入",
+    )
+    parser.add_argument(
+        "--kafka-sasl-mechanism",
+        default=None,
+        help="客户端 SASL 机制：PLAIN、SCRAM-SHA-256、SCRAM-SHA-512（未指定时默认 PLAIN，或读 KAFKA_SASL_MECHANISM）。--deploy-sasl-plain 部署侧仅支持 PLAIN",
+    )
+    parser.add_argument(
+        "--deploy-sasl-plain",
+        action="store_true",
+        help="与 --deploy standalone|broker|controller 合用：standalone/broker 启用 SASL_PLAINTEXT+PLAIN；"
+        "controller 仅写入 kafkacli.client.properties（Quorum 仍为 PLAINTEXT）。需 --kafka-user 与 --kafka-password",
+    )
+    parser.add_argument(
+        "--deploy-sasl-ssl",
+        action="store_true",
+        help="与 --deploy standalone|broker|controller 合用：standalone/broker 使用 SASL_SSL+PLAIN+ssl.*（自建 PKI）；"
+        "controller 仅写入 SASL_SSL 客户端文件。需 SASL 账号与 --ssl-* 或 KAFKA_SSL_*",
+    )
+    parser.add_argument(
+        "--ssl-keystore-path",
+        metavar="PATH",
+        help="服务端 keystore（JKS 或 PKCS12，自建 CA 签发）；或 KAFKA_SSL_KEYSTORE_PATH",
+    )
+    parser.add_argument("--ssl-keystore-password", help="keystore 口令；或 KAFKA_SSL_KEYSTORE_PASSWORD")
+    parser.add_argument(
+        "--ssl-key-password",
+        help="私钥口令（默认同 keystore 口令）；或 KAFKA_SSL_KEY_PASSWORD",
+    )
+    parser.add_argument(
+        "--ssl-truststore-path",
+        metavar="PATH",
+        help="信任库（含 CA）；或 KAFKA_SSL_TRUSTSTORE_PATH",
+    )
+    parser.add_argument("--ssl-truststore-password", help="truststore 口令；或 KAFKA_SSL_TRUSTSTORE_PASSWORD")
 
     # 远程部署（前置机 → 目标机）
     parser.add_argument("--target-host", help="远程目标主机（host 或 host:port），指定则在本机 SSH 到目标机执行")
@@ -2599,7 +3722,7 @@ def main():
 
     kafka_home = args.kafka_home or config.get("kafka_home")
 
-    # 仅查看状态：kafka_home 可选；有则拉取完整 Quorum 状态，无则仅检查 Broker 端口
+    # 仅查看状态：完整验收需 --kafka-home；否则仅 TCP 探测
     if args.status and not (args.deploy or config.get("deploy")):
         if kafka_home:
             try:
@@ -2609,29 +3732,38 @@ def main():
                     group=config.get("group", "kafka"),
                     **_kafka_deployer_kwargs(args, config),
                 )
-                deployer.show_cluster_status(
+                cc, auth_line = _resolve_kafka_client_config(args, config, kafka_home)
+                ok = deployer.show_cluster_status(
                     bootstrap_server=args.bootstrap_server or config.get("bootstrap_server", "localhost:9092"),
-                    command_config=args.command_config or config.get("command_config")
+                    command_config=cc,
+                    auth_summary=auth_line,
                 )
+                sys.exit(EXIT_OK if ok else EXIT_ERROR)
             except ValueError as e:
                 logger.error(str(e), extra={"to_stdout": True})
                 sys.exit(EXIT_ERROR)
         else:
+            logger.error(
+                "完整集群验收需指定 --kafka-home（以便调用 bin/ 下工具）。"
+                "未指定时仅能做端口探测（无法验证 SASL、Quorum、副本与 Lag）。",
+                extra={"to_stdout": True},
+            )
             host, port = _parse_bootstrap_server(
-                args.bootstrap_server or config.get("bootstrap_server", ""), DEFAULT_BROKER_PORT
+                args.bootstrap_server or config.get("bootstrap_server", "localhost:9092"), DEFAULT_BROKER_PORT
             )
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.settimeout(5)
                     s.connect((host, port))
-                logger.info(f"Broker 可连接: {host}:{port}", extra={"to_stdout": True})
+                logger.info(f"TCP 端口可连: {host}:{port}", extra={"to_stdout": True})
             except Exception as e:
-                logger.warning(f"无法连接 Broker {host}:{port}: {e}", extra={"to_stdout": True})
+                logger.error(f"TCP 无法连接 {host}:{port}: {e}", extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
         return
 
     # Topic / Group / 指标 / 配置 / Quorum / Broker 下线 运维子命令
     bootstrap = args.bootstrap_server or config.get("bootstrap_server", "localhost:9092")
-    cmd_config = args.command_config or config.get("command_config")
+    cmd_config, _ = _resolve_kafka_client_config(args, config, kafka_home)
 
     if getattr(args, "topic_create", False):
         _require(kafka_home, "--topic-create 需指定 --kafka-home")
@@ -2688,10 +3820,16 @@ def main():
         if getattr(args, "metrics_json", False):
             print(json.dumps(data, ensure_ascii=False, indent=2))
         else:
+            print("=== broker_connect ===")
+            print(json.dumps(data.get("broker_connect", {}), ensure_ascii=False))
             print("=== Quorum ===")
             print(json.dumps(data.get("quorum", {}), ensure_ascii=False))
             print("=== Partition 健康（Under-Replicated）===")
             print(json.dumps(data.get("partition_health", {}), ensure_ascii=False))
+            print("=== Topic 数量 ===")
+            print(json.dumps(data.get("topic_inventory", {}), ensure_ascii=False))
+            print("=== Consumer Group 数量 ===")
+            print(json.dumps(data.get("consumer_group_inventory", {}), ensure_ascii=False))
             print("=== Consumer Lag ===")
             print(json.dumps(data.get("consumer_lag", {}), ensure_ascii=False))
         sys.exit(EXIT_OK)
@@ -2783,6 +3921,33 @@ def main():
     java_home = args.java_home or config.get("java_home")
     extra_properties = config.get("extra_properties") or config.get("server_properties")
 
+    want_plain = bool(getattr(args, "deploy_sasl_plain", False) or config.get("deploy_sasl_plain"))
+    want_ssl = bool(getattr(args, "deploy_sasl_ssl", False) or config.get("deploy_sasl_ssl"))
+    if want_plain and want_ssl:
+        logger.error("--deploy-sasl-plain 与 --deploy-sasl-ssl 不能同时使用", extra={"to_stdout": True})
+        sys.exit(EXIT_ERROR)
+    ssl_mat: Optional[Tuple[str, str, str, str, str]] = None
+    if want_ssl:
+        ssl_mat = _resolve_deploy_sasl_ssl_material(args, config)
+    ku_acc: Optional[str] = None
+    kp_acc: Optional[str] = None
+    if want_plain:
+        _, ku_acc, kp_acc = _resolve_deploy_sasl_plain_credentials(args, config)
+    elif want_ssl:
+        ku_acc, kp_acc = _resolve_kafka_sasl_account(args, config)
+        if not ku_acc or not kp_acc:
+            logger.error(
+                "--deploy-sasl-ssl 需 --kafka-user 与 --kafka-password（或 KAFKA_SASL_*）",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
+        mech_ssl = _get_opt(args, config, "kafka_sasl_mechanism") or os.getenv("KAFKA_SASL_MECHANISM") or "PLAIN"
+        mech_ssl = (mech_ssl or "PLAIN").strip().upper()
+        if mech_ssl != "PLAIN":
+            logger.error("--deploy-sasl-ssl 部署侧当前仅支持 PLAIN", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+    need_sasl_creds = want_plain or want_ssl
+
     if deploy_type == "standalone":
         log_dirs = args.log_dirs or config.get("log_dirs") or DEFAULT_LOG_DIR
         if not InputValidator.validate_path(log_dirs.split(",")[0].strip()):
@@ -2792,11 +3957,15 @@ def main():
             log_dirs=log_dirs,
             cluster_id=args.cluster_id or config.get("cluster_id"),
             node_id=args.node_id or config.get("node_id", 1),
-            listeners=args.listeners or config.get("listeners"),
+            listeners=None if need_sasl_creds else (args.listeners or config.get("listeners")),
             java_home=java_home,
             enable_systemd=enable_systemd,
             force=args.force,
             extra_properties=extra_properties,
+            enable_sasl_plain=want_plain and not want_ssl,
+            sasl_username=ku_acc if need_sasl_creds else None,
+            sasl_password=kp_acc if need_sasl_creds else None,
+            sasl_ssl_material=ssl_mat,
         )
     elif deploy_type == "controller":
         node_id = args.node_id or config.get("node_id")
@@ -2819,6 +3988,10 @@ def main():
             enable_systemd=enable_systemd,
             force=args.force,
             extra_properties=extra_properties,
+            enable_sasl_plain=want_plain and not want_ssl,
+            sasl_username=ku_acc if need_sasl_creds else None,
+            sasl_password=kp_acc if need_sasl_creds else None,
+            sasl_ssl_material=ssl_mat,
         )
     else:  # broker
         node_id = args.node_id or config.get("node_id")
@@ -2841,12 +4014,16 @@ def main():
             node_id=node_id,
             controller_quorum_bootstrap_servers=quorum,
             log_dirs=log_dirs,
-            listeners=args.listeners or config.get("listeners"),
+            listeners=None if need_sasl_creds else (args.listeners or config.get("listeners")),
             cluster_id=cluster_id,
             java_home=java_home,
             enable_systemd=enable_systemd,
             force=args.force,
             extra_properties=extra_properties,
+            enable_sasl_plain=want_plain and not want_ssl,
+            sasl_username=ku_acc if need_sasl_creds else None,
+            sasl_password=kp_acc if need_sasl_creds else None,
+            sasl_ssl_material=ssl_mat,
         )
 
     if success:
@@ -2860,9 +4037,33 @@ def main():
                 "=== 部署完成（未使用 systemd）：配置与 storage format 已执行；进程未由本脚本启动，TCP 在线状态未检测 ===",
                 extra={"to_stdout": True},
             )
-        if args.verify and deploy_type in ("standalone", "broker"):
+        _log_post_deploy_production_practices(
+            cast(str, deploy_type), want_plain and not want_ssl, want_ssl
+        )
+
+        if args.verify and deploy_type == "controller":
             time.sleep(2)
-            deployer.verify_broker_started()
+            ctrl_port = args.controller_port or config.get("controller_port", DEFAULT_CONTROLLER_PORT)
+            bc_opt = _get_opt(args, config, "bootstrap_controller")
+            bc_for_q: str = (str(bc_opt).strip() if bc_opt else "") or f"{_advertised_host()}:{ctrl_port}"
+            cc, _auth_line = _resolve_kafka_client_config(args, config, kafka_home)
+            if enable_systemd and not deployer.verify_controller_started("127.0.0.1", ctrl_port):
+                logger.error("Controller 端口 TCP 验收失败", extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
+            if not deployer.verify_controller_quorum(bc_for_q, cc):
+                logger.error("部署后 Controller 元数据验收未通过", extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
+        elif args.verify and deploy_type in ("standalone", "broker"):
+            time.sleep(2)
+            if not deployer.verify_broker_started():
+                sys.exit(EXIT_ERROR)
+            bs = args.bootstrap_server or config.get("bootstrap_server")
+            if not bs:
+                bs = f"127.0.0.1:{DEFAULT_BROKER_PORT}"
+            cc, auth_line = _resolve_kafka_client_config(args, config, kafka_home)
+            if not deployer.show_cluster_status(bs, cc, auth_summary=auth_line):
+                logger.error("部署后验收未通过（见上文报告）", extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
     else:
         logger.error("=== 部署失败 ===", extra={"to_stdout": True})
         sys.exit(EXIT_ERROR)
@@ -2874,6 +4075,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("\n操作被用户中断", extra={"to_stdout": True})
         sys.exit(EXIT_ERROR)
-    except Exception as err:
-        logger.error(f"程序异常: {err}", exc_info=True, extra={"to_stdout": True})
+    except Exception as exc:
+        logger.error(f"程序异常: {exc}", exc_info=True, extra={"to_stdout": True})
         sys.exit(EXIT_ERROR)
