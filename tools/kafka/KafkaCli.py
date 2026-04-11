@@ -2769,7 +2769,9 @@ class KafkaDeployer:
         if lag.get("ok"):
             print(f"  估算总 Lag（逐行 LAG 累加）: {lag.get('total_lag', 0)}")
             detail = lag.get("groups") or []
-            if detail:
+            if lag.get("empty_groups"):
+                print("  （当前集群无 Consumer Group，跳过 --all-groups --describe；Lag 为 0 符合预期）")
+            elif detail:
                 print("  样例（前 8 条）:")
                 for row in detail[:8]:
                     print(f"    topic={row.get('topic')} partition={row.get('partition')} lag={row.get('lag')}")
@@ -3136,13 +3138,22 @@ class KafkaMetricsCollector:
             if pre:
                 out["error"] = pre
                 return out
+            # 无任何 Group 时，Kafka 4.x 对 --all-groups --describe 常非 0 退出或 stdout 为空，属正常，勿判失败
+            gc = self.collect_consumer_group_count()
+            if not gc.get("ok"):
+                out["error"] = (gc.get("error") or "").strip() or "consumer-groups --list 失败"
+                return out
+            if int(gc.get("group_count") or 0) == 0:
+                out["ok"] = True
+                out["empty_groups"] = True
+                return out
             cmd = [str(self.bin_dir / "kafka-consumer-groups.sh"), "--bootstrap-server",
                    self.bootstrap_server.strip(), "--all-groups", "--describe"]
             if self.command_config:
                 cmd.extend(["--command-config", self.command_config])
             r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(300))
-            if r.returncode != 0 or not r.stdout:
-                out["error"] = r.stderr or "describe failed"
+            if r.returncode != 0 or not (r.stdout or "").strip():
+                out["error"] = (r.stderr or r.stdout or "").strip() or "describe failed"
                 return out
             lines = r.stdout.strip().splitlines()
             for line in lines:
