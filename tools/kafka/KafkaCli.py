@@ -3358,6 +3358,30 @@ def _run_remote_deploy(
     sys.exit(EXIT_ERROR)
 
 
+class _KCliHelpFormatter(argparse.RawDescriptionHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
+    """加宽帮助列、保留描述换行、并显示默认值（与 argparse 文档一致）。"""
+
+    def __init__(self, prog: str):
+        try:
+            w = min(110, max(80, shutil.get_terminal_size(fallback=(100, 24)).columns))
+        except OSError:
+            w = 100
+        super().__init__(prog, max_help_position=26, width=w)
+
+
+KAFKACLI_PARSER_DESCRIPTION = """\
+Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/kafka-*.sh，生成 server.properties、
+可选 systemd，并封装 topic / consumer group / metrics / quorum 等常用操作。
+
+【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
+【典型用法】① 指定 Kafka 安装根目录 --kafka-home  ② 选择一种动作（--deploy / --status / --topic-* …）
+③ 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，
+   或部署时生成的 ${kafka_home}/config/kafkacli.client.properties（与 StarCli「一次配置」思路一致）。
+【配置文件】--config xxx.json 中的键名与长选项对应（下划线，如 kafka_home）；与命令行同时存在时命令行优先。
+【认证优先级】--command-config > 环境变量 KAFKA_CLI_* > 用户名密码 > kafkacli.client.properties
+"""
+
+
 def load_json_config(config_file: str) -> Dict[str, Any]:
     """加载 JSON 配置文件；路径须非空且指向已存在的文件"""
     if not (config_file or "").strip():
@@ -3384,41 +3408,22 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
 
 
 def show_examples():
-    """打印使用说明与命令示例。"""
+    """接续 argparse -h 输出：分场景可复制命令（与上方各 -- 选项对应）。"""
     examples = """
-kafkacli（与 StarCli 用法对齐思路）
-  · 部署：--deploy standalone|controller|broker
-  · 验收：--status（完整报告，需 --kafka-home）；部署时 --verify — standalone/broker 为 TCP+全量 status，controller 为 TCP+metadata-quorum describe --status（与官方 Quorum 运维一致）
-  · 认证：--kafka-user/--kafka-password 或 kafkacli.client.properties 或 --command-config（全子命令共用）
+（以下为「分场景示例」，与上方「可选参数」表中各选项一一对应；环境变量见脚本文件头注释。）
 
-环境变量：KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION、
-         KAFKA_CLI_COMMAND_CONFIG（或 KAFKA_COMMAND_CONFIG）
+常用环境变量一览:
+  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION、
+  KAFKA_CLI_COMMAND_CONFIG（或 KAFKA_COMMAND_CONFIG）、KAFKA_SASL_*、KAFKA_SSL_*
 
-版本：默认 Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：4.x→17，3.x→11。
+版本要求: Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：Kafka 4.x→17，3.x→11。
 
-用法:
-  部署与清理:
-    kafkacli --deploy <standalone|controller|broker> [选项]
-    kafkacli --deploy standalone --kafka-home /opt/kafka --verify   # TCP + 完整 status
-    kafkacli --deploy controller --node-id 1 ... --verify           # TCP + kafka-metadata-quorum describe --status
-    kafkacli --clean --deploy <standalone|controller|broker> [--node-id N]
-    kafkacli --batch --config cluster.json              # 按 nodes 列表批量远程部署
-    kafkacli --target-host HOST [SSH 选项] --deploy ...  # 单机远程部署
-  集群验收与指标（推荐部署后执行）:
-    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker:9092
-    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker:9092 --kafka-user U --kafka-password P
-    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker:9092 --command-config /path/override.properties
-    kafkacli --metrics [--metrics-json]                  # 结构化指标（含连通、Quorum、under-replicated、Topic/Group 数、Lag）
-    kafkacli --topic-create --topic NAME [--partitions] [--replication-factor]
-    kafkacli --topic-list | --topic-describe [--topic] | --topic-delete --topic NAME
-    kafkacli --group-list | --group-describe --consumer-group NAME
-    kafkacli --config-describe-broker [--config-entity-name id] | --config-describe-topic --topic NAME
-    kafkacli --quorum-add-controller                     # KRaft 动态添加 Controller
-  Broker 下线（kafka-reassign-partitions 后再停进程）:
-    kafkacli --broker-decommission-generate --broker-list 1,2 [--topics-to-move-json-file PATH]
-    kafkacli --broker-decommission-execute --reassignment-json-file plan.json [--throttle N]
-    kafkacli --broker-decommission-verify --reassignment-json-file plan.json
-  kafkacli --help
+快速命令索引（与选项表对照）:
+  部署+清理   → --deploy / --clean / --kafka-home / --verify
+  验收与指标 → --status / --metrics / --bootstrap-server
+  认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
+  Topic/Group→ --topic-* / --group-* / --consumer-group
+  远程       → --target-host / --batch
 
 示例:
 
@@ -3493,177 +3498,296 @@ kafkacli（与 StarCli 用法对齐思路）
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Kafka KRaft 部署与 bin/ 工具封装；客户端认证与 StarCli 类似：--kafka-user/--kafka-password 或 kafkacli.client.properties，全子命令共用。",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        add_help=False
+        description=KAFKACLI_PARSER_DESCRIPTION,
+        formatter_class=_KCliHelpFormatter,
+        add_help=False,
     )
-    parser.add_argument("-h", "--help", action="store_true", help="显示使用说明和示例")
-    parser.add_argument("--deploy", choices=["standalone", "controller", "broker"], help="部署类型")
-    parser.add_argument("--kafka-home", help="Kafka 安装目录（解压后的根目录）")
-    parser.add_argument("--config", help="JSON 配置文件路径")
-    parser.add_argument(
+
+    g_help = parser.add_argument_group(
+        "帮助",
+        "先阅读下方各分组；选项含义见每行右侧说明。默认不执行任何动作，须至少指定一类操作（如 --deploy）。",
+    )
+    g_help.add_argument(
+        "-h",
+        "--help",
+        action="store_true",
+        help="打印本帮助（含全部分组选项说明），并输出文末「分场景示例」可复制命令。",
+    )
+
+    g_cfg = parser.add_argument_group(
+        "配置文件与版本",
+        "与命令行合并；JSON 键名与长选项一致（下划线）。",
+    )
+    g_cfg.add_argument(
+        "--config",
+        metavar="PATH",
+        help="JSON 配置文件路径；可与命令行混用，命令行优先覆盖同名字段。",
+    )
+    g_cfg.add_argument(
         "--assume-kafka-version",
         metavar="X.Y.Z",
-        help="无法从安装路径或 libs/kafka-server-common-*.jar 推断 Kafka 版本时指定（如 3.7.0、4.2.0）；或设环境变量 KAFKA_CLI_ASSUME_VERSION",
+        help="当无法从安装路径或 libs/kafka-server-common-*.jar 推断版本时手工指定（如 3.7.0）；或环境变量 KAFKA_CLI_ASSUME_VERSION。",
     )
-    parser.add_argument(
+    g_cfg.add_argument(
         "--skip-kraft-version-check",
         action="store_true",
-        help="跳过本脚本对 Kafka 版本 ≥3.3.0 的检查",
+        help="跳过本脚本对 Kafka ≥3.3.0（KRaft 部署）的版本检查；不推荐用于未知版本环境。",
     )
 
-    # 通用
-    parser.add_argument("--log-dirs", help="Broker/Standalone 日志目录，逗号分隔（log.dirs）")
-    parser.add_argument("--metadata-log-dir", help="Controller 元数据日志目录（metadata.log.dir）")
-    parser.add_argument("--node-id", type=int, help="KRaft node.id（controller/broker 必填）")
-    parser.add_argument("--cluster-id", help="KRaft 集群 ID（多节点时与首节点一致）")
-    parser.add_argument("--controller-quorum-bootstrap-servers", help="controller.quorum.bootstrap.servers，逗号分隔 host:port")
-    parser.add_argument("--controller-port", type=int, default=DEFAULT_CONTROLLER_PORT, help=f"Controller 监听端口 (默认 {DEFAULT_CONTROLLER_PORT})")
-    parser.add_argument(
-        "--listeners",
-        help="listeners；standalone 且仅 PLAINTEXT 时脚本会追加 CONTROLLER。advertised 可用 KAFKA_ADVERTISED_HOST 或 extra_properties",
+    g_dep = parser.add_argument_group(
+        "部署 KRaft（须配合 --deploy 与 --kafka-home）",
+        "standalone=单节点 broker+controller；controller / broker=多节点角色拆分。"
+        " 与 --deploy-sasl-plain / --deploy-sasl-ssl 见「连接与认证」分组。",
     )
-    parser.add_argument("--initial-controllers", help="KRaft 多 controller 时首次 format 的 initial-controllers 列表")
-    parser.add_argument("--java-home", help="JAVA_HOME 路径")
-    parser.add_argument(
+    g_dep.add_argument(
+        "--deploy",
+        choices=["standalone", "controller", "broker"],
+        metavar="{standalone,controller,broker}",
+        help="要部署的角色：standalone 单机 combined；controller 仅元数据控制器；broker 仅数据节点（须已有 Quorum）。",
+    )
+    g_dep.add_argument(
+        "--kafka-home",
+        metavar="PATH",
+        help="Kafka 解压目录（须含 bin/kafka-storage.sh）；几乎所有子命令都需要。",
+    )
+    g_dep.add_argument(
+        "--log-dirs",
+        metavar="PATH[,PATH...]",
+        help="Broker/Standalone 数据目录，逗号分隔，对应 server.properties 的 log.dirs。",
+    )
+    g_dep.add_argument(
+        "--metadata-log-dir",
+        metavar="PATH",
+        help="Controller 专用：KRaft 元数据日志目录 metadata.log.dir。",
+    )
+    g_dep.add_argument("--node-id", type=int, help="KRaft node.id；controller / broker 部署必填。")
+    g_dep.add_argument(
+        "--cluster-id",
+        metavar="ID",
+        help="KRaft 集群 UUID；多节点时除首个节点外须与集群已有 ID 一致。",
+    )
+    g_dep.add_argument(
+        "--controller-quorum-bootstrap-servers",
+        metavar="HOST:PORT[,...]",
+        help="broker/controller（非首节点）使用：Quorum 入口，对应 controller.quorum.bootstrap.servers。",
+    )
+    g_dep.add_argument(
+        "--controller-port",
+        type=int,
+        default=DEFAULT_CONTROLLER_PORT,
+        help="本机 Controller 监听端口（CONTROLLER 协议），多机时须与 listeners 规划一致。",
+    )
+    g_dep.add_argument(
+        "--listeners",
+        metavar="STR",
+        help="自定义 listeners 行；未使用 SASL 自动化部署时可设。standalone 未含 CONTROLLER 时脚本会追加。",
+    )
+    g_dep.add_argument(
+        "--initial-controllers",
+        metavar="LIST",
+        help="多 controller 首次集群化时的 initial-controllers 参数（见 kafka-storage.sh format）。",
+    )
+    g_dep.add_argument("--java-home", metavar="PATH", help="运行 Kafka 的 JAVA_HOME；写入 systemd 与 env。")
+    g_dep.add_argument(
         "--user",
         default="kafka",
-        help="systemd 运行用户（须已存在于系统，默认 kafka；缺失则 217/USER。测试可传当前用户）",
+        help="systemd 运行用户（须已存在）；开发机可改为当前用户。",
     )
-    parser.add_argument(
-        "--group",
-        default="kafka",
-        help="systemd 运行组（须已存在，默认 kafka）",
+    g_dep.add_argument("--group", default="kafka", help="systemd 运行组（须已存在）。")
+    g_dep.add_argument(
+        "--no-systemd",
+        action="store_true",
+        help="只写配置并 format，不注册 systemd；须自行前台启动 kafka-server-start.sh。",
     )
-    parser.add_argument("--no-systemd", action="store_true", help="不安装 systemd 服务")
-    parser.add_argument(
+    g_dep.add_argument(
         "--verify",
         action="store_true",
-        help="部署后验收：standalone/broker 为 TCP + 与 --status 相同报告；controller 为 TCP + kafka-metadata-quorum describe --status",
+        help="部署成功后自动验收：standalone/broker 等同 --status；controller 为 Quorum describe --status。",
     )
-    parser.add_argument(
+    g_dep.add_argument(
         "--force",
         action="store_true",
-        help="覆盖已生成配置并重新执行 kafka-storage.sh format",
+        help="覆盖已存在生成配置并重新执行 kafka-storage.sh format（破坏性，慎用）。",
     )
-    parser.add_argument("--clean", action="store_true", help="仅清理服务与生成配置，不部署")
-    parser.add_argument(
+    g_dep.add_argument(
+        "--clean",
+        action="store_true",
+        help="停止并删除本脚本安装的 systemd 单元与生成配置（不删 log.dirs 数据）。须配合 --deploy 指定类型。",
+    )
+
+    g_conn = parser.add_argument_group(
+        "连接、验收与客户端认证",
+        "运维子命令（topic、metrics 等）共用；须能连上集群。",
+    )
+    g_conn.add_argument(
+        "--bootstrap-server",
+        default="localhost:9092",
+        metavar="HOST:PORT",
+        help="客户端连接入口（kafka 客户端 --bootstrap-server）；默认 localhost:9092。",
+    )
+    g_conn.add_argument(
+        "--bootstrap-controller",
+        metavar="HOST:PORT",
+        help="仅连 Controller 元数据面（kafka-metadata-quorum）；部署 controller 后 --verify 默认 KAFKA_ADVERTISED_HOST:端口。",
+    )
+    g_conn.add_argument(
         "--status",
         action="store_true",
-        help="集群验收报告：连通、KRaft Quorum、under-replicated、Topic/Group 数量、Lag（需 --kafka-home）",
+        help="输出集群验收报告（连通、Quorum、副本、Topic/Group、Lag）；须 --kafka-home 调用 bin 工具。",
     )
-    parser.add_argument("--bootstrap-server", default="localhost:9092", help="Kafka 客户端 bootstrap（各子命令共用）")
-    parser.add_argument(
-        "--bootstrap-controller",
-        help="Controller 端点 host:port（kafka-metadata-quorum --bootstrap-controller；"
-        "部署 controller 后 --verify 默认用 KAFKA_ADVERTISED_HOST:--controller-port）",
-    )
-    parser.add_argument(
+    g_conn.add_argument(
         "--command-config",
-        help="显式指定客户端 properties（SASL/SSL 等）；优先级高于 --kafka-user/--kafka-password 与 kafkacli.client.properties",
+        metavar="PATH",
+        help="显式客户端 properties（SASL_SSL/SCRAM 等高级场景）；优先级最高，覆盖用户名密码与默认文件。",
     )
-    parser.add_argument(
+    g_conn.add_argument(
         "--kafka-user",
-        help="SASL 用户名；与 --kafka-password 一起使用时脚本自动生成 client 配置，无需手写 JAAS。环境变量 KAFKA_SASL_USERNAME 或 KAFKA_USER",
+        metavar="NAME",
+        help="SASL 用户名；与 --kafka-password 成对出现时可不写 JAAS 文件。环境变量 KAFKA_SASL_USERNAME / KAFKA_USER。",
     )
-    parser.add_argument(
+    g_conn.add_argument(
         "--kafka-password",
-        help="SASL 密码；建议用环境变量 KAFKA_SASL_PASSWORD 或 KAFKA_PASSWORD 传入",
+        metavar="STR",
+        help="SASL 密码；建议用环境变量 KAFKA_SASL_PASSWORD / KAFKA_PASSWORD 传入以免进 shell 历史。",
     )
-    parser.add_argument(
+    g_conn.add_argument(
         "--kafka-sasl-mechanism",
         default=None,
-        help="客户端 SASL 机制：PLAIN、SCRAM-SHA-256、SCRAM-SHA-512（未指定时默认 PLAIN，或读 KAFKA_SASL_MECHANISM）。--deploy-sasl-plain 部署侧仅支持 PLAIN",
+        metavar="MECH",
+        help="客户端 SASL 机制：PLAIN、SCRAM-SHA-256、SCRAM-SHA-512；默认 PLAIN 或读 KAFKA_SASL_MECHANISM。",
     )
-    parser.add_argument(
+    g_conn.add_argument(
         "--deploy-sasl-plain",
         action="store_true",
-        help="与 --deploy standalone|broker|controller 合用：standalone/broker 启用 SASL_PLAINTEXT+PLAIN；"
-        "controller 仅写入 kafkacli.client.properties（Quorum 仍为 PLAINTEXT）。需 --kafka-user 与 --kafka-password",
+        help="与 --deploy 合用：服务端 SASL_PLAINTEXT+PLAIN，并写 config/kafkacli.client.properties；与 --deploy-sasl-ssl 互斥。",
     )
-    parser.add_argument(
+    g_conn.add_argument(
         "--deploy-sasl-ssl",
         action="store_true",
-        help="与 --deploy standalone|broker|controller 合用：standalone/broker 使用 SASL_SSL+PLAIN+ssl.*（自建 PKI）；"
-        "controller 仅写入 SASL_SSL 客户端文件。需 SASL 账号与 --ssl-* 或 KAFKA_SSL_*",
+        help="与 --deploy 合用：服务端 SASL_SSL+PLAIN+ssl.*（自建 PKI）；并写客户端文件；需 --ssl-* 与账号。",
     )
-    parser.add_argument(
+    g_conn.add_argument(
         "--ssl-keystore-path",
         metavar="PATH",
-        help="服务端 keystore（JKS 或 PKCS12，自建 CA 签发）；或 KAFKA_SSL_KEYSTORE_PATH",
+        help="服务端 keystore（.jks 或 .p12）；环境变量 KAFKA_SSL_KEYSTORE_PATH。",
     )
-    parser.add_argument("--ssl-keystore-password", help="keystore 口令；或 KAFKA_SSL_KEYSTORE_PASSWORD")
-    parser.add_argument(
+    g_conn.add_argument(
+        "--ssl-keystore-password",
+        metavar="STR",
+        help="Keystore 口令；环境变量 KAFKA_SSL_KEYSTORE_PASSWORD。",
+    )
+    g_conn.add_argument(
         "--ssl-key-password",
-        help="私钥口令（默认同 keystore 口令）；或 KAFKA_SSL_KEY_PASSWORD",
+        metavar="STR",
+        help="私钥口令；省略则与 keystore 口令相同；环境变量 KAFKA_SSL_KEY_PASSWORD。",
     )
-    parser.add_argument(
+    g_conn.add_argument(
         "--ssl-truststore-path",
         metavar="PATH",
-        help="信任库（含 CA）；或 KAFKA_SSL_TRUSTSTORE_PATH",
+        help="信任库（含 CA）；环境变量 KAFKA_SSL_TRUSTSTORE_PATH。",
     )
-    parser.add_argument("--ssl-truststore-password", help="truststore 口令；或 KAFKA_SSL_TRUSTSTORE_PASSWORD")
+    g_conn.add_argument(
+        "--ssl-truststore-password",
+        metavar="STR",
+        help="Truststore 口令；环境变量 KAFKA_SSL_TRUSTSTORE_PASSWORD。",
+    )
 
-    # 远程部署（前置机 → 目标机）
-    parser.add_argument("--target-host", help="远程目标主机（host 或 host:port），指定则在本机 SSH 到目标机执行")
-    parser.add_argument("--ssh-user", default="root", help="SSH 用户名")
-    parser.add_argument("--ssh-port", type=int, default=22, help="SSH 端口")
-    parser.add_argument("--ssh-key", default="~/.ssh/id_rsa", help="SSH 私钥路径")
-    parser.add_argument(
+    g_ssh = parser.add_argument_group(
+        "远程执行（前置机 SSH 到目标机跑本脚本）",
+        "指定 --target-host 时，本机不直接部署，把命令转发到目标机。",
+    )
+    g_ssh.add_argument(
+        "--target-host",
+        metavar="HOST[:PORT]",
+        help="目标机地址；与 --deploy 等同在远程执行。未装 kafkacli 时会自动拷贝当前脚本。",
+    )
+    g_ssh.add_argument("--ssh-user", default="root", help="SSH 登录用户。")
+    g_ssh.add_argument("--ssh-port", type=int, default=22, help="SSH 端口。")
+    g_ssh.add_argument("--ssh-key", default="~/.ssh/id_rsa", metavar="PATH", help="SSH 私钥路径。")
+    g_ssh.add_argument(
         "--disable-ssh-host-check",
         action="store_true",
-        help="SSH StrictHostKeyChecking=no",
+        help="等价 ssh -o StrictHostKeyChecking=no（仅在内网可控环境使用）。",
     )
-    parser.add_argument("--remote-workdir", help="远程工作目录 (默认: /tmp/kafka_deploy)")
+    g_ssh.add_argument(
+        "--remote-workdir",
+        metavar="PATH",
+        help="远程临时目录（拷贝脚本/配置用），默认 /tmp/kafka_deploy。",
+    )
+    g_ssh.add_argument(
+        "--batch",
+        action="store_true",
+        help="按 --config 中 nodes 数组依次 SSH 到多台机器执行部署（每台一条独立命令）。",
+    )
 
-    # 批量部署（config 中 nodes: [{ target_host, deploy, node_id, ... }]）
-    parser.add_argument("--batch", action="store_true", help="按配置文件 nodes 列表批量远程部署（需 --config）")
+    g_topic = parser.add_argument_group("Topic（kafka-topics.sh）", "均须 --kafka-home 与 --bootstrap-server。")
+    g_topic.add_argument("--topic-create", action="store_true", help="创建 Topic；配合 --topic、--partitions、--replication-factor。")
+    g_topic.add_argument("--topic-delete", action="store_true", help="删除 Topic；配合 --topic。")
+    g_topic.add_argument("--topic-describe", action="store_true", help="描述 Topic；可配合 --topic。")
+    g_topic.add_argument("--topic-list", action="store_true", help="列出集群内全部 Topic。")
+    g_topic.add_argument("--topic", metavar="NAME", help="Topic 名称。")
+    g_topic.add_argument("--partitions", type=int, default=1, help="新建 Topic 的分区数。")
+    g_topic.add_argument("--replication-factor", type=int, default=1, help="新建 Topic 的副本数。")
 
-    # Topic 运维
-    parser.add_argument("--topic-create", action="store_true", help="创建 Topic")
-    parser.add_argument("--topic-delete", action="store_true", help="删除 Topic")
-    parser.add_argument("--topic-describe", action="store_true", help="描述 Topic")
-    parser.add_argument("--topic-list", action="store_true", help="列出所有 Topic")
-    parser.add_argument("--topic", help="Topic 名称（与 --topic-* 配合）")
-    parser.add_argument("--partitions", type=int, default=1, help="分区数（--topic-create，默认 1）")
-    parser.add_argument("--replication-factor", type=int, default=1, help="副本数（--topic-create，默认 1）")
+    g_cg = parser.add_argument_group("Consumer Group（kafka-consumer-groups.sh）", "须 --kafka-home。")
+    g_cg.add_argument("--group-list", action="store_true", help="列出所有消费组。")
+    g_cg.add_argument("--group-describe", action="store_true", help="描述消费组详情与 Lag；须 --consumer-group。")
+    g_cg.add_argument("--consumer-group", metavar="NAME", help="消费组 id。")
 
-    # Consumer Group 运维（kafka-consumer-groups.sh）
-    parser.add_argument("--group-list", action="store_true", help="列出所有 Consumer Group")
-    parser.add_argument("--group-describe", action="store_true", help="描述 Group（含 Lag）")
-    parser.add_argument("--consumer-group", help="Consumer Group 名称（与 --group-describe 配合）")
+    g_met = parser.add_argument_group("指标采集", "一次性汇总连通性、Quorum、副本、Lag 等。")
+    g_met.add_argument("--metrics", action="store_true", help="人类可读多段输出。")
+    g_met.add_argument("--metrics-json", action="store_true", help="同上，JSON 结构便于脚本解析。")
 
-    # 指标采集
-    parser.add_argument("--metrics", action="store_true", help="采集并打印关键指标（Quorum/副本健康/Lag）")
-    parser.add_argument("--metrics-json", action="store_true", help="指标输出为 JSON（本脚本序列化格式）")
+    g_cf = parser.add_argument_group("动态配置（kafka-configs.sh）", "须 --kafka-home。")
+    g_cf.add_argument("--config-describe-broker", action="store_true", help="查看 broker 级配置；可 --config-entity-name 指定 broker id。")
+    g_cf.add_argument("--config-describe-topic", action="store_true", help="查看 topic 级配置；须 --topic。")
+    g_cf.add_argument("--config-entity-name", metavar="NAME", help="describe broker 时的实体名（如数字 broker id）。")
 
-    # 配置运维（kafka-configs.sh）
-    parser.add_argument("--config-describe-broker", action="store_true", help="查看 Broker 配置")
-    parser.add_argument("--config-describe-topic", action="store_true", help="查看 Topic 配置")
-    parser.add_argument("--config-entity-name", help="--config-describe-* 的 entity name（如 broker id）")
+    g_q = parser.add_argument_group("KRaft Quorum", "须 --kafka-home。")
+    g_q.add_argument("--quorum-add-controller", action="store_true", help="向现有 Quorum 动态添加 controller 节点。")
 
-    # KRaft Quorum 运维
-    parser.add_argument("--quorum-add-controller", action="store_true", help="动态添加 Controller（KRaft）")
-
-    # Broker 下线（副本迁移后停 Broker）
-    parser.add_argument("--broker-decommission-generate", action="store_true",
-                        help="kafka-reassign-partitions --generate（需 --broker-list）")
-    parser.add_argument("--broker-decommission-execute", action="store_true", help="执行副本迁移（--reassignment-json-file）")
-    parser.add_argument("--broker-decommission-verify", action="store_true", help="校验迁移进度")
-    parser.add_argument("--broker-list", help="副本迁移目标 Broker ID 列表，逗号分隔（如 1,2,3）")
-    parser.add_argument(
+    g_br = parser.add_argument_group(
+        "Broker 下线与副本迁移（kafka-reassign-partitions.sh）",
+        "先 generate 再 execute，最后用 verify；停进程需另行 systemctl/kill。",
+    )
+    g_br.add_argument(
+        "--broker-decommission-generate",
+        action="store_true",
+        help="生成迁出副本方案；须 --broker-list，可选 --topics-to-move-json-file。",
+    )
+    g_br.add_argument(
+        "--broker-decommission-execute",
+        action="store_true",
+        help="执行 --reassignment-json-file 中的迁移计划；可选 --throttle。",
+    )
+    g_br.add_argument("--broker-decommission-verify", action="store_true", help="校验迁移是否完成。")
+    g_br.add_argument(
+        "--broker-list",
+        metavar="ID,ID,...",
+        help="要迁出副本的目标 broker id 列表（逗号分隔）。",
+    )
+    g_br.add_argument(
         "--topics-to-move-json-file",
         "--topics-to-move-json",
         dest="topics_to_move_json",
         metavar="PATH",
-        help="kafka-reassign-partitions --topics-to-move-json-file",
+        help="限制只迁移部分 topic 时的 JSON 文件。",
     )
-    parser.add_argument("--reassignment-json-file", help="副本迁移 JSON 文件路径（execute/verify）")
-    parser.add_argument("--throttle", type=int, help="迁移限流（字节/秒）")
+    g_br.add_argument(
+        "--reassignment-json-file",
+        metavar="PATH",
+        help="execute/verify 使用的分区重分配 JSON 文件。",
+    )
+    g_br.add_argument("--throttle", type=int, metavar="BYTES", help="迁移带宽上限（字节/秒）。")
 
     args = parser.parse_args()
 
     if args.help:
+        parser.print_help()
+        print()
+        print("=" * 72)
+        print("分场景示例（可复制；与上方选项对应）")
+        print("=" * 72)
         show_examples()
         return
 
