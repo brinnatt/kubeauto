@@ -100,6 +100,107 @@ def _validate_command_config_path(command_config: Optional[str]) -> Optional[str
     return None
 
 
+def _parse_simple_kafka_properties_file(config_path: Path) -> Dict[str, str]:
+    """
+    读取 Kafka 风格 key=value 行（忽略空行与 # 注释；不处理续行）。
+    用于清理前从待删配置中解析 log.dirs / metadata.log.dir。
+    """
+    out: Dict[str, str] = {}
+    if not config_path.is_file():
+        return out
+    try:
+        text = config_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return out
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if "=" not in s:
+            continue
+        k, v = s.split("=", 1)
+        k = k.strip()
+        v = v.strip()
+        if k:
+            out[k] = v
+    return out
+
+
+def _merge_config_or_cli_path(from_file: Optional[str], from_cli: Optional[str]) -> str:
+    """命令行非空优先，否则用配置文件中的值。"""
+    c = (from_cli or "").strip()
+    if c:
+        return c
+    return (from_file or "").strip()
+
+
+def _csv_dirs_to_abs_paths(csv: str) -> List[str]:
+    """log.dirs 逗号分隔为多目录，每项展开为绝对路径字符串（去重保序）。"""
+    seen: set = set()
+    out: List[str] = []
+    for part in (csv or "").split(","):
+        p = part.strip()
+        if not p:
+            continue
+        ap = str(Path(p).expanduser().resolve())
+        if ap not in seen:
+            seen.add(ap)
+            out.append(ap)
+    return out
+
+
+def _rm_rf_kraft_data_dir(path_str: str, label: str) -> None:
+    """
+    删除整块 KRaft 数据目录（与 log.dirs / metadata.log.dir 根目录一致）。
+    拒绝删除根文件系统或明显不安全的极短路径。
+    """
+    root = Path(path_str).expanduser()
+    try:
+        resolved = root.resolve()
+    except OSError as ex:
+        logger.warning("跳过删除 %s（%s）：路径无效 — %s", label, path_str, ex, extra={"to_stdout": True})
+        return
+    s = str(resolved)
+    if resolved == Path("/"):
+        logger.error(
+            "拒绝删除数据目录 %s：不能指定文件系统根路径。",
+            label,
+            extra={"to_stdout": True},
+        )
+        raise ValueError("unsafe data path: /")
+    if not resolved.exists():
+        logger.info("数据目录不存在，跳过删除: %s (%s)", label, s, extra={"to_stdout": True})
+        return
+    if not resolved.is_dir():
+        logger.warning("数据路径不是目录，跳过删除: %s (%s)", label, s, extra={"to_stdout": True})
+        return
+    shutil.rmtree(resolved)
+    logger.info("✓ 已删除 KRaft 数据目录 [%s]: %s", label, s, extra={"to_stdout": True})
+
+
+def _read_cluster_id_from_meta_properties(data_dir_csv: str) -> Optional[str]:
+    """
+    读取 KRaft 数据目录下 meta.properties 的 cluster.id（若存在）。
+    log.dirs 取逗号分隔的第一段路径（与 Kafka 工具行为一致）。
+    """
+    first = (data_dir_csv or "").split(",")[0].strip()
+    if not first:
+        return None
+    meta = Path(first).expanduser() / "meta.properties"
+    if not meta.is_file():
+        return None
+    try:
+        text = meta.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("cluster.id="):
+            cid = s.split("=", 1)[1].strip()
+            return cid if cid else None
+    return None
+
+
 _TMP_CLIENT_CONFIG_FILES: List[str] = []
 
 
@@ -1692,17 +1793,44 @@ class KafkaDeployer:
         config_path = self.config_dir / "server-standalone.properties"
         if config_path.exists() and not force:
             logger.error(
-                f"配置已存在: {config_path}，使用 --force 覆盖或先执行 --clean",
+                f"配置已存在: {config_path}，使用 --force 覆盖，或先 --clean / --deploy … --clean-first；"
+                f"若需清空 KRaft 磁盘数据再加 --clean-data 或与上述联用 --force",
                 extra={"to_stdout": True}
             )
             return False
 
-        # 1) 生成或使用已有 cluster id
-        if not cluster_id:
-            cluster_id = self._generate_cluster_id()
-            if not cluster_id:
-                logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
+        # 1) cluster id：与 log.dirs 已有 meta.properties 对齐，避免 kafka-storage format 报 Invalid cluster.id
+        existing_cid = _read_cluster_id_from_meta_properties(log_dirs)
+        if cluster_id:
+            cid_in = cluster_id.strip()
+            if existing_cid and existing_cid != cid_in:
+                ld0 = log_dirs.split(",")[0].strip()
+                logger.error(
+                    "log.dirs（%s）中已有 KRaft 元数据，cluster.id=%s，与 --cluster-id=%s 不一致。\n"
+                    "可选：① 清空该目录或更换 --log-dirs 后重试；② 使用 --cluster-id %s 与磁盘一致；"
+                    "③ 确认废弃旧数据后删除 %s/meta.properties 再部署。",
+                    ld0,
+                    existing_cid,
+                    cid_in,
+                    existing_cid,
+                    ld0,
+                    extra={"to_stdout": True},
+                )
                 return False
+            cluster_id = cid_in
+        else:
+            if existing_cid:
+                cluster_id = existing_cid
+                logger.info(
+                    "复用 log.dirs 已有 cluster.id=%s（meta.properties；未传 --cluster-id 时自动采用）",
+                    cluster_id,
+                    extra={"to_stdout": True},
+                )
+            else:
+                cluster_id = self._generate_cluster_id()
+                if not cluster_id:
+                    logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
+                    return False
 
         # 2) 构建 server.properties
         if sasl_ssl_material:
@@ -1923,18 +2051,44 @@ class KafkaDeployer:
         if not self._write_properties(config_path, props):
             return False
 
-        is_first_controller = not cluster_id
-        if not cluster_id:
-            cluster_id = self._generate_cluster_id()
-            if not cluster_id:
-                logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
-                return False
-            logger.info("多节点时其他 controller/broker 须使用同一 cluster id", extra={"to_stdout": True})
+        user_supplied_cid = bool((cluster_id or "").strip())
+        existing_cid_meta = _read_cluster_id_from_meta_properties(metadata_dir)
 
-        format_args = ["format", "--cluster-id", cluster_id, "-c", str(config_path)]
+        if user_supplied_cid:
+            cid_resolved = cluster_id.strip()
+            if existing_cid_meta and existing_cid_meta != cid_resolved:
+                logger.error(
+                    "metadata.log.dir（%s）中已有 KRaft 元数据，cluster.id=%s，与 --cluster-id=%s 不一致。\n"
+                    "可选：① 清空该目录或更换 --metadata-log-dir；② 使用 --cluster-id %s；"
+                    "③ 确认废弃旧数据后删除该目录下 meta.properties 或整目录后再部署。",
+                    metadata_dir,
+                    existing_cid_meta,
+                    cid_resolved,
+                    existing_cid_meta,
+                    extra={"to_stdout": True},
+                )
+                return False
+        else:
+            if existing_cid_meta:
+                cid_resolved = existing_cid_meta
+                logger.info(
+                    "复用 metadata.log.dir 已有 cluster.id=%s（未传 --cluster-id 时自动采用）",
+                    cid_resolved,
+                    extra={"to_stdout": True},
+                )
+            else:
+                cid_resolved = self._generate_cluster_id()
+                if not cid_resolved:
+                    logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
+                    return False
+                logger.info("多节点时其他 controller/broker 须使用同一 cluster id", extra={"to_stdout": True})
+
+        first_bootstrap = not user_supplied_cid and not existing_cid_meta
+
+        format_args = ["format", "--cluster-id", cid_resolved, "-c", str(config_path)]
         if initial_controllers:
             format_args.extend(["--initial-controllers", initial_controllers])
-        elif is_first_controller:
+        elif first_bootstrap:
             format_args.append("--standalone")
         else:
             format_args.append("--no-initial-controllers")
@@ -2102,10 +2256,27 @@ class KafkaDeployer:
         if not self._write_properties(config_path, props):
             return False
 
+        cid_req = (cluster_id or "").strip()
+        existing_cid = _read_cluster_id_from_meta_properties(log_dirs)
+        if existing_cid and existing_cid != cid_req:
+            ld0 = log_dirs.split(",")[0].strip()
+            logger.error(
+                "log.dirs（%s）中已有 KRaft 元数据，cluster.id=%s，与 --cluster-id=%s 不一致。\n"
+                "可选：① 清空该目录或更换 log.dirs；② 使用 --cluster-id %s；"
+                "③ 确认废弃旧数据后删除 %s/meta.properties 再部署。",
+                ld0,
+                existing_cid,
+                cid_req,
+                existing_cid,
+                ld0,
+                extra={"to_stdout": True},
+            )
+            return False
+
         try:
             self._run_storage_cmd([
                 "format",
-                "--cluster-id", cluster_id,
+                "--cluster-id", cid_req,
                 "--no-initial-controllers",
                 "-c", str(config_path)
             ])
@@ -2229,11 +2400,17 @@ class KafkaDeployer:
             self,
             deploy_type: str,
             node_id: Optional[int] = None,
-            backup_config: bool = True
+            backup_config: bool = True,
+            clean_data: bool = False,
+            log_dirs: Optional[str] = None,
+            metadata_log_dir: Optional[str] = None,
     ) -> bool:
         """
         清理本脚本安装的 systemd 服务与生成配置（停止→禁用→进程清理→可选备份→删 unit→daemon-reload）。
-        不删除 log.dirs / metadata.log.dir（数据保留策略为本脚本约定）。
+
+        默认不删除 KRaft 数据目录。当 clean_data=True（或命令行 --clean-data，或与 --clean 联用的 --force）
+        时，在停止进程后、删除配置文件之前，按「待删配置文件 + 传入路径」解析出的 log.dirs /
+        metadata.log.dir 整目录删除（破坏性，等同抹除元数据与分区数据）。
         """
         logger.info(f"=== 清理 Kafka {deploy_type} 部署 ===", extra={"to_stdout": True})
 
@@ -2256,12 +2433,54 @@ class KafkaDeployer:
             logger.error(f"无效的 deploy 类型: {deploy_type}", extra={"to_stdout": True})
             return False
 
+        props_from_file: Dict[str, str] = {}
+        if config_path.is_file():
+            props_from_file = _parse_simple_kafka_properties_file(config_path)
+
+        ld_merged = _merge_config_or_cli_path(props_from_file.get("log.dirs"), log_dirs)
+        meta_merged = _merge_config_or_cli_path(props_from_file.get("metadata.log.dir"), metadata_log_dir)
+
+        dirs_to_wipe: List[Tuple[str, str]] = []
+        if deploy_type == "standalone":
+            if not ld_merged.strip():
+                ld_merged = DEFAULT_LOG_DIR
+            for p in _csv_dirs_to_abs_paths(ld_merged):
+                dirs_to_wipe.append(("log.dirs", p))
+        elif deploy_type == "broker":
+            for p in _csv_dirs_to_abs_paths(ld_merged):
+                dirs_to_wipe.append(("log.dirs", p))
+        else:  # controller
+            md = (meta_merged or "").strip() or DEFAULT_METADATA_LOG_DIR
+            for p in _csv_dirs_to_abs_paths(md):
+                dirs_to_wipe.append(("metadata.log.dir", p))
+            for p in _csv_dirs_to_abs_paths(ld_merged):
+                dirs_to_wipe.append(("log.dirs", p))
+
         service_path = Path(f"/etc/systemd/system/{service_name}.service")
 
         logger.info("正在停止服务...", extra={"to_stdout": True})
         self._stop_and_disable_service(service_name, force=True)
         self._kill_service_processes(service_name)
         time.sleep(1)
+
+        if clean_data:
+            if not dirs_to_wipe:
+                logger.warning(
+                    "已请求删除 KRaft 数据，但未解析到任何 log.dirs/metadata.log.dir（请检查配置或传入 --log-dirs / --metadata-log-dir）",
+                    extra={"to_stdout": True},
+                )
+            else:
+                logger.info("正在删除 KRaft 数据目录（clean_data）...", extra={"to_stdout": True})
+                try:
+                    seen_rm: set = set()
+                    for label, abs_p in dirs_to_wipe:
+                        if abs_p in seen_rm:
+                            continue
+                        seen_rm.add(abs_p)
+                        _rm_rf_kraft_data_dir(abs_p, label)
+                except (ValueError, OSError) as ex:
+                    logger.error("删除 KRaft 数据目录失败: %s", ex, extra={"to_stdout": True})
+                    return False
 
         logger.info("正在删除服务文件...", extra={"to_stdout": True})
         if service_path.exists():
@@ -3379,6 +3598,8 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
    或部署时生成的 ${kafka_home}/config/kafkacli.client.properties（与 StarCli「一次配置」思路一致）。
 【配置文件】--config xxx.json 中的键名与长选项对应（下划线，如 kafka_home）；与命令行同时存在时命令行优先。
 【认证优先级】--command-config > 环境变量 KAFKA_CLI_* > 用户名密码 > kafkacli.client.properties
+【清理与幂等】仅 --clean 会停服务并删生成配置，默认不动 log.dirs；删数据须 --clean-data 或与 --clean 联用 --force。
+  同一机重复部署建议：--deploy … --clean-first [--force|--clean-data]，或分两步先 --clean 再 --deploy。
 """
 
 
@@ -3419,7 +3640,7 @@ def show_examples():
 版本要求: Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：Kafka 4.x→17，3.x→11。
 
 快速命令索引（与选项表对照）:
-  部署+清理   → --deploy / --clean / --kafka-home / --verify
+  部署+清理   → --deploy / --clean / --clean-first / --clean-data / --kafka-home / --verify
   验收与指标 → --status / --metrics / --bootstrap-server
   认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
   Topic/Group→ --topic-* / --group-* / --consumer-group
@@ -3486,10 +3707,13 @@ def show_examples():
    # 将输出中的 Current partition reassignment configuration 保存为 plan.json
    kafkacli --broker-decommission-execute --reassignment-json-file plan.json --throttle 1048576 --kafka-home /opt/kafka
    kafkacli --broker-decommission-verify --reassignment-json-file plan.json --kafka-home /opt/kafka
-   # 迁移完成后在该 Broker 上: kafkacli --clean --deploy broker --node-id <id> --kafka-home /opt/kafka
+   # 迁移完成后在该 Broker 上仅卸载：kafkacli --clean --deploy broker --node-id <id> --kafka-home /opt/kafka --log-dirs …
 
-8) 清理与配置查看:
-   kafkacli --clean --deploy standalone --kafka-home /opt/kafka
+8) 清理与重复部署（--clean 仅停服务并删生成配置，默认不删 log.dirs；删数据加 --clean-data 或与 --clean 同用 --force）:
+   kafkacli --clean --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   kafkacli --clean --deploy standalone --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   # 一条命令：先卸载并可选清数据再部署（与 standalone 默认 log.dirs 一致时须显式 --log-dirs 以便清数据）
+   kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
    kafkacli --config-describe-broker --kafka-home /opt/kafka --config-entity-name 1
    kafkacli --config-describe-topic --topic my-topic --kafka-home /opt/kafka
 """
@@ -3607,12 +3831,22 @@ def main():
     g_dep.add_argument(
         "--force",
         action="store_true",
-        help="覆盖已存在生成配置并重新执行 kafka-storage.sh format（破坏性，慎用）。",
+        help="部署时：覆盖已存在生成配置并重新执行 kafka-storage.sh format。与 --clean 同用时：同时删除 KRaft 数据目录（须能解析路径）。与 --clean-first 同用时：部署前删数据（亦可用 --clean-data 显式指定）。",
     )
     g_dep.add_argument(
         "--clean",
         action="store_true",
-        help="停止并删除本脚本安装的 systemd 单元与生成配置（不删 log.dirs 数据）。须配合 --deploy 指定类型。",
+        help="仅卸载：停止并删除本脚本安装的 systemd 单元与生成配置；默认不删 log.dirs/metadata（与文档「清理与幂等」一致）。删数据请用 --clean-data，或与 --clean 同用 --force。须配合 --deploy 指定类型；执行完后退出，不会继续部署。",
+    )
+    g_dep.add_argument(
+        "--clean-data",
+        action="store_true",
+        help="与 --clean 或 --clean-first 合用：在停止进程后删除解析到的 log.dirs / metadata.log.dir 整目录（破坏性）。路径来自待删配置文件与命令行（命令行优先）。",
+    )
+    g_dep.add_argument(
+        "--clean-first",
+        action="store_true",
+        help="与 --deploy 合用：先执行与 --clean 相同的卸载，再执行本次部署。重复装同一机时配合 --force 或 --clean-data 以删除旧 KRaft 数据，达到可重复部署。不要与单独使用的 --clean 同条命令混用。",
     )
 
     g_conn = parser.add_argument_group(
@@ -4026,20 +4260,60 @@ def main():
         logger.error(str(e), extra={"to_stdout": True})
         sys.exit(EXIT_ERROR)
 
+    clean_first = bool(getattr(args, "clean_first", False) or config.get("clean_first", False))
+
+    if args.clean and clean_first:
+        logger.error(
+            "--clean 与 --clean-first 不要同时使用：仅卸载请用 --clean；要「先卸再装」请用 --deploy … --clean-first",
+            extra={"to_stdout": True},
+        )
+        sys.exit(EXIT_ERROR)
+
     if args.clean:
-        deploy_type = args.deploy or config.get("deploy")
-        if not deploy_type:
+        _dt_clean = args.deploy or config.get("deploy")
+        if not _dt_clean:
             logger.error("--clean 需指定 --deploy standalone|controller|broker", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
+        deploy_kind_clean: str = str(_dt_clean)
         node_id = args.node_id or config.get("node_id")
-        if not deployer.clean_deployment(deploy_type, node_id=node_id, backup_config=True):
+        log_dirs_clean = args.log_dirs or config.get("log_dirs")
+        meta_clean = args.metadata_log_dir or config.get("metadata_log_dir")
+        if deploy_kind_clean == "standalone" and not (log_dirs_clean or "").strip():
+            log_dirs_clean = DEFAULT_LOG_DIR
+        clean_data = bool(getattr(args, "clean_data", False) or (bool(args.force) and bool(args.clean)))
+        if not deployer.clean_deployment(
+            deploy_kind_clean,
+            node_id=node_id,
+            backup_config=True,
+            clean_data=clean_data,
+            log_dirs=log_dirs_clean,
+            metadata_log_dir=meta_clean,
+        ):
             sys.exit(EXIT_ERROR)
         sys.exit(EXIT_OK)
 
-    deploy_type = args.deploy or config.get("deploy")
-    if not deploy_type:
+    _dt_main = args.deploy or config.get("deploy")
+    if not _dt_main:
         logger.error("必须指定 --deploy standalone|controller|broker 或配置文件中的 deploy", extra={"to_stdout": True})
         sys.exit(EXIT_ERROR)
+    deploy_type: str = str(_dt_main)
+
+    if clean_first:
+        node_id_cf = args.node_id or config.get("node_id")
+        log_dirs_cf = args.log_dirs or config.get("log_dirs")
+        meta_cf = args.metadata_log_dir or config.get("metadata_log_dir")
+        if deploy_type == "standalone" and not (log_dirs_cf or "").strip():
+            log_dirs_cf = DEFAULT_LOG_DIR
+        clean_data_cf = bool(getattr(args, "clean_data", False) or bool(args.force))
+        if not deployer.clean_deployment(
+            deploy_type,
+            node_id=node_id_cf,
+            backup_config=True,
+            clean_data=clean_data_cf,
+            log_dirs=log_dirs_cf,
+            metadata_log_dir=meta_cf,
+        ):
+            sys.exit(EXIT_ERROR)
 
     enable_systemd = not (args.no_systemd or config.get("no_systemd", False))
     java_home = args.java_home or config.get("java_home")
