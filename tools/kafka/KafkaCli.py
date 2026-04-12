@@ -10,7 +10,13 @@ Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 b
 
 验收：部署后 `--verify` — standalone/broker 为 TCP + 完整 `show_cluster_status`；controller 为 TCP + `kafka-metadata-quorum describe --status`（元数据面，与官方运维一致）。平时可 `kafkacli --status --kafka-home ...`。
 
-部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在 systemctl start 前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 文件会 chown 给服务用户，避免仅 root 可读）。
+部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在 **systemctl restart** 前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 会 chown 给服务用户）。
+
+幂等约定（与下方「清理与幂等」、各 argparse 分组说明一致）：
+  · --deploy：重复执行覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
+  · --topic-create / --topic-delete：Topic 已存在/已不存在时按 CLI 输出匹配后视为成功（非「改分区/副本」的广义收敛）。
+  · --status / --metrics*：只读，天然可重复。
+  · --clean：卸载（停服务、删 unit 与生成配置），非部署；抹数据用 --clean-data 或与 --clean/--clean-first 联用 --force。
 
 退出码：0 成功，1 失败。
 """
@@ -46,10 +52,10 @@ DEFAULT_CONTROLLER_PORT = 9093
 DEFAULT_LOG_DIR = "/tmp/kafka-logs"
 DEFAULT_METADATA_LOG_DIR = "/tmp/kraft-combined-logs"
 
-# 与 StarCli 类似：部署 SASL/PLAIN 成功后写入，供后续子命令默认使用（0600）
+# 部署 SASL/PLAIN（等）成功后写入 ${kafka_home}/config/，供后续子命令默认使用（0600）
 KAFKACLI_CLIENT_PROPERTIES_NAME = "kafkacli.client.properties"
 
-# 进程退出码：0 成功，1 失败（本脚本与 StarCli 相同编号）
+# 进程退出码：0 成功，1 失败
 EXIT_OK = 0
 EXIT_ERROR = 1
 
@@ -1373,8 +1379,10 @@ WantedBy=multi-user.target
 
 class KafkaDeployer:
     """
-    KRaft 部署：写配置、kafka-storage.sh format、kafka-server-start.sh / systemd。
-    版本下限由 check_environment 与 KRAFT_DEPLOY_MIN_VERSION 执行；可用 --skip-kraft-version-check 跳过。
+    KRaft 部署：写配置、kafka-storage.sh format、kafka-server-start.sh / systemd（enable + restart）。
+
+    幂等：deploy_* 不因「生成配置已存在」失败；版本下限由 check_environment 与 KRAFT_DEPLOY_MIN_VERSION 执行，
+    可用 --skip-kraft-version-check 跳过。各 deploy_* 的 force 参数与 CLI/JSON 兼容保留，覆盖配置不依赖该参数。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
@@ -1746,7 +1754,7 @@ class KafkaDeployer:
             deploy_type: str,
             java_home: Optional[str] = None
     ) -> bool:
-        """安装并启动 systemd 服务（写 unit、daemon-reload、enable、start），并确认进入 active。"""
+        """安装并启动 systemd 服务（写 unit、daemon-reload、enable、restart），并确认进入 active。"""
         unit_path = Path(f"/etc/systemd/system/{service_name}.service")
         unit_content = self._systemd_unit_content(deploy_type, config_path, java_home)
         try:
@@ -1755,7 +1763,8 @@ class KafkaDeployer:
             run_command(["systemctl", "enable", service_name], timeout=30)
             run_command(["systemctl", "reset-failed", service_name], check=False, timeout=10)
             self._ensure_kafka_home_paths_for_service_user()
-            run_command(["systemctl", "start", service_name], timeout=60)
+            # restart：幂等部署时须重载已写入的 server.properties（start 对已 active 的单元不会重启进程）
+            run_command(["systemctl", "restart", service_name], timeout=180)
         except Exception as e:
             logger.error(f"systemd 启动阶段异常: {e}", extra={"to_stdout": True})
             tail = self._journal_tail_for_unit(service_name)
@@ -1909,8 +1918,11 @@ class KafkaDeployer:
     ) -> bool:
         """
         单节点 combined：写 server.properties → kafka-storage.sh format --standalone → systemd 或打印启动命令。
+        可重复执行（幂等）：若生成配置已存在则覆盖并 systemctl restart，使 PLAINTEXT↔SASL 等切换无需先 --clean。
         enable_sasl_plain：SASL_PLAINTEXT + PLAIN。
         sasl_ssl_material 非空：SASL_SSL + PLAIN + ssl.*（自建 PKI），并写入 kafkacli.client.properties。
+
+        force：与 CLI/JSON 兼容保留，部署覆盖与重启已不依赖本参数。
         """
         logger.info("=== 部署 Kafka Standalone（KRaft 单节点）===", extra={"to_stdout": True})
 
@@ -1927,13 +1939,12 @@ class KafkaDeployer:
         EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, log_dirs, "log.dirs")
 
         config_path = self.config_dir / "server-standalone.properties"
-        if config_path.exists() and not force:
-            logger.error(
-                f"配置已存在: {config_path}，使用 --force 覆盖，或先 --clean / --deploy … --clean-first；"
-                f"若需清空 KRaft 磁盘数据再加 --clean-data 或与上述联用 --force",
-                extra={"to_stdout": True}
+        if config_path.exists():
+            logger.info(
+                "已有生成配置，将覆盖并收敛为本次参数（幂等部署）: %s",
+                config_path,
+                extra={"to_stdout": True},
             )
-            return False
 
         # 1) cluster id：与 log.dirs 已有 meta.properties 对齐，避免 kafka-storage format 报 Invalid cluster.id
         existing_cid = _read_cluster_id_from_meta_properties(log_dirs)
@@ -2119,10 +2130,13 @@ class KafkaDeployer:
         """
         部署 KRaft Controller 节点（Kafka 4.x）。配置与 ConfigGenerator.generate_controller_properties 一致，
         含 controller.listener.names、listener.security.protocol.map。
+        可重复执行（幂等）：已存在 controller-<node_id>.properties 时覆盖并 restart。
         - 首个 controller：format --standalone 或 --initial-controllers
         - 后续 controller：format --no-initial-controllers
         enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties，
         供本机连接集群内 Broker（PLAIN 或 SASL_SSL，与集群一致）。
+
+        force：与 CLI/JSON 兼容保留，部署覆盖与重启已不依赖本参数。
         """
         logger.info("=== 部署 Kafka Controller（KRaft）===", extra={"to_stdout": True})
 
@@ -2143,9 +2157,12 @@ class KafkaDeployer:
         EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, metadata_dir, "metadata.log.dir")
 
         config_path = self.config_dir / f"controller-{node_id}.properties"
-        if config_path.exists() and not force:
-            logger.error(f"配置已存在: {config_path}，使用 --force 覆盖", extra={"to_stdout": True})
-            return False
+        if config_path.exists():
+            logger.info(
+                "已有生成配置，将覆盖并收敛为本次参数（幂等部署）: %s",
+                config_path,
+                extra={"to_stdout": True},
+            )
 
         if sasl_ssl_material:
             err_nm = _validate_sasl_plain_username((sasl_username or "").strip())
@@ -2305,9 +2322,12 @@ class KafkaDeployer:
     ) -> bool:
         """
         部署 KRaft Broker 节点（Kafka 4.x）。format --no-initial-controllers，process.roles=broker。
+        可重复执行（幂等）：已存在 server-broker-<id>.properties 时覆盖并 restart。
         默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
         advertised.listeners 主机来自 KAFKA_ADVERTISED_HOST；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
         enable_sasl_plain / sasl_ssl_material：对外 SASL_PLAINTEXT 或 SASL_SSL+PLAIN，并写入 kafkacli.client.properties。
+
+        force：与 CLI/JSON 兼容保留，部署覆盖与重启已不依赖本参数。
         """
         logger.info("=== 部署 Kafka Broker（KRaft）===", extra={"to_stdout": True})
 
@@ -2332,9 +2352,12 @@ class KafkaDeployer:
         EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, log_dirs, "log.dirs")
 
         config_path = self.config_dir / f"server-broker-{node_id}.properties"
-        if config_path.exists() and not force:
-            logger.error(f"配置已存在: {config_path}，使用 --force 覆盖", extra={"to_stdout": True})
-            return False
+        if config_path.exists():
+            logger.info(
+                "已有生成配置，将覆盖并收敛为本次参数（幂等部署）: %s",
+                config_path,
+                extra={"to_stdout": True},
+            )
 
         if sasl_ssl_material:
             if listeners and listeners.strip():
@@ -2670,8 +2693,8 @@ class KafkaDeployer:
             auth_summary: Optional[str] = None,
     ) -> bool:
         """
-        集群验收报告（对齐 StarCli「一条命令看清状态」的用法）：连通、KRaft Quorum、副本健康、
-        Topic/Consumer Group 规模、Lag 汇总与结论。认证与 _resolve_kafka_client_config 一致（用户名密码或 kafkacli.client.properties）。
+        集群验收报告：连通、KRaft Quorum、副本健康、Topic/Consumer Group 规模、Lag 汇总与结论。
+        认证与 _resolve_kafka_client_config 一致（用户名密码或 kafkacli.client.properties）。
         返回 True 表示客户端连通且 Quorum describe --status 成功（可认为元数据面可用）。
         """
         cc_err = _validate_command_config_path(command_config)
@@ -2824,7 +2847,12 @@ def _build_bootstrap_cmd(
 
 
 class KafkaTopicManager:
-    """bin/kafka-topics.sh 封装。"""
+    """
+    bin/kafka-topics.sh 封装。
+
+    create/delete 对「已存在 / 不存在」做 stderr 子串匹配后视为成功（幂等）；若 Topic 已存在但分区数等
+    与请求不一致，仍以 broker 报错为准（非「自动改配」）。
+    """
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.bin_dir = Path(kafka_home).resolve() / "bin"
@@ -3060,7 +3088,10 @@ class KafkaConfigManager:
 
 
 class KafkaMetricsCollector:
-    """调用 bin 下 metadata-quorum / kafka-topics / kafka-consumer-groups 采集并汇总为字典（--metrics-json）。"""
+    """
+    调用 bin 下 metadata-quorum / kafka-topics / kafka-consumer-groups 采集并汇总为字典（--metrics-json）。
+    collect_consumer_lag：无消费组时跳过 --all-groups --describe，避免空集群误报失败（与 --status 一致）。
+    """
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.kafka_home = Path(kafka_home).resolve()
@@ -3388,7 +3419,7 @@ def _resolve_kafka_client_config(
         kafka_home: Optional[str],
 ) -> Tuple[Optional[str], str]:
     """
-    解析 Kafka 客户端认证（与 StarCli 思路一致：显式文件 > 用户名密码 > 安装目录下默认文件 > 无）。
+    解析 Kafka 客户端认证。优先级：显式文件 > 用户名密码 > 安装目录下默认文件 > 无。
 
     优先级：--command-config / command_config / KAFKA_CLI_COMMAND_CONFIG；
     否则 --kafka-user + --kafka-password（或 KAFKA_SASL_*）由脚本生成临时 client 配置；
@@ -3763,11 +3794,14 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
 【典型用法】① 指定 Kafka 安装根目录 --kafka-home  ② 选择一种动作（--deploy / --status / --topic-* …）
 ③ 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，
-   或部署时生成的 ${kafka_home}/config/kafkacli.client.properties（与 StarCli「一次配置」思路一致）。
+   或部署时生成的 ${kafka_home}/config/kafkacli.client.properties（后续子命令默认可读该文件，与 --command-config 优先级见下）。
 【配置文件】--config xxx.json 中的键名与长选项对应（下划线，如 kafka_home）；与命令行同时存在时命令行优先。
 【认证优先级】--command-config > 环境变量 KAFKA_CLI_* > 用户名密码 > kafkacli.client.properties
-【清理与幂等】仅 --clean 会停服务并删生成配置，默认不动 log.dirs；删数据须 --clean-data 或与 --clean 联用 --force。
-  同一机重复部署建议：--deploy … --clean-first [--force|--clean-data]，或分两步先 --clean 再 --deploy。
+【清理与幂等】
+  · --deploy：可重复执行；覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
+  · --topic-create / --topic-delete：对已存在/已缺失按工具输出做幂等处理（见 Topic 分组说明）。
+  · --clean：卸载（删 unit 与生成配置），非部署；抹数据须 --clean-data 或与 --clean/--clean-first 联用 --force。
+  · --force：单独部署一般不需要；主要用于与 --clean / --clean-first 联用时删除磁盘数据。
 """
 
 
@@ -3808,7 +3842,7 @@ def show_examples():
 版本要求: Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：Kafka 4.x→17，3.x→11。
 
 快速命令索引（与选项表对照）:
-  部署+清理   → --deploy / --clean / --clean-first / --clean-data / --kafka-home / --verify
+  部署+清理   → --deploy（可重复）/ --clean / --clean-first / --clean-data / --kafka-home / --verify
   验收与指标 → --status / --metrics / --bootstrap-server
   认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
   Topic/Group→ --topic-* / --group-* / --consumer-group
@@ -3819,9 +3853,10 @@ def show_examples():
 1) 单节点 standalone（combined）示例:
    export KAFKA_ADVERTISED_HOST=127.0.0.1
    kafkacli --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   # 与 StarCli 类似：安装时设账号，后续 topic/status 等共用（脚本写 config/kafkacli.client.properties）:
+   # 同一机可重复执行 --deploy：覆盖生成配置并 systemctl restart；从 PLAINTEXT 切到 SASL 直接再跑下行即可，无需先删配置
    kafkacli --deploy standalone --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
      --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   # 安装时设账号，后续 topic/status 等共用（脚本写 config/kafkacli.client.properties）
    # 自建 PKI：SASL_SSL（keystore/truststore 可为 JKS 或 PKCS12）
    kafkacli --deploy standalone --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
      --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
@@ -3929,6 +3964,7 @@ def main():
     g_dep = parser.add_argument_group(
         "部署 KRaft（须配合 --deploy 与 --kafka-home）",
         "standalone=单节点 broker+controller；controller / broker=多节点角色拆分。"
+        " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
         " 与 --deploy-sasl-plain / --deploy-sasl-ssl 见「连接与认证」分组。",
     )
     g_dep.add_argument(
@@ -3999,7 +4035,7 @@ def main():
     g_dep.add_argument(
         "--force",
         action="store_true",
-        help="部署时：覆盖已存在生成配置并重新执行 kafka-storage.sh format。与 --clean 同用时：同时删除 KRaft 数据目录（须能解析路径）。与 --clean-first 同用时：部署前删数据（亦可用 --clean-data 显式指定）。",
+        help="单独 --deploy 已默认可重复执行并覆盖配置（无需本项）。与 --clean / --clean-first 联用时：配合删除 KRaft 数据目录（亦可用 --clean-data）。",
     )
     g_dep.add_argument(
         "--clean",
@@ -4014,7 +4050,7 @@ def main():
     g_dep.add_argument(
         "--clean-first",
         action="store_true",
-        help="与 --deploy 合用：先执行与 --clean 相同的卸载，再执行本次部署。重复装同一机时配合 --force 或 --clean-data 以删除旧 KRaft 数据，达到可重复部署。不要与单独使用的 --clean 同条命令混用。",
+        help="与 --deploy 合用：先执行与 --clean 相同的卸载，再执行本次部署。须清空磁盘元数据时加 --clean-data 或与 --force 联用。单独 --deploy 已可重复执行；本项用于需要先卸服务/删生成配置再装的场景。不要与仅 --clean 同条命令混用。",
     )
 
     g_conn = parser.add_argument_group(
@@ -4122,7 +4158,11 @@ def main():
         help="按 --config 中 nodes 数组依次 SSH 到多台机器执行部署（每台一条独立命令）。",
     )
 
-    g_topic = parser.add_argument_group("Topic（kafka-topics.sh）", "均须 --kafka-home 与 --bootstrap-server。")
+    g_topic = parser.add_argument_group(
+        "Topic（kafka-topics.sh）",
+        "均须 --kafka-home 与 --bootstrap-server。--topic-create：已存在且工具报 already exists 时视为成功；"
+        "--topic-delete：已不存在且工具报 unknown/does not exist 时视为成功。",
+    )
     g_topic.add_argument("--topic-create", action="store_true", help="创建 Topic；配合 --topic、--partitions、--replication-factor。")
     g_topic.add_argument("--topic-delete", action="store_true", help="删除 Topic；配合 --topic。")
     g_topic.add_argument("--topic-describe", action="store_true", help="描述 Topic；可配合 --topic。")
