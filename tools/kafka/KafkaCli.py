@@ -12,6 +12,8 @@ Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 b
 
 部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在 **systemctl restart** 前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 会 chown 给服务用户）。
 
+调用 bin 工具时：含 --command-config 的命令统一为「脚本 → 可选 --command-config → --bootstrap-server → 其余参数」（见 _kafka_cli_cmd），避免子命令解析错误。
+
 幂等约定（与下方「清理与幂等」、各 argparse 分组说明一致）：
   · --deploy：重复执行覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
   · --topic-create / --topic-delete：Topic 已存在/已不存在时按 CLI 输出匹配后视为成功（非「改分区/副本」的广义收敛）。
@@ -2543,9 +2545,10 @@ class KafkaDeployer:
         if not script.is_file():
             logger.error("未找到: %s", script, extra={"to_stdout": True})
             return False
-        cmd = [str(script), "--bootstrap-controller", bc, "describe", "--status"]
+        cmd = [str(script)]
         if command_config:
             cmd.extend(["--command-config", command_config])
+        cmd.extend(["--bootstrap-controller", bc, "describe", "--status"])
         print()
         print("=" * 72)
         print(" Controller 部署验收（元数据 Quorum）")
@@ -2741,16 +2744,24 @@ class KafkaDeployer:
             print(f"  LeaderEpoch  : {qs.get('leader_epoch')}")
             print(f"  CurrentVoters: {qs.get('voters')}")
         else:
-            print(f"  状态: FAIL  {qs.get('error', '')}")
+            print("  状态: FAIL")
+            qe = (qs.get("error") or "").strip()
+            if qe:
+                print(f"  原因: {qe}")
+            else:
+                print("  原因: kafka-metadata-quorum describe --status 非零退出或无输出（见上无「原因」时请查脚本日志）")
 
         quorum_script = self.bin_dir / "kafka-metadata-quorum.sh"
         if quorum_script.is_file():
-            cmd_base = [str(quorum_script), "--bootstrap-server", bootstrap_server.strip(), "describe"]
-            if command_config:
-                cmd_base.extend(["--command-config", command_config])
+            cmd_rep = _kafka_cli_cmd(
+                quorum_script,
+                bootstrap_server,
+                ["describe", "--replication"],
+                command_config,
+            )
             try:
                 r = run_command(
-                    cmd_base + ["--replication"],
+                    cmd_rep,
                     capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120),
                 )
                 print("\n[3] Quorum 副本同步（describe --replication）")
@@ -2758,8 +2769,11 @@ class KafkaDeployer:
                     for line in (r.stdout or "").strip().splitlines():
                         print(f"  {line}")
                 else:
-                    print(f"  (无输出或失败) {(r.stderr or '')[:500]}")
+                    err3 = (r.stderr or r.stdout or "").strip()
+                    print(f"  状态: FAIL")
+                    print(f"  原因: {err3[:1200] if err3 else f'exit {r.returncode}，无输出'}")
             except Exception as ex:
+                print("\n[3] Quorum 副本同步（describe --replication）")
                 print(f"  查询失败: {ex}")
 
         # [4] 副本健康（under-replicated）
@@ -2801,24 +2815,49 @@ class KafkaDeployer:
         else:
             print(f"  查询失败: {lag.get('error', '')}")
 
-        # [7] 结论
+        # [7] 结论（分项失败原因与 [1]～[6] 对应，避免笼统「连通或 Quorum」）
         print("\n" + "-" * 72)
         print(" 验收结论")
         print("-" * 72)
         critical_ok = ok_connect and ok_quorum_status
         ur_ok = ph.get("ok") and ur == 0
         if critical_ok and ur_ok:
-            print("  [通过] 客户端与 Quorum 可用；当前无 under-replicated 分区。")
+            print("  [通过] [1] Broker 连通、[2] Quorum 可读；[4] 无 under-replicated 分区。")
         elif critical_ok and ph.get("ok") and ur > 0:
-            print("  [警告] 客户端与 Quorum 可用，但存在 under-replicated 分区。")
-        elif not critical_ok:
-            print("  [未通过] 客户端连通或 Quorum 检查失败，请先修复后再投产。")
+            print("  [警告] [1][2] 通过，但 [4] 存在 under-replicated 分区（生产风险）。")
+        elif not ok_connect:
+            print("  [未通过] 仅 [1] Broker API 连通/认证失败（与 bootstrap、command-config、账号密码有关）；[2] 未单独判定。")
+        elif not ok_quorum_status:
+            print(
+                "  [未通过] [1] 通过但 [2] KRaft Quorum（kafka-metadata-quorum describe --status）失败；"
+                "请查看 [2] 原因（含 CLI 参数、元数据口是否可达）。"
+            )
+        elif not ph.get("ok"):
+            print("  [部分] [1][2] 通过，[4] 副本健康查询失败，见上文。")
         else:
-            print("  [部分] 核心项通过，部分指标查询失败，请查看上文。")
+            print("  [部分] [1][2][4] 未全部满足或 [5][6] 查询异常，请按各段「状态/原因」逐项排查。")
         print("-" * 72)
         print()
 
         return critical_ok
+
+
+def _kafka_cli_cmd(
+        script_path: Union[str, Path],
+        bootstrap_server: str,
+        tail_args: List[str],
+        command_config: Optional[str] = None,
+) -> List[str]:
+    """
+    组装多数 bin/*.sh 的命令行：可选全局 --command-config → --bootstrap-server → 其余参数。
+    与 Kafka 发行版 Admin 客户端惯例一致；尾随 --command-config 在 kafka-metadata-quorum 等带子命令的工具上会解析失败。
+    """
+    cmd: List[str] = [str(script_path)]
+    if command_config:
+        cmd.extend(["--command-config", command_config])
+    cmd.extend(["--bootstrap-server", (bootstrap_server or "").strip()])
+    cmd.extend(tail_args)
+    return cmd
 
 
 def _build_bootstrap_cmd(
@@ -2840,9 +2879,7 @@ def _build_bootstrap_cmd(
     if cc_err:
         raise CommandExecutionError(cc_err)
     to = timeout if timeout is not None else _kafka_cli_timeout_sec(120)
-    cmd = [str(script_path), "--bootstrap-server", bootstrap_server.strip()] + args
-    if command_config:
-        cmd.extend(["--command-config", command_config])
+    cmd = _kafka_cli_cmd(script_path, bootstrap_server, args, command_config)
     return run_command(cmd, capture_output=True, timeout=to)
 
 
@@ -3009,9 +3046,11 @@ class KafkaQuorumManager:
             conn = ["--bootstrap-server", bs]
         else:
             raise CommandExecutionError("须指定 bootstrap_server 或 bootstrap_controller（kafka-metadata-quorum.sh）")
-        cmd = [str(script)] + args + conn
+        # 全局选项须先于子命令 describe/add-controller 等（否则 --command-config 会报 unrecognized arguments）
+        cmd = [str(script)]
         if self.command_config:
             cmd.extend(["--command-config", self.command_config])
+        cmd.extend(conn + args)
         to = _kafka_cli_timeout_sec(120)
         return run_command(cmd, capture_output=True, timeout=to)
 
@@ -3117,12 +3156,16 @@ class KafkaMetricsCollector:
             if pre:
                 out["error"] = pre
                 return out
-            cmd = [str(self.bin_dir / "kafka-metadata-quorum.sh"), "--bootstrap-server",
-                   self.bootstrap_server.strip(), "describe", "--status"]
-            if self.command_config:
-                cmd.extend(["--command-config", self.command_config])
+            cmd = _kafka_cli_cmd(
+                self.bin_dir / "kafka-metadata-quorum.sh",
+                self.bootstrap_server,
+                ["describe", "--status"],
+                self.command_config,
+            )
             r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
-            if r.returncode != 0 or not r.stdout:
+            if r.returncode != 0 or not (r.stdout or "").strip():
+                err = (r.stderr or r.stdout or "").strip()
+                out["error"] = err[:4000] if err else f"exit {r.returncode}，无输出"
                 return out
             for line in r.stdout.splitlines():
                 if "LeaderId:" in line:
@@ -3144,13 +3187,15 @@ class KafkaMetricsCollector:
             if pre:
                 out["error"] = pre
                 return out
-            cmd = [str(self.bin_dir / "kafka-topics.sh"), "--bootstrap-server", self.bootstrap_server.strip(),
-                   "--describe", "--under-replicated-partitions"]
-            if self.command_config:
-                cmd.extend(["--command-config", self.command_config])
+            cmd = _kafka_cli_cmd(
+                self.bin_dir / "kafka-topics.sh",
+                self.bootstrap_server,
+                ["--describe", "--under-replicated-partitions"],
+                self.command_config,
+            )
             r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
             if r.returncode != 0:
-                out["error"] = r.stderr or r.stdout or "describe failed"
+                out["error"] = ((r.stderr or r.stdout or "").strip() or "describe failed")[:4000]
                 return out
             lines = (r.stdout or "").strip().splitlines()
             for line in lines:
@@ -3178,10 +3223,12 @@ class KafkaMetricsCollector:
                 out["ok"] = True
                 out["empty_groups"] = True
                 return out
-            cmd = [str(self.bin_dir / "kafka-consumer-groups.sh"), "--bootstrap-server",
-                   self.bootstrap_server.strip(), "--all-groups", "--describe"]
-            if self.command_config:
-                cmd.extend(["--command-config", self.command_config])
+            cmd = _kafka_cli_cmd(
+                self.bin_dir / "kafka-consumer-groups.sh",
+                self.bootstrap_server,
+                ["--all-groups", "--describe"],
+                self.command_config,
+            )
             r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(300))
             if r.returncode != 0 or not (r.stdout or "").strip():
                 out["error"] = (r.stderr or r.stdout or "").strip() or "describe failed"
@@ -3209,13 +3256,12 @@ class KafkaMetricsCollector:
             if pre:
                 out["error"] = pre
                 return out
-            cmd = [
-                str(self.bin_dir / "kafka-broker-api-versions.sh"),
-                "--bootstrap-server",
-                self.bootstrap_server.strip(),
-            ]
-            if self.command_config:
-                cmd.extend(["--command-config", self.command_config])
+            cmd = _kafka_cli_cmd(
+                self.bin_dir / "kafka-broker-api-versions.sh",
+                self.bootstrap_server,
+                [],
+                self.command_config,
+            )
             r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
             if r.returncode != 0:
                 out["error"] = (r.stderr or r.stdout or "").strip() or f"exit {r.returncode}"
@@ -3240,14 +3286,12 @@ class KafkaMetricsCollector:
             if pre:
                 out["error"] = pre
                 return out
-            cmd = [
-                str(self.bin_dir / "kafka-topics.sh"),
-                "--bootstrap-server",
-                self.bootstrap_server.strip(),
-                "--list",
-            ]
-            if self.command_config:
-                cmd.extend(["--command-config", self.command_config])
+            cmd = _kafka_cli_cmd(
+                self.bin_dir / "kafka-topics.sh",
+                self.bootstrap_server,
+                ["--list"],
+                self.command_config,
+            )
             r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
             if r.returncode != 0:
                 out["error"] = (r.stderr or r.stdout or "").strip() or f"exit {r.returncode}"
@@ -3267,14 +3311,12 @@ class KafkaMetricsCollector:
             if pre:
                 out["error"] = pre
                 return out
-            cmd = [
-                str(self.bin_dir / "kafka-consumer-groups.sh"),
-                "--bootstrap-server",
-                self.bootstrap_server.strip(),
-                "--list",
-            ]
-            if self.command_config:
-                cmd.extend(["--command-config", self.command_config])
+            cmd = _kafka_cli_cmd(
+                self.bin_dir / "kafka-consumer-groups.sh",
+                self.bootstrap_server,
+                ["--list"],
+                self.command_config,
+            )
             r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
             if r.returncode != 0:
                 out["error"] = (r.stderr or r.stdout or "").strip() or f"exit {r.returncode}"
@@ -3320,9 +3362,7 @@ class KafkaBrokerDecommission:
         if cc_err:
             raise CommandExecutionError(cc_err)
         to = timeout if timeout is not None else _kafka_cli_timeout_sec(120)
-        cmd = [str(self._reassign_script), "--bootstrap-server", self.bootstrap_server.strip()] + args
-        if self.command_config:
-            cmd.extend(["--command-config", self.command_config])
+        cmd = _kafka_cli_cmd(self._reassign_script, self.bootstrap_server, args, self.command_config)
         return run_command(cmd, capture_output=True, timeout=to)
 
     def generate(self, broker_ids: str, topics_to_move_json_path: Optional[str] = None) -> Optional[str]:
