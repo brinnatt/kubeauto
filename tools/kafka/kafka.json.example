@@ -1,5 +1,5 @@
 {
-  "deployment_note": "KRaft: official 3.3+ for new clusters (KIP-833); 4.0+ drops ZooKeeper. JDK: 11+ for Kafka 3.x, 17+ for 4.x (script infers from path or libs/kafka-server-common-*.jar). If needed add assume_kafka_version: \"3.7.0\" or skip_kraft_version_check: true (at your risk). Production: export KAFKA_ADVERTISED_HOST=<reachable IP>.",
+  "deployment_note": "键名与 kafkacli 命令行长选项一致（下划线）；用户可见说明须与运行 kafkacli -h 及 KafkaCli.py 内前言、分步示例一致维护。KRaft（Kafka 3.3+，4.0+ 无 ZooKeeper）。同一集群内 node.id（本文件为 node_id）须在所有 controller 与 broker 之间全局唯一。JDK：Kafka 3.x 常用 11，4.x 常用 17。生产请设置 KAFKA_ADVERTISED_HOST。若无法自动检测版本可设 assume_kafka_version 或（不推荐）skip_kraft_version_check。",
   "kafka_home": "/opt/kafka",
   "user": "kafka",
   "group": "kafka",
@@ -26,15 +26,23 @@
       "target_host": "controller2",
       "deploy": "controller",
       "node_id": 2,
-      "cluster_id": "<从第一台 controller 输出获取>",
+      "cluster_id": "<从第一台 controller 部署输出或 meta 中获取，与集群一致>",
+      "metadata_log_dir": "/var/kafka/metadata-log",
+      "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
+    },
+    {
+      "target_host": "controller3",
+      "deploy": "controller",
+      "node_id": 3,
+      "cluster_id": "<同上>",
       "metadata_log_dir": "/var/kafka/metadata-log",
       "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
     },
     {
       "target_host": "broker1",
       "deploy": "broker",
-      "node_id": 1,
-      "cluster_id": "<CLUSTER_ID>",
+      "node_id": 4,
+      "cluster_id": "<同上>",
       "log_dirs": "/var/kafka/logs",
       "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
     }

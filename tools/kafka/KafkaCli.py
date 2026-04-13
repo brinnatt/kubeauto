@@ -2,22 +2,35 @@
 """
 Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 bin/ 下工具。
 
+文档一致性（须与代码同步维护，避免用户可见说明与行为不一致）：
+  用户可见说明分散在：本段、下方 KAFKACLI_PARSER_DESCRIPTION、show_examples() 分步示例、argparse 各选项 help、
+  kafka.json.example 注释与 deployment_note。行为以 main() 分支及 _resolve_kafka_client_config、
+  KafkaDeployer、_run_remote_deploy 等实现为准；修改其一须核对其它各处。JSON 配置键名与命令行长选项对应（下划线）。
+
 常用环境变量：
   KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST（生产请设为对客户端可达的本机地址或 DNS）、KAFKA_CLI_ASSUME_VERSION
   KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD（或 KAFKA_USER / KAFKA_PASSWORD）、KAFKA_SASL_MECHANISM
-  KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG — 显式客户端 properties（覆盖用户名密码）
+  KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG：显式客户端 properties（优先级见下「客户端认证」）
   自建 PKI：KAFKA_SSL_KEYSTORE_PATH、KAFKA_SSL_KEYSTORE_PASSWORD、KAFKA_SSL_TRUSTSTORE_PATH、KAFKA_SSL_TRUSTSTORE_PASSWORD（与 --ssl-* 等价）
 
-验收：部署后 `--verify` — standalone/broker 为 TCP + 完整 `show_cluster_status`；controller 为 TCP + `kafka-metadata-quorum describe --status`（元数据面，与官方运维一致）。平时可 `kafkacli --status --kafka-home ...`。
+客户端认证（与 KAFKACLI_PARSER_DESCRIPTION、§6 分步示例一致；实现见 _resolve_kafka_client_config）：
+  --command-config 或 KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG
+  优于 --kafka-user + --kafka-password 或 KAFKA_SASL_* / KAFKA_USER / KAFKA_PASSWORD
+  优于 ${kafka_home}/config/kafkacli.client.properties（由 --deploy-sasl-plain / --deploy-sasl-ssl 等写入时）。
+
+KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、--node-id 帮助一致）：
+  多节点时 node.id（--node-id / JSON 的 node_id）须在全集群全部 controller 与 broker 间全局唯一；脚本不代为校验其它主机上的已占用编号。
+
+验收：部署后可用 --verify；standalone/broker 侧重业务监听与 show_cluster_status；controller 侧重 kafka-metadata-quorum describe --status。日常可用 kafkacli --status --kafka-home …。
 
 部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在执行 systemctl restart 之前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 会 chown 给服务用户）。
 
 调用 bin 工具时：含 --command-config 的命令统一为「脚本 → 可选 --command-config → --bootstrap-server → 其余参数」（见 _kafka_cli_cmd），避免子命令解析错误。
 
-幂等约定（与下方「清理与幂等」、各 argparse 分组说明一致）：
+幂等约定（与 KAFKACLI_PARSER_DESCRIPTION「清理与幂等」、各 argparse 分组说明一致）：
   · --deploy：重复执行覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
   · --topic-create / --topic-delete：Topic 已存在/已不存在时按 CLI 输出匹配后视为成功（非「改分区/副本」的广义收敛）。
-  · --status / --metrics*：只读，天然可重复。
+  · --status / --metrics 系列：只读，天然可重复。
   · --clean：卸载（停服务、删 unit 与生成配置），非部署；抹数据用 --clean-data 或与 --clean/--clean-first 联用 --force。
 
 退出码：0 成功，1 失败。
@@ -1385,6 +1398,9 @@ class KafkaDeployer:
 
     幂等：deploy_* 不因「生成配置已存在」失败；版本下限由 check_environment 与 KRAFT_DEPLOY_MIN_VERSION 执行，
     可用 --skip-kraft-version-check 跳过。
+
+    多节点须保证各节点的 node.id 在整集群唯一（含全部 controller 与 broker）；脚本无法代你校验其它机器上的已占用编号，
+    配置错误将导致 Kafka 拒绝启动或元数据异常，部署前请自行核对。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
@@ -2133,8 +2149,15 @@ class KafkaDeployer:
         - 后续 controller：format --no-initial-controllers
         enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties，
         供本机连接集群内 Broker（PLAIN 或 SASL_SSL，与集群一致）。
+
+        node.id 须与本集群内其它 controller 及全部 broker 的编号互不重复（全局唯一）。
         """
         logger.info("=== 部署 Kafka Controller（KRaft）===", extra={"to_stdout": True})
+        logger.info(
+            "KRaft：本节点 node.id=%s 须与集群内其余 controller、全部 broker 的 node.id 互不重复；重复将导致异常。",
+            node_id,
+            extra={"to_stdout": True},
+        )
 
         ok, errs = self.check_environment()
         if not ok:
@@ -2321,8 +2344,15 @@ class KafkaDeployer:
         默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
         advertised.listeners 主机来自 KAFKA_ADVERTISED_HOST；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
         enable_sasl_plain / sasl_ssl_material：对外 SASL_PLAINTEXT 或 SASL_SSL+PLAIN，并写入 kafkacli.client.properties。
+
+        node.id 须与本集群内全部 controller 及其它 broker 的编号互不重复（全局唯一）。
         """
         logger.info("=== 部署 Kafka Broker（KRaft）===", extra={"to_stdout": True})
+        logger.info(
+            "KRaft：本节点 node.id=%s 须与集群内全部 controller、其它 broker 的 node.id 互不重复；重复将导致异常。",
+            node_id,
+            extra={"to_stdout": True},
+        )
 
         ok, errs = self.check_environment()
         if not ok:
@@ -3450,11 +3480,12 @@ def _resolve_kafka_client_config(
         kafka_home: Optional[str],
 ) -> Tuple[Optional[str], str]:
     """
-    解析 Kafka 客户端认证。优先级：显式文件 > 用户名密码 > 安装目录下默认文件 > 无。
+    解析 Kafka 客户端认证（用户可见描述须与 KAFKACLI_PARSER_DESCRIPTION【认证优先级】、文件头「客户端认证」一致）。
 
-    优先级：--command-config / command_config / KAFKA_CLI_COMMAND_CONFIG；
-    否则 --kafka-user + --kafka-password（或 KAFKA_SASL_*）由脚本生成临时 client 配置；
-    否则若存在 ${kafka_home}/config/kafkacli.client.properties（如 --deploy-sasl-plain 部署写入）则使用。
+    顺序：1）--command-config / command_config / KAFKA_CLI_COMMAND_CONFIG / KAFKA_COMMAND_CONFIG；
+    2）--kafka-user + --kafka-password，或环境变量 KAFKA_SASL_*、KAFKA_USER、KAFKA_PASSWORD（由脚本生成临时 client 配置）；
+    3）若存在 ${kafka_home}/config/kafkacli.client.properties（如 --deploy-sasl-plain / --deploy-sasl-ssl 写入）则使用；
+    否则无认证（PLAINTEXT 等）。
     """
     v = _get_opt(args, config, "command_config")
     if not (v or "").strip():
@@ -3832,7 +3863,12 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
     3. 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，或部署时生成的
        ${kafka_home}/config/kafkacli.client.properties（后续子命令默认可读该文件，与 --command-config 优先级见下）。
 【配置文件】--config xxx.json 中的键名与长选项对应（下划线，如 kafka_home）；与命令行同时存在时命令行优先。
-【认证优先级】--command-config > 环境变量 KAFKA_CLI_* > 用户名密码 > kafkacli.client.properties
+【认证优先级】与 _resolve_kafka_client_config 实现一致：
+  --command-config 或 KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG
+  优于 --kafka-user + --kafka-password 或 KAFKA_SASL_* / KAFKA_USER / KAFKA_PASSWORD
+  优于 ${kafka_home}/config/kafkacli.client.properties
+【KRaft 节点编号】多节点时，node.id（命令行即 --node-id，JSON 即 node_id）在同一集群内须全局唯一，
+  适用于全部 controller 进程与全部 broker 进程；禁止两台主机使用相同编号（错误示例：controller 已用 1～3 时 broker 仍填 1）。
 【清理与幂等】
   · --deploy：可重复执行；覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
   · --topic-create / --topic-delete：对已存在/已缺失按工具输出做幂等处理（见 Topic 分组说明）。
@@ -3869,17 +3905,20 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
 def show_examples():
     """接续 argparse -h 输出：分步可复制命令（与上方各 -- 选项对应）。"""
     examples = """
-（以下为「分步示例」，与上方「可选参数」表对应；环境变量见脚本文件头注释。建议按 § 编号顺序阅读。）
+（以下为「分步示例」，须与本命令 -h 屏幕最前各节、源码 KafkaCli.py 文件头「文档一致性」及 tools/kafka/kafka.json.example 交叉一致维护；环境变量见文件头。
+ JSON 键名与命令行长选项一致（下划线）。建议按 § 编号顺序阅读。）
 
 ------------------------------------------------------------------------
 §0 术语：两种「地址」含义不同，请勿混淆
 ------------------------------------------------------------------------
   · kafkacli：在终端中运行的运维脚本；--kafka-home 为 Kafka 解压目录。
   · 部署角色（KRaft）：
-      - standalone：单机同时承担 broker 与 controller（入门、测试常用）。
+      - standalone：单机同时承担 broker 与 controller（入门、测试常用）；该模式下通常仅一个 node.id（默认 1）。
       - controller：仅参与元数据仲裁（常见为 3 或 5 台，须为奇数）；每台指定一个 --node-id。
       - broker：承载分区数据，对外提供 produce/consume；每台指定一个 --node-id。
       同一集群内可以是「多台 controller + 多台 broker」，并非全集群只有一个 controller。
+  · node.id（--node-id）：凡加入同一 KRaft 集群的进程（不论角色）共用一套编号，须全集群唯一。
+      例如 controller 已使用 1、2、3，则第一台 broker 应使用 4（或任意尚未占用的正整数），不可再填 1。
   · --target-host：表示「通过 SSH 登录哪一台主机来执行本条 kafkacli」。一条命令只对应一台主机；
       若要多台主机，请多次执行并每次更换 --target-host（或在各主机本地登录后执行，此时可不写 --target-host）。
   · --controller-quorum-bootstrap-servers "host1:9093,host2:9093,..."：
@@ -3985,7 +4024,7 @@ def show_examples():
    kafkacli --batch --config cluster.json
 
 ------------------------------------------------------------------------
-§6 验收与指标（客户端认证优先级：--command-config > 环境变量 > 用户名/密码 > kafkacli.client.properties）
+§6 验收与指标（客户端认证优先级与本帮助最前「【认证优先级】」、文件头「客户端认证」相同）
 ------------------------------------------------------------------------
    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
    export KAFKA_SASL_USERNAME=admin KAFKA_SASL_PASSWORD='***'
@@ -4025,6 +4064,7 @@ def show_examples():
   [ ] 各节点已安装兼容版本 Java，--kafka-home 路径正确，数据目录权限与磁盘空间满足要求
   [ ] 网络与安全组放行业务端口与 Controller 端口，各节点之间按规划互通
   [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；broker 的 --cluster-id 与集群一致
+  [ ] 各节点的 --node-id 已在整集群范围内核对，无与其它 controller 或 broker 重复
   [ ] 跨不可信网络时优先采用 TLS（如 SASL_SSL），避免长期使用未加密的 SASL_PLAINTEXT
   [ ] 部署后执行 --status 或 --metrics；承载业务前创建 topic，并确认 min.insync.replicas 等策略
 
@@ -4060,7 +4100,7 @@ def main():
 
     g_cfg = parser.add_argument_group(
         "配置文件与版本",
-        "与命令行合并；JSON 键名与长选项一致（下划线）。",
+        "与命令行合并；JSON 键名与长选项一致（下划线）。说明须与文件头「文档一致性」、分步示例同步维护。",
     )
     g_cfg.add_argument(
         "--config",
@@ -4082,6 +4122,7 @@ def main():
         "部署 KRaft（须配合 --deploy 与 --kafka-home）",
         "standalone=单节点 broker+controller；controller / broker=多节点角色拆分。"
         " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
+        " 多节点时 --node-id 对应 node.id，须在全集群（全部 controller 与 broker）内唯一。"
         " 与 --deploy-sasl-plain / --deploy-sasl-ssl 见「连接与认证」分组。",
     )
     g_dep.add_argument(
@@ -4105,16 +4146,21 @@ def main():
         metavar="PATH",
         help="Controller 专用：KRaft 元数据日志目录 metadata.log.dir。",
     )
-    g_dep.add_argument("--node-id", type=int, help="KRaft node.id；controller / broker 部署必填。")
+    g_dep.add_argument(
+        "--node-id",
+        type=int,
+        help="写入 server.properties 的 node.id。controller 与 broker 部署时必填（standalone 有默认）。"
+        " 同一集群内须全局唯一：与所有其它 controller、broker 节点的编号均不得重复。",
+    )
     g_dep.add_argument(
         "--cluster-id",
         metavar="ID",
-        help="KRaft 集群 UUID；多节点时除首个节点外须与集群已有 ID 一致。",
+        help="KRaft 集群 UUID。首个自举的 controller 由格式化生成；之后各 controller 与全部 broker 须与该 ID 一致（见分步示例 §4）。",
     )
     g_dep.add_argument(
         "--controller-quorum-bootstrap-servers",
         metavar="HOST:PORT[,...]",
-        help="broker/controller（非首节点）使用：Quorum 入口，对应 controller.quorum.bootstrap.servers。",
+        help="写入 controller.quorum.bootstrap.servers；controller 与 broker 部署时通常均需指定，且与集群内各台 Controller 监听地址一致。",
     )
     g_dep.add_argument(
         "--controller-port",
@@ -4172,7 +4218,7 @@ def main():
 
     g_conn = parser.add_argument_group(
         "连接、验收与客户端认证",
-        "运维子命令（topic、metrics 等）共用；须能连上集群。",
+        "运维子命令（topic、metrics 等）共用；须能连上集群。客户端认证优先级顺序见本帮助最前「【认证优先级】」段；与源码文件头「客户端认证」及分步示例 §6 一致。",
     )
     g_conn.add_argument(
         "--bootstrap-server",
@@ -4193,7 +4239,7 @@ def main():
     g_conn.add_argument(
         "--command-config",
         metavar="PATH",
-        help="显式客户端 properties（SASL_SSL/SCRAM 等高级场景）；优先级最高，覆盖用户名密码与默认文件。",
+        help="显式客户端 properties（SASL_SSL/SCRAM 等）；在所有认证来源中优先级最高，完整顺序见运行 kafkacli -h 时屏幕上方【认证优先级】一节。",
     )
     g_conn.add_argument(
         "--kafka-user",
