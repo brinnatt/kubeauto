@@ -574,6 +574,26 @@ def _validate_advertised_host_str(value: str) -> Optional[str]:
     return None
 
 
+def _validate_explicit_cluster_id_str(value: str) -> Optional[str]:
+    """
+    用户显式传入的 cluster.id（--cluster-id / JSON cluster_id）须与 kafka-storage.sh random-uuid 输出一致：
+    固定 22 字符，URL-safe Base64 字母表 [A-Za-z0-9_-]。
+    见 Apache Kafka StorageTool / meta.properties cluster.id。
+    """
+    s = (value or "").strip()
+    if not s:
+        return None
+    if len(s) != 22:
+        return (
+            f"cluster.id 格式无效：须为 `kafka-storage.sh random-uuid` 生成的 22 位字符串（当前长度 {len(s)}）。"
+            f"不要使用任意词（如 firstone）；第一台用 --generate-cluster-id，其余台用同一输出作为 --cluster-id。"
+        )
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
+    if any(c not in allowed for c in s):
+        return "cluster.id 含非法字符（仅允许 A-Z a-z 0-9 _ -，共 22 位）。"
+    return None
+
+
 class CommandExecutionError(Exception):
     """命令执行异常；message 可通过 str(e) 或 e.message 读取。"""
 
@@ -4568,7 +4588,8 @@ def main():
     g_dep.add_argument(
         "--cluster-id",
         metavar="ID",
-        help="KRaft 集群 UUID。与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller 部署；broker 仅使用本项加入已有集群）。",
+        help="KRaft 集群 ID：须为 kafka-storage.sh random-uuid 生成的 22 位字符串（与 --generate-cluster-id 输出同形）。"
+        " 多节点时除首台外复用同一 ID；勿使用任意词。与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller）；broker 仅本项。",
     )
     g_dep.add_argument(
         "--generate-cluster-id",
@@ -5185,6 +5206,11 @@ def main():
                 extra={"to_stdout": True},
             )
             sys.exit(EXIT_ERROR)
+        if cid_s and not gen_cid and not use_disk_cid:
+            err_cid = _validate_explicit_cluster_id_str(cid_s)
+            if err_cid:
+                logger.error(err_cid, extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
         if not InputValidator.validate_path(log_dirs.split(",")[0].strip()):
             logger.error("无效的 --log-dirs 路径", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
@@ -5231,6 +5257,11 @@ def main():
                 extra={"to_stdout": True},
             )
             sys.exit(EXIT_ERROR)
+        if cid_s and not gen_cid and not use_disk_cid:
+            err_cid = _validate_explicit_cluster_id_str(cid_s)
+            if err_cid:
+                logger.error(err_cid, extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
         success = deployer.deploy_controller(
             node_id=int(node_id),
             controller_quorum_bootstrap_servers=str(quorum).strip(),
@@ -5266,6 +5297,10 @@ def main():
         cluster_id = args.cluster_id or config.get("cluster_id")
         if not cluster_id:
             logger.error("Broker 必须指定 --cluster-id", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        err_cid_br = _validate_explicit_cluster_id_str(str(cluster_id).strip())
+        if err_cid_br:
+            logger.error(err_cid_br, extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
         success = deployer.deploy_broker(
             node_id=node_id,
