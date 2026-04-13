@@ -8,7 +8,8 @@ Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 b
   KafkaDeployer、_run_remote_deploy 等实现为准；修改其一须核对其它各处。JSON 配置键名与命令行长选项对应（下划线）。
 
 常用环境变量：
-  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST（部署 Controller/Broker 前请设为对**远程运维机**可达的 IP 或 DNS，避免元数据只登记 hostname 导致远程 kafka-metadata-quorum UnknownHost）、KAFKA_CLI_ASSUME_VERSION
+  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_CLI_ASSUME_VERSION
+  部署 advertised：须使用命令行 --advertised-host 或 JSON advertised_host（本节点对集群与客户端宣告的 IP 或 DNS），不再读取 KAFKA_ADVERTISED_HOST 环境变量。
   KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD（或 KAFKA_USER / KAFKA_PASSWORD）、KAFKA_SASL_MECHANISM
   KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG：显式客户端 properties（优先级见下「客户端认证」）
   自建 PKI：KAFKA_SSL_KEYSTORE_PATH、KAFKA_SSL_KEYSTORE_PASSWORD、KAFKA_SSL_TRUSTSTORE_PATH、KAFKA_SSL_TRUSTSTORE_PASSWORD（与 --ssl-* 等价）
@@ -456,12 +457,15 @@ def _build_kafka_client_sasl_ssl_content(
 
 
 def _kraft_combined_sasl_ssl_listener_properties(
-        username: str, password: str, ssl_stack: Dict[str, str]
+        advertised_host: str,
+        username: str,
+        password: str,
+        ssl_stack: Dict[str, str],
 ) -> Dict[str, str]:
     """KRaft combined：对外 SASL_SSL + PLAIN + ssl.*；Quorum 仍为 PLAINTEXT。"""
     broker_port = DEFAULT_BROKER_PORT
     ctrl_port = DEFAULT_CONTROLLER_PORT
-    adv_host = _advertised_host()
+    adv_host = advertised_host.strip()
     ls = f"SASL_SSL://0.0.0.0:{broker_port},CONTROLLER://0.0.0.0:{ctrl_port}"
     jaas = _broker_plain_jaas(username, password)
     out: Dict[str, str] = {
@@ -481,9 +485,14 @@ def _kraft_combined_sasl_ssl_listener_properties(
     return out
 
 
-def _kraft_broker_sasl_ssl_listener_properties(username: str, password: str, ssl_stack: Dict[str, str]) -> Dict[str, str]:
+def _kraft_broker_sasl_ssl_listener_properties(
+        advertised_host: str,
+        username: str,
+        password: str,
+        ssl_stack: Dict[str, str],
+) -> Dict[str, str]:
     """KRaft broker-only：SASL_SSL + PLAIN + ssl.*。"""
-    adv_host = _advertised_host()
+    adv_host = advertised_host.strip()
     broker_port = DEFAULT_BROKER_PORT
     ls = f"SASL_SSL://0.0.0.0:{broker_port}"
     jaas = _broker_plain_jaas(username, password)
@@ -500,11 +509,11 @@ def _kraft_broker_sasl_ssl_listener_properties(username: str, password: str, ssl
     return out
 
 
-def _kraft_combined_sasl_plain_listener_properties(username: str, password: str) -> Dict[str, str]:
+def _kraft_combined_sasl_plain_listener_properties(advertised_host: str, username: str, password: str) -> Dict[str, str]:
     """KRaft combined：SASL_PLAINTEXT + PLAIN（与 _kraft_combined_listener_properties 同结构）。"""
     broker_port = DEFAULT_BROKER_PORT
     ctrl_port = DEFAULT_CONTROLLER_PORT
-    adv_host = _advertised_host()
+    adv_host = advertised_host.strip()
     ls = f"SASL_PLAINTEXT://0.0.0.0:{broker_port},CONTROLLER://0.0.0.0:{ctrl_port}"
     jaas = _broker_plain_jaas(username, password)
     return {
@@ -552,9 +561,17 @@ def _cli_topic_missing(msg: str) -> bool:
     )
 
 
-def _advertised_host() -> str:
-    """读取环境变量 KAFKA_ADVERTISED_HOST；未设置时为 127.0.0.1。"""
-    return (os.getenv("KAFKA_ADVERTISED_HOST") or "127.0.0.1").strip() or "127.0.0.1"
+def _validate_advertised_host_str(value: str) -> Optional[str]:
+    """
+    部署用 advertised 主机（与 Kafka 文档 advertised.listeners 语义一致：须为客户端与其它节点可达的地址）。
+    返回 None 表示合法；否则返回错误说明。
+    """
+    s = (value or "").strip()
+    if not s:
+        return "未指定 advertised 主机（部署须使用 --advertised-host 或配置文件 advertised_host）"
+    if not InputValidator.validate_hostname(s):
+        return f"advertised 主机格式无效（须为 IPv4 或 DNS 兼容主机名）: {s!r}"
+    return None
 
 
 class CommandExecutionError(Exception):
@@ -686,15 +703,18 @@ def _listener_scheme_port(listeners: str, scheme: str, default_port: int) -> int
     return int(m.group(1)) if m else default_port
 
 
-def _kraft_combined_listener_properties(listeners_override: Optional[str]) -> Dict[str, str]:
+def _kraft_combined_listener_properties(
+        advertised_host: str,
+        listeners_override: Optional[str],
+) -> Dict[str, str]:
     """
     KRaft combined：返回 listeners、advertised.listeners、controller.quorum.bootstrap.servers、
     controller.listener.names、inter.broker.listener.name、listener.security.protocol.map。
-    主机名来自 KAFKA_ADVERTISED_HOST（未设置则 127.0.0.1）。
+    advertised_host：本节点对集群宣告的地址（须与 --advertised-host 一致）。
     """
     broker_port = DEFAULT_BROKER_PORT
     ctrl_port = DEFAULT_CONTROLLER_PORT
-    adv_host = _advertised_host()
+    adv_host = advertised_host.strip()
     if listeners_override and listeners_override.strip():
         ls = listeners_override.strip().rstrip(",")
         if "CONTROLLER" not in ls.upper():
@@ -723,9 +743,9 @@ def _kraft_combined_listener_properties(listeners_override: Optional[str]) -> Di
     }
 
 
-def _kraft_broker_sasl_plain_listener_properties(username: str, password: str) -> Dict[str, str]:
+def _kraft_broker_sasl_plain_listener_properties(advertised_host: str, username: str, password: str) -> Dict[str, str]:
     """KRaft broker-only：对外 SASL_PLAINTEXT + PLAIN（与 combined SASL 中 broker 侧一致）。"""
-    adv_host = _advertised_host()
+    adv_host = advertised_host.strip()
     broker_port = DEFAULT_BROKER_PORT
     ls = f"SASL_PLAINTEXT://0.0.0.0:{broker_port}"
     jaas = _broker_plain_jaas(username, password)
@@ -740,12 +760,12 @@ def _kraft_broker_sasl_plain_listener_properties(username: str, password: str) -
     }
 
 
-def _kraft_broker_listener_properties(listeners_override: Optional[str]) -> Dict[str, str]:
+def _kraft_broker_listener_properties(advertised_host: str, listeners_override: Optional[str]) -> Dict[str, str]:
     """
     KRaft broker-only：listeners 仅为 PLAINTEXT 且无 SSL/SASL 时补全 inter.broker.listener.name、
     listener.security.protocol.map、advertised.listeners；否则仅返回 listeners，由 extra_properties 提供完整映射。
     """
-    adv_host = _advertised_host()
+    adv_host = advertised_host.strip()
     ls = (listeners_override or "").strip() or f"PLAINTEXT://0.0.0.0:{DEFAULT_BROKER_PORT}"
     broker_port = DEFAULT_BROKER_PORT
     pm = re.search(r"PLAINTEXT://[^:]*:(\d+)", ls, re.I)
@@ -1246,6 +1266,7 @@ class ConfigGenerator:
     def generate_combined_standalone_properties(
             node_id: int,
             log_dirs: str,
+            advertised_host: str,
             listeners_override: Optional[str] = None,
             extra_properties: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
@@ -1254,7 +1275,7 @@ class ConfigGenerator:
             "process.roles": "broker,controller",
             "node.id": str(node_id),
             "log.dirs": log_dirs,
-            **_kraft_combined_listener_properties(listeners_override),
+            **_kraft_combined_listener_properties(advertised_host, listeners_override),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -1264,6 +1285,7 @@ class ConfigGenerator:
     def generate_combined_standalone_sasl_plain(
             node_id: int,
             log_dirs: str,
+            advertised_host: str,
             sasl_username: str,
             sasl_password: str,
             extra_properties: Optional[Dict[str, str]] = None,
@@ -1273,7 +1295,7 @@ class ConfigGenerator:
             "process.roles": "broker,controller",
             "node.id": str(node_id),
             "log.dirs": log_dirs,
-            **_kraft_combined_sasl_plain_listener_properties(sasl_username, sasl_password),
+            **_kraft_combined_sasl_plain_listener_properties(advertised_host, sasl_username, sasl_password),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -1283,6 +1305,7 @@ class ConfigGenerator:
     def generate_combined_standalone_sasl_ssl(
             node_id: int,
             log_dirs: str,
+            advertised_host: str,
             sasl_username: str,
             sasl_password: str,
             keystore_path: str,
@@ -1300,7 +1323,7 @@ class ConfigGenerator:
             "process.roles": "broker,controller",
             "node.id": str(node_id),
             "log.dirs": log_dirs,
-            **_kraft_combined_sasl_ssl_listener_properties(sasl_username, sasl_password, ssl_stack),
+            **_kraft_combined_sasl_ssl_listener_properties(advertised_host, sasl_username, sasl_password, ssl_stack),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -1311,6 +1334,7 @@ class ConfigGenerator:
             node_id: int,
             log_dirs: str,
             controller_quorum_bootstrap_servers: str,
+            advertised_host: str,
             sasl_username: str,
             sasl_password: str,
             extra_properties: Optional[Dict[str, str]] = None,
@@ -1321,7 +1345,7 @@ class ConfigGenerator:
             "node.id": str(node_id),
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "log.dirs": log_dirs,
-            **_kraft_broker_sasl_plain_listener_properties(sasl_username, sasl_password),
+            **_kraft_broker_sasl_plain_listener_properties(advertised_host, sasl_username, sasl_password),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -1332,6 +1356,7 @@ class ConfigGenerator:
             node_id: int,
             log_dirs: str,
             controller_quorum_bootstrap_servers: str,
+            advertised_host: str,
             sasl_username: str,
             sasl_password: str,
             keystore_path: str,
@@ -1350,7 +1375,7 @@ class ConfigGenerator:
             "node.id": str(node_id),
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "log.dirs": log_dirs,
-            **_kraft_broker_sasl_ssl_listener_properties(sasl_username, sasl_password, ssl_stack),
+            **_kraft_broker_sasl_ssl_listener_properties(advertised_host, sasl_username, sasl_password, ssl_stack),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -1393,12 +1418,12 @@ class ConfigGenerator:
             controller_quorum_bootstrap_servers: str,
             metadata_log_dir: str,
             log_dirs: str,
+            advertised_host: str,
             extra_properties: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
         """生成 Controller 专用 properties。log.dirs 与 metadata.log.dir 均须由调用方显式传入（见 main 校验）。"""
-        # 须设置 advertised.listeners，否则仅 listeners=0.0.0.0 时元数据里可能只出现本机 hostname（如 master-01），
-        # 远程机器上的 kafka-metadata-quorum / 客户端会 UnknownHostException。主机名用 KAFKA_ADVERTISED_HOST（建议为可达 IP 或 DNS）。
-        adv_host = _advertised_host()
+        # advertised.listeners 须为对其它节点与运维客户端可达的地址（与 Apache Kafka 文档 advertised.listeners 一致）。
+        adv_host = advertised_host.strip()
         props = {
             "process.roles": "controller",
             "node.id": str(node_id),
@@ -2003,6 +2028,7 @@ class KafkaDeployer:
             self,
             log_dirs: str,
             node_id: int,
+            advertised_host: str,
             cluster_id: Optional[str] = None,
             generate_cluster_id: bool = False,
             use_disk_cluster_id: bool = False,
@@ -2136,6 +2162,7 @@ class KafkaDeployer:
             props = ConfigGenerator.generate_combined_standalone_sasl_ssl(
                 node_id,
                 log_dirs,
+                advertised_host,
                 sasl_username.strip(),
                 sasl_password,
                 ks,
@@ -2165,13 +2192,14 @@ class KafkaDeployer:
             props = ConfigGenerator.generate_combined_standalone_sasl_plain(
                 node_id,
                 log_dirs,
+                advertised_host,
                 sasl_username.strip(),
                 sasl_password,
                 extra_properties=extra_properties,
             )
         else:
             props = ConfigGenerator.generate_combined_standalone_properties(
-                node_id, log_dirs, listeners, extra_properties=extra_properties
+                node_id, log_dirs, advertised_host, listeners, extra_properties=extra_properties
             )
         config_preexisted = config_path.is_file()
         if not self._write_properties(config_path, props):
@@ -2252,6 +2280,7 @@ class KafkaDeployer:
             controller_quorum_bootstrap_servers: str,
             metadata_log_dir: str,
             log_dirs: str,
+            advertised_host: str,
             controller_listener_port: int = DEFAULT_CONTROLLER_PORT,
             cluster_id: Optional[str] = None,
             generate_cluster_id: bool = False,
@@ -2354,6 +2383,7 @@ class KafkaDeployer:
             controller_quorum_bootstrap_servers=controller_quorum_bootstrap_servers,
             metadata_log_dir=metadata_dir,
             log_dirs=ld_ctrl,
+            advertised_host=advertised_host,
             extra_properties=extra_properties,
         )
         roots_ct: List[str] = [str(Path(metadata_dir).resolve())]
@@ -2496,6 +2526,7 @@ class KafkaDeployer:
             node_id: int,
             controller_quorum_bootstrap_servers: str,
             log_dirs: str,
+            advertised_host: str,
             listeners: Optional[str] = None,
             cluster_id: Optional[str] = None,
             java_home: Optional[str] = None,
@@ -2510,7 +2541,7 @@ class KafkaDeployer:
         部署 KRaft Broker 节点（Kafka 4.x）。format --no-initial-controllers，process.roles=broker。
         可重复执行（幂等）：已存在 server-broker-<id>.properties 时覆盖并 restart。
         默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
-        advertised.listeners 主机来自 KAFKA_ADVERTISED_HOST；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
+        advertised.listeners（须传入 advertised_host）；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
         enable_sasl_plain / sasl_ssl_material：对外 SASL_PLAINTEXT 或 SASL_SSL+PLAIN，并写入 kafkacli.client.properties。
 
         node.id 须与本集群内全部 controller 及其它 broker 的编号互不重复（全局唯一）。
@@ -2578,6 +2609,7 @@ class KafkaDeployer:
                 node_id,
                 log_dirs,
                 controller_quorum_bootstrap_servers,
+                advertised_host,
                 sasl_username.strip(),
                 sasl_password,
                 ks,
@@ -2608,6 +2640,7 @@ class KafkaDeployer:
                 node_id,
                 log_dirs,
                 controller_quorum_bootstrap_servers,
+                advertised_host,
                 sasl_username.strip(),
                 sasl_password,
                 extra_properties=extra_properties,
@@ -2618,7 +2651,7 @@ class KafkaDeployer:
                 "node.id": str(node_id),
                 "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
                 "log.dirs": log_dirs,
-                **_kraft_broker_listener_properties(listeners),
+                **_kraft_broker_listener_properties(advertised_host, listeners),
             }
             if extra_properties:
                 props.update(extra_properties)
@@ -3751,8 +3784,8 @@ def _hint_quorum_unknown_host(stderr_or_msg: str) -> str:
         msg
         + "\n\n【说明】你用 IP 做 bootstrap 仍会看到其它主机名：Kafka 元数据里登记的是各节点的 advertised 地址（常为 hostname）。"
         "\n远程验收机无法解析该名字时会报如上错误。处理：① 在本机 /etc/hosts 增加「主机名 → Controller IP」；"
-        "\n② 或在部署 Controller 的机器上 export KAFKA_ADVERTISED_HOST=<运维可达的 IP 或 DNS> 后重新部署（脚本会为 Controller 写入 advertised.listeners）。"
-        "\n不必等 5 台全装好：单台 Controller 即可做 describe --status。"
+        "\n② 或重新部署并在命令行指定 --advertised-host <对运维机可达的 IP 或 DNS>（写入 advertised.listeners）。"
+        "\n不必等全部节点就绪：单台 Controller 即可做 describe --status。"
     )
 
 
@@ -4195,6 +4228,9 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
   优于 ${kafka_home}/config/kafkacli.client.properties
 【KRaft 节点编号】多节点时，node.id（命令行即 --node-id，JSON 即 node_id）在同一集群内须全局唯一，
   适用于全部 controller 进程与全部 broker 进程；禁止两台主机使用相同编号（错误示例：controller 已用 1～3 时 broker 仍填 1）。
+【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
+  多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
+  controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
   · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
@@ -4258,17 +4294,18 @@ def show_examples():
       各台 Controller 实际监听地址一致。
 
 常用环境变量:
-  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION、
+  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_CLI_ASSUME_VERSION、
   KAFKA_CLI_COMMAND_CONFIG（或 KAFKA_COMMAND_CONFIG）、KAFKA_SASL_*、KAFKA_SSL_*
+  （部署 advertised 须用 --advertised-host / advertised_host，不再依赖 KAFKA_ADVERTISED_HOST。）
 
 版本: Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：Kafka 4.x→17，3.x→11。
 
 ------------------------------------------------------------------------
 §1 最小闭环：本机单机 standalone → 验收
 ------------------------------------------------------------------------
-  步骤 1 — 部署（可重复执行，会覆盖配置并 restart；须含 --node-id 与 cluster.id 三选一之一）:
-   export KAFKA_ADVERTISED_HOST=127.0.0.1
-   kafkacli --deploy standalone --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --generate-cluster-id
+  步骤 1 — 部署（可重复执行，会覆盖配置并 restart；须含 --advertised-host、--node-id 与 cluster.id 三选一之一）:
+   kafkacli --deploy standalone --kafka-home /opt/kafka --advertised-host 127.0.0.1 --node-id 1 \\
+     --log-dirs /tmp/kafka-logs --generate-cluster-id
 
   步骤 2 — 看集群是否正常（默认连 localhost:9092）:
    kafkacli --status --kafka-home /opt/kafka
@@ -4278,7 +4315,7 @@ def show_examples():
 ------------------------------------------------------------------------
   从 PLAINTEXT 切到 SASL 可直接再跑下面一行，无需先手工删配置（脚本幂等覆盖）:
    kafkacli --deploy standalone --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
-     --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
+     --kafka-home /opt/kafka --advertised-host 127.0.0.1 --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
   说明：脚本会写 ${kafka_home}/config/kafkacli.client.properties（0600），之后 --status、--topic-* 等
   若不传密码，会优先读该文件（与「认证优先级」一致）。
 
@@ -4286,18 +4323,18 @@ def show_examples():
    kafkacli --deploy standalone --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
      --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
      --ssl-truststore-path /secure/kafka.truststore.jks --ssl-truststore-password '***' \\
-     --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
+     --kafka-home /opt/kafka --advertised-host 127.0.0.1 --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
 
 ------------------------------------------------------------------------
 §3 远程单机：在前置机（或跳板机）上发起 SSH，只在目标机安装
 ------------------------------------------------------------------------
   下列命令在运维机上执行，Kafka 实际装在 192.168.1.10 上（与 --controller-quorum-bootstrap-servers 无对应关系）:
-   kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka --node-id 1 \\
-     --log-dirs /var/kafka/logs --generate-cluster-id
+   kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka \\
+     --advertised-host 192.168.1.10 --node-id 1 --log-dirs /var/kafka/logs --generate-cluster-id
 
   在主机 broker1 上部署 Broker（须先保证 Controller 仲裁已可用；--node-id 须与集群内已有 id 不重复，下例假定用 4）:
-   kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --node-id 4 \\
-     --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
+   kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --advertised-host broker1 \\
+     --node-id 4 --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
   说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
 
@@ -4309,25 +4346,26 @@ def show_examples():
     broker1、broker2    → 各跑一台仅含 broker 角色的节点；其 --node-id 须在整集群内唯一，
       不能与上述 controller 重复。例如 controller 已占用 1～3，则两台 broker 可设为 4 与 5（仅作编号示例）。
   （说明：KRaft 下「controller 与 broker」是进程角色不同，但 node.id 是同一套全局编号，不能两套各从 1 开始。）
-  公共配置串（所有 broker / 后续 controller 都要一致，指向三台 Controller 的 CONTROLLER 口）:
+  【advertised 与 Apache Kafka 惯例】每台进程只配置**本机** advertised（`advertised.listeners`）：3 台 controller = 在 3 台机器上各执行一次部署，各带**本机** `--advertised-host`（如 ctrl1、ctrl2、ctrl3 或对应 IP），不是一条命令里写 3 个地址。
+  公共配置串（所有节点上 controller.quorum.bootstrap.servers 一致，列出全部 Controller 的 host:port）:
     QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
 
   分步 A — 在 ctrl1 上初始化第一台 controller（得到 cluster-id，记下）:
-   kafkacli --deploy controller --kafka-home /opt/kafka --node-id 1 \\
+   kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl1 --node-id 1 \\
      --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
-   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （须含 metadata_log_dir、log_dirs、generate_cluster_id 等）
+   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （须含 advertised_host、metadata_log_dir、log_dirs、generate_cluster_id 等）
 
-  分步 B — 在 ctrl2、ctrl3 上追加 controller（--cluster-id 与集群已有值一致）:
-   kafkacli --deploy controller --kafka-home /opt/kafka --node-id 2 --cluster-id <CLUSTER_ID> \\
+  分步 B — 在 ctrl2、ctrl3 上追加 controller（--cluster-id 与集群已有值一致；各自 --advertised-host 填本机）:
+   kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl2 --node-id 2 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log \\
      --log-dirs /var/kafka/controller-log
-   kafkacli --deploy controller --kafka-home /opt/kafka --node-id 3 --cluster-id <CLUSTER_ID> \\
+   kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl3 --node-id 3 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log \\
      --log-dirs /var/kafka/controller-log
 
-  分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上；--node-id 取未占用的值，勿与 controller 重复）:
-   kafkacli --deploy broker --kafka-home /opt/kafka --node-id 4 --cluster-id <CLUSTER_ID> \\
+  分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上；--advertised-host 填本机 broker 对外名或 IP）:
+   kafkacli --deploy broker --kafka-home /opt/kafka --advertised-host broker1 --node-id 4 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
    # 第二台 broker 机器上改用 --node-id 5（示例）
 
@@ -4346,13 +4384,13 @@ def show_examples():
     · 常见做法：先列出全部 controller（首台格式化并产生 cluster_id 后，后续项须带相同 cluster_id），
       再列出各 broker（须带与仲裁一致的 cluster_id）。若顺序错误，后段步骤可能失败。
   配置示例（片段，可复制后补全）:
-  # cluster.json 根级可含 kafka_home；nodes 每项对应一台主机，至少含 target_host、deploy、node_id 等
+  # cluster.json 根级可含 kafka_home；nodes 每项对应一台主机，至少含 target_host、deploy、node_id、advertised_host 等
   # { "kafka_home": "/opt/kafka", "nodes": [
-  #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1,
+  #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1, "advertised_host": "ctrl1",
   #     "metadata_log_dir": "/var/kafka/meta", "log_dirs": "/var/kafka/controller-log",
   #     "generate_cluster_id": true,
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" },
-  #   { "target_host": "broker1", "deploy": "broker", "node_id": 4,
+  #   { "target_host": "broker1", "deploy": "broker", "node_id": 4, "advertised_host": "broker1",
   #     "log_dirs": "/var/kafka/logs", "cluster_id": "<CLUSTER_ID>",
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" }
   # ]}
@@ -4396,7 +4434,8 @@ def show_examples():
 ------------------------------------------------------------------------
    kafkacli --clean --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
    kafkacli --clean --deploy standalone --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --generate-cluster-id
+   kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --advertised-host 127.0.0.1 \\
+     --node-id 1 --log-dirs /tmp/kafka-logs --generate-cluster-id
    kafkacli --config-describe-broker --kafka-home /opt/kafka --config-entity-name 1
    kafkacli --config-describe-topic --topic my-topic --kafka-home /opt/kafka
 
@@ -4405,7 +4444,7 @@ def show_examples():
 ------------------------------------------------------------------------
   [ ] 各节点已安装兼容版本 Java，--kafka-home 路径正确，数据目录权限与磁盘空间满足要求
   [ ] 网络与安全组放行业务端口与 Controller 端口，各节点之间按规划互通
-  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；broker 的 --cluster-id 与集群一致
+  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；各节点 --advertised-host 为本机对外可达名或 IP；broker 的 --cluster-id 与集群一致
   [ ] 各节点的 --node-id 已在整集群范围内核对，无与其它 controller 或 broker 重复
   [ ] 跨不可信网络时优先采用 TLS（如 SASL_SSL），避免长期使用未加密的 SASL_PLAINTEXT
   [ ] 部署后执行 --status 或 --metrics；承载业务前创建 topic，并确认 min.insync.replicas 等策略
@@ -4486,6 +4525,7 @@ def main():
         "standalone=单节点 broker+controller；controller / broker=多节点角色拆分。"
         " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
         " 多节点时 --node-id 对应 node.id，须在全集群（全部 controller 与 broker）内唯一。"
+        " 须显式 --advertised-host（或 JSON advertised_host），与 Apache Kafka advertised.listeners 语义一致。"
         " 写入配置前会做数据目录 meta.properties 中 cluster.id 跨路径一致性检查；失败回滚见【部署前置与失败回滚】。"
         " 与 --deploy-sasl-plain / --deploy-sasl-ssl 见「连接与认证」分组。",
     )
@@ -4515,6 +4555,15 @@ def main():
         type=int,
         help="server.properties 的 node.id；standalone、controller、broker 部署均须显式指定（或 JSON 的 node_id）。"
         " 同一集群内须全局唯一。",
+    )
+    g_dep.add_argument(
+        "--advertised-host",
+        metavar="HOST",
+        default=None,
+        help="本节点 advertised.listeners 宣告的主机名或 IPv4（须对其它节点与客户端可达）；"
+        " 部署 standalone/controller/broker 时必填（或 JSON 的 advertised_host）。"
+        " 多节点：每台机器各填本机对外地址，与 controller.quorum.bootstrap.servers 中各端点一一对应；"
+        " 非一条命令内写多个地址。",
     )
     g_dep.add_argument(
         "--cluster-id",
@@ -4604,7 +4653,7 @@ def main():
     g_conn.add_argument(
         "--bootstrap-controller",
         metavar="HOST:PORT",
-        help="仅连 Controller 元数据面（kafka-metadata-quorum）；部署 controller 后 --verify 默认 KAFKA_ADVERTISED_HOST:端口。",
+        help="仅连 Controller 元数据面（kafka-metadata-quorum）；未指定时部署 --verify 默认使用本次 --advertised-host 与 --controller-port。",
     )
     g_conn.add_argument(
         "--status",
@@ -5102,6 +5151,14 @@ def main():
             sys.exit(EXIT_ERROR)
     need_sasl_creds = want_plain or want_ssl
 
+    ah_cli = getattr(args, "advertised_host", None)
+    adv_host_deploy = (str(ah_cli).strip() if ah_cli is not None else "") or (config.get("advertised_host") or "")
+    adv_host_deploy = (str(adv_host_deploy).strip() if adv_host_deploy else "")
+    err_ah = _validate_advertised_host_str(adv_host_deploy)
+    if err_ah:
+        logger.error(err_ah, extra={"to_stdout": True})
+        sys.exit(EXIT_ERROR)
+
     def _cid_mode_triple() -> Tuple[Optional[str], bool, bool]:
         cid_arg = args.cluster_id if getattr(args, "cluster_id", None) not in (None, "") else None
         if cid_arg is None:
@@ -5133,10 +5190,11 @@ def main():
             sys.exit(EXIT_ERROR)
         success = deployer.deploy_standalone(
             log_dirs=log_dirs,
+            node_id=int(node_id_sa),
+            advertised_host=adv_host_deploy,
             cluster_id=cid_s,
             generate_cluster_id=gen_cid,
             use_disk_cluster_id=use_disk_cid,
-            node_id=int(node_id_sa),
             listeners=None if need_sasl_creds else (args.listeners or config.get("listeners")),
             java_home=java_home,
             enable_systemd=enable_systemd,
@@ -5176,6 +5234,7 @@ def main():
         success = deployer.deploy_controller(
             node_id=int(node_id),
             controller_quorum_bootstrap_servers=str(quorum).strip(),
+            advertised_host=adv_host_deploy,
             controller_listener_port=args.controller_port or config.get("controller_port", DEFAULT_CONTROLLER_PORT),
             metadata_log_dir=str(mld).strip(),
             log_dirs=str(lds).strip(),
@@ -5212,6 +5271,7 @@ def main():
             node_id=node_id,
             controller_quorum_bootstrap_servers=quorum,
             log_dirs=log_dirs,
+            advertised_host=adv_host_deploy,
             listeners=None if need_sasl_creds else (args.listeners or config.get("listeners")),
             cluster_id=cluster_id,
             java_home=java_home,
@@ -5242,7 +5302,7 @@ def main():
             time.sleep(2)
             ctrl_port = args.controller_port or config.get("controller_port", DEFAULT_CONTROLLER_PORT)
             bc_opt = _get_opt(args, config, "bootstrap_controller")
-            bc_for_q: str = (str(bc_opt).strip() if bc_opt else "") or f"{_advertised_host()}:{ctrl_port}"
+            bc_for_q: str = (str(bc_opt).strip() if bc_opt else "") or f"{adv_host_deploy}:{ctrl_port}"
             cc, _auth_line = _resolve_kafka_client_config(args, config, kafka_home)
             if enable_systemd and not deployer.verify_controller_started("127.0.0.1", ctrl_port):
                 logger.error("Controller 端口 TCP 验收失败", extra={"to_stdout": True})
@@ -5257,8 +5317,16 @@ def main():
             bs = args.bootstrap_server or config.get("bootstrap_server")
             if not bs:
                 bs = f"127.0.0.1:{DEFAULT_BROKER_PORT}"
+            bc_verify = _get_opt(args, config, "bootstrap_controller")
+            if not (bc_verify or "").strip():
+                bc_verify = f"{adv_host_deploy}:{args.controller_port or config.get('controller_port', DEFAULT_CONTROLLER_PORT)}"
             cc, auth_line = _resolve_kafka_client_config(args, config, kafka_home)
-            if not deployer.show_cluster_status(bs, cc, auth_summary=auth_line):
+            if not deployer.show_cluster_status(
+                    bs,
+                    cc,
+                    auth_summary=auth_line,
+                    bootstrap_controller=(bc_verify or "").strip() or None,
+            ):
                 logger.error("部署后验收未通过（见上文报告）", extra={"to_stdout": True})
                 sys.exit(EXIT_ERROR)
     else:
