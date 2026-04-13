@@ -4849,6 +4849,12 @@ def main():
         logger.error(str(e), extra={"to_stdout": True})
         sys.exit(EXIT_ERROR)
 
+    def _node_id_from_args_or_config() -> Optional[int]:
+        """命令行优先；须保留 --node-id 0（不可用 args.node_id or config，否则 0 会被当成未设置）。"""
+        if getattr(args, "node_id", None) is not None:
+            return args.node_id
+        return config.get("node_id")
+
     clean_first = bool(getattr(args, "clean_first", False) or config.get("clean_first", False))
 
     if args.clean and clean_first:
@@ -4864,7 +4870,7 @@ def main():
             logger.error("--clean 需指定 --deploy standalone|controller|broker", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
         deploy_kind_clean: str = str(_dt_clean)
-        node_id = args.node_id or config.get("node_id")
+        node_id = _node_id_from_args_or_config()
         log_dirs_clean = args.log_dirs or config.get("log_dirs")
         meta_clean = args.metadata_log_dir or config.get("metadata_log_dir")
         clean_data = bool(getattr(args, "clean_data", False) or (bool(args.force) and bool(args.clean)))
@@ -4886,7 +4892,7 @@ def main():
     deploy_type: str = str(_dt_main)
 
     if clean_first:
-        node_id_cf = args.node_id or config.get("node_id")
+        node_id_cf = _node_id_from_args_or_config()
         log_dirs_cf = args.log_dirs or config.get("log_dirs")
         meta_cf = args.metadata_log_dir or config.get("metadata_log_dir")
         clean_data_cf = bool(getattr(args, "clean_data", False) or bool(args.force))
@@ -4946,7 +4952,7 @@ def main():
             logger.error("standalone 部署必须指定 --log-dirs（或配置文件 log_dirs）", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
         log_dirs = str(log_dirs).strip()
-        node_id_sa = args.node_id if getattr(args, "node_id", None) is not None else config.get("node_id")
+        node_id_sa = _node_id_from_args_or_config()
         if node_id_sa is None:
             logger.error("standalone 部署必须指定 --node-id（或配置文件 node_id）", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
@@ -4976,7 +4982,7 @@ def main():
             sasl_ssl_material=ssl_mat,
         )
     elif deploy_type == "controller":
-        node_id = args.node_id if getattr(args, "node_id", None) is not None else config.get("node_id")
+        node_id = _node_id_from_args_or_config()
         if node_id is None:
             logger.error("部署 Controller 必须指定 --node-id（或配置文件 node_id）", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
@@ -5021,7 +5027,7 @@ def main():
             sasl_ssl_material=ssl_mat,
         )
     else:  # broker
-        node_id = args.node_id or config.get("node_id")
+        node_id = _node_id_from_args_or_config()
         if node_id is None:
             logger.error("部署 Broker 必须指定 --node-id", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
