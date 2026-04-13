@@ -8,7 +8,7 @@ Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 b
   KafkaDeployer、_run_remote_deploy 等实现为准；修改其一须核对其它各处。JSON 配置键名与命令行长选项对应（下划线）。
 
 常用环境变量：
-  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST（生产请设为对客户端可达的本机地址或 DNS）、KAFKA_CLI_ASSUME_VERSION
+  KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST（部署 Controller/Broker 前请设为对**远程运维机**可达的 IP 或 DNS，避免元数据只登记 hostname 导致远程 kafka-metadata-quorum UnknownHost）、KAFKA_CLI_ASSUME_VERSION
   KAFKA_SASL_USERNAME / KAFKA_SASL_PASSWORD（或 KAFKA_USER / KAFKA_PASSWORD）、KAFKA_SASL_MECHANISM
   KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG：显式客户端 properties（优先级见下「客户端认证」）
   自建 PKI：KAFKA_SSL_KEYSTORE_PATH、KAFKA_SSL_KEYSTORE_PASSWORD、KAFKA_SSL_TRUSTSTORE_PATH、KAFKA_SSL_TRUSTSTORE_PASSWORD（与 --ssl-* 等价）
@@ -1396,10 +1396,14 @@ class ConfigGenerator:
             extra_properties: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
         """生成 Controller 专用 properties。log.dirs 与 metadata.log.dir 均须由调用方显式传入（见 main 校验）。"""
+        # 须设置 advertised.listeners，否则仅 listeners=0.0.0.0 时元数据里可能只出现本机 hostname（如 master-01），
+        # 远程机器上的 kafka-metadata-quorum / 客户端会 UnknownHostException。主机名用 KAFKA_ADVERTISED_HOST（建议为可达 IP 或 DNS）。
+        adv_host = _advertised_host()
         props = {
             "process.roles": "controller",
             "node.id": str(node_id),
             "listeners": f"CONTROLLER://0.0.0.0:{controller_listener_port}",
+            "advertised.listeners": f"CONTROLLER://{adv_host}:{controller_listener_port}",
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "controller.listener.names": "CONTROLLER",
             "listener.security.protocol.map": "CONTROLLER:PLAINTEXT",
@@ -2911,11 +2915,13 @@ class KafkaDeployer:
             bootstrap_server: str = "localhost:9092",
             command_config: Optional[str] = None,
             auth_summary: Optional[str] = None,
+            bootstrap_controller: Optional[str] = None,
     ) -> bool:
         """
         集群验收报告：连通、KRaft Quorum、副本健康、Topic/Consumer Group 规模、Lag 汇总与结论。
         认证与 _resolve_kafka_client_config 一致（用户名密码或 kafkacli.client.properties）。
-        返回 True 表示客户端连通且 Quorum describe --status 成功（可认为元数据面可用）。
+        若仅部署 Controller、未指定 bootstrap_server 但指定了 bootstrap_controller，则只做 [2][3] 元数据面验收，跳过 [1][4]～[6]。
+        返回 True：全栈模式下为 [1] 与 [2] 均成功；仅 Controller 模式下为 [2] 成功。
         """
         cc_err = _validate_command_config_path(command_config)
         if cc_err:
@@ -2926,35 +2932,51 @@ class KafkaDeployer:
             command_config or "(未使用 — PLAINTEXT 或未配置认证)"
         )
 
+        bc_disp = (bootstrap_controller or "").strip()
+        bs_disp = (bootstrap_server or "").strip()
+        controller_only = bool(bc_disp) and not bs_disp
+
         print()
         print("=" * 72)
         print(" Kafka 集群状态 / 验收报告")
         print("=" * 72)
-        print(f" bootstrap.server : {bootstrap_server}")
-        print(f" 客户端认证       : {auth_line}")
+        print(f" bootstrap.server    : {bs_disp or '(未指定 — 跳过 Broker 侧探测)'}")
+        if bc_disp:
+            print(f" bootstrap.controller: {bc_disp}")
+        print(f" 客户端认证          : {auth_line}")
         if command_config:
-            print(f" command.config   : {command_config}")
+            print(f" command.config      : {command_config}")
         print("=" * 72)
 
-        coll = KafkaMetricsCollector(str(self.kafka_home), bootstrap_server, command_config)
+        coll = KafkaMetricsCollector(
+            str(self.kafka_home),
+            bootstrap_server,
+            command_config,
+            bootstrap_controller=bootstrap_controller,
+        )
 
         ok_connect = False
         ok_quorum_status = False
 
         # [1] 客户端 → Broker（与运维命令同源认证）
         print("\n[1] 客户端 → 集群（kafka-broker-api-versions）")
-        bv = coll.collect_broker_api_versions()
-        if bv.get("ok"):
+        if controller_only:
             ok_connect = True
-            print(f"  状态: OK")
-            print(f"  摘要: {bv.get('snippet', '')}")
+            print("  状态: N/A（跳过）")
+            print("  说明: 未指定 --bootstrap-server；当前为仅 Controller 元数据验收（无 Broker 监听业务端口时属正常）。")
         else:
-            print(f"  状态: FAIL")
-            print(f"  原因: {bv.get('error', 'unknown')}")
+            bv = coll.collect_broker_api_versions()
+            if bv.get("ok"):
+                ok_connect = True
+                print("  状态: OK")
+                print(f"  摘要: {bv.get('snippet', '')}")
+            else:
+                print("  状态: FAIL")
+                print(f"  原因: {bv.get('error', 'unknown')}")
 
         # [2] KRaft Quorum
         print("\n[2] KRaft 元数据 Quorum（kafka-metadata-quorum describe --status）")
-        qs = coll.collect_quorum_status()
+        qs = coll.collect_quorum_status(progress=True)
         if qs.get("ok"):
             ok_quorum_status = True
             print(f"  LeaderId     : {qs.get('leader_id')}")
@@ -2970,18 +2992,19 @@ class KafkaDeployer:
 
         quorum_script = self.bin_dir / "kafka-metadata-quorum.sh"
         if quorum_script.is_file():
-            cmd_rep = _kafka_cli_cmd(
-                quorum_script,
-                bootstrap_server,
-                ["describe", "--replication"],
-                command_config,
-            )
+            print("\n[3] Quorum 副本同步（describe --replication）")
             try:
-                r = run_command(
-                    cmd_rep,
-                    capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120),
+                qm = KafkaQuorumManager(
+                    str(self.kafka_home),
+                    bs_disp or None,
+                    bc_disp or None,
+                    command_config,
                 )
-                print("\n[3] Quorum 副本同步（describe --replication）")
+                print("  正在调用 kafka-metadata-quorum describe --replication …", flush=True)
+                r = qm._quorum_cmd(
+                    ["describe", "--replication"],
+                    timeout_sec=_kafka_cli_timeout_sec(120),
+                )
                 if r.returncode == 0 and (r.stdout or "").strip():
                     for line in (r.stdout or "").strip().splitlines():
                         print(f"  {line}")
@@ -2990,55 +3013,78 @@ class KafkaDeployer:
                     print(f"  状态: FAIL")
                     print(f"  原因: {err3[:1200] if err3 else f'exit {r.returncode}，无输出'}")
             except Exception as ex:
-                print("\n[3] Quorum 副本同步（describe --replication）")
                 print(f"  查询失败: {ex}")
 
         # [4] 副本健康（under-replicated）
         print("\n[4] 分区副本健康（kafka-topics --under-replicated-partitions）")
-        ph = coll.collect_topic_partition_health()
-        ur = int(ph.get("under_replicated_partitions") or 0)
-        if ph.get("ok"):
-            print(f"  under-replicated 分区数: {ur}")
-            if ur > 0:
-                print("  说明: 存在副本未齐，需排查 Broker/网络/ISR（生产风险）。")
+        if controller_only:
+            ph = {"ok": True, "under_replicated_partitions": 0}
+            ur = 0
+            print("  状态: N/A（跳过，需 Broker bootstrap）")
         else:
-            print(f"  查询失败: {ph.get('error', '')}")
+            ph = coll.collect_topic_partition_health()
+            ur = int(ph.get("under_replicated_partitions") or 0)
+            if ph.get("ok"):
+                print(f"  under-replicated 分区数: {ur}")
+                if ur > 0:
+                    print("  说明: 存在副本未齐，需排查 Broker/网络/ISR（生产风险）。")
+            else:
+                print(f"  查询失败: {ph.get('error', '')}")
 
         # [5] Topic / Group 规模
         print("\n[5] 规模概览")
-        ti = coll.collect_topic_count()
-        gi = coll.collect_consumer_group_count()
-        if ti.get("ok"):
-            print(f"  Topic 数量           : {ti.get('topic_count', 0)}")
+        if controller_only:
+            print("  Topic / Consumer Group: N/A（跳过，需 Broker bootstrap）")
+            ti = {"ok": True, "topic_count": 0}
+            gi = {"ok": True, "group_count": 0}
         else:
-            print(f"  Topic 数量: 查询失败 — {ti.get('error', '')}")
-        if gi.get("ok"):
-            print(f"  Consumer Group 数量  : {gi.get('group_count', 0)}")
-        else:
-            print(f"  Consumer Group 数量: 查询失败 — {gi.get('error', '')}")
+            ti = coll.collect_topic_count()
+            gi = coll.collect_consumer_group_count()
+            if ti.get("ok"):
+                print(f"  Topic 数量           : {ti.get('topic_count', 0)}")
+            else:
+                print(f"  Topic 数量: 查询失败 — {ti.get('error', '')}")
+            if gi.get("ok"):
+                print(f"  Consumer Group 数量  : {gi.get('group_count', 0)}")
+            else:
+                print(f"  Consumer Group 数量: 查询失败 — {gi.get('error', '')}")
 
         # [6] Lag 汇总
         print("\n[6] Consumer Lag 汇总（--all-groups --describe）")
-        lag = coll.collect_consumer_lag()
-        if lag.get("ok"):
-            print(f"  估算总 Lag（逐行 LAG 累加）: {lag.get('total_lag', 0)}")
-            detail = lag.get("groups") or []
-            if lag.get("empty_groups"):
-                print("  （当前集群无 Consumer Group，跳过 --all-groups --describe；Lag 为 0 符合预期）")
-            elif detail:
-                print("  样例（前 8 条）:")
-                for row in detail[:8]:
-                    print(f"    topic={row.get('topic')} partition={row.get('partition')} lag={row.get('lag')}")
+        if controller_only:
+            lag = {"ok": True, "total_lag": 0, "groups": [], "empty_groups": True}
+            print("  状态: N/A（跳过，需 Broker bootstrap）")
         else:
-            print(f"  查询失败: {lag.get('error', '')}")
+            lag = coll.collect_consumer_lag()
+            if lag.get("ok"):
+                print(f"  估算总 Lag（逐行 LAG 累加）: {lag.get('total_lag', 0)}")
+                detail = lag.get("groups") or []
+                if lag.get("empty_groups"):
+                    print("  （当前集群无 Consumer Group，跳过 --all-groups --describe；Lag 为 0 符合预期）")
+                elif detail:
+                    print("  样例（前 8 条）:")
+                    for row in detail[:8]:
+                        print(f"    topic={row.get('topic')} partition={row.get('partition')} lag={row.get('lag')}")
+            else:
+                print(f"  查询失败: {lag.get('error', '')}")
 
         # [7] 结论（分项失败原因与 [1]～[6] 对应，避免笼统「连通或 Quorum」）
         print("\n" + "-" * 72)
         print(" 验收结论")
         print("-" * 72)
-        critical_ok = ok_connect and ok_quorum_status
-        ur_ok = ph.get("ok") and ur == 0
-        if critical_ok and ur_ok:
+        if controller_only:
+            critical_ok = ok_quorum_status
+            ur_ok = True
+        else:
+            critical_ok = ok_connect and ok_quorum_status
+            ur_ok = bool(ph.get("ok")) and ur == 0
+
+        if controller_only:
+            if critical_ok:
+                print("  [通过] 仅 Controller 验收：[2] KRaft Quorum 可读（[1][4]～[6] 已跳过）。")
+            else:
+                print("  [未通过] [2] KRaft Quorum 失败；请检查 --bootstrap-controller 与网络、端口。")
+        elif critical_ok and ur_ok:
             print("  [通过] [1] Broker 连通、[2] Quorum 可读；[4] 无 under-replicated 分区。")
         elif critical_ok and ph.get("ok") and ur > 0:
             print("  [警告] [1][2] 通过，但 [4] 存在 under-replicated 分区（生产风险）。")
@@ -3242,7 +3288,12 @@ class KafkaQuorumManager:
         self.bootstrap_controller = bootstrap_controller
         self.command_config = command_config
 
-    def _quorum_cmd(self, args: List[str]) -> subprocess.CompletedProcess:
+    def _quorum_cmd(
+            self,
+            args: List[str],
+            *,
+            timeout_sec: Optional[int] = None,
+    ) -> subprocess.CompletedProcess:
         script = self.bin_dir / "kafka-metadata-quorum.sh"
         if not script.is_file():
             raise CommandExecutionError(f"未找到 Quorum CLI: {script}")
@@ -3268,7 +3319,7 @@ class KafkaQuorumManager:
         if self.command_config:
             cmd.extend(["--command-config", self.command_config])
         cmd.extend(conn + args)
-        to = _kafka_cli_timeout_sec(120)
+        to = timeout_sec if timeout_sec is not None else _kafka_cli_timeout_sec(120)
         return run_command(cmd, capture_output=True, timeout=to)
 
     def add_controller(self) -> bool:
@@ -3347,11 +3398,19 @@ class KafkaMetricsCollector:
     """
     调用 bin 下 metadata-quorum / kafka-topics / kafka-consumer-groups 采集并汇总为字典（--metrics-json）。
     collect_consumer_lag：无消费组时跳过 --all-groups --describe，避免空集群误报失败（与 --status 一致）。
+    kafka-metadata-quorum 须使用 --bootstrap-controller 或 --bootstrap-server（与 KafkaQuorumManager 一致），不可仅用 Broker 地址访问仅 Controller 节点。
     """
 
-    def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
+    def __init__(
+            self,
+            kafka_home: str,
+            bootstrap_server: str,
+            command_config: Optional[str] = None,
+            bootstrap_controller: Optional[str] = None,
+    ):
         self.kafka_home = Path(kafka_home).resolve()
         self.bootstrap_server = bootstrap_server
+        self.bootstrap_controller = (bootstrap_controller or "").strip() or None
         self.command_config = command_config
         self.bin_dir = self.kafka_home / "bin"
 
@@ -3365,24 +3424,48 @@ class KafkaMetricsCollector:
             return msg
         return _validate_command_config_path(self.command_config)
 
-    def collect_quorum_status(self) -> Dict[str, Any]:
-        """元数据 Quorum 状态（LeaderId、HighWatermark、CurrentVoters）"""
+    def collect_quorum_status(self, progress: bool = False) -> Dict[str, Any]:
+        """元数据 Quorum 状态（LeaderId、HighWatermark、CurrentVoters）；连接方式与 KafkaQuorumManager 一致。"""
         out: Dict[str, Any] = {"ok": False, "leader_id": None, "leader_epoch": None, "voters": []}
+        script = self.bin_dir / "kafka-metadata-quorum.sh"
+        if not script.is_file():
+            out["error"] = f"未找到 CLI: {script}"
+            return out
+        cc_err = _validate_command_config_path(self.command_config)
+        if cc_err:
+            out["error"] = cc_err
+            return out
+        bc = self.bootstrap_controller or ""
+        bs = (self.bootstrap_server or "").strip()
+        if not bc.strip() and not bs:
+            out["error"] = "须指定 --bootstrap-server 或 --bootstrap-controller（kafka-metadata-quorum）"
+            return out
+        if bc.strip():
+            perr = _tcp_preflight_first_endpoint(bc, DEFAULT_CONTROLLER_PORT, "bootstrap.controller")
+        else:
+            perr = _tcp_preflight_first_endpoint(bs, DEFAULT_BROKER_PORT, "bootstrap.server")
+        if perr:
+            out["error"] = perr
+            return out
         try:
-            pre = self._metrics_precheck("kafka-metadata-quorum.sh")
-            if pre:
-                out["error"] = pre
-                return out
-            cmd = _kafka_cli_cmd(
-                self.bin_dir / "kafka-metadata-quorum.sh",
-                self.bootstrap_server,
-                ["describe", "--status"],
+            to_sec = _kafka_cli_timeout_sec(120)
+            if progress:
+                print(
+                    f"  TCP 预检通过；正在调用 kafka-metadata-quorum（JVM 启动与 TLS 握手可能需数十秒，最长 {to_sec} 秒，"
+                    f"可用环境变量 KAFKA_CLI_TIMEOUT 调整）…",
+                    flush=True,
+                )
+            qm = KafkaQuorumManager(
+                str(self.kafka_home),
+                bs or None,
+                bc.strip() or None,
                 self.command_config,
             )
-            r = run_command(cmd, capture_output=True, check=False, timeout=_kafka_cli_timeout_sec(120))
+            r = qm._quorum_cmd(["describe", "--status"], timeout_sec=to_sec)
             if r.returncode != 0 or not (r.stdout or "").strip():
                 err = (r.stderr or r.stdout or "").strip()
-                out["error"] = err[:4000] if err else f"exit {r.returncode}，无输出"
+                raw = err[:4000] if err else f"exit {r.returncode}，无输出"
+                out["error"] = _hint_quorum_unknown_host(raw)
                 return out
             for line in r.stdout.splitlines():
                 if "LeaderId:" in line:
@@ -3392,8 +3475,10 @@ class KafkaMetricsCollector:
                 elif "CurrentVoters:" in line:
                     out["voters"] = line.split(":", 1)[1].strip()
             out["ok"] = True
+        except CommandExecutionError as e:
+            out["error"] = _hint_quorum_unknown_host(str(e))
         except Exception as e:
-            out["error"] = str(e)
+            out["error"] = _hint_quorum_unknown_host(str(e))
         return out
 
     def collect_topic_partition_health(self) -> Dict[str, Any]:
@@ -3549,6 +3634,7 @@ class KafkaMetricsCollector:
         """汇总：连通、Quorum、副本、Topic/Group 规模、Lag。"""
         result = {
             "bootstrap_server": self.bootstrap_server,
+            "bootstrap_controller": self.bootstrap_controller,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "broker_connect": self.collect_broker_api_versions(),
             "quorum": self.collect_quorum_status(),
@@ -3652,6 +3738,50 @@ def _parse_bootstrap_server(bs: str, default_port: int = DEFAULT_BROKER_PORT) ->
         host = s or "localhost"
         port = default_port
     return host, port
+
+
+def _hint_quorum_unknown_host(stderr_or_msg: str) -> str:
+    """元数据返回的主机名在运维机上无法解析时，在 stderr 后附加可读说明。"""
+    msg = (stderr_or_msg or "").strip()
+    if not msg:
+        return msg
+    if "UnknownHostException" not in msg and "Name or service not known" not in msg:
+        return msg
+    return (
+        msg
+        + "\n\n【说明】你用 IP 做 bootstrap 仍会看到其它主机名：Kafka 元数据里登记的是各节点的 advertised 地址（常为 hostname）。"
+        "\n远程验收机无法解析该名字时会报如上错误。处理：① 在本机 /etc/hosts 增加「主机名 → Controller IP」；"
+        "\n② 或在部署 Controller 的机器上 export KAFKA_ADVERTISED_HOST=<运维可达的 IP 或 DNS> 后重新部署（脚本会为 Controller 写入 advertised.listeners）。"
+        "\n不必等 5 台全装好：单台 Controller 即可做 describe --status。"
+    )
+
+
+def _tcp_preflight_first_endpoint(
+        addr_csv: str,
+        default_port: int,
+        label: str,
+        connect_timeout_sec: float = 8.0,
+) -> Optional[str]:
+    """
+    对逗号分隔地址取第一段做 TCP 预检；失败返回中文说明。
+    用于避免 kafka-metadata-quorum 等 Java 客户端在网络不可达时长时间阻塞（看起来像「卡死」）。
+    """
+    first = (addr_csv or "").split(",")[0].strip()
+    if not first:
+        return f"{label} 为空"
+    host, port = _parse_bootstrap_server(first, default_port)
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(connect_timeout_sec)
+            s.connect((host, port))
+    except OSError as e:
+        return (
+            f"无法在约 {connect_timeout_sec:.0f} 秒内连上 {host}:{port}（{label}，{e!s}）。"
+            " 常见原因：① 防火墙/安全组未放行；② IP 或端口写错；③ Controller 只监听 127.0.0.1（此时请在**安装 Kafka 的那台机器上**执行 kafkacli，"
+            f"使用 --bootstrap-controller 127.0.0.1:{port}）。"
+            " ④ 从跳板机验收时，须保证本机能路由到该 IP。"
+        )
+    return None
 
 
 def _require(condition: bool, message: str) -> None:
@@ -4231,7 +4361,14 @@ def show_examples():
 ------------------------------------------------------------------------
 §6 验收与指标（客户端认证优先级与本帮助最前「【认证优先级】」、文件头「客户端认证」相同）
 ------------------------------------------------------------------------
-   kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
+  【新手先读】--status 里有两类地址，不要混用：
+    · --bootstrap-server：连 Broker 业务端口（常见 9092），测 produce/consume 侧。
+    · --bootstrap-controller：连 Controller 元数据端口（常见 9093），仅在「只装了 Controller、尚未装 Broker」时用。
+  只验 Controller 时不要写 --bootstrap-server（否则易误连本机 9092）。在 Kafka 所在机本机验收最省事:
+   kafkacli --status --kafka-home /opt/kafka --bootstrap-controller 127.0.0.1:9093
+  从另一台机子跨网验收须放通防火墙；脚本会先做一次 TCP 预检，不通会立即报错，避免长时间卡住。
+  已有 Broker 时可同时指定（示例）:
+   kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092 --bootstrap-controller ctrl1:9093
    export KAFKA_SASL_USERNAME=admin KAFKA_SASL_PASSWORD='***'
    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
@@ -4283,6 +4420,27 @@ def show_examples():
   远程与批量 → 单机用 --target-host；多机用 --batch + JSON（串行顺序见 §5 与 --batch 说明）
 """
     print(examples)
+
+
+def _resolve_bootstrap_for_status(
+        args: argparse.Namespace,
+        config: Dict[str, Any],
+) -> Tuple[str, Optional[str]]:
+    """
+    --status 专用：未在命令行/配置中指定 bootstrap-server、但指定了 bootstrap-controller 时，
+    不把 Broker 入口默认成 localhost:9092（否则仅 Controller 节点上会误连本机 9092）。
+    """
+    bc_raw = args.bootstrap_controller or config.get("bootstrap_controller")
+    bc = (str(bc_raw).strip() if bc_raw else "") or None
+    if getattr(args, "bootstrap_server", None) is not None:
+        bs = str(args.bootstrap_server).strip()
+    else:
+        bs = (config.get("bootstrap_server") or "").strip()
+    if not bs and bc:
+        return "", bc
+    if not bs:
+        bs = "localhost:9092"
+    return bs, bc
 
 
 def main():
@@ -4438,9 +4596,10 @@ def main():
     )
     g_conn.add_argument(
         "--bootstrap-server",
-        default="localhost:9092",
+        default=None,
         metavar="HOST:PORT",
-        help="客户端连接入口（kafka 客户端 --bootstrap-server）；默认 localhost:9092。",
+        help="客户端连接 Broker（--bootstrap-server）；未指定时多数子命令回退为 localhost:9092。"
+        " 仅验收 Controller、尚未部署 Broker 时请勿带本项，改用 --bootstrap-controller，以免误连本机 9092。",
     )
     g_conn.add_argument(
         "--bootstrap-controller",
@@ -4450,7 +4609,10 @@ def main():
     g_conn.add_argument(
         "--status",
         action="store_true",
-        help="输出集群验收报告（连通、Quorum、副本、Topic/Group、Lag）；须 --kafka-home 调用 bin 工具。",
+        help="输出集群验收报告。须 --kafka-home。"
+        " 仅部署了 Controller、尚未部署 Broker 时：只带 --bootstrap-controller，不要带 --bootstrap-server，"
+        " 以免误连本机 9092；跨机验收前须保证本机 TCP 能到达该地址（否则会先报预检失败）。"
+        " 最省事：在 Kafka 所在机器上执行，使用 --bootstrap-controller 127.0.0.1:9093。",
     )
     g_conn.add_argument(
         "--command-config",
@@ -4680,10 +4842,12 @@ def main():
                     **_kafka_deployer_kwargs(args, config),
                 )
                 cc, auth_line = _resolve_kafka_client_config(args, config, kafka_home)
+                bs_st, bc_st = _resolve_bootstrap_for_status(args, config)
                 ok = deployer.show_cluster_status(
-                    bootstrap_server=args.bootstrap_server or config.get("bootstrap_server", "localhost:9092"),
+                    bootstrap_server=bs_st,
                     command_config=cc,
                     auth_summary=auth_line,
+                    bootstrap_controller=bc_st,
                 )
                 sys.exit(EXIT_OK if ok else EXIT_ERROR)
             except ValueError as e:
@@ -4762,7 +4926,8 @@ def main():
 
     if getattr(args, "metrics", False) or getattr(args, "metrics_json", False):
         _require(kafka_home, "--metrics 需指定 --kafka-home")
-        coll = KafkaMetricsCollector(kafka_home, bootstrap, cmd_config)
+        bc_metrics = (args.bootstrap_controller or config.get("bootstrap_controller") or "").strip() or None
+        coll = KafkaMetricsCollector(kafka_home, bootstrap, cmd_config, bootstrap_controller=bc_metrics)
         data = coll.collect_all()
         if getattr(args, "metrics_json", False):
             print(json.dumps(data, ensure_ascii=False, indent=2))
