@@ -27,6 +27,12 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
 
 调用 bin 工具时：含 --command-config 的命令统一为「脚本 → 可选 --command-config → --bootstrap-server → 其余参数」（见 _kafka_cli_cmd），避免子命令解析错误。
 
+部署前置与失败回滚（与 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】、deploy_* 实现一致）：
+  · 写入生成配置前：对本次涉及的 metadata.log.dir 与 log.dirs 各根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署。
+  · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
+  · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
+  · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
+
 幂等约定（与 KAFKACLI_PARSER_DESCRIPTION「清理与幂等」、各 argparse 分组说明一致）：
   · --deploy：重复执行覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
   · --topic-create / --topic-delete：Topic 已存在/已不存在时按 CLI 输出匹配后视为成功（非「改分区/副本」的广义收敛）。
@@ -61,11 +67,9 @@ DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
-# Kafka 默认端口与路径（发行版惯例）
+# Kafka 默认端口（发行版惯例）
 DEFAULT_BROKER_PORT = 9092
 DEFAULT_CONTROLLER_PORT = 9093
-DEFAULT_LOG_DIR = "/tmp/kafka-logs"
-DEFAULT_METADATA_LOG_DIR = "/tmp/kraft-combined-logs"
 
 # 部署 SASL/PLAIN（等）成功后写入 ${kafka_home}/config/，供后续子命令默认使用（0600）
 KAFKACLI_CLIENT_PROPERTIES_NAME = "kafkacli.client.properties"
@@ -201,15 +205,15 @@ def _rm_rf_kraft_data_dir(path_str: str, label: str) -> None:
     logger.info("✓ 已删除 KRaft 数据目录 [%s]: %s", label, s, extra={"to_stdout": True})
 
 
-def _read_cluster_id_from_meta_properties(data_dir_csv: str) -> Optional[str]:
-    """
-    读取 KRaft 数据目录下 meta.properties 的 cluster.id（若存在）。
-    log.dirs 取逗号分隔的第一段路径（与 Kafka 工具行为一致）。
-    """
-    first = (data_dir_csv or "").split(",")[0].strip()
-    if not first:
+def _read_cluster_id_from_meta_at_root(root: str) -> Optional[str]:
+    """读取单个数据根目录下 meta.properties 的 cluster.id（若不存在或无键则 None）。"""
+    if not (root or "").strip():
         return None
-    meta = Path(first).expanduser() / "meta.properties"
+    try:
+        base = Path(root).expanduser().resolve()
+    except OSError:
+        return None
+    meta = base / "meta.properties"
     if not meta.is_file():
         return None
     try:
@@ -222,6 +226,76 @@ def _read_cluster_id_from_meta_properties(data_dir_csv: str) -> Optional[str]:
             cid = s.split("=", 1)[1].strip()
             return cid if cid else None
     return None
+
+
+def _read_cluster_id_from_meta_properties(data_dir_csv: str) -> Optional[str]:
+    """
+    读取 KRaft 数据目录下 meta.properties 的 cluster.id（若存在）。
+    log.dirs 仅取逗号分隔的第一段路径（与历史行为一致）；多路径一致性请用 _audit_cluster_ids_across_kraft_roots。
+    """
+    first = (data_dir_csv or "").split(",")[0].strip()
+    if not first:
+        return None
+    return _read_cluster_id_from_meta_at_root(first)
+
+
+def _dedupe_paths_stable(paths: List[str]) -> List[str]:
+    seen: set = set()
+    out: List[str] = []
+    for p in paths:
+        if p and p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
+def _audit_cluster_ids_across_kraft_roots(roots: List[str]) -> Tuple[bool, str]:
+    """
+    前置检测：多个数据根路径下若均存在 meta.properties，则 cluster.id 须一致，否则拒绝部署。
+    用于避免 standalone 残留、默认 log.dirs 等与本次 metadata.log.dir 混用导致 format 失败。
+    """
+    roots = _dedupe_paths_stable(roots)
+    mp: Dict[str, Optional[str]] = {}
+    for r in roots:
+        mp[r] = _read_cluster_id_from_meta_at_root(r)
+    vals = {v for v in mp.values() if v}
+    if len(vals) <= 1:
+        return True, ""
+    lines = [f"  {p} -> cluster.id={mp[p]!r}" for p in sorted(mp.keys()) if mp[p]]
+    return False, (
+        "多个 KRaft 数据目录上的 cluster.id 不一致，拒绝部署。"
+        "请先清空无关目录、或删除冲突的 meta.properties 后再执行（与 --clean / --clean-data 说明一致）。\n"
+        + "\n".join(lines)
+    )
+
+
+def _consolidate_existing_cluster_id_from_roots(roots: List[str]) -> Optional[str]:
+    """在已通过 _audit_cluster_ids_across_kraft_roots 后，返回唯一的已有 cluster.id（或 None）。"""
+    roots = _dedupe_paths_stable(roots)
+    cids = [_read_cluster_id_from_meta_at_root(r) for r in roots]
+    nonempty = [c for c in cids if c]
+    if not nonempty:
+        return None
+    return nonempty[0]
+
+
+def _rollback_new_deploy_config(config_path: Path, had_existed_before_deploy: bool) -> None:
+    """
+    首次部署失败时删除本次生成的 properties，避免残留配置与下次集群意图不一致。
+    若配置文件在部署前已存在（幂等覆盖），则保留并仅打日志，由运维自行恢复或再次部署。
+    """
+    if had_existed_before_deploy:
+        logger.warning(
+            "本次部署未成功：保留已存在的配置文件 %s（若本次已覆盖内容，请自行从备份恢复或再次修正后部署）。",
+            config_path,
+            extra={"to_stdout": True},
+        )
+        return
+    try:
+        config_path.unlink(missing_ok=True)
+        logger.info("已删除本次生成的配置文件（首次部署 kafka-storage 等步骤失败时的回滚）: %s", config_path, extra={"to_stdout": True})
+    except OSError as ex:
+        logger.warning("回滚删除配置文件失败 %s: %s", config_path, ex, extra={"to_stdout": True})
 
 
 _TMP_CLIENT_CONFIG_FILES: List[str] = []
@@ -1318,10 +1392,10 @@ class ConfigGenerator:
             controller_listener_port: int,
             controller_quorum_bootstrap_servers: str,
             metadata_log_dir: str,
-            log_dirs: Optional[str] = None,
+            log_dirs: str,
             extra_properties: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
-        """生成 Controller 专用 properties。"""
+        """生成 Controller 专用 properties。log.dirs 与 metadata.log.dir 均须由调用方显式传入（见 main 校验）。"""
         props = {
             "process.roles": "controller",
             "node.id": str(node_id),
@@ -1330,9 +1404,8 @@ class ConfigGenerator:
             "controller.listener.names": "CONTROLLER",
             "listener.security.protocol.map": "CONTROLLER:PLAINTEXT",
             "metadata.log.dir": metadata_log_dir,
+            "log.dirs": str(log_dirs).strip(),
         }
-        if log_dirs:
-            props["log.dirs"] = log_dirs
         if extra_properties:
             props.update(extra_properties)
         return props
@@ -1401,6 +1474,9 @@ class KafkaDeployer:
 
     多节点须保证各节点的 node.id 在整集群唯一（含全部 controller 与 broker）；脚本无法代你校验其它机器上的已占用编号，
     配置错误将导致 Kafka 拒绝启动或元数据异常，部署前请自行核对。
+
+    部署前置与失败回滚：见文件头「部署前置与失败回滚」及 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】；
+    写入配置前做跨路径 cluster.id 一致性检查；kafka-storage format 失败时对首次生成的配置文件回滚删除。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
@@ -1922,8 +1998,10 @@ class KafkaDeployer:
     def deploy_standalone(
             self,
             log_dirs: str,
+            node_id: int,
             cluster_id: Optional[str] = None,
-            node_id: int = 1,
+            generate_cluster_id: bool = False,
+            use_disk_cluster_id: bool = False,
             listeners: Optional[str] = None,
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
@@ -1935,7 +2013,8 @@ class KafkaDeployer:
     ) -> bool:
         """
         单节点 combined：写 server.properties → kafka-storage.sh format --standalone → systemd 或打印启动命令。
-        可重复执行（幂等）：若生成配置已存在则覆盖并 systemctl restart，使 PLAINTEXT↔SASL 等切换无需先 --clean。
+        cluster.id 须通过 --cluster-id、--generate-cluster-id、--use-disk-cluster-id 之一显式声明（见 main 校验），不再隐式生成或静默复用磁盘。
+        可重复执行（幂等）：相同参数下覆盖配置并 systemctl restart。
         enable_sasl_plain：SASL_PLAINTEXT + PLAIN。
         sasl_ssl_material 非空：SASL_SSL + PLAIN + ssl.*（自建 PKI），并写入 kafkacli.client.properties。
         """
@@ -1953,6 +2032,12 @@ class KafkaDeployer:
             return False
         EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, log_dirs, "log.dirs")
 
+        roots_sa = _csv_dirs_to_abs_paths(log_dirs)
+        ok_aud, err_aud = _audit_cluster_ids_across_kraft_roots(roots_sa)
+        if not ok_aud:
+            logger.error(err_aud, extra={"to_stdout": True})
+            return False
+
         config_path = self.config_dir / "server-standalone.properties"
         if config_path.exists():
             logger.info(
@@ -1961,38 +2046,69 @@ class KafkaDeployer:
                 extra={"to_stdout": True},
             )
 
-        # 1) cluster id：与 log.dirs 已有 meta.properties 对齐，避免 kafka-storage format 报 Invalid cluster.id
-        existing_cid = _read_cluster_id_from_meta_properties(log_dirs)
-        if cluster_id:
-            cid_in = cluster_id.strip()
-            if existing_cid and existing_cid != cid_in:
+        # 1) cluster.id：须显式 --cluster-id / --generate-cluster-id / --use-disk-cluster-id（与 main 一致）
+        existing_cid = _consolidate_existing_cluster_id_from_roots(roots_sa)
+        cid_arg = (cluster_id or "").strip() or None
+        if cid_arg and generate_cluster_id:
+            logger.error("--cluster-id 与 --generate-cluster-id 不能同时指定", extra={"to_stdout": True})
+            return False
+        if cid_arg and use_disk_cluster_id:
+            logger.error("--cluster-id 与 --use-disk-cluster-id 不能同时指定", extra={"to_stdout": True})
+            return False
+        if generate_cluster_id and use_disk_cluster_id:
+            logger.error("--generate-cluster-id 与 --use-disk-cluster-id 不能同时指定", extra={"to_stdout": True})
+            return False
+
+        if cid_arg:
+            if existing_cid and existing_cid != cid_arg:
                 ld0 = log_dirs.split(",")[0].strip()
                 logger.error(
                     "log.dirs（%s）中已有 KRaft 元数据，cluster.id=%s，与 --cluster-id=%s 不一致。\n"
-                    "可选：① 清空该目录或更换 --log-dirs 后重试；② 使用 --cluster-id %s 与磁盘一致；"
+                    "可选：① 清空该目录或更换 --log-dirs；② 使用 --cluster-id %s 与磁盘一致；"
                     "③ 确认废弃旧数据后删除 %s/meta.properties 再部署。",
                     ld0,
                     existing_cid,
-                    cid_in,
+                    cid_arg,
                     existing_cid,
                     ld0,
                     extra={"to_stdout": True},
                 )
                 return False
-            cluster_id = cid_in
-        else:
-            if existing_cid:
-                cluster_id = existing_cid
-                logger.info(
-                    "复用 log.dirs 已有 cluster.id=%s（meta.properties；未传 --cluster-id 时自动采用）",
-                    cluster_id,
+            cluster_id = cid_arg
+        elif use_disk_cluster_id:
+            if not existing_cid:
+                logger.error(
+                    "--use-disk-cluster-id 要求 log.dirs 下已存在 meta.properties 且含 cluster.id",
                     extra={"to_stdout": True},
                 )
-            else:
-                cluster_id = self._generate_cluster_id()
-                if not cluster_id:
-                    logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
-                    return False
+                return False
+            cluster_id = existing_cid
+            logger.info("按 --use-disk-cluster-id 采用磁盘 cluster.id=%s", cluster_id, extra={"to_stdout": True})
+        elif generate_cluster_id:
+            if existing_cid:
+                logger.error(
+                    "数据目录已有 cluster.id=%s，不能使用 --generate-cluster-id；请指定 --cluster-id 或 --use-disk-cluster-id，或清空数据目录。",
+                    existing_cid,
+                    extra={"to_stdout": True},
+                )
+                return False
+            cluster_id = self._generate_cluster_id()
+            if not cluster_id:
+                logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
+                return False
+        else:
+            if existing_cid:
+                logger.error(
+                    "数据目录已有 cluster.id=%s。请指定 --cluster-id 与之相同，或 --use-disk-cluster-id，或清空数据后再部署。",
+                    existing_cid,
+                    extra={"to_stdout": True},
+                )
+                return False
+            logger.error(
+                "新建部署须指定 --cluster-id，或使用 --generate-cluster-id（由脚本调用发行版工具生成 UUID），二者互斥。",
+                extra={"to_stdout": True},
+            )
+            return False
 
         # 2) 构建 server.properties
         if sasl_ssl_material:
@@ -2053,6 +2169,7 @@ class KafkaDeployer:
             props = ConfigGenerator.generate_combined_standalone_properties(
                 node_id, log_dirs, listeners, extra_properties=extra_properties
             )
+        config_preexisted = config_path.is_file()
         if not self._write_properties(config_path, props):
             return False
 
@@ -2068,6 +2185,7 @@ class KafkaDeployer:
             logger.info("✓ Kafka 存储已格式化（standalone）", extra={"to_stdout": True})
         except CommandExecutionError as e:
             logger.error(f"kafka-storage.sh format 失败: {e}", extra={"to_stdout": True})
+            _rollback_new_deploy_config(config_path, config_preexisted)
             return False
 
         self._chown_data_paths_for_service_user(log_dirs)
@@ -2128,10 +2246,12 @@ class KafkaDeployer:
             self,
             node_id: int,
             controller_quorum_bootstrap_servers: str,
+            metadata_log_dir: str,
+            log_dirs: str,
             controller_listener_port: int = DEFAULT_CONTROLLER_PORT,
-            metadata_log_dir: Optional[str] = None,
-            log_dirs: Optional[str] = None,
             cluster_id: Optional[str] = None,
+            generate_cluster_id: bool = False,
+            use_disk_cluster_id: bool = False,
             initial_controllers: Optional[str] = None,
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
@@ -2169,7 +2289,14 @@ class KafkaDeployer:
             logger.error("必须指定 controller.quorum.bootstrap.servers", extra={"to_stdout": True})
             return False
 
-        metadata_dir = metadata_log_dir or DEFAULT_METADATA_LOG_DIR
+        metadata_dir = (metadata_log_dir or "").strip()
+        if not metadata_dir:
+            logger.error("须显式指定 --metadata-log-dir（脚本不再使用默认路径）", extra={"to_stdout": True})
+            return False
+        ld_ctrl = (log_dirs or "").strip()
+        if not ld_ctrl:
+            logger.error("须显式指定 --log-dirs（controller 部署不再自动生成子目录）", extra={"to_stdout": True})
+            return False
         if not EnvironmentChecker.check_directory_writable(metadata_dir):
             logger.error(f"元数据日志目录不可写: {metadata_dir}", extra={"to_stdout": True})
             return False
@@ -2222,45 +2349,83 @@ class KafkaDeployer:
             controller_listener_port=controller_listener_port,
             controller_quorum_bootstrap_servers=controller_quorum_bootstrap_servers,
             metadata_log_dir=metadata_dir,
-            log_dirs=log_dirs,
+            log_dirs=ld_ctrl,
             extra_properties=extra_properties,
         )
-        if not self._write_properties(config_path, props):
+        roots_ct: List[str] = [str(Path(metadata_dir).resolve())]
+        roots_ct.extend(_csv_dirs_to_abs_paths(props.get("log.dirs") or ""))
+        ok_aud, err_aud = _audit_cluster_ids_across_kraft_roots(roots_ct)
+        if not ok_aud:
+            logger.error(err_aud, extra={"to_stdout": True})
             return False
 
-        user_supplied_cid = bool((cluster_id or "").strip())
-        existing_cid_meta = _read_cluster_id_from_meta_properties(metadata_dir)
+        cid_arg = (cluster_id or "").strip() or None
+        existing_cid_meta = _consolidate_existing_cluster_id_from_roots(roots_ct)
+        if cid_arg and generate_cluster_id:
+            logger.error("--cluster-id 与 --generate-cluster-id 不能同时指定", extra={"to_stdout": True})
+            return False
+        if cid_arg and use_disk_cluster_id:
+            logger.error("--cluster-id 与 --use-disk-cluster-id 不能同时指定", extra={"to_stdout": True})
+            return False
+        if generate_cluster_id and use_disk_cluster_id:
+            logger.error("--generate-cluster-id 与 --use-disk-cluster-id 不能同时指定", extra={"to_stdout": True})
+            return False
 
-        if user_supplied_cid:
-            cid_resolved = cluster_id.strip()
+        if cid_arg:
+            cid_resolved = cid_arg
             if existing_cid_meta and existing_cid_meta != cid_resolved:
                 logger.error(
-                    "metadata.log.dir（%s）中已有 KRaft 元数据，cluster.id=%s，与 --cluster-id=%s 不一致。\n"
-                    "可选：① 清空该目录或更换 --metadata-log-dir；② 使用 --cluster-id %s；"
-                    "③ 确认废弃旧数据后删除该目录下 meta.properties 或整目录后再部署。",
-                    metadata_dir,
+                    "数据目录已有 KRaft 元数据，cluster.id=%s，与 --cluster-id=%s 不一致。\n"
+                    "可选：清空目录或更换 --metadata-log-dir/--log-dirs，或使 --cluster-id 与磁盘一致。",
                     existing_cid_meta,
                     cid_resolved,
+                    extra={"to_stdout": True},
+                )
+                return False
+        elif use_disk_cluster_id:
+            if not existing_cid_meta:
+                logger.error(
+                    "--use-disk-cluster-id 要求数据目录已存在 meta.properties 且含 cluster.id",
+                    extra={"to_stdout": True},
+                )
+                return False
+            cid_resolved = existing_cid_meta
+            logger.info("按 --use-disk-cluster-id 采用磁盘 cluster.id=%s", cid_resolved, extra={"to_stdout": True})
+        elif generate_cluster_id:
+            if existing_cid_meta:
+                logger.error(
+                    "数据目录已有 cluster.id=%s，不能使用 --generate-cluster-id；请指定 --cluster-id 或 --use-disk-cluster-id，或清空数据。",
                     existing_cid_meta,
                     extra={"to_stdout": True},
                 )
                 return False
+            cid_resolved = self._generate_cluster_id()
+            if not cid_resolved:
+                logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
+                return False
+            logger.info("多节点时其他 controller/broker 须使用同一 cluster id", extra={"to_stdout": True})
         else:
             if existing_cid_meta:
-                cid_resolved = existing_cid_meta
-                logger.info(
-                    "复用 metadata.log.dir 已有 cluster.id=%s（未传 --cluster-id 时自动采用）",
-                    cid_resolved,
+                logger.error(
+                    "数据目录已有 cluster.id=%s。请指定 --cluster-id 与之相同，或 --use-disk-cluster-id，或清空数据后再部署。",
+                    existing_cid_meta,
                     extra={"to_stdout": True},
                 )
-            else:
-                cid_resolved = self._generate_cluster_id()
-                if not cid_resolved:
-                    logger.error("无法生成 KAFKA_CLUSTER_ID", extra={"to_stdout": True})
-                    return False
-                logger.info("多节点时其他 controller/broker 须使用同一 cluster id", extra={"to_stdout": True})
+                return False
+            logger.error(
+                "新建 controller 存储须指定 --cluster-id，或使用 --generate-cluster-id，二者与 --use-disk-cluster-id 互斥见帮助。",
+                extra={"to_stdout": True},
+            )
+            return False
 
-        first_bootstrap = not user_supplied_cid and not existing_cid_meta
+        user_supplied_cid = bool(cid_arg)
+
+        # 空磁盘首次格式化用 --standalone；盘上已有元数据则用 --no-initial-controllers；多节点首批见 --initial-controllers
+        first_bootstrap = not (initial_controllers or "").strip() and existing_cid_meta is None
+
+        config_preexisted = config_path.is_file()
+        if not self._write_properties(config_path, props):
+            return False
 
         format_args = ["format", "--cluster-id", cid_resolved, "-c", str(config_path)]
         if initial_controllers:
@@ -2276,9 +2441,10 @@ class KafkaDeployer:
             logger.info("✓ Controller 存储已格式化", extra={"to_stdout": True})
         except CommandExecutionError as e:
             logger.error(f"kafka-storage.sh format 失败: {e}", extra={"to_stdout": True})
+            _rollback_new_deploy_config(config_path, config_preexisted)
             return False
 
-        self._chown_data_paths_for_service_user(metadata_dir, log_dirs or "")
+        self._chown_data_paths_for_service_user(metadata_dir, props.get("log.dirs") or "")
 
         if enable_systemd:
             if not self._enable_systemd_service(
@@ -2374,6 +2540,12 @@ class KafkaDeployer:
             return False
         EnvironmentChecker.warn_if_path_under_kafka_home(self.kafka_home, log_dirs, "log.dirs")
 
+        roots_br = _csv_dirs_to_abs_paths(log_dirs)
+        ok_aud, err_aud = _audit_cluster_ids_across_kraft_roots(roots_br)
+        if not ok_aud:
+            logger.error(err_aud, extra={"to_stdout": True})
+            return False
+
         config_path = self.config_dir / f"server-broker-{node_id}.properties"
         if config_path.exists():
             logger.info(
@@ -2448,11 +2620,9 @@ class KafkaDeployer:
             }
             if extra_properties:
                 props.update(extra_properties)
-        if not self._write_properties(config_path, props):
-            return False
 
         cid_req = (cluster_id or "").strip()
-        existing_cid = _read_cluster_id_from_meta_properties(log_dirs)
+        existing_cid = _consolidate_existing_cluster_id_from_roots(roots_br)
         if existing_cid and existing_cid != cid_req:
             ld0 = log_dirs.split(",")[0].strip()
             logger.error(
@@ -2468,6 +2638,10 @@ class KafkaDeployer:
             )
             return False
 
+        config_preexisted = config_path.is_file()
+        if not self._write_properties(config_path, props):
+            return False
+
         try:
             self._run_storage_cmd([
                 "format",
@@ -2479,6 +2653,7 @@ class KafkaDeployer:
             logger.info("✓ Broker 存储已格式化", extra={"to_stdout": True})
         except CommandExecutionError as e:
             logger.error(f"kafka-storage.sh format 失败: {e}", extra={"to_stdout": True})
+            _rollback_new_deploy_config(config_path, config_preexisted)
             return False
 
         self._chown_data_paths_for_service_user(log_dirs)
@@ -2645,20 +2820,43 @@ class KafkaDeployer:
         meta_merged = _merge_config_or_cli_path(props_from_file.get("metadata.log.dir"), metadata_log_dir)
 
         dirs_to_wipe: List[Tuple[str, str]] = []
-        if deploy_type == "standalone":
-            if not ld_merged.strip():
-                ld_merged = DEFAULT_LOG_DIR
-            for p in _csv_dirs_to_abs_paths(ld_merged):
-                dirs_to_wipe.append(("log.dirs", p))
-        elif deploy_type == "broker":
-            for p in _csv_dirs_to_abs_paths(ld_merged):
-                dirs_to_wipe.append(("log.dirs", p))
-        else:  # controller
-            md = (meta_merged or "").strip() or DEFAULT_METADATA_LOG_DIR
-            for p in _csv_dirs_to_abs_paths(md):
-                dirs_to_wipe.append(("metadata.log.dir", p))
-            for p in _csv_dirs_to_abs_paths(ld_merged):
-                dirs_to_wipe.append(("log.dirs", p))
+        if clean_data:
+            if deploy_type == "standalone":
+                if not (ld_merged or "").strip():
+                    logger.error(
+                        "standalone 删除数据（--clean-data 或与 --clean/--clean-first 联用 --force）时，"
+                        "须指定 --log-dirs，且/或待删配置文件中能解析出 log.dirs",
+                        extra={"to_stdout": True},
+                    )
+                    return False
+                for p in _csv_dirs_to_abs_paths(ld_merged):
+                    dirs_to_wipe.append(("log.dirs", p))
+            elif deploy_type == "broker":
+                if not (ld_merged or "").strip():
+                    logger.error(
+                        "broker 删除数据时须指定 --log-dirs，且/或待删配置中能解析 log.dirs",
+                        extra={"to_stdout": True},
+                    )
+                    return False
+                for p in _csv_dirs_to_abs_paths(ld_merged):
+                    dirs_to_wipe.append(("log.dirs", p))
+            else:  # controller
+                if not (meta_merged or "").strip():
+                    logger.error(
+                        "controller 删除数据时须指定 --metadata-log-dir，且/或待删配置中有 metadata.log.dir",
+                        extra={"to_stdout": True},
+                    )
+                    return False
+                if not (ld_merged or "").strip():
+                    logger.error(
+                        "controller 删除数据时须指定 --log-dirs，且/或待删配置中有 log.dirs",
+                        extra={"to_stdout": True},
+                    )
+                    return False
+                for p in _csv_dirs_to_abs_paths((meta_merged or "").strip()):
+                    dirs_to_wipe.append(("metadata.log.dir", p))
+                for p in _csv_dirs_to_abs_paths((ld_merged or "").strip()):
+                    dirs_to_wipe.append(("log.dirs", p))
 
         service_path = Path(f"/etc/systemd/system/{service_name}.service")
 
@@ -3863,14 +4061,19 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
     3. 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，或部署时生成的
        ${kafka_home}/config/kafkacli.client.properties（后续子命令默认可读该文件，与 --command-config 优先级见下）。
 【配置文件】--config xxx.json 中的键名与长选项对应（下划线，如 kafka_home）；与命令行同时存在时命令行优先。
-【认证优先级】与 _resolve_kafka_client_config 实现一致：
+【认证优先级】与文件头「客户端认证」一致：
   --command-config 或 KAFKA_CLI_COMMAND_CONFIG 或 KAFKA_COMMAND_CONFIG
   优于 --kafka-user + --kafka-password 或 KAFKA_SASL_* / KAFKA_USER / KAFKA_PASSWORD
   优于 ${kafka_home}/config/kafkacli.client.properties
 【KRaft 节点编号】多节点时，node.id（命令行即 --node-id，JSON 即 node_id）在同一集群内须全局唯一，
   适用于全部 controller 进程与全部 broker 进程；禁止两台主机使用相同编号（错误示例：controller 已用 1～3 时 broker 仍填 1）。
+【部署前置与失败回滚】
+  · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
+  · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
+  · kafka-storage format 失败：若本次运行前该生成配置文件不存在，则删除刚生成的该文件；若文件已存在（幂等覆盖），则保留并提示自行核对。
+  · format 已成功但后续步骤失败：可能已产生元数据，请按 --clean 分组说明处理，脚本不自动抹盘。
 【清理与幂等】
-  · --deploy：可重复执行；覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
+  · --deploy：可重复执行；含上述前置检查；覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
   · --topic-create / --topic-delete：对已存在/已缺失按工具输出做幂等处理（见 Topic 分组说明）。
   · --clean：卸载（删 unit 与生成配置），非部署；抹数据须 --clean-data 或与 --clean/--clean-first 联用 --force。
   · --force：单独部署一般不需要；主要用于与 --clean / --clean-first 联用时删除磁盘数据。
@@ -3913,7 +4116,7 @@ def show_examples():
 ------------------------------------------------------------------------
   · kafkacli：在终端中运行的运维脚本；--kafka-home 为 Kafka 解压目录。
   · 部署角色（KRaft）：
-      - standalone：单机同时承担 broker 与 controller（入门、测试常用）；该模式下通常仅一个 node.id（默认 1）。
+      - standalone：单机同时承担 broker 与 controller（入门、测试常用）；须显式 --node-id。
       - controller：仅参与元数据仲裁（常见为 3 或 5 台，须为奇数）；每台指定一个 --node-id。
       - broker：承载分区数据，对外提供 produce/consume；每台指定一个 --node-id。
       同一集群内可以是「多台 controller + 多台 broker」，并非全集群只有一个 controller。
@@ -3935,9 +4138,9 @@ def show_examples():
 ------------------------------------------------------------------------
 §1 最小闭环：本机单机 standalone → 验收
 ------------------------------------------------------------------------
-  步骤 1 — 部署（可重复执行，会覆盖配置并 restart）:
+  步骤 1 — 部署（可重复执行，会覆盖配置并 restart；须含 --node-id 与 cluster.id 三选一之一）:
    export KAFKA_ADVERTISED_HOST=127.0.0.1
-   kafkacli --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   kafkacli --deploy standalone --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --generate-cluster-id
 
   步骤 2 — 看集群是否正常（默认连 localhost:9092）:
    kafkacli --status --kafka-home /opt/kafka
@@ -3947,7 +4150,7 @@ def show_examples():
 ------------------------------------------------------------------------
   从 PLAINTEXT 切到 SASL 可直接再跑下面一行，无需先手工删配置（脚本幂等覆盖）:
    kafkacli --deploy standalone --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
-     --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+     --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
   说明：脚本会写 ${kafka_home}/config/kafkacli.client.properties（0600），之后 --status、--topic-* 等
   若不传密码，会优先读该文件（与「认证优先级」一致）。
 
@@ -3955,13 +4158,14 @@ def show_examples():
    kafkacli --deploy standalone --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
      --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
      --ssl-truststore-path /secure/kafka.truststore.jks --ssl-truststore-password '***' \\
-     --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+     --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
 
 ------------------------------------------------------------------------
 §3 远程单机：在前置机（或跳板机）上发起 SSH，只在目标机安装
 ------------------------------------------------------------------------
   下列命令在运维机上执行，Kafka 实际装在 192.168.1.10 上（与 --controller-quorum-bootstrap-servers 无对应关系）:
-   kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka --log-dirs /var/kafka/logs
+   kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka --node-id 1 \\
+     --log-dirs /var/kafka/logs --generate-cluster-id
 
   在主机 broker1 上部署 Broker（须先保证 Controller 仲裁已可用；--node-id 须与集群内已有 id 不重复，下例假定用 4）:
    kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --node-id 4 \\
@@ -3983,14 +4187,16 @@ def show_examples():
   分步 A — 在 ctrl1 上初始化第一台 controller（得到 cluster-id，记下）:
    kafkacli --deploy controller --kafka-home /opt/kafka --node-id 1 \\
      --controller-quorum-bootstrap-servers "$QUORUM" \\
-     --metadata-log-dir /var/kafka/metadata-log
-   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （cluster.json 含 kafka_home、controller_quorum_bootstrap_servers 等）
+     --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
+   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （须含 metadata_log_dir、log_dirs、generate_cluster_id 等）
 
   分步 B — 在 ctrl2、ctrl3 上追加 controller（--cluster-id 与集群已有值一致）:
    kafkacli --deploy controller --kafka-home /opt/kafka --node-id 2 --cluster-id <CLUSTER_ID> \\
-     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log
+     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log \\
+     --log-dirs /var/kafka/controller-log
    kafkacli --deploy controller --kafka-home /opt/kafka --node-id 3 --cluster-id <CLUSTER_ID> \\
-     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log
+     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log \\
+     --log-dirs /var/kafka/controller-log
 
   分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上；--node-id 取未占用的值，勿与 controller 重复）:
    kafkacli --deploy broker --kafka-home /opt/kafka --node-id 4 --cluster-id <CLUSTER_ID> \\
@@ -4015,7 +4221,8 @@ def show_examples():
   # cluster.json 根级可含 kafka_home；nodes 每项对应一台主机，至少含 target_host、deploy、node_id 等
   # { "kafka_home": "/opt/kafka", "nodes": [
   #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1,
-  #     "metadata_log_dir": "/var/kafka/meta",
+  #     "metadata_log_dir": "/var/kafka/meta", "log_dirs": "/var/kafka/controller-log",
+  #     "generate_cluster_id": true,
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" },
   #   { "target_host": "broker1", "deploy": "broker", "node_id": 4,
   #     "log_dirs": "/var/kafka/logs", "cluster_id": "<CLUSTER_ID>",
@@ -4054,7 +4261,7 @@ def show_examples():
 ------------------------------------------------------------------------
    kafkacli --clean --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
    kafkacli --clean --deploy standalone --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+   kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --node-id 1 --log-dirs /tmp/kafka-logs --generate-cluster-id
    kafkacli --config-describe-broker --kafka-home /opt/kafka --config-entity-name 1
    kafkacli --config-describe-topic --topic my-topic --kafka-home /opt/kafka
 
@@ -4123,6 +4330,7 @@ def main():
         "standalone=单节点 broker+controller；controller / broker=多节点角色拆分。"
         " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
         " 多节点时 --node-id 对应 node.id，须在全集群（全部 controller 与 broker）内唯一。"
+        " 写入配置前会做数据目录 meta.properties 中 cluster.id 跨路径一致性检查；失败回滚见【部署前置与失败回滚】。"
         " 与 --deploy-sasl-plain / --deploy-sasl-ssl 见「连接与认证」分组。",
     )
     g_dep.add_argument(
@@ -4139,23 +4347,33 @@ def main():
     g_dep.add_argument(
         "--log-dirs",
         metavar="PATH[,PATH...]",
-        help="Broker/Standalone 数据目录，逗号分隔，对应 server.properties 的 log.dirs。",
+        help="server.properties 的 log.dirs。standalone、controller、broker 部署均须显式指定（或 JSON 的 log_dirs）；无隐式默认路径。",
     )
     g_dep.add_argument(
         "--metadata-log-dir",
         metavar="PATH",
-        help="Controller 专用：KRaft 元数据日志目录 metadata.log.dir。",
+        help="Controller：metadata.log.dir，部署 controller 时必填（或 JSON 的 metadata_log_dir）。",
     )
     g_dep.add_argument(
         "--node-id",
         type=int,
-        help="写入 server.properties 的 node.id。controller 与 broker 部署时必填（standalone 有默认）。"
-        " 同一集群内须全局唯一：与所有其它 controller、broker 节点的编号均不得重复。",
+        help="server.properties 的 node.id；standalone、controller、broker 部署均须显式指定（或 JSON 的 node_id）。"
+        " 同一集群内须全局唯一。",
     )
     g_dep.add_argument(
         "--cluster-id",
         metavar="ID",
-        help="KRaft 集群 UUID。首个自举的 controller 由格式化生成；之后各 controller 与全部 broker 须与该 ID 一致（见分步示例 §4）。",
+        help="KRaft 集群 UUID。与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller 部署；broker 仅使用本项加入已有集群）。",
+    )
+    g_dep.add_argument(
+        "--generate-cluster-id",
+        action="store_true",
+        help="由 kafka-storage 生成新的 cluster.id（与 --cluster-id、--use-disk-cluster-id 互斥；用于全新格式化）。",
+    )
+    g_dep.add_argument(
+        "--use-disk-cluster-id",
+        action="store_true",
+        help="采用数据目录已有 meta.properties 中的 cluster.id（与另两种互斥）。",
     )
     g_dep.add_argument(
         "--controller-quorum-bootstrap-servers",
@@ -4651,8 +4869,6 @@ def main():
         node_id = args.node_id or config.get("node_id")
         log_dirs_clean = args.log_dirs or config.get("log_dirs")
         meta_clean = args.metadata_log_dir or config.get("metadata_log_dir")
-        if deploy_kind_clean == "standalone" and not (log_dirs_clean or "").strip():
-            log_dirs_clean = DEFAULT_LOG_DIR
         clean_data = bool(getattr(args, "clean_data", False) or (bool(args.force) and bool(args.clean)))
         if not deployer.clean_deployment(
             deploy_kind_clean,
@@ -4675,8 +4891,6 @@ def main():
         node_id_cf = args.node_id or config.get("node_id")
         log_dirs_cf = args.log_dirs or config.get("log_dirs")
         meta_cf = args.metadata_log_dir or config.get("metadata_log_dir")
-        if deploy_type == "standalone" and not (log_dirs_cf or "").strip():
-            log_dirs_cf = DEFAULT_LOG_DIR
         clean_data_cf = bool(getattr(args, "clean_data", False) or bool(args.force))
         if not deployer.clean_deployment(
             deploy_type,
@@ -4719,15 +4933,41 @@ def main():
             sys.exit(EXIT_ERROR)
     need_sasl_creds = want_plain or want_ssl
 
+    def _cid_mode_triple() -> Tuple[Optional[str], bool, bool]:
+        cid_arg = args.cluster_id if getattr(args, "cluster_id", None) not in (None, "") else None
+        if cid_arg is None:
+            cid_arg = config.get("cluster_id")
+        cid_s = (str(cid_arg).strip() if cid_arg is not None else "") or None
+        gen = bool(getattr(args, "generate_cluster_id", False) or config.get("generate_cluster_id"))
+        use_disk = bool(getattr(args, "use_disk_cluster_id", False) or config.get("use_disk_cluster_id"))
+        return cid_s, gen, use_disk
+
     if deploy_type == "standalone":
-        log_dirs = args.log_dirs or config.get("log_dirs") or DEFAULT_LOG_DIR
+        log_dirs = args.log_dirs or config.get("log_dirs")
+        if not (log_dirs or "").strip():
+            logger.error("standalone 部署必须指定 --log-dirs（或配置文件 log_dirs）", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        log_dirs = str(log_dirs).strip()
+        node_id_sa = args.node_id if getattr(args, "node_id", None) is not None else config.get("node_id")
+        if node_id_sa is None:
+            logger.error("standalone 部署必须指定 --node-id（或配置文件 node_id）", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        cid_s, gen_cid, use_disk_cid = _cid_mode_triple()
+        if bool(cid_s) + gen_cid + use_disk_cid != 1:
+            logger.error(
+                "standalone 部署须且仅能指定一种 cluster.id 来源：--cluster-id，或 --generate-cluster-id，或 --use-disk-cluster-id",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
         if not InputValidator.validate_path(log_dirs.split(",")[0].strip()):
             logger.error("无效的 --log-dirs 路径", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
         success = deployer.deploy_standalone(
             log_dirs=log_dirs,
-            cluster_id=args.cluster_id or config.get("cluster_id"),
-            node_id=args.node_id or config.get("node_id", 1),
+            cluster_id=cid_s,
+            generate_cluster_id=gen_cid,
+            use_disk_cluster_id=use_disk_cid,
+            node_id=int(node_id_sa),
             listeners=None if need_sasl_creds else (args.listeners or config.get("listeners")),
             java_home=java_home,
             enable_systemd=enable_systemd,
@@ -4738,21 +4978,41 @@ def main():
             sasl_ssl_material=ssl_mat,
         )
     elif deploy_type == "controller":
-        node_id = args.node_id or config.get("node_id")
+        node_id = args.node_id if getattr(args, "node_id", None) is not None else config.get("node_id")
         if node_id is None:
-            logger.error("部署 Controller 必须指定 --node-id", extra={"to_stdout": True})
+            logger.error("部署 Controller 必须指定 --node-id（或配置文件 node_id）", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
         quorum = args.controller_quorum_bootstrap_servers or config.get("controller_quorum_bootstrap_servers")
         if not quorum:
             logger.error("必须指定 --controller-quorum-bootstrap-servers", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
+        mld = args.metadata_log_dir or config.get("metadata_log_dir")
+        lds = args.log_dirs or config.get("log_dirs")
+        if not (mld or "").strip():
+            logger.error(
+                "部署 Controller 必须指定 --metadata-log-dir（或配置文件 metadata_log_dir）",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
+        if not (lds or "").strip():
+            logger.error("部署 Controller 必须指定 --log-dirs（或配置文件 log_dirs）", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        cid_s, gen_cid, use_disk_cid = _cid_mode_triple()
+        if bool(cid_s) + gen_cid + use_disk_cid != 1:
+            logger.error(
+                "controller 部署须且仅能指定一种 cluster.id 来源：--cluster-id，或 --generate-cluster-id，或 --use-disk-cluster-id",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
         success = deployer.deploy_controller(
-            node_id=node_id,
-            controller_quorum_bootstrap_servers=quorum,
+            node_id=int(node_id),
+            controller_quorum_bootstrap_servers=str(quorum).strip(),
             controller_listener_port=args.controller_port or config.get("controller_port", DEFAULT_CONTROLLER_PORT),
-            metadata_log_dir=args.metadata_log_dir or config.get("metadata_log_dir"),
-            log_dirs=args.log_dirs or config.get("log_dirs"),
-            cluster_id=args.cluster_id or config.get("cluster_id"),
+            metadata_log_dir=str(mld).strip(),
+            log_dirs=str(lds).strip(),
+            cluster_id=cid_s,
+            generate_cluster_id=gen_cid,
+            use_disk_cluster_id=use_disk_cid,
             initial_controllers=args.initial_controllers or config.get("initial_controllers"),
             java_home=java_home,
             enable_systemd=enable_systemd,

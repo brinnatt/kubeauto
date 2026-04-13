@@ -1,5 +1,5 @@
 {
-  "deployment_note": "键名与 kafkacli 命令行长选项一致（下划线）；用户可见说明须与运行 kafkacli -h 及 KafkaCli.py 内前言、分步示例一致维护。KRaft（Kafka 3.3+，4.0+ 无 ZooKeeper）。同一集群内 node.id（本文件为 node_id）须在所有 controller 与 broker 之间全局唯一。JDK：Kafka 3.x 常用 11，4.x 常用 17。生产请设置 KAFKA_ADVERTISED_HOST。若无法自动检测版本可设 assume_kafka_version 或（不推荐）skip_kraft_version_check。",
+  "deployment_note": "键名与 kafkacli 命令行长选项一致（下划线）；须与 kafkacli -h、KafkaCli.py 模块头、分步示例一致维护。KRaft（Kafka 3.3+）。同一集群内 node_id 须在全部 controller 与 broker 间全局唯一。standalone/controller 部署须三选一：cluster_id、generate_cluster_id、use_disk_cluster_id。controller 须同时提供 metadata_log_dir 与 log_dirs（无隐式默认路径）。",
   "kafka_home": "/opt/kafka",
   "user": "kafka",
   "group": "kafka",
@@ -20,6 +20,8 @@
       "deploy": "controller",
       "node_id": 1,
       "metadata_log_dir": "/var/kafka/metadata-log",
+      "log_dirs": "/var/kafka/controller-log",
+      "generate_cluster_id": true,
       "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
     },
     {
@@ -28,6 +30,7 @@
       "node_id": 2,
       "cluster_id": "<从第一台 controller 部署输出或 meta 中获取，与集群一致>",
       "metadata_log_dir": "/var/kafka/metadata-log",
+      "log_dirs": "/var/kafka/controller-log",
       "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
     },
     {
@@ -36,6 +39,7 @@
       "node_id": 3,
       "cluster_id": "<同上>",
       "metadata_log_dir": "/var/kafka/metadata-log",
+      "log_dirs": "/var/kafka/controller-log",
       "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
     },
     {
