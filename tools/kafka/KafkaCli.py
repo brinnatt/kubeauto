@@ -3823,9 +3823,10 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 可选 systemd，并封装 topic / consumer group / metrics / quorum 等常用操作。
 
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
-【典型用法】① 指定 Kafka 安装根目录 --kafka-home  ② 选择一种动作（--deploy / --status / --topic-* …）
-③ 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，
-   或部署时生成的 ${kafka_home}/config/kafkacli.client.properties（后续子命令默认可读该文件，与 --command-config 优先级见下）。
+【典型用法】
+    1. 指定 Kafka 安装根目录 --kafka-home  
+    2. 选择一种动作（--deploy / --status / --topic-* …）
+    3. 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，或部署时生成的 ${kafka_home}/config/kafkacli.client.properties（后续子命令默认可读该文件，与 --command-config 优先级见下）。
 【配置文件】--config xxx.json 中的键名与长选项对应（下划线，如 kafka_home）；与命令行同时存在时命令行优先。
 【认证优先级】--command-config > 环境变量 KAFKA_CLI_* > 用户名密码 > kafkacli.client.properties
 【清理与幂等】
