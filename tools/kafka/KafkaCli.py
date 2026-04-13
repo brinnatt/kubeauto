@@ -3823,10 +3823,13 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 可选 systemd，并封装 topic / consumer group / metrics / quorum 等常用操作。
 
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
+【新手怎么用】先通读「kafkacli -h」文末「分步示例」：从 §0 术语与阅读顺序 → §1 单机 → … 按节递进；
+  复杂场景（多节点、远程、批量）在对应小节有分步说明与「和 SSH 无关」的地址含义说明。
 【典型用法】
-    1. 指定 Kafka 安装根目录 --kafka-home  
+    1. 指定 Kafka 安装根目录 --kafka-home
     2. 选择一种动作（--deploy / --status / --topic-* …）
-    3. 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，或部署时生成的 ${kafka_home}/config/kafkacli.client.properties（后续子命令默认可读该文件，与 --command-config 优先级见下）。
+    3. 若集群启用认证：使用 --command-config，或 --kafka-user + --kafka-password，或部署时生成的
+       ${kafka_home}/config/kafkacli.client.properties（后续子命令默认可读该文件，与 --command-config 优先级见下）。
 【配置文件】--config xxx.json 中的键名与长选项对应（下划线，如 kafka_home）；与命令行同时存在时命令行优先。
 【认证优先级】--command-config > 环境变量 KAFKA_CLI_* > 用户名密码 > kafkacli.client.properties
 【清理与幂等】
@@ -3863,94 +3866,161 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
 
 
 def show_examples():
-    """接续 argparse -h 输出：分场景可复制命令（与上方各 -- 选项对应）。"""
+    """接续 argparse -h 输出：分步可复制命令（与上方各 -- 选项对应）。"""
     examples = """
-（以下为「分场景示例」，与上方「可选参数」表中各选项一一对应；环境变量见脚本文件头注释。）
+（以下为「分步示例」，与上方「可选参数」表对应；环境变量见脚本文件头注释。建议按 § 编号顺序阅读。）
 
-常用环境变量一览:
+------------------------------------------------------------------------
+§0 先读这节：术语 & 两条「地址」不要混
+------------------------------------------------------------------------
+  · kafkacli：在你当前终端执行的运维脚本；--kafka-home 指向已解压的 Kafka 目录。
+  · 角色（KRaft）：
+      - standalone：一台机同时跑 broker+controller（入门、测试最常用）。
+      - controller：只参与元数据仲裁（通常 3 或 5 台，奇数）；每台一个 --node-id。
+      - broker：存 topic 分区、对外 produce/consume；每台一个 --node-id。
+      集群里可以有「多台 controller + 多台 broker」，不是全集群只有一个 controller。
+  · --target-host：只说明「SSH 到哪台机器去跑这条 kafkacli」，一条命令通常对应一台机器。
+      多机 = 多次执行，每次换 --target-host（或在目标机本机直接执行，省略 --target-host）。
+  · --controller-quorum-bootstrap-servers "host1:9093,host2:9093,..."：
+      这是写进 Kafka 配置的「元数据仲裁入口」，供 Broker/Controller 进程连接 KRaft Quorum（CONTROLLER 监听口）。
+      不是 SSH 列表，也不是「自动登录多台机」；host 须与你在各台机器上部署的 Controller 地址/端口一致。
+
+常用环境变量:
   KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION、
   KAFKA_CLI_COMMAND_CONFIG（或 KAFKA_COMMAND_CONFIG）、KAFKA_SASL_*、KAFKA_SSL_*
 
-版本要求: Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：Kafka 4.x→17，3.x→11。
+版本: Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：Kafka 4.x→17，3.x→11。
 
-快速命令索引（与选项表对照）:
-  部署+清理   → --deploy（可重复）/ --clean / --clean-first / --clean-data / --kafka-home / --verify
-  验收与指标 → --status / --metrics / --bootstrap-server
-  认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
-  Topic/Group→ --topic-* / --group-* / --consumer-group
-  远程       → --target-host / --batch
-
-示例:
-
-1) 单节点 standalone（combined）示例:
+------------------------------------------------------------------------
+§1 最小闭环：本机单机 standalone → 验收
+------------------------------------------------------------------------
+  步骤 1 — 部署（可重复执行，会覆盖配置并 restart）:
    export KAFKA_ADVERTISED_HOST=127.0.0.1
    kafkacli --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   # 同一机可重复执行 --deploy：覆盖生成配置并 systemctl restart；从 PLAINTEXT 切到 SASL 直接再跑下行即可，无需先删配置
+
+  步骤 2 — 看集群是否正常（默认连 localhost:9092）:
+   kafkacli --status --kafka-home /opt/kafka
+
+------------------------------------------------------------------------
+§2 带认证的单机（SASL）：部署一次，后续 topic/status 默认可用 client 文件
+------------------------------------------------------------------------
+  从 PLAINTEXT 切到 SASL 可直接再跑下面一行，无需先手工删配置（脚本幂等覆盖）:
    kafkacli --deploy standalone --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
      --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   # 安装时设账号，后续 topic/status 等共用（脚本写 config/kafkacli.client.properties）
-   # 自建 PKI：SASL_SSL（keystore/truststore 可为 JKS 或 PKCS12）
+  说明：脚本会写 ${kafka_home}/config/kafkacli.client.properties（0600），之后 --status、--topic-* 等
+  若不传密码，会优先读该文件（与「认证优先级」一致）。
+
+  自建 PKI，服务端 SASL_SSL（keystore/truststore 可为 JKS 或 PKCS12）:
    kafkacli --deploy standalone --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
      --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
      --ssl-truststore-path /secure/kafka.truststore.jks --ssl-truststore-password '***' \\
      --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   # 多节点：Broker 节点对外 SASL；Controller 节点不写 SASL 在 Quorum 口，只下发同一套客户端文件方便本机运维连 Broker：
-   kafkacli --deploy broker --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
-     --kafka-home /opt/kafka --node-id 1 --log-dirs /var/kafka/logs --cluster-id <ID> \\
-     --controller-quorum-bootstrap-servers "c1:9093,c2:9093,c3:9093"
-   kafkacli --deploy controller --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
-     --kafka-home /opt/kafka --node-id 2 --metadata-log-dir /var/kafka/meta \\
-     --controller-quorum-bootstrap-servers "c1:9093,c2:9093,c3:9093"
 
-2) 批量多机部署（配置文件 nodes 数组，依次 SSH 到每台执行）:
-   # cluster.json 示例: { "kafka_home": "/opt/kafka", "nodes": [
-   #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1, "metadata_log_dir": "/var/kafka/meta", ... },
-   #   { "target_host": "broker1", "deploy": "broker", "node_id": 1, "log_dirs": "/var/kafka/logs", "cluster_id": "xxx", ... }
-   # ]}
-   kafkacli --batch --config cluster.json
-
-3) 前置机远程部署单节点:
+------------------------------------------------------------------------
+§3 远程一台机：前置机 SSH 到目标机执行（与 Quorum 地址无关）
+------------------------------------------------------------------------
+  含义：下面命令在「你的笔记本/跳板机」上执行，实际安装发生在 192.168.1.10:
    kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka --log-dirs /var/kafka/logs
+
+  在 broker1 这台机器上部署 Broker（请先规划好：Quorum 已在 ctrl1~3 就绪，CLUSTER_ID 与仲裁一致）:
    kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --node-id 1 \\
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
-     --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID> --config cluster.json
+     --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
+  说明：--controller-quorum-bootstrap-servers 是 Kafka 进程用的「找元数据」地址；--target-host 只是 SSH 到 broker1。
 
-4) 多节点 KRaft（示例：多台 controller 与 broker）
+------------------------------------------------------------------------
+§4 多节点 KRaft：分步想清「谁在跑什么」，再抄命令
+------------------------------------------------------------------------
+  规划示例（主机名可换成 IP）:
+    ctrl1、ctrl2、ctrl3 → 各跑一个 controller，node-id 分别为 1、2、3
+    broker1, broker2    → 各跑一个 broker，node-id 分别为 1,2（与 controller 的 id 独立编号）
+  公共配置串（所有 broker / 后续 controller 都要一致，指向三台 Controller 的 CONTROLLER 口）:
+    QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
+
+  分步 A — 在 ctrl1 上初始化第一台 controller（得到 cluster-id，记下）:
    kafkacli --deploy controller --kafka-home /opt/kafka --node-id 1 \\
-     --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
-     --metadata-log-dir /var/kafka/metadata-log --config cluster.json
-   kafkacli --deploy controller --kafka-home /opt/kafka --node-id 2 --cluster-id <CLUSTER_ID> ...
-   kafkacli --deploy broker --kafka-home /opt/kafka --node-id 1 --cluster-id <CLUSTER_ID> \\
-     --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" --log-dirs /var/kafka/logs
+     --controller-quorum-bootstrap-servers "$QUORUM" \\
+     --metadata-log-dir /var/kafka/metadata-log
+   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （cluster.json 含 kafka_home、controller_quorum_bootstrap_servers 等）
 
-5) 集群验收与指标（认证三选一，全脚本一致：显式文件 > 用户名密码 > ${kafka_home}/config/kafkacli.client.properties）:
+  分步 B — 在 ctrl2、ctrl3 上追加 controller（--cluster-id 与集群已有值一致）:
+   kafkacli --deploy controller --kafka-home /opt/kafka --node-id 2 --cluster-id <CLUSTER_ID> \\
+     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log
+   kafkacli --deploy controller --kafka-home /opt/kafka --node-id 3 --cluster-id <CLUSTER_ID> \\
+     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log
+
+  分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上）:
+   kafkacli --deploy broker --kafka-home /opt/kafka --node-id 1 --cluster-id <CLUSTER_ID> \\
+     --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
+
+  若 Controller 与 Broker 对外要 SASL，可在各自命令上加 --deploy-sasl-plain 与账号（Quorum 口仍为 PLAINTEXT 的常见布局见脚本说明）。
+
+------------------------------------------------------------------------
+§5 批量多机：一次读 JSON，按 nodes 顺序各 SSH 一条
+------------------------------------------------------------------------
+  # cluster.json 根级可含 kafka_home；nodes 为数组，每项一台机，含 target_host、deploy、node_id 等
+  # 示例片段:
+  # { "kafka_home": "/opt/kafka", "nodes": [
+  #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1,
+  #     "metadata_log_dir": "/var/kafka/meta",
+  #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" },
+  #   { "target_host": "broker1", "deploy": "broker", "node_id": 1,
+  #     "log_dirs": "/var/kafka/logs", "cluster_id": "<CLUSTER_ID>",
+  #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" }
+  # ]}
+   kafkacli --batch --config cluster.json
+
+------------------------------------------------------------------------
+§6 验收与指标（认证：显式文件 > 环境变量 > 用户名密码 > kafkacli.client.properties）
+------------------------------------------------------------------------
    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
    export KAFKA_SASL_USERNAME=admin KAFKA_SASL_PASSWORD='***'
    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
-   # 高级：自管 SSL/多机制时用 --command-config 覆盖
    kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092
 
-6) Topic / Consumer Group 运维:
+------------------------------------------------------------------------
+§7 Topic / Consumer Group
+------------------------------------------------------------------------
    kafkacli --topic-create --topic my-topic --partitions 6 --replication-factor 2 --kafka-home /opt/kafka
    kafkacli --topic-list --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --topic-describe --topic my-topic --kafka-home /opt/kafka
    kafkacli --group-describe --consumer-group my-consumer --kafka-home /opt/kafka --bootstrap-server broker1:9092
 
-7) Broker 下线（--generate / --execute / --verify，停进程另做）:
+------------------------------------------------------------------------
+§8 Broker 下线与副本迁移（generate → execute → verify；停进程另做）
+------------------------------------------------------------------------
    kafkacli --broker-decommission-generate --broker-list 1,2 --kafka-home /opt/kafka --bootstrap-server broker1:9092
-   # 将输出中的 Current partition reassignment configuration 保存为 plan.json
+  # 将输出中的 Current partition reassignment configuration 保存为 plan.json
    kafkacli --broker-decommission-execute --reassignment-json-file plan.json --throttle 1048576 --kafka-home /opt/kafka
    kafkacli --broker-decommission-verify --reassignment-json-file plan.json --kafka-home /opt/kafka
-   # 迁移完成后在该 Broker 上仅卸载：kafkacli --clean --deploy broker --node-id <id> --kafka-home /opt/kafka --log-dirs …
+  # 迁移完成后在该机卸载: kafkacli --clean --deploy broker --node-id <id> --kafka-home /opt/kafka --log-dirs …
 
-8) 清理与重复部署（--clean 仅停服务并删生成配置，默认不删 log.dirs；删数据加 --clean-data 或与 --clean 同用 --force）:
+------------------------------------------------------------------------
+§9 清理与重装（--clean 默认不删数据目录；删数据用 --clean-data 或配合 --force）
+------------------------------------------------------------------------
    kafkacli --clean --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
    kafkacli --clean --deploy standalone --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   # 一条命令：先卸载并可选清数据再部署（与 standalone 默认 log.dirs 一致时须显式 --log-dirs 以便清数据）
    kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
    kafkacli --config-describe-broker --kafka-home /opt/kafka --config-entity-name 1
    kafkacli --config-describe-topic --topic my-topic --kafka-home /opt/kafka
+
+------------------------------------------------------------------------
+§10 生产落地前自检（对照勾选）
+------------------------------------------------------------------------
+  [ ] 所有节点 kafka_home、Java、目录权限、防火墙（业务口 + Controller 口互通）
+  [ ] controller_quorum 串与真实监听地址/端口一致；broker 的 --cluster-id 与仲裁一致
+  [ ] 生产跨网段优先 TLS/SASL_SSL，避免长期 SASL_PLAINTEXT 跨公网
+  [ ] 部署后 --status / --metrics；业务前再建 topic、确认 min.insync.replicas 等策略
+
+------------------------------------------------------------------------
+快速索引（与选项表对照）
+------------------------------------------------------------------------
+  部署+清理   → --deploy / --clean / --clean-first / --clean-data / --kafka-home / --verify
+  验收与指标 → --status / --metrics / --bootstrap-server
+  认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
+  Topic/Group→ --topic-* / --group-* / --consumer-group
+  远程       → --target-host / --batch
 """
     print(examples)
 
@@ -3970,7 +4040,7 @@ def main():
         "-h",
         "--help",
         action="store_true",
-        help="打印本帮助（含全部分组选项说明），并输出文末「分场景示例」可复制命令。",
+        help="打印本帮助（含全部分组选项说明），并输出文末「分步示例」可复制命令。",
     )
 
     g_cfg = parser.add_argument_group(
@@ -4260,7 +4330,7 @@ def main():
         parser.print_help()
         print()
         print("=" * 72)
-        print("分场景示例（可复制；与上方选项对应）")
+        print("分步示例与场景命令（可复制；与上方选项对应）")
         print("=" * 72)
         show_examples()
         return
