@@ -2418,8 +2418,6 @@ class KafkaDeployer:
             )
             return False
 
-        user_supplied_cid = bool(cid_arg)
-
         # 空磁盘首次格式化用 --standalone；盘上已有元数据则用 --no-initial-controllers；多节点首批见 --initial-controllers
         first_bootstrap = not (initial_controllers or "").strip() and existing_cid_meta is None
 
@@ -4937,10 +4935,10 @@ def main():
         cid_arg = args.cluster_id if getattr(args, "cluster_id", None) not in (None, "") else None
         if cid_arg is None:
             cid_arg = config.get("cluster_id")
-        cid_s = (str(cid_arg).strip() if cid_arg is not None else "") or None
+        cluster_id_opt = (str(cid_arg).strip() if cid_arg is not None else "") or None
         gen = bool(getattr(args, "generate_cluster_id", False) or config.get("generate_cluster_id"))
         use_disk = bool(getattr(args, "use_disk_cluster_id", False) or config.get("use_disk_cluster_id"))
-        return cid_s, gen, use_disk
+        return cluster_id_opt, gen, use_disk
 
     if deploy_type == "standalone":
         log_dirs = args.log_dirs or config.get("log_dirs")
