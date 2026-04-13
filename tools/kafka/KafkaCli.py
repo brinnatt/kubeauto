@@ -10,7 +10,7 @@ Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 b
 
 验收：部署后 `--verify` — standalone/broker 为 TCP + 完整 `show_cluster_status`；controller 为 TCP + `kafka-metadata-quorum describe --status`（元数据面，与官方运维一致）。平时可 `kafkacli --status --kafka-home ...`。
 
-部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在 **systemctl restart** 前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 会 chown 给服务用户）。
+部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在执行 systemctl restart 之前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 会 chown 给服务用户）。
 
 调用 bin 工具时：含 --command-config 的命令统一为「脚本 → 可选 --command-config → --bootstrap-server → 其余参数」（见 _kafka_cli_cmd），避免子命令解析错误。
 
@@ -3963,10 +3963,10 @@ def show_examples():
   执行方式（与实现一致）:
     · 仅当同时使用 --batch 与 --config <cluster.json> 时生效；读取根对象中的 nodes 数组。
     · 按数组下标从小到大依次处理：对 nodes[i] 先 SSH 到该元素的 target_host，再在远程执行合并后的 kafkacli；
-      本节点命令结束并成功后，再处理 nodes[i+1]。即**串行执行，不是多台同时 SSH**。
-    · 若某一节点远程执行失败，**立即终止**，不再处理后续节点；已成功节点**不会自动回滚**。
+      本节点命令结束并成功后，再处理 nodes[i+1]。此为串行执行，而非多台同时建立 SSH。
+    · 若某一节点远程执行失败，则立即终止并不再处理后续节点；已成功完成的节点不会自动回滚。
   集群依赖与排列顺序:
-    · 脚本**不会**根据角色自动调整 nodes 顺序；**须由你在 JSON 中按部署依赖自行排好序**。
+    · 脚本不会根据角色自动调整 nodes 顺序，须由你在 JSON 中按部署依赖自行排列。
     · 常见做法：先列出全部 controller（首台格式化并产生 cluster_id 后，后续项须带相同 cluster_id），
       再列出各 broker（须带与仲裁一致的 cluster_id）。若顺序错误，后段步骤可能失败。
   配置示例（片段，可复制后补全）:
