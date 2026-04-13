@@ -1384,7 +1384,7 @@ class KafkaDeployer:
     KRaft 部署：写配置、kafka-storage.sh format、kafka-server-start.sh / systemd（enable + restart）。
 
     幂等：deploy_* 不因「生成配置已存在」失败；版本下限由 check_environment 与 KRAFT_DEPLOY_MIN_VERSION 执行，
-    可用 --skip-kraft-version-check 跳过。各 deploy_* 的 force 参数与 CLI/JSON 兼容保留，覆盖配置不依赖该参数。
+    可用 --skip-kraft-version-check 跳过。
     """
 
     SERVICE_NAME_STANDALONE = "kafka-standalone"
@@ -1911,7 +1911,6 @@ class KafkaDeployer:
             listeners: Optional[str] = None,
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
-            force: bool = False,
             extra_properties: Optional[Dict[str, str]] = None,
             enable_sasl_plain: bool = False,
             sasl_username: Optional[str] = None,
@@ -1923,8 +1922,6 @@ class KafkaDeployer:
         可重复执行（幂等）：若生成配置已存在则覆盖并 systemctl restart，使 PLAINTEXT↔SASL 等切换无需先 --clean。
         enable_sasl_plain：SASL_PLAINTEXT + PLAIN。
         sasl_ssl_material 非空：SASL_SSL + PLAIN + ssl.*（自建 PKI），并写入 kafkacli.client.properties。
-
-        force：与 CLI/JSON 兼容保留，部署覆盖与重启已不依赖本参数。
         """
         logger.info("=== 部署 Kafka Standalone（KRaft 单节点）===", extra={"to_stdout": True})
 
@@ -2122,7 +2119,6 @@ class KafkaDeployer:
             initial_controllers: Optional[str] = None,
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
-            force: bool = False,
             extra_properties: Optional[Dict[str, str]] = None,
             enable_sasl_plain: bool = False,
             sasl_username: Optional[str] = None,
@@ -2137,8 +2133,6 @@ class KafkaDeployer:
         - 后续 controller：format --no-initial-controllers
         enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties，
         供本机连接集群内 Broker（PLAIN 或 SASL_SSL，与集群一致）。
-
-        force：与 CLI/JSON 兼容保留，部署覆盖与重启已不依赖本参数。
         """
         logger.info("=== 部署 Kafka Controller（KRaft）===", extra={"to_stdout": True})
 
@@ -2315,7 +2309,6 @@ class KafkaDeployer:
             cluster_id: Optional[str] = None,
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
-            force: bool = False,
             extra_properties: Optional[Dict[str, str]] = None,
             enable_sasl_plain: bool = False,
             sasl_username: Optional[str] = None,
@@ -2328,8 +2321,6 @@ class KafkaDeployer:
         默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
         advertised.listeners 主机来自 KAFKA_ADVERTISED_HOST；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
         enable_sasl_plain / sasl_ssl_material：对外 SASL_PLAINTEXT 或 SASL_SSL+PLAIN，并写入 kafkacli.client.properties。
-
-        force：与 CLI/JSON 兼容保留，部署覆盖与重启已不依赖本参数。
         """
         logger.info("=== 部署 Kafka Broker（KRaft）===", extra={"to_stdout": True})
 
@@ -4606,7 +4597,6 @@ def main():
             listeners=None if need_sasl_creds else (args.listeners or config.get("listeners")),
             java_home=java_home,
             enable_systemd=enable_systemd,
-            force=args.force,
             extra_properties=extra_properties,
             enable_sasl_plain=want_plain and not want_ssl,
             sasl_username=ku_acc if need_sasl_creds else None,
@@ -4632,7 +4622,6 @@ def main():
             initial_controllers=args.initial_controllers or config.get("initial_controllers"),
             java_home=java_home,
             enable_systemd=enable_systemd,
-            force=args.force,
             extra_properties=extra_properties,
             enable_sasl_plain=want_plain and not want_ssl,
             sasl_username=ku_acc if need_sasl_creds else None,
@@ -4664,7 +4653,6 @@ def main():
             cluster_id=cluster_id,
             java_home=java_home,
             enable_systemd=enable_systemd,
-            force=args.force,
             extra_properties=extra_properties,
             enable_sasl_plain=want_plain and not want_ssl,
             sasl_username=ku_acc if need_sasl_creds else None,
