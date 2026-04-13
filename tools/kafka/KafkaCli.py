@@ -3724,7 +3724,8 @@ def _run_remote_deploy(
         argv: List[str],
         exit_on_finish: bool = True
 ) -> Optional[bool]:
-    """在前置机通过 SSH 在目标机执行部署，日志回显到本地。exit_on_finish=False 时返回成功与否不退出（供批量用）。"""
+    """由前置机经 SSH 在目标机执行 kafkacli，标准输出与错误回显到本地。
+    exit_on_finish=False 时仅返回是否成功且不 sys.exit（供 --batch 串行调用下一台）。"""
     ssh_user = config.get("ssh_user") or args.ssh_user
     ssh_port = config.get("ssh_port") or args.ssh_port or 22
     ssh_key = config.get("ssh_key") or args.ssh_key
@@ -3823,8 +3824,8 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 可选 systemd，并封装 topic / consumer group / metrics / quorum 等常用操作。
 
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
-【新手怎么用】先通读「kafkacli -h」文末「分步示例」：从 §0 术语与阅读顺序 → §1 单机 → … 按节递进；
-  复杂场景（多节点、远程、批量）在对应小节有分步说明与「和 SSH 无关」的地址含义说明。
+【新手怎么用】运行「kafkacli -h」后阅读文末「分步示例」：建议从 §0 读起，再按 §1、§2… 顺序往下看。
+  多节点、远程 SSH、--batch 批量等场景在对应章节说明了执行顺序（例如批量为串行 SSH）与参数含义。
 【典型用法】
     1. 指定 Kafka 安装根目录 --kafka-home
     2. 选择一种动作（--deploy / --status / --topic-* …）
@@ -3871,19 +3872,20 @@ def show_examples():
 （以下为「分步示例」，与上方「可选参数」表对应；环境变量见脚本文件头注释。建议按 § 编号顺序阅读。）
 
 ------------------------------------------------------------------------
-§0 先读这节：术语 & 两条「地址」不要混
+§0 术语：两种「地址」含义不同，请勿混淆
 ------------------------------------------------------------------------
-  · kafkacli：在你当前终端执行的运维脚本；--kafka-home 指向已解压的 Kafka 目录。
-  · 角色（KRaft）：
-      - standalone：一台机同时跑 broker+controller（入门、测试最常用）。
-      - controller：只参与元数据仲裁（通常 3 或 5 台，奇数）；每台一个 --node-id。
-      - broker：存 topic 分区、对外 produce/consume；每台一个 --node-id。
-      集群里可以有「多台 controller + 多台 broker」，不是全集群只有一个 controller。
-  · --target-host：只说明「SSH 到哪台机器去跑这条 kafkacli」，一条命令通常对应一台机器。
-      多机 = 多次执行，每次换 --target-host（或在目标机本机直接执行，省略 --target-host）。
+  · kafkacli：在终端中运行的运维脚本；--kafka-home 为 Kafka 解压目录。
+  · 部署角色（KRaft）：
+      - standalone：单机同时承担 broker 与 controller（入门、测试常用）。
+      - controller：仅参与元数据仲裁（常见为 3 或 5 台，须为奇数）；每台指定一个 --node-id。
+      - broker：承载分区数据，对外提供 produce/consume；每台指定一个 --node-id。
+      同一集群内可以是「多台 controller + 多台 broker」，并非全集群只有一个 controller。
+  · --target-host：表示「通过 SSH 登录哪一台主机来执行本条 kafkacli」。一条命令只对应一台主机；
+      若要多台主机，请多次执行并每次更换 --target-host（或在各主机本地登录后执行，此时可不写 --target-host）。
   · --controller-quorum-bootstrap-servers "host1:9093,host2:9093,..."：
-      这是写进 Kafka 配置的「元数据仲裁入口」，供 Broker/Controller 进程连接 KRaft Quorum（CONTROLLER 监听口）。
-      不是 SSH 列表，也不是「自动登录多台机」；host 须与你在各台机器上部署的 Controller 地址/端口一致。
+      该字符串写入 Kafka 配置，表示 KRaft 元数据仲裁（CONTROLLER 协议）的访问入口，供本机 Broker/Controller
+      进程加入集群使用。它不是 SSH 目标列表，也不会由脚本代为登录多台机器；其中主机名或 IP、端口须与
+      各台 Controller 实际监听地址一致。
 
 常用环境变量:
   KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_ADVERTISED_HOST、KAFKA_CLI_ASSUME_VERSION、
@@ -3902,7 +3904,7 @@ def show_examples():
    kafkacli --status --kafka-home /opt/kafka
 
 ------------------------------------------------------------------------
-§2 带认证的单机（SASL）：部署一次，后续 topic/status 默认可用 client 文件
+§2 单机 SASL：部署时写入账号，后续 topic/status 可自动读客户端配置文件
 ------------------------------------------------------------------------
   从 PLAINTEXT 切到 SASL 可直接再跑下面一行，无需先手工删配置（脚本幂等覆盖）:
    kafkacli --deploy standalone --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
@@ -3917,23 +3919,23 @@ def show_examples():
      --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
 
 ------------------------------------------------------------------------
-§3 远程一台机：前置机 SSH 到目标机执行（与 Quorum 地址无关）
+§3 远程单机：在前置机（或跳板机）上发起 SSH，只在目标机安装
 ------------------------------------------------------------------------
-  含义：下面命令在「你的笔记本/跳板机」上执行，实际安装发生在 192.168.1.10:
+  下列命令在运维机上执行，Kafka 实际装在 192.168.1.10 上（与 --controller-quorum-bootstrap-servers 无对应关系）:
    kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka --log-dirs /var/kafka/logs
 
-  在 broker1 这台机器上部署 Broker（请先规划好：Quorum 已在 ctrl1~3 就绪，CLUSTER_ID 与仲裁一致）:
+  在主机 broker1 上部署 Broker（须先保证 Controller 仲裁已可用，且下列 --cluster-id 与集群一致）:
    kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --node-id 1 \\
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
-  说明：--controller-quorum-bootstrap-servers 是 Kafka 进程用的「找元数据」地址；--target-host 只是 SSH 到 broker1。
+  说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
 
 ------------------------------------------------------------------------
-§4 多节点 KRaft：分步想清「谁在跑什么」，再抄命令
+§4 多节点 KRaft：先理清拓扑与 node-id，再按步骤执行命令
 ------------------------------------------------------------------------
   规划示例（主机名可换成 IP）:
-    ctrl1、ctrl2、ctrl3 → 各跑一个 controller，node-id 分别为 1、2、3
-    broker1, broker2    → 各跑一个 broker，node-id 分别为 1,2（与 controller 的 id 独立编号）
+    ctrl1、ctrl2、ctrl3 → 各部署一个 controller，node-id 分别为 1、2、3
+    broker1、broker2    → 各部署一个 broker，node-id 分别为 1、2（与 controller 的 node-id 独立编号）
   公共配置串（所有 broker / 后续 controller 都要一致，指向三台 Controller 的 CONTROLLER 口）:
     QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
 
@@ -3956,10 +3958,19 @@ def show_examples():
   若 Controller 与 Broker 对外要 SASL，可在各自命令上加 --deploy-sasl-plain 与账号（Quorum 口仍为 PLAINTEXT 的常见布局见脚本说明）。
 
 ------------------------------------------------------------------------
-§5 批量多机：一次读 JSON，按 nodes 顺序各 SSH 一条
+§5 批量多机（--batch）：从 JSON 读取 nodes，按顺序串行 SSH
 ------------------------------------------------------------------------
-  # cluster.json 根级可含 kafka_home；nodes 为数组，每项一台机，含 target_host、deploy、node_id 等
-  # 示例片段:
+  执行方式（与实现一致）:
+    · 仅当同时使用 --batch 与 --config <cluster.json> 时生效；读取根对象中的 nodes 数组。
+    · 按数组下标从小到大依次处理：对 nodes[i] 先 SSH 到该元素的 target_host，再在远程执行合并后的 kafkacli；
+      本节点命令结束并成功后，再处理 nodes[i+1]。即**串行执行，不是多台同时 SSH**。
+    · 若某一节点远程执行失败，**立即终止**，不再处理后续节点；已成功节点**不会自动回滚**。
+  集群依赖与排列顺序:
+    · 脚本**不会**根据角色自动调整 nodes 顺序；**须由你在 JSON 中按部署依赖自行排好序**。
+    · 常见做法：先列出全部 controller（首台格式化并产生 cluster_id 后，后续项须带相同 cluster_id），
+      再列出各 broker（须带与仲裁一致的 cluster_id）。若顺序错误，后段步骤可能失败。
+  配置示例（片段，可复制后补全）:
+  # cluster.json 根级可含 kafka_home；nodes 每项对应一台主机，至少含 target_host、deploy、node_id 等
   # { "kafka_home": "/opt/kafka", "nodes": [
   #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1,
   #     "metadata_log_dir": "/var/kafka/meta",
@@ -3971,7 +3982,7 @@ def show_examples():
    kafkacli --batch --config cluster.json
 
 ------------------------------------------------------------------------
-§6 验收与指标（认证：显式文件 > 环境变量 > 用户名密码 > kafkacli.client.properties）
+§6 验收与指标（客户端认证优先级：--command-config > 环境变量 > 用户名/密码 > kafkacli.client.properties）
 ------------------------------------------------------------------------
    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
    export KAFKA_SASL_USERNAME=admin KAFKA_SASL_PASSWORD='***'
@@ -3988,7 +3999,7 @@ def show_examples():
    kafkacli --group-describe --consumer-group my-consumer --kafka-home /opt/kafka --bootstrap-server broker1:9092
 
 ------------------------------------------------------------------------
-§8 Broker 下线与副本迁移（generate → execute → verify；停进程另做）
+§8 Broker 下线与分区迁移（先生成方案，再执行，最后校验；停止进程需另行操作）
 ------------------------------------------------------------------------
    kafkacli --broker-decommission-generate --broker-list 1,2 --kafka-home /opt/kafka --bootstrap-server broker1:9092
   # 将输出中的 Current partition reassignment configuration 保存为 plan.json
@@ -4006,12 +4017,13 @@ def show_examples():
    kafkacli --config-describe-topic --topic my-topic --kafka-home /opt/kafka
 
 ------------------------------------------------------------------------
-§10 生产落地前自检（对照勾选）
+§10 生产环境上线前自检（可逐项勾选）
 ------------------------------------------------------------------------
-  [ ] 所有节点 kafka_home、Java、目录权限、防火墙（业务口 + Controller 口互通）
-  [ ] controller_quorum 串与真实监听地址/端口一致；broker 的 --cluster-id 与仲裁一致
-  [ ] 生产跨网段优先 TLS/SASL_SSL，避免长期 SASL_PLAINTEXT 跨公网
-  [ ] 部署后 --status / --metrics；业务前再建 topic、确认 min.insync.replicas 等策略
+  [ ] 各节点已安装兼容版本 Java，--kafka-home 路径正确，数据目录权限与磁盘空间满足要求
+  [ ] 网络与安全组放行业务端口与 Controller 端口，各节点之间按规划互通
+  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；broker 的 --cluster-id 与集群一致
+  [ ] 跨不可信网络时优先采用 TLS（如 SASL_SSL），避免长期使用未加密的 SASL_PLAINTEXT
+  [ ] 部署后执行 --status 或 --metrics；承载业务前创建 topic，并确认 min.insync.replicas 等策略
 
 ------------------------------------------------------------------------
 快速索引（与选项表对照）
@@ -4020,7 +4032,7 @@ def show_examples():
   验收与指标 → --status / --metrics / --bootstrap-server
   认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
   Topic/Group→ --topic-* / --group-* / --consumer-group
-  远程       → --target-host / --batch
+  远程与批量 → 单机用 --target-host；多机用 --batch + JSON（串行顺序见 §5 与 --batch 说明）
 """
     print(examples)
 
@@ -4034,7 +4046,7 @@ def main():
 
     g_help = parser.add_argument_group(
         "帮助",
-        "先阅读下方各分组；选项含义见每行右侧说明。默认不执行任何动作，须至少指定一类操作（如 --deploy）。",
+        "请阅读下方各参数分组；含义见每行末说明。未指定任何操作类选项时脚本不执行实质任务（例如须指定 --deploy 等）。",
     )
     g_help.add_argument(
         "-h",
@@ -4233,13 +4245,13 @@ def main():
     )
 
     g_ssh = parser.add_argument_group(
-        "远程执行（前置机 SSH 到目标机跑本脚本）",
-        "指定 --target-host 时，本机不直接部署，把命令转发到目标机。",
+        "远程执行（前置机经 SSH 在目标机执行本脚本）",
+        "指定 --target-host 时：不在本机安装 Kafka，仅通过 SSH 在目标机执行同一条 kafkacli（未装脚本时会自动拷贝当前文件）。",
     )
     g_ssh.add_argument(
         "--target-host",
         metavar="HOST[:PORT]",
-        help="目标机地址；与 --deploy 等同在远程执行。未装 kafkacli 时会自动拷贝当前脚本。",
+        help="目标机地址；与 --deploy 等组合时在远程执行。未装 kafkacli 时会自动拷贝当前脚本。",
     )
     g_ssh.add_argument("--ssh-user", default="root", help="SSH 登录用户。")
     g_ssh.add_argument("--ssh-port", type=int, default=22, help="SSH 端口。")
@@ -4257,7 +4269,9 @@ def main():
     g_ssh.add_argument(
         "--batch",
         action="store_true",
-        help="按 --config 中 nodes 数组依次 SSH 到多台机器执行部署（每台一条独立命令）。",
+        help="须与 --config 联用：读取 JSON 中 nodes 数组，按下标从小到大依次向各 target_host 建立 SSH 并执行部署（串行，非并行）；"
+        "上一节点成功后才执行下一节点，任一节点失败则中止后续步骤，已完成的节点不会自动回滚。"
+        "KRaft 多节点时，nodes 的排列顺序须由你按集群依赖自行决定（通常先全部 controller，再 broker；broker 项须含与仲裁一致的 cluster_id），脚本不会自动排序。",
     )
 
     g_topic = parser.add_argument_group(
@@ -4351,7 +4365,7 @@ def main():
             _run_remote_deploy(target_host, args, config, sys.argv)
             return
 
-    # 批量部署：按 config.nodes 依次远程部署每台机器
+    # 批量部署：按 config.nodes 下标顺序串行 SSH（非并行）；单节点失败则退出，见 --batch 帮助说明。
     if getattr(args, "batch", False):
         _require(args.config, "--batch 需同时指定 --config（含 nodes 数组的 JSON 文件）")
         nodes = config.get("nodes")
