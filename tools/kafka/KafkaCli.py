@@ -3924,8 +3924,8 @@ def show_examples():
   下列命令在运维机上执行，Kafka 实际装在 192.168.1.10 上（与 --controller-quorum-bootstrap-servers 无对应关系）:
    kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka --log-dirs /var/kafka/logs
 
-  在主机 broker1 上部署 Broker（须先保证 Controller 仲裁已可用，且下列 --cluster-id 与集群一致）:
-   kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --node-id 1 \\
+  在主机 broker1 上部署 Broker（须先保证 Controller 仲裁已可用；--node-id 须与集群内已有 id 不重复，下例假定用 4）:
+   kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --node-id 4 \\
      --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
   说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
@@ -3934,8 +3934,10 @@ def show_examples():
 §4 多节点 KRaft：先理清拓扑与 node-id，再按步骤执行命令
 ------------------------------------------------------------------------
   规划示例（主机名可换成 IP）:
-    ctrl1、ctrl2、ctrl3 → 各部署一个 controller，node-id 分别为 1、2、3
-    broker1、broker2    → 各部署一个 broker，node-id 分别为 1、2（与 controller 的 node-id 独立编号）
+    ctrl1、ctrl2、ctrl3 → 各跑一台仅含 controller 角色的节点，--node-id 分别设为 1、2、3。
+    broker1、broker2    → 各跑一台仅含 broker 角色的节点；其 --node-id 须在整集群内唯一，
+      不能与上述 controller 重复。例如 controller 已占用 1～3，则两台 broker 可设为 4 与 5（仅作编号示例）。
+  （说明：KRaft 下「controller 与 broker」是进程角色不同，但 node.id 是同一套全局编号，不能两套各从 1 开始。）
   公共配置串（所有 broker / 后续 controller 都要一致，指向三台 Controller 的 CONTROLLER 口）:
     QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
 
@@ -3951,9 +3953,10 @@ def show_examples():
    kafkacli --deploy controller --kafka-home /opt/kafka --node-id 3 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log
 
-  分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上）:
-   kafkacli --deploy broker --kafka-home /opt/kafka --node-id 1 --cluster-id <CLUSTER_ID> \\
+  分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上；--node-id 取未占用的值，勿与 controller 重复）:
+   kafkacli --deploy broker --kafka-home /opt/kafka --node-id 4 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
+   # 第二台 broker 机器上改用 --node-id 5（示例）
 
   若 Controller 与 Broker 对外要 SASL，可在各自命令上加 --deploy-sasl-plain 与账号（Quorum 口仍为 PLAINTEXT 的常见布局见脚本说明）。
 
@@ -3975,7 +3978,7 @@ def show_examples():
   #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1,
   #     "metadata_log_dir": "/var/kafka/meta",
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" },
-  #   { "target_host": "broker1", "deploy": "broker", "node_id": 1,
+  #   { "target_host": "broker1", "deploy": "broker", "node_id": 4,
   #     "log_dirs": "/var/kafka/logs", "cluster_id": "<CLUSTER_ID>",
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" }
   # ]}
