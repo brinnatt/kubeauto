@@ -27,6 +27,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
 部署注意：systemd 以 --user/--group（默认 kafka）运行时，须能对 ${KAFKA_HOME}/logs、log.dirs 写入；server.properties 中 ssl.*、keystore 等路径须对该用户可读。脚本在 storage format 后 chown 数据目录；在执行 systemctl restart 之前处理 ${KAFKA_HOME}/logs 与 config/kafkacli.client.properties（0600 会 chown 给服务用户）。
 
 调用 bin 工具时：含 --command-config 的命令统一为「脚本 → 可选 --command-config → --bootstrap-server → 其余参数」（见 _kafka_cli_cmd），避免子命令解析错误。
+  --bootstrap-server / --bootstrap-controller 可为逗号分隔多地址（与 Kafka 官方 bootstrap 语义一致）；校验见 _validate_bootstrap_server；TCP 预检见 _tcp_preflight_first_endpoint（仅探测列表首项）。
 
 部署前置与失败回滚（与 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】、deploy_* 实现一致）：
   · 写入生成配置前：对本次涉及的 metadata.log.dir 与 log.dirs 各根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署。
@@ -106,11 +107,13 @@ def _reassign_cmd_timeout_sec() -> int:
     return max(_kafka_cli_timeout_sec(120), 3600)
 
 
-def _validate_bootstrap_server(bootstrap_server: str) -> Tuple[bool, str]:
-    """校验 --bootstrap-server 非空且主机/端口可解析（减少 silent 失败）。"""
-    s = (bootstrap_server or "").strip()
+def _validate_single_bootstrap_endpoint(seg: str) -> Tuple[bool, str]:
+    """
+    校验单个 host:port（与 Apache Kafka bootstrap.servers 单项格式一致；IPv6 建议 [addr]:port）。
+    """
+    s = (seg or "").strip()
     if not s:
-        return False, "bootstrap server 不能为空"
+        return False, "端点不能为空"
     if ":" in s:
         host, _, port_part = s.rpartition(":")
         host = host.strip()
@@ -119,15 +122,58 @@ def _validate_bootstrap_server(bootstrap_server: str) -> Tuple[bool, str]:
             try:
                 p = int(port_part)
                 if not InputValidator.validate_port(p):
-                    return False, f"bootstrap 端口无效: {port_part}"
+                    return False, f"端口无效: {port_part}"
             except ValueError:
-                return False, f"bootstrap 端口无效: {port_part}"
-        if host and not InputValidator.validate_hostname(host):
-            return False, f"bootstrap 主机无效: {host}"
+                return False, f"端口无效: {port_part}"
+        if host:
+            if host.startswith("[") and host.endswith("]"):
+                inner = host[1:-1].strip()
+                try:
+                    ipaddress.ip_address(inner)
+                except ValueError:
+                    return False, f"主机无效: {host}"
+            elif not InputValidator.validate_hostname(host):
+                try:
+                    ipaddress.ip_address(host)
+                except ValueError:
+                    return False, f"主机无效: {host}"
     else:
         if not InputValidator.validate_hostname(s):
-            return False, f"bootstrap 主机无效: {s}"
+            try:
+                ipaddress.ip_address(s)
+            except ValueError:
+                return False, f"主机无效: {s}"
     return True, ""
+
+
+def _validate_bootstrap_server(bootstrap_server: str) -> Tuple[bool, str]:
+    """
+    校验 --bootstrap-server / --bootstrap-controller 字符串。
+    与 Apache Kafka 一致：可为逗号分隔的多个 host:port（用于初始发现与高可用；列表不必包含全部节点）。
+    """
+    s = (bootstrap_server or "").strip()
+    if not s:
+        return False, "bootstrap 不能为空"
+    parts = [p.strip() for p in s.split(",") if p.strip()]
+    if not parts:
+        return False, "bootstrap 不能为空"
+    for i, seg in enumerate(parts):
+        ok, msg = _validate_single_bootstrap_endpoint(seg)
+        if not ok:
+            return False, f"第 {i + 1} 项 {seg!r}: {msg}"
+    return True, ""
+
+
+def _first_bootstrap_segment(addr_csv: str) -> str:
+    """
+    逗号分隔的 bootstrap 串中第一个非空项。
+    与 _tcp_preflight_first_endpoint、无 --kafka-home 时仅 TCP 探测等「只需单端点」场景一致（完整串仍透传给 Kafka CLI）。
+    """
+    for part in (addr_csv or "").split(","):
+        p = part.strip()
+        if p:
+            return p
+    return ""
 
 
 def _validate_command_config_path(command_config: Optional[str]) -> Optional[str]:
@@ -3011,6 +3057,7 @@ class KafkaDeployer:
     ) -> bool:
         """
         部署后元数据面验收：kafka-metadata-quorum.sh --bootstrap-controller … describe --status。
+        bootstrap_controller 可为逗号分隔多地址（与官方 CLI 一致）。
         与 KRaft 官方 Quorum 运维方式一致（先确认 Leader/Voters 可读）。
         """
         cc_err = _validate_command_config_path(command_config)
@@ -3202,6 +3249,7 @@ class KafkaDeployer:
     ) -> bool:
         """
         集群验收报告：连通、KRaft Quorum、副本健康、Topic/Consumer Group 规模、Lag 汇总与结论。
+        bootstrap_server / bootstrap_controller 均支持逗号分隔多地址（与 Kafka 客户端一致）；TCP 预检仅检验首项。
         认证与 _resolve_kafka_client_config 一致（用户名密码或 kafkacli.client.properties）。
         若仅部署 Controller、未指定 bootstrap_server 但指定了 bootstrap_controller，则只做 [2][3] 元数据面验收，跳过 [1][4]～[6]。
         返回 True：全栈模式下为 [1] 与 [2] 均成功；仅 Controller 模式下为 [2] 成功。
@@ -3370,7 +3418,7 @@ class KafkaDeployer:
                 print("  [通过] 仅 Controller 验收：[2] KRaft Quorum 可读（[1][4]～[6] 已跳过）。")
             else:
                 print(
-                    "  [未通过] [2] KRaft Quorum 失败；请检查 --bootstrap-controller 与网络、端口。"
+                    "  [未通过] [2] KRaft Quorum 失败；请检查 --bootstrap-controller（多地址时首项须可达）与网络、端口。"
                     " 若 [2] 已打印 MetadataVersion/KIP-919 提示，多为首台 controller 空盘误用 --no-initial-controllers，见上文「提示」。"
                 )
         elif critical_ok and ur_ok:
@@ -3378,10 +3426,14 @@ class KafkaDeployer:
         elif critical_ok and ph.get("ok") and ur > 0:
             print("  [警告] [1][2] 通过，但 [4] 存在 under-replicated 分区（生产风险）。")
         elif not ok_connect:
-            print("  [未通过] 仅 [1] Broker API 连通/认证失败（与 bootstrap、command-config、账号密码有关）；[2] 未单独判定。")
+            print(
+                "  [未通过] 仅 [1] Broker API 连通/认证失败（与 bootstrap、command-config、账号密码有关）；[2] 未单独判定。"
+                " 多地址 --bootstrap-server 时预检仅首项，可调整顺序或检查首地址可达性。"
+            )
         elif not ok_quorum_status:
             print(
                 "  [未通过] [1] 通过但 [2] KRaft Quorum（kafka-metadata-quorum describe --status）失败；"
+                " 多地址 bootstrap 时预检仅覆盖首项，可调整顺序后重试；"
                 "请查看 [2] 原因（含 CLI 参数、元数据口是否可达）。"
             )
         elif not ph.get("ok"):
@@ -3402,6 +3454,7 @@ def _kafka_cli_cmd(
 ) -> List[str]:
     """
     组装多数 bin/*.sh 的命令行：可选全局 --command-config → --bootstrap-server → 其余参数。
+    bootstrap_server 可为逗号分隔多 host:port（与官方 bootstrap.servers 一致），整串透传。
     与 Kafka 发行版 Admin 客户端惯例一致；尾随 --command-config 在 kafka-metadata-quorum 等带子命令的工具上会解析失败。
     """
     cmd: List[str] = [str(script_path)]
@@ -3568,6 +3621,7 @@ class KafkaQuorumManager:
     """
     KRaft 元数据 Quorum 运维（add-controller、remove-controller、describe）。
     需提供 bootstrap_server 或 bootstrap_controller 之一，否则 _quorum_cmd 将缺少连接参数。
+    二者均支持逗号分隔多地址（与 kafka-metadata-quorum.sh 一致）；校验见 _validate_bootstrap_server。
     """
 
     def __init__(self, kafka_home: str, bootstrap_server: Optional[str] = None,
@@ -3687,7 +3741,7 @@ class KafkaMetricsCollector:
     """
     调用 bin 下 metadata-quorum / kafka-topics / kafka-consumer-groups 采集并汇总为字典（--metrics-json）。
     collect_consumer_lag：无消费组时跳过 --all-groups --describe；有组时按输出表头定位 LAG 列（兼容列顺序变化）。
-    kafka-metadata-quorum 须使用 --bootstrap-controller 或 --bootstrap-server（与 KafkaQuorumManager 一致）。
+    kafka-metadata-quorum 须使用 --bootstrap-controller 或 --bootstrap-server（与 KafkaQuorumManager 一致；均可逗号分隔多地址，TCP 预检仅首项）。
     仅部署 Controller、无 Broker 时：broker_connect / 副本 / topic 等段可能失败，quorum 段仍可参考（与仅元数据集群一致）。
     """
 
@@ -4059,7 +4113,7 @@ class KafkaBrokerDecommission:
 
 
 def _parse_bootstrap_server(bs: str, default_port: int = DEFAULT_BROKER_PORT) -> Tuple[str, int]:
-    """解析 bootstrap_server 字符串为 (host, port)。"""
+    """解析**单个** host:port 为 (host, port)。若为逗号列表须先取 _first_bootstrap_segment(...) 再解析。"""
     s = (bs or "").strip() or "localhost"
     if ":" in s:
         parts = s.rsplit(":", 1)
@@ -4172,10 +4226,11 @@ def _tcp_preflight_first_endpoint(
         connect_timeout_sec: float = 8.0,
 ) -> Optional[str]:
     """
-    对逗号分隔地址取第一段做 TCP 预检；失败返回中文说明。
+    对逗号分隔地址取**第一个非空**项做 TCP 预检；失败返回中文说明。
     用于避免 kafka-metadata-quorum 等 Java 客户端在网络不可达时长时间阻塞（看起来像「卡死」）。
+    与 Apache Kafka 多地址 bootstrap 一致：预检仅覆盖首项，完整串仍交给 CLI。
     """
-    first = (addr_csv or "").split(",")[0].strip()
+    first = _first_bootstrap_segment(addr_csv)
     if not first:
         return f"{label} 为空"
     host, port = _parse_bootstrap_server(first, default_port)
@@ -4655,6 +4710,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【远程子命令】--target-host 且目标非本机时，整条命令（含 --clean、broker-decommission、topic 等）在目标机执行；见「远程执行」分组与 §3。
 【Broker 下线】kafka-reassign-partitions：--topics-to-move-json-file 若指定须为已存在文件；verify 读取工具退出码与输出（进行中与完成态见 §8）。
 【Quorum 运维】--quorum-add-controller 须显式提供 --bootstrap-controller 和/或 --bootstrap-server；脚本不默认 localhost:9092（避免误用 Broker 端口连接元数据工具）。
+【bootstrap 列表】与 Apache Kafka 客户端一致：`--bootstrap-server` / `--bootstrap-controller` 可为逗号分隔的多个 host:port（初始连接与高可用；不必包含全部节点）。TCP 预检仅对列表中第一个地址探测（与脚本避免长时间阻塞的设计一致）。
 【指标采集】--metrics / --metrics-json 会连 Broker（默认 bootstrap）并采 Quorum；仅 Controller 集群时 Broker 相关段可能失败，quorum 段仍可看（与 --status 行为一致）。
 """
 
@@ -4829,8 +4885,8 @@ def show_examples():
 §6 验收与指标（客户端认证优先级与本帮助最前「【认证优先级】」、文件头「客户端认证」相同）
 ------------------------------------------------------------------------
   【新手先读】--status 里有两类地址，不要混用：
-    · --bootstrap-server：连 Broker 业务端口（常见 9092），测 produce/consume 侧。
-    · --bootstrap-controller：连 Controller 元数据端口（常见 9093），仅在「只装了 Controller、尚未装 Broker」时用。
+    · --bootstrap-server：连 Broker 业务端口（常见 9092），测 produce/consume 侧；可与官方一致写多个 host:port（逗号分隔）。
+    · --bootstrap-controller：连 Controller 元数据端口（常见 9093），仅在「只装了 Controller、尚未装 Broker」时用；亦可逗号分隔多台 Controller。
   只验 Controller 时不要写 --bootstrap-server（否则易误连本机 9092）。在 Kafka 所在机本机验收最省事:
    kafkacli --status --kafka-home /opt/kafka --bootstrap-controller 127.0.0.1:9093
   从另一台机子跨网验收须放通防火墙；脚本会先做一次 TCP 预检，不通会立即报错，避免长时间卡住。
@@ -4890,7 +4946,7 @@ def show_examples():
 快速索引（与选项表对照）
 ------------------------------------------------------------------------
   部署+清理   → --deploy / --clean / --clean-first / --clean-data / --kafka-home / --verify
-  验收与指标 → --status / --metrics / --bootstrap-server / --bootstrap-controller
+  验收与指标 → --status / --metrics / --bootstrap-server / --bootstrap-controller（均可逗号分隔多地址）
   Quorum 动态 → --quorum-add-controller（须显式 bootstrap，见 §6）
   认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
   Topic/Group→ --topic-* / --group-* / --consumer-group
@@ -4906,6 +4962,7 @@ def _resolve_bootstrap_for_status(
     """
     --status 专用：未在命令行/配置中指定 bootstrap-server、但指定了 bootstrap-controller 时，
     不把 Broker 入口默认成 localhost:9092（否则仅 Controller 节点上会误连本机 9092）。
+    bootstrap_server / bootstrap_controller 可为逗号分隔多地址（整串交给 show_cluster_status / Kafka CLI）。
     """
     bc_raw = args.bootstrap_controller or config.get("bootstrap_controller")
     bc = (str(bc_raw).strip() if bc_raw else "") or None
@@ -5124,19 +5181,23 @@ def main():
 
     g_conn = parser.add_argument_group(
         "连接、验收与客户端认证",
-        "运维子命令（topic、metrics 等）共用；须能连上集群。客户端认证优先级顺序见本帮助最前「【认证优先级】」段；与源码文件头「客户端认证」及分步示例 §6 一致。",
+        "运维子命令（topic、metrics 等）共用；须能连上集群。"
+        " --bootstrap-server / --bootstrap-controller 支持逗号分隔多 host:port（与 Kafka 官方一致）；无 --kafka-home 时仅对首项做 TCP 探测。"
+        " 客户端认证优先级顺序见本帮助最前「【认证优先级】」段；与源码文件头「客户端认证」及分步示例 §6 一致。",
     )
     g_conn.add_argument(
         "--bootstrap-server",
         default=None,
-        metavar="HOST:PORT",
-        help="客户端连接 Broker（--bootstrap-server）；未指定时多数子命令回退为 localhost:9092。"
+        metavar="HOST:PORT[,HOST:PORT...]",
+        help="客户端连接 Broker；与 Apache Kafka 一致，可为逗号分隔的多个 host:port（初始发现与高可用，不必列全）。"
+        " 未指定时多数子命令回退为 localhost:9092。"
         " 仅验收 Controller、尚未部署 Broker 时请勿带本项，改用 --bootstrap-controller，以免误连本机 9092。",
     )
     g_conn.add_argument(
         "--bootstrap-controller",
-        metavar="HOST:PORT",
-        help="仅连 Controller 元数据面（kafka-metadata-quorum）；未指定时部署 --verify 默认使用本次 --advertised-host 与 --controller-listen-port（或 JSON，默认 9093）。",
+        metavar="HOST:PORT[,HOST:PORT...]",
+        help="仅连 Controller 元数据面（kafka-metadata-quorum）；可为逗号分隔的多个 host:port，与发行版 CLI 一致。"
+        " 未指定时部署 --verify 默认使用本次 --advertised-host 与 --controller-listen-port（或 JSON，默认 9093）。",
     )
     g_conn.add_argument(
         "--status",
@@ -5237,7 +5298,8 @@ def main():
 
     g_topic = parser.add_argument_group(
         "Topic（kafka-topics.sh）",
-        "均须 --kafka-home 与 --bootstrap-server。--topic-create：已存在且工具报 already exists 时视为成功；"
+        "均须 --kafka-home 与 --bootstrap-server（可为逗号分隔多地址，与官方 bootstrap 语义一致）。"
+        "--topic-create：已存在且工具报 already exists 时视为成功；"
         "--topic-delete：已不存在且工具报 unknown/does not exist 时视为成功。",
     )
     g_topic.add_argument("--topic-create", action="store_true", help="创建 Topic；配合 --topic、--partitions、--replication-factor。")
@@ -5248,7 +5310,10 @@ def main():
     g_topic.add_argument("--partitions", type=int, default=1, help="新建 Topic 的分区数。")
     g_topic.add_argument("--replication-factor", type=int, default=1, help="新建 Topic 的副本数。")
 
-    g_cg = parser.add_argument_group("Consumer Group（kafka-consumer-groups.sh）", "须 --kafka-home。")
+    g_cg = parser.add_argument_group(
+        "Consumer Group（kafka-consumer-groups.sh）",
+        "须 --kafka-home 与 --bootstrap-server（可为逗号分隔多地址）。",
+    )
     g_cg.add_argument("--group-list", action="store_true", help="列出所有消费组。")
     g_cg.add_argument("--group-describe", action="store_true", help="描述消费组详情与 Lag；须 --consumer-group。")
     g_cg.add_argument("--consumer-group", metavar="NAME", help="消费组 id。")
@@ -5256,27 +5321,35 @@ def main():
     g_met = parser.add_argument_group(
         "指标采集",
         "一次性汇总连通性、Quorum、副本、Topic/Group 规模、Lag 等。"
+        " --bootstrap-server / --bootstrap-controller 支持逗号分隔多地址；TCP 预检仅首项。"
         " 若集群仅有 Controller、无 Broker 监听 9092，则 broker 侧段落可能报错，属预期；可配合 --bootstrap-controller 看 quorum 段。",
     )
     g_met.add_argument("--metrics", action="store_true", help="人类可读多段输出。")
     g_met.add_argument("--metrics-json", action="store_true", help="同上，JSON 结构便于脚本解析。")
 
-    g_cf = parser.add_argument_group("动态配置（kafka-configs.sh）", "须 --kafka-home。")
+    g_cf = parser.add_argument_group(
+        "动态配置（kafka-configs.sh）",
+        "须 --kafka-home 与 --bootstrap-server（可为逗号分隔多地址）。",
+    )
     g_cf.add_argument("--config-describe-broker", action="store_true", help="查看 broker 级配置；可 --config-entity-name 指定 broker id。")
     g_cf.add_argument("--config-describe-topic", action="store_true", help="查看 topic 级配置；须 --topic。")
     g_cf.add_argument("--config-entity-name", metavar="NAME", help="describe broker 时的实体名（如数字 broker id）。")
 
-    g_q = parser.add_argument_group("KRaft Quorum", "须 --kafka-home。")
+    g_q = parser.add_argument_group(
+        "KRaft Quorum",
+        "须 --kafka-home。--bootstrap-controller / --bootstrap-server 可为逗号分隔多地址（与 kafka-metadata-quorum.sh 一致）。",
+    )
     g_q.add_argument(
         "--quorum-add-controller",
         action="store_true",
         help="向现有 Quorum 动态添加 controller（kafka-metadata-quorum add-controller）。"
-        " 须指定 --bootstrap-controller 和/或 --bootstrap-server；无默认地址。",
+        " 须指定 --bootstrap-controller 和/或 --bootstrap-server（均可多地址）；无默认地址。",
     )
 
     g_br = parser.add_argument_group(
         "Broker 下线与副本迁移（kafka-reassign-partitions.sh）",
         "先 generate 再 execute，最后用 verify；停进程需另行 systemctl/kill。"
+        " 须 --bootstrap-server（可为逗号分隔多地址）。"
         " --topics-to-move-json-file 若指定须为已存在文件；verify 以工具退出码与输出为准。",
     )
     g_br.add_argument(
@@ -5408,8 +5481,14 @@ def main():
                 "未指定时仅能做端口探测（无法验证 SASL、Quorum、副本与 Lag）。",
                 extra={"to_stdout": True},
             )
+            bs_tcp = (args.bootstrap_server or config.get("bootstrap_server") or "localhost:9092").strip()
+            ok_bs_tcp, msg_bs_tcp = _validate_bootstrap_server(bs_tcp)
+            if not ok_bs_tcp:
+                logger.error("--bootstrap-server 无效: %s", msg_bs_tcp, extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
             host, port = _parse_bootstrap_server(
-                args.bootstrap_server or config.get("bootstrap_server", "localhost:9092"), DEFAULT_BROKER_PORT
+                _first_bootstrap_segment(bs_tcp) or "localhost:9092",
+                DEFAULT_BROKER_PORT,
             )
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
