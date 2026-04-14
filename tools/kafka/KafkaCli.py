@@ -33,6 +33,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
   · 多节点仅 controller：须 **--controller-scope cluster**；首台空盘**仅** `--generate-cluster-id`（禁止手填 --cluster-id），后续须同一 `--cluster-id`（首台输出）且 `--join-quorum`。单台 controller 用 **--controller-scope single**。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
   · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
+  · --deploy controller：**须显式 --controller-listen-host**（及可选 --controller-listen-port，默认 9093；JSON 兼容旧键 controller_port）用于 CONTROLLER 监听的绑定；与 --advertised-host 分工不同（宣告 vs 绑定）。
   · --deploy broker（Kafka 4.x）：**须显式 --broker-listen-host**（及可选 --broker-listen-port，默认 9092），用于生成 listeners 绑定地址（禁止仅 127.0.0.1）；与 --advertised-host 分工不同（宣告 vs 绑定）。脚本生成的 server-broker-*.properties 须含 controller.listener.names 与 listener.security.protocol.map（含 CONTROLLER:PLAINTEXT），以满足 kafka-storage format。若完全自定义 --listeners 且非内置模板，须在 extra_properties 中自行给出与 Quorum 一致的映射。
   · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
   · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
@@ -575,18 +576,19 @@ def _cli_topic_missing(msg: str) -> bool:
     )
 
 
-def _validate_broker_listen_host_str(value: str) -> Optional[str]:
+def _validate_listen_bind_host_str(value: str, cli_opt: str, json_key: str) -> Optional[str]:
     """
-    Broker 绑定地址（listeners 中的 host 段）：须显式给出；禁止仅回环或 localhost 以免集群不可达。
+    Broker/Controller 的 listeners 绑定 host：须显式给出；禁止仅回环或 localhost，以免集群不可达。
+    cli_opt / json_key 用于错误提示（如 --broker-listen-host / broker_listen_host）。
     返回 None 表示合法；否则返回错误说明。
     """
     s = (value or "").strip()
     if not s:
-        return "Broker 部署须指定 --broker-listen-host（或 JSON broker_listen_host），例如 0.0.0.0 或本机业务网 IP"
+        return f"须指定 {cli_opt}（或 JSON {json_key}），例如 0.0.0.0 或本机业务网 IP"
     sl = s.lower()
     if sl in ("127.0.0.1", "::1", "localhost"):
         return (
-            "Broker --broker-listen-host 不能使用 127.0.0.1、::1 或 localhost（其它节点与客户端无法访问）；"
+            f"{cli_opt} 不能使用 127.0.0.1、::1 或 localhost（其它节点与客户端无法访问）；"
             "请使用 0.0.0.0（全网卡）或本机对外 IP"
         )
     if s in ("0.0.0.0", "::"):
@@ -597,12 +599,30 @@ def _validate_broker_listen_host_str(value: str) -> Optional[str]:
         ipaddress.ip_address(s)
         return None
     except ValueError:
-        return f"Broker --broker-listen-host 格式无效: {s!r}"
+        return f"{cli_opt} 格式无效: {s!r}"
 
 
-def _tcp_probe_host_for_broker(advertised_host: str, listen_host: str) -> str:
+def _resolve_controller_listen_port(args: Any, config: Dict[str, Any]) -> int:
+    """controller_listen_port（CLI/JSON）优先；兼容旧键 controller_port（验收与默认 bootstrap.controller 拼接等）。"""
+    for raw in (
+        getattr(args, "controller_listen_port", None),
+        config.get("controller_listen_port"),
+        config.get("controller_port"),
+    ):
+        if raw is None:
+            continue
+        try:
+            p = int(raw)
+            if InputValidator.validate_port(p):
+                return p
+        except (TypeError, ValueError):
+            continue
+    return DEFAULT_CONTROLLER_PORT
+
+
+def _tcp_probe_host_after_deploy(advertised_host: str, listen_host: str) -> str:
     """
-    部署后在本机做 TCP 验收时使用的目标主机：优先 advertised_host（与客户端、跨机 --bootstrap-server 一致）；
+    部署后在本机做 TCP 验收时使用的目标主机：优先 advertised_host（与客户端、跨机 bootstrap 一致）；
     listen 为 0.0.0.0/:: 时连 advertised；无有效 advertised 时回退到 listen_host 或 127.0.0.1。
     """
     adv = (advertised_host or "").strip()
@@ -1374,7 +1394,8 @@ class ConfigGenerator:
     生成 server.properties 键值对（KRaft combined / controller / broker）。
 
     extra_properties 合并并覆盖同名字段；SSL/SASL 时须在 extra_properties 中给出完整 listener.security.protocol.map。
-    Kafka 4.x：`--deploy broker` 的 kafka-storage format 需要配置中含 controller.listener.names；broker-only 模板由 _kraft_broker_* 与 controller 模板一并维护；broker 须显式 broker_listen_host / broker_listen_port（或由 --listeners 完全自定义）。
+    Kafka 4.x：`--deploy broker` 的 kafka-storage format 需要配置中含 controller.listener.names；broker-only 模板由 _kraft_broker_* 与 controller 模板一并维护。
+    controller 须显式 controller_listen_host / controller_listen_port；broker 须显式 broker_listen_host / broker_listen_port（或由 --listeners 完全自定义）。
     """
 
     @staticmethod
@@ -1537,6 +1558,7 @@ class ConfigGenerator:
     @staticmethod
     def generate_controller_properties(
             node_id: int,
+            controller_listen_host: str,
             controller_listener_port: int,
             controller_quorum_bootstrap_servers: str,
             metadata_log_dir: str,
@@ -1547,10 +1569,11 @@ class ConfigGenerator:
         """生成 Controller 专用 properties。log.dirs 与 metadata.log.dir 均须由调用方显式传入（见 main 校验）。"""
         # advertised.listeners 须为对其它节点与运维客户端可达的地址（与 Apache Kafka 文档 advertised.listeners 一致）。
         adv_host = advertised_host.strip()
+        bind_host = controller_listen_host.strip()
         props = {
             "process.roles": "controller",
             "node.id": str(node_id),
-            "listeners": f"CONTROLLER://0.0.0.0:{controller_listener_port}",
+            "listeners": f"CONTROLLER://{bind_host}:{controller_listener_port}",
             "advertised.listeners": f"CONTROLLER://{adv_host}:{controller_listener_port}",
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "controller.listener.names": "CONTROLLER",
@@ -2424,6 +2447,7 @@ class KafkaDeployer:
             metadata_log_dir: str,
             log_dirs: str,
             advertised_host: str,
+            controller_listen_host: str,
             controller_listener_port: int = DEFAULT_CONTROLLER_PORT,
             cluster_id: Optional[str] = None,
             generate_cluster_id: bool = False,
@@ -2442,6 +2466,7 @@ class KafkaDeployer:
         """
         部署 KRaft Controller 节点（Kafka 4.x）。配置与 ConfigGenerator.generate_controller_properties 一致，
         含 controller.listener.names、listener.security.protocol.map。
+        controller_listen_host / controller_listener_port：生成 CONTROLLER 监听的绑定（须显式 host；禁止仅回环），与 advertised_host 分工不同。
         可重复执行（幂等）：已存在 controller-<node_id>.properties 时覆盖并 restart。
 
         须由 main 传入 controller_scope（CONTROLLER_SCOPE_SINGLE | CONTROLLER_SCOPE_CLUSTER）并在命令行校验组合：
@@ -2475,6 +2500,17 @@ class KafkaDeployer:
         ld_ctrl = (log_dirs or "").strip()
         if not ld_ctrl:
             logger.error("须显式指定 --log-dirs（controller 部署不再自动生成子目录）", extra={"to_stdout": True})
+            return False
+        clh = (controller_listen_host or "").strip()
+        err_clh = _validate_listen_bind_host_str(clh, "--controller-listen-host", "controller_listen_host")
+        if err_clh:
+            logger.error(err_clh, extra={"to_stdout": True})
+            return False
+        if not InputValidator.validate_port(controller_listener_port):
+            logger.error(
+                "无效的 --controller-listen-port（须为 1～65535 的整数）",
+                extra={"to_stdout": True},
+            )
             return False
         if not EnvironmentChecker.check_directory_writable(metadata_dir):
             logger.error(f"元数据日志目录不可写: {metadata_dir}", extra={"to_stdout": True})
@@ -2525,6 +2561,7 @@ class KafkaDeployer:
         # Controller 配置（与 ConfigGenerator.generate_controller_properties 一致，含 Kafka 4.x protocol map）
         props = ConfigGenerator.generate_controller_properties(
             node_id=node_id,
+            controller_listen_host=clh,
             controller_listener_port=controller_listener_port,
             controller_quorum_bootstrap_servers=controller_quorum_bootstrap_servers,
             metadata_log_dir=metadata_dir,
@@ -2676,8 +2713,9 @@ class KafkaDeployer:
                 return False
             ls = props.get("listeners", "")
             cport = _listener_scheme_port(ls, "CONTROLLER", controller_listener_port)
+            probe_ctrl = _tcp_probe_host_after_deploy(advertised_host, clh)
             if not self._wait_for_tcp_listening(
-                    "127.0.0.1",
+                    probe_ctrl,
                     cport,
                     "Controller（CONTROLLER）",
                     systemd_unit=f"{self.SERVICE_NAME_CONTROLLER}-{node_id}",
@@ -2775,7 +2813,7 @@ class KafkaDeployer:
             return False
 
         blh = (broker_listen_host or "").strip()
-        err_blh = _validate_broker_listen_host_str(blh)
+        err_blh = _validate_listen_bind_host_str(blh, "--broker-listen-host", "broker_listen_host")
         if err_blh:
             logger.error(err_blh, extra={"to_stdout": True})
             return False
@@ -2919,7 +2957,7 @@ class KafkaDeployer:
             else:
                 bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
                 label = "Broker（PLAINTEXT）"
-            probe_host = _tcp_probe_host_for_broker(advertised_host, blh)
+            probe_host = _tcp_probe_host_after_deploy(advertised_host, blh)
             if not self._wait_for_tcp_listening(
                     probe_host,
                     bport,
@@ -4602,7 +4640,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
 【多节点 Controller 与 kafka-storage】部署 controller 须**必选** `--controller-scope single|cluster`（或 JSON controller_scope）。**cluster**：首台空盘**仅** `--generate-cluster-id`（禁止手填 cluster.id）；第 2 台起须**同一** `--cluster-id`（首台输出）且 `--join-quorum`（format --no-initial-controllers）。**single**：单台 controller，空盘可用 `--generate-cluster-id` 或 `--cluster-id`。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
-【Broker 与 kafka-storage（Kafka 4.x）】`--deploy broker` 时须**显式** `--broker-listen-host`（及可选 `--broker-listen-port`，默认 9092），用于生成 listeners 绑定；禁止仅回环。`kafka-storage format` 会加载完整 KafkaConfig；须声明 **controller.listener.names**（脚本默认写 `CONTROLLER`）及 **listener.security.protocol.map**（须含 `CONTROLLER:PLAINTEXT` 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
+【Controller / Broker 监听与 kafka-storage（Kafka 4.x）】`--deploy controller` 须**显式** `--controller-listen-host`（及可选 `--controller-listen-port`，默认 9093；JSON 兼容 `controller_port`）用于 CONTROLLER 监听绑定；`--deploy broker` 须**显式** `--broker-listen-host`（及可选 `--broker-listen-port`，默认 9092）用于业务监听绑定；均禁止仅回环，且与 `--advertised-host`（宣告）分工不同。`kafka-storage format` 会加载完整 KafkaConfig；broker 须声明 **controller.listener.names**（脚本默认写 `CONTROLLER`）及 **listener.security.protocol.map**（须含 `CONTROLLER:PLAINTEXT` 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
   · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
@@ -4733,17 +4771,20 @@ def show_examples():
   cluster.id 须为 `kafka-storage.sh random-uuid` 形（22 位）；**cluster** 场景下首台**只能** `--generate-cluster-id`，第 2 台起用首台打印的 ID + `--join-quorum`。
 
   分步 A — 在 ctrl1 上初始化第一台 controller（记下输出的 cluster id）:
-   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl1 --node-id 1 \\
-     --controller-quorum-bootstrap-servers "$QUORUM" \\
+   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl1 \\
+     --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+     --node-id 1 --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
-   # 若用 JSON: 须含 controller_scope、advertised_host、metadata_log_dir、log_dirs、generate_cluster_id 等
+   # 若用 JSON: 须含 controller_scope、advertised_host、controller_listen_host、metadata_log_dir、log_dirs、generate_cluster_id 等
 
   分步 B — 在 ctrl2、ctrl3 上追加（须与首台同一 cluster id + --join-quorum）:
-   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl2 --node-id 2 \\
-     --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
+   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl2 \\
+     --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+     --node-id 2 --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
-   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl3 --node-id 3 \\
-     --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
+   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl3 \\
+     --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+     --node-id 3 --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
 
   分步 C — 在每台 broker 机器上部署 broker（cluster-id 与仲裁一致；--advertised-host 填本机；--broker-listen-host 填绑定地址）:
@@ -4773,6 +4814,7 @@ def show_examples():
   # cluster.json 根级可含 kafka_home；nodes 每项对应一台主机，至少含 target_host、deploy、node_id、advertised_host 等
   # { "kafka_home": "/opt/kafka", "nodes": [
   #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1, "advertised_host": "ctrl1",
+  #     "controller_listen_host": "0.0.0.0", "controller_listen_port": 9093,
   #     "metadata_log_dir": "/var/kafka/meta", "log_dirs": "/var/kafka/controller-log",
   #     "generate_cluster_id": true,
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" },
@@ -4839,7 +4881,7 @@ def show_examples():
 ------------------------------------------------------------------------
   [ ] 各节点已安装兼容版本 Java，--kafka-home 路径正确，数据目录权限与磁盘空间满足要求
   [ ] 网络与安全组放行业务端口与 Controller 端口，各节点之间按规划互通
-  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；各节点 --advertised-host 为本机对外可达名或 IP；broker 另须 --broker-listen-host（绑定）与 --cluster-id 与集群一致
+  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；各节点 --advertised-host 为本机对外可达名或 IP；controller 须 --controller-listen-host（绑定）与端口；broker 另须 --broker-listen-host（绑定）与 --cluster-id 与集群一致
   [ ] 各节点的 --node-id 已在整集群范围内核对，无与其它 controller 或 broker 重复
   [ ] 跨不可信网络时优先采用 TLS（如 SASL_SSL），避免长期使用未加密的 SASL_PLAINTEXT
   [ ] 部署后执行 --status 或 --metrics；承载业务前创建 topic，并确认 min.insync.replicas 等策略
@@ -4923,7 +4965,8 @@ def main():
         " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
         " 多节点时 --node-id 对应 node.id，须在全集群（全部 controller 与 broker）内唯一。"
         " 须显式 --advertised-host（或 JSON advertised_host），与 Apache Kafka advertised.listeners 语义一致；"
-        " --deploy broker 时须同时显式 --broker-listen-host（listeners 绑定，禁止 127.0.0.1）及端口（--broker-listen-port 或 JSON broker_listen_port，缺省 9092）。"
+        " --deploy controller 时须同时显式 --controller-listen-host（CONTROLLER 绑定，禁止 127.0.0.1）及端口（--controller-listen-port 或 JSON controller_listen_port，缺省 9093，兼容旧键 controller_port）；"
+        " --deploy broker 时须同时显式 --broker-listen-host（业务监听绑定，禁止 127.0.0.1）及端口（--broker-listen-port 或 JSON broker_listen_port，缺省 9092）。"
         " 写入配置前会做数据目录 meta.properties 中 cluster.id 跨路径一致性检查；失败回滚见【部署前置与失败回滚】。"
         " 与 --deploy-sasl-plain / --deploy-sasl-ssl 见「连接与认证」分组。",
     )
@@ -4997,10 +5040,18 @@ def main():
         help="写入 controller.quorum.bootstrap.servers；controller 与 broker 部署时通常均需指定，且与集群内各台 Controller 监听地址一致。",
     )
     g_dep.add_argument(
-        "--controller-port",
+        "--controller-listen-host",
+        metavar="HOST",
+        default=None,
+        help="仅 --deploy controller：**必填**（或 JSON controller_listen_host）。CONTROLLER 协议监听绑定地址（listeners 中的 host）；"
+        " 常用 0.0.0.0 或本机网卡 IP；禁止 127.0.0.1/localhost（与 --advertised-host 分工不同）。",
+    )
+    g_dep.add_argument(
+        "--controller-listen-port",
         type=int,
-        default=DEFAULT_CONTROLLER_PORT,
-        help="本机 Controller 监听端口（CONTROLLER 协议），多机时须与 listeners 规划一致。",
+        default=None,
+        metavar="PORT",
+        help="仅 --deploy controller：本机 CONTROLLER 监听端口；未指定且 JSON 无 controller_listen_port 时默认 9093（兼容旧键 controller_port）。",
     )
     g_dep.add_argument(
         "--broker-listen-host",
@@ -5085,7 +5136,7 @@ def main():
     g_conn.add_argument(
         "--bootstrap-controller",
         metavar="HOST:PORT",
-        help="仅连 Controller 元数据面（kafka-metadata-quorum）；未指定时部署 --verify 默认使用本次 --advertised-host 与 --controller-port。",
+        help="仅连 Controller 元数据面（kafka-metadata-quorum）；未指定时部署 --verify 默认使用本次 --advertised-host 与 --controller-listen-port（或 JSON，默认 9093）。",
     )
     g_conn.add_argument(
         "--status",
@@ -5627,6 +5678,8 @@ def main():
 
     br_listen_host: Optional[str] = None
     br_listen_port = DEFAULT_BROKER_PORT
+    ctrl_listen_host: Optional[str] = None
+    ctrl_listen_port = DEFAULT_CONTROLLER_PORT
 
     def _cid_mode_triple() -> Tuple[Optional[str], bool, bool]:
         cid_arg = args.cluster_id if getattr(args, "cluster_id", None) not in (None, "") else None
@@ -5727,11 +5780,35 @@ def main():
         if scope_err:
             logger.error(scope_err, extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
+        clh_m = (getattr(args, "controller_listen_host", None) or config.get("controller_listen_host") or "").strip()
+        err_clh_m = _validate_listen_bind_host_str(clh_m, "--controller-listen-host", "controller_listen_host")
+        if err_clh_m:
+            logger.error(err_clh_m, extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        clp_raw = getattr(args, "controller_listen_port", None)
+        if clp_raw is None:
+            clp_raw = config.get("controller_listen_port")
+        if clp_raw is None:
+            clp_raw = config.get("controller_port")
+        if clp_raw is None:
+            clp_m = DEFAULT_CONTROLLER_PORT
+        else:
+            try:
+                clp_m = int(clp_raw)
+            except (TypeError, ValueError):
+                logger.error("--controller-listen-port 须为整数", extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
+        if not InputValidator.validate_port(clp_m):
+            logger.error("无效的 --controller-listen-port（须为 1～65535）", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        ctrl_listen_host = clh_m
+        ctrl_listen_port = clp_m
         success = deployer.deploy_controller(
             node_id=int(node_id),
             controller_quorum_bootstrap_servers=str(quorum).strip(),
             advertised_host=adv_host_deploy,
-            controller_listener_port=args.controller_port or config.get("controller_port", DEFAULT_CONTROLLER_PORT),
+            controller_listen_host=clh_m,
+            controller_listener_port=clp_m,
             metadata_log_dir=str(mld).strip(),
             log_dirs=str(lds).strip(),
             cluster_id=cid_s,
@@ -5770,13 +5847,7 @@ def main():
             logger.error(err_cid_br, extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
         blh_m = (getattr(args, "broker_listen_host", None) or config.get("broker_listen_host") or "").strip()
-        if not blh_m:
-            logger.error(
-                "Broker 部署须指定 --broker-listen-host（或 JSON broker_listen_host），例如 0.0.0.0 或本机业务网 IP",
-                extra={"to_stdout": True},
-            )
-            sys.exit(EXIT_ERROR)
-        err_blh_m = _validate_broker_listen_host_str(blh_m)
+        err_blh_m = _validate_listen_bind_host_str(blh_m, "--broker-listen-host", "broker_listen_host")
         if err_blh_m:
             logger.error(err_blh_m, extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
@@ -5831,20 +5902,22 @@ def main():
 
         if args.verify and deploy_type == "controller":
             time.sleep(2)
-            ctrl_port = args.controller_port or config.get("controller_port", DEFAULT_CONTROLLER_PORT)
+            ctrl_port = ctrl_listen_port
             bc_opt = _get_opt(args, config, "bootstrap_controller")
             bc_for_q: str = (str(bc_opt).strip() if bc_opt else "") or f"{adv_host_deploy}:{ctrl_port}"
             cc, _auth_line = _resolve_kafka_client_config(args, config, kafka_home)
-            if enable_systemd and not deployer.verify_controller_started("127.0.0.1", ctrl_port):
-                logger.error("Controller 端口 TCP 验收失败", extra={"to_stdout": True})
-                sys.exit(EXIT_ERROR)
+            if enable_systemd and ctrl_listen_host:
+                probe_v = _tcp_probe_host_after_deploy(adv_host_deploy, ctrl_listen_host)
+                if not deployer.verify_controller_started(probe_v, ctrl_port):
+                    logger.error("Controller 端口 TCP 验收失败", extra={"to_stdout": True})
+                    sys.exit(EXIT_ERROR)
             if not deployer.verify_controller_quorum(bc_for_q, cc):
                 logger.error("部署后 Controller 元数据验收未通过", extra={"to_stdout": True})
                 sys.exit(EXIT_ERROR)
         elif args.verify and deploy_type in ("standalone", "broker"):
             time.sleep(2)
             if deploy_type == "broker" and br_listen_host:
-                vb = _tcp_probe_host_for_broker(adv_host_deploy, br_listen_host)
+                vb = _tcp_probe_host_after_deploy(adv_host_deploy, br_listen_host)
                 if not deployer.verify_broker_started(vb, br_listen_port):
                     sys.exit(EXIT_ERROR)
             elif not deployer.verify_broker_started():
@@ -5854,7 +5927,7 @@ def main():
                 bs = f"127.0.0.1:{DEFAULT_BROKER_PORT}"
             bc_verify = _get_opt(args, config, "bootstrap_controller")
             if not (bc_verify or "").strip():
-                bc_verify = f"{adv_host_deploy}:{args.controller_port or config.get('controller_port', DEFAULT_CONTROLLER_PORT)}"
+                bc_verify = f"{adv_host_deploy}:{_resolve_controller_listen_port(args, config)}"
             cc, auth_line = _resolve_kafka_client_config(args, config, kafka_home)
             if not deployer.show_cluster_status(
                     bs,
