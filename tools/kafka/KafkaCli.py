@@ -42,6 +42,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
   · --clean：卸载（停服务、删 unit 与生成配置），非部署；抹数据用 --clean-data 或与 --clean/--clean-first 联用 --force。
   · --batch：nodes[] 可逐项覆盖 SSH 参数；--target-host 支持 IPv6 时使用 [addr]:port 形式。
   · broker-decommission：--topics-to-move-json-file 若指定须为已存在文件；verify 结合工具 rc 与输出判断完成态。
+  · --metrics / --metrics-json：无 Broker 时多段可能失败；Consumer Lag 汇总按 CLI 表头定位 LAG 列。
 
 退出码：0 成功，1 失败。
 """
@@ -3480,8 +3481,9 @@ class KafkaConfigManager:
 class KafkaMetricsCollector:
     """
     调用 bin 下 metadata-quorum / kafka-topics / kafka-consumer-groups 采集并汇总为字典（--metrics-json）。
-    collect_consumer_lag：无消费组时跳过 --all-groups --describe，避免空集群误报失败（与 --status 一致）。
-    kafka-metadata-quorum 须使用 --bootstrap-controller 或 --bootstrap-server（与 KafkaQuorumManager 一致），不可仅用 Broker 地址访问仅 Controller 节点。
+    collect_consumer_lag：无消费组时跳过 --all-groups --describe；有组时按输出表头定位 LAG 列（兼容列顺序变化）。
+    kafka-metadata-quorum 须使用 --bootstrap-controller 或 --bootstrap-server（与 KafkaQuorumManager 一致）。
+    仅部署 Controller、无 Broker 时：broker_connect / 副本 / topic 等段可能失败，quorum 段仍可参考（与仅元数据集群一致）。
     """
 
     def __init__(
@@ -3618,16 +3620,32 @@ class KafkaMetricsCollector:
             if r.returncode != 0 or not (r.stdout or "").strip():
                 out["error"] = (r.stderr or r.stdout or "").strip() or "describe failed"
                 return out
-            lines = r.stdout.strip().splitlines()
-            for line in lines:
+            lines = [ln.rstrip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+            lag_idx: Optional[int] = None
+            data_start = 0
+            for i, line in enumerate(lines):
                 parts = line.split()
-                if len(parts) >= 6 and parts[5].isdigit():
-                    try:
-                        lag = int(parts[5])
-                        out["total_lag"] += lag
-                        out["groups"].append({"topic": parts[1], "partition": parts[2], "lag": lag})
-                    except (IndexError, ValueError):
-                        pass
+                if "LAG" in parts:
+                    lag_idx = parts.index("LAG")
+                    data_start = i + 1
+                    break
+            if lag_idx is None:
+                lag_idx = 5
+            for line in lines[data_start:]:
+                parts = line.split()
+                if len(parts) <= lag_idx:
+                    continue
+                lag_s = parts[lag_idx].strip()
+                if not lag_s or lag_s == "-" or lag_s.lower() == "n/a":
+                    continue
+                try:
+                    lag = int(lag_s)
+                except ValueError:
+                    continue
+                out["total_lag"] += lag
+                topic = parts[1] if len(parts) > 1 else ""
+                partition = parts[2] if len(parts) > 2 else ""
+                out["groups"].append({"topic": topic, "partition": partition, "lag": lag})
             out["ok"] = True
         except Exception as e:
             out["error"] = str(e)
@@ -4356,6 +4374,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【远程子命令】--target-host 且目标非本机时，整条命令（含 --clean、broker-decommission、topic 等）在目标机执行；见「远程执行」分组与 §3。
 【Broker 下线】kafka-reassign-partitions：--topics-to-move-json-file 若指定须为已存在文件；verify 读取工具退出码与输出（进行中与完成态见 §8）。
 【Quorum 运维】--quorum-add-controller 须显式提供 --bootstrap-controller 和/或 --bootstrap-server；脚本不默认 localhost:9092（避免误用 Broker 端口连接元数据工具）。
+【指标采集】--metrics / --metrics-json 会连 Broker（默认 bootstrap）并采 Quorum；仅 Controller 集群时 Broker 相关段可能失败，quorum 段仍可看（与 --status 行为一致）。
 """
 
 
@@ -4530,12 +4549,14 @@ def show_examples():
    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092
+  仅 Controller、尚未部署 Broker 时：--metrics 中依赖 9092 的段落可能失败，可先只看 quorum 或仅用 --bootstrap-controller 做 status；全量指标需 Broker 就绪后再采。
   动态添加 controller（kafka-metadata-quorum add-controller；须显式 --bootstrap-controller 或 --bootstrap-server，无默认）:
    kafkacli --quorum-add-controller --kafka-home /opt/kafka --bootstrap-controller ctrl1:9093
 
 ------------------------------------------------------------------------
 §7 Topic / Consumer Group
 ------------------------------------------------------------------------
+  （--topic-create / --topic-delete 对已存在/已缺失按工具输出做幂等处理，见 Topic 分组说明。）
    kafkacli --topic-create --topic my-topic --partitions 6 --replication-factor 2 --kafka-home /opt/kafka
    kafkacli --topic-list --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --topic-describe --topic my-topic --kafka-home /opt/kafka
@@ -4898,7 +4919,11 @@ def main():
     g_cg.add_argument("--group-describe", action="store_true", help="描述消费组详情与 Lag；须 --consumer-group。")
     g_cg.add_argument("--consumer-group", metavar="NAME", help="消费组 id。")
 
-    g_met = parser.add_argument_group("指标采集", "一次性汇总连通性、Quorum、副本、Lag 等。")
+    g_met = parser.add_argument_group(
+        "指标采集",
+        "一次性汇总连通性、Quorum、副本、Topic/Group 规模、Lag 等。"
+        " 若集群仅有 Controller、无 Broker 监听 9092，则 broker 侧段落可能报错，属预期；可配合 --bootstrap-controller 看 quorum 段。",
+    )
     g_met.add_argument("--metrics", action="store_true", help="人类可读多段输出。")
     g_met.add_argument("--metrics-json", action="store_true", help="同上，JSON 结构便于脚本解析。")
 
