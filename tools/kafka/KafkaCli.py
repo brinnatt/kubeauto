@@ -6,6 +6,7 @@ Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 b
   用户可见说明分散在：本段、下方 KAFKACLI_PARSER_DESCRIPTION、show_examples() 分步示例、argparse 各选项 help、
   kafka.json.example 注释与 deployment_note。行为以 main() 分支及 _resolve_kafka_client_config、
   KafkaDeployer、_run_remote_deploy 等实现为准；修改其一须核对其它各处。JSON 配置键名与命令行长选项对应（下划线）。
+  分步示例默认「运维机 / 跳板机 + --target-host」；示例 IP 与 tools/kafka/kafka.json.example 一致（192.168.47.140～142 为 controller，143～145 为 broker）。
 
 常用环境变量：
   KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_CLI_ASSUME_VERSION
@@ -4673,7 +4674,8 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
 【新手怎么用】运行「kafkacli -h」后阅读文末「分步示例」：建议从 §0 读起，再按 §1、§2… 顺序往下看。
-  多节点、远程 SSH、--batch 批量等场景在对应章节说明了执行顺序（例如批量为串行 SSH）与参数含义。
+  分步示例默认以「运维机 / 跳板机 / 堡垒机侧发起 SSH」为主（--target-host 指向各 Kafka 节点）；与 tools/kafka/kafka.json.example 中示例拓扑（192.168.47.140～142 为 controller，143～145 为 broker）一致。
+  多节点、--batch 批量等场景在对应章节说明了执行顺序（批量为串行 SSH）与参数含义。
 【远程与批量】--target-host 支持 [IPv6]:port；--batch 时 nodes[] 单项可覆盖 ssh_user / ssh_port / ssh_key 等（仅该节点 SSH，不写入远程 kafkacli 参数）。
 【典型用法】
     1. 指定 Kafka 安装根目录 --kafka-home
@@ -4741,25 +4743,23 @@ def show_examples():
     """接续 argparse -h 输出：分步可复制命令（与上方各 -- 选项对应）。"""
     examples = """
 （以下为「分步示例」，须与本命令 -h 屏幕最前各节、源码 KafkaCli.py 文件头「文档一致性」及 tools/kafka/kafka.json.example 交叉一致维护；环境变量见文件头。
- JSON 键名与命令行长选项一致（下划线）。建议按 § 编号顺序阅读。）
+ JSON 键名与命令行长选项一致（下划线）。建议按 § 编号顺序阅读；默认假定你在运维机 / 跳板机 / 堡垒机侧发起命令，经 SSH 落到各 Kafka 节点。）
 
 ------------------------------------------------------------------------
-§0 术语：两种「地址」含义不同，请勿混淆
+§0 企业生产惯例、术语与示例拓扑
 ------------------------------------------------------------------------
-  · kafkacli：在终端中运行的运维脚本；--kafka-home 为 Kafka 解压目录。
-  · 部署角色（KRaft）：
-      - standalone：单机同时承担 broker 与 controller（入门、测试常用）；须显式 --node-id。
-      - controller：仅参与元数据仲裁（常见为 3 或 5 台，须为奇数）；每台指定一个 --node-id。
-      - broker：承载分区数据，对外提供 produce/consume；每台指定一个 --node-id。
-      同一集群内可以是「多台 controller + 多台 broker」，并非全集群只有一个 controller。
-  · node.id（--node-id）：凡加入同一 KRaft 集群的进程（不论角色）共用一套编号，须全集群唯一。
-      例如 controller 已使用 1、2、3，则第一台 broker 应使用 4（或任意尚未占用的正整数），不可再填 1。
-  · --target-host：表示「通过 SSH 登录哪一台主机来执行本条 kafkacli」。一条命令只对应一台主机；
-      若要多台主机，请多次执行并每次更换 --target-host（或在各主机本地登录后执行，此时可不写 --target-host）。
-  · --controller-quorum-bootstrap-servers "host1:9093,host2:9093,..."：
-      该字符串写入 Kafka 配置，表示 KRaft 元数据仲裁（CONTROLLER 协议）的访问入口，供本机 Broker/Controller
-      进程加入集群使用。它不是 SSH 目标列表，也不会由脚本代为登录多台机器；其中主机名或 IP、端口须与
-      各台 Controller 实际监听地址一致。
+  · 执行位置：下列命令默认在「已能 SSH 到数据中心内各 Kafka 节点」的运维机上输入（堡垒机单跳或多跳时，可先在 ~/.ssh/config 配好 Host 别名与 ProxyJump，再把 --target-host 写成该别名）。
+  · 不写 --target-host：表示 kafkacli 在当前 shell 所在机执行（你已登录到目标机时与远程等价）。
+  · 本文件与 kafka.json.example 共用的示例拓扑（node.id 全局唯一）：
+      Controller：192.168.47.140（node 1）、192.168.47.141（node 2）、192.168.47.142（node 3）
+      Broker：    192.168.47.143（node 4）、192.168.47.144（node 5）、192.168.47.145（node 6）
+  · 公共变量（写入各节点 controller.quorum.bootstrap.servers，须与各 controller 实际监听及 advertised 一致）:
+      export QUORUM="192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
+  · kafkacli：运维脚本；--kafka-home 为 Kafka 解压目录（在目标机上存在的路径）。
+  · 部署角色（KRaft）：standalone=单进程 broker+controller；controller=仅仲裁；broker=仅数据面。同一集群可多 controller + 多 broker。
+  · --target-host：SSH 登录哪台机器执行本条 kafkacli；一条命令只对应一台主机；多台则多次执行并更换 --target-host。
+  · --controller-quorum-bootstrap-servers：写入 Kafka 配置的仲裁入口，不是 SSH 列表；须与全部 controller 的 host:port 一致。
+  · SSH：可用 --ssh-user、--ssh-port、--ssh-key；与 Kafka 监听无关。
 
 常用环境变量:
   KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_CLI_ASSUME_VERSION、
@@ -4769,175 +4769,167 @@ def show_examples():
 版本: Kafka ≥3.3.0（可 --skip-kraft-version-check）；Java：Kafka 4.x→17，3.x→11。
 
 ------------------------------------------------------------------------
-§1 最小闭环：本机单机 standalone → 验收
+§1 最小闭环：跳板机远程初始化首台 controller 并联检验收
 ------------------------------------------------------------------------
-  步骤 1 — 部署（可重复执行，会覆盖配置并 restart；须含 --advertised-host、--node-id 与 cluster.id 三选一之一）:
-   kafkacli --deploy standalone --kafka-home /opt/kafka --advertised-host 127.0.0.1 --node-id 1 \\
-     --log-dirs /tmp/kafka-logs --generate-cluster-id
-
-  步骤 2 — 看集群是否正常（默认连 localhost:9092）:
-   kafkacli --status --kafka-home /opt/kafka
-
-------------------------------------------------------------------------
-§2 单机 SASL：部署时写入账号，后续 topic/status 可自动读客户端配置文件
-------------------------------------------------------------------------
-  从 PLAINTEXT 切到 SASL 可直接再跑下面一行，无需先手工删配置（脚本幂等覆盖）:
-   kafkacli --deploy standalone --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
-     --kafka-home /opt/kafka --advertised-host 127.0.0.1 --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
-  说明：脚本会写 ${kafka_home}/config/kafkacli.client.properties（0600），之后 --status、--topic-* 等
-  若不传密码，会优先读该文件（与「认证优先级」一致）。
-
-  自建 PKI，服务端 SASL_SSL（keystore/truststore 可为 JKS 或 PKCS12）:
-   kafkacli --deploy standalone --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
-     --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
-     --ssl-truststore-path /secure/kafka.truststore.jks --ssl-truststore-password '***' \\
-     --kafka-home /opt/kafka --advertised-host 127.0.0.1 --node-id 1 --log-dirs /tmp/kafka-logs --use-disk-cluster-id
-
-------------------------------------------------------------------------
-§3 远程单机：在前置机（或跳板机）上发起 SSH，只在目标机安装
-------------------------------------------------------------------------
-  下列命令在运维机上执行，Kafka 实际装在 192.168.1.10 上（与 --controller-quorum-bootstrap-servers 无对应关系）:
-   kafkacli --target-host 192.168.1.10 --deploy standalone --kafka-home /opt/kafka \\
-     --advertised-host 192.168.1.10 --node-id 1 --log-dirs /var/kafka/logs --generate-cluster-id
-
-  在主机 broker1 上部署 Broker（须先保证 Controller 仲裁已可用；--node-id 须与集群内已有 id 不重复，下例假定用 4）:
-   kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --advertised-host broker1 \\
-     --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
-     --node-id 4 --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
-     --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
-  说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
-  （Kafka 4.x：脚本为 broker 生成配置时写入 controller.listener.names 等，以满足 kafka-storage format；勿手工删改生成文件中的该项。）
-  除部署外，任意子命令（如 --clean、--status、--broker-decommission-*、--topic-*）只要带上 --target-host 且目标非本机，均会在目标机执行与本地相同的完整命令行；须保证目标机可解析 --kafka-home（及 --config 若使用）。
-
-------------------------------------------------------------------------
-§4 多节点 KRaft：先理清拓扑与 node-id，再按步骤执行命令
-------------------------------------------------------------------------
-  规划示例（主机名可换成 IP）:
-    ctrl1、ctrl2、ctrl3 → 各跑一台仅含 controller 角色的节点，--node-id 分别设为 1、2、3。
-    broker1、broker2    → 各跑一台仅含 broker 角色的节点；其 --node-id 须在整集群内唯一，
-      不能与上述 controller 重复。例如 controller 已占用 1～3，则两台 broker 可设为 4 与 5（仅作编号示例）。
-  （说明：KRaft 下「controller 与 broker」是进程角色不同，但 node.id 是同一套全局编号，不能两套各从 1 开始。）
-  【advertised 与 Apache Kafka 惯例】每台进程只配置本机 advertised（advertised.listeners）：3 台 controller = 在 3 台机器上各执行一次部署，各带本机 --advertised-host（如 ctrl1、ctrl2、ctrl3 或对应 IP），不是一条命令里写 3 个地址。
-  公共配置串（所有节点上 controller.quorum.bootstrap.servers 一致，列出全部 Controller 的 host:port）:
-    QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
-  【controller-scope】多节点仲裁须指定 --controller-scope cluster；单台仅元数据进程可指定 --controller-scope single。
-  cluster.id 须为 kafka-storage.sh random-uuid 形（22 位）；cluster 场景下首台只能 --generate-cluster-id，第 2 台起用首台打印的 ID + --join-quorum。
-
-  分步 A — 在 ctrl1 上初始化第一台 controller（记下输出的 cluster id）:
-   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl1 \\
-     --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+  下列命令在运维机上执行；首台 controller 落在 192.168.47.140，记下输出中的 CLUSTER_ID。
+  步骤 1 — 远程部署首台（空盘仅 --generate-cluster-id）:
+   kafkacli --target-host 192.168.47.140 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host 192.168.47.140 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
      --node-id 1 --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
-   # 若用 JSON: 须含 controller_scope、advertised_host、controller_listen_host、metadata_log_dir、log_dirs、generate_cluster_id 等
 
-  分步 B — 在 ctrl2、ctrl3 上追加（须与首台同一 cluster id + --join-quorum）:
-   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl2 \\
-     --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+  步骤 2 — 仍在运维机：仅验 Controller 元数据面（不要带 --bootstrap-server，以免误连本机 9092）:
+   kafkacli --target-host 192.168.47.140 --status --kafka-home /opt/kafka \\
+     --bootstrap-controller 192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093
+  （若已按 §4 装完全部 controller，可将 --bootstrap-controller 写为多地址；仅首台就绪时只写 192.168.47.140:9093 亦可。）
+
+------------------------------------------------------------------------
+§2 启用 SASL（在 PLAINTEXT 集群上幂等切换；须先完成 §4 或等价的 broker 部署）
+------------------------------------------------------------------------
+  在跳板机对单台 broker 远程覆盖为 SASL_PLAINTEXT（示例为 192.168.47.143；须已有数据目录与 cluster.id）:
+   kafkacli --target-host 192.168.47.143 --deploy broker --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
+     --kafka-home /opt/kafka --advertised-host 192.168.47.143 --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
+     --node-id 4 --cluster-id <CLUSTER_ID> --controller-quorum-bootstrap-servers "$QUORUM" \\
+     --log-dirs /var/kafka/logs --use-disk-cluster-id
+  说明：脚本会写目标机 ${kafka_home}/config/kafkacli.client.properties（0600）；后续远程 --status、--topic-* 等同理加 --target-host。
+
+  自建 PKI 的 SASL_SSL（keystore/truststore 在目标机路径；下例路径须存在）:
+   kafkacli --target-host 192.168.47.143 --deploy broker --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
+     --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
+     --ssl-truststore-path /secure/kafka.truststore.jks --ssl-truststore-password '***' \\
+     --kafka-home /opt/kafka --advertised-host 192.168.47.143 --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
+     --node-id 4 --cluster-id <CLUSTER_ID> --controller-quorum-bootstrap-servers "$QUORUM" \\
+     --log-dirs /var/kafka/logs --use-disk-cluster-id
+
+------------------------------------------------------------------------
+§3 远程执行约定（与 §0 呼应）
+------------------------------------------------------------------------
+  · --target-host 只决定 SSH 会话落在哪台机器；--controller-quorum-bootstrap-servers 等是 Kafka 进程配置，二者职责不同。
+  · 任意子命令（--clean、--status、--broker-decommission-*、--topic-* 等）均可加 --target-host，使整条命令在目标机执行；须保证目标机存在 --kafka-home（及 --config 若使用）。
+  · Kafka 4.x：脚本为 broker 生成配置时写入 controller.listener.names 等以满足 kafka-storage；勿手工删改生成文件中的关键项。
+
+------------------------------------------------------------------------
+§4 多节点 KRaft 完整部署：三台 controller + 三台 broker（均在跳板机逐条远程执行）
+------------------------------------------------------------------------
+  【advertised】每台只填本机对外可达地址（下例均为各机自身 IP），不是一条命令写多个 advertise。
+  【controller-scope】多节点仲裁为 --controller-scope cluster；首台只能 --generate-cluster-id，后续须同一 CLUSTER_ID 且 --join-quorum。
+
+  分步 A — 首台 controller（与 §1 步骤 1 相同，可二选一执行）:
+   kafkacli --target-host 192.168.47.140 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host 192.168.47.140 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+     --node-id 1 --controller-quorum-bootstrap-servers "$QUORUM" \\
+     --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
+
+  分步 B — 第 2、3 台 controller（须 CLUSTER_ID 与首台输出一致）:
+   kafkacli --target-host 192.168.47.141 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host 192.168.47.141 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
      --node-id 2 --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
-   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl3 \\
-     --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+   kafkacli --target-host 192.168.47.142 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host 192.168.47.142 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
      --node-id 3 --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
 
-  分步 C — 在每台 broker 机器上部署 broker（cluster-id 与仲裁一致；--advertised-host 填本机；--broker-listen-host 填绑定地址）:
-   kafkacli --deploy broker --kafka-home /opt/kafka --advertised-host broker1 \\
-     --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
-     --node-id 4 --cluster-id <CLUSTER_ID> \\
+  分步 C — 三台 broker（node 4～6；CLUSTER_ID 与仲裁一致）:
+   kafkacli --target-host 192.168.47.143 --deploy broker --kafka-home /opt/kafka --advertised-host 192.168.47.143 \\
+     --broker-listen-host 0.0.0.0 --broker-listen-port 9092 --node-id 4 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
-   # 第二台 broker 改用 --node-id 5（示例）；Kafka 4.x 下脚本生成 server-broker-*.properties 含 controller.listener.names，供 kafka-storage format
-   # 完全自定义 --listeners 时须在 JSON extra_properties 中补全与 Quorum 一致的 listener.security.protocol.map
+   kafkacli --target-host 192.168.47.144 --deploy broker --kafka-home /opt/kafka --advertised-host 192.168.47.144 \\
+     --broker-listen-host 0.0.0.0 --broker-listen-port 9092 --node-id 5 --cluster-id <CLUSTER_ID> \\
+     --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
+   kafkacli --target-host 192.168.47.145 --deploy broker --kafka-home /opt/kafka --advertised-host 192.168.47.145 \\
+     --broker-listen-host 0.0.0.0 --broker-listen-port 9092 --node-id 6 --cluster-id <CLUSTER_ID> \\
+     --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
 
-  若 Controller 与 Broker 对外要 SASL，可在各自命令上加 --deploy-sasl-plain 与账号（脚本为 broker 模板补全 controller.listener.names 与 map）。
+  若需 SASL，在以上各条追加 --deploy-sasl-plain（或 --deploy-sasl-ssl 及 --ssl-*）与账号即可。
 
 ------------------------------------------------------------------------
-§5 批量多机（--batch）：从 JSON 读取 nodes，按顺序串行 SSH
+§5 批量多机（--batch）：与 kafka.json.example 相同拓扑，串行 SSH
 ------------------------------------------------------------------------
   执行方式（与实现一致）:
     · 仅当同时使用 --batch 与 --config <cluster.json> 时生效；读取根对象中的 nodes 数组。
-    · 按数组下标从小到大依次处理：对 nodes[i] 先 SSH 到该元素的 target_host，再在远程执行合并后的 kafkacli；
-      本节点命令结束并成功后，再处理 nodes[i+1]。此为串行执行，而非多台同时建立 SSH。
-    · nodes[i] 可含 ssh_user、ssh_port、ssh_key、remote_workdir、disable_ssh_host_check，覆盖 JSON 根级/命令行中的 SSH 设置，仅影响连接该 target_host 的一次会话。
-    · 若某一节点远程执行失败，则立即终止并不再处理后续节点；已成功完成的节点不会自动回滚。
-  集群依赖与排列顺序:
-    · 脚本不会根据角色自动调整 nodes 顺序，须由你在 JSON 中按部署依赖自行排列。
-    · 常见做法：先列出全部 controller（首台格式化并产生 cluster_id 后，后续项须带相同 cluster_id），
-      再列出各 broker（须带与仲裁一致的 cluster_id）。若顺序错误，后段步骤可能失败。
-  配置示例（片段，可复制后补全）:
-  # cluster.json 根级可含 kafka_home；nodes 每项对应一台主机，至少含 target_host、deploy、node_id、advertised_host 等
-  # { "kafka_home": "/opt/kafka", "nodes": [
-  #   { "target_host": "ctrl1", "deploy": "controller", "node_id": 1, "advertised_host": "ctrl1",
-  #     "controller_listen_host": "0.0.0.0", "controller_listen_port": 9093,
-  #     "metadata_log_dir": "/var/kafka/meta", "log_dirs": "/var/kafka/controller-log",
-  #     "generate_cluster_id": true,
-  #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" },
-  #   { "target_host": "broker1", "deploy": "broker", "node_id": 4, "advertised_host": "broker1",
-  #     "broker_listen_host": "0.0.0.0", "broker_listen_port": 9092,
-  #     "log_dirs": "/var/kafka/logs", "cluster_id": "<CLUSTER_ID>",
-  #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" }
-  # ]}
+    · 按数组下标依次 SSH：上一台成功后再下一台；失败则停止且不自动回滚。
+    · nodes[i] 可含 ssh_user、ssh_port、ssh_key 等，仅影响连接该 target_host。
+  将 tools/kafka/kafka.json.example 复制为 cluster.json，补全各节点 cluster_id 后:
    kafkacli --batch --config cluster.json
 
 ------------------------------------------------------------------------
-§6 验收与指标（客户端认证优先级与本帮助最前「【认证优先级】」、文件头「客户端认证」相同）
+§6 验收与指标（客户端认证优先级与本帮助「【认证优先级】」、文件头「客户端认证」相同）
 ------------------------------------------------------------------------
-  【新手先读】--status 里有两类地址，不要混用：
-    · --bootstrap-server：连 Broker 业务端口（常见 9092），测 produce/consume 侧；可与官方一致写多个 host:port（逗号分隔）。
-    · --bootstrap-controller：连 Controller 元数据端口（常见 9093），仅在「只装了 Controller、尚未装 Broker」时用；亦可逗号分隔多台 Controller。
-  只验 Controller 时不要写 --bootstrap-server（否则易误连本机 9092）。在 Kafka 所在机本机验收最省事:
-   kafkacli --status --kafka-home /opt/kafka --bootstrap-controller 127.0.0.1:9093
-  从另一台机子跨网验收须放通防火墙；脚本会先做一次 TCP 预检，不通会立即报错，避免长时间卡住。
-  已有 Broker 时可同时指定（示例）:
-   kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092 --bootstrap-controller ctrl1:9093
+  【先读】--bootstrap-server 连 Broker（9092）；--bootstrap-controller 连元数据（9093）。只验 Controller 时不要带 --bootstrap-server。
+  在运维机对装有 Kafka 的节点远程执行（示例连到 192.168.47.143 上的 kafkacli 与配置）:
+   kafkacli --target-host 192.168.47.143 --status --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092 \\
+     --bootstrap-controller 192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093
+  仅 Controller、尚未部署 Broker 时，不要带 --bootstrap-server；可只对首台 controller 远程 status:
+   kafkacli --target-host 192.168.47.140 --status --kafka-home /opt/kafka --bootstrap-controller 192.168.47.140:9093
+  放通防火墙；脚本会对 bootstrap 列表首项做 TCP 预检。
    export KAFKA_SASL_USERNAME=admin KAFKA_SASL_PASSWORD='***'
-   kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
-   kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
-   kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092
-  仅 Controller、尚未部署 Broker 时：--metrics 中依赖 9092 的段落可能失败，可先只看 quorum 或仅用 --bootstrap-controller 做 status；全量指标需 Broker 就绪后再采。
-  动态添加 controller（kafka-metadata-quorum add-controller；须显式 --bootstrap-controller 或 --bootstrap-server，无默认）:
-   kafkacli --quorum-add-controller --kafka-home /opt/kafka --bootstrap-controller ctrl1:9093
+   kafkacli --target-host 192.168.47.143 --status --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host 192.168.47.143 --metrics --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host 192.168.47.143 --metrics-json --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+  动态添加 controller（须显式 bootstrap，无默认）:
+   kafkacli --target-host 192.168.47.140 --quorum-add-controller --kafka-home /opt/kafka \\
+     --bootstrap-controller 192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093
 
 ------------------------------------------------------------------------
-§7 Topic / Consumer Group
+§7 Topic / Consumer Group（均在跳板机对 broker 节点远程执行）
 ------------------------------------------------------------------------
   （--topic-create / --topic-delete 对已存在/已缺失按工具输出做幂等处理，见 Topic 分组说明。）
-   kafkacli --topic-create --topic my-topic --partitions 6 --replication-factor 2 --kafka-home /opt/kafka
-   kafkacli --topic-list --kafka-home /opt/kafka --bootstrap-server broker1:9092
-   kafkacli --topic-describe --topic my-topic --kafka-home /opt/kafka
-   kafkacli --group-describe --consumer-group my-consumer --kafka-home /opt/kafka --bootstrap-server broker1:9092
+   kafkacli --target-host 192.168.47.143 --topic-create --topic my-topic --partitions 6 --replication-factor 3 \\
+     --kafka-home /opt/kafka --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host 192.168.47.143 --topic-list --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host 192.168.47.143 --topic-describe --topic my-topic --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host 192.168.47.143 --group-describe --consumer-group my-consumer --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
 
 ------------------------------------------------------------------------
-§8 Broker 下线与分区迁移（先生成方案，再执行，最后校验；停止进程需另行操作）
+§8 Broker 下线与分区迁移（在运维机远程执行；plan.json 须放在目标机可访问路径，或在本机配合 scp）
 ------------------------------------------------------------------------
-   kafkacli --broker-decommission-generate --broker-list 1,2 --kafka-home /opt/kafka --bootstrap-server broker1:9092
-  # 若使用 --topics-to-move-json-file，路径须已存在且可读；不存在时脚本报错退出，不会静默改用空 topic 列表。
-  # 将输出中的 Current partition reassignment configuration 保存为 plan.json
-   kafkacli --broker-decommission-execute --reassignment-json-file plan.json --throttle 1048576 --kafka-home /opt/kafka
-   kafkacli --broker-decommission-verify --reassignment-json-file plan.json --kafka-home /opt/kafka
-  # 迁移完成后在该机卸载: kafkacli --clean --deploy broker --node-id <id> --kafka-home /opt/kafka --log-dirs …
+   kafkacli --target-host 192.168.47.143 --broker-decommission-generate --broker-list 4,5 \\
+     --kafka-home /opt/kafka --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+  # 若使用 --topics-to-move-json-file，路径须已在目标机存在且可读。
+  # 将输出中的 Current partition reassignment configuration 保存为 plan.json（目标机路径）
+   kafkacli --target-host 192.168.47.143 --broker-decommission-execute --reassignment-json-file /var/tmp/plan.json \\
+     --throttle 1048576 --kafka-home /opt/kafka
+   kafkacli --target-host 192.168.47.143 --broker-decommission-verify --reassignment-json-file /var/tmp/plan.json \\
+     --kafka-home /opt/kafka
+  # 迁移完成后在对应节点卸载示例: kafkacli --target-host 192.168.47.143 --clean --deploy broker --node-id 4 ...
 
 ------------------------------------------------------------------------
-§9 清理与重装（--clean 默认不删数据目录；删数据用 --clean-data 或配合 --force）
+§9 清理与重装（远程；--clean 默认不删数据目录；删数据用 --clean-data 或配合 --force）
 ------------------------------------------------------------------------
-   kafkacli --clean --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-   kafkacli --clean --deploy standalone --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
-  # 在跳板机上对远程主机卸载（与 §3 一致，整条命令在目标机执行）:
-  # kafkacli --target-host 192.168.1.10 --clean --deploy controller --node-id 1 --kafka-home /opt/kafka \\
-  #   --metadata-log-dir /var/kafka/meta --log-dirs /var/kafka/controller-log
-   kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --advertised-host 127.0.0.1 \\
-     --node-id 1 --log-dirs /tmp/kafka-logs --generate-cluster-id
-   kafkacli --config-describe-broker --kafka-home /opt/kafka --config-entity-name 1
-   kafkacli --config-describe-topic --topic my-topic --kafka-home /opt/kafka
+  在跳板机卸载远程节点上的本脚本安装的 unit 与生成配置（示例：controller 节点 192.168.47.140）:
+   kafkacli --target-host 192.168.47.140 --clean --deploy controller --node-id 1 --kafka-home /opt/kafka \\
+     --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
+  抹盘须加 --clean-data 或与 --force 联用（见 --clean 帮助）。
+   kafkacli --target-host 192.168.47.143 --config-describe-broker --kafka-home /opt/kafka --config-entity-name 4
+   kafkacli --target-host 192.168.47.143 --config-describe-topic --topic my-topic --kafka-home /opt/kafka \\
+     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
 
 ------------------------------------------------------------------------
 §10 生产环境上线前自检（可逐项勾选）
 ------------------------------------------------------------------------
+  [ ] 自运维机经堡垒机 SSH 可达各 192.168.47.140～145；必要时已配置 ~/.ssh/config（含 ProxyJump）
   [ ] 各节点已安装兼容版本 Java，--kafka-home 路径正确，数据目录权限与磁盘空间满足要求
   [ ] 网络与安全组放行业务端口与 Controller 端口，各节点之间按规划互通
-  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；各节点 --advertised-host 为本机对外可达名或 IP；controller 须 --controller-listen-host（绑定）与端口；broker 另须 --broker-listen-host（绑定）与 --cluster-id 与集群一致
-  [ ] 各节点的 --node-id 已在整集群范围内核对，无与其它 controller 或 broker 重复
+  [ ] --controller-quorum-bootstrap-servers 与实际监听、advertised 一致；controller/broker 已分别设置 listen 与 advertised
+  [ ] node.id 1～6 已在全集群核对无重复
   [ ] 跨不可信网络时优先采用 TLS（如 SASL_SSL），避免长期使用未加密的 SASL_PLAINTEXT
-  [ ] 部署后执行 --status 或 --metrics；承载业务前创建 topic，并确认 min.insync.replicas 等策略
+  [ ] 部署后按 §6 执行 --status 或 --metrics；承载业务前创建 topic，并确认 min.insync.replicas 等策略
+
+------------------------------------------------------------------------
+附录：单机 standalone 练习（勿占用上文已规划的 controller/broker IP）
+------------------------------------------------------------------------
+  若另有独立实验机 <LAB_IP>，可在跳板机远程部署单机 combined 用于联调（与 §4 拓扑无关）:
+   kafkacli --target-host <LAB_IP> --deploy standalone --kafka-home /opt/kafka --advertised-host <LAB_IP> --node-id 1 \\
+     --log-dirs /var/kafka/logs --generate-cluster-id
+   kafkacli --target-host <LAB_IP> --status --kafka-home /opt/kafka --bootstrap-server <LAB_IP>:9092
 
 ------------------------------------------------------------------------
 快速索引（与选项表对照）
@@ -4947,7 +4939,8 @@ def show_examples():
   Quorum 动态 → --quorum-add-controller（须显式 bootstrap，见 §6）
   认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
   Topic/Group→ --topic-* / --group-* / --consumer-group
-  远程与批量 → 单机用 --target-host；多机用 --batch + JSON（串行顺序见 §5 与 --batch 说明）
+  远程与批量 → 默认在运维机对各节点使用 --target-host；多机一键顺序部署用 --batch + JSON（见 §5）
+
 """
     print(examples)
 
