@@ -31,7 +31,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
 部署前置与失败回滚（与 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】、deploy_* 实现一致）：
   · 写入生成配置前：对本次涉及的 metadata.log.dir 与 log.dirs 各根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署。
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
-  · 多节点仅 controller：首台空盘须 kafka-storage format --standalone（--generate-cluster-id，或显式 --cluster-id 且加 --initial-controller-standalone）。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919，--status 通过 --bootstrap-controller 调 kafka-metadata-quorum 会失败。
+  · 多节点仅 controller：须 **--controller-scope cluster**；首台空盘**仅** `--generate-cluster-id`（禁止手填 --cluster-id），后续须同一 `--cluster-id`（首台输出）且 `--join-quorum`。单台 controller 用 **--controller-scope single**。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
   · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
   · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
   · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
@@ -77,6 +77,10 @@ DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 # Kafka 默认端口（发行版惯例）
 DEFAULT_BROKER_PORT = 9092
 DEFAULT_CONTROLLER_PORT = 9093
+
+# 仅 --deploy controller：强制区分单节点与多节点仲裁（与 Apache Kafka 运维惯例一致，减少误操作）
+CONTROLLER_SCOPE_SINGLE = "single"
+CONTROLLER_SCOPE_CLUSTER = "cluster"
 
 # 部署 SASL/PLAIN（等）成功后写入 ${kafka_home}/config/，供后续子命令默认使用（0600）
 KAFKACLI_CLIENT_PROPERTIES_NAME = "kafkacli.client.properties"
@@ -609,8 +613,8 @@ def _status_hint_bootstrap_controller_kip919(error_text: str) -> Optional[str]:
         return None
     return (
         "提示: 常见原因是集群 MetadataVersion 不足以支持 KIP-919（AdminClient 经 --bootstrap-controller 直连 Controller）。"
-        " 多节点 controller 的**首台**若曾对**空盘**使用 kafka-storage format --no-initial-controllers（在未加 --initial-controller-standalone 且人为指定 --cluster-id 时脚本会误选此项），"
-        " 请停止服务、按文档清空各节点 metadata.log.dir 等后：首台用 --generate-cluster-id，或 (--cluster-id 与 --initial-controller-standalone) 再部署首台，再依次部署其余节点。"
+        " 多节点 controller 的**首台**若曾对**空盘**使用 kafka-storage format --no-initial-controllers（旧版脚本在「仅 --cluster-id」时误选此项），"
+        " 请停止服务、清空各节点 metadata.log.dir 等后按 --controller-scope cluster 重装：首台仅 --generate-cluster-id，后续 --cluster-id（首台输出）+ --join-quorum。"
     )
 
 
@@ -1744,6 +1748,26 @@ class KafkaDeployer:
         except OSError:
             return False
 
+    def _other_controller_in_quorum_tcp_reachable(
+            self,
+            controller_quorum_bootstrap_servers: str,
+            advertised_host: str,
+            controller_listener_port: int,
+            timeout_sec: float = 2.0,
+    ) -> bool:
+        """
+        探测 controller.quorum.bootstrap.servers 中「非本 advertised」的任一端点是否已有进程监听。
+        用于空盘 + 显式 cluster.id 时区分首台（format --standalone）与后续加入（--no-initial-controllers）。
+        """
+        for host, port in _controller_quorum_endpoint_list(
+                controller_quorum_bootstrap_servers, controller_listener_port
+        ):
+            if _quorum_endpoint_is_local_controller(host, advertised_host):
+                continue
+            if self._tcp_connect_ok(host, port, timeout=timeout_sec):
+                return True
+        return False
+
     def _chown_data_paths_for_service_user(self, *path_csvs: str) -> None:
         """
         将 log.dirs / metadata.log.dir 根路径递归 chown 为 systemd 运行用户。
@@ -2337,7 +2361,8 @@ class KafkaDeployer:
             generate_cluster_id: bool = False,
             use_disk_cluster_id: bool = False,
             initial_controllers: Optional[str] = None,
-            initial_controller_standalone: bool = False,
+            join_quorum: bool = False,
+            controller_scope: str = CONTROLLER_SCOPE_SINGLE,
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
             extra_properties: Optional[Dict[str, str]] = None,
@@ -2350,12 +2375,11 @@ class KafkaDeployer:
         部署 KRaft Controller 节点（Kafka 4.x）。配置与 ConfigGenerator.generate_controller_properties 一致，
         含 controller.listener.names、listener.security.protocol.map。
         可重复执行（幂等）：已存在 controller-<node_id>.properties 时覆盖并 restart。
-        - 首个 controller（--generate-cluster-id）：kafka-storage format 使用 --standalone，初始化单节点后再由后续节点加入。
-        - 首个 controller 且已人工固定 cluster.id：须加 --initial-controller-standalone，使 format 使用 --standalone；勿与「仅 --cluster-id、空盘」组合误走 --no-initial-controllers。
-        - 后续 controller（仅 --cluster-id，与首台相同）：新盘使用 --no-initial-controllers，加入已有 Quorum（须首台已启动可达）。
-        - 若使用 --initial-controllers，则按 StorageTool 传入，用于多节点首批同时声明选民（高级用法）。
-        enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties，
-        供本机连接集群内 Broker（PLAIN 或 SASL_SSL，与集群一致）。
+
+        须由 main 传入 controller_scope（CONTROLLER_SCOPE_SINGLE | CONTROLLER_SCOPE_CLUSTER）并在命令行校验组合：
+        - single：单节点 controller；空盘 format --standalone（--generate-cluster-id 或 --cluster-id）。
+        - cluster：多节点仲裁；首台空盘**仅** --generate-cluster-id（或磁盘幂等）；后续须 --cluster-id + --join-quorum。
+        enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties。
 
         node.id 须与本集群内其它 controller 及全部 broker 的编号互不重复（全局唯一）。
         """
@@ -2506,10 +2530,11 @@ class KafkaDeployer:
             )
             return False
 
-        # kafka-storage format 模式（与 Apache Kafka StorageTool 一致）：
-        # - --standalone：仅用于「首台」初始化新集群（本脚本对应 --generate-cluster-id + 空盘）。
-        # - --no-initial-controllers：加入已有 Quorum（--cluster-id + 空盘，或盘上已有元数据幂等）。
-        # 错误地对每台空盘都用 --standalone 会导致多台各自成为单节点仲裁（CurrentVoters 仅 1 人）。
+        if controller_scope not in (CONTROLLER_SCOPE_SINGLE, CONTROLLER_SCOPE_CLUSTER):
+            logger.error("--controller-scope 须为 single 或 cluster", extra={"to_stdout": True})
+            return False
+
+        # kafka-storage format：组合由 main() 按 controller_scope + cluster.id + --join-quorum 强制校验（企业生产向）。
         config_preexisted = config_path.is_file()
         if not self._write_properties(config_path, props):
             return False
@@ -2527,19 +2552,43 @@ class KafkaDeployer:
             logger.info("kafka-storage format：--no-initial-controllers（磁盘已有元数据 / 幂等）", extra={"to_stdout": True})
         elif generate_cluster_id:
             format_args.append("--standalone")
-            logger.info("kafka-storage format：--standalone（新集群首台 controller）", extra={"to_stdout": True})
-        elif initial_controller_standalone:
+            if controller_scope == CONTROLLER_SCOPE_CLUSTER:
+                logger.info(
+                    "kafka-storage format：--standalone（controller-scope cluster：仲裁首台，cluster.id 由 --generate-cluster-id 生成）",
+                    extra={"to_stdout": True},
+                )
+            else:
+                logger.info(
+                    "kafka-storage format：--standalone（controller-scope single：单节点 controller）",
+                    extra={"to_stdout": True},
+                )
+        elif join_quorum:
+            if controller_scope == CONTROLLER_SCOPE_CLUSTER and not self._other_controller_in_quorum_tcp_reachable(
+                    controller_quorum_bootstrap_servers, advertised_host, controller_listener_port
+            ):
+                logger.warning(
+                    "未探测到其它 Controller 在 controller.quorum.bootstrap.servers 中 TCP 可达；"
+                    "若 join 失败请确认首台已启动、防火墙与本机路由。",
+                    extra={"to_stdout": True},
+                )
+            format_args.append("--no-initial-controllers")
+            logger.info(
+                "kafka-storage format：--no-initial-controllers（--join-quorum：加入已有仲裁）",
+                extra={"to_stdout": True},
+            )
+        elif controller_scope == CONTROLLER_SCOPE_SINGLE:
             format_args.append("--standalone")
             logger.info(
-                "kafka-storage format：--standalone（--initial-controller-standalone：首台固定 cluster.id 的空盘初始化）",
+                "kafka-storage format：--standalone（controller-scope single：显式 --cluster-id 或幂等路径）",
                 extra={"to_stdout": True},
             )
         else:
-            format_args.append("--no-initial-controllers")
-            logger.info(
-                "kafka-storage format：--no-initial-controllers（加入已有 Quorum；请确保首台 controller 已启动且网络可达）",
+            logger.error(
+                "kafka-storage 路径与 --controller-scope cluster 不一致（须首台 --generate-cluster-id 或后续 --join-quorum + --cluster-id，或磁盘幂等）；请检查命令行。",
                 extra={"to_stdout": True},
             )
+            _rollback_new_deploy_config(config_path, config_preexisted)
+            return False
         format_args.append("--ignore-formatted")
 
         try:
@@ -3898,6 +3947,81 @@ def _parse_bootstrap_server(bs: str, default_port: int = DEFAULT_BROKER_PORT) ->
     return host, port
 
 
+def _validate_controller_scope_rules(
+        scope: str,
+        cid_s: Optional[str],
+        gen_cid: bool,
+        use_disk_cid: bool,
+        join_q: bool,
+        initial_controllers: Optional[str],
+) -> Optional[str]:
+    """
+    生产向约束：--controller-scope single|cluster 与 cluster.id / join 组合。
+    返回 None 表示合法；否则为对用户可见的中文错误说明。
+    """
+    ic = (initial_controllers or "").strip()
+    if ic:
+        return (
+            "已弃用与本约束并存：请移除 --initial-controllers；"
+            "多节点仲裁请用 --controller-scope cluster：首台仅 --generate-cluster-id，后续 --cluster-id + --join-quorum"
+        )
+    if scope not in (CONTROLLER_SCOPE_SINGLE, CONTROLLER_SCOPE_CLUSTER):
+        return f"--controller-scope 须为 {CONTROLLER_SCOPE_SINGLE} 或 {CONTROLLER_SCOPE_CLUSTER}（或 JSON controller_scope）"
+    if scope == CONTROLLER_SCOPE_SINGLE:
+        if join_q:
+            return "--controller-scope single 时不要使用 --join-quorum（单节点不存在加入仲裁）"
+        return None
+    # cluster：多台 Controller 组成 KRaft 仲裁
+    if join_q:
+        if gen_cid:
+            return "--controller-scope cluster 且已 --join-quorum 时不要使用 --generate-cluster-id（须使用首台输出的 --cluster-id）"
+        if not cid_s:
+            return "--controller-scope cluster 且加入仲裁（--join-quorum）时必须指定 --cluster-id（与首台生成值一致）"
+        if use_disk_cid:
+            return "--controller-scope cluster 且 --join-quorum 时不要使用 --use-disk-cluster-id（请使用显式 --cluster-id）"
+    else:
+        if cid_s and not gen_cid and not use_disk_cid:
+            return (
+                "--controller-scope cluster 且未 --join-quorum（首台或幂等）时，**禁止**在空盘上手动指定 --cluster-id；"
+                " 首台请**仅**使用 --generate-cluster-id，再在其余节点使用同一 cluster.id 与 --join-quorum"
+            )
+    return None
+
+
+def _controller_quorum_endpoint_list(csv: str, default_port: int) -> List[Tuple[str, int]]:
+    """解析 controller.quorum.bootstrap.servers 逗号列表为 [(host, port), ...]。"""
+    out: List[Tuple[str, int]] = []
+    for seg in (csv or "").split(","):
+        seg = seg.strip()
+        if seg:
+            out.append(_parse_bootstrap_server(seg, default_port))
+    return out
+
+
+def _quorum_endpoint_is_local_controller(host: str, advertised_host: str) -> bool:
+    """判断 quorum 列表中的 host 是否与 advertised 指向同一台机器（避免主机名与 IP 混用时误判）。"""
+    h = (host or "").strip().lower()
+    adv = (advertised_host or "").strip().lower()
+    if h == adv:
+        return True
+    if h in ("127.0.0.1", "localhost", "::1") and adv in ("127.0.0.1", "localhost", "::1"):
+        return True
+    try:
+        addrs_h = {
+            x[4][0]
+            for x in socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+            if x[0] in (socket.AF_INET, socket.AF_INET6)
+        }
+        addrs_a = {
+            x[4][0]
+            for x in socket.getaddrinfo(advertised_host, None, type=socket.SOCK_STREAM)
+            if x[0] in (socket.AF_INET, socket.AF_INET6)
+        }
+        return bool(addrs_h & addrs_a)
+    except OSError:
+        return False
+
+
 def _hint_quorum_unknown_host(stderr_or_msg: str) -> str:
     """元数据返回的主机名在运维机上无法解析时，在 stderr 后附加可读说明。"""
     msg = (stderr_or_msg or "").strip()
@@ -4387,7 +4511,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
   多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
-【多节点 Controller 与 kafka-storage】多机仅 controller 时：首台须 **format --standalone**（--generate-cluster-id，或显式 --cluster-id 且加 **--initial-controller-standalone**）；第 2 台起须相同 --cluster-id，新盘使用 **--no-initial-controllers** 加入 Quorum；首台须已成功启动后再部署下一台。若首台对空盘误用 --no-initial-controllers（例如仅 --cluster-id 却未加 --initial-controller-standalone），可能导致 MetadataVersion 不足以支持 KIP-919，`--status` 经 --bootstrap-controller 调 kafka-metadata-quorum 失败。若误对每台空盘均 format --standalone，describe 中 CurrentVoters 将只有本机 1 人。
+【多节点 Controller 与 kafka-storage】部署 controller 须**必选** `--controller-scope single|cluster`（或 JSON controller_scope）。**cluster**：首台空盘**仅** `--generate-cluster-id`（禁止手填 cluster.id）；第 2 台起须**同一** `--cluster-id`（首台输出）且 `--join-quorum`（format --no-initial-controllers）。**single**：单台 controller，空盘可用 `--generate-cluster-id` 或 `--cluster-id`。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
@@ -4513,23 +4637,22 @@ def show_examples():
   【advertised 与 Apache Kafka 惯例】每台进程只配置**本机** advertised（`advertised.listeners`）：3 台 controller = 在 3 台机器上各执行一次部署，各带**本机** `--advertised-host`（如 ctrl1、ctrl2、ctrl3 或对应 IP），不是一条命令里写 3 个地址。
   公共配置串（所有节点上 controller.quorum.bootstrap.servers 一致，列出全部 Controller 的 host:port）:
     QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
-  【多节点 controller】首台 kafka-storage 须 **--standalone**：用 --generate-cluster-id，或（已人工确定 cluster-id 时）--cluster-id <ID> **与** --initial-controller-standalone；第 2 台起用同一 --cluster-id（kafka-storage 为 --no-initial-controllers 加入仲裁）。
-    须**先**完成首台部署且进程已监听，再部署下一台；若每台空盘都误用「首台格式化」会导致各自 CurrentVoters 仅 1 人。若首台仅用 --cluster-id 而无 --initial-controller-standalone，空盘会误走 --no-initial-controllers，可能导致 --status 报 MetadataVersion/KIP-919。
+  【controller-scope】多节点仲裁须 **--controller-scope cluster**；单台仅元数据进程可 **--controller-scope single**。
+  cluster.id 须为 `kafka-storage.sh random-uuid` 形（22 位）；**cluster** 场景下首台**只能** `--generate-cluster-id`，第 2 台起用首台打印的 ID + `--join-quorum`。
 
-  分步 A — 在 ctrl1 上初始化第一台 controller（得到 cluster-id，记下）:
-   kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl1 --node-id 1 \\
+  分步 A — 在 ctrl1 上初始化第一台 controller（记下输出的 cluster id）:
+   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl1 --node-id 1 \\
      --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
-   # 若首台已有人工 random-uuid 形式的 cluster-id，可改用:  ... --cluster-id <CLUSTER_ID> --initial-controller-standalone
-   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （须含 advertised_host、metadata_log_dir、log_dirs、generate_cluster_id 或 initial_controller_standalone+cluster_id 等）
+   # 若用 JSON: 须含 controller_scope、advertised_host、metadata_log_dir、log_dirs、generate_cluster_id 等
 
-  分步 B — 在 ctrl2、ctrl3 上追加 controller（--cluster-id 与集群已有值一致；各自 --advertised-host 填本机）:
-   kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl2 --node-id 2 --cluster-id <CLUSTER_ID> \\
-     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log \\
-     --log-dirs /var/kafka/controller-log
-   kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl3 --node-id 3 --cluster-id <CLUSTER_ID> \\
-     --controller-quorum-bootstrap-servers "$QUORUM" --metadata-log-dir /var/kafka/metadata-log \\
-     --log-dirs /var/kafka/controller-log
+  分步 B — 在 ctrl2、ctrl3 上追加（须与首台同一 cluster id + --join-quorum）:
+   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl2 --node-id 2 \\
+     --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
+     --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
+   kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl3 --node-id 3 \\
+     --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
+     --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
 
   分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上；--advertised-host 填本机 broker 对外名或 IP）:
    kafkacli --deploy broker --kafka-home /opt/kafka --advertised-host broker1 --node-id 4 --cluster-id <CLUSTER_ID> \\
@@ -4700,6 +4823,7 @@ def main():
     g_dep = parser.add_argument_group(
         "部署 KRaft（须配合 --deploy 与 --kafka-home）",
         "standalone=单节点 broker+controller；controller / broker=多节点角色拆分。"
+        " --deploy controller 时**必须**指定 --controller-scope single|cluster（生产约束：cluster=首台仅 --generate-cluster-id，后续 --cluster-id + --join-quorum）。"
         " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
         " 多节点时 --node-id 对应 node.id，须在全集群（全部 controller 与 broker）内唯一。"
         " 须显式 --advertised-host（或 JSON advertised_host），与 Apache Kafka advertised.listeners 语义一致。"
@@ -4734,6 +4858,15 @@ def main():
         " 同一集群内须全局唯一。",
     )
     g_dep.add_argument(
+        "--controller-scope",
+        dest="controller_scope",
+        choices=[CONTROLLER_SCOPE_SINGLE, CONTROLLER_SCOPE_CLUSTER],
+        metavar="{single,cluster}",
+        help="仅 --deploy controller 时**必填**（或 JSON controller_scope）。"
+        f" {CONTROLLER_SCOPE_SINGLE}=单台 controller；"
+        f" {CONTROLLER_SCOPE_CLUSTER}=多节点仲裁：首台空盘**仅** --generate-cluster-id，后续须同一 --cluster-id + --join-quorum。",
+    )
+    g_dep.add_argument(
         "--advertised-host",
         metavar="HOST",
         default=None,
@@ -4746,14 +4879,14 @@ def main():
         "--cluster-id",
         metavar="ID",
         help="KRaft 集群 ID：须为 kafka-storage.sh random-uuid 生成的 22 位字符串（与 --generate-cluster-id 输出同形）。"
-        " 多节点时除首台外复用同一 ID；勿使用任意词。与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller）；broker 仅本项。"
-        " 多节点仅 controller 且首台空盘已固定本 ID 时须同时加 --initial-controller-standalone。",
+        " 与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller）；broker 仅本项。"
+        " --controller-scope cluster 时：首台空盘**禁止**手填本项；第 2 台起须与首台一致且加 --join-quorum。",
     )
     g_dep.add_argument(
         "--generate-cluster-id",
         action="store_true",
         help="由 kafka-storage 生成新的 cluster.id（与 --cluster-id、--use-disk-cluster-id 互斥）。"
-        " 多节点纯 controller 集群时：**仅首台**使用；后续台改用与首台相同的 --cluster-id（内部 format 分别为 --standalone / --no-initial-controllers）。",
+        " --controller-scope cluster 时首台空盘**必须**使用本项；后续节点使用首台输出的 ID 与 --join-quorum。",
     )
     g_dep.add_argument(
         "--use-disk-cluster-id",
@@ -4782,10 +4915,10 @@ def main():
         help="多 controller 首次集群化时的 initial-controllers 参数（见 kafka-storage.sh format）。",
     )
     g_dep.add_argument(
-        "--initial-controller-standalone",
+        "--join-quorum",
         action="store_true",
-        help="多节点仅 controller：**首台**空盘且已用显式 --cluster-id 时须加本项，使 kafka-storage 使用 format --standalone（与 --generate-cluster-id 二选一）。"
-        " 第 2 台及以后不要指定。若省略，脚本会对「--cluster-id + 空盘」误用 --no-initial-controllers，可能导致 kafka-metadata-quorum --bootstrap-controller 报 MetadataVersion/KIP-919 失败。",
+        help="仅与 --controller-scope cluster 合用：第 2 台及以后在**空盘**加入仲裁时**必须**指定；内部 format --no-initial-controllers。"
+        " 首台不要指定；首台须 --generate-cluster-id。",
     )
     g_dep.add_argument("--java-home", metavar="PATH", help="运行 Kafka 的 JAVA_HOME；写入 systemd 与 env。")
     g_dep.add_argument(
@@ -5461,28 +5594,23 @@ def main():
             if err_cid:
                 logger.error(err_cid, extra={"to_stdout": True})
                 sys.exit(EXIT_ERROR)
-        ics = bool(
-            getattr(args, "initial_controller_standalone", False) or config.get("initial_controller_standalone")
+        join_q = bool(getattr(args, "join_quorum", False) or config.get("join_quorum"))
+        raw_scope = getattr(args, "controller_scope", None) or config.get("controller_scope")
+        scope_str = (str(raw_scope).strip().lower() if raw_scope not in (None, "") else "") or None
+        if not scope_str:
+            logger.error(
+                "部署 controller 必须指定 --controller-scope single 或 cluster（或 JSON controller_scope）；"
+                " 生产多节点仲裁须 cluster；单台 controller 须 single。详见 -h。",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
+        init_ic = (args.initial_controllers or config.get("initial_controllers") or "")
+        scope_err = _validate_controller_scope_rules(
+            scope_str, cid_s, gen_cid, use_disk_cid, join_q, init_ic or None
         )
-        if ics:
-            if gen_cid:
-                logger.error(
-                    "--initial-controller-standalone 与 --generate-cluster-id 不要同时指定（均对应首台 kafka-storage format --standalone）",
-                    extra={"to_stdout": True},
-                )
-                sys.exit(EXIT_ERROR)
-            if use_disk_cid:
-                logger.error(
-                    "--initial-controller-standalone 与 --use-disk-cluster-id 互斥（磁盘已有元数据时无需该项）",
-                    extra={"to_stdout": True},
-                )
-                sys.exit(EXIT_ERROR)
-            if not cid_s:
-                logger.error(
-                    "--initial-controller-standalone 须与显式 --cluster-id 同用",
-                    extra={"to_stdout": True},
-                )
-                sys.exit(EXIT_ERROR)
+        if scope_err:
+            logger.error(scope_err, extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
         success = deployer.deploy_controller(
             node_id=int(node_id),
             controller_quorum_bootstrap_servers=str(quorum).strip(),
@@ -5494,7 +5622,8 @@ def main():
             generate_cluster_id=gen_cid,
             use_disk_cluster_id=use_disk_cid,
             initial_controllers=args.initial_controllers or config.get("initial_controllers"),
-            initial_controller_standalone=ics,
+            join_quorum=join_q,
+            controller_scope=scope_str,
             java_home=java_home,
             enable_systemd=enable_systemd,
             extra_properties=extra_properties,
