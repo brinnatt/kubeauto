@@ -1,5 +1,5 @@
 {
-  "deployment_note": "键名与 kafkacli 命令行长选项一致（下划线）；须与 kafkacli -h、KafkaCli.py 模块头、分步示例一致维护。KRaft（Kafka 3.3+）。同一集群内 node_id 须在全部 controller 与 broker 间全局唯一。standalone/controller 部署须三选一：cluster_id、generate_cluster_id、use_disk_cluster_id。controller 须同时提供 metadata_log_dir 与 log_dirs（无隐式默认路径）。多节点时每个 nodes[] 项须含本机 advertised_host（与 Apache Kafka advertised.listeners 一致），与 controller_quorum_bootstrap_servers 中各 Controller 端点对应。",
+  "deployment_note": "键名与 kafkacli 命令行长选项一致（下划线）；须与 kafkacli -h、KafkaCli.py 模块头、分步示例一致维护。KRaft（Kafka 3.3+）。同一集群内 node_id 须在全部 controller 与 broker 间全局唯一。standalone/controller 部署须三选一：cluster_id、generate_cluster_id、use_disk_cluster_id。controller 须同时提供 metadata_log_dir 与 log_dirs（无隐式默认路径）。多节点时每个 nodes[] 项须含本机 advertised_host（与 Apache Kafka advertised.listeners 一致），与 controller_quorum_bootstrap_servers 中各 Controller 端点对应。--batch 时 nodes[] 可含 ssh_user、ssh_port、ssh_key 等覆盖根级 SSH 参数（仅该节点连接）。",
   "kafka_home": "/opt/kafka",
   "user": "kafka",
   "group": "kafka",

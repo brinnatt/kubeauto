@@ -40,12 +40,14 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
   · --topic-create / --topic-delete：Topic 已存在/已不存在时按 CLI 输出匹配后视为成功（非「改分区/副本」的广义收敛）。
   · --status / --metrics 系列：只读，天然可重复。
   · --clean：卸载（停服务、删 unit 与生成配置），非部署；抹数据用 --clean-data 或与 --clean/--clean-first 联用 --force。
+  · --batch：nodes[] 可逐项覆盖 SSH 参数；--target-host 支持 IPv6 时使用 [addr]:port 形式。
 
 退出码：0 成功，1 失败。
 """
 
 import argparse
 import atexit
+import ipaddress
 import json
 import logging
 import os
@@ -832,6 +834,17 @@ class InputValidator:
         return bool(re.match(r'^[a-zA-Z0-9.-]+$', hostname))
 
     @staticmethod
+    def validate_ssh_target_host(host: str) -> bool:
+        """SSH 目标主机：DNS/IPv4 与 InputValidator 一致；另接受 IPv6 字面量（供 [addr]:port 解析后使用）。"""
+        if InputValidator.validate_hostname(host):
+            return True
+        try:
+            ipaddress.ip_address(host)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
     def validate_path(path: str) -> bool:
         """路径格式基本校验（本脚本目标环境多为类 Unix；非 Kafka 文档条款）。"""
         if not path or ".." in path:
@@ -875,7 +888,7 @@ class SSHManager:
             key_path: str = "~/.ssh/id_rsa",
             strict_host_key_checking: bool = True
     ):
-        if not InputValidator.validate_hostname(host):
+        if not InputValidator.validate_ssh_target_host(host):
             raise ValueError(f"无效的主机名: {host}")
         if not InputValidator.validate_port(port):
             raise ValueError(f"无效的端口号: {port}")
@@ -4079,10 +4092,31 @@ def _kafka_deployer_kwargs(args: argparse.Namespace, config: Dict[str, Any]) -> 
 
 
 def _parse_target_host(target_host: str, default_port: int) -> Tuple[str, int]:
-    """解析 target_host（支持 host 或 host:port）；空或仅空白时抛出 ValueError"""
+    """解析 target_host：host、host:port，或 RFC 方括号 IPv6 形式 [addr]:port（避免与 IPv6 冒号混淆）。"""
     th = (target_host or "").strip()
     if not th:
         raise ValueError("target_host 不能为空")
+    host: str
+    port: int
+    if th.startswith("["):
+        rb = th.find("]")
+        if rb <= 1:
+            raise ValueError("无效的 target_host（IPv6 方括号形式应为 [addr]:port）")
+        host = th[1:rb].strip()
+        rest = th[rb + 1 :].strip()
+        if rest.startswith(":"):
+            ps = rest[1:].strip()
+            if ps.isdigit():
+                port = int(ps)
+            else:
+                raise ValueError(f"无效的 target_host 端口: {rest!r}")
+        else:
+            port = default_port
+        if not host:
+            raise ValueError("无效的 target_host（IPv6 地址为空）")
+        if not InputValidator.validate_port(port):
+            raise ValueError(f"无效的 target_host 端口: {port}")
+        return host, port
     host, port = th, default_port
     if ":" in th:
         parts = th.rsplit(":", 1)
@@ -4153,7 +4187,16 @@ def _run_remote_deploy(
     """由前置机经 SSH 在目标机执行 kafkacli，标准输出与错误回显到本地。
     exit_on_finish=False 时仅返回是否成功且不 sys.exit（供 --batch 串行调用下一台）。"""
     ssh_user = config.get("ssh_user") or args.ssh_user
-    ssh_port = config.get("ssh_port") or args.ssh_port or 22
+    _sp_raw = config.get("ssh_port")
+    if _sp_raw is None or _sp_raw == "":
+        _sp_raw = getattr(args, "ssh_port", None)
+    if _sp_raw is None or _sp_raw == "":
+        _sp_raw = 22
+    try:
+        ssh_port = int(_sp_raw)
+    except (TypeError, ValueError):
+        logger.error(f"无效的 ssh_port: {_sp_raw!r}", extra={"to_stdout": True})
+        sys.exit(EXIT_ERROR)
     ssh_key = config.get("ssh_key") or args.ssh_key
     strict = not (config.get("disable_ssh_host_check") or args.disable_ssh_host_check)
     remote_workdir = config.get("remote_workdir") or args.remote_workdir or "/tmp/kafka_deploy"
@@ -4252,6 +4295,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
 【新手怎么用】运行「kafkacli -h」后阅读文末「分步示例」：建议从 §0 读起，再按 §1、§2… 顺序往下看。
   多节点、远程 SSH、--batch 批量等场景在对应章节说明了执行顺序（例如批量为串行 SSH）与参数含义。
+【远程与批量】--target-host 支持 [IPv6]:port；--batch 时 nodes[] 单项可覆盖 ssh_user / ssh_port / ssh_key 等（仅该节点 SSH，不写入远程 kafkacli 参数）。
 【典型用法】
     1. 指定 Kafka 安装根目录 --kafka-home
     2. 选择一种动作（--deploy / --status / --topic-* …）
@@ -4420,6 +4464,7 @@ def show_examples():
     · 仅当同时使用 --batch 与 --config <cluster.json> 时生效；读取根对象中的 nodes 数组。
     · 按数组下标从小到大依次处理：对 nodes[i] 先 SSH 到该元素的 target_host，再在远程执行合并后的 kafkacli；
       本节点命令结束并成功后，再处理 nodes[i+1]。此为串行执行，而非多台同时建立 SSH。
+    · nodes[i] 可含 ssh_user、ssh_port、ssh_key、remote_workdir、disable_ssh_host_check，覆盖 JSON 根级/命令行中的 SSH 设置，仅影响连接该 target_host 的一次会话。
     · 若某一节点远程执行失败，则立即终止并不再处理后续节点；已成功完成的节点不会自动回滚。
   集群依赖与排列顺序:
     · 脚本不会根据角色自动调整 nodes 顺序，须由你在 JSON 中按部署依赖自行排列。
@@ -4774,7 +4819,7 @@ def main():
     g_ssh.add_argument(
         "--target-host",
         metavar="HOST[:PORT]",
-        help="目标机地址；与 --deploy 等组合时在远程执行。未装 kafkacli 时会自动拷贝当前脚本。",
+        help="SSH 目标；可为 IPv4、主机名、IPv4:ssh_port，或 IPv6 的 [addr]:ssh_port。未装 kafkacli 时会自动拷贝当前脚本。",
     )
     g_ssh.add_argument("--ssh-user", default="root", help="SSH 登录用户。")
     g_ssh.add_argument("--ssh-port", type=int, default=22, help="SSH 端口。")
@@ -4794,6 +4839,7 @@ def main():
         action="store_true",
         help="须与 --config 联用：读取 JSON 中 nodes 数组，按下标从小到大依次向各 target_host 建立 SSH 并执行部署（串行，非并行）；"
         "上一节点成功后才执行下一节点，任一节点失败则中止后续步骤，已完成的节点不会自动回滚。"
+        "各 nodes[i] 可含 ssh_user、ssh_port、ssh_key、remote_workdir、disable_ssh_host_check，覆盖根对象/命令行中的 SSH 参数，仅影响该次连接。"
         "KRaft 多节点时，nodes 的排列顺序须由你按集群依赖自行决定（通常先全部 controller，再 broker；broker 项须含与仲裁一致的 cluster_id），脚本不会自动排序。",
     )
 
@@ -4923,7 +4969,12 @@ def main():
             base = config.get("kafka_home") or args.kafka_home
             if base and "--kafka-home" not in argv_parts:
                 argv_parts.extend(["--kafka-home", base])
-            ok = _run_remote_deploy(th, args, config, argv_parts, exit_on_finish=False)
+            # 各 node 可覆盖 SSH 连接参数（与 JSON 根级合并；不写入远程 argv，仅影响本机 SSH）
+            batch_cfg: Dict[str, Any] = dict(config)
+            for sshk in ("ssh_user", "ssh_port", "ssh_key", "remote_workdir", "disable_ssh_host_check"):
+                if sshk in node:
+                    batch_cfg[sshk] = node[sshk]
+            ok = _run_remote_deploy(th, args, batch_cfg, argv_parts, exit_on_finish=False)
             if ok is False:
                 logger.error(f"批量部署在节点 {th} 失败，终止", extra={"to_stdout": True})
                 sys.exit(EXIT_ERROR)
