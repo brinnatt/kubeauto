@@ -41,6 +41,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
   · --status / --metrics 系列：只读，天然可重复。
   · --clean：卸载（停服务、删 unit 与生成配置），非部署；抹数据用 --clean-data 或与 --clean/--clean-first 联用 --force。
   · --batch：nodes[] 可逐项覆盖 SSH 参数；--target-host 支持 IPv6 时使用 [addr]:port 形式。
+  · broker-decommission：--topics-to-move-json-file 若指定须为已存在文件；verify 结合工具 rc 与输出判断完成态。
 
 退出码：0 成功，1 失败。
 """
@@ -3729,7 +3730,7 @@ class KafkaMetricsCollector:
 
 
 class KafkaBrokerDecommission:
-    """kafka-reassign-partitions.sh --generate / --execute / --verify。"""
+    """kafka-reassign-partitions.sh --generate / --execute / --verify；generate 对不存在的 topics JSON 报错；verify 用 check=False 以读取非零退出码。"""
 
     def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
         self.bin_dir = Path(kafka_home).resolve() / "bin"
@@ -3737,7 +3738,7 @@ class KafkaBrokerDecommission:
         self.command_config = command_config
         self._reassign_script = self.bin_dir / "kafka-reassign-partitions.sh"
 
-    def _run(self, args: List[str], timeout: Optional[int] = None) -> subprocess.CompletedProcess:
+    def _run(self, args: List[str], timeout: Optional[int] = None, check: bool = True) -> subprocess.CompletedProcess:
         if not self._reassign_script.is_file():
             raise CommandExecutionError(f"未找到分区重分配脚本: {self._reassign_script}")
         ok, msg = _validate_bootstrap_server(self.bootstrap_server)
@@ -3748,12 +3749,24 @@ class KafkaBrokerDecommission:
             raise CommandExecutionError(cc_err)
         to = timeout if timeout is not None else _kafka_cli_timeout_sec(120)
         cmd = _kafka_cli_cmd(self._reassign_script, self.bootstrap_server, args, self.command_config)
-        return run_command(cmd, capture_output=True, timeout=to)
+        return run_command(cmd, capture_output=True, timeout=to, check=check)
 
     def generate(self, broker_ids: str, topics_to_move_json_path: Optional[str] = None) -> Optional[str]:
         """--generate --broker-list [--topics-to-move-json-file]。"""
         args = ["--generate", "--broker-list", broker_ids]
-        json_path = topics_to_move_json_path if (topics_to_move_json_path and Path(topics_to_move_json_path).exists()) else None
+        tsp = (topics_to_move_json_path or "").strip()
+        if tsp:
+            p = Path(tsp)
+            if not p.is_file():
+                logger.error(
+                    "topics-to-move-json-file 不存在或不是常规文件: %s（不再静默改用空 topic 列表）",
+                    tsp,
+                    extra={"to_stdout": True},
+                )
+                return None
+            json_path = str(p.resolve())
+        else:
+            json_path = None
         if not json_path:
             import tempfile
             fd, tmp = tempfile.mkstemp(suffix=".json")
@@ -3792,17 +3805,33 @@ class KafkaBrokerDecommission:
             return False
 
     def verify(self, reassignment_json_path: str) -> bool:
-        """校验迁移进度（--verify）"""
+        """校验迁移进度（--verify）；以工具退出码与输出中 completed 状态为准。"""
         try:
             r = self._run(
                 ["--verify", "--reassignment-json-file", reassignment_json_path],
                 timeout=_reassign_cmd_timeout_sec(),
+                check=False,
             )
-            if "Reassignment of partition" in (r.stdout or "") and "completed" in (r.stdout or "").lower():
+            out = (r.stdout or "") + (r.stderr or "")
+            if r.returncode != 0:
+                logger.error(
+                    "verify 非零退出 (rc=%s): %s",
+                    r.returncode,
+                    out.strip()[:1200] or "(无输出)",
+                    extra={"to_stdout": True},
+                )
+                return False
+            if "Reassignment of partition" in out and "completed" in out.lower():
                 logger.info("✓ 迁移已完成", extra={"to_stdout": True})
                 return True
+            logger.error(
+                "verify 未完成或输出未匹配完成态（可重试或检查 reassignment JSON）: %s",
+                out.strip()[:1200] or "(无输出)",
+                extra={"to_stdout": True},
+            )
             return False
-        except CommandExecutionError:
+        except CommandExecutionError as e:
+            logger.error("verify 调用失败: %s", e, extra={"to_stdout": True})
             return False
 
 
@@ -4324,6 +4353,8 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
   · --status / --metrics 系列：只读，天然可重复。
   · --clean：卸载（删 unit 与生成配置），非部署；抹数据须 --clean-data 或与 --clean/--clean-first 联用 --force。
   · --force：单独部署一般不需要；主要用于与 --clean / --clean-first 联用时删除磁盘数据。
+【远程子命令】--target-host 且目标非本机时，整条命令（含 --clean、broker-decommission、topic 等）在目标机执行；见「远程执行」分组与 §3。
+【Broker 下线】kafka-reassign-partitions：--topics-to-move-json-file 若指定须为已存在文件；verify 读取工具退出码与输出（进行中与完成态见 §8）。
 【Quorum 运维】--quorum-add-controller 须显式提供 --bootstrap-controller 和/或 --bootstrap-server；脚本不默认 localhost:9092（避免误用 Broker 端口连接元数据工具）。
 """
 
@@ -4421,6 +4452,7 @@ def show_examples():
      --node-id 4 --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
   说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
+  除部署外，任意子命令（如 --clean、--status、--broker-decommission-*、--topic-*）只要带上 --target-host 且目标非本机，均会在**目标机**执行与本地相同的完整命令行；须保证目标机可解析 --kafka-home（及 --config 若使用）。
 
 ------------------------------------------------------------------------
 §4 多节点 KRaft：先理清拓扑与 node-id，再按步骤执行命令
@@ -4513,6 +4545,7 @@ def show_examples():
 §8 Broker 下线与分区迁移（先生成方案，再执行，最后校验；停止进程需另行操作）
 ------------------------------------------------------------------------
    kafkacli --broker-decommission-generate --broker-list 1,2 --kafka-home /opt/kafka --bootstrap-server broker1:9092
+  # 若使用 --topics-to-move-json-file，路径须已存在且可读；不存在时脚本报错退出，不会静默改用空 topic 列表。
   # 将输出中的 Current partition reassignment configuration 保存为 plan.json
    kafkacli --broker-decommission-execute --reassignment-json-file plan.json --throttle 1048576 --kafka-home /opt/kafka
    kafkacli --broker-decommission-verify --reassignment-json-file plan.json --kafka-home /opt/kafka
@@ -4523,6 +4556,9 @@ def show_examples():
 ------------------------------------------------------------------------
    kafkacli --clean --deploy standalone --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
    kafkacli --clean --deploy standalone --force --kafka-home /opt/kafka --log-dirs /tmp/kafka-logs
+  # 在跳板机上对远程主机卸载（与 §3 一致，整条命令在目标机执行）:
+  # kafkacli --target-host 192.168.1.10 --clean --deploy controller --node-id 1 --kafka-home /opt/kafka \\
+  #   --metadata-log-dir /var/kafka/meta --log-dirs /var/kafka/controller-log
    kafkacli --deploy standalone --clean-first --force --kafka-home /opt/kafka --advertised-host 127.0.0.1 \\
      --node-id 1 --log-dirs /tmp/kafka-logs --generate-cluster-id
    kafkacli --config-describe-broker --kafka-home /opt/kafka --config-entity-name 1
@@ -4814,7 +4850,8 @@ def main():
 
     g_ssh = parser.add_argument_group(
         "远程执行（前置机经 SSH 在目标机执行本脚本）",
-        "指定 --target-host 时：不在本机安装 Kafka，仅通过 SSH 在目标机执行同一条 kafkacli（未装脚本时会自动拷贝当前文件）。",
+        "指定 --target-host 且目标非本机时：通过 SSH 在目标机执行**与当前命令行等价的** kafkacli（含 --deploy / --clean / --status / broker-decommission / topic 等；"
+        "未装脚本时会自动拷贝当前文件）。须保证目标机可访问 --kafka-home 与 --config 所指路径。",
     )
     g_ssh.add_argument(
         "--target-host",
@@ -4880,7 +4917,8 @@ def main():
 
     g_br = parser.add_argument_group(
         "Broker 下线与副本迁移（kafka-reassign-partitions.sh）",
-        "先 generate 再 execute，最后用 verify；停进程需另行 systemctl/kill。",
+        "先 generate 再 execute，最后用 verify；停进程需另行 systemctl/kill。"
+        " --topics-to-move-json-file 若指定须为已存在文件；verify 以工具退出码与输出为准。",
     )
     g_br.add_argument(
         "--broker-decommission-generate",
