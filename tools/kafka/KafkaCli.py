@@ -31,6 +31,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
 部署前置与失败回滚（与 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】、deploy_* 实现一致）：
   · 写入生成配置前：对本次涉及的 metadata.log.dir 与 log.dirs 各根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署。
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
+  · 多节点仅 controller：首台空盘须 kafka-storage format --standalone（--generate-cluster-id，或显式 --cluster-id 且加 --initial-controller-standalone）。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919，--status 通过 --bootstrap-controller 调 kafka-metadata-quorum 会失败。
   · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
   · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
   · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
@@ -597,6 +598,20 @@ def _validate_explicit_cluster_id_str(value: str) -> Optional[str]:
     if any(c not in allowed for c in s):
         return "cluster.id 含非法字符（仅允许 A-Z a-z 0-9 _ -，共 22 位）。"
     return None
+
+
+def _status_hint_bootstrap_controller_kip919(error_text: str) -> Optional[str]:
+    """当 kafka-metadata-quorum 因 MetadataVersion / KIP-919 失败时给出可操作提示。"""
+    t = error_text or ""
+    if "UnsupportedVersionException" not in t:
+        return None
+    if "Direct-to-controller" not in t and "MetadataVersion" not in t:
+        return None
+    return (
+        "提示: 常见原因是集群 MetadataVersion 不足以支持 KIP-919（AdminClient 经 --bootstrap-controller 直连 Controller）。"
+        " 多节点 controller 的**首台**若曾对**空盘**使用 kafka-storage format --no-initial-controllers（在未加 --initial-controller-standalone 且人为指定 --cluster-id 时脚本会误选此项），"
+        " 请停止服务、按文档清空各节点 metadata.log.dir 等后：首台用 --generate-cluster-id，或 (--cluster-id 与 --initial-controller-standalone) 再部署首台，再依次部署其余节点。"
+    )
 
 
 class CommandExecutionError(Exception):
@@ -2322,6 +2337,7 @@ class KafkaDeployer:
             generate_cluster_id: bool = False,
             use_disk_cluster_id: bool = False,
             initial_controllers: Optional[str] = None,
+            initial_controller_standalone: bool = False,
             java_home: Optional[str] = None,
             enable_systemd: bool = True,
             extra_properties: Optional[Dict[str, str]] = None,
@@ -2335,6 +2351,7 @@ class KafkaDeployer:
         含 controller.listener.names、listener.security.protocol.map。
         可重复执行（幂等）：已存在 controller-<node_id>.properties 时覆盖并 restart。
         - 首个 controller（--generate-cluster-id）：kafka-storage format 使用 --standalone，初始化单节点后再由后续节点加入。
+        - 首个 controller 且已人工固定 cluster.id：须加 --initial-controller-standalone，使 format 使用 --standalone；勿与「仅 --cluster-id、空盘」组合误走 --no-initial-controllers。
         - 后续 controller（仅 --cluster-id，与首台相同）：新盘使用 --no-initial-controllers，加入已有 Quorum（须首台已启动可达）。
         - 若使用 --initial-controllers，则按 StorageTool 传入，用于多节点首批同时声明选民（高级用法）。
         enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties，
@@ -2511,6 +2528,12 @@ class KafkaDeployer:
         elif generate_cluster_id:
             format_args.append("--standalone")
             logger.info("kafka-storage format：--standalone（新集群首台 controller）", extra={"to_stdout": True})
+        elif initial_controller_standalone:
+            format_args.append("--standalone")
+            logger.info(
+                "kafka-storage format：--standalone（--initial-controller-standalone：首台固定 cluster.id 的空盘初始化）",
+                extra={"to_stdout": True},
+            )
         else:
             format_args.append("--no-initial-controllers")
             logger.info(
@@ -3071,6 +3094,9 @@ class KafkaDeployer:
             qe = (qs.get("error") or "").strip()
             if qe:
                 print(f"  原因: {qe}")
+                kip919 = _status_hint_bootstrap_controller_kip919(qe)
+                if kip919:
+                    print(f"  {kip919}")
             else:
                 print("  原因: kafka-metadata-quorum describe --status 非零退出或无输出（见上无「原因」时请查脚本日志）")
 
@@ -3167,7 +3193,10 @@ class KafkaDeployer:
             if critical_ok:
                 print("  [通过] 仅 Controller 验收：[2] KRaft Quorum 可读（[1][4]～[6] 已跳过）。")
             else:
-                print("  [未通过] [2] KRaft Quorum 失败；请检查 --bootstrap-controller 与网络、端口。")
+                print(
+                    "  [未通过] [2] KRaft Quorum 失败；请检查 --bootstrap-controller 与网络、端口。"
+                    " 若 [2] 已打印 MetadataVersion/KIP-919 提示，多为首台 controller 空盘误用 --no-initial-controllers，见上文「提示」。"
+                )
         elif critical_ok and ur_ok:
             print("  [通过] [1] Broker 连通、[2] Quorum 可读；[4] 无 under-replicated 分区。")
         elif critical_ok and ph.get("ok") and ur > 0:
@@ -4358,7 +4387,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
   多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
-【多节点 Controller 与 kafka-storage】多机仅 controller 时：首台须 --generate-cluster-id，且 kafka-storage 对该台使用 **format --standalone**（初始化仲裁种子）；第 2 台起须相同 --cluster-id，新盘使用 **--no-initial-controllers** 加入 Quorum；首台须已成功启动后再部署下一台。若误对每台空盘均 format --standalone，describe 中 CurrentVoters 将只有本机 1 人。
+【多节点 Controller 与 kafka-storage】多机仅 controller 时：首台须 **format --standalone**（--generate-cluster-id，或显式 --cluster-id 且加 **--initial-controller-standalone**）；第 2 台起须相同 --cluster-id，新盘使用 **--no-initial-controllers** 加入 Quorum；首台须已成功启动后再部署下一台。若首台对空盘误用 --no-initial-controllers（例如仅 --cluster-id 却未加 --initial-controller-standalone），可能导致 MetadataVersion 不足以支持 KIP-919，`--status` 经 --bootstrap-controller 调 kafka-metadata-quorum 失败。若误对每台空盘均 format --standalone，describe 中 CurrentVoters 将只有本机 1 人。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
@@ -4484,14 +4513,15 @@ def show_examples():
   【advertised 与 Apache Kafka 惯例】每台进程只配置**本机** advertised（`advertised.listeners`）：3 台 controller = 在 3 台机器上各执行一次部署，各带**本机** `--advertised-host`（如 ctrl1、ctrl2、ctrl3 或对应 IP），不是一条命令里写 3 个地址。
   公共配置串（所有节点上 controller.quorum.bootstrap.servers 一致，列出全部 Controller 的 host:port）:
     QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
-  【多节点 controller】首台用 --generate-cluster-id（kafka-storage 为 --standalone）；第 2 台起用同一 --cluster-id（kafka-storage 为 --no-initial-controllers 加入仲裁）。
-    须**先**完成首台部署且进程已监听，再部署下一台；若每台空盘都误用「首台格式化」会导致各自 CurrentVoters 仅 1 人。
+  【多节点 controller】首台 kafka-storage 须 **--standalone**：用 --generate-cluster-id，或（已人工确定 cluster-id 时）--cluster-id <ID> **与** --initial-controller-standalone；第 2 台起用同一 --cluster-id（kafka-storage 为 --no-initial-controllers 加入仲裁）。
+    须**先**完成首台部署且进程已监听，再部署下一台；若每台空盘都误用「首台格式化」会导致各自 CurrentVoters 仅 1 人。若首台仅用 --cluster-id 而无 --initial-controller-standalone，空盘会误走 --no-initial-controllers，可能导致 --status 报 MetadataVersion/KIP-919。
 
   分步 A — 在 ctrl1 上初始化第一台 controller（得到 cluster-id，记下）:
    kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl1 --node-id 1 \\
      --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
-   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （须含 advertised_host、metadata_log_dir、log_dirs、generate_cluster_id 等）
+   # 若首台已有人工 random-uuid 形式的 cluster-id，可改用:  ... --cluster-id <CLUSTER_ID> --initial-controller-standalone
+   # 若用 JSON 合并公共项:  kafkacli --deploy controller --config cluster.json --node-id 1 （须含 advertised_host、metadata_log_dir、log_dirs、generate_cluster_id 或 initial_controller_standalone+cluster_id 等）
 
   分步 B — 在 ctrl2、ctrl3 上追加 controller（--cluster-id 与集群已有值一致；各自 --advertised-host 填本机）:
    kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl2 --node-id 2 --cluster-id <CLUSTER_ID> \\
@@ -4716,7 +4746,8 @@ def main():
         "--cluster-id",
         metavar="ID",
         help="KRaft 集群 ID：须为 kafka-storage.sh random-uuid 生成的 22 位字符串（与 --generate-cluster-id 输出同形）。"
-        " 多节点时除首台外复用同一 ID；勿使用任意词。与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller）；broker 仅本项。",
+        " 多节点时除首台外复用同一 ID；勿使用任意词。与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller）；broker 仅本项。"
+        " 多节点仅 controller 且首台空盘已固定本 ID 时须同时加 --initial-controller-standalone。",
     )
     g_dep.add_argument(
         "--generate-cluster-id",
@@ -4749,6 +4780,12 @@ def main():
         "--initial-controllers",
         metavar="LIST",
         help="多 controller 首次集群化时的 initial-controllers 参数（见 kafka-storage.sh format）。",
+    )
+    g_dep.add_argument(
+        "--initial-controller-standalone",
+        action="store_true",
+        help="多节点仅 controller：**首台**空盘且已用显式 --cluster-id 时须加本项，使 kafka-storage 使用 format --standalone（与 --generate-cluster-id 二选一）。"
+        " 第 2 台及以后不要指定。若省略，脚本会对「--cluster-id + 空盘」误用 --no-initial-controllers，可能导致 kafka-metadata-quorum --bootstrap-controller 报 MetadataVersion/KIP-919 失败。",
     )
     g_dep.add_argument("--java-home", metavar="PATH", help="运行 Kafka 的 JAVA_HOME；写入 systemd 与 env。")
     g_dep.add_argument(
@@ -5424,6 +5461,28 @@ def main():
             if err_cid:
                 logger.error(err_cid, extra={"to_stdout": True})
                 sys.exit(EXIT_ERROR)
+        ics = bool(
+            getattr(args, "initial_controller_standalone", False) or config.get("initial_controller_standalone")
+        )
+        if ics:
+            if gen_cid:
+                logger.error(
+                    "--initial-controller-standalone 与 --generate-cluster-id 不要同时指定（均对应首台 kafka-storage format --standalone）",
+                    extra={"to_stdout": True},
+                )
+                sys.exit(EXIT_ERROR)
+            if use_disk_cid:
+                logger.error(
+                    "--initial-controller-standalone 与 --use-disk-cluster-id 互斥（磁盘已有元数据时无需该项）",
+                    extra={"to_stdout": True},
+                )
+                sys.exit(EXIT_ERROR)
+            if not cid_s:
+                logger.error(
+                    "--initial-controller-standalone 须与显式 --cluster-id 同用",
+                    extra={"to_stdout": True},
+                )
+                sys.exit(EXIT_ERROR)
         success = deployer.deploy_controller(
             node_id=int(node_id),
             controller_quorum_bootstrap_servers=str(quorum).strip(),
@@ -5435,6 +5494,7 @@ def main():
             generate_cluster_id=gen_cid,
             use_disk_cluster_id=use_disk_cid,
             initial_controllers=args.initial_controllers or config.get("initial_controllers"),
+            initial_controller_standalone=ics,
             java_home=java_home,
             enable_systemd=enable_systemd,
             extra_properties=extra_properties,
