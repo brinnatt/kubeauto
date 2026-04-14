@@ -2318,8 +2318,9 @@ class KafkaDeployer:
         部署 KRaft Controller 节点（Kafka 4.x）。配置与 ConfigGenerator.generate_controller_properties 一致，
         含 controller.listener.names、listener.security.protocol.map。
         可重复执行（幂等）：已存在 controller-<node_id>.properties 时覆盖并 restart。
-        - 首个 controller：format --standalone 或 --initial-controllers
-        - 后续 controller：format --no-initial-controllers
+        - 首个 controller（--generate-cluster-id）：kafka-storage format 使用 --standalone，初始化单节点后再由后续节点加入。
+        - 后续 controller（仅 --cluster-id，与首台相同）：新盘使用 --no-initial-controllers，加入已有 Quorum（须首台已启动可达）。
+        - 若使用 --initial-controllers，则按 StorageTool 传入，用于多节点首批同时声明选民（高级用法）。
         enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties，
         供本机连接集群内 Broker（PLAIN 或 SASL_SSL，与集群一致）。
 
@@ -2472,20 +2473,34 @@ class KafkaDeployer:
             )
             return False
 
-        # 空磁盘首次格式化用 --standalone；盘上已有元数据则用 --no-initial-controllers；多节点首批见 --initial-controllers
-        first_bootstrap = not (initial_controllers or "").strip() and existing_cid_meta is None
-
+        # kafka-storage format 模式（与 Apache Kafka StorageTool 一致）：
+        # - --standalone：仅用于「首台」初始化新集群（本脚本对应 --generate-cluster-id + 空盘）。
+        # - --no-initial-controllers：加入已有 Quorum（--cluster-id + 空盘，或盘上已有元数据幂等）。
+        # 错误地对每台空盘都用 --standalone 会导致多台各自成为单节点仲裁（CurrentVoters 仅 1 人）。
         config_preexisted = config_path.is_file()
         if not self._write_properties(config_path, props):
             return False
 
         format_args = ["format", "--cluster-id", cid_resolved, "-c", str(config_path)]
-        if initial_controllers:
-            format_args.extend(["--initial-controllers", initial_controllers])
-        elif first_bootstrap:
+        ic = (initial_controllers or "").strip()
+        if ic:
+            format_args.extend(["--initial-controllers", ic])
+            logger.info(
+                "kafka-storage format：--initial-controllers（多节点首批声明选民；见官方 StorageTool 说明）",
+                extra={"to_stdout": True},
+            )
+        elif existing_cid_meta is not None:
+            format_args.append("--no-initial-controllers")
+            logger.info("kafka-storage format：--no-initial-controllers（磁盘已有元数据 / 幂等）", extra={"to_stdout": True})
+        elif generate_cluster_id:
             format_args.append("--standalone")
+            logger.info("kafka-storage format：--standalone（新集群首台 controller）", extra={"to_stdout": True})
         else:
             format_args.append("--no-initial-controllers")
+            logger.info(
+                "kafka-storage format：--no-initial-controllers（加入已有 Quorum；请确保首台 controller 已启动且网络可达）",
+                extra={"to_stdout": True},
+            )
         format_args.append("--ignore-formatted")
 
         try:
@@ -4251,6 +4266,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
   多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
+【多节点 Controller 与 kafka-storage】首台 controller 须 --generate-cluster-id（format --standalone）；后续节点须相同 --cluster-id、新盘时 format 为 --no-initial-controllers 以加入 Quorum；首台须已成功启动后再部署下一台。若误对每台空盘均 format --standalone，describe 中 CurrentVoters 将始终只有本机 1 人。
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
   · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
@@ -4369,6 +4385,8 @@ def show_examples():
   【advertised 与 Apache Kafka 惯例】每台进程只配置**本机** advertised（`advertised.listeners`）：3 台 controller = 在 3 台机器上各执行一次部署，各带**本机** `--advertised-host`（如 ctrl1、ctrl2、ctrl3 或对应 IP），不是一条命令里写 3 个地址。
   公共配置串（所有节点上 controller.quorum.bootstrap.servers 一致，列出全部 Controller 的 host:port）:
     QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
+  【多节点 controller】首台用 --generate-cluster-id（kafka-storage 为 --standalone）；第 2 台起用同一 --cluster-id（kafka-storage 为 --no-initial-controllers 加入仲裁）。
+    须**先**完成首台部署且进程已监听，再部署下一台；若每台空盘都误用「首台格式化」会导致各自 CurrentVoters 仅 1 人。
 
   分步 A — 在 ctrl1 上初始化第一台 controller（得到 cluster-id，记下）:
    kafkacli --deploy controller --kafka-home /opt/kafka --advertised-host ctrl1 --node-id 1 \\
@@ -4594,7 +4612,8 @@ def main():
     g_dep.add_argument(
         "--generate-cluster-id",
         action="store_true",
-        help="由 kafka-storage 生成新的 cluster.id（与 --cluster-id、--use-disk-cluster-id 互斥；用于全新格式化）。",
+        help="由 kafka-storage 生成新的 cluster.id（与 --cluster-id、--use-disk-cluster-id 互斥）。"
+        " 多节点纯 controller 集群时：**仅首台**使用；后续台改用与首台相同的 --cluster-id（内部 format 分别为 --standalone / --no-initial-controllers）。",
     )
     g_dep.add_argument(
         "--use-disk-cluster-id",
