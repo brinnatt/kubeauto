@@ -33,7 +33,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
   · 多节点仅 controller：须 **--controller-scope cluster**；首台空盘**仅** `--generate-cluster-id`（禁止手填 --cluster-id），后续须同一 `--cluster-id`（首台输出）且 `--join-quorum`。单台 controller 用 **--controller-scope single**。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
   · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
-  · --deploy broker（Kafka 4.x）：脚本生成的 server-broker-*.properties 须含 controller.listener.names 与 listener.security.protocol.map（含 CONTROLLER:PLAINTEXT），以满足 kafka-storage format 加载的 KafkaConfig；默认 PLAINTEXT/SASL 模板由脚本补全。若完全自定义 --listeners 且非内置模板，须在 extra_properties 中自行给出与 Quorum 一致的映射。
+  · --deploy broker（Kafka 4.x）：**须显式 --broker-listen-host**（及可选 --broker-listen-port，默认 9092），用于生成 listeners 绑定地址（禁止仅 127.0.0.1）；与 --advertised-host 分工不同（宣告 vs 绑定）。脚本生成的 server-broker-*.properties 须含 controller.listener.names 与 listener.security.protocol.map（含 CONTROLLER:PLAINTEXT），以满足 kafka-storage format。若完全自定义 --listeners 且非内置模板，须在 extra_properties 中自行给出与 Quorum 一致的映射。
   · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
   · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
 
@@ -501,11 +501,13 @@ def _kraft_broker_sasl_ssl_listener_properties(
         username: str,
         password: str,
         ssl_stack: Dict[str, str],
+        listen_host: str,
+        listen_port: int,
 ) -> Dict[str, str]:
     """KRaft broker-only：SASL_SSL + PLAIN + ssl.*；含 controller.listener.names（Kafka 4.x kafka-storage）。"""
     adv_host = advertised_host.strip()
-    broker_port = DEFAULT_BROKER_PORT
-    ls = f"SASL_SSL://0.0.0.0:{broker_port}"
+    broker_port = listen_port
+    ls = f"SASL_SSL://{listen_host}:{broker_port}"
     jaas = _broker_plain_jaas(username, password)
     out: Dict[str, str] = {
         "listeners": ls,
@@ -571,6 +573,45 @@ def _cli_topic_missing(msg: str) -> bool:
         or "does not exist" in m
         or "not found" in m
     )
+
+
+def _validate_broker_listen_host_str(value: str) -> Optional[str]:
+    """
+    Broker 绑定地址（listeners 中的 host 段）：须显式给出；禁止仅回环或 localhost 以免集群不可达。
+    返回 None 表示合法；否则返回错误说明。
+    """
+    s = (value or "").strip()
+    if not s:
+        return "Broker 部署须指定 --broker-listen-host（或 JSON broker_listen_host），例如 0.0.0.0 或本机业务网 IP"
+    sl = s.lower()
+    if sl in ("127.0.0.1", "::1", "localhost"):
+        return (
+            "Broker --broker-listen-host 不能使用 127.0.0.1、::1 或 localhost（其它节点与客户端无法访问）；"
+            "请使用 0.0.0.0（全网卡）或本机对外 IP"
+        )
+    if s in ("0.0.0.0", "::"):
+        return None
+    if InputValidator.validate_hostname(s):
+        return None
+    try:
+        ipaddress.ip_address(s)
+        return None
+    except ValueError:
+        return f"Broker --broker-listen-host 格式无效: {s!r}"
+
+
+def _tcp_probe_host_for_broker(advertised_host: str, listen_host: str) -> str:
+    """
+    部署后在本机做 TCP 验收时使用的目标主机：优先 advertised_host（与客户端、跨机 --bootstrap-server 一致）；
+    listen 为 0.0.0.0/:: 时连 advertised；无有效 advertised 时回退到 listen_host 或 127.0.0.1。
+    """
+    adv = (advertised_host or "").strip()
+    lh = (listen_host or "").strip()
+    if adv and adv not in ("0.0.0.0", "::"):
+        return adv
+    if lh and lh not in ("0.0.0.0", "::"):
+        return lh
+    return "127.0.0.1"
 
 
 def _validate_advertised_host_str(value: str) -> Optional[str]:
@@ -789,11 +830,17 @@ def _kraft_combined_listener_properties(
     }
 
 
-def _kraft_broker_sasl_plain_listener_properties(advertised_host: str, username: str, password: str) -> Dict[str, str]:
+def _kraft_broker_sasl_plain_listener_properties(
+        advertised_host: str,
+        username: str,
+        password: str,
+        listen_host: str,
+        listen_port: int,
+) -> Dict[str, str]:
     """KRaft broker-only：对外 SASL_PLAINTEXT + PLAIN；含 controller.listener.names（Kafka 4.x kafka-storage）。"""
     adv_host = advertised_host.strip()
-    broker_port = DEFAULT_BROKER_PORT
-    ls = f"SASL_PLAINTEXT://0.0.0.0:{broker_port}"
+    broker_port = listen_port
+    ls = f"SASL_PLAINTEXT://{listen_host}:{broker_port}"
     jaas = _broker_plain_jaas(username, password)
     return {
         "listeners": ls,
@@ -807,15 +854,21 @@ def _kraft_broker_sasl_plain_listener_properties(advertised_host: str, username:
     }
 
 
-def _kraft_broker_listener_properties(advertised_host: str, listeners_override: Optional[str]) -> Dict[str, str]:
+def _kraft_broker_listener_properties(
+        advertised_host: str,
+        listeners_override: Optional[str],
+        listen_host: str,
+        listen_port: int,
+) -> Dict[str, str]:
     """
     KRaft broker-only：listeners 仅为 PLAINTEXT 且无 SSL/SASL 时补全 controller.listener.names、
     inter.broker.listener.name、listener.security.protocol.map（含 CONTROLLER:PLAINTEXT）、advertised.listeners；
     以满足 Kafka 4.x kafka-storage format。否则仅返回 listeners，由 extra_properties 提供完整映射与 controller.*。
+    listeners_override 非空时沿用其整行；否则使用 listen_host:listen_port 生成 PLAINTEXT。
     """
     adv_host = advertised_host.strip()
-    ls = (listeners_override or "").strip() or f"PLAINTEXT://0.0.0.0:{DEFAULT_BROKER_PORT}"
-    broker_port = DEFAULT_BROKER_PORT
+    ls = (listeners_override or "").strip() or f"PLAINTEXT://{listen_host}:{listen_port}"
+    broker_port = listen_port
     pm = re.search(r"PLAINTEXT://[^:]*:(\d+)", ls, re.I)
     if pm:
         broker_port = int(pm.group(1))
@@ -1321,7 +1374,7 @@ class ConfigGenerator:
     生成 server.properties 键值对（KRaft combined / controller / broker）。
 
     extra_properties 合并并覆盖同名字段；SSL/SASL 时须在 extra_properties 中给出完整 listener.security.protocol.map。
-    Kafka 4.x：`--deploy broker` 的 kafka-storage format 需要配置中含 controller.listener.names；broker-only 模板由 _kraft_broker_* 与 controller 模板一并维护。
+    Kafka 4.x：`--deploy broker` 的 kafka-storage format 需要配置中含 controller.listener.names；broker-only 模板由 _kraft_broker_* 与 controller 模板一并维护；broker 须显式 broker_listen_host / broker_listen_port（或由 --listeners 完全自定义）。
     """
 
     @staticmethod
@@ -1399,6 +1452,8 @@ class ConfigGenerator:
             advertised_host: str,
             sasl_username: str,
             sasl_password: str,
+            broker_listen_host: str,
+            broker_listen_port: int = DEFAULT_BROKER_PORT,
             extra_properties: Optional[Dict[str, str]] = None,
     ) -> Dict[str, str]:
         """KRaft broker-only，对外 SASL_PLAINTEXT + PLAIN（含 Kafka 4.x 所需的 controller.listener.names）。"""
@@ -1407,7 +1462,9 @@ class ConfigGenerator:
             "node.id": str(node_id),
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "log.dirs": log_dirs,
-            **_kraft_broker_sasl_plain_listener_properties(advertised_host, sasl_username, sasl_password),
+            **_kraft_broker_sasl_plain_listener_properties(
+                advertised_host, sasl_username, sasl_password, broker_listen_host, broker_listen_port
+            ),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -1426,6 +1483,8 @@ class ConfigGenerator:
             key_password: str,
             truststore_path: str,
             truststore_password: str,
+            broker_listen_host: str,
+            broker_listen_port: int = DEFAULT_BROKER_PORT,
             extra_properties: Optional[Dict[str, str]] = None,
     ) -> Dict[str, str]:
         """KRaft broker-only：SASL_SSL + PLAIN + ssl.*（含 Kafka 4.x 所需的 controller.listener.names）。"""
@@ -1437,7 +1496,9 @@ class ConfigGenerator:
             "node.id": str(node_id),
             "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
             "log.dirs": log_dirs,
-            **_kraft_broker_sasl_ssl_listener_properties(advertised_host, sasl_username, sasl_password, ssl_stack),
+            **_kraft_broker_sasl_ssl_listener_properties(
+                advertised_host, sasl_username, sasl_password, ssl_stack, broker_listen_host, broker_listen_port
+            ),
         }
         if extra_properties:
             props.update(extra_properties)
@@ -2657,6 +2718,8 @@ class KafkaDeployer:
             controller_quorum_bootstrap_servers: str,
             log_dirs: str,
             advertised_host: str,
+            broker_listen_host: str,
+            broker_listen_port: int = DEFAULT_BROKER_PORT,
             listeners: Optional[str] = None,
             cluster_id: Optional[str] = None,
             java_home: Optional[str] = None,
@@ -2670,6 +2733,7 @@ class KafkaDeployer:
         """
         部署 KRaft Broker 节点（Kafka 4.x）。format --no-initial-controllers，process.roles=broker。
         可重复执行（幂等）：已存在 server-broker-<id>.properties 时覆盖并 restart。
+        broker_listen_host / broker_listen_port：生成 listeners 绑定（须显式；禁止仅回环），与 advertised_host 分工不同。
         默认 PLAINTEXT / 内置 SASL 模板时自动补全 controller.listener.names、inter.broker.listener.name、
         listener.security.protocol.map、advertised.listeners（Kafka 4.x 的 kafka-storage format 需要 controller.listener.names）；
         完全自定义 --listeners 且非 PLAINTEXT 简单场景时须在 extra_properties 中自行给出与 Quorum 一致的映射。
@@ -2710,6 +2774,18 @@ class KafkaDeployer:
             logger.error(err_aud, extra={"to_stdout": True})
             return False
 
+        blh = (broker_listen_host or "").strip()
+        err_blh = _validate_broker_listen_host_str(blh)
+        if err_blh:
+            logger.error(err_blh, extra={"to_stdout": True})
+            return False
+        if not InputValidator.validate_port(broker_listen_port):
+            logger.error(
+                "无效的 --broker-listen-port（须为 1～65535 的整数）",
+                extra={"to_stdout": True},
+            )
+            return False
+
         config_path = self.config_dir / f"server-broker-{node_id}.properties"
         if config_path.exists():
             logger.info(
@@ -2748,6 +2824,8 @@ class KafkaDeployer:
                 keypw,
                 ts,
                 tspw,
+                broker_listen_host=blh,
+                broker_listen_port=broker_listen_port,
                 extra_properties=extra_properties,
             )
         elif enable_sasl_plain:
@@ -2774,6 +2852,8 @@ class KafkaDeployer:
                 advertised_host,
                 sasl_username.strip(),
                 sasl_password,
+                broker_listen_host=blh,
+                broker_listen_port=broker_listen_port,
                 extra_properties=extra_properties,
             )
         else:
@@ -2782,7 +2862,7 @@ class KafkaDeployer:
                 "node.id": str(node_id),
                 "controller.quorum.bootstrap.servers": controller_quorum_bootstrap_servers,
                 "log.dirs": log_dirs,
-                **_kraft_broker_listener_properties(advertised_host, listeners),
+                **_kraft_broker_listener_properties(advertised_host, listeners, blh, broker_listen_port),
             }
             if extra_properties:
                 props.update(extra_properties)
@@ -2839,8 +2919,9 @@ class KafkaDeployer:
             else:
                 bport = _listener_scheme_port(ls, "PLAINTEXT", DEFAULT_BROKER_PORT)
                 label = "Broker（PLAINTEXT）"
+            probe_host = _tcp_probe_host_for_broker(advertised_host, blh)
             if not self._wait_for_tcp_listening(
-                    "127.0.0.1",
+                    probe_host,
                     bport,
                     label,
                     systemd_unit=f"{self.SERVICE_NAME_BROKER}-{node_id}",
@@ -4521,7 +4602,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
 【多节点 Controller 与 kafka-storage】部署 controller 须**必选** `--controller-scope single|cluster`（或 JSON controller_scope）。**cluster**：首台空盘**仅** `--generate-cluster-id`（禁止手填 cluster.id）；第 2 台起须**同一** `--cluster-id`（首台输出）且 `--join-quorum`（format --no-initial-controllers）。**single**：单台 controller，空盘可用 `--generate-cluster-id` 或 `--cluster-id`。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
-【Broker 与 kafka-storage（Kafka 4.x）】`--deploy broker` 时 `kafka-storage format` 会加载完整 KafkaConfig；须声明 **controller.listener.names**（脚本默认写 `CONTROLLER`）及 **listener.security.protocol.map**（须含 `CONTROLLER:PLAINTEXT` 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
+【Broker 与 kafka-storage（Kafka 4.x）】`--deploy broker` 时须**显式** `--broker-listen-host`（及可选 `--broker-listen-port`，默认 9092），用于生成 listeners 绑定；禁止仅回环。`kafka-storage format` 会加载完整 KafkaConfig；须声明 **controller.listener.names**（脚本默认写 `CONTROLLER`）及 **listener.security.protocol.map**（须含 `CONTROLLER:PLAINTEXT` 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
   · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
@@ -4630,6 +4711,7 @@ def show_examples():
 
   在主机 broker1 上部署 Broker（须先保证 Controller 仲裁已可用；--node-id 须与集群内已有 id 不重复，下例假定用 4）:
    kafkacli --target-host broker1 --deploy broker --kafka-home /opt/kafka --advertised-host broker1 \\
+     --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
      --node-id 4 --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
   说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
@@ -4664,8 +4746,10 @@ def show_examples():
      --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
 
-  分步 C — 在每台 broker 机器上部署 broker（cluster-id 与仲裁一致；--advertised-host 填本机）:
-   kafkacli --deploy broker --kafka-home /opt/kafka --advertised-host broker1 --node-id 4 --cluster-id <CLUSTER_ID> \\
+  分步 C — 在每台 broker 机器上部署 broker（cluster-id 与仲裁一致；--advertised-host 填本机；--broker-listen-host 填绑定地址）:
+   kafkacli --deploy broker --kafka-home /opt/kafka --advertised-host broker1 \\
+     --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
+     --node-id 4 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
    # 第二台 broker 改用 --node-id 5（示例）；Kafka 4.x 下脚本生成 server-broker-*.properties 含 controller.listener.names，供 kafka-storage format
    # 完全自定义 --listeners 时须在 JSON extra_properties 中补全与 Quorum 一致的 listener.security.protocol.map
@@ -4693,6 +4777,7 @@ def show_examples():
   #     "generate_cluster_id": true,
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" },
   #   { "target_host": "broker1", "deploy": "broker", "node_id": 4, "advertised_host": "broker1",
+  #     "broker_listen_host": "0.0.0.0", "broker_listen_port": 9092,
   #     "log_dirs": "/var/kafka/logs", "cluster_id": "<CLUSTER_ID>",
   #     "controller_quorum_bootstrap_servers": "ctrl1:9093,ctrl2:9093,ctrl3:9093" }
   # ]}
@@ -4754,7 +4839,7 @@ def show_examples():
 ------------------------------------------------------------------------
   [ ] 各节点已安装兼容版本 Java，--kafka-home 路径正确，数据目录权限与磁盘空间满足要求
   [ ] 网络与安全组放行业务端口与 Controller 端口，各节点之间按规划互通
-  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；各节点 --advertised-host 为本机对外可达名或 IP；broker 的 --cluster-id 与集群一致
+  [ ] --controller-quorum-bootstrap-servers 与实际监听地址、端口一致；各节点 --advertised-host 为本机对外可达名或 IP；broker 另须 --broker-listen-host（绑定）与 --cluster-id 与集群一致
   [ ] 各节点的 --node-id 已在整集群范围内核对，无与其它 controller 或 broker 重复
   [ ] 跨不可信网络时优先采用 TLS（如 SASL_SSL），避免长期使用未加密的 SASL_PLAINTEXT
   [ ] 部署后执行 --status 或 --metrics；承载业务前创建 topic，并确认 min.insync.replicas 等策略
@@ -4837,7 +4922,8 @@ def main():
         " --deploy controller 时**必须**指定 --controller-scope single|cluster（生产约束：cluster=首台仅 --generate-cluster-id，后续 --cluster-id + --join-quorum）。"
         " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
         " 多节点时 --node-id 对应 node.id，须在全集群（全部 controller 与 broker）内唯一。"
-        " 须显式 --advertised-host（或 JSON advertised_host），与 Apache Kafka advertised.listeners 语义一致。"
+        " 须显式 --advertised-host（或 JSON advertised_host），与 Apache Kafka advertised.listeners 语义一致；"
+        " --deploy broker 时须同时显式 --broker-listen-host（listeners 绑定，禁止 127.0.0.1）及端口（--broker-listen-port 或 JSON broker_listen_port，缺省 9092）。"
         " 写入配置前会做数据目录 meta.properties 中 cluster.id 跨路径一致性检查；失败回滚见【部署前置与失败回滚】。"
         " 与 --deploy-sasl-plain / --deploy-sasl-ssl 见「连接与认证」分组。",
     )
@@ -4915,6 +5001,20 @@ def main():
         type=int,
         default=DEFAULT_CONTROLLER_PORT,
         help="本机 Controller 监听端口（CONTROLLER 协议），多机时须与 listeners 规划一致。",
+    )
+    g_dep.add_argument(
+        "--broker-listen-host",
+        metavar="HOST",
+        default=None,
+        help="仅 --deploy broker：**必填**（或 JSON broker_listen_host）。Broker 业务监听绑定地址（listeners 中的 host）；"
+        " 常用 0.0.0.0 或本机网卡 IP；禁止 127.0.0.1/localhost（与 --advertised-host 分工不同）。",
+    )
+    g_dep.add_argument(
+        "--broker-listen-port",
+        type=int,
+        default=None,
+        metavar="PORT",
+        help="仅 --deploy broker：本机 Broker 业务监听端口；未指定且 JSON 无 broker_listen_port 时默认 9092。",
     )
     g_dep.add_argument(
         "--listeners",
@@ -5525,6 +5625,9 @@ def main():
         logger.error(err_ah, extra={"to_stdout": True})
         sys.exit(EXIT_ERROR)
 
+    br_listen_host: Optional[str] = None
+    br_listen_port = DEFAULT_BROKER_PORT
+
     def _cid_mode_triple() -> Tuple[Optional[str], bool, bool]:
         cid_arg = args.cluster_id if getattr(args, "cluster_id", None) not in (None, "") else None
         if cid_arg is None:
@@ -5666,11 +5769,40 @@ def main():
         if err_cid_br:
             logger.error(err_cid_br, extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
+        blh_m = (getattr(args, "broker_listen_host", None) or config.get("broker_listen_host") or "").strip()
+        if not blh_m:
+            logger.error(
+                "Broker 部署须指定 --broker-listen-host（或 JSON broker_listen_host），例如 0.0.0.0 或本机业务网 IP",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
+        err_blh_m = _validate_broker_listen_host_str(blh_m)
+        if err_blh_m:
+            logger.error(err_blh_m, extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        blp_raw = getattr(args, "broker_listen_port", None)
+        if blp_raw is None:
+            blp_raw = config.get("broker_listen_port")
+        if blp_raw is None:
+            blp_m = DEFAULT_BROKER_PORT
+        else:
+            try:
+                blp_m = int(blp_raw)
+            except (TypeError, ValueError):
+                logger.error("--broker-listen-port 须为整数", extra={"to_stdout": True})
+                sys.exit(EXIT_ERROR)
+        if not InputValidator.validate_port(blp_m):
+            logger.error("无效的 --broker-listen-port（须为 1～65535）", extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
+        br_listen_host = blh_m
+        br_listen_port = blp_m
         success = deployer.deploy_broker(
             node_id=node_id,
             controller_quorum_bootstrap_servers=quorum,
             log_dirs=log_dirs,
             advertised_host=adv_host_deploy,
+            broker_listen_host=blh_m,
+            broker_listen_port=blp_m,
             listeners=None if need_sasl_creds else (args.listeners or config.get("listeners")),
             cluster_id=cluster_id,
             java_home=java_home,
@@ -5711,7 +5843,11 @@ def main():
                 sys.exit(EXIT_ERROR)
         elif args.verify and deploy_type in ("standalone", "broker"):
             time.sleep(2)
-            if not deployer.verify_broker_started():
+            if deploy_type == "broker" and br_listen_host:
+                vb = _tcp_probe_host_for_broker(adv_host_deploy, br_listen_host)
+                if not deployer.verify_broker_started(vb, br_listen_port):
+                    sys.exit(EXIT_ERROR)
+            elif not deployer.verify_broker_started():
                 sys.exit(EXIT_ERROR)
             bs = args.bootstrap_server or config.get("bootstrap_server")
             if not bs:
