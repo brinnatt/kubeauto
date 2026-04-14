@@ -31,6 +31,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
 部署前置与失败回滚（与 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】、deploy_* 实现一致）：
   · 写入生成配置前：对本次涉及的 metadata.log.dir 与 log.dirs 各根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署。
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
+  · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
   · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
   · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
 
@@ -2225,12 +2226,12 @@ class KafkaDeployer:
         if not self._write_properties(config_path, props):
             return False
 
-        # 3) kafka-storage.sh format --standalone（已格式化目录须加 --ignore-formatted，否则 4.x 直接失败）
+        # 3) kafka-storage.sh format --standalone（KRaft 单节点 combined；与 controller/broker 一致使用 --cluster-id 长选项）
         try:
             self._run_storage_cmd([
                 "format",
                 "--standalone",
-                "-t", cluster_id,
+                "--cluster-id", cluster_id,
                 "--ignore-formatted",
                 "-c", str(config_path)
             ])
@@ -4266,7 +4267,8 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
   多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
-【多节点 Controller 与 kafka-storage】首台 controller 须 --generate-cluster-id（format --standalone）；后续节点须相同 --cluster-id、新盘时 format 为 --no-initial-controllers 以加入 Quorum；首台须已成功启动后再部署下一台。若误对每台空盘均 format --standalone，describe 中 CurrentVoters 将始终只有本机 1 人。
+【多节点 Controller 与 kafka-storage】多机仅 controller 时：首台须 --generate-cluster-id，且 kafka-storage 对该台使用 **format --standalone**（初始化仲裁种子）；第 2 台起须相同 --cluster-id，新盘使用 **--no-initial-controllers** 加入 Quorum；首台须已成功启动后再部署下一台。若误对每台空盘均 format --standalone，describe 中 CurrentVoters 将只有本机 1 人。
+  （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
   · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
@@ -4275,8 +4277,10 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【清理与幂等】
   · --deploy：可重复执行；含上述前置检查；覆盖生成配置、kafka-storage format（--ignore-formatted）、chown、systemctl restart。
   · --topic-create / --topic-delete：对已存在/已缺失按工具输出做幂等处理（见 Topic 分组说明）。
+  · --status / --metrics 系列：只读，天然可重复。
   · --clean：卸载（删 unit 与生成配置），非部署；抹数据须 --clean-data 或与 --clean/--clean-first 联用 --force。
   · --force：单独部署一般不需要；主要用于与 --clean / --clean-first 联用时删除磁盘数据。
+【Quorum 运维】--quorum-add-controller 须显式提供 --bootstrap-controller 和/或 --bootstrap-server；脚本不默认 localhost:9092（避免误用 Broker 端口连接元数据工具）。
 """
 
 
@@ -4449,6 +4453,8 @@ def show_examples():
    kafkacli --status --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics --kafka-home /opt/kafka --bootstrap-server broker1:9092
    kafkacli --metrics-json --kafka-home /opt/kafka --bootstrap-server broker1:9092
+  动态添加 controller（kafka-metadata-quorum add-controller；须显式 --bootstrap-controller 或 --bootstrap-server，无默认）:
+   kafkacli --quorum-add-controller --kafka-home /opt/kafka --bootstrap-controller ctrl1:9093
 
 ------------------------------------------------------------------------
 §7 Topic / Consumer Group
@@ -4491,7 +4497,8 @@ def show_examples():
 快速索引（与选项表对照）
 ------------------------------------------------------------------------
   部署+清理   → --deploy / --clean / --clean-first / --clean-data / --kafka-home / --verify
-  验收与指标 → --status / --metrics / --bootstrap-server
+  验收与指标 → --status / --metrics / --bootstrap-server / --bootstrap-controller
+  Quorum 动态 → --quorum-add-controller（须显式 bootstrap，见 §6）
   认证       → --command-config / --kafka-user / --deploy-sasl-plain / --deploy-sasl-ssl
   Topic/Group→ --topic-* / --group-* / --consumer-group
   远程与批量 → 单机用 --target-host；多机用 --batch + JSON（串行顺序见 §5 与 --batch 说明）
@@ -4818,7 +4825,12 @@ def main():
     g_cf.add_argument("--config-entity-name", metavar="NAME", help="describe broker 时的实体名（如数字 broker id）。")
 
     g_q = parser.add_argument_group("KRaft Quorum", "须 --kafka-home。")
-    g_q.add_argument("--quorum-add-controller", action="store_true", help="向现有 Quorum 动态添加 controller 节点。")
+    g_q.add_argument(
+        "--quorum-add-controller",
+        action="store_true",
+        help="向现有 Quorum 动态添加 controller（kafka-metadata-quorum add-controller）。"
+        " 须指定 --bootstrap-controller 和/或 --bootstrap-server；无默认地址。",
+    )
 
     g_br = parser.add_argument_group(
         "Broker 下线与副本迁移（kafka-reassign-partitions.sh）",
@@ -5057,7 +5069,24 @@ def main():
 
     if getattr(args, "quorum_add_controller", False):
         _require(kafka_home, "--quorum-add-controller 需指定 --kafka-home")
-        qm = KafkaQuorumManager(kafka_home, bootstrap_server=bootstrap, command_config=cmd_config)
+        bc_q = (args.bootstrap_controller or config.get("bootstrap_controller") or "").strip() or None
+        bs_arg = getattr(args, "bootstrap_server", None)
+        bs_q = (str(bs_arg).strip() if bs_arg not in (None, "") else "") or None
+        if not bs_q:
+            bs_q = (config.get("bootstrap_server") or "").strip() or None
+        if not bc_q and not bs_q:
+            logger.error(
+                "--quorum-add-controller 须显式指定 --bootstrap-controller（元数据仲裁，常见 :9093）"
+                " 或 --bootstrap-server；不会使用默认 localhost:9092（易误连 Broker 口）。",
+                extra={"to_stdout": True},
+            )
+            sys.exit(EXIT_ERROR)
+        qm = KafkaQuorumManager(
+            kafka_home,
+            bootstrap_server=bs_q,
+            bootstrap_controller=bc_q,
+            command_config=cmd_config,
+        )
         sys.exit(EXIT_OK if qm.add_controller() else EXIT_ERROR)
 
     if getattr(args, "broker_decommission_generate", False):
