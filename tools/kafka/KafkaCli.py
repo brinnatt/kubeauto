@@ -33,6 +33,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
   · 多节点仅 controller：须 **--controller-scope cluster**；首台空盘**仅** `--generate-cluster-id`（禁止手填 --cluster-id），后续须同一 `--cluster-id`（首台输出）且 `--join-quorum`。单台 controller 用 **--controller-scope single**。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
   · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
+  · --deploy broker（Kafka 4.x）：脚本生成的 server-broker-*.properties 须含 controller.listener.names 与 listener.security.protocol.map（含 CONTROLLER:PLAINTEXT），以满足 kafka-storage format 加载的 KafkaConfig；默认 PLAINTEXT/SASL 模板由脚本补全。若完全自定义 --listeners 且非内置模板，须在 extra_properties 中自行给出与 Quorum 一致的映射。
   · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
   · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
 
@@ -501,7 +502,7 @@ def _kraft_broker_sasl_ssl_listener_properties(
         password: str,
         ssl_stack: Dict[str, str],
 ) -> Dict[str, str]:
-    """KRaft broker-only：SASL_SSL + PLAIN + ssl.*。"""
+    """KRaft broker-only：SASL_SSL + PLAIN + ssl.*；含 controller.listener.names（Kafka 4.x kafka-storage）。"""
     adv_host = advertised_host.strip()
     broker_port = DEFAULT_BROKER_PORT
     ls = f"SASL_SSL://0.0.0.0:{broker_port}"
@@ -509,8 +510,9 @@ def _kraft_broker_sasl_ssl_listener_properties(
     out: Dict[str, str] = {
         "listeners": ls,
         "advertised.listeners": f"SASL_SSL://{adv_host}:{broker_port}",
+        "controller.listener.names": "CONTROLLER",
         "inter.broker.listener.name": "SASL_SSL",
-        "listener.security.protocol.map": "SASL_SSL:SASL_SSL",
+        "listener.security.protocol.map": "CONTROLLER:PLAINTEXT,SASL_SSL:SASL_SSL",
         "sasl.enabled.mechanisms": "PLAIN",
         "sasl.mechanism.inter.broker.protocol": "PLAIN",
         "listener.name.sasl_ssl.plain.sasl.jaas.config": jaas,
@@ -788,7 +790,7 @@ def _kraft_combined_listener_properties(
 
 
 def _kraft_broker_sasl_plain_listener_properties(advertised_host: str, username: str, password: str) -> Dict[str, str]:
-    """KRaft broker-only：对外 SASL_PLAINTEXT + PLAIN（与 combined SASL 中 broker 侧一致）。"""
+    """KRaft broker-only：对外 SASL_PLAINTEXT + PLAIN；含 controller.listener.names（Kafka 4.x kafka-storage）。"""
     adv_host = advertised_host.strip()
     broker_port = DEFAULT_BROKER_PORT
     ls = f"SASL_PLAINTEXT://0.0.0.0:{broker_port}"
@@ -796,8 +798,9 @@ def _kraft_broker_sasl_plain_listener_properties(advertised_host: str, username:
     return {
         "listeners": ls,
         "advertised.listeners": f"SASL_PLAINTEXT://{adv_host}:{broker_port}",
+        "controller.listener.names": "CONTROLLER",
         "inter.broker.listener.name": "SASL_PLAINTEXT",
-        "listener.security.protocol.map": "SASL_PLAINTEXT:SASL_PLAINTEXT",
+        "listener.security.protocol.map": "CONTROLLER:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT",
         "sasl.enabled.mechanisms": "PLAIN",
         "sasl.mechanism.inter.broker.protocol": "PLAIN",
         "listener.name.sasl_plaintext.plain.sasl.jaas.config": jaas,
@@ -806,8 +809,9 @@ def _kraft_broker_sasl_plain_listener_properties(advertised_host: str, username:
 
 def _kraft_broker_listener_properties(advertised_host: str, listeners_override: Optional[str]) -> Dict[str, str]:
     """
-    KRaft broker-only：listeners 仅为 PLAINTEXT 且无 SSL/SASL 时补全 inter.broker.listener.name、
-    listener.security.protocol.map、advertised.listeners；否则仅返回 listeners，由 extra_properties 提供完整映射。
+    KRaft broker-only：listeners 仅为 PLAINTEXT 且无 SSL/SASL 时补全 controller.listener.names、
+    inter.broker.listener.name、listener.security.protocol.map（含 CONTROLLER:PLAINTEXT）、advertised.listeners；
+    以满足 Kafka 4.x kafka-storage format。否则仅返回 listeners，由 extra_properties 提供完整映射与 controller.*。
     """
     adv_host = advertised_host.strip()
     ls = (listeners_override or "").strip() or f"PLAINTEXT://0.0.0.0:{DEFAULT_BROKER_PORT}"
@@ -822,7 +826,9 @@ def _kraft_broker_listener_properties(advertised_host: str, listeners_override: 
         and "SASL" not in ls.upper()
     ):
         out["inter.broker.listener.name"] = "PLAINTEXT"
-        out["listener.security.protocol.map"] = "PLAINTEXT:PLAINTEXT"
+        # Kafka 4.x：kafka-storage format / KafkaConfig 要求声明 controller 监听逻辑名（与远程 Quorum 的 CONTROLLER 协议一致；broker 进程本地可不监听 CONTROLLER）
+        out["controller.listener.names"] = "CONTROLLER"
+        out["listener.security.protocol.map"] = "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
         out["advertised.listeners"] = f"PLAINTEXT://{adv_host}:{broker_port}"
     return out
 
@@ -1315,6 +1321,7 @@ class ConfigGenerator:
     生成 server.properties 键值对（KRaft combined / controller / broker）。
 
     extra_properties 合并并覆盖同名字段；SSL/SASL 时须在 extra_properties 中给出完整 listener.security.protocol.map。
+    Kafka 4.x：`--deploy broker` 的 kafka-storage format 需要配置中含 controller.listener.names；broker-only 模板由 _kraft_broker_* 与 controller 模板一并维护。
     """
 
     @staticmethod
@@ -1394,7 +1401,7 @@ class ConfigGenerator:
             sasl_password: str,
             extra_properties: Optional[Dict[str, str]] = None,
     ) -> Dict[str, str]:
-        """KRaft broker-only，对外 SASL_PLAINTEXT + PLAIN。"""
+        """KRaft broker-only，对外 SASL_PLAINTEXT + PLAIN（含 Kafka 4.x 所需的 controller.listener.names）。"""
         props: Dict[str, str] = {
             "process.roles": "broker",
             "node.id": str(node_id),
@@ -1421,7 +1428,7 @@ class ConfigGenerator:
             truststore_password: str,
             extra_properties: Optional[Dict[str, str]] = None,
     ) -> Dict[str, str]:
-        """KRaft broker-only：SASL_SSL + PLAIN + ssl.*。"""
+        """KRaft broker-only：SASL_SSL + PLAIN + ssl.*（含 Kafka 4.x 所需的 controller.listener.names）。"""
         ssl_stack = _ssl_stack_properties(
             keystore_path, keystore_password, key_password, truststore_path, truststore_password
         )
@@ -2663,8 +2670,9 @@ class KafkaDeployer:
         """
         部署 KRaft Broker 节点（Kafka 4.x）。format --no-initial-controllers，process.roles=broker。
         可重复执行（幂等）：已存在 server-broker-<id>.properties 时覆盖并 restart。
-        默认 PLAINTEXT 监听器时自动补全 inter.broker.listener.name、listener.security.protocol.map、
-        advertised.listeners（须传入 advertised_host）；SSL/SASL 时在 extra_properties 中给出完整 listener 与协议映射。
+        默认 PLAINTEXT / 内置 SASL 模板时自动补全 controller.listener.names、inter.broker.listener.name、
+        listener.security.protocol.map、advertised.listeners（Kafka 4.x 的 kafka-storage format 需要 controller.listener.names）；
+        完全自定义 --listeners 且非 PLAINTEXT 简单场景时须在 extra_properties 中自行给出与 Quorum 一致的映射。
         enable_sasl_plain / sasl_ssl_material：对外 SASL_PLAINTEXT 或 SASL_SSL+PLAIN，并写入 kafkacli.client.properties。
 
         node.id 须与本集群内全部 controller 及其它 broker 的编号互不重复（全局唯一）。
@@ -4513,6 +4521,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
 【多节点 Controller 与 kafka-storage】部署 controller 须**必选** `--controller-scope single|cluster`（或 JSON controller_scope）。**cluster**：首台空盘**仅** `--generate-cluster-id`（禁止手填 cluster.id）；第 2 台起须**同一** `--cluster-id`（首台输出）且 `--join-quorum`（format --no-initial-controllers）。**single**：单台 controller，空盘可用 `--generate-cluster-id` 或 `--cluster-id`。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
+【Broker 与 kafka-storage（Kafka 4.x）】`--deploy broker` 时 `kafka-storage format` 会加载完整 KafkaConfig；须声明 **controller.listener.names**（脚本默认写 `CONTROLLER`）及 **listener.security.protocol.map**（须含 `CONTROLLER:PLAINTEXT` 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
   · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
@@ -4624,6 +4633,7 @@ def show_examples():
      --node-id 4 --controller-quorum-bootstrap-servers "ctrl1:9093,ctrl2:9093,ctrl3:9093" \\
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
   说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
+  （Kafka 4.x：脚本为 broker 生成配置时写入 controller.listener.names 等，以满足 kafka-storage format；勿手工删改生成文件中的该项。）
   除部署外，任意子命令（如 --clean、--status、--broker-decommission-*、--topic-*）只要带上 --target-host 且目标非本机，均会在**目标机**执行与本地相同的完整命令行；须保证目标机可解析 --kafka-home（及 --config 若使用）。
 
 ------------------------------------------------------------------------
@@ -4654,12 +4664,13 @@ def show_examples():
      --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
 
-  分步 C — 在每台 broker 机器上部署 broker（cluster-id 同上；--advertised-host 填本机 broker 对外名或 IP）:
+  分步 C — 在每台 broker 机器上部署 broker（cluster-id 与仲裁一致；--advertised-host 填本机）:
    kafkacli --deploy broker --kafka-home /opt/kafka --advertised-host broker1 --node-id 4 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
-   # 第二台 broker 机器上改用 --node-id 5（示例）
+   # 第二台 broker 改用 --node-id 5（示例）；Kafka 4.x 下脚本生成 server-broker-*.properties 含 controller.listener.names，供 kafka-storage format
+   # 完全自定义 --listeners 时须在 JSON extra_properties 中补全与 Quorum 一致的 listener.security.protocol.map
 
-  若 Controller 与 Broker 对外要 SASL，可在各自命令上加 --deploy-sasl-plain 与账号（Quorum 口仍为 PLAINTEXT 的常见布局见脚本说明）。
+  若 Controller 与 Broker 对外要 SASL，可在各自命令上加 --deploy-sasl-plain 与账号（脚本为 broker 模板补全 controller.listener.names 与 map）。
 
 ------------------------------------------------------------------------
 §5 批量多机（--batch）：从 JSON 读取 nodes，按顺序串行 SSH
@@ -4834,7 +4845,8 @@ def main():
         "--deploy",
         choices=["standalone", "controller", "broker"],
         metavar="{standalone,controller,broker}",
-        help="要部署的角色：standalone 单机 combined；controller 仅元数据控制器；broker 仅数据节点（须已有 Quorum）。",
+        help="要部署的角色：standalone 单机 combined；controller 仅元数据控制器（须 --controller-scope）；"
+        " broker 仅数据节点（须已有 Quorum；Kafka 4.x 生成配置含 controller.listener.names 以满足 kafka-storage）。",
     )
     g_dep.add_argument(
         "--kafka-home",
@@ -4907,7 +4919,8 @@ def main():
     g_dep.add_argument(
         "--listeners",
         metavar="STR",
-        help="自定义 listeners 行；未使用 SASL 自动化部署时可设。standalone 未含 CONTROLLER 时脚本会追加。",
+        help="自定义 listeners 行；未使用 SASL 自动化部署时可设。standalone 未含 CONTROLLER 时脚本会追加。"
+        " --deploy broker 且非脚本默认 PLAINTEXT 简单模板时，须在 extra_properties（或 JSON）中补全 controller.listener.names、listener.security.protocol.map（Kafka 4.x kafka-storage 需要）。",
     )
     g_dep.add_argument(
         "--initial-controllers",
