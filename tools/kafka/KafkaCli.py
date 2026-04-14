@@ -3335,7 +3335,7 @@ class KafkaDeployer:
                     command_config,
                 )
                 print("  正在调用 kafka-metadata-quorum describe --replication …", flush=True)
-                r = qm._quorum_cmd(
+                r = qm.run_metadata_quorum(
                     ["describe", "--replication"],
                     timeout_sec=_kafka_cli_timeout_sec(120),
                 )
@@ -3369,8 +3369,6 @@ class KafkaDeployer:
         print("\n[5] 规模概览")
         if controller_only:
             print("  Topic / Consumer Group: N/A（跳过，需 Broker bootstrap）")
-            ti = {"ok": True, "topic_count": 0}
-            gi = {"ok": True, "group_count": 0}
         else:
             ti = coll.collect_topic_count()
             gi = coll.collect_consumer_group_count()
@@ -3386,7 +3384,6 @@ class KafkaDeployer:
         # [6] Lag 汇总
         print("\n[6] Consumer Lag 汇总（--all-groups --describe）")
         if controller_only:
-            lag = {"ok": True, "total_lag": 0, "groups": [], "empty_groups": True}
             print("  状态: N/A（跳过，需 Broker bootstrap）")
         else:
             lag = coll.collect_consumer_lag()
@@ -3620,7 +3617,7 @@ class KafkaConsumerGroupManager:
 class KafkaQuorumManager:
     """
     KRaft 元数据 Quorum 运维（add-controller、remove-controller、describe）。
-    需提供 bootstrap_server 或 bootstrap_controller 之一，否则 _quorum_cmd 将缺少连接参数。
+    需提供 bootstrap_server 或 bootstrap_controller 之一，否则 run_metadata_quorum 将缺少连接参数。
     二者均支持逗号分隔多地址（与 kafka-metadata-quorum.sh 一致）；校验见 _validate_bootstrap_server。
     """
 
@@ -3631,7 +3628,7 @@ class KafkaQuorumManager:
         self.bootstrap_controller = bootstrap_controller
         self.command_config = command_config
 
-    def _quorum_cmd(
+    def run_metadata_quorum(
             self,
             args: List[str],
             *,
@@ -3668,7 +3665,7 @@ class KafkaQuorumManager:
     def add_controller(self) -> bool:
         """kafka-metadata-quorum.sh add-controller。"""
         try:
-            self._quorum_cmd(["add-controller"])
+            self.run_metadata_quorum(["add-controller"])
             logger.info("✓ 已提交 add-controller", extra={"to_stdout": True})
             return True
         except CommandExecutionError as e:
@@ -3678,7 +3675,7 @@ class KafkaQuorumManager:
     def remove_controller(self, controller_id: int, directory_id: str) -> bool:
         """动态移除 Controller（--controller-id --controller-directory-id）"""
         try:
-            self._quorum_cmd(["remove-controller", "--controller-id", str(controller_id),
+            self.run_metadata_quorum(["remove-controller", "--controller-id", str(controller_id),
                              "--controller-directory-id", directory_id])
             logger.info("✓ 已提交 remove-controller", extra={"to_stdout": True})
             return True
@@ -3689,7 +3686,7 @@ class KafkaQuorumManager:
     def describe_replication(self) -> Optional[str]:
         """describe --replication"""
         try:
-            r = self._quorum_cmd(["describe", "--replication"])
+            r = self.run_metadata_quorum(["describe", "--replication"])
             return r.stdout
         except CommandExecutionError as e:
             logger.error("describe quorum replication 失败: %s", e, extra={"to_stdout": True})
@@ -3805,7 +3802,7 @@ class KafkaMetricsCollector:
                 bc.strip() or None,
                 self.command_config,
             )
-            r = qm._quorum_cmd(["describe", "--status"], timeout_sec=to_sec)
+            r = qm.run_metadata_quorum(["describe", "--status"], timeout_sec=to_sec)
             if r.returncode != 0 or not (r.stdout or "").strip():
                 err = (r.stderr or r.stdout or "").strip()
                 raw = err[:4000] if err else f"exit {r.returncode}，无输出"
