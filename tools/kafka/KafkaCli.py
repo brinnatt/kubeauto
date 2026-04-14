@@ -32,10 +32,10 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
 部署前置与失败回滚（与 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】、deploy_* 实现一致）：
   · 写入生成配置前：对本次涉及的 metadata.log.dir 与 log.dirs 各根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署。
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
-  · 多节点仅 controller：须 **--controller-scope cluster**；首台空盘**仅** `--generate-cluster-id`（禁止手填 --cluster-id），后续须同一 `--cluster-id`（首台输出）且 `--join-quorum`。单台 controller 用 **--controller-scope single**。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
+  · 多节点仅 controller：须指定 --controller-scope cluster；首台空盘仅允许 --generate-cluster-id（禁止手填 --cluster-id），后续须同一 --cluster-id（首台输出）且 --join-quorum。单台 controller 用 --controller-scope single。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
   · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
-  · --deploy controller：**须显式 --controller-listen-host**（及可选 --controller-listen-port，默认 9093；JSON 兼容旧键 controller_port）用于 CONTROLLER 监听的绑定；与 --advertised-host 分工不同（宣告 vs 绑定）。
-  · --deploy broker（Kafka 4.x）：**须显式 --broker-listen-host**（及可选 --broker-listen-port，默认 9092），用于生成 listeners 绑定地址（禁止仅 127.0.0.1）；与 --advertised-host 分工不同（宣告 vs 绑定）。脚本生成的 server-broker-*.properties 须含 controller.listener.names 与 listener.security.protocol.map（含 CONTROLLER:PLAINTEXT），以满足 kafka-storage format。若完全自定义 --listeners 且非内置模板，须在 extra_properties 中自行给出与 Quorum 一致的映射。
+  · --deploy controller：须显式指定 --controller-listen-host（及可选 --controller-listen-port，默认 9093；JSON 兼容旧键 controller_port）用于 CONTROLLER 监听的绑定；与 --advertised-host 分工不同（宣告 vs 绑定）。
+  · --deploy broker（Kafka 4.x）：须显式指定 --broker-listen-host（及可选 --broker-listen-port，默认 9092），用于生成 listeners 绑定地址（禁止仅 127.0.0.1）；与 --advertised-host 分工不同（宣告 vs 绑定）。脚本生成的 server-broker-*.properties 须含 controller.listener.names 与 listener.security.protocol.map（含 CONTROLLER:PLAINTEXT），以满足 kafka-storage format。若完全自定义 --listeners 且非内置模板，须在 extra_properties 中自行给出与 Quorum 一致的映射。
   · kafka-storage format 失败：若本次运行前不存在该生成配置文件，则删除刚写入的该文件，避免残留配置与后续集群意图冲突；若文件本就存在（幂等覆盖），则保留并打警告。
   · format 已成功但 systemd 或监听探测失败：磁盘上可能已有元数据，须用 --clean / --clean-data 等按文档处理，脚本不自动删除数据目录。
 
@@ -722,7 +722,7 @@ def _status_hint_bootstrap_controller_kip919(error_text: str) -> Optional[str]:
         return None
     return (
         "提示: 常见原因是集群 MetadataVersion 不足以支持 KIP-919（AdminClient 经 --bootstrap-controller 直连 Controller）。"
-        " 多节点 controller 的**首台**若曾对**空盘**使用 kafka-storage format --no-initial-controllers（旧版脚本在「仅 --cluster-id」时误选此项），"
+        " 多节点 controller 的首台若曾对空盘使用 kafka-storage format --no-initial-controllers（旧版脚本在「仅 --cluster-id」时误选此项），"
         " 请停止服务、清空各节点 metadata.log.dir 等后按 --controller-scope cluster 重装：首台仅 --generate-cluster-id，后续 --cluster-id（首台输出）+ --join-quorum。"
     )
 
@@ -2517,7 +2517,7 @@ class KafkaDeployer:
 
         须由 main 传入 controller_scope（CONTROLLER_SCOPE_SINGLE | CONTROLLER_SCOPE_CLUSTER）并在命令行校验组合：
         - single：单节点 controller；空盘 format --standalone（--generate-cluster-id 或 --cluster-id）。
-        - cluster：多节点仲裁；首台空盘**仅** --generate-cluster-id（或磁盘幂等）；后续须 --cluster-id + --join-quorum。
+        - cluster：多节点仲裁；首台空盘仅允许 --generate-cluster-id（或磁盘幂等）；后续须 --cluster-id + --join-quorum。
         enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties。
 
         node.id 须与本集群内其它 controller 及全部 broker 的编号互不重复（全局唯一）。
@@ -4110,7 +4110,7 @@ class KafkaBrokerDecommission:
 
 
 def _parse_bootstrap_server(bs: str, default_port: int = DEFAULT_BROKER_PORT) -> Tuple[str, int]:
-    """解析**单个** host:port 为 (host, port)。若为逗号列表须先取 _first_bootstrap_segment(...) 再解析。"""
+    """解析单个 host:port 为 (host, port)。若为逗号列表须先取 _first_bootstrap_segment(...) 再解析。"""
     s = (bs or "").strip() or "localhost"
     if ":" in s:
         parts = s.rsplit(":", 1)
@@ -4160,8 +4160,8 @@ def _validate_controller_scope_rules(
     else:
         if cid_s and not gen_cid and not use_disk_cid:
             return (
-                "--controller-scope cluster 且未 --join-quorum（首台或幂等）时，**禁止**在空盘上手动指定 --cluster-id；"
-                " 首台请**仅**使用 --generate-cluster-id，再在其余节点使用同一 cluster.id 与 --join-quorum"
+                "--controller-scope cluster 且未 --join-quorum（首台或幂等）时，禁止在空盘上手动指定 --cluster-id；"
+                " 首台请仅使用 --generate-cluster-id，再在其余节点使用同一 cluster.id 与 --join-quorum"
             )
     return None
 
@@ -4223,7 +4223,7 @@ def _tcp_preflight_first_endpoint(
         connect_timeout_sec: float = 8.0,
 ) -> Optional[str]:
     """
-    对逗号分隔地址取**第一个非空**项做 TCP 预检；失败返回中文说明。
+    对逗号分隔地址取第一个非空项做 TCP 预检；失败返回中文说明。
     用于避免 kafka-metadata-quorum 等 Java 客户端在网络不可达时长时间阻塞（看起来像「卡死」）。
     与 Apache Kafka 多地址 bootstrap 一致：预检仅覆盖首项，完整串仍交给 CLI。
     """
@@ -4238,7 +4238,7 @@ def _tcp_preflight_first_endpoint(
     except OSError as e:
         return (
             f"无法在约 {connect_timeout_sec:.0f} 秒内连上 {host}:{port}（{label}，{e!s}）。"
-            " 常见原因：① 防火墙/安全组未放行；② IP 或端口写错；③ Controller 只监听 127.0.0.1（此时请在**安装 Kafka 的那台机器上**执行 kafkacli，"
+            " 常见原因：① 防火墙/安全组未放行；② IP 或端口写错；③ Controller 只监听 127.0.0.1（此时请在安装 Kafka 的那台机器上执行 kafkacli，"
             f"使用 --bootstrap-controller 127.0.0.1:{port}）。"
             " ④ 从跳板机验收时，须保证本机能路由到该 IP。"
         )
@@ -4690,9 +4690,9 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
   多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
-【多节点 Controller 与 kafka-storage】部署 controller 须**必选** `--controller-scope single|cluster`（或 JSON controller_scope）。**cluster**：首台空盘**仅** `--generate-cluster-id`（禁止手填 cluster.id）；第 2 台起须**同一** `--cluster-id`（首台输出）且 `--join-quorum`（format --no-initial-controllers）。**single**：单台 controller，空盘可用 `--generate-cluster-id` 或 `--cluster-id`。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
+【多节点 Controller 与 kafka-storage】部署 controller 须必选 --controller-scope single|cluster（或 JSON controller_scope）。cluster：首台空盘仅允许 --generate-cluster-id（禁止手填 cluster.id）；第 2 台起须使用与首台同一 cluster.id（首台输出）且 --join-quorum（format --no-initial-controllers）。single：单台 controller，空盘可用 --generate-cluster-id 或 --cluster-id。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
-【Controller / Broker 监听与 kafka-storage（Kafka 4.x）】`--deploy controller` 须**显式** `--controller-listen-host`（及可选 `--controller-listen-port`，默认 9093；JSON 兼容 `controller_port`）用于 CONTROLLER 监听绑定；`--deploy broker` 须**显式** `--broker-listen-host`（及可选 `--broker-listen-port`，默认 9092）用于业务监听绑定；均禁止仅回环，且与 `--advertised-host`（宣告）分工不同。`kafka-storage format` 会加载完整 KafkaConfig；broker 须声明 **controller.listener.names**（脚本默认写 `CONTROLLER`）及 **listener.security.protocol.map**（须含 `CONTROLLER:PLAINTEXT` 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
+【Controller / Broker 监听与 kafka-storage（Kafka 4.x）】--deploy controller 须显式指定 --controller-listen-host（及可选 --controller-listen-port，默认 9093；JSON 兼容 controller_port）用于 CONTROLLER 监听绑定；--deploy broker 须显式指定 --broker-listen-host（及可选 --broker-listen-port，默认 9092）用于业务监听绑定；均禁止仅回环，且与 --advertised-host（宣告）分工不同。kafka-storage format 会加载完整 KafkaConfig；broker 须声明 controller.listener.names（脚本默认写 CONTROLLER）及 listener.security.protocol.map（须含 CONTROLLER:PLAINTEXT 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
 【部署前置与失败回滚】
   · 写入配置前：对本次 metadata.log.dir / log.dirs 所涉各数据根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署（须先清空冲突目录或使用 --clean-data 等）。
   · standalone/controller：cluster.id 须显式三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；log.dirs、node.id、controller 的 metadata.log.dir 等均无隐式默认路径。
@@ -4807,7 +4807,7 @@ def show_examples():
      --log-dirs /var/kafka/logs --cluster-id <CLUSTER_ID>
   说明：--target-host 仅决定 SSH 登录哪台机器；--controller-quorum-bootstrap-servers 供 Kafka 进程定位元数据，二者职责不同。
   （Kafka 4.x：脚本为 broker 生成配置时写入 controller.listener.names 等，以满足 kafka-storage format；勿手工删改生成文件中的该项。）
-  除部署外，任意子命令（如 --clean、--status、--broker-decommission-*、--topic-*）只要带上 --target-host 且目标非本机，均会在**目标机**执行与本地相同的完整命令行；须保证目标机可解析 --kafka-home（及 --config 若使用）。
+  除部署外，任意子命令（如 --clean、--status、--broker-decommission-*、--topic-*）只要带上 --target-host 且目标非本机，均会在目标机执行与本地相同的完整命令行；须保证目标机可解析 --kafka-home（及 --config 若使用）。
 
 ------------------------------------------------------------------------
 §4 多节点 KRaft：先理清拓扑与 node-id，再按步骤执行命令
@@ -4817,11 +4817,11 @@ def show_examples():
     broker1、broker2    → 各跑一台仅含 broker 角色的节点；其 --node-id 须在整集群内唯一，
       不能与上述 controller 重复。例如 controller 已占用 1～3，则两台 broker 可设为 4 与 5（仅作编号示例）。
   （说明：KRaft 下「controller 与 broker」是进程角色不同，但 node.id 是同一套全局编号，不能两套各从 1 开始。）
-  【advertised 与 Apache Kafka 惯例】每台进程只配置**本机** advertised（`advertised.listeners`）：3 台 controller = 在 3 台机器上各执行一次部署，各带**本机** `--advertised-host`（如 ctrl1、ctrl2、ctrl3 或对应 IP），不是一条命令里写 3 个地址。
+  【advertised 与 Apache Kafka 惯例】每台进程只配置本机 advertised（advertised.listeners）：3 台 controller = 在 3 台机器上各执行一次部署，各带本机 --advertised-host（如 ctrl1、ctrl2、ctrl3 或对应 IP），不是一条命令里写 3 个地址。
   公共配置串（所有节点上 controller.quorum.bootstrap.servers 一致，列出全部 Controller 的 host:port）:
     QUORUM="ctrl1:9093,ctrl2:9093,ctrl3:9093"
-  【controller-scope】多节点仲裁须 **--controller-scope cluster**；单台仅元数据进程可 **--controller-scope single**。
-  cluster.id 须为 `kafka-storage.sh random-uuid` 形（22 位）；**cluster** 场景下首台**只能** `--generate-cluster-id`，第 2 台起用首台打印的 ID + `--join-quorum`。
+  【controller-scope】多节点仲裁须指定 --controller-scope cluster；单台仅元数据进程可指定 --controller-scope single。
+  cluster.id 须为 kafka-storage.sh random-uuid 形（22 位）；cluster 场景下首台只能 --generate-cluster-id，第 2 台起用首台打印的 ID + --join-quorum。
 
   分步 A — 在 ctrl1 上初始化第一台 controller（记下输出的 cluster id）:
    kafkacli --deploy controller --controller-scope cluster --kafka-home /opt/kafka --advertised-host ctrl1 \\
@@ -5015,7 +5015,7 @@ def main():
     g_dep = parser.add_argument_group(
         "部署 KRaft（须配合 --deploy 与 --kafka-home）",
         "standalone=单节点 broker+controller；controller / broker=多节点角色拆分。"
-        " --deploy controller 时**必须**指定 --controller-scope single|cluster（生产约束：cluster=首台仅 --generate-cluster-id，后续 --cluster-id + --join-quorum）。"
+        " --deploy controller 时必须指定 --controller-scope single|cluster（生产约束：cluster=首台仅 --generate-cluster-id，后续 --cluster-id + --join-quorum）。"
         " 同一套参数可重复执行（覆盖配置并 systemctl restart，见文件头「幂等约定」）。"
         " 多节点时 --node-id 对应 node.id，须在全集群（全部 controller 与 broker）内唯一。"
         " 须显式 --advertised-host（或 JSON advertised_host），与 Apache Kafka advertised.listeners 语义一致；"
@@ -5057,9 +5057,9 @@ def main():
         dest="controller_scope",
         choices=[CONTROLLER_SCOPE_SINGLE, CONTROLLER_SCOPE_CLUSTER],
         metavar="{single,cluster}",
-        help="仅 --deploy controller 时**必填**（或 JSON controller_scope）。"
+        help="仅 --deploy controller 时必填（或 JSON controller_scope）。"
         f" {CONTROLLER_SCOPE_SINGLE}=单台 controller；"
-        f" {CONTROLLER_SCOPE_CLUSTER}=多节点仲裁：首台空盘**仅** --generate-cluster-id，后续须同一 --cluster-id + --join-quorum。",
+        f" {CONTROLLER_SCOPE_CLUSTER}=多节点仲裁：首台空盘仅允许 --generate-cluster-id，后续须同一 --cluster-id + --join-quorum。",
     )
     g_dep.add_argument(
         "--advertised-host",
@@ -5075,13 +5075,13 @@ def main():
         metavar="ID",
         help="KRaft 集群 ID：须为 kafka-storage.sh random-uuid 生成的 22 位字符串（与 --generate-cluster-id 输出同形）。"
         " 与 --generate-cluster-id、--use-disk-cluster-id 三选一（standalone/controller）；broker 仅本项。"
-        " --controller-scope cluster 时：首台空盘**禁止**手填本项；第 2 台起须与首台一致且加 --join-quorum。",
+        " --controller-scope cluster 时：首台空盘禁止手填本项；第 2 台起须与首台一致且加 --join-quorum。",
     )
     g_dep.add_argument(
         "--generate-cluster-id",
         action="store_true",
         help="由 kafka-storage 生成新的 cluster.id（与 --cluster-id、--use-disk-cluster-id 互斥）。"
-        " --controller-scope cluster 时首台空盘**必须**使用本项；后续节点使用首台输出的 ID 与 --join-quorum。",
+        " --controller-scope cluster 时首台空盘必须使用本项；后续节点使用首台输出的 ID 与 --join-quorum。",
     )
     g_dep.add_argument(
         "--use-disk-cluster-id",
@@ -5097,7 +5097,7 @@ def main():
         "--controller-listen-host",
         metavar="HOST",
         default=None,
-        help="仅 --deploy controller：**必填**（或 JSON controller_listen_host）。CONTROLLER 协议监听绑定地址（listeners 中的 host）；"
+        help="仅 --deploy controller：必填（或 JSON controller_listen_host）。CONTROLLER 协议监听绑定地址（listeners 中的 host）；"
         " 常用 0.0.0.0 或本机网卡 IP；禁止 127.0.0.1/localhost（与 --advertised-host 分工不同）。",
     )
     g_dep.add_argument(
@@ -5111,7 +5111,7 @@ def main():
         "--broker-listen-host",
         metavar="HOST",
         default=None,
-        help="仅 --deploy broker：**必填**（或 JSON broker_listen_host）。Broker 业务监听绑定地址（listeners 中的 host）；"
+        help="仅 --deploy broker：必填（或 JSON broker_listen_host）。Broker 业务监听绑定地址（listeners 中的 host）；"
         " 常用 0.0.0.0 或本机网卡 IP；禁止 127.0.0.1/localhost（与 --advertised-host 分工不同）。",
     )
     g_dep.add_argument(
@@ -5135,7 +5135,7 @@ def main():
     g_dep.add_argument(
         "--join-quorum",
         action="store_true",
-        help="仅与 --controller-scope cluster 合用：第 2 台及以后在**空盘**加入仲裁时**必须**指定；内部 format --no-initial-controllers。"
+        help="仅与 --controller-scope cluster 合用：第 2 台及以后在空盘加入仲裁时必须指定；内部 format --no-initial-controllers。"
         " 首台不要指定；首台须 --generate-cluster-id。",
     )
     g_dep.add_argument("--java-home", metavar="PATH", help="运行 Kafka 的 JAVA_HOME；写入 systemd 与 env。")
@@ -5263,7 +5263,7 @@ def main():
 
     g_ssh = parser.add_argument_group(
         "远程执行（前置机经 SSH 在目标机执行本脚本）",
-        "指定 --target-host 且目标非本机时：通过 SSH 在目标机执行**与当前命令行等价的** kafkacli（含 --deploy / --clean / --status / broker-decommission / topic 等；"
+        "指定 --target-host 且目标非本机时：通过 SSH 在目标机执行与当前命令行等价的 kafkacli（含 --deploy / --clean / --status / broker-decommission / topic 等；"
         "未装脚本时会自动拷贝当前文件）。须保证目标机可访问 --kafka-home 与 --config 所指路径。",
     )
     g_ssh.add_argument(
