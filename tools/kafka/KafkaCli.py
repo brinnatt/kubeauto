@@ -3,8 +3,8 @@
 Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 bin/ 下工具。
 
 文档一致性（须与代码同步维护，避免用户可见说明与行为不一致）：
-  用户可见说明分散在：本段、下方 KAFKACLI_PARSER_DESCRIPTION、show_examples() 分步示例、argparse 各选项 help、
-  kafka.json.example 注释与 deployment_note。行为以 main() 分支及 _resolve_kafka_client_config、
+  用户可见说明分散在：本段、下方 KAFKACLI_PARSER_DESCRIPTION、show_examples() 分步示例（§0～§10 及附录）、argparse 各选项 help、
+  kafka.json.example 注释与 deployment_note（拓扑与 §0/§4/§5 对应）。行为以 main() 分支及 _resolve_kafka_client_config、
   KafkaDeployer、_run_remote_deploy 等实现为准；修改其一须核对其它各处。JSON 配置键名与命令行长选项对应（下划线）。
   分步示例默认「运维机 / 跳板机 + --target-host」；示例 IP 与 tools/kafka/kafka.json.example 一致（192.168.47.140～142 为 controller，143～145 为 broker）。
 
@@ -4673,7 +4673,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 可选 systemd，并封装 topic / consumer group / metrics / quorum 等常用操作。
 
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
-【新手怎么用】运行「kafkacli -h」后阅读文末「分步示例」：建议从 §0 读起，再按 §1、§2… 顺序往下看。
+【新手怎么用】运行「kafkacli -h」后阅读文末「分步示例」：建议从 §0 顺序读至 §10（附录 standalone 为可选补充）。
   分步示例默认以「运维机 / 跳板机 / 堡垒机侧发起 SSH」为主（--target-host 指向各 Kafka 节点）；与 tools/kafka/kafka.json.example 中示例拓扑（192.168.47.140～142 为 controller，143～145 为 broker）一致。
   多节点、--batch 批量等场景在对应章节说明了执行顺序（批量为串行 SSH）与参数含义。
 【远程与批量】--target-host 支持 [IPv6]:port；--batch 时 nodes[] 单项可覆盖 ssh_user / ssh_port / ssh_key 等（仅该节点 SSH，不写入远程 kafkacli 参数）。
@@ -4706,7 +4706,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
   · --status / --metrics 系列：只读，天然可重复。
   · --clean：卸载（删 unit 与生成配置），非部署；抹数据须 --clean-data 或与 --clean/--clean-first 联用 --force。
   · --force：单独部署一般不需要；主要用于与 --clean / --clean-first 联用时删除磁盘数据。
-【远程子命令】--target-host 且目标非本机时，整条命令（含 --clean、broker-decommission、topic 等）在目标机执行；见「远程执行」分组与 §3。
+【远程子命令】--target-host 且目标非本机时，整条命令（含 --clean、broker-decommission、topic 等）在目标机执行；见下方 argparse「远程执行（前置机经 SSH…）」分组与分步示例 §3。
 【Broker 下线】kafka-reassign-partitions：--topics-to-move-json-file 若指定须为已存在文件；verify 读取工具退出码与输出（进行中与完成态见 §8）。
 【Quorum 运维】--quorum-add-controller 须显式提供 --bootstrap-controller 和/或 --bootstrap-server；脚本不默认 localhost:9092（避免误用 Broker 端口连接元数据工具）。
 【bootstrap 列表】与 Apache Kafka 客户端一致：`--bootstrap-server` / `--bootstrap-controller` 可为逗号分隔的多个 host:port（初始连接与高可用；不必包含全部节点）。TCP 预检仅对列表中第一个地址探测（与脚本避免长时间阻塞的设计一致）。
@@ -5217,8 +5217,8 @@ def main():
         action="store_true",
         help="输出集群验收报告。须 --kafka-home。"
         " 仅部署了 Controller、尚未部署 Broker 时：只带 --bootstrap-controller，不要带 --bootstrap-server，"
-        " 以免误连本机 9092；跨机验收前须保证本机 TCP 能到达该地址（否则会先报预检失败）。"
-        " 最省事：在 Kafka 所在机器上执行，使用 --bootstrap-controller 127.0.0.1:9093。",
+        " 以免误连执行机本机 9092；跨机验收前须保证执行端 TCP 能到达该地址（否则会先报预检失败）。"
+        " 生产环境默认在运维机使用 --target-host 指向节点（见分步示例 §1、§6）；若已登录到 Kafka 节点本机 shell，可不写 --target-host，此时可用 --bootstrap-controller 127.0.0.1:9093（须进程监听本机）。",
     )
     g_conn.add_argument(
         "--command-config",
@@ -5280,7 +5280,8 @@ def main():
     g_ssh = parser.add_argument_group(
         "远程执行（前置机经 SSH 在目标机执行本脚本）",
         "指定 --target-host 且目标非本机时：通过 SSH 在目标机执行与当前命令行等价的 kafkacli（含 --deploy / --clean / --status / broker-decommission / topic 等；"
-        "未装脚本时会自动拷贝当前文件）。须保证目标机可访问 --kafka-home 与 --config 所指路径。",
+        "未装脚本时会自动拷贝当前文件）。须保证目标机可访问 --kafka-home 与 --config 所指路径。"
+        " 语义与分步示例 §3、§0「两种地址」一致。",
     )
     g_ssh.add_argument(
         "--target-host",
