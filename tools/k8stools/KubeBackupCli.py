@@ -7,7 +7,7 @@ k8s_backup.py - 企业级 Kubernetes 配置备份和恢复工具
 - 备份 Kubernetes 集群资源（Deployments、Services、ConfigMaps、Secrets 等）
 - 恢复备份到目标集群（server-side apply、单文件多文档清单、依赖顺序串行）
 - 支持命名空间映射、镜像映射、环境变量映射（统一 KEY=值，多项用逗号或空格分隔）
-- 恢复时可选：Downward API 风格 `KEY=@k8s:metadata.namespace`；与命名空间映射联用时对纯文本 env 值做受控替换（auto/all/off）
+- 恢复时可选：Downward API（`KEY=@k8s:fieldPath`）；另支持在字面量 env 值中按命名空间映射做受控替换（`--env-namespace-substitute`，详见脚本 -h 全文）
 - 备份侧拒绝缺少 apiVersion/kind 的对象；元数据 JSON 损坏时降级而非崩溃
 - 自动处理资源依赖关系和恢复顺序（含 HPA、PDB、NetworkPolicy 等扩展优先级）
 
@@ -176,7 +176,7 @@ class BackupConfig:
 
 @dataclass
 class RestoreConfig:
-    """restore 子命令配置；env_namespace_substitute 与 namespace_mapping 联用，控制字面量 env.value 的替换策略。"""
+    """restore 子命令配置。env_namespace_substitute 仅在存在 namespace_mapping 时对「字面量 env.value」生效，详见 -h 专节。"""
     kubeconfig: Optional[str] = None
     context: Optional[str] = None
     backup_dir: str = ""
@@ -194,7 +194,7 @@ class RestoreConfig:
 
 @dataclass
 class TransformationRule:
-    """恢复阶段变换规则：命名空间 / 镜像 / env（含 @k8s:fieldRef）/ 字面量 env 中的命名空间片段替换。"""
+    """恢复阶段变换规则：命名空间 → 镜像 → env_mapping（含 @k8s）→ env_namespace_substitute（仅字面量 value）。"""
     namespace_mapping: Dict[str, str] = field(default_factory=dict)
     image_mapping: Dict[str, str] = field(default_factory=dict)
     env_mapping: Dict[str, str] = field(default_factory=dict)
@@ -272,13 +272,14 @@ class TransformationRule:
         mode: str,
     ) -> str:
         """
-        在纯文本中按命名空间映射替换旧名称（用于 env.value 等无法单独用 KEY= 表达的场景）。
+        按 ``namespace_mapping``（源命名空间 → 目标命名空间）改写一段纯文本，用于 env 字面量 value。
 
-        - off：不替换
-        - all：对每个旧名做全局 str.replace（多规则时按旧名长度从长到短，降低误伤）
-        - auto：较保守 — 整值等于旧名、后缀 ``.{old_ns}``、中间 ``.{old_ns}.``、前缀 ``{old_ns}.``
+        - **off**：不替换。
+        - **all**：对每个「源命名空间」字符串做全文 ``replace``（多规则时源名从长到短）。
+        - **auto**：保守规则（整值等于源名、后缀 ``.源名``、中间 ``.源名.``、前缀 ``源名.``）。
 
-        与 Kubernetes Downward API 互补：能改成 fieldRef 的命名空间请优先用 ``KEY=@k8s:metadata.namespace``。
+        须在 ``--namespace-mapping`` 非空且调用方（如恢复）选择非 off 时使用。
+        与 Downward API（``@k8s:``）互补；详见 ``-h`` 中「恢复阶段：环境变量…」。
         """
         if mode == "off" or not text or not namespace_mapping:
             return text
@@ -571,6 +572,8 @@ def parse_mapping(mapping_str: Optional[str], mapping_kind: str) -> Dict[str, st
         - 删：见上
         - Downward API（恢复时写入 ``valueFrom.fieldRef``）: ``KEY=@k8s:metadata.namespace`` 等，
           fieldPath 须为白名单内字段或 ``metadata.labels['app']`` / ``metadata.annotations['k']`` 形式
+        - 「字面量 value 中的命名空间」与 ``--env-namespace-substitute``：术语、依赖关系与处理顺序以
+          运行 ``python KubeBackupCli.py -h`` 时打印的「恢复阶段：环境变量…」整节为准
 
     Args:
         mapping_str: 映射字符串；None 或空白视为无映射
@@ -1160,15 +1163,15 @@ class ResourceTransformer:
         if not isinstance(resource, dict):
             return resource
 
-        # Transform namespace
+        # ① namespace_mapping（metadata 等）
         resource = self._transform_namespace(resource)
 
-        # Transform container images
+        # ② image_mapping
         resource = self._transform_container_images(resource)
 
-        # Transform environment variables（含 @k8s:fieldRef）
+        # ③ env_mapping（含 @k8s: → valueFrom）
         resource = self._transform_env_variables(resource)
-        # 命名空间映射下，对仍为字面量 value 的 env 做片段替换（与 Downward 互补）
+        # ④ env_namespace_substitute：仅剩余字面量 value（见 -h 专节）
         resource = self._substitute_namespace_in_env_plain_values(resource)
 
         return resource
@@ -1391,11 +1394,11 @@ class ResourceTransformer:
 
     def _substitute_namespace_in_env_plain_values(self, resource: Dict) -> Dict:
         """
-        在 --namespace-mapping 与 --env-namespace-substitute 启用时，改写仍为 ``value: "..."``
-        的环境变量字符串，使其中嵌入的旧命名空间名随映射更新。
+        在 ``namespace_mapping`` 非空且 ``env_namespace_substitute != off`` 时执行；
+        且须在 ``_transform_env_variables`` **之后**调用（先应用 --env-mapping / @k8s:，再处理剩余字面量）。
 
-        典型：``DOMAIN_NAME=app.old-namespace``（app 各异，后缀为旧命名空间）。
-        与 KEY= 精确替换互补；纯「当前命名空间」类变量建议改用 ``@k8s:metadata.namespace``。
+        仅遍历仍为 ``value: "..."`` 的项（已有 ``valueFrom`` 的 env 跳过）。
+        典型：``DOMAIN_NAME=应用名.源命名空间`` → 替换为 ``应用名.目标命名空间``（auto 模式）。
         """
         mode = self.rule.env_namespace_substitute
         if mode == "off" or not self.rule.namespace_mapping:
@@ -2706,8 +2709,8 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
     --image-mapping MAP      改写 container.image（单字符串，含仓库/标签/digest）；最长前缀优先替换
     --env-mapping MAP        按环境变量名 增 / 改 / 删；支持 @k8s:fieldPath（Downward API）（见下方）
     --env-namespace-substitute off|auto|all
-                             与命名空间映射联用时，是否改写仍为字面量的 env.value 中的旧命名空间片段
-                             （默认 auto；详见下方「env 值中的命名空间」）
+                             仅在有 --namespace-mapping 时生效：是否改写「字面量 value」里的源命名空间
+                             （默认 auto；术语、顺序、示例见下方专节）
   恢复范围
     --skip-crds              不恢复 CustomResourceDefinition
     --skip-cluster-scoped    不恢复集群级资源（如 ClusterRole、StorageClass 等）
@@ -2718,16 +2721,67 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
   · 每项必须为  KEY=value ；键与值之间只用第一个 = 分割，故值里可含 :、=、URL 等。
   · 整段参数须至少包含一个 '='；多项之间可用空格、逗号或逗号加空格分隔，例如:
       A=1 B=2, C=3
-  · 环境变量映射语义:
+  · 环境变量映射语义（--env-mapping）:
       KEY=新值     已有则改值，没有则新增
       KEY=         删除该环境变量（ Deployment/Pod 模板中的 env 项）
       KEY=@k8s:metadata.namespace  恢复为 Downward API（valueFrom.fieldRef），运行时注入当前 Pod 命名空间
         （官方推荐用于「值即命名空间」；fieldPath 见脚本内白名单与 metadata.labels['k'] 形式）
-  · env 值中的命名空间（与 --namespace-mapping 配合）:
-      - 默认 --env-namespace-substitute=auto：仅当字面量 value 整段为旧名、或以 .旧名 结尾、
-        或含 .旧名.、或以 旧名. 开头时替换（适合 app.oldns 类主机名）
-      - all：对 value 全文做旧名→新名替换（更激进，可能误伤含同名子串的配置）
-      - off：不自动替换字面量 value（可只靠 KEY= 与 @k8s:）
+
+--------------------------------------------------------------------------------
+【恢复阶段：环境变量里的「源命名空间」如何替换（--env-namespace-substitute）】
+--------------------------------------------------------------------------------
+
+（1）术语（请先读这几条，再往下看选项）
+  · **字面量 value**
+      清单里写成 ``- name: FOO \n   value: "某字符串"``，值直接写在 YAML 里。
+      与之相对的是 ``valueFrom``（引用 Secret、ConfigMap、fieldRef 等）：本功能**只改写字面量 value**，
+      不修改已有 ``valueFrom``。
+  · **源命名空间（旧名）**
+      ``--namespace-mapping`` 里 **等号左侧** 的名字，即备份里使用的命名空间名
+      （例：``talkweb-project-hainan-test``）。
+  · **目标命名空间（新名）**
+      ``--namespace-mapping`` 里 **等号右侧** 的名字，即要恢复到的命名空间名
+      （例：``talkweb-project-hainan-prod``）。
+  · **「与 --namespace-mapping 配合」**
+      必须先提供至少一条 ``旧名=新名``；本选项决定在映射已确定后，是否还要在**仍是字面量的
+      env.value 字符串**里，把出现的「源命名空间」替换成「目标命名空间」。
+      若无 ``--namespace-mapping``（或映射表为空），``--env-namespace-substitute`` **不会产生任何效果**。
+
+（2）同一资源内的处理顺序（与先后覆盖关系）
+  对 Pod 模板中的 ``env`` 列表，脚本按下面顺序执行；排在前面的步骤会改变清单，后面的步骤基于**最新**清单：
+    ① 资源的 ``metadata.namespace``、Pod 模板内嵌套 namespace 等（``--namespace-mapping``）
+    ② ``--image-mapping``（容器 ``image``）
+    ③ ``--env-mapping``（按变量名增/删/改；若某 KEY 被改成 ``@k8s:...``，则该 KEY 变为 ``valueFrom``，
+       不再是字面量）
+    ④ ``--env-namespace-substitute``：只对**第③步之后仍为 ``value: "..."``** 的项，按模式替换字符串中的
+       源命名空间 → 目标命名空间
+
+  因此：若你用 ``--env-mapping`` 把某变量改成了 Downward API，该变量**不会**再参与第④步。
+
+（3）--env-namespace-substitute 三种模式（均只作用于第（2）节第④步中的字面量 value）
+  · **auto（默认，推荐）**
+      在字符串中查找「源命名空间」时采用较保守的规则，减少误伤：
+      - 整段 value **恰好等于**源命名空间 → 整段换成目标命名空间
+      - value **以 ``.源命名空间`` 结尾**（常见：``应用名.命名空间`` 主机名）→ 只换最后这一段
+      - value 中含 ``.源命名空间.``（中间一段）→ 替换该段
+      - value **以 ``源命名空间.`` 开头** → 替换前缀
+      实践：大量 Deployment 中 ``DOMAIN_NAME=ebd-board-server.talkweb-project-hainan-test``，
+      仅执行 ``--namespace-mapping "talkweb-project-hainan-test=talkweb-project-hainan-prod"`` 即可一把恢复，
+      应用名 ``ebd-board-server`` 保持备份原样，只把后缀命名空间换成 prod。
+  · **all**
+      对每个源命名空间名，在整段 value 中做全局文本替换（``str.replace``，多规则时按**旧名长度从长到短**）。
+      适合 URL、长串里多处出现命名空间名的场景；若某配置值里偶然含有与命名空间同名的子串，**可能误改**。
+  · **off**
+      不做第④步自动替换。跨环境时只能依赖 ``--env-mapping`` 逐 KEY 写死新值，或使用 ``@k8s:fieldPath``。
+
+（4）与 Downward API（@k8s:）的分工
+  · 值**就是**当前命名空间、且希望运行时注入 → ``DEPLOY_ENV=@k8s:metadata.namespace``（不必写死在映射里）。
+  · 值形如 ``{应用名}.{命名空间}`` 且应用名各 Deployment 不同 → 用 **auto + namespace-mapping**（默认即 auto）改后缀即可，
+    无需为每个应用单独写 ``--env-mapping``。
+
+--------------------------------------------------------------------------------
+【映射语法】续 — 镜像
+--------------------------------------------------------------------------------
   · 镜像映射（对齐 Kubernetes 官方：镜像名为单一字符串，标签与 digest 均为其后缀，无单独字段）:
       - 换仓库/路径：左侧写旧 registry 或路径前缀，例如 registry.a.com/proj/=registry.b.com/proj/
       - 保留原标签：左侧不要包含到 ':' 为止的标签部分，则 :v1.2 会留在结果中
@@ -2799,13 +2853,13 @@ R4. 环境变量 改值 / 删变量 / 新增变量（值中可有 https://host:4
         --env-mapping "DB_HOST=prod-db.internal API_URL=https://api.prod.com:443 LOG_LEVEL= DEBUG=" \\
         --create-namespaces
 
-R4b. 命名空间迁移：字面量 DOMAIN_NAME=app.oldns 随映射改写（auto）+ 纯命名空间类变量用 Downward
+R4b. 整命名空间迁环境（一把 restore）：各 Deployment 的 DOMAIN_NAME=应用名.旧ns 仅随命名空间映射改后缀（默认 auto）
    python KubeBackupCli.py restore \\
         --backup-dir /path/to/backup \\
-        --namespace-mapping "talkweb-project-hainan-test=my-new-ns" \\
-        --env-namespace-substitute auto \\
-        --env-mapping "DEPLOY_ENV=@k8s:metadata.namespace" \\
+        --namespace-mapping "talkweb-project-hainan-test=talkweb-project-hainan-prod" \\
         --create-namespaces
+   若另有 env 整段值等于命名空间名（非 app.ns 形式），可追加例如：
+        --env-mapping "DEPLOY_ENV=@k8s:metadata.namespace"
 
 R5. 三种映射同时使用 + 指定集群与演练
    python KubeBackupCli.py restore \\
@@ -2849,7 +2903,8 @@ R7. 备份目录中存在多份备份时按名称挑选（恢复始终串行 app
 注意事项
 ================================================================================
   - 映射：仅支持 KEY=value；值中含 ':'、'=' 时仍用第一个 '=' 分隔键与完整值。
-  - env：支持 @k8s:fieldPath（Downward API）；与 --namespace-mapping 联用时默认 auto 替换字面量 value 中的旧命名空间片段。
+  - env：@k8s:fieldPath（Downward API）见专节；字面量 value 中的命名空间替换须先有 --namespace-mapping，
+    再由 env-namespace-substitute（默认 auto）按顺序作用于 env_mapping 之后的剩余字面量，详见 -h 专节。
   - 启动前会校验路径、kubeconfig、并发数、资源类型名、命名空间名等；错误参数会记录日志并以退出码 1 结束，避免未处理异常。
   - 恢复：单文件多 YAML 文档（--- 分隔）会逐个对象 apply，与 kubectl 清单语义一致；禁止静默丢弃后续文档。
   - 恢复：启用 --create-namespaces 时，预创建命名空间任一失败会整次中止，避免资源写入错误拓扑。
@@ -2925,7 +2980,8 @@ def _add_restore_arguments(parser):
     )
     parser.add_argument(
         '--namespace-mapping',
-        help='命名空间映射：旧名=新名；多项用逗号或空格分隔（仅 KEY=value）'
+        help='源命名空间=目标命名空间（等号左=备份中的旧名，右=恢复目标新名）；多项空格或逗号分隔；'
+             ' 与 env-namespace-substitute 联动见 -h 全文「恢复阶段：环境变量…」'
     )
     parser.add_argument(
         '--image-mapping',
@@ -2941,8 +2997,8 @@ def _add_restore_arguments(parser):
         '--env-namespace-substitute',
         choices=('off', 'auto', 'all'),
         default='auto',
-        help='与 --namespace-mapping 联用时，是否替换仍为字面量 value 的 env 中的旧命名空间名 '
-             '（默认 auto：后缀 .旧名、整值、段内 .旧名. 等；all 为全文替换；off 关闭）',
+        help='仅当提供 --namespace-mapping 时有效：在 env_mapping 之后，是否仍对「字面量 value」'
+             ' 做源命名空间→目标命名空间替换（默认 auto；术语与顺序见 -h 专节）',
     )
     parser.add_argument(
         '--max-workers',
