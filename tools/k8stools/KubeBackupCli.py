@@ -7,7 +7,8 @@ k8s_backup.py - 企业级 Kubernetes 配置备份和恢复工具
 - 备份 Kubernetes 集群资源（Deployments、Services、ConfigMaps、Secrets 等）
 - 恢复备份到目标集群（server-side apply、单文件多文档清单、依赖顺序串行）
 - 支持命名空间映射、镜像映射、环境变量映射（统一 KEY=值，多项用逗号或空格分隔）
-- 恢复时可选：Downward API（KEY=@k8s:fieldPath）；另支持仅对「env.value 内联字符串」按命名空间映射做受控替换（--env-namespace-substitute，与 valueFrom 区分见 -h）
+- 恢复时可选：Downward API（KEY=@k8s:fieldPath）；另支持仅对 env.value 内联字符串按命名空间映射做受控替换（--env-namespace-substitute，与 valueFrom 区分见 -h）
+- 典型：restore --namespace-mapping 旧命名空间=新命名空间 时，清单里 metadata.namespace 与符合条件的 env.value 会随策略改写；具体顺序与示例见 -h 专节
 - 备份侧拒绝缺少 apiVersion/kind 的对象；元数据 JSON 损坏时降级而非崩溃
 - 自动处理资源依赖关系和恢复顺序（含 HPA、PDB、NetworkPolicy 等扩展优先级）
 
@@ -578,6 +579,11 @@ def parse_mapping(mapping_str: Optional[str], mapping_kind: str) -> Dict[str, st
         - env.value 内联字符串与 --env-namespace-substitute：与 env.valueFrom 的区分、依赖关系与处理顺序以
           运行 python KubeBackupCli.py -h 时打印的「恢复阶段：环境变量」整节为准
 
+    示例（与 mapping_kind 对应，仅供理解写法）：
+        namespace：old-team-ns=new-team-ns
+        image：harbor.old.com/library/=harbor.new.com/library/
+        env：API_URL=https://api.prod:443（删除某键用 KEY= 空值，见上文「环境变量」列表）
+
     Args:
         mapping_str: 映射字符串；None 或空白视为无映射
         mapping_kind: "namespace" | "image" | "env"
@@ -796,6 +802,7 @@ def load_kubernetes_yaml_documents(filepath: str) -> List[Dict[str, Any]]:
     读取单个 YAML 文件中的全部文档（与多对象清单中 --- 分隔行为一致）。
 
     若文件含多段对象而只解析第一段，会在无告警情况下丢失后续资源；恢复须与 kubectl apply 清单语义一致。
+    例：同一文件内先写 Deployment、下一行 --- 再写 Service，本函数返回两个对象，恢复时逐个 apply。
     参考: https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/
     """
     out: List[Dict[str, Any]] = []
@@ -2664,7 +2671,7 @@ class KubernetesRestoreManager:
 # Enhanced CLI Interface
 # -------------------------
 def show_examples():
-    """显示详细使用示例和说明（功能清单 + 场景示例 + 参数速查）。"""
+    """显示详细使用示例和说明（功能清单、进阶详解、场景示例、参数速查；篇幅较长便于一次性说清行为）。"""
     default_resources_line = ",".join(DEFAULT_RESOURCES)
     examples = """
 ================================================================================
@@ -2683,6 +2690,7 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
                         · restore：不执行 server-side apply，仅打日志
                         · backup：仍会调用 API 列举资源，但不写入 YAML、不写 backup-metadata.json、
                           不生成 tar、不做备份后校验（不落盘）
+                        例：backup --dry-run 结束时输出目录无新增 .yaml；restore --dry-run 仅打印将 apply 的对象名，集群内对象数不变。
 
 【backup 独有 — 全部开关】
   范围（二选一，必填其一）
@@ -2701,6 +2709,42 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
 
   默认 -r（省略 --resources 时）:
     __DEFAULT_RESOURCES__
+
+--------------------------------------------------------------------------------
+【backup：并发、CRD、过滤与输出（详解，配合上方开关阅读）】
+--------------------------------------------------------------------------------
+
+--max-workers N（默认 5）
+  作用：在已完成 API 列举之后，并行写出多个资源的 YAML 文件（线程池），只影响 backup，与 restore 无关。
+  何时调大：某命名空间内 Deployment/ConfigMap 等数量很多、磁盘为 SSD 时，适当增大可缩短总耗时。
+  何时勿过大：值过大可能造成磁盘或 API 客户端瞬时压力；脚本内建议上限见入口校验（一般 128 内）。
+  例：200 个 Deployment、max-workers=8，表示最多约 8 个资源同时写盘，并非 8 个并行 API List。
+
+--include-crds
+  作用：在默认 -r 之外，再备份全集群的 CustomResourceDefinition；并对每个已生效的 CRD，用动态客户端
+  按 apiVersion/kind 列举其资源实例（Cluster 范围一次；Namespaced 则按命名空间遍历），写入备份目录。
+  目录上：除各命名空间子目录外，会出现 cluster-scoped/customresourcedefinition/ 下各 CRD 定义文件；
+  各 CR 实例按 kind 分子目录落在对应命名空间或 cluster-scoped 下（与备份时 API 返回一致）。
+  注意：CRD 与实例量很大时耗时会明显增加；目标集群若无对应 CRD，仅恢复实例会失败，须先安装 CRD 或一并恢复定义。
+
+--label-selector（与 kubectl 一致）
+  语义：传给 List 的 labelSelector。逗号分隔多个条件时为 AND（须同时满足）。
+  例：--namespace app --label-selector "tier=frontend,env=staging" 只备份 app 命名空间中同时带 tier=frontend
+  与 env=staging 标签的、且在你 -r 列表中的资源。无标签或标签不匹配则该类型列表为空，不报错。
+  常见用途：只导出某业务线（统一 label）相关的 Deployment/Service，缩小备份体积。
+
+--field-selector（与 kubectl 一致，受 API 限制）
+  语义：传给 List 的 fieldSelector；具体支持哪些字段因资源类型而异（与 kubectl get 相同限制）。
+  例：--field-selector "metadata.name=my-api" 在每种资源类型的列表结果中筛名字为 my-api 的对象（若 API 支持）。
+  注意：部分资源不支持某些 field，或行为以集群版本为准；筛选过严可能导致某类型备份为空。
+
+-o / --output-dir 与 --backup-name
+  单次备份落盘根路径为：输出根目录 / 备份名 /。
+  例：--output-dir /data/k8s-backup --backup-name nightly-20260414
+  则生成 /data/k8s-backup/nightly-20260414/，其内有 backup-metadata.json 及按命名空间/资源类型划分的子目录。
+
+--tar
+  在非 dry-run 时，在备份根路径同级再生成同名 .tar.gz，例如 nightly-20260414.tar.gz，便于拷贝归档。
 
 【restore 独有 — 全部开关】
   必需
@@ -2724,6 +2768,10 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
   · 每项必须为  KEY=value ；键与值之间只用第一个 = 分割，故值里可含 :、=、URL 等。
   · 整段参数须至少包含一个 '='；多项之间可用空格、逗号或逗号加空格分隔，例如:
       A=1 B=2, C=3
+  · 快速对照（真实写法缩略）：
+      命名空间：--namespace-mapping "dev-ns=prod-ns"
+      镜像：--image-mapping "registry.old.com/proj/=registry.new.com/proj/"
+      环境变量：--env-mapping "DB_HOST=db.prod.internal LOG_LEVEL="
   · 环境变量映射语义（--env-mapping）:
       KEY=新值     已有则改值，没有则新增
       KEY=         删除该环境变量（ Deployment/Pod 模板中的 env 项）
@@ -2789,6 +2837,7 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
 
 （4）与 Downward API（@k8s:）的分工
   · 值就是当前命名空间、且希望运行时注入：DEPLOY_ENV=@k8s:metadata.namespace（不必写死在映射里）。
+    例：恢复后清单中为 valueFrom.fieldRef metadata.namespace，Pod 在 prod-ns 里启动时容器内 DEPLOY_ENV=prod-ns。
   · 值为 应用名.命名空间 且应用名各 Deployment 不同：用 auto 加 namespace-mapping（默认即 auto）改后缀即可，
     无需为每个应用单独写 --env-mapping。
 
@@ -2797,10 +2846,54 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
 --------------------------------------------------------------------------------
   · 镜像映射（对齐 Kubernetes 官方：镜像名为单一字符串，标签与 digest 均为其后缀，无单独字段）:
       - 换仓库/路径：左侧写旧 registry 或路径前缀，例如 registry.a.com/proj/=registry.b.com/proj/
+      - 例：备份里 image: registry.a.com/app:1.0，映射左侧写 registry.a.com/=registry.b.com/，恢复后为 registry.b.com/app:1.0
       - 保留原标签：左侧不要包含到 ':' 为止的标签部分，则 :v1.2 会留在结果中
       - 改标签或 digest：左侧须包含要替换的旧标签或 digest 片段，例如
         myreg.io/app:v1=myreg.io/app:v2  或  nginx@sha256:abc...=nginx@sha256:def...
       - 多规则时按最长前缀优先匹配（与常见镜像重写规则一致）
+
+--------------------------------------------------------------------------------
+【restore：范围开关、备份目录布局与 NetworkPolicy（详解）】
+--------------------------------------------------------------------------------
+
+--skip-crds
+  适用：目标集群已统一安装好同一套 CRD（如同一平台团队下发），你只把业务命名空间里的 CR 实例迁过去，
+  希望避免对 CustomResourceDefinition 再次 server-side apply，降低与集群已有 CRD 版本冲突风险。
+  不适用：目标集群根本没有该 CRD 时，跳过 CRD 后实例仍无法创建，须先在目标集群注册 CRD 或不要跳过。
+
+--skip-cluster-scoped
+  适用：目标集群已有全局 RBAC、StorageClass、IngressClass 等，你只恢复命名空间内工作负载与配置，
+  避免覆盖 ClusterRole、ClusterRoleBinding、PV、StorageClass 等集群级对象。
+  说明：命名空间内的 Role、RoleBinding、ConfigMap 等仍会按备份恢复（只要备份目录中存在）。
+
+--backup-name
+  适用：--backup-dir 指向「多份备份共同的父目录」时，用 --backup-name 指定要恢复的那一次子目录名。
+  例：--backup-dir /opt/k8s-backup --backup-name backup-20231201-120000-default
+  实际读取 /opt/k8s-backup/backup-20231201-120000-default/。
+  若 --backup-dir 已直接指向某次备份根目录（其下即有 backup-metadata.json），则无需再写 --backup-name。
+
+--create-namespaces
+  恢复前会扫描备份 yaml 中出现的 metadata.namespace，对目标集群缺失的命名空间做 apply；任一创建失败则整次 restore 中止，
+  避免大量对象 apply 到不存在的命名空间。
+
+备份目录常见布局（与备份生成或 tar 解压后一致，便于核对路径）：
+  <备份根>/
+    backup-metadata.json
+    cluster-scoped/          （若有集群级资源）
+      clusterrole/
+      customresourcedefinition/
+      ...
+    <命名空间名>/            （每个命名空间一个目录）
+      deployment/
+      service/
+      networkpolicy/
+      ...
+
+命名空间映射与 NetworkPolicy（与专节「源命名空间」配合）
+  除改写资源 metadata.namespace 外，脚本会处理 NetworkPolicy 中 namespaceSelector 里按命名空间名筛选的
+  标签（如 kubernetes.io/metadata.name）及 matchExpressions 中对应值，使策略在映射后仍指向正确命名空间。
+  例：原策略只允许来自 old-ns 的流量，映射 old-ns=new-ns 后，选择器中的 old-ns 会改为 new-ns，
+  避免出现策略仍引用旧名导致网络策略失效或选错端点。
 
 ================================================================================
 场景示例（可复制改路径后使用）
@@ -2843,6 +2936,23 @@ B5. 备份演练（仍访问集群 API；不落盘 YAML / 元数据 / tar）
         --debug \\
         --output-dir /opt/k8s-backup
 
+B6. 同一命名空间内只备份某业务线（标签 AND）
+   python KubeBackupCli.py backup \\
+        --namespace payments \\
+        --label-selector "app=checkout,tier=backend" \\
+        --output-dir /opt/k8s-backup
+   说明：只备份同时带 app=checkout 与 tier=backend 的对象；若 Deployment 打了标签而 Service 未打齐，可能出现只备 Deployment 不备对应 Service，需按实际标签设计调整。
+
+B7. 全集群备份并包含 CRD 及其实例（耗时可较长）
+   python KubeBackupCli.py backup \\
+        --all-namespaces \\
+        --include-crds \\
+        --resources "deployments,services,configmaps,secrets" \\
+        --max-workers 12 \\
+        --output-dir /opt/k8s-backup \\
+        --backup-name nightly-with-crds-20260414
+   说明：--include-crds 会在上述 -r 之外再拉 CRD 与各 CR 实例；若集群 CR 数量巨大，建议预留磁盘与时间窗口。
+
 R1. 恢复（最简：指定备份目录 + 自动建命名空间）
    python KubeBackupCli.py restore \\
         --backup-dir /opt/k8s-backup/backup-20231201-120000-default \\
@@ -2853,6 +2963,7 @@ R2. 命名空间映射（空格或逗号分隔多项）
         --backup-dir /path/to/backup \\
         --namespace-mapping "dev=prod test=staging" \\
         --create-namespaces
+   含义示例：备份中 metadata.namespace 为 dev 的资源恢复到 prod；为 test 的恢复到 staging（含 Namespace 对象 metadata.name 的对应改写）。
 
 R3. 镜像：换仓库（保留原 :tag）或连标签一起改（与官方「单字符串镜像名」一致）
    python KubeBackupCli.py restore \\
@@ -2908,6 +3019,25 @@ R7. 备份目录中存在多份备份时按名称挑选（恢复始终串行 app
         --backup-name backup-20231201-120000-default \\
         --create-namespaces
 
+R8. 灾备场景：目标集群已有全局策略，只灌入命名空间内业务（跳过 CRD 与集群级对象）
+   python KubeBackupCli.py restore \\
+        --backup-dir /path/to/backup \\
+        --namespace-mapping "prod-blue=prod-green" \\
+        --skip-crds \\
+        --skip-cluster-scoped \\
+        --create-namespaces
+   说明：适用于目标集群已安装同版本 CRD、ClusterRole/StorageClass 等由平台统一维护，只需把蓝环境命名空间
+   迁到绿环境命名空间且不改集群级对象的场合。若绿集群缺少某 CRD，仍须先安装 CRD 或去掉 --skip-crds。
+
+--------------------------------------------------------------------------------
+【restore：命名空间内资源 apply 顺序（摘要）】
+--------------------------------------------------------------------------------
+  同一备份命名空间子目录内，多个 yaml 文件按资源类型优先级排序后依次 server-side apply（单线程顺序，非并行），
+  以降低「工作负载先于 ConfigMap/Secret 创建」一类依赖问题。大致优先级：基础配置与 Secret/ConfigMap 类较早，
+  Service、RBAC、NetworkPolicy、Ingress 等次之，Deployment/StatefulSet/DaemonSet/Job 等工作负载再次，
+  HPA、PDB 等往往靠后；备份中出现的其它类型通常默认靠后。若某资源 apply 失败，计入失败统计并继续后续文件
+  （以日志为准）。集群级目录 cluster-scoped 单独先处理且 CRD 优先于其它集群级资源。
+
 ================================================================================
 参数速查表（与上面功能总览一一对应）
 ================================================================================
@@ -2927,8 +3057,12 @@ R7. 备份目录中存在多份备份时按名称挑选（恢复始终串行 app
   - 映射：仅支持 KEY=value；值中含 ':'、'=' 时仍用第一个 '=' 分隔键与完整值。
   - env：@k8s:fieldPath（Downward API）见专节；env.value 内联字符串中的命名空间替换须先有 --namespace-mapping，
     再由 env-namespace-substitute（默认 auto）在 env_mapping 之后处理仍为 value 内联的条目，详见 -h 专节。
+  - backup：label-selector 要求对象带齐标签，否则该类型可能备份为空；field-selector 受 Kubernetes API 支持范围限制，
+    与 kubectl get 行为一致，过严或不受支持时结果可能为空。
+  - backup：--include-crds 会显著增加列举与落盘量，大集群请预留时间与磁盘；目标集群恢复 CR 实例前通常需先有 CRD。
   - 启动前会校验路径、kubeconfig、并发数、资源类型名、命名空间名等；错误参数会记录日志并以退出码 1 结束，避免未处理异常。
   - 恢复：单文件多 YAML 文档（--- 分隔）会逐个对象 apply，与 kubectl 清单语义一致；禁止静默丢弃后续文档。
+    例：app.yaml 内第一段 Deployment、第二段 Service，会先后两次 server-side apply，不会只建 Deployment 而丢 Service。
   - 恢复：启用 --create-namespaces 时，预创建命名空间任一失败会整次中止，避免资源写入错误拓扑。
   - 命名空间映射对 Kind=Namespace 会改写 metadata.name；NetworkPolicy 的 namespaceSelector 同时处理 matchLabels 与 matchExpressions（kubernetes.io/metadata.name）。
   - 备份前预留磁盘空间；备份含 Secret，需妥善保管。
