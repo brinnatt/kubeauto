@@ -3,6 +3,8 @@
 """
 StressCli：在 Linux 工作节点上按本地时间窗调度 stress-ng（多进程包装）。
 
+时间窗边界时刻：规范为 HH:MM:SS；命令行可简写 HH:MM（秒按 00 计）。
+
 权威说明：STRESSCLI_PARSER_DESCRIPTION、show_examples()、源码中 STRESS_NG_GLOBAL_OPTS 注释。
 入口：main()、_run_scheduler_loop()、_build_stress_ng_*_cmd()。
 
@@ -39,6 +41,10 @@ DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 LOG_MAX_BYTES = 10 * 1024 * 1024
 LOG_BACKUP_COUNT = 5
+
+# 时间窗：与 --start / --end 一致，规范 HH:MM:SS；简写 HH:MM 等价于秒为 00
+DEFAULT_START_CLOCK = "09:00:00"
+DEFAULT_END_CLOCK = "19:00:00"
 
 # -----------------------------------------------------------------------------
 # 上游 stress-ng（stress-ng.1）与本脚本对齐的约定（修改命令行时须核对手册对应条目）
@@ -156,6 +162,10 @@ STRESSCLI_PARSER_DESCRIPTION = """\
 StressCli（仅 Linux）：在本地时间窗 [start, end) 内用 multiprocessing 拉起多个 worker，
 每个 worker 进程内执行一条 stress-ng；出窗或收到 SIGTERM 时结束 stress-ng。
 
+时间格式
+    --start / --end 使用节点本地时钟，规范写法 HH:MM:SS；可简写 HH:MM，等价于秒为 00。
+    须满足 start < end（同一天内、非跨夜）；时间窗为左闭右开 [start, end)，即在 end 的整秒起不再运行。
+
 调度方式
     主进程按 --poll-interval 秒轮询；在窗内且尚未启动时创建 (cpu-workers + mem-workers) 个
     子进程；在窗外或停服时确保子进程全部退出。时间使用节点本地时区。
@@ -192,8 +202,14 @@ StressCli 使用示例（路径与账号按环境修改）
   1. 查看帮助（含本段）
      python3 StressCli.py -h
 
-  2. 生产：默认时间窗 09:00 至 19:00（不含 19:00）
+  2. 生产：默认时间窗 [09:00:00, 19:00:00)（自 19:00:00 起停止）
      python3 /opt/kubeauto/tools/StressCli.py
+
+     显式指定（与默认等价示例）：
+     python3 /opt/kubeauto/tools/StressCli.py --start 09:00:00 --end 19:00:00
+
+     简写（秒为 00）：
+     python3 /opt/kubeauto/tools/StressCli.py --start 09:00 --end 19:00
 
   3. stress-ng 不在 PATH 时
      python3 StressCli.py --stress-ng-binary /usr/bin/stress-ng
@@ -352,14 +368,26 @@ def _mem_stress_ng_worker(
     _run_stress_ng_worker(stop, cmd, wlog)
 
 
-def _parse_hhmm(s: str) -> time_of_day:
+def _format_clock(t: time_of_day) -> str:
+    """将时刻格式化为 HH:MM:SS（日志与展示统一）。"""
+    return t.strftime("%H:%M:%S")
+
+
+def _parse_clock(s: str) -> time_of_day:
+    """
+    解析本地时刻。规范为 HH:MM:SS；允许简写 HH:MM，秒按 00。
+    """
     parts = s.strip().split(":")
-    if len(parts) != 2:
-        raise ValueError("时间格式应为 HH:MM")
-    h, m = int(parts[0]), int(parts[1])
-    if not (0 <= h <= 23 and 0 <= m <= 59):
-        raise ValueError("无效时间")
-    return time_of_day(hour=h, minute=m)
+    if len(parts) == 2:
+        h, m = int(parts[0]), int(parts[1])
+        sec = 0
+    elif len(parts) == 3:
+        h, m, sec = int(parts[0]), int(parts[1]), int(parts[2])
+    else:
+        raise ValueError("时间格式应为 HH:MM:SS，或简写 HH:MM（秒为 00）")
+    if not (0 <= h <= 23 and 0 <= m <= 59 and 0 <= sec <= 59):
+        raise ValueError("无效时间（时 0-23，分、秒各 0-59）")
+    return time_of_day(hour=h, minute=m, second=sec)
 
 
 def _now_in_window(
@@ -499,7 +527,9 @@ def _run_scheduler_loop(
 
             if inside and active is None:
                 log.info(
-                    "进入运行窗口：将启动 stress-ng=%s，CPU worker=%s，内存 worker=%s，每 VM %s",
+                    "进入运行窗口：当前生效 [%s, %s)  stress-ng=%s  CPU worker=%s  内存 worker=%s  每 VM %s",
+                    _format_clock(start),
+                    _format_clock(end),
                     stress_ng,
                     cpu_workers,
                     mem_workers,
@@ -519,7 +549,11 @@ def _run_scheduler_loop(
                     _stop_workers(active)
                     active = None
             elif not inside and active is not None:
-                log.info("离开运行窗口：停止所有 worker（本地时间已不在 [%s, %s)）", start, end)
+                log.info(
+                    "离开运行窗口：停止所有 worker（本地时间已不在 [%s, %s)）",
+                    _format_clock(start),
+                    _format_clock(end),
+                )
                 _stop_workers(active)
                 active = None
 
@@ -536,6 +570,8 @@ def _log_startup_banner(
     log_level: int,
     log_to_stdout: bool,
     args: argparse.Namespace,
+    start_t: time_of_day,
+    end_t: time_of_day,
 ) -> None:
     log = logging.getLogger(LOGGER_NAME)
     log.info(
@@ -555,10 +591,12 @@ def _log_startup_banner(
         stress_path,
     )
     log.info(
-        "时间窗: start=%s end=%s poll_interval=%.1fs force_run=%s cpu_workers=%s "
-        "mem_workers=%s mem_per_worker_gib=%s",
+        "时间窗: 参数 start=%s end=%s  生效区间 [%s, %s)  poll_interval=%.1fs  "
+        "force_run=%s  cpu_workers=%s  mem_workers=%s  mem_per_worker_gib=%s",
         args.start,
         args.end,
+        _format_clock(start_t),
+        _format_clock(end_t),
         args.poll_interval,
         args.force_run,
         args.cpu_workers,
@@ -587,19 +625,19 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     g_time = parser.add_argument_group(
         "时间窗与轮询",
-        "使用节点本地时区与系统时间；窗为左闭右开 [start, end)，即 end 时刻起不再运行。",
+        "节点本地时钟；规范 HH:MM:SS，可简写 HH:MM（秒为 00）。窗为左闭右开 [start, end)。",
     )
     g_time.add_argument(
         "--start",
-        default="09:00",
-        metavar="HH:MM",
-        help="运行窗口开始，默认 09:00。",
+        default=DEFAULT_START_CLOCK,
+        metavar="HH:MM:SS",
+        help="运行窗口开始，默认 %s。" % DEFAULT_START_CLOCK,
     )
     g_time.add_argument(
         "--end",
-        default="19:00",
-        metavar="HH:MM",
-        help="运行窗口结束（不含该时刻），默认 19:00。",
+        default=DEFAULT_END_CLOCK,
+        metavar="HH:MM:SS",
+        help="运行窗口结束（不含该时刻），默认 %s。" % DEFAULT_END_CLOCK,
     )
     g_time.add_argument(
         "--poll-interval",
@@ -690,10 +728,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     _require_linux()
 
     try:
-        start_t = _parse_hhmm(args.start)
-        end_t = _parse_hhmm(args.end)
+        start_t = _parse_clock(args.start)
+        end_t = _parse_clock(args.end)
     except ValueError as e:
         sys.stderr.write("参数错误: %s\n" % e)
+        return EXIT_BAD_ARGS
+
+    if start_t >= end_t:
+        sys.stderr.write(
+            "参数错误: 要求 --start 早于 --end（同一天内、区间 [start,end) 须非空）\n"
+        )
         return EXIT_BAD_ARGS
 
     if args.cpu_workers < 1 or args.mem_workers < 1:
@@ -741,7 +785,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             log_path,
         )
 
-    _log_startup_banner(stress_path, log_path, log_level, bool(args.log_to_stdout), args)
+    _log_startup_banner(
+        stress_path,
+        log_path,
+        log_level,
+        bool(args.log_to_stdout),
+        args,
+        start_t,
+        end_t,
+    )
 
     shutdown = threading.Event()
 
