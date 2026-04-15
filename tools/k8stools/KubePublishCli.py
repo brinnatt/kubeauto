@@ -133,6 +133,23 @@ class SSHConnectivityChecker:
         return False, (out or "").strip() or "未知错误"
 
 
+def _remote_ssh_runtime_ready(
+        ssh: "SSHManager",
+        host: str,
+        port: int,
+        runtime: str,
+) -> bool:
+    """SSHManager 已构造后：检查连通性与远程 runtime。失败时写日志，返回 False。"""
+    ok, reason = SSHConnectivityChecker.check(ssh)
+    if not ok:
+        logger.error("无法连接主机 {}:{}: {}".format(host, port, reason))
+        return False
+    if not ssh.check_runtime(runtime):
+        logger.error("主机 {}:{} 上未找到 {}".format(host, port, runtime))
+        return False
+    return True
+
+
 class CommandRunner:
     """命令执行器 - 参照官方最佳实践"""
 
@@ -560,9 +577,9 @@ class SSHManager:
                 parts.append(result.stderr.strip())
             if result.stdout:
                 parts.append(result.stdout.strip())
-            err = "\n".join(parts) if parts else "返回码 {}".format(result.returncode)
+            combined_output = "\n".join(parts) if parts else "返回码 {}".format(result.returncode)
             logger.error("复制文件到远程失败 {} -> {}，错误:".format(src, dst))
-            for line in err.split("\n"):
+            for line in combined_output.split("\n"):
                 logger.error("  {}".format(line))
             return False
         except Exception as e:
@@ -808,13 +825,7 @@ def _delete_images_remote(
             # 只有当remote_runtime是nerdctl时才需要验证命名空间
             validate_ns = (runtime == "nerdctl")
             ssh = SSHManager(host, port, ssh_user, ssh_key, namespace, strict_host_key_checking, validate_namespace=validate_ns)
-            # 先检查连通性再检查运行时，避免将连接失败误报为未找到运行时
-            ok, err = SSHConnectivityChecker.check(ssh)
-            if not ok:
-                logger.error("无法连接主机 {}:{}: {}".format(host, port, err))
-                continue
-            if not ssh.check_runtime(runtime):
-                logger.error("主机 {}:{} 上未找到 {}".format(host, port, runtime))
+            if not _remote_ssh_runtime_ready(ssh, host, port, runtime):
                 continue
 
             # 构建删除命令
@@ -926,13 +937,7 @@ def distribute_images(
             # 只有当remote_runtime是nerdctl时才需要验证命名空间
             validate_ns = (remote_runtime == "nerdctl")
             ssh = SSHManager(host, port, ssh_user, ssh_key, namespace, strict_host_key_checking, validate_namespace=validate_ns)
-            # 先检查连通性再检查运行时，避免将连接失败误报为未找到运行时
-            ok, err = SSHConnectivityChecker.check(ssh)
-            if not ok:
-                logger.error("无法连接主机 {}:{}: {}".format(host, port, err))
-                continue
-            if not ssh.check_runtime(remote_runtime):
-                logger.error("主机 {}:{} 上未找到 {}".format(host, port, remote_runtime))
+            if not _remote_ssh_runtime_ready(ssh, host, port, remote_runtime):
                 continue
 
             # 创建远程临时目录
@@ -1012,6 +1017,111 @@ def parse_host_with_port(host_str: str) -> Tuple[str, int]:
             logger.warning(f"无法解析端口 '{parts[1]}'，使用默认端口22")
             return parts[0], 22
     return host_str, 22
+
+
+def _split_trailing_port(token: str):
+    """若为 host:PORT 且 PORT 为十进制端口，返回 (主机部分, ':PORT' 或 '')。含 IPv6 或无法解析时整体作为主机部分。"""
+    if "[" in token:
+        return token, ""
+    if token.count(":") != 1:
+        return token, ""
+    left, right = token.split(":", 1)
+    if not right.isdigit():
+        return token, ""
+    try:
+        p = int(right)
+    except ValueError:
+        return token, ""
+    if not InputValidator.validate_port(p):
+        return token, ""
+    return left, ":" + right
+
+
+def _expand_brace_numeric_range(inner: str):
+    """解析 {01..17} 或 {1..17} 形式的数字区间，返回字符串列表；无法解析则返回 None。"""
+    if ".." not in inner:
+        return None
+    left, right = inner.split("..", 1)
+    left_s, right_s = left.strip(), right.strip()
+    if not left_s.isdigit() or not right_s.isdigit():
+        return None
+    start, end = int(left_s), int(right_s)
+    if start > end:
+        return None
+    width = len(left_s) if left_s.startswith("0") and len(left_s) > 1 else 0
+    out = []
+    for n in range(start, end + 1):
+        s = str(n).zfill(width) if width else str(n)
+        out.append(s)
+    return out
+
+
+def _expand_brace_in_string(base: str):
+    """将 base 中第一处 {n..m} 展开为多个字符串；无区间则返回 [base]。"""
+    m = re.match(r"^(.*)\{([^}]+)}(.*)$", base)
+    if not m:
+        return [base]
+    pre, inner, post = m.group(1), m.group(2), m.group(3)
+    nums = _expand_brace_numeric_range(inner)
+    if nums is None:
+        return [base]
+    return [pre + n + post for n in nums]
+
+
+def _expand_ipv4_last_octet_range(base: str):
+    """将 192.168.4.7-19 展开为同一 /24 网段内末段连续 IPv4；不匹配则返回 [base]。"""
+    m = re.match(r"^((?:\d{1,3}\.){3})(\d{1,3})-(\d{1,3})$", base)
+    if not m:
+        return [base]
+    prefix, lo_s, hi_s = m.group(1), m.group(2), m.group(3)
+    try:
+        lo, hi = int(lo_s), int(hi_s)
+    except ValueError:
+        return [base]
+    if lo > hi or not (0 <= lo <= 255 and 0 <= hi <= 255):
+        return [base]
+    out = []
+    for i in range(lo, hi + 1):
+        ip = prefix + str(i)
+        if InputValidator.validate_hostname(ip):
+            out.append(ip)
+        else:
+            logger.warning(f"跳过无效地址（区间展开）: {ip}")
+    return out if out else [base]
+
+
+def expand_host_distribution_token(token: str):
+    """
+    将单个主机表项展开为 host[:port] 列表。
+    支持: worker-{01..17}、192.168.4.7-19、以及上述形式带末尾 :port。
+    """
+    token = token.strip()
+    if not token:
+        return []
+    base, port_suf = _split_trailing_port(token)
+    # 先花括号展开（仅第一处 {..}）
+    if "{" in base and "}" in base and ".." in base:
+        expanded = _expand_brace_in_string(base)
+        if len(expanded) == 1 and expanded[0] == base:
+            return [token]
+        return [e + port_suf for e in expanded]
+    # IPv4 末段区间
+    if re.match(r"^((?:\d{1,3}\.){3})(\d{1,3})-(\d{1,3})$", base):
+        ips = _expand_ipv4_last_octet_range(base)
+        if len(ips) == 1 and ips[0] == base:
+            return [token]
+        return [ip + port_suf for ip in ips]
+    return [token]
+
+
+def expand_distribution_hosts(hosts):
+    """对 distribute / delete-hosts 的主机列表逐项展开并扁平化。"""
+    out = []
+    for h in hosts:
+        if not h:
+            continue
+        out.extend(expand_host_distribution_token(h))
+    return out
 
 
 def load_json_config(config_file: str) -> Dict[str, Any]:
@@ -1102,6 +1212,8 @@ def show_examples():
 4. 分发镜像到远程主机:
    # 方式1: 与--pack一起使用（推荐，同一会话完成）
    python3 k8simgmanager.py --pack nginx:alpine --distribute 192.168.1.100:2222 192.168.1.101
+   # 批量主机（花括号数字区间、IPv4 末段区间； per-host 端口仍用 :PORT，全局 SSH 端口用 --ssh-port）
+   python3 k8simgmanager.py --pack nginx:alpine --distribute worker-{01..17} 192.168.4.7-19 --ssh-port 58595
    python3 k8simgmanager.py --pack nginx:alpine --distribute 192.168.1.100 --cleanup  # 分发成功后清理旧文件
    
    # 方式2: 使用--tar指定已存在的tar文件
@@ -1118,7 +1230,8 @@ def show_examples():
    #   "pack": ["nginx:alpine", "redis:latest"],
    #   "distribute": [
    #     "192.168.1.100:2222",
-   #     "192.168.1.101",
+   #     "worker-{01..17}",
+   #     "192.168.4.7-19",
    #     {"host": "host2.example.com", "port": 2222}
    #   ]
    # }
@@ -1205,7 +1318,7 @@ def show_examples():
   --download IMAGES    从仓库下载镜像
   --delete IMAGES      删除镜像 (只能单独使用)
   --delete-hosts HOSTS 指定要删除镜像的远程主机 (与--delete一起使用)
-  --distribute HOSTS   分发到远程主机 (格式: host[:port])
+  --distribute HOSTS   分发到远程主机 (格式: host[:port]；可写 worker-{01..17}、192.168.4.7-19)
   --tar FILE           指定要分发的tar文件 (与--distribute一起使用)
   --config FILE        使用JSON配置文件
   --cleanup            在所有操作成功后清理旧的自动生成文件 (images_batch_*.tar格式)
@@ -1293,14 +1406,14 @@ def main():
         "--delete-hosts",
         nargs="*",
         metavar="HOST[:PORT]",
-        help="指定要删除镜像的远程主机 (例如: --delete-hosts host1:2222 host2)。与--delete一起使用"
+        help="指定要删除镜像的远程主机 (例如: --delete-hosts host1:2222 host2；批量写法同--distribute)。与--delete一起使用"
     )
 
     parser.add_argument(
         "--distribute",
         nargs="*",
         metavar="HOST[:PORT]",
-        help="分发镜像到远程主机 (例如: --distribute host1:2222 host2)"
+        help="分发镜像到远程主机 (例如: --distribute host1:2222 host2；支持 worker-{01..17}、192.168.4.7-19)"
     )
 
     parser.add_argument(
@@ -1449,9 +1562,10 @@ def main():
             hosts_to_delete = args.delete_hosts
         should_delete = True
     
-    # 基本验证：过滤空值
+    # 基本验证：过滤空值；delete-hosts 与 distribute 相同批量写法
     images_to_delete = [img for img in images_to_delete if img]
     hosts_to_delete = [h for h in hosts_to_delete if h]
+    hosts_to_delete = expand_distribution_hosts(hosts_to_delete)
     if not images_to_delete:
         should_delete = False
 
@@ -1477,8 +1591,9 @@ def main():
             hosts_to_distribute = args.distribute
         should_distribute = True
     
-    # 基本验证：过滤空值
+    # 基本验证：过滤空值；支持 worker-{01..17}、192.168.4.7-19 等批量写法
     hosts_to_distribute = [h for h in hosts_to_distribute if h]
+    hosts_to_distribute = expand_distribution_hosts(hosts_to_distribute)
     if not hosts_to_distribute:
         should_distribute = False
 
