@@ -949,6 +949,60 @@ class ResourceCleaner:
         return metadata
 
     @staticmethod
+    def _dedupe_container_ports_in_container(container: Dict, log_ctx: str) -> None:
+        """
+        按 (containerPort, protocol) 去重 ports 列表。
+
+        Server-Side Apply 将 ports 视为按 (containerPort, protocol) 合并的列表；重复键会导致 apiserver
+        返回 500（typed patch: duplicate entries）。部分集群曾允许同端口多 name，恢复时须规范化。
+        """
+        ports = container.get("ports")
+        if not ports or not isinstance(ports, list):
+            return
+        seen = set()
+        kept: List[Dict] = []
+        dropped = 0
+        for p in ports:
+            if not isinstance(p, dict):
+                kept.append(p)
+                continue
+            cp = p.get("containerPort")
+            if cp is None:
+                kept.append(p)
+                continue
+            proto = p.get("protocol") or "TCP"
+            if isinstance(proto, str):
+                proto = proto.upper()
+            key = (cp, proto)
+            if key in seen:
+                dropped += 1
+                cname = container.get("name", "?")
+                pname = p.get("name", "")
+                logger.warning(
+                    f"{log_ctx} 容器 {cname}: 忽略重复 ports 项 containerPort={cp} protocol={proto}"
+                    + (f" name={pname}" if pname else "")
+                    + "（SSA 与同键冲突；保留首次出现的项）"
+                )
+                continue
+            seen.add(key)
+            kept.append(p)
+        if dropped:
+            if kept:
+                container["ports"] = kept
+            else:
+                container.pop("ports", None)
+
+    @staticmethod
+    def dedupe_container_ports_in_pod_spec(pod_spec: Dict, log_ctx: str) -> None:
+        """对 PodSpec 内所有容器（含 init/ephemeral）执行 ports 去重。"""
+        if not isinstance(pod_spec, dict):
+            return
+        for ckey in ("initContainers", "containers", "ephemeralContainers"):
+            for ctr in pod_spec.get(ckey) or []:
+                if isinstance(ctr, dict):
+                    ResourceCleaner._dedupe_container_ports_in_container(ctr, log_ctx)
+
+    @staticmethod
     def _clean_pod_spec(pod_spec: Dict) -> None:
         """
         清理 Pod spec 中的集群特定字段
@@ -970,6 +1024,8 @@ class ResourceCleaner:
             ]
             if not pod_spec['volumes']:
                 pod_spec.pop('volumes', None)
+
+        ResourceCleaner.dedupe_container_ports_in_pod_spec(pod_spec, log_ctx="备份清理")
 
     @staticmethod
     def _clean_pod_template(template: Dict) -> None:
@@ -1183,6 +1239,16 @@ class ResourceTransformer:
         resource = self._transform_env_variables(resource)
         # ④ env_namespace_substitute：仅仍为 env.value 内联的条目（见 -h 专节）
         resource = self._substitute_namespace_in_env_plain_values(resource)
+
+        # ⑤ container.ports：SSA 按 (containerPort, protocol) 合并，重复项会导致 apiserver 报错（如 HTTP 500）
+        meta = resource.get("metadata") or {}
+        log_ctx = "恢复 {} / {}（{}）".format(
+            resource.get("kind") or "?",
+            meta.get("name") or "?",
+            meta.get("namespace") or "cluster-scoped",
+        )
+        for pod_spec in self._iter_pod_specs(resource):
+            ResourceCleaner.dedupe_container_ports_in_pod_spec(pod_spec, log_ctx=log_ctx)
 
         return resource
 
@@ -3065,6 +3131,8 @@ R8. 灾备场景：目标集群已有全局策略，只灌入命名空间内业�
     例：app.yaml 内第一段 Deployment、第二段 Service，会先后两次 server-side apply，不会只建 Deployment 而丢 Service。
   - 恢复：启用 --create-namespaces 时，预创建命名空间任一失败会整次中止，避免资源写入错误拓扑。
   - 命名空间映射对 Kind=Namespace 会改写 metadata.name；NetworkPolicy 的 namespaceSelector 同时处理 matchLabels 与 matchExpressions（kubernetes.io/metadata.name）。
+  - 若容器 ports 中出现相同 containerPort+protocol 的多条（仅 name 不同），server-side apply 可能报 500；
+    备份与恢复阶段会自动按 (containerPort, protocol) 去重并打警告日志，保留第一条；若业务确需多端口请改为不同端口或合并探针配置。
   - 备份前预留磁盘空间；备份含 Secret，需妥善保管。
   - 恢复使用 server-side apply（force 解决字段冲突），并会去掉 finalizers / ownerReferences 等集群绑定字段。
   - 备份拒绝缺少 kind 或 apiVersion 的对象；从不写入虚构类型，避免无法 apply 的垃圾清单。
