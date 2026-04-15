@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-StressCli：K8s 工作节点上按本地时间窗调度 stress-ng（多进程包装）。
+StressCli：在 Linux 工作节点上按本地时间窗调度 stress-ng（多进程包装）。
 
-说明与行为以 STRESSCLI_PARSER_DESCRIPTION、show_examples()、下方「上游 stress-ng 约定」常量为权威；
-实现入口见 main()、_run_scheduler_loop()、_build_stress_ng_*_cmd()。
+权威说明：STRESSCLI_PARSER_DESCRIPTION、show_examples()、源码中 STRESS_NG_GLOBAL_OPTS 注释。
+入口：main()、_run_scheduler_loop()、_build_stress_ng_*_cmd()。
 
-日志：默认 /var/log/res.log（滚动，见 init_stresscli_logging）；主进程与 worker 经 QueueListener 汇总，
-便于全程追踪正常运行、停窗、信号与 stress-ng 异常退出。
+日志默认 /var/log/res.log（滚动），主进程与 worker 经 QueueListener 写同一文件。
 
-退出码：0 成功；1 一般错误；2 参数错误。
+退出码：0 成功；1 错误；2 参数错误。
 """
 
 import argparse
@@ -154,83 +153,84 @@ def _configure_worker_logger(log_queue: Any, suffix: str) -> logging.Logger:
 # -----------------------------------------------------------------------------
 
 STRESSCLI_PARSER_DESCRIPTION = """\
-Linux 专用：在指定本地时间窗内，用 multiprocessing 启动若干子进程，每个子进程内执行一条 stress-ng 命令。
+StressCli（仅 Linux）：在本地时间窗 [start, end) 内用 multiprocessing 拉起多个 worker，
+每个 worker 进程内执行一条 stress-ng；出窗或收到 SIGTERM 时结束 stress-ng。
 
-【脚本做什么】
-  · 主进程按 --poll-interval 周期醒来，判断「当前本地时间是否在 [ --start , --end )」内。
-  · 若在窗内且尚未启动：fork 共 (--cpu-workers + --mem-workers) 个子进程。
-  · 每个子进程用 setsid 新建会话启动 stress-ng；停窗或收到 SIGTERM 时向进程组发信号结束 stress-ng。
-  · 若不在窗内：确保上述子进程已全部停止。
+调度方式
+    主进程按 --poll-interval 秒轮询；在窗内且尚未启动时创建 (cpu-workers + mem-workers) 个
+    子进程；在窗外或停服时确保子进程全部退出。时间使用节点本地时区。
 
-【与直接跑 stress-ng 的区别】
-  · 负载仍由 stress-ng 产生（参数见 show_examples / 下方「stress-ng 与规模」），本脚本只负责时间窗与进程拓扑。
-  · 进程表会出现「Python worker + 其子进程 stress-ng」，与手工多开终端等价类。
-  · 每条 stress-ng 命令在 stressor 之前统一加全局选项（源码常量 STRESS_NG_GLOBAL_OPTS，与 stress-ng.1 一致）：
-      --timeout 0（避免默认 24h 自动结束）、--quiet（无人值守）、--no-oom-adjust（不篡改 OOM 分数，利于与同台业务共存）。
+与手写 stress-ng 的差异
+    施压逻辑在 stress-ng；本脚本只负责时间窗与进程个数。每条命令的全局前缀见源码
+    STRESS_NG_GLOBAL_OPTS，与 stress-ng 手册一致：--timeout 0、--quiet、--no-oom-adjust。
+    进程表为 Python worker 及其子进程 stress-ng。
 
-【默认规模（可按节点调整）】
-  · CPU：每 worker 一条「--cpu 1 --cpu-load 100」，默认 4 个 worker（约占满 4 逻辑核）。
-  · 内存：每 worker 一条「--vm 1 --vm-bytes NG …」，默认 2 个 worker、每 worker 10G（合计约 20G，stress-ng 的 G 后缀语义见其手册）。
+默认资源（可用参数覆盖）
+    CPU：每 worker 一条 --cpu 1 --cpu-load 100，默认 4 个 worker。
+    内存：每 worker 一条 --vm 1 --vm-bytes <N>G ...，默认 2 个 worker，每 worker 10G（N 含义见 stress-ng 手册）。
 
-【systemd】
-  · Type=simple，ExecStart 指向本脚本；KillMode=mixed + TimeoutStopSec 给主进程先发 SIGTERM、再清理 cgroup，便于 Python 侧收掉 stress-ng。
-  · 完整片段见 show_examples()。
+日志
+    默认 /var/log/res.log，滚动；环境变量 STRESSCLI_LOG_FILE 可改路径。无法写首选路径时回退到
+    ./logs/res.log 并记告警。多进程经队列汇总到同一文件。详例见 -h 文末「示例」。
 
-【日志】
-  · 默认写入 /var/log/res.log（滚动，约 10MB×5）；环境变量 STRESSCLI_LOG_FILE 可覆盖路径。
-  · 无权限写 /var/log 时自动退回到当前工作目录下 logs/res.log，并在日志中告警。
-  · 多进程通过队列汇总写入，主进程与 worker 事件均落同一文件，便于排障。
+systemd
+    建议 Type=simple，ExecStart 指向本脚本；KillMode=mixed、TimeoutStopSec 便于先停主进程再清 cgroup。
+    完整 unit 见 -h 文末。
 
-【如何阅读下方选项】
-  分组标题下列出长选项；带默认值的会在 help 字符串中说明。
+选项说明
+    下方按 argparse 分组列出；各参数默认值在其 --help 行内给出。
 """
 
 
 def show_examples() -> None:
-    """接续「python StressCli.py -h」：示例命令与 systemd 片段（须与 STRESSCLI_PARSER_DESCRIPTION 同步维护）。"""
+    """与 python3 StressCli.py -h 文末一并输出；须与 STRESSCLI_PARSER_DESCRIPTION、实现同步。"""
     text = """
-========================================================================
-分步示例与可复制命令（与上方选项、源码实现一致）
-========================================================================
+----------------------------------------------------------------------
+StressCli 使用示例（路径与账号按环境修改）
+----------------------------------------------------------------------
 
-一、先看帮助（含本段）
-  python3 StressCli.py -h
+  1. 查看帮助（含本段）
+     python3 StressCli.py -h
 
-二、生产节点：按默认窗 09:00～19:00（19:00 起停止）运行
-  python3 /path/to/tools/StressCli.py
+  2. 生产：默认时间窗 09:00 至 19:00（不含 19:00）
+     python3 /opt/kubeauto/tools/StressCli.py
 
-三、指定 stress-ng 路径（PATH 中找不到时）
-  python3 StressCli.py --stress-ng-binary /usr/bin/stress-ng
+  3. stress-ng 不在 PATH 时
+     python3 StressCli.py --stress-ng-binary /usr/bin/stress-ng
 
-四、日志（默认 /var/log/res.log；调试可加控制台与 DEBUG）
-  export STRESSCLI_LOG_FILE=/var/log/res.log
-  python3 StressCli.py --log-to-stdout --log-level DEBUG
+  4. 日志：默认 /var/log/res.log；需要控制台时加 --log-to-stdout
+     export STRESSCLI_LOG_FILE=/var/log/res.log
+     python3 StressCli.py --log-to-stdout --log-level DEBUG
 
-五、调试：忽略时间窗，立即按默认 worker 数跑满（测完请 Ctrl+C）
-  python3 StressCli.py --force-run
+  5. 联调：忽略时间窗，立即加压（结束用 Ctrl+C）
+     python3 StressCli.py --force-run
 
-六、systemd 单元示例（路径请改为本机绝对路径）
-  [Unit]
-  Description=StressCli time-window stress-ng scheduler
-  After=network-online.target
-  Wants=network-online.target
+  6. systemd 单元示例（Python 与脚本路径换成本机实际值）
 
-  [Service]
-  Type=simple
-  ExecStart=/usr/bin/python3 /opt/kubeauto/tools/StressCli.py
-  Restart=always
-  RestartSec=10
-  KillMode=mixed
-  TimeoutStopSec=90
+     [Unit]
+     Description=StressCli time-window stress-ng scheduler
+     After=network-online.target
+     Wants=network-online.target
 
-  [Install]
-  WantedBy=multi-user.target
+     [Service]
+     Type=simple
+     ExecStart=/usr/bin/python3 /opt/kubeauto/tools/StressCli.py
+     Restart=always
+     RestartSec=10
+     KillMode=mixed
+     TimeoutStopSec=90
 
-七、每个 worker 内实际执行的 stress-ng（全局前缀与 STRESS_NG_GLOBAL_OPTS 一致；N 来自 --mem-per-worker-gib）
-  CPU worker:
-    stress-ng --timeout 0 --quiet --no-oom-adjust --cpu 1 --cpu-load 100
-  内存 worker:
-    stress-ng --timeout 0 --quiet --no-oom-adjust --vm 1 --vm-bytes NG --vm-keep --vm-method all --vm-hang 0
+     [Install]
+     WantedBy=multi-user.target
+
+  7. 单条 stress-ng 等价命令（全局前缀见 STRESS_NG_GLOBAL_OPTS；N 为 --mem-per-worker-gib）
+
+     CPU 单 worker：
+     stress-ng --timeout 0 --quiet --no-oom-adjust --cpu 1 --cpu-load 100
+
+     内存单 worker：
+     stress-ng --timeout 0 --quiet --no-oom-adjust \\
+       --vm 1 --vm-bytes NG --vm-keep --vm-method all --vm-hang 0
 
 """
     print(text)
@@ -576,13 +576,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     g_help = parser.add_argument_group(
         "帮助",
-        "默认执行「时间窗调度」；须先阅读本节与 STRESSCLI_PARSER_DESCRIPTION（脚本做什么、何时启停 worker）。",
+        "默认按时间窗调度；请先读本段与上方概述（何时启停 worker）。",
     )
     g_help.add_argument(
         "-h",
         "--help",
         action="store_true",
-        help="打印本帮助（含全部分组选项），并输出文末「分步示例」可复制命令。",
+        help="打印本帮助及文末示例段落（可复制命令）。",
     )
 
     g_time = parser.add_argument_group(
@@ -611,7 +611,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     g_bin = parser.add_argument_group(
         "stress-ng",
-        "实际施压由 stress-ng 完成；每条命令在 stressor 前统一附加 STRESS_NG_GLOBAL_OPTS（见源码与 -h 文首）。",
+        "施压由 stress-ng 执行；每条命令在 stressor 前加 STRESS_NG_GLOBAL_OPTS，见源码与 -h 概述。",
     )
     g_bin.add_argument(
         "--stress-ng-binary",
@@ -622,7 +622,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     g_scale = parser.add_argument_group(
         "worker 规模",
-        "CPU：每 worker 一条 --cpu 1；内存：每 worker 一条 --vm 1，--vm-bytes 为「整数+G」。",
+        "CPU：每 worker 一条 --cpu 1；内存：每 worker 一条 --vm 1，--vm-bytes 为整数后接 G。",
     )
     g_scale.add_argument(
         "--cpu-workers",
@@ -684,9 +684,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.help:
         parser.print_help()
         print()
-        print("=" * 72)
-        print("分步示例与场景命令（可复制；与上方选项对应）")
-        print("=" * 72)
         show_examples()
         return EXIT_OK
 
