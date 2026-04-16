@@ -2,31 +2,54 @@
 
 ## T9.1、日志架构
 
-前面在监控篇（T4）里已经搭好了指标与告警，运维上还有一块同样关键：**把日志集中存起来、能检索、能关联**，否则排障只能靠 `kubectl logs` 和节点本地文件，节点一换或 Pod 一删，上下文就没了。
+监控篇（T4）解决的是「指标与告警」；日志解决的是「当时发生了什么、可检索」。两边都要，但别混在同一套存储里硬塞。
 
-以下内容与 [Kubernetes 官方文档：Logging Architecture](https://kubernetes.io/docs/concepts/cluster-administration/logging/) 的表述一致，并在此基础上按生产实践做了取舍（镜像固定 tag、采集组件选型、落地注意点）。
+本节对齐 [Kubernetes：Logging Architecture](https://kubernetes.io/docs/concepts/cluster-administration/logging/)，并结合生产习惯写清：**镜像固定 tag、校验日期、可照着 apply 的 YAML**。文中配图来自 **Kubernetes 官网同一套素材**（已下载到本文 `images/`，便于离线阅读）。
 
-### 应用日志在集群里是什么
+### T9.1.1、概念与依据
 
-应用日志用来回答「业务在干什么、错在哪」。容器场景里最省事、也最通行的做法是：**写标准输出（stdout）和标准错误（stderr）**。运行时通过 CRI 把这两路流交给 kubelet，最终在节点上形成容器日志文件（具体格式与路径由**容器运行时 + kubelet** 决定，不同发行版可能略有差异），平时用 `kubectl logs` 就能看。
+**应用日志**：看业务行为、排错、审计。**容器里最省事的做法**：写 **stdout / stderr**，由运行时交给 kubelet，再在节点上落盘；平时用 `kubectl logs` 就能看。
 
-这和监控篇里「Exporter 暴露 `/metrics`」是两条线：**指标**走 Prometheus 一类系统；**日志**走日志代理或直推日志后端。两边都建议做，但别混在同一套存储里硬塞。
+**集群级日志（cluster-level logging）**：官方定义是——日志的**存储与生命周期**要和节点、Pod、容器**脱钩**，否则容器崩了、Pod 被赶走、节点挂了，你只依赖本地文件会抓瞎。Kubernetes **不提供**日志存储产品，只提供 API 与节点侧行为；**存哪、查哪、保留多久**由你自己选（EFK、托管日志、Kafka 等）。
 
-若只需要「当场 tail 一下」，stdout/stderr 足够；若希望 **Pod 重启、被驱逐、节点故障之后仍能查历史**，就需要 **cluster-level logging（集群级日志）**：日志的存储与生命周期**独立于**节点、Pod、容器，由**单独的日志后端**负责存、查、分析。Kubernetes **本身不提供**日志存储实现，只负责把节点上的日志暴露给客户端（例如 `kubectl logs`）以及描述工作负载；**选型与运维**由你在集群外或集群内自建（EFK、托管日志服务等）。
+**和监控的分工**：指标走 Prometheus 一类系统；日志走采集代理或应用直推。**Exporter 的 `/metrics`** 与 **stdout 日志** 是两条线，别互相替代。
 
-### 与生产相关的两点（官方依据）
+```mermaid
+flowchart LR
+  subgraph obs[可观测]
+    M[指标 Prometheus]
+    L[日志 后端]
+  end
+  APP[工作负载] --> M
+  APP --> L
+```
 
-**1）kubelet 日志轮转（节点磁盘）**
+---
 
-自 Kubernetes v1.21 起，kubelet 对容器日志做轮转的相关行为已稳定，可通过 kubelet 配置项控制单文件大小与保留文件数等，详见 [kubelet 配置](https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/) 中的 `containerLogMaxSize`、`containerLogMaxFiles` 等说明。生产上要配合节点磁盘与审计需求调这些值，避免单容器刷屏把节点写满。
+### T9.1.2、标准输出与节点行为
 
-**2）`kubectl logs` 看到的是「当前轮转文件」**
+下面这张图对应官方「节点如何处理容器日志」的说明：运行时接管 stdout/stderr，与 kubelet 之间用 **CRI 日志格式**衔接（具体实现随运行时变化，但对 kubelet 的接口是统一的）。
 
-官方文档说明：通过 `kubectl logs` 读到的通常是**当前正在写入的那份**日志文件；若日志量很大、已发生轮转，**更早的片段不一定**还能通过该命令拿到。企业里长期留存与合规检索应走**集群级日志后端**，不要指望 `kubectl logs` 当归档。
+![节点级日志示意（Kubernetes 官网）](./images/logging-node-level.png)
 
-### 最基础的 Pod 日志示例
+**你可以把一条日志从容器里到 `kubectl logs` 的路径理解成：**
 
-下面示例与官方 [counter Pod 示例](https://k8s.io/examples/debug/counter-pod.yaml) 同结构；镜像使用与本文监控篇一致的 **`busybox:1.37`**（固定 tag，勿用 `latest`）。
+```mermaid
+flowchart LR
+  C[容器 stdout/stderr]
+  R[容器运行时 CRI]
+  K[kubelet 读日志文件]
+  U[kubectl logs / API]
+  C --> R --> K --> U
+```
+
+**kubelet 轮转（生产必看）**：自 v1.21 起相关能力已稳定。可在 [kubelet 配置](https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/) 里调 `containerLogMaxSize`（默认约 10Mi）、`containerLogMaxFiles`（默认约 5）等；大流量集群还可关注 `containerLogMaxWorkers`、`containerLogMonitorInterval`。目的是**别让单容器日志把节点盘打满**。
+
+**`kubectl logs` 的边界**：官方写明——通常只能看到**当前正在写的那份**文件；若已轮转，更早的不一定还能从这个命令拿到。**长期留存、合规检索**必须走集群级后端，别指望 `kubectl logs` 当归档库。
+
+**可选（Alpha）**：从 v1.32 起有 `PodLogsQuerySplitStreams` 特性门，可把 stdout / stderr 分开查，默认关。见官方 [Container log streams](https://kubernetes.io/docs/concepts/cluster-administration/logging/#container-log-streams)。
+
+**最小示例**（与官方 [counter-pod.yaml](https://k8s.io/examples/debug/counter-pod.yaml) 同结构，镜像与监控篇一致）：
 
 ```yaml
 # counter-pod.yaml
@@ -47,77 +70,89 @@ spec:
 ```bash
 kubectl apply -f counter-pod.yaml
 kubectl logs counter
-# 多容器时用：kubectl logs counter -c <容器名>
-# 容器重启后看上一份实例：kubectl logs counter --previous
+kubectl logs counter -c count
+kubectl logs counter --previous
 ```
 
-输出中会每秒多一行时间戳文本。若本小节后面还要在同一命名空间重复做实验，请先 `kubectl delete pod counter --ignore-not-found`，避免名称冲突。
+重复实验若遇名称冲突：`kubectl delete pod counter --ignore-not-found`。
 
-> **版本与镜像约定（日志相关，与监控篇同一原则）**  
-> **`image:` 一律使用固定 tag**，升级前到对应项目的 **GitHub Releases**（或镜像仓库 tag 页）核对当前 **latest 稳定版**（`prerelease: false`），并更新下表与本文校验日期。  
+> **版本与镜像约定（与监控篇一致）**  
+> **`image:` 一律固定 tag**；升级前到 **GitHub Releases** 或镜像仓库核对 **latest 稳定版**（非 prerelease），并更新下表与校验日期。  
 >
-> **本文同步校验日期：2026-04-16**，示例用到的镜像 tag 如下（后续小节若出现新组件，按同表扩展）：  
+> **本文同步校验日期：2026-04-16**  
 >
 > | 组件 | 镜像 / 标签 | 说明 |
 > |------|-------------|------|
-> | busybox（示例 Pod） | `busybox:1.37` | 与 [T4 监控篇](../prometheus/prometheus.md) 示例一致 · [Docker Hub Tags](https://hub.docker.com/_/busybox/tags) |
-> | Fluent Bit（本小节 sidecar 采集示例） | `fluent/fluent-bit:5.0.3` | CNCF 托管的日志采集器，节点级/边车常用 · [Releases](https://github.com/fluent/fluent-bit/releases/latest) |
-> | Kubernetes 文档中的 fluentd 示例镜像 | `registry.k8s.io/fluentd-gcp:1.30` | 与 [官方 Logging Architecture 页面](https://kubernetes.io/docs/concepts/cluster-administration/logging/) 同源，偏 **GKE / Google Cloud** 配套；自建集群请优先 **Fluent Bit / 自管 fluentd** 并改 **OUTPUT**，勿照搬云厂商插件 |
+> | busybox | `busybox:1.37` | 与 [T4 监控篇](../prometheus/prometheus.md) 一致 · [Hub](https://hub.docker.com/_/busybox/tags) |
+> | Fluent Bit | `fluent/fluent-bit:5.0.3` | 节点/sidecar 常用 · [Releases](https://github.com/fluent/fluent-bit/releases/latest) |
+> | 官方文档中的 fluentd 示例 | `registry.k8s.io/fluentd-gcp:1.30` | 与 [官方页面示例](https://kubernetes.io/docs/concepts/cluster-administration/logging/) 同源，偏 GKE；**自建集群请改 OUTPUT**，勿照搬 `google_cloud` |
 
 ---
 
-### 集群级日志的三种常见架构（官方分类）
+### T9.1.3、三类集群级路径
 
-官方在 [Cluster-level logging architectures](https://kubernetes.io/docs/concepts/cluster-administration/logging/#cluster-level-logging-architectures) 中归纳了三类，生产里一般都从这三类里选或组合。
+官方在 [Cluster-level logging architectures](https://kubernetes.io/docs/concepts/cluster-administration/logging/#cluster-level-logging-architectures) 里只归纳三类，生产里一般是「三选一或组合」。
 
 ```mermaid
 flowchart LR
-  n1[节点 DaemonSet 代理] --> BE[(日志后端)]
-  sc[Sidecar] --> BE
-  ap[应用直推] --> BE
+  A[节点 DaemonSet 代理] --> BE[(日志后端)]
+  B[Sidecar] --> BE
+  C[应用直推] --> BE
 ```
 
-| 方式 | 要点 | 典型适用 |
-|------|------|----------|
-| **节点级 logging agent** | 每节点一个代理（常用 **DaemonSet**），读该节点上容器日志目录，再转发到后端；**不改业务镜像** | 绝大多数集群默认方案；采集 stdout/stderr 落盘后的文件 |
-| **Sidecar** | 与业务同 Pod：要么把文件日志**转写到 sidecar 的 stdout**，要么在 sidecar 里跑**独立采集进程** | 必须写文件、多格式流分离、或与节点策略冲突时 |
-| **应用内直推** | SDK/协议直接把日志送到后端 | 强业务语义、已与厂商 SDK 集成；成本和耦合由应用团队承担 |
-
-**（插槽：可在此插入 [Kubernetes 官方 Logging Architecture](https://kubernetes.io/docs/concepts/cluster-administration/logging/) 页面中的架构插图或自行导出的 SVG，便于汇报与评审。）**
+| 路径 | 一句话 | 常见场景 |
+|------|--------|----------|
+| 节点代理 | 每节点一个采集进程，读本节点容器日志目录，再发到后端 | **默认首选**，不动业务镜像 |
+| Sidecar | 跟业务同 Pod：要么把文件日志打到 sidecar 的 stdout，要么在 sidecar 里跑采集进程 | 写文件、多格式分流、节点策略不满足时 |
+| 应用直推 | 进程内 SDK 直接发到后端 | 强绑定某云/厂商 SDK，或作补充 |
 
 ---
 
-### 1）节点级 logging agent（DaemonSet）
+### T9.1.4、落地与示例
 
-**做法**：在每个节点跑一个采集容器（如 **Fluent Bit**、fluentd 等），挂载节点上容器日志目录（常见为 `/var/log/pods` 等路径，以你集群实际为准），把日志解析后送到 Elasticsearch、OpenSearch、Kafka、云日志等。
+下面按官方顺序，把三类路径拆成可对照的图 + 可执行的 YAML。**侧重点是「节点代理最常见；Sidecar 有代价；应用直推 Kubernetes 不管」**。
 
-**优点**：每节点**一个**代理进程，对业务无侵入；与官方「stdout 日志由 kubelet/运行时写盘、代理统一收集」模型一致。
+#### T9.1.4.1、节点代理
 
-**局限**：默认主要覆盖**标准流落盘**那条链路；应用若只写容器内文件且**未共享卷、未被代理路径覆盖**，需要配合下面 sidecar 或改应用写盘策略。
+![使用节点级 logging agent（Kubernetes 官网）](./images/logging-with-node-agent.png)
+
+**做法**：用 **DaemonSet** 跑采集容器（Fluent Bit、fluentd 等），挂载节点上容器日志目录（常见在 `/var/log/pods` 一带，以集群为准），解析后送到 ES、OpenSearch、Kafka、云日志等。
+
+**优点**：每节点**一个**代理，业务零改动。  
+**局限**：主要覆盖「标准流落盘」那条链路；应用只写**未共享**的容器内路径时，往往要配合 Sidecar 或改写入方式。
 
 ```mermaid
 flowchart TB
-  subgraph node[工作节点]
-    P1[Pod A]
-    P2[Pod B]
-    LOG[容器日志目录]
-    AGENT[DaemonSet 采集代理]
+  subgraph n[工作节点]
+    P1[Pod]
+    P2[Pod]
+    D[容器日志目录]
+    X[DaemonSet 代理]
   end
-  P1 --> LOG
-  P2 --> LOG
-  LOG --> AGENT
-  AGENT --> BACK[(日志后端)]
+  P1 --> D
+  P2 --> D
+  D --> X
+  X --> BK[(后端)]
 ```
 
 ---
 
-### 2）Sidecar：流式重定向到 stdout
+#### T9.1.4.2、Sidecar 流式
 
-**场景**：业务把日志写到容器内文件（或多种格式），节点代理**直接 tail 不到**或你希望**拆成多条 kubectl 流**。
+![流式 Sidecar（Kubernetes 官网）](./images/logging-with-streaming-sidecar.png)
 
-**做法**：与官方示例一致，用 **emptyDir 共享卷**，主容器写文件；**每个文件对应一个 sidecar**，`tail -F` 跟文件并把内容打到 **该 sidecar 自己的 stdout**，这样 kubelet 仍会收集 sidecar 的标准流，节点级代理即可按容器维度采集。
+**场景**：业务写文件，你希望仍走 kubelet 的 stdout 管线，或要把多路日志拆成多个 `kubectl logs` 流。
 
-YAML 结构与官方文档一致（镜像改为 `busybox:1.37`；`tail` 使用 `-F`，与官方示例一致）：
+**做法**：**emptyDir 共享卷**，主容器写文件；**每个文件一个 sidecar**，`tail -F` 跟文件并打到 **该 sidecar 自己的 stdout**。
+
+```mermaid
+flowchart LR
+  F[应用写文件]
+  T[sidecar tail -F]
+  O[sidecar stdout]
+  F --> T --> O
+  O --> K[kubelet/节点代理]
+```
 
 ```yaml
 # two-files-counter-pod-streaming-sidecar.yaml
@@ -167,19 +202,19 @@ kubectl logs counter -c count-log-1
 kubectl logs counter -c count-log-2
 ```
 
-**生产注意**：官方也指出——文件一份、再经 stdout 采集会在节点上**放大磁盘占用**；若可以改应用，**优先直接写 stdout/stderr**，把轮转和策略交给 kubelet 与集群级后端。
+**生产注意**：官方也提醒——**文件一份 + 再经 stdout 采集**，节点上占用可能接近**翻倍**；能改应用就优先写 **stdout/stderr**，轮转交给 kubelet 与集群级策略。
 
 ---
 
-### 3）Sidecar：独立采集进程（Fluent Bit 示例）
+#### T9.1.4.3、Sidecar 采集器
 
-**场景**：节点级 DaemonSet 策略不满足（例如多租户隔离、单应用特殊解析），可在 Pod 内再跑一个采集容器，**专门 tail 共享卷里的文件**并转发到后端。
+![Sidecar 内跑 logging agent（Kubernetes 官网）](./images/logging-with-sidecar-agent.png)
 
-**代价**：每个 Pod 多一份采集进程，**CPU/内存**要纳入容量规划；这些日志**不是**业务容器 stdout，**不能**指望用 `kubectl logs` 看到采集器「已经转发出去」的内容（要看采集容器自己的日志或后端）。
+**场景**：节点级 DaemonSet 不够灵活（解析规则、租户隔离等），在 Pod 里再跑一个**采集进程**，直接 tail 共享卷里的文件再转发。
 
-[Kubernetes 官方文档](https://kubernetes.io/docs/concepts/cluster-administration/logging/#sidecar-container-with-a-logging-agent) 仍给出 **fluentd + `google_cloud` 输出** 的 ConfigMap 示例，面向 **Google Cloud**；镜像已迁到 **`registry.k8s.io/fluentd-gcp:1.30`**（旧 `k8s.gcr.io` 已弃用）。**自建集群在 2026 年更常见的落地是 Fluent Bit**：同样的 **tail 输入**，**OUTPUT** 换成 **OpenSearch、Elasticsearch、Kafka、云厂商 HTTP 等**。下面给出 **Fluent Bit 5.x**、输出到 **stdout** 的最小可运行示例（任意环境都能验证管道；上生产把 `[OUTPUT]` 换成你的后端即可）。
+**代价**：**每个 Pod 多一份采集**，CPU/内存要算进容量；这类转发**不是**业务容器 stdout，**别指望**用 `kubectl logs` 看到「已经发到后端」的内容（要看采集容器日志或后端）。
 
-先创建 ConfigMap：
+官方示例仍是 **fluentd + `google_cloud`**，镜像为 **`registry.k8s.io/fluentd-gcp:1.30`**（旧 `k8s.gcr.io` 已弃用），面向 **GCP**。自建集群建议用 **Fluent Bit**，把 **OUTPUT** 换成你的 ES、Kafka、HTTP 等。下面给 **Fluent Bit 5.x**、**OUTPUT stdout** 的最小可跑通示例（验证管道；上生产只改 `[OUTPUT]`）。
 
 ```yaml
 # fluent-bit-sidecar-cm.yaml
@@ -208,8 +243,6 @@ data:
         Match *
         Format json_lines
 ```
-
-再部署带 sidecar 的 Pod（镜像 **`fluent/fluent-bit:5.0.3`**；将 ConfigMap 挂到 **`/fluent-bit/etc`**，主配置名为 **`fluent-bit.conf`**，与启动参数一致）：
 
 ```yaml
 # counter-with-fluent-bit-sidecar.yaml
@@ -259,15 +292,17 @@ kubectl apply -f counter-with-fluent-bit-sidecar.yaml
 kubectl logs counter -c count-agent
 ```
 
-若需与 [官方 fluentd 示例](https://kubernetes.io/docs/concepts/cluster-administration/logging/#sidecar-container-with-a-logging-agent) 逐行对照，可将 fluentd 的 `<match **>` 换成你环境的 **OUTPUT**；**不要**在生产环境硬编码 `google_cloud` 除非确实使用 GCP。
+与 [官方 fluentd 清单](https://kubernetes.io/docs/concepts/cluster-administration/logging/#sidecar-container-with-a-logging-agent) 对照时，记住：**采集器可替换**，**OUTPUT 必须跟你的后端一致**。
+
+**（插槽：生产环境把 Fluent Bit 的 OUTPUT 换成 OpenSearch/Elasticsearch 等后，可在此处补一张「Kibana/Discover 或后端检索」截图，便于验收。）**
 
 ---
 
-### 4）应用内直推日志后端
+#### T9.1.4.4、应用直推
 
-**做法**：在进程内用 SDK 或协议（例如各云厂商日志 SDK、gRPC 等）把日志**直接发到**后端或消息总线。
+![从应用直接暴露/推送日志（Kubernetes 官网）](./images/logging-from-application.png)
 
-**说明**：这类方案在 [官方文档](https://kubernetes.io/docs/concepts/cluster-administration/logging/#exposing-logs-directly-from-the-application) 中明确写出：**已超出 Kubernetes 核心概念范围**；你需要自己处理鉴权、重试、背压、与链路追踪的字段约定等。适合已与某日志平台深度绑定的业务，或与节点采集策略冲突时的补充手段。
+官方说明：从每个应用**直接**把日志推给后端，**已超出 Kubernetes 核心文档范围**——鉴权、重试、背压、字段规范都要你自己定。适合已深度绑定某日志平台的团队，或作为节点采集的补充。
 
 ```mermaid
 flowchart LR
@@ -277,7 +312,7 @@ flowchart LR
 
 ---
 
-下一节 **「T9.2、日志 EFK」** 将按本节架构选型，在集群内落地 **Elasticsearch、Kibana** 与 **DaemonSet 采集**（文中以 **Fluentd** 为主线演示，与本节 **Fluent Bit** 节点/sidecar 角色不冲突：二者同属 CNCF 可观测数据管道，生产可择一或混用）。
+下一节 **「T9.2、日志 EFK」** 在集群里落 **Elasticsearch、Kibana** 与 **DaemonSet 采集**（文内以 **Fluentd** 演示）；与本节 **Fluent Bit** 不冲突，同属可观测数据管道，生产可择一或混用。
 
 ## T9.2、日志 EFK
 
