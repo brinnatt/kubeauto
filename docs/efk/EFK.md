@@ -334,781 +334,312 @@ flowchart LR
 
 ---
 
-下一节 **「T9.2、日志 EFK」** 会在集群里实际部署 **Elasticsearch、Kibana**，并用 **DaemonSet** 跑采集（文档里用 **Fluentd** 演示）。那和本节举例用的 **Fluent Bit** 是同一类活——都是「把日志送出去」，选一个为主、或混用，按公司规范来即可。
+下一节 **「T9.2、日志 EFK」** 会用 **ECK** 部署 **Elasticsearch、Kibana**，再用 **Fluent Bit DaemonSet** 把节点上的容器日志送进 ES（与本文 **T9.1** 的采集组件一致）。若团队已经统一用 **Fluentd**，只要把输出指向同一套 ES 即可。
 
 ## T9.2、日志 EFK
 
-前面大家介绍了 Kubernetes 集群中的几种日志收集方案，Kubernetes 中比较流行的日志收集解决方案是 Elasticsearch、Fluentd 和 Kibana（EFK）技术栈，也是官方现在比较推荐的一种方案。
+**Elasticsearch** 负责存日志、做检索；**Kibana** 负责 Web 里查询和看图；**采集器**（本节用 **Fluent Bit**，与上文 **T9.1** 的镜像与采集思路一致）从每个节点读容器日志，再写到 ES。**Fluentd** 也是很好的选择（插件多、偏 Ruby 生态），若团队已标准化 Fluentd，只要把输出改到本节的 ES 地址即可，思路一样。
 
-`Elasticsearch` 是一个实时的、分布式的可扩展的搜索引擎，允许进行全文、结构化搜索，它通常用于索引和搜索大量日志数据，也可用于搜索许多不同类型的文档。
+2026 年 Elastic 在 Kubernetes 上的**官方推荐**落地方式是 **Elastic Cloud on Kubernetes（ECK）**：用 Operator 管理 Elasticsearch / Kibana 的生命周期、证书与升级。下面的步骤以 **ECK + Fluent Bit** 为主线，对齐 [Elastic 文档：ECK](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html) 与 [Fluent Bit Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。**不再沿用**早期教程里「Helm 分别装 master、data、client 三套旧版 Elasticsearch」的做法（与当前节点角色与运维方式都不一致）。
 
-Elasticsearch 通常与 `Kibana` 一起部署，Kibana 是 Elasticsearch 的一个功能强大的数据可视化 Dashboard，Kibana 允许你通过 web 界面来浏览 Elasticsearch 日志数据。
+### T9.2.1、数据怎么流
 
-`Fluentd`是一个流行的开源数据收集器，我们将在 Kubernetes 集群节点上安装 Fluentd，通过获取容器日志文件、过滤和转换日志数据，然后将数据传递到 Elasticsearch 集群，在该集群中对其进行索引和存储。
-
-我们先来配置启动一个可扩展的 Elasticsearch 集群，然后在 Kubernetes 集群中创建一个 Kibana 应用，最后通过 DaemonSet 来运行 Fluentd，以便它在每个 Kubernetes 工作节点上都可以运行一个 Pod。
-
-> 如果你了解 EFK 的基本原理，只是为了测试可以直接使用 Kubernetes 官方提供的 addon 插件的资源清单，地址：https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/fluentd-elasticsearch/，直接安装即可。
-
-### 安装 Elasticsearch 集群
-
-在创建 Elasticsearch 集群之前，我们先创建一个命名空间，我们将在其中安装所有日志相关的资源对象。
-
-```
-kubectl create ns logging
+```mermaid
+flowchart LR
+  P[业务 Pod 写 stdout]
+  N[节点 /var/log/containers]
+  F[Fluent Bit DaemonSet]
+  E[(Elasticsearch)]
+  K[Kibana]
+  P --> N --> F --> E --> K
 ```
 
-#### 环境准备
+---
 
-ElasticSearch 安装有最低安装要求，如果安装后 Pod 无法正常启动，请检查是否符合最低要求的配置，要求如下：
+### T9.2.2、版本与校验
 
-![es 集群要求](https://picdn.youdianzhishi.com/images/20210420112844.png)
+升级或排错前，务必到 **GitHub Releases / Elastic 支持矩阵**核对当前稳定版，并更新下表日期。
 
-这里我们要安装的 ES 集群环境信息如下所示：
+**本文同步校验日期：2026-04-16**
 
-![es 集群环境](https://picdn.youdianzhishi.com/images/20210420113128.png)
+| 组件 | 版本 / 来源 | 说明 |
+|------|-------------|------|
+| ECK Operator | `3.3.2` | [ECK Releases](https://github.com/elastic/cloud-on-k8s/releases) · 安装清单见下文官方下载地址 |
+| Elastic Stack（ES + Kibana `spec.version`） | **8.17.x**（示例写 `8.17.0`，以 [ECK 与版本兼容矩阵](https://www.elastic.co/support/matrix#matrix_kubernetes) 为准） | 镜像由 Operator 按版本拉取，一般来自 `docker.elastic.co` |
+| Fluent Bit | `fluent/fluent-bit:5.0.3` | 与本文 **T9.1** 约定一致 · [fluent-bit Releases](https://github.com/fluent/fluent-bit/releases) |
 
-这里我们使用一个 NFS 类型的 StorageClass 来做持久化存储，当然如果你是线上环境建议使用 Local PV 或者 Ceph RBD 之类的存储来持久化 Elasticsearch 的数据。
+---
 
-此外由于 ElasticSearch 7.x 版本默认安装了 `X-Pack` 插件，并且部分功能免费，需要我们配置一些安全证书文件。
+### T9.2.3、开工前要准备什么
 
-**1、生成证书文件**
+- **命名空间**：本章约定日志组件放在 **`logging`**（与下文 YAML 一致）。若还没有：`kubectl create namespace logging`。
+- **存储**：Elasticsearch 数据盘必须用 **PVC**（ECK 在 `volumeClaimTemplates` 里声明）。把 YAML 里的 **`storageClassName`** 改成你集群里真实存在的 **StorageClass**（可用 `kubectl get sc` 看）。学习可用单副本小盘；生产要按容量、副本、机架分散再做规划。
+- **资源**：ES 对内存敏感，示例里给的是**能跑起来的下限**；生产请按官方建议调高，并保证节点 `vm.max_map_count` 等系统参数（见 [Elasticsearch 安装说明](https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html)）。
+- **密码**：ECK 会为 `elastic` 用户生成随机密码，存在 Secret 里，**不要用教程里写死的密码**。
 
-```
-# 运行容器生成证书
-$ docker run --name elastic-certs -i -w /app elasticsearch:7.12.0 /bin/sh -c  \
-  "elasticsearch-certutil ca --out /app/elastic-stack-ca.p12 --pass '' && \
-    elasticsearch-certutil cert --name security-master --dns \
-    security-master --ca /app/elastic-stack-ca.p12 --pass '' --ca-pass '' --out /app/elastic-certificates.p12"
-# 从容器中将生成的证书拷贝出来
-$ docker cp elastic-certs:/app/elastic-certificates.p12 .
-# 删除容器
-$ docker rm -f elastic-certs
-# 将 pcks12 中的信息分离出来，写入文件
-$ openssl pkcs12 -nodes -passin pass:'' -in elastic-certificates.p12 -out elastic-certificate.pem
-```
+---
 
-**2、添加证书到 Kubernetes**
+### T9.2.4、安装 ECK Operator
 
-```
-# 添加证书
-$ kubectl create secret -n logging generic elastic-certs --from-file=elastic-certificates.p12
-# 设置集群用户名密码
-$ kubectl create secret -n logging generic elastic-auth --from-literal=username=elastic --from-literal=password=ydzsio321
+Operator 安装在 **`elastic-system`** 命名空间（安装 YAML 会自动建）。**必须先装 CRD，再装 Operator**，顺序如下（官方发布的固定版本链接，可写进流水线）：
+
+```bash
+kubectl create -f https://download.elastic.co/downloads/eck/3.3.2/crds.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/3.3.2/operator.yaml
 ```
 
-#### 安装 ES 集群
+等待 **elastic-system** 里 Operator Pod 变为 Running（不同版本标签可能略有差异，直接看 Pod 列表即可）：
 
-首先添加 ELastic 的 Helm 仓库：
-
-```
-helm repo add elastic https://helm.elastic.co
-helm repo update
+```bash
+kubectl -n elastic-system get pods
 ```
 
-ElaticSearch 安装需要安装三次，分别安装 Master、Data、Client 节点，Master 节点负责集群间的管理工作；Data 节点负责存储数据；Client 节点负责代理 ElasticSearch Cluster 集群，负载均衡。
+更多安装方式（Helm、离线等）见官方：[Install ECK](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install.html)。
 
-首先使用 `helm pull` 拉取 Chart 并解压：
+---
 
-```
-helm pull elastic/elasticsearch --untar --version 7.12.0
-cd elasticsearch
-```
+### T9.2.5、部署 Elasticsearch（ECK）
 
-在 Chart 目录下面创建用于 Master 节点安装配置的 values 文件：
+在 **`logging`** 命名空间创建集群。下面示例为 **单节点**、便于学习；生产请把 `count` 调成 3 及以上，并按官方做高可用与索引策略。
 
-```
-# values-master.yaml
-## 设置集群名称
-clusterName: "elasticsearch"
-## 设置节点名称
-nodeGroup: "master"
+**（插槽：若需要书中配 Elastic 官方示意图，可从当前版本 [Elastic 文档](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html) 截取「部署拓扑」类配图，保存为 `./images/eck-elasticsearch.png` 后在本节引用。）**
 
-## 设置角色
-roles:
-  master: "true"
-  ingest: "false"
-  data: "false"
-
-# ============镜像配置============
-## 指定镜像与镜像版本
-image: "elasticsearch"
-imageTag: "7.12.0"
-## 副本数
-replicas: 3
-
-# ============资源配置============
-## JVM 配置参数
-esJavaOpts: "-Xmx1g -Xms1g"
-## 部署资源配置(生成环境一定要设置大些)
-resources:
-  requests:
-    cpu: "2000m"
-    memory: "2Gi"
-  limits:
-    cpu: "2000m"
-    memory: "2Gi"
-## 数据持久卷配置
-persistence:
-  enabled: true
-## 存储数据大小配置
-volumeClaimTemplate:
-  storageClassName: nfs-storage
-  accessModes: ["ReadWriteOnce"]
-  resources:
-    requests:
-      storage: 5Gi
-
-# ============安全配置============
-## 设置协议，可配置为 http、https
-protocol: http
-## 证书挂载配置，这里我们挂入上面创建的证书
-secretMounts:
-  - name: elastic-certs
-    secretName: elastic-certs
-    path: /usr/share/elasticsearch/config/certs
-
-## 允许您在/usr/share/elasticsearch/config/中添加任何自定义配置文件,例如 elasticsearch.yml
-## ElasticSearch 7.x 默认安装了 x-pack 插件，部分功能免费，这里我们配置下
-## 下面注掉的部分为配置 https 证书，配置此部分还需要配置 helm 参数 protocol 值改为 https
-esConfig:
-  elasticsearch.yml: |
-    xpack.security.enabled: true
-    xpack.security.transport.ssl.enabled: true
-    xpack.security.transport.ssl.verification_mode: certificate
-    xpack.security.transport.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    xpack.security.transport.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    # xpack.security.http.ssl.enabled: true
-    # xpack.security.http.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    # xpack.security.http.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-## 环境变量配置，这里引入上面设置的用户名、密码 secret 文件
-extraEnvs:
-  - name: ELASTIC_USERNAME
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: username
-  - name: ELASTIC_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: password
-
-# ============调度配置============
-## 设置调度策略
-## - hard：只有当有足够的节点时 Pod 才会被调度，并且它们永远不会出现在同一个节点上
-## - soft：尽最大努力调度
-antiAffinity: "soft"
-tolerations:
-  - operator: "Exists" ##容忍全部污点
-```
-
-然后创建用于 Data 节点安装的 values 文件：
-
-```
-# values-data.yaml
-# ============设置集群名称============
-## 设置集群名称
-clusterName: "elasticsearch"
-## 设置节点名称
-nodeGroup: "data"
-## 设置角色
-roles:
-  master: "false"
-  ingest: "true"
-  data: "true"
-
-# ============镜像配置============
-## 指定镜像与镜像版本
-image: "elasticsearch"
-imageTag: "7.12.0"
-## 副本数(建议设置为3，我这里资源不足只用了1个副本)
-replicas: 1
-
-# ============资源配置============
-## JVM 配置参数
-esJavaOpts: "-Xmx1g -Xms1g"
-## 部署资源配置(生成环境一定要设置大些)
-resources:
-  requests:
-    cpu: "1000m"
-    memory: "2Gi"
-  limits:
-    cpu: "1000m"
-    memory: "2Gi"
-## 数据持久卷配置
-persistence:
-  enabled: true
-## 存储数据大小配置
-volumeClaimTemplate:
-  storageClassName: nfs-storage
-  accessModes: ["ReadWriteOnce"]
-  resources:
-    requests:
-      storage: 10Gi
-
-# ============安全配置============
-## 设置协议，可配置为 http、https
-protocol: http
-## 证书挂载配置，这里我们挂入上面创建的证书
-secretMounts:
-  - name: elastic-certs
-    secretName: elastic-certs
-    path: /usr/share/elasticsearch/config/certs
-## 允许您在/usr/share/elasticsearch/config/中添加任何自定义配置文件,例如 elasticsearch.yml
-## ElasticSearch 7.x 默认安装了 x-pack 插件，部分功能免费，这里我们配置下
-## 下面注掉的部分为配置 https 证书，配置此部分还需要配置 helm 参数 protocol 值改为 https
-esConfig:
-  elasticsearch.yml: |
-    xpack.security.enabled: true
-    xpack.security.transport.ssl.enabled: true
-    xpack.security.transport.ssl.verification_mode: certificate
-    xpack.security.transport.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    xpack.security.transport.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    # xpack.security.http.ssl.enabled: true
-    # xpack.security.http.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    # xpack.security.http.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-## 环境变量配置，这里引入上面设置的用户名、密码 secret 文件
-extraEnvs:
-  - name: ELASTIC_USERNAME
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: username
-  - name: ELASTIC_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: password
-
-# ============调度配置============
-## 设置调度策略
-## - hard：只有当有足够的节点时 Pod 才会被调度，并且它们永远不会出现在同一个节点上
-## - soft：尽最大努力调度
-antiAffinity: "soft"
-## 容忍配置
-tolerations:
-  - operator: "Exists" ##容忍全部污点
-```
-
-最后一个是用于创建 Client 节点的 values 文件：
-
-```
-# values-client.yaml
-# ============设置集群名称============
-## 设置集群名称
-clusterName: "elasticsearch"
-## 设置节点名称
-nodeGroup: "client"
-## 设置角色
-roles:
-  master: "false"
-  ingest: "false"
-  data: "false"
-
-# ============镜像配置============
-## 指定镜像与镜像版本
-image: "elasticsearch"
-imageTag: "7.12.0"
-## 副本数
-replicas: 1
-
-# ============资源配置============
-## JVM 配置参数
-esJavaOpts: "-Xmx1g -Xms1g"
-## 部署资源配置(生成环境一定要设置大些)
-resources:
-  requests:
-    cpu: "1000m"
-    memory: "2Gi"
-  limits:
-    cpu: "1000m"
-    memory: "2Gi"
-## 数据持久卷配置
-persistence:
-  enabled: false
-
-# ============安全配置============
-## 设置协议，可配置为 http、https
-protocol: http
-## 证书挂载配置，这里我们挂入上面创建的证书
-secretMounts:
-  - name: elastic-certs
-    secretName: elastic-certs
-    path: /usr/share/elasticsearch/config/certs
-## 允许您在/usr/share/elasticsearch/config/中添加任何自定义配置文件,例如 elasticsearch.yml
-## ElasticSearch 7.x 默认安装了 x-pack 插件，部分功能免费，这里我们配置下
-## 下面注掉的部分为配置 https 证书，配置此部分还需要配置 helm 参数 protocol 值改为 https
-esConfig:
-  elasticsearch.yml: |
-    xpack.security.enabled: true
-    xpack.security.transport.ssl.enabled: true
-    xpack.security.transport.ssl.verification_mode: certificate
-    xpack.security.transport.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    xpack.security.transport.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    # xpack.security.http.ssl.enabled: true
-    # xpack.security.http.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-    # xpack.security.http.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
-## 环境变量配置，这里引入上面设置的用户名、密码 secret 文件
-extraEnvs:
-  - name: ELASTIC_USERNAME
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: username
-  - name: ELASTIC_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: password
-
-# ============Service 配置============
-service:
-  type: NodePort
-  nodePort: "30200"
-```
-
-现在用上面的 values 文件来安装：
-
-```
-# 安装 master 节点
-helm install es-master -f values-master.yaml --namespace logging .
-# 安装 data 节点
-helm install es-data -f values-data.yaml --namespace logging .
-# 安装 client 节点
-helm install es-client -f values-client.yaml --namespace logging .
-```
-
-> 在安装 Master 节点后 Pod 启动时候会抛出异常，就绪探针探活失败，这是个正常现象。在执行安装 Data 节点后 Master 节点 Pod 就会恢复正常。
-
-#### 安装 Kibana
-
-Elasticsearch 集群安装完成后接下来配置安装 Kibana
-
-使用 `helm pull` 命令拉取 Kibana Chart 包并解压：
-
-```
-helm pull elastic/kibana --untar --version 7.12.0
-cd kibana
-```
-
-创建用于安装 Kibana 的 values 文件：
-
-```
-# values-prod.yaml
-## 指定镜像与镜像版本
-image: "kibana"
-imageTag: "7.12.0"
-
-## 配置 ElasticSearch 地址
-elasticsearchHosts: "http://elasticsearch-client:9200"
-
-# ============环境变量配置============
-## 环境变量配置，这里引入上面设置的用户名、密码 secret 文件
-extraEnvs:
-  - name: "ELASTICSEARCH_USERNAME"
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: username
-  - name: "ELASTICSEARCH_PASSWORD"
-    valueFrom:
-      secretKeyRef:
-        name: elastic-auth
-        key: password
-
-# ============资源配置============
-resources:
-  requests:
-    cpu: "500m"
-    memory: "1Gi"
-  limits:
-    cpu: "500m"
-    memory: "1Gi"
-
-# ============配置 Kibana 参数============
-## kibana 配置中添加语言配置，设置 kibana 为中文
-kibanaConfig:
-  kibana.yml: |
-    i18n.locale: "zh-CN"
-
-# ============Service 配置============
-service:
-  type: NodePort
-  nodePort: "30601"
-```
-
-使用上面的配置直接安装即可：
-
-```
-helm install kibana -f values-prod.yaml --namespace logging .
-```
-
-下面是安装完成后的 ES 集群和 Kibana 资源：
-
-```
-[root@node2 ~]# kubectl get pods -n logging
-NAME                            READY   STATUS              RESTARTS   AGE
-elasticsearch-client-0          1/1     Running             0          13m
-elasticsearch-data-0            1/1     Running             0          17m
-elasticsearch-master-0          1/1     Running             0          14m
-elasticsearch-master-1          1/1     Running             0          16m
-elasticsearch-master-2          1/1     Running             0          18m
-kibana-kibana-66f97964b-pmqlq   1/1     Running             0          31s
-[root@node2 ~]# kubectl get svc -n logging
-NAME                            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                         AGE
-elasticsearch-client            NodePort    10.102.35.207   <none>        9200:30200/TCP,9300:30078/TCP   33m
-elasticsearch-client-headless   ClusterIP   None            <none>        9200/TCP,9300/TCP               33m
-elasticsearch-data              ClusterIP   10.97.179.233   <none>        9200/TCP,9300/TCP               37m
-elasticsearch-data-headless     ClusterIP   None            <none>        9200/TCP,9300/TCP               37m
-elasticsearch-master            ClusterIP   10.97.35.120    <none>        9200/TCP,9300/TCP               46m
-elasticsearch-master-headless   ClusterIP   None            <none>        9200/TCP,9300/TCP               46m
-kibana-kibana                   NodePort    10.106.97.8     <none>        5601:30601/TCP                  35s
-```
-
-上面我们安装 Kibana 的时候指定了 30601 的 NodePort 端口，所以我们可以从任意节点 `http://IP:30601` 来访问 Kibana。
-
-![Kibana 登录页面](https://picdn.youdianzhishi.com/images/20210420173518.png)
-
-我们可以看到会跳转到登录页面，让我们输出用户名、密码，这里我们输入上面配置的用户名 elastic、密码 ydzsio321 进行登录。登录成功后进入如下所示的 Kibana 主页：
-
-![Kibana 主页面](https://picdn.youdianzhishi.com/images/20210420173726.png)
-
-### 部署 Fluentd
-
-`Fluentd` 是一个高效的日志聚合器，是用 Ruby 编写的，并且可以很好地扩展。对于大部分企业来说，Fluentd 足够高效并且消耗的资源相对较少，另外一个工具`Fluent-bit`更轻量级，占用资源更少，但是插件相对 Fluentd 来说不够丰富，所以整体来说，Fluentd 更加成熟，使用更加广泛，所以我们这里也同样使用 Fluentd 来作为日志收集工具。
-
-#### 工作原理
-
-Fluentd 通过一组给定的数据源抓取日志数据，处理后（转换成结构化的数据格式）将它们转发给其他服务，比如 Elasticsearch、对象存储等等。Fluentd 支持超过 300 个日志存储和分析服务，所以在这方面是非常灵活的。主要运行步骤如下：
-
-- 首先 Fluentd 从多个日志源获取数据
-- 结构化并且标记这些数据
-- 然后根据匹配的标签将数据发送到多个目标服务去
-
-![fluentd 架构](https://picdn.youdianzhishi.com/images/7moPNc.jpg)
-
-#### 配置
-
-一般来说我们是通过一个配置文件来告诉 Fluentd 如何采集、处理数据的，下面简单和大家介绍下 Fluentd 的配置方法。
-
-##### 日志源配置
-
-比如我们这里为了收集 Kubernetes 节点上的所有容器日志，就需要做如下的日志源配置：
-
-```
-<source>
-  @id fluentd-containers.log
-  @type tail                             # Fluentd 内置的输入方式，其原理是不停地从源文件中获取新的日志。
-  path /var/log/containers/*.log         # 挂载的服务器Docker容器日志地址
-  pos_file /var/log/es-containers.log.pos
-  tag raw.kubernetes.*                   # 设置日志标签
-  read_from_head true
-  <parse>                                # 多行格式化成JSON
-    @type multi_format                   # 使用 multi-format-parser 解析器插件
-    <pattern>
-      format json                        # JSON 解析器
-      time_key time                      # 指定事件时间的时间字段
-      time_format %Y-%m-%dT%H:%M:%S.%NZ  # 时间格式
-    </pattern>
-    <pattern>
-      format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
-      time_format %Y-%m-%dT%H:%M:%S.%N%:z
-    </pattern>
-  </parse>
-</source>
-```
-
-上面配置部分参数说明如下：
-
-- id：表示引用该日志源的唯一标识符，该标识可用于进一步过滤和路由结构化日志数据
-- type：Fluentd 内置的指令，`tail` 表示 Fluentd 从上次读取的位置通过 tail 不断获取数据，另外一个是 `http` 表示通过一个 GET 请求来收集数据。
-- path：`tail` 类型下的特定参数，告诉 Fluentd 采集 `/var/log/containers` 目录下的所有日志，这是 docker 在 Kubernetes 节点上用来存储运行容器 stdout 输出日志数据的目录。
-- pos_file：检查点，如果 Fluentd 程序重新启动了，它将使用此文件中的位置来恢复日志数据收集。
-- tag：用来将日志源与目标或者过滤器匹配的自定义字符串，Fluentd 匹配源/目标标签来路由日志数据。
-
-##### 路由配置
-
-上面是日志源的配置，接下来看看如何将日志数据发送到 Elasticsearch：
-
-```
-<match **>
-  @id elasticsearch
-  @type elasticsearch
-  @log_level info
-  include_tag_key true
-  type_name fluentd
-  host "#{ENV['OUTPUT_HOST']}"
-  port "#{ENV['OUTPUT_PORT']}"
-  logstash_format true
-  <buffer>
-    @type file
-    path /var/log/fluentd-buffers/kubernetes.system.buffer
-    flush_mode interval
-    retry_type exponential_backoff
-    flush_thread_count 2
-    flush_interval 5s
-    retry_forever
-    retry_max_interval 30
-    chunk_limit_size "#{ENV['OUTPUT_BUFFER_CHUNK_LIMIT']}"
-    queue_limit_length "#{ENV['OUTPUT_BUFFER_QUEUE_LIMIT']}"
-    overflow_action block
-  </buffer>
-</match>
-```
-
-- match：标识一个目标标签，后面是一个匹配日志源的正则表达式，我们这里想要捕获所有的日志并将它们发送给 Elasticsearch，所以需要配置成`**`。
-- id：目标的一个唯一标识符。
-- type：支持的输出插件标识符，我们这里要输出到 Elasticsearch，所以配置成 elasticsearch，这是 Fluentd 的一个内置插件。
-- log_level：指定要捕获的日志级别，我们这里配置成 `info`，表示任何该级别或者该级别以上（INFO、WARNING、ERROR）的日志都将被路由到 Elsasticsearch。
-- host/port：定义 Elasticsearch 的地址，也可以配置认证信息，我们的 Elasticsearch 不需要认证，所以这里直接指定 host 和 port 即可。
-- logstash_format：Elasticsearch 服务对日志数据构建反向索引进行搜索，将 logstash_format 设置为 `true`，Fluentd 将会以 logstash 格式来转发结构化的日志数据。
-- Buffer： Fluentd 允许在目标不可用时进行缓存，比如，如果网络出现故障或者 Elasticsearch 不可用的时候。缓冲区配置也有助于降低磁盘的 IO。
-
-##### 过滤
-
-由于 Kubernetes 集群中应用太多，也还有很多历史数据，所以我们可以只将某些应用的日志进行收集，比如我们只采集具有 `logging=true` 这个 Label 标签的 Pod 日志，这个时候就需要使用 filter，如下所示：
-
-```
-# 删除无用的属性
-<filter kubernetes.**>
-  @type record_transformer
-  remove_keys $.docker.container_id,$.kubernetes.container_image_id,$.kubernetes.pod_id,$.kubernetes.namespace_id,$.kubernetes.master_url,$.kubernetes.labels.pod-template-hash
-</filter>
-# 只保留具有logging=true标签的Pod日志
-<filter kubernetes.**>
-  @id filter_log
-  @type grep
-  <regexp>
-    key $.kubernetes.labels.logging
-    pattern ^true$
-  </regexp>
-</filter>
-```
-
-#### 安装
-
-要收集 Kubernetes 集群的日志，直接用 DasemonSet 控制器来部署 Fluentd 应用，这样，它就可以从 Kubernetes 节点上采集日志，确保在集群中的每个节点上始终运行一个 Fluentd 容器。当然可以直接使用 Helm 来进行一键安装，为了能够了解更多实现细节，我们这里还是采用手动方法来进行安装。
-
-首先，我们通过 ConfigMap 对象来指定 Fluentd 配置文件，新建 fluentd-configmap.yaml 文件，文件内容如下：
-
-```
-kind: ConfigMap
-apiVersion: v1
+```yaml
+# elasticsearch-eck.yaml（请把 storageClassName 改成你的 StorageClass）
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
 metadata:
-  name: fluentd-conf
+  name: quickstart
   namespace: logging
-data:
-  # 容器日志
-  containers.input.conf: |-
-    <source>
-      @id fluentd-containers.log
-      @type tail                              # Fluentd 内置的输入方式，其原理是不停地从源文件中获取新的日志
-      path /var/log/containers/*.log          # Docker 容器日志路径
-      pos_file /var/log/es-containers.log.pos  # 记录读取的位置
-      tag raw.kubernetes.*                    # 设置日志标签
-      read_from_head true                     # 从头读取
-      <parse>                                 # 多行格式化成JSON
-        # 可以使用我们介绍过的 multiline 插件实现多行日志
-        @type multi_format                    # 使用 multi-format-parser 解析器插件
-        <pattern>
-          format json                         # JSON解析器
-          time_key time                       # 指定事件时间的时间字段
-          time_format %Y-%m-%dT%H:%M:%S.%NZ   # 时间格式
-        </pattern>
-        <pattern>
-          format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
-          time_format %Y-%m-%dT%H:%M:%S.%N%:z
-        </pattern>
-      </parse>
-    </source>
-
-    # 在日志输出中检测异常(多行日志)，并将其作为一条日志转发
-    # https://github.com/GoogleCloudPlatform/fluent-plugin-detect-exceptions
-    <match raw.kubernetes.**>           # 匹配tag为raw.kubernetes.**日志信息
-      @id raw.kubernetes
-      @type detect_exceptions           # 使用detect-exceptions插件处理异常栈信息
-      remove_tag_prefix raw             # 移除 raw 前缀
-      message log
-      multiline_flush_interval 5
-    </match>
-
-    <filter **>  # 拼接日志
-      @id filter_concat
-      @type concat                # Fluentd Filter 插件，用于连接多个日志中分隔的多行日志
-      key message
-      multiline_end_regexp /\n$/  # 以换行符“\n”拼接
-      separator ""
-    </filter>
-
-    # 添加 Kubernetes metadata 数据
-    <filter kubernetes.**>
-      @id filter_kubernetes_metadata
-      @type kubernetes_metadata
-    </filter>
-
-    # 修复 ES 中的 JSON 字段
-    # 插件地址：https://github.com/repeatedly/fluent-plugin-multi-format-parser
-    <filter kubernetes.**>
-      @id filter_parser
-      @type parser                # multi-format-parser多格式解析器插件
-      key_name log                # 在要解析的日志中指定字段名称
-      reserve_data true           # 在解析结果中保留原始键值对
-      remove_key_name_field true  # key_name 解析成功后删除字段
-      <parse>
-        @type multi_format
-        <pattern>
-          format json
-        </pattern>
-        <pattern>
-          format none
-        </pattern>
-      </parse>
-    </filter>
-
-    # 删除一些多余的属性
-    <filter kubernetes.**>
-      @type record_transformer
-      remove_keys $.docker.container_id,$.kubernetes.container_image_id,$.kubernetes.pod_id,$.kubernetes.namespace_id,$.kubernetes.master_url,$.kubernetes.labels.pod-template-hash
-    </filter>
-
-    # 只保留具有logging=true标签的Pod日志
-    <filter kubernetes.**>
-      @id filter_log
-      @type grep
-      <regexp>
-        key $.kubernetes.labels.logging
-        pattern ^true$
-      </regexp>
-    </filter>
-
-  ###### 监听配置，一般用于日志聚合用 ######
-  forward.input.conf: |-
-    # 监听通过TCP发送的消息
-    <source>
-      @id forward
-      @type forward
-    </source>
-
-  output.conf: |-
-    <match **>
-      @id elasticsearch
-      @type elasticsearch
-      @log_level info
-      include_tag_key true
-      host elasticsearch-client
-      port 9200
-      user elastic # FLUENT_ELASTICSEARCH_USER | FLUENT_ELASTICSEARCH_PASSWORD
-      password ydzsio321
-      logstash_format true
-      logstash_prefix k8s
-      request_timeout 30s
-      <buffer>
-        @type file
-        path /var/log/fluentd-buffers/kubernetes.system.buffer
-        flush_mode interval
-        retry_type exponential_backoff
-        flush_thread_count 2
-        flush_interval 5s
-        retry_forever
-        retry_max_interval 30
-        chunk_limit_size 2M
-        queue_limit_length 8
-        overflow_action block
-      </buffer>
-    </match>
+spec:
+  version: 8.17.0
+  nodeSets:
+    - name: default
+      count: 1
+      config:
+        node.roles: ["master", "data", "ingest"]
+        node.store.allow_mmap: false
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                limits:
+                  memory: 2Gi
+                  cpu: "1"
+                requests:
+                  memory: 2Gi
+                  cpu: "500m"
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 30Gi
+            storageClassName: standard
 ```
 
-上面配置文件中我们只配置了 docker 容器日志目录，收集到数据经过处理后发送到 `elasticsearch-client:9200` 服务。
-
-然后新建一个 fluentd-daemonset.yaml 的文件，文件内容如下：
-
+```bash
+kubectl apply -f elasticsearch-eck.yaml
+kubectl -n logging get elasticsearch.elasticsearch.k8s.elastic.co
+kubectl -n logging get pods -l elasticsearch.k8s.elastic.co/cluster-name=quickstart
 ```
+
+集群就绪后，会创建名为 **`quickstart-es-http`** 的 Service（HTTPS 9200）。证书由 ECK 管理。
+
+---
+
+### T9.2.6、部署 Kibana（ECK）
+
+```yaml
+# kibana-eck.yaml
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: quickstart
+  namespace: logging
+spec:
+  version: 8.17.0
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+```
+
+```bash
+kubectl apply -f kibana-eck.yaml
+kubectl -n logging get kibana.k8s.elastic.co
+kubectl -n logging get pods -l kibana.k8s.elastic.co/name=quickstart
+```
+
+Kibana 的 HTTP Service 一般为 **`quickstart-kb-http`**。本机调试常用端口转发（不改 Service 类型也能用）：
+
+```bash
+kubectl -n logging port-forward svc/quickstart-kb-http 5601:5601
+```
+
+浏览器访问 `http://127.0.0.1:5601`。生产再通过 **Ingress / Gateway / NodePort** 暴露，并配好 TLS 与访问控制；别直接把 Kibana 暴露在公网。
+
+---
+
+### T9.2.7、拿到 elastic 用户密码
+
+用户名固定为 **`elastic`**。密码在 Secret 里，名称规则为 **`<Elasticsearch 资源名>-es-elastic-user`**：
+
+```bash
+kubectl -n logging get secret quickstart-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d
+echo
+```
+
+把密码复制到登录页即可。
+
+---
+
+### T9.2.8、Fluent Bit：DaemonSet 采集并写入 ES
+
+说明：
+
+- 采集路径仍用节点上的 **`/var/log/containers/*.log`**（与容器运行时写到节点的方式一致，与 T9.1「节点代理」一致）。
+- 写到 ES 时用 **HTTPS**；示例为便于先跑通，使用 **`tls.verify Off`**。**生产环境**应挂上 ECK 提供的 CA 或企业 PKI，并打开校验。
+- 下面用 **环境变量** 注入 `elastic` 用户密码，**不要**把密码写进 ConfigMap 明文。
+
+**第一步：把 ES 的密码同步成一个独立 Secret，供 Fluent Bit 引用**（名称可自定，与下文的 `fluent-bit-es` 一致）：
+
+```bash
+PW=$(kubectl -n logging get secret quickstart-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d)
+kubectl -n logging create secret generic fluent-bit-es-auth \
+  --from-literal=elastic_password="$PW" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+**第二步：ConfigMap + RBAC + DaemonSet**（镜像 **`fluent/fluent-bit:5.0.3`**；请把 `storageClassName` 一类无关项已在上文处理；此处 **`Host` 使用同命名空间 DNS 短名**）：
+
+```yaml
+# fluent-bit-es.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: fluentd-es
+  name: fluent-bit
   namespace: logging
-  labels:
-    k8s-app: fluentd-es
-    kubernetes.io/cluster-service: "true"
-    addonmanager.kubernetes.io/mode: Reconcile
 ---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: fluentd-es
-  labels:
-    k8s-app: fluentd-es
-    kubernetes.io/cluster-service: "true"
-    addonmanager.kubernetes.io/mode: Reconcile
+  name: fluent-bit-read
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - "namespaces"
-      - "pods"
-    verbs:
-      - "get"
-      - "watch"
-      - "list"
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
 metadata:
-  name: fluentd-es
-  labels:
-    k8s-app: fluentd-es
-    kubernetes.io/cluster-service: "true"
-    addonmanager.kubernetes.io/mode: Reconcile
+  name: fluent-bit-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fluent-bit-read
 subjects:
   - kind: ServiceAccount
-    name: fluentd-es
+    name: fluent-bit
     namespace: logging
-    apiGroup: ""
-roleRef:
-  kind: ClusterRole
-  name: fluentd-es
-  apiGroup: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: logging
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush        1
+        Daemon       Off
+        Log_Level    info
+        Parsers_File parsers.conf
+
+    [INPUT]
+        Name              tail
+        Tag               kube.*
+        Path              /var/log/containers/*.log
+        multiline.parser  docker, cri
+        Mem_Buf_Limit     50MB
+        Skip_Long_Lines   On
+
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Merge_Log           On
+
+    [OUTPUT]
+        Name                es
+        Match               kube.*
+        Host                quickstart-es-http.logging.svc
+        Port                9200
+        Logstash_Format     On
+        Logstash_Prefix     k8s
+        Suppress_Type_Name  On
+        HTTP_User           elastic
+        HTTP_Passwd         ${ES_PASSWORD}
+        TLS                 On
+        TLS.Verify          Off
+  parsers.conf: |
+    [PARSER]
+        Name   docker
+        Format json
+        Time_Key time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+    [PARSER]
+        Name        cri
+        Format      regex
+        Regex       ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: fluentd
+  name: fluent-bit
   namespace: logging
   labels:
-    app: fluentd
-    kubernetes.io/cluster-service: "true"
+    app: fluent-bit
 spec:
   selector:
     matchLabels:
-      app: fluentd
+      app: fluent-bit
   template:
     metadata:
       labels:
-        app: fluentd
-        kubernetes.io/cluster-service: "true"
+        app: fluent-bit
     spec:
+      serviceAccountName: fluent-bit
       tolerations:
-        - key: node-role.kubernetes.io/master
-          effect: NoSchedule
-      serviceAccountName: fluentd-es
+        - operator: Exists
       containers:
-        - name: fluentd
-          image: quay.io/fluentd_elasticsearch/fluentd:v3.2.0
+        - name: fluent-bit
+          image: fluent/fluent-bit:5.0.3
+          command: ["/fluent-bit/bin/fluent-bit"]
+          args: ["-c", "/fluent-bit/etc/fluent-bit.conf"]
+          env:
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fluent-bit-es-auth
+                  key: elastic_password
           volumeMounts:
-            - name: fluentconfig
-              mountPath: /etc/fluent/config.d
+            - name: config
+              mountPath: /fluent-bit/etc
             - name: varlog
               mountPath: /var/log
+              readOnly: true
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
               readOnly: true
-      terminationGracePeriodSeconds: 30
       volumes:
-        - name: fluentconfig
+        - name: config
           configMap:
-            name: fluentd-conf
+            name: fluent-bit-config
         - name: varlog
           hostPath:
             path: /var/log
@@ -1117,1257 +648,318 @@ spec:
             path: /var/lib/docker/containers
 ```
 
-我们将上面创建的 fluentd-config 这个 ConfigMap 对象通过 volumes 挂载到了 Fluentd 容器中，另外为了能够灵活控制哪些节点的日志可以被收集，所以我们这里还添加了一个 nodSelector 属性：
-
-```
-nodeSelector:
-  beta.kubernetes.io/fluentd-ds-ready: "true"
+```bash
+kubectl apply -f fluent-bit-es.yaml
+kubectl -n logging get pods -l app=fluent-bit
 ```
 
-意思就是要想采集节点的日志，那么我们就需要给节点打上上面的标签。
+若你集群里 **没有** `/var/lib/docker/containers`（少数环境），可删掉对应 `hostPath` 与 `volumeMounts` 块，一般只靠 `/var/log` 即可。
 
-提示
+**调不通时先看**：Fluent Bit Pod 日志、`quickstart-es-http` 是否 Ready、密码 Secret 是否一致、ES 是否已为 **green / yellow**（单节点常见 yellow，属预期）。
 
-如果你需要在其他节点上采集日志，则需要给对应节点打上标签，使用如下命令：`kubectl label nodes node名 beta.kubernetes.io/fluentd-ds-ready=true`。
-
-另外由于我们的集群使用的是 kubeadm 搭建的，默认情况下 master 节点有污点，所以如果要想也收集 master 节点的日志，则需要添加上容忍：
-
-```
-tolerations:
-  - operator: Exists
-```
-
-> 另外需要注意的地方是，如果更改了 docker 的根目录，则在 volumes 和 volumeMount 里面都需要更改，保持一致。
-
-分别创建上面的 ConfigMap 对象和 DaemonSet：
-
-```
-$ kubectl create -f fluentd-configmap.yaml
-configmap "fluentd-conf" created
-$ kubectl create -f fluentd-daemonset.yaml
-serviceaccount "fluentd-es" created
-clusterrole.rbac.authorization.k8s.io "fluentd-es" created
-clusterrolebinding.rbac.authorization.k8s.io "fluentd-es" created
-daemonset.apps "fluentd" created
-```
-
-创建完成后，查看对应的 Pods 列表，检查是否部署成功：
-
-```
-$ kubectl get pods -n logging
-NAME                            READY   STATUS    RESTARTS   AGE
-elasticsearch-client-0          1/1     Running   0          64m
-elasticsearch-data-0            1/1     Running   0          65m
-elasticsearch-master-0          1/1     Running   0          73m
-fluentd-5rqbq                   1/1     Running   0          60m
-fluentd-l6mgf                   1/1     Running   0          60m
-fluentd-xmfpg                   1/1     Running   0          60m
-kibana-kibana-66f97964b-mdspc   1/1     Running   0          63m
-```
-
-Fluentd 启动成功后，这个时候就可以发送日志到 ES 了，但是我们这里是过滤了只采集具有 `logging=true` 标签的 Pod 日志，所以现在还没有任何数据会被采集。
-
-下面我们部署一个简单的测试应用， 新建 counter.yaml 文件，文件内容如下：
-
-```
-apiVersion: v1
-kind: Pod
-metadata:
-  name: counter
-  labels:
-    logging: "true" # 一定要具有该标签才会被采集
-spec:
-  containers:
-    - name: count
-      image: busybox
-      args:
-        [
-          /bin/sh,
-          -c,
-          'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 1; done',
-        ]
-```
-
-该 Pod 只是简单将日志信息打印到 `stdout`，所以正常来说 Fluentd 会收集到这个日志数据，在 Kibana 中也就可以找到对应的日志数据了，使用 kubectl 工具创建该 Pod：
-
-```
-$ kubectl create -f counter.yaml
-$ kubectl get pods
-NAME                             READY   STATUS    RESTARTS   AGE
-counter                          1/1     Running   0          9h
-```
-
-Pod 创建并运行后，回到 Kibana Dashboard 页面，点击左侧最下面的 `Management` -> `Stack Management`，进入管理页面，点击左侧 `Kibana` 下面的 `索引模式`，点击 `创建索引模式` 开始导入索引数据：
-
-![create index](https://picdn.youdianzhishi.com/images/20210424172229.png)
-
-在这里可以配置我们需要的 Elasticsearch 索引，前面 Fluentd 配置文件中我们采集的日志使用的是 logstash 格式，定义了一个 `k8s` 的前缀，所以这里只需要在文本框中输入 `k8s-*` 即可匹配到 Elasticsearch 集群中采集的 Kubernetes 集群日志数据，然后点击下一步，进入以下页面：
-
-![index config](https://picdn.youdianzhishi.com/images/20210424172356.png)
-
-在该页面中配置使用哪个字段按时间过滤日志数据，在下拉列表中，选择`@timestamp`字段，然后点击 `创建索引模式`，创建完成后，点击左侧导航菜单中的 `Discover`，然后就可以看到一些直方图和最近采集到的日志数据了：
-
-![log data](https://picdn.youdianzhishi.com/images/20210424172654.png)
-
-现在的数据就是上面 Counter 应用的日志，如果还有其他的应用，我们也可以筛选过滤：
-
-![counter log data](https://picdn.youdianzhishi.com/images/20210424180009.png)
-
-我们也可以通过其他元数据来过滤日志数据，比如您可以单击任何日志条目以查看其他元数据，如容器名称，Kubernetes 节点，命名空间等。
-
-#### 日志分析
-
-上面我们已经可以将应用日志收集起来了，下面我们来使用一个应用演示如何分析采集的日志。示例应用会输出如下所示的 JSON 格式的日志信息：
-
-```
-{"LOGLEVEL":"WARNING","serviceName":"msg-processor","serviceEnvironment":"staging","message":"WARNING client connection terminated unexpectedly."}
-{"LOGLEVEL":"INFO","serviceName":"msg-processor","serviceEnvironment":"staging","message":"","eventsNumber":5}
-{"LOGLEVEL":"INFO","serviceName":"msg-receiver-api":"msg-receiver-api","serviceEnvironment":"staging","volume":14,"message":"API received messages"}
-{"LOGLEVEL":"ERROR","serviceName":"msg-receiver-api","serviceEnvironment":"staging","message":"ERROR Unable to upload files for processing"}
-```
-
-因为 JSON 格式的日志解析非常容易，当我们将日志结构化传输到 ES 过后，我们可以根据特定的字段值而不是文本搜索日志数据，当然纯文本格式的日志我们也可以进行结构化，但是这样每个应用的日志格式不统一，都需要单独进行结构化，非常麻烦，所以建议将日志格式统一成 JSON 格式输出。
-
-我们这里的示例应用会定期输出不同类型的日志消息，包含不同日志级别（INFO/WARN/ERROR）的日志，一行 JSON 日志就是我们收集的一条日志消息，该消息通过 fluentd 进行采集发送到 Elasticsearch。这里我们会使用到 fluentd 里面的自动 JSON 解析插件，默认情况下，fluentd 会将每个日志文件的一行作为名为 `log` 的字段进行发送，并自动添加其他字段，比如 `tag` 标识容器，`stream` 标识 stdout 或者 stderr。
-
-由于在 fluentd 配置中我们添加了如下所示的过滤器：
-
-```
-<filter kubernetes.**>
-  @id filter_parser
-  @type parser                # multi-format-parser多格式解析器插件
-  key_name log                # 在要解析的记录中指定字段名称
-  reserve_data true           # 在解析结果中保留原始键值对
-  remove_key_name_field true  # key_name 解析成功后删除字段。
-  <parse>
-    @type multi_format
-    <pattern>
-      format json
-    </pattern>
-    <pattern>
-      format none
-    </pattern>
-  </parse>
-</filter>
-```
-
-该过滤器使用 `json` 和 `none` 两个插件将 JSON 数据进行结构化，这样就会把 JSON 日志里面的属性解析成一个一个的字段，解析生效过后记得刷新 Kibana 的索引字段，否则会识别不了这些字段，通过 `管理` -> `索引模式` 点击刷新字段列表即可。
-
-下面我们将示例应用部署到 Kubernetes 集群中：(dummylogs.yaml)
-
-```
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: dummylogs
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: dummylogs
-  template:
-    metadata:
-      labels:
-        app: dummylogs
-        logging: "true" # 要采集日志需要加上该标签
-    spec:
-      containers:
-        - name: dummy
-          image: cnych/dummylogs:latest
-          args:
-            - msg-processor
 ---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: dummylogs2
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: dummylogs2
-  template:
-    metadata:
-      labels:
-        app: dummylogs2
-        logging: "true" # 要采集日志需要加上该标签
-    spec:
-      containers:
-        - name: dummy
-          image: cnych/dummylogs:latest
-          args:
-            - msg-receiver-api
+
+### T9.2.9、在 Kibana 里看日志
+
+1. 用 **T9.2.7** 的账号登录 Kibana。  
+2. **Stack Management → Data views（数据视图）** 里新建一条，索引模式填 **`k8s-*`**（与上面 `Logstash_Prefix k8s` 对应；ES 8 不再使用 `_type`，按界面提示选时间字段 **`@timestamp`**）。  
+3. 打开 **Discover** 即可检索。
+
+**（插槽：可在此贴一张本环境「Data view + Discover」截图，便于后来者对照 UI。）**
+
+若要**只采集带某标签的 Pod**（例如 `logging=true`），在 Fluent Bit 里加 **grep / rewrite_tag** 过滤即可，逻辑与旧版 Fluentd 教程相同，不再展开一篇长配置；生产建议用命名空间、标签策略统一管理。
+
+---
+
+### T9.2.10、（可选）中间加一层 Kafka
+
+日志量特别大时，可以在采集器和 ES 之间加 **Kafka** 做缓冲，减轻 ES 写入尖峰，架构如下：
+
+```mermaid
+flowchart LR
+  FB[Fluent Bit] --> K[Kafka]
+  K --> C[消费者 Logstash/Fluent Bit/自研]
+  C --> ES[(Elasticsearch)]
 ```
 
-直接部署上面的应用即可：
+**本节不再展开** Helm 版本与 ZooKeeper/KRaft 细节（版本迭代快）。选型时自行查阅 **Kafka 官方发行说明** 与当前 **Bitnami / Strimzi** 等 Chart 的 stable 版本，并统一写进你的 GitOps 仓库；落地后在本节**留一张架构或 Topic 监控截图**即可。
 
-```
-$ kubectl apply -f dummylogs.yaml
-$ kubectl get pods -l logging=true
-NAME                         READY   STATUS    RESTARTS   AGE
-counter                      1/1     Running   0          22h
-dummylogs-6f7b56579d-7js8n   1/1     Running   5          15h
-dummylogs-6f7b56579d-wdnc6   1/1     Running   5          15h
-dummylogs-6f7b56579d-x4twn   1/1     Running   5          15h
-dummylogs2-d9b978d9b-bchks   1/1     Running   5          15h
-dummylogs2-d9b978d9b-wv7rj   1/1     Running   5          15h
-dummylogs2-d9b978d9b-z2r26   1/1     Running   5          15h
-```
+---
 
-部署完成后 dummylogs 和 dummylogs2 两个应用就会开始输出不同级别的日志信息了，记得要给应用所在的节点打上 `beta.kubernetes.io/fluentd-ds-ready=true` 的标签，否则 fluentd 不会在对应的节点上运行也就不会收集日志了。正常情况下日志就已经可以被采集到 Elasticsearch 当中了，我们可以前往 Kibana 的 Dashboard 页面查看:
+### T9.2.11、和 T9.1 的对应关系
 
-![img](https://picdn.youdianzhishi.com/images/20200428092342.png)
+| T9.1 讲的概念 | T9.2 这里的落点 |
+|---------------|-----------------|
+| 节点级 DaemonSet 采集 | Fluent Bit DaemonSet，读本节点容器日志 |
+| Sidecar | 一般**不必**为了 EFK 再额外加采集边车；业务写文件仍按 T9.1.4 处理 |
+| 应用直推 | 仍可直接进 ES，与本节并行存在亦可 |
 
-我们可以看到可用的字段中已经包含我们应用中的一些字段了。找到 `serviceName` 字段点击我们可以查看已经采集了哪些服务的消息：
-
-![img](https://picdn.youdianzhishi.com/images/20200428092559.png)
-
-可以看到我们收到了来自 `msg-processor` 和 `msg-receiver-api` 的日志信息，在最近 15 分钟之内，`api` 服务产生的日志更多，点击后面的加号就可以只过滤该服务的日志数据：
-
-![img](https://picdn.youdianzhishi.com/images/20200428092903.png)
-
-我们可以看到展示的日志数据的属性比较多，有时候可能不利于我们查看日志，此时我们可以筛选想要展示的字段:
-
-![img](https://picdn.youdianzhishi.com/images/20200428093202.png)
-
-我们可以根据自己的需求选择要显示的字段，现在查看消息的时候就根据清楚了：
-
-![img](https://picdn.youdianzhishi.com/images/20200428093343.png)
-
-比如为了能够更加清晰的展示我们采集的日志数据，还可以将 `eventsNumber` 和 `serviceName` 字段选中添加：
-
-![img](https://picdn.youdianzhishi.com/images/20200428093646.png)
-
-然后同样我们可以根据自己的需求来筛选需要查看的日志数据：
-
-![img](https://picdn.youdianzhishi.com/images/20200428093815.png)
-
-如果你的 Elasticsearch 的查询语句比较熟悉的话，使用查询语句能实现的筛选功能更加强大，比如我们要查询 `mgs-processor` 和 `msg-receiver-api` 两个服务的日志，则可以使用如下所示的查询语句：
-
-```
-serviceName:msg-processor OR serviceName:msg-receiver-api
-```
-
-直接搜索框中输入上面的查询语句进行查询即可：
-
-![img](https://picdn.youdianzhishi.com/images/20200428094158.png)
-
-接下来我们来创建一个图表来展示已经处理了多少 `msg-processor` 服务的日志信息。在 Kibana 中切换到 `Visualize` 页面，点击 `Create new visualization` 按钮选择 `Area`，选择 `k8s-*` 的索引，首先配置 Y 轴的数据，这里我们使用 `eventsNumber` 字段的 `Sum` 函数进行聚合：
-
-![img](https://picdn.youdianzhishi.com/images/20200428095222.png)
-
-然后配置 X 轴数据使用 `Date Histogram` 类型的 `@timestamp` 字段：
-
-![img](https://picdn.youdianzhishi.com/images/20200428095344.png)
-
-配置完成后点击右上角的 `Apply Changes` 按钮则就会在右侧展示出对应的图表信息：
-
-![img](https://picdn.youdianzhishi.com/images/20200428095631.png)
-
-这个图表展示的就是最近 15 分钟内被处理的事件总数，当然我们也可以自己选择时间范围。我们还可以将 `msg-receiver-api` 事件的数量和已处理的消息总数进行关联，在该图表上添加另外一层数据，在 Y 轴上添加一个新指标，选择 `Add metrics` 和 `Y-axis`，然后同样选择 `sum` 聚合器，使用 `volume` 字段：
-
-![img](https://picdn.youdianzhishi.com/images/20200428100341.png)
-
-点击 `Apply Changes` 按钮就可以同时显示两个服务事件的数据了。最后点击顶部的 `save` 来保存该图表，并为其添加一个名称。
-
-在实际的应用中，我们可能对应用的错误日志更加关心，需要了解应用的运行情况，所以对于错误或者警告级别的日志进行统计也是非常有必要的。现在我们回到 `Discover` 页面，输入 `LOGLEVEL:ERROR OR LOGLEVEL:WARNING` 查询语句来过滤所有的错误和告警日志：
-
-![img](https://picdn.youdianzhishi.com/images/20200428101527.png)
-
-错误日志相对较少，实际上我们这里的示例应用会每 15-20 分钟左右就会抛出 4 个错误信息，其余都是警告信息。同样现在我们还是用可视化的图表来展示下错误日志的情况。
-
-同样切换到 `Visualize` 页面，点击 `Create visualization`，选择 `Vertical Bar`，然后选中 `k8s-*` 的 Index Pattern。
-
-![img](https://picdn.youdianzhishi.com/images/20200428102104.png)
-
-现在我们忽略 Y 轴，使用默认的 `Count` 设置来显示消息数量。首先点击 `Buckets` 下面的 `X-axis`，然后同样选择 `Date histogram`，然后点击下方的 `Add`，添加 `Sub-Bueckt`，选择 `Split series`:
-
-![img](https://picdn.youdianzhishi.com/images/20200428102530.png)
-
-然后我们可以通过指定的字段来分割条形图，选择 `Terms` 作为子聚合方式，然后选择 `serviceName.keyword` 字段，最后点击 `apply` 生成图表：
-
-![img](https://picdn.youdianzhishi.com/images/20200428102913.png)
-
-现在上面的图表以不同的颜色来显示每个服务消息，接下来我们在搜索框中输入要查找的内容，因为现在的图表是每个服务的所有消息计数，包括正常和错误的日志，我们要过滤告警和错误的日志，同样输入 `LOGLEVEL:ERROR OR LOGLEVEL:WARNING` 查询语句进行搜索即可：
-
-![img](https://picdn.youdianzhishi.com/images/20200428103237.png)
-
-从图表上可以看出来 `msg-processor` 服务问题较多，只有少量的是 `msg-receiver-api` 服务的，当然我们也可以只查看 `ERROR` 级别的日志统计信息：
-
-![img](https://picdn.youdianzhishi.com/images/20200428103446.png)
-
-从图表上可以看出来基本上出现错误日志的情况下两个服务都会出现，所以这个时候我们就可以猜测两个服务的错误是非常相关的了，这对于我们去排查错误非常有帮助。最后也将该图表进行保存。
-
-最后我们也可以将上面的两个图表添加到 `dashboard` 中，这样我们就可以在一个页面上组合各种可视化图表。切换到 `dashboard` 页面，然后点击 `Create New Dashboard` 按钮：
-
-![img](https://picdn.youdianzhishi.com/images/20200428104152.png)
-
-选择 `Add an existing` 链接：
-
-![img](https://picdn.youdianzhishi.com/images/20200428104225.png)
-
-然后选择上面我们创建的两个图表，添加完成后同样保存该 `dashboard` 即可：
-
-![img](https://picdn.youdianzhishi.com/images/20200428104516.png)
-
-到这里我们就完成了通过 Fluentd 收集日志到 Elasticsearch，并通过 Kibana 对日志进行了分析可视化操作。
-
-### 安装 Kafka
-
-对于大规模集群来说，日志数据量是非常巨大的，如果直接通过 Fluentd 将日志打入 Elasticsearch，对 ES 来说压力是非常巨大的，我们可以在中间加一层消息中间件来缓解 ES 的压力，一般情况下我们会使用 Kafka，然后可以直接使用 `kafka-connect-elasticsearch` 这样的工具将数据直接打入 ES，也可以在加一层 Logstash 去消费 Kafka 的数据，然后通过 Logstash 把数据存入 ES，这里我们来使用 Logstash 这种模式来对日志收集进行优化。
-
-首先在 Kubernetes 集群中安装 Kafka，同样这里使用 Helm 进行安装：
-
-```
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
-```
-
-首先使用 `helm pull` 拉取 Chart 并解压：
-
-```
-helm pull bitnami/kafka --untar --version 12.17.5
-cd kafka
-```
-
-这里面我们指定使用一个 `StorageClass` 来提供持久化存储，在 Chart 目录下面创建用于安装的 values 文件：
-
-```
-# values-prod.yaml
-## Persistence parameters
-##
-persistence:
-  enabled: true
-  storageClass: "nfs-storage"
-  accessModes:
-    - ReadWriteOnce
-  size: 5Gi
-  ## Mount point for persistence
-  mountPath: /bitnami/kafka
-
-# 配置zk volumes
-zookeeper:
-  enabled: true
-  persistence:
-    enabled: true
-    storageClass: "nfs-storage"
-    accessModes:
-      - ReadWriteOnce
-    size: 8Gi
-```
-
-直接使用上面的 values 文件安装 kafka：
-
-```
-$ helm install kafka -f values-prod.yaml --namespace logging .
-Release "kafka" does not exist. Installing it now.
-NAME: kafka
-LAST DEPLOYED: Tue Apr 27 18:46:01 2021
-NAMESPACE: logging
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
-NOTES:
-** Please be patient while the chart is being deployed **
-
-Kafka can be accessed by consumers via port 9092 on the following DNS name from within your cluster:
-
-    kafka.logging.svc.cluster.local
-
-Each Kafka broker can be accessed by producers via port 9092 on the following DNS name(s) from within your cluster:
-
-    kafka-0.kafka-headless.logging.svc.cluster.local:9092
-
-To create a pod that you can use as a Kafka client run the following commands:
-
-    kubectl run kafka-client --restart='Never' --image docker.io/bitnami/kafka:2.8.0-debian-10-r0 --namespace logging --command -- sleep infinity
-    kubectl exec --tty -i kafka-client --namespace logging -- bash
-
-    PRODUCER:
-        kafka-console-producer.sh \
-
-            --broker-list kafka-0.kafka-headless.logging.svc.cluster.local:9092 \
-            --topic test
-
-    CONSUMER:
-        kafka-console-consumer.sh \
-
-            --bootstrap-server kafka.logging.svc.cluster.local:9092 \
-            --topic test \
-            --from-beginning
-```
-
-安装完成后我们可以使用上面的提示来检查 Kafka 是否正常运行：
-
-```
-$ kubectl get pods -n logging -l app.kubernetes.io/instance=kafka
-kafka-0             1/1     Running   0          7m58s
-kafka-zookeeper-0   1/1     Running   0          7m58s
-```
-
-用下面的命令创建一个 Kafka 的测试客户端 Pod：
-
-```
-$ kubectl run kafka-client --restart='Never' --image docker.io/bitnami/kafka:2.8.0-debian-10-r0 --namespace logging --command -- sleep infinity
-pod/kafka-client created
-```
-
-然后启动一个终端进入容器内部生产消息：
-
-```
-# 生产者
-$ kubectl exec --tty -i kafka-client --namespace logging -- bash
-I have no name!@kafka-client:/$ kafka-console-producer.sh --broker-list kafka-0.kafka-headless.logging.svc.cluster.local:9092 --topic test
->hello kafka on k8s
->
-```
-
-启动另外一个终端进入容器内部消费消息：
-
-```
-# 消费者
-$ kubectl exec --tty -i kafka-client --namespace logging -- bash
-I have no name!@kafka-client:/$ kafka-console-consumer.sh --bootstrap-server kafka.logging.svc.cluster.local:9092 --topic test --from-beginning
-hello kafka on k8s
-```
-
-如果在消费端看到了生产的消息数据证明我们的 Kafka 已经运行成功了。
-
-### Fluentd 配置 Kafka
-
-现在有了 Kafka，我们就可以将 Fluentd 的日志数据输出到 Kafka 了，只需要将 Fluentd 配置中的 `<match>` 更改为使用 Kafka 插件即可，但是在 Fluentd 中输出到 Kafka，需要使用到 `fluent-plugin-kafka` 插件，所以需要我们自定义下 Docker 镜像，最简单的做法就是在上面 Fluentd 镜像的基础上新增 kafka 插件即可，Dockerfile 文件如下所示：
-
-```
-FROM quay.io/fluentd_elasticsearch/fluentd:v3.2.0
-RUN echo "source 'https://mirrors.tuna.tsinghua.edu.cn/rubygems/'" > Gemfile && gem install bundler
-RUN gem install fluent-plugin-kafka -v 0.16.1 --no-document
-```
-
-使用上面的 `Dockerfile` 文件构建一个 Docker 镜像即可，我这里构建过后的镜像名为 `cnych/fluentd-kafka:v0.16.1`。接下来替换 Fluentd 的 Configmap 对象中的 `<match>` 部分，如下所示：
-
-```
-# fluentd-configmap.yaml
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: fluentd-conf
-  namespace: logging
-data:
-  ......
-  output.conf: |-
-    <match **>
-      @id kafka
-      @type kafka2
-      @log_level info
-
-      # list of seed brokers
-      brokers kafka-0.kafka-headless.logging.svc.cluster.local:9092
-      use_event_time true
-
-      # topic settings
-      topic_key k8slog
-      default_topic messages  # 注意，kafka中消费使用的是这个topic
-      # buffer settings
-      <buffer k8slog>
-        @type file
-        path /var/log/td-agent/buffer/td
-        flush_interval 3s
-      </buffer>
-
-      # data type settings
-      <format>
-        @type json
-      </format>
-
-      # producer settings
-      required_acks -1
-      compression_codec gzip
-
-    </match>
-```
-
-然后替换运行的 Fluentd 镜像：
-
-```
-# fluentd-daemonset.yaml
-image: cnych/fluentd-kafka:v0.16.1
-```
-
-直接更新 Fluentd 的 Configmap 与 DaemonSet 资源对象即可：
-
-```
-kubectl apply -f fluentd-configmap.yaml
-kubectl apply -f fluentd-daemonset.yaml
-```
-
-更新成功后我们可以使用上面的测试 Kafka 客户端来验证是否有日志数据：
-
-```
-$ kubectl exec --tty -i kafka-client --namespace logging -- bash
-I have no name!@kafka-client:/$ kafka-console-consumer.sh --bootstrap-server kafka.logging.svc.cluster.local:9092 --topic messages --from-beginning
-{"stream":"stdout","docker":{},"kubernetes":{"container_name":"count","namespace_name":"default","pod_name":"counter","container_image":"busybox:latest","host":"node1","labels":{"logging":"true"}},"message":"43883: Tue Apr 27 12:16:30 UTC 2021\n"}
-......
-```
-
-### 安装 Logstash
-
-虽然数据从 Kafka 到 Elasticsearch 的方式多种多样，我们这里还是采用更加流行的 Logstash 方案，上面我们已经将日志从 Fluentd 采集输出到 Kafka 中去了，接下来我们使用 Logstash 来连接 Kafka 与 Elasticsearch 间的日志数据。
-
-首先使用 `helm pull` 拉取 Chart 并解压：
-
-```
-helm pull elastic/logstash --untar --version 7.12.0
-cd logstash
-```
-
-同样在 Chart 根目录下面创建用于安装的 Values 文件，如下所示：
-
-```
-# values-prod.yaml
-fullnameOverride: logstash
-
-persistence:
-  enabled: true
-
-logstashConfig:
-  logstash.yml: |
-    http.host: 0.0.0.0
-    # 如果启用了xpack，需要做如下配置
-    xpack.monitoring.enabled: true
-    xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch-client:9200"]
-    xpack.monitoring.elasticsearch.username: "elastic"
-    xpack.monitoring.elasticsearch.password: "ydzsio321"
-
-# 要注意下格式
-logstashPipeline:
-  logstash.conf: |
-    input { kafka { bootstrap_servers => "kafka-0.kafka-headless.logging.svc.cluster.local:9092" codec => json consumer_threads => 3 topics => ["messages"] } }
-    filter {}  # 过滤配置（比如可以删除key、添加geoip等等）
-    output { elasticsearch { hosts => [ "elasticsearch-client:9200" ] user => "elastic" password => "ydzsio321" index => "logstash-k8s-%{+YYYY.MM.dd}" } stdout { codec => rubydebug } }
-
-volumeClaimTemplate:
-  accessModes: ["ReadWriteOnce"]
-  storageClassName: nfs-storage
-  resources:
-    requests:
-      storage: 1Gi
-```
-
-其中最重要的就是通过 `logstashPipeline` 配置 logstash 数据流的处理配置，通过 `input` 指定日志源 kafka 的配置，通过 `output` 输出到 Elasticsearch，同样直接使用上面的 Values 文件安装 logstash 即可：
-
-```
-$ helm upgrade --install logstash -f values-prod.yaml --namespace logging .
-Release "logstash" does not exist. Installing it now.
-NAME: logstash
-LAST DEPLOYED: Tue Apr 27 20:22:45 2021
-NAMESPACE: logging
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
-NOTES:
-1. Watch all cluster members come up.
-  $ kubectl get pods --namespace=logging -l app=logstash -w
-```
-
-安装启动完成后可以查看 logstash 的日志：
-
-```
-$ logstash kubectl get pods --namespace=logging -l app=logstash
-NAME         READY   STATUS    RESTARTS   AGE
-logstash-0   1/1     Running   0          2m8s
-$ kubectl logs -f logstash-0 -n logging
-......
-{
-"docker" => {},
-"stream" => "stdout",
-"message" => "46921: Tue Apr 27 13:07:15 UTC 2021\n",
-"kubernetes" => {
-            "host" => "node1",
-          "labels" => {
-    "logging" => "true"
-},
-        "pod_name" => "counter",
-"container_image" => "busybox:latest",
-  "container_name" => "count",
-  "namespace_name" => "default"
-},
-"@timestamp" => 2021-04-27T13:07:15.761Z,
-"@version" => "1"
-}
-```
-
-由于我们启用了 debug 日志调试，所以我们可以在 logstash 的日志中看到我们采集的日志消息，到这里证明我们的日志数据就获取成功了。
-
-现在我们可以登录到 Kibana 可以看到有如下所示的索引数据了：
-
-![img](https://picdn.youdianzhishi.com/images/20210427210958.png)
-
-然后同样创建索引模式，匹配上面的索引即可：
-
-![img](https://picdn.youdianzhishi.com/images/20210427211119.png)
-
-创建完成后就可以前往发现页面过滤日志数据了：
-
-![img](https://picdn.youdianzhishi.com/images/20210427211331.png)
-
-到这里我们就实现了一个使用 `Fluentd+Kafka+Logstash+Elasticsearch+Kibana` 的 Kubernetes 日志收集工具栈，这里我们完整的 Pod 信息如下所示：
-
-```
-$ kubectl get pods -n logging
-NAME                            READY   STATUS    RESTARTS   AGE
-elasticsearch-client-0          1/1     Running   0          128m
-elasticsearch-data-0            1/1     Running   0          128m
-elasticsearch-master-0          1/1     Running   0          128m
-fluentd-6k52h                   1/1     Running   0          61m
-fluentd-cw72c                   1/1     Running   0          61m
-fluentd-dn4hs                   1/1     Running   0          61m
-kafka-0                         1/1     Running   3          134m
-kafka-client                    1/1     Running   0          125m
-kafka-zookeeper-0               1/1     Running   0          134m
-kibana-kibana-66f97964b-qqjgg   1/1     Running   0          128m
-logstash-0                      1/1     Running   0          13m
-```
-
-当然在实际的工作项目中还需要我们根据实际的业务场景来进行参数性能调优以及高可用等设置，以达到系统的最优性能。
+下一节 **T9.3、Loki** 会按官方 Helm 方式部署 **Loki + Promtail（+ 可选 Grafana）**；它和 EFK 是两条常见路线，按成本与查询习惯二选一即可。
 
 ## T9.3、Loki
 
-Grafana Loki 是一套可以组合成一个功能齐全的日志堆栈组件，与其他日志记录系统不同，Loki 是基于仅索引有关日志元数据的想法而构建的：标签（就像 Prometheus 标签一样）。日志数据本身被压缩然后并存储在对象存储（例如 S3 或 GCS）的块中，甚至存储在本地文件系统上，轻量级的索引和高度压缩的块简化了操作，并显着降低了 Loki 的成本，Loki 更适合中小团队。由于 Loki 使用和 Prometheus 类似的标签概念，所以如果你熟悉 Prometheus 那么将很容易上手；也可以直接和 Grafana 集成，只需要添加 Loki 数据源就可以开始查询日志数据了。
+[Grafana Loki](https://grafana.com/docs/loki/latest/) 按**标签**索引元数据，正文日志压缩成块存起来，不像传统全文检索那样给每个词建倒排索引，成本通常更友好。查询用 **LogQL**，和 **Prometheus / Grafana** 一套习惯。**采集**：官方常提 **Promtail**、**Grafana Alloy**（承接原 Grafana Agent）。本节按 **Promtail + Helm** 落地；你已在 **T9.1 / T9.2** 用的 **Fluent Bit** 也可直接输出到 Loki（[Fluent Bit Loki 输出](https://docs.fluentbit.io/manual/pipeline/outputs/loki)），不冲突。
 
-Loki 还提供了一个专门用于日志查询的 LogQL 查询语句，类似于 PromQL，通过 LogQL 我们可以很容易查询到需要的日志，也可以很轻松获取监控指标。Loki 还能够将 LogQL 查询直接转换为 Prometheus 指标。此外 Loki 允许我们定义有关 LogQL 指标的报警，并且由于它与 Prometheus 兼容，因此可以将它们和 Alertmanager 进行对接。
+### T9.3.1、和 ES 怎么选（大白话）
 
-Grafana Loki 主要由 3 部分组成:
+| 维度 | Loki | Elasticsearch（EFK） |
+|------|------|----------------------|
+| 索引侧重 | 主要索引**标签**；正文走块存储与压缩 | 常做**全文**检索，资源占用更高 |
+| 查询 | **LogQL**，跟 Prom 栈对齐 | **KQL / DSL** 等，生态成熟 |
+| 典型场景 | 已有 **Grafana**，想控成本、标签统一 | 强检索、复杂分析、合规检索 |
 
-- loki: 日志记录引擎，负责存储日志和处理查询
-- promtail: 代理，负责收集日志并将其发送给 loki
-- grafana: UI 界面
-
-### 概述
-
-Loki 是一组可以组成功能齐全的日志收集堆栈的组件，与其他日志收集系统不同，Loki 的构建思想是仅为日志建立索引标签，而使原始日志消息保持未索引状态。这意味着 Loki 的运营成本更低，并且效率更高。
-
-#### 多租户
-
-Loki 支持多租户，以使租户之间的数据完全分离。当 Loki 在多租户模式下运行时，所有数据（包括内存和长期存储中的数据）都由租户 ID 分区，该租户 ID 是从请求中的 `X-Scope-OrgID` HTTP 头中提取的。 当 Loki 不在多租户模式下时，将忽略 Header 头，并将租户 ID 设置为 `fake`，这将显示在索引和存储的块中。
-
-#### 运行模式
-
-![Loki 运行模式](https://picdn.youdianzhishi.com/images/20210504185732.png)
-
-Loki 针对本地运行（或小规模运行）和水平扩展进行了优化吗，Loki 带有单一进程模式，可在一个进程中运行所有必需的微服务。单进程模式非常适合测试 Loki 或以小规模运行。为了实现水平可伸缩性，可以将 Loki 的微服务拆分为单独的组件，从而使它们彼此独立地扩展。每个组件都产生一个用于内部请求的 gRPC 服务器和一个用于外部 API 请求的 HTTP 服务，所有组件都带有 HTTP 服务器，但是大多数只暴露就绪接口、运行状况和指标端点。
-
-Loki 运行哪个组件取决于命令行中的 `-target` 标志或 Loki 的配置文件中的 `target：<string>` 配置。 当 target 的值为 `all` 时，Loki 将在单进程中运行其所有组件。，这称为`单进程`或`单体模式`。 使用 Helm 安装 Loki 时，单单体模式是默认部署方式。
-
-当 target 未设置为 all（即被设置为 `querier`、`ingester`、`query-frontend` 或 `distributor`），则可以说 Loki 在`水平伸缩`或`微服务模式`下运行。
-
-Loki 的每个组件，例如 `ingester` 和 `distributors` 都使用 Loki 配置中定义的 gRPC 侦听端口通过 gRPC 相互通信。当以单体模式运行组件时，仍然是这样的：尽管每个组件都以相同的进程运行，但它们仍将通过本地网络相互连接进行组件之间的通信。
-
-单体模式非常适合于本地开发、小规模等场景，单体模式可以通过多个进程进行扩展，但有以下限制：
-
-- 当运行带有多个副本的单体模式时，当前无法使用本地索引和本地存储，因为每个副本必须能够访问相同的存储后端，并且本地存储对于并发访问并不安全。
-- 各个组件无法独立缩放，因此读取组件的数量不能超过写入组件的数量。
-
-#### 组件
-
-![Loki 组件](https://picdn.youdianzhishi.com/images/20210506102731.png)
-
-##### Distributor
-
-`distributor` 服务负责处理客户端写入的日志，它本质上是日志数据写入路径中的**第一站**，一旦 `distributor` 收到日志数据，会将其拆分为多个批次，然后并行发送给多个 `ingester`。
-
-`distributor` 通过 gRPC 与 `ingester` 通信，它们都是无状态的，可以根据需要扩大或缩小规模。
-
-**Hashing**
-
-`Distributors` 将一致性 hash 和可配置的复制因子结合使用，以确定 `Ingester` 服务的哪些实例应该接收指定的流。
-
-流是一组与租户和唯一标签集关联的日志，使用租户 ID 和标签集对流进行 hash 处理，然后使用哈希查询要发送流的 `Ingesters`。
-
-存储在 Consul 中的哈希环被用来实现一致性哈希，所有的 `ingester` 都会使用自己拥有的一组 Token 注册到哈希环中，每个 Token 是一个随机的无符号 32 位数字，与一组 Token 一起，`ingester` 将其状态注册到哈希环中，状态 `JOINING` 和 `ACTIVE` 都可以接收写请求，而 `ACTIVE` 和 `LEAVING` 的 `ingesters` 可以接收读请求。在进行哈希查询时，`distributors` 只使用处于请求的适当状态的 ingester 的 Token。
-
-为了进行哈希查找，`distributors` 找到最小合适的 Token，其值大于日志流的哈希值，当复制因子大于 1 时，属于不同 `ingesters` 的下一个后续 Token（在环中顺时针方向）也将被包括在结果中。
-
-这种哈希配置的效果是，一个 `ingester` 拥有的每个 Token 都负责一个范围的哈希值，如果有三个值为 0、25 和 50 的 Token，那么 3 的哈希值将被给予拥有 25 这个 Token 的 `ingester`，拥有 25 这个 Token 的 `ingester`负责`1-25`的哈希值范围。
-
-**Quorum(仲裁)一致性**
-
-由于所有的 `distributors` 共享对同一哈希环的访问权，所以写请求可以被发送到任何 `distributor`。
-
-为了确保查询结果的一致性，Loki 在读和写上使用 [Dynamo 式](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)的仲裁一致性方式，这意味着 `distributor` 将等待至少一半加一个 `ingesters` 的响应，然后再对发送的客户端进行响应。
-
-##### Ingester
-
-`ingester` 服务负责将日志数据写入长期存储后端（DynamoDB、S3、Cassandra 等）。此外 `ingester` 会验证摄取的日志行是按照时间戳递增的顺序接收的（即每条日志的时间戳都比前面的日志晚一些），当 `ingester` 收到不符合这个顺序的日志时，该日志行会被拒绝并返回一个错误。
-
-- 如果传入的行与之前收到的行完全匹配（与之前的时间戳和日志文本都匹配），传入的行将被视为完全重复并被忽略。
-- 如果传入的行与前一行的时间戳相同，但内容不同，则接受该日志行。这意味着同一时间戳有两个不同的日志行是可能的。
-
-来自每个唯一标签集的日志在内存中被建立成 `chunks(块)`，然后可以根据配置的时间间隔刷新到支持的后端存储。在下列情况下，块被压缩并标记为只读：
-
-- 当前块容量已满（该值可配置）
-- 过了太长时间没有更新当前块的内容
-- 刷新了
-
-每当一个数据块被压缩并标记为只读时，一个可写的数据块就会取代它。如果一个 `ingester` 进程崩溃或突然退出，所有尚未刷新的数据都会丢失。Loki 通常配置为多个副本（通常是 3 个）来**降低**这种风险。
-
-当向持久存储刷新时，该块将根据其租户、标签和内容进行哈希处理，这意味着具有相同数据副本的多个 `ingesters` 实例不会将相同的数据两次写入备份存储中，但如果对其中一个副本的写入失败，则会在备份存储中创建多个不同的块对象。有关如何对数据进行重复数据删除，请参阅 Querier。
-
-**WAL**
-
-上面我们也提到了 `ingesters` 将数据临时存储在内存中，如果发生了崩溃，可能会导致数据丢失，而 WAL 就可以帮助我们来提高这方面的可靠性。
-
-在计算机领域，WAL（Write-ahead logging，预写式日志）是数据库系统提供原子性和持久化的一系列技术。
-
-在使用 WAL 的系统中，所有的修改都先被写入到日志中，然后再被应用到系统状态中。通常包含 redo 和 undo 两部分信息。为什么需要使用 WAL，然后包含 redo 和 undo 信息呢？举个例子，如果一个系统直接将变更应用到系统状态中，那么在机器断电重启之后系统需要知道操作是成功了，还是只有部分成功或者是失败了（为了恢复状态）。如果使用了 WAL，那么在重启之后系统可以通过比较日志和系统状态来决定是继续完成操作还是撤销操作。
-
-`redo log` 称为重做日志，每当有操作时，在数据变更之前将操作写入 redo log，这样当发生断电之类的情况时系统可以在重启后继续操作。`undo log` 称为撤销日志，当一些变更执行到一半无法完成时，可以根据撤销日志恢复到变更之间的状态。
-
-Loki 中的 WAL 记录了传入的数据，并将其存储在本地文件系统中，以保证在进程崩溃的情况下持久保存已确认的数据。重新启动后，Loki 将**重放**日志中的所有数据，然后将自身注册，准备进行后续写操作。这使得 Loki 能够保持在内存中缓冲数据的性能和成本优势，以及持久性优势（一旦写被确认，它就不会丢失数据）。
-
-##### 查询前端
-
-查询前端是一个可选的服务，提供 `querier` 的 API 端点，可以用来加速读取路径。当查询前端就位时，应将传入的查询请求定向到查询前端，而不是 `querier`, 为了执行实际的查询，群集中仍需要 `querier` 服务。
-
-查询前端在内部执行一些查询调整，并在内部队列中保存查询。`querier` 作为 workers 从队列中提取作业，执行它们，并将它们返回到查询前端进行汇总。`querier` 需要配置查询前端地址（通过`-querier.frontend-address` CLI 标志），以便允许它们连接到查询前端。
-
-查询前端是无状态的，然而，由于内部队列的工作方式，建议运行几个查询前台的副本，以获得公平调度的好处，在大多数情况下，两个副本应该足够了。
-
-**队列**
-
-查询前端的排队机制用于：
-
-- 确保可能导致 `querier` 出现内存不足（OOM）错误的查询在失败时被重试。这允许管理员可以为查询提供不足的内存，或者并行运行更多的小型查询，这有助于降低总成本。
-- 通过使用先进先出队列（FIFO）将多个大型请求分配到所有 `querier` 上，以防止在单个 `querier` 中传送多个大型请求。
-- 通过在租户之间公平调度查询。
-
-**分割**
-
-查询前端将较大的查询分割成多个较小的查询，在下游 `querier` 上并行执行这些查询，并将结果再次拼接起来。这可以防止大型查询在单个查询器中造成内存不足的问题，并有助于更快地执行这些查询。
-
-**缓存**
-
-查询前端支持缓存指标查询结果，并在后续查询中重复使用。如果缓存的结果不完整，查询前端会计算所需的子查询，并在下游 `querier` 上并行执行这些子查询。查询前端可以选择将查询与其 step 参数对齐，以提高查询结果的可缓存性。结果缓存与任何 loki 缓存后端（当前为 memcached、redis 和内存缓存）兼容。
-
-##### Querier
-
-`Querier` 查询器服务使用 LogQL 查询语言处理查询，从 `ingesters` 和长期存储中获取日志。
-
-查询器查询所有 `ingesters` 的内存数据，然后再到后端存储运行相同的查询。由于复制因子，查询器有可能会收到重复的数据。为了解决这个问题，查询器在内部对具有相同纳秒时间戳、标签集和日志信息的数据进行重复数据删除。
-
-##### Chunk 格式
-
-```
- -------------------------------------------------------------------
-  |                               |                                 |
-  |        MagicNumber(4b)        |           version(1b)           |
-  |                               |                                 |
-  -------------------------------------------------------------------
-  |         block-1 bytes         |          checksum (4b)          |
-  -------------------------------------------------------------------
-  |         block-2 bytes         |          checksum (4b)          |
-  -------------------------------------------------------------------
-  |         block-n bytes         |          checksum (4b)          |
-  -------------------------------------------------------------------
-  |                        #blocks (uvarint)                        |
-  -------------------------------------------------------------------
-  | #entries(uvarint) | mint, maxt (varint) | offset, len (uvarint) |
-  -------------------------------------------------------------------
-  | #entries(uvarint) | mint, maxt (varint) | offset, len (uvarint) |
-  -------------------------------------------------------------------
-  | #entries(uvarint) | mint, maxt (varint) | offset, len (uvarint) |
-  -------------------------------------------------------------------
-  | #entries(uvarint) | mint, maxt (varint) | offset, len (uvarint) |
-  -------------------------------------------------------------------
-  |                      checksum(from #blocks)                     |
-  -------------------------------------------------------------------
-  |                    #blocks section byte offset                  |
-  -------------------------------------------------------------------
+```mermaid
+flowchart LR
+  subgraph efk[EFK]
+    FB1[采集] --> ES[(Elasticsearch)]
+    ES --> KB[Kibana]
+  end
+  subgraph loki[Loki 栈]
+    PR[Promtail] --> LO[(Loki)]
+    LO --> GF[Grafana]
+  end
 ```
 
-`mint` 和 `maxt`分别描述了最小和最大的 Unix 纳秒时间戳。
+### T9.3.2、日志怎么走
 
-##### Block 格式
-
-一个 block 由一系列日志 entries 组成，每个 entry 都是一个单独的日志行。
-
-请注意，一个 block 的字节是用 Gzip 压缩存储的。以下是它们未压缩时的形式。
-
-```
-  -------------------------------------------------------------------
-  |    ts (varint)    |     len (uvarint)    |     log-1 bytes      |
-  -------------------------------------------------------------------
-  |    ts (varint)    |     len (uvarint)    |     log-2 bytes      |
-  -------------------------------------------------------------------
-  |    ts (varint)    |     len (uvarint)    |     log-3 bytes      |
-  -------------------------------------------------------------------
-  |    ts (varint)    |     len (uvarint)    |     log-n bytes      |
-  -------------------------------------------------------------------
+```mermaid
+flowchart LR
+  P[Pod stdout]
+  N[节点 /var/log/pods]
+  PT[Promtail DaemonSet]
+  GW[Loki Gateway]
+  L[(Loki 存储)]
+  P --> N --> PT --> GW --> L
 ```
 
-`ts` 是日志的 Unix 纳秒时间戳，而 len 是日志条目的字节长度。
+部署模式（单体 / 简单可扩展 / 微服务）见 [Deployment modes](https://grafana.com/docs/loki/latest/get-started/deployment-modes/)。**学习和小集群**用 **Monolithic**（单进程，与文档里旧名 **Single Binary** 同类）即可；上生产再接对象存储、多副本与读写拆分。
 
-##### Chunk 存储
+下面是 [Loki overview](https://grafana.com/docs/loki/latest/get-started/overview/) 官网同款示意图（本仓库从 [grafana/loki 文档源](https://github.com/grafana/loki/blob/main/docs/sources/get-started/loki-overview-2.png) 同步到本地，便于离线阅读）：
 
-Chunk 存储是 Loki 的长期数据存储，旨在支持交互式查询和持续写入，不需要后台维护任务。它由以下部分组成:
+![Loki 日志栈：Agent、Loki、Grafana](./images/loki-overview-2.png)
 
-- 一个 chunks 索引，这个索引可以通过以下方式支持：Amazon DynamoDB、Google Bigtable、Apache Cassandra。
-- 一个用于 chunk 数据本身的键值（KV）存储，可以是：Amazon DynamoDB、Google Bigtable、Apache Cassandra、Amazon S3、Google Cloud Storage。
+### T9.3.3、版本与校验
 
-> 与 Loki 的其他核心组件不同，块存储不是一个单独的服务、任务或进程，而是嵌入到需要访问 Loki 数据的 `ingester` 和 `querier` 服务中的一个库。
+升级或排错前，对照 [Release notes](https://grafana.com/docs/loki/latest/release-notes/)、[Helm 安装](https://grafana.com/docs/loki/latest/setup/install/helm/) 与 [Chart README](https://github.com/grafana-community/helm-charts/blob/main/charts/loki/README.md)。
 
-块存储依赖于一个统一的接口，用于支持块存储索引的 `NoSQL` 存储（DynamoDB、Bigtable 和 Cassandra）。这个接口假定索引是由以下项构成的键的条目集合。
+**本文本节校验日期：2026-04-20**
 
-- 一个哈希 key，对所有的读和写都是必需的。
-- 一个范围 key，写入时需要，读取时可以省略，可以通过前缀或范围进行查询。
+| 组件 | 版本 / 来源 | 说明 |
+|------|-------------|------|
+| Loki 镜像 | **3.7.1**（Chart `appVersion`，可再 pin tag） | [grafana/loki Releases](https://github.com/grafana/loki/releases)；Chart 见下 |
+| Loki Helm Chart | **13.2.0**（与 `helm search repo grafana-community/loki` 一致即可） | [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts) |
+| Promtail Chart | `helm search repo grafana/promtail` 当前 stable | 镜像多为 `grafana/promtail` |
+| Grafana Chart | `helm search repo grafana/grafana` 当前 stable | 本文用于 Explore 查日志 |
 
-该接口在支持的数据库中的工作方式有些不同：
+推荐用 **OCI** 装 Loki：`oci://ghcr.io/grafana-community/helm-charts/loki`。下文同时写 **HTTP 仓库**，方便内网镜像站对齐。
 
-- `DynamoDB` 原生支持范围和哈希键，因此，索引条目被直接建模为 DynamoDB 条目，哈希键作为分布键，范围作为 DynamoDB 范围键。
-- 对于 `Bigtable` 和 `Cassandra`，索引条目被建模为单个列值。哈希键成为行键，范围键成为列键。
+### T9.3.4、开工前要准备什么
 
-一组模式集合被用来将读取和写入块存储时使用的匹配器和标签集映射到索引上的操作。随着 Loki 的发展，Schemas 模式也被添加进来，主要是为了更好地平衡写操作和提高查询性能。
+与 **T9.2** 相同：组件放在 **`logging`** 命名空间；没有则先建：
 
-##### 读取路径
-
-日志读取路径的流程如下所示：
-
-- 查询器收到一个对数据的 HTTP 请求。
-- 查询器将查询传递给所有 `ingesters` 以获取内存数据。
-- `ingesters` 收到读取请求，并返回与查询相匹配的数据（如果有的话）。
-- 如果没有 `ingesters` 返回数据，查询器会从后端存储加载数据，并对其运行查询。
-- 查询器对所有收到的数据进行迭代和重复计算，通过 HTTP 连接返回最后一组数据。
-
-##### 写入路径
-
-![write path](https://picdn.youdianzhishi.com/images/20210505174014.png)
-
-整体的日志写入路径如下所示：
-
-- `distributor` 收到一个 HTTP 请求，以存储流的数据。
-- 每个流都使用哈希环进行哈希操作。
-- `distributor` 将每个流发送到合适的 `ingester` 和他们的副本（基于配置的复制因子）。
-- 每个 `ingester` 将为日志流数据创建一个块或附加到一个现有的块上。每个租户和每个标签集的块是唯一的。
-- `distributor` 通过 HTTP 连接响应一个成功代码。
-
-### 安装
-
-首先添加 Loki 的 Chart 仓库：
-
+```bash
+kubectl create namespace logging
 ```
+
+示例 **Monolithic** 打开 **MinIO** 子 Chart 时会多占 **PVC**；把 YAML 里的 **StorageClass** 换成你集群真实值（`kubectl get sc`）。**生产**请接云对象存储或自建 S3 兼容端点，不要长期把 MinIO 当唯一真源；参数见 [Helm reference](https://grafana.com/docs/loki/latest/setup/install/helm/reference/) 与 [Install monolithic](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/)。
+
+### T9.3.5、装 Loki（Monolithic）
+
+下面 **values** 对齐官方 [Install the monolithic Helm chart — Single Replica](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/)，额外固定 **`deploymentMode: Monolithic`**、**`-n logging`**。若 Helm 报未知字段，以 `helm show values grafana-community/loki --version 13.2.0` 为准。
+
+将以下内容保存为 `loki-values.yaml`：
+
+```yaml
+# loki-values.yaml（学习/联调用；生产请换对象存储与高可用参数）
+loki:
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  pattern_ingester:
+    enabled: true
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+  ruler:
+    enable_api: true
+
+minio:
+  enabled: true
+
+deploymentMode: Monolithic
+
+singleBinary:
+  replicas: 1
+
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+queryScheduler:
+  replicas: 0
+distributor:
+  replicas: 0
+compactor:
+  replicas: 0
+indexGateway:
+  replicas: 0
+bloomPlanner:
+  replicas: 0
+bloomBuilder:
+  replicas: 0
+bloomGateway:
+  replicas: 0
+```
+
+安装（**固定 Chart 小版本**，避免他人 `helm install` 时偷偷跨大版本）：
+
+```bash
+helm repo add grafana-community https://grafana-community.github.io/helm-charts
+helm repo update
+
+helm upgrade --install loki grafana-community/loki -n logging -f loki-values.yaml --version 13.2.0
+```
+
+OCI 写法（等价，镜像源更省事时可用）：
+
+```bash
+helm upgrade --install loki oci://ghcr.io/grafana-community/helm-charts/loki -n logging -f loki-values.yaml --version 13.2.0
+```
+
+查看 Pod（会包含 Loki、Gateway、缓存、MinIO 等，略等几分钟变 Running）：
+
+```bash
+kubectl get pods -n logging
+```
+
+```mermaid
+flowchart LR
+  GW["Service loki-gateway"]
+  SB[Loki singleBinary]
+  MI[(MinIO)]
+  GW --> SB
+  SB -->|S3| MI
+```
+
+刚装完本节时，**logging** 里先有 **Gateway + Loki + MinIO**（以及 Chart 带出的缓存等）；**Promtail / Grafana** 在 **T9.3.6、T9.3.7** 再补上去。
+
+**Helm 报错时**：先跑 `helm show values grafana-community/loki --version 13.2.0` 核对字段。个别版本示例仍写 **`deploymentMode: SingleBinary`**，与 **Monolithic** 在 [Chart Upgrading](https://github.com/grafana-community/helm-charts/blob/main/charts/loki/README.md#upgrading) 里属同一类部署，按报错二选一；跨大版本升级必须先读该章节。
+
+### T9.3.6、装 Promtail
+
+Promtail 走 **Grafana 官方 Helm 仓库**里的 **`grafana/promtail`**（和 **`grafana-community`** 不是同一个 `helm repo`，两个都要 add）。
+
+客户端 URL 一般指向 **本 Release 名** 下的 Gateway。Release 名 **`loki`**、命名空间 **`logging`** 时，推送地址常为：
+
+`http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push`
+
+```bash
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
+
+helm upgrade --install promtail grafana/promtail -n logging \
+  --set "config.clients[0].url=http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push"
 ```
 
-获取 `loki-stack` 的 Chart 包并解压：
+若你改了 Helm Release 名，Service 前缀会跟着变，用 `kubectl -n logging get svc` 找带 **gateway** 的那条再拼 URL。
 
-```
-helm pull grafana/loki-stack --untar --version 2.3.1
-```
-
-`loki-stack` 这个 Chart 包里面包含所有的 Loki 相关工具依赖，在安装的时候可以根据需要开启或关闭，比如我们想要安装 Grafana，则可以  在安装的时候简单设置 `--set grafana.enabled=true` 即可。默认情况下 `loki`、`promtail` 是自动开启的，也可以根据我们的需要选择使用 `filebeat` 或者 `logstash`，同样在 Chart 包根目录下面创建用于安装的 Values 文件：
-
-```
-# values-prod.yaml
-loki:
-  enabled: true
-  replicas: 1
-  persistence:
-    enabled: true
-    storageClassName: nfs-storage
-
-promtail:
-  enabled: true
-
-grafana:
-  enabled: true
-  service:
-    type: NodePort
-  persistence:
-    enabled: true
-    storageClassName: nfs-storage
-    accessModes:
-      - ReadWriteOnce
-    size: 1Gi
+```bash
+kubectl get pods -n logging -l app.kubernetes.io/name=promtail
 ```
 
-然后直接使用上面的 Values 文件进行安装即可：
+默认会挂 **`/var/log/pods`**，和 **T9.1** 说的一致。节点没有 `/var/lib/docker/containers` 时，按当前 Chart 的 `values` 删掉多余 hostPath 即可。
 
-```
-helm upgrade --install loki -n logging -f values-prod.yaml .
-Release "loki" does not exist. Installing it now.
-NAME: loki
-LAST DEPLOYED: Sat May  8 11:58:50 2021
-NAMESPACE: logging
-STATUS: deployed
-REVISION: 1
-NOTES:
-The Loki stack has been deployed to your cluster. Loki can now be added as a datasource in Grafana.
+### T9.3.7、装 Grafana 接 Loki
 
-See http://docs.grafana.org/features/datasources/loki/ for more detail.
-```
+只调 API 可以不用 Grafana；**日常查日志**用 **Grafana Explore** 最顺手。新建 `grafana-values.yaml`（**adminPassword 必须改掉**；生产用 **Secret** 或 SSO，勿照抄）：
 
-安装完成后可以查看 Pod 的状态：
+```yaml
+# grafana-values.yaml
+adminUser: admin
+adminPassword: "请改成强密码"
 
-```
-$ kubectl get pods -n logging
-NAME                            READY   STATUS    RESTARTS   AGE
-loki-0                          1/1     Running   0          153m
-loki-grafana-86f4f9cbcc-kls6j   1/1     Running   0          153m
-loki-promtail-69w7b             1/1     Running   0          153m
-loki-promtail-mzk77             1/1     Running   0          150m
-loki-promtail-pnn97             1/1     Running   0          151m
+service:
+  type: ClusterIP
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        url: http://loki-gateway.logging.svc.cluster.local
+        access: proxy
+        isDefault: true
 ```
 
-这里我们为 Grafana 设置的 NodePort 类型的 Service：
-
-```
-$ kubectl get svc -n logging
-NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
-loki            ClusterIP   10.105.185.97    <none>        3100/TCP       156m
-loki-grafana    NodePort    10.102.226.255   <none>        80:30029/TCP   156m
-loki-headless   ClusterIP   None             <none>        3100/TCP       156m
+```bash
+# 若已在 T9.3.6 执行过 helm repo add grafana，则只需 helm repo update
+helm upgrade --install grafana grafana/grafana -n logging -f grafana-values.yaml
 ```
 
-可以通过 NodePort 端口 `30029` 访问 Grafana，使用下面的命令获取 Grafana 的登录密码：
-
-```
-kubectl get secret --namespace logging loki-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+```bash
+kubectl -n logging port-forward svc/grafana 3000:80
 ```
 
-使用用户名 `admin` 和上面的获取的密码即可登录 Grafana，由于 Helm Chart 已经为 Grafana 配置好了 Loki 的数据源，所以我们可以直接获取到日志数据了。点击左侧 `Explore` 菜单，然后就可以筛选 Loki 的日志数据了：
+浏览器访问 `http://127.0.0.1:3000`，进 **Explore**，选 **Loki**，用 **LogQL** 试查（例如 `{namespace="default"}`）。
 
-![Loki Explore](https://picdn.youdianzhishi.com/images/20210508143951.png)
+**（插槽：此处贴本环境 Grafana Explore 查询截图，便于后来者对照 UI。）**
 
-我们使用 Helm 安装的 Promtail 默认已经帮我们做好了配置，已经针对 Kubernetes 做了优化，我们可以查看其配置：
+**T9.3.5～T9.3.7 都做完后**，命名空间里采集与查询关系可概括成：
 
-```
-$ kubectl get cm loki-promtail -n logging -o yaml
-apiVersion: v1
-data:
-  promtail.yaml: |
-    client:
-      backoff_config:
-        max_period: 5m
-        max_retries: 10
-        min_period: 500ms
-      batchsize: 1048576
-      batchwait: 1s
-      external_labels: {}
-      timeout: 10s
-    positions:
-      filename: /run/promtail/positions.yaml
-    server:
-      http_listen_port: 3101
-    target_config:
-      sync_period: 10s
-    scrape_configs:
-    - job_name: kubernetes-pods-name
-      pipeline_stages:
-        - docker: {}
-      kubernetes_sd_configs:
-      - role: pod
-      relabel_configs:
-      - source_labels:
-        - __meta_kubernetes_pod_label_name
-        target_label: __service__
-      - source_labels:
-        - __meta_kubernetes_pod_node_name
-        target_label: __host__
-      - action: drop
-        regex: ''
-        source_labels:
-        - __service__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        replacement: $1
-        separator: /
-        source_labels:
-        - __meta_kubernetes_namespace
-        - __service__
-        target_label: job
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - replacement: /var/log/pods/*$1/*.log
-        separator: /
-        source_labels:
-        - __meta_kubernetes_pod_uid
-        - __meta_kubernetes_pod_container_name
-        target_label: __path__
-    - job_name: kubernetes-pods-app
-      pipeline_stages:
-        - docker: {}
-      kubernetes_sd_configs:
-      - role: pod
-      relabel_configs:
-      - action: drop
-        regex: .+
-        source_labels:
-        - __meta_kubernetes_pod_label_name
-      - source_labels:
-        - __meta_kubernetes_pod_label_app
-        target_label: __service__
-      - source_labels:
-        - __meta_kubernetes_pod_node_name
-        target_label: __host__
-      - action: drop
-        regex: ''
-        source_labels:
-        - __service__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        replacement: $1
-        separator: /
-        source_labels:
-        - __meta_kubernetes_namespace
-        - __service__
-        target_label: job
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - replacement: /var/log/pods/*$1/*.log
-        separator: /
-        source_labels:
-        - __meta_kubernetes_pod_uid
-        - __meta_kubernetes_pod_container_name
-        target_label: __path__
-    - job_name: kubernetes-pods-direct-controllers
-      pipeline_stages:
-        - docker: {}
-      kubernetes_sd_configs:
-      - role: pod
-      relabel_configs:
-      - action: drop
-        regex: .+
-        separator: ''
-        source_labels:
-        - __meta_kubernetes_pod_label_name
-        - __meta_kubernetes_pod_label_app
-      - action: drop
-        regex: '[0-9a-z-.]+-[0-9a-f]{8,10}'
-        source_labels:
-        - __meta_kubernetes_pod_controller_name
-      - source_labels:
-        - __meta_kubernetes_pod_controller_name
-        target_label: __service__
-      - source_labels:
-        - __meta_kubernetes_pod_node_name
-        target_label: __host__
-      - action: drop
-        regex: ''
-        source_labels:
-        - __service__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        replacement: $1
-        separator: /
-        source_labels:
-        - __meta_kubernetes_namespace
-        - __service__
-        target_label: job
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - replacement: /var/log/pods/*$1/*.log
-        separator: /
-        source_labels:
-        - __meta_kubernetes_pod_uid
-        - __meta_kubernetes_pod_container_name
-        target_label: __path__
-    - job_name: kubernetes-pods-indirect-controller
-      pipeline_stages:
-        - docker: {}
-      kubernetes_sd_configs:
-      - role: pod
-      relabel_configs:
-      - action: drop
-        regex: .+
-        separator: ''
-        source_labels:
-        - __meta_kubernetes_pod_label_name
-        - __meta_kubernetes_pod_label_app
-      - action: keep
-        regex: '[0-9a-z-.]+-[0-9a-f]{8,10}'
-        source_labels:
-        - __meta_kubernetes_pod_controller_name
-      - action: replace
-        regex: '([0-9a-z-.]+)-[0-9a-f]{8,10}'
-        source_labels:
-        - __meta_kubernetes_pod_controller_name
-        target_label: __service__
-      - source_labels:
-        - __meta_kubernetes_pod_node_name
-        target_label: __host__
-      - action: drop
-        regex: ''
-        source_labels:
-        - __service__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        replacement: $1
-        separator: /
-        source_labels:
-        - __meta_kubernetes_namespace
-        - __service__
-        target_label: job
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - replacement: /var/log/pods/*$1/*.log
-        separator: /
-        source_labels:
-        - __meta_kubernetes_pod_uid
-        - __meta_kubernetes_pod_container_name
-        target_label: __path__
-    - job_name: kubernetes-pods-static
-      pipeline_stages:
-        - docker: {}
-      kubernetes_sd_configs:
-      - role: pod
-      relabel_configs:
-      - action: drop
-        regex: ''
-        source_labels:
-        - __meta_kubernetes_pod_annotation_kubernetes_io_config_mirror
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_label_component
-        target_label: __service__
-      - source_labels:
-        - __meta_kubernetes_pod_node_name
-        target_label: __host__
-      - action: drop
-        regex: ''
-        source_labels:
-        - __service__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        replacement: $1
-        separator: /
-        source_labels:
-        - __meta_kubernetes_namespace
-        - __service__
-        target_label: job
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - replacement: /var/log/pods/*$1/*.log
-        separator: /
-        source_labels:
-        - __meta_kubernetes_pod_annotation_kubernetes_io_config_mirror
-        - __meta_kubernetes_pod_container_name
-        target_label: __path__
-......
+```mermaid
+flowchart TB
+  subgraph logging["命名空间 logging"]
+    PT[Promtail DaemonSet]
+    GW["Service loki-gateway"]
+    SB[Loki singleBinary]
+    MI[(MinIO 子 Chart)]
+    PT -->|push /loki/api/v1/push| GW
+    GW --> SB
+    SB -->|S3 API| MI
+  end
+  GR[Grafana] -->|LogQL 查询| GW
 ```
 
-### 收集 Traefik 日志
+### T9.3.8、和 T9.1 / T9.2 的对应
 
-这里我们以收集 Traefik 为例，为 Traefik 定制一个可视化的 Dashboard，默认情况下访问日志没有输出到 stdout，我们可以通过在命令行参数中设置 `--accesslog=true` 来开启，此外我们还可以设置访问日志格式为 json，这样更方便在 Loki 中查询使用：
+| 上文 | 本节落点 |
+|------|----------|
+| **T9.1** 采集路径、Sidecar | **Promtail** 就是典型的**节点级 DaemonSet** 采集 |
+| **T9.2** EFK → ES + Kibana | 本节走 **Loki + Grafana**（或只 API），两套路线二选一或按业务拆分 |
+| **Fluent Bit** | 已在前面出现过；若要**只保留 Fluent Bit 推到 Loki**，按 [Loki output](https://docs.fluentbit.io/manual/pipeline/outputs/loki) 配置即可，不必再装 Promtail |
 
-```
-containers:
-- args:
-  - --accesslog=true
-  - --accesslog.format=json
-  ......
-```
+### T9.3.9、（可选）Traefik 与入口
 
-默认 traefik 的日志输出为 stdout，如果你的采集端是通过读取文件的话，则需要用 filePath 参数将 traefik 的日志重定向到文件目录。
+入口用 **Traefik** 时，访问日志一般开 **access log**（多为 stdout、JSON），**Promtail** 随节点日志一并采集即可，不必为 Traefik 单独再起一套采集。具体开关以你当前的 Traefik 主版本文档为准。
 
-修改完成后正常在 Grafana 中就可以看到 Traefik 的访问日志了：
+**（插槽：若要大盘，可到 Grafana 官网选 Traefik 类 Dashboard 模板，导入后把 LogQL 里的 `job`、标签改名与你环境一致。）**
 
-![Traefik Logs](https://picdn.youdianzhishi.com/images/20210508170819.png)
+---
 
-然后我们还可以导入 Dashboard 来展示 Traefik 的信息：https://grafana.com/grafana/dashboards/13713，在 Grafana 中导入 13713 号 Dashboard：
-
-![导入 Dashboard](https://picdn.youdianzhishi.com/images/20210508171115.png)
-
-不过要注意我们需要更改 Dashboard 里面图表的查询语句，将 job 的值更改为你实际的标签，比如我这里采集 Traefik 日志的最终标签为 `job="kube-system/traefik"`：
-
-![修改标签](https://picdn.youdianzhishi.com/images/20210508172644.png)
-
-此外该 Dashboard 上还出现了 `Panel plugin not found: grafana-piechart-panel` 这样的提示，这是因为该面板依赖 `grafana-piechart-panel` 这个插件，我们进入 Grafana 容器内安装重建 Pod 即可：
-
-```
-$ kubectl exec -it loki-grafana-864fc6999c-z9587 -n logging -- /bin/bash
-bash-5.0$ grafana-cli plugins install grafana-piechart-panel
-installing grafana-piechart-panel @ 1.6.1
-from: https://grafana.com/api/plugins/grafana-piechart-panel/versions/1.6.1/download
-into: /var/lib/grafana/plugins
-
-✔ Installed grafana-piechart-panel successfully
-
-Restart grafana after installing plugins . <service grafana-server restart>
-```
-
-由于上面我们安装的时候为 Grafana 持久化了数据，所以删掉 Pod 重建即可：
-
-```
-kubectl delete pod loki-grafana-864fc6999c-z9587 -n logging
-pod "loki-grafana-864fc6999c-z9587" deleted
-```
-
-最后调整过后的 Traefik Dashboard 大盘效果如下所示：
-
-![Grafana Traefk Dashboard](https://picdn.youdianzhishi.com/images/20210508174428.png)
+下一节 **T9.4、Promtail** 专门写 **promtail.yaml** 里的管道、打标签、过滤，和 **T9.3.6** 的安装步骤衔接。
 
 ## T9.4、Promtail
 
-Promtail 是 Loki 官方支持的日志采集端，在需要采集日志的节点上运行采集代理，再统一发送到 Loki 进行处理。除了使用 Promtail，社区还有很多采集日志的组件，比如 fluentd、fluent bit 等，都是比较优秀的。
+**T9.3** 里已经用 Helm 把 **Promtail** 跑起来了；本节专门讲 **promtail.yaml** 里各部分怎么写、怎么和 **Loki**、**Prometheus** 的标签对齐。你也可以不用 Promtail，改用 **Grafana Alloy** 或 **Fluent Bit** 往 Loki 推日志，概念相通。
 
-但是 Promtail 是运行 Kubernetes 时的首选客户端，因为你可以将其配置为自动从 Promtail 运行的同一节点上运行的 Pod 中抓取日志。Promtail 和 Prometheus 在 Kubernetes 中一起运行，还可以实现非常强大的调试功能，如果 Prometheus 和 Promtail 使用相同的标签，用户还可以使用 Grafana 根据标签集在指标和日志之间切换。
-
-此外如果你想从日志中提取指标，比如计算某个特定信息的出现次数，Promtail 效果也是非常友好的。本文将介绍 Promtail 中的核心概念以及了解下如何设置 Promtail 来处理你的日志行数据，包括提取指标与标签等。
+Promtail 通过 `-config.file` 指定配置，需要展开环境变量时在进程参数中加 `-config.expand-env=true`，详见 [Promtail 配置](https://grafana.com/docs/loki/latest/clients/promtail/configuration/)。
 
 ### 配置
 
