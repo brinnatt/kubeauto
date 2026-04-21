@@ -86,7 +86,7 @@ kubectl logs counter --previous
 >
 > **`image:` 一律固定 tag**；升级前到 **GitHub Releases** 或镜像仓库核对 **latest 稳定版**（非 prerelease），并更新下表与校验日期。  
 >
-> **本文同步校验日期：2026-04-16**  
+> **本文同步校验日期：2026-04-21**  
 >
 > | 组件 | 镜像 / 标签 | 说明 |
 > |------|-------------|------|
@@ -338,71 +338,108 @@ flowchart LR
 
 ## T9.2、日志 EFK
 
-**Elasticsearch** 负责存日志、做检索；**Kibana** 负责 Web 里查询和看图；**采集器**（本节用 **Fluent Bit**，与上文 **T9.1** 的镜像与采集思路一致）从每个节点读容器日志，再写到 ES。**Fluentd** 也是很好的选择（插件多、偏 Ruby 生态），若团队已标准化 Fluentd，只要把输出改到本节的 ES 地址即可，思路一样。
+**Elasticsearch** 负责日志存储与检索；**Kibana** 提供查询与可视化；**Fluent Bit** 以 **DaemonSet** 在各节点读取容器日志并写入 ES，采集模型与 **T9.1** 节点代理一致。已标准化 **Fluentd** 时，将输出指向本节同一 ES 端点即可。
 
-2026 年 Elastic 在 Kubernetes 上的**官方推荐**落地方式是 **Elastic Cloud on Kubernetes（ECK）**：用 Operator 管理 Elasticsearch / Kibana 的生命周期、证书与升级。下面的步骤以 **ECK + Fluent Bit** 为主线，对齐 [Elastic 文档：ECK](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html) 与 [Fluent Bit Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。**不再沿用**早期教程里「Helm 分别装 master、data、client 三套旧版 Elasticsearch」的做法（与当前节点角色与运维方式都不一致）。
+**Elastic Cloud on Kubernetes（ECK）** 是 Elastic 在 Kubernetes 上编排 Elasticsearch、Kibana 等的官方 Operator，负责自定义资源生命周期、TLS 与滚动升级。本节操作步骤依据 ECK 官方安装与部署文档；Fluent Bit 写入 ES 的行为依据 [Elasticsearch 输出插件](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。
+
+**官方文档**：[Elastic Cloud on Kubernetes](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s) · [ECK Guide](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)
 
 ### T9.2.1、数据怎么流
 
+应用将日志写入 **stdout/stderr**，由容器运行时落盘至节点；**Fluent Bit** 读取节点上的容器日志文件并转发至 **Elasticsearch**；**Kibana** 查询 ES 中的索引。**elastic-operator** 根据 `Elasticsearch`、`Kibana` 等 CR 管理 Pod、PVC 与证书，不参与日志数据面转发。
+
 ```mermaid
-flowchart LR
-  P[业务 Pod 写 stdout]
-  N[节点 /var/log/containers]
-  F[Fluent Bit DaemonSet]
-  E[(Elasticsearch)]
-  K[Kibana]
-  P --> N --> F --> E --> K
+flowchart TB
+  subgraph node["工作节点"]
+    P[业务 Pod stdout/stderr]
+    L[容器日志在节点上的路径]
+    FB[Fluent Bit Pod]
+  end
+  subgraph logging_ns["命名空间 logging（工作负载）"]
+    ES[(Elasticsearch)]
+    KB[Kibana]
+  end
+  subgraph esys["命名空间 elastic-system"]
+    OP[elastic-operator]
+  end
+  P --> L --> FB -->|HTTPS 9200| ES
+  ES --> KB
+  OP -.监视 CR 并协调 Pod/PVC/证书.-> ES
+  OP -.监视 CR.-> KB
 ```
 
 ---
 
 ### T9.2.2、版本与校验
 
-升级或排错前，务必到 **GitHub Releases / Elastic 支持矩阵**核对当前稳定版，并更新下表日期。
+以 **GitHub Release、Elastic 下载页、[支持矩阵](https://www.elastic.co/support/matrix#matrix_kubernetes)** 为版本准绳；变更时同步更新下表与 GitOps 中的固定镜像 / 清单 URL。
 
-**本文同步校验日期：2026-04-16**
+**本文同步校验日期：2026-04-21**
 
 | 组件 | 版本 / 来源 | 说明 |
 |------|-------------|------|
-| ECK Operator | `3.3.2` | [ECK Releases](https://github.com/elastic/cloud-on-k8s/releases) · 安装清单见下文官方下载地址 |
-| Elastic Stack（ES + Kibana `spec.version`） | **8.17.x**（示例写 `8.17.0`，以 [ECK 与版本兼容矩阵](https://www.elastic.co/support/matrix#matrix_kubernetes) 为准） | 镜像由 Operator 按版本拉取，一般来自 `docker.elastic.co` |
-| Fluent Bit | `fluent/fluent-bit:5.0.3` | 与本文 **T9.1** 约定一致 · [fluent-bit Releases](https://github.com/fluent/fluent-bit/releases) |
+| ECK Operator | `3.3.2` | [YAML 安装](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/install-using-yaml-manifest-quickstart) 中的 `crds.yaml`、`operator.yaml` · [Releases](https://github.com/elastic/cloud-on-k8s/releases) · [下载](https://www.elastic.co/downloads/elastic-cloud-kubernetes) |
+| Kubernetes | **1.31–1.35** | [ECK：Supported versions](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s#k8s-supported) |
+| Elastic Stack（`spec.version`） | **9.3.3** | 与 [Elasticsearch 部署快速入门](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-deployment-quickstart) 示例一致；ECK 支持 Stack **8+、9+**；默认镜像仓库 **`docker.elastic.co`** |
+| Fluent Bit | `fluent/fluent-bit:5.0.3` | 与 **T9.1** 一致 · [Releases](https://github.com/fluent/fluent-bit/releases) |
 
 ---
 
-### T9.2.3、开工前要准备什么
+### T9.2.3、前提条件
 
-- **命名空间**：本章约定日志组件放在 **`logging`**（与下文 YAML 一致）。若还没有：`kubectl create namespace logging`。
-- **存储**：Elasticsearch 数据盘必须用 **PVC**（ECK 在 `volumeClaimTemplates` 里声明）。把 YAML 里的 **`storageClassName`** 改成你集群里真实存在的 **StorageClass**（可用 `kubectl get sc` 看）。学习可用单副本小盘；生产要按容量、副本、机架分散再做规划。
-- **资源**：ES 对内存敏感，示例里给的是**能跑起来的下限**；生产请按官方建议调高，并保证节点 `vm.max_map_count` 等系统参数（见 [Elasticsearch 安装说明](https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html)）。
-- **密码**：ECK 会为 `elastic` 用户生成随机密码，存在 Secret 里，**不要用教程里写死的密码**。
+- **命名空间**：Elasticsearch、Kibana、Fluent Bit 部署在 **`logging`**（`kubectl create namespace logging`）。ECK Operator 运行在 **`elastic-system`**（由 `operator.yaml` 创建）；业务负载勿与 Operator 混部于 **`elastic-system`**。
+- **存储**：数据目录使用 **`volumeClaimTemplates`** 申请 PVC；将示例中的 **`storageClassName`** 替换为集群内可用 StorageClass（`kubectl get sc`）。试跑可用单节点与小容量盘；生产按容量、副本、可用区规划，参见 [Volume claim templates](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/volume-claim-templates)。
+- **资源与节点**：示例 CPU/内存为联调下限；生产按数据量与查询负载扩容。节点需满足内存与 **`vm.max_map_count`** 等要求，参见 [Elasticsearch：系统配置与堆](https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html)。节点可调度的可用内存不足约 **2GiB** 时，ES Pod 可能持续 **Pending**。
+- **`node.store.allow_mmap`**：快速入门默认 **`false`**；生产是否启用 **mmap** 及调优见 [Virtual memory](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/virtual-memory)。
+- **网络（托管集群）**：**EKS** 须允许控制面与节点间 **TCP 443** 通信，以满足 **ValidatingWebhook** 要求，见 YAML 安装说明中的 **EKS** 章节。**GKE** 须具备完成 RBAC 绑定的管理员权限。
+- **凭据**：ECK 为 **`elastic`** 用户生成密码并存入 Secret；**禁止**将密码写入 Git 仓库或 ConfigMap 明文。
 
 ---
 
 ### T9.2.4、安装 ECK Operator
 
-Operator 安装在 **`elastic-system`** 命名空间（安装 YAML 会自动建）。**必须先装 CRD，再装 Operator**，顺序如下（官方发布的固定版本链接，可写进流水线）：
+**参考文档**
+
+| 内容 | 链接 |
+|------|------|
+| 安装总览（YAML、Helm、OpenShift、离线等） | [Guide：Install ECK](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-installing-eck.html) · [Docs：Install ECK](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/install) |
+| kubectl：CRD 与 Operator | [YAML manifests](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/install-using-yaml-manifest-quickstart) |
+| Helm | [Helm chart](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/install-using-helm-chart) |
+| 离线 / 私有镜像仓库 | [Air-gapped](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/air-gapped-install) |
+| 升级 Operator | [Upgrade ECK](https://www.elastic.co/docs/deploy-manage/upgrade/orchestrator/upgrade-cloud-on-k8s) |
+
+安装将写入集群级 **CRD**、**elastic-system** 命名空间、RBAC、**ValidatingWebhookConfiguration** 等对象，清单见 YAML 安装说明。**删除** ECK 相关 **CRD** 将级联删除集群内由该 Operator 管理的 Elastic 自定义资源，须在变更流程中评估影响。
+
+```mermaid
+flowchart LR
+  S1["kubectl create -f .../crds.yaml"] --> S2["kubectl apply -f .../operator.yaml"]
+  S2 --> R["elastic-operator Running"]
+  R --> OK["可创建 Elasticsearch / Kibana CR"]
+```
+
+**安装**（版本与官方 YAML 快速入门一致，便于在流水线中固定 URL）：
 
 ```bash
 kubectl create -f https://download.elastic.co/downloads/eck/3.3.2/crds.yaml
 kubectl apply -f https://download.elastic.co/downloads/eck/3.3.2/operator.yaml
 ```
 
-等待 **elastic-system** 里 Operator Pod 变为 Running（不同版本标签可能略有差异，直接看 Pod 列表即可）：
+**验收**：
 
 ```bash
+kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 kubectl -n elastic-system get pods
 ```
 
-更多安装方式（Helm、离线等）见官方：[Install ECK](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install.html)。
+**`elastic-operator-0`** 为 **`1/1 Running`** 后继续后续步骤。**Helm** 或 **离线**部署按上表文档配置 Chart 参数、镜像同步与 **`container-registry`** 等。
 
 ---
 
 ### T9.2.5、部署 Elasticsearch（ECK）
 
-在 **`logging`** 命名空间创建集群。下面示例为 **单节点**、便于学习；生产请把 `count` 调成 3 及以上，并按官方做高可用与索引策略。
+在 **`logging`** 命名空间应用 Elasticsearch CR。YAML 在 [Elasticsearch 部署快速入门](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-deployment-quickstart) 基础上补充 **resources**、**volumeClaimTemplates** 与 **`node.roles`**。**`count: 1`** 用于试跑与联调；**生产**将 **`count`** 提升至 **3** 及以上，并按官方说明实施高可用、索引生命周期（ILM）与快照等。
 
-**（插槽：若需要书中配 Elastic 官方示意图，可从当前版本 [Elastic 文档](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html) 截取「部署拓扑」类配图，保存为 `./images/eck-elasticsearch.png` 后在本节引用。）**
+**（插槽：官方拓扑或架构示意图 → `./images/eck-elasticsearch.png`）**
 
 ```yaml
 # elasticsearch-eck.yaml（请把 storageClassName 改成你的 StorageClass）
@@ -412,7 +449,7 @@ metadata:
   name: quickstart
   namespace: logging
 spec:
-  version: 8.17.0
+  version: 9.3.3
   nodeSets:
     - name: default
       count: 1
@@ -448,11 +485,26 @@ kubectl -n logging get elasticsearch.elasticsearch.k8s.elastic.co
 kubectl -n logging get pods -l elasticsearch.k8s.elastic.co/cluster-name=quickstart
 ```
 
-集群就绪后，会创建名为 **`quickstart-es-http`** 的 Service（HTTPS 9200）。证书由 ECK 管理。
+**就绪判定**：`kubectl -n logging get elasticsearch` 中 **PHASE** 为 **Ready**、**HEALTH** 为 **green**。单节点与高副本配置并存时可能出现 **yellow**，需按分片与副本策略调整。
+
+```mermaid
+flowchart TB
+  CR[Elasticsearch CR quickstart]
+  OP[elastic-operator]
+  CR --> OP
+  OP --> STS[StatefulSet / Pods]
+  OP --> PVC[PVC 数据盘]
+  OP --> SVC[Service quickstart-es-http :9200]
+  OP --> SEC[证书与 elastic 用户 Secret]
+```
+
+集群内访问 ES 使用 Service **`quickstart-es-http`**：**HTTPS**、**9200**，证书由 ECK 管理。扩展配置见 [Elasticsearch configuration](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-configuration)、[Configure deployments](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configure-deployments)。
 
 ---
 
 ### T9.2.6、部署 Kibana（ECK）
+
+依据 [Kibana 部署快速入门](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/kibana-instance-quickstart)，**`spec.version`** 与 Elasticsearch 一致。
 
 ```yaml
 # kibana-eck.yaml
@@ -462,7 +514,7 @@ metadata:
   name: quickstart
   namespace: logging
 spec:
-  version: 8.17.0
+  version: 9.3.3
   count: 1
   elasticsearchRef:
     name: quickstart
@@ -474,38 +526,39 @@ kubectl -n logging get kibana.k8s.elastic.co
 kubectl -n logging get pods -l kibana.k8s.elastic.co/name=quickstart
 ```
 
-Kibana 的 HTTP Service 一般为 **`quickstart-kb-http`**。本机调试常用端口转发（不改 Service 类型也能用）：
+Kibana 的 Service 一般为 **`quickstart-kb-http`**。本机调试：
 
 ```bash
 kubectl -n logging port-forward svc/quickstart-kb-http 5601:5601
 ```
 
-浏览器访问 `http://127.0.0.1:5601`。生产再通过 **Ingress / Gateway / NodePort** 暴露，并配好 TLS 与访问控制；别直接把 Kibana 暴露在公网。
+浏览器访问 `http://127.0.0.1:5601`。经 **Ingress / Gateway** 等对公网或广域暴露时，须配置 **TLS**、认证与访问控制。
 
 ---
 
-### T9.2.7、拿到 elastic 用户密码
+### T9.2.7、elastic 用户密码
 
-用户名固定为 **`elastic`**。密码在 Secret 里，名称规则为 **`<Elasticsearch 资源名>-es-elastic-user`**：
+用户 **`elastic`**；Secret 名称 **`<Elasticsearch 资源名>-es-elastic-user`**。
 
 ```bash
 kubectl -n logging get secret quickstart-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d
 echo
 ```
 
-把密码复制到登录页即可。
+```bash
+kubectl -n logging get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}{{"\n"}}'
+```
 
 ---
 
 ### T9.2.8、Fluent Bit：DaemonSet 采集并写入 ES
 
-说明：
+- **INPUT**：**`/var/log/containers/*.log`**，与 **T9.1** 节点级采集对象一致。
+- **OUTPUT**：Elasticsearch **HTTPS**；示例中 **`TLS.Verify Off`** 仅用于联调。**生产**挂载 Secret **`quickstart-es-http-certs-public`** 中的 **`ca.crt`**，启用 TLS 校验，参见 [K8s HTTPS 设置](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)。
+- **凭据**：通过环境变量引用 Secret，**不得**写入 ConfigMap。
+- **版本**：Fluent Bit **`es`** 输出与 Stack **9.x** 配合使用；变更以 [插件文档](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch) 为准。
 
-- 采集路径仍用节点上的 **`/var/log/containers/*.log`**（与容器运行时写到节点的方式一致，与 T9.1「节点代理」一致）。
-- 写到 ES 时用 **HTTPS**；示例为便于先跑通，使用 **`tls.verify Off`**。**生产环境**应挂上 ECK 提供的 CA 或企业 PKI，并打开校验。
-- 下面用 **环境变量** 注入 `elastic` 用户密码，**不要**把密码写进 ConfigMap 明文。
-
-**第一步：把 ES 的密码同步成一个独立 Secret，供 Fluent Bit 引用**（名称可自定，与下文的 `fluent-bit-es` 一致）：
+**1. Fluent Bit 专用 Secret**（名称与下文 `fluent-bit-es-auth` 一致）：
 
 ```bash
 PW=$(kubectl -n logging get secret quickstart-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d)
@@ -514,7 +567,7 @@ kubectl -n logging create secret generic fluent-bit-es-auth \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-**第二步：ConfigMap + RBAC + DaemonSet**（镜像 **`fluent/fluent-bit:5.0.3`**；请把 `storageClassName` 一类无关项已在上文处理；此处 **`Host` 使用同命名空间 DNS 短名**）：
+**2. ConfigMap、RBAC、DaemonSet**（镜像 **`fluent/fluent-bit:5.0.3`**；**Host**：**`quickstart-es-http.logging.svc`**）：
 
 ```yaml
 # fluent-bit-es.yaml
@@ -653,46 +706,52 @@ kubectl apply -f fluent-bit-es.yaml
 kubectl -n logging get pods -l app=fluent-bit
 ```
 
-若你集群里 **没有** `/var/lib/docker/containers`（少数环境），可删掉对应 `hostPath` 与 `volumeMounts` 块，一般只靠 `/var/log` 即可。
+未使用 **`/var/lib/docker/containers`** 的运行时（如 containerd）可移除对应 **`hostPath`** 与 **`volumeMount`**，保留 **`/var/log`** 挂载。
 
-**调不通时先看**：Fluent Bit Pod 日志、`quickstart-es-http` 是否 Ready、密码 Secret 是否一致、ES 是否已为 **green / yellow**（单节点常见 yellow，属预期）。
+**排障顺序**：Fluent Bit Pod 日志与事件 → **`quickstart-es-http` Endpoints** → 凭据 Secret → **`kubectl -n logging get elasticsearch`**（**PHASE**、**HEALTH**）。启用细粒度权限时，为写入用户配置 ES 索引权限。
 
----
-
-### T9.2.9、在 Kibana 里看日志
-
-1. 用 **T9.2.7** 的账号登录 Kibana。  
-2. **Stack Management → Data views（数据视图）** 里新建一条，索引模式填 **`k8s-*`**（与上面 `Logstash_Prefix k8s` 对应；ES 8 不再使用 `_type`，按界面提示选时间字段 **`@timestamp`**）。  
-3. 打开 **Discover** 即可检索。
-
-**（插槽：可在此贴一张本环境「Data view + Discover」截图，便于后来者对照 UI。）**
-
-若要**只采集带某标签的 Pod**（例如 `logging=true`），在 Fluent Bit 里加 **grep / rewrite_tag** 过滤即可，逻辑与旧版 Fluentd 教程相同，不再展开一篇长配置；生产建议用命名空间、标签策略统一管理。
+**（插槽：生产 TLS 校验开启后的验证截图或日志摘录）**
 
 ---
 
-### T9.2.10、（可选）中间加一层 Kafka
+### T9.2.9、在 Kibana 中查看日志
 
-日志量特别大时，可以在采集器和 ES 之间加 **Kafka** 做缓冲，减轻 ES 写入尖峰，架构如下：
+1. 使用 **T9.2.7** 中 **`elastic`** 凭据登录。  
+2. **Stack Management → Data views**：新建数据视图，索引模式 **`k8s-*`**（对应 **`Logstash_Prefix k8s`**），时间字段 **`@timestamp`**。  
+3. **Discover** 中检索。菜单名称以当前 **Kibana** 版本为准。
+
+**（插槽：Data view 与 Discover 界面截图）**
+
+按命名空间或标签限制采集范围时，在 Fluent Bit 中使用 **grep**、**rewrite_tag** 等插件配置过滤规则。
+
+---
+
+### T9.2.10、（可选）Kafka 缓冲
+
+高吞吐或写入尖峰场景下，可在采集端与 ES 之间引入 **Kafka** 削峰。
 
 ```mermaid
 flowchart LR
   FB[Fluent Bit] --> K[Kafka]
-  K --> C["消费者 Logstash Fluent 等"]
+  K --> C["消费者：Logstash / 自研等"]
   C --> ES[(Elasticsearch)]
 ```
 
-**本节不再展开** Helm 版本与 ZooKeeper/KRaft 细节（版本迭代快）。选型时自行查阅 **Kafka 官方发行说明** 与当前 **Bitnami / Strimzi** 等 Chart 的 stable 版本，并统一写进你的 GitOps 仓库；落地后在本节**留一张架构或 Topic 监控截图**即可。
+Kafka 部署与版本选型以 **Kafka 官方发行说明** 及所选 Operator/Chart（如 **Strimzi**）为准，版本纳入 GitOps。
+
+**（插槽：Kafka 架构或 Topic 监控截图）**
 
 ---
 
-### T9.2.11、和 T9.1 的对应关系
+### T9.2.11、与 T9.1 的对应关系
 
-| T9.1 讲的概念 | T9.2 这里的落点 |
-|---------------|-----------------|
-| 节点级 DaemonSet 采集 | Fluent Bit DaemonSet，读本节点容器日志 |
-| Sidecar | 一般**不必**为了 EFK 再额外加采集边车；业务写文件仍按 T9.1.4 处理 |
-| 应用直推 | 仍可直接进 ES，与本节并行存在亦可 |
+| T9.1 | T9.2 |
+|------|------|
+| 节点 DaemonSet 采集 | Fluent Bit DaemonSet，读取本节点容器日志 |
+| Sidecar | EFK 场景通常无需另增采集边车；日志写文件仍见 **T9.1.4** |
+| 应用直推 | 可与本节 ES 并存，应用直写 ES |
+
+**发布前核对**：Kubernetes 版本符合 [ECK 支持范围](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s#k8s-supported)；CRD 与 Operator 版本一致；Elasticsearch 存储、资源与 **`node.store.allow_mmap`** 已按 [Virtual memory](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/virtual-memory) 与容量规划评审；对外入口启用 TLS 与访问控制；Fluent Bit 生产启用 TLS 校验、凭据仅存 Secret；变更遵循 [Update deployments](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/update-deployments)。
 
 下一节 **T9.3、Loki** 会按官方 Helm 方式部署 **Loki + Promtail（+ 可选 Grafana）**；它和 EFK 是两条常见路线，按成本与查询习惯二选一即可。
 
