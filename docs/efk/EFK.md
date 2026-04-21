@@ -22,7 +22,7 @@
 
 ```mermaid
 flowchart LR
-  subgraph obs[可观测]
+  subgraph obs["可观测"]
     M[指标 Prometheus]
     L[日志 后端]
   end
@@ -139,7 +139,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  subgraph n[工作节点]
+  subgraph n["工作节点"]
     P1[Pod]
     P2[Pod]
     D[容器日志目录]
@@ -714,7 +714,7 @@ flowchart LR
     FB1[采集] --> ES[(Elasticsearch)]
     ES --> KB[Kibana]
   end
-  subgraph loki[Loki 栈]
+  subgraph loki["Loki 栈"]
     PR[Promtail] --> LO[(Loki)]
     LO --> GF[Grafana]
   end
@@ -976,11 +976,11 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  subgraph nd[节点]
+  subgraph nd["节点"]
     POD["/var/log/pods/..."]
     POS["positions 文件"]
   end
-  subgraph pr[Promtail Pod]
+  subgraph pr["Promtail Pod"]
     SC[scrape_configs]
     PL[pipeline_stages]
     CL[clients]
@@ -1299,15 +1299,13 @@ LogQL 里用 **`{app="nginx-demo"}`** 或 **`{namespace="default", app="nginx-de
 
 ```mermaid
 flowchart LR
-  subgraph logq[日志查询]
-    direction LR
+  subgraph logq["日志查询"]
     S1["标签选择器"] --> P1["管道可选"]
     P1 --> OUT["日志行"]
   end
-  subgraph met[指标查询]
-    direction LR
+  subgraph met["指标查询"]
     S2["标签选择器"] --> P2["解析与过滤"]
-    P2 --> R1["聚合与区间例如5m"]
+    P2 --> R1["聚合与区间"]
     R1 --> NUM["数值序列"]
   end
 ```
