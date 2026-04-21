@@ -439,7 +439,37 @@ kubectl -n elastic-system get pods
 
 在 **`logging`** 命名空间应用 Elasticsearch CR。YAML 在 [Elasticsearch 部署快速入门](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-deployment-quickstart) 基础上补充 **resources**、**volumeClaimTemplates** 与 **`node.roles`**。**`count: 1`** 用于试跑与联调；**生产**将 **`count`** 提升至 **3** 及以上，并按官方说明实施高可用、索引生命周期（ILM）与快照等。
 
-**（插槽：官方拓扑或架构示意图 → `./images/eck-elasticsearch.png`）**
+Elastic 当前公开文档未单独提供「ECK 编排」位图；安装 Operator 时创建的集群级 **CRD**、**ValidatingWebhookConfiguration** 等见 [YAML 安装说明](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/install-using-yaml-manifest-quickstart)。下图归纳 **`logging`** 命名空间内 **Elasticsearch CR** 经 **elastic-operator** 落地后的主要对象及 **Fluent Bit** 写入路径（与 **T9.2.1**、**T9.2.6** 衔接）。
+
+```mermaid
+flowchart TB
+  subgraph adm[管理员]
+    KA["kubectl apply Elasticsearch CR"]
+  end
+  subgraph esys[elastic-system]
+    OP[elastic-operator]
+  end
+  subgraph logns[logging]
+    ESCR["Elasticsearch CR quickstart"]
+    STS[Elasticsearch StatefulSet]
+    POD[Elasticsearch Pod]
+    PVC[PVC 数据卷]
+    SVC["Service quickstart-es-http HTTPS:9200"]
+    S_TLS[HTTP 证书 Secret]
+    S_EL["Secret quickstart-es-elastic-user"]
+    FB[Fluent Bit DaemonSet]
+  end
+  KA --> ESCR
+  ESCR --> OP
+  OP --> STS
+  OP --> PVC
+  OP --> SVC
+  OP --> S_TLS
+  OP --> S_EL
+  STS --> POD
+  POD --> PVC
+  FB -->|HTTPS 写索引| SVC
+```
 
 ```yaml
 # elasticsearch-eck.yaml（请把 storageClassName 改成你的 StorageClass）
@@ -486,17 +516,6 @@ kubectl -n logging get pods -l elasticsearch.k8s.elastic.co/cluster-name=quickst
 ```
 
 **就绪判定**：`kubectl -n logging get elasticsearch` 中 **PHASE** 为 **Ready**、**HEALTH** 为 **green**。单节点与高副本配置并存时可能出现 **yellow**，需按分片与副本策略调整。
-
-```mermaid
-flowchart TB
-  CR[Elasticsearch CR quickstart]
-  OP[elastic-operator]
-  CR --> OP
-  OP --> STS[StatefulSet / Pods]
-  OP --> PVC[PVC 数据盘]
-  OP --> SVC[Service quickstart-es-http :9200]
-  OP --> SEC[证书与 elastic 用户 Secret]
-```
 
 集群内访问 ES 使用 Service **`quickstart-es-http`**：**HTTPS**、**9200**，证书由 ECK 管理。扩展配置见 [Elasticsearch configuration](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-configuration)、[Configure deployments](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configure-deployments)。
 
