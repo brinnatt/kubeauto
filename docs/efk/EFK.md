@@ -528,10 +528,12 @@ kubectl -n logging get pods -l elasticsearch.k8s.elastic.co/cluster-name=quickst
 
 ### T9.2.6、部署 Kibana（ECK）
 
-按 [Kibana 部署快速入门](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/kibana-instance-quickstart) 创建 **`Kibana`** 自定义资源；**`spec.version`** 与 **Elasticsearch** 保持一致。
+按 [Kibana 部署快速入门](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/kibana-instance-quickstart) 创建 **`Kibana`** 自定义资源；**`spec.version`** 与 **Elasticsearch** 保持一致（本文与 **T9.2.5** 示例均为 **9.3.3**，升级时请对照 [ECK 与 Stack 支持矩阵](https://www.elastic.co/support/matrix#matrix_kubernetes) 与发行说明改同一套版本号）。
+
+清单文件名 **`kibana-eck.yaml`**，建议和 **`elasticsearch-eck.yaml`** 放在同一目录；下面第一段是**最小配置**（默认 ClusterIP，配合 **方式一** 的 port-forward）。需要 NodePort 或 LoadBalancer 时，在**同一份文件**的 **`spec`** 里加上 **方式二** 的 **`http`** 段，再执行 **`kubectl apply`**，不要只改 Service。
 
 ```yaml
-# kibana-eck.yaml
+# kibana-eck.yaml（最小示例；NodePort 见方式二整段示例）
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
@@ -551,9 +553,7 @@ kubectl -n logging get kb
 kubectl -n logging get pods -l kibana.k8s.elastic.co/name=quickstart
 ```
 
-> **运维说明：**
->
-> `kubectl get` 使用 **`kibanas`**（短名 **`kb`**），与 `kind: Kibana` 不同；使用单数 **`kibana`** 作为资源类型会报错 *the server doesn't have a resource type "kibana"*。  核对 API：`kubectl api-resources --api-group=kibana.k8s.elastic.co`。
+> **运维说明**：`kubectl get` 使用 **`kibanas`**（短名 **`kb`**），与 `kind: Kibana` 不同；使用单数 **`kibana`** 作为资源类型会报错 *the server doesn't have a resource type kibana*。  核对 API：`kubectl api-resources --api-group=kibana.k8s.elastic.co`。
 >
 > **就绪与访问**：Kibana 启动过程中会经历 **preboot** 与正式 HTTP 服务阶段，**5601** 为 **HTTPS**。短时内出现 **`Readiness probe ... unexpected EOF`** 多与探针命中进程切换窗口有关；以 **`kubectl get pods`** 最终 **Ready** 及日志中出现 **`Kibana is now available`** 作为可用判据。持续不 Ready 时检查 **内存配额**（默认 **1Gi** 仅适用于最小演示，生产按负载上调）及 **Elasticsearch** 是否已达 **Ready**（`kubectl get es`）。
 
@@ -574,13 +574,20 @@ kubectl -n logging port-forward svc/quickstart-kb-http 5601:5601
 
 **方式二：NodePort / LoadBalancer**  
 
-对 **`quickstart-kb-http`** 使用 **`kubectl edit service`** 改为 **NodePort** 常常**不持久**：该 Service 由 **elastic-operator** 按 **`Kibana`** 自定义资源**持续调和**，手工修改会被期望状态**覆盖回 ClusterIP**。  
-
-须在 **`Kibana`** 的 **`spec.http.service.spec`** 中声明 **`type`**（官方与 **LoadBalancer** 示例同一字段），例如：
+不要指望 **`kubectl edit service quickstart-kb-http`** 长期生效：这个 Service 是 Operator 根据 **`Kibana`** 对象算出来的，你手改类型，下一轮调和又会被改回 **ClusterIP**。正确做法和官方 [Accessing services](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-services.html) 一样：在**上面的 `kibana-eck.yaml`** 里， **`spec`** 中 **`version` / `count` / `elasticsearchRef` 不动**，和它们并列加上 **`http.service.spec`**；需要公网负载均衡就把 **`type`** 换成 **`LoadBalancer`**。
 
 ```yaml
-# 片段：合并进已有的 Kibana spec，与 version、elasticsearchRef 等并列
+# kibana-eck.yaml（含 NodePort 的完整示例，可覆盖最小示例整文件）
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: quickstart
+  namespace: logging
 spec:
+  version: 9.3.3
+  count: 1
+  elasticsearchRef:
+    name: quickstart
   http:
     service:
       spec:
@@ -589,37 +596,52 @@ spec:
           - name: https
             port: 5601
             targetPort: 5601
-            nodePort: 30560   # 可选；省略则由集群分配 30000–32767 内端口
+            # nodePort: 30560   # 不写则由集群自动分配
 ```
 
-执行 **`kubectl apply -f kibana-eck.yaml`**（或 **`kubectl patch kibana`** 等价修改）后，**`kubectl get svc -n logging quickstart-kb-http`** 应显示 **NodePort**；浏览器使用 **`https://<任一节点 IP>:<nodePort>`**（仍为 **HTTPS**）。**生产**优先 **Ingress / Gateway**、**TLS 终止** 与访问控制；**Fleet** 与 **NodePort** 在个别版本曾有兼容性讨论，以当前 ECK 发行说明为准。
+执行 **`kubectl apply -f kibana-eck.yaml`**，再 **`kubectl get svc -n logging quickstart-kb-http`** 看 **NodePort**。浏览器访问 **`https://节点IP:NodePort`**，仍是 HTTPS。长期生产建议 **Ingress + TLS + 鉴权**，避免长期只暴露 NodePort 当唯一入口（暴露面大、审计也不方便）。
 
-> **运维说明**  
-> - **`nodePort`** 须在集群允许的范围内且避免冲突；不确定时可省略 **`nodePort`** 字段，由 Kubernetes 自动分配后再 **`get svc`** 查看。  
-> - 若 **`ports`** 中 **`targetPort`** 与容器监听不一致会导致连接失败；Kibana 默认为 **5601**，参见官方文档 *Managing Kubernetes services* 一节。
+> **运维说明**  ：**`targetPort` 必须是 5601**（容器监听端口），和对外 **port** 一致时别乱改；**`nodePort`** 要在集群允许范围内。Fleet 与 NodePort 的组合若遇问题，以你当前 ECK 版本的发行说明为准。
 
-**启动日志与安全组件（生产验收）**
+**上线验收（对照做，做完算过）**
 
-以下条目用于区分「需处置的故障」与「可预期的产品行为」，便于变更评审与运维交接。
+本文 **T9.2** 的目标是 **日志进 ES、在 Kibana 里能查**，不是上齐 SIEM/EDR。验收按下面几条做即可；日志里其它 INFO 大多不用逐条消化。
 
-1. **`plugins.securitySolution.health-diagnostic` 与 `PermissionError: Index does not exist`**  
-   - 日志级别为 **`[INFO]`**，不是 **`[ERROR]`**。  
-   - **Security** 功能随 Kibana 默认加载；**health-diagnostic** 等内部任务会向 Elasticsearch 查询与 **Elastic Endpoint 诊断遥测**等相关的数据流。集群中**尚未创建**对应索引/数据流时，实现上会走权限与存在性检查并记录为 **`PermissionError: Index does not exist`**，属于**数据尚不存在**时的路径输出，**不代表** Kibana 核心或 Elasticsearch 写入链路已损坏。  
-   - 产品侧背景：诊断类遥测依赖专用数据流，历史上对 **`kibana_system`** 与相关索引权限有过专门扩展（参见 Elastic 仓库讨论 [elastic/kibana#85391](https://github.com/elastic/kibana/issues/85391)）。  
-   - **生产指导**：  
-     - **仅日志平台（EFK）场景**：可将此类 **`[INFO]`** 记入「已知、可接受」范围，**不阻断** Discover、仪表板等与本文档主路径相关的功能；无需为此单独开启 Endpoint。  
-     - **完整 Elastic Security / Elastic Defend 场景**：按官方流程完成 **Fleet、Elastic Agent、集成策略** 部署后，相关数据流会按策略创建；若需关闭 Endpoint 侧诊断上报，参见 [关闭 Elastic Defend 诊断数据](https://www.elastic.co/guide/en/security/current/endpoint-diagnostic-data.html)。  
-     - **合规与遥测策略**：全局用量与遥测相关设置见 Kibana [Telemetry settings](https://www.elastic.co/guide/en/kibana/current/telemetry-settings-kbn.html)；是否与上述 **`[INFO]`** 日志一一对应以实际版本为准，变更前在预发环境对照发行说明。
+**必过项（少一条都不算上线成功）**
 
-2. **其它常见噪声（简要）**  
-   - **许可证**：基础许可证下部分 **X-Pack** 能力不可用，日志中可能出现 *License is not available or does not support security features* 等提示；与「仅观测/日志」部署目标并存时，以**功能验收清单**为准。  
-   - **Fleet / Agentless**：内网或未完成证书配置时，可能出现与 **SSL**、**Agentless** 相关的 **`[ERROR]`**；若不使用 Fleet 纳管，以是否影响既定功能为处置依据，必要时在预发环境关闭或限制相关任务（以官方版本文档为准）。
+1. **`kubectl -n logging get pods`**：Kibana Pod **Ready**，Elasticsearch **Ready**（与 **T9.2.5** 一致）。  
+2. 能打开 Kibana（**方式一** 或 **方式二** 或你们自己的 Ingress），用 **T9.2.7** 的 **`elastic`** 登录。  
+3. **T9.2.8** 跑起来之后，在 **Discover** 里能搜到容器日志（或你们约定的索引/数据流）。
 
-**生产配置摘要**
+**常见日志：要不要管**
 
-- **资源**：在 **`spec.podTemplate`** 中为 **`kibana`** 容器声明 **requests/limits**，并与节点容量、并发与报表任务匹配；参见 [Configure Kibana（ECK）](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/kibana-configuration)。  
-- **暴露**：对外仅通过 **Ingress / Gateway + TLS + 认证**；避免将 **`port-forward`** 作为长期生产入口。  
-- **版本**：**`spec.version`** 与 **Elasticsearch** 处于 ECK 支持矩阵内，升级与回滚遵循 Elastic 发行说明。
+```mermaid
+flowchart TD
+  A[看 Kibana 容器日志] --> B{Pod Ready 且能登录能查日志?}
+  B -->|否| C[先按上文查内存 ES 是否 Ready 与网络 TLS]
+  B -->|是| D{是否只做本文日志方案?}
+  D -->|是| E[health-diagnostic 中 Index does not exist 多为 INFO 写入运行说明即可]
+  D -->|否 还要 Fleet 或安全中心| F[按 Elastic 官方单独做 Agent 与集成 别和日志验收混为一谈]
+  A --> G{出现 ERROR 且界面功能真的坏了?}
+  G -->|是| H[按当前 Stack 版本查官方排障与 ECK 文档]
+  G -->|否 只是连不上 telemetry.elastic.co 等| I[内网环境常见 合规上按公司要求配置遥测 见下文链接]
+```
+
+**`health-diagnostic` 和 `PermissionError: Index does not exist` 是啥意思**
+
+Kibana 里带着 **Security** 相关插件，启动后会跑一些内部检查，会去 Elasticsearch 里查一类给 **Endpoint 诊断、遥测**用的数据流。你按本文只装 **ES + Kibana + Fluent Bit**，**从来没装 Elastic Agent / Defend**，这些数据流本来就不存在。代码里把「索引不存在」也归到权限检查路径里打出来，所以你会看到 **`PermissionError: Index does not exist`**，前面往往是 **`[INFO]`** 不是 **`[ERROR]`**。一句话：**不等于集群坏了，也不挡你查日志。** 若以后要收 Endpoint 诊断数据或关掉诊断上报，以 Elastic 文档为准：[Elastic Defend 诊断数据](https://www.elastic.co/guide/en/security/current/endpoint-diagnostic-data.html)。产品侧对诊断数据流与系统角色的演进，可参考仓库说明 [elastic/kibana#85391](https://github.com/elastic/kibana/issues/85391)。
+
+**许可证、Fleet、遥测：什么时候才要动**
+
+- **许可证**：基础版本来就不会开放所有付费功能。日志里出现 *License is not available…* 之类，只要 **你要用的页面（例如 Discover）能用**，按公司采购流程决定是否买商业版；别被日志吓到。  
+- **Fleet / Agentless**：只有你真的要用 **Fleet 纳管 Agent** 才去排相关 ERROR；本文日志路径不依赖 Fleet。  
+- **往外发使用数据**：涉合规时，在 **`kibana.yml`** 里按官方 [Telemetry settings](https://www.elastic.co/docs/reference/kibana/configuration-reference/telemetry-settings) 配置（ECK 下通过 **`spec.config`** 或 **`SecureSettings`** 注入，具体见 [Kibana configuration（ECK）](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/kibana-configuration)）。改之前先在预发对一下当前小版本文档。
+
+**生产环境还建议补上的配置（和上文同一份 CR）**
+
+- **资源**：默认 **1Gi** 只够演示。生产在 **`spec.podTemplate`** 里给 **`kibana`** 容器写够 **requests/limits**，避免 OOM 和调度抖动，按官方 [Kibana configuration（ECK）](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/kibana-configuration) 做。  
+- **对外访问**：正式用户走 **Ingress / Gateway**，TLS 和鉴权交给入口，不要长期靠 **`kubectl port-forward`**。  
+- **版本**：**`spec.version`** 与 **Elasticsearch** 成套升级，先看 [ECK 支持矩阵](https://www.elastic.co/support/matrix#matrix_kubernetes)，再动生产。
 
 ---
 
