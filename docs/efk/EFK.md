@@ -726,7 +726,7 @@ kubectl -n logging create secret generic fluent-bit-es-auth \
 下面不是「经验帖」，而是**按厂商文档应做到的最低一致动作**；示例 YAML 已按此对齐，你扩容量时仍以同一套链接里的说明为准。
 
 1. **连 Elasticsearch**：使用 **HTTPS**，并对服务端证书做校验（**`TLS.Verify On`** + **`tls.ca_file`**）。CA 材料与 ECK 下发的 Secret 一致，见 Elastic [K8s HTTPS 设置](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)；TLS 通用参数见 Fluent Bit [Transport security](https://docs.fluentbit.io/manual/administration/transport-security)（文档强调生产应启用校验，而非长期关闭）。
-2. **Elasticsearch 输出插件**：行为以官方 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch) 为准——**`suppress_type_name`**（对接无 type 的 ES 8+）、**`generate_id`**（避免 bulk **`create`** 与 data stream 相关校验失败）、**`buffer_size` / `Buffer_Size`**（读 ES 响应；过小会出现 **`[http_client] cannot increase buffer`**，属官方参数可调范围，不是野路子）、需要时 **`compress`**（**`gzip`**，减轻载荷）。排障见同页 **Troubleshooting**。
+2. **Elasticsearch 输出插件**：行为以官方 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch) 为准——**`suppress_type_name`**、**`generate_id`**、**`buffer_size` / `Buffer_Size`**、需要时 **`compress`**；采集 **Kubernetes** 日志时建议 **`Replace_Dots On`**（**`replace_dots`**），避免 **`app.kubernetes.io/*`** 等带点 label 在文档里变成嵌套对象，与索引里已把 **`kubernetes.labels.app`** 映射成 **text** 冲突（表现为 **`document_parsing_exception`** / **`Can't get text on a START_OBJECT`**）。排障见同页 **Troubleshooting**。
 3. **凭据与 Secret**：密码、API 密钥只进 **Kubernetes Secret**，不写进 ConfigMap；与 Elastic [Accessing services](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-services.html#k8s-authentication) 及内置用户管理一致；生产缩小权限见 [Elasticsearch configuration（ECK）](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-configuration)。
 4. **采集与缓冲**：**Tail**、**Kubernetes** 过滤、**`Mem_Buf_Limit`** 等单位与含义见官方 [配置说明](https://docs.fluentbit.io/manual/administration/configuring-fluent-bit) 及各插件页；DaemonSet 的 **CPU/内存 requests、limits** 按集群节点日志量评审，并与下游 ES 写入能力匹配。
 5. **下游 Elasticsearch 容量**：单节点示例仅用于联调；生产索引速度、线程池、拒绝率等按 Elastic 当前版本 [Indexing speed / 容量规划](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/important-settings-configuration)（以你实际打开的 **Reference** 版本为准）执行，避免只调大 Fluent Bit、ES 侧仍 429。
@@ -811,6 +811,7 @@ data:
         TLS.Verify          On
         tls.ca_file         /etc/es-http-ca/tls.crt
         Buffer_Size         512k
+        Replace_Dots        On
   parsers.conf: |
     [PARSER]
         Name        docker
@@ -925,6 +926,14 @@ flowchart TD
 **`[http_client] cannot increase buffer ... max=32000`（可定因）**  
 
 这是 **Fluent Bit 读 Elasticsearch HTTP 响应的缓冲区上限太小**，不是 Pod 被系统 **OOM**（OOM 会看到 **`OOMKilled`**）。日志一多、bulk 响应变大就失败，表现为**先正常后报错**。处理： **`[OUTPUT]`** 里设置 **`Buffer_Size 512k`**（或更大），见上文示例与 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。仍不够时再加大或配合 **`Compress gzip`**（插件文档 **`compress`**）。
+
+**`document_parsing_exception` / `kubernetes.labels.app` / `Can't get text on a START_OBJECT`（可定因）**  
+
+ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app] of type [text]`**，预览值像 **`{kubernetes={io/component=metrics}}`**。含义是：索引里 **`kubernetes.labels.app`** 已被动态映射成 **字符串**，但部分 Pod 带 **`app.kubernetes.io/component`** 等 label，**metadata 在文档里既可能是纯 `app` 字符串，又可能被展成嵌套对象**，类型打架就写入失败。控制面/监控类 Pod（**node-exporter、prometheus-adapter** 等）常见，所以往往**先在某个 master 上的 Fluent Bit** 爆量失败。  
+
+**处理（与官方插件说明一致）**：在 **`[OUTPUT]`** 中加 **`Replace_Dots On`**（见 **`replace_dots`**），把字段名里的 **`.`** 换成 **`_`**，避免 ES 把 **`app`** 误当成可嵌套路径。上文 YAML 已默认打开。  
+
+**已写入失败过的当天索引**（如 **`k8s-2026.04.22`**）里可能仍是旧映射，联调可 **`DELETE`** 该索引后重采；生产应配合 **index template** 规范 **`kubernetes.labels`**（见 Elastic 当前文档 **mapping / flattened**），或接受新字段名后在 Kibana 里更新字段列表。
 
 **已调 `Buffer_Size`，日志里不再出现 `http_client`，但仍 `failed to flush` / `cannot be retried`（尤其只发生在某台 control-plane 节点）**  
 
