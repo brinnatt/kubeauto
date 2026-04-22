@@ -684,21 +684,49 @@ echo
 
 ### T9.2.8、Fluent Bit：DaemonSet 采集并写入 ES
 
-- **INPUT**：**`/var/log/containers/*.log`**，与 **T9.1** 节点级采集对象一致。
-- **OUTPUT**：Elasticsearch **HTTPS**；示例中 **`TLS.Verify Off`** 仅用于联调。**生产**挂载 Secret **`quickstart-es-http-certs-public`** 中的 **`ca.crt`**，启用 TLS 校验，参见 [K8s HTTPS 设置](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)。
-- **凭据**：通过环境变量引用 Secret，**不得**写入 ConfigMap。
-- **版本**：Fluent Bit **`es`** 输出与 Stack **9.x** 配合使用；变更以 [插件文档](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch) 为准。
+本节把**每个节点**上的容器日志送进 **T9.2.5** 里那套 **Elasticsearch**，和 **T9.1** 说的「读节点上 `/var/log/containers`」是同一路径。采集组件用 **Fluent Bit**，镜像与 **T9.1**、**T9.2.1** 表里一致：**`fluent/fluent-bit:5.0.3`**（与 [GitHub Releases 当前最新稳定 tag](https://github.com/fluent/fluent-bit/releases/latest) 对齐，后续你只管把 tag 换成当时的 latest 再测一遍）。
 
-**1. Fluent Bit 专用 Secret**（名称与下文 `fluent-bit-es-auth` 一致）：
+写法按官方来：**输入与过滤**见 [Tail](https://docs.fluentbit.io/manual/pipeline/inputs/tail)、[Kubernetes Filter](https://docs.fluentbit.io/manual/pipeline/filters/kubernetes)；**写到 ES** 见 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)；**TLS** 见 [Transport security](https://docs.fluentbit.io/manual/administration/transport-security)。连 ECK 的 HTTPS 与证书怎么取，见 [K8s HTTPS 设置](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)。
+
+**前置条件（少一步后面必挂）**：**`kubectl -n logging get es`** 里 **Elasticsearch 已 Ready**；同一命名空间已有 Service **`quickstart-es-http`**、Secret **`quickstart-es-elastic-user`**、**`quickstart-es-http-certs-public`**（ECK 创建 ES 后就会有）。你若改了 **T9.2.5** 里的集群名 **`quickstart`**，下面所有资源名里的 **`quickstart`** 都要一起改。
+
+```mermaid
+flowchart TB
+  subgraph node[某个工作节点]
+    LP["/var/log/containers/*.log"]
+    FB[Fluent Bit 容器]
+    LP --> FB
+  end
+  subgraph logging[命名空间 logging]
+    SVC["Service quickstart-es-http :9200 HTTPS"]
+    ES[(Elasticsearch Pods)]
+    FB -->|"HTTPS 写入 bulk"| SVC
+    SVC --> ES
+  end
+```
+
+**清单文件**：**`fluent-bit-es.yaml`**，建议和 **`elasticsearch-eck.yaml` / `kibana-eck.yaml`** 放同一目录，方便 Git 管理。
+
+**步骤 1：单独放密码的 Secret（不要写进 ConfigMap）**
+
+密码来源与 **T9.2.7** 相同。下面这条不依赖 **`base64 -d`**，Linux / Windows 上只要 **kubectl** 好用就能跑：
 
 ```bash
-PW=$(kubectl -n logging get secret quickstart-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d)
 kubectl -n logging create secret generic fluent-bit-es-auth \
-  --from-literal=elastic_password="$PW" \
+  --from-literal=elastic_password="$(kubectl -n logging get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')" \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-**2. ConfigMap、RBAC、DaemonSet**（镜像 **`fluent/fluent-bit:5.0.3`**；**Host**：**`quickstart-es-http.logging.svc`**）：
+生产上更稳妥的是给 Fluent Bit 单独建 **Elasticsearch 专用账号**，只给 **`k8s-*`** 索引写权限，这里仍用 **`elastic`** 是为了和全文示例一口气跑通；落地按 **T9.2.7** 生产建议改用户。
+
+**步骤 2：RBAC + ConfigMap + DaemonSet（生产默认开 TLS 校验）**
+
+要点说明一下，避免你对着 YAML 懵：
+
+- **读日志**：挂宿主机的 **`/var/log`**；再挂 **`/var/lib/docker/containers`** 是为了部分 Docker 运行时解析软链接，**纯 containerd** 的节点可以删掉这一挂卷（见 YAML 后说明）。
+- **写 ES**：访问 **`quickstart-es-http.logging.svc:9200`**，必须 **HTTPS**。**`TLS.Verify On`**，CA 用 ECK 公开的 **`quickstart-es-http-certs-public`** 里的 **`tls.crt`** 挂进容器，路径 **`/etc/es-http-ca/tls.crt`**，和官方 curl 示例用的是同一套材料。
+- **对接 ES 9.x**：**`Suppress_Type_Name On`**（去掉 `_type`，见插件文档里 Elastic Cloud 8+ 说明）；**`Generate_ID On`** 减少 bulk 写入报错（官方 Troubleshooting 里对 **`create`** 与 data stream 的说明）。
+- **索引名**：**`Logstash_Format On`** + **`Logstash_Prefix k8s`**，落到 ES 里是 **`k8s-YYYY.MM.DD`**，和 **T9.2.9** 里数据视图 **`k8s-*`** 对齐。
 
 ```yaml
 # fluent-bit-es.yaml
@@ -738,10 +766,10 @@ metadata:
 data:
   fluent-bit.conf: |
     [SERVICE]
-        Flush        1
-        Daemon       Off
-        Log_Level    info
-        Parsers_File parsers.conf
+        Flush           1
+        Daemon          Off
+        Log_Level       info
+        Parsers_File    parsers.conf
 
     [INPUT]
         Name              tail
@@ -764,15 +792,17 @@ data:
         Logstash_Format     On
         Logstash_Prefix     k8s
         Suppress_Type_Name  On
+        Generate_ID         On
         HTTP_User           elastic
         HTTP_Passwd         ${ES_PASSWORD}
         TLS                 On
-        TLS.Verify          Off
+        TLS.Verify          On
+        tls.ca_file         /etc/es-http-ca/tls.crt
   parsers.conf: |
     [PARSER]
-        Name   docker
-        Format json
-        Time_Key time
+        Name        docker
+        Format      json
+        Time_Key    time
         Time_Format %Y-%m-%dT%H:%M:%S.%L%z
     [PARSER]
         Name        cri
@@ -805,6 +835,13 @@ spec:
           image: fluent/fluent-bit:5.0.3
           command: ["/fluent-bit/bin/fluent-bit"]
           args: ["-c", "/fluent-bit/etc/fluent-bit.conf"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
           env:
             - name: ES_PASSWORD
               valueFrom:
@@ -820,6 +857,9 @@ spec:
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
               readOnly: true
+            - name: es-http-ca
+              mountPath: /etc/es-http-ca
+              readOnly: true
       volumes:
         - name: config
           configMap:
@@ -830,18 +870,46 @@ spec:
         - name: varlibdockercontainers
           hostPath:
             path: /var/lib/docker/containers
+        - name: es-http-ca
+          secret:
+            secretName: quickstart-es-http-certs-public
+            items:
+              - key: tls.crt
+                path: tls.crt
 ```
+
+**步骤 3：应用并验收**
 
 ```bash
 kubectl apply -f fluent-bit-es.yaml
+kubectl -n logging rollout status daemonset/fluent-bit --timeout=120s
 kubectl -n logging get pods -l app=fluent-bit
 ```
 
-未使用 **`/var/lib/docker/containers`** 的运行时（如 containerd）可移除对应 **`hostPath`** 与 **`volumeMount`**，保留 **`/var/log`** 挂载。
+任选一个 Fluent Bit Pod 看日志，没有连续 **`error`**、`ES` 拒绝连接之类即可。再到 **T9.2.9** 用 **`k8s-*`** 建数据视图、在 **Discover** 里能看到新日志，整条链路才算过。
 
-**排障顺序**：Fluent Bit Pod 日志与事件 → **`quickstart-es-http` Endpoints** → 凭据 Secret → **`kubectl -n logging get es`**（**PHASE**、**HEALTH**）。启用细粒度权限时，为写入用户配置 ES 索引权限。
+**纯 containerd、不跑 Docker 的节点**：删掉 DaemonSet 里 **`varlibdockercontainers`** 的 **`volumeMount`** 和 **`volumes`** 那一段即可，**`/var/log`** 必须保留。
 
-**（插槽：生产 TLS 校验开启后的验证截图或日志摘录）**
+> **运维说明**  
+> - 若 **`quickstart-es-http-certs-public`** 里没有 **`tls.crt`** 而有 **`ca.crt`**，把上面 Secret **`items`** 里的 **`key`** 改成 **`ca.crt`**，**`tls.ca_file`** 仍指向挂载目录下的文件名（与 **`path`** 一致）。  
+> - 集群若启用了 **Pod Security** 等策略，采集类 DaemonSet 可能要单独放命名空间或加 **`securityContext`**，按你们平台规范调，不在此展开。  
+> - **绝对不要**在生产长期 **`TLS.Verify Off`**。只有临时联调、且内网已控风险时才可以关校验，见 Fluent Bit 文档里「生产应启用校验」的说明。
+
+**出问题时按这个顺序查（够用）**
+
+```mermaid
+flowchart TD
+  A[Fluent Bit Pod 异常] --> B[kubectl logs 该 Pod]
+  B --> C{报 TLS 或 401?}
+  C -->|TLS| D[Secret 是否挂对 tls.crt / ca.crt]
+  C -->|401| E[fluent-bit-es-auth 密码是否与 ES 一致]
+  C -->|连接拒绝| F[kubectl get ep -n logging quickstart-es-http]
+  B --> G{仍不明}
+  G --> H[kubectl -n logging get es 是否 Ready]
+  H --> I[ES Pod 与 Service 是否同命名空间 logging]
+```
+
+**（插槽：Fluent Bit 正常写入后 ES 索引 `k8s-*` 或 Pod 日志截图，由你补图）**
 
 ---
 
