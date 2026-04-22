@@ -937,8 +937,6 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 
 **处理（与官方插件说明一致）**：在 **`[OUTPUT]`** 中加 **`Replace_Dots On`**（见 **`replace_dots`**），把字段名里的 **`.`** 换成 **`_`**，避免 ES 把 **`app`** 误当成可嵌套路径。上文 YAML 已默认打开。  
 
-**已写入失败过的当天索引**（如 **`k8s-2026.04.22`**）里可能仍是旧映射，联调可 **`DELETE`** 该索引后重采；生产应配合 **index template** 规范 **`kubernetes.labels`**（见 Elastic 当前文档 **mapping / flattened**），或接受新字段名后在 Kibana 里更新字段列表。
-
 **（插槽：Fluent Bit 正常写入后 ES 索引 `k8s-*` 或 Pod 日志截图，由你补图）**
 
 ---
