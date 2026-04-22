@@ -601,7 +601,11 @@ spec:
 
 执行 **`kubectl apply -f kibana-eck.yaml`**，再 **`kubectl get svc -n logging quickstart-kb-http`** 看 **NodePort**。浏览器访问 **`https://节点IP:NodePort`**，仍是 HTTPS。长期生产建议 **Ingress + TLS + 鉴权**，避免长期只暴露 NodePort 当唯一入口（暴露面大、审计也不方便）。
 
-> **运维说明**  ：**`targetPort` 必须是 5601**（容器监听端口），和对外 **port** 一致时别乱改；**`nodePort`** 要在集群允许范围内。Fleet 与 NodePort 的组合若遇问题，以你当前 ECK 版本的发行说明为准。
+> **运维说明**  
+>
+> **`targetPort` 必须是 5601**（容器监听端口），和对外 **port** 别乱改；**`nodePort`** 要在集群允许范围内。  
+>
+> **Fleet** 是 Elastic 自带的 **Elastic Agent 统一管理**（在 Kibana 里配策略、装集成、纳管主机上的 Agent）。**本文 T9.2 用 Fluent Bit 采日志，可以不启用 Fleet。** 只有当你同时用 Fleet 又给 Kibana 开了 NodePort 时，历史上个别 ECK 小版本出过兼容性问题；若碰到，查你正在用的 **ECK 版本发行说明**。官方概念见 [Fleet 概述](https://www.elastic.co/guide/en/fleet/current/fleet-overview.html)。
 
 **上线验收（对照做，做完算过）**
 
