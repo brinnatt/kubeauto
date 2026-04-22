@@ -551,15 +551,15 @@ kubectl -n logging get kb
 kubectl -n logging get pods -l kibana.k8s.elastic.co/name=quickstart
 ```
 
-> **运维说明**  
-> - `kubectl get` 使用 **`kibanas`**（短名 **`kb`**），与 `kind: Kibana` 不同；使用单数 **`kibana`** 作为资源类型会报错 *the server doesn't have a resource type "kibana"*。  
-> - 核对 API：`kubectl api-resources --api-group=kibana.k8s.elastic.co`。
-
-**就绪与访问**：Kibana 启动过程中会经历 **preboot** 与正式 HTTP 服务阶段，**5601** 为 **HTTPS**。短时内出现 **`Readiness probe ... unexpected EOF`** 多与探针命中进程切换窗口有关；以 **`kubectl get pods`** 最终 **Ready** 及日志中出现 **`Kibana is now available`** 作为可用判据。持续不 Ready 时检查 **内存配额**（默认 **1Gi** 仅适用于最小演示，生产按负载上调）及 **Elasticsearch** 是否已达 **Ready**（`kubectl get es`）。
+> **运维说明：**
+>
+> `kubectl get` 使用 **`kibanas`**（短名 **`kb`**），与 `kind: Kibana` 不同；使用单数 **`kibana`** 作为资源类型会报错 *the server doesn't have a resource type "kibana"*。  核对 API：`kubectl api-resources --api-group=kibana.k8s.elastic.co`。
+>
+> **就绪与访问**：Kibana 启动过程中会经历 **preboot** 与正式 HTTP 服务阶段，**5601** 为 **HTTPS**。短时内出现 **`Readiness probe ... unexpected EOF`** 多与探针命中进程切换窗口有关；以 **`kubectl get pods`** 最终 **Ready** 及日志中出现 **`Kibana is now available`** 作为可用判据。持续不 Ready 时检查 **内存配额**（默认 **1Gi** 仅适用于最小演示，生产按负载上调）及 **Elasticsearch** 是否已达 **Ready**（`kubectl get es`）。
 
 **访问方式与网络**：ECK 创建的 HTTP Service 名一般为 **`quickstart-kb-http`**，默认 **ClusterIP**，仅在集群内可达；自定义与暴露方式见官方 [Accessing services](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-services.html)。
 
-**方式一：`kubectl port-forward`（联调）**  
+**方式一：`kubectl port-forward`（联调）**
 
 在**已安装 kubectl、并已配置 kubeconfig 的管理机**上执行转发；监听的是**该机器的本机回环地址**，不是 Kubernetes 节点 IP。  
 
