@@ -515,7 +515,7 @@ kubectl -n logging get elasticsearch.elasticsearch.k8s.elastic.co
 kubectl -n logging get pods -l elasticsearch.k8s.elastic.co/cluster-name=quickstart
 ```
 
-**就绪判定**：`kubectl -n logging get elasticsearch` 中 **PHASE** 为 **Ready**、**HEALTH** 为 **green**。单节点与高副本配置并存时可能出现 **yellow**，需按分片与副本策略调整。
+**就绪判定**：`kubectl -n logging get elasticsearch` 里 **PHASE** 要是 **Ready**；**HEALTH** 最好是 **green**。若你只有 **一台 ES 数据节点**，索引却还要求 **副本（replica）> 0**，副本没法落到「另一台机器」上，集群常会卡在 **yellow**（主分片齐了，副本分片没凑齐）。**学习环境**可把副本调成 **0**；**真要冗余**就 **加数据节点**，再保留副本。
 
 集群内访问 ES 使用 Service **`quickstart-es-http`**：**HTTPS**、**9200**，证书由 ECK 管理。扩展配置见 [Elasticsearch configuration](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-configuration)、[Configure deployments](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/configure-deployments)。
 
