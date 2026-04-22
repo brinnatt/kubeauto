@@ -557,13 +557,46 @@ kubectl -n logging get pods -l kibana.k8s.elastic.co/name=quickstart
 
 **就绪与访问**：Kibana 启动过程中会经历 **preboot** 与正式 HTTP 服务阶段，**5601** 为 **HTTPS**。短时内出现 **`Readiness probe ... unexpected EOF`** 多与探针命中进程切换窗口有关；以 **`kubectl get pods`** 最终 **Ready** 及日志中出现 **`Kibana is now available`** 作为可用判据。持续不 Ready 时检查 **内存配额**（默认 **1Gi** 仅适用于最小演示，生产按负载上调）及 **Elasticsearch** 是否已达 **Ready**（`kubectl get es`）。
 
-Service 名一般为 **`quickstart-kb-http`**。本机调试：
+**访问方式与网络**：ECK 创建的 HTTP Service 名一般为 **`quickstart-kb-http`**，默认 **ClusterIP**，仅在集群内可达；自定义与暴露方式见官方 [Accessing services](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-services.html)。
+
+**方式一：`kubectl port-forward`（联调）**  
+
+在**已安装 kubectl、并已配置 kubeconfig 的管理机**上执行转发；监听的是**该机器的本机回环地址**，不是 Kubernetes 节点 IP。  
+
+- 在 **Windows** 办公机安装 [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl-windows) 并指向集群后，于 **PowerShell** 执行下文命令，再在同一台 Windows 上用 **Edge / Chrome** 打开 **`https://127.0.0.1:5601`** 即可（**`127.0.0.1` 表示本机**，与操作系统是否为 Linux 无关）。  
+- 若仅在 **无图形界面的 Linux 节点**（如 **master-01**）上 SSH 执行 `port-forward`，无法在「服务器本地」弹出浏览器；应在**带浏览器的管理机**上安装 kubeconfig 并转发，或改用 **方式二** / **Ingress**。
 
 ```bash
 kubectl -n logging port-forward svc/quickstart-kb-http 5601:5601
 ```
 
-浏览器使用 **`https://127.0.0.1:5601`**（ECK 提供 **TLS**，非明文 HTTP）。证书为企业自签或集群签发时，按安全基线导入 **CA** 或在受控环境临时信任。生产入口应经 **Ingress / Gateway**，配置 **TLS 终止**、**身份认证** 与访问控制。登录凭据见 **T9.2.7**（**`elastic`** 用户）。
+协议为 **`https://127.0.0.1:5601`**（ECK 对 Kibana 启用 **TLS**）。证书校验按基线导入 **CA**（例如自 **Secret `quickstart-kb-http-certs-public`** 导出 `tls.crt`）或在受控环境临时信任。登录凭据见 **T9.2.7**（**`elastic`** 用户）。
+
+**方式二：NodePort / LoadBalancer**  
+
+对 **`quickstart-kb-http`** 使用 **`kubectl edit service`** 改为 **NodePort** 常常**不持久**：该 Service 由 **elastic-operator** 按 **`Kibana`** 自定义资源**持续调和**，手工修改会被期望状态**覆盖回 ClusterIP**。  
+
+须在 **`Kibana`** 的 **`spec.http.service.spec`** 中声明 **`type`**（官方与 **LoadBalancer** 示例同一字段），例如：
+
+```yaml
+# 片段：合并进已有的 Kibana spec，与 version、elasticsearchRef 等并列
+spec:
+  http:
+    service:
+      spec:
+        type: NodePort
+        ports:
+          - name: https
+            port: 5601
+            targetPort: 5601
+            nodePort: 30560   # 可选；省略则由集群分配 30000–32767 内端口
+```
+
+执行 **`kubectl apply -f kibana-eck.yaml`**（或 **`kubectl patch kibana`** 等价修改）后，**`kubectl get svc -n logging quickstart-kb-http`** 应显示 **NodePort**；浏览器使用 **`https://<任一节点 IP>:<nodePort>`**（仍为 **HTTPS**）。**生产**优先 **Ingress / Gateway**、**TLS 终止** 与访问控制；**Fleet** 与 **NodePort** 在个别版本曾有兼容性讨论，以当前 ECK 发行说明为准。
+
+> **运维说明**  
+> - **`nodePort`** 须在集群允许的范围内且避免冲突；不确定时可省略 **`nodePort`** 字段，由 Kubernetes 自动分配后再 **`get svc`** 查看。  
+> - 若 **`ports`** 中 **`targetPort`** 与容器监听不一致会导致连接失败；Kibana 默认为 **5601**，参见官方文档 *Managing Kubernetes services* 一节。
 
 **启动日志与安全组件（生产验收）**
 
