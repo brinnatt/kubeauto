@@ -721,11 +721,23 @@ kubectl -n logging create secret generic fluent-bit-es-auth \
 
 **步骤 2：RBAC + ConfigMap + DaemonSet（生产默认开 TLS 校验）**
 
+**企业生产基线（与官方文档一致，可写进变更/评审）**
+
+下面不是「经验帖」，而是**按厂商文档应做到的最低一致动作**；示例 YAML 已按此对齐，你扩容量时仍以同一套链接里的说明为准。
+
+1. **连 Elasticsearch**：使用 **HTTPS**，并对服务端证书做校验（**`TLS.Verify On`** + **`tls.ca_file`**）。CA 材料与 ECK 下发的 Secret 一致，见 Elastic [K8s HTTPS 设置](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)；TLS 通用参数见 Fluent Bit [Transport security](https://docs.fluentbit.io/manual/administration/transport-security)（文档强调生产应启用校验，而非长期关闭）。
+2. **Elasticsearch 输出插件**：行为以官方 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch) 为准——**`suppress_type_name`**（对接无 type 的 ES 8+）、**`generate_id`**（避免 bulk **`create`** 与 data stream 相关校验失败）、**`buffer_size` / `Buffer_Size`**（读 ES 响应；过小会出现 **`[http_client] cannot increase buffer`**，属官方参数可调范围，不是野路子）、需要时 **`compress`**（**`gzip`**，减轻载荷）。排障见同页 **Troubleshooting**。
+3. **凭据与 Secret**：密码、API 密钥只进 **Kubernetes Secret**，不写进 ConfigMap；与 Elastic [Accessing services](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-services.html#k8s-authentication) 及内置用户管理一致；生产缩小权限见 [Elasticsearch configuration（ECK）](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-configuration)。
+4. **采集与缓冲**：**Tail**、**Kubernetes** 过滤、**`Mem_Buf_Limit`** 等单位与含义见官方 [配置说明](https://docs.fluentbit.io/manual/administration/configuring-fluent-bit) 及各插件页；DaemonSet 的 **CPU/内存 requests、limits** 按集群节点日志量评审，并与下游 ES 写入能力匹配。
+5. **下游 Elasticsearch 容量**：单节点示例仅用于联调；生产索引速度、线程池、拒绝率等按 Elastic 当前版本 [Indexing speed / 容量规划](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/important-settings-configuration)（以你实际打开的 **Reference** 版本为准）执行，避免只调大 Fluent Bit、ES 侧仍 429。
+6. **可观测与排障**：Fluent Bit 提供 [Monitoring / Metrics](https://docs.fluentbit.io/manual/administration/monitoring) 与 **`Trace_Error`** 等诊断手段（同 Elasticsearch 输出文档）；与 ES 侧慢日志、集群健康一并看，避免只看容器 stdout。
+
 要点说明一下，避免你对着 YAML 懵：
 
 - **读日志**：挂宿主机的 **`/var/log`**；再挂 **`/var/lib/docker/containers`** 是为了部分 Docker 运行时解析软链接，**纯 containerd** 的节点可以删掉这一挂卷（见 YAML 后说明）。
 - **写 ES**：访问 **`quickstart-es-http.logging.svc:9200`**，必须 **HTTPS**。**`TLS.Verify On`**，CA 用 ECK 公开的 **`quickstart-es-http-certs-public`** 里的 **`tls.crt`** 挂进容器，路径 **`/etc/es-http-ca/tls.crt`**，和官方 curl 示例用的是同一套材料。
 - **对接 ES 9.x**：**`Suppress_Type_Name On`**（去掉 `_type`，见插件文档里 Elastic Cloud 8+ 说明）；**`Generate_ID On`** 减少 bulk 写入报错（官方 Troubleshooting 里对 **`create`** 与 data stream 的说明）。
+- **读 ES 返回体**：**`Buffer_Size`**（插件文档里的 **`buffer_size`**）用来放大 Elasticsearch 输出里 HTTP 客户端可读响应的上限。默认过小会出现 **`[http_client] cannot increase buffer: ... max=32000`**，随后 **`failed to flush chunk` / `cannot be retried`**。生产建议显式设为 **`512k`** 或更大（日志量极大时再调），见 [Elasticsearch 输出 · buffer_size](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。
 - **索引名**：**`Logstash_Format On`** + **`Logstash_Prefix k8s`**，落到 ES 里是 **`k8s-YYYY.MM.DD`**，和 **T9.2.9** 里数据视图 **`k8s-*`** 对齐。
 
 ```yaml
@@ -798,6 +810,7 @@ data:
         TLS                 On
         TLS.Verify          On
         tls.ca_file         /etc/es-http-ca/tls.crt
+        Buffer_Size         512k
   parsers.conf: |
     [PARSER]
         Name        docker
@@ -908,6 +921,9 @@ flowchart TD
   G --> H[kubectl -n logging get es 是否 Ready]
   H --> I[ES Pod 与 Service 是否同命名空间 logging]
 ```
+
+**`[http_client] cannot increase buffer ... max=32000`（可定因）**  
+这是 **Fluent Bit 读 Elasticsearch HTTP 响应的缓冲区上限太小**，不是 Pod 被系统 **OOM**（OOM 会看到 **`OOMKilled`**）。日志一多、bulk 响应变大就失败，表现为**先正常后报错**。处理： **`[OUTPUT]`** 里设置 **`Buffer_Size 512k`**（或更大），见上文示例与 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。仍不够时再加大或配合 **`Compress gzip`**（插件文档 **`compress`**）。
 
 **（插槽：Fluent Bit 正常写入后 ES 索引 `k8s-*` 或 Pod 日志截图，由你补图）**
 
