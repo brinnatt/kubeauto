@@ -651,16 +651,34 @@ Kibana 里带着 **Security** 相关插件，启动后会跑一些内部检查�
 
 ### T9.2.7、elastic 用户密码
 
-用户 **`elastic`**；Secret 名称 **`<Elasticsearch 资源名>-es-elastic-user`**。
+**`elastic` 是谁**：Elasticsearch 内置的超级用户（**`superuser`**），权限最大。ECK 部署 Elasticsearch 时会自动创建该用户，并把**随机生成的密码**放进 Kubernetes **Secret** 里，不会在 YAML 里明文写死。官方说明见 [Accessing services：取 elastic 密码](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-services.html#k8s-authentication)。
+
+**Secret 叫什么**：固定规则是 **`{Elasticsearch 的 metadata.name}-es-elastic-user`**，和 **Elasticsearch CR 所在命名空间**一致。本文 **T9.2.5** 里资源名是 **`quickstart`**、命名空间是 **`logging`**，所以 Secret 全名是 **`quickstart-es-elastic-user`**。你若改了 `metadata.name`，Secret 前缀跟着变，**Kibana 登录、Fluent Bit、curl 测 ES** 都要用新名字取密码。
+
+**Secret 里有什么**：键名就是 **`elastic`**（用户名），值是 **Base64** 存的一份密码字符串。下面两条命令取出来的都是**解码后的明文密码**，任选其一即可。
 
 ```bash
+# 与本文示例一致：命名空间 logging，Elasticsearch 名 quickstart
+kubectl -n logging get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}{{"\n"}}'
+```
+
+```bash
+# 等价写法（Linux / macOS 常见；Windows 若管道异常请用上一条）
 kubectl -n logging get secret quickstart-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d
 echo
 ```
 
-```bash
-kubectl -n logging get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}{{"\n"}}'
-```
+**密码用在哪（和本文其它节对齐）**
+
+- **Kibana 网页登录**：用户名填 **`elastic`**，密码用上面命令打印出来的值（见 **T9.2.6**）。  
+- **Fluent Bit 写 ES**：**T9.2.8** 里用同一 Secret 做专用凭据，不要把密码写进 ConfigMap。  
+- **命令行测 ES**：对 **`quickstart-es-http`** 做 HTTPS 访问时，**`-u elastic:密码`**，并带上 ECK 提供的 **CA**（见 **T9.2.8** 与官方 [K8s HTTPS 设置](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)）。
+
+**取不到 Secret 时**：先 **`kubectl -n logging get es`** 看 Elasticsearch 是否 **Ready**；再 **`kubectl -n logging get secret`** 核对是否真有 **`…-es-elastic-user`**，名称是否和 **`metadata.name`** 对得上。
+
+> **生产建议**  
+>
+> **`elastic` 只宜管理员与应急使用**，权限过大。业务写入（如 Fluent Bit、应用）应在 Elasticsearch 里建**专用用户与角色**，只给必要索引权限；改密、轮转按公司安全制度，在 ES 侧操作后同步更新 K8s Secret 与引用方。ECK 还可配合自定义用户与证书，见 [Elasticsearch configuration](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-configuration) 与官方安全文档。
 
 ---
 
