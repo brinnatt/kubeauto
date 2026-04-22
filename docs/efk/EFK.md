@@ -923,7 +923,12 @@ flowchart TD
 ```
 
 **`[http_client] cannot increase buffer ... max=32000`（可定因）**  
+
 这是 **Fluent Bit 读 Elasticsearch HTTP 响应的缓冲区上限太小**，不是 Pod 被系统 **OOM**（OOM 会看到 **`OOMKilled`**）。日志一多、bulk 响应变大就失败，表现为**先正常后报错**。处理： **`[OUTPUT]`** 里设置 **`Buffer_Size 512k`**（或更大），见上文示例与 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。仍不够时再加大或配合 **`Compress gzip`**（插件文档 **`compress`**）。
+
+**已调 `Buffer_Size`，日志里不再出现 `http_client`，但仍 `failed to flush` / `cannot be retried`（尤其只发生在某台 control-plane 节点）**  
+
+这说明 **根因已不是（或不只是）读响应缓冲**，必须看到 **ES 返回的具体错误**：在 **`[OUTPUT]`** 里临时加 **`Trace_Error On`**（见同插件文档 **Troubleshooting**），滚动 Pod 后抓 **`[output:es:es.0]`** 打出来的请求/响应再定因。同时确认 **`kubectl -n logging describe pod <该 Pod>`** 里用的 ConfigMap **资源版本已更新**（旧 Pod 可能仍挂着旧配置）。
 
 **（插槽：Fluent Bit 正常写入后 ES 索引 `k8s-*` 或 Pod 日志截图，由你补图）**
 
