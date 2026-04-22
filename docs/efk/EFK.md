@@ -909,7 +909,7 @@ kubectl -n logging get pods -l app=fluent-bit
 > - 集群若启用了 **Pod Security** 等策略，采集类 DaemonSet 可能要单独放命名空间或加 **`securityContext`**，按你们平台规范调，不在此展开。  
 > - **绝对不要**在生产长期 **`TLS.Verify Off`**。只有临时联调、且内网已控风险时才可以关校验，见 Fluent Bit 文档里「生产应启用校验」的说明。
 
-**出问题时按这个顺序查（够用）**
+**出问题时按这个顺序查**
 
 ```mermaid
 flowchart TD
@@ -923,21 +923,21 @@ flowchart TD
   H --> I[ES Pod 与 Service 是否同命名空间 logging]
 ```
 
-**`[http_client] cannot increase buffer ... max=32000`（可定因）**  
+1、**`[http_client] cannot increase buffer ... max=32000`（可定因）**  
 
 这是 **Fluent Bit 读 Elasticsearch HTTP 响应的缓冲区上限太小**，不是 Pod 被系统 **OOM**（OOM 会看到 **`OOMKilled`**）。日志一多、bulk 响应变大就失败，表现为**先正常后报错**。处理： **`[OUTPUT]`** 里设置 **`Buffer_Size 512k`**（或更大），见上文示例与 [Elasticsearch 输出](https://docs.fluentbit.io/manual/pipeline/outputs/elasticsearch)。仍不够时再加大或配合 **`Compress gzip`**（插件文档 **`compress`**）。
 
-**`document_parsing_exception` / `kubernetes.labels.app` / `Can't get text on a START_OBJECT`（可定因）**  
+2、**已调 `Buffer_Size`，日志里不再出现 `http_client`，但仍 `failed to flush` / `cannot be retried`（尤其只发生在某台 control-plane 节点）**  
+
+这说明 **根因已不是（或不只是）读响应缓冲**，必须看到 **ES 返回的具体错误**：在 **`[OUTPUT]`** 里临时加 **`Trace_Error On`**（见同插件文档 **Troubleshooting**），滚动 Pod 后抓 **`[output:es:es.0]`** 打出来的请求/响应再定因。同时确认 **`kubectl -n logging describe pod <该 Pod>`** 里用的 ConfigMap **资源版本已更新**（旧 Pod 可能仍挂着旧配置）。
+
+3、**`document_parsing_exception` / `kubernetes.labels.app` / `Can't get text on a START_OBJECT`（可定因）**  
 
 ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app] of type [text]`**，预览值像 **`{kubernetes={io/component=metrics}}`**。含义是：索引里 **`kubernetes.labels.app`** 已被动态映射成 **字符串**，但部分 Pod 带 **`app.kubernetes.io/component`** 等 label，**metadata 在文档里既可能是纯 `app` 字符串，又可能被展成嵌套对象**，类型打架就写入失败。控制面/监控类 Pod（**node-exporter、prometheus-adapter** 等）常见，所以往往**先在某个 master 上的 Fluent Bit** 爆量失败。  
 
 **处理（与官方插件说明一致）**：在 **`[OUTPUT]`** 中加 **`Replace_Dots On`**（见 **`replace_dots`**），把字段名里的 **`.`** 换成 **`_`**，避免 ES 把 **`app`** 误当成可嵌套路径。上文 YAML 已默认打开。  
 
 **已写入失败过的当天索引**（如 **`k8s-2026.04.22`**）里可能仍是旧映射，联调可 **`DELETE`** 该索引后重采；生产应配合 **index template** 规范 **`kubernetes.labels`**（见 Elastic 当前文档 **mapping / flattened**），或接受新字段名后在 Kibana 里更新字段列表。
-
-**已调 `Buffer_Size`，日志里不再出现 `http_client`，但仍 `failed to flush` / `cannot be retried`（尤其只发生在某台 control-plane 节点）**  
-
-这说明 **根因已不是（或不只是）读响应缓冲**，必须看到 **ES 返回的具体错误**：在 **`[OUTPUT]`** 里临时加 **`Trace_Error On`**（见同插件文档 **Troubleshooting**），滚动 Pod 后抓 **`[output:es:es.0]`** 打出来的请求/响应再定因。同时确认 **`kubectl -n logging describe pod <该 Pod>`** 里用的 ConfigMap **资源版本已更新**（旧 Pod 可能仍挂着旧配置）。
 
 **（插槽：Fluent Bit 正常写入后 ES 索引 `k8s-*` 或 Pod 日志截图，由你补图）**
 
