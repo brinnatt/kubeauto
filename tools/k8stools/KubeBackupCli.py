@@ -7,7 +7,7 @@ k8s_backup.py - 企业级 Kubernetes 配置备份和恢复工具
 - 备份 Kubernetes 集群资源（Deployments、Services、ConfigMaps、Secrets 等）
 - 恢复备份到目标集群（server-side apply、单文件多文档清单、依赖顺序串行）
 - 支持命名空间映射、镜像映射、环境变量映射（统一 KEY=值，多项用逗号或空格分隔）
-- 恢复时可选：--merge-patch 传入与 kubectl patch -p 相同形状的部分对象（YAML/JSON），在 apply 前深度合并进清单（如 Deployment 的 spec.template.spec.nodeSelector；字典递归合并，列表整段覆盖）
+- 恢复时可选：--merge-patch 与 kubectl patch -p 同形状（YAML/JSON 文件或「{」开头内联 JSON），须配 --merge-patch-kind；内联仅适合小片段（脚本有 UTF-8 大小与嵌套深度上限），复杂结构请用文件以便评审与稳定落地（字典递归合并，列表整段覆盖）
 - 恢复时可选：Downward API（KEY=@k8s:fieldPath）；另支持仅对 env.value 内联字符串按命名空间映射做受控替换（--env-namespace-substitute，与 valueFrom 区分见 -h）
 - 典型：restore --namespace-mapping 旧命名空间=新命名空间 时，清单里 metadata.namespace 与符合条件的 env.value 会随策略改写；具体顺序与示例见 -h 专节
 - 备份侧拒绝缺少 apiVersion/kind 的对象；元数据 JSON 损坏时降级而非崩溃
@@ -637,6 +637,9 @@ def parse_mapping(mapping_str: Optional[str], mapping_kind: str) -> Dict[str, st
 KNOWN_RESOURCE_TYPES = frozenset(RESOURCE_API_MAPPING.keys())
 MAX_WORKERS_CAP = 128
 MAX_CLI_PATH_LEN = 4096
+# 内联 --merge-patch（JSON）：控制 shell/转义与可读性风险；超限须改用文件（与 kubectl 形状一致，无额外语义）
+MAX_MERGE_PATCH_INLINE_UTF8_BYTES = 32768
+MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH = 20
 MAX_BACKUP_NAME_LEN = 200
 MAX_CONTEXT_LEN = 256
 MAX_SELECTOR_LEN = 8192
@@ -867,6 +870,40 @@ def validate_cli_merge_patch_path(path: str) -> Optional[str]:
 _MERGE_PATCH_FORBIDDEN_ROOT_KEYS = frozenset({"apiVersion", "kind", "status"})
 
 
+def _merge_patch_inline_structure_depth(obj: Any) -> int:
+    """
+    估算内联 JSON 补丁的结构深度（dict 向下 +1；list 取元素最大深度不额外加层，避免 tolerations 等数组误伤）。
+    仅用于拒绝过深内联；文件补丁不做此限制。
+    """
+    if isinstance(obj, dict):
+        if not obj:
+            return 1
+        return 1 + max(_merge_patch_inline_structure_depth(v) for v in obj.values())
+    if isinstance(obj, list):
+        if not obj:
+            return 0
+        return max(_merge_patch_inline_structure_depth(v) for v in obj)
+    return 0
+
+
+def _sanitize_merge_patch_fragment_inplace(
+    frag: Dict[str, Any],
+    source_hint: str,
+    warned_flag: List[bool],
+) -> None:
+    """从补丁片段根级移除 apiVersion/kind/status；首次移除时打一条 warning。"""
+    bad = _MERGE_PATCH_FORBIDDEN_ROOT_KEYS & frag.keys()
+    if not bad:
+        return
+    if not warned_flag[0]:
+        logger.warning(
+            f"{source_hint}: 补丁根级含 {sorted(bad)}，已忽略（与 kubectl patch -p 相同，勿含 apiVersion/kind/status）"
+        )
+        warned_flag[0] = True
+    for k in bad:
+        frag.pop(k, None)
+
+
 def load_merge_patch_file(filepath: str) -> Optional[Dict[str, Any]]:
     """
     加载 --merge-patch：形状与 kubectl patch … -p '<json>' 相同的部分 Kubernetes 对象（YAML 或 JSON）。
@@ -875,6 +912,7 @@ def load_merge_patch_file(filepath: str) -> Optional[Dict[str, Any]]:
         {"spec": {"template": {"spec": {"nodeSelector": {"release": "production"}}}}}
 
     支持多文档 YAML：各段按顺序先合并为单一补丁。根级若含 apiVersion/kind/status 将剔除并告警。
+    文件模式不设内联 JSON 的结构深度上限；复杂 patch、多段 YAML、需入库评审的场景应优先用本路径而非命令行内联。
     """
     merged: Dict[str, Any] = {}
     try:
@@ -888,7 +926,7 @@ def load_merge_patch_file(filepath: str) -> Optional[Dict[str, Any]]:
         return None
 
     any_doc = False
-    warned_forbidden = False
+    warned_forbidden: List[bool] = [False]
     for idx, doc in enumerate(docs, start=1):
         if doc is None:
             continue
@@ -899,21 +937,72 @@ def load_merge_patch_file(filepath: str) -> Optional[Dict[str, Any]]:
             )
             return None
         frag = dict(doc)
-        bad_roots = _MERGE_PATCH_FORBIDDEN_ROOT_KEYS & frag.keys()
-        if bad_roots:
-            if not warned_forbidden:
-                logger.warning(
-                    f"{filepath}: 补丁根级含 {sorted(bad_roots)}，已忽略（请与 kubectl patch -p 相同，只写待合并字段；"
-                    "勿含 apiVersion/kind/status）"
-                )
-                warned_forbidden = True
-            for k in bad_roots:
-                frag.pop(k, None)
+        _sanitize_merge_patch_fragment_inplace(frag, filepath, warned_forbidden)
         deep_merge_k8s_dict(merged, frag)
     if not any_doc:
         logger.error(f"{filepath}: 未解析到任何 YAML 文档（文件为空？）")
         return None
     return merged
+
+
+def parse_merge_patch_json_string(json_text: str, source_hint: str) -> Optional[Dict[str, Any]]:
+    """
+    解析与 kubectl patch -p 相同的 JSON 对象字符串（如脚本内 dict 的 JSON 表示）。
+    须为 JSON object，不得为数组；根级 apiVersion/kind/status 将剔除。
+    内联场景另受结构深度约束（见 load_merge_patch_from_cli_arg）；复杂补丁请用文件。
+    """
+    if json_text.startswith("\ufeff"):
+        json_text = json_text[1:]
+    try:
+        val = json.loads(json_text)
+    except json.JSONDecodeError as e:
+        logger.error(f"{source_hint} 不是合法 JSON: {e}")
+        return None
+    if not isinstance(val, dict):
+        logger.error(f"{source_hint} 须为 JSON 对象（映射），当前为 {type(val).__name__}")
+        return None
+    frag = dict(val)
+    _sanitize_merge_patch_fragment_inplace(frag, source_hint, [False])
+    if not frag:
+        logger.warning(f"{source_hint}: 剔除禁止根字段后为空，合并不产生任何字段变更")
+        return frag
+    depth = _merge_patch_inline_structure_depth(frag)
+    if depth > MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH:
+        logger.error(
+            f"{source_hint}: 嵌套过深（结构深度约 {depth}，内联上限 {MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH}）；"
+            "企业环境请将复杂补丁写入 YAML/JSON 文件并通过路径传入，与简单 kubectl -p 片段分工一致"
+        )
+        return None
+    return frag
+
+
+def load_merge_patch_from_cli_arg(arg_value: str) -> Optional[Dict[str, Any]]:
+    """
+    解析 --merge-patch：文件路径，或以「{」开头的内联 JSON（与 kubectl -p 一致）。
+
+    生产约束：内联仅适合短、浅结构（UTF-8 字节与嵌套深度有上限）；多文档、大段 affinity/volumes 等请用文件，
+    降低 shell 转义错误并便于 Code Review 与配置库管理。
+    """
+    raw = str(arg_value).strip()
+    if not raw:
+        logger.error("--merge-patch 不能为空")
+        return None
+    if raw.startswith("{"):
+        ub = len(raw.encode("utf-8"))
+        if ub > MAX_MERGE_PATCH_INLINE_UTF8_BYTES:
+            logger.error(
+                f"内联 merge-patch 过大（UTF-8 约 {ub} 字节，上限 {MAX_MERGE_PATCH_INLINE_UTF8_BYTES}）；"
+                "请改用 YAML/JSON 文件路径传入，便于稳定评审与避免命令行长度/转义问题"
+            )
+            return None
+        return parse_merge_patch_json_string(raw, "--merge-patch 内联 JSON")
+    if len(raw) > MAX_CLI_PATH_LEN:
+        logger.error("--merge-patch 文件路径过长")
+        return None
+    patch_path = validate_cli_merge_patch_path(raw)
+    if patch_path is None:
+        return None
+    return load_merge_patch_file(patch_path)
 
 
 def load_backup_metadata(backup_dir: str) -> Dict[str, Any]:
@@ -1356,17 +1445,20 @@ class ResourceTransformer:
         """
         将 rule.merge_patch 按官方对象嵌套深度合并进当前资源根对象（与 kubectl patch -p 片段一致）。
 
-        若配置了 merge_patch_kinds，则仅当清单 kind 命中集合时才合并，避免向 Service/ConfigMap 等写入
-        仅适用于 Deployment 的 spec 子树而导致 apply 失败。
+        经 CLI 校验时 merge_patch 与 merge_patch_kinds 同时存在；若 kinds 为空则跳过合并（防御性）。
         """
         patch = self.rule.merge_patch
         if not patch:
             return resource
         kinds = self.rule.merge_patch_kinds
-        if kinds is not None:
-            k = resource.get("kind") or ""
-            if k not in kinds:
-                return resource
+        if not kinds:
+            logger.warning(
+                "merge_patch 已配置但 merge_patch_kinds 为空，已跳过合并；请使用 --merge-patch-kind 指定资源类型"
+            )
+            return resource
+        k = resource.get("kind") or ""
+        if k not in kinds:
+            return resource
         deep_merge_k8s_dict(resource, patch)
         return resource
 
@@ -2944,8 +3036,8 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
     --env-namespace-substitute off|auto|all
                              仅在有 --namespace-mapping 时生效：是否改写 env.value 内联字符串中的源命名空间
                              （默认 auto；与 valueFrom 区分、顺序、示例见下方专节）
-    --merge-patch FILE       与 kubectl patch -p 相同形状的部分对象，apply 前合并进清单（见下方专节）
-    --merge-patch-kind KIND  可重复；仅对该 kind 的文档合并 --merge-patch（与 YAML 中 kind 大小写一致）
+    --merge-patch PATH|JSON  补丁：优先文件；内联 JSON 仅短浅片段（有上限）；须配合 --merge-patch-kind（见专节）
+    --merge-patch-kind KIND  至少一次，可重复；仅对该 kind 合并补丁（与清单 kind 大小写一致）
   恢复范围
     --skip-crds              不恢复 CustomResourceDefinition
     --skip-cluster-scoped    不恢复集群级资源（如 ClusterRole、StorageClass 等）
@@ -3038,8 +3130,17 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
   设计：kubectl 对运行中对象执行 patch；本脚本在 restore 时对**静态清单**做同类合并后再 server-side apply，
   避免对线上做逐资源 patch 带来的抖动，并与命名空间/镜像/env 映射同属「落盘前改写」生产流程。
 
-  文件内容：单份 YAML 或 JSON 对象，嵌套须与**该资源在 Kubernetes API 中的结构**一致（与 `kubectl patch` 的 `-p`
-  载荷相同），**不要**含根级 apiVersion、kind、status（若误粘贴，脚本会剔除并告警）。
+  生产用法（与 kubectl patch 成熟语义一致；本脚本只在落盘前合并，边界由下列方式控制）：
+    · **推荐（复杂、多文档、需评审）**：YAML/JSON **文件路径**。无内联专用的结构深度上限，适合 affinity、
+      长 volumes、多段 `---` 补丁等；与配置库、MR 流程一致，利于企业稳定变更。
+    · **可选（简单片段）**：命令行 **内联 JSON**（首尾空白去掉后以「{」开头）。与 `kubectl patch -p`、
+      Python `dict` 经 `json.dumps` 一致；受 **UTF-8 字节数**与**嵌套深度**上限约束，超限须改用文件，
+      避免命令行长度、shell 转义与难以 Code Review 的大段 JSON。
+
+  嵌套须与**该资源在 Kubernetes API 中的结构**一致，**不要**含根级 apiVersion、kind、status（若误带，脚本会剔除并告警）。
+  内联上限（常量，与 kubectl 行为无关，仅本工具防运维风险）：UTF-8 约 __MAX_MERGE_PATCH_INLINE_UTF8_BYTES__ 字节；
+  结构深度约 __MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH__（dict 向下累计，list 内取子元素最大深度）。
+  详见脚本内 MAX_MERGE_PATCH_INLINE_UTF8_BYTES、MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH。
 
   例（与官方 Deployment API 一致，等价于对运行中 Deployment 执行）：
     kubectl patch deployment my-deploy -p '{"spec":{"template":{"spec":{"nodeSelector":{"release":"production"}}}}}'
@@ -3053,18 +3154,24 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
   合并规则：双方同一键均为映射时递归合并；否则以补丁整段覆盖（含列表）。列表项不按 strategic merge 的主键合并，
   与 apiserver 行为可能不同；复杂 patches 请以官方文档核对。
 
-  作用范围与 --merge-patch-kind：
-    · 未指定 kind 时：补丁会尝试合并进**每一个**被恢复的 YAML 文档。若补丁含仅适用于 Deployment 的
-      spec.template，合并进 Service/ConfigMap 可能导致非法字段或 apply 失败。
-    · 混合备份时**强烈建议**使用 `--merge-patch-kind Deployment`（可重复写多个 kind），仅对命中 kind 合并。
+  作用范围（强制）：
+    · 使用 `--merge-patch` 时**必须**同时指定至少一个 `--merge-patch-kind`（可重复，例如同时写 Deployment 与 StatefulSet），
+      仅对清单中 `kind` 命中的文档合并补丁，与按资源类型精确 patch 的惯例一致。
 
   与 env：容器环境变量优先用 --env-mapping；补丁中若写 spec.template.spec.containers 等整段列表会覆盖备份子树，
     除非补丁内写全量定义。
 
-  命令示例：
+  命令示例（补丁文件）：
    python KubeBackupCli.py restore \\
         --backup-dir /path/to/backup \\
         --merge-patch /path/to/deploy-merge.yaml \\
+        --merge-patch-kind Deployment \\
+        --create-namespaces
+
+  命令示例（内联 JSON，注意 shell 引号；长片段建议仍用文件）：
+   python KubeBackupCli.py restore \\
+        --backup-dir /path/to/backup \\
+        --merge-patch '{"spec":{"template":{"spec":{"nodeSelector":{"release":"production"}}}}}' \\
         --merge-patch-kind Deployment \\
         --create-namespaces
 
@@ -3257,18 +3364,15 @@ R8. 灾备场景：目标集群已有全局策略，只灌入命名空间内业�
    迁到绿环境命名空间且不改集群级对象的场合。若绿集群缺少某 CRD，仍须先安装 CRD 或去掉 --skip-crds。
 
 R9. 跨环境：与 kubectl patch -p 相同形状，改写 Deployment 的 Pod 模板（例：nodeSelector）
-   先准备 deploy-merge.yaml（嵌套与官方 Deployment.spec 一致）：
-        spec:
-          template:
-            spec:
-              nodeSelector:
-                release: production
+   方式一：补丁文件 deploy-merge.yaml（嵌套与官方 Deployment.spec 一致）同上专节。
+   方式二：内联 JSON（与 Python dict 的 JSON 表示相同），须整体加引号交给 shell：
    python KubeBackupCli.py restore \\
         --backup-dir /path/to/backup \\
-        --merge-patch /path/to/deploy-merge.yaml \\
+        --merge-patch '{"spec":{"template":{"spec":{"nodeSelector":{"release":"production"}}}}}' \\
         --merge-patch-kind Deployment \\
         --create-namespaces
-   说明：混合备份请始终加 --merge-patch-kind，避免补丁合并进 Service/ConfigMap 等无关 kind。
+   说明：--merge-patch 与 --merge-patch-kind 必须同时使用；可对多种工作负载重复写 --merge-patch-kind。
+   生产上：内联仅适合短浅片段（脚本有 UTF-8 与嵌套深度上限）；affinity、长 volumes、多段 YAML 等请用方式一（文件）。
 
 --------------------------------------------------------------------------------
 【restore：命名空间内资源 apply 顺序（摘要）】
@@ -3316,7 +3420,11 @@ R9. 跨环境：与 kubectl patch -p 相同形状，改写 Deployment 的 Pod �
   - API 客户端对 409/429/5xx 有限次重试（ SSA 竞态与瞬时服务端错误）。
   - 生产环境建议先 restore --dry-run 再正式执行。
   - 依赖: Python 3.7+，kubernetes、pyyaml、tenacity。
-""".replace("__DEFAULT_RESOURCES__", default_resources_line)
+""".replace("__DEFAULT_RESOURCES__", default_resources_line).replace(
+        "__MAX_MERGE_PATCH_INLINE_UTF8_BYTES__", str(MAX_MERGE_PATCH_INLINE_UTF8_BYTES)
+    ).replace(
+        "__MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH__", str(MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH)
+    )
     print(examples)
 
 
@@ -3402,18 +3510,18 @@ def _add_restore_arguments(parser):
     )
     parser.add_argument(
         '--merge-patch',
-        metavar='FILE',
+        metavar='PATH_OR_JSON',
         dest='merge_patch',
-        help='与 kubectl patch … -p 相同形状的部分对象（YAML/JSON），在 apply 前深度合并进每个清单文档的根对象；'
-             ' 勿含根级 apiVersion/kind/status；见 -h「恢复阶段：合并补丁（kubectl patch 形状）」',
+        help='YAML/JSON 文件路径（推荐：复杂/多文档），或以「{」开头的内联 JSON（仅适合短浅片段，有长度与嵌套深度上限）；'
+             ' 形状同 kubectl patch -p；勿含根级 apiVersion/kind/status；与 --merge-patch-kind 配套必填，见 -h 专节',
     )
     parser.add_argument(
         '--merge-patch-kind',
         action='append',
         dest='merge_patch_kinds',
         metavar='KIND',
-        help='可重复；仅当清单对象的 kind 与本参数一致时才应用 --merge-patch（须与 YAML 中 kind 大小写一致，如 Deployment）。'
-             ' 混合备份时强烈建议指定，避免向其它 kind 写入非法 spec。',
+        help='与 --merge-patch 配套使用且至少指定一次；可重复。仅当清单 kind 与本参数一致时才合并补丁'
+             '（须与 YAML 中 kind 大小写一致，如 Deployment）。',
     )
     parser.add_argument(
         '--max-workers',
@@ -3571,10 +3679,7 @@ def validate_restore_arguments(args) -> Optional[RestoreConfig]:
     merge_patch: Optional[Dict[str, Any]] = None
     raw_patch = _cli_strip_opt(getattr(args, "merge_patch", None))
     if raw_patch:
-        patch_path = validate_cli_merge_patch_path(raw_patch)
-        if patch_path is None:
-            return None
-        merge_patch = load_merge_patch_file(patch_path)
+        merge_patch = load_merge_patch_from_cli_arg(raw_patch)
         if merge_patch is None:
             return None
 
@@ -3584,6 +3689,13 @@ def validate_restore_arguments(args) -> Optional[RestoreConfig]:
         merge_patch_kinds = {str(x).strip() for x in raw_mp_kinds if x and str(x).strip()}
         if not merge_patch_kinds:
             merge_patch_kinds = None
+
+    if merge_patch and not merge_patch_kinds:
+        logger.error(
+            "使用 --merge-patch 时必须指定至少一个 --merge-patch-kind（与清单中 kind 大小写一致，例如 Deployment）；"
+            "以避免将补丁误合并到其它资源类型"
+        )
+        return None
     if merge_patch_kinds and not merge_patch:
         logger.error("已指定 --merge-patch-kind 但未提供 --merge-patch")
         return None
