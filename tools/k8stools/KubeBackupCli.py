@@ -3127,17 +3127,17 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
 【恢复阶段：合并补丁（--merge-patch，与 kubectl patch -p 形状一致）】
 --------------------------------------------------------------------------------
 
-  设计：kubectl 对运行中对象执行 patch；本脚本在 restore 时对**静态清单**做同类合并后再 server-side apply，
+  设计：kubectl 对运行中对象执行 patch；本脚本在 restore 时对静态清单做同类合并后再 server-side apply，
   避免对线上做逐资源 patch 带来的抖动，并与命名空间/镜像/env 映射同属「落盘前改写」生产流程。
 
   生产用法（与 kubectl patch 成熟语义一致；本脚本只在落盘前合并，边界由下列方式控制）：
-    · **推荐（复杂、多文档、需评审）**：YAML/JSON **文件路径**。无内联专用的结构深度上限，适合 affinity、
-      长 volumes、多段 `---` 补丁等；与配置库、MR 流程一致，利于企业稳定变更。
-    · **可选（简单片段）**：命令行 **内联 JSON**（首尾空白去掉后以「{」开头）。与 `kubectl patch -p`、
-      Python `dict` 经 `json.dumps` 一致；受 **UTF-8 字节数**与**嵌套深度**上限约束，超限须改用文件，
+    · 推荐（复杂、多文档、需评审）：使用 YAML/JSON 文件路径。无内联专用的结构深度上限，适合 affinity、
+      长 volumes、多段用 --- 分隔的补丁等；与配置库、MR 流程一致，利于企业稳定变更。
+    · 可选（简单片段）：命令行内联 JSON（首尾空白去掉后以「{」开头）。与 kubectl patch -p、
+      Python dict 经 json.dumps 一致；受 UTF-8 字节数与嵌套深度上限约束，超限须改用文件，
       避免命令行长度、shell 转义与难以 Code Review 的大段 JSON。
 
-  嵌套须与**该资源在 Kubernetes API 中的结构**一致，**不要**含根级 apiVersion、kind、status（若误带，脚本会剔除并告警）。
+  嵌套须与该资源在 Kubernetes API 中的结构一致，不要含根级 apiVersion、kind、status（若误带，脚本会剔除并告警）。
   内联上限（常量，与 kubectl 行为无关，仅本工具防运维风险）：UTF-8 约 __MAX_MERGE_PATCH_INLINE_UTF8_BYTES__ 字节；
   结构深度约 __MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH__（dict 向下累计，list 内取子元素最大深度）。
   详见脚本内 MAX_MERGE_PATCH_INLINE_UTF8_BYTES、MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH。
@@ -3155,8 +3155,8 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
   与 apiserver 行为可能不同；复杂 patches 请以官方文档核对。
 
   作用范围（强制）：
-    · 使用 `--merge-patch` 时**必须**同时指定至少一个 `--merge-patch-kind`（可重复，例如同时写 Deployment 与 StatefulSet），
-      仅对清单中 `kind` 命中的文档合并补丁，与按资源类型精确 patch 的惯例一致。
+    · 使用 --merge-patch 时必须同时指定至少一个 --merge-patch-kind（可重复，例如同时写 Deployment 与 StatefulSet），
+      仅对清单中 kind 与之一致的文档合并补丁，与按资源类型精确 patch 的惯例一致。
 
   与 env：容器环境变量优先用 --env-mapping；补丁中若写 spec.template.spec.containers 等整段列表会覆盖备份子树，
     除非补丁内写全量定义。
