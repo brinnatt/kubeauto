@@ -7,6 +7,7 @@ k8s_backup.py - 企业级 Kubernetes 配置备份和恢复工具
 - 备份 Kubernetes 集群资源（Deployments、Services、ConfigMaps、Secrets 等）
 - 恢复备份到目标集群（server-side apply、单文件多文档清单、依赖顺序串行）
 - 支持命名空间映射、镜像映射、环境变量映射（统一 KEY=值，多项用逗号或空格分隔）
+- 恢复时可选：--merge-patch 传入与 kubectl patch -p 相同形状的部分对象（YAML/JSON），在 apply 前深度合并进清单（如 Deployment 的 spec.template.spec.nodeSelector；字典递归合并，列表整段覆盖）
 - 恢复时可选：Downward API（KEY=@k8s:fieldPath）；另支持仅对 env.value 内联字符串按命名空间映射做受控替换（--env-namespace-substitute，与 valueFrom 区分见 -h）
 - 典型：restore --namespace-mapping 旧命名空间=新命名空间 时，清单里 metadata.namespace 与符合条件的 env.value 会随策略改写；具体顺序与示例见 -h 专节
 - 备份侧拒绝缺少 apiVersion/kind 的对象；元数据 JSON 损坏时降级而非崩溃
@@ -177,7 +178,7 @@ class BackupConfig:
 
 @dataclass
 class RestoreConfig:
-    """restore 子命令配置。env_namespace_substitute 仅在存在 namespace_mapping 时改写仍为 env.value 内联字符串的项，详见 -h 专节。"""
+    """restore 子命令配置。env_namespace_substitute 仅在存在 namespace_mapping 时改写仍为 env.value 内联字符串的项；merge_patch 与 kubectl patch -p 一致，详见 -h 专节。"""
     kubeconfig: Optional[str] = None
     context: Optional[str] = None
     backup_dir: str = ""
@@ -191,15 +192,19 @@ class RestoreConfig:
     create_namespaces: bool = True
     backup_name: Optional[str] = None
     env_namespace_substitute: str = "auto"
+    merge_patch: Optional[Dict[str, Any]] = None
+    merge_patch_kinds: Optional[Set[str]] = None
 
 
 @dataclass
 class TransformationRule:
-    """恢复阶段变换规则：命名空间、镜像、env_mapping（含 @k8s）、env_namespace_substitute（仅 env.value 内联字符串）。"""
+    """恢复阶段变换规则：命名空间、镜像、env_mapping（含 @k8s）、env_namespace_substitute（仅 env.value 内联字符串）、merge_patch（与 kubectl patch -p 一致的部分对象合并）。"""
     namespace_mapping: Dict[str, str] = field(default_factory=dict)
     image_mapping: Dict[str, str] = field(default_factory=dict)
     env_mapping: Dict[str, str] = field(default_factory=dict)
     env_namespace_substitute: str = "auto"
+    merge_patch: Optional[Dict[str, Any]] = None
+    merge_patch_kinds: Optional[Set[str]] = None
 
     def transform_namespace(self, original_ns: str) -> str:
         """Transform namespace according to mapping rules"""
@@ -819,6 +824,98 @@ def load_kubernetes_yaml_documents(filepath: str) -> List[Dict[str, Any]]:
     return out
 
 
+def deep_merge_k8s_dict(base: Dict[str, Any], overlay: Dict[str, Any]) -> None:
+    """
+    将 overlay 深度合并进 base（原地修改 base）。
+
+    - 双方同一键均为 dict 时递归合并子键；
+    - 否则以 overlay 的值覆盖 base 中该键（含 list、str、int 等；列表为整段替换，非数组合并）。
+    用于恢复前并入与 kubectl patch -p 相同形状的部分对象；与 apiserver strategic merge 对「列表按主键合并」
+    的差异见 Kubernetes 文档，复杂列表字段请按官方语义自行核对清单。
+    """
+    for k, v in overlay.items():
+        if k in base and isinstance(base[k], dict) and isinstance(v, dict):
+            deep_merge_k8s_dict(base[k], v)
+        else:
+            base[k] = v
+
+
+def validate_cli_merge_patch_path(path: str) -> Optional[str]:
+    if not _cli_reject_control_chars(path, "--merge-patch"):
+        return None
+    raw = str(path).strip()
+    if not raw:
+        logger.error("--merge-patch 不能为空")
+        return None
+    exp = os.path.abspath(os.path.expanduser(raw))
+    if len(exp) > MAX_CLI_PATH_LEN:
+        logger.error("--merge-patch 路径过长")
+        return None
+    if not os.path.exists(exp):
+        logger.error(f"--merge-patch 文件不存在: {exp}")
+        return None
+    if not os.path.isfile(exp):
+        logger.error(f"--merge-patch 不是文件: {exp}")
+        return None
+    if not os.access(exp, os.R_OK):
+        logger.error(f"--merge-patch 文件不可读: {exp}")
+        return None
+    return exp
+
+
+# 与 kubectl patch -p 惯例一致：补丁为「部分对象」，不应含根级 apiVersion/kind/status
+_MERGE_PATCH_FORBIDDEN_ROOT_KEYS = frozenset({"apiVersion", "kind", "status"})
+
+
+def load_merge_patch_file(filepath: str) -> Optional[Dict[str, Any]]:
+    """
+    加载 --merge-patch：形状与 kubectl patch … -p '<json>' 相同的部分 Kubernetes 对象（YAML 或 JSON）。
+
+    例（Deployment，与官方 API 一致）：
+        {"spec": {"template": {"spec": {"nodeSelector": {"release": "production"}}}}}
+
+    支持多文档 YAML：各段按顺序先合并为单一补丁。根级若含 apiVersion/kind/status 将剔除并告警。
+    """
+    merged: Dict[str, Any] = {}
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            docs = list(yaml.safe_load_all(f))
+    except (IOError, OSError) as e:
+        logger.error(f"读取 merge-patch 失败: {e}")
+        return None
+    except yaml.YAMLError as e:
+        logger.error(f"解析 merge-patch YAML 失败: {e}")
+        return None
+
+    any_doc = False
+    warned_forbidden = False
+    for idx, doc in enumerate(docs, start=1):
+        if doc is None:
+            continue
+        any_doc = True
+        if not isinstance(doc, dict):
+            logger.error(
+                f"{filepath}: 第 {idx} 段不是映射（应为与 kubectl patch -p 一致的部分对象）"
+            )
+            return None
+        frag = dict(doc)
+        bad_roots = _MERGE_PATCH_FORBIDDEN_ROOT_KEYS & frag.keys()
+        if bad_roots:
+            if not warned_forbidden:
+                logger.warning(
+                    f"{filepath}: 补丁根级含 {sorted(bad_roots)}，已忽略（请与 kubectl patch -p 相同，只写待合并字段；"
+                    "勿含 apiVersion/kind/status）"
+                )
+                warned_forbidden = True
+            for k in bad_roots:
+                frag.pop(k, None)
+        deep_merge_k8s_dict(merged, frag)
+    if not any_doc:
+        logger.error(f"{filepath}: 未解析到任何 YAML 文档（文件为空？）")
+        return None
+    return merged
+
+
 def load_backup_metadata(backup_dir: str) -> Dict[str, Any]:
     """
     加载备份元数据文件。
@@ -1219,13 +1316,13 @@ class ResourceCleaner:
 # Resource Transformer (新增)
 # -------------------------
 class ResourceTransformer:
-    """恢复阶段将备份清单改写为目标环境：命名空间、镜像、env 映射与 env.value 内联字符串中的命名空间替换。"""
+    """恢复阶段将备份清单改写为目标环境：命名空间、镜像、env 映射、env.value 内联命名空间替换、可选与 kubectl patch -p 一致的部分对象合并。"""
 
     def __init__(self, transformation_rule: TransformationRule):
         self.rule = transformation_rule
 
     def transform_resource(self, resource: Dict) -> Dict:
-        """对单个资源依次执行本类定义的变换（含①～④步，见 -h 专节）。"""
+        """对单个资源依次执行本类定义的变换（含①～⑥步，见 -h 专节）。"""
         if not isinstance(resource, dict):
             return resource
 
@@ -1240,7 +1337,10 @@ class ResourceTransformer:
         # ④ env_namespace_substitute：仅仍为 env.value 内联的条目（见 -h 专节）
         resource = self._substitute_namespace_in_env_plain_values(resource)
 
-        # ⑤ container.ports：SSA 按 (containerPort, protocol) 合并，重复项会导致 apiserver 报错（如 HTTP 500）
+        # ⑤ merge_patch：与 kubectl patch -p 相同形状的部分对象，深度合并进完整资源（见 --merge-patch 与 -h 专节）
+        resource = self._apply_merge_patch(resource)
+
+        # ⑥ container.ports：SSA 按 (containerPort, protocol) 合并，重复项会导致 apiserver 报错（如 HTTP 500）
         meta = resource.get("metadata") or {}
         log_ctx = "恢复 {} / {}（{}）".format(
             resource.get("kind") or "?",
@@ -1250,6 +1350,24 @@ class ResourceTransformer:
         for pod_spec in self._iter_pod_specs(resource):
             ResourceCleaner.dedupe_container_ports_in_pod_spec(pod_spec, log_ctx=log_ctx)
 
+        return resource
+
+    def _apply_merge_patch(self, resource: Dict) -> Dict:
+        """
+        将 rule.merge_patch 按官方对象嵌套深度合并进当前资源根对象（与 kubectl patch -p 片段一致）。
+
+        若配置了 merge_patch_kinds，则仅当清单 kind 命中集合时才合并，避免向 Service/ConfigMap 等写入
+        仅适用于 Deployment 的 spec 子树而导致 apply 失败。
+        """
+        patch = self.rule.merge_patch
+        if not patch:
+            return resource
+        kinds = self.rule.merge_patch_kinds
+        if kinds is not None:
+            k = resource.get("kind") or ""
+            if k not in kinds:
+                return resource
+        deep_merge_k8s_dict(resource, patch)
         return resource
 
     def _transform_namespace(self, resource: Dict) -> Dict:
@@ -2397,6 +2515,8 @@ class KubernetesRestoreManager:
                 image_mapping=restore_config.image_mapping,
                 env_mapping=restore_config.env_mapping,
                 env_namespace_substitute=restore_config.env_namespace_substitute,
+                merge_patch=restore_config.merge_patch,
+                merge_patch_kinds=restore_config.merge_patch_kinds,
             )
         )
         self.restore_stats = {
@@ -2824,6 +2944,8 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
     --env-namespace-substitute off|auto|all
                              仅在有 --namespace-mapping 时生效：是否改写 env.value 内联字符串中的源命名空间
                              （默认 auto；与 valueFrom 区分、顺序、示例见下方专节）
+    --merge-patch FILE       与 kubectl patch -p 相同形状的部分对象，apply 前合并进清单（见下方专节）
+    --merge-patch-kind KIND  可重复；仅对该 kind 的文档合并 --merge-patch（与 YAML 中 kind 大小写一致）
   恢复范围
     --skip-crds              不恢复 CustomResourceDefinition
     --skip-cluster-scoped    不恢复集群级资源（如 ClusterRole、StorageClass 等）
@@ -2875,13 +2997,15 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
       若无 --namespace-mapping（或映射表为空），--env-namespace-substitute 不会产生任何效果。
 
 （2）同一资源内的处理顺序（与先后覆盖关系）
-  对 Pod 模板中的 env 列表，脚本按下面顺序执行；排在前面的步骤会改变清单，后面的步骤基于最新清单：
+  对带 Pod 模板的资源，脚本按下面顺序执行；排在前面的步骤会改变清单，后面的步骤基于最新清单：
     ① 资源的 metadata.namespace、Pod 模板内嵌套 namespace 等（--namespace-mapping）
     ② --image-mapping（容器 image）
     ③ --env-mapping（按变量名增/删/改；若某 KEY 被改成 @k8s:...，则该 KEY 变为 valueFrom，
        不再使用内联 value）
     ④ --env-namespace-substitute：只对第③步之后仍为 env.value 内联字符串的项，按模式替换字符串中的
        源命名空间到目标命名空间
+    ⑤ --merge-patch：将补丁按 kubectl patch -p 形状深度合并进资源根对象（见下方「合并补丁」专节）
+    ⑥ 对容器 ports 按 (containerPort, protocol) 去重，避免 server-side apply 触发 apiserver 报错
 
   因此：若你用 --env-mapping 把某变量改成了 Downward API（valueFrom.fieldRef），该变量不会再参与第④步。
 
@@ -2906,6 +3030,43 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
     例：恢复后清单中为 valueFrom.fieldRef metadata.namespace，Pod 在 prod-ns 里启动时容器内 DEPLOY_ENV=prod-ns。
   · 值为 应用名.命名空间 且应用名各 Deployment 不同：用 auto 加 namespace-mapping（默认即 auto）改后缀即可，
     无需为每个应用单独写 --env-mapping。
+
+--------------------------------------------------------------------------------
+【恢复阶段：合并补丁（--merge-patch，与 kubectl patch -p 形状一致）】
+--------------------------------------------------------------------------------
+
+  设计：kubectl 对运行中对象执行 patch；本脚本在 restore 时对**静态清单**做同类合并后再 server-side apply，
+  避免对线上做逐资源 patch 带来的抖动，并与命名空间/镜像/env 映射同属「落盘前改写」生产流程。
+
+  文件内容：单份 YAML 或 JSON 对象，嵌套须与**该资源在 Kubernetes API 中的结构**一致（与 `kubectl patch` 的 `-p`
+  载荷相同），**不要**含根级 apiVersion、kind、status（若误粘贴，脚本会剔除并告警）。
+
+  例（与官方 Deployment API 一致，等价于对运行中 Deployment 执行）：
+    kubectl patch deployment my-deploy -p '{"spec":{"template":{"spec":{"nodeSelector":{"release":"production"}}}}}'
+  对应补丁文件 deploy-merge.yaml：
+        spec:
+          template:
+            spec:
+              nodeSelector:
+                release: production
+
+  合并规则：双方同一键均为映射时递归合并；否则以补丁整段覆盖（含列表）。列表项不按 strategic merge 的主键合并，
+  与 apiserver 行为可能不同；复杂 patches 请以官方文档核对。
+
+  作用范围与 --merge-patch-kind：
+    · 未指定 kind 时：补丁会尝试合并进**每一个**被恢复的 YAML 文档。若补丁含仅适用于 Deployment 的
+      spec.template，合并进 Service/ConfigMap 可能导致非法字段或 apply 失败。
+    · 混合备份时**强烈建议**使用 `--merge-patch-kind Deployment`（可重复写多个 kind），仅对命中 kind 合并。
+
+  与 env：容器环境变量优先用 --env-mapping；补丁中若写 spec.template.spec.containers 等整段列表会覆盖备份子树，
+    除非补丁内写全量定义。
+
+  命令示例：
+   python KubeBackupCli.py restore \\
+        --backup-dir /path/to/backup \\
+        --merge-patch /path/to/deploy-merge.yaml \\
+        --merge-patch-kind Deployment \\
+        --create-namespaces
 
 --------------------------------------------------------------------------------
 【映射语法】续 — 镜像
@@ -3095,6 +3256,20 @@ R8. 灾备场景：目标集群已有全局策略，只灌入命名空间内业�
    说明：适用于目标集群已安装同版本 CRD、ClusterRole/StorageClass 等由平台统一维护，只需把蓝环境命名空间
    迁到绿环境命名空间且不改集群级对象的场合。若绿集群缺少某 CRD，仍须先安装 CRD 或去掉 --skip-crds。
 
+R9. 跨环境：与 kubectl patch -p 相同形状，改写 Deployment 的 Pod 模板（例：nodeSelector）
+   先准备 deploy-merge.yaml（嵌套与官方 Deployment.spec 一致）：
+        spec:
+          template:
+            spec:
+              nodeSelector:
+                release: production
+   python KubeBackupCli.py restore \\
+        --backup-dir /path/to/backup \\
+        --merge-patch /path/to/deploy-merge.yaml \\
+        --merge-patch-kind Deployment \\
+        --create-namespaces
+   说明：混合备份请始终加 --merge-patch-kind，避免补丁合并进 Service/ConfigMap 等无关 kind。
+
 --------------------------------------------------------------------------------
 【restore：命名空间内资源 apply 顺序（摘要）】
 --------------------------------------------------------------------------------
@@ -3114,6 +3289,7 @@ R8. 灾备场景：目标集群已有全局策略，只灌入命名空间内业�
   restore:
     --backup-dir | --create-namespaces（--create-namespace）
     --namespace-mapping | --image-mapping | --env-mapping | --env-namespace-substitute
+    --merge-patch | --merge-patch-kind
     --skip-crds | --skip-cluster-scoped | --backup-name
   通用: --kubeconfig | --context | --debug | --dry-run
 
@@ -3223,6 +3399,21 @@ def _add_restore_arguments(parser):
         default='auto',
         help='仅当提供 --namespace-mapping 时有效：在 env_mapping 之后，是否仍对 env.value 内联字符串'
              ' 做源命名空间到目标命名空间替换（默认 auto；与 valueFrom 区分见 -h 专节）',
+    )
+    parser.add_argument(
+        '--merge-patch',
+        metavar='FILE',
+        dest='merge_patch',
+        help='与 kubectl patch … -p 相同形状的部分对象（YAML/JSON），在 apply 前深度合并进每个清单文档的根对象；'
+             ' 勿含根级 apiVersion/kind/status；见 -h「恢复阶段：合并补丁（kubectl patch 形状）」',
+    )
+    parser.add_argument(
+        '--merge-patch-kind',
+        action='append',
+        dest='merge_patch_kinds',
+        metavar='KIND',
+        help='可重复；仅当清单对象的 kind 与本参数一致时才应用 --merge-patch（须与 YAML 中 kind 大小写一致，如 Deployment）。'
+             ' 混合备份时强烈建议指定，避免向其它 kind 写入非法 spec。',
     )
     parser.add_argument(
         '--max-workers',
@@ -3377,6 +3568,26 @@ def validate_restore_arguments(args) -> Optional[RestoreConfig]:
         logger.error(f"映射参数无效: {e}")
         return None
 
+    merge_patch: Optional[Dict[str, Any]] = None
+    raw_patch = _cli_strip_opt(getattr(args, "merge_patch", None))
+    if raw_patch:
+        patch_path = validate_cli_merge_patch_path(raw_patch)
+        if patch_path is None:
+            return None
+        merge_patch = load_merge_patch_file(patch_path)
+        if merge_patch is None:
+            return None
+
+    raw_mp_kinds = getattr(args, "merge_patch_kinds", None) or []
+    merge_patch_kinds: Optional[Set[str]] = None
+    if raw_mp_kinds:
+        merge_patch_kinds = {str(x).strip() for x in raw_mp_kinds if x and str(x).strip()}
+        if not merge_patch_kinds:
+            merge_patch_kinds = None
+    if merge_patch_kinds and not merge_patch:
+        logger.error("已指定 --merge-patch-kind 但未提供 --merge-patch")
+        return None
+
     ctx = _cli_strip_opt(args.context)
     return RestoreConfig(
         kubeconfig=_cli_strip_opt(args.kubeconfig),
@@ -3392,6 +3603,8 @@ def validate_restore_arguments(args) -> Optional[RestoreConfig]:
         create_namespaces=args.create_namespaces,
         backup_name=_cli_strip_opt(args.backup_name),
         env_namespace_substitute=args.env_namespace_substitute,
+        merge_patch=merge_patch,
+        merge_patch_kinds=merge_patch_kinds,
     )
 
 
