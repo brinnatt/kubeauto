@@ -980,13 +980,11 @@ flowchart TB
 
 官方：[Data views](https://www.elastic.co/docs/explore-analyze/find-and-organize/data-views)
 
-**（插槽：Stack Management 中新建 Data view 指定 k8s-* 与 @timestamp）**
+![logging-kibana-data-view](./images/logging-kibana-data-view.png)
 
 #### T9.2.9.2、Discover：生产上用得最多的屏
 
 用途：**按时间轴翻日志**、**关键字过滤**、**看原始 JSON**、**临时对比字段**。和 `kubectl logs` 相比，这里是**集群级、可检索、可分享**的视图。
-
-建议熟练度（按优先级）：
 
 | 能力 | 企业生产里干什么 | 官方 |
 |------|------------------|------|
