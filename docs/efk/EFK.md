@@ -949,15 +949,22 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 
 > **本文本节校验日期：2026-04-24**（Kibana/Console/Data views 等表述对照 [Kibana 文档](https://www.elastic.co/docs) 与 [Kibana 发行说明](https://www.elastic.co/docs/release-notes/kibana)。**Stack 版本**与 **T9.2.2** 表中的 **9.3.3** 一致，升级时先改 CR 与镜像再回头核对本节步骤。）
 
-**官方总入口**（排障、升级、权限卡顿时优先看）：[Explore and analyze](https://www.elastic.co/docs/explore-analyze) · [Deploy and manage](https://www.elastic.co/docs/deploy-manage) · [Manage data](https://www.elastic.co/docs/manage-data) · [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/kuery-query) · [ES\|QL 入门](https://www.elastic.co/docs/explore-analyze/discover/try-esql) · [ES\|QL 语言参考](https://www.elastic.co/docs/reference/query-languages/esql)
+**官方文档**（本段发布前已逐条打开核对；**若以后 404**，是 Elastic 改版换 URL 了，以 [Kibana 总文档](https://www.elastic.co/docs) 里搜到的为准）：  
 
-> **界面上的英文、按钮和自动化用的 `data-test-subj` 以谁为准**  
-> Kibana 是**单页前端 + 调 Elasticsearch HTTP API**；**没有**和「每个按钮一一对应」的独立「后端业务控制器」类——**你看到的标签**来自各插件里的 **`@kbn/i18n`（`defaultMessage`）** 与 EUI 组件。本文 **Stack 与 T9.2.2 一致，为 9.3.3**，下面**凡写死英文默认文案、`data-test-subj` 的**均已在 **Kibana 源码 tag [`v9.3.3`](https://github.com/elastic/kibana/releases/tag/v9.3.3)** 中核对过对应文件；**你改了语言/主题/小版本**，界面以实际为准，**升级后请用同路径去新 tag 上对照**。  
-> **和 Discover 最相关的源码入口（可点进 GitHub 对行查）**  
->
-> - 整页主框架（含 **Data view** 入参、**AggregateQueryTopNavMenu** 统一搜索条、时间选择器显隐等）：[discover_topnav.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/discover_topnav.tsx)（**Data view** 选择触发器为 `data-test-subj="discover-dataView-switch-link"`，**title** 为当前 `dataView` 的 index pattern 字符串；展示名为 `dataView.getName()`。）  
-> - 顶栏**右侧**主操作（**Save**、**ES\|QL 模式切换**、**New session**、**Open session**、**Inspect**、**Alerts**、**Background searches** 等）：[use_top_nav_links.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/use_top_nav_links.tsx)及同目录下 `app_menu_actions/` 里各 `get_*.tsx`。  
-> 中文界面只是同一套 i18n key 的翻译，**行为什么变**以源码逻辑为准。  
+| 看什么 | 链接 |
+|--------|------|
+| 用 Kibana 查数、出图、大盘 | [Explore and analyze](https://www.elastic.co/docs/explore-analyze) |
+| 部署、用户角色、Space、升级 | [Deploy and manage](https://www.elastic.co/docs/deploy-manage) |
+| 索引、摄入、ILM、快照 | [Manage data](https://www.elastic.co/docs/manage-data) |
+| **KQL** 语法（**不要**用旧地址 `.../kuery-query`，已 404） | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
+| 在 Discover 里试 **ES\|QL** | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) |
+| **ES\|QL** 完整语法 | [ES\|QL reference](https://www.elastic.co/docs/reference/query-languages/esql) |
+
+> **界面上那串英文、自动化脚本里的 `data-test-subj` 以谁为准**  
+> 一句话：Kibana 是**网页**，字是程序里写好的**翻译表**里的；你改成中文，**还是同一套键**，所以**和截图对不上**先看语言设置。**要和本文 Stack 9.3.3 对行号**，再打开下面两个文件（**英文默认文案、部分 test id 在这里**）：  
+> - 整页 + **Data view** + 上面那条搜索栏：[discover_topnav.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/discover_topnav.tsx)（`data-test-subj="discover-dataView-switch-link"`）  
+> - 顶上一排 **Save / New session / Open session / Try ES\|QL** 等：[use_top_nav_links.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/use_top_nav_links.tsx) 及同目录 **`app_menu_actions/`**  
+> 你**升级了 Kibana 小版本**，以你集群为准；**GitHub** 上把 `v9.3.3` 换成**你的 tag** 再对。  
 
 ```mermaid
 flowchart TB
@@ -1145,7 +1152,7 @@ flowchart TB
 | 能力 | 企业生产里怎么用 | 官方 |
 |------|------------------|------|
 | 时间范围、自动刷新 | 对齐故障发生活动窗口；**大窗口 = 大查询量**，和 ES 资源抢算力，值班先缩小到分钟级 | [Discover](https://www.elastic.co/docs/explore-analyze/discover) |
-| **KQL** / Lucene / **ES\|QL** | 默认用 **KQL**（可输入 `field: value`、**`and` / `or` / `not`**）；**Lucene** 老语法在搜索栏边切换；**ES\|QL** 适合聚合与表格化预览，见 [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/kuery-query) |
+| **KQL** / Lucene / **ES\|QL** | 默认用 **KQL**（可输入 `field: value`、**`and` / `or` / `not`**）；**Lucene** 老语法在搜索栏边切换；**ES\|QL** 适合聚合与表格化预览，见 [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
 | 列、文档详情、对比 | 对字段名、**原始 JSON**、**两条日志逐字段比**，排「到底哪一版配置上线」时很有用 | [Document explorer](https://www.elastic.co/docs/explore-analyze/discover/document-explorer) |
 | 过滤器、**保存/打开会话** | 点字段上的 **+/-** 加**过滤器**；用顶栏 **Save**（源码文案 **Save session**）**固化当前会话**给同值班组 | 产品帮助仍多写 [Save a search / open a search](https://www.elastic.co/docs/explore-analyze/discover/save-open-search)（**9.3.3 界面**已全面用 *session* 叫法，和保存对象实现细节不必在本节抠） |
 | 小图、**Pattern analysis** | 看哪个 Pod 在刷屏、字段值分布、异常段 | [Pattern analysis](https://www.elastic.co/docs/explore-analyze/discover/run-pattern-analysis-discover) |
