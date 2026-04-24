@@ -939,7 +939,7 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 
 ---
 
-### T9.2.9、Kibana 企业生产实践（查日志与常用能力）
+### T9.2.9、Kibana 企业生产实践
 
 前面 **Fluent Bit** 已经把容器日志写进 **Elasticsearch**（本文示例索引前缀 **`k8s-`**，与 **`Logstash_Prefix k8s`** 一致）。**企业真正用起来**，入口就是 **Kibana**：值班查问题、研运做大盘、运维管索引生命周期和权限、必要时上告警。本节按「**使用频率高、对生产有价值**」排序，把主功能串成一条能照着做的工作流；细节与菜单名以你当前 **Stack** 小版本为准（与 **T9.2.2** 表中的 **Kibana 9.3.3** 对齐），拿不准时用左上角**全局搜索**输入英文关键字（如 `Discover`、`Index Management`）。
 
