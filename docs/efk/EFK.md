@@ -960,12 +960,6 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 | 在 Discover 里试 **ES\|QL** | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) |
 | **ES\|QL** 完整语法 | [ES\|QL reference](https://www.elastic.co/docs/reference/query-languages/esql) |
 
-> **界面上那串英文、自动化脚本里的 `data-test-subj` 以谁为准**  
-> 一句话：Kibana 是**网页**，字是程序里写好的**翻译表**里的；你改成中文，**还是同一套键**，所以**和截图对不上**先看语言设置。**要和本文 Stack 9.3.3 对行号**，再打开下面两个文件（**英文默认文案、部分 test id 在这里**）：  
-> - 整页 + **Data view** + 上面那条搜索栏：[discover_topnav.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/discover_topnav.tsx)（`data-test-subj="discover-dataView-switch-link"`）  
-> - 顶上一排 **Save / New session / Open session / Try ES\|QL** 等：[use_top_nav_links.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/use_top_nav_links.tsx) 及同目录 **`app_menu_actions/`**  
-> 你**升级了 Kibana 小版本**，以你集群为准；**GitHub** 上把 `v9.3.3` 换成**你的 tag** 再对。  
-
 ```mermaid
 flowchart TB
   subgraph goal[本文已打通]
