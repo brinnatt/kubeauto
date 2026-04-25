@@ -998,7 +998,7 @@ flowchart LR
   E -->|本文固定答案| F["@timestamp"]
   B --> G[要筛 Pod / 命名空间 / 关键字]
   G --> H[Discover 里用 KQL<br>或 过滤器 点选]
-  D --> I[在 Discover 点开一条日志<br>重点看 kubernetes.*（Pod/命名空间）和 log（日志正文）]
+  D --> I[在 Discover 点开一条日志<br>重点看 kubernetes.* Pod/命名空间 和 log 日志正文]
   F --> I
   H --> I
 ```
