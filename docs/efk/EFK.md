@@ -949,14 +949,14 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 
 > **本文本节校验日期：2026-04-24**（Kibana/Console/Data views 等表述对照 [Kibana 文档](https://www.elastic.co/docs) 与 [Kibana 发行说明](https://www.elastic.co/docs/release-notes/kibana)。**Stack 版本**与 **T9.2.2** 表中的 **9.3.3** 一致，升级时先改 CR 与镜像再回头核对本节步骤。）
 
-**官方文档**（本段发布前已逐条打开核对；**若以后 404**，是 Elastic 改版换 URL 了，以 [Kibana 总文档](https://www.elastic.co/docs) 里搜到的为准）：  
+**官方文档**：
 
 | 看什么 | 链接 |
 |--------|------|
 | 用 Kibana 查数、出图、大盘 | [Explore and analyze](https://www.elastic.co/docs/explore-analyze) |
 | 部署、用户角色、Space、升级 | [Deploy and manage](https://www.elastic.co/docs/deploy-manage) |
 | 索引、摄入、ILM、快照 | [Manage data](https://www.elastic.co/docs/manage-data) |
-| **KQL** 语法（**不要**用旧地址 `.../kuery-query`，已 404） | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
+| **KQL** 语法 | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
 | 在 Discover 里试 **ES\|QL** | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) |
 | **ES\|QL** 完整语法 | [ES\|QL reference](https://www.elastic.co/docs/reference/query-languages/esql) |
 
