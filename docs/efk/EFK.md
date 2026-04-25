@@ -1003,18 +1003,20 @@ flowchart LR
   H --> I
 ```
 
-**怎么读这一节（第一次用 Kibana 的跟这个顺序走）**
+**怎么读这一节**：
 
 1. **T9.2.9.0** 先把**左侧那一大串英文菜单**对上号，知道**该点哪、别乱点哪**。  
 2. 接着从 **T9.2.9.1** 起动手：**数据视图** → **Discover** → 大盘与告警等；细节都在后面小节。  
 
-#### T9.2.9.0、先认路：9.3.x 侧栏菜单都是啥，本文 EFK 用哪几个
+#### T9.2.9.0、先认路
 
-**你在屏幕上最先看到的，往往不是 Discover 里某一屏，而是左边一整条「分区导航」**（9.3.3 下常见分组名：**Analytics、Elasticsearch、Observability、Security、Management**；**具体文案、是否折叠、多一条少一条**会随**许可证、功能开关、Space 默认解决方案**变一点，以你环境为准。官方说明导航习惯见 [Find apps and objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/find-apps-and-objects)）。**企业生产里**：先把下面这张表和图刻在脑子里，**比死记按钮英文有用**——你会知道**容器日志进 `k8s-*` 这条线**，主要动 **Analytics + Elasticsearch（索引类）+ Management**；**别在没接数据时跟 Observability/Security 死磕，以为 EFK 没装好**。
+Kibana v9.3.3 下常见分组名：**Analytics、Elasticsearch、Observability、Security、Management**；**具体文案、是否折叠、多一条少一条**会随**许可证、功能开关、Space 默认解决方案**变一点，以你环境为准。官方说明导航习惯见 [Find apps and objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/find-apps-and-objects)）。
+
+**企业生产里**：先把下面这张表和图刻在脑子里，**比死记按钮英文有用**——你会知道**容器日志进 `k8s-*` 这条线**，主要动 **Analytics + Elasticsearch（索引类）+ Management**；**别在没接数据时跟 Observability/Security 死磕，以为 EFK 没装好**。
 
 **先记住两个省时间的操作（不必每次从根菜单点三级）**
 
-- **顶栏全局搜索框**：直接敲 **`Discover`**、**`Index management`**、**`Data views`** 等，可跳到具体页；`Ctrl`+`/`（Windows/Linux）或 `Cmd`+`/`（macOS）聚焦搜索框。  
+- **顶栏全局搜索框**：直接敲 **`Discover`**、**`Index management`**、**`Data views`** 等，可跳到具体页；`Ctrl`+`/`（Windows/Linux）或 `Cmd`+`/`（macOS）聚焦搜索框。
 - **你当前在的 Space**（见 **T9.2.9.7**）：换 Space 后，**同名字菜单里看到的已保存对象可能不同**，**不是数据丢了**。  
 
 **侧栏各分区在「本文：Fluent Bit → `k8s-*` 索引」下怎么用（一张总表）**
@@ -1070,8 +1072,7 @@ flowchart LR
   Q -->|上 SIEM/端点/复杂 Observe| X[先读完 T9.2.9.8 再动 Security/Obs 全家桶]
 ```
 
-> **和「界面上没有某某菜单」的说明**  
-> 若**看不到**上表中的某一条：多半是 **License** 或**管理员关掉了功能**；**不影响**你按 **Discover + `k8s-*` + Index Management** 把本文 EFK 跑通。有分歧以 **9.3.3 官方** [Kibana 文档](https://www.elastic.co/docs) 与**你们集群管理员**为准。  
+> 若**看不到**上表中的某一条：多半是 **License** 或**管理员关掉了功能**；**不影响**你按 **Discover + `k8s-*` + Index Management** 把本文 EFK 跑通。有分歧以 **v9.3.3 官方** [Kibana 文档](https://www.elastic.co/docs) 与**你们集群管理员**为准。
 
 **（插槽：本环境 Kibana 9.3.x 左栏完整展开截图，可圈出 Analytics / Elasticsearch / Management）**
 
