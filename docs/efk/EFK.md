@@ -949,17 +949,15 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 
 > **本文本节校验日期：2026-04-24**（Kibana/Console/Data views 等表述对照 [Kibana 文档](https://www.elastic.co/docs) 与 [Kibana 发行说明](https://www.elastic.co/docs/release-notes/kibana)。**Stack 版本**与 **T9.2.2** 表中的 **9.3.3** 一致，升级时先改 CR 与镜像再回头核对本节步骤。）
 
-**官方文档（企业版阅读顺序）**：
+**官方文档**：
 
-先按“主线必看 -> 治理必看 -> 进阶选看”走，不要乱跳：
-
-| 优先级 | 模块 | 覆盖功能 | 什么时候看 | 官方链接 |
-|--------|------|----------|------------|----------|
-| **P0 必看** | 业务操作主线 | Discover、Lens、Dashboard、基础分析 | 第一次接触 Kibana，先把查日志和做大盘跑通 | [Explore and analyze](https://www.elastic.co/docs/explore-analyze) |
-| **P0 必看** | 查询语言（KQL） | 日志过滤条件、字段查询、范围查询 | 日常值班查问题，默认先用 KQL | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
-| **P1 必看** | 平台治理模块 | 用户角色、Space、部署升级、连接治理 | 上生产前做权限、分权、变更与升级评审 | [Deploy and manage](https://www.elastic.co/docs/deploy-manage) |
-| **P1 必看** | 数据治理模块 | 索引、映射、摄入、ILM、快照 | 控成本、保留策略、合规留存、灾备恢复 | [Manage data](https://www.elastic.co/docs/manage-data) |
-| **P2 选看** | 查询进阶（ES\|QL） | 管道式查询、聚合分析、复杂结果处理 | KQL 不够用时再上，先试后再看完整语法 | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) · [ES\|QL reference](https://www.elastic.co/docs/reference/query-languages/esql) |
+| 模块 | 覆盖功能 | 什么时候看 | 官方链接 |
+|------|----------|------------|----------|
+| 业务操作主线 | Discover、Lens、Dashboard、基础分析 | 第一次接触 Kibana，先把查日志和做大盘跑通 | [Explore and analyze](https://www.elastic.co/docs/explore-analyze) |
+| 查询语言（KQL） | 日志过滤条件、字段查询、范围查询 | 日常值班查问题，默认先用 KQL | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
+| 平台治理模块 | 用户角色、Space、部署升级、连接治理 | 上生产前做权限、分权、变更与升级评审 | [Deploy and manage](https://www.elastic.co/docs/deploy-manage) |
+| 数据治理模块 | 索引、映射、摄入、ILM、快照 | 控成本、保留策略、合规留存、灾备恢复 | [Manage data](https://www.elastic.co/docs/manage-data) |
+| 查询进阶（ES\|QL） | 管道式查询、聚合分析、复杂结果处理 | KQL 不够用时再上，先试后再看完整语法 | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) · [ES\|QL reference](https://www.elastic.co/docs/reference/query-languages/esql) |
 
 ```mermaid
 flowchart TB
@@ -1000,7 +998,7 @@ flowchart LR
   E -->|本文固定答案| F["@timestamp"]
   B --> G[要筛 Pod / 命名空间 / 关键字]
   G --> H[Discover 里用 KQL<br>或 过滤器 点选]
-  D --> I[在 Discover 展开文档<br>看 kubernetes.* 与 log]
+  D --> I[在 Discover 点开一条日志<br>重点看 kubernetes.*（Pod/命名空间）和 log（日志正文）]
   F --> I
   H --> I
 ```
