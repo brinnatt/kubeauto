@@ -1017,7 +1017,7 @@ Kibana v9.3.3 下常见分组名：**Analytics、Elasticsearch、Observability�
 **先记住两个省时间的操作（不必每次从根菜单点三级）**
 
 - **顶栏全局搜索框**：直接敲 **`Discover`**、**`Index management`**、**`Data views`** 等，可跳到具体页；`Ctrl`+`/`（Windows/Linux）或 `Cmd`+`/`（macOS）聚焦搜索框。
-- **你当前在的 Space**（见 **T9.2.9.7**）：换 Space 后，**同名字菜单里看到的已保存对象可能不同**，**不是数据丢了**。  
+- **你当前在的哪个 Space**（工作区，细节见 **T9.2.9.7**）：可以把 Space 想成**互不干扰的若干套 Kibana「抽屉」**——**数据视图、大盘、已保存的 Discover 会话**等都按 **Space 分开存**。你**从 Space A 切到 Space B**，**左侧还是 Discover**，但**打开/保存 过的那些对象列表可能变少或变多**，因为那是**另一套抽屉里的东西**，**不是 Elasticsearch 里日志没写进、也不是删库了**，只是**换了个工作区**。  
 
 **侧栏各分区在「本文：Fluent Bit → `k8s-*` 索引」下怎么用（一张总表）**
 
