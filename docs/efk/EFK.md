@@ -1074,9 +1074,9 @@ flowchart LR
 
 > 若**看不到**上表中的某一条：多半是 **License** 或**管理员关掉了功能**；**不影响**你按 **Discover + `k8s-*` + Index Management** 把本文 EFK 跑通。有分歧以 **v9.3.3 官方** [Kibana 文档](https://www.elastic.co/docs) 与**你们集群管理员**为准。
 
-**（插槽：本环境 Kibana 9.3.x 左栏完整展开截图，可圈出 Analytics / Elasticsearch / Management）**
+![logging-kibana-modules](./images/logging-kibana-modules.png)
 
-#### T9.2.9.1、先登录，再建「数据视图」
+#### T9.2.9.1、建数据视图
 
 1. 用 **T9.2.7** 拿到的密码登录，用户名写 **`elastic`**，或你们已经建好的**业务只读/平台账号**。**不要**让所有人都用超级账号；落地方式见 **T9.2.9.7**。  
 2. 进 **Stack Management**（9.x 里也可能显示为 **Management**，以你界面为准）→ **Data views**（以前叫 *index pattern* 的那套，**概念是同一个，叫法换了**），点 **Create data view**。建一条：  
@@ -1090,10 +1090,7 @@ flowchart LR
 
 > **和 ES\|QL 的关系**：在 **ES\|QL** 模式下，不少分析可以**不经过**你刚建的数据视图（官方说明见 [Data views 概述](https://www.elastic.co/docs/explore-analyze/find-and-organize/data-views)）。**本文主线**是「数据视图 + Discover 常规 KQL」——和大多数值班同事的习惯一致，先把这条路走顺再玩 ES\|QL。
 
-**（图：本环境「Create data view」中 Index pattern 填 k8s-*、时间字段选 @timestamp 的界面）**  
-*仓库示例图，若与你当前 9.3.x 布局不一致，以你环境为准，生产文档可自换本地截图：*
-
-![logging-kibana-data-view（示例，界面以你集群为准）](./images/logging-kibana-data-view.png)
+![logging-kibana-data-view](./images/logging-kibana-data-view.png)
 
 #### T9.2.9.2、Discover：生产上用得最多的屏
 
