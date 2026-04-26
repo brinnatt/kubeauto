@@ -987,7 +987,7 @@ flowchart TB
   DT --> ES
 ```
 
-**心地图**（和界面上的名字对齐，不然后面步骤会对不上号）：
+**导图**（和界面上的名字对齐，不然后面步骤会对不上号）：
 
 ```mermaid
 flowchart LR
@@ -1012,7 +1012,7 @@ flowchart LR
 
 Kibana v9.3.3 下常见分组名：**Analytics、Elasticsearch、Observability、Security、Management**；**具体文案、是否折叠、多一条少一条**会随**许可证、功能开关、Space 默认解决方案**变一点，以你环境为准。官方说明导航习惯见 [Find apps and objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/find-apps-and-objects)）。
 
-**企业生产里**：先把下面这张表和图刻在脑子里，**比死记按钮英文有用**——你会知道**容器日志进 `k8s-*` 这条线**，主要动 **Analytics + Elasticsearch（索引类）+ Management**；**别在没接数据时跟 Observability/Security 死磕，以为 EFK 没装好**。
+**企业生产**：先把下面这张表和图刻在脑子里，**比死记英文按钮有用**——你会知道**容器日志进 `k8s-*` 这条线**，主要动 **Analytics + Elasticsearch（索引类）+ Management**；**别在没接数据时跟 Observability/Security 死磕，以为 EFK 没装好**。
 
 **先记住两个省时间的操作（不必每次从根菜单点三级）**
 
