@@ -1056,8 +1056,8 @@ flowchart TB
   A2 --> A4
   A5 --> A2
   A6 --> A2
-  O1 -.->|不要强行当| A1
-  S1 -.->|和容器 stdout 进 k8s-*| A1
+  O1 -.->|别把这区当查本文 k8s 日志的主路 仍用 Discover| A1
+  S1 -.->|安全线不是本文 EFK 主路 查容器日志仍用 Discover| A1
 ```
 
 ```mermaid
