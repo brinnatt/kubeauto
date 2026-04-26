@@ -1021,22 +1021,22 @@ Kibana v9.3.3 下常见分组名：**Analytics、Elasticsearch、Observability�
 
 **侧栏各分区在「本文：Fluent Bit → `k8s-*` 索引」下怎么用（一张总表）**
 
-| 侧栏大分区 | 你列的典型入口 | 是干什么的 | 本文 EFK 要不要用 | 备注 |
-|------------|----------------|------------|------------------|------|
-| **Analytics** | **Discover** | 按时间看日志、写 **KQL**、展开单条 JSON | **要，天天用** | 本文**主界面**，细节见 **T9.2.9.2** |
-| **Analytics** | **Dashboard** | 把图、表、**Saved search** 拼成一页 | **要，常用** | 用 **T9.2.9.3** 的 **`k8s-*`** 数据视图出图（Lens 与 Dashboards） |
-| **Analytics** | **Maps** / **Map** 类 | 地理可视化 | 一般**不用** | 除非日志里有 **geo 字段**要做地理大屏 |
-| **Analytics** | **Visualize library** | 管已保存的 **Lens / 旧版可视化** | **偶尔** | 新图多数在 **Lens** 里建，**库**里做复用/改名/删 |
-| **Analytics** | **Machine Learning**（或 **ML** 菜单） | 无监督、异常、预测等 | **先别当必会** | 有**数据量、角色与许可**要求；和「先查全量日志」不是同一条路 |
-| **Elasticsearch** | **Home** / **Getting started** | 总览、上手引导、快捷入口 | **可点** | 快速进 **Add data** 等；**不替代**你自建 `k8s-*` 数据视图 |
-| **Elasticsearch** | **Index Management** | 看索引列表、分片、**ilm** 状态、打开 **Edit settings** 等 | **要，生产必会** | 与 **T9.2.9.6**（索引/ILM/快照等治理）**配套看**；**直接看到 `k8s-*`** 有没有 |
-| **Elasticsearch** | **Playground**、**Synonyms**、**Query rules** 等 | **搜索体验**（同义词、查询规则、**检索实验**等） | **和本文强检索日志关系不大** | 偏 **站内外搜索/语义检索**；**不是**查容器 stdout 的必经之路 |
-| **Elasticsearch** | **Agents**（在 **Elasticsearch** 分组下若出现） | 多与 **ES 本侧/推理/检索**相关能力挂钩 | **别和「Fleet 纳管」搞混** | 采集面纳管在 **Management → Integrations / Fleet**；**本文**采日志是 **Fluent Bit**，见 **T9.2.8** |
-| **Observability** | **Overview、Logs、Infrastructure、APM…**、**Alerts**、**SLOs**、**Cases** 等 | Elastic **可观测**解决方案：**指标、链路等需 Agent/预置数据流**时好用 | **不代替 Discover** | 你**只**按本文上 **EFK** 时，这里**可能空/不对准 `k8s-*`** 很正常；**查容器日志**仍以 **Discover** 为主 |
-| **Security** | **Dashboard、Rules、Alerts、Attack Discovery** 等 | **安全/SIEM** 工作面 | **不是本文主线** | 需要 **Security 数据、规则包** 等，先读 **T9.2.9.8** 防期望错位 |
-| **Management** | **Stack Management** | 用户/角色、**Data views**、**Spaces**、部分 **Rules** 入口、**Connectors** 等 | **要，平台用** | **T9.2.9.1** 建数据视图、**T9.2.9.7** 做权限/空间 都常落在这；菜单名**有时直接叫 Management** |
-| **Management** | **Dev Tools** | **Console** 调 ES、**Kibana `kbn:`** API 等 | **要，排障** | 见 **T9.2.9.5** |
-| **Management** | **Integrations**、**Fleet**、**Stack Monitoring**、**Cloud Connect**、**Streams** 等 | **接 Elastic Agent/Beat**、**监控本栈**、**云连接**、**可观测/日志流** 类产品能力 | **按需** | 本文不装 Agent 时：**Fleet/Integrations 不是完成 EFK 的前提**；**要盯 ES 健康**再上 **Stack Monitoring**，也见 **T9.2.9.8** |
+| 侧栏大分区 | 你列的典型入口 | 是干什么的 | 备注 |
+|------------|----------------|------------|------|
+| **Analytics** | **Discover** | 按时间看日志、写 **KQL**、展开单条 JSON | 本文**主界面**，细节见 **T9.2.9.2** |
+| **Analytics** | **Dashboard** | 把图、表、**Saved search** 拼成一页 | 用 **T9.2.9.3** 的 **`k8s-*`** 数据视图出图（Lens 与 Dashboards） |
+| **Analytics** | **Maps** / **Map** 类 | 地理可视化 | 除非日志里有 **geo 字段**要做地理大屏 |
+| **Analytics** | **Visualize library** | 管已保存的 **Lens / 旧版可视化** | 新图多数在 **Lens** 里建，**库**里做复用/改名/删 |
+| **Analytics** | **Machine Learning**（或 **ML** 菜单） | 无监督、异常、预测等 | 有**数据量、角色与许可**要求；和「先查全量日志」不是同一条路 |
+| **Elasticsearch** | **Home** / **Getting started** | 总览、上手引导、快捷入口 | 快速进 **Add data** 等；**不替代**你自建 `k8s-*` 数据视图 |
+| **Elasticsearch** | **Index Management** | 看索引列表、分片、**ilm** 状态、打开 **Edit settings** 等 | 与 **T9.2.9.6**（索引/ILM/快照等治理）**配套看**；**直接看到 `k8s-*`** 有没有 |
+| **Elasticsearch** | **Playground**、**Synonyms**、**Query rules** 等 | **搜索体验**（同义词、查询规则、**检索实验**等） | 偏 **站内外搜索/语义检索**；**不是**查容器 stdout 的必经之路 |
+| **Elasticsearch** | **Agents**（在 **Elasticsearch** 分组下若出现） | 多与 **ES 本侧/推理/检索**相关能力挂钩 | 采集面纳管在 **Management → Integrations / Fleet**；**本文**采日志是 **Fluent Bit**，见 **T9.2.8** |
+| **Observability** | **Overview、Logs、Infrastructure、APM…**、**Alerts**、**SLOs**、**Cases** 等 | Elastic **可观测**解决方案：**指标、链路等需 Agent/预置数据流**时好用 | 你**只**按本文上 **EFK** 时，这里**可能空/不对准 `k8s-*`** 很正常；**查容器日志**仍以 **Discover** 为主 |
+| **Security** | **Dashboard、Rules、Alerts、Attack Discovery** 等 | **安全/SIEM** 工作面 | 需要 **Security 数据、规则包** 等，先读 **T9.2.9.8** 防期望错位 |
+| **Management** | **Stack Management** | 用户/角色、**Data views**、**Spaces**、部分 **Rules** 入口、**Connectors** 等 | **T9.2.9.1** 建数据视图、**T9.2.9.7** 做权限/空间 都常落在这；菜单名**有时直接叫 Management** |
+| **Management** | **Dev Tools** | **Console** 调 ES、**Kibana `kbn:`** API 等 | 见 **T9.2.9.5** |
+| **Management** | **Integrations**、**Fleet**、**Stack Monitoring**、**Cloud Connect**、**Streams** 等 | **接 Elastic Agent/Beat**、**监控本栈**、**云连接**、**可观测/日志流** 类产品能力 | 本文不装 Agent 时：**Fleet/Integrations 不是完成 EFK 的前提**；**要盯 ES 健康**再上 **Stack Monitoring**，也见 **T9.2.9.8** |
 
 ```mermaid
 flowchart TB
