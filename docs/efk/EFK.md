@@ -1079,7 +1079,7 @@ flowchart LR
 #### T9.2.9.1、建数据视图
 
 1. 用 **T9.2.7** 拿到的密码登录，用户名写 **`elastic`**，或你们已经建好的**业务只读/平台账号**。**不要**让所有人都用超级账号；落地方式见 **T9.2.9.7**。  
-2. 进 **Stack Management**（9.x 里也可能显示为 **Management**，以你界面为准）→ **Data views**（以前叫 *index pattern* 的那套，**概念是同一个，叫法换了**），点 **Create data view**。建一条：  
+2. 进 **Stack Management**（v9.x 里也可能显示为 **Management**，以你界面为准）→ **Data views**（以前叫 *index pattern* 的那套，**概念是同一个，叫法换了**），点 **Create data view**。建一条：  
    - **Name**：自定，如 **`Kubernetes 容器日志`**。  
    - **Index pattern**（界面上**仍用英文这个名字**）：填 **`k8s-*`**，和 **T9.2.8** 的 **`Logstash_Prefix k8s`** 对牢，否则 Discover 会查不到。  
    - **Timestamp field**：选 **`@timestamp`**。不选的话，**全局时间轴、Dashboard 时间选择器**很多功能会缺一条腿。  
@@ -1092,7 +1092,7 @@ flowchart LR
 
 ![logging-kibana-data-view](./images/logging-kibana-data-view.png)
 
-#### T9.2.9.2、Discover：生产上用得最多的屏
+#### T9.2.9.2、Discover
 
 **从菜单怎么进**：侧栏 **Analytics → Discover**（见 **T9.2.9.0**）；**第一次**进若提示选数据视图，**先建/选** **T9.2.9.1** 里配好的 **`k8s-*`**。
 
@@ -1120,7 +1120,7 @@ flowchart TB
   S1 --> S2
 ```
 
-**Discover 主区域怎么拼起来的（9.3.3 源码，英文为默认 `defaultMessage`）**  
+**Discover 主区域怎么拼起来的（v9.3.3 源码，英文为默认 `defaultMessage`）**  
 
 - **主容器**：[discover_topnav.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/discover_topnav.tsx) 里渲染 **`AggregateQueryTopNavMenu`**，把**查询、过滤器行、时间选择器**和 **Data view 选择**绑在同一套 `state` 上；**是否显示时间选择器**由 `showDatePicker` 算出来（**ES\|QL 模式始终显示**；**经典 KQL 模式**下非 rollup 且数据视图为**按时间**时有时间轴）。  
 - **Data view 切换**：上同一文件里传给 Picker 的 `trigger` 为 **`data-test-subj="discover-dataView-switch-link"`**；**点了换的就是当前会话绑定的 data view**——**必须**仍是 **T9.2.9.1** 的 **`k8s-*`**，否则下面列表对不上。  
