@@ -947,7 +947,7 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 - **Kibana 不存业务日志**；你选的 **数据视图**只是告诉 Kibana「查哪一批索引、默认用哪个时间字段」——不建对数据视图，**Discover、Lens 大多功能没法用**。  
 - **KQL 过滤、Dashboard、告警规则**里写的字段名，必须和 **Discover 左侧字段列表**里的一致；**T9.2.8** 里 **`Replace_Dots On`** 会改掉带点字段的路径，**别照抄老文档里带点号的示例**。
 
-> **本文本节校验日期：2026-04-24**（Kibana/Console/Data views 等表述对照 [Kibana 文档](https://www.elastic.co/docs) 与 [Kibana 发行说明](https://www.elastic.co/docs/release-notes/kibana)。**Stack 版本**与 **T9.2.2** 表中的 **9.3.3** 一致，升级时先改 CR 与镜像再回头核对本节步骤。）
+> **本文本节校验日期：2026-04-27**（Kibana/Console/Data views 等表述对照 [Kibana 文档](https://www.elastic.co/docs) 与 [Kibana 发行说明](https://www.elastic.co/docs/release-notes/kibana)。**Stack 版本**与 **T9.2.2** 表中的 **9.3.3** 一致，升级时先改 CR 与镜像再回头核对本节步骤。）
 
 **官方文档**：
 
@@ -1083,7 +1083,7 @@ flowchart LR
    - **Name**：自定，如 **`Kubernetes 容器日志`**。  
    - **Index pattern**（界面上**仍用英文这个名字**）：填 **`k8s-*`**，和 **T9.2.8** 的 **`Logstash_Prefix k8s`** 对牢，否则 Discover 会查不到。  
    - **Timestamp field**：选 **`@timestamp`**。不选的话，**全局时间轴、Dashboard 时间选择器**很多功能会缺一条腿。  
-3. 若下拉里暂时看不到 **`k8s-*`**，先到 **Stack Management → Index Management** 看是否已有 **`k8s-2026.04.24`** 这种索引；**没有**就回去查 **T9.2.8** Fluent Bit 与 ES 是否 Ready。**有索引但列表不刷新**时，等几十秒或重进页面；仍不行再对一下当前账号是否有 **`view_index_metadata`** 等读索引元数据的权限。  
+3. 若下拉里暂时看不到 **`k8s-*`**，先到 **Stack Management → Index Management** 看是否已有 **`k8s-2026.04.27`** 这种按日命名索引；**没有**就回去查 **T9.2.8** Fluent Bit 与 ES 是否 Ready。**有索引但列表不刷新**时，等几十秒或重进页面；仍不行再对一下当前账号是否有 **`view_index_metadata`** 等读索引元数据的权限。  
 4. 只想临时试一把、不打算保存成团队可见的对象时，可以在 **Discover / Lens** 里创建数据视图时选 **Use without saving**（**临时数据视图**），关页面或切应用会丢，适合个人排障。正式环境仍建议**保存**并交给权限管理。  
 
 官方：[Data views](https://www.elastic.co/docs/explore-analyze/find-and-organize/data-views) · [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)
@@ -1094,84 +1094,115 @@ flowchart LR
 
 #### T9.2.9.2、Discover
 
-**从菜单怎么进**：侧栏 **Analytics → Discover**（见 **T9.2.9.0**）；**第一次**进若提示选数据视图，**先建/选** **T9.2.9.1** 里配好的 **`k8s-*`**。
+本节与 **T9.2.2** 的 **Kibana/Elasticsearch 9.3.3**（**Elastic Stack** 当前**推荐**稳定小版本，可对照 [Kibana 发行说明](https://www.elastic.co/docs/release-notes/kibana)）、**T9.2.9.1** 的 **数据视图 `k8s-*`** 及**时间字段 `@timestamp`** 保持一致。产品行为以 [Discover](https://www.elastic.co/docs/explore-analyze/discover) 与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) 等官方页面为准，**本小节在 2026-04-27 前**已通读并引用上述链路的当前稳定版内容；KQL 语法以 [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) 为权威。侧栏分组与菜单**英文/中文**以实际界面为准，与 **T9.2.9.0** 一致。
 
-**在干什么（一句话）**：按时间翻**集群里所有已采集的容器日志**；比 `kubectl logs` 多三个能力——**可检索、可跨节点合并看、可保存/分享同一份查询**。
+**1. 作用**
 
-**界面怎么分块**（心里有这样一张图，调列宽、开文档详情时就不慌）：
+**Discover** 是 Kibana 中面向 Elasticsearch 数据的**主查询与浏览界面**：按时间范围检索文档，用 KQL 或 Lucene 过滤，查看字段与单条结构，并可将当前视图保存为会话供复用或接入大盘。相对 `kubectl logs`，在集群级日志场景下多三类能力：**全文与字段检索**、**跨节点与多副本统一视图**、**保存/共享同一条检索条件**（仍须配合集群级采集与存储，见 **T9.1**）。
+
+**2. 进入与数据前提**
+
+- **菜单**：**Analytics → Discover**（**T9.2.9.0**）。首次进入若要求选择数据视图，须选用 **T9.2.9.1** 中已建好的 **`k8s-*`**。  
+- **无数据**：在 **Index Management** 中看不到**当日或近期**的 **`k8s-` + 日期** 形索引时，应回到 **T9.2.8** 与 **ES** 连通性排查，勿仅在 Kibana 中反复切换数据视图。
+
+**3. 值班侧典型操作顺序**
+
+下列顺序与官方「选数据视图—时间—查询—看文档」一致。图中为简写并带编号，便于在窄屏下阅读；详细说明见上文与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)。
+
+```mermaid
+%%{init: { "flowchart": { "useMaxWidth": true, "nodeSpacing": 50, "rankSpacing": 48 }, "themeVariables": { "fontSize": "16px" } } }%%
+flowchart TB
+  A["1 选数据视图 k8s-*"] --> B["2 收窄时间窗"]
+  B --> C["3 搜索 KQL 或切 Lucene"]
+  C --> D["4 侧栏 加列/过滤器"]
+  D --> E["5 直方图点选 再缩时"]
+  E --> F["6 展开行 看 JSON"]
+  F --> G{"要固化为\n已存会话?"}
+  G -->|是| H["点 Save 保存"]
+  G -->|否| I["继续改条件"]
+  H --> J["T9.2.9.3 接 Dashboard 等"]
+```
+
+**4. 界面分区与职责**
+
+Kibana 9.3.x 的 Discover 为**通用数据探索**；未处于 Observability/Security 等**专项方案上下文**时，即为默认布局（与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) 中「Load data into Discover」一致）。可按下述区块理解各区域责任。
 
 ```mermaid
 flowchart TB
-  subgraph top[顶栏与左侧]
-    T1[时间范围 + 相对时间 / 自动刷新]
-    T2[数据视图选择器 k8s-*]
-    T3[搜索栏 默认 KQL 可改 Lucene]
+  subgraph top[顶区]
+    T1[时间范围 相对时间 自动刷新]
+    T2[数据视图 选择器]
+    T3[查询语言 KQL 默认 可改 Lucene]
   end
-  subgraph mid[中间主区]
-    M1[时间直方图 可点某段缩窄时间]
-    M2[文档表 可配置列 展开 JSON]
+  subgraph main[主区]
+    M1[时间直方图 可点选区间缩小查询窗]
+    M2[结果表 时间列 摘要 或自选字段列]
   end
-  subgraph side[右侧/左侧 依布局]
-    S1[Available fields 可筛选字段名]
-    S2[单条 Document 详细 JSON 结构]
+  subgraph flanks[侧栏 具体左右依主题与布局]
+    F1[Available fields 可搜索 字段名]
+    F2[单条 document 展开 多文档对比 见 document explorer]
   end
-  top --> mid
-  T3 --> M2
-  S1 --> S2
+  top --> main
+  F1 --> M2
+  M2 --> F2
 ```
 
-**Discover 主区域怎么拼起来的（v9.3.3 源码，英文为默认 `defaultMessage`）**  
+- **直方图与时间**：直方图依赖数据视图在 **T9.2.9.1** 中绑定的**默认时间字段**；**Time filter** 等说明见 [Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering)。生产上**先缩时间、再加条件**，可显著降低对 Elasticsearch 的查询压力。  
+- **表与列**：在侧栏为字段**加号**入表、拖拽排序；布局与多文档对比等见 [Document explorer](https://www.elastic.co/docs/explore-analyze/discover/document-explorer)。
 
-- **主容器**：[discover_topnav.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/discover_topnav.tsx) 里渲染 **`AggregateQueryTopNavMenu`**，把**查询、过滤器行、时间选择器**和 **Data view 选择**绑在同一套 `state` 上；**是否显示时间选择器**由 `showDatePicker` 算出来（**ES\|QL 模式始终显示**；**经典 KQL 模式**下非 rollup 且数据视图为**按时间**时有时间轴）。  
-- **Data view 切换**：上同一文件里传给 Picker 的 `trigger` 为 **`data-test-subj="discover-dataView-switch-link"`**；**点了换的就是当前会话绑定的 data view**——**必须**仍是 **T9.2.9.1** 的 **`k8s-*`**，否则下面列表对不上。  
-- **ES\|QL 模式切换**：[use_top_nav_links.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/use_top_nav_links.tsx) 中写入默认文案 **Try ES\|QL** 与 **Switch to classic**（`testId`：**`select-text-based-language-btn`** / **`switch-to-dataviews`**；Hover 用 tooltip 写清「切到 **KQL/Lucene**」等）。**本文主路径用经典模式 + KQL 即可**；**Try ES\|QL** 走另一条查询管线和 ES\|QL 列模型，**别和 T9.2.8 里按 KQL/JSON 字段表对号入座搞混。**  
-- **顶栏最右侧一列按钮**：同一文件在具备权限时**追加** **Save**；默认文案为 **Save**，说明串为 **Save session**，`data-test-subj`：**`discoverSaveButton`**。其余 **New session**、**Open session** 等见下表（全部可在 `app_menu_actions/get_*.tsx` 中核对 i18n id）。  
-- **浏览器自动化 / 和值班对屏**：让同事在**开发者工具**里用 **`data-test-subj` 为关键字搜 DOM**，和表里一致即对上源码。  
+**5. 查询与保存（企业常用项）**
 
-| 源码文件（v9.3.3） | 界面默认英文（`defaultMessage`） | `data-test-subj` / 行为 | 生产上怎么用（大白话） |
-|---------------------|----------------------------------|------------------------|------------------------|
-| `get_new_search.tsx` | **New session** | `discoverNewButton`；可带 `href` 开新页签 | 新开一条 Discover 会话，**不覆盖**你当前在看的条件（除非点完没保存、又确认丢弃）。 |
-| `get_open_search.tsx` | **Open session** | `discoverOpenButton`；弹出**已存会话**列表 | 打开以前**保存**过的 Discover 会话/查询组合。 |
-| 见上 | **Save** + 描述 **Save session** | `discoverSaveButton` | 把**当前**数据视图、查询、列、时间等**固化为会话**，方便值班复用、给 **T9.2.9.3** 大盘用。 |
-| `get_inspect.tsx` | **Inspect** + 描述 **Open Inspector for search** | `openInspectorButton` | 打开 Kibana **Inspector** 看**真正发往 ES 的请求/响应**；排慢查询、和 **T9.2.9.5** 对照。 |
-| `get_alerts.tsx` | 顶级 **Alerts**；子项 **Create search threshold rule**、**Manage rules and connectors** | `discoverAlertsButton` · `discoverCreateAlertButton` · `discoverManageAlertsButton`；后者链到 `management/insightsAndAlerting/triggersActions/rules` | **从当前查询起盘**的日志类阈值/规则入口；**T9.2.9.4** 里「统一规则/连接器」的别径，**和 Security/Obs 里**同名菜单**不是同一数据面**。无时间字段时 **Create** 会灰掉，源码提示 **Data view does not have a time field**（`discover.alerts.missedTimeFieldToolTip`）。 |
-| `get_background_search_flyout.tsx` | **Background searches** | `openBackgroundSearchFlyoutButton` | 仅当**后台搜索会话**能力与权限打开时出现；**不是** EFK 必会项。 |
-| 见上 **Share** | 由 [get_share.tsx](https://github.com/elastic/kibana/blob/v9.3.3/src/platform/plugins/shared/discover/public/application/main/components/top_nav/app_menu_actions/get_share.tsx) 组装，文案随分享目标变化 | 见该文件与 **`share` 服务**；无单一固定 `data-test-subj` 在入口 | 把当前视图的**可分享形态**发给别人；**注意**权限与**脱敏**。 |
-| 统一搜索条 + Filter 行 + 时间选择 + **Refresh 间隔** | 见 **unified_search / navigation** 插件在 `discover_topnav` 的装配 | 过滤器区常见的 **`addFilter`** 等以实际 DOM 为准 | **查询栏**、**点选式 Filter** 与**时间**叠加后一并发给 ES；**窄时间窗**能显著降载。本表不逐字抄「Add filter」英文，避免与 EUI 小版本**微调**冲突。 |
-| 主表区、字段列表、文档行展开 | 见 `discover` 下 **document / field list** 组件 | 以页面为准 | 列显示、**Surround** 等**仍在 Discover 子组件**中实现；排障**优先**用上表与 Discover 主文档。 |
+| 能力 | 生产上建议用法 | 官方 |
+|------|----------------|------|
+| 时间窗与自动刷新 | 对齐全次故障或发版窗口；**避免长时间窗 + 高频自动刷新** 与业务高峰叠加 | [Discover](https://www.elastic.co/docs/explore-analyze/discover)、[Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering) |
+| KQL 与 Lucene | **默认 KQL** 做字段与布尔组合；**Lucene** 在搜索栏侧切换。KQL 仅**过滤**文档，不负责聚合与排序，勿与 [Query DSL](https://www.elastic.co/docs/reference/query-languages/query-dsl) 在心智上混用 | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql)、[Lucene](https://www.elastic.co/docs/explore-analyze/query-filter/languages/lucene-query-syntax) |
+| **ES\|QL** | 不依赖数据视图的**另一种**查数方式，适合表格化、与 **ES\|QL** 图表化路径配合；**本文 EFK 主线**仍以「**数据视图 + KQL**」与值班习惯对齐，与 **T9.2.9.1** 脚注一致 | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) |
+| 过滤器与搜索栏 | 侧栏对字段**加/减**生成过滤器，与搜索栏 KQL 组合使用 | [Get started 中 Search and filter 路径](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) |
+| 保存与复用 | 顶栏保存当前 **Discover 会话**（**9.3.3** 等界面中常见 **Session** 等文案，以实际为准），可再加入 **Dashboard**；与保存对象、复用方式的关系见 [Save a search for reuse](https://www.elastic.co/docs/explore-analyze/discover/save-open-search) | 同上及 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) |
+| 字段与模式 | **Field statistics**、**Pattern analysis** 用于看高频值与日志模式，排刷屏与异常段 | [Run pattern analysis in Discover](https://www.elastic.co/docs/explore-analyze/discover/run-pattern-analysis-discover) |
+| 长时查询 | 大数据量时可用后台查询类能力，避免浏览器长时间无响应（是否开启受部署与权限约束） | [Run queries in the background](https://www.elastic.co/docs/explore-analyze/discover/background-search) |
 
-| 能力 | 企业生产里怎么用 | 官方 |
-|------|------------------|------|
-| 时间范围、自动刷新 | 对齐故障发生活动窗口；**大窗口 = 大查询量**，和 ES 资源抢算力，值班先缩小到分钟级 | [Discover](https://www.elastic.co/docs/explore-analyze/discover) |
-| **KQL** / Lucene / **ES\|QL** | 默认用 **KQL**（可输入 `field: value`、**`and` / `or` / `not`**）；**Lucene** 老语法在搜索栏边切换；**ES\|QL** 适合聚合与表格化预览，见 [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
-| 列、文档详情、对比 | 对字段名、**原始 JSON**、**两条日志逐字段比**，排「到底哪一版配置上线」时很有用 | [Document explorer](https://www.elastic.co/docs/explore-analyze/discover/document-explorer) |
-| 过滤器、**保存/打开会话** | 点字段上的 **+/-** 加**过滤器**；用顶栏 **Save**（源码文案 **Save session**）**固化当前会话**给同值班组 | 产品帮助仍多写 [Save a search / open a search](https://www.elastic.co/docs/explore-analyze/discover/save-open-search)（**9.3.3 界面**已全面用 *session* 叫法，和保存对象实现细节不必在本节抠） |
-| 小图、**Pattern analysis** | 看哪个 Pod 在刷屏、字段值分布、异常段 | [Pattern analysis](https://www.elastic.co/docs/explore-analyze/discover/run-pattern-analysis-discover) |
+上述「时间 + 搜索栏 + 过滤器」在 Kibana 多数应用中与查询结果取交集；具体组合方式见 [Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering)。
 
-**本文 Fluent Bit 进 ES 后，你在 Discover 里会反复碰到的字段（含义 + 使用说明）**  
+```mermaid
+flowchart TB
+  TF[顶栏 时间选择器] --> I[与搜索与过滤器 求交集]
+  SB[搜索栏 KQL 或 Lucene] --> I
+  PF[侧栏 点字段 生成的 结构化过滤器] --> I
+  I --> OUT[表与直方图 仅展示 命中 文档子集]
+```
 
-下表是 **T9.2.8** 的 **`kubernetes` 过滤器** + **Merge_Log** 组合下**最常见**的字段。若你们改过 Parser、或业务日志是嵌套 JSON，**多出来的字段以左侧列表为准**。**`Replace_Dots On` 为真时**，原来带点号的 label 路径在 ES 里会落成**下划线**一类名字，**不要死记带点写法**。
+**6. 与本文 Fluent Bit 字段的对应关系**
 
-| 字段 / 前缀 | 是什么意思 | 生产上怎么用 |
-|-------------|------------|--------------|
-| `@timestamp` | 本条日志在 ES 里的时间，用来画时间轴 | 和 **Kibana 时间选择器**一致；**优先用它**对故障点 |
-| `log` 或解出来的正文 | 容器**原始一行**；若应用打 JSON 且被合并，可能多出一层**业务字段** | 搜关键字、堆栈、错误码，**KQL 示例**：`log: *NullPointerException*` |
-| `stream` | 来自 **stdout** 还是 **stderr** | 只看标准错误里堆栈/报错：`stream: "stderr"` |
-| `kubernetes.pod_name` | Pod 名 | 定界到某个副本：`kubernetes.pod_name: "myapp-7d4f*"` |
-| `kubernetes.namespace_name` | 命名空间 | 按环境/租户切：`kubernetes.namespace_name: "prod"` |
-| `kubernetes.container_name` | 容器名，同一 Pod 多容器时区分**是谁打的** | 和 `pod_name` 联用，定位 sidecar 噪声 |
-| `kubernetes.container_image` / `kubernetes.host` | 镜像、落在**哪台 Node** | 发版/镜像版本对比；怀疑某台机器时筛 host |
-| `kubernetes.labels.*`（**Replace_Dots 后**可能是 flatten 的 **`kubernetes_labels_...`** 等） | **Workload 的 label**（`app`、**`app.kubernetes.io/*`** 等经替换后**名字会变长**） | 和 **Prometheus/Deployment** 的 label 对账；**字段名以 Discover 为准** |
+下表来自 **T9.2.8** 中 **Kubernetes 过滤器**与 **Merge_Log** 等常见配置。**若** Parser 或 **Merge** 与本文不一致，**以当前索引 mapping 与 Discover 左侧「可用字段」为准**。开启 **`Replace_Dots On`** 时，**带点的 label 路径在文档中会以替换后的字段名**出现，**不要**沿用带点号的旧文章示例。
 
-**KQL 示例（把下面复制进搜索栏试，按你们命名空间、Pod 名改字即可）：**
+| 字段 / 前缀 | 含义 | 生产上用法示例 |
+|-------------|------|----------------|
+| `@timestamp` | 文档时间，驱动时间轴 | 与顶栏时间选择器一致，排障**优先**对齐本字段 |
+| `log` 或解出的正文行 | 容器**一行**原始输出；若应用为 JSON 行且被合并，可多出**业务子字段** | 关键字、堆栈、错误码，例如：`log: *NullPointerException*` |
+| `stream` | **stdout** 或 **stderr** | 仅看标准错误，例如：`stream: "stderr"` |
+| `kubernetes.pod_name` | Pod 名 | 定界副本，例如：`kubernetes.pod_name: "myapp-7d4f*"` |
+| `kubernetes.namespace_name` | 命名空间 | 分环境/租户，例如：`kubernetes.namespace_name: "prod"` |
+| `kubernetes.container_name` | 容器名 | 同 Pod 多容器时与 `pod_name` 联用 |
+| `kubernetes.container_image`、`kubernetes.host` | 镜像、**所在节点** | 发版对比、怀疑单机问题时筛选 |
+| `kubernetes.labels` 经 Replace_Dots 后可能为 **`kubernetes_labels_...`** 等 | Workload 标签的落库形态因映射而异 | 与 **Deployment/Service** 对 label 时**以 Discover 展示名为准**；**T9.2.9.3、T9.2.9.4** 中引用字段须与此一致 |
+
+**7. 示例 KQL（请按实际命名空间与 Pod 名替换）**
 
 ```text
 kubernetes.namespace_name: "default" and kubernetes.pod_name: "counter*" and log: *error*
 ```
 
-**（图：选数据视图 k8s-*、搜索栏用 KQL、单条展开显示 kubernetes 与 log）**  
-*建议你在自己的 9.3.x 上截一张，替换为 `./images/...`；以下为占位。*
-**（插槽：Discover 选 k8s-*、KQL 过滤、展开单条日志）**
+**8. 与全局验收的对应关系（避免“界面会点、环境对不上”）**
+
+下列与 **T9.2.9.9** 的清单一一对应，在 Discover 中即可逐项自证，不必另写脚本：数据视图为 **`k8s-*`** 且能命中**新产生**的日志、字段名与 **T9.2.8**（含 **`Replace_Dots`**）一致。另请记住：**在 Discover 中缩小显示范围不会减少已写入索引的数据量**；在采集侧**减量**、用 **ILM** 等控容量，见 **T9.2.9.9** 与 **T9.2.8**。
+
+**9. 插图位（生产后补图）**
+
+**（插槽：在运行 **Kibana 9.3.3** 的环境中截取 Discover 全页，须可见数据视图 `k8s-*`、时间选择、搜索栏与至少一条已展开的文档（建议展开 `kubernetes` 与 `log` 等字段，方便对照上文字段表）。将成图存为 `./images/logging-kibana-discover-k8s.png`，并在下方取消注释。若需与官方界面对比，可对照 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) 中的版式。）**
+
+<!-- 成图后：删除本行“注释说明”，取消下一行 img 的注释。路径须与上段一致。 -->
+<!-- ![Kibana Discover：k8s 容器日志（本环境）](./images/logging-kibana-discover-k8s.png) -->
 
 #### T9.2.9.3、Lens 与 Dashboards：值班大屏与复盘
 
