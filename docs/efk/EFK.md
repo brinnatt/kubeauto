@@ -944,7 +944,7 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 前面 **Fluent Bit** 已经把容器日志写进 **Elasticsearch**（本文示例索引前缀 **`k8s-`**，与 **T9.2.8** 里 **`Logstash_Prefix k8s`**、**`Logstash_Format On`** 一致）。**生产里真正干活的界面**，长期就是 **Kibana**：**值班的**靠它**查问题翻日志**；**业务或开发**用大盘**盯发版、看流量和错误趋势**；**平台组**管**索引、备份、谁有权限**；**需要时**再上**日志告警**。第一次接触 EFK 的人容易在菜单里迷路，或 Discover 里看到一堆字段名不敢下手——**先把下面三句话记住**，后面就顺了：
 
 - **数据在 Elasticsearch 的索引里**（本文是**按天滚动的** **`k8s-YYYY.MM.DD`**，逻辑上你用一个 **`k8s-*`** 就全扫到）。  
-- **Kibana 不存业务日志**；你选的 **数据视图**只是告诉 Kibana「查哪一批索引、默认用哪个时间字段」——不建对数据视图，**Discover、Lens 大多功能没法用**。  
+- **Kibana 不存业务日志**；你选的 **数据视图**只是告诉 Kibana「查哪一批索引、默认用哪个时间字段」——不建对数据视图，**Discover** 和后面 **Lens 里做的图**都对不上（Lens 从哪进见 **T9.2.9.3**，侧栏通常**没有**单独一项叫 Lens）。  
 - **KQL 过滤、Dashboard、告警规则**里写的字段名，必须和 **Discover 左侧字段列表**里的一致；**T9.2.8** 里 **`Replace_Dots On`** 会改掉带点字段的路径，**别照抄老文档里带点号的示例**。
 
 > **本文本节校验日期：2026-04-27**（Kibana/Console/Data views 等表述对照 [Kibana 文档](https://www.elastic.co/docs) 与 [Kibana 发行说明](https://www.elastic.co/docs/release-notes/kibana)。**Stack 版本**与 **T9.2.2** 表中的 **9.3.3** 一致，升级时先改 CR 与镜像再回头核对本节步骤。）
@@ -953,7 +953,7 @@ ES 返回 **400**，日志里带 **`failed to parse field [kubernetes.labels.app
 
 | 模块 | 覆盖功能 | 什么时候看 | 官方链接 |
 |------|----------|------------|----------|
-| 业务操作主线 | Discover、Lens、Dashboard、基础分析 | 第一次接触 Kibana，先把查日志和做大盘跑通 | [Explore and analyze](https://www.elastic.co/docs/explore-analyze) |
+| 业务操作主线 | Discover、Dashboard、可视化（Lens 为默认编辑器）、基础分析 | 第一次接触 Kibana，先把查日志和做大盘跑通 | [Explore and analyze](https://www.elastic.co/docs/explore-analyze) |
 | 查询语言（KQL） | 日志过滤条件、字段查询、范围查询 | 日常值班查问题，默认先用 KQL | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql) |
 | 平台治理模块 | 用户角色、Space、部署升级、连接治理 | 上生产前做权限、分权、变更与升级评审 | [Deploy and manage](https://www.elastic.co/docs/deploy-manage) |
 | 数据治理模块 | 索引、映射、摄入、ILM、快照 | 控成本、保留策略、合规留存、灾备恢复 | [Manage data](https://www.elastic.co/docs/manage-data) |
@@ -1024,9 +1024,9 @@ Kibana v9.3.3 下常见分组名：**Analytics、Elasticsearch、Observability�
 | 侧栏大分区 | 你列的典型入口 | 是干什么的 | 备注 |
 |------------|----------------|------------|------|
 | **Analytics** | **Discover** | 按时间看日志、写 **KQL**、展开单条 JSON | 本文**主界面**，细节见 **T9.2.9.2** |
-| **Analytics** | **Dashboard** | 把图、表、**Saved search** 拼成一页 | 用 **T9.2.9.3** 的 **`k8s-*`** 数据视图出图（Lens 与 Dashboards） |
+| **Analytics** | **Dashboard** | 把图、表、**Saved search** 拼成一页 | 新建面板时**默认进 Lens 编辑器**（见 **T9.2.9.3**）；数据视图仍用 **`k8s-*`** |
 | **Analytics** | **Maps** / **Map** 类 | 地理可视化 | 除非日志里有 **geo 字段**要做地理大屏 |
-| **Analytics** | **Visualize library** | 管已保存的 **Lens / 旧版可视化** | 新图多数在 **Lens** 里建，**库**里做复用/改名/删 |
+| **Analytics** | **Visualize library** | 浏览、新建、保存 **Lens** 与旧版可视化到「库」里 | **新建可视化**同样默认 **Lens**；适合单独建图再挂到多个 Dashboard（见 **T9.2.9.3**） |
 | **Analytics** | **Machine Learning**（或 **ML** 菜单） | 无监督、异常、预测等 | 有**数据量、角色与许可**要求；和「先查全量日志」不是同一条路 |
 | **Elasticsearch** | **Home** / **Getting started** | 总览、上手引导、快捷入口 | 快速进 **Add data** 等；**不替代**你自建 `k8s-*` 数据视图 |
 | **Elasticsearch** | **Index Management** | 看索引列表、分片、**ilm** 状态、打开 **Edit settings** 等 | 与 **T9.2.9.6**（索引/ILM/快照等治理）**配套看**；**直接看到 `k8s-*`** 有没有 |
@@ -1043,7 +1043,7 @@ flowchart TB
   subgraph EFK[本文 EFK 容器日志 主线]
     A1[侧栏进 Analytics - Discover]
     A2[同一数据视图 k8s-*]
-    A3[必要时 Analytics - Dashboard / Lens]
+    A3[必要时 Dashboard 或 Visualize library<br/>打开 Lens 编辑器]
     A4[Management - Dev Tools 排障]
     A5[Elasticsearch 分组 - Index Management]
     A6[Stack Management 数据视图 / 用户与角色]
@@ -1064,7 +1064,7 @@ flowchart TB
 flowchart LR
   Q[我今天要干什么]
   Q -->|翻 Pod 日志 关键字| D[Analytics - Discover]
-  Q -->|看大盘 出报表| P[Dashboard + Lens]
+  Q -->|看大盘 出报表| P[Dashboard / Visualize library<br/>均可进 Lens]
   Q -->|索引是不是炸了 要删| I[Elasticsearch - Index Management]
   Q -->|curl 式查 ES/试 DSL| T[Management - Dev Tools]
   Q -->|建只读同事 分 Space| M[Stack Management 用户/角色/Spaces]
@@ -1084,7 +1084,7 @@ flowchart LR
    - **Index pattern**（界面上**仍用英文这个名字**）：填 **`k8s-*`**，和 **T9.2.8** 的 **`Logstash_Prefix k8s`** 对牢，否则 Discover 会查不到。  
    - **Timestamp field**：选 **`@timestamp`**。不选的话，**全局时间轴、Dashboard 时间选择器**很多功能会缺一条腿。  
 3. 若下拉里暂时看不到 **`k8s-*`**，先到 **Stack Management → Index Management** 看是否已有 **`k8s-2026.04.27`** 这种按日命名索引；**没有**就回去查 **T9.2.8** Fluent Bit 与 ES 是否 Ready。**有索引但列表不刷新**时，等几十秒或重进页面；仍不行再对一下当前账号是否有 **`view_index_metadata`** 等读索引元数据的权限。  
-4. 只想临时试一把、不打算保存成团队可见的对象时，可以在 **Discover / Lens** 里创建数据视图时选 **Use without saving**（**临时数据视图**），关页面或切应用会丢，适合个人排障。正式环境仍建议**保存**并交给权限管理。  
+4. 只想临时试一把、不打算保存成团队可见的对象时，可以在 **Discover** 或 **Visualize library（Lens）** 里创建数据视图时选 **Use without saving**（**临时数据视图**），关页面或切应用会丢，适合个人排障。正式环境仍建议**保存**并交给权限管理。  
 
 官方：[Data views](https://www.elastic.co/docs/explore-analyze/find-and-organize/data-views) · [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)
 
@@ -1263,35 +1263,54 @@ kubernetes.namespace_name: "default" and kubernetes.pod_name: "counter*" and log
 
 下列与 **T9.2.9.9** 的清单一一对应，在 Discover 中即可逐项自证，不必另写脚本：数据视图为 **`k8s-*`** 且能命中**新产生**的日志、字段名与 **T9.2.8**（含 **`Replace_Dots`**）一致。另请记住：**在 Discover 中缩小显示范围不会减少已写入索引的数据量**；在采集侧**减量**、用 **ILM** 等控容量，见 **T9.2.9.9** 与 **T9.2.8**。
 
-**9. 插图位（生产后补图）**
+#### T9.2.9.3、可视化（Lens）与 Dashboard
 
-**（插槽：在 **Kibana 9.3.3** 下截 **Discover** 全页，建议能同时看到：**数据视图 `k8s-*`**、**时间条与直方图**（若已选 **Break down** 可一并入镜）、**侧栏字段分组**（**Popular / Available / Empty / Meta** 中至少几类可见）、**Documents** 表与 **`@timestamp`、Summary** 等列。另可各补一张 **Patterns** 与 **Field statistics** 标签的截图，存为 `./images/logging-kibana-discover-patterns.png`、`./images/logging-kibana-discover-field-stats.png`（无则只保留全页一图即可）。全页成图主文件：`./images/logging-kibana-discover-k8s.png`，成图后取消下节注释。版式见 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)。）**
+**先说清楚：Analytics 里常常看不到一项就叫「Lens」**  
 
-<!-- 成图后：删除本行“注释说明”，取消下一行 img 的注释。路径须与上段一致。 -->
-<!-- ![Kibana Discover：k8s 容器日志（本环境）](./images/logging-kibana-discover-k8s.png) -->
+和官方一致（**Kibana 9.3.3**，见 **T9.2.2**）：左侧常见的是 **Discover、Dashboard、Maps、Machine Learning、Visualize library** 等。**Lens** 是 **Kibana 自带的拖拽式可视化编辑器名称**，多数场景下从 **Dashboard** 或 **Visualize library** 进去新建「可视化」时就会打开它，而不是单独占一个一级菜单。[Create a dashboard](https://www.elastic.co/docs/explore-analyze/dashboards/create-dashboard) 写明：在大盘里 **Add new visualizations** 时，**Lens 是默认编辑器**；从 **Visualize library** 新建也同样落在 Lens，详见 [Lens](https://www.elastic.co/docs/explore-analyze/visualize/lens)、[Visualize Library](https://www.elastic.co/docs/explore-analyze/visualize/visualize-library)。菜单找不到时，用顶栏 **全局搜索** 搜 **`Lens`**、**`Dashboard`**、**`Visualize`**（[Find apps and objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/find-apps-and-objects)）。
 
-#### T9.2.9.3、Lens 与 Dashboards：值班大屏与复盘
+**两条正式路径（任选其一，都会进 Lens）**
 
-**从菜单怎么进**：侧栏 **Analytics → Dashboard** 或 **Analytics 里的 Lens**；老对象也可能在 **Visualize library** 里维护（**T9.2.9.0** 表），**不冲突**，只是**新建**更推荐走 **Lens**。
+1. **Analytics → Dashboard**：**Create dashboard**（或打开已有大盘点 **Edit**）→ **Add new visualization** / **Add panel**（文案以你界面为准）→ 进入 **Lens**。从大盘里进的，做完常用 **Save and return** 留在当前大盘；也可 **Save to library** 存进可视化库以后多处复用（见 Lens 文档「Create visualizations」里两种保存方式的说明）。  
+2. **Analytics → Visualize library**：**Create visualization**（或等价入口）→ 进入 **Lens**，保存时可写入库、再挂到 Dashboard。
 
-- **Lens**：**拖拽选字段**就能出图（柱状、折线、指标卡、表格、热力等），是 **9.x 默认走的主可视化**；不纠结「老式 Visualize 里用哪种 aggs」也能交付。进入后重点看：右侧 **Data view 是否仍是 `k8s-*`**、横轴/纵轴**选的是可聚合 type**、右上角 **Save**。  
-- **Dashboards**：多面板 + 时间选 + 可选 **Controls 控件**（如按 `namespace` 下拉的变量），给 **NOC 大屏、发版窗口、周报复盘**。**Edit** 进入编辑；**Add from library** 加已有面板；顶栏 **Share** 与**只读编辑**别乱给外网。
+**在 Lens 里务必对齐的三件事**  
 
-**和 Discover 的衔接**：在 Discover 点 **Save** 的查询可以**加到面板**里；Lens 里**同一数据视图**（**`k8s-*`**）上做的图**保存**后，再**Add to dashboard**。  
+- **Data view（数据视图）**：选 **`k8s-*`**，与 **T9.2.9.1**、Discover 一致，否则和值班用的是两套索引范围。  
+- **时间**：顶栏时间范围要盖住你要看的故障或发版窗口；空数据先怀疑时间窗再怀疑聚合。  
+- **字段**：拆分维度、分桶尽量用 **keyword** 或可聚合类型；**text** 类字段若 mapping 带了 **`.keyword`**，图形里通常要选 **`.keyword`**。拿不准时在 Discover 看 **Field statistics** 或 ES mapping，避免「图上始终没数」。
 
-**生产上防踩坑**：做图前在 Discover **确认字段类型**是 **Keyword / 可聚合**，例如 **`kubernetes.namespace_name` 的 `.keyword` 子字段**（9.x 常见映射下会有）；若图怎么都不出数，多半是**字段用错**或**没选可聚合类型**。**大盘链接**出给外部门前，先想好**时间范围脱敏、权限、是否只读分享**（见官方 [Dashboards](https://www.elastic.co/docs/explore-analyze/dashboards)）。
+**Dashboard 用来干什么**  
+
+一页里叠多个面板（Lens 图、表格、Saved search 等）+ **顶栏时间选择器** + 可选 **Controls**（例如按命名空间下拉的选项列表），适合 **NOC 大屏、发版窗口、周报复盘**。**Edit** 编辑布局；**Add from library** 从库里拽已有 Lens 与已保存检索。**Share**、嵌入、导出前的权限与「谁能改」要在团队里说清楚；外链不要随手发到公网（见 [Share dashboards](https://www.elastic.co/docs/explore-analyze/dashboards/sharing)、[Dashboards 总览](https://www.elastic.co/docs/explore-analyze/dashboards)）。
+
+**和 Discover 怎么接上**  
+
+Discover 里 **Save** 的会话可作为 **Saved search** 再进 Dashboard（见 [Save a search for reuse](https://www.elastic.co/docs/explore-analyze/discover/save-open-search)）。Lens 里在 **`k8s-*`** 上做好的图 **Save** 后，再在 Dashboard 里 **Add from library** 或编辑大盘时插入即可。
+
+**生产上少踩坑**  
+
+- 图上不出数：多半是 **数据视图不是 `k8s-*`**、**时间窗不对**，或 **聚合字段类型不对**（该用 **keyword / .keyword** 却用了 **text**）。  
+- **大盘链接**给别的部门前：想清楚 **时间范围里有没有敏感内容**、**对方账号是否有权读这批索引**、**分享的是只读还是可编辑**。
 
 ```mermaid
-flowchart LR
-  D1[Discover 定字段与 KQL] --> L1[Lens 作图 保存]
-  L1 --> DB1[Dashboard 汇总]
-  D1 --> DB1
-  DB1 --> SH[分享/投屏/导出<br>注意只读与敏感信息]
+flowchart TB
+  subgraph entry[Lens 两条入口]
+    E1["Analytics Dashboard Create 或 Edit 后 Add visualization"]
+    E2["Analytics Visualize library Create visualization"]
+  end
+  E1 --> LensEd["Lens 数据视图同 k8s 通配"]
+  E2 --> LensEd
+  Disc["Discover 先摸清字段类型与 KQL"] --> LensEd
+  LensEd --> SV["保存 Save and return 或 Save to library"]
+  SV --> DB["Dashboard 多面板 Controls 时间"]
+  Disc --> DB
+  DB --> SH["分享与投屏 注意权限与敏感信息"]
 ```
 
-官方：[Lens](https://www.elastic.co/docs/explore-analyze/visualize/lens) · [Dashboards](https://www.elastic.co/docs/explore-analyze/dashboards) · [Add controls](https://www.elastic.co/docs/explore-analyze/dashboards/add-controls)
+官方：[Create a dashboard](https://www.elastic.co/docs/explore-analyze/dashboards/create-dashboard) · [Lens](https://www.elastic.co/docs/explore-analyze/visualize/lens) · [Visualize Library](https://www.elastic.co/docs/explore-analyze/visualize/visualize-library) · [Dashboards](https://www.elastic.co/docs/explore-analyze/dashboards) · [Add controls](https://www.elastic.co/docs/explore-analyze/dashboards/add-controls) · [Share dashboards](https://www.elastic.co/docs/explore-analyze/dashboards/sharing)
 
-**（插槽：Lens 从 k8s-* 拖字段出图；Dashboard 汇总多个面板）**
+**（插槽：从 Dashboard 进入 Lens，数据视图 `k8s-*` 拖拽字段成图；Dashboard 多面板与 Controls 成品截图）**
 
 #### T9.2.9.4、Rules（规则）与 Connectors：日志驱动的告警
 
