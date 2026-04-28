@@ -1100,14 +1100,14 @@ flowchart LR
 
 **Discover** 是 Kibana 中面向 Elasticsearch 数据的**主查询与浏览界面**：按时间范围检索文档，用 KQL 或 Lucene 过滤，查看字段与单条结构，并可将当前视图保存为会话供复用或接入大盘。相对 `kubectl logs`，在集群级日志场景下多三类能力：**全文与字段检索**、**跨节点与多副本统一视图**、**保存/共享同一条检索条件**（仍须配合集群级采集与存储，见 **T9.1**）。
 
-**2. 进入与数据前提**
+**2. 进入面板**
 
 - **菜单**：**Analytics → Discover**（**T9.2.9.0**）。首次进入若要求选择数据视图，须选用 **T9.2.9.1** 中已建好的 **`k8s-*`**。  
-- **无数据**：在 **Index Management** 中看不到**当日或近期**的 **`k8s-` + 日期** 形索引时，应回到 **T9.2.8** 与 **ES** 连通性排查，勿仅在 Kibana 中反复切换数据视图。
+- **无数据**：在 **Index Management** 中看不到**当日或近期**的 **`k8s-` + 日期** 形式的索引时，应回到 **T9.2.8** 与 **ES** 连通性排查，勿仅在 Kibana 中反复切换数据视图。
 
 **3. 值班侧典型操作顺序**
 
-下列顺序与官方「选数据视图—时间—查询—看文档」一致。图中为简写并带编号，便于在窄屏下阅读；详细说明见上文与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)。
+下列顺序与官方「选数据视图 -> 时间 -> 查询 -> 看文档」一致。图中为简写并带编号，便于在窄屏下阅读；详细说明见上文与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)。
 
 ```mermaid
 %%{init: { "flowchart": { "useMaxWidth": true, "nodeSpacing": 50, "rankSpacing": 48 }, "themeVariables": { "fontSize": "16px" } } }%%
