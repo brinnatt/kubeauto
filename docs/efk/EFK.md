@@ -1105,22 +1105,21 @@ flowchart LR
 - **菜单**：**Analytics → Discover**（**T9.2.9.0**）。首次进入若要求选择数据视图，须选用 **T9.2.9.1** 中已建好的 **`k8s-*`**。  
 - **无数据**：在 **Index Management** 中看不到**当日或近期**的 **`k8s-` + 日期** 形式的索引时，应回到 **T9.2.8** 与 **ES** 连通性排查，勿仅在 Kibana 中反复切换数据视图。
 
-**3. 值班侧典型操作顺序**
+**3. 排障思路：先省查询，再定界，再读正文**
 
-下列顺序与官方「选数据视图 -> 时间 -> 查询 -> 看文档」一致。图中为简写并带编号，便于在窄屏下阅读；详细说明见上文与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)。
+界面上的点击顺序见官方 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)。下面这张图回答的是**为什么要这么干**：**时间窗**先把 Elasticsearch 扫描范围压下去（算力与费用）；**KQL** 按 **Kubernetes** 常见层次把候选日志缩到「某个命名空间 / Pod / 容器」；**log 与展开文档**才是读堆栈、核对镜像与节点的地方；只有需要**交接或进大盘**时才值得**保存会话**（见 **T9.2.9.3**）。这与「从左到右点一遍菜单」不是一回事。
 
 ```mermaid
-%%{init: { "flowchart": { "useMaxWidth": true, "nodeSpacing": 50, "rankSpacing": 48 }, "themeVariables": { "fontSize": "16px" } } }%%
 flowchart TB
-  A["1 选数据视图 k8s-*"] --> B["2 收窄时间窗"]
-  B --> C["3 搜索 KQL 或切 Lucene"]
-  C --> D["4 侧栏 加列/过滤器"]
-  D --> E["5 直方图点选 再缩时"]
-  E --> F["6 展开行 看 JSON"]
-  F --> G{"要固化为\n已存会话?"}
-  G -->|是| H["点 Save 保存"]
-  G -->|否| I["继续改条件"]
-  H --> J["T9.2.9.3 接 Dashboard 等"]
+  START([数据视图已是 k8s-*<br/>见 T9.2.9.1])
+  START --> W[时间窗<br/>对齐告警或发布时段]
+  W --> NS[KQL 定界<br/>namespace 到 pod 到 container]
+  NS --> LG[读 log 正文<br/>stderr 关键字 堆栈]
+  LG --> JD[展开 JSON<br/>镜像 host label 等]
+  JD --> Q{同一套条件要<br/>给别人或进大盘?}
+  Q -->|是| SV[保存 Discover 会话]
+  SV --> NX[T9.2.9.3 Dashboard 等]
+  Q -->|否 继续排查| W
 ```
 
 **4. 界面分区与职责**
