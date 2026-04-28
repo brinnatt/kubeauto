@@ -1158,6 +1158,23 @@ flowchart TB
 | **Empty fields**（`#`） | 映射或数据视图里**列得出**、但在**当前查询与时间窗**下**看不到值**的字段 | 可能是这段时间确实没打到（例如某 label 只有个别 Pod 有）；也可能是窗太窄，先放大时间再判断「真没有」 |
 | **Meta fields**（`#`） | 文档元数据字段，如 **`_id`**、**`_index`**、**`_score`**、**`_source`** 等，含义以 Elasticsearch 为准 | 看日志落在哪一天索引用 **`_index`**（对应 **`k8s-YYYY.MM.DD`**）；看整段原始 JSON 用 **`_source`**；一般不在这里改映射。详见 [Document metadata fields](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/document-metadata-fields) |
 
+**Available 里字段太多时，先盯这几类（本文 `k8s-*` 容器日志）**
+
+不必一次性看懂几百个名字：用侧栏**搜索框**敲 **`kube`、`log`、`stream`** 就能把最常用的捞出来。**下面这些是值班最常点的**，和 **T9.2.8** Fluent Bit 管线一致；名字若略有出入，以你环境里 **Available** 为准。**第 6 节**有更完整的对照和 KQL 示例。
+
+| 优先看的字段（典型名） | 意义 |
+|------------------------|--------------|
+| `@timestamp` | 这条日志的时间，对齐顶栏时间轴、对齐故障时段 |
+| `log`（或解析出来的业务正文字段） | **一行日志正文**：关键字、堆栈、错误码都在这里搜 |
+| `stream` | **`stdout` 还是 `stderr`**，只想看报错时常筛 `stderr` |
+| `kubernetes.namespace_name` | **哪个命名空间**（环境、租户、团队边界） |
+| `kubernetes.pod_name` | **哪个 Pod**，定界到副本 |
+| `kubernetes.container_name` | 同一 Pod **哪个容器**打的（业务容器、sidecar 分开看） |
+| `kubernetes.host` | **落在集群里哪台节点**，怀疑单机网络或磁盘时有用 |
+| `kubernetes.container_image` | **镜像名与标签**，发版对比常用 |
+
+其他大批字段多半是：**业务 JSON 解出来的键**、**集成附带字段**、或 **`kubernetes.labels` 经 `Replace_Dots` 后的长名字**；用到再搜即可，别强迫自己先背全库。
+
 **4.2 时间直方图：Auto interval、Break down by**
 
 - **Auto interval（自动间隔）**：时间轴上的桶宽不是手写「固定 1 分钟」，而是由界面按当前时间跨度**自动选间隔**，底层对应一类「目标桶数」思路，与 Elasticsearch **auto_date_histogram** 聚合一致（默认常见为**目标约 10 个桶**，实际桶数不超过目标），见 [Auto-interval date histogram aggregation](https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-autodatehistogram-aggregation)。**你要记住的**：先看**形状和峰值时段**，再点某段把时间窗缩进去，比死记间隔更有意义。
@@ -1242,7 +1259,7 @@ flowchart TB
 kubernetes.namespace_name: "default" and kubernetes.pod_name: "counter*" and log: *error*
 ```
 
-**8. 与全局验收的对应关系（避免“界面会点、环境对不上”）**
+**8. 与全局验收的对应关系**
 
 下列与 **T9.2.9.9** 的清单一一对应，在 Discover 中即可逐项自证，不必另写脚本：数据视图为 **`k8s-*`** 且能命中**新产生**的日志、字段名与 **T9.2.8**（含 **`Replace_Dots`**）一致。另请记住：**在 Discover 中缩小显示范围不会减少已写入索引的数据量**；在采集侧**减量**、用 **ILM** 等控容量，见 **T9.2.9.9** 与 **T9.2.8**。
 
