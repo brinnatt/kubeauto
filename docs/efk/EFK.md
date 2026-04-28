@@ -1153,8 +1153,8 @@ flowchart TB
 
 | 能力 | 生产上建议用法 | 官方 |
 |------|----------------|------|
-| 时间窗与自动刷新 | 对齐全次故障或发版窗口；**避免长时间窗 + 高频自动刷新** 与业务高峰叠加 | [Discover](https://www.elastic.co/docs/explore-analyze/discover)、[Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering) |
-| KQL 与 Lucene | **默认 KQL** 做字段与布尔组合；**Lucene** 在搜索栏侧切换。KQL 仅**过滤**文档，不负责聚合与排序，勿与 [Query DSL](https://www.elastic.co/docs/reference/query-languages/query-dsl) 在心智上混用 | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql)、[Lucene](https://www.elastic.co/docs/explore-analyze/query-filter/languages/lucene-query-syntax) |
+| 时间窗与自动刷新 | **时间范围**要包住整起故障或整段发版窗口；没有需要时，别把查询时间拉得过大；自动刷新也别设太勤，避免和正常业务一起把 Elasticsearch 打满 | [Discover](https://www.elastic.co/docs/explore-analyze/discover)、[Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering) |
+| KQL 与 Lucene | **默认 KQL** 做字段与布尔组合；**Lucene** 在搜索栏侧切换。KQL 仅**过滤**文档，不负责聚合与排序，勿与 [Query DSL](https://www.elastic.co/docs/reference/query-languages/querydsl)（JSON，走 `_search` 等 API）在心智上混用；概念导读见 [Query DSL（Explore）](https://www.elastic.co/docs/explore-analyze/query-filter/languages/querydsl) | [KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql)、[Lucene](https://www.elastic.co/docs/explore-analyze/query-filter/languages/lucene-query-syntax) |
 | **ES\|QL** | 不依赖数据视图的**另一种**查数方式，适合表格化、与 **ES\|QL** 图表化路径配合；**本文 EFK 主线**仍以「**数据视图 + KQL**」与值班习惯对齐，与 **T9.2.9.1** 脚注一致 | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) |
 | 过滤器与搜索栏 | 侧栏对字段**加/减**生成过滤器，与搜索栏 KQL 组合使用 | [Get started 中 Search and filter 路径](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) |
 | 保存与复用 | 顶栏保存当前 **Discover 会话**（**9.3.3** 等界面中常见 **Session** 等文案，以实际为准），可再加入 **Dashboard**；与保存对象、复用方式的关系见 [Save a search for reuse](https://www.elastic.co/docs/explore-analyze/discover/save-open-search) | 同上及 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) |
@@ -1280,7 +1280,7 @@ flowchart TB
   SS --> DR[灾难与合规可审计]
 ```
 
-官方：[在 Kibana 中管理索引](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations) · [ILM](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management) · [快照](https://www.elastic.co/docs/manage-data/snapshots)
+官方：[在 Kibana 中管理索引](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations) · [ILM](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management) · [快照与恢复（Snapshot and restore）](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore)
 
 **（插槽：Index Management 中 k8s-* 与 ILM 策略）**
 
