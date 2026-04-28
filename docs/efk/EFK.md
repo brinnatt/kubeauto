@@ -1124,7 +1124,7 @@ flowchart TB
 
 **4. 界面分区与职责**
 
-Kibana 9.3.x 的 Discover 为**通用数据探索**；未处于 Observability/Security 等**专项方案上下文**时，即为默认布局（与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) 中「Load data into Discover」一致）。可按下述区块理解各区域责任。
+Kibana **9.3.x** 的 Discover 为**通用数据探索**；未处于 Observability、Security 等**专项方案上下文**时，即为默认布局（与 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) 一致）。下面按「你第一眼会点的控件」拆开写；**英文标签**以你界面为准（有的环境带 `#` 数字角标，那是字段数量提示，不是注释）。
 
 ```mermaid
 flowchart TB
@@ -1135,19 +1135,69 @@ flowchart TB
   end
   subgraph main[主区]
     M1[时间直方图 可点选区间缩小查询窗]
-    M2[结果表 时间列 摘要 或自选字段列]
+    M2[Documents Patterns Field statistics 等标签]
+    M3[结果表 列与展开]
   end
-  subgraph flanks[侧栏 具体左右依主题与布局]
-    F1[Available fields 可搜索 字段名]
-    F2[单条 document 展开 多文档对比 见 document explorer]
+  subgraph flanks[侧栏 字段列表]
+    F1[Popular Available Empty Meta 等分组]
+    F2[单字段 Top 值 加列 过滤器]
   end
   top --> main
-  F1 --> M2
-  M2 --> F2
+  flanks --> M3
+  M3 --> F2
 ```
 
-- **直方图与时间**：直方图依赖数据视图在 **T9.2.9.1** 中绑定的**默认时间字段**；**Time filter** 等说明见 [Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering)。生产上**先缩时间、再加条件**，可显著降低对 Elasticsearch 的查询压力。  
-- **表与列**：在侧栏为字段**加号**入表、拖拽排序；布局与多文档对比等见 [Document explorer](https://www.elastic.co/docs/explore-analyze/discover/document-explorer)。
+**4.1 侧栏：Popular fields、Available fields、Empty fields、Meta fields**
+
+这几块都是「字段列表」里的分区，方便你从几百个字段里**先找到该点的名**，再展开看 Top 值、加进表、加过滤器（侧栏搜索与「推荐字段」行为见 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) 中 **Explore the fields in your data**）。给运行时字段等设 **field popularity** 时，还会影响排序，见同页 **Add a field to your data view**。
+
+| 界面上的名字（大意） | 是什么 | 生产上怎么用（本文 `k8s-*` 日志） |
+|----------------------|--------|-----------------------------------|
+| **Popular fields**（常带数量 `#`） | 根据**使用习惯**往上排的字段：默认按「被放进表格的次数」从多到少（新数据视图会随团队使用逐渐稳定） | 常见会先出现 `log`、`kubernetes.*`；没有也不代表字段不存在，到 **Available** 里搜 |
+| **Available fields**（`#`） | 在当前**时间范围 + KQL** 命中结果下，**推断有值**、可供筛选和展示的字段（底层结合 **Field capabilities** 与查询，极少数边界情况与「直觉」不完全一致属已知限制） | **以这里显示的字段名为准**写 KQL、做过滤器；点字段可看 Top 值，点 **+** 加列 |
+| **Empty fields**（`#`） | 映射或数据视图里**列得出**、但在**当前查询与时间窗**下**看不到值**的字段 | 可能是这段时间确实没打到（例如某 label 只有个别 Pod 有）；也可能是窗太窄，先放大时间再判断「真没有」 |
+| **Meta fields**（`#`） | 文档元数据字段，如 **`_id`**、**`_index`**、**`_score`**、**`_source`** 等，含义以 Elasticsearch 为准 | 看日志落在哪一天索引用 **`_index`**（对应 **`k8s-YYYY.MM.DD`**）；看整段原始 JSON 用 **`_source`**；一般不在这里改映射。详见 [Document metadata fields](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/document-metadata-fields) |
+
+**4.2 时间直方图：Auto interval、Break down by**
+
+- **Auto interval（自动间隔）**：时间轴上的桶宽不是手写「固定 1 分钟」，而是由界面按当前时间跨度**自动选间隔**，底层对应一类「目标桶数」思路，与 Elasticsearch **auto_date_histogram** 聚合一致（默认常见为**目标约 10 个桶**，实际桶数不超过目标），见 [Auto-interval date histogram aggregation](https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-autodatehistogram-aggregation)。**你要记住的**：先看**形状和峰值时段**，再点某段把时间窗缩进去，比死记间隔更有意义。
+- **Break down by「按某某拆分」**（若你的主题显示该选项）：在**同一条时间轴**上，再按某个**维度字段**把每条柱子拆开或分色（多为 **keyword** 或可聚合的类型）。**典型用法**：按 `kubernetes.namespace_name`（或映射里的 **`.keyword`**）对比各命名空间条数；选项灰掉或报错多半是**字段类型不适合拆分**，换字段即可。
+
+**4.3 主区中部标签：Documents、Patterns、Field statistics**
+
+主区**时间图下方**通常有标签页（名称以界面为准），和官方 [Run a pattern analysis](https://www.elastic.co/docs/explore-analyze/discover/run-pattern-analysis-discover)、[View field statistics](https://www.elastic.co/docs/explore-analyze/discover/show-field-statistics) 对应。
+
+| 标签 | 是什么 | 怎么用 |
+|------|--------|--------|
+| **Documents** | 文档表：逐条看日志，展开 JSON | 值班主战场；与 **`@timestamp`、Summary** 等列配合见下 **4.4** |
+| **Patterns** | 对**文本字段**做**归类**，把相似日志句子收成几条模式，顺带可看占比 | 日志轰炸时先看**哪几种句式**，再回 **Documents** 展开个别样本；可选分析字段、对模式加过滤器。详见官方 [Run a pattern analysis…](https://www.elastic.co/docs/explore-analyze/discover/run-pattern-analysis-discover) |
+| **Field statistics** | 当前命中集合上，按字段做**分布、基数、数值范围**等汇总 | 做大盘前先确认字段有没有脏值、偏态；**仅在默认 Discover 模式**可用，**ES\|QL 模式**下不可用，见 [View field statistics](https://www.elastic.co/docs/explore-analyze/discover/show-field-statistics) |
+
+```mermaid
+flowchart LR
+  subgraph tabs[时间图下方]
+    D[Documents]
+    P[Patterns]
+    S[Field statistics]
+  end
+  D --> A[逐条 展开 log kubernetes]
+  P --> B[先看类别 再降噪]
+  S --> C[先看分布 再选图表字段]
+  B --> D
+  C --> D
+```
+
+**4.4 表格列：`@timestamp`、`Summary`、命中条数**
+
+- **`@timestamp` 列**：数据视图在 **T9.2.9.1** 里绑定的**时间字段**（本文为 **`@timestamp`**），与顶栏 **Time filter** 一致；点列头一般可排序（具体以界面为准）。
+- **Summary 列**：每条日志一行**摘要**；当你从侧栏把字段**加进表格**后，Summary 的处理方式会按版本变化，常见是**让位给具体列**（官方 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)：**When you add fields to the table, the Summary column is replaced**）。
+- **Documents / 命中数**：表示在当前过滤条件下**命中的规模**；表格里**实际展示的行数**还受 **`discover:sampleSize`**、分页等限制（见 [Customize the Discover view](https://www.elastic.co/docs/explore-analyze/discover/document-explorer)），**不等于**「索引里总共只有这么几条」。
+
+**4.5 与上文衔接**
+
+- **时间过滤**全局行为见 [Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering)。  
+- **列宽、行高、全屏、折叠字段列表**等布局见 [Document explorer](https://www.elastic.co/docs/explore-analyze/discover/document-explorer)。  
+- 生产上仍是：**先缩时间，再加 KQL**，减轻 Elasticsearch 压力（与 **3** 一致）。
 
 **5. 查询与保存（企业常用项）**
 
@@ -1158,7 +1208,7 @@ flowchart TB
 | **ES\|QL** | 不依赖数据视图的**另一种**查数方式，适合表格化、与 **ES\|QL** 图表化路径配合；**本文 EFK 主线**仍以「**数据视图 + KQL**」与值班习惯对齐，与 **T9.2.9.1** 脚注一致 | [Try ES\|QL](https://www.elastic.co/docs/explore-analyze/discover/try-esql) |
 | 过滤器与搜索栏 | 侧栏对字段**加/减**生成过滤器，与搜索栏 KQL 组合使用 | [Get started 中 Search and filter 路径](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) |
 | 保存与复用 | 顶栏保存当前 **Discover 会话**（**9.3.3** 等界面中常见 **Session** 等文案，以实际为准），可再加入 **Dashboard**；与保存对象、复用方式的关系见 [Save a search for reuse](https://www.elastic.co/docs/explore-analyze/discover/save-open-search) | 同上及 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) |
-| 字段与模式 | **Field statistics**、**Pattern analysis** 用于看高频值与日志模式，排刷屏与异常段 | [Run pattern analysis in Discover](https://www.elastic.co/docs/explore-analyze/discover/run-pattern-analysis-discover) |
+| 字段与模式 | **Field statistics**、**Patterns** 与侧栏 Top 值配合用：先看分布与模式，再回 **Documents** 逐条看。细节见 **4.3** | [Run pattern analysis…](https://www.elastic.co/docs/explore-analyze/discover/run-pattern-analysis-discover) · [View field statistics](https://www.elastic.co/docs/explore-analyze/discover/show-field-statistics) |
 | 长时查询 | 大数据量时可用后台查询类能力，避免浏览器长时间无响应（是否开启受部署与权限约束） | [Run queries in the background](https://www.elastic.co/docs/explore-analyze/discover/background-search) |
 
 上述「时间 + 搜索栏 + 过滤器」在 Kibana 多数应用中与查询结果取交集；具体组合方式见 [Filtering in Kibana](https://www.elastic.co/docs/explore-analyze/query-filter/filtering)。
@@ -1198,7 +1248,7 @@ kubernetes.namespace_name: "default" and kubernetes.pod_name: "counter*" and log
 
 **9. 插图位（生产后补图）**
 
-**（插槽：在运行 **Kibana 9.3.3** 的环境中截取 Discover 全页，须可见数据视图 `k8s-*`、时间选择、搜索栏与至少一条已展开的文档（建议展开 `kubernetes` 与 `log` 等字段，方便对照上文字段表）。将成图存为 `./images/logging-kibana-discover-k8s.png`，并在下方取消注释。若需与官方界面对比，可对照 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started) 中的版式。）**
+**（插槽：在 **Kibana 9.3.3** 下截 **Discover** 全页，建议能同时看到：**数据视图 `k8s-*`**、**时间条与直方图**（若已选 **Break down** 可一并入镜）、**侧栏字段分组**（**Popular / Available / Empty / Meta** 中至少几类可见）、**Documents** 表与 **`@timestamp`、Summary** 等列。另可各补一张 **Patterns** 与 **Field statistics** 标签的截图，存为 `./images/logging-kibana-discover-patterns.png`、`./images/logging-kibana-discover-field-stats.png`（无则只保留全页一图即可）。全页成图主文件：`./images/logging-kibana-discover-k8s.png`，成图后取消下节注释。版式见 [Get started with Discover](https://www.elastic.co/docs/explore-analyze/discover/discover-get-started)。）**
 
 <!-- 成图后：删除本行“注释说明”，取消下一行 img 的注释。路径须与上段一致。 -->
 <!-- ![Kibana Discover：k8s 容器日志（本环境）](./images/logging-kibana-discover-k8s.png) -->
