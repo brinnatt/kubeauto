@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-setup_x11vnc.py (Python 3.9+)
+VNCSetupCli.py（Python 3.9+）
 
 目标：
 - 面向 Ubuntu/Debian（apt）与 Rocky Linux（dnf/yum）两系，可生产、幂等部署
-- 对外命令仅 install / remove / status；systemd 通过内部子命令（见 INTERNAL_SYSTEMD_SUBCMD）在每次服务启动时重新探测 DISPLAY/XAUTHORITY，避免会话切换后固定 :N 导致永久失败
-- root用户：install/remove 须 root；systemd 服务固定以 root 运行（不设 User=），仅通过 XAUTHORITY 附着已有 Xorg
+- 对外命令统一为：install / remove / status，各须再选后端子命令 x11vnc 或 tigervnc（例：install x11vnc、remove tigervnc）。
+- x11vnc：systemd 通过内部子命令 service-run（见 INTERNAL_SYSTEMD_SUBCMD）在每次服务启动时重新探测 DISPLAY/XAUTHORITY，避免会话切换后固定 :N 导致永久失败；须 root 安装/卸载；服务以 root 运行，通过 XAUTHORITY 附着已有 Xorg。
+- TigerVNC：独立虚拟会话（vncserver.users + systemd 模板），install/remove 须 root。
 - 可重复执行，可回收脚本创建的资源，保持系统干净
 
 幂等、原子性与脏数据防护（与实现一一对应）：
@@ -24,6 +25,9 @@ setup_x11vnc.py (Python 3.9+)
 - Ubuntu 软件包索引: https://packages.ubuntu.com/x11vnc
 - Rocky Linux 9 桌面文档（x11vnc + SSH）: https://docs.rockylinux.org/9/desktop/gnome/x11vnc_plus_ssh_lan/
 - 上游项目（手册与发行说明以仓库为准）: https://github.com/LibVNC/x11vnc
+- TigerVNC（RHEL 7 系统管理指南章节）: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/system_administrators_guide/ch-tigervnc
+- 安装介质网络安装场景中的 VNC（RHEL 8 文档）: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/interactively_installing_rhel_over_the_network/starting-a-remote-installation-by-using-vnc_rhel-installer
+- Debian/Ubuntu 服务端包索引（tigervnc-standalone-server）: https://packages.debian.org/stable/tigervnc-standalone-server
 
 日志标记（便于 grep / 排障）：
 - [通用]  与发行版无关的步骤
@@ -32,6 +36,7 @@ setup_x11vnc.py (Python 3.9+)
 - [GDM]         显示管理 / Wayland vs Xorg 说明与 custom.conf 预检
 - [预检]       root 身份、xdpyinfo、端口、会话探测
 - [systemd]   unit 与 systemctl
+- [TigerVNC]  install/remove/status tigervnc 路径（虚拟会话、vncserver.users、模板 unit）
 """
 
 from __future__ import annotations
@@ -52,16 +57,31 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, cast
 
-SCRIPT_VERSION = "4.5.2"
-MANAGED_MARK = "# Managed-By: setup_x11vnc.py"
+SCRIPT_VERSION = "4.7.0"
+# 新写入的 x11vnc unit 使用下列标记；仍识别旧脚本名标记以便卸载与幂等。
+MANAGED_MARK = "# Managed-By: VNCSetupCli.py (x11vnc)"
+LEGACY_MANAGED_MARK = "# Managed-By: setup_x11vnc.py"
+BACKEND_X11VNC = "x11vnc"
+BACKEND_TIGERVNC = "tigervnc"
 STATE_DIR_DEFAULT = Path("/var/lib/x11vnc_setup")
+STATE_DIR_TIGERVNC_DEFAULT = Path("/var/lib/tigervnc_setup")
 STATE_FILE_NAME = "state.json"
 STATE_SCHEMA_VERSION = 1
+TIGERVNC_STATE_SCHEMA_VERSION = 1
+DEFAULT_TIGERVNC_PKG_APT = "tigervnc-standalone-server"
+DEFAULT_TIGERVNC_PKG_RPM = "tigervnc-server"
+DEFAULT_TIGERVNC_SELINUX_PKG = "tigervnc-selinux"
+TIGERVNC_USERS_FILE_DEFAULT = Path("/etc/tigervnc/vncserver.users")
 # 默认含 -noshm：root 附着本机其他 Xorg 会话时常见 MIT-SHM BadAccess（journal 中 X_ShmAttach）；与发行版无关。
 DEFAULT_X11VNC_FLAGS = "-noxdamage -noscr -noxfixes -noxrecord -xkb -nowf -noshm"
 
 # systemd unit 的 ExecStart 调用的子命令名；在 argparse 帮助中隐藏，不作为对外稳定 API。
 INTERNAL_SYSTEMD_SUBCMD = "service-run"
+
+
+def x11_unit_bears_managed_mark(txt: str) -> bool:
+    """识别本脚本写入或旧版 setup_x11vnc.py 写入的 x11vnc unit。"""
+    return MANAGED_MARK in txt or LEGACY_MANAGED_MARK in txt
 
 
 class DeployError(RuntimeError):
@@ -71,6 +91,7 @@ class DeployError(RuntimeError):
 @dataclass
 class Config:
     command: str
+    backend: str
     vnc_password: str
     vnc_port: int
     display: str
@@ -94,6 +115,41 @@ class Config:
     @property
     def unit_name(self) -> str:
         return self.service_file.name
+
+
+@dataclass
+class TigerVncConfig:
+    """TigerVNC 独立虚拟会话（systemd 模板实例 + /etc/tigervnc/vncserver.users），与 x11vnc 附着现有 X 会话互不干扰。"""
+
+    action: str
+    vnc_user: str
+    display_number: int
+    vnc_password: str
+    pkg_apt: str
+    pkg_rpm: str
+    selinux_pkg: str
+    install_selinux_pkg: bool
+    state_dir: Path
+    log_file: Path
+    purge_log: bool
+    remove_package: bool
+    vnc_users_file: Path
+
+    @property
+    def display_token(self) -> str:
+        return f":{self.display_number}"
+
+    @property
+    def vnc_port(self) -> int:
+        return 5900 + self.display_number
+
+    @property
+    def state_file(self) -> Path:
+        return self.state_dir / STATE_FILE_NAME
+
+    @property
+    def users_mapping_line(self) -> str:
+        return f"{self.display_token}={self.vnc_user}"
 
 
 class Logger:
@@ -213,21 +269,30 @@ def atomic_write_text(path: Path, text: str, *, mode: int) -> None:
     atomic_write_bytes(path, text.encode("utf-8"), mode=mode)
 
 
-def load_state(cfg: Config, *, strict: bool = False) -> Dict[str, Any]:
-    if not cfg.state_file.exists():
+def _load_json_state_file(path: Path, *, strict: bool, strict_error: str) -> Dict[str, Any]:
+    """读取 state.json；strict 且非空损坏内容时抛 DeployError，与 x11vnc / TigerVNC 两路径共用。"""
+    if not path.exists():
         return {}
     try:
-        raw = cfg.state_file.read_text(encoding="utf-8")
+        raw = path.read_text(encoding="utf-8")
     except OSError:
         return {}
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         if strict and raw.strip():
-            raise DeployError(
-                f"状态文件损坏或非法 JSON: {cfg.state_file}。请备份后删除该文件再执行 install，避免静默产生不一致。"
-            )
+            raise DeployError(strict_error)
         return {}
+
+
+def load_state(cfg: Config, *, strict: bool = False) -> Dict[str, Any]:
+    return _load_json_state_file(
+        cfg.state_file,
+        strict=strict,
+        strict_error=(
+            f"状态文件损坏或非法 JSON: {cfg.state_file}。请备份后删除该文件再执行 install，避免静默产生不一致。"
+        ),
+    )
 
 
 def save_state(cfg: Config, data: Dict[str, Any]) -> None:
@@ -239,6 +304,31 @@ def save_state(cfg: Config, data: Dict[str, Any]) -> None:
 
 
 def remove_state(cfg: Config) -> None:
+    try:
+        cfg.state_file.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def load_tigervnc_state(cfg: TigerVncConfig, *, strict: bool = False) -> Dict[str, Any]:
+    return _load_json_state_file(
+        cfg.state_file,
+        strict=strict,
+        strict_error=(
+            f"TigerVNC 状态文件损坏或非法 JSON: {cfg.state_file}。请备份后删除再执行 install tigervnc。"
+        ),
+    )
+
+
+def save_tigervnc_state(cfg: TigerVncConfig, data: Dict[str, Any]) -> None:
+    payload = dict(data)
+    payload["schema_version"] = TIGERVNC_STATE_SCHEMA_VERSION
+    payload["kind"] = "tigervnc"
+    text = json.dumps(payload, indent=2, ensure_ascii=False)
+    atomic_write_text(cfg.state_file, text, mode=0o600)
+
+
+def remove_tigervnc_state(cfg: TigerVncConfig) -> None:
     try:
         cfg.state_file.unlink(missing_ok=True)
     except OSError:
@@ -779,7 +869,7 @@ def backup_existing_unit(cfg: Config, log: Logger, state: Dict[str, Any]) -> Non
     if not cfg.service_file.exists():
         return
     txt = cfg.service_file.read_text(encoding="utf-8", errors="ignore")
-    if MANAGED_MARK in txt:
+    if x11_unit_bears_managed_mark(txt):
         return
     backup_path = cfg.state_dir / f"{cfg.service_file.name}.backup"
     cfg.state_dir.mkdir(parents=True, exist_ok=True)
@@ -808,7 +898,7 @@ def quiesce_managed_unit_if_ours(cfg: Config, log: Logger) -> None:
     """
     if not cfg.service_file.exists():
         return
-    if MANAGED_MARK not in cfg.service_file.read_text(encoding="utf-8", errors="ignore"):
+    if not x11_unit_bears_managed_mark(cfg.service_file.read_text(encoding="utf-8", errors="ignore")):
         return
     run_cmd(
         log,
@@ -853,25 +943,33 @@ def journal(unit: str, lines: int = 120) -> str:
     return cp.stdout + cp.stderr
 
 
-def journal_rollout_hints_from_tail(tail: str, max_items: int = 6) -> str:
+# x11vnc / TigerVNC journal 摘要共用关键词（合并两路径原有关键字，略冗余可接受）
+JOURNAL_ROLLOUT_HINT_KEYS: tuple[str, ...] = (
+    "error",
+    "denied",
+    "failed",
+    "cannot",
+    "x11vnc",
+    "xvnc",
+    "vnc",
+    "tigervnc",
+    "rfbauth",
+    "password",
+    "passwd",
+    "permission",
+    "auth",
+    "fatal",
+    "errno",
+    "selinux",
+)
+
+
+def journal_hints_from_tail(tail: str, max_items: int = 6) -> str:
     """从 journal 尾部挑出与排障相关的行，避免仅看到「端口未监听」而无从判断。"""
-    keys = (
-        "error",
-        "denied",
-        "failed",
-        "x11vnc",
-        "cannot",
-        "rfbauth",
-        "password",
-        "permission",
-        "auth",
-        "fatal",
-        "errno",
-    )
     picked: List[str] = []
     for line in tail.splitlines():
         low = line.lower()
-        if any(k in low for k in keys):
+        if any(k in low for k in JOURNAL_ROLLOUT_HINT_KEYS):
             x = line.strip()
             if x and x not in picked:
                 picked.append(x)
@@ -1065,7 +1163,7 @@ def rollout_x11vnc_unit(
             f.write("\n----- journal tail (unit not active) -----\n")
             f.write(tail)
             f.write("\n------------------------------------------\n")
-        log.tagged("预检", f"journal 摘要: {journal_rollout_hints_from_tail(tail)}")
+        log.tagged("预检", f"journal 摘要: {journal_hints_from_tail(tail)}")
         raise DeployError(
             f"服务未进入 active：{cfg.unit_name}。请检查 journalctl -u {cfg.unit_name} -n 120 --no-pager"
         )
@@ -1076,7 +1174,7 @@ def rollout_x11vnc_unit(
             f.write("\n----- journal tail (port not listening) -----\n")
             f.write(tail)
             f.write("\n---------------------------------------------\n")
-        log.tagged("预检", f"journal 摘要: {journal_rollout_hints_from_tail(tail)}")
+        log.tagged("预检", f"journal 摘要: {journal_hints_from_tail(tail)}")
         raise DeployError(
             f"验收失败：{cfg.vnc_port}/tcp 未监听。请检查 journalctl -u {cfg.unit_name} -n 120 --no-pager；"
             "若与 X 扩展相关可尝试调整 --flags（默认已含 -noshm）。"
@@ -1208,7 +1306,7 @@ def do_remove(cfg: Config, log: Logger) -> int:
     service_backup = state.get("service_backup")
     service_exists = cfg.service_file.exists()
     service_txt = cfg.service_file.read_text(encoding="utf-8", errors="ignore") if service_exists else ""
-    managed = MANAGED_MARK in service_txt
+    managed = x11_unit_bears_managed_mark(service_txt)
 
     if service_exists and (managed or cfg.force_remove_unmanaged):
         cfg.service_file.unlink(missing_ok=True)
@@ -1255,6 +1353,7 @@ def do_status(cfg: Config) -> int:
     require_systemd()
     state = load_state(cfg)
     print(f"脚本版本: {SCRIPT_VERSION}")
+    print(f"后端: {cfg.backend}")
     print(f"unit 路径: {cfg.service_file}")
     print(f"密码路径: {cfg.passwd_file}")
     print(f"日志路径: {cfg.log_file}")
@@ -1266,8 +1365,11 @@ def do_status(cfg: Config) -> int:
     print(f"unit 存在: {service_exists}")
     if service_exists:
         txt = cfg.service_file.read_text(encoding="utf-8", errors="ignore")
-        print(f"unit 是否脚本管理: {MANAGED_MARK in txt}")
-        print(f"ExecStart 动态附着（内部子命令 {INTERNAL_SYSTEMD_SUBCMD}）: {INTERNAL_SYSTEMD_SUBCMD in txt}")
+        print(f"unit 是否脚本管理: {x11_unit_bears_managed_mark(txt)}")
+        print(
+            f"ExecStart 动态附着（内部子命令 {INTERNAL_SYSTEMD_SUBCMD}，无后端子参数）: "
+            f"{INTERNAL_SYSTEMD_SUBCMD in txt}"
+        )
     cp = subprocess.run(["systemctl", "is-enabled", cfg.unit_name], text=True, capture_output=True)
     print(f"is-enabled: {cp.stdout.strip() or cp.stderr.strip() or cp.returncode}")
     cp = subprocess.run(["systemctl", "is-active", cfg.unit_name], text=True, capture_output=True)
@@ -1276,39 +1378,484 @@ def do_status(cfg: Config) -> int:
     return 0
 
 
+def parse_tigervnc_display_number(raw: str) -> int:
+    s = str(raw).strip()
+    if s.startswith(":"):
+        s = s[1:]
+    if not s.isdigit():
+        raise DeployError(f"TigerVNC 显示号非法: {raw!r}，请使用 1 或 :1 等形式（对应端口 5900+N）。")
+    n = int(s)
+    if not (1 <= n <= 99):
+        raise DeployError("TigerVNC 显示号须在 1–99。")
+    return n
+
+
+def selinux_is_enforcing() -> bool:
+    ge = shutil.which("getenforce")
+    if not ge:
+        return False
+    cp = subprocess.run([ge], text=True, capture_output=True)
+    return (cp.stdout or "").strip() == "Enforcing"
+
+
+def detect_tigervnc_systemd_unit_base(log: Logger) -> str:
+    """
+    Debian/Ubuntu 常见为 tigervncserver@.service；RHEL/Rocky 常见为 vncserver@.service。
+    以磁盘模板为准，避免硬编码发行版名。
+    """
+    candidates = (
+        ("/usr/lib/systemd/system/tigervncserver@.service", "tigervncserver"),
+        ("/lib/systemd/system/tigervncserver@.service", "tigervncserver"),
+        ("/usr/lib/systemd/system/vncserver@.service", "vncserver"),
+        ("/lib/systemd/system/vncserver@.service", "vncserver"),
+    )
+    for path, base in candidates:
+        if Path(path).is_file():
+            log.tagged("TigerVNC", f"检测到 systemd 模板: {path} → 实例前缀 {base}@")
+            return base
+    raise DeployError(
+        "未找到 tigervncserver@ 或 vncserver@ 的 systemd 模板。"
+        "请确认已安装 tigervnc-standalone-server（apt）或 tigervnc-server（dnf/yum）。"
+    )
+
+
+def tigervnc_unit_full_name(unit_base: str, display_number: int) -> str:
+    return f"{unit_base}@:{display_number}.service"
+
+
+def ensure_tigervnc_port_available_for_install(cfg: TigerVncConfig, log: Logger) -> None:
+    """须空闲，或已由本 TigerVNC/Xvnc 监听（幂等 reinstall）。"""
+    cp_ss = run_cmd(log, ["ss", "-lntp"], desc="[预检] TigerVNC 扫描本机监听端口", capture=True)
+    lines = _ss_lines_listening_on_port(cp_ss.stdout or "", cfg.vnc_port)
+    if not lines:
+        return
+    blob = "\n".join(lines).lower()
+    if any(k in blob for k in ("xvnc", "vnc", "tigervnc", "x11vnc")):
+        log.tagged(
+            "预检",
+            f"端口 {cfg.vnc_port}/tcp 已由 VNC 相关进程监听；视为幂等 reinstall，预检放行。",
+        )
+        return
+    raise DeployError(
+        f"端口 {cfg.vnc_port}/tcp 已被非 VNC 进程占用，无法安装 TigerVNC。ss 片段: {lines[0][:240]}"
+    )
+
+
+def dry_run_tigervnc_install(cfg: TigerVncConfig, log: Logger, pkg_mgr: str) -> None:
+    if shutil.which("vncserver") or Path("/usr/bin/Xvnc").is_file():
+        log.tagged("包", "已检测到 vncserver/Xvnc，跳过包管理器 dry-run。")
+        return
+    if pkg_mgr == "apt-get":
+        run_cmd(
+            log,
+            ["apt-get", "install", "-s", "-y", "--no-install-recommends", cfg.pkg_apt],
+            desc="[Debian/apt] TigerVNC dry-run: apt-get install -s",
+        )
+    elif pkg_mgr == "dnf":
+        run_cmd(
+            log,
+            ["dnf", "-y", "install", "--assumeno", cfg.pkg_rpm],
+            desc="[RHEL/rpm] TigerVNC dry-run: dnf install --assumeno",
+            check=False,
+        )
+    else:
+        log.tagged("RHEL/rpm", "当前后端为 yum，无与 dnf --assumeno 等价的 dry-run，跳过。")
+
+
+def _tigervnc_server_ready() -> bool:
+    return bool(shutil.which("vncserver")) or Path("/usr/bin/Xvnc").is_file()
+
+
+def _rpm_install_tigervnc_packages(cfg: TigerVncConfig, log: Logger, rpm: str, state: Dict[str, Any]) -> None:
+    installed: List[str] = []
+    run_cmd(log, [rpm, "-y", "install", cfg.pkg_rpm], desc=f"[RHEL/rpm] 安装 TigerVNC（{rpm} {cfg.pkg_rpm}）")
+    installed.append(cfg.pkg_rpm)
+    if cfg.install_selinux_pkg and selinux_is_enforcing():
+        cp = run_cmd(
+            log,
+            [rpm, "-y", "install", cfg.selinux_pkg],
+            desc=f"[RHEL/rpm] SELinux Enforcing：安装 {cfg.selinux_pkg}",
+            check=False,
+        )
+        if cp.returncode == 0:
+            installed.append(cfg.selinux_pkg)
+        else:
+            log.tagged("TigerVNC", f"WARNING: {cfg.selinux_pkg} 安装失败，若服务无法启动请检查 SELinux 策略与审计日志。")
+    prev = list(state.get("rpm_packages_installed_by_script", []))
+    state["rpm_packages_installed_by_script"] = list(dict.fromkeys(prev + installed))
+
+
+def install_tigervnc_packages(cfg: TigerVncConfig, log: Logger, pkg_mgr: str, state: Dict[str, Any]) -> None:
+    if _tigervnc_server_ready():
+        log.tagged("包", "TigerVNC 服务端已在系统中，跳过包安装步骤。")
+        return
+
+    if pkg_mgr == "apt-get":
+        cp = run_cmd(
+            log,
+            ["apt-get", "install", "-y", "--no-install-recommends", cfg.pkg_apt],
+            desc="[Debian/apt] 安装 TigerVNC",
+            check=False,
+        )
+        if cp.returncode != 0:
+            run_cmd(log, ["apt-get", "update"], desc="[Debian/apt] apt-get update")
+            run_cmd(
+                log,
+                ["apt-get", "install", "-y", "--no-install-recommends", cfg.pkg_apt],
+                desc="[Debian/apt] 重试安装 TigerVNC",
+            )
+        state["apt_package_installed_by_script"] = cfg.pkg_apt
+    else:
+        _rpm_install_tigervnc_packages(cfg, log, pkg_mgr, state)
+
+    if not _tigervnc_server_ready():
+        raise DeployError("安装后仍未找到 vncserver 或可执行 Xvnc。")
+    state["package_installed_by_script"] = True
+    log.tagged("包", f"TigerVNC 安装完成（后端={package_backend_label(pkg_mgr)}）。")
+
+
+def run_vncpasswd_as_user(log: Logger, vnc_user: str, passwd_file: Path, password: str) -> None:
+    """非交互 vncpasswd：密码 + 确认 + 不设 view-only。"""
+    if not shutil.which("vncpasswd"):
+        raise DeployError("未找到 vncpasswd，请确认 TigerVNC 包安装完整。")
+    cmd = ["runuser", "-u", vnc_user, "--", "vncpasswd", str(passwd_file)]
+    desc = f"[TigerVNC] runuser -u {vnc_user} vncpasswd（写入 {passwd_file}）"
+    if desc:
+        log.log(desc)
+    stdin_txt = f"{password}\n{password}\nn\n"
+    with log.path.open("a", encoding="utf-8") as lf:
+        cp = subprocess.run(cmd, text=True, input=stdin_txt, stdout=lf, stderr=lf)
+    if cp.returncode != 0:
+        raise DeployError(f"vncpasswd 失败({cp.returncode}): {' '.join(cmd)}")
+
+
+def ensure_user_vnc_passwd(cfg: TigerVncConfig, log: Logger, state: Dict[str, Any]) -> None:
+    if cfg.vnc_user in ("root", "0"):
+        raise DeployError(
+            "TigerVNC 虚拟会话不建议映射为 root（见 RHEL TigerVNC / 安全实践）。请使用普通系统用户。"
+        )
+    try:
+        pw = pwd.getpwnam(cfg.vnc_user)
+    except KeyError as exc:
+        raise DeployError(f"系统用户不存在: {cfg.vnc_user}") from exc
+
+    vnc_dir = Path(pw.pw_dir) / ".vnc"
+    vnc_dir.mkdir(parents=True, exist_ok=True)
+    os.chown(vnc_dir, pw.pw_uid, pw.pw_gid)
+    os.chmod(vnc_dir, 0o700)
+    passwd_path = vnc_dir / "passwd"
+
+    run_vncpasswd_as_user(log, cfg.vnc_user, passwd_path, cfg.vnc_password)
+    os.chown(passwd_path, pw.pw_uid, pw.pw_gid)
+    os.chmod(passwd_path, 0o600)
+    state["passwd_created_by_script"] = True
+    state["passwd_file"] = str(passwd_path)
+    log.tagged("TigerVNC", f"VNC 密码已写入 {passwd_path}（属主 {cfg.vnc_user}）。")
+
+
+def _parse_vncserver_users_mapping(line: str) -> Optional[tuple[int, str]]:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    if "=" not in stripped:
+        return None
+    left, right = stripped.split("=", 1)
+    left_s = left.strip()
+    right_s = right.strip()
+    if not left_s.startswith(":"):
+        return None
+    num_s = left_s[1:]
+    if not num_s.isdigit() or not right_s:
+        return None
+    return int(num_s), right_s
+
+
+def patch_vncserver_users_file(cfg: TigerVncConfig, log: Logger, state: Dict[str, Any], *, remove: bool) -> None:
+    """维护 /etc/tigervnc/vncserver.users 中的 :N=user 行；首次修改前备份到 state_dir。"""
+    path = cfg.vnc_users_file
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    backup_key = "vncserver_users_backup"
+    if not remove and path.is_file() and backup_key not in state:
+        bak = cfg.state_dir / "vncserver.users.backup"
+        cfg.state_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, bak)
+        state[backup_key] = str(bak)
+        log.tagged("TigerVNC", f"已备份 {path} → {bak}")
+
+    lines = path.read_text(encoding="utf-8", errors="ignore").splitlines() if path.is_file() else []
+    mappings: Dict[int, str] = {}
+    other_lines: List[str] = []
+    for ln in lines:
+        parsed = _parse_vncserver_users_mapping(ln)
+        if parsed:
+            mappings[parsed[0]] = parsed[1]
+        else:
+            other_lines.append(ln)
+
+    if remove:
+        if cfg.display_number in mappings and mappings[cfg.display_number] == cfg.vnc_user:
+            del mappings[cfg.display_number]
+            state["vncserver_users_managed"] = False
+        elif cfg.display_number in mappings:
+            log.tagged(
+                "TigerVNC",
+                f"WARNING: {path} 中 :{cfg.display_number} 映射为 {mappings[cfg.display_number]}，与状态中的 {cfg.vnc_user} 不一致，跳过删除该行。",
+            )
+    else:
+        existing = mappings.get(cfg.display_number)
+        if existing and existing != cfg.vnc_user:
+            raise DeployError(
+                f"{path} 已存在 :{cfg.display_number}={existing}，与目标用户 {cfg.vnc_user} 冲突。"
+                "请更换 --display 或手工编辑该文件。"
+            )
+        mappings[cfg.display_number] = cfg.vnc_user
+        state["vncserver_users_managed"] = True
+
+    out_lines = list(other_lines)
+    for n in sorted(mappings):
+        out_lines.append(f":{n}={mappings[n]}")
+    body = "\n".join(out_lines).rstrip() + ("\n" if out_lines else "")
+    atomic_write_text(path, body, mode=0o644)
+    log.tagged("TigerVNC", f"已更新 {path}（remove={remove}）。")
+
+
+def quiesce_tigervnc_unit(log: Logger, unit_full: str) -> None:
+    if not unit_full:
+        return
+    run_cmd(log, ["systemctl", "disable", "--now", unit_full], desc="[systemd] TigerVNC install 回滚：disable --now", check=False)
+
+
+def preflight_tigervnc_install(cfg: TigerVncConfig, log: Logger, pkg_mgr: str) -> None:
+    log.log("======== TigerVNC 阶段一：预检 ========")
+    require_root()
+    log.tagged("预检", "install tigervnc：已确认以 root 执行（euid=0）。")
+    if not str(cfg.vnc_user).strip():
+        raise DeployError("install tigervnc 须指定 --vnc-user 或环境变量 TIGERVNC_USER。")
+    if cfg.display_number <= 0:
+        raise DeployError("install tigervnc 须指定 --vnc-display（例如 1 或 :1）或环境变量 TIGERVNC_DISPLAY。")
+    if not cfg.vnc_password:
+        raise DeployError("VNC 密码不能为空。")
+    if cfg.vnc_password == "123456":
+        log.tagged("通用", "WARNING: 正在使用默认密码，生产请覆盖 VNC_PASSWORD。")
+    try:
+        pwd.getpwnam(cfg.vnc_user)
+    except KeyError as exc:
+        raise DeployError(f"系统用户不存在: {cfg.vnc_user}") from exc
+    log.tagged(
+        "TigerVNC",
+        f"目标：显示 {cfg.display_token} → 端口 {cfg.vnc_port}/tcp；systemd 用户映射 {cfg.users_mapping_line}。"
+        " 说明：此为独立虚拟桌面会话，不依赖本机已登录的 X11 控制台会话。",
+    )
+    ensure_tigervnc_port_available_for_install(cfg, log)
+    dry_run_tigervnc_install(cfg, log, pkg_mgr)
+
+
+def rollout_tigervnc_systemd(cfg: TigerVncConfig, log: Logger, state: Dict[str, Any], unit_base: str) -> None:
+    unit_full = tigervnc_unit_full_name(unit_base, cfg.display_number)
+    state["unit_template_base"] = unit_base
+    state["unit_instance"] = unit_full
+    state["display_number"] = cfg.display_number
+    state["display_token"] = cfg.display_token
+    state["vnc_user"] = cfg.vnc_user
+    state["vnc_port"] = cfg.vnc_port
+    state["vnc_users_file"] = str(cfg.vnc_users_file)
+    state["users_mapping_line"] = cfg.users_mapping_line
+
+    log.tagged("systemd", f"启用并启动 {unit_full}（RHEL: vncserver@；Debian: tigervncserver@）。")
+    save_tigervnc_state(cfg, state)
+    run_cmd(log, ["systemctl", "daemon-reload"], desc="[systemd] daemon-reload")
+    run_cmd(log, ["systemctl", "enable", unit_full], desc="[systemd] systemctl enable")
+    run_cmd(log, ["systemctl", "restart", unit_full], desc="[systemd] systemctl restart")
+
+    if not wait_active(unit_full, 30):
+        tail = journal(unit_full, 120)
+        with cfg.log_file.open("a", encoding="utf-8") as f:
+            f.write("\n----- journal tail (TigerVNC unit not active) -----\n")
+            f.write(tail)
+            f.write("\n----------------------------------------------------\n")
+        log.tagged("预检", f"journal 摘要: {journal_hints_from_tail(tail)}")
+        raise DeployError(f"TigerVNC 服务未进入 active：{unit_full}。请检查 journalctl -u {unit_full} -n 120 --no-pager")
+
+    if not wait_vnc_port_listening(cfg.vnc_port, 30):
+        tail = journal(unit_full, 120)
+        with cfg.log_file.open("a", encoding="utf-8") as f:
+            f.write("\n----- journal tail (TigerVNC port not listening) -----\n")
+            f.write(tail)
+            f.write("\n--------------------------------------------------------\n")
+        log.tagged("预检", f"journal 摘要: {journal_hints_from_tail(tail)}")
+        raise DeployError(
+            f"TigerVNC 验收失败：{cfg.vnc_port}/tcp 未监听。请检查 journalctl -u {unit_full} -n 120 --no-pager"
+        )
+
+
+def do_tigervnc_install(cfg: TigerVncConfig, log: Logger) -> int:
+    require_systemd()
+    pkg_mgr = detect_pkg_mgr()
+    state = load_tigervnc_state(cfg, strict=True)
+
+    unit_full_for_rollback = ""
+    try:
+        preflight_tigervnc_install(cfg, log, pkg_mgr)
+        log.log("======== TigerVNC 阶段二：包、密码、vncserver.users、systemd ========")
+        install_tigervnc_packages(cfg, log, pkg_mgr, state)
+        unit_base = detect_tigervnc_systemd_unit_base(log)
+        unit_full_for_rollback = tigervnc_unit_full_name(unit_base, cfg.display_number)
+
+        ensure_user_vnc_passwd(cfg, log, state)
+        patch_vncserver_users_file(cfg, log, state, remove=False)
+        rollout_tigervnc_systemd(cfg, log, state, unit_base)
+    except DeployError:
+        quiesce_tigervnc_unit(log, unit_full_for_rollback)
+        raise
+
+    log.log("======== TigerVNC 阶段三：完成 ========")
+    log.log(f"监听 {cfg.vnc_port}/tcp；映射 {cfg.users_mapping_line}；unit={unit_full_for_rollback}")
+    return 0
+
+
+def do_tigervnc_remove(cfg: TigerVncConfig, log: Logger) -> int:
+    require_root()
+    require_systemd()
+    state = load_tigervnc_state(cfg)
+    log.tagged("TigerVNC", "开始卸载 TigerVNC 配置（幂等）。")
+
+    unit_full = str(state.get("unit_instance", "") or "")
+    if unit_full:
+        run_cmd(log, ["systemctl", "disable", "--now", unit_full], desc="[systemd] TigerVNC disable --now", check=False)
+
+    vnc_user = str(state.get("vnc_user", cfg.vnc_user) or "")
+    try:
+        display_number = int(state.get("display_number", cfg.display_number))
+    except (TypeError, ValueError):
+        display_number = cfg.display_number
+
+    if vnc_user and display_number > 0:
+        rm_cfg = TigerVncConfig(
+            action="remove",
+            vnc_user=vnc_user,
+            display_number=display_number,
+            vnc_password="",
+            pkg_apt=cfg.pkg_apt,
+            pkg_rpm=cfg.pkg_rpm,
+            selinux_pkg=cfg.selinux_pkg,
+            install_selinux_pkg=cfg.install_selinux_pkg,
+            state_dir=cfg.state_dir,
+            log_file=cfg.log_file,
+            purge_log=False,
+            remove_package=False,
+            vnc_users_file=cfg.vnc_users_file,
+        )
+        try:
+            if Path(rm_cfg.vnc_users_file).is_file() and state.get("vncserver_users_managed", True):
+                patch_vncserver_users_file(rm_cfg, log, state, remove=True)
+        except DeployError as exc:
+            log.tagged("TigerVNC", f"WARNING: 更新 vncserver.users 时: {exc}")
+
+    passwd_created = bool(state.get("passwd_created_by_script", False))
+    passwd_path = Path(str(state.get("passwd_file", "")))
+    if passwd_created and passwd_path.is_file():
+        passwd_path.unlink(missing_ok=True)
+        log.tagged("TigerVNC", f"已删除脚本创建的密码文件: {passwd_path}")
+
+    if cfg.remove_package and bool(state.get("package_installed_by_script", False)):
+        pkg_mgr = detect_pkg_mgr()
+        if pkg_mgr == "apt-get":
+            apt_pkg = str(state.get("apt_package_installed_by_script", cfg.pkg_apt) or cfg.pkg_apt)
+            run_cmd(log, ["apt-get", "remove", "-y", apt_pkg], desc="[Debian/apt] remove TigerVNC", check=False)
+        else:
+            for pkg in reversed(list(state.get("rpm_packages_installed_by_script", []) or [])):
+                run_cmd(log, [pkg_mgr, "-y", "remove", pkg], desc=f"[RHEL/rpm] remove {pkg}", check=False)
+
+    backup_key = state.get("vncserver_users_backup")
+    if isinstance(backup_key, str) and Path(backup_key).exists():
+        Path(backup_key).unlink(missing_ok=True)
+
+    if cfg.purge_log and cfg.log_file.exists():
+        cfg.log_file.unlink(missing_ok=True)
+        print(f"已删除日志: {cfg.log_file}")
+
+    remove_tigervnc_state(cfg)
+    if cfg.state_dir.exists() and not any(cfg.state_dir.iterdir()):
+        cfg.state_dir.rmdir()
+
+    log.tagged("TigerVNC", "卸载完成。")
+    return 0
+
+
+def do_tigervnc_status(cfg: TigerVncConfig) -> int:
+    require_systemd()
+    state = load_tigervnc_state(cfg)
+    print(f"脚本版本: {SCRIPT_VERSION}")
+    print(f"后端: {BACKEND_TIGERVNC}")
+    print(f"日志路径: {cfg.log_file}")
+    print(f"状态目录: {cfg.state_dir}")
+    print(f"状态文件: {cfg.state_file}")
+    print(f"状态文件存在: {cfg.state_file.exists()}")
+    if state:
+        print(f"记录状态: {json.dumps(state, ensure_ascii=False)}")
+    unit_full = str(state.get("unit_instance", "") or "")
+    if state.get("vnc_port") is not None:
+        try:
+            port = int(state["vnc_port"])
+        except (TypeError, ValueError):
+            port = 0
+    elif cfg.display_number > 0:
+        port = cfg.vnc_port
+    else:
+        port = 0
+    if unit_full:
+        cp = subprocess.run(["systemctl", "is-enabled", unit_full], text=True, capture_output=True)
+        print(f"is-enabled ({unit_full}): {cp.stdout.strip() or cp.stderr.strip() or cp.returncode}")
+        cp = subprocess.run(["systemctl", "is-active", unit_full], text=True, capture_output=True)
+        print(f"is-active ({unit_full}): {cp.stdout.strip() or cp.stderr.strip() or cp.returncode}")
+    else:
+        print("unit_instance: (状态文件中无记录)")
+    if port:
+        print(f"端口 {port} 监听: {is_port_listening(port)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     epilog = """
-示例:
-  # 安装/更新（幂等，Ubuntu 或 Rocky）
-  sudo python3 setup_x11vnc.py install --password 'StrongPass' --port 5901 --display :0
+统一用法：python3 VNCSetupCli.py <install|remove|status> <x11vnc|tigervnc> [选项]
+（以下为常用示例，--help 可查看全部参数。）
 
-  # 显式指定 cookie（路径须与当前图形登录身份的 uid 一致；root 图形登录常见如下）
-  sudo python3 setup_x11vnc.py install --xauthority /run/user/0/gdm/Xauthority
+【x11vnc】附着本机已有 Xorg 图形会话（与 GDM/XAUTHORITY 探测相关）
+  # 安装/更新（幂等）
+  sudo python3 VNCSetupCli.py install x11vnc --password 'StrongPass' --port 5901 --display :0
 
-  # 查看状态
-  sudo python3 setup_x11vnc.py status
+  # 显式指定 cookie（路径须与当前图形登录身份一致；root 控制台登录常见）
+  sudo python3 VNCSetupCli.py install x11vnc --password 'StrongPass' --xauthority /run/user/0/gdm/Xauthority
 
-  # 卸载（恢复备份 unit，删除脚本创建的密码文件）
-  sudo python3 setup_x11vnc.py remove
+  # 查看状态 / 卸载 / 卸载并删包与日志
+  sudo python3 VNCSetupCli.py status x11vnc
+  sudo python3 VNCSetupCli.py remove x11vnc
+  sudo python3 VNCSetupCli.py remove x11vnc --remove-package --purge-log
 
-  # 卸载并移除脚本安装的 x11vnc 包、删除日志
-  sudo python3 setup_x11vnc.py remove --remove-package --purge-log
+【TigerVNC】独立虚拟桌面会话（:N 与 /etc/tigervnc/vncserver.users；参见 RHEL TigerVNC 文档）
+  sudo python3 VNCSetupCli.py install tigervnc --vnc-user alice --vnc-display 1 --password 'StrongPass'
+  sudo python3 VNCSetupCli.py status tigervnc
+  sudo python3 VNCSetupCli.py remove tigervnc
+  sudo python3 VNCSetupCli.py remove tigervnc --remove-package --purge-log
+
+【内部】systemd 仅调用（勿手工日常使用；x11vnc unit 的 ExecStart 依赖此入口）
+  /usr/bin/python3 /path/to/VNCSetupCli.py service-run --state-dir /var/lib/x11vnc_setup ...
 
 说明:
-  install 须由 root 执行；unit 固定以 root 运行，每次启动由 service-run 读 state.json 解析 DISPLAY/XAUTHORITY。
-  幂等与原子性：预检不写盘、不 stop 服务；阶段二失败仅 disable--now 本脚本托管 unit；state/unit/密码均为原子写。
-  端口已被 x11vnc 监听时预检放行，便于重复 install 同一端口。
-  install 若发现 state.json 非法 JSON 会直接失败；remove/status 遇损坏状态则按空状态尽量幂等处理。
-  注销/重登后 display 变化时仍可附着当前 X 会话；旧版固定 :N 的 unit 请重新 install 覆盖。
+  install x11vnc / install tigervnc / 对应 remove 须由 root 执行。
+  x11vnc：每次启动由 service-run 读 state.json 动态解析 DISPLAY/XAUTHORITY；状态目录默认 /var/lib/x11vnc_setup。
+  TigerVNC：状态目录默认 /var/lib/tigervnc_setup，与 x11vnc 相互独立。
+  幂等、原子写与预检边界见脚本顶部文档字符串。
 """
     p = argparse.ArgumentParser(
-        description=f"x11vnc 部署（Ubuntu/Debian·apt 与 Rocky·dnf/yum；root、幂等、原子写）v{SCRIPT_VERSION}",
+        description=f"VNC 部署 CLI：install/remove/status ×（x11vnc | tigervnc）；Ubuntu/Debian·apt 与 Rocky·dnf/yum v{SCRIPT_VERSION}",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=epilog,
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    def add_common(sp: argparse.ArgumentParser) -> None:
+    def add_x11vnc_options(sp: argparse.ArgumentParser) -> None:
         sp.add_argument("--password", default=os.getenv("VNC_PASSWORD", "123456"), help="VNC 密码（默认 123456）")
         sp.add_argument("--port", type=int, default=int(os.getenv("VNC_PORT", "5901")), help="VNC 端口（默认 5901）")
         sp.add_argument("--display", default=os.getenv("X11VNC_DISPLAY", ":0"), help="X display（默认 :0）")
@@ -1330,30 +1877,98 @@ def build_parser() -> argparse.ArgumentParser:
             help=f"x11vnc 参数串（默认 {DEFAULT_X11VNC_FLAGS!r}）",
         )
 
-    p_install = sub.add_parser("install", help="安装/更新并启动 x11vnc（幂等）")
-    add_common(p_install)
+    def add_tigervnc_shared(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument(
+            "--state-dir",
+            default=os.getenv("TIGERVNC_STATE_DIR", str(STATE_DIR_TIGERVNC_DEFAULT)),
+            help="TigerVNC 状态目录（默认 /var/lib/tigervnc_setup）",
+        )
+        sp.add_argument(
+            "--log-file",
+            default=os.getenv("TIGERVNC_LOG_FILE", "/var/log/tigervnc_setup.log"),
+            help="TigerVNC 日志路径",
+        )
+        sp.add_argument(
+            "--pkg-apt",
+            default=os.getenv("TIGERVNC_PKG_APT", DEFAULT_TIGERVNC_PKG_APT),
+            help="Debian/Ubuntu 包名（默认 tigervnc-standalone-server）",
+        )
+        sp.add_argument(
+            "--pkg-rpm",
+            default=os.getenv("TIGERVNC_PKG_RPM", DEFAULT_TIGERVNC_PKG_RPM),
+            help="RHEL/Rocky 主包名（默认 tigervnc-server）",
+        )
+        sp.add_argument(
+            "--selinux-pkg",
+            default=os.getenv("TIGERVNC_SELINUX_PKG", DEFAULT_TIGERVNC_SELINUX_PKG),
+            help="RHEL SELinux 策略包（默认 tigervnc-selinux）",
+        )
+        sp.add_argument(
+            "--users-file",
+            default=os.getenv("TIGERVNC_USERS_FILE", str(TIGERVNC_USERS_FILE_DEFAULT)),
+            help="显示号→用户映射文件（默认 /etc/tigervnc/vncserver.users）",
+        )
 
-    p_remove = sub.add_parser("remove", help="卸载脚本管理的 x11vnc 配置（幂等）")
-    add_common(p_remove)
-    p_remove.add_argument("--remove-package", action="store_true", help="同时移除脚本安装的 x11vnc 包")
-    p_remove.add_argument("--purge-log", action="store_true", help="同时删除日志文件")
-    p_remove.add_argument("--force-remove-unmanaged-unit", action="store_true", help="强制删除非脚本管理 unit")
+    p_install = sub.add_parser("install", help="安装/更新指定后端（子命令：x11vnc | tigervnc）")
+    ins_sub = p_install.add_subparsers(dest="backend", required=True)
+    p_ins_x11 = ins_sub.add_parser(BACKEND_X11VNC, help="x11vnc：附着已有 Xorg 会话（幂等）")
+    add_x11vnc_options(p_ins_x11)
+    p_ins_tv = ins_sub.add_parser(BACKEND_TIGERVNC, help="TigerVNC：独立虚拟会话（幂等）")
+    add_tigervnc_shared(p_ins_tv)
+    p_ins_tv.add_argument(
+        "--vnc-user",
+        default=os.getenv("TIGERVNC_USER", ""),
+        help="会话所属系统用户（须已存在，且勿用 root）",
+    )
+    p_ins_tv.add_argument(
+        "--vnc-display",
+        default=os.getenv("TIGERVNC_DISPLAY", ""),
+        help="虚拟显示号，如 1 或 :1（RFB 端口为 5900+N）",
+    )
+    p_ins_tv.add_argument("--password", default=os.getenv("VNC_PASSWORD", "123456"), help="VNC 密码")
+    p_ins_tv.add_argument(
+        "--no-selinux-policy",
+        action="store_true",
+        help="RHEL 系：即使 SELinux Enforcing 也不安装 tigervnc-selinux",
+    )
 
-    p_status = sub.add_parser("status", help="查看当前部署状态")
-    add_common(p_status)
+    p_remove = sub.add_parser("remove", help="卸载指定后端的脚本管理配置（幂等）")
+    rem_sub = p_remove.add_subparsers(dest="backend", required=True)
+    p_rem_x11 = rem_sub.add_parser(BACKEND_X11VNC, help="卸载 x11vnc unit / 密码 / 状态")
+    add_x11vnc_options(p_rem_x11)
+    p_rem_x11.add_argument("--remove-package", action="store_true", help="同时移除脚本安装的 x11vnc 包")
+    p_rem_x11.add_argument("--purge-log", action="store_true", help="同时删除日志文件")
+    p_rem_x11.add_argument("--force-remove-unmanaged-unit", action="store_true", help="强制删除非脚本管理 unit")
 
-    # 仅供 systemd ExecStart；SUPPRESS 使其不出现在主 --help 子命令列表；add_help=False 避免误当成运维 CLI
+    p_rem_tv = rem_sub.add_parser(BACKEND_TIGERVNC, help="卸载 TigerVNC systemd 映射与状态")
+    add_tigervnc_shared(p_rem_tv)
+    p_rem_tv.add_argument("--remove-package", action="store_true", help="同时移除脚本记录中安装的 RPM/apt 包")
+    p_rem_tv.add_argument("--purge-log", action="store_true", help="删除 TigerVNC 日志文件")
+
+    p_status = sub.add_parser("status", help="查看指定后端部署状态")
+    stat_sub = p_status.add_subparsers(dest="backend", required=True)
+    p_stat_x11 = stat_sub.add_parser(BACKEND_X11VNC, help="x11vnc 状态")
+    add_x11vnc_options(p_stat_x11)
+
+    p_stat_tv = stat_sub.add_parser(BACKEND_TIGERVNC, help="TigerVNC 状态")
+    add_tigervnc_shared(p_stat_tv)
+    p_stat_tv.add_argument(
+        "--vnc-display",
+        default="",
+        help="无 state 时可选，用于推导监听端口（5900+N）",
+    )
+
+    # 仅供 systemd ExecStart；与历史 unit 一致，无 backend 子命令。
     p_svc = sub.add_parser(INTERNAL_SYSTEMD_SUBCMD, help=argparse.SUPPRESS, add_help=False)
-    add_common(p_svc)
+    add_x11vnc_options(p_svc)
 
     return p
 
 
-def parse_config(argv: Sequence[str]) -> Config:
-    parser = build_parser()
-    ns = parser.parse_args(argv)
+def config_from_namespace(ns: argparse.Namespace) -> Config:
     return Config(
         command=cast(str, ns.command),
+        backend=cast(str, getattr(ns, "backend", BACKEND_X11VNC)),
         vnc_password=cast(str, ns.password),
         vnc_port=cast(int, ns.port),
         display=cast(str, ns.display),
@@ -1372,6 +1987,31 @@ def parse_config(argv: Sequence[str]) -> Config:
     )
 
 
+def tiger_config_from_namespace(ns: argparse.Namespace) -> TigerVncConfig:
+    action = cast(str, ns.command)
+    vnc_user = str(getattr(ns, "vnc_user", "") or "").strip()
+    dr = str(getattr(ns, "vnc_display", "") or "").strip()
+    display_number = parse_tigervnc_display_number(dr) if dr else 0
+    install_selinux = True
+    if action == "install":
+        install_selinux = not bool(getattr(ns, "no_selinux_policy", False))
+    return TigerVncConfig(
+        action=action,
+        vnc_user=vnc_user,
+        display_number=display_number,
+        vnc_password=str(getattr(ns, "password", "") or ""),
+        pkg_apt=str(getattr(ns, "pkg_apt", DEFAULT_TIGERVNC_PKG_APT)),
+        pkg_rpm=str(getattr(ns, "pkg_rpm", DEFAULT_TIGERVNC_PKG_RPM)),
+        selinux_pkg=str(getattr(ns, "selinux_pkg", DEFAULT_TIGERVNC_SELINUX_PKG)),
+        install_selinux_pkg=install_selinux,
+        state_dir=Path(str(getattr(ns, "state_dir", str(STATE_DIR_TIGERVNC_DEFAULT)))),
+        log_file=Path(str(getattr(ns, "log_file", "/var/log/tigervnc_setup.log"))),
+        purge_log=cast(bool, getattr(ns, "purge_log", False)),
+        remove_package=cast(bool, getattr(ns, "remove_package", False)),
+        vnc_users_file=Path(str(getattr(ns, "users_file", str(TIGERVNC_USERS_FILE_DEFAULT)))),
+    )
+
+
 def register_signal_handler(log: Logger) -> None:
     def _handler(signum, _frame):
         log.log(f"收到信号 {signum}，退出。")
@@ -1382,27 +2022,69 @@ def register_signal_handler(log: Logger) -> None:
 
 
 def main(argv: Sequence[str]) -> int:
-    cfg = parse_config(argv)
-    log = Logger(cfg.log_file)
-    register_signal_handler(log)
-    log.log("日志初始化完成")
-    try:
-        require_linux()
-        if cfg.command == "install":
-            return do_install(cfg, log)
-        if cfg.command == "remove":
-            return do_remove(cfg, log)
-        if cfg.command == "status":
-            return do_status(cfg)
-        if cfg.command == INTERNAL_SYSTEMD_SUBCMD:
+    ns = build_parser().parse_args(argv)
+    cmd = cast(str, ns.command)
+    backend = cast(Optional[str], getattr(ns, "backend", None))
+
+    if cmd == INTERNAL_SYSTEMD_SUBCMD:
+        cfg = config_from_namespace(ns)
+        log = Logger(cfg.log_file)
+        register_signal_handler(log)
+        log.log("日志初始化完成")
+        try:
+            require_linux()
             return do_service_run(cfg, log)
-        raise DeployError(f"未知命令: {cfg.command}")
-    except DeployError as e:
-        log.log(f"ERROR: {e}")
-        return 1
-    except (OSError, ValueError, TypeError, subprocess.SubprocessError) as e:
-        log.log(f"ERROR: 未预期异常: {e}")
-        return 1
+        except DeployError as e:
+            log.log(f"ERROR: {e}")
+            return 1
+        except (OSError, ValueError, TypeError, subprocess.SubprocessError) as e:
+            log.log(f"ERROR: 未预期异常: {e}")
+            return 1
+
+    if backend == BACKEND_TIGERVNC:
+        tc = tiger_config_from_namespace(ns)
+        log = Logger(tc.log_file)
+        register_signal_handler(log)
+        log.log("日志初始化完成")
+        try:
+            require_linux()
+            if cmd == "install":
+                return do_tigervnc_install(tc, log)
+            if cmd == "remove":
+                return do_tigervnc_remove(tc, log)
+            if cmd == "status":
+                return do_tigervnc_status(tc)
+            raise DeployError(f"未知动作（tigervnc）: {cmd}")
+        except DeployError as e:
+            log.log(f"ERROR: {e}")
+            return 1
+        except (OSError, ValueError, TypeError, subprocess.SubprocessError) as e:
+            log.log(f"ERROR: 未预期异常: {e}")
+            return 1
+
+    if backend == BACKEND_X11VNC:
+        cfg = config_from_namespace(ns)
+        log = Logger(cfg.log_file)
+        register_signal_handler(log)
+        log.log("日志初始化完成")
+        try:
+            require_linux()
+            if cmd == "install":
+                return do_install(cfg, log)
+            if cmd == "remove":
+                return do_remove(cfg, log)
+            if cmd == "status":
+                return do_status(cfg)
+            raise DeployError(f"未知动作（x11vnc）: {cmd}")
+        except DeployError as e:
+            log.log(f"ERROR: {e}")
+            return 1
+        except (OSError, ValueError, TypeError, subprocess.SubprocessError) as e:
+            log.log(f"ERROR: 未预期异常: {e}")
+            return 1
+
+    print(f"ERROR: CLI 路由失败: command={cmd!r} backend={backend!r}", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":
