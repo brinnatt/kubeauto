@@ -6,7 +6,7 @@ VNCSetupCli.py（Python 3.9+）
 - 面向 Ubuntu/Debian（apt）与 Rocky Linux（dnf/yum）两系，可生产、幂等部署
 - 对外命令统一为：install / remove / status，各须再选后端子命令 x11vnc 或 tigervnc（例：install x11vnc、remove tigervnc）。
 - x11vnc：systemd 通过内部子命令 service-run（见 INTERNAL_SYSTEMD_SUBCMD）在每次服务启动时重新探测 DISPLAY/XAUTHORITY，避免会话切换后固定 :N 导致永久失败；须 root 安装/卸载；服务以 root 运行，通过 XAUTHORITY 附着已有 Xorg。
-- TigerVNC：独立虚拟会话（vncserver.users + systemd 模板），install/remove 须 root。
+- TigerVNC：独立虚拟会话（vncserver.users + systemd 模板）；install/remove 须 root；且 vncserver.users 映射必须为 root（uid=0）。实测非 root 映射易导致客户端黑屏、上游无可靠修复，故本脚本禁止普通用户映射（与 x11vnc「仅 root 安装/运服」策略对齐）。
 - 可重复执行，可回收脚本创建的资源，保持系统干净
 
 幂等、原子性与脏数据防护（与实现一一对应）：
@@ -36,7 +36,7 @@ VNCSetupCli.py（Python 3.9+）
 - [Debian/apt]  仅 apt-get 路径
 - [RHEL/rpm]    dnf/yum 路径（Rocky 等）
 - [GDM]         显示管理 / Wayland vs Xorg 说明与 custom.conf 预检
-- [预检]       root 身份、xdpyinfo、端口、会话探测
+- [预检]       root 身份、xdpyinfo、端口、会话探测；TigerVNC 另校验映射用户为 uid=0
 - [systemd]   unit 与 systemctl
 - [TigerVNC]  install/remove/status tigervnc 路径（虚拟会话、vncserver.users、模板 unit）
 """
@@ -139,7 +139,10 @@ class Config:
 
 @dataclass
 class TigerVncConfig:
-    """TigerVNC 独立虚拟会话（systemd 模板实例 + /etc/tigervnc/vncserver.users），与 x11vnc 附着现有 X 会话互不干扰。"""
+    """TigerVNC 独立虚拟会话（systemd 模板实例 + /etc/tigervnc/vncserver.users），与 x11vnc 附着现有 X 会话互不干扰。
+
+    映射用户（vncserver.users 的 :N=user）在本脚本中固定为 root（uid=0）策略，见预检与 ensure_user_vnc_passwd。
+    """
 
     action: str
     vnc_user: str
@@ -1413,6 +1416,16 @@ def do_status(cfg: Config) -> int:
 # ---------------------------------------------------------------------------
 
 
+def _require_tigervnc_mapping_passwd_uid0(pw: pwd.struct_passwd) -> None:
+    """TigerVNC：仅允许 vncserver.users 映射到 uid=0（见模块文档与预检日志）。"""
+    if pw.pw_uid != 0:
+        raise DeployError(
+            "TigerVNC：vncserver.users 映射用户必须为 root（uid=0）。"
+            f"当前为 {pw.pw_name!r}（uid={pw.pw_uid}）。"
+            "实测非 root 虚拟会话易导致 VNC 客户端黑屏，上游暂无可靠修复，本脚本禁止该配置。"
+        )
+
+
 def parse_tigervnc_display_number(raw: str) -> int:
     s = str(raw).strip()
     if s.startswith(":"):
@@ -1683,11 +1696,19 @@ def ensure_tigervnc_user_config_session(
 
 
 def run_vncpasswd_as_user(log: Logger, vnc_user: str, passwd_file: Path, password: str) -> None:
-    """非交互 vncpasswd（确认密码 + 不设 view-only）。"""
+    """非交互 vncpasswd（确认密码 + 不设 view-only）。与调用方 euid 相同时直接执行，避免多余 runuser。"""
     if not shutil.which("vncpasswd"):
         raise DeployError("未找到 vncpasswd，请确认 TigerVNC 包安装完整。")
-    cmd = ["runuser", "-u", vnc_user, "--", "vncpasswd", str(passwd_file)]
-    log.log(f"[TigerVNC] runuser -u {vnc_user} vncpasswd → {passwd_file}")
+    try:
+        target = pwd.getpwnam(vnc_user)
+    except KeyError as exc:
+        raise DeployError(f"系统用户不存在: {vnc_user}") from exc
+    if target.pw_uid == os.geteuid():
+        cmd = ["vncpasswd", str(passwd_file)]
+        log.log(f"[TigerVNC] vncpasswd（euid={os.geteuid()}）→ {passwd_file}")
+    else:
+        cmd = ["runuser", "-u", vnc_user, "--", "vncpasswd", str(passwd_file)]
+        log.log(f"[TigerVNC] runuser -u {vnc_user} vncpasswd → {passwd_file}")
     stdin_txt = f"{password}\n{password}\nn\n"
     with log.path.open("a", encoding="utf-8") as lf:
         cp = subprocess.run(cmd, text=True, input=stdin_txt, stdout=lf, stderr=lf)
@@ -1705,14 +1726,12 @@ def _tigervnc_ensure_xdg_config_tree(pw: pwd.struct_passwd) -> tuple[Path, Path]
 
 
 def ensure_user_vnc_passwd(cfg: TigerVncConfig, log: Logger, state: Dict[str, Any], pkg_mgr: str) -> None:
-    if cfg.vnc_user in ("root", "0"):
-        raise DeployError(
-            "TigerVNC 虚拟会话不建议映射为 root（见 RHEL TigerVNC / 安全实践）。请使用普通系统用户。"
-        )
+    """在映射用户家目录下写入 ~/.config/tigervnc/passwd；映射用户须为 uid=0（与预检一致）。"""
     try:
         pw = pwd.getpwnam(cfg.vnc_user)
     except KeyError as exc:
         raise DeployError(f"系统用户不存在: {cfg.vnc_user}") from exc
+    _require_tigervnc_mapping_passwd_uid0(pw)
 
     relocate_legacy_dot_vnc_dir(log, pw, state)
     tdir, passwd_path = _tigervnc_ensure_xdg_config_tree(pw)
@@ -1892,7 +1911,9 @@ def preflight_tigervnc_install(cfg: TigerVncConfig, log: Logger, pkg_mgr: str) -
     require_root()
     log.tagged("预检", "install tigervnc：已确认以 root 执行（euid=0）。")
     if not str(cfg.vnc_user).strip():
-        raise DeployError("install tigervnc 须指定 --vnc-user 或环境变量 TIGERVNC_USER。")
+        raise DeployError(
+            "install tigervnc 须指定有效 --vnc-user（默认 root）或环境变量 TIGERVNC_USER；不得为空。"
+        )
     if cfg.display_number <= 0:
         raise DeployError("install tigervnc 须指定 --vnc-display（例如 1 或 :1）或环境变量 TIGERVNC_DISPLAY。")
     if not cfg.vnc_password:
@@ -1900,9 +1921,16 @@ def preflight_tigervnc_install(cfg: TigerVncConfig, log: Logger, pkg_mgr: str) -
     if cfg.vnc_password == "123456":
         log.tagged("通用", "WARNING: 正在使用默认密码，生产请覆盖 VNC_PASSWORD。")
     try:
-        pwd.getpwnam(cfg.vnc_user)
+        pw_tv = pwd.getpwnam(cfg.vnc_user)
     except KeyError as exc:
         raise DeployError(f"系统用户不存在: {cfg.vnc_user}") from exc
+    log.tagged(
+        "TigerVNC",
+        "策略：vncserver.users 仅允许映射 root（uid=0）。"
+        "实测非 root 易出现 VNC 黑屏且上游无可靠修复；与 x11vnc 路径「须 root 安装」一致，禁止普通用户映射。",
+    )
+    _require_tigervnc_mapping_passwd_uid0(pw_tv)
+    log.tagged("预检", f"已校验会话映射用户为 root：{pw_tv.pw_name}（uid=0）。")
     if not str(cfg.tigervnc_session or "").strip() and not _list_xsession_desktop_stems():
         raise DeployError(
             "预检失败：无 /usr/share/xsessions/*.desktop，无法自动写 session=。请安装桌面环境或指定 --session <与 .desktop 同名>。"
@@ -1979,6 +2007,7 @@ def rollout_tigervnc_systemd(cfg: TigerVncConfig, log: Logger, state: Dict[str, 
 
 
 def do_tigervnc_install(cfg: TigerVncConfig, log: Logger) -> int:
+    require_root()
     require_systemd()
     pkg_mgr = detect_pkg_mgr()
     state = load_tigervnc_state(cfg, strict=True)
@@ -2137,9 +2166,9 @@ def build_parser() -> argparse.ArgumentParser:
   sudo python3 VNCSetupCli.py remove x11vnc --remove-package --purge-log
 
 【TigerVNC】虚拟桌面（vncserver.users + systemd 模板；~/.config/tigervnc/passwd，见 tigervnc.org vncsession）
-  # 需普通用户（非 root）；无桌面时先装 GUI；建议安装 psmisc（fuser）以便清理陈旧 X11 socket
-  sudo python3 VNCSetupCli.py install tigervnc --vnc-user alice --vnc-display 1 --password 'StrongPass'
-  sudo python3 VNCSetupCli.py install tigervnc --vnc-user alice --vnc-display 1 --password 'StrongPass' --session xfce
+  # 映射用户须为 root（默认即 root，勿传普通用户）；无桌面时先装 GUI；建议安装 psmisc（fuser）以便清理陈旧 X11 socket
+  sudo python3 VNCSetupCli.py install tigervnc --vnc-display 1 --password 'StrongPass'
+  sudo python3 VNCSetupCli.py install tigervnc --vnc-display 1 --password 'StrongPass' --session xfce
   sudo python3 VNCSetupCli.py status tigervnc
   sudo python3 VNCSetupCli.py remove tigervnc
   sudo python3 VNCSetupCli.py remove tigervnc --remove-package --purge-log
@@ -2150,7 +2179,7 @@ def build_parser() -> argparse.ArgumentParser:
 说明:
   install x11vnc / install tigervnc / 对应 remove 须由 root 执行。
   x11vnc：每次启动由 service-run 读 state.json 动态解析 DISPLAY/XAUTHORITY；状态目录默认 /var/lib/x11vnc_setup。
-  TigerVNC：状态目录默认 /var/lib/tigervnc_setup，与 x11vnc 相互独立。
+  TigerVNC：状态目录默认 /var/lib/tigervnc_setup，与 x11vnc 相互独立；:N=user 仅允许 root（uid=0）。
   幂等、原子写与预检边界见脚本顶部文档字符串。
 """
     p = argparse.ArgumentParser(
@@ -2222,8 +2251,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_tigervnc_shared(p_ins_tv)
     p_ins_tv.add_argument(
         "--vnc-user",
-        default=os.getenv("TIGERVNC_USER", ""),
-        help="会话所属系统用户（须已存在，且勿用 root）",
+        default=os.getenv("TIGERVNC_USER") or "root",
+        help="vncserver.users 映射用户：须为 root（uid=0），默认 root；禁止普通用户（实测易黑屏）",
     )
     p_ins_tv.add_argument(
         "--vnc-display",
@@ -2300,6 +2329,8 @@ def config_from_namespace(ns: argparse.Namespace) -> Config:
 def tiger_config_from_namespace(ns: argparse.Namespace) -> TigerVncConfig:
     action = cast(str, ns.command)
     vnc_user = str(getattr(ns, "vnc_user", "") or "").strip()
+    if action == "install" and not vnc_user:
+        vnc_user = "root"
     dr = str(getattr(ns, "vnc_display", "") or "").strip()
     display_number = parse_tigervnc_display_number(dr) if dr else 0
     install_selinux = True
