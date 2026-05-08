@@ -1310,27 +1310,80 @@ flowchart TB
 
 官方：[Create a dashboard](https://www.elastic.co/docs/explore-analyze/dashboards/create-dashboard) · [Lens](https://www.elastic.co/docs/explore-analyze/visualize/lens) · [Visualize Library](https://www.elastic.co/docs/explore-analyze/visualize/visualize-library) · [Dashboards](https://www.elastic.co/docs/explore-analyze/dashboards) · [Add controls](https://www.elastic.co/docs/explore-analyze/dashboards/add-controls) · [Share dashboards](https://www.elastic.co/docs/explore-analyze/dashboards/sharing)
 
-#### T9.2.9.4、Rules 与 Connectors
+#### T9.2.9.4、Rules 与 Connectors（日志告警）
 
-**日志驱动的告警**
+本节前提与上文锁死，别自改一套：**Elasticsearch / Kibana 版本**见 **T9.2.2**（示例 **9.3.3**）；**数据视图**必须是 **T9.2.9.1** 建的 **`k8s-*`**，时间字段 **`@timestamp`**；**KQL 里写的字段名**与 **T9.2.8**、**T9.2.9.2 第 6 节**一致（含 **`Replace_Dots On`** 后的名字）。你还没跑通 **Fluent Bit → ES → Discover** 时，先别做告警，否则全是空跑或误报。
 
-在 **Stack Management**（**Management**）里找 **Rules** 或 **Connectors**；**Observability**、**Security** 下也有 **Alerts / Rules**（**T9.2.9.0** 侧栏）。**和本文 EFK 直接相关的**，是「能选数据视图 **`k8s-*`**、能用 **KQL/DSL 命中你容器日志**」的那类规则（常见名称：**Elasticsearch query**），一般放在 **Stack Management** 里和 **Connectors** 一起管；**别**和 **APM、SIEM 自带规则**混成一回事，**数据源、权限、许可**都不一样。  
+**1. 先分清三件事（避免排障时走错门）**
 
-**和本文**最常用的是 **Elasticsearch query** 类：对 **数据视图** **`k8s-*`** 在时间窗里跑**查询/聚合**，过阈值就触发；**Connectors** 配**邮件、Webhook、Slack** 等，接工单或群。  
+- **本文要用的规则类型**：**Elasticsearch query**（在创建规则时选这个类型）。它支持用 **[KQL](https://www.elastic.co/docs/explore-analyze/query-filter/languages/kql)**、**Lucene**、**Query DSL** 或 **ES|QL** 定义条件；**EFK 值班习惯**下优先 **KQL + 数据视图 `k8s-*`**，和 **Discover** 同一套话。细则见官方 [Elasticsearch query rule](https://www.elastic.co/docs/explore-analyze/alerting/alerts/rule-type-es-query)。
+- **菜单从哪进（与 9.3.x 官方一致）**：**Stack Management → Alerts and insights → Rules** 管规则列表；**Connectors** 在 **Stack Management** 里单独一页（各 Space 一份，和 **T9.2.9.7** 说的 Space 隔离一致）。找不到就用顶栏 **全局搜索** 搜 **`Rules`**、**`Connectors`**（[Find apps and objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/find-apps-and-objects)）。
+- **不要和这些混一谈**：**Observability / Security / APM** 里也有各自的 **Rules / Alerts**，数据源、许可和权限模型不同；**SIEM 检测规则**不是本节路径。**本文只写「容器日志进 `k8s-*` → 用 Stack 侧 Elasticsearch query 告警」**。
 
-**生产注意**：规则在 Kibana/ES 侧**定时跑查询**——**窗口别拉成「三天」、间隔别 10 秒一次**，会和大查询抢资源；**先在单命名空间/单服务的 KQL 上验证**再推广。
+**2. 权限与前置（生产一踩一个坑）**
 
-```mermaid
-flowchart LR
-  Q[KQL / DSL 命中 k8s-*] --> R[Rule 时间窗+阈值]
-  R --> C[Connector 通知]
-  C --> O[值班/On-call]
-  O --> F[回到 Discover 用同条件排查]
+- 能建规则、配连接器，需要 Kibana 功能权限里 **Management → Stack Rules**、**Actions and Connectors** 等到位；细则见 [Alerting set up](https://www.elastic.co/docs/explore-analyze/alerting/alerts/alerting-setup) 的 **Security** 小节。日常别用 **`elastic` 做规则 owner**（见 **T9.2.9.7**）；规则后台跑查询用的是创建时的 **API key** 权限快照，后人改角色可能导致规则悄悄失效，官方在 **Set up** 里写明了这一点。
+- 自建栈若要用**邮件**等连接器，通常还要配 **`kibana.yml`**（例如 **`xpack.encryptedSavedObjects.encryptionKey`**、邮件域白名单等），见同一页 [Alerting set up](https://www.elastic.co/docs/explore-analyze/alerting/alerts/alerting-setup)。ECK 托管 Kibana 时把这些写进 **Kibana CR 的 `spec.config`**，别只会在 UI 里点。
+
+**3. 推荐操作顺序（先连接器，后规则）**
+
+1. **Connectors**：**Stack Management → Connectors → Create connector**。选类型（常用：**Webhook**、**Slack**、**Email**、**Microsoft Teams** 等，完整列表见 [Available connectors](https://www.elastic.co/docs/reference/kibana/connectors-kibana)）。填 URL/凭据后**先 Test**，再保存。连接器说明总入口：[Connectors](https://www.elastic.co/docs/deploy-manage/manage-connectors)。
+2. **Rules**：**Stack Management → Alerts and insights → Rules → Create rule** → 选 **Elasticsearch query**。
+3. **查询方式**：选 **KQL**（或你团队统一的语言）；**Data view** 下拉选 **`k8s-*`**（与 **T9.2.9.1** 名称一致，不是手敲索引别名）。
+4. **KQL**：把你在 **Discover** 里已经验证过的条件贴进来。示例（命名空间、Pod 名请换成你的；字段以 Discover 为准）：
+
+```text
+kubernetes.namespace_name: "default" and stream: "stderr" and log: *error*
 ```
 
-官方：[创建与管理规则](https://www.elastic.co/docs/explore-analyze/alerting/alerts/create-manage-rules) · [Elasticsearch query 规则](https://www.elastic.co/docs/explore-analyze/alerting/alerts/rule-type-es-query) · [Alerting 总览](https://www.elastic.co/docs/explore-analyze/alerting)
+5. **度量与阈值**：先做 **`count`**（文档条数）最直观；阈值用 **`is above`** 等，与官方 [Elasticsearch query rule](https://www.elastic.co/docs/explore-analyze/alerting/alerts/rule-type-es-query) 一致。
+6. **时间窗口（Time window）**：例如「过去 5 分钟」——窗口越大，每次规则触发的查询越重，**别一上来就 24h、72h**。
+7. **检查间隔（Check interval）**：官方建议一般**小于**时间窗口，避免漏检；同时 **间隔越短，ES/Kibana 负担越大**。默认栈里常有**最短间隔**等护栏，见 [Kibana alerting: performance and scaling](https://www.elastic.co/docs/deploy-manage/production-guidance/kibana-alerting-production-considerations)。
+8. **Test query**：用界面里的 **Test query** 确认命中数合理，再保存规则（同上规则类型文档）。
+9. **去重**：**Exclude matches from previous run** 默认常开，避免同一条日志反复告警；若你用分组（group by）高基数字段，行为以官方说明为准。
+10. **Actions**：选刚建的 **Connector**，动作频率用 **alert summary** 或 **On status changes** 等压噪音，避免每分钟一封邮件（官方在 [Create and manage rules](https://www.elastic.co/docs/explore-analyze/alerting/alerts/create-manage-rules) 的 **Actions** 里有示例说明）。
+11. **Rule scope（9.3+）**：若界面让你选规则可见范围，本文场景选 **Stack Management / Stack rules** 一类即可，避免误选成仅 Observability 应用上下文导致别的同事在 **Stack Management** 里看不到（见 [Elasticsearch query rule](https://www.elastic.co/docs/explore-analyze/alerting/alerts/rule-type-es-query) 的 **Define the conditions** 里对 **scope** 的说明）。
 
-**（插槽：一条针对 k8s-* 的 Elasticsearch query 规则 + Connector 示例）**
+**4. 和 Discover 的闭环**
+
+告警里的 **KQL、时间窗**应能在 **Discover**（**T9.2.9.2**）用同一 **数据视图 `k8s-*`** 复现；值班收到通知后，用通知里的 **link** 或自己打开 **Discover** 同条件排查。告警**不会**减少索引体积；要降噪、省盘，仍在 **Fluent Bit / ILM** 上做（**T9.2.9.9、T9.2.9.6**）。
+
+```mermaid
+flowchart TB
+  subgraph pre[前置 与上文一致]
+    DV[数据视图 k8s-*]
+    FB[Fluent Bit 字段名]
+    DV --- FB
+  end
+  subgraph conn[第一步 Connectors]
+    C1[Stack Management Connectors]
+    C2[Create 选类型 Webhook 邮件等]
+    C3[Test 通过后保存]
+    C1 --> C2 --> C3
+  end
+  subgraph rule[第二步 Elasticsearch query 规则]
+    R1[Stack Management Alerts and insights Rules]
+    R2[Create rule 选 Elasticsearch query]
+    R3[KQL + Data view k8s-*]
+    R4[Test query 调时间窗与阈值]
+    R5[挂 Action 选 Connector]
+    R1 --> R2 --> R3 --> R4 --> R5
+  end
+  subgraph prod[生产注意]
+    P1[检查间隔 别压到 ES 扛不住]
+    P2[权限 用业务角色 不用 elastic 长期拥有规则]
+    P3[Space 规则与连接器只在当前 Space]
+  end
+  pre --> conn
+  conn --> rule
+  rule --> prod
+  prod --> DISC[Discover 同条件复盘]
+```
+
+**5. 验收（你做完应对得上号）**
+
+- 故意打一条满足 KQL 的测试日志（或临时放宽阈值），在 **Rules** 详情里能看到规则执行成功，**Connector** 能收到一次通知（测完改回阈值或禁用规则，别留「永远 firing」在生产里）。
+- **Last response** 无报错；若 **Errored actions**，到规则 **History** 里看原因（常见：邮件域不在白名单、Webhook 超时、连接器删了但规则还引用）。
 
 #### T9.2.9.5、Dev Tools（Console）与查询工具：运维必备
 
