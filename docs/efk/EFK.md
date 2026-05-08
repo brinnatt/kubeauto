@@ -1310,8 +1310,6 @@ flowchart TB
 
 官方：[Create a dashboard](https://www.elastic.co/docs/explore-analyze/dashboards/create-dashboard) · [Lens](https://www.elastic.co/docs/explore-analyze/visualize/lens) · [Visualize Library](https://www.elastic.co/docs/explore-analyze/visualize/visualize-library) · [Dashboards](https://www.elastic.co/docs/explore-analyze/dashboards) · [Add controls](https://www.elastic.co/docs/explore-analyze/dashboards/add-controls) · [Share dashboards](https://www.elastic.co/docs/explore-analyze/dashboards/sharing)
 
-**（插槽：从 Dashboard 进入 Lens，数据视图 `k8s-*` 拖拽字段成图；Dashboard 多面板与 Controls 成品截图）**
-
 #### T9.2.9.4、Rules（规则）与 Connectors：日志驱动的告警
 
 在 **Stack Management**（**Management**）里找 **Rules** 或 **Connectors**；**Observability**、**Security** 下也有 **Alerts / Rules**（**T9.2.9.0** 侧栏）。**和本文 EFK 直接相关的**，是「能选数据视图 **`k8s-*`**、能用 **KQL/DSL 命中你容器日志**」的那类规则（常见名称：**Elasticsearch query**），一般放在 **Stack Management** 里和 **Connectors** 一起管；**别**和 **APM、SIEM 自带规则**混成一回事，**数据源、权限、许可**都不一样。  
