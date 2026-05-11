@@ -1930,7 +1930,7 @@ output {
 
 ### T9.2.11、对照 T9.1
 
-这一节是 **T9.2 的收束**：把 Kubernetes 官方归纳的「集群级日志三条路」和本文已经一步步搭好的 **ECK + Fluent Bit + Kibana** 对上号。后面做架构评审、扩容、换人或接告警工单时，先看这里不容易和 **T9.1**、**T9.2.8** 打架。
+把 Kubernetes 官方归纳的「集群级日志三条路」和本文已经一步步搭好的 **ECK + Fluent Bit + Kibana** 对上号。后面做架构评审、扩容、换人或接告警工单时，先看这里不容易和 **T9.1**、**T9.2.8** 打架。
 
 官方说法见 [Cluster-level logging architectures](https://kubernetes.io/docs/concepts/cluster-administration/logging/#cluster-level-logging-architectures)（和 **T9.1.3** 是同一出处）。
 
