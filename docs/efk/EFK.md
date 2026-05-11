@@ -1611,23 +1611,108 @@ flowchart LR
 - **ILM**：新产生的 **`k8s-日期`** 索引详情里能看到已挂载策略；超过保留天的旧索引按策略进入 **delete**（时间以策略为准，别指望「改完立刻全没」）。  
 - **快照**：SLM **History** 或 API 能看到成功执行；**故意**在测试环境做一次 **restore** 流程通。  
 
-**（插槽：Index Management 中过滤 `k8s-*` 的列表截图，含健康与存储列）**
+#### T9.2.9.7、Spaces、用户与角色
 
-**（插槽：某条 ILM 策略 Delete 阶段配置 + 索引上已应用策略的状态截图）**
+**和上文对齐**：**Stack** 见 **T9.2.2**（示例 **9.3.3**）；日志在 **`k8s-*`**（**T9.2.8 / T9.2.9.1**）；**`elastic`** 密码与性质见 **T9.2.7**。本节解决：**谁进哪个 Space、谁能读/谁能管索引和告警、对象怎么在多环境之间搬**。你只有单团队、单 Space，也可以先做**角色**，以后加 Space 不用返工。
 
-**（插槽：Snapshot and Restore 中 Repository + SLM policy 截图，或 ECK 侧仓库凭据已就绪的说明页）**
+**1. 先把概念说清楚**
 
-> **本节与官方核对日期：2026-05-08**（Index Management、ILM、快照流程以当前文档为准；**Stack 小版本**以 **T9.2.2** 为准，升级后复查 ILM 与快照权限。）
+- **Space**：一套**独立的 Kibana 已保存对象**（数据视图、Dashboard、规则、连接器等）。用户能进哪些 Space、在每个 Space 里能点哪些功能，由**角色**决定（见 [Spaces](https://www.elastic.co/docs/deploy-manage/manage-spaces)）。官方提醒：**只在 Space 里藏菜单不等于安全**，真正收口要靠 **Elasticsearch / Kibana 权限**（同页 **Define access to a space** 附近说明）。  
+- **角色（Role）**：一边是 **Elasticsearch**（集群权限、**索引**上能干什么），一边是 **Kibana**（按 Space 配置**功能**读写）。用户拿多个角色时，权限是**并集**，不会「加一个角色反而变窄」——要收权限得改/删角色（见 [Role management using Kibana](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/kibana-role-management)）。  
+- **用户（User）**：本文用 Kibana 的 **Native** 用户即可入门（[Native user authentication](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/native)）。以后要接 **SSO**（SAML、OIDC、LDAP 等）再走 [User authentication](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/user-authentication)。  
+- **`elastic`**：仍是**超级用户**（[Built-in users](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/built-in-users)）。**装集群、救急、建第一个管理员角色**可以用它；日常值班、开发查日志应用下面建的**业务账号**。ECK 上密码与轮转见 [Orchestrator-managed users](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/orchestrator-managed-users-overview) 链到 [managed credentials ECK](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/managed-credentials-eck)。
 
-**官方索引**：[Manage indices in Kibana](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations) · [Index operations reference](https://www.elastic.co/docs/manage-data/data-store/index-operations-reference) · [Templates](https://www.elastic.co/docs/manage-data/data-store/templates) · [ILM](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management) · [Create ILM policy](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/configure-lifecycle-policy) · [Apply ILM to existing index](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/policy-apply) · [ILM status](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/policy-view-status) · [Snapshot and restore](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore) · [Create snapshots / SLM](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/create-snapshots) · [Snapshots on ECK](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/cloud-on-k8s) · [Restore snapshot](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/restore-snapshot)
+**2. 管理入口（记不住就全局搜索）**
 
-#### T9.2.9.7、Spaces、用户与角色：多团队共用时必做
+| 事 | 怎么走 |
+|----|--------|
+| Space | **Stack Management → Spaces**（或搜 **`Spaces`**） |
+| 角色 | **Stack Management → Security → Roles**（或搜 **`Roles`**）；需要 **`manage_security`** 集群权限才能进（见 [Kibana role management · Required permissions](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/kibana-role-management#required-permissions)） |
+| 用户 | **Stack Management → Security → Users**（或搜 **`Users`**） |
+| 已保存对象 | **Stack Management → Saved Objects**（或搜 **`Saved Objects`**） |
 
-- **Spaces**（[官方](https://www.elastic.co/docs/deploy-manage/manage-spaces)）：按**环境或业务线**切开 Kibana；每个 Space 里**自己的**数据视图、Dashboard、规则、已保存对象，**减少互相改乱、误触生产告警**。  
-- **Users / Roles**（[Built-in users](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/built-in-users)、[Roles](https://www.elastic.co/docs/reference/elasticsearch/roles)、[Kibana 中管理角色](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/kibana-role-management)、[快速上手](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/quickstart)）：典型拆法——**只读同事**：能 **Discover、Dashboard、读** **`k8s-*`**，**没有**改 ILM/删索引；**平台组**：**Index Management、快照、ILM、角色**；**`elastic` 与超级角色**只留给**应急**与**改集群配置**。  
-- **Saved objects**：**导出为 NDJSON** 做 **Git / 多环境晋升** 时，注意[版本向前兼容与导入](https://www.elastic.co/docs/explore-analyze/find-and-organize/saved-objects) 的限制。
+全局搜索习惯见 [Find apps and objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/find-apps-and-objects)。
 
-**（插槽：按 Space/Role 授权 + Saved objects 导出示意图）**
+**3. 建议先做 Space（新建环境最小集）**
+
+1. 用 **`elastic`**（或已有管理员）登录。  
+2. **Stack Management → Spaces → Create space**。  
+3. 填**名称**、**描述**；**URL identifier**（会进浏览器路径 `/s/xxx/`）**保存后不能改**，起名时想清楚。  
+4. 保存。默认还有一个 **Default** Space，可继续当「平台自用」或只留一个 Space 也行。  
+
+规则、连接器**按 Space 隔离**（**T9.2.9.4**）：业务 Space 和平台 Space 分开时，告警对象不会跟开发实验混在一抽屉里。删 Space 会**删掉里面所有对象**，操作前确认（见 [Spaces · Delete a space](https://www.elastic.co/docs/deploy-manage/manage-spaces#delete-a-space)）。
+
+**4. 建角色：两条线一起配（索引 + Kibana）**
+
+详细结构见 [Defining roles](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles) 与 [Kibana role management](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/kibana-role-management)。下面给你**本文 `k8s-*` 专用**的两种角色思路，名字可改成你公司的规范。
+
+**4.1 角色 A：只读看日志（开发 / 值班）**
+
+1. **Roles → Create role**，名称示例 **`k8s_logs_reader`**。  
+2. **Index privileges**：**Indices** 填 **`k8s-*`**；**Privileges** 至少 **`read`**、**`view_index_metadata`**（官方在 Kibana 角色文档里对看数据就这么建议）。  
+3. **Kibana privileges → Add Kibana privilege**：**Spaces** 选你的业务 Space（不要一上来 **All Spaces**，除非你真想全员全空间）。**Privilege** 用 **Custom**，例如：**Analytics** 里 **Discover、Dashboard、Visualize library** 给 **Read**；**Management** 里与 **Stack Management、索引、快照、Dev Tools** 相关项设为 **None**（避免手滑删索引、改集群级设置）。  
+4. **Stack Rules / Actions**：若你希望此人**也能收告警但不在此 Space 建规则**，按你们流程单独加；默认只读日志可全部 **None**。  
+5. 保存。
+
+**4.2 角色 B：平台运维（索引 / ILM / 快照 / 规则）**
+
+1. 名称示例 **`k8s_platform_ops`**。  
+2. **Index privileges**：对 **`k8s-*`** 给予与 **T9.2.9.6** 一致的能力（至少能管生命周期时要有 **`manage`** 或官方要求的组合，以你实际执行的 **ILM、删索引** 为准）；若还要在 **Index Management** 里看系统索引行为，按 [Manage indices · Required permissions](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations#required-permissions) 补 **`monitor`** 等集群权限。  
+3. **Cluster privileges**：按需勾选 **`monitor`**、**`manage_index_templates`**；快照与 SLM 需要 **`manage_slm`**、**`cluster:admin/snapshot/*`** 等（见 [Create snapshots · Prerequisites](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/create-snapshots#prerequisites)）。  
+4. **Kibana privileges**：在指定 Space（或单独 **Platform** Space）给 **Management** 下 **Index Management、Stack Rules、Actions and Connectors、Snapshot and Restore** 等 **All**；是否开放 **Dev Tools** 由你司规定。  
+5. 保存。
+
+**4.3 用户与验证**
+
+1. **Users → Create user**，建 **`dev_zhang`** 之类账号，只挂 **`k8s_logs_reader`**。  
+2. 再建平台账号挂 **`k8s_platform_ops`**（可再叠加更严的审批流程，本文不展开）。  
+3. **退出后用新用户登录**：应只能进被授权的 Space，**Discover** 里数据视图仍指向 **`k8s-*`**（需在**该 Space** 内建或复制一份数据视图，见下节）。官方完整示例流程见 [Quickstart: Native user and role management](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/quickstart)。
+
+**内置角色**一览与用途见 [Built-in roles](https://www.elastic.co/docs/reference/elasticsearch/roles)。**`kibana_admin`** 能管 Space，相当于全局 Kibana 管理，**别随手发给业务**。
+
+**5. 数据视图、Dashboard 和 Space**
+
+**数据视图 `k8s-*`** 是已保存对象，**跟着 Space 走**（**T9.2.9.1** 是在某个 Space 里建的）。新开 Space 后，要么在该 Space **再建一条 `k8s-*` 数据视图**，要么用 **Saved Objects** 从 Default **复制/导出导入**（见 [Saved objects · Copy to other spaces](https://www.elastic.co/docs/explore-analyze/find-and-organize/saved-objects#saved-objects-copy-to-other-spaces)）。否则用户进新 Space 会提示没有数据视图。
+
+**6. Saved objects（导出、升级、多环境）**
+
+- 入口：[Saved objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/saved-objects)。**Import/Export** 用 **NDJSON**；导入默认可能覆盖同名对象，生产用前先在测试 Kibana 试一遍。  
+- **版本**：导出文件**不能往旧版本 Kibana 导**；同主版本内跨小版本一般可按官方兼容表操作（见 [Compatibility across versions](https://www.elastic.co/docs/explore-analyze/find-and-organize/saved-objects#compatibility-across-versions)）。与 **T9.2.9.9** 升级前读 **Release notes** 一起看。  
+- **权限**：能进 **Saved Objects Management** 的人能力很大（官方 [Permissions](https://www.elastic.co/docs/explore-analyze/find-and-organize/saved-objects#permissions)），只给平台角色。
+
+**7. 采集账号别和 Kibana 登录混一谈**
+
+**Fluent Bit** 写 ES 用的是 **Elasticsearch 用户**（**T9.2.8** 里示例仍是 **`elastic`**，生产应换成**仅有 `k8s-*` 写权限**的专用用户）。那是**数据面账号**，不是本节给同事登录 Kibana 的账号；密钥只在 **Secret** 里轮转，别和 Kibana 密码共用一套流程。
+
+**8. 可选：ECK 上用文件固化「救命角色」**
+
+若你希望某些角色**只能运维在集群里改、没人能在 UI 里删掉**，可用 **`roles.yml`** 挂进 **Elasticsearch CR**（见 [Defining roles · File-based role management](https://www.elastic.co/docs/deploy-manage/users-roles/cluster-or-deployment-auth/defining-roles#roles-management-file) 里的 ECK 示例）。这是进阶手段，和 **T9.2.5** 的 GitOps 一起评审。
+
+```mermaid
+flowchart TB
+  subgraph order[推荐顺序]
+    S1[Spaces 划工作区]
+    S2[Roles 索引 k8s-* + Kibana 功能]
+    S3[Users 绑定角色]
+    S4[各 Space 补数据视图与对象]
+    S5[新用户登录验收]
+    S1 --> S2 --> S3 --> S4 --> S5
+  end
+```
+
+```mermaid
+flowchart LR
+  subgraph es[Elasticsearch 侧]
+    IP[Index k8s-* read 或 manage]
+    CP[Cluster monitor 模板 快照等]
+  end
+  subgraph kb[Kibana 侧]
+    KP[按 Space 的 Discover Dashboard Management]
+  end
+  U[用户] --> R[角色]
+  R --> es
+  R --> kb
+```
 
 #### T9.2.9.8、其他模块和本文的关系（避免期望错位）
 
@@ -1648,7 +1733,7 @@ flowchart LR
 1. **数据视图**：模式 **`k8s-*`**，时间字段 **`@timestamp`**，与 **T9.2.8** 的 **`k8s-YYYY.MM.DD`** 索引名一致。  
 2. **Discover**：新打一条日志在**预期时间窗**内能复现；字段名**含 `Replace_Dots` 后**的写法，**Lens / 规则**里**不要**混用老字段名。  
 3. **ILM + 快照**：在**容量评审**里就有结论，不等到磁盘告警再补。  
-4. **权限**：日常不用 **`elastic`**；**Space + Role** 可审计。  
+4. **权限**：同事用 **T9.2.9.7** 的**业务角色**登录；**`elastic`** 仅管理员与应急；**Space + Role** 可审计。  
 5. **升级**：动 **ECK/Stack 版本**前读 [Kibana release notes](https://www.elastic.co/docs/release-notes/kibana) 与 [ECK 与 K8s 支持矩阵](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s#k8s-supported)，再改 **T9.2.2** 的 GitOps 与本文 YAML 版本号。  
 
 ---
