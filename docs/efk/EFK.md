@@ -1385,43 +1385,241 @@ flowchart TB
 - 故意打一条满足 KQL 的测试日志（或临时放宽阈值），在 **Rules** 详情里能看到规则执行成功，**Connector** 能收到一次通知（测完改回阈值或禁用规则，别留「永远 firing」在生产里）。
 - **Last response** 无报错；若 **Errored actions**，到规则 **History** 里看原因（常见：邮件域不在白名单、Webhook 超时、连接器删了但规则还引用）。
 
-#### T9.2.9.5、Dev Tools（Console）与查询工具：运维必备
+#### T9.2.9.5、Dev Tools（Console）与查询工具
 
-**从菜单怎么进**：侧栏 **Management → Dev Tools**（**T9.2.9.0**）；点 **Console** 即主编辑区。  
+本节和上文绑在一起用，别跳步：**Stack 版本**见 **T9.2.2**（示例 **9.3.3**）；**日志索引**是 **T9.2.8** 写出来的 **`k8s-YYYY.MM.DD`**，在 Kibana 里用数据视图 **`k8s-*`**（**T9.2.9.1**）；登录账号与 TLS/CA 仍按 **T9.2.7**、**T9.2.5** 来。你还没在 **Discover** 里看到日志时，先在 **T9.2.8** 排连通，别在 Console 里空转。
 
-**Dev Tools → Console** 同时能发 **Elasticsearch** 和 **Kibana** 的 HTTP 接口。查 **索引列表、分片、mapping、手动 `_search` 试 DSL**，比在纯 UI 里点更快。
+**1. Console 是什么、权限从哪来**
 
-- **打 ES API**：**不用**加前缀，例如 `GET k8s-*/_count`、`GET /_cat/indices?v`（见 [Elasticsearch REST](https://www.elastic.co/docs/reference/elasticsearch/rest-apis)）。  
-- **打 Kibana API**：在路径前加 **`kbn:`**，与官方 [Console 文档](https://www.elastic.co/docs/explore-analyze/query-filter/tools/console) 一致，例如 `GET kbn:/api/index_management/indices`（**具体路径**以你调用的 [Kibana API 文档](https://www.elastic.co/docs/api) 为准）。  
+**Console** 是 Kibana 里的交互界面，用来对 **[Elasticsearch REST API](https://www.elastic.co/docs/reference/elasticsearch/rest-apis)** 和 **[Kibana API](https://www.elastic.co/docs/api/doc/kibana)** 发请求并看返回。官方说明见 [Run API requests with Console](https://www.elastic.co/docs/explore-analyze/query-filter/tools/console)。
 
-同一层菜单里通常还有 **Search Profiler**、**Grok Debugger** 等，分别用来查**慢在查询哪段**、和 **T9.2.8** 的 **parser** 联调。
+生产上要记牢一点：请求是 **经 Kibana 代你发往 Elasticsearch** 的，用的是 **你当前浏览器登录身份** 的权限，**不是**你在笔记本上 `curl https://es:9200` 那条路。账号读不了 **`k8s-*`**，Console 里同样会 403。日常别用 **`elastic`** 长期操作（**T9.2.9.7**）。
 
-官方：[Console](https://www.elastic.co/docs/explore-analyze/query-filter/tools/console) · [Query tools 总览](https://www.elastic.co/docs/explore-analyze/query-filter/tools)
+**2. 怎么进界面**
 
-**（插槽：Console 中执行 GET /_cat/indices 或 k8s-* 的 count）**
+- 侧栏 **Management → Dev Tools**，左侧选 **Console**（与 **T9.2.9.0** 一致）。  
+- 找不到就用顶栏 **全局搜索** 搜 **`Dev Tools`** 或 **`Console`**（[Find apps and objects](https://www.elastic.co/docs/explore-analyze/find-and-organize/find-apps-and-objects)）。  
+- 部分页面底部可以展开 **Persistent Console**，和 Dev Tools 里的是**同一套能力、同一份历史**（官方 Console 页有写）。
 
-#### T9.2.9.6、Stack Management：索引治理（ILM、模板、快照）
+**3. 语法两档（抄错前缀必报错）**
 
-**从菜单怎么进**：**Elasticsearch** 分组里的 **Index Management** 看**索引现况**；**ILM 策略、快照仓库**等常在 **Stack Management**（**Management**）下与 **数据、快照** 相关子项中配置（9.3.x 把功能拆在 **Manage data** 等入口，**以你界面为准**，找不到就用顶栏**全局搜索** `ILM` / `Snapshot`）。  
+| 打谁 | 写法 | 说明 |
+|------|------|------|
+| **Elasticsearch** | 直接写 `GET /_cluster/health`、`GET k8s-*/_count`，**不要**加 `kbn:` | 路径、方法与 [REST APIs](https://www.elastic.co/docs/reference/elasticsearch/rest-apis) 一致 |
+| **Kibana** | 路径前加 **`kbn:`**，例如 `GET kbn:/api/index_management/indices` | 具体路径以 [Kibana API](https://www.elastic.co/docs/api/doc/kibana) 为准；升级后偶有微调，以文档和本集群返回为准 |
 
-日志一多，**不治理就会贵、慢、磁盘爆**。**Index Management** 是生产**必会**的页面：看 **`k8s-*`** 体积、**分片数、主副分片健康**。
+请求体用 Console 简写（`GET` 下一行跟 JSON）即可；注释可用 **`#`**、`//` 或块注释，方便你在脚本里标注「只读 / 危险」（见官方 Console 页 **Comments**）。
 
-- **Index / Component templates**：统一**映射**（例如对 **`kubernetes.labels`** 用 **flattened** 类型、正文用 **text + keyword**），和 **T9.2.8** 的 **`Replace_Dots`** 是**两条线**：前者管「类型不打架、聚合好用」，后者管「带点 label 不和 **text** 动态映射**冲突」——**可以组合**，在评审里定一条主策略。  
-- **ILM（Index Lifecycle Management）**：热温冷、**按天级索引**到期删除/迁移，是成本核心。  
-- **Snapshot and Restore / SLM**：**备份**与**合规**按公司 **RPO/RTO** 设计，**不是**「上线后再说」的选项。
+**4. 建议你先跑通的只读命令（全部针对本文 `k8s-*`）**
+
+在编辑器里**一次只选中一条**，点 **运行**（**Ctrl/Cmd + Enter**）。这些都不改数据，适合新建环境验收。
+
+**4.1 集群与索引是否活着**
+
+```js
+GET /_cluster/health?filter_path=status,number_of_nodes,timed_out
+```
+
+```js
+GET /_cat/indices/k8s-*?v&s=index
+```
+
+**4.2 文档量（和 Discover 时间窗不是同一个概念，这里数的是索引里命中条件的条数）**
+
+```js
+GET k8s-*/_count
+```
+
+**4.3 看字段长什么样（排障「规则 / Lens 里写的字段名为什么不对」时极有用）**
+
+```js
+GET k8s-*/_field_caps?fields=*&include_unmapped=true
+```
+
+若只想看某天的索引，把 `k8s-*` 换成 **`k8s-2026.05.08`** 这类具体名字（与 **T9.2.8** 按日滚动一致）。
+
+**4.4 拉两条最新日志核对管线（`size` 别开大；高峰慎用）**
+
+```js
+GET k8s-*/_search
+{
+  "size": 2,
+  "sort": [ { "@timestamp": "desc" } ],
+  "_source": ["@timestamp", "log", "stream", "kubernetes.namespace_name", "kubernetes.pod_name", "kubernetes.container_name"],
+  "query": {
+    "range": {
+      "@timestamp": { "gte": "now-30m" }
+    }
+  }
+}
+```
+
+字段名若与上表不一致，以你集群 **`_field_caps` 或 Discover 左侧**为准（**Replace_Dots** 见 **T9.2.8、T9.2.9.2**）。
+
+**4.5 需要走 Kibana 管理面时（示例：索引管理 API）**
+
+```js
+GET kbn:/api/index_management/indices
+```
+
+返回结构随版本变化，**只当「能通」的自测**；日常列表仍建议 **Index Management** 页面（**T9.2.9.6**）对照。
+
+**5. 官方里还值得你用的能力（和值班的关系）**
+
+- **自动补全 / 变量 / 历史**：减少手敲路径错误；**History** 里会留下曾跑过的请求，**别在公用机器上留敏感查询**；需要留存时用 **Export requests** 导出 TXT，**脱敏后再进 Git**（见 Console 页 **Import and export**、**History**）。  
+- **Copy as cURL**：给自动化或工单复现时，记得在外部环境自己加认证（官方写在外部跑要补 [authentication](https://www.elastic.co/docs/api/doc/kibana/authentication)）。  
+- **Open API reference**：选中请求后在菜单里打开对应 API 文档，避免凭记忆猜参数。
+
+**6. 同一层里的 Search Profiler（慢查询）**
+
+入口仍在 **Dev Tools** 里，见 [Search Profiler](https://www.elastic.co/docs/explore-analyze/query-filter/tools/search-profiler)。把 **Index** 过滤成 **`k8s-*`** 或具体 `k8s-日期`，把你怀疑慢的 **Query DSL** 贴进去点 **Profile**，看各 shard 耗时分解。注意官方提醒：**累计时间**和墙钟时间不是一回事（并行分片时会差很多）。**生产高峰**少对超大时间范围做 profiling，避免和真实流量抢资源。
+
+**7. Grok Debugger（和 T9.2.8 的解析对齐）**
+
+见 [Grok Debugger](https://www.elastic.co/docs/explore-analyze/query-filter/tools/grok-debugger)。把 **Fluent Bit** 里一行典型 **`log`** 贴到 **Sample Data**，在 Kibana 里调 **Grok Pattern**，**Simulate** 通过后再回写到采集配置（**T9.2.8**）。栈上开了安全时，官方要求具备 **`manage_pipeline`** 一类权限才能用 Grok Debugger，缺权限就找管理员开角色。
+
+**8. 什么时候用谁（避免「只会点 Discover」或「只会乱搜 ES」）**
 
 ```mermaid
 flowchart TB
-  IM[Index Management 看分片/健康/体积] --> TPL[模板 统一 mapping]
-  IM --> ILM[ILM 热冷删]
-  IM --> SS[快照 SLM/仓库]
-  ILM --> COST[成本可控]
-  SS --> DR[灾难与合规可审计]
+  subgraph daily[日常值班]
+    D[Discover + KQL 数据视图 k8s-*]
+  end
+  subgraph console[要证据 / 要快]
+    C1[Console 只读 cat count mapping 小 search]
+    C2[和 Discover 同字段名对齐]
+  end
+  subgraph slow[慢或要优化 DSL]
+    P[Search Profiler 限索引与时间范围]
+  end
+  subgraph parse[解析不对]
+    G[Grok Debugger 调 pattern]
+    FB[回到 T9.2.8 改 Parser]
+  end
+  daily --> C1
+  C1 --> C2
+  C2 --> P
+  G --> FB
+  FB --> daily
 ```
 
-官方：[在 Kibana 中管理索引](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations) · [ILM](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management) · [快照与恢复（Snapshot and restore）](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore)
+**9. 治理类操作放哪**
 
-**（插槽：Index Management 中 k8s-* 与 ILM 策略）**
+**删索引、改 ILM、快照** 能在 Console 里用 ES API 做，但生产上更推荐：**变更走评审 + 有回滚**，和 **T9.2.9.6** 的界面与流程对齐；Console 适合**临时确认**和**脚本化前的试探**，别养成「随手 DELETE」的习惯。
+
+**10. 平台侧可选开关**
+
+若合规要求 **禁止终端用户直接调 API**，可在 **`kibana.yml`**（ECK 即 Kibana CR 的 **`spec.config`**）里设 **`console.ui.enabled: false`**，见 Console 文档 **Disable Console**。关掉后 Kibana 要重启加载资源，官方提示可能短暂变慢。
+
+#### T9.2.9.6、Stack Management：索引治理（模板、ILM、快照）
+
+**先把线头对齐**：**Elasticsearch / Kibana** 版本见 **T9.2.2**（示例 **9.3.3**）；容器日志进集群后，索引名是 **T9.2.8** 定下来的 **`k8s-YYYY.MM.DD`**，Kibana 里用 **`k8s-*`** 数据视图（**T9.2.9.1**）。本节解决三件事：**看清磁盘与分片**、**按公司保留期自动删旧索引**、**用快照做官方支持的备份**。没跑通采集前，你在 UI 里看不到像样的 **`k8s-*`**，别急着调 ILM。
+
+**1. 从哪进（9.3.x）**
+
+- **Index Management**（索引列表、模板、单个索引操作）：侧栏 **Elasticsearch** 分组里点 **Index Management**，或全局搜索 **`Index Management`**（与 [Manage indices in Kibana](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations) 一致）。  
+- **Index Lifecycle Policies**：全局搜索 **`Index Lifecycle`** / **`ILM`**，进 **Index Lifecycle Policies** 页面（见 [Create an ILM policy](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/configure-lifecycle-policy)）。  
+- **Snapshot and Restore**（仓库、SLM、手动快照）：全局搜索 **`Snapshot`**；**ECK 不会替你建好仓库和默认 SLM**，必须按 [Configuring snapshots on ECK](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/cloud-on-k8s) 自己做。
+
+**2. 权限（`elastic` 最全，但生产上要分角色）**
+
+**`elastic` 就是内置超级用户（`superuser`）**，权限最大，联调、紧急处理都可以用它登录（**T9.2.7** 已说明）。这里不是说「不能用 `elastic`」，而是说：**不要只靠这一个账号扛所有日常操作**。在 Kibana 里改索引、模板、ILM、快照，需要的是一串具体的 **Elasticsearch 集群/索引权限**（例如 **`monitor`**、索引上的 **`view_index_metadata` / `manage`**、**`manage_index_templates`** 等），官方列表见 [Manage indices in Kibana · Required permissions](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations#required-permissions)。快照与 SLM 另有 **`manage_slm`**、**`cluster:admin/snapshot/*`** 等要求，见 [Create snapshots · Prerequisites](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/create-snapshots#prerequisites)。**生产上**给平台同事建**专用角色**，权限收敛到「能管 `k8s-*`、模板、ILM、快照」即可，**`elastic` 留给少数管理员与应急**，这样审计和密钥轮转才说得清；细拆法见 **T9.2.9.7**。
+
+**3. Index Management：你每天第一眼该看什么**
+
+1. 打开 **Index Management → Indices**，搜索栏填 **`k8s-`**，只看本文日志索引。  
+2. 看 **健康、主分片数、文档量、存储**，有没有 **unassigned** 或 **red**（先回 **T9.2.5 / ES 资源与存储**，别在 Kibana 硬删索引凑绿）。  
+3. 点进某个 **`k8s-日期`**，能看 **mapping、settings、统计**；需要时从详情进 **Discover** 抽查文档（官方 [Navigate the Index Management page](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations#navigate-the-index-management-page)）。  
+4. 选中一个或多个索引，**Manage index** 里有哪些动作（关闭、force merge、删索引、**Add lifecycle policy** 等），以 [Index operations reference](https://www.elastic.co/docs/manage-data/data-store/index-operations-reference) 为准，**生产上删索引、force merge 要走变更**，别一个人手滑。
+
+**4. 模板（Index / Component templates）：和 T9.2.8 什么关系**
+
+- **Fluent Bit 已经能写进 ES** 时，映射多半由**动态模板**长成；要上生产，建议在 **Index Management → Index templates / Component templates** 给 **`k8s-*`** 配**显式模板**，统一 **`number_of_shards` / `number_of_replicas`**、关键字段类型（例如正文 **`text` + `keyword`**、标签稠密对象考虑 **`flattened`**），减少以后改 mapping 的痛苦。操作向导见 [Templates](https://www.elastic.co/docs/manage-data/data-store/templates)。  
+- **`Replace_Dots On`**（**T9.2.8**）管的是「带点路径别和动态映射打架」；**模板**管的是「类型与分片策略」。两件事可以同时做，在架构评审里写死一条。  
+- **index_patterns** 用 **`k8s-*`** 不会撞上内置的 **`logs-*-*`** 模板；若以后还接 Elastic Agent，注意官方说的 **priority / 命名冲突**（见 [Templates · Avoid index pattern collisions](https://www.elastic.co/docs/manage-data/data-store/templates#avoid-index-pattern-collisions)）。  
+
+下面这张图来自 Elastic 文档（**创建索引模板向导**），用来对照你在 Kibana 里点的页面是不是同一套（与当前 Stack 小版本相比，边框文案可能略有出入，以你界面为准）。
+
+![Kibana 中创建索引模板向导（Elastic 官方素材）](./images/kibana-index-template-wizard-official.png)
+
+**5. ILM：结合「Fluent Bit 按天建新索引」怎么落地**
+
+**现状**：**T9.2.8** 里 **`Logstash_Format On`** + **`Logstash_Prefix k8s`**，每天一个新索引名 **`k8s-YYYY.MM.DD`**，相当于**按日历切分**，**不是** ES 在写的「rollover 别名」那套。
+
+**推荐做法（简单、少坑）**
+
+1. 建一条 **ILM 策略**：例如 **Hot** 里可以不折腾或只做必要设置；**Delete** 里设 **`min_age: 14d`**（数字按你们合规改），执行 **`delete`**。具体按钮顺序见 [Create an ILM policy](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/configure-lifecycle-policy)。  
+2. **让以后新建的 `k8s-*` 自动带上策略**：在上面的 **索引模板** 的 **Index settings** 里加 **`index.lifecycle.name`** 指向该策略（不必配 **`rollover_alias`**，因为你没有用 ILM 的 rollover 去起新索引）。设置项说明见 [ILM index settings](https://www.elastic.co/docs/reference/elasticsearch/configuration-reference/index-lifecycle-management-settings)。  
+3. **库里已经有一堆历史 `k8s-*`**：在 **Index Management** 里多选索引 → **Add lifecycle policy**，挂同一条策略（官方 [Apply ILM to an existing index](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/policy-apply)）。  
+4. **官方红线**：**不要**给「现有索引手工挂载」的策略里带 **rollover**——rollover 类策略应通过**模板**去管新索引；否则 rollover 出来的新索引**不会自动继承**策略，详见同一页 **policy-apply** 开头的警告。你们当前是 Fluent Bit **按天起名**，最稳的是策略以 **删除 / 可选温冷迁移** 为主，别硬套 rollover。  
+5. **怎么看跑没跑起来**：在索引详情或 [Check ILM status](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/policy-view-status) 里看阶段；卡住时查 [Fix ILM errors](https://www.elastic.co/docs/troubleshoot/elasticsearch/index-lifecycle-management-errors)。
+
+**ILM 通用说明**（冷热阶段、force merge、 shrink 等）见 [Index lifecycle management](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management)；**集群内各节点版本要一致**，混版本集群上 ILM 行为官方不保证。
+
+```mermaid
+flowchart TB
+  subgraph observe[先看 Index Management]
+    O1[搜索 k8s-*]
+    O2[健康 分片 存储]
+    O3[必要时 Manage index 单索引操作]
+  end
+  subgraph template[再上模板]
+    T1[Component 模板 可复用 mapping/settings]
+    T2[Index 模板 index_patterns k8s-*]
+    T3[settings 里 index.lifecycle.name]
+  end
+  subgraph ilm[ILM 策略]
+    L1[新建策略 以删除或温冷为主]
+    L2[新建索引 模板自动套用]
+    L3[老索引 Add lifecycle policy]
+  end
+  subgraph snap[快照 与 ILM 独立]
+    S1[ECK 注册快照仓库]
+    S2[SLM 定时 + 保留期]
+    S3[恢复演练 别只备份不试]
+  end
+  observe --> template
+  template --> ilm
+  observe --> snap
+```
+
+**6. 快照与 SLM：备份只能走这条官方路**
+
+- 官方明确：**拷贝节点数据目录不是备份**，恢复集群要用 **Snapshot**（见 [Snapshot and restore](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore) 开篇警告）。  
+- **ECK**：仓库与策略要**自己配**，跟 Elastic Cloud 托管默认仓库**不是一回事**，步骤跟 [Configuring snapshots on ECK](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/cloud-on-k8s)。仓库类型与注册方式见 [Self-managed repository types](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/self-managed)（底层 ES 通用概念与 ECK 文档一起读）。  
+- Kibana 里 **Snapshot and Restore**：建 **Repository**、建 **SLM policy**（定时、`indices`、`include_global_state`、保留规则），见 [Create, monitor and delete snapshots](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/create-snapshots)。生产建议至少：**业务数据（含 `k8s-*`）+ 集群状态** 有固定节奏；敏感集群状态可单独仓库（同页 **Dedicated cluster state snapshots**）。  
+- **恢复**：先读 [Restore a snapshot](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/restore-snapshot)，在测试集群演练，别第一次就在生产上「试手气」。
+
+```mermaid
+flowchart LR
+  subgraph wrong[错误心态]
+    W1[拷 ES 数据目录]
+    W2[只靠磁盘扩容]
+  end
+  subgraph right[正确基线]
+    R1[注册快照仓库 S3 等]
+    R2[SLM 定时快照 + 保留]
+    R3[定期演练恢复到空集群]
+  end
+  wrong -.->|不支持| X[官方不保证可恢复]
+  right --> OK[可审计的 RPO/RTO]
+```
+
+**7. 验收（你做完应能对上号）**
+
+- **Index Management** 里能列出 **`k8s-*`**，单索引 **mapping** 与 **T9.2.9.2 / T9.2.8** 字段习惯一致。  
+- **ILM**：新产生的 **`k8s-日期`** 索引详情里能看到已挂载策略；超过保留天的旧索引按策略进入 **delete**（时间以策略为准，别指望「改完立刻全没」）。  
+- **快照**：SLM **History** 或 API 能看到成功执行；**故意**在测试环境做一次 **restore** 流程通。  
+
+**（插槽：Index Management 中过滤 `k8s-*` 的列表截图，含健康与存储列）**
+
+**（插槽：某条 ILM 策略 Delete 阶段配置 + 索引上已应用策略的状态截图）**
+
+**（插槽：Snapshot and Restore 中 Repository + SLM policy 截图，或 ECK 侧仓库凭据已就绪的说明页）**
+
+> **本节与官方核对日期：2026-05-08**（Index Management、ILM、快照流程以当前文档为准；**Stack 小版本**以 **T9.2.2** 为准，升级后复查 ILM 与快照权限。）
+
+**官方索引**：[Manage indices in Kibana](https://www.elastic.co/docs/manage-data/data-store/perform-index-operations) · [Index operations reference](https://www.elastic.co/docs/manage-data/data-store/index-operations-reference) · [Templates](https://www.elastic.co/docs/manage-data/data-store/templates) · [ILM](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management) · [Create ILM policy](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/configure-lifecycle-policy) · [Apply ILM to existing index](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/policy-apply) · [ILM status](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/policy-view-status) · [Snapshot and restore](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore) · [Create snapshots / SLM](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/create-snapshots) · [Snapshots on ECK](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/cloud-on-k8s) · [Restore snapshot](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/restore-snapshot)
 
 #### T9.2.9.7、Spaces、用户与角色：多团队共用时必做
 
