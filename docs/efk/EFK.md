@@ -1714,27 +1714,111 @@ flowchart LR
   R --> kb
 ```
 
-#### T9.2.9.8、其他模块和本文的关系（避免期望错位）
+#### T9.2.9.8、Kibana 里其他大块
 
-下面这些在 **Kibana 里都有入口**，但**多数**要**额外接数据、Agent 或商业许可**；**和本文仅「ES + Kibana + Fluent Bit」的日志主线**是两条线，别混为一谈以免排障时猜错方向：
+**本文主线**：**Fluent Bit → Elasticsearch（`k8s-*`）→ Kibana（Discover / Lens / 规则等）**，见 **T9.2.8～T9.2.9.6**。下面这些是 **Kibana 侧栏里常见、但数据模型不同** 的模块。排障时**先别往 Observability / Security 里钻**，除非你确认已经按官方把对应数据源接进来了。
 
-- **Stack Monitoring**：看 **ES / Kibana 自己**的健康，一般要先接 **Metricbeat 或 Elastic Agent** 的监控集，见 [Stack monitoring](https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring)  
-- **Observability 全家桶（APM、Mobile、Profiling 等）**：要**按官方接入**探针或 Agent，**补的是链路/指标等**，不替代你容器 **stdout 日志**  
-- **Security（SIEM 等）**：**安全运营**体系，**T9.2** 已说明**本文不上齐**  
-- **Maps / Canvas**：**地理与汇报**向；纯日志排障不常用，需要再学 [Maps](https://www.elastic.co/docs/explore-analyze/visualize/maps) / [Canvas](https://www.elastic.co/docs/explore-analyze/visualize/canvas)  
-- **Machine learning**：有**数据量与许可**前提，见 [Machine learning](https://www.elastic.co/docs/explore-analyze/machine-learning)  
+**1. 对照表（新建环境怎么选）**
 
-#### T9.2.9.9、和采集侧一致：过滤范围在 Fluent Bit 做
+| 模块 | 和 **`k8s-*` 容器 stdout 日志**的关系 | 你现在只有本文配置时 | 官方从哪读 |
+|------|----------------------------------------|----------------------|------------|
+| **Stack Monitoring** | 管 **Elasticsearch / Kibana 等 Elastic 组件**自己的指标和日志，不是业务 Pod 日志 | 默认**没有**完整监控页数据；要上监控集群或自监控再配 | [Stack monitoring](https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring) · **ECK**：[Enable on ECK](https://www.elastic.co/docs/deploy-manage/monitor/stack-monitoring/eck-stack-monitoring)（Sidecar **Metricbeat / Filebeat** 把数据打到 **`spec.monitoring`** 指向的集群；生产更建议**独立监控集群**，少玩「生产集群监控自己」当长期方案） |
+| **Observability**（Logs / APM / Infrastructure / Synthetics 等） | **Logs** 可以和 ES 里日志共用索引，但 UI 往往假设 **Elastic Agent / 集成** 那套路；**APM、RUM、Profiling** 要探针或 Agent，**不是** Fluent Bit 自动就有 | 没有 Agent 时，**别指望** Observability 里和本文一模一样的开箱体验；业务查询仍以 **Discover + `k8s-*`** 为准 | [Observability 概述](https://www.elastic.co/docs/solutions/observability) · [Get started](https://www.elastic.co/docs/solutions/observability/get-started) |
+| **Security**（SIEM / Defend / 检测规则等） | **安全运营**另一条产品线，索引、规则、许可和 **EFK 日志值班** 不是一回事 | **T9.2** 已说本文不上齐 Security；容器 stdout 进 **`k8s-*`** 也**不等于**满足 SIEM 检测包的数据模型 | [Elastic Security 概述](https://www.elastic.co/docs/solutions/security) |
+| **Maps** | 要有**地理字段**或 ES 里可绑定的地理数据；纯文本容器日志通常用不上 | 没有 `geo_point` 一类字段就别硬做地图 | [Maps](https://www.elastic.co/docs/explore-analyze/visualize/maps) |
+| **Canvas** | 大屏演示向，从 ES 拉数做 workpad | 官方写明：**仅对已升级且已有 workpad 的环境**提供等限制，见下 | [Canvas](https://www.elastic.co/docs/explore-analyze/visualize/canvas) |
+| **Machine Learning** | 异常检测、数据帧分析等，**吃数据量与订阅级别**；和 **T9.2.9.4** 的 **Stack Rules** 不是同一套规则引擎 | 小集群先别当必选项；要上再看许可与数据准备 | [What is Elastic Machine Learning?](https://www.elastic.co/docs/explore-analyze/machine-learning) |
+| **Fleet / Integrations** | Elastic 官方采集与集成入口 | **本文**用 **Fluent Bit**，不要求 Fleet；以后要双轨再评估 | [Fleet](https://www.elastic.co/docs/reference/fleet)（与 **T9.2.9.0** 一致） |
 
-要在**进 ES 之前**按**命名空间、节点、label** 砍掉不需要的流量（**省钱、合规、降噪**），在 **T9.2.8** 的 **Fluent Bit** 里用 **grep**、**rewrite_tag** 等改管道；**Kibana 不替你收日志**，**Discover 里做过滤**只是不显示，**索引里该占的空间还是占了**（除非从采集侧不送或 ILM 删除）。
+**2. 排障时别走岔路**
 
-**生产检查清单（防「文档在纸上、集群是另一套」）**
+- **业务 Pod 打 stdout、Fluent Bit 已写入 `k8s-*`**：优先 **Discover**、**T9.2.9.5 Console**、**索引治理 T9.2.9.6**。  
+- **怀疑 ES/Kibana 自己慢、挂、GC**：才去看 **Stack Monitoring** 是否已按 ECK 打开、监控集群是否真有数据。  
+- **要看调用链、RUM、基础设施指标**：属于 **Observability** 能力扩展，按官方 **Get started** 另立项，别和「日志进 ES」混成一条需求。  
 
-1. **数据视图**：模式 **`k8s-*`**，时间字段 **`@timestamp`**，与 **T9.2.8** 的 **`k8s-YYYY.MM.DD`** 索引名一致。  
-2. **Discover**：新打一条日志在**预期时间窗**内能复现；字段名**含 `Replace_Dots` 后**的写法，**Lens / 规则**里**不要**混用老字段名。  
-3. **ILM + 快照**：在**容量评审**里就有结论，不等到磁盘告警再补。  
-4. **权限**：同事用 **T9.2.9.7** 的**业务角色**登录；**`elastic`** 仅管理员与应急；**Space + Role** 可审计。  
-5. **升级**：动 **ECK/Stack 版本**前读 [Kibana release notes](https://www.elastic.co/docs/release-notes/kibana) 与 [ECK 与 K8s 支持矩阵](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s#k8s-supported)，再改 **T9.2.2** 的 GitOps 与本文 YAML 版本号。  
+```mermaid
+flowchart TB
+  Q[问题现象]
+  Q -->|查某 Pod 某行日志| D[Discover 数据视图 k8s-*]
+  Q -->|ES 健康 分片 磁盘| IM[T9.2.9.6 Index Management / ILM]
+  Q -->|Kibana 规则 连接器| R[T9.2.9.4 Rules Connectors]
+  Q -->|ES 进程 线程池 堆栈| SM[Stack Monitoring 需先启用]
+  Q -->|调用链 用户体验| OB[Observability 需 Agent 探针等]
+  SM -.->|未配置 monitoring| SMN[页面空 不是业务日志丢了]
+```
+
+**3. Canvas 与版本提示**
+
+当前官方 **Canvas** 页写明：**Canvas is only available for upgraded installations with existing workpads**（见 [Canvas](https://www.elastic.co/docs/explore-analyze/visualize/canvas) 开篇）。全新安装若看不到或不可用，以你当前 **Kibana** 界面和 [Kibana release notes](https://www.elastic.co/docs/release-notes/kibana) 为准，别当采集故障去查。
+
+#### T9.2.9.9、真要少写磁盘（在 Fluent Bit 挡，不在 Discover 挡）
+
+**三件事别混**：
+
+1. **Discover / KQL**：只影响**你看什么**，**不写回索引**，**不省** ES 磁盘。  
+2. **Kibana / ES 里给角色做文档级权限（DLS）**：别人**搜不到**某些文档，但数据**仍占**索引空间（合规常用，和「省钱删流量」不是同一把刀）。  
+3. **Fluent Bit 在进 ES 之前丢记录**：**写入量**才真的下来；配合 **T9.2.9.6 的 ILM**，磁盘才有长期可控性。
+
+```mermaid
+flowchart LR
+  P[Pod stdout]
+  FB[Fluent Bit 管道]
+  ES[(Elasticsearch k8s-*)]
+  KB[Kibana Discover]
+  P --> FB
+  FB -->|可选 在此 drop| X[丢弃 不进 ES]
+  FB -->|默认 全文发送| ES
+  ES --> KB
+  KB -->|仅过滤展示| V[界面 不删索引数据]
+```
+
+**1. 过滤器放哪、顺序很重要**
+
+**T9.2.8** 里已有 **Kubernetes** 过滤器，把 **`kubernetes.namespace_name`** 等字段补全。要对这些字段做 **grep / rewrite_tag**，必须把对应 **FILTER** 写在 **kubernetes 过滤器之后**（管道从上到下执行）。输入与过滤器总览见 [Tail](https://docs.fluentbit.io/manual/pipeline/inputs/tail)、[Kubernetes Filter](https://docs.fluentbit.io/manual/pipeline/filters/kubernetes)。
+
+**2. 用 Grep 按命名空间或标签丢日志（示例思路）**
+
+官方 [Grep](https://docs.fluentbit.io/manual/pipeline/filters/grep) 支持 **`regex` / `exclude`**，嵌套字段用 [Record Accessor](https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/classic-mode/record-accessor)。下面示例是 **classic `fluent-bit.conf` 风格**，与 **T9.2.8** 一致；**命名空间、正则按你环境改**，先在测试节点验证再全量 rollout。
+
+**示例 A：不要 `kube-system` 命名空间的日志（排除）**
+
+```ini
+[FILTER]
+    Name    grep
+    Match   kube.*
+    Exclude kubernetes.namespace_name ^kube-system$
+```
+
+**示例 B：只要 `prod`、`staging`（保留匹配；多条件用 `logical_op` 等，见 Grep 文档）**
+
+```ini
+[FILTER]
+    Name    grep
+    Match   kube.*
+    Regex   kubernetes.namespace_name ^(prod|staging)$
+```
+
+字段名若与上不同（例如 **`Replace_Dots`** 后 label 路径变了），以 **Discover** 或 **T9.2.9.5** 的 **`_field_caps`** 为准，别照抄死。
+
+**3. rewrite_tag：做分流，不是小白必选项**
+
+[Rewrite Tag](https://docs.fluentbit.io/manual/pipeline/filters/rewrite-tag) 可以把不同日志打到**不同 tag**，再接到**不同 OUTPUT**（例如一路 ES、一路 `stdout` 调试，或一路丢弃）。会改变路由和缓冲行为，生产上要单独评审；一般**先用 grep 解决「要不要进 ES」**就够了。
+
+**4. 变更怎么上线才像生产**
+
+1. 在 **ConfigMap**（**T9.2.8** 的 **`fluent-bit-es.yaml`**）里改过滤器，**Git 留痕**。  
+2. **`kubectl apply`** 后看 **DaemonSet rollout** 是否全节点成功。  
+3. 用 **T9.2.9.5** 对 **`k8s-*` 做 `_count`** 或在 ES 侧看写入速率，确认被排除的命名空间**不再出现**或**条数下降**。  
+4. 观察 Fluent Bit **metrics**（见 [Monitoring](https://docs.fluentbit.io/manual/administration/monitoring)）里 **filter drop** 相关计数，避免「配了 exclude 但 Match 没对上导致全没过滤」。  
+
+**5. 全局验收清单（EFK 新建环境打勾用）**
+
+1. **数据视图**：模式 **`k8s-*`**，时间字段 **`@timestamp`**，与 **T9.2.8** 的 **`k8s-YYYY.MM.DD`** 一致（**T9.2.9.1**）。  
+2. **Discover**：新日志在预期时间窗内可见；字段名与 **`Replace_Dots`** 一致（**T9.2.9.2**），**Lens / 规则**不混用旧字段名。  
+3. **ILM + 快照**：已按 **T9.2.9.6** 评审，不是磁盘红了再补。  
+4. **权限**：**T9.2.9.7** 业务角色日常登录；**`elastic`** 仅管理员与应急。  
+5. **采集减量（可选）**：若已加 **grep / 分流**，验证被挡命名空间**不再写入**或写入量符合预期。  
+6. **升级**：改 **ECK / Stack** 前读 [Elasticsearch release notes](https://www.elastic.co/docs/release-notes/elasticsearch)、[Kibana release notes](https://www.elastic.co/docs/release-notes/kibana)、[ECK 与 K8s 支持矩阵](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s#k8s-supported)，同步改 **T9.2.2** 的 GitOps 版本号；大版本跃迁另对照官方升级指南。  
 
 ---
 
