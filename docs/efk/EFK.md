@@ -1824,32 +1824,211 @@ flowchart LR
 
 ### T9.2.10、（可选）Kafka 缓冲
 
-高吞吐或写入尖峰场景下，可在采集端与 ES 之间引入 **Kafka** 削峰。
+**默认不要上**：你按 **T9.2.8** 已经 **Fluent Bit → HTTPS → ECK Elasticsearch（`k8s-*`）** 跑通时，**多数集群不必**再加 Kafka。加一层中间件就多 **Topic、消费者、滞后（lag）、升级、鉴权** 一整套运维；只有**容量或架构上真需要**再做。
+
+**和上文对齐**：采集端仍是 **T9.2.8** 的 **DaemonSet + `Tag kube.*` + Kubernetes 过滤器**；下游 **Elasticsearch** 仍是 **T9.2.5** 的 **`quickstart-es-http.logging.svc:9200`**、索引名 **`k8s-YYYY.MM.DD`**（**`Logstash_Format`/`Logstash_Prefix`**）；**Kibana 数据视图**仍是 **`k8s-*`**（**T9.2.9.1**）。本节只改**中间这一段**：日志先进 **Kafka**，再由**消费者**写 ES，**不要在没消费者的情况下**把 Fluent Bit 唯一出口改成 Kafka。
+
+**1. 什么时候值得上（生产上常见理由）**
+
+- **ES 写入尖峰明显**：批量发版、全量日志突增，ES 经常出现 **429 / bulk 拒绝**，而 Fluent Bit 侧已按 **T9.2.8** 把缓冲、`Buffer_Size` 等调到合理仍顶不住。  
+- **要写多个下游**：同一份日志既要进 ES，又要进别的系统（对象存储、数仓、风控流水线等），用 Kafka 做**解耦总线**比 Fluent Bit 多路复制好维护。  
+- **需要独立扩缩消费者**：ES 维护窗口想**短暂停写**，仍希望采集端不停、消息积在 Kafka（**注意磁盘与 retention**，不是无限堆）。
+
+**2. 目标拓扑（一条链，别双写）**
+
+生产上**不推荐**长期「Fluent Bit 同时写 ES 又写 Kafka」当主方案（双份写入、一致性问题、故障点更多）。常见做法是：
+
+1. **Fluent Bit 只产出到 Kafka**（或先灰度一部分 `Match`）。  
+2. **消费者**（下面以 **Logstash** 为例）从 Topic 读 JSON，再 **bulk 写入 ES**，索引模式与 **T9.2.8** 一致 **`k8s-%{+YYYY.MM.dd}`**（或等价 `index` 模板），这样 **Discover / ILM** 不用换故事。
 
 ```mermaid
 flowchart LR
-  FB[Fluent Bit] --> K[Kafka]
-  K --> C["消费者：Logstash / 自研等"]
-  C --> ES[(Elasticsearch)]
+  subgraph before[本文已实践 T9.2.8]
+    FB1[Fluent Bit DaemonSet]
+    ES1[(ECK Elasticsearch)]
+    FB1 -->|HTTPS bulk| ES1
+  end
 ```
 
-Kafka 部署与版本选型以 **Kafka 官方发行说明** 及所选 Operator/Chart（如 **Strimzi**）为准，版本纳入 GitOps。
+```mermaid
+flowchart LR
+  subgraph after[上 Kafka 后推荐形态]
+    FB2[Fluent Bit 仅 Producer]
+    K[(Kafka Cluster)]
+    LS[Logstash 或 等价消费者]
+    ES2[(ECK Elasticsearch k8s-* )]
+    FB2 -->|Kafka 协议| K --> LS -->|HTTPS bulk| ES2
+    KB[Kibana Discover 不变]
+    ES2 --> KB
+  end
+```
 
-**（插槽：Kafka 架构或 Topic 监控截图）**
+**3. 在 K8s 里怎么落 Kafka（Strimzi 路线）**
+
+自管集群最省事的路径之一是用 **Strimzi** 运维 Kafka（Operator + `Kafka` / `KafkaTopic` 等 CR）。入门与安装顺序见 [Strimzi Quickstarts](https://strimzi.io/quickstarts/)、组件说明见 [Strimzi Overview](https://strimzi.io/docs/operators/latest/overview)。生产要点（和写进变更评审的内容）：
+
+- **命名空间**：可与 **`logging` 分开**（例如 **`kafka`**），RBAC、网络策略按公司规范；Fluent Bit / Logstash 要能 **DNS 解析** 到 bootstrap 地址（集群内 **`*-kafka-bootstrap:9092`** 一类，以 Strimzi 生成的 Service 为准）。  
+- **副本与存储**：单节点只适合联调；生产至少按 **高可用** 示例与磁盘、**replication factor** 评审。  
+- **Topic**：单独用 **`KafkaTopic`** 管理，提前定好 **分区数**（影响并行度）、**retention**（磁盘上限）、**compression**（`compression.type` 等，见 [Kafka 文档](https://kafka.apache.org/documentation/)）。Topic 名示例：`k8s-container-logs`（自定，与消费者订阅一致）。  
+- **安全**：生产应 **TLS + SASL/SCRAM 或 mTLS**、Kafka **ACL**，与 **T9.2.8** 里 ES 的 TLS 习惯一致；Strimzi 配监听与用户的细节以其当前文档为准。
+
+**4. Fluent Bit 侧：Kafka 输出插件**
+
+官方 [Kafka output](https://docs.fluentbit.io/manual/pipeline/outputs/kafka) 基于 **librdkafka**。和 **T9.2.8** 的 classic 配置衔接时，典型在 **Kubernetes 过滤器之后**增加 **`[OUTPUT]`**（或把原 **`es`** 输出**替换**为 **`kafka`**，切换窗口见下文）：
+
+- **`Brokers`**：Strimzi bootstrap **Service:端口**（集群内地址）。  
+- **`Topics`**：上一步建的 Topic。  
+- **`Format json`**：便于 Logstash **`codec => json`** 解析（默认即为 JSON 时可按文档确认）。  
+- **`rdkafka.*`**：可按官方建议调 **`request.required.acks`**、**`log.connection.close`** 等（见插件页说明）；生产务必理解 **acks** 与丢数风险。  
+- **`message_key` / `message_key_field`**：可用 **`kubernetes.pod_name`** 等做 **Kafka 分区键**，让同一 Pod 日志进同一分区、顺序更稳（字段名以你记录为准）。  
+- **云上 MSK**：若用 **Amazon MSK IAM**，需 **Fluent Bit 4.0.4+** 且打开 **`aws_msk_iam`**（同页 **AWS MSK IAM** 小节）；本文 **T9.2.1** 为 **5.0.3**，版本上满足，但权限与网络另审。
+
+**5. 消费者侧：Logstash → ES（与 `k8s-*` 对齐）**
+
+用官方 [**kafka input**](https://www.elastic.co/docs/reference/logstash/plugins/plugins-inputs-kafka) 订阅 Topic，`codec => json`（或 `json_lines`，与 Fluent Bit 实际格式一致即可），**elasticsearch output** 的 **`index`** 使用与 **T9.2.8** 相同的按日模式，例如：
+
+```ruby
+input {
+  kafka {
+    bootstrap_servers => "my-cluster-kafka-bootstrap.kafka.svc:9092"
+    topics            => ["k8s-container-logs"]
+    codec             => "json"
+    # 生产再加 security_protocol、sasl 等
+  }
+}
+output {
+  elasticsearch {
+    hosts    => ["https://quickstart-es-http.logging.svc:9200"]
+    index    => "k8s-%{+YYYY.MM.dd}"
+    user     => "…"
+    password => "…"
+    ssl      => true
+    cacert   => "…"
+    # 与 ES 9.x 兼容的 ecs/data stream 选项按你们规范与插件文档取舍
+  }
+}
+```
+
+**`user`/`password`/`cacert`** 与 **T9.2.7 / T9.2.8** 一致，**不要**用 **`elastic`** 做长期管道账号，应建**仅有写 `k8s-*` 权限**的专用用户（同 **T9.2.7** 生产建议）。Logstash 自身版本需与 **Elasticsearch 9.3.x** 兼容，以 [Elastic 支持矩阵](https://www.elastic.co/support/matrix) 与你们镜像为准。
+
+**自研消费者**也可以，只要：**JSON 解析稳定**、**批量 bulk**、**重试与死信**、**监控 consumer lag** 四件事齐活。
+
+**6. 切换顺序（减少事故）**
+
+1. **先**把 Kafka、Topic、**Logstash（或消费者）**跑通，确认能写出 **`k8s-*`**，**Discover** 能查到**新**日志。  
+2. **再**改 Fluent Bit：灰度节点或先双写短窗口（仅过渡期）→ 最终切到 **仅 Kafka**（或保留直连 ES 的灾备管道，需书面预案）。  
+3. 全程盯 **consumer lag**、ES **ingest 线程池 / bulk 拒绝率**、Kafka **磁盘**。  
+4. 回滚思路：Fluent Bit **改回 `es` 输出** 指向 **T9.2.8** 原配置；Kafka 里积压按 retention 与业务决定是否另消费。
+
+**7. 验收**
+
+- **Kibana**：数据视图 **`k8s-*`**，新日志时间线连续；字段与 **Replace_Dots** 规则仍与 **T9.2.9.2** 一致。  
+- **ES**：无持续 **429**；索引仍按日 **`k8s-日期`**。  
+- **Kafka**：Topic 生产消费速率匹配，**lag** 有告警阈值。
 
 ---
 
-### T9.2.11、与 T9.1 的对应关系
+### T9.2.11、对照 T9.1
 
-| T9.1 | T9.2 |
-|------|------|
-| 节点 DaemonSet 采集 | Fluent Bit DaemonSet，读取本节点容器日志 |
-| Sidecar | EFK 场景通常无需另增采集边车；日志写文件仍见 **T9.1.4** |
-| 应用直推 | 可与本节 ES 并存，应用直写 ES |
+这一节是 **T9.2 的收束**：把 Kubernetes 官方归纳的「集群级日志三条路」和本文已经一步步搭好的 **ECK + Fluent Bit + Kibana** 对上号。后面做架构评审、扩容、换人或接告警工单时，先看这里不容易和 **T9.1**、**T9.2.8** 打架。
 
-**发布前核对**：Kubernetes 版本符合 [ECK 支持范围](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s#k8s-supported)；CRD 与 Operator 版本一致；Elasticsearch 存储、资源与 **`node.store.allow_mmap`** 已按 [Virtual memory](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/virtual-memory) 与容量规划评审；对外入口启用 TLS 与访问控制；Fluent Bit 生产启用 TLS 校验、凭据仅存 Secret；变更遵循 [Update deployments](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/update-deployments)。
+官方说法见 [Cluster-level logging architectures](https://kubernetes.io/docs/concepts/cluster-administration/logging/#cluster-level-logging-architectures)（和 **T9.1.3** 是同一出处）。
 
-下一节 **T9.3、Loki** 会按官方 Helm 方式部署 **Loki + Promtail（+ 可选 Grafana）**；它和 EFK 是两条常见路线，按成本与查询习惯二选一即可。
+**怎么读**：**T9.2.11.1** 路径映射表与图 → **T9.2.11.2** 数据面简图（对齐 **T9.2.1**）→ **T9.2.11.3** 上线核对（对齐 **T9.2.2～T9.2.10**）。
+
+#### T9.2.11.1、三类路径映射
+
+```mermaid
+flowchart TB
+  subgraph k8s_official["K8s 官方三类 见 T9.1.3"]
+    A[节点级采集代理 DaemonSet]
+    B[Sidecar]
+    C[应用内直推后端]
+  end
+  subgraph t92["本文 T9.2 已落地"]
+    FB["Fluent Bit DaemonSet 见 T9.2.8"]
+    ES["Elasticsearch 见 T9.2.5"]
+    KB["Kibana 见 T9.2.6 与 T9.2.9"]
+    T91["Sidecar 见 T9.1.4.2 与 T9.1.4.3"]
+    T914["应用直推 见 T9.1.4.4"]
+  end
+  A --> FB
+  FB -->|"HTTPS 写入 k8s 按日索引"| ES
+  ES --> KB
+  B --> T91
+  C --> T914
+```
+
+| K8s 官方路径（T9.1） | 在本文 T9.2 里是什么 | 文档落点 |
+|---------------------|---------------------|----------|
+| **节点级日志代理（推荐 DaemonSet）** | **Fluent Bit** 每节点一份，读本节点 **`/var/log/pods`** 等容器日志目录，经 **T9.2.8** 写入 **Elasticsearch**；索引 **`k8s-YYYY.MM.DD`**，Kibana 数据视图 **`k8s-*`**（**T9.2.9**） | **T9.1.4.1** ↔ **T9.2.1**、**T9.2.8** |
+| **Sidecar** | 本文 **没有**再搭一套 Sidecar 采集；业务若坚持写文件、节点策略不够，仍按 **T9.1.4.2 / T9.1.4.3** 做；日志进 stdout 后仍由节点上的 **Fluent Bit** 收走 | **T9.1.4.2～4.3** |
+| **应用内直推** | Kubernetes 不规定实现方式；可与 ES 并存，但属于**另一条管线**（SDK、索引命名、权限要单独设计），**不要**和 **`k8s-*` 容器 stdout 采集**混成一套默认假设 | **T9.1.4.4** |
+
+可选缓冲：**T9.2.10** 的 **Kafka** 插在 Fluent Bit 与下游之间时，数据面仍是「节点代理 → 后端」，只是中间多一层解耦；和 K8s 官方三类划分不冲突。
+
+#### T9.2.11.2、数据面简图
+
+与 **T9.2.1** 同一条链路，扫一眼对照用。
+
+```mermaid
+flowchart LR
+  subgraph node["工作节点"]
+    APP["业务 Pod 标准输出与标准错误"]
+    FILES["节点容器日志文件"]
+    FB2["Fluent Bit"]
+  end
+  subgraph logging["命名空间 logging"]
+    ES2["Elasticsearch"]
+    KB2["Kibana"]
+  end
+  APP --> FILES --> FB2 -->|"TLS 9200 写入 k8s 按日索引"| ES2
+  ES2 --> KB2
+```
+
+> **插图插槽（可选）**：若你们有对内架构评审材料，可在此放一张「节点 → Fluent Bit → ES → Kibana」拓扑截图，路径建议 `./images/t9211-efk-data-plane.png`。
+
+#### T9.2.11.3、上线核对
+
+下面每条都能在本文前面找到具体步骤；这里只列**决策和命令级核对**，避免泛泛而谈。
+
+**1）Kubernetes 与 ECK**
+
+- 集群版本在 [ECK Supported versions](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s#k8s-supported) 范围内（与 **T9.2.2** 表一致：**1.31–1.35**）。
+- `kubectl get pods -n elastic-system`：Operator Pod 正常；版本与 **T9.2.2** 中 **ECK Operator** 行一致。
+- `kubectl get elasticsearch.k8s.elastic.co,kibana.k8s.elastic.co -n logging`：`READY` 与 **T9.2.5 / T9.2.6** 一致。
+
+**2）Elasticsearch 资源与虚拟内存**
+
+- PVC、StorageClass、`volumeClaimTemplates` 与容量规划一致；缩容受限见 [Updating volume claims](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/volume-claim-templates#k8s-volume-claim-templates-update)。
+- 生产推荐：宿主机 **`vm.max_map_count=1048576`**（**Elasticsearch 8.16+**；更低版本阈值见官方），并**不要**在 ES 里写死 `node.store.allow_mmap: false` 凑合；试跑/受限集群才用 quickstart 那套关 mmap。细则见 [Virtual memory（ECK）](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/virtual-memory) 与 [vm.max_map_count（自管说明）](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/vm-max-map-count)。
+
+**3）安全与入口**
+
+- ES / Kibana 对外或对内访问：**TLS**、**Ingress 或 port-forward** 策略与 **T9.2.6 / T9.2.7** 一致；HTTP 证书与 [K8s HTTPS 设置](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings) 做法对齐。
+- **`elastic`** 仅作管理与排障；采集与自动化用**专用用户 + 角色**（见 **T9.2.7**、**T9.2.9.7**）。凭据只进 **Secret**，不进 ConfigMap 明文。
+
+**4）Fluent Bit（与 T9.2.8 一字对齐则不会歪）**
+
+- 镜像版本与 **T9.2.2** 一致；写 ES 时 **校验服务端证书**（生产禁用「跳过校验」类配置）。
+- 输出索引仍为 **`k8s-YYYY.MM.DD`**（**`Logstash_Format On`** + **`Logstash_Prefix k8s`**）；过滤 **`Match`** 与你们约定的 **`kube.*`** 一致，避免和 **T9.2.9.x** 字段规则打架。
+- **`Replace_Dots On`** 时，KQL / 告警里字段名以 **Discover 左侧列表**为准，勿照抄带点号的旧示例。
+
+**5）Kibana 与治理**
+
+- 数据视图 **`k8s-*`**、时间字段与 **T9.2.9** 一致；索引生命周期、快照、模板见 **T9.2.9.6**；告警见 **T9.2.9.4**。
+
+**6）若启用 Kafka（T9.2.10）**
+
+- Topic、Fluent Bit **Kafka Output**、下游 **Logstash / 消费组** 与切换顺序按 **T9.2.10** 执行；回灌后仍验证 **`k8s-*`** 与无持续 **429**。
+
+**7）变更与升级**
+
+- 改 ES / Kibana `spec`、扩节点、升 Stack 版本：集群要有**额外 CPU/内存/盘**扛滚动；用 `kubectl apply` 渐进变更，盯 Operator 日志与 Pod 事件。见 [Update your deployments](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/update-deployments)。
+
+---
+
+下一节 **T9.3、Loki** 按 **Helm** 走 **Loki + Promtail（+ 可选 Grafana）**；和本文 **EFK** 是两条常见路线，**二选一为主**即可。ES 前若要加 **Kafka** 缓冲见 **T9.2.10**；**Loki** 与 **Elasticsearch** 怎么选见 **T9.3.1**。
 
 ## T9.3、Loki
 
