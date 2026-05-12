@@ -2119,14 +2119,18 @@ kubectl create namespace logging
 
 **网络与合规**：上生产通常还要补 **NetworkPolicy**、入口 **TLS**、Grafana **对接企业 SSO** 等；每家集群的命名空间划分、证书来源、身份系统都不一样，**没法写一份放之四海都适用的 YAML**，这里只提醒要做什么，具体清单按本单位安全与平台规范补全。
 
-### T9.3.5、装 Loki（Helm 单体单副本）
+### T9.3.5、装 Loki（Helm）
 
-下面 **`loki-values.yaml`** 与官方 [Install monolithic — Single Replica](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) 同结构；**`deploymentMode: SingleBinary`** 与官方示例一致（社区 Chart 12.x 起对模式命名有调整，升级时读 [README — Upgrading](https://github.com/grafana-community/helm-charts/blob/main/charts/loki/README.md#upgrading)）。**`-n logging`** 与全文其它节一致。
+分两条路写清楚，避免只看第一段以为「生产也用 MinIO 单副本」。
 
-将以下内容保存为 `loki-values.yaml`：
+**路径 A：联调（单副本 + 子 Chart MinIO）**  
+
+和官方 [Install monolithic — Single Replica](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) 一致，用来验证 **Gateway、写入、查询** 和后面 **Promtail** 能否打通。**不当作生产终态。**
+
+将以下内容保存为 `loki-values-dev.yaml`（文件名随意，与 `helm -f` 对上即可）：
 
 ```yaml
-# loki-values.yaml 联调与小型环境；生产请关 minio、改对象存储与副本
+# loki-values-dev.yaml — 仅联调：单副本 + MinIO
 loki:
   commonConfig:
     replication_factor: 1
@@ -2183,19 +2187,93 @@ bloomGateway:
   replicas: 0
 ```
 
-**安装（Chart 版本钉死）**：
+**路径 B：生产（关 MinIO + 云或自建 S3 兼容存储 + 高可用副本）**  
+
+官方在 [Object Storage Configuration（同一页往下拉）](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/#object-storage-configuration) 给了 **AWS S3**、**Azure Blob** 等完整 `values`；云上「能上线」的拆法见 [Deploy Loki on AWS](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/aws/)、[Azure](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/azure/)、[GCP](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/gcp/)。更大流量、长期运维请优先按官方说明评估 **[Microservices](https://grafana.com/docs/loki/latest/setup/install/helm/install-microservices/)**（与 [Deployment modes](https://grafana.com/docs/loki/latest/get-started/deployment-modes/) 一致；**SSD 模式在弃用中**，新集群不要当主方案）。
+
+生产上建议至少做到下面几条（缺一条都别自称上线完毕）：
+
+1. **`minio.enabled: false`**，日志块与索引进**对象存储**（云 S3 / 兼容协议 / 自建 MinIO **集群**，而不是 Chart 里那个联调子 Chart）。  
+2. **桶名**：接真 S3 时**不要**用默认 **`chunks` / `ruler` / `admin`** 这类通用名，按 [Grafana 安全说明](https://grafana.com/blog/2024/06/27/grafana-security-update-grafana-loki-and-unintended-data-write-attempts-to-amazon-s3-buckets/) 换成你们环境里**唯一**的名字。  
+3. **副本与 `replication_factor`**：官方 [Multiple Replicas](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/#multiple-replicas) 要求 **`singleBinary.replicas` 与 `commonConfig.replication_factor` 一致**；生产常见起点是 **`replicas: 3` + `replication_factor: 3`**（仍属 Helm **SingleBinary** 形态；更大再拆微服务）。多副本时必须配**共享对象存储**，不能指望节点本地盘当唯一真源。  
+4. **`limits_config.retention_period`**：按留存合规设（官方 S3 示例里有 **`672h`** 等写法，你们按审计要求改）。  
+5. **`singleBinary.persistence`**：把 **`storageClassName` / `size`** 换成集群真实值；磁盘只做运行期需要，**别把「日志长期留存」押在 PVC 上**。  
+6. **密钥**：`accessKeyId`、`secretAccessKey` 等用 **Kubernetes Secret + Helm 引用** 或云厂商 **IRSA / Workload Identity**，**不要**把明文密钥写进提交到 Git 的 values。  
+7. **可观测与告警**：Chart 自带监控开关见 [Helm chart 组件说明 — Monitoring](https://grafana.com/docs/loki/latest/setup/install/helm/concepts/#monitoring-loki)；更完整见 [Meta monitoring](https://grafana.com/docs/loki/latest/operations/meta-monitoring/)。  
+8. **与本文其它节一致**：仍用 **`-n logging`**；装完 **Promtail / Alloy** 仍推 **`loki-gateway`**。
+
+下面是一段**生产骨架**（**占位符必须全部替换**；`loki.storage` / `storage_config` 字段以你云厂商与当前 Chart 为准，请先 **`helm show values grafana-community/loki --version 13.6.2`**，再和官方 **S3** 整段 [合并](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/#object-storage-configuration)）：
+
+```yaml
+# loki-values-prod.yaml — 骨架：须与官方 S3 示例合并并填真实值
+minio:
+  enabled: false
+
+deploymentMode: SingleBinary
+
+loki:
+  commonConfig:
+    replication_factor: 3
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  pattern_ingester:
+    enabled: true
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+    retention_period: 720h
+  ruler:
+    enable_api: true
+  # storage / storage_config：整段复制官方「S3」YAML，填 endpoint、region、bucketNames、凭证引用等
+
+singleBinary:
+  replicas: 3
+  persistence:
+    enabled: true
+    storageClass: YOUR_STORAGECLASS
+    accessModes:
+      - ReadWriteOnce
+    size: 30Gi
+
+# backend … bloomGateway 各 replicas: 0 与路径 A 相同，从路径 A 复制即可
+```
+
+```mermaid
+flowchart LR
+  subgraph dev["路径 A 联调"]
+    M1["MinIO 子 Chart"]
+    L1["Loki 单副本"]
+    L1 --> M1
+  end
+  subgraph prod["路径 B 生产"]
+    S3["对象存储 S3 兼容"]
+    L3["Loki 多副本"]
+    L3 --> S3
+  end
+  dev -->|"验证通过后改 values 升级"| prod
+```
+
+**安装（Chart 版本钉死；`-f` 指向你当前是联调还是生产文件）**：
 
 ```bash
 helm repo add grafana-community https://grafana-community.github.io/helm-charts
 helm repo update
 
-helm upgrade --install loki grafana-community/loki -n logging -f loki-values.yaml --version 13.6.2
+helm upgrade --install loki grafana-community/loki -n logging -f loki-values-dev.yaml --version 13.6.2
+# 生产：把上一行的 loki-values-dev.yaml 换成合并后的 loki-values-prod.yaml
 ```
 
 **OCI（可选）**：
 
 ```bash
-helm upgrade --install loki oci://ghcr.io/grafana-community/helm-charts/loki -n logging -f loki-values.yaml --version 13.6.2
+helm upgrade --install loki oci://ghcr.io/grafana-community/helm-charts/loki -n logging -f loki-values-dev.yaml --version 13.6.2
 ```
 
 **验收**：
@@ -2205,20 +2283,20 @@ kubectl get pods -n logging
 kubectl -n logging get svc
 ```
 
-期望有 **loki-gateway**、**singleBinary** 相关 Pod、若开了 MinIO 则有 **minio**；均 **Ready** 后再装 Promtail。
+联调期望有 **gateway、singleBinary、minio**；生产期望 **无 Chart 内置 minio**（`minio.enabled: false`）、**singleBinary 多 Ready**、对象存储侧能看到桶写入。
 
 ```mermaid
 flowchart LR
   GW["Service loki-gateway"]
   SB["Loki SingleBinary"]
-  MI["MinIO 子 Chart"]
+  OB["对象存储"]
   GW --> SB
-  SB -->|"S3 协议"| MI
+  SB --> OB
 ```
 
-**Helm 报错**：先跑 `helm show values grafana-community/loki --version 13.6.2` 对字段；跨 Chart 大版本前必读 [README — Upgrading](https://github.com/grafana-community/helm-charts/blob/main/charts/loki/README.md#upgrading)。
+**Helm 报错**：`helm show values grafana-community/loki --version 13.6.2`；跨大版本读 [README — Upgrading](https://github.com/grafana-community/helm-charts/blob/main/charts/loki/README.md#upgrading)。
 
-刚装完本节，**logging** 里先有 **Gateway、Loki、MinIO** 及 Chart 带出的缓存等；**Promtail / Grafana** 在 **T9.3.6、T9.3.7** 再装。
+**Promtail / Grafana** 仍在 **T9.3.6、T9.3.7**；生产里 Promtail 长期应换 **Alloy**（**T9.4**）。
 
 ### T9.3.6、装 Promtail
 
