@@ -1986,8 +1986,6 @@ flowchart LR
   ES2 --> KB2
 ```
 
-> **插图插槽（可选）**：若你们有对内架构评审材料，可在此放一张「节点 → Fluent Bit → ES → Kibana」拓扑截图，路径建议 `./images/t9211-efk-data-plane.png`。
-
 #### T9.2.11.3、上线核对
 
 下面每条都能在本文前面找到具体步骤；这里只列**决策和命令级核对**，避免泛泛而谈。
@@ -2034,7 +2032,7 @@ flowchart LR
 
 [Grafana Loki](https://grafana.com/docs/loki/latest/) 按**标签**索引元数据，正文日志压缩成块存起来，不像传统全文检索那样给每个词建倒排索引，成本通常更友好。查询用 **LogQL**，和 **Prometheus / Grafana** 一套习惯。**采集**：官方常提 **Promtail**、**Grafana Alloy**（承接原 Grafana Agent）。本节按 **Promtail + Helm** 落地；你已在 **T9.1 / T9.2** 用的 **Fluent Bit** 也可直接输出到 Loki（[Fluent Bit Loki 输出](https://docs.fluentbit.io/manual/pipeline/outputs/loki)），不冲突。
 
-### T9.3.1、和 ES 怎么选（大白话）
+### T9.3.1、和 ES 怎么选
 
 | 维度 | Loki | Elasticsearch（EFK） |
 |------|------|----------------------|
