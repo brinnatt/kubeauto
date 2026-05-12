@@ -2117,7 +2117,7 @@ kubectl create namespace logging
 
 **资源与和 T9.2 并存**：先看 **`logging`** 里 CPU、内存、磁盘是否够再装 Loki；EFK 与 Loki 同时跑时，Promtail 与 Fluent Bit 都会占节点资源，按容量规划。
 
-**网络与合规**：生产建议 **NetworkPolicy**、入口 **TLS**、Grafana **SSO**；本文不写你们平台专用 YAML。
+**网络与合规**：上生产通常还要补 **NetworkPolicy**、入口 **TLS**、Grafana **对接企业 SSO** 等；每家集群的命名空间划分、证书来源、身份系统都不一样，**没法写一份放之四海都适用的 YAML**，这里只提醒要做什么，具体清单按本单位安全与平台规范补全。
 
 ### T9.3.5、装 Loki（Helm 单体单副本）
 
