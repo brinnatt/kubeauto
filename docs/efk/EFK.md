@@ -2237,9 +2237,13 @@ kubectl get pvc,pods -n logging
 ```
 
 **你这次 `describe` 对症（Rocky 联调 + 已跑 EFK）**：  
+
 ① **`loki-chunks-cache-0` → Insufficient memory**：旧 values 没关 **chunksCache**，默认约 **10Gi** 内存请求；用上面新 **`loki-values-dev.yaml`**（**`chunksCache.enabled: false`**）再 **helm upgrade**，Pending 的 chunks-cache 应消失。  
+
 ② **`loki-minio-0` → unbound PVC**：values 里没写 **`minio.persistence.storageClass`**；`kubectl get sc` 查到名字后填进 **`YOUR_STORAGECLASS`** 再升级，直到 **`kubectl get pvc -n logging`** 里 **export-0-loki-minio-0**、**export-1-loki-minio-0** 为 **Bound**。  
+
 ③ **`loki-0` Pending**：多半在等 MinIO 或 **singleBinary** 的 PVC；**`singleBinary.persistence.storageClass`** 也要与 MinIO 同一可用 SC。  
+
 ④ **`loki-gateway` ImagePullBackOff**：与存储无关；处理 **nginx 镜像拉取**（外网 / 镜像加速 / 改 **`gateway.image`** 指向内网仓）。
 
 **路径 B：生产（关 MinIO + 云或自建 S3 兼容存储 + 高可用副本）**  
