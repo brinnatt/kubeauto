@@ -2113,9 +2113,16 @@ Helm 总入口：[Install Loki with Helm](https://grafana.com/docs/loki/latest/s
 kubectl create namespace logging
 ```
 
-**存储**：本示例打开 **MinIO 子 Chart**，会多出 **PVC**；把 values 里 **StorageClass** 换成集群里真实值（`kubectl get sc`）。**接真 S3** 时不要沿用示例默认桶名 **`chunks` / `ruler` / `admin`**，按官方说明换名，见 [Grafana 安全更新（S3 桶名）](https://grafana.com/blog/2024/06/27/grafana-security-update-grafana-loki-and-unintended-data-write-attempts-to-amazon-s3-buckets/)（MinIO 试跑可仍用 Chart 默认）。
+**存储（联调必做，否则 MinIO / Loki 会 Pending）**：
 
-**资源与和 T9.2 并存**：先看 **`logging`** 里 CPU、内存、磁盘是否够再装 Loki；EFK 与 Loki 同时跑时，Promtail 与 Fluent Bit 都会占节点资源，按容量规划。
+1. 执行 **`kubectl get sc`**，记下**带 `(default)`** 或你们平台规定的 **StorageClass** 名称（例如 `local-path`、`nfs-client`、`rook-ceph-block`）。  
+2. 下面 **`loki-values-dev.yaml`** 里两处 **`YOUR_STORAGECLASS`** 必须改成上一步的名字；**不要留占位符就 helm install**。  
+3. 装完后看 PVC：`kubectl get pvc -n logging`。若 **Pending** 且 Events 里是 **no StorageClass / no provisioner**，先修集群存储，不是 Loki 配置写错一行能救的。  
+4. MinIO 子 Chart 默认 **`drivesPerNode: 2`**，会建 **2 个 PVC**（联调 values 里每个 **10Gi**），再加上 **singleBinary** 的 **1 个 PVC（10Gi）**，联调至少 **3 个 Bound** 再指望 Loki Ready；生产路径见 **T9.3.5 路径 B**（关 MinIO、用对象存储）。
+
+**资源（与 T9.2 EFK 同机时必看）**：Chart 默认会起 **chunks-cache** memcached，**`allocatedMemory: 8192`（MB）** 时 Pod 大约会 **申请近 10Gi 内存**，6 节点都紧张时就会像你看到的那样 **`Insufficient memory` + Pending**。联调 values 里已 **关掉 chunks/results 两块缓存**；若仍 OOM，再缩小 **`singleBinary.resources`** 或给日志节点加内存。
+
+**和 T9.2 并存**：先看 **`logging`** 里 CPU、内存、磁盘是否够再装 Loki；Promtail 与 Fluent Bit 都会占节点资源。
 
 **网络与合规**：上生产通常还要补 **NetworkPolicy**、入口 **TLS**、Grafana **对接企业 SSO** 等；每家集群的命名空间划分、证书来源、身份系统都不一样，**没法写一份放之四海都适用的 YAML**，这里只提醒要做什么，具体清单按本单位安全与平台规范补全。
 
@@ -2125,12 +2132,14 @@ kubectl create namespace logging
 
 **路径 A：联调（单副本 + 子 Chart MinIO）**  
 
-和官方 [Install monolithic — Single Replica](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) 一致，用来验证 **Gateway、写入、查询** 和后面 **Promtail** 能否打通。**不当作生产终态。**
+和官方 [Install monolithic — Single Replica](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) 同结构，并补上**存储类、内存**（官方示例没写全，裸集群上容易 Pending）。用来验证 **Gateway、写入、查询** 和 **T9.3.6 Promtail**。**不是生产配置。**
 
-将以下内容保存为 `loki-values-dev.yaml`（文件名随意，与 `helm -f` 对上即可）：
+**动手前**：`kubectl get sc`，把下面 YAML 里 **`YOUR_STORAGECLASS`** 改成真实名字（两处：**`minio.persistence`**、**`singleBinary.persistence`**）。
+
+将以下内容保存为 `loki-values-dev.yaml`：
 
 ```yaml
-# loki-values-dev.yaml — 仅联调：单副本 + MinIO
+# loki-values-dev.yaml — 联调：须替换 YOUR_STORAGECLASS；与 T9.2 同命名空间 logging
 loki:
   commonConfig:
     replication_factor: 1
@@ -2151,13 +2160,37 @@ loki:
   ruler:
     enable_api: true
 
+# 默认 chunks-cache 会按 allocatedMemory 8192MB 算出约 10Gi 内存请求，和 EFK 同机时常见 Pending
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
 minio:
   enabled: true
+  persistence:
+    enabled: true
+    storageClass: YOUR_STORAGECLASS
+    size: 10Gi
 
 deploymentMode: SingleBinary
 
 singleBinary:
   replicas: 1
+  persistence:
+    enabled: true
+    storageClass: YOUR_STORAGECLASS
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+
+# 联调可关，少占 DaemonSet；要测写入链路可保持 true
+lokiCanary:
+  enabled: true
 
 backend:
   replicas: 0
@@ -2186,6 +2219,28 @@ bloomBuilder:
 bloomGateway:
   replicas: 0
 ```
+
+**联调装完仍 Pending / ImagePullBackOff 时怎么对表**（和你 `kubectl describe pod` 里 Events 对照）：
+
+| 现象 | 常见原因 | 处理 |
+|------|----------|------|
+| **loki-minio-0** `unbound PersistentVolumeClaims` | 没写 **storageClass** 或 SC 不能动态建卷 | 改 values 里 **`minio.persistence.storageClass`**，`kubectl get pvc -n logging` 看是否 Bound |
+| **loki-chunks-cache-0** `Insufficient memory` | 默认 memcached 约 **10Gi** 请求 | 用上面 values **关掉 `chunksCache`**，或 `allocatedMemory: 256` 代替 `enabled: false` |
+| **loki-0** Pending | 常是 **等 MinIO** 或 **singleBinary PVC** 未 Bound | 先解决 MinIO PVC；确认 **`singleBinary.persistence.storageClass`** |
+| **loki-gateway** `ImagePullBackOff` | 节点拉不动 **`docker.io/nginxinc/nginx-unprivileged`** | `kubectl describe pod -n logging -l app.kubernetes.io/component=gateway` 看 Events；能访问外网则手动 `crictl pull`，不能则改内网镜像仓并在 values 里设 **`gateway.image.registry` / `repository` / `tag`** |
+
+改完 values 后**用同一份文件升级**（不必先删 Release）：
+
+```bash
+helm upgrade loki grafana-community/loki -n logging -f loki-values-dev.yaml --version 13.6.2
+kubectl get pvc,pods -n logging
+```
+
+**你这次 `describe` 对症（Rocky 联调 + 已跑 EFK）**：  
+① **`loki-chunks-cache-0` → Insufficient memory**：旧 values 没关 **chunksCache**，默认约 **10Gi** 内存请求；用上面新 **`loki-values-dev.yaml`**（**`chunksCache.enabled: false`**）再 **helm upgrade**，Pending 的 chunks-cache 应消失。  
+② **`loki-minio-0` → unbound PVC**：values 里没写 **`minio.persistence.storageClass`**；`kubectl get sc` 查到名字后填进 **`YOUR_STORAGECLASS`** 再升级，直到 **`kubectl get pvc -n logging`** 里 **export-0-loki-minio-0**、**export-1-loki-minio-0** 为 **Bound**。  
+③ **`loki-0` Pending**：多半在等 MinIO 或 **singleBinary** 的 PVC；**`singleBinary.persistence.storageClass`** 也要与 MinIO 同一可用 SC。  
+④ **`loki-gateway` ImagePullBackOff**：与存储无关；处理 **nginx 镜像拉取**（外网 / 镜像加速 / 改 **`gateway.image`** 指向内网仓）。
 
 **路径 B：生产（关 MinIO + 云或自建 S3 兼容存储 + 高可用副本）**  
 
@@ -2283,7 +2338,7 @@ kubectl get pods -n logging
 kubectl -n logging get svc
 ```
 
-联调期望有 **gateway、singleBinary、minio**；生产期望 **无 Chart 内置 minio**（`minio.enabled: false`）、**singleBinary 多 Ready**、对象存储侧能看到桶写入。
+联调期望：**gateway、singleBinary、minio** 均 Ready，且相关 **PVC Bound**；**不应**再出现占 **~10Gi** 的 **loki-chunks-cache**（已关）。生产期望 **无 Chart 内 minio**、**singleBinary 多副本 Ready**、对象存储桶有写入。
 
 ```mermaid
 flowchart LR
