@@ -2026,120 +2026,140 @@ flowchart LR
 
 ---
 
-下一节 **T9.3、Loki** 用 **Helm** 在 **`logging`** 里装 **Loki、Promtail（可选 Grafana）**；与 **T9.2 EFK** 二选一做主栈即可；**Kafka** 见 **T9.2.10**；选型见 **T9.3.1**。
+下一节 **T9.3、Loki** 在 **`logging`** 部署 **Loki**、**Grafana Alloy** 采集与 **Grafana** 查询；与 **T9.2** 二选一为主栈；**Kafka** 见 **T9.2.10**。
 
 ## T9.3、Loki
 
-[Loki](https://grafana.com/docs/loki/latest/) 只把**标签**当索引，日志正文压块进对象存储，成本通常比全文检索友好；查日志用 **LogQL**。总览见 [Loki overview](https://grafana.com/docs/loki/latest/get-started/overview/)，示意图见 **T9.3.2**。
+**Loki** 用标签索引日志流，正文写入对象存储，查询语言为 **LogQL**。**Grafana Alloy** 负责采集（见 [Send data](https://grafana.com/docs/loki/latest/send-data/)）。工作负载与 **T9.2** 同命名空间 **`logging`**；对象存储联调对接集群已有 **MinIO**（`minio` 命名空间）。
 
-**和上文怎么接**：命名空间继续用 **`logging`**（与 **T9.2** 一致）；读节点 **`/var/log/pods`** 与 **T9.1.4.1** 同一路径。若 **T9.2** 已在跑 **Elasticsearch + Fluent Bit**，本节 Loki 可与之一块装，多占资源，但**别默认把同一批业务日志双写进两套系统**当两套唯一真相，除非你在做迁移或演练。
+**官方文档**：[Install Loki with Helm](https://grafana.com/docs/loki/latest/setup/install/helm/) · [Install monolithic](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) · [Helm concepts](https://grafana.com/docs/loki/latest/setup/install/helm/concepts/) · [Deployment modes](https://grafana.com/docs/loki/latest/get-started/deployment-modes/)
 
-**采集端**：官方 [Send data](https://grafana.com/docs/loki/latest/send-data/) 与 [overview](https://grafana.com/docs/loki/latest/get-started/overview/) 首推 **Grafana Alloy**。**Promtail** 已 **EOL**（见 **T9.4** 开头、[Migrate to Alloy](https://grafana.com/docs/loki/latest/setup/migrate/migrate-to-alloy/)）。下面 **T9.3.6** 仍用 **Promtail Helm**，是为了和 **T9.4** 连成一条**能照抄联调**的路径。**新建生产**更建议直接上 **Alloy**，按官方迁移文档装。
+**实施顺序**：**T9.3.4** 前提 → **T9.3.5** Loki → **T9.4** Alloy → **T9.3.6** Grafana → **T9.5** 告警 → **T9.6** LogQL → **T9.3.9** 上线核对。
 
-**Fluent Bit 直推 Loki**（不再装 Promtail）：见 [Fluent Bit Loki 输出](https://docs.fluentbit.io/manual/pipeline/outputs/loki)；与 **T9.2.8** 可并存，**OUTPUT** 与 ES 分开配。
+### T9.3.1、选型
 
-**怎么读**：**T9.3.1** 选型 → **T9.3.2** 数据流与图 → **T9.3.3** 版本表 → **T9.3.4** 开工条件 → **T9.3.5** Loki → **T9.3.6** Promtail → **T9.3.7** Grafana（可选）→ **T9.3.8** 对照 **T9.1 / T9.2** → **T9.3.9** Traefik。
-
-### T9.3.1、和 ES 怎么选
-
-| 维度 | Loki | Elasticsearch（本文 T9.2 EFK） |
-|------|------|----------------------------------|
-| 索引侧重 | 主要索引**标签**；正文块存 | 常做**全文**检索，资源更高 |
-| 查询 | **LogQL** | **KQL / DSL** 等 |
-| 典型场景 | 已有 **Grafana**、想控成本、标签规范好 | 强检索、合规、Kibana 生态 |
+| 维度 | Loki | Elasticsearch（T9.2） |
+|------|------|------------------------|
+| 索引 | 标签 + 时间；正文在对象存储 | 常做全文索引 |
+| 查询 | LogQL | KQL / DSL |
+| 典型场景 | 已有 Grafana、标签规范清晰 | 强检索、Kibana 生态 |
 
 ```mermaid
 flowchart TB
-  subgraph pick["选型 生产二选一为主"]
-    Q{已有 T9.2 且够用?}
-    Q -->|是| STAY[继续 T9.2 不必强上 Loki]
-    Q -->|否 或 要 Grafana 日志栈| LO[走本节 T9.3]
-  end
+  Q{已有 T9.2 且满足需求?}
+  Q -->|是| EFK[继续 T9.2]
+  Q -->|否| LOKI[部署本节 Loki 栈]
 ```
 
 ```mermaid
 flowchart LR
-  subgraph efk2["T9.2 EFK"]
-    FB1["Fluent Bit"] --> ES["Elasticsearch"]
-    ES --> KB["Kibana"]
+  subgraph efk["T9.2"]
+    FB[Fluent Bit] --> ES[Elasticsearch] --> KB[Kibana]
   end
-  subgraph lok2["本节 Loki"]
-    AG2["Promtail 或 Alloy 或 Fluent Bit"]
-    AG2 --> LO2["Loki"]
-    LO2 --> GF2["Grafana"]
+  subgraph loki_stack["T9.3"]
+    AL[Alloy] --> LO[Loki] --> GF[Grafana]
   end
 ```
 
-### T9.3.2、日志怎么走
+与 **T9.2** 并存仅用于迁移；同一批业务日志不要默认双写两套系统。
+
+---
+
+### T9.3.2、数据流
+
+应用 **stdout/stderr** 由容器运行时落盘；**Alloy DaemonSet** 经 Kubernetes API 采集本节点 Pod 日志，HTTP 推送到 **loki-gateway**，由 **Loki SingleBinary** 写入对象存储；**Grafana** 经网关用 LogQL 查询。
 
 ```mermaid
-flowchart LR
-  P["Pod 标准输出"]
-  N["节点容器日志目录"]
-  PT["Promtail DaemonSet"]
-  GW["Loki Gateway"]
-  L["Loki 写入与查询"]
-  P --> N --> PT --> GW --> L
+flowchart TB
+  subgraph node["工作节点"]
+    P[业务 Pod]
+    AL[Alloy DaemonSet]
+  end
+  subgraph logging_ns["命名空间 logging"]
+    GW[loki-gateway]
+    LO[Loki SingleBinary]
+    OB[(对象存储)]
+  end
+  GF[Grafana]
+  P --> AL
+  AL -->|push| GW
+  GW --> LO
+  LO --> OB
+  GF -->|LogQL| GW
 ```
 
-部署形态见 [Deployment modes](https://grafana.com/docs/loki/latest/get-started/deployment-modes/)：官方写明 **Simple scalable（SSD）在弃用中**，生产更推荐 **Microservices**。本节用 **Helm 单体单副本（SingleBinary）** 做联调与小型环境，与 [Install monolithic](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) 一致。上生产请接 **云 S3 兼容存储** 或按 [Helm 部署指南](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/)（AWS / Azure / GCP）扩成可运维形态。
+**部署形态**：中小型集群用 Helm **SingleBinary**（[Install monolithic](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/)）。日志量与查询并发显著增长后，按 [Microservices](https://grafana.com/docs/loki/latest/setup/install/helm/install-microservices/) 或云指南（[AWS](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/aws/) / [Azure](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/azure/) / [GCP](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/gcp/)）扩展。
 
-Helm 总入口：[Install Loki with Helm](https://grafana.com/docs/loki/latest/setup/install/helm/)。Chart 维护方与升级说明见 [grafana-community/loki README](https://github.com/grafana-community/helm-charts/blob/main/charts/loki/README.md)。
+![Loki 日志栈](./images/loki-overview-2.png)
 
-**示意图**：与 [overview](https://grafana.com/docs/loki/latest/get-started/overview/) 文内「Loki logging stack」一图同源；仓库内 `./images/loki-overview-2.png` 便于离线。若要对齐最新版式，可从 [Loki 仓库内 PNG](https://github.com/grafana/loki/raw/main/docs/sources/get-started/loki-overview-2.png) 覆盖本地文件。
+示意图与 [Loki overview](https://grafana.com/docs/loki/latest/get-started/overview/) 一致；本地文件可从 [官方 PNG](https://github.com/grafana/loki/raw/main/docs/sources/get-started/loki-overview-2.png) 更新。
 
-![Loki 日志栈 Agent、Loki、Grafana](./images/loki-overview-2.png)
+---
 
-### T9.3.3、版本与校验
+### T9.3.3、版本
 
-升级前读 [Release notes](https://grafana.com/docs/loki/latest/release-notes/)、[Helm 安装](https://grafana.com/docs/loki/latest/setup/install/helm/)、[Helm chart 组件说明](https://grafana.com/docs/loki/latest/setup/install/helm/concepts/)。全量可调字段以 **`helm show values grafana-community/loki --version 13.6.2`** 为准。
+以 [grafana-community/loki Chart.yaml](https://raw.githubusercontent.com/grafana-community/helm-charts/main/charts/loki/Chart.yaml)、[grafana/alloy Chart.yaml](https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/Chart.yaml) 与 [Release notes](https://grafana.com/docs/loki/latest/release-notes/) 为准；变更时同步 Helm `--version` 与 GitOps。
 
-**本文本节校验日期：2026-05-08**（对照 [grafana-community/loki Chart.yaml](https://raw.githubusercontent.com/grafana-community/helm-charts/main/charts/loki/Chart.yaml) 与官方 Helm 文档。）
+**本文同步校验日期：2026-05-19**
 
 | 组件 | 版本 / 来源 | 说明 |
 |------|-------------|------|
-| Loki 应用镜像 | **3.7.1** | 与 Chart `appVersion` 一致；可在 values 里 `image.tag` 再钉死 |
-| Loki Helm Chart | **13.6.2** | `helm search repo grafana-community/loki --versions`；OCI：`oci://ghcr.io/grafana-community/helm-charts/loki` |
-| Helm 客户端 | **3.x** | [Installing Helm](https://helm.sh/docs/intro/install/) |
-| Kubernetes | **≥ 1.25** | Chart `kubeVersion`；与 **T9.2.2** 的 1.31～1.35 不冲突 |
-| Promtail Chart | **6.17.1**（示例） | Chart 已 **deprecated**，长期迁 **Alloy**（**T9.4**）；镜像 tag 与 Loki 对齐见 **T9.3.6** |
-| Grafana Chart | `helm search repo grafana/grafana --versions` | 本文只用于 **Explore**；管理员密码勿提交 Git |
+| Loki | **3.7.2** | Chart `appVersion` |
+| Loki Helm Chart | **16.0.0** | `grafana-community/loki` |
+| Grafana Alloy Chart | **1.8.1** | 应用 **v1.16.1**，Chart `grafana/alloy` |
+| Kubernetes | **≥ 1.25** | 与 **T9.2.2**（1.31–1.35）一致 |
+| Helm | **3.x** | [Installing Helm](https://helm.sh/docs/intro/install/) |
 
-### T9.3.4、开工前要准备什么
+---
 
-**命名空间**：与 **T9.2** 相同，用 **`logging`**；没有就建：
+### T9.3.4、前提条件
+
+- **命名空间**：`logging`（与 **T9.2** 相同）。`kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -`
+- **Helm 仓库**：
 
 ```bash
-kubectl create namespace logging
+helm repo add grafana-community https://grafana-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
 ```
 
-**存储（联调必做，否则 MinIO / Loki 会 Pending）**：
+- **对象存储**：`minio.enabled: false`；联调使用已有 MinIO（`http://minio.minio.svc.cluster.local:9000`），预先创建桶 **`loki-chunks`**、**`loki-ruler`**、**`loki-admin`**
+- **StorageClass**：`kubectl get sc` 确认名称；`singleBinary.persistence.storageClass` 填真实值（联调示例 **`local-path`**）
+- **镜像**：节点可拉取 Chart 所需镜像；内网集群在 values 中配置 **`gateway.image`** 指向内网仓库（见 **T9.3.5.1**）
+- **values 固定项**（与 **T9.3.5.1** 一致）：`deploymentMode: SingleBinary`；`chunksCache.enabled: false`；`resultsCache.enabled: false`；`minio.enabled: false`；Alloy 推送 `http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push`
+- **凭据**：对象存储密钥写入 **Secret**，经 Helm 或环境变量引用；禁止明文进 Git
+- **安全**：生产配置 **TLS**、**NetworkPolicy**、Grafana **SSO**（按平台规范）
 
-1. 执行 **`kubectl get sc`**，记下**带 `(default)`** 或你们平台规定的 **StorageClass** 名称（例如 `local-path`、`nfs-client`、`rook-ceph-block`）。  
-2. 下面 **`loki-values-dev.yaml`** 里两处 **`YOUR_STORAGECLASS`** 必须改成上一步的名字；**不要留占位符就 helm install**。  
-3. 装完后看 PVC：`kubectl get pvc -n logging`。若 **Pending** 且 Events 里是 **no StorageClass / no provisioner**，先修集群存储，不是 Loki 配置写错一行能救的。  
-4. MinIO 子 Chart 默认 **`drivesPerNode: 2`**，会建 **2 个 PVC**（联调 values 里每个 **10Gi**），再加上 **singleBinary** 的 **1 个 PVC（10Gi）**，联调至少 **3 个 Bound** 再指望 Loki Ready；生产路径见 **T9.3.5 路径 B**（关 MinIO、用对象存储）。
+---
 
-**资源（与 T9.2 EFK 同机时必看）**：Chart 默认会起 **chunks-cache** memcached，**`allocatedMemory: 8192`（MB）** 时 Pod 大约会 **申请近 10Gi 内存**，6 节点都紧张时就会像你看到的那样 **`Insufficient memory` + Pending**。联调 values 里已 **关掉 chunks/results 两块缓存**；若仍 OOM，再缩小 **`singleBinary.resources`** 或给日志节点加内存。
+### T9.3.5、部署 Loki
 
-**和 T9.2 并存**：先看 **`logging`** 里 CPU、内存、磁盘是否够再装 Loki；Promtail 与 Fluent Bit 都会占节点资源。
+#### T9.3.5.1、联调（外置 MinIO）
 
-**网络与合规**：上生产通常还要补 **NetworkPolicy**、入口 **TLS**、Grafana **对接企业 SSO** 等；每家集群的命名空间划分、证书来源、身份系统都不一样，**没法写一份放之四海都适用的 YAML**，这里只提醒要做什么，具体清单按本单位安全与平台规范补全。
+**步骤 1**：在 MinIO 创建桶 `loki-chunks`、`loki-ruler`、`loki-admin`（名称与 values 一致）。
 
-### T9.3.5、装 Loki（Helm）
+**步骤 2**：创建 Secret（推荐；联调也可暂时在 values 填明文，勿提交 Git）：
 
-分两条路写清楚，避免只看第一段以为「生产也用 MinIO 单副本」。
+```bash
+kubectl create secret generic loki-minio-s3 -n logging \
+  --from-literal=AWS_ACCESS_KEY_ID='你的AccessKey' \
+  --from-literal=AWS_SECRET_ACCESS_KEY='你的SecretKey'
+```
 
-**路径 A：联调（单副本 + 子 Chart MinIO）**  
-
-和官方 [Install monolithic — Single Replica](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/) 同结构，并补上**存储类、内存**（官方示例没写全，裸集群上容易 Pending）。用来验证 **Gateway、写入、查询** 和 **T9.3.6 Promtail**。**不是生产配置。**
-
-**动手前**：`kubectl get sc`，把下面 YAML 里 **`YOUR_STORAGECLASS`** 改成真实名字（两处：**`minio.persistence`**、**`singleBinary.persistence`**）。
-
-将以下内容保存为 `loki-values-dev.yaml`：
+**步骤 3**：保存 `loki-values-dev.yaml`（**`YOUR_STORAGECLASS`** 换成 `kubectl get sc` 结果；若用 Secret，按下面注释改用 `existingSecret` 或保持 s3 段明文仅本地调试）：
 
 ```yaml
-# loki-values-dev.yaml — 联调：须替换 YOUR_STORAGECLASS；与 T9.2 同命名空间 logging
+# loki-values-dev.yaml — 与 T9.3.4 一致；勿留占位符直接 helm install
+minio:
+  enabled: false
+
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+deploymentMode: SingleBinary
+
 loki:
   commonConfig:
     replication_factor: 1
@@ -2159,21 +2179,18 @@ loki:
     volume_enabled: true
   ruler:
     enable_api: true
-
-# 默认 chunks-cache 会按 allocatedMemory 8192MB 算出约 10Gi 内存请求，和 EFK 同机时常见 Pending
-chunksCache:
-  enabled: false
-resultsCache:
-  enabled: false
-
-minio:
-  enabled: true
-  persistence:
-    enabled: true
-    storageClass: YOUR_STORAGECLASS
-    size: 10Gi
-
-deploymentMode: SingleBinary
+  storage:
+    type: s3
+    bucketNames:
+      chunks: loki-chunks
+      ruler: loki-ruler
+      admin: loki-admin
+    s3:
+      endpoint: http://minio.minio.svc.cluster.local:9000
+      accessKeyId: YOUR_MINIO_ACCESS_KEY
+      secretAccessKey: YOUR_MINIO_SECRET_KEY
+      s3ForcePathStyle: true
+      insecure: true
 
 singleBinary:
   replicas: 1
@@ -2188,7 +2205,14 @@ singleBinary:
     limits:
       memory: 2Gi
 
-# 联调可关，少占 DaemonSet；要测写入链路可保持 true
+gateway:
+  enabled: true
+  # 内网集群拉取失败时取消注释并改为内网镜像，例如：
+  # image:
+  #   registry: registry.example.com
+  #   repository: nginx/nginx-unprivileged
+  #   tag: "1.27"
+
 lokiCanary:
   enabled: true
 
@@ -2220,52 +2244,36 @@ bloomGateway:
   replicas: 0
 ```
 
-**联调装完仍 Pending / ImagePullBackOff 时怎么对表**（和你 `kubectl describe pod` 里 Events 对照）：
-
-| 现象 | 常见原因 | 处理 |
-|------|----------|------|
-| **loki-minio-0** `unbound PersistentVolumeClaims` | 没写 **storageClass** 或 SC 不能动态建卷 | 改 values 里 **`minio.persistence.storageClass`**，`kubectl get pvc -n logging` 看是否 Bound |
-| **loki-chunks-cache-0** `Insufficient memory` | 默认 memcached 约 **10Gi** 请求 | 用上面 values **关掉 `chunksCache`**，或 `allocatedMemory: 256` 代替 `enabled: false` |
-| **loki-0** Pending | 常是 **等 MinIO** 或 **singleBinary PVC** 未 Bound | 先解决 MinIO PVC；确认 **`singleBinary.persistence.storageClass`** |
-| **loki-gateway** `ImagePullBackOff` | 节点拉不动 **`docker.io/nginxinc/nginx-unprivileged`** | `kubectl describe pod -n logging -l app.kubernetes.io/component=gateway` 看 Events；能访问外网则手动 `crictl pull`，不能则改内网镜像仓并在 values 里设 **`gateway.image.registry` / `repository` / `tag`** |
-
-改完 values 后**用同一份文件升级**（不必先删 Release）：
+**步骤 4**：安装并核对：
 
 ```bash
-helm upgrade loki grafana-community/loki -n logging -f loki-values-dev.yaml --version 13.6.2
-kubectl get pvc,pods -n logging
+helm upgrade --install loki grafana-community/loki -n logging -f loki-values-dev.yaml --version 16.0.0
+kubectl get pods,pvc,svc -n logging
 ```
 
-**你这次 `describe` 对症（Rocky 联调 + 已跑 EFK）**：  
+**核对**：`loki-0`、`loki-gateway` 为 **Running**；**无** `loki-minio` Pod；**无** `loki-chunks-cache` Pod；`loki-0` 对应 PVC 为 **Bound**。通过后执行 **T9.4**。
 
-① **`loki-chunks-cache-0` → Insufficient memory**：旧 values 没关 **chunksCache**，默认约 **10Gi** 内存请求；用上面新 **`loki-values-dev.yaml`**（**`chunksCache.enabled: false`**）再 **helm upgrade**，Pending 的 chunks-cache 应消失。  
+---
 
-② **`loki-minio-0` → unbound PVC**：values 里没写 **`minio.persistence.storageClass`**；`kubectl get sc` 查到名字后填进 **`YOUR_STORAGECLASS`** 再升级，直到 **`kubectl get pvc -n logging`** 里 **export-0-loki-minio-0**、**export-1-loki-minio-0** 为 **Bound**。  
+#### T9.3.5.2、生产（S3 与高可用）
 
-③ **`loki-0` Pending**：多半在等 MinIO 或 **singleBinary** 的 PVC；**`singleBinary.persistence.storageClass`** 也要与 MinIO 同一可用 SC。  
+1. **`minio.enabled: false`**，使用云或企业 **S3 兼容**对象存储  
+2. **`singleBinary.replicas`** 与 **`loki.commonConfig.replication_factor`** 相同（常见 **3**）  
+3. 桶名在环境内唯一（见 [Grafana 安全说明](https://grafana.com/blog/2024/06/27/grafana-security-update-grafana-loki-and-unintended-data-write-attempts-to-amazon-s3-buckets/)）  
+4. **`limits_config.retention_period`** 按合规设置  
+5. 开启 [Monitoring](https://grafana.com/docs/loki/latest/setup/install/helm/concepts/#monitoring-loki) 或 [Meta monitoring](https://grafana.com/docs/loki/latest/operations/meta-monitoring/)  
+6. 日志量持续增大时评估 [Microservices](https://grafana.com/docs/loki/latest/setup/install/helm/install-microservices/)
 
-④ **`loki-gateway` ImagePullBackOff**：与存储无关；处理 **nginx 镜像拉取**（外网 / 镜像加速 / 改 **`gateway.image`** 指向内网仓）。
-
-**路径 B：生产（关 MinIO + 云或自建 S3 兼容存储 + 高可用副本）**  
-
-官方在 [Object Storage Configuration（同一页往下拉）](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/#object-storage-configuration) 给了 **AWS S3**、**Azure Blob** 等完整 `values`；云上「能上线」的拆法见 [Deploy Loki on AWS](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/aws/)、[Azure](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/azure/)、[GCP](https://grafana.com/docs/loki/latest/setup/install/helm/deployment-guides/gcp/)。更大流量、长期运维请优先按官方说明评估 **[Microservices](https://grafana.com/docs/loki/latest/setup/install/helm/install-microservices/)**（与 [Deployment modes](https://grafana.com/docs/loki/latest/get-started/deployment-modes/) 一致；**SSD 模式在弃用中**，新集群不要当主方案）。
-
-生产上建议至少做到下面几条（缺一条都别自称上线完毕）：
-
-1. **`minio.enabled: false`**，日志块与索引进**对象存储**（云 S3 / 兼容协议 / 自建 MinIO **集群**，而不是 Chart 里那个联调子 Chart）。  
-2. **桶名**：接真 S3 时**不要**用默认 **`chunks` / `ruler` / `admin`** 这类通用名，按 [Grafana 安全说明](https://grafana.com/blog/2024/06/27/grafana-security-update-grafana-loki-and-unintended-data-write-attempts-to-amazon-s3-buckets/) 换成你们环境里**唯一**的名字。  
-3. **副本与 `replication_factor`**：官方 [Multiple Replicas](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/#multiple-replicas) 要求 **`singleBinary.replicas` 与 `commonConfig.replication_factor` 一致**；生产常见起点是 **`replicas: 3` + `replication_factor: 3`**（仍属 Helm **SingleBinary** 形态；更大再拆微服务）。多副本时必须配**共享对象存储**，不能指望节点本地盘当唯一真源。  
-4. **`limits_config.retention_period`**：按留存合规设（官方 S3 示例里有 **`672h`** 等写法，你们按审计要求改）。  
-5. **`singleBinary.persistence`**：把 **`storageClassName` / `size`** 换成集群真实值；磁盘只做运行期需要，**别把「日志长期留存」押在 PVC 上**。  
-6. **密钥**：`accessKeyId`、`secretAccessKey` 等用 **Kubernetes Secret + Helm 引用** 或云厂商 **IRSA / Workload Identity**，**不要**把明文密钥写进提交到 Git 的 values。  
-7. **可观测与告警**：Chart 自带监控开关见 [Helm chart 组件说明 — Monitoring](https://grafana.com/docs/loki/latest/setup/install/helm/concepts/#monitoring-loki)；更完整见 [Meta monitoring](https://grafana.com/docs/loki/latest/operations/meta-monitoring/)。  
-8. **与本文其它节一致**：仍用 **`-n logging`**；装完 **Promtail / Alloy** 仍推 **`loki-gateway`**。
-
-下面是一段**生产骨架**（**占位符必须全部替换**；`loki.storage` / `storage_config` 字段以你云厂商与当前 Chart 为准，请先 **`helm show values grafana-community/loki --version 13.6.2`**，再和官方 **S3** 整段 [合并](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/#object-storage-configuration)）：
+将官方 [Object storage configuration](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/#object-storage-configuration) 中 **S3** 整段合并进 `loki-values-prod.yaml`（`chunksCache` / `resultsCache` 与联调相同先关闭，资源充足后再按 [Helm concepts](https://grafana.com/docs/loki/latest/setup/install/helm/concepts/) 调缓存）：
 
 ```yaml
-# loki-values-prod.yaml — 骨架：须与官方 S3 示例合并并填真实值
+# loki-values-prod.yaml — 须合并官方 S3 段；密钥走 Secret / IRSA
 minio:
+  enabled: false
+
+chunksCache:
+  enabled: false
+resultsCache:
   enabled: false
 
 deploymentMode: SingleBinary
@@ -2290,114 +2298,68 @@ loki:
     retention_period: 720h
   ruler:
     enable_api: true
-  # storage / storage_config：整段复制官方「S3」YAML，填 endpoint、region、bucketNames、凭证引用等
+  # storage：复制官方 S3 YAML
 
 singleBinary:
   replicas: 3
   persistence:
     enabled: true
     storageClass: YOUR_STORAGECLASS
-    accessModes:
-      - ReadWriteOnce
     size: 30Gi
 
-# backend … bloomGateway 各 replicas: 0 与路径 A 相同，从路径 A 复制即可
-```
+gateway:
+  enabled: true
 
-```mermaid
-flowchart LR
-  subgraph dev["路径 A 联调"]
-    M1["MinIO 子 Chart"]
-    L1["Loki 单副本"]
-    L1 --> M1
-  end
-  subgraph prod["路径 B 生产"]
-    S3["对象存储 S3 兼容"]
-    L3["Loki 多副本"]
-    L3 --> S3
-  end
-  dev -->|"验证通过后改 values 升级"| prod
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+queryScheduler:
+  replicas: 0
+distributor:
+  replicas: 0
+compactor:
+  replicas: 0
+indexGateway:
+  replicas: 0
+bloomPlanner:
+  replicas: 0
+bloomBuilder:
+  replicas: 0
+bloomGateway:
+  replicas: 0
 ```
-
-**安装（Chart 版本钉死；`-f` 指向你当前是联调还是生产文件）**：
 
 ```bash
-helm repo add grafana-community https://grafana-community.github.io/helm-charts
-helm repo update
-
-helm upgrade --install loki grafana-community/loki -n logging -f loki-values-dev.yaml --version 13.6.2
-# 生产：把上一行的 loki-values-dev.yaml 换成合并后的 loki-values-prod.yaml
-```
-
-**OCI（可选）**：
-
-```bash
-helm upgrade --install loki oci://ghcr.io/grafana-community/helm-charts/loki -n logging -f loki-values-dev.yaml --version 13.6.2
-```
-
-**验收**：
-
-```bash
+helm upgrade --install loki grafana-community/loki -n logging -f loki-values-prod.yaml --version 16.0.0
 kubectl get pods -n logging
-kubectl -n logging get svc
 ```
-
-联调期望：**gateway、singleBinary、minio** 均 Ready，且相关 **PVC Bound**；**不应**再出现占 **~10Gi** 的 **loki-chunks-cache**（已关）。生产期望 **无 Chart 内 minio**、**singleBinary 多副本 Ready**、对象存储桶有写入。
 
 ```mermaid
 flowchart LR
-  GW["Service loki-gateway"]
-  SB["Loki SingleBinary"]
-  OB["对象存储"]
-  GW --> SB
-  SB --> OB
+  GW[loki-gateway] --> SB[Loki] --> S3[(对象存储)]
 ```
 
-**Helm 报错**：`helm show values grafana-community/loki --version 13.6.2`；跨大版本读 [README — Upgrading](https://github.com/grafana-community/helm-charts/blob/main/charts/loki/README.md#upgrading)。
+---
 
-**Promtail / Grafana** 仍在 **T9.3.6、T9.3.7**；生产里 Promtail 长期应换 **Alloy**（**T9.4**）。
+### T9.3.6、Grafana 数据源
 
-### T9.3.6、装 Promtail
+**优先**在已有 **Grafana**（如 **kube-prometheus-stack**）添加数据源：类型 **Loki**，URL `http://loki-gateway.logging.svc.cluster.local`，Access **Server**。
 
-Promtail 在 **`grafana`** Helm 仓库（与 **`grafana-community`** 不同，两个都要 `helm repo add`）。
-
-推送 URL 指向本集群 **Gateway**。Release 名 **`loki`**、命名空间 **`logging`** 时一般为：
-
-`http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push`
-
-**Chart 默认 Promtail 镜像往往偏旧**，建议与 **Loki 3.7.1** 对齐，减少不兼容：
-
-```bash
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-
-helm upgrade --install promtail grafana/promtail -n logging \
-  --version 6.17.1 \
-  --set "config.clients[0].url=http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push" \
-  --set "image.repository=grafana/promtail" \
-  --set "image.tag=3.7.1"
-```
-
-版本号与 **T9.4.1** 对齐；Promtail Chart 小版本以 `helm search repo grafana/promtail --versions` 为准。若改了 Loki 的 Helm Release 名，用 `kubectl -n logging get svc` 找带 **gateway** 的 Service 再拼 URL。
-
-```bash
-kubectl get pods -n logging -l app.kubernetes.io/name=promtail
-```
-
-默认挂 **`/var/log/pods`**，与 **T9.1** 一致。节点没有 **`/var/lib/docker/containers`** 时，按 Chart 默认 `values` 删掉多余 **hostPath** 即可。
-
-**验收**：Promtail 日志无连续 **connection refused**；**T9.3.7** 里 **Explore** 能查到日志流（标签以你集群为准，必要时 **T9.4** 调 `scrape_configs`）。
-
-### T9.3.7、装 Grafana 接 Loki（可选）
-
-只走 **LogCLI / API** 可跳过；值班查日志用 **Grafana Explore** 最省事。
-
-`grafana-values.yaml`（**adminPassword 必须改掉**；生产用 **Secret** 或 SSO，勿提交 Git）：
+**无 Grafana** 时在 **`logging`** 安装：
 
 ```yaml
 # grafana-values.yaml
 adminUser: admin
-adminPassword: "请改成强密码"
+adminPassword: "请改为强密码或改用 Secret"
 
 service:
   type: ClusterIP
@@ -2414,268 +2376,254 @@ datasources:
 ```
 
 ```bash
-# 若 T9.3.6 已 add 过 grafana 仓库，此处只需 helm repo update
 helm upgrade --install grafana grafana/grafana -n logging -f grafana-values.yaml
-```
-
-需要可复现时再加 **`--version`**，版本用 **`helm search repo grafana/grafana --versions`** 选当前稳定。
-
-```bash
 kubectl -n logging port-forward svc/grafana 3000:80
 ```
 
-浏览器打开 `http://127.0.0.1:3000`，**Explore** 选 **Loki**，试 **`{namespace="kube-system"}`**（按你环境改标签）。
+**T9.4** Alloy 就绪后，在 **Explore** 查询 `{namespace="kube-system"}` 等。
 
-**（插槽：Grafana Explore 截图，建议路径 `./images/t937-grafana-explore-loki.png`。）**
-
-**T9.3.5～T9.3.7 做完后的关系**：
-
-```mermaid
-flowchart TB
-  subgraph logns["命名空间 logging"]
-    PT4["Promtail DaemonSet"]
-    GW4["loki-gateway"]
-    SB4["Loki SingleBinary"]
-    MI4["MinIO"]
-    PT4 -->|"push"| GW4
-    GW4 --> SB4
-    SB4 -->|"S3"| MI4
-  end
-  GR4["Grafana Pod"]
-  GR4 -->|"LogQL 经网关"| GW4
-```
-
-### T9.3.8、和 T9.1 / T9.2 的对应
-
-```mermaid
-flowchart LR
-  T91["T9.1 节点代理"]
-  T92["T9.2 Fluent Bit 写 ES"]
-  T93["本节 Promtail 写 Loki"]
-  T91 --> T92
-  T91 --> T93
-```
-
-| 上文 | 本节落点 |
-|------|----------|
-| **T9.1** 节点 DaemonSet、Sidecar | **Promtail** 同属 **DaemonSet 读节点日志**；Sidecar 仍按 **T9.1.4** |
-| **T9.2** EFK | **Loki + Grafana** 与 **ES + Kibana** 二选一为主；资源够可并存 |
-| **Fluent Bit** | 可 [直推 Loki](https://docs.fluentbit.io/manual/pipeline/outputs/loki)，则不必再装 Promtail；与 **T9.2.8** 并行时两套 **OUTPUT** 分清楚 |
-
-### T9.3.9、Traefik（可选）
-
-Traefik **access log** 多为 **stdout**，**Promtail** 跟节点日志一起收即可。开关以你用的 Traefik 大版本文档为准。
-
-**（插槽：Traefik 大盘模板导入后改 LogQL 标签，建议路径 `./images/t939-traefik-loki-dashboard.png`。）**
+**（插槽：`./images/t936-grafana-explore-loki.png`）**
 
 ---
 
-下一节 **T9.4、Promtail** 写配置、Helm 调参与 **Alloy** 迁移，和 **T9.3.6** 衔接。
+### T9.3.7、对照 T9.1 / T9.2
 
-## T9.4、Promtail
-
-> **官方结论（2026）**：[Promtail](https://grafana.com/docs/loki/latest/send-data/promtail/) 已于 **2026-03-02 EOL**（不再演进，商业支持结束），**新立项与扩容**请优先 [Grafana Alloy](https://grafana.com/docs/alloy/latest/) 采集并写入 Loki；**lambda-promtail** 不在此 EOL 范围内。本节仍按 **T9.3.6** 已装的 Promtail 讲清配置骨架，便于维护存量集群，并按 [Migrate to Alloy](https://grafana.com/docs/loki/latest/setup/migrate/migrate-to-alloy/) 替换采集端。
-
-**T9.3** 里 Helm 已起 DaemonSet；落地时你要动的主要是 **`config.clients`（推到哪）**、**`positions`（断点续读）**、**`scrape_configs`（采哪些文件 / Pod）**、**`pipeline_stages`（解析与打标签）**。字段级说明已收进官方文档与 Chart 默认模板，下面只保留**生产上容易踩坑**的部分；需要查全量参数时，以 `helm show values grafana/promtail` 与 [Promtail 主文档](https://grafana.com/docs/loki/latest/send-data/promtail/) 为准。
-
-### T9.4.1、版本与校验
-
-**本文本节校验日期：2026-04-21**
-
-| 项目 | 说明 |
+| 上文 | 本节 |
 |------|------|
-| Promtail Helm Chart | `grafana/promtail`，示例 **6.17.1**（以 `helm search repo grafana/promtail --versions` 为准）；Chart 已 **deprecated**，长期应迁 **Alloy** |
-| Promtail 镜像 | 建议与 **Loki 同发行线**（**T9.3** 使用 Loki **3.7.1** 时，镜像宜 **3.7.1**：**T9.3.6** 已用 **`--set image.tag=3.7.1`**；若未跟本节安装，可在 `values` 里设 `image.tag: "3.7.1"`） |
-| Loki 写入地址 | 与 **T9.3** 一致：`http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push`（Release 名 **`loki`**、命名空间 **`logging`**） |
-
-### T9.4.2、配置骨架
+| **T9.1** DaemonSet / Sidecar | **Alloy DaemonSet** 采 Pod 日志 |
+| **T9.2** Fluent Bit → ES | **Loki + Grafana** 与 EFK 二选一为主 |
+| **Fluent Bit** | 可 [直推 Loki](https://docs.fluentbit.io/manual/pipeline/outputs/loki)；与 **T9.2.8** 并存时两套 OUTPUT 分开 |
 
 ```mermaid
 flowchart LR
-  subgraph nd["节点"]
-    POD["/var/log/pods/..."]
-    POS["positions 文件"]
-  end
-  subgraph pr["Promtail Pod"]
-    SC[scrape_configs]
-    PL[pipeline_stages]
-    CL[clients]
-  end
-  LG[loki-gateway]
-  LO[Loki]
-  POD --> SC
-  SC --> PL
-  PL --> CL
-  CL -->|HTTP POST| LG
-  LG --> LO
-  POS <--> SC
+  T91[T9.1] --> T92[T9.2 ES]
+  T91 --> T93[T9.3 Loki]
 ```
 
-**三件事别搞混**：
+---
 
-1. **clients.url**：必须带 **`/loki/api/v1/push`**；多租户时再加 **`tenant_id`**（与 Loki 配置一致）。
-2. **positions**：路径要在容器里**可写**（Chart 默认常挂 **`/run/promtail`**）。
-3. **标签**：进 Loki 的是**标签集合**；**高基数**字段（请求 ID、用户 ID 等）不要做成标签，除非你算过成本。
+### T9.3.8、Traefik（可选）
 
-### T9.4.3、Helm 改法
+Traefik 访问日志走 **stdout**，由 **Alloy** 按 Pod 标签采集。
 
-`grafana/promtail` 的默认值在 **`config`** 下拼装完整 **`config.file`**，常见改法：
+**（插槽：`./images/t938-traefik-loki-dashboard.png`）**
 
-- **只改推送地址**（与 **T9.3.6** 的 `--set config.clients[0].url=...` 等价）；
-- **改镜像版本**：`image.tag`；
-- **改抓取 / 管道**：动 **`config.snippets`**、**`config.snippets.extraScrapeConfigs`**、**`config.snippets.extraRelabelConfigs`** 等（**键名以当期 Chart 为准**）。
+---
 
-示例片段（**字段名请对照** `helm show values grafana/promtail --version 6.17.1`）：
+### T9.3.9、上线核对
+
+**1）版本与 Release**
+
+- Helm Release **`loki`**、**`alloy`** 版本与 **T9.3.3** 表一致（Loki Chart **16.0.0**，Alloy Chart **1.8.1**）。
+- `helm list -n logging` 中 STATUS 为 **deployed**。
+
+**2）Loki 与存储**
+
+- `kubectl get pods,pvc -n logging`：`loki-0`、`loki-gateway` **Running**；`loki-0` PVC **Bound**。
+- 无 **`loki-minio`**、**`loki-chunks-cache`** Pod（与 **T9.3.5.1** values 一致）。
+- 对象存储桶 **`loki-chunks`** 等有写入（按 MinIO / S3 控制台或 API 抽查）。
+
+**3）Alloy 采集**
+
+- `kubectl get pods -n logging -l app.kubernetes.io/name=alloy`：各节点 **Running**（DaemonSet 期望数 = 节点数）。
+- Alloy 日志无持续 **connection refused**；推送地址为 **`loki-gateway.logging.svc.cluster.local/loki/api/v1/push`**（**T9.4.3**）。
+
+**4）Grafana 与查询**
+
+- **T9.3.6** 数据源 URL 为 `http://loki-gateway.logging.svc.cluster.local`。
+- **Explore** 能查到 `{namespace="kube-system"}` 或业务标签（**T9.6**）。
+
+**5）与 T9.2 关系**
+
+- 主栈二选一：若仍跑 **T9.2.8** 写 ES，确认未对同一业务日志默认双写 Loki，除非迁移方案明确要求。
+
+---
+
+下一节 **T9.4** 部署 **Grafana Alloy** 采集。
+
+## T9.4、Grafana Alloy
+
+**Grafana Alloy** 以 **DaemonSet** 部署，经 Kubernetes API 采集本节点 Pod 日志并写入 **loki-gateway**。配置依据 [Collect Kubernetes logs](https://grafana.com/docs/alloy/latest/collect/logs-in-kubernetes/)。
+
+**官方文档**：[Install on Kubernetes](https://grafana.com/docs/alloy/latest/set-up/install/kubernetes/) · [Configure on Kubernetes](https://grafana.com/docs/alloy/latest/configure/kubernetes/)
+
+### T9.4.1、版本
+
+与 **T9.3.3** 一致：**Chart 1.8.1**，应用 **v1.16.1**。推送 URL：`http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push`。
+
+### T9.4.2、数据流
+
+```mermaid
+flowchart LR
+  K8S[本节点 Pod] --> DISC[discovery.kubernetes]
+  DISC --> REL[discovery.relabel]
+  REL --> SRC[loki.source.kubernetes]
+  SRC --> PROC[loki.process]
+  PROC --> WR[loki.write]
+  WR --> GW[loki-gateway]
+```
+
+`discovery.kubernetes` 限制 **`spec.nodeName` 为本节点**（[Limit to same node](https://grafana.com/docs/alloy/latest/reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node)）。标签保留 **namespace、pod、container** 等低基数字段。
+
+### T9.4.3、部署 Alloy
+
+`alloy-values.yaml`（**`cluster`** 改为环境名）：
 
 ```yaml
-# promtail-values.yaml 片段
-image:
-  tag: "3.7.1"
+controller:
+  type: daemonset
 
-config:
-  clients:
-    - url: http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push
-  positions:
-    filename: /run/promtail/positions.yaml
+alloy:
+  configMap:
+    content: |-
+      loki.write "default" {
+        endpoint {
+          url = "http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push"
+        }
+      }
+
+      discovery.kubernetes "pod" {
+        role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+        }
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pod.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          action       = "replace"
+          target_label = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          action       = "replace"
+          target_label = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          action       = "replace"
+          target_label = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+          action       = "replace"
+          target_label = "job"
+          separator    = "/"
+          replacement  = "$1"
+        }
+      }
+
+      loki.source.kubernetes "pod_logs" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.pod_logs.receiver]
+      }
+
+      loki.process "pod_logs" {
+        forward_to = [loki.write.default.receiver]
+        stage.static_labels {
+          values = { cluster = "prod" }
+        }
+      }
 ```
 
 ```bash
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-helm upgrade --install promtail grafana/promtail -n logging -f promtail-values.yaml --version 6.17.1
+helm upgrade --install alloy grafana/alloy -n logging -f alloy-values.yaml --version 1.8.1
+kubectl get pods -n logging -l app.kubernetes.io/name=alloy
 ```
 
-### T9.4.4、K8s 抓取要点
+**（插槽：`./images/t943-alloy-running.png`）**
 
-- **DaemonSet 一节点一实例**：只读**本节点**日志；**Kubernetes SD** 下务必用 **`relabel`** 保证目标 Pod 落在本节点（Chart 默认模板里已有典型 **`__meta_kubernetes_pod_node_name`** 一类处理，见 `values.yaml` 里 **`snippets.scrapeConfigs`**）。
-- **重复日志**：多个 `job` 若匹配同一文件，会向 Loki 打**重复流**，排障时先合并 / 收紧 `scrape_configs`。
-- **与 Prometheus 对齐**：`namespace`、`pod`、`container` 等标签习惯与 Prometheus 一致时，**日志与指标**更好关联。
+### T9.4.4、管道（可选）
 
-```mermaid
-flowchart TB
-  SD["K8s SD 本节点 Pod"]
-  RB[relabel_configs]
-  PT["tail 日志路径"]
-  PL[pipeline_stages]
-  SD --> RB --> PT --> PL
+在 **`loki.process "pod_logs"`** 中增加阶段，例如按 **level** 丢弃 debug（[loki.process](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/)）：
+
+```alloy
+stage.json {
+  expressions = { level = "level" }
+}
+stage.labels {
+  values = { level = "" }
+}
+stage.match {
+  selector = "{level=\"debug\"}"
+  action   = "drop"
+}
 ```
 
-### T9.4.5、管道示例
-
-下面示意：**JSON 行**里抽出 `level` 打成标签，再按标签**丢掉 debug**（完整阶段列表以官方说明为准；Helm 默认往往已有 **`cri: {}`** 处理容器运行时格式，勿与业务 JSON 阶段重复打架）。
-
-```yaml
-pipeline_stages:
-  - json:
-      expressions:
-        level: level
-  - labels:
-      level:
-  - match:
-      selector: '{level="debug"}'
-      action: drop
-```
-
-**（插槽：可贴 `kubectl -n logging logs` 里 Promtail 正常工作的片段截图。）**
-
-### T9.4.6、迁到 Alloy（推荐）
-
-1. 读 [Migrate to Alloy](https://grafana.com/docs/loki/latest/setup/migrate/migrate-to-alloy/)，用官方迁移工具把 **Promtail 配置转成 Alloy**（命令以文档为准）。
-2. 推送端仍指向 **同一 Loki**（`loki-gateway.logging.svc.cluster.local`），与 **T9.3.5** 不冲突。
-3. 新装采集端**不要再押注 Promtail** 长期演进。
-
-```mermaid
-flowchart LR
-  A[存量 Promtail] -->|迁移| B[Grafana Alloy]
-  B -->|push| G[loki-gateway]
-  G --> L[Loki]
-```
-
-**（插槽：可贴 Alloy 运行后 Grafana Explore 查询截图。）**
+**（插槽：`./images/t944-explore-loki-logs.png`）**
 
 ---
 
 ## T9.5、报警
 
-日志告警常见三条路：**Grafana 里对 Loki 做告警规则**（官方当前主推的用法之一）、**Loki Ruler 用 LogQL 评估规则并通知 Alertmanager**、**采集端从日志生成指标再给 Prometheus**（Promtail 已 EOL，长期请用 Alloy 等价能力）。下面按「先易后难」排，并与 **T9.3、T9.4** 的 **Loki / Promtail** 安装方式对齐，不再使用已废弃的 **`loki-stack`** 与旧外链图。
+Loki 告警常用：**Grafana Alerting**、**Loki Ruler + Alertmanager**、**日志转 Prometheus 指标**。与 **T9.3 / T9.4** 安装一致。
 
-### T9.5.1、版本与校验
+**官方文档**：[Loki Alerting](https://grafana.com/docs/loki/latest/alerting/) · [Grafana Alerting](https://grafana.com/docs/grafana/latest/alerting/)
 
-**本文本节校验日期：2026-04-21**
+### T9.5.1、版本
 
-| 项目 | 说明 |
-|------|------|
-| Loki | 与 **T9.3.5** 一致，示例 **3.7.1**（Chart **13.6.2**） |
-| 告警规则语言 | **LogQL**（Ruler）或 **Grafana 表达式**（Grafana Alerting），见 [Alerting](https://grafana.com/docs/loki/latest/alerting/) |
-| Alertmanager | 与现有监控栈一致；若用 **kube-prometheus-stack**，版本以 `helm search` / 官方发行为准 |
-| 采集端 | **Promtail** 已 **EOL**（**T9.4**）；新装请 **Grafana Alloy** |
+Loki **3.7.2**（**T9.3.3**）。Alertmanager 与现有监控栈（如 **kube-prometheus-stack**）版本对齐。
 
-### T9.5.2、三条路怎么选
+### T9.5.2、选型
 
 ```mermaid
 flowchart TB
-  subgraph grafana["方案A Grafana 告警"]
-    GA[Grafana] -->|查 Loki| LK[(Loki)]
-    GA --> AM1[通知渠道]
+  subgraph g1["Grafana 告警"]
+    G[Grafana] --> L[(Loki)]
+    G --> N[通知渠道]
   end
-  subgraph ruler["方案B Loki Ruler"]
-    RU[Loki Ruler] -->|LogQL| LK2[(Loki)]
-    RU --> AM2[Alertmanager]
+  subgraph g2["Loki Ruler"]
+    R[Ruler] --> L2[(Loki)]
+    R --> A[Alertmanager]
   end
-  subgraph pipe["方案C 日志造指标"]
-    AG["Promtail 或 Alloy"] -->|metrics| PR[Prometheus]
-    PR --> AM3[Alertmanager]
+  subgraph g3["日志转指标"]
+    AL[Alloy] --> P[Prometheus]
+    P --> A2[Alertmanager]
   end
 ```
 
-- **方案 A**：团队已用 **Grafana 10/11**，优先在 **Grafana → Alerting** 建规则，数据源选 **Loki**，不必先改 Loki Helm。详见 [Grafana Alerting](https://grafana.com/docs/grafana/latest/alerting/) 与 Loki 文档中的 [Alerting](https://grafana.com/docs/loki/latest/alerting/) 说明。
-- **方案 B**：要把规则**当作代码**进集群、与 Prometheus 规则风格统一，或要 **Ruler API / lokitool 同步**时，用 **Ruler**。配置见 [Configure](https://grafana.com/docs/loki/latest/configure/#ruler) 与下文示例。
-- **方案 C**：已有 **Prometheus** 生态，希望**先变成指标再告警**时用；注意 **Promtail** 维护结束，新装请规划 **Alloy**（**T9.4.6**）。
+| 方式 | 适用 |
+|------|------|
+| Grafana Alerting | 已有 Grafana，规则在 UI 或 Git 管理 |
+| Loki Ruler | 规则进集群，统一走 Alertmanager |
+| 日志转指标 | 日志先变 Prometheus 指标再告警 |
 
-### T9.5.3、方案 A：Grafana 里告警（推荐入门）
+### T9.5.3、Grafana 告警
 
-1. 确认 **T9.3.7** 已把 **Loki** 加成 Grafana 数据源（`http://loki-gateway.logging.svc.cluster.local`）。  
-2. 在 Grafana 中新建告警规则，查询类型选 **Loki**，用 **LogQL** 写条件（例如错误日志条数、关键字出现次数）。  
-3. 配置通知渠道（企业微信、邮件、PagerDuty 等）。  
+1. **T9.3.6** 已配置 Loki 数据源  
+2. **Alerting → New alert rule**，查询类型 **Loki**，编写 **LogQL**  
+3. 绑定通知渠道  
 
-**（插槽：可贴「Alerting → New alert rule → Loki 查询」界面截图。）**
+**（插槽：`./images/t953-grafana-loki-alert.png`）**
 
-生产上记得：**评估间隔、For 持续时间、无数据/错误状态**与值班流程一致；复杂条件可用多查询与表达式（以当前 Grafana 版本文档为准）。
+### T9.5.4、Loki Ruler
 
-### T9.5.4、方案 B：Loki Ruler + Alertmanager
-
-**T9.3.5** 里若只有 **`loki.ruler.enable_api: true`**，还不足以把告警送到 Alertmanager，需要补上 **`alertmanager_url`**、**规则存储** 等。请先 **`helm show values grafana-community/loki --version 13.6.2`** 看清本版 Chart 是用 **`loki.ruler`** 还是 **`loki.rulerConfig`**，再合并，避免和旧文 **`loki-stack`** 混用。
-
-下面示例与官方 [Alerting](https://grafana.com/docs/loki/latest/alerting/) 中 ruler 结构一致：请用其**替换** **T9.3.5** 里原先那段只含 `enable_api` 的 **`ruler`**，保持 **`loki:`** 下只有一个 **`ruler`** 块。
+在 **`loki-values-prod.yaml`** 的 **`loki.ruler`** 中合并（Alertmanager 地址按集群修改）：
 
 ```yaml
-# 合并进 loki-values.yaml 的 loki: 段（路径按集群改）
 loki:
   ruler:
     enable_api: true
     alertmanager_url: http://alertmanager-operated.monitoring.svc:9093
     enable_alertmanager_v2: true
-    rule_path: /tmp/loki/scratch
     storage:
       type: local
       local:
         directory: /var/loki/rules
-    ring:
-      kvstore:
-        store: inmemory
 ```
-
-Alertmanager 的 Service 名、命名空间按你集群实际改（常见 **kube-prometheus-stack** 为 `monitoring`）。应用：
 
 ```bash
-helm upgrade loki grafana-community/loki -n logging -f loki-values.yaml --version 13.6.2
+helm upgrade loki grafana-community/loki -n logging -f loki-values-prod.yaml --version 16.0.0
 ```
 
-规则内容与 **Prometheus 告警规则** 相同，但 **`expr` 里是 LogQL**。官方示例（节选）：
+规则示例（`expr` 为 **LogQL**）：
 
 ```yaml
 groups:
-  - name: loki_demo
+  - name: loki_rules
     rules:
       - alert: HighErrorRate
         expr: |
@@ -2686,73 +2634,32 @@ groups:
         for: 5m
         labels:
           severity: warning
-        annotations:
-          summary: "nginx error ratio high"
 ```
 
-把规则文件放到 Ruler 能读到的存储（**local** 时需挂卷或 ConfigMap；生产多用 **S3/GCS** 等，见 [Ruler storage](https://grafana.com/docs/loki/latest/alerting/#ruler-storage)）。规则上线可用 **`lokitool`**（Loki **≥3.1**，见官方 [Interacting with the Ruler](https://grafana.com/docs/loki/latest/alerting/#interacting-with-the-ruler)）。
+生产规则存储使用 **S3**（[Ruler storage](https://grafana.com/docs/loki/latest/alerting/#ruler-storage)）；同步可用 [lokitool](https://grafana.com/docs/loki/latest/alerting/#interacting-with-the-ruler)。
 
 ```mermaid
 sequenceDiagram
-  participant R as Loki Ruler
+  participant R as Ruler
   participant L as Loki
   participant A as Alertmanager
-  R->>L: 评估 LogQL
-  R->>A: 触发告警
+  R->>L: LogQL
+  R->>A: 告警
 ```
 
-**（插槽：可贴 Alertmanager UI 中由 Loki 触发的告警条目截图。）**
+**（插槽：`./images/t954-alertmanager-loki.png`）**
 
-### T9.5.5、方案 C：日志里造指标再走 Prometheus
+### T9.5.5、日志转指标
 
-思路：**Promtail（或 Alloy）pipeline** 里用 **metrics** 阶段暴露 Counter/Histogram，Prometheus 通过 **ServiceMonitor** 抓取 **`/metrics`**，再用 **PrometheusRule** 告警。`grafana/promtail` Chart 支持 **`serviceMonitor.enabled: true`**，标签要对上 Prometheus Operator 的 **`serviceMonitorSelector`**。
+Alloy **`loki.process`** 暴露指标；Chart 开启 **`serviceMonitor`**（`helm show values grafana/alloy --version 1.8.1`），由 Prometheus 抓取后配置 **PrometheusRule**。
 
-示例片段（**pipeline 以 CRI 解析为准**，不要用已废弃的单独 **`docker: {}`** 硬套；标签 `app` 需与你 workload 一致）：
+**（插槽：`./images/t955-prometheus-alloy-metrics.png`）**
 
-```yaml
-# promtail-values-patch.yaml 片段（与 T9.4.3 合并时对照 helm show values）
-serviceMonitor:
-  enabled: true
-  additionalLabels:
-    release: prometheus
+### T9.5.6、演示应用
 
-config:
-  snippets:
-    pipelineStages:
-      - cri: {}
-    extraRelabelConfigs: []
-  # 在 snippets.scrapeConfigs / extraScrapeConfigs 中按需挂载下面 pipeline，勿重复抓取同一文件
-```
-
-**metrics 阶段**示例（逻辑说明用；键名以 Promtail 版本为准）：
+用于验证 LogQL 与告警：
 
 ```yaml
-pipeline_stages:
-  - cri: {}
-  - match:
-      selector: '{app="nginx-demo"}'
-      stages:
-        - regex:
-            expression: '.*(?P<method>GET|POST) .*'
-        - metrics:
-            nginx_http_requests:
-              type: Counter
-              description: "nginx requests"
-              source: method
-              config:
-                action: inc
-```
-
-Prometheus 里指标名多为 **`promtail_custom_<name>[_total]`**（Counter 带 `_total`），**PrometheusRule** 的 `expr` 以 **Prometheus UI / Grafana Explore（Metrics）** 里实际 series 为准。
-
-**（插槽：可贴 Prometheus Targets 中 promtail 与自定义指标查询截图。）**
-
-### T9.5.6、联调用小应用（可选）
-
-需要一个固定打日志的 workload 时，可用现代镜像，例如 **`nginx:1.27-alpine`**，**ClusterIP** + `kubectl port-forward` 访问，避免旧文里的 **NodePort + 固定机器 IP**。
-
-```yaml
-# nginx-demo.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -2790,103 +2697,65 @@ spec:
 ```bash
 kubectl apply -f nginx-demo.yaml
 kubectl port-forward svc/nginx-demo 8080:80
-# 另开终端：curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/
 ```
 
-LogQL 里用 **`{app="nginx-demo"}`** 或 **`{namespace="default", app="nginx-demo"}`** 与 **T9.5.4** 示例一致即可。
+查询示例：`{namespace="default", app="nginx-demo"}`。
 
 ---
 
 ## T9.6、LogQL
 
-**LogQL** 是 Loki 的查询语言，和 PromQL 有渊源，但面向日志。详细语法以官方 [Query Loki](https://grafana.com/docs/loki/latest/query/) 为准；下面只整理**生产里天天会用到的骨架**，避免把参考手册整本贴进来。
+**LogQL** 是 Loki 查询语言。语法以 [Query Loki](https://grafana.com/docs/loki/latest/query/) 为准；入口为 **Grafana Explore**（**T9.3.6**）、[LogCLI](https://grafana.com/docs/loki/latest/query/logcli/)、**T9.5** 告警规则。
 
-### T9.6.1、版本与校验
+**官方文档**：[Log queries](https://grafana.com/docs/loki/latest/query/log_queries/) · [Metric queries](https://grafana.com/docs/loki/latest/query/metric_queries/) · [Labels](https://grafana.com/docs/loki/latest/get-started/labels/)
 
-**本文本节校验日期：2026-04-21**
+### T9.6.1、版本
 
-| 项目 | 说明 |
-|------|------|
-| Loki | 与 **T9.3** 一致，示例 **3.7.x**（Chart **13.6.2**） |
-| 查询入口 | **Grafana Explore**、**LogCLI**（[logcli](https://grafana.com/docs/loki/latest/query/logcli/)）、告警规则里的 **LogQL**（**T9.5**） |
-| 必读 | [Log queries](https://grafana.com/docs/loki/latest/query/log_queries/) · [Metric queries](https://grafana.com/docs/loki/latest/query/metric_queries/) |
+与 **T9.3.3** 一致（Loki **3.7.2**）。
 
 ### T9.6.2、两类查询
 
 ```mermaid
 flowchart LR
   subgraph logq["日志查询"]
-    S1["标签选择器"] --> P1["管道可选"]
-    P1 --> OUT["日志行"]
+    S1[标签选择器] --> P1[管道]
+    P1 --> OUT[日志行]
   end
-  subgraph met["指标查询"]
-    S2["标签选择器"] --> P2["解析与过滤"]
-    P2 --> R1["聚合与区间"]
-    R1 --> NUM["数值序列"]
+  subgraph metq["指标查询"]
+    S2[标签选择器] --> P2[过滤解析]
+    P2 --> AGG[rate 等聚合]
   end
 ```
 
-- **日志查询**：结果还是日志内容，适合排障、检索。  
-- **指标查询**：在日志上算 **rate、count_over_time** 等，结果给大盘或告警（**T9.5.4**）。
+基本形式：`{ 标签选择器 } | 管道`。Loki 索引**标签与时间**，正文通过管道过滤与解析。
 
-基本形状（官方写法）：
+### T9.6.3、流选择器
 
-```logql
-{ log stream selector } | log pipeline
-```
-
-**流选择器必选**，**管道可选**；Loki **只索引标签和时间**，正文靠管道里过滤和解析（见 [Labels](https://grafana.com/docs/loki/latest/get-started/labels/)）。
-
-### T9.6.3、流选择器（标签）
-
-大括号里用 **`=`、`!=`、`=~`、`!~`** 匹配标签，规则和 Prometheus 类似（见 [Prometheus 标签匹配](https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors)）。
-
-新版本里常有 **`service_name`** 等约定标签，便于和 Grafana 里日志视图联动，具体以你集群里 **Explore → 标签浏览器** 看到的为准。
-
-**（插槽：可贴本环境 Grafana Explore 里标签键列表截图。）**
-
-与 **T9.5.6** 的 **nginx-demo** 对齐的示例：
+使用 **`=`、`!=`、`=~`、`!~`** 匹配标签（见 [Prometheus 标签匹配](https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors)）。
 
 ```logql
 {namespace="default", app="nginx-demo"}
 ```
 
-### T9.6.4、管道：先过滤行，再解析
+**（插槽：`./images/t963-explore-labels.png`）**
 
-**行过滤**尽量靠前，少扫数据：
+### T9.6.4、管道
 
-| 运算符 | 含义 |
-|--------|------|
-| `|=` | 行包含子串 |
-| `!=` | 行不包含 |
-| `|~` | 行匹配正则（RE2） |
-| `!~` | 正则不匹配 |
-
-**解析**：`| json`、`| logfmt`、`| regexp "..."` 等，把字段抽成标签再在管道里用（详见官方 [Log queries](https://grafana.com/docs/loki/latest/query/log_queries/)）。
-
-示例：只看包含 `error` 的行再解析 JSON：
+行过滤常用：**`|=`** 包含、**`!=`** 不包含、**`|~`** 正则、**`!~`** 非正则。解析用 **`| json`**、**`| logfmt`** 等（[Log queries](https://grafana.com/docs/loki/latest/query/log_queries/)）。
 
 ```logql
 {namespace="default", app="nginx-demo"} |= "error" | json
 ```
 
-**格式化展示**（不改变 Loki 里存的数据）：`| line_format "..."`、`| label_format ...`（官方 [Query](https://grafana.com/docs/loki/latest/query/) 页有示例）。
+### T9.6.5、指标查询
 
-### T9.6.5、指标查询（告警 / 大盘）
-
-在日志选择器 + 管道之后，对**范围区间**做聚合，常见：
-
-- **`rate()`**：每秒条目数  
-- **`count_over_time()`**：区间内条数  
-- **`sum(... ) by (label)`**：按标签聚合  
-
-示例：按 **pod** 看 5 分钟请求日志条数变化（标签名以你环境为准）：
+常用 **`rate()`**、**`count_over_time()`**、**`sum() by ()`**（[Metric queries](https://grafana.com/docs/loki/latest/query/metric_queries/)）。
 
 ```logql
 sum by (pod) (rate({namespace="default", app="nginx-demo"}[5m]))
 ```
 
-**错误率**一类写法（与 **T9.5.4** 思路一致，按业务改标签）：
+错误率示例（与 **T9.5.4** 一致，按业务改标签）：
 
 ```logql
 sum(rate({namespace="default", app="nginx-demo"} |= "error" [5m])) by (job)
@@ -2894,27 +2763,17 @@ sum(rate({namespace="default", app="nginx-demo"} |= "error" [5m])) by (job)
 sum(rate({namespace="default", app="nginx-demo"}[5m])) by (job)
 ```
 
-区间写法 **`[5m]`** 与 PromQL 习惯一致；更复杂的函数、**unwrap**、**二进制运算**见 [Metric queries](https://grafana.com/docs/loki/latest/query/metric_queries/)。
+### T9.6.6、使用习惯
 
-### T9.6.6、注释与排障习惯
-
-单行或行尾可用 **`#`** 注释（见官方说明）。  
-
-**生产注意**：
-
-1. **标签越少越准**：选择器越宽，扫的 chunk 越多，查询越慢、越贵。  
-2. **高基数不要塞进标签**（采集端就要克制，见 **T9.4**）。  
-3. **大时间范围 + 宽选择器** 容易超时，先缩时间窗或加 `|=` 过滤。  
-4. 与 **T9.3.7** 数据源 URL 一致时，**Grafana Explore** 里试通后再写进 **T9.5** 告警规则。
+先收窄标签选择器，再用行过滤；告警规则在 **Explore** 验证后再写入 **T9.5**。标签设计遵循 **T9.4**（低基数）。
 
 ```mermaid
 flowchart TB
-  A["标签尽量收窄"] --> B["行过滤 含子串或正则"]
-  B --> C["json 或 logfmt"]
-  C --> D["rate 等聚合"]
+  A[标签选择器] --> B[行过滤]
+  B --> C[json 或 logfmt]
+  C --> D[rate 聚合]
 ```
 
-**（插槽：可贴一条本环境完整 LogQL 在 Explore 中的查询结果截图。）**
+**（插槽：`./images/t966-logql-result.png`）**
 
 ---
-
