@@ -11,6 +11,9 @@ OpenVPN 客户端证书签发 / 吊销（Easy-RSA 3.0.7）
 有效证书: pki/issued/<用户>.crt 存在（权威判定，优先于 index.txt）
 index.txt: 同一 CN 可有多行 V/R（重签/吊销历史）；无 issued 时以末条状态为准
 吊销后:   移入 pki/revoked/，index.txt 追加 R 行，gen-crl 更新 pki/crl.pem
+
+控制台日志块（与 -h / 运行输出一致，详见 LOG_CONSOLE_HELP）:
+  [结果] [说明] [核验 · 标题]；末尾 --- 操作完成 · 用户 --- 摘要
 """
 
 from __future__ import print_function
@@ -98,6 +101,19 @@ PKI_LAYOUT = """
     └── ipp.txt
 """.format(ver=EASYRSA_VERSION).strip()
 
+# 控制台输出说明（模块文档、-h、USER_EPILOG 共用，与 GenovpnLogger 实现一致）
+LOG_CONSOLE_HELP = """
+控制台输出:
+  === 开始/完成 ===     阶段标题
+  操作: / 日志:         命令与日志文件路径
+  [N/M] 步骤            进度；行首 → 表示该步结果
+  [结果]                本步客观结果（路径为相对 /etc/openvpn 的短路径）
+  [说明]                业务含义、交付与后续提示
+  [核验 · 标题]         操作建议（非 shell 命令清单）
+  --- 标题 ---          末尾摘要（行首 · 为要点）
+  失败时: [当前状态 · 用户]（简要）、[后续操作]
+""".strip()
+
 # ---------------------------------------------------------------------------
 # 异常
 # ---------------------------------------------------------------------------
@@ -114,8 +130,8 @@ class GenovpnError(Exception):
 
 class GenovpnLogger(object):
     """
-    企业级日志：RotatingFileHandler 写文件，extra={'to_stdout': True} 才上屏。
-    关键步骤统一输出 [结果] / [审计] / [影响] 三段，便于运维与客户对账。
+    RotatingFileHandler 写文件；仅 extra to_stdout=True 的行上屏。
+    块标签与结构见 LOG_CONSOLE_HELP；result / note / verify / summary 对应实现。
     """
 
     _ready = False
@@ -214,18 +230,17 @@ class GenovpnLogger(object):
     def result(self, lines):
         self.step_block("结果", _as_lines(lines))
 
-    def audit(self, title, lines):
-        self.step_block("审计 · {0}".format(title), _as_lines(lines))
+    def verify(self, title, lines):
+        """操作完成后的简要核验提示（非 shell 命令清单）。"""
+        self.step_block("核验 · {0}".format(title), _as_lines(lines))
 
-    def impact(self, lines):
-        self.step_block("影响", _as_lines(lines))
+    def note(self, lines):
+        self.step_block("说明", _as_lines(lines))
 
-    def summary(self, title, lines):
-        self.info("-" * 60, to_stdout=True)
-        self.info("【{0}】".format(title), to_stdout=True)
+    def summary(self, headline, lines):
+        self.info("--- {0} ---".format(headline), to_stdout=True)
         for line in _as_lines(lines):
-            self.info("  {0}".format(line), to_stdout=True)
-        self.info("-" * 60, to_stdout=True)
+            self.info("  · {0}".format(line), to_stdout=True)
 
 
 def _as_lines(lines):
@@ -272,11 +287,18 @@ def hint_status(user):
 def log_failure(error):
     log.error("操作失败: {0}".format(error.message))
     if error.hint:
-        log.audit("建议操作", error.hint.splitlines())
+        log.step_block("后续操作", _as_lines(error.hint))
 
 
-def log_user_status(user):
+def log_user_status(user, brief=False):
     _, lines = describe_user_status(user)
+    if brief:
+        brief_lines = [lines[0]]
+        for line in lines[1:]:
+            if line.startswith("serial:"):
+                brief_lines.append(line)
+                break
+        lines = brief_lines
     log.step_block("当前状态 · {0}".format(user), lines)
 
 
@@ -347,11 +369,11 @@ class ServerConfSummary(TypedDict):
 
 
 def path_label(abs_path: str) -> str:
-    """绝对路径 + 相对 /etc/openvpn 的短名。"""
+    """日志用短路径（相对 /etc/openvpn）。"""
     abs_path = os.path.normpath(abs_path)
     base = OPENVPN_BASE + os.sep
     if abs_path.startswith(base):
-        return "{0}  ({1})".format(abs_path, abs_path[len(base):])
+        return abs_path[len(base):]
     return abs_path
 
 
@@ -389,7 +411,7 @@ def serial_for_pki_paths(serial):
 
 
 def normalize_serial(serial):
-    """仅用于 CRL / 审计 grep 比对，去除冒号并大写。"""
+    """仅用于 CRL 文本比对，去除冒号并大写。"""
     s = serial_for_pki_paths(serial)
     if not s:
         return None
@@ -511,17 +533,6 @@ def latest_revoked_index_entry(user):
 
 def index_entries_for_user(user):
     return parse_index_for_user(user)
-
-
-def index_audit_grep_cn(user, status=None):
-    """生成可在 Linux 上核对 index.txt 的 grep/awk 命令（状态列在行首）。"""
-    path = pki_path("index.txt")
-    cn_pat = "/CN={0}".format(user)
-    if status:
-        return "awk -F'\\t' '$1==\"{0}\" && $0 ~ /{1}/' {2}".format(
-            status, cn_pat, path
-        )
-    return "grep '{0}' {1}".format(cn_pat, path)
 
 
 def list_active_client_users():
@@ -701,7 +712,7 @@ def crl_revoked_count():
 
 
 def cert_serial(cert_file):
-    """读取证书序列号，用于审计对账。"""
+    """读取证书序列号，用于日志与核验展示。"""
     if not os.path.isfile(cert_file):
         return None
     proc = run_cmd(
@@ -713,64 +724,38 @@ def cert_serial(cert_file):
     return serial_for_pki_paths((proc.stdout or "").strip())
 
 
-def audit_tail():
-    return "tail -30 {0}    # 查看完整操作日志".format(log.log_file)
-
-
-def audit_create(user: str, out_dir: str) -> List[str]:
-    cert = issued_cert(user)
-    serial = cert_serial(cert) if os.path.isfile(cert) else None
-    lines = [
-        hint_status(user) + "    # 应显示「有效（可连接 VPN）」",
-        "test -f {0} && echo 'issued OK'".format(cert),
-        "openssl x509 -in {0} -noout -subject -dates".format(cert),
-        "ls -la {0}/".format(out_dir),
-        "tree -L 2 {0} {1}".format(EASYRSA_DIR, CLIENT_DIR),
-    ]
-    if serial:
-        pem = cert_by_serial_pem(serial)
-        if pem:
-            lines.append("test -f {0} && echo 'certs_by_serial OK'".format(pem))
-    lines.append(audit_tail())
-    return lines
-
-
-def audit_revoke(user, serial=None):
-    lines = [
-        hint_status(user) + "    # 应显示「已吊销（无法连接 VPN）」",
-        "test ! -f {0} && echo 'issued 已移除 OK'".format(issued_cert(user)),
-        index_audit_grep_cn(user, "R") + "    # 该用户全部吊销行",
-        "openssl crl -in {0} -text -noout | grep -c 'Serial Number'".format(
-            pki_path("crl.pem")
-        ),
-    ]
-    if serial:
-        archives = revoked_archive_paths(serial)
-        for label, path in (
-            ("吊销归档证书", archives.get("cert")),
-            ("吊销归档私钥", archives.get("key")),
-        ):
-            if path:
-                lines.append("test -f {0} && echo '{1} OK'".format(path, label))
-        sn = normalize_serial(serial)
-        lines.append(
-            "openssl crl -in {0} -text -noout | grep -i {1}".format(
-                pki_path("crl.pem"), sn
-            )
-        )
-    lines.append("grep crl-verify {0}".format(SERVER_CONF))
-    lines.append(audit_tail())
-    return lines
-
-
-def audit_check():
+def verify_hints_create(user: str, out_dir: str) -> List[str]:
+    """[核验 · 签发结果] 提示行（供 log.verify 使用）。"""
     return [
-        "tree -L 3 {0}".format(OPENVPN_BASE),
-        "openssl version",
-        "ls -la {0}/pki/{{issued,private,revoked,certs_by_serial}}".format(EASYRSA_DIR),
-        "grep -E '^(port|proto|crl-verify)' {0}".format(SERVER_CONF),
-        "openssl crl -in {0} -text -noout | head -20".format(pki_path("crl.pem")),
-        audit_tail(),
+        "{0} → 应显示「有效（可连接 VPN）」".format(hint_status(user)),
+        "确认 pki/issued/{0}.crt 存在".format(user),
+        "确认 {0}/ 含 client.ovpn 等 5 个文件".format(path_label(out_dir)),
+        "完整日志: {0}".format(log.log_file),
+    ]
+
+
+def verify_hints_revoke(user, serial=None):
+    """[核验 · 吊销结果] 提示行（供 log.verify 使用）。"""
+    lines = [
+        "{0} → 应显示「已吊销（无法连接 VPN）」".format(hint_status(user)),
+        "确认 pki/issued/{0}.crt 已移除".format(user),
+        "确认 pki/crl.pem 已更新",
+    ]
+    if serial:
+        sn = normalize_serial(serial) or serial_for_pki_paths(serial)
+        if sn:
+            lines.append("确认 CRL 含 serial {0}".format(sn))
+    lines.append("确认 server.conf 已配置 crl-verify")
+    lines.append("完整日志: {0}".format(log.log_file))
+    return lines
+
+
+def verify_hints_check():
+    """[核验 · 环境] 提示行（供 log.verify 使用）。"""
+    return [
+        "确认 Easy-RSA 目录 {0} 与 pki/ 结构正常".format(path_label(EASYRSA_DIR)),
+        "确认 server.conf 中 crl-verify 指向 pki/crl.pem",
+        "完整日志: {0}".format(log.log_file),
     ]
 
 
@@ -1023,26 +1008,21 @@ def validate_username(user):
 def assert_create_allowed(user):
     if has_valid_cert(user):
         cn = cert_common_name(issued_cert(user))
-        log_user_status(user)
+        log_user_status(user, brief=True)
         if cn != user:
             raise GenovpnError(
                 "用户 {0} 存在异常证书（CN={1}）".format(user, cn),
                 hint="\n".join(
                     [
-                        hint_revoke(user) + "    # 先吊销异常证书",
-                        hint_create(user) + "    # 再重新签发",
-                        hint_status(user) + "     # 查看详情",
+                        hint_revoke(user),
+                        hint_create(user),
+                        hint_status(user),
                     ]
                 ),
             )
         raise GenovpnError(
             "用户 {0} 已有有效证书，无法重复签发".format(user),
-            hint="\n".join(
-                [
-                    hint_revoke(user) + "    # 如需更换证书，请先吊销",
-                    hint_status(user) + "     # 查看当前状态",
-                ]
-            ),
+            hint="\n".join([hint_revoke(user), hint_status(user)]),
         )
 
     history = get_index_history(user)
@@ -1061,37 +1041,22 @@ def assert_revoke_allowed(user):
         return
 
     history = get_index_history(user)
-    log_user_status(user)
+    log_user_status(user, brief=True)
 
     if history == HISTORY_REVOKED:
         raise GenovpnError(
             "用户 {0} 已吊销，无需重复操作".format(user),
-            hint="\n".join(
-                [
-                    hint_create(user) + "    # 续费 / 重新签发",
-                    hint_status(user) + "     # 查看详情",
-                ]
-            ),
+            hint="\n".join([hint_create(user), hint_status(user)]),
         )
     if history == HISTORY_EXPIRED:
         raise GenovpnError(
             "用户 {0} 证书已过期，无需吊销".format(user),
-            hint="\n".join(
-                [
-                    hint_create(user) + "    # 直接重新签发",
-                    hint_status(user) + "     # 查看详情",
-                ]
-            ),
+            hint="\n".join([hint_create(user), hint_status(user)]),
         )
 
     raise GenovpnError(
         "用户 {0} 不存在，无法吊销".format(user),
-        hint="\n".join(
-            [
-                hint_create(user) + "    # 首次签发",
-                hint_status(user) + "     # 确认状态",
-            ]
-        ),
+        hint="\n".join([hint_create(user), hint_status(user)]),
     )
 
 
@@ -1122,7 +1087,7 @@ def assert_issue_done(user):
 
 def assert_revoke_done(user):
     if has_valid_cert(user):
-        log_user_status(user)
+        log_user_status(user, brief=True)
         raise GenovpnError(
             "吊销未完成：证书文件仍存在",
             hint="路径: {0}".format(issued_cert(user)),
@@ -1173,9 +1138,7 @@ def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
     for src, dst_name, src_label in copies:
         dst = os.path.join(out_dir, dst_name)
         shutil.copy2(src, dst)
-        copy_log.append(
-            "{0} ← {1}".format(path_label(dst), path_label(src))
-        )
+        copy_log.append("{0} ← {1}".format(dst_name, src_label))
 
     ovpn_path = os.path.join(out_dir, "client.ovpn")
     with open(ovpn_path, "w") as fh:
@@ -1282,22 +1245,20 @@ def cmd_check(_args):
     else:
         summary.append("有效客户端: 无（pki/issued/ 仅 server.crt 或为空）")
     log.result(summary)
-    log.step_block("目录说明", PKI_LAYOUT.splitlines())
-    log.impact(
+    for line in PKI_LAYOUT.splitlines():
+        log.debug(line)
+    log.note(
         [
-            "create  → pki/issued/<用户>.crt + {0}/<用户>/client.ovpn".format(
-                CLIENT_DIR
-            ),
-            "revoke  → 移入 pki/revoked/ + 更新 pki/crl.pem + 删除 client/<用户>/",
-            "status  → 对照 index.txt 与 issued/ revoked/ 目录",
+            "create → pki/issued/<用户>.crt + client/<用户>/client.ovpn",
+            "revoke → 更新 pki/crl.pem 并删除 client/<用户>/",
         ]
     )
-    log.audit("核验环境", audit_check())
+    log.verify("环境", verify_hints_check())
     log.summary(
         "检查通过",
         [
-            "签发: {0} create --user <用户名>".format(prog_name()),
-            "查询: {0} status --user <用户名>".format(prog_name()),
+            "签发 {0} create --user <用户名>".format(prog_name()),
+            "查询 {0} status --user <用户名>".format(prog_name()),
         ],
     )
     log.phase_end("环境检查")
@@ -1322,43 +1283,13 @@ def cmd_status(args):
     key, lines = describe_user_status(user)
     log.result(lines)
 
-    if key == "valid":
-        log.impact(
-            [
-                "该用户当前可正常连接 VPN",
-                "吊销: {0}".format(hint_revoke(user)),
-            ]
-        )
-    elif key == "revoked":
-        log.impact(
-            [
-                "该用户已被吊销，无法连接 VPN",
-                "旧 client.ovpn 已失效，续费请: {0}".format(hint_create(user)),
-            ]
-        )
-    elif key == "expired":
-        log.impact(
-            [
-                "证书已过期，无法连接 VPN",
-                "重新签发: {0}".format(hint_create(user)),
-            ]
-        )
-    else:
-        log.impact(
-            [
-                "该用户尚未签发证书",
-                "首次签发: {0}".format(hint_create(user)),
-            ]
-        )
-
-    log.audit(
-        "核验状态",
-        [
-            "test -f {0} ; echo issued=$?".format(issued_cert(user)),
-            index_audit_grep_cn(user),
-            audit_tail(),
-        ],
-    )
+    hints = {
+        "valid": "可连接 VPN；更换证书请先 {0}".format(hint_revoke(user)),
+        "revoked": "已吊销；续费请 {0}".format(hint_create(user)),
+        "expired": "已过期；重新签发 {0}".format(hint_create(user)),
+        "none": "未签发；首次签发 {0}".format(hint_create(user)),
+    }
+    log.note([hints.get(key, "")])
     log.phase_end("状态查询 · {0}".format(user), note=STATUS_LABEL.get(key, key))
 
 
@@ -1386,12 +1317,6 @@ def cmd_create(args):
         log.step_ok("允许重新签发（历史: {0}）".format(HISTORY_LABEL[history]))
     else:
         log.step_ok("允许首次签发")
-    log.impact(
-        [
-            "将执行 easyrsa build-client-full {0} nopass".format(user),
-            "证书 CN 将与用户名 {0} 一致".format(user),
-        ]
-    )
 
     log.step(3, total, "签发客户端证书 (easyrsa build-client-full)")
     easyrsa("build-client-full", user, "nopass")
@@ -1401,52 +1326,36 @@ def cmd_create(args):
     cn = cert_common_name(cert)
     sn = serial_for_pki_paths(serial)
     pki_result = [
-        "Easy-RSA 写入 PKI（相对 {0}/pki/）:".format(EASYRSA_DIR),
-        "  issued/{0}.crt      有效证书".format(user),
-        "  private/{0}.key     有效私钥".format(user),
-        "  reqs/{0}.req        证书请求".format(user),
+        "CN={0}  serial={1}".format(cn, serial or "见 index.txt"),
+        "pki: issued/{0}.crt  private/{0}.key  reqs/{0}.req".format(user),
     ]
     if sn:
-        pki_result.append("  certs_by_serial/{0}.pem  serial 索引".format(sn))
-    pki_result.extend(
-        [
-            "CN: {0}  serial: {1}".format(cn, serial or "见 index.txt"),
-        ]
-    )
+        pki_result.append("pki: certs_by_serial/{0}.pem".format(sn))
     log.result(pki_result)
-    log.impact(
-        [
-            "index.txt 新增 V（Valid）记录",
-            "pki/issued/{0}.crt 存在即表示该用户可连接 VPN".format(user),
-        ]
-    )
 
-    log.step(4, total, "打包客户端配置 → {0}".format(path_label(CLIENT_DIR)))
-    out_dir, copy_log = bundle_client(user, args.rhost, args.rport)
-    pack_result = [
-        "生成: {0}/client.ovpn".format(path_label(out_dir)),
-        "连接: {0}:{1} (tcp/tun，与 server/ 独立配置)".format(
-            args.rhost, args.rport
-        ),
-        "自 pki/ 复制:",
-    ]
-    pack_result.extend(["  " + line for line in copy_log])
-    log.result(pack_result)
-    log.impact(
+    log.step(4, total, "打包客户端配置")
+    out_dir, _copy_log = bundle_client(user, args.rhost, args.rport)
+    log.result(
         [
-            "请将 {0}/ 整个目录安全发给用户".format(path_label(out_dir)),
-            "私钥仅存在于 pki/private/ 与此客户端包，勿公开",
-            "服务端证书 pki/issued/server.crt 不在客户端包中（正常）",
+            "配置包 {0}/client.ovpn".format(path_label(out_dir)),
+            "连接 {0}:{1} (tcp/tun)".format(args.rhost, args.rport),
+            "含 ca.crt、ta.key、{0}.crt、{0}.key".format(user),
         ]
     )
-    log.audit("核验签发结果", audit_create(user, out_dir))
-    log.summary(
-        "签发摘要 · {0}".format(user),
+    log.note(
         [
-            "用户:     {0}".format(user),
-            "状态:     有效（可连接 VPN）",
-            "配置目录: {0}/".format(out_dir),
-            "后续:     {0} status --user {1}".format(prog_name(), user),
+            "请将 {0}/ 整目录安全发给用户，勿公开私钥".format(
+                path_label(out_dir)
+            ),
+        ]
+    )
+    log.verify("签发结果", verify_hints_create(user, out_dir))
+    log.summary(
+        "签发完成 · {0}".format(user),
+        [
+            "用户 {0}，状态有效，可连接 VPN".format(user),
+            "配置包 {0}/".format(path_label(out_dir)),
+            "查询 {0}".format(hint_status(user)),
         ],
     )
     log.phase_end("签发用户 {0}".format(user))
@@ -1473,9 +1382,7 @@ def cmd_revoke(args):
     serial = cert_serial(cert_path)
     cn = cert_common_name(cert_path)
     log.step_ok(
-        "有效证书 confirmed · CN={0}, serial={1}".format(
-            cn, serial or "未知"
-        )
+        "CN={0} serial={1}".format(cn, serial or "未知")
     )
 
     crl_before = crl_revoked_count()
@@ -1484,30 +1391,19 @@ def cmd_revoke(args):
     log.step(3, total, "吊销证书 (easyrsa revoke {0})".format(user))
     easyrsa("revoke", user)
     assert_revoke_done(user)
-    archives = revoked_archive_paths(serial)
+    sn = serial_for_pki_paths(serial)
     revoke_result = [
-        "index.txt: {0} → R（Revoked）".format(user),
-        "移除: {0}".format(path_label(issued_cert(user))),
-        "移除: {0}".format(path_label(private_key(user))),
+        "index.txt: {0} → R".format(user),
+        "已移除 issued/{0}.crt、private/{0}.key".format(user),
     ]
-    if archives.get("cert") and os.path.isfile(archives["cert"]):
+    if sn:
         revoke_result.append(
-            "归档: {0}".format(path_label(archives["cert"]))
-        )
-    if archives.get("key") and os.path.isfile(archives["key"]):
-        revoke_result.append(
-            "归档: {0}".format(path_label(archives["key"]))
-        )
-    if archives.get("req") and os.path.isfile(archives["req"]):
-        revoke_result.append(
-            "归档: {0}".format(path_label(archives["req"]))
+            "已归档 revoked/*_by_serial/{0}.*".format(sn)
         )
     log.result(revoke_result)
-    log.impact(
+    log.note(
         [
-            "pki/issued/{0}.crt 不再存在 → 无法新建 VPN 连接".format(user),
-            "原证书/私钥/请求按 serial 移入 pki/revoked/ 子目录（Easy-RSA 标准行为）",
-            "已在线连接: TLS 重协商或重连后被服务端拒绝",
+            "该用户无法新建 VPN 连接；已在线会话重连后将被拒绝",
         ]
     )
 
@@ -1520,61 +1416,46 @@ def cmd_revoke(args):
             crl_before, crl_after, crl_after - crl_before
         )
     server = read_server_conf_summary()
-    crl_result = [
-        "文件: {0}".format(path_label(crl_path)),
-        "机制: 单文件汇总全部吊销 serial（easyrsa gen-crl 覆盖写入）",
-        "吊销总数: {0} 张{1}".format(
-            crl_after if crl_after is not None else "未知", delta_text
-        ),
-    ]
-    log.result(crl_result)
-    impact_lines = [
-        "serial {0} 已写入 CRL，与 pki/revoked/ 归档对应".format(
-            normalize_serial(serial) or serial or "见 index.txt"
-        ),
-    ]
+    log.result(
+        [
+            "CRL {0}".format(path_label(crl_path)),
+            "吊销总数 {0} 张{1}".format(
+                crl_after if crl_after is not None else "未知", delta_text
+            ),
+        ]
+    )
+    note_lines = []
     if server["exists"] and server["crl_verify"]:
         if server["crl_matches_pki"]:
-            impact_lines.append(
-                "server.conf crl-verify 已指向 pki/crl.pem，reload 服务后生效"
+            note_lines.append(
+                "crl-verify 已指向 pki/crl.pem，reload OpenVPN 后生效"
             )
         else:
-            impact_lines.append(
-                "警告: server.conf crl-verify={0} 与 pki/crl.pem 路径不一致".format(
-                    server["crl_verify"]
-                )
+            note_lines.append(
+                "警告: crl-verify 路径与 pki/crl.pem 不一致，请核对 server.conf"
             )
     else:
-        impact_lines.append(
-            "须在 {0} 配置 crl-verify {1}".format(SERVER_CONF, crl_path)
+        note_lines.append(
+            "请在 server/server.conf 配置 crl-verify 指向 pki/crl.pem"
         )
-    impact_lines.append("续费: {0}（新 serial，与本次吊销无关）".format(
-        hint_create(user)
-    ))
-    log.impact(impact_lines)
-    log.audit("核验吊销与 CRL", audit_revoke(user, serial))
+    note_lines.append("续费请 {0}".format(hint_create(user)))
+    log.note(note_lines)
+    log.verify("吊销结果", verify_hints_revoke(user, serial))
 
     log.step(5, total, "清理客户端配置目录")
     client_dir = client_bundle_dir(user)
     if os.path.isdir(client_dir):
         shutil.rmtree(client_dir)
-        log.step_ok("已删除 {0}".format(path_label(client_dir)))
-        log.impact(
-            [
-                "client/{0}/ 已清除，旧 client.ovpn 不可再分发".format(user),
-                "pki/revoked/ 中仍保留该 serial 的归档供审计".format(user),
-            ]
-        )
+        log.step_ok("已删除 {0}/".format(path_label(client_dir)))
     else:
-        log.step_ok("目录不存在，跳过 ({0})".format(path_label(client_dir)))
+        log.step_ok("client/{0}/ 不存在，跳过".format(user))
 
     log.summary(
-        "吊销摘要 · {0}".format(user),
+        "吊销完成 · {0}".format(user),
         [
-            "用户:     {0}".format(user),
-            "状态:     已吊销（不可连接 VPN）",
-            "CRL:      {0}".format(crl_path),
-            "续费:     {0}".format(hint_create(user)),
+            "用户 {0}，已吊销，不可连接 VPN".format(user),
+            "CRL {0}".format(path_label(crl_path)),
+            "续费 {0}".format(hint_create(user)),
         ],
     )
     log.phase_end("吊销用户 {0}".format(user))
@@ -1588,7 +1469,7 @@ USER_HELP = "用户名（兼作证书 CN）：字母开头，3～16 位字母、
 USER_EPILOG = """
 目录布局（/etc/openvpn/）:
   · {ver}/pki/     Easy-RSA PKI（issued/ private/ revoked/ crl.pem）
-  · client/        客户端配置包（create 输出）
+  · client/        客户端配置包（create → client/<用户>/client.ovpn）
   · server/        服务端 server.conf（crl-verify 指向 pki/crl.pem）
 
 用户名规则:
@@ -1599,8 +1480,10 @@ USER_EPILOG = """
   · pki/issued/<用户名>.crt 存在 → 可连接
   · revoke 后移入 pki/revoked/certs_by_serial/<SERIAL>.crt
 
-日志: /var/log/openvpn/genovpnuser.log（GENOVPN_LOG_DIR 可改）
-""".format(ver=EASYRSA_VERSION)
+{log_help}
+
+完整日志文件: /var/log/openvpn/genovpnuser.log（环境变量 GENOVPN_LOG_DIR 可改）
+""".format(ver=EASYRSA_VERSION, log_help=LOG_CONSOLE_HELP)
 
 
 def build_parser():
@@ -1623,20 +1506,22 @@ def build_parser():
   create --rhost HOST  VPN 服务器地址（默认 {host}）
   create --rport PORT  VPN 端口（默认 {port}）
 
+{log_help}
+
 说明:
-  · 操作日志: /var/log/openvpn/genovpnuser.log（环境变量 GENOVPN_LOG_DIR 可改）
-  · 每步含 [结果] [审计] [影响] 三段，便于运维核验与交付说明
-  · CRL（crl.pem）为整个 CA 共用一份，每次 revoke 后 gen-crl 覆盖更新
-  · 客户端包目录: {client}
-  · Easy-RSA 目录: {easyrsa}
-  · 服务端配置: {server_conf}
+  · CRL（crl.pem）全 CA 共用，每次 revoke 后 gen-crl 覆盖更新
+  · 客户端包: client/<用户>/（绝对路径 {client}）
+  · Easy-RSA: {ver}/（绝对路径 {easyrsa}）
+  · 服务端: server/server.conf（绝对路径 {server_conf}）
 """.format(
             prog=prog_name(),
             host=DEFAULT_REMOTE_HOST,
             port=DEFAULT_REMOTE_PORT,
+            ver=EASYRSA_VERSION,
             client=CLIENT_DIR,
             easyrsa=EASYRSA_DIR,
             server_conf=SERVER_CONF,
+            log_help=LOG_CONSOLE_HELP,
         ),
     )
     sub = parser.add_subparsers(dest="command", metavar="command")
@@ -1645,6 +1530,14 @@ def build_parser():
         "check",
         help="检查 Easy-RSA 与 OpenSSL 环境是否就绪",
         description="检查 Easy-RSA 目录、vars、PKI 文件及 OpenSSL 是否可用。",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  {prog} check
+
+运行后可见 [结果] [说明] [核验 · 环境]，末尾 --- 检查通过 ---
+{common}
+""".format(prog=prog_name(), common=USER_EPILOG),
     )
 
     p_create = sub.add_parser(
@@ -1659,10 +1552,12 @@ def build_parser():
   {prog} create -u zhangsan              # -u 为 --user 简写
 
 输出:
-  {client}/<用户名>/client.ovpn
-  自 pki/ca.crt、pki/ta.key、pki/issued/<用户>.crt、pki/private/<用户>.key 复制
+  client/<用户名>/client.ovpn（含 ca.crt、ta.key、<用户>.crt/key）
+  控制台末尾: --- 签发完成 · <用户名> ---
+
+运行中可见 [结果] [说明] [核验 · 签发结果] 等块（详见 -h 说明）
 {common}
-""".format(prog=prog_name(), client=CLIENT_DIR, common=USER_EPILOG),
+""".format(prog=prog_name(), common=USER_EPILOG),
     )
     p_create.add_argument(
         "--user", "-u", required=True, metavar="USER", help=USER_HELP
@@ -1691,19 +1586,15 @@ def build_parser():
   {prog} revoke --user zhangsan
   {prog} revoke -u zhangsan
 
-吊销流程（Easy-RSA 标准，脚本会逐步说明）:
-  1. easyrsa revoke
-       pki/issued/<用户>.crt      → 移除
-       pki/private/<用户>.key     → 移入 pki/revoked/private_by_serial/<SERIAL>.key
-       pki/revoked/certs_by_serial/<SERIAL>.crt  ← 归档
-       pki/index.txt              → 标记 R
-  2. easyrsa gen-crl
-       pki/crl.pem                → 覆盖更新（含全部吊销 serial）
-  3. 删除 {client}/<用户>/        → 旧 client.ovpn 不可再分发
+流程（控制台按 [N/5] 步骤输出）:
+  1. easyrsa revoke  → issued/<用户>.crt 移除，归档至 pki/revoked/
+  2. easyrsa gen-crl → pki/crl.pem 覆盖更新
+  3. 删除 client/<用户>/（旧 client.ovpn 不可再分发）
 
-服务端: server/server.conf 须 crl-verify 指向 pki/crl.pem
+末尾摘要: --- 吊销完成 · <用户名> ---；含 [核验 · 吊销结果]
+服务端须配置 crl-verify 指向 pki/crl.pem
 {common}
-""".format(prog=prog_name(), client=CLIENT_DIR, common=USER_EPILOG),
+""".format(prog=prog_name(), common=USER_EPILOG),
     )
     p_revoke.add_argument(
         "--user", "-u", required=True, metavar="USER", help=USER_HELP
@@ -1718,6 +1609,8 @@ def build_parser():
 示例:
   {prog} status --user zhangsan
   {prog} status -u zhangsan
+
+输出 [结果] 为状态与 PKI 路径（短路径）；[说明] 为后续操作建议
 {common}
 """.format(prog=prog_name(), common=USER_EPILOG),
     )
