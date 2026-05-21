@@ -23,6 +23,7 @@ import shutil
 import subprocess
 import sys
 from logging.handlers import RotatingFileHandler
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 # ---------------------------------------------------------------------------
 # 日志
@@ -337,7 +338,15 @@ def openssl_version():
 # ---------------------------------------------------------------------------
 
 
-def path_label(abs_path):
+class ServerConfSummary(TypedDict):
+    exists: bool
+    crl_verify: Optional[str]
+    crl_matches_pki: Optional[bool]
+    port: Optional[str]
+    proto: Optional[str]
+
+
+def path_label(abs_path: str) -> str:
     """绝对路径 + 相对 /etc/openvpn 的短名。"""
     abs_path = os.path.normpath(abs_path)
     base = OPENVPN_BASE + os.sep
@@ -346,23 +355,23 @@ def path_label(abs_path):
     return abs_path
 
 
-def pki_path(*parts):
+def pki_path(*parts: str) -> str:
     return os.path.join(EASYRSA_DIR, "pki", *parts)
 
 
-def client_bundle_dir(user):
+def client_bundle_dir(user: str) -> str:
     return os.path.join(CLIENT_DIR, user)
 
 
-def issued_cert(user):
+def issued_cert(user: str) -> str:
     return pki_path("issued", "{0}.crt".format(user))
 
 
-def private_key(user):
+def private_key(user: str) -> str:
     return pki_path("private", "{0}.key".format(user))
 
 
-def user_req(user):
+def user_req(user: str) -> str:
     return pki_path("reqs", "{0}.req".format(user))
 
 
@@ -531,9 +540,9 @@ def list_active_client_users():
     return users
 
 
-def read_server_conf_summary():
+def read_server_conf_summary() -> ServerConfSummary:
     """解析 server.conf 中与 PKI 相关的关键项。"""
-    summary = {
+    summary: ServerConfSummary = {
         "exists": os.path.isfile(SERVER_CONF),
         "crl_verify": None,
         "crl_matches_pki": None,
@@ -569,9 +578,9 @@ def read_server_conf_summary():
     return summary
 
 
-def pki_files_for_user(user, serial=None):
+def pki_files_for_user(user: str, serial=None) -> Dict[str, Optional[str]]:
     """列出某用户相关 PKI 文件路径（用于日志说明）。"""
-    files = {
+    files: Dict[str, Optional[str]] = {
         "issued_crt": issued_cert(user),
         "private_key": private_key(user),
         "user_req": user_req(user),
@@ -708,7 +717,7 @@ def audit_tail():
     return "tail -30 {0}    # 查看完整操作日志".format(log.log_file)
 
 
-def audit_create(user, out_dir, host, port):
+def audit_create(user: str, out_dir: str) -> List[str]:
     cert = issued_cert(user)
     serial = cert_serial(cert) if os.path.isfile(cert) else None
     lines = [
@@ -1146,7 +1155,7 @@ reneg-sec 0
 """
 
 
-def bundle_client(user, host, port):
+def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
     out_dir = client_bundle_dir(user)
     os.makedirs(CLIENT_DIR, exist_ok=True)
 
@@ -1170,7 +1179,9 @@ def bundle_client(user, host, port):
 
     ovpn_path = os.path.join(out_dir, "client.ovpn")
     with open(ovpn_path, "w") as fh:
-        fh.write(OVPN_TEMPLATE.format(user=user, host=host, port=port))
+        fh.write(
+            OVPN_TEMPLATE.format(user=user, host=host, port=str(port))
+        )
 
     for name in (
         "client.ovpn",
@@ -1428,7 +1439,7 @@ def cmd_create(args):
             "服务端证书 pki/issued/server.crt 不在客户端包中（正常）",
         ]
     )
-    log.audit("核验签发结果", audit_create(user, out_dir, args.rhost, args.rport))
+    log.audit("核验签发结果", audit_create(user, out_dir))
     log.summary(
         "签发摘要 · {0}".format(user),
         [
