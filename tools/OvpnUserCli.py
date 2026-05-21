@@ -3,14 +3,17 @@
 """
 OpenVPN 客户端证书签发 / 吊销（Easy-RSA 3.0.7）
 
-标准目录（/etc/openvpn/）:
-  3.0.7/     Easy-RSA 工作区（easyrsa、vars、pki/）
-  client/    客户端配置包输出（create 生成）
-  server/    OpenVPN 服务端（server.conf、crl-verify）
+标准目录（/etc/openvpn/，详见 PKI_LAYOUT 与 -h）:
+  <Easy-RSA>/pki/  issued/ private/ reqs/ revoked/ certs_by_serial/（默认 3.0.7）
+  client/          create 输出；pki/ta.key 为 OpenVPN tls-auth（非 easyrsa 生成）
+  server/          server.conf 须 crl-verify → pki/crl.pem
 
 有效证书: pki/issued/<用户>.crt 存在（权威判定，优先于 index.txt）
 index.txt: 同一 CN 可有多行 V/R（重签/吊销历史）；无 issued 时以末条状态为准
-吊销后:   移入 pki/revoked/，index.txt 追加 R 行，gen-crl 更新 pki/crl.pem
+吊销后:   easyrsa revoke → move_revoked 按 serial 归档，须再执行 gen-crl
+
+环境变量: GENOVPN_OPENVPN_BASE / GENOVPN_EASYRSA_DIR / GENOVPN_EASYRSA_VERSION
+（默认面向 Easy-RSA 3.0.7，与上游 easyrsa3/easyrsa 行为对齐）
 
 控制台日志块（与 -h / 运行输出一致，详见 LOG_CONSOLE_HELP）:
   [结果] [说明] [核验 · 标题]；末尾 --- 操作完成 · 用户 --- 摘要
@@ -38,16 +41,43 @@ LOG_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 # ---------------------------------------------------------------------------
-# 配置（对齐 /etc/openvpn/ 标准布局）
+# 配置（对齐 /etc/openvpn/ 标准布局；路径可由环境变量覆盖）
 # ---------------------------------------------------------------------------
-OPENVPN_BASE = "/etc/openvpn"
-EASYRSA_VERSION = "3.0.7"
-EASYRSA_DIR = os.path.join(OPENVPN_BASE, EASYRSA_VERSION)
+# 脚本按 Easy-RSA v3.0.7 源码约定实现（revoke → move_revoked → gen-crl）：
+EASYRSA_UPSTREAM_TAG = "v3.0.7"
+EASYRSA_UPSTREAM_URL = (
+    "https://github.com/OpenVPN/easy-rsa/blob/{0}/easyrsa3/easyrsa"
+).format(EASYRSA_UPSTREAM_TAG)
+OPENVPN_BASE = os.environ.get("GENOVPN_OPENVPN_BASE", "/etc/openvpn")
+EASYRSA_VERSION = os.environ.get("GENOVPN_EASYRSA_VERSION", "3.0.7")
+EASYRSA_DIR = os.environ.get(
+    "GENOVPN_EASYRSA_DIR",
+    os.path.join(OPENVPN_BASE, EASYRSA_VERSION),
+)
 CLIENT_DIR = os.environ.get("GENOVPN_CLIENT_DIR", os.path.join(OPENVPN_BASE, "client"))
 SERVER_DIR = os.path.join(OPENVPN_BASE, "server")
 SERVER_CONF = os.path.join(SERVER_DIR, "server.conf")
 SERVER_STATUS_LOG = os.path.join(SERVER_DIR, "openvpn-status.log")
 SERVER_IPP = os.path.join(SERVER_DIR, "ipp.txt")
+
+# Easy-RSA verify_ca_init / verify_pki_init 要求的 PKI 条目（v3.0.7）
+EASYRSA_PKI_REQUIRED = (
+    "pki/index.txt",
+    "pki/index.txt.attr",
+    "pki/serial",
+    "pki/ca.crt",
+    "pki/private/ca.key",
+    "pki/private",
+    "pki/reqs",
+    "pki/issued",
+    "pki/certs_by_serial",
+    "pki/revoked",
+    "pki/revoked/certs_by_serial",
+    "pki/revoked/private_by_serial",
+    "pki/revoked/reqs_by_serial",
+)
+# OpenVPN 客户端包依赖（非 easyrsa 生成；openvpn --genkey secret pki/ta.key）
+OPENVPN_PKI_EXTRA = ("pki/ta.key",)
 
 DEFAULT_REMOTE_HOST = "61.187.64.38"
 DEFAULT_REMOTE_PORT = 11940
@@ -76,30 +106,33 @@ STATUS_LABEL = {
     "none": "不存在",
 }
 
+# 目录树说明；硬性检查见 EASYRSA_PKI_REQUIRED / OPENVPN_PKI_EXTRA（须同步维护）
 PKI_LAYOUT = """
-/etc/openvpn/ 标准布局
-├── {ver}/                  Easy-RSA 工作区
+/etc/openvpn/ 标准布局（Easy-RSA {ver} + OpenVPN，上游 {upstream}）
+├── {ver}/                  Easy-RSA 工作区（EASYRSA=/ GENOVPN_EASYRSA_DIR）
 │   ├── easyrsa / vars      签发工具与变量
-│   └── pki/                PKI 数据库
-│       ├── ca.crt          CA 证书（客户端 trust anchor）
-│       ├── ta.key          tls-auth 密钥
-│       ├── crl.pem         吊销列表（全 CA 共用，revoke 后 gen-crl 更新）
-│       ├── dh.pem          DH 参数（服务端用）
-│       ├── index.txt       证书台账（V/R/E；同一 CN 可多行，末条+issued/ 判定）
-│       ├── issued/         当前有效证书 → <CN>.crt
-│       ├── private/        当前有效私钥 → <CN>.key
-│       ├── reqs/           证书请求     → <CN>.req
-│       ├── certs_by_serial/ 按 serial 索引 → <SERIAL>.pem
-│       └── revoked/        吊销归档（按 serial，revoke 后从 issued/ 移入）
-│           ├── certs_by_serial/<SERIAL>.crt
-│           ├── private_by_serial/<SERIAL>.key
-│           └── reqs_by_serial/<SERIAL>.req
-├── client/                 客户端配置包（本脚本 create 输出 → <用户>/client.ovpn）
-└── server/                 OpenVPN 服务端
-    ├── server.conf         须含 crl-verify 指向 pki/crl.pem
-    ├── openvpn-status.log
-    └── ipp.txt
-""".format(ver=EASYRSA_VERSION).strip()
+│   └── pki/                PKI（openssl ca 数据库，见 openssl-easyrsa.cnf）
+│       ├── ca.crt          CA 证书
+│       ├── ta.key          OpenVPN tls-auth（openvpn --genkey，非 easyrsa 生成）
+│       ├── crl.pem         吊销列表（revoke 后须 easyrsa gen-crl）
+│       ├── dh.pem          DH 参数（easyrsa gen-dh，仅服务端需要）
+│       ├── index.txt       台账 V/R/E（重签/吊销追加行，非覆盖）
+│       ├── index.txt.attr  须含 unique_subject = no（续签同 CN）
+│       ├── issued/         有效证书 <CN>.crt（revoke 后 move_revoked 移走）
+│       ├── private/        有效私钥 <CN>.key
+│       ├── reqs/           证书请求 <CN>.req
+│       ├── certs_by_serial/<SERIAL>.pem  签发索引（revoke 时删除）
+│       ├── revoked/        move_revoked 归档（按 serial 文件名）
+│       │   ├── certs_by_serial/<SERIAL>.crt
+│       │   ├── private_by_serial/<SERIAL>.key
+│       │   └── reqs_by_serial/<SERIAL>.req
+│       └── renewed/        renew 时 move_renewed（本脚本未调用 renew）
+├── client/                 create 输出 client/<用户>/client.ovpn
+└── server/
+    └── server.conf         crl-verify 须指向 pki/crl.pem
+
+说明: init-pki 仅建 private/ reqs/；build-ca 建 issued/ revoked/* 等；crl.pem 首次 revoke 后 gen-crl 生成。
+""".format(ver=EASYRSA_VERSION, upstream=EASYRSA_UPSTREAM_TAG).strip()
 
 # 控制台输出说明（模块文档、-h、USER_EPILOG 共用，与 GenovpnLogger 实现一致）
 LOG_CONSOLE_HELP = """
@@ -338,14 +371,63 @@ def run_cmd(cmd, cwd=None, env=None, check=True):
     return proc
 
 
+def easyrsa_bin_path():
+    return os.path.join(EASYRSA_DIR, "easyrsa")
+
+
 def easyrsa(*args):
-    """在 EASYRSA_DIR 下以批处理模式调用 easyrsa。"""
-    easyrsa_bin = os.path.join(EASYRSA_DIR, "easyrsa")
+    """在 EASYRSA_DIR 下以批处理模式调用 easyrsa（等同官方 EASYRSA_BATCH=1）。"""
     return run_cmd(
-        [easyrsa_bin] + list(args),
+        [easyrsa_bin_path()] + list(args),
         cwd=EASYRSA_DIR,
         env={"EASYRSA_BATCH": "1"},
     )
+
+
+def read_easyrsa_bundle_version():
+    """
+    从工作区 ChangeLog 读取 Easy-RSA 发行版本（v3.0.7  tarball 根目录常见）。
+    无法解析时返回 None。
+    """
+    changelog = os.path.join(EASYRSA_DIR, "ChangeLog")
+    if not os.path.isfile(changelog):
+        return None
+    try:
+        with open(changelog, "r") as fh:
+            for line in fh:
+                m = re.match(r"^(\d+\.\d+\.\d+)", line)
+                if m:
+                    return m.group(1)
+    except OSError:
+        return None
+    return None
+
+
+def assert_easyrsa_version():
+    """目录名与 ChangeLog 版本应与脚本面向的 EASYRSA_VERSION 一致。"""
+    dir_name = os.path.basename(os.path.realpath(EASYRSA_DIR))
+    expected = EASYRSA_VERSION
+    if dir_name != expected:
+        raise GenovpnError(
+            "Easy-RSA 目录名与脚本要求不一致",
+            hint=(
+                "脚本面向 Easy-RSA {0}（见 GENOVPN_EASYRSA_VERSION）\n"
+                "当前目录名: {1}\n"
+                "工作目录:   {2}".format(expected, dir_name, EASYRSA_DIR)
+            ),
+        )
+    bundle_ver = read_easyrsa_bundle_version()
+    if bundle_ver and bundle_ver != expected:
+        raise GenovpnError(
+            "Easy-RSA 发行版本与脚本要求不一致",
+            hint=(
+                "ChangeLog 版本: {0}\n"
+                "脚本要求:       {1}\n"
+                "请使用 v{1} 或更新脚本常量后充分回归测试。".format(
+                    bundle_ver, expected
+                )
+            ),
+        )
 
 
 def openssl_version():
@@ -753,7 +835,11 @@ def verify_hints_revoke(user, serial=None):
 def verify_hints_check():
     """[核验 · 环境] 提示行（供 log.verify 使用）。"""
     return [
-        "确认 Easy-RSA 目录 {0} 与 pki/ 结构正常".format(path_label(EASYRSA_DIR)),
+        "确认 Easy-RSA {0} 与上游 {1} 一致".format(
+            path_label(EASYRSA_DIR), EASYRSA_UPSTREAM_TAG
+        ),
+        "确认已 build-ca（pki/ca.crt、issued/、revoked/*_by_serial/）",
+        "确认 pki/ta.key 存在（OpenVPN tls-auth）",
         "确认 server.conf 中 crl-verify 指向 pki/crl.pem",
         "完整日志: {0}".format(log.log_file),
     ]
@@ -898,14 +984,12 @@ def ensure_reissue_allowed():
 
 
 def cleanup_pki_stale(user):
+    """清理妨碍 build-client-full 的残留（官方 build_full 遇同名 req/key/crt 会中止）。"""
     patterns = [
         pki_path("reqs", "{0}.req".format(user)),
         pki_path("private", "{0}.key".format(user)),
         pki_path("issued", "{0}.crt".format(user)),
-        pki_path("expired", "{0}.crt".format(user)),
-        pki_path("renewed", "issued", "{0}.crt".format(user)),
-        pki_path("renewed", "reqs", "{0}.req".format(user)),
-        pki_path("inline", "{0}.inline".format(user)),
+        pki_path("{0}.creds".format(user)),
     ]
     for path in patterns:
         if os.path.isfile(path):
@@ -922,45 +1006,37 @@ def preflight():
     if not os.path.isdir(EASYRSA_DIR):
         raise GenovpnError(
             "Easy-RSA 工作目录不存在",
-            hint="期望路径: {0}\n请确认 OpenVPN / Easy-RSA 已正确安装。".format(
+            hint="期望路径: {0}\n可通过 GENOVPN_EASYRSA_DIR 指定。".format(
                 EASYRSA_DIR
             ),
         )
 
-    real = os.path.realpath(EASYRSA_DIR)
-    if os.path.basename(real) != EASYRSA_VERSION:
-        raise GenovpnError(
-            "Easy-RSA 版本目录不匹配",
-            hint="脚本配置版本: {0}\n实际目录名:   {1}".format(
-                EASYRSA_VERSION, os.path.basename(real)
-            ),
-        )
-    if real != os.path.normpath(EASYRSA_DIR):
-        raise GenovpnError(
-            "Easy-RSA 路径解析异常",
-            hint="配置路径: {0}\n解析结果: {1}".format(EASYRSA_DIR, real),
-        )
+    assert_easyrsa_version()
 
     if not shutil.which("openssl"):
         missing.append("openssl 未安装或不在 PATH 中")
 
-    for rel in (
-        "easyrsa",
-        "vars",
-        "pki/index.txt",
-        "pki/ca.crt",
-        "pki/ta.key",
-        "pki/issued",
-        "pki/private",
-        "pki/reqs",
-        "pki/certs_by_serial",
-        "pki/revoked",
-    ):
+    for rel in ("easyrsa", "vars", "openssl-easyrsa.cnf"):
         path = os.path.join(EASYRSA_DIR, rel)
         if not os.path.exists(path):
-            missing.append("缺少: {0}".format(path))
+            missing.append("缺少: {0}".format(rel))
 
-    easyrsa_bin = os.path.join(EASYRSA_DIR, "easyrsa")
+    for rel in EASYRSA_PKI_REQUIRED:
+        path = os.path.join(EASYRSA_DIR, rel)
+        if not os.path.exists(path):
+            missing.append("缺少: {0}（CA 是否已 build-ca / init-pki？）".format(rel))
+
+    for rel in OPENVPN_PKI_EXTRA:
+        path = os.path.join(EASYRSA_DIR, rel)
+        if not os.path.isfile(path):
+            missing.append(
+                "缺少: {0}（OpenVPN tls-auth；"
+                "例: openvpn --genkey secret {1}）".format(
+                    rel, os.path.join(EASYRSA_DIR, "pki", "ta.key")
+                )
+            )
+
+    easyrsa_bin = easyrsa_bin_path()
     if os.path.exists(easyrsa_bin) and not os.access(easyrsa_bin, os.X_OK):
         missing.append("不可执行: {0}".format(easyrsa_bin))
 
@@ -979,6 +1055,19 @@ def preflight():
                 expected, (proc.stdout or "").strip()
             ),
         )
+
+    for subcmd in ("revoke", "gen-crl", "build-client-full"):
+        help_proc = run_cmd(
+            [easyrsa_bin, "help", subcmd], cwd=EASYRSA_DIR, check=False
+        )
+        if help_proc.returncode != 0:
+            raise GenovpnError(
+                "当前 easyrsa 不支持子命令: {0}".format(subcmd),
+                hint=(
+                    "本脚本面向 Easy-RSA {0}（{1}）\n"
+                    "请核对 GENOVPN_EASYRSA_DIR / ChangeLog 版本。"
+                ).format(EASYRSA_VERSION, EASYRSA_UPSTREAM_TAG),
+            )
 
 
 def validate_username(user):
@@ -1085,13 +1174,28 @@ def assert_issue_done(user):
         )
 
 
-def assert_revoke_done(user):
+def assert_revoke_done(user, serial=None):
+    """对照 Easy-RSA revoke + move_revoked：issued 应清空、index 末条为 R、按 serial 归档。"""
     if has_valid_cert(user):
         log_user_status(user, brief=True)
         raise GenovpnError(
             "吊销未完成：证书文件仍存在",
             hint="路径: {0}".format(issued_cert(user)),
         )
+    entry = latest_index_entry(user)
+    if not entry or entry.get("status") != "R":
+        raise GenovpnError(
+            "吊销未完成：index.txt 中该用户末条未标记为 R",
+            hint="请检查 easyrsa revoke 输出与 {0}".format(pki_path("index.txt")),
+        )
+    if serial:
+        archives = revoked_archive_paths(serial)
+        cert_arc = archives.get("cert")
+        if not cert_arc or not os.path.isfile(cert_arc):
+            raise GenovpnError(
+                "吊销未完成：未找到 move_revoked 归档证书",
+                hint="期望路径类似: pki/revoked/certs_by_serial/<SERIAL>.crt",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -1136,6 +1240,11 @@ def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
     )
     copy_log = []
     for src, dst_name, src_label in copies:
+        if not os.path.isfile(src):
+            raise GenovpnError(
+                "打包失败：缺少 PKI 文件",
+                hint="路径: {0}（{1}）".format(src, src_label),
+            )
         dst = os.path.join(out_dir, dst_name)
         shutil.copy2(src, dst)
         copy_log.append("{0} ← {1}".format(dst_name, src_label))
@@ -1390,7 +1499,7 @@ def cmd_revoke(args):
 
     log.step(3, total, "吊销证书 (easyrsa revoke {0})".format(user))
     easyrsa("revoke", user)
-    assert_revoke_done(user)
+    assert_revoke_done(user, serial)
     sn = serial_for_pki_paths(serial)
     revoke_result = [
         "index.txt: {0} → R".format(user),
@@ -1467,10 +1576,13 @@ def cmd_revoke(args):
 
 USER_HELP = "用户名（兼作证书 CN）：字母开头，3～16 位字母、数字或下划线"
 USER_EPILOG = """
-目录布局（/etc/openvpn/）:
-  · {ver}/pki/     Easy-RSA PKI（issued/ private/ revoked/ crl.pem）
-  · client/        客户端配置包（create → client/<用户>/client.ovpn）
-  · server/        服务端 server.conf（crl-verify 指向 pki/crl.pem）
+目录与版本:
+  · 脚本面向 Easy-RSA {ver}（与 OpenVPN/easy-rsa v{ver} 源码一致）
+  · 环境变量: GENOVPN_OPENVPN_BASE / GENOVPN_EASYRSA_DIR / GENOVPN_EASYRSA_VERSION
+  · {ver}/pki/     issued/ private/ reqs/ revoked/ crl.pem（easyrsa 维护）
+  · pki/ta.key     OpenVPN tls-auth（须单独生成，非 easyrsa）
+  · client/        create → client/<用户>/client.ovpn
+  · server/        server.conf 中 crl-verify 指向 pki/crl.pem
 
 用户名规则:
   · 字母开头，3～16 位，字母/数字/下划线
@@ -1509,10 +1621,11 @@ def build_parser():
 {log_help}
 
 说明:
+  · create: easyrsa build-client-full；revoke: easyrsa revoke + gen-crl（官方流程）
   · CRL（crl.pem）全 CA 共用，每次 revoke 后 gen-crl 覆盖更新
-  · 客户端包: client/<用户>/（绝对路径 {client}）
-  · Easy-RSA: {ver}/（绝对路径 {easyrsa}）
-  · 服务端: server/server.conf（绝对路径 {server_conf}）
+  · 客户端包: client/<用户>/（{client}）
+  · Easy-RSA: {easyrsa}
+  · 服务端: {server_conf}
 """.format(
             prog=prog_name(),
             host=DEFAULT_REMOTE_HOST,
