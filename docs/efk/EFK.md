@@ -2123,7 +2123,7 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 ```
 
-- **对象存储**：`minio.enabled: false`；联调使用已有 MinIO（`http://minio.minio.svc.cluster.local:9000`），预先创建桶 **`loki-chunks`**、**`loki-ruler`**、**`loki-admin`**
+- **对象存储**：`minio.enabled: false`；联调使用已有 MinIO（`http://minio.minio.svc.cluster.local:9000`）。桶保持 **Private**（默认即可，不要设 Public）；为 Loki 单独建 **MinIO 用户**并绑定 **IAM 策略**（只允许访问三个桶），用该用户的 **Access Key / Secret Key** 写入 Loki values 或 Secret（见 **T9.3.5.1 步骤 1～2**）
 - **StorageClass**：`kubectl get sc` 确认名称；`singleBinary.persistence.storageClass` 填真实值（联调示例 **`local-path`**）
 - **镜像**：节点可拉取 Chart 所需镜像；内网集群在 values 中配置 **`gateway.image`** 指向内网仓库（见 **T9.3.5.1**）
 - **values 固定项**（与 **T9.3.5.1** 一致）：`deploymentMode: SingleBinary`；`chunksCache.enabled: false`；`resultsCache.enabled: false`；`minio.enabled: false`；Alloy 推送 `http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push`
@@ -2136,15 +2136,67 @@ helm repo update
 
 #### T9.3.5.1、联调（外置 MinIO）
 
-**步骤 1**：在 MinIO 创建桶 `loki-chunks`、`loki-ruler`、`loki-admin`（名称与 values 一致）。
+**步骤 1**：MinIO 建桶与用户（桶名与 values 一致）
 
-**步骤 2**：创建 Secret（推荐；联调也可暂时在 values 填明文，勿提交 Git）：
+1. 在 MinIO Console（或 `mc`）创建三个桶：**`loki-chunks`**、**`loki-ruler`**、**`loki-admin`**。  
+   
+   **访问策略选 Private**（默认就是 Private）。**不要**选 Public，Public 表示匿名可读，日志桶不能这样开，有安全问题。
+
+   **Custom** 一般也不用：MinIO 用 **IAM 策略挂在用户上** 控制 AK/SK 能访问哪些桶，不是靠桶的 Public/Custom。
+   
+2. 新建专用用户（例如 **`loki`**），不要长期用 root 账号给 Loki。
+
+3. 为该用户绑定策略，至少允许对三个桶的读写。Console：**Identity → Users → loki → Policies**；或 **Identity → Policies → Create**，再赋给用户。策略示例（按 [MinIO IAM](https://docs.min.io/aistor/administration/iam/access/) 语法）：
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::loki-chunks",
+        "arn:aws:s3:::loki-chunks/*",
+        "arn:aws:s3:::loki-ruler",
+        "arn:aws:s3:::loki-ruler/*",
+        "arn:aws:s3:::loki-admin",
+        "arn:aws:s3:::loki-admin/*"
+      ]
+    }
+  ]
+}
+```
+
+4. 在该用户下 **Create access key**，得到 **Access Key** 与 **Secret Key**，这就是 Loki `accessKeyId` / `secretAccessKey` 的来源。AK/SK 能否访问桶，取决于用户是否挂了上述策略，与桶是否 Public 无关。
+
+用 `mc` 时可参考（`MINIO_ALIAS` 换成你的 alias）：
+
+```bash
+mc mb MINIO_ALIAS/loki-chunks
+mc mb MINIO_ALIAS/loki-ruler
+mc mb MINIO_ALIAS/loki-admin
+mc admin policy create MINIO_ALIAS loki-s3-policy loki-policy.json
+mc admin user add MINIO_ALIAS loki '强密码'
+mc admin policy attach MINIO_ALIAS loki-s3-policy --user loki
+mc admin user svcacct add MINIO_ALIAS loki --access-key 'LOKI_AK' --secret-key 'LOKI_SK'
+```
+
+**步骤 2**：把 AK/SK 写入 Kubernetes Secret（联调也可暂时写在 values 里，勿提交 Git）：
 
 ```bash
 kubectl create secret generic loki-minio-s3 -n logging \
-  --from-literal=AWS_ACCESS_KEY_ID='你的AccessKey' \
-  --from-literal=AWS_SECRET_ACCESS_KEY='你的SecretKey'
+  --from-literal=AWS_ACCESS_KEY_ID='步骤1得到的AccessKey' \
+  --from-literal=AWS_SECRET_ACCESS_KEY='步骤1得到的SecretKey'
 ```
+
+`loki.storage.s3` 里填的 **`accessKeyId` / `secretAccessKey`** 必须与上一步 **loki 用户** 的 AK/SK 一致；values 中 `insecure: true` 仅表示联调走 HTTP，与桶 Public/Private 无关。
 
 **步骤 3**：保存 `loki-values-dev.yaml`（**`YOUR_STORAGECLASS`** 换成 `kubectl get sc` 结果；若用 Secret，按下面注释改用 `existingSecret` 或保持 s3 段明文仅本地调试）：
 
