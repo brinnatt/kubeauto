@@ -25,7 +25,7 @@ import sys
 from logging.handlers import RotatingFileHandler
 
 # ---------------------------------------------------------------------------
-# 日志（参考 starrocks_deploy：文件全量记录，stdout 仅关键步骤）
+# 日志
 # ---------------------------------------------------------------------------
 LOG_DIR = os.environ.get("GENOVPN_LOG_DIR", "/var/log/openvpn")
 LOG_FILE = os.path.join(LOG_DIR, "genovpnuser.log")
