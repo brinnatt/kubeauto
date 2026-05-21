@@ -29,7 +29,7 @@ import shutil
 import subprocess
 import sys
 from logging.handlers import RotatingFileHandler
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import Dict, List, Optional, Tuple, TypedDict, cast
 
 # ---------------------------------------------------------------------------
 # 日志
@@ -460,7 +460,7 @@ def path_label(abs_path: str) -> str:
 
 
 def pki_path(*parts: str) -> str:
-    return os.path.join(EASYRSA_DIR, "pki", *parts)
+    return cast(str, os.path.join(EASYRSA_DIR, "pki", *parts))
 
 
 def client_bundle_dir(user: str) -> str:
