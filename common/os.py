@@ -5,6 +5,8 @@ import paramiko
 import base64
 import json
 import socket
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 import sys
 import subprocess
 import getpass
@@ -23,9 +25,6 @@ _known_hosts_lock = threading.Lock()
 
 class SystemProbe:
     """handle system probe or execute command"""
-
-    def __init__(self):
-        self.executor = Executor()
 
     @property
     def system_info(self) -> Dict[str, str]:
@@ -418,6 +417,42 @@ restorecon -Rv ~/.ssh 2>/dev/null || true
                 # Log but don't fail the operation if saving host key fails
                 logger.debug(f"Failed to save host key for {host}:{port}: {e}")
 
+    @staticmethod
+    def _generate_ed25519_keypair(ssh_dir: Path) -> Tuple[Path, str]:
+        """
+        Generate ed25519 key pair in OpenSSH format.
+
+        [fix] In-process generation avoids ssh-keygen OpenSSL symbol errors
+              (e.g. EVP_sm4_ctr) when Python pollutes LD_LIBRARY_PATH.
+        [optimize] Uses project dependency cryptography; no shell subprocess.
+        """
+        ssh_dir.mkdir(mode=0o700, exist_ok=True)
+        private_key_path = ssh_dir / "id_ed25519"
+        public_key_path = private_key_path.with_suffix(".pub")
+
+        key = Ed25519PrivateKey.generate()
+        private_key_path.write_bytes(
+            key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.OpenSSH,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
+        comment = f"{getpass.getuser()}@{socket.gethostname()}"
+        public_line = (
+            key.public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.OpenSSH,
+                format=serialization.PublicFormat.OpenSSH,
+            )
+            .decode()
+            + f" {comment}"
+        )
+        public_key_path.write_text(public_line + "\n", encoding="utf-8")
+        os.chmod(private_key_path, 0o600)
+        os.chmod(public_key_path, 0o644)
+        return public_key_path, public_line
+
     def _load_all_public_keys(self) -> Dict[str, str]:
         ssh_dir = Path.home() / ".ssh"
         keys_priority = ["id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"]
@@ -431,18 +466,9 @@ restorecon -Rv ~/.ssh 2>/dev/null || true
         if keys:
             return keys
 
-        # Generate ed25519
-        private_key = ssh_dir / "id_ed25519"
+        # [fix] 无本地密钥时改用 cryptography 生成，规避 ssh-keygen 与系统 OpenSSL 链接冲突
         logger.info("No SSH keys found, generating ed25519...", extra=LOG_STDOUT)
-        stdout, stderr, rc = self.executor.execute(
-            f"ssh-keygen -t ed25519 -N '' -f {private_key} -q"
-        )
-        if rc != 0:
-            raise RuntimeError(f"Keygen failed: {stderr.strip()}")
-        pub = private_key.with_suffix(".pub")
-        if not pub.exists():
-            raise RuntimeError("Public key missing after generation")
-        content = pub.read_text().strip()
+        _, content = self._generate_ed25519_keypair(ssh_dir)
         if not (content.startswith("ssh-") and " " in content):
             raise RuntimeError("Invalid public key format")
         return {"id_ed25519.pub": content}
