@@ -24,6 +24,8 @@ class DockerManager:
         self.system_probe = SystemProbe()
         self.image_dir = Path(self.kube_constant.IMAGE_DIR)
         self.docker_bin_dir = Path(self.kube_constant.DOCKER_BIN_DIR)
+        self.extra_bin_dir = Path(self.kube_constant.EXTRA_BIN_DIR)
+        self.docker_compose_plugin_dir = Path("/usr/local/lib/docker/cli-plugins")
         self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
         self.sys_bin_dir = Path(self.kube_constant.SYS_BIN_DIR)
         self.temp_path = Path(self.kube_constant.TEMP_PATH)
@@ -68,6 +70,7 @@ class DockerManager:
         version = version or self.kube_constant.v_docker
         self._download_docker(version)
         self._install_docker_binaries(version)
+        self._install_docker_compose_plugin()
         self._configure_docker(version)
         self._start_docker_service(version)
 
@@ -158,6 +161,16 @@ class DockerManager:
             if self.docker_bin_dir.exists():
                 run_command(["rm", "-rf", str(self.docker_bin_dir)])
                 logger.debug(f"Docker binary dir has been deleted: {self.docker_bin_dir}")
+
+            compose_plugin = self.docker_compose_plugin_dir / "docker-compose"
+            if compose_plugin.is_symlink():
+                try:
+                    target = compose_plugin.resolve()
+                    if str(target).startswith(str(self.extra_bin_dir)):
+                        compose_plugin.unlink()
+                        logger.debug(f"Docker Compose plugin symlink removed: {compose_plugin}")
+                except (OSError, RuntimeError) as e:
+                    logger.debug(f"Failed to remove Compose plugin symlink: {e}")
         except Exception as e:
             logger.warning(f"Failed to delete Docker binary dir: {str(e)}")
 
@@ -247,6 +260,30 @@ class DockerManager:
         run_command(["rm", "-rf", str(self.temp_path / "docker")])
 
         logger.info("Docker binary has been installed successfully!", extra=LOG_STDOUT)
+
+    def _install_docker_compose_plugin(self) -> None:
+        """
+        Install Docker Compose CLI plugin (docker compose) from bundled extra-bin binary.
+        See https://docs.docker.com/compose/install/linux/
+        """
+        compose_src = self.extra_bin_dir / "docker-compose"
+        if not compose_src.is_file():
+            logger.warning(
+                "docker-compose not found in extra-bin, skip Compose plugin install "
+                "(run 'kubecli download -D' first).",
+                extra=LOG_STDOUT,
+            )
+            return
+
+        self.docker_compose_plugin_dir.mkdir(parents=True, exist_ok=True)
+        plugin_bin = self.docker_compose_plugin_dir / "docker-compose"
+        run_command(["ln", "-svf", str(compose_src), str(plugin_bin)])
+
+        try:
+            run_command(["docker", "compose", "version"])
+            logger.info("Docker Compose plugin has been installed successfully!", extra=LOG_STDOUT)
+        except CommandExecutionError as e:
+            logger.warning(f"Docker Compose plugin linked but verification failed: {e}", extra=LOG_STDOUT)
 
     def _configure_docker(self, version: str) -> None:
         """
