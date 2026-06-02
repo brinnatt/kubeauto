@@ -523,9 +523,9 @@ Examples:
             help="Remove all containers including running containers"
         )
         docker_container_group.add_argument(
-            "-e", "--remove-existed",
+            "-e", "--remove-exited",
             action="store_true",
-            help="Remove all existed containers"
+            help="Remove all exited containers"
         )
 
     def _setup_system_command(self) -> None:
@@ -923,7 +923,7 @@ Examples:
         docker = DockerManager()
 
         # required at least one argument
-        if not any([args.set_proxy, args.del_proxy, args.no_proxy, args.remove, args.remove_all, args.remove_existed]):
+        if not any([args.set_proxy, args.del_proxy, args.no_proxy, args.remove, args.remove_all, args.remove_exited]):
             self.subparsers.choices["docker"].print_help()
             raise DockerManageError("Docker command requires at least one argument")
 
@@ -947,7 +947,7 @@ Examples:
             if confirm_action("Clean all containers including running containers with --force"):
                 docker.clean_all_containers(force=args.force)
 
-        if args.remove_existed:
+        if args.remove_exited:
             docker.clean_exited_containers()
 
     def _handle_system(self, args: argparse.Namespace) -> None:
