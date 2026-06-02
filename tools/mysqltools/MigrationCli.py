@@ -40,11 +40,20 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum
 from logging.handlers import RotatingFileHandler
-from typing import Dict, List, Optional, Tuple
+from typing import Any, BinaryIO, Dict, List, Optional, Tuple, cast
 
 import pymysql
-from pymysql import Error as MySQLError
 from pymysql.constants import CLIENT
+
+MIGRATION_FAILURE_EXCEPTIONS = (
+    RuntimeError,
+    ConnectionError,
+    ValueError,
+    OSError,
+    FileNotFoundError,
+    subprocess.SubprocessError,
+    pymysql.err.MySQLError,
+)
 
 # ---------------------------------------------------------------------------
 # 常量
@@ -304,8 +313,8 @@ class CredentialManager:
 def parse_version(version_str: str) -> Tuple[int, int, int]:
     match = VERSION_PATTERN.search(version_str or "")
     if not match:
-        return (0, 0, 0)
-    return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        return 0, 0, 0
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
 def format_bytes(num_bytes: int) -> str:
@@ -355,20 +364,12 @@ def resolve_env_in_string(value: str) -> str:
         var = match.group(1)
         return os.environ.get(var, "")
 
-    return re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", replacer, value)
+    return re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)}", replacer, value)
 
 
 def build_migration_options(args, config_options: Optional[dict] = None) -> MigrationOptions:
     cfg = config_options or {}
     opts = MigrationOptions()
-
-    def pick(name, arg_val, cast=str):
-        if arg_val is not None and arg_val is not False:
-            return cast(arg_val) if cast != str else arg_val
-        if name in cfg and cfg[name] is not None:
-            val = cfg[name]
-            return cast(val) if cast != str else val
-        return getattr(opts, name)
 
     opts.dry_run = bool(args.dry_run)
     opts.keep_dump_files = bool(args.keep_dump_files)
@@ -483,7 +484,7 @@ class DatabaseConnector:
             if conn:
                 try:
                     conn.close()
-                except Exception:
+                except OSError:
                     pass
 
     @staticmethod
@@ -644,13 +645,13 @@ class PreflightChecker:
                 f"源版本 ({source.version}) 高于目标 ({target.version})，请确认兼容性",
                 to_stdout=True,
             )
-        if src[0] < 8 and tgt[0] >= 8:
+        if src[0] < 8 <= tgt[0]:
             self.logger.log_progress(
                 "检测到 5.x -> 8.x 迁移，已启用 --column-statistics=0 等跨版本参数",
                 to_stdout=True,
             )
         client = parse_version(client_version)
-        if client[0] >= 8 and src[0] < 8:
+        if src[0] < 8 <= client[0]:
             self.logger.log_progress(
                 "mysqldump 8.x 客户端连接 5.x 源库，使用 --column-statistics=0",
                 to_stdout=False,
@@ -680,7 +681,7 @@ class PreflightChecker:
                 )
 
     def resolve_gtid_purged(
-        self, source: ServerInfo, target: ServerInfo, options: MigrationOptions
+        self, source: ServerInfo, _target: ServerInfo, options: MigrationOptions
     ) -> str:
         mode = options.gtid_mode
         if mode == GtidMode.OFF:
@@ -729,7 +730,7 @@ class DumpPostProcessor:
     def compress_file(source_path: str) -> str:
         gz_path = source_path + ".gz"
         with open(source_path, "rb") as inf, gzip.open(gz_path, "wb", compresslevel=6) as outf:
-            shutil.copyfileobj(inf, outf, length=1024 * 1024)
+            shutil.copyfileobj(inf, cast(BinaryIO, outf), length=1024 * 1024)
         os.remove(source_path)
         return gz_path
 
@@ -778,7 +779,7 @@ class MySQLDumpManager:
                 self._active_files.clear()
             shutil.rmtree(self.temp_dir, ignore_errors=True)
             self.logger.log_progress("临时文件清理完成", to_stdout=False)
-        except Exception as e:
+        except OSError as e:
             self.logger.log_warning(f"清理临时文件失败: {e}", to_stdout=False)
 
     @staticmethod
@@ -820,7 +821,7 @@ class MySQLDumpManager:
         host = self._validate_command_arg(config.host, "host")
         self._validate_command_arg(config.user, "user")
         self._validate_command_arg(config.database, "database")
-        if not isinstance(config.port, int) or not (1 <= config.port <= 65535):
+        if not isinstance(config.port, int) or not 1 <= config.port <= 65535:
             raise ValueError(f"Invalid port: {config.port}")
         if not os.path.isabs(output_file) or ".." in output_file:
             raise ValueError(f"Invalid output path: {output_file}")
@@ -874,7 +875,7 @@ class MySQLDumpManager:
         ]
 
     def _run_subprocess(
-        self, cmd: List[str], timeout: int, stdin_file=None, text_stderr: bool = True
+        self, cmd: List[str], timeout: int, stdin_file: Optional[BinaryIO] = None
     ) -> Tuple[int, str]:
         stderr_pipe = subprocess.PIPE
         proc = subprocess.Popen(
@@ -893,7 +894,9 @@ class MySQLDumpManager:
         finally:
             self.process_registry.unregister(proc)
         err = (
-            stderr.decode("utf-8", errors="replace") if isinstance(stderr, bytes) else (stderr or "")
+            stderr.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes)
+            else stderr or ""
         )
         return proc.returncode, err.strip()
 
@@ -978,12 +981,12 @@ class MySQLDumpManager:
             if abs_dump.endswith(".gz"):
                 with gzip.open(abs_dump, "rb") as gz:
                     rc, err = self._run_subprocess(
-                        cmd, self.options.import_timeout, stdin_file=gz, text_stderr=True
+                        cmd, self.options.import_timeout, stdin_file=cast(BinaryIO, gz)
                     )
             else:
                 with open(abs_dump, "rb") as fh:
                     rc, err = self._run_subprocess(
-                        cmd, self.options.import_timeout, stdin_file=fh, text_stderr=True
+                        cmd, self.options.import_timeout, stdin_file=fh
                     )
             if rc != 0:
                 raise RuntimeError(f"mysql 导入失败 ({desc}): {err}")
@@ -1004,7 +1007,7 @@ class MigrationValidator:
         source: DatabaseConnector,
         target: DatabaseConnector,
         mode: MigrationMode,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         report = {"table_count_match": False, "tables": [], "passed": False}
         src_tables = source.get_tables()
         tgt_tables = target.get_tables()
@@ -1112,10 +1115,10 @@ class MigrationManager:
         self.dump_manager = MySQLDumpManager(
             self.logger, options, process_registry, keep_dump_files=options.keep_dump_files
         )
-        self.migration_progress: Dict[str, dict] = {}
+        self.migration_progress: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
 
-    def _update_progress(self, task_id: str, updates: dict):
+    def _update_progress(self, task_id: str, updates: Dict[str, Any]):
         with self._lock:
             self.migration_progress.setdefault(task_id, {}).update(updates)
 
@@ -1176,16 +1179,16 @@ class MigrationManager:
                 to_stdout=True,
             )
 
-    def execute_migration(self, task: MigrationTask) -> dict:
+    def execute_migration(self, task: MigrationTask) -> Dict[str, Any]:
         task_id = f"{task.source.database}->{task.target.database}"
         opts = task.options or self.options
-        audit = {
+        audit: Dict[str, Any] = {
             "task_id": task_id,
             "start_time": datetime.now().isoformat(),
             "status": "running",
             "source": {"host": task.source.host, "database": task.source.database},
             "target": {"host": task.target.host, "database": task.target.database},
-            "options": {k: (v.value if isinstance(v, Enum) else v) for k, v in asdict(opts).items()},
+            "options": {k: v.value if isinstance(v, Enum) else v for k, v in asdict(opts).items()},
         }
 
         target_key = (task.target.host, task.target.port)
@@ -1194,7 +1197,9 @@ class MigrationManager:
         with self.host_limiter.acquire(*target_key):
             try:
                 self.logger.log_step(f"开始迁移: {task_id}", to_stdout=True)
-                self._update_progress(task_id, {"status": "running", "start_time": datetime.now()})
+                self._update_progress(
+                    task_id, {"status": "running", "start_time": datetime.now().isoformat()}
+                )
 
                 if not task.dry_run:
                     src_conn = DatabaseConnector(task.source, opts)
@@ -1237,27 +1242,30 @@ class MigrationManager:
                     self._migrate_whole_database(task, task_id)
                     audit["migration_strategy"] = "whole_db"
 
-                validation = None
                 if not task.dry_run:
-                    validation = self.validator.validate(
+                    audit["validation"] = self.validator.validate(
                         DatabaseConnector(task.source, opts),
                         DatabaseConnector(task.target, opts),
                         task.source.mode,
                     )
-                    audit["validation"] = validation
 
                 audit["status"] = "completed"
                 audit["end_time"] = datetime.now().isoformat()
-                self._update_progress(task_id, {"status": "completed", "end_time": datetime.now()})
+                self._update_progress(
+                    task_id,
+                    {"status": "completed", "end_time": datetime.now().isoformat()},
+                )
                 self.logger.log_step(f"迁移完成: {task_id}", to_stdout=True)
                 return audit
 
-            except Exception as exc:
+            except MIGRATION_FAILURE_EXCEPTIONS as exc:
                 audit["status"] = "failed"
                 audit["error"] = str(exc)
                 audit["end_time"] = datetime.now().isoformat()
                 self._update_progress(task_id, {
-                    "status": "failed", "error": str(exc), "end_time": datetime.now(),
+                    "status": "failed",
+                    "error": str(exc),
+                    "end_time": datetime.now().isoformat(),
                 })
                 self.logger.log_error(f"迁移失败 {task_id}: {exc}", to_stdout=True)
 
@@ -1268,7 +1276,7 @@ class MigrationManager:
                         )
                         DatabaseConnector(task.target, opts).drop_database()
                         audit["rollback"] = "dropped_target_database"
-                    except Exception as rb_exc:
+                    except (OSError, pymysql.err.MySQLError) as rb_exc:
                         audit["rollback"] = f"failed: {rb_exc}"
                         self.logger.log_error(f"回滚失败: {rb_exc}", to_stdout=True)
                 raise
@@ -1829,7 +1837,7 @@ def parse_database_config(db_str: str, mode: MigrationMode) -> DatabaseConfig:
         )
     try:
         port = int(parts[1])
-        if not (1 <= port <= 65535):
+        if not 1 <= port <= 65535:
             raise ValueError(f"端口超出范围: {port}")
     except ValueError as e:
         raise ValueError(f"端口必须是整数: {parts[1]}") from e
@@ -1851,7 +1859,7 @@ def _parse_db_dict(data: dict, label: str) -> DatabaseConfig:
         if field_name not in data:
             raise ValueError(f"{label} 缺少字段: {field_name}")
     port = int(data["port"])
-    if not (1 <= port <= 65535):
+    if not 1 <= port <= 65535:
         raise ValueError(f"{label} 端口无效: {port}")
     return DatabaseConfig(
         host=str(data["host"]).strip(),
@@ -2009,7 +2017,7 @@ def main():
                 try:
                     audit = fut.result()
                     audits.append(audit)
-                except Exception as e:
+                except MIGRATION_FAILURE_EXCEPTIONS as e:
                     failed += 1
                     audits.append({
                         "task_id": tid,
