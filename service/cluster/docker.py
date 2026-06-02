@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import tarfile
 import time
 from pathlib import Path
 from typing import Optional, Dict, List
@@ -249,7 +250,9 @@ class DockerManager:
         self.temp_path.mkdir(parents=True, exist_ok=True)
         self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
 
-        run_command(["tar", "xf", str(self.image_dir / f"docker-{version}.tgz"), "-C", str(self.temp_path)])
+        docker_tgz = self.image_dir / f"docker-{version}.tgz"
+        with tarfile.open(docker_tgz, "r:gz") as tf:
+            tf.extractall(path=self.temp_path)
 
         # [bug fixed] 在subprocess.run中直接使用*通配符时，shell不会自动扩展它
         run_command(["bash", "-c", f"cp -f {self.temp_path}/docker/* {self.docker_bin_dir}/"])
