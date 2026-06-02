@@ -1,0 +1,134 @@
+{
+  "_documentation": {
+    "_note": "本段仅作说明，程序运行时忽略。完整手册: python MigrationCli.py --guide",
+    "options": {
+      "dry_run": "预演模式，true=不实际 dump/import",
+      "keep_dump_files": "true=保留 dump 文件；排障时建议 true",
+      "gtid_mode": "auto|off|on|commented — GTID 策略，见 --guide 第五节",
+      "replication_target": "true=目标为 GTID 从库，auto 模式下用 COMMENTED",
+      "ssl_mode": "DISABLED|PREFERRED|REQUIRED — 连接加密",
+      "add_drop_table": "dump 含 DROP TABLE，重复迁移时可开",
+      "force_overwrite": "目标库有表时仍迁移（慎用）",
+      "skip_target_empty_check": "跳过目标非空检查（慎用）",
+      "fix_definer": "true=将 DEFINER 改为 CURRENT_USER，避免导入失败",
+      "compress_dump": "true=gzip 压缩 dump，大库省磁盘",
+      "per_table": "true=分表迁移(大库推荐)；false=整库一次 dump",
+      "max_workers": "多库并行任务数，默认 2",
+      "max_workers_per_target_host": "同一目标主机并发上限，默认 1",
+      "dump_timeout": "mysqldump 超时秒数，默认 86400",
+      "import_timeout": "mysql 导入超时秒数，默认 172800",
+      "exact_row_count": "true=COUNT(*) 精确校验，亿级表很慢",
+      "row_count_threshold": "超过此行数用 information_schema 估算，默认 10000000",
+      "row_count_tolerance_pct": "估算行数允许偏差%，默认 5.0",
+      "rollback_on_failure": "失败时 DROP 目标库",
+      "report_dir": "JSON 审计报告目录",
+      "net_read_timeout": "客户端读超时秒",
+      "net_write_timeout": "客户端写超时秒",
+      "disk_space_margin": "磁盘预留倍数，默认 1.3",
+      "skip_version_check": "跳过版本兼容性提示",
+      "complete_insert": "dump 完整 INSERT 列名，一般 false"
+    },
+    "source_target_fields": {
+      "host": "MySQL 主机名或 IP",
+      "port": "端口 1-65535",
+      "user": "迁移账号",
+      "password": "密码，推荐 ${MYSQL_SOURCE_PASSWORD} 环境变量",
+      "database": "库名",
+      "mode": "structure_only | structure_and_data"
+    },
+    "scenarios": {
+      "普通迁库_5.7到8.4": "gtid_mode=auto, replication_target=false, per_table=true",
+      "GTID搭从库": "replication_target=true, gtid_mode=auto",
+      "50GB大库": "per_table=true, compress_dump=true, dump/import 超时调大",
+      "仅结构": "source.mode=structure_only"
+    }
+  },
+  "options": {
+    "gtid_mode": "auto",
+    "replication_target": false,
+    "ssl_mode": "PREFERRED",
+    "compress_dump": true,
+    "per_table": true,
+    "fix_definer": true,
+    "max_workers": 2,
+    "max_workers_per_target_host": 1,
+    "dump_timeout": 86400,
+    "import_timeout": 172800,
+    "exact_row_count": false,
+    "row_count_threshold": 10000000,
+    "row_count_tolerance_pct": 5.0,
+    "rollback_on_failure": false,
+    "report_dir": "./logs",
+    "net_read_timeout": 3600,
+    "net_write_timeout": 3600,
+    "disk_space_margin": 1.3
+  },
+  "migrations": [
+    {
+      "_comment": "示例1: MySQL 5.7 -> 8.4 普通业务库迁移",
+      "source": {
+        "host": "mysql57-source.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "business_db",
+        "mode": "structure_and_data"
+      },
+      "target": {
+        "host": "mysql84-target.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "business_db",
+        "mode": "structure_and_data"
+      },
+      "options": {
+        "force_overwrite": false,
+        "rollback_on_failure": true
+      }
+    },
+    {
+      "_comment": "示例2: GTID 复制 — 从 5.7 主库搭 8.4 从库",
+      "source": {
+        "host": "mysql57-master.example.com",
+        "port": 3306,
+        "user": "repl_migration",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "orders_db",
+        "mode": "structure_and_data"
+      },
+      "target": {
+        "host": "mysql84-replica.example.com",
+        "port": 3306,
+        "user": "repl_migration",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "orders_db",
+        "mode": "structure_and_data"
+      },
+      "options": {
+        "replication_target": true,
+        "gtid_mode": "auto",
+        "rollback_on_failure": true
+      }
+    },
+    {
+      "_comment": "示例3: 仅迁移表结构（预建库）",
+      "source": {
+        "host": "mysql80-source.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "analytics_db",
+        "mode": "structure_only"
+      },
+      "target": {
+        "host": "mysql84-target.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "analytics_db",
+        "mode": "structure_only"
+      }
+    }
+  ]
+}
