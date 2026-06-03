@@ -2123,7 +2123,7 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 ```
 
-- **对象存储**：`minio.enabled: false`；联调使用已有 MinIO（`http://minio.minio.svc.cluster.local:9000`）。桶保持 **Private**（默认即可，不要设 Public）；为 Loki 单独建 **MinIO 用户**并绑定 **IAM 策略**（只允许访问三个桶），用该用户的 **Access Key / Secret Key** 写入 Loki values 或 Secret（见 **T9.3.5.1 步骤 1～2**）
+- **对象存储**：`minio.enabled: false`；联调使用已有 MinIO（`http://minio.minio.svc.cluster.local:9000`，部署见 **T4.12.6.2**）。在 MinIO Console 建三个桶、IAM 策略和 Loki 专用用户，AK/SK 写入 Secret（见 **T9.3.5.1 步骤 1～4**）
 - **StorageClass**：`kubectl get sc` 确认名称；`singleBinary.persistence.storageClass` 填真实值（联调示例 **`local-path`**）
 - **镜像**：节点可拉取 Chart 所需镜像；内网集群在 values 中配置 **`gateway.image`** 指向内网仓库（见 **T9.3.5.1**）
 - **values 固定项**（与 **T9.3.5.1** 一致）：`deploymentMode: SingleBinary`；`chunksCache.enabled: false`；`resultsCache.enabled: false`；`minio.enabled: false`；Alloy 推送 `http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push`
@@ -2136,17 +2136,50 @@ helm repo update
 
 #### T9.3.5.1、联调（外置 MinIO）
 
-**步骤 1**：MinIO 建桶与用户（桶名与 values 一致）
+联调对接 **`minio` 命名空间**里已有的 MinIO（与 prometheus **T4.12.6.2** 一致：镜像 `minio/minio:RELEASE.2025-04-22T22-12-26Z`。本节**全部在 Console 界面完成**；官方说明见 [Managing Objects](https://min.io/docs/minio/linux/administration/console/managing-objects.html)、[Security and Access](https://min.io/docs/minio/linux/administration/console/security-and-access.html)。
 
-1. 在 MinIO Console（或 `mc`）创建三个桶：**`loki-chunks`**、**`loki-ruler`**、**`loki-admin`**。  
-   
-   **访问策略选 Private**（默认就是 Private）。**不要**选 Public，Public 表示匿名可读，日志桶不能这样开，有安全问题。
+Loki 只走 S3 API，**不要把 root 账号**写进 values；给 Loki 单独建用户并绑定只允许三个桶的策略即可。
 
-   **Custom** 一般也不用：MinIO 用 **IAM 策略挂在用户上** 控制 AK/SK 能访问哪些桶，不是靠桶的 Public/Custom。
-   
-2. 新建专用用户（例如 **`loki`**），不要长期用 root 账号给 Loki。
+```mermaid
+flowchart TB
+  A[确认 MinIO Pod Running] --> B[port-forward 9001 登录 Console]
+  B --> C[Administrator → Buckets 建三个桶]
+  C --> D[Administrator → Policies 建 loki-s3-policy]
+  D --> E[Administrator → Identity → Users 建 loki 用户]
+  E --> F[Secret 写入 User Name / Password]
+  F --> G[helm install Loki]
+  G --> H[Object Browser 核对 loki-chunks 有对象]
+```
 
-3. 为该用户绑定策略，至少允许对三个桶的读写。Console：**Identity → Users → loki → Policies**；或 **Identity → Policies → Create**，再赋给用户。策略示例（按 [MinIO IAM](https://docs.min.io/aistor/administration/iam/access/) 语法）：
+**步骤 0**：确认 MinIO 就绪并打开 Console
+
+```bash
+kubectl get pods,svc -n minio
+kubectl port-forward svc/minio 9001:9001 -n minio
+```
+
+浏览器打开 `http://192.168.47.140:30600`，用 **T4.12.6.2** 的 root 账号登录（`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`；生产务必改 Secret）。
+
+登录后左侧菜单分两组：**User**（Object Browser、Access Keys 等）和 **Administrator**（Buckets、Policies、Identity 等）。下文凡写 `Administrator → …` 均指点左侧 **Administrator** 分组下的菜单项。
+
+集群内 S3 地址固定为 **`http://minio.minio.svc.cluster.local:9000`**（与 **T9.3.4**、values 里 `endpoint` 一致）。
+
+**步骤 1**：建三个桶（桶名必须与 values 一致）
+
+1. 左侧 **Administrator** → **Buckets**。
+2. 点 **Create Bucket**。
+3. **Bucket Name** 填 **`loki-chunks`**，其余开关（Versioning、Object Locking、Quota 等）**全部保持关闭**——**T4.12.6.2** 是单盘联调，这些高级选项本身不可用，Loki 也不需要开。
+4. 点 **Create Bucket** 保存。
+5. 同样方式再建 **`loki-ruler`**、**`loki-admin`**。
+
+建完后 **Buckets** 列表应能看到三个桶。MinIO 新建桶默认私有，**不要**给日志桶设匿名 Public 读；Loki 能否读写三个桶，靠下一步的 **IAM 策略**，不靠桶上的 Public/Custom。
+
+**步骤 2**：建 Loki 专用 IAM 策略
+
+1. 左侧 **Administrator** → **Policies**。
+2. 点 **Create Policy**。
+3. **Policy Name** 填 **`loki-s3-policy`**。
+4. **Write Policy** 编辑器粘贴以下 JSON（语法同 AWS IAM，见 [Policy Based Access Control](https://min.io/docs/minio/linux/administration/identity-access-management/policy-based-access-control.html)）：
 
 ```json
 {
@@ -2174,31 +2207,31 @@ helm repo update
 }
 ```
 
-4. 在该用户下 **Create access key**，得到 **Access Key** 与 **Secret Key**，这就是 Loki `accessKeyId` / `secretAccessKey` 的来源。AK/SK 能否访问桶，取决于用户是否挂了上述策略，与桶是否 Public 无关。
+5. 点 **Save** 保存。
 
-用 `mc` 时可参考（`MINIO_ALIAS` 换成你的 alias）：
+**步骤 3**：建 Loki 专用用户并绑定策略
 
-```bash
-mc mb MINIO_ALIAS/loki-chunks
-mc mb MINIO_ALIAS/loki-ruler
-mc mb MINIO_ALIAS/loki-admin
-mc admin policy create MINIO_ALIAS loki-s3-policy loki-policy.json
-mc admin user add MINIO_ALIAS loki '强密码'
-mc admin policy attach MINIO_ALIAS loki-s3-policy --user loki
-mc admin user svcacct add MINIO_ALIAS loki --access-key 'LOKI_AK' --secret-key 'LOKI_SK'
-```
+1. 左侧 **Administrator** → **Identity** → **Users**。
+2. 点 **Create User**。
+3. 填写：
+   - **User Name**：建议填 **`loki`**（即 S3 的 Access Key，Loki values 里 `accessKeyId` 用同一个字符串）。
+   - **Password**：自行设足够长的随机串（至少 8 位，即 S3 的 Secret Key，Loki values 里 `secretAccessKey` 用同一个字符串）。
+4. 下方 **Policies** 列表勾选 **`loki-s3-policy`**（创建用户时即可挂策略；若漏选，保存后到该用户详情页 **Policies** 标签点 **Assign Policies** 补上）。
+5. 点 **Save** 创建用户。
 
-**步骤 2**：把 AK/SK 写入 Kubernetes Secret（联调也可暂时写在 values 里，勿提交 Git）：
+**说明**：Console 里 **User Name / Password** 就是 Loki 连接 MinIO 所需的 AK/SK，**不要**把 root 给 Loki。若希望应用凭据与用户登录分离，可在用户详情页 **Service Accounts** 标签点 **Create Access Key** 单独生成一对 AK/SK 给 Loki 用（Access Key 不能登录 Console，更适合只跑程序）。
+
+**步骤 4**：把 AK/SK 写入 Kubernetes Secret（联调也可暂时写在 values 里，勿提交 Git）：
 
 ```bash
 kubectl create secret generic loki-minio-s3 -n logging \
-  --from-literal=AWS_ACCESS_KEY_ID='步骤1得到的AccessKey' \
-  --from-literal=AWS_SECRET_ACCESS_KEY='步骤1得到的SecretKey'
+  --from-literal=AWS_ACCESS_KEY_ID='loki' \
+  --from-literal=AWS_SECRET_ACCESS_KEY='步骤3设置的Password'
 ```
 
-`loki.storage.s3` 里填的 **`accessKeyId` / `secretAccessKey`** 必须与上一步 **loki 用户** 的 AK/SK 一致；values 中 `insecure: true` 仅表示联调走 HTTP，与桶 Public/Private 无关。
+若步骤 3 用的是 **Create Access Key** 生成的凭据，这里改成对应的 Access Key / Secret Key。`loki.storage.s3` 里的 AK/SK 必须与上一步一致；`insecure: true` 表示联调走 HTTP。
 
-**步骤 3**：保存 `loki-values-dev.yaml`（**`YOUR_STORAGECLASS`** 换成 `kubectl get sc` 结果；若用 Secret，按下面注释改用 `existingSecret` 或保持 s3 段明文仅本地调试）：
+**步骤 5**：保存 `loki-values-dev.yaml`（**`YOUR_STORAGECLASS`** 换成 `kubectl get sc` 结果；**`YOUR_MINIO_*`** 换成步骤 3 的 User Name / Password，或 Access Key / Secret Key）：
 
 ```yaml
 # loki-values-dev.yaml — 与 T9.3.4 一致；勿留占位符直接 helm install
@@ -2296,14 +2329,27 @@ bloomGateway:
   replicas: 0
 ```
 
-**步骤 4**：安装并核对：
+**步骤 6**：安装并核对
 
 ```bash
 helm upgrade --install loki grafana-community/loki -n logging -f loki-values-dev.yaml --version 16.0.0
 kubectl get pods,pvc,svc -n logging
 ```
 
-**核对**：`loki-0`、`loki-gateway` 为 **Running**；**无** `loki-minio` Pod；**无** `loki-chunks-cache` Pod；`loki-0` 对应 PVC 为 **Bound**。通过后执行 **T9.4**。
+**Loki 侧核对**（与 **T9.3.9** 一致）：
+
+- `loki-0`、`loki-gateway` 为 **Running**
+- **无** `loki-minio` Pod；**无** `loki-chunks-cache` Pod
+- `loki-0` 对应 PVC 为 **Bound**
+- `kubectl logs loki-0 -n logging` 无持续 S3 / access denied 报错
+
+**MinIO 侧核对**（Loki 跑起来几分钟后）：
+
+1. Console 左侧 **User** → **Object Browser**。
+2. 点 **`loki-chunks`**，应能看到 Loki 写入的对象（有前缀目录或 chunk 文件）。
+3. 可选：用 **`loki`** 用户登录 Console，应只能看到上述三个桶，看不到 Administrator 菜单（验证策略生效）。
+
+以上全部通过后执行 **T9.4**。
 
 ---
 
@@ -2473,7 +2519,7 @@ Traefik 访问日志走 **stdout**，由 **Alloy** 按 Pod 标签采集。
 
 - `kubectl get pods,pvc -n logging`：`loki-0`、`loki-gateway` **Running**；`loki-0` PVC **Bound**。
 - 无 **`loki-minio`**、**`loki-chunks-cache`** Pod（与 **T9.3.5.1** values 一致）。
-- 对象存储桶 **`loki-chunks`** 等有写入（按 MinIO / S3 控制台或 API 抽查）。
+- 对象存储桶 **`loki-chunks`** 等有写入（Console **Object Browser** 抽查，见 **T9.3.5.1 步骤 6**）。
 
 **3）Alloy 采集**
 
