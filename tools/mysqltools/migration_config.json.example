@@ -1,6 +1,20 @@
 {
   "_documentation": {
     "_note": "本段仅作说明，程序运行时忽略。完整手册: python MigrationCli.py --guide",
+    "migration_path": {
+      "_required": "必填。格式: 源版本线->目标版本线",
+      "supported": [
+        "8.0->8.0", "8.0->8.4", "8.0->9.x",
+        "8.4->8.0", "8.4->8.4", "8.4->9.x",
+        "9.x->8.0", "9.x->8.4", "9.x->9.x"
+      ],
+      "version_lines": {
+        "8.0": "MySQL 8.0.x (minor=0)",
+        "8.4": "MySQL 8.1~8.4.x (minor>=1)",
+        "9.x": "MySQL 9.x Innovation 系列"
+      },
+      "priority": "任务级 migration_path > CLI --migration-path > 根级 migration_path"
+    },
     "options": {
       "dry_run": "预演: 连库预检+打印命令，不 dump/import；未知 options 键将拒绝启动",
       "keep_dump_files": "true=保留 dump 文件；排障时建议 true",
@@ -25,7 +39,7 @@
       "net_read_timeout": "客户端读超时秒",
       "net_write_timeout": "客户端写超时秒",
       "disk_space_margin": "磁盘预留倍数，默认 1.3",
-      "skip_version_check": "跳过版本兼容性提示",
+      "skip_version_check": "跳过客户端版本提示",
       "complete_insert": "dump 完整 INSERT 列名，一般 false"
     },
     "source_target_fields": {
@@ -37,12 +51,15 @@
       "mode": "structure_only | structure_and_data（仅此二值，拼写错误将拒绝启动）"
     },
     "scenarios": {
-      "普通迁库_5.7到8.4": "gtid_mode=auto, replication_target=false, per_table=true",
-      "GTID搭从库": "replication_target=true, gtid_mode=auto",
+      "8.0到8.4普通迁库": "migration_path=8.0->8.4, gtid_mode=auto, per_table=true",
+      "8.0到9.x升级": "migration_path=8.0->9.x, 先 dry-run",
+      "9.x到8.0降级": "migration_path=9.x->8.0, 先 structure_only + dry-run",
+      "GTID搭从库": "migration_path=8.0->8.4, replication_target=true, gtid_mode=auto",
       "50GB大库": "per_table=true, compress_dump=true, dump/import 超时调大",
       "仅结构": "source.mode=structure_only"
     }
   },
+  "migration_path": "8.0->8.4",
   "options": {
     "gtid_mode": "auto",
     "replication_target": false,
@@ -65,9 +82,10 @@
   },
   "migrations": [
     {
-      "_comment": "示例1: MySQL 5.7 -> 8.4 普通业务库迁移",
+      "_comment": "示例1: MySQL 8.0 -> 8.4 普通业务库迁移",
+      "migration_path": "8.0->8.4",
       "source": {
-        "host": "mysql57-source.example.com",
+        "host": "mysql80-source.example.com",
         "port": 3306,
         "user": "migration_user",
         "password": "${MYSQL_SOURCE_PASSWORD}",
@@ -88,9 +106,10 @@
       }
     },
     {
-      "_comment": "示例2: GTID 复制 — 从 5.7 主库搭 8.4 从库",
+      "_comment": "示例2: GTID 复制 — 从 8.0 主库搭 8.4 从库",
+      "migration_path": "8.0->8.4",
       "source": {
-        "host": "mysql57-master.example.com",
+        "host": "mysql80-master.example.com",
         "port": 3306,
         "user": "repl_migration",
         "password": "${MYSQL_SOURCE_PASSWORD}",
@@ -112,13 +131,34 @@
       }
     },
     {
-      "_comment": "示例3: 仅迁移表结构（预建库）",
+      "_comment": "示例3: 8.0 -> 9.x 升级迁移",
+      "migration_path": "8.0->9.x",
       "source": {
         "host": "mysql80-source.example.com",
         "port": 3306,
         "user": "migration_user",
         "password": "${MYSQL_SOURCE_PASSWORD}",
         "database": "analytics_db",
+        "mode": "structure_and_data"
+      },
+      "target": {
+        "host": "mysql94-target.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "analytics_db",
+        "mode": "structure_and_data"
+      }
+    },
+    {
+      "_comment": "示例4: 仅迁移表结构（预建库）",
+      "migration_path": "8.0->8.4",
+      "source": {
+        "host": "mysql80-source.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "staging_db",
         "mode": "structure_only"
       },
       "target": {
@@ -126,7 +166,7 @@
         "port": 3306,
         "user": "migration_user",
         "password": "${MYSQL_TARGET_PASSWORD}",
-        "database": "analytics_db",
+        "database": "staging_db",
         "mode": "structure_only"
       }
     }
