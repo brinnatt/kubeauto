@@ -459,18 +459,18 @@ def write_yaml_safely(data: Dict, filepath: str, dry_run: bool = False) -> None:
     Args:
         data: 要写入的字典数据
         filepath: 文件路径
-        dry_run: 是否为模拟运行
+        dry_run: 是否为模拟运行（为 True 时不创建目录、不写文件，仅打日志）
         
     Raises:
         IOError: 文件写入失败
         yaml.YAMLError: YAML 序列化失败
     """
     try:
-        dirpath = os.path.dirname(filepath) or "."
-        ensure_directory(dirpath)
         if dry_run:
             logger.info(f"[模拟运行] 将写入 YAML 文件 {filepath}")
             return
+        dirpath = os.path.dirname(filepath) or "."
+        ensure_directory(dirpath)
 
         safe_data = _encode_bytes_in_obj(data)
 
@@ -2322,7 +2322,10 @@ class KubernetesBackupManager:
                     f"已启用 --include-names（metadata.name 精确匹配，共 "
                     f"{len(self.config.include_names)} 个）: {names_preview}"
                 )
-            ensure_directory(output_dir)
+            if not self.config.dry_run:
+                ensure_directory(output_dir)
+            else:
+                logger.info("[模拟运行] 不创建备份目录、不写 YAML / 元数据 / tar")
 
             # 保存备份元数据
             metadata = {
@@ -3023,7 +3026,7 @@ class KubernetesRestoreManager:
 
             if self.config.dry_run:
                 logger.info(
-                    f"[Dry-run] 将恢复 {kind}/{name}{doc_tag} (ns={namespace})"
+                    f"[模拟运行] 将恢复 {kind}/{name}{doc_tag} (ns={namespace})"
                 )
                 self.restore_stats['successful_restores'] += 1
                 return
@@ -3098,9 +3101,10 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
   --debug             更详细的日志
   --dry-run           演练模式
                         · restore：不执行 server-side apply，仅打日志
-                        · backup：仍会调用 API 列举资源，但不写入 YAML、不写 backup-metadata.json、
-                          不生成 tar、不做备份后校验（不落盘）
-                        例：backup --dry-run 结束时输出目录无新增 .yaml；restore --dry-run 仅打印将 apply 的对象名，集群内对象数不变。
+                        · backup：仍会调用 API 列举资源；不创建备份子目录、不写 YAML、不写 backup-metadata.json、
+                          不生成 tar、不做备份后校验（全程不落盘）
+                        · restore：不执行 server-side apply，仅打日志，集群内对象不变
+                        例：backup --dry-run 结束后不应出现新的 backup-* 空目录；restore --dry-run 仅见 [模拟运行] 恢复日志。
 
 【backup 独有 — 全部开关】
   范围（二选一，必填其一）
@@ -3405,12 +3409,13 @@ B4. 标签过滤 + 字段过滤 + 指定 kubeconfig / 上下文 + 调试日志
         --debug \\
         --output-dir /opt/k8s-backup
 
-B5. 备份演练（仍访问集群 API；不落盘 YAML / 元数据 / tar）
+B5. 备份演练（仍访问集群 API；不建 backup-* 目录、不写 YAML / 元数据 / tar）
    python KubeBackupCli.py backup \\
         --namespace default \\
         --dry-run \\
         --debug \\
         --output-dir /opt/k8s-backup
+   说明：与正式 backup 共用列举逻辑；结束后 /opt/k8s-backup 下不应新增 backup-时间戳 空目录（历史遗留空目录需手工清理）。
 
 B6. 同一命名空间内只备份某业务线（标签 AND）
    python KubeBackupCli.py backup \\
@@ -3729,6 +3734,17 @@ def create_argument_parser() -> argparse.ArgumentParser:
     restore_parser = subparsers.add_parser('restore', help='从备份恢复 Kubernetes 资源')
     _add_restore_arguments(restore_parser)
 
+    backup_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='演练：仍列举集群资源，但不创建备份子目录、不写 YAML/元数据/tar',
+    )
+    restore_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='演练：不执行 server-side apply，仅打 [模拟运行] 日志',
+    )
+
     # Common arguments
     for subparser in [backup_parser, restore_parser]:
         subparser.add_argument(
@@ -3743,11 +3759,6 @@ def create_argument_parser() -> argparse.ArgumentParser:
             '--debug',
             action='store_true',
             help='启用调试日志'
-        )
-        subparser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='模拟执行，不实际修改资源'
         )
 
     return parser
