@@ -8,15 +8,15 @@ MySQL 生产级数据迁移工具 - 基于官方 mysqldump/mysql (MySQL 8.0+)
   python MigrationCli.py -c config.json --dry-run   # 预演
 
 适用场景:
-  - MySQL 8.0 / 8.4 / 9.x 跨版本逻辑迁移（须手动指定 migration_path）
+  - MySQL 8.0 / 8.1~8.4 / 9.0~9.x 全系列自动版本识别与兼容策略
   - GTID 复制环境 (auto/off/on/commented)
   - 大库 (>50GB) 分表迁移、压缩 dump、分表串行可观测进度
   - 亿级行表迁移后校验
 
 官方依据:
+  - https://dev.mysql.com/doc/refman/8.4/en/mysql-releases.html  (LTS/Innovation 模型)
+  - https://dev.mysql.com/doc/refman/8.4/en/upgrade-paths.html   (升级路径表)
   - https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html
-  - https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html
-  - https://dev.mysql.com/doc/refman/9.4/en/mysqldump.html
   - https://dev.mysql.com/doc/refman/9.4/en/mysqldump-upgrade-testing.html
 """
 
@@ -36,14 +36,13 @@ import tempfile
 import threading
 import time
 import uuid
-from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum
 from logging.handlers import RotatingFileHandler
-from typing import Any, BinaryIO, ClassVar, Dict, List, Optional, Tuple, Type, cast
+from typing import Any, Dict, IO, List, Optional, Tuple
 
 import pymysql
 from pymysql.constants import CLIENT
@@ -72,16 +71,9 @@ DEFINER_PATTERN = re.compile(
 )
 IDENTIFIER_PATTERN = re.compile(r"^[a-zA-Z_$][a-zA-Z0-9_$]*$")
 VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
-ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)}")
 
-TOOL_VERSION = "2.0.0"
-
-# 支持的迁移路径: 源版本线 -> 目标版本线 (须手动指定)
-VALID_MIGRATION_PATHS = frozenset({
-    "8.0->8.0", "8.0->8.4", "8.0->9.x",
-    "8.4->8.0", "8.4->8.4", "8.4->9.x",
-    "9.x->8.0", "9.x->8.4", "9.x->9.x",
-})
+TOOL_VERSION = "2.1.0"
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXIT_CONFIG = 2
@@ -90,6 +82,9 @@ EXIT_INTERRUPT = 130
 MAX_WORKERS_RECOMMENDED = 8
 VALID_MIGRATION_MODES = frozenset({"structure_only", "structure_and_data"})
 TASK_META_KEYS = frozenset({"_comment", "_documentation"})
+TASK_OPTIONAL_KEYS = frozenset({
+    "expected_source_version", "expected_target_version",
+})
 
 KNOWN_OPTION_KEYS = frozenset({
     "dry_run", "keep_dump_files", "gtid_mode", "replication_target", "ssl_mode",
@@ -167,8 +162,9 @@ class MigrationOptions:
 class MigrationTask:
     source: DatabaseConfig
     target: DatabaseConfig
-    migration_path: str
     options: MigrationOptions = field(default_factory=MigrationOptions)
+    expected_source_version: Optional[str] = None
+    expected_target_version: Optional[str] = None
 
 
 @dataclass
@@ -189,11 +185,64 @@ class TableInfo:
 
 
 # ---------------------------------------------------------------------------
-# 迁移路径 (MySQL 8.0+ 专用 — 必须手动指定 migration_path)
+# MySQL 版本识别与兼容策略引擎 (官方 LTS / Innovation 模型)
 # ---------------------------------------------------------------------------
+class ReleaseTrack(Enum):
+    LTS = "lts"
+    INNOVATION = "innovation"
+
+
+class MigrationDirection(Enum):
+    SAME = "same"
+    UPGRADE = "upgrade"
+    DOWNGRADE = "downgrade"
+
+
+class MigrationCategory(Enum):
+    """对应官方 Upgrade Paths 表的逻辑迁移分类。"""
+    WITHIN_SERIES = "within_series"
+    LTS_TO_LTS = "lts_to_lts"
+    TO_INNOVATION = "to_innovation"
+    INNOVATION_TO_LTS = "innovation_to_lts"
+    WITHIN_INNOVATION_8 = "within_innovation_8"
+    WITHIN_INNOVATION_9 = "within_innovation_9"
+    DOWNGRADE = "downgrade"
+    UNKNOWN_FUTURE = "unknown_future"
+
+
+# 官方已发布/文档化的 8.x 系列元数据 (major, minor) -> (track, label, eol)
+MYSQL_8_SERIES_META: Dict[Tuple[int, int], Tuple[ReleaseTrack, str, bool]] = {
+    (8, 0): (ReleaseTrack.LTS, "8.0 LTS (Bugfix)", False),
+    (8, 1): (ReleaseTrack.INNOVATION, "8.1 Innovation", True),
+    (8, 2): (ReleaseTrack.INNOVATION, "8.2 Innovation", True),
+    (8, 3): (ReleaseTrack.INNOVATION, "8.3 Innovation", True),
+    (8, 4): (ReleaseTrack.LTS, "8.4 LTS", False),
+}
+
+MIN_MYSQL_MAJOR = 8
+
+
+@dataclass(frozen=True)
+class MySQLReleaseInfo:
+    version_string: str
+    version_tuple: Tuple[int, int, int]
+    major: int
+    minor: int
+    patch: int
+    series_id: str
+    track: ReleaseTrack
+    series_label: str
+    is_eol: bool
+    is_known_series: bool
+
+    @property
+    def short_label(self) -> str:
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+
 @dataclass
 class DumpContext:
-    """由迁移路径处理器生成，注入 mysqldump/mysql 命令构建。"""
+    """兼容策略生成的 mysqldump/mysql 参数与预检提示。"""
     column_statistics: Optional[bool] = None
     extra_mysqldump_args: List[str] = field(default_factory=list)
     extra_mysql_args: List[str] = field(default_factory=list)
@@ -201,231 +250,334 @@ class DumpContext:
     require_fix_definer: bool = False
 
 
-def parse_migration_path(path: str, label: str = "migration_path") -> str:
-    key = str(path or "").strip()
-    if not key:
-        raise ValueError(f"{label} 不能为空，须手动指定，如 8.0->8.4")
-    if key not in VALID_MIGRATION_PATHS:
-        raise ValueError(
-            f"{label} 无效: '{path}'，仅支持: "
-            + ", ".join(sorted(VALID_MIGRATION_PATHS))
-        )
-    return key
+@dataclass
+class MigrationCompatibilityProfile:
+    source: MySQLReleaseInfo
+    target: MySQLReleaseInfo
+    direction: MigrationDirection
+    category: MigrationCategory
+    migration_label: str
+    official_notes: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    dump_context: DumpContext = field(default_factory=DumpContext)
+    logical_migration_supported: bool = True
+    in_place_officially_supported: Optional[bool] = None
+
+    def to_audit_dict(self) -> Dict[str, Any]:
+        return {
+            "migration_label": self.migration_label,
+            "direction": self.direction.value,
+            "category": self.category.value,
+            "source_series": self.source.series_label,
+            "target_series": self.target.series_label,
+            "official_notes": self.official_notes,
+            "warnings": self.warnings,
+            "logical_migration_supported": self.logical_migration_supported,
+            "in_place_officially_supported": self.in_place_officially_supported,
+        }
 
 
-def server_version_to_line(version_tuple: Tuple[int, int, int]) -> str:
-    """将服务器版本映射到版本线: 8.0 / 8.4 / 9.x"""
-    major, minor, _patch = version_tuple
-    if major == 9:
-        return "9.x"
-    if major == 8:
-        if minor == 0:
-            return "8.0"
-        if minor >= 1:
-            return "8.4"
-    raise ValueError(
-        f"MySQL {major}.{minor} 不在支持范围，本工具仅支持 8.0 / 8.4 / 9.x"
-    )
+def format_version_tuple(version_tuple: Tuple[int, int, int]) -> str:
+    return f"{version_tuple[0]}.{version_tuple[1]}.{version_tuple[2]}"
 
 
 def assert_mysql8_plus(version_tuple: Tuple[int, int, int], label: str):
-    major = version_tuple[0]
-    if major < 8:
+    if version_tuple[0] < MIN_MYSQL_MAJOR:
         raise RuntimeError(
-            f"{label} 版本 {major}.x 不受支持，本工具仅支持 MySQL 8.0+"
+            f"{label} 版本 {format_version_tuple(version_tuple)} 不受支持，"
+            f"本工具仅支持 MySQL {MIN_MYSQL_MAJOR}.0+"
         )
 
 
-class MigrationPathHandler(ABC):
-    """单一迁移路径的专用处理器 — 单一职责。"""
+def classify_release(version_string: str, version_tuple: Tuple[int, int, int]) -> MySQLReleaseInfo:
+    assert_mysql8_plus(version_tuple, "服务器")
+    major, minor, patch = version_tuple
 
-    path_id: ClassVar[str]
-    source_line: ClassVar[str]
-    target_line: ClassVar[str]
-
-    @classmethod
-    def validate_server_versions(cls, source: "ServerInfo", target: "ServerInfo"):
-        assert_mysql8_plus(source.version_tuple, "源库")
-        assert_mysql8_plus(target.version_tuple, "目标库")
-        src_line = server_version_to_line(source.version_tuple)
-        tgt_line = server_version_to_line(target.version_tuple)
-        if src_line != cls.source_line:
-            raise RuntimeError(
-                f"迁移路径 {cls.path_id} 要求源库为 {cls.source_line} 系列，"
-                f"实际源库 {source.version} (识别为 {src_line})"
+    if major == 8:
+        meta = MYSQL_8_SERIES_META.get((major, minor))
+        if meta:
+            track, label, eol = meta
+            return MySQLReleaseInfo(
+                version_string=version_string,
+                version_tuple=version_tuple,
+                major=major, minor=minor, patch=patch,
+                series_id=f"{major}.{minor}",
+                track=track, series_label=label, is_eol=eol, is_known_series=True,
             )
-        if tgt_line != cls.target_line:
-            raise RuntimeError(
-                f"迁移路径 {cls.path_id} 要求目标库为 {cls.target_line} 系列，"
-                f"实际目标库 {target.version} (识别为 {tgt_line})"
+        if minor > 4:
+            return MySQLReleaseInfo(
+                version_string=version_string,
+                version_tuple=version_tuple,
+                major=major, minor=minor, patch=patch,
+                series_id=f"{major}.{minor}",
+                track=ReleaseTrack.INNOVATION,
+                series_label=f"8.{minor} (未在元数据登记的新系列)",
+                is_eol=False, is_known_series=False,
             )
-
-    @abstractmethod
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        ...
-
-
-class _SameLinePathHandler(MigrationPathHandler):
-    """同版本线迁移 — 标准逻辑导出/导入。"""
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        return DumpContext(
-            preflight_messages=[
-                f"迁移路径 {self.path_id}: 同版本线逻辑迁移，"
-                "官方建议 mysqldump 客户端版本尽量接近源库",
-            ],
+        raise RuntimeError(
+            f"无法识别的 MySQL 8.x 次版本 {major}.{minor}，"
+            "请确认服务器 VERSION() 输出正确"
         )
 
-
-class _UpgradePathHandler(MigrationPathHandler):
-    """低版本线 -> 高版本线 — 升级迁移。"""
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        return DumpContext(
-            preflight_messages=[
-                f"迁移路径 {self.path_id}: 升级迁移，"
-                "逻辑备份通常兼容；建议先 --dry-run 验证",
-            ],
+    if major >= 9:
+        return MySQLReleaseInfo(
+            version_string=version_string,
+            version_tuple=version_tuple,
+            major=major, minor=minor, patch=patch,
+            series_id=f"{major}.{minor}",
+            track=ReleaseTrack.INNOVATION,
+            series_label=f"{major}.{minor} Innovation",
+            is_eol=False, is_known_series=True,
         )
 
-
-class _DowngradePathHandler(MigrationPathHandler):
-    """高版本线 -> 低版本线 — 降级迁移（MySQL 不支持原地降级）。"""
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        return DumpContext(
-            column_statistics=False,
-            require_fix_definer=True,
-            preflight_messages=[
-                f"迁移路径 {self.path_id}: 降级迁移 — MySQL 官方不支持原地降级，"
-                "仅能通过逻辑导出/导入；请先 structure_only + dry-run 验证结构",
-                "参考: dev.mysql.com/doc/refman/9.4/en/mysqldump-upgrade-testing.html",
-            ],
-        )
-
-
-class Path_8_0_to_8_0(_SameLinePathHandler):
-    path_id = "8.0->8.0"
-    source_line = "8.0"
-    target_line = "8.0"
-
-
-class Path_8_0_to_8_4(_UpgradePathHandler):
-    path_id = "8.0->8.4"
-    source_line = "8.0"
-    target_line = "8.4"
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        ctx = super().build_dump_context(options)
-        ctx.preflight_messages.append(
-            "8.0->8.4: 目标为 8.4 LTS，导入后请检查 sql_mode、"
-            "authentication_policy 等 8.4 新默认值"
-        )
-        return ctx
-
-
-class Path_8_0_to_9_x(_UpgradePathHandler):
-    path_id = "8.0->9.x"
-    source_line = "8.0"
-    target_line = "9.x"
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        ctx = super().build_dump_context(options)
-        ctx.preflight_messages.append(
-            "8.0->9.x: MySQL 9.x 变更认证插件策略，"
-            "导入后请验证账号认证方式与 replication 兼容性"
-        )
-        return ctx
-
-
-class Path_8_4_to_8_0(_DowngradePathHandler):
-    path_id = "8.4->8.0"
-    source_line = "8.4"
-    target_line = "8.0"
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        ctx = super().build_dump_context(options)
-        ctx.preflight_messages.append(
-            "8.4->8.0: 请确认未使用 8.4 专有特性"
-            "（如部分 replication 参数、新数据类型）"
-        )
-        return ctx
-
-
-class Path_8_4_to_8_4(_SameLinePathHandler):
-    path_id = "8.4->8.4"
-    source_line = "8.4"
-    target_line = "8.4"
-
-
-class Path_8_4_to_9_x(_UpgradePathHandler):
-    path_id = "8.4->9.x"
-    source_line = "8.4"
-    target_line = "9.x"
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        ctx = super().build_dump_context(options)
-        ctx.preflight_messages.append(
-            "8.4->9.x: 自 LTS 升级至 Innovation 系列，"
-            "建议在低峰期执行并保留 keep_dump_files 便于回滚"
-        )
-        return ctx
-
-
-class Path_9_x_to_8_0(_DowngradePathHandler):
-    path_id = "9.x->8.0"
-    source_line = "9.x"
-    target_line = "8.0"
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        ctx = super().build_dump_context(options)
-        ctx.preflight_messages.extend([
-            "9.x->8.0: 高风险降级路径，务必先 structure_only 验证",
-            "请排查 9.x 新增/变更的 SQL 特性、分区语法、认证插件",
-        ])
-        return ctx
-
-
-class Path_9_x_to_8_4(_DowngradePathHandler):
-    path_id = "9.x->8.4"
-    source_line = "9.x"
-    target_line = "8.4"
-
-    def build_dump_context(self, options: MigrationOptions) -> DumpContext:
-        ctx = super().build_dump_context(options)
-        ctx.preflight_messages.append(
-            "9.x->8.4: 降级至 8.4 LTS，"
-            "请确认 dump 中无 9.x 专有语法"
-        )
-        return ctx
-
-
-class Path_9_x_to_9_x(_SameLinePathHandler):
-    path_id = "9.x->9.x"
-    source_line = "9.x"
-    target_line = "9.x"
-
-
-MIGRATION_PATH_REGISTRY: Dict[str, Type[MigrationPathHandler]] = {
-    cls.path_id: cls
-    for cls in (
-        Path_8_0_to_8_0,
-        Path_8_0_to_8_4,
-        Path_8_0_to_9_x,
-        Path_8_4_to_8_0,
-        Path_8_4_to_8_4,
-        Path_8_4_to_9_x,
-        Path_9_x_to_8_0,
-        Path_9_x_to_8_4,
-        Path_9_x_to_9_x,
+    raise RuntimeError(
+        f"MySQL {major}.{minor} 不在支持范围，本工具仅支持 8.0+ 及 9.x Innovation"
     )
-}
 
 
-def get_migration_path_handler(path: str) -> MigrationPathHandler:
-    key = parse_migration_path(path)
-    handler_cls = MIGRATION_PATH_REGISTRY[key]
-    return handler_cls()
+def _is_lts_series(info: MySQLReleaseInfo) -> bool:
+    return info.track == ReleaseTrack.LTS
+
+
+def _is_innovation_8(info: MySQLReleaseInfo) -> bool:
+    return info.major == 8 and info.track == ReleaseTrack.INNOVATION
+
+
+def _is_innovation_9(info: MySQLReleaseInfo) -> bool:
+    return info.major >= 9
+
+
+def validate_expected_version(
+    actual: ServerInfo, expected: Optional[str], label: str
+):
+    """可选：配置中声明的预期版本，用于上线前核对连库是否正确。"""
+    if not expected:
+        return
+    exp = str(expected).strip()
+    if not exp:
+        return
+    actual_ver = actual.version
+    actual_short = format_version_tuple(actual.version_tuple)
+    if actual_ver.startswith(exp) or actual_short.startswith(exp):
+        return
+    raise RuntimeError(
+        f"{label} 版本不符: 预期 {exp}，实际 {actual_ver} ({actual_short})"
+    )
+
+
+class MySQLCompatibilityEngine:
+    """
+    基于 MySQL 官方 LTS/Innovation 发布模型与 Upgrade Paths 表，
+    自动识别任意 8.0+ / 9.x 源/目标组合并生成迁移策略。
+    逻辑迁移 (mysqldump/mysql) 覆盖官方表中所有支持的方法。
+    """
+
+    @staticmethod
+    def analyze(source: ServerInfo, target: ServerInfo) -> MigrationCompatibilityProfile:
+        src = classify_release(source.version, source.version_tuple)
+        tgt = classify_release(target.version, target.version_tuple)
+        sv, tv = src.version_tuple, tgt.version_tuple
+
+        if sv == tv:
+            direction = MigrationDirection.SAME
+        elif sv < tv:
+            direction = MigrationDirection.UPGRADE
+        else:
+            direction = MigrationDirection.DOWNGRADE
+
+        category, official_notes, warnings, in_place = (
+            MySQLCompatibilityEngine._classify_category(src, tgt, direction)
+        )
+        dump_ctx = MySQLCompatibilityEngine._build_dump_context(
+            src, tgt, direction, category
+        )
+        label = (
+            f"{src.short_label} ({src.series_label}) -> "
+            f"{tgt.short_label} ({tgt.series_label})"
+        )
+
+        return MigrationCompatibilityProfile(
+            source=src,
+            target=tgt,
+            direction=direction,
+            category=category,
+            migration_label=label,
+            official_notes=official_notes,
+            warnings=warnings,
+            dump_context=dump_ctx,
+            logical_migration_supported=True,
+            in_place_officially_supported=in_place,
+        )
+
+    @staticmethod
+    def _classify_category(
+        src: MySQLReleaseInfo,
+        tgt: MySQLReleaseInfo,
+        direction: MigrationDirection,
+    ) -> Tuple[MigrationCategory, List[str], List[str], Optional[bool]]:
+        notes: List[str] = []
+        warns: List[str] = []
+
+        if not src.is_known_series:
+            warns.append(
+                f"源库系列 {src.series_label} 未在工具元数据登记，"
+                "将按通用逻辑迁移策略处理"
+            )
+        if not tgt.is_known_series:
+            warns.append(
+                f"目标库系列 {tgt.series_label} 未在工具元数据登记，"
+                "将按通用逻辑迁移策略处理"
+            )
+        if src.is_eol:
+            warns.append(
+                f"源库 {src.series_label} 已 EOL，官方建议迁移至 8.4 LTS 或 9.x Innovation"
+            )
+
+        if direction == MigrationDirection.SAME:
+            notes.append("同版本逻辑迁移（同 patch 或重复迁移）")
+            return MigrationCategory.WITHIN_SERIES, notes, warns, True
+
+        if direction == MigrationDirection.DOWNGRADE:
+            notes.append(
+                "降级迁移：MySQL 不支持跨系列原地降级，本工具使用逻辑 dump/load"
+                "（官方 Downgrade 文档推荐方式）"
+            )
+            if _is_innovation_9(src) or _is_innovation_8(src):
+                notes.append(
+                    "Innovation 系列降级必须使用逻辑导出/导入（官方 Innovation Notes）"
+                )
+            if _is_lts_series(tgt) and _is_lts_series(src) and src.major == tgt.major:
+                in_place = True
+            else:
+                in_place = False
+                warns.append(
+                    f"从 {src.series_label} 降级至 {tgt.series_label} 存在语法/特性不兼容风险，"
+                    "务必先 structure_only + dry-run 验证"
+                )
+            return MigrationCategory.DOWNGRADE, notes, warns, in_place
+
+        # UPGRADE
+        if src.series_id == tgt.series_id:
+            notes.append(
+                f"同系列内升级: {src.series_id}.x -> {tgt.series_id}.x "
+                "（官方支持 in-place 与 logical dump/load）"
+            )
+            in_place = True
+            return MigrationCategory.WITHIN_SERIES, notes, warns, in_place
+
+        if _is_lts_series(src) and _is_lts_series(tgt):
+            notes.append(
+                "LTS -> LTS 升级（如 8.0.x -> 8.4.x），"
+                "官方支持 in-place 与 logical dump/load"
+            )
+            in_place = True
+            return MigrationCategory.LTS_TO_LTS, notes, warns, in_place
+
+        if _is_innovation_8(src) and _is_innovation_8(tgt):
+            notes.append(
+                "8.x Innovation 系列内升级（如 8.1 -> 8.3），"
+                "官方支持 in-place 与 logical dump/load"
+            )
+            in_place = True
+            return MigrationCategory.WITHIN_INNOVATION_8, notes, warns, in_place
+
+        if _is_innovation_9(src) and _is_innovation_9(tgt):
+            notes.append(
+                f"9.x Innovation 系列内升级（如 {src.series_id} -> {tgt.series_id}），"
+                "官方支持 in-place 与 logical dump/load"
+            )
+            in_place = True
+            return MigrationCategory.WITHIN_INNOVATION_9, notes, warns, in_place
+
+        if _is_innovation_8(src) and _is_lts_series(tgt) and tgt.series_id == "8.4":
+            notes.append(
+                "Innovation -> LTS（如 8.3 -> 8.4），"
+                "官方推荐路径，支持 in-place 与 logical dump/load"
+            )
+            in_place = True
+            return MigrationCategory.INNOVATION_TO_LTS, notes, warns, in_place
+
+        if _is_innovation_8(src) and _is_innovation_9(tgt):
+            notes.append(
+                f"跨大版本 Innovation 升级 {src.series_id} -> {tgt.series_id}："
+                "官方 in-place 不允许直接跳跃，须先升至 8.4 LTS 再升 9.x"
+            )
+            notes.append(
+                "本工具 logical dump/load 可一次完成数据迁移，"
+                "但请自行验证 SQL 兼容性"
+            )
+            in_place = False
+            warns.append(
+                f"官方 in-place 路径: {src.series_id} -> 8.4 -> {tgt.series_id}；"
+                "逻辑迁移一步完成需人工确认"
+            )
+            return MigrationCategory.TO_INNOVATION, notes, warns, in_place
+
+        if (_is_lts_series(src) or _is_innovation_8(src)) and _is_innovation_9(tgt):
+            notes.append(
+                f"升级至 9.x Innovation（{src.series_id} -> {tgt.series_id}），"
+                "官方支持 in-place 与 logical dump/load（如 8.4 -> 9.0）"
+            )
+            if src.series_id == "8.0":
+                notes.append(
+                    "自 8.0 LTS 升级至 9.x 时，官方建议经 8.4 LTS 过渡；"
+                    "逻辑迁移可直达但需验证 authentication/sql_mode 等变更"
+                )
+            in_place = True
+            return MigrationCategory.TO_INNOVATION, notes, warns, in_place
+
+        if _is_lts_series(src) and _is_innovation_8(tgt):
+            notes.append(
+                f"升级至 8.x Innovation（{src.series_id} -> {tgt.series_id}），"
+                "官方支持 in-place 与 logical dump/load"
+            )
+            in_place = True
+            return MigrationCategory.TO_INNOVATION, notes, warns, in_place
+
+        notes.append("未精确匹配的版本组合，使用通用逻辑迁移策略")
+        warns.append("请查阅官方 Upgrade Paths 并在 dry-run 后人工确认")
+        in_place = None
+        return MigrationCategory.UNKNOWN_FUTURE, notes, warns, in_place
+
+    @staticmethod
+    def _build_dump_context(
+        src: MySQLReleaseInfo,
+        tgt: MySQLReleaseInfo,
+        direction: MigrationDirection,
+        category: MigrationCategory,
+    ) -> DumpContext:
+        ctx = DumpContext(
+            preflight_messages=[
+                f"自动识别迁移: {src.short_label} -> {tgt.short_label} "
+                f"[{direction.value}/{category.value}]",
+            ],
+        )
+
+        if direction == MigrationDirection.DOWNGRADE:
+            ctx.column_statistics = False
+            ctx.require_fix_definer = True
+            ctx.preflight_messages.append(
+                "降级策略: column-statistics=0, 强烈建议 fix_definer=true, "
+                "先 structure_only 验证"
+            )
+        elif category == MigrationCategory.LTS_TO_LTS and tgt.series_id == "8.4":
+            ctx.preflight_messages.append(
+                "8.0 -> 8.4: 导入后检查 authentication_policy、sql_mode 等 8.4 默认值"
+            )
+        elif category == MigrationCategory.TO_INNOVATION and _is_innovation_9(tgt):
+            ctx.preflight_messages.append(
+                f"升级至 {tgt.series_label}: 导入后验证认证插件与 replication 兼容性"
+            )
+        elif category == MigrationCategory.WITHIN_INNOVATION_9:
+            ctx.preflight_messages.append(
+                f"9.x 系列内迁移 {src.series_id} -> {tgt.series_id}，"
+                "官方 quarterly Innovation 发布，逻辑迁移通常安全"
+            )
+
+        ctx.preflight_messages.append(
+            "官方建议: 无论 Server 版本，优先使用最新版 MySQL Client/Tools"
+        )
+        return ctx
 
 
 # ---------------------------------------------------------------------------
@@ -990,21 +1142,29 @@ class PreflightChecker:
             to_stdout=True,
         )
 
-    def check_client_version(self, client_version: str, migration_path: str):
+    def check_client_version(
+        self,
+        client_version: str,
+        profile: MigrationCompatibilityProfile,
+    ):
         if self.options.skip_version_check:
             return
         client = parse_version(client_version)
-        if client[0] < 8:
+        if client[0] < MIN_MYSQL_MAJOR:
             self.logger.log_warning(
-                f"mysqldump 客户端版本 ({client_version.strip()}) 低于 8.0，"
-                "建议安装 MySQL 8.0+ 客户端",
+                f"mysqldump 客户端 ({client_version.strip()}) 低于 8.0，"
+                "官方建议安装最新 MySQL Client/Tools",
                 to_stdout=True,
             )
-        handler = get_migration_path_handler(migration_path)
         self.logger.log_progress(
-            f"迁移路径: {handler.path_id} ({handler.source_line} -> {handler.target_line})",
+            f"迁移策略: {profile.migration_label} "
+            f"[{profile.direction.value}/{profile.category.value}]",
             to_stdout=True,
         )
+        for note in profile.official_notes:
+            self.logger.log_progress(f"  官方: {note}", to_stdout=True)
+        for warn in profile.warnings:
+            self.logger.log_warning(f"  {warn}", to_stdout=True)
 
     def check_storage_engines(self, tables: List[TableInfo]):
         non_innodb = [t for t in tables if t.engine not in ("INNODB", "UNKNOWN")]
@@ -1079,7 +1239,7 @@ class DumpPostProcessor:
     def compress_file(source_path: str) -> str:
         gz_path = source_path + ".gz"
         with open(source_path, "rb") as inf, gzip.open(gz_path, "wb", compresslevel=6) as outf:
-            shutil.copyfileobj(inf, cast(BinaryIO, outf), length=1024 * 1024)
+            shutil.copyfileobj(inf, outf, length=1024 * 1024)
         os.remove(source_path)
         return gz_path
 
@@ -1193,7 +1353,7 @@ class MySQLDumpManager:
         ctx = self._path_context
         if ctx.column_statistics is False:
             cmd.append("--column-statistics=0")
-        elif ctx.column_statistics is True:
+        elif ctx.column_statistics:
             cmd.append("--column-statistics=1")
         if ctx.extra_mysqldump_args:
             cmd.extend(ctx.extra_mysqldump_args)
@@ -1238,7 +1398,7 @@ class MySQLDumpManager:
         return cmd
 
     def _run_subprocess(
-        self, cmd: List[str], timeout: int, stdin_file: Optional[BinaryIO] = None
+        self, cmd: List[str], timeout: int, stdin_file: Optional[IO[bytes]] = None
     ) -> Tuple[int, str]:
         stderr_pipe = subprocess.PIPE
         proc = subprocess.Popen(
@@ -1344,7 +1504,7 @@ class MySQLDumpManager:
             if abs_dump.endswith(".gz"):
                 with gzip.open(abs_dump, "rb") as gz:
                     rc, err = self._run_subprocess(
-                        cmd, self.options.import_timeout, stdin_file=cast(BinaryIO, gz)
+                        cmd, self.options.import_timeout, stdin_file=gz
                     )
             else:
                 with open(abs_dump, "rb") as fh:
@@ -1545,10 +1705,8 @@ class MigrationManager:
     def execute_migration(self, task: MigrationTask) -> Dict[str, Any]:
         task_id = f"{task.source.database}->{task.target.database}"
         opts = task.options or self.options
-        path_handler = get_migration_path_handler(task.migration_path)
         audit: Dict[str, Any] = {
             "task_id": task_id,
-            "migration_path": path_handler.path_id,
             "start_time": datetime.now().isoformat(),
             "status": "running",
             "source": {"host": task.source.host, "database": task.source.database},
@@ -1561,34 +1719,42 @@ class MigrationManager:
         self.dump_manager.options = opts
         with self.host_limiter.acquire(*target_key):
             try:
+                src_conn = DatabaseConnector(task.source, opts)
+                tgt_conn = DatabaseConnector(task.target, opts)
+
+                src_info = src_conn.get_server_info()
+                tgt_info = tgt_conn.get_server_info()
+                validate_expected_version(
+                    src_info, task.expected_source_version, "源库"
+                )
+                validate_expected_version(
+                    tgt_info, task.expected_target_version, "目标库"
+                )
+
+                profile = MySQLCompatibilityEngine.analyze(src_info, tgt_info)
+                dump_ctx = profile.dump_context
+                audit["source"]["version"] = src_info.version
+                audit["target"]["version"] = tgt_info.version
+                audit["source"]["series"] = profile.source.series_label
+                audit["target"]["series"] = profile.target.series_label
+                audit["source"]["gtid"] = src_info.gtid_mode
+                audit["target"]["gtid"] = tgt_info.gtid_mode
+                audit["compatibility"] = profile.to_audit_dict()
+                audit["path_preflight"] = dump_ctx.preflight_messages
+
                 self.logger.log_step(
-                    f"开始迁移: {task_id} [{path_handler.path_id}]",
+                    f"开始迁移: {task_id} [{profile.migration_label}]",
                     to_stdout=True,
                 )
                 self._update_progress(
                     task_id, {"status": "running", "start_time": datetime.now().isoformat()}
                 )
 
-                src_conn = DatabaseConnector(task.source, opts)
-                tgt_conn = DatabaseConnector(task.target, opts)
-
-                src_info = src_conn.get_server_info()
-                tgt_info = tgt_conn.get_server_info()
-                audit["source"]["version"] = src_info.version
-                audit["target"]["version"] = tgt_info.version
-                audit["source"]["version_line"] = server_version_to_line(src_info.version_tuple)
-                audit["target"]["version_line"] = server_version_to_line(tgt_info.version_tuple)
-                audit["source"]["gtid"] = src_info.gtid_mode
-                audit["target"]["gtid"] = tgt_info.gtid_mode
-
-                path_handler.validate_server_versions(src_info, tgt_info)
-                dump_ctx = path_handler.build_dump_context(opts)
-                audit["path_preflight"] = dump_ctx.preflight_messages
                 for msg in dump_ctx.preflight_messages:
                     self.logger.log_progress(msg, to_stdout=True)
                 if dump_ctx.require_fix_definer and not opts.fix_definer:
                     self.logger.log_warning(
-                        f"迁移路径 {path_handler.path_id} 强烈建议 fix_definer=true，"
+                        f"迁移 {profile.migration_label} 强烈建议 fix_definer=true，"
                         "当前已关闭，导入可能因 DEFINER 失败",
                         to_stdout=True,
                     )
@@ -1597,7 +1763,7 @@ class MigrationManager:
                     ["mysqldump", "--version"], text=True, stderr=subprocess.STDOUT
                 ).strip()
                 audit["client_version"] = client_ver
-                self.preflight.check_client_version(client_ver, task.migration_path)
+                self.preflight.check_client_version(client_ver, profile)
 
                 tables = src_conn.get_tables()
                 self.preflight.check_storage_engines(tables)
@@ -1678,26 +1844,28 @@ USER_GUIDE = r"""
 一、工具简介
 ------------
 本工具基于 MySQL 官方 mysqldump / mysql 客户端，实现数据库逻辑迁移（导出 SQL
-再导入）。仅支持 MySQL 8.0 / 8.4 / 9.x，须手动指定 migration_path。
+再导入）。支持 MySQL 8.0+ 全系列（8.0 / 8.1~8.4 / 9.0~9.x 及后续版本），
+连接源/目标后自动识别精确版本并生成兼容策略。
 适用于 GTID 复制、50GB+ 大库、亿级行表等生产场景。
 
 核心能力:
-  * 九种迁移路径: 8.0/8.4/9.x 任意组合，每种路径独立处理器
-  * 分表迁移 (per_table): 先迁结构，再逐表迁数据；同一次运行内可跳过已完成表
-  * GTID 策略: auto / off / on / commented，适配独立迁移与复制搭 slave
-  * 迁移前预检: 路径校验、版本线匹配、磁盘、目标库是否为空、存储引擎
+  * 自动版本识别: 读取 VERSION()，按官方 LTS/Innovation 模型分类
+  * 兼容策略引擎: 对照官方 Upgrade Paths 表生成 dump 参数与预检提示
+  * 分表迁移 (per_table): 先迁结构，再逐表迁数据
+  * GTID 策略: auto / off / on / commented
+  * 迁移前预检: 版本策略、磁盘、目标库是否为空、存储引擎
   * 迁移后校验: 表数量一致 + 行数对比（估算或精确 COUNT）
   * 安全: 临时 cnf 传密码(0600)、DEFINER 自动修复、目标非空保护
-  * 审计: JSON 报告 + 滚动日志
+  * 审计: JSON 报告含完整 compatibility 分析
 
-版本线说明:
-  * 8.0  — MySQL 8.0.x LTS (minor=0)
-  * 8.4  — MySQL 8.1~8.4.x (minor>=1)
-  * 9.x  — MySQL 9.x Innovation 系列
+MySQL 官方版本模型 (参见 mysql-releases.html):
+  * LTS (长期支持): 8.0.x Bugfix、8.4.x LTS — 系列内可 in-place 升降级
+  * Innovation (创新): 8.1~8.3 (已 EOL)、9.0~9.6+ — 季度发布
+  * 逻辑迁移 (mysqldump/mysql) 为官方所有 Upgrade Paths 均支持的方法
 
 依赖:
   * Python 3.6+、pymysql
-  * 系统已安装 mysqldump、mysql 客户端（建议与源库大版本接近）
+  * 系统已安装 mysqldump、mysql 客户端（官方建议始终用最新 Client/Tools）
 
 环境变量:
   * MYSQL_MIGRATION_LOG_DIR  日志目录，默认 ./logs
@@ -1744,11 +1912,8 @@ USER_GUIDE = r"""
   -t, --target STR
       单库迁移-目标库。格式同 -s。
 
-  --migration-path PATH
-      迁移路径 (单库模式必填)。九选一:
-      8.0->8.0  8.0->8.4  8.0->9.x  8.4->8.0  8.4->8.4
-      8.4->9.x  9.x->8.0  9.x->8.4  9.x->9.x
-      JSON 可在根级或任务级 migration_path 设置。
+  版本由程序自动识别，无需手动指定 migration_path。
+  可选 expected_source_version / expected_target_version 用于核对连库是否正确。
 
 【迁移模式】
   --dry-run
@@ -1819,11 +1984,11 @@ USER_GUIDE = r"""
 ---------------------
 
   {
-    "migration_path": "8.0->8.4",
     "options": { ... 全局默认，见下表 ... },
     "migrations": [
       {
-        "migration_path": "8.0->8.4",
+        "expected_source_version": "8.0.41",
+        "expected_target_version": "8.4.4",
         "source": { "host", "port", "user", "password", "database", "mode" },
         "target": { 同上 },
         "options": { ... 可选，覆盖本任务 ... }
@@ -1831,11 +1996,14 @@ USER_GUIDE = r"""
     ]
   }
 
-  migration_path (必填，三选一指定):
-    任务级 migration_path > CLI --migration-path > 根级 migration_path
-    格式: 8.0->8.0 | 8.0->8.4 | 8.0->9.x | 8.4->8.0 | 8.4->8.4 |
-          8.4->9.x | 9.x->8.0 | 9.x->8.4 | 9.x->9.x
-    程序会校验实际源/目标版本是否匹配所声明的路径。
+  expected_source_version / expected_target_version (可选):
+    用于上线前核对 VERSION() 是否与预期一致（前缀匹配即可，如 "8.0" 或 "8.0.41"）。
+    不填则完全依赖自动识别。
+
+  程序连接源/目标后自动:
+    1. 解析精确版本 (如 8.0.41, 8.4.4, 9.6.0)
+    2. 分类为 LTS/Innovation 系列
+    3. 对照官方 Upgrade Paths 生成迁移策略与 dump 参数
 
   source / target 字段:
     host      MySQL 主机名或 IP
@@ -1883,51 +2051,44 @@ USER_GUIDE = r"""
 五、典型场景示例
 ----------------
 
-【场景 A】MySQL 8.0 -> 8.4 普通迁库（非复制）
-  migration_path = "8.0->8.4"
-  options.gtid_mode = "auto"
-  options.replication_target = false
-  options.per_table = true
+【场景 A】MySQL 8.0.41 -> 8.4.4 普通迁库
+  自动识别为 lts_to_lts 升级；gtid_mode=auto, per_table=true
 
 【场景 B】8.0 主库 -> 8.4 GTID 从库
-  migration_path = "8.0->8.4"
-  options.replication_target = true
-  options.gtid_mode = "auto"
-  源端账号需 RELOAD 或 FLUSH_TABLES（GTID + single-transaction 时，8.0.32+）
+  replication_target=true, gtid_mode=auto
 
-【场景 C】8.0 -> 9.x 升级迁库
-  migration_path = "8.0->9.x"
-  建议先 --dry-run，导入后验证认证插件策略
+【场景 C】8.4.2 -> 9.6.0 升级至 Innovation
+  自动识别为 to_innovation；建议 --dry-run 后验证认证插件
 
-【场景 D】9.x -> 8.0 降级（高风险）
-  migration_path = "9.x->8.0"
-  务必先 structure_only + dry-run 验证结构
-  fix_definer = true（默认已开）
+【场景 D】9.4.0 -> 8.4.4 降级（高风险）
+  自动识别为 downgrade；务必 structure_only + dry-run 先验证
 
-【场景 E】50GB+ 大库，含亿级单表
+【场景 E】9.0.1 -> 9.6.0 同 Innovation 系列内升级
+  自动识别为 within_innovation_9
+
+【场景 F】50GB+ 大库，含亿级单表
   options.per_table = true          # 必须
   options.dump_timeout = 86400
   options.import_timeout = 172800
   options.keep_dump_files = true    # 首次建议保留便于排错
   校验: 默认估算；核心表可二次跑 --exact-row-count
 
-【场景 F】仅迁结构（如预建库）
+【场景 G】仅迁结构（如预建库）
   source.mode = "structure_only"
-  或 CLI: --structure-only
 
-【场景 G】多库并行迁移到同一台目标机
+【场景 H】多库并行迁移到同一台目标机
   migrations: [ 任务1, 任务2, ... ]
   options.max_workers = 2
   options.max_workers_per_target_host = 1   # 避免打满目标磁盘 IO
 
-【场景 H】重复迁移到同一目标（覆盖）
+【场景 I】重复迁移到同一目标（覆盖）
   options.force_overwrite = true
   options.add_drop_table = true           # 可选，确保表定义更新
 
 
 六、迁移执行过程（便于排障）
 ----------------------------
-  1. 预检: 连接源/目标、migration_path 校验、版本线匹配、GTID、磁盘、目标是否为空
+  1. 预检: 连接源/目标、自动版本识别、兼容策略、GTID、磁盘、目标是否为空
   2. 导出:
      - 分表模式: 先 schema(含视图/存储过程/触发器/事件)，再逐表 data
      - 整库模式: 一次 mysqldump
@@ -1971,8 +2132,11 @@ USER_GUIDE = r"""
 
 九、常见问题
 ------------
-  Q: 报错 migration_path 与实际版本不匹配
-  A: 检查源/目标 MySQL 版本线。8.0.x=8.0，8.1~8.4.x=8.4，9.x=9.x。
+  Q: 8.3 能否直接 in-place 升到 9.0?
+  A: 官方不允许，须 8.3->8.4->9.0。本工具 logical dump 可一步迁移但需人工验证兼容性。
+
+  Q: expected_source_version 报错
+  A: 检查是否连错库；该字段仅用于核对，前缀匹配 VERSION() 即可。
 
   Q: 导入报 DEFINER 不存在
   A: 默认 fix_definer=true；降级路径(如 9.x->8.0)强烈建议保持开启。
@@ -2016,7 +2180,7 @@ def parse_arguments():
         prog=prog,
         description=(
             "MySQL 生产级逻辑迁移工具 (mysqldump/mysql, MySQL 8.0+)\n"
-            "须手动指定 migration_path (8.0/8.4/9.x 九种路径)。\n"
+            "自动识别 8.0/8.1~8.4/9.x 全系列版本并生成官方兼容策略。\n"
             "完整说明请运行: %(prog)s --guide"
         ),
         formatter_class=_HelpFormatter,
@@ -2063,16 +2227,6 @@ def parse_arguments():
         "-t", "--target",
         metavar="SPEC",
         help="单库模式-目标库。格式同 --source",
-    )
-    conn.add_argument(
-        "--migration-path",
-        metavar="PATH",
-        choices=sorted(VALID_MIGRATION_PATHS),
-        default=None,
-        help=(
-            "迁移路径 (必填)。格式: 源版本线->目标版本线，"
-            "如 8.0->8.4、9.x->8.0。JSON 可在任务级或根级 migration_path 设置"
-        ),
     )
 
     # ---- 迁移模式 ----
@@ -2368,25 +2522,17 @@ def validate_migration_config(data: dict):
     if global_opts is not None and not isinstance(global_opts, dict):
         cli_die("options 必须是对象")
 
-    global_path = data.get("migration_path")
-    if global_path is not None:
-        try:
-            parse_migration_path(str(global_path), "migration_path")
-        except ValueError as e:
-            cli_die(str(e))
+
+def _optional_task_str(item: dict, key: str) -> Optional[str]:
+    if key not in item:
+        return None
+    val = str(item[key]).strip()
+    return val if val else None
 
 
 def load_migration_tasks(config_data: dict, args) -> List[MigrationTask]:
     logger = MigrationLogger()
     global_cfg = config_data.get("options") or {}
-    global_path = config_data.get("migration_path")
-    if global_path:
-        global_path = parse_migration_path(str(global_path), "migration_path")
-    cli_path = (
-        parse_migration_path(args.migration_path, "--migration-path")
-        if getattr(args, "migration_path", None)
-        else None
-    )
     tasks: List[MigrationTask] = []
     seen_targets: set = set()
 
@@ -2394,20 +2540,20 @@ def load_migration_tasks(config_data: dict, args) -> List[MigrationTask]:
         if not isinstance(item, dict):
             cli_die(f"任务 {idx} 必须是对象")
         if "source" not in item or "target" not in item:
-            if set(item.keys()) <= TASK_META_KEYS:
+            meta_keys = TASK_META_KEYS | TASK_OPTIONAL_KEYS
+            if set(item.keys()) <= meta_keys:
                 continue
             cli_die(f"任务 {idx} 缺少 source 或 target")
         try:
-            raw_path = item.get("migration_path") or cli_path or global_path
-            if not raw_path:
-                cli_die(
-                    f"任务 {idx} 缺少 migration_path。"
-                    "须在任务级、配置文件根级或 CLI --migration-path 中手动指定，"
-                    f"如 8.0->8.4。支持: {', '.join(sorted(VALID_MIGRATION_PATHS))}"
-                )
-            migration_path = parse_migration_path(
-                str(raw_path), f"任务{idx}.migration_path"
-            )
+            unknown_keys = [
+                k for k in item
+                if not k.startswith("_")
+                and k not in ("source", "target", "options")
+                and k not in TASK_OPTIONAL_KEYS
+            ]
+            if unknown_keys:
+                raise ValueError(f"未知字段: {', '.join(sorted(unknown_keys))}")
+
             task_cfg = merge_options_dict(
                 global_cfg,
                 item["options"] if isinstance(item.get("options"), dict) else None,
@@ -2426,8 +2572,13 @@ def load_migration_tasks(config_data: dict, args) -> List[MigrationTask]:
             tasks.append(MigrationTask(
                 source=source,
                 target=target,
-                migration_path=migration_path,
                 options=task_opts,
+                expected_source_version=_optional_task_str(
+                    item, "expected_source_version"
+                ),
+                expected_target_version=_optional_task_str(
+                    item, "expected_target_version"
+                ),
             ))
         except ValueError as e:
             cli_die(f"任务 {idx} 配置错误: {e}")
@@ -2496,11 +2647,6 @@ def main():
     if args.config:
         tasks = load_migration_tasks(config_data, args)
     elif args.source and args.target:
-        if not args.migration_path:
-            cli_die(
-                "单库模式须指定 --migration-path，如 --migration-path 8.0->8.4\n"
-                f"支持: {', '.join(sorted(VALID_MIGRATION_PATHS))}"
-            )
         mode = (
             MigrationMode.STRUCTURE_ONLY
             if args.structure_only
@@ -2509,7 +2655,6 @@ def main():
         tasks.append(MigrationTask(
             source=parse_database_config(args.source, mode, "源库"),
             target=parse_database_config(args.target, mode, "目标库"),
-            migration_path=parse_migration_path(args.migration_path, "--migration-path"),
             options=options,
         ))
     else:
@@ -2528,9 +2673,8 @@ def main():
 
     logger.log_step(
         f"MigrationCli v{TOOL_VERSION} | {len(tasks)} 个任务 | "
-        f"paths={[t.migration_path for t in tasks]} | "
         f"dry_run={any_dry_run} | per_table={opts.per_table} | "
-        f"gtid={opts.gtid_mode.value}",
+        f"gtid={opts.gtid_mode.value} | 版本策略=自动识别",
         to_stdout=True,
     )
 
