@@ -10,7 +10,7 @@ MySQL 生产级数据迁移工具 - 基于官方 mysqldump/mysql
 适用场景:
   - MySQL 5.7 / 8.0 / 8.4 跨版本逻辑迁移
   - GTID 复制环境 (auto/off/on/commented)
-  - 大库 (>50GB) 分表迁移、压缩 dump、可恢复进度
+  - 大库 (>50GB) 分表迁移、压缩 dump、分表串行可观测进度
   - 亿级行表迁移后校验
 
 官方依据:
@@ -69,6 +69,27 @@ DEFINER_PATTERN = re.compile(
 )
 IDENTIFIER_PATTERN = re.compile(r"^[a-zA-Z_$][a-zA-Z0-9_$]*$")
 VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+TOOL_VERSION = "1.2.0"
+EXIT_SUCCESS = 0
+EXIT_FAILURE = 1
+EXIT_CONFIG = 2
+EXIT_INTERRUPT = 130
+
+MAX_WORKERS_RECOMMENDED = 8
+VALID_MIGRATION_MODES = frozenset({"structure_only", "structure_and_data"})
+TASK_META_KEYS = frozenset({"_comment", "_documentation"})
+
+KNOWN_OPTION_KEYS = frozenset({
+    "dry_run", "keep_dump_files", "gtid_mode", "replication_target", "ssl_mode",
+    "add_drop_table", "force_overwrite", "skip_target_empty_check", "fix_definer",
+    "compress_dump", "per_table", "max_workers", "max_workers_per_target_host",
+    "dump_timeout", "import_timeout", "exact_row_count", "row_count_threshold",
+    "row_count_tolerance_pct", "rollback_on_failure", "report_dir",
+    "net_read_timeout", "net_write_timeout", "disk_space_margin",
+    "skip_version_check", "complete_insert",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +157,6 @@ class MigrationOptions:
 class MigrationTask:
     source: DatabaseConfig
     target: DatabaseConfig
-    dry_run: bool = False
     options: MigrationOptions = field(default_factory=MigrationOptions)
 
 
@@ -327,94 +347,182 @@ def format_bytes(num_bytes: int) -> str:
     return f"{num_bytes / 1024 ** 3:.2f} GB"
 
 
-def safe_parse_migration_mode(mode_str: str) -> MigrationMode:
+def cli_die(message: str, code: int = EXIT_CONFIG):
+    MigrationLogger().log_error(message, to_stdout=True)
+    sys.exit(code)
+
+
+def parse_migration_mode(mode_str: Optional[str], label: str = "mode") -> MigrationMode:
     if not mode_str:
         return MigrationMode.STRUCTURE_AND_DATA
-    mode_map = {
-        "structure_only": MigrationMode.STRUCTURE_ONLY,
-        "structure_and_data": MigrationMode.STRUCTURE_AND_DATA,
-        "data_only": MigrationMode.STRUCTURE_AND_DATA,
-    }
-    return mode_map.get(mode_str.lower().strip(), MigrationMode.STRUCTURE_AND_DATA)
+    key = str(mode_str).lower().strip()
+    if key not in VALID_MIGRATION_MODES:
+        raise ValueError(
+            f"{label} 无效: '{mode_str}'，仅支持: "
+            + ", ".join(sorted(VALID_MIGRATION_MODES))
+        )
+    return (
+        MigrationMode.STRUCTURE_ONLY
+        if key == "structure_only"
+        else MigrationMode.STRUCTURE_AND_DATA
+    )
 
 
-def safe_parse_gtid_mode(value: str) -> GtidMode:
+def parse_gtid_mode(value: Optional[str], label: str = "gtid_mode") -> GtidMode:
     if not value:
         return GtidMode.AUTO
+    key = str(value).lower().strip()
     mode_map = {m.value: m for m in GtidMode}
-    return mode_map.get(value.lower().strip(), GtidMode.AUTO)
+    if key not in mode_map:
+        raise ValueError(
+            f"{label} 无效: '{value}'，仅支持: "
+            + ", ".join(sorted(mode_map.keys()))
+        )
+    return mode_map[key]
 
 
-def safe_parse_ssl_mode(value: str) -> SslMode:
+def parse_ssl_mode(value: Optional[str], label: str = "ssl_mode") -> SslMode:
     if not value:
         return SslMode.PREFERRED
-    upper = value.upper().strip()
+    upper = str(value).upper().strip()
     for mode in SslMode:
         if mode.value == upper:
             return mode
-    return SslMode.PREFERRED
+    allowed = ", ".join(m.value for m in SslMode)
+    raise ValueError(f"{label} 无效: '{value}'，仅支持: {allowed}")
+
+
+def merge_options_dict(
+    global_opts: Optional[dict],
+    task_opts: Optional[dict],
+) -> dict:
+    """合并全局与任务级 options（任务级覆盖全局）。"""
+    merged: Dict[str, Any] = {}
+    if global_opts:
+        merged.update(global_opts)
+    if task_opts:
+        merged.update(task_opts)
+    return merged
+
+
+def require_known_option_keys(options: dict, label: str):
+    unknown = [
+        k for k in options
+        if not k.startswith("_") and k not in KNOWN_OPTION_KEYS
+    ]
+    if unknown:
+        raise ValueError(f"{label} 含未知选项: {', '.join(sorted(unknown))}")
+
+
+def validate_options_dict(options: dict, label: str):
+    if not options:
+        return
+    max_workers = options.get("max_workers")
+    if max_workers is not None:
+        mw = int(max_workers)
+        if mw < 1:
+            raise ValueError(f"{label}.max_workers 必须 >= 1")
+        if mw > MAX_WORKERS_RECOMMENDED:
+            MigrationLogger().log_warning(
+                f"{label}.max_workers={mw} 超过建议上限 {MAX_WORKERS_RECOMMENDED}，"
+                "请确认目标 IO 与并行任务数",
+                to_stdout=True,
+            )
+    per_host = options.get("max_workers_per_target_host")
+    if per_host is not None and int(per_host) < 1:
+        raise ValueError(f"{label}.max_workers_per_target_host 必须 >= 1")
+    for key in ("dump_timeout", "import_timeout"):
+        if key in options and int(options[key]) <= 0:
+            raise ValueError(f"{label}.{key} 必须为正整数")
+    if "row_count_threshold" in options and int(options["row_count_threshold"]) < 0:
+        raise ValueError(f"{label}.row_count_threshold 不能为负")
+    if "row_count_tolerance_pct" in options:
+        pct = float(options["row_count_tolerance_pct"])
+        if not 0 <= pct <= 100:
+            raise ValueError(f"{label}.row_count_tolerance_pct 须在 0-100 之间")
+    if "disk_space_margin" in options and float(options["disk_space_margin"]) < 1.0:
+        raise ValueError(f"{label}.disk_space_margin 须 >= 1.0")
 
 
 def resolve_env_in_string(value: str) -> str:
     """支持 ${ENV_VAR} 环境变量替换"""
-    if not isinstance(value, str):
-        return value
-
     def replacer(match):
-        var = match.group(1)
-        return os.environ.get(var, "")
+        return os.environ.get(match.group(1), "")
 
-    return re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)}", replacer, value)
+    return ENV_VAR_PATTERN.sub(replacer, str(value))
 
 
-def build_migration_options(args, config_options: Optional[dict] = None) -> MigrationOptions:
+def _cfg_bool(cfg: dict, key: str, default: bool = False) -> bool:
+    return bool(cfg.get(key, default))
+
+
+def _cli_or_cfg_bool(args, cli_attr: str, cfg: dict, cfg_key: str) -> bool:
+    return bool(getattr(args, cli_attr, False) or _cfg_bool(cfg, cfg_key))
+
+
+def _cli_or_cfg_int(args, cli_attr: str, cfg: dict, cfg_key: str, default: int) -> int:
+    cli_val = getattr(args, cli_attr, None)
+    if cli_val is not None:
+        return int(cli_val)
+    if cfg_key in cfg:
+        return int(cfg[cfg_key])
+    return default
+
+
+def _cfg_enabled_by_default(cfg: dict, key: str, cli_disable_attr: str, args) -> bool:
+    if getattr(args, cli_disable_attr, False):
+        return False
+    if key in cfg and cfg[key] is False:
+        return False
+    return True
+
+
+def build_migration_options(
+    args,
+    config_options: Optional[dict] = None,
+    label: str = "options",
+) -> MigrationOptions:
     cfg = config_options or {}
+    require_known_option_keys(cfg, label)
+    validate_options_dict(cfg, label)
     opts = MigrationOptions()
 
-    opts.dry_run = bool(args.dry_run)
-    opts.keep_dump_files = bool(args.keep_dump_files)
-    opts.gtid_mode = safe_parse_gtid_mode(
-        args.gtid_mode if args.gtid_mode else cfg.get("gtid_mode", "auto")
+    opts.dry_run = _cli_or_cfg_bool(args, "dry_run", cfg, "dry_run")
+    opts.keep_dump_files = _cli_or_cfg_bool(args, "keep_dump_files", cfg, "keep_dump_files")
+    opts.gtid_mode = parse_gtid_mode(
+        args.gtid_mode if args.gtid_mode else cfg.get("gtid_mode"),
+        f"{label}.gtid_mode",
     )
-    opts.replication_target = bool(
-        args.replication_target or cfg.get("replication_target", False)
+    opts.replication_target = _cli_or_cfg_bool(
+        args, "replication_target", cfg, "replication_target"
     )
-    opts.ssl_mode = safe_parse_ssl_mode(
-        args.ssl_mode if args.ssl_mode else cfg.get("ssl_mode", "PREFERRED")
+    opts.ssl_mode = parse_ssl_mode(
+        args.ssl_mode if args.ssl_mode else cfg.get("ssl_mode"),
+        f"{label}.ssl_mode",
     )
-    opts.add_drop_table = bool(
-        args.add_drop_table or cfg.get("add_drop_table", False)
+    opts.add_drop_table = _cli_or_cfg_bool(args, "add_drop_table", cfg, "add_drop_table")
+    opts.force_overwrite = _cli_or_cfg_bool(args, "force_overwrite", cfg, "force_overwrite")
+    opts.skip_target_empty_check = _cli_or_cfg_bool(
+        args, "skip_target_empty_check", cfg, "skip_target_empty_check"
     )
-    opts.force_overwrite = bool(
-        args.force_overwrite or cfg.get("force_overwrite", False)
+    opts.fix_definer = _cfg_enabled_by_default(cfg, "fix_definer", "no_fix_definer", args)
+    opts.compress_dump = _cfg_enabled_by_default(cfg, "compress_dump", "no_compress", args)
+    opts.per_table = _cfg_enabled_by_default(cfg, "per_table", "no_per_table", args)
+    opts.max_workers = _cli_or_cfg_int(args, "max_workers", cfg, "max_workers", 2)
+    opts.max_workers_per_target_host = _cli_or_cfg_int(
+        args, "max_workers_per_target_host", cfg, "max_workers_per_target_host", 1
     )
-    opts.skip_target_empty_check = bool(
-        args.skip_target_empty_check or cfg.get("skip_target_empty_check", False)
+    opts.dump_timeout = _cli_or_cfg_int(args, "dump_timeout", cfg, "dump_timeout", 86400)
+    opts.import_timeout = _cli_or_cfg_int(
+        args, "import_timeout", cfg, "import_timeout", 172800
     )
-    opts.fix_definer = not bool(args.no_fix_definer or cfg.get("fix_definer") is False)
-    opts.compress_dump = not bool(args.no_compress or cfg.get("compress_dump") is False)
-    opts.per_table = not bool(args.no_per_table or cfg.get("per_table") is False)
-    opts.max_workers = int(args.max_workers if args.max_workers else cfg.get("max_workers", 2))
-    opts.max_workers_per_target_host = int(
-        args.max_workers_per_target_host
-        if getattr(args, "max_workers_per_target_host", None)
-        else cfg.get("max_workers_per_target_host", 1)
-    )
-    opts.dump_timeout = int(
-        args.dump_timeout if args.dump_timeout else cfg.get("dump_timeout", 86400)
-    )
-    opts.import_timeout = int(
-        args.import_timeout if args.import_timeout else cfg.get("import_timeout", 172800)
-    )
-    opts.exact_row_count = bool(
-        args.exact_row_count or cfg.get("exact_row_count", False)
-    )
+    opts.exact_row_count = _cli_or_cfg_bool(args, "exact_row_count", cfg, "exact_row_count")
     opts.row_count_threshold = int(cfg.get("row_count_threshold", opts.row_count_threshold))
     opts.row_count_tolerance_pct = float(
         cfg.get("row_count_tolerance_pct", opts.row_count_tolerance_pct)
     )
-    opts.rollback_on_failure = bool(
-        args.rollback_on_failure or cfg.get("rollback_on_failure", False)
+    opts.rollback_on_failure = _cli_or_cfg_bool(
+        args, "rollback_on_failure", cfg, "rollback_on_failure"
     )
     opts.report_dir = str(
         args.report_dir if args.report_dir else cfg.get("report_dir", LOG_DIR)
@@ -422,12 +530,10 @@ def build_migration_options(args, config_options: Optional[dict] = None) -> Migr
     opts.net_read_timeout = int(cfg.get("net_read_timeout", opts.net_read_timeout))
     opts.net_write_timeout = int(cfg.get("net_write_timeout", opts.net_write_timeout))
     opts.disk_space_margin = float(cfg.get("disk_space_margin", opts.disk_space_margin))
-    opts.skip_version_check = bool(
-        args.skip_version_check or cfg.get("skip_version_check", False)
+    opts.skip_version_check = _cli_or_cfg_bool(
+        args, "skip_version_check", cfg, "skip_version_check"
     )
-    opts.complete_insert = bool(
-        args.complete_insert or cfg.get("complete_insert", False)
-    )
+    opts.complete_insert = _cli_or_cfg_bool(args, "complete_insert", cfg, "complete_insert")
     return opts
 
 
@@ -1124,11 +1230,11 @@ class MigrationManager:
 
     def _migrate_whole_database(self, task: MigrationTask, task_id: str):
         opts = task.options or self.options
-        dump_file = self.dump_manager.execute_dump(task.source, task.dry_run)
+        dump_file = self.dump_manager.execute_dump(task.source, task.options.dry_run)
         self._update_progress(task_id, {"dump_file": dump_file, "mode": "whole_db"})
-        if not task.dry_run:
+        if not task.options.dry_run:
             DatabaseConnector(task.target, opts).create_database_if_not_exists()
-        self.dump_manager.execute_import(task.target, dump_file, task.dry_run)
+        self.dump_manager.execute_import(task.target, dump_file, task.options.dry_run)
 
     def _migrate_per_table(self, task: MigrationTask, task_id: str):
         opts = task.options or self.options
@@ -1139,15 +1245,15 @@ class MigrationManager:
 
         completed = self.migration_progress.get(task_id, {}).get("tables_done", [])
 
-        if not task.dry_run:
+        if not task.options.dry_run:
             DatabaseConnector(task.target, opts).create_database_if_not_exists()
 
         # 1) 结构 (含 routines/events/triggers/views)
         if "__schema__" not in completed:
             schema_file = self.dump_manager.execute_dump(
-                task.source, task.dry_run, no_data=True, label=f"{task.source.database} [schema]"
+                task.source, task.options.dry_run, no_data=True, label=f"{task.source.database} [schema]"
             )
-            if not task.dry_run:
+            if not task.options.dry_run:
                 self.dump_manager.execute_import(
                     task.target, schema_file, label=f"{task.target.database} [schema]"
                 )
@@ -1162,12 +1268,12 @@ class MigrationManager:
             if tbl.name in completed:
                 continue
             data_file = self.dump_manager.execute_dump(
-                task.source, task.dry_run,
+                task.source, task.options.dry_run,
                 tables=[tbl.name], no_create_info=True,
                 include_schema_objects=False,
                 label=f"{task.source.database}.{tbl.name}",
             )
-            if not task.dry_run:
+            if not task.options.dry_run:
                 self.dump_manager.execute_import(
                     task.target, data_file,
                     label=f"{task.target.database}.{tbl.name}",
@@ -1201,38 +1307,39 @@ class MigrationManager:
                     task_id, {"status": "running", "start_time": datetime.now().isoformat()}
                 )
 
-                if not task.dry_run:
-                    src_conn = DatabaseConnector(task.source, opts)
-                    tgt_conn = DatabaseConnector(task.target, opts)
+                # 预检在 dry-run 下同样执行，便于上线前验证连接、版本、磁盘与 GTID 策略
+                src_conn = DatabaseConnector(task.source, opts)
+                tgt_conn = DatabaseConnector(task.target, opts)
 
-                    src_info = src_conn.get_server_info()
-                    tgt_info = tgt_conn.get_server_info()
-                    audit["source"]["version"] = src_info.version
-                    audit["target"]["version"] = tgt_info.version
-                    audit["source"]["gtid"] = src_info.gtid_mode
-                    audit["target"]["gtid"] = tgt_info.gtid_mode
+                src_info = src_conn.get_server_info()
+                tgt_info = tgt_conn.get_server_info()
+                audit["source"]["version"] = src_info.version
+                audit["target"]["version"] = tgt_info.version
+                audit["source"]["gtid"] = src_info.gtid_mode
+                audit["target"]["gtid"] = tgt_info.gtid_mode
 
-                    client_ver = subprocess.check_output(
-                        ["mysqldump", "--version"], text=True, stderr=subprocess.STDOUT
-                    ).strip()
-                    audit["client_version"] = client_ver
-                    self.preflight.check_version_compatibility(src_info, tgt_info, client_ver)
+                client_ver = subprocess.check_output(
+                    ["mysqldump", "--version"], text=True, stderr=subprocess.STDOUT
+                ).strip()
+                audit["client_version"] = client_ver
+                self.preflight.check_version_compatibility(src_info, tgt_info, client_ver)
 
-                    tables = src_conn.get_tables()
-                    self.preflight.check_storage_engines(tables)
-                    est = src_conn.estimate_database_bytes()
-                    audit["estimated_bytes"] = est
+                tables = src_conn.get_tables()
+                self.preflight.check_storage_engines(tables)
+                est = src_conn.estimate_database_bytes()
+                audit["estimated_bytes"] = est
+                if not task.options.dry_run:
                     self.preflight.check_disk_space(est, self.dump_manager.temp_dir)
 
-                    if not opts.skip_target_empty_check:
-                        self.preflight.check_target_empty(tgt_conn, opts.force_overwrite)
+                if not opts.skip_target_empty_check:
+                    self.preflight.check_target_empty(tgt_conn, opts.force_overwrite)
 
-                    gtid = self.preflight.resolve_gtid_purged(src_info, tgt_info, opts)
-                    non_innodb = any(t.engine not in ("INNODB", "UNKNOWN") for t in tables)
-                    self.dump_manager.set_dump_context(
-                        gtid_purged=gtid, skip_lock_tables=non_innodb
-                    )
-                    audit["gtid_purged"] = gtid
+                gtid = self.preflight.resolve_gtid_purged(src_info, tgt_info, opts)
+                non_innodb = any(t.engine not in ("INNODB", "UNKNOWN") for t in tables)
+                self.dump_manager.set_dump_context(
+                    gtid_purged=gtid, skip_lock_tables=non_innodb
+                )
+                audit["gtid_purged"] = gtid
 
                 use_per_table = opts.per_table and task.source.mode == MigrationMode.STRUCTURE_AND_DATA
                 if use_per_table:
@@ -1242,7 +1349,7 @@ class MigrationManager:
                     self._migrate_whole_database(task, task_id)
                     audit["migration_strategy"] = "whole_db"
 
-                if not task.dry_run:
+                if not task.options.dry_run:
                     audit["validation"] = self.validator.validate(
                         DatabaseConnector(task.source, opts),
                         DatabaseConnector(task.target, opts),
@@ -1269,7 +1376,7 @@ class MigrationManager:
                 })
                 self.logger.log_error(f"迁移失败 {task_id}: {exc}", to_stdout=True)
 
-                if opts.rollback_on_failure and not task.dry_run:
+                if opts.rollback_on_failure and not task.options.dry_run:
                     try:
                         self.logger.log_warning(
                             f"回滚: 删除目标库 {task.target.database}", to_stdout=True
@@ -1299,7 +1406,7 @@ USER_GUIDE = r"""
 生产场景。
 
 核心能力:
-  * 分表迁移 (per_table): 先迁结构，再逐表迁数据，失败可断点续跑
+  * 分表迁移 (per_table): 先迁结构，再逐表迁数据；同一次运行内可跳过已完成表
   * GTID 策略: auto / off / on / commented，适配独立迁移与复制搭 slave
   * 迁移前预检: 版本、磁盘、目标库是否为空、存储引擎、GTID 状态
   * 迁移后校验: 表数量一致 + 行数对比（估算或精确 COUNT）
@@ -1327,7 +1434,7 @@ USER_GUIDE = r"""
     export MYSQL_SOURCE_PASSWORD='...'
     export MYSQL_TARGET_PASSWORD='...'
 
-  第 3 步  预演（不连库执行 dump/import，只打印将执行的命令）
+  第 3 步  预演（连库做预检，打印 dump/import 命令，不实际导出导入）
     python MigrationCli.py -c migration_config.json --dry-run
 
   第 4 步  正式迁移
@@ -1357,7 +1464,8 @@ USER_GUIDE = r"""
 
 【迁移模式】
   --dry-run
-      预演模式: 执行连接预检逻辑，dump/import 只打印命令不实际运行。
+      预演模式: 连接源/目标做预检（版本、GTID、目标是否为空等），
+      dump/import 只打印命令不实际运行。dry-run 不校验临时目录磁盘空间。
       上线前必须至少跑一次。
 
   --structure-only
@@ -1472,6 +1580,8 @@ USER_GUIDE = r"""
     complete_insert             bool      false       dump 完整 INSERT
 
   优先级: 命令行 > 任务级 options > 全局 options > 内置默认值
+  未知 options 键名、非法 mode/gtid_mode/ssl_mode 会在启动时报错退出。
+  ${ENV} 未设置或密码为空同样会拒绝启动。
 
 
 五、典型场景示例
@@ -1547,9 +1657,10 @@ USER_GUIDE = r"""
   报告内容:  每任务版本/GTID/策略/校验结果/耗时/错误信息
 
   退出码:
-    0  全部任务成功
-    1  存在失败任务或致命错误
-    130 用户 Ctrl+C 中断
+    0    全部任务成功 (EXIT_SUCCESS)
+    1    存在失败任务或运行时错误 (EXIT_FAILURE)
+    2    配置文件错误 (EXIT_CONFIG)
+    130  用户 Ctrl+C / SIGINT 中断 (EXIT_INTERRUPT)
 
 
 九、常见问题
@@ -1656,7 +1767,10 @@ def parse_arguments():
     mode_grp.add_argument(
         "--dry-run",
         action="store_true",
-        help="预演: 执行预检并打印 dump/import 命令，不实际导出导入。上线前必跑",
+        help=(
+            "预演: 连库预检并打印 dump/import 命令，不实际导出导入。"
+            "JSON 可在 options 设 dry_run=true。上线前必跑"
+        ),
     )
     mode_grp.add_argument(
         "--structure-only",
@@ -1682,7 +1796,7 @@ def parse_arguments():
         type=int,
         default=None,
         metavar="N",
-        help="并行迁移的任务数(多库场景)。默认 2，实际上限 min(N, CPU核数, 8)",
+        help=f"并行迁移的任务数(多库场景)。默认 2，实际上限 min(N, CPU核数, {MAX_WORKERS_RECOMMENDED})",
     )
     perf.add_argument(
         "--max-workers-per-target-host",
@@ -1828,32 +1942,54 @@ def print_user_guide():
 # ---------------------------------------------------------------------------
 # CLI 与配置加载
 # ---------------------------------------------------------------------------
-def parse_database_config(db_str: str, mode: MigrationMode) -> DatabaseConfig:
+def parse_database_config(db_str: str, mode: MigrationMode, label: str = "连接") -> DatabaseConfig:
     parts = db_str.split(":")
     if len(parts) < 5:
         raise ValueError(
-            f"格式错误: {db_str}，应为 host:port:database:user:password"
+            f"{label} 格式错误，应为 host:port:database:user:password"
             "（password 中可含冒号，会取第5段及之后全部内容）"
         )
     try:
         port = int(parts[1])
         if not 1 <= port <= 65535:
-            raise ValueError(f"端口超出范围: {port}")
+            raise ValueError(f"{label} 端口超出范围: {port}")
     except ValueError as e:
-        raise ValueError(f"端口必须是整数: {parts[1]}") from e
+        raise ValueError(f"{label} 端口必须是整数: {parts[1]}") from e
 
+    host = parts[0].strip()
+    database = parts[2].strip()
+    user = parts[3].strip()
     password = ":".join(parts[4:]).replace("\\:", ":")
+    if not host or not user or not database:
+        raise ValueError(f"{label} host/user/database 不能为空")
+    if not password:
+        raise ValueError(f"{label} password 不能为空")
+    DatabaseConnector.validate_identifier(database)
     return DatabaseConfig(
-        host=parts[0].strip(),
+        host=host,
         port=port,
-        database=parts[2].strip(),
-        user=parts[3].strip(),
+        database=database,
+        user=user,
         password=password,
         mode=mode,
     )
 
 
+def _check_credential_field(raw_value: str, resolved: str, field_label: str):
+    if not str(raw_value).strip():
+        raise ValueError(f"{field_label} 不能为空")
+    if ENV_VAR_PATTERN.search(raw_value) and not resolved:
+        missing = ENV_VAR_PATTERN.findall(raw_value)
+        raise ValueError(
+            f"{field_label} 引用的环境变量未设置或为空: {', '.join(missing)}"
+        )
+    if field_label.endswith("password") and not resolved:
+        raise ValueError(f"{field_label} 不能为空")
+
+
 def _parse_db_dict(data: dict, label: str) -> DatabaseConfig:
+    if not isinstance(data, dict):
+        raise ValueError(f"{label} 必须是对象")
     required = ["host", "port", "user", "password", "database"]
     for field_name in required:
         if field_name not in data:
@@ -1861,58 +1997,101 @@ def _parse_db_dict(data: dict, label: str) -> DatabaseConfig:
     port = int(data["port"])
     if not 1 <= port <= 65535:
         raise ValueError(f"{label} 端口无效: {port}")
+
+    raw_user = str(data["user"])
+    raw_password = str(data["password"])
+    user = str(resolve_env_in_string(raw_user)).strip()
+    password = str(resolve_env_in_string(raw_password))
+    database = str(data["database"]).strip()
+    host = str(data["host"]).strip()
+
+    _check_credential_field(raw_user, user, f"{label}.user")
+    _check_credential_field(raw_password, password, f"{label}.password")
+    if not database:
+        raise ValueError(f"{label}.database 不能为空")
+    DatabaseConnector.validate_identifier(database)
+
     return DatabaseConfig(
-        host=str(data["host"]).strip(),
+        host=host,
         port=port,
-        user=str(resolve_env_in_string(str(data["user"]))).strip(),
-        password=str(resolve_env_in_string(str(data["password"]))),
-        database=str(data["database"]).strip(),
-        mode=safe_parse_migration_mode(data.get("mode")),
+        user=user,
+        password=password,
+        database=database,
+        mode=parse_migration_mode(data.get("mode"), f"{label}.mode"),
     )
 
 
-def load_config_file(config_path: str, args, file_options: MigrationOptions) -> List[MigrationTask]:
-    logger = MigrationLogger()
-    PreflightChecker(file_options).check_config_file_permissions(config_path)
+def read_config_file(config_path: str) -> dict:
+    """读取并解析 JSON 配置文件（单次 IO）。"""
+    PreflightChecker(MigrationOptions()).check_config_file_permissions(config_path)
 
     if not os.path.isfile(config_path):
-        logger.log_error(f"配置文件不存在: {config_path}", to_stdout=True)
-        sys.exit(1)
+        cli_die(f"配置文件不存在: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as fh:
         try:
             data = json.load(fh)
         except json.JSONDecodeError as e:
-            logger.log_error(f"JSON 格式错误: {e}", to_stdout=True)
-            sys.exit(1)
+            cli_die(f"JSON 格式错误: {e}")
 
+    if not isinstance(data, dict):
+        cli_die("配置文件根节点必须是 JSON 对象")
+    return data
+
+
+def validate_migration_config(data: dict):
     if "migrations" not in data:
-        logger.log_error("配置文件缺少 migrations 字段", to_stdout=True)
-        sys.exit(1)
+        cli_die("配置文件缺少 migrations 字段")
+    migrations = data["migrations"]
+    if not isinstance(migrations, list):
+        cli_die("migrations 必须是数组")
+    if not migrations:
+        cli_die("migrations 不能为空")
 
-    tasks = []
-    for idx, item in enumerate(data["migrations"], 1):
+    global_opts = data.get("options")
+    if global_opts is not None and not isinstance(global_opts, dict):
+        cli_die("options 必须是对象")
+
+
+def load_migration_tasks(config_data: dict, args) -> List[MigrationTask]:
+    logger = MigrationLogger()
+    global_cfg = config_data.get("options") or {}
+    tasks: List[MigrationTask] = []
+    seen_targets: set = set()
+
+    for idx, item in enumerate(config_data["migrations"], 1):
+        if not isinstance(item, dict):
+            cli_die(f"任务 {idx} 必须是对象")
+        if "source" not in item or "target" not in item:
+            if set(item.keys()) <= TASK_META_KEYS:
+                continue
+            cli_die(f"任务 {idx} 缺少 source 或 target")
         try:
-            if "source" not in item or "target" not in item:
-                raise ValueError("缺少 source 或 target")
-            task_opts = (
-                build_migration_options(args, item["options"])
-                if "options" in item
-                else file_options
+            task_cfg = merge_options_dict(
+                global_cfg,
+                item["options"] if isinstance(item.get("options"), dict) else None,
             )
+            task_opts = build_migration_options(args, task_cfg, f"任务{idx} options")
+            source = _parse_db_dict(item["source"], f"任务{idx}.source")
+            target = _parse_db_dict(item["target"], f"任务{idx}.target")
+            target_key = (target.host, target.port, target.database)
+            if target_key in seen_targets:
+                logger.log_warning(
+                    f"任务 {idx} 与先前任务写入同一目标库 "
+                    f"{target.host}:{target.port}/{target.database}，请确认无冲突",
+                    to_stdout=True,
+                )
+            seen_targets.add(target_key)
             tasks.append(MigrationTask(
-                source=_parse_db_dict(item["source"], f"任务{idx}.source"),
-                target=_parse_db_dict(item["target"], f"任务{idx}.target"),
-                dry_run=file_options.dry_run,
+                source=source,
+                target=target,
                 options=task_opts,
             ))
         except ValueError as e:
-            logger.log_error(f"任务 {idx} 配置错误: {e}", to_stdout=True)
-            sys.exit(1)
+            cli_die(f"任务 {idx} 配置错误: {e}")
 
     if not tasks:
-        logger.log_error("无有效迁移任务", to_stdout=True)
-        sys.exit(1)
+        cli_die("无有效迁移任务（migrations 不能为空或仅含 _comment 占位）")
 
     logger.log_progress(f"已加载 {len(tasks)} 个迁移任务", to_stdout=True)
     return tasks
@@ -1923,7 +2102,7 @@ def check_dependencies():
     if missing:
         logger = MigrationLogger()
         logger.log_error(f"缺少命令: {', '.join(missing)}", to_stdout=True)
-        sys.exit(1)
+        sys.exit(EXIT_FAILURE)
     try:
         ver = subprocess.check_output(
             ["mysqldump", "--version"], text=True, stderr=subprocess.STDOUT
@@ -1939,7 +2118,7 @@ def setup_signal_handlers(process_registry: ProcessRegistry, dump_manager: MySQL
         logger.log_warning(f"收到信号 {sig}，终止子进程并清理...", to_stdout=True)
         process_registry.terminate_all()
         dump_manager.cleanup()
-        sys.exit(130 if sig == signal.SIGINT else 1)
+        sys.exit(EXIT_INTERRUPT if sig == signal.SIGINT else EXIT_FAILURE)
 
     signal.signal(signal.SIGTERM, handler)
     signal.signal(signal.SIGINT, handler)
@@ -1949,17 +2128,22 @@ def main():
     args = parse_arguments()
     if args.guide:
         print_user_guide()
-        sys.exit(0)
+        sys.exit(EXIT_SUCCESS)
 
     logger = MigrationLogger()
     check_dependencies()
 
-    file_cfg = None
-    if args.config and os.path.isfile(args.config):
-        with open(args.config, "r", encoding="utf-8") as fh:
-            file_cfg = json.load(fh).get("options")
+    config_data = None
+    if args.config:
+        config_data = read_config_file(args.config)
+        validate_migration_config(config_data)
 
-    options = build_migration_options(args, file_cfg)
+    global_cfg = (
+        config_data.get("options")
+        if config_data and isinstance(config_data.get("options"), dict)
+        else None
+    )
+    options = build_migration_options(args, global_cfg)
     process_registry = ProcessRegistry()
     host_limiter = HostConcurrencyLimiter(options.max_workers_per_target_host)
     migration_manager = MigrationManager(options, process_registry, host_limiter)
@@ -1968,7 +2152,7 @@ def main():
     tasks: List[MigrationTask] = []
 
     if args.config:
-        tasks = load_config_file(args.config, args, options)
+        tasks = load_migration_tasks(config_data, args)
     elif args.source and args.target:
         mode = (
             MigrationMode.STRUCTURE_ONLY
@@ -1976,29 +2160,28 @@ def main():
             else MigrationMode.STRUCTURE_AND_DATA
         )
         tasks.append(MigrationTask(
-            source=parse_database_config(args.source, mode),
-            target=parse_database_config(args.target, mode),
-            dry_run=options.dry_run,
+            source=parse_database_config(args.source, mode, "源库"),
+            target=parse_database_config(args.target, mode, "目标库"),
             options=options,
         ))
     else:
-        logger.log_error(
+        cli_die(
             "请指定迁移任务:\n"
             "  推荐: python MigrationCli.py -c migration_config.json\n"
             "  单库: python MigrationCli.py -s host:port:db:user:pass -t host:port:db:user:pass\n"
             "  手册: python MigrationCli.py --guide\n"
-            "  参数: python MigrationCli.py --help",
-            to_stdout=True,
+            "  参数: python MigrationCli.py --help"
         )
-        sys.exit(1)
 
     opts = migration_manager.options
-    max_workers = min(opts.max_workers, os.cpu_count() or 4, 8)
+    max_workers = min(opts.max_workers, os.cpu_count() or 4, MAX_WORKERS_RECOMMENDED)
+    any_dry_run = any(t.options.dry_run for t in tasks)
     report_writer = AuditReportWriter(opts.report_dir)
 
     logger.log_step(
-        f"开始 {len(tasks)} 个任务 | dry_run={opts.dry_run} | "
-        f"per_table={opts.per_table} | gtid={opts.gtid_mode.value}",
+        f"MigrationCli v{TOOL_VERSION} | {len(tasks)} 个任务 | "
+        f"dry_run={any_dry_run} | per_table={opts.per_table} | "
+        f"gtid={opts.gtid_mode.value}",
         to_stdout=True,
     )
 
@@ -2030,11 +2213,15 @@ def main():
         success = len(tasks) - failed
         summary = {
             "summary": {
+                "tool_version": TOOL_VERSION,
+                "config_file": os.path.abspath(args.config) if args.config else None,
+                "dry_run": any_dry_run,
                 "total": len(tasks),
                 "success": success,
                 "failed": failed,
                 "elapsed_seconds": round(elapsed, 2),
                 "timestamp": datetime.now().isoformat(),
+                "exit_code": EXIT_FAILURE if failed else EXIT_SUCCESS,
             },
             "tasks": audits,
         }
@@ -2046,7 +2233,7 @@ def main():
                 f"耗时 {elapsed:.0f}s",
                 to_stdout=True,
             )
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
 
         logger.log_step(
             f"全部成功 {success}/{len(tasks)}，耗时 {elapsed:.0f}s",
@@ -2057,13 +2244,13 @@ def main():
                 f"dump 保留于: {migration_manager.dump_manager.temp_dir}",
                 to_stdout=True,
             )
-        elif not opts.dry_run:
+        elif not any_dry_run:
             migration_manager.dump_manager.cleanup()
 
     except KeyboardInterrupt:
         process_registry.terminate_all()
         migration_manager.dump_manager.cleanup()
-        sys.exit(130)
+        sys.exit(EXIT_INTERRUPT)
 
 
 if __name__ == "__main__":
