@@ -3088,7 +3088,7 @@ def show_examples():
     default_resources_line = ",".join(DEFAULT_RESOURCES)
     examples = """
 ================================================================================
-Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能做什么」）
+Kubernetes 备份 / 恢复工具
 ================================================================================
 
 【子命令】
@@ -3096,11 +3096,10 @@ Kubernetes 备份 / 恢复工具 — 功能总览（看本节即可知道「能�
   restore  从备份目录写回集群（可选映射命名空间 / 镜像 / 环境变量）
 
 【两子命令均支持的通用参数】
-  --kubeconfig PATH   指定 kubeconfig（不填则用默认或 in-cluster）
+  --kubeconfig PATH   指定 kubeconfig（不填则用默认）
   --context NAME      指定上下文
   --debug             更详细的日志
   --dry-run           演练模式
-                        · restore：不执行 server-side apply，仅打日志
                         · backup：仍会调用 API 列举资源；不创建备份子目录、不写 YAML、不写 backup-metadata.json、
                           不生成 tar、不做备份后校验（全程不落盘）
                         · restore：不执行 server-side apply，仅打日志，集群内对象不变
