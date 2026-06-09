@@ -13,6 +13,7 @@ index.txt: 同一 CN 可有多行 V/R（重签/吊销历史）；无 issued 时�
 吊销后:   easyrsa revoke → move_revoked 按 serial 归档，须再执行 gen-crl
 
 环境变量: GENOVPN_OPENVPN_BASE / GENOVPN_EASYRSA_DIR / GENOVPN_EASYRSA_VERSION
+         GENOVPN_OVPN_PROTO / GENOVPN_OVPN_DEV（client.ovpn 默认 proto/dev）
 （默认面向 Easy-RSA 3.0.7，与上游 easyrsa3/easyrsa 行为对齐）
 
 控制台日志块（与 -h / 运行输出一致，详见 LOG_CONSOLE_HELP）:
@@ -81,6 +82,14 @@ OPENVPN_PKI_EXTRA = ("pki/ta.key",)
 
 DEFAULT_REMOTE_HOST = "61.187.64.38"
 DEFAULT_REMOTE_PORT = 11940
+# client.ovpn 模板默认值（与当前生产一致；可用环境变量覆盖）
+DEFAULT_OVPN_PROTO = os.environ.get("GENOVPN_OVPN_PROTO", "tcp")
+DEFAULT_OVPN_DEV = os.environ.get("GENOVPN_OVPN_DEV", "tun")
+OVPN_PROTO_CHOICES = frozenset(
+    ["tcp", "udp", "tcp4", "tcp6", "udp4", "udp6"]
+)
+OVPN_DEV_RE = re.compile(r"^tun\d*$", re.IGNORECASE)
+OVPN_TAP_DEV_RE = re.compile(r"^tap\d*$", re.IGNORECASE)
 
 # Easy-RSA 内置/server 证书名，禁止作为客户端用户名
 RESERVED_USERS = frozenset(["server", "ca"])
@@ -127,7 +136,7 @@ PKI_LAYOUT = """
 │       │   ├── private_by_serial/<SERIAL>.key
 │       │   └── reqs_by_serial/<SERIAL>.req
 │       └── renewed/        renew 时 move_renewed（本脚本未调用 renew）
-├── client/                 create 输出 client/<用户>/client.ovpn
+├── client/                 create 输出 client/<用户>/client.ovpn（dev/proto 可定制）
 └── server/
     └── server.conf         crl-verify 须指向 pki/crl.pem
 
@@ -306,6 +315,10 @@ def hint_create(user, **kwargs):
         extra.extend(["--rhost", kwargs["rhost"]])
     if kwargs.get("rport"):
         extra.extend(["--rport", str(kwargs["rport"])])
+    if kwargs.get("proto"):
+        extra.extend(["--proto", kwargs["proto"]])
+    if kwargs.get("dev"):
+        extra.extend(["--dev", kwargs["dev"]])
     return cmd_hint("create", user, extra or None)
 
 
@@ -448,6 +461,7 @@ class ServerConfSummary(TypedDict):
     crl_matches_pki: Optional[bool]
     port: Optional[str]
     proto: Optional[str]
+    dev: Optional[str]
 
 
 def path_label(abs_path: str) -> str:
@@ -641,6 +655,7 @@ def read_server_conf_summary() -> ServerConfSummary:
         "crl_matches_pki": None,
         "port": None,
         "proto": None,
+        "dev": None,
     }
     if not summary["exists"]:
         return summary
@@ -668,7 +683,33 @@ def read_server_conf_summary() -> ServerConfSummary:
                 parts = line.split()
                 if len(parts) >= 2:
                     summary["proto"] = parts[1]
+            elif line.startswith("dev "):
+                parts = line.split()
+                if len(parts) >= 2:
+                    summary["dev"] = parts[1]
     return summary
+
+
+def validate_ovpn_proto(proto: str) -> str:
+    """校验 client.ovpn 的 proto，须与 server.conf 一致方可连通。"""
+    value = (proto or "").strip().lower()
+    if value not in OVPN_PROTO_CHOICES:
+        raise GenovpnError(
+            "协议无效: {0}".format(proto),
+            hint="--proto 可选: {0}".format(", ".join(sorted(OVPN_PROTO_CHOICES))),
+        )
+    return value
+
+
+def validate_ovpn_dev(dev: str) -> str:
+    """校验 client.ovpn 的 dev（tun 路由 / tap 桥接），须与 server.conf 一致。"""
+    value = (dev or "").strip()
+    if OVPN_DEV_RE.match(value) or OVPN_TAP_DEV_RE.match(value):
+        return value
+    raise GenovpnError(
+        "虚拟设备无效: {0}".format(dev),
+        hint="--dev 须为 tun/tap 或其编号形式，如 tun、tun0、tap、tap0",
+    )
 
 
 def pki_files_for_user(user: str, serial=None) -> Dict[str, Optional[str]]:
@@ -1204,8 +1245,8 @@ def assert_revoke_done(user, serial=None):
 
 OVPN_TEMPLATE = """\
 client
-dev tun
-proto tcp
+dev {dev}
+proto {proto}
 remote {host} {port}
 resolv-retry infinite
 persist-key
@@ -1224,7 +1265,9 @@ reneg-sec 0
 """
 
 
-def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
+def bundle_client(
+    user: str, host: str, port: int, proto: str, dev: str
+) -> Tuple[str, List[str]]:
     out_dir = client_bundle_dir(user)
     os.makedirs(CLIENT_DIR, exist_ok=True)
 
@@ -1252,7 +1295,13 @@ def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
     ovpn_path = os.path.join(out_dir, "client.ovpn")
     with open(ovpn_path, "w") as fh:
         fh.write(
-            OVPN_TEMPLATE.format(user=user, host=host, port=str(port))
+            OVPN_TEMPLATE.format(
+                user=user,
+                host=host,
+                port=str(port),
+                proto=proto,
+                dev=dev,
+            )
         )
 
     for name in (
@@ -1310,10 +1359,12 @@ def cmd_check(_args):
             )
         else:
             dir_lines.append("crl-verify: 未配置（吊销证书不会对已连接用户生效）")
-        if server["port"] or server["proto"]:
+        if server["port"] or server["proto"] or server["dev"]:
             dir_lines.append(
-                "监听:      {0} {1}".format(
-                    server["proto"] or "?", server["port"] or "?"
+                "监听:      {0} {1} dev {2}".format(
+                    server["proto"] or "?",
+                    server["port"] or "?",
+                    server["dev"] or "?",
                 )
             )
     else:
@@ -1324,8 +1375,11 @@ def cmd_check(_args):
     crl_count = crl_revoked_count()
     summary = [
         "OpenSSL:   {0}".format(ov or "未知"),
-        "默认连接:  {0}:{1}（create 写入 client.ovpn）".format(
-            DEFAULT_REMOTE_HOST, DEFAULT_REMOTE_PORT
+        "默认连接:  {0}:{1} {2}/dev {3}（create 写入 client.ovpn）".format(
+            DEFAULT_REMOTE_HOST,
+            DEFAULT_REMOTE_PORT,
+            DEFAULT_OVPN_PROTO,
+            DEFAULT_OVPN_DEV,
         ),
     ]
     crl_file = pki_path("crl.pem")
@@ -1408,8 +1462,9 @@ def cmd_create(args):
     log.phase_start("签发用户 {0} 的 VPN 证书".format(user))
     log.meta(
         [
-            "操作: create --user {0} --rhost {1} --rport {2}".format(
-                user, args.rhost, args.rport
+            "操作: create --user {0} --rhost {1} --rport {2} "
+            "--proto {3} --dev {4}".format(
+                user, args.rhost, args.rport, args.proto, args.dev
             ),
             "日志: {0}".format(log.log_file),
         ]
@@ -1443,14 +1498,36 @@ def cmd_create(args):
     log.result(pki_result)
 
     log.step(4, total, "打包客户端配置")
-    out_dir, _copy_log = bundle_client(user, args.rhost, args.rport)
+    out_dir, _copy_log = bundle_client(
+        user, args.rhost, args.rport, args.proto, args.dev
+    )
     log.result(
         [
             "配置包 {0}/client.ovpn".format(path_label(out_dir)),
-            "连接 {0}:{1} (tcp/tun)".format(args.rhost, args.rport),
+            "连接 {0}:{1} ({2}/dev {3})".format(
+                args.rhost, args.rport, args.proto, args.dev
+            ),
             "含 ca.crt、ta.key、{0}.crt、{0}.key".format(user),
         ]
     )
+    server = read_server_conf_summary()
+    if server["exists"]:
+        mismatch = []
+        if server["proto"] and server["proto"] != args.proto:
+            mismatch.append(
+                "proto 客户端 {0} ≠ 服务端 {1}".format(
+                    args.proto, server["proto"]
+                )
+            )
+        if server["dev"] and server["dev"] != args.dev:
+            mismatch.append(
+                "dev 客户端 {0} ≠ 服务端 {1}".format(args.dev, server["dev"])
+            )
+        if mismatch:
+            log.note(
+                ["警告: client.ovpn 与 server.conf 不一致，将无法连通"]
+                + mismatch
+            )
     log.note(
         [
             "请将 {0}/ 整目录安全发给用户，勿公开私钥".format(
@@ -1579,6 +1656,7 @@ USER_EPILOG = """
 目录与版本:
   · 脚本面向 Easy-RSA {ver}（与 OpenVPN/easy-rsa v{ver} 源码一致）
   · 环境变量: GENOVPN_OPENVPN_BASE / GENOVPN_EASYRSA_DIR / GENOVPN_EASYRSA_VERSION
+             GENOVPN_OVPN_PROTO / GENOVPN_OVPN_DEV
   · {ver}/pki/     issued/ private/ reqs/ revoked/ crl.pem（easyrsa 维护）
   · pki/ta.key     OpenVPN tls-auth（须单独生成，非 easyrsa）
   · client/        create → client/<用户>/client.ovpn
@@ -1617,6 +1695,8 @@ def build_parser():
   create --user USER   必填，用户名
   create --rhost HOST  VPN 服务器地址（默认 {host}）
   create --rport PORT  VPN 端口（默认 {port}）
+  create --proto P     传输协议（默认 {proto}，须与 server.conf 一致）
+  create --dev D       虚拟设备 tun/tap（默认 {dev}，须与 server.conf 一致）
 
 {log_help}
 
@@ -1630,6 +1710,8 @@ def build_parser():
             prog=prog_name(),
             host=DEFAULT_REMOTE_HOST,
             port=DEFAULT_REMOTE_PORT,
+            proto=DEFAULT_OVPN_PROTO,
+            dev=DEFAULT_OVPN_DEV,
             ver=EASYRSA_VERSION,
             client=CLIENT_DIR,
             easyrsa=EASYRSA_DIR,
@@ -1662,10 +1744,12 @@ def build_parser():
 示例:
   {prog} create --user zhangsan
   {prog} create --user lisi --rhost 10.0.0.1 --rport 1194
+  {prog} create --user lisi --proto udp --dev tun
   {prog} create -u zhangsan              # -u 为 --user 简写
 
 输出:
-  client/<用户名>/client.ovpn（含 ca.crt、ta.key、<用户>.crt/key）
+  client/<用户名>/client.ovpn（dev/proto 可定制，须与 server.conf 一致）
+  含 ca.crt、ta.key、<用户>.crt/key
   控制台末尾: --- 签发完成 · <用户名> ---
 
 运行中可见 [结果] [说明] [核验 · 签发结果] 等块（详见 -h 说明）
@@ -1687,6 +1771,24 @@ def build_parser():
         default=DEFAULT_REMOTE_PORT,
         metavar="PORT",
         help="OpenVPN 端口（默认: {0}）".format(DEFAULT_REMOTE_PORT),
+    )
+    p_create.add_argument(
+        "--proto",
+        default=DEFAULT_OVPN_PROTO,
+        metavar="PROTO",
+        help=(
+            "OpenVPN 传输协议（默认: {0}；可选 tcp/udp 及 tcp4/udp4 等，"
+            "须与 server.conf 一致）"
+        ).format(DEFAULT_OVPN_PROTO),
+    )
+    p_create.add_argument(
+        "--dev",
+        default=DEFAULT_OVPN_DEV,
+        metavar="DEV",
+        help=(
+            "虚拟网络设备 tun（路由）或 tap（桥接），默认: {0}，"
+            "须与 server.conf 一致"
+        ).format(DEFAULT_OVPN_DEV),
     )
 
     p_revoke = sub.add_parser(
@@ -1759,6 +1861,8 @@ def main():
                     "服务器地址无效",
                     hint="请指定有效 --rhost，例如: 61.187.64.38",
                 )
+            args.proto = validate_ovpn_proto(args.proto)
+            args.dev = validate_ovpn_dev(args.dev)
             cmd_create(args)
         elif args.command == "revoke":
             validate_username(args.user)
