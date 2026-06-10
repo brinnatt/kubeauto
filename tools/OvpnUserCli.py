@@ -5,8 +5,8 @@ OpenVPN 客户端证书签发 / 吊销（Easy-RSA 3.0.7）
 
 标准目录（/etc/openvpn/，详见 PKI_LAYOUT 与 -h）:
   <Easy-RSA>/pki/  issued/ private/ reqs/ revoked/ certs_by_serial/（默认 3.0.7）
-  client/          create 输出；pki/ta.key 为 OpenVPN tls-auth（非 easyrsa 生成）
-  server/          server.conf 须 crl-verify → pki/crl.pem
+  client/          create 输出 client.ovpn（默认对齐 server.conf；--proto/--dev 可覆盖）
+  server/          server.conf 须含 dev/proto/tls/cipher 等；crl-verify → pki/crl.pem
 
 有效证书: pki/issued/<用户>.crt 存在（权威判定，优先于 index.txt）
 index.txt: 同一 CN 可有多行 V/R（重签/吊销历史）；无 issued 时以末条状态为准
@@ -15,8 +15,11 @@ index.txt: 同一 CN 可有多行 V/R（重签/吊销历史）；无 issued 时�
 环境变量: GENOVPN_OPENVPN_BASE / GENOVPN_EASYRSA_DIR / GENOVPN_EASYRSA_VERSION
 （默认面向 Easy-RSA 3.0.7，与上游 easyrsa3/easyrsa 行为对齐）
 
+client.ovpn 默认与 server.conf 对齐；仅 --proto/--dev/--rhost/--rport 可手动覆盖。
+
 控制台日志块（与 -h / 运行输出一致，详见 LOG_CONSOLE_HELP）:
-  [结果] [说明] [核验 · 标题]；末尾 --- 操作完成 · 用户 --- 摘要
+  [结果] [说明] [警告] [注意] [核验 · 标题]；末尾 --- 操作完成 · 用户 --- 摘要
+  终端支持配色高亮（NO_COLOR=1 可关闭）
 """
 
 from __future__ import print_function
@@ -81,6 +84,11 @@ OPENVPN_PKI_EXTRA = ("pki/ta.key",)
 
 DEFAULT_REMOTE_HOST = "61.187.64.38"
 DEFAULT_REMOTE_PORT = 11940
+OVPN_PROTO_CHOICES = frozenset(
+    ["tcp", "udp", "tcp4", "tcp6", "udp4", "udp6"]
+)
+OVPN_DEV_RE = re.compile(r"^tun\d*$", re.IGNORECASE)
+OVPN_TAP_DEV_RE = re.compile(r"^tap\d*$", re.IGNORECASE)
 
 # Easy-RSA 内置/server 证书名，禁止作为客户端用户名
 RESERVED_USERS = frozenset(["server", "ca"])
@@ -113,7 +121,7 @@ PKI_LAYOUT = """
 │   ├── easyrsa / vars      签发工具与变量
 │   └── pki/                PKI（openssl ca 数据库，见 openssl-easyrsa.cnf）
 │       ├── ca.crt          CA 证书
-│       ├── ta.key          OpenVPN tls-auth（openvpn --genkey，非 easyrsa 生成）
+│       ├── ta.key          OpenVPN tls-auth/tls-crypt（openvpn --genkey，非 easyrsa）
 │       ├── crl.pem         吊销列表（revoke 后须 easyrsa gen-crl）
 │       ├── dh.pem          DH 参数（easyrsa gen-dh，仅服务端需要）
 │       ├── index.txt       台账 V/R/E（重签/吊销追加行，非覆盖）
@@ -127,9 +135,9 @@ PKI_LAYOUT = """
 │       │   ├── private_by_serial/<SERIAL>.key
 │       │   └── reqs_by_serial/<SERIAL>.req
 │       └── renewed/        renew 时 move_renewed（本脚本未调用 renew）
-├── client/                 create 输出 client/<用户>/client.ovpn
+├── client/                 create 输出 client/<用户>/client.ovpn（默认对齐 server.conf）
 └── server/
-    └── server.conf         crl-verify 须指向 pki/crl.pem
+    └── server.conf         dev/proto/tls/cipher 等；crl-verify → pki/crl.pem
 
 说明: init-pki 仅建 private/ reqs/；build-ca 建 issued/ revoked/* 等；crl.pem 首次 revoke 后 gen-crl 生成。
 """.format(ver=EASYRSA_VERSION, upstream=EASYRSA_UPSTREAM_TAG).strip()
@@ -137,15 +145,56 @@ PKI_LAYOUT = """
 # 控制台输出说明（模块文档、-h、USER_EPILOG 共用，与 GenovpnLogger 实现一致）
 LOG_CONSOLE_HELP = """
 控制台输出:
-  === 开始/完成 ===     阶段标题
+  === 开始/完成 ===     阶段标题（青色加粗）
   操作: / 日志:         命令与日志文件路径
-  [N/M] 步骤            进度；行首 → 表示该步结果
+  [N/M] 步骤            进度；行首 → 表示该步结果（绿色）
   [结果]                本步客观结果（路径为相对 /etc/openvpn 的短路径）
   [说明]                业务含义、交付与后续提示
+  [警告]                严重不一致/将导致失败（红底白字高亮）
+  [注意]                需关注但不阻断（黄字高亮）
   [核验 · 标题]         操作建议（非 shell 命令清单）
   --- 标题 ---          末尾摘要（行首 · 为要点）
-  失败时: [当前状态 · 用户]（简要）、[后续操作]
+  失败时: [当前状态 · 用户]（简要）、[后续操作]（红色）
+  配色: 终端自动启用；设 NO_COLOR=1 关闭；日志文件始终纯文本
 """.strip()
+
+# ---------------------------------------------------------------------------
+# 控制台配色（仅 TTY 上屏；日志文件写纯文本）
+# ---------------------------------------------------------------------------
+def _color_enabled():
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+
+
+class ConsoleStyle(object):
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    CYAN = "\033[36m"
+    WHITE = "\033[97m"
+    BLACK = "\033[30m"
+    BG_RED = "\033[41m"
+    BG_YELLOW = "\033[43m"
+
+    PHASE = BOLD + CYAN
+    OK = BOLD + GREEN
+    TAG = BOLD
+    WARN = BOLD + YELLOW
+    ALERT = BG_RED + WHITE + BOLD
+    ERROR = BOLD + RED
+    MUTED = DIM
+
+
+def _paint(text, style):
+    if not style or not _color_enabled():
+        return text
+    return style + text + ConsoleStyle.RESET
 
 # ---------------------------------------------------------------------------
 # 异常
@@ -225,6 +274,16 @@ class GenovpnLogger(object):
             extra={"to_stdout": to_stdout, "skip_file": skip_file},
         )
 
+    def _stdout(self, plain, styled=None):
+        """文件写纯文本，控制台可带配色。"""
+        self._emit(logging.INFO, plain)
+        self._emit(
+            logging.INFO,
+            styled if styled is not None else plain,
+            to_stdout=True,
+            skip_file=True,
+        )
+
     def debug(self, msg):
         self._emit(logging.DEBUG, msg)
 
@@ -232,48 +291,95 @@ class GenovpnLogger(object):
         self._emit(logging.INFO, msg, to_stdout=to_stdout)
 
     def warning(self, msg):
-        self._emit(logging.WARNING, msg, to_stdout=True)
+        plain = msg
+        self._emit(logging.WARNING, plain)
+        self._emit(
+            logging.WARNING,
+            _paint(plain, ConsoleStyle.WARN),
+            to_stdout=True,
+            skip_file=True,
+        )
 
     def error(self, msg):
-        self._emit(logging.ERROR, msg, to_stdout=True)
+        plain = msg
+        self._emit(logging.ERROR, plain)
+        self._emit(
+            logging.ERROR,
+            _paint(plain, ConsoleStyle.ERROR),
+            to_stdout=True,
+            skip_file=True,
+        )
 
     def phase_start(self, title):
-        self.info("=== 开始: {0} ===".format(title), to_stdout=True)
+        plain = "=== 开始: {0} ===".format(title)
+        self._stdout(plain, _paint(plain, ConsoleStyle.PHASE))
 
     def phase_end(self, title, note=""):
         suffix = " ({0})".format(note) if note else ""
-        self.info("=== 完成: {0}{1} ===".format(title, suffix), to_stdout=True)
+        plain = "=== 完成: {0}{1} ===".format(title, suffix)
+        self._stdout(plain, _paint(plain, ConsoleStyle.PHASE))
 
     def meta(self, lines):
         """操作元信息：时间戳由 logging 自动附加，此处记录命令上下文。"""
         for line in lines:
-            self.info(line, to_stdout=True)
+            plain = line
+            self._stdout(plain, _paint(plain, ConsoleStyle.MUTED))
 
     def step(self, index, total, action):
-        self.info("[{0}/{1}] {2}".format(index, total, action), to_stdout=True)
+        plain = "[{0}/{1}] {2}".format(index, total, action)
+        self._stdout(plain)
 
     def step_ok(self, detail="通过"):
-        self.info("  → {0}".format(detail), to_stdout=True)
+        plain = "  → {0}".format(detail)
+        self._stdout(plain, _paint(plain, ConsoleStyle.OK))
 
-    def step_block(self, tag, lines):
-        self.info("  [{0}]".format(tag), to_stdout=True)
-        for line in lines:
-            self.info("    {0}".format(line), to_stdout=True)
+    def step_block(self, tag, lines, tag_style=None, line_style=None):
+        tag_plain = "  [{0}]".format(tag)
+        tag_out = _paint(tag_plain, tag_style) if tag_style else tag_plain
+        self._stdout(tag_plain, tag_out)
+        for line in _as_lines(lines):
+            plain = "    {0}".format(line)
+            styled = _paint(plain, line_style) if line_style else plain
+            self._stdout(plain, styled)
 
     def result(self, lines):
         self.step_block("结果", _as_lines(lines))
 
     def verify(self, title, lines):
         """操作完成后的简要核验提示（非 shell 命令清单）。"""
-        self.step_block("核验 · {0}".format(title), _as_lines(lines))
+        self.step_block(
+            "核验 · {0}".format(title),
+            _as_lines(lines),
+            tag_style=ConsoleStyle.TAG,
+        )
 
     def note(self, lines):
         self.step_block("说明", _as_lines(lines))
 
+    def alert(self, lines):
+        """严重警告：配置不一致等将导致失败的关键信息。"""
+        self.step_block(
+            "警告",
+            _as_lines(lines),
+            tag_style=ConsoleStyle.ALERT,
+            line_style=ConsoleStyle.ALERT,
+        )
+
+    def warn(self, lines):
+        """需关注但不阻断的提示。"""
+        self.step_block(
+            "注意",
+            _as_lines(lines),
+            tag_style=ConsoleStyle.WARN,
+            line_style=ConsoleStyle.WARN,
+        )
+
     def summary(self, headline, lines):
-        self.info("--- {0} ---".format(headline), to_stdout=True)
+        plain_head = "--- {0} ---".format(headline)
+        self._stdout(plain_head, _paint(plain_head, ConsoleStyle.TAG))
         for line in _as_lines(lines):
-            self.info("  · {0}".format(line), to_stdout=True)
+            plain = "  · {0}".format(line)
+            self._stdout(plain)
 
 
 def _as_lines(lines):
@@ -306,6 +412,10 @@ def hint_create(user, **kwargs):
         extra.extend(["--rhost", kwargs["rhost"]])
     if kwargs.get("rport"):
         extra.extend(["--rport", str(kwargs["rport"])])
+    if kwargs.get("proto"):
+        extra.extend(["--proto", kwargs["proto"]])
+    if kwargs.get("dev"):
+        extra.extend(["--dev", kwargs["dev"]])
     return cmd_hint("create", user, extra or None)
 
 
@@ -320,7 +430,12 @@ def hint_status(user):
 def log_failure(error):
     log.error("操作失败: {0}".format(error.message))
     if error.hint:
-        log.step_block("后续操作", _as_lines(error.hint))
+        log.step_block(
+            "后续操作",
+            _as_lines(error.hint),
+            tag_style=ConsoleStyle.ERROR,
+            line_style=ConsoleStyle.ERROR,
+        )
 
 
 def log_user_status(user, brief=False):
@@ -448,6 +563,22 @@ class ServerConfSummary(TypedDict):
     crl_matches_pki: Optional[bool]
     port: Optional[str]
     proto: Optional[str]
+    dev: Optional[str]
+    cipher: Optional[str]
+    data_ciphers: Optional[str]
+    auth: Optional[str]
+    compress: Optional[str]
+    comp_lzo: Optional[str]
+    allow_compression: Optional[str]
+    tls_mode: Optional[str]
+    tls_key_file: Optional[str]
+
+
+class CreateLinkOptions(TypedDict):
+    proto: str
+    dev: str
+    proto_manual: bool
+    dev_manual: bool
 
 
 def path_label(abs_path: str) -> str:
@@ -633,15 +764,29 @@ def list_active_client_users():
     return users
 
 
-def read_server_conf_summary() -> ServerConfSummary:
-    """解析 server.conf 中与 PKI 相关的关键项。"""
-    summary: ServerConfSummary = {
-        "exists": os.path.isfile(SERVER_CONF),
+def _empty_server_conf_summary() -> ServerConfSummary:
+    return {
+        "exists": False,
         "crl_verify": None,
         "crl_matches_pki": None,
         "port": None,
         "proto": None,
+        "dev": None,
+        "cipher": None,
+        "data_ciphers": None,
+        "auth": None,
+        "compress": None,
+        "comp_lzo": None,
+        "allow_compression": None,
+        "tls_mode": None,
+        "tls_key_file": None,
     }
+
+
+def read_server_conf_summary() -> ServerConfSummary:
+    """解析 server.conf 中与 PKI、客户端打包相关的关键项。"""
+    summary = _empty_server_conf_summary()
+    summary["exists"] = os.path.isfile(SERVER_CONF)
     if not summary["exists"]:
         return summary
 
@@ -651,24 +796,245 @@ def read_server_conf_summary() -> ServerConfSummary:
             line = raw.strip()
             if not line or line.startswith("#") or line.startswith(";"):
                 continue
-            if line.startswith("crl-verify"):
-                parts = line.split(None, 1)
-                if len(parts) == 2:
-                    summary["crl_verify"] = parts[1].strip()
-                    try:
-                        configured = os.path.realpath(parts[1].strip())
-                        summary["crl_matches_pki"] = configured == expected_crl
-                    except OSError:
-                        summary["crl_matches_pki"] = False
-            elif line.startswith("port"):
-                parts = line.split()
-                if len(parts) >= 2:
-                    summary["port"] = parts[1]
-            elif line.startswith("proto"):
-                parts = line.split()
-                if len(parts) >= 2:
-                    summary["proto"] = parts[1]
+            parts = line.split()
+            if not parts:
+                continue
+            key = parts[0]
+            rest = line[len(key):].strip()
+
+            if key == "crl-verify" and rest:
+                summary["crl_verify"] = rest
+                try:
+                    configured = os.path.realpath(rest)
+                    summary["crl_matches_pki"] = configured == expected_crl
+                except OSError:
+                    summary["crl_matches_pki"] = False
+            elif key == "port" and len(parts) >= 2:
+                summary["port"] = parts[1]
+            elif key == "proto" and len(parts) >= 2:
+                summary["proto"] = parts[1]
+            elif key == "dev" and len(parts) >= 2:
+                summary["dev"] = parts[1]
+            elif key == "cipher" and rest:
+                summary["cipher"] = rest
+            elif key == "data-ciphers" and rest:
+                summary["data_ciphers"] = rest
+            elif key == "auth" and rest:
+                summary["auth"] = rest
+            elif key == "compress":
+                summary["compress"] = rest if rest else ""
+            elif key == "comp-lzo":
+                summary["comp_lzo"] = rest if rest else ""
+            elif key == "allow-compression" and rest:
+                summary["allow_compression"] = rest
+            elif key == "tls-auth" and len(parts) >= 2:
+                summary["tls_mode"] = "tls-auth"
+                summary["tls_key_file"] = parts[1]
+            elif key == "tls-crypt-v2" and len(parts) >= 2:
+                summary["tls_mode"] = "tls-crypt-v2"
+                summary["tls_key_file"] = parts[1]
+            elif key == "tls-crypt" and len(parts) >= 2:
+                summary["tls_mode"] = "tls-crypt"
+                summary["tls_key_file"] = parts[1]
     return summary
+
+
+def _format_openvpn_directive(name: str, value: Optional[str] = None) -> str:
+    """将 OpenVPN 配置项格式化为单行（value 为空时仅指令名）。"""
+    if value:
+        return "{0} {1}".format(name, value)
+    return name
+
+
+def _append_cipher_directives(
+    server: ServerConfSummary,
+    lines: List[str],
+    missing: Optional[List[str]] = None,
+) -> None:
+    if server.get("data_ciphers"):
+        lines.append(
+            _format_openvpn_directive("data-ciphers", server["data_ciphers"])
+        )
+        if server.get("cipher"):
+            lines.append(_format_openvpn_directive("cipher", server["cipher"]))
+    elif server.get("cipher"):
+        lines.append(_format_openvpn_directive("cipher", server["cipher"]))
+    elif missing is not None:
+        missing.append("cipher / data-ciphers")
+
+
+def _append_auth_directive(
+    server: ServerConfSummary, lines: List[str]
+) -> None:
+    if server.get("auth"):
+        lines.append(_format_openvpn_directive("auth", server["auth"]))
+
+
+def _append_compression_directives(
+    server: ServerConfSummary, lines: List[str]
+) -> None:
+    if server.get("allow_compression") is not None:
+        lines.append(
+            _format_openvpn_directive(
+                "allow-compression", server["allow_compression"]
+            )
+        )
+    elif server.get("compress") is not None:
+        lines.append(
+            _format_openvpn_directive("compress", server["compress"] or None)
+        )
+    elif server.get("comp_lzo") is not None:
+        lines.append(
+            _format_openvpn_directive("comp-lzo", server["comp_lzo"] or None)
+        )
+
+
+def _format_tls_server_line(server: ServerConfSummary) -> Optional[str]:
+    tls_mode = server.get("tls_mode")
+    if not tls_mode:
+        return None
+    key_file = server.get("tls_key_file") or "ta.key"
+    if tls_mode == "tls-auth":
+        return _format_openvpn_directive(tls_mode, "{0} 0".format(key_file))
+    return _format_openvpn_directive(tls_mode, key_file)
+
+
+def _append_tls_client_directives(
+    server: ServerConfSummary,
+    lines: List[str],
+    missing: Optional[List[str]] = None,
+) -> None:
+    tls_mode = server.get("tls_mode")
+    if tls_mode == "tls-crypt-v2":
+        lines.append("tls-crypt-v2 ta.key")
+    elif tls_mode == "tls-crypt":
+        lines.append("tls-crypt ta.key")
+    elif tls_mode == "tls-auth":
+        lines.append("tls-auth ta.key 1")
+    elif missing is not None:
+        missing.append("tls-auth / tls-crypt / tls-crypt-v2")
+
+
+def format_server_security_lines(server: ServerConfSummary) -> List[str]:
+    """将 server.conf 安全/压缩项格式化为可读行（check 输出用）。"""
+    if not server.get("exists"):
+        return []
+    lines: List[str] = []
+    tls_line = _format_tls_server_line(server)
+    if tls_line:
+        lines.append(tls_line)
+    _append_cipher_directives(server, lines)
+    _append_auth_directive(server, lines)
+    _append_compression_directives(server, lines)
+    return lines
+
+
+def validate_ovpn_proto(proto: str) -> str:
+    """校验 client.ovpn 的 proto。"""
+    value = (proto or "").strip().lower()
+    if value not in OVPN_PROTO_CHOICES:
+        raise GenovpnError(
+            "协议无效: {0}".format(proto),
+            hint="--proto 可选: {0}".format(", ".join(sorted(OVPN_PROTO_CHOICES))),
+        )
+    return value
+
+
+def validate_ovpn_dev(dev: str) -> str:
+    """校验 client.ovpn 的 dev（tun 路由 / tap 桥接）。"""
+    value = (dev or "").strip()
+    if OVPN_DEV_RE.match(value) or OVPN_TAP_DEV_RE.match(value):
+        return value
+    raise GenovpnError(
+        "虚拟设备无效: {0}".format(dev),
+        hint="--dev 须为 tun/tap 或其编号形式，如 tun、tun0、tap、tap0",
+    )
+
+
+def require_server_conf(server: ServerConfSummary) -> ServerConfSummary:
+    if not server.get("exists"):
+        raise GenovpnError(
+            "server.conf 不存在，无法生成与服务器对齐的 client.ovpn",
+            hint="请确认 {0} 存在，或设置 GENOVPN_OPENVPN_BASE".format(
+                SERVER_CONF
+            ),
+        )
+    return server
+
+
+def resolve_create_link_options(
+    server: ServerConfSummary,
+    proto_override: Optional[str],
+    dev_override: Optional[str],
+) -> CreateLinkOptions:
+    """默认读取 server.conf；仅 --proto/--dev 显式指定时覆盖。"""
+    require_server_conf(server)
+    proto = proto_override if proto_override is not None else server.get("proto")
+    dev = dev_override if dev_override is not None else server.get("dev")
+    if not proto:
+        raise GenovpnError(
+            "无法确定 proto",
+            hint="请在 server.conf 配置 proto，或使用 --proto 手动指定",
+        )
+    if not dev:
+        raise GenovpnError(
+            "无法确定 dev",
+            hint="请在 server.conf 配置 dev，或使用 --dev 手动指定",
+        )
+    return {
+        "proto": validate_ovpn_proto(proto),
+        "dev": validate_ovpn_dev(dev),
+        "proto_manual": proto_override is not None,
+        "dev_manual": dev_override is not None,
+    }
+
+
+def _link_override_warning(
+    field: str,
+    manual: bool,
+    client_value: str,
+    server_value: Optional[str],
+) -> Optional[str]:
+    if manual and server_value and client_value != server_value:
+        return "{0} 手动指定 {1} ≠ server.conf {2}".format(
+            field, client_value, server_value
+        )
+    return None
+
+
+def client_link_override_warnings(
+    server: ServerConfSummary, link: CreateLinkOptions
+) -> List[str]:
+    """手动覆盖且与 server.conf 不一致时告警（操作者已知风险）。"""
+    warnings = []
+    for field, manual, client_val, server_val in (
+        ("proto", link["proto_manual"], link["proto"], server.get("proto")),
+        ("dev", link["dev_manual"], link["dev"], server.get("dev")),
+    ):
+        msg = _link_override_warning(field, manual, client_val, server_val)
+        if msg:
+            warnings.append(msg)
+    return warnings
+
+
+def resolve_client_security_lines(server: ServerConfSummary) -> List[str]:
+    """
+    从 server.conf 生成 client.ovpn 安全/压缩指令行（须与服务器 opt-verify 项一致）。
+    客户端包固定分发 ta.key，故 tls 行文件名恒为 ta.key。
+    """
+    require_server_conf(server)
+    lines: List[str] = []
+    missing: List[str] = []
+    _append_tls_client_directives(server, lines, missing)
+    _append_cipher_directives(server, lines, missing)
+    _append_auth_directive(server, lines)
+    _append_compression_directives(server, lines)
+    if missing:
+        raise GenovpnError(
+            "server.conf 缺少客户端必需配置",
+            hint="请补充: {0}".format(", ".join(missing)),
+        )
+    return lines
 
 
 def pki_files_for_user(user: str, serial=None) -> Dict[str, Optional[str]]:
@@ -1116,9 +1482,12 @@ def assert_create_allowed(user):
 
     history = get_index_history(user)
     if history in (HISTORY_REVOKED, HISTORY_EXPIRED):
-        log.info(
-            "检测到历史记录（{0}），准备重新签发".format(HISTORY_LABEL[history]),
-            to_stdout=True,
+        log.warn(
+            [
+                "检测到历史记录（{0}），准备重新签发".format(
+                    HISTORY_LABEL[history]
+                ),
+            ]
         )
 
     cleanup_pki_stale(user)
@@ -1202,12 +1571,13 @@ def assert_revoke_done(user, serial=None):
 # 客户端打包
 # ---------------------------------------------------------------------------
 
-OVPN_TEMPLATE = """\
+OVPN_TEMPLATE_HEAD = """\
 client
-dev tun
-proto tcp
+dev {dev}
+proto {proto}
 remote {host} {port}
 resolv-retry infinite
+nobind
 persist-key
 persist-tun
 mute-replay-warnings
@@ -1215,16 +1585,42 @@ ca ca.crt
 cert {user}.crt
 key {user}.key
 remote-cert-tls server
-tls-auth ta.key 1
-cipher AES-256-CBC
-compress lzo
+"""
+
+OVPN_TEMPLATE_TAIL = """\
 verb 3
 mute 20
 reneg-sec 0
 """
 
 
-def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
+def build_client_ovpn_content(
+    user: str,
+    host: str,
+    port: int,
+    link: CreateLinkOptions,
+    server: ServerConfSummary,
+) -> Tuple[str, List[str]]:
+    """组装 client.ovpn 全文；返回 (内容, 安全指令行)。"""
+    security_lines = resolve_client_security_lines(server)
+    body = OVPN_TEMPLATE_HEAD.format(
+        user=user,
+        host=host,
+        port=str(port),
+        proto=link["proto"],
+        dev=link["dev"],
+    )
+    content = body + "\n".join(security_lines) + "\n" + OVPN_TEMPLATE_TAIL
+    return content, security_lines
+
+
+def bundle_client(
+    user: str,
+    host: str,
+    port: int,
+    link: CreateLinkOptions,
+    server: ServerConfSummary,
+) -> Tuple[str, List[str], List[str]]:
     out_dir = client_bundle_dir(user)
     os.makedirs(CLIENT_DIR, exist_ok=True)
 
@@ -1249,11 +1645,12 @@ def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
         shutil.copy2(src, dst)
         copy_log.append("{0} ← {1}".format(dst_name, src_label))
 
+    ovpn_content, security_lines = build_client_ovpn_content(
+        user, host, port, link, server
+    )
     ovpn_path = os.path.join(out_dir, "client.ovpn")
     with open(ovpn_path, "w") as fh:
-        fh.write(
-            OVPN_TEMPLATE.format(user=user, host=host, port=str(port))
-        )
+        fh.write(ovpn_content)
 
     for name in (
         "client.ovpn",
@@ -1268,7 +1665,7 @@ def bundle_client(user: str, host: str, port: int) -> Tuple[str, List[str]]:
                 hint="缺少文件: {0}".format(name),
             )
 
-    return out_dir, copy_log
+    return out_dir, copy_log, security_lines
 
 
 # ---------------------------------------------------------------------------
@@ -1299,6 +1696,8 @@ def cmd_check(_args):
         "客户端包:  {0}".format(path_label(CLIENT_DIR)),
         "服务端:    {0}".format(path_label(SERVER_DIR)),
     ]
+    check_alerts = []
+    check_warns = []
     if server["exists"]:
         dir_lines.append("server.conf: {0}".format(path_label(SERVER_CONF)))
         if server["crl_verify"]:
@@ -1308,25 +1707,62 @@ def cmd_check(_args):
                     server["crl_verify"], match
                 )
             )
+            if not server["crl_matches_pki"]:
+                check_alerts.append(
+                    "crl-verify 路径与 pki/crl.pem 不一致，吊销将无法生效"
+                )
         else:
             dir_lines.append("crl-verify: 未配置（吊销证书不会对已连接用户生效）")
-        if server["port"] or server["proto"]:
+            check_warns.append(
+                "server.conf 未配置 crl-verify，吊销证书不会对已连接用户生效"
+            )
+        if server["port"] or server["proto"] or server["dev"]:
             dir_lines.append(
-                "监听:      {0} {1}".format(
-                    server["proto"] or "?", server["port"] or "?"
+                "监听:      {0} {1} dev {2}".format(
+                    server["proto"] or "?",
+                    server["port"] or "?",
+                    server["dev"] or "?",
                 )
+            )
+        security_lines = format_server_security_lines(server)
+        if security_lines:
+            dir_lines.append(
+                "安全/压缩: {0}".format("；".join(security_lines))
+            )
+        else:
+            check_warns.append(
+                "server.conf 未解析到 tls/cipher 等安全项，create 将失败"
+            )
+        dir_lines.append(
+            "client.ovpn: create 默认对齐 server.conf（--proto/--dev 可手动覆盖）"
+        )
+        if not server.get("proto") or not server.get("dev"):
+            check_warns.append(
+                "server.conf 缺少 proto 或 dev，create 须手动 --proto/--dev"
             )
     else:
         dir_lines.append("server.conf: 不存在（{0}）".format(SERVER_CONF))
+        check_alerts.append(
+            "server.conf 不存在，create 无法生成客户端配置"
+        )
     log.result(dir_lines)
+    if check_alerts:
+        log.alert(check_alerts)
+    if check_warns:
+        log.warn(check_warns)
 
     log.step(3, 3, "汇总 PKI 与客户端状态")
     crl_count = crl_revoked_count()
+    if server["exists"] and server.get("proto") and server.get("dev"):
+        link_hint = "{0}/dev {1}".format(server["proto"], server["dev"])
+    else:
+        link_hint = "见 server.conf 或 --proto/--dev"
     summary = [
         "OpenSSL:   {0}".format(ov or "未知"),
-        "默认连接:  {0}:{1}（create 写入 client.ovpn）".format(
+        "远程地址:  {0}:{1}（--rhost/--rport 可覆盖）".format(
             DEFAULT_REMOTE_HOST, DEFAULT_REMOTE_PORT
         ),
+        "连接参数:  {0}（默认 server.conf）".format(link_hint),
     ]
     crl_file = pki_path("crl.pem")
     if os.path.isfile(crl_file):
@@ -1338,13 +1774,6 @@ def cmd_check(_args):
         summary.append(
             "CRL:      未生成（首次 revoke 后 easyrsa gen-crl 将创建 {0}）".format(
                 path_label(crl_file)
-            )
-        )
-    legacy_certs = "/client.certs"
-    if os.path.isdir(legacy_certs):
-        summary.append(
-            "注意: 发现旧版目录 {0}，当前标准为 {1}".format(
-                legacy_certs, path_label(CLIENT_DIR)
             )
         )
     if active:
@@ -1359,6 +1788,7 @@ def cmd_check(_args):
     log.note(
         [
             "create → pki/issued/<用户>.crt + client/<用户>/client.ovpn",
+            "client.ovpn 默认与 server.conf 对齐；仅 --proto/--dev 等可手动覆盖",
             "revoke → 更新 pki/crl.pem 并删除 client/<用户>/",
         ]
     )
@@ -1402,18 +1832,34 @@ def cmd_status(args):
     log.phase_end("状态查询 · {0}".format(user), note=STATUS_LABEL.get(key, key))
 
 
+def _format_create_meta(user, args, link):
+    parts = [
+        "操作: create --user {0} --rhost {1} --rport {2}".format(
+            user, args.rhost, args.rport
+        ),
+    ]
+    if link["proto_manual"]:
+        parts[0] += " --proto {0}".format(link["proto"])
+    if link["dev_manual"]:
+        parts[0] += " --dev {0}".format(link["dev"])
+    parts.append(
+        "连接: {0}/dev {1}（{2}）".format(
+            link["proto"],
+            link["dev"],
+            "手动覆盖" if (link["proto_manual"] or link["dev_manual"]) else "server.conf",
+        )
+    )
+    parts.append("日志: {0}".format(log.log_file))
+    return parts
+
+
 def cmd_create(args):
     user = args.user
     total = 4
+    server = read_server_conf_summary()
+    link = resolve_create_link_options(server, args.proto, args.dev)
     log.phase_start("签发用户 {0} 的 VPN 证书".format(user))
-    log.meta(
-        [
-            "操作: create --user {0} --rhost {1} --rport {2}".format(
-                user, args.rhost, args.rport
-            ),
-            "日志: {0}".format(log.log_file),
-        ]
-    )
+    log.meta(_format_create_meta(user, args, link))
 
     log.step(1, total, "检查 Easy-RSA 环境")
     preflight()
@@ -1443,14 +1889,34 @@ def cmd_create(args):
     log.result(pki_result)
 
     log.step(4, total, "打包客户端配置")
-    out_dir, _copy_log = bundle_client(user, args.rhost, args.rport)
+    out_dir, _copy_log, security_lines = bundle_client(
+        user, args.rhost, args.rport, link, server
+    )
+    link_source = (
+        "手动覆盖"
+        if (link["proto_manual"] or link["dev_manual"])
+        else "server.conf"
+    )
     log.result(
         [
             "配置包 {0}/client.ovpn".format(path_label(out_dir)),
-            "连接 {0}:{1} (tcp/tun)".format(args.rhost, args.rport),
+            "连接 {0}:{1} ({2}/dev {3}，{4})".format(
+                args.rhost,
+                args.rport,
+                link["proto"],
+                link["dev"],
+                link_source,
+            ),
+            "安全选项:  {0}（server.conf）".format("；".join(security_lines)),
             "含 ca.crt、ta.key、{0}.crt、{0}.key".format(user),
         ]
     )
+    override_warnings = client_link_override_warnings(server, link)
+    if override_warnings:
+        log.alert(
+            ["client.ovpn 与 server.conf 不一致，将无法连通"]
+            + override_warnings
+        )
     log.note(
         [
             "请将 {0}/ 整目录安全发给用户，勿公开私钥".format(
@@ -1540,15 +2006,16 @@ def cmd_revoke(args):
                 "crl-verify 已指向 pki/crl.pem，reload OpenVPN 后生效"
             )
         else:
-            note_lines.append(
-                "警告: crl-verify 路径与 pki/crl.pem 不一致，请核对 server.conf"
+            log.alert(
+                ["crl-verify 路径与 pki/crl.pem 不一致，请核对 server.conf"]
             )
     else:
-        note_lines.append(
-            "请在 server/server.conf 配置 crl-verify 指向 pki/crl.pem"
+        log.warn(
+            ["请在 server/server.conf 配置 crl-verify 指向 pki/crl.pem"]
         )
     note_lines.append("续费请 {0}".format(hint_create(user)))
-    log.note(note_lines)
+    if note_lines:
+        log.note(note_lines)
     log.verify("吊销结果", verify_hints_revoke(user, serial))
 
     log.step(5, total, "清理客户端配置目录")
@@ -1580,9 +2047,9 @@ USER_EPILOG = """
   · 脚本面向 Easy-RSA {ver}（与 OpenVPN/easy-rsa v{ver} 源码一致）
   · 环境变量: GENOVPN_OPENVPN_BASE / GENOVPN_EASYRSA_DIR / GENOVPN_EASYRSA_VERSION
   · {ver}/pki/     issued/ private/ reqs/ revoked/ crl.pem（easyrsa 维护）
-  · pki/ta.key     OpenVPN tls-auth（须单独生成，非 easyrsa）
-  · client/        create → client/<用户>/client.ovpn
-  · server/        server.conf 中 crl-verify 指向 pki/crl.pem
+  · pki/ta.key     OpenVPN tls-auth/tls-crypt（须单独生成，非 easyrsa）
+  · client/        create → client/<用户>/client.ovpn（默认对齐 server.conf）
+  · server/        server.conf 含 dev/proto/tls/cipher；crl-verify → pki/crl.pem
 
 用户名规则:
   · 字母开头，3～16 位，字母/数字/下划线
@@ -1617,11 +2084,14 @@ def build_parser():
   create --user USER   必填，用户名
   create --rhost HOST  VPN 服务器地址（默认 {host}）
   create --rport PORT  VPN 端口（默认 {port}）
+  create --proto P     覆盖 server.conf 传输协议（默认与 server.conf 一致）
+  create --dev D       覆盖 server.conf 虚拟设备（默认与 server.conf 一致）
 
 {log_help}
 
 说明:
   · create: easyrsa build-client-full；revoke: easyrsa revoke + gen-crl（官方流程）
+  · client.ovpn 默认对齐 server.conf；仅 --proto/--dev/--rhost/--rport 可手动覆盖
   · CRL（crl.pem）全 CA 共用，每次 revoke 后 gen-crl 覆盖更新
   · 客户端包: client/<用户>/（{client}）
   · Easy-RSA: {easyrsa}
@@ -1648,7 +2118,7 @@ def build_parser():
 示例:
   {prog} check
 
-运行后可见 [结果] [说明] [核验 · 环境]，末尾 --- 检查通过 ---
+运行后可见 [结果] [警告] [注意] [说明] [核验 · 环境]，末尾 --- 检查通过 ---
 {common}
 """.format(prog=prog_name(), common=USER_EPILOG),
     )
@@ -1662,13 +2132,15 @@ def build_parser():
 示例:
   {prog} create --user zhangsan
   {prog} create --user lisi --rhost 10.0.0.1 --rport 1194
+  {prog} create --user lisi --proto tcp   # 仅当需覆盖 server.conf 时指定
   {prog} create -u zhangsan              # -u 为 --user 简写
 
 输出:
-  client/<用户名>/client.ovpn（含 ca.crt、ta.key、<用户>.crt/key）
+  client/<用户名>/client.ovpn（默认对齐 server.conf；手动覆盖不一致时 [警告] 高亮）
+  含 ca.crt、ta.key、<用户>.crt/key、nobind
   控制台末尾: --- 签发完成 · <用户名> ---
 
-运行中可见 [结果] [说明] [核验 · 签发结果] 等块（详见 -h 说明）
+运行中可见 [结果] [警告] [注意] [说明] [核验 · 签发结果] 等块（详见 -h 说明）
 {common}
 """.format(prog=prog_name(), common=USER_EPILOG),
     )
@@ -1687,6 +2159,24 @@ def build_parser():
         default=DEFAULT_REMOTE_PORT,
         metavar="PORT",
         help="OpenVPN 端口（默认: {0}）".format(DEFAULT_REMOTE_PORT),
+    )
+    p_create.add_argument(
+        "--proto",
+        default=None,
+        metavar="PROTO",
+        help=(
+            "覆盖 server.conf 传输协议（默认读取 server.conf；"
+            "可选 tcp/udp 及 tcp4/udp4 等）"
+        ),
+    )
+    p_create.add_argument(
+        "--dev",
+        default=None,
+        metavar="DEV",
+        help=(
+            "覆盖 server.conf 虚拟设备 tun（路由）或 tap（桥接）；"
+            "默认读取 server.conf"
+        ),
     )
 
     p_revoke = sub.add_parser(
@@ -1759,6 +2249,10 @@ def main():
                     "服务器地址无效",
                     hint="请指定有效 --rhost，例如: 61.187.64.38",
                 )
+            if args.proto is not None:
+                args.proto = validate_ovpn_proto(args.proto)
+            if args.dev is not None:
+                args.dev = validate_ovpn_dev(args.dev)
             cmd_create(args)
         elif args.command == "revoke":
             validate_username(args.user)
