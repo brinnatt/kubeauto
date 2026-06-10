@@ -1,22 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-k8s_backup.py - 企业级 Kubernetes 配置备份和恢复工具
-
-支持功能：
-- 备份 Kubernetes 集群资源（Deployments、Services、ConfigMaps、Secrets 等）
-- 恢复备份到目标集群（server-side apply、单文件多文档清单、依赖顺序串行）
-- 支持命名空间映射、镜像映射、环境变量映射（统一 KEY=值，多项用逗号或空格分隔）
-- 恢复时可选：--merge-patch 与 kubectl patch -p 同形状（YAML/JSON 文件或「{」开头内联 JSON），须配 --merge-patch-kind；内联仅适合小片段（脚本有 UTF-8 大小与嵌套深度上限），复杂结构请用文件以便评审与稳定落地（字典递归合并，列表整段覆盖）
-- 恢复时可选：Downward API（KEY=@k8s:fieldPath）；另支持仅对 env.value 内联字符串按命名空间映射做受控替换（--env-namespace-substitute，与 valueFrom 区分见 -h）
-- 典型：restore --namespace-mapping 旧命名空间=新命名空间 时，清单里 metadata.namespace 与符合条件的 env.value 会随策略改写；具体顺序与示例见 -h 专节
-- 备份侧可选 --include-names：按 metadata.name 精确过滤（与对象名一致；省略则不过滤，行为与旧版相同）
-- 备份侧拒绝缺少 apiVersion/kind 的对象；元数据 JSON 损坏时降级而非崩溃
-- 自动处理资源依赖关系和恢复顺序（含 HPA、PDB、NetworkPolicy 等扩展优先级）
-
-设计与约束对齐 Kubernetes 官方文档（声明式配置、SSA、Service、NetworkPolicy 等）。
-
-Python 3.7+ 兼容
+    Kubernetes 配置备份和恢复工具
+    Python 3.7+ 兼容
 """
 
 import argparse
@@ -3129,37 +3115,25 @@ Kubernetes 备份 / 恢复工具
 --------------------------------------------------------------------------------
 
 --max-workers N（默认 5）
-  作用：在已完成 API 列举之后，并行写出多个资源的 YAML 文件（线程池），只影响 backup，与 restore 无关。
-  何时调大：某命名空间内 Deployment/ConfigMap 等数量很多、磁盘为 SSD 时，适当增大可缩短总耗时。
-  何时勿过大：值过大可能造成磁盘或 API 客户端瞬时压力；脚本内建议上限见入口校验（一般 128 内）。
-  例：200 个 Deployment、max-workers=8，表示最多约 8 个资源同时写盘，并非 8 个并行 API List。
+  线程池，只影响 backup，与 restore 无关。例：200 个 Deployment、max-workers=8，表示最多约 8 个资源同时写盘，并非 8 个并行 API List。
 
 --include-crds
-  作用：在默认 -r 之外，再备份全集群的 CustomResourceDefinition；并对每个已生效的 CRD，用动态客户端
-  按 apiVersion/kind 列举其资源实例（Cluster 范围一次；Namespaced 则按命名空间遍历），写入备份目录。
-  目录上：除各命名空间子目录外，会出现 cluster-scoped/customresourcedefinition/ 下各 CRD 定义文件；
-  各 CR 实例按 kind 分子目录落在对应命名空间或 cluster-scoped 下（与备份时 API 返回一致）。
+  在默认 -r 之外，再备份全集群的 CustomResourceDefinition；并对每个已生效的 CRD，用动态客户端按 apiVersion/kind 列举其资源实例（Cluster 范围一次；Namespaced 则按命名空间遍历），写入备份目录。
   注意：CRD 与实例量很大时耗时会明显增加；目标集群若无对应 CRD，仅恢复实例会失败，须先安装 CRD 或一并恢复定义。
 
 --label-selector（与 kubectl 一致）
-  语义：传给 List 的 labelSelector。逗号分隔多个条件时为 AND（须同时满足）。
-  例：--namespace app --label-selector "tier=frontend,env=staging" 只备份 app 命名空间中同时带 tier=frontend
-  与 env=staging 标签的、且在你 -r 列表中的资源。无标签或标签不匹配则该类型列表为空，不报错。
-  常见用途：只导出某业务线（统一 label）相关的 Deployment/Service，缩小备份体积。
+  传给 List 的 labelSelector。逗号分隔多个条件时为 AND（须同时满足）。例：--namespace app --label-selector "tier=frontend,env=staging" 只备份 app 命名空间中同时带 tier=frontend 与 env=staging 标签的、且在你 -r 列表中的资源。
+  无标签或标签不匹配则该类型列表为空，不报错。一般用于只导出某业务线（统一 label）相关的 Deployment/Service，缩小备份体积。
 
 --field-selector（与 kubectl 一致，受 API 限制）
-  语义：传给 List 的 fieldSelector；具体支持哪些字段因资源类型而异（与 kubectl get 相同限制）。
-  例：--field-selector "metadata.name=my-api" 在每种资源类型的列表结果中筛名字为 my-api 的对象（若 API 支持）。
+  传给 List 的 fieldSelector；具体支持哪些字段因资源类型而异（与 kubectl get 相同限制）。例：--field-selector "metadata.name=my-api" 在每种资源类型的列表结果中筛名字为 my-api 的对象（若 API 支持）。
   注意：部分资源不支持某些 field，或行为以集群版本为准；筛选过严可能导致某类型备份为空。
 
 --include-names（按对象名精确过滤，省略则与旧版相同：备份 -r 下列出的全部对象）
-  语义：在 API List（及可选的 label/field selector）之后，仅保留 metadata.name 在名单中的资源。
-  名称须为 DNS 子域名（RFC 1123），与 Kubernetes 对象名约定一致；大小写敏感、精确匹配。
+  在 API List（及可选的 label/field selector）之后，仅保留 metadata.name 在名单中的资源。名称须为 DNS 子域名（RFC 1123），与 Kubernetes 对象名约定一致；大小写敏感、精确匹配。
   例：-n prod -r deployments,services --include-names "api-gateway,order-service"
-       只写出名为 api-gateway 与 order-service 的 Deployment/Service；同命名空间其它应用不会落盘。
-  与 --label-selector / --field-selector 为 AND：先 API 过滤，再按名称筛。
-  注意：按名称过滤时，ConfigMap/Secret 等若与 Deployment 不同名，不会自动连带备份；须将依赖对象名一并列入，
-  或扩大 -r / 使用标签过滤。Service 与 Deployment 异名时，两个名字都需写入列表。
+       只写出名为 api-gateway 与 order-service 的 Deployment/Service；同命名空间其它应用不会落盘。与 --label-selector / --field-selector 为 AND：先 API 过滤，再按名称筛。
+  注意：按名称过滤时，ConfigMap/Secret 等若与 Deployment 不同名，不会自动连带备份；须将依赖对象名一并列入，或扩大 -r / 使用标签过滤。Service 与 Deployment 异名时，两个名字都需写入列表。
 
 -o / --output-dir 与 --backup-name
   单次备份落盘根路径为：输出根目录 / 备份名 /。
@@ -3191,8 +3165,7 @@ Kubernetes 备份 / 恢复工具
 
 【映射语法（namespace / image / env 通用书写规则）】
   · 每项必须为  KEY=value ；键与值之间只用第一个 = 分割，故值里可含 :、=、URL 等。
-  · 整段参数须至少包含一个 '='；多项之间可用空格、逗号或逗号加空格分隔，例如:
-      A=1 B=2, C=3
+  · 整段参数须至少包含一个 '='；多项之间可用空格、逗号或逗号加空格分隔，例如: A=1 B=2, C=3
   · 快速对照（真实写法缩略）：
       命名空间：--namespace-mapping "dev-ns=prod-ns"
       镜像：--image-mapping "registry.old.com/proj/=registry.new.com/proj/"
@@ -3202,18 +3175,20 @@ Kubernetes 备份 / 恢复工具
       KEY=         删除该环境变量（ Deployment/Pod 模板中的 env 项）
       KEY=@k8s:metadata.namespace  恢复为 Downward API（valueFrom.fieldRef），运行时注入当前 Pod 命名空间
         （官方推荐用于「值即命名空间」；fieldPath 见脚本内白名单与 metadata.labels['k'] 形式）
+        
+  · 镜像映射（对齐 Kubernetes 官方：镜像名为单一字符串，标签与 digest 均为其后缀，无单独字段）:
+      - 换仓库/路径：左侧写旧 registry 或路径前缀，例如 registry.a.com/proj/=registry.b.com/proj/
+      - 例：备份里 image: registry.a.com/app:1.0，映射左侧写 registry.a.com/=registry.b.com/，恢复后为 registry.b.com/app:1.0
+      - 保留原标签：左侧不要包含到 ':' 为止的标签部分，则 :v1.2 会留在结果中
+      - 改标签或 digest：左侧须包含要替换的旧标签或 digest 片段，例如
+        myreg.io/app:v1=myreg.io/app:v2  或  nginx@sha256:abc...=nginx@sha256:def...
+      - 多规则时按最长前缀优先匹配（与常见镜像重写规则一致）
 
 --------------------------------------------------------------------------------
-【恢复阶段：环境变量里的「源命名空间」如何替换（--env-namespace-substitute）】
+【恢复阶段：环境变量里的「源命名空间」如何替换】
 --------------------------------------------------------------------------------
 
-（0）本脚本这一段在做什么
-  恢复时，清单里所有内容（含 env 的 name）本来都在 YAML 里。本选项只解决一类问题：
-  当某环境变量仍通过 Kubernetes 的 env.value 字段、把字符串直接写在清单里时，是否要把该字符串中出现的
-  「源命名空间」替换成「目标命名空间」。它不解析 Secret/ConfigMap 文件内容，也不自动改 valueFrom 指向的对象；
-  若某变量已用 valueFrom，除非你在第③步用 --env-mapping 把它改成 value，否则本步骤不会动它。
-
-（1）术语（请先读这几条，再往下看选项）
+（1）术语
   · env.value 内联字符串（文档中简称「内联 value」）
       Kubernetes 规定 env 条目在 YAML 里要么带 value，要么带 valueFrom，二者互斥（见 Pod Container env）。
       「内联 value」指：该条目使用 value 字段，且把要注入容器的字符串直接写在该字段下面，例如
@@ -3229,24 +3204,21 @@ Kubernetes 备份 / 恢复工具
       --namespace-mapping 里等号右侧的名字，即要恢复到的命名空间名
       （例：talkweb-project-hainan-prod）。
   · 与 --namespace-mapping 配合
-      必须先提供至少一条 旧名=新名；本选项决定在映射已确定后，是否还要在仍为 env.value 内联字符串的
-      内容里，把出现的源命名空间替换成目标命名空间。
+      必须先提供至少一条 旧名=新名；本选项决定在映射已确定后，是否还要在仍为 env.value 内联字符串的内容里，把出现的源命名空间替换成目标命名空间。
       若无 --namespace-mapping（或映射表为空），--env-namespace-substitute 不会产生任何效果。
 
 （2）同一资源内的处理顺序（与先后覆盖关系）
   对带 Pod 模板的资源，脚本按下面顺序执行；排在前面的步骤会改变清单，后面的步骤基于最新清单：
-    ① 资源的 metadata.namespace、Pod 模板内嵌套 namespace 等（--namespace-mapping）
-    ② --image-mapping（容器 image）
-    ③ --env-mapping（按变量名增/删/改；若某 KEY 被改成 @k8s:...，则该 KEY 变为 valueFrom，
-       不再使用内联 value）
-    ④ --env-namespace-substitute：只对第③步之后仍为 env.value 内联字符串的项，按模式替换字符串中的
-       源命名空间到目标命名空间
-    ⑤ --merge-patch：将补丁按 kubectl patch -p 形状深度合并进资源根对象（见下方「合并补丁」专节）
-    ⑥ 对容器 ports 按 (containerPort, protocol) 去重，避免 server-side apply 触发 apiserver 报错
+    1、资源的 metadata.namespace、Pod 模板内嵌套 namespace 等（--namespace-mapping）
+    2、--image-mapping（容器 image）
+    3、--env-mapping（按变量名增/删/改；若某 KEY 被改成 @k8s:...，则该 KEY 变为 valueFrom，不再使用内联 value）
+    4、--env-namespace-substitute：只对第 3 步之后仍为 env.value 内联字符串的项，按模式替换字符串中的源命名空间到目标命名空间
+    5、--merge-patch：将补丁按 kubectl patch -p 形状深度合并进资源根对象（见下方「合并补丁」专节）
+    6、对容器 ports 按 (containerPort, protocol) 去重，避免 server-side apply 触发 apiserver 报错
 
-  因此：若你用 --env-mapping 把某变量改成了 Downward API（valueFrom.fieldRef），该变量不会再参与第④步。
+  因此：若你用 --env-mapping 把某变量改成了 Downward API（valueFrom.fieldRef），该变量不会再参与第 4 步。
 
-（3）--env-namespace-substitute 三种模式（均只作用于第（2）节第④步中的内联 value）
+（3）--env-namespace-substitute 三种模式（均只作用于第（2）节第 4 步中的内联 value）
   · auto（默认，推荐）
       在字符串中查找源命名空间时采用较保守的规则，减少误伤：
       - 整段 value 恰好等于源命名空间：整段换成目标命名空间
@@ -3260,20 +3232,17 @@ Kubernetes 备份 / 恢复工具
       对每个源命名空间名，在整段 value 中做全局文本替换（str.replace，多规则时按旧名长度从长到短）。
       适合 URL、长串里多处出现命名空间名的场景；若某配置值里偶然含有与命名空间同名的子串，可能误改。
   · off
-      不做第④步自动替换。跨环境时只能依赖 --env-mapping 逐 KEY 写死新值，或使用 @k8s:fieldPath。
+      不做第 4 步自动替换。跨环境时只能依赖 --env-mapping 逐 KEY 写死新值，或使用 @k8s:fieldPath。
 
 （4）与 Downward API（@k8s:）的分工
   · 值就是当前命名空间、且希望运行时注入：DEPLOY_ENV=@k8s:metadata.namespace（不必写死在映射里）。
     例：恢复后清单中为 valueFrom.fieldRef metadata.namespace，Pod 在 prod-ns 里启动时容器内 DEPLOY_ENV=prod-ns。
-  · 值为 应用名.命名空间 且应用名各 Deployment 不同：用 auto 加 namespace-mapping（默认即 auto）改后缀即可，
+  · 值为 应用名.命名空间 且各 Deployment 应用名不同：用 auto 加 namespace-mapping（默认即 auto）改后缀即可，
     无需为每个应用单独写 --env-mapping。
 
 --------------------------------------------------------------------------------
 【恢复阶段：合并补丁（--merge-patch，与 kubectl patch -p 形状一致）】
 --------------------------------------------------------------------------------
-
-  设计：kubectl 对运行中对象执行 patch；本脚本在 restore 时对静态清单做同类合并后再 server-side apply，
-  避免对线上做逐资源 patch 带来的抖动，并与命名空间/镜像/env 映射同属「落盘前改写」生产流程。
 
   生产用法（与 kubectl patch 成熟语义一致；本脚本只在落盘前合并，边界由下列方式控制）：
     · 推荐（复杂、多文档、需评审）：使用 YAML/JSON 文件路径。无内联专用的结构深度上限，适合 affinity、
@@ -3296,8 +3265,7 @@ Kubernetes 备份 / 恢复工具
               nodeSelector:
                 release: production
 
-  合并规则：双方同一键均为映射时递归合并；否则以补丁整段覆盖（含列表）。列表项不按 strategic merge 的主键合并，
-  与 apiserver 行为可能不同；复杂 patches 请以官方文档核对。
+  合并规则：双方同一键均为映射时递归合并；否则以补丁整段覆盖（含列表）。列表项不按 strategic merge 的主键合并，与 apiserver 行为可能不同；复杂 patches 请以官方文档核对。
 
   作用范围（强制）：
     · 使用 --merge-patch 时必须同时指定至少一个 --merge-patch-kind（可重复，例如同时写 Deployment 与 StatefulSet），
@@ -3319,17 +3287,6 @@ Kubernetes 备份 / 恢复工具
         --merge-patch '{"spec":{"template":{"spec":{"nodeSelector":{"release":"production"}}}}}' \\
         --merge-patch-kind Deployment \\
         --create-namespaces
-
---------------------------------------------------------------------------------
-【映射语法】续 — 镜像
---------------------------------------------------------------------------------
-  · 镜像映射（对齐 Kubernetes 官方：镜像名为单一字符串，标签与 digest 均为其后缀，无单独字段）:
-      - 换仓库/路径：左侧写旧 registry 或路径前缀，例如 registry.a.com/proj/=registry.b.com/proj/
-      - 例：备份里 image: registry.a.com/app:1.0，映射左侧写 registry.a.com/=registry.b.com/，恢复后为 registry.b.com/app:1.0
-      - 保留原标签：左侧不要包含到 ':' 为止的标签部分，则 :v1.2 会留在结果中
-      - 改标签或 digest：左侧须包含要替换的旧标签或 digest 片段，例如
-        myreg.io/app:v1=myreg.io/app:v2  或  nginx@sha256:abc...=nginx@sha256:def...
-      - 多规则时按最长前缀优先匹配（与常见镜像重写规则一致）
 
 --------------------------------------------------------------------------------
 【restore：范围开关、备份目录布局与 NetworkPolicy（详解）】
