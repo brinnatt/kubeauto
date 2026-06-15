@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, Callable, List
 from taskflow.patterns import linear_flow
 from taskflow import engines
-from common.utils import confirm_action, validate_ip
+from common.utils import confirm_action, validate_ip, expand_host_targets, parse_pw_file_hosts
 from common.exceptions import KubeautoError, DownloadError, DockerManageError, SystemExecutionError, InstallPrereqError
 from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
@@ -547,6 +547,9 @@ Examples:
   # 4. Group passwords via JSON file (enterprise)
   kubeauto system -a --user root --pw-file ./pw.json host1 host2 host3
 
+  # 5. IPv4 last-octet range
+  kubeauto system -a --user root --password 'pass' 192.168.139.129-134
+
   Password file format (pw.json):
   {
     "host1": "pass1",
@@ -591,7 +594,7 @@ Examples:
         ssh_parser.add_argument(
             "hosts",
             nargs="*",
-            help="Target host IPs/names"
+            help="Target host IPs/names (supports IPv4 last-octet range, e.g. 192.168.139.129-134)"
         )
         ssh_parser.add_argument(
             "--dry-run",
@@ -976,26 +979,23 @@ Examples:
                 except Exception as e:
                     raise SystemExecutionError(f"Failed to load --pw-file '{args.pw_file}': {e}")
 
-                pw_file_hosts = set()
-                for k, v in pw_data.items():
-                    if k.endswith("_password"):
-                        group_name = k[:-9]
-                        group_hosts = pw_data.get(group_name)
-                        if isinstance(group_hosts, list):
-                            for h in group_hosts:
-                                if isinstance(h, str):
-                                    pw_file_hosts.add(h)
-                    elif isinstance(v, str):
-                        pw_file_hosts.add(k)
-                target_hosts_set.update(pw_file_hosts)
+                try:
+                    target_hosts_set.update(parse_pw_file_hosts(pw_data))
+                except ValueError as e:
+                    raise SystemExecutionError(str(e)) from e
 
             # Step 2: Add CLI hosts (only if not already in pw_file)
-            cli_hosts = set(args.hosts) if args.hosts else set()
-            dup_hosts = cli_hosts & target_hosts_set
+            try:
+                cli_hosts = expand_host_targets(args.hosts) if args.hosts else []
+            except ValueError as e:
+                raise SystemExecutionError(str(e)) from e
+            dup_hosts = set(cli_hosts) & target_hosts_set
             if dup_hosts:
-                logger.warning(f"Duplicate hosts: {dup_hosts}, these will be ignored!", extra=LOG_STDOUT)
-            extra_hosts = cli_hosts - dup_hosts
-            target_hosts_set.update(extra_hosts)
+                logger.warning(
+                    f"Duplicate hosts: {sorted(dup_hosts)}, password from --pw-file takes precedence",
+                    extra=LOG_STDOUT,
+                )
+            target_hosts_set.update(cli_hosts)
 
             # Step 3: Validate at least one host
             if not target_hosts_set:

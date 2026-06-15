@@ -13,6 +13,7 @@ import getpass
 import threading
 import os
 from .logger import setup_logger, LOG_STDOUT
+from .utils import expand_host_targets, parse_pw_file_host_passwords
 from typing import Dict, Generator, Union, List, Optional, Tuple
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -146,7 +147,10 @@ class SystemProbe:
           "groupA_password": "passA"
         }
         Hosts not listed default to key-only or --password fallback.
+
+        Host tokens support IPv4 last-octet ranges, e.g. 192.168.139.129-134.
         """
+        host_ips = expand_host_targets(host_ips)
         public_keys = self._load_all_public_keys()
         if not public_keys:
             raise RuntimeError("No SSH public keys found. Tried: id_ed25519.pub, id_ecdsa.pub, id_rsa.pub")
@@ -162,22 +166,8 @@ class SystemProbe:
             except Exception as e:
                 raise ValueError(f"Failed to load --pw-file '{pw_file}': {e}")
 
-            # Expand group definitions
-            host_to_pw: Dict[str, str] = {}
-            for k, v in pw_data.items():
-                if k.endswith("_password") and isinstance(v, str):
-                    group_name = k[:-9]  # remove '_password'
-                    group_hosts = pw_data.get(group_name)
-                    if isinstance(group_hosts, list):
-                        for h in group_hosts:
-                            if isinstance(h, str):
-                                host_to_pw[h] = v
-                elif isinstance(v, str) and not k.endswith("_password"):
-                    # direct host mapping
-                    host_to_pw[k] = v
-
-            for host in host_ips:
-                pw_map[host] = host_to_pw.get(host)
+            host_to_pw = parse_pw_file_host_passwords(pw_data)
+            pw_map.update({host: host_to_pw.get(host) for host in host_ips})
 
         # Step 2: --password fallback
         if password is not None:
