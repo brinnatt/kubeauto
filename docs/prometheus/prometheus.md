@@ -143,6 +143,29 @@ scrape_configs:
 
 > 为便于管理，以下所有监控相关资源均放在 namespace `kube-mon` 下，若不存在请先执行：`kubectl create namespace kube-mon`。
 
+> **版本与镜像约定（官方最新稳定版）**
+>
+> 文中 **`image:` 固定标签**须与各软件 **GitHub Releases**（或 registry 对应 tag）上 **latest 稳定版**（`prerelease: false`）一致，**禁止使用 `latest` 浮动标签**。升级前先查官方发行页再改 YAML。
+>
+> **本文同步校验日期：2026-03-28**，对应当前稳定版示例：  
+>
+> | 组件 | 镜像 / 标签 | 官方发行说明 |
+> |------|-------------|--------------|
+> | Prometheus | `prom/prometheus:v3.10.0` | [Releases](https://github.com/prometheus/prometheus/releases/latest) |
+> | Alertmanager | `prom/alertmanager:v0.31.1` | [Releases](https://github.com/prometheus/alertmanager/releases/latest) |
+> | node_exporter | `prom/node-exporter:v1.10.2` | [Releases](https://github.com/prometheus/node_exporter/releases/latest) |
+> | Grafana OSS | `grafana/grafana:12.4.1` | [Releases](https://github.com/grafana/grafana/releases/latest) · [Download](https://grafana.com/grafana/download) |
+> | kube-state-metrics | `registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0` | [Releases](https://github.com/kubernetes/kube-state-metrics/releases/latest) |
+> | redis_exporter | `oliver006/redis_exporter:v1.82.0` | [Releases](https://github.com/oliver006/redis_exporter/releases/latest) |
+> | Redis（应用镜像） | `redis:8.6.2-alpine` | [Releases](https://github.com/redis/redis/releases/latest) · [Hub Tags](https://hub.docker.com/_/redis/tags) |
+> | Thanos | `thanosio/thanos:v0.41.0` | [Releases](https://github.com/thanos-io/thanos/releases/latest) |
+> | busybox（init 辅助） | `busybox:1.37` | [Hub Tags](https://hub.docker.com/_/busybox/tags) |
+> | MinIO | `minio/minio:RELEASE.2025-10-15T17-29-55Z` | [Releases](https://github.com/minio/minio/releases/latest) |
+> | prometheus-webhook-dingtalk | `timonwong/prometheus-webhook-dingtalk:v2.1.0` | [Releases](https://github.com/timonwong/prometheus-webhook-dingtalk/releases/latest) |
+> | PrometheusAlert（企微等聚合通道） | `feiyu563/prometheus-alert:v4.9.2` | [Releases](https://github.com/feiyu563/PrometheusAlert/releases/latest) |
+>
+> **补充**：文中出现的 `cnych/*` 等为教程配套**社区镜像**，通常无独立 GitHub Release 页与核心栈同步；使用须在 [Docker Hub](https://hub.docker.com/) 对应仓库核对维护者当前推荐的**固定 tag**（勿用 `latest`），并在变更时更新本文校验日期。
+
 **3. 在 Kubernetes 中部署 Prometheus 3.10**
 
 以下给出 ConfigMap、Deployment、PV/PVC、RBAC、Service 的**资源定义**；实际在集群中的 **apply 顺序** 见本小节「6. 部署 Prometheus 并处理数据目录权限」中的表格，须严格按该顺序执行，否则 Pod 无法创建或无法调度。
@@ -207,7 +230,7 @@ spec:
       serviceAccountName: prometheus
       initContainers:
         - name: fix-data-dir-permissions
-          image: busybox:1.36
+          image: busybox:1.37
           command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
           volumeMounts:
             - name: data
@@ -414,6 +437,18 @@ kubectl get svc -n kube-mon
 
 ![prometheus-webui](./images/prometheus-webui.png)
 
+**企业生产补充：Prometheus Web/API 安全与 Grafana 数据源认证（官方文档对齐）**
+
+上文 **T4.2.1** 为便于在内网快速跑通，Prometheus 监听 **HTTP `9090`** 且 **未**在服务端启用 Basic Auth / TLS；集群内 Grafana 使用 **`http://prometheus:9090`**、数据源认证选 **No authentication** 即可。**有合规或内控要求时**，必须在 **Prometheus 侧** 与 **Grafana 数据源侧**同步按官方说明打开认证与传输安全，否则仅改一端会出现 UI 里 **Authentication** 选项与真实服务不一致、**Save & test** 失败或「以为已加密实际仍明文」的问题。
+
+| 层面 | 官方依据 | 生产要点 |
+|------|----------|----------|
+| Prometheus 服务端 | [HTTPS and authentication](https://prometheus.io/docs/prometheus/latest/configuration/https/) | 使用 **`--web.config.file`** 加载 YAML，可配置 **`tls_server_config`**（服务端证书）与 **`basic_auth_users`**（口令为 **bcrypt** 哈希；文件可在每次 HTTP 请求时重读）。示例见上游 [web-config.yml](https://github.com/prometheus/prometheus/blob/main/documentation/examples/web-config.yml)。TLS 部署步骤另见 Grafana 文档所引用的 [Securing Prometheus API and UI Endpoints Using TLS Encryption](https://prometheus.io/docs/guides/tls-encryption/)。 |
+| 网络与暴露面 | Kubernetes / Ingress 惯例 | 除上述外，常用 **Ingress + TLS**、**仅 ClusterIP** 配合 **NetworkPolicy**、或前置 API 网关，缩小 `9090` 对外暴露；**Admin API**（T4.2.1 中 `--web.enable-admin-api`）尤须限制可达性。 |
+| Grafana 数据源 | [Configure the Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/) | **Authentication**：**Basic authentication**（用户名/口令，对应 Prometheus Basic Auth）、**Forward OAuth identity**（将当前用户的 OAuth/OIDC 令牌转发给数据源；需上游与本企业 IdP 策略支持）、**No authentication**（仅当 Prometheus 确无认证且风险可接受）。**Prometheus server URL**：启用 TLS 后改为 **`https://主机:端口`**。**TLS settings**：校验自签/私有 CA 时配置 **CA certificate**；双向 TLS 时配置 **TLS client authentication**；**Skip TLS verify** 仅应急排障。**HTTP headers**：按反向代理或多租户网关要求添加。口令、客户端证书私钥等用 Grafana **Secrets** 或 Provisioning 的 **`secureJsonData`** 注入，**勿**写入 Git 明文。 |
+
+**与本文清单的对应关系**：保持 **HTTP、无认证** 时，Grafana 数据源选 **No authentication**，URL 维持 **`http://prometheus.kube-mon.svc.cluster.local:9090`**（或短名 `http://prometheus:9090`）。一旦 Prometheus 启用 **HTTPS** 和/或 **Basic Auth**，必须在数据源中填写 **同一套** URL scheme、**Authentication** 与 **TLS** 选项；中间经 **Thanos Querier** 等查询入口时，URL 与认证方式以 **实际查询服务** 为准（见后文 Thanos 相关小节）。
+
 ## T4.3、监控应用
 
 Prometheus 通过 HTTP(S) 拉取目标的 [exposition 格式](https://prometheus.io/docs/instrumenting/exposition_formats/) 指标，无需在目标上安装独立 agent，只要目标暴露一个可访问的 metrics 端点即可。许多组件（如 Kubernetes 各组件、CoreDNS、Istio）已内置 `/metrics` 或专用端口；未内置的可通过 [Exporter](https://prometheus.io/docs/instrumenting/exporters/)（如 `node_exporter`、`mysqld_exporter`）以 sidecar 或独立部署方式暴露指标。
@@ -507,7 +542,7 @@ curl -X POST "http://${POD_IP}:9090/-/reload"
 
 **1. 部署 Redis 与 redis-exporter**
 
-同一 Pod 内：主容器为 Redis，sidecar 为 redis-exporter。exporter 默认连接 `localhost:6379`，与主应用同 Pod 时无需额外配置。镜像版本随官方更新，当前示例使用 **Redis 8.6**（[官方发布](https://redis.io/blog/announcing-redis-86-performance-improvements-streams/)）与 **redis_exporter v1.82**（[GitHub Releases](https://github.com/oliver006/redis_exporter/releases)），便于安全与兼容性。资源清单（文件名与 T4.3.1 统一，如 `prometheus-redis.yaml`）：
+同一 Pod 内：主容器为 Redis，sidecar 为 redis-exporter。exporter 默认连接 `localhost:6379`，与主应用同 Pod 时无需额外配置。镜像与上文 **「版本与镜像约定」** 表一致：**Redis** 用官方补丁线 **`8.6.2-alpine`**（[GitHub Releases](https://github.com/redis/redis/releases/latest)）、**redis_exporter** 用 **`v1.82.0`**。资源清单（文件名与 T4.3.1 统一，如 `prometheus-redis.yaml`）：
 
 ```yaml
 # prometheus-redis.yaml
@@ -527,7 +562,7 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:8.6-alpine
+          image: redis:8.6.2-alpine
           resources:
             requests:
               cpu: 100m
@@ -812,7 +847,7 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 - **relabel_configs**：在真正发起抓取前，对 target 的标签做改写。这里**标签**指 key-value 对：每个 target 有一组「标签名(key)=标签值(value)」。
   - **source_labels 和 regex 的关系（容易混）**：`source_labels` 里写的是**标签名（key）**，不是 key:value。Prometheus 会取出这些 key 在当前 target 上对应的 **value**，按顺序用分隔符（默认 `;`）拼成一个字符串；**regex 匹配的是这个「拼接后的 value 字符串」**，不是 key。例如 `source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]`、`regex: "true"` 表示：取名为 `__meta_kubernetes_service_annotation_prometheus_io_scrape` 的标签的**值**（例如 `"true"`），若该值匹配正则 `"true"` 则执行后续动作（如 keep 保留该 target）。
   - **action: replace**：用上述「source_labels 的 value 拼接串」去匹配 `regex`，用 `replacement` 里的 `$1`、`${1}` 等引用捕获组，把结果写入 `target_label`。上面把 `__address__` 从 `(.*):10250` 改成 `${1}:9100`，就是把“抓取地址”从 kubelet 的 10250 改成 node-exporter 的 9100。
-  - **action: labelmap**：这里 regex 作用对象不同——**匹配的是「标签名(key)」**，把匹配到的标签整对复制，新标签名由 `replacement` 决定。例如 `regex: __meta_kubernetes_node_label_(.+)` 匹配的是**现有标签的名字**（如 `__meta_kubernetes_node_label_zone`），复制后新名字为 `zone`。
+  - **action: labelmap**：这里 regex 作用对象不同，**匹配的是「标签名(key)」**，把匹配到的标签整对复制，新标签名由 `replacement` 决定。例如 `regex: __meta_kubernetes_node_label_(.+)` 匹配的是**现有标签的名字**（如 `__meta_kubernetes_node_label_zone`），复制后新名字为 `zone`。
 - **为何 10250 改成 9100**：`role: node` 时，服务发现默认把每个节点的 `__address__` 设成该节点的 kubelet 地址（`<节点IP>:10250`）。我们要抓的是 **node-exporter**（监听 9100），所以用一条 replace 规则把端口改成 9100；这样 `kubernetes-nodes` 这个 job 抓的就是各节点上的 node-exporter，而不是 kubelet。
 - **kubernetes-kubelet 的 scheme / tls / bearer_token**：kubelet 的 metrics 只暴露在 **HTTPS 10250** 上，因此需要 `scheme: https`。`ca_file` 和 `bearer_token_file` 使用 Pod 内挂载的 ServiceAccount 的 CA 与 token，用于与 kubelet 建立 TLS 并做认证；`insecure_skip_verify: true` 表示不校验 kubelet 服务端证书（常见于自签名）。该 job 需要 T4.2.1 中配置的 RBAC（如 `nodes/metrics`、`nodes/proxy` 等）才能访问 kubelet。
 
@@ -1273,15 +1308,11 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 
 ![prometheus-endpoints](./images/prometheus-endpoints.png)
 
-![prometheus-pod-redis](./images/prometheus-pod-redis.png)
-
 ## T4.8、kube-state-metrics
 
-本节解决一个问题：**前面我们监控到的都是「用量」和「组件是否活着」，还没有「资源对象的状态」**。用一句话说：**kube-state-metrics 是一个监听 Kubernetes API、把各类资源对象的「当前状态」转成 Prometheus 指标的组件**，这样你就能在 Prometheus 里查「期望副本数 vs 实际可用数」「Pod 是否 Pending/Failed」「重启次数」等。
+**前面我们监控到的都是「资源用量」和「组件是否活着」，还没有「资源对象的状态」**。
 
----
-
-### 和前面几节的关系（避免断片）
+**kube-state-metrics 是一个监听 Kubernetes API、把各类资源对象的「当前状态」转成 Prometheus 指标的组件**，这样你就能在 Prometheus 里查「期望副本数 vs 实际可用数」「Pod 是否 Pending/Failed」「重启次数」等。
 
 | 前面已经有的 | 能回答的问题 | 还缺什么 |
 |-------------|--------------|----------|
@@ -1289,22 +1320,38 @@ curl -X POST "http://<节点IP>:31078/-/reload"
 | **T4.6 API Server** | API 请求量、延迟 | 不知道「有多少 Pod 处于 Pending/Failed」 |
 | **T4.7 Endpoints 发现** | 哪些 Service 暴露了 `/metrics`、自动抓取 | 不知道「Pod 重启了几次」「Job 是否失败」 |
 
-**API Server 和 kubelet 的 `/metrics` 里没有上面「还缺」的这类信息**。这些信息来自 Kubernetes 的**资源对象本身**（Deployment、Pod、Job 等）的**状态字段**。kube-state-metrics 做的事就是：**监听 API Server 里这些对象的变化，把状态转成 Prometheus 指标**（例如 `kube_deployment_status_replicas_available`、`kube_pod_status_phase`），供 Prometheus 抓取。官方说明见 [kube-state-metrics README](https://github.com/kubernetes/kube-state-metrics)：*"listens to the Kubernetes API server and generates metrics about the state of the objects"*。
+**API Server 和 kubelet 的 `/metrics` 里没有上面「还缺」的这类信息**。这些信息来自 Kubernetes 的**资源对象本身**（Deployment、Pod、Job 等）的**状态字段**。kube-state-metrics 做的事就是：**监听 API Server 里这些对象的变化，把状态转成 Prometheus 指标**（例如 `kube_deployment_status_replicas_available`、`kube_pod_status_phase`），供 Prometheus 抓取。
+
+> 官方说明见 [kube-state-metrics README](https://github.com/kubernetes/kube-state-metrics)：`listens to the Kubernetes API server and generates metrics about the state of the objects`。
 
 ---
 
-### 4.8.1、和 metric-server 的区别（防止搞混）
+### T4.8.1、和 metric-server 的区别
 
-集群里可能还会听到 **metrics-server**，两者容易混淆，区别可以记成：
+集群里可能还会听到 **metrics-server**，两者容易混淆，区别可以理解为：
 
 - **metrics-server**：给 **Kubernetes 自己用**的。采集节点/Pod 的 **CPU、内存用量**，通过 Metrics API 提供给 HPA、调度器等，**不是给 Prometheus 当数据源的**。
 - **kube-state-metrics**：给 **Prometheus 用**的。采集 **Deployment/Pod/Job 等对象的状态**（期望副本数、实际副本数、Pod 阶段、重启次数等），以 Prometheus 格式暴露在 `/metrics`，由 Prometheus 抓取。
 
-也就是说：**用量**（CPU/内存）→ metrics-server / 我们前面的 node-exporter、cAdvisor；**对象状态**（副本数、Phase、重启次数）→ kube-state-metrics。
+也就是说：**资源用量**（CPU/内存）→ metrics-server / 我们前面的 node-exporter、cAdvisor；**对象状态**（副本数、Phase、重启次数）→ kube-state-metrics。
+
+下图与上文及 [kube-state-metrics README](https://github.com/kubernetes/kube-state-metrics) 一致：左侧为「监听 API、由 Prometheus 拉取」；右侧为「kubelet → metrics-server → Metrics API」，**不经由 Prometheus**，与 **T4.13** 中资源类 HorizontalPodAutoscaler 路径同类。
+
+```mermaid
+flowchart TB
+  subgraph ksm["kube-state-metrics · 供 Prometheus 使用"]
+    API[Kubernetes API Server] -->|list / watch 对象变化| KSM[kube-state-metrics]
+    PM[Prometheus] -->|HTTP 抓取 /metrics| KSM
+  end
+  subgraph ms["metrics-server · 供集群调度与扩缩等使用"]
+    KBL[kubelet] --> MSRV[metrics-server]
+    MSRV --> MKAPI[Metrics API\nmetrics.k8s.io]
+  end
+```
 
 ---
 
-### 4.8.2、安装（按步做即可）
+### T4.8.2、安装
 
 部署 kube-state-metrics 后，**不需要改 Prometheus 的 ConfigMap**：T4.7 已经配置了 `kubernetes-endpoints`，只要给 kube-state-metrics 的 **Service 打上** `prometheus.io/scrape=true` 和 `prometheus.io/port=8080`，Prometheus 就会自动发现并抓取这个新 Service 背后的 Pod（和之前 redis、kube-dns 一样）。
 
@@ -1317,7 +1364,14 @@ cd kube-state-metrics/examples/standard
 
 注意与 Kubernetes 版本兼容性，见官方 [Compatibility matrix](https://github.com/kubernetes/kube-state-metrics#compatibility-matrix)；一般用最新 release 即可。
 
-![prometheus-kube-state-metrics](./images/prometheus-kube-state-metrics.png)
+| kube-state-metrics | Kubernetes client-go Version |
+| ------------------ | ---------------------------- |
+| v2.14.0            | v1.31                        |
+| v2.15.0            | v1.32                        |
+| v2.16.0            | v1.32                        |
+| v2.17.0            | v1.33                        |
+| v2.18.0            | v1.34                        |
+| main               | v1.35                        |
 
 **步骤二：若无法拉取 gcr.io 镜像，修改 deployment 中的镜像**
 
@@ -1340,14 +1394,25 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    app.kubernetes.io/component: exporter
     app.kubernetes.io/name: kube-state-metrics
-    app.kubernetes.io/version: 2.0.0-rc.0
+    app.kubernetes.io/version: 2.18.0
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "8080"   # 8080=指标端口；8081=应用自身遥测
   name: kube-state-metrics
   namespace: kube-system
-# ... spec 等保持不变
+spec:
+  clusterIP: None
+  ports:
+    - name: http-metrics
+      port: 8080
+      targetPort: http-metrics
+    - name: telemetry
+      port: 8081
+      targetPort: telemetry
+  selector:
+    app.kubernetes.io/name: kube-state-metrics
 ```
 
 **步骤四：一键部署**
@@ -1358,15 +1423,34 @@ metadata:
 kubectl apply -f .
 ```
 
+若最后一行出现类似下面的报错，**属于正常现象**，一般**不影响** kube-state-metrics 是否已部署成功（前面 `deployment`、`service`、`clusterrole` 等已为 `created` 即说明核心清单已应用）：
+
+```text
+error: resource mapping not found for name: "" namespace: "" from "kustomization.yaml": no matches for kind "Kustomization" in version "kustomize.config.k8s.io/v1beta1"
+ensure CRDs are installed first
+```
+
+**原因**：官方 `examples/standard` 目录里除各组件清单外，还带有 **`kustomization.yaml`**，是给 **Kustomize** 用的编排文件（需执行 `kubectl apply -k .` 时由 kubectl 内置解释），**不是** 集群里的某种 CRD。执行 `kubectl apply -f .` 时会把目录下所有 yaml 都提交给 API Server，`kustomization.yaml` 无法作为集群资源创建，便会报上述错误。
+
+**可选做法**：
+
+- 继续用 `kubectl apply -f .`：忽略该条错误即可；或用 `kubectl get pods -n kube-system -l app.kubernetes.io/name=kube-state-metrics` 确认 Pod 已就绪。
+- 改用 Kustomize：`kubectl apply -k .`（在同一目录下），则不会把 `kustomization.yaml` 误当普通资源 apply。
+- 或只应用具体文件（与当前官方仓库一致）：`kubectl apply -f cluster-role.yaml -f cluster-role-binding.yaml -f service-account.yaml -f deployment.yaml -f service.yaml`（**不要**带上 `kustomization.yaml`）。
+
 **步骤五：确认 Prometheus 已抓取**
 
-因为 T4.7 的 `kubernetes-endpoints` 只抓带 `prometheus.io/scrape=true` 的 Service，部署完成后 Prometheus 会自动把 kube-state-metrics 加入抓取目标。在 Prometheus 的 **Status → Targets** 里找到 `kubernetes-endpoints`，应能看到 kube-state-metrics 的 endpoint（状态为 UP）。
+因为 T4.7 的 `kubernetes-endpoints` 只抓带 `prometheus.io/scrape=true` 的 Service，部署完成后 Prometheus 会自动把 kube-state-metrics 加入抓取目标。在 Prometheus 的 **Status → Service discovery** 里找到 `kubernetes-endpoints`，应能看到 kube-state-metrics 的 endpoint（状态为 UP）。
 
 ![prometheus-kube-state-metrics1](./images/prometheus-kube-state-metrics1.png)
 
-### 4.8.3、水平分片（可选，小集群可跳过）
+> Grafana 大盘：导入 kube-state-metrics 或 Kubernetes 工作负载类模板前，请先读 T4.9.3「观测分层与本文 job」。默认经 T4.7 的 kubernetes-endpoints 抓取时，序列上的 job 多为 kubernetes-endpoints，模板若写死 kube-state-metrics 容易无数据，需按该节改变量或 PromQL。若已按 T4.8.4 增加独立的 kube-state-metrics job 并启用 honor_labels，则可能与社区模板一致，仍以 Explore 里实际标签为准。
 
-**什么时候需要看这段**：集群规模很大（例如节点数 > 500 或对象数 > 10 万）时，单实例 kube-state-metrics 可能吃满内存或延迟变高，这时可以用**水平分片**把对象分摊到多个实例。中小集群用默认单实例即可，不必配置分片。
+### T4.8.3、水平分片
+
+**什么时候需要看这段**？
+
+集群规模很大（例如节点数 > 500 或对象数 > 10 万）时，单实例 kube-state-metrics 可能吃满内存或延迟变高，这时可以用**水平分片**把对象分摊到多个实例。中小集群用默认单实例即可，不必配置分片。
 
 分片原理：按 Kubernetes 对象的 UID 做 MD5 再对总分片数取模，同一个对象始终由同一个分片负责，这样 Prometheus 抓多个 target 时不会重复或漏掉。官方文档见 [Horizontal sharding](https://github.com/kubernetes/kube-state-metrics#horizontal-sharding)。
 
@@ -1381,7 +1465,7 @@ kubectl apply -f .
 
 **自动分片（实验性）**：用 StatefulSet 部署时，可通过 Downward API 把 Pod 名和 namespace 传给进程，实现「按 Pod 序号自动算分片」。示例见官方 [examples/autosharding](https://github.com/kubernetes/kube-state-metrics/tree/main/examples/autosharding)。官方注明该功能为实验性，可能随时变更或移除，生产环境建议用静态分片。
 
-### 4.8.4、部署后能查什么（应用场景示例）
+### T4.8.4、部署后能查什么（应用场景示例）
 
 部署并确认 Prometheus 已抓取 kube-state-metrics 后，在 **Prometheus → Query（Graph）** 里就可以用下面这类 PromQL。指标含义和更多示例见官方 [docs 目录](https://github.com/kubernetes/kube-state-metrics/tree/main/docs)。
 
@@ -1425,7 +1509,7 @@ kube_pod_container_resource_limits_cpu_cores == 0
 
 ---
 
-### 常见问题：为什么查到的标签是 `exported_namespace` 而不是 `namespace`？
+**常见问题：为什么查到的标签是 `exported_namespace` 而不是 `namespace`？**
 
 **现象**：在 Prometheus 里用 `namespace="default"` 过滤 kube-state-metrics 的指标没结果，但改成 `exported_namespace="default"` 就有数据。
 
@@ -1455,7 +1539,7 @@ kube_pod_container_resource_limits_cpu_cores == 0
 
 ---
 
-### 故障排查速查
+### T4.8.5、故障排查速查
 
 | 现象         | 建议检查                                               | 常见处理 |
 | ------------ | ------------------------------------------------------ | -------- |
@@ -1468,40 +1552,117 @@ kube_pod_container_resource_limits_cpu_cores == 0
 
 ## T4.9、Grafana
 
-前面我们使用 Prometheus 采集了 Kubernetes 集群中的一些监控数据指标，我们也尝试使用 promQL 语句查询出了一些数据，并且在 Prometheus 的 Dashboard 中进行了展示，但是 Prometheus 的图表功能相对较弱，我们需要一个专业的工具来展示这些数据，这里采用 [Grafana](http://grafana.com/)。
+[Grafana OSS](https://grafana.com/grafana/) 把前面部署的 Prometheus 等指标源做成大盘和告警界面。本节按官方 [在 Kubernetes 上部署 Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 来写：PVC、Deployment、Service。与全文一致：命名空间 `kube-mon`，Prometheus 服务地址 `prometheus:9090`；持久化用 Local PV 加 PVC，与 Prometheus 分开，避免挂错卷。
 
-Grafana 是一个可视化面板，有着非常漂亮的图表和布局展示，专业的度量仪表盘和图形编辑器，支持 Graphite、zabbix、InfluxDB、Prometheus、OpenTSDB、Elasticsearch 等作为数据源，比 Prometheus 自带的图表展示功能强大很多，支持丰富的插件。
+> **生产落地摘要**（逐项核对）
+>
+> 镜像：固定标签，禁用 latest，版本与文首「版本与镜像约定」一致，以 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 为准。 
+>
+> 凭据：管理员口令放在 Secret 里，生产用强口令并定期轮换。 
+>
+> 安全：容器非 root 运行（官方镜像常用 UID/GID 472，见 [Configure Docker](https://grafana.com/docs/grafana/latest/setup-grafana/configure-docker/)）；对外优先 Ingress 配 TLS，少长期暴露 NodePort。 
+>
+> 容量：官方 Kubernetes 安装页中的最低配置约 250m CPU、750Mi 内存；生产按用户和大盘数量提高 limit，并盯 PVC 使用率。 
+>
+> 入口：云上优先 LoadBalancer 或 Ingress；裸金属内网可像 T4.2.1 一样先用 NodePort 验证。 
+>
+> 大盘：长期维护建议用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 把 JSON 放进 Git，少依赖只在网页里改。 
+>
+> 托管：若要少运维，可看 [Grafana Cloud](https://grafana.com/products/cloud/)。
 
-### 4.9.1、安装
+**访问与查询关系**（与上文「`kube-mon` 内 Prometheus 服务地址 `prometheus:9090`」一致）：终端用户通过浏览器访问 Grafana；Grafana 按数据源配置向 **Prometheus HTTP API** 发起查询，**不负责**抓取目标，抓取仍由 **T4.2～T4.8** 中 Prometheus 任务完成。
 
-同样的我们将 grafana 安装到 Kubernetes 集群中，可以先查看一下 grafana 的 docker 镜像介绍，在 dockerhub 上搜索，也可以去官网查看相关资料，镜像地址如下：https://hub.docker.com/r/grafana/grafana/，我们可以看到介绍中运行 grafana 容器的命令非常简单：
-
-```bash
-$ docker run -d --name=grafana -p 3000:3000 grafana/grafana
+```mermaid
+flowchart LR
+  BR[浏览器] -->|HTTP / HTTPS| GF[Grafana]
+  GF -->|已配置数据源\nPromQL / HTTP| PRM[Prometheus :9090]
 ```
 
-这里需要注意 Changelog 中 v5.1.0 版本的更新介绍：
+---
 
-```bash
-Major restructuring of the container
-Usage of chown removed
-File permissions incompatibility with previous versions
-user id changed from 104 to 472
-group id changed from 107 to 472
-Runs as the grafana user by default (instead of root)
-All default volumes removed
-```
+### T4.9.1、清单部署（OSS，Local PV）
 
-特别需要注意第 3 条，userid 和 groupid 都有所变化，所以我们在运行容器的时候需要注意这个变化。现在我们将这个容器转化成 Kubernetes 中的 Pod：
+**（1）持久化** 
+
+在选定节点创建宿主机目录（示例 `/data/k8s/grafana`），把下面 PV 里 `nodeAffinity` 的节点名改成 `kubectl get nodes` 看到的真实名字，改法与 T4.2.1 里 Prometheus 的 PV 相同。
 
 ```yaml
-# grafana.yaml
+# grafana-pv-pvc.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: grafana-local
+  labels:
+    app: grafana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  storageClassName: local-storage-grafana
+  local:
+    path: /data/k8s/grafana
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - node3   # 必改：如 worker-01
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: kube-mon
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-storage-grafana
+```
+
+**（2）管理员 Secret**
+
+Kubernetes 要求 `Secret.stringData` 里每个值都是字符串（见 [Secret 说明](https://kubernetes.io/docs/concepts/configuration/secret/)）。若 `admin-password` 写成不带引号的纯数字，YAML 会当成数字类型，API 会报错：无法把数字解成 stringData。因此口令一律用英文双引号包起来；口令里若含双引号或反斜杠，可用外层单引号或 YAML 多行块写法。
+
+```yaml
+# grafana-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  namespace: kube-mon
+type: Opaque
+stringData:
+  admin-user: "admin"
+  admin-password: "在此处填写强密码"
+```
+
+**（3）Deployment**
+
+与官方示例一样设置 `fsGroup: 472`，并加上 `runAsUser`、`runAsGroup` 为 472，以及 initContainer 里对数据目录做 `chown`，避免 Local 卷属主是 root 时 Grafana 写不进 `/var/lib/grafana`。健康检查：官方常用 `/robots.txt`，这里用 `/api/health`，含义更直观，两种都与 [Kubernetes 安装文档](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/) 不冲突。
+
+镜像用 OSS 稳定版，与文首版本表一致（示例 `grafana/grafana:12.4.1`）；升级前到 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 核对 tag。
+
+```yaml
+# grafana-deploy.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
   namespace: kube-mon
+  labels:
+    app: grafana
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: grafana
@@ -1510,270 +1671,413 @@ spec:
       labels:
         app: grafana
     spec:
-      volumes:
-      - name: storage
-        hostPath:
-          path: /data/k8s/grafana/
-      nodeSelector:
-        kubernetes.io/hostname: node2
       securityContext:
-        runAsUser: 0
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+      initContainers:
+        - name: fix-grafana-data-perms
+          image: busybox:1.37
+          command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana || true"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
       containers:
-      - name: grafana
-        image: grafana/grafana:7.4.3
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 3000
-          name: grafana
-        env:
-        - name: GF_SECURITY_ADMIN_USER
-          value: admin
-        - name: GF_SECURITY_ADMIN_PASSWORD
-          value: admin321
-        readinessProbe:
-          failureThreshold: 10
-          httpGet:
-            path: /api/health
-            port: 3000
-            scheme: HTTP
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 30
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /api/health
-            port: 3000
-            scheme: HTTP
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        resources:
-          limits:
-            cpu: 150m
-            memory: 512Mi
-          requests:
-            cpu: 150m
-            memory: 512Mi
-        volumeMounts:
-        - mountPath: /var/lib/grafana
-          name: storage
----
+        - name: grafana
+          image: grafana/grafana:12.4.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 3000
+              name: http-grafana
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-password
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http-grafana
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http-grafana
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: grafana-data
+```
+
+**（4）Service**
+
+与 T4.2.1 一样先用 NodePort，方便裸金属或内网访问；云上可改成 LoadBalancer 或交给 Ingress（官方安装示例里常见 LoadBalancer）。
+
+```yaml
+# grafana-svc.yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: grafana
   namespace: kube-mon
+  labels:
+    app: grafana
 spec:
   type: NodePort
-  ports:
-    - port: 3000
   selector:
     app: grafana
+  ports:
+    - name: http
+      port: 3000
+      protocol: TCP
+      targetPort: http-grafana
 ```
 
-镜像版本 `grafana/grafana:7.4.3`，然后添加了健康检查、资源声明，另外两个比较重要的环境变量`GF_SECURITY_ADMIN_USER` 和 `GF_SECURITY_ADMIN_PASSWORD`，用来配置 grafana 的管理员用户和密码。
+**（5）应用顺序**
 
-由于 grafana 将 dashboard、插件这些数据保存在 `/var/lib/grafana` 这个目录下面，所以如果需要做数据持久化，就需要针对这个目录进行 volume 挂载声明。
-
-同 Prometheus 一样，我们将 grafana 固定在一个具有 `kubernetes.io/hostname=node2` 标签的节点，由于上面我们刚刚提到 Changelog 中 grafana 的 userid 和 groupid 有所变化，所以我们这里增加一个 `securityContext`，声明使用 root 用户运行。
-
-最后，我们需要对外暴露 grafana 这个服务，所以我们需要一个对应的 Service 对象，当然用 NodePort 或者再建立一个 ingress 对象都是可行的。
-
-现在我们直接创建上面的这些资源对象：
+| 顺序 | 命令 |
+|------|------|
+| 1 | `kubectl apply -f grafana-pv-pvc.yaml` |
+| 2 | `kubectl apply -f grafana-secret.yaml` |
+| 3 | `kubectl apply -f grafana-deploy.yaml` |
+| 4 | `kubectl apply -f grafana-svc.yaml` |
 
 ```bash
-$ kubectl apply -f grafana.yaml
-deployment.apps "grafana" created
-service "grafana" created
+kubectl wait --for=condition=available deployment/grafana -n kube-mon --timeout=180s
+kubectl get pods,svc -n kube-mon -l app=grafana
 ```
 
-创建完成后，我们可以查看 grafana 对应的 Pod 是否正常：
+浏览器访问 `http://节点IP:NodePort`，端口号用 `kubectl get svc grafana -n kube-mon` 查看。若在集群内自测，可执行 `kubectl port-forward -n kube-mon svc/grafana 3000:3000`，再打开 `http://127.0.0.1:3000`（port-forward 见官方说明）。
 
-```bash
-$ kubectl get pods -n kube-mon -l app=grafana         
-NAME                       READY   STATUS    RESTARTS   AGE
-grafana-5579769f64-vfn7q   1/1     Running   0          77s
-$ kubectl logs -f grafana-5579769f64-vfn7q -n kube-mon
-......
-logger=settings var="GF_SECURITY_ADMIN_USER=admin"
-t=2019-12-13T06:35:08+0000 lvl=info msg="Config overridden from Environment variable"
-......
-t=2019-12-13T06:35:08+0000 lvl=info msg="Initializing Stream Manager"
-t=2019-12-13T06:35:08+0000 lvl=info msg="HTTP Server Listen" logger=http.server address=[::]:3000 protocol=http subUrl= socket=
-```
+![grafana_login_page](./images/grafana_login_page.png)
 
-看到上面的日志信息就证明 grafana 的 Pod 已经正常启动起来了。这个时候我们可以查看 Service 对象：
+---
 
-```bash
-$ kubectl get svc -n kube-mon
-NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
-grafana      NodePort    10.104.116.58   <none>        3000:31548/TCP      12m
-......
-```
+### T4.9.2、配置 Prometheus 数据源
 
-现在我们就可以在浏览器中使用 `http://<任意节点IP:31548>` 来访问 grafana 这个服务了：
+步骤与 Grafana 官方 [配置 Prometheus 数据源](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/) 一致。若生产上对 Prometheus 开了认证或 TLS，请同时阅读 T4.2.1 文末「企业生产补充」一节，避免只改 Grafana 或只改 Prometheus 一侧。
 
-![grafana_login](./images/grafana_login.png)
-
-由于上面我们配置了管理员，所以第一次打开的时候会跳转到登录界面，然后就可以用上面我们配置的两个环境变量的值来进行登录，登录完成后就可以进入到 Grafana 的首页，然后点击 `Add data source` 进入添加数据源界面。
-
-我们要配置的数据源是 `Prometheus`，Prometheus 和 Grafana 都处于 kube-mon namespace 下面，所以我们这里的数据源地址：`http://prometheus:9090`，因为在同一个 namespace 下面，可以直接用 Service 服务名，然后其他的配置信息就根据实际情况了，比如 Auth 认证，我们这里没有，所以跳过即可，点击最下方的 `Save & Test`，提示成功证明我们的数据源配置正确：
+1. 权限：需要组织管理员（或贵司 Grafana 里同等角色）；也可用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 用 YAML 声明数据源。  
+2. 入口：Connections → Add new connection → 搜 Prometheus → Add new data source（菜单随版本可能略有不同，以官方文档为准）。  
+3. Connection 里的 Prometheus 地址：与 T4.2.1 同命名空间、且未开 TLS 时，可填 `http://prometheus:9090`，或 `http://prometheus.kube-mon.svc.cluster.local:9090`。若 Prometheus 已启用 TLS，这里要改成 https 和对应端口，并与下面 TLS 设置一致。  
+4. Authentication：须与 Prometheus 实际配置一致。Basic authentication 对应 Prometheus 的 web.config 里 basic_auth_users；口令用 Secret 或 secureJsonData，不要写进 Git。Forward OAuth identity 把当前登录用户的 OAuth 令牌转给上游，需上游和身份体系支持。No authentication 仅在 Prometheus 未做认证且网络已隔离时使用，与 T4.2.1 默认清单一致。  
+5. TLS settings：自签或内网 CA 时按需上传 CA；双向 TLS 时配置客户端证书与密钥。Skip TLS verify 只建议临时排障，生产不要长期打开。Prometheus 侧如何开 TLS 见 [官方 TLS 指南](https://prometheus.io/docs/guides/tls-encryption/)。  
+6. HTTP headers：若前面有反向代理要带头，可在此添加。  
+7. 点 Save and test，成功说明地址、认证和 TLS 与当前 Prometheus（或兼容查询接口）匹配。
 
 ![grafana_datasource](./images/grafana_datasource.png)
 
-### 4.9.2、插件
+---
 
-我们也可以安装一些其他插件，比如 grafana 就有一个专门针对 Kubernetes 集群监控的插件 [grafana-kubernetes-app](https://grafana.com/plugins/grafana-kubernetes-app)，这里我们介绍一个功能更加强大的插件 [DevOpsProdigy KubeGraf](https://github.com/devopsprodigy/kubegraf/)，它是 Grafana 官方的 [Kubernetes 插件](https://grafana.com/plugins/grafana-kubernetes-app) 的升级版本，该插件可以用来可视化和分析 Kubernetes 集群的性能，通过各种图形直观的展示了 Kubernetes 集群主要服务的指标和特征，还可以用于检查应用程序的生命周期和错误日志。
+### T4.9.3、导入 Dashboard 与大盘维护
 
-要安装这个插件，需要到 grafana Pod 里面执行安装命令：
+前面已用官方稳定栈把采集跑通（Prometheus、node_exporter、kubelet、cAdvisor、apiserver、Endpoints、kube-state-metrics 等）。Grafana 只用 PromQL 展示已有指标，本身不产生新指标。若大盘里的 job、instance 与当前抓取配置不一致，再热门的模板也会整页无数据。下面先说明分层与本文 job 的对应关系，再给出推荐导入顺序和上线自检。
 
-```bash
-$ kubectl exec -it grafana-5579769f64-7729f -n kube-mon /bin/bash
-bash-5.0# grafana-cli plugins install devopsprodigy-kubegraf-app
+维护大盘时可参考官方：[创建与构建大盘](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/)、[最佳实践](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/)、[导入大盘](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/import-dashboards/)、[Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)、[Alerting](https://grafana.com/docs/grafana/latest/alerting/)。若希望规则和大盘与上游生态完全同源，可看 [kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin) 或 [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)，与本文手写 YAML 路线不同，可作中长期方向。
 
-installing devopsprodigy-kubegraf-app @ 1.5.1
-from: https://grafana.com/api/plugins/devopsprodigy-kubegraf-app/versions/1.5.1/download
-into: /var/lib/grafana/plugins
+**观测分层与本文 job（总览）**
 
-✔ Installed devopsprodigy-kubegraf-app successfully
-installing grafana-piechart-panel @ 1.6.1
-from: https://grafana.com/api/plugins/grafana-piechart-panel/versions/1.6.1/download
-into: /var/lib/grafana/plugins
+请先确认 Prometheus 里 Status → Target health 中，下表相关 job 均为 UP，且 `prometheus-config` 至少包含 T4.7；T4.8 的 kube-state-metrics 经 Endpoints 注解被发现。
 
-✔ Installed grafana-piechart-panel successfully
-Installed dependency: grafana-piechart-panel ✔
+| 分层 | 关注点 | 本文 job 标签 | 典型指标（节选） |
+|------|--------|---------------|------------------|
+| 宿主机 | 节点 CPU、内存、磁盘、网络 | kubernetes-nodes | `node_cpu_seconds_total`、`node_memory_*` 等 |
+| 容器 | Pod 资源用量与限额 | kubernetes-cadvisor、kubernetes-kubelet | `container_cpu_usage_seconds_total` 等 |
+| 工作负载 | 副本、Pod 状态、重启 | kubernetes-endpoints 下的 kube-state-metrics（见 T4.8） | `kube_deployment_*`、`kube_pod_status_phase` 等 |
+| 控制面 | API 请求与延迟 | kubernetes-apiservers | `apiserver_request_*` 等 |
+| 平台组件 | CoreDNS、示例 Redis | 静态 coredns job（若仍保留）或 kubernetes-endpoints | `coredns_*`、`redis_*` 等 |
+| 监控自身 | 抓取与 TSDB | prometheus | `up`、`scrape_*`、`prometheus_tsdb_*` |
 
-Restart grafana after installing plugins . <service grafana-server restart>
+与社区模板的常见差别（不改会无数据）：社区常写 job 为 node-exporter，本文为 kubernetes-nodes；社区常写 cadvisor，本文为 kubernetes-cadvisor。
+
+kube-state-metrics 经 kubernetes-endpoints 抓取时，时间序列上的 job 一般是 kubernetes-endpoints，而不是 kube-state-metrics。社区大盘若在 PromQL 里把 job 固定写成 kube-state-metrics，就筛不到任何序列，图表面板会空白（看不到曲线）。可去掉这条 job 条件、只按 `kube_` 前缀查指标，或把 job 改成 kubernetes-endpoints，再配合 namespace 等标签缩小范围。节点类大盘里 instance 应与 T4.4 一致，一般是节点名。
+
+**推荐导入顺序**
+
+打开 [Grafana 大盘库](https://grafana.com/grafana/dashboards/)，Dashboards → New → Import，数据源选 T4.9.2 配好的 Prometheus。下表 ID 为常用社区模板，导入后请以页面说明为准，并务必按上表改 job 等变量。
+
+| 优先级 | 范围 | 做法 | 导入后核对 |
+|--------|------|------|------------|
+| 高 | 宿主机 | 搜 Node Exporter Full，常用 [1860](https://grafana.com/grafana/dashboards/1860) | 变量或查询里 job 改为 kubernetes-nodes，instance 用节点名 |
+| 高 | 容器与集群 | 搜 Kubernetes cluster monitoring，可试 [7249](https://grafana.com/grafana/dashboards/7249) | cadvisor、kubelet 相关 job 改为 kubernetes-cadvisor、kubernetes-kubelet |
+| 高 | 对象状态 | 搜 kube-state-metrics、Kubernetes Views 等 | 去掉 job=kube-state-metrics，或改为 kubernetes-endpoints，以 `kube_*` 能出数为准 |
+| 中 | 控制面 | 搜 Kubernetes API Server | job 为 kubernetes-apiservers |
+| 中 | DNS | 搜 CoreDNS，如 [14981](https://grafana.com/grafana/dashboards/14981) | 若静态 job 与 Endpoints 重复抓取，注意重复序列 |
+| 中 | Prometheus 自身 | 搜 Prometheus Stats，如 [3662](https://grafana.com/grafana/dashboards/3662) | job 为 prometheus |
+| 低 | Redis（若做了 T4.3.2） | 搜 Redis Exporter 大盘 | 与 redis 或 kubernetes-endpoints、端口一致 |
+
+**企业侧习惯**
+
+定版：改好 job 后的 JSON 放进 Git，用 Provisioning 下发，少在生产界面手改。 
+
+分文件夹：例如基础设施、K8s 对象与控制面、平台组件、监控自省，配合文件夹权限。 
+
+告警：规则与通知仍以 T4.11 的 Prometheus + Alertmanager 或 Grafana Alerting 为主（见官方 Alerting 文档）；大盘侧重看图和排障。
+
+ 升级：升级 node_exporter、KSM、Grafana 后对照各项目发行说明检查指标名；社区大盘停更时可 fork 自维护。
+
+**上线前自检**
+
+在 Explore 或大盘里确认：`up{job="kubernetes-nodes"}` 与节点数一致；cadvisor 的 container 类指标有数据；`kube_*` 有数据；若抓了 apiserver 则 apiserver_request_total 有数据；CoreDNS、Redis 若部署则对应指标可查。若某项没有数据，先回 Prometheus 看 Target，再按本节第一张表改大盘里的 job 和 instance，不要先假定集群坏了。
+
+![grafana_dashboard_Node_Exporter_Full](./images/grafana_dashboard_Node_Exporter_Full.png)
+
+---
+
+### 4.9.4、自建 Panel 与模板变量
+
+在 Grafana 里新建一个面板，用 PromQL 显示 node_exporter 的 CPU 利用率（本文里 job 为 kubernetes-nodes，instance 为节点名），并用下拉框切换节点。
+
+**整体分四步**：进入大盘编辑 → 先不写变量、确认有曲线 → 添加名为 `node` 的变量 → 在查询里写上 `instance="$node"` 再保存。更细的菜单说明见官方 [创建大盘](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/create-dashboard/) 与 [变量](https://grafana.com/docs/grafana/latest/dashboards/variables/)；PromQL 规则见 [Prometheus 查询基础](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
+
+**步骤 1：进入面板编辑**
+
+Explore 只用来试跑查询；要落到大盘上，按下表操作。
+
+| 场景 | 操作 |
+|------|------|
+| 新建 | 左侧 Dashboards → New → New dashboard → Add visualization（中文版多为「添加可视化」）→ 数据源选 T4.9.2 里配好的 Prometheus |
+| 已有大盘 | 打开该大盘 → 右上角 Edit → Add → Visualization → 同一 Prometheus 数据源 |
+
+**步骤 2：先不加变量，确认查询有数据**
+
+> 注意：**若界面里只有 Metric、Label filters，没有大段文本框**：这是 Prometheus 数据源的 **Builder（构建器）** 模式，用来点选指标和标签，不是用来粘贴整段 PromQL 的。请在**该条 Query（如 Query A）的编辑区域**找到 **Builder** 与 **Code** 的切换（多在查询标题行右侧或标签旁；中文版可能写作「代码」）。点 **Code** 后会出现多行文本输入框，再把下面整句贴进去。若找不到切换项，见官方 [Prometheus 查询编辑器](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/) 中 Builder 与 Code 的说明。Explore 里同样可先切到 Code 再试跑。
+
+在面板编辑页 Queries 里（切换到 **Code**）粘贴下面整句，点右上角 Save dashboard 保存，回到大盘看是否出曲线：
+
+```promql
+100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}[5m])))
 ```
 
-安装完成后需要重启 grafana 才会生效，我们这里直接删除 Pod，重建即可。Pod 删除重建完成后插件就安装成功了。然后通过浏览器打开 Grafana 找到该插件，点击 `enable` 启用插件。
+`mode` 必须写成 `mode="idle"`（英文半角双引号）。若你集群里 job 名与本文不同，可先删掉 job 条件只留 `mode="idle"` 试通；与本文一致时应保留 `job="kubernetes-nodes"`。
 
-![grafana_kubegraf_plugin](./images/grafana_kubegraf_plugin.png)
+**步骤 3：添加变量 `node`**
 
-点击 `Set up your first k8s-cluster` 创建一个新的 Kubernetes 集群：
+官方顺序与字段说明见：[添加与管理变量](https://grafana.com/docs/grafana/latest/dashboards/variables/add-template-variables/)、[Prometheus 模板变量](https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/)（含 Query type 与 API 对应关系）。下面按 **Grafana 12.x 常见布局**（General、Query options、Static options、Selection options 等）与本文环境对齐；若你界面多「Advanced」折叠区，展开后勿改与下表冲突的项。
 
-- URL 使用 Kubernetes Service 地址即可：https://kubernetes.default:443
-- Access 访问模式使用：`Server(default)`
-- 由于插件访问 Kubernetes 集群的各种资源对象信息，所以我们需要配置访问权限，这里我们可以简单使用 kubectl 的 `kubeconfig` 来进行配置即可。
-- 勾选 Auth 下面的 `TLS Client Auth` 和 `With CA Cert` 两个选项
-- 其中 `TLS Auth Details` 下面的值就对应 `kubeconfig` 里面的证书信息。比如我们这里的 `kubeconfig` 文件格式如下所示：
+1. 在该大盘右上角点齿轮 **Dashboard settings** → 左侧 **Variables** → **Add variable**。  
+2. 自上而下对照下表填写，填完点 **Apply**（或页面底部 **Update**），再在 **Dashboard settings** 里 **Save dashboard**；回到大盘顶部应出现名为「节点」（或你设的 Label）的下拉框。  
+3. **Preview of values**（或「运行查询 / Run query」）应有若干 `instance`（节点名）；若为空，先回 Prometheus Query 查 `node_cpu_seconds_total{job="kubernetes-nodes"}`。
+
+| 界面分组 | 字段 | 本文生产推荐 | 说明 |
+|----------|------|----------------|------|
+| 顶部 | Variable type（变量类型） | **Query** | 不用 Custom、Constant 等；Query 才能拉 Prometheus。 |
+| General | Name | **node** | 必须与步骤 4 里 `$node` 完全一致，区分大小写。 |
+| General | Label | **节点**（可改） | 仅大盘顶部展示名。 |
+| General | Description | 可填：node_exporter 节点 instance，job 为 kubernetes-nodes | 生产建议写清用途，便于交接与审计；可不填。 |
+| General | Display / Show on dashboard | 与团队习惯一致 | 常见为列表或「Label 与值」；保持默认亦可。 |
+| Query options | Data source | **T4.9.2 配置的 Prometheus** | 勿选错成其它数据源。 |
+| Query options | Query type | 见下「Query type 两种填法」 | 须与本文 job、metric、标签一致；选错则无预览值。 |
+| Query options | Regex | **留空** | 生产勿随意写正则；除非有统一命名再过滤。 |
+| Query options | Apply regex to | 默认即可 | 仅在使用 Regex 时有意义。 |
+| Query options | Sort | **Alphabetical asc** 或默认 | 便于找节点；按团队习惯。 |
+| Static options | Use static options（使用静态选项） | **关闭** | 本文用动态查询，不要改用手写静态列表。 |
+| Selection options | Multi-value | **关闭** | 与步骤 4 的 `instance="$node"` 等号匹配一致；打开后易被迫改用 `=~`，与本文生产方案冲突。 |
+| Selection options | Include All option | **关闭** | 避免「全部」占位符与 RE2 问题；需要看全节点时用 T4.9.3 大盘或临时去掉变量条件。 |
+| Selection options | Allow custom values（允许用户向列表添加自定义值） | **关闭** | 官方说明为「允许用户把自定义值加进列表」。生产建议**关闭**，只选查询预览里存在的 `instance`，避免手填不存在的节点名导致整图无数据或误查；临时排障若需手填再单独开。 |
+| Selection options | Custom all value 等 | **勿填**（Include All 关闭时通常无此项） | 禁止填两个星号等非法正则占位。 |
+
+**Query type 两种填法（选一种即可，以预览出节点名为准）**
+
+1. **Label values**（推荐，与 [官方说明](https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/) 一致）：Query type 选 **Label values**；**Label** 填 **instance**；**Metric** 选 `node_cpu_seconds_total`，并在同一区域的**标签筛选**里加上 `job` = `kubernetes-nodes`、`mode` = `idle`。若你界面允许把 Metric 写成一整段选择器，也可试 `node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}`。  
+2. **Classic query**：若下拉中有 **Classic query**（文档标注为 deprecated，仍可用），在出现的文本框中只填：`label_values(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}, instance)`，不要再套其它选项。
+
+**步骤 4：把查询改成使用变量，再保存**
+
+1. 打开上一步同一个面板的编辑页（Edit panel），确认查询仍为 **Code** 模式。
+2. 把 Queries 里的 PromQL **整句替换**为下面这一条。注意：这里是 **`instance="$node"`**（等号），**不要**写成 `instance=~"$node"`（波浪线表示正则，容易和多选、「全部」一起触发难查的报错）。
+3. Save dashboard。用大盘左上角下拉框换节点，曲线应随所选 instance 变化。
+
+```promql
+100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="kubernetes-nodes", mode="idle", instance="$node"}[5m])))
+```
+
+多节点对比需要多个图时，可复制本面板或再建查询，**不要**为此打开 Multi-value 或 Include All；也可直接用 T4.9.3 导入的社区大盘。
+
+**为何禁止多选和 Include All（读懂即可）**
+
+多选或「全部」时，Grafana 往往把 `$node` 展开成带 `|` 的正则串，查询里就要用 `=~`，一旦再配错「全部」占位符，容易撞上 Prometheus 用的 RE2 正则限制。本文只教**单选 + 等号**，步骤最少、最不容易错。
+
+**与本文的对应关系**
+
+job 在 T4.4 中为 kubernetes-nodes；instance 一般为节点名（如 worker-01）。社区模板常写 node-exporter，直接套用会无数据，需在面板里改 job，或按 T4.9.3 的表格处理。
+
+![grafana_self_defined_panel](./images/grafana_self_defined_panel.png)
+
+---
+
+### 4.9.5、Helm 部署 Grafana
+
+本节面向**已用 Helm 管理应用发布**的集群，做法对齐 Grafana 官方 [使用 Helm 部署](https://grafana.com/docs/grafana/latest/setup-grafana/installation/helm/)、Helm 官方 [安装与升级说明](https://helm.sh/docs/intro/install/)，以及社区 chart [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts) 中 `charts/grafana` 的 README 与默认 `values.yaml`。chart 由社区维护，**选定 chart 版本后请先读完该版本的 README**，再合上本文的镜像与命名空间约定。
+
+**与全文保持一致（避免双实例、版本漂移）**
+
+- **命名空间**：全文默认使用 `kube-mon`，下文命令与示例 values 都按此书写。**如果你必须改用别的命名空间**（例如公司有统一前缀），请做三件事：把下面所有命令里的 `kube-mon` 全部换成你的名字；在 Grafana 里配置 Prometheus 时，把地址改成 `http://prometheus.<你的命名空间>.svc.cluster.local:9090`（与 T4.9.2 同理）；确认 Prometheus 的 Service 真在该命名空间。  
+- **Grafana 镜像**：与文首「版本与镜像约定」一致，示例 tag 为 `12.4.1`；升级前到 [Grafana Releases](https://github.com/grafana/grafana/releases/latest) 重新核对稳定版，**values 里写死 tag**，不要依赖未经确认的默认浮动版本。  
+- **管理员 Secret**：与 T4.9.1 相同，`admin-user`、`admin-password` 的值必须是字符串（纯数字口令要用引号），见 T4.9.1。  
+- **Prometheus**：若只装本 chart、不装整套监控栈，集群里须已有 T4.2.1 的 Prometheus，否则 Grafana 没有数据源；数据源 URL 与 T4.9.2 一致。  
+- **与 T4.9.1 二选一**：同一命名空间里不要既有清单部署的 Grafana，又 Helm 再装一套。改走 Helm 前，请先删掉清单里的 Grafana Deployment、Service 等资源，或整体换命名空间并同步改 Prometheus 访问方式。  
+- **kube-prometheus-stack**：若选用 Prometheus Operator 整套 chart，一般自带 Prometheus 和 Grafana，**不要再**套用 T4.2.1 与 T4.9.1 的手工清单，避免双实例；该路线见后文 T4.14，以所选 chart 官方文档为准。
+
+**安全、稳定、可靠（生产建议，与官方 chart 能力对齐）**
+
+- **安全**：镜像与 chart 版本写入 Git 变更记录；管理员口令只放 Secret，**不要**把 `adminPassword` 明文写进长期保存的 values 仓库；对浏览器暴露走 **Ingress + TLS**（由集群签发或 cert-manager 等）；Grafana 官方镜像以非 root 用户运行，community chart 默认带有 `runAsUser: 472` 与容器安全上下文，**升级 chart 后复查这些默认值是否仍符合你们基线**。若集群推行零信任网络，可按 chart 说明启用 **NetworkPolicy**，并务必放行到 **Prometheus**、**DNS** 的出站，否则数据源与健康检查会失败。  
+- **稳定**：开启持久化 PVC，选对 `storageClassName`，避免 Pod 重建后配置丢失；为容器配置合适的请求与上限（至少不低于 T4.9.1），减轻节点挤压与 OOM；社区 chart 已带存活与就绪探针，一般保持默认即可。单副本时，尽量在计划窗口内做版本升级。  
+- **可靠**：`helm install` / `helm upgrade` 使用 `--version` 锁定 chart，并用 `--wait` 与合理 `timeout`（官方常用做法，见 Helm 文档），必要时对生产升级加 `--atomic` 以便失败时自动回滚；了解 **PVC 在 uninstall 后是否保留**（常见为保留），制定备份与清理策略；重要大盘与数据源用 [Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/) 进 Git，避免唯一副本丢数据后无从恢复。
+
+**命令示例（注释逐项说明；chart 版本号须替换为你们在变更单里锁定的那一串）**
+
+```bash
+# 1）添加官方安装文档使用的社区仓库
+helm repo add grafana-community https://grafana-community.github.io/helm-charts
+helm repo update
+
+# 2）列出 chart 版本，挑一版与你们验证过的 Grafana 应用版本匹配，写入变更记录；可用下列命令导出新版本默认值作 diff
+# helm show values grafana-community/grafana --version "<chart 版本>" > chart-defaults.yaml
+helm search repo grafana-community/grafana --versions | head -20
+
+# 3）命名空间：与全文一致为 kube-mon；若你用其它名字，这里和下两行一并替换
+kubectl create namespace kube-mon 2>/dev/null || true
+
+# 4）管理员 Secret：与 T4.9.1 同结构的 YAML，勿把仓库里的明文密码提交到 Git
+kubectl apply -f grafana-secret.yaml
+
+# 5）安装：--version 必写；--wait 等待就绪，超时调大；生产升级可再加 --atomic
+helm install grafana grafana-community/grafana \
+  --namespace kube-mon \
+  --version "<填写 helm search 选中的 chart 版本号>" \
+  -f grafana-helm-values.yaml \
+  --wait --timeout 15m
+
+helm status grafana -n kube-mon
+kubectl get pods,svc,ingress -n kube-mon -l app.kubernetes.io/name=grafana
+```
+
+**values 示例（文件名自定；YAML 内注释便于评审与交接，键名以当时 chart 的 values 为准）**
 
 ```yaml
-apiVersion: v1
-clusters:
-- cluster:
-    certificate-authority-data: <certificate-authority-data>
-    server: https://master1:6443
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: kubernetes-admin
-  name: kubernetes-admin@kubernetes
-current-context: 'kubernetes-admin@kubernetes'
-kind: Config
-preferences: {}
-users:
-- name: kubernetes-admin
-  user:
-    client-certificate-data: <client-certificate-data>
-    client-key-data: <client-key-data>
+# grafana-helm-values.yaml — 生产向示例，安装前用 `helm show values grafana-community/grafana --version <同安装版本>` 核对字段是否变化
+
+# 单副本可满足多数 OSS 场景；要高可用需额外架构（多副本、共享存储、Grafana Enterprise 等），超出本文范围
+replicas: 1
+
+# 镜像：与文首「版本与镜像约定」一致；pullPolicy 若生产要求可改为 Always 并配合固定 digest（由贵司镜像规范决定）
+image:
+  registry: docker.io
+  repository: grafana/grafana
+  tag: "12.4.1"
+  pullPolicy: IfNotPresent
+
+# Pod 安全上下文：community chart 默认与官方 Grafana 镜像非 root（472）一致；显式写出便于安全审计，若与 chart 新版本默认值冲突以 chart 为准
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# 数据盘：生产必须持久化，否则重启丢大盘与数据源配置
+persistence:
+  enabled: true
+  type: pvc
+  size: 10Gi
+  # 填空字符串常表示用集群默认 StorageClass；显式写名更清晰，例如 local-storage-grafana
+  storageClassName: ""
+
+# 管理员：口令来自 Secret，勿在此写 adminPassword
+adminUser: admin
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+# 资源：底线参考 T4.9.1；用户与大盘多时要加压测后再调
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+# 对外访问的根 URL，须与 Ingress 实际对外地址一致，否则登录重定向、邮件链接易错
+env:
+  GF_SERVER_ROOT_URL: "https://grafana.example.com"
+
+# 入口：生产优先 TLS；tls.secretName 需事先创建或由 Ingress 控制器托管证书
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - grafana.example.com
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - grafana.example.com
+
+# 可选：零信任网络时再启用，并务必按 chart 文档配置 egress，放行 Prometheus（如 kube-mon:9090）与 DNS
+# networkPolicy:
+#   enabled: true
+#   allowExternal: false
+#   # 须结合 explicitNamespacesSelector、explicitIpBlocks、egress 等逐项放行，见 chart values 英文注释
+
+# 可选：缓解节点维护时的驱逐（单副本时效果有限，视集群策略而定）
+# podDisruptionBudget:
+#   minAvailable: 1
 ```
 
-那么 `CA Cert` 的值就对应 `kubeconfig` 里面的 `<certificate-authority-data>` 进行 base64 解码过后的值；`Client Cert` 的值对应 `<client-certificate-data>` 进行 base64 解码过后的值；`Client Key` 的值就对应 `<client-key-data>` 进行 base64 解码过后的值。
+**部署完成后**
 
-- 最后在 `additional datasources` 下拉列表中选择 prometheus 的数据源。
-- 点击 `Save & Test` 就可以保存成功了。
+在 **Connections** 中按 **T4.9.2** 添加 Prometheus；大盘与变量按 **T4.9.3、T4.9.4**；抓取端 job 仍须与 **T4.4～T4.8** 一致。日后配置以 Provisioning 落 Git 为佳，与 T4.9.3「企业侧习惯」一致。
 
-> 对于 base64 解码推荐使用一些在线的服务，比如 [https://www.base64decode.org](https://www.base64decode.org/)，非常方便。
+**升级与卸载**
 
-插件配置完成后，在左侧栏就会出现 `DevOpsProdigy KubeGraf` 插件的入口，通过插件页面可以查看整个集群的状态。
-
-![grafana_kubegraf_configure](./images/grafana_kubegraf_configure.png)
-
-还有几个漂亮的 Dashboard 可以供我们来进行监控图表的展示：
-
-![grafana_kubegraf_graphs](./images/grafana_kubegraf_graphs.png)
-
-### 4.9.3、导入 Dashboard
-
-为了能够快速对系统进行监控，我们可以直接复用别人的 Grafana Dashboard，在 Grafana 的官方网站上就有很多非常优秀的第三方 Dashboard，我们完全可以直接导入进来即可。比如我们想要对所有的集群节点进行监控，也就是 node-exporter 采集的数据，这里我们就可以导入 https://grafana.com/grafana/dashboards/8919 这个 Dashboard。
-
-在侧边栏点击 "+"，选择 `Import`，在 Grafana Dashboard 的文本框中输入 8919 即可导入：
-
-![grafana_kubegraf_8919](./images/grafana_kubegraf_8919.png)
-
-进入导入 Dashboard 的页面，可以编辑名称，选择 Prometheus 的数据源：
-
-![grafana_kubegraf_8919_datasource](./images/grafana_kubegraf_8919_datasource.png)
-
-保存后即可进入导入的 Dashboard 页面。由于该 Dashboard 更新比较及时，所以基本上导入进来就可以直接使用了，我们也可以对页面进行一些调整，如果有的图表没有出现对应的图形，则可以编辑根据查询语句去 DEBUG。
-
-![grafana_kubegraf_8919_datasource_showup](./images/grafana_kubegraf_8919_datasource_showup.png)
-
-### 4.9.4、自定义图表
-
-导入现成的第三方 Dashboard 或许能解决我们大部分问题，但是毕竟还会有需要定制图表的时候，这个时候就需要了解如何去自定义图表了。
-
-同样在侧边栏点击 "+"，选择 Dashboard，然后选择 `Add new panel` 创建一个图表：
-
-![grafana_define_graph](./images/grafana_define_graph.png)
-
-然后在下方 Query 栏中选择 `Prometheus` 这个数据源：
-
-![grafana_define_graph_1](./images/grafana_define_graph_1.png)
-
-然后在 `Metrics` 区域输入我们要查询的监控 PromQL 语句，比如我们这里想要查询集群节点 CPU 的使用率：
-
-```bash
-(1 - sum(increase(node_cpu_seconds_total{mode="idle", instance=~"$node"}[1m])) by (instance) / sum(increase(node_cpu_seconds_total{instance=~"$node"}[1m])) by (instance)) * 100
-```
-
-虽然我们现在还没有具体的学习过 PromQL 语句，但其实我们仔细分析上面的语句也不是很困难，集群节点的 CPU 使用率实际上就相当于排除空闲 CPU 的使用率，所以我们可以优先计算空闲 CPU 的使用时长，除以总的 CPU 时长就是空闲率了，1 减空闲率就是 CPU 的使用率，如果想用百分比来表示的话，则乘以 100 即可。
-
-这里有一个需要注意的地方是在 PromQL 语句中有一个 `instance=~"$node"` 的标签，其实意思就是根据 `$node` 这个参数来进行过滤，也就是我们希望在 Grafana 里面通过参数化来控制每一次计算哪一个节点的 CPU 使用率。
-
-所以这里就涉及到 Grafana 里面的参数使用。点击页面顶部的 `Dashboard Settings` 按钮进入配置页面：
-
-![grafana_databoard_setting](./images/grafana_databoard_setting.png)
-
-在左侧 tab 栏点击 `Variables` 进入参数配置页面，如果还没有任何参数，可以通过点击 `Add Variable` 添加一个新的变量：
-
-![grafana_databoard_setting_varibles](./images/grafana_databoard_setting_varibles.png)
-
-这里需要注意的是变量的名称 `node` 就是上面我们在 PromQL 语句里面使用的 `$node` 这个参数，这两个地方必须保持一致，然后最重要的就是参数的获取方式了，比如我们可以通过 `Prometheus` 这个数据源，通过 `kubelet_node_name` 这个指标来获取，在 Prometheus 里面我们可以查询该指标获取到的值为：
-
-![grafana_prometheus_fetch_metrics](./images/grafana_prometheus_fetch_metrics.png)
-
-其实我们只想要获取节点的名称，所以我们可以用正则表达式去匹配 `node=xxx` 这个标签，将匹配的值作为参数的值即可：
-
-![grafana_prometheus_regex](./images/grafana_prometheus_regex.png)
-
-在最下面的 `Preview of values` 里面会有获取的参数值的预览结果。除此之外，我们还可以使用一个更方便的 `label_values` 函数来获取，该函数可以用来直接获取某个指标的 label 值：
-
-![grafana_databoard_setting_value_label](./images/grafana_databoard_setting_label_values.png)
-
-另外由于我们希望能够让用户选择一次性可以查询多少个节点的数据，所以我们将 `Multi-value` 以及 `Include All option` 都勾选上了，保存后跳转到 Dashboard 页面就可以看到我们自定义的图表信息：
-
-![grafana_define_graph_2](./images/grafana_define_graph_2.png)
-
-而且还可以根据参数选择一个或者多个节点，当然图表的标题和大小都可以更改：
-
-![grafana_databoard_resize](./images/grafana_databoard_resize.png)
+- 升级：`helm upgrade grafana grafana-community/grafana --namespace kube-mon --version "<新版本>" -f grafana-helm-values.yaml --wait --timeout 15m`，生产建议先在预发集群跑通；需要失败自动回滚时可加 `--atomic`（见 Helm 文档）。  
+- 卸载：`helm uninstall grafana -n kube-mon`。**PVC 是否随 chart 删除因版本与参数而异**，卸载前查阅当前 chart 说明并做好数据备份。
 
 ## T4.10、PromQL
 
-Prometheus 通过指标名称（metrics name）以及对应的一组标签（label）定义一条唯一的时间序列。指标名称反映了监控样本的基本标识，而 label 则在这个基本特征上为采集到的数据提供了多种特征维度。用户可以基于这些特征维度进行过滤、聚合、统计从而产生一条计算后的新时间序列。
-
-`PromQL` 是 Prometheus 内置的数据查询语言，提供对时间序列数据丰富的查询，聚合以及逻辑运算能力的支持。并且被广泛应用在 Prometheus 的日常应用当中，包括对数据查询、可视化、告警处理。可以这么说，`PromQL` 是 Prometheus 所有应用场景的基础，理解和掌握 `PromQL` 是我们使用 Prometheus 必备的技能。
+Prometheus 用指标名和一组标签确定一条时间序列；同名指标下标签不同即为不同序列。术语与语义以官方 [PromQL 基础](https://prometheus.io/docs/prometheus/latest/querying/basics/)、[数据模型](https://prometheus.io/docs/concepts/data_model/)、[指标类型](https://prometheus.io/docs/concepts/metric_types/) 为准。部署版本请以 [Prometheus 发行页](https://github.com/prometheus/prometheus/releases/latest) 上标记为 Latest 的发行线为准（编写本文时为 3.10.x），升级前请再次打开该页核对 Tag 与发行说明，并与前文抓取配置一并回归验证。下文示例中的 `job` 与 `instance` 与 **T4.4** 一致时可写作 `job="kubernetes-nodes"` 与节点名（如 `worker-01`），便于在 Grafana Explore 或 Prometheus 自带查询页面对照练习。
 
 ### 4.10.1、时间序列
 
-前面我们通过 node-exporter 暴露的 metrics 服务，Prometheus 可以采集到当前主机所有监控指标的样本数据。例如：
+node_exporter 暴露的文本里，非注释行即样本，例如：
 
-```bash
+```text
 # HELP node_cpu_seconds_total Seconds the cpus spent in each mode.
 # TYPE node_cpu_seconds_total counter
 node_cpu_seconds_total{cpu="0",mode="idle"} 6.62885731e+06
@@ -1782,397 +2086,341 @@ node_cpu_seconds_total{cpu="0",mode="idle"} 6.62885731e+06
 node_load1 2.29
 ```
 
-其中非 `#` 开头的每一行表示当前 node-exporter 采集到的一个监控样本，`node_cpu_seconds_total` 和 `node_load1` 表示当前指标的名称，大括号中的标签则反映了当前样本的一些特征和维度，浮点数则是该监控样本的具体值。
+行首带 `#` 的是说明；其余行里，指标名加大括号内的标签和最后的数值构成一个样本。
 
-Prometheus 会将所有采集到的样本数据以时间序列的方式保存在**内存数据库**中，并且定时保存到硬盘上。时间序列是按照时间戳和值的序列顺序存放的，我们称之为向量(vector)，每条时间序列通过指标名称(metrics name)和一组标签集(labelset)命名。如下所示，可以将时间序列理解为一个以时间为 X 轴的数字矩阵：
+样本按时间追加形成时间序列；多条序列可理解为沿同一时间轴并行演进，每条由指标名与唯一标签集标识。样本持久化在本地 TSDB（含 WAL 与块存储），查询在 TSDB 上完成，而不是仅在内存里临时存放。
 
-```bash
-  ^
-  │   . . . . . . . . . . . . . . . . .   . .   node_cpu_seconds_total{cpu="cpu0",mode="idle"}
-  │     . . . . . . . . . . . . . . . . . . .   node_cpu_seconds_total{cpu="cpu0",mode="system"}
-  │     . . . . . . . . . .   . . . . . . . .   node_load1{}
-  │     . . . . . . . . . . . . . . . .   . .  
-  v
-    <------------------ 时间 ---------------->
+一个样本包含三部分：指标与标签、时间戳、float64 数值。下面只是概念示意（不是 `/metrics` 里的原文格式）：
+
+```text
+http_request_total{status="200",method="GET"} @1434417560938 => 94355
 ```
 
-在时间序列中的每一个点称为一个样本（sample），样本由以下三部分组成：
+序列的一般写法为 `指标名{标签名="值", 其他标签...}`。指标名与标签名的命名规则以官方 [数据模型](https://prometheus.io/docs/concepts/data_model/) 为准。
 
-- 指标(metric)：包括 metric name 和描述当前样本特征的 labelsets
-- 时间戳(timestamp)：一个精确到毫秒的时间戳
-- 样本值(value)： 一个 float64 浮点型数据
+PromQL 求值结果可分为瞬时向量、区间向量、标量、字符串四类，定义见官方 [Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
 
-如下所示：
-
-```bash
-<--------------- metric ---------------------><-timestamp -><-value->
-http_request_total{status="200", method="GET"}@1434417560938 => 94355
-http_request_total{status="200", method="GET"}@1434417561287 => 94334
-
-http_request_total{status="404", method="GET"}@1434417560938 => 38473
-http_request_total{status="404", method="GET"}@1434417561287 => 38544
-
-http_request_total{status="200", method="POST"}@1434417560938 => 4748
-http_request_total{status="200", method="POST"}@1434417561287 => 4785
-```
-
-在形式上，所有的指标(Metric)都通过如下格式表示：
-
-```bash
-<metric name>{<label name> = <label value>, ...}
-```
-
-- 指标的名称(metric name)可以反映被监控样本的含义（比如 http_request_total 表示当前系统接收到的 HTTP 请求总量）。指标名称只能由 ASCII 字符、数字、下划线以及冒号组成，并且必须符合正则表达式 `[a-zA-Z_:][a-zA-Z0-9_:]*`。
-- 标签(label)反映了当前样本的特征维度，通过这些维度 Prometheus 可以对样本数据进行过滤，聚合等。标签的名称只能由 ASCII 字符、数字以及下划线组成，并且满足正则表达式 `[a-zA-Z_][a-zA-Z0-9_]*`。
-
-每个不同的 `metric_name` 和 `label` 组合都称为**时间序列**，在 Prometheus 的表达式语言中，表达式或子表达式有以下四种类型：
-
-- 瞬时向量（Instant vector）：一组时间序列，每个时间序列包含单个样本，它们共享相同的时间戳。也就是说，表达式的返回值中只会包含该时间序列中的最新的一个样本值。而这样的表达式称之为瞬时向量表达式。
-- 区间向量（Range vector）：一组时间序列，每个时间序列包含一段时间范围内的样本数据，这些是通过将时间选择器附加到方括号中的瞬时向量（例如[5m]5分钟）而生成的。
-- 标量（Scalar）：一个简单的数字浮点值。
-- 字符串（String）：一个简单的字符串值。
-
-所有指标都是 Prometheus 定期从 metrics 接口那里采集过来的。采集间隔时间由 `prometheus.yaml` 配置中的 `scrape_interval` 指定。最多抓取间隔为 30 秒，这意味着至少每 30 秒就会有一个带有新时间戳记录的新数据点，这个值可能会更改，也可能不会更改，但是每隔 `scrape_interval` 都会产生一个新的数据点。
+抓取由 [配置](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) 里全局或各 `scrape_config` 的 `scrape_interval` 决定；主配置在本文 ConfigMap 中常为 `prometheus.yml`。每次抓取成功会为各序列追加新时间戳的样本，间隔以你当前配置为准。
 
 ### 4.10.2、指标类型
 
-从存储上来讲，所有的监控指标 metric 都是相同的，但是在不同的场景下这些 metric 又有一些细微的差异。 例如，在 Node Exporter 返回的样本中指标 `node_load1` 反应的是当前系统的负载状态，随着时间的变化这个指标返回的样本数据是在不断变化的。
+同类样本在存储层格式一致，语义上仍分四种：Counter、Gauge、Histogram、Summary，见 [指标类型](https://prometheus.io/docs/concepts/metric_types/)。`node_load1` 随负载升降，多为 Gauge；`node_cpu_seconds_total` 大体单调递增（进程重启等会复位），为 Counter。exposition 里的 `# TYPE` 可辅助判断。
 
-而指标 `node_cpu_seconds_total` 所获取到的样本数据却不同，它是一个持续增大的值，因为其反应的是 CPU 的累计使用时间，从理论上讲只要系统不关机，这个值是会一直变大的。
-
-为了能够帮助用户理解和区分这些不同监控指标之间的差异，Prometheus 定义了 4 种不同的指标类型：Counter（计数器）、Gauge（仪表盘）、Histogram（直方图）、Summary（摘要）。
-
-在 node-exporter 返回的样本数据中，其注释中也包含了该样本的类型。例如：
-
-```bash
+```text
 # HELP node_cpu_seconds_total Seconds the cpus spent in each mode.
 # TYPE node_cpu_seconds_total counter
-node_cpu_seconds_total{cpu="cpu0",mode="idle"} 362812.7890625
+node_cpu_seconds_total{cpu="0",mode="idle"} 362812.7890625
 ```
 
 #### 4.10.2.1、Counter
 
-`Counter` (只增不减的计数器) 类型的指标其工作方式和计数器一样，只增不减。常见的监控指标，如 `http_requests_total`、`node_cpu_seconds_total` 都是 `Counter` 类型的监控指标。
+Counter 只增不减（计数器复位除外）。看「每秒变化」应对区间向量使用 `rate` 或 `increase`，见 [Counter](https://prometheus.io/docs/concepts/metric_types/#counter) 与下文 4.10.3.2。
 
-`Counter` 是一个简单但又强大的工具，例如我们可以在应用程序中记录某些事件发生的次数，通过以时间序列的形式存储这些数据，我们可以轻松的了解该事件产生的速率变化。`PromQL` 内置的聚合操作和函数可以让用户对这些数据进行进一步的分析，例如，通过 `rate()` 函数获取 HTTP 请求量的增长率：
-
-```bash
+```promql
 rate(http_requests_total[5m])
 ```
 
-查询当前系统中，访问量前 10 的 HTTP 请求：
+对 Counter 直接 `topk` 往往按累计值排序，只宜粗看。告警与容量分析建议先对区间向量做 `rate` 或 `increase` 再聚合，例如：
 
-```bash
-topk(10, http_requests_total)
+```promql
+topk(10, rate(http_requests_total[5m]))
 ```
 
 #### 4.10.2.2、Gauge
 
-与 `Counter` 不同，`Gauge`（可增可减的仪表盘）类型的指标侧重于反应系统的当前状态。因此这类指标的样本数据可增可减。常见指标如：`node_memory_MemFree_bytes`（主机当前空闲的内存大小）、`node_memory_MemAvailable_bytes`（可用内存大小）都是 `Gauge` 类型的监控指标。通过 `Gauge` 指标，用户可以直接查看系统的当前状态：
+Gauge 可升可降，反映当前量，如 `node_memory_MemAvailable_bytes`。可用 `delta`、`predict_linear` 等，函数语义见 [Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)。
 
-```bash
-node_memory_MemFree_bytes
+```promql
+node_memory_MemAvailable_bytes{job="kubernetes-nodes", instance="worker-01"}
+delta(node_load1{job="kubernetes-nodes", instance="worker-01"}[2h])
+predict_linear(node_filesystem_free_bytes{job="kubernetes-nodes", instance="worker-01"}[1h], 4 * 3600)
 ```
 
-对于 `Gauge` 类型的监控指标，通过 `PromQL` 内置函数 `delta()` 可以获取样本在一段时间范围内的变化情况。例如，计算 CPU 温度在两个小时内的差异：
+#### 4.10.2.3、Histogram 与 Summary
 
-```bash
-delta(cpu_temp_celsius{host="zeus"}[2h])
-```
+二者用于分位数与分布，避免只看平均值而掩盖长尾延迟。Summary 在客户端算好分位数；Histogram 暴露 `_bucket{le="..."}` 以及 `_sum`、`_count`，查询端常用 `histogram_quantile`，细则见官方函数与指标类型说明。
 
-还可以直接使用 `predict_linear()` 对数据的变化趋势进行预测。例如，预测系统磁盘空间在 4 个小时之后的剩余情况：
+若组件采用原生直方图（native histogram），标签与 PromQL 与经典 Histogram 不同，见 [Native histograms](https://prometheus.io/docs/concepts/native_histograms/) 与所用版本的发行说明；生产以实际 `/metrics` 输出为准。
 
-```bash
-predict_linear(node_filesystem_free_bytes[1h], 4 * 3600)
-```
+以下为 Prometheus 自身 `/metrics` 的示意片段（数值随运行变化）：Summary 带 `quantile`；Histogram 带 `le` 的 `bucket`。
 
-#### 4.10.2.3、Histogram 和 Summary
-
-除了 `Counter` 和 `Gauge` 类型的监控指标以外，Prometheus 还定义了 `Histogram` 和 `Summary` 指标类型。`Histogram` 和 `Summary` 主要用于统计和分析样本的分布情况。
-
-在大多数情况下人们都倾向于使用某些量化指标的平均值，例如 CPU 的平均使用率、页面的平均响应时间，这种方式也有很明显的问题，以系统 API 调用的平均响应时间为例：
-
-+ 如果大多数 API 请求都维持在 100ms 的响应时间范围内，而个别请求的响应时间需要 5s，那么就会导致某些 WEB 页面的响应时间落到**中位数**上，而这种现象被称为**长尾问题**。
-
-+ 为了区分是平均的慢还是长尾的慢，最简单的方式就是按照请求延迟的范围进行分组。
-  + 例如，统计延迟在 0~10ms 之间的请求数有多少，而 10~20ms 之间的请求数又有多少。
-  + 通过这种方式可以快速分析系统慢的原因。`Histogram` 和 `Summary` 都是为了能够解决这样的问题而存在的。
-  + 通过 `Histogram` 和`Summary` 类型的监控指标，我们可以快速了解监控样本的分布情况。
-
-例如，指标 `prometheus_tsdb_wal_fsync_duration_seconds` 的指标类型为 Summary。它记录了 Prometheus Server 中 `wal_fsync` 的处理时间，通过访问 Prometheus Server 的 `/metrics` 地址，可以获取到以下监控样本数据：
-
-```bash
-# HELP prometheus_tsdb_wal_fsync_duration_seconds Duration of WAL fsync.
+```text
 # TYPE prometheus_tsdb_wal_fsync_duration_seconds summary
 prometheus_tsdb_wal_fsync_duration_seconds{quantile="0.5"} 0.012352463
-prometheus_tsdb_wal_fsync_duration_seconds{quantile="0.9"} 0.014458005
-prometheus_tsdb_wal_fsync_duration_seconds{quantile="0.99"} 0.017316173
 prometheus_tsdb_wal_fsync_duration_seconds_sum 2.888716127000002
 prometheus_tsdb_wal_fsync_duration_seconds_count 216
-```
-
-从上面的样本中可以得知当前 Prometheus Server 进行 `wal_fsync` 操作的总次数为 216 次，耗时 2.888716127000002s。其中中位数（quantile=0.5）的耗时为 0.012352463，9 分位数（quantile=0.9）的耗时为 0.014458005s。
-
-在 Prometheus Server 自身返回的样本数据中，我们还能找到类型为 Histogram 的监控指标 `prometheus_tsdb_compaction_chunk_range_seconds_bucket`：
-
-```bash
-# HELP prometheus_tsdb_compaction_chunk_range_seconds Final time range of chunks on their first compaction
 # TYPE prometheus_tsdb_compaction_chunk_range_seconds histogram
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="100"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="400"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="1600"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="6400"} 71
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="25600"} 405
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="102400"} 25690
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="409600"} 71863
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="1.6384e+06"} 115928
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="6.5536e+06"} 2.5687892e+07
-prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="2.62144e+07"} 2.5687896e+07
 prometheus_tsdb_compaction_chunk_range_seconds_bucket{le="+Inf"} 2.5687896e+07
 prometheus_tsdb_compaction_chunk_range_seconds_sum 4.7728699529576e+13
 prometheus_tsdb_compaction_chunk_range_seconds_count 2.5687896e+07
 ```
 
-与 `Summary` 类型的指标相似之处在于 `Histogram` 类型的样本同样会反应当前指标的记录的总数（以 `_count` 作为后缀）以及其值的总量（以 `_sum` 作为后缀）。不同在于 `Histogram` 指标直接反应了在不同区间内样本的个数，区间通过标签 le 进行定义。
+Histogram 与 Summary 都有 `_count` 与 `_sum`；Histogram 还通过各 `le` 桶反映落在各区间的观测数。
 
 ### 4.10.3、查询
 
-当 Prometheus 采集到监控指标样本数据后，我们就可以通过 PromQL 对监控样本数据进行查询。基本的 Prometheus 查询的结构非常类似于一个 metric 指标，以指标名称开始。
+查询多以指标名开头，再用大括号筛选标签，见 [Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
 
 #### 4.10.3.1、查询结构
 
-比如只查询 `node_cpu_seconds_total` 则会返回所有采集节点的所有类型的 CPU 时长数据，当然如果数据量特别大的时候，直接在 Grafana 执行该查询操作的时候，则可能导致浏览器崩溃，因为它同时需要渲染的数据点太多。
+单独写 `node_cpu_seconds_total` 会拉出所有节点、所有模式，序列很多，在 Grafana 全屏渲染可能很卡。应先加标签缩小范围。与本文 node 抓取一致时可写 `job="kubernetes-nodes"`（见 **T4.4**），`instance` 为节点名（如 `worker-01`）。
 
-接下来，可以使用标签进行过滤查询，标签过滤器支持 4 种运算符：
+标签匹配：`=`、`!=`、`=~`、`!~`；正则引擎为 [RE2](https://github.com/google/re2/wiki/Syntax)。`{}` 内多个条件逗号分隔，语义为与（AND）。
 
-- `=` 等于
-- `!=` 不等于
-- `=~` 匹配正则表达式
-- `!~` 与正则表达式不匹配
-
-标签过滤器都位于指标名称后面的 `{}` 内，比如过滤 master 节点的 CPU 使用数据可用如下查询语句：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master"}
-```
-
-> PromQL 查询语句中的正则表达式匹配使用 [RE2语法](https://github.com/google/re2/wiki/Syntax)。
-
-此外我们还可以使用多个标签过滤器，以逗号分隔。多个标签过滤器之间是 `AND` 的关系，所以使用多个标签进行过滤，返回的指标数据必须和所有标签过滤器匹配。
-
-如下查询语句将返回所有以 `ydzs-` 为前缀并且是 `idle` 模式下面的节点的 CPU 使用时长指标：
-
-```bash
-node_cpu_seconds_total{instance=~"ydzs-.*", mode="idle"}
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01"}
+node_cpu_seconds_total{job="kubernetes-nodes", instance=~"worker-.*", mode="idle"}
 ```
 
 #### 4.10.3.2、范围选择器
 
-我们可以通过在查询语句末尾附加**[时间范围选择器](https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors)**（Range Selector，语法为 `[时长]`），来指定从每个时间序列中提取多长时间范围内的样本数据，从而生成**区间向量**（Range Vector）。
+在瞬时向量选择器后追加官方文档中的 [区间向量选择器](https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors)（语法为 `[时长]`），得到区间向量：每条序列在窗口内保留多个按时间排序的样本点。时长单位含 `s`、`m`、`h`、`d`、`w`、`y`，详见官方 Basics。
 
-区间向量中的每个样本包含该时间范围内多个按时间正序排列的 `<时间戳, 值>` 对。例如：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[1m]
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[1m]
 ```
 
-+ 时间单位支持：`s`（秒）、`m`（分钟）、`h`（小时）、`d`（天）、`w`（周）、`y`（年）
+若抓取间隔为 15 秒，1 分钟内每条序列通常约有四个样点，具体以集群配置为准。在 Table 视图可看到区间内多个带 `@` 时间戳的值。
 
-添加 `[1m]` 后，查询将返回过去 1 分钟内该指标的所有采样点。若 Prometheus 的抓取间隔（scrape interval）为 15 秒，则每个时间序列通常会包含约 4 个样本点（如下图所示）：
+![promql_range_table](./images/promql_range_table.png)
 
-![promql_range_show1](./images/promql_range_show1.png)
+Graph 面板只接受标量或瞬时向量；对「裸区间向量」在同一时刻仍含多点，直接绘图会报错。
 
-可以看到上面的两个时间序列都有 4 个值，这是因为我们 Prometheus 中配置的抓取间隔是 15 秒，所以，我们从图中的 `@` 符号后面的时间戳可以看出，它们之间的间隔基本上就是 15 秒。
+![promql-range-graph-error](./images/promql-range-graph-error.png)
 
-但是在 Prometheus 表达式浏览器的 **Graph** 选项卡中直接执行上述区间向量查询时，会出现渲染错误：
+对 Counter 的区间向量应使用 `rate`、`increase` 等（其它类型选对应函数），先得到瞬时向量再画图或写告警。函数定义见官方 [Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)。告警与 SLO 规则里，Counter 的增长率优先用 `rate`，慎用 `irate`；`increase` 多用于看图或粗估区间总增量。区间长度建议明显大于抓取间隔（常见做法是至少取约 2 倍 `scrape_interval`，以便有足够样点；细则以官方说明为准）。
 
-![promql_range_show_error](./images/promql_range_show_error.png)
+| 函数 | 作用（扼要） | 常见用途 | 注意 |
+| ---- | ------------ | -------- | ---- |
+| `rate(v[d])` | 估计窗口内平均每秒增长，处理计数器复位 | Counter 趋势、告警 | 窗口应大于抓取间隔，常为 `scrape_interval` 数倍；结果可为非整数 |
+| `irate(v[d])` | 仅用窗口内最后两点估瞬时每秒增长 | 极短期波动展示 | 噪声大，不宜单独用于告警 |
+| `increase(v[d])` | 估计窗口内总增量 | 区间「大约多了多少」 | 与 `rate` 的关系与边界行为见官方说明 |
 
-这是因为 Graph 面板仅支持绘制**标量**（Scalar）或**瞬时向量**（Instant Vector），而区间向量包含多个 `时间戳 - 值` 对，无法直接映射为单一时间点的图表数据。
-
-正确做法：对区间向量应用聚合函数（如 `rate()`/`irate()`/`increase()`），将其转换为瞬时向量后再绘图。
-
-Prometheus 官方对瞬时向量和区间向量有很多操作的[函数](https://prometheus.io/docs/prometheus/latest/querying/functions)，不过对于区间向量来说最常用的函数并不多，使用最频繁的有如下几个函数：
-
-| 函数             | 作用                                                         | 适用场景                                         | 注意事项                                      |
-| ---------------- | ------------------------------------------------------------ | ------------------------------------------------ | --------------------------------------------- |
-| `rate(v[d])`     | 计算区间 `d` 内每个时间序列的**每秒平均增长率**，基于线性回归平滑计算 | 计数器（counter）类型指标的长期趋势分析、告警    | 自动处理计数器重置（reset），结果可能为非整数 |
-| `irate(v[d])`    | 仅使用区间内**最后两个样本点**计算瞬时每秒增长率             | 快速波动指标的实时监控视图                       | 对噪声敏感，**不推荐**用于告警或长期趋势分析  |
-| `increase(v[d])` | 计算区间 `d` 内时间序列的**总增量**，等价于 `rate(v[d]) * d(秒)` | 统计某时间段内的累计增长量（如请求总数、错误数） | 同样会处理 counter 重置，结果为浮点数         |
-
-```bash
-# 过去 5 分钟内 CPU idle 时间的每秒平均增长率
-rate(node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[5m])
-
-# 过去 1 分钟内的瞬时增长率（最后两点）
-irate(node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[1m])
-
-# 过去 10 分钟内 idle 时间的总增量（秒）
-increase(node_cpu_seconds_total{instance="ydzs-master", mode="idle"}[10m])
+```promql
+rate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[5m])
+irate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[1m])
+increase(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[10m])
 ```
 
-我们选择的时间范围将确定图表的粒度，比如，持续时间 `[1m]` 会给出非常尖锐的图表，从而很难直观的显示出趋势来，看起来像这样：
+窗口 `[d]` 越短曲线起伏越大，越长越平滑。生产上可在固定抓取间隔后，在 Grafana 中对同一 `rate(...)` 尝试不同窗口（如 5 分钟与 30 分钟），或把短窗与长窗放在同一面板对比，再结合大盘时间跨度选用。
 
-![promql_range_show2](./images/promql_range_show2.png)
+![promql_range_graph](./images/promql_range_graph.png)
 
-对于一小时的图表，`[5m]` 显示的图表看上去要更加合适一些，更能显示出 CPU 使用的趋势：
+`offset` 把选中的时间整体向过去平移。**瞬时向量**的写法是把 `offset` 紧接在标签选择器后面（大括号之后）。下式是约 30 分钟前那一刻的 idle 累计秒数，仍是 Counter 瞬时值，不是每秒变化率。
 
-![promql_range_show3](./images/promql_range_show3.png)
-
-对于更长的时间跨度，可能需要设置更长的持续时间，以便消除波峰并获得更多的长期趋势图表。我们可以简单比较持续时间为`[5m]` 和 `[30m]` 的一天内的图表：
-
-![promql_range_show4](./images/promql_range_show4.png)
-
-![promql_range_show5](./images/promql_range_show5.png)
-
-有的时候可能想要查看 5 分钟前或者昨天一天的区间内的样本数据，这个时候我们就需要用到位移操作了，位移操作的关键字是 `offset`，比如我们可以查询 30 分钟之前的 master 节点 CPU 的空闲指标数据：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master", mode="idle"} offset 30m
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"} offset 30m
 ```
 
-> 需要注意的是 `offset` 关键字需要紧跟在选择器 `{}` 后面。
+**区间向量**必须把 `offset` 写在 **`[时长]` 之后**，再交给 `rate` 等函数，官方示例形如 `rate(http_requests_total[5m] offset 1w)`。下面用较短偏移便于在练习环境里仍能查到数据（若仍为空，多半是评估时刻往前移之后，该 5 分钟窗口内样本不足或当时尚无抓取，可改短 `offset` 或把 Grafana 时间范围拉长）：
 
-同样位移操作也适用于区间向量，比如我们要查询昨天的前 5 分钟的 CPU 空闲增长率：
+```promql
+rate(node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle"}[5m] offset 15m)
+```
 
-![promql_range_show6](./images/promql_range_show6.png)
+需要对比「整点前一小时」时再把 `offset` 改成 `1h` 等即可；`offset 1h` 语法正确，但在**新起的 Prometheus**或**保留时间不足**时，一小时前可能没有序列或窗口内点数不够算 `rate`，就会表现为无数据，并非表达式写错。
+
+标签与时长请按集群实际情况改写。
+
+![promql_rate_offset](./images/promql_rate_offset.png)
 
 #### 4.10.3.3、关联查询
 
-Prometheus 不提供类似 SQL 的关联查询（JOIN）语法，但可以通过 [运算符](https://prometheus.io/docs/prometheus/latest/querying/operators/) 对多个时间序列或标量执行常规计算、比较和逻辑运算。
+Prometheus 没有 SQL 式的 JOIN，但可用 [运算符](https://prometheus.io/docs/prometheus/latest/querying/operators/) 对向量与标量做算术、比较和向量间逻辑运算。
 
-> 当运算符作用于两个瞬时向量时，仅标签集完全一致的时间序列才会参与运算。所谓标签集完全一致，是指两个时间序列的所有标签名称和标签值均相同（`__name__` 除外）。只有当左侧向量的每个序列都能在右侧向量中找到唯一匹配的序列时，才能完成一对一匹配运算。
+两路瞬时向量做二元运算时，默认按完整标签集一对一匹配（指标名可不同，细则见官方 [向量匹配](https://prometheus.io/docs/prometheus/latest/querying/operators/#vector-matching)）。左侧每条序列须在右侧找到恰好一条标签完全相同的序列，否则该点无结果。
 
-例如以下两个瞬时向量查询：
+例如（与本文节点名一致）：
 
-```bash
-node_cpu_seconds_total{instance="ydzs-master", cpu="0", mode="idle"}
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", cpu="0", mode="idle"}
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", cpu="0", mode="idle"}
 ```
 
-```bash
-node_cpu_seconds_total{instance="ydzs-node1", cpu="0", mode="idle"}
+直接相加：
+
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", cpu="0", mode="idle"}
++
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", cpu="0", mode="idle"}
 ```
 
-若对这两个序列执行加法运算：
+因 `instance` 不同，默认无法配对，结果为空。
 
-```bash
-node_cpu_seconds_total{instance="ydzs-master", cpu="0", mode="idle"} 
-+ 
-node_cpu_seconds_total{instance="ydzs-node1", cpu="0", mode="idle"}
+![promql_related_query](./images/promql_related_query.png)
+
+可用 `on` 或 `ignoring` 声明仅用部分标签对齐。`node_cpu_seconds_total` 按 **CPU 核心**分多条序列（`cpu="0"`、`cpu="1"` 等），同一 `instance`、同一 `mode="idle"` 仍会对应多条时间序列。若只写 `on(mode)`，左右任一侧都会在匹配组 `{mode="idle"}` 下出现多条序列，Prometheus 会报错（duplicate series / many-to-many matching not allowed）。教学上应同时限定 **同一颗 CPU**，并用 `on` 列出足以区分序列的标签，例如 `mode` 与 `cpu`：
+
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01", mode="idle", cpu="0"}
++ on(mode, cpu)
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-02", mode="idle", cpu="0"}
 ```
 
-尝试获取 master 和 node1 节点总的空闲 CPU 时长，则不会返回任何内容：
+结果侧只保留 `on` 中声明的标签（本例为 `mode` 与 `cpu`），`instance` 等其余标签会丢弃。若要把多核、多节点合成一条曲线，应用 `sum` 等聚合，而不是强行用过粗的 `on(...)`。
 
-![promql_range_show7](./images/promql_range_show7.png)
+![promql_related_query_on](./images/promql_related_query_on.png)
 
-原因是两个时间序列的 `instance` 标签值不同，标签集不完全匹配，无法建立一对一映射关系。
+多数「多序列合成」场景更稳妥的是 [聚合](https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)，例如按实例汇总 idle 的 Counter 值（若要看使用率，仍应对 `rate` 或归一化后再做聚合，视面板公式而定）：
 
-此时可使用 `on` 关键字显式指定仅基于部分标签进行匹配。例如仅按 `mode` 标签匹配：
-
-```bash
-node_cpu_seconds_total{instance="ydzs-master", mode="idle"} 
-+ on(mode) 
-node_cpu_seconds_total{instance="ydzs-node1", mode="idle"}
+```promql
+sum by (instance) (
+  node_cpu_seconds_total{job="kubernetes-nodes", mode="idle"}
+)
 ```
 
-![promql_range_show8](./images/promql_range_show8.png)
+出现**多对一**或**一对多**时，必须写清 `group_left` 或 `group_right`。例：与 **T4.8** [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) 联用时，`container_cpu_user_seconds_total` 常带 `container`、`cpu` 等高基数标签，而 `kube_pod_info` 每 Pod 往往一条，粗写：
 
-需要注意的是，运算结果生成的新瞬时向量仅包含 `on` 关键字中指定的标签（本例中为 `mode`），其他标签将被丢弃。
-
-实际上，Prometheus 提供了丰富的 [聚合操作](https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)，多数场景下使用聚合函数更为简洁。例如统计各实例的空闲 CPU 时间序列，推荐使用：
-
-```bash
-sum by (instance) (node_cpu_seconds_total{mode="idle"})
-```
-
-`on` 关键字仅适用于一对一匹配场景。当涉及多对一或一对多匹配时，需配合 `group_left` 或 `group_right` 使用。例如通过 [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) 获取 Kubernetes 集群指标时，执行以下查询：
-
-```bash
+```promql
 container_cpu_user_seconds_total{namespace="kube-system"} * on (pod) kube_pod_info
 ```
 
-将返回错误：
+可能报错：
 
-```bash
+```text
 Error executing query: multiple matches for labels: many-to-one matching must be explicit (group_left/group_right)
 ```
 
-错误原因：`container_cpu_user_seconds_total` 指标在同一个 Pod 上可能因 `container`、`cpu` 等标签存在多条时间序列，而 `kube_pod_info` 每个 Pod 通常仅对应一条记录，形成多对一匹配关系，必须显式声明匹配方向。
+原因是左侧多条序列对应右侧同一 `pod`。应使用 `group_left`（或按数据方向使用 `group_right`），且 `on` 与 `group_left` 里写的标签须与两侧序列上真实存在的标签一致。`pod` 是否足以唯一匹配、是否要同时约束 `namespace` 等，请在 Grafana Explore 或 Prometheus 查询页用 `kube_pod_info`、`container_cpu_user_seconds_total` 实际列出的标签核对（不同 chart 版本可能仍见 `pod_name` 等旧标签名）。
 
-解决方法是使用 `group_left` 或 `group_right` 关键字：
-
-- `group_left`：表示左侧为高基数侧，允许多个左侧序列匹配同一个右侧序列
-- `group_right`：表示右侧为高基数侧，允许一个左侧序列匹配多个右侧序列
-
-结果向量默认保留高基数侧的所有标签。若需额外引入低基数侧的特定标签，可在括号中显式指定。
-
-修正后的查询示例：
-
-```bash
-container_cpu_user_seconds_total{namespace="kube-system"} * on (pod) group_left() kube_pod_info
+```promql
+container_cpu_user_seconds_total{namespace="kube-system"}
+  * on (namespace, pod) group_left()
+  kube_pod_info{namespace="kube-system"}
 ```
 
-该查询可正常执行，返回结果包含左侧序列的全部标签，并成功关联右侧 `kube_pod_info` 的匹配记录。
+`group_left` 表示左侧一侧可有多条序列对应右侧同一条；括号内可列出要从右侧并入左侧的额外标签，具体写法以你要保留的维度和官方运算符文档为准。
 
-#### 4.10.3.4、瞬时向量和标量结合
+#### 4.10.3.4、瞬时向量与标量
 
-瞬时向量支持与标量值直接进行算术运算，标量将广播至向量中的每个样本。
+标量与瞬时向量运算时，标量会作用到向量中每一个样本，例如：
 
-```bash
-node_cpu_seconds_total{instance="ydzs-master"} * 10
+```promql
+node_cpu_seconds_total{job="kubernetes-nodes", instance="worker-01"} * 10
 ```
 
-该查询会将瞬时向量中每个序列的每个样本值乘以 10，常用于比率换算或百分比计算。
+常用运算符见 [Operators](https://prometheus.io/docs/prometheus/latest/querying/operators/)：算术；比较（可加 `bool` 得 0/1）；以及向量集合运算 `and`、`or`、`unless`。
 
-支持的运算符包括：
-
-- 算术运算符：`+`、`-`、`*`、`/`、`%`、`^`
-- 比较运算符：`==`、`!=`、`>`、`<`、`>=`、`<=`（配合 `bool` 修饰符可返回 0/1 值）
-- 逻辑集合运算符：`and`、`or`、`unless`（仅适用于两个瞬时向量之间，基于标签匹配执行集合运算）
-
-关于 PromQL 的更多用法，请参考官方文档：https://prometheus.io/docs/prometheus/latest/querying/basics/。
+更完整的 PromQL 语法与语义见官方 [Querying basics](https://prometheus.io/docs/prometheus/latest/querying/basics/)。
 
 ## T4.11、Alertmanager
 
-在前面的学习中我们了解到，Prometheus 生态包含一个独立的告警通知组件——AlertManager。AlertManager 主要用于接收 Prometheus Server 发送的告警信息，支持丰富的告警通知渠道，并具备告警去重、降噪、分组、路由等核心能力，是一款功能完善的告警通知管理系统。
+官方把「告警」拆成两块，这是理解全部配置的出发点，见 [Alerting overview](https://prometheus.io/docs/alerting/latest/overview/)：**Prometheus 里的告警规则**负责在本地周期求值并把告警发给 Alertmanager；**Alertmanager** 负责在收到之后做静默、抑制、聚合（分组）以及通过邮件、On-Call、聊天、Webhook 等渠道把通知发出去。Prometheus 不替你选收件人、也不做静默；Alertmanager 不替你跑 PromQL、也不存业务指标。
 
-Prometheus Server 通过配置告警规则（Alerting Rules）周期性执行规则计算。当 PromQL 表达式查询结果满足告警条件，并持续达到指定的持续时间（`for` 子句）后，Prometheus 会将告警信息发送至 AlertManager。
+**1、Prometheus 一侧在做什么**
 
-![alertmanager_arch](./images/alertmanager_arch.png)
+每条 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)在 `global.evaluation_interval`（或规则组自己的 `interval`）到达时被求值一次。`expr` 是 PromQL，结果是**瞬时向量**：里面有几条时间序列，就表示当前时刻有几个「告警候选」。若写了 `for`，条件须**连续**满足这一段时长，状态才从 `pending` 进到 `firing`；未写 `for` 则一旦为真会很快进入 `firing`。只有进入 `firing` 的告警才会通过 HTTP 推给 Alertmanager（恢复时也会按协议告知，便于发「已恢复」类通知，具体行为见 [Alerts API 与客户端约定](https://prometheus.io/docs/alerting/latest/alerts_api/)）。`labels` 会进入告警实例并参与后续路由；`annotations` 给人看，不参与匹配。可用内置指标 `ALERTS` 在 Prometheus 里自查当前规则状态。
 
-在 Prometheus 中，一条告警规则主要由以下部分组成：
+**2、Alertmanager 一侧在做什么**
 
-- **告警名称（alert name）**：用于标识告警规则，命名应简洁明确，能够直接反映告警的核心内容
-- **告警表达式（expr）**：通过 PromQL 定义告警触发条件，表示需要监控的指标状态
-- **持续时间（for）**：可选字段，指定告警条件持续满足多长时间后才正式触发告警，用于避免瞬时抖动导致的误报
-- **标签（labels）**：为告警添加额外的键值对标签，可用于告警分组、路由或丰富告警上下文
-- **注解（annotations）**：用于补充告警的详细描述、处理建议等人类可读信息，通常用于通知模板渲染
+Alertmanager 处理客户端（主要是 Prometheus）推上来的告警，官方归纳的核心概念见 [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)，下面按「为何要这样设计」来读即可。
 
-Prometheus 支持通过 `groups` 对多条相关的告警规则进行分组管理，便于统一配置评估间隔和维护。
+1. **去重（deduplicating）**
+   
 
-AlertManager 作为独立组件，负责接收并处理来自一个或多个 Prometheus Server 的告警信息。其核心功能包括：
+同一告警在重复推送、多副本 Prometheus 等场景下会多次到达，Alertmanager 会按告警身份做合并，避免收件箱被完全相同的条目刷屏。
 
-- **告警去重（Deduplication）**：自动合并来自不同 Prometheus 实例的重复告警，避免通知风暴
-- **告警分组（Grouping）**：将具有相同标签组合的告警聚合为一条通知，提升通知可读性
-- **告警路由（Routing）**：根据告警标签将告警分发至不同的接收器（Receiver），支持按团队、环境、严重程度等维度灵活配置
-- **告警抑制（Inhibition）**：当某条告警触发时，自动抑制其他相关联的低优先级告警，减少冗余通知
-- **静默管理（Silences）**：支持在指定时间范围内临时屏蔽符合条件的告警，适用于维护窗口或已知问题场景
+2. **分组（grouping）**
 
-在通知渠道方面，AlertManager 原生支持 Email、Slack、PagerDuty、OpsGenie、Webhook 等多种集成方式。对于未原生支持的渠道（如钉钉、企业微信等），用户可通过配置 Webhook 接收器，与第三方机器人或自定义服务集成，实现灵活的告警通知扩展。
+   大规模故障时，`expr` 往往会对很多实例各产生一条 firing，若逐条通知人会崩溃。`group_by` 指定用哪些标签把告警**归并成一批**再发通知（例如按 `alertname` 加 `cluster`），这样一条通知里仍能带上多个实例信息。`group_wait` 是「这一批刚凑齐时先等一会儿」，以便同一批里再进来的告警能塞进同一条通知；`group_interval` 控制**同一分组**在已发过通知之后，隔多久可以再发**下一批**关于该组的更新；`repeat_interval` 控制**同一条已处于 firing 的告警**在未恢复前，重复提醒收件人的最小间隔。三者都在路由树里配置，细节以 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 为准。
 
-关于 AlertManager 的详细配置与使用，请参考官方文档：https://prometheus.io/docs/alerting/latest/overview/。
+3. **抑制（inhibition）**
 
-### T4.11.1、安装
+   若「集群整体不可达」这类根因告警已在 firing，可以配置规则：**在满足条件时不再通知**同一范围内的次要告警（例如该集群下所有节点磁盘告警），避免根因未修时收到海量次生告警。写在 `inhibit_rules`。
 
-从官方文档 https://prometheus.io/docs/alerting/configuration/ 中我们可以看到下载 AlertManager 二进制文件后，可以通过下面的命令运行：
+4. **静默（silences）**
 
-```bash
-$ ./alertmanager --config.file=simple.yml
+   按计划维护或已知问题时，用与路由相同的 **matchers** 语法匹配告警，在时间段内**直接不发通知**。多在 Alertmanager Web UI 里配，也可走 API。
+
+5. **路由树与接收器（routing + receivers）**
+
+   根路由 `route` 与子路由 `routes` 组成一棵树，按 **matchers**（Alertmanager 0.22 起推荐写法，本文镜像 v0.31.1 适用）决定走哪个 `receiver`。`receiver` 里并列 `email_configs`、`slack_configs`、`webhook_configs` 等，真正把 JSON 负载交给外部系统；通知正文模板见 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/)。
+
+高可用说明：多实例 Alertmanager 可组成集群（`--cluster.*` 等参数，见[项目说明](https://github.com/prometheus/alertmanager#high-availability)）。Prometheus 应在配置里列出**全部** Alertmanager 地址，而不是在前面做一层会丢弃请求的负载均衡，否则不符合官方对客户端行为的约定。
+
+可选：**每 alertname 告警条数上限**（`--alerts.per-alertname-limit`）用于防止异常洪峰把 Alertmanager 或下游渠道打垮，见官方 [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) 一节「Alert limits」。
+
+**3、数据流示意**
+
+```mermaid
+flowchart TB
+  subgraph PM[Prometheus]
+    E[按间隔求值 expr]
+    F["满足 for → firing"]
+    H[HTTP 推送到 Alertmanager]
+  end
+  subgraph AM[Alertmanager]
+    R[接收与去重]
+    G[按 group_by 分组]
+    I[抑制 inhibit_rules]
+    S[静默 silences 过滤]
+    T[路由树选 receiver]
+    N[邮件 Slack Webhook 等]
+  end
+  E --> F --> H --> R --> G --> I --> S --> T --> N
 ```
 
-其中 `-config.file` 参数是用来指定对应的配置文件，由于我们这里同样要运行到 Kubernetes 集群中来，所以我们使用 Docker 镜像的方式来安装，使用的镜像是：`prom/alertmanager:v0.21.0`。
+上图是便于对齐配置项的逻辑顺序；抑制、静默与路由在实际代码中的衔接细节以当前版本的 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 为准。
 
-首先，指定配置文件，同样的，我们这里使用一个 ConfigMap 资源对象：
+**4、你在本教程环境里怎么逐项对得上号**
+
+下面按「先能打开页面，再看 Prometheus，最后看 Alertmanager」来操作，和 **T4.2.1**、**T4.11.1** 一致：两组件都在 `kube-mon`，Service 名通常是 `prometheus` 与 `alertmanager`（若你改过名字，把下文命令里的服务名一起改掉）。
+
+**怎么进到页面**
+
+- 集群内临时验证：可对该 namespace 下的 Prometheus / Alertmanager Pod 做端口转发，例如 `kubectl port-forward -n kube-mon svc/prometheus 9090:9090`、`kubectl port-forward -n kube-mon svc/alertmanager 9093:9093`，本机浏览器分别打开 `http://127.0.0.1:9090` 与 `http://127.0.0.1:9093`。
+- 若 **T4.11.1** 里把 Alertmanager 暴露成 NodePort，则可用 `kubectl get svc -n kube-mon alertmanager` 看 `9093:节点端口`，再用 `http://<任一节点IP>:<节点端口>` 打开 Alertmanager；Prometheus 是否 NodePort 以你前文清单为准，没有就只能 port-forward 或 Ingress。
+
+**在 Prometheus 里该看哪里**
+
+1. 打开顶部菜单里的 Alerts（告警）。这里列出的是「规则求值结果」，不是邮件有没有发出去。  
+   - `inactive`：当前这次求值里 `expr` 为假，属于正常空闲。  
+   - `pending`：`expr` 已经为真，但还没到规则里 `for` 写的持续时间，相当于在等「是不是持续出问题」，避免短暂抖动就告警。  
+   - `firing`：条件持续满足 `for` 之后，Prometheus 会把这条告警推给 Alertmanager；只有到了这一步，后面邮件、钉钉之类才可能动工。  
+2. 若 Alerts 里**根本没有**你在 `rules.yml` 里写的规则名，多半是 `rule_files` 没挂上、`rules.yml` 键名或路径不对，或改完 ConfigMap 没 reload，回到 **T4.4** / **T4.11.2** 核对并做一次 **T4.3.1** 的 reload。  
+3. 菜单 Status 里可顺带看一眼运行信息（不同版本入口名称略有差异），确认进程与启动参数正常即可；是否连上 Alertmanager 以配置里 `alerting.alertmanagers` 为准，连不上时常见表现是 firing 后收件箱永远没有动静，同时可结合 Alertmanager 侧是否收到请求来排查。
+
+**在 Alertmanager 里该看哪里**
+
+1. 默认页或 Alerts 一类入口会列出**当前推送到 Alertmanager 的告警**（已按分组、静默、抑制处理前的集合在不同版本里展示方式可能略有不同，但核心是「通知链路上游送来的内容」）。  
+2. Silences（静默）用于维护窗口：按标签匹配器在这段时间一定范围内**拦通知**，适合「今晚割接，先别吵」。这和 Prometheus 里规则删不删是两回事：规则可以还在 firing，只是 Alertmanager 选择不往 receiver 发。  
+3. 若 Prometheus 里已经是 `firing`，而 Alertmanager 里长时间什么都没有，优先查三类问题：  
+   - Prometheus 的 `prometheus.yml` 里有没有 `alerting.alertmanagers`，`targets` 是否是 `alertmanager:9093`（同 ns）或完整集群域名；  
+   - 两个 Pod 是否都在 `Running`、网络策略有没有拦掉 9093；  
+   - 有没有静默或抑制规则把通知挡掉（可在配置里搜 `inhibit_rules` 和对照 UI）。
+
+### T4.11.1、安装（按表顺序做）
+
+**默认前提**：你已按 **T4.2.1** 部署 Prometheus（镜像 `prom/prometheus:v3.10.0`），并按 **T4.4** 配好 `kubernetes-nodes` 等抓取；资源在命名空间 `kube-mon`，ConfigMap 名为 `prometheus-config`，与全文一致。
+
+**版本**：Alertmanager 使用 **T4.2.1「版本与镜像约定」表**中的 `prom/alertmanager:v0.31.1`。以后升级只以 [Alertmanager Releases](https://github.com/prometheus/alertmanager/releases/latest) 上标记为 Latest 的**稳定版**为准，不要猜 tag。
+
+**这一节只做两件事**：先把 Alertmanager 起在集群里；再改 Prometheus 的 `prometheus.yml`，把空的 `alertmanagers: []` 换成真实地址。**告警规则文件**留到 **T4.11.2**，避免一次改太多。
+
+**总流程**
+
+| 顺序 | 内容 | 做完怎么确认 |
+|------|------|----------------|
+| 1 | 应用 Alertmanager 配置 ConfigMap | `kubectl get cm -n kube-mon alert-config` |
+| 2 | 应用 Deployment | `kubectl rollout status deployment/alertmanager -n kube-mon` |
+| 3 | 应用 Service | `kubectl get svc,endpoints -n kube-mon alertmanager` |
+| 4 | 改 `prometheus-config` 里的 `alerting`，再 apply 并对 Prometheus 执行 **T4.3.1** reload | Prometheus 无报错；必要时看 Pod 日志 |
+
+**可选：本机试二进制**（与镜像内 `alertmanager --help` 一致，参数是两个连字符）：
+
+```bash
+./alertmanager --config.file=alertmanager.yml
+```
+
+**步骤 1：Alertmanager 配置（ConfigMap）**
+
+`data.config.yml` 是 **Alertmanager 自己的配置语法**，不是 Kubernetes 资源语法。SMTP 真实密码不要进 Git；生产用流水线注入、Secret 挂载（官方支持 `smtp_auth_password_file`，见 [Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)），或只在集群里维护的渲染流程。
+
+`route` 里：`receiver: default` 表示没被子路由命中的告警走默认通道；`routes` 里带 `matchers` 的子路由把 `team="node"` 的告警改走名为 **`email` 的接收器**（与 **T4.11.2** 示例规则里的 `labels.team: node` 对齐）。`matchers` 写法见官方 [matcher](https://prometheus.io/docs/alerting/latest/configuration/#matcher)；嵌在 Kubernetes YAML 里时，**每一条 matcher 用单引号包整行**，避免 YAML 解析和 Alertmanager 语法混在一起不好查错。
+
+**易错点（启动失败时先查这条）**：`route` / `routes` 里出现的**每一个** `receiver: xxx`，都必须在下面的 **`receivers` 里有一条对应的 `- name: xxx`**，名字要**完全一致**（区分大小写）。少定义会报错：`undefined receiver "xxx" used in route`。这不是「邮件和 Webhook 冲突」，而是**名字没对上**。例如 **T4.11.2.2** 把接收器命名成 `email-and-dingtalk` 时，子路由里的 `receiver` 也要改成 **`email-and-dingtalk`**，或保留子路由为 `email` 则 `receivers` 里仍须保留 `- name: email`（并在该块里并列写 `webhook_configs`）。
+
+若你在 Prometheus 里配了 `global.external_labels.cluster`，`group_by` 里可加上 `cluster`，多集群时分组更清晰。SMTP 端口和是否 TLS 以邮件服务商文档为准（常见 587 + STARTTLS）。
 
 ```yaml
 # alertmanager-config.yaml
@@ -2184,60 +2432,57 @@ metadata:
 data:
   config.yml: |-
     global:
-      # 当alertmanager持续多长时间未接收到告警后标记告警状态为 resolved
       resolve_timeout: 5m
-      # 配置邮件发送信息
-      smtp_smarthost: 'smtp.163.com:25'
-      smtp_from: 'ych_1024@163.com'
-      smtp_auth_username: 'ych_1024@163.com'
-      smtp_auth_password: '<邮箱密码>'
-      smtp_hello: '163.com'
-      smtp_require_tls: false
-    # 所有报警信息进入后的根路由，用来设置报警的分发策略
+      smtp_smarthost: 'smtp.example.com:587'
+      smtp_from: 'alerts@example.com'
+      smtp_auth_username: 'alerts@example.com'
+      smtp_auth_password: '<由部署流程注入，勿入库>'
+      smtp_require_tls: true
     route:
-      # 这里的标签列表是接收到报警信息后的重新分组标签，例如，接收到的报警信息里面有许多具有 cluster=A 和 alertname=LatncyHigh 这样的标签的报警信息将会批量被聚合到一个分组里面
-      group_by: ['alertname', 'cluster']
-      # 当一个新的报警分组被创建后，需要等待至少 group_wait 时间来初始化通知，这种方式可以确保您能有足够的时间为同一分组来获取多个警报，然后一起触发这个报警信息。
+      group_by: [alertname, team]
       group_wait: 30s
-
-      # 相同的group之间发送告警通知的时间间隔
-      group_interval: 30s
-
-      # 如果一个报警信息已经发送成功了，等待 repeat_interval 时间来重新发送他们，不同类型告警发送频率需要具体配置
-      repeat_interval: 1h
-
-      # 默认的receiver：如果一个报警没有被一个route匹配，则发送给默认的接收器
+      group_interval: 5m
+      repeat_interval: 4h
       receiver: default
-
-      # 上面所有的属性都由所有子路由继承，并且可以在每个子路由上进行覆盖。
       routes:
-      - receiver: email
-        group_wait: 10s
-        match:
-          team: node
+        - receiver: email
+          matchers:
+            - 'team="node"'
+          group_wait: 10s
     receivers:
-    - name: 'default'
-      email_configs:
-      - to: '517554016@qq.com'
-        send_resolved: true  # 接受告警恢复的通知
-    - name: 'email'
-      email_configs:
-      - to: '517554016@qq.com'
-        send_resolved: true
+      - name: default
+        email_configs:
+          - to: 'oncall@example.com'
+            send_resolved: true
+      - name: email
+        email_configs:
+          - to: 'oncall@example.com'
+            send_resolved: true
 ```
-
-> **分组**：分组机制可以将详细的告警信息合并成一个通知，在某些情况下，比如由于系统宕机导致大量的告警被同时触发，在这种情况下分组机制可以将这些被触发的告警合并为一个告警通知，避免一次性接受大量的告警通知，而无法对问题进行快速定位。
-
-这是 AlertManager 的配置文件，我们先直接创建这个 ConfigMap 资源对象：
 
 ```bash
-$ kubectl apply -f alertmanager-config.yaml
-configmap/alert-config created
+kubectl apply -f alertmanager-config.yaml
 ```
 
-然后配置 AlertManager 的容器，直接使用一个 Deployment 来进行管理即可，对应的 YAML 资源声明如下：
+**邮件通知：要能进收件箱，缺哪条都不行**
+
+`email_configs` 里的 `to` 只是**收件人地址**。真正发信走的是 **`global` 里的 SMTP**：Alertmanager 作为 SMTP 客户端连到 `smtp_smarthost`，用 `smtp_auth_*` 认证，用 `smtp_from` 当发件人。示例里的 `smtp.example.com`、`alerts@example.com` 和占位密码**不会发出任何真实邮件**，必须全部换成你可用的邮件服务参数。
+
+生产上通常要同时满足：
+
+1. **SMTP 与认证**：`smtp_smarthost`（`主机:端口`）、TLS（`smtp_require_tls` 等）与**服务商或企业邮局**文档一致；密码用官方支持的 `smtp_auth_password` 或 **`smtp_auth_password_file`**（Secret 挂文件，推荐），不要进 Git。
+2. **个人邮箱（如 QQ 邮箱）**：在邮箱设置里**开启 SMTP**，使用**授权码**填入 `smtp_auth_password`（不是 QQ 登录密码）；`smtp_from` 一般填该邮箱或服务商要求的发信身份；**主机名、端口、SSL/STARTTLS 以腾讯当前说明为准**（常见为 `smtp.qq.com` 配合 465 或 587，以官方为准）。
+3. **出站网络**：Alertmanager Pod 能解析并访问 SMTP 端口（防火墙、安全组、代理、固定出口白名单、NetworkPolicy 等）。很多企业让监控走**内部 SMTP 中继**，由运维提供 relay 地址和账号。
+4. **投递与反垃圾**：发件域、SPF/DKIM 等常由邮件基础设施负责；若 SMTP 通了但进垃圾箱，要按你们邮局规范调整。
+
+只把 `to` 改成你的 QQ 邮箱**不够**；`global` 不配成真实 QQ SMTP 与授权码，告警路由到 `email` 接收器后也会在日志里报 SMTP 错误。改完 `alert-config` 后 **`kubectl rollout restart deployment/alertmanager -n kube-mon`**，排错看 **`kubectl logs -n kube-mon deploy/alertmanager`**。
+
+**步骤 2：Deployment**
+
+与 **T4.2.1** 一样给工作负载加非 root 安全上下文；数据目录 Alertmanager 镜像默认不需要 PVC（本示例仅配置文件 ConfigMap）。
 
 ```yaml
+# alertmanager-deploy.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -2254,41 +2499,56 @@ spec:
       labels:
         app: alertmanager
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
       volumes:
-      - name: alertcfg
-        configMap:
-          name: alert-config
+        - name: alertcfg
+          configMap:
+            name: alert-config
       containers:
-      - name: alertmanager
-        image: prom/alertmanager:v0.21.0
-        imagePullPolicy: IfNotPresent
-        args:
-        - "--config.file=/etc/alertmanager/config.yml"
-        ports:
-        - containerPort: 9093
-          name: http
-        volumeMounts:
-        - mountPath: "/etc/alertmanager"
-          name: alertcfg
-        resources:
-          requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            cpu: 100m
-            memory: 256Mi
+        - name: alertmanager
+          image: prom/alertmanager:v0.31.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/alertmanager/config.yml
+          ports:
+            - containerPort: 9093
+              name: http
+          volumeMounts:
+            - mountPath: /etc/alertmanager
+              name: alertcfg
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
 ```
-
-这里我们将上面创建的 `alert-config` 这个 ConfigMap 资源对象以 Volume 的形式挂载到 `/etc/alertmanager` 目录下去，然后在启动参数中指定了配置文件 `--config.file=/etc/alertmanager/config.yml`，然后我们可以来创建这个资源对象：
 
 ```bash
-$ kubectl apply -f alertmanager-deploy.yaml
-deployment.apps/alertmanager created
+kubectl apply -f alertmanager-deploy.yaml
+kubectl rollout status deployment/alertmanager -n kube-mon
 ```
 
-为了可以访问到 AlertManager，同样需要我们创建一个对应的 Service 对象：(alertmanager-svc.yaml)
+**步骤 3：Service**
+
+练习环境用 NodePort 方便浏览器访问；生产多改成 ClusterIP，再配合 Ingress 或只给集群内访问，并配合 NetworkPolicy 收紧来源。与 **T4.2.1** 的 Prometheus Service 策略保持一致即可。
 
 ```yaml
+# alertmanager-svc.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -2306,423 +2566,703 @@ spec:
       targetPort: http
 ```
 
-使用 NodePort 类型也是为了方便测试，创建上面的 Service 这个资源对象：
-
 ```bash
-$ kubectl apply -f alertmanager-svc.yaml
-service/alertmanager created
+kubectl apply -f alertmanager-svc.yaml
 ```
 
-AlertManager 的容器启动起来后，我们还需要在 Prometheus 中配置下 AlertManager 的地址，让 Prometheus 能够访问到 AlertManager，在 Prometheus 的 ConfigMap 资源清单中添加如下配置：
+**改 Alertmanager 配置后怎么生效**：默认镜像**没有**像 Prometheus 那样依赖 `/-/reload` 热加载。更新 `alert-config` 后请重启 Deployment：
 
 ```bash
-alerting:
-  alertmanagers:
-    - static_configs:
-      - targets: ["alertmanager:9093"]
+kubectl rollout restart deployment/alertmanager -n kube-mon
 ```
 
-更新这个资源对象后，稍等一小会儿，执行 reload 操作即可。
+可选：在镜像参数中加 `--web.enable-lifecycle` 后，可对 Alertmanager 发 POST `/-/reload`（与 [官方文档](https://prometheus.io/docs/alerting/latest/configuration/) 中 HTTP API 说明一致）；本文采用重启，步骤最少。
 
-### T4.11.2、报警规则
+**步骤 4：让 Prometheus 指向 Alertmanager**
 
-目前 AlertManager 容器已正常运行并与 Prometheus 完成关联配置，但尚未定义具体的告警规则。Prometheus 需要依据告警规则对监控数据进行评估，当满足触发条件时才会向 AlertManager 发送告警信息。
+编辑 `prometheus-config` 的 `data.prometheus.yml`。在 **T4.4** 完整示例里，原来类似：
 
-告警规则允许基于 Prometheus 表达式语言（PromQL）定义告警触发条件，并在条件满足时向外部接收者发送通知。
-
-首先需要在 Prometheus 配置文件中指定告警规则文件路径：
-
-```bash
-rule_files:
-- /etc/prometheus/rules.yml
+```yaml
+    rule_files: []
+    alerting:
+      alertmanagers: []
 ```
 
-`rule_files` 用于指定告警规则文件的位置。在 Kubernetes 环境中，通常通过 ConfigMap 将规则文件挂载至 Prometheus 容器。示例如下（alert-rules.yml）：
+本步**只改 `alerting` 段**，`rule_files` **暂时保持 `[]`**（规则在 **T4.11.2** 再加）。把 `alerting` 整段替换为下面内容（结构必须与 [Prometheus configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) 一致：`static_configs` 下面是**列表项**，必须有 `- targets:`，不能写成裸的 `targets:`）：
 
-```bash
+```yaml
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["alertmanager:9093"]
+```
+
+Prometheus 与 Alertmanager **同命名空间**时用服务短名即可；若 Prometheus 以后迁到别的命名空间，target 改成 FQDN，例如 `alertmanager.kube-mon.svc.cluster.local:9093`。
+
+**不要**删掉 `global`、`scrape_configs`、`storage` 等已有块。保存后 `kubectl apply` 你的 Prometheus ConfigMap 清单，再按 **T4.3.1** 对 Prometheus 执行 reload。
+
+**可选自检**：配置加载后看 Alertmanager 日志是否有解析错误；也可在 Alertmanager Pod 内执行 `amtool check-config /etc/alertmanager/config.yml`（镜像内自带 `amtool`）。
+
+### T4.11.2、告警规则
+
+**前提**：**T4.11.1** 已完成，Prometheus 的 `alerting` 已指向 Alertmanager。
+
+**这一节做三件事**：
+
+1. 在 ConfigMap `prometheus-config` 的 `data` 下**新增键** `rules.yml`（与 `prometheus.yml` 并列），Kubernetes 会把每个键挂成 `/etc/prometheus/<键名>`，因此容器内路径为 `/etc/prometheus/rules.yml`。
+2. 在 `prometheus.yml` 里**只保留一处** `rule_files`：把顶部的 `rule_files: []` **改成**下面这类列表即可；**不要**在前面留着 `rule_files: []` 又在文件后面再写一段 `rule_files`，否则启动或 reload 会报错：`field rule_files already set`。
+3. apply 后按 **T4.3.1** reload；上线前用 `promtool` 自检（见下）。
+
+**不要**再复制粘贴一整段 `alerting`。**T4.11.1** 已配好的话保持不动；若你跳过了上一节，需要把下面片段里 `rule_files` 与 `alerting` 一起合并进 `prometheus.yml`。
+
+合并后应类似（仅作结构核对，实际文件里还有 `global`、`scrape_configs` 等）。注意：**全文件仅此一段 `rule_files`**，与 **T4.4** 等完整版里 `global` 下面的 `rule_files: []` 是「二选一」，改规则时删掉空列表，不要追加第二处。
+
+```yaml
+    rule_files:
+      - /etc/prometheus/rules.yml
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["alertmanager:9093"]
+```
+
+规则求值周期跟 **T4.2.1** 的 `global.evaluation_interval`（如 `15s`）走；某个组要放慢可在 `groups` 里单独写 `interval`。字段含义见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
+
+**示例规则**（与 **T4.4** 节点指标一致：`job="kubernetes-nodes"`）。用 `MemAvailable` 和 `MemTotal` 估算内存压力；阈值 `50` 方便实验，生产常改 `80`～`90`，并保留 `for` 防抖。
+
+```yaml
+# prometheus-config 中 data.rules.yml 的完整内容
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
   namespace: kube-mon
 data:
+  rules.yml: |
+    groups:
+      - name: node-memory
+        interval: 30s
+        rules:
+          - alert: NodeMemoryHigh
+            expr: |
+              (100 * (1 - node_memory_MemAvailable_bytes{job="kubernetes-nodes"} / node_memory_MemTotal_bytes{job="kubernetes-nodes"})) > 50
+            for: 2m
+            labels:
+              team: node
+            annotations:
+              summary: "节点 {{ $labels.instance }} 内存压力高"
+              description: "可用内存占比已低于阈值，当前计算值（已用百分比）约 {{ $value }}。"
   prometheus.yml: |
     global:
       scrape_interval: 15s
-      scrape_timeout: 15s
-      evaluation_interval: 30s  # 默认情况下每分钟对告警规则进行计算
-    alerting:
-      alertmanagers:
-      - static_configs:
-        - targets: ["alertmanager:9093"]
-    rule_files:
-    - /etc/prometheus/rules.yml
-  ...... # 省略prometheus其他部分
-  rules.yml: |
-    groups:
-    - name: test-node-mem
-      rules:
-      - alert: NodeMemoryUsage
-        expr: (node_memory_MemTotal_bytes - (node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes)) / node_memory_MemTotal_bytes * 100 > 20
-        for: 2m
-        labels:
-          team: node
-        annotations:
-          summary: "{{$labels.instance}}: High Memory usage detected"
-          description: "{{$labels.instance}}: Memory usage is above 20% (current value is: {{ $value }}"
+      scrape_timeout: 10s
+  # 下面保持不变 ...
 ```
 
-上述示例定义了一条名为 `NodeMemoryUsage` 的告警规则，一条完整的告警规则包含以下字段：
+**字段一眼看懂**：`alert` 规则名；`expr` 是 PromQL，为真才算触发；`for` 要连续满足多久才从 `pending` 变 `firing`；`labels` 会进告警实例，Alertmanager 路由和分组都靠它；`annotations` 给人读，不参与匹配。模板变量见官方 [告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 里的模板说明。
 
-- **alert**：告警规则名称，用于唯一标识该告警
-- **expr**：PromQL 表达式，定义告警触发条件。Prometheus 周期性评估该表达式，当查询结果非空且满足条件时触发告警
-- **for**：可选字段，指定告警条件持续满足的等待时间。仅在条件持续满足该时长后，告警状态才会从 `pending` 转为 `firing`。该机制用于过滤瞬时抖动，降低误报率
-- **labels**：自定义标签，以键值对形式附加到告警实例上，可用于告警分组、路由或丰富告警上下文
-- **annotations**：补充说明信息，不参与告警匹配或路由，通常用于通知模板中展示告警详情、处理建议等人类可读内容
-
-> **for 字段说明**：该参数主要用于告警降噪。对于响应时间、资源使用率等存在波动的指标，通过设置合理的等待时间，可避免因瞬时峰值触发误告警，确保告警反映的是持续性问题。
-
-为提升告警信息的可读性，Prometheus 支持在 `labels` 和 `annotations` 中使用模板语法：
-
-- `{{$labels.<label_name>}}`：引用当前告警实例中指定标签的值
-- `{{$value}}`：引用当前 PromQL 表达式计算的样本值
-
-为便于演示，示例中将告警阈值设置为 20%。更新 ConfigMap 后，由于 Prometheus Pod 已通过 Volume 挂载该 ConfigMap 至 `/etc/prometheus` 目录，`rules.yml` 文件将自动同步。执行 Prometheus 配置重载（reload）后，在 Prometheus Dashboard 的 **Alerts** 页面即可查看已加载的告警规则：
-
-![alertmanager1](./images/alertmanager1.png)
-
-告警规则在生命周期内存在三种状态：
-
-- **inactive**：告警条件未满足，处于非活动状态
-- **pending**：告警条件已满足，但持续时间未达到 `for` 指定的阈值
-- **firing**：告警条件持续满足超过 `for` 指定的时长，告警正式触发并发送至 AlertManager
-
-Prometheus 会将处于 `pending` 或 `firing` 状态的告警实例记录到内置时间序列 `ALERTS{}` 中，可通过以下表达式查询：
+**上线前自检**：
 
 ```bash
-ALERTS{alertname="<alert name>", alertstate="pending|firing", <additional alert labels>}
+kubectl rollout restart -n kube-mon deployment prometheus
+kubectl exec -n kube-mon deploy/prometheus -- promtool check config /etc/prometheus/prometheus.yml
+kubectl exec -n kube-mon deploy/prometheus -- promtool check rules /etc/prometheus/rules.yml
 ```
 
-样本值为 `1` 表示告警处于活动状态（pending 或 firing），样本值为 `0` 表示告警已从活动状态恢复。
+第二条若报找不到文件，说明 ConfigMap 里缺少 `rules.yml` 键，或 `rule_files` 路径与挂载路径不一致。
 
-示例告警规则中配置了标签 `team: node`，若 AlertManager 路由配置如下：
+**打开 Prometheus 的 Alerts 页面看规则是否在列表里、状态是否变化。**
 
-```bash
-routes:
-- receiver: email
-  group_wait: 10s
-  match:
-    team: node
+![altermanager-in-prometheus-status](./images/altermanager-in-prometheus-status.png)
+
+**状态含义**：`inactive` 条件不成立；`pending` 已成立但未满 `for`；`firing` 已推给 Alertmanager。用内置指标自查：
+
+```promql
+ALERTS{alertname="NodeMemoryHigh", alertstate=~"pending|firing"}
 ```
 
-则该告警将被路由至 `email` 接收器。若接收器配置为邮箱通知，满足条件后将收到类似如下的告警邮件：
+本例 `labels.team` 为 `node`，与 **T4.11.1** 子路由里 `team="node"` 一致，告警会交给 **`email` 接收器**，由 Alertmanager **按 `global` SMTP 尝试发信**。收件箱能不能收到，取决于 **T4.11.1**「邮件通知」里 SMTP、认证、出站是否已配通，**不是**只改 `to` 就行。
 
-![alertmanager2](./images/alertmanager2.png)
+#### T4.11.2.1、Alertmanager Web UI
 
-邮件内容包含 `View In AlertManager` 链接，可通过该链接跳转至 AlertManager 界面查看详情。
+**和 Prometheus 里 Alerts 的区别**：Prometheus 页是**规则求值状态**（inactive/pending/firing）；Alertmanager 页是**已经送过来的告警**怎么分组、有没有被静默/抑制、会走哪个接收器。两边都要会看，别混成一个。
 
-若 AlertManager 服务通过 NodePort 方式暴露：
+**怎么打开**
 
-```bash
-$ kubectl get svc -n kube-mon
-NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
-alertmanager   NodePort    10.98.1.195     <none>        9093:31194/TCP      141m
+- **NodePort**（与 **T4.11.1** 清单一致）：`kubectl get svc -n kube-mon alertmanager`，看 `PORT(S)` 里 `9093:3xxxx` 的节点端口，浏览器访问 `http://<任一节点 IP>:<3xxxx>`。
+- **ClusterIP / 本机没直达集群**：`kubectl port-forward -n kube-mon svc/alertmanager 9093:9093`，本机打开 `http://127.0.0.1:9093`。
+- 生产对外多走 Ingress + TLS，逻辑仍是访问 Alertmanager 的 **9093** 等价入口。
+
+**界面大致结构**（0.2x 以后常见布局；具体文案随版本略有出入，以你镜像为准）
+
+| 入口 / 区域 | 用途 |
+|-------------|----------------|
+| **Alerts** | 当前 Alertmanager 手里的告警列表，多按 **`route.group_by`** 聚成「一组」展示。展开一组可看每条告警的**标签**（来自 Prometheus 规则里的 `labels` 等）、当前会交给哪个 **receiver**（邮件、Webhook 等）。若显示被 **silenced** / **inhibited**，表示被静默或抑制规则挡了通知。 |
+| **Silences** | **临时静音**：在时间段内按 **matchers** 匹配到的告警**不再往接收器发**，适合割接、已知误报。和「改 Prometheus 规则」无关；规则可以还在 firing，只是不吵你。新建静默时要填：匹配条件、开始/结束时间、说明、创建人（有的版本可选）。matchers 语法与路由里一致，例如 `alertname="NodeMemoryHigh"`、`team="node"`，见官方 [matcher](https://prometheus.io/docs/alerting/latest/configuration/#matcher)。 |
+| **Status** | 版本、运行信息；多实例集群时可能看到成员状态。改配置是否生效以 **T4.11.1** 的 **restart / reload** 为准，不是看这个页「自动更新」。 |
+
+**你在 Alerts 页该怎么理解**
+
+- **一组里多条**：通常是因为同一 `group_by` 标签组合下有多条 firing（例如多个 `instance`）。通知往往按组发，所以你会觉得「一条邮件里塞了多台机器」。
+- **看不到告警**：可能是 Prometheus 没推到 Alertmanager（查 Prometheus `alerting` 与网络）、告警已被静默/抑制、或当前本来就没有 firing。
+- **有告警但没邮件**：先看 **T4.11.1「邮件通知」** SMTP；再看该组对应的 **receiver** 是不是邮件；最后看是否 **silenced**。
+
+**Silences 页常用操作**
+
+1. **New Silence**：填 matchers（至少能唯一框住你想静音的范围，太宽会误伤）。
+2. 设 **开始/结束时间**；到期自动失效。
+3. 已有静默可在列表里 **Expire** 提前取消。
+
+**配置文件里才有的地方（UI 里不画表单）**
+
+- **`inhibit_rules`（抑制）**：例如「集群挂了就别再报单盘」这类逻辑，写在 `config.yml`，见 [inhibit_rule](https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule)。
+- **`repeat_interval` / `group_wait` / `group_interval`**：控制多久重复通知、分组等待等，在 **`route`** 里调，要和值班习惯一起试，官方说明在 [configuration](https://prometheus.io/docs/alerting/latest/configuration/) 的 routing 相关字段。
+
+官方延伸阅读：[Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)、[Alertmanager 配置](https://prometheus.io/docs/alerting/latest/configuration/)、[告警规则](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)。
+
+#### T4.11.2.2、Webhook：钉钉与企业微信群机器人
+
+**这一节要干的事**：告警已经到 **Alertmanager v0.31.1**（版本与 **T4.2.1** 文首表一致）了，再往**钉钉群**或**企业微信群**里推一条通知。Alertmanager 只会按 [webhook_config](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) 把 [官方这份 JSON](https://prometheus.io/docs/alerting/latest/notifications/) POST 到集群里的某个 HTTP 地址；钉钉和企微机器人各自要的报文格式，必须靠**集群里的转发程序**去调官方 HTTPS 接口。**机器人的 token、加签密钥、带 key 的整段 URL 只往 Secret 里放，不要写进 Git。**
+
+**生产上这条链路怎么选（和文首「版本与镜像约定」表一致）**
+
+| 要接到哪里 | 用到的转发软件（固定镜像 tag） | 官方依据你先看哪里 | K8s 清单从哪来 |
+|------------|-------------------------------|--------------------|----------------|
+| 钉钉自定义机器人（可含加签） | [prometheus-webhook-dingtalk](https://github.com/timonwong/prometheus-webhook-dingtalk)，镜像 `timonwong/prometheus-webhook-dingtalk:v2.1.0` | 钉钉开放平台：[自定义机器人接入](https://developers.dingtalk.com/document/app/custom-robot-access)、[安全设置与加签](https://developers.dingtalk.com/document/robots/customize-robot-security-settings)（页面若改版以开放平台搜索为准） | 上游有 [contrib/k8s](https://github.com/timonwong/prometheus-webhook-dingtalk/tree/v2.1.0/contrib/k8s)；下文已按 **kube-mon**、Secret、固定 tag 写好一份可直接 apply 的示例。 |
+| 企业微信群机器人 | [PrometheusAlert](https://github.com/feiyu563/PrometheusAlert)，镜像 `feiyu563/prometheus-alert:v4.9.2` | 腾讯：[群机器人配置说明](https://developer.work.weixin.qq.com/document/path/91770)（路径以官网为准） | Release **v4.9.2** 里的 [kubernetes.zip](https://github.com/feiyu563/PrometheusAlert/releases/download/v4.9.2/kubernetes.zip)；先解压部署，再按下面 Alertmanager 的 URL 接上。 |
+
+**两套都要守的规矩**：转发 Pod 必须能访问 `oapi.dingtalk.com` 或 `qyapi.weixin.qq.com`；镜像不准用未钉死的 tag；Alertmanager 里 `webhook_configs.url` 写集群内 Service，例如 `http://服务名.kube-mon.svc.cluster.local:端口路径`；要和 **T4.11.2** 规则上的 `labels`（如 `team="node"`）在 `route` 里对得上；要和邮件一起发，就在**同一个 receiver** 里并排写 `email_configs` 和 `webhook_configs`。需要 TLS 客户端、代理等用 Alertmanager 的 [http_config](https://prometheus.io/docs/alerting/latest/configuration/#http_config)。
+
+---
+
+**甲、钉钉（官方建机器人 + 集群里跑 prometheus-webhook-dingtalk）**
+
+1. 在钉钉侧按开放平台文档建好「自定义机器人」，安全设置用 **加签**，记下 **access_token** 和 **SECRET**（常见 `SEC` 开头）。这一步只能在钉钉控制台完成，和 K8s 无关。  
+2. 集群里配置由 **Secret** 提供。下面示例里 target 名叫 `prod`，你可以改名，但后面的 Alertmanager 路径最后一节要跟着改。
+
+`prometheus-webhook-dingtalk-secret.yaml`（本地改完再 apply，勿提交仓库）：
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prometheus-webhook-dingtalk
+  namespace: kube-mon
+type: Opaque
+stringData:
+  config.yaml: |
+    targets:
+      prod:
+        url: https://oapi.dingtalk.com/robot/send?access_token=换成你的 token
+        secret: 换成你的 SEC 加签密钥
 ```
 
-可通过 `<NodeIP>:31194` 访问 AlertManager Dashboard。该页面支持告警过滤、分组查看，并提供两项高级功能：
+`prometheus-webhook-dingtalk.yaml`：
 
-- **Inhibition（告警抑制）**：当某条告警已触发时，可配置规则抑制其他相关联的低优先级告警。例如：当集群不可达告警触发时，可抑制该集群下所有节点的资源告警，避免通知风暴。抑制规则需在 AlertManager 配置文件中通过 `inhibit_rules` 显式定义
-- **Silences（告警静默）**：支持在指定时间范围内临时屏蔽符合匹配条件的告警。静默规则基于标签匹配器（matchers）配置，与路由树语法一致。匹配成功的告警将不会发送给接收者，适用于计划维护或已知问题场景
-
-AlertManager 全局配置中的 `repeat_interval` 参数控制相同告警的重复通知间隔。例如配置 `repeat_interval: 1h`，则同一告警在持续触发状态下，每小时仅发送一次通知，避免重复打扰。
-
-一条告警从产生到最终通知接收者，需经过 AlertManager 的完整处理流程：分组（Grouping）→ 去重（Deduplication）→ 抑制（Inhibition）→ 静默（Silences）→ 路由（Routing）→ 通知（Notification）。该过程中任一环节均可能导致告警被合并、抑制或屏蔽，最终未发送通知。告警完整生命周期如下图所示：
-
-![alertmanager3](./images/alertmanager3.png)
-
-关于告警规则与 AlertManager 的详细配置，请参考官方文档：
-
-- 告警规则：https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
-- AlertManager 配置：https://prometheus.io/docs/alerting/latest/configuration/
-
-#### T4.11.2.1、WebHook 接收器
-
-前文配置了 AlertManager 自带的邮件告警模板。AlertManager 支持多种告警接收器，例如 Slack、企业微信、钉钉等，其中最为灵活的方式是使用 Webhook。通过配置 Webhook 接收器，AlertManager 可将告警信息以 HTTP POST 请求的形式发送至自定义服务，由该服务负责告警内容的解析、格式化及分发。
-
-以下是一个用于对接钉钉机器人的 Webhook 服务示例，代码仓库地址：[github.com/cnych/alertmanager-dingtalk-hook](https://github.com/cnych/alertmanager-dingtalk-hook)
-
-需将该服务部署至 Kubernetes 集群中，对应的资源清单如下（dingtalk-hook.yaml）：
-
-```bash
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dingtalk-hook
+  name: prometheus-webhook-dingtalk
   namespace: kube-mon
+  labels:
+    app: prometheus-webhook-dingtalk
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      app: dingtalk-hook
+      app: prometheus-webhook-dingtalk
   template:
     metadata:
       labels:
-        app: dingtalk-hook
+        app: prometheus-webhook-dingtalk
     spec:
       containers:
-      - name: dingtalk-hook
-        image: cnych/alertmanager-dingtalk-hook:v0.3.2
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 5000
-          name: http
-        env:
-        - name: PROME_URL
-          value: k8s.qikqiak.com:30980
-        - name: LOG_LEVEL
-          value: debug
-        - name: ROBOT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: dingtalk-secret
-              key: token
-        - name: ROBOT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: dingtalk-secret
-              key: secret
-        resources:
-          requests:
-            cpu: 50m
-            memory: 100Mi
-          limits:
-            cpu: 50m
-            memory: 100Mi
-
+        - name: prometheus-webhook-dingtalk
+          image: timonwong/prometheus-webhook-dingtalk:v2.1.0
+          args:
+            - --web.listen-address=:8060
+            - --config.file=/config/config.yaml
+          ports:
+            - name: http
+              containerPort: 8060
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: config
+          secret:
+            secretName: prometheus-webhook-dingtalk
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: dingtalk-hook
+  name: prometheus-webhook-dingtalk
   namespace: kube-mon
 spec:
   selector:
-    app: dingtalk-hook
+    app: prometheus-webhook-dingtalk
   ports:
-  - name: hook
-    port: 5000
-    targetPort: http
+    - name: http
+      port: 8060
+      targetPort: http
 ```
 
-上述配置中包含以下关键环境变量：
-
-- `ROBOT_TOKEN`：钉钉机器人 Access Token，用于标识机器人身份
-- `PROME_URL`：指定跳转链接中的 Prometheus 地址，默认为 Pod 内部地址，建议配置为外部可访问地址
-- `LOG_LEVEL`：日志级别，设置为 `debug` 可输出 AlertManager 发送的原始 Webhook 数据，便于调试，生产环境可不配置或设置为 `info`
-- `ROBOT_SECRET`：钉钉机器人安全设置中的加签密钥（SEC 开头字符串），用于请求签名验证
-
-![alertmanager4](./images/alertmanager4.png)
-
-由于 `ROBOT_TOKEN` 和 `ROBOT_SECRET` 属于敏感信息，建议通过 Kubernetes Secret 进行管理。创建 Secret 并部署资源：
-
 ```bash
-$ kubectl create secret generic dingtalk-secret --from-literal=token=<钉钉群聊的机器人TOKEN> --from-literal=secret=<钉钉群聊机器人的SECRET> -n kube-mon
-secret "dingtalk-secret" created
-$ kubectl apply -f dingtalk-hook.yaml
-deployment.apps "dingtalk-hook" created
-service "dingtalk-hook" created
-$ kubectl get pods -n kube-mon
-NAME                            READY     STATUS      RESTARTS   AGE
-dingtalk-hook-c4fcd8cd6-6r2b6   1/1       Running     0          45m
-......
+kubectl apply -f prometheus-webhook-dingtalk-secret.yaml
+kubectl apply -f prometheus-webhook-dingtalk.yaml
+kubectl logs -n kube-mon deploy/prometheus-webhook-dingtalk
 ```
 
-部署完成后，在 AlertManager 配置中添加 Webhook 接收器及对应路由：
+日志里应打印出对应的 Webhook 地址，格式固定为 **`http://<主机>:8060/dingtalk/<target 名>/send`**；给 Alertmanager 用时把主机名换成 Service：`prometheus-webhook-dingtalk.kube-mon.svc.cluster.local`。
 
-```bash
-  routes:
-  - receiver: webhook
-    match:
-      filesystem: node
-receivers:
-- name: 'webhook'
-  webhook_configs:
-  - url: 'http://dingtalk-hook:5000'
-    send_resolved: true
+在 **T4.11.1** 的 `receivers` 里追加或合并（邮件 + 钉钉示例）。若接收器名叫 **`email-and-dingtalk`**，则 **`route.routes` 里对应子路由的 `receiver` 也必须改成 `email-and-dingtalk`**，否则会报 **`undefined receiver "email" used in route`**（见 **T4.11.1** 文内「易错点」）。
+
+下面只是 **`route.routes` + `receivers` 片段**，你要和 **T4.11.1** 里已有的 **`global:`**、**`route`** 顶栏（`group_by`、`receiver: default` 等）拼成**完整** `config.yml`，不要只有这一段就去 apply。
+
+```yaml
+      routes:
+        - receiver: email-and-dingtalk
+          matchers:
+            - 'team="node"'
+          group_wait: 10s
+    receivers:
+      - name: default
+        email_configs:
+          - to: 'oncall@example.com'
+            send_resolved: true
+      - name: email-and-dingtalk
+        email_configs:
+          - to: 'oncall@example.com'
+            send_resolved: true
+        webhook_configs:
+          - url: 'http://prometheus-webhook-dingtalk.kube-mon.svc.cluster.local:8060/dingtalk/prod/send'
+            send_resolved: true
 ```
 
-上述配置定义了一个名为 `webhook` 的接收器，其地址为 `http://dingtalk-hook:5000`，即前述钉钉 Webhook 服务的 ClusterIP 地址。`send_resolved: true` 表示在告警恢复时也向接收器发送通知。
+改完 Alertmanager 配置后按你在 **T4.11.1** 的方式 reload 或重启 Deployment。
 
-更新 AlertManager 和 Prometheus 的 ConfigMap 后，执行配置重载使变更生效。当满足告警条件时，包含 `team=node` 标签的告警将被路由至 `webhook` 接收器，即由 `dingtalk-hook` 服务处理。可通过查看 Pod 日志确认请求处理情况：
+---
 
-```bash
-$ kubectl logs -f dingtalk-hook-cc677c46d-gf26f -n kube-mon
- * Serving Flask app "app" (lazy loading)
- * Environment: production
-   WARNING: Do not use the development server in a production environment.
-   Use a production WSGI server instead.
- * Debug mode: off
- * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+**乙、企业微信（官方建机器人 + 集群里跑 PrometheusAlert）**
 
-2019-12-15 08:11:30,051 DEBUG Starting new HTTPS connection (1): oapi.dingtalk.com:443
-2019-12-15 08:11:30,781 DEBUG https://oapi.dingtalk.com:443 "POST /robot/send?access_token=ff5067c95035185a752eb0fe90a1e52fd16f596c8ca89712e18ac2a3e1b7ee89&timestamp=1576397489986&sign=wOggfoW%2BAVgvi2BiHnlKd79Tvjf7S3boRAs1BoDhhTE%3D HTTP/1.1" 200 None
-2019-12-15 08:11:30,951 INFO 10.244.2.129 - - [15/Dec/2019 08:11:30] "POST / HTTP/1.1" 200 -
+1. 在企微群里添加机器人，复制 **带 key= 的 Webhook 地址**，字段含义以 **[群机器人文档](https://developer.work.weixin.qq.com/document/path/91770)** 为准。  
+2. 部署 **PrometheusAlert v4.9.2**：下载与 Release 同版本的 **[kubernetes.zip](https://github.com/feiyu563/PrometheusAlert/releases/download/v4.9.2/kubernetes.zip)**，解压后把清单里的命名空间改成 **kube-mon**，镜像行改成 **`feiyu563/prometheus-alert:v4.9.2`**（若 [Docker Hub 标签页](https://hub.docker.com/r/feiyu563/prometheus-alert/tags) 暂时还没有同号 tag，以 Hub 上已有、且 README 示例推荐的最近稳定 tag 为准，或按 zip 里默认镜像行与 Release 说明对齐），再 `kubectl apply`。首次登录 Web 控制台，按项目 **[企业微信告警配置](https://github.com/feiyu563/PrometheusAlert/blob/master/doc/readme/conf-wechat.md)**、**[Prometheus 接入](https://github.com/feiyu563/PrometheusAlert/blob/master/doc/readme/system-prometheus.md)** 配好机器人与模版。**模版英文名 `tpl`** 必须与你控制台里实际启用的一致，不要照抄文档里不存在的名字。  
+3. Alertmanager 对接口 **`/prometheusalert`**，查询参数见项目 **[接口说明](https://github.com/feiyu563/PrometheusAlert/blob/master/doc/readme/base-restful.md)**。下面是一条示意（把 Service 名、端口、tpl、整段 wxurl 换成你的；若一行太长或特殊字符导致失败或对 `wxurl` 做 URL 编码，按项目文档处理）：
+
+```yaml
+  - name: alertmanager-to-prometheusalert-wx
+    webhook_configs:
+      - url: 'http://prometheus-alert.kube-mon.svc.cluster.local:8080/prometheusalert?type=wx&tpl=这里填Web里的模版名&wxurl=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=你的key'
+        send_resolved: true
 ```
 
-日志显示 Webhook 请求已成功发送至钉钉开放平台接口。此时钉钉群聊中将收到告警通知：
+Service 名 `prometheus-alert`、端口 **8080** 若与 zip 里不一致，以 `kubectl get svc -n kube-mon` 为准。
 
-![alertmanager5](./images/alertmanager5.png)
+---
 
-示例服务采用简单的 Markdown 格式转发告警内容，展示效果较为基础。实际生产中可根据钉钉自定义机器人文档（https://open.dingtalk.com/document/robots/custom-robot-access ）定制消息模板，实现更友好的告警展示。
+**丙、验收（按顺序做，和前文约定一致）**
 
-### T4.11.3、自定义模板
+下面假设你用的还是 **T4.11.2** 示例规则：**`NodeMemoryHigh`**，`labels.team: node`，`for: 2m`，表达式里是 **`> 50`**。你已按 **甲** 或 **乙** 接好转发，并在 **T4.11.1** 里让 **`team="node"`** 命中带 Webhook 的 `receiver`（名称以你 config 为准，别和旧文里的 `email` 接收器弄混）。
 
-AlertManager 默认使用内置的通知模板，该模板已编译至二进制文件中，无需额外配置即可使用。若需自定义告警通知内容（如调整邮件 HTML 结构、适配特定 IM 平台格式等），可按以下步骤配置自定义模板：
+1. **先确认没有误伤**
+   
 
-**步骤一：下载官方默认模板**
+打开 Alertmanager Web（**T4.11.2.1** 里的 NodePort 或 port-forward），进 **Silences**，看是否已有匹配 `alertname="NodeMemoryHigh"` 或 `team="node"` 的静默；有就先 **Expire** 或等到期，否则通知永远被挡。
 
-```bash
-$ wget https://raw.githubusercontent.com/prometheus/alertmanager/master/template/default.tmpl
+2. **把规则改成「必响」便于实验（验完改回去）**
+
+   编辑 `kube-mon` 下的 **`prometheus-config`**，在 `data.rules.yml` 里把 `NodeMemoryHigh` 的阈值从 **`> 50`** 改成 **`> 1`**（或更小），目的是让 `expr` 几乎恒为真。`kubectl apply -f` 更新 ConfigMap 之后：若 Prometheus 已按 **T4.2.1** 打开 **`--web.enable-lifecycle`**，用 NodePort 或端口转发对 **`/prometheus` 的 9090** 发 **`curl -X POST .../-/reload`**（全文多处示例与 **T4.3.1** 同一操作）；若你集群里习惯改完必重启，则执行 `kubectl rollout restart -n kube-mon deployment prometheus`
+
+   若你当前是 **StatefulSet** 版 Prometheus（如 **T4.12.3**），就对对应 StatefulSet 滚动重启，别和 Deployment 命令混用。
+
+3. **在 Prometheus 里确认已经 firing**  
+   - 页面 **Alerts** 里找到 **NodeMemoryHigh**，等满 **`for: 2m`** 后状态应为 **firing**。  
+   - 或在 **Graph** 里查：`ALERTS{alertname="NodeMemoryHigh", alertstate="firing"}`，若一直是 `pending`，说明条件未满 2 分钟，或节点指标没抓到（回到 **T4.4**、**T4.11.2** 看 `job="kubernetes-nodes"`）。
+
+4. **在 Alertmanager 里确认这条告警会进你的接收器**
+
+   打开 **Alerts**，展开对应分组，看是否出现 **NodeMemoryHigh**，标签里是否有 **`team="node"`**，展示的 **receiver** 是否为你配了钉钉或企微 Webhook 的那一个。若显示 **silenced** / **inhibited**，回到步骤 1 或 **T4.11.1** 的 `inhibit_rules`。
+
+5. **看转发 Pod 有没有报错**  
+   - 钉钉：`kubectl logs -n kube-mon deploy/prometheus-webhook-dingtalk --tail=100`  
+
+   - 企微：`kubectl logs -n kube-mon deploy/prometheus-alert --tail=100`（Deployment 名以你 apply 的为准，可先 `kubectl get deploy -n kube-mon`）
+
+     常见现象：加签错、token 错会返回 4xx，日志里会有 HTTP 错误。
+
+6. **看 IM 是否收到**
+
+   钉钉群或企业微信群里应在 **group_wait** 等路由参数允许的时间窗内收到一条（或一组）告警；若 Alertmanager 配了 **`send_resolved: true`**，恢复阈值并 reload 后还应收到恢复类通知（以实际模版为准）。
+
+7. **收不到时按这条顺序自查**
+
+   ① Alertmanager **Silences** 是否挡掉
+
+   ② **`route` 的 matcher** 是否包含 `team="node"`，且 **receiver** 里真有对应的 **`webhook_configs.url`**（路径与 **甲** 的 `/dingtalk/prod/send` 或 **乙** 的 `/prometheusalert?...` 完全一致）
+
+   ③ **`kubectl get endpoints -n kube-mon prometheus-webhook-dingtalk`**（或你的 PrometheusAlert Service）是否有后端
+
+   ④ 从集群内 `curl -sS -X POST`  your-webhook-url 是否通（可临时起一个 **curl** debug Pod，见 **T4.2.1** 同集群 DNS 习惯）
+
+   ⑤ 转发 Pod **能否访问公网**（防火墙、代理、企业出口策略）
+
+8. **实验结束把阈值改回**
+
+   将 `rules.yml` 里的 **`> 1`** 改回 **`> 50`**（或你们生产用阈值），reload / 重启 Prometheus，避免实验规则长期误报。
+
+![altermanager-dingding-webhook](./images/altermanager-dingding-webhook.png)
+
+### T4.11.3、邮件模板
+
+告警规则见 **T4.11.2**，Alertmanager 部署见 **T4.11.1**。Prometheus 只负责产生告警并转发给 Alertmanager；是否发信、发给哪一类接收器，由 Alertmanager 的 `route` 与 `receivers` 决定；邮件的**主题行**和**正文**由 Go 模板根据告警上的**标签**和**注解**渲染生成。若不在 Alertmanager 配置中声明 `templates:`，则使用镜像自带的默认模板。通知上下文里有哪些变量可用，见官方文档 [Notifications](https://prometheus.io/docs/alerting/latest/notifications/)；`templates` 键的写法见 [configuration](https://prometheus.io/docs/alerting/latest/configuration/)。
+
+#### T4.11.3.1、示例邮件（结构示意）
+
+下面是一封告警邮件的结构示意（正文为 HTML，下图用文字缩进表示层次）：
+
+```text
+主题: [prod] [WARNING] NodeMemoryHigh
+
+正文:
+  值班: https://oncall.example.com
+  节点 10.0.1.5:9100 内存压力高
+  可用内存占比已低于阈值。
+  处置说明: https://wiki.example.com/runbooks/node-memory
+  内部信息，勿外传
 ```
 
-**步骤二：根据需求修改模板内容**
+#### T4.11.3.2、字段与配置项对应关系
 
-重点修改 `define "email.default.html"` 等模板定义块：
+- 主题中的 `[prod]`：对应 Prometheus `prometheus.yml` 中的 `global.external_labels.cluster`。未配置时，主题中不出现该方括号段。
+- 主题中的 `[WARNING]`：对应告警规则中的标签 `severity`。未配置时，主题中不出现级别段。
+- 主题中的 `NodeMemoryHigh`：对应告警规则中的 `alert` 名称（标签 `alertname`）。
+- 若主题末尾带有命名空间，仅当告警标签中存在 `namespace` 时才会生成。**T4.11.2** 中的节点内存示例一般没有该标签，可忽略。
+- 正文中的值班链接、页脚文案：写在 Alertmanager 侧自定义模板（如下文 `company.tmpl`）中，按本单位要求替换地址与表述。
+- 正文中的摘要与详细说明：分别对应告警规则中的 `annotations.summary` 与 `annotations.description`。
+- 正文中的处置链接：对应 `annotations.runbook_url`，通常填写内部运维文档或知识库地址（部分团队称之为 runbook 链接）。
 
-```bash
-{{ define "email.default.html" }}
-.... // 自定义 HTML 内容
-{{ end }}
+#### T4.11.3.3、Prometheus：规则与全局标签
+
+在 **T4.11.2** 已有 `NodeMemoryHigh` 规则上增加 `labels` 与 `annotations`，**不要改动** `expr`：
+
+```yaml
+            labels:
+              team: node
+              severity: warning
+            annotations:
+              summary: "节点 {{ $labels.instance }} 内存压力高"
+              description: "可用内存占比已低于阈值。"
+              runbook_url: "https://wiki.example.com/runbooks/node-memory"
 ```
 
-模板语法基于 Go template，支持访问告警的 `Labels`、`Annotations`、`Status` 等字段，具体参考官方模板文档：https://prometheus.io/docs/alerting/latest/notification_examples/
+若主题中需要集群标识，可在同一 ConfigMap 的 `prometheus.yml` 中设置：
 
-**步骤三：在 alertmanager.yml 中配置模板路径**
+```yaml
+    global:
+      external_labels:
+        cluster: prod
+```
 
-```bash
+修改 Prometheus 配置后，按 **T4.3.1** 执行 reload，或按你们环境对 Prometheus 做滚动重启。
+
+#### T4.11.3.4、Alertmanager：模板与挂载
+
+镜像 `prom/alertmanager:v0.31.1` 已在二进制内嵌官方 `default.tmpl` 与 `email.tmpl`。**不得**再将这两份文件原样放入 ConfigMap 并与内嵌模板一同加载，否则模板名称重复定义，进程往往无法正常启动。正确做法是：仅新增包含本单位版式的文件（例如 `company.tmpl`），挂载到单独目录（如 `/etc/alertmanager/templates`），并在 `config.yml` 顶层通过 `templates` 引用该目录下的 glob。
+
+（1）保存为 `alertmanager-templates.yaml` 并应用：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-templates
+  namespace: kube-mon
+data:
+  company.tmpl: |
+    {{ define "company.email.subject" }}{{ if .CommonLabels.cluster }}[{{ .CommonLabels.cluster }}] {{ end }}{{ if .CommonLabels.severity }}[{{ .CommonLabels.severity | toUpper }}] {{ end }}{{ .CommonLabels.alertname }}{{ if .CommonLabels.namespace }} / {{ .CommonLabels.namespace }}{{ end }}{{ end }}
+
+    {{ define "company.email.html" }}
+    <p>值班: https://oncall.example.com</p>
+    <p><b>{{ .CommonAnnotations.summary }}</b></p>
+    <p>{{ .CommonAnnotations.description }}</p>
+    {{ if .CommonAnnotations.runbook_url }}<p>处置说明: <a href="{{ .CommonAnnotations.runbook_url }}">{{ .CommonAnnotations.runbook_url }}</a></p>{{ end }}
+    <p style="font-size:12px;color:#666;">内部信息，勿外传</p>
+    {{ end }}
+```
+
+（2）在 `alert-config` 的 `config.yml` 顶层增加（与 `global`、`route` 同一层级）：
+
+```yaml
 templates:
-- '/etc/alertmanager/templates/*.tmpl'
+  - /etc/alertmanager/templates/*.tmpl
 ```
 
-确保模板文件通过 ConfigMap 或 Volume 挂载至指定路径，保存配置后执行重载即可生效。
+（3）在用于发送邮件的 `receiver` 中配置 `email_configs`，使其引用上一文件中的两个模板定义。请与 **T4.11.1** 已有段落**合并**，避免出现两个同名的 receiver。含有双花括号的字符串在 YAML 中建议使用单引号括起：
 
-### T4.11.4、记录规则
-
-通过 PromQL 可实时对 Prometheus 采集的样本数据进行查询、聚合及各类运算。当 PromQL 表达式较为复杂或计算开销较大时，直接查询可能导致响应延迟或超时。为此，Prometheus 提供 Recording Rule（记录规则）机制，支持在后台周期性预计算复杂表达式，并将结果保存为新的时间序列，供后续查询直接复用，从而提升查询效率、降低计算压力。
-
-在 Prometheus 配置文件中，通过 `rule_files` 指定记录规则文件路径：
-
-```bash
-rule_files:
-  [ - <filepath_glob> ... ]
+```yaml
+    email_configs:
+      - to: 'oncall@example.com'
+        send_resolved: true
+        html: '{{ template "company.email.html" . }}'
+        headers:
+          Subject: '{{ template "company.email.subject" . }}'
 ```
 
-规则文件采用以下结构定义：
+（4）在 **T4.11.1** 的 Deployment 中，于 `spec.template.spec` 下为同一 `alertmanager` 容器增加模板卷：保留原有的 `alert-config` 挂载（挂载点为 `/etc/alertmanager`），再增加将 `alertmanager-templates` 挂到 `/etc/alertmanager/templates`。下列 YAML 为片段，**并入**原清单即可；若原清单已包含 `args` 或部分 `volumeMounts`，切勿重复书写，只补足缺失项。
+
+```yaml
+      volumes:
+        - name: alertcfg
+          configMap:
+            name: alert-config
+        - name: alert-templates
+          configMap:
+            name: alertmanager-templates
+      containers:
+        - name: alertmanager
+          args:
+            - --config.file=/etc/alertmanager/config.yml
+          volumeMounts:
+            - mountPath: /etc/alertmanager
+              name: alertcfg
+            - mountPath: /etc/alertmanager/templates
+              name: alert-templates
+```
+
+#### T4.11.3.5、应用与自检
 
 ```bash
+kubectl apply -f alertmanager-templates.yaml
+kubectl apply -f alertmanager-config.yaml
+kubectl apply -f alertmanager-deploy.yaml
+kubectl exec -n kube-mon deploy/alertmanager -- amtool check-config /etc/alertmanager/config.yml
+kubectl rollout restart deployment/alertmanager -n kube-mon
+```
+
+SMTP 认证信息仍按 **T4.11.1** 使用 Secret 或 `smtp_auth_password_file`，不得写入模板。升级 Alertmanager 时，可在代码仓库中暂存与当前镜像同版本的上游 `template/default.tmpl` 供比对，**不要**将该文件挂入运行中的 Pod。若未为 Alertmanager 开启 HTTP 生命周期接口，修改 ConfigMap 后须执行上述 `rollout restart` 后改动才会生效。
+
+### T4.11.4、记录规则（配合 T4.4 / T4.11.2）
+
+官方说明见 [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)。**与告警规则同属** `rule_files`，由 Prometheus **按配置间隔求值**，写出新的时间序列后再被告警、`expr`、Grafana 查询引用。
+
+**何时使用记录规则**
+
+- **该用**：同一条 PromQL 在多个大盘面板、多条告警里反复出现，算力或查询延迟已可感知；希望告警 `expr` 只剩「与阈值比较」，可读性与评审成本更低。  
+- **慎用**：为「少写几个字」给高基数维度打 `record`（标签组合爆炸会拖垮 Prometheus）；或与抓取周期不对齐、把 `interval` 设得过细导致无意义的写入压力。记录规则**不替代**合理的抓取间隔与告警 `for`。
+
+**命名与文件**：指标名建议与团队规范一致（常见形如 `level:metric:operations`，如 `instance:node_memory_utilisation:ratio`）。与 **T4.11.2** 的衔接有两种等价做法，**不要**两个都做重复定义：**要么**在现有 `rules.yml` 里**再加一个** `groups` 项；**要么**新建 `recording-rules.yml`，在 `prometheus.yml` 的 **`rule_files`** 中增加第二行路径（**全文件仍只保留一处 `rule_files` 键**，列表里多路径即可），例如 `- /etc/prometheus/recording-rules.yml`，并在 `prometheus-config` 的 `data` 里增加同名键。
+
+**组顺序（告警引用 `record` 时必看）**：同一评估周期内，记录规则应先于依赖它的告警规则求值。写在**同一 YAML** 时，把 **`node-recording` 组放在 `node-memory` 组之上**；拆成多文件时，把**含记录规则的文件**放在 `rule_files` 列表**靠前**（Prometheus 按列表顺序加载组，具体行为以当前版本文档为准，有依赖时勿把顺序写反）。
+
+**求值周期**：组级 `interval` 未写时，跟随 **`global.evaluation_interval`**（**T4.2.1** 示例为 `15s`）；若全局未配置，以 Prometheus 程序默认（常见 `1m`）为准，**以你当前 `prometheus.yml` 为准**。记录节点级指标时，习惯让记录组的 `interval` 与节点 **`scrape_interval`** 同量级（如 `30s`），避免「16s 记一笔、15s 刮一次」之类无意义的抖动；告警组可继续用 `30s` 与 **T4.11.2** 示例一致。
+
+**与 T4.4 / T4.11.2 对齐的示例**（`job="kubernetes-nodes"`；第二条为利用率 **ratio**，取值 `0`～`1`）：
+
+```yaml
 groups:
-  [ - <rule_group> ]
+  - name: node-recording
+    interval: 30s
+    rules:
+      - record: instance:node_memory_used_bytes:calc
+        expr: |
+          node_memory_MemTotal_bytes{job="kubernetes-nodes"}
+          - node_memory_MemAvailable_bytes{job="kubernetes-nodes"}
+      - record: instance:node_memory_utilisation:ratio
+        expr: |
+          1 - (
+            node_memory_MemAvailable_bytes{job="kubernetes-nodes"}
+            /
+            node_memory_MemTotal_bytes{job="kubernetes-nodes"}
+          )
 ```
 
-示例规则文件：
+**可选：把 T4.11.2 的 `NodeMemoryHigh` 改为引用记录指标**（与原来「已用内存百分比 > 50」等价时，阈值对 ratio 写作 **`> 0.5`**；生产请再按环境改严/放宽）：
 
-```bash
-groups:
-- name: example
-  rules:
-  - record: job:http_inprogress_requests:sum
-    expr: sum(http_inprogress_requests) by (job)
+```yaml
+          - alert: NodeMemoryHigh
+            expr: instance:node_memory_utilisation:ratio{job="kubernetes-nodes"} > 0.5
+            for: 2m
+            # labels / annotations 不变
 ```
 
-`rule_group` 配置项说明：
-
-```bash
-# 分组名称，在同一文件中必须唯一
-name: <string>
-
-# 该分组规则的评估频率，未指定时沿用 global.evaluation_interval
-[ interval: <duration> | default = global.evaluation_interval ]
-
-rules:
-  [ - <rule> ... ]
-```
-
-单个规则（rule）的配置项如下：
-
-```bash
-# 输出时间序列的名称，必须符合 Prometheus 指标命名规范
-record: <string>
-
-# PromQL 表达式，每个评估周期执行计算，结果保存为 record 指定的新时间序列
-expr: <string>
-
-# 为结果时间序列添加或覆盖的标签（可选）
-labels:
-  [ <labelname>: <labelvalue> ]
-```
-
-Prometheus 按照 `global.evaluation_interval` 指定的频率（默认 1 分钟）周期性评估记录规则，执行 `expr` 中的 PromQL 计算，并将结果写入 `record` 指定的新指标中。通过 `labels` 可为结果添加额外标签，便于后续过滤或聚合。
-
-记录规则与告警规则共享相同的评估机制和配置方式，建议将高频使用的复杂查询预定义为记录规则，以优化系统整体查询性能。
-
-关于 Recording Rule 的详细配置，请参考官方文档：https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/
+上线前仍执行 **T4.11.2** 已给的自检：**`promtool check rules`** 针对**包含记录与告警的完整规则文件**；改 `rule_files` 或 ConfigMap 后对 Prometheus 做 **T4.3.1** reload（或按你们规范重启）。CPU、磁盘、中间件等更复杂表达式建议优先用 [monitoring-mixins](https://github.com/monitoring-mixins) 或内部标准规则集统一维护，避免在文档或各业务仓库复制易错的长 `expr`。
 
 ## T4.12、Thanos
 
-[Thanos](https://thanos.io/) 是一个基于 Prometheus 实现的监控方案，其主要设计目的是解决原生 Prometheus 上的痛点，并且做进一步的提升，主要的特性有：**全局查询，高可用，动态拓展，长期存储**。下图是 Thanos 官方的架构图：
+[Thanos](https://thanos.io/) 装在现有 Prometheus 外面，帮你做到三件事：历史数据进对象存储、所有人用同一个查询地址、两台 Prometheus 查出来能当一台看（去重）。
 
-![thanos1](./images/thanos1.png)
+和本文 **T4.2.1～T4.11** 连起来用时，请先对齐下面几条（后文 YAML 都按这个前提写）：
 
-Thanos 由以下功能组件构成：
+| 项 | 说明 |
+|----|------|
+| 镜像 | 文首「版本与镜像约定」：Prometheus `v3.10.0`，Thanos `v0.41.0` |
+| Grafana | 数据源改成 Querier，不要再去轮询两个 Prometheus |
+| 对象存储 | 账号密钥只放 Secret，不要写进 Git |
 
-- **Sidecar**：与 Prometheus 进程部署在同一 Pod 中，负责将 Prometheus 数据暴露给 Querier 进行实时查询，并可选将数据上传至对象存储以实现长期保存
-- **Querier**：实现 Prometheus HTTP API，负责聚合来自 Sidecar、Store Gateway 等组件的数据，提供统一查询入口
-- **Store Gateway**：从对象存储中读取历史数据块，并通过 gRPC Store API 向 Querier 提供查询服务
-- **Compactor**：对对象存储中的历史数据块执行压缩、合并及下采样操作，优化存储效率与查询性能
-- **Receiver**：接收 Prometheus 通过 Remote Write API 发送的指标数据，支持本地持久化及上传至对象存储
-- **Ruler**：基于 PromQL 执行告警规则和记录规则评估，支持将结果写回 Prometheus 或发送至 Alertmanager
-- **Bucket**：用于查看对象存储中数据块的元信息，包括压缩级别、采样分辨率、时间范围等
+**长期数据怎么进桶（两种做法，别混用）**
 
-### T4.12.1、工作流程
+Thanos 把数据长期放进对象存储，常见有两种路子：
 
-Thanos 支持 Prometheus 的读取与远程写入，其核心工作流程如下：
+1. **Sidecar**：Prometheus 先在本地盘里生成 TSDB 块，Sidecar 负责把块上传到桶。  
+2. **Receiver**：Prometheus 用 `remote_write` 把样本推到 Receiver，Receiver 落盘后再上传桶。
 
-**指标写入流程**
+两种都能存历史，但**架构不同**。本文 **T4.12.3～T4.12.7** 详写第一种（Sidecar + 块上传对象存储）；第二种是 **Receiver + `remote_write` + 桶**，**可独立按节走完的生产步骤**见 **T4.12.8**，与第一种在「同批业务指标」上**二选一**，勿双写进同一逻辑桶。
 
-1. Prometheus 从目标服务的 metrics 端点抓取指标数据，并根据配置的 recording rules 周期性评估，结果以 TSDB 格式分块存储至本地。默认每 2 小时生成一个数据块，且禁用本地压缩
-2. Sidecar 监听 Prometheus 数据目录，当检测到新生成的只读数据块时，将其上传至对象存储作为长期历史数据。上传过程中会修改数据块的 `meta.json` 文件，添加 Thanos 扩展字段（如 `external_labels`）
-3. Ruler 根据配置的 recording rules 周期性向 Querier 发起查询，获取评估所需指标值，并将结果以 TSDB 格式存储至本地。当本地生成新的只读数据块时，Ruler 也会将其上传至对象存储
-4. Compactor 周期性对对象存储中的数据块执行压缩与下采样操作。压缩时合并数据块中的 chunk 并更新 `meta.json` 中的 `level` 字段（初始值为 1，每次压缩递增）；下采样时根据指定步长从原始数据块中抽取样本生成新数据块，并在 `meta.json` 中记录 `resolution` 字段
+若两条路同时打开，同一条指标可能被写进桶里两份，费钱还容易查乱；除非你们事先写清楚谁写哪些指标，否则不要两条一起上。
 
-**指标查询流程**
+**官方文档**（升级前对照 [Releases](https://github.com/thanos-io/thanos/releases/latest) 稳定版）：
 
-1. 客户端通过 Prometheus HTTP API 向 Querier 发起查询请求，Querier 将请求转换为 gRPC Store API 请求，分发至其他 Querier、Sidecar、Ruler 及 Store Gateway 组件
-2. Sidecar 接收到查询请求后，将其转换为 Prometheus HTTP API 请求转发至本地 Prometheus 实例，返回短期实时数据
-3. Ruler 接收到查询请求后，直接从本地 TSDB 读取评估结果并返回
-4. Store Gateway 接收到查询请求后，首先遍历对象存储中数据块的 `meta.json` 文件，根据时间范围和标签进行预过滤；随后读取 `index` 和 `chunks` 执行精确查询，高频访问的 `index` 会被缓存以提升后续查询效率，最终返回长期历史数据
+- [入门](https://thanos.io/tip/thanos/getting-started.md/)
+- [设计](https://thanos.io/tip/thanos/design.md/)
+- [组件总览](https://thanos.io/tip/components/query.md/)
 
-**告警触发流程**
+![thanos_arch](./images/thanos_arch.png)
 
-1. Prometheus 根据配置的 alerting rules 周期性评估本地采集的指标，当告警条件满足时向 Alertmanager 发送告警
-2. Ruler 根据配置的 alerting rules 周期性向 Querier 发起查询获取评估指标，当告警条件满足时同样向 Alertmanager 发送告警
-3. Alertmanager 接收来自 Prometheus 和 Ruler 的告警消息，执行分组、去重、抑制等处理后发送至配置的接收器
+需要与官方图一致时，打开 [Thanos README → Architecture Overview](https://github.com/thanos-io/thanos/blob/main/README.md#architecture-overview)，把图另存为上述文件名即可（离线阅读依赖本地图片）。
 
-### T4.12.2、核心特性
+**组件简介：**
 
-相比原生 Prometheus，Thanos 具备以下优势：
+**1、Sidecar（和 Prometheus 同一个 Pod）**
 
-- **统一查询入口**：Querier 实现 Prometheus HTTP API 及 gRPC Store API，作为全局查询网关聚合来自多个 Prometheus 实例 Sidecar 及 Store Gateway 的数据
-- **查询去重**：每个数据块携带集群标识标签，Querier 在查询时自动去除副本标签，将指标名称与标签一致的序列按时间戳合并，避免重复结果
-- **高存储利用率**：Prometheus 实例仅保留短期数据，Sidecar 将持久化数据块上传至对象存储；Compactor 定期压缩历史数据并按采样策略清理冗余，显著降低存储成本
-- **高可用架构**：Querier 为无状态服务，支持水平扩展；Store、Ruler、Sidecar 为有状态服务，多副本部署时支持高可用，但需注意数据冗余带来的存储开销
-- **长期数据存储**：通过 Sidecar 或 Receiver 将本地数据块上传至对象存储，实现监控数据的无限期归档
-- **水平扩展能力**：当单 Prometheus 实例采集压力过大时，可通过拆分 scrape job 至多个实例实现负载分担，Querier 自动聚合查询结果
-- **跨集群查询**：通过在多个集群的 Querier 之上部署全局 Querier，可实现跨集群指标聚合查询，支持监控架构的无限横向扩展
+和 Prometheus 共用一块 TSDB 数据盘。一般干三件事：
 
-### T4.12.3、Sidecar 组件
+- 用 gRPC 的 Store API 把「本机刚写完、还没上传」的数据提供给 Querier（查最近几小时主要靠它）。
+- 块写满封闭后，上传到对象存储（长期历史靠它）。
+- reloader：把模板里的 `$(POD_NAME)` 渲染成真正的 `prometheus.yaml`。
 
-首先清理前序章节中部署的 Prometheus 资源对象。为实现 Prometheus 对 Kubernetes 集群资源的自动发现，需配置相应的 RBAC 权限（rbac.yaml）：
+上线后重点看：上传有没有报错（权限、地址、网络），块大小和保留时间是否和下文 YAML 一致。详见 [Sidecar](https://thanos.io/tip/components/sidecar.md/)。
 
-```bash
+**2、Querier（统一查询入口）**
+
+Grafana、脚本、人工排障，HTTP 请求都打 Querier，Querier 会向所有已注册的 Store（Sidecar、Store Gateway、Receiver 等）要数据，再拼成一份结果。
+
+注意两点：**双副本去重**依赖 Prometheus `external_labels` 里用固定**键名**区分副本（本文用 `replica`，值为 `$(POD_NAME)` 渲染后的 Pod 名），Querier 用 `--query.replica-label` 填**同一个键名**；Query UI（v0.41）勾选 **Use Deduplication** 才能把两条线合成一条。**为什么要一致、键与值分别是什么**见 **T4.12.1.1**；UI 其它选项见 **T4.12.4**「Query 页各选项含义」。另：用 DNS 自动发现时，Headless Service 里 Store API 的端口名要叫 `grpc`。负载高可以多起几个 Querier 副本。详见 [Query](https://thanos.io/tip/components/query.md/)。
+
+查询量特别大时，可再加 [Query Frontend](https://thanos.io/tip/components/query-frontend.md/) 做缓存和拆分，本文不写部署清单，避免和入门路径混在一起。
+
+**3、Store Gateway（只读桶里的老数据）**
+
+不负责抓取。它根据桶里块的元数据，决定读哪些对象，再通过 Store API 把「冷数据」交给 Querier。数据量大时要调内存和缓存（见 **T4.12.6**），必要时按区域或桶前缀拆多套 Store。详见 [Store](https://thanos.io/tip/components/store.md/)。
+
+**4、Compactor（整理桶里的数据，只能跑一个）**
+
+对**同一个桶**做合并块、降采样、执行保留策略。官方要求：**同一个桶不要并行跑多个 Compactor**，否则可能把数据弄坏。Kubernetes 里保持 `replicas: 1`，并确认没有另一套环境误连同一个桶。部署顺序、自检与排错见 **T4.12.7**。详见 [Compact](https://thanos.io/tip/components/compact.md/)。
+
+**5、Receiver（remote_write）**
+
+Prometheus 开 **`remote_write`** 把数据推到 Thanos Receive，Receive 落盘后再上传对象存储，并给 Querier 当 Store 用。和 **Sidecar 从本机块上传**是两条长期入桶的路，**同一个桶里同一批业务指标不要两条路一起写**。怎么接、两个端口怎么写，见 **T4.12.8**。组件说明：[Receive](https://thanos.io/tip/components/receive.md/)。
+
+**6、Ruler（可选）**
+
+在 Thanos 这边跑记录规则/告警规则，数据从 Querier 来，链路比「Prometheus 本机算规则」长。默认仍建议：**规则在各 Prometheus 上算，告警走 T4.11**（**T4.12.3** 里已示例用 `alert_relabel_configs` 去掉 `replica`，避免双副本重复告警）。何时改用 Thanos Ruler、代价与对照表见 **T4.12.5**。组件说明见 [Rule](https://thanos.io/tip/components/rule.md/)。
+
+**7、Bucket Web（可选）**
+
+在页面上看桶里有哪些块、时间范围等，方便排障，不参与正常查询链路。详见 [Bucket](https://thanos.io/tip/components/tools.md/#bucket-web)。
+
+### T4.12.0、数据怎么流动（写、查、告警）
+
+**写入**
+
+- 抓取和规则仍在 Prometheus 里跑，`scrape_configs` 从 **T4.4～T4.8** 整段贴进模板。
+- 数据先写本地 TSDB；块按 2h 封闭后，Sidecar 上传到对象存储（**T4.12.6** 给 Sidecar 配上 `--objstore` 之后）。
+- 桶里块多了，由 Compactor 做合并和降采样。
+
+**怎么验收**：对象存储里是否出现 Thanos 相关对象；Sidecar 日志里是否还有持续上传失败。
+
+**查询**
+
+- 对外只暴露 Querier；Grafana 里填例如 `http://thanos-querier.kube-mon.svc.cluster.local:9090`。
+- 查最近的数据，主要靠 Sidecar；查很久以前的数据，主要靠 Store Gateway 读桶。
+- 打开 Querier UI 顶部导航里的 **Endpoints**（路由多为 `/stores`，对应 API `/api/v1/stores`；**导航文字不叫「Stores」**）：应能看到每个 Prometheus 上的 Sidecar，以及接上桶之后的 Store Gateway 等。缺哪一类，就查 DNS、标签 `thanos-store-api`、网络策略。
+
+**告警**
+
+- 规则默认仍在 Prometheus 里算，Alertmanager 仍是 **T4.11** 的 `alertmanager:9093`。
+- 两个副本会各算一遍规则，要靠 `alert_relabel_configs` 去掉 `replica`，Alertmanager 才只收一条（见 **T4.12.1.1** 与 **T4.12.3**）。
+- 是否引入 **Thanos Ruler**、与本地规则如何取舍，见 **T4.12.5**；若 Ruler 与 Prometheus 同推一套 Alertmanager，须用路由与标签防重复。
+
+**写入与查询主路径**（与上文「写入」「查询」两小节一致；不写 Compactor、Ruler、Query Frontend 等可选组件，避免与 **T4.12.6** 中更细的 Store 关系图重复）：
+
+```mermaid
+flowchart TB
+  subgraph wr["写入"]
+    SRC[抓取目标] -->|scrape_configs| PROM[Prometheus 抓取]
+    SC[Sidecar\n与 Prometheus 同 Pod]
+    PROM --> TS[(本机 TSDB)]
+    TS --- SC
+    SC -->|上传封闭块| OBJ[(对象存储)]
+  end
+  subgraph rd["查询"]
+    CLI[Grafana 等] -->|HTTP| TQ[Querier]
+    TQ -->|gRPC Store API| SC
+    TQ -->|gRPC Store API| STGW[Store Gateway]
+    STGW -->|读对象| OBJ
+  end
+```
+
+告警仍由各 **Prometheus** 上规则求值后送往 **T4.11** 的 Alertmanager，与本图查询分支独立。
+
+### T4.12.1、副本标签
+
+**背景**：**T4.12.3** 里用 StatefulSet 起 **两个 Prometheus**，它们抓取同一批 target，写出来的时间序列几乎一样。若没有额外区分，Thanos Querier 会把两边当成两套无关数据，**图里同一条指标可能出现两条线**（或查询语义混乱）。
+
+**`external_labels` 干什么用**：Prometheus 在把样本写入 TSDB 前，会给每条序列加上 **全局标签**。其中 **`cluster`** 用来标识「哪套集群」（多集群联邦时尤其重要）。**副本维度**用另一个标签：本文**标签名（键）**固定写 **`replica`**，**标签值**必须是「这一副本独有的字符串」，这样两个 Pod 写出来的同一条逻辑指标，只在 **`replica` 的值**上不同。
+
+**`replica` 和 `$(POD_NAME)` 谁是谁**：二者不是同一类东西。
+
+| 写法 | 含义 |
+|------|------|
+| **`replica`** | **标签的键名（key）**，出现在 `external_labels:` 下面左侧。Querier 的 `--query.replica-label` 指的就是这个**键名**。 |
+| **`$(POD_NAME)`** | 模板里的**占位符**。Sidecar reloader 做环境变量替换后，会变成当前 Pod 的名字，例如 **`prometheus-0`、`prometheus-1`**。那才是 **`replica` 标签的值（value）**。 |
+
+渲染后在配置里等价于：
+
+```yaml
+external_labels:
+  cluster: cluster1
+  replica: prometheus-0   # 在 prometheus-1 上则是 prometheus-1
+```
+
+**`--query.replica-label=replica` 干什么用**：Querier 从多个 Store / Sidecar 拉数据时，若你在 UI 里打开 **deduplication（去重）**，它会认为：除了配置里指定的这条 **「副本标签」** 以外，其它标签都相同的序列，属于**同一逻辑序列的高可用副本**，可以合并成一条展示。**`--query.replica-label` 的值必须是 Prometheus `external_labels` 里那条「用来区分第几个 Prometheus」的标签键名**。本文都写 **`replica`**，所以 Querier 写 **`--query.replica-label=replica`**。
+
+**为什么要一致**：若 Prometheus 加的键是 **`replica`**，而 Querier 写成 **`--query.replica-label=replica_id`**（或任意别的键名），Querier **认不出**哪一个是「副本维度」，**去重不会对上**，双副本时仍可能两条线或合并错误。键名可以改成别的（例如 `prometheus_replica`），但两边必须**同一个字符串**。
+
+**和告警的关系**：两个副本各自算规则，告警里也会带上 **`replica`**。**T4.12.3** 里用 `alert_relabel_configs` **删掉 `replica`**，是为了让 Alertmanager 把两条几乎相同的告警合成一条通知；删的是**标签键**为 `replica` 的那一项，与 Querier 去重是同一套「副本维度」概念。
+
+**小结**：**`replica`** = 标签键；**`$(POD_NAME)`** → 渲染后的 Pod 名 = 该键的值；**`--query.replica-label`** = 告诉 Querier「副本维度用的是哪一个键」，须与 Prometheus 里 **`external_labels` 的键名**一致。
+
+### T4.12.2、上生产前核对清单
+
+- 对象存储：优先云厂商 S3 兼容或你们已运维好的兼容存储；连接信息只放 Secret；桶权限最小化。
+- Compactor：同一个桶只跑一个 Compactor；CPU 和本地盘给够，看压缩是否跟得上。
+- 标签：`external_labels.cluster` 在多集群里不重复；**副本维度的标签键名**与 Querier `--query.replica-label` 一致（含义见 **T4.12.1.1**）。
+- 从 T4.2.1 迁过来：先备份 ConfigMap；删掉 Deployment 版 `prometheus`，避免和 StatefulSet 同名；StorageClass 用你们集群真实的，不要照抄示例里的 `openebs-jiva-default`。
+- RBAC：T4.2.1 若已建过同名 ClusterRole/Binding 且规则一样，不必再 apply 一遍。
+- 日志：平时用 `info`，临时改 `debug` 查完记得改回。
+- 安全：Prometheus 的 `--web.enable-admin-api` 不要暴露到不可信网络；Thanos/Prometheus 的 HTTP、gRPC 按你们习惯加 NetworkPolicy 或等价隔离。
+
+### T4.12.3、Sidecar 与双副本 Prometheus
+
+**本节假设**
+
+- 命名空间：`kube-mon`
+- 用 StatefulSet 起 2 个 Prometheus 副本，每个 Pod 里：Prometheus + Thanos Sidecar
+- 告警仍用 **T4.11** 的 Alertmanager
+
+RBAC 与 **T4.2.1** 一致（Ingress 只用 `networking.k8s.io`，不要再用已废弃的 `extensions`）。
+
+`rbac.yaml`（与 T4.2.1 的 `prometheus-rbac.yaml` 相同；若集群里已有，可不再 apply）：
+
+```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -2734,17 +3274,17 @@ kind: ClusterRole
 metadata:
   name: prometheus
 rules:
-- apiGroups: [""]
-  resources: ["nodes", "services", "endpoints", "pods", "nodes/proxy"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["extensions", "networking.k8s.io"]
-  resources: ["ingresses"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["configmaps", "nodes/metrics"]
-  verbs: ["get"]
-- nonResourceURLs: ["/metrics"]
-  verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["nodes", "services", "endpoints", "pods", "nodes/proxy"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps", "nodes/metrics"]
+    verbs: ["get"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -2755,46 +3295,60 @@ roleRef:
   kind: ClusterRole
   name: prometheus
 subjects:
-- kind: ServiceAccount
-  name: prometheus
-  namespace: kube-mon
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: kube-mon
 ```
 
-接下来配置 Prometheus 配置文件模板，该模板由 Thanos Sidecar 组件读取并渲染为实际配置文件。配置中必须添加 `external_labels` 字段，以便 Querier 基于这些标签执行数据去重（configmap.yaml）：
+`configmap.yaml` 说明：
 
-```bash
+- Sidecar 读 `prometheus.yaml.tmpl`，用环境变量替换后生成真正的 `prometheus.yaml`。
+- 必须把 **T4.4～T4.8** 里已经验证过的整段 `scrape_configs` 贴进下面占位（含 `kubernetes-nodes`、`kubernetes-endpoints` 等），**不要留 `......`**，否则迁完会丢抓取目标。
+- `cluster` 改成你们集群唯一名字；`external_labels` 下 **`replica:` 是标签键名**，**`$(POD_NAME)` 是标签值的模板**（渲染成 `prometheus-0` 等）；Querier 的 **`--query.replica-label` 必须与这个键名一致**（本文均为 `replica`）。详见 **T4.12.1.1**。
+- 保留时间写在配置里的 `storage` 段（Prometheus 3.x 推荐），不要再用已弃用的 `--storage.tsdb.retention.time` 命令行。
+
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
   namespace: kube-mon
 data:
-  prometheus.yaml.tmpl: | # 注意这里的名称是 prometheus.yaml.tmpl
+  prometheus.yaml.tmpl: |
     global:
       scrape_interval: 15s
-      scrape_timeout: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 15s
       external_labels:
         cluster: ydzs-test
-        replica: $(POD_NAME)  # 每个 Prometheus 有一个唯一的标签
+        replica: $(POD_NAME)
 
-    rule_files:  # 报警规则文件配置
-    - /etc/prometheus/rules/*rules.yaml
+    storage:
+      tsdb:
+        retention:
+          time: 6h
+
+    rule_files:
+      - /etc/prometheus/rules/*rules.yaml
 
     alerting:
-      alert_relabel_configs:  # 我们希望告警从不同的副本中也是去重的
-      - regex: replica
-        action: labeldrop
+      alert_relabel_configs:
+        - regex: replica
+          action: labeldrop
       alertmanagers:
-      - scheme: http
-        path_prefix: /
-        static_configs:
-        - targets: ['alertmanager:9093']
+        - scheme: http
+          path_prefix: /
+          static_configs:
+            - targets: ['alertmanager:9093']
 
     scrape_configs:
-    ......  # 其他抓取任务配置和前面章节中的配置保持一致即可
+      # 将 T4.4～T4.8 中已验证的 scrape_configs 整段粘贴到这里（保持缩进）
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
 ```
 
-告警规则文件因内容较多，建议拆分至独立 ConfigMap 中管理（rules-configmap.yaml）：
+`rules-configmap.yaml`：示例规则对齐 **T4.8** 的 kube-state-metrics。若抓取未开 `honor_labels`，命名空间标签往往是 `exported_namespace`，下面注解已按此写；若你已开 `honor_labels: true`，把注解里的 `exported_namespace` 改成 `namespace`。
 
 ```yaml
 apiVersion: v1
@@ -2805,34 +3359,34 @@ metadata:
 data:
   alert-rules.yaml: |-
     groups:
-    - name: Deployment
-      rules:
-      - alert: DeploymentAtZeroReplicas
-        annotations:
-          summary: Deployment {{$labels.deployment}} in {{$labels.exported_namespace}} has no running pods
-        expr: |
-          sum(kube_deployment_status_replicas) by (deployment, exported_namespace) < 1
-        for: 1m
-        labels:
-          team: node
-    - name: Pods
-      rules:
-      - alert: ContainerRestarted
-        annotations:
-          summary: Container {{$labels.container}} in pod {{$labels.pod}} (namespace: {{$labels.exported_namespace}}) was restarted
-        expr: |
-          sum(increase(kube_pod_container_status_restarts_total[1m])) by (pod, exported_namespace, container) > 0
-        for: 0m
-        labels:
-          team: node
+      - name: workload
+        rules:
+          - alert: DeploymentNoAvailableReplicas
+            annotations:
+              summary: Deployment {{ $labels.deployment }} 在 {{ $labels.exported_namespace }} 无可用副本
+            expr: |
+              kube_deployment_spec_replicas > 0
+              and kube_deployment_status_replicas_available == 0
+            for: 5m
+            labels:
+              team: node
+          - alert: ContainerRestarted
+            annotations:
+              summary: Pod {{ $labels.pod }} 内容器 {{ $labels.container }} 发生重启（{{ $labels.exported_namespace }}）
+            expr: |
+              increase(kube_pod_container_status_restarts_total[15m]) > 0
+            for: 2m
+            labels:
+              team: node
 ```
 
-Thanos 通过 Sidecar 与 Prometheus 集成，需将两者部署于同一 Pod 中。Prometheus 必须启用以下参数：
+**Prometheus 启动参数**（与 [Sidecar](https://thanos.io/tip/components/sidecar.md/) 要求一致）
 
-- `--web.enable-admin-api`：允许 Sidecar 通过管理 API 获取 Prometheus 元数据
-- `--web.enable-lifecycle`：支持 Sidecar 触发 Prometheus 配置与规则文件的热重载
+- `--web.enable-admin-api`、`--web.enable-lifecycle`：Sidecar 读元数据、触发热加载。
+- `--storage.tsdb.min-block-duration` / `max-block-duration` 设为 2h：和块上传节奏一致；本地保留多久看 ConfigMap 里的 `storage.tsdb.retention.time`（示例 6h，可按磁盘改）。
+- 镜像默认非 root，PVC 挂盘权限不对会起不来：用 initContainer 做 `chown`，做法同 **T4.2.1**。
 
-由于 Prometheus 默认每 2 小时生成一个 TSDB 数据块，为避免实例重启导致数据丢失，建议使用 StatefulSet 管理并配置持久化存储（sidecar.yaml）：
+`sidecar.yaml`：镜像版本见文首约定表；`storageClassName` 换成你们集群的；生产请加大磁盘，示例 2Gi 仅练习。
 
 ```yaml
 apiVersion: apps/v1
@@ -2843,7 +3397,7 @@ metadata:
   labels:
     app: prometheus
 spec:
-  serviceName: "prometheus"
+  serviceName: prometheus-headless
   replicas: 2
   selector:
     matchLabels:
@@ -2856,6 +3410,15 @@ spec:
         thanos-store-api: "true"
     spec:
       serviceAccountName: prometheus
+      securityContext:
+        fsGroup: 65534
+      initContainers:
+        - name: fix-data-dir-permissions
+          image: busybox:1.37
+          command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
+          volumeMounts:
+            - name: data
+              mountPath: /prometheus
       volumes:
         - name: prometheus-config
           configMap:
@@ -2867,17 +3430,16 @@ spec:
           emptyDir: {}
       containers:
         - name: prometheus
-          image: prom/prometheus:v2.14.0
+          image: prom/prometheus:v3.10.0
           imagePullPolicy: IfNotPresent
           args:
             - "--config.file=/etc/prometheus-shared/prometheus.yaml"
             - "--storage.tsdb.path=/prometheus"
-            - "--storage.tsdb.retention.time=6h"
             - "--storage.tsdb.no-lockfile"
-            - "--storage.tsdb.min-block-duration=2h" # Thanos处理数据压缩
+            - "--storage.tsdb.min-block-duration=2h"
             - "--storage.tsdb.max-block-duration=2h"
-            - "--web.enable-admin-api" # 通过一些命令去管理数据
-            - "--web.enable-lifecycle" # 支持热更新  localhost:9090/-/reload 加载
+            - "--web.enable-admin-api"
+            - "--web.enable-lifecycle"
           ports:
             - name: http
               containerPort: 9090
@@ -2896,11 +3458,14 @@ spec:
             - name: data
               mountPath: "/prometheus"
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
           args:
             - sidecar
-            - --log.level=debug
+            - --log.level=info
             - --tsdb.path=/prometheus
             - --prometheus.url=http://localhost:9090
             - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
@@ -2932,7 +3497,7 @@ spec:
               mountPath: /etc/prometheus/rules
             - name: data
               mountPath: "/prometheus"
-  volumeClaimTemplates: # 由于prometheus每2h生成一个TSDB数据块，所以还是需要保存本地的数据
+  volumeClaimTemplates:
     - metadata:
         name: data
         labels:
@@ -2946,20 +3511,36 @@ spec:
             storage: 2Gi
 ```
 
-配置说明：
+**Headless 说明**
 
-- Prometheus 与 Sidecar 通过 `localhost` 通信，共享 `/prometheus` 数据目录及配置文件挂载卷
-- 通过 Downward API 将 Pod 名称注入 `POD_NAME` 环境变量，并作为 `external_labels.replica` 标签附加至指标
-- 使用 StatefulSet 配合 `volumeClaimTemplates` 实现数据持久化，避免实例重启导致 2 小时窗口内数据丢失
+- Prometheus StatefulSet 的 Headless 名为 `prometheus-headless`（与 `spec.serviceName` 一致），单 Pod 稳定 DNS 形如 `prometheus-0.prometheus-headless.kube-mon.svc.cluster.local`。
+- 发现用 Service 名叫 `thanos-store-apis`，故意不和后面 Store Gateway 的 StatefulSet 名 `thanos-store-gateway` 混成一个名字。
+- 打了标签 `thanos-store-api: "true"` 的 Pod（Sidecar、Store、Receiver 等）都会被这条 Service 收进来，Querier 只配这一条 DNS SRV 即可。
 
-由于使用 StatefulSet 管理 Prometheus 实例，需创建 Headless Service 供 Querier 通过 DNS SRV 记录自动发现 Sidecar（headless.yaml）：
+`discovery.yaml`：StatefulSet 要求 `serviceName` 对应的 Headless Service 必须先存在。下面有两个 Service：给 Prometheus **StatefulSet 稳定网络身份**用的 Headless、给 Thanos Store API 发现用的（和 Store Gateway 那套 StatefulSet 不冲突）。
+
+**与 T4.2.1 同名冲突说明**：若你已在 **T4.2.1** 创建过 Service **`prometheus`**（NodePort 等，会分配固定 `clusterIP`），**不能**再用同名清单把该 Service 改成 Headless（`clusterIP: None`），API 会报 `spec.clusterIPs[0]: Invalid value: []string{"None"}: may not change once set`。本文 Headless 使用独立名称 **`prometheus-headless`**，与上文 `sidecar.yaml` 里 `serviceName` 一致；**T4.2.1 的 Service `prometheus` 可保留**，继续给浏览器 / Grafana 用 `http://prometheus.kube-mon.svc.cluster.local:9090`（selector 仍是 `app: prometheus` 即可）。
 
 ```yaml
-# 该服务为 querier 创建 srv 记录，以便查找 store-api 的信息
 apiVersion: v1
 kind: Service
 metadata:
-  name: thanos-store-gateway
+  name: prometheus-headless
+  namespace: kube-mon
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http
+  selector:
+    app: prometheus
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-store-apis
   namespace: kube-mon
 spec:
   type: ClusterIP
@@ -2972,23 +3553,30 @@ spec:
     thanos-store-api: "true"
 ```
 
-应用上述资源配置：
+**部署顺序**
+
+还没接对象存储时，Sidecar 可能报上传相关错误，可以先不配 `--objstore`，等 **T4.12.6** 再补上。
 
 ```bash
-$ kubectl apply -f rbac.yaml
-$ kubectl apply -f configmap.yaml
-$ kubectl apply -f rules-configmap.yaml
-$ kubectl apply -f headless.yaml
-$ kubectl apply -f sidecar.yaml
-$ kubectl get pods -n kube-mon -l app=prometheus
-NAME           READY   STATUS    RESTARTS   AGE
-prometheus-0   2/2     Running   0          86s
-prometheus-1   2/2     Running   0          74s
+kubectl apply -f rbac.yaml
+kubectl apply -f configmap.yaml
+kubectl apply -f rules-configmap.yaml
+kubectl apply -f discovery.yaml
+kubectl apply -f sidecar.yaml
+kubectl get pods -n kube-mon -l app=prometheus
 ```
 
-### T4.12.4、Querier 组件
+两副本就绪后，每个 Pod 应是 2/2（Prometheus + Sidecar）。
 
-创建 Prometheus 实例后，需通过 Thanos Querier 提供统一查询入口，而非直接使用负载均衡器转发请求。Querier 配置需指定 Sidecar 的发现地址，此处通过 Headless Service 的 DNS SRV 记录实现自动发现（querier.yaml）：
+### T4.12.4、Querier
+
+查数只走 Querier，不要再去负载均衡两个 Prometheus。
+
+Querier 用 DNS SRV 自动发现所有带 Store API 的组件（Sidecar、Store Gateway、Receiver 等）。Headless Service 里端口名必须叫 `grpc`，这样 SRV 记录才是 `_grpc._tcp...` 形式。
+
+**与 Thanos v0.41+ 对齐（Breaking）**：自 **v0.41** 起，Query 已**删除**静态指定后端的 **`--store`**（以及 `--rule`、`--exemplar` 等旧写法），统一改用 **`--endpoint`**（可重复传递多个地址；仍支持 `dns+`、`dnssrv+` 前缀）。旧清单若仍写 `--store`，进程会直接报错：`unknown long flag '--store'`。依据见上游 [CHANGELOG / #7890](https://github.com/thanos-io/thanos/pull/7890)；本仓库文首镜像约定既为 `v0.41.0`，下列 YAML 已按 **`--endpoint`** 编写。若你暂时卡在更老的 Thanos 镜像，需对照该版本 `thanos query --help`，或升级镜像与本文一致。
+
+`querier.yaml`：
 
 ```yaml
 apiVersion: apps/v1
@@ -3009,13 +3597,12 @@ spec:
     spec:
       containers:
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           args:
             - query
-            - --log.level=debug
+            - --log.level=info
             - --query.replica-label=replica
-            # Discover local store APIs using DNS SRV.
-            - --store=dnssrv+thanos-store-gateway:10901
+            - --endpoint=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local
           ports:
             - name: http
               containerPort: 10902
@@ -3035,7 +3622,7 @@ spec:
             initialDelaySeconds: 10
           readinessProbe:
             httpGet:
-              path: /-/healthy
+              path: /-/ready
               port: http
             initialDelaySeconds: 15
 ---
@@ -3057,113 +3644,197 @@ spec:
   type: NodePort
 ```
 
-关键配置说明：
+参数说明：
 
-- `--store=dnssrv+_grpc._tcp.thanos-store-gateway:10901`：通过 DNS SRV 记录自动发现所有暴露 gRPC Store API 的组件（Sidecar、Store Gateway 等）
-- `--query.replica-label=replica`：指定用于标识数据副本的标签，Querier 基于该标签执行去重
-- 健康检查端点：`/-/healthy` 用于存活探针，`/-/ready` 用于就绪探针
-
-应用配置并验证：
+- `--endpoint=dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local`：静态注册的 Store API（Sidecar 等）发现地址；须与 **T4.12.3** 里 Headless 名称、命名空间一致；你改了名字这里要一起改。多个后端可写多条 `--endpoint=...`。**勿**再使用已移除的 `--store`（v0.41+）。
+- `--query.replica-label=replica`：填的是 **Prometheus `external_labels` 里「副本维度」的标签键名**（本文键名为 `replica`，不是 Pod 名）。须与 ConfigMap 模板里 `replica: $(POD_NAME)` 的**左侧键名**一致。Query UI 勾选 **Use Deduplication**（或 API `dedup=true`）后，才按该键合并双副本曲线。原理见 **T4.12.1.1**；界面其它开关见本节下 **「Query 页各选项含义」**。
 
 ```bash
-$ kubectl apply -f querier.yaml
-$ kubectl get pods -n kube-mon -l app=thanos-querier
-NAME                             READY   STATUS    RESTARTS   AGE
-thanos-querier-cf566866b-r4jcj   1/1     Running   0          3m26s
-$ kubectl get svc -n kube-mon -l app=thanos-querier
-NAME             TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-thanos-querier   NodePort   10.108.199.11   <none>        9090:31854/TCP   3m30s
+kubectl apply -f querier.yaml
+kubectl get pods -n kube-mon -l app=thanos-querier
+kubectl get svc -n kube-mon -l app=thanos-querier
 ```
 
-部署完成后，通过 `http://<NodeIP>:31854` 访问 Querier Web 界面：
+用 NodePort 或 `kubectl port-forward svc/thanos-querier 9090:9090 -n kube-mon` 打开 Query UI。
 
-- **Stores 页面**：显示通过服务发现获取的 Sidecar 及 Store Gateway 组件信息
-- **Graph 页面**：提供与原生 Prometheus 一致的 PromQL 查询界面
+**Store 列表在哪（v0.41 容易找错）**：顶部导航第二项在源码里叫 **Endpoints**（链接到 **`/stores`**），**不会显示「Stores」字样**。若你从 **Graph** 进来，点顶栏 **Endpoints** 即可看到 Querier 当前认识的所有 Store API 端点（Sidecar、Store Gateway 等）。窄屏时导航收成「汉堡菜单」，要先展开。也可直接访问 `http://<Querier>:<NodePort>/stores`（若前面有 `web.route-prefix` 或反代路径前缀，需把前缀加在 `/stores` 前）。
 
-![thanos2](./images/thanos2.png)
+**和「Enable Store Filtering」里两个地址的关系**：勾选 **Enable Store Filtering** 后，查询面板里的 **Store Filter** 下拉选项（例如 `172.20.37.237:10901`、`172.20.202.232:10901`）来自**同一份** `/api/v1/stores` 数据，只是嵌在 Graph 页里做查询过滤；**并不是没有独立列表页**，完整列表在 **Endpoints** 页，Filter 里只是多选子集。
 
-在 `Graph` 页面下同样可以使用 `PromQL` 语句来查询监控信息，这个页面和 Prometheus 原生的页面几乎是一致的，比如我们查询 master 节点的节点信息：
+下文 **Query 主界面**按 **Thanos v0.41.x**（镜像 `thanosio/thanos:v0.41.0`）说明。上游会持续合并 Prometheus 查询页改动，**若你界面文案与下表略有出入，以当前镜像 UI 为准**。
 
-![thanos3](./images/thanos3.png)
+**官方文档为什么「不像界面说明书」**：[Query 组件文档](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md)写的是 **HTTP API**（如 `dedup`、`partial_response`、`storeMatch[]`、`engine`）和 **启动参数**，一般不画 Web 布局图。界面上的勾选项是把这些参数**填进 POST body / 请求头**。**与 v0.41.0 源码的对应关系**（便于你自行核对、升级后 diff）：
 
-这里我们没有勾选 `deduplication`，Thanos 不会帮我们合并数据，所以能够看到 `prometheus-0` 和 `prometheus-1` 两条数据，因为我们有两个副本去抓取监控数据。
+| 你在界面上点的 | v0.41.0 前端实现要点（Thanos 仓库） |
+|----------------|--------------------------------------|
+| 顶栏 **Use local time** 等 5 项 | `PanelList.tsx`：`useLocalStorage` 存浏览器本地，控制 **图形时间轴用本地时区**、是否拉 `/api/v1/stores` 进面板、是否启用历史/补全/高亮/Linter；**不直接改 Querier 服务端配置**。 |
+| **Execute** | `Panel.tsx` → `POST` `/api/v1/query` 或 `/api/v1/query_range`，表单里带 `dedup`、`partial_response`、`storeMatch[]`、`engine`、`analyze` 等。 |
+| **Explain** | `Panel.tsx` → `GET`（带 query string）`/api/v1/query_explain` 或 `/api/v1/query_range_explain`，参数与上面同类；返回**解释/分析结构**，不是替代 Execute 的数值结果。 |
+| **Use Deduplication / Use Partial Response** | 同上，映射为表单字段 **`dedup`**、**`partial_response`**（与官方文档表格一致）。 |
+| **Force Tracing** | 勾选后对该次请求加 HTTP 头 **`X-Thanos-Force-Tracing: true`**（见 `Panel.tsx`）；响应里可取 **`X-Thanos-Trace-ID`**。**不是**「Prometheus / Thanos 引擎」切换；若你界面上曾看成「Force Tracing Engine」，多半是 **Force Tracing** 与 **Engine** 两行靠在一起误读。 |
+| **Prometheus / Thanos**（Engine） | 映射为表单字段 **`engine`**，与 `--query.promql-engine` 默认值一致；选 Prometheus 时源码里会关掉 **Analyze** 勾选能力。 |
+| **Enable Store Filtering** | `PanelList.tsx`：仅当勾选时才把 **`/api/v1/stores`** 的结果传给各 Panel；**不勾选时面板侧 Store 列表为空，不出现「Store Filter」多选**，请求里也不会带 `storeMatch[]`（即仍向 Querier 已注册的全部 Store 扇出）。 |
 
-如果将 `deduplication` 选中，结果会根据 `replica` 这个标签进行合并，如果两个副本都有对应的数据，`Querier` 会取 timestamp 更小的结果：
+因此：**下表描述的是「勾选后在协议层等价于什么」**，与官方文档一致；**不是**臆测布局，而是以 **v0.41.0** 的 `pkg/ui/react-app/src/pages/graph/PanelList.tsx`、`Panel.tsx`、`GraphControls.tsx` 为准。**旧教程只写「Graph + 去重」已不足以描述当前 UI**。
 
-![thanos4](./images/thanos4.png)
+#### T4.12.4.1、Query 页各选项含义（v0.41.0）
 
-注意，前面 Grafana 配置的 Prometheus 数据源已经失效了，因为现在监控数据的来源是 `Thanos Querier`，所以我们需要重新配置 Prometheus 的数据源地址为 `http://thanos-querier:9090`：
+**时间与展示习惯**
 
-![thanos5](./images/thanos5.png)
+| 界面要素 | 含义 | 生产上怎么用 |
+|----------|------|----------------|
+| **Time**（时间范围 / 结束时刻 / 步长 step） | 与原生 Prometheus 一致：**瞬时查询**看「某一时刻」；**范围查询**要起止时间与 **step**（分辨率）。Thanos 还会参与 **降采样** 相关行为（见官方 `max_source_resolution`）。 | 排障先选最近 1h；看长期趋势再拉大窗口。step 过小会加重 Store 与 Querier 负载。 |
+| **Table \| Graph** | **Graph**：折线/多序列曲线；**Table**：当前时刻或范围内的数值表。 | 看图做趋势；需要精确对比标签组合时用 Table。 |
+| **Use local time** | 时间轴、时间戳按**浏览器本地时区**显示；关闭则多用 **UTC**。 | 值班习惯本地时间可开；写文档、对日志（常 UTC）可对齐关。 |
 
-之前的监控图表也可以正常显示了：
+**编辑器与体验（不改变数据，只改变你怎么写查询）**
 
-![thanos6](./images/thanos6.png)
+| 界面要素 | 含义 | 生产上怎么用 |
+|----------|------|----------------|
+| **Enable query history** | 开启后把执行过的查询写入浏览器 **localStorage**（键 `history`，最多约 50 条），输入框可复用；**关则不上历史列表**（纯前端行为，与 Querier 无关）。 | 可开；共享工作站或敏感环境建议关或清站点数据。 |
+| **Enable autocomplete** | 输入时提示 metric / 标签名。 | 建议开，减少手误。 |
+| **Enable highlighting** | PromQL **语法高亮**。 | 建议开，可读性更好。 |
+| **Enable Linter** | 对当前表达式做**静态检查/提示**（如可疑写法）。 | 建议开；**Linter 通过也不代表查询一定省资源**。 |
+| **查询框旁的 Execute \| Explain** | **Execute**：真正发起查询，返回指标结果。**Explain**：展示表达式**如何被解析/规划**（查询计划类信息），用于理解求值结构；**不替代 Execute 的数值结果**。具体展示与所选引擎有关。 | 日常用 **Execute**；慢查询或结果不符合预期时，用 **Explain** 辅助分析（与官方引擎演进相关，勿与「告警规则 explain」混为一谈）。 |
 
-### T4.12.5、Ruler 组件
+**与 Thanos 数据面直接相关的开关（最重要）**
 
-现在我们可以测试下 Prometheus 配置的监控报警规则是否生效，比如对于 `DeploymentAtZeroReplicas` 这个报警规则，当集群中有 Deployment 的副本数变成 0 就会触发报警：
+| 界面要素 | 含义 | 生产上怎么用 |
+|----------|------|----------------|
+| **Use Deduplication** | 对应 API 参数 **`dedup`**：是否按 Querier 配置的 **`--query.replica-label`**（本文 `replica`）对 HA 副本做**去重合并**（见文档 **T4.12.1.1**）。关：每个 Prometheus 副本各一条序列；开：合成一条并填缝。 | **双副本 Prometheus + Sidecar 场景建议常开**；调试「到底哪个副本在吐数」时可临时关。Grafana 走同一 Querier 时，去重由数据源 URL 参数或数据源版本决定，未必与你在 Web UI 勾的一致。 |
+| **Use Partial Response** | 对应 **`partial_response`**：某个 Store/Sidecar **超时或报错**时，是**带 warning 返回其它 Store 能拿到的部分结果**（偏可用），还是整体更偏失败（偏严格）。与 `--query.partial-response` 默认值、Store 超时等配合，见 [Query 文档 · Partial Response](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md#partial-response)。 | **多数生产会先开**：避免单个副本抖动导致整页空；**金融级强一致**场景再评估关，并接受可用性下降。注意响应里的 **Warnings**。 |
+| **Enable Store Filtering** | **勾选**：前端会去拉 **`/api/v1/stores`** 并在每个查询面板里显示 **Store Filter** 多选；你选的 Store 会转成请求里的 **`storeMatch[]`**（与 [store matchers](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md#store-matchers) 一致）。**不勾选**：不向面板注入 Store 列表，**不出现** Filter 控件，请求**不带** `storeMatch[]`，Querier 仍对**已注册的全部 Store** 扇出。 | **日常建议关**（少误操作、也少依赖 stores API）；**排障单 Store** 时再开。 |
+| **Thanos \| Prometheus**（Engine） | 选用 **Thanos 实验性 PromQL 引擎**还是**经典 Prometheus 引擎**，请求体字段 **`engine`**，与 **`--query.promql-engine`**（及 distributed 模式下默认）一致，见 [Query 文档 · Thanos PromQL Engine](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md#thanos-promql-engine-experimental)。 | **生产默认可保持 Prometheus**；切 Thanos 引擎前先在非生产验证。 |
+| **Analyze**（与 Engine 同区，**仅 Thanos 引擎时可选**） | 源码中与 **`analyze`** 查询参数一起提交；选 **Prometheus** 引擎时该勾选会被禁用（`Panel.tsx` 中 `disableAnalyzeCheckbox`）。用于在 Thanos 引擎路径上请求**额外分析信息**（具体字段随版本以响应 JSON 为准）。 | 默认关；**性能排障、验证 Thanos 引擎**时再开。勿与 **Explain** 按钮混淆：Explain 走 **`/api/v1/query_explain`** 系列端点。 |
+| **Force Tracing**（v0.41.0 源码字面；**不是**引擎开关） | 勾选后对本请求设置 **`X-Thanos-Force-Tracing: true`**，在 Querier **已配置 tracing** 时促使采集本次查询链路 trace；响应可带 **`X-Thanos-Trace-ID`**。背景见 [#6311](https://github.com/thanos-io/thanos/issues/6311)、[#6770](https://github.com/thanos-io/thanos/pull/6770)。 | **未接追踪后端时通常无效果**。生产默认关；排障慢查询时临时开。 |
 
-```bash
-$ kubectl get deploy
-NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
-vault-demo               1/1     1            1           41d
+**和旧描述的对照**：以前常说「去重开/关对比两条线」；在 v0.41 上请认准界面 **Use Deduplication**，且同一面板可能还有 **Partial Response、Store Filtering、引擎** 等，**不要只记 Graph**。
+
+**Grafana**（见 **T4.9**）：数据源填集群内 `http://thanos-querier.kube-mon.svc.cluster.local:9090`；Grafana 在集群外时再用 NodePort 或 Ingress，安全要求与 T4.9 一致。保存后点 Save & test。Grafana Explore 的选项与 Thanos 自带 Web UI **不是同一套界面**，但访问的是同一 Query API。
+
+**生产习惯**：Querier Service 常改成 ClusterIP，只给集群内或受控 Ingress 用；**不要把带租户头、无鉴别的 Query UI 直接暴露给不可信用户**（见 [Query 文档 · tenant](https://github.com/thanos-io/thanos/blob/v0.41.0/docs/components/query.md) 安全提示）。**Endpoints** 页（`/stores`）里长期缺某个 Sidecar 时，先查对应 Prometheus Pod、Headless 的 SRV 解析、是否刚扩缩容。多集群联邦见官方 [Query](https://thanos.io/tip/components/query.md/)。
+
+![thanos_store_or_endpoints](./images/thanos_store_or_endpoints.png)
+
+![thanos_query](./images/thanos_query.png)
+
+### T4.12.5、告警与 Ruler 怎么选
+
+告警规则可以在两处求值：一是**各 Prometheus 进程本地**（读本机 TSDB）；二是 **Thanos Ruler**（通过 **Querier** 发起查询，数据来源是 Querier 背后接入的全部 Store，见 [Rule 组件说明](https://thanos.io/tip/components/rule.md/)）。无论哪种方式，**通知仍由 Alertmanager 发出**，与本篇 **T4.11** 一致。
+
+本文 **T4.12.3～T4.12.4** 的默认拓扑是：双副本 Prometheus 加 Sidecar，查询走 Querier。**在没有跨集群、没有「必须按全局视图单点求值」这类硬需求时，不要把 Ruler 当成标配**，否则多一套组件、多一条依赖链，运维和排障成本都会上去。
+
+#### T4.12.5.1、推荐做法：规则留在 Prometheus
+
+将记录规则与告警规则继续放在各 Prometheus 的 `rule_files`（或等价 CRD）中，由 **`evaluation_interval`** 驱动的本地引擎求值。抓取、存储、规则、告警四件事仍在同一进程周边完成，**路径短、行为与单机 Prometheus 文档一致**，最容易向团队解释和排障。
+
+告警送达方式仍按 **T4.11**：在 `prometheus.yml` 的 `alerting` 段配置 Alertmanager 地址；双副本场景下配合下文 **T4.12.5.2** 做标签处理，避免重复通知。
+
+#### T4.12.5.2、双副本时避免「同一告警两条通知」
+
+**T4.12.3** 中两个 Prometheus 副本抓取同一批目标，且各自带 `external_labels.replica` 区分副本。若不在告警出口做处理，两条告警仅在 `replica` 上不同，Alertmanager 会当作两条独立告警，**用户可能收到两封内容几乎相同的邮件或两条 IM**。
+
+对策是在 **Prometheus** 侧对发往 Alertmanager 的告警做**标签丢弃**（**T4.12.3** 示例片段如下，与全文 `prometheus.yaml.tmpl` 一致）：
+
+```yaml
+    alerting:
+      alert_relabel_configs:
+        - regex: replica
+          action: labeldrop
+      alertmanagers:
+        - scheme: http
+          path_prefix: /
+          static_configs:
+            - targets: ['alertmanager:9093']
 ```
 
-我们可以手动将某个 Deployment 的副本数缩减为 0：
+含义：`replica` 标签在进入 Alertmanager 之前被去掉，两条告警在分组与去重语义上可视为同一条。该键名须与 **T4.12.1.1**、Querier 的 **`--query.replica-label`** 所指的「副本维度」一致（本文均为 `replica`）。
 
-```bash
-$ kubectl scale --replicas=0 deployment/vault-demo
-deployment.apps/vault-demo scaled
-$ kubectl get deploy
-NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
-vault-demo               0/0     0            0           41d
+**不要**在已有双副本 Prometheus 规则的前提下，再随便加一个 Ruler 向**同一套** Alertmanager 推同一批业务告警而不做路由区分，否则仍可能出现重复或规则打架，需要额外的 `match` 与团队约定。
+
+#### T4.12.5.3、何时再考虑 Thanos Ruler
+
+在以下一类或多类需求**确实成立**，且团队愿意承担 **T4.12.5.4** 中的代价时，再引入 Thanos Ruler 才有明确收益：
+
+1. **跨集群或跨多套 Prometheus 的全局规则**：一条 PromQL 必须在「Querier 能看到的全部集群／全部副本合并后的视图」上求值，而**无法**拆成每个集群各自一条本地规则再加外部汇总。
+2. **长期存储数据参与告警**：规则必须依赖**仅存在于对象存储**、已超出各 Prometheus 本地保留窗口的序列，且通过 Querier 对 Store Gateway 等在查询侧已是常态路径。
+3. **与查询入口强绑定的一致性**：希望告警与大盘使用**同一 Querier 查询语义**（含去重、partial response 策略等），并接受由此带来的可用性假设。
+
+若只是「双副本去重」「避免重复通知」，用 **T4.12.5.2** 即可，**不等于**要上 Ruler。
+
+#### T4.12.5.4、使用 Ruler 时的依赖与风险
+
+- **数据路径**：Ruler 周期性向 Querier 执行规则中的查询；Querier 再向 Sidecar、Store Gateway 等 Store API 拉数。Querier 不可用、Store 大面积超时、网络策略误伤 gRPC，都会直接表现为**规则延迟、漏判或抖动**，与「本机 TSDB 算规则」相比，故障面更大。
+- **配置面**：除 Querier 地址外，仍需配置 **`--alertmanagers.url`**（对齐 **T4.11**）、规则文件或对象存储、以及对 Ruler 自身的高可用与资源；具体参数与版本差异以当前 Thanos [Rule 文档](https://thanos.io/tip/components/rule.md/) 与 [Releases](https://github.com/thanos-io/thanos/releases/tag/v0.41.0) 为准。
+- **运维原则**：Ruler 与 Prometheus 上**不要**对同一批指标维护两套完全重复且无人处理冲突的告警规则；若必须并存，应用标签与 Alertmanager `route` 明确分流。
+
+#### T4.12.5.5、选择对照（便于评审）
+
+| 维度 | 规则在 Prometheus（推荐默认） | Thanos Ruler |
+|------|-------------------------------|--------------|
+| 数据从哪读 | 本机 TSDB | 经 Querier 聚合后的查询结果 |
+| 典型适用 | 单集群内抓取与告警、双副本 HA | 全局视图、跨集群、强依赖历史桶数据 |
+| 与 **T4.12.3** 关系 | 配合 `alert_relabel_configs` 去 `replica` | 另起组件，须单独设计标签与路由 |
+| 链路复杂度 | 低 | 高（依赖 Querier 与 Store 健康） |
+
+#### T4.12.5.6、验收思路（与 **T4.12.3** 示例规则一致）
+
+任选集群内一个 Deployment，执行 `kubectl scale deploy/<name> --replicas=0 -n <ns>`，待 **T4.12.3** 中 `DeploymentNoAvailableReplicas` 的 `for` 时间走完后，在 Alertmanager 或 **T4.11.2.2** 配置的钉钉、企业微信等渠道应收到告警；将副本数恢复后告警应消除。该验收验证的是「**Prometheus 本地规则 + T4.11 通知**」整条链路，与是否部署 Ruler 无关。
+
+### T4.12.6、对象存储与 Store Gateway
+
+**T4.12.3** 里 Prometheus 只在本地盘保留一段时间（示例为 6h），过期后本机会删除对应 TSDB 数据。**对象存储**承接已由 **Sidecar** 上传的 **封闭 TSDB 块**（块时长与 **T4.12.3** 中 `min-block-duration` / `max-block-duration` 一致，示例为 2h），用于长期保存指标，供查历史曲线或做全局视图。**本节**在概念上理清「谁写桶、谁读桶、Querier 如何拼结果」，随后在练习环境部署 **MinIO**，再为 **Store Gateway** 与 **Sidecar** 挂载**同桶**的 `thanos.yaml` Secret，使 **T4.12.4** Querier 的 **Endpoints**（`/stores`）中**同时**出现各副本 **Sidecar** 与 **Store Gateway**。**T4.12.7** Compactor 也使用同一 Secret 读写同一桶，部署细节见该节。
+
+#### T4.12.6.1、桶、Sidecar、Store Gateway 与 Querier 的关系
+
+抓取与短期保留仍在 **Prometheus 本机 TSDB** 完成。块一旦封闭，**Sidecar** 按对象存储配置把块**上传**到桶；它还对 **Querier** 提供 **Store API**（一般为 **10901**），数据来源是**本 Pod 内 Prometheus 仍能访问的 TSDB**，**不**在每次查询时把整个桶扫一遍。**Store Gateway** 同样提供 Store API，但在查询路径上**从桶内拉取**已上传而本机可能已删掉的块，是**只读历史**的组件。
+
+```mermaid
+flowchart LR
+  subgraph local["每个 Prometheus Pod"]
+    P[Prometheus TSDB]
+    SC[Sidecar]
+    P --- SC
+  end
+  B[(S3 兼容桶)]
+  SG[Store Gateway]
+  Q[Querier]
+  SC -->|上传封闭块| B
+  SG -->|查询时读对象| B
+  Q -->|gRPC Store API| SC
+  Q -->|gRPC Store API| SG
 ```
 
-这个时候 Alertmanager 同样也会根据外部的 replica 标签对告警进行去重，上面的报警规则中我们添加了 `team=node` 这样的标签，所以会通过前面配置的 webhook 接收器发送给钉钉进行告警：
+**T4.12.3** 与本文 **Store Gateway** 的 Pod 都带标签 **`thanos-store-api: "true"`**，由同一 Headless（名称与 **T4.12.3** `discovery.yaml` 中 `thanos-store-apis` 一致）向 **T4.12.4** Querier 的 `--endpoint=dnssrv+_grpc._tcp...` 提供 SRV 记录；因此 Querier 会把查询**扇出**到所有 Sidecar 与所有 Store Gateway，再在协议层合并。
 
-![thanos7](./images/thanos7.png)
+| 组件 | 是否向桶上传块 | 查询时是否读桶 | 对 Querier 的角色 |
+|------|----------------|----------------|-------------------|
+| Sidecar | 是 | 否 | 本机近期 TSDB + 上传元数据 |
+| Store Gateway | 否 | 是 | 桶中长期历史 |
+| Querier | 否 | 否 | 汇聚各 Store 的查询结果 |
 
-前序配置中，告警规则由 Prometheus 实例本地评估。Thanos Ruler 组件可作为替代方案，其通过 Query API 从 Querier 获取指标数据执行规则评估，评估结果可写回本地 TSDB 或发送至 Alertmanager。
+**缺少 Store Gateway** 时：超出各 Prometheus **本地 retention**、但已经进桶的数据，**无法**通过 Querier 查到（除非仍在别处的本地盘上）。**缺少 Sidecar 上传**（未配 `--objstore` 或权限错误）时：桶内没有新块，Store Gateway 只能看到旧数据或空桶。
 
-Ruler 的数据获取路径为：`Ruler → Querier → Sidecar → Prometheus`，相较 Prometheus 本地评估增加了链路依赖。在无跨集群告警或全局聚合需求场景下，建议优先使用 Prometheus 原生告警机制以降低复杂度。
+**Sidecar 与 Store Gateway 共用同一 Secret**（同一 `thanos.yaml`）：二者访问**同一个 bucket**，一个负责**写**，一个负责**读**，配置内容须一致，否则会出现一侧上传成功、另一侧读不到对象或访问拒绝的问题。
 
-若需使用 Ruler，配置要点包括：
+生产环境优先使用云厂商 **S3 兼容**存储（OSS、COS、Amazon S3 等），`endpoint`、区域、TLS、服务端加密、IAM 权限按厂商文档；凭证放在 Kubernetes **Secret** 或工作负载身份中，**禁止**将 `access_key`、`secret_key` 提交到 Git。键名与后端类型见 Thanos [对象存储配置](https://thanos.io/tip/thanos/storage.md/)。上线自检建议：Querier **Endpoints** 中 Store Gateway 为 **Up**；桶内对象体量随时间增加；Sidecar 日志中 shipper **无持续上传失败**。
 
-- 通过 `--rule-file` 指定告警/记录规则文件
-- 通过 `--query` 指定 Querier 地址列表
-- 通过 `--alertmanagers.url` 配置 Alertmanager 接收地址
-- 通过 `--objstore.config-file` 配置对象存储，实现评估结果持久化
+练习环境以下文 **MinIO** 自建桶为例。MinIO 开源项目已废弃，可换 [RustFS](https://rustfs.com/) 等 S3 兼容实现，Thanos 侧仍按 S3 填写 `endpoint` 与密钥。镜像与安全更新见文首约定表与 [MinIO Releases](https://github.com/minio/minio/releases/latest)。
 
-详细配置请参考官方文档：https://thanos.io/tip/components/rule.md/
+#### T4.12.6.2、MinIO（练习用，独立 namespace）
 
-### T4.12.6、Store 组件
+资源都放在命名空间 `minio`。生产请把 root 账号口令改成 Secret；示例里明文只为跟练方便。
 
-前面我们安装了 Thanos 的 Sidecar 和 Querier 组件，已经可以做到 Prometheus 的高可用，通过 Querier 提供统一的入口来查询监控数据，而且还可以对监控数据自动去重，但是还有一个非常重要的环节，就是配置对象存储，对于查看历史监控数据至关重要。
+`minio-deploy.yaml`：
 
-这个时候需要用到 Thanos Store 组件，将历史监控指标存储到对象存储中。
-
-目前 Thanos 支持的对象存储有：
-
-![thanos8](./images/thanos8.png)
-
-生产环境推荐使用 `Stable` 状态的方案，比如 S3 或者兼容 S3 的服务，比如 Ceph、Minio 等等。
-
-对于国内用户当然最方便的还是直接使用阿里云 OSS 或者腾讯云 COS 这样的服务，很多时候可能我们的服务并不是跑在公有云上面的，所以这里我们用 Minio 来部署一个兼容 S3 协议的对象存储服务。
-
-#### T4.12.6.1、安装 Minio
-
-> Minio 开源项目已废弃，可以找其它替代方案，比如 https://rustfs.com/
-
-MinIO RELEASE.2025-05-24T17-08-30Z 以前的版本都包含完整的功能，短期还可以使用。
-
-为了方便管理，将所有的资源对象都部署在一个名为 minio 的命名空间中，如果没有的话需要手动创建。直接使用 Deployment 来管理 Minio 的服务（minio-deploy.yaml）：
-
-```bash
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: minio
+  namespace: minio
+  labels:
+    app: minio
 spec:
   selector:
     matchLabels:
@@ -3181,25 +3852,24 @@ spec:
             claimName: minio-pvc
       containers:
         - name: minio
-          volumeMounts:
-            - name: data
-              mountPath: "/data"
           image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-          args:
-            - server
-            - /data
+          args: ["server", "/data", "--console-address", ":9001"]
           env:
-            - name: MINIO_ACCESS_KEY
-              value: "minio"
-            - name: MINIO_SECRET_KEY
-              value: "minio123"
+            - name: MINIO_ROOT_USER
+              value: minio
+            - name: MINIO_ROOT_PASSWORD
+              value: minio123
           ports:
             - containerPort: 9000
+            - containerPort: 9001
+          volumeMounts:
+            - name: data
+              mountPath: /data
           readinessProbe:
             httpGet:
               path: /minio/health/ready
               port: 9000
-            initialDelaySeconds: 90
+            initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
             httpGet:
@@ -3209,120 +3879,101 @@ spec:
             periodSeconds: 10
 ```
 
-通过一个名为 `minio-pvc` 的 PVC 对象将数据持久化，当然我们可以使用静态的 PV 来提供存储，这里我们直接使用前面的 OpenEBS 的 LocalPV 来提供存储服务，使用 `openebs-jiva-default` 这个 StorageClass 对象来提供动态 PV（minio-pvc.yaml）：
+`minio-pvc.yaml`：
 
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: minio-pvc
+  namespace: minio
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10G
+      storage: 10Gi
   storageClassName: openebs-jiva-default
 ```
 
-最后我们可以通过 Service 和 Ingress 对象将 Minio 暴露给外部用户使用（minio-ingress.yaml）：
+`minio-svc.yaml`：API 用 9000；控制台 9001，按需再暴露。
 
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: minio
+  namespace: minio
 spec:
+  type: ClusterIP
   ports:
-    - port: 9000
+    - name: api
+      port: 9000
       targetPort: 9000
-      protocol: TCP
+    - name: console
+      port: 9001
+      targetPort: 9001
   selector:
     app: minio
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: redirect-https
-spec:
-  redirectScheme:
-    scheme: https
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: minio
-spec:
-  entryPoints:
-    - web
-  routes:
-    - kind: Rule
-      match: Host(`minio.qikqiak.com`)
-      services:
-        - kind: Service
-          name: minio
-          port: 9000
-      middlewares:
-        - name: redirect-https
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: minio-https
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - kind: Rule
-      match: Host(`minio.qikqiak.com`)
-      services:
-        - kind: Service
-          name: minio
-          port: 9000
-  tls:
-    certResolver: ali
-    domains:
-      - main: "*.qikqiak.com"
 ```
-
-这里我们使用的是 Traefik2.X 版本的 Ingress 控制器，使用 IngressRoute 这个资源对象来定义 Ingress 信息，然后直接创建上面的资源对象即可：
 
 ```bash
-kubectl create ns minio
-kubectl apply -f minio-deploy.yaml
+kubectl create namespace minio --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f minio-pvc.yaml
-kubectl apply -f minio-ingress.yaml
+kubectl apply -f minio-deploy.yaml
+kubectl apply -f minio-svc.yaml
 ```
 
-部署成功后，将域名 `minio.qikqiak.com` 解析到 Ingress 控制器所在的节点即可通过浏览器访问到 MinIO 服务了，通过上面定义的 `MINIO_ACCESS_KEY` 和 `MINIO_SECRET_KEY` 即可登录：
+控制台可执行：`kubectl port-forward svc/minio 9001:9001 -n minio`，用上面账号登录，新建 bucket `thanos`。外网暴露用你们自己的 Ingress 或 Gateway。
 
-![thanos9](./images/thanos9.png)
+![thanos_bucket](./images/thanos_bucket.png)
 
-#### T4.12.6.2、安装 Thanos Store
+#### T4.12.6.3、Thanos 连接 MinIO 与 Store Gateway
 
-对象存储就绪后，部署 Store Gateway 组件。首先登录 MinIO 创建名为 `thanos` 的 Bucket，并配置对象存储连接文件（thanos-storage-minio.yaml）：
+操作顺序建议如下，避免 Querier 已发现 Store 却读不到桶。**①** 将桶连接信息写入 `thanos.yaml`，在 **`kube-mon`** 创建 Secret **`thanos-objectstorage`**（与 **T4.12.3** Prometheus 在同一命名空间，便于 Sidecar 挂载）。**②** 部署 **Store Gateway** 的 Headless 与 StatefulSet：模板中已带 **`thanos-store-api: "true"`**，与 **T4.12.3** 里带 Sidecar 的 Prometheus Pod **共享**同一套 SRV 发现名。**③** 在 **T4.12.3** Prometheus StatefulSet 的 **Sidecar** 上挂载该 Secret，并增加 **`--objstore.config-file`**（示例见本小节末）。**④** 回到 **T4.12.4** Querier 的 **Endpoints**，应比原先多出 **Store Gateway** 端点；若长期缺失，先查 `thanos-store-apis` Endpoints、Pod 就绪与网络策略。
+
+`thanos-storage-minio.yaml`：MinIO 在命名空间 `minio` 时，endpoint 如下（若你改了名字或端口，这里要一起改）：
 
 ```yaml
 type: s3
 config:
   bucket: thanos
-  endpoint: minio.default.svc.cluster.local:9000
+  endpoint: minio.minio.svc.cluster.local:9000
   access_key: minio
   secret_key: minio123
   insecure: true
   signature_version2: false
 ```
 
-使用上面的配置文件来创建一个 Secret 对象：
-
 ```bash
-$ kubectl create secret generic thanos-objectstorage --from-file=thanos.yaml=thanos-storage-minio.yaml -n kube-mon
-secret/thanos-objectstorage created
+kubectl create secret generic thanos-objectstorage \
+  --from-file=thanos.yaml=thanos-storage-minio.yaml -n kube-mon
 ```
 
-然后创建 Store 组件的资源清单，注意需要添加一个 `thanos-store-api: "true"` 的标签，这样前面我们创建的 `thanos-store-gateway` 这个 Headless Service 就可以自动发现这个服务，Querier 组件查询数据的时候除了可以通过 Sidecar 去获取数据也可以通过这个 Store 组件去对象存储里面获取数据了。
+**务必写成 `thanos.yaml=本地文件`**：冒号左侧是 Secret **`data` 里的键名**，挂载到 Pod 里会变成 **`/etc/secret/thanos.yaml`**，与下文 **`--objstore.config-file=/etc/secret/thanos.yaml`** 一致。若只写 **`--from-file=thanos-storage-minio.yaml`**，键名常变成 **`thanos-storage-minio.yaml`**，容器内**没有** `thanos.yaml`，Sidecar 会报 `open /etc/secret/thanos.yaml: no such file`，reloader 也不会生成 `prometheus.yaml`。可用 **`kubectl describe secret thanos-objectstorage -n kube-mon`** 查看 **Data** 下的实际键名。
 
-将上面的 Secret 对象通过 Volume 形式挂载到容器中的 `/etc/secret` 目录下，通过 `objstore.config-file` 参数指定即可（store.yaml）：
+Store Gateway 的 StatefulSet 需要同名 Headless Service（和 `serviceName` 一致）：
+
+`store-gateway-discovery.yaml`：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-store-gateway
+  namespace: kube-mon
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: grpc
+      port: 10901
+      targetPort: grpc
+  selector:
+    app: thanos-store-gateway
+```
+
+`store.yaml`：
 
 ```yaml
 apiVersion: apps/v1
@@ -3346,14 +3997,14 @@ spec:
     spec:
       containers:
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           args:
-            - "store"
-            - "--log.level=debug"
-            - "--data-dir=/data"
-            - "--objstore.config-file=/etc/secret/thanos.yaml"
-            - "--index-cache-size=500MB"
-            - "--chunk-pool-size=500MB"
+            - store
+            - --log.level=info
+            - --data-dir=/data
+            - --objstore.config-file=/etc/secret/thanos.yaml
+            - --index-cache-size=500MB
+            - --chunk-pool-size=500MB
           ports:
             - name: http
               containerPort: 10902
@@ -3361,70 +4012,127 @@ spec:
               containerPort: 10901
           livenessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/healthy
           readinessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/ready
           volumeMounts:
+            - name: store-data
+              mountPath: /data
             - name: object-storage-config
               mountPath: /etc/secret
-              readOnly: false
+              readOnly: true
       volumes:
+        - name: store-data
+          emptyDir: {}
         - name: object-storage-config
           secret:
             secretName: thanos-objectstorage
 ```
 
-直接创建上面的资源对象即可：
-
 ```bash
-$ kubectl apply -f store.yaml
-$ kubectl get pods -n kube-mon -l thanos-store-api=true
-NAME                     READY   STATUS    RESTARTS   AGE
-prometheus-0             2/2     Running   0          15h
-prometheus-1             2/2     Running   0          15h
-thanos-store-gateway-0   1/1     Running   0          100s
+kubectl apply -f store-gateway-discovery.yaml
+kubectl apply -f store.yaml
+kubectl get pods -n kube-mon -l thanos-store-api=true
 ```
 
-部署成功后可以去 Thano 的 Querier 页面上查看 Store 信息，能看到我们配置的 Store 组件了：
+此时 **T4.12.4** Querier 的 **Endpoints**（`/stores`）列表中应出现 Store Gateway 对应的 gRPC 端点（与两个 Sidecar 并列，具体 IP 以集群为准）。
 
-![thanos10](./images/thanos10.png)
+数据**写入**桶仍由各 Prometheus Pod 内的 **Sidecar** 完成：除 `--objstore.config-file` 外，必须在 **同一个 Pod 的 `spec.template.spec.volumes` 里声明 Secret**，并在 **仅 `thanos` 容器** 上挂载到 **`/etc/secret`**（与 **T4.12.3** 示例一致；**不要**挂给 `prometheus` 容器）。**不要**只把下面 `args` 贴进清单却漏掉 `volumes` / `volumeMounts`，否则 Sidecar 因读不到对象存储配置而立即退出，**reloader 不会生成** `/etc/prometheus-shared/prometheus.yaml`，隔壁 **Prometheus** 容器就会报 `open ... prometheus.yaml: no such file or directory`（该文件来自共享 **`emptyDir`** **`prometheus-config-shared`**，不是 ConfigMap 直挂）。
 
-这里我们只是配置了去对象存储查询数据的组件，那什么地方往对象存储中写数据呢？
-
-当然还是由 Sidecar 组件完成，所以我们需要把 `objstore.config-file` 参数和 Secret 对象也要配置到 Sidecar 组件中去：
+`spec.template.spec` 下与 **T4.12.3** `sidecar.yaml` **合并**的完整增量示例（已含原有 `prometheus-config` 等卷时，**只追加** `object-storage-config` 一项；`thanos` 容器在原有 `volumeMounts` 基础上**只追加**最后一项）。与同层 **`securityContext.fsGroup: 65534`**、**thanos** 的 **`runAsUser` / `runAsGroup`: 65534** 一并使用，避免 Shipper **硬链接**因 UID 不一致报 **`operation not permitted`**：
 
 ```yaml
-volumes:
-- name: object-storage-config
-  secret:
-    secretName: thanos-objectstorage
-args:
-- sidecar
-- --log.level=debug
-- --tsdb.path=/prometheus
-- --prometheus.url=http://localhost:9090
-- --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
-- --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
-- --reloader.rule-dir=/etc/prometheus/rules/
-- --objstore.config-file=/etc/secret/thanos.yaml
-volumeMounts:
-- name: object-storage-config
-  mountPath: /etc/secret
-  readOnly: false
+      securityContext:
+        fsGroup: 65534
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-rules
+          configMap:
+            name: prometheus-rules
+        - name: prometheus-config-shared
+          emptyDir: {}
+        - name: object-storage-config
+          secret:
+            secretName: thanos-objectstorage
+      containers:
+        - name: prometheus
+          # ... 与 T4.12.3 一致，勿改 --config.file=...
+          volumeMounts:
+            - name: prometheus-config-shared
+              mountPath: /etc/prometheus-shared/
+            # ... 其余与原文一致 ...
+        - name: thanos
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+          args:
+            - sidecar
+            - --log.level=info
+            - --tsdb.path=/prometheus
+            - --prometheus.url=http://localhost:9090
+            - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
+            - --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
+            - --reloader.rule-dir=/etc/prometheus/rules/
+            - --objstore.config-file=/etc/secret/thanos.yaml
+          volumeMounts:
+            - name: prometheus-config-shared
+              mountPath: /etc/prometheus-shared/
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            - name: prometheus-rules
+              mountPath: /etc/prometheus/rules
+            - name: data
+              mountPath: "/prometheus"
+            - name: object-storage-config
+              mountPath: /etc/secret
+              readOnly: true
 ```
 
-配置完成后重新更新 Sidecar 组件即可。配置生效后就会有数据写入到 MinIO，我们可以去 MinIO 的页面上查看验证：
+**排错**
 
-![thanos11](./images/thanos11.png)
+- **Prometheus** 报找不到 `prometheus.yaml`：看 **`kubectl logs ... -c thanos`**；并 **`kubectl describe secret thanos-objectstorage -n kube-mon`** 确认 **Data** 下键名为 **`thanos.yaml`**（与 **`--from-file=thanos.yaml=...`** 一致）。**勿**把 `--reloader.*` / `--objstore.*` 写到 **prometheus** 容器。
+- **Sidecar** 报 **`hard link ... operation not permitted`**、`uploaded=0`：Shipper 要把块**硬链接**到 **`/prometheus/thanos/upload/`**。块目录由 **Prometheus 镜像默认用户 65534** 创建；**Thanos 镜像默认常为其它 UID（如 1001）**，跨用户硬链易被内核拒绝。处理：Pod **`securityContext.fsGroup: 65534`**，且 **thanos** 容器 **`securityContext.runAsUser` / `runAsGroup` 均为 65534**（与上文 **T4.12.3** `sidecar.yaml` 一致）。若仍失败且在 **Rocky/CentOS** 等环境，再查 **`getenforce`** 与审计日志是否 **SELinux** 拦截。参考上游 [Issue #6811](https://github.com/thanos-io/thanos/issues/6811) 等讨论。
 
-### T4.12.7、Compactor 组件
+apply 后等至少一个 2h 块上传，或看 sidecar 日志里 shipper 成功，再到 MinIO 里应能看到对象。
 
-现在历史监控数据已经上传到对象存储中去了，但是由于监控数据量非常庞大，所以一般情况下我们会去安装一个 Thanos 的 Compactor 组件，用来将对象存储中的数据进行压缩和下采样。Compactor 组件的部署和 Store 非常类似，指定对象存储的配置文件即可，如下所示的资源清单文件（compactor.yaml）：
+![thanos_to_minio_bucket](./images/thanos_to_minio_bucket.png)
 
-```bash
+### T4.12.7、Compactor
+
+**Compactor** 不对指标做抓取，也不注册 **Store API**（**T4.12.4** 的 `--endpoint` 发现名单里**没有**它）。它只连接 **T4.12.6** 中的**同一对象存储桶**，在桶内对已上传的 TSDB 块做**合并、降采样与保留策略**，降低存储与元数据开销，间接减轻 **Store Gateway** 与 **Querier** 的压力。凭证与 **Sidecar**、**Store Gateway** 一致：**Secret `thanos-objectstorage`**、**`thanos.yaml` 键名**与 **T4.12.6** 对齐。镜像与全文约定一致：**`thanosio/thanos:v0.41.0`**。参数与语义以官方 [Compact](https://thanos.io/tip/components/compact.md/)、[对象存储](https://thanos.io/tip/thanos/storage.md/) 为准；升级前对照 [Releases](https://github.com/thanos-io/thanos/releases)。
+
+#### T4.12.7.1、在链路中的位置
+
+| 组件 | 对桶的读写 | 与查询的关系 |
+|------|------------|----------------|
+| **Sidecar**（**T4.12.3**） | 上传封闭块 | 经 Store API 提供本机近期数据 |
+| **Receiver**（**T4.12.8**） | 上传由其 TSDB 产出的块 | 经 Store API 提供 Receiver 本地近期数据 |
+| **Store Gateway**（**T4.12.6**） | 读对象 | 经 Store API 提供桶内历史数据 |
+| **Compactor**（本节） | **读并回写**（整理、可能删对象） | **不参与** Querier 扇出；整理后的块仍由 **Store** 暴露 |
+
+无 Compactor 时桶内块会持续增多、粒度偏细；部署后仍须配置**符合团队政策的保留与降采样**，否则成本与合规仍可能失控。练习用清单为缩短篇幅**未**写入 `--retention.resolution-*` 等保留参数，**上线前必须在评审中补齐**。
+
+#### T4.12.7.2、生产约束
+
+1. **每个对象存储桶在同一时刻仅允许一个 Compactor 进程独占压缩**（本文 **`replicas: 1`**）。多副本或多套集群指向**同一**桶并各跑 Compactor，官方视为**高风险**，可能导致块不一致或数据损坏。
+2. **预发与生产若共用桶名与同一 Secret**，不得在两套环境里各起一个 Compactor；应拆桶或拆凭证，并在流程上禁止误配。
+3. **`--data-dir`** 承担下载与合并过程中的本地 I/O，**磁盘或 `emptyDir` 用尽**会导致压缩失败或反复重启。练习示例用 **`emptyDir`**；生产建议改为 **PVC** 或更大本地盘，并设 **`resources`** 与告警。
+4. **`--wait`** 表示在处理完一轮调度任务后仍驻留、等待后续工作（与 **一次性**跑完即退出的运维脚本不同）；具体行为以 **`thanos compact --help`** 为准。
+
+#### T4.12.7.3、`compactor.yaml` 字段说明
+
+- **StatefulSet + Headless**：`serviceName: thanos-compactor` 与同名 Service 满足 StatefulSet 约定；Headless **仅供** Pod 稳定身份或排障访问 **10902**，**不是** Querier 的 Store 后端。
+- **`--objstore.config-file`**：与 **T4.12.6** 相同路径 **`/etc/secret/thanos.yaml`**，即同一 Secret 挂载。
+- **探针**：`/-/healthy`、`/-/ready`；压缩高峰若 CPU、磁盘尖刺明显，可适当调大延迟或 **limits**，避免误杀（清单未写 **resources**，生产请补）。
+
+`compactor.yaml`：
+
+```yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -3445,197 +4153,223 @@ spec:
     spec:
       containers:
         - name: thanos
-          image: thanosio/thanos:v0.18.0
+          image: thanosio/thanos:v0.41.0
           args:
-            - "compact"
-            - "--log.level=debug"
-            - "--data-dir=/data"
-            - "--objstore.config-file=/etc/secret/thanos.yaml"
-            - "--wait"
+            - compact
+            - --log.level=info
+            - --data-dir=/data
+            - --objstore.config-file=/etc/secret/thanos.yaml
+            - --wait
           ports:
             - name: http
               containerPort: 10902
           livenessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/healthy
             initialDelaySeconds: 10
           readinessProbe:
             httpGet:
-              port: 10902
+              port: http
               path: /-/ready
             initialDelaySeconds: 15
           volumeMounts:
             - name: object-storage-config
               mountPath: /etc/secret
-              readOnly: false
+              readOnly: true
+            - name: data
+              mountPath: /data
       volumes:
         - name: object-storage-config
           secret:
             secretName: thanos-objectstorage
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-compactor
+  namespace: kube-mon
+spec:
+  clusterIP: None
+  selector:
+    app: thanos-compactor
+  ports:
+    - port: 10902
+      name: http
 ```
 
-最重要的还是提供对象存储的配置文件，然后直接创建上面的资源清单文件：
+#### T4.12.7.4、应用与自检
 
 ```bash
-$ kubectl apply -f compactor.yaml
-$ kubectl get pods -n kube-mon -l app=thanos-compactor
-NAME                 READY   STATUS    RESTARTS   AGE
-thanos-compactor-0   1/1     Running   0          68s
+kubectl apply -f compactor.yaml
+kubectl rollout status statefulset/thanos-compactor -n kube-mon
+kubectl get pods -n kube-mon -l app=thanos-compactor
+kubectl logs -n kube-mon -l app=thanos-compactor --tail=100
 ```
 
-到这里我们就完成了使用 Thanos 来部署高可用的 Prometheus 集群，当然 Thanos 还有其他的一些组件，比如 Check、Bucket、Receiver 等，对于这些组件的使用感兴趣的可以查看官方文档 https://thanos.io/。
+验收时可按下面几条，在集群和对象存储控制台**对照着看**：
 
-### T4.12.8、Receiver 组件
+1. **Pod 状态**：`thanos-compactor` 长时间保持 **Running**，不要反复 **CrashLoopBackOff**。
+2. **日志**：偶发重试可以不管；不要出现**连续多次**访问对象存储失败（例如 **403、5xx**）或明显的校验错误。
+3. **桶里占多少空间**：在已为 Compactor 配好**保留、降采样**的前提下，运行一段时间后，对象个数或总大小**不应一直线性猛涨**；若**从来不跑 Compactor、只靠 Sidecar 往里堆块**，桶往往会越堆越大，可作为参照。
+4. **查历史曲线是否好查**：跨度很大的查询是否还容易超时、Store 和 Querier 是否长期打满，只能结合你们**自己的业务量**判断，单靠这一条难以下结论。
 
-前面我们介绍主要组件的时候提到了 Receiver 组件，那为什么上面在使用 Thanos 的时候并没有用到呢？这是因为 Receiver 和 Sidecar 是 Thanos 的两种不同架构模式，早期的 Receiver 只是一种实验特性，现在已经是 GA 状态了，所以非常有必要来了解下。
+**与 Store 组件的关系**：在 **Sidecar** 路径下，新块由 **Sidecar 上传**；在 **Receiver** 路径（**T4.12.8**）下，新块由 **Receiver 上传**。**Store Gateway** 仍从**同一桶**里读对象给 **Querier**。**短时间关掉 Compactor**，一般**仍能**查到新写进桶的块。但若**长期不做合并与按策略清理**，桶会越来越臃肿，费用和查询压力也容易变差，所以**从长期运维和成本上**，仍应让 Compactor **稳定跑起来**。
 
-那么 Receiver 到底有什么作用呢？和 Sidecar 的区别是什么？
+#### T4.12.7.5、排错提要
 
-我们知道 Sidecar 模式是在每一个 Prometheus 的实例旁边添加一个 Sidecar 组件来上传数据，但是数据上传并不是实时的，而是每 2h 上传一个数据块，而且当通过 Querier 组件查询的时候，如果 Sidecar 非常多，那么势必会造成很多的资源消耗，这也是现在使用 Sidecar 模式的弊端。
+- **`replicas` 大于 1** 或两套环境争用同桶：立即收敛为**单实例单桶**，并按事故流程评估桶一致性。
+- **`CrashLoopBackOff` / OOM**：加大 **`/data` 卷**与内存 **limits**，或按 [Compact 文档](https://thanos.io/tip/components/compact.md/) 调优并发相关参数。
+- **权限错误**：核对 Secret、桶 **IAM/策略**、endpoint 是否与 **T4.12.6** 完全一致。
+- **长期无进展**：查日志是否等待分布式锁、网络超时；排除多 Compactor、多环境误连同桶。
 
-Thanos Receiver 组件可以接收来自任何 Prometheus 实例的 remote write 远程写入请求，并将数据存储在本地 TSDB 中，同样我们也可以选择将这些 TSDB 块定期上传到对象存储中。此外 Receiver 同样也暴露了 StoreAPI 接口，这样 Thanos Querier 组件也是可以实时查询接收到的指标，完全不需要去所有的 Sidecar 上查询最新的数据。
+到本节为止：若走 **Sidecar** 路径，**双副本 Prometheus + Sidecar**、**Querier**、**对象存储**、**Store Gateway**、**Compactor** 形成常见入门闭环。若改走 **Receiver** 路径，按 **T4.12.8** 部署 **Receiver** 与 **`remote_write`**，并**去掉** Prometheus 侧 **Sidecar 的 `--objstore`**（或不用 Sidecar），仍复用本节 **Compactor** 与 **T4.12.6** 的同一桶。**T4.12.5** Ruler 等其它组件见 [Thanos 入门](https://thanos.io/tip/thanos/getting-started.md/)。
 
-另外 Thanos Receiver 组件也支持多租户，通过传入请求的 HTTP Header 头 `THANOS-TENANT` 的值来确定租户 Prometheus 的 ID，为了防止数据库级别的数据泄露，每个租户都有一个单独的 TSDB 实例，Thanos Receiver 还通过暴露类似于 Prometheus 的 external_label 来支持多租户。
+### T4.12.8、Receiver（remote_write）
 
-```bash
-                 +
-Tenant's Premise | Provider Premise
-                 |
-                 |            +------------------------+
-                 |            |                        |
-                 |  +-------->+     Object Storage     |
-                 |  |         |                        |
-                 |  |         +-----------+------------+
-                 |  |                     ^
-                 |  | S3 API              | S3 API
-                 |  |                     |
-                 |  |         +-----------+------------+
-                 |  |         |                        |       Store API
-                 |  |         |  Thanos Store Gateway  +<-----------------------+
-                 |  |         |                        |                        |
-                 |  |         +------------------------+                        |
-                 |  |                                                           |
-                 |  +---------------------+                                     |
-                 |                        |                                     |
-+--------------+ |            +-----------+------------+              +---------+--------+
-|              | | Remote     |                        |  Store API   |                  |
-|  Prometheus  +------------->+     Thanos Receiver    +<-------------+  Thanos Querier  |
-|              | | Write      |                        |              |                  |
-+--------------+ |            +------------------------+              +---------+--------+
-                 |                                                              ^
-                 |                                                              |
-+--------------+ |                                                              |
-|              | |                PromQL                                        |
-|    User      +----------------------------------------------------------------+
-|              | |
-+--------------+ |
-                 +
+**版本约定**：与全文 **T4.2.1「版本与镜像约定」** 一致：**Thanos `thanosio/thanos:v0.41.0`**，**Prometheus `prom/prometheus:v3.10.0`**（截至文档编写时，二者均为对应项目 Release 页的当前稳定线；以后升级只认 [Thanos Releases](https://github.com/thanos-io/thanos/releases/latest) 与 [Prometheus Releases](https://github.com/prometheus/prometheus/releases/latest) 上标注的 **Latest** 稳定版，本节 YAML 里的镜像 tag 要一起改）。行为与参数以与当前镜像同步的 [Receive 文档](https://thanos.io/tip/components/receive.md/) 为准。
+
+**本节解决什么问题**：在 **T4.12.6** 已接好对象存储的前提下，用 **Receive** 接 Prometheus 的 **`remote_write`**，把数据写入与 **T4.12.3 Sidecar 上传**不同的另一条链路：样本先进 Prometheus，再被推送到 Receive；Receive 用自己的磁盘做 TSDB，再上传块到桶；**Querier（T4.12.4）** 查「最近」会打到 Receive 的 Store，查「很久以前」仍靠 **Store Gateway**。Prometheus 侧接口说明见官方 [remote_write](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)。
+
+**和前面的关系**：命名空间仍 **`kube-mon`**，对象存储仍是 Secret **`thanos-objectstorage`**（键 **`thanos.yaml`**，与 **T4.12.6** 一致），**Compactor** 仍用 **T4.12.7**，**Querier** 仍用 **T4.12.4** 的 `dnssrv+_grpc._tcp.thanos-store-apis...` 发现 Store。**不要**在已经有 Sidecar **`--objstore`** 向**同一个桶**上传的同时，又对**同一批业务指标**开 **`remote_write`** 再写进该桶（除非换桶或租户与标签空间已书面拆开）。
+
+#### T4.12.8.1、路线对照
+
+Sidecar 路线（**T4.12.3～7**）与 Receive 路线（本节）长期入桶方式不同，下表分项对比。
+
+| 问题 | Sidecar 路线（T4.12.3～7） | Receive 路线（本节） |
+|------|---------------------------|----------------------|
+| 谁往桶里上传块 | 每个 Prometheus 上的 **Sidecar**，读**本机** Prometheus 已封闭的块 | **Receive**，读**自己机器**上形成的块 |
+| Prometheus 上还要不要 Thanos | 一般要 **Sidecar 同 Pod** | 至少要能访问 Receive 的 **`remote_write` 端口**；可以只有 Prometheus 容器 |
+| 查最近几小时谁提供 Store | 各副本 **Sidecar** | **Receive**；更久靠 **Store Gateway** |
+
+两条路线进**同一个逻辑桶**时只能选一条，不要 Sidecar 上传和 Receive 推送混写同一批业务指标。下图便于和表格对照着看：
+
+```mermaid
+flowchart TB
+  subgraph SC["Sidecar 路线 T4.12.3 至 T4.12.7"]
+    P1["Prometheus 本机 TSDB"]
+    SD["Sidecar"]
+    P1 --> SD
+  end
+  subgraph RC["Receive 路线 本节"]
+    P2["Prometheus 抓取与本机 TSDB"]
+    RV["Receive 本地 TSDB"]
+    P2 --> RV
+  end
+  SD --> BUCK[(对象存储)]
+  RV --> BUCK
 ```
 
-如果我们需要负载均衡和数据多副本等功能，则可以将 Thanos Receiver 的多个实例作为单个 hash 的一部分来运行，每个 Receiver 在 hashring 中的位置决定了哪些时间序列被哪个 Receiver 接收和存储。下面是一个 hashring 的配置文件示例：
+#### T4.12.8.2、数据流
 
-```bash
-[
-  {
-    "hashring": "tenant-a",
-    "endpoints": [
-      "tenant-a-1.metrics.local:19291/api/v1/receive",
-      "tenant-a-2.metrics.local:19291/api/v1/receive"
-    ],
-    "tenants": ["tenant-a"]
-  },
-  {
-    "hashring": "tenants-b-c",
-    "endpoints": [
-      "tenant-b-c-1.metrics.local:19291/api/v1/receive",
-      "tenant-b-c-2.metrics.local:19291/api/v1/receive"
-    ],
-    "tenants": ["tenant-b", "tenant-c"]
-  },
-  {
-    "hashring": "soft-tenants",
-    "endpoints": ["http://soft-tenants-1.metrics.local:19291/api/v1/receive"]
-  }
-]
+按顺序看 Receive 这一路：抓取与查询各怎么走。
+
+1. **抓取不变**：`scrape_configs` 照 **T4.4～T4.8** 配，有没有 Receive 都一样。  
+2. **推送**：在 Prometheus 里增加 **`remote_write`**，用 HTTP 访问 Receive 提供的 **`/api/v1/receive`**（默认容器端口 **19291**，见下文清单）。  
+3. **Receive 内部**：写入本地 TSDB，再按 Thanos 规则把块上传到对象存储（官方说明默认约 **2 小时**一块，以你镜像行为为准）。  
+4. **查询**：Querier 用 **gRPC** 访问 Receive 的 Store（端口 **10901**），和访问 Sidecar、Store Gateway 的方式一致；长期数据仍在桶里，由 Store Gateway 读。
+
+Receive 副本之间的复制、转发在组件内部用 **gRPC** 完成，和 Prometheus 直连的 HTTP **不是**一回事。
+
+**Receiver 路线一览**（写入用 HTTP **19291**，Querier 读 Receive 用 gRPC **10901**；详表见 **T4.12.8.3**）：
+
+```mermaid
+flowchart TB
+  TG["抓取目标"] -->|"HTTP pull"| PM["Prometheus"]
+  PM -->|"remote_write 端口 19291"| RX["Receive"]
+  RX -->|"上传 TSDB 块"| BUCK2[(对象存储)]
+  Q["Querier"]
+  Q -->|"gRPC Store 端口 10901"| RX
+  Q --> SG["Store Gateway"]
+  SG --> BUCK2
 ```
 
-这里多租户配置涉及两个核心概念：
+#### T4.12.8.3、地址与端口
 
-**软租户（Soft Tenants）**
+`remote_write` 的 **URL** 和 `hashring.json` 里的 **endpoints** 不是同一种写法，配错会起不来。
 
-当 hashring 配置未显式指定 `tenants` 字段时，该 hashring 即被视为软租户 hashring。软租户 hashring 作为默认路由规则，接收所有未匹配到任何硬租户配置的远程写入请求。具体行为如下：
+| 写在哪里 | 填什么 | 端口 | 说明 |
+|----------|--------|------|------|
+| Prometheus **`remote_write` → `url`** | `http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive`（同命名空间可写 `http://thanos-receiver:19291/api/v1/receive`） | **19291** | 给 Prometheus 推数据，**HTTP** |
+| **`hashring.json` → `endpoints`** | 形如 `thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:10901` | **10901** | Receive 的 **`--grpc-address`**，给环内路由和复制用，**不要**写 `http://`、**不要**写 19291 |
 
-- 对于未在 HTTP 请求头中设置 `THANOS-TENANT` 字段的远程写入请求，Thanos Receiver 会将其路由至软租户 hashring
-- 请求中的数据点将自动附加默认租户 ID 作为 `tenant_id` 标签，该默认值可通过 `--receive.default-tenant-id` 启动参数配置（默认为 `default-tenant`）
-- 软租户模式适用于单租户场景或无需严格隔离的多租户场景，配置简单，但无法实现租户级别的数据隔离与权限控制
+`hashring.json` 的格式与上游示例一致，见 [Receive · Example](https://thanos.io/tip/components/receive.md/#example)。
 
-**硬租户（Hard Tenants）**
+#### T4.12.8.4、采集端选型
 
-硬租户需在 hashring 配置文件中通过 `tenants` 字段显式声明租户标识列表。Thanos Receiver 对硬租户请求的处理逻辑如下：
+**甲 / 乙** 只能二选一：要么保留 Sidecar 只当 reloader，要么只要 Prometheus 单容器。
 
-- 所有发往硬租户的远程写入请求，必须在 HTTP 请求头中携带 `THANOS-TENANT: <tenant-id>`，且 `<tenant-id>` 需与 hashring 配置中的某一项完全匹配
-- Receiver 接收到请求后，遍历已配置的硬租户列表，将请求路由至该租户对应的 Receiver 端点集合（endpoints）
-- 每个硬租户可配置多个 Receiver 端点，结合 `--receive.replication-factor` 参数可实现数据副本冗余，提升数据可靠性
-- 硬租户模式适用于多租户隔离场景，不同租户的数据在存储、查询、告警等链路中完全隔离，满足安全合规与资源配额管理需求
+| 甲：已有双容器（Prometheus + Sidecar） | 乙：只要 Receive（推荐新做这一条） |
+|----------------------------------------|-----------------------------------|
+| **删掉** Sidecar 的 **`--objstore.config-file`** 和对象存储 **Secret** 挂载，Sidecar 只保留渲染配置的用途 | **只有** Prometheus 容器，写好 **`remote_write`** |
+| Pod 若仍带标签 **`thanos-store-api: "true"`**，Querier 会**同时**查 Sidecar 和 Receive，要在 Query 配好去重（**`replica` / `receive_replica`** 等），见 [Query](https://thanos.io/tip/components/query.md/)、[External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels) | 查最近主要依赖 **Receive**，链路简单 |
 
-> **远程写入请求可经由任意 Receiver 实例接入，但会根据 Hashring 配置内部路由至该硬租户指定的存储端点。**
+路径乙建议继续打开 **`--web.enable-lifecycle`**，便于 **T4.3.1** 那套 reload。
 
-```bash
-                                  Soft tenant hashring
-                                 +-----------------------+
-                                 |                       |
-+-----------------+              |  +-----------------+  |
-|                 |              |  |                 |  |
-|  Load Balancer  +-------+      |  | Thanos receiver |  |
-|                 |       |      |  |                 |  |
-+-----------------+       |      |  +-----------------+  |
-                          |      |                       |
-                          |      |                       |
-                          |      |  +-----------------+  |
-                          |      |  |                 |  |
-                          +-------->+ Thanos receiver +-----------+
-                                 |  |                 |  |        |
-                                 |  +-----------------+  |        |
-                                 |                       |        |
-                                 +-----------------------+        |
-                                                                  |
-                                   Hard Tenant A hashring         |
-                                 +-----------------------+        |
-                                 |                       |        |
-                                 |  +-----------------+  |        |
-                                 |  |                 |  |        |
-                                 |  | Thanos receiver +<----------+
-                                 |  |                 |  |        |
-                                 |  +-----------------+  |        |
-                                 |                       |        |
-                                 |                       |        |
-                                 |  +-----------------+  |        |
-                                 |  |                 |  |        |
-                                 |  | Thanos receiver +<----------+
-                                 |  |                 |  |
-                                 |  +-----------------+  |
-                                 |                       |
-                                 +-----------------------+
-```
+**落地**：选定甲或乙后，按 **T4.12.8.7** 的 **第一步（ConfigMap）→ 第二步（路径清单）→ 第三步（发布）** 顺序操作；该节用表格与清单对应本节表格，避免跳读漏步。
 
-接下来我们来安装配置 Thanos Receiver 组件，现在我们的 Prometheus 数据是通过 Remote Write API 实时上传到 Receiver 组件上面去的，所以我们需要对 Receiver 组件进行数据持久化，然后指定 objstore 后可以将数据上传到对象存储中去，对应的资源清单文件如下所示：
+#### T4.12.8.5、生产要点
+
+上线前建议逐项核对：标签、保留策略、哈希环、RF、资源与告警责任等。
+
+- **标签**：Prometheus **`global.external_labels`** 要稳定；Receive 用 **`--label`** 增加 **`receive_replica`** 等，键名尽量用 **`receive_` 开头**，避免和 Prometheus 的 **`replica`** 混在一起（重名时 Receive 会覆盖推送里的标签），见 [External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels)。**`receive` 的 `--label` 必须是 Prometheus 标签写法、值要包在英文双引号里**；在 **`args` 里推荐整段用单引号包住**，例如 **`'--label=receive_replica="thanos-receiver-0"'`**。若写成 **`--label=receive_replica=thanos-receiver-0`**（无引号），启动会报 **`unquote label value`** / **`invalid syntax`**（与 [Thanos #2491](https://github.com/thanos-io/thanos/issues/2491) 同理）。  
+- **Receive 的 `--tsdb.retention`**：含义和普通 Prometheus **不一样**，涉及租户生命周期，见 [Tenant lifecycle management](https://thanos.io/tip/components/receive.md/#tenant-lifecycle-management)。下面 YAML 里 **`1d`** 只是练习规模，生产按缓冲和合规自己定。  
+- **哈希算法**：下面 JSON 已写 **`"algorithm": "ketama"`**，新环境建议固定用 Ketama；默认 **hashmod** 扩缩容时容易搅动序列，见 [Series distribution algorithms](https://thanos.io/tip/components/receive.md/#series-distribution-algorithms)。  
+- **复制因子 `RF`**：和副本数、hashring 要一起设计，见 [Quorum](https://thanos.io/tip/components/receive.md/#quorum)。不要只把 `replicas` 改成 3 却还把 **RF 留在 1** 当高可用。  
+- **在 Kubernetes 里维护 hashring**：副本多或要自动扩缩时，用 [Thanos Receive Controller](https://github.com/observatorium/thanos-receive-controller)（说明见 [hashring 与扩缩](https://thanos.io/tip/components/receive.md/#hashring-management-and-autoscaling-in-kubernetes)），比手改 ConfigMap 不容易出错。  
+- **资源**：生产务必给 Receive 配 **`resources`** 和足够 PVC；Prometheus **`remote_write` 队列**按 [Remote write tuning](https://prometheus.io/docs/practices/remote_write/) 调。需要限制单次写入体积时可了解 Receive 的 **limits/gates**（仍为实验能力），见 [Limits and gates](https://thanos.io/tip/components/receive.md/#limits--gates-experimental)。  
+- **告警**：仍走 **T4.11** 和 Alertmanager；Receive 不负责发告警。
+
+#### T4.12.8.6、部署顺序
+
+建议按下面顺序做；后面的 **`thanos-receive-hashring.yaml`**、**`receiver.yaml`** 紧跟本小节。
+
+1. 做完 **T4.12.6**（Secret、`thanos-objectstorage`、Store Gateway）。  
+2. 确认 **T4.12.3** 里的 **`discovery.yaml`** 已部署（**`thanos-store-apis`** Headless），否则 **T4.12.4** 里那条 **`dnssrv+_grpc._tcp.thanos-store-apis.kube-mon.svc.cluster.local`** 发现不到 Receive。  
+3. 依次 **`kubectl apply`**：本节的 **`thanos-receive-hashring.yaml`**，再 **`receiver.yaml`**。  
+4. 看 **T4.12.4** Querier 的 **Endpoints** 页面是否出现 Receive。  
+5. 按 **T4.12.8.7** 给 Prometheus 加上 **`remote_write`**；若走路径甲，同时去掉 Sidecar **`--objstore`**。  
+6. 按 **T4.12.8.9** 做自检。
+
+**`thanos-receive-hashring.yaml`**（**单副本**、**Ketama**；扩副本时要改 **全部** `endpoints`，并同步每个 Pod 的 **`--receive.local-endpoint`** 和 **`RF`**）：
 
 ```yaml
-# receiver.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thanos-receive-hashring
+  namespace: kube-mon
+data:
+  hashring.json: |
+    [
+      {
+        "algorithm": "ketama",
+        "endpoints": [
+          "thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:10901"
+        ]
+      }
+    ]
+```
+
+**`receiver.yaml`**（**`storageClassName`** 换成本集群 **StorageClass**；**生产请补全 `resources.limits/requests`**；**`--receive.local-endpoint`** 与 **`hashring.json` 中对应 Pod 的 `host:10901` 完全一致**）
+
+```yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  labels:
-    app: thanos-receiver
   name: thanos-receiver
   namespace: kube-mon
+  labels:
+    app: thanos-receiver
 spec:
+  serviceName: thanos-receiver
+  replicas: 1
   selector:
     matchLabels:
       app: thanos-receiver
-  serviceName: thanos-receiver
-  replicas: 1
   template:
     metadata:
       labels:
@@ -3643,35 +4377,21 @@ spec:
         thanos-store-api: "true"
     spec:
       containers:
-        - image: thanosio/thanos:v0.18.0
+        - name: thanos
+          image: thanosio/thanos:v0.41.0
           args:
             - receive
+            - --log.level=info
             - --grpc-address=0.0.0.0:10901
             - --http-address=0.0.0.0:10902
             - --remote-write.address=0.0.0.0:19291
             - --receive.replication-factor=1
+            - --receive.hashrings-file=/etc/thanos/hashring.json
             - --objstore.config-file=/etc/secret/thanos.yaml
             - --tsdb.path=/var/thanos/receiver
             - --tsdb.retention=1d
-            - --label=receive_replica="$(NAME)"
-            - --receive.local-endpoint=$(NAME).thanos-receiver.$(NAMESPACE).svc.cluster.local:10901
-          env:
-            - name: NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          livenessProbe:
-            failureThreshold: 8
-            httpGet:
-              path: /-/healthy
-              port: 10902
-              scheme: HTTP
-            periodSeconds: 30
-          name: thanos-receive
+            - '--label=receive_replica="thanos-receiver-0"'
+            - --receive.local-endpoint=thanos-receiver-0.thanos-receiver.kube-mon.svc.cluster.local:10901
           ports:
             - containerPort: 10901
               name: grpc
@@ -3679,33 +4399,38 @@ spec:
               name: http
             - containerPort: 19291
               name: remote-write
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            periodSeconds: 30
           readinessProbe:
-            failureThreshold: 20
             httpGet:
               path: /-/ready
-              port: 10902
-              scheme: HTTP
+              port: http
             periodSeconds: 5
           volumeMounts:
-            - mountPath: /var/thanos/receiver
-              name: data
-              readOnly: false
+            - name: data
+              mountPath: /var/thanos/receiver
             - name: object-storage-config
               mountPath: /etc/secret
-              readOnly: false
+              readOnly: true
+            - name: thanos-receive-hashring
+              mountPath: /etc/thanos
+              readOnly: true
       volumes:
         - name: object-storage-config
           secret:
             secretName: thanos-objectstorage
+        - name: thanos-receive-hashring
+          configMap:
+            name: thanos-receive-hashring
   volumeClaimTemplates:
     - metadata:
         name: data
-        labels:
-          app: thanos-receiver
       spec:
         storageClassName: openebs-jiva-default
-        accessModes:
-          - ReadWriteOnce
+        accessModes: ["ReadWriteOnce"]
         resources:
           requests:
             storage: 20Gi
@@ -3720,612 +4445,492 @@ spec:
   ports:
     - name: grpc
       port: 10901
-      targetPort: 10901
+      targetPort: grpc
     - name: http
       port: 10902
-      targetPort: 10902
+      targetPort: http
     - name: remote-write
       port: 19291
-      targetPort: 19291
+      targetPort: remote-write
   selector:
     app: thanos-receiver
 ```
 
-需要注意现在 Receiver 也变成了 Querier 组件的一个数据源了，所以这里我们给上面的 Pod 增加一个 `thanos-store-api: "true"` 的标签，这样可以让 Querier 自动发现这个 Pod。直接创建上面的资源清单即可：
-
 ```bash
+kubectl apply -f thanos-receive-hashring.yaml
 kubectl apply -f receiver.yaml
+kubectl rollout status statefulset/thanos-receiver -n kube-mon
+kubectl get pods,svc -n kube-mon -l app=thanos-receiver
 ```
 
-创建完成后可以得到我们的远程写 API 地址为：`http://thanos-receiver:19291/api/v1/receive`。
+#### T4.12.8.7、remote_write
 
-由于现在我们使用 Receiver 模式了，所以之前的 Sidecar 模式就不需要了，可以先将之前的 Sidecar 删除掉，其实现在我们的 Prometheus 变成了近乎无状态的了，只需要 Prometheus 应用本身，然后加上 remotewrite api 地址即可：
+本小节回答三件事：**ConfigMap 里怎么写**、**StatefulSet 走路径甲还是乙**、**改完怎么发布**。请先读完 **T4.12.8.6**（Receive 已就绪），再改 Prometheus。
 
-```bash
-# configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: prometheus-config
-  namespace: kube-mon
-data:
-  prometheus.yaml.tmpl: |
-    global:
-      scrape_interval: 15s
-      scrape_timeout: 15s
-      external_labels:
-        cluster: ydzs-test
-        replica: $(POD_NAME)  # 每个 Prometheus 有一个唯一的标签
+**与 T4.12.3 对齐的基准**（你合并成 **`prometheus-deploy.yaml`** 也行，改法相同）：
 
-    rule_files:  # 报警规则文件配置
-    - /etc/prometheus/rules/*rules.yaml
+| 对象 | 约定 |
+|------|------|
+| ConfigMap **`prometheus-config`** | 键 **`prometheus.yaml.tmpl`**（含 **`$(POD_NAME)`** 等占位） |
+| StatefulSet **`prometheus`** | 两容器时：`prometheus` + **`thanos` Sidecar**；共享卷 **`prometheus-config-shared`（emptyDir）**；进程读 **`--config.file=/etc/prometheus-shared/prometheus.yaml`** |
+| 谁生成 `prometheus.yaml` | 路径甲：**Sidecar reloader**；路径乙：**initContainer + envsubst**（见下文） |
 
-    # 指定 remote write 地址
-    remote_write:
-    - url: http://thanos-receiver:19291/api/v1/receive
+---
 
-    ......
-```
+**第一步：ConfigMap（路径甲、乙相同）**
 
-正常是不需要 Sidecar 容器了，这里我们为了用一个 StatefulSet 来运行两个 Prometheus 副本，借助 Sidecar 来帮我们渲染 prometheus.yaml.tmpl 模板文件(因为 Prometheus 本身是不支持环境变量替换的)，`这里的 Sidecar 仅作渲染用`，后续可以换成其他方式：
+在 **`prometheus.yaml.tmpl` 顶层**增加 **`remote_write`**，与 **`alerting:`、`scrape_configs:` 同级**（缩进与这两段对齐）。
+
+- **保留**原有 **`global` / `storage` / `rule_files` / `alerting` / `scrape_configs`**；**`scrape_configs` 仍是 T4.4～T4.8 全文**，不要用 `...` 占位。  
+- **`url`**：必须带 **`/api/v1/receive`**，端口 **19291**（见 **T4.12.8.3**）。同命名空间可写 `http://thanos-receiver:19291/api/v1/receive`。  
+- **应用**：`kubectl apply` 你维护 ConfigMap 的清单。生效依赖「模板是否已渲染成 **`/etc/prometheus-shared/prometheus.yaml`**」——路径甲靠 Sidecar，路径乙靠 init；见下文「第三步」。
+
+在 **`alerting:` 段落后**追加（可直接粘贴进现有 **`.tmpl`**，YAML 用两空格缩进）：
 
 ```yaml
-# sidecar.yaml
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: prometheus
-  namespace: kube-mon
-  labels:
-    app: prometheus
-spec:
-  serviceName: "prometheus"
-  replicas: 2
-  selector:
-    matchLabels:
-      app: prometheus
-  template:
-    metadata:
-      labels:
-        app: prometheus
-    spec:
-      serviceAccountName: prometheus
-      volumes:
-        - name: prometheus-config
-          configMap:
-            name: prometheus-config
-        - name: prometheus-rules
-          configMap:
-            name: prometheus-rules
-        - name: prometheus-config-shared
-          emptyDir: {}
-      containers:
-        - name: prometheus
-          image: prom/prometheus:v2.14.0
-          imagePullPolicy: IfNotPresent
-          args:
-            - "--config.file=/etc/prometheus-shared/prometheus.yaml"
-            - "--storage.tsdb.path=/prometheus"
-            - "--storage.tsdb.retention.time=6h"
-            - "--storage.tsdb.no-lockfile"
-            - "--storage.tsdb.min-block-duration=2h" # Thanos处理数据压缩
-            - "--storage.tsdb.max-block-duration=2h"
-            - "--web.enable-admin-api" # 通过一些命令去管理数据
-            - "--web.enable-lifecycle" # 支持热更新  localhost:9090/-/reload 加载
-          ports:
-            - name: http
-              containerPort: 9090
-          resources:
-            requests:
-              memory: "2Gi"
-              cpu: "1"
-            limits:
-              memory: "2Gi"
-              cpu: "1"
-          volumeMounts:
-            - name: prometheus-config-shared
-              mountPath: /etc/prometheus-shared/
-            - name: prometheus-rules
-              mountPath: /etc/prometheus/rules
-            - name: prometheus-config
-              mountPath: /etc/prometheus
-        - name: thanos
-          image: thanosio/thanos:v0.18.0
-          imagePullPolicy: IfNotPresent
+    remote_write:
+      - url: http://thanos-receiver.kube-mon.svc.cluster.local:19291/api/v1/receive
+        queue_config:
+          capacity: 10000
+          max_shards: 50
+          min_shards: 1
+          max_samples_per_send: 2000
+          batch_send_deadline: 5s
+```
+
+**调参与安全**：队列含义与调优见 [Remote write tuning](https://prometheus.io/docs/practices/remote_write/)、[`remote_write` 配置](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)。请求体过大时 Receive 可能 **413**，见 [Request limits](https://thanos.io/tip/components/receive.md/#remote-write-request-limits)。推送前改标签用 **`write_relabel_configs`**。生产 **TLS** 在 Receive 与 Prometheus 两侧分别配置，见 [Receive · Flags](https://thanos.io/tip/components/receive.md/#flags) 与 Prometheus **`tls_config`**。
+
+---
+
+**第二步：路径甲或路径乙（二选一）**
+
+与 **T4.12.8.4** 一致：要么 **Sidecar 只当 reloader + 删掉对象存储上传**，要么 **单容器 Prometheus**，不再跑 Sidecar。
+
+| 项目 | **路径甲** | **路径乙** |
+|------|------------|------------|
+| **Pod 形态** | 仍 **`prometheus` + `thanos`（Sidecar）** | **仅 `prometheus`** |
+| **Sidecar 是否上传块** | **否**（去掉 **`--objstore`** 与对象存储挂载） | 无 Sidecar |
+| **谁渲染 `prometheus.yaml.tmpl`** | Sidecar **reloader**（照旧） | **initContainer**（`envsubst`） |
+| **Querier 看「最近」** | Sidecar **与** Receive **都会**作为 Store（须会去重） | 主要靠 Receive |
+
+---
+
+**路径甲 · 操作清单**（适用于当前已是 **T4.12.3** 双容器、且带 **`--objstore`** 的清单）
+
+| 序号 | 做什么 |
+|------|--------|
+| 1 | ConfigMap：完成上文 **`remote_write`**。 |
+| 2 | **`thanos` 容器 `args`**：删除 **`--objstore.config-file=/etc/secret/thanos.yaml`** 仅此一行；其余 **`sidecar`、`--reloader.*`、`--tsdb.path`、`--prometheus.url`** 保留。 |
+| 3 | **`thanos` 容器 `volumeMounts`**：删除 **`object-storage-config` → `/etc/secret`**。 |
+| 4 | **`spec.volumes`**：删除 **`name: object-storage-config`**（全 Pod 无人再用时）。勿删 **`prometheus-config` / `prometheus-rules` / `prometheus-config-shared`**。 |
+| 5 | **顺序**：先确认 **Receive、hashring、桶（T4.12.6）、Querier（T4.12.4）** 正常，再 **`apply` ConfigMap / StatefulSet**，避免 WAL 因长期 **`remote_write` 失败** 顶满。 |
+| 6 | **滚动**：`kubectl rollout restart statefulset/prometheus -n kube-mon`（或按规范逐 Pod 重建）。 |
+| 7 | **日志**：`prometheus-0` 的 **`thanos`** 容器不应再持续报 **shipper / upload** 写桶失败；**`prometheus`** 容器不应持续报 **`remote_write`** 错误；UI **Status → Targets** 正常。 |
+| 8 | **Querier**：Endpoints 会同时看到 **Sidecar** 与 **Receive**。近期数据可能双路重叠，须结合 **T4.12.1.1、[External Labels](https://thanos.io/tip/thanos/storage.md/#external-labels)** 区分 **`replica`（Prom 副本）** 与 **`receive_*`（Receive 块标签）**；Query **去重**、**`--query.replica-label`** 按评审结论配置；排障可暂开 **Partial response**。 |
+
+**路径甲 · Sidecar `args` 改后示例**（无 **`--objstore`**）：
+
+```yaml
           args:
             - sidecar
-            - --log.level=debug
+            - --log.level=info
+            - --tsdb.path=/prometheus
+            - --prometheus.url=http://localhost:9090
             - --reloader.config-file=/etc/prometheus/prometheus.yaml.tmpl
             - --reloader.config-envsubst-file=/etc/prometheus-shared/prometheus.yaml
             - --reloader.rule-dir=/etc/prometheus/rules/
-          ports:
-            - name: http-sidecar
-              containerPort: 10902
-            - name: grpc
-              containerPort: 10901
+```
+
+---
+
+**路径乙 · 为何要多一个 init**
+
+删掉 Sidecar 后，**没有人**再执行 **reloader**。若 **`prometheus` 仍用** **`--config.file=/etc/prometheus-shared/prometheus.yaml`**，必须在 **主容器启动前** 把 **`prometheus.yaml.tmpl`** 渲染成该文件，否则 Prometheus 起不来。
+
+**做法**：在 **`fix-data-dir-permissions`** 之后、**`containers`** 之前增加 **`render-prometheus-config`**；挂载 **`prometheus-config`** 到只读目录（下文示例用 **`/etc/prometheus-src`**），输出写到 **`prometheus-config-shared/prometheus.yaml`**；**`POD_NAME`** 用 `fieldRef.metadata.name`，与 **T4.12.3** 一致。
+
+```yaml
+      initContainers:
+        - name: fix-data-dir-permissions
+          image: busybox:1.37
+          command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
+          volumeMounts:
+            - name: data
+              mountPath: /prometheus
+        - name: render-prometheus-config
+          image: alpine:3.20
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache gettext >/dev/null
+              export POD_NAME
+              envsubst < /etc/prometheus-src/prometheus.yaml.tmpl > /etc/prometheus-shared/prometheus.yaml
           env:
             - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
           volumeMounts:
-            - name: prometheus-config-shared
-              mountPath: /etc/prometheus-shared/
             - name: prometheus-config
-              mountPath: /etc/prometheus
-            - name: prometheus-rules
-              mountPath: /etc/prometheus/rules
+              mountPath: /etc/prometheus-src
+              readOnly: true
+            - name: prometheus-config-shared
+              mountPath: /etc/prometheus-shared
 ```
 
-重新创建 Prometheus：
+**路径乙 · 随后改 StatefulSet**
 
-```bash
-$ kubectl delete -f configmap.yaml
-$ kubectl delete -f sidecar.yaml
-$ kubectl apply -f configmap.yaml
-$ kubectl apply -f sidecar.yaml
-$ kubectl get pods -n kube-mon
-NAME                              READY   STATUS    RESTARTS   AGE
-alertmanager-86c756695f-b92zh     1/1     Running   0          38h
-dingtalk-hook-66c75955d-mjpdc     1/1     Running   0          38h
-grafana-67c7856c69-kjcvp          1/1     Running   0          23h
-node-exporter-gvbmd               1/1     Running   0          23h
-node-exporter-tx4p2               1/1     Running   0          166m
-node-exporter-wfp4j               1/1     Running   0          36h
-node-exporter-x8gjs               1/1     Running   0          27d
-prometheus-0                      2/2     Running   0          5m8s
-prometheus-1                      2/2     Running   0          5m1s
-thanos-compactor-0                1/1     Running   0          3h44m
-thanos-querier-77b47f7948-4sjhc   1/1     Running   0          3h9m
-thanos-receiver-0                 1/1     Running   0          40m
-thanos-store-gateway-0            1/1     Running   0          3h10m
-```
+1. **删除**整个 **`thanos` 容器**。  
+2. **`containers` 里只保留 `prometheus`**；其 **`volumeMounts`** 至少保留 **`prometheus-config-shared`、`prometheus-rules`、`data`**。  
+3. **`prometheus` 不必**再挂载 **`prometheus-config`**（可由 **init 独占**）。  
+4. **删除** **`object-storage-config`** 及所有相关 **`volumeMounts`**（若仍存在）。  
+5. **`serviceAccountName` / `securityContext` / PVC**：按原生产清单保留即可。
 
-部署完成后，Prometheus 就开始实时远程写入数据到 Receiver 去了，我们通过 Querier 的界面可以查看到现在发现的 Stores：
+**路径乙 · 标签与 `selector`（易踩坑）**
 
-![thanos12](./images/thanos12.png)
+若 **T4.12.3** 里 **`thanos-store-api: "true"`** 既在 **`spec.selector`** 又在 **Pod labels**：Querier 通过 **`thanos-store-apis`** 发现 Store。路径乙 **没有** Sidecar **10901**，若标签还在，会指向**无 gRPC Store 的 Pod**，查询异常。
 
-然后切换到 Graph 页面查询 `node_load1`，先去掉 `deduplication`：
+- **应做**：在 **`template.metadata.labels` 与 `spec.selector.matchLabels` 上同时去掉 `thanos-store-api`**，且 **selector 与 Pod 标签键值一致**。  
+- **限制**：已创建的 StatefulSet **不能改 `spec.selector`**。存量环境通常要 **换新 STS 名**（如 `prometheus-rw`）做切流，或规划 **短暂下线重建**；与平台变更流程对齐。
 
-![thanos13](./images/thanos13.png)
+**路径乙 · 离线 / 内网**：若 **`apk add gettext`** 不可行，改用**内置 `envsubst` 的内网镜像**，去掉示例里的 **`apk`** 行，只保留 **`export POD_NAME`** 与 **`envsubst`**。
 
+**路径乙 · 另一种工程化方式**：不用 **tmpl**，由 CI 生成最终 **`prometheus.yaml`** 进 ConfigMap，**`--config.file` 直挂该文件**；等价于重做 **T4.12.3** 的挂载方式，本文不展开。
 
+---
 
-可以看到已经查询到了两个 Prometheus 实例的数据，这证明我们数据已经成功上传到 Receiver 了，这里的数据其实是通过 Receiver 获取到的，然后勾选上 `deduplication` 后可以根据 `replica` 标签进行去重：
+**第三步：发布与热加载**
 
-![thanos14](./images/thanos14.png)
+- **`prometheus.yaml` 已出现在共享卷后**：若开了 **`--web.enable-lifecycle`**，可对 **9090** 发 **`POST /-/reload`**（同 **T4.3.1**）；否则 **`rollout restart`**。  
+- **双副本**：路径甲可由 Sidecar **watch** 模板；路径乙 **init 只在建 Pod 时跑一次**，**改 ConfigMap 后必须滚动全部 Prometheus Pod** 才会重新渲染。
 
-而且在 `NewUI` 中还可以根据 Store 来过滤要查询的数据，比如我们可以直接查询远程对象存储中的数据：
+#### T4.12.8.8、扩缩容
 
-![thanos15](./images/thanos15.png)
+扩 Receive 副本或改 **DNS** 时，**不能只改 `StatefulSet.replicas`**，须联动：
 
+- **`hashring.json` → `endpoints`**：每项为 **`主机:10901`（gRPC）**；**注意不要**写成 **`remote_write` 用的地址 `http://…:19291/...`**。  
+- **每个 Pod 的 `--receive.local-endpoint`**：须是 **`endpoints` 里的一条**（本 Pod 在环上的身份）。  
+- **`--label`**：与副本一一对应（如 **`'--label=receive_replica="thanos-receiver-0"'`**），便于 Query **dedup**；值两侧须有 **`"`**。  
+- **`--receive.replication-factor`**：与副本数、官方 **Quorum** 一起设计。
 
+多副本、弹性伸缩优先 **Thanos Receive Controller**（见 **T4.12.8.5**、[官方 hashring 与 K8s 扩缩](https://thanos.io/tip/components/receive.md/#hashring-management-and-autoscaling-in-kubernetes)）。多租户、**`THANOS-TENANT`** 头见 [Receive](https://thanos.io/tip/components/receive.md/)、[Multi-tenancy](https://thanos.io/tip/operating/multi-tenancy.md/)。
 
-此外我们还为 Receiver 配置了 StoreObject，正常一段时间（默认还是 2h）后 Receiver 组件也会把数据上传到对象存储中去。
+#### T4.12.8.9、自检
 
-![thanos16](./images/thanos16.png)
+| 查什么 | 合格标准 / 排错要点 |
+|--------|---------------------|
+| **Querier → Endpoints** | Receive（及 Store GW）为 **Up**。路径甲：Sidecar + Receive 双 Store，去重按 **T4.12.8.7 路径甲步骤 8** 与 **T4.12.8.4**。路径乙：应已去掉 **`thanos-store-api`** / 修正 **selector**，避免发现「假 Store」。 |
+| **Prometheus** | Targets 正常；日志无长期 **`remote_write` 失败**；WAL 持续增长时先调 **queue_config**、查网络与 **413**（见 **T4.12.8.7 第一步** 文档链）。 |
+| **Receive 日志** | 桶 **403/5xx** → 权限与 endpoint；**PVC 满** → 写失败。启动失败常见：**`hashring.json`** 与 **`--receive.local-endpoint`** 不一致。 |
+| **对象存储** | 运行一段时间后应有新对象；块上可见 **`receive_*`** 等与 **`--label`** 一致的标签。 |
+| **禁止** | 同一批业务序列：**Sidecar `--objstore` 上传** 与 **Receive `remote_write`** **不要**同时灌同一逻辑空间（见 **T4.12.8** 开篇「不要混写」）。 |
+| **乱序窗口** | 若开 **`--tsdb.out-of-order.time-window`**，Compactor 须支持 **vertical compaction**，否则压块可能卡住（见 Receive 说明与 **T4.12.7**）。 |
+
+![thanos_receive](./images/thanos_receive.png)
+
+![thanos_receive_single](./images/thanos_receive_single.png)
 
 ## T4.13、Prometheus Adapter
 
-Kubernetes 的核心优势之一是支持应用程序的水平弹性伸缩。**HorizontalPodAutoscaler（HPA）** 可根据资源使用指标（如 CPU、内存）或自定义业务指标自动调整 Pod 副本数量。
+HorizontalPodAutoscaler 仅基于 CPU、内存扩缩时，依赖 `metrics.k8s.io` 与 metrics-server 即可，与 Prometheus 无直接耦合，可省略本节。若需基于 Prometheus 中已存储的业务指标进行扩缩，则应部署 [prometheus-adapter](https://github.com/kubernetes-sigs/prometheus-adapter)：该组件按配置中的 rules 周期性访问 Prometheus 兼容的查询接口（本文对接 T4.12.4 的 Thanos Querier），将查询结果聚合后注册至 Custom Metrics API（`custom.metrics.k8s.io/v1beta1`），供 HorizontalPodAutoscaler 引用。HorizontalPodAutoscaler 语义以 [Horizontal Pod Autoscale](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) 为准；adapter 规则语法以 [config.md](https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md) 为准。
 
-> **重要更新**：`autoscaling/v2` 已在 Kubernetes 1.23+ 中成为**稳定版本**，推荐生产环境使用。`autoscaling/v2beta1` 和 `autoscaling/v2beta2` 已被废弃，请勿在新项目中采用。
+**版本约定**：适配器二进制见 [Releases](https://github.com/kubernetes-sigs/prometheus-adapter/releases)（截至文档编写时常见 v0.12.0）。Helm Chart 为 `prometheus-community/prometheus-adapter`，下文示例固定 Chart `5.3.0`。生产环境须在变更管理中锁定 `helm upgrade --install` 的 `--version`；升级前以 `helm search repo prometheus-community/prometheus-adapter --versions` 与组织审批版本对齐，不宜在生产省略 `--version` 而跟踪上游最新标签。
 
-### T4.13.1、自定义指标
+**本节解决什么问题**：在 T4.4～T4.8 抓取与 T4.12.4 Thanos Querier 已可用的前提下，补充 prometheus-adapter、rules 及 `autoscaling/v2` 的 HorizontalPodAutoscaler，使副本数随 `nginx_vts_server_requests_total` 经规则派生的 Pod 级速率指标变化。Custom Metrics API 中对外暴露的名称由 rules 中 `name.as` 等字段决定。
 
-除了基于 CPU 和内存来进行自动扩缩容之外，我们还可以根据自定义的监控指标来进行。这时我们要用到 `Prometheus Adapter`，Prometheus 用于监控应用的负载和集群本身的各种指标，`Prometheus Adapter` 可以帮我们使用 Prometheus 收集的指标，然后加以利用来制定扩展策略，这些指标都是通过 APIServer 暴露的，而且 HPA 资源对象也可以很轻易地直接使用。
+**和前面的关系**：示例资源位于命名空间 `kube-mon`。`prometheus.url` 配置 Thanos Querier 的 HTTP 基址（`http://thanos-querier.kube-mon.svc.cluster.local`），端口单独写 `prometheus.port: 9090`。rules 所引用的时间序列标签须与 T4.4 中 `kubernetes-endpoints` 的 relabel 结果一致，即 `kubernetes_namespace`、`kubernetes_pod_name`。集群内 `v1beta1.custom.metrics.k8s.io` 仅应由一套 adapter 注册；若 T4.14 已通过 kube-prometheus 等栈安装 adapter，则不应重复部署。
 
-![prometheus-adapter1](./images/prometheus-adapter1.png)
+**推荐操作顺序**：（1）部署可被 Prometheus 抓取的工作负载，并于 Thanos Querier 中确认时间序列存在；（2）安装 prometheus-adapter 并下发 rules；（3）以 `kubectl get apiservice`、`kubectl get --raw` 验证 Custom Metrics API；（4）创建 HorizontalPodAutoscaler，目标值与第（3）步 RAW 输出在数量级与单位上一致。
 
-首先，我们部署一个示例应用，测试通过 Prometheus 收集指标自动缩放，资源清单文件如下所示（hpa-prome-demo.yaml）：
+**扩展阅读**：亦可评估 [KEDA](https://keda.sh/) 与 [Prometheus Scaler](https://keda.sh/docs/latest/scalers/prometheus/) 作为替代路径。prometheus-adapter 维护与迁移讨论见 [Issue #701](https://github.com/kubernetes-sigs/prometheus-adapter/issues/701)。
+
+新建 HorizontalPodAutoscaler 应使用 `autoscaling/v2`；`autoscaling/v2beta1`、`autoscaling/v2beta2` 已废弃，不应写入新清单。
+
+| 配置项 | 取值或约束 |
+|--------|------------|
+| 查询端 | `prometheus.url` 不含端口；`prometheus.port: 9090` |
+| HorizontalPodAutoscaler | `apiVersion: autoscaling/v2`；`metrics[].type: Pods`；`metric.name` 与 `kubectl get --raw` 路径一致 |
+| 部署 adapter 前 | Thanos Querier 中已存在含 `kubernetes_namespace`、`kubernetes_pod_name` 的示例序列 |
+
+下图为 **T4.13** 与 **T4.4～T4.8、T4.12** 及 **资源类 HPA** 的对照关系：上方为指标如何进入 TSDB 并经 Thanos Querier 对外查询；中间为本节控制面；下方为仅使用 CPU/内存时的路径（metrics-server），与 Prometheus 无直接耦合。渲染器须支持 [Mermaid](https://mermaid.js.org/)（如 VS Code 插件、GitHub、部分静态站点生成器）。
+
+```mermaid
+flowchart TB
+  subgraph data["指标数据面 · T4.4～T4.8 与 T4.12"]
+    WL["工作负载与 Service\n（本章示例 kube-mon）"]
+    EP["Prometheus 任务\nkubernetes-endpoints"]
+    PM["Prometheus 抓取"]
+    TS["本机 TSDB"]
+    WL --> EP --> PM --> TS
+    TS -.->|"Sidecar / Store / Receive 等\n（详见 T4.12）"| Q["Thanos Querier\nHTTP :9090"]
+  end
+
+  subgraph ctrl["自定义指标扩缩控制面 · 本节"]
+    HPA["HorizontalPodAutoscaler\nautoscaling/v2 · Pods 指标"]
+    AGG["kube-apiserver 聚合层"]
+    CM["Custom Metrics API\ncustom.metrics.k8s.io\nAPIService v1beta1.custom..."]
+    AD["prometheus-adapter\nrules / PromQL"]
+    HPA --> AGG --> CM --> AD
+    AD -->|"prometheus.url + port\n与正文 values 一致"| Q
+  end
+
+  subgraph res["资源类扩缩 · 对照（非本节）"]
+    HPAr["HorizontalPodAutoscaler\nCPU / 内存"]
+    MK["Metrics API\nmetrics.k8s.io"]
+    MS["metrics-server"]
+    HPAr --> MK --> MS
+  end
+```
+
+说明：adapter **只**向 **Querier** 发查询；**rules** 中的 `seriesQuery` / `overrides` 须与 **T4.4** 产生的 `kubernetes_namespace`、`kubernetes_pod_name` 等标签一致，否则自定义 API 有数据而 **HorizontalPodAutoscaler** 仍为 unknown。
+
+### T4.13.1、示例
+
+于命名空间 `kube-mon` 部署 nginx-vts 示例；Service 注解须符合 T4.4 `kubernetes-endpoints` 抓取约定，指标路径为 `/status/format/prometheus`。须先在 Thanos Querier 中确认可查询 `nginx_vts_server_requests_total`，且标签包含 `kubernetes_namespace`、`kubernetes_pod_name`，方可继续 T4.13.2；否则应回到 T4.4 核对抓取与 relabel，不宜先行安装 prometheus-adapter。
+
+镜像 `cnych/nginx-vts:v1.0` 仅供随文演练，生产环境应替换为经组织批准的镜像。
+
+`hpa-adapter-demo.yaml`：
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hpa-prom-demo
+  name: hpa-adapter-demo
+  namespace: kube-mon
+  labels:
+    app: hpa-adapter-demo
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      app: nginx-server
+      app: hpa-adapter-demo
   template:
     metadata:
       labels:
-        app: nginx-server
+        app: hpa-adapter-demo
     spec:
       containers:
-        - name: nginx-demo
+        - name: nginx
           image: cnych/nginx-vts:v1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
           resources:
-            limits:
-              cpu: 50m
             requests:
               cpu: 50m
-          ports:
-            - containerPort: 80
-              name: http
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: hpa-prom-demo
+  name: hpa-adapter-demo
+  namespace: kube-mon
+  labels:
+    app: hpa-adapter-demo
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "80"
     prometheus.io/path: "/status/format/prometheus"
 spec:
+  type: ClusterIP
   ports:
-    - port: 80
-      targetPort: 80
-      name: http
+    - name: http
+      port: 80
+      targetPort: http
   selector:
-    app: nginx-server
-  type: NodePort
+    app: hpa-adapter-demo
 ```
-
-这里我们部署的应用是在 80 端口的 `/status/format/prometheus` 这个端点暴露 nginx-vts 指标的，前面我们已经在 Prometheus 中配置了 Endpoints 的自动发现，所以我们直接在 Service 对象的 `annotations` 中进行配置，这样我们就可以在 Prometheus 中采集该指标数据了。为了测试方便，我们这里使用 NodePort 类型的 Service，现在直接创建上面的资源对象即可：
 
 ```bash
-$ kubectl apply -f hpa-prome-demo.yaml
-deployment.apps/hpa-prom-demo created
-service/hpa-prom-demo created
-$ kubectl get pods -l app=nginx-server
-NAME                             READY   STATUS    RESTARTS   AGE
-hpa-prom-demo-755bb56f85-lvksr   1/1     Running   0          4m52s
-$ kubectl get svc
-NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
-hpa-prom-demo   NodePort    10.101.210.158   <none>        80:32408/TCP   5m44s
-......
+kubectl apply -f hpa-adapter-demo.yaml
+kubectl rollout status deployment/hpa-adapter-demo -n kube-mon
 ```
 
-部署完成后我们可以使用如下命令测试应用是否正常，以及指标数据接口能否正常获取：
+部署后确认指标端点可用：
 
 ```bash
-$ curl http://k8s.qikqiak.com:32408
-<!DOCTYPE html>
-<html>
-......
-</html>
-$ curl http://k8s.qikqiak.com:32408/status/format/prometheus
-......
-nginx_vts_server_requests_total{host="*",code="1xx"} 0
-nginx_vts_server_requests_total{host="*",code="2xx"} 32
-nginx_vts_server_requests_total{host="*",code="3xx"} 0
-nginx_vts_server_requests_total{host="*",code="4xx"} 0
-nginx_vts_server_requests_total{host="*",code="5xx"} 0
-nginx_vts_server_requests_total{host="*",code="total"} 32
-nginx_vts_server_request_seconds_total{host="*"} 0.000
-nginx_vts_server_request_seconds{host="*"} 0.000
-......
+kubectl -n kube-mon port-forward svc/hpa-adapter-demo 8080:80
+curl -sS http://127.0.0.1:8080/status/format/prometheus | head
 ```
 
-上面的指标数据中，我们比较关心的是 `nginx_vts_server_requests_total` 这个指标，表示请求总数，是一个 `Counter` 类型的指标，我们将使用该指标的值来确定是否需要对我们的应用进行自动扩缩容。
+在 Thanos Querier 中执行查询，确认 `nginx_vts_server_requests_total` 存在，且含 `kubernetes_namespace="kube-mon"`、`kubernetes_pod_name` 等标签。若不满足，应回到 T4.4 调整抓取与 relabel，不宜安装 prometheus-adapter。
 
-![prometheus-adapter2](./images/prometheus-adapter2.png)
+### T4.13.2、Rules 与 Helm 部署
 
-**安装 Prometheus-Adapter 并配置自定义指标**
+本节通过 Helm 部署 prometheus-adapter，并以 rules 声明指标来源与聚合方式：`seriesQuery` 选取 `nginx_vts_server_requests_total`；`metricsQuery` 中 `rate()` 将计数器转换为速率并按 Pod 聚合；`resources.overrides` 将 `kubernetes_namespace`、`kubernetes_pod_name` 映射至 Kubernetes 的 namespace、pod 资源，以便 Custom Metrics API 按 Pod 返回取值。字段说明见 [config.md](https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md)。
 
-将 Prometheus-Adapter 部署到 Kubernetes 集群后，可以通过配置规则将 Prometheus 中的任意指标暴露给 HPA（Horizontal Pod Autoscaler）使用。配置的核心是定义一个规则文件，让 Adapter 知道如何从 Prometheus 查询指标并将其映射为 Kubernetes 可用的自定义指标。
-
-以下是一个配置示例，详细说明可参考官方文档 [Prometheus-Adapter 配置说明](https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md)
+`hpa-prome-adapter-values.yaml`：
 
 ```yaml
-rules:
-  - seriesQuery: "nginx_vts_server_requests_total"
-    seriesFilters: []
-    resources:
-      overrides:
-        namespace: # 这里的namespace和pod_name是prometheus里面指标的标签
-          resource: namespace
-        pod_name:
-          resource: pod
-    name:
-      matches: "^(.*)_total"
-      as: "${1}_per_second"
-    metricsQuery: (sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>))
-```
+prometheus:
+  url: http://thanos-querier.kube-mon.svc.cluster.local
+  port: 9090
 
-**配置字段说明**
+metricsRelistInterval: 1m
 
-- **`seriesQuery`**：指定 Prometheus 查询语句，用于发现可用的指标。Adapter 会执行该查询，并将返回的所有指标系列（series）作为候选指标提供给 HPA。
-- **`seriesFilters`**：可选字段，用于过滤 `seriesQuery` 返回的指标系列。如果不需要过滤，留空即可。
-- **`resources`**：将 Prometheus 指标中的标签与 Kubernetes 资源类型关联，这是 Adapter 能够按 Pod、Namespace 等资源维度查询指标的关键。有两种定义方式：
-  - **`overrides`**：显式指定标签与 Kubernetes 资源的映射关系。示例中将指标中的 `namespace` 标签映射为 Kubernetes 的 `namespace` 资源，`pod_name` 标签映射为 `pod` 资源。这样在查询时，Adapter 会自动将目标 Pod 的名称和命名空间作为标签值传入查询语句。
-  - **`template`**：使用 Go 模板语法动态生成标签名。例如 `template: "kube_<<.Group>>_<<.Resource>>"` 会将指标中的 `kube_apps_deployment` 标签与 `apps` 组下的 `deployment` 资源关联。
-- **`name`**：用于重命名指标，通常是因为原始指标（如 `_total` 后缀的计数器）不适合直接用于 HPA，需要转换为速率等形式。
-  - **`matches`**：正则表达式匹配原始指标名，支持分组捕获。
-  - **`as`**：定义重命名后的指标名格式，默认为 `$1`（第一个分组）。示例中将 `_total` 后缀替换为 `_per_second`，更符合指标含义。
-- **`metricsQuery`**：定义实际的 PromQL 查询语句，用于获取某个具体指标的当前值。Adapter 在收到 HPA 请求时会执行该查询。查询语句中的占位符会被自动替换：
-  - `<<.Series>>`：当前指标名称。
-  - `<<.LabelMatchers>>`：基于 `resources` 关联生成的标签选择器，例如 `namespace="default", pod="my-pod"`。
-  - `<<.GroupBy>>`：用于聚合的标签，通常为 `pod` 或 `namespace`，由 `resources` 关联决定。
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
 
-示例中的查询语句计算了每个 Pod 在最近 1 分钟内的请求速率，并按 Pod 分组返回结果。
-
-接下来我们通过 Helm Chart 来部署 Prometheus Adapter，新建 `hpa-prome-adapter-values.yaml` 文件覆盖默认的 Values 值，内容如下所示：
-
-```yaml
 rules:
   default: false
   custom:
-    - seriesQuery: "nginx_vts_server_requests_total"
+    - seriesQuery: 'nginx_vts_server_requests_total{kubernetes_namespace!="",kubernetes_pod_name!=""}'
+      seriesFilters: []
       resources:
         overrides:
-          namespace:
+          kubernetes_namespace:
             resource: namespace
-          pod_name:
+          kubernetes_pod_name:
             resource: pod
       name:
         matches: "^(.*)_total"
         as: "${1}_per_second"
-      metricsQuery: (sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>))
-
-prometheus:
-  url: http://thanos-querier.kube-mon.svc.cluster.local
+      metricsQuery: sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>)
 ```
 
-这里我们添加了一条 rules 规则，然后指定了 Prometheus 的地址，我们这里使用了 Thanos 部署的 Promethues 集群，所以用 Querier 的地址。使用下面的命令一键安装：
-
 ```bash
-$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-$ helm repo update
-$ helm install prometheus-adapter prometheus-community/prometheus-adapter -n kube-mon -f hpa-prome-adapter-values.yaml
-NAME: prometheus-adapter
-LAST DEPLOYED: Mon Mar 29 18:52:44 2021
-NAMESPACE: kube-mon
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
-NOTES:
-prometheus-adapter has been deployed.
-In a few minutes you should be able to list metrics using the following command(s):
-
-  kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm upgrade --install prometheus-adapter prometheus-community/prometheus-adapter \
+  --version 5.3.0 \
+  -n kube-mon \
+  -f hpa-prome-adapter-values.yaml
+kubectl rollout status deployment/prometheus-adapter -n kube-mon
 ```
 
-安装完成后，可以使用下面的命令来检测是否生效了：
+示例中 Helm 使用 `--version 5.3.0`（与本文编写时一致）；生产环境应以审批版本为准，且须显式指定 `--version`，不得依赖未固定的上游最新 Chart。
+
+安装 adapter 后，须先确认 **Custom Metrics API 已就绪且能返回数字**，再写 HorizontalPodAutoscaler。若下面任一步失败，说明 adapter、规则或网络仍有问题，**不要**先下 HPA，否则 HorizontalPodAutoscaler 会一直拿不到指标（表现为 unknown）。
+
+| 顺序 | 做什么 | 通过时大致长什么样 |
+|------|--------|-------------------|
+| 1 | `kubectl get apiservice v1beta1.custom.metrics.k8s.io` | `AVAILABLE` 为 `True`，表示聚合层已把请求转到 adapter。 |
+| 2 | `kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1` | 返回的 API 列表里，出现 **`pods/…`** 一类资源名；本例规则下常见 `pods/nginx_vts_server_requests_per_second`（具体字符串随上面 `name.as`，不必与示例逐字相同）。 |
+| 3 | 见下方命令 | 返回 **JSON**，且其中对每个 Pod 有一条带 **`value`** 的记录，表示「该 Pod 在这项指标上的当前读数」。 |
+
+第 3 步命令（命名空间、指标名须与你的 rules / `name.as` 一致；本例为 `kube-mon` 与 `nginx_vts_server_requests_per_second`）：
 
 ```bash
-$ kubectl get pods -n kube-mon -l app=prometheus-adapter
-NAME                                  READY   STATUS    RESTARTS   AGE
-prometheus-adapter-58b559fc7d-l2j6t   1/1     Running   0          3m21s
-$  kubectl get --raw="/apis/custom.metrics.k8s.io/v1beta1" | jq
-{
-  "kind": "APIResourceList",
-  "apiVersion": "v1",
-  "groupVersion": "custom.metrics.k8s.io/v1beta1",
-  "resources": [
-    {
-      "name": "pods/nginx_vts_server_requests_per_second",
-      "singularName": "",
-      "namespaced": true,
-      "kind": "MetricValueList",
-      "verbs": [
-        "get"
-      ]
-    },
-    {
-      "name": "namespaces/nginx_vts_server_requests_per_second",
-      "singularName": "",
-      "namespaced": false,
-      "kind": "MetricValueList",
-      "verbs": [
-        "get"
-      ]
-    }
-  ]
-}
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/kube-mon/pods/*/nginx_vts_server_requests_per_second" |jq .
 ```
 
-我们可以看到 `nginx_vts_server_requests_per_second` 指标可用。 现在，让我们检查该指标的当前值：
+返回为 JSON；各字段以你环境 **`kubectl get --raw` 实际输出为准**，下面仅示意 **`items` 中应能读到带 `value` 的条目**（数值为虚构）：
 
-```bash
-$ kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pods/*/nginx_vts_server_requests_per_second" | jq .
+```json
 {
   "kind": "MetricValueList",
   "apiVersion": "custom.metrics.k8s.io/v1beta1",
-  "metadata": {
-    "selfLink": "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pods/%2A/nginx_vts_server_requests_per_second"
-  },
+  "metadata": {},
   "items": [
     {
       "describedObject": {
         "kind": "Pod",
-        "namespace": "default",
-        "name": "hpa-prom-demo-bbb6c65bb-jlc95",
+        "namespace": "kube-mon",
+        "name": "hpa-adapter-demo-6f665c889c-rjgxj",
         "apiVersion": "/v1"
       },
       "metricName": "nginx_vts_server_requests_per_second",
-      "timestamp": "2021-03-29T11:30:47Z",
-      "value": "355m",
+      "timestamp": "2026-04-10T05:43:19Z",
+      "value": "539m",
       "selector": null
     }
   ]
 }
 ```
 
-出现类似上面的信息就表明已经配置成功了，此外部署完成后还会添加一个 `APIService` 对象：
+要点：**`items[].value`** 是 Kubernetes 用字符串表示的 **Quantity**（有时带 `m` 等后缀，含义以该指标在 API 中的约定为准）。这就是 HorizontalPodAutoscaler 在比对时看到的「当前每个 Pod 的指标值」的数据来源。
 
-```bash
-$ kubectl get apiservice |grep adapter
-v1beta1.custom.metrics.k8s.io          kube-mon/prometheus-adapter   True        24h
-$ kubectl get apiservice v1beta1.custom.metrics.k8s.io -o yaml
-apiVersion: apiregistration.k8s.io/v1
-kind: APIService
-metadata:
-  name: v1beta1.custom.metrics.k8s.io
-  ......
-spec:
-  group: custom.metrics.k8s.io
-  groupPriorityMinimum: 100
-  insecureSkipTLSVerify: true
-  service:
-    name: prometheus-adapter
-    namespace: kube-mon
-    port: 443
-  version: v1beta1
-  versionPriority: 100
-......
-```
+**与 HorizontalPodAutoscaler 里 `averageValue` 的对应关系**：
 
-上面的这个 `APIService` 对象其实就是我们这里通过自定义 Metrics 来实现 HPA 的核心，通过这个对象来提供 `custom metrics API`。
+- 清单字段 **`metrics[].pods.target.averageValue`**（示例里写成 `"10"`）表示：你希望 **每个 Pod 在该指标上维持的大致目标水平**（与上面 RAW 里 **`value` 的单位、语义一致**，都是「每 Pod 一个数」）。
+- 控制器会把 **当前各 Pod 的指标** 与 **`averageValue` 比较** 来决定是否增减副本；因此 **`averageValue` 不能随手写一个数**，而应：先看第 3 步在**常态负载**下 `value` 大致是多少，再结合「希望略高/略低于多少时扩缩」设目标；示例中的 `"10"` 仅表示「每秒请求类指标的占位」，**须按你第 3 步实际看到的数量级改**，否则要么永远不触发、要么频繁抖动。
+- 若 `value` 与 `averageValue` 单位不一致（例如一处带 `m`、一处不带），比对会失真，故二者须在**同一套 Quantity 写法**下填写。
 
-当 HPA 请求 metrics 时，APIServer 聚合器会将请求转发到上面配置的 `prometheus-adapter` 服务，该服务实现了 Kubernetes resource metrics API 和 custom metrics API，它会根据配置的 rules 从 Prometheus 抓取并处理 metrics，处理（如重命名 metrics 等）完后将 metric 通过 `custom metrics API` 返回给 HPA。最后 HPA 通过获取的 metrics 的 value 对 Deployment/ReplicaSet 进行扩缩容。
+**约束**：不要改名 **`v1beta1.custom.metrics.k8s.io`** 对应的 APIService；同一集群不要装两套 prometheus-adapter，以免争抢同一 API 前缀。
 
-prometheus-adapter 作为 APIServer 的一个扩展，充当了代理 kube-apiserver 请求 Prometheus 的功能。
+### T4.13.3、HorizontalPodAutoscaler 验证
 
-> 需要注意的是 `v1beta1.custom.metrics.k8s.io` 是写在 `prometheus-adapter` 代码中的，因此不能任意改变。
+创建 HorizontalPodAutoscaler，并对示例 Deployment 施加负载以观察副本数变化。清单中 **`averageValue` 的填法见 T4.13.2 上一段**；`minReplicas`、`maxReplicas` 用于约束副本上下界。
 
-接下来我们部署一个针对上面的自定义指标的 HPA 资源对象，如下所示：
+`hpa-adapter.yaml`：
 
-```bash
-# hpa-prome.yaml
-apiVersion: autoscaling/v2beta1
+```yaml
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: nginx-custom-hpa
+  name: nginx-adapter-hpa
+  namespace: kube-mon
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: hpa-prom-demo
+    name: hpa-adapter-demo
   minReplicas: 2
   maxReplicas: 5
   metrics:
     - type: Pods
       pods:
-        metricName: nginx_vts_server_requests_per_second
-        targetAverageValue: 10
-        # m 除以 1000
-        # target 500 milli-requests per second,
-        # which is 1 request every two seconds
-        # targetAverageValue: 500m
+        metric:
+          name: nginx_vts_server_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "10"
 ```
-
-如果请求数超过每秒 10 个，则将对应用进行扩容。直接创建上面的资源对象：
 
 ```bash
-$ kubectl apply -f hpa-prome.yaml
-horizontalpodautoscaler.autoscaling/nginx-custom-hpa created
-$ kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       <none>
-CreationTimestamp:                                 Mon, 29 Mar 2021 19:32:37 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  <unknown> / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   0 current / 0 desired
-Events:                                            <none>
-[root@master1 install]# kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       <none>
-CreationTimestamp:                                 Mon, 29 Mar 2021 19:32:37 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  266m / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   2 current / 2 desired
-Conditions:
-  Type            Status  Reason              Message
-  ----            ------  ------              -------
-  AbleToScale     True    ReadyForNewScale    recommended size matches current size
-  ScalingActive   True    ValidMetricFound    the HPA was able to successfully calculate a replica count from pods metric nginx_vts_server_requests_per_second
-  ScalingLimited  False   DesiredWithinRange  the desired count is within the acceptable range
-Events:
-  Type    Reason             Age   From                       Message
-  ----    ------             ----  ----                       -------
-  Normal  SuccessfulRescale  21s   horizontal-pod-autoscaler  New size: 2; reason: Current number of replicas below Spec.MinReplicas
+kubectl apply -f hpa-adapter.yaml
+kubectl describe horizontalpodautoscaler/nginx-adapter-hpa -n kube-mon
 ```
 
-可以看到 HPA 对象已经生效了，新增了一个 Pod 副本：
+集群内加压示例：
 
 ```bash
-$ kubectl get pods -l app=nginx-server
-NAME                             READY   STATUS    RESTARTS   AGE
-hpa-prom-demo-755bb56f85-s5dzf   1/1     Running   0          67s
-hpa-prom-demo-755bb56f85-wbpfr   1/1     Running   0          3m30s
+kubectl run hpa-load --rm -i --restart=Never --image=curlimages/curl:8.12.1 -n kube-mon -- \
+  sh -c 'while true; do curl -sS "http://hpa-adapter-demo/" >/dev/null; done'
 ```
 
-接下来我们同样对应用进行压测：
+另起终端观察副本与指标。
+
+开两个终端，分别只 watch 一类资源：
 
 ```bash
-$ while true; do wget -q -O- http://k8s.qikqiak.com:32408; done
+kubectl get hpa -n kube-mon -w
+kubectl get pods -n kube-mon -l app=hpa-adapter-demo -w
 ```
 
-打开另外一个终端观察 HPA 对象的变化：
+**负载解除后为何不会立刻回到 `minReplicas`（与官方一致）**
 
-```bash
-$ kubectl get hpa
-NAME               REFERENCE                  TARGETS     MINPODS   MAXPODS   REPLICAS   AGE
-nginx-custom-hpa   Deployment/hpa-prom-demo   14239m/10   2         5         2          4m27s
-$ kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       <none>
-CreationTimestamp:                                 Mon, 29 Mar 2021 19:32:37 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  31874m / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   5 current / 5 desired
-Conditions:
-  Type            Status  Reason               Message
-  ----            ------  ------               -------
-  AbleToScale     True    ScaleDownStabilized  recent recommendations were higher than current one, applying the highest recent recommendation
-  ScalingActive   True    ValidMetricFound     the HPA was able to successfully calculate a replica count from pods metric nginx_vts_server_requests_per_second
-  ScalingLimited  True    TooManyReplicas      the desired replica count is more than the maximum replica count
-Events:
-  Type    Reason             Age    From                       Message
-  ----    ------             ----   ----                       -------
-  Normal  SuccessfulRescale  2m37s  horizontal-pod-autoscaler  New size: 2; reason: Current number of replicas below Spec.MinReplicas
-  Normal  SuccessfulRescale  50s    horizontal-pod-autoscaler  New size: 4; reason: pods metric nginx_vts_server_requests_per_second above target
-  Normal  SuccessfulRescale  35s    horizontal-pod-autoscaler  New size: 5; reason: pods metric nginx_vts_server_requests_per_second above target
-```
+HorizontalPodAutoscaler 由控制面控制器按周期执行（周期由集群 **kube-controller-manager** 的 `--horizontal-pod-autoscaler-sync-period` 决定，文档默认示例为 **15s**），并非实时连续调节，见 [Horizontal Pod Autoscale · How does a HorizontalPodAutoscaler work?](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#how-does-a-horizontalpodautoscaler-work)。
 
-可以看到指标 `nginx_vts_server_requests_per_second` 的数据已经超过阈值了，触发扩容动作了，副本数变成了 3，然后又扩容到了 5。
+在**缩容方向**，官方算法在真正下调副本前，会把最近一段时间内算出的「期望副本」记入历史，并在**缩容稳定窗口**内取其中的**较高值**再作决策，用于抑制指标抖动导致的反复删 Pod、再拉起（文档中称为近似 **rolling maximum**），见 [Algorithm details](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details) 与 [Stabilization window](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#stabilization-window)。**默认**下，`autoscaling/v2` 清单未写 `behavior` 时，与 `scaleDown` 合并的默认值里 **`stabilizationWindowSeconds` 为 300**（即 **5 分钟**），与 **kube-controller-manager** 参数 **`--horizontal-pod-autoscaler-downscale-stabilization` 的默认 5 分钟**一致；窗口内各周期推荐副本的取舍关系以上述官方「Configurable scaling behavior / Default behavior」为准，见 [Default behavior](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#default-behavior)。因此：**停止压测后，在指标已回落的前提下，仍可能要等待至多约一个稳定窗口量级的时间**，副本才会逐步向 `minReplicas` 靠拢，**属预期行为**，不是 adapter 或清单写错。
 
-![prometheus-adapter3](./images/prometheus-adapter3.png)
+**企业侧落地建议**
 
-如果需要更好的进行测试，我们可以使用一些压测工具，比如 ab、fortio 等工具。当我们中断测试后，默认 5 分钟过后就会自动缩容：
+| 要点 | 说明 |
+|------|------|
+| 验收与排障 | 压测结束后观察缩容时，**至少覆盖一个完整默认缩容稳定窗口**再下结论；配合 `kubectl describe horizontalpodautoscaler` 的 **Conditions / Events** 与指标是否仍高于目标。 |
+| 清单调参 | 在 **HorizontalPodAutoscaler** 中显式编写 **`spec.behavior.scaleDown`**（如 **`stabilizationWindowSeconds`**、**`policies`**、**`selectPolicy`**），使测试与生产行为可审计、可复现；字段语义与示例见官方 [Configurable scaling behavior](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#configurable-scaling-behavior) 与 [API 参考](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/#HorizontalPodAutoscalerSpec)。 |
+| 集群级参数 | **`--horizontal-pod-autoscaler-tolerance`**、**`--horizontal-pod-autoscaler-downscale-stabilization`** 等仅能通过 **kube-controller-manager** 配置；修改控制面参数须由**平台团队**按本企业**变更流程**在集群侧实施，与仅在业务命名空间内修改 HorizontalPodAutoscaler 清单**不是同一类变更**。 |
+| 与自定义指标 | 自定义指标仍适用同一套 HorizontalPodAutoscaler 算法。若希望负载停止后**更快缩容**，在缩短 **`stabilizationWindowSeconds`** 或收紧 **`scaleDown` policies** 之前，应先评估指标是否容易出现**短时尖峰或采样抖动**；窗口过短可能放大误判，需在**缩容灵敏度**与**稳定性**之间书面评审后再改。 |
 
-```bash
-$ kubectl describe hpa nginx-custom-hpa
-Name:                                              nginx-custom-hpa
-Namespace:                                         default
-Labels:                                            <none>
-Annotations:                                       kubectl.kubernetes.io/last-applied-configuration:
-                                                     {"apiVersion":"autoscaling/v2beta1","kind":"HorizontalPodAutoscaler","metadata":{"annotations":{},"name":"nginx-custom-hpa","namespace":"d...
-CreationTimestamp:                                 Tue, 07 Apr 2020 17:54:55 +0800
-Reference:                                         Deployment/hpa-prom-demo
-Metrics:                                           ( current / target )
-  "nginx_vts_server_requests_per_second" on pods:  533m / 10
-Min replicas:                                      2
-Max replicas:                                      5
-Deployment pods:                                   2 current / 2 desired
-Conditions:
-  Type            Status  Reason            Message
-  ----            ------  ------            -------
-  AbleToScale     True    ReadyForNewScale  recommended size matches current size
-  ScalingActive   True    ValidMetricFound  the HPA was able to successfully calculate a replica count from pods metric nginx_vts_server_requests_per_second
-  ScalingLimited  True    TooFewReplicas    the desired replica count is less than the minimum replica count
-Events:
-  Type    Reason             Age   From                       Message
-  ----    ------             ----  ----                       -------
-  Normal  SuccessfulRescale  23m   horizontal-pod-autoscaler  New size: 2; reason: Current number of replicas below Spec.MinReplicas
-  Normal  SuccessfulRescale  19m   horizontal-pod-autoscaler  New size: 3; reason: pods metric nginx_vts_server_requests_per_second above target
-  Normal  SuccessfulRescale  4m2s  horizontal-pod-autoscaler  New size: 2; reason: All metrics below target
-```
+若 Prometheus 或 Querier 部署于集群外，须将 values 中 `prometheus.url`、`prometheus.port` 调整为 adapter 所在网络可达的地址，并按 Chart 文档配置 TLS 与身份认证；`overrides` 键名仍须与实际指标标签一致。
 
-到这里我们就完成了使用自定义的指标对应用进行自动扩缩容的操作。如果 Prometheus 安装在我们的 Kubernetes 集群之外，则只需要确保可以从集群访问到查询的端点，并在 adapter 的部署清单中对其进行更新即可。在更复杂的场景中，可以获取多个指标结合使用来制定扩展策略。
+| 现象 | 建议排查 |
+|------|----------|
+| HorizontalPodAutoscaler 指标为 unknown | `kubectl get --raw` 是否返回数据；prometheus-adapter 日志；至 Thanos Querier 9090 连通性 |
+| RAW 有数据而 HorizontalPodAutoscaler 异常 | `overrides`、`seriesQuery` 与 T4.4 是否一致；清单中 `metric.name` 与 RAW 路径是否一致 |
+| `kubectl get --raw` 失败 | APIService；prometheus-adapter 的 Service、Endpoints、Pod、RBAC |
+| 替代方案 | [KEDA](https://keda.sh/)；[#701](https://github.com/kubernetes-sigs/prometheus-adapter/issues/701) |
 
 ## T4.14、Prometheus Operator
 

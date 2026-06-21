@@ -1,41 +1,95 @@
 {
+  "deployment_note": "键名与 kafkacli 命令行长选项一致（下划线）；须与 kafkacli -h、KafkaCli.py 模块头、分步示例（§0 术语与拓扑、§4 分步部署、§5 --batch）一致维护。KRaft（Kafka 3.3+）。示例拓扑：controller 192.168.47.140～142（node_id 1～3），broker 192.168.47.143～145（node_id 4～6）；生产环境通常在跳板机用 --target-host 或本文件 --batch 串行部署。同一集群内 node_id 须在全部 controller 与 broker 间全局唯一。--deploy controller 须必选 controller_scope、controller_listen_host（及可选 controller_listen_port，默认 9093；兼容旧键 controller_port）；cluster 首台空盘仅 generate_cluster_id，后续须 cluster_id 与 join_quorum。--deploy broker（Kafka 4.x）须 broker_listen_host（及可选 broker_listen_port，默认 9092）；脚本生成配置含 controller.listener.names 等以满足 kafka-storage；自定义 listeners 时在 extra_properties 补全映射。standalone/controller 的 cluster.id 须三选一。controller 须 metadata_log_dir 与 log_dirs；broker 须 log_dirs 与与仲裁一致的 cluster_id。bootstrap_server、bootstrap_controller 可与 Apache Kafka 一致使用逗号分隔多 host:port（运维子命令与 --status；无 kafka-home 时仅对首项 TCP 探测）。--batch 时 nodes[] 可含 ssh_user、ssh_port、ssh_key 等。",
   "kafka_home": "/opt/kafka",
   "user": "kafka",
   "group": "kafka",
-  "java_home": "/usr/lib/jvm/java-17-openjdk",
+  "java_home": "/usr/lib/jvm/java-21-openjdk",
   "log_dirs": "/var/kafka/logs",
   "metadata_log_dir": "/var/kafka/metadata-log",
-  "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093",
-  "controller_port": 9093,
+  "controller_quorum_bootstrap_servers": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093",
+  "controller_listen_host": "0.0.0.0",
+  "controller_listen_port": 9093,
   "listeners": "PLAINTEXT://0.0.0.0:9092",
-  "bootstrap_server": "broker1:9092",
+  "bootstrap_server": "192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092",
+  "bootstrap_controller": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093",
   "extra_properties": {
     "num.partitions": "3",
-    "default.replication.factor": "2"
+    "default.replication.factor": "3"
   },
   "nodes": [
     {
-      "target_host": "controller1",
+      "target_host": "192.168.47.140",
       "deploy": "controller",
+      "controller_scope": "cluster",
       "node_id": 1,
+      "advertised_host": "192.168.47.140",
+      "controller_listen_host": "0.0.0.0",
+      "controller_listen_port": 9093,
       "metadata_log_dir": "/var/kafka/metadata-log",
-      "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
+      "log_dirs": "/var/kafka/controller-log",
+      "generate_cluster_id": true,
+      "controller_quorum_bootstrap_servers": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
     },
     {
-      "target_host": "controller2",
+      "target_host": "192.168.47.141",
       "deploy": "controller",
+      "controller_scope": "cluster",
       "node_id": 2,
-      "cluster_id": "<从第一台 controller 输出获取>",
+      "advertised_host": "192.168.47.141",
+      "controller_listen_host": "0.0.0.0",
+      "controller_listen_port": 9093,
+      "cluster_id": "<从第一台 controller 部署输出或 meta 中获取，与集群一致>",
+      "join_quorum": true,
       "metadata_log_dir": "/var/kafka/metadata-log",
-      "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
+      "log_dirs": "/var/kafka/controller-log",
+      "controller_quorum_bootstrap_servers": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
     },
     {
-      "target_host": "broker1",
+      "target_host": "192.168.47.142",
+      "deploy": "controller",
+      "controller_scope": "cluster",
+      "node_id": 3,
+      "advertised_host": "192.168.47.142",
+      "controller_listen_host": "0.0.0.0",
+      "controller_listen_port": 9093,
+      "cluster_id": "<同上>",
+      "join_quorum": true,
+      "metadata_log_dir": "/var/kafka/metadata-log",
+      "log_dirs": "/var/kafka/controller-log",
+      "controller_quorum_bootstrap_servers": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
+    },
+    {
+      "target_host": "192.168.47.143",
       "deploy": "broker",
-      "node_id": 1,
-      "cluster_id": "<CLUSTER_ID>",
+      "node_id": 4,
+      "advertised_host": "192.168.47.143",
+      "broker_listen_host": "0.0.0.0",
+      "broker_listen_port": 9092,
+      "cluster_id": "<同上>",
       "log_dirs": "/var/kafka/logs",
-      "controller_quorum_bootstrap_servers": "controller1:9093,controller2:9093,controller3:9093"
+      "controller_quorum_bootstrap_servers": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
+    },
+    {
+      "target_host": "192.168.47.144",
+      "deploy": "broker",
+      "node_id": 5,
+      "advertised_host": "192.168.47.144",
+      "broker_listen_host": "0.0.0.0",
+      "broker_listen_port": 9092,
+      "cluster_id": "<同上>",
+      "log_dirs": "/var/kafka/logs",
+      "controller_quorum_bootstrap_servers": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
+    },
+    {
+      "target_host": "192.168.47.145",
+      "deploy": "broker",
+      "node_id": 6,
+      "advertised_host": "192.168.47.145",
+      "broker_listen_host": "0.0.0.0",
+      "broker_listen_port": 9092,
+      "cluster_id": "<同上>",
+      "log_dirs": "/var/kafka/logs",
+      "controller_quorum_bootstrap_servers": "192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
     }
   ]
 }
