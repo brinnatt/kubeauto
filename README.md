@@ -39,7 +39,7 @@ k8s 作为一个容器编排工具，发展之初，借用稳定可靠的 docker
 - k8s 版本 < 1.24 时，支持 docker/containerd
 - k8s 版本 >= 1.24 时，仅支持 containerd
 
-从 kubecli 发布 v0.9.1 开始，推荐使用 containerd，想进一步了解 containerd，可参考社区文档：
+从 kubecli 发布 v0.1.1 开始，推荐使用 containerd，想进一步了解 containerd，可参考社区文档：
 
 - 安装指南 https://github.com/containerd/cri/blob/master/docs/installation.md
 - 客户端 circtl 使用指南 https://github.com/containerd/cri/blob/master/docs/crictl.md
@@ -54,7 +54,7 @@ k8s 作为一个容器编排工具，发展之初，借用稳定可靠的 docker
 1、下载集群管理工具
 
 ```bash
-# wget https://github.com/brinnatt/kubeauto/releases/download/v0.9.1/kubecli-amd64
+# wget https://github.com/brinnatt/kubeauto/releases/download/v0.1.1/kubecli-amd64
 # mv kubecli-amd64 /usr/local/bin/kubecli
 # chmod +x /usr/local/bin/kubecli
 # kubecli -h
@@ -176,7 +176,7 @@ kubecli 把大部分依赖环境一起打包进了二进制，但 ansible_runner
 4.1、下载对应的 x64 或 arm64 构架的 kubecli 工具
 
 ```bash
-# wget https://github.com/brinnatt/kubeauto/releases/download/v0.9.1/kubecli-amd64
+# wget https://github.com/brinnatt/kubeauto/releases/download/v0.1.1/kubecli-amd64
 # mv kubecli-amd64 /usr/local/bin/kubecli
 # chmod +x /usr/local/bin/kubecli
 # kubecli -h
@@ -1292,6 +1292,8 @@ Calico 证书使用场景：
 > https://docs.tigera.io/calico/latest/operations/install-apiserver
 >
 > https://docs.tigera.io/calico/latest/operations/calicoctl/configure/kdd
+>
+> 说明（与 kubectl apply projectcalico.org/v3）：默认 etcd 存储安装不会在集群里注册 GlobalNetworkPolicy、HostEndpoint 等 CRD，因此 kubectl apply 这类清单会报 no matches for kind，但 calico-node 仍可正常运行。主机侧 Calico 策略请使用 calicoctl（本仓库下发的 /etc/calico/calicoctl.cfg 与证书）。使用 tools/k8stools/CalicoPolicyCli.py 时：所有子命令须显式 `--context`；`plan` / `validate` / `apply` / `delete` 须显式 `--traffic-layer`；Pod 层还须 `-n`；上述定位类参数仅能从命令行传入（脚本不读取对应环境变量，也不使用 kubectl 当前默认 context 代替）。traffic-layer 含 host/both 必须手写 `--executor calicoctl`（本模式）或 `--executor kubectl`（Kubernetes 数据存储且已装 CRD），并手写 `--interface` 或逐节点注解 `kubeauto.calico/host-interface`；脚本不提供 executor 自动推断。预演用 `plan`；calicoctl 路径不支持 `apply --dry-run=server`。详见该脚本 MAINTAINER_DOC 第 0、7、9 节。
 
 **创建 calico DaemonSet yaml 文件和 rbac 文件：**
 

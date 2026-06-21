@@ -6,7 +6,8 @@ import site
 import subprocess
 import shutil
 import ipaddress
-from typing import List, Tuple, Optional, Union, Sequence
+import re
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 from enum import Enum
 from pathlib import Path
 from .logger import setup_logger, LOG_STDOUT
@@ -158,6 +159,98 @@ def validate_ip(ip: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+_RE_IPV4_LAST_OCTET_RANGE = re.compile(
+    r"^(?P<prefix>(?:\d{1,3}\.){3})(?P<start>\d{1,3})-(?P<end>\d{1,3})$"
+)
+
+DEFAULT_MAX_HOST_EXPAND = 256
+
+
+def expand_host_target(token: str, *, max_hosts: int = DEFAULT_MAX_HOST_EXPAND) -> List[str]:
+    """
+    Expand one host token into concrete addresses.
+
+    Supported forms:
+      - Single host: 192.168.139.129 or hostname
+      - IPv4 last-octet range: 192.168.139.129-134
+    """
+    token = token.strip()
+    if not token:
+        return []
+
+    match = _RE_IPV4_LAST_OCTET_RANGE.match(token)
+    if not match:
+        return [token]
+
+    prefix = match.group("prefix")
+    start, end = int(match.group("start")), int(match.group("end"))
+    if start > end:
+        raise ValueError(f"Invalid host range '{token}': start octet > end octet")
+    count = end - start + 1
+    if count > max_hosts:
+        raise ValueError(
+            f"Host range '{token}' expands to {count} addresses (limit {max_hosts})"
+        )
+
+    ips = [f"{prefix}{octet}" for octet in range(start, end + 1)]
+    try:
+        for ip in ips:
+            ipaddress.IPv4Address(ip)
+    except ipaddress.AddressValueError as e:
+        raise ValueError(f"Invalid host range '{token}': {e}") from e
+    return ips
+
+
+def expand_host_targets(
+        tokens: Iterable[str],
+        *,
+        max_hosts: int = DEFAULT_MAX_HOST_EXPAND,
+) -> List[str]:
+    """Expand host tokens and deduplicate while preserving order."""
+    return list(dict.fromkeys(
+        host
+        for token in tokens
+        for host in expand_host_target(token, max_hosts=max_hosts)
+    ))
+
+
+def iter_pw_file_bindings(pw_data: Mapping[str, object]) -> Iterator[tuple[str, str]]:
+    """Yield (host_token, password) pairs from pw.json; tokens may include ranges."""
+    for key, value in pw_data.items():
+        if key.endswith("_password"):
+            if not isinstance(value, str):
+                continue
+            group = pw_data.get(key[:-9])
+            if not isinstance(group, list):
+                continue
+            yield from ((token, value) for token in group if isinstance(token, str))
+        elif isinstance(value, str):
+            yield key, value
+
+
+def parse_pw_file_host_passwords(
+        pw_data: Mapping[str, object],
+        *,
+        max_hosts: int = DEFAULT_MAX_HOST_EXPAND,
+) -> Dict[str, str]:
+    """Map each expanded host to its password from pw.json."""
+    return {
+        host: password
+        for token, password in iter_pw_file_bindings(pw_data)
+        for host in expand_host_target(token, max_hosts=max_hosts)
+    }
+
+
+def parse_pw_file_hosts(
+        pw_data: Mapping[str, object],
+        *,
+        max_hosts: int = DEFAULT_MAX_HOST_EXPAND,
+) -> List[str]:
+    """All hosts referenced in pw.json, expanded and deduped in order."""
+    tokens = (token for token, _ in iter_pw_file_bindings(pw_data))
+    return expand_host_targets(tokens, max_hosts=max_hosts)
 
 
 def get_host_ip() -> str:

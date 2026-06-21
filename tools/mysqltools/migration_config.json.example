@@ -1,0 +1,179 @@
+{
+  "_documentation": {
+    "_note": "本段仅作说明，程序运行时忽略。完整手册: python MigrationCli.py --guide",
+    "version_model": {
+      "reference": "https://dev.mysql.com/doc/refman/8.4/en/mysql-releases.html",
+      "lts": ["8.0.x (Bugfix)", "8.4.x (LTS)"],
+      "innovation": ["8.1~8.3 (EOL)", "9.0~9.6+ (quarterly GA)"],
+      "auto_detect": "连接源/目标后读取 VERSION()，无需手动指定 migration_path"
+    },
+    "expected_versions": {
+      "expected_source_version": "可选，前缀匹配 VERSION()，用于核对是否连对库，如 8.0.41 或 8.0",
+      "expected_target_version": "可选，同上，如 8.4.4 或 9.6"
+    },
+    "options": {
+      "dry_run": "预演: 连库预检+打印命令，不 dump/import",
+      "keep_dump_files": "true=保留 dump 文件；排障时建议 true",
+      "gtid_mode": "auto|off|on|commented — GTID 策略",
+      "replication_target": "true=目标为 GTID 从库",
+      "ssl_mode": "DISABLED|PREFERRED|REQUIRED",
+      "add_drop_table": "dump 含 DROP TABLE",
+      "force_overwrite": "目标库有表时仍迁移（慎用）",
+      "skip_target_empty_check": "跳过目标非空检查（慎用）",
+      "fix_definer": "true=DEFINER 改为 CURRENT_USER",
+      "compress_dump": "true=gzip 压缩 dump",
+      "per_table": "true=分表迁移(大库推荐)",
+      "max_workers": "多库并行任务数",
+      "max_workers_per_target_host": "同目标主机并发上限",
+      "dump_timeout": "mysqldump 超时秒数",
+      "import_timeout": "mysql 导入超时秒数",
+      "exact_row_count": "true=COUNT(*) 精确校验",
+      "row_count_threshold": "超过此行数用 information_schema 估算",
+      "row_count_tolerance_pct": "估算行数允许偏差%",
+      "rollback_on_failure": "失败时 DROP 目标库",
+      "report_dir": "JSON 审计报告目录",
+      "skip_version_check": "跳过客户端版本与策略提示"
+    },
+    "scenarios": {
+      "8.0到8.4": "8.0.41 -> 8.4.4，自动 lts_to_lts",
+      "8.4到9.6": "8.4.2 -> 9.6.0，自动 to_innovation",
+      "9.x系列内": "9.0.1 -> 9.6.0，自动 within_innovation_9",
+      "9.x降级8.4": "9.4.0 -> 8.4.4，自动 downgrade，先 structure_only",
+      "GTID搭从库": "replication_target=true, gtid_mode=auto"
+    }
+  },
+  "options": {
+    "gtid_mode": "auto",
+    "replication_target": false,
+    "ssl_mode": "PREFERRED",
+    "compress_dump": true,
+    "per_table": true,
+    "fix_definer": true,
+    "max_workers": 2,
+    "max_workers_per_target_host": 1,
+    "dump_timeout": 86400,
+    "import_timeout": 172800,
+    "exact_row_count": false,
+    "row_count_threshold": 10000000,
+    "row_count_tolerance_pct": 5.0,
+    "rollback_on_failure": false,
+    "report_dir": "./logs",
+    "net_read_timeout": 3600,
+    "net_write_timeout": 3600,
+    "disk_space_margin": 1.3
+  },
+  "migrations": [
+    {
+      "_comment": "示例1: 8.0.41 -> 8.4.4 普通业务库迁移 (LTS to LTS)",
+      "expected_source_version": "8.0",
+      "expected_target_version": "8.4",
+      "source": {
+        "host": "mysql80-source.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "business_db",
+        "mode": "structure_and_data"
+      },
+      "target": {
+        "host": "mysql84-target.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "business_db",
+        "mode": "structure_and_data"
+      },
+      "options": {
+        "force_overwrite": false,
+        "rollback_on_failure": true
+      }
+    },
+    {
+      "_comment": "示例2: GTID 复制 — 8.0 主库搭 8.4 从库",
+      "expected_source_version": "8.0.41",
+      "expected_target_version": "8.4",
+      "source": {
+        "host": "mysql80-master.example.com",
+        "port": 3306,
+        "user": "repl_migration",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "orders_db",
+        "mode": "structure_and_data"
+      },
+      "target": {
+        "host": "mysql84-replica.example.com",
+        "port": 3306,
+        "user": "repl_migration",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "orders_db",
+        "mode": "structure_and_data"
+      },
+      "options": {
+        "replication_target": true,
+        "gtid_mode": "auto",
+        "rollback_on_failure": true
+      }
+    },
+    {
+      "_comment": "示例3: 8.4.2 -> 9.6.0 升级至 Innovation",
+      "expected_source_version": "8.4",
+      "expected_target_version": "9.6",
+      "source": {
+        "host": "mysql84-source.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "analytics_db",
+        "mode": "structure_and_data"
+      },
+      "target": {
+        "host": "mysql96-target.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "analytics_db",
+        "mode": "structure_and_data"
+      }
+    },
+    {
+      "_comment": "示例4: 9.0.1 -> 9.6.0 Innovation 系列内升级",
+      "source": {
+        "host": "mysql90-source.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "app_db",
+        "mode": "structure_and_data"
+      },
+      "target": {
+        "host": "mysql96-target.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "app_db",
+        "mode": "structure_and_data"
+      }
+    },
+    {
+      "_comment": "示例5: 仅迁移表结构",
+      "expected_source_version": "8.0",
+      "expected_target_version": "8.4",
+      "source": {
+        "host": "mysql80-source.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_SOURCE_PASSWORD}",
+        "database": "staging_db",
+        "mode": "structure_only"
+      },
+      "target": {
+        "host": "mysql84-target.example.com",
+        "port": 3306,
+        "user": "migration_user",
+        "password": "${MYSQL_TARGET_PASSWORD}",
+        "database": "staging_db",
+        "mode": "structure_only"
+      }
+    }
+  ]
+}
