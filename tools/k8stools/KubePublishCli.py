@@ -36,6 +36,54 @@ MAX_PORT = 65535
 SSH_KEY_PERMISSIONS = 0o600  # SSH私钥文件权限要求
 
 
+def _env_for_system_subprocess():
+    """Return envvars so subprocess (ssh/scp/docker/nerdctl) use system libs, not the PyInstaller bundle.
+
+    Used when this script is run as a PyInstaller one-file binary on Linux (e.g. Kylin). Without this, ssh
+    can load libcrypto from the unpacked bundle and fail with "OPENSSL_1_1_1f not found".
+
+    Background
+    ----------
+    PyInstaller bundles the Python interpreter and shared-library dependencies (e.g. libcrypto, libssl)
+    from the build machine (the host where pyinstaller is run) into the executable. At runtime the bootloader extracts them to a temporary directory
+    (sys._MEIPASS, e.g. /tmp/_MEIxxxxxx) and prepends that path to LD_LIBRARY_PATH so the frozen process
+    can load those .so files. The original LD_LIBRARY_PATH is saved in LD_LIBRARY_PATH_ORIG.
+
+    References:
+    - What PyInstaller bundles and one-file extraction:
+      https://pyinstaller.org/en/stable/operating-mode.html
+    - Bootstrap: LD_LIBRARY_PATH_ORIG and prepend to LD_LIBRARY_PATH (GNU/Linux):
+      https://pyinstaller.org/en/stable/advanced-topics.html#the-bootstrap-process-in-detail
+
+    Why ssh sees the bundle's libcrypto
+    -----------------------------------
+    Subprocesses inherit the parent's environment. The chain is: this_script -> ssh/scp (or docker/nerdctl).
+    So ssh runs with LD_LIBRARY_PATH still pointing at _MEIPASS. The dynamic linker then loads
+    libcrypto from the bundle instead of the system. Host ssh (e.g. on Kylin) is built against the host's
+    OpenSSL and expects symbols like OPENSSL_1_1_1f from the host's libcrypto; the bundled libcrypto from
+    the build machine does not provide that symbol version, so ssh fails with "OPENSSL_1_1_1f not found".
+
+    Reference:
+    - Launching external programs and inherited library path:
+      https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application
+
+    Solution
+    --------
+    Before spawning ssh/scp or other system binaries, pass env that restores LD_LIBRARY_PATH from
+    LD_LIBRARY_PATH_ORIG (or set it to empty). Then the child processes use system libraries only; host ssh
+    and host libcrypto remain ABI-compatible.
+
+    Reference (official recipe):
+    - LD_LIBRARY_PATH / LIBPATH considerations:
+      https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
+    """
+    env = os.environ.copy()
+    if sys.platform.startswith("linux"):
+        lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
+        env["LD_LIBRARY_PATH"] = lp_orig if lp_orig is not None else ""
+    return env
+
+
 class InputValidator:
     """输入验证器"""
     
@@ -108,13 +156,14 @@ class RuntimeChecker:
 
     @staticmethod
     def check_runtime(runtime: str) -> bool:
-        """检查运行时是否可用"""
+        """检查运行时是否可用（打包后使用系统库，兼容麒麟，见 _env_for_system_subprocess）"""
         try:
             subprocess.run(
                 [runtime, "--version"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                check=True
+                check=True,
+                env=_env_for_system_subprocess()
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -155,10 +204,11 @@ class CommandRunner:
 
     @staticmethod
     def run(cmd, capture_output=True, check=False, timeout: Optional[int] = None, **kwargs):
-        """执行命令 - 支持 List/Tuple/str 类型"""
+        """执行命令 - 支持 List/Tuple/str 类型；未传 env 时使用 _env_for_system_subprocess 以兼容麒麟打包"""
         if not cmd:
             raise ValueError("命令为空")
-        
+        if "env" not in kwargs:
+            kwargs["env"] = _env_for_system_subprocess()
         # 处理命令类型：如果是字符串且没有指定 shell，转换为列表
         if isinstance(cmd, str):
             if not kwargs.get("shell"):

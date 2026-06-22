@@ -31,6 +31,53 @@ DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
+def _env_for_system_subprocess():
+    """Return envvars so subprocess (ssh/scp) use system libs, not the PyInstaller bundle.
+
+    Used when this script is run as a PyInstaller one-file binary on Linux (e.g. Kylin). Without this, ssh
+    can load libcrypto from the unpacked bundle and fail with "OPENSSL_1_1_1f not found".
+
+    Background
+    ----------
+    PyInstaller bundles the Python interpreter and shared-library dependencies (e.g. libcrypto, libssl)
+    from the build machine (the host where pyinstaller is run) into the executable. At runtime the bootloader extracts them to a temporary directory
+    (sys._MEIPASS, e.g. /tmp/_MEIxxxxxx) and prepends that path to LD_LIBRARY_PATH so the frozen process
+    can load those .so files. The original LD_LIBRARY_PATH is saved in LD_LIBRARY_PATH_ORIG.
+
+    References:
+    - What PyInstaller bundles and one-file extraction:
+      https://pyinstaller.org/en/stable/operating-mode.html
+    - Bootstrap: LD_LIBRARY_PATH_ORIG and prepend to LD_LIBRARY_PATH (GNU/Linux):
+      https://pyinstaller.org/en/stable/advanced-topics.html#the-bootstrap-process-in-detail
+
+    Why ssh sees the bundle's libcrypto
+    -----------------------------------
+    Subprocesses inherit the parent's environment. So ssh runs with LD_LIBRARY_PATH still pointing at _MEIPASS. The dynamic linker then loads
+    libcrypto from the bundle instead of the system. Host ssh (e.g. on Kylin) is built against the host's
+    OpenSSL and expects symbols like OPENSSL_1_1_1f from the host's libcrypto; the bundled libcrypto from
+    the build machine does not provide that symbol version, so ssh fails with "OPENSSL_1_1_1f not found".
+
+    Reference:
+    - Launching external programs and inherited library path:
+      https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application
+
+    Solution
+    --------
+    Before spawning ssh/scp, pass env that restores LD_LIBRARY_PATH from
+    LD_LIBRARY_PATH_ORIG (or set it to empty). Then the child processes use system libraries only; host ssh
+    and host libcrypto remain ABI-compatible.
+
+    Reference (official recipe):
+    - LD_LIBRARY_PATH / LIBPATH considerations:
+      https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
+    """
+    env = os.environ.copy()
+    if sys.platform.startswith("linux"):
+        lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
+        env["LD_LIBRARY_PATH"] = lp_orig if lp_orig is not None else ""
+    return env
+
+
 class CommandExecutionError(Exception):
     """命令执行异常"""
     pass
@@ -568,7 +615,7 @@ class SSHManager:
         # 直接传递命令字符串给 SSH，让远程 shell 执行
         ssh_cmd = ["ssh"] + self._build_ssh_options() + [f"{self.username}@{self.host}", cmd]
         try:
-            result = run_command(ssh_cmd, check=False, capture_output=True, timeout=timeout or 3600)
+            result = run_command(ssh_cmd, check=False, capture_output=True, timeout=timeout or 3600, env=_env_for_system_subprocess())
             if result.returncode == 0:
                 return True, result.stdout if result.stdout else ""
             else:
@@ -618,7 +665,7 @@ class SSHManager:
 
         scp_cmd = ["scp"] + scp_options + [str(src_path), f"{self.username}@{self.host}:{dst}"]
         try:
-            result = run_command(scp_cmd, check=False, capture_output=False, timeout=1800)
+            result = run_command(scp_cmd, check=False, capture_output=False, timeout=1800, env=_env_for_system_subprocess())
             return result.returncode == 0
         except Exception as e:
             logger.error("复制文件到远程失败 {} -> {}: {}".format(src, dst, e), extra={"to_stdout": True})
