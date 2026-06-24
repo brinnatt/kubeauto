@@ -8,9 +8,9 @@ WordPress 是一个免费的、开源的内容管理系统(CMS)，建立在 MySQ
 
 当然，我们下面使用 Docker 和 Docker Compose 来实现 WordPress 的搭建很方便，至于 Docker 是什么，这是一个当今流行且很大的话题。需要花一些时间学习，这里直接上手使用。
 
-接下来的教程中，我们将会安装 MySQL、Nginx、WordPress 以及 Certbot 4 个容器。Certbot 这个容器是用来给 WordPress 关联的域名申请 TLS/SSL 证书的，也就是实现 https 协议访问 WordPress 网站。
+接下来的教程中，我们将会安装 MySQL、Nginx、WordPress 以及 Certbot 4 个容器。Certbot 负责通过 [ACME](https://datatracker.ietf.org/doc/html/rfc8555) 协议向 [Let's Encrypt](https://letsencrypt.org/zh-cn/) 申请并续期 TLS 证书；Nginx 加载证书后对外提供 HTTPS，浏览器即可通过 `https://` 安全访问 WordPress。
 
-申请证书的机构是 [Let's Encrypt](https://letsencrypt.org/zh-cn/) 这个非盈利性证书颁发机构。每次申请的证书有效期是 3 个月，到期后需要重新申请，所以我们需要设置一个 cronjob 来 renew 证书，以保证我们域名的安全。
+证书由 Let's Encrypt（ISRG 运营的非营利性 CA）签发。按 [官方 FAQ](https://letsencrypt.org/zh-cn/docs/faq/)，每张证书有效期为 **90 天**（约 3 个月），不会自动延期。到期前需运行 `certbot renew` 续期，因此文末会配置 cron 定时任务。
 
 ## Y2、前提条件
 
@@ -28,7 +28,9 @@ WordPress 是一个免费的、开源的内容管理系统(CMS)，建立在 MySQ
 
 ## Y3、定义 Web 服务器配置
 
-在开始运行任何容器之前，首先就要定义好 Nginx Web 服务器的配置。该配置包括 WordPress 相关的代码块，还包括 Let's Encrypt 相关的代码块，用于将 Let 's Encrypt 验证请求直接发送到 Certbot 客户端，以实现自动证书更新。
+在开始运行任何容器之前，首先要定义好 Nginx 配置。配置需同时满足两件事：一是把 PHP 请求转发给 WordPress（php-fpm）；二是在 80 端口对外提供 ACME **HTTP-01** 挑战路径 `/.well-known/acme-challenge/`。
+
+理解 HTTP-01 的方向很重要：**Let's Encrypt 的验证服务器会主动访问你的站点**（公网 HTTP GET），而不是「把请求发给 Certbot」。Certbot 的 **webroot 验证插件**（`--webroot`，仅负责**获取**证书，属于 Authenticator，不修改 Nginx）把临时挑战文件写入 Web 根目录；Nginx 负责把这些文件提供给验证服务器。验证通过后，证书写入共享卷 `/etc/letsencrypt`，续期时重复同一流程。
 
 首先为 WordPress 创建一个专门的项目根目录，比如：
 
@@ -100,44 +102,39 @@ server {
 
 注意，要把 `your_domain` 替换成我们自己的域名。该 server 代码块的核心指令如下：
 
-+ `listen`：该指令告诉 nginx 监听在 80 端口，这将允许你使用 Certbot 的 webroot 插件来处理你的证书请求。注意，现在还没有包括端口 443。成功获得证书后，就可以更新配置以包括 SSL。
++ `listen`：在 80 端口监听 HTTP。[HTTP-01 挑战](https://datatracker.ietf.org/doc/html/rfc8555#section-8.3)要求 Let's Encrypt 能通过 HTTP（默认端口 80）访问 `http://<域名>/.well-known/acme-challenge/<token>`。此阶段尚未监听 443；证书签发并挂载到卷后，再增加 HTTPS `server` 块，并在 `listen` 上添加 `ssl` 参数（参见 [nginx HTTPS 配置](http://nginx.org/en/docs/http/configuring_https_servers.html)）。
 
-+ `server_name`：该指令定义多个主机名，第一个名字为虚拟主机的首要主机名。也就是响应用户请求的主机。请将 your_domain 替换成自己的域名。
++ `server_name`：声明本 `server` 块处理的虚拟主机名；请求中的 `Host` 头与之匹配时由该块处理。可写多个名字，第一个通常视为主名。请将 `your_domain` 替换为自己的域名。
 
-+ `index`：该指令定义响应客户请求的索引文件。该索引文件有前后顺序，优先响应前面的索引文件，如果不存在，搜索后面的文件。
++ `index`：当请求 URI 映射到目录时，按顺序尝试的默认文件名（参见 [index 指令](http://nginx.org/en/docs/http/ngx_http_index_module.html#index)）。
 
-+ `root`：该指令定义响应客户请求的 root 根目录。`/var/www/html` 这个目录是根据 WordPress Dockerfile 中的指令在构建时作为挂载点创建的。这些 Dockerfile 指令还确保来自 WordPress 发行版的文件被挂载到这个卷上。
++ `root`：请求 URI 的文件系统根目录。`/var/www/html` 与 WordPress 官方镜像的 Web 根及 Compose 中 `wordpress` 命名卷挂载点一致，Nginx 与 WordPress 容器通过同一卷共享站点文件。
 
-+ `location ~ /.well-known/acme-challenge`：该代码块将处理对 `.well-known` 目录的请求，Certbot 会在里面放置一个临时文件，用来验证可以通过 DNS 将您的域名解析到该服务器。有了该配置，您就可以使用 Certbot 的 webroot 插件来为您的域名获取证书。
++ `location ~ /.well-known/acme-challenge`：处理 ACME 挑战路径。`~` 表示正则匹配 location（参见 [location](http://nginx.org/en/docs/http/ngx_http_core_module.html#location)）。Certbot webroot 插件在 `{webroot}/.well-known/acme-challenge/` 写入临时文件；Let's Encrypt 验证服务器从公网发起 HTTP GET 读取内容，以证明你对域名有控制权（域名 A 记录需已解析到本机——验证机制是 HTTP，不是 DNS-01）。正则中未转义的 `.` 可匹配任意单字符；更严谨可用 `^~ /.well-known/acme-challenge/` 前缀匹配，本配置在生产中已验证可用。
 
-+ `location /`：在该代码块中，没有精确匹配的 location 都将匹配该代码块。try_files 指令工作流程如下。
-  + `$uri`：首先尝试直接访问请求的文件。
-    + 例如请求 `/about.html` → 查找 `/var/www/html/about.html`
-  + `$uri/`：如果上一步没找到，尝试作为目录访问
-    + 例如请求 `/blog/` → 查找 `/var/www/html/blog/index.php` (受 index 指令影响)
-  + `/index.php$is_args$args` - 如果前两步都失败，将请求转发给 index.php
-    + `$is_args`：如果原始请求有参数 `?xxx` 则添加 `?`，否则为空
-    + `$args`：保留原始请求参数
-    + 例如请求 `/non-existent-page` → 内部转发到 `/index.php?non-existent-page`
-+ `location ~ \.php$`：该代码块将会处理 PHP 动态请求，并代理这些请求给 WordPress 容器。因为您的 WordPress 容器镜像是基于 `php:fpm` 镜像，您还将在此代码块中包含特定于 FastCGI 协议的配置选项。Nginx 需要一个独立的 PHP 处理器来处理 PHP 请求。在本示例中，这些请求将由 php:fpm 镜像中的 php-fpm 处理器进行处理。
-  + `try_files $uri =404`：首先检查请求的 PHP 文件是否存在，如果不存在直接返回 404，防止任意代码执行漏洞。
-  + `fastcgi_split_path_info ^(.+\.php)(/.+)$`：正则表达式 `^(.+\.php)(/.+)$` 将请求路径分成两部分。
-    + `$fastcgi_script_name`：PHP 脚本路径 (如 /script.php)
-    + `$fastcgi_path_info`：路径信息 (如 /additional/path)
-  + `fastcgi_pass wordpress:9000`：指定 PHP-FPM 服务地址，这里使用 Docker 服务名 wordpress 和端口 9000
-  + `fastcgi_index index.php`：当请求指向目录时使用的默认 PHP 文件
-  + `include fastcgi_params`：包含 FastCGI 的标准参数文件
-  + 自定义 FastCGI 参数
-    + `SCRIPT_FILENAME`：告诉 PHP-FPM 要执行的文件完整路径
-    + `PATH_INFO`：传递路径信息给 PHP 脚本
++ `location /`：前缀匹配，处理其余路径。`try_files` 按顺序探测文件是否存在，均失败则**内部重定向**到最后一项（参见 [try_files](http://nginx.org/en/docs/http/ngx_http_core_module.html#try_files)）：
+  + `$uri`：按 URI 查找文件，如 `/about.html` → `/var/www/html/about.html`
+  + `$uri/`：当作目录查找，结合 `index` 尝试默认页，如 `/blog/` → `/var/www/html/blog/index.php`
+  + `/index.php$is_args$args`：内部重定向到 `index.php`，并保留原查询串
+    + `$is_args`：原 URL 带 `?` 时输出 `?`，否则为空
+    + `$args`：原查询参数（不含 `?`）
+    + 例：`/search?q=nginx` → 内部重定向为 `/index.php?q=nginx`；`/foo`（无查询串）→ `/index.php`
+    + WordPress 通过 FastCGI 环境变量（如 `REQUEST_URI`）识别用户原始路径，permalink 依赖此机制
 
-  另外，该代码块还包括 FastCGI 特定的指令、变量以及将代理请求给 WordPress 容器应用的选项，为解析过的请求 URI 设置首选索引，并解析 URI 请求。
++ `location ~ \.php$`：正则匹配以 `.php` 结尾的 URI，通过 **FastCGI** 转发给 PHP-FPM（非 HTTP 反向代理）。WordPress 镜像为 `php-fpm` 变体，监听 9000 端口；Nginx 作为 FastCGI 客户端，将 PHP 脚本路径等参数传给 FPM 进程执行（参见 [ngx_http_fastcgi_module](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html)）。
+  + `try_files $uri =404`：仅当对应 `.php` 文件真实存在时才交给 FPM，避免将任意 URI 当作脚本执行（常见安全加固，参见 nginx/PHP 部署实践）。
+  + `fastcgi_split_path_info ^(.+\.php)(/.+)$`：将 URI 拆成脚本部分与 PATH_INFO 部分，结果写入 `$fastcgi_script_name`、`$fastcgi_path_info`（参见 [fastcgi_split_path_info](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html#fastcgi_split_path_info)）。
+  + `fastcgi_pass wordpress:9000`：FastCGI 后端地址；`wordpress` 为 Compose 服务名，在 `app-network` 内通过内置 DNS 解析为容器 IP。
+  + `fastcgi_index index.php`：URI 以 `/` 结尾时补全的默认脚本名。
+  + `include fastcgi_params`：引入标准 FastCGI 参数集（含 `REQUEST_URI`、`QUERY_STRING` 等）。
+  + `fastcgi_param SCRIPT_FILENAME`：PHP-FPM 实际执行的文件绝对路径，通常为 `$document_root$fastcgi_script_name`。
+  + `fastcgi_param PATH_INFO`：传递给 PHP 的路径后缀信息（PATH_INFO 模式）。
 
-+ `location ~ /\.ht`：该代码块将处理 `.htaccess` 文件，因为 Nginx 不会为它们提供服务。`deny_all` 指令保证这些 `.htaccess` 文件永远不会服务给用户。
++ `location ~ /\.ht`：拒绝访问 `.htaccess` 等点开头文件。Nginx 不解析 Apache 的 `.htaccess`；`deny all` 拒绝所有客户端（参见 [deny](http://nginx.org/en/docs/http/ngx_http_access_module.html#deny)）。
 
-+ `location = /favicon.ico`，`location = /robots.txt`：这些代码块保证对 `/favicon.ico` 和 `/robots.txt` 的请求不会被记录进日志。
++ `location = /favicon.ico`，`location = /robots.txt`：`=` 为精确匹配。`log_not_found off` 与 `access_log off` 减少无意义日志。
 
-+ `location ~* \.(css|gif|ico|jpeg|jpg|js|png)$`：该代码块关闭了对静态资产请求的日志记录，并确保这些资产是高度可缓存的，因为通常它们提供服务的代价很大。
++ `location ~* \.(css|gif|ico|jpeg|jpg|js|png)$`：`~*` 为不区分大小写的正则匹配。`expires max` 将 `Expires` 设为 2037-12-31（nginx 对 `max` 的约定值），配合关闭访问日志，减轻静态资源开销。
 
 Nginx 配置就绪后，就可以继续创建环境变量，以便在运行时传递给应用程序和数据库。
 
@@ -147,7 +144,7 @@ Nginx 配置就绪后，就可以继续创建环境变量，以便在运行时�
 
 要设置的这些环境变量一般包含敏感和非敏感信息，像 MySQL 的用户名和密码就是敏感信息，主机名和地址算是非敏感信息。
 
-不建议在 Docker Compose 文件中设置这些重要的环境变量，而是在 `.env` 文件中设置敏感值并限制其流通。可以有效避免重要的信息泄漏出去。
+不建议把敏感凭据直接写在 `docker-compose.yml` 中，应放在项目根目录的 `.env` 里，并限制传播范围，降低泄漏风险。Compose 会自动读取同目录下的 `.env`，并用于替换 compose 文件中的 `$VAR` 插值（如 `$MYSQL_USER`）；`env_file: .env` 则把变量**注入容器进程环境**——两者作用不同（参见 [Compose 环境变量](https://docs.docker.com/compose/how-tos/environment-variables/)）。
 
 在项目的根目录 `~/wordpress` 下编辑 `.env` 文件：
 
@@ -237,11 +234,9 @@ services:
 
 + `volumes`：该示例会将名为 dbdata 的存储卷挂载到容器的 /var/lib/mysql 目录中，这是 MySQL 大多数发行版的标准数据库目录。
 
-+ `command`：该命令会覆盖镜像中默认的 CMD 指令。在某些特殊场景下，您需要为 Docker 镜像的标准 mysqld 命令添加一个选项，以便在容器中启动 MySQL 服务器。这里设置 default-authentication-plugin 系统变量为 mysql_native_password，指定应该使用哪种身份验证机制管理服务器的新身份验证请求。
++ `command`：覆盖镜像默认 `CMD`，向 `mysqld` 传入 `--default-authentication-plugin=mysql_native_password`。MySQL 8.0 默认 `caching_sha2_password`，而本文 WordPress/PHP 栈与 `mysql_native_password` 兼容性更好；该选项指定**新账户**的默认插件，已有账户不受影响（参见 [MySQL 身份验证文档](https://dev.mysql.com/doc/refman/8.0/en/authentication-plugins.html)）。
 
-  因为 PHP 和 WordPress 镜像不支持 MySQL 新版本默认身份验证，所以必须进行此调整，以便对应用程序数据库用户进行身份验证。
-
-+ `networks`：该指令告诉应用程序服务器自己将要添加到哪个网络，该示例是添加到 app-network 二层桥网络中。注意，app-network 二层桥需要定义在文件的全局。
++ `networks`：将容器接入 `app-network`。该网络在文件末尾以 `driver: bridge` 定义，属于 [Docker 用户自定义桥接网络](https://docs.docker.com/engine/network/drivers/bridge/)，同一网络上的容器可通过服务名 DNS 解析互相访问。
 
 接下来，在 db 服务的定义后面，加上 wordpress 应用程序服务的定义：
 
@@ -267,10 +262,10 @@ services:
 
 该服务的定义跟 db 服务定义很相似：
 
-+ `depends_on`：定义依赖关系，该示例定义 wordpress 服务依赖于 mysql 服务，因为 wordpress 的数据要保存到 mysql 数据库中，所示 mysql 服务就绪后，启动 wordpress 容器服务才有意义。
-+ image：该示例将使用 `wordpress:5.1.1-fpm-alpine` 镜像，正如我们前面所说的，php-fpm 处理器专门用来处理 PHP 动态请求；还有一个 alpine 镜像，该镜像来自于 [Alpine Linux project](https://alpinelinux.org/)，这将有助于控制整体镜像的大小。
-+ `env_file`：同样的，我们需要使用该指令获取 `.env` 文件中的环境变量，因为里面定义了应用程序数据库的用户名和密码。
-+ `environment`：我们使用的是在 `.env` 文件中定义的值，但是需要将这些值分配给 WordPress 镜像所期望的变量名：`WORDPRESS_DB_USER` 和 `WORDPRESS_DB_PASSWORD`。另外，我们还要额外定义 `WORDPRESS_DB_HOST` 变量，这是在 db 容器中运行的 MySQL 服务器监听的套接字，默认端口是 3306。`WORDPRESS_DB_NAME` 变量是指明 wordpress 应用程序将要使用到的数据库名，跟 db 服务定义中的 `MYSQL_DATABASE` 变量名一致。
++ `depends_on`：声明启动顺序。wordpress 依赖 **db** 服务（Compose 服务名，不是镜像名 `mysql`）。[Compose 文档](https://docs.docker.com/compose/how-tos/startup-order/)说明它只保证 db 容器先启动，**不等待** MySQL 完成初始化；若 WordPress 偶发连库失败，可配合 healthcheck 或应用重试。
++ image：使用 `wordpress:5.1.1-fpm-alpine`。`-fpm` 表示内置 **PHP-FPM**（FastCGI 进程管理器），由 Nginx 通过 FastCGI 协议转发 PHP 请求；`alpine` 基于 [Alpine Linux](https://alpinelinux.org/)，镜像体积更小。
++ `env_file`：从 `.env` 注入数据库凭据等变量。
++ `environment`：映射 WordPress 所需变量。`WORDPRESS_DB_USER`、`WORDPRESS_DB_PASSWORD` 引用 `.env` 中的值；`WORDPRESS_DB_HOST=db:3306` 是 **主机名:端口**（Compose 服务名 `db` 在 `app-network` 内可解析，3306 为 MySQL 默认端口），不是 Unix socket 路径；`WORDPRESS_DB_NAME` 与 db 服务中的 `MYSQL_DATABASE` 一致。
 + `volumes`：这里将取名为 wordpress 的存储卷挂载到由 wordpress 镜像创建的 /var/www/html 挂载点上。以这种方式使用命名存储卷将允许您与其他容器共享应用程序代码。
 + `networks`：同样地，将 wordpress 容器加入到 app-network 网络。
 
@@ -296,11 +291,11 @@ services:
 
 通过前面的服务定义学习，很容易理解该服务定义：
 
-+ ports：该容器服务将暴露 80 端口，启用在 nginx.conf 文件中定义的配置选项。
-+ `volumes`：该示例将结合使用命名存储卷和绑定挂载。
-  + `wordpress:/var/www/html`：该示例将把你的 WordPress 应用程序代码挂载到 nginx 容器的 /var/www/html 目录下，这个目录是你在 Nginx 服务器代码块中设置的根目录。
-  + `./nginx-conf:/etc/nginx/conf.d`：这将绑定宿主机上的 Nginx 配置目录挂载到容器上的相关目录，确保您对宿主机上的文件所做的任何更改都将反映到容器中。
-  + `certbot-etc:/etc/letsencrypt`：这将把您域名相关的 Let 's Encrypt 证书和密钥挂载到容器上的适当目录。
++ `ports`：将容器 80 映射到宿主机 80，对外提供 HTTP（ACME 挑战与后续 HTTPS 重定向均依赖此端口可达）。
++ `volumes`：命名卷与绑定挂载组合使用。
+  + `wordpress:/var/www/html`：与 WordPress 容器共享站点文件，对应 Nginx `root` 指令路径。
+  + `./nginx-conf:/etc/nginx/conf.d`：绑定挂载，宿主机改配置即可生效（需 `nginx -s reload` 或容器重建）。
+  + `certbot-etc:/etc/letsencrypt`：与 Certbot 共享证书目录；`live/<域名>/` 下的 `fullchain.pem`、`privkey.pem` 为符号链接，指向 `archive/` 中实际文件（Certbot 标准布局）。
 
 最后，在 webserver 服务的定义下面添加 certbot 服务定义。请务必将这里列出的电子邮件地址和域名替换为您自己的信息。
 
@@ -316,19 +311,22 @@ certbot:
     command: certonly --webroot --webroot-path=/var/www/html --email sammy@your_domain --agree-tos --no-eff-email --staging -d your_domain -d www.your_domain
 ```
 
-该定义告诉 Compose 从 Docker Hub 上拉取 certbot/certbot 镜像运行容器。这里同样用命名存储卷，并且与 nginx 容器共享资源，包括 certbot-etc 中的域名证书和密钥以及 wordpress 容器中的应用程序代码。
+该定义从 Docker Hub 拉取 `certbot/certbot` 镜像。Certbot 分两类插件（参见 [Certbot 用户指南](https://eff-certbot.readthedocs.io/en/stable/using.html)）：
++ **Authenticator（验证插件）**：证明域名控制权，本文用 `--webroot`
++ **Installer（安装插件）**：自动修改 Web 服务器配置以启用 HTTPS；本文用 `certonly`，**不**使用 Installer，由你手写 Nginx SSL 配置
 
-certbot 容器依赖 webserver 是必须的，如果 nginx 都没有启动，更新证书没有意义。
+命名卷 `certbot-etc` 与 `wordpress` 分别与 Nginx 共享证书目录和 Web 根，使挑战文件可被公网访问、证书可被 Nginx 加载。
 
-这里还包含了一个命令选项，它指定一个要与容器的默认 certbot 命令一起运行的子命令。certonly 子命令将获得一个具有以下选项的证书：
+`depends_on: webserver` 确保 Nginx 先启动并在 80 端口监听；webroot 模式下若 Web 服务器未运行，HTTP-01 验证无法完成。
 
-+ `--webroot`：这里告诉 Certbot 使用 webroot 插件将文件放在 webroot 文件夹中进行身份验证。该插件依赖于 [HTTP-01 验证方法](https://datatracker.ietf.org/doc/html/draft-ietf-acme-acme-03#section-7.2)，该方法使用 HTTP 请求来证明 Certbot 可以从响应给定域名的服务器访问资源。
-+ `--webroot-path`：这里指定 webroot 目录的路径。
-+ `--email`：指定首选邮箱用于注册和恢复。
-+ `--agree-tos`：这里指定您同意 [ACME’s Subscriber Agreement](https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf)。
-+ `--no-eff-email`：这里告诉 Certbot 您不希望共享电子邮件给 [Electronic Frontier Foundation](https://www.eff.org/) (EFF)。
-+ `--staging`：这里告诉 Certbot，您希望使用 Let 's Encrypt 的 staging 环境来获得测试证书。使用此选项允许您测试配置选项并避免可能的域请求限制。有关这些限制的更多信息，请阅读 Let’s Encrypt’s [rate limits documentation](https://letsencrypt.org/docs/rate-limits/)。
-+ `-d`：这允许您指定多个应用于请求证书的域名。在本例中，包含了 your_domain 和 www.your_domain。请确保将它们替换为您自己的域名。
+`command` 中的 `certonly` 子命令仅**获取或续期证书**，不修改 Nginx。各参数含义：
++ `--webroot`：使用 webroot 验证插件（Authenticator only）
++ `--webroot-path`：Web 根路径，须与 Nginx `root` 及卷挂载一致
++ `--email`：注册 ACME 账户的联系邮箱，用于到期通知等
++ `--agree-tos`：同意 [Let's Encrypt 订阅者协议](https://letsencrypt.org/documents/)
++ `--no-eff-email`：不向 EFF 分享邮箱（Certbot 可选营销邮件）
++ `--staging`：使用 Let's Encrypt **测试** CA，签发不被浏览器信任的测试证书，用于验证配置、避免触发生产环境 [速率限制](https://letsencrypt.org/docs/rate-limits/)
++ `-d`：证书 SAN 中的域名，可多次使用以覆盖多个主机名
 
 在 certbot 服务定义下面，添加您的网络和卷定义：
 
@@ -344,11 +342,9 @@ networks:
     driver: bridge
 ```
 
-在全局级别使用 volumes 关键字定义存储卷 certbot-etc、wordpress 和 dbdata。当 Docker 创建卷时，卷的内容存储在宿主机文件系统的 /var/lib/docker/volumes/ 目录中，该目录由 Docker 管理。然后将每个卷的内容从这个目录挂载到使用该卷的任何容器。通过这种方式，可以在容器之间共享代码和数据。
+在全局级别定义命名卷 `certbot-etc`、`wordpress`、`dbdata`。Docker 将卷数据存放在宿主机 `/var/lib/docker/volumes/` 下，由 Docker 管理生命周期；挂载到容器的路径由 Compose `volumes` 映射决定，从而实现跨容器共享。
 
-用户自定义的桥接网络 app-network 支持容器之间的通信，因为它们位于相同的 Docker 守护进程主机上。这简化了应用程序内的通信，因为它打开了同一桥接网络上容器之间的所有端口，而不向外界暴露任何端口。
-
-因此，您的 db、wordpress 和 webserver 容器可以相互通信，您只需要公开端口 80 来进行应用程序的前端访问。
+`app-network` 使用 `bridge` 驱动，创建用户自定义桥接网络（参见 [bridge 网络](https://docs.docker.com/engine/network/drivers/bridge/)）。同一网络上的容器可通过**服务名**（内置 DNS）互相访问任意端口，无需把 db、wordpress 的端口发布到宿主机；仅 webserver 的 80/443 需映射到宿主机供公网访问。
 
 下面是 docker-compose.yml 文件的全部内容：
 
@@ -447,7 +443,7 @@ Creating certbot   ... done
 $ docker-compose ps
 ```
 
-一但完成，您的 db、wordpress 和 webserver 服务都处于 Up 状态，并且 certbot 容器将退出并显示一个 0 状态消息。
+一旦完成，您的 db、wordpress 和 webserver 服务都处于 Up 状态，并且 certbot 容器将退出并显示一个 0 状态消息。
 
 ```bash
 Output
@@ -482,15 +478,11 @@ drwxr-xr-x    9 root     root          4096 May 10 15:45 ..
 drwxr-xr-x    2 root     root          4096 May 10 15:45 your_domain
 ```
 
-现在，您已经知道您的证书请求是成功的，您可以编辑 certbot 服务定义，移除 --staging 标识。
+certbot 为**一次性任务容器**：`certonly` 完成后进程退出，`Exit 0` 表示成功。证书写入共享卷 `certbot-etc`，webserver 通过同一卷在 `/etc/letsencrypt/live/` 读取。
 
-打开 docker-compose.yml 文件：
+测试证书验证流程无误后，编辑 `docker-compose.yml`，移除 `--staging`，改用 `--force-renewal` 向**生产 CA** 申请正式证书。按 [Certbot 文档](https://eff-certbot.readthedocs.io/en/stable/using.html)，`--force-renewal` 即使现有证书未临近到期也会强制重新申请，成功后更新 `live/` 符号链接指向新证书。
 
-```bash
-$ vim docker-compose.yml
-```
-
-找到 certbot 服务定义，将命令行中 --staging 标识替换成 --force-renewal 标识，它会告诉 Certbot，您想请求一个与现有证书具有相同域名的新证书。
+同时增加 `certbot-var:/var/lib/letsencrypt` 卷：存放 ACME 账户密钥、续期配置等元数据（`/etc/letsencrypt` 侧重证书与 `renewal/*.conf`），与仅挂载 `certbot-etc` 的首次定义相比更完整。
 
 以下是更新后的 certbot 服务定义：
 
@@ -509,7 +501,7 @@ $ vim docker-compose.yml
 ...
 ```
 
-您现在可以运行 docker-compose up 来重建 certbot 容器。您需要使用 --no-deps 选项来告诉 Compose 不需要重启 webserver 容器服务，因为 webserver 处理正常运行状态。
+您现在可以运行 docker-compose up 来重建 certbot 容器。`--no-deps` 避免重启依赖链上的其他服务；`--force-recreate` 强制用更新后的 `command` 创建新容器。webserver 保持运行即可，HTTP-01 仍由 Nginx 在 80 端口响应。
 
 ```bash
 $ docker-compose up --force-recreate --no-deps certbot
@@ -552,25 +544,27 @@ certbot      |
 certbot exited with code 0
 ```
 
+日志中 `Authenticator webroot, Installer None` 表示仅用 webroot 做域名验证，**未**使用 Installer 自动改 Nginx——与本文手写 SSL 配置的方式一致。
+
 现在证书已就位，接下来就可以配置 nginx 配置文件启用 SSL。
 
 ## Y7、修改 nginx 配置启用 SSL
 
-在 Nginx 配置中启用 SSL 需要添加一个 HTTP 重定向到 HTTPS，指定 SSL 证书和密钥位置，并添加安全参数和报头。
+在 Nginx 中启用 HTTPS 需要：保留 80 端口上的 ACME 路径（续期仍用 HTTP-01）；将其他 HTTP 请求重定向到 HTTPS；在 443 上配置 `ssl`、证书与推荐 TLS 参数。
 
-因为你要重新创建 webserver 服务来包含这些添加项，你现在可以停止它：
+重建 webserver 前可先停止，避免配置切换瞬间的异常响应：
 
 ```bash
 $ docker-compose stop webserver
 ```
 
-在修改配置文件之前，使用 curl 从 Certbot 中获取推荐的 Nginx 安全参数：
+从 Certbot 官方仓库获取推荐的 Nginx TLS 片段（与 certbot-nginx 插件使用的配置一致）：
 
 ```bash
 curl -sSLo nginx-conf/options-ssl-nginx.conf https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf
 ```
 
-这个命令将把这些参数保存在 nginx-conf 目录下的一个名为 options-ssl-nginx.conf 的文件中。
+该文件通常包含 `ssl_protocols`、`ssl_prefer_server_ciphers`、`ssl_session_cache` 等，由 Certbot 维护并与当前最佳实践对齐。
 
 接下来，删除你之前创建的 Nginx 配置文件：
 
@@ -658,13 +652,22 @@ server {
 }
 ```
 
-这里的 HTTP server 代码块为 Certbot 更新请求到 `.well-known/acme-challenge` 目录指定 webroot，还包括一个重写指令 [rewrite directive](http://nginx.org/en/docs/http/ngx_http_rewrite_module.html#rewrite)，将到根目录的 HTTP 请求导向 HTTPS。
+这里的 HTTP `server` 块保留 `/.well-known/acme-challenge`（证书续期仍依赖 HTTP-01）；`location /` 中的 `rewrite` 将其余 HTTP 请求 **301 永久重定向**到 HTTPS（参见 [rewrite](http://nginx.org/en/docs/http/ngx_http_rewrite_module.html#rewrite)）。替换串末尾的 `?` 表示不再追加原 `$args`（因 `$request_uri` 已含完整路径与查询串）。
 
-HTTPS server 代码块启用了 ssl 和 http2，还包括您的 SSL 证书和密钥位置，以及您保存在 nginx-conf/options-ssl-nginx.conf 中推荐的 Certbot 安全参数。
+HTTPS `server` 块要点：
++ `listen 443 ssl http2`：在 443 启用 SSL/TLS；`http2` 作为 `listen` 参数在 nginx 1.25.1+ 已弃用，应改用独立 `http2 on` 指令；本文使用 nginx 1.15.12，此写法正确且与当时官方示例一致。
++ `ssl_certificate` / `ssl_certificate_key`：分别指向**证书链**与**私钥** PEM 文件（参见 [ngx_http_ssl_module](http://nginx.org/en/docs/http/ngx_http_ssl_module.html)）。`fullchain.pem` 含叶子证书及中间证书（叶子在前）；`privkey.pem` 仅含私钥，须限制权限且 nginx master 进程可读。
++ `include options-ssl-nginx.conf`：引入 Certbot 维护的 TLS 参数片段。
++ `server_tokens off`：错误页不暴露 nginx 版本号。
 
-此外，包括一些安全头，将使您获得 A 评级的感受，如 [SSL Labs](https://www.ssllabs.com/ssltest/) 和  [Security Headers](https://securityheaders.com/) 服务器测试站点。这些头部包括  [`X-Frame-Options`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options), [`X-Content-Type-Options`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options), [`Referrer Policy`](https://scotthelme.co.uk/a-new-security-header-referrer-policy/), [`Content-Security-Policy`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy), and [`X-XSS-Protection`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection)。
+以下 `add_header` 为应用层安全响应头，与 TLS 配置互补，可用于 [SSL Labs](https://www.ssllabs.com/ssltest/)、[Security Headers](https://securityheaders.com/) 等检测：
++ [`X-Frame-Options`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options)：限制页面是否可被嵌入 iframe
++ [`X-Content-Type-Options`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options)：禁止 MIME 嗅探
++ [`Referrer-Policy`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy)：控制 Referer 泄露范围
++ [`Content-Security-Policy`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy)：限制资源加载来源（本文为 WordPress 兼容的宽松策略）
++ [`X-XSS-Protection`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection)：旧版浏览器 XSS 过滤提示，现代浏览器已逐步弃用，保留不影响主流浏览器
 
- [HTTP `Strict Transport Security`](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) (HSTS) 头部已注释，如果您明白其含义并且已评估它预加载的功能就可以启用它。
+[HSTS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security)（`Strict-Transport-Security`）已注释。启用后浏览器在 `max-age` 内强制 HTTPS；`includeSubDomains`、`preload` 影响子域及预加载列表，误配可能导致长时间无法通过 HTTP 访问，理解影响后再启用。
 
 在重建 webserver 服务之前，您需要添加一个 443 映射端口到您 webserver 服务定义中。
 
@@ -794,7 +797,7 @@ wordpress   docker-entrypoint.sh php-fpm     Up       9000/tcp
 
 ## Y9、更新证书
 
-Let's Encrypt 证书的有效期是 90 天。您可以设置一个自动更新流程，以确保它们不会失效。可以设置 cron 任务计划来更新证书并且重载 nginx 配置。
+Let's Encrypt 证书有效期 90 天。应配置自动续期，在到期前由 `certbot renew` 更新证书，并**重载 Nginx** 以加载新证书文件（证书路径不变，但磁盘内容已更新）。
 
 编辑 ssl_renew.sh 脚本文件：
 
@@ -815,12 +818,11 @@ $COMPOSE run certbot renew --dry-run && $COMPOSE kill -s SIGHUP webserver
 $DOCKER system prune -af
 ```
 
-该脚本首先分配 docker-compose 二进制路径给 COMPOSE 变量，并且指定 `--ansi never(老版本是--no-ansi)` 选项，它将运行没有 [ANSI control characters](https://vt100.net/docs/vt510-rm/chapter4.html) 的 docker-compose 命令。同样地，docker 二进制路径也设置变量。最后进入 `~/wordpress` 项目根目录并且运行下面 docker-compose 命令：
+该脚本设置 Compose 与 Docker 可执行文件路径；`--ansi never`（旧版 Compose 为 `--no-ansi`）避免 cron 邮件中出现 [ANSI 控制字符](https://vt100.net/docs/vt510-rm/chapter4.html)。`cd` 进入项目目录后执行：
 
-+ `docker-compose run`：这将启动 certbot 容器并覆盖 certbot 服务定义中提供的命令。这里使用的不是 certonly 子命令，而是 renew 子命令，它将更新即将过期的证书。还包括用于测试脚本的 `--dry-run` 选项。
-+ [`docker-compose kill`](https://docs.docker.com/engine/reference/commandline/compose_kill/)：这将向 webserver 容器发送一个 SIGHUP 信号来重新加载 Nginx 配置。
-
-然后执行 [`docker system prune`](https://docs.docker.com/engine/reference/commandline/system_prune/) 来删除所有未使用的容器和镜像。
++ `docker-compose run certbot renew`：`run` 启动一次性 certbot 容器并覆盖服务定义中的 `command`，执行 `renew` 子命令。按 [Certbot 文档](https://eff-certbot.readthedocs.io/en/stable/using.html)，`renew` **仅处理临近到期的证书**（Certbot 4.0+ 阈值为剩余寿命不足 1/3；更短寿命证书为 1/2；旧版为固定 30 天）。未到期时通常无操作，故可频繁调度。`--dry-run` 走完整流程但不保存证书，用于验证续期配置。
++ [`docker-compose kill -s SIGHUP`](https://docs.docker.com/engine/reference/commandline/compose_kill/)：向 webserver 主进程发送 **SIGHUP**，触发 nginx **优雅重载**配置与证书（参见 [nginx 控制](http://nginx.org/en/docs/control.html)），无需停容器。续期后必须重载，否则 nginx 可能仍使用旧证书。
++ [`docker system prune -af`](https://docs.docker.com/engine/reference/commandline/system_prune/)：清理未使用的容器、网络与镜像，释放磁盘（生产环境可按需调整频率）。
 
 给该脚本一个执行权限：
 
@@ -863,9 +865,9 @@ Congratulations, all renewals succeeded. The following certs have been renewed:
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ```
 
-> 注意：如果 certbot 容器正在运行，执行该脚本会出现 another container is running 的错误，需要使用 docker-compose 将 certbot 终止。实际上，certbot 的作用就是完成证书相关的任务，一旦完成，certbot 容器就该退出。
+> 注意：若 certbot 容器仍在运行，执行脚本可能出现 container name already in use。certbot 设计为任务型容器，证书操作完成后应已退出；若未退出，用 `docker-compose rm -f certbot` 清理后再跑续期。
 
-成功之后就可以将 `--dry-run` 选项从 ssl_renew.sh 脚本中移除掉：
+验证通过后移除 `--dry-run`，执行真实续期：
 
 ```bash
 #!/bin/bash
@@ -878,7 +880,7 @@ $COMPOSE run certbot renew && $COMPOSE kill -s SIGHUP webserver
 $DOCKER system prune -af
 ```
 
-另外，证书 90 天后才会过期，cron 任务计划没有必要每隔 5 分钟就执行一次，可以把时间间隔设置的更长一些，比如每天执行一次。
+证书 90 天才过期，cron 无需每 5 分钟执行；[Certbot 建议](https://eff-certbot.readthedocs.io/en/stable/using.html)每天运行两次 `renew` 即可（未到期时几乎无操作）。下面改为每天 08:08 执行：
 
 ```bash
 8 8 * * * /home/sammy/wordpress/ssl_renew.sh >> /var/log/cron.log 2>&1
