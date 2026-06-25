@@ -234,9 +234,15 @@ class DockerManager:
 
         logger.info(f"Downloading {label}", extra=LOG_STDOUT)
         try:
-            run_command(["wget", "-c", "--no-check-certificate", url, "-O", str(dest)])
+            run_command(
+                ["wget", "-c", "--no-check-certificate", url, "-O", str(dest)],
+                capture_output=False,
+            )
         except CommandExecutionError:
-            run_command(["curl", "-k", "-C-", "-o", str(dest), url])
+            run_command(
+                ["curl", "-k", "-C-", "-o", str(dest), url],
+                capture_output=False,
+            )
 
         if executable:
             run_command(["chmod", "+x", str(dest)])
