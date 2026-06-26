@@ -152,14 +152,14 @@ class KubeConstant:
     def docker_compose_bin_url(self, version: str) -> str:
         suffix = self._docker_plugin_arch()["compose"]
         return (
-            f"https://github.com/docker/compose/releases/download/v{version}/"
+            f"https://v6.gh-proxy.org/https://github.com/docker/compose/releases/download/v{version}/"
             f"docker-compose-linux-{suffix}"
         )
 
     def docker_buildx_bin_url(self, version: str) -> str:
         suffix = self._docker_plugin_arch()["buildx"]
         return (
-            f"https://github.com/docker/buildx/releases/download/v{version}/"
+            f"https://v6.gh-proxy.org/https://github.com/docker/buildx/releases/download/v{version}/"
             f"buildx-v{version}.linux-{suffix}"
         )
 
