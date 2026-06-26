@@ -5,9 +5,18 @@ from common.os import SystemProbe
 @dataclass
 class KubeConstant:
     # kubernetes ecosystem components version
-    v_docker: str = field(default="28.0.4", metadata={
+    v_docker: str = field(default="29.6.0", metadata={
         "refer_bin": "https://docs.docker.com/engine/install/binaries/",
-        "refer_docs": "https://docs.docker.com/manuals/"
+        "refer_docs": "https://docs.docker.com/manuals/",
+        "description": "Engine 29.6.0; CLI plugins paired via v_docker_compose / v_docker_buildx",
+    })
+    v_docker_compose: str = field(default="5.1.4", metadata={
+        "refer_github": "https://github.com/docker/compose/releases",
+        "description": "CLI plugin paired with v_docker",
+    })
+    v_docker_buildx: str = field(default="0.35.0", metadata={
+        "refer_github": "https://github.com/docker/buildx/releases",
+        "description": "CLI plugin paired with v_docker",
     })
     v_docker_registry: str = field(default="2", metadata={
         "refer_hub": "https://hub.docker.com/_/registry",
@@ -125,9 +134,34 @@ class KubeConstant:
         """用于 @dataclass 自动生成的 __init__ 后执行额外逻辑"""
         self.arch = SystemProbe().system_info["machine"]
 
+    _DOCKER_PLUGIN_ARCH = {
+        "x86_64": {"compose": "x86_64", "buildx": "amd64"},
+        "aarch64": {"compose": "aarch64", "buildx": "arm64"},
+    }
+
     def docker_bin_url(self, version):
         url = f"https://mirrors.aliyun.com/docker-ce/linux/static/stable/{self.arch}/docker-{version}.tgz"
         return url
+
+    def _docker_plugin_arch(self) -> dict:
+        suffixes = self._DOCKER_PLUGIN_ARCH.get(self.arch)
+        if not suffixes:
+            raise RuntimeError(f"Unsupported architecture for Docker CLI plugins: {self.arch}")
+        return suffixes
+
+    def docker_compose_bin_url(self, version: str) -> str:
+        suffix = self._docker_plugin_arch()["compose"]
+        return (
+            f"https://v6.gh-proxy.org/https://github.com/docker/compose/releases/download/v{version}/"
+            f"docker-compose-linux-{suffix}"
+        )
+
+    def docker_buildx_bin_url(self, version: str) -> str:
+        suffix = self._docker_plugin_arch()["buildx"]
+        return (
+            f"https://v6.gh-proxy.org/https://github.com/docker/buildx/releases/download/v{version}/"
+            f"buildx-v{version}.linux-{suffix}"
+        )
 
     @property
     def component_images(self):

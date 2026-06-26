@@ -70,8 +70,9 @@ class DockerManager:
         """Install Docker"""
         version = version or self.kube_constant.v_docker
         self._download_docker(version)
+        self._download_docker_cli_plugins()
         self._install_docker_binaries(version)
-        self._install_docker_compose_plugin()
+        self._install_docker_cli_plugins()
         self._configure_docker(version)
         self._start_docker_service(version)
 
@@ -163,15 +164,20 @@ class DockerManager:
                 run_command(["rm", "-rf", str(self.docker_bin_dir)])
                 logger.debug(f"Docker binary dir has been deleted: {self.docker_bin_dir}")
 
-            compose_plugin = self.docker_compose_plugin_dir / "docker-compose"
-            if compose_plugin.is_symlink():
+            for plugin_name in ("docker-compose", "docker-buildx"):
+                plugin_path = self.docker_compose_plugin_dir / plugin_name
+                if not plugin_path.is_symlink():
+                    continue
                 try:
-                    target = compose_plugin.resolve()
-                    if str(target).startswith(str(self.extra_bin_dir)):
-                        compose_plugin.unlink()
-                        logger.debug(f"Docker Compose plugin symlink removed: {compose_plugin}")
+                    target = plugin_path.resolve()
+                    if (
+                        str(target).startswith(str(self.extra_bin_dir))
+                        or str(target).startswith(str(self.docker_bin_dir))
+                    ):
+                        plugin_path.unlink()
+                        logger.debug(f"Docker CLI plugin symlink removed: {plugin_path}")
                 except (OSError, RuntimeError) as e:
-                    logger.debug(f"Failed to remove Compose plugin symlink: {e}")
+                    logger.debug(f"Failed to remove CLI plugin symlink {plugin_path}: {e}")
         except Exception as e:
             logger.warning(f"Failed to delete Docker binary dir: {str(e)}")
 
@@ -219,27 +225,56 @@ class DockerManager:
 
         logger.info(f"Residual Docker (was {docker_version}) cleaned.", extra=LOG_STDOUT)
 
-    def _download_docker(self, version: str) -> None:
-        """
-        Download Docker binary
-        """
-        # ensure image_dir exists
-        self.image_dir.mkdir(parents=True, exist_ok=True)
-
-        docker_tgz = self.image_dir / f"docker-{version}.tgz"
-        if docker_tgz.exists():
-            logger.warning("Docker binary exists already", extra=LOG_STDOUT)
+    def _download_binary(self, url: str, dest: Path, label: str, *, executable: bool = False) -> None:
+        """Download a file with wget/curl fallback; skip when cached."""
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            logger.warning(f"{label} exists already", extra=LOG_STDOUT)
             return
 
-        logger.info(f"Downloading Docker binary: {version}", extra=LOG_STDOUT)
-        docker_bin_url = self.kube_constant.docker_bin_url(version)
-
+        logger.info(f"Downloading {label}", extra=LOG_STDOUT)
         try:
-            run_command(["wget", "-c", "--no-check-certificate", docker_bin_url, "-O", str(docker_tgz)])
+            run_command(
+                ["wget", "-c", "--no-check-certificate", url, "-O", str(dest)],
+                capture_output=False,
+            )
         except CommandExecutionError:
-            run_command(["curl", "-k", "-C-", "-o", str(docker_tgz), docker_bin_url])
+            run_command(
+                ["curl", "-k", "-C-", "-o", str(dest), url],
+                capture_output=False,
+            )
 
-        logger.info("Docker binary has been downloaded successfully!", extra=LOG_STDOUT)
+        if executable:
+            run_command(["chmod", "+x", str(dest)])
+
+        logger.info(f"{label} has been downloaded successfully!", extra=LOG_STDOUT)
+
+    def _download_docker(self, version: str) -> None:
+        """Download Docker engine static binary tarball."""
+        docker_tgz = self.image_dir / f"docker-{version}.tgz"
+        self._download_binary(
+            self.kube_constant.docker_bin_url(version),
+            docker_tgz,
+            f"Docker binary: {version}",
+        )
+
+    def _download_docker_cli_plugins(self) -> None:
+        """Download Docker Compose and Buildx CLI plugin binaries."""
+        compose_version = self.kube_constant.v_docker_compose
+        buildx_version = self.kube_constant.v_docker_buildx
+
+        self._download_binary(
+            self.kube_constant.docker_compose_bin_url(compose_version),
+            self.image_dir / f"docker-compose-{compose_version}",
+            f"Docker Compose binary: {compose_version}",
+            executable=True,
+        )
+        self._download_binary(
+            self.kube_constant.docker_buildx_bin_url(buildx_version),
+            self.image_dir / f"docker-buildx-{buildx_version}",
+            f"Docker Buildx binary: {buildx_version}",
+            executable=True,
+        )
 
     def _install_docker_binaries(self, version) -> None:
         """
@@ -252,7 +287,7 @@ class DockerManager:
 
         docker_tgz = self.image_dir / f"docker-{version}.tgz"
         with tarfile.open(docker_tgz, "r:gz") as tf:
-            tf.extractall(path=self.temp_path)
+            tf.extractall(path=self.temp_path, filter="data")
 
         # [bug fixed] 在subprocess.run中直接使用*通配符时，shell不会自动扩展它
         run_command(["bash", "-c", f"cp -f {self.temp_path}/docker/* {self.docker_bin_dir}/"])
@@ -264,29 +299,40 @@ class DockerManager:
 
         logger.info("Docker binary has been installed successfully!", extra=LOG_STDOUT)
 
-    def _install_docker_compose_plugin(self) -> None:
+    def _install_docker_cli_plugins(self) -> None:
         """
-        Install Docker Compose CLI plugin (docker compose) from bundled extra-bin binary.
+        Install Docker Compose and Buildx CLI plugins from cached binaries in image_dir.
         See https://docs.docker.com/compose/install/linux/
         """
-        compose_src = self.extra_bin_dir / "docker-compose"
-        if not compose_src.is_file():
-            logger.warning(
-                "docker-compose not found in extra-bin, skip Compose plugin install "
-                "(run 'kubecli download -D' first).",
-                extra=LOG_STDOUT,
-            )
-            return
-
+        self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
         self.docker_compose_plugin_dir.mkdir(parents=True, exist_ok=True)
-        plugin_bin = self.docker_compose_plugin_dir / "docker-compose"
-        run_command(["ln", "-svf", str(compose_src), str(plugin_bin)])
 
-        try:
-            run_command(["docker", "compose", "version"])
-            logger.info("Docker Compose plugin has been installed successfully!", extra=LOG_STDOUT)
-        except CommandExecutionError as e:
-            logger.warning(f"Docker Compose plugin linked but verification failed: {e}", extra=LOG_STDOUT)
+        plugins = (
+            ("docker-compose", self.kube_constant.v_docker_compose, ["docker", "compose", "version"]),
+            ("docker-buildx", self.kube_constant.v_docker_buildx, ["docker", "buildx", "version"]),
+        )
+
+        for plugin_name, plugin_version, verify_cmd in plugins:
+            cache_bin = self.image_dir / f"{plugin_name}-{plugin_version}"
+            if not cache_bin.is_file():
+                logger.warning(
+                    f"{plugin_name} binary not found in cache, skip plugin install",
+                    extra=LOG_STDOUT,
+                )
+                continue
+
+            dest_bin = self.docker_bin_dir / plugin_name
+            run_command(["cp", "-f", str(cache_bin), str(dest_bin)])
+            run_command(["chmod", "+x", str(dest_bin)])
+
+            plugin_link = self.docker_compose_plugin_dir / plugin_name
+            run_command(["ln", "-svf", str(dest_bin), str(plugin_link)])
+
+            try:
+                run_command(verify_cmd)
+                logger.info(f"{plugin_name} plugin has been installed successfully!", extra=LOG_STDOUT)
+            except CommandExecutionError as e:
+                logger.warning(f"{plugin_name} plugin linked but verification failed: {e}", extra=LOG_STDOUT)
 
     def _configure_docker(self, version: str) -> None:
         """

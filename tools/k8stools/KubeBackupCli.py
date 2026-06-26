@@ -153,6 +153,7 @@ class BackupConfig:
     label_selector: Optional[str] = None
     field_selector: Optional[str] = None
     include_names: Optional[frozenset] = None
+    exclude_names: Optional[frozenset] = None
     backup_name: Optional[str] = None
 
     def __post_init__(self):
@@ -481,6 +482,10 @@ class IncludeNamesParseError(ValueError):
     """--include-names 解析或校验失败。"""
 
 
+class ExcludeNamesParseError(ValueError):
+    """--exclude-names 解析或校验失败。"""
+
+
 # Kubernetes 命名空间名称（DNS 标签）
 _K8S_DNS_LABEL_RE = re.compile(r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
 # 对象 metadata.name（DNS 子域名，RFC 1123）— 与 API 常见约束一致
@@ -641,9 +646,10 @@ MAX_MERGE_PATCH_INLINE_STRUCTURE_DEPTH = 20
 MAX_BACKUP_NAME_LEN = 200
 MAX_CONTEXT_LEN = 256
 MAX_SELECTOR_LEN = 8192
-# metadata.name 最长 253（DNS1123Subdomain）；单次 --include-names 条目上限防滥用
+# metadata.name 最长 253（DNS1123Subdomain）；单次 --include-names / --exclude-names 条目上限防滥用
 MAX_K8S_OBJECT_NAME_LEN = 253
 MAX_INCLUDE_NAMES_COUNT = 512
+MAX_EXCLUDE_NAMES_COUNT = 512
 
 _K8S_RESOURCE_TOKEN_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 _BACKUP_NAME_BAD = re.compile(r'[/\\\x00\r\n]|[<>:"|?*]')
@@ -733,9 +739,15 @@ def is_valid_k8s_object_name(name: str) -> bool:
     return _K8S_DNS_SUBDOMAIN_RE.match(name) is not None
 
 
-def parse_include_names(names_str: Optional[str]) -> Optional[frozenset]:
+def _parse_object_names(
+    names_str: Optional[str],
+    *,
+    option_label: str,
+    max_count: int,
+    error_cls: type,
+) -> Optional[frozenset]:
     """
-    解析 backup --include-names。
+    解析 backup --include-names / --exclude-names。
 
     未指定或空白时返回 None（不过滤，与历史行为一致）。
     多项逗号分隔；按 metadata.name 精确匹配（大小写敏感，与 API 一致）。
@@ -744,31 +756,47 @@ def parse_include_names(names_str: Optional[str]) -> Optional[frozenset]:
     if s is None:
         return None
     if len(s) > MAX_SELECTOR_LEN:
-        raise IncludeNamesParseError(
-            f"--include-names 过长（最大 {MAX_SELECTOR_LEN} 字符）"
-        )
+        raise error_cls(f"{option_label} 过长（最大 {MAX_SELECTOR_LEN} 字符）")
     if "\x00" in s:
-        raise IncludeNamesParseError("--include-names 不能包含空字符")
+        raise error_cls(f"{option_label} 不能包含空字符")
     tokens = [t.strip() for t in s.split(",") if t.strip()]
     if not tokens:
-        raise IncludeNamesParseError("--include-names 须至少包含一个对象名")
-    if len(tokens) > MAX_INCLUDE_NAMES_COUNT:
-        raise IncludeNamesParseError(
-            f"--include-names 条目过多（最多 {MAX_INCLUDE_NAMES_COUNT} 个）"
-        )
+        raise error_cls(f"{option_label} 须至少包含一个对象名")
+    if len(tokens) > max_count:
+        raise error_cls(f"{option_label} 条目过多（最多 {max_count} 个）")
     unique: List[str] = []
     seen: Set[str] = set()
     for token in tokens:
         if token in seen:
-            logger.debug(f"--include-names 重复项已忽略: {token!r}")
+            logger.debug(f"{option_label} 重复项已忽略: {token!r}")
             continue
         if not is_valid_k8s_object_name(token):
-            raise IncludeNamesParseError(
+            raise error_cls(
                 f"对象名无效（须为 DNS 子域名、最长 {MAX_K8S_OBJECT_NAME_LEN}）: {token!r}"
             )
         seen.add(token)
         unique.append(token)
     return frozenset(unique)
+
+
+def parse_include_names(names_str: Optional[str]) -> Optional[frozenset]:
+    """解析 backup --include-names。"""
+    return _parse_object_names(
+        names_str,
+        option_label="--include-names",
+        max_count=MAX_INCLUDE_NAMES_COUNT,
+        error_cls=IncludeNamesParseError,
+    )
+
+
+def parse_exclude_names(names_str: Optional[str]) -> Optional[frozenset]:
+    """解析 backup --exclude-names。"""
+    return _parse_object_names(
+        names_str,
+        option_label="--exclude-names",
+        max_count=MAX_EXCLUDE_NAMES_COUNT,
+        error_cls=ExcludeNamesParseError,
+    )
 
 
 def filter_resources_by_include_names(
@@ -792,6 +820,30 @@ def filter_resources_by_include_names(
         name = meta.get("name")
         if isinstance(name, str) and name in include_names:
             filtered.append(itm)
+    return filtered
+
+
+def filter_resources_by_exclude_names(
+    items: List[Dict], exclude_names: frozenset
+) -> List[Dict]:
+    """
+    在 API List 结果上按 metadata.name 排除指定对象。
+
+    与 label/field selector 为 AND 关系：先由 API 过滤，再按名称精确排除。
+    """
+    if not exclude_names:
+        return items
+    filtered: List[Dict] = []
+    for itm in items:
+        if not isinstance(itm, dict):
+            continue
+        meta = itm.get("metadata")
+        if not isinstance(meta, dict):
+            continue
+        name = meta.get("name")
+        if isinstance(name, str) and name in exclude_names:
+            continue
+        filtered.append(itm)
     return filtered
 
 
@@ -2235,23 +2287,41 @@ class KubernetesBackupManager:
                     continue
         return normalized
 
-    def _apply_include_names_filter(
+    def _apply_names_filter(
         self, items: List[Dict], resource_type: str, namespace: Optional[str]
     ) -> List[Dict]:
-        """按 --include-names 过滤；未配置时原样返回。"""
-        if not self.config.include_names:
-            return items
-        before = len(items)
-        filtered = filter_resources_by_include_names(items, self.config.include_names)
+        """按 --include-names / --exclude-names 过滤；均未配置时原样返回。"""
+        filtered = items
         scope = namespace or 'cluster'
-        if before != len(filtered):
-            logger.info(
-                f"{resource_type} ({scope}): --include-names 过滤，列举 {before} 个，保留 {len(filtered)} 个"
+
+        if self.config.include_names:
+            before = len(filtered)
+            filtered = filter_resources_by_include_names(
+                filtered, self.config.include_names
             )
-        elif before > 0 and len(filtered) == 0:
-            logger.info(
-                f"{resource_type} ({scope}): 列举 {before} 个，无对象名匹配 --include-names，跳过写盘"
+            if before != len(filtered):
+                logger.info(
+                    f"{resource_type} ({scope}): --include-names 过滤，列举 {before} 个，保留 {len(filtered)} 个"
+                )
+            elif before > 0 and len(filtered) == 0:
+                logger.info(
+                    f"{resource_type} ({scope}): 列举 {before} 个，无对象名匹配 --include-names，跳过写盘"
+                )
+
+        if self.config.exclude_names:
+            before = len(filtered)
+            filtered = filter_resources_by_exclude_names(
+                filtered, self.config.exclude_names
             )
+            if before != len(filtered):
+                logger.info(
+                    f"{resource_type} ({scope}): --exclude-names 过滤，列举 {before} 个，保留 {len(filtered)} 个"
+                )
+            elif before > 0 and len(filtered) == 0:
+                logger.info(
+                    f"{resource_type} ({scope}): 列举 {before} 个，全部命中 --exclude-names，跳过写盘"
+                )
+
         return filtered
 
     def backup_resources_parallel(self, resources: List[Dict], output_dir: str) -> Tuple[int, int]:
@@ -2308,6 +2378,12 @@ class KubernetesBackupManager:
                     f"已启用 --include-names（metadata.name 精确匹配，共 "
                     f"{len(self.config.include_names)} 个）: {names_preview}"
                 )
+            if self.config.exclude_names:
+                names_preview = ", ".join(sorted(self.config.exclude_names))
+                logger.info(
+                    f"已启用 --exclude-names（metadata.name 精确排除，共 "
+                    f"{len(self.config.exclude_names)} 个）: {names_preview}"
+                )
             if not self.config.dry_run:
                 ensure_directory(output_dir)
             else:
@@ -2328,6 +2404,8 @@ class KubernetesBackupManager:
                 metadata['field_selector'] = self.config.field_selector
             if self.config.include_names:
                 metadata['include_names'] = sorted(self.config.include_names)
+            if self.config.exclude_names:
+                metadata['exclude_names'] = sorted(self.config.exclude_names)
 
             if not self.config.dry_run:
                 save_backup_metadata(output_dir, metadata)
@@ -2415,7 +2493,7 @@ class KubernetesBackupManager:
                 return
 
             normalized = self._normalize_listed_resources(resources)
-            normalized = self._apply_include_names_filter(
+            normalized = self._apply_names_filter(
                 normalized, resource_type, namespace
             )
             if not normalized:
@@ -2444,7 +2522,7 @@ class KubernetesBackupManager:
                     crd = crd.to_dict()
                 crd_resources.append(crd)
 
-            crd_resources = self._apply_include_names_filter(
+            crd_resources = self._apply_names_filter(
                 crd_resources, 'customresourcedefinitions', None
             )
             if crd_resources:
@@ -2511,7 +2589,7 @@ class KubernetesBackupManager:
                         normalized_items = self._normalize_listed_resources(items)
                         # Namespaced CR 实例可能来自多个命名空间，勿用 for 循环末次的 namespace
                         cr_filter_scope = None if scope == "Cluster" else "all-namespaces"
-                        normalized_items = self._apply_include_names_filter(
+                        normalized_items = self._apply_names_filter(
                             normalized_items,
                             crd_kind or 'customresource',
                             cr_filter_scope,
@@ -3101,6 +3179,7 @@ Kubernetes 备份 / 恢复工具
     --label-selector         按标签过滤（kubectl 风格，如 app=myapp,env=prod）
     --field-selector         按字段过滤（kubectl 风格）
     --include-names LIST     仅备份 metadata.name 在列表中的对象（逗号分隔；省略则不过滤）
+    --exclude-names LIST     全量备份时排除 metadata.name 在列表中的对象（逗号分隔；省略则不过滤）
   输出与性能
     -o, --output-dir PATH    备份根目录（默认 /opt/k8s-backup）
     --tar                    额外生成 .tar.gz 归档
@@ -3134,6 +3213,14 @@ Kubernetes 备份 / 恢复工具
   例：-n prod -r deployments,services --include-names "api-gateway,order-service"
        只写出名为 api-gateway 与 order-service 的 Deployment/Service；同命名空间其它应用不会落盘。与 --label-selector / --field-selector 为 AND：先 API 过滤，再按名称筛。
   注意：按名称过滤时，ConfigMap/Secret 等若与 Deployment 不同名，不会自动连带备份；须将依赖对象名一并列入，或扩大 -r / 使用标签过滤。Service 与 Deployment 异名时，两个名字都需写入列表。
+  与 --exclude-names 互斥，不可同时使用。
+
+--exclude-names（按对象名精确排除，省略则与旧版相同：备份 -r 下列出的全部对象）
+  在 API List（及可选的 label/field selector）之后，排除 metadata.name 在名单中的资源；其余对象照常写盘。名称规则与 --include-names 相同。
+  例：-n prod -r deployments,services --exclude-names "legacy-api,test-app"
+       备份该命名空间下除 legacy-api 与 test-app 外的全部 Deployment/Service。与 --label-selector / --field-selector 为 AND：先 API 过滤，再按名称排除。
+  注意：排除某 Deployment 不会自动排除同名或关联的 ConfigMap/Secret；若需一并跳过，须将相关对象名也写入列表，或扩大 -r 后按需排除。
+  与 --include-names 互斥，不可同时使用。
 
 -o / --output-dir 与 --backup-name
   单次备份落盘根路径为：输出根目录 / 备份名 /。
@@ -3388,6 +3475,14 @@ B6b. 按应用对象名只备份指定 Deployment/Service（生产常用）
         --output-dir /opt/k8s-backup
    说明：省略 --include-names 时行为与旧版一致（该命名空间下全部 Deployment/Service）；指定后仅 metadata.name 匹配的会写盘。
 
+B6c. 全量备份但排除指定应用（生产常用）
+   python KubeBackupCli.py backup \\
+        --namespace production \\
+        --resources "deployments,services" \\
+        --exclude-names "legacy-api,test-app" \\
+        --output-dir /opt/k8s-backup
+   说明：省略 --exclude-names 时行为与旧版一致（该命名空间下全部 Deployment/Service）；指定后 metadata.name 命中的对象不会写盘。
+
 B7. 全集群备份并包含 CRD 及其实例（耗时可较长）
    python KubeBackupCli.py backup \\
         --all-namespaces \\
@@ -3589,6 +3684,10 @@ def _add_backup_arguments(parser):
         help='仅备份 metadata.name 在列表中的对象（逗号分隔；省略则不过滤，与旧版全量一致）'
     )
     parser.add_argument(
+        '--exclude-names',
+        help='全量备份时排除 metadata.name 在列表中的对象（逗号分隔；省略则不过滤，与旧版全量一致）'
+    )
+    parser.add_argument(
         '--backup-name',
         help='自定义备份名称（默认: 自动生成）'
     )
@@ -3765,6 +3864,16 @@ def validate_backup_arguments(args) -> Optional[BackupConfig]:
         logger.error(f"--include-names 无效: {e}")
         return None
 
+    try:
+        exclude_names = parse_exclude_names(getattr(args, 'exclude_names', None))
+    except ExcludeNamesParseError as e:
+        logger.error(f"--exclude-names 无效: {e}")
+        return None
+
+    if include_names and exclude_names:
+        logger.error("--include-names 与 --exclude-names 不能同时使用")
+        return None
+
     ctx = _cli_strip_opt(args.context)
     return BackupConfig(
         kubeconfig=_cli_strip_opt(args.kubeconfig),
@@ -3779,6 +3888,7 @@ def validate_backup_arguments(args) -> Optional[BackupConfig]:
         label_selector=_cli_strip_opt(args.label_selector),
         field_selector=_cli_strip_opt(args.field_selector),
         include_names=include_names,
+        exclude_names=exclude_names,
         backup_name=_cli_strip_opt(args.backup_name),
     )
 
