@@ -6,9 +6,9 @@
   - name: stopping kube_master services
     service: name={{ item }} state=stopped
     with_items:
-    - kube-apiserver
     - kube-controller-manager
     - kube-scheduler
+    - kube-apiserver
 
 - hosts:
   - kube_master
@@ -21,15 +21,27 @@
     - kube-proxy
 
 - hosts: etcd
+  serial: 1
   roles:
   - cluster-restore
 
+# [fix] serial:1 — start apiserver before controller-manager/scheduler after restore
 - hosts: kube_master
+  serial: 1
   tasks:
-  - name: starting kube_master services
+  - name: starting kube-apiserver
+    service: name=kube-apiserver state=started enabled=yes
+
+  - name: wait for kube-apiserver running
+    shell: "systemctl is-active kube-apiserver.service"
+    register: api_status
+    until: '"active" in api_status.stdout'
+    retries: 15
+    delay: 3
+
+  - name: starting kube-controller-manager and kube-scheduler
     service: name={{ item }} state=started enabled=yes
     with_items:
-    - kube-apiserver
     - kube-controller-manager
     - kube-scheduler
 

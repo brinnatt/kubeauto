@@ -87,17 +87,25 @@
   shell: systemctl enable kube-apiserver kube-controller-manager kube-scheduler
   ignore_errors: true
 
-- name: start master service
-  shell: "systemctl daemon-reload && systemctl restart kube-apiserver && \
-	systemctl restart kube-controller-manager && systemctl restart kube-scheduler"
+# [fix] restart apiserver first, wait, then start cm/scheduler (pairs with playbook serial:1)
+- name: reload systemd and restart kube-apiserver
+  shell: "systemctl daemon-reload && systemctl restart kube-apiserver"
+  register: apiserver_restart
+  failed_when: false
   tags: upgrade_k8s, restart_master, force_change_certs
 
 - name: wait for kube-apiserver running
   shell: "systemctl is-active kube-apiserver.service"
   register: api_status
   until: '"active" in api_status.stdout'
-  retries: 10
+  retries: 15
   delay: 3
+  tags: upgrade_k8s, restart_master, force_change_certs
+
+- name: restart kube-controller-manager and kube-scheduler
+  shell: "systemctl restart kube-controller-manager && systemctl restart kube-scheduler"
+  register: master_cm_sch_restart
+  failed_when: false
   tags: upgrade_k8s, restart_master, force_change_certs
 
 - name: wait for kube-controller-manager running

@@ -19,12 +19,16 @@
 # to install etcd cluster
 # to run with '-t force_change_certs'
 - hosts: etcd
+  # [ops] serial:1 — rolling etcd restart during cert rotation
+  serial: 1
   roles:
   - etcd
 
 # to set up 'kube_master' nodes
 # to run with '-t force_change_certs'
 - hosts: kube_master
+  # [fix] serial:1 — rolling cert redeploy one master at a time
+  serial: 1
   roles:
   - kube-master
 
