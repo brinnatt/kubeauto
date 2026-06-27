@@ -1,6 +1,5 @@
 import json
 import re
-import sys
 import tarfile
 import time
 from pathlib import Path
@@ -8,6 +7,7 @@ from typing import Optional, Dict, List
 import docker
 from docker.errors import DockerException, APIError, ImageNotFound
 from common.constants import KubeConstant
+from common.docker_jsonmessage import DockerJSONMessageDisplay
 from common.utils import run_command, rmrf
 from common.exceptions import CommandExecutionError
 from common.logger import setup_logger, LOG_STDOUT
@@ -705,33 +705,25 @@ WantedBy=multi-user.target
         except CommandExecutionError as e:
             raise RuntimeError(f"Failed to copy file from container src to host dest: {str(e)}")
 
-    def _log_pull_push_progress(self, line: dict) -> None:
-        """Output one stream event to stdout (progress/status). Only used when Docker SDK is active; fallback to docker CLI does not stream."""
-        if line.get("progress"):
-            logger.info(line["progress"], extra=LOG_STDOUT)
-            sys.stdout.flush()
-        elif line.get("status"):
-            msg = line["status"]
-            if line.get("id"):
-                msg += f" {line['id']}"
-            logger.info(msg, extra=LOG_STDOUT)
-            sys.stdout.flush()
+    def _stream_pull_push_progress(self, lines) -> None:
+        """Render Docker Engine pull/push JSON stream (moby jsonmessage) when using SDK."""
+        DockerJSONMessageDisplay().display_stream(lines)
 
     def pull_image(self, image: str) -> None:
-        """Pull image from registry. Streams progress when Docker SDK is used; fallback to 'docker pull' has no per-line progress."""
+        """Pull image from registry. SDK path renders jsonmessage progress; CLI fallback uses native output."""
         logger.info(f"[DOWNLOAD] Pulling image: {image}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
                 repository, tag = (image.rsplit(":", 1) if ":" in image else (image, "latest"))
-                for line in self.client.api.pull(repository, tag=tag, stream=True, decode=True):
-                    self._log_pull_push_progress(line)
+                stream = self.client.api.pull(repository, tag=tag, stream=True, decode=True)
+                self._stream_pull_push_progress(stream)
                 logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
                 return
-            except APIError as e:
+            except APIError:
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            run_command(["docker", "pull", image])
+            run_command(["docker", "pull", image], capture_output=False)
             logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
             logger.error(f"[DOWNLOAD] Failed to pull image: {image} — {e}", extra=LOG_STDOUT)
@@ -794,19 +786,19 @@ WantedBy=multi-user.target
             raise
 
     def push_image(self, image: str) -> None:
-        """Push image to registry. Streams progress when Docker SDK is used; fallback to 'docker push' has no per-line progress."""
+        """Push image to registry. SDK path renders jsonmessage progress; CLI fallback uses native output."""
         logger.info(f"[UPLOAD] Pushing image: {image}", extra=LOG_STDOUT)
         if self.client is not None:
             try:
-                for line in self.client.images.push(image, stream=True, decode=True):
-                    self._log_pull_push_progress(line)
+                stream = self.client.images.push(image, stream=True, decode=True)
+                self._stream_pull_push_progress(stream)
                 logger.info(f"[UPLOAD] Pushed successfully: {image}", extra=LOG_STDOUT)
                 return
-            except APIError as e:
+            except APIError:
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            run_command(["docker", "push", image])
+            run_command(["docker", "push", image], capture_output=False)
             logger.info(f"[UPLOAD] Pushed successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
             logger.error(f"[UPLOAD] Failed to push image: {image} — {e}", extra=LOG_STDOUT)
