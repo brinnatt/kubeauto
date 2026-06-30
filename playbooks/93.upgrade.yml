@@ -29,6 +29,8 @@
 # update masters
 - hosts: 
   - kube_master
+  # [fix] serial:1 — rolling upgrade one master at a time
+  serial: 1
   roles:
   - kube-master
   - kube-node

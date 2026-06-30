@@ -1,9 +1,9 @@
 # Note: this playbook can't run independently
 
-- hosts: "{{ NODE_TO_ADD }}" 
+- hosts: "{{ NODE_TO_ADD }}"
   roles:
   - { role: os-harden, when: "OS_HARDEN|bool" }
-  - { role: chrony, when: "groups['chrony']|length > 0" } 
+  - { role: chrony, when: "groups['chrony']|length > 0" }
   - prepare
   - { role: docker, when: "CONTAINER_RUNTIME == 'docker'" }
   - { role: containerd, when: "CONTAINER_RUNTIME == 'containerd'" }
@@ -15,3 +15,9 @@
   - { role: flannel, when: "CLUSTER_NETWORK == 'flannel'" }
   - { role: kube-router, when: "CLUSTER_NETWORK == 'kube-router'" }
   - { role: kube-ovn, when: "CLUSTER_NETWORK == 'kube-ovn'" }
+
+# [fix] serial:1 — redistribute apiserver certs and restart all masters after SAN change
+- hosts: kube_master
+  serial: 1
+  roles:
+  - { role: kube-master, tags: ['change_cert', 'force_change_certs', 'restart_master'] }

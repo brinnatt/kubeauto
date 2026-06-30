@@ -1,5 +1,7 @@
 # to set up 'kube_master' nodes
 - hosts: kube_master
+  # [fix] serial:1 — avoid apiserver Service IP allocator race on multi-master bootstrap
+  serial: 1
   roles:
   - kube-lb
   - kube-master

@@ -1,13 +1,16 @@
+# [fix] serial:1 — stop controller-manager/scheduler before apiserver on each master
 - hosts: kube_master
+  serial: 1
   tasks:
   - name: stopping kube_master services
     service: name={{ item }} state=stopped enabled=no
     with_items:
-    - kube-apiserver
     - kube-controller-manager
     - kube-scheduler
+    - kube-apiserver
 
 - hosts: etcd
+  serial: 1
   tasks:
   - name: stopping etcd cluster
     service: name=etcd state=stopped enabled=no

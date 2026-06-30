@@ -662,9 +662,10 @@ kubeauto 集成安装 containerd：
 ```bash
 cat playbooks/04.kube-master.yml
 - hosts: kube_master
+  serial: 1        # [fix] 多 master 串行部署，避免 apiserver Service IP allocator 竞态
   roles:
   - kube-lb        # 四层负载均衡，监听在127.0.0.1:6443，转发到真实master节点apiserver服务
-  - kube-master    #
+  - kube-master
   - kube-node      # 因为网络、监控等daemonset组件，master节点也推荐安装kubelet和kube-proxy服务
   ... 
 ```
