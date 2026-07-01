@@ -5,18 +5,18 @@ from common.os import SystemProbe
 @dataclass
 class KubeConstant:
     # kubernetes ecosystem components version
-    v_docker: str = field(default="29.6.0", metadata={
+    v_docker: str = field(default="28.5.2", metadata={
         "refer_bin": "https://docs.docker.com/engine/install/binaries/",
-        "refer_docs": "https://docs.docker.com/manuals/",
-        "description": "Engine 29.6.0; CLI plugins paired via v_docker_compose / v_docker_buildx",
+        "refer_docs": "https://docs.docker.com/engine/release-notes/28/",
+        "description": "Engine 28.5.2 (28.x latest stable); CLI plugins paired via v_docker_compose / v_docker_buildx",
     })
-    v_docker_compose: str = field(default="5.1.4", metadata={
+    v_docker_compose: str = field(default="2.40.3", metadata={
         "refer_github": "https://github.com/docker/compose/releases",
-        "description": "CLI plugin paired with v_docker",
+        "description": "Compose v2 CLI plugin paired with Engine 28.5.x (not v5.x, which targets Engine 29)",
     })
-    v_docker_buildx: str = field(default="0.35.0", metadata={
+    v_docker_buildx: str = field(default="0.29.1", metadata={
         "refer_github": "https://github.com/docker/buildx/releases",
-        "description": "CLI plugin paired with v_docker",
+        "description": "Buildx CLI plugin paired with Engine 28.5.x (docker-ce packaging release train)",
     })
     v_docker_registry: str = field(default="2", metadata={
         "refer_hub": "https://hub.docker.com/_/registry",
