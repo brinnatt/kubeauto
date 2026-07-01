@@ -953,13 +953,18 @@ def deep_merge_k8s_dict(base: Dict[str, Any], overlay: Dict[str, Any]) -> None:
     """
     将 overlay 深度合并进 base（原地修改 base）。
 
-    - 双方同一键均为 dict 时递归合并子键；
-    - 否则以 overlay 的值覆盖 base 中该键（含 list、str、int 等；列表为整段替换，非数组合并）。
-    用于恢复前并入与 kubectl patch -p 相同形状的部分对象；与 apiserver strategic merge 对「列表按主键合并」
-    的差异见 Kubernetes 文档，复杂列表字段请按官方语义自行核对清单。
+    语义与 kubectl patch --type merge（RFC 7386 JSON Merge Patch）一致，补丁「形状」与 kubectl patch -p 相同：
+    - 映射（dict）递归合并子键；补丁中某键不存在于 base 时先建空映射再合并；
+    - 补丁值为 null（JSON null / YAML null）时删除 base 中对应键（勿写成空字符串）；
+    - 其它类型（含 list、str、int、bool）以补丁整段覆盖 base 中该键（列表为整段替换，非 strategic merge 按 mergeKey 合并）。
+    与 kubectl 默认 strategic merge（kubectl patch -p 未加 --type）在「containers 等列表按 name 合并」上可能不同，复杂列表补丁请以官方文档核对。
     """
     for k, v in overlay.items():
-        if k in base and isinstance(base[k], dict) and isinstance(v, dict):
+        if v is None:
+            base.pop(k, None)
+        elif isinstance(v, dict):
+            if k not in base or not isinstance(base[k], dict):
+                base[k] = {}
             deep_merge_k8s_dict(base[k], v)
         else:
             base[k] = v
@@ -3352,7 +3357,10 @@ Kubernetes 备份 / 恢复工具
               nodeSelector:
                 release: production
 
-  合并规则：双方同一键均为映射时递归合并；否则以补丁整段覆盖（含列表）。列表项不按 strategic merge 的主键合并，与 apiserver 行为可能不同；复杂 patches 请以官方文档核对。
+  合并规则（与 kubectl patch --type merge / RFC 7386 一致；补丁形状同 kubectl patch -p）：
+    · 映射递归合并；补丁值为 null 时删除对应键（例：删除 nodeSelector 整段用 "nodeSelector":null；
+      仅删某 label 用 "nodeSelector":{"release":null}，等价于 kubectl patch --type merge -p '…'）。
+    · 列表及其它标量：补丁整段覆盖，不按 strategic merge 的 mergeKey 合并（与 kubectl patch -p 默认 strategic 在 containers 等列表上可能不同）。
 
   作用范围（强制）：
     · 使用 --merge-patch 时必须同时指定至少一个 --merge-patch-kind（可重复，例如同时写 Deployment 与 StatefulSet），
@@ -3578,6 +3586,9 @@ R9. 跨环境：与 kubectl patch -p 相同形状，改写 Deployment 的 Pod �
         --merge-patch-kind Deployment \\
         --create-namespaces
    说明：--merge-patch 与 --merge-patch-kind 必须同时使用；可对多种工作负载重复写 --merge-patch-kind。
+   删除 nodeSelector 示例（与 kubectl patch --type merge 相同）：
+        --merge-patch '{"spec":{"template":{"spec":{"nodeSelector":null}}}}'
+   或仅删除某 label：--merge-patch '{"spec":{"template":{"spec":{"nodeSelector":{"release":null}}}}}'
    生产上：内联仅适合短浅片段（脚本有 UTF-8 与嵌套深度上限）；affinity、长 volumes、多段 YAML 等请用方式一（文件）。
 
 --------------------------------------------------------------------------------
