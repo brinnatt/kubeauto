@@ -22,7 +22,7 @@ class KubeConstant:
         "refer_hub": "https://hub.docker.com/_/registry",
         "refer_docs": "https://distribution.github.io/distribution/"
     })
-    v_kubeauto: str = field(default="v0.1.3", metadata={
+    v_kubeauto: str = field(default="v0.1.4", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
     v_k8s_bin: str = field(default="v1.33.6", metadata={
