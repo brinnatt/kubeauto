@@ -23,7 +23,7 @@ from common.utils import run_command, validate_ip, confirm_action, AnsiColor, ge
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError,
-    InstallPrereqError,
+    InstallPrereqError, CommandExecutionError,
 )
 from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
@@ -333,6 +333,10 @@ class ClusterManager:
                 env["LD_LIBRARY_PATH"] = lp_orig
             else:
                 env["LD_LIBRARY_PATH"] = ""
+            # Ignore ~/.local site-packages when Ansible spawns module interpreters.
+            # User-installed urllib3/pyOpenSSL can break the apt module on Ubuntu/Debian
+            # (AttributeError: X509_V_FLAG_NOTIFY_POLICY). See start-aio on Debian family.
+            env["PYTHONNOUSERSITE"] = "1"
         return env
 
     @staticmethod
@@ -709,6 +713,49 @@ class ClusterManager:
             )
 
     @staticmethod
+    def _has_passwordless_sudo() -> bool:
+        """Return True when sudo -n succeeds (passwordless privilege escalation available)."""
+        try:
+            run_command(["sudo", "-n", "true"])
+            return True
+        except CommandExecutionError:
+            return False
+
+    @staticmethod
+    def _local_install_use_become() -> bool:
+        """Return True if start-aio should pass -b to ansible (non-root + passwordless sudo).
+
+        Raises InstallPrereqError when neither root nor passwordless sudo is available.
+        """
+        if os.geteuid() == 0:
+            return False
+        if ClusterManager._has_passwordless_sudo():
+            return True
+        raise InstallPrereqError(
+            "start-aio installs Kubernetes on this host and requires root privileges. "
+            "Run as root, or configure passwordless sudo and run: kubecli start-aio"
+        )
+
+    @staticmethod
+    def _validate_ansible_module_runtime() -> None:
+        """Preflight: Ansible apt module must import under PYTHONNOUSERSITE (Debian/Ubuntu prepare)."""
+        if not sys.platform.startswith("linux"):
+            return
+        env = ClusterManager._env_for_system_subprocess()
+        env.setdefault("PYTHONNOUSERSITE", "1")
+        try:
+            run_command(
+                [sys.executable, "-c", "from ansible.modules import apt"],
+                env={**os.environ, **env},
+            )
+        except CommandExecutionError as exc:
+            raise InstallPrereqError(
+                "Ansible runtime is broken (apt module cannot load). "
+                "On Ubuntu/Debian, align python3-openssl/cryptography or remove conflicting "
+                "~/.local urllib3/pyOpenSSL packages, then retry."
+            ) from exc
+
+    @staticmethod
     def _config_md5(config_path: Path) -> str:
         """Return MD5 of kubeconfig content excluding server field (for comparing current vs cluster config)."""
         md5_cmd = ["sed", "/server/d", str(config_path), "|", "md5sum"]
@@ -1012,6 +1059,7 @@ class SetupAIO(task.Task):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cluster_manager = ClusterManager()
+        self._aio_use_become = False
 
     def execute(self) -> None:
         """Start an all-in-one cluster with default settings. Idempotent: skip if aio already live (K8s API)."""
@@ -1037,19 +1085,33 @@ class SetupAIO(task.Task):
                 "Remove it manually if you want to retry, or fix the cluster."
             )
 
+        self._aio_use_become = m._local_install_use_become()
+        m._validate_ansible_module_runtime()
+
         logger.info("Initializing all-in-one cluster environment.", extra=LOG_STDOUT)
         host_ip = get_host_ip()
         ssh_localhost()
 
         m.new_cluster(self.AIO_CLUSTER)
         aio_hosts = aio_dir / "hosts"
-        aio_hosts.write_text(
+        hosts_text = (
             Path(get_resource_path("conf", "hosts.allinone")).read_text()
             .replace("192.168.1.1", f"{host_ip} ansible_connection=local")
             .replace("_cluster_name_", self.AIO_CLUSTER)
         )
+        # Local install: do not force SSH user root (irrelevant for ansible_connection=local).
+        hosts_text = hosts_text.replace("ansible_user=root\n", "")
+        if self._aio_use_become:
+            # Scope become to the aio node only; localhost deploy/addon plays must stay unprivileged.
+            hosts_text = hosts_text.replace(
+                f"{host_ip} ansible_connection=local",
+                f"{host_ip} ansible_connection=local ansible_become=true ansible_become_method=sudo",
+            )
+        aio_hosts.write_text(hosts_text)
         logger.info("All-in-one cluster environment initialized.", extra=LOG_STDOUT)
 
+        # Host-line ansible_become handles privilege escalation; do not pass global -b
+        # (would break localhost deploy/addon plays that must run as the invoking user).
         try:
             logger.info("Creating all-in-one cluster.", extra=LOG_STDOUT)
             m.setup_cluster(self.AIO_CLUSTER, "all")
@@ -1062,7 +1124,19 @@ class SetupAIO(task.Task):
         """Revert only when cluster is not live (K8s API). Refuse to tear down a live cluster."""
         m = self.cluster_manager
         aio_dir = m.clusters_dir / self.AIO_CLUSTER
+        if not aio_dir.exists():
+            logger.info("No partial aio cluster directory; nothing to revert.", extra=LOG_STDOUT)
+            return
+
         aio_kubeconfig = aio_dir / "kubectl.kubeconfig"
+        config_yml = aio_dir / "config.yml"
+        hosts_file = aio_dir / "hosts"
+
+        # Precondition failure before cluster files were written (e.g. root check)
+        if not config_yml.exists() or not hosts_file.exists():
+            rmrf(aio_dir)
+            logger.info("Removed incomplete aio cluster directory.", extra=LOG_STDOUT)
+            return
 
         # Safety: do not revert if cluster has Ready nodes (production protection)
         if aio_kubeconfig.exists() and m._is_cluster_live(aio_kubeconfig):

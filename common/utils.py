@@ -173,6 +173,13 @@ def rmrf(path: Path) -> None:
         else:
             path.unlink()
     except Exception as e:
+        # cluster playbooks with become may leave root-owned artifacts under cluster_dir
+        if os.geteuid() != 0:
+            try:
+                run_command(["sudo", "rm", "-rf", str(path)])
+                return
+            except CommandExecutionError:
+                pass
         raise CommandExecutionError(f"Failed to remove {path}: {e}")
 
 

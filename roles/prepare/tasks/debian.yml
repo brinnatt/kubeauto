@@ -1,35 +1,26 @@
-# install basic system software
-- name: update apt
-  apt: update_cache=yes cache_valid_time=72000
-  ignore_errors: true
+# Debian/Ubuntu prepare: use apt-get via shell so we do not depend on Ansible's apt
+# module (which can break when ~/.local urllib3/pyOpenSSL conflicts with system OpenSSL).
 
-# delete default software
+- name: update apt cache
+  shell: DEBIAN_FRONTEND=noninteractive apt-get update -qq
+  changed_when: false
+  register: apt_update
+  failed_when: apt_update.rc != 0
+
 - name: delete ubuntu default software
-  package:
-    name:
-      - ufw
-      - lxd
-      - lxcfs
-      - lxc-common
-    state: absent
-  ignore_errors: true
+  shell: >-
+    DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq
+    ufw lxd lxcfs lxc-common 2>/dev/null || true
+  changed_when: false
+  failed_when: false
 
-# install basic system software
 - name: install ubuntu/debian basic software
-  package: 
-    name:
-      - bash-completion     # bash completion
-      - conntrack           # Connection Tracking
-      - ipset               # ipvs mode
-      - ipvsadm             # ipvs mode
-      - jq                  # light JSON handler, docker commands need it
-      - libseccomp2         # containerd requires it
-      - lvm2                # Local PV LVM requires it
-      - nfs-common          # nfs function needs it
-      - psmisc              # provides killall command, keepalive monitor scripts need it
-      - rsync               # sync file
-      - socat               # port forwarding requires it
-    state: present
+  shell: >-
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq
+    bash-completion conntrack ipset ipvsadm jq libseccomp2 lvm2 nfs-common psmisc rsync socat
+  register: apt_install
+  changed_when: apt_install.stdout | regex_search('[1-9][0-9]* newly installed') != ''
+  failed_when: apt_install.rc != 0
 
 # optimize journal configuration, avoid wasting resource
 - name: create journal relative directory
