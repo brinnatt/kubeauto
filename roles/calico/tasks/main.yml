@@ -10,11 +10,11 @@
             -profile=kubernetes calico-csr.json|{{ base_dir }}/extra-bin/cfssljson -bare calico"
 
     - name: delete old calico-etcd-secrets
-      shell: "kubectl -n kube-system delete secrets calico-etcd-secrets || echo NotFound"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig -n kube-system delete secrets calico-etcd-secrets || echo NotFound"
 
     - name: create calico-etcd-secrets
       shell: "cd {{ cluster_dir }}/ssl && \
-            kubectl create secret generic -n kube-system calico-etcd-secrets \
+            kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create secret generic -n kube-system calico-etcd-secrets \
             --from-file=etcd-ca=ca.pem \
             --from-file=etcd-key=calico-key.pem \
             --from-file=etcd-cert=calico.pem"
@@ -23,13 +23,13 @@
       template: src=calico-{{ calico_ver_main }}.yaml.j2 dest={{ cluster_dir }}/yml/calico.yaml
 
     - name: delete calico network
-      shell: "kubectl delete -f {{ cluster_dir }}/yml/calico.yaml || echo NotFound; sleep 3"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig delete -f {{ cluster_dir }}/yml/calico.yaml || echo NotFound; sleep 3"
       when: 'CHANGE_CA|bool'
 
     - name: apply calico network
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/calico.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/calico.yaml"
   run_once: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs
 
 - name: prepare some dirs
@@ -58,13 +58,13 @@
   template: src=calicoctl.cfg.j2 dest=/etc/calico/calicoctl.cfg
 
 - name: wait for calico-node running in a polling manner
-  shell: "kubectl get pod -n kube-system -o wide|grep 'calico-node'|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
+  shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n kube-system -o wide|grep 'calico-node'|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
   register: pod_status
   until: pod_status.stdout == "Running"
   retries: 15
   delay: 15
   ignore_errors: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs
 
 - import_tasks: calico-rr.yml

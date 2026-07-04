@@ -28,7 +28,7 @@
 - name: create kubernetes CSR
   template: src=kubernetes-csr.json.j2 dest={{ cluster_dir }}/ssl/kubernetes-csr.json
   tags: change_cert, force_change_certs
-  connection: local
+  delegate_to: localhost
 
 - name: create kubernetes cert and private key
   shell: "cd {{ cluster_dir }}/ssl && {{ base_dir }}/extra-bin/cfssl gencert \
@@ -37,12 +37,12 @@
         -config=ca-config.json \
         -profile=kubernetes kubernetes-csr.json | {{ base_dir }}/extra-bin/cfssljson -bare kubernetes"
   tags: change_cert, force_change_certs
-  connection: local
+  delegate_to: localhost
 
 # create aggregator proxy cert-related files
 - name: create aggregator proxy CSR
   template: src=aggregator-proxy-csr.json.j2 dest={{ cluster_dir }}/ssl/aggregator-proxy-csr.json
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs 
 
 - name: create aggregator-proxy cert and private key
@@ -51,7 +51,7 @@
         -ca-key=ca-key.pem \
         -config=ca-config.json \
         -profile=kubernetes aggregator-proxy-csr.json | {{ base_dir }}/extra-bin/cfssljson -bare aggregator-proxy"
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs 
 
 - name: distribute kubernetes cert-related files
@@ -81,7 +81,7 @@
   - kube-apiserver.service
   - kube-controller-manager.service
   - kube-scheduler.service
-  tags: restart_master, upgrade_k8s
+  tags: restart_master, upgrade_k8s, force_change_certs
 
 - name: enable master service on startup
   shell: systemctl enable kube-apiserver kube-controller-manager kube-scheduler
@@ -93,6 +93,7 @@
   register: apiserver_restart
   failed_when: false
   tags: upgrade_k8s, restart_master, force_change_certs
+  when: not (KUBE_MASTER_SKIP_RESTART | default(false) | bool)
 
 - name: wait for kube-apiserver running
   shell: "systemctl is-active kube-apiserver.service"
@@ -101,12 +102,14 @@
   retries: 15
   delay: 3
   tags: upgrade_k8s, restart_master, force_change_certs
+  when: not (KUBE_MASTER_SKIP_RESTART | default(false) | bool)
 
 - name: restart kube-controller-manager and kube-scheduler
   shell: "systemctl restart kube-controller-manager && systemctl restart kube-scheduler"
   register: master_cm_sch_restart
   failed_when: false
   tags: upgrade_k8s, restart_master, force_change_certs
+  when: not (KUBE_MASTER_SKIP_RESTART | default(false) | bool)
 
 - name: wait for kube-controller-manager running
   shell: "systemctl is-active kube-controller-manager.service"
@@ -115,6 +118,7 @@
   retries: 8
   delay: 3
   tags: upgrade_k8s, restart_master, force_change_certs
+  when: not (KUBE_MASTER_SKIP_RESTART | default(false) | bool)
 
 - name: wait for kube-scheduler running
   shell: "systemctl is-active kube-scheduler.service"
@@ -123,6 +127,7 @@
   retries: 8
   delay: 3
   tags: upgrade_k8s, restart_master, force_change_certs
+  when: not (KUBE_MASTER_SKIP_RESTART | default(false) | bool)
 
 - block:
     - name: copy kubectl.kubeconfig
@@ -145,12 +150,13 @@
       tags: upgrade_k8s, restart_master, force_change_certs
 
     - name: check if user:kubernetes was bond to related role
-      shell: "kubectl get clusterrolebindings|grep kubernetes-crb || echo 'notfound'"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get clusterrolebindings|grep kubernetes-crb || echo 'notfound'"
       register: crb_info
       run_once: true
 
     - name: create user:kubernetes role binding
-      command: "kubectl create clusterrolebinding kubernetes-crb --clusterrole=system:kubelet-api-admin --user=kubernetes"
+      command: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create clusterrolebinding kubernetes-crb --clusterrole=system:kubelet-api-admin --user=kubernetes"
       run_once: true
       when: "'notfound' in crb_info.stdout"
-  connection: local
+  when: not (KUBE_MASTER_SKIP_RESTART | default(false) | bool)
+  delegate_to: localhost

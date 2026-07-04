@@ -4,3 +4,6 @@ ETCD_NODES: "{{ TMP_NODES.rstrip(',') }}"
 
 # etcd cluster initial state new/existing
 CLUSTER_STATE: "new"
+
+# Skip per-node restart (used by kca-renew to restart all etcd members together).
+ETCD_SKIP_RESTART: false

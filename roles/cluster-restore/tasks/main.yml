@@ -10,6 +10,9 @@
 - name: create backup directory
   file: name=/etcd_backup state=directory
 
+- name: distribute etcdutl for snapshot restore
+  copy: src={{ base_dir }}/extra-bin/etcdutl dest={{ bin_dir }}/etcdutl mode=0755
+
 - name: prepare specific etcd data for restore
   copy:
     src: "{{ cluster_dir }}/backup/{{ db_to_restore }}"
@@ -26,12 +29,14 @@
 - name: restore data to etcd directory
   shell: "cp -rf /etcd_backup/etcd-{{ inventory_hostname }}.etcd/member {{ ETCD_DATA_DIR }}/"
 
-- name: restart etcd service
-  service: name=etcd state=restarted
+# Restored snapshot data requires existing cluster state; default etcd unit uses "new".
+- name: reconfigure etcd systemd unit for existing cluster after restore
+  template:
+    src: "{{ role_path }}/../etcd/templates/etcd.service.j2"
+    dest: /etc/systemd/system/etcd.service
+  vars:
+    CLUSTER_STATE: existing
 
-- name: wait for service syncing in a polling manner
-  shell: "systemctl is-active etcd.service"
-  register: etcd_status
-  until: '"active" in etcd_status.stdout'
-  retries: 8
-  delay: 8
+- name: reload systemd after etcd unit change
+  systemd:
+    daemon_reload: yes

@@ -16,21 +16,98 @@
   roles:
   - deploy
 
-# to install etcd cluster
-# to run with '-t force_change_certs'
+# Distribute new etcd certs to every member before any restart (required for HA CA renewal).
 - hosts: etcd
-  # [ops] serial:1 — rolling etcd restart during cert rotation
-  serial: 1
+  tags: force_change_certs
+  vars:
+    ETCD_SKIP_RESTART: true
   roles:
   - etcd
 
-# to set up 'kube_master' nodes
-# to run with '-t force_change_certs'
+# Restart the entire etcd cluster together after all members have new certs.
+- hosts: etcd
+  tags: force_change_certs
+  tasks:
+  - name: stop all etcd members before simultaneous restart
+    service: name=etcd state=stopped
+
+- hosts: etcd
+  tags: force_change_certs
+  tasks:
+  - name: restart etcd after cert rotation
+    shell: systemctl daemon-reload && systemctl restart etcd
+
+  - name: wait for etcd service running after cert rotation
+    shell: "systemctl is-active etcd.service"
+    register: etcd_status
+    until: '"active" in etcd_status.stdout'
+    retries: 20
+    delay: 10
+
+- hosts: localhost
+  tags: force_change_certs
+  tasks:
+  - name: verify etcd cluster health after cert rotation
+    shell: >-
+      ETCDCTL_API=3 {{ base_dir }}/extra-bin/etcdctl
+      --endpoints={% for h in groups['etcd'] %}https://{{ h }}:2379{% if not loop.last %},{% endif %}{% endfor %}
+      --cacert={{ cluster_dir }}/ssl/ca.pem
+      --cert={{ cluster_dir }}/ssl/etcd.pem
+      --key={{ cluster_dir }}/ssl/etcd-key.pem
+      endpoint health
+    register: etcd_health
+    until: etcd_health.rc == 0
+    retries: 12
+    delay: 8
+
+# Distribute new master certs to every control-plane node before any restart (HA CA renewal).
 - hosts: kube_master
-  # [fix] serial:1 — rolling cert redeploy one master at a time
-  serial: 1
+  tags: force_change_certs
+  vars:
+    KUBE_MASTER_SKIP_RESTART: true
   roles:
   - kube-master
+
+# Restart all control-plane components together after every master has new certs.
+- hosts: kube_master
+  tags: force_change_certs
+  tasks:
+  - name: stop control-plane services before simultaneous restart
+    service: name={{ item }} state=stopped
+    with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+
+- hosts: kube_master
+  tags: force_change_certs
+  tasks:
+  - name: reload systemd and restart kube-apiserver
+    shell: systemctl daemon-reload && systemctl restart kube-apiserver
+
+  - name: wait for kube-apiserver running after cert rotation
+    shell: "systemctl is-active kube-apiserver.service"
+    register: api_status
+    until: '"active" in api_status.stdout'
+    retries: 20
+    delay: 5
+
+  - name: restart kube-controller-manager and kube-scheduler
+    shell: systemctl restart kube-controller-manager && systemctl restart kube-scheduler
+
+  - name: wait for kube-controller-manager running
+    shell: "systemctl is-active kube-controller-manager.service"
+    register: cm_status
+    until: '"active" in cm_status.stdout'
+    retries: 12
+    delay: 5
+
+  - name: wait for kube-scheduler running
+    shell: "systemctl is-active kube-scheduler.service"
+    register: sch_status
+    until: '"active" in sch_status.stdout'
+    retries: 12
+    delay: 5
 
 # to set up 'kube_node' nodes
 # to run with '-t force_change_certs'
@@ -51,6 +128,24 @@
   - { role: flannel, when: "CLUSTER_NETWORK == 'flannel'" }
   - { role: kube-router, when: "CLUSTER_NETWORK == 'kube-router'" }
   - { role: kube-ovn, when: "CLUSTER_NETWORK == 'kube-ovn'" }
+
+- hosts:
+  - kube_master
+  - kube_node
+  tasks:
+  - import_tasks: ../roles/kube-node/tasks/wait-node-ready.yml
+  tags: force_change_certs
+
+- hosts: localhost
+  tags: force_change_certs
+  tasks:
+  - name: check if user:kubernetes was bound to related role
+    shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get clusterrolebindings|grep kubernetes-crb || echo 'notfound'"
+    register: crb_info
+
+  - name: create user:kubernetes role binding after cert rotation
+    command: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create clusterrolebinding kubernetes-crb --clusterrole=system:kubelet-api-admin --user=kubernetes"
+    when: "'notfound' in crb_info.stdout"
 
 # to install cluster-addons
 - hosts: localhost

@@ -3,8 +3,8 @@
       template: src=nacos/nacos-sts.yaml.j2 dest={{ cluster_dir }}/yml/nacos-sts.yaml
 
     - name: 创建命名空间{{ nacos_namespace }}
-      shell: "kubectl create ns {{ nacos_namespace }} || echo true"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create ns {{ nacos_namespace }} || echo true"
 
     - name: 创建 nacos部署
-      shell: "kubectl -n {{ nacos_namespace }} apply -f {{ cluster_dir }}/yml/nacos-sts.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig -n {{ nacos_namespace }} apply -f {{ cluster_dir }}/yml/nacos-sts.yaml"
   when: 'nacos_install == "yes"'

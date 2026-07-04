@@ -61,17 +61,11 @@
         regexp: 'registry.talkschool.cn'
         line: "{{ ansible_env.SSH_CLIENT.split(' ')[0] }}    registry.talkschool.cn"
 
-    # Calico requires unique hostnames across all nodes
-    # hostname 模块：不要写 use: systemd
-    #   - Ansible 2.8（Kylin V10 常见）不支持 use 参数（2.9 才加入），写了会直接报错
-    #   - 在 Linux + systemd 主机上（RHEL 8/9/10、Rocky、Ubuntu 24.04+、Kylin），
-    #     模块 autodetect 仍走 SystemdStrategy（hostnamectl），与 Ansible 2.9+ 显式 use: systemd 等价
-    #   - 源码依据：Hostname.__init__ 先判 systemd，再 fallback 到发行版策略（RedHat/Debian 等）
-    #     https://github.com/ansible/ansible/blob/v2.8.20/lib/ansible/modules/system/hostname.py
-    #     https://github.com/ansible/ansible/blob/devel/lib/ansible/modules/system/hostname.py
+    # Calico requires unique hostnames across all nodes.
+    # Use hostnamectl directly: Ansible 2.10 hostname module does not recognize Rocky Linux.
+    # Reference: https://www.freedesktop.org/software/systemd/man/hostnamectl.html
     - name: set node hostname
-      hostname:
-        name: "{{ K8S_NODENAME }}"
+      command: hostnamectl set-hostname "{{ K8S_NODENAME }}"
       when: "ENABLE_SETTING_HOSTNAME|bool"
 
     # 约定：使用当前 inventory 的 groups.kube_master[0] 作为 /etc/hosts 汇总源，见 docs/design-first-master.md

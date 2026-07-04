@@ -22,7 +22,7 @@
               {{ base_dir }}/roles/cilium/files/cilium-{{ cilium_ver }}.tgz"
       tags: force_change_certs
   run_once: true
-  connection: local  
+  delegate_to: localhost  
 
 - name: download client tools
   copy: src={{ base_dir }}/extra-bin/{{ item }} dest={{ bin_dir }}/{{ item }} mode=0755
@@ -41,7 +41,7 @@
   retries: 15
   delay: 8
   ignore_errors: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs
 
 # hubble-relay may need to be restarted
@@ -49,6 +49,6 @@
   shell: "kubectl -n kube-system scale deploy hubble-relay --replicas=0 && sleep 5 && \
             kubectl -n kube-system scale deploy hubble-relay --replicas=1"
   run_once: true
-  connection: local
+  delegate_to: localhost
   when: "cilium_hubble_enabled|bool"
   tags: force_change_certs

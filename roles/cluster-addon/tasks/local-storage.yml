@@ -9,5 +9,5 @@
       - "test-pod.yaml"
 
     - name: 创建 local-storage部署
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/local-storage/local-path-storage.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/local-storage/local-path-storage.yaml"
   when: 'local_path_provisioner_install == "yes"'

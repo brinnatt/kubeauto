@@ -9,7 +9,7 @@
     - name: apply kube-router DaemonSet
       shell: "kubectl apply -f {{ cluster_dir }}/yml/kube-router.yaml"
   run_once: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs
 
 # delete original cni configurations
@@ -23,5 +23,5 @@
   retries: 15
   delay: 8
   ignore_errors: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs

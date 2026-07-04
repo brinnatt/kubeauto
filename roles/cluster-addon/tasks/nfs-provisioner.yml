@@ -9,5 +9,5 @@
       - "test-pod.yaml"
 
     - name: 创建 nfs-provisioner部署
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/nfs-provisioner/nfs-provisioner.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/nfs-provisioner/nfs-provisioner.yaml"
   when: 'nfs_provisioner_install == "yes"'

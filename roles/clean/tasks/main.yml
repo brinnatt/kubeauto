@@ -21,6 +21,24 @@
   when: 'DEL_ETCD == "yes" and DEL_MASTER == "yes" and DEL_NODE == "yes" and ca_dir is defined'
   ignore_errors: true
 
+# Full teardown: remove prepare marker on every host (etcd-only nodes skip clean_node)
+- name: remove prepare tasks marker (full teardown only)
+  file: name=/opt/kubeauto_prepare_tasks state=absent
+  when: 'DEL_ETCD == "yes" and DEL_MASTER == "yes" and DEL_NODE == "yes"'
+  ignore_errors: true
+
+# Full teardown: remove leftover k8s config dir after role-specific cleanup
+- name: remove /etc/kubernetes dir (full teardown only)
+  file: name=/etc/kubernetes state=absent
+  when: 'DEL_ETCD == "yes" and DEL_MASTER == "yes" and DEL_NODE == "yes"'
+  ignore_errors: true
+
+# Full teardown: flush ipvs rules (kube-proxy ipvs mode leaves stale rules)
+- name: flush ipvs rules (full teardown only)
+  shell: "command -v ipvsadm >/dev/null && ipvsadm --clear || true"
+  when: 'DEL_ETCD == "yes" and DEL_MASTER == "yes" and DEL_NODE == "yes"'
+  ignore_errors: true
+
 - name: clean 'ENV PATH'
   lineinfile:
     dest: ~/.bashrc

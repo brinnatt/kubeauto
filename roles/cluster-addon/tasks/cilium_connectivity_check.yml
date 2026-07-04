@@ -10,13 +10,13 @@
       - "namespace.yaml"
     
     - name: 创建测试namespace
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/cilium-check/namespace.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/cilium-check/namespace.yaml"
     
     - name: 创建测试part1
-      shell: "kubectl apply -n cilium-test -f {{ cluster_dir }}/yml/cilium-check/check-part1.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -n cilium-test -f {{ cluster_dir }}/yml/cilium-check/check-part1.yaml"
     
     - name: 轮询等待echo pod运行，视下载镜像速度而定
-      shell: "kubectl get pod -n cilium-test |grep echo|grep Running|grep '1/1'|wc -l"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n cilium-test |grep echo|grep Running|grep '1/1'|wc -l"
       register: pod_status
       until: pod_status.stdout == "3"
       retries: 15
@@ -24,9 +24,9 @@
       ignore_errors: true
     
     - name: 创建完整测试connectivity-check
-      shell: "kubectl apply -n cilium-test -f {{ cluster_dir }}/yml/cilium-check/connectivity-check.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -n cilium-test -f {{ cluster_dir }}/yml/cilium-check/connectivity-check.yaml"
 
     - debug:
         msg: "[重要]: 请查看命名空间cilium-test下所有pod，如果均为Running状态，且没有重启数增长，说明cilium连接测试正常。 \
-              测试观察一段时间可以整体删除该命名空间所有资源(kubectl delete ns cilium-test)"
+              测试观察一段时间可以整体删除该命名空间所有资源(kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig delete ns cilium-test)"
   when: 'cilium_connectivity_check|bool'

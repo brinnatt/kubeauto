@@ -2,7 +2,7 @@
   "CN": "kubernetes",
   "hosts": [
     "127.0.0.1",
-{% if groups['ex_lb']|length > 0 %}
+{% if (groups['ex_lb'] | default([])) | length > 0 %}
     "{{ hostvars[groups['ex_lb'][0]]['EX_APISERVER_VIP'] }}",
 {% endif %}
 {% for host in groups['kube_master'] %}

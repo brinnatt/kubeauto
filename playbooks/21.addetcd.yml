@@ -29,7 +29,7 @@
       register: RUNNING_NODE
 
     - debug: var="RUNNING_NODE.stdout"
-    connection: local
+    delegate_to: localhost
 
   # step2: add a new member in the etcd cluster
   - name: add a new etcd member
@@ -43,6 +43,6 @@
     CLUSTER_STATE: existing
   roles:
   - { role: os-harden, when: "OS_HARDEN|bool" }
-  - { role: chrony, when: "groups['chrony']|length > 0" }
+  - { role: chrony, when: "(groups['chrony'] | default([])) | length > 0" }
   - prepare
   - etcd

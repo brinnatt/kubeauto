@@ -20,10 +20,44 @@
     - kubelet
     - kube-proxy
 
+# All etcd members must be stopped before any snapshot restore (HA requirement).
+- hosts: etcd
+  tasks:
+  - name: ensure etcd stopped on all members before restore
+    service: name=etcd state=stopped
+
 - hosts: etcd
   serial: 1
   roles:
   - cluster-restore
+
+# Start etcd only after every member has restored snapshot data (HA-safe).
+- hosts: etcd
+  tasks:
+  - name: restart etcd service after restore
+    service: name=etcd state=restarted
+
+  - name: wait for etcd service running after restore
+    shell: "systemctl is-active etcd.service"
+    register: etcd_status
+    until: '"active" in etcd_status.stdout'
+    retries: 12
+    delay: 8
+
+- hosts: localhost
+  tasks:
+  - name: verify etcd cluster health after restore
+    shell: >-
+      ETCDCTL_API=3 {{ base_dir }}/extra-bin/etcdctl
+      --endpoints={% for h in groups['etcd'] %}https://{{ h }}:2379{% if not loop.last %},{% endif %}{% endfor %}
+      --cacert={{ cluster_dir }}/ssl/ca.pem
+      --cert={{ cluster_dir }}/ssl/etcd.pem
+      --key={{ cluster_dir }}/ssl/etcd-key.pem
+      endpoint health
+    register: etcd_health
+    until: etcd_health.rc == 0
+    retries: 12
+    delay: 8
 
 # [fix] serial:1 — start apiserver before controller-manager/scheduler after restore
 - hosts: kube_master

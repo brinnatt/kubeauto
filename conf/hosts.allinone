@@ -71,5 +71,5 @@ ca_dir="/etc/kubernetes/ssl"
 # Default 'k8s_nodename' is empty
 k8s_nodename=''
 
-# Default python interpreter
-ansible_python_interpreter=/usr/bin/python3
+# SSH user for ansible (default root per README deployment guide)
+ansible_user=root

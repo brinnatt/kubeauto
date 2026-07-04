@@ -3,15 +3,15 @@
       file: name={{ cluster_dir }}/yml/minio state=directory
 
     - name: 创建命名空间{{ minio_namespace }}
-      shell: "kubectl create ns {{ minio_namespace }} || echo true"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create ns {{ minio_namespace }} || echo true"
 
     - name: get minio-global-cert info
-      shell: "kubectl get secrets -n {{ minio_namespace }}"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get secrets -n {{ minio_namespace }}"
       register: secrets_info
       when: 'minio_with_global_cert|bool'
 
     - name: 创建 minio-global-cert
-      shell: "kubectl create secret generic -n {{ minio_namespace }} minio-global-cert \
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create secret generic -n {{ minio_namespace }} minio-global-cert \
             --from-file=public.crt={{ base_dir }}/roles/cluster-addon/templates/minio/server.crt \
             --from-file=private.key={{ base_dir }}/roles/cluster-addon/templates/minio/server.key"
       when: 'minio_with_global_cert|bool and "minio-global-cert" not in secrets_info.stdout'

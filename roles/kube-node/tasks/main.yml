@@ -108,25 +108,6 @@
   delay: 2
   tags: reload-kube-proxy, upgrade_k8s, restart_node, force_change_certs
 
-- name: wait for node Ready
-  shell: "kubectl get node {{ K8S_NODENAME }}|awk 'NR>1{print $2}'"
-  register: node_status
-  until: node_status.stdout == "Ready" or node_status.stdout == "Ready,SchedulingDisabled"
-  retries: 8 
-  delay: 8
-  tags: upgrade_k8s, restart_node, force_change_certs
-  connection: local
-
-- block:
-  - name: Setting worker role name
-    shell: "kubectl label node {{ K8S_NODENAME }} kubernetes.io/role=node --overwrite"
-
-  - name: Setting master role name
-    shell: "kubectl label node {{ K8S_NODENAME }} kubernetes.io/role=master --overwrite"
-    when: "inventory_hostname in groups['kube_master']"
-
-  - name: Making master nodes SchedulingDisabled
-    shell: "kubectl cordon {{ K8S_NODENAME }} "
-    when: "inventory_hostname not in groups['kube_node']"
-  ignore_errors: true
-  connection: local
+# Node Ready wait runs after CNI via playbook imports; only inline for rolling upgrades.
+- import_tasks: wait-node-ready.yml
+  tags: upgrade_k8s, restart_node

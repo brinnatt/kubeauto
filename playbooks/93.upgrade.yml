@@ -16,7 +16,7 @@
     shell: "{{ bin_dir }}/kube-apiserver --version"
     register: UPDATE_VER
     run_once: true
-    connection: local
+    delegate_to: localhost
 
   - name: print update version
     debug: var="UPDATE_VER.stdout"

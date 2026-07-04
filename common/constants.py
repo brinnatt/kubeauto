@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import os
 from common.os import SystemProbe
 
 
@@ -132,6 +133,13 @@ class KubeConstant:
 
     def __post_init__(self):
         """用于 @dataclass 自动生成的 __init__ 后执行额外逻辑"""
+        base_override = os.environ.get("KUBEAUTO_BASE_PATH")
+        if base_override:
+            self.BASE_PATH = base_override.rstrip("/")
+            self.IMAGE_DIR = f"{self.BASE_PATH}/down"
+            self.KUBE_BIN_DIR = f"{self.BASE_PATH}/kube-bin"
+            self.EXTRA_BIN_DIR = f"{self.BASE_PATH}/extra-bin"
+            self.DOCKER_BIN_DIR = f"{self.BASE_PATH}/docker-bin"
         self.arch = SystemProbe().system_info["machine"]
 
     _DOCKER_PLUGIN_ARCH = {

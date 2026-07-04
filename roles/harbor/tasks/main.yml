@@ -44,7 +44,7 @@
   - block:
     - name: create harbor certificate request
       template: src=harbor-csr.json.j2 dest={{ cluster_dir }}/ssl/harbor-csr.json
-      connection: local
+      delegate_to: localhost
     
     - name: create harbor certificate and private key
       shell: "cd {{ cluster_dir }}/ssl && {{ base_dir }}/extra-bin/cfssl gencert \
@@ -52,7 +52,7 @@
             -ca-key=ca-key.pem \
             -config=ca-config.json \
             -profile=kubernetes harbor-csr.json|{{ base_dir }}/extra-bin/cfssljson -bare harbor"
-      connection: local
+      delegate_to: localhost
     
     - name: distribute self-signed certificates
       copy: src={{ cluster_dir }}/ssl/{{ item }} dest={{ ca_dir }}/{{ item }}

@@ -1,6 +1,7 @@
 """
 Utility functions for kubeauto
 """
+import os
 import sys
 import site
 import subprocess
@@ -11,9 +12,32 @@ from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, 
 from enum import Enum
 from pathlib import Path
 from .logger import setup_logger, LOG_STDOUT
-from .exceptions import CommandExecutionError
+from .exceptions import CommandExecutionError, InstallPrereqError
 
 logger = setup_logger(__name__)
+
+
+def ensure_kubeauto_clusters_dir(base_path: Union[Path, str]) -> Path:
+    """Ensure /usr/local/kubeauto/clusters exists and is writable by the invoking user."""
+    clusters_dir = Path(base_path) / "clusters"
+    try:
+        clusters_dir.mkdir(parents=True, exist_ok=True)
+    except PermissionError as exc:
+        raise InstallPrereqError(
+            f"Cannot create cluster directory {clusters_dir}: permission denied. "
+            f"Run once as root: mkdir -p {clusters_dir} && chown $USER:$USER {clusters_dir}"
+        ) from exc
+
+    if os.getuid() == 0:
+        owner = os.environ.get("SUDO_USER") or os.environ.get("USER")
+        if owner and owner != "root":
+            try:
+                import pwd
+                pw = pwd.getpwnam(owner)
+                os.chown(clusters_dir, pw.pw_uid, pw.pw_gid)
+            except (ImportError, KeyError, OSError):
+                pass
+    return clusters_dir
 
 
 def copy_file_to_remote(
@@ -298,11 +322,16 @@ def ssh_localhost() -> None:
 
 
 def confirm_action(prompt: str, timeout: int = 5) -> bool:
-    """Ask for confirmation with timeout"""
+    """Ask for confirmation with timeout. Non-interactive sessions auto-proceed."""
     import select
     import sys
+    import time
 
     logger.warning(f"{prompt} (timeout: {timeout}s)")
+    if not sys.stdin.isatty():
+        logger.info("Non-interactive session: proceeding automatically.")
+        return True
+
     sys.stdout.write("Press any key to abort...")
     sys.stdout.flush()
 

@@ -5,20 +5,20 @@
 - name: get docker version information
   shell: "{{ base_dir }}/docker-bin/dockerd --version | awk '{print $3}' | tr -d ','"
   register: docker_ver
-  connection: local
+  delegate_to: localhost
   run_once: true
   tags: upgrade_docker, download_docker
 
 - name: debug info
   debug: var="docker_ver"
-  connection: local
+  delegate_to: localhost
   run_once: true
   tags: upgrade_docker, download_docker
 
 - name: revise docker version with float type
   set_fact:
     DOCKER_VER: "{{ docker_ver.stdout.split('.')[0]|int + docker_ver.stdout.split('.')[1]|int/100 }}"
-  connection: local
+  delegate_to: localhost
   run_once: true
   tags: upgrade_docker, download_docker
 

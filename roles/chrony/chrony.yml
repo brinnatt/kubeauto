@@ -5,4 +5,4 @@
   - ex_lb
   - chrony
   roles:
-  - { role: chrony, when: "groups['chrony']|length > 0" }
+  - { role: chrony, when: "(groups['chrony'] | default([])) | length > 0" }

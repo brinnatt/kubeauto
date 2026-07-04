@@ -1,13 +1,14 @@
 - block:
     - name: 准备 DNS的部署文件
       template: src=dns/coredns.yaml.j2 dest={{ cluster_dir }}/yml/coredns.yaml
+      tags: force_change_certs
 
     - name: 删除coredns部署
-      shell: "kubectl delete -f {{ cluster_dir }}/yml/coredns.yaml || echo true; sleep 3"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig delete -f {{ cluster_dir }}/yml/coredns.yaml || echo true; sleep 3"
       tags: force_change_certs
       when: 'CHANGE_CA|bool'
 
     - name: 创建coredns部署
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/coredns.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/coredns.yaml"
       tags: force_change_certs
   when: 'dns_install == "yes"'

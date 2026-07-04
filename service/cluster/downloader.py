@@ -8,7 +8,7 @@ from typing import Optional
 from common.constants import KubeConstant
 from common.exceptions import DownloadError, InstallPrereqError
 from common.logger import setup_logger, LOG_STDOUT
-from common.utils import rmrf, run_command
+from common.utils import rmrf, run_command, ensure_kubeauto_clusters_dir
 
 from .docker import DockerManager
 from .registry import RegistryManager
@@ -39,6 +39,8 @@ class DownloadManager:
         self.get_ext_bin()
         self.registry.start_local_registry()
         self.get_default_images()
+        ensure_kubeauto_clusters_dir(self.base_path)
+        logger.info(f"Cluster config directory ready: {self.base_path / 'clusters'}", extra=LOG_STDOUT)
 
     def get_ansible_env(self):
         """

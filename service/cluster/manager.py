@@ -19,7 +19,7 @@ from typing import Generator, List, Optional, Tuple
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException as K8sApiException
 
-from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf, copy_file_to_remote, get_host_ip
+from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf, copy_file_to_remote, get_host_ip, ensure_kubeauto_clusters_dir
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError,
@@ -102,6 +102,9 @@ class ClusterManager:
         self.extra_bin_dir = Path(self.kube_constant.EXTRA_BIN_DIR)
         self.clusters_dir = self.base_path / "clusters"
 
+    def _ensure_clusters_dir(self) -> None:
+        self.clusters_dir = ensure_kubeauto_clusters_dir(self.base_path)
+
     def list_clusters(self) -> List[str]:
         """List all managed clusters"""
         if not self.clusters_dir.exists():
@@ -136,6 +139,7 @@ class ClusterManager:
 
     def new_cluster(self, name: str) -> None:
         """Create a new cluster configuration"""
+        self._ensure_clusters_dir()
         cluster_dir = self.clusters_dir / name
         if cluster_dir.exists():
             raise ClusterExistsError(f"Cluster {name} already exists")
@@ -331,6 +335,17 @@ class ClusterManager:
                 env["LD_LIBRARY_PATH"] = ""
         return env
 
+    @staticmethod
+    def _write_ansible_cfg(tmp_dir: str, kubeconfig: str | None = None) -> None:
+        """Write ansible.cfg for playbook runs (auto_silent + local_connection python)."""
+        env_line = f"environment = KUBECONFIG={kubeconfig}\n" if kubeconfig else ""
+        Path(tmp_dir, "ansible.cfg").write_text(
+            "[defaults]\ninterpreter_python = auto_silent\n"
+            f"{env_line}\n"
+            "[local_connection]\npython = /usr/bin/python3\n",
+            encoding="utf-8",
+        )
+
     def _run_playbook(
         self,
         cluster: str,
@@ -352,7 +367,14 @@ class ClusterManager:
         else:
             pb_path = get_resource_path("playbooks", playbook)
         envvars = self._env_for_system_subprocess()
+        kubeconfig_path = self.clusters_dir / cluster / "kubectl.kubeconfig"
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+            # auto_silent: discover python per host (platform-python on RHEL8, python3 on Ubuntu localhost)
+            # Ref: https://docs.ansible.com/ansible/latest/reference_appendices/interpreter_discovery.html
+            self._write_ansible_cfg(
+                tmp_dir,
+                str(kubeconfig_path) if kubeconfig_path.exists() else None,
+            )
             result = ansible_runner.run(
                 private_data_dir=tmp_dir,
                 playbook=pb_path,
@@ -442,6 +464,9 @@ class ClusterManager:
             tmp_path = Path(tmp_dir) / "hosts"
             shutil.copy2(hosts_file, tmp_path)
             self._add_to_hosts_section(tmp_path, role, node_line)
+            # Master nodes also belong in [kube_node] for restore/stop/start playbooks.
+            if role == "master" and not self._ip_in_hosts_section(tmp_path, ip, "node"):
+                self._add_to_hosts_section(tmp_path, "node", ip)
             logger.info(f"Adding {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
             extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
             extra_vars["NODE_TO_ADD"] = ip
@@ -495,13 +520,22 @@ class ClusterManager:
         # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
 
+        # Master nodes are also listed in [kube_node]; keep inventory aligned with del-master cleanup.
+        if role == "master" and self._ip_in_hosts_section(hosts_file, ip, "node"):
+            self._remove_from_hosts_section(hosts_file, "node", ip)
+
         # After removing a node, we still have to notify related services
         if role == "etcd":
             self._notify_etcd_apiserver(cluster)
         elif role == "master":
+            if self._ip_in_hosts_section(hosts_file, ip, "etcd"):
+                logger.warning(
+                    f"Node {ip} is still listed in [etcd]. Run 'del-etcd {cluster} {ip}' if this etcd member should be removed.",
+                    extra=LOG_STDOUT,
+                )
             self._reconfigure_kubeconfig(cluster)
-            self._restart_load_balancers(cluster)
             self._kubectl_del_node(cluster, ip, role)
+            self._restart_load_balancers(cluster)
         elif role == "node":
             self._kubectl_del_node(cluster, ip, role)
 
@@ -818,14 +852,31 @@ class ClusterManager:
         )
         logger.info("Apiservers restarted.", extra=LOG_STDOUT)
 
+    def _hosts_group_has_members(self, hosts_file: Path, group: str) -> bool:
+        """Return True if an inventory group has at least one non-comment host line."""
+        in_group = False
+        for line in hosts_file.read_text().splitlines():
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                in_group = stripped[1:-1].split(":")[0] == group
+                continue
+            if in_group and stripped and not stripped.startswith("#") and not stripped.startswith("["):
+                return True
+        return False
+
     def _restart_load_balancers(self, cluster: str) -> None:
         """Restart kube-lb and ex-lb services"""
+        hosts_file = self.clusters_dir / cluster / "hosts"
         logger.info("Restarting kube-lb (master membership changed).", extra=LOG_STDOUT)
         self._run_playbook(
-            cluster, "90.setup.yml", cmdline="-t restart_kube-lb",
+            cluster, "90.setup.yml",
+            cmdline="-t restart_kube-lb --limit kube_master",
             fail_msg="Failed to restart the kube-lb for the changed cluster membership.",
         )
         logger.info("Kube-lb restarted.", extra=LOG_STDOUT)
+        if not self._hosts_group_has_members(hosts_file, "ex_lb"):
+            logger.info("No ex_lb hosts configured; skipping ex-lb restart.", extra=LOG_STDOUT)
+            return
         logger.info("Restarting ex-lb (master membership changed).", extra=LOG_STDOUT)
         self._run_playbook(
             cluster, "10.ex-lb.yml", cmdline="-t restart_lb",
@@ -907,9 +958,15 @@ class ClusterManager:
         # When the bastion host is not a cluster node, update local ~/.kube/config (avoid duplicate copy when the bastion host is a k8s node)
         if self.get_current_cluster() == cluster and get_host_ip() not in cluster_ips:
             dest_local = Path.home() / ".kube" / "config"
-            dest_local.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(kubeconfig_path, dest_local)
-            dest_local.chmod(0o600)
+            try:
+                dest_local.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(kubeconfig_path, dest_local)
+                dest_local.chmod(0o600)
+            except OSError as exc:
+                logger.warning(
+                    f"Could not update local kubeconfig at {dest_local}: {exc}",
+                    extra=LOG_STDOUT,
+                )
         logger.info("Kubeconfig reconfigured.", extra=LOG_STDOUT)
 
     def _is_cluster_live(self, kubeconfig_path: Path) -> bool:
@@ -988,7 +1045,7 @@ class SetupAIO(task.Task):
         aio_hosts = aio_dir / "hosts"
         aio_hosts.write_text(
             Path(get_resource_path("conf", "hosts.allinone")).read_text()
-            .replace("192.168.1.1", host_ip)
+            .replace("192.168.1.1", f"{host_ip} ansible_connection=local")
             .replace("_cluster_name_", self.AIO_CLUSTER)
         )
         logger.info("All-in-one cluster environment initialized.", extra=LOG_STDOUT)
@@ -1023,6 +1080,7 @@ class SetupAIO(task.Task):
         )
         envvars = m._env_for_system_subprocess()
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+            m._write_ansible_cfg(tmp_dir, str(aio_kubeconfig) if aio_kubeconfig.exists() else None)
             run_result = ansible_runner.run(
                 private_data_dir=tmp_dir,
                 playbook=get_resource_path("playbooks", "99.clean.yml"),

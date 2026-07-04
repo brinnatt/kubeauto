@@ -3,7 +3,7 @@
 - hosts: "{{ NODE_TO_ADD }}" 
   roles:
   - { role: os-harden, when: "OS_HARDEN|bool" }
-  - { role: chrony, when: "groups['chrony']|length > 0" } 
+  - { role: chrony, when: "(groups['chrony'] | default([])) | length > 0" } 
   - prepare
   - { role: docker, when: "CONTAINER_RUNTIME == 'docker'" }
   - { role: containerd, when: "CONTAINER_RUNTIME == 'containerd'" }
@@ -13,3 +13,8 @@
   - { role: cilium, when: "CLUSTER_NETWORK == 'cilium'" }
   - { role: flannel, when: "CLUSTER_NETWORK == 'flannel'" }
   - { role: kube-router, when: "CLUSTER_NETWORK == 'kube-router'" }
+  - { role: kube-ovn, when: "CLUSTER_NETWORK == 'kube-ovn'" }
+
+- hosts: "{{ NODE_TO_ADD }}"
+  tasks:
+  - import_tasks: ../roles/kube-node/tasks/wait-node-ready.yml

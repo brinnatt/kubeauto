@@ -9,12 +9,12 @@
       - "namespace.yaml"
     
     - name: 创建测试namespace
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/network-check/namespace.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/network-check/namespace.yaml"
     
     - name: 创建完整测试network-check
-      shell: "kubectl apply -n network-test -f {{ cluster_dir }}/yml/network-check/network-check.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -n network-test -f {{ cluster_dir }}/yml/network-check/network-check.yaml"
 
     - debug:
         msg: "[重要]: 请查看命名空间network-test下所有pod，如果均为Completed状态，且没有重启数增长，说明网络连接测试正常。 \
-              如果有Pending状态，部分测试需要多节点集群才能完成，如果希望禁用网络测试执行(kubectl delete ns network-test)"
+              如果有Pending状态，部分测试需要多节点集群才能完成，如果希望禁用网络测试执行(kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig delete ns network-test)"
   when: 'network_check_enabled|bool'

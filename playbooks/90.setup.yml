@@ -7,7 +7,7 @@
   - chrony
   roles:
   - { role: os-harden, when: "OS_HARDEN|bool" }
-  - { role: chrony, when: "groups['chrony']|length > 0" }
+  - { role: chrony, when: "(groups['chrony'] | default([])) | length > 0" }
 
 # to create CA, kubeconfig, kube-proxy.kubeconfig etc.
 - hosts: localhost
@@ -60,6 +60,13 @@
   - { role: flannel, when: "CLUSTER_NETWORK == 'flannel'" }
   - { role: kube-router, when: "CLUSTER_NETWORK == 'kube-router'" }
   - { role: kube-ovn, when: "CLUSTER_NETWORK == 'kube-ovn'" }
+
+# Wait for nodes Ready after CNI is installed.
+- hosts:
+  - kube_master
+  - kube_node
+  tasks:
+  - import_tasks: ../roles/kube-node/tasks/wait-node-ready.yml
 
 # to install cluster-addons
 - hosts: localhost

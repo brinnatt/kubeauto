@@ -24,13 +24,20 @@
       debug: var="DRAIN_OPT"
 
     - name: get the node name to delete
-      shell: "kubectl get node -owide|grep ' {{ NODE_TO_DEL }} '|awk '{print $1}'"
+      shell: >-
+        kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+        get nodes -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}'
+        | awk '$2 == "{{ NODE_TO_DEL }}" {print $1; exit}'
       register: NODE_NAME
 
     - debug: var="NODE_NAME.stdout"
 
+    - fail:
+        msg: "Cannot find node with IP {{ NODE_TO_DEL }} in cluster {{ cluster_dir }}"
+      when: NODE_NAME.stdout | trim == ''
+
     - name: run kubectl drain @{{ NODE_NAME.stdout }}
-      shell: "kubectl drain {{ NODE_NAME.stdout }} {{ DRAIN_OPT }}"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig drain {{ NODE_NAME.stdout }} {{ DRAIN_OPT }}"
       #ignore_errors: true
 
 

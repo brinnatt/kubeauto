@@ -1,0 +1,32 @@
+---
+# Wait until the node registers and becomes Ready (run after CNI is installed).
+- name: wait for node Ready
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+    get node {{ K8S_NODENAME }}
+    -o jsonpath='{range .status.conditions[?(@.type=="Ready")]}{.status}{end}'
+  register: node_status
+  until: node_status.stdout == "True"
+  retries: "{{ wait_node_ready_retries | default(36) }}"
+  delay: "{{ wait_node_ready_delay | default(10) }}"
+  delegate_to: localhost
+
+- block:
+  - name: Setting worker role name
+    shell: >-
+      kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+      label node {{ K8S_NODENAME }} kubernetes.io/role=node --overwrite
+
+  - name: Setting master role name
+    shell: >-
+      kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+      label node {{ K8S_NODENAME }} kubernetes.io/role=master --overwrite
+    when: "inventory_hostname in groups['kube_master']"
+
+  - name: Making master nodes SchedulingDisabled
+    shell: >-
+      kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+      cordon {{ K8S_NODENAME }}
+    when: "inventory_hostname not in groups['kube_node']"
+  ignore_errors: true
+  delegate_to: localhost

@@ -7,7 +7,7 @@
   - chrony
   roles:
   - { role: os-harden, when: "OS_HARDEN|bool" }
-  - { role: chrony, when: "groups['chrony']|length > 0" }
+  - { role: chrony, when: "(groups['chrony'] | default([])) | length > 0" }
 
 # to create CA, kubeconfig, kube-proxy.kubeconfig etc.
 - hosts: localhost

@@ -6,11 +6,12 @@
   with_items:
   - etcd
   - etcdctl
+  - etcdutl
   tags: upgrade_etcd
 
 - name: create etcd CSR
   template: src=etcd-csr.json.j2 dest={{ cluster_dir }}/ssl/etcd-csr.json
-  connection: local
+  delegate_to: localhost
   run_once: true
   tags: force_change_certs
 
@@ -20,7 +21,7 @@
         -ca-key=ca-key.pem \
         -config=ca-config.json \
         -profile=kubernetes etcd-csr.json | {{ base_dir }}/extra-bin/cfssljson -bare etcd"
-  connection: local
+  delegate_to: localhost
   run_once: true
   tags: force_change_certs
 
@@ -44,11 +45,13 @@
   shell: systemctl daemon-reload && systemctl restart etcd
   ignore_errors: true
   tags: upgrade_etcd, restart_etcd, force_change_certs
+  when: not (ETCD_SKIP_RESTART | default(false) | bool)
 
 - name: wait for etcd service running
   shell: "systemctl is-active etcd.service"
   register: etcd_status
   until: '"active" in etcd_status.stdout'
-  retries: 8
-  delay: 8
+  retries: 20
+  delay: 10
   tags: upgrade_etcd, restart_etcd, force_change_certs
+  when: not (ETCD_SKIP_RESTART | default(false) | bool)

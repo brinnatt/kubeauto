@@ -22,7 +22,7 @@
                 node_name=$({{ bin_dir }}/calicoctl get node -owide|grep " $ip/"|cut -d" " -f1) && \
                 kubectl label node "$node_name" route-reflector=true --overwrite;
              done'
-      connection: local
+      delegate_to: localhost
 
     - name: configure calico bgp yaml file
       template: src={{ item }}.j2 dest=/etc/calico/{{ item }}

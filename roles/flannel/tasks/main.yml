@@ -1,19 +1,19 @@
 - name: configure flannel DaemonSet yaml file
   template: src=kube-flannel.yaml.j2 dest={{ cluster_dir }}/yml/flannel.yaml
   run_once: true
-  connection: local
+  delegate_to: localhost
 
 - name: delete flannel network before applying
   shell: "kubectl delete -f {{ cluster_dir }}/yml/flannel.yaml || echo true; sleep 3"
   run_once: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs
   when: 'CHANGE_CA|bool'
 
 - name: apply flannel network
   shell: "kubectl apply -f {{ cluster_dir }}/yml/flannel.yaml"
   run_once: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs
 
 - name: delete default cni configuration
@@ -26,5 +26,5 @@
   retries: 15
   delay: 8
   ignore_errors: true
-  connection: local
+  delegate_to: localhost
   tags: force_change_certs
