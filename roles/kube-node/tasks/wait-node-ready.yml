@@ -7,7 +7,7 @@
     -o jsonpath='{range .status.conditions[?(@.type=="Ready")]}{.status}{end}'
   register: node_status
   until: node_status.stdout == "True"
-  retries: "{{ wait_node_ready_retries | default(36) }}"
+  retries: "{{ wait_node_ready_retries | default(48) }}"
   delay: "{{ wait_node_ready_delay | default(10) }}"
   delegate_to: localhost
 

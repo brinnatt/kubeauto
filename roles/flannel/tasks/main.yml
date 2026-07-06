@@ -4,27 +4,28 @@
   delegate_to: localhost
 
 - name: delete flannel network before applying
-  shell: "kubectl delete -f {{ cluster_dir }}/yml/flannel.yaml || echo true; sleep 3"
+  shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig delete -f {{ cluster_dir }}/yml/flannel.yaml || echo true; sleep 3"
   run_once: true
   delegate_to: localhost
   tags: force_change_certs
   when: 'CHANGE_CA|bool'
 
 - name: apply flannel network
-  shell: "kubectl apply -f {{ cluster_dir }}/yml/flannel.yaml"
+  shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/flannel.yaml"
   run_once: true
   delegate_to: localhost
-  tags: force_change_certs
+  tags: always
 
 - name: delete default cni configuration
   file: path=/etc/cni/net.d/10-default.conf state=absent
 
 - name: wait for flannel running in a polling manner
-  shell: "kubectl get pod -n kube-system -o wide|grep 'flannel'|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n kube-system -o wide
+    | grep 'flannel' | grep ' {{ K8S_NODENAME }} ' | awk '{print $3}'
   register: pod_status
   until: pod_status.stdout == "Running"
-  retries: 15
-  delay: 8
-  ignore_errors: true
+  retries: 30
+  delay: 10
   delegate_to: localhost
-  tags: force_change_certs
+  tags: always

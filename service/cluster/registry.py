@@ -7,6 +7,15 @@ from common.exceptions import CommandExecutionError
 
 logger = setup_logger(__name__)
 
+# ghcr.io images often mirror Docker Hub; try these when direct ghcr pull fails (CN networks).
+_GHCR_PULL_FALLBACKS = {
+    "ghcr.io/flannel-io/flannel": ["flannel/flannel", "ghcr.dockerproxy.com/flannel-io/flannel"],
+    "ghcr.io/flannel-io/flannel-cni-plugin": [
+        "flannel/flannel-cni-plugin",
+        "ghcr.dockerproxy.com/flannel-io/flannel-cni-plugin",
+    ],
+}
+
 
 class RegistryManager:
     def __init__(self):
@@ -66,11 +75,7 @@ class RegistryManager:
         for idx, image in enumerate(images, start=1):
             logger.info(f"[REGISTRY] [{idx}/{total}] Image: {image}", extra=LOG_STDOUT)
             try:
-                if not self.docker.image_exists(image):
-                    logger.info(f"[REGISTRY]   -> Pulling from remote...", extra=LOG_STDOUT)
-                    self.docker.pull_image(image)
-                else:
-                    logger.info(f"[REGISTRY]   -> Image exists locally; skipping pull.", extra=LOG_STDOUT)
+                self._ensure_image_local(image)
 
                 # Image may contain multiple colons (e.g. host:5000/name:tag); tag is after last colon
                 repo, _, tag = image.rpartition(":")
@@ -90,3 +95,32 @@ class RegistryManager:
                 raise
 
         logger.info(f"[REGISTRY] All {total} image(s) uploaded to local registry.", extra=LOG_STDOUT)
+
+    def _ensure_image_local(self, image: str) -> None:
+        """Pull image if missing; for ghcr.io try Docker Hub / proxy mirrors before failing."""
+        if self.docker.image_exists(image):
+            logger.info(f"[REGISTRY]   -> Image exists locally; skipping pull.", extra=LOG_STDOUT)
+            return
+
+        candidates = [image]
+        repo, _, tag = image.rpartition(":")
+        if not tag:
+            tag = "latest"
+        if repo in _GHCR_PULL_FALLBACKS:
+            candidates.extend(f"{alt}:{tag}" for alt in _GHCR_PULL_FALLBACKS[repo])
+
+        last_err = None
+        for idx, candidate in enumerate(candidates):
+            try:
+                if idx > 0:
+                    logger.info(f"[REGISTRY]   -> Retry pull via mirror: {candidate}", extra=LOG_STDOUT)
+                else:
+                    logger.info(f"[REGISTRY]   -> Pulling from remote...", extra=LOG_STDOUT)
+                self.docker.pull_image(candidate)
+                if candidate != image:
+                    self.docker.tag_image(candidate, image)
+                return
+            except (CommandExecutionError, Exception) as e:
+                last_err = e
+                continue
+        raise last_err

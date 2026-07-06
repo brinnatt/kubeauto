@@ -117,6 +117,7 @@ SYS_RESERVED_ENABLED: "no"
 FLANNEL_BACKEND: "vxlan"
 DIRECT_ROUTING: false
 flannel_ver: "__flannel__"
+flannel_cni_ver: "__flannel_cni__"
 # ------------------- flannel end ---------------------
 
 
@@ -151,6 +152,7 @@ calico_ver_main: "{{ calico_ver.split('.')[0] }}.{{ calico_ver.split('.')[1] }}"
 
 # ------------------- cilium begin -----------------
 cilium_ver: "__cilium__"
+cilium_hubble_ui_ver: "__cilium_hubble_ui__"
 cilium_connectivity_check: false
 cilium_hubble_enabled: false
 cilium_hubble_ui_enabled: false

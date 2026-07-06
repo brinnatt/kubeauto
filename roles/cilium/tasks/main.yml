@@ -13,16 +13,20 @@
 
     - name: helm delete cilium {{ cilium_ver }}
       shell: "{{ base_dir }}/extra-bin/helm delete cilium -n kube-system || echo true; sleep 3"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
       tags: force_change_certs
       when: 'CHANGE_CA|bool'
 
     - name: helm create cilium {{ cilium_ver }}
       shell: "{{ base_dir }}/extra-bin/helm upgrade cilium --install \
               -n kube-system -f {{ cluster_dir }}/yml/cilium-values.yaml \
-              {{ base_dir }}/roles/cilium/files/cilium-{{ cilium_ver }}.tgz"
-      tags: force_change_certs
+              {{ base_dir }}/roles/cilium/files/cilium-{{ cilium_ver | regex_replace('^v', '') }}.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+      tags: always
   run_once: true
-  delegate_to: localhost  
+  delegate_to: localhost
 
 - name: download client tools
   copy: src={{ base_dir }}/extra-bin/{{ item }} dest={{ bin_dir }}/{{ item }} mode=0755
@@ -35,19 +39,31 @@
   file: path=/etc/cni/net.d/10-default.conf state=absent
 
 - name: wait for cilium-node running in a polling manner
-  shell: "kubectl get pod -n kube-system -owide -lk8s-app=cilium|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n kube-system -owide -lk8s-app=cilium
+    | grep ' {{ K8S_NODENAME }} ' | awk '{print $3}'
   register: pod_status
   until: pod_status.stdout == "Running"
-  retries: 15
-  delay: 8
-  ignore_errors: true
+  retries: 30
+  delay: 10
   delegate_to: localhost
-  tags: force_change_certs
+  tags: always
+
+- name: restart hubble-ui after CNI is up (avoids frontend probe failure during bootstrap)
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig rollout restart deploy/hubble-ui -n kube-system &&
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig rollout status deploy/hubble-ui -n kube-system --timeout=180s
+  run_once: true
+  delegate_to: localhost
+  when: "cilium_hubble_ui_enabled|bool"
+  tags: always
 
 # hubble-relay may need to be restarted
 - name: restart hubble-relay pod
-  shell: "kubectl -n kube-system scale deploy hubble-relay --replicas=0 && sleep 5 && \
-            kubectl -n kube-system scale deploy hubble-relay --replicas=1"
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig -n kube-system scale deploy hubble-relay --replicas=0 &&
+    sleep 5 &&
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig -n kube-system scale deploy hubble-relay --replicas=1
   run_once: true
   delegate_to: localhost
   when: "cilium_hubble_enabled|bool"

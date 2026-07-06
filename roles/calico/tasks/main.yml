@@ -11,13 +11,16 @@
 
     - name: delete old calico-etcd-secrets
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig -n kube-system delete secrets calico-etcd-secrets || echo NotFound"
+      when: 'CHANGE_CA|bool'
+      tags: force_change_certs
 
     - name: create calico-etcd-secrets
       shell: "cd {{ cluster_dir }}/ssl && \
             kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create secret generic -n kube-system calico-etcd-secrets \
             --from-file=etcd-ca=ca.pem \
             --from-file=etcd-key=calico-key.pem \
-            --from-file=etcd-cert=calico.pem"
+            --from-file=etcd-cert=calico.pem \
+            --dry-run=client -o yaml | kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f -"
 
     - name: configure calico DaemonSet yaml file
       template: src=calico-{{ calico_ver_main }}.yaml.j2 dest={{ cluster_dir }}/yml/calico.yaml
@@ -25,12 +28,13 @@
     - name: delete calico network
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig delete -f {{ cluster_dir }}/yml/calico.yaml || echo NotFound; sleep 3"
       when: 'CHANGE_CA|bool'
+      tags: force_change_certs
 
     - name: apply calico network
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/calico.yaml"
   run_once: true
   delegate_to: localhost
-  tags: force_change_certs
+  tags: always
 
 - name: prepare some dirs
   file: name={{ item }} state=directory
@@ -43,7 +47,7 @@
   - ca.pem
   - calico.pem
   - calico-key.pem
-  tags: force_change_certs
+  tags: always
 
 - name: delete default cni configuration
   file: path=/etc/cni/net.d/10-default.conf state=absent
@@ -65,7 +69,7 @@
   delay: 15
   ignore_errors: true
   delegate_to: localhost
-  tags: force_change_certs
+  tags: always
 
 - import_tasks: calico-rr.yml
   when: 'CALICO_RR_ENABLED|bool'

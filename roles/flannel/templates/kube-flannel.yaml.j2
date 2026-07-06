@@ -169,7 +169,7 @@ spec:
         - /opt/cni/bin/flannel
         command:
         - cp
-        image: registry.talkschool.cn:5000/flannel/flannel-cni-plugin:v1.7.1-flannel1
+        image: registry.talkschool.cn:5000/flannel/flannel-cni-plugin:{{ flannel_cni_ver | default('v1.7.1-flannel1') }}
         name: install-cni-plugin
         volumeMounts:
         - mountPath: /opt/cni/bin

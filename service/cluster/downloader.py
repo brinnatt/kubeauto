@@ -184,6 +184,9 @@ class DownloadManager:
             logger.error(f"[DOWNLOAD] Invalid component: {component}.", extra=LOG_STDOUT)
             raise DownloadError(f"Invalid component: {component}. Choose from: {list(self.kube_constant.component_images.keys())}.")
 
+        if component == "cilium":
+            self._ensure_cilium_helm_chart()
+
         images = self.kube_constant.component_images[component]
         logger.info(f"[DOWNLOAD] Component {component}: uploading {len(images)} image(s) to local registry.", extra=LOG_STDOUT)
         try:
@@ -192,6 +195,30 @@ class DownloadManager:
             logger.error(f"[DOWNLOAD] Failed to upload {component} images — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload {component} images: {e}")
         logger.info(f"[DOWNLOAD] Component {component}: {len(images)} image(s) uploaded.", extra=LOG_STDOUT)
+
+    def _ensure_cilium_helm_chart(self) -> None:
+        """Pull Cilium Helm chart matching v_cilium into roles/cilium/files/."""
+        version = self.kube_constant.v_cilium.lstrip("v")
+        chart_name = f"cilium-{version}.tgz"
+        for roles_dir in (self.base_path / "roles" / "cilium" / "files", Path("/opt/kubeauto/roles/cilium/files")):
+            roles_dir.mkdir(parents=True, exist_ok=True)
+            chart_path = roles_dir / chart_name
+            if chart_path.exists() and chart_path.stat().st_size > 10000:
+                logger.info(f"[DOWNLOAD] Cilium chart already present: {chart_path}", extra=LOG_STDOUT)
+                continue
+            tmp_dir = self.temp_path / f"cilium-chart-{version}"
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            helm_bin = self.extra_bin_dir / "helm"
+            logger.info(f"[DOWNLOAD] Pulling Cilium Helm chart {version} from quay.io/cilium/charts.", extra=LOG_STDOUT)
+            run_command([
+                str(helm_bin), "pull", "oci://quay.io/cilium/charts/cilium",
+                "--version", version, "-d", str(tmp_dir),
+            ])
+            pulled = tmp_dir / chart_name
+            if not pulled.exists():
+                raise DownloadError(f"Helm pull did not produce {chart_name} under {tmp_dir}")
+            shutil.copy2(pulled, chart_path)
+            logger.info(f"[DOWNLOAD] Cilium chart installed: {chart_path}", extra=LOG_STDOUT)
 
     def __check_file_exists(self, directory: Path, filename: str) -> bool:
         """Check if file exists"""

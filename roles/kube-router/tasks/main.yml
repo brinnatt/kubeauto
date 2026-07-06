@@ -3,25 +3,27 @@
       template: src=kuberouter.yaml.j2 dest={{ cluster_dir }}/yml/kube-router.yaml
 
     - name: delete kube-router DaemonSet
-      shell: "kubectl delete -f {{ cluster_dir }}/yml/kube-router.yaml || echo true; sleep 3"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig delete -f {{ cluster_dir }}/yml/kube-router.yaml || echo true; sleep 3"
       when: 'CHANGE_CA|bool'
+      tags: force_change_certs
 
     - name: apply kube-router DaemonSet
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/kube-router.yaml"
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/kube-router.yaml"
+      tags: always
   run_once: true
   delegate_to: localhost
-  tags: force_change_certs
 
 # delete original cni configurations
 - name: delete default cni configurations
   file: path=/etc/cni/net.d/10-default.conf state=absent
 
 - name: wait for kube-router running in a polling manner
-  shell: "kubectl get pod -n kube-system -o wide|grep 'kube-router'|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n kube-system -o wide
+    | grep 'kube-router' | grep ' {{ K8S_NODENAME }} ' | awk '{print $3}'
   register: pod_status
   until: pod_status.stdout == "Running"
-  retries: 15
-  delay: 8
-  ignore_errors: true
+  retries: 30
+  delay: 10
   delegate_to: localhost
-  tags: force_change_certs
+  tags: always

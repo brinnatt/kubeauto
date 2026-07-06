@@ -64,12 +64,21 @@ class KubeConstant:
         "refer_github": "https://github.com/kubernetes/kubernetes/tree/master/build/pause",
         "refer_none_official_docs": "https://k8s.iswbm.com/c02/p02_learn-kubernetes-pod-via-pause-container.html"
     })
-    v_flannel: str = field(default="v0.27.3", metadata={
-        "refer_github": "https://github.com/flannel-io/flannel"
+    v_flannel: str = field(default="v0.28.4", metadata={
+        "refer_github": "https://github.com/flannel-io/flannel/releases",
+        "description": "Latest stable v0.28.4 (2026-04); pin flannel_ver in cluster config if mirror lags",
     })
-    v_cilium: str = field(default="v1.17.4", metadata={
-        "refer_github": "https://github.com/cilium/cilium",
-        "refer_docs": "https://docs.cilium.io/en/stable/installation/k8s-install-helm/"
+    v_flannel_cni: str = field(default="v1.8.0-flannel1", metadata={
+        "refer_github": "https://github.com/flannel-io/flannel-cni-plugin/releases",
+    })
+    v_cilium: str = field(default="v1.19.5", metadata={
+        "refer_github": "https://github.com/cilium/cilium/releases",
+        "refer_docs": "https://docs.cilium.io/en/stable/network/kubernetes/compatibility/",
+        "description": "Latest stable v1.19.5; K8s 1.33 compatible",
+    })
+    v_cilium_hubble_ui: str = field(default="v0.13.5", metadata={
+        "refer_github": "https://github.com/cilium/hubble-ui/releases",
+        "description": "Hubble UI v0.13.5 paired with Cilium 1.19.x per upstream chart",
     })
     v_kuberouter: str = field(default="v1.5.4", metadata={
         "refer_github": "https://github.com/cloudnativelabs/kube-router"
@@ -178,14 +187,14 @@ class KubeConstant:
                 f"cilium/cilium:{self.v_cilium}",
                 f"cilium/operator-generic:{self.v_cilium}",
                 f"cilium/hubble-relay:{self.v_cilium}",
-                "cilium/hubble-ui-backend:v0.13.2",
-                "cilium/hubble-ui:v0.13.2"
+                f"cilium/hubble-ui-backend:{self.v_cilium_hubble_ui}",
+                f"cilium/hubble-ui:{self.v_cilium_hubble_ui}",
             ],
             "flannel": [
                 f"ghcr.io/flannel-io/flannel:{self.v_flannel}",
-                "ghcr.io/flannel-io/flannel-cni-plugin:v1.7.1-flannel1",
+                f"ghcr.io/flannel-io/flannel-cni-plugin:{self.v_flannel_cni}",
                 f"flannel/flannel:{self.v_flannel}",
-                "flannel/flannel-cni-plugin:v1.7.1-flannel1"
+                f"flannel/flannel-cni-plugin:{self.v_flannel_cni}",
             ],
             "dashboard": [
                 "kubernetesui/dashboard-api:1.14.0",
@@ -204,8 +213,8 @@ class KubeConstant:
                 "nacos/nacos-peer-finder-plugin:1.1"
             ],
             "openebs": [
-                "bitnami/kubectl:1.25.15",
-                "openebs/provisioner-localpv:4.3.0",
+                "bitnami/kubectl:1.33.6",
+                f"openebs/provisioner-localpv:{self.v_openebs}",
                 "openebs/linux-utils:4.2.0",
                 "openebs/lvm-driver:1.7.0",
                 "brinnatt/csi-node-driver-registrar:v2.13.0",

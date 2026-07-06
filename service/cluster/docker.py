@@ -1,5 +1,7 @@
 import json
+import os
 import re
+import shutil
 import tarfile
 import time
 from pathlib import Path
@@ -34,6 +36,22 @@ class DockerManager:
 
         # Initialize Docker SDK client after docker daemon installed
         self._client = None
+        self._docker_cli = ["docker"]
+
+    def _run_docker(self, args: List[str], **kwargs):
+        """Run docker CLI; fall back to passwordless sudo when unprivileged or permission denied."""
+        prefixes = [self._docker_cli]
+        if os.geteuid() != 0 and self._docker_cli == ["docker"]:
+            prefixes.append(["sudo", "-n", "docker"])
+        last_err = None
+        for prefix in prefixes:
+            try:
+                return run_command(prefix + args, **kwargs)
+            except CommandExecutionError as e:
+                last_err = e
+                if prefix[0] == "sudo":
+                    raise
+        raise last_err
 
     def _initialize_docker_client(self):
         """Initialize Docker SDK client"""
@@ -53,18 +71,38 @@ class DockerManager:
             self._initialize_docker_client()
         return self._client
 
+    def _docker_info_ok(self) -> bool:
+        """Return True if docker daemon responds (try plain docker, then passwordless sudo)."""
+        for cmd in (["docker", "info"], ["sudo", "-n", "docker", "info"]):
+            try:
+                run_command(cmd, shell=(len(cmd) == 2))
+                return True
+            except CommandExecutionError:
+                continue
+        return False
+
     @property
     def is_docker_installed(self) -> bool:
-        """Check if Docker was installed and running"""
+        """Check if Docker binary is present and daemon is reachable (start service if stopped)."""
         if self.client is not None:
             return True
 
-        try:
-            run_command(["docker", "info"], shell=True)
-            return True
-        except CommandExecutionError:
-            self.clean_docker_env(assume_yes=True)
+        if not shutil.which("docker"):
             return False
+
+        if self._docker_info_ok():
+            self._initialize_docker_client()
+            return True
+
+        try:
+            run_command(["sudo", "-n", "systemctl", "start", "docker"], shell=False)
+        except CommandExecutionError:
+            pass
+
+        if self._docker_info_ok():
+            self._initialize_docker_client()
+            return True
+        return False
 
     def install_docker(self, version: Optional[str] = None) -> None:
         """Install Docker"""
@@ -344,6 +382,9 @@ class DockerManager:
         try:
             # 9 indicates docker group exists
             run_command(["groupadd", "-r", "docker"], allowed_exit_codes=[0, 9])
+            user = os.environ.get("SUDO_USER") or os.environ.get("USER")
+            if user and user != "root":
+                run_command(["usermod", "-aG", "docker", user], allowed_exit_codes=[0])
         except Exception as e:
             logger.error(f"Failed to create docker user group: {e}", extra=LOG_STDOUT)
 
@@ -479,8 +520,8 @@ WantedBy=multi-user.target
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            result = run_command([
-                "docker", "ps", "-a",
+            result = self._run_docker([
+                "ps", "-a",
                 "--filter", f"name=^{name}$",
                 "--format", "{{.Names}}",
             ])
@@ -662,7 +703,7 @@ WantedBy=multi-user.target
 
         # Docker CLI: use list form (no shell) so --format Go templates are not mangled by shell.
         # See https://docs.docker.com/engine/cli/formatting/
-        cmd = ["docker", "run", "-d", "--name", name]
+        cmd = ["run", "-d", "--name", name]
         for k, v in kwargs.items():
             if v is None:
                 continue
@@ -674,7 +715,6 @@ WantedBy=multi-user.target
                 for vol_map in v:
                     cmd.extend([key, str(vol_map)])
             elif k == "env" and isinstance(v, list):
-                # Official: multiple -e/--env flags, e.g. docker run -e VAR1=val1 -e VAR2=val2
                 for env_item in v:
                     if isinstance(env_item, str) and "=" in env_item:
                         cmd.extend([key, env_item])
@@ -682,7 +722,7 @@ WantedBy=multi-user.target
                 cmd.extend([key, str(v)])
         cmd.append(image)
 
-        result = run_command(cmd)
+        result = self._run_docker(cmd)
         return result.stdout.strip()
 
     def copy_from_container(self, container: str, src: str, dest: str) -> None:
@@ -712,7 +752,7 @@ WantedBy=multi-user.target
     def pull_image(self, image: str) -> None:
         """Pull image from registry. SDK path renders jsonmessage progress; CLI fallback uses native output."""
         logger.info(f"[DOWNLOAD] Pulling image: {image}", extra=LOG_STDOUT)
-        if self.client is not None:
+        if self.client is not None and os.geteuid() == 0:
             try:
                 repository, tag = (image.rsplit(":", 1) if ":" in image else (image, "latest"))
                 stream = self.client.api.pull(repository, tag=tag, stream=True, decode=True)
@@ -723,7 +763,7 @@ WantedBy=multi-user.target
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            run_command(["docker", "pull", image], capture_output=False)
+            self._run_docker(["pull", image], capture_output=False)
             logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
             logger.error(f"[DOWNLOAD] Failed to pull image: {image} — {e}", extra=LOG_STDOUT)
@@ -744,7 +784,7 @@ WantedBy=multi-user.target
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            run_command(["docker", "save", "-o", output, image])
+            self._run_docker(["save", "-o", output, image])
             logger.info(f"[DOWNLOAD] Saved successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
             logger.error(f"[DOWNLOAD] Failed to save image: {image} — {e}", extra=LOG_STDOUT)
@@ -763,7 +803,7 @@ WantedBy=multi-user.target
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            run_command(["docker", "load", "-i", input_file])
+            self._run_docker(["load", "-i", input_file])
             logger.info(f"[DOWNLOAD] Loaded successfully: {input_file}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
             logger.error(f"[DOWNLOAD] Failed to load image from: {input_file} — {e}", extra=LOG_STDOUT)
@@ -780,7 +820,7 @@ WantedBy=multi-user.target
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            run_command(["docker", "tag", src, dest])
+            self._run_docker(["tag", src, dest])
         except CommandExecutionError as e:
             logger.error(f"[TAG] Failed to tag {src} -> {dest} — {e}", extra=LOG_STDOUT)
             raise
@@ -798,7 +838,7 @@ WantedBy=multi-user.target
                 logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
-            run_command(["docker", "push", image], capture_output=False)
+            self._run_docker(["push", image], capture_output=False)
             logger.info(f"[UPLOAD] Pushed successfully: {image}", extra=LOG_STDOUT)
         except CommandExecutionError as e:
             logger.error(f"[UPLOAD] Failed to push image: {image} — {e}", extra=LOG_STDOUT)

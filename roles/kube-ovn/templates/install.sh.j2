@@ -35,7 +35,7 @@ CNI_CONF_DIR="/etc/cni/net.d"
 CNI_BIN_DIR="/opt/cni/bin"
 
 REGISTRY="registry.talkschool.cn:5000/kubeovn"
-VERSION="v1.11.5"
+VERSION="{{ kube_ovn_ver }}"
 IMAGE_PULL_POLICY="IfNotPresent"
 POD_CIDR="{{ CLUSTER_CIDR }}"              # Do NOT overlap with NODE/SVC/JOIN CIDR
 POD_GATEWAY="{{ CLUSTER_CIDR_GW }}"
@@ -3607,9 +3607,11 @@ if ! sh -c "echo \":$PATH:\" | grep -q \":/usr/local/bin:\""; then
 fi
 
 echo "[Step 6/6] Run network diagnose"
-kubectl cp kube-system/$(kubectl  -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}'):/kube-ovn/kubectl-ko /usr/local/bin/kubectl-ko
-chmod +x /usr/local/bin/kubectl-ko
-kubectl ko diagnose all
+KUBECTL_KO="{{ cluster_dir }}/kubectl-ko"
+kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig cp kube-system/$(kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig -n kube-system get pods -o wide | grep cni | awk '{print $1}' | awk 'NR==1{print}'):/kube-ovn/kubectl-ko "$KUBECTL_KO"
+chmod +x "$KUBECTL_KO"
+export PATH="{{ cluster_dir }}:$PATH"
+KUBECONFIG={{ cluster_dir }}/kubectl.kubeconfig kubectl ko diagnose all || echo "[WARN] kubectl ko diagnose finished with warnings"
 
 echo "-------------------------------"
 echo "

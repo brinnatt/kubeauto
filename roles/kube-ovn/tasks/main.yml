@@ -18,21 +18,28 @@
       when: "PROXY_MODE == 'iptables'"
 
     - name: apply coredns, dnscache yaml
-      shell: "kubectl apply -f {{ cluster_dir }}/yml/coredns.yaml && \
-			  kubectl apply -f {{ cluster_dir }}/yml/nodelocaldns.yaml"
+      shell: >-
+        kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/coredns.yaml &&
+        kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/nodelocaldns.yaml
 
     - name: install kube-ovn network
-      shell: 'cd {{ cluster_dir }}/yml/ && bash install.sh >> /tmp/install-kube-ovn-`date +"%Y%m%d%H%M%S"`.log 2>&1'
+      shell: >-
+        cd {{ cluster_dir }}/yml/ &&
+        KUBECONFIG={{ cluster_dir }}/kubectl.kubeconfig
+        bash install.sh >> /tmp/install-kube-ovn-{{ cluster_dir | basename }}-`date +"%Y%m%d%H%M%S"`.log 2>&1
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
   run_once: true
-  ignore_errors: true
   delegate_to: localhost
+  tags: always
 
 - name: wait for kube-ovn running in a polling manner
-  shell: "kubectl get pod -n kube-system -o wide|grep 'kube-ovn-cni'|grep ' {{ K8S_NODENAME }} '|awk '{print $3}'"
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n kube-system -o wide
+    | grep 'kube-ovn-cni' | grep ' {{ K8S_NODENAME }} ' | awk '{print $3}'
   register: pod_status
   until: pod_status.stdout == "Running"
-  retries: 15
-  delay: 8
-  ignore_errors: true
+  retries: 30
+  delay: 10
   delegate_to: localhost
-  tags: force_change_certs
+  tags: always

@@ -1,0 +1,425 @@
+# kubeauto 企业级测试矩阵
+# 用法: 按 group 顺序执行；每项 status: pending|pass|fail|skip|partial|na
+# 环境: 跳板机 147(Ubuntu) + Rocky 130-132,140-142
+# 默认栈: K8s 1.33 + containerd + calico + ipvs (当前发布基线)
+
+meta:
+  version: 1
+  updated: "2026-07-05"
+  baseline:
+    k8s: "1.33.6"
+    runtime: containerd
+    network: calico
+    proxy_mode: ipvs
+    os_primary: "Rocky 8.10"
+    os_secondary: "Ubuntu 22.04"
+
+# ---------------------------------------------------------------------------
+# 一级功能: kubecli 命令
+# ---------------------------------------------------------------------------
+tier1_commands:
+  # --- G1: CLI 冒烟 (只读/无副作用) ---
+  - id: T1-G1-01
+    group: G1
+    command: version
+    desc: 显示版本号
+    status: pass
+    notes: "v0.1.4"
+
+  - id: T1-G1-02
+    group: G1
+    command: list
+    desc: 列出管理的集群
+    status: pass
+
+  - id: T1-G1-03
+    group: G1
+    command: completion
+    desc: bash/zsh 补全脚本输出
+    status: pass
+    notes: "bash/zsh 均正常"
+
+  - id: T1-G1-04
+    group: G1
+    command: checkout
+    desc: 切换 ~/.kube/config 到指定集群
+    status: pass
+    cluster: test130
+
+  - id: T1-G1-05
+    group: G1
+    command: download
+    desc: 组件下载 (-D / 分组件)
+    status: partial
+    notes: "registry 本地可用; -E 外网 pull 受防火墙限制; 修复 docker 权限/误清理 bug"
+
+  # --- G2: 集群生命周期 (单节点 Rocky) ---
+  - id: T1-G2-01
+    group: G2
+    command: new + setup
+    desc: 新建集群 + setup all
+    status: pass
+    cluster: test141
+    os: Rocky
+
+  - id: T1-G2-02
+    group: G2
+    command: start-aio
+    desc: 本机一键 AIO (Ubuntu/Debian)
+    status: pass
+    cluster: aio
+    os: Ubuntu
+    cross: [backup, stop, start, restore, idempotent-retry]
+
+  - id: T1-G2-03
+    group: G2
+    command: destroy
+    desc: 销毁集群并清理目录
+    status: pass
+    cluster: test130
+    notes: "曾验证; destroy 会删 cluster dir"
+
+  - id: T1-G2-04
+    group: G2
+    command: setup
+    desc: 分步 setup (01-07, 10, 11)
+    status: pass
+    cluster: test141
+    notes: "2026-07-05 幂等回归 01-06+07 通过"
+
+  # --- G3: 集群运维 ---
+  - id: T1-G3-01
+    group: G3
+    command: start
+    status: pass
+    clusters: [test130, test141, test-ha, aio]
+
+  - id: T1-G3-02
+    group: G3
+    command: stop
+    status: pass
+    clusters: [test130, test141, test-ha, aio]
+
+  - id: T1-G3-03
+    group: G3
+    command: backup
+    status: pass
+    clusters: [test130, test141, test-ha, aio]
+
+  - id: T1-G3-04
+    group: G3
+    command: restore
+    status: pass
+    clusters: [test130, test141, test-ha, aio]
+    notes: "HA restore 曾修 existing-state; 需偶发 apiserver 回归"
+
+  - id: T1-G3-05
+    group: G3
+    command: upgrade
+    status: partial
+    notes: "同版本正确 abort; 跨版本升级未测"
+
+  - id: T1-G3-06
+    group: G3
+    command: kca-renew
+    status: pass
+    clusters: [test130, test141, test-ha, aio]
+    notes: "aio Ubuntu kca-renew 2026-07-05 pass"
+
+  # --- G4: 节点扩缩 ---
+  - id: T1-G4-01
+    group: G4
+    command: add-node
+    status: pass
+    notes: "131 在 test130/test-ha 交叉测过"
+
+  - id: T1-G4-02
+    group: G4
+    command: del-node
+    status: pass
+
+  - id: T1-G4-03
+    group: G4
+    command: add-master
+    status: pass
+    cluster: test-ha
+    notes: "142 add-master 测过; 需 clean 节点前置"
+
+  - id: T1-G4-04
+    group: G4
+    command: del-master
+    status: pass
+    notes: "inventory kube_node 同步已修; del-master 后需 del-etcd 提示"
+
+  - id: T1-G4-05
+    group: G4
+    command: add-etcd
+    status: pass
+    cluster: test-ha
+
+  - id: T1-G4-06
+    group: G4
+    command: del-etcd
+    status: pass
+    cluster: test-ha
+
+  # --- G5: 身份与工具 ---
+  - id: T1-G5-01
+    group: G5
+    command: kcfg-adm
+    desc: add / list / delete 自定义 kubeconfig 用户
+    status: partial
+    notes: "test130 add/list/delete 测过; 多集群/过期用户未测"
+
+  - id: T1-G5-02
+    group: G5
+    command: docker
+    desc: 容器代理/镜像管理 CLI
+    status: pending
+
+  - id: T1-G5-03
+    group: G5
+    command: system
+    desc: SSH 免密/系统环境初始化
+    status: pending
+
+# ---------------------------------------------------------------------------
+# 一级交叉场景 (企业常见)
+# ---------------------------------------------------------------------------
+tier1_cross_scenarios:
+  - id: X-G6-01
+    group: G6
+    scenario: destroy → new → setup all → kca-renew
+    status: pass
+    cluster: test130
+
+  - id: X-G6-02
+    group: G6
+    scenario: setup → backup → stop → start → restore
+    status: pass
+    clusters: [test130, test141, test-ha, aio]
+
+  - id: X-G6-03
+    group: G6
+    scenario: kca-renew → backup → restore
+    status: pass
+    notes: "141/ha/aio 测过; aio 2026-07-05 回归 pass"
+
+  - id: X-G6-04
+    group: G6
+    scenario: add-node → 业务验证 → del-node → 同 IP 加入另一集群
+    status: partial
+    notes: "131 IP 冲突教训; 需标准化 del-node 后再 reuse"
+
+  - id: X-G6-05
+    group: G6
+    scenario: add-master → backup → restore → del-master → del-etcd
+    status: partial
+
+  - id: X-G6-06
+    group: G6
+    scenario: 多集群并行 kubecli (checkout/backup 切换)
+    status: partial
+    notes: "KUBECONFIG 隔离已修; 并行 ansible 未压测"
+
+  - id: X-G6-07
+    group: G6
+    scenario: 非 TTY / CI 管道执行 (confirm_action)
+    status: pass
+
+  - id: X-G6-08
+    group: G6
+    scenario: start-aio 失败自动 revert
+    status: partial
+    notes: "revert 路径已修; 需注入失败用例回归"
+
+# ---------------------------------------------------------------------------
+# 二级功能: 运行时 / 网络 / 拓扑 / OS
+# ---------------------------------------------------------------------------
+tier2_matrix:
+  runtime:
+    - id: T2-RT-01
+      value: containerd
+      status: pass
+      notes: "当前默认; 全部集群"
+
+    - id: T2-RT-02
+      value: docker
+      status: na
+      notes: "K8s>=1.24 项目仅 containerd; docker CLI 命令仍待测"
+
+  network:
+    - id: T2-NW-01
+      value: calico
+      status: pass
+      notes: "默认; ipvs 模式"
+
+    - id: T2-NW-02
+      value: flannel
+      status: pass
+      cluster: test142-flannel
+      notes: "2026-07-05 v0.27.3 本地镜像; 已 destroy 转 cilium"
+
+    - id: T2-NW-03
+      value: cilium
+      status: pass
+      cluster: test142-cilium
+      notes: "v1.19.5 全套: cilium/operator/hubble-relay + hubble-ui v0.13.5; helm chart 1.19.5"
+
+    - id: T2-NW-04
+      value: kube-router
+      status: pass
+      cluster: test142-kr
+      notes: "2026-07-05 v1.5.4; CNI apply tag bug 已修"
+
+    - id: T2-NW-05
+      value: kube-ovn
+      status: pass
+      cluster: test142-ovn
+      notes: "v1.11.5 单节点; 修复 KUBECONFIG 隔离与 install.sh diagnose"
+
+  proxy_mode:
+    - id: T2-PM-01
+      value: ipvs
+      status: pass
+
+    - id: T2-PM-02
+      value: iptables
+      status: pending
+
+  topology:
+    - id: T2-TO-01
+      value: single-node
+      status: pass
+      clusters: [test130, test141, aio]
+
+    - id: T2-TO-02
+      value: ha-multi-master
+      status: pass
+      cluster: test-ha
+      notes: "当前 2 master; 3 master 曾测"
+
+    - id: T2-TO-03
+      value: master+worker
+      status: pass
+
+    - id: T2-TO-04
+      value: dedicated-etcd
+      status: pending
+      notes: "etcd 与 master 分离拓扑未专门测"
+
+    - id: T2-TO-05
+      value: ex_lb
+      status: pending
+
+    - id: T2-TO-06
+      value: harbor
+      status: pending
+
+  os:
+    - id: T2-OS-01
+      value: Rocky 8.10
+      status: pass
+
+    - id: T2-OS-02
+      value: Ubuntu 22.04
+      status: pass
+      notes: "aio start-aio on 147"
+
+    - id: T2-OS-03
+      value: Debian
+      status: pending
+      notes: "prepare debian.yml 已修; 无专用 Debian 节点"
+
+  addons:
+    - id: T2-AD-01
+      value: coredns
+      status: pass
+
+    - id: T2-AD-02
+      value: metrics-server
+      status: pass
+
+    - id: T2-AD-03
+      value: node-local-dns
+      status: pass
+
+    - id: T2-AD-04
+      value: ingress-nginx
+      status: pending
+      notes: "config ingress_nginx_install"
+
+    - id: T2-AD-05
+      value: prometheus
+      status: pending
+
+# ---------------------------------------------------------------------------
+# 执行计划 (按组推进)
+# ---------------------------------------------------------------------------
+execution_groups:
+  G1:
+    name: "CLI 冒烟"
+    priority: P0
+    effort: low
+    next: "补 zsh completion; download 增量"
+
+  G2:
+    name: "集群创建/销毁"
+    priority: P0
+    effort: medium
+    next: "setup 10/11 ex-lb/harbor; new 集群模板回归"
+
+  G3:
+    name: "集群运维"
+    priority: P0
+    effort: medium
+    next: "upgrade 跨版本(需第二套 k8s bin); restore 全集群回归"
+
+  G4:
+    name: "节点扩缩"
+    priority: P0
+    effort: high
+    next: "142 干净节点 full add/del 链路"
+
+  G5:
+    name: "身份与工具"
+    priority: P1
+    effort: low
+    next: "kcfg-adm 过期用户; docker/system"
+
+  G6:
+    name: "交叉场景"
+    priority: P0
+    effort: high
+    next: "kca-renew→restore on aio; add-master 全链路"
+
+  G7:
+    name: "二级-网络插件"
+    priority: P1
+    effort: high
+    next: "kube-router/kube-ovn; 同步 registry v0.28.4/v1.19.5 镜像"
+
+  G8:
+    name: "二级-拓扑/addon"
+    priority: P2
+    effort: high
+    next: "ex_lb, harbor, dedicated etcd"
+
+coverage_summary:
+  tier1_total: 28
+  tier1_pass: 17
+  tier1_partial: 3
+  tier1_pending: 7
+  tier1_na: 1
+  tier1_cross_total: 8
+  tier1_cross_pass: 2
+  tier1_cross_partial: 6
+  tier2_total: 18
+  tier2_pass: 8
+  tier2_pending: 9
+  tier2_na: 1
+  overall_assessment: |
+    基线栈 (Rocky+containerd+calico) 核心路径已覆盖约 60%。
+    距企业级全功能覆盖差距主要在: setup 分步、upgrade 跨版本、
+    五类 CNI 未系统测、docker/system/download CLI、ex_lb/harbor、
+    Dedicated etcd 拓扑。

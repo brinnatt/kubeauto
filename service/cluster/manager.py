@@ -266,8 +266,10 @@ class ClusterManager:
         return {
             "__k8s_ver__": kc.v_k8s_bin.lstrip("v"),
             "__flannel__": kc.v_flannel,
+            "__flannel_cni__": kc.v_flannel_cni,
             "__calico__": kc.v_calico,
             "__cilium__": kc.v_cilium,
+            "__cilium_hubble_ui__": kc.v_cilium_hubble_ui,
             "__kube_ovn__": kc.v_kubeovn,
             "__kube_router__": kc.v_kuberouter,
             "__coredns__": kc.v_coredns,
