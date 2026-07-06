@@ -53,6 +53,33 @@ class DockerManager:
                     raise
         raise last_err
 
+    def _run_systemctl(self, args: List[str], **kwargs):
+        """Run systemctl; use passwordless sudo when not root."""
+        if os.geteuid() == 0:
+            return run_command(["systemctl"] + args, **kwargs)
+        return run_command(["sudo", "-n", "systemctl"] + args, **kwargs)
+
+    def _write_privileged_file(self, path: Path, content: str) -> None:
+        """Write a root-owned config file (e.g. docker systemd drop-in)."""
+        if os.geteuid() == 0:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+            return
+        run_command(["sudo", "-n", "mkdir", "-p", str(path.parent)])
+        run_command(
+            ["sudo", "-n", "tee", str(path)],
+            input=content,
+            capture_output=False,
+        )
+
+    def _remove_privileged_file(self, path: Path) -> None:
+        if not path.exists():
+            return
+        if os.geteuid() == 0:
+            path.unlink()
+            return
+        run_command(["sudo", "-n", "rm", "-f", str(path)])
+
     def _initialize_docker_client(self):
         """Initialize Docker SDK client"""
         try:
@@ -952,8 +979,7 @@ WantedBy=multi-user.target
         no_proxy_str = ",".join(sorted(set(no_proxy_all)))
 
         # Write config
-        conf_file.parent.mkdir(parents=True, exist_ok=True)
-        conf_file.write_text(f"""
+        self._write_privileged_file(conf_file, f"""
 [Service]
 Environment="HTTP_PROXY=http://{host}:{port}/"
 Environment="HTTPS_PROXY=http://{host}:{port}/"
@@ -961,8 +987,8 @@ Environment="NO_PROXY={no_proxy_str}"
 """)
 
         # Reload and restart Docker
-        run_command(["systemctl", "daemon-reload"])
-        run_command(["systemctl", "restart", "docker"])
+        self._run_systemctl(["daemon-reload"])
+        self._run_systemctl(["restart", "docker"])
 
     def unset_docker_proxy(self) -> None:
         """
@@ -973,6 +999,6 @@ Environment="NO_PROXY={no_proxy_str}"
 
         conf_file = self.docker_proxy_dir / "http_proxy.conf"
         if conf_file.exists():
-            conf_file.unlink()
-            run_command(["systemctl", "daemon-reload"])
-            run_command(["systemctl", "restart", "docker"])
+            self._remove_privileged_file(conf_file)
+            self._run_systemctl(["daemon-reload"])
+            self._run_systemctl(["restart", "docker"])

@@ -5,7 +5,7 @@
 
 meta:
   version: 1
-  updated: "2026-07-05"
+  updated: "2026-07-06"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -168,20 +168,22 @@ tier1_commands:
     group: G5
     command: kcfg-adm
     desc: add / list / delete 自定义 kubeconfig 用户
-    status: partial
-    notes: "test130 add/list/delete 测过; 多集群/过期用户未测"
+    status: pass
+    notes: "修复 CRB kubectl 无 KUBECONFIG、-L 过滤 bug; admin/view 权限验证"
 
   - id: T1-G5-02
     group: G5
     command: docker
     desc: 容器代理/镜像管理 CLI
-    status: pending
+    status: pass
+    notes: "非 root sudo 写 proxy; -e 清理; registry 重启验证"
 
   - id: T1-G5-03
     group: G5
     command: system
     desc: SSH 免密/系统环境初始化
-    status: pending
+    status: partial
+    notes: "本地 -b/-c/-d 探针通过; 远程主机探针未实现; -a 免密已有"
 
 # ---------------------------------------------------------------------------
 # 一级交叉场景 (企业常见)
@@ -208,13 +210,15 @@ tier1_cross_scenarios:
   - id: X-G6-04
     group: G6
     scenario: add-node → 业务验证 → del-node → 同 IP 加入另一集群
-    status: partial
-    notes: "131 IP 冲突教训; 需标准化 del-node 后再 reuse"
+    status: pass
+    notes: "131 test130→test-ha add-master 全链路; 需清理 CNI/kube-router 残留"
 
   - id: X-G6-05
     group: G6
     scenario: add-master → backup → restore → del-master → del-etcd
-    status: partial
+    status: pass
+    cluster: test-ha
+    notes: "2026-07-06 master-131 全链路; 131 非 etcd 成员无需 del-etcd"
 
   - id: X-G6-06
     group: G6
@@ -258,7 +262,7 @@ tier2_matrix:
       value: flannel
       status: pass
       cluster: test142-flannel
-      notes: "2026-07-05 v0.27.3 本地镜像; 已 destroy 转 cilium"
+      notes: "v0.28.4 + flannel_cni v1.8.0-flannel1; 修复 kubectl KUBECONFIG"
 
     - id: T2-NW-03
       value: cilium
@@ -385,19 +389,19 @@ execution_groups:
     name: "身份与工具"
     priority: P1
     effort: low
-    next: "kcfg-adm 过期用户; docker/system"
+    next: "system 远程探针; kcfg-adm --expired 用例"
 
   G6:
     name: "交叉场景"
     priority: P0
     effort: high
-    next: "kca-renew→restore on aio; add-master 全链路"
+    next: "并行 ansible 压测; start-aio revert 注入失败"
 
   G7:
     name: "二级-网络插件"
     priority: P1
     effort: high
-    next: "kube-router/kube-ovn; 同步 registry v0.28.4/v1.19.5 镜像"
+    next: "iptables proxy_mode; 节点 CNI 残留预检"
 
   G8:
     name: "二级-拓扑/addon"
@@ -407,19 +411,19 @@ execution_groups:
 
 coverage_summary:
   tier1_total: 28
-  tier1_pass: 17
-  tier1_partial: 3
-  tier1_pending: 7
+  tier1_pass: 20
+  tier1_partial: 2
+  tier1_pending: 4
   tier1_na: 1
   tier1_cross_total: 8
-  tier1_cross_pass: 2
-  tier1_cross_partial: 6
+  tier1_cross_pass: 4
+  tier1_cross_partial: 4
   tier2_total: 18
-  tier2_pass: 8
-  tier2_pending: 9
+  tier2_pass: 14
+  tier2_pending: 3
   tier2_na: 1
   overall_assessment: |
-    基线栈 (Rocky+containerd+calico) 核心路径已覆盖约 60%。
-    距企业级全功能覆盖差距主要在: setup 分步、upgrade 跨版本、
-    五类 CNI 未系统测、docker/system/download CLI、ex_lb/harbor、
-    Dedicated etcd 拓扑。
+    基线栈 (Rocky+containerd+calico) 核心路径已覆盖约 75%。
+    五类 CNI 单节点均已测通; G5/G6 主要交叉场景完成。
+    距企业级全功能覆盖差距主要在: upgrade 跨版本、iptables proxy、
+    ex_lb/harbor/dedicated-etcd 拓扑、ingress/prometheus addon。

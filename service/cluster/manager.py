@@ -641,7 +641,7 @@ class ClusterManager:
                 if role_name and (not crb.role_ref or crb.role_ref.name != role_name):
                     continue
                 for subj in (crb.subjects or []):
-                    if subj.name:
+                    if subj.kind == "User" and subj.name:
                         names.append(subj.name)
             return names
 
@@ -670,22 +670,20 @@ class ClusterManager:
         admins = set(self._get_kcfg_users(kubeconfig, "cluster-admin"))
         views = set(self._get_kcfg_users(kubeconfig, "view"))
         bound_users = set(self._get_kcfg_users(kubeconfig))
+        cert_users = {
+            p.stem for p in (self.clusters_dir / cluster / "ssl/users").glob("*.pem")
+            if not p.name.endswith("-key.pem")
+        }
         if show_all:
-            cert_users = {
-                p.stem for p in (self.clusters_dir / cluster / "ssl/users").glob("*.pem")
-                if not p.name.endswith("-key.pem")
-            }
             all_users = sorted(cert_users)
         else:
-            all_users = sorted(bound_users)
+            all_users = sorted(bound_users & cert_users)
 
         header_fmt = f"{'USER':<30}{'TYPE':<18}{'EXPIRY(+8h if in Asia/Shanghai)':<30}{'DAYS_LEFT'}"
         print("\n" + header_fmt)
         print("-" * len(header_fmt))
-        suffix_pattern = re.compile(r".*-\d{12}$")
-
         for user in all_users:
-            role = "cluster-admin" if user in admins else "view" if user in views else "unknown"
+            role = "admin" if user in admins else "view" if user in views else "unknown"
             cert_file = self.clusters_dir / cluster / "ssl/users" / f"{user}.pem"
             expiry, days_left, is_expired = self._get_cert_expiry_info(cert_file)
             if expired_only and not is_expired:
@@ -694,9 +692,8 @@ class ClusterManager:
             if days_left != "N/A":
                 days_int = int(days_left)
                 color = AnsiColor.RED.value if days_int < 0 else AnsiColor.YELLOW.value if days_int <= 7 else AnsiColor.GREEN.value
-            if show_all or suffix_pattern.match(user):
-                expired_mark = "*" if is_expired else " "
-                print(f"{expired_mark}{user:<29}{role:<18}{expiry:<30}{color}{days_left}{AnsiColor.RESET.value}")
+            expired_mark = "*" if is_expired else " "
+            print(f"{expired_mark}{user:<29}{role:<18}{expiry:<30}{color}{days_left}{AnsiColor.RESET.value}")
         print("")
 
     def _require_install_prereqs(self) -> None:
