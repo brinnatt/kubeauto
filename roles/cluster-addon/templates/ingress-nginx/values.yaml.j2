@@ -39,14 +39,13 @@ controller:
   metrics:
     port: 10254
     portName: metrics
-    # if this port is changed, change healthz-port: in extraArgs: accordingly
-    enabled: {% if ingress_nginx_metrics_enabled %}true{% else %}false{% endif %} 
+    enabled: {{ 'true' if ingress_nginx_metrics_enabled else 'false' }}
     serviceMonitor:
-      enabled: true
+      enabled: {{ 'true' if (ingress_nginx_metrics_enabled and prom_install | default('no') == 'yes') else 'false' }}
       additionalLabels:
-        release: "prometheus" 
+        release: "prometheus"
     prometheusRule:
-      enabled: true 
+      enabled: {{ 'true' if (ingress_nginx_metrics_enabled and prom_install | default('no') == 'yes') else 'false' }}
       rules:
         - alert: NGINXConfigFailed
           expr: count(nginx_ingress_controller_config_last_reload_successful == 0) > 0

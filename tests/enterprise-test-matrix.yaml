@@ -289,13 +289,15 @@ tier2_matrix:
 
     - id: T2-PM-02
       value: iptables
-      status: pending
+      status: pass
+      cluster: test142-iptables
+      notes: "142 单节点 calico+iptables; KUBE iptables 规则验证"
 
   topology:
     - id: T2-TO-01
       value: single-node
       status: pass
-      clusters: [test130, test141, aio]
+      clusters: [test141, test142-iptables, aio]
 
     - id: T2-TO-02
       value: ha-multi-master
@@ -309,8 +311,9 @@ tier2_matrix:
 
     - id: T2-TO-04
       value: dedicated-etcd
-      status: pending
-      notes: "etcd 与 master 分离拓扑未专门测"
+      status: pass
+      cluster: test-ded-etcd
+      notes: "131 专 etcd (无 kubelet); 130 master"
 
     - id: T2-TO-05
       value: ex_lb
@@ -350,8 +353,9 @@ tier2_matrix:
 
     - id: T2-AD-04
       value: ingress-nginx
-      status: pending
-      notes: "config ingress_nginx_install"
+      status: pass
+      cluster: test141
+      notes: "helm 4.13.0; 修复 KUBECONFIG/metrics CRD/镜像 download"
 
     - id: T2-AD-05
       value: prometheus
@@ -411,19 +415,18 @@ execution_groups:
 
 coverage_summary:
   tier1_total: 28
-  tier1_pass: 20
-  tier1_partial: 2
-  tier1_pending: 4
+  tier1_pass: 22
+  tier1_partial: 1
+  tier1_pending: 3
   tier1_na: 1
   tier1_cross_total: 8
-  tier1_cross_pass: 4
-  tier1_cross_partial: 4
+  tier1_cross_pass: 5
+  tier1_cross_partial: 3
   tier2_total: 18
-  tier2_pass: 14
-  tier2_pending: 3
+  tier2_pass: 17
+  tier2_pending: 1
   tier2_na: 1
   overall_assessment: |
-    基线栈 (Rocky+containerd+calico) 核心路径已覆盖约 75%。
-    五类 CNI 单节点均已测通; G5/G6 主要交叉场景完成。
-    距企业级全功能覆盖差距主要在: upgrade 跨版本、iptables proxy、
-    ex_lb/harbor/dedicated-etcd 拓扑、ingress/prometheus addon。
+    基线栈核心路径已覆盖约 85%。
+    五类 CNI、ipvs/iptables、ingress-nginx、dedicated-etcd 均已测通。
+    距全功能覆盖差距: ex_lb、harbor、prometheus、upgrade 跨版本、Debian OS。

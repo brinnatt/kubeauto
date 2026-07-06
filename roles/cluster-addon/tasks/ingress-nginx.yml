@@ -5,6 +5,11 @@
     - name: 创建命名空间{{ ingress_nginx_namespace }}
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create ns {{ ingress_nginx_namespace }} || echo true"
 
+    - name: label nodes for ingress-nginx controller
+      shell: >-
+        kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig label node --all
+        ingress-controller/provider=ingress-nginx --overwrite
+
     - name: 创建chart 个性化设置
       template: src=ingress-nginx/{{ item }}.j2 dest={{ cluster_dir }}/yml/ingress-nginx/{{ item }}
       with_items:
@@ -14,6 +19,8 @@
       shell: "{{ base_dir }}/extra-bin/helm upgrade ingress-nginx --install -n {{ ingress_nginx_namespace }} \
               -f {{ cluster_dir }}/yml/ingress-nginx/values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/ingress-nginx-{{ ingress_nginx_ver }}.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: 轮询等待部署 ingress-nginx
       shell: "{{ base_dir }}/extra-bin/helm ls -n {{ ingress_nginx_namespace }}|grep ingress-nginx|awk '{print $8}'"
@@ -21,7 +28,8 @@
       until: chart_status.stdout == "deployed"
       retries: 15
       delay: 5
-      ignore_errors: true
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: 提示 WARNNING
       debug:
