@@ -48,7 +48,7 @@
 
     - name: helm 创建 kube-prometheus-stack {{ prom_chart_ver }}
       shell: "{{ base_dir }}/extra-bin/helm upgrade prometheus --install \
-              -n {{ prom_namespace }} -f {{ cluster_dir }}/yml/prom-values.yaml \
+              -n {{ prom_namespace }} --create-namespace -f {{ cluster_dir }}/yml/prom-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kube-prometheus-stack-{{ prom_chart_ver }}.tgz"
   when: 'prom_install == "yes"'
   tags: force_change_certs

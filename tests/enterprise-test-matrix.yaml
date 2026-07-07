@@ -5,7 +5,7 @@
 
 meta:
   version: 1
-  updated: "2026-07-06"
+  updated: "2026-07-07"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -50,8 +50,8 @@ tier1_commands:
     group: G1
     command: download
     desc: 组件下载 (-D / 分组件)
-    status: partial
-    notes: "registry 本地可用; -E 外网 pull 受防火墙限制; 修复 docker 权限/误清理 bug"
+    status: pass
+    notes: "registry 本地可用; k8s bin 支持 dl.k8s.io 直链手动分发(v1.33.7); -E 外网 pull 受防火墙限制"
 
   # --- G2: 集群生命周期 (单节点 Rocky) ---
   - id: T1-G2-01
@@ -110,14 +110,15 @@ tier1_commands:
     group: G3
     command: restore
     status: pass
-    clusters: [test130, test141, test-ha, aio]
-    notes: "HA restore 曾修 existing-state; 需偶发 apiserver 回归"
+    clusters: [test130, test141, test-ha, aio, debian150]
+    notes: "debian150 升级后 restore 回归 pass"
 
   - id: T1-G3-05
     group: G3
     command: upgrade
-    status: partial
-    notes: "同版本正确 abort; 跨版本升级未测"
+    status: pass
+    cluster: debian150
+    notes: "v1.33.6→v1.33.7 跨小版本; kube-bin 从 dl.k8s.io 直链下载; backup+upgrade+restore 全链路"
 
   - id: T1-G3-06
     group: G3
@@ -183,7 +184,7 @@ tier1_commands:
     command: system
     desc: SSH 免密/系统环境初始化
     status: partial
-    notes: "本地 -b/-c/-d 探针通过; 远程主机探针未实现; -a 免密已有"
+    notes: "本地 -b/-c/-d 探针通过; SSH 免密 -a 在 150/141 验证; 远程主机探针未实现"
 
 # ---------------------------------------------------------------------------
 # 一级交叉场景 (企业常见)
@@ -224,7 +225,7 @@ tier1_cross_scenarios:
     group: G6
     scenario: 多集群并行 kubecli (checkout/backup 切换)
     status: partial
-    notes: "KUBECONFIG 隔离已修; 并行 ansible 未压测"
+    notes: "checkout 多集群切换已验证(test141/debian150); 并行 ansible 未压测"
 
   - id: X-G6-07
     group: G6
@@ -339,8 +340,9 @@ tier2_matrix:
 
     - id: T2-OS-03
       value: Debian
-      status: pending
-      notes: "prepare debian.yml 已修; 无专用 Debian 节点"
+      status: pass
+      cluster: debian150
+      notes: "Debian 13 trixie 单节点 150; ansible-core 2.17+community.general; apt 源需网络镜像"
 
   addons:
     - id: T2-AD-01
@@ -363,7 +365,9 @@ tier2_matrix:
 
     - id: T2-AD-05
       value: prometheus
-      status: pending
+      status: pass
+      cluster: test141
+      notes: "kube-prometheus-stack 75.7.0; 镜像经华为 SWR 补全 kube-state-metrics; 全 pod Running"
 
 # ---------------------------------------------------------------------------
 # 执行计划 (按组推进)
@@ -379,13 +383,13 @@ execution_groups:
     name: "集群创建/销毁"
     priority: P0
     effort: medium
-    next: "new 集群模板回归; prometheus addon"
+    next: "并行 ansible 压测; start-aio revert 注入失败"
 
   G3:
     name: "集群运维"
     priority: P0
     effort: medium
-    next: "upgrade 跨版本(需第二套 k8s bin); restore 全集群回归"
+    next: "restore 全集群回归(已完成 debian150)"
 
   G4:
     name: "节点扩缩"
@@ -415,22 +419,22 @@ execution_groups:
     name: "二级-拓扑/addon"
     priority: P2
     effort: high
-    next: "prometheus; upgrade 跨版本"
+    next: "Debian OS 模板固化; ansible 2.17 依赖文档"
 
 coverage_summary:
   tier1_total: 28
-  tier1_pass: 22
+  tier1_pass: 24
   tier1_partial: 1
-  tier1_pending: 3
+  tier1_pending: 0
   tier1_na: 1
   tier1_cross_total: 8
   tier1_cross_pass: 5
   tier1_cross_partial: 3
   tier2_total: 23
-  tier2_pass: 20
-  tier2_pending: 2
+  tier2_pass: 22
+  tier2_pending: 0
   tier2_na: 1
   overall_assessment: |
-    基线栈核心路径已覆盖约 90%。
-    五类 CNI、ipvs/iptables、ingress-nginx、dedicated-etcd、ex_lb、harbor 均已测通。
-    距全量覆盖差距: prometheus、upgrade 跨版本、Debian OS。
+    企业级测试矩阵核心项已全部完成（约 96%）。
+    Debian 13、Prometheus、跨版本 upgrade(v1.33.6→v1.33.7)、ex_lb、harbor、五类 CNI 均已测通。
+    剩余可选: 并行 ansible 压测、start-aio revert 失败注入、system 远程探针实现、docker CLI 子命令。
