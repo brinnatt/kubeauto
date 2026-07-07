@@ -7,9 +7,14 @@ controller:
     image: brinnatt/ingress-nginx-controller
     tag: "v1.13.0"
     digest: ''
-  dnsPolicy: ClusterFirstWithHostNet
-  reportNodeInternalIp: true
-  hostNetwork: true 
+  dnsPolicy: ClusterFirst
+  publishService:
+    enabled: true
+
+  service:
+    enabled: true
+    type: NodePort
+    externalTrafficPolicy: Local
 
   # Limit the scope of the controller to a specific namespace
   scope:

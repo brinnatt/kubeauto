@@ -361,7 +361,7 @@ tier2_matrix:
       value: ingress-nginx
       status: pass
       cluster: test141
-      notes: "helm 4.13.0; 修复 KUBECONFIG/metrics CRD/镜像 download"
+      notes: "helm 4.13.0; NodePort+Service(ipvs); 默认关闭 hostNetwork; 修复 KUBECONFIG/metrics CRD"
 
     - id: T2-AD-05
       value: prometheus

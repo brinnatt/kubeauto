@@ -1,13 +1,4 @@
 ############################
-# prepare
-############################
-
-# [optional] this option comes from project https://github.com/dev-sec/ansible-collection-hardening
-# [caution] we didn't adapt this project to kubeauto
-OS_HARDEN: false
-
-
-############################
 # role:deploy
 ############################
 # default: ca will expire in 100 years

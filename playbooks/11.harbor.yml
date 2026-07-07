@@ -3,7 +3,6 @@
 ### --- install harbor ---
 - hosts: harbor
   roles:
-  - { role: os-harden, when: "NEW_INSTALL|bool and OS_HARDEN|bool" }
   - { role: chrony, when: "NEW_INSTALL|bool and (groups['chrony'] | default([])) | length > 0" }
   - { role: prepare, when: "NEW_INSTALL|bool" }
   - { role: docker, when: "NEW_INSTALL|bool" }

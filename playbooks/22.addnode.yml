@@ -2,7 +2,6 @@
 
 - hosts: "{{ NODE_TO_ADD }}" 
   roles:
-  - { role: os-harden, when: "OS_HARDEN|bool" }
   - { role: chrony, when: "(groups['chrony'] | default([])) | length > 0" } 
   - prepare
   - { role: docker, when: "CONTAINER_RUNTIME == 'docker'" }

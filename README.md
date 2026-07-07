@@ -224,7 +224,6 @@ kubecli setup k8s-main 02
 
 本步骤主要完成:
 
-- (deprecated) role: os-harden，未更新上游项目，未验证最新 k8s 集群安装，不建议启用。但项目继续保留可选系统加固，需要客户根据实际情况自行适配，参见上游 [upstream](https://github.com/dev-sec/ansible-collection-hardening/tree/master/roles/os_hardening)
 - (optional) role: chrony，集群中的时间同步至关重要，有条件的话，手动单独完成所有节点时间同步
 - role: deploy，创建 CA 证书、集群组件访问 apiserver 所需的各种 kubeconfig
 - role: prepare，系统基础环境初始化配置、分发 CA 证书、kubectl 客户端安装
