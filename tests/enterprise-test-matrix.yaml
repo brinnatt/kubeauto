@@ -317,11 +317,15 @@ tier2_matrix:
 
     - id: T2-TO-05
       value: ex_lb
-      status: pending
+      status: pass
+      cluster: test-ha
+      notes: "142 master + 131 backup; VIP 250:8443; apiserver SAN 已更新"
 
     - id: T2-TO-06
       value: harbor
-      status: pending
+      status: pass
+      cluster: test141
+      notes: "v2.13.0 on 141; HTTP 9080/HTTPS 9443 (避让 ingress 80/443/8443); UI/API 200"
 
   os:
     - id: T2-OS-01
@@ -375,7 +379,7 @@ execution_groups:
     name: "集群创建/销毁"
     priority: P0
     effort: medium
-    next: "setup 10/11 ex-lb/harbor; new 集群模板回归"
+    next: "new 集群模板回归; prometheus addon"
 
   G3:
     name: "集群运维"
@@ -411,7 +415,7 @@ execution_groups:
     name: "二级-拓扑/addon"
     priority: P2
     effort: high
-    next: "ex_lb, harbor, dedicated etcd"
+    next: "prometheus; upgrade 跨版本"
 
 coverage_summary:
   tier1_total: 28
@@ -422,11 +426,11 @@ coverage_summary:
   tier1_cross_total: 8
   tier1_cross_pass: 5
   tier1_cross_partial: 3
-  tier2_total: 18
-  tier2_pass: 17
-  tier2_pending: 1
+  tier2_total: 23
+  tier2_pass: 20
+  tier2_pending: 2
   tier2_na: 1
   overall_assessment: |
-    基线栈核心路径已覆盖约 85%。
-    五类 CNI、ipvs/iptables、ingress-nginx、dedicated-etcd 均已测通。
-    距全功能覆盖差距: ex_lb、harbor、prometheus、upgrade 跨版本、Debian OS。
+    基线栈核心路径已覆盖约 90%。
+    五类 CNI、ipvs/iptables、ingress-nginx、dedicated-etcd、ex_lb、harbor 均已测通。
+    距全量覆盖差距: prometheus、upgrade 跨版本、Debian OS。

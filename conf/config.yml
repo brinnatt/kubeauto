@@ -284,6 +284,7 @@ ingress_nginx_metrics_enabled: true # request prometheus installed firstly
 HARBOR_VER: "__harbor__"
 HARBOR_DOMAIN: "harbor.brinnatt.io.local"
 HARBOR_PATH: /var/data
+HARBOR_HTTP_PORT: 80
 HARBOR_TLS_PORT: 8443
 HARBOR_REGISTRY: "{{ HARBOR_DOMAIN }}:{{ HARBOR_TLS_PORT }}"
 
