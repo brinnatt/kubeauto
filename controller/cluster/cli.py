@@ -612,17 +612,17 @@ Examples:
         probe_group.add_argument(
             "-b", "--disk-usage",
             action="store_true",
-            help="Probe disk usage"
+            help="Probe disk usage (local or remote hosts)"
         )
         probe_group.add_argument(
             "-c", "--system-load",
             action="store_true",
-            help="Probe CPU/memory/swap"
+            help="Probe CPU/memory/swap (local or remote hosts)"
         )
         probe_group.add_argument(
             "-d", "--network-usage",
             action="store_true",
-            help="Probe network interfaces"
+            help="Probe network interfaces (local or remote hosts)"
         )
 
     def _setup_version_command(self) -> None:
@@ -1021,44 +1021,107 @@ Examples:
             for host, result in results.items():
                 logger.info(f"{host}: {result}", extra=LOG_STDOUT)
 
-        if args.disk_usage:
-            disks = list(system.disk_usage())
-            header = f"{'Device':<18} {'Mount':<15} {'Total(GB)':<10} {'Used(GB)':<10} {'Free(GB)':<10} {'Use%':<6}"
-            logger.info("Disk Usage:", extra=LOG_STDOUT)
-            logger.info("-" * len(header), extra=LOG_STDOUT)
-            logger.info(header, extra=LOG_STDOUT)
-            logger.info("-" * len(header), extra=LOG_STDOUT)
-            for disk in disks:
-                logger.info(
-                    f"{disk['device']:<18} {disk['mount']:<15} "
-                    f"{disk['total_gb']:<10.2f} {disk['used_gb']:<10.2f} "
-                    f"{disk['free_gb']:<10.2f} {disk['usage_percent']:<6.1f}",
-                    extra=LOG_STDOUT
-                )
+        probe_hosts: List[str] = []
+        if any([args.disk_usage, args.system_load, args.network_usage]):
+            try:
+                probe_hosts = expand_host_targets(args.hosts) if args.hosts else []
+            except ValueError as e:
+                raise SystemExecutionError(str(e)) from e
+            for h in probe_hosts:
+                if not validate_ip(h):
+                    raise SystemExecutionError(f"Invalid IP: {h}")
 
-        if args.system_load:
-            resources = system.hardware_resources()
-            logger.info("System Resources:", extra=LOG_STDOUT)
-            logger.info(f"CPU Cores: {resources['cpu_cores']} (Threads: {resources['cpu_threads']})",
-                        extra=LOG_STDOUT)
-            logger.info(f"CPU Usage: {resources['cpu_usage_percent']:.1f}%", extra=LOG_STDOUT)
-            logger.info(
-                f"Memory: {resources['memory_available_gb']:.1f}/{resources['memory_total_gb']:.1f} GB ({resources['memory_usage_percent']:.1f}%)",
-                extra=LOG_STDOUT)
-            logger.info(f"Swap: {resources['swap_used_gb']:.1f}/{resources['swap_total_gb']:.1f} GB",
-                        extra=LOG_STDOUT)
+        if probe_hosts:
+            remote = system.remote_probe(
+                host_ips=probe_hosts,
+                username=args.user,
+                port=args.port,
+                timeout=10,
+                max_workers=args.workers,
+            )
+            for host in sorted(remote.keys()):
+                data = remote[host]
+                if isinstance(data, str):
+                    logger.info(f"{host}: {data}", extra=LOG_STDOUT)
+                    continue
+                if args.disk_usage:
+                    header = f"{'Device':<18} {'Mount':<15} {'Total(GB)':<10} {'Used(GB)':<10} {'Free(GB)':<10} {'Use%':<6}"
+                    logger.info(f"=== {host} Disk Usage ===", extra=LOG_STDOUT)
+                    logger.info(header, extra=LOG_STDOUT)
+                    for disk in data.get("disks", []):
+                        logger.info(
+                            f"{disk['device']:<18} {disk['mount']:<15} "
+                            f"{disk['total_gb']:<10.2f} {disk['used_gb']:<10.2f} "
+                            f"{disk['free_gb']:<10.2f} {disk['usage_percent']:<6.1f}",
+                            extra=LOG_STDOUT,
+                        )
+                if args.system_load:
+                    resources = data.get("resources", {})
+                    logger.info(f"=== {host} System Resources ===", extra=LOG_STDOUT)
+                    logger.info(
+                        f"CPU Cores: {resources.get('cpu_cores')} (Threads: {resources.get('cpu_threads')})",
+                        extra=LOG_STDOUT,
+                    )
+                    logger.info(f"CPU Usage (load): {resources.get('cpu_usage_percent', 0):.1f}%", extra=LOG_STDOUT)
+                    logger.info(
+                        f"Memory: {resources.get('memory_available_gb', 0):.1f}/"
+                        f"{resources.get('memory_total_gb', 0):.1f} GB "
+                        f"({resources.get('memory_usage_percent', 0):.1f}%)",
+                        extra=LOG_STDOUT,
+                    )
+                    logger.info(
+                        f"Swap: {resources.get('swap_used_gb', 0):.1f}/"
+                        f"{resources.get('swap_total_gb', 0):.1f} GB",
+                        extra=LOG_STDOUT,
+                    )
+                if args.network_usage:
+                    logger.info(f"=== {host} Network Interfaces ===", extra=LOG_STDOUT)
+                    for intf in data.get("networks", []):
+                        logger.info(f"Interface: {intf['interface']}", extra=LOG_STDOUT)
+                        traffic = intf.get("traffic_mb", {})
+                        logger.info(
+                            f"  Traffic: ↑ {traffic.get('sent', 0):.2f} MB | ↓ {traffic.get('recv', 0):.2f} MB",
+                            extra=LOG_STDOUT,
+                        )
+        else:
+            if args.disk_usage:
+                disks = list(system.disk_usage())
+                header = f"{'Device':<18} {'Mount':<15} {'Total(GB)':<10} {'Used(GB)':<10} {'Free(GB)':<10} {'Use%':<6}"
+                logger.info("Disk Usage:", extra=LOG_STDOUT)
+                logger.info("-" * len(header), extra=LOG_STDOUT)
+                logger.info(header, extra=LOG_STDOUT)
+                logger.info("-" * len(header), extra=LOG_STDOUT)
+                for disk in disks:
+                    logger.info(
+                        f"{disk['device']:<18} {disk['mount']:<15} "
+                        f"{disk['total_gb']:<10.2f} {disk['used_gb']:<10.2f} "
+                        f"{disk['free_gb']:<10.2f} {disk['usage_percent']:<6.1f}",
+                        extra=LOG_STDOUT
+                    )
 
-        if args.network_usage:
-            interfaces = list(system.network_interfaces())
-            logger.info("Network Interfaces:", extra=LOG_STDOUT)
-            for intf in interfaces:
-                logger.info(f"Interface: {intf['interface']}", extra=LOG_STDOUT)
-                for family, addr in intf['addresses'].items():
-                    logger.info(f"  {family}: {addr}", extra=LOG_STDOUT)
+            if args.system_load:
+                resources = system.hardware_resources()
+                logger.info("System Resources:", extra=LOG_STDOUT)
+                logger.info(f"CPU Cores: {resources['cpu_cores']} (Threads: {resources['cpu_threads']})",
+                            extra=LOG_STDOUT)
+                logger.info(f"CPU Usage: {resources['cpu_usage_percent']:.1f}%", extra=LOG_STDOUT)
                 logger.info(
-                    f"  Traffic: ↑ {intf['traffic_mb']['sent']:.2f} MB | ↓ {intf['traffic_mb']['recv']:.2f} MB",
-                    extra=LOG_STDOUT
-                )
+                    f"Memory: {resources['memory_available_gb']:.1f}/{resources['memory_total_gb']:.1f} GB ({resources['memory_usage_percent']:.1f}%)",
+                    extra=LOG_STDOUT)
+                logger.info(f"Swap: {resources['swap_used_gb']:.1f}/{resources['swap_total_gb']:.1f} GB",
+                            extra=LOG_STDOUT)
+
+            if args.network_usage:
+                interfaces = list(system.network_interfaces())
+                logger.info("Network Interfaces:", extra=LOG_STDOUT)
+                for intf in interfaces:
+                    logger.info(f"Interface: {intf['interface']}", extra=LOG_STDOUT)
+                    for family, addr in intf['addresses'].items():
+                        logger.info(f"  {family}: {addr}", extra=LOG_STDOUT)
+                    logger.info(
+                        f"  Traffic: ↑ {intf['traffic_mb']['sent']:.2f} MB | ↓ {intf['traffic_mb']['recv']:.2f} MB",
+                        extra=LOG_STDOUT
+                    )
 
     def run(self) -> None:
         """Run the CLI application"""

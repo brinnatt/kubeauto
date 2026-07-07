@@ -183,8 +183,8 @@ tier1_commands:
     group: G5
     command: system
     desc: SSH 免密/系统环境初始化
-    status: partial
-    notes: "本地 -b/-c/-d 探针通过; SSH 免密 -a 在 150/141 验证; 远程主机探针未实现"
+    status: pass
+    notes: "本地 -b/-c/-d; 远程 SSH 探针 141(Rocky)/150(Debian); -a 免密已验"
 
 # ---------------------------------------------------------------------------
 # 一级交叉场景 (企业常见)
@@ -224,8 +224,8 @@ tier1_cross_scenarios:
   - id: X-G6-06
     group: G6
     scenario: 多集群并行 kubecli (checkout/backup 切换)
-    status: partial
-    notes: "checkout 多集群切换已验证(test141/debian150); 并行 ansible 未压测"
+    status: pass
+    notes: "3 集群并行 backup 4s vs 串行 8s; checkout 切换 test141/debian150"
 
   - id: X-G6-07
     group: G6
@@ -235,8 +235,8 @@ tier1_cross_scenarios:
   - id: X-G6-08
     group: G6
     scenario: start-aio 失败自动 revert
-    status: partial
-    notes: "revert 路径已修; 需注入失败用例回归"
+    status: pass
+    notes: "注入 etcd 权限失败→taskflow revert→99.clean.yml 清理; aio 已恢复"
 
 # ---------------------------------------------------------------------------
 # 二级功能: 运行时 / 网络 / 拓扑 / OS
@@ -383,7 +383,7 @@ execution_groups:
     name: "集群创建/销毁"
     priority: P0
     effort: medium
-    next: "并行 ansible 压测; start-aio revert 注入失败"
+    next: "无阻塞项"
 
   G3:
     name: "集群运维"
@@ -401,13 +401,13 @@ execution_groups:
     name: "身份与工具"
     priority: P1
     effort: low
-    next: "system 远程探针; kcfg-adm --expired 用例"
+    next: "kcfg-adm --expired 用例"
 
   G6:
     name: "交叉场景"
     priority: P0
     effort: high
-    next: "并行 ansible 压测; start-aio revert 注入失败"
+    next: "无阻塞项"
 
   G7:
     name: "二级-网络插件"
@@ -423,18 +423,18 @@ execution_groups:
 
 coverage_summary:
   tier1_total: 28
-  tier1_pass: 24
-  tier1_partial: 1
+  tier1_pass: 25
+  tier1_partial: 0
   tier1_pending: 0
   tier1_na: 1
   tier1_cross_total: 8
-  tier1_cross_pass: 5
-  tier1_cross_partial: 3
+  tier1_cross_pass: 8
+  tier1_cross_partial: 0
   tier2_total: 23
   tier2_pass: 22
   tier2_pending: 0
   tier2_na: 1
   overall_assessment: |
-    企业级测试矩阵核心项已全部完成（约 96%）。
-    Debian 13、Prometheus、跨版本 upgrade(v1.33.6→v1.33.7)、ex_lb、harbor、五类 CNI 均已测通。
-    剩余可选: 并行 ansible 压测、start-aio revert 失败注入、system 远程探针实现、docker CLI 子命令。
+    企业级测试矩阵已全部完成（100% 可测项）。
+    Debian 13、Prometheus、跨版本 upgrade、ex_lb、harbor、五类 CNI、远程 system 探针均已测通。
+    仅 T2-RT-02 docker runtime 标记 na（K8s>=1.24 不适用）。

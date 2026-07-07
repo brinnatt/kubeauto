@@ -463,6 +463,162 @@ restorecon -Rv ~/.ssh 2>/dev/null || true
             raise RuntimeError("Invalid public key format")
         return {"id_ed25519.pub": content}
 
+    # Stdlib-only probe script for remote hosts (no psutil on targets).
+    _REMOTE_PROBE_PY = r"""
+import json, os
+
+def disk_rows():
+    skip_fs = {
+        "proc", "sysfs", "devtmpfs", "tmpfs", "squashfs", "overlay", "cgroup2",
+        "cgroup", "pstore", "bpf", "tracefs", "debugfs", "securityfs", "configfs",
+        "fusectl", "mqueue", "hugetlbfs", "devpts", "autofs", "binfmt_misc",
+    }
+    rows = []
+    for line in open("/proc/mounts", encoding="utf-8", errors="replace"):
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        dev, mnt, fstype = parts[0], parts[1], parts[2]
+        if fstype in skip_fs or mnt.startswith(("/proc", "/sys", "/run", "/dev")):
+            continue
+        try:
+            st = os.statvfs(mnt)
+            total = st.f_frsize * st.f_blocks
+            free = st.f_frsize * st.f_bavail
+            used = total - free
+            pct = (used / total * 100) if total else 0
+            rows.append({
+                "device": dev, "mount": mnt, "fstype": fstype,
+                "total_gb": round(total / 1024 ** 3, 2),
+                "used_gb": round(used / 1024 ** 3, 2),
+                "free_gb": round(free / 1024 ** 3, 2),
+                "usage_percent": round(pct, 1),
+            })
+        except OSError:
+            pass
+    return rows
+
+def resources():
+    mem = {}
+    for line in open("/proc/meminfo", encoding="utf-8", errors="replace"):
+        if ":" not in line:
+            continue
+        k, v = line.split(":", 1)
+        mem[k.strip()] = int(v.split()[0])
+    total_kb = mem.get("MemTotal", 0)
+    avail_kb = mem.get("MemAvailable", mem.get("MemFree", 0))
+    swap_total = mem.get("SwapTotal", 0)
+    swap_free = mem.get("SwapFree", 0)
+    load = open("/proc/loadavg", encoding="utf-8").read().split()
+    cpus = os.cpu_count() or 1
+    cpuinfo = open("/proc/cpuinfo", encoding="utf-8", errors="replace").read()
+    threads = max(cpuinfo.count("processor"), cpus)
+    usage = round(float(load[0]) / cpus * 100, 1) if cpus else 0.0
+    return {
+        "cpu_cores": cpus,
+        "cpu_threads": threads,
+        "cpu_usage_percent": usage,
+        "memory_total_gb": round(total_kb / 1024 / 1024, 2),
+        "memory_available_gb": round(avail_kb / 1024 / 1024, 2),
+        "memory_usage_percent": round((1 - avail_kb / total_kb) * 100, 1) if total_kb else 0,
+        "swap_total_gb": round(swap_total / 1024 / 1024, 2),
+        "swap_used_gb": round((swap_total - swap_free) / 1024 / 1024, 2),
+        "swap_free_gb": round(swap_free / 1024 / 1024, 2),
+    }
+
+def networks():
+    rows = []
+    with open("/proc/net/dev", encoding="utf-8", errors="replace") as f:
+        next(f)
+        next(f)
+        for line in f:
+            if ":" not in line:
+                continue
+            name, data = line.split(":", 1)
+            name = name.strip()
+            if name == "lo":
+                continue
+            nums = data.split()
+            rx, tx = int(nums[0]), int(nums[8])
+            rows.append({
+                "interface": name,
+                "traffic_mb": {"sent": round(tx / 1024 / 1024, 2), "recv": round(rx / 1024 / 1024, 2)},
+            })
+    return rows
+
+print(json.dumps({"disks": disk_rows(), "resources": resources(), "networks": networks()}))
+"""
+
+    def _ssh_exec(
+            self,
+            host: str,
+            username: str,
+            command: str,
+            port: int = 22,
+            timeout: int = 10,
+    ) -> Tuple[str, str, int]:
+        """Run command on remote host via SSH key auth."""
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            hostname=host,
+            port=port,
+            username=username,
+            timeout=timeout,
+            look_for_keys=True,
+            allow_agent=True,
+            compress=True,
+        )
+        try:
+            _, stdout, stderr = client.exec_command(command, timeout=timeout)
+            out = stdout.read().decode("utf-8", errors="replace")
+            err = stderr.read().decode("utf-8", errors="replace")
+            rc = stdout.channel.recv_exit_status()
+            return out, err, rc
+        finally:
+            client.close()
+
+    def remote_probe(
+            self,
+            host_ips: List[str],
+            username: str = "root",
+            port: int = 22,
+            timeout: int = 10,
+            max_workers: int = 10,
+    ) -> Dict[str, Union[Dict, str]]:
+        """Collect disk/cpu/network stats from remote hosts over SSH."""
+        host_ips = expand_host_targets(host_ips)
+        script_b64 = base64.b64encode(self._REMOTE_PROBE_PY.encode()).decode()
+        py_code = f"import base64; exec(base64.b64decode('{script_b64}').decode())"
+        py_arg = json.dumps(py_code)
+        remote_cmd = (
+            "for py in /usr/bin/python3 /usr/libexec/platform-python python3; do "
+            f'[ -x "$py" ] || continue; "$py" -c {py_arg} && exit 0; done; exit 127'
+        )
+
+        results: Dict[str, Union[Dict, str]] = {}
+
+        def _worker(host: str):
+            try:
+                out, err, rc = self._ssh_exec(host, username, remote_cmd, port=port, timeout=timeout)
+                if rc != 0:
+                    return f"[FAILED] exit {rc}: {err.strip() or out.strip()}"
+                return json.loads(out)
+            except json.JSONDecodeError as ex:
+                return f"[FAILED] invalid probe JSON: {ex}"
+            except (paramiko.AuthenticationException, paramiko.SSHException, socket.error) as ex:
+                return f"[FAILED] SSH error: {ex}"
+            except Exception as ex:
+                return f"[CRASH] {type(ex).__name__}: {ex}"
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_worker, h): h for h in host_ips}
+            for future in as_completed(futures):
+                host = futures[future]
+                results[host] = future.result()
+
+        return results
+
 
 class Executor:
     @staticmethod
