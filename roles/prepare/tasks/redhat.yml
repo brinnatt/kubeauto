@@ -1,34 +1,17 @@
-# Remove firewalld so kubeauto can manage iptables. Sometimes slow: yum/dnf may refresh
-# repo metadata (network/mirror). Already-absent or warm cache = fast; cold cache = slow.
-# update_cache: false avoids unnecessary metadata refresh for removal-only.
+# Remove firewalld so kubeauto can manage iptables. Use dnf CLI (not ansible
+# package/dnf module): Rocky 8 python3-dnf binds to platform-python 3.6 only,
+# while Ansible 2.17 modules require Python >= 3.8 on the target.
 - name: delete centos/redhat default software
-  package:
-    name:
-      - firewalld
-      - python3-firewall
-      - firewalld-filesystem
-    state: absent
-    update_cache: false
-  ignore_errors: true
+  shell: dnf remove -y firewalld python3-firewall firewalld-filesystem || true
+  changed_when: false
+  failed_when: false
 
 - name: install basic system software
-  package: 
-    name:
-      - bash-completion     # bash completion
-      - conntrack-tools     # ipvs requires
-      - ipset               # ipvs requires
-      - ipvsadm             # ipvs requires
-      - libseccomp          # containerd requires
-      - lvm2                # Local PV LVM requires
-      - nfs-utils           # nfs function requires
-      - psmisc              # psmisc provides killall command，keepalive monitoring script requires
-      - rsync               # sync file
-      - socat               # port forwarding requires
-      - rsyslog             # rockylinux has no rsyslog service by default
-      - vim                 # rockylinux has no vim by default
-      - ipset-service       # help iptables to set firewall rules
-      - iptables-services   # useful for setting firewall rules in a small scale cluster
-    state: present
+  shell: >-
+    dnf install -y
+    bash-completion conntrack-tools ipset ipvsadm libseccomp lvm2 nfs-utils
+    psmisc rsync socat rsyslog vim ipset-service iptables-services
+  changed_when: false
 
 - name: disable selinux right now
   shell: "setenforce 0"

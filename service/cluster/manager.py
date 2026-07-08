@@ -84,6 +84,9 @@ def _iter_host_entries(hosts_file: Path, role: str) -> Generator[Tuple[str, str]
                 continue
             if end_section and line == end_section:
                 break
+            # [kube_node] is last kube_* section; stop at [harbor]/[ex_lb]/[chrony]/[all:vars]
+            if in_section and line.startswith("[") and line.endswith("]"):
+                break
             if in_section and line and not line.startswith("#"):
                 parts = line.split()
                 if parts:
@@ -343,10 +346,15 @@ class ClusterManager:
 
     @staticmethod
     def _write_ansible_cfg(tmp_dir: str, kubeconfig: str | None = None) -> None:
-        """Write ansible.cfg for playbook runs (auto_silent + local_connection python)."""
+        """Write ansible.cfg for playbook runs.
+
+        Use /usr/bin/python3 instead of auto_silent: on RHEL8/Rocky, auto_silent prefers
+        platform-python (3.6) over python3 even when inventory sets ansible_python_interpreter.
+        Rocky nodes symlink python3 -> python3.12 after prepare/bootstrap.
+        """
         env_line = f"environment = KUBECONFIG={kubeconfig}\n" if kubeconfig else ""
         Path(tmp_dir, "ansible.cfg").write_text(
-            "[defaults]\ninterpreter_python = auto_silent\n"
+            "[defaults]\ninterpreter_python = /usr/bin/python3\n"
             f"{env_line}\n"
             "[local_connection]\npython = /usr/bin/python3\n",
             encoding="utf-8",
