@@ -100,30 +100,15 @@ def _iter_host_entries(hosts_file: Path, role: str) -> Generator[Tuple[str, str]
                         continue
 
 
-_PYTHON_DETECT_CMD = (
-    "for py in /usr/bin/python3.12 /usr/bin/python3.11 /usr/bin/python3.10 "
-    "/usr/bin/python3.9 /usr/bin/python3 /usr/libexec/platform-python python3; do "
-    '[ -x "$py" ] || continue; "$py" -c "import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)" '
-    "2>/dev/null && echo \"$py\" && exit 0; done; exit 1"
+from common.ansible_python import (
+    ansible_python_policy,
+    detect_python_cmd,
+    parse_detected_python,
+    rhel8_python39_bootstrap_local_cmd,
+    rhel8_python39_bootstrap_remote_cmd,
+    should_bootstrap_python39_rhel8,
+    validate_detected_interpreter,
 )
-
-def _rhel8_python_bootstrap_local_cmd() -> str:
-    script = get_resource_path("roles", "prepare", "files", "huawei-mirror-rhel.sh")
-    return (
-        f"set -e; bash {script} && "
-        "(command -v dnf >/dev/null && dnf install -y python39 || yum install -y python39)"
-    )
-
-
-def _rhel8_python_bootstrap_remote_cmd() -> str:
-    """Run Huawei mirror + python39 on remote host (script streamed from control node)."""
-    script_path = Path(get_resource_path("roles", "prepare", "files", "huawei-mirror-rhel.sh"))
-    b64 = base64.b64encode(script_path.read_bytes()).decode()
-    return (
-        f"set -e; echo '{b64}' | base64 -d | bash && "
-        "(command -v dnf >/dev/null && dnf install -y python39 || yum install -y python39)"
-    )
-
 
 def _inventory_unique_ips(hosts_file: Path) -> List[str]:
     """Collect unique host IPs from an inventory file (before [all:vars])."""
@@ -158,31 +143,51 @@ def _host_uses_local_connection(host_line: str) -> bool:
     return "ansible_connection=local" in host_line
 
 
+def _subprocess_env_for_local_probe() -> dict:
+    """Environment for local shell probes when kubecli runs as a PyInstaller binary.
+
+    The frozen kubecli process may prepend ``LD_LIBRARY_PATH`` with PyInstaller
+    extract dir (``sys._MEIPASS``). Child probes must use the host linker view so
+    ``/usr/bin/python3`` behaves like a normal system interpreter.
+    """
+    env = os.environ.copy()
+    env["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH_ORIG", "")
+    env["PYTHONNOUSERSITE"] = "1"
+    return env
+
+
 def _detect_local_ansible_python() -> Optional[str]:
+    policy = ansible_python_policy()
     try:
-        out = run_command(["bash", "-c", _PYTHON_DETECT_CMD], capture=True).stdout
-        if out.strip():
-            return out.strip().splitlines()[-1].strip()
+        out = run_command(
+            ["bash", "-c", detect_python_cmd()],
+            capture=True,
+            env=_subprocess_env_for_local_probe(),
+        ).stdout
+        py = parse_detected_python(out)
+        if py and validate_detected_interpreter(py, policy):
+            return py
     except Exception:
         pass
     return None
-
-
-def _local_is_rhel8_family() -> bool:
-    info = platform.freedesktop_os_release()
-    os_id = info.get("ID", "").lower()
-    major = (info.get("VERSION_ID", "") or "").split(".")[0]
-    return os_id in {"rhel", "redhat", "rocky", "almalinux", "centos", "anolis", "openeuler"} and major == "8"
 
 
 def _ensure_local_ansible_python() -> Optional[str]:
     py = _detect_local_ansible_python()
     if py:
         return py
-    if _local_is_rhel8_family():
-        logger.info("localhost: installing distro python39 for Ansible (Huawei mirror).", extra=LOG_STDOUT)
+    policy = ansible_python_policy()
+    info = platform.freedesktop_os_release()
+    if should_bootstrap_python39_rhel8(info.get("ID", ""), info.get("VERSION_ID", ""), None, policy):
+        logger.info(
+            f"localhost: no Python >={policy.target_module_runtime_min[0]}."
+            f"{policy.target_module_runtime_min[1]} for ansible-core {policy.core_label}; "
+            "installing distro python39 (Huawei mirror).",
+            extra=LOG_STDOUT,
+        )
         try:
-            run_command(["bash", "-c", _rhel8_python_bootstrap_local_cmd()], capture_output=False)
+            script = get_resource_path("roles", "prepare", "files", "huawei-mirror-rhel.sh")
+            run_command(["bash", "-c", rhel8_python39_bootstrap_local_cmd(script)], capture_output=False)
         except Exception as exc:
             logger.warning(f"localhost: python39 install failed: {exc}", extra=LOG_STDOUT)
             return None
@@ -191,32 +196,47 @@ def _ensure_local_ansible_python() -> Optional[str]:
 
 
 def _detect_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
-    out, _, rc = probe._ssh_exec(host, username, _PYTHON_DETECT_CMD, timeout=30)
-    if rc == 0 and out.strip():
-        return out.strip().splitlines()[-1].strip()
+    policy = ansible_python_policy()
+    out, _, rc = probe._ssh_exec(host, username, detect_python_cmd(), timeout=30)
+    if rc != 0:
+        return None
+    py = parse_detected_python(out)
+    if py and validate_detected_interpreter(py, policy):
+        return py
     return None
 
 
-def _is_rhel8_family(probe: SystemProbe, host: str, username: str) -> bool:
+def _remote_os_release(probe: SystemProbe, host: str, username: str) -> tuple[str, str]:
     out, _, rc = probe._ssh_exec(
         host,
         username,
-        ". /etc/os-release 2>/dev/null; echo ${ID:-}:${VERSION_ID%%.*}",
+        ". /etc/os-release 2>/dev/null; echo ${ID:-}:${VERSION_ID:-}",
         timeout=15,
     )
     if rc != 0:
-        return False
-    id_part, _, major = out.strip().partition(":")
-    return id_part.lower() in {"rhel", "redhat", "rocky", "almalinux", "centos", "anolis", "openeuler"} and major == "8"
+        return "", ""
+    id_part, _, version_id = out.strip().partition(":")
+    return id_part, version_id
 
 
 def _ensure_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
     py = _detect_ansible_python(probe, host, username)
     if py:
         return py
-    if _is_rhel8_family(probe, host, username):
-        logger.info(f"{host}: installing distro python39 for Ansible (Huawei mirror).", extra=LOG_STDOUT)
-        _, err, rc = probe._ssh_exec(host, username, _rhel8_python_bootstrap_remote_cmd(), timeout=600)
+    policy = ansible_python_policy()
+    os_id, version_id = _remote_os_release(probe, host, username)
+    if should_bootstrap_python39_rhel8(os_id, version_id, None, policy):
+        logger.info(
+            f"{host}: no Python >={policy.target_module_runtime_min[0]}."
+            f"{policy.target_module_runtime_min[1]} for ansible-core {policy.core_label}; "
+            "installing distro python39 (Huawei mirror).",
+            extra=LOG_STDOUT,
+        )
+        script_path = Path(get_resource_path("roles", "prepare", "files", "huawei-mirror-rhel.sh"))
+        b64 = base64.b64encode(script_path.read_bytes()).decode()
+        _, err, rc = probe._ssh_exec(
+            host, username, rhel8_python39_bootstrap_remote_cmd(b64), timeout=600
+        )
         if rc != 0:
             logger.warning(f"{host}: python39 install failed: {err.strip()}", extra=LOG_STDOUT)
             return None
@@ -253,7 +273,10 @@ def _prepare_inventory_with_python(hosts_file: Path) -> Path:
         if py:
             interpreters[token] = py
         else:
-            logger.warning(f"{token}: no Python >= 3.8 for Ansible modules.", extra=LOG_STDOUT)
+            logger.warning(
+                f"{token}: no compatible Python for ansible-core on this host.",
+                extra=LOG_STDOUT,
+            )
 
     if not interpreters:
         return hosts_file
@@ -935,14 +958,51 @@ class ClusterManager:
 
     @staticmethod
     def _validate_ansible_module_runtime() -> None:
-        """Preflight: Ansible apt module must import under PYTHONNOUSERSITE (Debian/Ubuntu prepare)."""
+        """Preflight-check *system* Ansible on Debian/Ubuntu before start-aio.
+
+        Two separate Python runtimes are involved (do not confuse them):
+
+        **A) PyInstaller kubecli (this process)**
+
+        - ``sys.executable`` points at the frozen kubecli binary.
+        - Bundled Python runs kubeauto controller code only (manager, CLI, taskflow).
+        - It does **not** include the system ``ansible`` package or ``ansible.modules.*``.
+
+        **B) System Ansible (external packages on the jump host)**
+
+        - Installed via apt/dnf (``ansible`` / ``ansible-core`` on PATH).
+        - ``ansible-playbook`` and module payloads run under **host** ``python3``
+          (e.g. ``/usr/bin/python3``), not under kubecli's embedded interpreter.
+
+        start-aio eventually runs ``roles/prepare`` on Debian/Ubuntu targets using
+        the ``apt`` module. This check verifies that **host** Python can import
+        ``ansible.modules.apt`` with ``PYTHONNOUSERSITE=1`` (ignoring ``~/.local``
+        packages that often break cryptography/pyOpenSSL).
+
+        We intentionally use ``shutil.which("python3")``, **not** ``sys.executable``,
+        because the latter would test the wrong interpreter and false-fail on frozen
+        kubecli builds.
+
+        Flow::
+
+            kubecli (frozen Python A)  ──spawns──►  ansible-playbook (system Python B)
+                                                          │
+                                                          ▼
+                                               apt module import self-test (this check)
+        """
         if not sys.platform.startswith("linux"):
+            return
+        info = platform.freedesktop_os_release()
+        os_id = info.get("ID", "").lower()
+        id_like = info.get("ID_LIKE", "").lower()
+        if os_id not in {"debian", "ubuntu"} and "debian" not in id_like:
             return
         env = ClusterManager._env_for_system_subprocess()
         env.setdefault("PYTHONNOUSERSITE", "1")
+        py = shutil.which("python3") or "/usr/bin/python3"
         try:
             run_command(
-                [sys.executable, "-c", "from ansible.modules import apt"],
+                [py, "-c", "from ansible.modules import apt"],
                 env={**os.environ, **env},
             )
         except CommandExecutionError as exc:

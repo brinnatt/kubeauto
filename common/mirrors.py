@@ -16,25 +16,6 @@ from common.utils import get_resource_path, run_command
 HUAWEI_REPO = "https://repo.huaweicloud.com"
 HUAWEI_MIRRORS = "https://mirrors.huaweicloud.com"
 
-# Huawei mirrors of dl.k8s.io / k8s release binaries (verified 2026-07-08).
-K8S_BIN_MIRROR_BASES = (
-    f"{HUAWEI_MIRRORS}/dl.k8s.io/release",
-    f"{HUAWEI_MIRRORS}/k8s/release",
-    f"{HUAWEI_MIRRORS}/cncf/kubernetes/release",
-)
-K8S_BIN_FALLBACK_BASE = "https://dl.k8s.io/release"
-
-K8S_BIN_NAMES = (
-    "kube-apiserver",
-    "kube-controller-manager",
-    "kube-scheduler",
-    "kubelet",
-    "kube-proxy",
-    "kubectl",
-)
-
-_ARCH_TO_GOARCH = {"x86_64": "amd64", "aarch64": "arm64"}
-
 _RHEL_IDS = frozenset({"rhel", "redhat", "rocky", "almalinux", "centos", "openeuler", "anolis"})
 _DEBIAN_IDS = frozenset({"debian", "ubuntu"})
 _SUSE_IDS = frozenset({"opensuse", "opensuse-leap", "sles", "suse"})
@@ -96,47 +77,4 @@ def install_ansible_with_system_pm() -> None:
         return
 
     raise RuntimeError(f"Unsupported distribution for ansible install: {os_id}")
-
-
-def normalize_k8s_version(version: str) -> str:
-    version = version.strip()
-    return version if version.startswith("v") else f"v{version}"
-
-
-def k8s_goarch(machine: str) -> str:
-    return _ARCH_TO_GOARCH.get(machine, machine)
-
-
-def k8s_bin_download_url(version: str, machine: str, name: str, base_index: int = 0) -> str:
-    ver = normalize_k8s_version(version)
-    goarch = k8s_goarch(machine)
-    base = K8S_BIN_MIRROR_BASES[base_index]
-    return f"{base}/{ver}/bin/linux/{goarch}/{name}"
-
-
-def download_k8s_bins(version: str, dest_dir: Path, machine: str) -> None:
-    """Download Kubernetes server/client binaries (Huawei mirrors first, dl.k8s.io fallback)."""
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    ver = normalize_k8s_version(version)
-    goarch = k8s_goarch(machine)
-    for name in K8S_BIN_NAMES:
-        dest = dest_dir / name
-        floor = 500_000 if name in ("kubectl", "kube-proxy") else 1_000_000
-        last_err = None
-        for base in (*K8S_BIN_MIRROR_BASES, K8S_BIN_FALLBACK_BASE):
-            url = f"{base}/{ver}/bin/linux/{goarch}/{name}"
-            try:
-                tmp = dest.with_suffix(".tmp")
-                run_command(["curl", "-fsSL", "-o", str(tmp), url], capture_output=False)
-                if tmp.stat().st_size < floor:
-                    raise RuntimeError(f"unexpected size {tmp.stat().st_size} from {url}")
-                tmp.chmod(0o755)
-                tmp.replace(dest)
-                last_err = None
-                break
-            except Exception as exc:
-                last_err = exc
-                dest.unlink(missing_ok=True)
-        if last_err:
-            raise RuntimeError(f"Failed to download {name} for {ver}: {last_err}")
 

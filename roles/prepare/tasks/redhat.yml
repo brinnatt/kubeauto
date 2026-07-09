@@ -1,6 +1,7 @@
 # Remove firewalld so kubeauto can manage iptables. Use dnf CLI (not ansible
 # package/dnf module): Rocky 8 python3-dnf binds to platform-python 3.6 only,
-# while Ansible 2.17 modules require Python >= 3.8 on the target.
+# while ansible-core 2.17+ module payloads require Python 3.9+ on the target.
+# See common/ansible_python.py (matrix + RHEL8 respawn policy).
 - name: copy huawei cloud yum/dnf mirror script
   copy: src=huawei-mirror-rhel.sh dest=/tmp/huawei-mirror-rhel.sh mode=0755
 
@@ -8,11 +9,26 @@
   shell: /tmp/huawei-mirror-rhel.sh
   changed_when: false
 
-# Ansible 2.17 modules require Python >= 3.8 on targets; Rocky/RHEL8 default python3 is 3.6.
-- name: install python39 for ansible (RHEL8 family, distro package)
+# Matrix-aligned probe: ansible-core 2.17+ module runtime needs Python 3.9+ on target.
+# Must match common/ansible_python.py target_module_runtime_min for core 2.17.
+- name: detect ansible-compatible python on target
+  shell: |
+    for py in /usr/bin/python3.13 /usr/bin/python3.12 /usr/bin/python3.11 /usr/bin/python3.10 \
+    /usr/bin/python3.9 /usr/bin/python3 /usr/libexec/platform-python python3; do
+      [ -x "$py" ] || continue
+      "$py" -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" 2>/dev/null && exit 0
+    done
+    exit 1
+  changed_when: false
+  failed_when: false
+  register: py_detect
+
+- name: install python39 for ansible (RHEL8 family, only when no compatible python)
   shell: dnf install -y python39 || yum install -y python39
   changed_when: false
-  when: ansible_distribution_major_version | default('') | string == '8'
+  when:
+    - ansible_distribution_major_version | default('') | string == '8'
+    - py_detect.rc != 0
 
 - name: delete centos/redhat default software
   shell: dnf remove -y firewalld python3-firewall firewalld-filesystem || true

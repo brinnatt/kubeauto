@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from common.constants import KubeConstant
-from common.mirrors import install_ansible_with_system_pm, download_k8s_bins, normalize_k8s_version
+from common.mirrors import install_ansible_with_system_pm
 from common.exceptions import DownloadError, InstallPrereqError
 from common.logger import setup_logger, LOG_STDOUT
 from common.utils import rmrf, run_command, ensure_kubeauto_clusters_dir
@@ -82,47 +82,24 @@ class DownloadManager:
         logger.info("Kubeauto installed.", extra=LOG_STDOUT)
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
-        """Download Kubernetes binaries from Huawei Cloud mirrors (no Docker image required)."""
+        """Download Kubernetes binaries from brinnatt/kubeauto-k8s-bin image."""
+        if not self.docker.is_docker_installed:
+            raise InstallPrereqError(
+                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
+            )
         version = version or self.kube_constant.v_k8s_bin
-        target = normalize_k8s_version(version)
 
-        installed = self._installed_k8s_version()
-        if installed == target and self.__check_file_exists(self.kube_bin_dir, "kubelet"):
-            if (self.sys_bin_dir / "kubelet").is_symlink():
-                logger.warning(
-                    f"Kubernetes binaries {target} already installed; skipping.",
-                    extra=LOG_STDOUT,
-                )
-                return
+        if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
+            logger.warning("Kubernetes binaries already installed; skipping.", extra=LOG_STDOUT)
+            return
 
-        logger.info(
-            f"[DOWNLOAD] Kubernetes binaries {target} from Huawei mirrors.",
-            extra=LOG_STDOUT,
+        self.__handle_image(self.image_dir, f"k8s_bin_{version}.tar", f"brinnatt/kubeauto-k8s-bin:{version}")
+
+        self.__handle_files(
+            f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=True
         )
-        try:
-            download_k8s_bins(target, self.kube_bin_dir, self.kube_constant.arch)
-            for item in self.kube_bin_dir.iterdir():
-                if not item.is_file() or not os.access(item, os.X_OK):
-                    continue
-                target_link = self.sys_bin_dir / item.name
-                tmp_link = self.sys_bin_dir / f".{item.name}.new"
-                rmrf(tmp_link)
-                tmp_link.symlink_to(item)
-                tmp_link.replace(target_link)
-            logger.info("Kubernetes binaries installed.", extra=LOG_STDOUT)
-        except Exception as e:
-            logger.error(f"[DOWNLOAD] Failed to download Kubernetes binaries — {e}", extra=LOG_STDOUT)
-            raise DownloadError(f"Failed to download Kubernetes binaries: {e}")
 
-    def _installed_k8s_version(self) -> Optional[str]:
-        apiserver = self.kube_bin_dir / "kube-apiserver"
-        if not apiserver.exists():
-            return None
-        try:
-            out = run_command([str(apiserver), "--version"], capture=True).stdout.strip()
-            return out.split()[1]
-        except Exception:
-            return None
+        logger.info("Kubernetes binaries installed.", extra=LOG_STDOUT)
 
     def get_ext_bin(self, version: Optional[str] = None) -> None:
         """Download extra binaries with caching and error handling"""
@@ -256,7 +233,37 @@ class DownloadManager:
             raise DownloadError(f"Failed to pull, save, or load {image}: {e}")
 
     def __handle_files(self, image: str, image_carrier: str, destination: Path, create_symlink=False) -> None:
-        """Handle files"""
+        """Extract files from a container image into ``destination``.
+
+        Symlink publishing (``create_symlink=True``)
+        --------------------------------------------
+        Kubernetes binaries are published under ``/usr/local/bin`` as symlinks
+        into ``kube-bin/``.  During ``kubecli download -k`` or cluster upgrade,
+        those binaries may be replaced while ``kubelet`` / ``kube-apiserver``
+        are still running.
+
+        Linux returns **ETXTBUSY** ("Text file busy") when a file open for
+        execution is overwritten in place.  Deleting and recreating a symlink
+        that points at an in-use executable can hit the same failure mode under
+        load.
+
+        **Atomic symlink replace** avoids touching the live path until the last
+        step:
+
+        1. Write ``/usr/local/bin/.kubelet.new`` → new target in ``kube-bin/``
+        2. ``Path.replace()`` (rename) ``.kubelet.new`` → ``kubelet`` in one step
+
+        ``rename(2)`` is atomic on the same filesystem: concurrent readers keep
+        the old inode until the rename completes; the window for ETXTBUSY is
+        minimal compared with ``rm`` + ``symlink`` on the final name.
+
+        Flow::
+
+            kube-bin/kubelet (new file)     .kubelet.new ──rename──► /usr/local/bin/kubelet
+                  ▲                              (temp symlink)
+                  └──────── symlink ───────────────┘
+            old kubelet inode still served to running process until rename
+        """
         # Creating temporary container and handle files
         container_id = None
         temp_carrier = None
@@ -280,12 +287,13 @@ class DownloadManager:
                 shutil.move(str(item), str(destination))
 
             if create_symlink:
-                # recurse destination to find executable binary file and make symlink to /usr/local/bin
                 for item in destination.rglob('*'):
                     if item.is_file() and os.access(item, os.X_OK):
                         target_link = self.sys_bin_dir / item.name
-                        rmrf(target_link)
-                        target_link.symlink_to(item)
+                        tmp_link = self.sys_bin_dir / f".{item.name}.new"
+                        rmrf(tmp_link)
+                        tmp_link.symlink_to(item)
+                        tmp_link.replace(target_link)
 
         except Exception as e:
             raise DownloadError(f"Failed to copy image files to dest — {e}")
