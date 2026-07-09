@@ -59,7 +59,7 @@
         dest: /etc/hosts
         state: present
         regexp: 'registry.talkschool.cn'
-        line: "{{ (ansible_env.SSH_CLIENT | default('')).split(' ')[0] | default(inventory_hostname, true) }}    registry.talkschool.cn"
+        line: "{{ REGISTRY_HOST_IP }}    registry.talkschool.cn"
 
     # Calico requires unique hostnames across all nodes.
     # Use hostnamectl directly: Ansible 2.10 hostname module does not recognize Rocky Linux.

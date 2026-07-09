@@ -1,11 +1,11 @@
 import os
-import platform
 import shutil
 import sys
 from pathlib import Path
 from typing import Optional
 
 from common.constants import KubeConstant
+from common.mirrors import install_ansible_with_system_pm, download_k8s_bins, normalize_k8s_version
 from common.exceptions import DownloadError, InstallPrereqError
 from common.logger import setup_logger, LOG_STDOUT
 from common.utils import rmrf, run_command, ensure_kubeauto_clusters_dir
@@ -51,26 +51,10 @@ class DownloadManager:
             logger.info("Ansible already installed; skipping.", extra=LOG_STDOUT)
             return
 
-        logger.info("Installing Ansible (system package manager).", extra=LOG_STDOUT)
+        logger.info("Installing Ansible (system package manager, Huawei mirror).", extra=LOG_STDOUT)
 
         try:
-            distro = platform.freedesktop_os_release().get("ID", "").lower()
-            family = platform.freedesktop_os_release().get("ID_LIKE", "").lower()
-
-            if distro in ["centos", "rhel", "rocky", "almalinux"] or "rhel" in family:
-                run_command(["yum", "-y", "install", "epel-release"], capture_output=False)
-                run_command(["yum", "-y", "install", "ansible"], capture_output=False)
-
-            elif distro in ["ubuntu", "debian"] or "debian" in family:
-                run_command(["apt-get", "update"], capture_output=False)
-                run_command(["apt-get", "-y", "install", "ansible"], capture_output=False)
-
-            elif distro in ["opensuse", "sles", "suse"] or "suse" in family:
-                run_command(["zypper", "--non-interactive", "install", "ansible"], capture_output=False)
-
-            else:
-                raise RuntimeError(f"Unsupported distribution: {distro}")
-
+            install_ansible_with_system_pm()
             logger.info("Ansible installed.", extra=LOG_STDOUT)
 
         except Exception as e:
@@ -98,22 +82,47 @@ class DownloadManager:
         logger.info("Kubeauto installed.", extra=LOG_STDOUT)
 
     def get_k8s_bin(self, version: Optional[str] = None) -> None:
-        """Download Kubernetes binaries with caching and error handling"""
-        if not self.docker.is_docker_installed:
-            raise InstallPrereqError(
-                "Docker is required to pull and extract images. Run 'kubecli download -d' first."
-            )
+        """Download Kubernetes binaries from Huawei Cloud mirrors (no Docker image required)."""
         version = version or self.kube_constant.v_k8s_bin
+        target = normalize_k8s_version(version)
 
-        if self.__check_file_exists(self.kube_bin_dir, "kubelet") and (self.sys_bin_dir / "kubelet").is_symlink():
-            logger.warning("Kubernetes binaries already installed; skipping.", extra=LOG_STDOUT)
-            return
+        installed = self._installed_k8s_version()
+        if installed == target and self.__check_file_exists(self.kube_bin_dir, "kubelet"):
+            if (self.sys_bin_dir / "kubelet").is_symlink():
+                logger.warning(
+                    f"Kubernetes binaries {target} already installed; skipping.",
+                    extra=LOG_STDOUT,
+                )
+                return
 
-        self.__handle_image(self.image_dir, f"k8s_bin_{version}.tar", f"brinnatt/kubeauto-k8s-bin:{version}")
+        logger.info(
+            f"[DOWNLOAD] Kubernetes binaries {target} from Huawei mirrors.",
+            extra=LOG_STDOUT,
+        )
+        try:
+            download_k8s_bins(target, self.kube_bin_dir, self.kube_constant.arch)
+            for item in self.kube_bin_dir.iterdir():
+                if not item.is_file() or not os.access(item, os.X_OK):
+                    continue
+                target_link = self.sys_bin_dir / item.name
+                tmp_link = self.sys_bin_dir / f".{item.name}.new"
+                rmrf(tmp_link)
+                tmp_link.symlink_to(item)
+                tmp_link.replace(target_link)
+            logger.info("Kubernetes binaries installed.", extra=LOG_STDOUT)
+        except Exception as e:
+            logger.error(f"[DOWNLOAD] Failed to download Kubernetes binaries — {e}", extra=LOG_STDOUT)
+            raise DownloadError(f"Failed to download Kubernetes binaries: {e}")
 
-        self.__handle_files(f"brinnatt/kubeauto-k8s-bin:{version}", "/k8s", self.kube_bin_dir, create_symlink=True)
-
-        logger.info("Kubernetes binaries installed.", extra=LOG_STDOUT)
+    def _installed_k8s_version(self) -> Optional[str]:
+        apiserver = self.kube_bin_dir / "kube-apiserver"
+        if not apiserver.exists():
+            return None
+        try:
+            out = run_command([str(apiserver), "--version"], capture=True).stdout.strip()
+            return out.split()[1]
+        except Exception:
+            return None
 
     def get_ext_bin(self, version: Optional[str] = None) -> None:
         """Download extra binaries with caching and error handling"""

@@ -1,6 +1,19 @@
 # Remove firewalld so kubeauto can manage iptables. Use dnf CLI (not ansible
 # package/dnf module): Rocky 8 python3-dnf binds to platform-python 3.6 only,
 # while Ansible 2.17 modules require Python >= 3.8 on the target.
+- name: copy huawei cloud yum/dnf mirror script
+  copy: src=huawei-mirror-rhel.sh dest=/tmp/huawei-mirror-rhel.sh mode=0755
+
+- name: apply huawei cloud yum/dnf mirror
+  shell: /tmp/huawei-mirror-rhel.sh
+  changed_when: false
+
+# Ansible 2.17 modules require Python >= 3.8 on targets; Rocky/RHEL8 default python3 is 3.6.
+- name: install python39 for ansible (RHEL8 family, distro package)
+  shell: dnf install -y python39 || yum install -y python39
+  changed_when: false
+  when: ansible_distribution_major_version | default('') | string == '8'
+
 - name: delete centos/redhat default software
   shell: dnf remove -y firewalld python3-firewall firewalld-filesystem || true
   changed_when: false

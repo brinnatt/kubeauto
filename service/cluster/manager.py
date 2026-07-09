@@ -4,7 +4,9 @@ Main cluster operations for kubeauto
 # ansible_runner usage: on host use private_data_dir in temp; bubblewrap/docker use
 # process_isolation with bwrap or container_image. See ansible-runner docs for details.
 import ipaddress
+import base64
 import os
+import platform
 import re
 import shutil
 import ansible_runner
@@ -20,6 +22,7 @@ from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException as K8sApiException
 
 from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf, copy_file_to_remote, get_host_ip, ensure_kubeauto_clusters_dir
+from common.os import SystemProbe
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError,
@@ -95,6 +98,188 @@ def _iter_host_entries(hosts_file: Path, role: str) -> Generator[Tuple[str, str]
                         yield (line, parts[0])
                     except ValueError:
                         continue
+
+
+_PYTHON_DETECT_CMD = (
+    "for py in /usr/bin/python3.12 /usr/bin/python3.11 /usr/bin/python3.10 "
+    "/usr/bin/python3.9 /usr/bin/python3 /usr/libexec/platform-python python3; do "
+    '[ -x "$py" ] || continue; "$py" -c "import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)" '
+    "2>/dev/null && echo \"$py\" && exit 0; done; exit 1"
+)
+
+def _rhel8_python_bootstrap_local_cmd() -> str:
+    script = get_resource_path("roles", "prepare", "files", "huawei-mirror-rhel.sh")
+    return (
+        f"set -e; bash {script} && "
+        "(command -v dnf >/dev/null && dnf install -y python39 || yum install -y python39)"
+    )
+
+
+def _rhel8_python_bootstrap_remote_cmd() -> str:
+    """Run Huawei mirror + python39 on remote host (script streamed from control node)."""
+    script_path = Path(get_resource_path("roles", "prepare", "files", "huawei-mirror-rhel.sh"))
+    b64 = base64.b64encode(script_path.read_bytes()).decode()
+    return (
+        f"set -e; echo '{b64}' | base64 -d | bash && "
+        "(command -v dnf >/dev/null && dnf install -y python39 || yum install -y python39)"
+    )
+
+
+def _inventory_unique_ips(hosts_file: Path) -> List[str]:
+    """Collect unique host IPs from an inventory file (before [all:vars])."""
+    ips: List[str] = []
+    seen: set[str] = set()
+    for raw in hosts_file.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("[all:vars]"):
+            break
+        if not line or line.startswith("#") or (line.startswith("[") and line.endswith("]")):
+            continue
+        token = line.split()[0]
+        try:
+            ipaddress.ip_address(token)
+        except ValueError:
+            continue
+        if token not in seen:
+            seen.add(token)
+            ips.append(token)
+    return ips
+
+
+def _inventory_ansible_user(hosts_file: Path) -> str:
+    for raw in hosts_file.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("ansible_user="):
+            return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return "root"
+
+
+def _host_uses_local_connection(host_line: str) -> bool:
+    return "ansible_connection=local" in host_line
+
+
+def _detect_local_ansible_python() -> Optional[str]:
+    try:
+        out = run_command(["bash", "-c", _PYTHON_DETECT_CMD], capture=True).stdout
+        if out.strip():
+            return out.strip().splitlines()[-1].strip()
+    except Exception:
+        pass
+    return None
+
+
+def _local_is_rhel8_family() -> bool:
+    info = platform.freedesktop_os_release()
+    os_id = info.get("ID", "").lower()
+    major = (info.get("VERSION_ID", "") or "").split(".")[0]
+    return os_id in {"rhel", "redhat", "rocky", "almalinux", "centos", "anolis", "openeuler"} and major == "8"
+
+
+def _ensure_local_ansible_python() -> Optional[str]:
+    py = _detect_local_ansible_python()
+    if py:
+        return py
+    if _local_is_rhel8_family():
+        logger.info("localhost: installing distro python39 for Ansible (Huawei mirror).", extra=LOG_STDOUT)
+        try:
+            run_command(["bash", "-c", _rhel8_python_bootstrap_local_cmd()], capture_output=False)
+        except Exception as exc:
+            logger.warning(f"localhost: python39 install failed: {exc}", extra=LOG_STDOUT)
+            return None
+        return _detect_local_ansible_python()
+    return None
+
+
+def _detect_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
+    out, _, rc = probe._ssh_exec(host, username, _PYTHON_DETECT_CMD, timeout=30)
+    if rc == 0 and out.strip():
+        return out.strip().splitlines()[-1].strip()
+    return None
+
+
+def _is_rhel8_family(probe: SystemProbe, host: str, username: str) -> bool:
+    out, _, rc = probe._ssh_exec(
+        host,
+        username,
+        ". /etc/os-release 2>/dev/null; echo ${ID:-}:${VERSION_ID%%.*}",
+        timeout=15,
+    )
+    if rc != 0:
+        return False
+    id_part, _, major = out.strip().partition(":")
+    return id_part.lower() in {"rhel", "redhat", "rocky", "almalinux", "centos", "anolis", "openeuler"} and major == "8"
+
+
+def _ensure_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
+    py = _detect_ansible_python(probe, host, username)
+    if py:
+        return py
+    if _is_rhel8_family(probe, host, username):
+        logger.info(f"{host}: installing distro python39 for Ansible (Huawei mirror).", extra=LOG_STDOUT)
+        _, err, rc = probe._ssh_exec(host, username, _rhel8_python_bootstrap_remote_cmd(), timeout=600)
+        if rc != 0:
+            logger.warning(f"{host}: python39 install failed: {err.strip()}", extra=LOG_STDOUT)
+            return None
+        return _detect_ansible_python(probe, host, username)
+    return None
+
+
+def _prepare_inventory_with_python(hosts_file: Path) -> Path:
+    """Return inventory path with per-host ansible_python_interpreter when needed."""
+    content = hosts_file.read_text(encoding="utf-8").splitlines()
+    if any("ansible_python_interpreter=" in line for line in content):
+        return hosts_file
+
+    probe = SystemProbe()
+    user = _inventory_ansible_user(hosts_file)
+    interpreters: dict[str, str] = {}
+    for raw in content:
+        stripped = raw.strip()
+        if stripped.startswith("[all:vars]"):
+            break
+        if not stripped or stripped.startswith("#") or (stripped.startswith("[") and stripped.endswith("]")):
+            continue
+        token = stripped.split()[0]
+        try:
+            ipaddress.ip_address(token)
+        except ValueError:
+            continue
+        if token in interpreters:
+            continue
+        if _host_uses_local_connection(stripped):
+            py = _ensure_local_ansible_python()
+        else:
+            py = _ensure_ansible_python(probe, token, user)
+        if py:
+            interpreters[token] = py
+        else:
+            logger.warning(f"{token}: no Python >= 3.8 for Ansible modules.", extra=LOG_STDOUT)
+
+    if not interpreters:
+        return hosts_file
+
+    patched: List[str] = []
+    for raw in content:
+        line = raw.rstrip()
+        stripped = line.strip()
+        if stripped.startswith("[all:vars]"):
+            patched.append(line)
+            continue
+        if not stripped or stripped.startswith("#") or (stripped.startswith("[") and stripped.endswith("]")):
+            patched.append(line)
+            continue
+        token = stripped.split()[0]
+        py = interpreters.get(token)
+        if py and "ansible_python_interpreter=" not in stripped:
+            patched.append(f"{line} ansible_python_interpreter={py}")
+        else:
+            patched.append(line)
+
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="kubeauto-inv-", suffix=".hosts", dir="/dev/shm")
+    os.close(tmp_fd)
+    tmp = Path(tmp_path)
+    tmp.write_text("\n".join(patched) + "\n", encoding="utf-8")
+    return tmp
 
 
 class ClusterManager:
@@ -348,15 +533,14 @@ class ClusterManager:
     def _write_ansible_cfg(tmp_dir: str, kubeconfig: str | None = None) -> None:
         """Write ansible.cfg for playbook runs.
 
-        Use /usr/bin/python3 instead of auto_silent: on RHEL8/Rocky, auto_silent prefers
-        platform-python (3.6) over python3 even when inventory sets ansible_python_interpreter.
-        Rocky nodes symlink python3 -> python3.12 after prepare/bootstrap.
+        auto_silent discovers per-host interpreters: platform-python on RHEL8/Rocky,
+        /usr/bin/python3 on Debian/Ubuntu. Do not preinstall python3 on RHEL family.
+        Ref: https://docs.ansible.com/ansible/latest/reference_appendices/interpreter_discovery.html
         """
         env_line = f"environment = KUBECONFIG={kubeconfig}\n" if kubeconfig else ""
         Path(tmp_dir, "ansible.cfg").write_text(
-            "[defaults]\ninterpreter_python = /usr/bin/python3\n"
-            f"{env_line}\n"
-            "[local_connection]\npython = /usr/bin/python3\n",
+            "[defaults]\ninterpreter_python = auto_silent\n"
+            f"{env_line}\n",
             encoding="utf-8",
         )
 
@@ -374,6 +558,9 @@ class ClusterManager:
         """Run Ansible playbook in a temp dir. When fail_msg is set and rc != 0, log and raise fail_exception."""
         inv = inventory or (self.clusters_dir / cluster / "hosts")
         ev = extra_vars if extra_vars is not None else self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
+        if isinstance(ev, dict):
+            ev = dict(ev)
+            ev.setdefault("REGISTRY_HOST_IP", get_host_ip())
         if isinstance(playbook, Path):
             pb_path = str(playbook)
         elif "/" in str(playbook):
@@ -382,22 +569,25 @@ class ClusterManager:
             pb_path = get_resource_path("playbooks", playbook)
         envvars = self._env_for_system_subprocess()
         kubeconfig_path = self.clusters_dir / cluster / "kubectl.kubeconfig"
-        with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
-            # auto_silent: discover python per host (platform-python on RHEL8, python3 on Ubuntu localhost)
-            # Ref: https://docs.ansible.com/ansible/latest/reference_appendices/interpreter_discovery.html
-            self._write_ansible_cfg(
-                tmp_dir,
-                str(kubeconfig_path) if kubeconfig_path.exists() else None,
-            )
-            result = ansible_runner.run(
-                private_data_dir=tmp_dir,
-                playbook=pb_path,
-                inventory=str(inv),
-                extravars=ev,
-                roles_path=get_resource_path("roles"),
-                cmdline=cmdline or "",
-                envvars=envvars,
-            )
+        prepared_inv = _prepare_inventory_with_python(inv)
+        try:
+            with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
+                self._write_ansible_cfg(
+                    tmp_dir,
+                    str(kubeconfig_path) if kubeconfig_path.exists() else None,
+                )
+                result = ansible_runner.run(
+                    private_data_dir=tmp_dir,
+                    playbook=pb_path,
+                    inventory=str(prepared_inv),
+                    extravars=ev,
+                    roles_path=get_resource_path("roles"),
+                    cmdline=cmdline or "",
+                    envvars=envvars,
+                )
+        finally:
+            if prepared_inv != inv and prepared_inv.exists():
+                prepared_inv.unlink(missing_ok=True)
         if fail_msg and result.rc != 0:
             logger.error(fail_msg, extra=LOG_STDOUT)
             raise fail_exception(fail_msg)

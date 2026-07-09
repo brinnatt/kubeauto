@@ -1,6 +1,13 @@
 # Debian/Ubuntu prepare: use apt-get via shell so we do not depend on Ansible's apt
 # module (which can break when ~/.local urllib3/pyOpenSSL conflicts with system OpenSSL).
 
+- name: copy huawei cloud apt mirror script
+  copy: src=huawei-mirror-debian.sh dest=/tmp/huawei-mirror-debian.sh mode=0755
+
+- name: apply huawei cloud apt mirror
+  shell: /tmp/huawei-mirror-debian.sh
+  changed_when: false
+
 - name: update apt cache
   shell: DEBIAN_FRONTEND=noninteractive apt-get update -qq
   changed_when: false

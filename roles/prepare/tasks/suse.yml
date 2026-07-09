@@ -1,3 +1,10 @@
+- name: copy huawei cloud zypper mirror script
+  copy: src=huawei-mirror-suse.sh dest=/tmp/huawei-mirror-suse.sh mode=0755
+
+- name: apply huawei cloud zypper mirror
+  shell: /tmp/huawei-mirror-suse.sh
+  changed_when: false
+
 - name: install basic system software
   package: 
     name:

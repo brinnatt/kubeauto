@@ -157,7 +157,7 @@ class KubeConstant:
     }
 
     def docker_bin_url(self, version):
-        url = f"https://mirrors.aliyun.com/docker-ce/linux/static/stable/{self.arch}/docker-{version}.tgz"
+        url = f"https://repo.huaweicloud.com/docker-ce/linux/static/stable/{self.arch}/docker-{version}.tgz"
         return url
 
     def _docker_plugin_arch(self) -> dict:
