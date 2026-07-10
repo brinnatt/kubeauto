@@ -36,7 +36,8 @@ shopt -s nullglob
 for f in /etc/yum.repos.d/*.repo; do
   sed -i 's|^mirrorlist=|#mirrorlist=|g' "$f"
   sed -i 's|^metalink=|#metalink=|g' "$f"
-  sed -i 's|^#\?baseurl=http://dl\.[^/]*/\$contentdir/|baseurl='"${PREFIX}"'/|g' "$f"
+  sed -i 's|^#\?baseurl=https\?://dl\.[^/]*/\$contentdir/|baseurl='"${PREFIX}"'/|g' "$f"
+  sed -i 's|^#\?baseurl=https\?://download\.rockylinux\.org/\$contentdir/|baseurl='"${PREFIX}"'/|g' "$f"
   sed -i 's|^#\?baseurl=http://mirror\.centos\.org/|baseurl='"${PREFIX}"'/|g' "$f"
   sed -i 's|^#\?baseurl=http://vault\.centos\.org/|baseurl='"${PREFIX}"'/|g' "$f"
 done
@@ -44,7 +45,9 @@ for f in /etc/yum.repos.d/epel*.repo; do
   [ -f "$f" ] || continue
   sed -i 's|^mirrorlist=|#mirrorlist=|g' "$f"
   sed -i 's|^metalink=|#metalink=|g' "$f"
-  sed -i 's|^#\?baseurl=https\?\://download\.fedoraproject\.org/pub/epel/|baseurl='"${HUAWEI}"'/epel/|g' "$f"
+  # EL8+ epel-release ships metalink-only repos with placeholder download.example URLs.
+  sed -i 's|^#\?baseurl=https\?://download\.example/pub/epel/|baseurl='"${HUAWEI}"'/epel/|g' "$f"
+  sed -i 's|^#\?baseurl=https\?://download\.fedoraproject\.org/pub/epel/|baseurl='"${HUAWEI}"'/epel/|g' "$f"
 done
 
 if command -v dnf >/dev/null 2>&1; then

@@ -5,8 +5,8 @@
 
 meta:
   version: 1
-  updated: "2026-07-09"
-  regression: "2026-07-09 full (phase1 G1/G2 + phase2 G3/G4/X-G6-01 + phase3 Tier2/G4-etcd/G5/X-G6-08/download)"
+  updated: "2026-07-10"
+  regression: "2026-07-10 EPEL mirror fix + 147 full regression (5 clusters Ready, G3/G4/G5/G6)"
   baseline:
     k8s: "1.33.7"
     runtime: containerd
@@ -52,7 +52,7 @@ tier1_commands:
     command: download
     desc: 组件下载 (-D / 分组件)
     status: pass
-    notes: "2026-07-09 download -k v1.33.6 镜像缓存导出+原子 symlink 替换 OK"
+    notes: "2026-07-10 jumper136: EPEL 华为源+ansible 重装 OK; epel.repo baseurl=repo.huaweicloud.com"
 
   - id: T1-G2-01
     group: G2

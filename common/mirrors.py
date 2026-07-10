@@ -64,6 +64,9 @@ def install_ansible_with_system_pm() -> None:
             run_command(["dnf", "-y", "install", "epel-release"], capture_output=False)
         else:
             run_command(["yum", "-y", "install", "epel-release"], capture_output=False)
+        # epel-release writes repo files after the first mirror pass; re-apply so
+        # EPEL baseurl points at Huawei (metalink-only epel.repo on EL8+).
+        apply_huawei_mirror()
         run_command([pm, "-y", "install", "ansible"], capture_output=False)
         return
 
