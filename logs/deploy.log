@@ -1,0 +1,36 @@
+[2026-07-12 22:52:44] [DEBUG] [common.utils] Executing command: /home/ubuntu/.local/bin/ansible --version
+[2026-07-12 22:52:44] [DEBUG] [common.utils] Executing command: /home/ubuntu/.local/bin/ansible --version
+[2026-07-12 22:53:05] [DEBUG] [common.utils] Executing command: ansible --version
+[2026-07-12 22:53:39] [DEBUG] [common.utils] Executing command: /home/ubuntu/.local/bin/ansible --version
+[2026-07-12 22:53:39] [DEBUG] [common.utils] Executing command: /home/ubuntu/.local/bin/ansible --version
+[2026-07-12 23:09:07] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-12 23:09:07] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-12 23:09:07] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-12 23:09:07] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-12 23:09:07] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-12 23:09:07] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-12 23:17:58] [DEBUG] [common.utils] Executing command: /home/ubuntu/.local/bin/ansible --version
+[2026-07-12 23:18:24] [DEBUG] [common.utils] Executing command: /home/ubuntu/.local/bin/ansible --version
+[2026-07-12 23:18:24] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.17: target module runtime >= 3.9
+[2026-07-12 23:40:36] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-12 23:40:36] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-12 23:40:36] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-12 23:40:36] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-12 23:40:36] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-12 23:40:36] [DEBUG] [common.utils] Executing command: echo explicit

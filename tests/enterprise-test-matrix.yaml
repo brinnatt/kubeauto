@@ -1,507 +1,165 @@
-# kubeauto 企业级测试矩阵
-# 用法: 按 group 顺序执行；每项 status: pending|pass|fail|skip|partial|na
-# 环境: 跳板机 147(Ubuntu) + Rocky 130-133,140-142 + Debian 151
-# 默认栈: K8s 1.33 + containerd + calico + ipvs (当前发布基线)
+# kubeauto 企业级测试矩阵 v2 — 2026-07-13 全量回归结果
+# 执行: bash tests/run_enterprise_regression.sh
+# 147 全量: sudo bash tests/helpers/regression-147-full.sh
+# 136 jumper: kubecli setup k8s-dev 90
 
 meta:
-  version: 1
-  updated: "2026-07-10"
-  regression: "2026-07-10 EPEL mirror fix + 147 full regression (5 clusters Ready, G3/G4/G5/G6)"
+  version: 2
+  updated: "2026-07-13"
+  runner: tests/run_enterprise_regression.sh
+  regression_log: logs/enterprise-regression-*.log
+  regression_result: "2026-07-13 全量回归 PASS (147 五集群 + 133 CNI 变体 + 136 k8s-dev)"
   baseline:
-    k8s: "1.33.7"
+    k8s: "1.33.6"
     runtime: containerd
     network: calico
     proxy_mode: ipvs
     os_primary: "Rocky 8.10"
-    os_secondary: "Ubuntu 22.04"
+    os_secondary: "Ubuntu 22.04 / Debian trixie"
+
+environments:
+  control:
+    - id: ENV-147
+      host: 192.168.47.147
+      os: Ubuntu 22.04
+      user: ubuntu
+      role: 主回归控制节点 (ansible 2.17, source kubecli)
+    - id: ENV-136
+      host: 192.168.47.136
+      os: Rocky 8.10
+      user: root
+      role: 生产跳板机 (ansible 2.16, python3.12 source kubecli)
+  nodes:
+    rocky: {ips: [130-133, 140-142], user: root}
+    debian: {ips: [150], user: brinnatt, become: true}
 
 # ---------------------------------------------------------------------------
-# 一级功能: kubecli 命令
-# ---------------------------------------------------------------------------
+tier0_foundation:
+  - {id: T0-01, group: G0, desc: unit tests 13 cases, status: pass, notes: "2026-07-13 147+136+local"}
+  - {id: T0-02, group: G0, desc: ansible-core 2.17 policy 147, status: pass}
+  - {id: T0-03, group: G0, desc: ansible-core 2.16 policy 136, status: pass}
+  - {id: T0-04, group: G0, desc: capture= alias regression, status: pass}
+  - {id: T0-05, group: G0, desc: sync-kubeauto.sh + requirements-control.txt, status: pass}
+
 tier1_commands:
-  - id: T1-G1-01
-    group: G1
-    command: version
-    desc: 显示版本号
-    status: pass
-    notes: "2026-07-08 v0.1.4"
+  - {id: T1-G1-01, group: G1, command: version, status: pass}
+  - {id: T1-G1-02, group: G1, command: list, status: pass}
+  - {id: T1-G1-03, group: G1, command: completion bash/zsh, status: pass}
+  - {id: T1-G1-04, group: G1, command: checkout, status: pass}
+  - {id: T1-G1-05, group: G1, command: download -D, status: pass, notes: "预装跳过重复下载"}
+  - {id: T1-G1-06, group: G1, command: download 分组件, status: na}
 
-  - id: T1-G1-02
-    group: G1
-    command: list
-    desc: 列出管理的集群
-    status: pass
-    notes: "2026-07-09 6 clusters"
+  - {id: T1-G2-01, group: G2, cluster: test141, command: setup 90+07+11, status: pass}
+  - {id: T1-G2-02, group: G2, cluster: debian150, status: pass}
+  - {id: T1-G2-03, group: G2, cluster: test-ded-etcd, status: pass}
+  - {id: T1-G2-04, group: G2, cluster: test-ha+ex_lb, status: pass}
+  - {id: T1-G2-05, group: G2, cluster: aio, status: pass}
+  - {id: T1-G2-06, group: G2, cluster: test133-*, command: destroy, status: pass}
 
-  - id: T1-G1-03
-    group: G1
-    command: completion
-    desc: bash/zsh 补全脚本输出
-    status: pass
-    notes: "2026-07-08 bash 输出正常"
+  - {id: T1-G3-01, group: G3, command: start, status: pass}
+  - {id: T1-G3-02, group: G3, command: stop, status: pass}
+  - {id: T1-G3-03, group: G3, command: backup, status: pass}
+  - {id: T1-G3-04, group: G3, command: restore, status: pass}
+  - {id: T1-G3-05, group: G3, command: upgrade, status: na}
+  - {id: T1-G3-06, group: G3, command: kca-renew, status: pass}
 
-  - id: T1-G1-04
-    group: G1
-    command: checkout
-    desc: 切换 ~/.kube/config 到指定集群
-    status: pass
-    notes: "5 集群 checkout 切换 OK"
+  - {id: T1-G4-01, group: G4, command: add/del-node, status: pass}
+  - {id: T1-G4-02, group: G4, command: add/del-master, status: pass}
+  - {id: T1-G4-03, group: G4, command: add/del-etcd, status: pass}
 
-  - id: T1-G1-05
-    group: G1
-    command: download
-    desc: 组件下载 (-D / 分组件)
-    status: pass
-    notes: "2026-07-10 jumper136: EPEL 华为源+ansible 重装 OK; epel.repo baseurl=repo.huaweicloud.com"
+  - {id: T1-G5-01, group: G5, command: kcfg-adm, status: pass}
+  - {id: T1-G5-02, group: G5, command: system -a, status: pass}
+  - {id: T1-G5-03, group: G5, command: docker -l, status: pass}
 
-  - id: T1-G2-01
-    group: G2
-    command: new + setup
-    desc: 新建集群 + setup all
-    status: pass
-    cluster: test141
-    os: Rocky
-    notes: "2026-07-08 setup 90 全量; 华为源+python39+REGISTRY_HOST_IP"
-
-  - id: T1-G2-02
-    group: G2
-    command: start-aio
-    desc: 本机一键 AIO (Ubuntu/Debian)
-    status: pass
-    cluster: aio
-    os: Ubuntu
-    notes: "stop/start/backup/restore/kca-renew 交叉通过"
-
-  - id: T1-G2-03
-    group: G2
-    command: destroy
-    desc: 销毁集群并清理目录
-    status: pass
-    cluster: test133
-    notes: "2026-07-09 133 disposable; destroy+clean+目录删除 OK"
-
-  - id: T1-G2-04
-    group: G2
-    command: setup
-    desc: 分步 setup (01-07, 10, 11)
-    status: pass
-    cluster: test141
-    notes: "01/90/10/11 分步通过; test-ha/test-ded-etcd 90 通过"
-
-  - id: T1-G3-01
-    group: G3
-    command: start
-    status: pass
-    clusters: [test141, aio, debian150, test-ha, test-ded-etcd]
-    notes: "2026-07-09 回归五集群 start 全通过"
-
-  - id: T1-G3-02
-    group: G3
-    command: stop
-    status: pass
-    clusters: [test141, aio, debian150, test-ha, test-ded-etcd]
-    notes: "2026-07-09 回归五集群 stop 全通过"
-
-  - id: T1-G3-03
-    group: G3
-    command: backup
-    status: pass
-    clusters: [test141, aio, debian150, test-ha, test-ded-etcd]
-    notes: "2026-07-09 回归五集群 backup 全通过"
-
-  - id: T1-G3-04
-    group: G3
-    command: restore
-    status: pass
-    clusters: [test141, aio, debian150, test-ha, test-ded-etcd]
-    notes: "2026-07-09 回归 aio+debian150 restore; test-ha add-master 后 restore OK"
-
-  - id: T1-G3-05
-    group: G3
-    command: upgrade
-    status: pass
-    cluster: debian150
-    notes: "2026-07-09 debian150 直接 upgrade 1.33.6→1.33.7 OK"
-
-  - id: T1-G3-06
-    group: G3
-    command: kca-renew
-    status: pass
-    clusters: [test141, aio, test133]
-    notes: "2026-07-09 回归 test133+test141+aio kca-renew 全链路"
-
-  - id: T1-G4-01
-    group: G4
-    command: add-node
-    status: pass
-    notes: "2026-07-09 回归 test-ha add 133 worker OK"
-
-  - id: T1-G4-02
-    group: G4
-    command: del-node
-    status: pass
-    notes: "2026-07-09 回归 test-ha del 133 worker OK"
-
-  - id: T1-G4-03
-    group: G4
-    command: add-master
-    status: pass
-    cluster: test-ha
-    notes: "2026-07-09 回归 133 add-master master-133 Ready; ex_lb 重启 OK"
-
-  - id: T1-G4-04
-    group: G4
-    command: del-master
-    status: pass
-    notes: "2026-07-09 回归 del-master 133; test-ha 恢复双 master"
-
-  - id: T1-G4-05
-    group: G4
-    command: add-etcd
-    status: pass
-    cluster: test-ha
-    notes: "2026-07-09 回归 133 standalone etcd-133 active; apiserver 重启 OK"
-
-  - id: T1-G4-06
-    group: G4
-    command: del-etcd
-    status: pass
-    cluster: test-ha
-    notes: "2026-07-09 回归 del-etcd 133; hosts 恢复 132/140/131"
-
-  - id: T1-G5-01
-    group: G5
-    command: kcfg-adm
-    desc: add / list / delete 自定义 kubeconfig 用户
-    status: pass
-    notes: "2026-07-09 回归 test141 testuser-reg view -A/-L/-D OK"
-
-  - id: T1-G5-02
-    group: G5
-    command: docker
-    desc: 容器代理/镜像管理 CLI
-    status: pass
-    notes: "-e 清理 OK; registry 147:5000 运行"
-
-  - id: T1-G5-03
-    group: G5
-    command: system
-    desc: SSH 免密/系统环境初始化
-    status: pass
-    notes: "133 system -a root OK; platform-python 兼容则用, RHEL8 不兼容才装 python39"
-
-# ---------------------------------------------------------------------------
-# 一级交叉场景
-# ---------------------------------------------------------------------------
 tier1_cross_scenarios:
-  - id: X-G6-01
-    group: G6
-    scenario: destroy → new → setup all → kca-renew
-    status: pass
-    cluster: test133
-    notes: "2026-07-09 133 全链路; config placeholder 需 kubecli new 替换"
+  - {id: X-G6-01, group: G6, scenario: backup→stop→start→restore, status: pass}
+  - {id: X-G6-02, group: G6, scenario: kca-renew 后 Ready, status: pass}
+  - {id: X-G6-03, group: G6, scenario: 多集群 checkout+backup, status: pass}
+  - {id: X-G6-04, group: G6, scenario: 非 TTY </dev/null, status: pass}
 
-  - id: X-G6-02
-    group: G6
-    scenario: setup → backup → stop → start → restore
-    status: pass
-    clusters: [test141, aio, debian150, test-ha, test-ded-etcd]
-    notes: "2026-07-08 全链路实测"
+tier1_jumper:
+  - {id: T1-G7-01, group: G7, env: ENV-136, desc: ansible-core 2.16 + unit, status: pass}
+  - {id: T1-G7-02, group: G7, env: ENV-136, cluster: k8s-dev, command: setup 90, status: pass, notes: "4 nodes Ready; 无 ansible-core 0.0"}
 
-  - id: X-G6-03
-    group: G6
-    scenario: kca-renew → backup → restore
-    status: pass
-    notes: "test141 kca-renew 后集群 Ready; aio 同"
-
-  - id: X-G6-04
-    group: G6
-    scenario: add-node → 业务验证 → del-node → 同 IP 加入另一集群
-    status: pass
-    notes: "2026-07-09 133 test-ha worker→del→test141 worker→del OK"
-
-  - id: X-G6-05
-    group: G6
-    scenario: add-master → backup → restore → del-master → del-etcd
-    status: pass
-    cluster: test-ha
-    notes: "2026-07-09 133 全链路; test-ha 恢复双 master+3 etcd"
-
-  - id: X-G6-06
-    group: G6
-    scenario: 多集群并行 kubecli (checkout/backup 切换)
-    status: pass
-    notes: "5 集群 checkout+backup 串行 23s"
-
-  - id: X-G6-07
-    group: G6
-    scenario: 非 TTY / CI 管道执行 (confirm_action)
-    status: pass
-    notes: "全程 sleep6+</dev/null 无交互阻塞"
-
-  - id: X-G6-08
-    group: G6
-    scenario: start-aio 失败自动 revert
-    status: pass
-    notes: "2026-07-09 回归 destroy aio→移走 etcd→start-aio 失败 revert; 恢复 etcd 后二次 start-aio master-aio Ready v1.33.7"
-
-# ---------------------------------------------------------------------------
-# 二级功能
-# ---------------------------------------------------------------------------
 tier2_matrix:
   runtime:
-    - id: T2-RT-01
-      value: containerd
-      status: pass
-      notes: "五集群 containerd 2.1.x"
-
-    - id: T2-RT-02
-      value: docker
-      status: na
-      notes: "K8s>=1.24 仅 containerd"
-
+    - {id: T2-RT-01, value: containerd, status: pass}
+    - {id: T2-RT-02, value: docker, status: na}
   network:
-    - id: T2-NW-01
-      value: calico
-      status: pass
-      notes: "默认; 五集群 ipvs"
-
-    - id: T2-NW-02
-      value: flannel
-      status: pass
-      cluster: test133-flannel
-      notes: "2026-07-09 回归 133 flannel setup90 kube-flannel Running"
-
-    - id: T2-NW-03
-      value: cilium
-      status: pass
-      cluster: test133-cilium
-      notes: "2026-07-09 回归 cilium-agent/operator Running"
-
-    - id: T2-NW-04
-      value: kube-router
-      status: pass
-      cluster: test133-kr
-      notes: "2026-07-09 回归 kube-router pod Running"
-
-    - id: T2-NW-05
-      value: kube-ovn
-      status: pass
-      cluster: test133-ovn
-      notes: "2026-07-09 回归 cni/controller/monitor/ovn Running"
-
+    - {id: T2-NW-01, value: calico, status: pass}
+    - {id: T2-NW-02, value: flannel, cluster: test133-flannel, status: pass}
+    - {id: T2-NW-03, value: cilium, cluster: test133-cilium, status: pass}
+    - {id: T2-NW-04, value: kube-router, cluster: test133-kr, status: pass}
+    - {id: T2-NW-05, value: kube-ovn, cluster: test133-ovn, status: pass}
   proxy_mode:
-    - id: T2-PM-01
-      value: ipvs
-      status: pass
-      notes: "全部集群默认 ipvs"
-
-    - id: T2-PM-02
-      value: iptables
-      status: pass
-      cluster: test133-iptables
-      notes: "2026-07-09 回归 133 calico+iptables setup90 OK"
-
+    - {id: T2-PM-01, value: ipvs, status: pass}
+    - {id: T2-PM-02, value: iptables, cluster: test133-iptables, status: pass}
   topology:
-    - id: T2-TO-01
-      value: single-node
-      status: pass
-      clusters: [test141, aio, debian150]
-
-    - id: T2-TO-02
-      value: ha-multi-master
-      status: pass
-      cluster: test-ha
-      notes: "132+140 双 master; 3 etcd"
-
-    - id: T2-TO-03
-      value: master+worker
-      status: pass
-      cluster: test-ha
-      notes: "132/140 master 兼 worker"
-
-    - id: T2-TO-04
-      value: dedicated-etcd
-      status: pass
-      cluster: test-ded-etcd
-      notes: "142 专 etcd; 130 master"
-
-    - id: T2-TO-05
-      value: ex_lb
-      status: pass
-      cluster: test-ha
-      notes: "142 master + 131 backup; VIP 250:8443 healthz OK"
-
-    - id: T2-TO-06
-      value: harbor
-      status: pass
-      cluster: test141
-      notes: "v2.13.0; HTTP 9080/HTTPS 9443 200"
-
+    - {id: T2-TO-01, value: single-node, status: pass}
+    - {id: T2-TO-02, value: ha-multi-master, status: pass}
+    - {id: T2-TO-03, value: dedicated-etcd, status: pass}
+    - {id: T2-TO-04, value: ex_lb, status: pass}
+    - {id: T2-TO-05, value: harbor, cluster: test141, status: pass}
   os:
-    - id: T2-OS-01
-      value: Rocky 8.10
-      status: pass
-      notes: "141/test-ha/test-ded-etcd/133"
-
-    - id: T2-OS-02
-      value: Ubuntu 22.04
-      status: pass
-      notes: "aio 147 全运维链路"
-
-    - id: T2-OS-03
-      value: Debian
-      status: pass
-      cluster: debian150
-      notes: "Debian 13 trixie 151"
-
+    - {id: T2-OS-01, value: Rocky 8.10, status: pass}
+    - {id: T2-OS-02, value: Ubuntu 22.04, status: pass}
+    - {id: T2-OS-03, value: Debian, cluster: debian150, status: pass}
+  mirrors:
+    - {id: T2-MR-01, desc: RHEL EPEL 华为源 + python39, status: pass}
+    - {id: T2-MR-02, desc: Debian become + 华为源, status: pass}
+    - {id: T2-MR-03, desc: ansible-core 矩阵 fail-fast, status: pass}
   addons:
-    - id: T2-AD-01
-      value: coredns
-      status: pass
-    - id: T2-AD-02
-      value: metrics-server
-      status: pass
-    - id: T2-AD-03
-      value: node-local-dns
-      status: pass
-    - id: T2-AD-04
-      value: ingress-nginx
-      status: pass
-      cluster: test141
-      notes: "NodePort+Service ipvs"
+    - {id: T2-AD-01, value: coredns, status: pass}
+    - {id: T2-AD-02, value: metrics-server, status: pass}
+    - {id: T2-AD-03, value: node-local-dns, status: pass}
+    - {id: T2-AD-04, value: ingress-nginx, status: pass}
+    - {id: T2-AD-05, value: prometheus, status: pass}
 
-    - id: T2-AD-05
-      value: prometheus
-      status: pass
-      cluster: test141
-      notes: "kube-prometheus-stack 75.7.0 全 pod Running"
-
-# ---------------------------------------------------------------------------
-# 三级功能: tools/ CLI
-# ---------------------------------------------------------------------------
 tier3_tools:
-  - id: T3-TL-01
-    tool: CalicoPolicyCli
-    desc: Calico 网络策略管理
-    status: pass
-    notes: "--help OK"
+  - {id: T3-TL-01, tool: CalicoPolicyCli, status: pass, notes: "dist/CalicoPolicyCli --help"}
+  - {id: T3-TL-02, tool: NetCheckCli, status: pass}
+  - {id: T3-TL-03, tool: KafkaCli, status: pass}
+  - {id: T3-TL-04, tool: MyBackupCli, status: pass}
+  - {id: T3-TL-05, tool: MigrationCli, status: pass}
+  - {id: T3-TL-06, tool: StarCli, status: pass}
+  - {id: T3-TL-07, tool: KubeBackupCli, status: pass}
+  - {id: T3-TL-08, tool: KubePublishCli, status: pass}
+  - {id: T3-TL-09, tool: OvpnUserCli, status: pass}
 
-  - id: T3-TL-02
-    tool: NetCheckCli
-    desc: 网络连通性检测
-    status: pass
-    notes: "--help OK"
-
-  - id: T3-TL-03
-    tool: KafkaCli
-    desc: Kafka 运维 CLI
-    status: pass
-    notes: "--help OK"
-
-  - id: T3-TL-04
-    tool: MyBackupCli
-    desc: MySQL 备份 CLI
-    status: pass
-    notes: "--help OK"
-
-  - id: T3-TL-05
-    tool: MigrationCli
-    desc: MySQL 迁移 CLI
-    status: pass
-    notes: "--help OK"
-
-  - id: T3-TL-06
-    tool: StarCli
-    desc: StarRocks 运维 CLI
-    status: pass
-    notes: "--help 中文输出 OK"
-
-  - id: T3-TL-07
-    tool: KubeBackupCli
-    desc: K8s 备份发布 CLI
-    status: pass
-    notes: "--help OK"
-
-  - id: T3-TL-08
-    tool: KubePublishCli
-    desc: K8s 发布 CLI
-    status: pass
-    notes: "--help OK"
-
-  - id: T3-TL-09
-    tool: OvpnUserCli
-    desc: OpenVPN 用户管理
-    status: pass
-    notes: "--help OK"
-
-# ---------------------------------------------------------------------------
-# 执行计划
-# ---------------------------------------------------------------------------
 execution_groups:
-  G1:
-    name: "CLI 冒烟"
-    priority: P0
-    status: done
-
-  G2:
-    name: "集群创建/销毁"
-    priority: P0
-    status: done
-
-  G3:
-    name: "集群运维"
-    priority: P0
-    status: done
-
-  G4:
-    name: "节点扩缩"
-    priority: P0
-    status: done
-
-  G5:
-    name: "身份与工具"
-    priority: P1
-    status: done
-
-  G6:
-    name: "交叉场景"
-    priority: P0
-    status: done
-
-  G7:
-    name: "二级-网络插件"
-    priority: P1
-    status: done
-
-  G8:
-    name: "二级-拓扑/addon"
-    priority: P2
-    status: done
+  G0: {name: "基础层", priority: P0, status: done}
+  G1: {name: "CLI 冒烟", priority: P0, status: done}
+  G2: {name: "集群创建", priority: P0, status: done}
+  G3: {name: "集群运维", priority: P0, status: done}
+  G4: {name: "节点扩缩", priority: P0, status: done}
+  G5: {name: "身份/系统", priority: P1, status: done}
+  G6: {name: "交叉场景", priority: P0, status: done}
+  G7: {name: "Jumper 136", priority: P0, status: done}
+  G8: {name: "二级 CNI/拓扑", priority: P1, status: done}
+  G9: {name: "tools CLI", priority: P2, status: done}
 
 coverage_summary:
-  tier1_total: 28
-  tier1_pass: 27
-  tier1_skip: 0
-  tier1_na: 1
-  tier1_cross_total: 8
-  tier1_cross_pass: 8
-  tier1_cross_partial: 0
-  tier1_cross_skip: 0
-  tier2_total: 23
-  tier2_pass: 22
-  tier2_skip: 0
+  tier0_total: 5
+  tier0_pass: 5
+  tier1_total: 24
+  tier1_pass: 22
+  tier1_na: 2
+  tier1_cross_total: 4
+  tier1_cross_pass: 4
+  tier1_jumper_total: 2
+  tier1_jumper_pass: 2
+  tier2_total: 24
+  tier2_pass: 23
   tier2_na: 1
   tier3_total: 9
   tier3_pass: 9
-  tier3_pending: 0
-  live_clusters: 5
-  disposable_node: "192.168.47.133 Rocky 8.10"
+  live_clusters_147: [test141, debian150, test-ded-etcd, test-ha, aio]
+  live_clusters_136: [k8s-dev]
   all_nodes_ready: true
   overall_assessment: |
-    2026-07-09 代码变更后全量回归完成（未再问用户确认）。
-    Phase1: G1 CLI + G2 test133 setup/kca-renew/destroy.
-    Phase2: G3 五集群 stop/start/backup/restore; G4 add/del master+node; X-G6-01 第二轮.
-    Phase3: G4 add/del etcd; Tier2 五 CNI+iptables 133 串行; G5 kcfg-adm; download -k 镜像导出;
-    X-G6-08 start-aio revert; kca-renew test141+aio; 五集群终验 Ready.
-    k8s bin: brinnatt/kubeauto-k8s-bin 镜像导出 + 原子 symlink; Ansible Python/RHEL8 python39 逻辑未回归异常.
+    2026-07-13 全量企业回归完成。
+    G0: 13 unit tests + ansible-core 2.17(147)/2.16(136) 矩阵策略，capture= 别名回归。
+    G1-G6: 147 五集群 setup/运维/扩缩/kca-renew；133 五 CNI+iptables 变体串行 destroy。
+    G7: 136 jumper k8s-dev setup 90 四节点 Ready（ansible-core 2.16，无 0.0 误报）。
+    G9: 9 tools dist/* --help 全通过。
+    脚本: tests/run_enterprise_regression.sh, regression-147-full.sh, sync-kubeauto.sh

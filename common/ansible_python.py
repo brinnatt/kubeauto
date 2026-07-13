@@ -45,13 +45,19 @@ Architecture (interpreter selection)::
 
 from __future__ import annotations
 
+import functools
 import platform
 import re
+import shlex
 import shutil
 from dataclasses import dataclass
 from typing import Optional, Sequence, Tuple
 
+from common.exceptions import AnsibleCoreDetectionError
+from common.logger import setup_logger
 from common.utils import run_command
+
+logger = setup_logger(__name__)
 
 # Source: ansible-core support matrix (control / target columns), 2.12–2.19.
 # Tuple form: (min_major, min_minor, max_major, max_minor); max None = open upper bound.
@@ -84,13 +90,10 @@ _MATRIX: dict[AnsibleCoreVersion, tuple[tuple[int, int], Optional[tuple[int, int
     (2, 19): ((3, 11), (3, 13), (3, 8), (3, 13), (3, 9)),
 }
 
-_DEFAULT_RUNTIME_MIN = (3, 9)
-_DEFAULT_CONTROL_MIN = (3, 10)
-
 
 @dataclass(frozen=True)
 class AnsiblePythonPolicy:
-    """Resolved Python requirements for the installed ansible-core."""
+    """Resolved Python requirements for a detected ansible-core release."""
 
     core_version: AnsibleCoreVersion
     control_min: tuple[int, int]
@@ -101,7 +104,23 @@ class AnsiblePythonPolicy:
 
     @property
     def core_label(self) -> str:
-        return f"{self.core_version[0]}.{self.core_version[1]}"
+        major, minor = self.core_version
+        return f"{major}.{minor}"
+
+
+@dataclass(frozen=True)
+class AnsibleCoreProbeAttempt:
+    command: str
+    exit_code: Optional[int] = None
+    stdout: str = ""
+    stderr: str = ""
+    error: str = ""
+
+
+@dataclass(frozen=True)
+class AnsibleCoreProbeResult:
+    version: Optional[AnsibleCoreVersion]
+    attempts: tuple[AnsibleCoreProbeAttempt, ...]
 
 
 def parse_ansible_core_version(version_output: str) -> Optional[AnsibleCoreVersion]:
@@ -112,17 +131,72 @@ def parse_ansible_core_version(version_output: str) -> Optional[AnsibleCoreVersi
     return int(match.group(1)), int(match.group(2))
 
 
+def probe_installed_ansible_core() -> AnsibleCoreProbeResult:
+    """Probe ansible-core on the control node PATH with full diagnostics."""
+    attempts: list[AnsibleCoreProbeAttempt] = []
+    commands = [c for c in (shutil.which("ansible"), shutil.which("ansible-core")) if c]
+    if not commands:
+        return AnsibleCoreProbeResult(
+            version=None,
+            attempts=(
+                AnsibleCoreProbeAttempt(
+                    command="(PATH lookup)",
+                    error="ansible and ansible-core not found in PATH",
+                ),
+            ),
+        )
+
+    for cmd in commands:
+        try:
+            result = run_command([cmd, "--version"], check=False)
+            attempt = AnsibleCoreProbeAttempt(
+                command=cmd,
+                exit_code=result.returncode,
+                stdout=(result.stdout or "").strip(),
+                stderr=(result.stderr or "").strip(),
+            )
+            attempts.append(attempt)
+            if result.returncode == 0:
+                version = parse_ansible_core_version(result.stdout or "")
+                if version:
+                    return AnsibleCoreProbeResult(version=version, attempts=tuple(attempts))
+        except Exception as exc:
+            attempts.append(AnsibleCoreProbeAttempt(command=cmd, error=str(exc)))
+
+    return AnsibleCoreProbeResult(version=None, attempts=tuple(attempts))
+
+
+def format_ansible_core_detection_failure(result: AnsibleCoreProbeResult) -> str:
+    """Human-readable failure text when ansible-core cannot be detected."""
+    lines = [
+        "Cannot detect ansible-core version on the control node.",
+        "kubeauto selects target Python requirements from the official ansible-core support matrix.",
+        "",
+        "Install Ansible on this host (e.g. kubecli download -a) and verify:",
+        "  ansible --version",
+        "",
+        "Probe details:",
+    ]
+    for attempt in result.attempts:
+        lines.append(f"  - command: {attempt.command}")
+        if attempt.error:
+            lines.append(f"    error: {attempt.error}")
+        if attempt.exit_code is not None:
+            lines.append(f"    exit code: {attempt.exit_code}")
+        if attempt.stderr:
+            lines.append(f"    stderr: {attempt.stderr[:300]}")
+        if attempt.stdout:
+            parsed = parse_ansible_core_version(attempt.stdout)
+            if parsed:
+                lines.append(f"    parsed core: {parsed[0]}.{parsed[1]}")
+            else:
+                lines.append(f"    stdout (unparsed): {attempt.stdout[:300]}")
+    return "\n".join(lines)
+
+
 def read_installed_ansible_core_version() -> Optional[AnsibleCoreVersion]:
     """Return (major, minor) for ansible-core on the control node PATH."""
-    for cmd in filter(None, (shutil.which("ansible"), shutil.which("ansible-core"))):
-        try:
-            out = run_command([cmd, "--version"], capture=True).stdout
-            ver = parse_ansible_core_version(out)
-            if ver:
-                return ver
-        except Exception:
-            continue
-    return None
+    return probe_installed_ansible_core().version
 
 
 def _lookup_matrix(core: AnsibleCoreVersion) -> AnsiblePythonPolicy:
@@ -139,6 +213,13 @@ def _lookup_matrix(core: AnsibleCoreVersion) -> AnsiblePythonPolicy:
     # Unknown future release: use newest known row as conservative baseline.
     latest = max(_MATRIX.keys())
     base = _lookup_matrix(latest)
+    logger.warning(
+        "ansible-core %s.%s is not in kubeauto matrix; using conservative policy from %s.%s.",
+        core[0],
+        core[1],
+        latest[0],
+        latest[1],
+    )
     return AnsiblePythonPolicy(
         core_version=core,
         control_min=base.control_min,
@@ -149,19 +230,42 @@ def _lookup_matrix(core: AnsibleCoreVersion) -> AnsiblePythonPolicy:
     )
 
 
+@functools.lru_cache(maxsize=1)
 def ansible_python_policy() -> AnsiblePythonPolicy:
-    """Build policy from the ansible-core version installed on the control node."""
-    core = read_installed_ansible_core_version()
-    if core is None:
-        return AnsiblePythonPolicy(
-            core_version=(0, 0),
-            control_min=_DEFAULT_CONTROL_MIN,
-            control_max=None,
-            target_documented_min=(3, 8),
-            target_documented_max=None,
-            target_module_runtime_min=_DEFAULT_RUNTIME_MIN,
-        )
-    return _lookup_matrix(core)
+    """Build policy from ansible-core detected on the control node.
+
+    Raises ``AnsibleCoreDetectionError`` when detection fails. There is no silent
+    fallback version — guessing the matrix would mis-bootstrap managed hosts.
+    """
+    result = probe_installed_ansible_core()
+    if result.version is None:
+        message = format_ansible_core_detection_failure(result)
+        logger.error(message)
+        raise AnsibleCoreDetectionError(message)
+    policy = _lookup_matrix(result.version)
+    logger.debug(
+        "Resolved ansible Python policy for ansible-core %s: target module runtime >= %s.%s",
+        policy.core_label,
+        policy.target_module_runtime_min[0],
+        policy.target_module_runtime_min[1],
+    )
+    return policy
+
+
+def clear_ansible_python_policy_cache() -> None:
+    """Clear cached policy (unit tests / ansible reinstall)."""
+    ansible_python_policy.cache_clear()
+
+
+def format_policy_summary(policy: AnsiblePythonPolicy) -> str:
+    """One-line summary for setup logs."""
+    rt = policy.target_module_runtime_min
+    ctrl = policy.control_min
+    return (
+        f"Ansible Python policy (ansible-core {policy.core_label}): "
+        f"control node Python >={ctrl[0]}.{ctrl[1]}, "
+        f"target module runtime Python >={rt[0]}.{rt[1]}"
+    )
 
 
 def _version_ge(a: tuple[int, int], b: tuple[int, int]) -> bool:
@@ -204,6 +308,25 @@ def python_detect_shell(min_major: int, min_minor: int) -> str:
     )
 
 
+def python_read_version_shell(path: str) -> str:
+    """Shell snippet: print ``major.minor`` for an interpreter path (remote/local)."""
+    py = shlex.quote(path)
+    return (
+        f'{py} -c "import sys; print(f\'{{sys.version_info[0]}}.{{sys.version_info[1]}}\')" 2>/dev/null'
+    )
+
+
+def parse_python_version_text(output: str) -> Optional[tuple[int, int]]:
+    text = output.strip().splitlines()[-1].strip() if output.strip() else ""
+    if not text or "." not in text:
+        return None
+    major, minor = text.split(".", 1)[:2]
+    try:
+        return int(major), int(minor)
+    except ValueError:
+        return None
+
+
 def detect_target_python_cmd(policy: Optional[AnsiblePythonPolicy] = None) -> str:
     """Remote/local probe command using ``target_module_runtime_min`` from the matrix."""
     policy = policy or ansible_python_policy()
@@ -218,25 +341,46 @@ def parse_detected_python(output: str) -> Optional[str]:
     return text.splitlines()[-1].strip()
 
 
-def validate_detected_interpreter(path: str, policy: Optional[AnsiblePythonPolicy] = None) -> bool:
-    """True if ``path`` satisfies module runtime min and RHEL 8 respawn rules."""
+def validate_local_interpreter(path: str, policy: Optional[AnsiblePythonPolicy] = None) -> bool:
+    """Validate an interpreter on the control node (local filesystem)."""
     policy = policy or ansible_python_policy()
     if not interpreter_allowed_on_rhel8(path, policy):
         return False
     try:
-        out = run_command(
-            [path, "-c", "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')"],
-            capture=True,
-        ).stdout.strip()
-        major, minor = out.split(".")[:2]
+        out = run_command([path, "-c", "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')"]).stdout
+        version = parse_python_version_text(out)
+        if not version:
+            return False
         return python_meets_spec(
-            int(major),
-            int(minor),
+            version[0],
+            version[1],
             policy.target_module_runtime_min,
             policy.target_documented_max,
         )
-    except Exception:
+    except Exception as exc:
+        logger.debug("Local interpreter validation failed for %s: %s", path, exc)
         return False
+
+
+def validate_remote_interpreter_version(
+    version_output: str,
+    policy: AnsiblePythonPolicy,
+) -> bool:
+    """Validate interpreter version text returned from a remote SSH probe."""
+    version = parse_python_version_text(version_output)
+    if not version:
+        return False
+    return python_meets_spec(
+        version[0],
+        version[1],
+        policy.target_module_runtime_min,
+        policy.target_documented_max,
+    )
+
+
+def validate_detected_interpreter(path: str, policy: Optional[AnsiblePythonPolicy] = None) -> bool:
+    """Backward-compatible alias for local interpreter validation."""
+    return validate_local_interpreter(path, policy)
 
 
 def local_is_rhel8_family() -> bool:
@@ -259,7 +403,7 @@ def should_bootstrap_python39_rhel8(
     """Install python39 only on RHEL 8 family when no matrix-compatible interpreter exists."""
     if not remote_is_rhel8_family(os_id, version_id):
         return False
-    if detected and validate_detected_interpreter(detected, policy):
+    if detected and validate_local_interpreter(detected, policy):
         return False
     return True
 

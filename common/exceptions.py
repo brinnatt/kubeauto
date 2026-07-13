@@ -47,6 +47,11 @@ class InstallPrereqError(KubeautoError):
     """Required install components (from download) not present. Run e.g. kubecli download -D first."""
     pass
 
+
+class AnsibleCoreDetectionError(InstallPrereqError):
+    """Cannot detect ansible-core version on the control node (required for Python compatibility matrix)."""
+    pass
+
 class DockerManageError(KubeautoError):
     """Docker manage"""
     pass

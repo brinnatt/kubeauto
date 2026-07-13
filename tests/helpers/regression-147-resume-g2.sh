@@ -1,49 +1,31 @@
 #!/bin/bash
-# Full regression on 192.168.47.147 (ubuntu) — run: sudo bash regression-147.sh
+# Resume regression after test141 setup 90/07 — sudo bash regression-147-resume-g2.sh
 set -euo pipefail
-LOG=/var/log/kubeauto-regression-$(date +%Y%m%d-%H%M).log
+LOG=/var/log/kubeauto-regression-resume-g2-$(date +%Y%m%d-%H%M).log
 exec > >(tee -a "$LOG") 2>&1
-
-pass() { echo "[PASS] $*"; }
-fail() { echo "[FAIL] $*"; exit 1; }
-run() { echo ">>> $*"; "$@" || fail "$*"; }
-
 BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE"
 K=kubecli
+PW=123456
+pass(){ echo "[PASS] $*"; }
+fail(){ echo "[FAIL] $*"; exit 1; }
+run(){ echo ">>> $*"; "$@" || fail "$*"; }
 
-echo "========== Unit / policy preflight =========="
-export PYTHONPATH="$BASE"
-python3 -c "
-from common.utils import run_command
-from common.ansible_python import ansible_python_policy, format_policy_summary
-# Regression: capture= alias must work (was silently breaking ansible-core detection)
-r = run_command(['ansible', '--version'], capture=True, check=False)
-assert r.returncode == 0, (r.stderr or r.stdout or 'ansible --version failed')
-p = ansible_python_policy()
-assert p.core_version[0] >= 2, p.core_version
-print(format_policy_summary(p))
-"
-if [ -f "$(dirname "$0")/../run_unit_tests.sh" ]; then
-  run bash "$(dirname "$0")/../run_unit_tests.sh"
-elif [ -f /projects/kubeauto/tests/run_unit_tests.sh ]; then
-  run bash /projects/kubeauto/tests/run_unit_tests.sh
-fi
-pass "ansible-core policy preflight"
+nodes_ready(){
+  local c="$1" tries="${2:-30}"
+  export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
+  local i=0
+  while [ "$i" -lt "$tries" ]; do
+    if kubectl get nodes --no-headers 2>/dev/null | grep -q Ready; then
+      return 0
+    fi
+    i=$((i+1))
+    sleep 10
+  done
+  return 1
+}
 
-echo "========== G1 CLI smoke =========="
-run $K version
-run $K completion bash >/dev/null
-# mirror: ansible install path (skip if present)
-if ! command -v ansible >/dev/null; then
-  run $K download -a
-fi
-grep -q 'repo.huaweicloud.com/epel' /etc/yum.repos.d/epel.repo 2>/dev/null && pass "EPEL huawei (control)" || true
-pass G1
-
-echo "========== G2 cluster create =========="
-# test141 Rocky single
-run $K new test141
+# Fix test141 harbor inventory
 cat > "$BASE/clusters/test141/hosts" <<'EOF'
 [etcd]
 192.168.47.141
@@ -52,6 +34,7 @@ cat > "$BASE/clusters/test141/hosts" <<'EOF'
 [kube_node]
 192.168.47.141
 [harbor]
+192.168.47.141 NEW_INSTALL=true
 [ex_lb]
 [chrony]
 [all:vars]
@@ -70,12 +53,13 @@ ca_dir="/etc/kubernetes/ssl"
 k8s_nodename=''
 ansible_user=root
 EOF
-sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test141/config.yml"
-run $K setup test141 90 </dev/null
-run $K setup test141 07 </dev/null
+
+echo "========== resume G2 harbor test141 =========="
+run $K setup test141 11 </dev/null
+nodes_ready test141 || fail test141
 
 # debian150
-run $K new debian150
+$K new debian150 2>/dev/null || true
 cat > "$BASE/clusters/debian150/hosts" <<'EOF'
 [etcd]
 192.168.47.150
@@ -106,9 +90,9 @@ ansible_become_method=sudo
 EOF
 sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/debian150/config.yml"
 run $K setup debian150 90 </dev/null
+nodes_ready debian150 || fail debian150
 
-# test-ded-etcd
-run $K new test-ded-etcd
+$K new test-ded-etcd 2>/dev/null || true
 cat > "$BASE/clusters/test-ded-etcd/hosts" <<'EOF'
 [etcd]
 192.168.47.142
@@ -137,9 +121,9 @@ ansible_user=root
 EOF
 sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test-ded-etcd/config.yml"
 run $K setup test-ded-etcd 90 </dev/null
+nodes_ready test-ded-etcd || fail test-ded-etcd
 
-# test-ha
-run $K new test-ha
+$K new test-ha 2>/dev/null || true
 cat > "$BASE/clusters/test-ha/hosts" <<'EOF'
 [etcd]
 192.168.47.131
@@ -175,9 +159,13 @@ EOF
 sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test-ha/config.yml"
 run $K setup test-ha 90 </dev/null
 run $K setup test-ha 10 </dev/null
+nodes_ready test-ha || fail test-ha
 
-# aio on 147
-run $K start-aio </dev/null
+if nodes_ready aio 2>/dev/null; then pass aio-live; else
+  $K destroy aio </dev/null 2>/dev/null || rm -rf "$BASE/clusters/aio"
+  run $K start-aio </dev/null
+fi
+nodes_ready aio || fail aio
 pass G2
 
 echo "========== G3 ops all clusters =========="
@@ -187,38 +175,75 @@ for c in test141 debian150 test-ded-etcd test-ha aio; do
   run $K stop "$c" </dev/null
   run $K start "$c" </dev/null
   run $K restore "$c" </dev/null
+  nodes_ready "$c" || fail "G3 $c not Ready after restore"
+  pass "G3 $c"
 done
-pass G3
 
 echo "========== G5 kcfg-adm =========="
 run $K checkout test141
 run $K kcfg-adm -A -u testuser-reg -t view test141 </dev/null
 run $K kcfg-adm -L test141
 run $K kcfg-adm -D -u testuser-reg test141 </dev/null
-pass G5
+pass G5-kcfg
 
-echo "========== G4 test-ha expand (130 worker) =========="
+echo "========== G4 node expand/shrink =========="
+run $K checkout test-ha
 run $K add-node test-ha 192.168.47.130 worker-130 </dev/null
 export KUBECONFIG="$BASE/clusters/test-ha/kubectl.kubeconfig"
-kubectl get nodes | grep -q worker-130 && pass add-node || fail add-node
+kubectl get nodes | grep -q worker-130 || fail add-node
 run $K del-node test-ha 192.168.47.130 </dev/null
-pass G4-partial
+pass G4-node
 
-echo "========== G6 cross: kca-renew test141 =========="
+echo "========== G4 add-master + del-master (133 disposable) =========="
+run $K add-master test-ha 192.168.47.133 master-133 </dev/null
+kubectl get nodes | grep -q master-133 || fail add-master
+run $K backup test-ha </dev/null
+run $K del-master test-ha 192.168.47.133 </dev/null
+pass G4-master
+
+echo "========== G4 add-etcd + del-etcd (133) =========="
+run $K add-etcd test-ha 192.168.47.133 etcd-133 </dev/null
+grep -q '192.168.47.133' "$BASE/clusters/test-ha/hosts"
+run $K del-etcd test-ha 192.168.47.133 </dev/null
+pass G4-etcd
+
+echo "========== G6 cross kca-renew + multi checkout =========="
 run $K kca-renew test141 </dev/null
 export KUBECONFIG="$BASE/clusters/test141/kubectl.kubeconfig"
-kubectl get nodes | grep -q Ready && pass kca-renew || fail kca-renew
-
-echo "========== Tier2 tools --help =========="
-for t in CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli; do
-  /usr/local/bin/$t --help >/dev/null 2>&1 || true
+nodes_ready test141 || fail kca-renew-test141
+run $K kca-renew aio </dev/null
+for c in test141 debian150 test-ded-etcd test-ha aio; do
+  run $K checkout "$c"
+  run $K backup "$c" </dev/null
 done
-pass tier3
+pass G6
 
-echo "========== REGRESSION COMPLETE =========="
+echo "========== G8 Tier2 CNI/proxy on 133 =========="
+for spec in "test133-flannel flannel ipvs" "test133-cilium cilium ipvs" "test133-kr kube-router ipvs" "test133-ovn kube-ovn ipvs" "test133-iptables calico iptables"; do
+  set -- $spec
+  cname=$1; net=$2; proxy=$3
+  $K destroy "$cname" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$cname"
+  $K new "$cname" 2>/dev/null || true
+  bash "$BASE/tests/helpers/mk-cluster-133.sh" "$cname" "$net" "$proxy"
+  sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/$cname/config.yml"
+  run $K setup "$cname" 90 </dev/null
+  export KUBECONFIG="$BASE/clusters/$cname/kubectl.kubeconfig"
+  nodes_ready "$cname" || fail "$cname $net"
+  $K destroy "$cname" </dev/null 2>/dev/null || true
+  pass "Tier2 $cname ($net/$proxy)"
+done
+
+echo "========== Tier3 tools --help =========="
+for t in CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli; do
+  /usr/local/bin/$t --help >/dev/null 2>&1 || fail "$t --help"
+done
+pass Tier3
+
+echo "========== FINAL verification =========="
 $K list
 for c in test141 debian150 test-ded-etcd test-ha aio; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   echo "--- $c ---"
-  kubectl get nodes 2>/dev/null || true
+  kubectl get nodes
 done
+echo REGRESSION_FULL_COMPLETE

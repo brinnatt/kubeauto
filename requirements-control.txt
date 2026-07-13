@@ -1,0 +1,12 @@
+# kubeauto control-node Python dependencies (147/136 source deployment)
+taskflow>=6.0
+ansible-runner>=2.4
+kubernetes>=35.0
+paramiko>=4.0
+PyYAML>=6.0
+distro>=1.9
+psutil>=5.9
+cryptography>=42.0
+docker>=7.0
+requests>=2.32
+urllib3>=2.0

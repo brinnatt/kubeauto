@@ -103,12 +103,17 @@ def _iter_host_entries(hosts_file: Path, role: str) -> Generator[Tuple[str, str]
 from common.ansible_python import (
     ansible_python_policy,
     detect_python_cmd,
+    format_policy_summary,
+    interpreter_allowed_on_rhel8,
     parse_detected_python,
+    python_read_version_shell,
     rhel8_python39_bootstrap_local_cmd,
     rhel8_python39_bootstrap_remote_cmd,
     should_bootstrap_python39_rhel8,
-    validate_detected_interpreter,
+    validate_local_interpreter,
+    validate_remote_interpreter_version,
 )
+from common.exceptions import AnsibleCoreDetectionError
 
 def _inventory_unique_ips(hosts_file: Path) -> List[str]:
     """Collect unique host IPs from an inventory file (before [all:vars])."""
@@ -161,14 +166,39 @@ def _detect_local_ansible_python() -> Optional[str]:
     try:
         out = run_command(
             ["bash", "-c", detect_python_cmd()],
-            capture=True,
             env=_subprocess_env_for_local_probe(),
         ).stdout
         py = parse_detected_python(out)
-        if py and validate_detected_interpreter(py, policy):
+        if py and validate_local_interpreter(py, policy):
             return py
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Local ansible Python probe failed: %s", exc)
+    return None
+
+
+def _remote_interpreter_meets_policy(
+    probe: SystemProbe,
+    host: str,
+    username: str,
+    path: str,
+    policy,
+) -> bool:
+    if not interpreter_allowed_on_rhel8(path, policy):
+        return False
+    out, _, rc = probe._ssh_exec(host, username, python_read_version_shell(path), timeout=15)
+    if rc != 0:
+        return False
+    return validate_remote_interpreter_version(out, policy)
+
+
+def _detect_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
+    policy = ansible_python_policy()
+    out, _, rc = probe._ssh_exec(host, username, detect_python_cmd(), timeout=30)
+    if rc != 0:
+        return None
+    py = parse_detected_python(out)
+    if py and _remote_interpreter_meets_policy(probe, host, username, py, policy):
+        return py
     return None
 
 
@@ -192,17 +222,6 @@ def _ensure_local_ansible_python() -> Optional[str]:
             logger.warning(f"localhost: python39 install failed: {exc}", extra=LOG_STDOUT)
             return None
         return _detect_local_ansible_python()
-    return None
-
-
-def _detect_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
-    policy = ansible_python_policy()
-    out, _, rc = probe._ssh_exec(host, username, detect_python_cmd(), timeout=30)
-    if rc != 0:
-        return None
-    py = parse_detected_python(out)
-    if py and validate_detected_interpreter(py, policy):
-        return py
     return None
 
 
@@ -1033,11 +1052,20 @@ class ClusterManager:
         if not config.exists():
             raise ClusterNotFoundError(f"Config file not found for cluster {name}. Run 'new {name}' or fix the cluster directory.")
 
+    def _validate_ansible_core_policy(self) -> None:
+        """Resolve ansible-core matrix policy on the control node before any setup playbooks."""
+        try:
+            policy = ansible_python_policy()
+        except AnsibleCoreDetectionError as exc:
+            raise InstallPrereqError(str(exc)) from exc
+        logger.info(format_policy_summary(policy), extra=LOG_STDOUT)
+
     def _validate_for_setup(self, name: str) -> None:
         """Validate cluster exists, has hosts/config, and install prereqs. Used by setup, cluster_command, add/remove node, renew_ca, kcfg add."""
         self._validate_cluster(name)
         self._validate_cluster_files(name)
         self._require_install_prereqs()
+        self._validate_ansible_core_policy()
 
     def _validate_ip(self, ip: str) -> None:
         """Validate IP address"""
@@ -1343,6 +1371,7 @@ class SetupAIO(task.Task):
             )
 
         self._aio_use_become = m._local_install_use_become()
+        m._validate_ansible_core_policy()
         m._validate_ansible_module_runtime()
 
         logger.info("Initializing all-in-one cluster environment.", extra=LOG_STDOUT)

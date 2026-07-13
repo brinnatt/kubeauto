@@ -125,7 +125,22 @@ def run_command(cmd: List[str] | Tuple[str] | str,
                 capture_output=True,
                 allowed_exit_codes: List[int] = None,
                 **kwargs):
-    """Run a shell command with error handling"""
+    """Run a shell command with error handling.
+
+    Accepts ``capture_output`` (subprocess standard). For backward compatibility,
+    ``capture=`` is accepted as an alias and must not be passed through to
+    ``subprocess.run`` (which only understands ``capture_output``).
+    """
+    if "capture" in kwargs:
+        capture_alias = kwargs.pop("capture")
+        if "capture_output" in kwargs:
+            capture_output = kwargs.pop("capture_output")
+        else:
+            capture_output = capture_alias
+        logger.warning(
+            "run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.",
+        )
+
     logger.debug(f"Executing command: {' '.join(cmd) if isinstance(cmd, (list, tuple)) else cmd}")
 
     # [fix subprocess grammar] if SHELL enabled, CMD must be string, because LIST takes no effect in this case.
