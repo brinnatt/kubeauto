@@ -16,6 +16,26 @@ _GHCR_PULL_FALLBACKS = {
     ],
 }
 
+_BRINATT_PREFIX = "brinnatt/"
+
+
+def _talkedu_mirror(image: str, registry: str) -> Optional[str]:
+    """Map brinnatt/<name>:<tag> → <registry>/<name>:<tag> (CN private mirror).
+
+    Pull order for brinnatt/* images (CN production):
+      1. hub.talkedu.cn/kubeauto/<name>:<tag>   (preferred)
+      2. brinnatt/<name>:<tag>                 (Docker Hub fallback)
+    """
+    if ":" in image:
+        repo, _, tag = image.rpartition(":")
+    else:
+        repo, tag = image, "latest"
+    if not tag:
+        tag = "latest"
+    if repo.startswith(_BRINATT_PREFIX) and repo.count("/") == 1:
+        return f"{registry}/{repo[len(_BRINATT_PREFIX):]}:{tag}"
+    return None
+
 
 class RegistryManager:
     def __init__(self):
@@ -97,25 +117,37 @@ class RegistryManager:
         logger.info(f"[REGISTRY] All {total} image(s) uploaded to local registry.", extra=LOG_STDOUT)
 
     def _ensure_image_local(self, image: str) -> None:
-        """Pull image if missing; for ghcr.io try Docker Hub / proxy mirrors before failing."""
+        """Pull image if missing.
+
+        Order for brinnatt/* (aligned with CI dual-push to hub.talkedu.cn + Docker Hub):
+          1. hub.talkedu.cn/kubeauto/<name>:<tag>
+          2. brinnatt/<name>:<tag> (Docker Hub)
+        ghcr.io images keep existing Docker Hub / proxy fallbacks after the primary ref.
+        """
         if self.docker.image_exists(image):
             logger.info(f"[REGISTRY]   -> Image exists locally; skipping pull.", extra=LOG_STDOUT)
             return
 
-        candidates = [image]
+        talkedu = _talkedu_mirror(image, self.kube_constant.v_talkedu_registry)
+        # Prefer CN private registry; Docker Hub (original image ref) is fallback.
+        candidates = [talkedu, image] if talkedu else [image]
+
         repo, _, tag = image.rpartition(":")
         if not tag:
             tag = "latest"
         if repo in _GHCR_PULL_FALLBACKS:
-            candidates.extend(f"{alt}:{tag}" for alt in _GHCR_PULL_FALLBACKS[repo])
+            for alt in _GHCR_PULL_FALLBACKS[repo]:
+                alt_ref = f"{alt}:{tag}"
+                if alt_ref not in candidates:
+                    candidates.append(alt_ref)
 
         last_err = None
         for idx, candidate in enumerate(candidates):
             try:
                 if idx > 0:
-                    logger.info(f"[REGISTRY]   -> Retry pull via mirror: {candidate}", extra=LOG_STDOUT)
+                    logger.info(f"[REGISTRY]   -> Retry pull via fallback: {candidate}", extra=LOG_STDOUT)
                 else:
-                    logger.info(f"[REGISTRY]   -> Pulling from remote...", extra=LOG_STDOUT)
+                    logger.info(f"[REGISTRY]   -> Pulling from remote: {candidate}", extra=LOG_STDOUT)
                 self.docker.pull_image(candidate)
                 if candidate != image:
                     self.docker.tag_image(candidate, image)

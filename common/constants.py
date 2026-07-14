@@ -26,6 +26,13 @@ class KubeConstant:
     v_kubeauto: str = field(default="v0.1.1", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
+    v_talkedu_registry: str = field(default="hub.talkedu.cn/kubeauto", metadata={
+        "description": (
+            "CN private registry for brinnatt/* images. "
+            "Pull order: hub.talkedu.cn/kubeauto/<name> first, then Docker Hub brinnatt/<name>. "
+            "CI dual-push path must stay hub.talkedu.cn/kubeauto/<name>:<tag> across all dockerfile projects."
+        ),
+    })
     v_k8s_bin: str = field(default="v1.33.6", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",

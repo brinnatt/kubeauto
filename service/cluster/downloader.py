@@ -222,7 +222,7 @@ class DownloadManager:
         try:
             if not path.exists():
                 logger.info(f"[DOWNLOAD] Image {image}: pulling and saving to cache.", extra=LOG_STDOUT)
-                self.docker.pull_image(image)
+                self.registry._ensure_image_local(image)
                 self.docker.save_image(image, str(path))
             else:
                 logger.info(f"[DOWNLOAD] Image {image}: loading from cache.", extra=LOG_STDOUT)
