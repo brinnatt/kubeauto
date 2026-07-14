@@ -228,7 +228,7 @@ class KubeConstant:
                 "brinnatt/csi-resizer:v1.11.2",
                 "brinnatt/csi-snapshotter:v7.0.0",
                 "brinnatt/csi-provisioner:v5.2.0",
-                "brinnatt/snapshot-controller:v7.0.0",
+                "brinnatt/snapshot-controller:v8.3.0",
             ],
             "rocketmq": [
                 "apache/rocketmq-operator:latest",
