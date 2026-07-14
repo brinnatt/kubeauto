@@ -38,7 +38,7 @@ class KubeConstant:
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.13.0", metadata={
+    v_extra_bin: str = field(default="1.13.1", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
     })
     v_harbor: str = field(default="v2.13.0", metadata={
