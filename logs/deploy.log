@@ -76,3 +76,106 @@ Probe details:
 [2026-07-14 09:18:26] [DEBUG] [common.utils] Executing command: echo alias-ok
 [2026-07-14 09:18:26] [DEBUG] [common.utils] Executing command: echo kubeauto
 [2026-07-14 09:18:26] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-15 12:28:01] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-15 12:28:01] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-15 12:28:01] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 12:28:01] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 12:28:01] [WARNING] [service.cluster.docker] Docker daemon not ready after 0.2s (docker info / SDK ping).
+[2026-07-15 12:28:01] [INFO] [service.cluster.docker] [DOWNLOAD] Pulling image: brinnatt/pause:3.10
+[2026-07-15 12:28:01] [INFO] [service.cluster.docker] [DOWNLOAD] Pulled successfully: brinnatt/pause:3.10
+[2026-07-15 12:28:01] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-15 12:28:01] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-15 12:28:01] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-15 12:28:01] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-15 12:28:08] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-15 12:28:08] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-15 12:28:08] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 12:28:08] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 12:28:08] [WARNING] [service.cluster.docker] Docker daemon not ready after 0.2s (docker info / SDK ping).
+[2026-07-15 12:28:08] [INFO] [service.cluster.docker] [DOWNLOAD] Pulling image: brinnatt/pause:3.10
+[2026-07-15 12:28:08] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-15 12:28:08] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-15 12:28:08] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-15 12:28:08] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-15 12:28:14] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-15 12:28:14] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-15 12:28:14] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 12:28:14] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 12:28:14] [WARNING] [service.cluster.docker] Docker daemon not ready after 0.2s (docker info / SDK ping).
+[2026-07-15 12:28:14] [INFO] [service.cluster.docker] [DOWNLOAD] Pulling image: brinnatt/pause:3.10
+[2026-07-15 12:28:14] [INFO] [service.cluster.docker] [DOWNLOAD] Pulled successfully: brinnatt/pause:3.10
+[2026-07-15 12:28:14] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-15 12:28:14] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-15 12:28:14] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-15 12:28:14] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-15 13:57:10] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-15 13:57:10] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-15 13:57:10] [ERROR] [service.cluster.docker] Docker daemon not ready after 0.2s. Check: systemctl status docker && docker info
+[2026-07-15 13:57:10] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-15 13:57:10] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-15 13:57:10] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-15 13:57:10] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-15 13:57:18] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-15 13:57:18] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-15 13:57:18] [ERROR] [service.cluster.docker] Docker daemon not ready after 0.2s. Check: systemctl status docker && docker info
+[2026-07-15 13:57:18] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-15 13:57:18] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-15 13:57:18] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-15 13:57:18] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-15 14:44:41] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-15 14:44:41] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-15 14:44:41] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 14:44:41] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-15 14:44:41] [WARNING] [service.cluster.docker] Docker daemon not ready after 0.2s (docker info / SDK ping).
+[2026-07-15 14:44:41] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-15 14:44:41] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-15 14:44:41] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-15 14:44:41] [DEBUG] [common.utils] Executing command: echo explicit

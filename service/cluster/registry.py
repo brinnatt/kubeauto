@@ -142,17 +142,29 @@ class RegistryManager:
                     candidates.append(alt_ref)
 
         last_err = None
+        total = len(candidates)
         for idx, candidate in enumerate(candidates):
+            is_last = idx == total - 1
             try:
                 if idx > 0:
                     logger.info(f"[REGISTRY]   -> Retry pull via fallback: {candidate}", extra=LOG_STDOUT)
                 else:
                     logger.info(f"[REGISTRY]   -> Pulling from remote: {candidate}", extra=LOG_STDOUT)
-                self.docker.pull_image(candidate)
+                self.docker._execute_pull(candidate)
                 if candidate != image:
                     self.docker.tag_image(candidate, image)
                 return
-            except (CommandExecutionError, Exception) as e:
+            except CommandExecutionError as e:
                 last_err = e
-                continue
+                if is_last:
+                    logger.error(
+                        f"[REGISTRY]   -> All pull sources failed for {image} "
+                        f"(tried {total} source(s), last: {candidate}).",
+                        extra=LOG_STDOUT,
+                    )
+                else:
+                    logger.warning(
+                        f"[REGISTRY]   -> Pull failed ({candidate}), trying next source.",
+                        extra=LOG_STDOUT,
+                    )
         raise last_err

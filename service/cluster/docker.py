@@ -17,8 +17,8 @@ from common.os import SystemProbe
 
 logger = setup_logger(__name__)
 
-# Docker SDK 不可用时的回退提示，统一文案
-_SDK_FALLBACK_MSG = "Docker SDK got wrong, roll back to docker command"
+# Docker SDK 单次 API 失败时回退 CLI；不是 daemon 未就绪或 client 初始化失败
+_SDK_CLI_FALLBACK_MSG = "Docker SDK request failed, retrying via docker CLI"
 
 
 class DockerManager:
@@ -91,6 +91,23 @@ class DockerManager:
             logger.debug(f"Failed to initialize Docker SDK client: {str(e)}")
             self._client = None
 
+    def _wait_for_daemon_ready(self, timeout: float = 30.0, interval: float = 0.5) -> bool:
+        """Poll until Docker daemon accepts CLI/SDK requests (replaces fixed sleep after install)."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self._docker_info_ok():
+                self._initialize_docker_client()
+                if self._client is not None:
+                    logger.debug("Docker daemon is ready (SDK ping ok).")
+                    return True
+                logger.debug("Docker CLI ok but SDK not ready yet; retrying.")
+            time.sleep(interval)
+        logger.warning(
+            f"Docker daemon not ready after {timeout}s (docker info / SDK ping).",
+            extra=LOG_STDOUT,
+        )
+        return False
+
     @property
     def client(self):
         """Get Docker client; lazy-initialize on first use so SDK is used when only running download (no install in same run)."""
@@ -126,10 +143,7 @@ class DockerManager:
         except CommandExecutionError:
             pass
 
-        if self._docker_info_ok():
-            self._initialize_docker_client()
-            return True
-        return False
+        return self._wait_for_daemon_ready(timeout=15.0)
 
     def install_docker(self, version: Optional[str] = None) -> None:
         """Install Docker"""
@@ -141,11 +155,11 @@ class DockerManager:
         self._configure_docker(version)
         self._start_docker_service(version)
 
-        # 等待 unix:///var/run/docker.sock 就绪
-        time.sleep(1)
-
-        # Initialize Docker SDK after installing docker
-        self._initialize_docker_client()
+        if not self._wait_for_daemon_ready():
+            raise RuntimeError(
+                "Docker service started but daemon did not become ready. "
+                "Check: systemctl status docker && docker info"
+            )
 
     def clean_docker_env(self, assume_yes: bool = False) -> bool:
         """
@@ -544,7 +558,7 @@ WantedBy=multi-user.target
                 logger.debug(f"Container '{name}' not found")
                 return False
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             result = self._run_docker([
@@ -572,7 +586,7 @@ WantedBy=multi-user.target
                 container.remove(force=True)
                 return
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "rm", "-f", name])
 
@@ -599,7 +613,7 @@ WantedBy=multi-user.target
                         logger.warning(f"Failed to delete container {container.name}: {str(e)}")
                 return removed_count
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
         try:
             cmd = ["docker", "ps", "-a", "--filter", "status=exited", "--format={{.ID}}"]
             result = run_command(cmd)
@@ -648,7 +662,7 @@ WantedBy=multi-user.target
                         logger.warning(f"Failed to delete container {container.name}: {str(e)}")
                 return removed_count
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
         try:
             cmd = ["docker", "ps", "-a", "--format={{.ID}}"]
             result = run_command(cmd)
@@ -726,7 +740,7 @@ WantedBy=multi-user.target
                 )
                 return container.id
             except APIError as e:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         # Docker CLI: use list form (no shell) so --format Go templates are not mangled by shell.
         # See https://docs.docker.com/engine/cli/formatting/
@@ -776,8 +790,8 @@ WantedBy=multi-user.target
         """Render Docker Engine pull/push JSON stream (moby jsonmessage) when using SDK."""
         DockerJSONMessageDisplay().display_stream(lines)
 
-    def pull_image(self, image: str) -> None:
-        """Pull image from registry. SDK path renders jsonmessage progress; CLI fallback uses native output."""
+    def _execute_pull(self, image: str) -> None:
+        """Pull image via SDK or CLI. Raises CommandExecutionError on failure (no terminal error log)."""
         logger.info(f"[DOWNLOAD] Pulling image: {image}", extra=LOG_STDOUT)
         if self.client is not None and os.geteuid() == 0:
             try:
@@ -786,12 +800,16 @@ WantedBy=multi-user.target
                 self._stream_pull_push_progress(stream)
                 logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
                 return
-            except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+            except (APIError, DockerException):
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
+        self._run_docker(["pull", image], capture_output=False)
+        logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
+
+    def pull_image(self, image: str) -> None:
+        """Pull image from registry. SDK path renders jsonmessage progress; CLI fallback uses native output."""
         try:
-            self._run_docker(["pull", image], capture_output=False)
-            logger.info(f"[DOWNLOAD] Pulled successfully: {image}", extra=LOG_STDOUT)
+            self._execute_pull(image)
         except CommandExecutionError as e:
             logger.error(f"[DOWNLOAD] Failed to pull image: {image} — {e}", extra=LOG_STDOUT)
             raise
@@ -808,7 +826,7 @@ WantedBy=multi-user.target
                 logger.info(f"[DOWNLOAD] Saved successfully: {image}", extra=LOG_STDOUT)
                 return
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             self._run_docker(["save", "-o", output, image])
@@ -827,7 +845,7 @@ WantedBy=multi-user.target
                 logger.info(f"[DOWNLOAD] Loaded successfully: {input_file}", extra=LOG_STDOUT)
                 return
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             self._run_docker(["load", "-i", input_file])
@@ -844,7 +862,7 @@ WantedBy=multi-user.target
                 image.tag(dest)
                 return
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             self._run_docker(["tag", src, dest])
@@ -862,7 +880,7 @@ WantedBy=multi-user.target
                 logger.info(f"[UPLOAD] Pushed successfully: {image}", extra=LOG_STDOUT)
                 return
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             self._run_docker(["push", image], capture_output=False)
@@ -885,7 +903,7 @@ WantedBy=multi-user.target
                     'image': c.image.tags[0] if c.image.tags else c.image.id
                 } for c in containers]
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             output = run_command(["docker", "ps", "-a", "--format={{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}"])
@@ -913,7 +931,7 @@ WantedBy=multi-user.target
                 container_obj = self.client.containers.get(container)
                 return container_obj.logs(tail=tail).decode('utf-8')
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             output = run_command(["docker", "logs", "--tail", str(tail), container])
@@ -932,7 +950,7 @@ WantedBy=multi-user.target
             except ImageNotFound:
                 return False
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         try:
             run_command(["docker", "image", "inspect", image])
@@ -954,7 +972,7 @@ WantedBy=multi-user.target
                 self.client.images.remove(image, force=True)
                 return
             except APIError:
-                logger.warning(_SDK_FALLBACK_MSG, extra=LOG_STDOUT)
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
 
         run_command(["docker", "rmi", "-f", image])
 
