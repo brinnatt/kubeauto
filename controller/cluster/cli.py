@@ -5,7 +5,7 @@ import argparse
 import sys
 import re
 from pathlib import Path
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Optional, Set
 from taskflow.patterns import linear_flow
 from taskflow import engines
 from common.utils import confirm_action, validate_ip, expand_host_targets, parse_pw_file_hosts
@@ -656,10 +656,187 @@ Examples:
             return []
         return sorted(p.name for p in clusters_dir.iterdir() if p.is_dir())
 
+    @staticmethod
+    def _filter_prefix(candidates: List[str], prefix: str) -> List[str]:
+        if not prefix:
+            return candidates
+        return [c for c in candidates if c.startswith(prefix)]
+
+    @staticmethod
+    def _option_actions(parser: argparse.ArgumentParser) -> List[argparse.Action]:
+        return [a for a in parser._actions if a.option_strings]
+
+    @staticmethod
+    def _action_takes_value(action: argparse.Action) -> bool:
+        """True if this option consumes a following value (Docker/cobra flag-value path)."""
+        if isinstance(action, (argparse._StoreTrueAction, argparse._StoreFalseAction)):
+            return False
+        if isinstance(action, argparse._HelpAction):
+            return False
+        if action.nargs == 0:
+            return False
+        return True
+
+    def _used_option_dests(self, parser: argparse.ArgumentParser, tokens: List[str]) -> Set[str]:
+        """Dests already present on the command line (skip re-suggesting, like cobra Changed)."""
+        opt_to_dest = {
+            opt: action.dest
+            for action in self._option_actions(parser)
+            for opt in action.option_strings
+        }
+        used: Set[str] = set()
+        for token in tokens:
+            if not token.startswith("-"):
+                continue
+            name = token.split("=", 1)[0]
+            dest = opt_to_dest.get(name)
+            if dest:
+                used.add(dest)
+        # Once one mutually-exclusive option is set, hide the rest of the group
+        for group in getattr(parser, "_mutually_exclusive_groups", []):
+            group_dests = {a.dest for a in group._group_actions}
+            if used & group_dests:
+                used |= group_dests
+        return used
+
+    def _flag_name_completions(
+        self,
+        parser: argparse.ArgumentParser,
+        prior_tokens: List[str],
+        prefix: str,
+    ) -> List[str]:
+        """Complete -short / --long option names by prefix (Docker/cobra getFlagNameCompletions).
+
+        Typing '-' matches both short and long (both start with '-');
+        typing '--' matches long options only.
+        """
+        if not prefix.startswith("-") or "=" in prefix:
+            return []
+        used = self._used_option_dests(parser, prior_tokens)
+        out: List[str] = []
+        for action in self._option_actions(parser):
+            if action.dest in used:
+                continue
+            for opt in action.option_strings:
+                if opt.startswith(prefix):
+                    out.append(opt)
+        return sorted(set(out))
+
+    def _flag_value_completions(
+        self,
+        parser: argparse.ArgumentParser,
+        prior_tokens: List[str],
+        prefix: str,
+    ) -> Optional[List[str]]:
+        """Complete choice values for a flag (e.g. --type admin|view), including --flag=value.
+
+        Returns None when not in a flag-value position; [] when in value position but no choices.
+        """
+        flag_token: Optional[str] = None
+        val_prefix = prefix
+        if prefix.startswith("-") and "=" in prefix:
+            flag_token, val_prefix = prefix.split("=", 1)
+        elif prior_tokens:
+            flag_token = prior_tokens[-1]
+
+        if not flag_token or not flag_token.startswith("-"):
+            return None
+        flag_name = flag_token.split("=", 1)[0]
+
+        for action in self._option_actions(parser):
+            if flag_name not in action.option_strings:
+                continue
+            if not self._action_takes_value(action):
+                return None
+            if not action.choices:
+                return []
+            matched = self._filter_prefix(list(action.choices), val_prefix)
+            if "=" in prefix:
+                return [f"{flag_name}={c}" for c in matched]
+            return matched
+        return None
+
+    def _non_option_tokens(
+        self,
+        parser: argparse.ArgumentParser,
+        tokens: List[str],
+    ) -> List[str]:
+        """Approximate positional tokens after stripping known options (completion-only)."""
+        opt_map = {
+            opt: action
+            for action in self._option_actions(parser)
+            for opt in action.option_strings
+        }
+        result: List[str] = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            if token == "--":
+                result.extend(tokens[i + 1 :])
+                break
+            if token.startswith("-") and "=" in token:
+                name = token.split("=", 1)[0]
+                if name in opt_map:
+                    i += 1
+                    continue
+            if token.startswith("-") and token in opt_map:
+                action = opt_map[token]
+                i += 1
+                if not self._action_takes_value(action):
+                    continue
+                nargs = action.nargs
+                if nargs is None or nargs == argparse.OPTIONAL:
+                    if i < len(tokens) and not tokens[i].startswith("-"):
+                        i += 1
+                elif isinstance(nargs, int):
+                    for _ in range(nargs):
+                        if i < len(tokens):
+                            i += 1
+                elif nargs in (argparse.ONE_OR_MORE, argparse.ZERO_OR_MORE):
+                    while i < len(tokens) and not tokens[i].startswith("-"):
+                        i += 1
+                elif nargs == argparse.REMAINDER:
+                    break
+                continue
+            if token.startswith("-"):
+                # Unknown / incomplete option — skip the token itself
+                i += 1
+                continue
+            result.append(token)
+            i += 1
+        return result
+
+    def _positional_completions(
+        self,
+        cmd: str,
+        parser: argparse.ArgumentParser,
+        prior_tokens: List[str],
+        prefix: str,
+    ) -> List[str]:
+        """Positional completions after options are stripped (cluster / setup step / shell)."""
+        positionals = self._non_option_tokens(parser, prior_tokens[1:] if prior_tokens else [])
+        if cmd in _CLUSTER_COMMANDS and len(positionals) == 0:
+            return self._filter_prefix(self._get_cluster_names(), prefix)
+        if cmd == "setup" and len(positionals) == 1:
+            return self._filter_prefix(_SETUP_STEPS, prefix)
+        if cmd == "completion" and len(positionals) == 0:
+            shells: List[str] = []
+            for action in parser._actions:
+                if getattr(action, "choices", None) and isinstance(action.choices, dict):
+                    shells = sorted(action.choices.keys())
+                    break
+            return self._filter_prefix(shells, prefix)
+        return []
+
     def _do_completion(self, argv_after_complete: List[str]) -> None:
         """Print completions one per line for shell. No side effects, read-only.
         argv_after_complete: [cword, word0, word1, ...] where cword is the index
         of the word being completed (0-based), rest are the words from the command line.
+
+        Flag completion follows Docker/cobra ideas:
+        - option names come from argparse definitions (single source of truth)
+        - prefix '-' / '--' selects short and/or long options
+        - already-used options (and filled mutex groups) are omitted
         """
         if len(argv_after_complete) < 1:
             return
@@ -669,23 +846,34 @@ Examples:
             return
         tokens = argv_after_complete[1:]
         prefix = (tokens[cword] or "") if cword < len(tokens) else ""
+        prior = tokens[:cword]
 
-        def filter_prefix(candidates: List[str], p: str) -> List[str]:
-            if not p:
-                return candidates
-            return [c for c in candidates if c.startswith(p)]
-
-        subcommands = self._get_subcommand_names()
         out: List[str] = []
 
         if cword == 0:
-            out = filter_prefix(subcommands, prefix)
-        elif cword == 1 and tokens and tokens[0] in _CLUSTER_COMMANDS:
-            out = filter_prefix(self._get_cluster_names(), prefix)
-        elif cword == 2 and len(tokens) >= 2 and tokens[0] == "setup":
-            out = filter_prefix(_SETUP_STEPS, prefix)
+            if prefix.startswith("-"):
+                out = self._flag_name_completions(self.parser, prior, prefix)
+            if not out:
+                out = self._filter_prefix(self._get_subcommand_names(), prefix)
         else:
-            out = []
+            cmd = tokens[0] if tokens else ""
+            sub_parser = self.subparsers.choices.get(cmd)
+            if sub_parser is not None:
+                # 1) --flag=value choice completion
+                if prefix.startswith("-") and "=" in prefix:
+                    vals = self._flag_value_completions(sub_parser, prior, prefix)
+                    out = vals if vals is not None else []
+                # 2) flag name completion (- / --)
+                elif prefix.startswith("-"):
+                    out = self._flag_name_completions(sub_parser, prior, prefix)
+                else:
+                    # 3) flag value choices (e.g. after --type)
+                    vals = self._flag_value_completions(sub_parser, prior, prefix)
+                    if vals is not None:
+                        out = vals
+                    else:
+                        # 4) positionals (cluster / setup step / completion shell)
+                        out = self._positional_completions(cmd, sub_parser, prior, prefix)
 
         for s in out:
             print(s)
