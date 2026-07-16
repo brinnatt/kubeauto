@@ -1,0 +1,128 @@
+========== PHASE 0: local unit tests (G0) ==========
+>>> bash /projects/kubeauto/tests/run_unit_tests.sh
+test_parse_ansible_core_version (test_ansible_python.TestAnsibleCoreParsing) ... ok
+test_parse_ansible_core_version_missing (test_ansible_python.TestAnsibleCoreParsing) ... ok
+test_policy_fails_fast_when_detection_breaks (test_ansible_python.TestAnsiblePythonPolicy) ... ok
+test_policy_resolves_from_ansible_version (test_ansible_python.TestAnsiblePythonPolicy) ... ok
+test_probe_reports_missing_ansible_in_path (test_ansible_python.TestAnsiblePythonPolicy) ... ok
+test_python_meets_spec (test_ansible_python.TestInterpreterValidation) ... ok
+test_validate_local_interpreter (test_ansible_python.TestInterpreterValidation) ... ok
+test_validate_remote_interpreter_version (test_ansible_python.TestInterpreterValidation) ... ok
+test_matrix_2_16_target_runtime_min (test_ansible_python.TestSupportMatrix) ... ok
+test_matrix_2_17_target_runtime_min (test_ansible_python.TestSupportMatrix) ... ok
+test_all_component_images_are_brinnatt (test_brinnatt_image_contract.TestBrinnattImageContract) ... ok
+test_default_images_are_brinnatt (test_brinnatt_image_contract.TestBrinnattImageContract) ... ok
+test_cluster_after_flags (test_cli_completion.TestCliCompletion) ... ok
+test_cluster_positional_still_works (test_cli_completion.TestCliCompletion) ... ok
+test_completion_shells (test_cli_completion.TestCliCompletion) ... ok
+test_docker_flags (test_cli_completion.TestCliCompletion) ... ok
+test_download_long_flags_on_double_dash (test_cli_completion.TestCliCompletion) ... ok
+test_download_prefix_filters_long (test_cli_completion.TestCliCompletion) ... ok
+test_download_short_flags_on_dash (test_cli_completion.TestCliCompletion) ... ok
+test_flag_prefix_does_not_steal_cluster_when_not_dash (test_cli_completion.TestCliCompletion) ... ok
+test_kcfg_adm_mutex_hides_siblings (test_cli_completion.TestCliCompletion) ... ok
+test_kcfg_adm_type_choices (test_cli_completion.TestCliCompletion) ... ok
+test_kcfg_adm_type_equals_form (test_cli_completion.TestCliCompletion) ... ok
+test_setup_steps_still_work (test_cli_completion.TestCliCompletion) ... ok
+test_system_long_only_options (test_cli_completion.TestCliCompletion) ... ok
+test_top_level_subcommands (test_cli_completion.TestCliCompletion) ... ok
+test_used_flag_not_suggested_again (test_cli_completion.TestCliCompletion) ... ok
+test_wait_for_daemon_ready_retries_until_sdk_ok (test_docker_daemon.TestDockerDaemonReady) ... ok
+test_wait_for_daemon_ready_succeeds_on_first_ping (test_docker_daemon.TestDockerDaemonReady) ... ok
+test_wait_for_daemon_ready_times_out (test_docker_daemon.TestDockerDaemonReady) ... [2026-07-16 11:27:11] [WARNING] [service.cluster.docker] Docker daemon not ready after 0.2s (docker info / SDK ping).
+ok
+test_execute_pull_sdk_fallback_uses_warning (test_docker_daemon.TestPullImage) ... ok
+test_pull_image_logs_error_on_failure (test_docker_daemon.TestPullImage) ... ok
+test_sdk_fallback_message_is_not_init_failure (test_docker_daemon.TestPullImage) ... ok
+test_all_sources_fail_logs_error (test_registry_pull_sources.TestRegistryPullSources) ... ok
+test_brinnatt_candidates_talkedu_first (test_registry_pull_sources.TestRegistryPullSources) ... ok
+test_intermediate_failure_warning_final_error (test_registry_pull_sources.TestRegistryPullSources) ... ok
+test_capture_alias_is_supported (test_run_command.TestRunCommand)
+Regression: capture=True must not leak to subprocess.run as invalid kwarg. ... ok
+test_capture_output_default_captures_stdout (test_run_command.TestRunCommand) ... ok
+test_capture_output_explicit (test_run_command.TestRunCommand) ... ok
+test_default_tag_latest (test_talkedu_mirror.TestTalkeduMirror) ... ok
+test_ignores_non_brinnatt (test_talkedu_mirror.TestTalkeduMirror) ... ok
+test_maps_brinnatt_to_talkedu (test_talkedu_mirror.TestTalkeduMirror) ... ok
+test_maps_migrated_defaults (test_talkedu_mirror.TestTalkeduMirror) ... ok
+test_pull_order_talkedu_before_dockerhub (test_talkedu_mirror.TestTalkeduMirror)
+CN production: hub.talkedu.cn first, Docker Hub brinnatt/* as fallback. ... ok
+
+----------------------------------------------------------------------
+Ran 44 tests in 0.336s
+
+OK
+[PASS] G0-local-unit
+========== PHASE 1: sync source to 147 + 136 ==========
+>>> bash /projects/kubeauto/tests/helpers/sync-kubeauto.sh ubuntu@192.168.47.147 123456
+sync_ok
+Synced to ubuntu@192.168.47.147:/usr/local/kubeauto
+>>> bash /projects/kubeauto/tests/helpers/sync-kubeauto.sh root@192.168.47.136 123456
+sync_ok
+Synced to root@192.168.47.136:/usr/local/kubeauto
+[PASS] G0-deploy-sync
+========== PHASE 1b: bootstrap brinnatt mirrors + upload defaults ==========
+[pull] calico/cni:v3.28.4 -> brinnatt/calico-cni:v3.28.4
+v3.28.4: Pulling from calico/cni
+Digest: sha256:f918594378cd13afa910744a56ff1e196134f863fda8b4fdd5346b46643ec6ce
+Status: Image is up to date for calico/cni:v3.28.4
+docker.io/calico/cni:v3.28.4
+[pull] calico/node:v3.28.4 -> brinnatt/calico-node:v3.28.4
+v3.28.4: Pulling from calico/node
+Digest: sha256:77f4e494343f41763bb7438e1ab61d07094abe07584b56c01ab5c3fb0b9bb4de
+Status: Image is up to date for calico/node:v3.28.4
+docker.io/calico/node:v3.28.4
+[pull] calico/kube-controllers:v3.28.4 -> brinnatt/calico-kube-controllers:v3.28.4
+v3.28.4: Pulling from calico/kube-controllers
+Digest: sha256:539d1e3985426cc39426a3cc769c69646e043790a7ee920c8c0edfe9987d0772
+Status: Image is up to date for calico/kube-controllers:v3.28.4
+docker.io/calico/kube-controllers:v3.28.4
+[pull] coredns/coredns:1.12.4 -> brinnatt/coredns:1.12.4
+1.12.4: Pulling from coredns/coredns
+Digest: sha256:986f04c2e15e147d00bdd51e8c51bcef3644b13ff806be7d2ff1b261d6dfbae1
+Status: Image is up to date for coredns/coredns:1.12.4
+docker.io/coredns/coredns:1.12.4
+[pull] registry:2 -> brinnatt/registry:2
+2: Pulling from library/registry
+Digest: sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+Status: Image is up to date for registry:2
+docker.io/library/registry:2
+[skip] brinnatt/pause:3.10
+[skip] brinnatt/metrics-server:v0.8.0
+[skip] brinnatt/k8s-dns-node-cache:1.26.4
+[pull] brinnatt/ansible-runner:0.9.1 -> brinnatt/ansible-runner:0.9.1
+0.9.1: Pulling from brinnatt/ansible-runner
+29a5ca154d1a: Pulling fs layer
+fdc12ef68aee: Pulling fs layer
+998ceb85f375: Pulling fs layer
+45081c646f63: Pulling fs layer
+1ef8ba1e4771: Pulling fs layer
+09cb68ff8bae: Pulling fs layer
+6ce230ee5616: Pulling fs layer
+0a1c53b5e37b: Pulling fs layer
+229587a136fc: Pulling fs layer
+b0eb4fd5a26a: Pulling fs layer
+ea9d80c3282c: Pulling fs layer
+48ce73c7e477: Pulling fs layer
+ada1e3665c00: Pulling fs layer
+b753593f0c5f: Pulling fs layer
+48711491cfef: Pulling fs layer
+34d2a1249074: Pulling fs layer
+521af800d830: Pulling fs layer
+09cb68ff8bae: Download complete
+34d2a1249074: Download complete
+48ce73c7e477: Download complete
+29a5ca154d1a: Download complete
+ea9d80c3282c: Download complete
+0a1c53b5e37b: Download complete
+5f5333b30292: Download complete
+998ceb85f375: Download complete
+ada1e3665c00: Download complete
+b753593f0c5f: Download complete
+b0eb4fd5a26a: Download complete
+229587a136fc: Download complete
+1ef8ba1e4771: Download complete
+45081c646f63: Download complete
+6ce230ee5616: Download complete
+521af800d830: Download complete
+48711491cfef: Download complete

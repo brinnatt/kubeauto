@@ -4,9 +4,9 @@ operator:
     - name: OPERATOR_STS_ENABLED
       value: "on"
   image:
-    repository: registry.talkschool.cn:5000/minio/operator
+    repository: registry.talkschool.cn:5000/brinnatt/minio-operator
   sidecarImage:
-    repository: registry.talkschool.cn:5000/minio/operator-sidecar
+    repository: registry.talkschool.cn:5000/brinnatt/minio-operator-sidecar
     tag: v7.0.1
   replicaCount: 1
   resources:

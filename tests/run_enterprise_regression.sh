@@ -28,6 +28,30 @@ run bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST147" "$PASS"
 run bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST136" "$PASS"
 pass G0-deploy-sync
 
+echo "========== PHASE 1b: bootstrap brinnatt mirrors + upload defaults =========="
+# Until CI dual-pushes new images, retag upstream → brinnatt/* then upload to local registry.
+ssh147 "sudo bash /usr/local/kubeauto/tests/helpers/bootstrap-brinnatt-mirrors.sh"
+ssh147 "sudo bash -s" <<'REMOTE147_IMG'
+set -euo pipefail
+export PYTHONPATH=/usr/local/kubeauto
+export PATH=/usr/local/bin:/usr/bin:$PATH
+kubecli download -X </dev/null
+# CNI / addon images used by Tier2 + setup 07
+for c in flannel cilium kube-router kube-ovn prometheus ingress-nginx network-check local-path-provisioner; do
+  kubecli download -E "$c" </dev/null || true
+done
+echo IMG_PREP_147_OK
+REMOTE147_IMG
+ssh136 "BOOTSTRAP_MODE=defaults bash /usr/local/kubeauto/tests/helpers/bootstrap-brinnatt-mirrors.sh"
+ssh136 "bash -s" <<'REMOTE136_IMG'
+set -euo pipefail
+export PYTHONPATH=/usr/local/kubeauto
+export PATH=/usr/local/bin:/usr/bin:$PATH
+kubecli download -X </dev/null
+echo IMG_PREP_136_OK
+REMOTE136_IMG
+pass G0-brinnatt-bootstrap
+
 echo "========== PHASE 2: 147 preflight (G0/G1) =========="
 ssh147 "sudo bash -s" <<'REMOTE147_PREFLIGHT'
 set -euo pipefail
@@ -58,14 +82,17 @@ ssh136 "bash -s" <<'REMOTE136'
 set -euo pipefail
 BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE"
+export PATH="/usr/local/bin:/usr/bin:$PATH"
+# Rocky jumper: prefer python3.12 (system python3 may still be 3.6)
+PY="$(command -v python3.12 || command -v python3)"
 
 # Deploy source wrapper if frozen binary only
-if ! python3 -c "import common.ansible_python" 2>/dev/null; then
-  echo "common module missing on 136"
+if ! "$PY" -c "import common.ansible_python" 2>/dev/null; then
+  echo "common module missing on 136 (py=$PY)"
   exit 1
 fi
 
-python3 -c "
+"$PY" -c "
 from common.utils import run_command
 from common.ansible_python import ansible_python_policy, format_policy_summary
 r = run_command(['ansible', '--version'], capture=True, check=False)
@@ -76,7 +103,6 @@ print(format_policy_summary(p))
 "
 bash "$BASE/tests/run_unit_tests.sh"
 
-export PYTHONPATH="$BASE"
 kubecli system -a --user root --password 123456 192.168.47.130-131 192.168.47.140-141 </dev/null
 
 # k8s-dev: policy preflight + setup (non-interactive)

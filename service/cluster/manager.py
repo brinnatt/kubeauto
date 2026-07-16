@@ -336,12 +336,9 @@ class ClusterManager:
         self.clusters_dir = ensure_kubeauto_clusters_dir(self.base_path)
 
     def list_clusters(self) -> List[str]:
-        """List all managed clusters"""
+        """List all managed clusters that have been set up (have kubectl.kubeconfig)."""
         if not self.clusters_dir.exists():
             raise ClusterNotFoundError("Cluster directory not found, run 'new' first")
-
-        if not (Path.home() / ".kube/config").exists():
-            raise ClusterNotFoundError("kubeconfig not found, run 'setup' first")
 
         clusters = [
             d.name for d in self.clusters_dir.iterdir()
@@ -442,7 +439,7 @@ class ClusterManager:
                 playbook="site.yml",
                 process_isolation=True,
                 process_isolation_executable="docker",  # the same as podman(default)
-                container_image="quay.io/ansible/ansible-runner:latest",
+                container_image="brinnatt/ansible-runner:0.9.1",
                 container_volume_mounts=["/root/.ssh:/root/.ssh:ro"],
                 container_options=["--rm", "--network", "none"]
             )
@@ -563,12 +560,17 @@ class ClusterManager:
             lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
             if lp_orig is not None:
                 env["LD_LIBRARY_PATH"] = lp_orig
-            else:
+            elif getattr(sys, "frozen", False):
+                # Only clear library path for PyInstaller one-file; source installs
+                # should keep the host LD_LIBRARY_PATH untouched.
                 env["LD_LIBRARY_PATH"] = ""
             # Ignore ~/.local site-packages when Ansible spawns module interpreters.
-            # User-installed urllib3/pyOpenSSL can break the apt module on Ubuntu/Debian
-            # (AttributeError: X509_V_FLAG_NOTIFY_POLICY). See start-aio on Debian family.
-            env["PYTHONNOUSERSITE"] = "1"
+            # Needed for frozen kubecli (and historically for Debian apt breakage).
+            # Do NOT force it for source installs: on Rocky 8 + system ansible-core
+            # 2.16, PYTHONNOUSERSITE=1 makes ansible-playbook (via ansible-runner
+            # awx_display) fail immediately with "'NoneType' object is not callable".
+            if getattr(sys, "frozen", False):
+                env["PYTHONNOUSERSITE"] = "1"
         return env
 
     @staticmethod

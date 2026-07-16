@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: dingtalk
-        image: timonwong/prometheus-webhook-dingtalk:v0.3.0
+        image: registry.talkschool.cn:5000/brinnatt/prometheus-webhook-dingtalk:v0.3.0
         imagePullPolicy: IfNotPresent
         # After setting up the DingTalk group chat custom robot, replace the xxxxxx part below with the actual access_token
         args:

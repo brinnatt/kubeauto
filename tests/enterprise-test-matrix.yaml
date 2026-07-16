@@ -1,14 +1,16 @@
-# kubeauto 企业级测试矩阵 v2 — 2026-07-13 全量回归结果
+# kubeauto 企业级测试矩阵 v3 — brinnatt/talkedu 镜像统一 + 全量回归
 # 执行: bash tests/run_enterprise_regression.sh
 # 147 全量: sudo bash tests/helpers/regression-147-full.sh
+# 补跑: sudo bash tests/helpers/regression-147-remainder.sh
 # 136 jumper: kubecli setup k8s-dev 90
+# 镜像过渡期: tests/helpers/bootstrap-brinnatt-mirrors.sh（CI 双推完成后可省略）
 
 meta:
-  version: 2
-  updated: "2026-07-13"
+  version: 3
+  updated: "2026-07-16"
   runner: tests/run_enterprise_regression.sh
   regression_log: logs/enterprise-regression-*.log
-  regression_result: "2026-07-13 全量回归 PASS (147 五集群 + 133 CNI 变体 + 136 k8s-dev)"
+  regression_result: "PASS — 147 full + remainder (cilium/addons) + FINAL Ready"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -16,6 +18,16 @@ meta:
     proxy_mode: ipvs
     os_primary: "Rocky 8.10"
     os_secondary: "Ubuntu 22.04 / Debian trixie"
+  image_policy: |
+    所有业务镜像统一 brinnatt/<name>:<tag>；
+    拉取顺序 hub.talkedu.cn/kubeauto/<name> → Docker Hub brinnatt/<name>；
+    部署路径 registry.talkschool.cn:5000/brinnatt/<name>；
+    打包仓 kubeauto-ext-images-dockerfile CI 双推。
+  notes: |
+    Cilium operator repository 不含 -generic（避免 chart cloud=generic 双重后缀）。
+    OpenEBS localpv 镜像 pin 4.3.0（umbrella 4.3.2 上游无 :4.3.2）。
+    Addon 冒烟在 aio（与 local registry 同机），避免节点 /etc/hosts 指向错误 REGISTRY_HOST_IP。
+    Tier3 tools 二进制未装在控制节点 → SKIP（非镜像迁移范围）。
 
 environments:
   control:
@@ -35,19 +47,22 @@ environments:
 
 # ---------------------------------------------------------------------------
 tier0_foundation:
-  - {id: T0-01, group: G0, desc: unit tests 13 cases, status: pass, notes: "2026-07-13 147+136+local"}
+  - {id: T0-01, group: G0, desc: unit tests (brinnatt contract + completion + ansible), status: pass}
   - {id: T0-02, group: G0, desc: ansible-core 2.17 policy 147, status: pass}
   - {id: T0-03, group: G0, desc: ansible-core 2.16 policy 136, status: pass}
   - {id: T0-04, group: G0, desc: capture= alias regression, status: pass}
   - {id: T0-05, group: G0, desc: sync-kubeauto.sh + requirements-control.txt, status: pass}
+  - {id: T0-06, group: G0, desc: all component_images are brinnatt/* + talkedu map, status: pass}
+  - {id: T0-07, group: G0, desc: bootstrap-brinnatt-mirrors + download -X/-E, status: pass}
+  - {id: T0-08, group: G0, desc: kubecli completion short/long flags, status: pass}
 
 tier1_commands:
   - {id: T1-G1-01, group: G1, command: version, status: pass}
   - {id: T1-G1-02, group: G1, command: list, status: pass}
   - {id: T1-G1-03, group: G1, command: completion bash/zsh, status: pass}
   - {id: T1-G1-04, group: G1, command: checkout, status: pass}
-  - {id: T1-G1-05, group: G1, command: download -D, status: pass, notes: "预装跳过重复下载"}
-  - {id: T1-G1-06, group: G1, command: download 分组件, status: na}
+  - {id: T1-G1-05, group: G1, command: download -X defaults via brinnatt, status: pass}
+  - {id: T1-G1-06, group: G1, command: download -E CNI/addons via brinnatt, status: pass}
 
   - {id: T1-G2-01, group: G2, cluster: test141, command: setup 90+07+11, status: pass}
   - {id: T1-G2-02, group: G2, cluster: debian150, status: pass}
@@ -79,18 +94,18 @@ tier1_cross_scenarios:
 
 tier1_jumper:
   - {id: T1-G7-01, group: G7, env: ENV-136, desc: ansible-core 2.16 + unit, status: pass}
-  - {id: T1-G7-02, group: G7, env: ENV-136, cluster: k8s-dev, command: setup 90, status: pass, notes: "4 nodes Ready; 无 ansible-core 0.0"}
+  - {id: T1-G7-02, group: G7, env: ENV-136, cluster: k8s-dev, command: setup 90, status: pass}
 
 tier2_matrix:
   runtime:
     - {id: T2-RT-01, value: containerd, status: pass}
     - {id: T2-RT-02, value: docker, status: na}
   network:
-    - {id: T2-NW-01, value: calico, status: pass}
-    - {id: T2-NW-02, value: flannel, cluster: test133-flannel, status: pass}
-    - {id: T2-NW-03, value: cilium, cluster: test133-cilium, status: pass}
-    - {id: T2-NW-04, value: kube-router, cluster: test133-kr, status: pass}
-    - {id: T2-NW-05, value: kube-ovn, cluster: test133-ovn, status: pass}
+    - {id: T2-NW-01, value: calico (brinnatt/calico-*), status: pass}
+    - {id: T2-NW-02, value: flannel (brinnatt/flannel*), cluster: test133-flannel, status: pass}
+    - {id: T2-NW-03, value: cilium (brinnatt/cilium-operator-generic 无 double-generic), cluster: test133-cilium, status: pass}
+    - {id: T2-NW-04, value: kube-router (brinnatt/kube-router), cluster: test133-kr, status: pass}
+    - {id: T2-NW-05, value: kube-ovn (brinnatt/kube-ovn), cluster: test133-ovn, status: pass}
   proxy_mode:
     - {id: T2-PM-01, value: ipvs, status: pass}
     - {id: T2-PM-02, value: iptables, cluster: test133-iptables, status: pass}
@@ -108,58 +123,65 @@ tier2_matrix:
     - {id: T2-MR-01, desc: RHEL EPEL 华为源 + python39, status: pass}
     - {id: T2-MR-02, desc: Debian become + 华为源, status: pass}
     - {id: T2-MR-03, desc: ansible-core 矩阵 fail-fast, status: pass}
+    - {id: T2-MR-04, desc: talkedu→dockerhub brinnatt pull order, status: pass}
   addons:
-    - {id: T2-AD-01, value: coredns, status: pass}
+    - {id: T2-AD-01, value: coredns (brinnatt/coredns), status: pass}
     - {id: T2-AD-02, value: metrics-server, status: pass}
     - {id: T2-AD-03, value: node-local-dns, status: pass}
-    - {id: T2-AD-04, value: ingress-nginx, status: pass}
-    - {id: T2-AD-05, value: prometheus, status: pass}
+    - {id: T2-AD-04, value: ingress-nginx (brinnatt/ingress-nginx-controller), status: pass}
+    - {id: T2-AD-05, value: prometheus (brinnatt/*), status: pass}
+    - {id: T2-AD-06, value: dashboard/kong (brinnatt/*), status: pass}
+    - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass}
+    - {id: T2-AD-08, value: local-path-provisioner, status: pass}
+    - {id: T2-AD-09, value: minio operator+tenant, status: pass}
 
 tier3_tools:
-  - {id: T3-TL-01, tool: CalicoPolicyCli, status: pass, notes: "dist/CalicoPolicyCli --help"}
-  - {id: T3-TL-02, tool: NetCheckCli, status: pass}
-  - {id: T3-TL-03, tool: KafkaCli, status: pass}
-  - {id: T3-TL-04, tool: MyBackupCli, status: pass}
-  - {id: T3-TL-05, tool: MigrationCli, status: pass}
-  - {id: T3-TL-06, tool: StarCli, status: pass}
-  - {id: T3-TL-07, tool: KubeBackupCli, status: pass}
-  - {id: T3-TL-08, tool: KubePublishCli, status: pass}
-  - {id: T3-TL-09, tool: OvpnUserCli, status: pass}
+  - {id: T3-TL-01, tool: CalicoPolicyCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-02, tool: NetCheckCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-03, tool: KafkaCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-04, tool: MyBackupCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-05, tool: MigrationCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-06, tool: StarCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-07, tool: KubeBackupCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-08, tool: KubePublishCli, status: skip, note: "binary absent on control node"}
+  - {id: T3-TL-09, tool: OvpnUserCli, status: skip, note: "binary absent on control node"}
 
 execution_groups:
-  G0: {name: "基础层", priority: P0, status: done}
-  G1: {name: "CLI 冒烟", priority: P0, status: done}
-  G2: {name: "集群创建", priority: P0, status: done}
-  G3: {name: "集群运维", priority: P0, status: done}
-  G4: {name: "节点扩缩", priority: P0, status: done}
-  G5: {name: "身份/系统", priority: P1, status: done}
-  G6: {name: "交叉场景", priority: P0, status: done}
-  G7: {name: "Jumper 136", priority: P0, status: done}
-  G8: {name: "二级 CNI/拓扑", priority: P1, status: done}
-  G9: {name: "tools CLI", priority: P2, status: done}
+  G0: {name: "基础层", priority: P0, status: pass}
+  G1: {name: "CLI 冒烟", priority: P0, status: pass}
+  G2: {name: "集群创建", priority: P0, status: pass}
+  G3: {name: "集群运维", priority: P0, status: pass}
+  G4: {name: "节点扩缩", priority: P0, status: pass}
+  G5: {name: "身份/系统", priority: P1, status: pass}
+  G6: {name: "交叉场景", priority: P0, status: pass}
+  G7: {name: "Jumper 136", priority: P0, status: pass}
+  G8: {name: "二级 CNI/拓扑", priority: P1, status: pass}
+  G8b: {name: "Addon 镜像冒烟 (aio)", priority: P1, status: pass}
+  G9: {name: "tools CLI", priority: P2, status: skip}
 
 coverage_summary:
-  tier0_total: 5
-  tier0_pass: 5
+  tier0_total: 8
+  tier0_pass: 8
   tier1_total: 24
-  tier1_pass: 22
-  tier1_na: 2
+  tier1_pass: 23
+  tier1_na: 1
   tier1_cross_total: 4
   tier1_cross_pass: 4
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
-  tier2_total: 24
-  tier2_pass: 23
+  tier2_total: 29
+  tier2_pass: 28
   tier2_na: 1
   tier3_total: 9
-  tier3_pass: 9
-  live_clusters_147: [test141, debian150, test-ded-etcd, test-ha, aio]
+  tier3_pass: 0
+  tier3_skip: 9
+  live_clusters_147: [aio, debian150, test-ded-etcd, test-ha, test141]
   live_clusters_136: [k8s-dev]
   all_nodes_ready: true
   overall_assessment: |
-    2026-07-13 全量企业回归完成。
-    G0: 13 unit tests + ansible-core 2.17(147)/2.16(136) 矩阵策略，capture= 别名回归。
-    G1-G6: 147 五集群 setup/运维/扩缩/kca-renew；133 五 CNI+iptables 变体串行 destroy。
-    G7: 136 jumper k8s-dev setup 90 四节点 Ready（ansible-core 2.16，无 0.0 误报）。
-    G9: 9 tools dist/* --help 全通过。
-    脚本: tests/run_enterprise_regression.sh, regression-147-full.sh, sync-kubeauto.sh
+    2026-07-16 brinnatt/talkedu 镜像统一迁移后企业级回归通过。
+    证据: logs/enterprise-regression-20260716-1721.log (G0–G7/G8 CNI) +
+    logs/enterprise-remainder-live.out (R0–R3 cilium) +
+    logs/aio-addon-smoke.out / aio-ingress-smoke.out (G8b addons)。
+    关键点修复: Cilium operator 无 double-generic；OpenEBS localpv:4.3.0；
+    addon 冒烟落在 aio；test-ded-etcd Unauthorized 已重建；test141 宕机后已恢复 Ready。

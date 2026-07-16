@@ -5,18 +5,29 @@ localpv-provisioner:
     enabled: true
     name: {{ openebs_hostpath_storage_class }}
   localpv:
+    image:
+      registry: registry.talkschool.cn:5000
+      repository: brinnatt/provisioner-localpv
+      # OpenEBS chart 4.3.2 depends on localpv image 4.3.0 (upstream has no :4.3.2).
+      tag: "4.3.0"
     basePath: "{{ openebs_hostpath }}"
     resources:
       limits:
         cpu: 100m
         memory: 128Mi
+  helperPod:
+    image:
+      registry: registry.talkschool.cn:5000
+      repository: brinnatt/linux-utils
+      tag: "4.2.0"
 
 lvm-localpv:
   lvmNode:
     driverRegistrar:
       image:
         registry: registry.talkschool.cn:5000/
-        repository: openebs/csi-node-driver-registrar
+        repository: brinnatt/csi-node-driver-registrar
+        tag: "{{ csi_node_driver_registrar_ver | default('v2.13.0') }}"
     kubeletDir: "{{ KUBELET_ROOT_DIR }}"
     resources:
       limits:
@@ -26,19 +37,24 @@ lvm-localpv:
     resizer:
       image:
         registry: registry.talkschool.cn:5000/
-        repository: openebs/csi-resizer
+        repository: brinnatt/csi-resizer
+        tag: "{{ csi_resizer_ver | default('v1.11.2') }}"
     snapshotter:
       image:
         registry: registry.talkschool.cn:5000/
-        repository: openebs/csi-snapshotter
+        repository: brinnatt/csi-snapshotter
+        tag: "{{ csi_snapshotter_ver | default('v7.0.0') }}"
     snapshotController:
       image:
         registry: registry.talkschool.cn:5000/
-        repository: openebs/snapshot-controller
+        repository: brinnatt/snapshot-controller
+        # Align with component_images / Dockerfile (not chart default v7.0.0).
+        tag: "{{ snapshot_controller_ver | default('v8.3.0') }}"
     provisioner:
       image:
         registry: registry.talkschool.cn:5000/
-        repository: openebs/csi-provisioner
+        repository: brinnatt/csi-provisioner
+        tag: "{{ csi_provisioner_ver | default('v5.2.0') }}"
     resources:
       limits:
         cpu: 100m
@@ -46,18 +62,21 @@ lvm-localpv:
   lvmPlugin:
     image:
       registry: registry.talkschool.cn:5000/
-      repository: openebs/lvm-driver
+      repository: brinnatt/lvm-driver
+      tag: "1.7.0"
 
 # -- Configuration options for pre-upgrade helm hook job.
 preUpgradeHook:
   image:
     registry: registry.talkschool.cn:5000
-    repo: openebs/kubectl
+    repo: brinnatt/openebs-kubectl
+    # Chart default is 1.25.15; pin to mirrored kubectl tag.
+    tag: "{{ K8S_VER | regex_replace('^v', '') }}"
 
 engines:
   local:
     lvm:
-      enabled: true
+      enabled: {{ (openebs_lvm_enabled | default('yes') | string | lower) == 'yes' }}
     zfs:
       enabled: false
   replicated:

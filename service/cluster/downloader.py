@@ -144,10 +144,10 @@ class DownloadManager:
                 "Docker is required to download and push images. Run 'kubecli download -d' first, or install Docker manually."
             )
         images = [
-            f"calico/cni:{self.kube_constant.v_calico}",
-            f"calico/kube-controllers:{self.kube_constant.v_calico}",
-            f"calico/node:{self.kube_constant.v_calico}",
-            f"coredns/coredns:{self.kube_constant.v_coredns}",
+            f"brinnatt/calico-cni:{self.kube_constant.v_calico}",
+            f"brinnatt/calico-kube-controllers:{self.kube_constant.v_calico}",
+            f"brinnatt/calico-node:{self.kube_constant.v_calico}",
+            f"brinnatt/coredns:{self.kube_constant.v_coredns}",
             f"brinnatt/k8s-dns-node-cache:{self.kube_constant.v_dnsnodecache}",
             f"brinnatt/metrics-server:{self.kube_constant.v_metricsserver}",
             f"brinnatt/pause:{self.kube_constant.v_pause}"
@@ -176,7 +176,9 @@ class DownloadManager:
         images = self.kube_constant.component_images[component]
         logger.info(f"[DOWNLOAD] Component {component}: uploading {len(images)} image(s) to local registry.", extra=LOG_STDOUT)
         try:
-            self.registry.upload_to_registry(images)
+            # Continue past optional/unmirrorable tags (e.g. hubble-ui, dingtalk) so
+            # core component images still land in the local registry.
+            self.registry.upload_to_registry(images, fail_fast=False)
         except Exception as e:
             logger.error(f"[DOWNLOAD] Failed to upload {component} images — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload {component} images: {e}")

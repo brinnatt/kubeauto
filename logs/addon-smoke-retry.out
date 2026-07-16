@@ -1,0 +1,345 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.minio
+#1 transferring dockerfile: 97B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/1] FROM quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z@sha256:8834ae47a2de3509b83e0e70da9369c24bbbc22de42f2a2eddc530eee88acd1b
+#4 resolve quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z@sha256:8834ae47a2de3509b83e0e70da9369c24bbbc22de42f2a2eddc530eee88acd1b done
+#4 CACHED
+
+#5 exporting to image
+#5 exporting layers done
+#5 exporting manifest sha256:79f5beef4fe27220c1b55fe8d38a4dc88544870891b871bea6fe113b90256297 done
+#5 exporting config sha256:9a5b995451f9d661f670fdf52b156359d31b7bedb88a46fa961953236ae73c14 done
+#5 naming to registry.talkschool.cn:5000/brinnatt/minio:RELEASE.2025-04-08T15-41-24Z done
+#5 unpacking to registry.talkschool.cn:5000/brinnatt/minio:RELEASE.2025-04-08T15-41-24Z done
+#5 naming to docker.io/brinnatt/minio:RELEASE.2025-04-08T15-41-24Z done
+#5 unpacking to docker.io/brinnatt/minio:RELEASE.2025-04-08T15-41-24Z 0.0s done
+#5 DONE 0.1s
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/minio]
+476692aa7e4f: Layer already exists
+c0fb136fda0a: Layer already exists
+a68b380b887b: Layer already exists
+fdc61cbe6d7e: Layer already exists
+546fbfcace65: Layer already exists
+8c577d69454d: Layer already exists
+fb024c1bcc90: Layer already exists
+9d8ba80ec174: Layer already exists
+7d182d4b9a27: Layer already exists
+d949f716ce77: Layer already exists
+RELEASE.2025-04-08T15-41-24Z: digest: sha256:79f5beef4fe27220c1b55fe8d38a4dc88544870891b871bea6fe113b90256297 size: 2275
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 133B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for registry.talkschool.cn:5000/brinnatt/linux-utils:4.2.0
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/2] FROM registry.talkschool.cn:5000/brinnatt/linux-utils:4.2.0@sha256:f205fb89c88aaa35a1d46490b7ebbdac45d5c48d2924ca73b67d8eb14d4e735e
+#4 resolve registry.talkschool.cn:5000/brinnatt/linux-utils:4.2.0@sha256:f205fb89c88aaa35a1d46490b7ebbdac45d5c48d2924ca73b67d8eb14d4e735e 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 60.14MB 0.2s done
+#5 DONE 0.2s
+
+#6 [2/2] COPY kubectl /usr/local/bin/kubectl
+#6 CACHED
+
+#7 exporting to image
+#7 exporting layers done
+#7 exporting manifest sha256:da23e997bf62c9ead5b46bcbc823dfca4c48b00a0f3d211af9a4412bcf173843 done
+#7 exporting config sha256:040d0da84de22834685e6e162c07e044ed1651ebbf5efd3bf124d07b650a47d1 done
+#7 naming to docker.io/brinnatt/openebs-kubectl:1.33.6 done
+#7 unpacking to docker.io/brinnatt/openebs-kubectl:1.33.6 done
+#7 naming to registry.talkschool.cn:5000/brinnatt/openebs-kubectl:1.33.6 done
+#7 unpacking to registry.talkschool.cn:5000/brinnatt/openebs-kubectl:1.33.6 done
+#7 DONE 0.0s
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/openebs-kubectl]
+2e21018b343a: Layer already exists
+f18232174bc9: Layer already exists
+8066551ee209: Layer already exists
+1.33.6: digest: sha256:da23e997bf62c9ead5b46bcbc823dfca4c48b00a0f3d211af9a4412bcf173843 size: 901
+brinnatt/minio:RELEASE.2025-04-08T15-41-24Z docker-v2=200
+brinnatt/openebs-kubectl:1.33.6 docker-v2=200
+job.batch "prometheus-kube-prometheus-admission-create" force deleted
+pod "prometheus-kube-prometheus-admission-create-zxnrm" force deleted
+pod "kubernetes-dashboard-auth-857c567d87-9lhpp" force deleted
+pod "kubernetes-dashboard-kong-c5bfd86dd-5qft4" force deleted
+pod "kubernetes-dashboard-metrics-scraper-6c7c5f94ff-bp2sh" force deleted
+pod "kubernetes-dashboard-web-57c95fb6d-prp5q" force deleted
+pod "local-path-provisioner-7fbdcdb5cb-hbqrc" force deleted
+pod "kubernetes-dashboard-kong-c5bfd86dd-bhfv6" force deleted
+START_SETUP07
+[2026-07-16 21:56:49] [INFO] [service.cluster.manager] Current kubeconfig set to cluster test141.
+[2026-07-16 21:56:50] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.17): control node Python >=3.10, target module runtime Python >=3.9
+[2026-07-16 21:56:50] [INFO] [service.cluster.manager] Setting up cluster with playbook 07.cluster-addon.yml.
+[2026-07-16 21:56:50] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-07-16 21:56:50] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, calico: v3.28.4
+
+PLAY [localhost] ***************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [cluster-addon : 获取所有已经创建的POD信息] *******************************
+changed: [localhost]
+
+TASK [cluster-addon : 准备 DNS的部署文件] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除coredns部署] *****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建coredns部署] *****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备dnscache的部署文件] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备dnscache的部署文件] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除dnscache部署] ****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建dnscache部署] ****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 metrics-server的部署文件] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除 metrics-server部署] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 metrics-server部署] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 dashboard的部署文件] ********************************
+skipping: [localhost] => (item=dashboard-values.yaml) 
+skipping: [localhost] => (item=admin-user-sa-rbac.yaml) 
+skipping: [localhost] => (item=read-user-sa-rbac.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 dashboard部署] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建用户admin,read] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 local-storage 配置目录] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 local-storage部署文件] ******************************
+skipping: [localhost] => (item=local-path-storage.yaml) 
+skipping: [localhost] => (item=test-pod.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 local-storage部署] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nfs-provisioner 配置目录] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nfs-provisioner部署文件] ****************************
+skipping: [localhost] => (item=nfs-provisioner.yaml) 
+skipping: [localhost] => (item=test-pod.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 nfs-provisioner部署] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 清理 snapshot-controller crd] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间openebs] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=values.yaml) 
+skipping: [localhost] => (item=sc.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 openebs operator] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 openebs] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待lvm-localpv-controller 运行] *********************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建lvm storageclass] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 获取是否已创建命名空间monitor] ***************************
+changed: [localhost]
+
+TASK [cluster-addon : 创建命名空间monitor] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : get etcd-client-cert info] *******************************
+changed: [localhost]
+
+TASK [cluster-addon : 创建etcd-client 证书请求] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 etcd-client证书和私钥] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除 etcd-client-cert] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 etcd-client-cert] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+ok: [localhost] => {
+    "K8S_VER": "1.33.6"
+}
+
+TASK [cluster-addon : 创建 prom chart 个性化设置] ******************************
+ok: [localhost]
+
+TASK [cluster-addon : helm 删除 kube-prometheus-stack 75.7.0] ******************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 创建 kube-prometheus-stack 75.7.0] ******************
+changed: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+changed: [localhost]
+
+TASK [cluster-addon : 创建命名空间minio] ***************************************
+changed: [localhost]
+
+TASK [cluster-addon : get minio-global-cert info] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 minio-global-cert] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+changed: [localhost] => (item=operator-values.yaml)
+changed: [localhost] => (item=tenant-values.yaml)
+
+TASK [cluster-addon : helm 部署 minio operator] ********************************
+changed: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 minio operator] *****************************
+changed: [localhost]
+
+TASK [cluster-addon : helm 部署 minio tenant] **********************************
+changed: [localhost]
+
+TASK [cluster-addon : 准备 nacos的部署文件] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间nacos] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 nacos部署] ******************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间rocketmq] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 rocketmq operator] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待 rocketmq operator 运行] *************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 rocketmq 部署文件] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 部署 rocketmq cluster] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 cilium-check 配置目录] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备部署文件] ********************************************
+skipping: [localhost] => (item=connectivity-check.yaml) 
+skipping: [localhost] => (item=check-part1.yaml) 
+skipping: [localhost] => (item=namespace.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试namespace] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试part1] *******************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待echo pod运行，视下载镜像速度而定] ****************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建完整测试connectivity-check] **************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 network-check 配置目录] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备部署文件] ********************************************
+skipping: [localhost] => (item=network-check.yaml) 
+skipping: [localhost] => (item=namespace.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试namespace] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建完整测试network-check] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间ingress-nginx] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : label nodes for ingress-nginx controller] ****************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=values.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 ingress-nginx] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 ingress-nginx] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 提示 WARNNING] *******************************************
+skipping: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=13   changed=10   unreachable=0    failed=0    skipped=63   rescued=0    ignored=0   
+[2026-07-16 21:57:16] [INFO] [service.cluster.manager] Cluster setup completed (playbook 07.cluster-addon.yml).
+SETUP07_DONE

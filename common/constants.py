@@ -41,10 +41,30 @@ class KubeConstant:
     v_extra_bin: str = field(default="1.13.1", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
     })
+    v_extra_bin_sp1: str = field(default="1.3.1", metadata={
+        "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin-sp1",
+        "description": "Supplement package pulled into kubeauto-ext-bin build",
+    })
     v_harbor: str = field(default="v2.13.0", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
         "description": "None-official"
     })
+    # Pack / component image pins (brinnatt/* dual-publish tags)
+    v_kube_state_metrics: str = field(default="v2.16.0")
+    v_webhook_certgen: str = field(default="v1.6.0")
+    v_ingress_nginx_controller: str = field(default="v1.13.0")
+    v_json_mock: str = field(default="v1.3.0")
+    v_alpine_curl: str = field(default="v7.85.0")
+    v_snapshot_controller: str = field(default="v8.3.0")
+    v_csi_node_driver_registrar: str = field(default="v2.13.0")
+    v_csi_provisioner: str = field(default="v5.2.0")
+    v_csi_resizer: str = field(default="v1.11.2")
+    v_csi_snapshotter: str = field(default="v7.0.0")
+
+    @property
+    def k8s_bin_pack_tags(self):
+        """k8s-bin image tags published by pack CI (includes current default)."""
+        return (self.v_k8s_bin,)
     v_calico: str = field(default="v3.28.4", metadata={
         "refer_github": "https://github.com/projectcalico/calico",
         "refer_docs": "https://docs.tigera.io/calico/latest/about/"
@@ -189,82 +209,95 @@ class KubeConstant:
 
     @property
     def component_images(self):
+        """Extra component images for `kubecli download -E <component>`.
+
+        All entries must be brinnatt/<name>:<tag> so pull order is:
+          1. hub.talkedu.cn/kubeauto/<name>:<tag>
+          2. Docker Hub brinnatt/<name>:<tag>
+        Roles deploy from registry.talkschool.cn:5000/brinnatt/<name>:<tag>.
+        """
         return {
             "cilium": [
-                f"cilium/cilium:{self.v_cilium}",
-                f"cilium/operator-generic:{self.v_cilium}",
-                f"cilium/hubble-relay:{self.v_cilium}",
-                f"cilium/hubble-ui-backend:{self.v_cilium_hubble_ui}",
-                f"cilium/hubble-ui:{self.v_cilium_hubble_ui}",
+                f"brinnatt/cilium:{self.v_cilium}",
+                f"brinnatt/cilium-operator-generic:{self.v_cilium}",
+            ],
+            # Optional: enable with cilium_hubble_enabled / cilium_hubble_ui_enabled
+            "cilium-hubble": [
+                f"brinnatt/hubble-relay:{self.v_cilium}",
+                f"brinnatt/hubble-ui-backend:{self.v_cilium_hubble_ui}",
+                f"brinnatt/hubble-ui:{self.v_cilium_hubble_ui}",
             ],
             "flannel": [
-                f"ghcr.io/flannel-io/flannel:{self.v_flannel}",
-                f"ghcr.io/flannel-io/flannel-cni-plugin:{self.v_flannel_cni}",
-                f"flannel/flannel:{self.v_flannel}",
-                f"flannel/flannel-cni-plugin:{self.v_flannel_cni}",
+                f"brinnatt/flannel:{self.v_flannel}",
+                f"brinnatt/flannel-cni-plugin:{self.v_flannel_cni}",
             ],
             "dashboard": [
-                "kubernetesui/dashboard-api:1.14.0",
-                "kubernetesui/dashboard-auth:1.4.0",
-                "kubernetesui/dashboard-metrics-scraper:1.2.2",
-                "kubernetesui/dashboard-web:1.7.0",
-                "kong:3.9"
+                "brinnatt/dashboard-api:1.14.0",
+                "brinnatt/dashboard-auth:1.4.0",
+                "brinnatt/dashboard-metrics-scraper:1.2.2",
+                "brinnatt/dashboard-web:1.7.0",
+                "brinnatt/kong:3.9",
             ],
             "minio": [
-                f"quay.io/minio/operator:v{self.v_miniooperator}",
-                "quay.io/minio/operator-sidecar:v7.0.1",
-                "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z",
+                f"brinnatt/minio-operator:v{self.v_miniooperator}",
+                "brinnatt/minio-operator-sidecar:v7.0.1",
+                "brinnatt/minio:RELEASE.2025-04-08T15-41-24Z",
             ],
             "nacos": [
-                "nacos/nacos-server:v2.4.3",
-                "nacos/nacos-peer-finder-plugin:1.1"
+                "brinnatt/nacos-server:v2.4.3",
+                "brinnatt/nacos-peer-finder-plugin:1.1",
             ],
             "openebs": [
-                "bitnami/kubectl:1.33.6",
-                f"openebs/provisioner-localpv:{self.v_openebs}",
-                "openebs/linux-utils:4.2.0",
-                "openebs/lvm-driver:1.7.0",
-                "brinnatt/csi-node-driver-registrar:v2.13.0",
-                "brinnatt/csi-resizer:v1.11.2",
-                "brinnatt/csi-snapshotter:v7.0.0",
-                "brinnatt/csi-provisioner:v5.2.0",
-                "brinnatt/snapshot-controller:v8.3.0",
+                f"brinnatt/openebs-kubectl:{self.v_k8s_bin.lstrip('v')}",
+                # OpenEBS umbrella chart 4.3.2 ships localpv-provisioner image 4.3.0 (no :4.3.2 tag upstream).
+                "brinnatt/provisioner-localpv:4.3.0",
+                "brinnatt/linux-utils:4.2.0",
+                "brinnatt/lvm-driver:1.7.0",
+                f"brinnatt/csi-node-driver-registrar:{self.v_csi_node_driver_registrar}",
+                f"brinnatt/csi-resizer:{self.v_csi_resizer}",
+                f"brinnatt/csi-snapshotter:{self.v_csi_snapshotter}",
+                f"brinnatt/csi-provisioner:{self.v_csi_provisioner}",
+                f"brinnatt/snapshot-controller:{self.v_snapshot_controller}",
             ],
             "rocketmq": [
-                "apache/rocketmq-operator:latest",
-                "apacherocketmq/rocketmq-broker:4.5.0-alpine-operator-0.3.0",
-                "apacherocketmq/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0",
-                "apacherocketmq/rocketmq-console:2.0.0"
+                "brinnatt/rocketmq-operator:latest",
+                "brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0",
+                "brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0",
+                "brinnatt/rocketmq-console:2.0.0",
             ],
             "ingress-nginx": [
-                "brinnatt/ingress-nginx-controller:v1.13.0",
-                "brinnatt/kube-webhook-certgen:v1.6.0"
+                f"brinnatt/ingress-nginx-controller:{self.v_ingress_nginx_controller}",
+                f"brinnatt/kube-webhook-certgen:{self.v_webhook_certgen}",
             ],
             "kube-ovn": [
-                f"kubeovn/kube-ovn:{self.v_kubeovn}"
+                f"brinnatt/kube-ovn:{self.v_kubeovn}",
             ],
             "kube-router": [
-                f"cloudnativelabs/kube-router:{self.v_kuberouter}"
+                f"brinnatt/kube-router:{self.v_kuberouter}",
             ],
             "local-path-provisioner": [
-                f"rancher/local-path-provisioner:{self.v_localpathprovisioner}"
+                f"brinnatt/local-path-provisioner:{self.v_localpathprovisioner}",
             ],
             "network-check": [
-                "brinnatt/json-mock:v1.3.0",
-                "brinnatt/alpine-curl:v7.85.0"
+                f"brinnatt/json-mock:{self.v_json_mock}",
+                f"brinnatt/alpine-curl:{self.v_alpine_curl}",
             ],
             "nfs-provisioner": [
-                f"brinnatt/nfs-subdir-external-provisioner:{self.v_nfsprovisioner}"
+                f"brinnatt/nfs-subdir-external-provisioner:{self.v_nfsprovisioner}",
             ],
             "prometheus": [
-                "brinnatt/kube-state-metrics:v2.16.0",
-                "brinnatt/kube-webhook-certgen:v1.6.0",
-                "grafana/grafana:12.0.2",
-                "quay.io/kiwigrid/k8s-sidecar:1.30.5",
-                "quay.io/prometheus-operator/prometheus-config-reloader:v0.83.0",
-                "quay.io/prometheus-operator/prometheus-operator:v0.83.0",
-                "quay.io/prometheus/alertmanager:v0.28.1",
-                "quay.io/prometheus/node-exporter:v1.9.1",
-                "quay.io/prometheus/prometheus:v3.4.2"
-            ]
+                f"brinnatt/kube-state-metrics:{self.v_kube_state_metrics}",
+                f"brinnatt/kube-webhook-certgen:{self.v_webhook_certgen}",
+                "brinnatt/grafana:12.0.2",
+                "brinnatt/k8s-sidecar:1.30.5",
+                "brinnatt/prometheus-config-reloader:v0.83.0",
+                "brinnatt/prometheus-operator:v0.83.0",
+                "brinnatt/alertmanager:v0.28.1",
+                "brinnatt/node-exporter:v1.9.1",
+                "brinnatt/prometheus:v3.4.2",
+            ],
+            # Optional example receiver (roles/cluster-addon/templates/prometheus/dingtalk-webhook.yaml)
+            "prometheus-dingtalk": [
+                "brinnatt/prometheus-webhook-dingtalk:v0.3.0",
+            ],
         }

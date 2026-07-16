@@ -38,8 +38,10 @@
       retries: 15
       delay: 10
       ignore_errors: true
+      when: (openebs_lvm_enabled | default('yes') | string | lower) == 'yes'
 
     - name: 创建lvm storageclass
-      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/openebs/sc.yaml" 
+      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/openebs/sc.yaml"
+      when: (openebs_lvm_enabled | default('yes') | string | lower) == 'yes'
 
   when: 'openebs_install == "yes"'

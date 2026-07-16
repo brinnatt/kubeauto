@@ -213,6 +213,8 @@ openebs_hostpath: "/var/openebs/local"
 openebs_hostpath_storage_class: "openebs-hostpath"
 openebs_lvm_storage_class: "openebs-lvmpv"
 openebs_lvm_vg: "vg_k8s"
+# Set "no" to install hostpath localpv only (skip LVM CSI when VG is absent).
+openebs_lvm_enabled: "yes"
 
 
 # prometheus not installed by default

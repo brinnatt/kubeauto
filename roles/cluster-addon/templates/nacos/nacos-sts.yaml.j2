@@ -86,14 +86,14 @@ spec:
               topologyKey: "kubernetes.io/hostname"
       initContainers:
         - name: peer-finder-plugin-install
-          image: registry.talkschool.cn:5000/nacos/nacos-peer-finder-plugin:1.1
+          image: registry.talkschool.cn:5000/brinnatt/nacos-peer-finder-plugin:1.1
           volumeMounts:
             - mountPath: /home/nacos/plugins/peer-finder
               name: data
               subPath: peer-finder
       containers:
         - name: nacos
-          image: registry.talkschool.cn:5000/nacos/nacos-server:v2.4.3
+          image: registry.talkschool.cn:5000/brinnatt/nacos-server:v2.4.3
           resources:
             requests:
               memory: "2Gi"

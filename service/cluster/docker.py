@@ -571,6 +571,44 @@ WantedBy=multi-user.target
             logger.debug(f"Failed to check container status: {e}")
             return False
 
+    def is_container_running(self, name: str) -> bool:
+        """Return True if the named container exists and is running."""
+        if self.client is not None:
+            try:
+                container = self.client.containers.get(name)
+                container.reload()
+                return container.status == "running"
+            except docker.errors.NotFound:
+                return False
+            except APIError:
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
+
+        try:
+            result = self._run_docker([
+                "ps",
+                "--filter", f"name=^{name}$",
+                "--filter", "status=running",
+                "--format", "{{.Names}}",
+            ])
+            return name in result.stdout
+        except CommandExecutionError:
+            return False
+
+    def start_container(self, name: str) -> None:
+        """Start an existing stopped container by name."""
+        if self.client is not None:
+            try:
+                container = self.client.containers.get(name)
+                if container.status != "running":
+                    container.start()
+                return
+            except docker.errors.NotFound:
+                raise CommandExecutionError(f"Container '{name}' not found", 1)
+            except APIError:
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
+
+        run_command(["docker", "start", name])
+
     def remove_container(self, name: str) -> None:
         """
         remove container

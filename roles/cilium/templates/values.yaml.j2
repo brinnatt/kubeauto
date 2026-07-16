@@ -1,5 +1,5 @@
 image:
-  repository: "registry.talkschool.cn:5000/cilium/cilium"
+  repository: "registry.talkschool.cn:5000/brinnatt/cilium"
   tag: "{{ cilium_ver }}"
   useDigest: false
 
@@ -23,7 +23,7 @@ hubble:
   relay:
     enabled: true
     image:
-      repository: "registry.talkschool.cn:5000/cilium/hubble-relay"
+      repository: "registry.talkschool.cn:5000/brinnatt/hubble-relay"
       tag: "{{ cilium_ver }}"
       useDigest: false
   ui:
@@ -34,12 +34,12 @@ hubble:
 {% endif %}
     backend:
       image:
-        repository: "registry.talkschool.cn:5000/cilium/hubble-ui-backend"
+        repository: "registry.talkschool.cn:5000/brinnatt/hubble-ui-backend"
         tag: "{{ cilium_hubble_ui_ver | default('v0.13.5') }}"
         useDigest: false
     frontend:
       image:
-        repository: "registry.talkschool.cn:5000/cilium/hubble-ui"
+        repository: "registry.talkschool.cn:5000/brinnatt/hubble-ui"
         tag: "{{ cilium_hubble_ui_ver | default('v0.13.5') }}"
         useDigest: false
 {% endif %}
@@ -67,7 +67,11 @@ etcd:
 operator:
   enabled: true
   image:
-    repository: "registry.talkschool.cn:5000/cilium/operator"
+    # Chart helper: repository + "-" + cloud + suffix + ":" + tag (cloud defaults to generic).
+    # Upstream default is quay.io/cilium/operator -> operator-generic.
+    # Keep repository WITHOUT -generic so cloud=generic yields brinnatt/cilium-operator-generic.
+    repository: "registry.talkschool.cn:5000/brinnatt/cilium-operator"
+    suffix: ""
     tag: "{{ cilium_ver }}"
     useDigest: false
   replicas: 1

@@ -1,0 +1,1018 @@
+[2026-07-16 19:15:37] [ERROR] [controller.cluster.cli] Cluster test133-cilium not found
+[2026-07-16 19:15:38] [INFO] [service.cluster.manager] Cluster test133-cilium created. Next: edit /usr/local/kubeauto/clusters/test133-cilium/hosts and /usr/local/kubeauto/clusters/test133-cilium/config.yml, then run setup.
+Created /usr/local/kubeauto/clusters/test133-cilium/hosts (cilium/ipvs)
+Note: run 'kubecli new test133-cilium' first so config.yml placeholders are resolved
+[2026-07-16 19:15:38] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.17): control node Python >=3.10, target module runtime Python >=3.9
+[2026-07-16 19:15:38] [INFO] [service.cluster.manager] Setting up cluster with playbook 90.setup.yml.
+[2026-07-16 19:15:38] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-07-16 19:15:38] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, cilium: v1.19.5
+[WARNING]: Collection ansible.posix does not support Ansible version 2.17.14
+
+PLAY [kube_master,kube_node,etcd,ex_lb,chrony] *********************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.47.133]
+
+TASK [chrony : check if chronyd running, break the role] ***********************
+skipping: [192.168.47.133]
+
+TASK [chrony : terminate the play if chronyd running] **************************
+skipping: [192.168.47.133]
+
+TASK [chrony : uninstall residual ntp chrony] **********************************
+skipping: [192.168.47.133] => (item=ntp) 
+skipping: [192.168.47.133] => (item=chrony) 
+skipping: [192.168.47.133]
+
+TASK [chrony : prepare some dirs] **********************************************
+skipping: [192.168.47.133] => (item=/etc/chrony) 
+skipping: [192.168.47.133] => (item=/var/lib/chrony) 
+skipping: [192.168.47.133] => (item=/var/log/chrony) 
+skipping: [192.168.47.133]
+
+TASK [chrony : distribute chronyd binary] **************************************
+skipping: [192.168.47.133]
+
+TASK [chrony : create chronyd systemd unit file] *******************************
+skipping: [192.168.47.133]
+
+TASK [chrony : configure chrony server] ****************************************
+skipping: [192.168.47.133]
+
+TASK [chrony : configure chrony client] ****************************************
+skipping: [192.168.47.133]
+
+TASK [chrony : enable chronyd service on startup] ******************************
+skipping: [192.168.47.133]
+
+TASK [chrony : start chronyd service] ******************************************
+skipping: [192.168.47.133]
+
+TASK [chrony : wait for chronyd running] ***************************************
+skipping: [192.168.47.133]
+
+PLAY [localhost] ***************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [deploy : prepare some dirs] **********************************************
+changed: [localhost] => (item=/usr/local/kubeauto/clusters/test133-cilium/ssl)
+changed: [localhost] => (item=/usr/local/kubeauto/clusters/test133-cilium/backup)
+changed: [localhost] => (item=/usr/local/kubeauto/clusters/test133-cilium/yml)
+ok: [localhost] => (item=~/.kube)
+
+TASK [deploy : set extra-bin directory permission] *****************************
+ok: [localhost]
+
+TASK [deploy : read ca cert stat information into p] ***************************
+ok: [localhost]
+
+TASK [deploy : prepare ca configuration and cert request] **********************
+changed: [localhost] => (item=ca-config.json)
+changed: [localhost] => (item=ca-csr.json)
+
+TASK [deploy : generate CA cert and private key] *******************************
+changed: [localhost]
+
+TASK [deploy : prepare admin csr for kubectl usage] ****************************
+changed: [localhost]
+
+TASK [deploy : create admin cert and private key] ******************************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+TASK [deploy : install kubeconfig] *********************************************
+changed: [localhost]
+
+TASK [deploy : create self-defined user certs directory] ***********************
+skipping: [localhost]
+
+TASK [deploy : prepare CA configuration] ***************************************
+skipping: [localhost]
+
+TASK [deploy : prepare {{ USER_NAME }} cert request for kubectl] ***************
+skipping: [localhost]
+
+TASK [deploy : create {{ USER_NAME }} cert and private key] ********************
+skipping: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+skipping: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+skipping: [localhost]
+
+TASK [deploy : set context params] *********************************************
+skipping: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+skipping: [localhost]
+
+TASK [deploy : generate clusterrolebind configuration] *************************
+skipping: [localhost]
+
+TASK [deploy : create clusterrolebind] *****************************************
+skipping: [localhost]
+
+TASK [deploy : debug] **********************************************************
+skipping: [localhost]
+
+TASK [deploy : prepare kube-proxy csr] *****************************************
+changed: [localhost]
+
+TASK [deploy : create kube-proxy cert and private key] *************************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+TASK [deploy : prepare kube-controller-manager csr] ****************************
+changed: [localhost]
+
+TASK [deploy : create kube-controller-manager cert and private key] ************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+TASK [deploy : prepare kube-scheduler csr] *************************************
+changed: [localhost]
+
+TASK [deploy : create kube-scheduler cert and private key] *********************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+PLAY [kube_master,kube_node,etcd] **********************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.47.133]
+
+TASK [prepare : read the prepare tasks file] ***********************************
+ok: [192.168.47.133]
+
+TASK [prepare : indicates the prepare tasks finished already] ******************
+skipping: [192.168.47.133]
+
+TASK [prepare : copy huawei cloud apt mirror script] ***************************
+skipping: [192.168.47.133]
+
+TASK [prepare : apply huawei cloud apt mirror] *********************************
+skipping: [192.168.47.133]
+
+TASK [prepare : update apt cache] **********************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : delete ubuntu default software] ********************************
+skipping: [192.168.47.133]
+
+TASK [prepare : install ubuntu/debian basic software] **************************
+skipping: [192.168.47.133]
+
+TASK [prepare : create journal relative directory] *****************************
+skipping: [192.168.47.133] => (item=/etc/systemd/journald.conf.d) 
+skipping: [192.168.47.133] => (item=/var/log/journal) 
+skipping: [192.168.47.133]
+
+TASK [prepare : optimize journal params] ***************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : restart journald service] **************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : copy huawei cloud yum/dnf mirror script] ***********************
+ok: [192.168.47.133]
+
+TASK [prepare : apply huawei cloud yum/dnf mirror] *****************************
+ok: [192.168.47.133]
+
+TASK [prepare : detect ansible-compatible python on target] ********************
+ok: [192.168.47.133]
+
+TASK [prepare : install python39 for ansible (RHEL8 family, only when no compatible python)] ***
+skipping: [192.168.47.133]
+
+TASK [prepare : delete centos/redhat default software] *************************
+ok: [192.168.47.133]
+
+TASK [prepare : install basic system software] *********************************
+ok: [192.168.47.133]
+
+TASK [prepare : disable selinux right now] *************************************
+changed: [192.168.47.133]
+
+TASK [prepare : check if /etc/selinux/config exists] ***************************
+ok: [192.168.47.133]
+
+TASK [prepare : disable selinux forever] ***************************************
+ok: [192.168.47.133]
+
+TASK [prepare : disable selinux forever] ***************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : forbidden rsyslog fetch journald 1, avoid double handling logs and wasting disk space] ***
+ok: [192.168.47.133]
+
+TASK [prepare : forbidden rsyslog fetch journald 2, avoid double handling logs and wasting disk space] ***
+ok: [192.168.47.133]
+
+TASK [prepare : restart rsyslog service] ***************************************
+changed: [192.168.47.133]
+
+TASK [prepare : copy huawei cloud zypper mirror script] ************************
+skipping: [192.168.47.133]
+
+TASK [prepare : apply huawei cloud zypper mirror] ******************************
+skipping: [192.168.47.133]
+
+TASK [prepare : install basic system software] *********************************
+skipping: [192.168.47.133]
+
+TASK [prepare : copy huawei cloud yum/dnf mirror script] ***********************
+skipping: [192.168.47.133]
+
+TASK [prepare : apply huawei cloud yum/dnf mirror] *****************************
+skipping: [192.168.47.133]
+
+TASK [prepare : detect ansible-compatible python on target] ********************
+skipping: [192.168.47.133]
+
+TASK [prepare : install python39 for ansible (RHEL8 family, only when no compatible python)] ***
+skipping: [192.168.47.133]
+
+TASK [prepare : delete centos/redhat default software] *************************
+skipping: [192.168.47.133]
+
+TASK [prepare : install basic system software] *********************************
+skipping: [192.168.47.133]
+
+TASK [prepare : disable selinux right now] *************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : check if /etc/selinux/config exists] ***************************
+skipping: [192.168.47.133]
+
+TASK [prepare : disable selinux forever] ***************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : disable selinux forever] ***************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : forbidden rsyslog fetch journald 1, avoid double handling logs and wasting disk space] ***
+skipping: [192.168.47.133]
+
+TASK [prepare : forbidden rsyslog fetch journald 2, avoid double handling logs and wasting disk space] ***
+skipping: [192.168.47.133]
+
+TASK [prepare : restart rsyslog service] ***************************************
+skipping: [192.168.47.133]
+
+TASK [prepare : disable swap] **************************************************
+changed: [192.168.47.133]
+
+TASK [prepare : delete fstab swap configuration] *******************************
+ok: [192.168.47.133]
+
+TASK [prepare : load kernel module] ********************************************
+ok: [192.168.47.133] => (item=br_netfilter)
+ok: [192.168.47.133] => (item=dm_snapshot)
+ok: [192.168.47.133] => (item=dm_thin_pool)
+ok: [192.168.47.133] => (item=ip_vs)
+ok: [192.168.47.133] => (item=ip_vs_rr)
+ok: [192.168.47.133] => (item=ip_vs_wrr)
+ok: [192.168.47.133] => (item=ip_vs_sh)
+ok: [192.168.47.133] => (item=nf_conntrack)
+
+TASK [prepare : try to load nf_conntrack_ipv4] *********************************
+changed: [192.168.47.133]
+
+TASK [prepare : enable systemd loading module automatically] *******************
+ok: [192.168.47.133]
+
+TASK [prepare : load kernel module on startup] *********************************
+ok: [192.168.47.133]
+
+TASK [prepare : set system params] *********************************************
+changed: [192.168.47.133]
+
+TASK [prepare : check if fs.may_detach_mounts needs to be set] *****************
+ok: [192.168.47.133]
+
+TASK [prepare : if needed, set fs.may_detach_mounts as 1] **********************
+skipping: [192.168.47.133]
+
+TASK [prepare : check if net.ipv4.tcp_tw_recycle needs to be set] **************
+ok: [192.168.47.133]
+
+TASK [prepare : if needed, set tcp_tw_recycle] *********************************
+skipping: [192.168.47.133]
+
+TASK [prepare : take effect on system] *****************************************
+changed: [192.168.47.133]
+
+TASK [prepare : create systemd configuration directory] ************************
+ok: [192.168.47.133]
+
+TASK [prepare : set system param ulimits] **************************************
+ok: [192.168.47.133]
+
+TASK [prepare : take SCTP to kernel module blacklist] **************************
+ok: [192.168.47.133]
+
+TASK [prepare : prepare some dirs] *********************************************
+ok: [192.168.47.133] => (item=/usr/local/bin)
+changed: [192.168.47.133] => (item=/etc/kubernetes/ssl)
+ok: [192.168.47.133] => (item=/root/.kube)
+
+TASK [prepare : copy kubectl kubeconfig to home dir] ***************************
+changed: [192.168.47.133]
+
+TASK [prepare : add hosts entry to resolve local registry] *********************
+ok: [192.168.47.133]
+
+TASK [prepare : set node hostname] *********************************************
+changed: [192.168.47.133]
+
+TASK [prepare : the master[0] resolves all hosts master-133 in /etc/hosts] *****
+changed: [192.168.47.133]
+
+TASK [prepare : get /etc/hosts from the master[0]] *****************************
+changed: [192.168.47.133]
+
+TASK [prepare : delete /etc/hosts in the master[0]] ****************************
+changed: [192.168.47.133]
+
+TASK [prepare : sync /etc/hosts to all hosts] **********************************
+changed: [192.168.47.133] => (item=192.168.47.133)
+ok: [192.168.47.133] => (item=192.168.47.133)
+
+TASK [prepare : set prepare tasks label file] **********************************
+changed: [192.168.47.133]
+
+PLAY [etcd] ********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.47.133]
+
+TASK [etcd : prepare some dirs] ************************************************
+changed: [192.168.47.133]
+
+TASK [etcd : download etcd binary] *********************************************
+ok: [192.168.47.133] => (item=etcd)
+ok: [192.168.47.133] => (item=etcdctl)
+ok: [192.168.47.133] => (item=etcdutl)
+
+TASK [etcd : create etcd CSR] **************************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [etcd : create etcd certs and private key] ********************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [etcd : distribute etcd cert-related files] *******************************
+changed: [192.168.47.133] => (item=ca.pem)
+changed: [192.168.47.133] => (item=etcd.pem)
+changed: [192.168.47.133] => (item=etcd-key.pem)
+
+TASK [etcd : create etcd systemd unit file] ************************************
+changed: [192.168.47.133]
+
+TASK [etcd : enable etcd service on startup] ***********************************
+changed: [192.168.47.133]
+
+TASK [etcd : start etcd service] ***********************************************
+changed: [192.168.47.133]
+
+TASK [etcd : wait for etcd service running] ************************************
+changed: [192.168.47.133]
+
+PLAY [kube_master,kube_node] ***************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.47.133]
+
+TASK [docker : check if docker was installed] **********************************
+skipping: [192.168.47.133]
+
+TASK [docker : get docker version information] *********************************
+skipping: [192.168.47.133]
+
+TASK [docker : debug info] *****************************************************
+skipping: [192.168.47.133]
+
+TASK [docker : revise docker version with float type] **************************
+skipping: [192.168.47.133]
+
+TASK [docker : infer docker installed] *****************************************
+skipping: [192.168.47.133]
+
+TASK [docker : prepare docker-related directories] *****************************
+skipping: [192.168.47.133] => (item=/usr/local/bin) 
+skipping: [192.168.47.133] => (item=/etc/docker) 
+skipping: [192.168.47.133]
+
+TASK [docker : download docker binary] *****************************************
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.47.133]
+
+TASK [docker : configure docker daemon] ****************************************
+skipping: [192.168.47.133]
+
+TASK [docker : create docker systemd unit file] ********************************
+skipping: [192.168.47.133]
+
+TASK [docker : enable docker service on startup] *******************************
+skipping: [192.168.47.133]
+
+TASK [docker : start docker service] *******************************************
+skipping: [192.168.47.133]
+
+TASK [docker : wait for docker running] ****************************************
+skipping: [192.168.47.133]
+
+TASK [docker : configure docker symlink] ***************************************
+skipping: [192.168.47.133]
+
+TASK [containerd : prepare containerd-related directories] *********************
+changed: [192.168.47.133] => (item=/etc/containerd)
+changed: [192.168.47.133] => (item=/etc/containerd/certs.d/docker.io)
+changed: [192.168.47.133] => (item=/etc/containerd/certs.d/registry.talkschool.cn:5000)
+changed: [192.168.47.133] => (item=/etc/containerd/certs.d/harbor.brinnatt.io.local:8443)
+
+TASK [containerd : prepare INSECURE REGISTRY dirs] *****************************
+skipping: [192.168.47.133] => (item=http://registry.talkschool.cn:5000) 
+changed: [192.168.47.133] => (item=https://reg.yourcompany.com)
+
+TASK [containerd : load kernel module overlay] *********************************
+ok: [192.168.47.133]
+
+TASK [containerd : download containerd binary] *********************************
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/runc)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-stress)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/ctr)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-shim-runc-v2)
+
+TASK [containerd : download crictl] ********************************************
+ok: [192.168.47.133]
+
+TASK [containerd : crictl bash completion] *************************************
+changed: [192.168.47.133]
+
+TASK [containerd : create containerd configuration file] ***********************
+changed: [192.168.47.133]
+
+TASK [containerd : configure docker.io accelerator] ****************************
+changed: [192.168.47.133]
+
+TASK [containerd : configure local_registry] ***********************************
+changed: [192.168.47.133]
+
+TASK [containerd : configure trusted INSECURE REGISTRY registry] ***************
+skipping: [192.168.47.133] => (item=http://registry.talkschool.cn:5000) 
+changed: [192.168.47.133] => (item=https://reg.yourcompany.com)
+
+TASK [containerd : configure harbor registry] **********************************
+changed: [192.168.47.133]
+
+TASK [containerd : create systemd unit file] ***********************************
+changed: [192.168.47.133]
+
+TASK [containerd : create crictl configuration] ********************************
+changed: [192.168.47.133]
+
+TASK [containerd : enable containerd service on startup] ***********************
+changed: [192.168.47.133]
+
+TASK [containerd : start containerd service] ***********************************
+changed: [192.168.47.133]
+
+TASK [containerd : wait for containerd service running] ************************
+changed: [192.168.47.133]
+
+PLAY [kube_master] *************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.47.133]
+
+TASK [kube-lb : prepare some dirs] *********************************************
+changed: [192.168.47.133] => (item=/etc/kube-lb/sbin)
+changed: [192.168.47.133] => (item=/etc/kube-lb/logs)
+changed: [192.168.47.133] => (item=/etc/kube-lb/conf)
+
+TASK [kube-lb : download kube-lb(nginx)] ***************************************
+changed: [192.168.47.133]
+
+TASK [kube-lb : create kube-lb configuration file] *****************************
+changed: [192.168.47.133]
+
+TASK [kube-lb : create kube-lb systemd unit file] ******************************
+changed: [192.168.47.133]
+
+TASK [kube-lb : enable kube-lb service on startup] *****************************
+changed: [192.168.47.133]
+
+TASK [kube-lb : start kube-lb service] *****************************************
+changed: [192.168.47.133]
+
+TASK [kube-lb : wait for kube-lb service running] ******************************
+changed: [192.168.47.133]
+
+TASK [kube-master : assure k8s bin can be executable] **************************
+ok: [192.168.47.133] => (item=kube-apiserver)
+ok: [192.168.47.133] => (item=kube-controller-manager)
+ok: [192.168.47.133] => (item=kube-scheduler)
+ok: [192.168.47.133] => (item=kubectl)
+
+TASK [kube-master : distribute controller/scheduler kubeconfig] ****************
+changed: [192.168.47.133] => (item=kube-controller-manager.kubeconfig)
+changed: [192.168.47.133] => (item=kube-scheduler.kubeconfig)
+
+TASK [kube-master : create cluster audit related directories] ******************
+skipping: [192.168.47.133] => (item=/etc/kubernetes/audit) 
+skipping: [192.168.47.133] => (item=/var/log/kubernetes/audit) 
+skipping: [192.168.47.133]
+
+TASK [kube-master : distribute cluster audit configuration file] ***************
+skipping: [192.168.47.133]
+
+TASK [kube-master : create kubernetes CSR] *************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-master : create kubernetes cert and private key] ********************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-master : create aggregator proxy CSR] *******************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-master : create aggregator-proxy cert and private key] **************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-master : distribute kubernetes cert-related files] ******************
+ok: [192.168.47.133] => (item=ca.pem)
+changed: [192.168.47.133] => (item=ca-key.pem)
+changed: [192.168.47.133] => (item=kubernetes.pem)
+changed: [192.168.47.133] => (item=kubernetes-key.pem)
+changed: [192.168.47.133] => (item=aggregator-proxy.pem)
+changed: [192.168.47.133] => (item=aggregator-proxy-key.pem)
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+changed: [192.168.47.133] => (item=/etc/kubernetes/kube-controller-manager.kubeconfig)
+changed: [192.168.47.133] => (item=/etc/kubernetes/kube-scheduler.kubeconfig)
+
+TASK [kube-master : create master systemd unit file] ***************************
+changed: [192.168.47.133] => (item=kube-apiserver.service)
+changed: [192.168.47.133] => (item=kube-controller-manager.service)
+changed: [192.168.47.133] => (item=kube-scheduler.service)
+
+TASK [kube-master : enable master service on startup] **************************
+changed: [192.168.47.133]
+
+TASK [kube-master : reload systemd and restart kube-apiserver] *****************
+changed: [192.168.47.133]
+
+TASK [kube-master : wait for kube-apiserver running] ***************************
+changed: [192.168.47.133]
+
+TASK [kube-master : restart kube-controller-manager and kube-scheduler] ********
+changed: [192.168.47.133]
+
+TASK [kube-master : wait for kube-controller-manager running] ******************
+FAILED - RETRYING: [192.168.47.133]: wait for kube-controller-manager running (8 retries left).
+FAILED - RETRYING: [192.168.47.133]: wait for kube-controller-manager running (7 retries left).
+changed: [192.168.47.133]
+
+TASK [kube-master : wait for kube-scheduler running] ***************************
+changed: [192.168.47.133]
+
+TASK [kube-master : copy kubectl.kubeconfig] ***********************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+ok: [192.168.47.133 -> localhost]
+
+TASK [kube-master : wait for master service running] ***************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-master : check if user:kubernetes was bond to related role] *********
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-master : create user:kubernetes role binding] ***********************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : create kube_node related directories] ************************
+changed: [192.168.47.133] => (item=/var/lib/kubelet)
+changed: [192.168.47.133] => (item=/var/lib/kube-proxy)
+ok: [192.168.47.133] => (item=/etc/cni/net.d)
+ok: [192.168.47.133] => (item=/opt/cni/bin)
+
+TASK [kube-node : download kubelet,kube-proxy binaries] ************************
+ok: [192.168.47.133] => (item=kubectl)
+ok: [192.168.47.133] => (item=kubelet)
+ok: [192.168.47.133] => (item=kube-proxy)
+
+TASK [kube-node : download cni plugins binaries] *******************************
+changed: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr)
+changed: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan)
+changed: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device)
+changed: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall)
+changed: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE)
+ok: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp)
+
+TASK [kube-node : kubectl bash completion] *************************************
+changed: [192.168.47.133]
+
+TASK [kube-node : prepare kubelet CSR] *****************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : create kubelet cert and private key] *************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : set cluster params] ******************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : set client credential params] ********************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : set context params] ******************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : choose default context] **************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : distribute ca cert] ******************************************
+ok: [192.168.47.133]
+
+TASK [kube-node : distribute kubelet cert] *************************************
+changed: [192.168.47.133] => (item=kubelet.pem)
+changed: [192.168.47.133] => (item=kubelet-key.pem)
+
+TASK [kube-node : distribute kubeconfig] ***************************************
+changed: [192.168.47.133]
+
+TASK [kube-node : prepare cni configuration file] ******************************
+changed: [192.168.47.133]
+
+TASK [kube-node : create kubelet configuration file] ***************************
+changed: [192.168.47.133]
+
+TASK [kube-node : check if /run/systemd/resolve/resolv.conf exists] ************
+ok: [192.168.47.133]
+
+TASK [kube-node : replace resolvConf param] ************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : create kubelet systemd unit file] ****************************
+changed: [192.168.47.133]
+
+TASK [kube-node : enable kubelet service on startup] ***************************
+changed: [192.168.47.133]
+
+TASK [kube-node : start kubelet service] ***************************************
+changed: [192.168.47.133]
+
+TASK [kube-node : distribute kube-proxy.kubeconfig configuration file] *********
+changed: [192.168.47.133]
+
+TASK [kube-node : correct apiserver socket in kube-proxy.kubeconfig] ***********
+changed: [192.168.47.133]
+
+TASK [kube-node : create kube-proxy configuration] *****************************
+changed: [192.168.47.133]
+
+TASK [kube-node : create kube-proxy service file] ******************************
+changed: [192.168.47.133]
+
+TASK [kube-node : enable kube-proxy service on startup] ************************
+changed: [192.168.47.133]
+
+TASK [kube-node : start kube-proxy service] ************************************
+changed: [192.168.47.133]
+
+TASK [kube-node : wait for kube-proxy running] *********************************
+changed: [192.168.47.133]
+
+TASK [kube-node : wait for kubelet running] ************************************
+changed: [192.168.47.133]
+
+TASK [kube-node : wait for node Ready] *****************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : Setting worker role name] ************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : Setting master role name] ************************************
+changed: [192.168.47.133 -> localhost]
+
+TASK [kube-node : Making master nodes SchedulingDisabled] **********************
+skipping: [192.168.47.133]
+
+PLAY [kube_node] ***************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.47.133]
+
+TASK [kube-lb : prepare some dirs] *********************************************
+skipping: [192.168.47.133] => (item=/etc/kube-lb/sbin) 
+skipping: [192.168.47.133] => (item=/etc/kube-lb/logs) 
+skipping: [192.168.47.133] => (item=/etc/kube-lb/conf) 
+skipping: [192.168.47.133]
+
+TASK [kube-lb : download kube-lb(nginx)] ***************************************
+skipping: [192.168.47.133]
+
+TASK [kube-lb : create kube-lb configuration file] *****************************
+skipping: [192.168.47.133]
+
+TASK [kube-lb : create kube-lb systemd unit file] ******************************
+skipping: [192.168.47.133]
+
+TASK [kube-lb : enable kube-lb service on startup] *****************************
+skipping: [192.168.47.133]
+
+TASK [kube-lb : start kube-lb service] *****************************************
+skipping: [192.168.47.133]
+
+TASK [kube-lb : wait for kube-lb service running] ******************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : create kube_node related directories] ************************
+skipping: [192.168.47.133] => (item=/var/lib/kubelet) 
+skipping: [192.168.47.133] => (item=/var/lib/kube-proxy) 
+skipping: [192.168.47.133] => (item=/etc/cni/net.d) 
+skipping: [192.168.47.133] => (item=/opt/cni/bin) 
+skipping: [192.168.47.133]
+
+TASK [kube-node : download kubelet,kube-proxy binaries] ************************
+skipping: [192.168.47.133] => (item=kubectl) 
+skipping: [192.168.47.133] => (item=kubelet) 
+skipping: [192.168.47.133] => (item=kube-proxy) 
+skipping: [192.168.47.133]
+
+TASK [kube-node : download cni plugins binaries] *******************************
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE) 
+skipping: [192.168.47.133] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp) 
+skipping: [192.168.47.133]
+
+TASK [kube-node : kubectl bash completion] *************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : prepare kubelet CSR] *****************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : create kubelet cert and private key] *************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : set cluster params] ******************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : set client credential params] ********************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : set context params] ******************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : choose default context] **************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : distribute ca cert] ******************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : distribute kubelet cert] *************************************
+skipping: [192.168.47.133] => (item=kubelet.pem) 
+skipping: [192.168.47.133] => (item=kubelet-key.pem) 
+skipping: [192.168.47.133]
+
+TASK [kube-node : distribute kubeconfig] ***************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : prepare cni configuration file] ******************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : create kubelet configuration file] ***************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : check if /run/systemd/resolve/resolv.conf exists] ************
+skipping: [192.168.47.133]
+
+TASK [kube-node : replace resolvConf param] ************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : create kubelet systemd unit file] ****************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : enable kubelet service on startup] ***************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : start kubelet service] ***************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : distribute kube-proxy.kubeconfig configuration file] *********
+skipping: [192.168.47.133]
+
+TASK [kube-node : correct apiserver socket in kube-proxy.kubeconfig] ***********
+skipping: [192.168.47.133]
+
+TASK [kube-node : create kube-proxy configuration] *****************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : create kube-proxy service file] ******************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : enable kube-proxy service on startup] ************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : start kube-proxy service] ************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : wait for kube-proxy running] *********************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : wait for kubelet running] ************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : wait for node Ready] *****************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : Setting worker role name] ************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : Setting master role name] ************************************
+skipping: [192.168.47.133]
+
+TASK [kube-node : Making master nodes SchedulingDisabled] **********************
+skipping: [192.168.47.133]
+
+PLAY [kube_master,kube_node] ***************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [192.168.47.133]
+
+TASK [calico : create calico CSR] **********************************************
+skipping: [192.168.47.133]
+
+TASK [calico : create calico cert and private key] *****************************
+skipping: [192.168.47.133]
+
+TASK [calico : delete old calico-etcd-secrets] *********************************
+skipping: [192.168.47.133]
+
+TASK [calico : create calico-etcd-secrets] *************************************
+skipping: [192.168.47.133]
+
+TASK [calico : configure calico DaemonSet yaml file] ***************************
+skipping: [192.168.47.133]
+
+TASK [calico : delete calico network] ******************************************
+skipping: [192.168.47.133]
+
+TASK [calico : apply calico network] *******************************************
+skipping: [192.168.47.133]
+
+TASK [calico : prepare some dirs] **********************************************
+skipping: [192.168.47.133] => (item=/etc/calico/ssl) 
+skipping: [192.168.47.133]
+
+TASK [calico : distribute calico cert-related files] ***************************
+skipping: [192.168.47.133] => (item=ca.pem) 
+skipping: [192.168.47.133] => (item=calico.pem) 
+skipping: [192.168.47.133] => (item=calico-key.pem) 
+skipping: [192.168.47.133]
+
+TASK [calico : delete default cni configuration] *******************************
+skipping: [192.168.47.133]
+
+TASK [calico : download calicoctl client command] ******************************
+skipping: [192.168.47.133] => (item=calicoctl) 
+skipping: [192.168.47.133]
+
+TASK [calico : prepare calicoctl configuration file] ***************************
+skipping: [192.168.47.133]
+
+TASK [calico : wait for calico-node running in a polling manner] ***************
+skipping: [192.168.47.133]
+
+TASK [calico : choose default rr nodes(master nodes by default)] ***************
+skipping: [192.168.47.133]
+
+TASK [calico : choose user-defined rr nodes] ***********************************
+skipping: [192.168.47.133]
+
+TASK [calico : show rr nodes] **************************************************
+skipping: [192.168.47.133]
+
+TASK [calico : configure routeReflectorClusterID] ******************************
+skipping: [192.168.47.133]
+
+TASK [calico : node label] *****************************************************
+skipping: [192.168.47.133]
+
+TASK [calico : configure calico bgp yaml file] *********************************
+skipping: [192.168.47.133] => (item=bgp-default.yaml) 
+skipping: [192.168.47.133] => (item=bgp-rr.yaml) 
+skipping: [192.168.47.133]
+
+TASK [calico : apply calico bgp configuration] *********************************
+skipping: [192.168.47.133]
+
+TASK [calico : check bgp connection] *******************************************
+skipping: [192.168.47.133]
+
+TASK [calico : debug] **********************************************************
+skipping: [192.168.47.133]
+
+TASK [cilium : revise kernel version with float type] **************************
+ok: [192.168.47.133]
+
+TASK [cilium : check if kernel version > 4.9] **********************************
+skipping: [192.168.47.133]
+
+TASK [cilium : create cilium chart setting] ************************************
+An exception occurred during task execution. To see the full traceback, use -vvv. The error was: ansible.errors.AnsibleUndefinedVariable: 'repository' is undefined
+fatal: [192.168.47.133 -> localhost]: FAILED! => {"changed": false, "msg": "AnsibleUndefinedVariable: 'repository' is undefined"}
+
+PLAY RECAP *********************************************************************
+192.168.47.133             : ok=124  changed=87   unreachable=0    failed=1    skipped=118  rescued=0    ignored=0   
+localhost                  : ok=31   changed=28   unreachable=0    failed=0    skipped=11   rescued=0    ignored=0   
+[2026-07-16 19:17:29] [ERROR] [service.cluster.manager] Failed to set up the k8s cluster with playbook 90.setup.yml
+[2026-07-16 19:17:29] [ERROR] [controller.cluster.cli] Failed to set up the k8s cluster with playbook 90.setup.yml

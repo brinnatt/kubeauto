@@ -20,8 +20,18 @@ class TestTalkeduMirror(unittest.TestCase):
         )
 
     def test_ignores_non_brinnatt(self):
-        self.assertIsNone(_talkedu_mirror("calico/node:v3.28.4", self.registry))
-        self.assertIsNone(_talkedu_mirror("registry:2", self.registry))
+        self.assertIsNone(_talkedu_mirror("registry.k8s.io/pause:3.10", self.registry))
+        self.assertIsNone(_talkedu_mirror("quay.io/prometheus/prometheus:v3.4.2", self.registry))
+
+    def test_maps_migrated_defaults(self):
+        self.assertEqual(
+            _talkedu_mirror("brinnatt/calico-node:v3.28.4", self.registry),
+            "hub.talkedu.cn/kubeauto/calico-node:v3.28.4",
+        )
+        self.assertEqual(
+            _talkedu_mirror("brinnatt/coredns:1.12.4", self.registry),
+            "hub.talkedu.cn/kubeauto/coredns:1.12.4",
+        )
 
     def test_default_tag_latest(self):
         self.assertEqual(

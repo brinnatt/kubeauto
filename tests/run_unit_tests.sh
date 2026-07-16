@@ -3,4 +3,5 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PYTHONPATH="$ROOT"
-python3 -m unittest discover -s "$ROOT/tests/unit" -p 'test_*.py' -v
+PY="$(command -v python3.12 || command -v python3)"
+"$PY" -m unittest discover -s "$ROOT/tests/unit" -p 'test_*.py' -v

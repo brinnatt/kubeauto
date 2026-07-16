@@ -133,7 +133,7 @@ spec:
         kubernetes.io/os: linux
       containers:
       - name: coredns
-        image: registry.talkschool.cn:5000/coredns/coredns:{{ corednsVer }}
+        image: registry.talkschool.cn:5000/brinnatt/coredns:{{ corednsVer }}
         imagePullPolicy: IfNotPresent
         resources:
           limits:
