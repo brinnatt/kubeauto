@@ -53,7 +53,7 @@ pairs = [
   ("rancher/local-path-provisioner:v0.0.31", "brinnatt/local-path-provisioner:v0.0.31"),
   ("openebs/provisioner-localpv:4.3.0", "brinnatt/provisioner-localpv:4.3.0"),
   ("openebs/linux-utils:4.2.0", "brinnatt/linux-utils:4.2.0"),
-  ("bitnamilegacy/kubectl:1.33.4", "brinnatt/openebs-kubectl:1.33.6"),
+  ("brinnatt/openebs-kubectl:1.33.6", "brinnatt/openebs-kubectl:1.33.6"),
   ("timonwong/prometheus-webhook-dingtalk:v2.1.0", "brinnatt/prometheus-webhook-dingtalk:v2.1.0"),
   ("quay.io/cilium/hubble-ui:v0.13.5", "brinnatt/hubble-ui:v0.13.5"),
   ("quay.io/cilium/hubble-ui-backend:v0.13.5", "brinnatt/hubble-ui-backend:v0.13.5"),

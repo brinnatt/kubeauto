@@ -69,12 +69,13 @@ lvm-localpv:
       repository: brinnatt/lvm-driver
       tag: "1.7.0"
 
-# -- Configuration options for pre-upgrade helm hook job.
+# -- preUpgradeHook: override chart default third-party kubectl image with
+# brinnatt/openebs-kubectl (official kubectl binary from dl.k8s.io).
 preUpgradeHook:
   image:
     registry: registry.talkschool.cn:5000
     repo: brinnatt/openebs-kubectl
-    # Chart default is 1.25.15; pin to mirrored kubectl tag.
+    # Align with cluster K8S_VER (dl.k8s.io release tag without leading v).
     tag: "{{ K8S_VER | regex_replace('^v', '') }}"
 
 engines:

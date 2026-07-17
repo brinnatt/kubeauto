@@ -43,9 +43,8 @@ _BRINATT_UPSTREAM_FALLBACKS = {
     "brinnatt/minio": "quay.io/minio/minio",
     "brinnatt/nacos-server": "nacos/nacos-server",
     "brinnatt/nacos-peer-finder-plugin": "nacos/nacos-peer-finder-plugin",
-    # bitnami/kubectl versioned tags removed from public catalog; mirror is built from dl.k8s.io.
-    # Keep legacy fallback for older cached tags only.
-    "brinnatt/openebs-kubectl": "bitnamilegacy/kubectl",
+    # openebs-kubectl: no docker-image upstream. Built in ext-images from the
+    # official kubectl binary at dl.k8s.io. Pull order: talkedu → Hub brinnatt only.
     "brinnatt/provisioner-localpv": "openebs/provisioner-localpv",
     "brinnatt/linux-utils": "openebs/linux-utils",
     "brinnatt/lvm-driver": "openebs/lvm-driver",

@@ -142,15 +142,53 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
         "prometheus-webhook-dingtalk": "docker.io/timonwong/prometheus-webhook-dingtalk:v2.1.0",
     }
 
-    def test_openebs_kubectl_not_bitnami_missing_tag(self):
+    def test_openebs_kubectl_uses_official_dl_k8s_io(self):
         df = EXT_IMAGES / "openebs-kubectl" / "Dockerfile"
         if not df.is_file():
             self.skipTest("ext-images not mounted")
         text = df.read_text(encoding="utf-8")
-        self.assertNotIn("bitnami/kubectl:1.33.6", text)
-        self.assertTrue(
-            "dl.k8s.io" in text or "bitnamilegacy/kubectl" in text,
-            "openebs-kubectl must not depend on removed bitnami/kubectl:1.33.6",
+        self.assertIn("dl.k8s.io/release/", text)
+        # Operational refs must not use third-party kubectl images
+        for line in text.splitlines():
+            s = line.strip()
+            if s.upper().startswith("FROM ") or s.upper().startswith("RUN "):
+                self.assertNotIn("bitnami", s.lower())
+
+    def test_openebs_chart_hook_only_needs_kubectl_cli(self):
+        """Official OpenEBS 4.3.2 pre-upgrade hook runs kubectl client commands only.
+
+        Evidence: roles/cluster-addon/files/openebs-4.3.2.tgz
+        templates/pre-upgrade-hook.yaml args are:
+          kubectl annotate ... CRDs && kubectl delete deploy ...
+        So any image whose PATH provides a Kubernetes-project kubectl binary
+        (dl.k8s.io) is functionally equivalent; Bitnami packaging is not required.
+        """
+        import tarfile
+
+        tgz = ROOT / "roles/cluster-addon/files/openebs-4.3.2.tgz"
+        self.assertTrue(tgz.is_file(), "openebs chart tgz missing")
+        with tarfile.open(tgz, "r:gz") as tf:
+            member = tf.extractfile("openebs/templates/pre-upgrade-hook.yaml")
+            self.assertIsNotNone(member)
+            hook = member.read().decode("utf-8")
+        self.assertIn("kubectl annotate", hook)
+        self.assertIn("kubectl -n", hook)
+        self.assertIn("delete deploy", hook)
+        # Hook image is configurable; chart default is third-party, we override in values.
+        values = _read("roles/cluster-addon/templates/openebs/values.yaml.j2")
+        self.assertIn("brinnatt/openebs-kubectl", values)
+        self.assertIn("dl.k8s.io", (EXT_IMAGES / "openebs-kubectl" / "Dockerfile").read_text())
+
+    def test_no_bitnami_in_registry_fallbacks(self):
+        from service.cluster import registry as reg
+
+        for name, upstream in reg._BRINATT_UPSTREAM_FALLBACKS.items():
+            self.assertNotIn("bitnami", name.lower())
+            self.assertNotIn("bitnami", upstream.lower())
+        self.assertNotIn(
+            "brinnatt/openebs-kubectl",
+            reg._BRINATT_UPSTREAM_FALLBACKS,
+            "openebs-kubectl must not map to any third-party container upstream",
         )
 
     def test_provisioner_localpv_tag_is_430_not_432(self):

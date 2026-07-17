@@ -90,8 +90,8 @@ if [[ "$MODE" == "full" ]]; then
   pull_tag "openebs/provisioner-localpv:4.3.0" "brinnatt/provisioner-localpv:4.3.0"
   pull_tag "openebs/linux-utils:4.2.0" "brinnatt/linux-utils:4.2.0"
   pull_tag "openebs/lvm-driver:1.7.0" "brinnatt/lvm-driver:1.7.0"
-  # Built in ext-images from dl.k8s.io; talkedu/brinnatt first, legacy Bitnami as last resort.
-  pull_tag "bitnamilegacy/kubectl:1.33.4" "brinnatt/openebs-kubectl:1.33.6"
+  # Official kubectl binary packaged in ext-images (dl.k8s.io); talkedu/Hub only.
+  pull_tag "brinnatt/openebs-kubectl:1.33.6" "brinnatt/openebs-kubectl:1.33.6"
   pull_tag "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.13.0" "brinnatt/csi-node-driver-registrar:v2.13.0"
   pull_tag "registry.k8s.io/sig-storage/csi-resizer:v1.11.2" "brinnatt/csi-resizer:v1.11.2"
   pull_tag "registry.k8s.io/sig-storage/csi-snapshotter:v7.0.0" "brinnatt/csi-snapshotter:v7.0.0"
