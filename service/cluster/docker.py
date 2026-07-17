@@ -150,8 +150,10 @@ class DockerManager:
         version = version or self.kube_constant.v_docker
         self._download_docker(version)
         self._download_docker_cli_plugins()
+        self._download_cri_dockerd()
         self._install_docker_binaries(version)
         self._install_docker_cli_plugins()
+        self._install_cri_dockerd_binary()
         self._configure_docker(version)
         self._start_docker_service(version)
 
@@ -354,6 +356,37 @@ class DockerManager:
             f"Docker Buildx binary: {buildx_version}",
             executable=True,
         )
+
+    def _download_cri_dockerd(self) -> None:
+        """Download Mirantis cri-dockerd (required for K8s >=1.24 + docker runtime)."""
+        version = self.kube_constant.v_cri_dockerd
+        self._download_binary(
+            self.kube_constant.cri_dockerd_bin_url(version),
+            self.image_dir / f"cri-dockerd-{version}.tgz",
+            f"cri-dockerd binary: {version}",
+        )
+
+    def _install_cri_dockerd_binary(self) -> None:
+        """Extract cri-dockerd into docker-bin for ansible role distribution."""
+        version = self.kube_constant.v_cri_dockerd
+        tgz = self.image_dir / f"cri-dockerd-{version}.tgz"
+        if not tgz.is_file():
+            logger.warning("cri-dockerd tarball missing; ansible role may download it", extra=LOG_STDOUT)
+            return
+        self.temp_path.mkdir(parents=True, exist_ok=True)
+        self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(tgz, "r:gz") as tf:
+            tf.extractall(path=self.temp_path, filter="data")
+        src = self.temp_path / "cri-dockerd" / "cri-dockerd"
+        if not src.is_file():
+            # some layouts place binary at top level
+            candidates = list(self.temp_path.rglob("cri-dockerd"))
+            src = next((p for p in candidates if p.is_file()), src)
+        dest = self.docker_bin_dir / "cri-dockerd"
+        run_command(["cp", "-f", str(src), str(dest)])
+        run_command(["chmod", "+x", str(dest)])
+        run_command(["rm", "-rf", str(self.temp_path / "cri-dockerd")])
+        logger.info("cri-dockerd binary staged into docker-bin", extra=LOG_STDOUT)
 
     def _install_docker_binaries(self, version) -> None:
         """

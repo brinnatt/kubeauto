@@ -1,0 +1,428 @@
+LOG=/var/log/kubeauto-retest-mq-net-20260717153624.log
+ns_left=0
+[2026-07-17 15:36:25] [INFO] [service.cluster.downloader] [DOWNLOAD] Component rocketmq: uploading 4 image(s) to local registry.
+[2026-07-17 15:36:25] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY] Uploading 4 image(s) to local registry.
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY] [1/4] Image: brinnatt/rocketmq-operator:latest
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-07-17 15:36:25] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: registry.talkschool.cn:5000/brinnatt/rocketmq-operator:latest
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/rocketmq-operator]
+e7c96db7181b: Layer already exists
+d113e80b1e19: Layer already exists
+c2274a1a0e27: Layer already exists
+a9d7f821cb6b: Layer already exists
+78f48a4a1923: Layer already exists
+c9a85256bb40: Layer already exists
+f910a506b6cb: Layer already exists
+d8bd09c71589: Layer already exists
+latest: digest: sha256:cce2074e96146f359c49551d09d9f89a68d242f55166bd4fbef4f2b22503efab size: 1821
+[2026-07-17 15:36:25] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: registry.talkschool.cn:5000/brinnatt/rocketmq-operator:latest
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/rocketmq-operator:latest.
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY] [2/4] Image: brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-07-17 15:36:25] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: registry.talkschool.cn:5000/brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/rocketmq-broker]
+532f69ae4f07: Layer already exists
+c0b3564097ed: Layer already exists
+f910a506b6cb: Layer already exists
+4447e6272fa9: Layer already exists
+e7c96db7181b: Layer already exists
+924ee0ef566f: Layer already exists
+1e558e7c5db8: Layer already exists
+6febe1bb60d9: Layer already exists
+c21ac3d7d088: Layer already exists
+c2274a1a0e27: Layer already exists
+3082adf3b6c9: Layer already exists
+4.5.0-alpine-operator-0.3.0: digest: sha256:4439c53b6fecce5f3f1cabcf053f364b5c945f87557d191201206729c64da504 size: 2573
+[2026-07-17 15:36:25] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: registry.talkschool.cn:5000/brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0.
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY] [3/4] Image: brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-07-17 15:36:25] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-07-17 15:36:25] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: registry.talkschool.cn:5000/brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/rocketmq-nameserver]
+3082adf3b6c9: Layer already exists
+a30b109dcda0: Layer already exists
+c7ced476f1be: Layer already exists
+61ba89aeb59c: Layer already exists
+c2274a1a0e27: Layer already exists
+2dbbae45b1ad: Layer already exists
+e7c96db7181b: Layer already exists
+f910a506b6cb: Layer already exists
+48c808bd7c90: Layer already exists
+4.5.0-alpine-operator-0.3.0: digest: sha256:9ccac537425a39b1eb1244a184f123b33eebb8d5f50f615048e0d3a7ed849d50 size: 2006
+[2026-07-17 15:36:26] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: registry.talkschool.cn:5000/brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0
+[2026-07-17 15:36:26] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0.
+[2026-07-17 15:36:26] [INFO] [service.cluster.registry] [REGISTRY] [4/4] Image: brinnatt/rocketmq-console:2.0.0
+[2026-07-17 15:36:26] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-07-17 15:36:26] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-07-17 15:36:26] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: registry.talkschool.cn:5000/brinnatt/rocketmq-console:2.0.0
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/rocketmq-console]
+11f7af24ed9c: Layer already exists
+29e8ef0e3340: Layer already exists
+2cf014724202: Layer already exists
+4bc402a00dfe: Layer already exists
+e0012639d2c5: Layer already exists
+a0c934d2565d: Layer already exists
+a360a17c9cab: Layer already exists
+c36604fa7939: Layer already exists
+51390f399deb: Layer already exists
+7448db3b31eb: Layer already exists
+2.0.0: digest: sha256:e4d6af063439a40d8bbd155caf82d1664f143261cfc7c5930c5a25d95219bc58 size: 2206
+[2026-07-17 15:36:26] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: registry.talkschool.cn:5000/brinnatt/rocketmq-console:2.0.0
+[2026-07-17 15:36:26] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/rocketmq-console:2.0.0.
+[2026-07-17 15:36:26] [INFO] [service.cluster.registry] [REGISTRY] All 4 image(s) uploaded to local registry.
+[2026-07-17 15:36:26] [INFO] [service.cluster.downloader] [DOWNLOAD] Component rocketmq: 4 image(s) uploaded.
+[2026-07-17 15:36:27] [INFO] [service.cluster.downloader] [DOWNLOAD] Component network-check: uploading 2 image(s) to local registry.
+[2026-07-17 15:36:27] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY] Uploading 2 image(s) to local registry.
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY] [1/2] Image: brinnatt/json-mock:v1.3.1
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-07-17 15:36:27] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: registry.talkschool.cn:5000/brinnatt/json-mock:v1.3.1
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/json-mock]
+f33ee5a0dff2: Layer already exists
+ab511d14ed38: Layer already exists
+385a37e91df2: Already exists
+94b46bd7f04c: Layer already exists
+6620872b7cde: Layer already exists
+af302e5c37e9: Layer already exists
+b4ffe8c091b8: Layer already exists
+3351a9c5c3d7: Layer already exists
+v1.3.1: digest: sha256:fda12e7e2cb6b686ad355f4ecfbb645663ca73a7a732b6d667d1452612484d7e size: 856
+[2026-07-17 15:36:27] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: registry.talkschool.cn:5000/brinnatt/json-mock:v1.3.1
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/json-mock:v1.3.1.
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY] [2/2] Image: brinnatt/alpine-curl:v7.85.0
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-07-17 15:36:27] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: registry.talkschool.cn:5000/brinnatt/alpine-curl:v7.85.0
+The push refers to repository [registry.talkschool.cn:5000/brinnatt/alpine-curl]
+ce313c0d90c0: Layer already exists
+505a4470f1d8: Layer already exists
+1b7ca6aea1dd: Layer already exists
+v7.85.0: digest: sha256:b79b171cc1640981afcc42606950c157505380d0dcf791a4a2318c23cd6cdd49 size: 861
+[2026-07-17 15:36:27] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: registry.talkschool.cn:5000/brinnatt/alpine-curl:v7.85.0
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/alpine-curl:v7.85.0.
+[2026-07-17 15:36:27] [INFO] [service.cluster.registry] [REGISTRY] All 2 image(s) uploaded to local registry.
+[2026-07-17 15:36:27] [INFO] [service.cluster.downloader] [DOWNLOAD] Component network-check: 2 image(s) uploaded.
+v1.3.1: Pulling from brinnatt/json-mock
+Digest: sha256:fda12e7e2cb6b686ad355f4ecfbb645663ca73a7a732b6d667d1452612484d7e
+Status: Image is up to date for registry.talkschool.cn:5000/brinnatt/json-mock:v1.3.1
+registry.talkschool.cn:5000/brinnatt/json-mock:v1.3.1
+========== setup cluster-addon 07 ==========
+[2026-07-17 15:36:28] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.17): control node Python >=3.10, target module runtime Python >=3.9
+[2026-07-17 15:36:28] [INFO] [service.cluster.manager] Setting up cluster with playbook 07.cluster-addon.yml.
+[2026-07-17 15:36:28] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-07-17 15:36:28] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, calico: v3.28.4
+
+PLAY [localhost] ***************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [cluster-addon : 获取所有已经创建的POD信息] *******************************
+changed: [localhost]
+
+TASK [cluster-addon : 准备 DNS的部署文件] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除coredns部署] *****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建coredns部署] *****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备dnscache的部署文件] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备dnscache的部署文件] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除dnscache部署] ****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建dnscache部署] ****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : wait for hubble-relay Ready (needs cluster DNS)] *********
+skipping: [localhost]
+
+TASK [cluster-addon : wait for hubble-ui Ready] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 metrics-server的部署文件] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除 metrics-server部署] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 metrics-server部署] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 dashboard的部署文件] ********************************
+skipping: [localhost] => (item=dashboard-values.yaml) 
+skipping: [localhost] => (item=admin-user-sa-rbac.yaml) 
+skipping: [localhost] => (item=read-user-sa-rbac.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 dashboard部署] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建用户admin,read] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 local-storage 配置目录] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 local-storage部署文件] ******************************
+skipping: [localhost] => (item=local-path-storage.yaml) 
+skipping: [localhost] => (item=test-pod.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 local-storage部署] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nfs-provisioner 配置目录] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nfs-provisioner部署文件] ****************************
+skipping: [localhost] => (item=nfs-provisioner.yaml) 
+skipping: [localhost] => (item=test-pod.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 nfs-provisioner部署] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 清理 snapshot-controller crd] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 确保命名空间openebs Ready] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=values.yaml) 
+skipping: [localhost] => (item=sc.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 openebs operator] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 openebs] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待lvm-localpv-controller 运行] *********************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建lvm storageclass] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 获取是否已创建命名空间monitor] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间monitor] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : get etcd-client-cert info] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建etcd-client 证书请求] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 etcd-client证书和私钥] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除 etcd-client-cert] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 etcd-client-cert] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 prom chart 个性化设置] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 删除 kube-prometheus-stack 75.7.0] ******************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 创建 kube-prometheus-stack 75.7.0] ******************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间minio] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : get minio-global-cert info] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 minio-global-cert] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=operator-values.yaml) 
+skipping: [localhost] => (item=tenant-values.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 minio operator] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 minio operator] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 minio tenant] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nacos的部署文件] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间nacos] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 nacos部署] ******************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 确保命名空间rocketmq Ready] ******************************
+changed: [localhost]
+
+TASK [cluster-addon : helm 部署 rocketmq operator] *****************************
+changed: [localhost]
+
+TASK [cluster-addon : 轮询等待 rocketmq operator 运行] *************************
+FAILED - RETRYING: [localhost]: 轮询等待 rocketmq operator 运行 (15 retries left).
+changed: [localhost]
+
+TASK [cluster-addon : 准备 rocketmq 部署文件] **********************************
+changed: [localhost]
+
+TASK [cluster-addon : 部署 rocketmq cluster] ***********************************
+changed: [localhost]
+
+TASK [cluster-addon : 准备 cilium-check 配置目录] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备部署文件] ********************************************
+skipping: [localhost] => (item=connectivity-check.yaml) 
+skipping: [localhost] => (item=check-part1.yaml) 
+skipping: [localhost] => (item=namespace.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试namespace] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试part1] *******************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待echo pod运行，视下载镜像速度而定] ****************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建完整测试connectivity-check] **************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 network-check 配置目录] *****************************
+ok: [localhost]
+
+TASK [cluster-addon : 准备部署文件] ********************************************
+changed: [localhost] => (item=network-check.yaml)
+ok: [localhost] => (item=namespace.yaml)
+
+TASK [cluster-addon : 创建测试namespace] ***************************************
+changed: [localhost]
+
+TASK [cluster-addon : 创建完整测试network-check] *******************************
+changed: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+ok: [localhost] => {
+    "msg": "[重要]: 请查看命名空间network-test下所有pod，如果均为Completed状态，且没有重启数增长，说明网络连接测试正常。 如果有Pending状态，部分测试需要多节点集群才能完成，如果希望禁用网络测试执行(kubectl --kubeconfig=/usr/local/kubeauto//clusters/aio/kubectl.kubeconfig delete ns network-test)"
+}
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间ingress-nginx] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : label nodes for ingress-nginx controller] ****************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=values.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 ingress-nginx] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 ingress-nginx] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 提示 WARNNING] *******************************************
+skipping: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=12   changed=9    unreachable=0    failed=0    skipped=66   rescued=0    ignored=0   
+[2026-07-17 15:36:41] [INFO] [service.cluster.manager] Cluster setup completed (playbook 07.cluster-addon.yml).
+========== wait rocketmq ==========
+NAME                                 READY   STATUS    RESTARTS   AGE   IP              NODE         NOMINATED NODE   READINESS GATES
+name-service-0                       0/1     Pending   0          3s    <none>          <none>       <none>           <none>
+rocketmq-operator-6597bb6768-4sqq6   0/1     Running   0          8s    172.20.202.40   master-aio   <none>           <none>
+try=1 total=2 bad=1
+NAME                                 READY   STATUS    RESTARTS   AGE   IP               NODE         NOMINATED NODE   READINESS GATES
+broker-0-master-0                    1/1     Running   0          12s   172.20.202.47    master-aio   <none>           <none>
+console-64956f58db-l4qps             1/1     Running   0          12s   172.20.202.44    master-aio   <none>           <none>
+name-service-0                       1/1     Running   0          19s   192.168.47.147   master-aio   <none>           <none>
+rocketmq-operator-6597bb6768-4sqq6   1/1     Running   0          24s   172.20.202.40    master-aio   <none>           <none>
+try=2 total=4 bad=0
+oom=0 restarts=0
+MQ_STABLE_PASS
+NAME                                 READY   STATUS    RESTARTS   AGE    IP               NODE         NOMINATED NODE   READINESS GATES
+broker-0-master-0                    1/1     Running   0          102s   172.20.202.47    master-aio   <none>           <none>
+console-64956f58db-l4qps             1/1     Running   0          102s   172.20.202.44    master-aio   <none>           <none>
+name-service-0                       1/1     Running   0          109s   192.168.47.147   master-aio   <none>           <none>
+rocketmq-operator-6597bb6768-4sqq6   1/1     Running   0          114s   172.20.202.40    master-aio   <none>           <none>
+NAME                                SIZE   REPLICA-PER-GROUP   ALLOW-RESTART   AGE
+broker.rocketmq.apache.org/broker   1      0                   true            109s
+
+NAME                                           SIZE   HOST-NETWORK   AGE
+nameservice.rocketmq.apache.org/name-service   1      true           109s
+========== wait network-check echo-server ==========
+NAME                                READY   STATUS    RESTARTS   AGE    IP               NODE         NOMINATED NODE   READINESS GATES
+echo-server-56f9cb5d6b-22rhv        1/1     Running   0          106s   172.20.202.43    master-aio   <none>           <none>
+echo-server-host-849bf87b7c-b8p5n   1/1     Running   0          106s   192.168.47.147   master-aio   <none>           <none>
+image=registry.talkschool.cn:5000/brinnatt/json-mock:v1.3.1
+echo_running=1 try=1
+NETWORK_CHECK_ECHO_PASS
+NAME                                READY   STATUS    RESTARTS   AGE     IP               NODE         NOMINATED NODE   READINESS GATES
+echo-server-56f9cb5d6b-22rhv        1/1     Running   0          2m17s   172.20.202.43    master-aio   <none>           <none>
+echo-server-host-849bf87b7c-b8p5n   1/1     Running   0          2m17s   192.168.47.147   master-aio   <none>           <none>
+  \{^_^}/ hi!
+
+  Loading /default.json
+  Done
+
+  Resources
+  http://:8080/private
+  http://:8080/public
+
+  Home
+  http://:8080
+
+  Type s + enter at any time to create a snapshot of the database
+  Watching...
+
+mq_ok=1 echo_ok=1
+RETEST_MQ_NET_PASS
+LOG=/var/log/kubeauto-retest-mq-net-20260717153624.log

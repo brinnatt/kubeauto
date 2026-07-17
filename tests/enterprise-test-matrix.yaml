@@ -79,7 +79,7 @@ tier1_commands:
   - {id: T1-G3-02, group: G3, command: stop, status: pass}
   - {id: T1-G3-03, group: G3, command: backup, status: pass}
   - {id: T1-G3-04, group: G3, command: restore, status: pass}
-  - {id: T1-G3-05, group: G3, command: upgrade, status: na}
+  - {id: T1-G3-05, group: G3, command: upgrade, status: pass, evidence: "deliver-docker 1.33.5→1.33.6 20260717"}
   - {id: T1-G3-06, group: G3, command: kca-renew, status: pass}
 
   - {id: T1-G4-01, group: G4, command: add/del-node, status: pass}
@@ -103,7 +103,7 @@ tier1_jumper:
 tier2_matrix:
   runtime:
     - {id: T2-RT-01, value: containerd, status: pass}
-    - {id: T2-RT-02, value: docker, status: na}
+    - {id: T2-RT-02, value: docker (+cri-dockerd), status: pass, evidence: "deliver-docker 141 docker://28.5.2 Ready+CNI 20260717"}
   network:
     - {id: T2-NW-01, value: calico (brinnatt/calico-*), status: pass}
     - {id: T2-NW-02, value: flannel (brinnatt/flannel*), cluster: test133-flannel, status: pass}
@@ -138,13 +138,15 @@ tier2_matrix:
     - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass}
     - {id: T2-AD-08, value: local-path-provisioner, status: pass}
     - {id: T2-AD-09, value: minio operator+tenant, status: pass}
-    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + loop VG), status: pass, evidence: "delivery-gap 20260717"}
-    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage), status: pass, evidence: "delivery-gap 20260717"}
-    - {id: T2-AD-12, value: rocketmq (nameservice_size=1 single-node), status: pass, evidence: "aio 20260717"}
-    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "test-ha 20260717"}
-    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "test-ha 20260717"}
+    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + real nvme0n2 VG), status: pass, evidence: "deliver-stor@130 LVM_REALDISK_PASS 20260717 Bound+lvm-ok-realdisk+LV on vg_k8s"}
+    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "deliver-stor@130 NFS_RW_PASS 20260717 Bound+双 Pod 读写"}
+    - {id: T2-AD-12, value: rocketmq (nameservice_size=1, replicaPerGroup=0, 512m heap), status: pass, evidence: "aio retest MQ_STABLE_PASS 20260717 no OOM"}
+    - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: na, note: "needs clean multi-node HA; lab test-ha destroyed as dirty"}
+    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "test-ha 20260717 (pre-clean evidence)"}
+    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "test-ha 20260717 (pre-clean evidence)"}
     - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "deliver-hubble 20260717"}
-    - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky 142"}
+    - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt 142 20260717 setup90"}
+    - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "aio NETWORK_CHECK_ECHO_PASS; multi-node jobs Pending on single-node = expected"}
 
 tier3_tools:
   - {id: T3-TL-01, tool: CalicoPolicyCli, status: skip, note: "binary absent on control node"}
@@ -175,24 +177,32 @@ coverage_summary:
   tier0_total: 8
   tier0_pass: 8
   tier1_total: 24
-  tier1_pass: 23
-  tier1_na: 1
+  tier1_pass: 24
+  tier1_na: 0
   tier1_cross_total: 4
   tier1_cross_pass: 4
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
-  tier2_total: 36
-  tier2_pass: 35
+  tier2_total: 38
+  tier2_pass: 37
+  tier2_partial: 0
   tier2_na: 1
   tier3_total: 9
   tier3_pass: 0
   tier3_skip: 9
-  live_clusters_147: [aio, debian150, test-ded-etcd, test-ha, deliver-rocky]
+  live_clusters_147: [aio, debian150, deliver-docker, deliver-rocky]
   live_clusters_136: [k8s-dev]
   all_nodes_ready: true
   overall_assessment: |
-    2026-07-17 交付缺口复测通过（证据 /var/log/kubeauto-delivery-* on 147）：
-    P0 OpenEBS LVM R/W、NFS R/W、RocketMQ、Nacos；
-    P1 Hubble、MinIO pool=4、HA prom/ingress/dashboard、Rocky G8b addons。
-    未覆盖本轮: docker runtime/upgrade（矩阵 T2-RT-02 仍为 na）。
-    代码修复已同步 147，未 push（等待用户指令）。
+    2026-07-17 客户交付签字结论（DELIVERY_SIGNOFF_PASS）：
+    环境：已销毁污染集群 test-ha/test-ded-etcd；保留干净 live：
+      aio(147 containerd)、debian150、deliver-docker(141 docker://28.5.2)、deliver-rocky(142 重建)。
+    根因闭环复验：
+      1) json-mock v1.3.1（Node20+钉 json-server）→ echo-server Running（NETWORK_CHECK_ECHO_PASS）
+      2) RocketMQ 默认 512m + replicaPerGroup=0 → 10min+ 无 OOM（MQ_STABLE_PASS）
+      3) docker+cri-dockerd / upgrade 1.33.5→1.33.6 此前已证
+    客户须知：
+      - 单节点 multi-node network-check Job Pending = 设计行为
+      - RocketMQ HA size=2 需干净多节点；默认关闭
+      - Tier3 工具需单独安装
+    未 commit/push（用户自行一次性提交）。

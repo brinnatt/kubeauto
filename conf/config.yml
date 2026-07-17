@@ -256,7 +256,13 @@ rocketmq_install: "no"
 rocketmq_namespace: "rocketmq"
 rocketmq_storage_class: "{{ openebs_lvm_storage_class }}"
 # hostNetwork NameService: use 1 on single-node; 2+ needs matching Ready nodes
-rocketmq_nameservice_size: 2
+rocketmq_nameservice_size: 1
+# broker JVM / replica: keep small by default to avoid OOM on 8–16Gi nodes
+rocketmq_broker_mem: " -Xms512m -Xmx512m -Xmn256m "
+rocketmq_broker_size: 1
+rocketmq_replica_per_group: 0
+rocketmq_broker_mem_request: "512Mi"
+rocketmq_broker_mem_limit: "1536Mi"
 
 
 # network-check not installed by default

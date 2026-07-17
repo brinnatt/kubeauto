@@ -68,3 +68,55 @@
       file: src={{ bin_dir }}/docker dest=/usr/bin/docker state=link
       ignore_errors: true
   when: "'NoFound' in docker_svc.stdout"
+
+# K8s >=1.24 removed dockershim; kubelet must speak CRI via Mirantis cri-dockerd.
+# Runs even when dockerd was already present (previous block may be skipped).
+- name: ensure cri-dockerd present on control node docker-bin
+  shell: |
+    set -e
+    VER="{{ v_cri_dockerd | default('0.3.26') }}"
+    ARCH="$(uname -m)"
+    case "$ARCH" in
+      x86_64|amd64) A=amd64 ;;
+      aarch64|arm64) A=arm64 ;;
+      *) echo "unsupported arch $ARCH"; exit 1 ;;
+    esac
+    DEST="{{ base_dir }}/docker-bin/cri-dockerd"
+    if [ -x "$DEST" ]; then
+      echo "cri-dockerd already in docker-bin"
+      exit 0
+    fi
+    TMP=$(mktemp -d)
+    URL="https://v6.gh-proxy.org/https://github.com/Mirantis/cri-dockerd/releases/download/v${VER}/cri-dockerd-${VER}.${A}.tgz"
+    ALT="https://github.com/Mirantis/cri-dockerd/releases/download/v${VER}/cri-dockerd-${VER}.${A}.tgz"
+    if ! curl -fsSL --retry 3 -o "$TMP/cri.tgz" "$URL"; then
+      curl -fsSL --retry 3 -o "$TMP/cri.tgz" "$ALT"
+    fi
+    tar -xzf "$TMP/cri.tgz" -C "$TMP"
+    # tarball layout: cri-dockerd/cri-dockerd
+    install -m 0755 "$TMP"/cri-dockerd/cri-dockerd "$DEST"
+    rm -rf "$TMP"
+    "$DEST" --version || true
+  delegate_to: localhost
+  run_once: true
+  tags: upgrade_docker, download_docker
+
+- name: install cri-dockerd binary on node
+  copy: src={{ base_dir }}/docker-bin/cri-dockerd dest={{ bin_dir }}/cri-dockerd mode=0755
+  tags: upgrade_docker, download_docker
+
+- name: create cri-dockerd systemd unit
+  template: src=cri-dockerd.service.j2 dest=/etc/systemd/system/cri-dockerd.service
+  tags: upgrade_docker, download_docker
+
+- name: enable and start cri-dockerd
+  shell: systemctl daemon-reload && systemctl enable cri-dockerd && systemctl restart cri-dockerd
+  tags: upgrade_docker
+
+- name: wait for cri-dockerd running
+  shell: "systemctl is-active cri-dockerd.service"
+  register: cri_docker_status
+  until: '"active" in cri_docker_status.stdout'
+  retries: 10
+  delay: 2
+  tags: upgrade_docker

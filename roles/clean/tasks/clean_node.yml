@@ -61,16 +61,25 @@
           shell: "echo /var/run/docker/netns/*|xargs umount || exit 0"
           ignore_errors: true
 
+        - name: stop and disable cri-dockerd
+          service:
+            name: cri-dockerd
+            state: stopped
+            enabled: no
+          ignore_errors: true
+
         - name: remove files and dirs
           file: name={{ item }} state=absent
           with_items:
           - "/var/lib/docker/"
           - "/var/lib/dockershim/"
           - "/var/run/docker/"
+          - "/var/run/cri-dockerd.sock"
           - "/etc/docker/"
           - "/etc/systemd/system/docker.service"
           - "/etc/systemd/system/docker.service.requires/"
           - "/etc/systemd/system/docker.service.d/"
+          - "/etc/systemd/system/cri-dockerd.service"
           - "/etc/bash_completion.d/docker"
           - "/usr/bin/docker"
         when: "'kubeauto' not in install_info.stdout"

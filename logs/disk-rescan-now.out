@@ -1,0 +1,77 @@
+===== disk survey after user attach =====
+======== 192.168.47.130 ========
+NAME         SIZE TYPE FSTYPE MOUNTPOINT
+sr0         1024M rom         
+nvme0n1       60G disk        
+├─nvme0n1p1    1G part xfs    /boot
+├─nvme0n1p2    1G part swap   
+└─nvme0n1p3   58G part xfs    /
+nvme0n2       60G disk        
+---
+======== 192.168.47.131 ========
+NAME         SIZE TYPE FSTYPE MOUNTPOINT
+sr0         1024M rom         
+nvme0n1       60G disk        
+├─nvme0n1p1    1G part xfs    /boot
+├─nvme0n1p2    1G part swap   
+└─nvme0n1p3   58G part xfs    /
+nvme0n2       60G disk        
+---
+======== 192.168.47.141 ========
+NAME         SIZE TYPE FSTYPE      MOUNTPOINT
+loop0         15G loop LVM2_member 
+sr0         1024M rom              
+nvme0n1       60G disk             
+├─nvme0n1p1    1G part xfs         /boot
+├─nvme0n1p2    1G part swap        
+└─nvme0n1p3   58G part xfs         /
+nvme0n2       60G disk             
+---
+  PV         VG     Fmt  Attr PSize   PFree  
+  /dev/loop0 vg_k8s lvm2 a--  <15.00g <15.00g
+  VG     #PV #LV #SN Attr   VSize   VFree  
+  vg_k8s   1   0   0 wz--n- <15.00g <15.00g
+======== 192.168.47.142 ========
+NAME         SIZE TYPE FSTYPE MOUNTPOINT
+sr0         1024M rom         
+nvme0n1       60G disk        
+├─nvme0n1p1    1G part xfs    /boot
+├─nvme0n1p2    1G part swap   
+└─nvme0n1p3   58G part xfs    /
+nvme0n2       60G disk        
+---
+======== 192.168.47.147 ========
+NAME     SIZE TYPE FSTYPE   MOUNTPOINT
+loop0      4K loop squashfs /snap/bare/5
+loop1   63.9M loop squashfs /snap/core20/2318
+loop2   63.8M loop squashfs /snap/core20/2866
+loop3     74M loop squashfs /snap/core22/2411
+loop4   66.8M loop squashfs /snap/core24/1643
+loop5  148.2M loop squashfs /snap/docker/3505
+loop6  252.7M loop squashfs /snap/firefox/8585
+loop7  252.8M loop squashfs /snap/firefox/8595
+loop8  614.5M loop squashfs /snap/gnome-46-2404/164
+loop9   91.7M loop squashfs /snap/gtk-common-themes/1535
+loop10  91.7M loop squashfs /snap/lxd/38800
+loop11 115.1M loop squashfs /snap/lxd/40115
+loop12   395M loop squashfs /snap/mesa-2404/1165
+loop13  50.1M loop squashfs /snap/snapd/27406
+loop14   402M loop squashfs /snap/mesa-2404/1839
+loop15  38.8M loop squashfs /snap/snapd/21759
+sda      200G disk          
+├─sda1     1M part          
+├─sda2     1G part ext4     /boot
+└─sda3   199G part ext4     /
+sr0     1024M rom           
+---
+======== 192.168.47.150 ========
+NAME    SIZE TYPE FSTYPE  MOUNTPOINT
+sda      60G disk         
+├─sda1 56.9G part ext4    /
+├─sda2    1K part         
+└─sda5  3.1G part swap    [SWAP]
+sdb      60G disk         
+sr0     3.7G rom  iso9660 
+bash: line 1: pvs: command not found
+bash: line 1: vgs: command not found
+UNREACHABLE

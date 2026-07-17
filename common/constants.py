@@ -23,6 +23,12 @@ class KubeConstant:
         "refer_hub": "https://hub.docker.com/_/registry",
         "refer_docs": "https://distribution.github.io/distribution/"
     })
+    # Required when CONTAINER_RUNTIME=docker on K8s >=1.24 (dockershim removed).
+    # Official: https://github.com/Mirantis/cri-dockerd
+    v_cri_dockerd: str = field(default="0.3.26", metadata={
+        "refer_github": "https://github.com/Mirantis/cri-dockerd/releases",
+        "description": "cri-dockerd CRI shim for dockerd; pairs with Engine 28.x / K8s 1.33",
+    })
     v_kubeauto: str = field(default="v0.1.1", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
@@ -53,7 +59,8 @@ class KubeConstant:
     v_kube_state_metrics: str = field(default="v2.16.0")
     v_webhook_certgen: str = field(default="v1.6.0")
     v_ingress_nginx_controller: str = field(default="v1.13.0")
-    v_json_mock: str = field(default="v1.3.0")
+    # v1.3.1: Node 20 + pinned json-server@0.17.4 (v1.3.0 used Node 18.10 + unpinned npm → CrashLoop)
+    v_json_mock: str = field(default="v1.3.1")
     v_alpine_curl: str = field(default="v7.85.0")
     v_snapshot_controller: str = field(default="v8.3.0")
     v_csi_node_driver_registrar: str = field(default="v2.13.0")
@@ -209,6 +216,14 @@ class KubeConstant:
         return (
             f"https://v6.gh-proxy.org/https://github.com/docker/buildx/releases/download/v{version}/"
             f"buildx-v{version}.linux-{suffix}"
+        )
+
+    def cri_dockerd_bin_url(self, version: str) -> str:
+        """Mirantis cri-dockerd static tarball (amd64/arm64)."""
+        arch = "amd64" if self.arch in ("x86_64", "amd64") else "arm64"
+        return (
+            f"https://v6.gh-proxy.org/https://github.com/Mirantis/cri-dockerd/releases/download/"
+            f"v{version}/cri-dockerd-{version}.{arch}.tgz"
         )
 
     @property

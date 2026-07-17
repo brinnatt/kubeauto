@@ -1,6 +1,14 @@
 [Unit]
 Description=Kubernetes Kubelet
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+{% if CONTAINER_RUNTIME == 'docker' %}
+After=network-online.target cri-dockerd.service
+Wants=network-online.target
+Requires=cri-dockerd.service
+{% else %}
+After=network-online.target
+Wants=network-online.target
+{% endif %}
 
 [Service]
 WorkingDirectory=/var/lib/kubelet
@@ -27,7 +35,11 @@ ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/podruntime.slice
 {% endif %}
 ExecStart={{ bin_dir }}/kubelet \
   --config=/var/lib/kubelet/config.yaml \
+{% if CONTAINER_RUNTIME == 'docker' %}
+  --container-runtime-endpoint=unix:///var/run/cri-dockerd.sock \
+{% else %}
   --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+{% endif %}
   --hostname-override={{ K8S_NODENAME }} \
   --kubeconfig=/etc/kubernetes/kubelet.kubeconfig \
   --root-dir={{ KUBELET_ROOT_DIR }} \
