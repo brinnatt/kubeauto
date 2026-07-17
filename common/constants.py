@@ -87,7 +87,7 @@ class KubeConstant:
     v_dashboard: str = field(default="7.14.0", metadata={
         "refer_github": "https://github.com/kubernetes/dashboard",
     })
-    v_dashboardmetricsscraper: str = field(default="v1.0.8", metadata={
+    v_dashboardmetricsscraper: str = field(default="1.2.2", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/dashboard-metrics-scraper"
     })
     v_metricsserver: str = field(default="v0.8.0", metadata={
@@ -253,7 +253,7 @@ class KubeConstant:
             "dashboard": [
                 "brinnatt/dashboard-api:1.14.0",
                 "brinnatt/dashboard-auth:1.4.0",
-                "brinnatt/dashboard-metrics-scraper:1.2.2",
+                f"brinnatt/dashboard-metrics-scraper:{self.v_dashboardmetricsscraper}",
                 "brinnatt/dashboard-web:1.7.0",
                 "brinnatt/kong:3.9",
             ],
