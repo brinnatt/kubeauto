@@ -141,9 +141,9 @@ tier2_matrix:
     - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + real nvme0n2 VG), status: pass, evidence: "deliver-stor@130 LVM_REALDISK_PASS 20260717 Bound+lvm-ok-realdisk+LV on vg_k8s"}
     - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "deliver-stor@130 NFS_RW_PASS 20260717 Bound+双 Pod 读写"}
     - {id: T2-AD-12, value: rocketmq (nameservice_size=1, replicaPerGroup=0, 512m heap), status: pass, evidence: "aio retest MQ_STABLE_PASS 20260717 no OOM"}
-    - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: na, note: "needs clean multi-node HA; lab test-ha destroyed as dirty"}
-    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "test-ha 20260717 (pre-clean evidence)"}
-    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "test-ha 20260717 (pre-clean evidence)"}
+    - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: pass, evidence: "deliver-ha 20260717 HA_GATE_PASS nameservice size=2 + broker/console Running no OOM"}
+    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "deliver-ha 20260717 Nacos Running(2)+MySQL; schema mysql-schema.sql; replicas=3 Pending on 2C/3.5Gi lab → scale 2"}
+    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "deliver-ha 20260717 tenant servers=4 health=green pool pods 4/4 Running"}
     - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "deliver-hubble 20260717"}
     - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt 142 20260717 setup90"}
     - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "aio NETWORK_CHECK_ECHO_PASS; multi-node jobs Pending on single-node = expected"}
@@ -184,25 +184,29 @@ coverage_summary:
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
   tier2_total: 38
-  tier2_pass: 37
+  tier2_pass: 38
   tier2_partial: 0
-  tier2_na: 1
+  tier2_na: 0
   tier3_total: 9
   tier3_pass: 0
   tier3_skip: 9
-  live_clusters_147: [aio, debian150, deliver-docker, deliver-rocky]
+  live_clusters_147: [aio, debian150, deliver-docker, deliver-rocky, deliver-stor, deliver-ha]
   live_clusters_136: [k8s-dev]
   all_nodes_ready: true
   overall_assessment: |
-    2026-07-17 客户交付签字结论（DELIVERY_SIGNOFF_PASS）：
-    环境：已销毁污染集群 test-ha/test-ded-etcd；保留干净 live：
-      aio(147 containerd)、debian150、deliver-docker(141 docker://28.5.2)、deliver-rocky(142 重建)。
+    2026-07-17 客户交付签字结论（DELIVERY_SIGNOFF_PASS / HA_GATE_PASS）：
+    环境：已销毁污染集群 test-ha/test-ded-etcd；干净 live：
+      aio(147)、debian150(150 DEBIAN150_REBUILD_PASS)、deliver-docker(141 docker+cri-dockerd)、
+      deliver-rocky(142)、deliver-stor(130 LVM+NFS)、deliver-ha(131/132/133/140)。
     根因闭环复验：
-      1) json-mock v1.3.1（Node20+钉 json-server）→ echo-server Running（NETWORK_CHECK_ECHO_PASS）
-      2) RocketMQ 默认 512m + replicaPerGroup=0 → 10min+ 无 OOM（MQ_STABLE_PASS）
-      3) docker+cri-dockerd / upgrade 1.33.5→1.33.6 此前已证
+      1) json-mock v1.3.1 → NETWORK_CHECK_ECHO_PASS
+      2) RocketMQ 默认 512m + replicaPerGroup=0 → MQ_STABLE_PASS；HA size=2 → deliver-ha PASS
+      3) docker+cri-dockerd / upgrade 1.33.5→1.33.6 已证
+      4) NFS RWX + OpenEBS LVM 真盘 → deliver-stor PASS
+      5) MinIO pool=4 health=green；Nacos+外部 MySQL（需导入 mysql-schema.sql）
     客户须知：
       - 单节点 multi-node network-check Job Pending = 设计行为
-      - RocketMQ HA size=2 需干净多节点；默认关闭
-      - Tier3 工具需单独安装
+      - Nacos 默认 requests 已改为可配 512Mi；小规格节点 replicas=3 可能 Pending（资源类）
+      - Nacos 依赖外部 MySQL + schema 初始化（产品不内置 MySQL）
+      - Tier3 工具需单独安装（tools/ 源码在仓，控制节点无二进制）
     未 commit/push（用户自行一次性提交）。

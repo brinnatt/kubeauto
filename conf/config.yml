@@ -241,14 +241,19 @@ minio_with_global_cert: false
 
 
 # nacos not installed by default
+# Requires external MySQL; import mysql-schema.sql from nacos-server image before first start.
 nacos_install: "no"
 nacos_namespace: "nacos"
+nacos_replicas: 3
 nacos_mysql_host: "semisync-mysql-cluster-mysql"
 nacos_mysql_db: "nacos"
 nacos_mysql_port: "3306"
 nacos_mysql_user: "__dbuser__"
 nacos_mysql_password: "__yourpassword__"
 nacos_storage_class: "{{ openebs_lvm_storage_class }}"
+# Default 512Mi fits small nodes; raise for production HA (anti-affinity needs N Ready nodes).
+nacos_mem_request: "512Mi"
+nacos_cpu_request: "200m"
 
 
 # rocketmq not installed by default

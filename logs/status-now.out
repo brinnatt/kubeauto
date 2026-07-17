@@ -1,0 +1,65 @@
+===== clusters =====
+aio
+debian150
+deliver-docker
+deliver-rocky
+deliver-stor
+===== health =====
+--- aio ---
+NAME         STATUS   ROLES    AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION       CONTAINER-RUNTIME
+master-aio   Ready    master   23h   v1.33.6   192.168.47.147   <none>        Ubuntu 22.04.5 LTS   5.15.0-185-generic   containerd://2.1.4
+network-test   test03-pod-to-multi-node-clusterip-29737900-zwbtl    0/1   Pending     0             88m
+network-test   test04-pod-to-multi-node-headless-29737900-r9gnx     0/1   Pending     0             88m
+network-test   test05-pod-to-multi-node-nodeport-29737900-vtkjf     0/1   Pending     0             88m
+network-test   test08-host-to-multi-node-clusterip-29737900-ndl2q   0/1   Pending     0             88m
+network-test   test09-host-to-multi-node-headless-29737900-k8x7q    0/1   Pending     0             88m
+--- debian150 ---
+The connection to the server 192.168.47.150:6443 was refused - did you specify the right host or port?
+UNREACHABLE
+--- deliver-docker ---
+NAME         STATUS   ROLES    AGE     VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                            KERNEL-VERSION             CONTAINER-RUNTIME
+master-141   Ready    master   3h29m   v1.33.6   192.168.47.141   <none>        Rocky Linux 8.10 (Green Obsidian)   4.18.0-553.el8_10.x86_64   docker://28.5.2
+--- deliver-rocky ---
+NAME         STATUS   ROLES    AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                            KERNEL-VERSION             CONTAINER-RUNTIME
+master-142   Ready    master   93m   v1.33.6   192.168.47.142   <none>        Rocky Linux 8.10 (Green Obsidian)   4.18.0-553.el8_10.x86_64   containerd://2.1.4
+--- deliver-stor ---
+NAME         STATUS   ROLES    AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                            KERNEL-VERSION             CONTAINER-RUNTIME
+master-130   Ready    master   67m   v1.33.6   192.168.47.130   <none>        Rocky Linux 8.10 (Green Obsidian)   4.18.0-553.el8_10.x86_64   containerd://2.1.4
+default       nfs-smoke-pod                                     0/1   Unknown   0             59m
+default       nfs-smoke-pod2                                    0/1   Unknown   0             59m
+===== free nodes =====
+ok_130
+ok_131
+ok_132
+ok_133
+ok_140
+ok_141
+ok_142
+ok_147
+ok_150
+===== inventory ownership =====
+--- aio ---
+192.168.47.147 ansible_connection=local
+192.168.47.147 ansible_connection=local k8s_nodename='master-aio'
+192.168.47.147 ansible_connection=local
+CONTAINER_RUNTIME="containerd"
+--- debian150 ---
+192.168.47.150
+192.168.47.150 k8s_nodename='master-debian'
+192.168.47.150
+CONTAINER_RUNTIME="containerd"
+--- deliver-docker ---
+192.168.47.141
+192.168.47.141 k8s_nodename='master-141'
+192.168.47.141
+CONTAINER_RUNTIME="docker"
+--- deliver-rocky ---
+192.168.47.142
+192.168.47.142 k8s_nodename='master-142'
+192.168.47.142
+CONTAINER_RUNTIME="containerd"
+--- deliver-stor ---
+192.168.47.130
+192.168.47.130 k8s_nodename='master-130'
+192.168.47.130
+CONTAINER_RUNTIME="containerd"

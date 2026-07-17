@@ -63,7 +63,7 @@ metadata:
 spec:
   podManagementPolicy: Parallel
   serviceName: nacos-headless
-  replicas: 3
+  replicas: {{ nacos_replicas | default(3) }}
   selector:
     matchLabels:
       app: nacos
@@ -96,8 +96,8 @@ spec:
           image: registry.talkschool.cn:5000/brinnatt/nacos-server:v2.4.3
           resources:
             requests:
-              memory: "2Gi"
-              cpu: "500m"
+              memory: "{{ nacos_mem_request | default('512Mi') }}"
+              cpu: "{{ nacos_cpu_request | default('200m') }}"
           ports:
             - containerPort: 8848
               name: client-port
@@ -109,7 +109,7 @@ spec:
               name: old-raft-rpc
           env:
             - name: NACOS_REPLICAS
-              value: "3"
+              value: "{{ nacos_replicas | default(3) }}"
             - name: SERVICE_NAME
               value: "nacos-headless"
             - name: DOMAIN_NAME
