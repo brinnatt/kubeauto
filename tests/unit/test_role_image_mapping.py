@@ -125,17 +125,48 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
         "calico-kube-controllers": "docker.io/calico/kube-controllers:",
         "coredns": "docker.io/coredns/coredns:",
         "flannel": "docker.io/flannel/flannel:",
-        "cilium": "docker.io/cilium/cilium:",
-        "cilium-operator-generic": "docker.io/cilium/operator-generic:",
+        # Cilium official publish location for current tags is quay.io
+        "cilium": "quay.io/cilium/cilium:",
+        "cilium-operator-generic": "quay.io/cilium/operator-generic:",
+        "hubble-relay": "quay.io/cilium/hubble-relay:",
+        "hubble-ui": "quay.io/cilium/hubble-ui:",
+        "hubble-ui-backend": "quay.io/cilium/hubble-ui-backend:",
         "kube-router": "docker.io/cloudnativelabs/kube-router:",
         "kube-ovn": "docker.io/kubeovn/kube-ovn:",
         "local-path-provisioner": "docker.io/rancher/local-path-provisioner:",
-        "provisioner-localpv": "docker.io/openebs/provisioner-localpv:",
+        "provisioner-localpv": "docker.io/openebs/provisioner-localpv:4.3.0",
         "prometheus": "quay.io/prometheus/prometheus:",
         "prometheus-operator": "quay.io/prometheus-operator/prometheus-operator:",
         "alertmanager": "quay.io/prometheus/alertmanager:",
         "minio-operator": "quay.io/minio/operator:",
+        "prometheus-webhook-dingtalk": "docker.io/timonwong/prometheus-webhook-dingtalk:v2.1.0",
     }
+
+    def test_openebs_kubectl_not_bitnami_missing_tag(self):
+        df = EXT_IMAGES / "openebs-kubectl" / "Dockerfile"
+        if not df.is_file():
+            self.skipTest("ext-images not mounted")
+        text = df.read_text(encoding="utf-8")
+        self.assertNotIn("bitnami/kubectl:1.33.6", text)
+        self.assertTrue(
+            "dl.k8s.io" in text or "bitnamilegacy/kubectl" in text,
+            "openebs-kubectl must not depend on removed bitnami/kubectl:1.33.6",
+        )
+
+    def test_provisioner_localpv_tag_is_430_not_432(self):
+        df = EXT_IMAGES / "provisioner-localpv" / "Dockerfile"
+        if not df.is_file():
+            self.skipTest("ext-images not mounted")
+        text = df.read_text(encoding="utf-8")
+        self.assertIn("provisioner-localpv:4.3.0", text)
+        self.assertNotIn("provisioner-localpv:4.3.2", text)
+        # kubeauto values must pin the same official chart default
+        values = (
+            Path(__file__).resolve().parents[2]
+            / "roles/cluster-addon/templates/openebs/values.yaml.j2"
+        )
+        v = values.read_text(encoding="utf-8")
+        self.assertIn('tag: "4.3.0"', v)
 
     @unittest.skipUnless(EXT_IMAGES.is_dir(), "ext-images dockerfile repo not mounted")
     def test_dockerfile_from_lines(self):

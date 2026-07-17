@@ -1,0 +1,22 @@
+# After CoreDNS/node-local-dns exist, hubble-relay can resolve hubble-peer.
+- name: wait for hubble-relay Ready (needs cluster DNS)
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+    rollout status deploy/hubble-relay -n kube-system --timeout=300s
+  register: hubble_relay_wait
+  retries: 3
+  delay: 20
+  until: hubble_relay_wait.rc == 0
+  ignore_errors: true
+  when: "cilium_hubble_enabled|default(false)|bool"
+
+- name: wait for hubble-ui Ready
+  shell: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+    rollout status deploy/hubble-ui -n kube-system --timeout=300s
+  register: hubble_ui_wait
+  retries: 3
+  delay: 20
+  until: hubble_ui_wait.rc == 0
+  ignore_errors: true
+  when: "cilium_hubble_ui_enabled|default(false)|bool"

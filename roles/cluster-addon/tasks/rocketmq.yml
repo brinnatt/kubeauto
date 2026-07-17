@@ -1,11 +1,24 @@
 - block:
-    - name: 创建命名空间{{ rocketmq_namespace }}
-      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create ns {{ rocketmq_namespace }} || echo true"
+    - name: 确保命名空间{{ rocketmq_namespace }} Ready
+      shell: |
+        set -e
+        KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+        $KC create ns {{ rocketmq_namespace }} 2>/dev/null || true
+        for i in $(seq 1 60); do
+          ph=$($KC get ns {{ rocketmq_namespace }} -o jsonpath='{.status.phase}' 2>/dev/null || true)
+          [ "$ph" = "Active" ] && exit 0
+          [ -z "$ph" ] && { $KC create ns {{ rocketmq_namespace }} 2>/dev/null || true; }
+          sleep 2
+        done
+        echo "namespace {{ rocketmq_namespace }} not Active in time"; exit 1
 
     - name: helm 部署 rocketmq operator 
       shell: "{{ base_dir }}/extra-bin/helm upgrade rocketmq-operator --install -n {{ rocketmq_namespace }} \
+              --create-namespace \
               --set rocketmqOperator.manager.image.repository='registry.talkschool.cn:5000/brinnatt/rocketmq-operator' \
               {{ base_dir }}/roles/cluster-addon/files/rocketmq-operator-0.1.0.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: 轮询等待 rocketmq operator 运行
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n {{ rocketmq_namespace }}|grep 'rocketmq-operator'|awk '{print $3}'"

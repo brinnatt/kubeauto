@@ -17,6 +17,7 @@
 
     - name: helm 部署 ingress-nginx
       shell: "{{ base_dir }}/extra-bin/helm upgrade ingress-nginx --install -n {{ ingress_nginx_namespace }} \
+              --create-namespace \
               -f {{ cluster_dir }}/yml/ingress-nginx/values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/ingress-nginx-{{ ingress_nginx_ver }}.tgz"
       environment:

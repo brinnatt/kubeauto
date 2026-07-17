@@ -111,6 +111,8 @@
     - "/var/log/calico/"
     - "/etc/cilium/"
     - "/sys/fs/bpf/tc/"
+    - "/sys/fs/bpf/cilium"
+    - "/run/cilium/"
     - "/var/lib/cni/"
     - "/var/lib/kube-router/"
     - "/var/run/openvswitch/"
@@ -120,6 +122,17 @@
     - "/var/log/openvswitch/"
     - "/var/log/ovn/"
     - "/var/log/kube-ovn/"
+    ignore_errors: true
+
+  - name: remove leftover CNI/vxlan links (prevents cilium_vxlan address-already-in-use)
+    shell: |
+      set +e
+      fuser -k 8472/udp 2>/dev/null
+      for i in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | cut -d@ -f1 | grep -E 'cilium|lxc|flannel|vxlan' || true); do
+        ip link set "$i" down 2>/dev/null
+        ip link delete "$i" 2>/dev/null
+      done
+      exit 0
     ignore_errors: true
 
   when: "inventory_hostname in groups['kube_master'] or inventory_hostname in groups['kube_node']"

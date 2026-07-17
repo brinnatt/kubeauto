@@ -54,8 +54,8 @@ pull_tag "brinnatt/metrics-server:v0.8.0" "brinnatt/metrics-server:v0.8.0"
 pull_tag "brinnatt/k8s-dns-node-cache:1.26.4" "brinnatt/k8s-dns-node-cache:1.26.4"
 
 if [[ "$MODE" == "essential" || "$MODE" == "full" ]]; then
-  pull_tag "cilium/cilium:v1.19.5" "brinnatt/cilium:v1.19.5"
-  pull_tag "cilium/operator-generic:v1.19.5" "brinnatt/cilium-operator-generic:v1.19.5"
+  pull_tag "quay.io/cilium/cilium:v1.19.5" "brinnatt/cilium:v1.19.5"
+  pull_tag "quay.io/cilium/operator-generic:v1.19.5" "brinnatt/cilium-operator-generic:v1.19.5"
   pull_tag "flannel/flannel:v0.28.4" "brinnatt/flannel:v0.28.4"
   pull_tag "flannel/flannel-cni-plugin:v1.8.0-flannel1" "brinnatt/flannel-cni-plugin:v1.8.0-flannel1"
   pull_tag "cloudnativelabs/kube-router:v1.5.4" "brinnatt/kube-router:v1.5.4"
@@ -65,9 +65,9 @@ fi
 if [[ "$MODE" == "full" ]]; then
   # Optional Hubble UI (not required for default cilium / addon smoke)
   if [[ "${BOOTSTRAP_HUBBLE:-0}" == "1" ]]; then
-    pull_tag "cilium/hubble-relay:v1.19.5" "brinnatt/hubble-relay:v1.19.5"
-    pull_tag "cilium/hubble-ui:v0.13.5" "brinnatt/hubble-ui:v0.13.5"
-    pull_tag "cilium/hubble-ui-backend:v0.13.5" "brinnatt/hubble-ui-backend:v0.13.5"
+    pull_tag "quay.io/cilium/hubble-relay:v1.19.5" "brinnatt/hubble-relay:v1.19.5"
+    pull_tag "quay.io/cilium/hubble-ui:v0.13.5" "brinnatt/hubble-ui:v0.13.5"
+    pull_tag "quay.io/cilium/hubble-ui-backend:v0.13.5" "brinnatt/hubble-ui-backend:v0.13.5"
   fi
   # dashboard
   pull_tag "kubernetesui/dashboard-api:1.14.0" "brinnatt/dashboard-api:1.14.0"
@@ -90,7 +90,8 @@ if [[ "$MODE" == "full" ]]; then
   pull_tag "openebs/provisioner-localpv:4.3.0" "brinnatt/provisioner-localpv:4.3.0"
   pull_tag "openebs/linux-utils:4.2.0" "brinnatt/linux-utils:4.2.0"
   pull_tag "openebs/lvm-driver:1.7.0" "brinnatt/lvm-driver:1.7.0"
-  pull_tag "bitnami/kubectl:1.33.6" "brinnatt/openebs-kubectl:1.33.6"
+  # Built in ext-images from dl.k8s.io; talkedu/brinnatt first, legacy Bitnami as last resort.
+  pull_tag "bitnamilegacy/kubectl:1.33.4" "brinnatt/openebs-kubectl:1.33.6"
   pull_tag "registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.13.0" "brinnatt/csi-node-driver-registrar:v2.13.0"
   pull_tag "registry.k8s.io/sig-storage/csi-resizer:v1.11.2" "brinnatt/csi-resizer:v1.11.2"
   pull_tag "registry.k8s.io/sig-storage/csi-snapshotter:v7.0.0" "brinnatt/csi-snapshotter:v7.0.0"

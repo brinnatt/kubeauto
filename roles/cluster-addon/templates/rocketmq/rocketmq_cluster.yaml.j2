@@ -74,7 +74,8 @@ metadata:
   name: name-service
   namespace: {{ rocketmq_namespace }}
 spec:
-  size: 2
+  # hostNetwork NameService needs 1 replica per node; default 2 for HA (>=2 nodes).
+  size: {{ rocketmq_nameservice_size | default(2) }}
   nameServiceImage: registry.talkschool.cn:5000/brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0
   imagePullPolicy: IfNotPresent
   hostNetwork: true

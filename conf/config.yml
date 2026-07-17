@@ -255,6 +255,8 @@ nacos_storage_class: "{{ openebs_lvm_storage_class }}"
 rocketmq_install: "no"
 rocketmq_namespace: "rocketmq"
 rocketmq_storage_class: "{{ openebs_lvm_storage_class }}"
+# hostNetwork NameService: use 1 on single-node; 2+ needs matching Ready nodes
+rocketmq_nameservice_size: 2
 
 
 # network-check not installed by default

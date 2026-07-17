@@ -8,8 +8,11 @@ localpv-provisioner:
     image:
       registry: registry.talkschool.cn:5000
       repository: brinnatt/provisioner-localpv
-      # OpenEBS chart 4.3.2 depends on localpv image 4.3.0 (upstream has no :4.3.2).
+      # Official OpenEBS umbrella chart 4.3.2 → dependency localpv-provisioner chart
+      # appVersion/tag is 4.3.0 (see openebs-4.3.2.tgz charts/localpv-provisioner/values.yaml:
+      #   localpv.image.tag: 4.3.0). Upstream has no openebs/provisioner-localpv:4.3.2.
       tag: "4.3.0"
+    # Chart default basePath is /var/openebs/local; override from conf.
     basePath: "{{ openebs_hostpath }}"
     resources:
       limits:
@@ -19,6 +22,7 @@ localpv-provisioner:
     image:
       registry: registry.talkschool.cn:5000
       repository: brinnatt/linux-utils
+      # Chart default helperPod.image.tag is 4.2.0 (same tgz values.yaml).
       tag: "4.2.0"
 
 lvm-localpv:

@@ -1,5 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webhook-dingtalk-config
+  namespace: monitor
+data:
+  # prometheus-webhook-dingtalk >= v1.0 uses YAML config (CLI --ding.profile removed).
+  # Replace xxxxxx with the DingTalk robot access_token.
+  config.yml: |
+    targets:
+      webhook1:
+        url: https://oapi.dingtalk.com/robot/send?access_token=xxxxxx
 ---
-apiVersion: apps/v1 
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -18,15 +30,21 @@ spec:
     spec:
       containers:
       - name: dingtalk
-        image: registry.talkschool.cn:5000/brinnatt/prometheus-webhook-dingtalk:v0.3.0
+        image: registry.talkschool.cn:5000/brinnatt/prometheus-webhook-dingtalk:v2.1.0
         imagePullPolicy: IfNotPresent
-        # After setting up the DingTalk group chat custom robot, replace the xxxxxx part below with the actual access_token
         args:
-          - --ding.profile=webhook1=https://oapi.dingtalk.com/robot/send?access_token=xxxxxx
+          - --config.file=/etc/prometheus-webhook-dingtalk/config.yml
         ports:
         - containerPort: 8060
           protocol: TCP
-
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus-webhook-dingtalk
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: webhook-dingtalk-config
 ---
 apiVersion: v1
 kind: Service

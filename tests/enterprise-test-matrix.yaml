@@ -7,10 +7,10 @@
 
 meta:
   version: 3
-  updated: "2026-07-16"
+  updated: "2026-07-17"
   runner: tests/run_enterprise_regression.sh
   regression_log: logs/enterprise-regression-*.log
-  regression_result: "PASS — 147 full + remainder (cilium/addons) + FINAL Ready"
+  regression_result: "PASS — 147 full + remainder + delivery-gap retest (LVM/NFS/Hubble/MQ/Nacos/MinIO/HA/Rocky)"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -28,6 +28,10 @@ meta:
     OpenEBS localpv 镜像 pin 4.3.0（umbrella 4.3.2 上游无 :4.3.2）。
     Addon 冒烟在 aio（与 local registry 同机），避免节点 /etc/hosts 指向错误 REGISTRY_HOST_IP。
     Tier3 tools 二进制未装在控制节点 → SKIP（非镜像迁移范围）。
+    2026-07-17 交付缺口修复: OpenEBS ns Active 等待+--create-namespace；
+    Hubble 不在 CNI 阶段阻塞 rollout（CoreDNS 之后再等）；
+    clean/cilium 清理残留 cilium_vxlan:8472；rocketmq_nameservice_size 可配；
+    openebs/rocketmq helm 显式 KUBECONFIG。
 
 environments:
   control:
@@ -134,6 +138,13 @@ tier2_matrix:
     - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass}
     - {id: T2-AD-08, value: local-path-provisioner, status: pass}
     - {id: T2-AD-09, value: minio operator+tenant, status: pass}
+    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + loop VG), status: pass, evidence: "delivery-gap 20260717"}
+    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage), status: pass, evidence: "delivery-gap 20260717"}
+    - {id: T2-AD-12, value: rocketmq (nameservice_size=1 single-node), status: pass, evidence: "aio 20260717"}
+    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "test-ha 20260717"}
+    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "test-ha 20260717"}
+    - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "deliver-hubble 20260717"}
+    - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky 142"}
 
 tier3_tools:
   - {id: T3-TL-01, tool: CalicoPolicyCli, status: skip, note: "binary absent on control node"}
@@ -158,6 +169,7 @@ execution_groups:
   G8: {name: "二级 CNI/拓扑", priority: P1, status: pass}
   G8b: {name: "Addon 镜像冒烟 (aio)", priority: P1, status: pass}
   G9: {name: "tools CLI", priority: P2, status: skip}
+  G10: {name: "交付缺口 P0/P1 (LVM/NFS/MQ/Nacos/Hubble/HA/Rocky)", priority: P0, status: pass}
 
 coverage_summary:
   tier0_total: 8
@@ -169,19 +181,18 @@ coverage_summary:
   tier1_cross_pass: 4
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
-  tier2_total: 29
-  tier2_pass: 28
+  tier2_total: 36
+  tier2_pass: 35
   tier2_na: 1
   tier3_total: 9
   tier3_pass: 0
   tier3_skip: 9
-  live_clusters_147: [aio, debian150, test-ded-etcd, test-ha, test141]
+  live_clusters_147: [aio, debian150, test-ded-etcd, test-ha, deliver-rocky]
   live_clusters_136: [k8s-dev]
   all_nodes_ready: true
   overall_assessment: |
-    2026-07-16 brinnatt/talkedu 镜像统一迁移后企业级回归通过。
-    证据: logs/enterprise-regression-20260716-1721.log (G0–G7/G8 CNI) +
-    logs/enterprise-remainder-live.out (R0–R3 cilium) +
-    logs/aio-addon-smoke.out / aio-ingress-smoke.out (G8b addons)。
-    关键点修复: Cilium operator 无 double-generic；OpenEBS localpv:4.3.0；
-    addon 冒烟落在 aio；test-ded-etcd Unauthorized 已重建；test141 宕机后已恢复 Ready。
+    2026-07-17 交付缺口复测通过（证据 /var/log/kubeauto-delivery-* on 147）：
+    P0 OpenEBS LVM R/W、NFS R/W、RocketMQ、Nacos；
+    P1 Hubble、MinIO pool=4、HA prom/ingress/dashboard、Rocky G8b addons。
+    未覆盖本轮: docker runtime/upgrade（矩阵 T2-RT-02 仍为 na）。
+    代码修复已同步 147，未 push（等待用户指令）。

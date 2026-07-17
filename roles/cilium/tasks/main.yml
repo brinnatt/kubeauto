@@ -7,6 +7,19 @@
   fail: msg="kernel {{ ansible_kernel }} is too old for cilium installing"
   when: "KERNEL_VER|float <= 4.09"
 
+# Stale DOWN cilium_vxlan from prior installs holds UDP 8472 and breaks datapath.
+- name: clear stale cilium vxlan/bpf before install
+  shell: |
+    set +e
+    fuser -k 8472/udp 2>/dev/null
+    for i in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | cut -d@ -f1 | grep -E 'cilium|lxc' || true); do
+      ip link set "$i" down 2>/dev/null
+      ip link delete "$i" 2>/dev/null
+    done
+    rm -rf /sys/fs/bpf/tc/globals/cilium_* /sys/fs/bpf/cilium /run/cilium 2>/dev/null
+    exit 0
+  tags: always
+
 - block:
     - name: create cilium chart setting
       template: src=values.yaml.j2 dest={{ cluster_dir }}/yml/cilium-values.yaml
@@ -49,14 +62,18 @@
   delegate_to: localhost
   tags: always
 
+# Restart only — do NOT wait for Available here.
+# CoreDNS / node-local-dns are installed later in cluster-addon; hubble-relay/ui
+# need cluster DNS before probes succeed. Waiting here blocks 90.setup forever.
 - name: restart hubble-ui after CNI is up (avoids frontend probe failure during bootstrap)
   shell: >-
-    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig rollout restart deploy/hubble-ui -n kube-system &&
-    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig rollout status deploy/hubble-ui -n kube-system --timeout=180s
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+    rollout restart deploy/hubble-ui -n kube-system
   run_once: true
   delegate_to: localhost
   when: "cilium_hubble_ui_enabled|bool"
   tags: always
+  ignore_errors: true
 
 # hubble-relay may need to be restarted
 - name: restart hubble-relay pod

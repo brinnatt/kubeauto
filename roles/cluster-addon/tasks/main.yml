@@ -9,6 +9,10 @@
 - import_tasks: nodelocaldns.yml
   when: '"node-local-dns" not in pod_info.stdout or CHANGE_CA|bool'
 
+# Hubble needs CoreDNS (and usually node-local-dns) before relay/ui probes pass.
+- import_tasks: hubble_wait.yml
+  when: 'CLUSTER_NETWORK == "cilium" and (cilium_hubble_enabled|default(false)|bool or cilium_hubble_ui_enabled|default(false)|bool)'
+
 - import_tasks: metrics-server.yml
   when: '"metrics-server" not in pod_info.stdout or CHANGE_CA|bool'
 

@@ -25,11 +25,12 @@ _BRINATT_UPSTREAM_FALLBACKS = {
     "brinnatt/calico-kube-controllers": "calico/kube-controllers",
     "brinnatt/coredns": "coredns/coredns",
     "brinnatt/registry": "registry",
-    "brinnatt/cilium": "cilium/cilium",
-    "brinnatt/cilium-operator-generic": "cilium/operator-generic",
-    "brinnatt/hubble-relay": "cilium/hubble-relay",
-    "brinnatt/hubble-ui": "cilium/hubble-ui",
-    "brinnatt/hubble-ui-backend": "cilium/hubble-ui-backend",
+    # Cilium publishes these tags on quay.io (hubble-ui:v0.13.5 is NOT on docker.io).
+    "brinnatt/cilium": "quay.io/cilium/cilium",
+    "brinnatt/cilium-operator-generic": "quay.io/cilium/operator-generic",
+    "brinnatt/hubble-relay": "quay.io/cilium/hubble-relay",
+    "brinnatt/hubble-ui": "quay.io/cilium/hubble-ui",
+    "brinnatt/hubble-ui-backend": "quay.io/cilium/hubble-ui-backend",
     "brinnatt/flannel": "flannel/flannel",
     "brinnatt/flannel-cni-plugin": "flannel/flannel-cni-plugin",
     "brinnatt/dashboard-api": "kubernetesui/dashboard-api",
@@ -42,7 +43,9 @@ _BRINATT_UPSTREAM_FALLBACKS = {
     "brinnatt/minio": "quay.io/minio/minio",
     "brinnatt/nacos-server": "nacos/nacos-server",
     "brinnatt/nacos-peer-finder-plugin": "nacos/nacos-peer-finder-plugin",
-    "brinnatt/openebs-kubectl": "bitnami/kubectl",
+    # bitnami/kubectl versioned tags removed from public catalog; mirror is built from dl.k8s.io.
+    # Keep legacy fallback for older cached tags only.
+    "brinnatt/openebs-kubectl": "bitnamilegacy/kubectl",
     "brinnatt/provisioner-localpv": "openebs/provisioner-localpv",
     "brinnatt/linux-utils": "openebs/linux-utils",
     "brinnatt/lvm-driver": "openebs/lvm-driver",

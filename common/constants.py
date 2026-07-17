@@ -105,7 +105,11 @@ class KubeConstant:
     })
     v_cilium_hubble_ui: str = field(default="v0.13.5", metadata={
         "refer_github": "https://github.com/cilium/hubble-ui/releases",
-        "description": "Hubble UI v0.13.5 paired with Cilium 1.19.x per upstream chart",
+        "refer_quay": "https://quay.io/repository/cilium/hubble-ui?tab=tags",
+        "description": (
+            "Hubble UI v0.13.5 paired with Cilium 1.19.x per upstream chart. "
+            "Official images are on quay.io/cilium/* (not docker.io/cilium for this tag)."
+        ),
     })
     v_kuberouter: str = field(default="v1.5.4", metadata={
         "refer_github": "https://github.com/cloudnativelabs/kube-router"
@@ -297,7 +301,8 @@ class KubeConstant:
                 "brinnatt/prometheus:v3.4.2",
             ],
             # Optional example receiver (roles/cluster-addon/templates/prometheus/dingtalk-webhook.yaml)
+            # v0.3.0 is Docker Schema 1 (rejected by modern buildx); upstream stable is v2.1.0.
             "prometheus-dingtalk": [
-                "brinnatt/prometheus-webhook-dingtalk:v0.3.0",
+                "brinnatt/prometheus-webhook-dingtalk:v2.1.0",
             ],
         }

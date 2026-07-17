@@ -9,8 +9,24 @@
     - name: prepare some dirs
       file: name={{ cluster_dir }}/yml/openebs state=directory
 
-    - name: 创建命名空间{{ openebs_namespace }}
-      shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create ns {{ openebs_namespace }} || echo ''"
+    # Wait for Active: covers delete --wait=false Terminating races and create/helm races.
+    - name: 确保命名空间{{ openebs_namespace }} Ready
+      shell: |
+        set -e
+        KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+        $KC create ns {{ openebs_namespace }} 2>/dev/null || true
+        for i in $(seq 1 60); do
+          ph=$($KC get ns {{ openebs_namespace }} -o jsonpath='{.status.phase}' 2>/dev/null || true)
+          if [ "$ph" = "Active" ]; then
+            exit 0
+          fi
+          # Recreate if missing (not just Terminating)
+          if [ -z "$ph" ]; then
+            $KC create ns {{ openebs_namespace }} 2>/dev/null || true
+          fi
+          sleep 2
+        done
+        echo "namespace {{ openebs_namespace }} not Active in time"; exit 1
 
     - name: 创建chart 个性化设置
       template: src=openebs/{{ item }}.j2 dest={{ cluster_dir }}/yml/openebs/{{ item }}
@@ -20,8 +36,11 @@
 
     - name: helm 部署 openebs operator 
       shell: "{{ base_dir }}/extra-bin/helm upgrade openebs --install -n {{ openebs_namespace }} \
+              --create-namespace \
               -f {{ cluster_dir }}/yml/openebs/values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/openebs-{{ openebs_ver }}.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: 轮询等待部署 openebs 
       shell: "{{ base_dir }}/extra-bin/helm ls -n {{ openebs_namespace }}|grep openebs|awk '{print $8}'"
