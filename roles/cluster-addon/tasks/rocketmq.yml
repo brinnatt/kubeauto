@@ -33,4 +33,9 @@
 
     - name: 部署 rocketmq cluster
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/rocketmq_cluster.yaml"
+      register: rocketmq_apply
+      retries: 5
+      delay: 10
+      until: rocketmq_apply.rc == 0
+      # Transient etcd leader elections can fail a single apply; CRs may already be created.
   when: 'rocketmq_install == "yes"'

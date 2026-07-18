@@ -251,6 +251,8 @@ nacos_mysql_port: "3306"
 nacos_mysql_user: "__dbuser__"
 nacos_mysql_password: "__yourpassword__"
 nacos_storage_class: "{{ openebs_lvm_storage_class }}"
+# PVC size per nacos pod (official samples often 5–20Gi; keep configurable for lab VGs)
+nacos_storage_size: "5Gi"
 # Default 512Mi fits small nodes; raise for production HA (anti-affinity needs N Ready nodes).
 nacos_mem_request: "512Mi"
 nacos_cpu_request: "200m"

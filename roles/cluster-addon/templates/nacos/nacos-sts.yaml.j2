@@ -5,6 +5,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nacos-headless
+  namespace: {{ nacos_namespace }}
   labels:
     app: nacos
 spec:
@@ -31,6 +32,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nacos
+  namespace: {{ nacos_namespace }}
   labels:
     app: nacos
 spec:
@@ -49,6 +51,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: nacos-cm
+  namespace: {{ nacos_namespace }}
 data:
   mysql.host: "{{ nacos_mysql_host }}"
   mysql.db.name: "{{ nacos_mysql_db }}"
@@ -60,6 +63,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: nacos
+  namespace: {{ nacos_namespace }}
 spec:
   podManagementPolicy: Parallel
   serviceName: nacos-headless
@@ -183,6 +187,6 @@ spec:
         accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
-            storage: 10Gi
+            storage: {{ nacos_storage_size | default('5Gi') }}
         storageClassName: {{ nacos_storage_class }}
         volumeMode: Filesystem

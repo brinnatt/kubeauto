@@ -7,10 +7,10 @@
 
 meta:
   version: 3
-  updated: "2026-07-17"
+  updated: "2026-07-18"
   runner: tests/run_enterprise_regression.sh
   regression_log: logs/enterprise-regression-*.log
-  regression_result: "PASS — 147 full + remainder + delivery-gap retest (LVM/NFS/Hubble/MQ/Nacos/MinIO/HA/Rocky)"
+  regression_result: "PASS — Tier3 tools 验收外；2026-07-18 复验 Nacos+MySQL@136 / dingtalk / docker+cri-dockerd / HA MQ+MinIO green"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -103,7 +103,7 @@ tier1_jumper:
 tier2_matrix:
   runtime:
     - {id: T2-RT-01, value: containerd, status: pass}
-    - {id: T2-RT-02, value: docker (+cri-dockerd), status: pass, evidence: "deliver-docker 141 docker://28.5.2 Ready+CNI 20260717"}
+    - {id: T2-RT-02, value: docker (+cri-dockerd), status: pass, evidence: "deliver-docker 141 SIDE_GATE_PASS 20260718 docker://28.5.2 Ready + cri-dockerd.sock"}
   network:
     - {id: T2-NW-01, value: calico (brinnatt/calico-*), status: pass}
     - {id: T2-NW-02, value: flannel (brinnatt/flannel*), cluster: test133-flannel, status: pass}
@@ -138,12 +138,13 @@ tier2_matrix:
     - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass}
     - {id: T2-AD-08, value: local-path-provisioner, status: pass}
     - {id: T2-AD-09, value: minio operator+tenant, status: pass}
-    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + real nvme0n2 VG), status: pass, evidence: "deliver-stor@130 LVM_REALDISK_PASS 20260717 Bound+lvm-ok-realdisk+LV on vg_k8s"}
-    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "deliver-stor@130 NFS_RW_PASS 20260717 Bound+双 Pod 读写"}
+    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + real nvme0n2 VG), status: pass, evidence: "deliver-stor@130 LVM_NFS_REBUILD_PASS 20260718 Bound+lvm-ok-realdisk+LV on /dev/nvme0n2 vg_k8s"}
+    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "deliver-stor@130 LVM_NFS_REBUILD_PASS 20260718 Bound+双 Pod nfs-ok"}
     - {id: T2-AD-12, value: rocketmq (nameservice_size=1, replicaPerGroup=0, 512m heap), status: pass, evidence: "aio retest MQ_STABLE_PASS 20260717 no OOM"}
-    - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: pass, evidence: "deliver-ha 20260717 HA_GATE_PASS nameservice size=2 + broker/console Running no OOM"}
-    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "deliver-ha 20260717 Nacos Running(2)+MySQL; schema mysql-schema.sql; replicas=3 Pending on 2C/3.5Gi lab → scale 2"}
-    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "deliver-ha 20260717 tenant servers=4 health=green pool pods 4/4 Running"}
+    - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: pass, evidence: "deliver-ha 20260718 nameservice 2/2 + broker Running; apply retries for etcd leader change"}
+    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "deliver-ha 20260718 → MySQL 192.168.47.136; official mysql-schema.sql; log 'cluster mode. use external storage'; Running(2)"}
+    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "deliver-ha 20260718 tenant servers=4 health=green pool pods 4/4 Running"}
+    - {id: T2-AD-18, value: prometheus-webhook-dingtalk, status: pass, evidence: "aio monitor webhook-dingtalk Running 20260718 SIDE_GATE_PASS"}
     - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "deliver-hubble 20260717"}
     - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt 142 20260717 setup90"}
     - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "aio NETWORK_CHECK_ECHO_PASS; multi-node jobs Pending on single-node = expected"}
@@ -183,8 +184,8 @@ coverage_summary:
   tier1_cross_pass: 4
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
-  tier2_total: 38
-  tier2_pass: 38
+  tier2_total: 39
+  tier2_pass: 39
   tier2_partial: 0
   tier2_na: 0
   tier3_total: 9
@@ -194,19 +195,14 @@ coverage_summary:
   live_clusters_136: [k8s-dev]
   all_nodes_ready: true
   overall_assessment: |
-    2026-07-17 客户交付签字结论（DELIVERY_SIGNOFF_PASS / HA_GATE_PASS）：
-    环境：已销毁污染集群 test-ha/test-ded-etcd；干净 live：
-      aio(147)、debian150(150 DEBIAN150_REBUILD_PASS)、deliver-docker(141 docker+cri-dockerd)、
-      deliver-rocky(142)、deliver-stor(130 LVM+NFS)、deliver-ha(131/132/133/140)。
-    根因闭环复验：
-      1) json-mock v1.3.1 → NETWORK_CHECK_ECHO_PASS
-      2) RocketMQ 默认 512m + replicaPerGroup=0 → MQ_STABLE_PASS；HA size=2 → deliver-ha PASS
-      3) docker+cri-dockerd / upgrade 1.33.5→1.33.6 已证
-      4) NFS RWX + OpenEBS LVM 真盘 → deliver-stor PASS
-      5) MinIO pool=4 health=green；Nacos+外部 MySQL（需导入 mysql-schema.sql）
-    客户须知：
-      - 单节点 multi-node network-check Job Pending = 设计行为
-      - Nacos 默认 requests 已改为可配 512Mi；小规格节点 replicas=3 可能 Pending（资源类）
-      - Nacos 依赖外部 MySQL + schema 初始化（产品不内置 MySQL）
-      - Tier3 工具需单独安装（tools/ 源码在仓，控制节点无二进制）
-    未 commit/push（用户自行一次性提交）。
+    2026-07-18 交付复验（tools 验收外）：
+    - Nacos + 真实 MySQL 192.168.47.136：官方镜像 mysql-schema.sql 建表；
+      日志 Nacos started successfully in cluster mode. use external storage；Running(2)
+    - prometheus-webhook-dingtalk：aio monitor Running（SIDE_GATE_PASS）
+    - deliver-docker 干净重建：docker://28.5.2 + cri-dockerd.sock Ready
+    - deliver-ha：MQ nameservice=2 + broker Running；MinIO×4 health=green；
+      （131 曾主机挂死导致短暂降级，恢复后已回绿）
+    - deliver-stor：130 干净重建 + LVM_NFS_REBUILD_PASS（nvme0n2 真盘 + NFS RWX）
+    官方对齐：Nacos 按 nacos-k8s/peer-finder + MYSQL_SERVICE_*；cri-dockerd 按上游 CRI 接入。
+    产品补丁待提交：nacos 模板 namespace、nacos_storage_size、rocketmq apply retries。
+    客户须知：Nacos 需外部 MySQL+schema；小规格 replicas=3 可能 Pending；Tier3 tools 不纳入验收。
