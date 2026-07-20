@@ -26,6 +26,8 @@
       shell: "{{ base_dir }}/extra-bin/helm upgrade minio-operator --install -n minio-operator \
               --create-namespace -f {{ cluster_dir }}/yml/minio/operator-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/operator-{{ minio_chart_ver }}.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: 轮询等待部署 minio operator
       shell: "{{ base_dir }}/extra-bin/helm ls -n minio-operator|grep minio-operator|awk '{print $8}'"
@@ -34,10 +36,14 @@
       retries: 15
       delay: 5
       ignore_errors: true
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: helm 部署 minio tenant
       shell: "{{ base_dir }}/extra-bin/helm upgrade minio --install -n {{ minio_namespace }} \
               --create-namespace -f {{ cluster_dir }}/yml/minio/tenant-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/tenant-{{ minio_chart_ver }}.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
   when: 'minio_install == "yes"'

@@ -49,6 +49,8 @@
       retries: 15
       delay: 5
       ignore_errors: true
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: 轮询等待lvm-localpv-controller 运行
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get pod -n {{ openebs_namespace }}|grep 'lvm-localpv-controller'|awk '{print $2}'"

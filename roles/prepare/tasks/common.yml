@@ -83,3 +83,7 @@
 
 - name: take SCTP to kernel module blacklist
   copy: src=sctp.conf dest=/etc/modprobe.d/sctp.conf
+
+# Early install of kubeReserved parent slice (also re-applied by runtime/kube-node roles).
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+- import_tasks: podruntime-slice.yml

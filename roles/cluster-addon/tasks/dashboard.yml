@@ -13,6 +13,8 @@
       shell: "{{ base_dir }}/extra-bin/helm upgrade kubernetes-dashboard --install --create-namespace \
               -n kube-system -f {{ cluster_dir }}/yml/dashboard/dashboard-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kubernetes-dashboard-{{ dashboardVer }}.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: 创建用户admin,read
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig apply -f {{ cluster_dir }}/yml/dashboard/admin-user-sa-rbac.yaml \

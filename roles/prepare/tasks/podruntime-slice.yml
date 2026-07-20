@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# Ensure systemd slice used as kubeReserved parent cgroup.
+#
+# Official docs (Node Allocatable / kubeReserved):
+#   https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
+#   - "Kubelet does not create kubeReservedCgroup if it doesn't exist."
+#   - With systemd cgroup driver: configured name + ".slice" appended
+#     (set kubeReservedCgroup=/podruntime → host path podruntime.slice).
+#   - Recommended: place kubelet + container runtime under a top-level slice
+#     (docs example: runtime.slice). We use podruntime.slice for the same role.
+#
+# Official source (systemd name conversion appends ".slice"):
+#   https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/cm/cgroup_manager_linux.go
+#   CgroupName.ToSystemd() / ParseSystemdToCgroupName()
+#
+# Known failure if misconfigured as /podruntime.slice under systemd:
+#   https://github.com/kubernetes/kubernetes/issues/78629
+#   (resolves to podruntime.slice.slice and kubelet fails to start)
+#
+# systemd slice unit reference:
+#   https://www.freedesktop.org/software/systemd/man/systemd.slice.html
+# ---------------------------------------------------------------------------
+- name: install podruntime.slice unit for kubeReserved
+  copy:
+    dest: /etc/systemd/system/podruntime.slice
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Kubernetes and container runtime reserved slice (kubeReserved)
+      Documentation=https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
+      Documentation=https://www.freedesktop.org/software/systemd/man/systemd.slice.html
+      Before=slices.target
+
+      [Slice]
+      CPUAccounting=yes
+      MemoryAccounting=yes
+  when: (KUBE_RESERVED_ENABLED | default('no')) == 'yes'
+
+- name: enable and start podruntime.slice
+  systemd:
+    name: podruntime.slice
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: (KUBE_RESERVED_ENABLED | default('no')) == 'yes'

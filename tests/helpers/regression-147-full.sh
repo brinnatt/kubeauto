@@ -80,6 +80,16 @@ echo "========== G5 system SSH + docker =========="
 ssh-keygen -R 192.168.47.133 2>/dev/null || true
 run $K system -a --user root --password "$PW" 192.168.47.130-133 192.168.47.140-142 </dev/null
 run $K system -a --user brinnatt --password "$PW" 192.168.47.150 </dev/null
+# When this script runs under sudo, ansible uses /root/.ssh — ensure root pubkey is on targets.
+if [[ "$(id -u)" -eq 0 ]] && [[ -f /root/.ssh/id_rsa.pub ]]; then
+  PUB="$(cat /root/.ssh/id_rsa.pub)"
+  for ip in 192.168.47.130 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.140 192.168.47.141 192.168.47.142; do
+    sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$ip" \
+      "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
+  done
+  sshpass -p "$PW" ssh -o StrictHostKeyChecking=no brinnatt@192.168.47.150 \
+    "mkdir -p ~/.ssh; chmod 700 ~/.ssh; grep -qxF '$PUB' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" || true
+fi
 $K docker -l >/dev/null 2>&1 || true
 pass G5-system
 
@@ -234,6 +244,24 @@ fi
 nodes_ready aio || fail "aio not Ready"
 pass G2
 
+echo "========== G11 Node Allocatable reserved (contract) =========="
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
+# Must cover cgroup v2 (aio/debian) and cgroup v1 hybrid (Rocky test141).
+for c in aio test141 debian150; do
+  export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
+  grep -E '^KUBE_RESERVED_ENABLED:|^SYS_RESERVED_ENABLED:' "$BASE/clusters/$c/config.yml" || true
+  grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$c/config.yml" || fail "$c KUBE_RESERVED not yes"
+  grep -q 'SYS_RESERVED_ENABLED: "yes"' "$BASE/clusters/$c/config.yml" || fail "$c SYS_RESERVED not yes"
+  bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG" || fail "reserved verify $c"
+  pass "G11-reserved $c"
+done
+# Local aio: runtime must sit under podruntime.slice (kubeReserved enforcement)
+systemctl show kubelet -p Slice --value | tee /tmp/aio-kubelet-slice.txt
+systemctl show containerd -p Slice --value | tee /tmp/aio-containerd-slice.txt
+grep -q podruntime.slice /tmp/aio-kubelet-slice.txt || fail "kubelet not in podruntime.slice"
+grep -q podruntime.slice /tmp/aio-containerd-slice.txt || fail "containerd not in podruntime.slice"
+pass "G11-aio-slice-placement"
+
 echo "========== G3 ops all clusters =========="
 for c in test141 debian150 test-ded-etcd test-ha aio; do
   run $K checkout "$c"
@@ -284,16 +312,26 @@ done
 pass G6
 
 echo "========== G8 Tier2 CNI/proxy on 133 =========="
+# Prime local registry so CNI matrix never ImagePullBackOff mid-run (six-repo tags).
+BOOTSTRAP_MODE=essential bash "$BASE/tests/helpers/bootstrap-brinnatt-mirrors.sh" || true
+for comp in flannel cilium kube-router kube-ovn; do
+  kubecli download -E "$comp" </dev/null || fail "upload $comp before G8"
+done
 for spec in "test133-flannel flannel ipvs" "test133-cilium cilium ipvs" "test133-kr kube-router ipvs" "test133-ovn kube-ovn ipvs" "test133-iptables calico iptables"; do
   set -- $spec
   cname=$1; net=$2; proxy=$3
   $K destroy "$cname" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$cname"
+  # wipe 133 between CNI swaps to avoid leftover CNI/cgroup pollution
+  sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.133 \
+    'set +e; systemctl stop kubelet containerd; rm -rf /var/lib/kubelet /etc/kubernetes /etc/cni /var/lib/containerd /etc/containerd /etc/systemd/system/podruntime.slice /opt/kubeauto_prepare_tasks /etc/calico /run/flannel /etc/cilium; systemctl daemon-reload; grep -q registry.talkschool.cn /etc/hosts || echo "192.168.47.147    registry.talkschool.cn" >> /etc/hosts' || true
   $K new "$cname" 2>/dev/null || true
   bash "$BASE/tests/helpers/mk-cluster-133.sh" "$cname" "$net" "$proxy"
   sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/$cname/config.yml"
+  grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$cname/config.yml" || fail "$cname reserved default off"
   run $K setup "$cname" 90 </dev/null
   export KUBECONFIG="$BASE/clusters/$cname/kubectl.kubeconfig"
   nodes_ready "$cname" || fail "$cname $net"
+  bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG" || fail "$cname reserved"
   if [ "$net" = "cilium" ]; then
     img=$(kubectl -n kube-system get deploy -l io.cilium/app=operator -o jsonpath='{.items[0].spec.template.spec.containers[0].image}' 2>/dev/null || true)
     echo "cilium_operator_image=$img"

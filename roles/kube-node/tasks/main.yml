@@ -34,6 +34,11 @@
 - name: prepare cni configuration file
   template: src=cni-default.conf.j2 dest=/etc/cni/net.d/10-default.conf
 
+# Official: kubeReservedCgroup must exist before kubelet starts.
+# https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+- import_tasks: ../../prepare/tasks/podruntime-slice.yml
+  tags: upgrade_k8s, restart_node
+
 - name: create kubelet configuration file
   template: src=kubelet-config.yaml.j2 dest=/var/lib/kubelet/config.yaml
   tags: upgrade_k8s, restart_node

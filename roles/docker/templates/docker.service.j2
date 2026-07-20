@@ -4,6 +4,11 @@ Documentation=http://docs.docker.io
 
 [Service]
 Environment="PATH={{ bin_dir }}:/bin:/sbin:/usr/bin:/usr/sbin"
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+# dockerd is the container runtime when CONTAINER_RUNTIME=docker → kubeReserved parent.
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+Slice=podruntime.slice
+{% endif %}
 ExecStart={{ bin_dir }}/dockerd 
 ExecStartPost=/sbin/iptables -I FORWARD -s 0.0.0.0/0 -j ACCEPT
 ExecReload=/bin/kill -s HUP $MAINPID

@@ -5,6 +5,12 @@ After=network.target
 
 [Service]
 Environment="PATH={{ bin_dir }}:/bin:/sbin:/usr/bin:/usr/sbin"
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+# Container runtime must share kubeReserved parent with kubelet for enforcement to be meaningful.
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+#   ("kubelet, container runtime, etc.")
+Slice=podruntime.slice
+{% endif %}
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart={{ bin_dir }}/containerd --log-level warn
 Restart=always

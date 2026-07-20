@@ -7,6 +7,11 @@ Requires=docker.service
 
 [Service]
 Type=notify
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+# cri-dockerd is the CRI shim for dockerd → same kubeReserved parent as runtime.
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+Slice=podruntime.slice
+{% endif %}
 ExecStart={{ bin_dir }}/cri-dockerd \
   --container-runtime-endpoint=unix:///var/run/cri-dockerd.sock \
   --pod-infra-container-image={{ SANDBOX_IMAGE }}

@@ -1,3 +1,8 @@
+# Slice=podruntime.slice on docker/cri-dockerd requires the unit first.
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+- import_tasks: ../../prepare/tasks/podruntime-slice.yml
+  tags: upgrade_docker
+
 - name: check if docker was installed
   shell: 'systemctl is-active docker || echo "NoFound"'
   register: docker_svc
@@ -104,6 +109,17 @@
 - name: install cri-dockerd binary on node
   copy: src={{ base_dir }}/docker-bin/cri-dockerd dest={{ bin_dir }}/cri-dockerd mode=0755
   tags: upgrade_docker, download_docker
+
+# Existing docker installs skip the install block; refresh unit when reserved is on.
+- name: refresh docker.service for reserved cgroup placement
+  template: src=docker.service.j2 dest=/etc/systemd/system/docker.service
+  when: (KUBE_RESERVED_ENABLED | default('no')) == 'yes'
+  tags: upgrade_docker
+
+- name: restart docker after reserved slice placement
+  shell: systemctl daemon-reload && systemctl restart docker
+  when: (KUBE_RESERVED_ENABLED | default('no')) == 'yes'
+  tags: upgrade_docker
 
 - name: create cri-dockerd systemd unit
   template: src=cri-dockerd.service.j2 dest=/etc/systemd/system/cri-dockerd.service

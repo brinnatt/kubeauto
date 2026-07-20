@@ -52,6 +52,11 @@
 - name: configure harbor registry
   template: src="HARBOR_REGISTRY/hosts.toml.j2" dest=/etc/containerd/certs.d/{{ HARBOR_REGISTRY }}/hosts.toml
 
+# Slice=podruntime.slice requires the unit to exist before containerd starts.
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+- import_tasks: ../../prepare/tasks/podruntime-slice.yml
+  tags: upgrade
+
 - name: create systemd unit file
   template: src=containerd.service.j2 dest=/etc/systemd/system/containerd.service
   tags: upgrade

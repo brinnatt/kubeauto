@@ -5,6 +5,11 @@ After=network.target
 
 [Service]
 WorkingDirectory=/var/lib/kube-proxy
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+# kube-proxy is a host kube daemon → belong under kubeReserved parent.
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+Slice=podruntime.slice
+{% endif %}
 ExecStart={{ bin_dir }}/kube-proxy \
   --config=/var/lib/kube-proxy/kube-proxy-config.yaml
 Restart=always

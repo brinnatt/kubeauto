@@ -44,12 +44,38 @@
 
     - name: helm 删除 kube-prometheus-stack {{ prom_chart_ver }}
       shell: "{{ base_dir }}/extra-bin/helm delete prometheus -n {{ prom_namespace }} || echo true; sleep 3"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
       when: 'CHANGE_CA|bool'
+
+    # Clear stuck pending-install/upgrade secrets (connection reset mid-hook leaves helm locked).
+    - name: 清理卡住的 prometheus helm pending release
+      shell: |
+        set +e
+        KC="{{ cluster_dir }}/kubectl.kubeconfig"
+        HELM="{{ base_dir }}/extra-bin/helm"
+        st="$($HELM status prometheus -n {{ prom_namespace }} --kubeconfig "$KC" -o json 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("info",{}).get("status",""))' 2>/dev/null)"
+        case "$st" in
+          pending-install|pending-upgrade|pending-rollback|uninstalling)
+            $HELM uninstall prometheus -n {{ prom_namespace }} --kubeconfig "$KC" --wait=false 2>/dev/null
+            kubectl --kubeconfig="$KC" -n {{ prom_namespace }} delete secret -l owner=helm,name=prometheus --wait=false 2>/dev/null
+            sleep 5
+            ;;
+        esac
+        exit 0
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
     - name: helm 创建 kube-prometheus-stack {{ prom_chart_ver }}
       shell: "{{ base_dir }}/extra-bin/helm upgrade prometheus --install \
               -n {{ prom_namespace }} --create-namespace --timeout 20m \
               -f {{ cluster_dir }}/yml/prom-values.yaml \
               {{ base_dir }}/roles/cluster-addon/files/kube-prometheus-stack-{{ prom_chart_ver }}.tgz"
+      environment:
+        KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+      register: prom_helm
+      retries: 3
+      delay: 30
+      until: prom_helm.rc == 0
   when: 'prom_install == "yes"'
   tags: force_change_certs

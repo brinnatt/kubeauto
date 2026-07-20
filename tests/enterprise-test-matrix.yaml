@@ -7,10 +7,10 @@
 
 meta:
   version: 3
-  updated: "2026-07-18"
+  updated: "2026-07-19"
   runner: tests/run_enterprise_regression.sh
-  regression_log: logs/enterprise-regression-*.log
-  regression_result: "PASS — Tier3 tools 验收外；2026-07-18 复验 Nacos+MySQL@136 / dingtalk / docker+cri-dockerd / HA MQ+MinIO green"
+  regression_log: /tmp/kubeauto-resume-g8-20260719-164803.log + /tmp/g8b-local-finish.log
+  regression_result: "SIGNABLE_PASS — tools外全PASS；G8 CNI×5+reserved；G8b addon+监控；六仓单测OK；SYS_RESERVED_ENFORCE默认no（官方告警）"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -28,10 +28,10 @@ meta:
     OpenEBS localpv 镜像 pin 4.3.0（umbrella 4.3.2 上游无 :4.3.2）。
     Addon 冒烟在 aio（与 local registry 同机），避免节点 /etc/hosts 指向错误 REGISTRY_HOST_IP。
     Tier3 tools 二进制未装在控制节点 → SKIP（非镜像迁移范围）。
-    2026-07-17 交付缺口修复: OpenEBS ns Active 等待+--create-namespace；
-    Hubble 不在 CNI 阶段阻塞 rollout（CoreDNS 之后再等）；
-    clean/cilium 清理残留 cilium_vxlan:8472；rocketmq_nameservice_size 可配；
-    openebs/rocketmq helm 显式 KUBECONFIG。
+    2026-07-19：SYS_RESERVED_ENABLED=yes 仍计入 Allocatable；SYS_RESERVED_ENFORCE 默认 no
+    （官方 docs 警告 hard-limit system.slice 会饿死 apiserver/etcd；aio 实测 MemoryMax=1000Mi 导致 6443 reset）。
+    helm dashboard/prometheus/minio 统一注入 KUBECONFIG（修复 localhost:8080）。
+    六仓严禁局部分裂：test_six_repo_version_sync 对账 constants↔ext-images CI↔component_images。
 
 environments:
   control:
@@ -148,6 +148,23 @@ tier2_matrix:
     - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "deliver-hubble 20260717"}
     - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt 142 20260717 setup90"}
     - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "aio NETWORK_CHECK_ECHO_PASS; multi-node jobs Pending on single-node = expected"}
+  node_allocatable:
+    - {id: T2-NA-01, desc: "KUBE_RESERVED+SYS_RESERVED both yes (contract default)", status: pass, evidence: "aio@147 20260719 RESERVED_ALLOCATABLE_PASS cpuΔ=1000m memΔ=2300Mi; config defaults yes + configurable CPU/Mem/PID"}
+    - {id: T2-NA-02, desc: "systemd cgroup /podruntime+/system + podruntime.slice (cgroup2)", status: pass, evidence: "aio cgroup2fs; kubeReservedCgroup=/podruntime systemReservedCgroup=/system; kubelet/containerd/kube-proxy Slice=podruntime.slice; NO_DOUBLE_SLICE"}
+    - {id: T2-NA-03, desc: "cgroup v1 hybrid Rocky8 reserved enablement", status: pass, evidence: "test141@141 Rocky8.10 HYBRID_V1; memory+systemd podruntime.slice; RESERVED_ALLOCATABLE_PASS; NO_DOUBLE_SLICE"}
+    - {id: T2-NA-04, desc: "docker+cri-dockerd reserved enablement", status: pass, evidence: "deliver-docker@133 20260719 DOCKER_GATE_PASS + RESERVED_ALLOCATABLE_PASS; kubelet/docker/cri-dockerd Slice=podruntime.slice; NO_DOUBLE_SLICE"}
+    - {id: T2-NA-05, desc: "unit: systemd vs cgroupfs naming + soft mkdir", status: pass, evidence: "tests/unit/test_kube_reserved.py"}
+  compatibility_six_repo:
+    # 签字硬门槛：六仓版本/逻辑严禁局部分裂；覆盖 K8s、组件、CNI、addon、监控/日志生态 + cgroup
+    - {id: T2-CX-01, desc: "六仓共存检出 + ext-bin/sp1 ENV 与 constants 一致", status: pass, evidence: "tests/unit/test_six_repo_version_sync.py"}
+    - {id: T2-CX-02, desc: "K8s 控制面/proxy/pause 镜像 tag=v_k8s_bin/v_pause 与 ext-images CI 一致", status: pass, evidence: "test_ecosystem_ci_tags_match_kubeauto_constants"}
+    - {id: T2-CX-03, desc: "CNI(calico/flannel/cilium/kube-router/kube-ovn)+DNS 与 CI 一致", status: pass, evidence: "test_ecosystem_ci_tags_match_kubeauto_constants"}
+    - {id: T2-CX-04, desc: "component_images 全量 brinnatt pin 存在于 ext-images CI（无本地分叉）", status: pass, evidence: "test_component_images_tags_exist_in_ext_images_ci"}
+    - {id: T2-CX-05, desc: "监控栈 prometheus/grafana/alertmanager/dingtalk 与 CI 一致", status: pass, evidence: "component_images.prometheus + CI tags"}
+    - {id: T2-CX-06, desc: "存储/消息/注册中心 addon pins（openebs/minio/rocketmq/nacos）与 CI 一致", status: pass, evidence: "component_images + CI"}
+    - {id: T2-CX-07, desc: "cgroup systemd/v1/v2 + reserved 合同默认（与六仓无关但同属兼容签字）", status: pass, evidence: "T2-NA-01..05"}
+    - {id: T2-CX-08, desc: "Live：G8 CNI 矩阵 + G8b addon 冒烟后仍无镜像漂移/ImagePull", status: pass, evidence: "resume-g8: flannel/cilium/kr/ovn/iptables + reserved PASS; G8b dashboard/openebs/prom/minio/ingress Running brinnatt; RESUME_G8B_COMPLETE"}
+    - {id: T2-CX-09, desc: "SYS_RESERVED 计入 Allocatable；ENFORCE 默认 no（防 system.slice 饿死控制面）", status: pass, evidence: "aio MemoryMax=1000Mi 曾打挂 6443；改为 enforce 不含 system-reserved 后 prometheus deployed + RESERVED_ALLOCATABLE_PASS"}
 
 tier3_tools:
   - {id: T3-TL-01, tool: CalicoPolicyCli, status: skip, note: "binary absent on control node"}
@@ -173,6 +190,8 @@ execution_groups:
   G8b: {name: "Addon 镜像冒烟 (aio)", priority: P1, status: pass}
   G9: {name: "tools CLI", priority: P2, status: skip}
   G10: {name: "交付缺口 P0/P1 (LVM/NFS/MQ/Nacos/Hubble/HA/Rocky)", priority: P0, status: pass}
+  G11: {name: "Node Allocatable reserved (合同 KUBE/SYS)", priority: P0, status: pass}
+  G12: {name: "六仓+生态兼容（K8s/CNI/addon/监控）", priority: P0, status: pass}
 
 coverage_summary:
   tier0_total: 8
@@ -184,25 +203,23 @@ coverage_summary:
   tier1_cross_pass: 4
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
-  tier2_total: 39
-  tier2_pass: 39
+  tier2_total: 53
+  tier2_pass: 53
   tier2_partial: 0
+  tier2_open: 0
   tier2_na: 0
   tier3_total: 9
   tier3_pass: 0
   tier3_skip: 9
-  live_clusters_147: [aio, debian150, deliver-docker, deliver-rocky, deliver-stor, deliver-ha]
-  live_clusters_136: [k8s-dev]
+  live_clusters_147: [aio, test141, debian150, test-ha]
+  live_clusters_136: []
   all_nodes_ready: true
   overall_assessment: |
-    2026-07-18 交付复验（tools 验收外）：
-    - Nacos + 真实 MySQL 192.168.47.136：官方镜像 mysql-schema.sql 建表；
-      日志 Nacos started successfully in cluster mode. use external storage；Running(2)
-    - prometheus-webhook-dingtalk：aio monitor Running（SIDE_GATE_PASS）
-    - deliver-docker 干净重建：docker://28.5.2 + cri-dockerd.sock Ready
-    - deliver-ha：MQ nameservice=2 + broker Running；MinIO×4 health=green；
-      （131 曾主机挂死导致短暂降级，恢复后已回绿）
-    - deliver-stor：130 干净重建 + LVM_NFS_REBUILD_PASS（nvme0n2 真盘 + NFS RWX）
-    官方对齐：Nacos 按 nacos-k8s/peer-finder + MYSQL_SERVICE_*；cri-dockerd 按上游 CRI 接入。
-    产品补丁待提交：nacos 模板 namespace、nacos_storage_size、rocketmq apply retries。
-    客户须知：Nacos 需外部 MySQL+schema；小规格 replicas=3 可能 Pending；Tier3 tools 不纳入验收。
+    2026-07-19 SIGNABLE_PASS（Tier3 tools 验收外）：
+    - 合同 reserved：KUBE/SYS ENABLED=yes；Allocatable Δ 校验 PASS（aio/Rocky/docker/CNI×5）。
+    - 产品安全阀：SYS_RESERVED_ENFORCE 默认 no（官方告警 + aio 实测 system.slice MemoryMax=1Gi 导致 apiserver reset）。
+    - G8：flannel/cilium/kube-router/kube-ovn/calico-iptables 全 PASS + reserved。
+    - G8b：dashboard/openebs/prometheus/minio/ingress-nginx Running，镜像 brinnatt/*。
+    - 六仓：test_six_repo_version_sync（constants↔CI↔component_images）本地 OK；147 无 sibling 仓故 skip。
+    - helm：dashboard/prometheus/minio 补齐 KUBECONFIG（与 ingress/openebs 一致）。
+    签字条件已满足：除 Tier3 tools 外全 PASS；无 double-slice；无 registry 误伤；生态版本无局部分裂。

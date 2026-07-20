@@ -9,29 +9,44 @@ Requires=cri-dockerd.service
 After=network-online.target
 Wants=network-online.target
 {% endif %}
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+# Docs: kubeReserved parent must exist before kubelet starts (kubelet does not create it).
+# https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+After=podruntime.slice
+Requires=podruntime.slice
+{% endif %}
 
 [Service]
 WorkingDirectory=/var/lib/kubelet
 ExecStartPre=/bin/mount -o remount,rw '/sys/fs/cgroup'
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+# Place kubelet under kubeReserved parent so enforce kube-reserved accounts kubelet usage.
+# Docs: "kubernetes system daemons are placed under a top level control group"
+# https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+Slice=podruntime.slice
+{% endif %}
 {% if KUBE_RESERVED_ENABLED == "yes" or SYS_RESERVED_ENABLED == "yes" %}
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/cpu/podruntime.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/cpuacct/podruntime.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/cpuset/podruntime.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/memory/podruntime.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/pids/podruntime.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/systemd/podruntime.slice
-
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/cpu/system.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/cpuacct/system.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/cpuset/system.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/memory/system.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/pids/system.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/systemd/system.slice
-
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/hugetlb/podruntime.slice
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/hugetlb/system.slice
-
-ExecStartPre=/bin/mkdir -p /sys/fs/cgroup/podruntime.slice
+# cgroup v1 / hybrid fallback (Rocky 8 etc.): create controller paths if missing.
+# Prefix "-" = ignore failure on cgroup v2 unified (Ubuntu/Debian): those cpu/* paths
+# do not exist; systemd podruntime.slice / system.slice already owns the hierarchy.
+# Docs: kubelet fails if reserved cgroup is invalid/missing.
+# https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
+# Historical note (cgroupfs/v1 controllers): README cites centos7 cpuset/hugetlb gaps.
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/cpu/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/cpuacct/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/cpuset/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/memory/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/pids/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/systemd/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/hugetlb/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/cpu/system.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/cpuacct/system.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/cpuset/system.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/memory/system.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/pids/system.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/systemd/system.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/hugetlb/system.slice
 {% endif %}
 ExecStart={{ bin_dir }}/kubelet \
   --config=/var/lib/kubelet/config.yaml \

@@ -26,12 +26,24 @@ clusterDomain: {{ CLUSTER_DNS_DOMAIN }}
 configMapAndSecretChangeDetectionStrategy: Watch
 containerLogMaxFiles: 3 
 containerLogMaxSize: 10Mi
+# Node Allocatable enforcement keys.
+# Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#enforcing-node-allocatable
+# Source: pkg/kubelet/cm/node_container_manager_linux.go (enforceNodeAllocatableCgroups)
 enforceNodeAllocatable:
 - pods
 {% if KUBE_RESERVED_ENABLED == "yes" %}
 - kube-reserved
 {% endif %}
-{% if SYS_RESERVED_ENABLED == "yes" %}
+{#
+  Official warning (same reserve-compute-resources page): enforcing system-reserved
+  hard-limits system.slice. Control-plane (kube-apiserver/etcd) and OS daemons share
+  that slice — tender baseline SYS_RESERVED_MEMORY=1000Mi is enough for Allocatable
+  accounting but too small as a hard MemoryMax under addon/CRD storms.
+  Therefore: systemReserved* always applied when SYS_RESERVED_ENABLED=yes (capacity
+  subtraction), but enforceNodeAllocatable += system-reserved only when
+  SYS_RESERVED_ENFORCE=yes (opt-in).
+#}
+{% if SYS_RESERVED_ENABLED == "yes" and (SYS_RESERVED_ENFORCE | default('no')) == "yes" %}
 - system-reserved
 {% endif %}
 eventBurst: 10
@@ -52,11 +64,28 @@ imageGCHighThresholdPercent: 85
 imageGCLowThresholdPercent: 80
 imageMinimumGCAge: 2m0s
 {% if KUBE_RESERVED_ENABLED == "yes" %}
+{#
+  kubeReservedCgroup naming (critical for production):
+  Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved
+    "With systemd cgroup driver, you should follow a specific pattern for the name
+     of the cgroup you define: the name should be the value you set for
+     kubeReservedCgroup, with .slice appended."
+  Source: pkg/kubelet/cm/cgroup_manager_linux.go — ToSystemd() appends ".slice"
+  Bug if set to /podruntime.slice under systemd → podruntime.slice.slice:
+    https://github.com/kubernetes/kubernetes/issues/78629
+  Therefore:
+    - systemd driver → /podruntime  (host: podruntime.slice)
+    - cgroupfs driver → /podruntime.slice (literal cgroupfs path)
+#}
+{% if CGROUP_DRIVER == "systemd" %}
+kubeReservedCgroup: /podruntime
+{% else %}
 kubeReservedCgroup: /podruntime.slice
+{% endif %}
 kubeReserved:
-  cpu: 500m
-  memory: 1000Mi
-  pid: "1000"
+  cpu: {{ KUBE_RESERVED_CPU | default('500m') }}
+  memory: {{ KUBE_RESERVED_MEMORY | default('1000Mi') }}
+  pid: "{{ KUBE_RESERVED_PID | default('1000') }}"
 {% endif %}
 kubeAPIBurst: 100
 kubeAPIQPS: 50
@@ -78,11 +107,22 @@ serializeImagePulls: false
 streamingConnectionIdleTimeout: 4h0m0s
 syncFrequency: 1m0s
 {% if SYS_RESERVED_ENABLED == "yes" %}
+{#
+  systemReservedCgroup: same systemd naming rule as kubeReservedCgroup.
+  Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#system-reserved
+  Recommended parent for OS daemons: system.slice → configure as /system under systemd.
+  WARNING (same official page): enforcing system-reserved can starve OS daemons if values
+  are too low; contract requires enablement — values are the tender baseline (raise on large nodes).
+#}
+{% if CGROUP_DRIVER == "systemd" %}
+systemReservedCgroup: /system
+{% else %}
 systemReservedCgroup: /system.slice
+{% endif %}
 systemReserved:
-  cpu: 500m
-  memory: 1000Mi
-  pid: "5000"
+  cpu: {{ SYS_RESERVED_CPU | default('500m') }}
+  memory: {{ SYS_RESERVED_MEMORY | default('1000Mi') }}
+  pid: "{{ SYS_RESERVED_PID | default('5000') }}"
 {% endif %}
 tlsCertFile: {{ ca_dir }}/kubelet.pem
 tlsPrivateKeyFile: {{ ca_dir }}/kubelet-key.pem

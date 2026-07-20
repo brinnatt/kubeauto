@@ -6,8 +6,12 @@ BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE" PATH="/usr/local/bin:/usr/bin:$PATH"
 K=kubecli
 C=deliver-docker
-NODE=192.168.47.141
-LOG=/var/log/kubeauto-delivery-docker-$(date +%Y%m%d%H%M%S).log
+# 133 is disposable for docker runtime + reserved gate (avoids colliding with test141 on 141).
+NODE="${DOCKER_GATE_NODE:-192.168.47.133}"
+LOG=/tmp/kubeauto-delivery-docker-$(date +%Y%m%d%H%M%S).log
+if [ -w /var/log ] 2>/dev/null; then
+  LOG=/var/log/kubeauto-delivery-docker-$(date +%Y%m%d%H%M%S).log
+fi
 exec > >(tee -a "$LOG") 2>&1
 echo "LOG=$LOG"
 
@@ -62,7 +66,7 @@ cat > "$BASE/clusters/$C/hosts" <<EOF
 $NODE
 
 [kube_master]
-$NODE k8s_nodename='master-141'
+$NODE k8s_nodename='master-docker'
 
 [kube_node]
 $NODE
@@ -131,5 +135,14 @@ sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
   'systemctl is-active docker cri-dockerd kubelet; /usr/local/bin/cri-dockerd --version; grep -E "container-runtime-endpoint|pod-infra|network-plugin" /etc/systemd/system/kubelet.service /etc/systemd/system/cri-dockerd.service'
 
 pass "docker runtime Ready ($rt) + system pods + CNI"
+
+echo "========== reserved enablement (contract) =========="
+grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$C/config.yml" || fail "KUBE_RESERVED not yes"
+grep -q 'SYS_RESERVED_ENABLED: "yes"' "$BASE/clusters/$C/config.yml" || fail "SYS_RESERVED not yes"
+bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG" || fail "reserved allocatable"
+sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
+  'systemctl show kubelet docker cri-dockerd -p Slice --value; test ! -d /sys/fs/cgroup/systemd/podruntime.slice.slice -a ! -d /sys/fs/cgroup/podruntime.slice.slice && echo NO_DOUBLE_SLICE'
+pass "docker reserved RESERVED_ALLOCATABLE_PASS"
+
 echo "DOCKER_GATE_PASS"
 echo "LOG=$LOG"

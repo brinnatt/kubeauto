@@ -89,15 +89,26 @@ KUBELET_ROOT_DIR: "/var/lib/kubelet"
 # Maximum number of pods per node
 MAX_PODS: 110
 
-# Configures the amount of resources reserved for Kube components (kubelet, kube-proxy, dockerd, etc.)
-# For specific value settings, refer to templates/kubelet-config.yaml.j2
-KUBE_RESERVED_ENABLED: "no"
+# Node Allocatable reservations — contract/tender default: BOTH enabled.
+# Official docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
+# Official source (systemd appends ".slice"): pkg/kubelet/cm/cgroup_manager_linux.go
+# Do NOT set kubeReservedCgroup=/podruntime.slice under systemd (becomes .slice.slice):
+#   https://github.com/kubernetes/kubernetes/issues/78629
+# Values below are the tender baseline for a minimal 4C/8G OS install; raise on larger nodes.
+KUBE_RESERVED_ENABLED: "yes"
+KUBE_RESERVED_CPU: "500m"
+KUBE_RESERVED_MEMORY: "1000Mi"
+KUBE_RESERVED_PID: "1000"
 
-# Kubernetes does not recommend enabling system-reserved without careful consideration. It should only be configured after establishing a baseline resource usage profile through long-term monitoring.
-# Additionally, the reserved amount may need to be increased over time as system workloads evolve. For specific value settings, refer to templates/kubelet-config.yaml.j2.
-# The current system reservation settings are based on a minimal OS installation on a 4-core/8GB virtual machine. If using high-performance physical servers, the reservations should be increased appropriately.
-# Important Note: During cluster installation, components like the API server may experience temporary high resource usage. It is advised to reserve at least 1GB of memory to accommodate this.
-SYS_RESERVED_ENABLED: "no"
+# system-reserved: contract default ON for Allocatable accounting.
+# Docs warn: enforcing system-reserved hard-limits system.slice (apiserver/etcd live there).
+# Baseline 1000Mi is intentional for Capacity→Allocatable; hard enforce is opt-in.
+# SYS_RESERVED_ENFORCE: "yes" only after sizing Memory ≥ real OS+control-plane peak.
+SYS_RESERVED_ENABLED: "yes"
+SYS_RESERVED_ENFORCE: "no"
+SYS_RESERVED_CPU: "500m"
+SYS_RESERVED_MEMORY: "1000Mi"
+SYS_RESERVED_PID: "5000"
 
 
 ############################
