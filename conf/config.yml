@@ -94,20 +94,21 @@ MAX_PODS: 110
 # Official source (systemd appends ".slice"): pkg/kubelet/cm/cgroup_manager_linux.go
 # Do NOT set kubeReservedCgroup=/podruntime.slice under systemd (becomes .slice.slice):
 #   https://github.com/kubernetes/kubernetes/issues/78629
-# Values below are the tender baseline for a minimal 4C/8G OS install; raise on larger nodes.
+# Contract node floor: ≥16 CPU / 32Gi RAM — reserve 2 CPU + 4Gi for kubelet/runtime + OS/kernel
+# so business Pods are capped/evicted first under peak load (SYS_RESERVED_ENFORCE stays no).
 KUBE_RESERVED_ENABLED: "yes"
-KUBE_RESERVED_CPU: "500m"
-KUBE_RESERVED_MEMORY: "1000Mi"
+KUBE_RESERVED_CPU: "1000m"
+KUBE_RESERVED_MEMORY: "1536Mi"
 KUBE_RESERVED_PID: "1000"
 
-# system-reserved: contract default ON for Allocatable accounting.
+# system-reserved: contract default ON for Allocatable accounting (2.5Gi of the 4Gi memory floor).
 # Docs warn: enforcing system-reserved hard-limits system.slice (apiserver/etcd live there).
-# Baseline 1000Mi is intentional for Capacity→Allocatable; hard enforce is opt-in.
-# SYS_RESERVED_ENFORCE: "yes" only after sizing Memory ≥ real OS+control-plane peak.
+# Hard enforce is opt-in only after profiling system.slice peak on control-plane nodes.
+# SYS_RESERVED_ENFORCE: "yes" only when SYS_RESERVED_MEMORY ≥ measured control-plane peak.
 SYS_RESERVED_ENABLED: "yes"
 SYS_RESERVED_ENFORCE: "no"
-SYS_RESERVED_CPU: "500m"
-SYS_RESERVED_MEMORY: "1000Mi"
+SYS_RESERVED_CPU: "1000m"
+SYS_RESERVED_MEMORY: "2560Mi"
 SYS_RESERVED_PID: "5000"
 
 

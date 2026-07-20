@@ -37,8 +37,8 @@ enforceNodeAllocatable:
 {#
   Official warning (same reserve-compute-resources page): enforcing system-reserved
   hard-limits system.slice. Control-plane (kube-apiserver/etcd) and OS daemons share
-  that slice — tender baseline SYS_RESERVED_MEMORY=1000Mi is enough for Allocatable
-  accounting but too small as a hard MemoryMax under addon/CRD storms.
+  that slice — contract baseline reserves 4Gi total (1536Mi kube + 2560Mi system) on ≥32Gi
+  nodes. Hard MemoryMax on system.slice is opt-in via SYS_RESERVED_ENFORCE only.
   Therefore: systemReserved* always applied when SYS_RESERVED_ENABLED=yes (capacity
   subtraction), but enforceNodeAllocatable += system-reserved only when
   SYS_RESERVED_ENFORCE=yes (opt-in).
@@ -83,8 +83,8 @@ kubeReservedCgroup: /podruntime
 kubeReservedCgroup: /podruntime.slice
 {% endif %}
 kubeReserved:
-  cpu: {{ KUBE_RESERVED_CPU | default('500m') }}
-  memory: {{ KUBE_RESERVED_MEMORY | default('1000Mi') }}
+  cpu: {{ KUBE_RESERVED_CPU | default('1000m') }}
+  memory: {{ KUBE_RESERVED_MEMORY | default('1536Mi') }}
   pid: "{{ KUBE_RESERVED_PID | default('1000') }}"
 {% endif %}
 kubeAPIBurst: 100
@@ -120,8 +120,8 @@ systemReservedCgroup: /system
 systemReservedCgroup: /system.slice
 {% endif %}
 systemReserved:
-  cpu: {{ SYS_RESERVED_CPU | default('500m') }}
-  memory: {{ SYS_RESERVED_MEMORY | default('1000Mi') }}
+  cpu: {{ SYS_RESERVED_CPU | default('1000m') }}
+  memory: {{ SYS_RESERVED_MEMORY | default('2560Mi') }}
   pid: "{{ SYS_RESERVED_PID | default('5000') }}"
 {% endif %}
 tlsCertFile: {{ ca_dir }}/kubelet.pem

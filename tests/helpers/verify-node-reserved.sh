@@ -62,13 +62,13 @@ mem_delta = cap_mem - alloc_mem
 print(f"capacity.cpu={cap['cpu']} allocatable.cpu={alloc['cpu']} delta_m={cpu_delta}")
 print(f"capacity.memory={cap['memory']} allocatable.memory={alloc['memory']} delta_bytes={mem_delta}")
 
-# Contract baseline: kube 500m + system 500m = 1000m CPU
-if cpu_delta < 1000:
-    print(f"FAIL: cpu reserved delta {cpu_delta}m < 1000m (expect kube+system reserved)")
+# Contract baseline (≥16C/32Gi nodes): kube 1000m+1536Mi + system 1000m+2560Mi = 2 CPU + 4Gi
+if cpu_delta < 2000:
+    print(f"FAIL: cpu reserved delta {cpu_delta}m < 2000m (expect kube+system reserved)")
     sys.exit(1)
 
-# memory: kube 1000Mi + system 1000Mi + evictionHard memory.available 300Mi
-min_mem = (1000 + 1000 + 300) * 1024**2
+# memory: 1536Mi + 2560Mi reserved + evictionHard memory.available 300Mi
+min_mem = (1536 + 2560 + 300) * 1024**2
 if mem_delta < min_mem * 0.9:
     print(f"FAIL: memory reserved delta {mem_delta} < ~{min_mem} (kube+system+eviction)")
     sys.exit(1)

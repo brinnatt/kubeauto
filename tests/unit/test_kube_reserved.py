@@ -37,11 +37,11 @@ class TestKubeReservedTemplates(unittest.TestCase):
             "CLUSTER_DNS_DOMAIN": "cluster.local",
             "KUBE_RESERVED_ENABLED": "yes",
             "SYS_RESERVED_ENABLED": "yes",
-            "KUBE_RESERVED_CPU": "500m",
-            "KUBE_RESERVED_MEMORY": "1000Mi",
+            "KUBE_RESERVED_CPU": "1000m",
+            "KUBE_RESERVED_MEMORY": "1536Mi",
             "KUBE_RESERVED_PID": "1000",
-            "SYS_RESERVED_CPU": "500m",
-            "SYS_RESERVED_MEMORY": "1000Mi",
+            "SYS_RESERVED_CPU": "1000m",
+            "SYS_RESERVED_MEMORY": "2560Mi",
             "SYS_RESERVED_PID": "5000",
             "MAX_PODS": 110,
             "POD_MAX_PIDS": -1,
@@ -58,8 +58,10 @@ class TestKubeReservedTemplates(unittest.TestCase):
         self.assertRegex(text, r'(?m)^KUBE_RESERVED_ENABLED:\s*"yes"\s*$')
         self.assertRegex(text, r'(?m)^SYS_RESERVED_ENABLED:\s*"yes"\s*$')
         self.assertRegex(text, r'(?m)^SYS_RESERVED_ENFORCE:\s*"no"\s*$')
-        self.assertIn("KUBE_RESERVED_CPU:", text)
-        self.assertIn("SYS_RESERVED_MEMORY:", text)
+        self.assertIn('KUBE_RESERVED_CPU: "1000m"', text)
+        self.assertIn('KUBE_RESERVED_MEMORY: "1536Mi"', text)
+        self.assertIn('SYS_RESERVED_CPU: "1000m"', text)
+        self.assertIn('SYS_RESERVED_MEMORY: "2560Mi"', text)
 
     def test_systemd_cgroup_names_without_double_slice(self):
         """systemd driver: /podruntime + /system (docs + k8s#78629)."""
@@ -71,8 +73,9 @@ class TestKubeReservedTemplates(unittest.TestCase):
         self.assertIn("- kube-reserved", out)
         # Default: account systemReserved but do NOT hard-enforce system.slice
         self.assertNotIn("- system-reserved", out)
-        self.assertIn("cpu: 500m", out)
-        self.assertIn("memory: 1000Mi", out)
+        self.assertIn("cpu: 1000m", out)
+        self.assertIn("memory: 1536Mi", out)
+        self.assertIn("memory: 2560Mi", out)
 
     def test_sys_reserved_enforce_opt_in(self):
         out = _render(KUBELET_CFG, **self._base_ctx(SYS_RESERVED_ENFORCE="yes"))
