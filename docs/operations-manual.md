@@ -613,13 +613,13 @@ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
 
 Kubernetes 集群使用 etcd 存储所有数据，是最重要的组件之一，注意 etcd 集群需要奇数个节点(1, 3, 5 ...)，本文档使用 3 个节点做集群。
 
-请在另外窗口打开 [roles/etcd/tasks/main.yml](https://github.com/brinnatt/kubeauto/blob/master/roles/etcd/tasks/main.yml) 文件，对照看以下讲解内容。
+请在另外窗口打开 [roles/etcd/tasks/main.yml](../roles/etcd/tasks/main.yml) 文件，对照看以下讲解内容。
 
 1、创建 etcd 证书
 
 > 注意：证书是在部署节点创建好之后推送到目标 etcd 节点上去的，以增加 ca 证书的安全性
 
-创建 etcd 证书请求 [etcd-csr.json.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/etcd/templates/etcd-csr.json.j2)
+创建 etcd 证书请求 [etcd-csr.json.j2](../roles/etcd/templates/etcd-csr.json.j2)
 
 ```bash
 {
@@ -648,7 +648,7 @@ Kubernetes 集群使用 etcd 存储所有数据，是最重要的组件之一，
 
 - etcd 使用对等证书，hosts 字段必须指定授权使用该证书的 etcd 节点 IP，这里枚举了所有 etcd 节点的地址。
 
-2、创建 etcd 服务文件 [etcd.service.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/etcd/templates/etcd.service.j2)
+2、创建 etcd 服务文件 [etcd.service.j2](../roles/etcd/templates/etcd.service.j2)
 
 ```bash
 [Unit]
@@ -1283,7 +1283,7 @@ $ tree .
     `-- main.yml
 ```
 
-请在另外窗口打开 [roles/calico/tasks/main.yml](https://github.com/brinnatt/kubeauto/blob/master/roles/calico/tasks/main.yml) 文件，对照看以下讲解内容。
+请在另外窗口打开 [roles/calico/tasks/main.yml](../roles/calico/tasks/main.yml) 文件，对照看以下讲解内容。
 
 **创建 calico 证书申请：**
 
@@ -1332,12 +1332,12 @@ Calico 证书使用场景：
 
 **创建 calico DaemonSet yaml 文件和 rbac 文件：**
 
-请对照 [roles/calico/templates/calico-v3.28.yaml.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/calico/templates/calico-v3.28.yaml.j2) 文件注释和以下注意内容
+请对照 [roles/calico/templates/calico-v3.28.yaml.j2](../roles/calico/templates/calico-v3.28.yaml.j2) 文件注释和以下注意内容
 
-- 详细配置参数请参考 [calico官方文档](https://projectcalico.docs.tigera.io/reference/node/configuration)
+- 详细配置参数请参考 [Configuring calico/node](https://docs.tigera.io/calico/latest/reference/configure-calico-node)
 - 配置 ETCD_ENDPOINTS 、CA、证书等，所有 `"{{ }}"` 变量与 ansible hosts 文件中设置对应
 - 配置集群 POD 网络 CALICO_IPV4POOL_CIDR={{ CLUSTER_CIDR }}
-- 配置 FELIX_DEFAULTENDPOINTTOHOSTACTION=ACCEPT 默认允许 Pod 到 Node 的网络流量，更多 [felix配置选项](https://projectcalico.docs.tigera.io/reference/felix/configuration)
+- 配置 FELIX_DEFAULTENDPOINTTOHOSTACTION=ACCEPT 默认允许 Pod 到 Node 的网络流量，更多 [Configuring Felix](https://docs.tigera.io/calico/latest/reference/felix/configuration)
 
 **安装 calico 网络：**
 
@@ -1346,7 +1346,7 @@ Calico 证书使用场景：
 - 安装之前必须确保 `kube_master` 和 `kube_node` 节点已经成功部署
 - 删除前面安装 kube_node 时默认的 cni 网络配置，轮询等待 calico 网络插件安装完成
 
-[可选]配置 calicoctl 工具 [calicoctl.cfg.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/calico/templates/calicoctl.cfg.j2)
+[可选]配置 calicoctl 工具 [calicoctl.cfg.j2](../roles/calico/templates/calicoctl.cfg.j2)
 
 ```bash
 apiVersion: projectcalico.org/v3

@@ -277,7 +277,7 @@ A：containerd **2.1.4**、runc、crictl、CNI 等由 **ext-bin** 供给，版�
 |------|-----|
 | Container Runtimes（生产） | https://kubernetes.io/docs/setup/production-environment/container-runtimes/ |
 | CRI 概念 | https://kubernetes.io/docs/concepts/architecture/cri/ |
-| dockershim 移除说明 | https://kubernetes.io/blog/2022/02/17/dockershim-removal-faq/ |
+| dockershim 移除说明 | https://kubernetes.io/blog/2022/02/17/dockershim-faq/ |
 | containerd | https://github.com/containerd/containerd |
 | cri-dockerd | https://github.com/Mirantis/cri-dockerd |
 | crictl | https://github.com/kubernetes-sigs/cri-tools |
