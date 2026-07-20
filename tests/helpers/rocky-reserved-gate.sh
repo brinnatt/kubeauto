@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # Rocky 8 cgroup v1 hybrid reserved enablement gate (run on 147).
+# Requires node memory ≥6Gi (contract floor is ≥32Gi). Undersized lab VMs must skip.
 set -euo pipefail
 BASE=/usr/local/kubeauto
 export PYTHONPATH=$BASE PATH=/usr/local/bin:$PATH
 cd "$BASE"
 echo "=== rocky reserved gate ==="
+MEM_MI="$(sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.141 \
+  "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo")"
+echo "rocky141_mem_mi=$MEM_MI"
+if [[ "$MEM_MI" -lt 6144 ]]; then
+  echo "ROCKY_SKIP_LAB_UNDERSIZED: ${MEM_MI}Mi < 6Gi (contract reserved 4Gi needs capacity ≥ reservation; customer nodes ≥32Gi)"
+  exit 0
+fi
 docker start local_registry >/dev/null 2>&1 || true
 curl -sf http://127.0.0.1:5000/v2/brinnatt/pause/tags/list
 echo
-# Ansible uses SSH keys from control node (same as regression-147-full G5).
 kubecli system -a --user root --password 123456 192.168.47.141 </dev/null
 
 sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.141 \
@@ -45,6 +52,11 @@ ansible_user=root
 EOF
 sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test141/config.yml"
 grep -E 'RESERVED' "$BASE/clusters/test141/config.yml"
+grep -q 'KUBE_RESERVED_CPU: "1000m"' "$BASE/clusters/test141/config.yml" || { echo FAIL: rocky KUBE_RESERVED_CPU; exit 1; }
+grep -q 'KUBE_RESERVED_MEMORY: "1536Mi"' "$BASE/clusters/test141/config.yml" || { echo FAIL: rocky KUBE_RESERVED_MEMORY; exit 1; }
+grep -q 'SYS_RESERVED_CPU: "1000m"' "$BASE/clusters/test141/config.yml" || { echo FAIL: rocky SYS_RESERVED_CPU; exit 1; }
+grep -q 'SYS_RESERVED_MEMORY: "2560Mi"' "$BASE/clusters/test141/config.yml" || { echo FAIL: rocky SYS_RESERVED_MEMORY; exit 1; }
+grep -q 'SYS_RESERVED_ENFORCE: "no"' "$BASE/clusters/test141/config.yml" || { echo FAIL: rocky SYS_RESERVED_ENFORCE; exit 1; }
 echo "=== setup test141 ==="
 kubecli setup test141 90 </dev/null
 export KUBECONFIG="$BASE/clusters/test141/kubectl.kubeconfig"
@@ -55,6 +67,6 @@ done
 kubectl get nodes -o wide
 bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG"
 sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.141 \
-  'systemctl show kubelet containerd kube-proxy -p Slice --value; ls -d /sys/fs/cgroup/systemd/podruntime.slice /sys/fs/cgroup/memory/podruntime.slice; test ! -d /sys/fs/cgroup/systemd/podruntime.slice.slice && echo NO_DOUBLE_SLICE; findmnt -no FSTYPE /sys/fs/cgroup; test ! -f /sys/fs/cgroup/cgroup.controllers && echo HYBRID_V1; grep -E "kubeReservedCgroup|systemReservedCgroup" /var/lib/kubelet/config.yaml'
+  'systemctl show kubelet containerd kube-proxy -p Slice --value; ls -d /sys/fs/cgroup/systemd/podruntime.slice /sys/fs/cgroup/memory/podruntime.slice; test ! -d /sys/fs/cgroup/systemd/podruntime.slice.slice && echo NO_DOUBLE_SLICE; findmnt -no FSTYPE /sys/fs/cgroup; test ! -f /sys/fs/cgroup/cgroup.controllers && echo HYBRID_V1; grep -E "kubeReservedCgroup|systemReservedCgroup|memory:" /var/lib/kubelet/config.yaml'
 echo ROCKY_RESERVED_GATE_PASS
 echo RESERVED_DUAL_CGROUP_GATE_PASS

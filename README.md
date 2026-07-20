@@ -47,6 +47,236 @@ k8s 作为一个容器编排工具，发展之初，借用稳定可靠的 docker
 
 > 提示：可以从 k8s 的历史安装方法中加深对容器运行时的理解，参考[安装 Kubernetes](https://brinnatt.com/projects/cicd/6、安装-kubernetes)
 
+### 1.1.4、为系统守护进程预留计算资源（Node Allocatable）
+
+Kubernetes 节点默认可被调度至节点 **Capacity**。若不预先为操作系统与 Kubernetes 系统守护进程划定资源，业务 Pod 将与上述守护进程竞争 CPU、内存等资源，并在压力场景下触发节点级资源饥饿、System OOM，甚至导致节点暂时不可用。
+
+kubelet 提供 **Node Allocatable** 能力，用于从 Capacity 中划出不可被调度器超卖的业务容量，并为系统守护进程建立可审计的预留。Kubernetes 建议集群管理员按节点负载密度配置 Node Allocatable。kubeauto 默认启用 `kubeReserved` 与 `systemReserved`，并在约定节点规格（≥16 CPU / 32Gi 内存）下采用合计 **2 CPU + 4Gi** 的预留基线。
+
+本节说明官方机制、驱逐与 QoS 相关行为，以及本项目的默认策略与验收方法。
+
+**参考文档：**
+
+| 主题 | 链接 |
+|------|------|
+| Node Allocatable、`kubeReserved`、`systemReserved`、强制执行 | [Reserve Compute Resources for System Daemons](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/) |
+| 节点压力驱逐 | [Node-pressure Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/) |
+| Pod QoS 类别 | [Pod Quality of Service Classes](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/) |
+
+#### 1.1.4.1、问题背景
+
+未配置预留时，调度器可按 Capacity 放置 Pod。节点上仍运行大量系统守护进程（操作系统服务、kubelet、容器运行时等）。这些进程与 Pod 共享同一套物理资源，在高密度或突发负载下会产生资源争用。
+
+未配置 Node Allocatable 时：
+
+```mermaid
+flowchart TB
+  C1[Capacity 几乎全部可调度给 Pod] --> S1[Pod 与系统守护进程争用]
+  S1 --> R1[节点内存压力 / System OOM]
+  R1 --> I1[节点不稳定，系统与业务同时受损]
+```
+
+配置 Node Allocatable 后：
+
+```mermaid
+flowchart TB
+  C2[Capacity] --> A2[扣减 kubeReserved / systemReserved / eviction]
+  A2 --> AL[Allocatable：仅供 Pod]
+  AL --> S2[调度器不超卖 Allocatable]
+  E2[evictionHard] --> EV[kubelet 在阈值前提前驱逐 Pod]
+  S2 --> I2[降低系统守护进程被饿死的概率]
+  EV --> I2
+```
+
+预留机制的作用边界如下：
+
+1. **调度约束**：减小 Allocatable，限制可调度到该节点的 Pod `requests` 总量。
+2. **运行时约束**：在启用相应 `enforceNodeAllocatable` 项时，通过 cgroup 限制 Pods 与（可选）kube / system 预留对应控制组的用量上限。
+3. **驱逐约束**：在可用内存等信号跌破 `evictionHard` 阈值时，由 kubelet 主动终止 Pod，降低直接进入 System OOM 的概率。
+4. **能力边界**：Node Allocatable 与节点压力驱逐不能保证内核永不故障，也不能保证 Linux OOM killer 永不误杀系统进程；其目标是降低概率并改善失效模式（优先影响业务 Pod，而非平台组件）。
+
+#### 1.1.4.2、Node Allocatable 计算
+
+**Allocatable** 表示节点上可供 Pod 使用的计算资源量。调度器不会对 Allocatable 进行超卖。当前支持 CPU、内存与 ephemeral-storage 等资源类型。
+
+内存维度的关系可概括为：
+
+```text
+Allocatable ≈ Capacity − kubeReserved − systemReserved − evictionHard 预留量
+```
+
+官方文档示例：节点具备 `16` CPU、`32Gi` 内存；配置
+
+- `kubeReserved` = `{cpu: 1000m, memory: 2Gi}`
+- `systemReserved` = `{cpu: 500m, memory: 1Gi}`
+- `evictionHard` = `{memory.available: "<500Mi"}`
+
+时，Allocatable 约为 **14.5 CPU、28.5Gi 内存**。调度器确保该节点上所有 Pod 的内存 `requests` 之和不超过 28.5Gi；当节点上 Pod 的总体内存用量超过 Allocatable 时，kubelet 将驱逐 Pod。
+
+```mermaid
+%%{init: {'theme': 'neutral'}}%%
+pie showData
+  title 示意：32Gi 节点在 kubeauto 默认预留下的容量划分
+  "Allocatable（业务 Pod）" : 27
+  "kubeReserved（1536Mi）" : 1.5
+  "systemReserved（2560Mi）" : 2.5
+  "eviction 及其他余量" : 1
+```
+
+上图仅为结构示意。现场 Capacity 与 Allocatable 的差值以 `kubectl describe node` 为准。
+
+#### 1.1.4.3、kubeReserved 与 systemReserved
+
+| 配置项 | 用途（官方定义） | kubeauto 默认落点 |
+|--------|------------------|-------------------|
+| `kubeReserved` | 为 kubelet、容器运行时等 **Kubernetes 系统守护进程** 预留资源；一般不用于以 Pod 形式运行的系统组件 | `KUBE_RESERVED_CPU/MEMORY`；systemd 下 `kubeReservedCgroup: /podruntime`（对应主机 `podruntime.slice`） |
+| `systemReserved` | 为 **操作系统守护进程**（如 sshd、udev）预留资源；亦应考虑为 **内核** 预留内存（内核内存当前不计入 Pod） | `SYS_RESERVED_CPU/MEMORY`；systemd 下 `systemReservedCgroup: /system`（对应 `system.slice`） |
+| `evictionHard` | 为节点压力驱逐保留阈值以下的可用资源；该部分不可再分配给 Pod | 模板默认含 `memory.available: 300Mi` 等 |
+
+使用 **systemd** cgroup 驱动时，官方要求：配置名应为 `kubeReservedCgroup` / `systemReservedCgroup` 的取值，由 kubelet 在名称后追加 `.slice`。若直接配置为 `/podruntime.slice`，将产生 `podruntime.slice.slice` 这类错误路径（参见 [kubernetes#78629](https://github.com/kubernetes/kubernetes/issues/78629)）。kubeauto 在 systemd 模式下使用 `/podruntime` 与 `/system`。
+
+```mermaid
+flowchart TB
+  subgraph host["Linux 节点（systemd cgroup 驱动示意）"]
+    direction TB
+    subgraph system_slice["system.slice"]
+      OS[操作系统服务]
+      CP[控制面进程等]
+    end
+    subgraph podruntime_slice["podruntime.slice"]
+      KL[kubelet]
+      RT[containerd / cri-dockerd]
+      KP[kube-proxy]
+    end
+    subgraph pods_cg["Pods 控制组"]
+      P[业务 Pod]
+    end
+    system_slice --> podruntime_slice --> pods_cg
+  end
+```
+
+#### 1.1.4.4、强制执行 Node Allocatable（enforceNodeAllocatable）
+
+调度器将 Allocatable 视为 Pod 可用容量。默认情况下，kubelet 通过在 Pod 总体用量超过 Allocatable 时驱逐 Pod 来强制执行该约束，对应 `enforceNodeAllocatable` 中的 `pods`。
+
+可选地，可将 `kube-reserved`、`system-reserved` 加入同一列表，以对相应预留控制组施加强制限制；同时必须分别配置 `kubeReservedCgroup`、`systemReservedCgroup`。kubelet **不会**创建不存在的预留 cgroup；无效 cgroup 会导致 kubelet 启动失败。
+
+**预留数值与强制执行是两件独立事务：**
+
+| 行为 | 作用 | 是否默认开启（kubeauto） |
+|------|------|--------------------------|
+| 配置 `kubeReserved` / `systemReserved` | 从 Capacity 扣减，缩小 Allocatable（调度侧） | 是 |
+| `enforceNodeAllocatable` 含 `pods` | 限制 Pod 总体用量，超额则驱逐 | 是 |
+| 含 `kube-reserved` | 对 kube 预留控制组施加上限 | 是 |
+| 含 `system-reserved` | 对 OS 预留控制组（如 `system.slice`）施加上限 | **否**（`SYS_RESERVED_ENFORCE: "no"`） |
+
+```mermaid
+flowchart TB
+  CFG["配置 kubeReserved / systemReserved"] --> ACC["Capacity 扣减 → Allocatable"]
+  ACC --> ENF{"enforceNodeAllocatable"}
+  ENF -->|pods| P["强制 Pod 侧用量不超过 Allocatable"]
+  ENF -->|kube-reserved| K["强制 kube 预留控制组上限"]
+  ENF -->|system-reserved| S["强制 system 预留控制组上限"]
+  ENF -->|未包含 system-reserved| N["system 控制组无硬上限；用量可短暂超过预留值"]
+```
+
+官方 General Guidelines 指出：对 `systemReserved` 的强制执行须格外谨慎，可能导致关键系统服务 CPU 饥饿、被 OOM 杀死或无法 fork。建议仅在完成充分节点画像、并具备故障恢复能力后再启用。推荐演进顺序为：先强制 `pods` → 在监控完备后尝试对 kube/system 的可压缩资源（如 CPU）强制 → 再考虑 kube 的不可压缩资源 → 确有必要时再对 `systemReserved` 的不可压缩资源强制执行。
+
+kubeauto 默认策略：启用预留记账（合计 2 CPU + 4Gi），强制执行 `pods` 与 `kube-reserved`，**不**默认强制执行 `system-reserved`，以避免过小的 `system.slice` 内存上限危及控制面进程。
+
+#### 1.1.4.5、节点压力与资源回收顺序
+
+资源紧张时，行为由多层机制共同决定，不宜简化为「仅由内核 OOM killer 决定」。
+
+```mermaid
+sequenceDiagram
+  participant Pod as 业务 Pod
+  participant Scheduler as kube-scheduler
+  participant Kubelet as kubelet
+  participant Cgroup as cgroup 限制
+  participant Kernel as 内核 OOM killer
+
+  Note over Scheduler: 调度阶段
+  Pod->>Scheduler: 申请调度（受 requests 约束）
+  Scheduler-->>Pod: 超过 Allocatable 则保持 Pending
+
+  Note over Kubelet: 节点压力驱逐
+  Kubelet->>Pod: 信号低于 evictionHard 时终止 Pod（相位 Failed）
+
+  Note over Cgroup: 控制组上限
+  Cgroup-->>Pod: 超限则限流或终止容器
+
+  Note over Kernel: 整机仍不可用时
+  Kernel->>Kernel: OOM killer 按内核策略选择进程
+```
+
+**调度阶段**  
+节点上 Pod 的 `requests` 总和不得超过 Allocatable。
+
+**节点压力驱逐（Node-pressure Eviction）**  
+kubelet 监控内存、磁盘、inode、PID 等信号。当资源达到配置阈值时，可主动终止 Pod 以回收资源。硬驱逐阈值下，kubelet 使用 `0s` 宽限期。节点级内存压力可导致 System OOM 并影响该节点全部工作负载；通过 `evictionHard` 预留可用内存，kubelet 在跌破阈值前提前驱逐 Pod。
+
+在回收节点级资源仍不足以缓解压力后，kubelet 按以下因素对终端用户 Pod 排序并驱逐（内存压力场景）：
+
+1. Pod 资源用量是否超过 `requests`；
+2. Pod Priority；
+3. 用量相对 `requests` 的超额程度。
+
+典型顺序：用量超过 `requests` 的 BestEffort / Burstable 优先；Guaranteed，以及用量未超过 `requests` 的 Burstable，通常靠后。文档说明：kubelet **并不**以 QoS 类别作为驱逐排序的直接键；QoS 可用于估计倾向。当系统守护进程用量超过 `kube-reserved` / `system-reserved`，且节点上仅剩遵守 `requests` 的 Guaranteed / Burstable 时，kubelet 仍可能驱逐低优先级 Pod 以维护节点稳定性。
+
+**Pod QoS 类别（与驱逐倾向相关）**
+
+| QoS | 判定要点 | 节点压力下的相对位置 |
+|-----|----------|----------------------|
+| BestEffort | 容器未设置 CPU/内存 request 与 limit | 通常最先成为驱逐候选 |
+| Burstable | 不满足 Guaranteed，但至少设置了部分 request/limit | 介于中间 |
+| Guaranteed | 各容器 CPU、内存的 request 与 limit 均大于零且两两相等 | 通常最不易因其他 Pod 超用而被驱逐 |
+
+**内核 OOM**  
+若上述机制仍无法恢复节点可用内存，Linux OOM killer 将介入。该层不由 Kubernetes 保证「业务进程一定先于系统守护进程终止」。合理配置预留与驱逐的目标，是尽量避免进入该层。
+
+#### 1.1.4.6、kubeauto 默认参数与变更方式
+
+约定生产节点规格不低于 **16 CPU / 32Gi 内存**。默认预留如下：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `KUBE_RESERVED_ENABLED` | `"yes"` | 启用 kube 预留 |
+| `KUBE_RESERVED_CPU` / `KUBE_RESERVED_MEMORY` | `1000m` / `1536Mi` | `kubeReserved` |
+| `SYS_RESERVED_ENABLED` | `"yes"` | 启用 system 预留（调度扣减） |
+| `SYS_RESERVED_CPU` / `SYS_RESERVED_MEMORY` | `1000m` / `2560Mi` | `systemReserved` |
+| `SYS_RESERVED_ENFORCE` | `"no"` | 不将 `system-reserved` 加入 `enforceNodeAllocatable` |
+| 合计 | **2 CPU + 4Gi** | 从业务可调度容量中划出的平台基线 |
+
+配置文件：`conf/config.yml`（模板）与 `clusters/<cluster>/config.yml`（集群实例）。修改后需重新应用 kube-node 配置，例如：
+
+```bash
+kubecli setup <cluster> 05
+```
+
+节点物理内存必须 **大于** 预留量与 eviction 预留之和。若 Capacity 小于预留，kubelet 将以 `Expected capacity >= reservation` 类错误拒绝启动；该行为符合官方约束。低规格实验节点不得直接套用上述生产默认值。
+
+#### 1.1.4.7、验收
+
+```bash
+# 确认集群配置中的预留项
+grep -E 'KUBE_RESERVED_|SYS_RESERVED_' clusters/<cluster>/config.yml
+
+# 确认 Capacity 与 Allocatable 差值符合预留预期
+kubectl describe node <node> | grep -A8 -E 'Capacity|Allocatable'
+
+# 仓库内校验脚本（期望输出 RESERVED_ALLOCATABLE_PASS）
+bash tests/helpers/verify-node-reserved.sh clusters/<cluster>/kubectl.kubeconfig
+```
+
+通过条件通常包括：CPU 差值不少于约 `2000m`、内存差值约 `4Gi` 量级（含 eviction）；kubelet 配置中存在 `kubeReserved` / `systemReserved`；`enforceNodeAllocatable` 包含 `pods` 与 `kube-reserved`，默认不包含 `system-reserved`；运行时位于 `podruntime.slice`，且不存在错误的 `podruntime.slice.slice`。
+
+#### 1.1.4.8、交付说明摘要
+
+在约定规格（≥16 CPU / 32Gi 内存）的节点上，kubeauto 默认启用 Node Allocatable：从业务可调度容量中预留合计 **2 CPU + 4Gi**，供 Kubernetes 系统守护进程与操作系统（含内核侧记账）使用；默认强制执行 `pods` 与 `kube-reserved`，不强制执行 `system-reserved`。资源压力下，优先通过调度约束与节点压力驱逐影响业务 Pod，以降低 System OOM 及平台组件不可用的风险。
+
+---
+
 ## 1.2、单节点部署
 
 单节点部署是以 allinone 的方式把所有组件都部署在一个节点上面，可以快速构建一个可用的 k8s，供学习和测试使用。
@@ -927,7 +1157,7 @@ WantedBy=multi-user.target
   Failed to start ContainerManager Failed to enforce System Reserved Cgroup Limits
   ```
 
-- 关于 kubelet 资源预留相关配置请参考 https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
+- 关于为系统守护进程预留计算资源（Node Allocatable），见本文 **§1.1.4**；官方文档：https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
 
 **创建 kube-proxy kubeconfig 文件：**
 

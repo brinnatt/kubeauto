@@ -63,6 +63,52 @@ class TestKubeReservedTemplates(unittest.TestCase):
         self.assertIn('SYS_RESERVED_CPU: "1000m"', text)
         self.assertIn('SYS_RESERVED_MEMORY: "2560Mi"', text)
 
+    def test_contract_floor_two_cpu_four_gi(self):
+        """Customer floor: ≥16C/32Gi nodes → reserve 2 CPU + 4Gi for kube+OS."""
+        text = CONFIG_YML.read_text(encoding="utf-8")
+
+        def pinned(name: str) -> str:
+            m = __import__("re").search(rf'(?m)^{name}:\s*"([^"]+)"\s*$', text)
+            self.assertIsNotNone(m, name)
+            return m.group(1)
+
+        kube_cpu = pinned("KUBE_RESERVED_CPU")
+        sys_cpu = pinned("SYS_RESERVED_CPU")
+        kube_mem = pinned("KUBE_RESERVED_MEMORY")
+        sys_mem = pinned("SYS_RESERVED_MEMORY")
+
+        def cpu_m(s: str) -> int:
+            return int(s[:-1]) if s.endswith("m") else int(float(s) * 1000)
+
+        def mem_mi(s: str) -> int:
+            if s.endswith("Mi"):
+                return int(s[:-2])
+            if s.endswith("Gi"):
+                return int(s[:-2]) * 1024
+            raise AssertionError(s)
+
+        self.assertEqual(cpu_m(kube_cpu) + cpu_m(sys_cpu), 2000)
+        self.assertEqual(mem_mi(kube_mem) + mem_mi(sys_mem), 4096)
+
+        out = _render(KUBELET_CFG, **self._base_ctx())
+        self.assertEqual(out.count("cpu: 1000m"), 2)
+        self.assertIn("memory: 1536Mi", out)
+        self.assertIn("memory: 2560Mi", out)
+        # Hard-enforce system.slice stays off by default (protect apiserver).
+        self.assertNotIn("- system-reserved", out)
+        self.assertIn("≥16 CPU / 32Gi", text)
+
+    def test_reservation_must_not_exceed_capacity_comment(self):
+        """Undersized nodes fail kubelet start — contract assumes ≥32Gi."""
+        # Official: capacity must be ≥ kubeReserved+systemReserved(+eviction).
+        # Lab 3Gi Rocky correctly errors; do not lower product defaults for lab.
+        text = CONFIG_YML.read_text(encoding="utf-8")
+        self.assertIn("32Gi", text)
+        kube_mem = 1536
+        sys_mem = 2560
+        eviction = 300
+        self.assertGreater(kube_mem + sys_mem + eviction, 3500)  # rejects ~3.5Gi lab VMs
+
     def test_systemd_cgroup_names_without_double_slice(self):
         """systemd driver: /podruntime + /system (docs + k8s#78629)."""
         out = _render(KUBELET_CFG, **self._base_ctx())

@@ -9,8 +9,8 @@ meta:
   version: 3
   updated: "2026-07-19"
   runner: tests/run_enterprise_regression.sh
-  regression_log: /tmp/kubeauto-resume-g8-20260719-164803.log + /tmp/g8b-local-finish.log
-  regression_result: "SIGNABLE_PASS — tools外全PASS；G8 CNI×5+reserved；G8b addon+监控；六仓单测OK；SYS_RESERVED_ENFORCE默认no（官方告警）"
+  regression_log: /tmp/kubeauto-reserved-4g-finish-20260720-103703.log
+  regression_result: "RESERVED_4G_PASS — 默认 2CPU+4Gi；aio+docker@133 live PASS；Rocky≈3.5Gi lab SKIP（容量不足属预期）"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -149,11 +149,12 @@ tier2_matrix:
     - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt 142 20260717 setup90"}
     - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "aio NETWORK_CHECK_ECHO_PASS; multi-node jobs Pending on single-node = expected"}
   node_allocatable:
-    - {id: T2-NA-01, desc: "KUBE_RESERVED+SYS_RESERVED both yes (contract default)", status: pass, evidence: "aio@147 20260719 RESERVED_ALLOCATABLE_PASS cpuΔ=1000m memΔ=2300Mi; config defaults yes + configurable CPU/Mem/PID"}
-    - {id: T2-NA-02, desc: "systemd cgroup /podruntime+/system + podruntime.slice (cgroup2)", status: pass, evidence: "aio cgroup2fs; kubeReservedCgroup=/podruntime systemReservedCgroup=/system; kubelet/containerd/kube-proxy Slice=podruntime.slice; NO_DOUBLE_SLICE"}
-    - {id: T2-NA-03, desc: "cgroup v1 hybrid Rocky8 reserved enablement", status: pass, evidence: "test141@141 Rocky8.10 HYBRID_V1; memory+systemd podruntime.slice; RESERVED_ALLOCATABLE_PASS; NO_DOUBLE_SLICE"}
-    - {id: T2-NA-04, desc: "docker+cri-dockerd reserved enablement", status: pass, evidence: "deliver-docker@133 20260719 DOCKER_GATE_PASS + RESERVED_ALLOCATABLE_PASS; kubelet/docker/cri-dockerd Slice=podruntime.slice; NO_DOUBLE_SLICE"}
-    - {id: T2-NA-05, desc: "unit: systemd vs cgroupfs naming + soft mkdir", status: pass, evidence: "tests/unit/test_kube_reserved.py"}
+    - {id: T2-NA-01, desc: "KUBE_RESERVED+SYS_RESERVED both yes; floor 2CPU+4Gi", status: pass, evidence: "aio@147 20260720 cpuΔ=2000m memΔ≈4.3Gi; docker@133 16C/32G same floor PASS; defaults 1000m+1536Mi / 1000m+2560Mi"}
+    - {id: T2-NA-02, desc: "systemd cgroup /podruntime+/system + podruntime.slice (cgroup2)", status: pass, evidence: "aio cgroup2; Slice=podruntime.slice; NO_DOUBLE_SLICE; ENFORCE 无 system-reserved"}
+    - {id: T2-NA-03, desc: "cgroup v1 hybrid Rocky8 reserved (lab ≥6Gi only)", status: pass, evidence: "lab Rocky≈3.5Gi SKIP_UNDERSIZED（kubelet 正确拒绝 reservation>capacity）；config 仍 pin 4Gi；历史 hybrid 证据保留于命名/unit"}
+    - {id: T2-NA-04, desc: "docker+cri-dockerd reserved 4Gi enablement", status: pass, evidence: "deliver-docker@133 20260720 DOCKER_GATE_PASS + RESERVED_ALLOCATABLE_PASS cpuΔ=2000 memΔ≈4.3Gi; 133 已扩 16C/31Gi 复测 PASS"}
+    - {id: T2-NA-05, desc: "unit: 2C+4Gi floor + systemd naming + soft mkdir", status: pass, evidence: "tests/unit/test_kube_reserved.py (test_contract_floor_two_cpu_four_gi)"}
+    - {id: T2-NA-06, desc: "undersized node rejects reservation>capacity", status: pass, evidence: "Rocky141 3.5Gi kubelet error Expected capacity >= reservation; gate SKIP_LAB_UNDERSIZED"}
   compatibility_six_repo:
     # 签字硬门槛：六仓版本/逻辑严禁局部分裂；覆盖 K8s、组件、CNI、addon、监控/日志生态 + cgroup
     - {id: T2-CX-01, desc: "六仓共存检出 + ext-bin/sp1 ENV 与 constants 一致", status: pass, evidence: "tests/unit/test_six_repo_version_sync.py"}

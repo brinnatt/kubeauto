@@ -249,9 +249,14 @@ echo "========== G11 Node Allocatable reserved (contract) =========="
 # Must cover cgroup v2 (aio/debian) and cgroup v1 hybrid (Rocky test141).
 for c in aio test141 debian150; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
-  grep -E '^KUBE_RESERVED_ENABLED:|^SYS_RESERVED_ENABLED:' "$BASE/clusters/$c/config.yml" || true
+  grep -E '^KUBE_RESERVED_|^SYS_RESERVED_' "$BASE/clusters/$c/config.yml" || true
   grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$c/config.yml" || fail "$c KUBE_RESERVED not yes"
   grep -q 'SYS_RESERVED_ENABLED: "yes"' "$BASE/clusters/$c/config.yml" || fail "$c SYS_RESERVED not yes"
+  grep -q 'KUBE_RESERVED_CPU: "1000m"' "$BASE/clusters/$c/config.yml" || fail "$c KUBE_RESERVED_CPU not 1000m"
+  grep -q 'KUBE_RESERVED_MEMORY: "1536Mi"' "$BASE/clusters/$c/config.yml" || fail "$c KUBE_RESERVED_MEMORY not 1536Mi"
+  grep -q 'SYS_RESERVED_CPU: "1000m"' "$BASE/clusters/$c/config.yml" || fail "$c SYS_RESERVED_CPU not 1000m"
+  grep -q 'SYS_RESERVED_MEMORY: "2560Mi"' "$BASE/clusters/$c/config.yml" || fail "$c SYS_RESERVED_MEMORY not 2560Mi"
+  grep -q 'SYS_RESERVED_ENFORCE: "no"' "$BASE/clusters/$c/config.yml" || fail "$c SYS_RESERVED_ENFORCE not no"
   bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG" || fail "reserved verify $c"
   pass "G11-reserved $c"
 done

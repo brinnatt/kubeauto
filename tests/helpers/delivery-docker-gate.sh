@@ -34,6 +34,20 @@ nodes_ready(){
   return 1
 }
 
+# Contract reserved floor is 4Gi; lab VMs under ~6Gi cannot run live (kubelet rejects).
+MEM_MI="$(sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
+  "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo" 2>/dev/null || echo 0)"
+echo "docker_gate_node=$NODE mem_mi=$MEM_MI"
+if [[ "$MEM_MI" -lt 6144 ]]; then
+  echo "DOCKER_SKIP_LAB_UNDERSIZED: ${MEM_MI}Mi < 6Gi (contract ≥32Gi; reserved 4Gi)"
+  grep -q 'KUBE_RESERVED_MEMORY: "1536Mi"' "$BASE/conf/config.yml"
+  grep -q 'SYS_RESERVED_MEMORY: "2560Mi"' "$BASE/conf/config.yml"
+  grep -q 'KUBE_RESERVED_CPU: "1000m"' "$BASE/conf/config.yml"
+  grep -q 'SYS_RESERVED_CPU: "1000m"' "$BASE/conf/config.yml"
+  echo DOCKER_GATE_SKIP_UNDERSIZED
+  exit 0
+fi
+
 echo "========== destroy leftover clusters using $NODE =========="
 for c in deliver-docker deliver-upgrade; do
   $K destroy "$c" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$c"
@@ -139,6 +153,11 @@ pass "docker runtime Ready ($rt) + system pods + CNI"
 echo "========== reserved enablement (contract) =========="
 grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$C/config.yml" || fail "KUBE_RESERVED not yes"
 grep -q 'SYS_RESERVED_ENABLED: "yes"' "$BASE/clusters/$C/config.yml" || fail "SYS_RESERVED not yes"
+grep -q 'KUBE_RESERVED_CPU: "1000m"' "$BASE/clusters/$C/config.yml" || fail "KUBE_RESERVED_CPU not 1000m"
+grep -q 'KUBE_RESERVED_MEMORY: "1536Mi"' "$BASE/clusters/$C/config.yml" || fail "KUBE_RESERVED_MEMORY not 1536Mi"
+grep -q 'SYS_RESERVED_CPU: "1000m"' "$BASE/clusters/$C/config.yml" || fail "SYS_RESERVED_CPU not 1000m"
+grep -q 'SYS_RESERVED_MEMORY: "2560Mi"' "$BASE/clusters/$C/config.yml" || fail "SYS_RESERVED_MEMORY not 2560Mi"
+grep -q 'SYS_RESERVED_ENFORCE: "no"' "$BASE/clusters/$C/config.yml" || fail "SYS_RESERVED_ENFORCE not no"
 bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG" || fail "reserved allocatable"
 sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
   'systemctl show kubelet docker cri-dockerd -p Slice --value; test ! -d /sys/fs/cgroup/systemd/podruntime.slice.slice -a ! -d /sys/fs/cgroup/podruntime.slice.slice && echo NO_DOUBLE_SLICE'
