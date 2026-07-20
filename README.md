@@ -2,17 +2,17 @@
 
 kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装与配置由 Ansible 角色落地，集群生命周期由 Python 控制面（`kubecli`）编排。项目采用**二进制 + systemd** 方式安装控制面与节点组件（不依赖 kubeadm），并通过配套镜像仓实现离线制品分发。
 
-当前默认栈（以 `common/constants.py` 为准）：**Kubernetes v1.33.6** · **Calico v3.28.4** · **containerd（默认 CRI）** · **Node Allocatable 默认开启**。
+当前默认栈（以 `common/constants.py` 为准）：**Kubernetes v1.33.6** · **etcd v3.6.4** · **Calico v3.28.4** · **containerd（默认 CRI）** · **Node Allocatable 默认开启**。
 
 ---
 
 ## 0、文档入口（交付三件套）
 
-交付与日常使用请从下列文档进入，勿再依赖本 README 中的长篇操作细节（操作内容已迁入手册）：
+交付与日常使用请从下列文档进入，勿再依赖本 README 中的长篇操作细节（操作细节见操作手册）：
 
 | 文档 | 路径 | 用途 |
 |------|------|------|
-| **运维操作手册** | [docs/operations-manual.md](./docs/operations-manual.md) | 安装、扩缩、备份、插件开关、验收（Administration Guide） |
+| **操作手册** | [docs/operations-manual.md](./docs/operations-manual.md) | 安装、扩缩、备份、插件开关、验收（Administration Guide） |
 | **技术白皮书** | [docs/technical-whitepaper.md](./docs/technical-whitepaper.md) | **签收级 Concepts**：K8s/组件/证书/CRI/CNI/监控原理 + 本项目实现；分章见 [`docs/whitepaper/`](./docs/whitepaper/) |
 | **开发手册** | [docs/development-manual.md](./docs/development-manual.md) | 六仓开发、版本钉扎、代码导航、测试与 PR（Developer Guide） |
 
@@ -20,14 +20,19 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 
 | 章 | 内容 |
 |----|------|
+| [00 前言](./docs/whitepaper/00-preface.md) | 文档约定、术语、安装步骤 |
+| [01 产品范围](./docs/whitepaper/01-product-scope.md) | 交付物、能力边界、与 kubeadm 差异 |
 | [02 总体架构](./docs/whitepaper/02-k8s-architecture.md) | 控制面/数据面、协调循环 |
 | [03 控制平面](./docs/whitepaper/03-control-plane.md) | apiserver / CM / scheduler 与 systemd 实现 |
 | [05 etcd](./docs/whitepaper/05-etcd.md) | Raft、TLS、备份恢复 |
 | [06 证书 PKI](./docs/whitepaper/06-pki-certificates.md) | cfssl 全链路、SA 复用 CA、轮换顺序 |
+| [07 高可用](./docs/whitepaper/07-ha-loadbalancer.md) | kube-lb / 外置 LB |
 | [08 CRI](./docs/whitepaper/08-cri-runtime.md) | containerd / cri-dockerd |
-| [09 CNI](./docs/whitepaper/09-cni-networking.md) | Calico 等五选一 |
+| [09 CNI](./docs/whitepaper/09-cni-networking.md) | Calico（etcdv3）等五选一 |
+| [11 Allocatable](./docs/whitepaper/11-allocatable-qos.md) | 预留、QoS、验收 |
 | [12 监控插件](./docs/whitepaper/12-addons-observability.md) | metrics / Dashboard / Prometheus / Ingress / 存储 |
 | [13 制品供应链](./docs/whitepaper/13-artifact-supply-chain.md) | 六仓 dual-push 与离线灌仓 |
+| [附录 A 版本矩阵](./docs/whitepaper/A-version-matrix.md) | 与 `constants.py` 对齐 |
 
 ```mermaid
 flowchart LR

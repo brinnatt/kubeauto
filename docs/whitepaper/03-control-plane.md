@@ -175,7 +175,7 @@ sequenceDiagram
 - 集群内 CSR（例如部分启动引导场景）也由同一 CA 签发。
 - **`ca-key.pem` 只分发到 kube_master**，worker 节点只持有 `ca.pem`。
 
-这是安全边界，不是疏忽：任何持有 `ca-key.pem` 的主机都能签发集群信任的证书与 Token。运维验收时应检查 worker 的 `/etc/kubernetes/ssl/` **不包含** `ca-key.pem`。
+这是明确的安全边界设计：任何持有 `ca-key.pem` 的主机都能签发集群信任的证书与 Token。运维验收时应检查 worker 的 `/etc/kubernetes/ssl/` **不包含** `ca-key.pem`。
 
 ```mermaid
 flowchart LR
@@ -208,7 +208,7 @@ flowchart LR
 - `MASTER_CERT_HOSTS` 列表中配置的外网 IP / FQDN（`conf/config.yml` 示例含公网 IP 与域名）
 - DNS 风格名：`kubernetes`、`kubernetes.default`、`kubernetes.default.svc`、`kubernetes.default.svc.cluster.local`、以及 `kubernetes.default.svc.{{ CLUSTER_DNS_DOMAIN }}`
 
-**遗漏 SAN 是交付现场最高频的 TLS 故障之一。** 表现为：用某 VIP 或域名访问 API 时证书校验失败；或 ServiceAccount / 集群内客户端以 Service IP 访问失败。变更 VIP / 域名后，必须重新签发 `kubernetes.pem`（本仓库有证书相关 tag / playbook），而不是只改 LB 配置。
+**SAN 遗漏是交付现场常见的 TLS 故障原因之一。** 表现为：用某 VIP 或域名访问 API 时证书校验失败；或 ServiceAccount / 集群内客户端以 Service IP 访问失败。变更 VIP / 域名后，必须重新签发 `kubernetes.pem`（本仓库有证书相关 tag / playbook），而不是只改 LB 配置。
 
 ### 3.2.7 生产验证（apiserver）
 
@@ -250,7 +250,7 @@ apiserver 负责将对象持久化到 etcd 并通知观察者；它**不会**因
 1. 从 apiserver **list/watch** 相关对象。
 2. 计算「期望状态 vs 实际状态」。
 3. 若不一致，则通过 apiserver **创建 / 更新 / 删除** 对象，使实际逼近期望。
-4. 处理错误重试与速率限制，避免雪崩。
+4. 处理错误重试与速率限制，避免请求风暴。
 
 控制器是**持续过程**，而非一次性脚本：每次调谐结束后仍继续监视，直至期望与实际一致，并在后续偏差出现时再次收敛。
 
@@ -381,7 +381,17 @@ kubectl describe pod <pending-pod>   # 看 Events: FailedScheduling 等
 
 ## 3.5 控制面安装顺序与 `serial: 1`
 
-### 3.5.1 单 master 主机上的角色顺序
+### 3.5.1 与安装步骤的对应关系
+
+| CLI 步骤 | Playbook | 本章涉及组件 |
+|----------|----------|--------------|
+| `01` | `01.prepare.yml` | `deploy` 签发 CM / Scheduler / admin kubeconfig（server 暂指首 master） |
+| `04` | `04.kube-master.yml` | `kube-lb` → `kube-master` → 本机 `kube-node` |
+| `90` | `90.setup.yml` | 同上；多 master 间 `serial: 1` |
+
+步骤 `04` 依赖步骤 `01` 已完成的 CA 与 kubeconfig；`kubernetes.pem` 在 `kube-master` 角色签发，不在 `deploy` 阶段。
+
+### 3.5.2 单 master 主机上的角色顺序
 
 在 `playbooks/90.setup.yml` 中，针对 `kube_master`：
 
@@ -415,7 +425,7 @@ sequenceDiagram
 2. apiserver 必须先于依赖 API 的组件可用。
 3. master 上的 kube-node 让控制面主机也成为 Node 对象（可再 cordon）。
 
-### 3.5.2 为什么 `serial: 1`
+### 3.5.3 为什么 `serial: 1`
 
 playbook 注释写明：
 
@@ -423,7 +433,7 @@ playbook 注释写明：
 
 多 master **并行**首次启动时，Service IP 分配（以及部分控制面初始化）可能竞态，导致 bootstrap 失败或状态异常。`serial: 1` 强制一次只配置一个 master，用确定性换并行度——这对安装阶段是正确取舍。
 
-### 3.5.3 apiserver 先于 CM / Scheduler 重启
+### 3.5.4 apiserver 先于 CM / Scheduler 重启
 
 `roles/kube-master/tasks/main.yml` 的启动顺序：
 
@@ -434,7 +444,7 @@ playbook 注释写明：
 
 这与「CM / Scheduler 依赖 API」一致。升级或强制换证时走同一路径（相关 Ansible tags：`restart_master`、`force_change_certs`、`upgrade_k8s`）。
 
-### 3.5.4 证书分发清单（master）
+### 3.5.5 证书分发清单（master）
 
 分发到 `{{ ca_dir }}`（默认 `/etc/kubernetes/ssl`）的文件包括：
 
@@ -476,7 +486,7 @@ metrics-server 等扩展以 **extension-apiserver** 形式注册 APIService。ku
 - 渲染 `roles/kube-master/templates/audit-policy.yaml.j2` → `/etc/kubernetes/audit/audit-policy.yaml`
 - apiserver 增加 `--audit-log-path=/var/log/kubernetes/audit/audit.log` 等参数
 
-审计日志增长快。生产开启前必须规划采集、压缩与留存，否则磁盘打满会连带打挂 apiserver——这是「安全开关」附带的运维责任。
+审计日志增长快。生产开启前必须规划采集、压缩与留存，否则磁盘占满可能导致 apiserver 不可用——这是启用审计功能所附带的运维责任。
 
 ---
 

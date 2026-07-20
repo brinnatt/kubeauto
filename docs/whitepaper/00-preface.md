@@ -11,7 +11,7 @@
 | 文档 | 对应业界形态 | 回答的问题 |
 |------|--------------|------------|
 | [技术白皮书](../technical-whitepaper.md)（本文体系） | Concepts / Architecture Whitepaper | 为什么这样设计？组件如何工作？证书/网络/监控如何落地？ |
-| [运维操作手册](../operations-manual.md) | Installation & Administration Guide | 如何安装、扩缩、备份、验收？ |
+| [操作手册](../operations-manual.md) | Installation & Administration Guide | 如何安装、扩缩、备份、验收？ |
 | [开发手册](../development-manual.md) | Developer Guide | 六仓如何改代码、如何钉版本、如何测试？ |
 
 ## 读者对象
@@ -36,8 +36,27 @@
 | 集群配置 | `clusters/<name>/config.yml`（由 `conf/config.yml` 生成） |
 | `ca_dir` | 节点证书目录，默认 `/etc/kubernetes/ssl` |
 | `SECURE_PORT` | apiserver 安全端口，默认 `6443` |
-| `brinnatt/*` | 本项目统一镜像命名空间 |
+| `brinnatt/*` | 本项目统一镜像命名空间（Docker Hub）；离线部署时经本地 Registry 以 `registry.talkschool.cn:5000/brinnatt/*` 引用 |
+| `hub.talkedu.cn/kubeauto` | 国内镜像拉取优先源（`KubeConstant.v_talkedu_registry`）；CI dual-push 与 Docker Hub `brinnatt/*` 对齐 |
 | SSOT | Single Source of Truth，版本单一真相源 `common/constants.py` |
+| 安装步骤 `01`–`07` | 分步 playbook 编号；`90` / `all` 等价于 `playbooks/90.setup.yml` 一键总装（映射见 `service/cluster/manager.py` 中 `_PLAYBOOK_MAP_SETUP`） |
+
+## 安装步骤约定
+
+与 [操作手册](../operations-manual.md) 一致，集群安装可按下列步骤分步执行，或使用 `kubecli setup <cluster> 90`（别名 `all`）一次性运行 `playbooks/90.setup.yml`：
+
+| 步骤 | CLI 别名 | Playbook | 主要角色 |
+|------|----------|----------|----------|
+| `01` | `prepare` | `01.prepare.yml` | `chrony`（可选）→ `deploy` → `prepare` |
+| `02` | `etcd` | `02.etcd.yml` | `etcd` |
+| `03` | `container-runtime` | `03.runtime.yml` | `containerd`（默认）或 `docker` + `cri-dockerd` |
+| `04` | `kube-master` | `04.kube-master.yml` | `kube-lb` → `kube-master` → `kube-node`（`serial: 1`） |
+| `05` | `kube-node` | `05.kube-node.yml` | `kube-lb` → `kube-node`（非 master 的 worker） |
+| `06` | `network` | `06.network.yml` | CNI（默认 `calico`，**etcdv3** 数据存储，非 KDD） |
+| `07` | `cluster-addon` | `07.cluster-addon.yml` | DNS、metrics-server 等可选插件 |
+| `90` | `all` | `90.setup.yml` | 上述流程总装（含 CNI 后 `wait-node-ready`） |
+
+可选步骤：`10`（`ex-lb`）、`11`（`harbor`），不在 `90` 默认路径内。
 
 ## 版本基线（编写时）
 

@@ -2,7 +2,7 @@
 
 > 官方参考：[PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)、[Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/)、[RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)、[TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)、[Certificate Management with kubeadm](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/)  
 > 业界对照：Oracle OCNE Concepts 将 X.509 互信视为平台前提；kubeauto 采用 **私有 CA + cfssl 显式签发**，文件可审计、可备份、可轮换。  
-> **本章是签收评审的核心安全章。** 请完整阅读，勿只扫表格。
+> **本章是签收评审的核心安全章。** 建议通读全文，并对照分发矩阵与验收清单逐项核对。
 
 ---
 
@@ -92,7 +92,7 @@ kubeauto 的 `roles/deploy/templates/ca-config.json.j2` 定义两个 profile：
 | `kubernetes` | signing, key encipherment, **server auth**, **client auth** | 组件证书（可作服务端也可作客户端） |
 | `kcfg` | signing, key encipherment, **client auth** | 自定义用户 kubeconfig（仅客户端） |
 
-`kubernetes` profile 故意双用途，这才允许同一张 `kubernetes.pem` / `etcd.pem` 在不同连接方向上复用。这是简化运维，不是疏忽。
+`kubernetes` profile 同时包含 `server auth` 与 `client auth`，因此同一叶子证书可在不同连接方向上复用。这是简化运维的明确设计，而非证书用途配置遗漏。
 
 ### 6.3.4 双向 TLS（mTLS）在本项目中的落点
 
@@ -113,7 +113,7 @@ kubeauto 的 `roles/deploy/templates/ca-config.json.j2` 定义两个 profile：
 
 | Subject | 含义 | 典型绑定 |
 |---------|------|----------|
-| O=`system:masters` | 破窗超级管理员组 | 可绕过常规鉴权层（极度危险，须严控） |
+| O=`system:masters` | 应急超级管理员组（break-glass） | 可绕过常规鉴权层（须严格管控） |
 | CN=`admin` + O=`system:masters` | kubeauto 默认运维管理员 | 等价超管 kubeconfig |
 | CN=`system:kube-controller-manager` | 控制器管理器 | 预置 CM 权限 |
 | CN=`system:kube-scheduler` | 调度器 | 预置 Scheduler 权限 |
@@ -158,7 +158,7 @@ kubeauto 的 `roles/deploy/templates/ca-config.json.j2` 定义两个 profile：
 | 文件（kubeadm） | 默认 CN | O | 用途 |
 |-----------------|---------|---|------|
 | admin.conf | kubernetes-admin | 发行版相关 | 管理员 |
-| super-admin.conf | kubernetes-super-admin | system:masters | 破窗超管 |
+| super-admin.conf | kubernetes-super-admin | system:masters | 应急超管（break-glass） |
 | kubelet.conf | system:node:`<nodeName>` | system:nodes | kubelet→apiserver |
 | controller-manager.conf | system:kube-controller-manager | — | CM→apiserver |
 | scheduler.conf | system:kube-scheduler | — | Scheduler→apiserver |
@@ -546,7 +546,7 @@ A：官方要求「有 SA 签名密钥对」，并未强制与集群 CA 分离�
 A：作为 **服务端证** 时 Subject O 不用于客户端身份。当它被用作 **kubelet 客户端** 时，身份用户名取 CN=`kubernetes`；本项目靠显式 ClusterRoleBinding 提权到 kubelet API 管理，而不是塞进 system:masters。
 
 **Q4：admin 在 system:masters 是否过于危险？**  
-A：是破窗身份。生产应限制持有 `kubectl.kubeconfig` 的人员与主机；日常可另发 profile=`kcfg` 的普通用户并绑定更小角色。
+A：属于 break-glass 应急身份。生产应限制持有 `kubectl.kubeconfig` 的人员与主机；日常可另发 profile=`kcfg` 的普通用户并绑定更小角色。
 
 **Q5：只想给 apiserver 加一个新域名，必须全量 kca-renew 吗？**  
 A：不一定。更新 `MASTER_CERT_HOSTS` 后重新签发 `kubernetes.pem`（`change_cert` 相关标签/流程）并滚动 apiserver 即可。只有 CA 本身要换或大量客户端证泄露时才走完整 `CHANGE_CA`。

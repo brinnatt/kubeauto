@@ -125,7 +125,7 @@ kubelet 在每个节点上运行，确保分配到本节点的 Pod（含其中�
 - 暴露本地 API（默认 `10250`）供 apiserver 做 logs/exec（需正确客户端证书）。
 - 更新 Node 与 Pod 的 Status、Events。
 
-kubelet **自己**可以由 systemd 托管（本项目如此）；这与「kubelet 用 CRI 管理业务容器」是不同层级——新手常把「kubelet 挂了」和「容器全停了」混为一谈，二者相关但不等价。
+kubelet 由 systemd 托管（本项目如此）；这与「kubelet 经 CRI 管理业务容器」属于不同层级——kubelet 进程异常不等同于全部业务容器停止，二者相关但不等价。
 
 ### 4.4.3 Pod 启动全链路
 
@@ -319,10 +319,20 @@ journalctl -u kubelet -f
 1. Node Ready？有无 `NetworkPluginNotReady`？
 2. kubelet active？CRI socket 是否存在？
 3. pause 沙箱能否创建？`SANDBOX_IMAGE` 能否拉取？
-4. `/etc/cni/net.d` 是否只有正确的 CNI 配置（残留 `10-default.conf` 会坑人）？
+4. `/etc/cni/net.d` 是否仅有目标 CNI 的配置（残留的 `10-default.conf` 可能导致 CNI 冲突）？
 5. kubeconfig 的 server 是否为 `https://127.0.0.1:6443`？kube-lb 是否在听？
 
 ---
+
+### 4.7.3 与安装步骤的对应关系
+
+| CLI 步骤 | Playbook | 本章组件 |
+|----------|----------|----------|
+| `03` | `03.runtime.yml` | containerd / docker（CRI 端点） |
+| `04` | `04.kube-master.yml` | master 上的 kubelet / kube-proxy |
+| `05` | `05.kube-node.yml` | worker 上的 kube-lb → kube-node |
+| `06` | `06.network.yml` | CNI 安装；此前节点 NotReady 属预期 |
+| `90` | `90.setup.yml` | 上述总装 + `wait-node-ready.yml` |
 
 ## 4.8 生产验证：命令与路径
 
@@ -381,7 +391,7 @@ master 主机在 `90.setup.yml` 中也会跑 `kube-node`，因此：
 
 - 控制面进程（systemd）与 kubelet 共存。
 - 资源预留对 master 节点更关键（apiserver/etcd 常在 `system.slice`）。
-- 纯 master 可在 wait 阶段被 cordon，避免业务打满控制面机器。
+- 纯 master 可在 wait 阶段被 cordon，避免业务 Pod 调度至控制面节点。
 
 ### 4.9.3 精确路径表
 

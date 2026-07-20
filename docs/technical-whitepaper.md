@@ -2,7 +2,7 @@
 
 > **文档形态：** 概念与架构说明书（Concepts / Architecture White Paper）  
 > **对照业界：** Oracle Cloud Native Environment *Concepts*、华为云 CCE 架构说明、Amazon EKS 架构白皮书一类交付物——先讲清原理与组件协作，再落到本产品实现与验收口径。  
-> **配套：** [运维操作手册](./operations-manual.md) · [开发手册](./development-manual.md) · [仓库入口](../README.md)
+> **配套：** [操作手册](./operations-manual.md) · [开发手册](./development-manual.md) · [仓库入口](../README.md)
 
 ---
 
@@ -120,7 +120,7 @@ flowchart TB
 ### 2.4.3、运行时与网络
 
 - 默认 containerd；可选 docker + cri-dockerd（对接官方 CRI 演进）。
-- 默认 Calico；另支持 flannel / cilium / kube-router / kube-ovn。
+- 默认 Calico（**etcdv3** 数据存储，非 KDD）；另支持 flannel / cilium / kube-router / kube-ovn。
 - CoreDNS + 默认 NodeLocal DNSCache（`169.254.20.10`）。
 
 ### 2.4.4、资源与监控
@@ -157,3 +157,20 @@ flowchart TB
 
 分章内容随代码演进更新；**版本数字以六仓同步测试通过的 `KubeConstant` 为准**。
 `)
+
+---
+
+## 2.7、交付签收检查表
+
+| # | 项 | 依据 |
+|---|----|------|
+| 1 | 版本基线与 `common/constants.py` / 附录 A 一致 | 白皮书附录 A |
+| 2 | aio 与 HA 各完成一次安装记录 | 操作手册 §1.2 / §1.3 |
+| 3 | 控制面经 kube-lb（`127.0.0.1:6443`）可达；节点 Ready | 白皮书第 7 章 |
+| 4 | 证书矩阵抽检；`ca-key` 仅 master | 白皮书第 6 章 |
+| 5 | Calico 为 etcdv3（或所选 CNI 文档路径） | 操作手册 §1.3.3.6 |
+| 6 | NodeLocal DNS `169.254.20.10`（若启用） | 白皮书第 10 章 |
+| 7 | `verify-node-reserved.sh` 通过（启用 Allocatable 时） | 操作手册 §1.1.4 |
+| 8 | backup / restore 演练记录 | 操作手册生命周期章 |
+| 9 | 可选插件（监控/Ingress/存储）按合同范围验收 | 白皮书第 12 章 |
+| 10 | 初始口令已修改；私仓仅信本地 Registry | 白皮书第 15 章 |

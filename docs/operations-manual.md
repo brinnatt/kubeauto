@@ -1,6 +1,6 @@
 # 1、操作手册
 
-本文档为 kubeauto 的**运维操作手册**，说明如何在目标环境中下载制品、部署集群、配置网络与插件，以及日常运维操作。
+本文档为 kubeauto 的**操作手册**，说明如何在目标环境中下载制品、部署集群、配置网络与插件，以及日常运维操作。
 
 kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装与配置逻辑由 Ansible 角色实现，集群生命周期由 Python 控制面（`kubecli`）编排。项目不依赖 kubeadm，采用二进制 + systemd 方式落地控制面与节点组件，并支持离线镜像仓库分发。
 
@@ -20,7 +20,7 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 
 ### 1.1.1、最小配置
 
-最小配置是相对概念，来自测试与学习环境的经验值，用于快速拉起可用集群。配置偏低时活动空间有限，**不建议直接作为生产规格**。生产环境请按业务与合同约定选型；启用默认 Node Allocatable（合计预留约 2 CPU + 4Gi）时，节点建议不低于 **16 CPU / 32Gi 内存**（详见 §1.1.4）。
+下表给出实验室连通性验证常用规格，**不得**直接作为生产合同基线。生产按业务容量与合同选型；启用默认 Node Allocatable（合计约 **2 CPU + 4Gi**）时，工作节点建议不低于 **16 CPU / 32Gi**（详见 §1.1.4）。
 
 | 部署场景                   | 节点角色            | CPU  | 内存  | 存储空间 | 常规组件                                                     |
 | -------------------------- | ------------------- | ---- | ----- | -------- | ------------------------------------------------------------ |
@@ -31,40 +31,42 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 
 ### 1.1.2、架构
 
-从最小配置描述中可以看到，我们的部署方案有两种，一种是 allinone 安装，一般用来学习和测试；一种是高可用安装，用于生产环境。
+部署形态：
 
-使用独立负载均衡器的高可用架构很经典，成熟且高效，如下图所示：
+| 形态 | 用途 | 说明 |
+|------|------|------|
+| all-in-one | 学习 / 测试 | `kubecli start-aio`；控制面与工作负载共节点 |
+| 多节点高可用 | 生产 | 多 master + etcd 奇数成员；节点组件经本机 kube-lb 访问 apiserver |
+
+**外置 LB（可选）**：keepalived VIP + nginx（stream）转发至各 master apiserver：
 
 ![k8s_traditional_arch](../images/k8s_traditional_arch.png)
 
-使用集成负载均衡器的高可用架构同样高效，如下图所示：
+**集成 kube-lb（默认）**：各节点本地 `127.0.0.1:6443` 四层转发至 master 列表：
 
 ![k8s_new_arch](../images/k8s_new_arch.png)
 
-本项目默认使用第二种集成负载均衡器的高可用架构。
+本项目默认第二种。原理见白皮书 [第 7 章](./whitepaper/07-ha-loadbalancer.md)。
 
 ### 1.1.3、容器运行时
 
-k8s 作为一个容器编排工具，发展之初，借用稳定可靠的 docker 作为底层的容器运行时，顺理成章，但是 docker 是一个独立的 C/S 架构的容器工具，对容器有完整的生命周期定义，并非为 k8s 而生。
+Kubernetes 通过 [CRI](https://kubernetes.io/docs/concepts/architecture/cri/) 与节点上的容器运行时交互。自 **1.24** 起，内建 dockershim 已移除；节点须使用符合 CRI 的运行时。官方说明：[Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)。
 
-随着 k8s 的发展，社区有了一些新的理解，符合 CRI 标准的容器运行时皆可对接 k8s，其中比较突出的有 containerd，CRI-O 等，我们可以根据自己的实际需求灵活搭配。
+本项目支持：
 
-Kubernetes 自 1.24 起移除 dockershim。本项目支持两类 CRI：
+| 运行时 | 适用说明 | 库存配置 | 默认版本钉扎 |
+|--------|----------|----------|--------------|
+| **containerd**（默认） | 生产推荐；与 pause / k8s 二进制配套 | `CONTAINER_RUNTIME="containerd"` | 随 ext-bin（当前 **2.1.4**） |
+| **docker + cri-dockerd** | 需保留 Docker Engine 时 | `CONTAINER_RUNTIME="docker"` | Engine **28.5.2**，cri-dockerd **0.3.26**（`v_docker` / `v_cri_dockerd`） |
 
-| 运行时 | 适用说明 | 库存配置 |
-|--------|----------|----------|
-| **containerd**（默认） | 推荐生产默认；与当前 k8s 二进制包、pause 镜像配套 | `CONTAINER_RUNTIME="containerd"` |
-| **docker + cri-dockerd** | 需要沿用 Docker Engine 时使用；通过 [cri-dockerd](https://github.com/Mirantis/cri-dockerd) 提供 CRI | `CONTAINER_RUNTIME="docker"` |
+默认 Kubernetes 版本：**v1.33.6**（`v_k8s_bin`）。沙箱镜像：`SANDBOX_IMAGE` → `registry.talkschool.cn:5000/brinnatt/pause:3.10`。kubelet 与运行时须使用相同 **cgroup 驱动**（本项目为 `systemd`）。
 
-默认 Kubernetes 版本为 **v1.33.6**（见 `common/constants.py` 中 `v_k8s_bin`）。cri-dockerd 版本与 Engine 版本见同文件 `v_cri_dockerd` / `v_docker`。
+参考：
 
-进一步了解 containerd：
-
-- 安装与 CRI：https://github.com/containerd/containerd/blob/main/docs/getting-started.md
-- crictl：https://github.com/kubernetes-sigs/cri-tools
-- Docker Engine 二进制安装：https://docs.docker.com/engine/install/binaries/
-
-> 提示：可从 Kubernetes 历史安装方法中加深对容器运行时演进的理解，参考[安装 Kubernetes](https://brinnatt.com/projects/cicd/6、安装-kubernetes)
+- [containerd getting started](https://github.com/containerd/containerd/blob/main/docs/getting-started.md)
+- [cri-tools / crictl](https://github.com/kubernetes-sigs/cri-tools)
+- [cri-dockerd](https://github.com/Mirantis/cri-dockerd)
+- [Docker Engine 二进制安装](https://docs.docker.com/engine/install/binaries/)
 
 ### 1.1.4、为系统守护进程预留计算资源（Node Allocatable）
 
@@ -298,9 +300,11 @@ bash tests/helpers/verify-node-reserved.sh clusters/<cluster>/kubectl.kubeconfig
 
 ## 1.2、单节点部署
 
-单节点部署是以 allinone 的方式把所有组件都部署在一个节点上面，可以快速构建一个可用的 k8s，供学习和测试使用。
+all-in-one 将 etcd、控制面与工作负载部署在同一节点，仅用于学习与测试。生产请使用 §1.3。低规格节点若启用默认 Node Allocatable，可能因 Capacity 不足导致 kubelet 拒绝启动——实验室可临时关闭预留（见 §1.1.4.6）。
 
-1、下载集群管理工具
+控制节点默认路径：`/usr/local/kubeauto`。也可用源码同步：`bash tests/helpers/sync-kubeauto.sh <user@host> '<password>'`。
+
+### 1.2.1、安装 kubecli
 
 ```bash
 # wget https://github.com/brinnatt/kubeauto/releases/download/v0.1.1/kubecli-amd64
@@ -342,7 +346,8 @@ available commands:
 
 > 提示：该项目支持 amd64 和 arm64 两种架构，根据自己的系统架构选择对应的管理工具即可。
 
-2、配置 kubecli 执行环境并下载 k8s 所需组件
+### 1.2.2、下载制品
+
 
 ```bash
 # kubecli download -D
@@ -350,15 +355,15 @@ available commands:
 
 > 提示：kubecli 二进制包含所有的 python 库，但是不包含 ansible 工具，kubecli 会根据系统源安装 ansible 工具，如果安装源有问题导致安装失败，请自行手动安装，然后继续下面的步骤。
 
-3、安装 aio 集群
+### 1.2.3、安装
 
-使用 kubecli 工具安装 k8s 集群，要有 root 权限。
+需 root（或等效权限）：
 
 ```bash
 # kubecli start-aio
 ```
 
-4、验证 aio 集群是否成功安装
+### 1.2.4、验证
 
 ```bash
 # kubecli list
@@ -381,143 +386,111 @@ kube-system   node-local-dns-6qbst                       1/1     Running   0    
 
 ### 1.3.1、环境准备
 
-| 角色        | 数量 | 描述                                                         |
-| ----------- | ---- | ------------------------------------------------------------ |
-| 部署节点    | 1    | 运行 kubecli 命令，管控多集群；可以复用 master 节点，但生产上建议准备一个单独的部署节点。 |
-| etcd 节点   | 3    | etcd 集群需要 1, 3, 5, ... 奇数个节点，选举必需；可以复用 master 节点，但生产上建议使用性能高的磁盘单独部署。 |
-| master 节点 | 2    | 高可用集群至少 2 个 master 节点                              |
-| node 节点   | n    | 运行应用负载的节点，可根据需要提升机器配置或增加节点数       |
+| 角色 | 数量建议 | 描述 |
+|------|----------|------|
+| 控制 / 部署节点 | 1 | 运行 `kubecli`、本地 Registry、持有 `clusters/`；生产建议与业务节点分离 |
+| etcd | 3（或 1/5） | **奇数**成员以维持 Raft 多数；生产建议独立 SSD（见 §1.3.3.2 fio） |
+| kube_master | ≥2 | apiserver 无状态多副本；CM/Scheduler 选主 |
+| kube_node | n | 工作负载；master 默认也安装 kubelet（跑 CNI DaemonSet） |
+| ex_lb（可选） | 2 | 外置 VIP；步骤 `10` |
 
-> 注意 1：集群时钟同步至关重要，时间一旦不同步，会出现无法预料的问题，且不易察觉，按下面步骤安装集群时，时间同步会自动初始化，你需要在安装完集群后，首先检查时间同步的有效性。
->
-> 注意 2：默认配置下容器运行时和 kubelet 会占用 /var 的磁盘空间，如果磁盘分区特殊，可以设置 config.yml 中的容器运行时和 kubelet 数据目录：`CONTAINERD_STORAGE_DIR`，`DOCKER_STORAGE_DIR`，`KUBELET_ROOT_DIR`。
->
-> 注意 3：确保在干净的系统上开始安装，不要使用曾经装过 kubeadm 或其他 k8s 发行版的环境。
->
-> 注意 4：本项目开发环境是 Rockylinux 8.10，不建议使用低于该版本的系统安装 k8s 集群。
+前置约束：
+
+1. **时钟同步**：安装流程可部署 chrony；装完后须确认各节点时间一致。
+2. **数据目录**：默认占用 `/var`；可改 `CONTAINERD_STORAGE_DIR` / `DOCKER_STORAGE_DIR` / `KUBELET_ROOT_DIR` / `ETCD_DATA_DIR`。
+3. **干净系统**：勿在曾安装 kubeadm 或其他发行版残留的节点上直接安装。
+4. **OS**：以 Rocky Linux 8.10 为主要验证基线；过旧发行版不建议。
+5. **规格**：启用默认 Allocatable 时节点建议 ≥16C/32Gi；文档中 2C/4G 仅作连通性试验，不可当生产规格。
 
 ### 1.3.2、快速安装
 
-以下示例创建一个 9 节点的多主高可用集群，文档中命令默认都需要 root 权限运行。
+以下以多 master 高可用为例；命令默认在控制节点以 root 执行。示例 IP 请替换为现场地址。
 
-1、基础系统配置
-
-- 2c/4g 内存 120g 硬盘（该配置仅测试用）
-- 最小化安装 Rockylinux 8.10
-- 配置基础网络、更新源、SSH 登录等
-
-2、安装依赖
-
-kubecli 把大部分依赖环境一起打包进了二进制，但 ansible_runner 库依赖操作系统的 ansible 环境，不过 `kubecli download -D` 在下载所有安装组件同时也解决了 ansible 依赖，如果因国内网络环境安装失败，可以手动安装 ansible 再继续后面步骤。
-
-3、准备 ssh 免密登陆
-
-配置从部署节点能够 ssh 免密登陆所有节点
+1. **OS 与网络**：Rocky Linux 8.10（或项目已验证发行版）；主机名唯一；SSH 可达。
+2. **安装 kubecli**（amd64 / arm64 选一）：
 
 ```bash
-# kubecli system -a 192.168.110.214 192.168.110.215 192.168.110.216 192.168.110.217 192.168.110.218 192.168.110.219 192.168.110.220 192.168.110.221 192.168.110.222 --password xxx
+wget https://github.com/brinnatt/kubeauto/releases/download/v0.1.1/kubecli-amd64
+mv kubecli-amd64 /usr/local/bin/kubecli && chmod +x /usr/local/bin/kubecli
+kubecli version
 ```
 
-> 说明：如果密码相同，只需要输入一次，如果密码不同，需要输入各自的密码。
-
-4、在部署节点安装 k8s 集群
-
-4.1、下载对应的 x64 或 arm64 构架的 kubecli 工具
+3. **SSH 与制品**：
 
 ```bash
-# wget https://github.com/brinnatt/kubeauto/releases/download/v0.1.1/kubecli-amd64
-# mv kubecli-amd64 /usr/local/bin/kubecli
-# chmod +x /usr/local/bin/kubecli
-# kubecli -h
-```
-
-4.2、下载 k8s 所需所有组件以及 kubecli 运行时环境
-
-```bash
-# kubecli download -D
-```
-
-4.3、下载额外容器镜像（cilium，flannel，prometheus 等）
-
-```bash
+kubecli system -a <node1> <node2> ... --password '<ssh-password>'
+kubecli download -D
+# 非默认 CNI / 可选插件按需：
 # kubecli download -E flannel
+# kubecli download -E cilium
 # kubecli download -E prometheus
 ```
 
-4.4、创建集群配置实例
+`download -D` 会拉取 k8s-bin / ext-bin、启动本地 Registry，并尽量安装系统 Ansible（`ansible-runner` 依赖）。失败时请按发行版手动安装 ansible 后重试。
+
+4. **集群配置**：
 
 ```bash
-# kubecli new k8s-main
-[2025-12-05 12:59:10] [INFO] [service.cluster.manager] -> Cluster k8s-main created. Next steps:
-[2025-12-05 12:59:10] [INFO] [service.cluster.manager] 1. Configure /usr/local/kubeauto/clusters/k8s-main/hosts
-[2025-12-05 12:59:10] [INFO] [service.cluster.manager] 2. Configure /usr/local/kubeauto/clusters/k8s-main/config.yml
+kubecli new k8s-main
+# 编辑 clusters/k8s-main/hosts 与 clusters/k8s-main/config.yml
 ```
 
-然后根据提示配置 hosts 和 config.yml，根据前面节点规划修改hosts 文件和其他集群层面的主要配置选项；其他集群组件等配置项可以在config.yml 文件中修改。
-
-4.5、开始安装
+5. **安装**：
 
 ```bash
-# 一键安装
-kubecli setup k8s-main all
-
-# 或者分步安装
-kubecli setup k8s-main 01
-kubecli setup k8s-main 02
-...
+kubecli setup k8s-main 90          # 或 all
+# 分步：01 prepare → 02 etcd → 03 runtime → 04 kube-master → 05 kube-node → 06 network → 07 cluster-addon
 ```
+
+6. **验收**：`kubectl get nodes`；`kubectl get pods -A`；按需执行 `tests/helpers/verify-node-reserved.sh`。
 
 ### 1.3.3、分步安装
 
 #### 1.3.3.1、创建证书和初始化环境
 
-本步骤主要完成:
+对应 CLI：`kubecli setup <cluster> 01` 或 `kubecli setup <cluster> prepare`（映射到 `playbooks/01.prepare.yml`）。
 
-- (optional) role: chrony，集群中的时间同步至关重要，有条件的话，手动单独完成所有节点时间同步
-- role: deploy，创建 CA 证书、集群组件访问 apiserver 所需的各种 kubeconfig
-- role: prepare，系统基础环境初始化配置、分发 CA 证书、kubectl 客户端安装
+该 playbook 依次执行：
+
+| 顺序 | 角色 | 目标主机 | 作用 |
+|------|------|----------|------|
+| 1（可选） | `chrony` | `kube_master` / `kube_node` / `etcd` / `ex_lb` / `chrony` | 仅当 inventory 中 `chrony` 组非空时安装；生产环境建议事先完成全节点时间同步 |
+| 2 | `deploy` | `localhost`（部署节点） | 生成集群 CA，以及 admin / kube-proxy / controller-manager / scheduler 等 kubeconfig |
+| 3 | `prepare` | `kube_master` / `kube_node` / `etcd` | 操作系统与内核参数初始化、目录、本机仓库解析、主机名与 `/etc/hosts`、向 master/node 下发 `kubectl.kubeconfig` |
+
+说明：本步骤**不**签发 `kubernetes.pem`（由 `kube-master` 签发）与 kubelet 证书（由 `kube-node` 签发）；**不**向工作节点分发 `ca-key.pem`。CA 信任锚与叶子证书的分发矩阵见技术白皮书第 6 章。
 
 ##### 1.3.3.1.1、deploy 角色
 
-> roles/deploy/tasks/main.yml
+实现：`roles/deploy/tasks/main.yml`。证书与 kubeconfig 写入 `clusters/<cluster>/ssl/` 与 `clusters/<cluster>/`。若已存在 `ca.pem` 且未设置 `CHANGE_CA=true`，则跳过 CA 初始化以保证幂等。
 
-**1、创建 CA 证书**
+**证书模型（本项目）**
 
-kubernetes 系统各组件需要使用 TLS 证书对通信进行加密，使用 CloudFlare 的 PKI 工具集生成自签名的 CA 证书，用来签名后续创建的其它 TLS 证书。[参见官方项目](https://github.com/cloudflare/cfssl)。
+组件 TLS 使用 Cloudflare [cfssl](https://github.com/cloudflare/cfssl) 与集群自签 CA。按用途区分：
 
-根据认证对象可以将证书分成三类：服务器证书 `server cert`，客户端证书 `client cert`，对等证书 `peer cert`(既是 `server cert` 又是 `client cert`)，在kubernetes 集群中需要的证书种类如下：
+| 类型 | key usage | 本项目典型文件 |
+|------|-----------|----------------|
+| 服务端证书 | server auth | 校验连接目标（SAN 必须覆盖客户端实际访问的 IP/DNS） |
+| 客户端证书 | client auth | `admin.pem`、`kube-proxy.pem`、CM/Scheduler 客户端证等；CSR 的 `hosts` 可为空 |
+| 对等证书（同一张证兼 server + client） | 二者兼有 | `etcd.pem`；以及后续步骤中的 `kubernetes.pem`、kubelet 证书 |
 
-- `etcd` 集群每个节点既需要标识自己服务的 `server cert`，也需要 `client cert` 与其它 `etcd` 集群节点交互，当然可以分别指定 2 个证书，为了更简洁，这里使用一个对等证书。
-- `master` 节点既需要标识 apiserver 服务的 `server cert`，也需要 `client cert` 连接 `etcd` 集群，这里也使用一个对等证书。
-- `kubectl` `calico` `kube-proxy` 只需要 `client cert`，因此证书请求中 `hosts` 字段可以为空。
-- `kubelet` 既需要标识自己服务的 `server cert`，也需要 `client cert` 请求 `apiserver`，也使用一个对等证书。
+`kubernetes` profile 同时包含 `server auth` 与 `client auth`，因此同一叶子证书可在不同连接方向复用。`kubernetes.pem` 的三重用途（apiserver 服务端、etcd 客户端、kubelet 客户端）在 **§1.3.3.4** 与 `kube-master` 角色中落地。
 
-整个集群要使用统一的 CA 证书，只需要在 ansible 控制端创建，然后分发给其他节点；为了保证安装的幂等性，如果已经存在 CA 证书，就跳过创建 CA 步骤。
+**1、创建 CA**
 
-创建 CA 配置文件 [ca-config.json.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/deploy/templates/ca-config.json.j2)
+配置模板：`roles/deploy/templates/ca-config.json.j2`（有效期来自 `conf/config.yml` 的 `CERT_EXPIRY` / `CUSTOM_EXPIRY`）。
 
-```bash
+```json
 {
   "signing": {
-    "default": {
-      "expiry": "{{ CERT_EXPIRY }}"
-    },
+    "default": { "expiry": "{{ CERT_EXPIRY }}" },
     "profiles": {
       "kubernetes": {
-        "usages": [
-            "signing",
-            "key encipherment",
-            "server auth",
-            "client auth"
-        ],
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
         "expiry": "{{ CERT_EXPIRY }}"
       },
       "kcfg": {
-        "usages": [
-            "signing",
-            "key encipherment",
-            "client auth"
-        ],
+        "usages": ["signing", "key encipherment", "client auth"],
         "expiry": "{{ CUSTOM_EXPIRY }}"
       }
     }
@@ -525,173 +498,113 @@ kubernetes 系统各组件需要使用 TLS 证书对通信进行加密，使用 
 }
 ```
 
-- `signing`：表示该证书可用于签名其它证书；生成的 ca.pem 证书中 `CA=TRUE`；
-- `server auth`：表示可以用该 CA 对 server 提供的证书进行验证；
-- `client auth`：表示可以用该 CA 对 client 提供的证书进行验证；
-- `profile kubernetes`：包含了 `server auth` 和 `client auth`，所以可以签发三种不同类型证书；expiry 证书有效期，默认 50 年。
-- `profile kcfg`：在后面客户端 kubeconfig 证书管理中用到。
+- `profile kubernetes`：签发组件证书（默认可作服务端或客户端）；`CERT_EXPIRY` 默认 `438000h`（50 年）。
+- `profile kcfg`：自定义用户 kubeconfig（仅 client auth）；在 `ADD_KCFG=true` 时使用。
 
-创建 CA 证书签名请求 [ca-csr.json.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/deploy/templates/ca-csr.json.j2)
+CSR 模板：`roles/deploy/templates/ca-csr.json.j2`，`ca.expiry` 取自 `CA_EXPIRY`（默认 `876000h`，约 100 年）：
 
-```bash
+```json
 {
   "CN": "kubernetes-ca",
-  "key": {
-    "algo": "rsa",
-    "size": 2048
-  },
-  "names": [
-    {
-      "C": "CN",
-      "ST": "HangZhou",
-      "L": "XS",
-      "O": "k8s",
-      "OU": "System"
-    }
-  ],
-  "ca": {
-    "expiry": "876000h"
-  }
+  "key": { "algo": "rsa", "size": 2048 },
+  "names": [{ "C": "CN", "ST": "HangZhou", "L": "XS", "O": "k8s", "OU": "System" }],
+  "ca": { "expiry": "{{ CA_EXPIRY }}" }
 }
 ```
 
-- `ca expiry`：指定 ca 证书的有效期，默认 100 年。
-
-生成 CA 证书和私钥
-
 ```bash
+# 在 clusters/<cluster>/ssl/ 下执行（由 Ansible 调用 extra-bin/cfssl）
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+# 产物：ca.pem、ca-key.pem
 ```
 
-**2、生成 kubeconfig 配置文件**
+**2、生成 kubectl（admin）kubeconfig**
 
-kubectl 使用 `~/.kube/config` 配置文件与 kube-apiserver 进行交互，且拥有管理 K8S 集群的完全权限。
+CSR：`roles/deploy/templates/admin-csr.json.j2`。
 
-准备 kubectl 使用的 admin 证书签名请求 [admin-csr.json.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/deploy/templates/admin-csr.json.j2)
-
-```bash
+```json
 {
   "CN": "admin",
   "hosts": [],
-  "key": {
-    "algo": "rsa",
-    "size": 2048
-  },
-  "names": [
-    {
-      "C": "CN",
-      "ST": "HangZhou",
-      "L": "XS",
-      "O": "system:masters",
-      "OU": "System"
-    }
-  ]
+  "key": { "algo": "rsa", "size": 2048 },
+  "names": [{ "C": "CN", "ST": "HangZhou", "L": "XS", "O": "system:masters", "OU": "System" }]
 }
 ```
 
-- kubectl 使用客户端证书可以不指定 hosts 字段。
-- 证书 Subject 的 Organization（`O`）为 `system:masters`。Kubernetes x509 认证器将该字段映射为用户组。默认 RBAC 中 `cluster-admin` ClusterRoleBinding 包含该组；官方亦将 `system:masters` 视为可绕过授权层的高权限（break-glass）组（见 [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)）。admin 证书与 `kubectl.kubeconfig` 须按密钥级保护。
+- 客户端证书无需填写 `hosts`。
+- Subject 的 Organization（`O`）为 `system:masters`。x509 认证器将该字段映射为用户组。默认 RBAC 中 `cluster-admin` ClusterRoleBinding 的 Subject 含该组；官方亦将 `system:masters` 视为可绕过授权层的高权限（break-glass）组（见 [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)）。admin 证书与 `kubectl.kubeconfig` 须按密钥级保护。
 
 ```bash
-$ kubectl describe clusterrolebinding cluster-admin
-Name:         cluster-admin
-Labels:       kubernetes.io/bootstrapping=rbac-defaults
-Annotations:  rbac.authorization.kubernetes.io/autoupdate=true
-Role:
-  Kind:  ClusterRole
-  Name:  cluster-admin
-Subjects:
-  Kind   Name            Namespace
-  ----   ----            ---------
-  Group  system:masters  
+kubectl describe clusterrolebinding cluster-admin
+# Subjects: Group system:masters
 ```
 
-生成 admin 用户证书
+签发与写入（逻辑见 `roles/deploy/tasks/create-kubectl-kubeconfig.yml`）：
 
 ```bash
-cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes admin-csr.json | cfssljson -bare admin
+cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
+  -profile=kubernetes admin-csr.json | cfssljson -bare admin
+
+# server 使用 roles/deploy/vars/main.yml：
+#   KUBE_APISERVER=https://{{ groups['kube_master'][0] }}:{{ SECURE_PORT }}
+# 默认 SECURE_PORT=6443；集群名/上下文取自 config.yml 的 CLUSTER_NAME、CONTEXT_NAME
+kubectl config set-cluster {{ CLUSTER_NAME }} \
+  --certificate-authority=ca.pem --embed-certs=true \
+  --server={{ KUBE_APISERVER }} \
+  --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+kubectl config set-credentials admin \
+  --client-certificate=admin.pem --embed-certs=true --client-key=admin-key.pem \
+  --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+kubectl config set-context {{ CONTEXT_NAME }} \
+  --cluster={{ CLUSTER_NAME }} --user=admin \
+  --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+kubectl config use-context {{ CONTEXT_NAME }} \
+  --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+# 另复制一份到部署节点 ~/.kube/config（mode 0400）
 ```
 
-生成 `~/.kube/config` 配置文件
+注意：部署节点上的运维 kubeconfig **默认指向首个 master IP:SECURE_PORT**，不是本机 `127.0.0.1`。节点上 CM / Scheduler / kubelet / kube-proxy 在后续步骤中会改为经 **kube-lb** 访问 `https://127.0.0.1:{{ SECURE_PORT }}`。
 
-使用 `kubectl config` 生成 kubeconfig 自动保存到 `~/.kube/config`，生成后 `cat ~/.kube/config` 可以验证配置文件包含 kube-apiserver 地址、证书、用户名等信息。
+**3、生成 kube-proxy.kubeconfig**
+
+CSR：`roles/deploy/templates/kube-proxy-csr.json.j2`，CN=`system:kube-proxy`。预定义 ClusterRoleBinding `system:node-proxier` 将该用户绑定到 Role `system:node-proxier`。
 
 ```bash
-kubectl config set-cluster kubernetes --certificate-authority=ca.pem --embed-certs=true --server=127.0.0.1:8443
-kubectl config set-credentials admin --client-certificate=admin.pem --embed-certs=true --client-key=admin-key.pem
-kubectl config set-context kubernetes --cluster=kubernetes --user=admin
-kubectl config use-context kubernetes
+cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
+  -profile=kubernetes kube-proxy-csr.json | cfssljson -bare kube-proxy
+# kubectl config … --server={{ KUBE_APISERVER }} --kubeconfig={{ cluster_dir }}/kube-proxy.kubeconfig
 ```
 
-**3、生成 kube-proxy.kubeconfig 配置文件**
+节点安装时由 `kube-node` 将该文件复制到 `/etc/kubernetes/kube-proxy.kubeconfig`，并把 `server` 改写为 `https://127.0.0.1:{{ SECURE_PORT }}`。
 
-创建 kube-proxy 证书请求 [kube-proxy-csr.json.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/deploy/templates/kube-proxy-csr.json.j2)
+**4、生成 controller-manager / scheduler kubeconfig**
 
-```bash
-{
-  "CN": "system:kube-proxy",
-  "hosts": [],
-  "key": {
-    "algo": "rsa",
-    "size": 2048
-  },
-  "names": [
-    {
-      "C": "CN",
-      "ST": "HangZhou",
-      "L": "XS",
-      "O": "k8s",
-      "OU": "System"
-    }
-  ]
-}
-```
+任务文件：`create-kube-controller-manager-kubeconfig.yml`、`create-kube-scheduler-kubeconfig.yml`。
 
-- kube-proxy 使用客户端证书可以不指定 hosts 字段。
-- CN 指定该证书的 User 为 `system:kube-proxy`，预定义的 ClusterRoleBinding `system:node-proxier` 将 User `system:kube-proxy` 与 Role `system:node-proxier` 绑定，授予了调用 kube-apiserver Proxy 相关 API 的权限；
+| 组件 | CN / 凭据用户 | O |
+|------|---------------|---|
+| kube-controller-manager | `system:kube-controller-manager` | `system:kube-controller-manager` |
+| kube-scheduler | `system:kube-scheduler` | `system:kube-scheduler` |
 
-```bash
-$ kubectl describe clusterrolebinding system:node-proxier
-Name:         system:node-proxier
-Labels:       kubernetes.io/bootstrapping=rbac-defaults
-Annotations:  rbac.authorization.kubernetes.io/autoupdate=true
-Role:
-  Kind:  ClusterRole
-  Name:  system:node-proxier
-Subjects:
-  Kind  Name               Namespace
-  ----  ----               ---------
-  User  system:kube-proxy  
-```
+生成过程与 kube-proxy 相同；产物保存在 `clusters/<cluster>/`。安装 master 时由 `kube-master` 分发到 `/etc/kubernetes/`，并将 `server` 改写为 `https://127.0.0.1:{{ SECURE_PORT }}`。
 
-生成 `system:kube-proxy` 用户证书
-
-```bash
-cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | cfssljson -bare kube-proxy
-```
-
-生成 kube-proxy.kubeconfig
-
-使用 `kubectl config` 生成 kubeconfig 自动保存到 kube-proxy.kubeconfig
-
-```bash
-kubectl config set-cluster kubernetes --certificate-authority=ca.pem --embed-certs=true --server=127.0.0.1:8443 --kubeconfig=kube-proxy.kubeconfig
-kubectl config set-credentials kube-proxy --client-certificate=kube-proxy.pem --embed-certs=true --client-key=kube-proxy-key.pem --kubeconfig=kube-proxy.kubeconfig
-kubectl config set-context default --cluster=kubernetes --user=kube-proxy --kubeconfig=kube-proxy.kubeconfig
-kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
-```
-
-**4、生成其它组件 kubeconfig 配置文件**
-
-创建 kube-controller-manager 和 kube-scheduler 组件的 kubeconfig 文件，过程与创建 kube-proxy.kubeconfig 类似，略。
+可选：`ADD_KCFG=true` 时执行 `add-custom-kubectl-kubeconfig.yml`，使用 `kcfg` profile 签发自定义用户客户端证书。
 
 ##### 1.3.3.1.2、prepare 角色
 
-请在另外窗口打开[roles/prepare/tasks/main.yml](https://github.com/brinnatt/kubeauto/blob/master/roles/prepare/tasks/main.yml) 文件，比较简单直观
+实现：`roles/prepare/tasks/main.yml`。节点上若存在标记文件 `/opt/kubeauto_prepare_tasks`，则跳过本角色（幂等）。
 
-1. 设置基础操作系统软件和系统参数，请阅读脚本中的注释内容。
-2. 创建一些基础文件目录、环境变量以及添加本地镜像仓库 `registry.talkschool.cn` 的域名解析。
-3. 分发 kubeconfig 等配置文件。
+主要动作：
+
+1. 按发行版执行 `debian.yml` / `redhat.yml` / `suse.yml` 等，安装基础软件包。
+2. `common.yml`：关闭 swap、加载 `br_netfilter` / IPVS 等相关模块、写入 `sysctl` 与 systemd 限制等。
+3. 创建 `{{ bin_dir }}`、`{{ ca_dir }}`、`/root/.kube`。
+4. 将部署节点上的 `kubectl.kubeconfig` 复制到 **kube_master 与 kube_node** 的 `/root/.kube/config`（etcd 专用节点不复制）。
+5. 向 `/etc/hosts` 写入本地镜像仓库 `registry.talkschool.cn` 解析（`REGISTRY_HOST_IP`）。
+6. 若 `ENABLE_SETTING_HOSTNAME=true`，用 `hostnamectl` 设置 `K8S_NODENAME`；并以 `groups.kube_master[0]` 为汇聚源同步各节点主机名到 `/etc/hosts`（见 `docs/design-first-master.md`）。
+7. 写入 `/opt/kubeauto_prepare_tasks` 标记完成。
+
+本角色**不**安装 `kubectl` / `kubelet` 二进制（由后续 `kube-master` / `kube-node` 从 `kube-bin/` 下发），也**不**分发 `ca.pem` / `ca-key.pem`（分别在 etcd、kube-master、kube-node 等角色中按矩阵下发）。
 
 #### 1.3.3.2、安装 etcd 集群
 
@@ -839,33 +752,62 @@ for ip in ${NODE_IPS}; do
 - 节点间网络稳定：没有频繁的领导者切换（通过监控 etcd_server_leader_changes_seen_total 指标）。
 - 磁盘空间充足：没有 NOSPACE 告警，且磁盘使用率在安全阈值内（例如低于80%）。
 
-> **磁盘性能**：快速的磁盘是 etcd 部署性能和稳定性的最关键因素。
->
-> 磁盘速度慢会增加 etcd 请求延迟，并可能损害集群稳定性。由于 etcd 的 raft 协议依赖于将元数据持久地存储到日志中，因此大多数 etcd 集群成员必须将每个请求写入磁盘。此外，etcd 还会逐步将其状态检查点写入磁盘，以便截断此日志。如果这些写入耗时过长，心跳可能会超时并触发选举，从而损害集群的稳定性。通常，要判断磁盘速度是否足以满足 etcd 的要求，可以使用 fio 等基准测试工具。
->
-> etcd 对磁盘写入延迟非常敏感。通常需要 50 的顺序 IOPS（例如，7200 RPM 磁盘）。对于负载较重的集群，建议使用 500 的顺序 IOPS（例如，典型的本地 SSD 或高性能虚拟化块设备）。请注意，大多数云提供商发布的是并发 IOPS，而不是顺序 IOPS；发布的并发 IOPS 可能比顺序 IOPS 高出 10 倍。要测量实际的顺序 IOPS，我们建议使用磁盘基准测试工具，例如 diskbench 或 fio。
->
-> ```bash
-> # 测试示例
-> mkdir test-data
-> fio --rw=write --ioengine=sync --fdatasync=1 --directory=test-data --size=2200m --bs=2300 --name=mytest
-> ```
+##### 磁盘与 fio 验收（对齐官方 Hardware recommendations）
+
+官方文档：[Hardware recommendations](https://etcd.io/docs/v3.6/op-guide/hardware/) · [Performance](https://etcd.io/docs/v3.6/op-guide/performance/)
+
+**结论先说：** 生产环境 etcd 最敏感的是**磁盘顺序写 + `fdatasync` 延迟**，不是 CPU。慢盘会拉长 Raft 提交时间，导致心跳超时、频繁选主，集群表现为 apiserver 卡顿或 etcd `leader changes` 升高。
+
+| 官方建议 | 含义 | 交付建议 |
+|----------|------|----------|
+| 典型需约 **50 sequential IOPS** | 例如 7200 RPM 机械盘量级的顺序写能力 | 仅适合实验室；生产不推荐机械盘承载 etcd |
+| 重载建议约 **500 sequential IOPS** | 本地 SSD / 高性能块存储量级 | 生产 etcd 数据盘优先 SSD |
+| 云厂商标称多为 **并发 IOPS** | 并发值可比顺序 IOPS 高约一个数量级 | **不要**用控制台「IOPS」数字直接当 etcd 容量依据 |
+| 带宽 | 故障成员追赶需要带宽；常见 10MB/s 起，大规模更高 | 与延迟分开评估 |
+
+本项目落点（`conf/config.yml` / `etcd.service.j2`）：
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `ETCD_DATA_DIR` | `/var/lib/etcd` | 后端数据与快照 |
+| `ETCD_WAL_DIR` | `""`（空则与 data 同路径） | 可将 WAL 放到独立磁盘，降低与 data 的 IO 争用 |
+| `--quota-backend-bytes` | `8589934592`（8Gi） | 后端配额；接近配额会触发 `NOSPACE` 告警 |
+
+**fio 测什么：** 用与 etcd 相近的同步写 + `fdatasync` 模式，测量**该块设备**的提交延迟。下列命令与官方硬件指南中的示例同类（在**将承载 `ETCD_DATA_DIR` 的挂载点**上执行，勿测无关盘）：
+
+```bash
+# 在 etcd 数据盘挂载目录下执行（示例：已挂载到 /var/lib/etcd）
+cd /var/lib/etcd
+mkdir -p fio-testdata && cd fio-testdata
+fio --rw=write --ioengine=sync --fdatasync=1 \
+  --directory=. --size=2200m --bs=2300 --name=etcd-disk-check
+```
+
+**如何读结果（现场验收）：**
+
+1. 关注报告中的 **fdatasync / fsync 延迟**（以及写完成延迟），而不是只看「IOPS」一行营销数字。
+2. 对照官方 Performance 叙述：同机房 RTT 可为数百微秒；机械盘 `fdatasync` 常见约 10ms 量级，SSD 常可低于 1ms。若 p99/`fdatasync` 长期明显高于数毫秒且伴随选主，应更换更快存储或隔离 WAL。
+3. 测完删除 `fio-testdata`，避免占满 etcd 盘。
+4. 装完集群后用指标交叉验证：`etcd_disk_wal_fsync_duration_seconds`、`etcd_server_leader_changes_seen_total`（若已部署监控）。
+
+**与健康检查的关系：** 上文 `endpoint health` / `endpoint status` 证明成员与 Raft 正常；fio 证明**底层盘**是否满足稳定写延迟。二者都要通过才宜作为生产 etcd 盘。
 
 #### 1.3.3.3、安装容器运行时
 
 > **原理与实现详解：** 见技术白皮书 [第 8 章 CRI](./whitepaper/08-cri-runtime.md)。
 
+库存 `CONTAINER_RUNTIME`：`containerd`（默认）或 `docker`。角色：`roles/containerd` / `roles/docker`（含 cri-dockerd）。安装：`kubecli setup <cluster> 03`（或 `container-runtime`）。
 
-Kubernetes 1.24 起移除 dockershim。本项目支持：
+关键落点：
 
-- **containerd**（默认，`CONTAINER_RUNTIME="containerd"`）
-- **docker + cri-dockerd**（`CONTAINER_RUNTIME="docker"`）
+| 项 | containerd | docker + cri-dockerd |
+|----|------------|----------------------|
+| CRI socket | `unix:///run/containerd/containerd.sock` | `unix:///var/run/cri-dockerd.sock` |
+| 主配置 | `/etc/containerd/config.toml` | `/etc/docker/daemon.json` + cri-dockerd unit |
+| 沙箱 | `SANDBOX_IMAGE` | 同左（`--pod-infra-container-image`） |
+| 私仓 | `certs.d/` + `INSECURE_REG` | `insecure-registries` |
 
-kubeauto 集成安装运行时：
-
-- 默认无需修改库存中的 `CONTAINER_RUNTIME`
-- 执行安装：分步 `kubecli setup k8s-main 03`，或一键 `kubecli setup k8s-main 90` / `all`（以当前 CLI 帮助为准）
-- 版本钉扎见 `common/constants.py` 与 ext-bin 打包镜像
+启用 `KUBE_RESERVED_ENABLED` 时，运行时 unit 可加入 `podruntime.slice`（与 §1.1.4 一致）。
 
 命令对比：
 
@@ -897,45 +839,42 @@ kubeauto 集成安装运行时：
 
 > **原理与实现详解：** 见技术白皮书 [第 3 章控制平面](./whitepaper/03-control-plane.md)、[第 6 章证书](./whitepaper/06-pki-certificates.md)、[第 7 章 HA](./whitepaper/07-ha-loadbalancer.md)。
 
+对应 CLI：`kubecli setup <cluster> 04` 或 `kubecli setup <cluster> kube-master`（映射到 `playbooks/04.kube-master.yml`）。
 
-部署 master 节点主要包含三个组件 `apiserver` `scheduler` `controller-manager`，其中：
+部署 master 节点包含控制面三组件，并在本步骤同时安装本机 kube-lb 与 kubelet/kube-proxy：
 
-- apiserver 提供集群管理的 REST API 接口，包括认证授权、数据校验以及集群状态变更等
-  - 只有 API Server 才直接操作 etcd
-  - 其他模块通过 API Server 查询或修改数据
-  - 提供其他模块之间的数据交互和通信的枢纽
-- scheduler 负责分配调度 Pod 到集群内的 node 节点
-  - 监听 kube-apiserver，查询还未分配 Node 的 Pod
-  - 根据调度策略为这些 Pod 分配节点
-- controller-manager 由一系列的控制器组成，它通过 apiserver 监控整个集群的状态，并确保集群处于预期的工作状态
+- **kube-apiserver**：集群 REST API；唯一直接访问 etcd 的控制面组件；其它组件经 API 读写状态。
+- **kube-scheduler**：监视未绑定 Node 的 Pod，按调度策略完成绑定。
+- **kube-controller-manager**：一组控制器；通过 API 使集群状态收敛到期望态。
 
-**高可用机制：**
+**高可用：**
 
-- apiserver：无状态服务，可以通过独立负载均衡器或集成负载均衡器实现高可用，如前言中架构描述。
-- controller-manager：开启 `--leader-elect=true` 时，多副本通过协调选举，仅 **leader** 运行控制循环，其余副本待命。现代 Kubernetes 默认使用 **Lease** 对象作为选主锁（历史版本亦支持基于 Endpoints / ConfigMap 的锁）。
-- scheduler：同样使用 `--leader-elect=true`；仅 leader 执行调度决策，其它副本不进行绑定。
+- apiserver：无状态；本项目由每节点 **kube-lb**（nginx stream）提供本机入口，可选 `ex_lb` 提供北向 VIP。
+- controller-manager / scheduler：`--leader-elect=true`；仅 leader 执行 reconcile / 调度；现代版本默认使用 Lease 作为选主锁。
 
-**安装流程：**
+**安装编排（`playbooks/04.kube-master.yml`）：**
 
-```bash
-cat playbooks/04.kube-master.yml
+```yaml
 - hosts: kube_master
-  serial: 1        # [fix] 多 master 串行部署，避免 apiserver Service IP allocator 竞态
+  serial: 1        # 多 master 串行，避免 apiserver Service IP allocator 竞态
   roles:
-  - kube-lb        # 四层负载均衡，监听在127.0.0.1:6443，转发到真实master节点apiserver服务
+  - kube-lb        # 监听 127.0.0.1:{{ SECURE_PORT }}（默认 6443），上游为全部 master:SECURE_PORT
   - kube-master
-  - kube-node      # 因为网络、监控等daemonset组件，master节点也推荐安装kubelet和kube-proxy服务
-  ... 
+  - kube-node      # master 亦运行 kubelet/kube-proxy，以便 DaemonSet（网络/监控等）落地
 ```
 
-**创建 kubernetes 证书签名请求：**
+顺序要求：先有本机 kube-lb，CM / Scheduler / kubelet 的 kubeconfig 才能稳定指向 `https://127.0.0.1:{{ SECURE_PORT }}`。
 
-```bash
+**签发 `kubernetes.pem`（`roles/kube-master`）**
+
+CSR：`roles/kube-master/templates/kubernetes-csr.json.j2`：
+
+```json
 {
   "CN": "kubernetes",
   "hosts": [
     "127.0.0.1",
-{% if groups['ex_lb']|length > 0 %}
+{% if (groups['ex_lb'] | default([])) | length > 0 %}
     "{{ hostvars[groups['ex_lb'][0]]['EX_APISERVER_VIP'] }}",
 {% endif %}
 {% for host in groups['kube_master'] %}
@@ -952,31 +891,44 @@ cat playbooks/04.kube-master.yml
     "kubernetes.default.svc.cluster.local",
     "kubernetes.default.svc.{{ CLUSTER_DNS_DOMAIN }}"
   ],
-  "key": {
-    "algo": "rsa",
-    "size": 2048
-  },
-  "names": [
-    {
-      "C": "CN",
-      "ST": "HangZhou",
-      "L": "XS",
-      "O": "k8s",
-      "OU": "System"
-    }
-  ]
+  "key": { "algo": "rsa", "size": 2048 },
+  "names": [{ "C": "CN", "ST": "HangZhou", "L": "XS", "O": "k8s", "OU": "System" }]
 }
 ```
 
-kubernetes apiserver 使用对等证书，创建时 hosts 字段需要配置：
+SAN 必须覆盖客户端实际访问名：
 
-- 如果配置 ex_lb，需要把 EX_APISERVER_VIP 也配置进去
-- 如果需要外部访问 apiserver，可选在 config.yml 配置 MASTER_CERT_HOSTS
-- `kubectl get svc` 将看到集群中由 api-server 创建的默认服务 `kubernetes`，因此也要把 `kubernetes` 服务名和各个服务域名也添加进去
+- 始终含 `127.0.0.1`（经 kube-lb 的 TLS 校验名）与全部 `kube_master` IP。
+- 若配置 `ex_lb`，自动加入 `EX_APISERVER_VIP`。
+- 外部访问可在 `conf/config.yml` 的 `MASTER_CERT_HOSTS` 追加 IP/FQDN。
+- 含默认 Service `kubernetes` 的 ClusterIP（`CLUSTER_KUBERNETES_SVC_IP`）及 DNS 名。
 
-**创建 apiserver 的服务配置文件：**
+**`kubernetes.pem` 一证多用**（同一张证 + `kubernetes-key.pem`）：
 
-```bash
+| 用途 | apiserver 参数 |
+|------|----------------|
+| HTTPS 服务端 | `--tls-cert-file` / `--tls-private-key-file` |
+| 访问 etcd 的客户端 | `--etcd-certfile` / `--etcd-keyfile` |
+| 访问 kubelet API 的客户端 | `--kubelet-client-certificate` / `--kubelet-client-key` |
+
+安装后会创建 ClusterRoleBinding `kubernetes-crb`：`--clusterrole=system:kubelet-api-admin --user=kubernetes`，使上述 kubelet 客户端身份具备 logs/exec 等权限。
+
+**ServiceAccount 与集群 CSR 签发复用 `ca-key.pem`：**
+
+| 组件 | 参数 | 文件 |
+|------|------|------|
+| kube-apiserver | `--service-account-signing-key-file` | `ca-key.pem` |
+| kube-apiserver | `--service-account-key-file` | `ca.pem` |
+| kube-controller-manager | `--service-account-private-key-file` | `ca-key.pem` |
+| kube-controller-manager | `--cluster-signing-cert-file` / `--cluster-signing-key-file` | `ca.pem` / `ca-key.pem` |
+
+`ca-key.pem` **仅分发到 kube_master**（与 `ca.pem`、`kubernetes.pem`、`aggregator-proxy.pem` 一同下发）；纯 worker / 纯 etcd 节点不得持有 `ca-key.pem`。
+
+同角色还会签发 **aggregator-proxy** 证书，供 apiserver 的 `--proxy-client-cert-file` / `--proxy-client-key-file` 使用。
+
+**kube-apiserver unit**（`roles/kube-master/templates/kube-apiserver.service.j2`，摘要；`ENABLE_CLUSTER_AUDIT=true` 时另有 audit 参数）：
+
+```ini
 [Unit]
 Description=Kubernetes API Server
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
@@ -1024,14 +976,13 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 ```
 
-- Kubernetes 对 API 访问需要依次经过认证、授权和准入控制(admission control)，认证解决用户是谁的问题，授权解决用户能做什么的问题，Admission Control 则是资源管理方面的作用。
-- 本项目 `--authorization-mode=Node,RBAC`：Node 授权器配合 `NodeRestriction` 准入插件，限制 kubelet 仅能操作与本节点相关的资源。官方说明见 [Node authorization](https://kubernetes.io/docs/reference/access-authn-authz/node/) 与 [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/)。
-- 详细参数以当前版本 `kube-apiserver --help` 及 [kube-apiserver](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/) 为准。
-- 增加了访问 kubelet 使用的证书配置，防止匿名访问 kubelet 的安全漏洞。
+- `--authorization-mode=Node,RBAC`：Node 授权器配合 `NodeRestriction` 准入，限制 kubelet 仅能操作本节点相关资源（见 [Node authorization](https://kubernetes.io/docs/reference/access-authn-authz/node/)）。
+- 完整参数以当前版本 `kube-apiserver --help` 及[官方参考](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/)为准。
+- 启动顺序：先 `systemctl restart kube-apiserver` 并等待 active，再启动 CM / scheduler（与 `serial: 1` 配合）。
 
-**创建 controller-manager 的服务文件：**
+**kube-controller-manager unit**（`kube-controller-manager.service.j2`）：
 
-```bash
+```ini
 [Unit]
 Description=Kubernetes Controller Manager
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
@@ -1061,15 +1012,14 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-- --cluster-cidr：指定 Cluster 中 Pod 的 CIDR 范围，该网段在各 Node 间必须路由可达(flannel/calico 等网络插件实现)
-- --service-cluster-ip-range：参数指定 Cluster 中 Service 的 CIDR 范围，必须和 kube-apiserver 中的参数一致
-- `--cluster-signing-*`：指定的证书和私钥文件用来签名为 TLS BootStrap 创建的证书和私钥
-- --root-ca-file：用来对 kube-apiserver 证书进行校验，指定该参数后，才会在 Pod 容器的 ServiceAccount 中放置该 CA 证书文件
-- `--leader-elect=true`：多副本选主；仅 **leader** 运行各控制器 reconcile 循环，非 leader 副本参与选举并作为故障接管后备。
+- `--cluster-cidr` / `--service-cluster-ip-range`：须与网络插件及 apiserver 一致。
+- `--cluster-signing-*`：用于签发 TLS Bootstrap / CSR 证书。
+- `--root-ca-file`：写入 Pod ServiceAccount 卷中的 CA，供校验 apiserver。
+- kubeconfig 的 `server` 在节点上被改写为 `https://127.0.0.1:{{ SECURE_PORT }}`。
 
-**创建 scheduler 的服务文件：**
+**kube-scheduler unit**（`kube-scheduler.service.j2`）：
 
-```bash
+```ini
 [Unit]
 Description=Kubernetes Scheduler
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
@@ -1089,386 +1039,229 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-- `--leader-elect=true`：多副本选主；仅 **leader** 执行调度（过滤 / 打分 / 绑定），非 leader 副本不进行 Pod 绑定。
+**master 上的 kube-node**
 
-**master 节点安装 node 服务 kubelet kube-proxy**
+默认以 DaemonSet 部署 CNI；master 若不运行 kubelet，则无法调度网络/监控等 DaemonSet Pod。本 playbook 在 `kube-master` 之后对同一主机执行 `kube-node`。业务工作负载默认可调度到 master；可用 `kubectl cordon` / taint 限制。
 
-本项目默认使用 DaemonSet 方式安装网络插件，如果 master 节点不安装 kubelet 服务，就无法启动容器，也就不能安装网络插件；
-
-如果 master 节点不安装网络插件，那么通过 `apiserver` 方式无法访问 `dashboard` `kibana` 等 POD 资源。
-
-> 注意：在 master 节点也同时成为 node 节点后，默认业务 POD 也会调度到 master 节点；可以使用 `kubectl cordon` 命令禁止业务 POD 调度到 master 节点。
-
-**master 集群的验证**
-
-运行 `kubecli setup k8s-main 04`（或 `kube-master`）成功后，验证 master 节点的主要组件：
+**验证**
 
 ```bash
-# 查看进程状态
-systemctl status kube-apiserver
-systemctl status kube-controller-manager
-systemctl status kube-scheduler
-# 查看进程运行日志
-journalctl -u kube-apiserver
-journalctl -u kube-controller-manager
-journalctl -u kube-scheduler
+kubecli setup k8s-main 04   # 或 kube-master
+
+systemctl status kube-lb kube-apiserver kube-controller-manager kube-scheduler
+ss -lntp | grep 127.0.0.1:6443    # kube-lb
+journalctl -u kube-apiserver -u kube-controller-manager -u kube-scheduler
+# 确认 worker 上不存在 ca-key.pem；master 上存在
 ```
 
 #### 1.3.3.5、安装 kube_node 节点
 
 > **原理与实现详解：** 见技术白皮书 [第 4 章数据平面](./whitepaper/04-node-dataplane.md)、[第 11 章 Allocatable](./whitepaper/11-allocatable-qos.md)。
 
+对应 CLI：`kubecli setup <cluster> 05` 或 `kubecli setup <cluster> kube-node`（映射到 `playbooks/05.kube-node.yml`）。
 
-kube_node 是集群中运行工作负载的节点，前置条件需要先部署好 kube_master 节点，kube_node 需要部署如下组件：
+前置条件：控制面（§1.3.3.4）已可用。本步骤仅处理 **不在** `kube_master` 组中的 worker（master 已在上一步执行过 `kube-node` 角色）：
 
-```bash
-cat playbooks/05.kube-node.yml
+```yaml
+# playbooks/05.kube-node.yml
 - hosts: kube_node
   roles:
   - { role: kube-lb, when: "inventory_hostname not in groups['kube_master']" }
   - { role: kube-node, when: "inventory_hostname not in groups['kube_master']" }
 ```
 
-- kube-lb：由 nginx 裁剪编译的四层负载均衡，用于将请求转发到主节点的 apiserver 服务
-- kubelet：kube_node 上最主要的组件，管理容器、数据采集、日志等 k8s 资源
-- kube-proxy：发布应用服务与负载均衡
+| 组件 | 作用 |
+|------|------|
+| kube-lb | nginx stream；监听 `127.0.0.1:{{ SECURE_PORT }}`，上游全部 `kube_master:SECURE_PORT` |
+| kubelet | 节点代理：Pod 生命周期、CRI、Node 状态上报 |
+| kube-proxy | Service 代理（iptables / ipvs，由 `PROXY_MODE` 决定） |
 
-**创建 cni 基础网络插件配置文件：**
+节点侧 kubeconfig 的 apiserver 地址统一为 `roles/kube-node/vars/main.yml` 中的  
+`KUBE_APISERVER: "https://127.0.0.1:{{ SECURE_PORT }}"`（经本机 kube-lb）。
 
-因为后续需要用 `DaemonSet Pod` 方式运行 k8s 网络插件，所以 kubelet.server 服务必须开启 cni 相关参数，并且提供 cni 网络配置文件。
+**CNI 占位配置**
 
-**创建 kubelet 的服务文件：**
+`kube-node` 写入 `/etc/cni/net.d/10-default.conf`（`cni-default.conf.j2`），并下发 CNI 二进制到 `/opt/cni/bin`，以便后续 DaemonSet 网络插件接管。正式 CNI 在 `kubecli setup <cluster> 06`（`network`）安装。
 
-- 根据官方建议独立使用 kubelet 配置文件，详见 [roles/kube-node/templates/kubelet-config.yaml.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/kube-node/templates/kubelet-config.yaml.j2)
-- 必须先创建工作目录 `/var/lib/kubelet`
+**kubelet 证书与 kubeconfig**
 
-当前实现见 `roles/kube-node/templates/kubelet.service.j2`（摘要）：
+`roles/kube-node/tasks/create-kubelet-kubeconfig.yml` 在部署节点签发，再分发到本机（**仅** `ca.pem` + kubelet 证，不含 `ca-key.pem`）：
 
-```bash
+- CN=`system:node:{{ K8S_NODENAME }}`，O=`system:nodes`（Node 授权所需）。
+- SAN 含 `127.0.0.1`、本机 IP、`K8S_NODENAME`。
+- 配置文件：`/etc/kubernetes/kubelet.kubeconfig`；行为配置：`/var/lib/kubelet/config.yaml`（`kubelet-config.yaml.j2`）。
+
+**kubelet.service**（完整逻辑见 `roles/kube-node/templates/kubelet.service.j2`）：
+
+```ini
 [Unit]
 Description=Kubernetes Kubelet
-# docker 模式：After/Requires=cri-dockerd.service
-# KUBE_RESERVED_ENABLED=yes 时：After/Requires=podruntime.slice
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+{% if CONTAINER_RUNTIME == 'docker' %}
+After=network-online.target cri-dockerd.service
+Wants=network-online.target
+Requires=cri-dockerd.service
+{% else %}
+After=network-online.target
+Wants=network-online.target
+{% endif %}
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+After=podruntime.slice
+Requires=podruntime.slice
+{% endif %}
+
 [Service]
 WorkingDirectory=/var/lib/kubelet
 ExecStartPre=/bin/mount -o remount,rw '/sys/fs/cgroup'
-# KUBE_RESERVED_ENABLED=yes 时：Slice=podruntime.slice（kubelet 计入 kubeReserved）
-# 预留开启时：ExecStartPre=-/bin/mkdir -p …/podruntime.slice 与 …/system.slice
-#   （前缀 "-"：cgroup v2 统一层级上路径可能不存在，允许失败；cgroup v1/hybrid 上回填控制器目录）
+{% if KUBE_RESERVED_ENABLED == "yes" %}
+Slice=podruntime.slice
+{% endif %}
+{% if KUBE_RESERVED_ENABLED == "yes" or SYS_RESERVED_ENABLED == "yes" %}
+# 前缀 "-"：cgroup v2 统一层级上部分路径可能不存在，允许失败；
+# cgroup v1/hybrid 上回填控制器目录，避免 Reserved Cgroup 强制失败
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/podruntime.slice
+ExecStartPre=-/bin/mkdir -p /sys/fs/cgroup/cpu/podruntime.slice
+# … 以及 cpuacct/cpuset/memory/pids/systemd/hugetlb 下的
+#    podruntime.slice 与 system.slice（见模板全文）
+{% endif %}
 ExecStart={{ bin_dir }}/kubelet \
   --config=/var/lib/kubelet/config.yaml \
-  # containerd: unix:///run/containerd/containerd.sock
-  # docker:    unix:///var/run/cri-dockerd.sock
-  --container-runtime-endpoint=… \
+{% if CONTAINER_RUNTIME == 'docker' %}
+  --container-runtime-endpoint=unix:///var/run/cri-dockerd.sock \
+{% else %}
+  --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+{% endif %}
   --hostname-override={{ K8S_NODENAME }} \
   --kubeconfig=/etc/kubernetes/kubelet.kubeconfig \
   --root-dir={{ KUBELET_ROOT_DIR }} \
   --v=2
-```
-
-- `podruntime.slice` 由 `roles/prepare/tasks/podruntime-slice.yml` 预先创建；kubelet **不会**自动创建 `kubeReservedCgroup` 指向的父控制组（官方说明）。
-- cgroup v1 场景下，部分发行版未预先初始化 `cpuset` / `hugetlb` 等控制器下的 slice 目录时，需由上述 `ExecStartPre=-/bin/mkdir` 回填，否则启用 reserved cgroup 时可能出现 `Failed to enforce … Reserved Cgroup Limits`。
-- CRI 端点随 `CONTAINER_RUNTIME` 在 containerd 与 cri-dockerd 之间切换，勿写死为单一 socket。
-- Node Allocatable 参数与验收见本文 **§1.1.4**；官方文档：https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
-
-**创建 kube-proxy kubeconfig 文件：**
-
-该步骤已经在 deploy 节点完成，[roles/deploy/tasks/main.yml](https://github.com/brinnatt/kubeauto/blob/master/roles/deploy/tasks/main.yml)
-
-- 生成的 kube-proxy.kubeconfig 配置文件需要移动到 /etc/kubernetes/ 目录，后续 kube-proxy 服务启动参数里面需要指定。
-
-**创建 kube-proxy 服务文件：**
-
-```bash
-[Unit]
-Description=Kubernetes Kube-Proxy Server
-Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-After=network.target
-
-[Service]
-WorkingDirectory=/var/lib/kube-proxy
-ExecStart={{ bin_dir }}/kube-proxy \
-  --config=/var/lib/kube-proxy/kube-proxy-config.yaml
 Restart=always
 RestartSec=5
-LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-请注意 [kube-proxy-config](https://github.com/brinnatt/kubeauto/blob/master/roles/kube-node/templates/kube-proxy-config.yaml.j2) 文件的注释说明。
+要点：
 
-验证 node 状态：
+- `CONTAINER_RUNTIME=docker` 时依赖 **cri-dockerd**；默认 containerd 使用 `unix:///run/containerd/containerd.sock`。
+- `KUBE_RESERVED_ENABLED=yes`（`conf/config.yml` 默认）时：`Slice=podruntime.slice`，且 unit 依赖预先由 `roles/prepare/tasks/podruntime-slice.yml` 创建的 slice；kubelet **不会**自行创建 `kubeReservedCgroup` 父组。
+- `ExecStartPre=-/bin/mkdir …`：在 cgroup v1/hybrid 上回填缺失目录；在 cgroup v2 上允许失败。
+- Node Allocatable 参数与验收见 **§1.1.4**；官方：[Reserve compute resources](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/)。
+
+**kube-proxy**
+
+- kubeconfig 已在 `deploy` 生成；本角色复制到 `/etc/kubernetes/kube-proxy.kubeconfig` 并将 `server` 改为 `{{ KUBE_APISERVER }}`（本机 127.0.0.1）。
+- 配置：`/var/lib/kube-proxy/kube-proxy-config.yaml`（见模板注释，含 `clusterCIDR`、`hostnameOverride`、`mode` 等）。
+- unit（`kube-proxy.service.j2`）：`KUBE_RESERVED_ENABLED=yes` 时同样设置 `Slice=podruntime.slice`；`ExecStart` 仅引用上述 config 文件。
+
+**验证**
 
 ```bash
-systemctl status kubelet	# 查看状态
-systemctl status kube-proxy
-journalctl -u kubelet		# 查看日志
-journalctl -u kube-proxy 
+kubecli setup k8s-main 05   # 或 kube-node
+
+systemctl status kube-lb kubelet kube-proxy
+ss -lntp | grep 127.0.0.1:6443
+grep 'server:' /etc/kubernetes/kubelet.kubeconfig   # 期望 https://127.0.0.1:6443
+test ! -e /etc/kubernetes/ssl/ca-key.pem && echo OK  # worker 不得有 ca-key
+journalctl -u kubelet -u kube-proxy
 ```
 
 #### 1.3.3.6、安装网络组件
 
-> **原理与实现详解：** 见技术白皮书 [第 9 章 CNI](./whitepaper/09-cni-networking.md)、[第 10 章 DNS](./whitepaper/10-dns-service.md)。
+> **原理与实现详解：** 见技术白皮书 [第 9 章 CNI](./whitepaper/09-cni-networking.md)、[第 10 章 DNS](./whitepaper/10-dns-service.md)。  
+> 官方参考：[Cluster Networking](https://kubernetes.io/docs/concepts/cluster-administration/networking/) · [CNI Spec](https://www.cni.dev/)
 
+Kubernetes **不实现**完整的 Pod 到 Pod 连通性；节点间与主机侧如何转发，由实现 CNI 的网络插件负责。缺少可用 Pod 网络时，节点常长期处于 NotReady（条件含 `NetworkPluginNotReady`）。
 
-首先回顾下 K8S 网络设计原则，在配置集群网络插件或者部署 K8S 应用、服务时，请参考以下总结：
+**官方网络模型关注的四类通信：**
 
-- 每个 Pod 都拥有一个独立 IP 地址，Pod 内所有容器共享一个网络命名空间
-- 集群内所有 Pod 都在一个直接连通的扁平网络中，可通过 IP 直接访问
-  - 所有容器之间无需 NAT 就可以直接互相访问
-  - 所有 Node 和所有容器之间无需 NAT 就可以直接互相访问
-  - 容器自己看到的 IP 跟其他容器看到的一样
-- Service cluster IP 只可在集群内部访问，外部请求需要通过 NodePort、LoadBalance 或者 Ingress 来访问
+| # | 问题 | 职责归属 |
+|---|------|----------|
+| 1 | 同 Pod 内容器到容器 | Pod 共享网络命名空间（localhost） |
+| 2 | Pod 到 Pod | CNI / 集群网络插件 |
+| 3 | Pod 到 Service | Service + kube-proxy（或 eBPF 等替代数据面） |
+| 4 | 外部到 Service | NodePort / LoadBalancer / Ingress 等 |
 
-`Container Network Interface (CNI)` 是目前 CNCF 主推的网络模型，它由两部分组成：
+**Pod IP 模型四条不变量（官方要求）：**
 
-- CNI Plugin 负责给容器配置网络，它包括两个基本的接口
-  - 配置网络：AddNetwork(net *NetworkConfig, rt *RuntimeConf) (types.Result, error)
-  - 清理网络：DelNetwork(net *NetworkConfig, rt *RuntimeConf) error
-- IPAM Plugin 负责给容器分配 IP 地址
+1. 每个 Pod 拥有独立 IP；同 Pod 内容器共享该网络命名空间。
+2. 任意 Pod 与任意 Pod 无需 NAT 即可通信（模型语义）。
+3. 任意 Node 上的代理（如系统守护进程）与任意 Pod 无需 NAT 即可通信。
+4. Pod 自身所见 IP 与其他 Pod / 节点所见一致（无双重地址映射）。
 
-Kubernetes Pod 的网络是这样创建的：
+**CNI 与本项目落地：**
 
-- 每个 Pod 除业务容器外，还包含由 kubelet 通过 CRI 创建的 **Pod 沙箱（sandbox）**，镜像一般为 pause（本项目 `SANDBOX_IMAGE`，默认 `registry.talkschool.cn:5000/brinnatt/pause:3.10`）
-- kubelet 创建沙箱并建立 network namespace
-- kubelet 调用 CNI（`ADD`）为沙箱配置网络
-- Pod 内业务容器共享该沙箱的网络命名空间
+- kubelet 经 CRI 创建 Pod 沙箱（pause，本项目 `SANDBOX_IMAGE`）并持有 network namespace 后，调用 CNI **ADD** 配址与接口；Pod 删除时调用 **DEL**。IPAM 负责地址分配与回收。
+- 配置通常位于 `/etc/cni/net.d/`，二进制位于 `/opt/cni/bin`。正式 CNI 安装成功后须清除占位 `10-default.conf`，且勿多插件配置并存。
+- Pod 网段由 `CLUSTER_CIDR`（及 `NODE_CIDR_LEN` 等）划定；Service 网段为 `SERVICE_CIDR`，二者不得重叠。Service 可达不等于 Pod IP 互通。
 
-本项目基于 CNI driver 调用各种网络插件来配置 kubernetes 的网络，常用 CNI 插件有 `flannel` `calico` `cilium`等等，这些插件各有优势，也在互相借鉴学习优点。
-
-同一二层网络内，Flannel 可选用 `host-gw` 后端（主机路由，无 VXLAN 封装开销）；跨子网场景常用 `vxlan`。Calico 可在 BGP 宣告路由之外，按需启用 **IP-in-IP** 或 **VXLAN** 封装（IP-in-IP 是 IP 协议号 4 的封装，**不是** GRE）。各插件能力与适用拓扑不同，按库存 `CLUSTER_NETWORK` 五选一安装。
-
-项目当前内置支持的网络插件有：`calico` `cilium` `flannel` `kube-ovn` `kube-router`
+**库存选型（五选一）：** `CLUSTER_NETWORK` ∈ `calico` | `flannel` | `cilium` | `kube-router` | `kube-ovn`。由 `playbooks/06.network.yml`（`kubecli setup <cluster> 06` / `network`）按条件安装对应角色。默认 **calico**。切换 CNI 前须清理旧插件状态（conflist、隧道/BPF 残留等），并重新 `kubecli download -E <组件>`。
 
 ##### 1.3.3.6.1、安装 calico 网络
 
 Calico 是广泛使用的 Kubernetes 网络插件之一，支持 NetworkPolicy，并可按模式组合 BGP / IP-in-IP / VXLAN。**kubeauto 默认 CNI 为 Calico**（库存 `CLUSTER_NETWORK="calico"`）。说明：Kubernetes 一致性测试（conformance）并不绑定某一特定 CNI，上文「默认网络插件」仅指本项目默认选型。
 
-以下示意图便于理解 Calico 数据面组件关系。**注意：** 图中若出现 `projectcalico.org/v3` CRD，对应的是 Kubernetes 数据存储模式；**kubeauto 默认使用 etcdv3 数据存储**（`calicoctl.cfg` 指向 etcd），此时部分 CRD 清单不会注册，主机侧策略请使用 `calicoctl`（见下文说明）。
+###### 本项目中的 Calico 架构（etcdv3 数据存储）
 
-```bash
-+================================================================================+
-|                          Kubernetes Control Plane                              |
-|                                                                                |
-|  kube-apiserver                                                                |
-|                                                                                |
-|  - Stores Calico CRDs (authoritative state only, no IP allocation)             |
-|    * IPPool                                                                    |
-|    * BlockAffinity                                                             |
-|    * BGPPeer                                                                   |
-|    * BGPConfiguration                                                          |
-|    * NetworkPolicy / GlobalNetworkPolicy                                       |
-|                                                                                |
-|  Example: CRD YAML snippet                                                     |
-|    apiVersion: projectcalico.org/v3                                            |
-|    kind: IPPool                                                                |
-|    metadata:                                                                   |
-|      name: ippool-1                                                            |
-|    spec:                                                                       |
-|      cidr: 192.168.0.0/16                                                      |
-|      ipipMode: CrossSubnet                                                     |
-|      vxlanMode: Never                                                          |
-|      natOutgoing: true                                                         |
-|      disabled: false                                                           |
-|                                                                                |
-+================================================================================+
-                                   |
-                                   | watch / sync (CRD)
-                                   v
-+================================================================================+
-|                 calico-kube-controllers (Deployment)                           |
-|                                                                                |
-|  node-controller                                                               |
-|                                                                                |
-|  - Watches Kubernetes Node lifecycle                                           |
-|  - Creates BlockAffinity per node                                              |
-|  - Reclaims unused IP blocks                                                   |
-|                                                                                |
-|  Example: node-controller config                                               |
-|    FELIX_CONFIGURATION (ConfigMap / environment variables)                     |
-|      DATASTORE_TYPE: "kubernetes"                                              |
-|      ETCD_ENDPOINTS: "https://etcd:2379"                                       |
-|      IPAM_TYPE: "calico-ipam"                                                  |
-|                                                                                |
-|  Notes:                                                                        |
-|  - Does NOT allocate Pod IPs                                                   |
-|  - Does NOT program kernel routes                                              |
-|                                                                                |
-+================================================================================+
-                                   |
-                                   | watch CRD
-                                   v
-+================================================================================+
-|                    calico-node (DaemonSet, per node)                           |
-|                                                                                |
-|  +----------------------------------------------------------------------------+|
-|  |                                Felix                                       ||
-|  |                                                                            ||
-|  |  Control Plane -> Data Plane Translation                                   ||
-|  |                                                                            ||
-|  |  - Watches CRDs and Kubernetes API                                         ||
-|  |  - Determines dataplane behavior                                           ||
-|  |      * Encapsulation: IPIP / VXLAN / WireGuard                             ||
-|  |      * Local routing view                                                  ||
-|  |      * NetworkPolicy enforcement                                           ||
-|  |                                                                            ||
-|  |  - Programs Linux kernel                                                   ||
-|  |      * ip route (Pod /32 or Node CIDR)                                     ||
-|  |      * iptables / nftables / tc / eBPF                                     ||
-|  |      * Creates tunnel interfaces                                           ||
-|  |        - tunl0 (IPIP)                                                      ||
-|  |        - vxlan.calico (VXLAN)                                              ||
-|  |        - wireguard.calico (WireGuard)                                      ||
-|  |                                                                            ||
-|  |  Felix Configuration (ConfigMap / Environment)                             ||
-|  |    FELIX_IPV6SUPPORT: "false"                                              ||
-|  |    FELIX_IPV4POOL_CIDR: "192.168.0.0/16"                                   ||
-|  |    FELIX_ENCAPSULATION: "IPIP"                                             ||
-|  |    FELIX_BPFENABLED: "true"                                                ||
-|  |                                                                            ||
-|  |  NOTE: Felix does NOT run BGP                                              ||
-|  +----------------------------------------------------------------------------+|
-|                                                                                |
-|  +----------------------------------------------------------------------------+|
-|  |                           calico-ipam                                      ||
-|  |                                                                            ||
-|  |  - Allocates Pod IPs from IP blocks                                        ||
-|  |  - Honors BlockAffinity ownership                                          ||
-|  |  - Persists allocation state in etcd/datastore                             ||
-|  |                                                                            ||
-|  |  Example: calico-ipam config                                               ||
-|  |    IPAM_TYPE: "calico-ipam"                                                ||
-|  |    AUTO_ASSIGN_BLOCK_SIZE: 26                                              ||
-|  |    DATASTORE_TYPE: "kubernetes"                                            ||
-|  +----------------------------------------------------------------------------+|
-|                                                                                |
-|  +----------------------------------------------------------------------------+|
-|  |                           BIRD / BIRDv2                                    ||
-|  |                                                                            ||
-|  |  BGP Control Plane                                                         ||
-|  |                                                                            ||
-|  |  - Establishes BGP sessions (TCP 179)                                      ||
-|  |  - Peers with other nodes or Route Reflectors                              ||
-|  |                                                                            ||
-|  |  - Advertises routes (mode dependent):                                     ||
-|  |      * Pod /32 routes (pure BGP, no encapsulation)                         ||
-|  |      * Node CIDR routes (IPIP / VXLAN / WireGuard modes)                   ||
-|  |  - Learns remote routes and exports them to Felix                          ||
-|  |                                                                            ||
-|  |  BIRD Configuration example (bird.conf / bird6.conf)                       ||
-|  |    router id 192.168.0.101                                                 ||
-|  |    protocol bgp Node-to-Node {                                             ||
-|  |      local as 64512                                                        ||
-|  |      neighbor 192.168.0.102 as 64512                                       ||
-|  |      multihop 2;                                                           ||
-|  |    }                                                                       ||
-|  |                                                                            ||
-|  |  NOTE: BIRD does NOT enforce policy or program kernel rules                ||
-|  +----------------------------------------------------------------------------+|
-|                                                                                |
-+================================================================================+
-                                   |
-                                   | iBGP / eBGP
-                                   v
-+================================================================================+
-|                       Calico Route Reflectors (Detailed)                       |
-|                                                                                |
-|  Configuration / Working Mechanism:                                            |
-|    ┌───────────────────────────────────────────────────────────────┐           |
-|    │ 1. Configure RR cluster ID on node:                           │           |
-|    │    calicoctl patch node <node> -p '{"spec":{"bgp":            │           | 
-|    │    {"routeReflectorClusterID":"244.0.0.1"}}}'                 │           |
-|    │                                                               │           |
-|    │ 2. Label node as RR:                                          │           |
-|    │    calicoctl patch node <node> -p '{"metadata":{"labels":     │           |
-|    │    {"route-reflector":"true"}}}'                              │           |
-|    │                                                               │           |
-|    │ 3. Create BGPPeer to connect all nodes to RR nodes:           │           |
-|    │    kind: BGPPeer                                              │           |
-|    │    spec:                                                      │           |
-|    │      nodeSelector: all()       # matches all nodes            │           |
-|    │      peerSelector: route-reflector == 'true'                  │           |
-|    │                                                               │           |
-|    │ 4. Disable full node-to-node mesh:                            │           |
-|    │    kind: BGPConfiguration                                     │           |
-|    │    spec:                                                      │           |
-|    │      nodeToNodeMeshEnabled: false                             │           |
-|    │      asNumber: 64512                                          │           |
-|    │                                                               │           |
-|    │ 5. Working mechanism:                                         │           |
-|    │      * RR receives BGP routes from all calico-nodes           │           |
-|    │      * RR reflects routes to other nodes                      │           |
-|    │      * Reduces full-mesh BGP connections                      │           |
-|    │      * RR nodes do not run Felix or enforce policies          │           |
-|    └───────────────────────────────────────────────────────────────┘           |
-+================================================================================+
-                                   |
-                                   | route propagation
-                                   v
-+================================================================================+
-|                        Linux Kernel Data Plane                                 |
-|                                                                                |
-|  +----------------------------------------------------------------------------+|
-|  |                        Kernel Routing Table                                ||
-|  |                                                                            ||
-|  |  Local Pod routes:                                                         ||
-|  |    192.168.1.2/32  dev caliXXXX  scope link                                ||
-|  |                                                                            ||
-|  |  Remote routes (examples):                                                 ||
-|  |    192.168.1.66/32 via 192.168.0.101 dev eth0                              ||
-|  |    192.168.2.0/26  via tunl0 / vxlan.calico                                ||
-|  +----------------------------------------------------------------------------+|
-|                                                                                |
-|  +----------------------------------------------------------------------------+|
-|  |                  Encapsulation (controlled by IPPool)                      ||
-|  |                                                                            ||
-|  |  ipipMode: Detailed                                                        ||
-|  |    ┌──────────────────────────────────────────────────────────────────┐    ||
-|  |    │ Never       -> Direct L3 routing, no encapsulation               │    ||
-|  |    │              * Linux kernel installs Pod /32 routes directly     │    || 
-|  |    │              * Minimal CPU / MTU overhead                        │    ||
-|  |    │ Always      -> Encapsulate all cross-node traffic                │    ||
-|  |    │              * Creates tunl0 device                              │    ||
-|  |    │              * Wraps Pod traffic in IPIP header                  │    ||
-|  |    │              * Decapsulates on destination node                  │    ||
-|  |    │ CrossSubnet -> Encapsulate only if nodes are in different subnets│    ||
-|  |    │              * Local subnet traffic stays unencapsulated         │    ||
-|  |    │              * Cross-subnet traffic uses tunl0                   │    ||
-|  |    │              * Balances encapsulation overhead and isolation     │    ||
-|  |    └──────────────────────────────────────────────────────────────────┘    ||
-|  |                                                                            ||
-|  |  vxlanMode: Never / Always / CrossSubnet                                   ||
-|  |    -> vxlan.calico                                                         ||
-|  |  wireguardEnabled: true                                                    ||
-|  |    -> wireguard.calico                                                     ||
-|  +----------------------------------------------------------------------------+|
-|                                                                                |
-|  +----------------------------------------------------------------------------+|
-|  |                 Cross-Node Pod Traffic Flow                                ||
-|  |                                                                            ||
-|  |  Pod A (192.168.1.2)                                                       ||
-|  |    -> veth                                                                 ||
-|  |    -> caliXXXX                                                             ||
-|  |    -> routing lookup                                                       ||
-|  |    -> eth0 / tunl0 / vxlan.calico / wireguard.calico                       ||
-|  |    -> Node B                                                               ||
-|  |    -> decapsulation (if enabled)                                           ||
-|  |    -> caliYYYY                                                             ||
-|  |    -> Pod B (192.168.1.66)                                                 ||
-|  +----------------------------------------------------------------------------+|
-|                                                                                |
-|  +----------------------------------------------------------------------------+|
-|  |                    NetworkPolicy Enforcement                               ||
-|  |                                                                            ||
-|  |  Implemented by Felix at multiple hook points                              ||
-|  |    - iptables / nftables                                                   ||
-|  |    - tc                                                                    ||
-|  |    - eBPF (eBPF dataplane mode)                                            ||
-|  +----------------------------------------------------------------------------+|
-+================================================================================+
+官方文档：[About Calico](https://docs.tigera.io/calico/latest/about/) · [Determine best networking option](https://docs.tigera.io/calico/latest/networking/determine-best-networking)
+
+kubeauto **默认数据存储为 etcdv3**（`roles/calico/templates/calicoctl.cfg.j2` 中 `datastoreType: etcdv3`），**不是** Kubernetes CRD（KDD）模式。因此：
+
+- Calico 状态（IPAM、BGP 节点信息、部分策略对象）写在 **etcd**（路径前缀通常为 `/calico`），而不是以 `projectcalico.org/v3` CRD 为权威源。
+- 未额外安装 Calico API server / CRD 时，`kubectl apply` 含 `GlobalNetworkPolicy`、`HostEndpoint` 等清单会报 `no matches for kind`；**主机侧策略与排障请使用 `calicoctl`**（证书与 `/etc/calico/calicoctl.cfg` 由角色下发）。
+- 下图按 **本项目默认（etcd + bird）** 绘制，勿与上游「仅 KDD」示意图混读。
+
+```mermaid
+flowchart TB
+  subgraph etcdstore["etcd 集群（与 Kubernetes 共用或同机部署的 etcd）"]
+    CALDATA["/calico/... 状态<br/>IPAM / BGP / 策略等"]
+  end
+  subgraph k8s["Kubernetes API"]
+    API[kube-apiserver]
+    NP[NetworkPolicy 等原生对象]
+  end
+  subgraph ds["每节点 calico-node DaemonSet"]
+    FELIX[Felix：编程路由 / iptables 或 nft / 隧道口]
+    BIRD[BIRD：BGP 会话 TCP/179]
+    IPAM[calico-ipam：为 Pod 分配地址]
+  end
+  subgraph ctrl["calico-kube-controllers"]
+    KC[同步 Node 等生命周期到数据存储]
+  end
+  CTL[calicoctl + 客户端证书] --> CALDATA
+  KC --> API
+  KC --> CALDATA
+  FELIX --> CALDATA
+  BIRD --> CALDATA
+  IPAM --> CALDATA
+  FELIX --> NP
+  CNI[kubelet CNI ADD] --> IPAM
+  CNI --> FELIX
 ```
+
+| 组件 | 作用 | 本项目落点 |
+|------|------|------------|
+| calico-node | 每节点数据面：Felix +（bird 模式下）BGP + CNI/IPAM | DaemonSet；镜像 `brinnatt/calico-node` 等 |
+| calico-kube-controllers | 监视 K8s 对象并写入 Calico 数据存储 | Deployment |
+| calicoctl | 运维查询 / 策略 / BGP 配置 | 节点 `/usr/local/bin/calicoctl` + `/etc/calico/calicoctl.cfg` |
+| 客户端证书 | 访问 etcd | `/etc/calico/ssl/calico.pem`（由 `calico-csr.json.j2` 签发） |
+
+**封装与路由（与 `conf/config.yml` 对应）：**
+
+| 配置项 | 默认 | 含义 |
+|--------|------|------|
+| `CALICO_NETWORKING_BACKEND` | `bird` | BGP 控制面；可选 `vxlan` / `none` |
+| `CALICO_ENABLE_OVERLAY` | `Always` | 映射到 IPIP/VXLAN 池模式：`Always` / `CrossSubnet` / `Never` |
+| `IP_AUTODETECTION_METHOD` | `can-reach={{ 首个 kube_master }}` | 选中用于 BGP/隧道的主机 IP |
+| `CALICO_RR_ENABLED` | `false` | 大规模可开启 Route Reflector（见下节） |
+| `calico_ver` | 由常量渲染，当前 **v3.28.4** | 清单模板 `calico-v3.28.yaml.j2` |
+
+| 模式（概念） | 数据面特征 | 适用 |
+|--------------|------------|------|
+| 纯 BGP（overlay=`Never`） | 节点间宣告 Pod/网段路由，无额外封装 | 底层路由可达、可接受 BGP |
+| IP-in-IP | 接口常为 `tunl0`；**IP 协议号 4**，不是 GRE | 跨子网且需简单封装 |
+| VXLAN | 接口常为 `vxlan.calico` | 云上或限制 BGP 的环境 |
 
 如果需要安装 calico，请在 `clusters/xxxx/hosts` 文件中设置变量 `CLUSTER_NETWORK="calico"`。
 
@@ -1518,9 +1311,7 @@ calico 作为客户端连接 etcd，证书申请 hosts 字段可以为空：
 
 - 服务器证书：用于 HTTPS 服务端验证，必须包含服务的域名/IP（如 `etcd-server.local`, `192.168.1.100`），客户端通过验证证书中的 `hosts` 来确认连接的是正确的服务器。
 - 客户端证书：用于客户端身份认证，`hosts` 字段通常为空或包含客户端自身的标识。etcd 通过验证证书的 `CN`（Common Name）和 `O`（Organization）字段来识别客户端身份并授权。
-- etcd 使用 **TLS 双向认证**：服务器验证客户端证书，客户端验证服务器证书。
-  - 当 Calico 组件作为客户端连接 etcd 时，只需要提供有效的客户端证书，不需要在证书中声明要访问的服务端地址。
-  - etcd 服务器端会检查客户端证书的 `CN` 和 `O` 字段，根据这些信息进行 RBAC 授权。
+- etcd 使用 **TLS 双向认证**：服务端校验客户端证书，客户端校验服务端证书（由 `--trusted-ca-file` / 对等 CA 配置）。Calico 作为 etcd **客户端**时，证书 `hosts` 可为空；身份由 CN/O 等 Subject 字段体现。etcd 自身的用户/权限模型与 Kubernetes RBAC 无关。
 
 Calico 证书使用场景：
 
@@ -1550,8 +1341,8 @@ Calico 证书使用场景：
 
 **安装 calico 网络：**
 
-- 安装前检查主机名，不能有大写字母，只能由 `小写字母` `-` `.`组成，calico-node v3.0.6 以上已经解决主机大写字母问题。
-- 安装前必须确保各节点主机名不重复，calico node name 由节点主机名决定，如果重复，那么重复节点在 etcd 中只存储一份配置，BGP 邻居也不会建立。
+- 节点名须符合 DNS 子域规则且集群内唯一；Calico 节点名与主机名相关，重复会导致 etcd 中配置互相覆盖、BGP 邻居异常。
+- 推荐使用库存/`K8S_NODENAME` 固定命名，避免事后改名。
 - 安装之前必须确保 `kube_master` 和 `kube_node` 节点已经成功部署
 - 删除前面安装 kube_node 时默认的 cni 网络配置，轮询等待 calico 网络插件安装完成
 
@@ -1571,7 +1362,7 @@ spec:
 
 **验证 calico 网络：**
 
-执行 calico 安装成功后可以验证如下：(需要等待镜像下载完成，有时候即便上一步已经配置了 docker 国内加速，还是可能比较慢，请确认以下容器运行起来以后，再执行后续验证步骤)
+安装成功后验证如下（镜像须已通过 `kubecli download` 进入 `registry.talkschool.cn:5000`；确认 Pod Running 后再做连通性检查）：
 
 ```bash
 kubectl get pods -A
@@ -1652,12 +1443,10 @@ tcp        0      0 192.168.110.218:56419   192.168.110.214:179     ESTABLISHED 
 
 **查看 etcd 中 calico 相关信息：**
 
-因为这里 calico 网络使用 etcd 存储数据，所以可以在 etcd 集群中查看数据
-
-- calico 3.x 版本默认使用 etcd v3 存储，**登录集群的一个etcd 节点**，查看命令：
+本项目 Calico 使用 **etcdv3** 存储。可在 **etcd 成员节点**上用本机回环客户端口查看（unit 监听 `http://127.0.0.1:2379`；集群广告地址仍为 HTTPS）：
 
 ```bash
-# 查看所有calico相关数据
+# 查看 calico 前缀（按现场 ETCDCTL_API / etcdctl 版本）
 ETCDCTL_API=3 etcdctl --endpoints="http://127.0.0.1:2379" get --prefix /calico
 # 查看 calico网络为各节点分配的网段
 ETCDCTL_API=3 etcdctl --endpoints="http://127.0.0.1:2379" get --prefix /calico/ipam/v2/host
@@ -1667,630 +1456,361 @@ ETCDCTL_API=3 etcdctl --endpoints="http://127.0.0.1:2379" get --prefix /calico/i
 
 ###### 1.3.3.6.1.1、BGP Route Reflectors
 
-`Calico` 作为 `k8s` 的一个流行网络插件，它依赖 `BGP` 路由协议实现集群节点上的 `POD` 路由互通；而路由互通的前提是节点间建立 BGP Peer 连接。BGP 路由反射器（Route Reflectors，简称 RR）可以简化集群 BGP Peer 的连接方式，它是解决 BGP 扩展性问题的有效方式；具体来说：
+`CALICO_NETWORKING_BACKEND=bird` 时，默认启用 **node-to-node mesh**（IBGP 全互联）。节点规模增大后，启用 **BGP Route Reflector（RR）** 可使非 RR 节点主要与 RR 建立 peer，降低 mesh 开销。`conf/config.yml` 建议在约 **50+ 节点**时评估。
 
-- 没有 RR 时，所有节点之间需要两两建立连接（IBGP 全互联），节点数量增加将导致连接数剧增、资源占用剧增
-- 引入 RR 后，其他 BGP 路由器只需要与它建立连接并交换路由信息，节点数量增加连接数只是线性增加，节省系统资源
-
-calico-node 版本 v3.3 开始支持内建路由反射器，非常方便，因此使用 calico 作为网络插件可以支持大规模节点数的 `K8S` 集群。
-
-- 建议集群节点数大于 50 时，应用 BGP Route Reflectors 特性
-
-**前提条件：**
-
-k8s 集群使用 calico 网络插件部署成功。实验环境是 3 个 master，3 个 worker，3 个 etcd，calico 版本 v3.28.4。
-
-```bash
-# kubectl get nodes
-NAME        STATUS                     ROLES    AGE     VERSION
-master-01   Ready,SchedulingDisabled   master   3d23h   v1.33.6
-master-02   Ready,SchedulingDisabled   master   3d23h   v1.33.6
-master-03   Ready,SchedulingDisabled   master   47h     v1.33.6
-worker-01   Ready                      node     3d23h   v1.33.6
-worker-02   Ready                      node     3d23h   v1.33.6
-worker-03   Ready                      node     3m28s   v1.33.6
-# kubectl get pods -A |grep calico
-kube-system   calico-kube-controllers-5d475c975d-kjmtm   1/1     Running   5 (10h ago)   3d23h
-kube-system   calico-node-9b8b7                          1/1     Running   4 (10h ago)   3d23h
-kube-system   calico-node-dsv65                          1/1     Running   4 (10h ago)   3d23h
-kube-system   calico-node-jmcw2                          1/1     Running   1 (10h ago)   47h
-kube-system   calico-node-lrhhg                          1/1     Running   4 (10h ago)   3d23h
-kube-system   calico-node-qx7qd                          1/1     Running   4 (10h ago)   3d23h
-kube-system   calico-node-w57lk                          1/1     Running   0             3m36s
-```
-
-查看当前集群中 BGP 连接情况：可以看到集群中 4 个节点两两建立了 BGP 连接
-
-```bash
-# ansible -i /usr/local/kubeauto/clusters/k8s-main/hosts kube_master,kube_node -m shell -a 'calicoctl node status'
-192.168.110.214 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+-------------------+-------+----------+-------------+
-|  PEER ADDRESS   |     PEER TYPE     | STATE |  SINCE   |    INFO     |
-+-----------------+-------------------+-------+----------+-------------+
-| 192.168.110.215 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.216 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.217 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.218 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.219 | node-to-node mesh | up    | 13:57:46 | Established |
-+-----------------+-------------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.218 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+-------------------+-------+----------+-------------+
-|  PEER ADDRESS   |     PEER TYPE     | STATE |  SINCE   |    INFO     |
-+-----------------+-------------------+-------+----------+-------------+
-| 192.168.110.214 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.215 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.216 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.217 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.219 | node-to-node mesh | up    | 13:57:46 | Established |
-+-----------------+-------------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.217 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+-------------------+-------+----------+-------------+
-|  PEER ADDRESS   |     PEER TYPE     | STATE |  SINCE   |    INFO     |
-+-----------------+-------------------+-------+----------+-------------+
-| 192.168.110.214 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.215 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.216 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.218 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.219 | node-to-node mesh | up    | 13:57:46 | Established |
-+-----------------+-------------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.216 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+-------------------+-------+----------+-------------+
-|  PEER ADDRESS   |     PEER TYPE     | STATE |  SINCE   |    INFO     |
-+-----------------+-------------------+-------+----------+-------------+
-| 192.168.110.214 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.215 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.217 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.218 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.219 | node-to-node mesh | up    | 13:57:46 | Established |
-+-----------------+-------------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.215 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+-------------------+-------+----------+-------------+
-|  PEER ADDRESS   |     PEER TYPE     | STATE |  SINCE   |    INFO     |
-+-----------------+-------------------+-------+----------+-------------+
-| 192.168.110.214 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.216 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.217 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.218 | node-to-node mesh | up    | 03:18:21 | Established |
-| 192.168.110.219 | node-to-node mesh | up    | 13:57:46 | Established |
-+-----------------+-------------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.219 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+-------------------+-------+----------+-------------+
-|  PEER ADDRESS   |     PEER TYPE     | STATE |  SINCE   |    INFO     |
-+-----------------+-------------------+-------+----------+-------------+
-| 192.168.110.214 | node-to-node mesh | up    | 13:57:47 | Established |
-| 192.168.110.215 | node-to-node mesh | up    | 13:57:47 | Established |
-| 192.168.110.216 | node-to-node mesh | up    | 13:57:47 | Established |
-| 192.168.110.217 | node-to-node mesh | up    | 13:57:47 | Established |
-| 192.168.110.218 | node-to-node mesh | up    | 13:57:47 | Established |
-+-----------------+-------------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-```
-
----
+| 项 | 说明 |
+|----|------|
+| 前提 | `CLUSTER_NETWORK=calico`；`calico-node` Running；数据存储为 **etcdv3**（本项目默认，非 KDD） |
+| 开关 | `CALICO_RR_ENABLED: true` |
+| RR 节点 | `CALICO_RR_NODES: ["<ip>", ...]`；未设则默认全部 `kube_master`（`roles/calico/tasks/calico-rr.yml`） |
+| 安装步骤 | `kubecli setup <cluster> 06`（`network`）；勿与 `07` / `cluster-addon` 混淆 |
 
 ###### 1.3.3.6.1.2、kubecli 启用 route reflector
 
-- 修改 `/usr/local/kubeauto/clusters/k8s-main/config.yml` 文件，设置配置项 `CALICO_RR_ENABLED: true`
-- 重新执行网络安装 `kubecli setup k8s-main 06`（或 `network`；勿与 `07`/`cluster-addon` 混淆）
-
-执行完成，检查 bgp 连接验证即可。
-
-###### 1.3.3.6.1.3、手动安装 route reflector
-
-参考官方[Calico bgp route reflector 配置](https://docs.tigera.io/calico/latest/networking/configuring/bgp#configure-a-node-to-act-as-a-route-reflector)
-
-选定节点并配置 Route Reflector，首先查看当前集群中的节点：
-
 ```bash
-# calicoctl get node -o wide
-NAME        ASN       IPV4                 IPV6   
-master-01   (64512)   192.168.110.214/24          
-master-02   (64512)   192.168.110.215/24          
-master-03   (64512)   192.168.110.216/24          
-worker-01   (64512)   192.168.110.217/24          
-worker-02   (64512)   192.168.110.218/24          
-worker-03   (64512)   192.168.110.219/24          
+# 1. 编辑 clusters/<cluster>/config.yml
+#    CALICO_RR_ENABLED: true
+#    # CALICO_RR_NODES: ["10.0.0.11", "10.0.0.12"]
+kubecli setup <cluster> 06
+
+# 2. 验证（各节点）
+calicoctl node status
+# 期望：PEER TYPE 为指向 RR 的 node specific；STATE=Established；mesh 全互联减少
 ```
 
-可以在集群中选择 1 个或多个节点作为 rr 节点，这里先选择节点 master-01
+###### 1.3.3.6.1.3、手动配置 route reflector
 
-```bash
-# 配置routeReflectorClusterID
-calicoctl patch node master-01 -p '{"spec": {"bgp": {"routeReflectorClusterID": "244.0.0.1"}}}'
-
-# 配置node label
-calicoctl patch node master-01 -p '{"metadata": {"labels": {"route-reflector": "true"}}}'
-```
-
-> `routeReflectorClusterID`：BGP 集群标识符，防止路由环路，通常是 IPv4 格式的地址，在同一 AS 内必须唯一，当有多个 RR 时，所有 RR 应使用相同的 ClusterID
->
-> `route-reflector`：通过 kv 标签标识 RR 节点，便于后续的节点选择器匹配。
-
-配置 BGP node 与 Route Reflector 的连接建立规则：
-
-```bash
-# 让所有节点（nodeSelector: all()）与所有 RR 节点（peerSelector）建立 BGP 连接。
-$ cat << EOF | calicoctl create -f -
-kind: BGPPeer
-apiVersion: projectcalico.org/v3
-metadata:
-  name: peer-with-route-reflectors
-spec:
-  nodeSelector: all()	# 匹配所有节点
-  peerSelector: route-reflector == 'true'	# 连接到带有此标签的节点
-EOF
-```
-
-配置全局禁用全连接（BGP full mesh）：
-
-```bash
-# 必须禁用全连接，否则 RR 配置无效，节点间仍会建立全连接。
-$ cat << EOF | calicoctl create -f -
-apiVersion: projectcalico.org/v3
-kind: BGPConfiguration
-metadata:
-  name: default
-spec:
-  logSeverityScreen: Info
-  nodeToNodeMeshEnabled: false	# 关键：关闭节点间全连接
-  asNumber: 64512
-EOF
-```
-
-验证增加 rr 之后的 bgp 连接情况：
-
-```bash
-# ansible -i /usr/local/kubeauto/clusters/k8s-main/hosts kube_master,kube_node -m shell -a 'calicoctl node status'
-192.168.110.214 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+---------------+-------+----------+-------------+
-|  PEER ADDRESS   |   PEER TYPE   | STATE |  SINCE   |    INFO     |
-+-----------------+---------------+-------+----------+-------------+
-| 192.168.110.215 | node specific | up    | 13:52:58 | Established |
-| 192.168.110.216 | node specific | up    | 13:52:58 | Established |
-| 192.168.110.217 | node specific | up    | 13:52:58 | Established |
-| 192.168.110.218 | node specific | up    | 13:52:58 | Established |
-| 192.168.110.219 | node specific | up    | 13:52:58 | Established |
-+-----------------+---------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.218 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+---------------+-------+----------+-------------+
-|  PEER ADDRESS   |   PEER TYPE   | STATE |  SINCE   |    INFO     |
-+-----------------+---------------+-------+----------+-------------+
-| 192.168.110.214 | node specific | up    | 13:52:58 | Established |
-+-----------------+---------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.217 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+---------------+-------+----------+-------------+
-|  PEER ADDRESS   |   PEER TYPE   | STATE |  SINCE   |    INFO     |
-+-----------------+---------------+-------+----------+-------------+
-| 192.168.110.214 | node specific | up    | 13:52:58 | Established |
-+-----------------+---------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.216 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+---------------+-------+----------+-------------+
-|  PEER ADDRESS   |   PEER TYPE   | STATE |  SINCE   |    INFO     |
-+-----------------+---------------+-------+----------+-------------+
-| 192.168.110.214 | node specific | up    | 13:52:58 | Established |
-+-----------------+---------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.215 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+---------------+-------+----------+-------------+
-|  PEER ADDRESS   |   PEER TYPE   | STATE |  SINCE   |    INFO     |
-+-----------------+---------------+-------+----------+-------------+
-| 192.168.110.214 | node specific | up    | 13:52:59 | Established |
-+-----------------+---------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-192.168.110.219 | CHANGED | rc=0 >>
-Calico process is running.
-
-IPv4 BGP status
-+-----------------+---------------+-------+----------+-------------+
-|  PEER ADDRESS   |   PEER TYPE   | STATE |  SINCE   |    INFO     |
-+-----------------+---------------+-------+----------+-------------+
-| 192.168.110.214 | node specific | up    | 13:52:59 | Established |
-+-----------------+---------------+-------+----------+-------------+
-
-IPv6 BGP status
-No IPv6 peers found.
-```
-
-可以看到所有其他节点都与所选 rr 节点建立 bgp 连接。
-
-> 可以继续增加一个 rr 节点，步骤同上，添加成功后可以看到所有其他节点都与两个 rr 节点建立 bgp 连接，两个 rr 节点之间也建立 bgp 连接。对于节点数较多的 `K8S` 集群建议配置 2-3 个 RR 节点。
+手工步骤见 Tigera：[Configure a node to act as a route reflector](https://docs.tigera.io/calico/latest/networking/configuring/bgp#configure-a-node-to-act-as-a-route-reflector)（`routeReflectorClusterID`、peerSelector、关闭 `nodeToNodeMeshEnabled`）。本项目默认 **etcdv3**，请用节点上 `calicoctl` 操作，勿按 Kubernetes datastore（KDD）流程假设。
 
 ##### 1.3.3.6.2、安装 flannel 网络
 
-`Flannel` 是最早应用到 k8s 集群的网络插件之一，简单高效，且提供多个后端 `backend` 模式供选择；本文介绍以 `DaemonSet Pod` 方式集成到 k8s 集群，需要在所有 master 节点和 worker 节点安装。
+官方文档：[flannel](https://github.com/flannel-io/flannel) · [Kubernetes 集成说明](https://github.com/flannel-io/flannel/blob/master/Documentation/kubernetes.md)
 
-**kubeauto 集成安装 flannel：**
+Flannel 为每个节点分配 Pod 子网，并在节点间建立连通（后端常见 **vxlan** / **host-gw**）。它**不**替代 kube-proxy，也不实现 Kubernetes NetworkPolicy（策略需其他组件）。
 
-- 设置 `/usr/local/kubeauto/clusters/xxx/hosts` 文件中变量 `CLUSTER_NETWORK="flannel"`
-- 下载额外镜像 `kubecli download -E flannel`
-- 执行集群安装 `kubecli setup xxx all`
+###### 工作机制（与本项目路径一致）
 
-Flannel 的核心职责是：
+```mermaid
+sequenceDiagram
+  participant API as kube-apiserver
+  participant FD as flanneld DaemonSet
+  participant ENV as /run/flannel/subnet.env
+  participant CNI as flannel CNI + delegate
+  participant KL as kubelet
 
-1. **管理集群的子网分配**：为每个节点分配一个 Pod 子网（保存在 etcd 或 Kubernetes API 中）。
-2. **提供网络配置模板**：它告诉每个节点上的 CNI “如何配置网络”。
+  Note over API: controller-manager 可为 Node 分配 podCIDR<br/>（--allocate-node-cidrs / --cluster-cidr）
+  FD->>API: 读取本节点 PodCIDR（kube-subnet-mgr）
+  FD->>FD: 初始化 Backend（vxlan / host-gw）
+  FD->>ENV: 写入 FLANNEL_NETWORK / SUBNET / MTU / BACKEND
+  KL->>CNI: Pod 沙箱 CNI ADD
+  CNI->>ENV: 读取子网环境
+  CNI->>CNI: delegate（如 bridge）创建 veth 等
+```
 
-Flannel 的典型配置文件（`/etc/cni/net.d/10-flannel.conflist`）结构如下：
+要点：
 
-```bash
+1. **flanneld** 负责子网与后端设备/路由，**不**直接创建每个 Pod 的 veth。
+2. **CNI 配置**（由 ConfigMap 下发到 `/etc/cni/net.d`）中 `type: flannel` 的插件读取 `subnet.env`，再 **delegate** 给 bridge 等插件完成主机侧接口。
+3. 本项目通过 apiserver 读取 `podCIDR`（见 [flannel#847](https://github.com/flannel-io/flannel/issues/847)），依赖控制面已正确配置 `CLUSTER_CIDR` / `NODE_CIDR_LEN`。
+
+| 后端 | 行为 | 适用 |
+|------|------|------|
+| `vxlan`（默认） | 节点间 VXLAN 封装（常见设备 `flannel.1`，UDP 8472） | 跨子网、云网络限制主机路由时 |
+| `host-gw` | 仅主机路由，无封装 | 所有节点二层可达时，开销更低 |
+
+###### kubeauto 安装步骤
+
+| 步骤 | 操作 |
+|------|------|
+| 1 | 库存 `CLUSTER_NETWORK="flannel"` |
+| 2 | `conf/config.yml`：`FLANNEL_BACKEND`（默认 `vxlan`）；若 `vxlan` 且同二层可优化，可设 `DIRECT_ROUTING: true`（写入 DirectRouting） |
+| 3 | `kubecli download -E flannel`（镜像 `brinnatt/flannel`、`brinnatt/flannel-cni-plugin`，版本见 `v_flannel` / `v_flannel_cni`） |
+| 4 | `kubecli setup <cluster> 06` 或一键 `90`/`all` |
+
+角色与模板：`roles/flannel/` · `templates/kube-flannel.yaml.j2`（含 RBAC、ConfigMap `net-conf.json` / `cni-conf.json`、DaemonSet）。
+
+ConfigMap 中 CNI 链示例（与模板一致，无 bandwidth 插件时以仓库为准）：
+
+```json
 {
   "name": "cbr0",
   "cniVersion": "0.3.1",
   "plugins": [
     {
       "type": "flannel",
-      "delegate": {
-        "hairpinMode": true,
-        "isDefaultGateway": true
-      }
+      "delegate": { "hairpinMode": true, "isDefaultGateway": true }
     },
     {
       "type": "portmap",
-      "capabilities": {
-        "portMappings": true
-      }
-    },
-    {
-      "type": "bandwidth",
-      "capabilities": {
-        "bandwidth": true
-      }
+      "capabilities": { "portMappings": true }
     }
   ]
 }
 ```
 
-Flannel 的配置文件定义了一个**插件链**，它自己作为链中的第一个插件，负责提供集群网络信息，然后**委托（调用）** 像 `bridge` 这样的底层插件去干活，最后还可以让 `portmap` 等插件进行功能增强。
+`net-conf.json` 中 `Network` 取自 `CLUSTER_CIDR`，`Backend.Type` 取自 `FLANNEL_BACKEND`。
 
-这种设计使得 Flannel 非常灵活，可以专注于集群范围的子网管理，而将具体的网络设备操作委托给更专业的插件。以下是 flannel 的工作机制流程图，大致方向没有问题，有助于排查细节问题。
-
+###### 验证
 ```bash
-+================================================================================+
-|                          Kubernetes Control Plane                              |
-|                                                                                |
-|  kube-apiserver                                                                |
-|                                                                                |
-|  - Allocates and records PodCIDR per Node                                      |
-|                                                                                |
-|    Node.spec.podCIDR = 10.244.X.0/24                                           |
-|                                                                                |
-+================================================================================+
-                                   |
-                                   | watch / patch
-                                   v
-+================================================================================+
-|                         flanneld (DaemonSet)                                   |
-|                         One flanneld per Node                                  |
-|                                                                                |
-|  1. Retrieve local Node PodCIDR                                                |
-|     - Source: Kubernetes API                                                   |
-|                                                                                |
-|  2. Initialize backend                                                         |
-|     - vxlan      -> prepare VXLAN device                                       |
-|     - host-gw    -> prepare direct routing                                     |
-|     - wireguard  -> prepare encrypted tunnel                                   |
-|                                                                                |
-|  3. Create backend resources                                                   |
-|     - vxlan      -> create flannel.1                                           |
-|     - host-gw    -> no tunnel, route only                                      |
-|                                                                                |
-|  4. Write runtime network configuration (CORE)                                 |
-|                                                                                |
-|     /run/flannel/subnet.env                                                    |
-|     +----------------------------------------------------------------------+   |
-|     | FLANNEL_NETWORK=10.244.0.0/16                                          | |
-|     | FLANNEL_SUBNET=10.244.1.1/24                                           | |
-|     | FLANNEL_MTU=1450                                                       | |
-|     | FLANNEL_BACKEND=vxlan                                                  | |
-|     +----------------------------------------------------------------------+   |
-|                                                                                |
-|  5. Configure inter-node forwarding                                            |
-|     - vxlan   -> FDB entries + ARP + UDP 8472                                  |
-|     - host-gw -> ip route add                                                  |
-|                                                                                |
-|  NOTE: flanneld does NOT create Pod interfaces                                 |
-|        flanneld does NOT run CNI lifecycle                                     |
-|                                                                                |
-+================================================================================+
-                                   |
-                                   | configuration only
-                                   v
-+================================================================================+
-|              /etc/cni/net.d/10-flannel.conflist (CRITICAL)                     |
-|                                                                                |
-|  Generated during Flannel installation                                         |
-|                                                                                |
-|  {                                                                             |
-|    "name": "cbr0",                                                             |
-|    "plugins": [                                                                |
-|      {                                                                         |
-|        "type": "flannel",                                                      |
-|        "delegate": {                                                           |
-|          "type": "bridge",                                                     |
-|          "bridge": "cni0",                                                     |
-|          "isGateway": true,                                                    |
-|          "ipMasq": false,                                                      |
-|          "hairpinMode": true                                                   |
-|        }                                                                       |
-|      },                                                                        |
-|      {                                                                         |
-|        "type": "portmap",                                                      |
-|        "capabilities": { "portMappings": true }                                |
-|      }                                                                         |
-|    ]                                                                           |
-|  }                                                                             |
-|                                                                                |
-|  Semantics:                                                                    |
-|  - flannel CNI reads subnet.env                                                |
-|  - flannel CNI passes parameters to delegate plugin                            |
-|  - actual interface creation is done by bridge / host-local                    |
-|                                                                                |
-+================================================================================+
-                                   |
-                                   | kubelet invokes CNI
-                                   v
-+================================================================================+
-|                          CNI Execution Phase                                   |
-|                                                                                |
-|  6. kubelet creates Pod sandbox                                                |
-|                                                                                |
-|  7. flannel CNI plugin                                                         |
-|     - Reads /run/flannel/subnet.env                                            |
-|     - Determines Pod CIDR and MTU                                              |
-|     - Calculates Pod IP (10.244.X.Y)                                           |
-|     - Delegates to bridge plugin                                               |
-|                                                                                |
-|  8. bridge / host-local plugin                                                 |
-|     - Create veth pair                                                         |
-|     - Pod namespace: eth0                                                      |
-|     - Host side: vethXXXX -> cni0                                              |
-|     - Assign Pod IP and default route                                          |
-|                                                                                |
-+================================================================================+
-                                   |
-                                   v
-+================================================================================+
-|                         Linux Kernel Data Plane                                |
-|                                                                                |
-|  Pod Network Namespace                                                         |
-|     +----------------------+                                                   |
-|     | eth0                 | 10.244.1.2                                        |
-|     +----------------------+                                                   |
-|                |                                                               |
-|              veth                                                              |
-|                |                                                               |
-|     +----------------------+                                                   |
-|     | cni0 (Linux bridge)  |                                                   |
-|     +----------------------+                                                   |
-|                |                                                               |
-|     +----------------------------------------------------------------------+   |
-|     | Flannel backend forwarding                                           |   |
-|     |                                                                      |   |
-|     | vxlan   -> flannel.1 -> UDP 8472 -> remote Node                      |   |
-|     | host-gw -> physical NIC -> remote Node                               |   |
-|     +----------------------------------------------------------------------+   |
-|                                                                                |
-|  Result:                                                                       |
-|  - Flat Pod network across nodes                                               |
-|  - No network policy enforcement                                               |
-|  - No BGP, no routing protocol                                                 |
-|                                                                                |
-+================================================================================+
+kubectl get pods -n kube-system -l app=flannel
+# 或
+kubectl get pods -n kube-system | grep flannel
+
+# 任选一节点
+cat /run/flannel/subnet.env
+ip -d link show flannel.1 2>/dev/null || true   # vxlan 后端
+ip route | head
 ```
 
-`Flannel DaemonSet Pod` 运行以后会生成 `/run/flannel/subnet.env` 文件，例如：
+每个节点的 flannel Pod 须为 Running，且 `subnet.env` 中网段属于 `CLUSTER_CIDR`，然后再部署业务负载。
+
+##### 1.3.3.6.3、安装 cilium 网络
+
+官方文档：[Cilium](https://docs.cilium.io/) · 原理见白皮书 [第 9 章](./whitepaper/09-cni-networking.md)。
+
+Cilium 基于 **eBPF** 实现 Pod 连通、NetworkPolicy 与可观测（可选 Hubble）。本项目以 Helm 安装（`roles/cilium/`，chart 随 `download -E cilium` 准备），当前版本 **`v_cilium=v1.19.5`**（Hubble UI 镜像版本见 `v_cilium_hubble_ui`，默认 `v0.13.5`）。内核需大于 4.9。
+
+| 步骤 | 操作 |
+|------|------|
+| 1 | 库存 `CLUSTER_NETWORK="cilium"` |
+| 2 | `kubecli download -E cilium`（`brinnatt/cilium`、`brinnatt/cilium-operator-generic`）；若启用 Hubble：另执行 `kubecli download -E cilium-hubble` |
+| 3 | `kubecli setup <cluster> 06` |
+
+**`conf/config.yml` 关键项：**
+
+| 配置项 | 默认 | 含义 |
+|--------|------|------|
+| `cilium_ver` | 由常量渲染（当前 v1.19.5） | Agent / Operator / Hubble Relay 镜像标签 |
+| `cilium_hubble_enabled` | `false` | 启用 Hubble Relay |
+| `cilium_hubble_ui_enabled` | `false` | 启用 Hubble UI（依赖 DNS；在 `07` addon 阶段再等待就绪） |
+| `cilium_connectivity_check` | `false` | 在 `07` 部署连通性检查工作负载（命名空间 `cilium-test`） |
+
+IPAM 为 cluster-pool，池网段取自 `CLUSTER_CIDR`（见 `roles/cilium/templates/values.yaml.j2`）。启用 NodeLocal DNS 时，values 会排除 `LOCAL_DNS_CACHE` 地址。
+
+**验证：**
 
 ```bash
-FLANNEL_NETWORK=10.1.0.0/16
-FLANNEL_SUBNET=10.1.17.1/24
-FLANNEL_MTU=1472
-FLANNEL_IPMASQ=true
+kubectl get pods -n kube-system -l k8s-app=cilium
+kubectl -n kube-system get pods | grep -E 'cilium-operator|hubble' || true
+cilium status   # 节点已下发 cilium 客户端时
+ls /etc/cni/net.d/
 ```
 
-然后它利用这个文件信息去配置和调用 `bridge` 插件来生成容器网络，调用 `host-local` 来管理 `IP` 地址，例如：
+##### 1.3.3.6.4、安装 kube-router 网络
+
+官方文档：[kube-router](https://www.kube-router.io/) · 原理见白皮书 [第 9 章](./whitepaper/09-cni-networking.md)。
+
+kube-router 提供 Pod 路由（BGP / overlay）、可选 NetworkPolicy 防火墙。本项目 DaemonSet 固定 `--run-service-proxy=false`，Service 数据面仍由 **kube-proxy** 负责，避免双代理冲突。当前版本 **`v_kuberouter=v1.5.4`**。
+
+| 步骤 | 操作 |
+|------|------|
+| 1 | 库存 `CLUSTER_NETWORK="kube-router"` |
+| 2 | `kubecli download -E kube-router`（`brinnatt/kube-router`） |
+| 3 | `kubecli setup <cluster> 06` |
+
+**`conf/config.yml` 关键项：**
+
+| 配置项 | 默认 | 含义 |
+|--------|------|------|
+| `OVERLAY_TYPE` | `full` | overlay 模式（公有云等常需 Always/full；自管环境可按文档改为 `subnet` 等） |
+| `FIREWALL_ENABLE` | `true` | 是否启用 NetworkPolicy 防火墙（`--run-firewall`） |
+| `kube_router_ver` | 由常量渲染（当前 v1.5.4） | 镜像标签 |
+
+角色与模板：`roles/kube-router/` · `templates/kuberouter.yaml.j2`（命名空间 `kube-system`）。
+
+**验证：**
 
 ```bash
-{
-	"name": "mynet",
-	"type": "bridge",
-	"mtu": 1472,
-	"ipMasq": false,
-	"isGateway": true,
-	"ipam": {
-		"type": "host-local",
-		"subnet": "10.1.17.0/24"
-	}
-}
+kubectl get pods -n kube-system -l k8s-app=kube-router
+ls /etc/cni/net.d/
 ```
 
-> 关联文档：[flannel kubernetes 集成](https://github.com/flannel-io/flannel/blob/master/Documentation/kubernetes.md)，[cni 插件](https://github.com/containernetworking/plugins)。
+##### 1.3.3.6.5、安装 kube-ovn 网络
 
-本项目配置文件 [kube-flannel.yaml.j2](https://github.com/brinnatt/kubeauto/blob/master/roles/flannel/templates/kube-flannel.yaml.j2)：
+官方文档：[Kube-OVN](https://kubeovn.github.io/docs/) · 原理见白皮书 [第 9 章](./whitepaper/09-cni-networking.md)。
 
-- 注意：本安装方式，flannel 通过 apiserver 接口读取 podCidr 信息，详见 https://github.com/flannel-io/flannel/issues/847
+kube-ovn 基于 OVN/OVS 提供 SDN（逻辑交换机、网关等）。本项目通过 `roles/kube-ovn/templates/install.sh.j2` 安装，当前版本 **`v_kubeovn=v1.11.5`**。角色在安装 CNI **之前**会下发 CoreDNS 与 NodeLocal DNS 清单；因此 `07` addon 阶段若已检测到 `coredns` Pod，将跳过重复安装。
 
-  因此想要修改节点 pod 网段掩码，请在 `clusters/xxxx/config.yml` 中修改 `NODE_CIDR_LEN` 配置项
+| 步骤 | 操作 |
+|------|------|
+| 1 | 库存 `CLUSTER_NETWORK="kube-ovn"` |
+| 2 | `kubecli download -E kube-ovn`（`brinnatt/kube-ovn`） |
+| 3 | `kubecli setup <cluster> 06` |
 
-- 配置相关 RBAC 权限和 `service account`
+**`conf/config.yml` 关键项：**
 
-- 配置 `ConfigMap` 包含 CNI 配置和 flannel 配置(指定backend等)
+| 配置项 | 默认 | 含义 |
+|--------|------|------|
+| `kube_ovn_ver` | 由常量渲染（当前 v1.11.5） | 镜像标签 |
 
-**验证 flannel 网络：**
-
-执行 flannel 安装成功后可以验证如下：
+**验证：**
 
 ```bash
-# kubectl get pods -A  |grep flannel
-kube-system   kube-flannel-ds-49rzh           1/1     Running   0          38m
-kube-system   kube-flannel-ds-djpbg           1/1     Running   0          38m
-kube-system   kube-flannel-ds-ngpmp           1/1     Running   0          38m
-kube-system   kube-flannel-ds-nxngw           1/1     Running   0          38m
-kube-system   kube-flannel-ds-ppwst           1/1     Running   0          38m
-kube-system   kube-flannel-ds-zwc59           1/1     Running   0          38m
+kubectl get pods -n kube-system | grep -E 'kube-ovn|ovs|ovn'
+kubectl get pods -n kube-system -l app=kube-ovn-cni
+ls /etc/cni/net.d/
 ```
-
-每个节点上的 flannel pod 都必须处于 Running 状态才可以部署应用。
 
 #### 1.3.3.7、集成插件
 
 > **原理与实现详解：** 见技术白皮书 [第 12 章插件与监控](./whitepaper/12-addons-observability.md)。
 
+`roles/cluster-addon` 在步骤 `07` / `cluster-addon`（`playbooks/07.cluster-addon.yml`）按 `config.yml` 开关安装。镜像统一为 `brinnatt/<name>:<tag>`，节点侧拉取路径为 `registry.talkschool.cn:5000/brinnatt/...`。默认镜像集用 `kubecli download -X`；可选组件用 `kubecli download -E <component>`（合法组件名见 `common/constants.py` 的 `component_images`）。
 
 ##### 1.3.3.7.1、DNS
 
 集群 DNS 为 Pod 提供 Service / Pod 相关域名解析。当前推荐实现为 **CoreDNS**（集群内 Service 名通常仍为 `kube-dns`）。官方说明：[DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)。
 
-**NodeLocal DNSCache**（官方：[Using NodeLocal DNSCache](https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/)）以 DaemonSet 在每个节点运行本地 DNS 缓存，降低对 CoreDNS Service 的跨节点查询与 conntrack 压力。kubeauto 默认 `dns_install: "yes"` 且 `ENABLE_LOCAL_DNS_CACHE: true`（`conf/config.yml`）：启用后 kubelet `clusterDNS` 指向链路本地地址 **`169.254.20.10`**（`LOCAL_DNS_CACHE`），因此 Pod 内 `/etc/resolv.conf` 的 nameserver 常见为该地址，而非 CoreDNS 的 ClusterIP。
+**NodeLocal DNSCache**（官方：[Using NodeLocal DNSCache](https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/)）以 DaemonSet 在每个节点运行本地 DNS 缓存。kubeauto 默认 `dns_install: "yes"` 且 `ENABLE_LOCAL_DNS_CACHE: true`：启用后 kubelet `clusterDNS` 指向 **`169.254.20.10`**（`LOCAL_DNS_CACHE`）。
 
-**部署**
+**部署：** `kubecli setup <cluster> 07`（或 `cluster-addon`）。模板：`roles/cluster-addon/templates/dns/`。选用 `kube-ovn` 时 DNS 已在步骤 `06` 预装，addon 会按现有 Pod 跳过重复创建。
 
-DNS 由 `roles/cluster-addon` 安装（步骤 `07` / `cluster-addon`），模板位于 `roles/cluster-addon/templates/dns/`。
-
-```bash
-kubecli setup <cluster> 07
-# 或
-kubecli setup <cluster> cluster-addon
-```
-
-**验证**
+**验证：**
 
 ```bash
 kubectl get pods -n kube-system -l k8s-app=kube-dns
 kubectl get pods -n kube-system | grep -E 'node-local-dns|nodelocaldns' || true
 kubectl get svc -n kube-system kube-dns
-```
-
-创建测试工作负载时，请分别创建 Deployment 与 Service（勿依赖已移除的 `kubectl run --expose`）：
-
-```bash
 kubectl create deployment dns-nginx --image=nginx --replicas=1
 kubectl expose deployment dns-nginx --port=80 --name=dns-nginx
 kubectl run dns-test --rm -it --restart=Never --image=busybox:1.28 -- \
   nslookup dns-nginx.default.svc.cluster.local
 ```
 
-启用 NodeLocal 时，业务 Pod 内 `/etc/resolv.conf` 典型为：
+启用 NodeLocal 时，业务 Pod 内 `/etc/resolv.conf` 的 nameserver 常见为 `169.254.20.10`。外部域名由 CoreDNS forward 至上游。验证建议使用 `busybox:1.28` 或 `dnsutils`（部分 busybox 自带 `nslookup` 存在缺陷）。
 
-```text
-nameserver 169.254.20.10
-search <namespace>.svc.cluster.local svc.cluster.local cluster.local
-options ndots:5
+##### 1.3.3.7.2、metrics-server
+
+实现聚合 API `metrics.k8s.io`，支撑 `kubectl top` 与基于资源指标的 HPA。镜像属于 **默认镜像集**（`-X` / `-D` 内含），无需单独 `-E`。
+
+| 项 | 值 |
+|----|-----|
+| 开关 | `metricsserver_install`（默认 `"yes"`） |
+| 版本 | `metricsVer` / `v_metricsserver`（当前 `v0.8.0`） |
+| 命名空间 | `kube-system` |
+| 模板 | `roles/cluster-addon/templates/metrics-server/components.yaml.j2` |
+| 下载 | `kubecli download -X`（含 `brinnatt/metrics-server`） |
+| 安装 | `kubecli setup <cluster> 07` |
+
+```bash
+kubectl get apiservice v1beta1.metrics.k8s.io
+kubectl top nodes
+kubectl top pods -A
 ```
 
-外部域名解析由 CoreDNS forward 至上游（通常继承节点解析配置）；连通性取决于节点出网与上游 DNS。
+##### 1.3.3.7.3、Kubernetes Dashboard
 
-> 历史问题 1（早期版本记录，供排障参考）：部分旧版 Calico 从网段网络地址起分配 Pod IP，可能导致 DNS Pod 异常（见 [calico#1710](https://github.com/projectcalico/calico/issues/1710)）。当前默认 Calico **v3.28.x** 一般不再复现；若仍出现 DNS CrashLoop，优先检查 CNI Ready、沙箱镜像拉取与 CoreDNS/NodeLocal 日志，再考虑删除重建 DNS Pod。历史现象摘录：
->
-> ```bash
-> # BUG出现现象
-> $ kubectl get pod --all-namespaces -o wide
-> NAMESPACE     NAME                                       READY     STATUS             RESTARTS   AGE       IP              NODE
-> default       busy-5cc98488d4-s894w                      1/1       Running            0          28m       172.20.24.193   192.168.97.24
-> kube-system   calico-kube-controllers-6597d9c664-nq9hn   1/1       Running            0          1h        192.168.97.24   192.168.97.24
-> kube-system   calico-node-f8gnf                          2/2       Running            0          1h        192.168.97.24   192.168.97.24
-> kube-system   kube-dns-69bf9d5cc9-c68mw                  0/3       CrashLoopBackOff   27         31m       172.20.24.192   192.168.97.24
-> 
-> # 解决办法，删除pod，自动重建
-> $ kubectl delete pod -n kube-system kube-dns-69bf9d5cc9-c68mw
-> ```
->
-> 历史问题 2：部分 busybox 镜像自带的 `nslookup` 存在缺陷，DNS 测试可能误报失败（见 [kubernetes/dns#109](https://github.com/kubernetes/dns/issues/109)）。验证时建议使用 `busybox:1.28` 或 `dnsutils` 镜像。
+| 项 | 值 |
+|----|-----|
+| 开关 | `dashboard_install`（默认 `"no"`） |
+| 版本 | `dashboardVer`（chart `kubernetes-dashboard-*.tgz`） |
+| 命名空间 | `kube-system`（Helm release `kubernetes-dashboard`） |
+| 下载 | `kubecli download -E dashboard` |
+| 安装 | 置 `"yes"` 后 `kubecli setup <cluster> 07` |
 
+含 Kong 前置代理及 admin-user / read-user RBAC 模板。生产环境须限制暴露面并轮换高权限令牌。详见白皮书第 12 章。
 
-##### 1.3.3.7.2、其他可选插件（概要）
+```bash
+kubectl get pods -n kube-system | grep -E 'dashboard|kong'
+```
 
-`cluster-addon` 角色按集群 `config.yml` 中的开关安装可选组件。镜像统一为 `brinnatt/<name>:<tag>`，部署路径一般为 `registry.talkschool.cn:5000/brinnatt/...`。安装前请用 `kubecli download -E <component>` 将对应镜像推入本地仓库。
+##### 1.3.3.7.4、Prometheus（kube-prometheus-stack）
 
-| 组件 | 配置开关（示例） | `-E` 组件名（示例） | 说明 |
-|------|------------------|---------------------|------|
-| metrics-server | 默认随基础安装 | （默认镜像集） | 资源指标 API |
-| Kubernetes Dashboard | `dashboard_install` | `dashboard` | Helm chart + Kong |
-| local-path-provisioner | `local_path_provisioner_install` | `local-path-provisioner` | 本地路径动态卷 |
-| NFS provisioner | `nfs_provisioner_install` | `nfs-provisioner` | NFS 子目录供给 |
-| OpenEBS | `openebs_install` | `openebs` | 本地 PV / LVM 等（见角色模板注释） |
-| Prometheus Stack | `prom_install` | `prometheus` | kube-prometheus-stack |
-| MinIO | `minio_install` | `minio` | Operator + Tenant |
-| ingress-nginx | `ingress_nginx_install` | `ingress-nginx` | Ingress 控制器 |
-| Nacos / RocketMQ | `nacos_install` / `rocketmq_install` | `nacos` / `rocketmq` | 中间件示例，依赖外部存储或资源规格时请按模板调整 |
+| 项 | 值 |
+|----|-----|
+| 开关 | `prom_install`（默认 `"no"`） |
+| 命名空间 | `prom_namespace`（默认 `monitor`） |
+| 存储类 | `prom_storage_class`（可空；持久化前须先有可用 StorageClass） |
+| Chart | `prom_chart_ver` |
+| 下载 | `kubecli download -E prometheus`；可选钉钉 webhook：`-E prometheus-dingtalk` |
+| 安装 | 置 `"yes"` 后 `kubecli setup <cluster> 07` |
 
-网络插件除 Calico、Flannel 外，库存 `CLUSTER_NETWORK` 还可取 `cilium`、`kube-router`、`kube-ovn`。切换 CNI 前需保证节点干净（无残留 CNI 配置与 vxlan 设备），并已 `download -E` 对应镜像。Cilium Hubble 等可选能力见集群配置中的 `cilium_*` 开关。
+角色会为 etcd 抓取签发客户端证书 Secret（`monitor/etcd-client-cert`）。资源消耗较大，须在已配置 Node Allocatable 的充足节点上启用。
 
-详细镜像与版本钉扎见 [技术白皮书](./technical-whitepaper.md) 与 `common/constants.py` 中 `component_images`。
+```bash
+kubectl get pods -n monitor
+```
+
+##### 1.3.3.7.5、ingress-nginx
+
+| 项 | 值 |
+|----|-----|
+| 开关 | `ingress_nginx_install`（默认 `"no"`） |
+| 命名空间 | `ingress_nginx_namespace`（默认 `ingress-nginx`） |
+| 调度 | 节点需标签 `ingress-controller/provider=ingress-nginx` |
+| 指标 | `ingress_nginx_metrics_enabled`（默认 `true`；建议先装 Prometheus） |
+| 下载 | `kubecli download -E ingress-nginx` |
+| 安装 | 置 `"yes"` 后 `kubecli setup <cluster> 07` |
+
+```bash
+kubectl label node <node> ingress-controller/provider=ingress-nginx --overwrite
+kubectl get pods -n ingress-nginx
+```
+
+ex-lb 可将 80/443 转发至 Ingress NodePort（见 `INGRESS_NODEPORT_LB` / `INGRESS_TLS_NODEPORT_LB`）。
+
+##### 1.3.3.7.6、存储供给
+
+| 组件 | 开关（默认均 `"no"`） | 命名空间 / 要点 | `-E` |
+|------|----------------------|-----------------|------|
+| local-path-provisioner | `local_path_provisioner_install` | StorageClass `local_path_storage_class`（默认 `local-path`）；数据目录 `local_path_provisioner_dir` | `local-path-provisioner` |
+| NFS provisioner | `nfs_provisioner_install` | 命名空间 `nfs_provisioner_namespace`（默认 `kube-system`）；须配置 `nfs_server` / `nfs_path` | `nfs-provisioner` |
+| OpenEBS | `openebs_install` | 命名空间 `openebs_namespace`（默认 `openebs`）；`openebs_lvm_enabled` 控制是否装 LVM CSI | `openebs` |
+
+安装：对应开关置 `"yes"` → `download -E` → `kubecli setup <cluster> 07`。
+
+```bash
+kubectl get sc
+kubectl get pods -n openebs   # OpenEBS 时
+```
+
+##### 1.3.3.7.7、MinIO
+
+| 项 | 值 |
+|----|-----|
+| 开关 | `minio_install`（默认 `"no"`） |
+| Operator / Tenant 命名空间 | Operator 固定 `minio-operator`；Tenant 为 `minio_namespace`（默认 `minio`） |
+| 存储类 | `minio_storage_class`（默认倾向 OpenEBS LVM SC） |
+| 池规模 | `minio_pool_servers`（默认 4）、`minio_pool_size` |
+| 凭据 | `minio_root_user` / `minio_root_password`（交付后须轮换） |
+| 下载 | `kubecli download -E minio` |
+| 安装 | 置 `"yes"` 后 `kubecli setup <cluster> 07`（须先有可用 StorageClass） |
+
+```bash
+kubectl get pods -n minio-operator
+kubectl get pods -n minio
+```
+
+##### 1.3.3.7.8、其他可选组件（概要）
+
+| 组件 | 开关 | `-E` | 说明 |
+|------|------|------|------|
+| Nacos | `nacos_install` | `nacos` | 命名空间 `nacos`；需外部 MySQL |
+| RocketMQ | `rocketmq_install` | `rocketmq` | 命名空间 `rocketmq` |
+| network-check | `network_check_enabled` | `network-check` | 非 Cilium 时的连通性 CronJob（NS `network-test`） |
+
+完整镜像与版本钉扎见 `common/constants.py` 的 `component_images` 与白皮书第 12 章。
 
 ## 1.4、制品下载与离线分发
 
-控制节点需具备 Docker，用于拉取打包镜像并推送到本地仓库。
+控制节点需具备 Docker，用于拉取镜像并推送到本地仓库。命令与参数以实现为准：`controller/cluster/cli.py` → `service/cluster/downloader.py`。
+
+| 选项 | 含义 |
+|------|------|
+| `-D` / `--all` | 下载全部默认组件：Docker、Ansible、K8s 二进制、extra-bin、kubeauto 及默认镜像集 |
+| `-d` / `--docker` | 仅 Docker（可选版本） |
+| `-a` / `--ansible` | Ansible |
+| `-k` / `--k8s-bin` | Kubernetes 二进制包 |
+| `-e` / `--ext-bin` | 额外二进制（helm、cfssl、cilium 客户端等） |
+| `-z` / `--kubeauto` | kubeauto 运行时包 |
+| `-R` / `--harbor` | Harbor 离线安装包 |
+| `-X` / `--default-images` | 默认镜像：pause、coredns、k8s-dns-node-cache、metrics-server、calico-\* |
+| `-E` / `--ext-images` `<COMPONENT>` | 额外组件镜像；合法名含：`cilium`、`cilium-hubble`、`flannel`、`kube-router`、`kube-ovn`、`dashboard`、`prometheus`、`prometheus-dingtalk`、`ingress-nginx`、`minio`、`openebs`、`local-path-provisioner`、`nfs-provisioner`、`nacos`、`rocketmq`、`network-check` 等 |
 
 ```bash
-# 下载默认二进制包与基础镜像（pause、coredns、calico、metrics-server 等）
 kubecli download -D
-
-# 或按项下载
-kubecli download -X              # 默认镜像集
-kubecli download -E flannel      # 指定组件镜像
+kubecli download -X
+kubecli download -E flannel
 kubecli download -E prometheus
 ```
 
@@ -2298,24 +1818,40 @@ kubecli download -E prometheus
 
 ## 1.5、集群生命周期
 
+步骤与 playbook 映射以实现为准：`service/cluster/manager.py` 中 `_PLAYBOOK_MAP_SETUP` / `_PLAYBOOK_MAP_CLUSTER_COMMAND` / `_PLAYBOOK_MAP_ADD_NODE` / `_PLAYBOOK_MAP_REMOVE_NODE`。
+
+**安装步骤（`kubecli setup <cluster> <step>`）：**
+
+| 步骤 | 别名 | Playbook |
+|------|------|----------|
+| `01` | `prepare` | `01.prepare.yml` |
+| `02` | `etcd` | `02.etcd.yml` |
+| `03` | `container-runtime` | `03.runtime.yml` |
+| `04` | `kube-master` | `04.kube-master.yml` |
+| `05` | `kube-node` | `05.kube-node.yml` |
+| `06` | `network` | `06.network.yml` |
+| `07` | `cluster-addon` | `07.cluster-addon.yml` |
+| `90` | `all` | `90.setup.yml` |
+| `10` | `ex-lb` | `10.ex-lb.yml` |
+| `11` | `harbor` | `11.harbor.yml` |
+
+**运维命令：**
+
 | 操作 | 命令 | Playbook |
 |------|------|----------|
-| 一键安装 | `kubecli setup <cluster> 90` 或 `all` | `90.setup.yml` |
-| 启动 / 停止 | `kubecli start` / `stop` | `91.start.yml` / `92.stop.yml` |
-| 备份 / 恢复 | `kubecli backup` / `restore` | `94.backup.yml` / `95.restore.yml` |
-| 升级 | `kubecli upgrade` | `93.upgrade.yml` |
-| 证书轮换 | `kubecli kca-renew <cluster>` | `96.update-certs.yml` |
-| 销毁 | `kubecli destroy <cluster>` | `99.clean.yml` |
+| 启动 / 停止 | `kubecli start` / `stop` `<cluster>` | `91.start.yml` / `92.stop.yml` |
+| 备份 / 恢复 | `kubecli backup` / `restore` `<cluster>` | `94.backup.yml` / `95.restore.yml` |
+| 升级 | `kubecli upgrade` `<cluster>` | `93.upgrade.yml` |
+| 证书轮换 | `kubecli kca-renew` `<cluster>` | `96.update-certs.yml` |
+| 销毁 | `kubecli destroy` `<cluster>` | `99.clean.yml` |
+| 一键全量安装 | `kubecli setup <cluster> 90` 或 `all` | `90.setup.yml` |
 
-扩缩容：
+**扩缩容：**
 
-```bash
-kubecli add-node <cluster> <ip...>
-kubecli add-master <cluster> <ip...>
-kubecli add-etcd <cluster> <ip...>
-kubecli del-node <cluster> <ip...>
-# del-master / del-etcd 同理
-```
+| 操作 | 命令 | Playbook |
+|------|------|----------|
+| 加 etcd / master / node | `kubecli add-etcd` / `add-master` / `add-node` `<cluster> <ip...>` | `21.addetcd.yml` / `23.addmaster.yml` / `22.addnode.yml` |
+| 删 etcd / master / node | `kubecli del-etcd` / `del-master` / `del-node` `<cluster> <ip...>` | `31.deletcd.yml` / `33.delmaster.yml` / `32.delnode.yml` |
 
 切换当前操作集群：
 
@@ -2324,13 +1860,16 @@ kubecli list
 kubecli checkout <cluster>
 ```
 
+用户 kubeconfig 管理见 `kubecli kcfg-adm`（非 playbook 生命周期步骤）。
+
 ## 1.6、验收建议
 
-1. `kubectl get nodes` 全部 Ready；系统 Pod Running。
-2. Node Allocatable：见 §1.1.4.7，或执行 `bash tests/helpers/verify-node-reserved.sh clusters/<cluster>/kubectl.kubeconfig`。
-3. 业务镜像应来自 `registry.talkschool.cn:5000/brinnatt/...`，避免节点直连外网导致版本漂移。
-4. 企业级矩阵见 `tests/enterprise-test-matrix.yaml`（交付回归参考）。
+1. `kubectl get nodes` 全部 Ready；`kube-system`（及所选 CNI / addon 命名空间）系统 Pod Running。
+2. 已启用 metrics-server 时：`kubectl top nodes` 有输出；APIService `v1beta1.metrics.k8s.io` Available。
+3. Node Allocatable：见 §1.1.4.7，或执行 `bash tests/helpers/verify-node-reserved.sh clusters/<cluster>/kubectl.kubeconfig`。
+4. 业务与插件镜像应来自 `registry.talkschool.cn:5000/brinnatt/...`；非默认 CNI / 可选 addon 须已执行对应 `download -E`。
+5. 企业级矩阵见 `tests/enterprise-test-matrix.yaml`（交付回归参考）。
 
 ---
 
-**文档修订说明：** 本节由早期 README 运维内容整理而来，已按当前默认版本（Kubernetes v1.33.6）、CRI（containerd / docker+cri-dockerd）与 Node Allocatable 默认策略校准。架构与六仓协同详见技术白皮书与开发手册。
+**文档修订说明：** 本节由早期 README 运维内容整理而来，已按当前默认版本（Kubernetes v1.33.6）、CRI（containerd / docker+cri-dockerd）、CNI 五选一与 Node Allocatable 默认策略校准。架构与六仓协同详见技术白皮书与开发手册。

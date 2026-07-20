@@ -77,8 +77,8 @@ etcd 集群基于 Raft 共识协议。稳态下成员角色为：
 当存活成员 < quorum 时：
 
 - 集群**无法选出或维持 Leader**（或无法提交新日志）。
-- 客户端写入失败；Kubernetes 侧表现为创建/更新资源超时、Lease 无法续约、控制器停摆。
-- 这不是「自动降级为只读副本集群」的魔法模式——运维必须恢复成员或从快照重建。
+- 客户端写入失败；Kubernetes 侧表现为创建/更新资源超时、Lease 无法续约、控制器停止协调。
+- 集群**不会**自动降级为只读模式；运维须恢复成员 quorum 或从快照重建。
 
 ```mermaid
 flowchart TB
@@ -391,6 +391,17 @@ sequenceDiagram
 
 ---
 
+### 5.9.5 与安装步骤的对应关系
+
+| CLI 步骤 | Playbook | 说明 |
+|----------|----------|------|
+| `02` | `02.etcd.yml` | 全新集群；`CLUSTER_STATE=new` |
+| `21` | `21.addetcd.yml` | 扩容；`kubecli add-etcd`；`CLUSTER_STATE=existing` |
+| `94` / `95` | `94.backup.yml` / `95.restore.yml` | 快照备份与协同恢复 |
+| `96` | `96.update-certs.yml` | 证书轮换；`ETCD_SKIP_RESTART` 两阶段屏障 |
+
+步骤 `02` 在 `90.setup.yml` 中位于 `prepare` 之后、`containerd` 之前；Calico 默认以 **etcdv3** 读取网络状态（与 apiserver 所用 etcd 集群相同，经独立客户端证书 `calico.pem` 访问）。
+
 ## 5.10 与 apiserver、监控的衔接
 
 - **控制面**：`roles/kube-master/vars/main.yml` 组装 `ETCD_ENDPOINTS`；无 etcd 则 apiserver 无法持久化。
@@ -419,7 +430,7 @@ sequenceDiagram
 ## 5.12 常见问题（FAQ）
 
 **Q1：为什么不能用 2 节点 etcd「先省一台」？**  
-A：quorum=2，任一故障即失多数。你以为做了 HA，实际可用性与单节点相同，却多了复制复杂度。
+A：quorum=2，任一故障即失多数。可用性与单节点相当，却增加复制与运维复杂度。
 
 **Q2：本机 `http://127.0.0.1:2379` 是否不安全？**  
 A：它只绑定回环，不对外暴露。风险面是「本机任意进程可无 TLS 访问 etcd」。生产主机应限制登录与本地恶意进程；远程访问仍必须 HTTPS+客户端证。不要把 HTTP 加到 `advertise-client-urls`。

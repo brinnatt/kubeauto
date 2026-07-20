@@ -230,7 +230,7 @@ keepalived 通过 `vrrp_track_process` 跟踪 l4lb 进程：l4lb 不健康时降
 | 某 worker 上 kube-lb 挂了 | 仅该节点失联 API | 其它节点不受影响 | 不是全集群故障 |
 | ex-lb 主节点宕机 | VIP 漂移到 backup | keepalived + 跟踪 l4lb | 节点侧流量不变 |
 | l4lb 死但 VIP 未切 | 北向入口黑洞 | `vrrp_track_process` 降低此风险；仍需监控 | 单靠 VRRP 不够 |
-| etcd 失多数 | 全集群无法持久化写入 | **无自动魔法**——保 quorum / 恢复 | LB 再多也救不了 |
+| etcd 失多数 | 全集群无法持久化写入 | **无自动恢复机制**——须保 quorum 或从快照恢复 | LB 不能替代 etcd 修复 |
 | 证书 SAN 无 VIP | 外部客户端 TLS 失败 | 规划 SAN；重签 | 看起来像「网络不通」 |
 | 增减 master 未刷新 kube-lb | failover 变慢或容量不足 | manager 流程触发刷新 | 易被忽略的静默问题 |
 
@@ -339,6 +339,14 @@ systemctl start kube-apiserver
 安装总序（概念）：证书（deploy）→ … → **kube-lb** 与 **kube-master**（多 master 时常 `serial:1`）→ kube-node。没有本机 LB，节点 kubeconfig 指向 127.0.0.1 会失败。
 
 ---
+
+### 7.11.1 与安装步骤的对应关系
+
+| CLI 步骤 | Playbook | 说明 |
+|----------|----------|------|
+| `04` / `05` | `04.kube-master.yml` / `05.kube-node.yml` | 各节点安装 `kube-lb`；改写 kubeconfig → `127.0.0.1:6443` |
+| `10` | `10.ex-lb.yml` | 可选北向 VIP；不在 `90` 默认路径内 |
+| `90` | `90.setup.yml` | 总装含 kube-lb；不含 ex-lb |
 
 ## 7.12 选型建议
 

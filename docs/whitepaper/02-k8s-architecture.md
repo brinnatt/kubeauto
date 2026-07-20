@@ -69,7 +69,7 @@ flowchart TB
 
 ### 2.2.2 节点
 
-节点可以是物理机或虚拟机。每个节点由控制面管理，并包含运行 Pod 所需的服务（kubelet、容器运行时、网络插件等）。学习或资源受限环境可以只有一个节点；生产环境通常有多个节点。
+节点可以是物理机或虚拟机。每个节点由控制面管理，并包含运行 Pod 所需的服务（kubelet、容器运行时、网络插件等）。资源受限或实验环境可以只有一个节点；生产环境通常有多个节点。
 
 关于 Node 对象、自注册、Ready 条件与心跳，见第 4 章与官方 [Nodes](https://kubernetes.io/docs/concepts/architecture/nodes/)。
 
@@ -126,8 +126,9 @@ kubeauto **不使用 kubeadm**。控制面与节点组件以**二进制 + system
 | kube-proxy | systemd + 配置文件 | `roles/kube-node` |
 | 容器运行时 | containerd 或 dockerd + cri-dockerd | `roles/containerd` / `roles/docker` |
 | apiserver 本机入口 | kube-lb（nginx stream，监听 `127.0.0.1:6443`） | `roles/kube-lb` |
+| 默认 CNI | Calico **v3.28.4**，**etcdv3** 数据存储（非 KDD） | `roles/calico`；`playbooks/06.network.yml` |
 
-默认版本基线见附录 A（编写时：Kubernetes **v1.33.6**）。证书目录默认 `/etc/kubernetes/ssl`（`ca_dir`），apiserver 安全端口默认 `SECURE_PORT=6443`。
+默认版本基线见附录 A（编写时：Kubernetes **v1.33.6**，containerd **2.1.4**，etcd **v3.6.4**）。证书目录默认 `/etc/kubernetes/ssl`（`ca_dir`），apiserver 安全端口默认 `SECURE_PORT=6443`。
 
 ### 2.5.1 与 kubeadm 默认形态的差异
 
@@ -138,9 +139,24 @@ kubeauto **不使用 kubeadm**。控制面与节点组件以**二进制 + system
 | 安装入口 | `kubeadm init/join` | `kubecli setup` → Ansible playbooks |
 | 本机访问 apiserver | 视配置而定 | 节点组件统一经 `https://127.0.0.1:6443`（kube-lb） |
 
-该差异是交付架构选择，不是「未完成的 kubeadm 封装」。升级、证书轮换由本仓库 `93` / `96` 等 playbook 承担。
+该差异是交付架构选择，不是 kubeadm 封装未完成。升级、证书轮换由本仓库 `93` / `96` 等 playbook 承担。
 
-### 2.5.2 一键安装顺序
+### 2.5.2 安装步骤 01–07 与 90/all
+
+分步安装与一键总装映射如下（CLI：`kubecli setup <cluster> <step>`，定义于 `service/cluster/manager.py`）：
+
+| 步骤 | Playbook | 主要角色 / 任务 |
+|------|----------|-----------------|
+| `01` | `01.prepare.yml` | 可选 `chrony` → `deploy`（CA / kubeconfig）→ `prepare` |
+| `02` | `02.etcd.yml` | `etcd` |
+| `03` | `03.runtime.yml` | `containerd`（默认）或 `docker` |
+| `04` | `04.kube-master.yml` | `kube-lb` → `kube-master` → `kube-node`（`serial: 1`） |
+| `05` | `05.kube-node.yml` | worker：`kube-lb` → `kube-node` |
+| `06` | `06.network.yml` | CNI（默认 `calico`，etcdv3 后端） |
+| `07` | `07.cluster-addon.yml` | `cluster-addon` |
+| `90` / `all` | `90.setup.yml` | 下列总装流程 |
+
+### 2.5.3 一键安装顺序（90.setup.yml）
 
 `playbooks/90.setup.yml`（与分步 `01`–`07` 等价）顺序为：
 
@@ -159,7 +175,9 @@ flowchart TD
 
 对 `kube_master` 使用 `serial: 1`，以避免多 master 并行 bootstrap 时 Service IP 分配器竞态。细节见第 3、7 章。
 
-## 2.6 生产观测入口
+**说明：** 步骤 `01` 已包含 `deploy`（签发 CA 与组件 kubeconfig）；步骤 `04` 不再重复 deploy，但会签发 `kubernetes.pem` 并启动控制面 systemd 单元。
+
+## 2.6 生产观测与验收入口
 
 安装完成后，可用下列命令核对架构是否按预期落地（控制节点配置好 `KUBECONFIG`）：
 
@@ -178,6 +196,13 @@ systemctl is-active containerd   # 或 docker / cri-dockerd
 crictl info
 journalctl -u kubelet -n 50 --no-pager
 ```
+
+### 2.6.1 架构签收要点
+
+- [ ] 控制面组件以 systemd 托管（非 static Pod）；worker 上不存在 `ca-key.pem`。
+- [ ] 各节点 `ss -lntp` 可见 `127.0.0.1:6443`（kube-lb）与 `inventory_hostname:6443`（apiserver，仅 master）。
+- [ ] 默认 Calico 时，网络插件使用 etcdv3 数据存储；`calico-node` 在 kube-system Running。
+- [ ] `kubectl get --raw=/readyz?verbose` 返回各子检查 OK。
 
 ## 2.7 本章与后续章节
 

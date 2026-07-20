@@ -15,7 +15,7 @@
 | 1.23 | 仍可用；迁移文档已成熟 |
 | **1.24** | dockershim 从 kubelet 中移除 |
 
-官方生产要求可概括为：选择实现了 CRI 的运行时，并保证其与 kubelet 的 **cgroup 驱动一致**。本项目默认选择 containerd；在需要保留 Docker Engine 工作流时，可选 docker + cri-dockerd。
+官方生产要求可概括为：选择实现了 CRI 的运行时，并保证其与 kubelet 的 **cgroup 驱动一致**。本项目以 **二进制 + systemd** 安装运行时（**不使用 kubeadm**），默认选择 containerd；在需要保留 Docker Engine 工作流时，可选 docker + cri-dockerd。
 
 ## 8.2 CRI：RuntimeService 与 ImageService
 

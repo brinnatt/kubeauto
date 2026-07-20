@@ -7,11 +7,17 @@
 
 控制面、CRI 与 CNI 就绪后，集群仍缺少多项日常运维能力：资源指标、可视化、监控告警、HTTP 入口、动态存储供给等。官方将这类扩展统称为 **Cluster Addons（插件）**：它们不是控制面核心组件，但通过 Deployment / DaemonSet / Helm Chart 等形式扩展集群功能。
 
-本项目由 **`roles/cluster-addon`** 在 `playbooks/07.cluster-addon.yml` / `90.setup.yml` 末段统一安装。DNS（CoreDNS / NodeLocal）亦属 addon，机制见第 10 章；本章聚焦指标、监控、入口、存储与相关安全约定。
+本项目由 **`roles/cluster-addon`** 在 **`playbooks/07.cluster-addon.yml`**（setup 步骤 **07**）及 `90.setup.yml` 末段统一安装。Pod 网络（CNI）已在步骤 **06**（`06.network.yml`）完成；addon 阶段假定节点 Ready 且 CNI 可用。DNS（CoreDNS / NodeLocal DNSCache，`169.254.20.10`）亦在本阶段安装，机制见第 10 章；本章聚焦指标、监控、入口、存储与相关安全约定。
+
+| Setup 步骤 | Playbook | 与本章关系 |
+|------------|----------|------------|
+| `06` / `network` | `06.network.yml` | CNI 就绪（前置条件） |
+| `07` / `cluster-addon` | `07.cluster-addon.yml` | 本章所述插件 |
 
 ```mermaid
 flowchart TB
-  BASE[节点 Ready + CNI] --> ADD[cluster-addon]
+  NET[06 network CNI Ready] --> ADD[07 cluster-addon]
+  ADD --> BASE[节点 Ready + Pod 网络]
   ADD --> DNS[CoreDNS / NodeLocalDNS]
   ADD --> MS[metrics-server]
   ADD --> OPT{config.yml 开关}

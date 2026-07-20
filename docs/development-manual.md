@@ -4,7 +4,7 @@
 
 配套文档：
 
-- [运维操作手册](./operations-manual.md)
+- [操作手册](./operations-manual.md)
 - [技术白皮书总册](./technical-whitepaper.md)（分章见 [`whitepaper/`](./whitepaper/)，含证书/监控/CNI 等原理级说明）
 - 仓库入口：[README.md](../README.md)
 
@@ -12,7 +12,7 @@
 
 ---
 
-## 3.1、五分钟心智模型
+## 3.1、开发流程概览
 
 ```mermaid
 flowchart LR
@@ -23,7 +23,7 @@ flowchart LR
   LAB --> PR[提 PR / 发版]
 ```
 
-记住三件事：
+关键约束：
 
 1. **逻辑在 kubeauto，制品在五个 dockerfile 仓**；改镜像标签必须两边一起改。
 2. **版本真相源是 `common/constants.py`**；六仓同步测试会对照 sibling 仓。

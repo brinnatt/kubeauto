@@ -155,6 +155,16 @@ flowchart TB
 
 ## 10.7 本项目实现
 
+### 10.7.0 安装阶段（06 network / 07 addon）
+
+| 阶段 | Playbook / 步骤 | DNS 相关行为 |
+|------|-----------------|--------------|
+| **06 network** | `06.network.yml` | 仅 CNI；**不**安装 CoreDNS / NodeLocal |
+| **07 cluster-addon** | `07.cluster-addon.yml` | `dns_install: "yes"` 时安装 CoreDNS + NodeLocal |
+| **kube-ovn 例外** | `roles/kube-ovn`（步骤 06） | 可预装 CoreDNS / NodeLocal；addon **检测去重** |
+
+因此：节点在步骤 06 完成后可 Ready，但集群服务发现依赖步骤 **07**（或 kube-ovn 预装路径）。Hubble UI 等 addon 子任务在 CoreDNS Ready 后再做等待。
+
 ### 10.7.1 开关与地址约定
 
 | 项 | 值 |

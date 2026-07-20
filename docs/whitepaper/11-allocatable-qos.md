@@ -51,7 +51,7 @@ pie showData
   "eviction 及其他余量" : 1
 ```
 
-以现场 `kubectl describe node` 与验收脚本为准；示意图仅建立数量级直觉。
+以现场 `kubectl describe node` 与验收脚本为准；下图为容量结构示意，非精确数值。
 
 ## 11.3 kubeReserved 与 systemReserved
 

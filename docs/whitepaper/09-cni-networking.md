@@ -130,7 +130,7 @@ Calico 优先以路由方式实现 Pod 连通，必要时使用隧道封装。
 | 模式 | 机制 |
 |------|------|
 | **BGP**（常配合 bird） | 节点通过 BGP 宣告 Pod 子网；同二层/可路由 fabric 上可无封装转发 |
-| **IPIP** | 将原 IP 包再封装进另一层 IP；适合跨子网且底层不传播容器路由的环境 |
+| **IPIP** | 将原 IP 包再封装进另一层 IP（**IP 协议号 4**）；接口常为 `tunl0`。**不是 GRE**（协议号 47） |
 | **VXLAN** | 基于 UDP 的覆盖封装；穿越更苛刻底层网络时常见 |
 | **CrossSubnet / Always / Never** | 按「同子网直连、跨子网封装」折中，减少不必要隧道 |
 
@@ -209,13 +209,22 @@ CNI 完成前的 NotReady 是官方预期，不是安装失败。
 | 角色 | `roles/calico` |
 | 清单 | `templates/calico-v3.28.yaml.j2` 等 |
 | 镜像 | `brinnatt/calico-{node,cni,kube-controllers}` |
-| Overlay | `CALICO_ENABLE_OVERLAY`：`Always` / `CrossSubnet` / `Never` |
+| **数据存储** | **etcdv3**（`calicoctl.cfg.j2` 中 `datastoreType: etcdv3`）；**非** Kubernetes CRD（KDD）模式 |
+| Overlay | `CALICO_ENABLE_OVERLAY`：`Always` / `CrossSubnet` / `Never`（映射 IPIP/VXLAN 池策略） |
 | Backend | `CALICO_NETWORKING_BACKEND`：`bird` / `vxlan` / `none` |
 | 网卡探测 | `IP_AUTODETECTION_METHOD`（如 `can-reach=<首 master>`） |
 | RR | `CALICO_RR_ENABLED`、`CALICO_RR_NODES` |
-| 数据面协作 | 可与 etcd 协作（calicoctl / etcdv3、节点证书 `/etc/calico/ssl`） |
+| 证书与工具 | 节点 `/etc/calico/ssl/`；`calicoctl` + `/etc/calico/calicoctl.cfg` |
 
-安装语义：控制节点生成密钥与清单并 `kubectl apply`；节点落盘证书；轮询 `calico-node` Running。
+**etcdv3 模式含义：**
+
+- Calico 网络状态写入 **集群 etcd**（与 Kubernetes 数据面共用 etcd 集群，经 TLS 客户端证书访问）。  
+- 未安装 Calico API server / 相关 CRD 时，`kubectl apply` 含 `GlobalNetworkPolicy`、`HostEndpoint` 等 CR 清单会报 `no matches for kind`；**主机侧策略与排障须使用 `calicoctl`**。  
+- 勿与上游「仅 KDD（Kubernetes 数据存储）」架构图混读。
+
+**IPIP 与 GRE：** 本项目 Calico IPIP 使用 **IP-in-IP（proto 4）**，对应 `tunl0`；与 **GRE（proto 47）** 为不同封装。防火墙须按协议号放行，不可混用 GRE 规则。
+
+安装语义：控制节点生成密钥与清单并 `kubectl apply`；节点落盘证书；轮询 `calico-node` Running。安装入口为 **`playbooks/06.network.yml`**（setup 步骤 **06**），与 DNS（步骤 **07**）分离。
 
 `conf/config.yml` 默认示例：`CALICO_ENABLE_OVERLAY: "Always"`、`CALICO_NETWORKING_BACKEND: "bird"`、`CALICO_RR_ENABLED: false`。
 
@@ -283,7 +292,10 @@ A：CNI 正式安装成功后应删除。残留时优先怀疑安装任务未跑
 A：kube-ovn 路径会预装 DNS；`cluster-addon` 检测到已有 CoreDNS 应跳过。
 
 **Q8：防火墙要放行哪些？**  
-A：随模式变化：BGP（TCP 179）、VXLAN（UDP 4789 等）、IPIP（IP proto 4）、Cilium/health 端口等。
+A：随模式变化：BGP（TCP 179）、VXLAN（UDP 4789 等）、IPIP（**IP proto 4**，非 GRE proto 47）、Cilium/health 端口等。
+
+**Q9：Calico 默认是 KDD 还是 etcd？**  
+A：kubeauto 默认为 **etcdv3**。策略与 IP 池管理使用 `calicoctl`；非 KDD 模式下勿依赖 `kubectl apply` Calico CRD 清单。
 
 ## 9.11 参考文档与仓库路径
 
