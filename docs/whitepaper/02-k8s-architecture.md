@@ -36,32 +36,74 @@ Kubernetes 集群由**控制面**（Control Plane）与一个或多个**工作�
 
 ### 2.1.4 架构总览
 
+Kubernetes 的精髓不是「若干守护进程的集合」，而是：
+
+1. **声明式对象模型**：客户端提交*期望状态*（`spec`）；集群持续把*实际状态*（`status` / 节点实况）收敛到期望。  
+2. **单一真相源与单一写入门面**：对象持久化在 **etcd**；**只有 kube-apiserver** 读写 etcd，其余组件一律经 HTTP API（List / Watch / Get / Create / Update / Patch / Delete）。  
+3. **解耦的控制循环**：controller-manager、scheduler、kubelet、kube-proxy 各自对 API 做 ListWatch，独立决策、互不直连。  
+4. **节点只做落地**：调度结果写入 Pod 的绑定信息后，kubelet 通过 **CRI** 启停容器、通过 **CNI** 配置网络，再把状态写回 API。
+
+下图按官方组件边界绘制通信关系（箭头标注的是 API 语义，而非进程间私有协议）：
+
 ```mermaid
-flowchart LR
+flowchart TB
+  subgraph north["北向：声明期望"]
+    CLI["kubectl / CI / 运营自动化"]
+  end
+
   subgraph cp["控制面 Control Plane"]
     direction TB
-    API[kube-apiserver]
-    ETCD[(etcd)]
-    CM[kube-controller-manager]
-    SCH[kube-scheduler]
-    CM -->|API| API
-    SCH -->|API| API
-    API --- ETCD
+    API["kube-apiserver<br/>鉴权 · 准入 · 校验 · 序列化"]
+    ETCD[("etcd<br/>全部 API 对象")]
+    CM["kube-controller-manager<br/>多控制器同进程"]
+    SCH["kube-scheduler"]
+    API -->|"gRPC / HTTP<br/>唯一持久化路径"| ETCD
+    ETCD -->|"watch 通知 / 读"| API
+    CM -->|"ListWatch Deployment/RS/…<br/>Create/Update Pod spec"| API
+    SCH -->|"ListWatch 未绑定 Pod<br/>创建 Binding / 写 nodeName"| API
   end
-  subgraph dp["节点 Node"]
+
+  subgraph node["工作节点 Node（每节点一份）"]
     direction TB
-    KL[kubelet]
-    KP[kube-proxy]
-    RT[Container Runtime]
-    CNI[CNI Plugin]
-    POD[Pods]
-    KL --> RT
-    KL --> CNI
+    KL["kubelet"]
+    KP["kube-proxy"]
+    RT["容器运行时 CRI<br/>containerd / CRI-O …"]
+    CNI["CNI 插件"]
+    POD["Pod：pause 沙箱 + 业务容器"]
+    RULES["Service 数据面<br/>iptables / IPVS / 其他"]
+    KL -->|"CRI：RunPodSandbox<br/>Create/StartContainer"| RT
+    KL -->|"CNI ADD/DEL<br/>分配 Pod IP"| CNI
     RT --> POD
+    CNI --> POD
+    KP --> RULES
   end
-  KL -->|状态上报 / 拉取规范| API
-  KP -->|watch Service/EndpointSlice| API
+
+  CLI -->|"HTTPS REST<br/>create/update/delete/watch"| API
+  KL -->|"ListWatch 本节点 Pod<br/>PATCH Pod.status / Node.status<br/>租约心跳"| API
+  KP -->|"ListWatch Service<br/>+ EndpointSlice"| API
 ```
+
+**组件间通信要点（对照源码职责）：**
+
+| 通路 | 发起方 → 目标 | 机制（概念层） | 不做什么 |
+|------|----------------|----------------|----------|
+| 持久化 | apiserver ↔ etcd | 对象编解码后写入键值；版本与资源版本（resourceVersion）由 API 语义保证 | 其他组件**永不**直连 etcd |
+| 协调 | controller-manager → apiserver | Informer ListWatch；例如 ReplicaSet 控制器把副本数收敛为 Pod 对象 | 不启动容器、不选节点 |
+| 调度 | scheduler → apiserver | 监视 `spec.nodeName` 为空的 Pod；写 Binding 或等价字段完成绑定 | 不调用 CRI/CNI |
+| 执行 | kubelet → apiserver | 监视分配到本节点的 Pod；同步后更新 `status`；维护 Node 条件与租约 | 不修改他人节点上的 Pod |
+| 运行时 | kubelet → CRI | gRPC：沙箱与容器生命周期、镜像拉取 | kubelet 不直接操作容器引擎私有 API（经 CRI） |
+| 网络 | kubelet → CNI | 插件可执行文件：为沙箱配置接口与 IP | 跨节点连通由 CNI 实现，非 apiserver |
+| 服务 | kube-proxy → apiserver | ListWatch Service / EndpointSlice，在本机编程转发规则 | 不负责 Pod IP 分配 |
+
+读图时抓住一条主链路即可理解排障分层：
+
+```text
+写入期望 → etcd 落盘 → 控制器生成/调整 Pod
+       → 调度器绑定节点 → kubelet 经 CRI/CNI 落地
+       → status 回写 API → 控制器继续收敛
+```
+
+更细的时序见 §2.3.1；本项目中节点访问 apiserver 默认经本机 kube-lb（`127.0.0.1:6443`），见第 7 章与 §2.5。
 
 ## 2.2 控制面与节点的职责边界
 
