@@ -29,7 +29,7 @@ flowchart LR
 | kubeauto | （逻辑仓库） | CLI、roles、playbooks、conf 模板 |
 | kubeauto-dockerfile | `brinnatt/kubeauto:<v_kubeauto>` | PyInstaller / 打包产品载体 |
 | kubeauto-k8s-bin-dockerfile | `brinnatt/kubeauto-k8s-bin:<v_k8s_bin>` | Kubernetes 官方二进制 `/k8s` |
-| kubeauto-ext-bin-dockerfile | `brinnatt/kubeauto-ext-bin:<v_extra_bin>` | etcd、containerd、runc、CNI、helm、crictl、cfssl、calicoctl 等 |
+| kubeauto-ext-bin-dockerfile | `brinnatt/kubeauto-ext-bin:<v_extra_bin>` | etcd、containerd、runc、CNI、helm、crictl、**nerdctl**（minimal）、cfssl、calicoctl 等 |
 | kubeauto-ext-bin-sp1-dockerfile | `brinnatt/kubeauto-ext-bin-sp1:<v_extra_bin_sp1>` | nginx、chrony、keepalived（被 ext-bin Dockerfile COPY） |
 | kubeauto-ext-images-dockerfile | 各 `brinnatt/<组件>:<tag>` | Calico、CoreDNS、Prometheus 栈、Ingress 等生态镜像 |
 

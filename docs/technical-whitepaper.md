@@ -24,7 +24,7 @@
 
 kubeauto 以 **`kubecli`（Python）+ Ansible 角色** 在目标主机上以 **二进制 + systemd** 方式安装 Kubernetes 与生态组件，**不依赖 kubeadm**；制品由 **六仓 dual-push** 生产，经控制节点本地 Registry 离线分发；默认启用 Node Allocatable（合计约 2 CPU + 4Gi 预留，systemReserved 默认不硬限）。
 
-**编写时版本基线：** Kubernetes v1.33.6 · etcd v3.6.4 · Calico v3.28.4 · containerd 2.1.4 · kubeauto v0.1.1（以 `common/constants.py` 与六仓同步测试为准）。
+**编写时版本基线：** Kubernetes v1.33.6 · etcd v3.6.4 · Calico v3.28.4 · containerd 2.1.4 · nerdctl 2.3.4 · ext-bin 1.14.0 · kubeauto v0.1.1（以 `common/constants.py` 与六仓同步测试为准）。
 
 ---
 
@@ -119,7 +119,7 @@ flowchart TB
 
 ### 2.4.3、运行时与网络
 
-- 默认 containerd；可选 docker + cri-dockerd（对接官方 CRI 演进）。
+- 默认 containerd（随包分发 **nerdctl 2.3.4**，`roles/containerd` 安装到 master/worker）；可选 docker + cri-dockerd（对接官方 CRI 演进）。
 - 默认 Calico（**etcdv3** 数据存储，非 KDD）；另支持 flannel / cilium / kube-router / kube-ovn。
 - CoreDNS + 默认 NodeLocal DNSCache（`169.254.20.10`）。
 

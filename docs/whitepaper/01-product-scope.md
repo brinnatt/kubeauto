@@ -18,7 +18,7 @@ kubeauto 将上述能力收敛为：**一个控制面 CLI（`kubecli`）+ 一套
 | 产品逻辑与编排 | CLI、playbooks、roles、配置模板、测试 | `kubeauto` |
 | 产品运行镜像 | 打包后的 kubeauto（可选容器化控制面） | `kubeauto-dockerfile` |
 | Kubernetes 二进制包 | apiserver/CM/scheduler/kubelet/proxy/kubectl | `kubeauto-k8s-bin-dockerfile` |
-| 扩展二进制包 | etcd、containerd、runc、CNI、helm、crictl、cfssl、calicoctl 等 | `kubeauto-ext-bin-dockerfile` |
+| 扩展二进制包 | etcd、containerd、runc、CNI、helm、crictl、nerdctl、cfssl、calicoctl 等 | `kubeauto-ext-bin-dockerfile` |
 | 源码编译补充包 | nginx(stream)、chrony、keepalived | `kubeauto-ext-bin-sp1-dockerfile` |
 | 组件镜像集 | 全部 `brinnatt/<name>:<tag>` | `kubeauto-ext-images-dockerfile` |
 | 文档三件套 | 操作 / 白皮书 / 开发 | `kubeauto/docs/` |
@@ -31,7 +31,7 @@ kubeauto 将上述能力收敛为：**一个控制面 CLI（`kubecli`）+ 一套
 | 类别 | 默认值 | 声明 / 落地 |
 |------|--------|-------------|
 | Kubernetes | **v1.33.6** | `v_k8s_bin` → `K8S_VER` |
-| 容器运行时 | **containerd 2.1.4**（ext-bin） | `CONTAINER_RUNTIME=containerd`；可选 `docker` + cri-dockerd |
+| 容器运行时 | **containerd 2.1.4**（ext-bin）+ **nerdctl 2.3.4** | `CONTAINER_RUNTIME=containerd`；可选 `docker` + cri-dockerd |
 | CNI | **Calico v3.28.4** | `CLUSTER_NETWORK=calico`；数据存储为 **etcdv3**（`roles/calico/templates/calicoctl.cfg.j2`），**非** Kubernetes Datastore（KDD） |
 | etcd | **v3.6.4** | ext-bin；`roles/etcd` |
 | apiserver 本机入口 | **kube-lb** `127.0.0.1:6443` | `roles/kube-lb` |

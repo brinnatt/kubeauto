@@ -60,7 +60,7 @@
 
 ## 版本基线（编写时）
 
-以 `KubeConstant` 为准：Kubernetes **v1.33.6**，Calico **v3.28.4**，containerd **2.1.4**（ext-bin），etcd **v3.6.4**，kubeauto **v0.1.1**。数字变更时以代码与六仓同步测试为准，并应同步修订本白皮书版本矩阵。
+以 `KubeConstant` 为准：Kubernetes **v1.33.6**，Calico **v3.28.4**，containerd **2.1.4**（ext-bin），nerdctl **2.3.4**（ext-bin minimal），etcd **v3.6.4**，ext-bin **1.14.0**，kubeauto **v0.1.1**。数字变更时以代码与六仓同步测试为准，并应同步修订本白皮书版本矩阵。
 
 ## 官方规范对齐声明
 

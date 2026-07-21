@@ -256,8 +256,9 @@ flowchart TD
 
 ### 3.8.3、kubeauto-ext-bin-dockerfile
 
-- 聚合 etcd、containerd、runc、CNI、helm、crictl、calicoctl、cfssl，并 `COPY` sp1 产物。
-- `EXT_BIN_VER` 必须等于 `v_extra_bin`；嵌入的 `kubeauto-ext-bin-sp1:<tag>` 必须等于 `v_extra_bin_sp1`。
+- 聚合 etcd、containerd、runc、CNI、helm、crictl、**nerdctl**（minimal）、calicoctl、cfssl，并 `COPY` sp1 产物。
+- `EXT_BIN_VER` 必须等于 `v_extra_bin`；`NERDCTL_VER` 必须等于 `v_nerdctl`；嵌入的 `kubeauto-ext-bin-sp1:<tag>` 必须等于 `v_extra_bin_sp1`。
+- **禁止**打包 `nerdctl-full`（会与本仓 containerd/runc/CNI 钉扎冲突）。
 
 ### 3.8.4、kubeauto-ext-bin-sp1-dockerfile
 

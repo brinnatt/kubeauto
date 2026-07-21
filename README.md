@@ -2,7 +2,7 @@
 
 kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装与配置由 Ansible 角色落地，集群生命周期由 Python 控制面（`kubecli`）编排。项目采用**二进制 + systemd** 方式安装控制面与节点组件（不依赖 kubeadm），并通过配套镜像仓实现离线制品分发。
 
-当前默认栈（以 `common/constants.py` 为准）：**Kubernetes v1.33.6** · **etcd v3.6.4** · **Calico v3.28.4** · **containerd（默认 CRI）** · **Node Allocatable 默认开启**。
+当前默认栈（以 `common/constants.py` 为准）：**Kubernetes v1.33.6** · **etcd v3.6.4** · **Calico v3.28.4** · **containerd（默认 CRI）** · **nerdctl 2.3.4** · **Node Allocatable 默认开启**。
 
 ---
 
@@ -50,7 +50,7 @@ flowchart LR
 ### 1.1、能力摘要
 
 - 一键 / 分步安装：prepare → etcd → runtime → master → node → network → addon
-- 运行时：containerd（默认）或 docker + cri-dockerd
+- 运行时：containerd（默认，含 nerdctl）或 docker + cri-dockerd
 - 网络：calico（默认）、flannel、cilium、kube-router、kube-ovn
 - 高可用：集成 kube-lb（默认）或外置 keepalived + nginx
 - 可选插件：Dashboard、Prometheus、Ingress、存储（local-path / NFS / OpenEBS）、MinIO 等
@@ -64,7 +64,7 @@ flowchart LR
 | **kubeauto**（本仓） | CLI、Ansible、配置模板、测试与文档 |
 | kubeauto-dockerfile | 产品镜像打包 |
 | kubeauto-k8s-bin-dockerfile | Kubernetes 二进制包 |
-| kubeauto-ext-bin-dockerfile | etcd / containerd / helm / cfssl 等 |
+| kubeauto-ext-bin-dockerfile | etcd / containerd / nerdctl / helm / cfssl 等 |
 | kubeauto-ext-bin-sp1-dockerfile | nginx / chrony / keepalived（源码构建） |
 | kubeauto-ext-images-dockerfile | 生态组件镜像 `brinnatt/*` |
 
@@ -127,6 +127,8 @@ Node Allocatable 默认策略见操作手册 [§1.1.4](./docs/operations-manual.
 | etcd | v3.6.4（ext-bin） |
 | Calico | v3.28.4 |
 | containerd | 2.1.4（ext-bin） |
+| nerdctl | 2.3.4（ext-bin minimal；`v_nerdctl`） |
+| ext-bin 包 | 1.14.0（`v_extra_bin`） |
 | 六仓同步测试 | `tests/unit/test_six_repo_version_sync.py` |
 | 单测入口 | `bash tests/run_unit_tests.sh` |
 | 企业矩阵 | `tests/enterprise-test-matrix.yaml` |
