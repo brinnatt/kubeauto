@@ -103,7 +103,7 @@ tier1_jumper:
 tier2_matrix:
   runtime:
     - {id: T2-RT-01, value: containerd, status: pass}
-    - {id: T2-RT-01b, value: "nerdctl on master+worker (ext-bin minimal, containerd path)", status: pending, evidence: "tests/unit/test_nerdctl.py + test_six_repo_version_sync NERDCTL_VER; requires rebuild brinnatt/kubeauto-ext-bin:1.14.0"}
+    - {id: T2-RT-01b, value: "nerdctl on master+worker (ext-bin minimal, containerd path)", status: pass, evidence: "nerdctl-gate 20260721: wipe→download -e 1.14.0→aio+nerdctl-mw(147 master/133 worker); nerdctl 2.3.4 ↔ containerd 2.1.4; sudo/rootful info+k8s.io ps+crictl OK; docker role untouched; unit 78 OK; log /tmp/kubeauto-nerdctl-gate-resume-20260721-153520.log"}
     - {id: T2-RT-02, value: docker (+cri-dockerd), status: pass, evidence: "deliver-docker 141 SIDE_GATE_PASS 20260718 docker://28.5.2 Ready + cri-dockerd.sock"}
   network:
     - {id: T2-NW-01, value: calico (brinnatt/calico-*), status: pass}
