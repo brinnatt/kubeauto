@@ -18,7 +18,7 @@
 
 | 组件 | 版本 | 声明位置 |
 |------|------|----------|
-| ext-bin 镜像 tag | 1.13.1 | `v_extra_bin` |
+| ext-bin 镜像 tag | 1.14.0 | `v_extra_bin` |
 | ext-bin-sp1 镜像 tag | 1.3.1 | `v_extra_bin_sp1` |
 | etcd | v3.6.4 | ext-bin Dockerfile |
 | containerd | 2.1.4 | ext-bin Dockerfile |
@@ -26,6 +26,7 @@
 | CNI plugins | v1.8.0 | ext-bin Dockerfile |
 | helm | v3.19.0 | ext-bin Dockerfile |
 | crictl | v1.34.0 | ext-bin Dockerfile |
+| nerdctl（minimal） | 2.3.4 | `v_nerdctl` / ext-bin Dockerfile |
 | cfssl / cfssljson | v1.6.5 | ext-bin 静态编译 |
 | calicoctl | 随 Calico 版本 | ext-bin |
 

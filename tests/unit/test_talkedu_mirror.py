@@ -41,14 +41,15 @@ class TestTalkeduMirror(unittest.TestCase):
 
     def test_pull_order_talkedu_before_dockerhub(self):
         """CN production: hub.talkedu.cn first, Docker Hub brinnatt/* as fallback."""
-        image = "brinnatt/kubeauto-ext-bin:1.13.1"
+        tag = KubeConstant().v_extra_bin
+        image = f"brinnatt/kubeauto-ext-bin:{tag}"
         talkedu = _talkedu_mirror(image, self.registry)
         candidates = [talkedu, image] if talkedu else [image]
         self.assertEqual(
             candidates,
             [
-                "hub.talkedu.cn/kubeauto/kubeauto-ext-bin:1.13.1",
-                "brinnatt/kubeauto-ext-bin:1.13.1",
+                f"hub.talkedu.cn/kubeauto/kubeauto-ext-bin:{tag}",
+                f"brinnatt/kubeauto-ext-bin:{tag}",
             ],
         )
 

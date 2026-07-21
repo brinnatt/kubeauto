@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 import os
 from common.os import SystemProbe
@@ -44,12 +46,19 @@ class KubeConstant:
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.13.1", metadata={
+    v_extra_bin: str = field(default="1.14.0", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
+        "description": "ext-bin pack tag; includes containerd/crictl/nerdctl/helm/…",
     })
     v_extra_bin_sp1: str = field(default="1.3.1", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin-sp1",
         "description": "Supplement package pulled into kubeauto-ext-bin build",
+    })
+    # Docker-compatible CLI for containerd; shipped via ext-bin (minimal), installed by roles/containerd.
+    # Upstream v2.3.4 supports containerd v1.7 / v2.0 / v2.1 / v2.2 / v2.3 (matches CONTAINERD_VER=2.1.4).
+    v_nerdctl: str = field(default="2.3.4", metadata={
+        "refer_github": "https://github.com/containerd/nerdctl/releases",
+        "description": "Latest stable nerdctl compatible with containerd 2.1.x; minimal tarball only",
     })
     v_harbor: str = field(default="v2.13.0", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
@@ -224,6 +233,15 @@ class KubeConstant:
         return (
             f"https://v6.gh-proxy.org/https://github.com/Mirantis/cri-dockerd/releases/download/"
             f"v{version}/cri-dockerd-{version}.{arch}.tgz"
+        )
+
+    def nerdctl_bin_url(self, version: str | None = None) -> str:
+        """Upstream minimal nerdctl tarball (amd64/arm64); packaged into ext-bin."""
+        ver = (version or self.v_nerdctl).lstrip("v")
+        arch = "amd64" if self.arch in ("x86_64", "amd64") else "arm64"
+        return (
+            f"https://github.com/containerd/nerdctl/releases/download/v{ver}/"
+            f"nerdctl-{ver}-linux-{arch}.tar.gz"
         )
 
     @property

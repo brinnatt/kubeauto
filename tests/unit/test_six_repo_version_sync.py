@@ -61,10 +61,16 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
         self.assertEqual(env(ext, "EXT_BIN_VER"), self.kc.v_extra_bin.lstrip("v"))
         self.assertEqual(env(ext, "DOCKER_COMPOSE_VER"), self.kc.v_docker_compose.lstrip("v"))
+        self.assertEqual(env(ext, "NERDCTL_VER"), self.kc.v_nerdctl.lstrip("v"))
         self.assertEqual(env(sp1, "EXT_BIN_SP1_VER"), self.kc.v_extra_bin_sp1.lstrip("v"))
         m = re.search(r"kubeauto-ext-bin-sp1:([^\s]+)", ext)
         self.assertIsNotNone(m)
         self.assertEqual(m.group(1).lstrip("v"), self.kc.v_extra_bin_sp1.lstrip("v"))
+
+        # nerdctl must be minimal-only in the download script (no full-bundle collision).
+        sh = (EXT_BIN / "multi-platform-download.sh").read_text()
+        self.assertIn("nerdctl-${NERDCTL_VER}-linux-${ARCH}.tar.gz", sh)
+        self.assertNotRegex(sh, r"wget[^\n]*nerdctl-full")
 
     def test_json_mock_dockerfile_pins_node20(self):
         """Dockerfile must stay on Node >=18.13 + pinned json-server (v1.3.1 contract)."""

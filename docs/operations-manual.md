@@ -833,7 +833,7 @@ fio --rw=write --ioengine=sync --fdatasync=1 \
 | 启动Pod        | 无             | crictl runp     | 无                     |
 | 停止Pod        | 无             | crictl stopp    | 无                     |
 
-> 提示：如果你觉得 crictl 和 ctr 不顺手，那就使用 [nerdctl](https://github.com/containerd/nerdctl)，跟 docker 的使用方式一样。
+> 提示：默认 containerd 路径会在 master/worker 安装 [nerdctl](https://github.com/containerd/nerdctl)（与 docker CLI 用法相近），版本钉扎见 `v_nerdctl` / ext-bin。
 
 #### 1.3.3.4、安装 kube_master 节点
 

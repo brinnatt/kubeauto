@@ -172,8 +172,9 @@ kubelet unit 模板 `roles/kube-node/templates/kubelet.service.j2` 按 `CONTAINE
 | CNI | `bin_dir=/opt/cni/bin`，`conf_dir=/etc/cni/net.d` |
 | runc cgroup | **`SystemdCgroup = true`**（与默认 `CGROUP_DRIVER=systemd` 对齐） |
 | Registry | `config_path=/etc/containerd/certs.d` |
-| 二进制来源 | **ext-bin**：containerd **2.1.4**、配套 runc **v1.3.1**、crictl 等 |
+| 二进制来源 | **ext-bin**：containerd **2.1.4**、配套 runc **v1.3.1**、crictl、nerdctl **2.3.4** 等 |
 | crictl | `templates/crictl.yaml.j2` → `/etc/crictl.yaml`，指向同一 socket |
+| nerdctl | `roles/containerd` 分发 `extra-bin/nerdctl` → `{{ bin_dir }}/nerdctl`（master/worker） |
 
 #### Registry：`certs.d` 与 `hosts.toml`
 

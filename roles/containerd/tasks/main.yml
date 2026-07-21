@@ -25,12 +25,23 @@
 - name: download crictl
   copy: src={{ base_dir }}/extra-bin/crictl dest={{ bin_dir }}/crictl mode=0755
 
+- name: download nerdctl
+  copy: src={{ base_dir }}/extra-bin/nerdctl dest={{ bin_dir }}/nerdctl mode=0755
+  tags: upgrade
+
 - name: crictl bash completion
   lineinfile:
     dest: ~/.bashrc
     state: present
     regexp: 'crictl completion'
     line: 'source <(crictl completion bash) # flag by kubeauto'
+
+- name: nerdctl bash completion
+  lineinfile:
+    dest: ~/.bashrc
+    state: present
+    regexp: 'nerdctl completion'
+    line: 'source <(nerdctl completion bash) # flag by kubeauto'
   
 - name: create containerd configuration file
   template: src=config.toml.j2 dest=/etc/containerd/config.toml
