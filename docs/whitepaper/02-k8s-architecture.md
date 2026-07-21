@@ -4,7 +4,7 @@
 
 ## 2.1 概述
 
-Kubernetes 集群由**控制面（Control Plane）**与一个或多个**工作节点（Node）**组成。控制面管理集群的期望状态与全局决策；节点运行工作负载（Pod），并维护容器运行时环境。
+Kubernetes 集群由**控制面**（Control Plane）与一个或多个**工作节点**（Node）组成。控制面管理集群的期望状态与全局决策；节点运行工作负载（Pod），并维护容器运行时环境。
 
 官方组件划分如下（摘自 [Kubernetes Components](https://kubernetes.io/docs/concepts/overview/components/)）：
 
@@ -37,17 +37,19 @@ Kubernetes 集群由**控制面（Control Plane）**与一个或多个**工作�
 ### 2.1.4 架构总览
 
 ```mermaid
-flowchart TB
+flowchart LR
   subgraph cp["控制面 Control Plane"]
+    direction TB
     API[kube-apiserver]
     ETCD[(etcd)]
     CM[kube-controller-manager]
     SCH[kube-scheduler]
-    API --- ETCD
     CM -->|API| API
     SCH -->|API| API
+    API --- ETCD
   end
   subgraph dp["节点 Node"]
+    direction TB
     KL[kubelet]
     KP[kube-proxy]
     RT[Container Runtime]
