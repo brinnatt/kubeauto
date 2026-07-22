@@ -639,3 +639,36 @@ Probe details:
 [2026-07-21 14:31:40] [DEBUG] [common.utils] Executing command: echo alias-ok
 [2026-07-21 14:31:40] [DEBUG] [common.utils] Executing command: echo kubeauto
 [2026-07-21 14:31:40] [DEBUG] [common.utils] Executing command: echo explicit
+[2026-07-22 15:42:09] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-07-22 15:42:09] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-07-22 15:42:09] [INFO] [service.cluster.registry] [REGISTRY] Local registry container exists but is stopped; starting.
+[2026-07-22 15:42:09] [DEBUG] [service.cluster.registry] Local registry is ready (GET /v2/ ok).
+[2026-07-22 15:42:09] [DEBUG] [service.cluster.registry] Local registry is ready (GET /v2/ ok).
+[2026-07-22 15:42:09] [WARNING] [service.cluster.registry] [REGISTRY] Local registry not ready after 0.2s (GET http://127.0.0.1:5000/v2/).
+[2026-07-22 15:42:09] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-22 15:42:09] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-22 15:42:09] [WARNING] [service.cluster.docker] Docker daemon not ready after 0.2s (docker info / SDK ping).
+[2026-07-22 15:42:15] [WARNING] [service.cluster.registry] [REGISTRY] Local registry not ready after 5s (GET http://127.0.0.1:5000/v2/).
+[2026-07-22 15:42:26] [ERROR] [common.ansible_python] Cannot detect ansible-core version on the control node.
+kubeauto selects target Python requirements from the official ansible-core support matrix.
+
+Install Ansible on this host (e.g. kubecli download -a) and verify:
+  ansible --version
+
+Probe details:
+  - command: /usr/bin/ansible
+    error: broken subprocess
+[2026-07-22 15:42:26] [DEBUG] [common.ansible_python] Resolved ansible Python policy for ansible-core 2.16: target module runtime >= 3.8
+[2026-07-22 15:42:26] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-22 15:42:26] [DEBUG] [service.cluster.docker] Docker daemon is ready (SDK ping ok).
+[2026-07-22 15:42:26] [WARNING] [service.cluster.docker] Docker daemon not ready after 0.2s (docker info / SDK ping).
+[2026-07-22 15:42:26] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-07-22 15:42:26] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-07-22 15:42:26] [INFO] [service.cluster.registry] [REGISTRY] Local registry container exists but is stopped; starting.
+[2026-07-22 15:42:26] [DEBUG] [service.cluster.registry] Local registry is ready (GET /v2/ ok).
+[2026-07-22 15:42:26] [DEBUG] [service.cluster.registry] Local registry is ready (GET /v2/ ok).
+[2026-07-22 15:42:26] [WARNING] [service.cluster.registry] [REGISTRY] Local registry not ready after 0.2s (GET http://127.0.0.1:5000/v2/).
+[2026-07-22 15:42:26] [WARNING] [common.utils] run_command(): kwarg 'capture' is deprecated; use 'capture_output' instead.
+[2026-07-22 15:42:26] [DEBUG] [common.utils] Executing command: echo alias-ok
+[2026-07-22 15:42:26] [DEBUG] [common.utils] Executing command: echo kubeauto
+[2026-07-22 15:42:26] [DEBUG] [common.utils] Executing command: echo explicit

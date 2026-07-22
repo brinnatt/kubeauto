@@ -7,7 +7,7 @@
 
 meta:
   version: 3
-  updated: "2026-07-19"
+  updated: "2026-07-22"
   runner: tests/run_enterprise_regression.sh
   regression_log: /tmp/kubeauto-reserved-4g-finish-20260720-103703.log
   regression_result: "RESERVED_4G_PASS — 默认 2CPU+4Gi；aio+docker@133 live PASS；Rocky≈3.5Gi lab SKIP（容量不足属预期）"
@@ -31,6 +31,7 @@ meta:
     2026-07-19：SYS_RESERVED_ENABLED=yes 仍计入 Allocatable；SYS_RESERVED_ENFORCE 默认 no
     （官方 docs 警告 hard-limit system.slice 会饿死 apiserver/etcd；aio 实测 MemoryMax=1000Mi 导致 6443 reset）。
     helm dashboard/prometheus/minio 统一注入 KUBECONFIG（修复 localhost:8080）。
+    2026-07-22：local registry start 后等待 GET /v2/ 就绪（同 Docker daemon wait），修 download -D EOF 时序。
     六仓严禁局部分裂：test_six_repo_version_sync 对账 constants↔ext-images CI↔component_images。
 
 environments:
@@ -59,6 +60,7 @@ tier0_foundation:
   - {id: T0-06, group: G0, desc: all component_images are brinnatt/* + talkedu map, status: pass}
   - {id: T0-07, group: G0, desc: bootstrap-brinnatt-mirrors + download -X/-E, status: pass}
   - {id: T0-08, group: G0, desc: kubecli completion short/long flags, status: pass}
+  - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "registry-ready-gate 20260722: lab-wipe→147 cold -D/-X/-E network-check + warm -X PASS; jumper136 exact-bug cold -D/-X + warm -X PASS (no EOF); unit test_registry_ready 6/6; logs /tmp/kubeauto-registry-ready-gate-20260722-162358.log /tmp/kubeauto-registry-ready-gate-resume-20260722-162514.log /tmp/kubeauto-registry-ready-jumper-20260722-162658.log"}
 
 tier1_commands:
   - {id: T1-G1-01, group: G1, command: version, status: pass}
@@ -67,6 +69,7 @@ tier1_commands:
   - {id: T1-G1-04, group: G1, command: checkout, status: pass}
   - {id: T1-G1-05, group: G1, command: download -X defaults via brinnatt, status: pass}
   - {id: T1-G1-06, group: G1, command: download -E CNI/addons via brinnatt, status: pass}
+  - {id: T1-G1-07, group: G1, command: "download -D/-X after stopped local_registry (HTTP /v2/ wait)", status: pass, evidence: "registry-ready-gate 20260722: lab-wipe→147 cold -D/-X/-E network-check + warm -X PASS; jumper136 exact-bug cold -D/-X + warm -X PASS (no EOF); unit test_registry_ready 6/6; logs /tmp/kubeauto-registry-ready-gate-20260722-162358.log /tmp/kubeauto-registry-ready-gate-resume-20260722-162514.log /tmp/kubeauto-registry-ready-jumper-20260722-162658.log"}
 
   - {id: T1-G2-01, group: G2, cluster: test141, command: setup 90+07+11, status: pass}
   - {id: T1-G2-02, group: G2, cluster: debian150, status: pass}

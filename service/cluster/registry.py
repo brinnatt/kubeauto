@@ -1,6 +1,10 @@
 from common.logger import setup_logger, LOG_STDOUT
 from pathlib import Path
 from typing import List, Optional
+import time
+import urllib.error
+import urllib.request
+
 from .docker import DockerManager
 from common.constants import KubeConstant
 from common.exceptions import CommandExecutionError
@@ -93,57 +97,91 @@ class RegistryManager:
         self.image_dir = Path(self.kube_constant.IMAGE_DIR)
         self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
 
+    def _registry_http_ok(self) -> bool:
+        """Return True if local registry answers Registry HTTP API V2 on loopback :5000."""
+        # Probe 127.0.0.1 (not the hostname) so readiness does not depend on /etc/hosts.
+        url = "http://127.0.0.1:5000/v2/"
+        try:
+            with urllib.request.urlopen(url, timeout=2) as resp:
+                # 200 OK (anonymous) or 401 (auth required) both mean the daemon is listening.
+                return resp.status in (200, 401)
+        except (urllib.error.URLError, TimeoutError, OSError):
+            return False
+
+    def _wait_for_registry_ready(self, timeout: float = 30.0, interval: float = 0.5) -> bool:
+        """Poll until local registry accepts GET /v2/ (same pattern as Docker daemon readiness)."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self._registry_http_ok():
+                logger.debug("Local registry is ready (GET /v2/ ok).")
+                return True
+            time.sleep(interval)
+        logger.warning(
+            f"[REGISTRY] Local registry not ready after {timeout}s (GET http://127.0.0.1:5000/v2/).",
+            extra=LOG_STDOUT,
+        )
+        return False
+
     def start_local_registry(self, version: Optional[str] = None) -> None:
-        """Start local Docker registry (create if missing, start if stopped)."""
+        """Start local Docker registry (create if missing, start if stopped).
+
+        Always waits until the Registry HTTP API responds before returning, so
+        callers (upload / download -D) do not race a just-started container.
+        """
         version = version or self.kube_constant.v_docker_registry
 
         if self.docker.is_container_running("local_registry"):
             logger.warning("[REGISTRY] Local registry already running; skipping.", extra=LOG_STDOUT)
-            return
-
-        if self.docker.container_exists("local_registry"):
+        elif self.docker.container_exists("local_registry"):
             logger.info("[REGISTRY] Local registry container exists but is stopped; starting.", extra=LOG_STDOUT)
             self.docker.start_container("local_registry")
-            return
-
-        # Load registry image if not exists (brinnatt/registry → talkedu first, Docker Hub fallback)
-        registry_image = f"brinnatt/registry:{version}"
-        legacy_image = f"registry:{version}"
-        registry_tar = self.image_dir / f"registry-{version}.tar"
-        if not registry_tar.exists():
-            logger.info(f"[REGISTRY] Pulling registry image {registry_image}.", extra=LOG_STDOUT)
-            self._ensure_image_local(registry_image)
-            self.docker.save_image(registry_image, str(registry_tar))
         else:
-            logger.info(f"[REGISTRY] Loading registry image from cache.", extra=LOG_STDOUT)
-            self.docker.load_image(str(registry_tar))
-            # Legacy caches saved registry:2; retag to brinnatt/registry for talkedu alignment
-            if not self.docker.image_exists(registry_image):
-                if self.docker.image_exists(legacy_image):
-                    self.docker.tag_image(legacy_image, registry_image)
-                else:
-                    self._ensure_image_local(registry_image)
+            # Load registry image if not exists (brinnatt/registry → talkedu first, Docker Hub fallback)
+            registry_image = f"brinnatt/registry:{version}"
+            legacy_image = f"registry:{version}"
+            registry_tar = self.image_dir / f"registry-{version}.tar"
+            if not registry_tar.exists():
+                logger.info(f"[REGISTRY] Pulling registry image {registry_image}.", extra=LOG_STDOUT)
+                self._ensure_image_local(registry_image)
+                self.docker.save_image(registry_image, str(registry_tar))
+            else:
+                logger.info(f"[REGISTRY] Loading registry image from cache.", extra=LOG_STDOUT)
+                self.docker.load_image(str(registry_tar))
+                # Legacy caches saved registry:2; retag to brinnatt/registry for talkedu alignment
+                if not self.docker.image_exists(registry_image):
+                    if self.docker.image_exists(legacy_image):
+                        self.docker.tag_image(legacy_image, registry_image)
+                    else:
+                        self._ensure_image_local(registry_image)
 
-        # Create registry directory
-        registry_data = self.base_data_path / "registry"
-        registry_data.mkdir(parents=True, exist_ok=True)
+            # Create registry directory
+            registry_data = self.base_data_path / "registry"
+            registry_data.mkdir(parents=True, exist_ok=True)
 
-        # Run registry container
-        logger.info(f"[REGISTRY] Starting local registry (image {registry_image}).", extra=LOG_STDOUT)
-        self.docker.run_container(
-            image=registry_image,
-            name="local_registry",
-            publish=["5000:5000"],
-            restart="always",
-            volume=[f"{registry_data}:/var/lib/registry"]
-        )
+            # Run registry container
+            logger.info(f"[REGISTRY] Starting local registry (image {registry_image}).", extra=LOG_STDOUT)
+            self.docker.run_container(
+                image=registry_image,
+                name="local_registry",
+                publish=["5000:5000"],
+                restart="always",
+                volume=[f"{registry_data}:/var/lib/registry"]
+            )
 
-        # Add registry to hosts file
-        hosts_file = Path("/etc/hosts")
-        content = hosts_file.read_text()
-        if "registry.talkschool.cn" not in content:
-            with hosts_file.open("a") as f:
-                f.write("127.0.0.1  registry.talkschool.cn\n")
+            # Add registry to hosts file
+            hosts_file = Path("/etc/hosts")
+            content = hosts_file.read_text()
+            if "registry.talkschool.cn" not in content:
+                with hosts_file.open("a") as f:
+                    f.write("127.0.0.1  registry.talkschool.cn\n")
+
+        if not self._wait_for_registry_ready():
+            raise CommandExecutionError(
+                "Local registry is not ready on :5000 after start. "
+                "Check: docker ps -a --filter name=local_registry && "
+                "curl -v http://127.0.0.1:5000/v2/",
+                1,
+            )
 
     def upload_to_registry(self, images: List[str], *, fail_fast: bool = True) -> None:
         """Upload images to local registry. Logs progress and per-image steps for traceability.
