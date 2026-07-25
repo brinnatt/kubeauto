@@ -1,6 +1,6 @@
 #!/bin/bash
-# Full enterprise regression on 192.168.47.147 — non-interactive, all matrix groups.
-# sudo bash /tmp/regression-147-full.sh
+# Full enterprise regression on 192.168.47.138 — non-interactive, all matrix groups.
+# sudo bash /tmp/regression-full.sh
 set -euo pipefail
 LOG=/var/log/kubeauto-regression-full-$(date +%Y%m%d-%H%M).log
 exec > >(tee -a "$LOG") 2>&1
@@ -78,33 +78,33 @@ pass G1
 echo "========== G5 system SSH + docker =========="
 # 133 may have stale host key after rebuild
 ssh-keygen -R 192.168.47.133 2>/dev/null || true
-run $K system -a --user root --password "$PW" 192.168.47.130-133 192.168.47.140-142 </dev/null
-run $K system -a --user brinnatt --password "$PW" 192.168.47.150 </dev/null
+run $K system -a --user root --password "$PW" 192.168.47.131-137 </dev/null
+run $K system -a --user brinnatt --password "$PW" 192.168.47.128 </dev/null
 # When this script runs under sudo, ansible uses /root/.ssh — ensure root pubkey is on targets.
 if [[ "$(id -u)" -eq 0 ]] && [[ -f /root/.ssh/id_rsa.pub ]]; then
   PUB="$(cat /root/.ssh/id_rsa.pub)"
-  for ip in 192.168.47.130 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.140 192.168.47.141 192.168.47.142; do
+  for ip in 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.134 192.168.47.135 192.168.47.136 192.168.47.137; do
     sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$ip" \
       "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
   done
-  sshpass -p "$PW" ssh -o StrictHostKeyChecking=no brinnatt@192.168.47.150 \
+  sshpass -p "$PW" ssh -o StrictHostKeyChecking=no brinnatt@192.168.47.128 \
     "mkdir -p ~/.ssh; chmod 700 ~/.ssh; grep -qxF '$PUB' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" || true
 fi
 $K docker -l >/dev/null 2>&1 || true
 pass G5-system
 
 echo "========== G2 cluster (re)setup =========="
-# test141 Rocky single + addons
-$K new test141 2>/dev/null || true
-cat > "$BASE/clusters/test141/hosts" <<'EOF'
+# test137 Rocky single + addons
+$K new test137 2>/dev/null || true
+cat > "$BASE/clusters/test137/hosts" <<'EOF'
 [etcd]
-192.168.47.141
+192.168.47.137
 [kube_master]
-192.168.47.141 k8s_nodename='master-141'
+192.168.47.137 k8s_nodename='master-137'
 [kube_node]
-192.168.47.141
+192.168.47.137
 [harbor]
-192.168.47.141 NEW_INSTALL=true
+192.168.47.137 NEW_INSTALL=true
 [ex_lb]
 [chrony]
 [all:vars]
@@ -118,26 +118,26 @@ NODE_PORT_RANGE="30000-32767"
 CLUSTER_DNS_DOMAIN="cluster.local"
 bin_dir="/usr/local/bin"
 base_dir="/usr/local/kubeauto"
-cluster_dir="{{ base_dir }}/clusters/test141"
+cluster_dir="{{ base_dir }}/clusters/test137"
 ca_dir="/etc/kubernetes/ssl"
 k8s_nodename=''
 ansible_user=root
 EOF
-sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test141/config.yml"
-run $K setup test141 90 </dev/null
-run $K setup test141 07 </dev/null
-run $K setup test141 11 </dev/null
-nodes_ready test141 || fail "test141 not Ready"
+sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test137/config.yml"
+run $K setup test137 90 </dev/null
+run $K setup test137 07 </dev/null
+run $K setup test137 11 </dev/null
+nodes_ready test137 || fail "test137 not Ready"
 
-# debian150
-$K new debian150 2>/dev/null || true
-cat > "$BASE/clusters/debian150/hosts" <<'EOF'
+# debian128
+$K new debian128 2>/dev/null || true
+cat > "$BASE/clusters/debian128/hosts" <<'EOF'
 [etcd]
-192.168.47.150
+192.168.47.128
 [kube_master]
-192.168.47.150 k8s_nodename='master-debian'
+192.168.47.128 k8s_nodename='master-debian'
 [kube_node]
-192.168.47.150
+192.168.47.128
 [harbor]
 [ex_lb]
 [chrony]
@@ -152,26 +152,26 @@ NODE_PORT_RANGE="31000-32767"
 CLUSTER_DNS_DOMAIN="cluster.local"
 bin_dir="/usr/local/bin"
 base_dir="/usr/local/kubeauto"
-cluster_dir="{{ base_dir }}/clusters/debian150"
+cluster_dir="{{ base_dir }}/clusters/debian128"
 ca_dir="/etc/kubernetes/ssl"
 k8s_nodename=''
 ansible_user=brinnatt
 ansible_become=true
 ansible_become_method=sudo
 EOF
-sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/debian150/config.yml"
-run $K setup debian150 90 </dev/null
-nodes_ready debian150 || fail "debian150 not Ready"
+sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/debian128/config.yml"
+run $K setup debian128 90 </dev/null
+nodes_ready debian128 || fail "debian128 not Ready"
 
 # test-ded-etcd
 $K new test-ded-etcd 2>/dev/null || true
 cat > "$BASE/clusters/test-ded-etcd/hosts" <<'EOF'
 [etcd]
-192.168.47.142
+192.168.47.136
 [kube_master]
-192.168.47.130 k8s_nodename='master-130'
+192.168.47.134 k8s_nodename='master-134'
 [kube_node]
-192.168.47.130
+192.168.47.131
 [harbor]
 [ex_lb]
 [chrony]
@@ -199,18 +199,19 @@ nodes_ready test-ded-etcd || fail "test-ded-etcd not Ready"
 $K new test-ha 2>/dev/null || true
 cat > "$BASE/clusters/test-ha/hosts" <<'EOF'
 [etcd]
+192.168.47.134
+192.168.47.135
+192.168.47.136
+[kube_master]
+192.168.47.134 k8s_nodename='master-134'
+192.168.47.135 k8s_nodename='master-135'
+192.168.47.136 k8s_nodename='master-136'
+[kube_node]
 192.168.47.131
 192.168.47.132
-192.168.47.140
-[kube_master]
-192.168.47.132 k8s_nodename='master-132'
-192.168.47.140 k8s_nodename='master-140'
-[kube_node]
-192.168.47.132
-192.168.47.140
 [ex_lb]
-192.168.47.142 LB_ROLE=master EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
-192.168.47.131 LB_ROLE=backup EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
+192.168.47.136 LB_ROLE=master EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
+192.168.47.133 LB_ROLE=backup EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
 [harbor]
 [chrony]
 [all:vars]
@@ -234,7 +235,7 @@ run $K setup test-ha 90 </dev/null
 run $K setup test-ha 10 </dev/null
 nodes_ready test-ha || fail "test-ha not Ready"
 
-# aio (147 localhost)
+# aio (138 localhost)
 if nodes_ready aio 2>/dev/null; then
   pass "aio already live"
 else
@@ -246,8 +247,8 @@ pass G2
 
 echo "========== G11 Node Allocatable reserved (contract) =========="
 # Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
-# Must cover cgroup v2 (aio/debian) and cgroup v1 hybrid (Rocky test141).
-for c in aio test141 debian150; do
+# Must cover cgroup v2 (aio/debian) and cgroup v1 hybrid (Rocky test137).
+for c in aio test137 debian128; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   grep -E '^KUBE_RESERVED_|^SYS_RESERVED_' "$BASE/clusters/$c/config.yml" || true
   grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$c/config.yml" || fail "$c KUBE_RESERVED not yes"
@@ -268,7 +269,7 @@ grep -q podruntime.slice /tmp/aio-containerd-slice.txt || fail "containerd not i
 pass "G11-aio-slice-placement"
 
 echo "========== G3 ops all clusters =========="
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   run $K checkout "$c"
   run $K backup "$c" </dev/null
   run $K stop "$c" </dev/null
@@ -279,17 +280,17 @@ for c in test141 debian150 test-ded-etcd test-ha aio; do
 done
 
 echo "========== G5 kcfg-adm =========="
-run $K checkout test141
-run $K kcfg-adm -A -u testuser-reg -t view test141 </dev/null
-run $K kcfg-adm -L test141
-run $K kcfg-adm -D -u testuser-reg test141 </dev/null
+run $K checkout test137
+run $K kcfg-adm -A -u testuser-reg -t view test137 </dev/null
+run $K kcfg-adm -L test137
+run $K kcfg-adm -D -u testuser-reg test137 </dev/null
 pass G5-kcfg
 
 echo "========== G4 node expand/shrink =========="
 run $K checkout test-ha
-run $K add-node test-ha 192.168.47.130 worker-130 </dev/null
-wait_node test-ha worker-130 || fail add-node
-run $K del-node test-ha 192.168.47.130 </dev/null
+run $K add-node test-ha 192.168.47.133 worker-133 </dev/null
+wait_node test-ha worker-133 || fail add-node
+run $K del-node test-ha 192.168.47.133 </dev/null
 pass G4-node
 
 echo "========== G4 add-master + del-master (133 disposable) =========="
@@ -306,11 +307,11 @@ run $K del-etcd test-ha 192.168.47.133 </dev/null
 pass G4-etcd
 
 echo "========== G6 cross kca-renew + multi checkout =========="
-run $K kca-renew test141 </dev/null
-export KUBECONFIG="$BASE/clusters/test141/kubectl.kubeconfig"
-nodes_ready test141 || fail kca-renew-test141
+run $K kca-renew test137 </dev/null
+export KUBECONFIG="$BASE/clusters/test137/kubectl.kubeconfig"
+nodes_ready test137 || fail kca-renew-test137
 run $K kca-renew aio </dev/null
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   run $K checkout "$c"
   run $K backup "$c" </dev/null
 done
@@ -328,7 +329,7 @@ for spec in "test133-flannel flannel ipvs" "test133-cilium cilium ipvs" "test133
   $K destroy "$cname" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$cname"
   # wipe 133 between CNI swaps to avoid leftover CNI/cgroup pollution
   sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.133 \
-    'set +e; systemctl stop kubelet containerd; rm -rf /var/lib/kubelet /etc/kubernetes /etc/cni /var/lib/containerd /etc/containerd /etc/systemd/system/podruntime.slice /opt/kubeauto_prepare_tasks /etc/calico /run/flannel /etc/cilium; systemctl daemon-reload; grep -q registry.talkschool.cn /etc/hosts || echo "192.168.47.147    registry.talkschool.cn" >> /etc/hosts' || true
+    'set +e; systemctl stop kubelet containerd; rm -rf /var/lib/kubelet /etc/kubernetes /etc/cni /var/lib/containerd /etc/containerd /etc/systemd/system/podruntime.slice /opt/kubeauto_prepare_tasks /etc/calico /run/flannel /etc/cilium; systemctl daemon-reload; grep -q registry.talkschool.cn /etc/hosts || echo "192.168.47.138    registry.talkschool.cn" >> /etc/hosts' || true
   $K new "$cname" 2>/dev/null || true
   bash "$BASE/tests/helpers/mk-cluster-133.sh" "$cname" "$net" "$proxy"
   sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/$cname/config.yml"
@@ -441,7 +442,7 @@ fi
 
 echo "========== FINAL verification =========="
 $K list
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   echo "--- $c ---"
   kubectl get nodes

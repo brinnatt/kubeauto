@@ -66,7 +66,7 @@ pass "six-repo+unit"
 
 echo "========== FINAL =========="
 kubecli list
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   if [ -f "$BASE/clusters/$c/kubectl.kubeconfig" ]; then
     export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
     echo "--- $c ---"

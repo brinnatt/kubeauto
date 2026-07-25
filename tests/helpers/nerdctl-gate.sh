@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Nerdctl regression gate (containerd path): clean lab → ext-bin 1.14.0 → aio + master/worker.
-# Run on control node 147 as ubuntu (sudo where needed for wipe/aio).
+# Run on Ubuntu aio control 138 as ubuntu (sudo where needed for wipe/aio).
 # Usage: bash tests/helpers/nerdctl-gate.sh
 set -euo pipefail
 SRC="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -17,7 +17,7 @@ run(){ echo ">>> $*"; "$@" || fail "$*"; }
 
 PW="${LAB_SSH_PASSWORD:-123456}"
 WORKER="${NERDCTL_WORKER:-192.168.47.133}"
-CONTROL_IP=192.168.47.147
+CONTROL_IP=192.168.47.138
 
 echo "========== N0 sync source → ${BASE} =========="
 run bash "$SRC/tests/helpers/sync-kubeauto.sh" "ubuntu@${CONTROL_IP}" "$PW"
@@ -67,7 +67,7 @@ BOOTSTRAP_MODE=essential bash "$BASE/tests/helpers/bootstrap-brinnatt-mirrors.sh
 kubecli download -X </dev/null || fail "download -X"
 pass "images"
 
-echo "========== N5 aio@147 (master+worker co-located, containerd) =========="
+echo "========== N5 aio@138 (master+worker co-located, containerd) =========="
 # seed ssh key to worker for later multi-node
 PUB="$(cat /home/ubuntu/.ssh/id_rsa.pub 2>/dev/null || cat ~/.ssh/id_rsa.pub 2>/dev/null || true)"
 if [[ -n "${PUB:-}" ]]; then
@@ -94,7 +94,7 @@ wc -l /tmp/aio-nerdctl-ps.txt
 sudo crictl info >/tmp/aio-crictl-info.txt 2>&1 || fail "crictl info broken after nerdctl install"
 pass "aio-nerdctl"
 
-echo "========== N6 destroy aio, wipe worker, multi-node master@147 + worker@${WORKER} =========="
+echo "========== N6 destroy aio, wipe worker, multi-node master@138 + worker@${WORKER} =========="
 kubecli destroy aio </dev/null || true
 # wipe control k8s leftovers again but KEEP docker/registry; wipe worker hard
 CTRL_WIPE='

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Remainder after partial enterprise regression: fix gaps → addon smoke → cilium reverify → matrix.
-# sudo bash /tmp/regression-147-remainder.sh
+# sudo bash /tmp/regression-remainder.sh
 set -euo pipefail
 LOG=/var/log/kubeauto-regression-remainder-$(date +%Y%m%d-%H%M).log
 exec > >(tee -a "$LOG") 2>&1
@@ -85,11 +85,11 @@ if [ -d "$BASE/clusters/test-ded-etcd" ]; then
     $K new test-ded-etcd 2>/dev/null || true
     cat > "$BASE/clusters/test-ded-etcd/hosts" <<'EOF'
 [etcd]
-192.168.47.142
+192.168.47.136
 [kube_master]
-192.168.47.130 k8s_nodename='master-130'
+192.168.47.134 k8s_nodename='master-134'
 [kube_node]
-192.168.47.130
+192.168.47.131
 [harbor]
 [ex_lb]
 [chrony]
@@ -184,7 +184,7 @@ pass R4-addons
 
 echo "========== R5 FINAL =========="
 $K list
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   echo "--- $c ---"
   kubectl get nodes --no-headers 2>/dev/null | awk '{print $1,$2}' || fail "$c nodes"

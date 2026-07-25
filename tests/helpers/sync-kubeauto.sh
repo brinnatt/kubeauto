@@ -3,6 +3,16 @@
 # Usage: sync-kubeauto.sh <user@host> [password]
 set -euo pipefail
 
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "ERROR: required command '$1' is not installed." >&2
+    exit 127
+  }
+}
+
+require_command rsync
+require_command sshpass
+
 TARGET="${1:?user@host}"
 PASS="${2:-123456}"
 SRC="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -29,10 +39,10 @@ WRAP
 chmod +x /usr/local/bin/kubecli
 test -f /usr/local/kubeauto/kubecli.py
 test -f /usr/local/kubeauto/common/ansible_python.py
-# Ensure Python runtime deps for source-based kubecli (147/136 control nodes)
+# Ensure Python runtime deps for source-based kubecli (Ubuntu aio 138 / jumper 130).
 # Prefer python3.12 on Rocky jumper (system python3 may be 3.6).
 PY="\$(command -v python3.12 || command -v python3)"
-if ! \$PY -c "import taskflow" 2>/dev/null; then
+if ! \$PY -c "import docker, jinja2, psutil, taskflow" 2>/dev/null; then
   if ! \$PY -m pip --version >/dev/null 2>&1; then
     \$PY -m ensurepip --upgrade >/dev/null 2>&1 || true
   fi
@@ -42,7 +52,7 @@ if ! \$PY -c "import taskflow" 2>/dev/null; then
     echo "WARN: cannot bootstrap pip for \$PY" >&2
   fi
 fi
-\$PY -c "import taskflow"
+\$PY -c "import docker, jinja2, psutil, taskflow"
 echo sync_ok
 REMOTE
 

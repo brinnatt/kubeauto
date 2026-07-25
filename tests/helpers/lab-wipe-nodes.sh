@@ -4,9 +4,9 @@
 set -euo pipefail
 
 PW="${LAB_SSH_PASSWORD:-123456}"
-ROCKY_IPS=(192.168.47.130 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.140 192.168.47.141 192.168.47.142)
-DEBIAN_IP=192.168.47.150
-CONTROL=192.168.47.147
+ROCKY_IPS=(192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.134 192.168.47.135 192.168.47.136 192.168.47.137)
+DEBIAN_IP=192.168.47.128
+CONTROL=192.168.47.138
 
 wipe_cmd='
 set +e
@@ -42,10 +42,10 @@ for ip in "${ROCKY_IPS[@]}"; do
   sshpass -p "$PW" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 "root@$ip" "$wipe_cmd" || echo "WARN wipe failed $ip"
 done
 
-echo "== wipe debian 150 =="
-sshpass -p "$PW" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 "brinnatt@$DEBIAN_IP" "sudo bash -lc $(printf '%q' "$wipe_cmd")" || echo "WARN wipe failed 150"
+echo "== wipe Debian 128 =="
+sshpass -p "$PW" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 "brinnatt@$DEBIAN_IP" "sudo bash -lc $(printf '%q' "$wipe_cmd")" || echo "WARN wipe failed 128"
 
-echo "== wipe control 147 k8s leftovers (KEEP docker + local registry :5000) =="
+echo "== wipe Ubuntu aio control 138 k8s leftovers (KEEP docker + local registry :5000) =="
 # Control node hosts registry.talkschool.cn:5000 via docker — never wipe dockerd/registry here.
 CTRL_WIPE='
 set +e

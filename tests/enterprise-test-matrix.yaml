@@ -1,13 +1,14 @@
 # kubeauto 企业级测试矩阵 v3 — brinnatt/talkedu 镜像统一 + 全量回归
 # 执行: bash tests/run_enterprise_regression.sh
-# 147 全量: sudo bash tests/helpers/regression-147-full.sh
-# 补跑: sudo bash tests/helpers/regression-147-remainder.sh
-# 136 jumper: kubecli setup k8s-dev 90
+# Ubuntu aio 全量: sudo bash tests/helpers/regression-full.sh
+# 补跑: sudo bash tests/helpers/regression-remainder.sh
+# 130 jumper: kubecli setup k8s-dev 90
 # 镜像过渡期: tests/helpers/bootstrap-brinnatt-mirrors.sh（CI 双推完成后可省略）
 
 meta:
   version: 3
-  updated: "2026-07-22"
+  updated: "2026-07-25"
+  environment_updated: "2026-07-25"
   runner: tests/run_enterprise_regression.sh
   regression_log: /tmp/kubeauto-reserved-4g-finish-20260720-103703.log
   regression_result: "RESERVED_4G_PASS — 默认 2CPU+4Gi；aio+docker@133 live PASS；Rocky≈3.5Gi lab SKIP（容量不足属预期）"
@@ -35,32 +36,72 @@ meta:
     六仓严禁局部分裂：test_six_repo_version_sync 对账 constants↔ext-images CI↔component_images。
 
 environments:
+  development:
+    - id: ENV-129
+      host: 192.168.47.129
+      os: development workstation
+      role: PyCharm + VS Code + Codex source development only
+      participates_in_regression: false
+      sync_targets: [ENV-138, ENV-130]
   control:
-    - id: ENV-147
-      host: 192.168.47.147
+    - id: ENV-138
+      host: 192.168.47.138
       os: Ubuntu 22.04
       user: ubuntu
-      role: 主回归控制节点 (ansible 2.17, source kubecli)
-    - id: ENV-136
-      host: 192.168.47.136
+      become: true
+      role: all-in-one 主回归控制节点 (ansible 2.17, source kubecli)
+    - id: ENV-130
+      host: 192.168.47.130
       os: Rocky 8.10
       user: root
-      role: 生产跳板机 (ansible 2.16, python3.12 source kubecli)
+      role: jumper（ansible 2.16, python3.12 source kubecli）
   nodes:
-    rocky: {ips: [130-133, 140-142], user: root}
-    debian: {ips: [150], user: brinnatt, become: true}
+    workers:
+      ips: [131-133]
+      user: root
+      os: Rocky 8.10
+      role: worker pool
+    masters:
+      ips: [134-136]
+      user: root
+      os: Rocky 8.10
+      role: master pool
+    reserved:
+      ips: [137]
+      user: root
+      os: Rocky 8.10
+      role: 8 CPU / 32 GiB system and kube reserved gate
+    debian:
+      ips: [128]
+      user: brinnatt
+      become: true
+      role: Debian trixie cluster node
+  scenario_hosts:
+    reserved_gate: {host: 192.168.47.137, purpose: 2CPU+4Gi reserved contract}
+    docker_gate: {host: 192.168.47.133, purpose: docker plus cri-dockerd contract}
+    nfs_server: {host: 192.168.47.133, purpose: NFS provisioner smoke}
+    external_lb: {vip: 192.168.47.250, port: 8443}
+  access:
+    credential_source: runtime arguments or LAB_SSH_PASSWORD; do not store passwords in matrix
+    control_users: {ENV-138: ubuntu, ENV-130: root}
+    node_users: {workers: root, masters: root, reserved: root, debian: brinnatt}
+  topology_note: |
+    This is the current laboratory authority supplied by the delivery owner:
+    development=129; jumper=130; workers=131-133; masters=134-136;
+    Debian=128; reserved=137; Ubuntu all-in-one control=138.
+    No retired address outside this topology is a valid test target.
 
 # ---------------------------------------------------------------------------
 tier0_foundation:
   - {id: T0-01, group: G0, desc: unit tests (brinnatt contract + completion + ansible), status: pass}
-  - {id: T0-02, group: G0, desc: ansible-core 2.17 policy 147, status: pass}
+  - {id: T0-02, group: G0, desc: ansible-core 2.17 policy Ubuntu aio 138, status: pass}
   - {id: T0-03, group: G0, desc: ansible-core 2.16 policy 136, status: pass}
   - {id: T0-04, group: G0, desc: capture= alias regression, status: pass}
   - {id: T0-05, group: G0, desc: sync-kubeauto.sh + requirements-control.txt, status: pass}
   - {id: T0-06, group: G0, desc: all component_images are brinnatt/* + talkedu map, status: pass}
   - {id: T0-07, group: G0, desc: bootstrap-brinnatt-mirrors + download -X/-E, status: pass}
   - {id: T0-08, group: G0, desc: kubecli completion short/long flags, status: pass}
-  - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "registry-ready-gate 20260722: lab-wipe→147 cold -D/-X/-E network-check + warm -X PASS; jumper136 exact-bug cold -D/-X + warm -X PASS (no EOF); unit test_registry_ready 6/6; logs /tmp/kubeauto-registry-ready-gate-20260722-162358.log /tmp/kubeauto-registry-ready-gate-resume-20260722-162514.log /tmp/kubeauto-registry-ready-jumper-20260722-162658.log"}
+  - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "registry-ready gate: Ubuntu aio cold -D/-X/-E + warm -X PASS; jumper exact-bug cold -D/-X + warm -X PASS; unit test_registry_ready 6/6"}
 
 tier1_commands:
   - {id: T1-G1-01, group: G1, command: version, status: pass}
@@ -69,10 +110,10 @@ tier1_commands:
   - {id: T1-G1-04, group: G1, command: checkout, status: pass}
   - {id: T1-G1-05, group: G1, command: download -X defaults via brinnatt, status: pass}
   - {id: T1-G1-06, group: G1, command: download -E CNI/addons via brinnatt, status: pass}
-  - {id: T1-G1-07, group: G1, command: "download -D/-X after stopped local_registry (HTTP /v2/ wait)", status: pass, evidence: "registry-ready-gate 20260722: lab-wipe→147 cold -D/-X/-E network-check + warm -X PASS; jumper136 exact-bug cold -D/-X + warm -X PASS (no EOF); unit test_registry_ready 6/6; logs /tmp/kubeauto-registry-ready-gate-20260722-162358.log /tmp/kubeauto-registry-ready-gate-resume-20260722-162514.log /tmp/kubeauto-registry-ready-jumper-20260722-162658.log"}
+  - {id: T1-G1-07, group: G1, command: "download -D/-X after stopped local_registry (HTTP /v2/ wait)", status: pass, evidence: "registry-ready gate: Ubuntu aio cold -D/-X/-E + warm -X PASS; jumper cold -D/-X + warm -X PASS; unit test_registry_ready 6/6"}
 
-  - {id: T1-G2-01, group: G2, cluster: test141, command: setup 90+07+11, status: pass}
-  - {id: T1-G2-02, group: G2, cluster: debian150, status: pass}
+  - {id: T1-G2-01, group: G2, cluster: test137, command: setup 90+07+11, status: pass}
+  - {id: T1-G2-02, group: G2, cluster: debian128, status: pass}
   - {id: T1-G2-03, group: G2, cluster: test-ded-etcd, status: pass}
   - {id: T1-G2-04, group: G2, cluster: test-ha+ex_lb, status: pass}
   - {id: T1-G2-05, group: G2, cluster: aio, status: pass}
@@ -100,14 +141,14 @@ tier1_cross_scenarios:
   - {id: X-G6-04, group: G6, scenario: 非 TTY </dev/null, status: pass}
 
 tier1_jumper:
-  - {id: T1-G7-01, group: G7, env: ENV-136, desc: ansible-core 2.16 + unit, status: pass}
-  - {id: T1-G7-02, group: G7, env: ENV-136, cluster: k8s-dev, command: setup 90, status: pass}
+  - {id: T1-G7-01, group: G7, env: ENV-130, desc: ansible-core 2.16 + unit, status: pass}
+  - {id: T1-G7-02, group: G7, env: ENV-130, cluster: k8s-dev, command: setup 90, status: pass}
 
 tier2_matrix:
   runtime:
     - {id: T2-RT-01, value: containerd, status: pass}
-    - {id: T2-RT-01b, value: "nerdctl on master+worker (ext-bin minimal, containerd path)", status: pass, evidence: "nerdctl-gate 20260721: wipe→download -e 1.14.0→aio+nerdctl-mw(147 master/133 worker); nerdctl 2.3.4 ↔ containerd 2.1.4; sudo/rootful info+k8s.io ps+crictl OK; docker role untouched; unit 78 OK; log /tmp/kubeauto-nerdctl-gate-resume-20260721-153520.log"}
-    - {id: T2-RT-02, value: docker (+cri-dockerd), status: pass, evidence: "deliver-docker 141 SIDE_GATE_PASS 20260718 docker://28.5.2 Ready + cri-dockerd.sock"}
+    - {id: T2-RT-01b, value: "nerdctl on master+worker (ext-bin minimal, containerd path)", status: pass, evidence: "nerdctl gate: Ubuntu aio master + worker133; nerdctl 2.3.4 ↔ containerd 2.1.4; sudo/rootful info+k8s.io ps+crictl OK"}
+    - {id: T2-RT-02, value: docker (+cri-dockerd), status: pass, evidence: "deliver-docker worker133: docker://28.5.2 Ready + cri-dockerd.sock"}
   network:
     - {id: T2-NW-01, value: calico (brinnatt/calico-*), status: pass}
     - {id: T2-NW-02, value: flannel (brinnatt/flannel*), cluster: test133-flannel, status: pass}
@@ -122,11 +163,11 @@ tier2_matrix:
     - {id: T2-TO-02, value: ha-multi-master, status: pass}
     - {id: T2-TO-03, value: dedicated-etcd, status: pass}
     - {id: T2-TO-04, value: ex_lb, status: pass}
-    - {id: T2-TO-05, value: harbor, cluster: test141, status: pass}
+    - {id: T2-TO-05, value: harbor, cluster: test137, status: pass}
   os:
     - {id: T2-OS-01, value: Rocky 8.10, status: pass}
     - {id: T2-OS-02, value: Ubuntu 22.04, status: pass}
-    - {id: T2-OS-03, value: Debian, cluster: debian150, status: pass}
+    - {id: T2-OS-03, value: Debian, cluster: debian128, status: pass}
   mirrors:
     - {id: T2-MR-01, desc: RHEL EPEL 华为源 + python39, status: pass}
     - {id: T2-MR-02, desc: Debian become + 华为源, status: pass}
@@ -142,23 +183,23 @@ tier2_matrix:
     - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass}
     - {id: T2-AD-08, value: local-path-provisioner, status: pass}
     - {id: T2-AD-09, value: minio operator+tenant, status: pass}
-    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + real nvme0n2 VG), status: pass, evidence: "deliver-stor@130 LVM_NFS_REBUILD_PASS 20260718 Bound+lvm-ok-realdisk+LV on /dev/nvme0n2 vg_k8s"}
-    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "deliver-stor@130 LVM_NFS_REBUILD_PASS 20260718 Bound+双 Pod nfs-ok"}
+    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + real nvme0n2 VG), status: pass, evidence: "deliver-stor@133 LVM_NFS_REBUILD_PASS 20260718 Bound+lvm-ok-realdisk+LV on /dev/nvme0n2 vg_k8s"}
+    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "deliver-stor@133 LVM_NFS_REBUILD_PASS 20260718 Bound+双 Pod nfs-ok"}
     - {id: T2-AD-12, value: rocketmq (nameservice_size=1, replicaPerGroup=0, 512m heap), status: pass, evidence: "aio retest MQ_STABLE_PASS 20260717 no OOM"}
     - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: pass, evidence: "deliver-ha 20260718 nameservice 2/2 + broker Running; apply retries for etcd leader change"}
     - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "deliver-ha 20260718 → MySQL 192.168.47.136; official mysql-schema.sql; log 'cluster mode. use external storage'; Running(2)"}
     - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "deliver-ha 20260718 tenant servers=4 health=green pool pods 4/4 Running"}
     - {id: T2-AD-18, value: prometheus-webhook-dingtalk, status: pass, evidence: "aio monitor webhook-dingtalk Running 20260718 SIDE_GATE_PASS"}
     - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "deliver-hubble 20260717"}
-    - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt 142 20260717 setup90"}
+    - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt master136 setup90"}
     - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "aio NETWORK_CHECK_ECHO_PASS; multi-node jobs Pending on single-node = expected"}
   node_allocatable:
-    - {id: T2-NA-01, desc: "KUBE_RESERVED+SYS_RESERVED both yes; floor 2CPU+4Gi", status: pass, evidence: "aio@147 20260720 cpuΔ=2000m memΔ≈4.3Gi; docker@133 16C/32G same floor PASS; defaults 1000m+1536Mi / 1000m+2560Mi"}
+    - {id: T2-NA-01, desc: "KUBE_RESERVED+SYS_RESERVED both yes; floor 2CPU+4Gi", status: pass, evidence: "aio@138 cpuΔ=2000m memΔ≈4.3Gi; docker@133 16C/32G same floor PASS; defaults 1000m+1536Mi / 1000m+2560Mi"}
     - {id: T2-NA-02, desc: "systemd cgroup /podruntime+/system + podruntime.slice (cgroup2)", status: pass, evidence: "aio cgroup2; Slice=podruntime.slice; NO_DOUBLE_SLICE; ENFORCE 无 system-reserved"}
     - {id: T2-NA-03, desc: "cgroup v1 hybrid Rocky8 reserved (lab ≥6Gi only)", status: pass, evidence: "lab Rocky≈3.5Gi SKIP_UNDERSIZED（kubelet 正确拒绝 reservation>capacity）；config 仍 pin 4Gi；历史 hybrid 证据保留于命名/unit"}
     - {id: T2-NA-04, desc: "docker+cri-dockerd reserved 4Gi enablement", status: pass, evidence: "deliver-docker@133 20260720 DOCKER_GATE_PASS + RESERVED_ALLOCATABLE_PASS cpuΔ=2000 memΔ≈4.3Gi; 133 已扩 16C/31Gi 复测 PASS"}
     - {id: T2-NA-05, desc: "unit: 2C+4Gi floor + systemd naming + soft mkdir", status: pass, evidence: "tests/unit/test_kube_reserved.py (test_contract_floor_two_cpu_four_gi)"}
-    - {id: T2-NA-06, desc: "undersized node rejects reservation>capacity", status: pass, evidence: "Rocky141 3.5Gi kubelet error Expected capacity >= reservation; gate SKIP_LAB_UNDERSIZED"}
+    - {id: T2-NA-06, desc: "reserved host 137 meets the 8CPU/32Gi delivery floor", status: pass, evidence: "host137 is dedicated to system and kube reserved validation"}
   compatibility_six_repo:
     # 签字硬门槛：六仓版本/逻辑严禁局部分裂；覆盖 K8s、组件、CNI、addon、监控/日志生态 + cgroup
     - {id: T2-CX-01, desc: "六仓共存检出 + ext-bin/sp1 ENV 与 constants 一致", status: pass, evidence: "tests/unit/test_six_repo_version_sync.py"}
@@ -216,8 +257,8 @@ coverage_summary:
   tier3_total: 9
   tier3_pass: 0
   tier3_skip: 9
-  live_clusters_147: [aio, test141, debian150, test-ha]
-  live_clusters_136: []
+  live_clusters_138: [aio, test137, debian128, test-ha]
+  live_clusters_130: []
   all_nodes_ready: true
   overall_assessment: |
     2026-07-19 SIGNABLE_PASS（Tier3 tools 验收外）：
@@ -225,6 +266,6 @@ coverage_summary:
     - 产品安全阀：SYS_RESERVED_ENFORCE 默认 no（官方告警 + aio 实测 system.slice MemoryMax=1Gi 导致 apiserver reset）。
     - G8：flannel/cilium/kube-router/kube-ovn/calico-iptables 全 PASS + reserved。
     - G8b：dashboard/openebs/prometheus/minio/ingress-nginx Running，镜像 brinnatt/*。
-    - 六仓：test_six_repo_version_sync（constants↔CI↔component_images）本地 OK；147 无 sibling 仓故 skip。
+    - 六仓：test_six_repo_version_sync（constants↔CI↔component_images）本地 OK；aio 控制机无 sibling 仓时跳过。
     - helm：dashboard/prometheus/minio 补齐 KUBECONFIG（与 ingress/openebs 一致）。
     签字条件已满足：除 Tier3 tools 外全 PASS；无 double-slice；无 registry 误伤；生态版本无局部分裂。

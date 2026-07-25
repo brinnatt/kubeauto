@@ -14,9 +14,9 @@ section(){ echo; echo "========== $* =========="; }
 
 fix_registry_hosts(){
   local ip
-  for ip in 130 131 132 133 140 141 142; do
+  for ip in 131 132 133 134 135 136 137; do
     sshpass -p 123456 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 root@192.168.47.$ip \
-      "sed -i '/registry.talkschool.cn/d' /etc/hosts; echo '192.168.47.147    registry.talkschool.cn' >> /etc/hosts" \
+      "sed -i '/registry.talkschool.cn/d' /etc/hosts; echo '192.168.47.138    registry.talkschool.cn' >> /etc/hosts" \
       2>/dev/null || echo "[WARN] hosts 47.$ip"
   done
 }
@@ -71,28 +71,28 @@ for comp in openebs local-path-provisioner nfs-provisioner nacos rocketmq minio 
 done
 
 ###############################################################################
-section "P1-Rocky G8b on test141 (before occupying 133)"
-export KUBECONFIG="$BASE/clusters/test141/kubectl.kubeconfig"
-$K checkout test141 </dev/null || true
-if nodes_ready test141 18; then
+section "P1-Rocky G8b on test137 (before occupying 133)"
+export KUBECONFIG="$BASE/clusters/test137/kubectl.kubeconfig"
+$K checkout test137 </dev/null || true
+if nodes_ready test137 18; then
   fix_registry_hosts
-  prep_lvm_remote 141 15 || true
-  CFG="$BASE/clusters/test141/config.yml"
+  prep_lvm_remote 137 15 || true
+  CFG="$BASE/clusters/test137/config.yml"
   set_cfg "$CFG" dashboard_install '"yes"'; set_cfg "$CFG" prom_install '"yes"'
   set_cfg "$CFG" ingress_nginx_install '"yes"'; set_cfg "$CFG" local_path_provisioner_install '"yes"'
   set_cfg "$CFG" openebs_install '"yes"'; set_cfg "$CFG" openebs_lvm_enabled '"no"'
   set_cfg "$CFG" minio_install '"no"'; set_cfg "$CFG" nacos_install '"no"'; set_cfg "$CFG" rocketmq_install '"no"'
   for ns in monitor openebs ingress-nginx; do kubectl delete ns "$ns" --wait=false 2>/dev/null || true; done
   sleep 5
-  if $K setup test141 07 </dev/null; then
+  if $K setup test137 07 </dev/null; then
     sleep 25
-    assert_no_imagepull || fail "P1 test141 ImagePull"
+    assert_no_imagepull || fail "P1 test137 ImagePull"
     prom=$(kubectl -n monitor get deploy prometheus-kube-prometheus-operator -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
     dash=$(kubectl -n kube-system get deploy kubernetes-dashboard-api -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
     echo "prom=$prom dash=$dash"
     echo "$prom$dash" | grep -q brinnatt/ && pass "P1 Rocky G8b addons" || fail "P1 Rocky G8b images"
-  else fail "P1 test141 setup 07"; fi
-else skip "P1 test141 not Ready"; fi
+  else fail "P1 test137 setup 07"; fi
+else skip "P1 test137 not Ready"; fi
 
 ###############################################################################
 section "P0 LVM+NFS+RocketMQ on deliver-lvm (133)"
@@ -233,13 +233,13 @@ nodes_ready test-ha || fail "test-ha down"
 fix_registry_hosts
 ncount=$(kubectl get nodes --no-headers 2>/dev/null | grep -c Ready || echo 0)
 if [ "$ncount" -lt 3 ]; then
-  echo "Adding workers 133 and 141 to test-ha (have $ncount)"
+  echo "Adding workers 133 and 137 to test-ha (have $ncount)"
   $K add-node test-ha 192.168.47.133 worker-133 </dev/null || true
-  $K add-node test-ha 192.168.47.141 worker-141 </dev/null || true
+  $K add-node test-ha 192.168.47.137 worker-133 </dev/null || true
   sleep 60
 fi
 fix_registry_hosts
-for ip in 132 140 133 141; do prep_lvm_remote $ip 15 || true; done
+for ip in 132 135 133 137; do prep_lvm_remote $ip 15 || true; done
 ncount=$(kubectl get nodes --no-headers 2>/dev/null | grep -c Ready || echo 0)
 kubectl get nodes -o wide
 echo "Ready nodes=$ncount"

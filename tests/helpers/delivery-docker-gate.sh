@@ -1,12 +1,12 @@
 #!/bin/bash
-# Focused docker runtime gate on 141 after cri-dockerd product fix.
-# Usage (on 147 as root): bash /usr/local/kubeauto/tests/helpers/delivery-docker-gate.sh
+# Focused docker runtime gate on 137 after cri-dockerd product fix.
+# Usage (on 138 as root): bash /usr/local/kubeauto/tests/helpers/delivery-docker-gate.sh
 set -euo pipefail
 BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE" PATH="/usr/local/bin:/usr/bin:$PATH"
 K=kubecli
 C=deliver-docker
-# 133 is disposable for docker runtime + reserved gate (avoids colliding with test141 on 141).
+# 133 is disposable for docker runtime + reserved gate (avoids colliding with test137 on 137).
 NODE="${DOCKER_GATE_NODE:-192.168.47.133}"
 LOG=/tmp/kubeauto-delivery-docker-$(date +%Y%m%d%H%M%S).log
 if [ -w /var/log ] 2>/dev/null; then
@@ -68,7 +68,7 @@ systemctl daemon-reload || true
 systemctl reset-failed 2>/dev/null || true
 systemctl disable kubelet docker containerd cri-dockerd 2>/dev/null || true
 sed -i '/registry.talkschool.cn/d' /etc/hosts
-echo '192.168.47.147    registry.talkschool.cn' >> /etc/hosts
+echo '192.168.47.138    registry.talkschool.cn' >> /etc/hosts
 echo RESET_OK
 RST
 

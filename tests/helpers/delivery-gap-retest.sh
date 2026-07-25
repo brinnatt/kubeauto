@@ -13,9 +13,9 @@ skip(){ echo "[SKIP] $*"; SKIP_N=$((SKIP_N+1)); }
 section(){ echo; echo "========== $* =========="; }
 fix_registry_hosts(){
   local ip
-  for ip in 130 131 132 133 140 141 142; do
+  for ip in 131 132 133 134 135 136 137; do
     sshpass -p 123456 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 root@192.168.47.$ip \
-      "sed -i '/registry.talkschool.cn/d' /etc/hosts; echo '192.168.47.147    registry.talkschool.cn' >> /etc/hosts" \
+      "sed -i '/registry.talkschool.cn/d' /etc/hosts; echo '192.168.47.138    registry.talkschool.cn' >> /etc/hosts" \
       2>/dev/null || echo "[WARN] hosts 47.$ip"
   done
 }
@@ -62,7 +62,7 @@ rm -rf /etc/kubernetes /var/lib/kubelet /var/lib/etcd /etc/cni /opt/cni/bin /var
 systemctl reset-failed kubelet 2>/dev/null || true
 systemctl disable kubelet 2>/dev/null || true
 sed -i '/registry.talkschool.cn/d' /etc/hosts
-echo '192.168.47.147    registry.talkschool.cn' >> /etc/hosts
+echo '192.168.47.138    registry.talkschool.cn' >> /etc/hosts
 RST
 }
 
@@ -317,23 +317,23 @@ else
 fi
 
 ###############################################################################
-section "P1 Rocky G8b — recreate on 142 if free"
-kube=$(sshpass -p 123456 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=6 root@192.168.47.142 'systemctl is-active kubelet 2>/dev/null' || echo dead)
+section "P1 Rocky G8b — recreate on 136 if free"
+kube=$(sshpass -p 123456 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=6 root@192.168.47.136 'systemctl is-active kubelet 2>/dev/null' || echo dead)
 if [ "$kube" = "inactive" ] || [ "$kube" = "dead" ] || [ "$kube" = "failed" ]; then
   C_R=deliver-rocky
   $K destroy "$C_R" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$C_R"
-  $K destroy test141 </dev/null 2>/dev/null || true
+  $K destroy test137 </dev/null 2>/dev/null || true
   $K new "$C_R" 2>/dev/null || true
   mkdir -p "$BASE/clusters/$C_R"
   cat > "$BASE/clusters/$C_R/hosts" <<EOF
 [etcd]
-192.168.47.142
+192.168.47.136
 
 [kube_master]
-192.168.47.142 k8s_nodename='master-142'
+192.168.47.136 k8s_nodename='master-136'
 
 [kube_node]
-192.168.47.142
+192.168.47.136
 
 [harbor]
 
@@ -364,7 +364,7 @@ EOF
   set_cfg "$CFG" ingress_nginx_install '"yes"'; set_cfg "$CFG" local_path_provisioner_install '"yes"'
   set_cfg "$CFG" openebs_install '"yes"'; set_cfg "$CFG" openebs_lvm_enabled '"no"'
   set_cfg "$CFG" minio_install '"no"'; set_cfg "$CFG" nacos_install '"no"'; set_cfg "$CFG" rocketmq_install '"no"'
-  prep_lvm_remote 142 15 || true
+  prep_lvm_remote 136 15 || true
   if $K setup "$C_R" 90 </dev/null && $K setup "$C_R" 07 </dev/null; then
     export KUBECONFIG="$BASE/clusters/$C_R/kubectl.kubeconfig"
     nodes_ready "$C_R" || fail "rocky nodes"
@@ -375,7 +375,7 @@ EOF
     echo "$prom" | grep -q brinnatt/ && pass "P1 Rocky G8b addons" || fail "P1 Rocky G8b images"
   else fail "P1 Rocky setup"; fi
 else
-  skip "P1 Rocky 142 busy kubelet=$kube"
+  skip "P1 Rocky 136 busy kubelet=$kube"
 fi
 
 echo

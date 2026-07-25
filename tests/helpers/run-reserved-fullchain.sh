@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sequential: docker reserved gate → wipe 133 → full enterprise regression (incl. G11 reserved).
-# Run on 147 as ubuntu (sudo used for regression).
+# Run on Ubuntu aio control 138 as ubuntu (sudo used for regression).
 set -euo pipefail
 BASE=/usr/local/kubeauto
 export PATH=/usr/local/bin:$PATH PYTHONPATH=$BASE
@@ -20,7 +20,7 @@ sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.133 \
 
 echo "==== FULL REGRESSION (G0-G11, tools skip) ===="
 sudo -E env PATH="/usr/local/bin:$PATH" PYTHONPATH="$BASE" \
-  bash "$BASE/tests/helpers/regression-147-full.sh"
+  bash "$BASE/tests/helpers/regression-full.sh"
 
 echo FULLCHAIN_COMPLETE
 echo "LOG=$LOG"

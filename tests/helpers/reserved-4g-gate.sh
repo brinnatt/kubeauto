@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Clean-lab gate for contract reserved floor: 2 CPU + 4Gi (kube 1000m/1536Mi + system 1000m/2560Mi).
 # Contract node floor is ≥16C/32Gi. Lab peers are often 2C/≈3Gi — those MUST skip live setup
-# (kubelet correctly refuses reservation > capacity). aio@147 (8C/15Gi) is the live proof node.
+# (kubelet correctly refuses reservation > capacity). aio@138 (8C/15Gi) is the live proof node.
 set -euo pipefail
 BASE="$(cd "$(dirname "$0")/../.." && pwd)"
 export PATH=/usr/local/bin:$PATH PYTHONPATH="$BASE"
@@ -25,7 +25,7 @@ echo "========== U0 unit (2C+4Gi contract) =========="
 run bash "$BASE/tests/run_unit_tests.sh"
 pass "unit"
 
-echo "========== U1 lab wipe (keep 147 docker/registry) =========="
+echo "========== U1 lab wipe (keep 138 docker/registry) =========="
 run bash "$BASE/tests/helpers/lab-wipe-nodes.sh"
 docker start local_registry >/dev/null 2>&1 || true
 for i in $(seq 1 30); do
@@ -43,7 +43,7 @@ pass "images"
 echo "========== U3 aio cgroup2 reserved 4Gi (live) =========="
 PUB="$(cat /home/ubuntu/.ssh/id_rsa.pub 2>/dev/null || cat ~/.ssh/id_rsa.pub 2>/dev/null || true)"
 if [[ -n "${PUB:-}" ]]; then
-  for ip in 192.168.47.133 192.168.47.141; do
+  for ip in 192.168.47.133 192.168.47.137; do
     sshpass -p 123456 ssh -o StrictHostKeyChecking=no "root@$ip" \
       "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
   done
@@ -97,16 +97,16 @@ echo "system.slice memory.max=$(cat /sys/fs/cgroup/system.slice/memory.max 2>/de
 pass "aio-4g-reserved"
 
 echo "========== U4 Rocky141 config pins + capacity gate =========="
-MEM_MI="$(node_mem_mi root 192.168.47.141)"
+MEM_MI="$(node_mem_mi root 192.168.47.137)"
 echo "rocky141_mem_mi=$MEM_MI"
-rm -rf "$BASE/clusters/test141"
-kubecli new test141 </dev/null
-sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test141/config.yml"
-grep -q 'KUBE_RESERVED_MEMORY: "1536Mi"' "$BASE/clusters/test141/config.yml" || fail "rocky mem pin"
-grep -q 'SYS_RESERVED_MEMORY: "2560Mi"' "$BASE/clusters/test141/config.yml" || fail "rocky sys mem pin"
-grep -q 'KUBE_RESERVED_CPU: "1000m"' "$BASE/clusters/test141/config.yml" || fail "rocky cpu pin"
-grep -q 'SYS_RESERVED_CPU: "1000m"' "$BASE/clusters/test141/config.yml" || fail "rocky sys cpu pin"
-grep -q 'SYS_RESERVED_ENFORCE: "no"' "$BASE/clusters/test141/config.yml" || fail "rocky enforce pin"
+rm -rf "$BASE/clusters/test137"
+kubecli new test137 </dev/null
+sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test137/config.yml"
+grep -q 'KUBE_RESERVED_MEMORY: "1536Mi"' "$BASE/clusters/test137/config.yml" || fail "rocky mem pin"
+grep -q 'SYS_RESERVED_MEMORY: "2560Mi"' "$BASE/clusters/test137/config.yml" || fail "rocky sys mem pin"
+grep -q 'KUBE_RESERVED_CPU: "1000m"' "$BASE/clusters/test137/config.yml" || fail "rocky cpu pin"
+grep -q 'SYS_RESERVED_CPU: "1000m"' "$BASE/clusters/test137/config.yml" || fail "rocky sys cpu pin"
+grep -q 'SYS_RESERVED_ENFORCE: "no"' "$BASE/clusters/test137/config.yml" || fail "rocky enforce pin"
 if [[ "$MEM_MI" -lt 6144 ]]; then
   skip "rocky live setup: node ${MEM_MI}Mi < 6Gi (contract ≥32Gi; kubelet rejects reservation>capacity — expected)"
 else

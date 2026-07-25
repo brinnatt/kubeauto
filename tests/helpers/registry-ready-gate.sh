@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Local registry readiness gate: stop→start race must not EOF on download -D/-X/-E.
 # Same pattern as Docker daemon wait; mirrors nerdctl-gate (sync → unit → wipe → repro).
-# Run from control host with lab SSH. Primary: 147 source kubecli; also jumper 136 (bug host).
+# Run from control host with lab SSH. Primary: Ubuntu aio 138 source kubecli; also jumper 130 (bug host).
 # Usage: bash tests/helpers/registry-ready-gate.sh
 # Env: LAB_SSH_PASSWORD, REGISTRY_GATE_SKIP_WIPE=1, REGISTRY_GATE_SKIP_136=1
 set -euo pipefail
@@ -18,8 +18,8 @@ fail(){ echo "[FAIL] $*"; exit 1; }
 run(){ echo ">>> $*"; "$@" || fail "$*"; }
 
 PW="${LAB_SSH_PASSWORD:-123456}"
-CONTROL_IP=192.168.47.147
-JUMPER_IP=192.168.47.136
+CONTROL_IP=192.168.47.138
+JUMPER_IP=192.168.47.130
 
 # Prefer ubuntu+docker-group kubecli (snap docker + sudo root often cannot kill temp_*).
 # -D only needs root when (re)installing /usr/local/bin symlinks; gate preflights that path.
@@ -52,7 +52,7 @@ assert_registry_http(){
 
 stop_registry_cold(){
   # Force the exact bug path: container exists but stopped → start → immediate push.
-  # snap docker on lab 147 often returns "permission denied" on stop/kill — fall back to PID.
+  # snap docker on lab 138 often returns "permission denied" on stop/kill — fall back to PID.
   docker update --restart=no local_registry >/dev/null 2>&1 || true
   if ! docker stop -t 2 local_registry >/dev/null 2>&1; then
     local pid
@@ -104,7 +104,7 @@ grep -q '_wait_for_registry_ready' "$BASE/service/cluster/registry.py" \
   || fail "synced tree missing _wait_for_registry_ready"
 grep -q '_registry_http_ok' "$BASE/service/cluster/registry.py" \
   || fail "synced tree missing _registry_http_ok"
-pass "sync-147"
+pass "sync-138"
 
 echo "========== R1 unit tests =========="
 cd "$BASE"
@@ -114,7 +114,7 @@ python3 -m unittest tests.unit.test_registry_ready -v 2>&1 | tee /tmp/registry-r
 pass "unit"
 
 if [[ "${REGISTRY_GATE_SKIP_WIPE:-0}" != "1" ]]; then
-  echo "========== R2 lab wipe (keep docker + registry container on 147) =========="
+  echo "========== R2 lab wipe (keep Docker + registry container on 138) =========="
   run bash "$BASE/tests/helpers/lab-wipe-nodes.sh"
   # Wipe leaves docker; registry may be Exited — that is the intended cold state.
   pass "wipe"
@@ -122,7 +122,7 @@ else
   echo "========== R2 lab wipe SKIPPED (REGISTRY_GATE_SKIP_WIPE=1) =========="
 fi
 
-echo "========== R3 ensure docker + hosts on 147 =========="
+echo "========== R3 ensure docker + hosts on 138 =========="
 systemctl is-active docker >/dev/null 2>&1 || sudo systemctl start docker
 grep -q 'registry.talkschool.cn' /etc/hosts \
   || echo '127.0.0.1  registry.talkschool.cn' | sudo tee -a /etc/hosts >/dev/null
@@ -150,13 +150,13 @@ run_download_cold "download -E network-check" kubecli download -E network-check
 pass "R6"
 
 echo "========== R7 catalog sanity =========="
-curl -sf http://127.0.0.1:5000/v2/_catalog | tee /tmp/registry-catalog-147.json
-grep -q 'brinnatt/' /tmp/registry-catalog-147.json \
-  || grep -q '"' /tmp/registry-catalog-147.json \
+curl -sf http://127.0.0.1:5000/v2/_catalog | tee /tmp/registry-catalog-138.json
+grep -q 'brinnatt/' /tmp/registry-catalog-138.json \
+  || grep -q '"' /tmp/registry-catalog-138.json \
   || fail "empty/invalid catalog"
 # Restore always-restart for lab (cold steps temporarily set restart=no).
 docker update --restart=always local_registry >/dev/null 2>&1 || true
-pass "catalog-147"
+pass "catalog-138"
 
 # ---------------------------------------------------------------------------
 # Jumper 136: production jump host where the EOF bug was observed (binary kubecli).
@@ -250,4 +250,4 @@ fi
 echo "========== SUMMARY =========="
 echo "REGISTRY_READY_GATE_PASS"
 echo "evidence: $LOG"
-echo "catalog147: $(head -c 200 /tmp/registry-catalog-147.json 2>/dev/null || true)"
+echo "catalog138: $(head -c 200 /tmp/registry-catalog-138.json 2>/dev/null || true)"

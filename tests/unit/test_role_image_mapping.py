@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-EXT_IMAGES = Path("/projects/kubeauto-ext-images-dockerfile")
+EXT_IMAGES = ROOT.parent / "kubeauto-ext-images-dockerfile"
 
 
 def _read(rel: str) -> str:

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Resume from G3 test-ha onward — sudo bash regression-147-resume-g3.sh
+# Resume from G3 test-ha onward — sudo bash regression-resume-g3.sh
 set -euo pipefail
 exec > /var/log/kubeauto-regression-resume-g3.log 2>&1
 BASE=/usr/local/kubeauto
@@ -30,18 +30,18 @@ nodes_ready test-ha || fail "test-ha not Ready"
 pass G3-test-ha
 
 echo "========== G5 kcfg-adm =========="
-run $K checkout test141
-run $K kcfg-adm -A -u testuser-reg -t view test141 </dev/null
-run $K kcfg-adm -L test141
-run $K kcfg-adm -D -u testuser-reg test141 </dev/null
+run $K checkout test137
+run $K kcfg-adm -A -u testuser-reg -t view test137 </dev/null
+run $K kcfg-adm -L test137
+run $K kcfg-adm -D -u testuser-reg test137 </dev/null
 pass G5-kcfg
 
 echo "========== G4 node expand/shrink =========="
 run $K checkout test-ha
-run $K add-node test-ha 192.168.47.130 worker-130 </dev/null
+run $K add-node test-ha 192.168.47.133 worker-133 </dev/null
 export KUBECONFIG="$BASE/clusters/test-ha/kubectl.kubeconfig"
-kubectl get nodes | grep -q worker-130 || fail add-node
-run $K del-node test-ha 192.168.47.130 </dev/null
+kubectl get nodes | grep -q worker-133 || fail add-node
+run $K del-node test-ha 192.168.47.134 </dev/null
 pass G4-node
 
 echo "========== G4 add-master + del-master (133) =========="
@@ -58,11 +58,11 @@ run $K del-etcd test-ha 192.168.47.133 </dev/null
 pass G4-etcd
 
 echo "========== G6 cross kca-renew + multi checkout =========="
-run $K kca-renew test141 </dev/null
-export KUBECONFIG="$BASE/clusters/test141/kubectl.kubeconfig"
-nodes_ready test141 || fail kca-renew-test141
+run $K kca-renew test137 </dev/null
+export KUBECONFIG="$BASE/clusters/test137/kubectl.kubeconfig"
+nodes_ready test137 || fail kca-renew-test137
 run $K kca-renew aio </dev/null
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   run $K checkout "$c"
   run $K backup "$c" </dev/null
 done
@@ -94,7 +94,7 @@ pass Tier3
 
 echo "========== FINAL verification =========="
 $K list
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   echo "--- $c ---"
   kubectl get nodes

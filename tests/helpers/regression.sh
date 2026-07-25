@@ -1,5 +1,5 @@
 #!/bin/bash
-# Full regression on 192.168.47.147 (ubuntu) — run: sudo bash regression-147.sh
+# Full regression on 192.168.47.138 (ubuntu) — run: sudo bash regression.sh
 set -euo pipefail
 LOG=/var/log/kubeauto-regression-$(date +%Y%m%d-%H%M).log
 exec > >(tee -a "$LOG") 2>&1
@@ -24,11 +24,7 @@ p = ansible_python_policy()
 assert p.core_version[0] >= 2, p.core_version
 print(format_policy_summary(p))
 "
-if [ -f "$(dirname "$0")/../run_unit_tests.sh" ]; then
-  run bash "$(dirname "$0")/../run_unit_tests.sh"
-elif [ -f /projects/kubeauto/tests/run_unit_tests.sh ]; then
-  run bash /projects/kubeauto/tests/run_unit_tests.sh
-fi
+run bash "$BASE/tests/run_unit_tests.sh"
 pass "ansible-core policy preflight"
 
 echo "========== G1 CLI smoke =========="
@@ -42,15 +38,15 @@ grep -q 'repo.huaweicloud.com/epel' /etc/yum.repos.d/epel.repo 2>/dev/null && pa
 pass G1
 
 echo "========== G2 cluster create =========="
-# test141 Rocky single
-run $K new test141
-cat > "$BASE/clusters/test141/hosts" <<'EOF'
+# test137 Rocky single
+run $K new test137
+cat > "$BASE/clusters/test137/hosts" <<'EOF'
 [etcd]
-192.168.47.141
+192.168.47.137
 [kube_master]
-192.168.47.141 k8s_nodename='master-141'
+192.168.47.137 k8s_nodename='master-137'
 [kube_node]
-192.168.47.141
+192.168.47.137
 [harbor]
 [ex_lb]
 [chrony]
@@ -65,24 +61,24 @@ NODE_PORT_RANGE="30000-32767"
 CLUSTER_DNS_DOMAIN="cluster.local"
 bin_dir="/usr/local/bin"
 base_dir="/usr/local/kubeauto"
-cluster_dir="{{ base_dir }}/clusters/test141"
+cluster_dir="{{ base_dir }}/clusters/test137"
 ca_dir="/etc/kubernetes/ssl"
 k8s_nodename=''
 ansible_user=root
 EOF
-sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test141/config.yml"
-run $K setup test141 90 </dev/null
-run $K setup test141 07 </dev/null
+sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test137/config.yml"
+run $K setup test137 90 </dev/null
+run $K setup test137 07 </dev/null
 
-# debian150
-run $K new debian150
-cat > "$BASE/clusters/debian150/hosts" <<'EOF'
+# debian128
+run $K new debian128
+cat > "$BASE/clusters/debian128/hosts" <<'EOF'
 [etcd]
-192.168.47.150
+192.168.47.128
 [kube_master]
-192.168.47.150 k8s_nodename='master-debian'
+192.168.47.128 k8s_nodename='master-debian'
 [kube_node]
-192.168.47.150
+192.168.47.128
 [harbor]
 [ex_lb]
 [chrony]
@@ -97,25 +93,25 @@ NODE_PORT_RANGE="31000-32767"
 CLUSTER_DNS_DOMAIN="cluster.local"
 bin_dir="/usr/local/bin"
 base_dir="/usr/local/kubeauto"
-cluster_dir="{{ base_dir }}/clusters/debian150"
+cluster_dir="{{ base_dir }}/clusters/debian128"
 ca_dir="/etc/kubernetes/ssl"
 k8s_nodename=''
 ansible_user=brinnatt
 ansible_become=true
 ansible_become_method=sudo
 EOF
-sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/debian150/config.yml"
-run $K setup debian150 90 </dev/null
+sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/debian128/config.yml"
+run $K setup debian128 90 </dev/null
 
 # test-ded-etcd
 run $K new test-ded-etcd
 cat > "$BASE/clusters/test-ded-etcd/hosts" <<'EOF'
 [etcd]
-192.168.47.142
+192.168.47.136
 [kube_master]
-192.168.47.130 k8s_nodename='master-130'
+192.168.47.134 k8s_nodename='master-134'
 [kube_node]
-192.168.47.130
+192.168.47.131
 [harbor]
 [ex_lb]
 [chrony]
@@ -142,18 +138,19 @@ run $K setup test-ded-etcd 90 </dev/null
 run $K new test-ha
 cat > "$BASE/clusters/test-ha/hosts" <<'EOF'
 [etcd]
+192.168.47.134
+192.168.47.135
+192.168.47.136
+[kube_master]
+192.168.47.134 k8s_nodename='master-134'
+192.168.47.135 k8s_nodename='master-135'
+192.168.47.136 k8s_nodename='master-136'
+[kube_node]
 192.168.47.131
 192.168.47.132
-192.168.47.140
-[kube_master]
-192.168.47.132 k8s_nodename='master-132'
-192.168.47.140 k8s_nodename='master-140'
-[kube_node]
-192.168.47.132
-192.168.47.140
 [ex_lb]
-192.168.47.142 LB_ROLE=master EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
-192.168.47.131 LB_ROLE=backup EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
+192.168.47.136 LB_ROLE=master EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
+192.168.47.133 LB_ROLE=backup EX_APISERVER_VIP=192.168.47.250 EX_APISERVER_PORT=8443
 [harbor]
 [chrony]
 [all:vars]
@@ -176,12 +173,12 @@ sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test-ha/config.yml"
 run $K setup test-ha 90 </dev/null
 run $K setup test-ha 10 </dev/null
 
-# aio on 147
+# aio on 138
 run $K start-aio </dev/null
 pass G2
 
 echo "========== G3 ops all clusters =========="
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   run $K checkout "$c"
   run $K backup "$c" </dev/null
   run $K stop "$c" </dev/null
@@ -191,22 +188,22 @@ done
 pass G3
 
 echo "========== G5 kcfg-adm =========="
-run $K checkout test141
-run $K kcfg-adm -A -u testuser-reg -t view test141 </dev/null
-run $K kcfg-adm -L test141
-run $K kcfg-adm -D -u testuser-reg test141 </dev/null
+run $K checkout test137
+run $K kcfg-adm -A -u testuser-reg -t view test137 </dev/null
+run $K kcfg-adm -L test137
+run $K kcfg-adm -D -u testuser-reg test137 </dev/null
 pass G5
 
-echo "========== G4 test-ha expand (130 worker) =========="
-run $K add-node test-ha 192.168.47.130 worker-130 </dev/null
+echo "========== G4 test-ha expand (worker133) =========="
+run $K add-node test-ha 192.168.47.133 worker-133 </dev/null
 export KUBECONFIG="$BASE/clusters/test-ha/kubectl.kubeconfig"
-kubectl get nodes | grep -q worker-130 && pass add-node || fail add-node
-run $K del-node test-ha 192.168.47.130 </dev/null
+kubectl get nodes | grep -q worker-133 && pass add-node || fail add-node
+run $K del-node test-ha 192.168.47.134 </dev/null
 pass G4-partial
 
-echo "========== G6 cross: kca-renew test141 =========="
-run $K kca-renew test141 </dev/null
-export KUBECONFIG="$BASE/clusters/test141/kubectl.kubeconfig"
+echo "========== G6 cross: kca-renew test137 =========="
+run $K kca-renew test137 </dev/null
+export KUBECONFIG="$BASE/clusters/test137/kubectl.kubeconfig"
 kubectl get nodes | grep -q Ready && pass kca-renew || fail kca-renew
 
 echo "========== Tier2 tools --help =========="
@@ -217,7 +214,7 @@ pass tier3
 
 echo "========== REGRESSION COMPLETE =========="
 $K list
-for c in test141 debian150 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ded-etcd test-ha aio; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   echo "--- $c ---"
   kubectl get nodes 2>/dev/null || true

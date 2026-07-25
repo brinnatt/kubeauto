@@ -33,10 +33,11 @@ flowchart LR
 
 ## 3.2、推荐目录布局
 
-将六个仓库放在同一父目录（同步测试默认假设 `/projects` 下同级）：
+将六个仓库放在同一父目录。同步测试从 `kubeauto` 的父目录发现 sibling
+仓，不依赖固定绝对路径；当前开发机目录为 `/home/brinnatt/projects`：
 
 ```text
-/projects/
+/home/brinnatt/projects/
 ├── kubeauto/                          # 本仓：CLI + Ansible
 ├── kubeauto-dockerfile/               # 产品镜像打包
 ├── kubeauto-k8s-bin-dockerfile/       # k8s 二进制包
@@ -535,4 +536,3 @@ bash tests/helpers/verify-node-reserved.sh clusters/demo/kubectl.kubeconfig
 
 **示例 C：新增 addon 开关**  
 按 §3.7 闭环；PR 必须含：constants、component_images、role task、config 默认 false、单测、操作手册一行、白皮书第 12 章一行。
-

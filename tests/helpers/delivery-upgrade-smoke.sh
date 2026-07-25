@@ -3,7 +3,7 @@ set -euo pipefail
 export PYTHONPATH=/usr/local/kubeauto PATH=/usr/local/bin:/usr/bin:$PATH
 BASE=/usr/local/kubeauto
 C=deliver-docker
-NODE=192.168.47.141
+NODE=192.168.47.137
 LOG=/var/log/kubeauto-upgrade-smoke-$(date +%Y%m%d%H%M%S).log
 exec > >(tee -a "$LOG") 2>&1
 echo "LOG=$LOG"
