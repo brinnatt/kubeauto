@@ -3,6 +3,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PYTHONPATH="$ROOT"
+UNIT_LOG_DIR="$(mktemp -d /tmp/kubeauto-unit-logs.XXXXXX)"
+trap 'rm -rf "$UNIT_LOG_DIR"' EXIT
+export KUBEAUTO_LOG_DIR="$UNIT_LOG_DIR"
 VENV_PY="$ROOT/.venv/bin/python"
 if [[ -x "$VENV_PY" ]]; then
   PY="$VENV_PY"

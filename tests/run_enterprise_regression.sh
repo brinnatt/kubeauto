@@ -6,7 +6,8 @@
 # remote commands inside this script so a delivery regression is autonomous
 # rather than requiring a per-host operator confirmation.
 #
-# Run:    bash tests/run_enterprise_regression.sh
+# Full:   bash tests/run_enterprise_regression.sh --all-delivery
+# Core:   bash tests/run_enterprise_regression.sh
 # Status: bash tests/run_enterprise_regression.sh --status
 set -euo pipefail
 
@@ -278,6 +279,28 @@ monitor_remote_job() {
   done
 }
 
+if [[ "$MODE" == "--all-delivery" ]]; then
+  # One autonomous delivery-signoff command. Each existing focused mode owns
+  # its durable state, foreground stream, diagnostics and post-run clean
+  # verification; composing the proven modes here avoids a second orchestration
+  # implementation and keeps the user's approval surface to this fixed runner.
+  delivery_modes=(
+    --jumper-only
+    --nerdctl-only
+    --docker-only
+    --upgrade-only
+    --gaps-only
+  )
+  for delivery_mode in "${delivery_modes[@]}"; do
+    echo "========== DELIVERY SIGNOFF mode=$delivery_mode =========="
+    bash "$0" "$delivery_mode"
+  done
+  echo "ENTERPRISE_DELIVERY_ALL_PASS"
+  matrix_counts
+  echo
+  exit 0
+fi
+
 if [[ "$MODE" == "--status" ]]; then
   echo "========== 138 full regression =========="
   remote_job_summary ssh138 sudo /tmp/kubeauto-regression-aio /tmp/kubeauto-regression-live.log || true
@@ -510,7 +533,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--status|--follow|--follow-jumper|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--upgrade-only|--gaps-only|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--status|--follow|--follow-jumper|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--upgrade-only|--gaps-only|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 
