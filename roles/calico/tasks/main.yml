@@ -67,7 +67,6 @@
   until: pod_status.stdout == "Running"
   retries: 15
   delay: 15
-  ignore_errors: true
   delegate_to: localhost
   tags: always
 

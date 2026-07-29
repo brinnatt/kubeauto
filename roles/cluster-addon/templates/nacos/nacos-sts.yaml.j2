@@ -112,6 +112,15 @@ spec:
             - containerPort: 7848
               name: old-raft-rpc
           env:
+            # nacos-docker exposes these variables in docker-startup.sh.
+            # Keep its upstream defaults unless an installation explicitly
+            # sizes the JVM for a smaller delivery/test node.
+            - name: JVM_XMS
+              value: "{{ nacos_jvm_xms | default('1g') }}"
+            - name: JVM_XMX
+              value: "{{ nacos_jvm_xmx | default('1g') }}"
+            - name: JVM_XMN
+              value: "{{ nacos_jvm_xmn | default('512m') }}"
             - name: NACOS_REPLICAS
               value: "{{ nacos_replicas | default(3) }}"
             - name: SERVICE_NAME
@@ -148,6 +157,8 @@ spec:
                 configMapKeyRef:
                   name: nacos-cm
                   key: mysql.password
+            - name: MYSQL_SERVICE_DB_PARAM
+              value: "{{ nacos_mysql_db_param | default('characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC') }}"
             - name: SPRING_DATASOURCE_PLATFORM
               value: "mysql"
             - name: NACOS_SERVER_PORT

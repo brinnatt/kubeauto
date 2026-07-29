@@ -159,13 +159,13 @@ docker update --restart=always local_registry >/dev/null 2>&1 || true
 pass "catalog-138"
 
 # ---------------------------------------------------------------------------
-# Jumper 136: production jump host where the EOF bug was observed (binary kubecli).
+# Jumper 130: production jump host where the EOF bug was observed (binary kubecli).
 # Sync installs source wrapper so the fix is exerciseable without rebuilding the ELF.
 # ---------------------------------------------------------------------------
 if [[ "${REGISTRY_GATE_SKIP_136:-0}" != "1" ]]; then
   echo "========== R8 sync + cold download on jumper ${JUMPER_IP} =========="
   run bash "$SRC/tests/helpers/sync-kubeauto.sh" "root@${JUMPER_IP}" "$PW"
-  sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@${JUMPER_IP}" "bash -s" <<'REMOTE'
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@${JUMPER_IP}" "bash -s" <<'REMOTE'
 set -euo pipefail
 export PATH=/usr/local/bin:$PATH
 export PYTHONPATH=/usr/local/kubeauto

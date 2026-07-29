@@ -15,7 +15,7 @@ bash "$BASE/tests/helpers/delivery-docker-gate.sh"
 
 echo "==== DESTROY docker cluster before full matrix ===="
 kubecli destroy deliver-docker </dev/null 2>/dev/null || rm -rf "$BASE/clusters/deliver-docker"
-sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.133 \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.133 \
   'set +e; systemctl stop kubelet docker cri-dockerd; rm -rf /var/lib/kubelet /var/lib/docker /etc/kubernetes /etc/docker /etc/cni /etc/systemd/system/podruntime.slice; echo 133_clean'
 
 echo "==== FULL REGRESSION (G0-G11, tools skip) ===="

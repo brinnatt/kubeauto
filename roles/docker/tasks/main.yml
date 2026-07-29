@@ -27,6 +27,23 @@
   run_once: true
   tags: upgrade_docker, download_docker
 
+# On a Kubernetes containerd host, Docker's bundled runtime must remain private.
+# Keep this outside the new-install block so an idempotent rerun also repairs
+# nodes created by older kubeauto releases.
+- name: prepare docker managed runtime directory
+  file: name=/usr/local/libexec/docker state=directory
+  when: CONTAINER_RUNTIME == 'containerd'
+  tags: upgrade_docker, download_docker
+
+- name: isolate docker managed runtime binaries from kubernetes containerd
+  copy: src={{ item }} dest=/usr/local/libexec/docker/ mode=0755
+  with_fileglob:
+  - "{{ base_dir }}/docker-bin/*"
+  when:
+  - CONTAINER_RUNTIME == 'containerd'
+  - (item | basename) in ['containerd', 'containerd-shim-runc-v2', 'ctr', 'runc']
+  tags: upgrade_docker, download_docker
+
 - name: infer docker installed
   debug:
     msg: "The docker has been installed yet"
@@ -39,12 +56,22 @@
       - "{{ bin_dir }}"
       - "/etc/docker"
     
-    - name: download docker binary
+    # The official static archive also contains Docker's private containerd,
+    # runc, ctr and shim.  On a host that is already a Kubernetes containerd
+    # node (for example an all-in-one Harbor host), copying those files into
+    # bin_dir would replace the ext-bin 2.x runtime.  Moby starts its managed
+    # containerd by basename and inherits dockerd's PATH, so keep that private
+    # bundle in a Docker-only directory selected by docker.service.
+    # Source: moby/moby v28.5.2 libcontainerd/supervisor/remote_daemon.go.
+    - name: download public docker binaries
       copy: src={{ item }} dest={{ bin_dir }}/ mode=0755
       with_fileglob:
       - "{{ base_dir }}/docker-bin/*"
+      when: >-
+        CONTAINER_RUNTIME != 'containerd' or
+        (item | basename) not in ['containerd', 'containerd-shim-runc-v2', 'ctr', 'runc']
       tags: upgrade_docker, download_docker
-    
+
     - name: configure docker daemon
       template: src=daemon.json.j2 dest=/etc/docker/daemon.json
     
@@ -67,41 +94,63 @@
       retries: 8
       delay: 2
       tags: upgrade_docker
-    
+
     # configure docker symlink，it's convenient to maintain
     - name: configure docker symlink
       file: src={{ bin_dir }}/docker dest=/usr/bin/docker state=link
       ignore_errors: true
   when: "'NoFound' in docker_svc.stdout"
 
+- name: read staged kubernetes containerd checksum on controller
+  stat:
+    path: "{{ base_dir }}/extra-bin/containerd-bin/containerd"
+    checksum_algorithm: sha256
+  register: staged_kubernetes_containerd
+  delegate_to: localhost
+  when:
+  - CONTAINER_RUNTIME == 'containerd'
+  - inventory_hostname in ((groups['kube_master'] | default([])) + (groups['kube_node'] | default([])))
+
+- name: read installed kubernetes containerd checksum after docker install
+  stat:
+    path: "{{ bin_dir }}/containerd"
+    checksum_algorithm: sha256
+  register: installed_kubernetes_containerd
+  when:
+  - CONTAINER_RUNTIME == 'containerd'
+  - inventory_hostname in ((groups['kube_master'] | default([])) + (groups['kube_node'] | default([])))
+
+- name: require docker install to preserve kubernetes containerd
+  assert:
+    that:
+    - staged_kubernetes_containerd.stat.exists
+    - installed_kubernetes_containerd.stat.exists
+    - installed_kubernetes_containerd.stat.checksum == staged_kubernetes_containerd.stat.checksum
+    fail_msg: >-
+      Docker installation replaced the Kubernetes containerd binary.
+      Docker managed runtime files must remain under /usr/local/libexec/docker.
+  when:
+  - CONTAINER_RUNTIME == 'containerd'
+  - inventory_hostname in ((groups['kube_master'] | default([])) + (groups['kube_node'] | default([])))
+
 # K8s >=1.24 removed dockershim; kubelet must speak CRI via Mirantis cri-dockerd.
 # Runs even when dockerd was already present (previous block may be skipped).
-- name: ensure cri-dockerd present on control node docker-bin
-  shell: |
-    set -e
-    VER="{{ v_cri_dockerd | default('0.3.26') }}"
-    ARCH="$(uname -m)"
-    case "$ARCH" in
-      x86_64|amd64) A=amd64 ;;
-      aarch64|arm64) A=arm64 ;;
-      *) echo "unsupported arch $ARCH"; exit 1 ;;
-    esac
-    DEST="{{ base_dir }}/docker-bin/cri-dockerd"
-    if [ -x "$DEST" ]; then
-      echo "cri-dockerd already in docker-bin"
-      exit 0
-    fi
-    TMP=$(mktemp -d)
-    URL="https://v6.gh-proxy.org/https://github.com/Mirantis/cri-dockerd/releases/download/v${VER}/cri-dockerd-${VER}.${A}.tgz"
-    ALT="https://github.com/Mirantis/cri-dockerd/releases/download/v${VER}/cri-dockerd-${VER}.${A}.tgz"
-    if ! curl -fsSL --retry 3 -o "$TMP/cri.tgz" "$URL"; then
-      curl -fsSL --retry 3 -o "$TMP/cri.tgz" "$ALT"
-    fi
-    tar -xzf "$TMP/cri.tgz" -C "$TMP"
-    # tarball layout: cri-dockerd/cri-dockerd
-    install -m 0755 "$TMP"/cri-dockerd/cri-dockerd "$DEST"
-    rm -rf "$TMP"
-    "$DEST" --version || true
+- name: require verified cri-dockerd from kubecli download -D
+  stat:
+    path: "{{ base_dir }}/docker-bin/cri-dockerd"
+  register: cri_dockerd_artifact
+  delegate_to: localhost
+  run_once: true
+  tags: upgrade_docker, download_docker
+
+- name: fail when the ext-bin cri-dockerd artifact is unavailable
+  assert:
+    that:
+      - cri_dockerd_artifact.stat.exists
+      - cri_dockerd_artifact.stat.executable
+    fail_msg: >-
+      Missing verified cri-dockerd artifact at {{ base_dir }}/docker-bin/cri-dockerd.
+      Run kubecli download -D so ext-bin is pulled from TalkEdu or Docker Hub.
   delegate_to: localhost
   run_once: true
   tags: upgrade_docker, download_docker

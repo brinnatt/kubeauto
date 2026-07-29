@@ -97,6 +97,27 @@ class RegistryManager:
         self.image_dir = Path(self.kube_constant.IMAGE_DIR)
         self.base_data_path = Path(self.kube_constant.BASE_DATA_PATH)
 
+    def _registry_data_path(self) -> Path:
+        """Return a bind-mount source visible to the active Docker daemon.
+
+        Strictly confined Snap Docker exposes its persistent ``SNAP_COMMON``
+        tree at ``/var/snap/docker/common``.  A bind source such as ``/data``
+        can otherwise become a private tmpfs inside the container, so deleting
+        the host path does not reset registry blobs.
+        """
+        try:
+            result = self.docker._run_docker(
+                ["info", "--format", "{{.DockerRootDir}}"]
+            )
+            docker_root = Path(result.stdout.strip())
+        except (CommandExecutionError, AttributeError, TypeError, ValueError):
+            docker_root = Path()
+
+        snap_common = Path("/var/snap/docker/common")
+        if docker_root.is_relative_to(snap_common):
+            return snap_common / "kubeauto-registry"
+        return self.base_data_path / "registry"
+
     def _registry_http_ok(self) -> bool:
         """Return True if local registry answers Registry HTTP API V2 on loopback :5000."""
         # Probe 127.0.0.1 (not the hostname) so readiness does not depend on /etc/hosts.
@@ -122,6 +143,17 @@ class RegistryManager:
         )
         return False
 
+    def _ensure_local_registry_hostname(self, hosts_file: Path = Path("/etc/hosts")) -> None:
+        """Make the control host resolve its local registry name to loopback."""
+        try:
+            lines = hosts_file.read_text(encoding="utf-8").splitlines()
+        except OSError as exc:
+            raise CommandExecutionError(f"Unable to read {hosts_file}: {exc}", 1) from exc
+
+        retained = [line for line in lines if "registry.talkschool.cn" not in line]
+        retained.append("127.0.0.1  registry.talkschool.cn")
+        self.docker._write_privileged_file(hosts_file, "\n".join(retained) + "\n")
+
     def start_local_registry(self, version: Optional[str] = None) -> None:
         """Start local Docker registry (create if missing, start if stopped).
 
@@ -129,6 +161,9 @@ class RegistryManager:
         callers (upload / download -D) do not race a just-started container.
         """
         version = version or self.kube_constant.v_docker_registry
+        # A former test may have left this name pointing at a retired control IP.
+        # Pushes originate locally, so normalize it even if the container is running.
+        self._ensure_local_registry_hostname()
 
         if self.docker.is_container_running("local_registry"):
             logger.warning("[REGISTRY] Local registry already running; skipping.", extra=LOG_STDOUT)
@@ -155,7 +190,7 @@ class RegistryManager:
                         self._ensure_image_local(registry_image)
 
             # Create registry directory
-            registry_data = self.base_data_path / "registry"
+            registry_data = self._registry_data_path()
             registry_data.mkdir(parents=True, exist_ok=True)
 
             # Run registry container
@@ -167,13 +202,6 @@ class RegistryManager:
                 restart="always",
                 volume=[f"{registry_data}:/var/lib/registry"]
             )
-
-            # Add registry to hosts file
-            hosts_file = Path("/etc/hosts")
-            content = hosts_file.read_text()
-            if "registry.talkschool.cn" not in content:
-                with hosts_file.open("a") as f:
-                    f.write("127.0.0.1  registry.talkschool.cn\n")
 
         if not self._wait_for_registry_ready():
             raise CommandExecutionError(
@@ -206,7 +234,12 @@ class RegistryManager:
                 repo, _, tag = image.rpartition(":")
                 if not tag:
                     tag = "latest"
-                local_image = f"registry.talkschool.cn:5000/{repo}:{tag}"
+                # Pushes originate on the registry host itself. Use loopback so
+                # a stale DNS/hosts cache cannot send the control-plane upload
+                # to a retired lab address. The registry stores the same
+                # ``brinnatt/<name>:<tag>`` repository which nodes later pull
+                # through registry.talkschool.cn:5000.
+                local_image = f"127.0.0.1:5000/{repo}:{tag}"
 
                 logger.info(f"[REGISTRY]   -> Tagging and pushing to local registry.", extra=LOG_STDOUT)
                 self.docker.tag_image(image, local_image)

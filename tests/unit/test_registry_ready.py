@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
 from common.exceptions import CommandExecutionError
@@ -9,6 +11,21 @@ from service.cluster.registry import RegistryManager
 
 
 class TestRegistryReady(unittest.TestCase):
+    def test_registry_data_path_uses_snap_common_for_snap_docker(self):
+        rm = RegistryManager()
+        rm.docker = MagicMock()
+        rm.docker._run_docker.return_value.stdout = "/var/snap/docker/common/var-lib-docker\n"
+        self.assertEqual(
+            rm._registry_data_path(),
+            Path("/var/snap/docker/common/kubeauto-registry"),
+        )
+
+    def test_registry_data_path_uses_base_data_for_native_docker(self):
+        rm = RegistryManager()
+        rm.docker = MagicMock()
+        rm.docker._run_docker.return_value.stdout = "/var/lib/docker\n"
+        self.assertEqual(rm._registry_data_path(), rm.base_data_path / "registry")
+
     @patch("service.cluster.registry.time.sleep")
     def test_wait_succeeds_on_first_probe(self, mock_sleep):
         rm = RegistryManager()
@@ -42,7 +59,9 @@ class TestRegistryReady(unittest.TestCase):
         rm.docker.is_container_running.return_value = False
         rm.docker.container_exists.return_value = True
 
-        with patch.object(rm, "_wait_for_registry_ready", return_value=True) as wait:
+        with patch.object(rm, "_ensure_local_registry_hostname"), patch.object(
+            rm, "_wait_for_registry_ready", return_value=True
+        ) as wait:
             rm.start_local_registry()
             rm.docker.start_container.assert_called_once_with("local_registry")
             wait.assert_called_once()
@@ -52,7 +71,9 @@ class TestRegistryReady(unittest.TestCase):
         rm.docker = MagicMock()
         rm.docker.is_container_running.return_value = True
 
-        with patch.object(rm, "_wait_for_registry_ready", return_value=False):
+        with patch.object(rm, "_ensure_local_registry_hostname"), patch.object(
+            rm, "_wait_for_registry_ready", return_value=False
+        ):
             with self.assertRaises(CommandExecutionError) as ctx:
                 rm.start_local_registry()
             self.assertIn(":5000", str(ctx.exception))
@@ -63,10 +84,33 @@ class TestRegistryReady(unittest.TestCase):
         rm.docker = MagicMock()
         rm.docker.is_container_running.return_value = True
 
-        with patch.object(rm, "_wait_for_registry_ready", return_value=True) as wait:
+        with patch.object(rm, "_ensure_local_registry_hostname"), patch.object(
+            rm, "_wait_for_registry_ready", return_value=True
+        ) as wait:
             rm.start_local_registry()
             rm.docker.start_container.assert_not_called()
             wait.assert_called_once()
+
+    def test_local_registry_hostname_replaces_retired_mapping(self):
+        rm = RegistryManager()
+        rm.docker = MagicMock()
+        with TemporaryDirectory() as temp_dir:
+            hosts = Path(temp_dir) / "hosts"
+            hosts.write_text("127.0.0.1 localhost\n192.168.47.147 registry.talkschool.cn\n")
+            rm._ensure_local_registry_hostname(hosts)
+            content = rm.docker._write_privileged_file.call_args.args[1]
+        self.assertNotIn("192.168.47.147", content)
+        self.assertIn("127.0.0.1  registry.talkschool.cn", content)
+
+    def test_control_host_push_uses_loopback_not_registry_dns(self):
+        rm = RegistryManager()
+        rm.docker = MagicMock()
+        with patch.object(rm, "start_local_registry"), patch.object(rm, "_ensure_image_local"):
+            rm.upload_to_registry(["brinnatt/calico-cni:v3.28.4"])
+        rm.docker.tag_image.assert_called_once_with(
+            "brinnatt/calico-cni:v3.28.4", "127.0.0.1:5000/brinnatt/calico-cni:v3.28.4"
+        )
+        rm.docker.push_image.assert_called_once_with("127.0.0.1:5000/brinnatt/calico-cni:v3.28.4")
 
 
 if __name__ == "__main__":

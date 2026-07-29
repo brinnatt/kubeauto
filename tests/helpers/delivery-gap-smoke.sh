@@ -15,7 +15,7 @@ section(){ echo; echo "========== $* =========="; }
 fix_registry_hosts(){
   local ip
   for ip in 131 132 133 134 135 136 137; do
-    sshpass -p 123456 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 root@192.168.47.$ip \
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 root@192.168.47.$ip \
       "sed -i '/registry.talkschool.cn/d' /etc/hosts; echo '192.168.47.138    registry.talkschool.cn' >> /etc/hosts" \
       2>/dev/null || echo "[WARN] hosts 47.$ip"
   done
@@ -46,12 +46,17 @@ assert_no_imagepull(){
 }
 prep_lvm_remote(){
   local ip="$1"
-  sshpass -p 123456 scp -o StrictHostKeyChecking=no "$BASE/tests/helpers/prep-node-lvm-loop.sh" root@192.168.47.$ip:/tmp/prep-lvm.sh
-  sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.$ip "bash /tmp/prep-lvm.sh vg_k8s ${2:-20}"
+  scp -o BatchMode=yes -o StrictHostKeyChecking=no "$BASE/tests/helpers/prep-node-lvm-loop.sh" root@192.168.47.$ip:/tmp/prep-lvm.sh
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.$ip "bash /tmp/prep-lvm.sh vg_k8s ${2:-20}"
 }
 set_cfg(){ # file key value
-  local f="$1" k="$2" v="$3"
-  if grep -q "^${k}:" "$f"; then sed -i "s|^${k}:.*|${k}: ${v}|" "$f"; else echo "${k}: ${v}" >> "$f"; fi
+  local f="$1" k="$2" v="$3" replacement
+  replacement=$(printf '%s' "$v" | sed 's/[\\&|]/\\&/g')
+  if grep -q "^${k}:" "$f"; then
+    sed -i "s|^${k}:.*|${k}: ${replacement}|" "$f"
+  else
+    printf '%s: %s\n' "$k" "$v" >> "$f"
+  fi
 }
 
 section "0 unit + registry hosts + trim aio + bootstrap"
@@ -108,8 +113,8 @@ set_cfg "$CFG" local_path_provisioner_install '"yes"'
 set_cfg "$CFG" nfs_provisioner_install '"yes"'; set_cfg "$CFG" nfs_server '"192.168.47.133"'; set_cfg "$CFG" nfs_path '"/data/nfs"'
 set_cfg "$CFG" rocketmq_install '"yes"'; set_cfg "$CFG" rocketmq_storage_class '"openebs-hostpath"'
 set_cfg "$CFG" dashboard_install '"no"'; set_cfg "$CFG" prom_install '"no"'; set_cfg "$CFG" minio_install '"no"'; set_cfg "$CFG" nacos_install '"no"'
-sshpass -p 123456 scp -o StrictHostKeyChecking=no "$BASE/tests/helpers/prep-nfs-server.sh" root@192.168.47.133:/tmp/prep-nfs.sh
-sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.133 'bash /tmp/prep-nfs.sh /data/nfs'
+scp -o BatchMode=yes -o StrictHostKeyChecking=no "$BASE/tests/helpers/prep-nfs-server.sh" root@192.168.47.133:/tmp/prep-nfs.sh
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.133 'bash /tmp/prep-nfs.sh /data/nfs'
 
 if $K setup "$C_LVM" 90 </dev/null && $K setup "$C_LVM" 07 </dev/null; then
   export KUBECONFIG="$BASE/clusters/$C_LVM/kubectl.kubeconfig"
@@ -143,7 +148,8 @@ EOF
         echo "$out" | grep -q lvm-ok && ok=1 && break
       fi; sleep 10
     done
-    kubectl get pvc,pod lvm-smoke-pvc lvm-smoke-pod -o wide || true
+    kubectl get pvc lvm-smoke-pvc -o wide || true
+    kubectl get pod lvm-smoke-pod -o wide || true
     [ "$ok" = 1 ] && pass "P0 OpenEBS LVM R/W" || fail "P0 OpenEBS LVM R/W"
   else fail "P0 OpenEBS pods"; fi
 
@@ -173,7 +179,8 @@ EOF
       echo "$out" | grep -q nfs-ok && ok=1 && break
     fi; sleep 10
   done
-  kubectl get pvc,pod nfs-smoke-pvc nfs-smoke-pod -o wide || true
+  kubectl get pvc nfs-smoke-pvc -o wide || true
+  kubectl get pod nfs-smoke-pod -o wide || true
   kubectl -n kube-system get pods | grep -i nfs || true
   [ "$ok" = 1 ] && pass "P0 NFS R/W" || fail "P0 NFS R/W"
 

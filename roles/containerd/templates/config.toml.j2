@@ -2,7 +2,6 @@ version = 2
 root = '{{ CONTAINERD_STORAGE_DIR }}'
 state = '/run/containerd'
 temp = ''
-plugin_dir = ''
 disabled_plugins = []
 required_plugins = []
 oom_score = 0
@@ -106,7 +105,9 @@ imports = []
             SystemdCgroup = true
 
     [plugins.'io.containerd.cri.v1.runtime'.cni]
-      bin_dir = '/opt/cni/bin'
+      # containerd 2.1 deprecates bin_dir; its official config default uses
+      # bin_dirs and announces removal of bin_dir in 2.2.
+      bin_dirs = ['/opt/cni/bin']
       conf_dir = '/etc/cni/net.d'
       max_conf_num = 1
       setup_serially = false

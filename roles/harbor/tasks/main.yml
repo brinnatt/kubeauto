@@ -4,14 +4,16 @@
     state: directory
     mode: 0755
 
-# Register the variable result. If the registry directory exists under the {{ HARBOR_PATH }} directory, it indicates that Harbor has already been installed, and no further installation should be performed.
-- name: register variable result
-  command: ls {{ HARBOR_PATH }}
+# Harbor data can survive a Docker cleanup.  A directory named "registry" is
+# not proof that Harbor is installed or running; the registry container is.
+- name: detect running Harbor registry service
+  command: "{{ bin_dir }}/docker ps --filter name=^/registry$ --format {% raw %}'{{.Names}}'{% endraw %}"
   register: result
+  changed_when: false
 
-- name: indicates that the harbor has been installed already
+- name: indicate that Harbor is already running
   debug:
-    msg: "It has been detected that Harbor installation already exists. To avoid conflicts, no reinstallation will be performed; only an attempt to start Harbor will be made."
+    msg: "A running Harbor registry container was detected; installation is not required."
   when: '"registry" in result.stdout'
 
 - block:

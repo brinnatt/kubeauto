@@ -1,6 +1,6 @@
 """Docker daemon readiness and pull execution."""
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from docker.errors import APIError
 
@@ -70,6 +70,20 @@ class TestPullImage(unittest.TestCase):
         msg = _SDK_CLI_FALLBACK_MSG.lower()
         self.assertIn("retrying via docker cli", msg)
         self.assertNotIn("initialize", msg)
+
+
+class TestTemporaryContainerCleanup(unittest.TestCase):
+    def test_cli_run_failure_removes_created_container_before_reraise(self):
+        dm = DockerManager()
+        failure = CommandExecutionError("port already allocated", 125)
+        with patch.object(dm, "remove_container") as remove, patch.object(
+            dm, "_run_docker", side_effect=failure
+        ), patch.object(DockerManager, "client", new_callable=PropertyMock, return_value=None):
+            with self.assertRaises(CommandExecutionError):
+                dm.run_container("brinnatt/registry:2", "local_registry", publish=["5000:5000"])
+        self.assertEqual(remove.call_count, 2)
+        self.assertEqual(remove.call_args_list[0].args, ("local_registry",))
+        self.assertEqual(remove.call_args_list[1].args, ("local_registry",))
 
 
 if __name__ == "__main__":

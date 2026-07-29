@@ -61,6 +61,8 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
         self.assertEqual(env(ext, "EXT_BIN_VER"), self.kc.v_extra_bin.lstrip("v"))
         self.assertEqual(env(ext, "DOCKER_COMPOSE_VER"), self.kc.v_docker_compose.lstrip("v"))
+        self.assertEqual(env(ext, "DOCKER_BUILDX_VER"), self.kc.v_docker_buildx.lstrip("v"))
+        self.assertEqual(env(ext, "CRI_DOCKERD_VER"), self.kc.v_cri_dockerd.lstrip("v"))
         self.assertEqual(env(ext, "NERDCTL_VER"), self.kc.v_nerdctl.lstrip("v"))
         self.assertEqual(env(sp1, "EXT_BIN_SP1_VER"), self.kc.v_extra_bin_sp1.lstrip("v"))
         m = re.search(r"kubeauto-ext-bin-sp1:([^\s]+)", ext)
@@ -71,6 +73,10 @@ class TestSixRepoVersionSync(unittest.TestCase):
         sh = (EXT_BIN / "multi-platform-download.sh").read_text()
         self.assertIn("nerdctl-${NERDCTL_VER}-linux-${ARCH}.tar.gz", sh)
         self.assertNotRegex(sh, r"wget[^\n]*nerdctl-full")
+        self.assertIn("buildx-${DOCKER_BUILDX_VER}.linux-${ARCH}", sh)
+        self.assertIn("cri-dockerd-${CRI_DOCKERD_VER}.${ARCH}.tgz", sh)
+        self.assertIn("docker-runtime-artifacts.sha256", ext)
+        self.assertIn("sha256sum docker-compose docker-buildx cri-dockerd", ext)
 
     def test_json_mock_dockerfile_pins_node20(self):
         """Dockerfile must stay on Node >=18.13 + pinned json-server (v1.3.1 contract)."""

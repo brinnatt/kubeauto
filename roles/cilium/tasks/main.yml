@@ -16,6 +16,7 @@
       ip link set "$i" down 2>/dev/null
       ip link delete "$i" 2>/dev/null
     done
+    findmnt -rn -o TARGET | awk '$0 == "/run/cilium" || index($0, "/run/cilium/") == 1' | sort -r | xargs -r -n1 umount -l
     rm -rf /sys/fs/bpf/tc/globals/cilium_* /sys/fs/bpf/cilium /run/cilium 2>/dev/null
     exit 0
   tags: always

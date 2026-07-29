@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nerdctl regression gate (containerd path): clean lab → ext-bin 1.14.0 → aio + master/worker.
+# Nerdctl regression gate (containerd path): clean lab → current ext-bin → aio + master/worker.
 # Run on Ubuntu aio control 138 as ubuntu (sudo where needed for wipe/aio).
 # Usage: bash tests/helpers/nerdctl-gate.sh
 set -euo pipefail
@@ -18,11 +18,17 @@ run(){ echo ">>> $*"; "$@" || fail "$*"; }
 PW="${LAB_SSH_PASSWORD:-123456}"
 WORKER="${NERDCTL_WORKER:-192.168.47.133}"
 CONTROL_IP=192.168.47.138
+EXT_BIN_VERSION="$(python3 -c 'from common.constants import KubeConstant; print(KubeConstant().v_extra_bin)')"
 
 echo "========== N0 sync source → ${BASE} =========="
-run bash "$SRC/tests/helpers/sync-kubeauto.sh" "ubuntu@${CONTROL_IP}" "$PW"
+if [[ "${NERDCTL_SKIP_SYNC:-0}" == 1 ]]; then
+  echo "[SKIP] source already synchronized by enterprise supervisor"
+else
+  run bash "$SRC/tests/helpers/sync-kubeauto.sh" "ubuntu@${CONTROL_IP}" "$PW"
+fi
 grep -q 'v_nerdctl' "$BASE/common/constants.py" || fail "synced tree missing v_nerdctl"
-grep -q '1.14.0' "$BASE/common/constants.py" || fail "synced tree missing v_extra_bin 1.14.0"
+grep -q "v_extra_bin.*${EXT_BIN_VERSION}" "$BASE/common/constants.py" || \
+  fail "synced tree missing v_extra_bin ${EXT_BIN_VERSION}"
 grep -q 'extra-bin/nerdctl' "$BASE/roles/containerd/tasks/main.yml" || fail "containerd role missing nerdctl copy"
 pass "sync"
 
@@ -32,25 +38,29 @@ run bash "$BASE/tests/run_unit_tests.sh"
 pass "unit"
 
 echo "========== N2 lab wipe (keep docker + registry :5000) =========="
-run bash "$BASE/tests/helpers/lab-wipe-nodes.sh"
+if [[ "${NERDCTL_SKIP_LAB_WIPE:-0}" == 1 ]]; then
+  echo "[SKIP] lab clean+verify already completed by enterprise supervisor"
+else
+  run bash "$BASE/tests/helpers/lab-wipe-nodes.sh"
+fi
 # also drop stale nerdctl binaries so old installs cannot mask missing distribute
-sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$WORKER" \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$WORKER" \
   'rm -f /usr/local/bin/nerdctl /opt/kube/bin/nerdctl 2>/dev/null; echo worker_nerdctl_cleared' || true
 sudo rm -f /usr/local/bin/nerdctl /opt/kube/bin/nerdctl 2>/dev/null || true
 sudo rm -rf "$BASE/extra-bin" 2>/dev/null || true
 mkdir -p "$BASE/extra-bin"
-docker start local_registry >/dev/null 2>&1 || true
-for i in $(seq 1 30); do
-  curl -sf http://127.0.0.1:5000/v2/_catalog >/dev/null && break
-  sleep 2
-done
+# The authoritative lab wipe removes local_registry. Recreate it through the
+# production download path so this gate also proves the HTTP-ready contract;
+# `docker start` alone silently fails when the container does not exist.
+run kubecli download -D </dev/null
+(cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256)
 curl -sf http://127.0.0.1:5000/v2/_catalog >/dev/null || fail "local_registry down after wipe"
 pass "wipe+registry"
 
-echo "========== N3 pull/extract ext-bin 1.14.0 =========="
+echo "========== N3 pull/extract ext-bin ${EXT_BIN_VERSION} =========="
 # Force image present, then let kubecli extract via get_ext_bin path
-docker pull hub.talkedu.cn/kubeauto/kubeauto-ext-bin:1.14.0 >/dev/null
-docker pull brinnatt/kubeauto-ext-bin:1.14.0 >/dev/null
+docker pull "hub.talkedu.cn/kubeauto/kubeauto-ext-bin:${EXT_BIN_VERSION}" >/dev/null
+docker pull "brinnatt/kubeauto-ext-bin:${EXT_BIN_VERSION}" >/dev/null
 # Prefer kubecli download path used in production
 kubecli download -e </dev/null || fail "kubecli download -e (ext-bin)"
 test -x "$BASE/extra-bin/nerdctl" || fail "extra-bin/nerdctl missing after download -e"
@@ -60,7 +70,7 @@ grep -E '2\.3\.4|v2\.3\.4' /tmp/nerdctl-extbin-version.txt || \
   grep -q 'nerdctl' /tmp/nerdctl-extbin-version.txt || fail "unexpected nerdctl version output"
 # ensure not leftover from full bundle collision
 test -x "$BASE/extra-bin/containerd-bin/containerd" || fail "containerd binary missing in ext-bin"
-pass "ext-bin-1.14.0"
+pass "ext-bin-${EXT_BIN_VERSION}"
 
 echo "========== N4 bootstrap essential images =========="
 BOOTSTRAP_MODE=essential bash "$BASE/tests/helpers/bootstrap-brinnatt-mirrors.sh" || true
@@ -71,7 +81,7 @@ echo "========== N5 aio@138 (master+worker co-located, containerd) =========="
 # seed ssh key to worker for later multi-node
 PUB="$(cat /home/ubuntu/.ssh/id_rsa.pub 2>/dev/null || cat ~/.ssh/id_rsa.pub 2>/dev/null || true)"
 if [[ -n "${PUB:-}" ]]; then
-  sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$WORKER" \
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$WORKER" \
     "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
 fi
 run kubecli start-aio </dev/null
@@ -114,7 +124,7 @@ systemctl daemon-reload 2>/dev/null
 echo CTRL_REWIPE_OK
 '
 sudo bash -lc "$CTRL_WIPE"
-sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$WORKER" '
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$WORKER" '
 set +e
 systemctl stop kubelet kube-proxy kube-lb containerd docker cri-dockerd 2>/dev/null
 mount | awk "/kubelet|containerd|docker|kube-/ {print \$3}" | xargs -r umount -l 2>/dev/null
@@ -130,7 +140,7 @@ echo WORKER_REWIPE_OK
 '
 # ensure no stale nerdctl on either host before setup
 ! command -v nerdctl >/dev/null 2>&1 || fail "nerdctl still present on control after rewipe"
-sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$WORKER" 'command -v nerdctl' \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$WORKER" 'command -v nerdctl' \
   && fail "nerdctl still present on worker after rewipe" || true
 
 rm -rf "$BASE/clusters/nerdctl-mw"
@@ -167,6 +177,17 @@ ca_dir="/etc/kubernetes/ssl"
 k8s_nodename=''
 ansible_user=root
 EOF
+# config.yml is passed to Ansible as extra-vars, so it is authoritative over
+# inventory [all:vars].  This gate includes the small 3.5 GiB worker 133;
+# reserve-resource coverage belongs on the dedicated large-memory 137/138 gates.
+sed -i 's/^KUBE_RESERVED_ENABLED: "yes"/KUBE_RESERVED_ENABLED: "no"/' \
+  "$BASE/clusters/nerdctl-mw/config.yml"
+sed -i 's/^SYS_RESERVED_ENABLED: "yes"/SYS_RESERVED_ENABLED: "no"/' \
+  "$BASE/clusters/nerdctl-mw/config.yml"
+grep -q '^KUBE_RESERVED_ENABLED: "no"$' "$BASE/clusters/nerdctl-mw/config.yml" || \
+  fail "failed to disable kube reserved for small worker"
+grep -q '^SYS_RESERVED_ENABLED: "no"$' "$BASE/clusters/nerdctl-mw/config.yml" || \
+  fail "failed to disable system reserved for small worker"
 # SSH prep
 kubecli system -a --user root --password "$PW" "$CONTROL_IP" "$WORKER" </dev/null || true
 # Prefer passwordless from ubuntu→root via key; ansible may need become
@@ -190,7 +211,7 @@ sudo nerdctl -n k8s.io ps >/tmp/mw-master-nerdctl-ps.txt 2>&1 || fail "master ne
 sudo crictl info >/dev/null || fail "master crictl broken"
 
 echo "----- worker nerdctl -----"
-sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$WORKER" '
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$WORKER" '
 set -e
 command -v nerdctl
 nerdctl --version

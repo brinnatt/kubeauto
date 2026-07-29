@@ -7,11 +7,11 @@
 
 meta:
   version: 3
-  updated: "2026-07-25"
+  updated: "2026-07-29"
   environment_updated: "2026-07-25"
   runner: tests/run_enterprise_regression.sh
-  regression_log: /tmp/kubeauto-reserved-4g-finish-20260720-103703.log
-  regression_result: "RESERVED_4G_PASS — 默认 2CPU+4Gi；aio+docker@133 live PASS；Rocky≈3.5Gi lab SKIP（容量不足属预期）"
+  regression_log: /tmp/kubeauto-gaps-live.log
+  regression_result: "PASS - DELIVERY_GAPS_FULLCHAIN_PASS; durable rc=0; 38 pass markers, 0 failure markers; post-run LAB_CLEAN_VERIFY_PASS"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -78,7 +78,7 @@ environments:
       role: Debian trixie cluster node
   scenario_hosts:
     reserved_gate: {host: 192.168.47.137, purpose: 2CPU+4Gi reserved contract}
-    docker_gate: {host: 192.168.47.133, purpose: docker plus cri-dockerd contract}
+    docker_gate: {host: 192.168.47.137, purpose: docker plus cri-dockerd and 2CPU+4Gi reserved contract}
     nfs_server: {host: 192.168.47.133, purpose: NFS provisioner smoke}
     external_lb: {vip: 192.168.47.250, port: 8443}
   access:
@@ -93,124 +93,125 @@ environments:
 
 # ---------------------------------------------------------------------------
 tier0_foundation:
-  - {id: T0-01, group: G0, desc: unit tests (brinnatt contract + completion + ansible), status: pass}
-  - {id: T0-02, group: G0, desc: ansible-core 2.17 policy Ubuntu aio 138, status: pass}
-  - {id: T0-03, group: G0, desc: ansible-core 2.16 policy 136, status: pass}
-  - {id: T0-04, group: G0, desc: capture= alias regression, status: pass}
-  - {id: T0-05, group: G0, desc: sync-kubeauto.sh + requirements-control.txt, status: pass}
-  - {id: T0-06, group: G0, desc: all component_images are brinnatt/* + talkedu map, status: pass}
-  - {id: T0-07, group: G0, desc: bootstrap-brinnatt-mirrors + download -X/-E, status: pass}
-  - {id: T0-08, group: G0, desc: kubecli completion short/long flags, status: pass}
-  - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "registry-ready gate: Ubuntu aio cold -D/-X/-E + warm -X PASS; jumper exact-bug cold -D/-X + warm -X PASS; unit test_registry_ready 6/6"}
+  - {id: T0-01, group: G0, desc: unit tests (brinnatt contract + completion + ansible), status: pass, evidence: "2026-07-29 development host: tests/run_unit_tests.sh, 134/134 passed after the full live regression and lab cleanup"}
+  - {id: T0-02, group: G0, desc: ansible-core 2.17 policy Ubuntu aio 138, status: pass, evidence: "2026-07-26 138 regression: ansible-core 2.17 / control Python >=3.10 / target >=3.9 policy passed"}
+  - {id: T0-03, group: G0, desc: ansible-core 2.16 policy jumper 130, status: pass, evidence: "2026-07-27 clean jumper gate: ansible-core 2.16 policy and full unit suite passed on 130; G7_JUMPER_PASS; supervised rc=0/failure_markers=0; post-wipe LAB_CLEAN_VERIFY_PASS."}
+  - {id: T0-04, group: G0, desc: capture= alias regression, status: pass, evidence: "2026-07-26 unit test_run_command passed"}
+  - {id: T0-05, group: G0, desc: sync-kubeauto.sh + requirements-control.txt, status: pass, evidence: "2026-07-26 sync_ok to 138 and 130"}
+  - {id: T0-06, group: G0, desc: all component_images are brinnatt/* + talkedu map, status: pass, evidence: "2026-07-26 regression preflight brinnatt_contract_ok"}
+  - {id: T0-07, group: G0, desc: bootstrap-brinnatt-mirrors + download -X/-E, status: pass, evidence: "2026-07-26 138 regression BOOTSTRAP_BRINATT_OK mode=essential fails=0"}
+  - {id: T0-08, group: G0, desc: kubecli completion short/long flags, status: pass, evidence: "2026-07-26 unit completion cases and 138 G1 passed"}
+  - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "2026-07-26 lab wipe removed local_registry; 138 download -D/-X/-E recreated, waited and uploaded successfully"}
 
 tier1_commands:
-  - {id: T1-G1-01, group: G1, command: version, status: pass}
-  - {id: T1-G1-02, group: G1, command: list, status: pass}
-  - {id: T1-G1-03, group: G1, command: completion bash/zsh, status: pass}
-  - {id: T1-G1-04, group: G1, command: checkout, status: pass}
-  - {id: T1-G1-05, group: G1, command: download -X defaults via brinnatt, status: pass}
-  - {id: T1-G1-06, group: G1, command: download -E CNI/addons via brinnatt, status: pass}
-  - {id: T1-G1-07, group: G1, command: "download -D/-X after stopped local_registry (HTTP /v2/ wait)", status: pass, evidence: "registry-ready gate: Ubuntu aio cold -D/-X/-E + warm -X PASS; jumper cold -D/-X + warm -X PASS; unit test_registry_ready 6/6"}
+  - {id: T1-G1-01, group: G1, command: version, status: pass, evidence: "2026-07-26 138 G1: kubecli version v0.1.2"}
+  - {id: T1-G1-02, group: G1, command: list, status: pass, evidence: "2026-07-26 138 G1 passed"}
+  - {id: T1-G1-03, group: G1, command: completion bash/zsh, status: pass, evidence: "2026-07-26 138 G1 passed"}
+  - {id: T1-G1-04, group: G1, command: checkout, status: pass, evidence: "2026-07-27 clean 138 regression: checkout exercised across dedicated-etcd, test137, Debian128, HA and aio during G3/G6; REGRESSION_FULL_COMPLETE rc=0/failure_markers=0."}
+  - {id: T1-G1-05, group: G1, command: download -X defaults via brinnatt, status: pass, evidence: "2026-07-26 138 preflight uploaded default brinnatt images"}
+  - {id: T1-G1-06, group: G1, command: download -E CNI/addons via brinnatt, status: pass, evidence: "2026-07-26 138 preflight uploaded flannel/cilium/router/ovn/addon images"}
+  - {id: T1-G1-07, group: G1, command: "download -D/-X after stopped local_registry (HTTP /v2/ wait)", status: pass, evidence: "2026-07-26 local_registry recreated after wipe; -D/-X/-E completed with no EOF"}
 
-  - {id: T1-G2-01, group: G2, cluster: test137, command: setup 90+07+11, status: pass}
-  - {id: T1-G2-02, group: G2, cluster: debian128, status: pass}
-  - {id: T1-G2-03, group: G2, cluster: test-ded-etcd, status: pass}
-  - {id: T1-G2-04, group: G2, cluster: test-ha+ex_lb, status: pass}
-  - {id: T1-G2-05, group: G2, cluster: aio, status: pass}
-  - {id: T1-G2-06, group: G2, cluster: test133-*, command: destroy, status: pass}
+  - {id: T1-G2-01, group: G2, cluster: test137, command: setup 90+07+11, status: pass, evidence: "2026-07-26 138: setup 90 and 07 failed=0; Harbor 11 failed=0"}
+  - {id: T1-G2-02, group: G2, cluster: debian128, status: pass, evidence: "2026-07-26 138: Debian setup 90 failed=0"}
+  - {id: T1-G2-03, group: G2, cluster: test-ded-etcd, status: pass, evidence: "2026-07-27 clean 138 regression: dedicated etcd 132 + master134 + worker131 setup, Ready, full lifecycle and destroy passed."}
+  - {id: T1-G2-04, group: G2, cluster: test-ha+ex_lb, status: pass, evidence: "2026-07-27 clean 138 regression: 3-master HA, workers and external LB 192.168.47.250:8443 setup 90+10, all nodes Ready."}
+  - {id: T1-G2-05, group: G2, cluster: aio, status: pass, evidence: "2026-07-27 clean 138 regression: Ubuntu aio created and Ready; G3/G6/G8b operations passed."}
+  - {id: T1-G2-06, group: G2, cluster: test133-*, command: destroy, status: pass, evidence: "2026-07-27 clean G8: five disposable 133 CNI/proxy clusters each reached Ready and were destroyed successfully."}
 
-  - {id: T1-G3-01, group: G3, command: start, status: pass}
-  - {id: T1-G3-02, group: G3, command: stop, status: pass}
-  - {id: T1-G3-03, group: G3, command: backup, status: pass}
-  - {id: T1-G3-04, group: G3, command: restore, status: pass}
-  - {id: T1-G3-05, group: G3, command: upgrade, status: pass, evidence: "deliver-docker 1.33.5→1.33.6 20260717"}
-  - {id: T1-G3-06, group: G3, command: kca-renew, status: pass}
+  - {id: T1-G3-01, group: G3, command: start, status: pass, evidence: "2026-07-27 clean 138 regression: start passed for dedicated-etcd, test137, Debian128, HA and aio; each returned Ready."}
+  - {id: T1-G3-02, group: G3, command: stop, status: pass, evidence: "2026-07-27 clean 138 regression: stop passed for dedicated-etcd, test137, Debian128, HA and aio."}
+  - {id: T1-G3-03, group: G3, command: backup, status: pass, evidence: "2026-07-27 clean 138 regression: backup passed for all five exercised topologies and again during G6 multi-cluster flow."}
+  - {id: T1-G3-04, group: G3, command: restore, status: pass, evidence: "2026-07-27 clean 138 regression: restore passed and every exercised cluster returned Ready."}
+  - {id: T1-G3-05, group: G3, command: upgrade, status: pass, evidence: "2026-07-28 clean upgrade gate on large-memory 137: official-SHA256-pinned v1.33.5 source Ready with all system pods Running; kubecli upgrade to v1.33.6 recap failed=0; AFTER=v1.33.6 runtime=docker://28.5.2; seven services active; UPGRADE_GATE_PASS; supervised rc=0/failure_markers=0; post-wipe LAB_CLEAN_VERIFY_PASS."}
+  - {id: T1-G3-06, group: G3, command: kca-renew, status: pass, evidence: "2026-07-27 clean 138 G6: kca-renew passed on test137 and aio; test137 returned Ready; REGRESSION_FULL_COMPLETE."}
 
-  - {id: T1-G4-01, group: G4, command: add/del-node, status: pass}
-  - {id: T1-G4-02, group: G4, command: add/del-master, status: pass}
-  - {id: T1-G4-03, group: G4, command: add/del-etcd, status: pass}
+  - {id: T1-G4-01, group: G4, command: add/del-node, status: pass, evidence: "2026-07-27 clean HA G4: worker132 del→add→Ready→del passed."}
+  - {id: T1-G4-02, group: G4, command: add/del-master, status: pass, evidence: "2026-07-27 clean HA G4: master132 add→Ready→backup→del passed."}
+  - {id: T1-G4-03, group: G4, command: add/del-etcd, status: pass, evidence: "2026-07-27 clean HA G4: etcd132 add, inventory assertion and del passed."}
 
-  - {id: T1-G5-01, group: G5, command: kcfg-adm, status: pass}
-  - {id: T1-G5-02, group: G5, command: system -a, status: pass}
-  - {id: T1-G5-03, group: G5, command: docker -l, status: pass}
+  - {id: T1-G5-01, group: G5, command: kcfg-adm, status: pass, evidence: "2026-07-27 clean 138 G5: add/list/delete view user on test137 passed."}
+  - {id: T1-G5-02, group: G5, command: system -a, status: pass, evidence: "2026-07-26 128 and 131-137 key authentication verified; Rocky Python 3.9.25 preflight passed"}
+  - {id: T1-G5-03, group: G5, command: docker -e, status: pass, evidence: "2026-07-29 clean focused gate: kubecli docker -e </dev/null completed with strict rc=0; [PASS] G5 docker -e; no tolerated failure path"}
 
 tier1_cross_scenarios:
-  - {id: X-G6-01, group: G6, scenario: backup→stop→start→restore, status: pass}
-  - {id: X-G6-02, group: G6, scenario: kca-renew 后 Ready, status: pass}
-  - {id: X-G6-03, group: G6, scenario: 多集群 checkout+backup, status: pass}
-  - {id: X-G6-04, group: G6, scenario: 非 TTY </dev/null, status: pass}
+  - {id: X-G6-01, group: G6, scenario: backup→stop→start→restore, status: pass, evidence: "2026-07-27 clean 138: complete lifecycle passed on dedicated-etcd, Rocky, Debian, HA and Ubuntu aio; nodes Ready after restore."}
+  - {id: X-G6-02, group: G6, scenario: kca-renew 后 Ready, status: pass, evidence: "2026-07-27 clean 138: test137 and aio certificate renewal passed; readiness revalidated."}
+  - {id: X-G6-03, group: G6, scenario: 多集群 checkout+backup, status: pass, evidence: "2026-07-27 clean 138: sequential checkout+backup passed for test137, Debian128, test-ha and aio."}
+  - {id: X-G6-04, group: G6, scenario: 非 TTY </dev/null, status: pass, evidence: "2026-07-27 autonomous regression executed every mutating kubecli command with </dev/null; rc=0/failure_markers=0."}
 
 tier1_jumper:
-  - {id: T1-G7-01, group: G7, env: ENV-130, desc: ansible-core 2.16 + unit, status: pass}
-  - {id: T1-G7-02, group: G7, env: ENV-130, cluster: k8s-dev, command: setup 90, status: pass}
+  - {id: T1-G7-01, group: G7, env: ENV-130, desc: ansible-core 2.16 + unit, status: pass, evidence: "2026-07-27 clean jumper gate: official 2.16 control/target Python policy and unit suite passed on 130."}
+  - {id: T1-G7-02, group: G7, env: ENV-130, cluster: k8s-dev, command: setup 90, status: pass, evidence: "2026-07-27 clean jumper gate: 134-136 masters + worker131 reached 4/4 Ready, destroy passed; G7_JUMPER_PASS rc=0/failure_markers=0; LAB_CLEAN_VERIFY_PASS."}
 
 tier2_matrix:
   runtime:
-    - {id: T2-RT-01, value: containerd, status: pass}
-    - {id: T2-RT-01b, value: "nerdctl on master+worker (ext-bin minimal, containerd path)", status: pass, evidence: "nerdctl gate: Ubuntu aio master + worker133; nerdctl 2.3.4 ↔ containerd 2.1.4; sudo/rootful info+k8s.io ps+crictl OK"}
-    - {id: T2-RT-02, value: docker (+cri-dockerd), status: pass, evidence: "deliver-docker worker133: docker://28.5.2 Ready + cri-dockerd.sock"}
+    - {id: T2-RT-01, value: containerd, status: pass, evidence: "2026-07-26 test137 and Debian 128 setup 90 completed with containerd"}
+    - {id: T2-RT-01b, value: "nerdctl on master+worker (ext-bin minimal, containerd path)", status: pass, evidence: "2026-07-27 clean nerdctl gate: Ubuntu 138 master + Rocky worker133 Ready; nerdctl 2.3.4/containerd 2.1.4; rootful info, k8s.io ps, crictl and worker execution passed; NERDCTL_GATE_PASS; post-wipe LAB_CLEAN_VERIFY_PASS."}
+    - {id: T2-RT-02, value: "docker runtime artifacts (ext-bin manifest; compose/buildx/cri-dockerd)", status: pass, evidence: "2026-07-27 clean Docker gate on 137: real buildx/compose corruption recovered via TalkEdu-first and forced DockerHub fallback; manifest verified; compose v2.40.3, buildx v0.29.1, cri-dockerd 0.3.26; Docker 28.5.2 Kubernetes Ready; DOCKER_GATE_PASS; post-wipe LAB_CLEAN_VERIFY_PASS."}
+    - {id: T2-RT-03, value: "Harbor Docker + Kubernetes containerd co-location isolation", cluster: test137, status: pass, evidence: "2026-07-27 clean 137 setup 90+07+11 and kca-renew passed; K8s containerd 2.1.4 SHA 0f55112 unchanged, Docker containerd 1.7.28 isolated under /usr/local/libexec/docker, config dump pause:3.10 with no warnings, node/CNI/addons Ready, Harbor healthy; TEST137_RUNTIME_ISOLATION_RENEW_PASS."}
   network:
-    - {id: T2-NW-01, value: calico (brinnatt/calico-*), status: pass}
-    - {id: T2-NW-02, value: flannel (brinnatt/flannel*), cluster: test133-flannel, status: pass}
-    - {id: T2-NW-03, value: cilium (brinnatt/cilium-operator-generic 无 double-generic), cluster: test133-cilium, status: pass}
-    - {id: T2-NW-04, value: kube-router (brinnatt/kube-router), cluster: test133-kr, status: pass}
-    - {id: T2-NW-05, value: kube-ovn (brinnatt/kube-ovn), cluster: test133-ovn, status: pass}
+    - {id: T2-NW-01, value: calico (brinnatt/calico-*), status: pass, evidence: "2026-07-26 test137 and Debian 128 Calico reached Ready during setup 90"}
+    - {id: T2-NW-02, value: flannel (brinnatt/flannel*), cluster: test133-flannel, status: pass, evidence: "2026-07-27 clean G8: 133 flannel/ipvs Ready, no ImagePull failure, destroy passed."}
+    - {id: T2-NW-03, value: cilium (brinnatt/cilium-operator-generic 无 double-generic), cluster: test133-cilium, status: pass, evidence: "2026-07-27 clean G8: 133 cilium/ipvs Ready; operator image asserted cilium-operator-generic with no generic-generic; destroy passed."}
+    - {id: T2-NW-04, value: kube-router (brinnatt/kube-router), cluster: test133-kr, status: pass, evidence: "2026-07-27 clean G8: 133 kube-router/ipvs Ready and destroy passed."}
+    - {id: T2-NW-05, value: kube-ovn (brinnatt/kube-ovn), cluster: test133-ovn, status: pass, evidence: "2026-07-27 clean G8: 133 kube-ovn/ipvs Ready and destroy passed."}
   proxy_mode:
-    - {id: T2-PM-01, value: ipvs, status: pass}
-    - {id: T2-PM-02, value: iptables, cluster: test133-iptables, status: pass}
+    - {id: T2-PM-01, value: ipvs, status: pass, evidence: "2026-07-26 test137 and Debian 128 setup 90 completed with ipvs"}
+    - {id: T2-PM-02, value: iptables, cluster: test133-iptables, status: pass, evidence: "2026-07-27 clean G8: 133 Calico/iptables Ready and destroy passed."}
   topology:
-    - {id: T2-TO-01, value: single-node, status: pass}
-    - {id: T2-TO-02, value: ha-multi-master, status: pass}
-    - {id: T2-TO-03, value: dedicated-etcd, status: pass}
-    - {id: T2-TO-04, value: ex_lb, status: pass}
-    - {id: T2-TO-05, value: harbor, cluster: test137, status: pass}
+    - {id: T2-TO-01, value: single-node, status: pass, evidence: "2026-07-26 test137 and Debian 128 single-node clusters Ready"}
+    - {id: T2-TO-02, value: ha-multi-master, status: pass, evidence: "2026-07-27 clean test-ha: masters134-136 plus workers reached Ready; lifecycle and G4 passed."}
+    - {id: T2-TO-03, value: dedicated-etcd, status: pass, evidence: "2026-07-27 clean dedicated-etcd: etcd132/master134/worker131 Ready, lifecycle and destroy passed."}
+    - {id: T2-TO-04, value: ex_lb, status: pass, evidence: "2026-07-27 clean test-ha setup 10: master136/backup133 external LB at 192.168.47.250:8443 passed."}
+    - {id: T2-TO-05, value: harbor, cluster: test137, status: pass, evidence: "2026-07-26 Harbor install and 8443 ready gate passed"}
   os:
-    - {id: T2-OS-01, value: Rocky 8.10, status: pass}
-    - {id: T2-OS-02, value: Ubuntu 22.04, status: pass}
-    - {id: T2-OS-03, value: Debian, cluster: debian128, status: pass}
+    - {id: T2-OS-01, value: Rocky 8.10, status: pass, evidence: "2026-07-26 test137 Rocky 8.10 setup 90/07/11 passed"}
+    - {id: T2-OS-02, value: Ubuntu 22.04, status: pass, evidence: "2026-07-27 clean Ubuntu138 aio: setup, lifecycle, reserved and addons passed."}
+    - {id: T2-OS-03, value: Debian, cluster: debian128, status: pass, evidence: "2026-07-26 Debian 128 setup 90 passed"}
   mirrors:
-    - {id: T2-MR-01, desc: RHEL EPEL 华为源 + python39, status: pass}
-    - {id: T2-MR-02, desc: Debian become + 华为源, status: pass}
-    - {id: T2-MR-03, desc: ansible-core 矩阵 fail-fast, status: pass}
-    - {id: T2-MR-04, desc: talkedu→dockerhub brinnatt pull order, status: pass}
+    - {id: T2-MR-01, desc: RHEL EPEL 华为源 + python39, status: pass, evidence: "2026-07-26 Rocky 131/134/136 Python 3.9.25 installed and Ansible ping passed"}
+    - {id: T2-MR-02, desc: Debian become + 华为源, status: pass, evidence: "2026-07-26 Debian 128 become setup 90 passed"}
+    - {id: T2-MR-03, desc: ansible-core 矩阵 fail-fast, status: pass, evidence: "2026-07-26 138 policy check enforced core 2.17 control/target compatibility"}
+    - {id: T2-MR-04, desc: talkedu→dockerhub brinnatt pull order, status: pass, evidence: "2026-07-26 unit test_talkedu_mirror and 138 image preload passed"}
   addons:
-    - {id: T2-AD-01, value: coredns (brinnatt/coredns), status: pass}
-    - {id: T2-AD-02, value: metrics-server, status: pass}
-    - {id: T2-AD-03, value: node-local-dns, status: pass}
-    - {id: T2-AD-04, value: ingress-nginx (brinnatt/ingress-nginx-controller), status: pass}
-    - {id: T2-AD-05, value: prometheus (brinnatt/*), status: pass}
-    - {id: T2-AD-06, value: dashboard/kong (brinnatt/*), status: pass}
-    - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass}
-    - {id: T2-AD-08, value: local-path-provisioner, status: pass}
-    - {id: T2-AD-09, value: minio operator+tenant, status: pass}
-    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + real nvme0n2 VG), status: pass, evidence: "deliver-stor@133 LVM_NFS_REBUILD_PASS 20260718 Bound+lvm-ok-realdisk+LV on /dev/nvme0n2 vg_k8s"}
-    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "deliver-stor@133 LVM_NFS_REBUILD_PASS 20260718 Bound+双 Pod nfs-ok"}
-    - {id: T2-AD-12, value: rocketmq (nameservice_size=1, replicaPerGroup=0, 512m heap), status: pass, evidence: "aio retest MQ_STABLE_PASS 20260717 no OOM"}
-    - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: pass, evidence: "deliver-ha 20260718 nameservice 2/2 + broker Running; apply retries for etcd leader change"}
-    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "deliver-ha 20260718 → MySQL 192.168.47.136; official mysql-schema.sql; log 'cluster mode. use external storage'; Running(2)"}
-    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "deliver-ha 20260718 tenant servers=4 health=green pool pods 4/4 Running"}
-    - {id: T2-AD-18, value: prometheus-webhook-dingtalk, status: pass, evidence: "aio monitor webhook-dingtalk Running 20260718 SIDE_GATE_PASS"}
-    - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "deliver-hubble 20260717"}
-    - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "deliver-rocky rebuilt master136 setup90"}
-    - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "aio NETWORK_CHECK_ECHO_PASS; multi-node jobs Pending on single-node = expected"}
+    - {id: T2-AD-01, value: coredns (brinnatt/coredns), status: pass, evidence: "2026-07-28 clean Docker upgrade gate: coredns 1/1 Running before and after patch upgrade."}
+    - {id: T2-AD-02, value: metrics-server, status: pass, evidence: "2026-07-28 clean Docker upgrade gate: bounded startup wait then metrics-server 1/1 Running before and after upgrade."}
+    - {id: T2-AD-03, value: node-local-dns, status: pass, evidence: "2026-07-28 clean Docker upgrade gate: node-local-dns 1/1 Running before and after upgrade."}
+    - {id: T2-AD-04, value: ingress-nginx (brinnatt/ingress-nginx-controller), status: pass, evidence: "2026-07-27 clean G8b: Helm wait passed; deployed image registry.talkschool.cn:5000/brinnatt/ingress-nginx-controller:v1.13.0."}
+    - {id: T2-AD-05, value: prometheus (brinnatt/*), status: pass, evidence: "2026-07-27 clean G8b: monitor namespace 6 pods Ready; operator image brinnatt/prometheus-operator:v0.83.0 and Prometheus v3.4.2."}
+    - {id: T2-AD-06, value: dashboard/kong (brinnatt/*), status: pass, evidence: "2026-07-27 clean G8b: dashboard api/auth/kong/scraper/web all Running; dashboard image asserted brinnatt/dashboard-api:1.14.0."}
+    - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass, evidence: "2026-07-27 clean G8b: openebs namespace Ready; provisioner image asserted brinnatt/provisioner-localpv:4.3.0."}
+    - {id: T2-AD-08, value: local-path-provisioner, status: pass, evidence: "2026-07-27 clean G8b: local-path-provisioner 1/1 Running."}
+    - {id: T2-AD-09, value: minio operator+tenant, status: pass, evidence: "2026-07-29 clean test-ha focused gate: official MinIO operator and Tenant Ready; four pool pods 2/2 Running; Tenant healthStatus=green"}
+    - {id: T2-AD-10, value: openebs LVM R/W (openebs-lvmpv + vg_k8s lab VG), status: pass, evidence: "2026-07-29 clean deliver-lvm on 133: OpenEBS LVM PVC Bound, workload wrote and read lvm-ok; [PASS] P0 OpenEBS LVM R/W"}
+    - {id: T2-AD-11, value: nfs-provisioner R/W (managed-nfs-storage RWX), status: pass, evidence: "2026-07-29 clean deliver-lvm on 133: NFS PVC Bound, workload wrote and read nfs-ok; [PASS] P0 NFS R/W"}
+    - {id: T2-AD-12, value: rocketmq (nameservice_size=1, replicaPerGroup=0, 512m heap), status: pass, evidence: "2026-07-29 clean large-memory aio 138 gate: operator, NameService and Broker containers Ready with no image-pull failure; [PASS] P0 RocketMQ single-node Ready"}
+    - {id: T2-AD-12b, value: rocketmq HA nameservice_size=2, status: pass, evidence: "2026-07-29 clean test-ha gate: asynchronous reconcile wait observed NameService 2/2 and Broker 1/1 Ready; [PASS] P0 RocketMQ HA nameservice=2"}
+    - {id: T2-AD-13, value: nacos + mysql, status: pass, evidence: "2026-07-29 clean test-ha gate: official mysql-schema.sql imported, Nacos 3 replicas Ready using external MySQL; no embedded-db false positive"}
+    - {id: T2-AD-14, value: minio pool_servers=4, status: pass, evidence: "2026-07-29 clean test-ha gate: official four-server Tenant, 4/4 pool pods 2/2 Running and healthStatus=green"}
+    - {id: T2-AD-18, value: prometheus-webhook-dingtalk, status: pass, evidence: "2026-07-29 clean test-ha gate: webhook-dingtalk rollout completed with brinnatt/prometheus-webhook-dingtalk:v2.1.0"}
+    - {id: T2-AD-15, value: cilium hubble-relay+ui (brinnatt/*), status: pass, evidence: "2026-07-29 clean Cilium gate: Hubble relay and UI deployments reached Ready with no image-pull failure; [PASS] P1 Cilium Hubble Running"}
+    - {id: T2-AD-16, value: rocky addon G8b (prom/ingress/dashboard/openebs), status: pass, evidence: "2026-07-29 clean large-memory Rocky 137 gate: Prometheus, Ingress, Dashboard and OpenEBS Ready; deployed images verified as brinnatt/*; no ImagePull failure"}
+    - {id: T2-AD-17, value: network-check echo-server json-mock:v1.3.1, status: pass, evidence: "2026-07-29 clean six-node test-ha gate: both echo deployments Ready with brinnatt/json-mock:v1.3.1; all 9/9 generated network-check Jobs Complete"}
   node_allocatable:
-    - {id: T2-NA-01, desc: "KUBE_RESERVED+SYS_RESERVED both yes; floor 2CPU+4Gi", status: pass, evidence: "aio@138 cpuΔ=2000m memΔ≈4.3Gi; docker@133 16C/32G same floor PASS; defaults 1000m+1536Mi / 1000m+2560Mi"}
-    - {id: T2-NA-02, desc: "systemd cgroup /podruntime+/system + podruntime.slice (cgroup2)", status: pass, evidence: "aio cgroup2; Slice=podruntime.slice; NO_DOUBLE_SLICE; ENFORCE 无 system-reserved"}
-    - {id: T2-NA-03, desc: "cgroup v1 hybrid Rocky8 reserved (lab ≥6Gi only)", status: pass, evidence: "lab Rocky≈3.5Gi SKIP_UNDERSIZED（kubelet 正确拒绝 reservation>capacity）；config 仍 pin 4Gi；历史 hybrid 证据保留于命名/unit"}
-    - {id: T2-NA-04, desc: "docker+cri-dockerd reserved 4Gi enablement", status: pass, evidence: "deliver-docker@133 20260720 DOCKER_GATE_PASS + RESERVED_ALLOCATABLE_PASS cpuΔ=2000 memΔ≈4.3Gi; 133 已扩 16C/31Gi 复测 PASS"}
-    - {id: T2-NA-05, desc: "unit: 2C+4Gi floor + systemd naming + soft mkdir", status: pass, evidence: "tests/unit/test_kube_reserved.py (test_contract_floor_two_cpu_four_gi)"}
-    - {id: T2-NA-06, desc: "reserved host 137 meets the 8CPU/32Gi delivery floor", status: pass, evidence: "host137 is dedicated to system and kube reserved validation"}
+    - {id: T2-NA-01, desc: "KUBE_RESERVED+SYS_RESERVED both yes; floor 2CPU+4Gi", status: pass, evidence: "2026-07-27 clean G11 on large-memory 137 and 138: defaults 1000m+1536Mi / 1000m+2560Mi asserted; live Allocatable delta passed; Docker gate independently reconfirmed 2000m/4609540096 bytes."}
+    - {id: T2-NA-02, desc: "systemd cgroup /podruntime+/system + podruntime.slice (cgroup2)", status: pass, evidence: "2026-07-27 clean G11: Ubuntu138 kubelet and containerd both in podruntime.slice; Docker gate NO_DOUBLE_SLICE passed."}
+    - {id: T2-NA-03, desc: "cgroup v1 hybrid Rocky8 reserved (lab ≥6Gi only)", status: pass, evidence: "2026-07-27 clean test137 Rocky8 8CPU/32Gi hybrid gate: live reserved Allocatable verification passed; small 131-136 nodes remained disabled."}
+    - {id: T2-NA-04, desc: "docker+cri-dockerd reserved 4Gi enablement", status: pass, evidence: "2026-07-27 clean Docker gate on 137: docker://28.5.2 Ready; capacity 8 CPU/32622212Ki, allocatable 6 CPU/28120708Ki; delta 2000m/4609540096 bytes; RESERVED_ALLOCATABLE_PASS + NO_DOUBLE_SLICE; post-wipe clean verified."}
+    - {id: T2-NA-05, desc: "unit: 2C+4Gi floor + systemd naming + soft mkdir", status: pass, evidence: "2026-07-28 full unit suite 108/108 passed including test_kube_reserved contract floor, systemd names, and soft mkdir."}
+    - {id: T2-NA-06, desc: "reserved host 137 meets the 8CPU/32Gi delivery floor", status: pass, evidence: "2026-07-27 Docker gate measured host137 cpu=8, memory=31857Mi and validated the live 2CPU+4Gi reservation contract."}
   compatibility_six_repo:
     # 签字硬门槛：六仓版本/逻辑严禁局部分裂；覆盖 K8s、组件、CNI、addon、监控/日志生态 + cgroup
-    - {id: T2-CX-01, desc: "六仓共存检出 + ext-bin/sp1 ENV 与 constants 一致", status: pass, evidence: "tests/unit/test_six_repo_version_sync.py"}
-    - {id: T2-CX-02, desc: "K8s 控制面/proxy/pause 镜像 tag=v_k8s_bin/v_pause 与 ext-images CI 一致", status: pass, evidence: "test_ecosystem_ci_tags_match_kubeauto_constants"}
-    - {id: T2-CX-03, desc: "CNI(calico/flannel/cilium/kube-router/kube-ovn)+DNS 与 CI 一致", status: pass, evidence: "test_ecosystem_ci_tags_match_kubeauto_constants"}
-    - {id: T2-CX-04, desc: "component_images 全量 brinnatt pin 存在于 ext-images CI（无本地分叉）", status: pass, evidence: "test_component_images_tags_exist_in_ext_images_ci"}
-    - {id: T2-CX-05, desc: "监控栈 prometheus/grafana/alertmanager/dingtalk 与 CI 一致", status: pass, evidence: "component_images.prometheus + CI tags"}
-    - {id: T2-CX-06, desc: "存储/消息/注册中心 addon pins（openebs/minio/rocketmq/nacos）与 CI 一致", status: pass, evidence: "component_images + CI"}
-    - {id: T2-CX-07, desc: "cgroup systemd/v1/v2 + reserved 合同默认（与六仓无关但同属兼容签字）", status: pass, evidence: "T2-NA-01..05"}
-    - {id: T2-CX-08, desc: "Live：G8 CNI 矩阵 + G8b addon 冒烟后仍无镜像漂移/ImagePull", status: pass, evidence: "resume-g8: flannel/cilium/kr/ovn/iptables + reserved PASS; G8b dashboard/openebs/prom/minio/ingress Running brinnatt; RESUME_G8B_COMPLETE"}
-    - {id: T2-CX-09, desc: "SYS_RESERVED 计入 Allocatable；ENFORCE 默认 no（防 system.slice 饿死控制面）", status: pass, evidence: "aio MemoryMax=1000Mi 曾打挂 6443；改为 enforce 不含 system-reserved 后 prometheus deployed + RESERVED_ALLOCATABLE_PASS"}
+    - {id: T2-CX-01, desc: "六仓共存检出 + ext-bin/sp1 ENV 与 constants 一致", status: pass, evidence: "2026-07-25 test_six_repo_version_sync.py passed (EXT_BIN 1.15.0 + runtime artifact pins)"}
+    - {id: T2-CX-02, desc: "K8s 控制面/proxy/pause 镜像 tag=v_k8s_bin/v_pause 与 ext-images CI 一致", status: pass, evidence: "2026-07-25 test_ecosystem_ci_tags_match_kubeauto_constants passed"}
+    - {id: T2-CX-03, desc: "CNI(calico/flannel/cilium/kube-router/kube-ovn)+DNS 与 CI 一致", status: pass, evidence: "2026-07-25 test_ecosystem_ci_tags_match_kubeauto_constants passed"}
+    - {id: T2-CX-04, desc: "component_images 全量 brinnatt pin 存在于 ext-images CI（无本地分叉）", status: pass, evidence: "2026-07-25 test_component_images_tags_exist_in_ext_images_ci passed"}
+    - {id: T2-CX-05, desc: "监控栈 prometheus/grafana/alertmanager/dingtalk 与 CI 一致", status: pass, evidence: "2026-07-25 test_component_images_tags_exist_in_ext_images_ci passed"}
+    - {id: T2-CX-06, desc: "存储/消息/注册中心 addon pins（openebs/minio/rocketmq/nacos）与 CI 一致", status: pass, evidence: "2026-07-25 test_component_images_tags_exist_in_ext_images_ci passed"}
+    - {id: T2-CX-07, desc: "cgroup systemd/v1/v2 + reserved 合同默认（与六仓无关但同属兼容签字）", status: pass, evidence: "2026-07-27/28 T2-NA-01..06 all passed across Ubuntu cgroup2 and large-memory Rocky8 hybrid, including Docker and containerd."}
+    - {id: T2-CX-08, desc: "Live：G8 CNI 矩阵 + G8b addon 冒烟后仍无镜像漂移/ImagePull", status: pass, evidence: "2026-07-27 clean regression: flannel/cilium/kube-router/kube-ovn/calico-iptables all Ready; G8b dashboard/openebs/prometheus/local-path/ingress used brinnatt images; no ErrImagePull/ImagePullBackOff; rc=0/failure_markers=0."}
+    - {id: T2-CX-09, desc: "SYS_RESERVED 计入 Allocatable；ENFORCE 默认 no（防 system.slice 饿死控制面）", status: pass, evidence: "2026-07-27 clean G11 asserted SYS_RESERVED_ENABLED=yes and SYS_RESERVED_ENFORCE=no on 137/138; live Allocatable and control-plane/addon readiness passed."}
 
 tier3_tools:
   - {id: T3-TL-01, tool: CalicoPolicyCli, status: skip, note: "binary absent on control node"}
@@ -231,7 +232,7 @@ execution_groups:
   G4: {name: "节点扩缩", priority: P0, status: pass}
   G5: {name: "身份/系统", priority: P1, status: pass}
   G6: {name: "交叉场景", priority: P0, status: pass}
-  G7: {name: "Jumper 136", priority: P0, status: pass}
+  G7: {name: "Jumper 130", priority: P0, status: pass}
   G8: {name: "二级 CNI/拓扑", priority: P1, status: pass}
   G8b: {name: "Addon 镜像冒烟 (aio)", priority: P1, status: pass}
   G9: {name: "tools CLI", priority: P2, status: skip}
@@ -240,32 +241,27 @@ execution_groups:
   G12: {name: "六仓+生态兼容（K8s/CNI/addon/监控）", priority: P0, status: pass}
 
 coverage_summary:
-  tier0_total: 8
-  tier0_pass: 8
-  tier1_total: 24
-  tier1_pass: 24
+  tier0_total: 9
+  tier0_pass: 9
+  tier1_total: 25
+  tier1_pass: 25
   tier1_na: 0
   tier1_cross_total: 4
   tier1_cross_pass: 4
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
-  tier2_total: 53
-  tier2_pass: 53
+  tier2_total: 57
+  tier2_pass: 57
   tier2_partial: 0
   tier2_open: 0
   tier2_na: 0
   tier3_total: 9
   tier3_pass: 0
   tier3_skip: 9
-  live_clusters_138: [aio, test137, debian128, test-ha]
+  live_clusters_138: []
   live_clusters_130: []
-  all_nodes_ready: true
+  all_nodes_ready: false
   overall_assessment: |
-    2026-07-19 SIGNABLE_PASS（Tier3 tools 验收外）：
-    - 合同 reserved：KUBE/SYS ENABLED=yes；Allocatable Δ 校验 PASS（aio/Rocky/docker/CNI×5）。
-    - 产品安全阀：SYS_RESERVED_ENFORCE 默认 no（官方告警 + aio 实测 system.slice MemoryMax=1Gi 导致 apiserver reset）。
-    - G8：flannel/cilium/kube-router/kube-ovn/calico-iptables 全 PASS + reserved。
-    - G8b：dashboard/openebs/prometheus/minio/ingress-nginx Running，镜像 brinnatt/*。
-    - 六仓：test_six_repo_version_sync（constants↔CI↔component_images）本地 OK；aio 控制机无 sibling 仓时跳过。
-    - helm：dashboard/prometheus/minio 补齐 KUBECONFIG（与 ingress/openebs 一致）。
-    签字条件已满足：除 Tier3 tools 外全 PASS；无 double-slice；无 registry 误伤；生态版本无局部分裂。
+    PASS（2026-07-29）：110 个测试/执行组均有本轮真实证据并标记为 PASS，0 个 PENDING，0 个 FAIL；Tier3 9 个按范围定义为 SKIP。
+    完整基线回归和交付缺口专项取得 DELIVERY_RETEST_PASS、DELIVERY_GAPS_FULLCHAIN_PASS、durable rc=0，累计 38 个 PASS marker、0 个 failure marker。
+    回归后 128、131-138 全部完成清场反向验证并取得 LAB_CLEAN_VERIFY_PASS；最终开发机单元测试 134/134 PASS。

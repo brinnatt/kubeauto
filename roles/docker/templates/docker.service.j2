@@ -3,7 +3,13 @@ Description=Docker Application Container Engine
 Documentation=http://docs.docker.io
 
 [Service]
+{% if CONTAINER_RUNTIME == "containerd" %}
+# Moby starts its managed containerd by basename and inherits this PATH.  Keep
+# Docker's pinned runtime ahead of the Kubernetes runtime without replacing it.
+Environment="PATH=/usr/local/libexec/docker:{{ bin_dir }}:/bin:/sbin:/usr/bin:/usr/sbin"
+{% else %}
 Environment="PATH={{ bin_dir }}:/bin:/sbin:/usr/bin:/usr/sbin"
+{% endif %}
 {% if KUBE_RESERVED_ENABLED == "yes" %}
 # dockerd is the container runtime when CONTAINER_RUNTIME=docker → kubeReserved parent.
 # Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#kube-reserved

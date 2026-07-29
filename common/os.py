@@ -24,6 +24,17 @@ logger = setup_logger(__name__)
 _known_hosts_lock = threading.Lock()
 
 
+class _DeferredAutoAddPolicy(paramiko.MissingHostKeyPolicy):
+    """Accept an unknown key; the caller persists it through the locked path."""
+
+    def missing_host_key(self, client, hostname, key):
+        # Paramiko AutoAddPolicy calls client.save_host_keys() here.  With
+        # concurrent system -a workers that causes unsynchronised in-place
+        # rewrites.  Keep AutoAddPolicy's acceptance semantics, but defer the
+        # write to _save_host_key_thread_safe() after connect succeeds.
+        client._host_keys.add(hostname, key.get_name(), key)
+
+
 class SystemProbe:
     """handle system probe or execute command"""
 
@@ -240,16 +251,12 @@ class SystemProbe:
         
         client = paramiko.SSHClient()
         
-        # Load existing known_hosts file (if exists)
-        # This ensures we don't duplicate entries
         if known_hosts_path.exists():
-            try:
-                client.load_host_keys(str(known_hosts_path))
-            except Exception as e:
-                logger.debug(f"Failed to load known_hosts: {e}")
+            self._load_host_keys_thread_safe(client, known_hosts_path)
         
-        # Set policy to auto-add new host keys
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # Accept unknown host keys as before, but serialize persistence after
+        # connect instead of letting Paramiko AutoAddPolicy write concurrently.
+        client.set_missing_host_key_policy(_DeferredAutoAddPolicy())
         
         try:
             # Phase 1: Try key auth
@@ -338,6 +345,63 @@ restorecon -Rv ~/.ssh 2>/dev/null || true
 
         finally:
             client.close()
+
+    @staticmethod
+    def _load_host_keys_thread_safe(
+            client: paramiko.SSHClient,
+            known_hosts_path: Path,
+    ) -> None:
+        """Load host keys under the save lock and repair only invalid lines."""
+        with _known_hosts_lock:
+            try:
+                client.load_host_keys(str(known_hosts_path))
+                return
+            except paramiko.hostkeys.InvalidHostKey as ex:
+                logger.warning(
+                    "Invalid SSH host-key record in %s; removing only invalid records.",
+                    known_hosts_path,
+                )
+                SystemProbe._repair_invalid_host_key_lines(known_hosts_path)
+                try:
+                    client.load_host_keys(str(known_hosts_path))
+                    return
+                except Exception as retry_ex:
+                    logger.debug(
+                        f"Failed to load repaired known_hosts: {retry_ex}"
+                    )
+            except Exception as ex:
+                logger.debug(f"Failed to load known_hosts: {ex}")
+
+    @staticmethod
+    def _repair_invalid_host_key_lines(known_hosts_path: Path) -> None:
+        """Atomically discard records whose key data Paramiko cannot decode."""
+        original_mode = known_hosts_path.stat().st_mode & 0o777
+        valid_lines = []
+        for lineno, line in enumerate(
+                known_hosts_path.read_text(errors="surrogateescape").splitlines(True),
+                1,
+        ):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                valid_lines.append(line)
+                continue
+            try:
+                paramiko.hostkeys.HostKeyEntry.from_line(stripped, lineno)
+            except paramiko.hostkeys.InvalidHostKey:
+                continue
+            valid_lines.append(line)
+
+        temporary_path = known_hosts_path.with_name(
+            f".{known_hosts_path.name}.repair-{os.getpid()}-{threading.get_ident()}"
+        )
+        try:
+            temporary_path.write_text(
+                "".join(valid_lines), errors="surrogateescape"
+            )
+            os.chmod(temporary_path, original_mode)
+            os.replace(temporary_path, known_hosts_path)
+        finally:
+            temporary_path.unlink(missing_ok=True)
 
     @staticmethod
     def _save_host_key_thread_safe(

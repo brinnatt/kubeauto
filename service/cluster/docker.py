@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -19,6 +20,7 @@ logger = setup_logger(__name__)
 
 # Docker SDK 单次 API 失败时回退 CLI；不是 daemon 未就绪或 client 初始化失败
 _SDK_CLI_FALLBACK_MSG = "Docker SDK request failed, retrying via docker CLI"
+_DOCKER_RUNTIME_ARTIFACTS = ("docker-compose", "docker-buildx", "cri-dockerd")
 
 
 class DockerManager:
@@ -146,14 +148,10 @@ class DockerManager:
         return self._wait_for_daemon_ready(timeout=15.0)
 
     def install_docker(self, version: Optional[str] = None) -> None:
-        """Install Docker"""
+        """Install Docker Engine, then verified runtime artifacts from ext-bin."""
         version = version or self.kube_constant.v_docker
         self._download_docker(version)
-        self._download_docker_cli_plugins()
-        self._download_cri_dockerd()
         self._install_docker_binaries(version)
-        self._install_docker_cli_plugins()
-        self._install_cri_dockerd_binary()
         self._configure_docker(version)
         self._start_docker_service(version)
 
@@ -162,6 +160,7 @@ class DockerManager:
                 "Docker service started but daemon did not become ready. "
                 "Check: systemctl status docker && docker info"
             )
+        self.ensure_docker_runtime_artifacts()
 
     def clean_docker_env(self, assume_yes: bool = False) -> bool:
         """
@@ -339,55 +338,6 @@ class DockerManager:
             f"Docker binary: {version}",
         )
 
-    def _download_docker_cli_plugins(self) -> None:
-        """Download Docker Compose and Buildx CLI plugin binaries."""
-        compose_version = self.kube_constant.v_docker_compose
-        buildx_version = self.kube_constant.v_docker_buildx
-
-        self._download_binary(
-            self.kube_constant.docker_compose_bin_url(compose_version),
-            self.image_dir / f"docker-compose-{compose_version}",
-            f"Docker Compose binary: {compose_version}",
-            executable=True,
-        )
-        self._download_binary(
-            self.kube_constant.docker_buildx_bin_url(buildx_version),
-            self.image_dir / f"docker-buildx-{buildx_version}",
-            f"Docker Buildx binary: {buildx_version}",
-            executable=True,
-        )
-
-    def _download_cri_dockerd(self) -> None:
-        """Download Mirantis cri-dockerd (required for K8s >=1.24 + docker runtime)."""
-        version = self.kube_constant.v_cri_dockerd
-        self._download_binary(
-            self.kube_constant.cri_dockerd_bin_url(version),
-            self.image_dir / f"cri-dockerd-{version}.tgz",
-            f"cri-dockerd binary: {version}",
-        )
-
-    def _install_cri_dockerd_binary(self) -> None:
-        """Extract cri-dockerd into docker-bin for ansible role distribution."""
-        version = self.kube_constant.v_cri_dockerd
-        tgz = self.image_dir / f"cri-dockerd-{version}.tgz"
-        if not tgz.is_file():
-            logger.warning("cri-dockerd tarball missing; ansible role may download it", extra=LOG_STDOUT)
-            return
-        self.temp_path.mkdir(parents=True, exist_ok=True)
-        self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
-        with tarfile.open(tgz, "r:gz") as tf:
-            tf.extractall(path=self.temp_path, filter="data")
-        src = self.temp_path / "cri-dockerd" / "cri-dockerd"
-        if not src.is_file():
-            # some layouts place binary at top level
-            candidates = list(self.temp_path.rglob("cri-dockerd"))
-            src = next((p for p in candidates if p.is_file()), src)
-        dest = self.docker_bin_dir / "cri-dockerd"
-        run_command(["cp", "-f", str(src), str(dest)])
-        run_command(["chmod", "+x", str(dest)])
-        run_command(["rm", "-rf", str(self.temp_path / "cri-dockerd")])
-        logger.info("cri-dockerd binary staged into docker-bin", extra=LOG_STDOUT)
-
     def _install_docker_binaries(self, version) -> None:
         """
         Install Docker binary
@@ -411,40 +361,121 @@ class DockerManager:
 
         logger.info("Docker binary has been installed successfully!", extra=LOG_STDOUT)
 
+    def _docker_runtime_artifacts_valid(self) -> bool:
+        """Validate the locally staged artifact manifest before reusing it."""
+        manifest = self.docker_bin_dir / "docker-runtime-artifacts.sha256"
+        if not manifest.is_file():
+            return False
+        try:
+            checksums = self._read_docker_runtime_manifest(manifest)
+            for name in _DOCKER_RUNTIME_ARTIFACTS:
+                artifact = self.docker_bin_dir / name
+                if not artifact.is_file() or not os.access(artifact, os.X_OK):
+                    return False
+                digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+                if checksums.get(name) != digest:
+                    return False
+        except (OSError, ValueError):
+            return False
+        return True
+
+    @staticmethod
+    def _read_docker_runtime_manifest(manifest: Path) -> dict[str, str]:
+        """Read the fixed-name SHA-256 manifest emitted by the ext-bin image."""
+        checksums = {}
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            digest, name = line.split(maxsplit=1)
+            name = name.lstrip(" *")
+            if name not in _DOCKER_RUNTIME_ARTIFACTS or not re.fullmatch(r"[0-9a-f]{64}", digest):
+                raise ValueError(f"invalid Docker runtime artifact manifest row: {line!r}")
+            if name in checksums:
+                raise ValueError(f"duplicate Docker runtime artifact manifest row: {name}")
+            checksums[name] = digest
+        if set(checksums) != set(_DOCKER_RUNTIME_ARTIFACTS):
+            raise ValueError("Docker runtime artifact manifest is incomplete")
+        return checksums
+
+    def _stage_docker_runtime_artifacts(self) -> None:
+        """Extract verified Docker runtime artifacts from the dual-pushed ext-bin image."""
+        from .registry import RegistryManager
+
+        image = self.kube_constant.docker_runtime_artifact_image
+        work_dir = self.temp_path / "docker-runtime-artifacts"
+        container_id = None
+        try:
+            rmrf(work_dir)
+            work_dir.mkdir(parents=True, exist_ok=True)
+            # RegistryManager implements the delivery pull contract: TalkEdu first,
+            # Docker Hub brinnatt fallback. Docker verifies OCI layer digests on pull.
+            RegistryManager()._ensure_image_local(image)
+            container_id = self.run_container(image, "temp_docker_runtime_artifacts")
+            self.copy_from_container(container_id, "/extra", str(work_dir))
+            source_dir = work_dir / "extra"
+            source_manifest = source_dir / "docker-runtime-artifacts.sha256"
+            if not source_manifest.is_file():
+                raise RuntimeError(f"{image} is missing docker runtime artifact manifest")
+
+            self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
+            checksums = self._read_docker_runtime_manifest(source_manifest)
+            for name in _DOCKER_RUNTIME_ARTIFACTS:
+                source = source_dir / name
+                if not source.is_file():
+                    raise RuntimeError(f"{image} is missing required artifact {name}")
+                digest = hashlib.sha256(source.read_bytes()).hexdigest()
+                if checksums.get(name) != digest:
+                    raise RuntimeError(f"{image} checksum mismatch for {name}")
+
+            # Do not alter a known-good local set until every source artifact has
+            # passed manifest verification. This protects reruns after a failed pull.
+            for name in _DOCKER_RUNTIME_ARTIFACTS:
+                source = source_dir / name
+                destination = self.docker_bin_dir / name
+                temporary = self.docker_bin_dir / f".{name}.new"
+                shutil.copy2(source, temporary)
+                temporary.chmod(0o755)
+                temporary.replace(destination)
+            shutil.copy2(source_manifest, self.docker_bin_dir / source_manifest.name)
+        finally:
+            if container_id:
+                try:
+                    self.remove_container(container_id)
+                except Exception as exc:
+                    logger.warning(f"Failed to remove Docker runtime artifact container: {exc}")
+            rmrf(work_dir)
+
     def _install_docker_cli_plugins(self) -> None:
-        """
-        Install Docker Compose and Buildx CLI plugins from cached binaries in image_dir.
-        See https://docs.docker.com/compose/install/linux/
-        """
+        """Link verified Compose and Buildx artifacts into Docker's system plugin directory."""
         self.docker_bin_dir.mkdir(parents=True, exist_ok=True)
         self.docker_compose_plugin_dir.mkdir(parents=True, exist_ok=True)
 
         plugins = (
-            ("docker-compose", self.kube_constant.v_docker_compose, ["docker", "compose", "version"]),
-            ("docker-buildx", self.kube_constant.v_docker_buildx, ["docker", "buildx", "version"]),
+            ("docker-compose", ["docker", "compose", "version"]),
+            ("docker-buildx", ["docker", "buildx", "version"]),
         )
 
-        for plugin_name, plugin_version, verify_cmd in plugins:
-            cache_bin = self.image_dir / f"{plugin_name}-{plugin_version}"
-            if not cache_bin.is_file():
-                logger.warning(
-                    f"{plugin_name} binary not found in cache, skip plugin install",
-                    extra=LOG_STDOUT,
-                )
-                continue
-
+        for plugin_name, verify_cmd in plugins:
             dest_bin = self.docker_bin_dir / plugin_name
-            run_command(["cp", "-f", str(cache_bin), str(dest_bin)])
-            run_command(["chmod", "+x", str(dest_bin)])
-
+            if not dest_bin.is_file():
+                raise RuntimeError(f"Docker runtime artifact missing: {dest_bin}")
             plugin_link = self.docker_compose_plugin_dir / plugin_name
-            run_command(["ln", "-svf", str(dest_bin), str(plugin_link)])
+            if plugin_link.exists() or plugin_link.is_symlink():
+                plugin_link.unlink()
+            plugin_link.symlink_to(dest_bin)
+            run_command(verify_cmd)
+            logger.info(f"{plugin_name} plugin has been installed successfully!", extra=LOG_STDOUT)
 
-            try:
-                run_command(verify_cmd)
-                logger.info(f"{plugin_name} plugin has been installed successfully!", extra=LOG_STDOUT)
-            except CommandExecutionError as e:
-                logger.warning(f"{plugin_name} plugin linked but verification failed: {e}", extra=LOG_STDOUT)
+    def ensure_docker_runtime_artifacts(self) -> None:
+        """Guarantee verified Compose, Buildx and cri-dockerd for Docker installs."""
+        if not self._docker_runtime_artifacts_valid():
+            logger.info(
+                "Docker runtime artifacts missing or invalid; extracting ext-bin delivery artifact.",
+                extra=LOG_STDOUT,
+            )
+            self._stage_docker_runtime_artifacts()
+        if not self._docker_runtime_artifacts_valid():
+            raise RuntimeError("Docker runtime artifact verification failed after extraction")
+        self._install_docker_cli_plugins()
+        run_command([str(self.docker_bin_dir / "cri-dockerd"), "--version"])
 
     def _configure_docker(self, version: str) -> None:
         """
@@ -834,7 +865,14 @@ WantedBy=multi-user.target
                 cmd.extend([key, str(v)])
         cmd.append(image)
 
-        result = self._run_docker(cmd)
+        try:
+            result = self._run_docker(cmd)
+        except CommandExecutionError:
+            # ``docker run`` can leave a Created container behind when port or
+            # network setup fails. Remove that partial object so a retry does
+            # not fail with an unrelated duplicate-name error.
+            self.remove_container(name)
+            raise
         return result.stdout.strip()
 
     def copy_from_container(self, container: str, src: str, dest: str) -> None:

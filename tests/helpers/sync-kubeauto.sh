@@ -1,6 +1,6 @@
 #!/bin/bash
 # Sync kubeauto source tree to control host (preserve clusters + downloaded binaries).
-# Usage: sync-kubeauto.sh <user@host> [password]
+# Usage: sync-kubeauto.sh <user@host> (SSH key authentication)
 set -euo pipefail
 
 require_command() {
@@ -11,14 +11,11 @@ require_command() {
 }
 
 require_command rsync
-require_command sshpass
-
 TARGET="${1:?user@host}"
-PASS="${2:-123456}"
 SRC="$(cd "$(dirname "$0")/../.." && pwd)"
 REMOTE_BASE="/usr/local/kubeauto"
 
-RSYNC_SSH="sshpass -p ${PASS} ssh -o StrictHostKeyChecking=no"
+RSYNC_SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2"
 rsync -az \
   --delete --exclude '.git/' --exclude '.venv/' --exclude '.idea/' --exclude 'logs/' \
   --exclude 'dist/' --exclude 'build/' --exclude '__pycache__/' --exclude '*.pyc' \
@@ -27,7 +24,8 @@ rsync -az \
   -e "$RSYNC_SSH" \
   "$SRC/" "${TARGET}:${REMOTE_BASE}/"
 
-sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$TARGET" "bash -s" <<REMOTE
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+  -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$TARGET" "bash -s" <<REMOTE
 set -euo pipefail
 cat > /usr/local/bin/kubecli <<'WRAP'
 #!/bin/bash

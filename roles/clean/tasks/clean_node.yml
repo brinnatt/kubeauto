@@ -111,6 +111,16 @@
     ignore_errors: true
     when: CONTAINER_RUNTIME == 'containerd'
 
+  # The official Cilium chart and Calico manifest mount host cgroup2 filesystems
+  # below /run. Detach them before removing cgroup control files.
+  - name: unmount CNI host cgroup filesystems
+    shell: |
+      findmnt -rn -o TARGET | awk '
+        $0 == "/run/cilium" || index($0, "/run/cilium/") == 1 ||
+        $0 == "/run/calico" || index($0, "/run/calico/") == 1
+      ' | sort -r | xargs -r -n1 umount -l
+    changed_when: false
+
   - name: remove files and dirs2
     file: name={{ item }} state=absent
     with_items:
@@ -119,6 +129,7 @@
     - "/etc/calico/"
     - "/var/lib/calico/"
     - "/var/log/calico/"
+    - "/run/calico/"
     - "/etc/cilium/"
     - "/sys/fs/bpf/tc/"
     - "/sys/fs/bpf/cilium"

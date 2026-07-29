@@ -11,6 +11,7 @@ KA = Path(__file__).resolve().parents[2]
 ROOT = KA.parent
 EXT_BIN = ROOT / "kubeauto-ext-bin-dockerfile"
 CONTAINERD_ROLE = KA / "roles" / "containerd" / "tasks" / "main.yml"
+NERDCTL_GATE = KA / "tests" / "helpers" / "nerdctl-gate.sh"
 
 
 class TestNerdctlPin(unittest.TestCase):
@@ -41,6 +42,24 @@ class TestNerdctlPin(unittest.TestCase):
         self.assertIn("kube_master", pb)
         self.assertIn("kube_node", pb)
         self.assertIn("role: containerd", pb)
+
+    def test_multi_node_gate_disables_reserved_on_small_worker(self):
+        """Worker 133 is below the 16C/32Gi reserved-resource contract floor."""
+        text = NERDCTL_GATE.read_text()
+        self.assertIn('WORKER="${NERDCTL_WORKER:-192.168.47.133}"', text)
+        self.assertIn(
+            "sed -i 's/^KUBE_RESERVED_ENABLED: \"yes\"/KUBE_RESERVED_ENABLED: \"no\"/'",
+            text,
+        )
+        self.assertIn(
+            "sed -i 's/^SYS_RESERVED_ENABLED: \"yes\"/SYS_RESERVED_ENABLED: \"no\"/'",
+            text,
+        )
+        created = text.index("kubecli new nerdctl-mw")
+        config_override = text.index("sed -i 's/^KUBE_RESERVED_ENABLED", created)
+        setup = text.index("kubecli setup nerdctl-mw 90", config_override)
+        self.assertLess(created, config_override)
+        self.assertLess(config_override, setup)
 
     @unittest.skipUnless(EXT_BIN.is_dir(), "ext-bin sibling not checked out")
     def test_ext_bin_dockerfile_pins_match_constants(self):

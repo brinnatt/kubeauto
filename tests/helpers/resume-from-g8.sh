@@ -33,7 +33,7 @@ curl -sf http://127.0.0.1:5000/v2/_catalog >/dev/null || fail "local registry do
 if [[ "$(id -u)" -eq 0 ]] && [[ -f /root/.ssh/id_rsa.pub ]]; then
   PUB="$(cat /root/.ssh/id_rsa.pub)"
   for ip in 192.168.47.134 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.135 192.168.47.137 192.168.47.136; do
-    sshpass -p 123456 ssh -o StrictHostKeyChecking=no "root@$ip" \
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$ip" \
       "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
   done
 fi
@@ -55,7 +55,7 @@ for spec in "test133-flannel flannel ipvs" "test133-cilium cilium ipvs" "test133
   cname=$1; net=$2; proxy=$3
   kubecli destroy "$cname" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$cname"
   # hard wipe 133 between CNI swaps
-  sshpass -p "$PW" ssh -o StrictHostKeyChecking=no root@192.168.47.133 \
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.133 \
     'set +e; systemctl stop kubelet containerd; rm -rf /var/lib/kubelet /etc/kubernetes /etc/cni /var/lib/containerd /etc/containerd /etc/systemd/system/podruntime.slice /opt/kubeauto_prepare_tasks /etc/calico /run/flannel /etc/cilium; systemctl daemon-reload; sed -i "/registry.talkschool.cn/d" /etc/hosts; echo "192.168.47.138    registry.talkschool.cn" >> /etc/hosts; echo wipe133'
   kubecli new "$cname" </dev/null || true
   bash "$BASE/tests/helpers/mk-cluster-133.sh" "$cname" "$net" "$proxy"

@@ -177,7 +177,10 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
         # Hook image is configurable; chart default is third-party, we override in values.
         values = _read("roles/cluster-addon/templates/openebs/values.yaml.j2")
         self.assertIn("brinnatt/openebs-kubectl", values)
-        self.assertIn("dl.k8s.io", (EXT_IMAGES / "openebs-kubectl" / "Dockerfile").read_text())
+        dockerfile = EXT_IMAGES / "openebs-kubectl" / "Dockerfile"
+        if not dockerfile.is_file():
+            self.skipTest("ext-images dockerfile repo not mounted")
+        self.assertIn("dl.k8s.io", dockerfile.read_text(encoding="utf-8"))
 
     def test_no_bitnami_in_registry_fallbacks(self):
         from service.cluster import registry as reg

@@ -17,7 +17,7 @@ run(){ echo ">>> $*"; "$@" || fail "$*"; }
 
 node_mem_mi(){
   local user="$1" host="$2"
-  sshpass -p 123456 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$user@$host" \
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$user@$host" \
     "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo" 2>/dev/null || echo 0
 }
 
@@ -44,7 +44,7 @@ echo "========== U3 aio cgroup2 reserved 4Gi (live) =========="
 PUB="$(cat /home/ubuntu/.ssh/id_rsa.pub 2>/dev/null || cat ~/.ssh/id_rsa.pub 2>/dev/null || true)"
 if [[ -n "${PUB:-}" ]]; then
   for ip in 192.168.47.133 192.168.47.137; do
-    sshpass -p 123456 ssh -o StrictHostKeyChecking=no "root@$ip" \
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$ip" \
       "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
   done
 fi

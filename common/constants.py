@@ -46,9 +46,12 @@ class KubeConstant:
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.14.0", metadata={
+    v_extra_bin: str = field(default="1.15.0", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
-        "description": "ext-bin pack tag; includes containerd/crictl/nerdctl/helm/…",
+        "description": (
+            "ext-bin pack tag; includes containerd/crictl/nerdctl/helm and the "
+            "Docker Compose, Buildx, cri-dockerd runtime artifacts."
+        ),
     })
     v_extra_bin_sp1: str = field(default="1.3.1", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin-sp1",
@@ -198,42 +201,14 @@ class KubeConstant:
             self.DOCKER_BIN_DIR = f"{self.BASE_PATH}/docker-bin"
         self.arch = SystemProbe().system_info["machine"]
 
-    _DOCKER_PLUGIN_ARCH = {
-        "x86_64": {"compose": "x86_64", "buildx": "amd64"},
-        "aarch64": {"compose": "aarch64", "buildx": "arm64"},
-    }
-
     def docker_bin_url(self, version):
         url = f"https://repo.huaweicloud.com/docker-ce/linux/static/stable/{self.arch}/docker-{version}.tgz"
         return url
 
-    def _docker_plugin_arch(self) -> dict:
-        suffixes = self._DOCKER_PLUGIN_ARCH.get(self.arch)
-        if not suffixes:
-            raise RuntimeError(f"Unsupported architecture for Docker CLI plugins: {self.arch}")
-        return suffixes
-
-    def docker_compose_bin_url(self, version: str) -> str:
-        suffix = self._docker_plugin_arch()["compose"]
-        return (
-            f"https://v6.gh-proxy.org/https://github.com/docker/compose/releases/download/v{version}/"
-            f"docker-compose-linux-{suffix}"
-        )
-
-    def docker_buildx_bin_url(self, version: str) -> str:
-        suffix = self._docker_plugin_arch()["buildx"]
-        return (
-            f"https://v6.gh-proxy.org/https://github.com/docker/buildx/releases/download/v{version}/"
-            f"buildx-v{version}.linux-{suffix}"
-        )
-
-    def cri_dockerd_bin_url(self, version: str) -> str:
-        """Mirantis cri-dockerd static tarball (amd64/arm64)."""
-        arch = "amd64" if self.arch in ("x86_64", "amd64") else "arm64"
-        return (
-            f"https://v6.gh-proxy.org/https://github.com/Mirantis/cri-dockerd/releases/download/"
-            f"v{version}/cri-dockerd-{version}.{arch}.tgz"
-        )
+    @property
+    def docker_runtime_artifact_image(self) -> str:
+        """Dual-pushed ext-bin image carrying Docker CLI plugins and cri-dockerd."""
+        return f"brinnatt/kubeauto-ext-bin:{self.v_extra_bin}"
 
     def nerdctl_bin_url(self, version: str | None = None) -> str:
         """Upstream minimal nerdctl tarball (amd64/arm64); packaged into ext-bin."""

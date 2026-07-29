@@ -22,6 +22,32 @@
   - "{{ base_dir }}/extra-bin/containerd-bin/*"
   tags: upgrade
 
+- name: read staged containerd checksum on controller
+  stat:
+    path: "{{ base_dir }}/extra-bin/containerd-bin/containerd"
+    checksum_algorithm: sha256
+  register: staged_containerd
+  delegate_to: localhost
+  tags: upgrade
+
+- name: read installed containerd checksum
+  stat:
+    path: "{{ bin_dir }}/containerd"
+    checksum_algorithm: sha256
+  register: installed_containerd
+  tags: upgrade
+
+- name: require the exact ext-bin containerd artifact
+  assert:
+    that:
+    - staged_containerd.stat.exists
+    - installed_containerd.stat.exists
+    - installed_containerd.stat.checksum == staged_containerd.stat.checksum
+    fail_msg: >-
+      Installed containerd does not match the verified ext-bin artifact.
+      Refusing to continue with a stale or overwritten runtime binary.
+  tags: upgrade
+
 - name: download crictl
   copy: src={{ base_dir }}/extra-bin/crictl dest={{ bin_dir }}/crictl mode=0755
 
@@ -89,4 +115,20 @@
   until: '"active" in containerd_status.stdout'
   retries: 8
   delay: 2
+  tags: upgrade
+
+- name: dump effective containerd configuration
+  command: "{{ bin_dir }}/containerd config dump"
+  register: effective_containerd_config
+  changed_when: false
+  tags: upgrade
+
+- name: require the configured sandbox image
+  assert:
+    that:
+    - ("sandbox = '" ~ SANDBOX_IMAGE ~ "'") in effective_containerd_config.stdout
+    fail_msg: >-
+      containerd config dump does not contain the required CRI sandbox image
+      SANDBOX_IMAGE={{ SANDBOX_IMAGE }}. Refusing to continue with an
+      incompatible or ignored containerd configuration.
   tags: upgrade

@@ -1,13 +1,12 @@
 #!/bin/bash
-# Focused docker runtime gate on 137 after cri-dockerd product fix.
+# Focused Docker runtime/artifact gate on the large-memory reserved host 137.
 # Usage (on 138 as root): bash /usr/local/kubeauto/tests/helpers/delivery-docker-gate.sh
 set -euo pipefail
 BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE" PATH="/usr/local/bin:/usr/bin:$PATH"
 K=kubecli
 C=deliver-docker
-# 133 is disposable for docker runtime + reserved gate (avoids colliding with test137 on 137).
-NODE="${DOCKER_GATE_NODE:-192.168.47.133}"
+NODE="${DOCKER_GATE_NODE:-192.168.47.137}"
 LOG=/tmp/kubeauto-delivery-docker-$(date +%Y%m%d%H%M%S).log
 if [ -w /var/log ] 2>/dev/null; then
   LOG=/var/log/kubeauto-delivery-docker-$(date +%Y%m%d%H%M%S).log
@@ -17,6 +16,7 @@ echo "LOG=$LOG"
 
 pass(){ echo "[PASS] $*"; }
 fail(){ echo "[FAIL] $*"; exit 1; }
+run(){ echo ">>> $*"; "$@" || fail "$*"; }
 
 nodes_ready(){
   local kc="$1" tries="${2:-48}"
@@ -35,7 +35,7 @@ nodes_ready(){
 }
 
 # Contract reserved floor is 4Gi; lab VMs under ~6Gi cannot run live (kubelet rejects).
-MEM_MI="$(sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
+MEM_MI="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@$NODE \
   "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo" 2>/dev/null || echo 0)"
 echo "docker_gate_node=$NODE mem_mi=$MEM_MI"
 if [[ "$MEM_MI" -lt 6144 ]]; then
@@ -48,13 +48,73 @@ if [[ "$MEM_MI" -lt 6144 ]]; then
   exit 0
 fi
 
+echo "========== artifact recovery + dual-source delivery =========="
+run bash "$BASE/tests/run_unit_tests.sh"
+EXT_BIN_VERSION="$(python3 -c 'from common.constants import KubeConstant; print(KubeConstant().v_extra_bin)')"
+EXT_IMAGE="brinnatt/kubeauto-ext-bin:${EXT_BIN_VERSION}"
+PRIVATE_IMAGE="hub.talkedu.cn/kubeauto/kubeauto-ext-bin:${EXT_BIN_VERSION}"
+ARTIFACT_BACKUP="$(mktemp -d /tmp/kubeauto-docker-artifacts.XXXXXX)"
+restore_artifacts_on_exit() {
+  rc=$?
+  trap - EXIT
+  if ! (cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256 >/dev/null 2>&1); then
+    cp -a "$ARTIFACT_BACKUP"/. "$BASE/docker-bin"/
+  fi
+  rm -rf "$ARTIFACT_BACKUP"
+  exit "$rc"
+}
+trap restore_artifacts_on_exit EXIT
+
+run kubecli download -D </dev/null
+(cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256) || \
+  fail "initial Docker runtime artifact manifest"
+cp -a "$BASE/docker-bin/docker-compose" "$BASE/docker-bin/docker-buildx" \
+  "$BASE/docker-bin/cri-dockerd" "$BASE/docker-bin/docker-runtime-artifacts.sha256" \
+  "$ARTIFACT_BACKUP"/
+
+# Force a real restage with neither delivery tag cached. RegistryManager must
+# pull TalkEdu first and atomically replace the corrupted local artifact.
+docker image rm "$EXT_IMAGE" "$PRIVATE_IMAGE" >/dev/null 2>&1 || true
+printf '\ncorrupted-by-delivery-gate\n' >> "$BASE/docker-bin/docker-buildx"
+if (cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256 >/dev/null 2>&1); then
+  fail "corrupted buildx unexpectedly passed manifest"
+fi
+run kubecli download -D </dev/null
+(cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256) || \
+  fail "TalkEdu restage manifest"
+docker image inspect "$PRIVATE_IMAGE" >/dev/null || fail "TalkEdu image was not pulled first"
+pass "TalkEdu-first corrupted-artifact recovery"
+
+# Exercise the production fallback path with an intentionally unreachable
+# private endpoint, then restage another corrupt artifact from Docker Hub.
+docker image rm "$EXT_IMAGE" "$PRIVATE_IMAGE" >/dev/null 2>&1 || true
+printf '\ncorrupted-by-fallback-gate\n' >> "$BASE/docker-bin/docker-compose"
+python3 - <<'PY'
+from common.constants import KubeConstant
+from service.cluster.docker import DockerManager
+from service.cluster.registry import RegistryManager
+
+image = KubeConstant().docker_runtime_artifact_image
+registry = RegistryManager()
+registry.kube_constant.v_talkedu_registry = "127.0.0.1:9/kubeauto"
+registry._ensure_image_local(image)
+DockerManager().ensure_docker_runtime_artifacts()
+print("DOCKERHUB_FALLBACK_OK")
+PY
+(cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256) || \
+  fail "Docker Hub fallback restage manifest"
+docker compose version
+docker buildx version
+"$BASE/docker-bin/cri-dockerd" --version
+pass "DockerHub-fallback corrupted-artifact recovery"
+
 echo "========== destroy leftover clusters using $NODE =========="
 for c in deliver-docker deliver-upgrade; do
   $K destroy "$c" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$c"
 done
 
 echo "========== hard reset $NODE =========="
-sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE bash -s <<'RST'
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@$NODE bash -s <<'RST'
 set -e
 systemctl stop kubelet cri-dockerd docker containerd 2>/dev/null || true
 pkill -9 kubelet 2>/dev/null || true
@@ -108,14 +168,15 @@ EOF
 if [ ! -f "$BASE/clusters/$C/config.yml" ]; then
   cp "$BASE/conf/config.yml" "$BASE/clusters/$C/config.yml"
 fi
-sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/$C/config.yml"
+K8S_VERSION="$(python3 -c 'from common.constants import KubeConstant; print(KubeConstant().v_k8s_bin.lstrip("v"))')"
+sed -i "s/__k8s_ver__/${K8S_VERSION}/g" "$BASE/clusters/$C/config.yml"
 
 $K download -X </dev/null || true
 
 echo "========== setup 90 =========="
 if ! $K setup "$C" 90 </dev/null; then
   echo "--- node services ---"
-  sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@$NODE \
     'systemctl status docker cri-dockerd kubelet --no-pager -l | head -120; ls -la /var/run/cri-dockerd.sock /run/containerd/containerd.sock 2>&1; journalctl -u kubelet -n 40 --no-pager'
   fail "setup 90"
 fi
@@ -145,7 +206,7 @@ if [ -n "$docker0" ]; then
   fail "non-hostNetwork pods on docker0 — cri-dockerd CNI misconfigured"
 fi
 
-sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@$NODE \
   'systemctl is-active docker cri-dockerd kubelet; /usr/local/bin/cri-dockerd --version; grep -E "container-runtime-endpoint|pod-infra|network-plugin" /etc/systemd/system/kubelet.service /etc/systemd/system/cri-dockerd.service'
 
 pass "docker runtime Ready ($rt) + system pods + CNI"
@@ -159,7 +220,7 @@ grep -q 'SYS_RESERVED_CPU: "1000m"' "$BASE/clusters/$C/config.yml" || fail "SYS_
 grep -q 'SYS_RESERVED_MEMORY: "2560Mi"' "$BASE/clusters/$C/config.yml" || fail "SYS_RESERVED_MEMORY not 2560Mi"
 grep -q 'SYS_RESERVED_ENFORCE: "no"' "$BASE/clusters/$C/config.yml" || fail "SYS_RESERVED_ENFORCE not no"
 bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG" || fail "reserved allocatable"
-sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@$NODE \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@$NODE \
   'systemctl show kubelet docker cri-dockerd -p Slice --value; test ! -d /sys/fs/cgroup/systemd/podruntime.slice.slice -a ! -d /sys/fs/cgroup/podruntime.slice.slice && echo NO_DOUBLE_SLICE'
 pass "docker reserved RESERVED_ALLOCATABLE_PASS"
 

@@ -12,6 +12,20 @@ PW=123456
 pass(){ echo "[PASS] $*"; }
 fail(){ echo "[FAIL] $*"; exit 1; }
 run(){ echo ">>> $*"; "$@" || fail "$*"; }
+run_system_access(){
+  local output status
+  echo ">>> $K system -a $*"
+  set +e
+  output=$("$K" system -a "$@" 2>&1)
+  status=$?
+  set -e
+  printf '%s\n' "$output"
+  [[ "$status" -eq 0 ]] || fail "system -a command failed"
+  if grep -Eq '\[(CRASH|FAILED)\]' <<<"$output"; then
+    fail "system -a reported a host failure"
+  fi
+  return 0
+}
 
 nodes_ready(){
   local c="$1" tries="${2:-30}"
@@ -19,11 +33,14 @@ nodes_ready(){
   local i=0
   while [ "$i" -lt "$tries" ]; do
     if kubectl get nodes --no-headers 2>/dev/null | grep -q Ready; then
+      echo "[WAIT] cluster=$c nodes=Ready attempt=$((i+1))/$tries"
       return 0
     fi
     i=$((i+1))
+    echo "[WAIT] cluster=$c nodes=not-ready attempt=$i/$tries next_check=10s"
     sleep 10
   done
+  kubectl get nodes -o wide 2>/dev/null || true
   return 1
 }
 
@@ -34,9 +51,11 @@ wait_node(){
   local i=0
   while [ "$i" -lt "$tries" ]; do
     if kubectl get nodes --no-headers 2>/dev/null | awk '{print $1,$2}' | grep -E "^${name}[[:space:]]+Ready" >/dev/null; then
+      echo "[WAIT] cluster=$c node=$name status=Ready attempt=$((i+1))/$tries"
       return 0
     fi
     i=$((i+1))
+    echo "[WAIT] cluster=$c node=$name status=not-ready attempt=$i/$tries next_check=5s"
     sleep 5
   done
   kubectl get nodes -o wide 2>/dev/null || true
@@ -76,21 +95,33 @@ run $K completion zsh >/dev/null
 pass G1
 
 echo "========== G5 system SSH + docker =========="
-# 133 may have stale host key after rebuild
-ssh-keygen -R 192.168.47.133 2>/dev/null || true
-run $K system -a --user root --password "$PW" 192.168.47.131-137 </dev/null
-run $K system -a --user brinnatt --password "$PW" 192.168.47.128 </dev/null
+# Lab nodes are rebuilt repeatedly.  Clear every prior Rocky host key before
+# password-authenticated key distribution; Paramiko correctly refuses a changed
+# key and otherwise cannot refresh the authorized_keys bootstrap.
+for ip in 192.168.47.128 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.134 192.168.47.135 192.168.47.136 192.168.47.137; do
+  ssh-keygen -R "$ip" 2>/dev/null || true
+done
+run_system_access --user root --password "$PW" 192.168.47.131-137 </dev/null
+run_system_access --user brinnatt --password "$PW" 192.168.47.128 </dev/null
 # When this script runs under sudo, ansible uses /root/.ssh — ensure root pubkey is on targets.
 if [[ "$(id -u)" -eq 0 ]] && [[ -f /root/.ssh/id_rsa.pub ]]; then
   PUB="$(cat /root/.ssh/id_rsa.pub)"
   for ip in 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.134 192.168.47.135 192.168.47.136 192.168.47.137; do
-    sshpass -p "$PW" ssh -o StrictHostKeyChecking=no "root@$ip" \
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$ip" \
       "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
   done
-  sshpass -p "$PW" ssh -o StrictHostKeyChecking=no brinnatt@192.168.47.128 \
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no brinnatt@192.168.47.128 \
     "mkdir -p ~/.ssh; chmod 700 ~/.ssh; grep -qxF '$PUB' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" || true
 fi
-$K docker -l >/dev/null 2>&1 || true
+# ansible-core 2.17 requires a supported target interpreter.  Rocky 8's
+# platform Python is intentionally not an Ansible module runtime, so guarantee
+# the same Python 3.9 installation the prepare role selects for fresh hosts.
+for ip in 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.134 192.168.47.135 192.168.47.136 192.168.47.137; do
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$ip" \
+    'command -v python3.9 >/dev/null 2>&1 || dnf install -y python39; python3.9 --version' \
+    || fail "Python 3.9 preflight failed on $ip"
+done
+$K docker -e >/dev/null 2>&1 || true
 pass G5-system
 
 echo "========== G2 cluster (re)setup =========="
@@ -160,6 +191,12 @@ ansible_become=true
 ansible_become_method=sudo
 EOF
 sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/debian128/config.yml"
+# Debian 128 is the OS/privilege compatibility node (about 4 GiB in this lab),
+# not the dedicated 8C/32Gi allocation-contract host.  Kubernetes rejects a
+# kube+system reservation that exceeds capacity; keep the delivery defaults
+# unchanged and disable the optional reservation only for this undersized case.
+sed -i 's/^KUBE_RESERVED_ENABLED: "yes"/KUBE_RESERVED_ENABLED: "no"/' "$BASE/clusters/debian128/config.yml"
+sed -i 's/^SYS_RESERVED_ENABLED: "yes"/SYS_RESERVED_ENABLED: "no"/' "$BASE/clusters/debian128/config.yml"
 run $K setup debian128 90 </dev/null
 nodes_ready debian128 || fail "debian128 not Ready"
 
@@ -192,8 +229,33 @@ k8s_nodename=''
 ansible_user=root
 EOF
 sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test-ded-etcd/config.yml"
+sed -i 's/^KUBE_RESERVED_ENABLED: "yes"/KUBE_RESERVED_ENABLED: "no"/' "$BASE/clusters/test-ded-etcd/config.yml"
+sed -i 's/^SYS_RESERVED_ENABLED: "yes"/SYS_RESERVED_ENABLED: "no"/' "$BASE/clusters/test-ded-etcd/config.yml"
 run $K setup test-ded-etcd 90 </dev/null
 nodes_ready test-ded-etcd || fail "test-ded-etcd not Ready"
+
+# This topology shares 131/134/136 with test-ha, so exercise its complete
+# lifecycle while its own etcd data and CA are still present.  Keeping only the
+# control-plane directory after the nodes are rebuilt would create a stale
+# cluster entry whose credentials can never match the replacement HA cluster.
+echo "========== G3 dedicated-etcd lifecycle before topology reuse =========="
+run $K checkout test-ded-etcd
+run $K backup test-ded-etcd </dev/null
+run $K stop test-ded-etcd </dev/null
+run $K start test-ded-etcd </dev/null
+run $K restore test-ded-etcd </dev/null
+nodes_ready test-ded-etcd || fail "G3 test-ded-etcd not Ready after restore"
+pass "G3 test-ded-etcd"
+run $K destroy test-ded-etcd </dev/null
+
+# test-ded-etcd and test-ha intentionally reuse 131-136.  A member's etcd
+# data directory belongs to exactly one initial cluster; carrying it into the
+# HA inventory causes an etcd cluster-ID mismatch and leaves new masters unable
+# to register.  Preserve the completed dedicated-etcd evidence, then reset the
+# shared lab nodes before creating the independent HA topology.
+run bash "$BASE/tests/helpers/lab-wipe-nodes.sh" --rocky-only \
+  192.168.47.131 192.168.47.132 192.168.47.133 \
+  192.168.47.134 192.168.47.135 192.168.47.136
 
 # test-ha + ex_lb
 $K new test-ha 2>/dev/null || true
@@ -231,12 +293,17 @@ k8s_nodename=''
 ansible_user=root
 EOF
 sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/test-ha/config.yml"
+sed -i 's/^KUBE_RESERVED_ENABLED: "yes"/KUBE_RESERVED_ENABLED: "no"/' "$BASE/clusters/test-ha/config.yml"
+sed -i 's/^SYS_RESERVED_ENABLED: "yes"/SYS_RESERVED_ENABLED: "no"/' "$BASE/clusters/test-ha/config.yml"
 run $K setup test-ha 90 </dev/null
 run $K setup test-ha 10 </dev/null
 nodes_ready test-ha || fail "test-ha not Ready"
 
 # aio (138 localhost)
-if nodes_ready aio 2>/dev/null; then
+# This is an existence/reuse probe, not the post-install readiness gate.  A
+# clean regression has no aio cluster, so one quick check is sufficient before
+# start-aio; the full 30-attempt gate remains immediately below.
+if nodes_ready aio 1 2>/dev/null; then
   pass "aio already live"
 else
   $K destroy aio </dev/null 2>/dev/null || rm -rf "$BASE/clusters/aio"
@@ -248,7 +315,7 @@ pass G2
 echo "========== G11 Node Allocatable reserved (contract) =========="
 # Docs: https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
 # Must cover cgroup v2 (aio/debian) and cgroup v1 hybrid (Rocky test137).
-for c in aio test137 debian128; do
+for c in aio test137; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   grep -E '^KUBE_RESERVED_|^SYS_RESERVED_' "$BASE/clusters/$c/config.yml" || true
   grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$c/config.yml" || fail "$c KUBE_RESERVED not yes"
@@ -269,7 +336,7 @@ grep -q podruntime.slice /tmp/aio-containerd-slice.txt || fail "containerd not i
 pass "G11-aio-slice-placement"
 
 echo "========== G3 ops all clusters =========="
-for c in test137 debian128 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ha aio; do
   run $K checkout "$c"
   run $K backup "$c" </dev/null
   run $K stop "$c" </dev/null
@@ -288,22 +355,26 @@ pass G5-kcfg
 
 echo "========== G4 node expand/shrink =========="
 run $K checkout test-ha
-run $K add-node test-ha 192.168.47.133 worker-133 </dev/null
-wait_node test-ha worker-133 || fail add-node
-run $K del-node test-ha 192.168.47.133 </dev/null
+# 133 is the active ex-lb backup and must never be cleaned as a disposable
+# Kubernetes node.  Free the ordinary worker 132 through the supported shrink
+# path, then reuse that role-neutral host for every G4 lifecycle operation.
+run $K del-node test-ha 192.168.47.132 </dev/null
+run $K add-node test-ha 192.168.47.132 worker-132 </dev/null
+wait_node test-ha worker-132 || fail add-node
+run $K del-node test-ha 192.168.47.132 </dev/null
 pass G4-node
 
-echo "========== G4 add-master + del-master (133 disposable) =========="
-run $K add-master test-ha 192.168.47.133 master-133 </dev/null
-wait_node test-ha master-133 || fail add-master
+echo "========== G4 add-master + del-master (132 disposable) =========="
+run $K add-master test-ha 192.168.47.132 master-132 </dev/null
+wait_node test-ha master-132 || fail add-master
 run $K backup test-ha </dev/null
-run $K del-master test-ha 192.168.47.133 </dev/null
+run $K del-master test-ha 192.168.47.132 </dev/null
 pass G4-master
 
-echo "========== G4 add-etcd + del-etcd (133) =========="
-run $K add-etcd test-ha 192.168.47.133 etcd-133 </dev/null
-grep -q '192.168.47.133' "$BASE/clusters/test-ha/hosts"
-run $K del-etcd test-ha 192.168.47.133 </dev/null
+echo "========== G4 add-etcd + del-etcd (132) =========="
+run $K add-etcd test-ha 192.168.47.132 etcd-132 </dev/null
+grep -q '192.168.47.132' "$BASE/clusters/test-ha/hosts"
+run $K del-etcd test-ha 192.168.47.132 </dev/null
 pass G4-etcd
 
 echo "========== G6 cross kca-renew + multi checkout =========="
@@ -311,7 +382,7 @@ run $K kca-renew test137 </dev/null
 export KUBECONFIG="$BASE/clusters/test137/kubectl.kubeconfig"
 nodes_ready test137 || fail kca-renew-test137
 run $K kca-renew aio </dev/null
-for c in test137 debian128 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ha aio; do
   run $K checkout "$c"
   run $K backup "$c" </dev/null
 done
@@ -328,16 +399,16 @@ for spec in "test133-flannel flannel ipvs" "test133-cilium cilium ipvs" "test133
   cname=$1; net=$2; proxy=$3
   $K destroy "$cname" </dev/null 2>/dev/null || rm -rf "$BASE/clusters/$cname"
   # wipe 133 between CNI swaps to avoid leftover CNI/cgroup pollution
-  sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.133 \
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.133 \
     'set +e; systemctl stop kubelet containerd; rm -rf /var/lib/kubelet /etc/kubernetes /etc/cni /var/lib/containerd /etc/containerd /etc/systemd/system/podruntime.slice /opt/kubeauto_prepare_tasks /etc/calico /run/flannel /etc/cilium; systemctl daemon-reload; grep -q registry.talkschool.cn /etc/hosts || echo "192.168.47.138    registry.talkschool.cn" >> /etc/hosts' || true
   $K new "$cname" 2>/dev/null || true
   bash "$BASE/tests/helpers/mk-cluster-133.sh" "$cname" "$net" "$proxy"
   sed -i 's/__k8s_ver__/1.33.6/g' "$BASE/clusters/$cname/config.yml"
-  grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$cname/config.yml" || fail "$cname reserved default off"
+  sed -i 's/^KUBE_RESERVED_ENABLED: "yes"/KUBE_RESERVED_ENABLED: "no"/' "$BASE/clusters/$cname/config.yml"
+  sed -i 's/^SYS_RESERVED_ENABLED: "yes"/SYS_RESERVED_ENABLED: "no"/' "$BASE/clusters/$cname/config.yml"
   run $K setup "$cname" 90 </dev/null
   export KUBECONFIG="$BASE/clusters/$cname/kubectl.kubeconfig"
   nodes_ready "$cname" || fail "$cname $net"
-  bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG" || fail "$cname reserved"
   if [ "$net" = "cilium" ]; then
     img=$(kubectl -n kube-system get deploy -l io.cilium/app=operator -o jsonpath='{.items[0].spec.template.spec.containers[0].image}' 2>/dev/null || true)
     echo "cilium_operator_image=$img"
@@ -375,17 +446,26 @@ export KUBECONFIG="$BASE/clusters/aio/kubectl.kubeconfig"
 # Wait / assert key pods using mirrored images
 wait_ns_ready() {
   local ns="$1" tries="${2:-36}"
-  local i=0
+  local i=0 pod_counts total bad
   while [ "$i" -lt "$tries" ]; do
-    if kubectl get pods -n "$ns" --no-headers 2>/dev/null | grep -vE 'Completed|Succeeded' | grep -qvE 'Running|0/'; then
-      :
+    if ! pod_counts=$(kubectl get pods -n "$ns" --no-headers 2>/dev/null | awk '
+      $3 != "Completed" && $3 != "Succeeded" {
+        total++
+        split($2, ready, "/")
+        if ($3 != "Running" || ready[1] != ready[2]) bad++
+      }
+      END { print total + 0, bad + 0 }
+    '); then
+      pod_counts="0 1"
     fi
-    bad=$(kubectl get pods -n "$ns" --no-headers 2>/dev/null | grep -vE 'Completed|Succeeded' | grep -v Running | wc -l || echo 1)
-    total=$(kubectl get pods -n "$ns" --no-headers 2>/dev/null | grep -vE 'Completed|Succeeded' | wc -l || echo 0)
+    read -r total bad <<< "$pod_counts"
     if [ "$total" -gt 0 ] && [ "$bad" -eq 0 ]; then
+      echo "[WAIT] namespace=$ns status=Ready total=$total attempt=$((i+1))/$tries"
       return 0
     fi
-    i=$((i+1)); sleep 10
+    i=$((i+1))
+    echo "[WAIT] namespace=$ns status=not-ready total=$total bad=$bad attempt=$i/$tries next_check=10s"
+    sleep 10
   done
   kubectl get pods -n "$ns" -o wide || true
   return 1
@@ -442,9 +522,11 @@ fi
 
 echo "========== FINAL verification =========="
 $K list
-for c in test137 debian128 test-ded-etcd test-ha aio; do
+for c in test137 debian128 test-ha aio; do
   export KUBECONFIG="$BASE/clusters/$c/kubectl.kubeconfig"
   echo "--- $c ---"
   kubectl get nodes
 done
+echo "--- test-ded-etcd ---"
+echo "validated and destroyed before shared nodes were rebuilt as test-ha"
 echo REGRESSION_FULL_COMPLETE

@@ -37,6 +37,7 @@ class DownloadManager:
         self.get_kubeauto()
         self.get_k8s_bin()
         self.get_ext_bin()
+        self.docker.ensure_docker_runtime_artifacts()
         self.registry.start_local_registry()
         self.get_default_images()
         ensure_kubeauto_clusters_dir(self.base_path)

@@ -6,7 +6,7 @@ BASE=/usr/local/kubeauto
 export PYTHONPATH=$BASE PATH=/usr/local/bin:$PATH
 cd "$BASE"
 echo "=== rocky reserved gate ==="
-MEM_MI="$(sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.137 \
+MEM_MI="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.137 \
   "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo")"
 echo "rocky141_mem_mi=$MEM_MI"
 if [[ "$MEM_MI" -lt 6144 ]]; then
@@ -18,7 +18,7 @@ curl -sf http://127.0.0.1:5000/v2/brinnatt/pause/tags/list
 echo
 kubecli system -a --user root --password 123456 192.168.47.137 </dev/null
 
-sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.137 \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.137 \
   'set +e; systemctl stop kubelet containerd; rm -rf /var/lib/kubelet /etc/kubernetes /etc/cni /var/lib/containerd /etc/containerd /etc/systemd/system/kubelet.service /etc/systemd/system/containerd.service /etc/systemd/system/podruntime.slice /opt/kubeauto_prepare_tasks; systemctl daemon-reload; sed -i "/registry.talkschool.cn/d" /etc/hosts; echo "192.168.47.138    registry.talkschool.cn" >> /etc/hosts; echo 141_clean'
 
 rm -rf "$BASE/clusters/test137"
@@ -66,7 +66,7 @@ for i in $(seq 1 72); do
 done
 kubectl get nodes -o wide
 bash "$BASE/tests/helpers/verify-node-reserved.sh" "$KUBECONFIG"
-sshpass -p 123456 ssh -o StrictHostKeyChecking=no root@192.168.47.137 \
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.137 \
   'systemctl show kubelet containerd kube-proxy -p Slice --value; ls -d /sys/fs/cgroup/systemd/podruntime.slice /sys/fs/cgroup/memory/podruntime.slice; test ! -d /sys/fs/cgroup/systemd/podruntime.slice.slice && echo NO_DOUBLE_SLICE; findmnt -no FSTYPE /sys/fs/cgroup; test ! -f /sys/fs/cgroup/cgroup.controllers && echo HYBRID_V1; grep -E "kubeReservedCgroup|systemReservedCgroup|memory:" /var/lib/kubelet/config.yaml'
 echo ROCKY_RESERVED_GATE_PASS
 echo RESERVED_DUAL_CGROUP_GATE_PASS
