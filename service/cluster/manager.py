@@ -696,6 +696,12 @@ class ClusterManager:
         elif role == "etcd":
             if self._is_ip_in_kube_master_or_node(hosts_file, ip):
                 node_line = ip
+                if extra_info.strip():
+                    logger.warning(
+                        f"Node {ip} already belongs to kube_master/kube_node; "
+                        f"ignoring k8s_nodename '{extra_info.strip()}' so the existing host identity is preserved.",
+                        extra=LOG_STDOUT,
+                    )
             else:
                 self._validate_k8s_nodename(extra_info)
                 nodename = extra_info.strip()
@@ -712,9 +718,6 @@ class ClusterManager:
             tmp_path = Path(tmp_dir) / "hosts"
             shutil.copy2(hosts_file, tmp_path)
             self._add_to_hosts_section(tmp_path, role, node_line)
-            # Master nodes also belong in [kube_node] for restore/stop/start playbooks.
-            if role == "master" and not self._ip_in_hosts_section(tmp_path, ip, "node"):
-                self._add_to_hosts_section(tmp_path, "node", ip)
             logger.info(f"Adding {_ROLE_LABEL[role]} {ip} to cluster {cluster}.", extra=LOG_STDOUT)
             extra_vars = self._yaml_to_dict(self.clusters_dir / cluster / "config.yml")
             extra_vars["NODE_TO_ADD"] = ip
@@ -767,10 +770,6 @@ class ClusterManager:
 
         # Remove node from hosts file
         self._remove_from_hosts_section(hosts_file, role, ip)
-
-        # Master nodes are also listed in [kube_node]; keep inventory aligned with del-master cleanup.
-        if role == "master" and self._ip_in_hosts_section(hosts_file, ip, "node"):
-            self._remove_from_hosts_section(hosts_file, "node", ip)
 
         # After removing a node, we still have to notify related services
         if role == "etcd":

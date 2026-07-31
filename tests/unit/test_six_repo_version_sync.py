@@ -132,10 +132,22 @@ class TestSixRepoVersionSync(unittest.TestCase):
         self.assertEqual(bad, [], msg=f"six-repo ecosystem tag drift: {bad}")
 
     def test_k8s_bin_pack_default_matches_constant(self):
-        """k8s-bin sibling is ARG-driven; pack tags property must include current default."""
+        """k8s-bin dual-push CI must publish current and test-fixture artifacts."""
         self.assertIn(self.kc.v_k8s_bin, self.kc.k8s_bin_pack_tags)
-        df = (ROOT / "kubeauto-k8s-bin-dockerfile" / "Dockerfile").read_text()
+        k8s_bin = ROOT / "kubeauto-k8s-bin-dockerfile"
+        df = (k8s_bin / "Dockerfile").read_text()
         self.assertIn("ARG K8S_VER", df)
+        ci = (k8s_bin / ".github/workflows/build.yml").read_text()
+        published = set(re.findall(r"version:\s*(v?[0-9]+\.[0-9]+\.[0-9]+)", ci))
+        upgrade_gate = (ROOT / "kubeauto" / "tests" / "helpers" / "delivery-upgrade-smoke.sh").read_text()
+        upgrade_source = re.search(r"^OLD_VERSION=(v?[0-9]+\.[0-9]+\.[0-9]+)$", upgrade_gate, re.MULTILINE)
+        self.assertIsNotNone(upgrade_source, msg="upgrade gate must pin its source fixture")
+        required = {*self.kc.k8s_bin_pack_tags, upgrade_source.group(1)}
+        self.assertEqual(
+            required - published,
+            set(),
+            msg="k8s-bin CI must dual-push every required current/upgrade tag",
+        )
 
     def test_component_images_tags_exist_in_ext_images_ci(self):
         """Every brinnatt image pin in component_images must have matching CI tag (no local fork)."""

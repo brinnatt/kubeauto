@@ -62,6 +62,16 @@ wait_node(){
   return 1
 }
 
+section_has_ip(){
+  local file="$1" group="$2" ip="$3"
+  awk -v section="[$group]" -v ip="$ip" '
+    $0 == section { in_section=1; next }
+    /^\[/ { if (in_section) exit; next }
+    in_section && $1 == ip { found=1; exit }
+    END { exit(found ? 0 : 1) }
+  ' "$file"
+}
+
 echo "========== G0 preflight =========="
 python3 -c "
 from common.utils import run_command
@@ -367,13 +377,39 @@ pass G4-node
 echo "========== G4 add-master + del-master (132 disposable) =========="
 run $K add-master test-ha 192.168.47.132 master-132 </dev/null
 wait_node test-ha master-132 || fail add-master
+HA_HOSTS="$BASE/clusters/test-ha/hosts"
+section_has_ip "$HA_HOSTS" kube_master 192.168.47.132 \
+  || fail "add-master did not add 132 to [kube_master]"
+if section_has_ip "$HA_HOSTS" kube_node 192.168.47.132; then
+  fail "add-master incorrectly added 132 to [kube_node]"
+fi
+
+echo "========== G4 add-etcd on existing master (132) =========="
+run $K add-etcd test-ha 192.168.47.132 etcd-132 </dev/null
+section_has_ip "$HA_HOSTS" etcd 192.168.47.132 \
+  || fail "co-located add-etcd did not add 132 to [etcd]"
+section_has_ip "$HA_HOSTS" kube_master 192.168.47.132 \
+  || fail "co-located add-etcd removed 132 from [kube_master]"
+if section_has_ip "$HA_HOSTS" kube_node 192.168.47.132; then
+  fail "co-located add-etcd changed [kube_node] membership"
+fi
+grep -q "^192.168.47.132 k8s_nodename='master-132'$" "$HA_HOSTS" \
+  || fail "co-located add-etcd did not preserve the master nodename"
+run $K del-etcd test-ha 192.168.47.132 </dev/null
+pass G4-master-etcd-colocated
+
 run $K backup test-ha </dev/null
 run $K del-master test-ha 192.168.47.132 </dev/null
+if section_has_ip "$HA_HOSTS" kube_master 192.168.47.132 \
+  || section_has_ip "$HA_HOSTS" kube_node 192.168.47.132; then
+  fail "del-master left an implicit master/worker inventory role for 132"
+fi
 pass G4-master
 
-echo "========== G4 add-etcd + del-etcd (132) =========="
+echo "========== G4 standalone add-etcd + del-etcd (132) =========="
 run $K add-etcd test-ha 192.168.47.132 etcd-132 </dev/null
-grep -q '192.168.47.132' "$BASE/clusters/test-ha/hosts"
+section_has_ip "$HA_HOSTS" etcd 192.168.47.132 \
+  || fail "standalone add-etcd did not add 132 to [etcd]"
 run $K del-etcd test-ha 192.168.47.132 </dev/null
 pass G4-etcd
 

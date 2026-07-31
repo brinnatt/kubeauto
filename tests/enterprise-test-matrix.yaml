@@ -7,11 +7,11 @@
 
 meta:
   version: 3
-  updated: "2026-07-29"
+  updated: "2026-07-31"
   environment_updated: "2026-07-25"
   runner: tests/run_enterprise_regression.sh
   regression_log: /tmp/kubeauto-gaps-live.log
-  regression_result: "PASS - DELIVERY_GAPS_FULLCHAIN_PASS; durable rc=0; 38 pass markers, 0 failure markers; post-run LAB_CLEAN_VERIFY_PASS"
+  regression_result: "PASS - ENTERPRISE_DELIVERY_ALL_PASS; all supervised gates rc=0/failure_markers=0; DELIVERY_GAPS_FULLCHAIN_PASS; final LAB_CLEAN_VERIFY_PASS"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -93,8 +93,8 @@ environments:
 
 # ---------------------------------------------------------------------------
 tier0_foundation:
-  - {id: T0-01, group: G0, desc: unit tests (brinnatt contract + completion + ansible), status: pass, evidence: "2026-07-29 development host: tests/run_unit_tests.sh, 142/142 passed after the full live regression, retrospective process-contract additions and lab cleanup"}
-  - {id: T0-02, group: G0, desc: ansible-core 2.17 policy Ubuntu aio 138, status: pass, evidence: "2026-07-26 138 regression: ansible-core 2.17 / control Python >=3.10 / target >=3.9 policy passed"}
+  - {id: T0-01, group: G0, desc: unit tests (brinnatt contract + completion + ansible), status: pass, evidence: "2026-07-31 development host after current all-delivery and matrix update: tests/run_unit_tests.sh, 160/160 passed, including inventory roles, cross-distribution Ansible, upgrade fixture, six-repo and delivery-process contracts."}
+  - {id: T0-02, group: G0, desc: ansible-core 2.17 policy Ubuntu aio 138, status: pass, evidence: "2026-07-31 clean all-delivery on Ubuntu 138: ansible-core 2.17.14 with the official control Python >=3.10 policy drove the full regression, focused gates and final cleanup; ENTERPRISE_DELIVERY_ALL_PASS."}
   - {id: T0-03, group: G0, desc: ansible-core 2.16 policy jumper 130, status: pass, evidence: "2026-07-27 clean jumper gate: ansible-core 2.16 policy and full unit suite passed on 130; G7_JUMPER_PASS; supervised rc=0/failure_markers=0; post-wipe LAB_CLEAN_VERIFY_PASS."}
   - {id: T0-04, group: G0, desc: capture= alias regression, status: pass, evidence: "2026-07-26 unit test_run_command passed"}
   - {id: T0-05, group: G0, desc: sync-kubeauto.sh + requirements-control.txt, status: pass, evidence: "2026-07-26 sync_ok to 138 and 130"}
@@ -103,6 +103,7 @@ tier0_foundation:
   - {id: T0-08, group: G0, desc: kubecli completion short/long flags, status: pass, evidence: "2026-07-26 unit completion cases and 138 G1 passed"}
   - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "2026-07-26 lab wipe removed local_registry; 138 download -D/-X/-E recreated, waited and uploaded successfully"}
   - {id: T0-10, group: G0, desc: "autonomous delivery process contract (one entry, durable state, live stream, heartbeat, clean verify, current lab, isolated logs)", status: pass, evidence: "2026-07-29 tests/unit/test_delivery_process_contract.py 8/8 passed within the final 142/142 unit suite; all composed live sub-gates had already passed individually with final LAB_CLEAN_VERIFY_PASS"}
+  - {id: T0-11, group: G0, desc: "cross-distribution ansible-core install and official control-Python matrix validation", status: pass, evidence: "2026-07-31 clean all-delivery: shared RHEL/Debian/SUSE validation and Huawei-first pip recovery passed contract coverage; Ubuntu 138 controlled Rocky 128/131-137 targets, Debian 128 completed setup/lifecycle, and jumper 130 passed independently; all supervised gates rc=0."}
 
 tier1_commands:
   - {id: T1-G1-01, group: G1, command: version, status: pass, evidence: "2026-07-26 138 G1: kubecli version v0.1.2"}
@@ -113,7 +114,7 @@ tier1_commands:
   - {id: T1-G1-06, group: G1, command: download -E CNI/addons via brinnatt, status: pass, evidence: "2026-07-26 138 preflight uploaded flannel/cilium/router/ovn/addon images"}
   - {id: T1-G1-07, group: G1, command: "download -D/-X after stopped local_registry (HTTP /v2/ wait)", status: pass, evidence: "2026-07-26 local_registry recreated after wipe; -D/-X/-E completed with no EOF"}
 
-  - {id: T1-G2-01, group: G2, cluster: test137, command: setup 90+07+11, status: pass, evidence: "2026-07-26 138: setup 90 and 07 failed=0; Harbor 11 failed=0"}
+  - {id: T1-G2-01, group: G2, cluster: test137, command: setup 90+07+11, status: pass, evidence: "2026-07-31 clean all-delivery: explicit Harbor offline preflight succeeded; test137 setup 90+07+11, Harbor health, Docker/Kubernetes containerd isolation, reserved contract and lifecycle all passed."}
   - {id: T1-G2-02, group: G2, cluster: debian128, status: pass, evidence: "2026-07-26 138: Debian setup 90 failed=0"}
   - {id: T1-G2-03, group: G2, cluster: test-ded-etcd, status: pass, evidence: "2026-07-27 clean 138 regression: dedicated etcd 132 + master134 + worker131 setup, Ready, full lifecycle and destroy passed."}
   - {id: T1-G2-04, group: G2, cluster: test-ha+ex_lb, status: pass, evidence: "2026-07-27 clean 138 regression: 3-master HA, workers and external LB 192.168.47.250:8443 setup 90+10, all nodes Ready."}
@@ -124,12 +125,13 @@ tier1_commands:
   - {id: T1-G3-02, group: G3, command: stop, status: pass, evidence: "2026-07-27 clean 138 regression: stop passed for dedicated-etcd, test137, Debian128, HA and aio."}
   - {id: T1-G3-03, group: G3, command: backup, status: pass, evidence: "2026-07-27 clean 138 regression: backup passed for all five exercised topologies and again during G6 multi-cluster flow."}
   - {id: T1-G3-04, group: G3, command: restore, status: pass, evidence: "2026-07-27 clean 138 regression: restore passed and every exercised cluster returned Ready."}
-  - {id: T1-G3-05, group: G3, command: upgrade, status: pass, evidence: "2026-07-28 clean upgrade gate on large-memory 137: official-SHA256-pinned v1.33.5 source Ready with all system pods Running; kubecli upgrade to v1.33.6 recap failed=0; AFTER=v1.33.6 runtime=docker://28.5.2; seven services active; UPGRADE_GATE_PASS; supervised rc=0/failure_markers=0; post-wipe LAB_CLEAN_VERIFY_PASS."}
+  - {id: T1-G3-05, group: G3, command: upgrade, status: pass, evidence: "2026-07-31 clean upgrade gate: dual-pushed v1.33.5 fixture bootstrapped a Ready source cluster on 137; kubecli upgraded it to v1.33.6 with active services and Ready node; UPGRADE_GATE_PASS, supervised rc=0/failure_markers=0, post-wipe clean verified."}
   - {id: T1-G3-06, group: G3, command: kca-renew, status: pass, evidence: "2026-07-27 clean 138 G6: kca-renew passed on test137 and aio; test137 returned Ready; REGRESSION_FULL_COMPLETE."}
 
   - {id: T1-G4-01, group: G4, command: add/del-node, status: pass, evidence: "2026-07-27 clean HA G4: worker132 del→add→Ready→del passed."}
-  - {id: T1-G4-02, group: G4, command: add/del-master, status: pass, evidence: "2026-07-27 clean HA G4: master132 add→Ready→backup→del passed."}
+  - {id: T1-G4-02, group: G4, command: add/del-master, status: pass, evidence: "2026-07-31 clean HA G4: add-master 132 reached Ready while exact inventory assertions proved it was absent from [kube_node]; backup and del-master passed; [PASS] G4-master."}
   - {id: T1-G4-03, group: G4, command: add/del-etcd, status: pass, evidence: "2026-07-27 clean HA G4: etcd132 add, inventory assertion and del passed."}
+  - {id: T1-G4-04, group: G4, command: "add-etcd on an existing master", status: pass, evidence: "2026-07-31 clean HA G4: add-etcd on existing master preserved its master nodename and left [kube_node] unchanged; del-etcd restored membership; [PASS] G4-master-etcd-colocated. Standalone add/del-etcd 132 also passed [PASS] G4-etcd without role pollution."}
 
   - {id: T1-G5-01, group: G5, command: kcfg-adm, status: pass, evidence: "2026-07-27 clean 138 G5: add/list/delete view user on test137 passed."}
   - {id: T1-G5-02, group: G5, command: system -a, status: pass, evidence: "2026-07-26 128 and 131-137 key authentication verified; Rocky Python 3.9.25 preflight passed"}
@@ -242,10 +244,12 @@ execution_groups:
   G12: {name: "六仓+生态兼容（K8s/CNI/addon/监控）", priority: P0, status: pass}
 
 coverage_summary:
-  tier0_total: 10
-  tier0_pass: 10
-  tier1_total: 25
-  tier1_pass: 25
+  tier0_total: 11
+  tier0_pass: 11
+  tier0_pending: 0
+  tier1_total: 26
+  tier1_pass: 26
+  tier1_pending: 0
   tier1_na: 0
   tier1_cross_total: 4
   tier1_cross_pass: 4
@@ -263,6 +267,6 @@ coverage_summary:
   live_clusters_130: []
   all_nodes_ready: false
   overall_assessment: |
-    PASS（2026-07-29）：111 个测试/执行组均有本轮真实证据并标记为 PASS，0 个 PENDING，0 个 FAIL；Tier3 9 个按范围定义为 SKIP。
-    完整基线回归和交付缺口专项取得 DELIVERY_RETEST_PASS、DELIVERY_GAPS_FULLCHAIN_PASS、durable rc=0，累计 38 个 PASS marker、0 个 failure marker。
-    回归后 128、131-138 全部完成清场反向验证并取得 LAB_CLEAN_VERIFY_PASS；复盘过程合同补充后，最终开发机单元测试 142/142 PASS。
+    PASS（2026-07-31）：113 个范围内测试/执行项均有当前干净实测证据并标记为 PASS，0 个 PENDING，0 个 FAIL；Tier3 9 个按范围定义为 SKIP。
+    权威入口 tests/run_enterprise_regression.sh --all-delivery 依次取得 G7_JUMPER_PASS、NERDCTL_GATE_PASS、DOCKER_GATE_PASS、UPGRADE_GATE_PASS、DELIVERY_GAPS_FULLCHAIN_PASS 和 ENTERPRISE_DELIVERY_ALL_PASS；全部 supervised gate rc=0、failure_markers=0。
+    add-master、master/etcd 共置和 standalone etcd 的精确 inventory 角色合同均在真实 HA 拓扑通过；最终 128、131-138 清场反向验证取得 LAB_CLEAN_VERIFY_PASS。

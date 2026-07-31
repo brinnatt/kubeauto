@@ -121,11 +121,20 @@ class AnsibleCoreProbeAttempt:
 class AnsibleCoreProbeResult:
     version: Optional[AnsibleCoreVersion]
     attempts: tuple[AnsibleCoreProbeAttempt, ...]
+    control_python_version: Optional[tuple[int, int]] = None
 
 
 def parse_ansible_core_version(version_output: str) -> Optional[AnsibleCoreVersion]:
     """Parse ``ansible --version`` / ``ansible-core --version`` text."""
     match = re.search(r"core\s+(\d+)\.(\d+)", version_output)
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def parse_ansible_control_python_version(version_output: str) -> Optional[tuple[int, int]]:
+    """Parse the control Python reported by ``ansible --version``."""
+    match = re.search(r"python version\s*=\s*(\d+)\.(\d+)", version_output, re.IGNORECASE)
     if not match:
         return None
     return int(match.group(1)), int(match.group(2))
@@ -159,7 +168,11 @@ def probe_installed_ansible_core() -> AnsibleCoreProbeResult:
             if result.returncode == 0:
                 version = parse_ansible_core_version(result.stdout or "")
                 if version:
-                    return AnsibleCoreProbeResult(version=version, attempts=tuple(attempts))
+                    return AnsibleCoreProbeResult(
+                        version=version,
+                        attempts=tuple(attempts),
+                        control_python_version=parse_ansible_control_python_version(result.stdout or ""),
+                    )
         except Exception as exc:
             attempts.append(AnsibleCoreProbeAttempt(command=cmd, error=str(exc)))
 
@@ -210,24 +223,50 @@ def _lookup_matrix(core: AnsibleCoreVersion) -> AnsiblePythonPolicy:
             target_documented_max=t_doc_max,
             target_module_runtime_min=t_runtime,
         )
-    # Unknown future release: use newest known row as conservative baseline.
-    latest = max(_MATRIX.keys())
-    base = _lookup_matrix(latest)
-    logger.warning(
-        "ansible-core %s.%s is not in kubeauto matrix; using conservative policy from %s.%s.",
-        core[0],
-        core[1],
-        latest[0],
-        latest[1],
+    supported = ", ".join(f"{major}.{minor}" for major, minor in sorted(_MATRIX))
+    raise AnsibleCoreDetectionError(
+        f"ansible-core {core[0]}.{core[1]} is outside kubeauto's audited official matrix "
+        f"({supported}); install a supported release before running a playbook."
     )
-    return AnsiblePythonPolicy(
-        core_version=core,
-        control_min=base.control_min,
-        control_max=base.control_max,
-        target_documented_min=base.target_documented_min,
-        target_documented_max=base.target_documented_max,
-        target_module_runtime_min=base.target_module_runtime_min,
-    )
+
+
+def ansible_python_policy_for_core(core: AnsibleCoreVersion) -> AnsiblePythonPolicy:
+    """Return the audited official policy for an explicit ansible-core line."""
+    return _lookup_matrix(core)
+
+
+def format_ansible_core_compatibility_failure(result: AnsibleCoreProbeResult) -> str:
+    """Explain why an installed Ansible cannot be used as a control runtime."""
+    if result.version is None:
+        return format_ansible_core_detection_failure(result)
+
+    try:
+        policy = _lookup_matrix(result.version)
+    except AnsibleCoreDetectionError as exc:
+        return str(exc)
+
+    control = result.control_python_version
+    if control is None:
+        return (
+            f"ansible-core {policy.core_label} was detected, but 'ansible --version' did not report "
+            "its control-node Python version; compatibility cannot be assumed."
+        )
+    if not python_meets_spec(control[0], control[1], policy.control_min, policy.control_max):
+        maximum = (
+            f"{policy.control_max[0]}.{policy.control_max[1]}"
+            if policy.control_max
+            else "unbounded"
+        )
+        return (
+            f"ansible-core {policy.core_label} is running on control Python {control[0]}.{control[1]}, "
+            f"outside the official supported range {policy.control_min[0]}.{policy.control_min[1]}-{maximum}."
+        )
+    return ""
+
+
+def ansible_core_probe_is_compatible(result: AnsibleCoreProbeResult) -> bool:
+    """Return whether version and actual control Python satisfy the audited matrix."""
+    return not format_ansible_core_compatibility_failure(result)
 
 
 @functools.lru_cache(maxsize=1)
@@ -238,8 +277,8 @@ def ansible_python_policy() -> AnsiblePythonPolicy:
     fallback version — guessing the matrix would mis-bootstrap managed hosts.
     """
     result = probe_installed_ansible_core()
-    if result.version is None:
-        message = format_ansible_core_detection_failure(result)
+    message = format_ansible_core_compatibility_failure(result)
+    if message:
         logger.error(message)
         raise AnsibleCoreDetectionError(message)
     policy = _lookup_matrix(result.version)

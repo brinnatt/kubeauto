@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RUNNER = (ROOT / "tests" / "run_enterprise_regression.sh").read_text()
 UNIT_RUNNER = (ROOT / "tests" / "run_unit_tests.sh").read_text()
 LAB_WIPE = (ROOT / "tests" / "helpers" / "lab-wipe-nodes.sh").read_text()
+AIO_PREP = (ROOT / "tests" / "helpers" / "regression-aio-prep-full.sh").read_text()
 HANDBOOK = (ROOT / "tests" / "README.md").read_text()
 GITIGNORE = (ROOT / ".gitignore").read_text()
 
@@ -47,6 +48,13 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertEqual(sorted(positions), positions)
         self.assertIn('bash "$0" "$delivery_mode"', all_delivery)
         self.assertIn("ENTERPRISE_DELIVERY_ALL_PASS", all_delivery)
+
+    def test_clean_aio_preflight_stages_harbor_before_setup_11(self):
+        self.assertIn("kubecli download -R </dev/null", AIO_PREP)
+        self.assertLess(
+            AIO_PREP.index("kubecli download -R </dev/null"),
+            AIO_PREP.index("bash /tmp/regression-full.sh"),
+        )
 
     def test_lab_authority_and_reserved_roles_are_documented(self):
         for address in (

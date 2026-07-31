@@ -25,6 +25,10 @@ trap finish EXIT
 # setup prevents a node from being permanently NotReady when its CNI DaemonSet
 # first creates a sandbox against the local delivery registry.
 kubecli download -D </dev/null
+# G2 executes ``setup 11`` on the clean 137 host.  Harbor is an optional
+# offline artifact and is intentionally not part of -D, so stage it explicitly
+# instead of relying on a previous control-host cache.
+kubecli download -R </dev/null
 kubecli download -X </dev/null
 for component in flannel cilium kube-router kube-ovn prometheus ingress-nginx \
   network-check local-path-provisioner; do

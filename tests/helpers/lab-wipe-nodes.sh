@@ -116,8 +116,15 @@ shim_count=$(ps -eo comm= | awk "\$1 == \"containerd-shim-runc-v2\" {count++} EN
 echo "containerd_shim_count=$shim_count"
 test "$shim_count" -eq 0 || bad=1
 docker_state=$(systemctl is-active snap.docker.dockerd.service 2>/dev/null || systemctl is-active docker 2>/dev/null || true)
-echo "local_docker=$docker_state"
-test "$docker_state" = active || bad=1
+docker_state=$(echo "$docker_state" | tail -n 1)
+echo "local_docker=${docker_state:-absent}"
+# A rebuilt control host may not have Docker until source sync followed by
+# `kubecli download -D`. Missing/inactive Docker is still a clean preflight
+# state when the disposable registry paths above are absent; live gates prove
+# Docker and registry readiness before cluster setup.
+if test -n "$docker_state"; then
+  case "$docker_state" in active|inactive|unknown) ;; *) bad=1 ;; esac
+fi
 if docker container inspect local_registry >/dev/null 2>&1; then echo "residue=local_registry"; bad=1; fi
 exit "$bad"
 '

@@ -23,9 +23,15 @@ class TestUpgradeGate(unittest.TestCase):
 
     def test_old_binaries_are_offline_and_officially_pinned(self):
         self.assertIn("OFFICIAL", GATE.upper())
-        self.assertIn("sha256sum -c /tmp/kubeauto-k8s-1335.sha256", GATE)
+        self.assertIn('OLD_PRIVATE_IMAGE="hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:$OLD_VERSION"', GATE)
+        self.assertIn('OLD_FALLBACK_IMAGE="brinnatt/kubeauto-k8s-bin:$OLD_VERSION"', GATE)
+        self.assertLess(GATE.index('"$OLD_PRIVATE_IMAGE"'), GATE.index('"$OLD_FALLBACK_IMAGE"'))
+        self.assertIn("mktemp -d /tmp/kubeauto-k8s-1335.", GATE)
+        self.assertIn('run docker cp "$OLD_CONTAINER:/k8s/." "$OLD_BIN/"', GATE)
+        self.assertIn('sha256sum -c "$OLD_STAGE/official.sha256"', GATE)
+        self.assertIn("trap cleanup_fixture EXIT", GATE)
         self.assertNotIn("curl ", GATE)
-        self.assertEqual(GATE.count("/home/ubuntu/k8s1335/"), 6)
+        self.assertNotIn("/home/ubuntu/k8s1335", GATE)
 
     def test_gate_requires_ready_pods_versions_runtime_and_services(self):
         self.assertIn("healthy_pods", GATE)

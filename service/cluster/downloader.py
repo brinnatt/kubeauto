@@ -4,6 +4,11 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from common.ansible_python import (
+    ansible_core_probe_is_compatible,
+    format_ansible_core_compatibility_failure,
+    probe_installed_ansible_core,
+)
 from common.constants import KubeConstant
 from common.mirrors import install_ansible_with_system_pm
 from common.exceptions import DownloadError, InstallPrereqError
@@ -45,18 +50,37 @@ class DownloadManager:
 
     def get_ansible_env(self):
         """
-        Install ansible from system package manager.
+        Install and verify an ansible-core control runtime.
         Supports: RHEL/CentOS/Rocky, Ubuntu/Debian, SUSE.
         """
-        if shutil.which("ansible"):
-            logger.info("Ansible already installed; skipping.", extra=LOG_STDOUT)
+        probe = probe_installed_ansible_core()
+        if ansible_core_probe_is_compatible(probe):
+            installed_core = probe.version
+            logger.info(
+                f"ansible-core {installed_core[0]}.{installed_core[1]} already installed; skipping.",
+                extra=LOG_STDOUT,
+            )
             return
 
-        logger.info("Installing Ansible (system package manager, Huawei mirror).", extra=LOG_STDOUT)
+        if probe.version or shutil.which("ansible"):
+            logger.warning(
+                f"Installed Ansible is incompatible: {format_ansible_core_compatibility_failure(probe)} "
+                "Installing a supported release.",
+                extra=LOG_STDOUT,
+            )
+
+        logger.info("Installing a supported Ansible runtime (Huawei mirrors first).", extra=LOG_STDOUT)
 
         try:
             install_ansible_with_system_pm()
-            logger.info("Ansible installed.", extra=LOG_STDOUT)
+            probe = probe_installed_ansible_core()
+            if not ansible_core_probe_is_compatible(probe):
+                raise RuntimeError(format_ansible_core_compatibility_failure(probe))
+            installed_core = probe.version
+            logger.info(
+                f"ansible-core {installed_core[0]}.{installed_core[1]} installed.",
+                extra=LOG_STDOUT,
+            )
 
         except Exception as e:
             logger.warning(

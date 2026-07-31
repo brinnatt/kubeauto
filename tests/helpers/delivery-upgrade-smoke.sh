@@ -1,7 +1,8 @@
 #!/bin/bash
 # Standalone Kubernetes patch-upgrade gate on the large-memory Docker host 137.
-# The v1.33.5 binaries are pre-staged and pinned to the official dl.k8s.io
-# checksums, so the delivery test does not depend on international networking.
+# The v1.33.5 binaries come from the project's dual-pushed k8s-bin image and
+# are pinned to the official dl.k8s.io checksums, so the delivery test does not
+# depend on international download endpoints or a manually prepared fixture.
 set -euo pipefail
 
 BASE=/usr/local/kubeauto
@@ -11,7 +12,11 @@ C=deliver-upgrade
 NODE="${UPGRADE_GATE_NODE:-192.168.47.137}"
 OLD_VERSION=v1.33.5
 NEW_VERSION=v1.33.6
-OLD_BIN=/home/ubuntu/k8s1335
+OLD_PRIVATE_IMAGE="hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:$OLD_VERSION"
+OLD_FALLBACK_IMAGE="brinnatt/kubeauto-k8s-bin:$OLD_VERSION"
+OLD_STAGE=$(mktemp -d /tmp/kubeauto-k8s-1335.XXXXXX)
+OLD_BIN="$OLD_STAGE/k8s"
+OLD_CONTAINER=
 LOG=/tmp/kubeauto-delivery-upgrade-$(date +%Y%m%d%H%M%S).log
 if [ -w /var/log ] 2>/dev/null; then
   LOG=/var/log/kubeauto-delivery-upgrade-$(date +%Y%m%d%H%M%S).log
@@ -22,6 +27,14 @@ echo "LOG=$LOG"
 pass(){ echo "[PASS] $*"; }
 fail(){ echo "[FAIL] $*"; exit 1; }
 run(){ echo ">>> $*"; "$@" || fail "$*"; }
+
+cleanup_fixture(){
+  if [ -n "$OLD_CONTAINER" ]; then
+    docker rm -f "$OLD_CONTAINER" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$OLD_STAGE"
+}
+trap cleanup_fixture EXIT
 
 nodes_ready(){
   export KUBECONFIG="$BASE/clusters/$C/kubectl.kubeconfig"
@@ -104,18 +117,33 @@ assert_remote_version(){
 echo "========== official v1.33.5 artifact contract =========="
 # Official checksum endpoints:
 # https://dl.k8s.io/v1.33.5/bin/linux/amd64/<binary>.sha256
-cat > /tmp/kubeauto-k8s-1335.sha256 <<'EOF'
-394a66ee7c22d2dfc52b09e01eb4ace2ed5109dc3d8f09677af190ced83332ee  /home/ubuntu/k8s1335/kube-apiserver
-2772be36e1d9b9a7d423cd6dc53410b7ea8cb59b53e809d00180a0ff6e109b17  /home/ubuntu/k8s1335/kube-controller-manager
-f9dcbcf0a5f2cb9c959d5ad660c4a21d5220d788c46c7aca6a306f7f0b1d5831  /home/ubuntu/k8s1335/kube-scheduler
-8f6106b970259486c5af5cbee404d4f23406d96d99dfb92a6965b299c2a4db0e  /home/ubuntu/k8s1335/kubelet
-4681433b0dd216eb591eee440934cf79a68f9c5185f32c62905fa8fecf0c4d95  /home/ubuntu/k8s1335/kube-proxy
-6a12d6c39e4a611a3687ee24d8c733961bb4bae1ae975f5204400c0a6930c6fc  /home/ubuntu/k8s1335/kubectl
+OLD_IMAGE=
+for candidate in "$OLD_PRIVATE_IMAGE" "$OLD_FALLBACK_IMAGE"; do
+  echo ">>> docker pull $candidate"
+  if docker pull "$candidate"; then
+    OLD_IMAGE="$candidate"
+    break
+  fi
+  echo "[WAIT] Kubernetes $OLD_VERSION artifact unavailable from $candidate; trying fallback"
+done
+[ -n "$OLD_IMAGE" ] || fail "cannot pull Kubernetes $OLD_VERSION artifact from private registry or Docker Hub"
+mkdir -p "$OLD_BIN"
+OLD_CONTAINER=$(docker create "$OLD_IMAGE")
+run docker cp "$OLD_CONTAINER:/k8s/." "$OLD_BIN/"
+run docker rm "$OLD_CONTAINER"
+OLD_CONTAINER=
+cat > "$OLD_STAGE/official.sha256" <<EOF
+394a66ee7c22d2dfc52b09e01eb4ace2ed5109dc3d8f09677af190ced83332ee  $OLD_BIN/kube-apiserver
+2772be36e1d9b9a7d423cd6dc53410b7ea8cb59b53e809d00180a0ff6e109b17  $OLD_BIN/kube-controller-manager
+f9dcbcf0a5f2cb9c959d5ad660c4a21d5220d788c46c7aca6a306f7f0b1d5831  $OLD_BIN/kube-scheduler
+8f6106b970259486c5af5cbee404d4f23406d96d99dfb92a6965b299c2a4db0e  $OLD_BIN/kubelet
+4681433b0dd216eb591eee440934cf79a68f9c5185f32c62905fa8fecf0c4d95  $OLD_BIN/kube-proxy
+6a12d6c39e4a611a3687ee24d8c733961bb4bae1ae975f5204400c0a6930c6fc  $OLD_BIN/kubectl
 EOF
-run sha256sum -c /tmp/kubeauto-k8s-1335.sha256
+run sha256sum -c "$OLD_STAGE/official.sha256"
 "$OLD_BIN/kube-apiserver" --version | grep -F "$OLD_VERSION"
 "$OLD_BIN/kubelet" --version | grep -F "$OLD_VERSION"
-pass "official Kubernetes $OLD_VERSION artifacts"
+pass "official Kubernetes $OLD_VERSION artifacts from $OLD_IMAGE"
 
 echo "========== create clean $NEW_VERSION Docker cluster =========="
 "$BASE/kube-bin/kube-apiserver" --version | grep -F "$NEW_VERSION" \

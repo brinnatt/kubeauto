@@ -4,10 +4,13 @@ import unittest
 from unittest.mock import patch
 
 from common.ansible_python import (
+    AnsibleCoreProbeResult,
     AnsibleCoreDetectionError,
+    ansible_core_probe_is_compatible,
     ansible_python_policy,
     clear_ansible_python_policy_cache,
     format_ansible_core_detection_failure,
+    parse_ansible_control_python_version,
     parse_ansible_core_version,
     probe_installed_ansible_core,
     python_meets_spec,
@@ -26,6 +29,10 @@ class TestAnsibleCoreParsing(unittest.TestCase):
     def test_parse_ansible_core_version_missing(self):
         self.assertIsNone(parse_ansible_core_version("ansible 2.10.0"))
 
+    def test_parse_control_python_version(self):
+        text = "ansible [core 2.17.14]\n  python version = 3.10.12 (main) [/usr/bin/python3]"
+        self.assertEqual(parse_ansible_control_python_version(text), (3, 10))
+
 
 class TestSupportMatrix(unittest.TestCase):
     def test_matrix_2_16_target_runtime_min(self):
@@ -35,6 +42,20 @@ class TestSupportMatrix(unittest.TestCase):
     def test_matrix_2_17_target_runtime_min(self):
         policy = _lookup_matrix((2, 17))
         self.assertEqual(policy.target_module_runtime_min, (3, 9))
+
+    def test_unknown_core_is_not_guessed_from_latest_matrix_row(self):
+        with self.assertRaises(AnsibleCoreDetectionError):
+            _lookup_matrix((2, 99))
+
+    def test_probe_requires_supported_control_python(self):
+        compatible = AnsibleCoreProbeResult(
+            version=(2, 17), attempts=(), control_python_version=(3, 10)
+        )
+        incompatible = AnsibleCoreProbeResult(
+            version=(2, 17), attempts=(), control_python_version=(3, 9)
+        )
+        self.assertTrue(ansible_core_probe_is_compatible(compatible))
+        self.assertFalse(ansible_core_probe_is_compatible(incompatible))
 
 
 class TestAnsiblePythonPolicy(unittest.TestCase):
@@ -46,7 +67,10 @@ class TestAnsiblePythonPolicy(unittest.TestCase):
     def test_policy_resolves_from_ansible_version(self, mock_which, mock_run):
         mock_which.side_effect = lambda name: "/usr/bin/ansible" if name == "ansible" else None
         mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "ansible [core 2.16.3]\n"
+        mock_run.return_value.stdout = (
+            "ansible [core 2.16.3]\n"
+            "  python version = 3.12.4 (main) [/usr/bin/python3.12]\n"
+        )
         mock_run.return_value.stderr = ""
 
         policy = ansible_python_policy()

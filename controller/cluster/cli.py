@@ -272,7 +272,7 @@ Examples:
             "extra_info",
             nargs="?",
             default="",
-            help="k8s_nodename for standalone etcd (required if etcd is not on a master/node host); optional if same host as master/node"
+            help="k8s_nodename for standalone etcd (required if etcd is not on a master/node host); ignored with a warning for an existing master/node so its host identity is preserved"
         )
 
     def _setup_add_master_command(self) -> None:
