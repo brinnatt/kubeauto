@@ -1,3 +1,11 @@
+# Direct dependencies maintained for kubecli and the frozen tools:
+# ansible-runner, cryptography, distro, docker, kubernetes, paramiko, psutil,
+# PyMySQL, PyYAML, taskflow, and tenacity. The remaining entries are selected
+# transitive versions retained from the validated build environment; they are
+# not additional application-level dependencies.
+# pip resolves transitive dependencies automatically, but its repeatable-install
+# guidance recommends pinning both direct and transitive versions:
+# https://pip.pypa.io/en/stable/topics/repeatable-installs/
 ansible-runner==2.4.2
 attrs==25.4.0
 automaton==3.2.0

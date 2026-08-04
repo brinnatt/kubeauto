@@ -27,6 +27,11 @@ def main():
             "Installing PyInstaller and pinned runtime dependencies...",
             extra={"to_stdout": True},
         )
+        # Do not add ansible or ansible-core to the frozen application. Upstream
+        # ansible-runner builds an ``ansible-playbook`` command and spawns that
+        # external executable from PATH; bundling the Python packages neither
+        # supplies that command nor replaces the distribution-owned Ansible.
+        # https://github.com/ansible/ansible-runner/blob/2.4.2/src/ansible_runner/config/runner.py
         run_command(
             [
                 sys.executable,
