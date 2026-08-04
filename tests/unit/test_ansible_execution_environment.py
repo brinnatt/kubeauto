@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from common.ansible_python import ansible_python_policy_for_core
-from common.exceptions import NoCompatibleAnsibleTargetPython
+from common.exceptions import ClusterSetupError, NoCompatibleAnsibleTargetPython
 from service.cluster.manager import (
     ClusterManager,
     _effective_user_home,
@@ -263,6 +263,101 @@ class TestExecutionEnvironmentRunner(unittest.TestCase):
         )
         native_run.assert_not_called()
         ee_run.assert_called_once()
+
+    def test_native_nonzero_result_raises_domain_error_and_cleans_inventory(self):
+        manager = ClusterManager.__new__(ClusterManager)
+        manager.base_path = Path("/usr/local/kubeauto")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            manager.clusters_dir = root
+            inventory = root / "source.hosts"
+            inventory.write_text("[all]\n192.168.47.130\n", encoding="utf-8")
+            prepared = root / "prepared.hosts"
+            prepared.write_text("[all]\n192.168.47.130\n", encoding="utf-8")
+
+            with (
+                patch("service.cluster.manager.ansible_python_policy"),
+                patch(
+                    "service.cluster.manager._prepare_inventory_with_python",
+                    return_value=prepared,
+                ),
+                patch.object(manager, "_write_ansible_cfg"),
+                patch.object(manager, "_ansible_runner_envvars", return_value={}),
+                patch(
+                    "service.cluster.manager.ansible_runner.run",
+                    return_value=SimpleNamespace(rc=2),
+                ),
+                patch(
+                    "service.cluster.manager.get_host_ip",
+                    return_value="192.168.47.130",
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    ClusterSetupError, "Native playbook failed"
+                ):
+                    manager._run_playbook(
+                        "cluster",
+                        Path("/tmp/playbook.yml"),
+                        inventory=inventory,
+                        extra_vars={},
+                        fail_msg="Native playbook failed",
+                        fail_exception=ClusterSetupError,
+                    )
+
+            self.assertFalse(prepared.exists())
+
+    def test_execution_environment_nonzero_result_raises_domain_error(self):
+        manager = ClusterManager.__new__(ClusterManager)
+        manager.base_path = Path("/usr/local/kubeauto")
+        manager.kube_constant = SimpleNamespace(v_ansible_core="2.18.6")
+        native_policy = ansible_python_policy_for_core((2, 10))
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            manager.clusters_dir = root
+            inventory = root / "source.hosts"
+            inventory.write_text("[all]\n192.168.47.128\n", encoding="utf-8")
+            prepared = root / "prepared-ee.hosts"
+            prepared.write_text("[all]\n192.168.47.128\n", encoding="utf-8")
+
+            with (
+                patch(
+                    "service.cluster.manager.ansible_python_policy",
+                    return_value=native_policy,
+                ),
+                patch(
+                    "service.cluster.manager._prepare_inventory_with_python",
+                    side_effect=[
+                        NoCompatibleAnsibleTargetPython(
+                            "2.10", "3.5-3.9", ["192.168.47.128"]
+                        ),
+                        prepared,
+                    ],
+                ),
+                patch.object(manager, "_write_ansible_cfg"),
+                patch.object(manager, "_ansible_runner_envvars", return_value={}),
+                patch.object(
+                    manager,
+                    "_run_playbook_in_execution_environment",
+                    return_value=SimpleNamespace(rc=4),
+                ),
+                patch(
+                    "service.cluster.manager.get_host_ip",
+                    return_value="192.168.47.130",
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    ClusterSetupError, "Execution-environment playbook failed"
+                ):
+                    manager._run_playbook(
+                        "cluster",
+                        Path("/tmp/playbook.yml"),
+                        inventory=inventory,
+                        extra_vars={},
+                        fail_msg="Execution-environment playbook failed",
+                        fail_exception=ClusterSetupError,
+                    )
+
+            self.assertFalse(prepared.exists())
 
 
 if __name__ == "__main__":

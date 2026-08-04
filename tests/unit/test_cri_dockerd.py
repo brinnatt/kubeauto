@@ -52,6 +52,12 @@ class TestCriDockerdPin(unittest.TestCase):
         self.assertIn('"$BASE/docker-bin/cri-dockerd" --version', gate)
         self.assertIn("kubernetes-production-smoke.sh", gate)
         self.assertIn("PRODUCTION_SMOKE_SERVER_NODE=master-docker", gate)
+        self.assertIn("pods status=api-unavailable", gate)
+        self.assertIn("pods status=not-ready", gate)
+        self.assertNotIn(
+            "bad=$(kubectl get pods -A --no-headers 2>/dev/null",
+            gate,
+        )
         self.assertLess(
             gate.index("kubernetes-production-smoke.sh"),
             gate.index("DOCKER_GATE_PASS"),

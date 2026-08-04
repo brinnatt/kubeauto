@@ -16,28 +16,29 @@ def main():
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent
+    requirements_file = project_root / "requirements"
     spec_file = project_root / "kubecli-onefile.spec"
 
     try:
         logger.info("Upgrading pip...", extra={"to_stdout": True})
         run_command([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], capture_output=False)
 
-        # Install PyInstaller and runtime deps
-        logger.info("Installing PyInstaller...", extra={"to_stdout": True})
-        run_command([sys.executable, "-m", "pip", "install",
-            "pyinstaller==6.16.0",
-            # ansible_runner.run() only invokes ansible-playbook out of system PATH, it's useless in pyinstaller bundle
-            # "ansible==9.2.0",
-            # "ansible-core==2.16.3",
-            "ansible-runner==2.4.1",
-            "distro==1.9.0",
-            "docker==7.1.0",
-            "paramiko==4.0.0",
-            "psutil==7.0.0",
-            "taskflow==6.0.2",
-            "PyMySQL==1.1.2",
-            "kubernetes==35.0.0"
-        ], capture_output=False)
+        logger.info(
+            "Installing PyInstaller and pinned runtime dependencies...",
+            extra={"to_stdout": True},
+        )
+        run_command(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "pyinstaller==6.16.0",
+                "-r",
+                str(requirements_file),
+            ],
+            capture_output=False,
+        )
 
         if not args.tools_only:
             logger.info(f"Building with spec: {spec_file}", extra={"to_stdout": True})

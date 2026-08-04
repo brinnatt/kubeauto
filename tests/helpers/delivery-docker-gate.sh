@@ -210,9 +210,15 @@ echo "$rt" | grep -qi docker || fail "expected docker runtime, got $rt"
 
 ok=0
 for i in $(seq 1 36); do
+  if ! kubectl get pods -A --no-headers > /tmp/kubeauto-docker-all-pods; then
+    echo "[WAIT] pods status=api-unavailable bad=unknown attempt=$i/36 next_check=10s"
+    sleep 10
+    continue
+  fi
   # kubectl --no-headers columns: NS NAME READY STATUS RESTARTS AGE
-  bad=$(kubectl get pods -A --no-headers 2>/dev/null | awk '$4!="Running" && $4!="Completed"{print}' | wc -l)
+  bad=$(awk '$4!="Running" && $4!="Completed"{print}' /tmp/kubeauto-docker-all-pods | wc -l)
   if [ "$bad" -eq 0 ]; then ok=1; break; fi
+  echo "[WAIT] pods status=not-ready bad=$bad attempt=$i/36 next_check=10s"
   sleep 10
 done
 [ "$ok" -eq 1 ] || { kubectl get pods -A -o wide; fail "system pods not Running"; }

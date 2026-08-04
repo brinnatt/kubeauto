@@ -1,6 +1,5 @@
 import os
 import shutil
-import sys
 from pathlib import Path
 from typing import Optional
 
@@ -64,7 +63,7 @@ class DownloadManager:
             return
 
         if probe.version or shutil.which("ansible"):
-            raise RuntimeError(
+            raise InstallPrereqError(
                 "Installed Ansible failed the native-package delivery gate: "
                 f"{format_ansible_core_compatibility_failure(probe)}"
             )
@@ -82,11 +81,13 @@ class DownloadManager:
                 extra=LOG_STDOUT,
             )
 
-        except Exception as e:
-            logger.warning(
-                f"Failed to install ansible env: {e}, we suggest you install ansible tools manually and continue!",
-                extra=LOG_STDOUT)
-            sys.exit(1)
+        except Exception as exc:
+            message = (
+                "Failed to install a compatible distribution-owned Ansible "
+                f"runtime: {exc}"
+            )
+            logger.error(message, extra=LOG_STDOUT)
+            raise InstallPrereqError(message) from exc
 
     def get_ansible_execution_env(self) -> None:
         """Pre-pull the conditional Ansible EE through the standard mirror policy."""

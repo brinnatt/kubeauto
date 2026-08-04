@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import call, patch
 
 from common.ansible_python import AnsibleCoreProbeResult
+from common.exceptions import InstallPrereqError
 from common.mirrors import install_ansible_with_system_pm
 from service.cluster.downloader import DownloadManager
 
@@ -153,10 +154,31 @@ class TestDownloadAnsibleGate(unittest.TestCase):
         ),
     )
     def test_rejects_unowned_pip_ansible_without_overwriting(self, _probe, _which, install):
-        with self.assertRaisesRegex(RuntimeError, "not owned by the system RPM/deb"):
+        with self.assertRaisesRegex(
+            InstallPrereqError, "not owned by the system RPM/deb"
+        ):
             DownloadManager.__new__(DownloadManager).get_ansible_env()
 
         install.assert_not_called()
+
+    @patch("service.cluster.downloader.shutil.which", return_value=None)
+    @patch(
+        "service.cluster.downloader.probe_installed_ansible_core",
+        return_value=AnsibleCoreProbeResult(version=None, attempts=()),
+    )
+    @patch("service.cluster.downloader.install_ansible_with_system_pm")
+    def test_install_failure_raises_domain_error_with_cause(
+        self, install, _probe, _which
+    ):
+        cause = OSError("package manager unavailable")
+        install.side_effect = cause
+
+        with self.assertRaisesRegex(
+            InstallPrereqError, "Failed to install a compatible"
+        ) as caught:
+            DownloadManager.__new__(DownloadManager).get_ansible_env()
+
+        self.assertIs(caught.exception.__cause__, cause)
 
 
 if __name__ == "__main__":

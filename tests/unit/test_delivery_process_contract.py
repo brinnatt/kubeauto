@@ -252,6 +252,16 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertIn("if not args.tools_only", BUILD_ENTRYPOINT)
         self.assertIn("if not args.kubecli_only", BUILD_ENTRYPOINT)
 
+    def test_frozen_build_uses_single_runtime_requirements_source(self):
+        requirements = (ROOT / "requirements").read_text()
+
+        self.assertIn('project_root / "requirements"', BUILD_ENTRYPOINT)
+        self.assertIn('"-r"', BUILD_ENTRYPOINT)
+        self.assertIn("ansible-runner==2.4.2", requirements)
+        self.assertIn("paramiko==3.5.1", requirements)
+        self.assertNotIn("ansible-runner==", BUILD_ENTRYPOINT)
+        self.assertNotIn("paramiko==", BUILD_ENTRYPOINT)
+
     def test_lab_docker_bootstrap_uses_product_huawei_path_without_global_pip(self):
         helper = (ROOT / "tests" / "helpers" / "lab-docker-bootstrap.sh").read_text()
         self.assertIn("huawei-mirror-debian.sh", helper)
