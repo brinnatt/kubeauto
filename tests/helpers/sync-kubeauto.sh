@@ -12,6 +12,7 @@ require_command() {
 
 require_command rsync
 TARGET="${1:?user@host}"
+CLEAN_LEGACY_GLOBAL_PIP="${2:-}"
 SRC="$(cd "$(dirname "$0")/../.." && pwd)"
 REMOTE_BASE="/usr/local/kubeauto"
 
@@ -38,32 +39,39 @@ if [[ "\$(id -u)" -eq 0 ]]; then
 else
   SUDO=(sudo -n)
 fi
+PY="\$(command -v python3.12 || command -v python3)"
+VENV=/usr/local/kubeauto/.venv
+if [[ ! -x "\$VENV/bin/python" ]]; then
+  "\$PY" -m venv "\$VENV"
+fi
+if ! "\$VENV/bin/python" -c "import docker, jinja2, psutil, taskflow" 2>/dev/null; then
+  "\$VENV/bin/python" -m pip install -q -r /usr/local/kubeauto/requirements-control.txt
+fi
+"\$VENV/bin/python" -c "import docker, jinja2, psutil, taskflow"
+if [[ "$CLEAN_LEGACY_GLOBAL_PIP" == "--clean-legacy-global-pip" ]]; then
+  SYSTEM_PY=/usr/bin/python3
+  GLOBAL_SITE="\$("\$SYSTEM_PY" -c 'import site; print(next(path for path in site.getsitepackages() if path.startswith("/usr/local/")))')"
+  mapfile -t GLOBAL_PACKAGES < <(
+    "\$SYSTEM_PY" -m pip list --path "\$GLOBAL_SITE" --format=freeze 2>/dev/null \
+      | sed 's/[=@<].*//' | sed '/^$/d'
+  )
+  if (( \${#GLOBAL_PACKAGES[@]} > 0 )); then
+    "\${SUDO[@]}" "\$SYSTEM_PY" -m pip uninstall -y "\${GLOBAL_PACKAGES[@]}"
+  fi
+  PYTHONNOUSERSITE=1 "\$SYSTEM_PY" -c 'from ansible.modules import apt'
+  echo LEGACY_GLOBAL_PIP_CLEAN_PASS
+fi
 WRAPPER=\$(mktemp)
 cat > "\$WRAPPER" <<'WRAP'
 #!/bin/bash
 cd /usr/local/kubeauto
 export PYTHONPATH=/usr/local/kubeauto
-PY="\$(command -v python3.12 || command -v python3)"
-exec "\$PY" /usr/local/kubeauto/kubecli.py "\$@"
+exec /usr/local/kubeauto/.venv/bin/python /usr/local/kubeauto/kubecli.py "\$@"
 WRAP
 "\${SUDO[@]}" install -m 0755 "\$WRAPPER" /usr/local/bin/kubecli
 rm -f "\$WRAPPER"
 test -f /usr/local/kubeauto/kubecli.py
 test -f /usr/local/kubeauto/common/ansible_python.py
-# Ensure Python runtime deps for source-based kubecli (Ubuntu aio 138 / jumper 130).
-# Prefer python3.12 on Rocky jumper (system python3 may be 3.6).
-PY="\$(command -v python3.12 || command -v python3)"
-if ! \$PY -c "import docker, jinja2, psutil, taskflow" 2>/dev/null; then
-  if ! \$PY -m pip --version >/dev/null 2>&1; then
-    "\${SUDO[@]}" \$PY -m ensurepip --upgrade >/dev/null 2>&1 || true
-  fi
-  if \$PY -m pip --version >/dev/null 2>&1; then
-    "\${SUDO[@]}" \$PY -m pip install -q -r /usr/local/kubeauto/requirements-control.txt
-  else
-    echo "WARN: cannot bootstrap pip for \$PY" >&2
-  fi
-fi
-\$PY -c "import docker, jinja2, psutil, taskflow"
 echo sync_ok
 REMOTE
 

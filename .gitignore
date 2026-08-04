@@ -1,6 +1,8 @@
 .idea/
 .venv/
 .cache/
+/build/
+/dist/
 **/__pycache__/
 *.pyc
 logs/*.log

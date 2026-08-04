@@ -41,6 +41,14 @@ class KubeConstant:
             "CI dual-push path must stay hub.talkedu.cn/kubeauto/<name>:<tag> across all dockerfile projects."
         ),
     })
+    v_ansible_core: str = field(default="2.18.6", metadata={
+        "refer_docs": "https://docs.ansible.com/ansible/latest/reference_appendices/release_and_maintenance.html",
+        "refer_runner": "https://ansible.readthedocs.io/projects/runner/en/stable/intro/",
+        "description": (
+            "Containerized execution fallback for targets outside the native "
+            "control package's Python support range; CI dual-pushed by ext-images."
+        ),
+    })
     v_k8s_bin: str = field(default="v1.33.6", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
@@ -209,6 +217,11 @@ class KubeConstant:
     def docker_runtime_artifact_image(self) -> str:
         """Dual-pushed ext-bin image carrying Docker CLI plugins and cri-dockerd."""
         return f"brinnatt/kubeauto-ext-bin:{self.v_extra_bin}"
+
+    @property
+    def ansible_execution_image(self) -> str:
+        """Dual-pushed Ansible execution environment used only when required."""
+        return f"brinnatt/ansible:{self.v_ansible_core}"
 
     def nerdctl_bin_url(self, version: str | None = None) -> str:
         """Upstream minimal nerdctl tarball (amd64/arm64); packaged into ext-bin."""

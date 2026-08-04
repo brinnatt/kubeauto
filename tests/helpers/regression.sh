@@ -9,12 +9,14 @@ fail() { echo "[FAIL] $*"; exit 1; }
 run() { echo ">>> $*"; "$@" || fail "$*"; }
 
 BASE=/usr/local/kubeauto
+PROJECT_PY="$BASE/.venv/bin/python"
+test -x "$PROJECT_PY"
 export PYTHONPATH="$BASE"
 K=kubecli
 
 echo "========== Unit / policy preflight =========="
 export PYTHONPATH="$BASE"
-python3 -c "
+"$PROJECT_PY" -c "
 from common.utils import run_command
 from common.ansible_python import ansible_python_policy, format_policy_summary
 # Regression: capture= alias must work (was silently breaking ansible-core detection)

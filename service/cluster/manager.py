@@ -7,6 +7,7 @@ import ipaddress
 import base64
 import os
 import platform
+import pwd
 import re
 import shutil
 import ansible_runner
@@ -21,12 +22,23 @@ from typing import Generator, List, Optional, Tuple
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.client.rest import ApiException as K8sApiException
 
-from common.utils import run_command, validate_ip, confirm_action, AnsiColor, get_resource_path, rmrf, copy_file_to_remote, get_host_ip, ensure_kubeauto_clusters_dir
+from common.utils import (
+    _system_subprocess_env,
+    run_command,
+    validate_ip,
+    confirm_action,
+    AnsiColor,
+    get_resource_path,
+    rmrf,
+    copy_file_to_remote,
+    get_host_ip,
+    ensure_kubeauto_clusters_dir,
+)
 from common.os import SystemProbe
 from common.exceptions import (
     ClusterExistsError, ClusterNotFoundError,
     InvalidIPError, NodeExistsError, NodeNotFoundError, ClusterNewError, ClusterSetupError, ClusterManageError,
-    InstallPrereqError, CommandExecutionError,
+    InstallPrereqError, CommandExecutionError, NoCompatibleAnsibleTargetPython,
 )
 from common.logger import setup_logger, LOG_STDOUT
 from common.constants import KubeConstant
@@ -101,7 +113,9 @@ def _iter_host_entries(hosts_file: Path, role: str) -> Generator[Tuple[str, str]
 
 
 from common.ansible_python import (
+    AnsiblePythonPolicy,
     ansible_python_policy,
+    ansible_python_policy_for_core,
     detect_python_cmd,
     format_policy_summary,
     interpreter_allowed_on_rhel8,
@@ -148,25 +162,32 @@ def _host_uses_local_connection(host_line: str) -> bool:
     return "ansible_connection=local" in host_line
 
 
-def _subprocess_env_for_local_probe() -> dict:
-    """Environment for local shell probes when kubecli runs as a PyInstaller binary.
+def _effective_user_home() -> Path:
+    """Return the passwd home for the effective UID, independent of sudo HOME."""
+    try:
+        return Path(pwd.getpwuid(os.geteuid()).pw_dir)
+    except (KeyError, OSError):
+        return Path.home()
 
-    The frozen kubecli process may prepend ``LD_LIBRARY_PATH`` with PyInstaller
-    extract dir (``sys._MEIPASS``). Child probes must use the host linker view so
-    ``/usr/bin/python3`` behaves like a normal system interpreter.
-    """
-    env = os.environ.copy()
-    env["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH_ORIG", "")
+
+def _effective_user_name() -> str:
+    """Return the account name whose key and passwd home the process uses."""
+    try:
+        return pwd.getpwuid(os.geteuid()).pw_name
+    except (KeyError, OSError):
+        return os.environ.get("USER", "root")
+
+
+def _detect_local_ansible_python(
+    policy: Optional[AnsiblePythonPolicy] = None,
+) -> Optional[str]:
+    policy = policy or ansible_python_policy()
+    env = _system_subprocess_env() or os.environ.copy()
     env["PYTHONNOUSERSITE"] = "1"
-    return env
-
-
-def _detect_local_ansible_python() -> Optional[str]:
-    policy = ansible_python_policy()
     try:
         out = run_command(
-            ["bash", "-c", detect_python_cmd()],
-            env=_subprocess_env_for_local_probe(),
+            ["bash", "-c", detect_python_cmd(policy)],
+            env=env,
         ).stdout
         py = parse_detected_python(out)
         if py and validate_local_interpreter(py, policy):
@@ -191,9 +212,16 @@ def _remote_interpreter_meets_policy(
     return validate_remote_interpreter_version(out, policy)
 
 
-def _detect_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
-    policy = ansible_python_policy()
-    out, _, rc = probe._ssh_exec(host, username, detect_python_cmd(), timeout=30)
+def _detect_ansible_python(
+    probe: SystemProbe,
+    host: str,
+    username: str,
+    policy: Optional[AnsiblePythonPolicy] = None,
+) -> Optional[str]:
+    policy = policy or ansible_python_policy()
+    out, _, rc = probe._ssh_exec(
+        host, username, detect_python_cmd(policy), timeout=30
+    )
     if rc != 0:
         return None
     py = parse_detected_python(out)
@@ -202,11 +230,13 @@ def _detect_ansible_python(probe: SystemProbe, host: str, username: str) -> Opti
     return None
 
 
-def _ensure_local_ansible_python() -> Optional[str]:
-    py = _detect_local_ansible_python()
+def _ensure_local_ansible_python(
+    policy: Optional[AnsiblePythonPolicy] = None,
+) -> Optional[str]:
+    policy = policy or ansible_python_policy()
+    py = _detect_local_ansible_python(policy)
     if py:
         return py
-    policy = ansible_python_policy()
     info = platform.freedesktop_os_release()
     if should_bootstrap_python39_rhel8(info.get("ID", ""), info.get("VERSION_ID", ""), None, policy):
         logger.info(
@@ -221,7 +251,7 @@ def _ensure_local_ansible_python() -> Optional[str]:
         except Exception as exc:
             logger.warning(f"localhost: python39 install failed: {exc}", extra=LOG_STDOUT)
             return None
-        return _detect_local_ansible_python()
+        return _detect_local_ansible_python(policy)
     return None
 
 
@@ -238,11 +268,16 @@ def _remote_os_release(probe: SystemProbe, host: str, username: str) -> tuple[st
     return id_part, version_id
 
 
-def _ensure_ansible_python(probe: SystemProbe, host: str, username: str) -> Optional[str]:
-    py = _detect_ansible_python(probe, host, username)
+def _ensure_ansible_python(
+    probe: SystemProbe,
+    host: str,
+    username: str,
+    policy: Optional[AnsiblePythonPolicy] = None,
+) -> Optional[str]:
+    policy = policy or ansible_python_policy()
+    py = _detect_ansible_python(probe, host, username, policy)
     if py:
         return py
-    policy = ansible_python_policy()
     os_id, version_id = _remote_os_release(probe, host, username)
     if should_bootstrap_python39_rhel8(os_id, version_id, None, policy):
         logger.info(
@@ -259,19 +294,40 @@ def _ensure_ansible_python(probe: SystemProbe, host: str, username: str) -> Opti
         if rc != 0:
             logger.warning(f"{host}: python39 install failed: {err.strip()}", extra=LOG_STDOUT)
             return None
-        return _detect_ansible_python(probe, host, username)
+        return _detect_ansible_python(probe, host, username, policy)
     return None
 
 
-def _prepare_inventory_with_python(hosts_file: Path) -> Path:
+def _prepare_inventory_with_python(
+    hosts_file: Path,
+    policy: Optional[AnsiblePythonPolicy] = None,
+    *,
+    execution_environment: bool = False,
+) -> Path:
     """Return inventory path with per-host ansible_python_interpreter when needed."""
+    policy = policy or ansible_python_policy()
     content = hosts_file.read_text(encoding="utf-8").splitlines()
-    if any("ansible_python_interpreter=" in line for line in content):
-        return hosts_file
+
+    # The official local connection executes on the controller and ignores the
+    # remote user.  Its runtime is therefore governed by the already-validated
+    # distribution Ansible package, not by the upstream managed-target matrix.
+    # Keep interpreter_python=auto_silent for these hosts; forcing a host path
+    # into an execution container would execute against the container instead.
+    # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/local_connection.html
+    local_hosts = {
+        raw.strip().split()[0]
+        for raw in content
+        if raw.strip()
+        and not raw.lstrip().startswith(("#", "["))
+        and _host_uses_local_connection(raw)
+    }
 
     probe = SystemProbe()
     user = _inventory_ansible_user(hosts_file)
+    local_user = _effective_user_name()
     interpreters: dict[str, str] = {}
+    incompatible_hosts: List[str] = []
+    processed_hosts: set[str] = set()
     for raw in content:
         stripped = raw.strip()
         if stripped.startswith("[all:vars]"):
@@ -283,19 +339,29 @@ def _prepare_inventory_with_python(hosts_file: Path) -> Path:
             ipaddress.ip_address(token)
         except ValueError:
             continue
-        if token in interpreters:
+        if token in processed_hosts:
             continue
-        if _host_uses_local_connection(stripped):
-            py = _ensure_local_ansible_python()
-        else:
-            py = _ensure_ansible_python(probe, token, user)
+        processed_hosts.add(token)
+        if token in local_hosts and not execution_environment:
+            continue
+        target_user = local_user if token in local_hosts else user
+        py = _ensure_ansible_python(probe, token, target_user, policy)
         if py:
             interpreters[token] = py
         else:
-            logger.warning(
-                f"{token}: no compatible Python for ansible-core on this host.",
-                extra=LOG_STDOUT,
-            )
+            incompatible_hosts.append(token)
+
+    if incompatible_hosts:
+        maximum = policy.target_documented_max
+        maximum_label = (
+            f"{maximum[0]}.{maximum[1]}" if maximum else "newer"
+        )
+        raise NoCompatibleAnsibleTargetPython(
+            policy.core_label,
+            f"{policy.target_module_runtime_min[0]}."
+            f"{policy.target_module_runtime_min[1]}-{maximum_label}",
+            incompatible_hosts,
+        )
 
     if not interpreters:
         return hosts_file
@@ -312,7 +378,23 @@ def _prepare_inventory_with_python(hosts_file: Path) -> Path:
             continue
         token = stripped.split()[0]
         py = interpreters.get(token)
-        if py and "ansible_python_interpreter=" not in stripped:
+        if execution_environment and token in local_hosts:
+            # ansible.builtin.local means the EE container once ansible-playbook
+            # is containerized.  Reach the actual controller host over the key
+            # prepared by start-aio, retaining any host-scoped become settings.
+            line = line.replace("ansible_connection=local", "ansible_connection=ssh")
+            if "ansible_user=" not in line:
+                line = f"{line} ansible_user={local_user}"
+            stripped = line.strip()
+        if py and "ansible_python_interpreter=" in stripped:
+            patched.append(
+                re.sub(
+                    r"ansible_python_interpreter=(?:'[^']*'|\"[^\"]*\"|\S+)",
+                    f"ansible_python_interpreter={py}",
+                    line,
+                )
+            )
+        elif py:
             patched.append(f"{line} ansible_python_interpreter={py}")
         else:
             patched.append(line)
@@ -514,63 +596,21 @@ class ClusterManager:
         }
 
     @staticmethod
-    def _env_for_system_subprocess() -> dict:
-        """Return envvars so ansible_runner subprocess (and thus ssh) use system libs, not the PyInstaller bundle.
+    def _ansible_runner_envvars() -> dict:
+        """Adapt the centralized system-child environment for ansible-runner.
 
-        Used when kubecli is run as a PyInstaller one-file binary on Linux (e.g. Kylin). Without this, ssh
-        can load libcrypto from the unpacked bundle and fail with "OPENSSL_1_1_1f not found".
-
-        Background
-        ----------
-        PyInstaller bundles the Python interpreter and shared-library dependencies (e.g. libcrypto, libssl)
-        from the build machine (the host where pyinstaller is run) into the executable. At runtime the bootloader extracts them to a temporary directory
-        (sys._MEIPASS, e.g. /tmp/_MEIxxxxxx) and prepends that path to LD_LIBRARY_PATH so the frozen process
-        can load those .so files. The original LD_LIBRARY_PATH is saved in LD_LIBRARY_PATH_ORIG.
-
-        References:
-        - What PyInstaller bundles and one-file extraction:
-          https://pyinstaller.org/en/stable/operating-mode.html
-        - Bootstrap: LD_LIBRARY_PATH_ORIG and prepend to LD_LIBRARY_PATH (GNU/Linux):
-          https://pyinstaller.org/en/stable/advanced-topics.html#the-bootstrap-process-in-detail
-
-        Why ssh sees the bundle's libcrypto
-        -----------------------------------
-        Subprocesses inherit the parent's environment. The chain is: kubecli -> ansible_runner -> ansible-playbook
-        -> ssh. So ssh runs with LD_LIBRARY_PATH still pointing at _MEIPASS. The dynamic linker then loads
-        libcrypto from the bundle instead of the system. Host ssh (e.g. on Kylin) is built against the host's
-        OpenSSL and expects symbols like OPENSSL_1_1_1f from the host's libcrypto; the bundled libcrypto from
-        the build machine does not provide that symbol version, so ssh fails with "OPENSSL_1_1_1f not found".
-
-        Reference:
-        - Launching external programs and inherited library path:
-          https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application
-
-        Solution
-        --------
-        Before spawning the external chain (ansible_runner), pass envvars that restore LD_LIBRARY_PATH from
-        LD_LIBRARY_PATH_ORIG (or set it to empty). Then the child processes use system libraries only; host ssh
-        and host libcrypto remain ABI-compatible.
-
-        Reference (official recipe):
-        - LD_LIBRARY_PATH / LIBPATH considerations:
-          https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
+        ``ansible-runner`` 2.4.2 copies ``os.environ`` and then updates it with
+        ``envvars``.  The centralized helper therefore returns an explicit empty
+        linker path when the inherited PyInstaller path must be removed.
         """
-        env = {}
-        if sys.platform.startswith("linux"):
-            lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
-            if lp_orig is not None:
-                env["LD_LIBRARY_PATH"] = lp_orig
-            elif getattr(sys, "frozen", False):
-                # Only clear library path for PyInstaller one-file; source installs
-                # should keep the host LD_LIBRARY_PATH untouched.
-                env["LD_LIBRARY_PATH"] = ""
-            # Ignore ~/.local site-packages when Ansible spawns module interpreters.
-            # Needed for frozen kubecli (and historically for Debian apt breakage).
-            # Do NOT force it for source installs: on Rocky 8 + system ansible-core
-            # 2.16, PYTHONNOUSERSITE=1 makes ansible-playbook (via ansible-runner
-            # awx_display) fail immediately with "'NoneType' object is not callable".
-            if getattr(sys, "frozen", False):
-                env["PYTHONNOUSERSITE"] = "1"
+        env = _system_subprocess_env(for_env_update=True) or {}
+        # Ignore ~/.local site-packages when Ansible spawns module interpreters.
+        # Needed for frozen kubecli (and historically for Debian apt breakage).
+        # Do NOT force it for source installs: on Rocky 8 + system ansible-core
+        # 2.16, PYTHONNOUSERSITE=1 makes ansible-playbook (via ansible-runner
+        # awx_display) fail immediately with "'NoneType' object is not callable".
+        if getattr(sys, "frozen", False):
+            env["PYTHONNOUSERSITE"] = "1"
         return env
 
     @staticmethod
@@ -586,6 +626,88 @@ class ClusterManager:
             "[defaults]\ninterpreter_python = auto_silent\n"
             f"{env_line}\n",
             encoding="utf-8",
+        )
+
+    def _ensure_ansible_execution_image(self) -> str:
+        """Ensure the dual-pushed EE image is available under its canonical tag."""
+        from service.cluster.registry import RegistryManager
+
+        image = self.kube_constant.ansible_execution_image
+        RegistryManager()._ensure_image_local(image)
+        return image
+
+    def _run_playbook_in_execution_environment(
+        self,
+        *,
+        tmp_dir: str,
+        playbook: str,
+        inventory: Path,
+        extravars: dict,
+        cmdline: str,
+        envvars: dict,
+        kubeconfig: Path,
+    ):
+        """Run through Ansible Runner's documented container isolation interface."""
+        private = Path(tmp_dir)
+        inventory_dir = private / "inventory"
+        inventory_dir.mkdir()
+        shutil.copy2(inventory, inventory_dir / "hosts")
+
+        image = self._ensure_ansible_execution_image()
+        resource_root = Path(get_resource_path("roles")).resolve().parent
+        base_path = self.base_path.resolve()
+        mounts = [f"{base_path}:{base_path}:rw"]
+        if resource_root != base_path:
+            mounts.append(f"{resource_root}:{resource_root}:ro")
+        user_home = _effective_user_home()
+        ssh_dir = user_home / ".ssh"
+        if ssh_dir.is_dir():
+            # OpenSSH expands the default ~/.ssh/id_* paths from getuid()'s
+            # passwd home, not from HOME. Keep the host path unchanged inside
+            # the container so runner's --user=<effective uid> sees the keys.
+            mounts.append(f"{ssh_dir}:{ssh_dir}:ro")
+        kube_dir = user_home / ".kube"
+        kube_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        mounts.append(f"{kube_dir}:{kube_dir}:rw")
+        if Path("/etc/hosts").is_file():
+            mounts.append("/etc/hosts:/etc/hosts:ro")
+
+        ee_envvars = dict(envvars)
+        ee_envvars.update(
+            {
+                "ANSIBLE_CONFIG": "/runner/ansible.cfg",
+                "HOME": str(user_home),
+                "PATH": (
+                    f"{base_path}/kube-bin:{base_path}/extra-bin:"
+                    "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                ),
+            }
+        )
+        if kubeconfig.exists():
+            ee_envvars["KUBECONFIG"] = str(kubeconfig)
+        logger.warning(
+            f"Using isolated ansible-core {self.kube_constant.v_ansible_core} "
+            f"execution image {image}; the native package remains unchanged.",
+            extra=LOG_STDOUT,
+        )
+        return ansible_runner.run(
+            private_data_dir=tmp_dir,
+            playbook=playbook,
+            inventory="hosts",
+            extravars=extravars,
+            roles_path=get_resource_path("roles"),
+            cmdline=cmdline,
+            envvars=ee_envvars,
+            process_isolation=True,
+            process_isolation_executable="docker",
+            container_image=image,
+            container_volume_mounts=mounts,
+            container_options=[
+                "--network",
+                "host",
+                "--label",
+                "kubeauto.ansible-ee=true",
+            ],
         )
 
     def _run_playbook(
@@ -611,24 +733,48 @@ class ClusterManager:
             pb_path = get_resource_path(*str(playbook).split("/"))
         else:
             pb_path = get_resource_path("playbooks", playbook)
-        envvars = self._env_for_system_subprocess()
+        envvars = self._ansible_runner_envvars()
         kubeconfig_path = self.clusters_dir / cluster / "kubectl.kubeconfig"
-        prepared_inv = _prepare_inventory_with_python(inv)
+        native_policy = ansible_python_policy()
+        use_execution_environment = False
+        try:
+            prepared_inv = _prepare_inventory_with_python(inv, native_policy)
+        except NoCompatibleAnsibleTargetPython as exc:
+            logger.warning(
+                f"{exc} Switching this playbook run to the audited execution environment.",
+                extra=LOG_STDOUT,
+            )
+            ee_policy = ansible_python_policy_for_core((2, 18))
+            prepared_inv = _prepare_inventory_with_python(
+                inv, ee_policy, execution_environment=True
+            )
+            use_execution_environment = True
         try:
             with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
                 self._write_ansible_cfg(
                     tmp_dir,
                     str(kubeconfig_path) if kubeconfig_path.exists() else None,
                 )
-                result = ansible_runner.run(
-                    private_data_dir=tmp_dir,
-                    playbook=pb_path,
-                    inventory=str(prepared_inv),
-                    extravars=ev,
-                    roles_path=get_resource_path("roles"),
-                    cmdline=cmdline or "",
-                    envvars=envvars,
-                )
+                if use_execution_environment:
+                    result = self._run_playbook_in_execution_environment(
+                        tmp_dir=tmp_dir,
+                        playbook=pb_path,
+                        inventory=prepared_inv,
+                        extravars=ev,
+                        cmdline=cmdline or "",
+                        envvars=envvars,
+                        kubeconfig=kubeconfig_path,
+                    )
+                else:
+                    result = ansible_runner.run(
+                        private_data_dir=tmp_dir,
+                        playbook=pb_path,
+                        inventory=str(prepared_inv),
+                        extravars=ev,
+                        roles_path=get_resource_path("roles"),
+                        cmdline=cmdline or "",
+                        envvars=envvars,
+                    )
         finally:
             if prepared_inv != inv and prepared_inv.exists():
                 prepared_inv.unlink(missing_ok=True)
@@ -1017,13 +1163,13 @@ class ClusterManager:
         id_like = info.get("ID_LIKE", "").lower()
         if os_id not in {"debian", "ubuntu"} and "debian" not in id_like:
             return
-        env = ClusterManager._env_for_system_subprocess()
-        env.setdefault("PYTHONNOUSERSITE", "1")
+        env = _system_subprocess_env() or os.environ.copy()
+        env["PYTHONNOUSERSITE"] = "1"
         py = shutil.which("python3") or "/usr/bin/python3"
         try:
             run_command(
                 [py, "-c", "from ansible.modules import apt"],
-                env={**os.environ, **env},
+                env=env,
             )
         except CommandExecutionError as exc:
             raise InstallPrereqError(
@@ -1439,7 +1585,7 @@ class SetupAIO(task.Task):
             f"Reverting failed all-in-one install (task failed: {result.exception_str}).",
             extra=LOG_STDOUT,
         )
-        envvars = m._env_for_system_subprocess()
+        envvars = m._ansible_runner_envvars()
         with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
             m._write_ansible_cfg(tmp_dir, str(aio_kubeconfig) if aio_kubeconfig.exists() else None)
             run_result = ansible_runner.run(

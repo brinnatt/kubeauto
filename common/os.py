@@ -13,7 +13,7 @@ import getpass
 import threading
 import os
 from .logger import setup_logger, LOG_STDOUT
-from .utils import expand_host_targets, parse_pw_file_host_passwords
+from .utils import _system_subprocess_env, expand_host_targets, parse_pw_file_host_passwords
 from typing import Dict, Generator, Union, List, Optional, Tuple
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -696,6 +696,7 @@ class Executor:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            encoding="utf-8"
+            encoding="utf-8",
+            env=_system_subprocess_env(),
         )
         return result.stdout, result.stderr, result.returncode

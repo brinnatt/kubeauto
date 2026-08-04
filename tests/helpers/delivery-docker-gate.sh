@@ -3,6 +3,8 @@
 # Usage (on 138 as root): bash /usr/local/kubeauto/tests/helpers/delivery-docker-gate.sh
 set -euo pipefail
 BASE=/usr/local/kubeauto
+PROJECT_PY="$BASE/.venv/bin/python"
+test -x "$PROJECT_PY"
 export PYTHONPATH="$BASE" PATH="/usr/local/bin:/usr/bin:$PATH"
 K=kubecli
 C=deliver-docker
@@ -50,13 +52,15 @@ fi
 
 echo "========== artifact recovery + dual-source delivery =========="
 run bash "$BASE/tests/run_unit_tests.sh"
-EXT_BIN_VERSION="$(python3 -c 'from common.constants import KubeConstant; print(KubeConstant().v_extra_bin)')"
+EXT_BIN_VERSION="$("$PROJECT_PY" -c 'from common.constants import KubeConstant; print(KubeConstant().v_extra_bin)')"
 EXT_IMAGE="brinnatt/kubeauto-ext-bin:${EXT_BIN_VERSION}"
 PRIVATE_IMAGE="hub.talkedu.cn/kubeauto/kubeauto-ext-bin:${EXT_BIN_VERSION}"
+CACHE_IMAGE="kubeauto-delivery-cache:${EXT_BIN_VERSION}"
 ARTIFACT_BACKUP="$(mktemp -d /tmp/kubeauto-docker-artifacts.XXXXXX)"
 restore_artifacts_on_exit() {
   rc=$?
   trap - EXIT
+  docker image rm "$CACHE_IMAGE" >/dev/null 2>&1 || true
   if ! (cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256 >/dev/null 2>&1); then
     cp -a "$ARTIFACT_BACKUP"/. "$BASE/docker-bin"/
   fi
@@ -87,9 +91,16 @@ pass "TalkEdu-first corrupted-artifact recovery"
 
 # Exercise the production fallback path with an intentionally unreachable
 # private endpoint, then restage another corrupt artifact from Docker Hub.
+# Keep a temporary tag so Docker's official content-addressable store can reuse
+# the already verified layers.  The fallback still contacts Docker Hub and
+# resolves its manifest, but the China delivery gate does not depend on a full
+# repeated transfer of the same large layers from an intentionally secondary
+# overseas source.
+docker image tag "$PRIVATE_IMAGE" "$CACHE_IMAGE"
+CACHE_IMAGE_ID="$(docker image inspect "$CACHE_IMAGE" --format '{{.Id}}')"
 docker image rm "$EXT_IMAGE" "$PRIVATE_IMAGE" >/dev/null 2>&1 || true
 printf '\ncorrupted-by-fallback-gate\n' >> "$BASE/docker-bin/docker-compose"
-python3 - <<'PY'
+"$PROJECT_PY" - <<'PY'
 from common.constants import KubeConstant
 from service.cluster.docker import DockerManager
 from service.cluster.registry import RegistryManager
@@ -101,12 +112,19 @@ registry._ensure_image_local(image)
 DockerManager().ensure_docker_runtime_artifacts()
 print("DOCKERHUB_FALLBACK_OK")
 PY
+docker image inspect "$EXT_IMAGE" >/dev/null || fail "Docker Hub fallback image missing"
+[[ "$(docker image inspect "$EXT_IMAGE" --format '{{.Id}}')" == "$CACHE_IMAGE_ID" ]] || \
+  fail "dual-pushed Docker runtime artifact image IDs differ"
+docker image inspect "$EXT_IMAGE" --format '{{range .RepoDigests}}{{println .}}{{end}}' | \
+  grep -q 'brinnatt/kubeauto-ext-bin@sha256:' || \
+  fail "Docker Hub fallback digest missing"
 (cd "$BASE/docker-bin" && sha256sum -c docker-runtime-artifacts.sha256) || \
   fail "Docker Hub fallback restage manifest"
 docker compose version
 docker buildx version
 "$BASE/docker-bin/cri-dockerd" --version
 pass "DockerHub-fallback corrupted-artifact recovery"
+docker image rm "$CACHE_IMAGE" >/dev/null 2>&1 || true
 
 echo "========== destroy leftover clusters using $NODE =========="
 for c in deliver-docker deliver-upgrade; do
@@ -168,7 +186,7 @@ EOF
 if [ ! -f "$BASE/clusters/$C/config.yml" ]; then
   cp "$BASE/conf/config.yml" "$BASE/clusters/$C/config.yml"
 fi
-K8S_VERSION="$(python3 -c 'from common.constants import KubeConstant; print(KubeConstant().v_k8s_bin.lstrip("v"))')"
+K8S_VERSION="$("$PROJECT_PY" -c 'from common.constants import KubeConstant; print(KubeConstant().v_k8s_bin.lstrip("v"))')"
 sed -i "s/__k8s_ver__/${K8S_VERSION}/g" "$BASE/clusters/$C/config.yml"
 
 $K download -X </dev/null || true
@@ -209,7 +227,19 @@ fi
 ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@$NODE \
   'systemctl is-active docker cri-dockerd kubelet; /usr/local/bin/cri-dockerd --version; grep -E "container-runtime-endpoint|pod-infra|network-plugin" /etc/systemd/system/kubelet.service /etc/systemd/system/cri-dockerd.service'
 
-pass "docker runtime Ready ($rt) + system pods + CNI"
+SMOKE_IMAGE=$(
+  "$PROJECT_PY" -c '
+from common.constants import KubeConstant
+
+c = KubeConstant()
+print(f"{c.v_talkedu_registry}/json-mock:{c.v_json_mock}")
+'
+)
+PRODUCTION_SMOKE_IMAGE="$SMOKE_IMAGE" \
+PRODUCTION_SMOKE_SERVER_NODE=master-docker \
+PRODUCTION_SMOKE_CLIENT_NODE=master-docker \
+  bash "$BASE/tests/helpers/kubernetes-production-smoke.sh"
+pass "docker runtime ($rt) + application DNS/ClusterIP HTTP read-write"
 
 echo "========== reserved enablement (contract) =========="
 grep -q 'KUBE_RESERVED_ENABLED: "yes"' "$BASE/clusters/$C/config.yml" || fail "KUBE_RESERVED not yes"

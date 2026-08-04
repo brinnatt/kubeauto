@@ -39,6 +39,7 @@ class DownloadManager:
             self.docker.install_docker()
 
         self.get_ansible_env()
+        self.get_ansible_execution_env()
         self.get_kubeauto()
         self.get_k8s_bin()
         self.get_ext_bin()
@@ -63,13 +64,12 @@ class DownloadManager:
             return
 
         if probe.version or shutil.which("ansible"):
-            logger.warning(
-                f"Installed Ansible is incompatible: {format_ansible_core_compatibility_failure(probe)} "
-                "Installing a supported release.",
-                extra=LOG_STDOUT,
+            raise RuntimeError(
+                "Installed Ansible failed the native-package delivery gate: "
+                f"{format_ansible_core_compatibility_failure(probe)}"
             )
 
-        logger.info("Installing a supported Ansible runtime (Huawei mirrors first).", extra=LOG_STDOUT)
+        logger.info("Installing Ansible from the distribution package manager.", extra=LOG_STDOUT)
 
         try:
             install_ansible_with_system_pm()
@@ -87,6 +87,15 @@ class DownloadManager:
                 f"Failed to install ansible env: {e}, we suggest you install ansible tools manually and continue!",
                 extra=LOG_STDOUT)
             sys.exit(1)
+
+    def get_ansible_execution_env(self) -> None:
+        """Pre-pull the conditional Ansible EE through the standard mirror policy."""
+        image = self.kube_constant.ansible_execution_image
+        logger.info(
+            f"[DOWNLOAD] Preparing conditional Ansible execution image {image}.",
+            extra=LOG_STDOUT,
+        )
+        self.registry._ensure_image_local(image)
 
     def get_kubeauto(self, version: Optional[str] = None) -> None:
         """Download and setup kubeauto with full directory backup"""

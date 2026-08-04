@@ -8,6 +8,12 @@ export PYTHONPATH="$BASE" PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 
 echo "========== gaps full-chain image preflight =========="
 kubecli download -D </dev/null
+# Harbor's official offline flow requires the versioned installer archive to
+# be downloaded before installation.  ``download -D`` intentionally covers the
+# core delivery set only, while G2 runs the optional ``setup 11`` Harbor role;
+# stage that archive explicitly on every clean control host.
+# https://goharbor.io/docs/2.13.0/install-config/download-installer/
+kubecli download -R </dev/null
 kubecli download -X </dev/null
 for component in flannel cilium kube-router kube-ovn prometheus ingress-nginx \
   network-check local-path-provisioner openebs nfs-provisioner rocketmq \

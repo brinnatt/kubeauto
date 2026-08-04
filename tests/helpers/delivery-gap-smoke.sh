@@ -44,6 +44,40 @@ assert_no_imagepull(){
     kubectl get pods -A | grep -E 'ImagePullBackOff|ErrImagePull' || true; return 1
   fi; return 0
 }
+require_registry_tag(){
+  local repository="$1" tag="$2"
+  curl -fsS "http://127.0.0.1:5000/v2/${repository}/tags/list" 2>/dev/null \
+    | grep -Fq "\"${tag}\""
+}
+materialize_registry_image(){
+  local repository="$1" tag="$2" timeout_seconds="$3" source
+  local local_ref="127.0.0.1:5000/${repository}:${tag}"
+  shift 3
+
+  if require_registry_tag "$repository" "$tag"; then
+    echo "[PASS] registry fixture already present image=$local_ref"
+    return 0
+  fi
+
+  for source in "$@"; do
+    echo "[WAIT] registry fixture pull source=$source target=$local_ref"
+    if timeout "$timeout_seconds" docker pull "$source"; then
+      if docker image inspect "$source" >/dev/null 2>&1 \
+        && docker tag "$source" "$local_ref" \
+        && docker push "$local_ref" \
+        && require_registry_tag "$repository" "$tag"; then
+        echo "[PASS] registry fixture materialized source=$source target=$local_ref"
+        return 0
+      fi
+      echo "[WARN] registry fixture publish/verify failed source=$source"
+      docker image rm "$local_ref" >/dev/null 2>&1 || true
+    else
+      pull_rc=$?
+      echo "[WARN] registry fixture pull failed source=$source rc=$pull_rc timeout_seconds=$timeout_seconds"
+    fi
+  done
+  return 1
+}
 prep_lvm_remote(){
   local ip="$1"
   scp -o BatchMode=yes -o StrictHostKeyChecking=no "$BASE/tests/helpers/prep-node-lvm-loop.sh" root@192.168.47.$ip:/tmp/prep-lvm.sh
@@ -253,16 +287,12 @@ echo "Ready nodes=$ncount"
 
 # MySQL mirror + deploy
 kubectl create ns nacos 2>/dev/null || true
-if ! curl -sf http://127.0.0.1:5000/v2/brinnatt/mysql/tags/list 2>/dev/null | grep -q 8.0.36; then
-  timeout 300 docker pull mysql:8.0.36 || timeout 300 docker pull mysql:8.0 || true
-  cat >/tmp/Dockerfile.mysql <<'DF'
-FROM mysql:8.0.36
-DF
-  DOCKER_BUILDKIT=1 docker build --provenance=false --sbom=false \
-    -t registry.talkschool.cn:5000/brinnatt/mysql:8.0.36 -f /tmp/Dockerfile.mysql /tmp || \
-    { docker tag mysql:8.0.36 registry.talkschool.cn:5000/brinnatt/mysql:8.0.36 2>/dev/null || docker tag mysql:8.0 registry.talkschool.cn:5000/brinnatt/mysql:8.0.36; }
-  docker push registry.talkschool.cn:5000/brinnatt/mysql:8.0.36 || true
-fi
+materialize_registry_image brinnatt/mysql 8.0.46 900 \
+  docker.sparkcr.cn/mysql:8.0.46 \
+  hub.talkedu.cn/kubeauto/mysql:8.0.46 \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/mysql:8.0.46 \
+  mysql:8.0.46 \
+  || fail "P0 Nacos MySQL registry seed"
 cat <<'EOF' | kubectl apply -f -
 apiVersion: v1
 kind: Secret
@@ -281,7 +311,7 @@ spec:
     spec:
       containers:
       - name: mysql
-        image: registry.talkschool.cn:5000/brinnatt/mysql:8.0.36
+        image: registry.talkschool.cn:5000/brinnatt/mysql:8.0.46
         env:
         - { name: MYSQL_ROOT_PASSWORD, value: "NacosRoot!23" }
         - { name: MYSQL_DATABASE, value: nacos }

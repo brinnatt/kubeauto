@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import sys
 from pathlib import Path
 from common.utils import run_command
@@ -8,6 +9,12 @@ from common.logger import setup_logger
 logger = setup_logger(__name__)
 
 def main():
+    parser = argparse.ArgumentParser(description="Build kubeauto onefile executables")
+    target = parser.add_mutually_exclusive_group()
+    target.add_argument("--kubecli-only", action="store_true")
+    target.add_argument("--tools-only", action="store_true")
+    args = parser.parse_args()
+
     project_root = Path(__file__).resolve().parent
     spec_file = project_root / "kubecli-onefile.spec"
 
@@ -32,13 +39,15 @@ def main():
             "kubernetes==35.0.0"
         ], capture_output=False)
 
-        # Build main executable (kubecli)
-        logger.info(f"Building with spec: {spec_file}", extra={"to_stdout": True})
-        run_command([sys.executable, "-m", "PyInstaller", "--clean", str(spec_file)], capture_output=False)
+        if not args.tools_only:
+            logger.info(f"Building with spec: {spec_file}", extra={"to_stdout": True})
+            run_command(
+                [sys.executable, "-m", "PyInstaller", "--clean", str(spec_file)],
+                capture_output=False,
+            )
 
-        # Build each script under tools/ as a separate onefile executable
         tools_spec = project_root / "tools-onefile.spec"
-        if tools_spec.exists():
+        if not args.kubecli_only and tools_spec.exists():
             logger.info(f"Building tools with spec: {tools_spec}", extra={"to_stdout": True})
             run_command([sys.executable, "-m", "PyInstaller", "--clean", str(tools_spec)], capture_output=False)
 

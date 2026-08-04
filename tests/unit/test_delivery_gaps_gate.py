@@ -10,6 +10,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 RETEST = (ROOT / "tests/helpers/delivery-gap-retest.sh").read_text()
+SMOKE = (ROOT / "tests/helpers/delivery-gap-smoke.sh").read_text()
 FULLCHAIN = (ROOT / "tests/helpers/delivery-gaps-fullchain.sh").read_text()
 RUNNER = (ROOT / "tests/run_enterprise_regression.sh").read_text()
 MK_CLUSTER_133 = (ROOT / "tests/helpers/mk-cluster-133.sh").read_text()
@@ -31,7 +32,7 @@ class TestDeliveryGapsGate(unittest.TestCase):
         )
         expected = f"nacos_mysql_db_param: {jdbc}"
 
-        for script in (RETEST, (ROOT / "tests/helpers/delivery-gap-smoke.sh").read_text()):
+        for script in (RETEST, SMOKE):
             with self.subTest(script=script.splitlines()[1]), tempfile.TemporaryDirectory() as tmp:
                 config = Path(tmp) / "config.yml"
                 config.write_text('nacos_mysql_db_param: "old"\nunchanged: true\n')
@@ -66,9 +67,10 @@ class TestDeliveryGapsGate(unittest.TestCase):
 
     def test_nacos_minio_and_rocketmq_are_real_ha_gates(self):
         self.assertIn(
-            "docker push 127.0.0.1:5000/brinnatt/mysql:8.0.36",
+            'local local_ref="127.0.0.1:5000/${repository}:${tag}"',
             RETEST,
         )
+        self.assertIn('docker push "$local_ref"', RETEST)
         self.assertNotIn(
             "docker push registry.talkschool.cn:5000/brinnatt/mysql",
             RETEST,
@@ -83,6 +85,116 @@ class TestDeliveryGapsGate(unittest.TestCase):
         self.assertIn("rocketmq_nameservice_running", RETEST)
         self.assertIn(".status.healthStatus", RETEST)
         self.assertIn("pool=4 health=green", RETEST)
+
+    def test_mysql_fixture_uses_pinned_china_first_sources(self):
+        sources = (
+            "docker.sparkcr.cn/mysql:8.0.46",
+            "hub.talkedu.cn/kubeauto/mysql:8.0.46",
+            "swr.cn-north-4.myhuaweicloud.com/ddn-k8s/"
+            "docker.io/library/mysql:8.0.46",
+            "mysql:8.0.46",
+        )
+        for script in (RETEST, SMOKE):
+            with self.subTest(script=script.splitlines()[1]):
+                call = "materialize_registry_image brinnatt/mysql 8.0.46 900"
+                call_lines = script[script.index(call) :].splitlines()
+                configured_sources = tuple(
+                    line.strip().removesuffix(" \\") for line in call_lines[1:5]
+                )
+                self.assertEqual(sources, configured_sources)
+                self.assertNotIn("docker pull mysql:8.0 ||", script)
+                self.assertNotIn("docker tag mysql:8.0 ", script)
+                self.assertNotIn("Dockerfile.mysql", script)
+
+    def test_mysql_fixture_only_publishes_a_complete_pulled_image(self):
+        command = "\n".join(
+            (
+                extract_shell_function(RETEST, "require_registry_tag"),
+                extract_shell_function(RETEST, "materialize_registry_image"),
+                "timeout() { shift; \"$@\"; }",
+                "curl() {",
+                "  test -f \"$MOCK_READY\" || return 1",
+                "  printf '%s\\n' '{\"tags\":[\"8.0.46\"]}'",
+                "}",
+                "docker() {",
+                "  printf '%s\\n' \"$*\" >> \"$MOCK_CALLS\"",
+                "  if [ \"$1\" = pull ]; then",
+                "    test \"$2\" = \"$MOCK_SUCCESS_SOURCE\"",
+                "    return",
+                "  fi",
+                "  if [ \"$1\" = push ]; then touch \"$MOCK_READY\"; fi",
+                "  return 0",
+                "}",
+                "materialize_registry_image brinnatt/mysql 8.0.46 1 \\",
+                "  docker.sparkcr.cn/mysql:8.0.46 \\",
+                "  hub.talkedu.cn/kubeauto/mysql:8.0.46 \\",
+                "  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/mysql:8.0.46 \\",
+                "  mysql:8.0.46",
+            )
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            calls = tmp_path / "calls"
+            result = subprocess.run(
+                ["bash", "-s"],
+                input=command,
+                text=True,
+                capture_output=True,
+                check=True,
+                env={
+                    "PATH": "/usr/bin:/bin",
+                    "MOCK_CALLS": str(calls),
+                    "MOCK_READY": str(tmp_path / "ready"),
+                    "MOCK_SUCCESS_SOURCE": (
+                        "swr.cn-north-4.myhuaweicloud.com/ddn-k8s/"
+                        "docker.io/library/mysql:8.0.46"
+                    ),
+                },
+            )
+            executed = calls.read_text().splitlines()
+            self.assertEqual(
+                "pull docker.sparkcr.cn/mysql:8.0.46", executed[0]
+            )
+            self.assertEqual(
+                "pull hub.talkedu.cn/kubeauto/mysql:8.0.46", executed[1]
+            )
+            self.assertEqual(
+                "pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/"
+                "docker.io/library/mysql:8.0.46",
+                executed[2],
+            )
+            self.assertEqual(1, sum(call.startswith("tag ") for call in executed))
+            self.assertEqual(1, sum(call.startswith("push ") for call in executed))
+            self.assertNotIn("pull mysql:8.0.46", executed)
+            self.assertIn("registry fixture materialized", result.stdout)
+
+    def test_mysql_fixture_reports_timeout_without_publishing_partial_image(self):
+        command = "\n".join(
+            (
+                extract_shell_function(RETEST, "require_registry_tag"),
+                extract_shell_function(RETEST, "materialize_registry_image"),
+                "timeout() { printf '%s\\n' \"$*\" >> \"$MOCK_CALLS\"; return 124; }",
+                "curl() { return 1; }",
+                "docker() { printf '%s\\n' \"$*\" >> \"$MOCK_CALLS\"; return 0; }",
+                "materialize_registry_image brinnatt/mysql 8.0.46 900 source.invalid/mysql:8.0.46",
+            )
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            calls = Path(tmp) / "calls"
+            result = subprocess.run(
+                ["bash", "-s"],
+                input=command,
+                text=True,
+                capture_output=True,
+                env={"PATH": "/usr/bin:/bin", "MOCK_CALLS": str(calls)},
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertIn("rc=124 timeout_seconds=900", result.stdout)
+            executed = calls.read_text().splitlines()
+            self.assertEqual("900 docker pull source.invalid/mysql:8.0.46", executed[0])
+            self.assertFalse(any("image inspect" in call for call in executed))
+            self.assertFalse(any(call.startswith("tag ") for call in executed))
+            self.assertFalse(any(call.startswith("push ") for call in executed))
 
     def test_rocketmq_gate_waits_for_the_asynchronous_broker(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -129,8 +241,7 @@ fi
             self.assertIn("attempt=3/3", result.stdout)
 
     def test_storage_diagnostics_query_each_resource_by_its_own_name(self):
-        smoke = (ROOT / "tests/helpers/delivery-gap-smoke.sh").read_text()
-        for script in (RETEST, smoke):
+        for script in (RETEST, SMOKE):
             with self.subTest(script=script.splitlines()[1]):
                 self.assertNotIn("kubectl get pvc,pod", script)
                 self.assertIn("kubectl get pvc lvm-smoke-pvc -o wide", script)
@@ -277,8 +388,25 @@ fi
         self.assertIn("monitor_remote_job", branch)
         self.assertIn("--diagnose-nacos-last", RUNNER)
         self.assertIn("--diagnose-nacos-images", RUNNER)
+        self.assertIn("--diagnose-gaps-last", RUNNER)
+        self.assertIn("===pass-and-terminal-markers===", RUNNER)
+        self.assertIn("^DELIVERY_RETEST_COMPLETE", RUNNER)
+        self.assertIn("^DELIVERY_GAPS_EXIT", RUNNER)
+        self.assertIn("===failure-context===", RUNNER)
+        self.assertIn("===reserved-host-capacity===", RUNNER)
+        self.assertIn("/tmp/kubeauto-gaps-live.log", RUNNER)
         self.assertIn("--rocketmq-image-integrity", RUNNER)
         self.assertIn("registry_blob_integrity.py", RUNNER)
+
+    def test_transient_etcd_retry_captures_official_latency_evidence(self):
+        self.assertIn("capture_etcd_timeout_diagnostics", RETEST)
+        self.assertIn("etcd_disk_wal_fsync_duration_seconds", RETEST)
+        self.assertIn("etcd_disk_backend_commit_duration_seconds", RETEST)
+        self.assertIn("endpoint status --write-out=table", RETEST)
+        self.assertLess(
+            RETEST.index('capture_etcd_timeout_diagnostics "$cluster"'),
+            RETEST.index("for recovery in $(seq 1 30)"),
+        )
 
     def test_snap_registry_storage_is_cleaned_from_the_container_view(self):
         self.assertIn(

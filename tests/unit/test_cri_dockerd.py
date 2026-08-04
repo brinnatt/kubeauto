@@ -39,10 +39,23 @@ class TestCriDockerdPin(unittest.TestCase):
         self.assertIn("corrupted-by-delivery-gate", gate)
         self.assertIn("corrupted-by-fallback-gate", gate)
         self.assertIn("DOCKERHUB_FALLBACK_OK", gate)
+        self.assertIn('docker image tag "$PRIVATE_IMAGE" "$CACHE_IMAGE"', gate)
+        self.assertIn("Docker Hub fallback digest missing", gate)
+        cache_tag = gate.index('docker image tag "$PRIVATE_IMAGE" "$CACHE_IMAGE"')
+        self.assertLess(
+            cache_tag,
+            gate.index('docker image rm "$EXT_IMAGE" "$PRIVATE_IMAGE"', cache_tag),
+        )
         self.assertIn("sha256sum -c docker-runtime-artifacts.sha256", gate)
         self.assertIn("docker compose version", gate)
         self.assertIn("docker buildx version", gate)
         self.assertIn('"$BASE/docker-bin/cri-dockerd" --version', gate)
+        self.assertIn("kubernetes-production-smoke.sh", gate)
+        self.assertIn("PRODUCTION_SMOKE_SERVER_NODE=master-docker", gate)
+        self.assertLess(
+            gate.index("kubernetes-production-smoke.sh"),
+            gate.index("DOCKER_GATE_PASS"),
+        )
 
 
 class TestDockerRuntimeArtifactManifest(unittest.TestCase):

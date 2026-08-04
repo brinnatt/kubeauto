@@ -135,9 +135,13 @@ def _env_for_system_subprocess():
       https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
     """
     env = os.environ.copy()
-    if sys.platform.startswith("linux"):
-        lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
-        env["LD_LIBRARY_PATH"] = lp_orig if lp_orig is not None else ""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return env
+    original = env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
     return env
 
 
@@ -1199,6 +1203,8 @@ def run_command(
 
     # 未传 input= 时 stdin=DEVNULL，防止子进程阻塞读标准输入
     run_kw = dict(kwargs)
+    if "env" not in run_kw:
+        run_kw["env"] = _env_for_system_subprocess()
     if run_kw.get("stdin") is None and "input" not in run_kw:
         run_kw["stdin"] = subprocess.DEVNULL
     if run_kw.get("encoding") is None:
@@ -1834,12 +1840,13 @@ class KafkaDeployer:
     def _run_storage_cmd(self, args: List[str], env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
         """执行 bin/kafka-storage.sh"""
         cmd = [str(self.bin_dir / "kafka-storage.sh")] + args
-        return run_command(cmd, capture_output=True, timeout=60, env=env or os.environ.copy())
+        child_env = env if env is not None else _env_for_system_subprocess()
+        return run_command(cmd, capture_output=True, timeout=60, env=child_env)
 
     def _run_server_start(self, config_path: Path, java_home: Optional[str] = None) -> subprocess.CompletedProcess:
         """执行 bin/kafka-server-start.sh（前台；启用 systemd 时由 ExecStart 调用，未启用时可手动调用此方法做一次性启动）"""
         cmd = [str(self.bin_dir / "kafka-server-start.sh"), str(config_path)]
-        env = os.environ.copy()
+        env = _env_for_system_subprocess()
         if java_home:
             env["JAVA_HOME"] = java_home
         return run_command(cmd, capture_output=True, timeout=5, env=env)

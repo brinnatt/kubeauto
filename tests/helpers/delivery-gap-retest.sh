@@ -22,6 +22,42 @@ abort_after_namespace_cleanup(){
   wait_namespace_deleted "$namespace" 120 || true
   abort "$message"
 }
+capture_etcd_timeout_diagnostics(){
+  local cluster="$1" cluster_dir="$BASE/clusters/$1" etcd_ip metrics
+  echo "========== transient etcd diagnostics cluster=$cluster =========="
+  kubectl --kubeconfig="$cluster_dir/kubectl.kubeconfig" get --raw='/readyz?verbose' 2>&1 || true
+  kubectl --kubeconfig="$cluster_dir/kubectl.kubeconfig" get nodes -o wide 2>&1 || true
+  metrics='etcd_server_has_leader|etcd_server_leader_changes_seen_total|etcd_server_proposals_pending|etcd_server_proposals_failed_total|etcd_disk_wal_fsync_duration_seconds|etcd_disk_backend_commit_duration_seconds'
+  while read -r etcd_ip; do
+    [ -n "$etcd_ip" ] || continue
+    echo "--- etcd endpoint $etcd_ip ---"
+    "$BASE/extra-bin/etcdctl" \
+      --endpoints="https://$etcd_ip:2379" \
+      --cacert="$cluster_dir/ssl/ca.pem" \
+      --cert="$cluster_dir/ssl/etcd.pem" \
+      --key="$cluster_dir/ssl/etcd-key.pem" \
+      endpoint status --write-out=table 2>&1 || true
+    curl -fsS --max-time 10 \
+      --cacert "$cluster_dir/ssl/ca.pem" \
+      --cert "$cluster_dir/ssl/etcd.pem" \
+      --key "$cluster_dir/ssl/etcd-key.pem" \
+      "https://$etcd_ip:2379/metrics" 2>/dev/null \
+      | grep -E "^($metrics)" || true
+    if [[ "$etcd_ip" == "127.0.0.1" || "$etcd_ip" == "192.168.47.138" ]]; then
+      bash -lc 'uptime; free -m; df -h /var/lib/etcd; vmstat 1 3; journalctl -u etcd --since "-3 minutes" --no-pager | tail -n 160' || true
+    else
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 \
+        "root@$etcd_ip" \
+        'uptime; free -m; df -h /var/lib/etcd; vmstat 1 3; journalctl -u etcd --since "-3 minutes" --no-pager | tail -n 160' \
+        || true
+    fi
+  done < <(awk '
+    /^\[etcd\]$/ { in_etcd=1; next }
+    /^\[/ { if (in_etcd) exit; next }
+    in_etcd && $1 !~ /^#/ && NF { print $1 }
+  ' "$cluster_dir/hosts")
+  echo "========== transient etcd diagnostics complete =========="
+}
 setup_with_transient_retry(){
   local cluster="$1" step="$2" attempts="${3:-3}" attempt log
   log=$(mktemp "/tmp/kubeauto-${cluster}-${step}.XXXXXX.log")
@@ -39,6 +75,7 @@ setup_with_transient_retry(){
       return 1
     fi
     echo "[WAIT] kubecli setup transient API/etcd failure; control-plane recovery before retry"
+    capture_etcd_timeout_diagnostics "$cluster"
     for recovery in $(seq 1 30); do
       if [ "$(kubectl --kubeconfig="$BASE/clusters/$cluster/kubectl.kubeconfig" get --raw=/readyz 2>/dev/null || true)" = ok ]; then
         break
@@ -144,6 +181,35 @@ require_registry_tag(){
   local repository="$1" tag="$2"
   curl -fsS "http://127.0.0.1:5000/v2/${repository}/tags/list" 2>/dev/null \
     | grep -Fq "\"${tag}\""
+}
+materialize_registry_image(){
+  local repository="$1" tag="$2" timeout_seconds="$3" source
+  local local_ref="127.0.0.1:5000/${repository}:${tag}"
+  shift 3
+
+  if require_registry_tag "$repository" "$tag"; then
+    echo "[PASS] registry fixture already present image=$local_ref"
+    return 0
+  fi
+
+  for source in "$@"; do
+    echo "[WAIT] registry fixture pull source=$source target=$local_ref"
+    if timeout "$timeout_seconds" docker pull "$source"; then
+      if docker image inspect "$source" >/dev/null 2>&1 \
+        && docker tag "$source" "$local_ref" \
+        && docker push "$local_ref" \
+        && require_registry_tag "$repository" "$tag"; then
+        echo "[PASS] registry fixture materialized source=$source target=$local_ref"
+        return 0
+      fi
+      echo "[WARN] registry fixture publish/verify failed source=$source"
+      docker image rm "$local_ref" >/dev/null 2>&1 || true
+    else
+      pull_rc=$?
+      echo "[WARN] registry fixture pull failed source=$source rc=$pull_rc timeout_seconds=$timeout_seconds"
+    fi
+  done
+  return 1
 }
 prep_lvm_remote(){
   local ip="$1"
@@ -537,13 +603,12 @@ done
 recover_ha_control_plane || abort "test-ha recovery after preflight cleanup"
 
 kubectl create ns nacos 2>/dev/null || true
-if ! curl -sf http://127.0.0.1:5000/v2/brinnatt/mysql/tags/list 2>/dev/null | grep -q 8.0.36; then
-  timeout 300 docker pull mysql:8.0.36 || timeout 300 docker pull mysql:8.0 || true
-  docker tag mysql:8.0.36 127.0.0.1:5000/brinnatt/mysql:8.0.36 2>/dev/null || \
-    docker tag mysql:8.0 127.0.0.1:5000/brinnatt/mysql:8.0.36
-  docker push 127.0.0.1:5000/brinnatt/mysql:8.0.36 \
-    || abort_after_namespace_cleanup "P0 Nacos MySQL registry seed" nacos
-fi
+materialize_registry_image brinnatt/mysql 8.0.46 900 \
+  docker.sparkcr.cn/mysql:8.0.46 \
+  hub.talkedu.cn/kubeauto/mysql:8.0.46 \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/mysql:8.0.46 \
+  mysql:8.0.46 \
+  || abort_after_namespace_cleanup "P0 Nacos MySQL registry seed" nacos
 cat <<'EOF' | kubectl apply -f -
 apiVersion: v1
 kind: Secret
@@ -562,7 +627,7 @@ spec:
     spec:
       containers:
       - name: mysql
-        image: registry.talkschool.cn:5000/brinnatt/mysql:8.0.36
+        image: registry.talkschool.cn:5000/brinnatt/mysql:8.0.46
         env:
         - { name: MYSQL_ROOT_PASSWORD, value: "NacosRoot!23" }
         - { name: MYSQL_DATABASE, value: nacos }

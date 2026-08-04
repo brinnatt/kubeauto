@@ -52,6 +52,19 @@ MAX_PORT = 65535
 MAX_HOSTNAME_LENGTH = 253
 
 
+def _env_for_system_subprocess() -> Optional[Dict[str, str]]:
+    """Restore the host linker path for children of a frozen Linux tool."""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return None
+    env = os.environ.copy()
+    original = env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
+    return env
+
+
 def is_tcp_style_target(s: str) -> bool:
     """唯一 `:` 且右侧为十进制端口 → host:port（与 expand_cli_target / validate_target 共用）。"""
     if s.count(":") != 1:
@@ -515,6 +528,7 @@ def run_ping(host: str) -> str:
             timeout=timeout,
             text=True,
             errors="replace",
+            env=_env_for_system_subprocess(),
         )
         out = (proc.stdout or "").strip()
         if not out and proc.stderr:

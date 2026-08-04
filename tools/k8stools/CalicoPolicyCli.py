@@ -623,6 +623,19 @@ def setup_logging(verbose: bool = False, no_file: bool = False) -> logging.Logge
 logger = logging.getLogger("calico_host_port_lockdown")
 
 
+def _env_for_system_subprocess() -> Optional[Dict[str, str]]:
+    """Restore the host linker path for children of a frozen Linux tool."""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return None
+    env = os.environ.copy()
+    original = env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
+    return env
+
+
 def run_cmd(
     argv: Sequence[str],
     *,
@@ -635,7 +648,12 @@ def run_cmd(
     if timeout is not None:
         kw["timeout"] = timeout
     try:
-        return subprocess.run(list(argv), capture_output=True, **kw)
+        return subprocess.run(
+            list(argv),
+            capture_output=True,
+            env=_env_for_system_subprocess(),
+            **kw,
+        )
     except subprocess.TimeoutExpired as e:
         cmd_s = " ".join(str(x) for x in (e.cmd if isinstance(e.cmd, (list, tuple)) else [e.cmd]))
         raise CalicoHostFwError(f"命令超时（{e.timeout}s）: {cmd_s}") from e

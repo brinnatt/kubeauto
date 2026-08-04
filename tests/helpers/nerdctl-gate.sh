@@ -5,6 +5,8 @@
 set -euo pipefail
 SRC="$(cd "$(dirname "$0")/../.." && pwd)"
 BASE="${KUBEAUTO_BASE:-/usr/local/kubeauto}"
+PROJECT_PY="$BASE/.venv/bin/python"
+test -x "$PROJECT_PY"
 export PATH=/usr/local/bin:$PATH
 export PYTHONPATH="$BASE"
 LOG=/tmp/kubeauto-nerdctl-gate-$(date +%Y%m%d-%H%M%S).log
@@ -15,10 +17,9 @@ pass(){ echo "[PASS] $*"; }
 fail(){ echo "[FAIL] $*"; exit 1; }
 run(){ echo ">>> $*"; "$@" || fail "$*"; }
 
-PW="${LAB_SSH_PASSWORD:-123456}"
 WORKER="${NERDCTL_WORKER:-192.168.47.133}"
 CONTROL_IP=192.168.47.138
-EXT_BIN_VERSION="$(python3 -c 'from common.constants import KubeConstant; print(KubeConstant().v_extra_bin)')"
+EXT_BIN_VERSION="$("$PROJECT_PY" -c 'from common.constants import KubeConstant; print(KubeConstant().v_extra_bin)')"
 
 echo "========== N0 sync source → ${BASE} =========="
 if [[ "${NERDCTL_SKIP_SYNC:-0}" == 1 ]]; then
@@ -78,12 +79,8 @@ kubecli download -X </dev/null || fail "download -X"
 pass "images"
 
 echo "========== N5 aio@138 (master+worker co-located, containerd) =========="
-# seed ssh key to worker for later multi-node
-PUB="$(cat /home/ubuntu/.ssh/id_rsa.pub 2>/dev/null || cat ~/.ssh/id_rsa.pub 2>/dev/null || true)"
-if [[ -n "${PUB:-}" ]]; then
-  ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$WORKER" \
-    "mkdir -p /root/.ssh; chmod 700 /root/.ssh; grep -qxF '$PUB' /root/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys" || true
-fi
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no "root@$WORKER" true || \
+  fail "control-to-worker key access missing; run through tests/run_enterprise_regression.sh"
 run kubecli start-aio </dev/null
 export KUBECONFIG="$BASE/clusters/aio/kubectl.kubeconfig"
 for i in $(seq 1 90); do
@@ -188,9 +185,6 @@ grep -q '^KUBE_RESERVED_ENABLED: "no"$' "$BASE/clusters/nerdctl-mw/config.yml" |
   fail "failed to disable kube reserved for small worker"
 grep -q '^SYS_RESERVED_ENABLED: "no"$' "$BASE/clusters/nerdctl-mw/config.yml" || \
   fail "failed to disable system reserved for small worker"
-# SSH prep
-kubecli system -a --user root --password "$PW" "$CONTROL_IP" "$WORKER" </dev/null || true
-# Prefer passwordless from ubuntu→root via key; ansible may need become
 # Install full cluster
 run kubecli setup nerdctl-mw 90 </dev/null
 export KUBECONFIG="$BASE/clusters/nerdctl-mw/kubectl.kubeconfig"
@@ -223,6 +217,20 @@ echo WORKER_NERDCTL_OK
 ' | tee /tmp/mw-worker-nerdctl.txt
 grep -q WORKER_NERDCTL_OK /tmp/mw-worker-nerdctl.txt || fail "worker nerdctl checks failed"
 pass "master-worker-nerdctl"
+
+SMOKE_IMAGE=$(
+  "$PROJECT_PY" -c '
+from common.constants import KubeConstant
+
+c = KubeConstant()
+print(f"{c.v_talkedu_registry}/json-mock:{c.v_json_mock}")
+'
+)
+PRODUCTION_SMOKE_IMAGE="$SMOKE_IMAGE" \
+PRODUCTION_SMOKE_SERVER_NODE=worker-133 \
+PRODUCTION_SMOKE_CLIENT_NODE=master-aio \
+  bash "$BASE/tests/helpers/kubernetes-production-smoke.sh"
+pass "containerd application DNS/ClusterIP cross-node HTTP read-write"
 
 echo "========== N7 negative: docker path must not require nerdctl distribute =========="
 # Role file: nerdctl only in containerd role, not docker role

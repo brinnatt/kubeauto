@@ -61,6 +61,16 @@ class TestNerdctlPin(unittest.TestCase):
         self.assertLess(created, config_override)
         self.assertLess(config_override, setup)
 
+    def test_live_gate_executes_cross_node_application_read_write(self):
+        text = NERDCTL_GATE.read_text()
+        self.assertIn("kubernetes-production-smoke.sh", text)
+        self.assertIn("PRODUCTION_SMOKE_SERVER_NODE=worker-133", text)
+        self.assertIn("PRODUCTION_SMOKE_CLIENT_NODE=master-aio", text)
+        self.assertLess(
+            text.index("kubernetes-production-smoke.sh"),
+            text.index("NERDCTL_GATE_PASS"),
+        )
+
     @unittest.skipUnless(EXT_BIN.is_dir(), "ext-bin sibling not checked out")
     def test_ext_bin_dockerfile_pins_match_constants(self):
         df = (EXT_BIN / "Dockerfile").read_text()

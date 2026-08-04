@@ -16,6 +16,12 @@ A delivery run is complete only when all of the following are true:
 
 Do not mark a matrix item pass from historical evidence. A Pod merely existing or showing `Running` is insufficient when the component has multiple containers, asynchronous custom resources, readiness conditions, data-path checks, or a required business read/write operation.
 
+For a newly created Kubernetes cluster, Node/Pod `Ready` is also insufficient.
+The fixed live gate must deploy an application, satisfy its readiness probe,
+resolve a Service through cluster DNS, complete an HTTP write/read through the
+ClusterIP data path, and emit `KUBERNETES_PRODUCTION_SMOKE_PASS`.  The reusable
+implementation is `helpers/kubernetes-production-smoke.sh`.
+
 ## Laboratory topology
 
 | Role | Address | Account | Contract |
@@ -25,12 +31,19 @@ Do not mark a matrix item pass from historical evidence. A Pod merely existing o
 | Workers | 192.168.47.131-133 | root | Rocky 8.10, small memory, reserved disabled |
 | Masters | 192.168.47.134-136 | root | Rocky 8.10, small memory, reserved disabled |
 | Debian node | 192.168.47.128 | brinnatt + sudo | Debian compatibility |
-| Reserved/runtime | 192.168.47.137 | root | Rocky 8.10, 8 CPU / 32 GiB |
+| Reserved/runtime | 192.168.47.137 | root | Rocky 8.10, 8 CPU / about 16 GiB currently provisioned; live 2 CPU + 4 GiB reservation gate |
 | AIO/control/reserved | 192.168.47.138 | ubuntu + sudo | Ubuntu AIO and primary regression control |
+| Ansible compatibility | 192.168.47.141 | root | Anolis OS 23.3 clean-snapshot control path |
+| Ansible compatibility | 192.168.47.142 | root | openEuler 22.03 LTS-SP4 clean-snapshot control path |
+| Ansible compatibility | 192.168.47.143 | root | openSUSE Leap 16.0 clean-snapshot control path |
 
-The current external load-balancer VIP is `192.168.47.250:8443`. Addresses 140-142 and 147 belong to retired kubeauto lab layouts and must not appear in active regression configuration. A negative unit-test fixture may contain a retired address only to prove that it is removed.
+The current external load-balancer VIP is `192.168.47.250:8443`. Addresses 140 and 147 belong to retired kubeauto lab layouts and must not appear in active regression configuration. Addresses 141-143 are dedicated compatibility controls and must not be silently reused as ordinary Kubernetes nodes. A negative unit-test fixture may contain a retired address only to prove that it is removed.
 
-SSH keys are the primary authentication path. The scripts use `BatchMode=yes` for SSH/SCP/rsync. Password bootstrap is an already-authorized compatibility path in a small number of existing helpers; do not copy that credential into new files or expose it in logs/output.
+The production reserved-resource sizing baseline remains 16 CPU / 32 GiB. The
+smaller 137 lab host validates the effective 2 CPU + 4 GiB Allocatable delta and
+cgroup placement; it must not be reported as proof that the lab itself has 32 GiB.
+
+SSH keys are the primary authentication path. The scripts use `BatchMode=yes` for SSH/SCP/rsync. A snapshot restore may remove the installed key on 141-143; the fixed runner invokes `tests/helpers/lab-ssh-bootstrap.sh`, which accepts the already-authorized credential only through the runtime `LAB_SSH_PASSWORD` environment variable and then returns to `BatchMode=yes`. Do not copy that credential into files, command output or retained logs.
 
 ## One top-level runner
 
@@ -42,9 +55,10 @@ bash tests/run_enterprise_regression.sh --all-delivery
 
 `--all-delivery` is the unattended final-signoff sequence. It composes the
 already focused and cleanup-safe modes in this order: jumper, nerdctl, Docker,
-Kubernetes patch upgrade, then the delivery-gaps full chain (which includes the
-authoritative core topology regression). A failed sub-mode stops the sequence
-after that mode's mandatory cleanup.
+Kubernetes patch upgrade, the delivery-gaps full chain (which includes the
+authoritative core topology regression), the Rocky 8 customer-binary build,
+cross-distribution Ansible gates, and the nine Tier3 frozen-tool gates. A failed
+sub-mode stops the sequence after that mode's mandatory cleanup.
 
 Useful fixed modes:
 
@@ -58,6 +72,13 @@ bash tests/run_enterprise_regression.sh --nerdctl-only
 bash tests/run_enterprise_regression.sh --docker-only
 bash tests/run_enterprise_regression.sh --upgrade-only
 bash tests/run_enterprise_regression.sh --gaps-only
+bash tests/run_enterprise_regression.sh --diagnose-gaps-last
+bash tests/run_enterprise_regression.sh --ansible-os-probe
+bash tests/run_enterprise_regression.sh --ansible-anolis-probe
+bash tests/run_enterprise_regression.sh --ansible-anolis-container-probe
+bash tests/run_enterprise_regression.sh --ansible-os-only
+bash tests/run_enterprise_regression.sh --build-rocky8-kubecli
+bash tests/run_enterprise_regression.sh --tier3-tools-only
 ```
 
 The runner is authoritative because it centralizes SSH, source synchronization, remote launch, durable PID/exit state, foreground log streaming, heartbeat, silent-stall diagnostics, final markers, and cleanup. Do not replace it with a sequence of manually approved SSH commands.
@@ -91,6 +112,12 @@ When a gate fails:
 
 Examples captured by the current gates include registry HTTP readiness instead of container state, SHA256 validation and atomic restaging of Docker runtime artifacts, asynchronous RocketMQ Broker reconciliation, real LVM/NFS read/write, official Nacos schema import with external MySQL, MinIO Tenant health, and 9/9 executed network-check jobs.
 
+## China image-source contract
+
+For a Docker Hub-origin fixture, use an explicit, reviewable fallback list. Try the pinned `docker.sparkcr.cn/<upstream-image>` accelerator before direct Docker Hub, retain the applicable TalkEdu and Huawei candidates, and keep the upstream reference last. A mirror-discovery page such as `https://status.anye.xyz/` is for operator review only; never consume its current recommendations dynamically in a delivery run.
+
+An accelerator response is not evidence that the fixture is usable. The gate must complete pull, inspect the exact image, tag and push it into the local registry, then verify the expected registry tag/manifest before deploying a workload. Pin the real upstream tag throughout the source list, local-registry tag and Pod manifest; never retag a different patch release to impersonate the requested version.
+
 ## Script map
 
 Authoritative orchestration:
@@ -100,6 +127,7 @@ Authoritative orchestration:
 - `helpers/run-durable-gate.sh`: remote PID/exit wrapper.
 - `helpers/lab-wipe-nodes.sh`: destructive lab cleanup plus independent verification.
 - `helpers/sync-kubeauto.sh`: controlled source synchronization.
+- `helpers/lab-control-ssh-bootstrap.sh`: key-only control-to-node access bootstrap; it transfers only the control public key and never persists a fallback password or copies a private key.
 
 Current live gates:
 
@@ -109,6 +137,7 @@ Current live gates:
 - `helpers/delivery-docker-gate.sh`: Docker, buildx, Compose, cri-dockerd and artifact recovery.
 - `helpers/delivery-upgrade-smoke.sh`: real Kubernetes patch transition.
 - `helpers/delivery-gaps-fullchain.sh` and `helpers/delivery-gap-retest.sh`: remaining storage, messaging, registry, observability and network workload gates.
+- `helpers/build-tools-rocky8.sh` and `helpers/tier3-tools-gate.sh`: build every frozen tool on glibc 2.28, execute the exact outputs on real Rocky 8, and remove scoped build/runtime residue.
 
 Recovery and historical phase scripts are retained because they encode useful focused diagnostics and safe resume points. They are not alternate top-level sign-off commands. Before reusing one, verify that its preconditions still match the matrix and run it through the same durable supervision and cleanup contract.
 

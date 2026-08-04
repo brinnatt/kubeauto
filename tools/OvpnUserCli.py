@@ -455,10 +455,23 @@ def log_user_status(user, brief=False):
 # ---------------------------------------------------------------------------
 
 
+def _env_for_system_subprocess():
+    """Restore the host linker path for children of a frozen Linux tool."""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return os.environ.copy()
+    child_env = os.environ.copy()
+    original = child_env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        child_env.pop("LD_LIBRARY_PATH", None)
+    else:
+        child_env["LD_LIBRARY_PATH"] = original
+    return child_env
+
+
 def run_cmd(cmd, cwd=None, env=None, check=True):
     """执行命令，返回 CompletedProcess（Python 3.6 兼容）。"""
     log.debug("执行命令: {0}".format(" ".join(cmd)))
-    merged = os.environ.copy()
+    merged = _env_for_system_subprocess()
     if env:
         merged.update(env)
     proc = subprocess.run(

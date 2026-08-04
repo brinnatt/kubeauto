@@ -40,6 +40,14 @@ class TestSixRepoVersionSync(unittest.TestCase):
         tag = m.group(1).strip().strip("'\"")
         self.assertEqual(tag, self.kc.v_json_mock)
 
+    def test_ansible_execution_image_ci_tag_matches_constant(self):
+        """Conditional EE must keep the TalkEdu/Docker Hub CI tag in sync."""
+        self.assertEqual(self._ci_tag("alpine-ansible"), self.kc.v_ansible_core)
+        self.assertEqual(
+            self.kc.ansible_execution_image,
+            f"brinnatt/ansible:{self.kc.v_ansible_core}",
+        )
+
     def test_json_mock_templates_match_constant(self):
         """No leftover hardcoded json-mock tags in role templates."""
         bad = []

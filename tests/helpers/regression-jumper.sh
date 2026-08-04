@@ -6,7 +6,8 @@ set -euo pipefail
 BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE"
 export PATH="/usr/local/bin:/usr/bin:$PATH"
-PY="$(command -v python3.12 || command -v python3)"
+PY="$BASE/.venv/bin/python"
+test -x "$PY"
 
 "$PY" -c '
 from common.utils import run_command
@@ -88,6 +89,22 @@ for attempt in $(seq 1 30); do
   }
   sleep 10
 done
+
+# Node Ready is only infrastructure readiness.  Exercise a real application
+# through Deployment scheduling, readiness probes, Service, cluster DNS and a
+# cross-node HTTP write/read before this delivery path may pass.
+SMOKE_IMAGE=$(
+  "$PY" -c '
+from common.constants import KubeConstant
+
+c = KubeConstant()
+print(f"{c.v_talkedu_registry}/json-mock:{c.v_json_mock}")
+'
+)
+PRODUCTION_SMOKE_IMAGE="$SMOKE_IMAGE" \
+PRODUCTION_SMOKE_SERVER_NODE=worker-131 \
+PRODUCTION_SMOKE_CLIENT_NODE=master-134 \
+  bash "$BASE/tests/helpers/kubernetes-production-smoke.sh"
 
 kubecli destroy k8s-dev </dev/null
 echo "G7_JUMPER_PASS"

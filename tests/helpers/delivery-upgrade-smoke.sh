@@ -7,6 +7,8 @@ set -euo pipefail
 
 BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE" PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+PROJECT_PY="$BASE/.venv/bin/python"
+test -x "$PROJECT_PY"
 K=kubecli
 C=deliver-upgrade
 NODE="${UPGRADE_GATE_NODE:-192.168.47.137}"
@@ -112,6 +114,24 @@ assert_remote_version(){
         || fail "$binary is not $expected on $NODE"
     fi
   done
+}
+
+production_smoke(){
+  local phase="$1" smoke_image
+  smoke_image=$(
+    "$PROJECT_PY" -c '
+from common.constants import KubeConstant
+
+c = KubeConstant()
+print(f"{c.v_talkedu_registry}/json-mock:{c.v_json_mock}")
+'
+  )
+  echo "========== application production smoke: $phase =========="
+  PRODUCTION_SMOKE_IMAGE="$smoke_image" \
+  PRODUCTION_SMOKE_NAMESPACE="kubeauto-upgrade-${phase}-smoke" \
+  PRODUCTION_SMOKE_SERVER_NODE=master-upgrade \
+  PRODUCTION_SMOKE_CLIENT_NODE=master-upgrade \
+    bash "$BASE/tests/helpers/kubernetes-production-smoke.sh"
 }
 
 echo "========== official v1.33.5 artifact contract =========="
@@ -247,6 +267,7 @@ healthy_pods || fail "$OLD_VERSION source pods"
 before=$(kubectl get node -o jsonpath='{.items[0].status.nodeInfo.kubeletVersion}')
 echo "BEFORE=$before"
 [ "$before" = "$OLD_VERSION" ] || fail "source kubelet reports $before"
+production_smoke source
 pass "$OLD_VERSION source state"
 
 echo "========== kubecli patch upgrade =========="
@@ -264,6 +285,7 @@ echo "AFTER=$after runtime=$runtime"
 echo "$runtime" | grep -q '^docker://' || fail "runtime changed during upgrade: $runtime"
 ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@"$NODE" \
   'systemctl is-active kube-apiserver kube-controller-manager kube-scheduler kubelet kube-proxy docker cri-dockerd'
+production_smoke target
 pass "$OLD_VERSION -> $NEW_VERSION Docker cluster upgrade"
 echo UPGRADE_GATE_PASS
 echo "LOG=$LOG"

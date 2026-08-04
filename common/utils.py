@@ -17,6 +17,70 @@ from .exceptions import CommandExecutionError, InstallPrereqError
 logger = setup_logger(__name__)
 
 
+def _system_subprocess_env(*, for_env_update: bool = False) -> Optional[Dict[str, str]]:
+    """Return an environment that makes frozen-app children use system libraries.
+
+    Production incident
+    -------------------
+    This is required when ``kubecli`` runs as a PyInstaller one-file binary on
+    Linux distributions such as Kylin.  Without it, the host ``ssh`` executable
+    can load ``libcrypto`` from the unpacked kubecli bundle and fail with an ABI
+    error such as ``OPENSSL_1_1_1f not found``.
+
+    Root cause
+    ----------
+    PyInstaller bundles the Python interpreter and shared-library dependencies
+    (including ``libcrypto`` and ``libssl``) from the build host.  Its one-file
+    bootloader extracts them below ``sys._MEIPASS`` (usually ``/tmp/_MEI*``),
+    saves the original linker path in ``LD_LIBRARY_PATH_ORIG``, and prepends the
+    extraction directory to ``LD_LIBRARY_PATH``.
+
+    Subprocesses inherit that environment.  The affected production chain is
+    ``kubecli -> ansible_runner -> ansible-playbook -> ssh``; other system
+    commands launched by the frozen application have the same risk.  The host
+    ``ssh`` binary is linked against the host OpenSSL ABI, so loading the bundled
+    build-host ``libcrypto`` can make its required symbol versions unavailable.
+
+    Solution and return contract
+    ----------------------------
+    Before launching a system program, restore ``LD_LIBRARY_PATH`` from
+    ``LD_LIBRARY_PATH_ORIG``.  If PyInstaller did not save an original value,
+    remove the inherited bundle path.  Normal source installs and non-Linux
+    platforms are left unchanged.
+
+    Most subprocess APIs receive the returned full environment.  APIs such as
+    ansible-runner first copy ``os.environ`` and then merge caller ``envvars``;
+    for those callers, ``for_env_update=True`` returns an explicit
+    ``LD_LIBRARY_PATH`` update (an empty value when removal is required), because
+    omitting the key would leave the unsafe ``_MEIPASS`` value inherited.
+
+    Official PyInstaller references
+    --------------------------------
+    - Bundled files and one-file extraction:
+      https://pyinstaller.org/en/stable/operating-mode.html
+    - Bootloader handling of ``LD_LIBRARY_PATH_ORIG``:
+      https://pyinstaller.org/en/stable/advanced-topics.html#the-bootstrap-process-in-detail
+    - Why external programs must not inherit bundled shared libraries:
+      https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application
+    - Official ``LD_LIBRARY_PATH`` / ``LIBPATH`` restoration recipe:
+      https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
+    """
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return {} if for_env_update else None
+
+    child_env = os.environ.copy()
+    original = child_env.get("LD_LIBRARY_PATH_ORIG")
+    if for_env_update:
+        # APIs such as ansible-runner merge envvars into os.environ; omitting
+        # the key would retain the inherited PyInstaller path.
+        return {"LD_LIBRARY_PATH": original or ""}
+    if original is None:
+        child_env.pop("LD_LIBRARY_PATH", None)
+    else:
+        child_env["LD_LIBRARY_PATH"] = original
+    return child_env
+
+
 def ensure_kubeauto_clusters_dir(base_path: Union[Path, str]) -> Path:
     """Ensure /usr/local/kubeauto/clusters exists and is writable by the invoking user."""
     clusters_dir = Path(base_path) / "clusters"
@@ -159,6 +223,13 @@ def run_command(cmd: List[str] | Tuple[str] | str,
     # Disable capture_output if stdout/stderr is provided
     if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
         capture_output = False
+
+    # An explicit env belongs to the caller. Some Ansible/Python probes already
+    # apply a narrower environment contract and must not be rewritten here.
+    if "env" not in kwargs:
+        external_env = _system_subprocess_env()
+        if external_env is not None:
+            kwargs["env"] = external_env
 
     try:
         result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True, **kwargs)

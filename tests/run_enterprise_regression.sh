@@ -23,6 +23,11 @@ require_command rsync
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HOST138="ubuntu@192.168.47.138"
 HOST130="root@192.168.47.130"
+HOST137="root@192.168.47.137"
+HOST128="brinnatt@192.168.47.128"
+HOST141="root@192.168.47.141"
+HOST142="root@192.168.47.142"
+HOST143="root@192.168.47.143"
 LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
 MODE="${1:-run}"
 mkdir -p "${ROOT}/logs"
@@ -32,7 +37,13 @@ exec 3>&1 4>&2
 
 ssh138() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST138" "$@"; }
 ssh130() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST130" "$@"; }
+ssh137() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST137" "$@"; }
+ssh128() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST128" "$@"; }
+ssh141() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST141" "$@"; }
+ssh142() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST142" "$@"; }
+ssh143() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST143" "$@"; }
 scp138() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
+scp137() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 
 remote_job_summary() {
   local ssh_function="$1" privilege="$2" state_prefix="$3" remote_log="$4"
@@ -179,9 +190,9 @@ echo '[CANCEL] label=${label} state=stopped pid='\"\$pid\"
 matrix_counts() {
   local matrix="$ROOT/tests/enterprise-test-matrix.yaml"
   printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
-    "$(grep -c 'status: pass' "$matrix" || true)" \
-    "$(grep -c 'status: pending' "$matrix" || true)" \
-    "$(grep -c 'status: fail' "$matrix" || true)"
+    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pass' "$matrix" || true)" \
+    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$matrix" || true)" \
+    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: fail' "$matrix" || true)"
 }
 
 monitor_remote_job() {
@@ -290,6 +301,11 @@ if [[ "$MODE" == "--all-delivery" ]]; then
     --docker-only
     --upgrade-only
     --gaps-only
+    --build-rocky8-kubecli
+    --ansible-os-probe
+    --ansible-os-only
+    --ansible-anolis-container-probe
+    --tier3-tools-only
   )
   for delivery_mode in "${delivery_modes[@]}"; do
     echo "========== DELIVERY SIGNOFF mode=$delivery_mode =========="
@@ -320,12 +336,419 @@ if [[ "$MODE" == "--status" ]]; then
   echo "========== 138 remaining delivery gaps gate =========="
   remote_job_summary ssh138 sudo /tmp/kubeauto-gaps-gate /tmp/kubeauto-gaps-live.log || true
   remote_log_tail ssh138 sudo /tmp/kubeauto-gaps-live.log 30
+  echo "========== 138 Ansible EE Debian compatibility gate =========="
+  remote_job_summary ssh138 sudo /tmp/kubeauto-ansible-ee-gate /tmp/kubeauto-ansible-ee-live.log || true
+  remote_log_tail ssh138 sudo /tmp/kubeauto-ansible-ee-live.log 30
   echo "========== matrix =========="
   matrix_counts
   echo
   echo "========== process state =========="
   ssh138 "pgrep -af '[r]egression-full|[k]ubecli|[a]nsible-playbook' || true"
   ssh130 "pgrep -af '[r]egression-jumper|[k]ubecli|[a]nsible-playbook' || true"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ansible-anolis-probe" ]]; then
+  echo "========== restore snapshot SSH key 141 =========="
+  bash "$ROOT/tests/helpers/lab-ssh-bootstrap.sh" "$HOST141"
+  anolis_probe_script='
+set -u
+. /etc/os-release
+printf "os_id=%s version_id=%s pretty_name=%s\n" "${ID:-}" "${VERSION_ID:-}" "${PRETTY_NAME:-}"
+for runtime in docker podman; do
+  if command -v "$runtime" >/dev/null 2>&1; then
+    echo "container_runtime=$runtime path=$(command -v "$runtime")"
+    "$runtime" version 2>/dev/null | head -n 20 || true
+  else
+    echo "container_runtime_absent=$runtime"
+  fi
+done
+for url in \
+  https://mirrors.openanolis.cn/anolis/23/Devel/ \
+  https://mirrors.openanolis.cn/anolis/23/Devel/x86_64/ \
+  https://mirrors.openanolis.cn/anolis/23.3/Devel/ \
+  https://mirrors.openanolis.cn/anolis/23.3/Devel/x86_64/ \
+  https://mirrors.openanolis.cn/epao/23/ \
+  https://mirrors.openanolis.cn/epao/23/x86_64/; do
+  echo "openanolis_official_index=$url"
+  if index="$(curl -fsSL --max-time 15 "$url" 2>/dev/null)"; then
+    printf "%s\n" "$index" | grep -Eo "href=\"[^\"]+\"" | head -n 160 || true
+    echo "OPENANOLIS_INDEX_OK url=$url"
+  else
+    echo "OPENANOLIS_INDEX_UNAVAILABLE url=$url"
+  fi
+done
+for spec in \
+  "anolis-devel-23.3,https://mirrors.openanolis.cn/anolis/23.3/Devel/x86_64/os" \
+  "epao-23,https://mirrors.openanolis.cn/epao/23/x86_64/"; do
+  repo_id="${spec%%,*}"
+  echo "openanolis_dnf_repo=$spec"
+  dnf -q --repofrompath "$spec" --repo "$repo_id" list --available ansible ansible-core 2>/dev/null || true
+  dnf -q --repofrompath "$spec" --repo "$repo_id" info ansible ansible-core 2>/dev/null || true
+  dnf -q --repofrompath "$spec" --repo "$repo_id" repoquery --requires --resolve ansible ansible-core 2>/dev/null || true
+done
+echo ANSIBLE_ANOLIS_PROBE_PASS
+'
+  ssh141 "bash -lc $(printf '%q' "$anolis_probe_script")"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ansible-anolis-container-probe" ]]; then
+  echo "========== restore snapshot SSH key 141 =========="
+  bash "$ROOT/tests/helpers/lab-ssh-bootstrap.sh" "$HOST141"
+  scp -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    "$ROOT/dist/kubecli" \
+    "$ROOT/tests/helpers/ansible-anolis-container-gate.sh" \
+    "$ROOT/tests/helpers/run-durable-gate.sh" "$HOST141:/tmp/"
+  ssh141 "chmod 0755 /tmp/kubecli /tmp/ansible-anolis-container-gate.sh /tmp/run-durable-gate.sh; mv /tmp/kubecli /tmp/kubecli-anolis-container-gate; rm -f /tmp/kubeauto-ansible-anolis-live.log /tmp/kubeauto-ansible-anolis-gate.pid /tmp/kubeauto-ansible-anolis-gate.exit; nohup bash /tmp/run-durable-gate.sh /tmp/kubeauto-ansible-anolis-gate ANSIBLE_ANOLIS_CONTAINER_EXIT bash /tmp/ansible-anolis-container-gate.sh /tmp/kubecli-anolis-container-gate >/tmp/kubeauto-ansible-anolis-live.log 2>&1 </dev/null &"
+  gate_rc=0
+  monitor_remote_job \
+    ansible-anolis-141 ssh141 '' /tmp/kubeauto-ansible-anolis-gate \
+    /tmp/kubeauto-ansible-anolis-live.log ANSIBLE_ANOLIS_CONTAINER_GATE_PASS || gate_rc=$?
+  ssh141 "rm -f /tmp/kubecli-anolis-container-gate /tmp/ansible-anolis-container-gate.sh /tmp/run-durable-gate.sh /tmp/kubeauto-ansible-anolis-live.log /tmp/kubeauto-ansible-anolis-gate.pid /tmp/kubeauto-ansible-anolis-gate.exit"
+  (( gate_rc == 0 )) || exit "$gate_rc"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ansible-os-only" ]]; then
+  test -x "$ROOT/dist/kubecli" || {
+    echo "ERROR: current customer binary missing: $ROOT/dist/kubecli" >&2
+    exit 1
+  }
+  ansible_gate_rc=0
+  for entry in "142:ssh142:$HOST142" "143:ssh143:$HOST143"; do
+    label="${entry%%:*}"
+    remainder="${entry#*:}"
+    ssh_function="${remainder%%:*}"
+    target="${remainder#*:}"
+    echo "========== prepare native Ansible gate $label =========="
+    bash "$ROOT/tests/helpers/lab-ssh-bootstrap.sh" "$target"
+    "$ssh_function" "rm -rf /tmp/kubeauto-ansible-native-source; mkdir -p /tmp/kubeauto-ansible-native-source"
+    # Clean compatibility snapshots intentionally contain only base OS tools.
+    # The native gate needs just these Ansible inputs; SCP/SFTP avoids requiring
+    # rsync or tar to already be installed on the remote host.
+    scp -r -o BatchMode=yes -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      "$ROOT/playbooks" "$ROOT/roles" "$ROOT/conf" \
+      "$target:/tmp/kubeauto-ansible-native-source/"
+    scp -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+      "$ROOT/dist/kubecli" "$ROOT/tests/helpers/ansible-native-package-gate.sh" \
+      "$ROOT/tests/helpers/run-durable-gate.sh" "$target:/tmp/"
+    "$ssh_function" "chmod 0755 /tmp/kubecli /tmp/ansible-native-package-gate.sh /tmp/run-durable-gate.sh; mv /tmp/kubecli /tmp/kubecli-ansible-native-gate; rm -f /tmp/kubeauto-ansible-native-live.log /tmp/kubeauto-ansible-native-gate.pid /tmp/kubeauto-ansible-native-gate.exit; nohup bash /tmp/run-durable-gate.sh /tmp/kubeauto-ansible-native-gate ANSIBLE_NATIVE_GATE_EXIT bash /tmp/ansible-native-package-gate.sh /tmp/kubecli-ansible-native-gate /tmp/kubeauto-ansible-native-source >/tmp/kubeauto-ansible-native-live.log 2>&1 </dev/null &"
+    gate_rc=0
+    monitor_remote_job \
+      "ansible-native-$label" "$ssh_function" '' /tmp/kubeauto-ansible-native-gate \
+      /tmp/kubeauto-ansible-native-live.log ANSIBLE_NATIVE_PACKAGE_GATE_PASS || gate_rc=$?
+    "$ssh_function" "rm -rf /tmp/kubeauto-ansible-native-source /tmp/kubecli-ansible-native-gate /tmp/ansible-native-package-gate.sh /tmp/run-durable-gate.sh /tmp/kubeauto-ansible-native-live.log /tmp/kubeauto-ansible-native-gate.pid /tmp/kubeauto-ansible-native-gate.exit"
+    if (( gate_rc != 0 )); then
+      ansible_gate_rc=$gate_rc
+      break
+    fi
+  done
+  (( ansible_gate_rc == 0 )) || exit "$ansible_gate_rc"
+  echo ANSIBLE_OS_NATIVE_GATES_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--build-rocky8-kubecli" ]]; then
+  echo "========== build customer kubecli on Rocky 8.10 / glibc 2.28 =========="
+  bash "$ROOT/tests/helpers/lab-sudo-bootstrap.sh" "$HOST138"
+  ssh138 "sudo rm -rf /tmp/kubeauto-rocky8-build-source /tmp/kubeauto-rocky8-build-output; sudo mkdir -p /tmp/kubeauto-rocky8-build-source; sudo chown -R ubuntu:ubuntu /tmp/kubeauto-rocky8-build-source"
+  rsync -a --delete \
+    --exclude .git --exclude .venv --exclude build --exclude dist \
+    --exclude logs --exclude __pycache__ --exclude '*.pyc' \
+    -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=no" \
+    "$ROOT/" "$HOST138:/tmp/kubeauto-rocky8-build-source/"
+  scp138 "$ROOT/tests/helpers/lab-docker-bootstrap.sh" \
+    "$ROOT/tests/helpers/build-kubecli-rocky8.sh" \
+    "$ROOT/tests/helpers/run-durable-gate.sh" "$HOST138:/tmp/"
+  ssh138 "sudo chmod 0755 /tmp/lab-docker-bootstrap.sh /tmp/run-durable-gate.sh; sudo rm -f /tmp/kubeauto-docker-bootstrap-live.log /tmp/kubeauto-docker-bootstrap-gate.pid /tmp/kubeauto-docker-bootstrap-gate.exit; sudo nohup bash /tmp/run-durable-gate.sh /tmp/kubeauto-docker-bootstrap-gate LAB_DOCKER_BOOTSTRAP_EXIT bash /tmp/lab-docker-bootstrap.sh >/tmp/kubeauto-docker-bootstrap-live.log 2>&1 </dev/null &"
+  docker_bootstrap_rc=0
+  monitor_remote_job \
+    docker-bootstrap-138 ssh138 sudo /tmp/kubeauto-docker-bootstrap-gate \
+    /tmp/kubeauto-docker-bootstrap-live.log LAB_DOCKER_BOOTSTRAP_PASS || docker_bootstrap_rc=$?
+  if (( docker_bootstrap_rc != 0 )); then
+    ssh138 "sudo rm -rf /tmp/kubeauto-rocky8-build-source /tmp/kubeauto-rocky8-build-output /tmp/lab-docker-bootstrap.sh /tmp/build-kubecli-rocky8.sh /tmp/run-durable-gate.sh /tmp/kubeauto-docker-bootstrap-live.log /tmp/kubeauto-docker-bootstrap-gate.pid /tmp/kubeauto-docker-bootstrap-gate.exit"
+    exit "$docker_bootstrap_rc"
+  fi
+  ssh138 "sudo chmod 0755 /tmp/build-kubecli-rocky8.sh /tmp/run-durable-gate.sh; sudo rm -f /tmp/kubeauto-rocky8-build-live.log /tmp/kubeauto-rocky8-build-gate.pid /tmp/kubeauto-rocky8-build-gate.exit; sudo nohup bash /tmp/run-durable-gate.sh /tmp/kubeauto-rocky8-build-gate ROCKY8_BUILD_EXIT bash /tmp/build-kubecli-rocky8.sh >/tmp/kubeauto-rocky8-build-live.log 2>&1 </dev/null &"
+  build_rc=0
+  monitor_remote_job \
+    rocky8-kubecli-build ssh138 sudo /tmp/kubeauto-rocky8-build-gate \
+    /tmp/kubeauto-rocky8-build-live.log ROCKY8_KUBECLI_BUILD_PASS || build_rc=$?
+  if (( build_rc == 0 )); then
+    mkdir -p "$ROOT/dist"
+    scp138 "$HOST138:/tmp/kubeauto-rocky8-build-output/kubecli" "$ROOT/dist/.kubecli.new"
+    chmod 0755 "$ROOT/dist/.kubecli.new"
+    mv "$ROOT/dist/.kubecli.new" "$ROOT/dist/kubecli"
+    "$ROOT/dist/kubecli" version
+    sha256sum "$ROOT/dist/kubecli"
+  fi
+  ssh138 "sudo rm -rf /tmp/kubeauto-rocky8-build-source /tmp/kubeauto-rocky8-build-output /tmp/lab-docker-bootstrap.sh /tmp/build-kubecli-rocky8.sh /tmp/run-durable-gate.sh /tmp/kubeauto-docker-bootstrap-live.log /tmp/kubeauto-docker-bootstrap-gate.pid /tmp/kubeauto-docker-bootstrap-gate.exit /tmp/kubeauto-rocky8-build-live.log /tmp/kubeauto-rocky8-build-gate.pid /tmp/kubeauto-rocky8-build-gate.exit"
+  (( build_rc == 0 )) || exit "$build_rc"
+  echo ROCKY8_CUSTOMER_BINARY_READY
+  exit 0
+fi
+
+if [[ "$MODE" == "--tier3-tools-only" ]]; then
+  tools=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
+  tier3_stage="$(mktemp -d /tmp/kubeauto-tier3-stage.XXXXXX)"
+
+  tier3_cleanup() {
+    local cleanup_rc=0
+    set +e
+    ssh138 "sudo bash -lc 'docker rm -f kubeauto-rocky8-tools-build >/dev/null 2>&1 || true; rm -rf /tmp/kubeauto-rocky8-build-source /tmp/kubeauto-rocky8-tools-output /tmp/kubeauto-docker-bootstrap-venv /tmp/lab-docker-bootstrap.sh /tmp/build-tools-rocky8.sh /tmp/run-durable-gate.sh'" || cleanup_rc=1
+    ssh137 "rm -rf /tmp/kubeauto-tier3-tools /tmp/tier3-tools-gate.sh /tmp/run-durable-gate.sh" || cleanup_rc=1
+    rm -rf "$tier3_stage"
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --rocky-only 192.168.47.137 || cleanup_rc=1
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --rocky-only 192.168.47.137 || cleanup_rc=1
+    ssh138 "sudo bash -lc 'test ! -e /tmp/kubeauto-rocky8-build-source; test ! -e /tmp/kubeauto-rocky8-tools-output; ! docker container inspect kubeauto-rocky8-tools-build >/dev/null 2>&1'" || cleanup_rc=1
+    ssh137 "test ! -e /tmp/kubeauto-tier3-tools" || cleanup_rc=1
+    set -e
+    if (( cleanup_rc == 0 )); then
+      echo TIER3_SCOPE_CLEAN_PASS
+    fi
+    return "$cleanup_rc"
+  }
+  trap 'tier3_cleanup || true' EXIT INT TERM
+
+  echo "========== Tier3 preflight clean: Rocky 137 =========="
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --rocky-only 192.168.47.137
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --rocky-only 192.168.47.137
+  bash "$ROOT/tests/helpers/lab-sudo-bootstrap.sh" "$HOST138"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control \
+    "$HOST138" "$HOST137"
+
+  echo "========== stage current source on Ubuntu 138 =========="
+  ssh138 "sudo rm -rf /tmp/kubeauto-rocky8-build-source /tmp/kubeauto-rocky8-tools-output; sudo mkdir -p /tmp/kubeauto-rocky8-build-source; sudo chown -R ubuntu:ubuntu /tmp/kubeauto-rocky8-build-source"
+  rsync -a --delete \
+    --exclude .git --exclude .venv --exclude build --exclude dist \
+    --exclude logs --exclude __pycache__ --exclude '*.pyc' \
+    -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=no" \
+    "$ROOT/" "$HOST138:/tmp/kubeauto-rocky8-build-source/"
+  scp138 "$ROOT/tests/helpers/lab-docker-bootstrap.sh" \
+    "$ROOT/tests/helpers/build-tools-rocky8.sh" \
+    "$ROOT/tests/helpers/run-durable-gate.sh" "$HOST138:/tmp/"
+
+  echo "========== ensure customer Docker path on Ubuntu 138 =========="
+  ssh138 "sudo chmod 0755 /tmp/lab-docker-bootstrap.sh /tmp/build-tools-rocky8.sh /tmp/run-durable-gate.sh; sudo rm -f /tmp/kubeauto-docker-bootstrap-live.log /tmp/kubeauto-docker-bootstrap-gate.pid /tmp/kubeauto-docker-bootstrap-gate.exit; sudo nohup bash /tmp/run-durable-gate.sh /tmp/kubeauto-docker-bootstrap-gate LAB_DOCKER_BOOTSTRAP_EXIT bash /tmp/lab-docker-bootstrap.sh >/tmp/kubeauto-docker-bootstrap-live.log 2>&1 </dev/null &"
+  monitor_remote_job \
+    docker-bootstrap-138 ssh138 sudo /tmp/kubeauto-docker-bootstrap-gate \
+    /tmp/kubeauto-docker-bootstrap-live.log LAB_DOCKER_BOOTSTRAP_PASS
+
+  echo "========== build nine tools on Rocky 8.10 / glibc 2.28 =========="
+  ssh138 "sudo rm -f /tmp/kubeauto-tier3-build-live.log /tmp/kubeauto-tier3-build-gate.pid /tmp/kubeauto-tier3-build-gate.exit; sudo nohup bash /tmp/run-durable-gate.sh /tmp/kubeauto-tier3-build-gate TIER3_BUILD_EXIT bash /tmp/build-tools-rocky8.sh >/tmp/kubeauto-tier3-build-live.log 2>&1 </dev/null &"
+  monitor_remote_job \
+    tier3-build-138 ssh138 sudo /tmp/kubeauto-tier3-build-gate \
+    /tmp/kubeauto-tier3-build-live.log ROCKY8_TOOLS_BUILD_PASS
+
+  echo "========== stage exact build outputs for real Rocky 137 =========="
+  for tool in "${tools[@]}"; do
+    scp138 "$HOST138:/tmp/kubeauto-rocky8-tools-output/$tool" "$tier3_stage/$tool"
+    test -x "$tier3_stage/$tool"
+  done
+  test "$(find "$tier3_stage" -maxdepth 1 -type f | wc -l)" -eq "${#tools[@]}"
+  sha256sum "$tier3_stage"/*
+
+  ssh137 "rm -rf /tmp/kubeauto-tier3-tools; mkdir -m 0755 /tmp/kubeauto-tier3-tools; rm -f /tmp/kubeauto-tier3-live.log /tmp/kubeauto-tier3-gate.pid /tmp/kubeauto-tier3-gate.exit"
+  for tool in "${tools[@]}"; do
+    scp137 "$tier3_stage/$tool" "$HOST137:/tmp/kubeauto-tier3-tools/$tool"
+  done
+  scp137 "$ROOT/tests/helpers/tier3-tools-gate.sh" \
+    "$ROOT/tests/helpers/run-durable-gate.sh" "$HOST137:/tmp/"
+  ssh137 "chmod 0755 /tmp/tier3-tools-gate.sh /tmp/run-durable-gate.sh /tmp/kubeauto-tier3-tools/*; nohup bash /tmp/run-durable-gate.sh /tmp/kubeauto-tier3-gate TIER3_TOOLS_EXIT bash /tmp/tier3-tools-gate.sh >/tmp/kubeauto-tier3-live.log 2>&1 </dev/null &"
+
+  gate_rc=0
+  monitor_remote_job \
+    tier3-tools-137 ssh137 '' /tmp/kubeauto-tier3-gate \
+    /tmp/kubeauto-tier3-live.log TIER3_TOOLS_GATE_PASS || gate_rc=$?
+  cleanup_rc=0
+  tier3_cleanup || cleanup_rc=$?
+  trap - EXIT INT TERM
+  (( gate_rc == 0 )) || exit "$gate_rc"
+  (( cleanup_rc == 0 )) || exit "$cleanup_rc"
+  echo TIER3_TOOLS_DELIVERY_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--diagnose-docker-bootstrap" ]]; then
+  echo "========== Docker bootstrap diagnostic 138 =========="
+  remote_job_summary ssh138 sudo /tmp/kubeauto-docker-bootstrap-gate \
+    /tmp/kubeauto-docker-bootstrap-live.log
+  ssh138 "sudo bash -lc 'echo ===processes===; ps -eo pid,ppid,etime,stat,wchan:24,cmd --forest | grep -E \"kubeauto-docker-bootstrap|kubecli.py download -d|dockerd\" | grep -v grep || true; echo ===network===; ss -tpn | grep -E \"dockerd|:443\" || true; echo ===docker-data===; du -sh /data/docker /var/lib/docker 2>/dev/null || true; find /data/docker -type f -printf \"%s %p\\n\" 2>/dev/null | sort -nr | head -n 20; echo ===docker-system-df===; docker system df || true; echo ===daemon-log===; journalctl -u docker --since \"30 minutes ago\" --no-pager | tail -n 160'"
+  ssh138 "echo ===private-registry-resolution===; getent ahostsv4 hub.talkedu.cn || true; grep -n 'hub.talkedu.cn' /etc/hosts || true; echo ===private-registry-v2===; curl -ksS --connect-timeout 5 --max-time 15 -D - https://hub.talkedu.cn/v2/ -o /dev/null || true; echo ===private-ext-bin-manifest===; curl -ksS --connect-timeout 5 --max-time 15 -D - -H 'Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' https://hub.talkedu.cn/v2/kubeauto/kubeauto-ext-bin/manifests/1.15.0 -o /dev/null || true"
+  exit 0
+fi
+
+if [[ "$MODE" == "--cancel-rocky8-build" ]]; then
+  cancel_remote_job rocky8-kubecli-build ssh138 sudo /tmp/kubeauto-rocky8-build-gate
+  ssh138 "sudo rm -rf /tmp/kubeauto-rocky8-build-output; sudo docker rm -f kubeauto-rocky8-kubecli-build >/dev/null 2>&1 || true; sudo find /data/docker/tmp -maxdepth 1 -type f -name 'GetImageBlob*' -delete 2>/dev/null || true"
+  echo ROCKY8_BUILD_CANCEL_CLEAN_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--rocky8-image-probe" ]]; then
+  ssh138 "sudo bash -lc 'set -u; for image in swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/rockylinux/rockylinux:8.10 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/rockylinux/rockylinux:8.10; do echo probe=\$image; if timeout --signal=TERM --kill-after=5s 45s docker manifest inspect \"\$image\" >/dev/null; then echo ROCKY8_IMAGE_PROBE_PASS image=\$image; exit 0; fi; done; echo ROCKY8_IMAGE_PROBE_FAIL >&2; exit 1'"
+  exit 0
+fi
+
+if [[ "$MODE" == "--cancel-docker-bootstrap" ]]; then
+  cancel_remote_job docker-bootstrap-138 ssh138 sudo /tmp/kubeauto-docker-bootstrap-gate
+  ssh138 "sudo rm -rf /tmp/kubeauto-docker-bootstrap-venv; sudo find /data/docker/tmp -maxdepth 1 -type f -name 'GetImageBlob*' -delete 2>/dev/null || true"
+  echo DOCKER_BOOTSTRAP_CANCEL_CLEAN_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--follow-docker-bootstrap" ]]; then
+  monitor_remote_job \
+    docker-bootstrap-138 ssh138 sudo /tmp/kubeauto-docker-bootstrap-gate \
+    /tmp/kubeauto-docker-bootstrap-live.log LAB_DOCKER_BOOTSTRAP_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--ansible-os-probe" ]]; then
+  probe_script='
+set -u
+echo "PROBE_HOST=$(hostname)"
+printf "host_ips=%s\n" "$(hostname -I 2>/dev/null || true)"
+. /etc/os-release
+printf "os_id=%s version_id=%s pretty_name=%s\n" "${ID:-}" "${VERSION_ID:-}" "${PRETTY_NAME:-}"
+printf "arch=%s\n" "$(uname -m)"
+for py in python3.13 python3.12 python3.11 python3.10 python3.9 python3 /usr/libexec/platform-python; do
+  command -v "$py" >/dev/null 2>&1 || test -x "$py" || continue
+  "$py" -c "import sys; print(\"python=%s version=%s.%s.%s\" % (sys.executable, *sys.version_info[:3]))" 2>/dev/null || true
+done
+if command -v ansible >/dev/null 2>&1; then
+  echo "ansible_path=$(command -v ansible)"
+  ansible --version || true
+  rpm -qf "$(command -v ansible)" 2>/dev/null || true
+fi
+if command -v dnf >/dev/null 2>&1; then
+  echo "package_manager=dnf"
+  dnf -q repolist || true
+  dnf -q repolist --all || true
+  dnf -q list --available ansible ansible-core 2>/dev/null || true
+  dnf -q info ansible ansible-core 2>/dev/null || true
+  dnf -q search ansible 2>/dev/null || true
+  dnf -q repoquery --requires --resolve ansible 2>/dev/null || true
+  rpm -q --requires ansible ansible-core 2>/dev/null || true
+  sed -n "/^\[.*\]/p; /^enabled=/p; /^baseurl=/p; /^metalink=/p; /^mirrorlist=/p" /etc/yum.repos.d/*.repo 2>/dev/null || true
+  if [[ "${ID:-}" == "anolis" ]] && command -v curl >/dev/null 2>&1; then
+    for url in \
+      https://mirrors.openanolis.cn/anolis/23/ \
+      https://mirrors.openanolis.cn/anolis/23.3/ \
+      https://mirrors.openanolis.cn/epao/; do
+      echo "openanolis_official_index=$url"
+      curl -fsSL --max-time 15 "$url" 2>/dev/null \
+        | grep -Eo "href=\"[^\"]+\"" | head -n 80 || true
+    done
+  fi
+elif command -v yum >/dev/null 2>&1; then
+  echo "package_manager=yum"
+  yum -q repolist || true
+  yum -q list available ansible ansible-core 2>/dev/null || true
+  yum -q info ansible ansible-core 2>/dev/null || true
+elif command -v zypper >/dev/null 2>&1; then
+  echo "package_manager=zypper"
+  zypper --non-interactive repos -u || true
+  zypper --non-interactive search -s ansible ansible-core || true
+  zypper --non-interactive info --requires ansible || true
+  zypper --non-interactive info --requires ansible-core || true
+elif command -v apt-get >/dev/null 2>&1; then
+  echo "package_manager=apt"
+  apt-cache policy ansible ansible-core python3.9 python3.10 python3.11 python3.12 python3.13 2>/dev/null || true
+  if command -v ansible >/dev/null 2>&1; then
+    dpkg-query -S "$(command -v ansible)" 2>/dev/null || true
+  fi
+fi
+echo ANSIBLE_OS_PROBE_HOST_PASS
+'
+  probe_failures=0
+  for entry in "128:ssh128:$HOST128" "141:ssh141:$HOST141" "142:ssh142:$HOST142" "143:ssh143:$HOST143"; do
+    label="${entry%%:*}"
+    remainder="${entry#*:}"
+    ssh_function="${remainder%%:*}"
+    target="${remainder#*:}"
+    echo "========== restore snapshot SSH key $label =========="
+    if ! bash "$ROOT/tests/helpers/lab-ssh-bootstrap.sh" "$target"; then
+      echo "[FAIL] Ansible OS probe $label SSH bootstrap/connectivity"
+      probe_failures=$((probe_failures+1))
+      continue
+    fi
+    echo "========== Ansible OS probe $label =========="
+    if ! "$ssh_function" "bash -lc $(printf '%q' "$probe_script")"; then
+      echo "[FAIL] Ansible OS probe $label command"
+      probe_failures=$((probe_failures+1))
+    fi
+  done
+  if (( probe_failures > 0 )); then
+    echo "ANSIBLE_OS_PROBE_FAIL failures=$probe_failures"
+    exit 1
+  fi
+  official_script='
+set -u
+fetch_github_source() {
+  branch="$1"
+  file="$2"
+  primary="https://raw.githubusercontent.com/ansible/ansible/${branch}/${file}"
+  fallback="https://v6.gh-proxy.org/https://github.com/ansible/ansible/raw/${branch}/${file}"
+  echo "official_ansible_source_${branch}"
+  if content="$(curl -fsSL --max-time 15 "$primary" 2>/dev/null)"; then
+    source_path=github-direct
+  elif content="$(curl -fsSL --max-time 15 "$fallback" 2>/dev/null)"; then
+    source_path=github-proxy
+  else
+    echo "OFFICIAL_SOURCE_UNAVAILABLE branch=$branch"
+    return
+  fi
+  printf "%s\n" "$content" \
+    | grep -E "python_requires|requires-python|install_requires|dependencies =|jinja2|PyYAML|cryptography|resolvelib" \
+    | head -n 24 || true
+  echo "OFFICIAL_SOURCE_OK branch=$branch path=$source_path"
+}
+for branch in stable-2.9 stable-2.10; do
+  fetch_github_source "$branch" setup.py
+done
+for branch in stable-2.16 stable-2.17 stable-2.18 stable-2.19; do
+  fetch_github_source "$branch" pyproject.toml
+done
+for branch in stable-2.16 stable-2.17; do
+  fetch_github_source "$branch" setup.cfg
+done
+echo "official_ansible_support_matrix"
+if curl -fsSL --max-time 15 https://docs.ansible.com/projects/ansible-core/devel/reference_appendices/release_and_maintenance.html 2>/dev/null \
+  | python3 -c "import html,re,sys; text=sys.stdin.read(); text=re.sub(r\"</(?:tr|p|li|h[1-6])>\", \"\\n\", text); print(html.unescape(re.sub(r\"<[^>]+>\", \" \", text)))" \
+  | grep -Ei "control node python|target python|2\\.(16|17|18|19)" | head -n 80; then
+  echo OFFICIAL_SUPPORT_MATRIX_OK
+else
+  echo OFFICIAL_SUPPORT_MATRIX_UNAVAILABLE
+fi
+
+'
+  echo "========== Ansible official source evidence (once via 143) =========="
+  ssh143 "bash -lc $(printf '%q' "$official_script")"
+  echo "ANSIBLE_OS_PROBE_PASS"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ansible-ee-debian-probe" ]]; then
+  # Ansible Runner officially supports containerized execution environments.
+  # Prove the already dual-pushed image can execute real modules on Debian's
+  # Python 3.13 before considering any product-path change.
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control \
+    "$HOST138" "$HOST128"
+  bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
+  ssh138 "sudo rm -f /tmp/kubeauto-ansible-ee-live.log /tmp/kubeauto-ansible-ee-gate.pid /tmp/kubeauto-ansible-ee-gate.exit; sudo nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ansible-ee-gate ANSIBLE_EE_PROBE_EXIT bash /usr/local/kubeauto/tests/helpers/ansible-ee-debian-gate.sh >/tmp/kubeauto-ansible-ee-live.log 2>&1 </dev/null &"
+  monitor_remote_job \
+    ansible-ee-debian-138 ssh138 sudo /tmp/kubeauto-ansible-ee-gate \
+    /tmp/kubeauto-ansible-ee-live.log ANSIBLE_EE_DEBIAN_PROBE_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--follow-ansible-ee" ]]; then
+  monitor_remote_job \
+    ansible-ee-debian-138 ssh138 sudo /tmp/kubeauto-ansible-ee-gate \
+    /tmp/kubeauto-ansible-ee-live.log ANSIBLE_EE_DEBIAN_PROBE_PASS
   exit 0
 fi
 
@@ -348,6 +771,14 @@ fi
 
 if [[ "$MODE" == "--cancel-gaps" ]]; then
   cancel_remote_job gaps-138 ssh138 sudo /tmp/kubeauto-gaps-gate
+  exit 0
+fi
+
+if [[ "$MODE" == "--diagnose-gaps-last" ]]; then
+  # Read the durable full-chain evidence after cleanup without reconstructing
+  # state from an already wiped cluster. Capacity is read separately because
+  # the reserved-host contract is part of classifying control-plane timeouts.
+  ssh138 "sudo bash -lc 'set -u; log=/tmp/kubeauto-gaps-live.log; echo ===durable-state===; stat -c \"%y %s %n\" /tmp/kubeauto-gaps-gate.pid /tmp/kubeauto-gaps-gate.exit \"\$log\" 2>/dev/null || true; printf \"pid=\"; cat /tmp/kubeauto-gaps-gate.pid 2>/dev/null || true; printf \"rc=\"; cat /tmp/kubeauto-gaps-gate.exit 2>/dev/null || true; echo ===pass-and-terminal-markers===; grep -nE \"^\\[PASS\\]|^[A-Z][A-Z0-9_]+_PASS( |\$)|^DELIVERY_RETEST_COMPLETE|^DELIVERY_GAPS_EXIT\" \"\$log\" 2>/dev/null || true; echo ===failure-context===; grep -n -C 100 -E \"etcdserver: request timed out|^\\[FAIL\\]|Traceback|^[^ ]+[[:space:]]+:[[:space:]].*failed=[1-9]\" \"\$log\" 2>/dev/null || true; echo ===baseline-log===; latest=\$(ls -t /var/log/kubeauto-regression-full-*.log 2>/dev/null | head -n 1); echo \"log=\$latest\"; test -n \"\$latest\" && stat -c \"%y %s %n\" \"\$latest\" || true; echo ===reserved-host-capacity===; ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.47.137 \"nproc; awk \\\"/^MemTotal:/ {print}\\\" /proc/meminfo; systemctl is-active kubelet etcd containerd 2>/dev/null || true\"'"
   exit 0
 fi
 
@@ -403,7 +834,7 @@ if [[ "$MODE" == "--rocketmq-image-integrity" ]]; then
   # OCI Distribution content-addressability gate: rebuild the disposable local
   # registry, upload the RocketMQ bundle, then read and hash every console
   # manifest descriptor before a Kubernetes runtime is allowed to consume it.
-  ssh138 "sudo bash -lc 'set -euo pipefail; cd /usr/local/kubeauto; env PYTHONPATH=/usr/local/kubeauto PATH=/usr/local/bin:/usr/bin:/bin kubecli download -E rocketmq </dev/null; python3 tests/helpers/registry_blob_integrity.py http://127.0.0.1:5000 brinnatt/rocketmq-console 2.0.0'"
+  ssh138 "sudo bash -lc 'set -euo pipefail; cd /usr/local/kubeauto; env PYTHONPATH=/usr/local/kubeauto PATH=/usr/local/bin:/usr/bin:/bin kubecli download -E rocketmq </dev/null; .venv/bin/python tests/helpers/registry_blob_integrity.py http://127.0.0.1:5000 brinnatt/rocketmq-console 2.0.0'"
   exit 0
 fi
 
@@ -433,7 +864,7 @@ if [[ "$MODE" == "--diagnose-nacos-images" ]]; then
   # The mirrored delivery images contain the upstream entrypoint sources that
   # define readiness and startup ordering.  Inspect those sources locally so
   # this evidence remains available even when the lab cannot reach GitHub.
-  ssh138 "sudo bash -lc 'echo ===mysql-official-image===; docker image inspect mysql:8.0.36 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}}\" 2>&1 || true; docker run --rm --entrypoint sed mysql:8.0.36 -n 1,260p /usr/local/bin/docker-entrypoint.sh 2>&1 || true; echo ===nacos-official-image===; docker image inspect brinnatt/nacos-server:v2.4.3 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-server:v2.4.3 -c \"echo ---docker-startup.sh---; sed -n 1,260p /home/nacos/bin/docker-startup.sh; echo ---application.properties---; sed -n 1,120p /home/nacos/conf/application.properties\" 2>&1 || true; echo ===nacos-peer-finder-official-image===; docker image inspect brinnatt/nacos-peer-finder-plugin:1.1 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-peer-finder-plugin:1.1 -c \"for file in /install.sh /plugin.sh /on-start.sh; do echo ---\\\$file---; sed -n 1,260p \\\"\\\$file\\\"; done; ls -l /peer-finder; sha256sum /peer-finder\" 2>&1 || true'"
+  ssh138 "sudo bash -lc 'echo ===mysql-official-image===; docker image inspect docker.sparkcr.cn/mysql:8.0.46 --format \"id={{.Id}} digests={{json .RepoDigests}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}}\" 2>&1 || true; docker run --rm --entrypoint sed docker.sparkcr.cn/mysql:8.0.46 -n 1,260p /usr/local/bin/docker-entrypoint.sh 2>&1 || true; echo ===nacos-official-image===; docker image inspect brinnatt/nacos-server:v2.4.3 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-server:v2.4.3 -c \"echo ---docker-startup.sh---; sed -n 1,260p /home/nacos/bin/docker-startup.sh; echo ---application.properties---; sed -n 1,120p /home/nacos/conf/application.properties\" 2>&1 || true; echo ===nacos-peer-finder-official-image===; docker image inspect brinnatt/nacos-peer-finder-plugin:1.1 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-peer-finder-plugin:1.1 -c \"for file in /install.sh /plugin.sh /on-start.sh; do echo ---\\\$file---; sed -n 1,260p \\\"\\\$file\\\"; done; ls -l /peer-finder; sha256sum /peer-finder\" 2>&1 || true'"
   exit 0
 fi
 
@@ -443,6 +874,9 @@ if [[ "$MODE" == "--nerdctl-only" ]]; then
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh"
   echo ">>> bash $ROOT/tests/helpers/lab-wipe-nodes.sh --verify"
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify
+  echo ">>> bootstrap root control key 138 -> worker 133"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control \
+    "$HOST138" root@192.168.47.133
   echo ">>> bash $ROOT/tests/helpers/sync-kubeauto.sh $HOST138"
   bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
   ssh138 "sudo rm -f /tmp/kubeauto-nerdctl-live.log /tmp/kubeauto-nerdctl-gate.pid /tmp/kubeauto-nerdctl-gate.exit; sudo nohup env NERDCTL_SKIP_SYNC=1 NERDCTL_SKIP_LAB_WIPE=1 bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-nerdctl-gate NERDCTL_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/nerdctl-gate.sh >/tmp/kubeauto-nerdctl-live.log 2>&1 </dev/null &"
@@ -467,6 +901,9 @@ if [[ "$MODE" == "--docker-only" ]]; then
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh"
   echo ">>> bash $ROOT/tests/helpers/lab-wipe-nodes.sh --verify"
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify
+  echo ">>> bootstrap root control key 138 -> reserved node 137"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control \
+    "$HOST138" root@192.168.47.137
   echo ">>> bash $ROOT/tests/helpers/sync-kubeauto.sh $HOST138"
   bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
   ssh138 "sudo rm -f /tmp/kubeauto-docker-live.log /tmp/kubeauto-docker-gate.pid /tmp/kubeauto-docker-gate.exit; sudo nohup env DOCKER_GATE_NODE=192.168.47.137 bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-docker-gate DOCKER_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/delivery-docker-gate.sh >/tmp/kubeauto-docker-live.log 2>&1 </dev/null &"
@@ -491,6 +928,9 @@ if [[ "$MODE" == "--upgrade-only" ]]; then
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh"
   echo ">>> bash $ROOT/tests/helpers/lab-wipe-nodes.sh --verify"
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify
+  echo ">>> bootstrap root control key 138 -> reserved node 137"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control \
+    "$HOST138" root@192.168.47.137
   echo ">>> bash $ROOT/tests/helpers/sync-kubeauto.sh $HOST138"
   bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
   ssh138 "sudo rm -f /tmp/kubeauto-upgrade-live.log /tmp/kubeauto-upgrade-gate.pid /tmp/kubeauto-upgrade-gate.exit; sudo nohup env UPGRADE_GATE_NODE=192.168.47.137 bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-upgrade-gate UPGRADE_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/delivery-upgrade-smoke.sh >/tmp/kubeauto-upgrade-live.log 2>&1 </dev/null &"
@@ -515,6 +955,12 @@ if [[ "$MODE" == "--gaps-only" ]]; then
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh"
   echo ">>> bash $ROOT/tests/helpers/lab-wipe-nodes.sh --verify"
   bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify
+  echo ">>> bootstrap root control key 138 -> full lab"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control \
+    "$HOST138" \
+    root@192.168.47.131 root@192.168.47.132 root@192.168.47.133 \
+    root@192.168.47.134 root@192.168.47.135 root@192.168.47.136 \
+    root@192.168.47.137 brinnatt@192.168.47.128
   echo ">>> bash $ROOT/tests/helpers/sync-kubeauto.sh $HOST138"
   bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
   ssh138 "sudo rm -f /tmp/kubeauto-gaps-live.log /tmp/kubeauto-gaps-gate.pid /tmp/kubeauto-gaps-gate.exit; sudo nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-gaps-gate DELIVERY_GAPS_EXIT bash /usr/local/kubeauto/tests/helpers/delivery-gaps-fullchain.sh >/tmp/kubeauto-gaps-live.log 2>&1 </dev/null &"
@@ -533,7 +979,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--all-delivery|--status|--follow|--follow-jumper|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--upgrade-only|--gaps-only|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--status|--follow|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 
@@ -566,6 +1012,20 @@ echo "========== PHASE 1: restore jumper control prerequisites + sync source ===
 # Python 3.10-3.12 on the control node, so restore Python 3.12 if a previous
 # cleanup removed it before syncing source requirements.
 ssh130 'if ! command -v python3.12 >/dev/null 2>&1; then dnf install -y python3.12 python3.12-pip; fi'
+if [[ "$MODE" != "--jumper-only" ]]; then
+  run bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control \
+    "$HOST138" \
+    root@192.168.47.131 root@192.168.47.132 root@192.168.47.133 \
+    root@192.168.47.134 root@192.168.47.135 root@192.168.47.136 \
+    root@192.168.47.137 brinnatt@192.168.47.128
+fi
+if [[ "$MODE" != "--aio-only" ]]; then
+  run bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" \
+    "$HOST130" \
+    root@192.168.47.131 root@192.168.47.132 root@192.168.47.133 \
+    root@192.168.47.134 root@192.168.47.135 root@192.168.47.136 \
+    root@192.168.47.137
+fi
 run bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
 run bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST130"
 pass G0-deploy-sync

@@ -51,6 +51,7 @@ import re
 import shlex
 import shutil
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
 from common.exceptions import AnsibleCoreDetectionError
@@ -60,6 +61,10 @@ from common.utils import run_command
 logger = setup_logger(__name__)
 
 # Source: ansible-core support matrix (control / target columns), 2.12–2.19.
+# Legacy 2.9/2.10 rows follow the archived official support matrix.  Their
+# distro packages are still shipped by enterprise distributions such as
+# openEuler and Ubuntu, but they cannot execute modules on arbitrary future
+# Python releases.
 # Tuple form: (min_major, min_minor, max_major, max_minor); max None = open upper bound.
 AnsibleCoreVersion = Tuple[int, int]
 
@@ -80,6 +85,8 @@ RHEL8_PLATFORM_PYTHON = "/usr/libexec/platform-python"
 # (core_major, core_minor) -> (control_min, control_max, target_doc_min, target_doc_max, target_runtime_min)
 # target_runtime_min: effective floor for module execution (may exceed documented target min).
 _MATRIX: dict[AnsibleCoreVersion, tuple[tuple[int, int], Optional[tuple[int, int]], tuple[int, int], Optional[tuple[int, int]], tuple[int, int]]] = {
+    (2, 9): ((3, 5), (3, 8), (3, 5), (3, 8), (3, 5)),
+    (2, 10): ((3, 5), (3, 8), (3, 5), (3, 9), (3, 5)),
     (2, 12): ((3, 8), (3, 10), (3, 5), (3, 10), (3, 8)),
     (2, 13): ((3, 8), (3, 10), (3, 5), (3, 10), (3, 8)),
     (2, 14): ((3, 9), (3, 11), (3, 5), (3, 11), (3, 8)),
@@ -122,14 +129,20 @@ class AnsibleCoreProbeResult:
     version: Optional[AnsibleCoreVersion]
     attempts: tuple[AnsibleCoreProbeAttempt, ...]
     control_python_version: Optional[tuple[int, int]] = None
+    executable_path: Optional[str] = None
+    package_owner: Optional[str] = None
 
 
 def parse_ansible_core_version(version_output: str) -> Optional[AnsibleCoreVersion]:
     """Parse ``ansible --version`` / ``ansible-core --version`` text."""
-    match = re.search(r"core\s+(\d+)\.(\d+)", version_output)
-    if not match:
-        return None
-    return int(match.group(1)), int(match.group(2))
+    for pattern in (
+        r"(?mi)^ansible\s+\[core\s+(\d+)\.(\d+)",
+        r"(?mi)^ansible\s+(\d+)\.(\d+)",
+    ):
+        match = re.search(pattern, version_output)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+    return None
 
 
 def parse_ansible_control_python_version(version_output: str) -> Optional[tuple[int, int]]:
@@ -138,6 +151,23 @@ def parse_ansible_control_python_version(version_output: str) -> Optional[tuple[
     if not match:
         return None
     return int(match.group(1)), int(match.group(2))
+
+
+def _query_native_package_owner(executable: str) -> Optional[str]:
+    """Return the RPM/deb owner of an Ansible executable, if any."""
+    candidates = tuple(dict.fromkeys((executable, str(Path(executable).resolve()))))
+    if shutil.which("rpm"):
+        for path in candidates:
+            result = run_command(["rpm", "-qf", path], check=False)
+            if result.returncode == 0 and (result.stdout or "").strip():
+                return f"rpm:{result.stdout.strip().splitlines()[-1]}"
+    if shutil.which("dpkg-query"):
+        for path in candidates:
+            result = run_command(["dpkg-query", "-S", path], check=False)
+            if result.returncode == 0 and (result.stdout or "").strip():
+                package = result.stdout.strip().splitlines()[-1].split(":", 1)[0]
+                return f"deb:{package}"
+    return None
 
 
 def probe_installed_ansible_core() -> AnsibleCoreProbeResult:
@@ -172,6 +202,8 @@ def probe_installed_ansible_core() -> AnsibleCoreProbeResult:
                         version=version,
                         attempts=tuple(attempts),
                         control_python_version=parse_ansible_control_python_version(result.stdout or ""),
+                        executable_path=cmd,
+                        package_owner=_query_native_package_owner(cmd),
                     )
         except Exception as exc:
             attempts.append(AnsibleCoreProbeAttempt(command=cmd, error=str(exc)))
@@ -245,22 +277,23 @@ def format_ansible_core_compatibility_failure(result: AnsibleCoreProbeResult) ->
     except AnsibleCoreDetectionError as exc:
         return str(exc)
 
+    if not result.package_owner:
+        path = result.executable_path or "the active PATH entry"
+        return (
+            f"Ansible executable {path} is not owned by the system RPM/deb package manager. "
+            "Refusing to use or overwrite a pip/user-site installation; recover the host package "
+            "state, then install Ansible from the distribution repository."
+        )
+
     control = result.control_python_version
     if control is None:
         return (
             f"ansible-core {policy.core_label} was detected, but 'ansible --version' did not report "
             "its control-node Python version; compatibility cannot be assumed."
         )
-    if not python_meets_spec(control[0], control[1], policy.control_min, policy.control_max):
-        maximum = (
-            f"{policy.control_max[0]}.{policy.control_max[1]}"
-            if policy.control_max
-            else "unbounded"
-        )
-        return (
-            f"ansible-core {policy.core_label} is running on control Python {control[0]}.{control[1]}, "
-            f"outside the official supported range {policy.control_min[0]}.{policy.control_min[1]}-{maximum}."
-        )
+    # A successful RPM/deb executable is governed by the distribution package's
+    # dependency and backport contract.  The upstream matrix below remains
+    # authoritative for Python interpreters on managed targets.
     return ""
 
 
@@ -302,7 +335,7 @@ def format_policy_summary(policy: AnsiblePythonPolicy) -> str:
     ctrl = policy.control_min
     return (
         f"Ansible Python policy (ansible-core {policy.core_label}): "
-        f"control node Python >={ctrl[0]}.{ctrl[1]}, "
+        "control node managed by distribution RPM/deb, "
         f"target module runtime Python >={rt[0]}.{rt[1]}"
     )
 
@@ -335,13 +368,21 @@ def interpreter_allowed_on_rhel8(path: str, policy: AnsiblePythonPolicy) -> bool
     return not _version_ge(policy.target_module_runtime_min, (3, 9))
 
 
-def python_detect_shell(min_major: int, min_minor: int) -> str:
-    """Shell snippet: print the first executable Python >= (min_major, min_minor)."""
+def python_detect_shell(
+    min_major: int,
+    min_minor: int,
+    maximum: Optional[tuple[int, int]] = None,
+) -> str:
+    """Print the first executable Python inside the complete supported range."""
     candidates = " ".join(_PYTHON_CANDIDATES)
+    maximum_check = ""
+    if maximum:
+        maximum_check = f" and sys.version_info[:2] <= ({maximum[0]}, {maximum[1]})"
     return (
         f"for py in {candidates}; do "
         '[ -x "$py" ] || continue; '
-        f'"$py" -c "import sys; sys.exit(0 if sys.version_info >= ({min_major}, {min_minor}) else 1)" '
+        f'"$py" -c "import sys; sys.exit(0 if sys.version_info[:2] >= '
+        f'({min_major}, {min_minor}){maximum_check} else 1)" '
         "2>/dev/null && echo \"$py\" && exit 0; "
         "done; exit 1"
     )
@@ -370,7 +411,9 @@ def detect_target_python_cmd(policy: Optional[AnsiblePythonPolicy] = None) -> st
     """Remote/local probe command using ``target_module_runtime_min`` from the matrix."""
     policy = policy or ansible_python_policy()
     minimum = policy.target_module_runtime_min
-    return python_detect_shell(minimum[0], minimum[1])
+    return python_detect_shell(
+        minimum[0], minimum[1], policy.target_documented_max
+    )
 
 
 def parse_detected_python(output: str) -> Optional[str]:
@@ -467,8 +510,8 @@ def rhel8_python39_bootstrap_remote_cmd(mirror_script_b64: str) -> str:
 
 
 # Backward-compatible aliases used by manager.py
-def detect_python_cmd() -> str:
-    return detect_target_python_cmd()
+def detect_python_cmd(policy: Optional[AnsiblePythonPolicy] = None) -> str:
+    return detect_target_python_cmd(policy)
 
 
 def ansible_core_min_target_python() -> tuple[int, int]:

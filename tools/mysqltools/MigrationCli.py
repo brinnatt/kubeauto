@@ -97,6 +97,19 @@ KNOWN_OPTION_KEYS = frozenset({
 })
 
 
+def _env_for_system_subprocess() -> Optional[Dict[str, str]]:
+    """Restore the host linker path for children of a frozen Linux tool."""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return None
+    env = os.environ.copy()
+    original = env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
+    return env
+
+
 # ---------------------------------------------------------------------------
 # 枚举与配置
 # ---------------------------------------------------------------------------
@@ -1406,6 +1419,7 @@ class MySQLDumpManager:
             stdin=stdin_file,
             stdout=subprocess.DEVNULL,
             stderr=stderr_pipe,
+            env=_env_for_system_subprocess(),
         )
         self.process_registry.register(proc)
         try:
@@ -1760,7 +1774,10 @@ class MigrationManager:
                     )
 
                 client_ver = subprocess.check_output(
-                    ["mysqldump", "--version"], text=True, stderr=subprocess.STDOUT
+                    ["mysqldump", "--version"],
+                    text=True,
+                    stderr=subprocess.STDOUT,
+                    env=_env_for_system_subprocess(),
                 ).strip()
                 audit["client_version"] = client_ver
                 self.preflight.check_client_version(client_ver, profile)
@@ -2598,7 +2615,10 @@ def check_dependencies():
         sys.exit(EXIT_FAILURE)
     try:
         ver = subprocess.check_output(
-            ["mysqldump", "--version"], text=True, stderr=subprocess.STDOUT
+            ["mysqldump", "--version"],
+            text=True,
+            stderr=subprocess.STDOUT,
+            env=_env_for_system_subprocess(),
         )
         MigrationLogger().log_progress(f"客户端: {ver.strip()}", to_stdout=False)
     except subprocess.CalledProcessError:

@@ -78,9 +78,13 @@ def _env_for_system_subprocess():
       https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
     """
     env = os.environ.copy()
-    if sys.platform.startswith("linux"):
-        lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
-        env["LD_LIBRARY_PATH"] = lp_orig if lp_orig is not None else ""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return env
+    original = env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
     return env
 
 

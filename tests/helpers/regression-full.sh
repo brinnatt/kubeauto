@@ -6,6 +6,8 @@ LOG=/var/log/kubeauto-regression-full-$(date +%Y%m%d-%H%M).log
 exec > >(tee -a "$LOG") 2>&1
 
 BASE=/usr/local/kubeauto
+PROJECT_PY="$BASE/.venv/bin/python"
+test -x "$PROJECT_PY"
 export PYTHONPATH="$BASE"
 K=kubecli
 PW=123456
@@ -73,7 +75,7 @@ section_has_ip(){
 }
 
 echo "========== G0 preflight =========="
-python3 -c "
+"$PROJECT_PY" -c "
 from common.utils import run_command
 from common.ansible_python import ansible_python_policy, format_policy_summary
 r = run_command(['ansible','--version'], capture=True, check=False)
@@ -85,7 +87,7 @@ run bash "$BASE/tests/run_unit_tests.sh"
 if [ -x "$BASE/tests/helpers/bootstrap-brinnatt-mirrors.sh" ]; then
   bash "$BASE/tests/helpers/bootstrap-brinnatt-mirrors.sh"
 fi
-python3 -c "
+"$PROJECT_PY" -c "
 from common.constants import KubeConstant
 from service.cluster.registry import _talkedu_mirror
 kc = KubeConstant()

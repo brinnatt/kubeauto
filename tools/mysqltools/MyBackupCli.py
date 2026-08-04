@@ -58,6 +58,19 @@ DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
+def _env_for_system_subprocess():
+    """Restore the host linker path for children of a frozen Linux tool."""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return None
+    env = os.environ.copy()
+    original = env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
+    return env
+
+
 def setup_logger(
     name: str = "mysqlbackup",
     log_file: Optional[str] = None,
@@ -241,7 +254,13 @@ class Config:
             "--socket={0}".format(self.mysql_socket),
             "-e", sql
         ]
-        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=_env_for_system_subprocess(),
+        )
         if p.returncode != 0:
             raise RuntimeError("MySQL command failed")
         return p.stdout.strip()
@@ -275,7 +294,13 @@ class BackupManager:
     def run_cmd(self, cmd, check=True):
         """执行系统命令"""
         self.logger.info("RUN: {0}".format(" ".join(cmd)))
-        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        p = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=_env_for_system_subprocess(),
+        )
         if p.returncode != 0:
             if p.stderr.strip():
                 self.logger.error(p.stderr.strip())
@@ -923,7 +948,12 @@ class BackupManager:
         
         # 执行binlog恢复
         try:
-            p1 = subprocess.Popen(mysqlbinlog_cmd, stdout=subprocess.PIPE)
+            child_env = _env_for_system_subprocess()
+            p1 = subprocess.Popen(
+                mysqlbinlog_cmd,
+                stdout=subprocess.PIPE,
+                env=child_env,
+            )
             p2 = subprocess.Popen(
                 [
                     "mysql",
@@ -933,7 +963,8 @@ class BackupManager:
                 ],
                 stdin=p1.stdout,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
+                env=child_env,
             )
             stdout, stderr = p2.communicate()
             

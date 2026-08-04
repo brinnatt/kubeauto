@@ -72,9 +72,13 @@ def _env_for_system_subprocess():
       https://pyinstaller.org/en/stable/runtime-information.html#ld-library-path-libpath-considerations
     """
     env = os.environ.copy()
-    if sys.platform.startswith("linux"):
-        lp_orig = os.environ.get("LD_LIBRARY_PATH_ORIG")
-        env["LD_LIBRARY_PATH"] = lp_orig if lp_orig is not None else ""
+    if not (sys.platform.startswith("linux") and getattr(sys, "frozen", False)):
+        return env
+    original = env.get("LD_LIBRARY_PATH_ORIG")
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
     return env
 
 
@@ -270,6 +274,9 @@ def run_command(
     # Disable capture_output if stdout/stderr is provided
     if capture_output and ("stdout" in kwargs or "stderr" in kwargs):
         capture_output = False
+
+    if "env" not in kwargs:
+        kwargs["env"] = _env_for_system_subprocess()
 
     try:
         result = subprocess.run(cmd, check=check, capture_output=capture_output, text=True, **kwargs)
@@ -1492,7 +1499,7 @@ class StarRocksDeployer:
             logger.info(f"正在从集群移除 {node_type.upper()} 节点: {node_ip}:{node_port}", extra={"to_stdout": True})
             cmd = [mysql_client, '-h', fe_host, '-P', str(fe_query_port), '-uroot', '-e', sql]
             if password:
-                env = os.environ.copy()
+                env = _env_for_system_subprocess()
                 env['MYSQL_PWD'] = password
                 result = run_command(cmd, check=False, capture_output=True, timeout=30, env=env)
             else:
@@ -2829,7 +2836,7 @@ class StarRocksDeployer:
             try:
                 cmd = [mysql_client, '-h', fe_host, '-P', str(fe_query_port), '-uroot', '-e', 'SELECT 1;']
                 if password:
-                    env = os.environ.copy()
+                    env = _env_for_system_subprocess()
                     env['MYSQL_PWD'] = password
                     result = run_command(cmd, check=False, capture_output=True, timeout=5, env=env)
                 else:
@@ -3177,7 +3184,7 @@ class StarRocksDeployer:
 
         cmd = [mysql_client, '-h', fe_host, '-P', str(fe_query_port), '-uroot', '-e', sql]
         if password:
-            env = os.environ.copy()
+            env = _env_for_system_subprocess()
             env['MYSQL_PWD'] = password
             result = run_command(cmd, check=False, capture_output=True, timeout=30, env=env)
         else:
@@ -3230,7 +3237,7 @@ class StarRocksDeployer:
 
         try:
             if password:
-                env = os.environ.copy()
+                env = _env_for_system_subprocess()
                 env['MYSQL_PWD'] = password
                 result = run_command(cmd, check=False, capture_output=True, timeout=30, env=env)
             else:
