@@ -408,11 +408,6 @@ def ssh_localhost() -> None:
             with open(authorized_keys, "a") as f:
                 f.write(f"\n{pub_key_content}\n")
 
-    # Add host to known_hosts
-    host_ip = get_host_ip()
-    known_hosts = ssh_dir / "known_hosts"
-    run_command(["ssh-keyscan", "-t", "ecdsa", "-H", host_ip], stdout=known_hosts.open("a"))
-
 
 def confirm_action(prompt: str, timeout: int = 5) -> bool:
     """Ask for confirmation with timeout. Non-interactive sessions auto-proceed."""
