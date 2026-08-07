@@ -7,13 +7,13 @@
 
 meta:
   version: 3
-  updated: "2026-08-04"
+  updated: "2026-08-07"
   environment_updated: "2026-08-04"
   runner: tests/run_enterprise_regression.sh
-  regression_log: "192.168.47.138:/tmp/kubeauto-gaps-live.log"
-  regression_result: "PASS - 2026-08-04 authoritative --all-delivery completed with ENTERPRISE_DELIVERY_ALL_PASS, durable rc=0, zero failure markers and final LAB_CLEAN_VERIFY_PASS"
+  regression_log: "logs/enterprise-delivery-20260807-1009.log"
+  regression_result: "PASS - current --all-delivery completed with ENTERPRISE_DELIVERY_ALL_EXIT rc=0, all durable gates rc=0, zero failure markers, and final LAB_CLEAN_VERIFY_PASS"
   regression_evidence:
-    all_delivery_started: /home/brinnatt/projects/kubeauto/logs/enterprise-regression-20260804-0237.log
+    all_delivery: "logs/enterprise-delivery-20260807-1009.log: ENTERPRISE_DELIVERY_ALL_PASS; ENTERPRISE_DELIVERY_ALL_EXIT rc=0; final LAB_CLEAN_VERIFY_PASS"
     jumper: "192.168.47.130:/tmp/kubeauto-jumper-live.log"
     nerdctl: "192.168.47.138:/tmp/kubeauto-nerdctl-live.log"
     docker: "192.168.47.138:/tmp/kubeauto-docker-live.log"
@@ -23,7 +23,7 @@ meta:
     ansible_native_142_143: "tests/run_enterprise_regression.sh --ansible-os-only: ANSIBLE_OS_NATIVE_GATES_PASS; both durable rc=0 and failure_markers=0"
     ansible_anolis_141: "tests/run_enterprise_regression.sh --ansible-anolis-container-probe: ANSIBLE_ANOLIS_CONTAINER_GATE_PASS; durable rc=0; failure_markers=0; scoped clean passed"
     tier3_tools: "tests/run_enterprise_regression.sh --tier3-tools-only: ROCKY8_TOOLS_BUILD_PASS count=9; TIER3_TOOLS_GATE_PASS count=9 glibc=2.28; TIER3_TOOLS_DELIVERY_PASS; scoped clean passed"
-    unit: "2026-08-04 bash tests/run_unit_tests.sh: 208/208 PASS; git diff --check PASS"
+    unit: "2026-08-07 bash tests/run_unit_tests.sh: 218/218 PASS; bash -n and git diff --check PASS"
   baseline:
     k8s: "1.33.6"
     runtime: containerd
@@ -136,6 +136,7 @@ tier0_foundation:
   - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-26 lab wipe removed local_registry; 138 download -D/-X/-E recreated, waited and uploaded successfully"}
   - {id: T0-10, group: G0, desc: "autonomous delivery process contract (one entry, durable state, live stream, heartbeat, clean verify, current lab, isolated logs)", status: pass, evidence: "2026-08-04 authoritative --all-delivery emitted durable state, foreground stream, 30s heartbeats and 60s silent-stall diagnostics; every gate ended rc=0/failure_markers=0 and final LAB_CLEAN_VERIFY_PASS."}
   - {id: T0-11, group: G0, desc: "cross-distribution native Ansible package install and Python compatibility", status: pass, evidence: "2026-08-04 current controls: openEuler 142 native ansible 2.9.27, openSUSE 143 native ansible-core 2.18.3/Python 3.13.5 and Anolis 141 audited execution environment all passed; package/container cleanup passed."}
+  - {id: T0-12, group: G0, desc: "local_registry restart=always across Docker SDK/CLI and host reboot", status: pass, evidence: "2026-08-07 current full --all-delivery: focused SDK/CLI policy assertions, real 138 host reboot, no kubecli after reboot, automatic local_registry HTTP recovery, persistent fixture manifest digest unchanged (sha256:f8bb41d7285336a0c27787f9ba3d7372bc5ff3d0ef7d977d0467a673289545ad); REGISTRY_REBOOT_PREP_EXIT rc=0, ENTERPRISE_DELIVERY_ALL_EXIT rc=0, zero failure markers, final LAB_CLEAN_VERIFY_PASS."}
 
 tier1_commands:
   - {id: T1-G1-01, group: G1, command: version, status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-26 138 G1: kubecli version v0.1.2"}
@@ -280,8 +281,8 @@ execution_groups:
   G12: {name: "六仓+生态兼容（K8s/CNI/addon/监控）", priority: P0, status: pass}
 
 coverage_summary:
-  tier0_total: 11
-  tier0_pass: 11
+  tier0_total: 12
+  tier0_pass: 12
   tier0_pending: 0
   tier1_total: 26
   tier1_pass: 26
@@ -307,4 +308,4 @@ coverage_summary:
   all_nodes_ready: false
   final_lab_clean: true
   overall_assessment: |
-    PASS（2026-08-04）：113/113 项 PASS、0 项 PENDING、0 项 FAIL。当前权威 --all-delivery 已输出 ENTERPRISE_DELIVERY_ALL_PASS；全部 durable gate rc=0、failure_markers=0，最终 LAB_CLEAN_VERIFY_PASS，随后当前单元与契约测试 208/208 PASS、git diff --check PASS。
+    PASS（2026-08-07）：114/114 项 PASS、0 项 PENDING、0 项 FAIL。当前 --all-delivery 输出 ENTERPRISE_DELIVERY_ALL_PASS 和 durable ENTERPRISE_DELIVERY_ALL_EXIT rc=0；所有子门禁零 failure marker，最终 LAB_CLEAN_VERIFY_PASS；218/218 单元测试、shell 语法和 diff 检查通过。

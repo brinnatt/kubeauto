@@ -64,6 +64,7 @@ class TestRegistryReady(unittest.TestCase):
         ) as wait:
             rm.start_local_registry()
             rm.docker.start_container.assert_called_once_with("local_registry")
+            rm.docker.set_container_restart_policy.assert_called_once_with("local_registry", "always")
             wait.assert_called_once()
 
     def test_start_raises_when_not_ready(self):
@@ -89,6 +90,7 @@ class TestRegistryReady(unittest.TestCase):
         ) as wait:
             rm.start_local_registry()
             rm.docker.start_container.assert_not_called()
+            rm.docker.set_container_restart_policy.assert_called_once_with("local_registry", "always")
             wait.assert_called_once()
 
     def test_local_registry_hostname_replaces_retired_mapping(self):

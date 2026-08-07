@@ -28,6 +28,9 @@ ROCKY8_TOOLS_BUILD = (
 TIER3_TOOLS_GATE = (
     ROOT / "tests" / "helpers" / "tier3-tools-gate.sh"
 ).read_text()
+REGISTRY_REBOOT_GATE = (
+    ROOT / "tests" / "helpers" / "registry-reboot-gate.sh"
+).read_text()
 BUILD_ENTRYPOINT = (ROOT / "build.py").read_text()
 
 
@@ -53,6 +56,33 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertIn('lab-wipe-nodes.sh" --verify', RUNNER)
         self.assertIn("LAB_CLEAN_VERIFY_PASS", LAB_WIPE)
 
+    def test_status_reports_rocky8_customer_binary_build(self):
+        status = RUNNER.split('if [[ "$MODE" == "--status" ]]', 1)[1].split(
+            'if [[ "$MODE" == "--ansible-anolis-probe" ]]', 1
+        )[0]
+        self.assertIn("138 Rocky 8 customer-binary build", status)
+        self.assertIn("/tmp/kubeauto-rocky8-build-gate", status)
+        self.assertIn("/tmp/kubeauto-rocky8-build-live.log", status)
+        for label in (
+            "debian-128",
+            "rocky-130",
+            "anolis-141",
+            "openeuler-142",
+            "opensuse-143",
+        ):
+            self.assertIn(label, status)
+        self.assertIn("/tmp/kubeauto-ansible-native-gate", status)
+
+    def test_rocky8_build_collects_failure_evidence_before_cleanup(self):
+        build = RUNNER.split('if [[ "$MODE" == "--build-rocky8-kubecli" ]]', 1)[1]
+        evidence = build.index("ROCKY8_BUILD_FAILURE_EVIDENCE")
+        cleanup = build.index(
+            'ssh138 "sudo rm -rf /tmp/kubeauto-rocky8-build-source', evidence
+        )
+        self.assertIn("remote_log_tail ssh138 sudo", build)
+        self.assertIn('| tee -a "$LOG"', build)
+        self.assertLess(evidence, cleanup)
+
     def test_matrix_progress_counts_only_test_items(self):
         self.assertIn(
             "^[[:space:]]*-[[:space:]]*\\{id:.*status: pass",
@@ -68,6 +98,7 @@ class TestDeliveryProcessContract(unittest.TestCase):
         end = RUNNER.index('if [[ "$MODE" == "--status" ]]')
         all_delivery = RUNNER[start:end]
         expected_modes = (
+            "--registry-reboot-only",
             "--jumper-only",
             "--nerdctl-only",
             "--docker-only",
@@ -76,6 +107,7 @@ class TestDeliveryProcessContract(unittest.TestCase):
             "--build-rocky8-kubecli",
             "--ansible-os-probe",
             "--ansible-os-only",
+            "--ansible-ee-debian-probe",
             "--ansible-anolis-container-probe",
             "--tier3-tools-only",
         )
@@ -83,6 +115,48 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertEqual(sorted(positions), positions)
         self.assertIn('bash "$0" "$delivery_mode"', all_delivery)
         self.assertIn("ENTERPRISE_DELIVERY_ALL_PASS", all_delivery)
+
+    def test_all_delivery_daemon_keeps_local_durable_state(self):
+        daemon = RUNNER.split(
+            'if [[ "$MODE" == "--all-delivery-daemon" ]]', 1
+        )[1].split('if [[ "$MODE" == "--all-delivery" ]]', 1)[0]
+        self.assertIn("/tmp/kubeauto-all-delivery", daemon)
+        self.assertIn("setsid nohup", daemon)
+        self.assertIn("run-durable-gate.sh", daemon)
+        self.assertIn("ENTERPRISE_DELIVERY_ALL_EXIT", daemon)
+        self.assertIn('bash "$0" --all-delivery', daemon)
+
+    def test_delivery_progress_is_compact_and_has_a_fixed_follow_interval(self):
+        progress = RUNNER.split('if [[ "$MODE" == "--progress" ]]', 1)[1].split(
+            'if [[ "$MODE" == "--follow-delivery" ]]', 1
+        )[0]
+        self.assertIn("delivery progress", progress)
+        self.assertIn("remote_job_summary", progress)
+        self.assertIn("matrix_counts", progress)
+        follow = RUNNER.split('if [[ "$MODE" == "--follow-delivery" ]]', 1)[1]
+        self.assertIn('bash "$0" --progress', follow)
+        self.assertIn("sleep 30", follow)
+
+    def test_registry_reboot_gate_requires_docker_owned_recovery_and_persistent_data(self):
+        for required in (
+            "RestartPolicy.Name",
+            "REGISTRY_REBOOT_PREP_PASS",
+            "REGISTRY_HOST_REBOOT_PASS",
+            "Docker must restore the container itself",
+            "registry fixture changed across reboot",
+        ):
+            self.assertIn(required, REGISTRY_REBOOT_GATE)
+        self.assertIn('if [[ "$MODE" == "--registry-reboot-only" ]]', RUNNER)
+        self.assertIn('ssh138 "sudo systemctl reboot"', RUNNER)
+
+    def test_anolis_gate_preserves_terminal_evidence_before_remote_cleanup(self):
+        gate = RUNNER.split(
+            'if [[ "$MODE" == "--ansible-anolis-container-probe" ]]', 1
+        )[1].split('if [[ "$MODE" == "--ansible-os-only" ]]', 1)[0]
+        evidence = gate.index("remote_log_tail ssh141 ''")
+        cleanup = gate.index('ssh141 "rm -f /tmp/kubecli-anolis-container-gate', evidence)
+        self.assertIn('| tee -a "$LOG"', gate)
+        self.assertLess(evidence, cleanup)
 
     def test_clean_aio_preflight_stages_harbor_before_setup_11(self):
         self.assertIn("kubecli download -R </dev/null", AIO_PREP)

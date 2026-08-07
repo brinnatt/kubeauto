@@ -103,7 +103,7 @@ for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-sched
   printf "unit_%s=%s\\n" "$unit" "${state:-unknown}"
   case "$state" in inactive|unknown) ;; *) bad=1 ;; esac
 done
-for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/crictl.yaml /etc/kube-lb /data/registry /var/snap/docker/common/kubeauto-registry; do
+for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/crictl.yaml /etc/kube-lb /data/registry /var/snap/docker/common/kubeauto-registry /var/tmp/kubeauto-registry-reboot.expected; do
   if test -e "$path"; then echo "residue=$path"; bad=1; fi
 done
 if findmnt -rn -o TARGET | grep -E "^/run/(cilium|calico)(/|$)" | grep -q .; then
@@ -261,7 +261,7 @@ echo CTRL_WIPE_OK $(hostname)
 '
 if ! ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 \
   -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "ubuntu@$CONTROL" \
-  "sudo timeout --signal=TERM --kill-after=10s 300s bash -lc $(printf '%q' "$CTRL_WIPE"); ctrl_rc=\$?; sudo docker exec local_registry sh -c 'rm -rf /var/lib/registry/docker' >/dev/null 2>&1 || true; sudo docker rm -f local_registry >/dev/null 2>&1 || true; sudo rm -rf /data/registry /var/snap/docker/common/kubeauto-registry; sudo sed -i '/registry.talkschool.cn/d; /master-aio.*flag by kubeauto/d' /etc/hosts; echo '127.0.0.1  registry.talkschool.cn' | sudo tee -a /etc/hosts >/dev/null; echo '192.168.47.138    master-aio # flag by kubeauto' | sudo tee -a /etc/hosts >/dev/null; if sudo systemctl is-active --quiet snap.docker.dockerd.service; then sudo systemctl restart snap.docker.dockerd.service; else sudo systemctl restart docker; fi; sudo rm -rf /usr/local/kubeauto/clusters/*; ls /usr/local/kubeauto/clusters || true; exit \$ctrl_rc"
+  "sudo timeout --signal=TERM --kill-after=10s 300s bash -lc $(printf '%q' "$CTRL_WIPE"); ctrl_rc=\$?; sudo docker exec local_registry sh -c 'rm -rf /var/lib/registry/docker' >/dev/null 2>&1 || true; sudo docker rm -f local_registry >/dev/null 2>&1 || true; sudo rm -rf /data/registry /var/snap/docker/common/kubeauto-registry; sudo rm -f /var/tmp/kubeauto-registry-reboot.expected /var/tmp/kubeauto-registry-reboot.expected.tmp; sudo sed -i '/registry.talkschool.cn/d; /master-aio.*flag by kubeauto/d' /etc/hosts; echo '127.0.0.1  registry.talkschool.cn' | sudo tee -a /etc/hosts >/dev/null; echo '192.168.47.138    master-aio # flag by kubeauto' | sudo tee -a /etc/hosts >/dev/null; if sudo systemctl is-active --quiet snap.docker.dockerd.service; then sudo systemctl restart snap.docker.dockerd.service; else sudo systemctl restart docker; fi; sudo rm -rf /usr/local/kubeauto/clusters/*; ls /usr/local/kubeauto/clusters || true; exit \$ctrl_rc"
 then
   echo "ERROR wipe failed $CONTROL" >&2
   wipe_failed=1

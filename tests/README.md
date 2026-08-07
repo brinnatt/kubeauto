@@ -70,6 +70,7 @@ bash tests/run_enterprise_regression.sh --aio-only
 bash tests/run_enterprise_regression.sh --jumper-only
 bash tests/run_enterprise_regression.sh --nerdctl-only
 bash tests/run_enterprise_regression.sh --docker-only
+bash tests/run_enterprise_regression.sh --registry-reboot-only
 bash tests/run_enterprise_regression.sh --upgrade-only
 bash tests/run_enterprise_regression.sh --gaps-only
 bash tests/run_enterprise_regression.sh --diagnose-gaps-last
@@ -135,6 +136,7 @@ Current live gates:
 - `helpers/regression-jumper.sh`: jumper/Ansible 2.16 path.
 - `helpers/nerdctl-gate.sh`: containerd/nerdctl contract.
 - `helpers/delivery-docker-gate.sh`: Docker, buildx, Compose, cri-dockerd and artifact recovery.
+- `helpers/registry-reboot-gate.sh`: local Registry restart policy, real control-host reboot recovery and persisted-manifest integrity.
 - `helpers/delivery-upgrade-smoke.sh`: real Kubernetes patch transition.
 - `helpers/delivery-gaps-fullchain.sh` and `helpers/delivery-gap-retest.sh`: remaining storage, messaging, registry, observability and network workload gates.
 - `helpers/build-tools-rocky8.sh` and `helpers/tier3-tools-gate.sh`: build every frozen tool on glibc 2.28, execute the exact outputs on real Rocky 8, and remove scoped build/runtime residue.

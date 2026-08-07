@@ -673,6 +673,20 @@ WantedBy=multi-user.target
 
         run_command(["docker", "start", name])
 
+    def set_container_restart_policy(self, name: str, policy: str) -> None:
+        """Apply the same restart policy through the Docker SDK or CLI."""
+        if self.client is not None:
+            try:
+                container = self.client.containers.get(name)
+                container.update(restart_policy={"Name": policy})
+                return
+            except docker.errors.NotFound:
+                raise CommandExecutionError(f"Container '{name}' not found", 1)
+            except APIError:
+                logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)
+
+        self._run_docker(["update", "--restart", policy, name])
+
     def remove_container(self, name: str) -> None:
         """
         remove container
@@ -806,6 +820,7 @@ WantedBy=multi-user.target
                 ports = {}
                 volumes = {}
                 environment = {}
+                restart_policy = None
 
                 for k, v in kwargs.items():
                     key = k.replace('_', '-')
@@ -831,15 +846,22 @@ WantedBy=multi-user.target
                                     parts = env.split('=', 1)
                                     environment[parts[0]] = parts[1]
 
-                container = self.client.containers.run(
+                    elif key == 'restart':
+                        restart_policy = {"Name": str(v)}
+
+                run_options = dict(
                     image=image,
                     name=name,
                     detach=True,
                     ports=ports,
                     volumes=volumes,
                     environment=environment,
-                    remove=False
+                    remove=False,
                 )
+                if restart_policy is not None:
+                    run_options["restart_policy"] = restart_policy
+
+                container = self.client.containers.run(**run_options)
                 return container.id
             except APIError as e:
                 logger.warning(_SDK_CLI_FALLBACK_MSG, extra=LOG_STDOUT)

@@ -81,10 +81,12 @@ passes=0
 failures=0
 if test -r '${remote_log}'; then
   passes=\$(grep -c '^\\[PASS\\]' '${remote_log}' 2>/dev/null || true)
-  # Ansible prints fatal FAILED even for tasks immediately followed by an
-  # ignoring marker. Final recap failed>0 is authoritative; counting raw fatal
-  # lines turns an ignored cleanup probe into a false regression.
-  failures=\$(grep -Ec '^\\[FAIL\\]|Traceback|REGRESSION_.*EXIT rc=[1-9]|^[^ ]+[[:space:]]+:[[:space:]].*failed=[1-9]' '${remote_log}' 2>/dev/null || true)
+  # A durable non-zero exit is authoritative for Ansible failures.  A
+  # controlled retry can legitimately leave an earlier failed=1 recap in the
+  # same log before recovering and emitting the required terminal marker.
+  # Count only explicit script failures here; the durable exit record is
+  # checked independently by monitor_remote_job.
+  failures=\$(grep -Ec '^\\[FAIL\\]' '${remote_log}' 2>/dev/null || true)
   latest=\$(grep -E '^==========|^>>> |^\\[PASS\\]|^\\[FAIL\\]|^\\[WAIT\\]|^REGRESSION_' '${remote_log}' 2>/dev/null | tail -n 1 || true)
 else
   latest='log-not-created'
@@ -290,12 +292,26 @@ monitor_remote_job() {
   done
 }
 
+if [[ "$MODE" == "--all-delivery-daemon" ]]; then
+  # A UI terminal may disappear during a multi-hour delivery sign-off. Keep
+  # the one authoritative runner alive with durable local state and audit log.
+  all_delivery_state="/tmp/kubeauto-all-delivery"
+  all_delivery_log="$ROOT/logs/enterprise-delivery-$(date +%Y%m%d-%H%M).log"
+  rm -f "${all_delivery_state}.pid" "${all_delivery_state}.exit"
+  setsid nohup bash "$ROOT/tests/helpers/run-durable-gate.sh" \
+    "$all_delivery_state" ENTERPRISE_DELIVERY_ALL_EXIT \
+    bash "$0" --all-delivery >"$all_delivery_log" 2>&1 < /dev/null &
+  echo "ENTERPRISE_DELIVERY_ALL_STARTED pid=$! log=$all_delivery_log"
+  exit 0
+fi
+
 if [[ "$MODE" == "--all-delivery" ]]; then
   # One autonomous delivery-signoff command. Each existing focused mode owns
   # its durable state, foreground stream, diagnostics and post-run clean
   # verification; composing the proven modes here avoids a second orchestration
   # implementation and keeps the user's approval surface to this fixed runner.
   delivery_modes=(
+    --registry-reboot-only
     --jumper-only
     --nerdctl-only
     --docker-only
@@ -304,6 +320,7 @@ if [[ "$MODE" == "--all-delivery" ]]; then
     --build-rocky8-kubecli
     --ansible-os-probe
     --ansible-os-only
+    --ansible-ee-debian-probe
     --ansible-anolis-container-probe
     --tier3-tools-only
   )
@@ -318,6 +335,20 @@ if [[ "$MODE" == "--all-delivery" ]]; then
 fi
 
 if [[ "$MODE" == "--status" ]]; then
+  echo "========== development-host full delivery =========="
+  local_all_delivery_pid=missing
+  local_all_delivery_rc=missing
+  local_all_delivery_state=starting
+  test -r /tmp/kubeauto-all-delivery.pid && local_all_delivery_pid=$(cat /tmp/kubeauto-all-delivery.pid)
+  if test -r /tmp/kubeauto-all-delivery.exit; then
+    local_all_delivery_rc=$(cat /tmp/kubeauto-all-delivery.exit)
+    local_all_delivery_state=exited
+  elif test "$local_all_delivery_pid" != missing && kill -0 "$local_all_delivery_pid" 2>/dev/null; then
+    local_all_delivery_state=running
+  elif test "$local_all_delivery_pid" != missing; then
+    local_all_delivery_state=lost
+  fi
+  printf 'state=%s pid=%s rc=%s\n' "$local_all_delivery_state" "$local_all_delivery_pid" "$local_all_delivery_rc"
   echo "========== 138 full regression =========="
   remote_job_summary ssh138 sudo /tmp/kubeauto-regression-aio /tmp/kubeauto-regression-live.log || true
   remote_log_tail ssh138 sudo /tmp/kubeauto-regression-live.log 30
@@ -339,6 +370,20 @@ if [[ "$MODE" == "--status" ]]; then
   echo "========== 138 Ansible EE Debian compatibility gate =========="
   remote_job_summary ssh138 sudo /tmp/kubeauto-ansible-ee-gate /tmp/kubeauto-ansible-ee-live.log || true
   remote_log_tail ssh138 sudo /tmp/kubeauto-ansible-ee-live.log 30
+  echo "========== 138 Rocky 8 customer-binary build =========="
+  remote_job_summary ssh138 sudo /tmp/kubeauto-rocky8-build-gate /tmp/kubeauto-rocky8-build-live.log || true
+  remote_log_tail ssh138 sudo /tmp/kubeauto-rocky8-build-live.log 30
+  echo "========== native Ansible package gates =========="
+  for native_status in \
+    "debian-128:ssh128:brinnatt@192.168.47.128" \
+    "rocky-130:ssh130:root@192.168.47.130" \
+    "anolis-141:ssh141:root@192.168.47.141" \
+    "openeuler-142:ssh142:root@192.168.47.142" \
+    "opensuse-143:ssh143:root@192.168.47.143"; do
+    IFS=: read -r native_label native_ssh native_host <<<"$native_status"
+    echo "--- $native_label ($native_host) ---"
+    remote_job_summary "$native_ssh" '' /tmp/kubeauto-ansible-native-gate /tmp/kubeauto-ansible-native-live.log || true
+  done
   echo "========== matrix =========="
   matrix_counts
   echo
@@ -346,6 +391,47 @@ if [[ "$MODE" == "--status" ]]; then
   ssh138 "pgrep -af '[r]egression-full|[k]ubecli|[a]nsible-playbook' || true"
   ssh130 "pgrep -af '[r]egression-jumper|[k]ubecli|[a]nsible-playbook' || true"
   exit 0
+fi
+
+if [[ "$MODE" == "--progress" ]]; then
+  echo "========== delivery progress $(date '+%F %T %Z') =========="
+  local_all_delivery_pid=missing
+  local_all_delivery_rc=missing
+  local_all_delivery_state=starting
+  test -r /tmp/kubeauto-all-delivery.pid && local_all_delivery_pid=$(cat /tmp/kubeauto-all-delivery.pid)
+  if test -r /tmp/kubeauto-all-delivery.exit; then
+    local_all_delivery_rc=$(cat /tmp/kubeauto-all-delivery.exit)
+    local_all_delivery_state=exited
+  elif test "$local_all_delivery_pid" != missing && kill -0 "$local_all_delivery_pid" 2>/dev/null; then
+    local_all_delivery_state=running
+  elif test "$local_all_delivery_pid" != missing; then
+    local_all_delivery_state=lost
+  fi
+  printf 'delivery state=%s pid=%s rc=%s\n' "$local_all_delivery_state" "$local_all_delivery_pid" "$local_all_delivery_rc"
+  for progress_gate in \
+    'registry-reboot:ssh138:sudo:/tmp/kubeauto-registry-reboot-gate:/tmp/kubeauto-registry-reboot-live.log' \
+    'jumper:ssh130::/tmp/kubeauto-regression-jumper:/tmp/kubeauto-jumper-live.log' \
+    'nerdctl:ssh138:sudo:/tmp/kubeauto-nerdctl-gate:/tmp/kubeauto-nerdctl-live.log' \
+    'docker:ssh138:sudo:/tmp/kubeauto-docker-gate:/tmp/kubeauto-docker-live.log' \
+    'upgrade:ssh138:sudo:/tmp/kubeauto-upgrade-gate:/tmp/kubeauto-upgrade-live.log' \
+    'gaps:ssh138:sudo:/tmp/kubeauto-gaps-gate:/tmp/kubeauto-gaps-live.log' \
+    'ansible-ee:ssh138:sudo:/tmp/kubeauto-ansible-ee-gate:/tmp/kubeauto-ansible-ee-live.log' \
+    'rocky8-build:ssh138:sudo:/tmp/kubeauto-rocky8-build-gate:/tmp/kubeauto-rocky8-build-live.log'; do
+    IFS=: read -r progress_label progress_ssh progress_privilege progress_state progress_log <<<"$progress_gate"
+    progress_summary=$(remote_job_summary "$progress_ssh" "$progress_privilege" "$progress_state" "$progress_log" 2>/dev/null || true)
+    [[ "$progress_summary" == *'state=running'* || "$progress_summary" == *'state=lost'* ]] && \
+      printf 'gate=%s %s\n' "$progress_label" "$progress_summary"
+  done
+  matrix_counts
+  echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--follow-delivery" ]]; then
+  while :; do
+    bash "$0" --progress
+    sleep 30
+  done
 fi
 
 if [[ "$MODE" == "--ansible-anolis-probe" ]]; then
@@ -405,6 +491,10 @@ if [[ "$MODE" == "--ansible-anolis-container-probe" ]]; then
   monitor_remote_job \
     ansible-anolis-141 ssh141 '' /tmp/kubeauto-ansible-anolis-gate \
     /tmp/kubeauto-ansible-anolis-live.log ANSIBLE_ANOLIS_CONTAINER_GATE_PASS || gate_rc=$?
+  # The remote control is intentionally restored to its clean snapshot. Keep
+  # its terminal evidence locally before removing the ephemeral remote files.
+  remote_log_tail ssh141 '' /tmp/kubeauto-ansible-anolis-live.log 160 \
+    | tee -a "$LOG"
   ssh141 "rm -f /tmp/kubecli-anolis-container-gate /tmp/ansible-anolis-container-gate.sh /tmp/run-durable-gate.sh /tmp/kubeauto-ansible-anolis-live.log /tmp/kubeauto-ansible-anolis-gate.pid /tmp/kubeauto-ansible-anolis-gate.exit"
   (( gate_rc == 0 )) || exit "$gate_rc"
   exit 0
@@ -483,6 +573,13 @@ if [[ "$MODE" == "--build-rocky8-kubecli" ]]; then
     mv "$ROOT/dist/.kubecli.new" "$ROOT/dist/kubecli"
     "$ROOT/dist/kubecli" version
     sha256sum "$ROOT/dist/kubecli"
+  else
+    # Preserve the remote failure context locally before mandatory cleanup.
+    # The local logs directory is ignored; the 138 build workspace is still
+    # removed below so a failed attempt never becomes the next baseline.
+    echo "========== ROCKY8_BUILD_FAILURE_EVIDENCE =========="
+    remote_log_tail ssh138 sudo /tmp/kubeauto-rocky8-build-live.log 240 \
+      | tee -a "$LOG"
   fi
   ssh138 "sudo rm -rf /tmp/kubeauto-rocky8-build-source /tmp/kubeauto-rocky8-build-output /tmp/lab-docker-bootstrap.sh /tmp/build-kubecli-rocky8.sh /tmp/run-durable-gate.sh /tmp/kubeauto-docker-bootstrap-live.log /tmp/kubeauto-docker-bootstrap-gate.pid /tmp/kubeauto-docker-bootstrap-gate.exit /tmp/kubeauto-rocky8-build-live.log /tmp/kubeauto-rocky8-build-gate.pid /tmp/kubeauto-rocky8-build-gate.exit"
   (( build_rc == 0 )) || exit "$build_rc"
@@ -921,6 +1018,81 @@ if [[ "$MODE" == "--docker-only" ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == "--registry-reboot-only" ]]; then
+  echo "========== local_registry real host-reboot gate =========="
+  cleanup_registry_reboot_gate() {
+    local gate_rc=$? cleanup_rc=0
+    trap - EXIT
+    set +e
+    echo ">>> mandatory cleanup after local_registry reboot gate"
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" || cleanup_rc=$?
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify || cleanup_rc=$?
+    if [[ "$gate_rc" -eq 0 && "$cleanup_rc" -ne 0 ]]; then
+      gate_rc=$cleanup_rc
+    fi
+    exit "$gate_rc"
+  }
+  trap cleanup_registry_reboot_gate EXIT
+
+  echo ">>> bash $ROOT/tests/run_unit_tests.sh"
+  bash "$ROOT/tests/run_unit_tests.sh"
+  echo ">>> bash $ROOT/tests/helpers/lab-wipe-nodes.sh"
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh"
+  echo ">>> bash $ROOT/tests/helpers/lab-wipe-nodes.sh --verify"
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify
+  echo ">>> bash $ROOT/tests/helpers/sync-kubeauto.sh $HOST138"
+  bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
+
+  ssh138 "sudo rm -f /tmp/kubeauto-registry-reboot-live.log /tmp/kubeauto-registry-reboot-gate.pid /tmp/kubeauto-registry-reboot-gate.exit; sudo nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-registry-reboot-gate REGISTRY_REBOOT_PREP_EXIT bash /usr/local/kubeauto/tests/helpers/registry-reboot-gate.sh prepare >/tmp/kubeauto-registry-reboot-live.log 2>&1 </dev/null &"
+  monitor_remote_job \
+    registry-reboot-prepare-138 ssh138 sudo /tmp/kubeauto-registry-reboot-gate \
+    /tmp/kubeauto-registry-reboot-live.log REGISTRY_REBOOT_PREP_PASS
+
+  echo "[REBOOT] requesting control-host reboot host=192.168.47.138"
+  ssh138 "sudo systemctl reboot" >/dev/null 2>&1 || true
+  host_went_down=0
+  for attempt in $(seq 1 30); do
+    if ! ssh138 true >/dev/null 2>&1; then
+      host_went_down=1
+      echo "[REBOOT] host is down attempt=$attempt/30"
+      break
+    fi
+    echo "[WAIT] host shutdown attempt=$attempt/30 next_check=2s"
+    sleep 2
+  done
+  [[ "$host_went_down" -eq 1 ]] || {
+    echo "[FAIL] control host did not go down after reboot request" >&2
+    exit 1
+  }
+
+  host_returned=0
+  for attempt in $(seq 1 90); do
+    if ssh138 true >/dev/null 2>&1; then
+      host_returned=1
+      echo "[REBOOT] host SSH restored attempt=$attempt/90"
+      break
+    fi
+    if (( attempt % 5 == 0 )); then
+      echo "[HEARTBEAT] waiting for control host after reboot attempt=$attempt/90"
+    fi
+    sleep 5
+  done
+  [[ "$host_returned" -eq 1 ]] || {
+    echo "[FAIL] control host did not return after reboot" >&2
+    exit 1
+  }
+
+  registry_reboot_rc=0
+  ssh138 "sudo bash /usr/local/kubeauto/tests/helpers/registry-reboot-gate.sh verify" \
+    | tee -a "$LOG" || registry_reboot_rc=$?
+  if [[ "$registry_reboot_rc" -ne 0 ]]; then
+    echo "[FAIL] local_registry host-reboot gate failed (rc=$registry_reboot_rc)" >&2
+    exit 1
+  fi
+  echo "[PASS] local_registry-host-reboot-gate"
+  exit 0
+fi
+
 if [[ "$MODE" == "--upgrade-only" ]]; then
   echo "========== Kubernetes patch-upgrade delivery gate =========="
   cancel_remote_job upgrade-138 ssh138 sudo /tmp/kubeauto-upgrade-gate
@@ -979,7 +1151,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--all-delivery|--status|--follow|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 

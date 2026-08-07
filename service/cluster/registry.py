@@ -203,6 +203,10 @@ class RegistryManager:
                 volume=[f"{registry_data}:/var/lib/registry"]
             )
 
+        # Repair registries created by older SDK-path builds, which silently
+        # dropped ``restart=always`` and therefore stayed down after a reboot.
+        self.docker.set_container_restart_policy("local_registry", "always")
+
         if not self._wait_for_registry_ready():
             raise CommandExecutionError(
                 "Local registry is not ready on :5000 after start. "

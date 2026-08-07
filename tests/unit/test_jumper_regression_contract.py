@@ -58,11 +58,17 @@ class TestJumperRegressionContract(unittest.TestCase):
         self.assertIn('descendants() {', script)
         self.assertLess(cancel, wipe)
 
-    def test_monitor_uses_final_ansible_recap_not_ignored_fatal_lines(self):
+    def test_monitor_uses_durable_exit_not_transient_ansible_recaps(self):
         script = (ROOT / "tests/run_enterprise_regression.sh").read_text()
+        summary = script.split("remote_job_summary()", 1)[1].split(
+            "remote_log_tail()", 1
+        )[0]
 
-        self.assertNotIn("fatal: .*FAILED|Traceback", script)
-        self.assertIn("failed=[1-9]", script)
+        self.assertNotIn("fatal: .*FAILED|Traceback", summary)
+        self.assertNotIn("failed=[1-9]", summary)
+        self.assertIn("A durable non-zero exit is authoritative", summary)
+        self.assertIn("failures=\\$(grep -Ec", summary)
+        self.assertIn("\\\\[FAIL\\\\]", summary)
 
 
 if __name__ == "__main__":

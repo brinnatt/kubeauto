@@ -73,6 +73,45 @@ class TestPullImage(unittest.TestCase):
 
 
 class TestTemporaryContainerCleanup(unittest.TestCase):
+    def test_sdk_run_forwards_restart_policy(self):
+        dm = DockerManager()
+        dm._client = MagicMock()
+        dm._client.containers.run.return_value.id = "registry-id"
+
+        with patch.object(dm, "remove_container"):
+            container_id = dm.run_container(
+                "brinnatt/registry:2",
+                "local_registry",
+                publish=["5000:5000"],
+                restart="always",
+            )
+
+        self.assertEqual(container_id, "registry-id")
+        self.assertEqual(
+            dm._client.containers.run.call_args.kwargs["restart_policy"],
+            {"Name": "always"},
+        )
+
+    def test_sdk_updates_existing_container_restart_policy(self):
+        dm = DockerManager()
+        dm._client = MagicMock()
+
+        dm.set_container_restart_policy("local_registry", "always")
+
+        container = dm._client.containers.get.return_value
+        container.update.assert_called_once_with(restart_policy={"Name": "always"})
+
+    def test_cli_updates_existing_container_restart_policy(self):
+        dm = DockerManager()
+        with patch.object(
+            DockerManager, "client", new_callable=PropertyMock, return_value=None
+        ), patch.object(dm, "_run_docker") as run_docker:
+            dm.set_container_restart_policy("local_registry", "always")
+
+        run_docker.assert_called_once_with(
+            ["update", "--restart", "always", "local_registry"]
+        )
+
     def test_cli_run_failure_removes_created_container_before_reraise(self):
         dm = DockerManager()
         failure = CommandExecutionError("port already allocated", 125)
