@@ -15,7 +15,7 @@
 | 读者 | 建议精读 |
 |------|----------|
 | 甲方架构师 / 签收人 | 第 1–3、6、7、11、12、15 章 + 附录 A |
-| 实施运维 | 第 5–10、13、15 章，并对照操作手册上机 |
+| 实施运维 | 第 5–10、13、15–17 章，并对照操作手册上机 |
 | 二次开发 | 第 13–14 章 + 开发手册全文 |
 
 ---
@@ -98,7 +98,11 @@ flowchart TB
 | 13 | 制品供应链与离线分发 | [whitepaper/13-artifact-supply-chain.md](./whitepaper/13-artifact-supply-chain.md) |
 | 14 | kubecli 软件架构 | [whitepaper/14-controlplane-software.md](./whitepaper/14-controlplane-software.md) |
 | 15 | 安全基线与生命周期 | [whitepaper/15-security-lifecycle.md](./whitepaper/15-security-lifecycle.md) |
+| 16 | **持久化存储与 OpenEBS** | [whitepaper/16-storage-openebs.md](./whitepaper/16-storage-openebs.md) |
+| 17 | **其他存储与中间件插件** | [whitepaper/17-storage-middleware-addons.md](./whitepaper/17-storage-middleware-addons.md) |
 | 附录 A | 版本矩阵与官方文档索引 | [whitepaper/A-version-matrix.md](./whitepaper/A-version-matrix.md) |
+
+跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。
 
 ---
 
@@ -127,6 +131,7 @@ flowchart TB
 
 - 默认 kubeReserved + systemReserved 计入 Allocatable；**systemReserved 默认不 enforce**。
 - Prometheus 栈可选安装于 `monitor`，镜像与 chart 版本钉扎；须在充足容量节点上启用。
+- OpenEBS 可选安装 Hostpath 与 LVM 两条独立本地卷链路；二者均不自带跨节点数据副本，LVM 启用不等于自动创建 VG。
 
 ### 2.4.5、制品
 
@@ -153,7 +158,7 @@ flowchart TB
 
 | 版本 | 说明 |
 |------|------|
-| 交付深化版 | 由单页概要扩展为「总册 + 16 分章」Concepts 结构；原理与仓库实装一一对应，供客户签收评审 |
+| 交付深化版 | 由单页概要扩展为「总册 + 18 分章」Concepts 结构；原理与仓库实装一一对应，供客户签收评审 |
 
 分章内容随代码演进更新；**版本数字以六仓同步测试通过的 `KubeConstant` 为准**。
 `)
@@ -172,5 +177,5 @@ flowchart TB
 | 6 | NodeLocal DNS `169.254.20.10`（若启用） | 白皮书第 10 章 |
 | 7 | `verify-node-reserved.sh` 通过（启用 Allocatable 时） | 操作手册 §1.1.4 |
 | 8 | backup / restore 演练记录 | 操作手册生命周期章 |
-| 9 | 可选插件（监控/Ingress/存储）按合同范围验收 | 白皮书第 12 章 |
+| 9 | 可选插件（监控/Ingress/存储）按合同范围验收 | 白皮书第 12、16 章 |
 | 10 | 初始口令已修改；私仓仅信本地 Registry | 白皮书第 15 章 |

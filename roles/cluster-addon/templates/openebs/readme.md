@@ -1,16 +1,25 @@
-# readme
+# OpenEBS LVM 运维提示
 
-openebs 使用启用lvm-localpv-controller，当创建StorageClass 时启用thinProvision: "yes"，需要注意vg_k8s_thinpool 的容量问题：
+当前 StorageClass 启用 `thinProvision: "yes"`，驱动会创建或复用
+`<VG>_thinpool`。thin pool **不是固定默认 10Gi**：OpenEBS LVM LocalPV
+v1.7.0 在第一次创建 thin volume 且 pool 不存在时，根据请求容量与 VG
+剩余空间计算初始大小。
 
+生产必须持续检查：
+
+```bash
+lvs -a vg_k8s -o lv_name,lv_size,pool_lv,segtype,data_percent,metadata_percent,seg_monitor
+vgs vg_k8s -o vg_name,vg_size,vg_free
 ```
-lvs
-  LV                                       VG     Attr       LSize   Pool            Origin Data%  Meta%  Move Log Cpy%Sync Convert
-  pvc-2214c3d8-83de-44e6-988c-6293277e9b1e vg_k8s Vwi-aotz--  5.00g vg_k8s_thinpool        2.91
-  pvc-d8ea9413-5ddd-42db-a3f8-4363f745909a vg_k8s Vwi-aotz-- 20.00g vg_k8s_thinpool        2.23
-  vg_k8s_thinpool                          vg_k8s twi-aotzD- 10.00g                        100.00 6.99
+
+`Data%` 或 `Meta%` 到 100% 会造成写入失败和数据损坏风险。扩容量必须依据
+现场 VG 空闲容量与增长模型评审，禁止照抄固定数值：
+
+```bash
+lvextend -L +<approved-size> vg_k8s/vg_k8s_thinpool
 ```
 
-默认vg_k8s_thinpool 只有10G 大小，当如上图 Data% = 100% 时，就无法创建新的pv，需要扩容：
+完整原理、告警、扩容和恢复流程见：
 
-lvextend -L +190G vg_k8s/vg_k8s_thinpool
-
+- `docs/whitepaper/16-storage-openebs.md`
+- `docs/operations-manual.md` §1.3.4

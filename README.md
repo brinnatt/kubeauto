@@ -15,6 +15,7 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 | **操作手册** | [docs/operations-manual.md](./docs/operations-manual.md) | 安装、扩缩、备份、插件开关、验收（Administration Guide） |
 | **技术白皮书** | [docs/technical-whitepaper.md](./docs/technical-whitepaper.md) | **签收级 Concepts**：K8s/组件/证书/CRI/CNI/监控原理 + 本项目实现；分章见 [`docs/whitepaper/`](./docs/whitepaper/) |
 | **开发手册** | [docs/development-manual.md](./docs/development-manual.md) | 六仓开发、版本钉扎、代码导航、测试与 PR（Developer Guide） |
+| **技术栈索引** | [docs/technology-stack-index.md](./docs/technology-stack-index.md) | 所有技术栈的集中导航、覆盖矩阵、官方来源与文档质量门槛 |
 
 白皮书分章（架构评审请从这里进）：
 
@@ -32,6 +33,8 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 | [11 Allocatable](./docs/whitepaper/11-allocatable-qos.md) | 预留、QoS、验收 |
 | [12 监控插件](./docs/whitepaper/12-addons-observability.md) | metrics / Dashboard / Prometheus / Ingress / 存储 |
 | [13 制品供应链](./docs/whitepaper/13-artifact-supply-chain.md) | 六仓 dual-push 与离线灌仓 |
+| [16 持久化存储与 OpenEBS](./docs/whitepaper/16-storage-openebs.md) | Hostpath/LVM 架构、VG/topology、thin pool、故障域与验收 |
+| [17 其他存储与中间件](./docs/whitepaper/17-storage-middleware-addons.md) | local-path/NFS、Nacos、RocketMQ 架构与数据面验收 |
 | [附录 A 版本矩阵](./docs/whitepaper/A-version-matrix.md) | 与 `constants.py` 对齐 |
 
 ```mermaid
@@ -39,8 +42,10 @@ flowchart LR
   R[本 README<br/>概览与入口] --> O[操作手册<br/>怎么装、怎么运维]
   R --> W[技术白皮书总册<br/>+ whitepaper 分章]
   R --> D[开发手册<br/>怎么改、怎么贡献]
+  R --> I[技术栈索引<br/>集中检索]
   W --> O
   D --> W
+  I --> W
 ```
 
 ---

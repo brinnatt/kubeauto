@@ -6,6 +6,7 @@
 
 - [操作手册](./operations-manual.md)
 - [技术白皮书总册](./technical-whitepaper.md)（分章见 [`whitepaper/`](./whitepaper/)，含证书/监控/CNI 等原理级说明）
+- [技术栈导航与文档覆盖矩阵](./technology-stack-index.md)（集中入口、官方来源与章节质量门槛）
 - 仓库入口：[README.md](../README.md)
 
 > 开发前建议至少读完白皮书第 6（PKI）、8（CRI）、13（制品）、14（kubecli）章，避免改配置时破坏信任链或版本契约。
@@ -387,6 +388,8 @@ flowchart TD
 - 本开发手册（若影响开发流程）
 - 根 `README.md`（版本表与入口摘要）
 
+同时更新 [`technology-stack-index.md`](./technology-stack-index.md) 的导航与覆盖状态。技术栈文档不得只增加官网链接或参数表；最低内容包括能力边界、锁定版本、架构/数据流、项目实现、操作与回滚、安全、容量/可观测性、故障树、真实验收和官方源码依据。完整门槛见该索引第 4 节。
+
 ---
 
 ## 3.13、常见问题（开发向）
@@ -480,6 +483,59 @@ A：`bash tests/run_unit_tests.sh` 即可覆盖契约与常量；安装路径仍
 | 组件清单 | `KubeConstant.component_images` |
 
 新增 `-E` 组件：先保证 ext-images 能构建出 `brinnatt/name:tag`，再写入 `component_images`，再写 addon 任务。
+
+### 3.15.7、改 OpenEBS / 持久化存储
+
+OpenEBS 不是一个镜像或一个版本号。当前项目的版本链是 umbrella chart `4.3.2` → LocalPV Hostpath `4.3.0` + LVM LocalPV `1.7.0`，升级时必须分别核对依赖 chart、镜像和参数语义。
+
+| 目的 | 文件/仓库 |
+|------|-----------|
+| umbrella 版本 SSOT | `common/constants.py` 的 `v_openebs` |
+| 客户默认配置 | `conf/config.yml` 的 `openebs_*` |
+| Helm 安装与等待 | `roles/cluster-addon/tasks/openebs.yml` |
+| 子 chart values/镜像覆盖 | `roles/cluster-addon/templates/openebs/values.yaml.j2` |
+| LVM StorageClass | `roles/cluster-addon/templates/openebs/sc.yaml.j2` |
+| vendored 官方 chart | `roles/cluster-addon/files/openebs-4.3.2.tgz` |
+| 下载镜像集合 | `KubeConstant.component_images["openebs"]` |
+| 上游到 brinnatt 映射 | `service/cluster/registry.py` |
+| 镜像构建 | sibling `kubeauto-ext-images-dockerfile` 中 OpenEBS/CSI 目录与 workflow |
+| 数据面门禁 | `tests/helpers/delivery-gap-retest.sh` |
+| 架构/运维文档 | `docs/whitepaper/16-storage-openebs.md`、操作手册 §1.3.4 |
+
+修改前先解包或直接读取 vendored chart 的 `Chart.yaml`、子 chart `values.yaml` 和 templates，再对照相同 tag 的官方源码。不要用 umbrella `4.3.2` 推断所有镜像也应是 `4.3.2`；官方依赖就是 Hostpath `4.3.0`、LVM `1.7.0`、linux-utils `4.2.0`。
+
+当前 LVM SC 的几个开发约束：
+
+1. `volgroup` 与 `vgpattern` 同时存在时，v1.7.0 `NewVolumeParams` 用精确 `volgroup` 覆盖 pattern；修改任一字段前必须加参数契约测试。
+2. `thinProvision: "yes"` 会创建/复用 `<VG>_thinpool`；不能把首次测试 PVC 的大小写成固定默认 pool 大小。
+3. `WaitForFirstConsumer`、CSI capacity tracking 和 `allowedTopologies` 共同影响调度；部分节点 VG 场景必须有正向和负向现场测试。
+4. `openebs_lvm_enabled: "no"` 必须完全关闭 LVM 子 chart、等待任务和 LVM SC，同时保留 Hostpath。
+5. 安装 Ready 只证明控制面存活。门禁必须创建 PVC/Pod 并完成 Bound、挂载、写、读、删除回收。
+6. 任何清理逻辑必须限定测试 PVC/LV；不得用 VG 级通配删除作为自动化回收。
+
+最小测试组合：
+
+| 场景 | 必测结果 |
+|------|----------|
+| Hostpath-only | 无 LVM Controller/SC；Hostpath R/W 通过 |
+| 所有候选节点同名 VG | LVMNode 上报、LVM PVC R/W、容量/拓扑正确 |
+| 部分节点有 VG + allowedTopologies | 允许节点成功，禁止节点不可调度且无错误 LV |
+| 所有节点无 VG | 安装诊断明确；LVM PVC 可审计地失败，Hostpath 不受影响 |
+| thin pool 逼近阈值 | 告警/扩容流程有效，无静默写满 |
+| PVC 删除 | PV、LVMVolume CR、测试 LV/目录按 reclaimPolicy 回收且无越界删除 |
+
+OpenEBS 相关镜像或 chart 改动属于六仓发布变更，至少运行 `bash tests/run_unit_tests.sh`、六仓同步契约和当前固定全交付门禁；不能只做 Helm template 静态检查后签字。
+
+### 3.15.8、改 local-path / NFS / Nacos / RocketMQ
+
+这些组件的原理和验收合同见白皮书第 17 章。改动时不能只看 Pod：local-path/NFS 要测真实跨 Pod/节点读写和回收；Nacos 要使用外部 MySQL 官方 schema 做配置发布/读取；RocketMQ 要等待 CR 异步协调后做 topic、生产、消费和重启持久性。
+
+| 组件 | 代码入口 | 特别门禁 |
+|------|----------|----------|
+| local-path | `tasks/local-storage.yml`、`templates/local-storage/` | 官方 v0.0.31 不执行容量硬限制；helper teardown 删除边界 |
+| NFS provisioner | `tasks/nfs-provisioner.yml`、`templates/nfs-provisioner/` | 已有 NFS export 前置、跨节点 R/W、`archiveOnDelete` |
+| Nacos | `tasks/nacos.yml`、`templates/nacos/` | 外部 MySQL schema、三节点强反亲和、JVM/认证/持久性 |
+| RocketMQ | `tasks/rocketmq.yml`、`templates/rocketmq/` | chart 0.1.0/app 0.3.0、异步 reconcile、master/replica 语义、消息 E2E |
 
 ---
 

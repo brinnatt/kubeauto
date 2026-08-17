@@ -214,6 +214,8 @@ ex-lb 可选将 80/443 转发到 Ingress NodePort（`INGRESS_NODEPORT_LB`）。
 
 本地路径类适合实验室与单节点；生产需按数据持久性与副本要求选型（NFS、OpenEBS LVM、外部存储阵列等）。
 
+OpenEBS Hostpath/LVM 的组件架构、StorageClass 参数优先级、thin pool、部分节点 VG、故障域与验收口径已独立成[第 16 章](./16-storage-openebs.md)。不要从本节的组件列表推断 OpenEBS 具备跨节点复制；kubeauto 当前禁用了 Mayastor，本项目的 Hostpath 和 LVM 都是节点本地卷。
+
 ## 12.8 MinIO
 
 | 项 | 值 |
@@ -234,6 +236,8 @@ flowchart LR
 ```
 
 若 `prom_storage_class` / `minio_storage_class` 指向尚未安装的 OpenEBS/NFS，Helm 会卡住。安装顺序建议：存储 provisioner →（可选）MinIO → Prometheus（若要持久化）。
+
+local-path、NFS provisioner、Nacos 与 RocketMQ 的详细架构和业务数据面验收见[第 17 章](./17-storage-middleware-addons.md)。
 
 ## 12.9 Helm 与多集群 KUBECONFIG
 

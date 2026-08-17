@@ -97,6 +97,10 @@ DNS 在 setup 步骤 **07**（`07.cluster-addon.yml`）安装；CNI 在步骤 **
 
 | 镜像 | Tag |
 |------|-----|
+| OpenEBS umbrella chart | 4.3.2 |
+| provisioner-localpv（Hostpath 子 chart/app） | 4.3.0 |
+| lvm-driver（LVM LocalPV 子 chart/app） | 1.7.0 |
+| linux-utils helper | 4.2.0 |
 | csi-node-driver-registrar | v2.13.0 |
 | csi-provisioner | v5.2.0 |
 | csi-resizer | v1.11.2 |
@@ -145,6 +149,8 @@ DNS 在 setup 步骤 **07**（`07.cluster-addon.yml`）安装；CNI 在步骤 **
 | CoreDNS | https://coredns.io/ |
 | Prometheus Operator | https://prometheus-operator.dev/ |
 | Helm | https://helm.sh/docs/ |
+| OpenEBS 4.3.x | https://openebs.io/docs/4.3.x/ |
+| OpenEBS LVM v1.7.0 源码 | https://github.com/openebs/lvm-localpv/tree/v1.7.0 |
 
 ## A.10 实现路径速查
 

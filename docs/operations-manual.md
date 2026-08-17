@@ -14,6 +14,7 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
   - 监控与插件 → [第 12 章](./whitepaper/12-addons-observability.md)
   - Node Allocatable → [第 11 章](./whitepaper/11-allocatable-qos.md)（操作细节见本文 §1.1.4）
 - [开发手册](./development-manual.md)：六仓协同开发与贡献指南
+- [技术栈索引](./technology-stack-index.md)：集中查找组件原理、项目入口、运维章节与官方来源
 - 仓库入口：[README.md](../README.md)
 
 ## 1.1、前言
@@ -1790,6 +1791,411 @@ kubectl get pods -n minio
 | network-check | `network_check_enabled` | `network-check` | 非 Cilium 时的连通性 CronJob（NS `network-test`） |
 
 完整镜像与版本钉扎见 `common/constants.py` 的 `component_images` 与白皮书第 12 章。
+
+local-path/NFS 的容量与删除边界、Nacos 外部 MySQL/强反亲和、RocketMQ Operator 异步协调与消息数据面验收见白皮书[第 17 章](./whitepaper/17-storage-middleware-addons.md)。以下终态是最低要求：
+
+```bash
+# local-path / NFS：必须创建 PVC + Pod 做写、读、重建和回收
+kubectl get sc,pv,pvc
+kubectl describe pvc <pvc>
+
+# Nacos：对象/PVC 全部 Ready 后，还要做配置发布与跨客户端读取
+kubectl -n nacos get sts,pod,pvc,svc -o wide
+kubectl -n nacos logs <nacos-pod> -c nacos --tail=200
+
+# RocketMQ：等待异步 CR 协调完成，再做 topic + 生产/消费验收
+kubectl -n rocketmq get broker,nameservice,console
+kubectl -n rocketmq get pod,pvc,svc -o wide
+kubectl -n rocketmq logs deploy/rocketmq-operator --tail=200
+```
+
+Nacos `nacos_replicas: 3` 使用跨主机强反亲和，需要至少 3 个合格节点；RocketMQ 默认 `rocketmq_replica_per_group: 0` 只有 master，不能写成消息副本 HA。NFS provisioner 不会安装 NFS server，安装前必须先从每个工作节点验证 export 可挂载和可写。
+
+### 1.3.4、OpenEBS 生产运维
+
+本节是 kubeauto 的 OpenEBS 现场 SOP。架构、两种 StorageClass 的原理与能力边界见白皮书[第 16 章](./whitepaper/16-storage-openebs.md)。
+
+#### 1.3.4.1、先选模式，再改开关
+
+| 现场条件 | 配置 | 可用 StorageClass |
+|----------|------|-------------------|
+| 没有独立数据盘/VG，只需节点目录型本地卷 | `openebs_install: "yes"`、`openebs_lvm_enabled: "no"` | `openebs-hostpath` |
+| 所有存储节点已准备同名 VG | 两项都设 `"yes"` | `openebs-hostpath`、`openebs-lvmpv` |
+| 只有部分节点有 VG | 两项都设 `"yes"`，并另外创建带 `allowedTopologies` 的 LVM SC | Hostpath + 自定义拓扑 LVM SC |
+| 需要跨节点 RWX 或存储自身多副本 | 不把本项目 Hostpath/LVM 当成该能力 | 使用 NFS、外部阵列或已评审的复制型存储 |
+
+注意：`openebs_install: "no"` 时，`openebs_lvm_enabled` 的值不生效。`openebs_lvm_enabled: "yes"` 只安装驱动，不创建磁盘分区、PV 或 VG。
+
+编辑的是目标集群副本，不是模板：
+
+```bash
+vi /usr/local/kubeauto/clusters/<cluster>/config.yml
+```
+
+Hostpath-only 示例：
+
+```yaml
+openebs_install: "yes"
+openebs_ver: "4.3.2"
+openebs_namespace: "openebs"
+openebs_hostpath: "/var/openebs/local"
+openebs_hostpath_storage_class: "openebs-hostpath"
+openebs_lvm_enabled: "no"
+```
+
+Hostpath + LVM 示例：
+
+```yaml
+openebs_install: "yes"
+openebs_ver: "4.3.2"
+openebs_namespace: "openebs"
+openebs_hostpath: "/var/openebs/local"
+openebs_hostpath_storage_class: "openebs-hostpath"
+openebs_lvm_storage_class: "openebs-lvmpv"
+openebs_lvm_vg: "vg_k8s"
+openebs_lvm_enabled: "yes"
+```
+
+#### 1.3.4.2、节点与磁盘前置检查
+
+对每个允许承载 LVM 业务的节点执行检查。生产不得直接运行实验室的 loop-device helper。
+
+```bash
+# 软件与内核能力
+command -v lvm
+lsmod | grep -E 'dm_snapshot|dm_thin_pool'
+
+# 盘、挂载、签名和现有 LVM 关系
+lsblk -o NAME,TYPE,SIZE,FSTYPE,MOUNTPOINTS,MODEL,SERIAL
+pvs
+vgs
+lvs -a -o+devices,seg_monitor,data_percent,metadata_percent
+```
+
+kubeauto 的 prepare 角色会安装 LVM2，并加载 `dm_snapshot`、`dm_thin_pool`。若模块检查失败，先排查当前内核是否提供对应模块，不能跳过后继续安装。
+
+若要新建 VG，必须先由客户确认专用数据盘、备份状态和销毁授权。下面只展示 LVM 官方命令形态，`<approved-device>` 必须替换为已核准且不含现有数据的明确设备：
+
+```bash
+# 高危：pvcreate 会写入设备元数据；确认设备后才可执行
+sudo pvcreate <approved-device>
+sudo vgcreate vg_k8s <approved-device>
+
+# 已有 vg_k8s 扩入新盘时使用 vgextend，而不是再次 vgcreate
+# sudo pvcreate <approved-new-device>
+# sudo vgextend vg_k8s <approved-new-device>
+```
+
+每台存储节点验收：
+
+```bash
+sudo vgs vg_k8s -o vg_name,vg_size,vg_free,pv_count,lv_count
+sudo lvs -a vg_k8s -o lv_name,lv_size,segtype,data_percent,metadata_percent,seg_monitor
+```
+
+禁止事项：
+
+- 不对系统盘、已挂载文件系统、容器运行时目录所在盘执行 `pvcreate`。
+- 不用 loop 文件作为客户生产 VG。
+- 不把不同性能/可靠性等级的磁盘混入同一 VG 后仍宣称具有单一性能等级。
+- 不在没有备份和恢复演练时删除 PVC、LV、VG 或 PV。
+
+#### 1.3.4.3、下载与安装
+
+```bash
+cd /usr/local/kubeauto
+kubecli download -E openebs
+kubecli setup <cluster> 07
+```
+
+安装任务使用仓库内 `openebs-4.3.2.tgz`，并从本地 Registry 拉取项目钉扎镜像。安装后先查 Helm 和组件，而不是直接创建业务：
+
+```bash
+export KUBECONFIG=/usr/local/kubeauto/clusters/<cluster>/kubectl.kubeconfig
+
+helm -n openebs list
+kubectl -n openebs get deploy,ds,pod -o wide
+kubectl get sc openebs-hostpath -o yaml
+```
+
+启用 LVM 时继续检查：
+
+```bash
+kubectl get sc openebs-lvmpv -o yaml
+kubectl -n openebs get lvmnodes.local.openebs.io
+kubectl -n openebs get lvmnodes.local.openebs.io -o yaml
+kubectl get csidriver local.csi.openebs.io
+kubectl get csistoragecapacity -A
+```
+
+验收要点：
+
+- Hostpath SC provisioner 为 `openebs.io/local`。
+- LVM SC provisioner 为 `local.csi.openebs.io`，`volumeBindingMode` 为 `WaitForFirstConsumer`。
+- `LVMNode` 中目标节点上报 `vg_k8s` 与非零空闲容量。
+- Controller `5/5` Ready；LVM node DaemonSet 在预期节点 Ready。
+- “Pod Ready”不能代替后续真实读写验收。
+
+#### 1.3.4.4、Hostpath PVC 读写验收
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openebs-hostpath-smoke
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: openebs-hostpath
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openebs-hostpath-smoke
+spec:
+  restartPolicy: Never
+  containers:
+    - name: writer
+      image: registry.talkschool.cn:5000/brinnatt/linux-utils:4.2.0
+      command: ["sh", "-c", "echo hostpath-ok > /data/probe && cat /data/probe && sleep 3600"]
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: openebs-hostpath-smoke
+```
+
+将清单保存到受控临时文件后应用，并验证：
+
+```bash
+kubectl apply -f <hostpath-smoke-yaml>
+kubectl wait --for=condition=Ready pod/openebs-hostpath-smoke --timeout=180s
+kubectl get pvc,pv
+kubectl exec openebs-hostpath-smoke -- cat /data/probe
+kubectl get pv "$(kubectl get pvc openebs-hostpath-smoke -o jsonpath='{.spec.volumeName}')" -o yaml
+```
+
+预期输出包含 `hostpath-ok`，PV 有目标节点亲和性。删除 Pod 再以同一 PVC 重建，数据仍应存在。
+
+Hostpath 容量检查必须到 PV 所在节点查看 `openebs_hostpath` 所在文件系统：
+
+```bash
+df -hT /var/openebs/local
+df -ih /var/openebs/local
+```
+
+当前项目未配置 Hostpath XFS project quota，PVC 的 `1Gi` 不是目录写入硬上限。必须以文件系统容量和 inode 监控防止多个 PVC 互相挤占。
+
+#### 1.3.4.5、LVM PVC 读写验收
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openebs-lvm-smoke
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: openebs-lvmpv
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openebs-lvm-smoke
+spec:
+  restartPolicy: Never
+  containers:
+    - name: writer
+      image: registry.talkschool.cn:5000/brinnatt/linux-utils:4.2.0
+      command: ["sh", "-c", "echo lvm-ok > /data/probe && sync && cat /data/probe && sleep 3600"]
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: openebs-lvm-smoke
+```
+
+```bash
+kubectl apply -f <lvm-smoke-yaml>
+kubectl wait --for=condition=Ready pod/openebs-lvm-smoke --timeout=300s
+kubectl get pvc openebs-lvm-smoke -o wide
+kubectl get pod openebs-lvm-smoke -o wide
+kubectl exec openebs-lvm-smoke -- cat /data/probe
+kubectl -n openebs get lvmvolumes.local.openebs.io -o wide
+```
+
+在 Pod 所在节点确认 LV 与 thin pool：
+
+```bash
+sudo lvs -a vg_k8s -o lv_name,lv_size,pool_lv,segtype,data_percent,metadata_percent,seg_monitor
+sudo vgs vg_k8s -o vg_name,vg_size,vg_free
+```
+
+预期：PVC `Bound`，读回 `lvm-ok`，`LVMVolume` Ready，`vg_k8s` 中存在对应 PVC LV。仅看到 `openebs-lvmpv` SC 或 LVM Pod Running 均不算通过。
+
+#### 1.3.4.6、只有部分节点提供 LVM
+
+当前默认 `openebs-lvmpv` 没有启用 `allowedTopologies`。官方 v1.7.0 要求 VG 只存在于部分节点时显式声明拓扑。先获取准确节点名：
+
+```bash
+kubectl get nodes -o custom-columns=NAME:.metadata.name
+```
+
+创建新的、名称不同的 SC；只列出已验证存在 `vg_k8s` 的节点：
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-lvmpv-topology
+allowVolumeExpansion: true
+parameters:
+  fsType: ext4
+  storage: "lvm"
+  thinProvision: "yes"
+  volgroup: "vg_k8s"
+provisioner: local.csi.openebs.io
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowedTopologies:
+  - matchLabelExpressions:
+      - key: kubernetes.io/hostname
+        values:
+          - <storage-node-1>
+          - <storage-node-2>
+```
+
+```bash
+kubectl apply -f <topology-storageclass-yaml>
+kubectl get sc openebs-lvmpv-topology -o yaml
+```
+
+业务 PVC 必须显式使用 `openebs-lvmpv-topology`。再做两个负向验证：
+
+1. Pod 强制到允许节点时，PVC 能 Bound 并读写。
+2. Pod 强制到未列入 topology 的节点时，应保持不可调度，而不是创建错误位置的卷。
+
+不要把两个 SC 同时标记为默认。节点扩容时，必须先准备 VG、检查 `LVMNode` 容量，再更新 topology，最后允许业务调度。
+
+#### 1.3.4.7、PVC Pending 故障树
+
+```mermaid
+flowchart TD
+  P[PVC Pending] --> C{是否已有消费 Pod}
+  C -->|否| W[WaitForFirstConsumer 正常等待]
+  C -->|是| E[kubectl describe pvc/pod]
+  E --> S{StorageClass 存在且名称正确}
+  S -->|否| F1[修正 storageClassName/先安装 provisioner]
+  S -->|是| D{Hostpath 还是 LVM}
+  D -->|Hostpath| H[查 provisioner/helper Pod、基目录文件系统、权限/inode]
+  D -->|LVM| L[查 LVMNode、VG 名、VFree、topology、thin pool]
+  L --> G{目标节点有 vg_k8s 且空间足够}
+  G -->|否| F2[准备/扩容 VG 或修正 topology]
+  G -->|是| F3[查 controller/node 日志与 CSIStorageCapacity]
+```
+
+固定诊断命令：
+
+```bash
+kubectl describe pvc <pvc>
+kubectl describe pod <pod>
+kubectl get events -A --sort-by=.lastTimestamp | tail -n 100
+kubectl -n openebs get pod -o wide
+kubectl -n openebs logs deploy/openebs-lvm-localpv-controller -c openebs-lvm-plugin --tail=200
+kubectl -n openebs get lvmnodes.local.openebs.io -o yaml
+kubectl get csistoragecapacity -A -o yaml
+```
+
+部署名/容器名以 `kubectl -n openebs get deploy` 的现场输出为准。常见分类：
+
+| 现象 | 根因方向 | 处理 |
+|------|----------|------|
+| PVC Pending，无 Pod | WFFC 正常行为 | 创建真正消费者后再判断 |
+| `storageclass ... not found` | 名称或安装顺序 | 修正 PVC/先安装 SC |
+| scheduler 选不到节点 | VG 不存在、无空间、topology 冲突 | 查 LVMNode/VG/Pod 亲和性 |
+| `InsufficientCapacity` | VG/thin pool 容量不足 | 扩容后确认容量对象刷新 |
+| `FailedMount` | node plugin、kubelet 路径、文件系统或设备错误 | 查 Pod 事件和目标节点日志 |
+| Hostpath helper 失败 | 基目录权限、只读 FS、磁盘/inode 满 | 修复节点文件系统，不要反复重建 PVC |
+
+#### 1.3.4.8、thin pool 容量与扩容
+
+项目 LVM SC 默认 `thinProvision: "yes"`，所有同一 VG 的 thin PVC 共用 `vg_k8s_thinpool`。巡检：
+
+```bash
+sudo lvs -a vg_k8s -o lv_name,lv_size,pool_lv,segtype,data_percent,metadata_percent,seg_monitor
+sudo vgs vg_k8s -o vg_name,vg_size,vg_free
+```
+
+`Data%` 是数据块占用，`Meta%` 是映射元数据占用，任一接近 100% 都是故障风险。扩容前先确认 VG 有足够 `VFree`：
+
+```bash
+# 示例：从 VG 空闲 extents 向现有 thin pool 增加已评审容量
+sudo lvextend -L +<approved-size> vg_k8s/vg_k8s_thinpool
+sudo lvs -a vg_k8s -o lv_name,lv_size,data_percent,metadata_percent,seg_monitor
+```
+
+不要照抄固定 `+190G`；扩多少由真实写入增长、保留余量和 VG 空闲容量决定。若启用 LVM autoextend，还必须验证 thin pool 已监控：
+
+```bash
+sudo lvchange --monitor y vg_k8s/vg_k8s_thinpool
+sudo lvs -a vg_k8s -o lv_name,seg_monitor,data_percent,metadata_percent
+sudo grep -E '^\s*thin_pool_autoextend_(threshold|percent)' /etc/lvm/lvm.conf
+```
+
+自动扩容仍受 VG `VFree` 限制，不能替代物理容量告警。
+
+扩大单个 PVC：
+
+```bash
+kubectl patch pvc <pvc> -p '{"spec":{"resources":{"requests":{"storage":"<new-size>"}}}}'
+kubectl describe pvc <pvc>
+```
+
+只支持增大，不支持缩小。扩容后必须在业务 Pod 内验证文件系统容量与读写；不要只看 PVC spec。
+
+#### 1.3.4.9、备份、删除与卸载
+
+etcd 备份不包含卷数据。交付备份至少包含：
+
+- 应用一致性数据备份；
+- PV/PVC/SC 和工作负载清单；
+- PV 到节点、目录或 LV 的映射；
+- VG、thin pool 和节点磁盘清单；
+- 在隔离环境执行过的恢复记录。
+
+当前 SC `reclaimPolicy: Delete`。删除 PVC 会触发删除后端目录或 LV。清理 smoke 资源前先确认它们不是业务资源：
+
+```bash
+kubectl delete pod openebs-hostpath-smoke openebs-lvm-smoke --ignore-not-found
+kubectl delete pvc openebs-hostpath-smoke openebs-lvm-smoke --ignore-not-found
+kubectl get pv
+kubectl -n openebs get lvmvolumes.local.openebs.io
+```
+
+卸载 OpenEBS 前必须先迁移/删除所有使用它的 PVC，并核对 Retain/Delete 结果。仅卸载 Helm release 不等于业务数据已安全迁移，也不应直接手工删除未知 LV 或 Hostpath 目录。
+
+#### 1.3.4.10、现场签收表
+
+| # | 检查 | 通过证据 |
+|---|------|----------|
+| 1 | 模式与业务需求一致 | 选型记录明确本地卷不自带副本/RWX |
+| 2 | 版本与镜像一致 | chart 4.3.2、Hostpath 4.3.0、LVM 1.7.0 |
+| 3 | 节点前置条件 | LVM2、内核模块、磁盘/VG 清单 |
+| 4 | 部分节点模型 | SC `allowedTopologies` 与 VG 节点一致 |
+| 5 | Hostpath 数据面 | PVC Bound、写入/读取、Pod 重建持久 |
+| 6 | LVM 数据面 | PVC Bound、LVMVolume Ready、LV 存在、写入/读取 |
+| 7 | 容量保护 | 文件系统、VG、thin pool 告警规则与责任人 |
+| 8 | 故障边界 | 节点不可用演练结果符合本地卷设计 |
+| 9 | 备份恢复 | 业务一致性备份与恢复演练通过 |
+| 10 | 删除回收 | 测试卷清理符合 `Delete`，无错误 LV/目录残留 |
 
 ## 1.4、制品下载与离线分发
 
