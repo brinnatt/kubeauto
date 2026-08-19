@@ -46,6 +46,7 @@ flowchart LR
 | 对象存储 | MinIO Operator/Tenant | 依赖已验证 SC；应用副本不等于底层卷副本 | [第 12 章](./whitepaper/12-addons-observability.md#128-minio) | [MinIO](./operations-manual.md#13377minio) | 架构 + 安装 |
 | 注册配置 | Nacos + 外部 MySQL | 三副本强反亲和；必须导入官方 schema | [第 17 章](./whitepaper/17-storage-middleware-addons.md#174-nacos-243) | [其他插件](./operations-manual.md#13378其他可选组件概要) | 架构 + SOP |
 | 消息 | RocketMQ Operator | NameService/Broker 异步 CR 协调；默认 master 无副本 | [第 17 章](./whitepaper/17-storage-middleware-addons.md#175-rocketmq-operator) | [其他插件](./operations-manual.md#13378其他可选组件概要) | 架构 + SOP |
+| 数据库中间件 | Percona Operator for MySQL / PXC | 目标方案：Operator 1.20.0、PXC 8.4.8-8.1、HAProxy；独立 MySQL 分路，当前未编码 | [PXC 白皮书](./middleware/perconaPXC/technical-whitepaper.md) | [PXC 用户与运维手册](./middleware/perconaPXC/operations-manual.md) | 企业文档基线完成，代码/门禁待实现 |
 | 制品 | Distribution Registry、Harbor、Helm、六仓 CI | TalkEdu 优先、Hub 回退、本地 Registry 部署 | [第 13 章](./whitepaper/13-artifact-supply-chain.md) | [§1.4](./operations-manual.md#14制品下载与离线分发) | 专章 |
 | 生命周期 | 备份、恢复、升级、证书轮换、安全基线 | 固定 playbook/CLI 路径 | [第 15 章](./whitepaper/15-security-lifecycle.md) | [§1.5](./operations-manual.md#15集群生命周期) | 专章 |
 
@@ -112,6 +113,7 @@ flowchart TB
 | MinIO Kubernetes | https://min.io/docs/minio/kubernetes/upstream/ |
 | Nacos | https://nacos.io/en/docs/latest/ |
 | RocketMQ Operator | https://github.com/apache/rocketmq-operator |
+| Percona Operator for MySQL/PXC | https://docs.percona.com/percona-operator-for-mysql/pxc/ |
 | Harbor 2.13 | https://goharbor.io/docs/2.13.0/ |
 | Helm | https://helm.sh/docs/ |
 | Ansible | https://docs.ansible.com/ansible/latest/ |

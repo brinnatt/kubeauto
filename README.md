@@ -17,6 +17,12 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 | **开发手册** | [docs/development-manual.md](./docs/development-manual.md) | 六仓开发、版本钉扎、代码导航、测试与 PR（Developer Guide） |
 | **技术栈索引** | [docs/technology-stack-index.md](./docs/technology-stack-index.md) | 所有技术栈的集中导航、覆盖矩阵、官方来源与文档质量门槛 |
 
+新增中间件分路：
+
+| 中间件 | 文档入口 | 当前状态 |
+|---|---|---|
+| **Percona PXC** | [docs/middleware/perconaPXC/README.md](./docs/middleware/perconaPXC/README.md) | PXC 技术白皮书、用户/运维手册、开发手册与官方版本依据；当前为编码前方案 |
+
 白皮书分章（架构评审请从这里进）：
 
 | 章 | 内容 |

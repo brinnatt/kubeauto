@@ -102,7 +102,7 @@ flowchart TB
 | 17 | **其他存储与中间件插件** | [whitepaper/17-storage-middleware-addons.md](./whitepaper/17-storage-middleware-addons.md) |
 | 附录 A | 版本矩阵与官方文档索引 | [whitepaper/A-version-matrix.md](./whitepaper/A-version-matrix.md) |
 
-跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。
+跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。Percona PXC 独立中间件文档见[目录入口](./middleware/perconaPXC/README.md)，包含白皮书、用户/运维手册、开发手册和锁定版本的官方依据。
 
 ---
 

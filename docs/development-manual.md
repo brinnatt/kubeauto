@@ -8,6 +8,7 @@
 - [技术白皮书总册](./technical-whitepaper.md)（分章见 [`whitepaper/`](./whitepaper/)，含证书/监控/CNI 等原理级说明）
 - [技术栈导航与文档覆盖矩阵](./technology-stack-index.md)（集中入口、官方来源与章节质量门槛）
 - 仓库入口：[README.md](../README.md)
+- Percona PXC 接入开发手册：[middleware/perconaPXC/development-manual.md](./middleware/perconaPXC/development-manual.md)（独立 middleware 分路，不改变已交付核心功能）
 
 > 开发前建议至少读完白皮书第 6（PKI）、8（CRI）、13（制品）、14（kubecli）章，避免改配置时破坏信任链或版本契约。
 
