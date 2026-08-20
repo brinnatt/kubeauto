@@ -36,7 +36,7 @@ class PerconaPxcDocumentationTests(unittest.TestCase):
             "8.4.0-5.1",
             "2.8.18-1",
             "5.0.6-1",
-            "尚未编码",
+            "已实现",
             "独立 MySQL middleware 分路",
         ):
             self.assertIn(phrase, all_text)
@@ -96,7 +96,7 @@ class PerconaPxcDocumentationTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, all_text)
         for document in FILES.values():
-            self.assertIn("v1.0（编码前技术基线）", document)
+            self.assertIn("v1.1（独立 MySQL/PXC 分路交付版）", document)
 
     def test_development_keeps_mysql_gate_independent(self):
         text = FILES["development-manual.md"]

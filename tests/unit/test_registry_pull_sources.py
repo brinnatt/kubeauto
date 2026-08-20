@@ -90,6 +90,36 @@ class TestRegistryPullSources(unittest.TestCase):
         rm.docker.tag_image.assert_called_once_with(upstream, hub)
         self.assertEqual(mock_logger.warning.call_count, 2)
 
+    @patch("service.cluster.registry.logger")
+    def test_percona_falls_back_only_to_official_upstream(self, mock_logger):
+        rm = RegistryManager.__new__(RegistryManager)
+        rm.kube_constant = MagicMock()
+        rm.kube_constant.v_talkedu_registry = "hub.talkedu.cn/kubeauto"
+        rm.docker = MagicMock()
+        rm.docker.image_exists.return_value = False
+        rm.docker._execute_pull.side_effect = [
+            CommandExecutionError("talkedu missing", 1),
+            CommandExecutionError("brinnatt missing", 1),
+            None,
+        ]
+
+        image = "brinnatt/percona-xtradb-cluster:8.4.8-8.1"
+        rm._ensure_image_local(image)
+
+        self.assertEqual(
+            [call.args[0] for call in rm.docker._execute_pull.call_args_list],
+            [
+                "hub.talkedu.cn/kubeauto/percona-xtradb-cluster:8.4.8-8.1",
+                image,
+                "percona/percona-xtradb-cluster:8.4.8-8.1",
+            ],
+        )
+        rm.docker.tag_image.assert_called_once_with(
+            "percona/percona-xtradb-cluster:8.4.8-8.1",
+            image,
+        )
+        self.assertEqual(mock_logger.warning.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

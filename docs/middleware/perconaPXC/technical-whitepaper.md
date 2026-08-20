@@ -1,11 +1,11 @@
 # Percona XtraDB Cluster（PXC）技术白皮书
 
-> **文档版本：** v1.0（编码前技术基线）  
-> **最后核验：** 2026-08-19  
-> **锁定版本：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、XtraBackup 8.4.0-5.1、HAProxy 2.8.18-1  
+> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
+> **最后核验：** 2026-08-20
+> **锁定版本：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、XtraBackup 8.4.0-5.1、HAProxy 2.8.18-1
 > **官方依据：** [Architecture](https://docs.percona.com/percona-operator-for-mysql/pxc/architecture.html)、[Replication](https://docs.percona.com/percona-operator-for-mysql/pxc/replication.html)、[HAProxy](https://docs.percona.com/percona-operator-for-mysql/pxc/haproxy-conf.html)、[Storage](https://docs.percona.com/percona-operator-for-mysql/pxc/storage.html)
 
-本文说明 PXC 为什么这样设计、一次 SQL 请求经过哪些组件、故障时哪些状态是安全状态、哪些能力不属于本方案，以及后续 kubeauto 代码必须如何落地。
+本文说明 PXC 为什么这样设计、一次 SQL 请求经过哪些组件、故障时哪些状态是安全状态、哪些能力不属于本方案，以及 kubeauto 当前实现如何落地和验证。
 
 ## 目录
 
@@ -115,6 +115,22 @@ Operator 故障首先影响声明式变更、扩缩容、备份恢复和自愈�
 ## 第三章、Galera/PXC 复制原理
 
 PXC 采用 Galera 虚拟同步复制。事务先在接入节点本地执行，提交阶段提取被修改行的 write-set，通过组通信获得全局顺序并在各成员认证。认证通过后进入 apply/commit；冲突事务回滚。最慢节点、网络 RTT、磁盘延迟和事务冲突都会增加提交延迟。
+
+### 3.5 故障状态判定与自动恢复边界
+
+故障演练必须区分“成员非计划消失”和“全体成员同时停止”两类状态。三节点中只剩一个仍能看到原组成员时，正确的安全观察值是 `wsrep_cluster_size=1`、`wsrep_cluster_status=Non-Primary`，写事务必须拒绝；禁止通过 `wsrep_cluster_address` 或手工 `pc.bootstrap=YES` 绕过多数派。全体成员同时停止后，PXC/Operator 的 `autoRecovery` 可依据持久化恢复位置选择最新节点重新组成组件，这是全量崩溃恢复流程，不等同于少数派写入授权。
+
+```mermaid
+flowchart TD
+    A[检测成员故障] --> B{仍有多数派?}
+    B -->|是 2/3| C[Primary 继续服务]
+    B -->|否 1/3| D[Non-Primary]
+    D --> E[拒绝写入并保全 wsrep/事件]
+    A --> F{全体成员同时停止?}
+    F -->|是| G[按 grastate/seqno 选择最新节点]
+    G --> H[autoRecovery 重建组件]
+    H --> I[逐节点加入并验证 Synced]
+```
 
 ```mermaid
 flowchart LR

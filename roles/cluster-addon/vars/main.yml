@@ -2,3 +2,8 @@
 
 # CoreDNS service address, configured based on SERVICE_CIDR, defaults to the second address of the network segment
 CLUSTER_DNS_SVC_IP: "{{ SERVICE_CIDR.split('.')[0] }}.{{ SERVICE_CIDR.split('.')[1] }}.{{ SERVICE_CIDR.split('.')[2] }}.{{ SERVICE_CIDR.split('.')[3]|regex_replace('/.*', '')|int + 2 }}"
+
+# PXC may need an SST on first creation; keep the wait bounded but long enough
+# for production storage and image preparation.
+mysql_ready_retries: 270
+mysql_ready_delay: 10

@@ -1,12 +1,12 @@
 # Percona XtraDB Cluster（PXC）用户与运维手册
 
-> **文档版本：** v1.0（编码前技术基线）  
-> **最后核验：** 2026-08-19  
-> **适用系统：** kubeauto Kubernetes v1.33.6  
-> **适用组件：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、HAProxy 2.8.18-1  
+> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
+> **最后核验：** 2026-08-20
+> **适用系统：** kubeauto Kubernetes v1.33.6
+> **适用组件：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、HAProxy 2.8.18-1
 > **官方主线：** [Quickstart](https://docs.percona.com/percona-operator-for-mysql/pxc/quickstart.html)、[Connect](https://docs.percona.com/percona-operator-for-mysql/pxc/connect.html)、[Debug](https://docs.percona.com/percona-operator-for-mysql/pxc/debug.html)、[Backups and restore](https://docs.percona.com/percona-operator-for-mysql/pxc/backups-restore.html)
 
-本文按 drafts 企业文档规范编写：每个操作都有执行位置、文件归属、前置条件、命令、预期结果、异常分流和回滚边界。当前 PXC 尚未接入 kubeauto；标记为“目标实现”的命令，必须等编码和 MySQL 独立门禁完成后再执行。
+本文按 drafts 企业文档规范编写：每个操作都有执行位置、文件归属、前置条件、命令、预期结果、异常分流和回滚边界。当前实现通过独立 MySQL role 和固定 runner 交付；命令中使用 `<...>` 的位置参数必须由客户环境评审后替换，不能直接复制示例凭据。
 
 ## 目录
 
@@ -44,12 +44,12 @@ PXC_WORKDIR 是管理节点本地路径，不是 Operator 读取路径。Operato
 
 ### 1.2 当前实现状态
 
-| 内容 | 状态 |
+| 内容 | 当前状态 |
 |---|---|
 | 版本和架构 | 已完成官方资料核对 |
-| 本文档 | 编码前目标流程 |
-| kubeauto mysql 开关 | 尚未编码 |
-| MySQL 独立现场门禁 | 尚未编码 |
+| 本文档 | 与当前实现和独立门禁同步 |
+| kubeauto mysql 分路 | 已实现，入口由项目 CLI/role 管理 |
+| MySQL 独立现场门禁 | 已实现，使用 `tests/run_enterprise_regression.sh --mysql-only` |
 | 现有核心矩阵 | 不修改、不重新签字 |
 
 ## 第二章、部署目标和容量规划
@@ -198,7 +198,7 @@ test -z "$(kubectl -n mysql get pod,pvc -o name | grep 'pxc-storage-preflight' |
 PXC_STORAGE_CLEAN
 ```
 
-> **异常处理：PVC 长期 Pending**  
+> **异常处理：PVC 长期 Pending**
 > 保留 kubectl describe pvc、Pod events、StorageClass 和 CSI 日志，分流“没有消费者、节点拓扑、容量不足、CSI 故障”。不得用降低 PXC 副本数掩盖存储问题。
 
 ## 第四章、制品、Chart 和镜像
@@ -206,7 +206,6 @@ PXC_STORAGE_CLEAN
 | 制品 | 固定版本 | 官方用途 |
 |---|---|---|
 | pxc-operator Chart | 1.20.0 | Operator Deployment、RBAC、CRD |
-| pxc-db Chart | 1.20.0 | PXC 数据库 CR 辅助模板 |
 | Operator image | 1.20.0 | reconcile、webhook、备份恢复协调 |
 | PXC image | 8.4.8-8.1 | 数据库节点 |
 | XtraBackup image | 8.4.0-5.1 | 备份、恢复、SST |
@@ -220,11 +219,11 @@ PXC_STORAGE_CLEAN
 | `percona/percona-xtradb-cluster-operator:1.20.0` | `brinnatt/percona-xtradb-cluster-operator:1.20.0` | `registry.talkschool.cn:5000/brinnatt/percona-xtradb-cluster-operator:1.20.0` |
 | `percona/percona-xtradb-cluster:8.4.8-8.1` | `brinnatt/percona-xtradb-cluster:8.4.8-8.1` | `registry.talkschool.cn:5000/brinnatt/percona-xtradb-cluster:8.4.8-8.1` |
 | `percona/percona-xtrabackup:8.4.0-5.1` | `brinnatt/percona-xtrabackup:8.4.0-5.1` | `registry.talkschool.cn:5000/brinnatt/percona-xtrabackup:8.4.0-5.1` |
-| `percona/haproxy:2.8.18-1` | `brinnatt/haproxy:2.8.18-1` | `registry.talkschool.cn:5000/brinnatt/haproxy:2.8.18-1` |
+| `percona/haproxy:2.8.18-1` | `brinnatt/percona-haproxy:2.8.18-1` | `registry.talkschool.cn:5000/brinnatt/percona-haproxy:2.8.18-1` |
 
-这些 kubeauto 发布名是编码目标，当前尚未进入 `component_images` 和镜像 CI，不能把表格当成制品已经存在。编码后拉取顺序应为 `hub.talkedu.cn/kubeauto`、固定加速源、Docker Hub/上游；最终部署只引用控制节点本地 Registry。
+这些发布名已进入 MySQL 制品集合和独立门禁。正式拉取顺序为 TalkEdu 私仓、Docker Hub 已发布副本、Percona 官方上游；公共加速器只允许在测试命令行临时注入，不能写入代码、CI、默认配置或本文档。
 
-镜像必须经固定候选拉取、inspect、tag/push、本地 Registry manifest 和 digest 验证；Chart/CRD 必须 vendored 并通过 SHA256。当前代码尚未提供 mysql 下载集合，以下是编码后契约：
+镜像必须经固定候选拉取、inspect、tag/push、本地 Registry manifest 和 digest 验证；Chart/CRD 必须 vendored 并通过 SHA256。以下命令用于交付前核对本地 Registry：
 
 ```bash
 bash <<'PXC_ARTIFACT'
@@ -251,9 +250,7 @@ PXC_WORKDIR="<第一章输出的绝对路径>"
 test -d "$PXC_WORKDIR/vendor"
 cd "$PXC_WORKDIR/vendor"
 sha256sum -c pxc-operator-1.20.0.tgz.sha256
-sha256sum -c pxc-db-1.20.0.tgz.sha256
 tar -tzf pxc-operator-1.20.0.tgz >/dev/null
-tar -tzf pxc-db-1.20.0.tgz >/dev/null
 PXC_CHART_VERIFY
 ```
 
@@ -377,7 +374,7 @@ spec:
   haproxy:
     enabled: true
     size: 3
-    image: registry.talkschool.cn:5000/brinnatt/haproxy:2.8.18-1
+    image: registry.talkschool.cn:5000/brinnatt/percona-haproxy:2.8.18-1
     affinity:
       antiAffinityTopologyKey: kubernetes.io/hostname
     podDisruptionBudget:
@@ -956,7 +953,7 @@ SmartUpdate 应一次处理一个数据库节点。每个节点结束后检查�
 
 数据库回滚不是修改镜像 tag。发生数据字典或存储格式变化时，按官方支持矩阵选择 Operator 回退、备份恢复或新集群恢复。
 
-> **回滚：升级中出现 PXC 不收敛或业务数据面失败**  
+> **回滚：升级中出现 PXC 不收敛或业务数据面失败**
 > 保留 Operator 日志、CR status、Pod events、镜像 digest、备份状态和数据库日志；停止继续升级，确认多数派和备份可用，再选择官方支持的恢复路径。禁止删除 PVC 后声称回滚完成。
 
 | 情形 | 首选路径 | 前提 |
@@ -1101,6 +1098,30 @@ PVC 名称必须以现场 `kubectl get pvc` 为准；如果与示例不同，不
 | `wsrep_ready=OFF` | 当前不接受 wsrep 业务 | 查 state、日志和成员视图 |
 | recv queue 持续升高 | 节点应用复制变慢 | 查慢节点 CPU/IO/大事务 |
 | flow control 持续升高 | 集群被慢节点节流 | 找出队列和磁盘异常节点 |
+
+故障演练还必须区分两种恢复语义：
+
+| 现象 | 结论 | 处理 |
+|---|---|---|
+| `size=1`、`status=Non-Primary` | 少数派，继续写入会破坏安全边界 | 保留日志和 `grastate.dat`，等待多数成员恢复；不得 bootstrap |
+| 所有 PXC Pod 同时停止并出现 `FULL_PXC_CLUSTER_CRASH` | 全量崩溃恢复流程 | 按日志给出的最高 seqno 节点恢复，随后逐节点验证 |
+| `status=Primary` 但 Ready/HAProxy 不一致 | 控制面和数据面尚未收敛 | 先看 Operator、PDB、StatefulSet 事件，再检查 wsrep |
+
+```bash
+bash <<'PXC_QUORUM_DIAG'
+set -Eeuo pipefail
+export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+for pod in cluster1-pxc-0 cluster1-pxc-1 cluster1-pxc-2; do
+  kubectl -n mysql exec "$pod" -c pxc -- mysql -uroot -p \
+    --batch --skip-column-names -e \
+    "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_cluster_size','wsrep_cluster_status','wsrep_local_state_comment','wsrep_ready');" \
+    || true
+done
+kubectl -n mysql get pxc,pod,pdb,events --sort-by=.lastTimestamp
+PXC_QUORUM_DIAG
+```
+
+诊断命令中的密码必须通过交互式密码系统或 Secret 注入；不得把 `-p<明文>` 写进 shell history。只有在确认数据保护边界、取得客户审批并完成备份后，才允许执行官方全量崩溃恢复动作。
 
 全体节点停止后的 bootstrap 必须选择拥有最新安全状态的节点，并遵循 Percona 官方 crash recovery 流程。本文故意不提供一条“通用 bootstrap 命令”，因为选错节点可能丢失已提交事务或形成脑裂。必须保存所有节点 grastate/日志和最后提交序列，由 DBA 双人复核后执行。
 

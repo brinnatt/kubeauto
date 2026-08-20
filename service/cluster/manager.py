@@ -593,6 +593,11 @@ class ClusterManager:
             "__minio_chart__": kc.v_miniooperator,
             "__openebs_ver__": kc.v_openebs,
             "__ingress_nginx_ver__": kc.v_ingressnginx,
+            "__pxc_operator__": kc.v_pxc_operator,
+            "__pxc__": kc.v_pxc,
+            "__pxc_xtrabackup__": kc.v_pxc_xtrabackup,
+            "__pxc_haproxy__": kc.v_pxc_haproxy,
+            "__pxc_fluentbit__": kc.v_pxc_fluentbit,
         }
 
     @staticmethod

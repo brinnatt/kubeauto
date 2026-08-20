@@ -1,0 +1,183 @@
+- name: 校验 Percona PXC 配置
+  assert:
+    that:
+      - mysql_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - mysql_operator_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - mysql_cluster_name is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - mysql_storage_class | length > 0
+      - mysql_pxc_size | int >= 3
+      - mysql_pxc_size | int % 2 == 1
+      - mysql_haproxy_size | int >= 3
+      - mysql_haproxy_size | int % 2 == 1
+      - mysql_pvc_size is match('^[1-9][0-9]*(Gi|Ti)$')
+      - not (mysql_pitr_enabled | bool) or (mysql_backup_enabled | bool)
+      - not (mysql_backup_enabled | bool) or mysql_backup_credentials_secret | length > 0
+      - not (mysql_backup_enabled | bool) or mysql_backup_bucket | length > 0
+      - not (mysql_backup_enabled | bool) or mysql_backup_region | length > 0
+      - not (mysql_backup_enabled | bool) or mysql_backup_endpoint is match('^https://')
+      - not (mysql_backup_enabled | bool) or mysql_backup_storage_name is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - not (mysql_backup_enabled | bool) or mysql_backup_credentials_secret is match('^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$')
+      - not (mysql_backup_enabled | bool) or mysql_backup_bucket is match('^[a-z0-9][a-z0-9./-]*$')
+      - mysql_backup_ca_bundle_secret | length == 0 or mysql_backup_ca_bundle_secret is match('^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$')
+      - mysql_backup_ca_bundle_secret | length == 0 or mysql_backup_ca_bundle_key | length > 0
+      - not (mysql_pitr_enabled | bool) or mysql_pitr_storage_name is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - not (mysql_pitr_enabled | bool) or mysql_pitr_storage_name != mysql_backup_storage_name
+      - not (mysql_pitr_enabled | bool) or mysql_pitr_bucket is match('^[a-z0-9][a-z0-9./-]*$')
+      - mysql_backup_retention_count | int >= 1
+      - mysql_pitr_upload_interval | int >= 60
+    fail_msg: >-
+      Percona PXC 配置无效：必须提供 StorageClass；PXC/HAProxy 副本必须为不小于 3 的奇数；
+      PITR 必须同时开启备份并使用独立存储名；S3 备份必须提供合法的 Secret、bucket、region 和 HTTPS endpoint；
+      指定私有 CA Secret 时必须同时提供 CA 键名。
+
+- name: 创建 Percona PXC 渲染目录
+  file:
+    path: "{{ cluster_dir }}/yml/percona-pxc"
+    state: directory
+    mode: "0700"
+
+- name: 校验 Percona Operator Chart SHA256
+  command:
+    argv:
+      - sha256sum
+      - --check
+      - "{{ base_dir }}/roles/cluster-addon/files/pxc-operator-{{ pxc_operator_ver }}.tgz.sha256"
+  args:
+    chdir: "{{ base_dir }}/roles/cluster-addon/files"
+  changed_when: false
+
+- name: 渲染 Percona Operator 和 PXC 配置
+  template:
+    src: "percona-pxc/{{ item.src }}"
+    dest: "{{ cluster_dir }}/yml/percona-pxc/{{ item.dest }}"
+    mode: "0600"
+  loop:
+    - {src: operator-values.yaml.j2, dest: operator-values.yaml}
+    - {src: cluster.yaml.j2, dest: cluster.yaml}
+
+- name: 创建并确认 PXC 命名空间
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for ns in {{ mysql_operator_namespace }} {{ mysql_namespace }}; do
+      $KC create namespace "$ns" --dry-run=client -o yaml | $KC apply -f -
+      test "$($KC get namespace "$ns" -o jsonpath='{.status.phase}')" = Active
+    done
+  args:
+    executable: /bin/bash
+  register: mysql_namespace_apply
+  changed_when: "'created' in mysql_namespace_apply.stdout"
+
+- name: 安装或升级 Percona Operator
+  command:
+    argv:
+      - "{{ base_dir }}/extra-bin/helm"
+      - upgrade
+      - --install
+      - pxc-operator
+      - "{{ base_dir }}/roles/cluster-addon/files/pxc-operator-{{ pxc_operator_ver }}.tgz"
+      - --namespace
+      - "{{ mysql_operator_namespace }}"
+      - --values
+      - "{{ cluster_dir }}/yml/percona-pxc/operator-values.yaml"
+      - --wait
+      - --timeout
+      - 10m
+      - --history-max
+      - "10"
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  register: mysql_operator_helm
+  changed_when: "'has been upgraded' in mysql_operator_helm.stdout or 'has been installed' in mysql_operator_helm.stdout"
+
+- name: 等待 Percona Operator 和 CRD 就绪
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    $KC -n {{ mysql_operator_namespace }} rollout status deployment/pxc-operator --timeout=10m
+    $KC wait --for=condition=Established \
+      crd/perconaxtradbclusters.pxc.percona.com --timeout=2m
+    $KC auth can-i create perconaxtradbclusters.pxc.percona.com -n {{ mysql_namespace }} | grep -qx yes
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 在 API Server 校验 PXC 清单
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for attempt in $(seq 1 12); do
+      if $KC apply --dry-run=server --field-manager=kubeauto-mysql \
+        -f "{{ cluster_dir }}/yml/percona-pxc/cluster.yaml"; then
+        exit 0
+      fi
+      if (( attempt == 12 )); then
+        $KC -n {{ mysql_operator_namespace }} get pod -l app.kubernetes.io/name=pxc-operator -o wide || true
+        $KC get validatingwebhookconfiguration percona-xtradbcluster-webhook -o yaml || true
+        exit 1
+      fi
+      sleep 5
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 发布 Percona XtraDB Cluster
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - apply
+      - --server-side
+      - --field-manager=kubeauto-mysql
+      - -f
+      - "{{ cluster_dir }}/yml/percona-pxc/cluster.yaml"
+  register: mysql_cluster_apply
+  changed_when: "'created' in mysql_cluster_apply.stdout or 'serverside-applied' in mysql_cluster_apply.stdout"
+
+- name: 等待 PXC、HAProxy、PVC 和 CR 状态就绪
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for i in $(seq 1 {{ mysql_ready_retries }}); do
+      pxc_ready=0
+      haproxy_ready=0
+      for ordinal in $(seq 0 $(({{ mysql_pxc_size | int }} - 1))); do
+        ready=$($KC -n {{ mysql_namespace }} get pod \
+          {{ mysql_cluster_name }}-pxc-${ordinal} \
+          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+        [ "$ready" = True ] && pxc_ready=$((pxc_ready + 1))
+      done
+      for ordinal in $(seq 0 $(({{ mysql_haproxy_size | int }} - 1))); do
+        ready=$($KC -n {{ mysql_namespace }} get pod \
+          {{ mysql_cluster_name }}-haproxy-${ordinal} \
+          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+        [ "$ready" = True ] && haproxy_ready=$((haproxy_ready + 1))
+      done
+      state=$($KC -n {{ mysql_namespace }} get pxc {{ mysql_cluster_name }} \
+        -o jsonpath='{.status.state}' 2>/dev/null || true)
+      pvc_total=$($KC -n {{ mysql_namespace }} get pvc \
+        -l app.kubernetes.io/instance={{ mysql_cluster_name }} \
+        -o jsonpath='{range .items[*]}{.status.phase}{"\n"}{end}' 2>/dev/null | grep -cx Bound || true)
+      if [ "$pxc_ready" -eq {{ mysql_pxc_size | int }} ] && \
+         [ "$haproxy_ready" -eq {{ mysql_haproxy_size | int }} ] && \
+         [ "$state" = ready ] && [ "$pvc_total" -ge {{ mysql_pxc_size | int }} ]; then
+        nodes=$($KC -n {{ mysql_namespace }} get pod \
+          -l app.kubernetes.io/component=pxc \
+          -o jsonpath='{range .items[*]}{.spec.nodeName}{"\n"}{end}' | sort -u | wc -l)
+        test "$nodes" -ge {{ mysql_pxc_size | int }}
+        echo "PXC_CONTROL_PLANE_READY state=$state pxc=$pxc_ready haproxy=$haproxy_ready pvc=$pvc_total nodes=$nodes"
+        exit 0
+      fi
+      if [ $((i % 10)) -eq 0 ]; then
+        echo "waiting PXC: attempt=$i state=${state:-missing} pxc=$pxc_ready haproxy=$haproxy_ready pvc=$pvc_total"
+        $KC -n {{ mysql_namespace }} get pod,pvc -o wide || true
+      fi
+      sleep {{ mysql_ready_delay }}
+    done
+    $KC -n {{ mysql_namespace }} get pxc,pod,pvc,svc -o wide || true
+    $KC -n {{ mysql_namespace }} get events --sort-by=.lastTimestamp | tail -80 || true
+    exit 1
+  args:
+    executable: /bin/bash
+  changed_when: false

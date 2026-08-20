@@ -28,6 +28,12 @@ HOST128="brinnatt@192.168.47.128"
 HOST141="root@192.168.47.141"
 HOST142="root@192.168.47.142"
 HOST143="root@192.168.47.143"
+MYSQL_TEST_HOST="${MYSQL_TEST_HOST:-root@master-aio}"
+MYSQL_TEST_JUMPER="${MYSQL_TEST_JUMPER:-root@192.168.122.2}"
+MYSQL_RUNTIME_IMAGE_PREFIX="${MYSQL_IMAGE_SOURCE_PREFIX:-${2:-}}"
+MYSQL_RUNTIME_VERIFY_PREFIXES="${MYSQL_IMAGE_VERIFY_PREFIXES:-${MYSQL_IMAGE_VERIFY_PREFIX:-${3:-}}}"
+MYSQL_RUNTIME_STAGE_NODE="${MYSQL_IMAGE_STAGE_NODE:-${4:-}}"
+MYSQL_RUNTIME_IMAGE_FALLBACK_PREFIX="${MYSQL_IMAGE_SOURCE_FALLBACK_PREFIX:-${5:-}}"
 LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
 MODE="${1:-run}"
 mkdir -p "${ROOT}/logs"
@@ -42,6 +48,7 @@ ssh128() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFil
 ssh141() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST141" "$@"; }
 ssh142() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST142" "$@"; }
 ssh143() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST143" "$@"; }
+ssh_mysql() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -J "$MYSQL_TEST_JUMPER" "$MYSQL_TEST_HOST" "$@"; }
 scp138() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 scp137() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 
@@ -191,11 +198,144 @@ echo '[CANCEL] label=${label} state=stopped pid='\"\$pid\"
 
 matrix_counts() {
   local matrix="$ROOT/tests/enterprise-test-matrix.yaml"
+  [[ "$MODE" == --mysql-* ]] && matrix="$ROOT/tests/mysql-test-matrix.yaml"
   printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pass' "$matrix" || true)" \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$matrix" || true)" \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: fail' "$matrix" || true)"
 }
+
+if [[ "$MODE" == "--mysql-status" ]]; then
+  echo "========== MySQL/PXC independent gate =========="
+  remote_job_summary ssh_mysql '' /tmp/kubeauto-mysql-gate /tmp/kubeauto-mysql-live.log || true
+  remote_log_tail ssh_mysql '' /tmp/kubeauto-mysql-live.log 40
+  echo "========== MySQL/PXC cluster preflight =========="
+  ssh_mysql "kubectl version 2>/dev/null || true; kubectl get nodes -o wide 2>/dev/null || true; kubectl get storageclass 2>/dev/null || true; kubectl get namespace mysql mysql-operator 2>/dev/null || true; echo mysql-workloads; kubectl -n mysql get pxc,pod,pvc,svc -o wide 2>/dev/null || true; kubectl -n mysql-operator get pod -o wide 2>/dev/null || true; kubectl -n mysql get events --sort-by=.lastTimestamp 2>/dev/null | tail -40 || true; echo toolchain; command -v helm || true; helm version --short 2>/dev/null || true; command -v ansible-playbook || true; ansible-playbook --version 2>/dev/null | head -2 || true; command -v skopeo || true; command -v nerdctl || true; command -v podman || true; command -v docker || true; echo stale-processes; pgrep -af '[p]ip|[r]sync.*kubeauto' || true; echo registry-port; ss -lntp '( sport = :5000 )' || true; docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Ports}}' 2>/dev/null || true; curl -fsS --max-time 3 http://127.0.0.1:5000/v2/ 2>/dev/null && echo registry_v2_ready=true || true; echo control-addresses; hostname; hostname -I; echo node-access; for ip in \$(kubectl get nodes -o wide --no-headers | awk '{print \$6}'); do ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@\"\$ip\" 'printf \"node=\"; hostname; printf \"ctr=\"; command -v ctr || true; test -d /etc/containerd/certs.d && echo certs.d-present || true' 2>/dev/null || echo \"node_ssh_failed=\$ip\"; done; echo capacity; kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory,EPHEMERAL:.status.allocatable.ephemeral-storage"
+  echo "========== MySQL/PXC matrix =========="
+  matrix_counts
+  echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-follow" ]]; then
+  ssh_mysql "tail -n 80 -F /tmp/kubeauto-mysql-live.log"
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-cancel" ]]; then
+  cancel_remote_job mysql-pxc ssh_mysql '' /tmp/kubeauto-mysql-gate
+  echo MYSQL_PXC_CANCEL_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-clean-only" ]]; then
+  mysql_cleanup_env=""
+  if [[ -n "$MYSQL_RUNTIME_IMAGE_PREFIX" ]]; then
+    printf -v mysql_cleanup_prefix_quoted '%q' "$MYSQL_RUNTIME_IMAGE_PREFIX"
+    mysql_cleanup_env="MYSQL_IMAGE_SOURCE_PREFIX=${mysql_cleanup_prefix_quoted}"
+  fi
+  if [[ -n "$MYSQL_RUNTIME_STAGE_NODE" ]]; then
+    printf -v mysql_cleanup_stage_node_quoted '%q' "$MYSQL_RUNTIME_STAGE_NODE"
+    mysql_cleanup_env+=" MYSQL_IMAGE_STAGE_NODE=${mysql_cleanup_stage_node_quoted}"
+  fi
+  cancel_remote_job mysql-pxc ssh_mysql '' /tmp/kubeauto-mysql-gate
+  KUBEAUTO_SSH_JUMP="$MYSQL_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$MYSQL_TEST_HOST"
+  ssh_mysql "chmod 0755 /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh"
+  ssh_mysql "env ${mysql_cleanup_env} bash /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh"
+  ssh_mysql "env ${mysql_cleanup_env} bash /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh --verify"
+  echo MYSQL_PXC_CLEAN_ONLY_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-source-probe" ]]; then
+  [[ -n "${2:-}" ]] || {
+    echo "Usage: $0 --mysql-source-probe <runtime-registry-prefix> [repository] [tag]" >&2
+    exit 2
+  }
+  mysql_probe_repository="${3:-percona/percona-xtradb-cluster-operator}"
+  mysql_probe_tag="${4:-1.20.0}"
+  [[ "$mysql_probe_repository" =~ ^[a-z0-9]+([._/-][a-z0-9]+)*$ ]] || {
+    echo "ERROR: invalid image repository: $mysql_probe_repository" >&2
+    exit 2
+  }
+  [[ "$mysql_probe_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]] || {
+    echo "ERROR: invalid image tag: $mysql_probe_tag" >&2
+    exit 2
+  }
+  mysql_probe_image="${2}/${mysql_probe_repository}:${mysql_probe_tag}"
+  printf -v mysql_probe_ref '%q' "$mysql_probe_image"
+  ssh_mysql "timeout --signal=TERM --kill-after=5s 45s docker manifest inspect ${mysql_probe_ref} >/dev/null"
+  echo "MYSQL_RUNTIME_SOURCE_MANIFEST_PASS image=${mysql_probe_image}"
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-source-head" ]]; then
+  [[ -n "${2:-}" ]] || {
+    echo "Usage: $0 --mysql-source-head <runtime-registry-prefix> [repository] [tag]" >&2
+    exit 2
+  }
+  mysql_head_repository="${3:-percona/percona-xtradb-cluster-operator}"
+  mysql_head_tag="${4:-1.20.0}"
+  [[ "$mysql_head_repository" =~ ^[a-z0-9]+([._/-][a-z0-9]+)*$ ]] || {
+    echo "ERROR: invalid image repository: $mysql_head_repository" >&2
+    exit 2
+  }
+  [[ "$mysql_head_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]] || {
+    echo "ERROR: invalid image tag: $mysql_head_tag" >&2
+    exit 2
+  }
+  printf -v mysql_head_url '%q' "https://${2}/v2/${mysql_head_repository}/manifests/${mysql_head_tag}"
+  ssh_mysql "curl -sSIL --max-time 30 -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' ${mysql_head_url}"
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-node-source-probe" ]]; then
+  [[ -n "${2:-}" ]] || {
+    echo "Usage: $0 --mysql-node-source-probe <runtime-registry-prefix>" >&2
+    exit 2
+  }
+  printf -v mysql_node_probe_ref '%q' "${2}/percona/percona-xtradb-cluster-operator:1.20.0"
+  ssh_mysql "ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.122.210 'timeout --signal=TERM --kill-after=15s 10m ctr -n k8s.io images pull --platform linux/amd64 ${mysql_node_probe_ref} >/dev/null && ctr -n k8s.io images inspect ${mysql_node_probe_ref} | sed -n \"s/.*@\\(sha256:[0-9a-f]\\{64\\}\\).*/\\1/p\" | head -n 1 | grep -Ex \"sha256:[0-9a-f]{64}\" && ctr -n k8s.io images push --help | grep -E \"manifest|platform\"'"
+  echo MYSQL_NODE_RUNTIME_SOURCE_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-node-progress" ]]; then
+  ssh_mysql "ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.122.210 'echo ===process===; ps -eo pid,ppid,etime,stat,wchan:24,cmd | grep -E \"[c]tr -n k8s.io images (pull|push)\"; echo ===network===; ss -tpn | grep -E \"ctr|:443\" || true; echo ===active-content===; ctr -n k8s.io content active || true; echo ===content===; du -sb /var/lib/containerd/io.containerd.content.v1.content/blobs/sha256 2>/dev/null || true; find /var/lib/containerd/io.containerd.content.v1.content/ingest -mindepth 1 -maxdepth 2 -type f -printf \"%s %p\\n\" 2>/dev/null | sort -nr | head -n 20'"
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-node-ingest-abort" ]]; then
+  ingest_ref="${2:-}"
+  [[ "$ingest_ref" =~ ^layer-sha256:[0-9a-f]{64}$ ]] || {
+    echo "Usage: $0 --mysql-node-ingest-abort layer-sha256:<digest>" >&2
+    exit 2
+  }
+  printf -v ingest_ref_quoted '%q' "$ingest_ref"
+  ssh_mysql "ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.122.210 bash -s -- ${ingest_ref_quoted}" <<'NODE_INGEST_ABORT'
+set -Eeuo pipefail
+ingest_ref="$1"
+ingest_root=/var/lib/containerd/io.containerd.content.v1.content/ingest
+test -z "$(pgrep -f '^ctr -n k8s.io images pull ' || true)"
+ctr -n k8s.io content active | awk 'NR > 1 && NF {print $1}' | grep -Fx "$ingest_ref"
+mapfile -t matches < <(find "$ingest_root" -mindepth 2 -maxdepth 2 -type f -name ref -print \
+  | while IFS= read -r ref_file; do
+    stored_ref="$(cat "$ref_file")"
+    if [[ "$stored_ref" == "$ingest_ref" || "$stored_ref" == */"$ingest_ref" ]]; then
+      printf '%s\n' "$ref_file"
+    fi
+    done)
+(( ${#matches[@]} == 1 ))
+ingest_dir="$(dirname "${matches[0]}")"
+[[ "$ingest_dir" == "$ingest_root/"* ]]
+# Mirrors containerd 2.1 local Store.Abort after the owning pull has stopped.
+rm -rf -- "$ingest_dir"
+! ctr -n k8s.io content active | awk 'NR > 1 && NF {print $1}' | grep -Fx "$ingest_ref"
+NODE_INGEST_ABORT
+  echo MYSQL_NODE_ORPHAN_INGEST_ABORT_PASS
+  exit 0
+fi
 
 monitor_remote_job() {
   local label="$1" ssh_function="$2" privilege="$3" state_prefix="$4" remote_log="$5" success_marker="$6"
@@ -291,6 +431,125 @@ monitor_remote_job() {
     sleep 10
   done
 }
+
+if [[ "$MODE" == "--mysql-only" ]]; then
+  echo "========== Independent MySQL/PXC delivery gate =========="
+  cancel_remote_job mysql-pxc ssh_mysql '' /tmp/kubeauto-mysql-gate
+  echo ">>> focused MySQL/PXC unit and contract tests"
+  "$ROOT/.venv/bin/python" -m unittest \
+    tests.unit.test_percona_pxc_delivery \
+    tests.unit.test_registry_pull_sources \
+    tests.unit.test_six_repo_version_sync \
+    tests.unit.test_percona_pxc_documentation -v
+  ssh_mysql "stale_pid=\$(pgrep -f '^/usr/local/kubeauto/.venv/bin/python -m pip install -q -r /usr/local/kubeauto/requirements-control.txt$' || true); if test -n \"\$stale_pid\"; then kill \"\$stale_pid\"; echo RECOVERED_STALE_MYSQL_SYNC_PIP pid=\$stale_pid; fi"
+  echo ">>> sync source through fixed MySQL jumper"
+  KUBEAUTO_SSH_JUMP="$MYSQL_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$MYSQL_TEST_HOST"
+  ssh_mysql "chmod 0755 /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh /usr/local/kubeauto/tests/helpers/mysql-regression.sh /usr/local/kubeauto/tests/helpers/mysql-stage-node-image.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
+
+  mysql_runtime_env=""
+  if [[ -n "$MYSQL_RUNTIME_IMAGE_PREFIX" ]]; then
+    printf -v mysql_runtime_prefix_quoted '%q' "$MYSQL_RUNTIME_IMAGE_PREFIX"
+    mysql_runtime_env="MYSQL_IMAGE_SOURCE_PREFIX=${mysql_runtime_prefix_quoted}"
+  fi
+  if [[ -n "${MYSQL_RUNTIME_IMAGE_FALLBACK_PREFIX:-}" ]]; then
+    printf -v mysql_runtime_fallback_quoted '%q' "$MYSQL_RUNTIME_IMAGE_FALLBACK_PREFIX"
+    mysql_runtime_env+=" MYSQL_IMAGE_SOURCE_FALLBACK_PREFIX=${mysql_runtime_fallback_quoted}"
+  fi
+  if [[ -n "$MYSQL_RUNTIME_VERIFY_PREFIXES" ]]; then
+    printf -v mysql_runtime_verify_quoted '%q' "$MYSQL_RUNTIME_VERIFY_PREFIXES"
+    mysql_runtime_env+=" MYSQL_IMAGE_VERIFY_PREFIXES=${mysql_runtime_verify_quoted}"
+  fi
+  if [[ -n "$MYSQL_RUNTIME_STAGE_NODE" ]]; then
+    printf -v mysql_runtime_stage_node_quoted '%q' "$MYSQL_RUNTIME_STAGE_NODE"
+    mysql_runtime_env+=" MYSQL_IMAGE_STAGE_NODE=${mysql_runtime_stage_node_quoted}"
+  fi
+
+  echo ">>> scoped MySQL/PXC cleanup before run"
+  ssh_mysql "env ${mysql_runtime_env} bash /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh"
+  ssh_mysql "env ${mysql_runtime_env} bash /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh --verify"
+  ssh_mysql "rm -f /tmp/kubeauto-mysql-live.log /tmp/kubeauto-mysql-gate.pid /tmp/kubeauto-mysql-gate.exit; nohup env ${mysql_runtime_env} bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-mysql-gate MYSQL_PXC_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/mysql-regression.sh >/tmp/kubeauto-mysql-live.log 2>&1 </dev/null &"
+  mysql_rc=0
+  monitor_remote_job \
+    mysql-pxc ssh_mysql '' /tmp/kubeauto-mysql-gate \
+    /tmp/kubeauto-mysql-live.log MYSQL_PXC_FULL_GATE_PASS || mysql_rc=$?
+
+  cleanup_rc=0
+  echo ">>> scoped MySQL/PXC cleanup after run"
+  ssh_mysql "env ${mysql_runtime_env} bash /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh" || cleanup_rc=$?
+  ssh_mysql "env ${mysql_runtime_env} bash /usr/local/kubeauto/tests/helpers/mysql-cleanup.sh --verify" || cleanup_rc=$?
+  if [[ "$mysql_rc" -ne 0 || "$cleanup_rc" -ne 0 ]]; then
+    echo "[FAIL] MySQL/PXC gate rc=${mysql_rc}; cleanup rc=${cleanup_rc}" >&2
+    exit 1
+  fi
+  echo MYSQL_PXC_DELIVERY_BRANCH_PASS
+  matrix_counts
+  echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--mysql-stage-source" ]]; then
+  [[ -n "${2:-}" ]] || {
+    echo "Usage: $0 --mysql-stage-source <runtime-registry-prefix>" >&2
+    exit 2
+  }
+  cancel_remote_job mysql-pxc ssh_mysql '' /tmp/kubeauto-mysql-gate
+  if ssh138 "sudo docker version >/dev/null" 2>/dev/null; then
+    stage_label=mysql-stage-138
+    stage_ssh=ssh138
+    stage_privilege=sudo
+    stage_sudo='sudo '
+    stage_target="$HOST138"
+  elif ssh130 "docker version >/dev/null" 2>/dev/null; then
+    stage_label=mysql-stage-130
+    stage_ssh=ssh130
+    stage_privilege=''
+    stage_sudo=''
+    stage_target="$HOST130"
+  else
+    echo "[FAIL] neither staging control host has key access and Docker" >&2
+    exit 1
+  fi
+  cancel_remote_job "$stage_label" "$stage_ssh" "$stage_privilege" /tmp/kubeauto-mysql-stage
+  scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+    "$ROOT/tests/helpers/mysql-stage-images.sh" \
+    "$ROOT/tests/helpers/run-durable-gate.sh" "$stage_target:/tmp/"
+  printf -v mysql_stage_prefix_quoted '%q' "$2"
+  "$stage_ssh" "${stage_sudo}chmod 0755 /tmp/mysql-stage-images.sh /tmp/run-durable-gate.sh; ${stage_sudo}rm -f /tmp/kubeauto-mysql-stage-live.log /tmp/kubeauto-mysql-stage.pid /tmp/kubeauto-mysql-stage.exit; ${stage_sudo}nohup env MYSQL_IMAGE_SOURCE_PREFIX=${mysql_stage_prefix_quoted} bash /tmp/run-durable-gate.sh /tmp/kubeauto-mysql-stage MYSQL_STAGE_EXIT bash /tmp/mysql-stage-images.sh >/tmp/kubeauto-mysql-stage-live.log 2>&1 </dev/null &"
+  monitor_remote_job \
+    "$stage_label" "$stage_ssh" "$stage_privilege" /tmp/kubeauto-mysql-stage \
+    /tmp/kubeauto-mysql-stage-live.log MYSQL_STAGE_IMAGES_PASS
+
+  stage_images=(
+    percona/percona-xtradb-cluster-operator:1.20.0
+    percona/percona-xtradb-cluster:8.4.8-8.1
+    percona/percona-xtrabackup:8.4.0-5.1
+    percona/haproxy:2.8.18-1
+    percona/fluentbit:5.0.6-1
+  )
+  stage_refs=()
+  for image in "${stage_images[@]}"; do
+    stage_refs+=("${2}/${image}")
+  done
+  printf -v stage_refs_quoted ' %q' "${stage_refs[@]}"
+  echo "[TRANSFER] staging-host=${stage_target} target=mysql-control heartbeat=30s"
+  (
+    set -o pipefail
+    "$stage_ssh" "${stage_sudo}docker save${stage_refs_quoted}" | ssh_mysql "docker load"
+  ) &
+  stage_transfer_pid=$!
+  stage_transfer_started=$(date +%s)
+  while kill -0 "$stage_transfer_pid" 2>/dev/null; do
+    echo "[HEARTBEAT] time=$(date '+%F %T %Z') label=mysql-stage-transfer elapsed=$(( $(date +%s) - stage_transfer_started ))s"
+    sleep 30
+  done
+  wait "$stage_transfer_pid"
+  for ref in "${stage_refs[@]}"; do
+    ssh_mysql "docker image inspect $(printf '%q' "$ref") >/dev/null"
+  done
+  echo MYSQL_STAGE_TRANSFER_PASS
+  exit 0
+fi
 
 if [[ "$MODE" == "--all-delivery-daemon" ]]; then
   # A UI terminal may disappear during a multi-hour delivery sign-off. Keep
@@ -685,7 +944,10 @@ if [[ "$MODE" == "--cancel-rocky8-build" ]]; then
 fi
 
 if [[ "$MODE" == "--rocky8-image-probe" ]]; then
-  ssh138 "sudo bash -lc 'set -u; for image in swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/rockylinux/rockylinux:8.10 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/rockylinux/rockylinux:8.10; do echo probe=\$image; if timeout --signal=TERM --kill-after=5s 45s docker manifest inspect \"\$image\" >/dev/null; then echo ROCKY8_IMAGE_PROBE_PASS image=\$image; exit 0; fi; done; echo ROCKY8_IMAGE_PROBE_FAIL >&2; exit 1'"
+  rocky8_probe_image="${ROCKY8_BUILD_IMAGE:-rockylinux/rockylinux:8.10}"
+  printf -v rocky8_probe_image_quoted '%q' "$rocky8_probe_image"
+  ssh138 "sudo timeout --signal=TERM --kill-after=5s 45s docker manifest inspect ${rocky8_probe_image_quoted} >/dev/null"
+  echo ROCKY8_IMAGE_PROBE_PASS
   exit 0
 fi
 
@@ -961,7 +1223,7 @@ if [[ "$MODE" == "--diagnose-nacos-images" ]]; then
   # The mirrored delivery images contain the upstream entrypoint sources that
   # define readiness and startup ordering.  Inspect those sources locally so
   # this evidence remains available even when the lab cannot reach GitHub.
-  ssh138 "sudo bash -lc 'echo ===mysql-official-image===; docker image inspect docker.sparkcr.cn/mysql:8.0.46 --format \"id={{.Id}} digests={{json .RepoDigests}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}}\" 2>&1 || true; docker run --rm --entrypoint sed docker.sparkcr.cn/mysql:8.0.46 -n 1,260p /usr/local/bin/docker-entrypoint.sh 2>&1 || true; echo ===nacos-official-image===; docker image inspect brinnatt/nacos-server:v2.4.3 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-server:v2.4.3 -c \"echo ---docker-startup.sh---; sed -n 1,260p /home/nacos/bin/docker-startup.sh; echo ---application.properties---; sed -n 1,120p /home/nacos/conf/application.properties\" 2>&1 || true; echo ===nacos-peer-finder-official-image===; docker image inspect brinnatt/nacos-peer-finder-plugin:1.1 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-peer-finder-plugin:1.1 -c \"for file in /install.sh /plugin.sh /on-start.sh; do echo ---\\\$file---; sed -n 1,260p \\\"\\\$file\\\"; done; ls -l /peer-finder; sha256sum /peer-finder\" 2>&1 || true'"
+  ssh138 "sudo bash -lc 'echo ===mysql-official-image===; docker image inspect mysql:8.0.46 --format \"id={{.Id}} digests={{json .RepoDigests}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}}\" 2>&1 || true; docker run --rm --entrypoint sed mysql:8.0.46 -n 1,260p /usr/local/bin/docker-entrypoint.sh 2>&1 || true; echo ===nacos-official-image===; docker image inspect brinnatt/nacos-server:v2.4.3 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-server:v2.4.3 -c \"echo ---docker-startup.sh---; sed -n 1,260p /home/nacos/bin/docker-startup.sh; echo ---application.properties---; sed -n 1,120p /home/nacos/conf/application.properties\" 2>&1 || true; echo ===nacos-peer-finder-official-image===; docker image inspect brinnatt/nacos-peer-finder-plugin:1.1 --format \"id={{.Id}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}} env={{json .Config.Env}} source={{index .Config.Labels \\\"org.opencontainers.image.source\\\"}}\" 2>/dev/null || true; docker run --rm --entrypoint sh brinnatt/nacos-peer-finder-plugin:1.1 -c \"for file in /install.sh /plugin.sh /on-start.sh; do echo ---\\\$file---; sed -n 1,260p \\\"\\\$file\\\"; done; ls -l /peer-finder; sha256sum /peer-finder\" 2>&1 || true'"
   exit 0
 fi
 
@@ -1151,7 +1413,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--mysql-source-probe|--mysql-node-ingest-abort|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 

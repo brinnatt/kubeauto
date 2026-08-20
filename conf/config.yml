@@ -293,6 +293,55 @@ rocketmq_broker_mem_request: "512Mi"
 rocketmq_broker_mem_limit: "1536Mi"
 
 
+# Percona XtraDB Cluster is an independent, opt-in MySQL middleware branch.
+# Production defaults require three schedulable failure domains. Set an
+# explicit StorageClass before enabling; passwords remain in Kubernetes
+# Secrets and are never stored in this file.
+mysql_install: "no"
+pxc_operator_ver: "__pxc_operator__"
+pxc_ver: "__pxc__"
+pxc_xtrabackup_ver: "__pxc_xtrabackup__"
+pxc_haproxy_ver: "__pxc_haproxy__"
+pxc_fluentbit_ver: "__pxc_fluentbit__"
+mysql_namespace: "mysql"
+mysql_operator_namespace: "mysql-operator"
+mysql_cluster_name: "cluster1"
+mysql_storage_class: ""
+mysql_pvc_size: "100Gi"
+mysql_pxc_size: 3
+mysql_haproxy_size: 3
+mysql_pxc_cpu_request: "2"
+mysql_pxc_memory_request: "4Gi"
+mysql_pxc_cpu_limit: "4"
+mysql_pxc_memory_limit: "8Gi"
+mysql_haproxy_cpu_request: "500m"
+mysql_haproxy_memory_request: "512Mi"
+mysql_haproxy_cpu_limit: "1"
+mysql_haproxy_memory_limit: "1Gi"
+mysql_gcache_size: "1G"
+# Empty means <mysql_cluster_name>-secrets. The Operator generates the system
+# credentials when this Secret does not already exist.
+mysql_secrets_name: ""
+mysql_tls_enabled: true
+mysql_logcollector_enabled: false
+mysql_backup_enabled: false
+mysql_backup_storage_name: "s3-prod"
+mysql_backup_credentials_secret: ""
+mysql_backup_bucket: ""
+mysql_backup_region: ""
+mysql_backup_endpoint: ""
+mysql_backup_verify_tls: true
+mysql_backup_ca_bundle_secret: ""
+mysql_backup_ca_bundle_key: "ca.crt"
+mysql_backup_force_path_style: false
+mysql_backup_schedule: "0 1 * * *"
+mysql_backup_retention_count: 7
+mysql_pitr_enabled: false
+mysql_pitr_storage_name: "s3-binlogs"
+mysql_pitr_bucket: ""
+mysql_pitr_upload_interval: 60
+
+
 # network-check not installed by default
 network_check_enabled: false
 network_check_schedule: "*/5 * * * *"

@@ -80,7 +80,15 @@ bash tests/run_enterprise_regression.sh --ansible-anolis-container-probe
 bash tests/run_enterprise_regression.sh --ansible-os-only
 bash tests/run_enterprise_regression.sh --build-rocky8-kubecli
 bash tests/run_enterprise_regression.sh --tier3-tools-only
+bash tests/run_enterprise_regression.sh --mysql-only
+bash tests/run_enterprise_regression.sh --mysql-status
+bash tests/run_enterprise_regression.sh --mysql-follow
 ```
+
+`--mysql-only` owns the independent Percona PXC matrix in
+`mysql-test-matrix.yaml`. It uses the dedicated six-node MySQL laboratory,
+does not enter the delivered core topology or `--all-delivery`, and always
+performs scoped PXC cleanup and verification before and after the run.
 
 The runner is authoritative because it centralizes SSH, source synchronization, remote launch, durable PID/exit state, foreground log streaming, heartbeat, silent-stall diagnostics, final markers, and cleanup. Do not replace it with a sequence of manually approved SSH commands.
 
@@ -115,9 +123,11 @@ Examples captured by the current gates include registry HTTP readiness instead o
 
 ## China image-source contract
 
-For a Docker Hub-origin fixture, use an explicit, reviewable fallback list. Try the pinned `docker.sparkcr.cn/<upstream-image>` accelerator before direct Docker Hub, retain the applicable TalkEdu and Huawei candidates, and keep the upstream reference last. A mirror-discovery page such as `https://status.anye.xyz/` is for operator review only; never consume its current recommendations dynamically in a delivery run.
+For a Docker Hub-origin fixture in an already-delivered path, preserve its explicit, reviewable fallback list. The existing gates try the pinned `docker.sparkcr.cn/<upstream-image>` accelerator before direct Docker Hub, retain the applicable TalkEdu and Huawei candidates, and keep the upstream reference last. A mirror-discovery page such as `https://status.anye.xyz/` is for operator review only; never consume its current recommendations dynamically in a delivery run.
 
 An accelerator response is not evidence that the fixture is usable. The gate must complete pull, inspect the exact image, tag and push it into the local registry, then verify the expected registry tag/manifest before deploying a workload. Pin the real upstream tag throughout the source list, local-registry tag and Pod manifest; never retag a different patch release to impersonate the requested version.
+
+New middleware branches do not persist dynamically discovered public accelerators. When an isolated middleware test requires temporary acceleration, inject the reviewed source through a non-persisted runtime parameter, verify the checksum or manifest digest, and remove the override after the run.
 
 ## Script map
 

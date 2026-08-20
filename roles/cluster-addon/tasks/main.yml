@@ -40,6 +40,9 @@
 - import_tasks: rocketmq.yml
   when: '"broker-0-master" not in pod_info.stdout and rocketmq_install == "yes"'
 
+- import_tasks: percona-pxc.yml
+  when: 'mysql_install == "yes"'
+
 - import_tasks: cilium_connectivity_check.yml
   when: 'CLUSTER_NETWORK == "cilium" and cilium_connectivity_check|bool'
 

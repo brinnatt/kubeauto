@@ -188,6 +188,39 @@ class TestSixRepoVersionSync(unittest.TestCase):
                     bad.append(f"{component}:{name} ci={got} const={tag}")
         self.assertEqual(bad, [], msg=f"component_images vs CI drift: {bad}")
 
+    def test_nacos_mysql_fixture_is_published_by_ext_images_ci(self):
+        """Every Nacos MySQL fixture reference must match one dual-pushed image."""
+        ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
+        tag = self._ci_tag("mysql")
+        self.assertRegex(
+            ci,
+            r"(?s)dockerfile:\s*\./mysql/Dockerfile.*?"
+            r"image:\s*brinnatt/mysql.*?"
+            r"talkedu_image:\s*hub\.talkedu\.cn/kubeauto/mysql.*?"
+            rf"tag:\s*['\"]?{re.escape(tag)}['\"]?.*?ctx:\s*\./mysql/",
+        )
+        self.assertIn(
+            f"FROM docker.io/library/mysql:{tag}",
+            (EXT_IMAGES / "mysql" / "Dockerfile").read_text(),
+        )
+
+        fixture_tags = set()
+        for relative in (
+            "tests/helpers/delivery-gap-retest.sh",
+            "tests/helpers/delivery-gap-smoke.sh",
+        ):
+            gate = (KA / relative).read_text()
+            for image in (
+                "hub.talkedu.cn/kubeauto/mysql",
+                "brinnatt/mysql",
+                "docker.io/library/mysql",
+                "registry.talkschool.cn:5000/brinnatt/mysql",
+            ):
+                match = re.search(rf"{re.escape(image)}:([0-9]+\.[0-9]+\.[0-9]+)", gate)
+                self.assertIsNotNone(match, f"{relative} missing {image}")
+                fixture_tags.add(match.group(1))
+        self.assertEqual(fixture_tags, {tag}, msg="Nacos MySQL fixture tag drift")
+
 
 if __name__ == "__main__":
     unittest.main()

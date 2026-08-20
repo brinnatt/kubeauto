@@ -1,8 +1,8 @@
 # Percona XtraDB Cluster（PXC）开发手册
 
-> **文档版本：** v1.0（编码前技术基线）  
-> **最后核验：** 2026-08-19  
-> **适用对象：** kubeauto 主仓及五个 sibling 仓库的开发、测试、发布和文档维护人员  
+> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
+> **最后核验：** 2026-08-20
+> **适用对象：** kubeauto 主仓及五个 sibling 仓库的开发、测试、发布和文档维护人员
 > **变更原则：** PXC 是独立 middleware 分路；除非有可复现证据证明现有核心功能存在缺陷，不修改已交付的 Kubernetes、Nacos、RocketMQ 和存储代码。
 
 ## 目录
@@ -32,7 +32,7 @@
 
 ### 1.1 当前状态和开发授权边界
 
-本手册是编码前接口契约，不表示以下路径、配置项、镜像或测试入口已经存在。进入编码阶段后，开发者必须先读取当时的 `AGENTS.md`、测试矩阵、现有 addon 代码和锁定版本官方源码，再把目标路径与仓库真实结构对齐。
+本手册是当前实现的开发契约。任何后续变更仍必须先读取 `AGENTS.md`、MySQL 测试矩阵、现有 addon 代码和锁定版本官方源码，再把变更与仓库真实结构对齐。
 
 PXC 变更默认只允许触及：新增 MySQL 配置、独立 role/templates、MySQL 制品集合、MySQL 单元/契约/现场测试和本目录文档。若测试暴露核心代码问题，必须先以最小复现证明根因和影响面，不能为让 PXC 测试通过顺手重构已交付主链路。
 
@@ -62,11 +62,11 @@ flowchart TB
     GATE --> MATRIX[tests/mysql-test-matrix.yaml]
 ```
 
-| 目标路径 | 责任 |
+| 实际路径 | 责任 |
 |---|---|
 | common/constants.py | Operator、PXC、XtraBackup、HAProxy、Fluent Bit 版本和 component_images mysql |
 | conf/config.yml | mysql_install、命名空间、副本、StorageClass、PVC、TLS、备份和 PITR |
-| roles/cluster-addon/tasks/mysql.yml | Namespace、Operator、CRD、Secret 引用、CR 发布和状态等待 |
+| roles/cluster-addon/tasks/percona-pxc.yml | Namespace、Operator、CRD、Secret 引用、CR 发布和状态等待 |
 | roles/cluster-addon/templates/perconaPXC | Operator values、PXC CR、Backup/Restore/PITR CR |
 | roles/cluster-addon/files | 官方 Chart/CRD vendored 包和 SHA256 |
 | tests/helpers/mysql-regression.sh | 独立现场门禁、取证、durable rc 和清理 |
@@ -130,9 +130,9 @@ sequenceDiagram
 | HAProxy | 2.8.18-1 | v1.20.0 官方 CR 默认镜像 |
 | Fluent Bit | 5.0.6-1 | v1.20.0 supported software |
 
-镜像不得使用 latest、main、开发镜像或动态镜像发现结果。中国交付路径必须使用固定候选：sparkcr、TalkEdu、Huawei、官方上游；每个候选都要完成 pull、inspect、tag/push 和本地 Registry manifest 验证。
+镜像不得使用 latest、main、开发镜像或动态镜像发现结果。正式供应链只使用项目自有 TalkEdu/Docker Hub 发布和 Percona 官方上游；每个候选都要完成 pull、inspect、tag/push 和本地 Registry manifest 验证。公共加速器只允许通过非持久化环境变量临时注入测试，不得写入仓库。
 
-Chart tag 是 pxc-operator-1.20.0 和 pxc-db-1.20.0，不是不存在的统一 v1.20.0 Git tag。Chart/CRD 下载后执行 SHA256 校验并原子替换，失败下载不能进入 vendored 目录。
+当前交付只 vendored `pxc-operator-1.20.0.tgz` 及其 SHA256；PXC CR 由 role 模板渲染，不存在单独的 `pxc-db` Chart。Chart/CRD 下载后执行 SHA256 校验并原子替换，失败下载不能进入 vendored 目录。
 
 ### 3.1 镜像映射必须来自一个权威表
 
@@ -141,7 +141,7 @@ Chart tag 是 pxc-operator-1.20.0 和 pxc-db-1.20.0，不是不存在的统一 v
 | operator | `percona/percona-xtradb-cluster-operator:1.20.0` | `brinnatt/percona-xtradb-cluster-operator:1.20.0` |
 | pxc | `percona/percona-xtradb-cluster:8.4.8-8.1` | `brinnatt/percona-xtradb-cluster:8.4.8-8.1` |
 | xtrabackup | `percona/percona-xtrabackup:8.4.0-5.1` | `brinnatt/percona-xtrabackup:8.4.0-5.1` |
-| haproxy | `percona/haproxy:2.8.18-1` | `brinnatt/haproxy:2.8.18-1` |
+| haproxy | `percona/haproxy:2.8.18-1` | `brinnatt/percona-haproxy:2.8.18-1` |
 | fluent-bit | `percona/fluentbit:5.0.6-1` | `brinnatt/fluentbit:5.0.6-1` |
 
 常量、下载逻辑、ext-images CI、Docker Hub、TalkEdu、模板和测试只引用这份映射派生结果。不能让 CI 叫 `percona-haproxy`、常量叫 `haproxy`、模板又引用 `percona/haproxy` 而没有显式映射。
@@ -163,7 +163,7 @@ flowchart LR
     G -->|是| H[允许 addon 使用]
 ```
 
-中国路径的目标顺序是：已双推的 `hub.talkedu.cn/kubeauto/<发布名>` → 固定 `docker.sparkcr.cn/<上游镜像>` → 已审查的华为镜像候选 → Docker Hub/官方上游。每个候选都要验证 manifest/digest；运行时不得访问动态镜像列表。
+正式路径的顺序是：已双推的 `hub.talkedu.cn/kubeauto/<发布名>` → Docker Hub `brinnatt/<发布名>` → Percona 官方上游。每个候选都要验证 manifest/digest。临时测试加速源不得成为该顺序的一部分，也不得写入常量、CI、模板、脚本默认值、文档命令或测试矩阵。
 
 ## 第四章、配置与模板契约
 

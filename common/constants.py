@@ -164,6 +164,18 @@ class KubeConstant:
     v_ingressnginx: str = field(default="4.13.0", metadata={
         "refer_docs": "https://kubernetes.github.io/ingress-nginx/deploy/",
     })
+    v_pxc_operator: str = field(default="1.20.0", metadata={
+        "refer_github": "https://github.com/percona/percona-xtradb-cluster-operator/releases/tag/v1.20.0",
+        "refer_docs": "https://docs.percona.com/percona-operator-for-mysql/pxc/",
+        "description": "GA Percona Operator for MySQL based on PXC",
+    })
+    v_pxc: str = field(default="8.4.8-8.1")
+    v_pxc_xtrabackup: str = field(default="8.4.0-5.1")
+    v_pxc_haproxy: str = field(default="2.8.18-1")
+    v_pxc_fluentbit: str = field(default="5.0.6-1")
+    v_pxc_operator_chart_sha256: str = field(
+        default="b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf"
+    )
 
     # path for storing some important files
     BASE_PATH: str = field(default="/usr/local/kubeauto", metadata={
@@ -325,5 +337,12 @@ class KubeConstant:
             # v0.3.0 is Docker Schema 1 (rejected by modern buildx); upstream stable is v2.1.0.
             "prometheus-dingtalk": [
                 "brinnatt/prometheus-webhook-dingtalk:v2.1.0",
+            ],
+            "mysql": [
+                f"brinnatt/percona-xtradb-cluster-operator:{self.v_pxc_operator}",
+                f"brinnatt/percona-xtradb-cluster:{self.v_pxc}",
+                f"brinnatt/percona-xtrabackup:{self.v_pxc_xtrabackup}",
+                f"brinnatt/percona-haproxy:{self.v_pxc_haproxy}",
+                f"brinnatt/percona-fluentbit:{self.v_pxc_fluentbit}",
             ],
         }

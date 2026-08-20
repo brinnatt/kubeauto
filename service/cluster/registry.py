@@ -67,6 +67,11 @@ _BRINATT_UPSTREAM_FALLBACKS = {
     "brinnatt/node-exporter": "quay.io/prometheus/node-exporter",
     "brinnatt/prometheus": "quay.io/prometheus/prometheus",
     "brinnatt/prometheus-webhook-dingtalk": "timonwong/prometheus-webhook-dingtalk",
+    "brinnatt/percona-xtradb-cluster-operator": "percona/percona-xtradb-cluster-operator",
+    "brinnatt/percona-xtradb-cluster": "percona/percona-xtradb-cluster",
+    "brinnatt/percona-xtrabackup": "percona/percona-xtrabackup",
+    "brinnatt/percona-haproxy": "percona/haproxy",
+    "brinnatt/percona-fluentbit": "percona/fluentbit",
 }
 
 _BRINATT_PREFIX = "brinnatt/"

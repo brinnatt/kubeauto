@@ -1,10 +1,10 @@
 # Percona XtraDB Cluster（PXC）企业级部署、运维与开发文档
 
-> **文档版本：** v1.0（编码前技术基线）  
-> **最后核验：** 2026-08-19  
-> **Operator：** Percona Operator for MySQL based on PXC v1.20.0  
-> **数据库：** Percona XtraDB Cluster 8.4.8-8.1  
-> **适用范围：** kubeauto 后续新增的独立 MySQL middleware 分路；不改变已交付的 Kubernetes、Nacos、RocketMQ 和现有存储功能。  
+> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
+> **最后核验：** 2026-08-20
+> **Operator：** Percona Operator for MySQL based on PXC v1.20.0
+> **数据库：** Percona XtraDB Cluster 8.4.8-8.1
+> **适用范围：** kubeauto 后续新增的独立 MySQL middleware 分路；不改变已交付的 Kubernetes、Nacos、RocketMQ 和现有存储功能。
 > **官方依据：** [Percona Operator for MySQL/PXC 官方文档](https://docs.percona.com/percona-operator-for-mysql/pxc/)、[v1.20.0 Release](https://github.com/percona/percona-xtradb-cluster-operator/releases/tag/v1.20.0)
 
 ## 目录
@@ -39,19 +39,19 @@ flowchart LR
 
 ## 第二章、文档与实现状态
 
-当前阶段是“技术方案和企业文档先行”，不是功能已发布阶段：
+当前版本已包含 kubeauto 的独立 MySQL/PXC 实现和现场门禁；以下状态以当前仓库和最近一次独立回归证据为准：
 
 | 项目 | 当前状态 | 说明 |
 |---|---|---|
 | PXC 技术选型 | 已锁定 | v1.20.0 + PXC 8.4.8-8.1 + HAProxy |
-| 技术白皮书 | 编码前企业基线已完成 | 解释原理、架构、性能、故障和数据保护 |
-| 用户/运维手册 | 编码前企业基线已完成 | 按 `drafts` 企业文档规范编排；编码后需核对真实自动化入口 |
-| 开发手册 | 编码前企业基线已完成 | 规定代码、六仓、门禁和文档联动 |
-| kubeauto 安装代码 | 未开始 | 本目录中的 `mysql_*` 名称是待实现接口，不可直接执行 |
-| MySQL 独立现场门禁 | 未开始 | 不借用现有 enterprise matrix 的历史 PASS |
+| 技术白皮书 | 已交付并随版本核验 | 解释原理、架构、性能、故障和数据保护 |
+| 用户/运维手册 | 已交付并随版本核验 | 命令、预期结果、异常分流和回滚边界与实现对齐 |
+| 开发手册 | 已交付并随版本核验 | 规定代码、六仓、门禁和文档联动 |
+| kubeauto 安装代码 | 已实现 | 通过 MySQL 独立 role、模板和受控制品目录发布 |
+| MySQL 独立现场门禁 | 已实现 | 使用独立矩阵、durable rc 和双清理证据 |
 | 现有核心项目 | 已交付 | 不因 PXC 文档或后续测试而修改功能代码 |
 
-文档中的命令若标记“目标实现”，表示编码阶段需要落地后再执行；若标记“官方/诊断命令”，表示用于理解或排查 Operator/PXC 行为。
+文档中的命令分为三类：`交付入口` 是当前仓库固定自动化；`现场操作` 由客户平台/运维执行；`官方诊断` 只用于取证和解释行为。任何临时镜像代理或加速地址都不属于交付入口。
 
 ## 第三章、配套手册
 

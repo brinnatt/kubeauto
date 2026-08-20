@@ -1,0 +1,130 @@
+apiVersion: pxc.percona.com/v1
+kind: PerconaXtraDBCluster
+metadata:
+  name: {{ mysql_cluster_name }}
+  namespace: {{ mysql_namespace }}
+  labels:
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: percona-pxc
+  finalizers:
+    - percona.com/delete-pxc-pods-in-order
+spec:
+  crVersion: {{ pxc_operator_ver }}
+  secretsName: {{ mysql_secrets_name | default(mysql_cluster_name ~ '-secrets', true) }}
+  initImage: registry.talkschool.cn:5000/brinnatt/percona-xtradb-cluster-operator:{{ pxc_operator_ver }}
+  tls:
+    enabled: {{ mysql_tls_enabled | bool | lower }}
+  unsafeFlags:
+    tls: false
+    pxcSize: false
+    proxySize: false
+    backupIfUnhealthy: false
+  pause: false
+  updateStrategy: SmartUpdate
+  upgradeOptions:
+    apply: disabled
+  pxc:
+    size: {{ mysql_pxc_size | int }}
+    image: registry.talkschool.cn:5000/brinnatt/percona-xtradb-cluster:{{ pxc_ver }}
+    imagePullPolicy: IfNotPresent
+    autoRecovery: true
+    configuration: |
+      [mysqld]
+      wsrep_provider_options="gcache.size={{ mysql_gcache_size }};gcache.recover=yes"
+    resources:
+      requests:
+        cpu: {{ mysql_pxc_cpu_request }}
+        memory: {{ mysql_pxc_memory_request }}
+      limits:
+        cpu: {{ mysql_pxc_cpu_limit }}
+        memory: {{ mysql_pxc_memory_limit }}
+    affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+    podDisruptionBudget:
+      maxUnavailable: 1
+    volumeSpec:
+      persistentVolumeClaim:
+        storageClassName: {{ mysql_storage_class }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ mysql_pvc_size }}
+    gracePeriod: 600
+  haproxy:
+    enabled: true
+    size: {{ mysql_haproxy_size | int }}
+    image: registry.talkschool.cn:5000/brinnatt/percona-haproxy:{{ pxc_haproxy_ver }}
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: {{ mysql_haproxy_cpu_request }}
+        memory: {{ mysql_haproxy_memory_request }}
+      limits:
+        cpu: {{ mysql_haproxy_cpu_limit }}
+        memory: {{ mysql_haproxy_memory_limit }}
+    affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+    podDisruptionBudget:
+      maxUnavailable: 1
+    exposePrimary:
+      type: ClusterIP
+    exposeReplicas:
+      enabled: true
+      onlyReaders: true
+      type: ClusterIP
+  logcollector:
+    enabled: {{ mysql_logcollector_enabled | bool | lower }}
+    image: registry.talkschool.cn:5000/brinnatt/percona-fluentbit:{{ pxc_fluentbit_ver }}
+  backup:
+    image: registry.talkschool.cn:5000/brinnatt/percona-xtrabackup:{{ pxc_xtrabackup_ver }}
+    imagePullPolicy: IfNotPresent
+    pitr:
+      enabled: {{ mysql_pitr_enabled | bool | lower }}
+{% if mysql_pitr_enabled | bool %}
+      storageName: {{ mysql_pitr_storage_name }}
+      timeBetweenUploads: {{ mysql_pitr_upload_interval | int }}
+{% endif %}
+{% if mysql_backup_enabled | bool %}
+    storages:
+      {{ mysql_backup_storage_name }}:
+        type: s3
+        verifyTLS: {{ mysql_backup_verify_tls | bool | lower }}
+        s3:
+          bucket: {{ mysql_backup_bucket }}
+          credentialsSecret: {{ mysql_backup_credentials_secret }}
+          region: {{ mysql_backup_region }}
+          endpointUrl: {{ mysql_backup_endpoint }}
+          forcePathStyle: {{ mysql_backup_force_path_style | bool | lower }}
+          checksumAlgorithm: SHA256
+{% if mysql_backup_ca_bundle_secret | length > 0 %}
+          caBundle:
+            name: {{ mysql_backup_ca_bundle_secret }}
+            key: {{ mysql_backup_ca_bundle_key }}
+{% endif %}
+{% if mysql_pitr_enabled | bool %}
+      {{ mysql_pitr_storage_name }}:
+        type: s3
+        verifyTLS: {{ mysql_backup_verify_tls | bool | lower }}
+        s3:
+          bucket: {{ mysql_pitr_bucket }}
+          credentialsSecret: {{ mysql_backup_credentials_secret }}
+          region: {{ mysql_backup_region }}
+          endpointUrl: {{ mysql_backup_endpoint }}
+          forcePathStyle: {{ mysql_backup_force_path_style | bool | lower }}
+          checksumAlgorithm: SHA256
+{% if mysql_backup_ca_bundle_secret | length > 0 %}
+          caBundle:
+            name: {{ mysql_backup_ca_bundle_secret }}
+            key: {{ mysql_backup_ca_bundle_key }}
+{% endif %}
+{% endif %}
+    schedule:
+      - name: daily-full
+        schedule: {{ mysql_backup_schedule | quote }}
+        retention:
+          type: count
+          count: {{ mysql_backup_retention_count | int }}
+          deleteFromStorage: true
+        storageName: {{ mysql_backup_storage_name }}
+{% endif %}

@@ -1,8 +1,8 @@
 # 官方依据与版本基线
 
-> **文档版本：** v1.0（编码前技术基线）  
-> **最后核验：** 2026-08-19  
-> **适用范围：** Percona Operator for MySQL/PXC v1.20.0 文档集的版本、源码和官方功能证据  
+> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
+> **最后核验：** 2026-08-20
+> **适用范围：** Percona Operator for MySQL/PXC v1.20.0 文档集的版本、源码和官方功能证据
 > **维护要求：** 版本升级时必须重新核对 Release、Chart tag、CR/CRD 和 supported software，不能只修改版本字符串。
 
 本页是 PXC 文档的证据索引。文档结论以锁定版本的官方源码和官方发布说明为准，不以 `main` 分支或动态镜像标签推断生产行为。
@@ -19,7 +19,6 @@
 |---|---|---|---|
 | Operator | `1.20.0` | [GitHub release](https://github.com/percona/percona-xtradb-cluster-operator/releases/tag/v1.20.0) | `draft=false`、`prerelease=false`；GA 发布 |
 | Operator Helm chart | `1.20.0` | [`pxc-operator/Chart.yaml`](https://raw.githubusercontent.com/percona/percona-helm-charts/pxc-operator-1.20.0/charts/pxc-operator/Chart.yaml) | 独立 tag `pxc-operator-1.20.0`，`appVersion=1.20.0` |
-| Database chart | `1.20.0` | [`pxc-db/Chart.yaml`](https://raw.githubusercontent.com/percona/percona-helm-charts/pxc-db-1.20.0/charts/pxc-db/Chart.yaml) | 独立 tag `pxc-db-1.20.0`，用于 CR/辅助模板 |
 | PXC | `8.4.8-8.1` | [官方 v1.20.0 CR](https://raw.githubusercontent.com/percona/percona-xtradb-cluster-operator/v1.20.0/deploy/cr.yaml) | 官方示例和支持矩阵版本 |
 | XtraBackup | `8.4.0-5.1` | [官方 release supported software](https://github.com/percona/percona-xtradb-cluster-operator/releases/tag/v1.20.0) | 与 PXC 8.4 匹配 |
 | HAProxy | `2.8.18-1` | [官方 CR 默认镜像](https://raw.githubusercontent.com/percona/percona-xtradb-cluster-operator/v1.20.0/deploy/cr.yaml) | 默认代理路径 |
