@@ -350,6 +350,16 @@ class PerconaPxcDeliveryTests(unittest.TestCase):
             'MYSQL-09 full S3 backup and object readability',
             'MYSQL-10 full restore and new backup baseline',
             'MYSQL-11 PITR transaction target',
+            'SET @kubeauto_gtid_before=@@GLOBAL.gtid_executed',
+            'SELECT GTID_SUBTRACT(@@GLOBAL.gtid_executed, @kubeauto_gtid_before)',
+            'PXC_PITR_BOUNDARY next_transaction_gtid=',
+            'invalid or ambiguous PITR boundary GTID',
+            'Re-enabling PITR is asynchronous',
+            'for attempt in $(seq 1 90)',
+            'PITR restore starts a new Galera timeline',
+            "gap-baseline",
+            'PITR collector was not ready before gap baseline',
+            "tr -d '\\r\\n[:space:]' | sed 's/\\\\n//g'",
             'BinlogGapDetected',
             "Backup doesn't guarantee consistent recovery with PITR",
             'MYSQL-12 fixed sysbench baseline and node-loss load',
@@ -358,6 +368,7 @@ class PerconaPxcDeliveryTests(unittest.TestCase):
             'minio/mc:RELEASE.2025-04-08T15-39-49Z',
         ):
             self.assertIn(phrase, MYSQL_GATE)
+        self.assertNotIn('@@GLOBAL.wsrep_cluster_state_uuid', MYSQL_GATE)
         self.assertNotRegex(MYSQL_GATE, r'(?m)echo\s+"\$(APP|OLD_ROOT|NEW_ROOT)_PASSWORD')
         self.assertLess(RUNNER.index('monitor_remote_job()'), RUNNER.index('if [[ "$MODE" == "--mysql-only" ]]'))
         all_delivery = RUNNER[RUNNER.index('delivery_modes=('):RUNNER.index(')', RUNNER.index('delivery_modes=('))]

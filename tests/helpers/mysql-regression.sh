@@ -267,8 +267,21 @@ wait_restore_state() {
 }
 
 wait_pitr_deployment_ready() {
-  kubectl -n "$MYSQL_NAMESPACE" rollout status \
-    deployment/"${MYSQL_CLUSTER}-pitr" --timeout=15m
+  local deployment="${MYSQL_CLUSTER}-pitr"
+  local attempt
+  # Re-enabling PITR is asynchronous: the Operator may remove the old
+  # Deployment before creating the new one. Treat that bounded gap as a
+  # convergence window, not as a failed rollout.
+  for attempt in $(seq 1 90); do
+    if kubectl -n "$MYSQL_NAMESPACE" get deployment "$deployment" >/dev/null 2>&1; then
+      kubectl -n "$MYSQL_NAMESPACE" rollout status \
+        deployment/"$deployment" --timeout=15m
+      return 0
+    fi
+    sleep 2
+  done
+  kubectl -n "$MYSQL_NAMESPACE" get pxc "$MYSQL_CLUSTER" -o yaml || true
+  return 1
 }
 
 create_backup() {
@@ -1111,16 +1124,18 @@ mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
 create_backup pitr-base || fail "PITR base backup failed"
 mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
   "REPLACE INTO kubeauto_restore.pitr_marker VALUES (100, 'pitr-target');"
-pitr_gtid="$(mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
-  "SELECT CONCAT(SUBSTRING_INDEX(TRIM(SUBSTRING_INDEX(@@GLOBAL.gtid_executed, ',', -1)), ':', 1), ':', SUBSTRING_INDEX(TRIM(SUBSTRING_INDEX(@@GLOBAL.gtid_executed, ',', -1)), '-', -1));" \
-  | tr -d '\r\n[:space:]')"
-[[ "$pitr_gtid" =~ ^[0-9A-Fa-f-]{36}:[1-9][0-9]*$ ]] || fail "invalid PITR target GTID: ${pitr_gtid}"
 for pod in ${MYSQL_CLUSTER}-pxc-0 ${MYSQL_CLUSTER}-pxc-1 ${MYSQL_CLUSTER}-pxc-2; do
   mysql_exec 127.0.0.1 "FLUSH BINARY LOGS;" "$pod"
 done
 sleep 75
-mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
-  "REPLACE INTO kubeauto_restore.pitr_marker VALUES (101, 'after-pitr-target');"
+# Percona transaction recovery excludes the target GTID and everything after
+# it. Capture the first transaction after the desired recovery boundary in the
+# same MySQL session so the test does not guess from a multi-UUID GTID set.
+pitr_gtid="$(mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
+  "SET @kubeauto_gtid_before=@@GLOBAL.gtid_executed; REPLACE INTO kubeauto_restore.pitr_marker VALUES (101, 'after-pitr-target'); SELECT GTID_SUBTRACT(@@GLOBAL.gtid_executed, @kubeauto_gtid_before);" \
+  | tr -d '\r\n[:space:]' | sed 's/\\n//g')"
+[[ "$pitr_gtid" =~ ^[0-9A-Fa-f-]{36}:[1-9][0-9]*$ ]] || fail "invalid or ambiguous PITR boundary GTID: ${pitr_gtid}"
+echo "PXC_PITR_BOUNDARY next_transaction_gtid=${pitr_gtid}"
 for pod in ${MYSQL_CLUSTER}-pxc-0 ${MYSQL_CLUSTER}-pxc-1 ${MYSQL_CLUSTER}-pxc-2; do
   mysql_exec 127.0.0.1 "FLUSH BINARY LOGS;" "$pod"
 done
@@ -1163,6 +1178,16 @@ after_target_count="$(mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.sv
 echo "PXC_PITR_RESTORED gtid=${pitr_gtid} latest_restorable_time=${latest_restorable_time}"
 
 echo "========== MYSQL-11 binlog-gap refusal =========="
+wait_pitr_deployment_ready || fail "PITR collector was not ready before gap baseline"
+# PITR restore starts a new Galera timeline. Give the collector one complete
+# upload cycle on that timeline before stopping it; otherwise the old timeline
+# cache is intentionally treated as a new cluster rather than a binlog gap.
+mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
+  "REPLACE INTO kubeauto_restore.pitr_marker VALUES (102, 'gap-baseline');"
+for pod in ${MYSQL_CLUSTER}-pxc-0 ${MYSQL_CLUSTER}-pxc-1 ${MYSQL_CLUSTER}-pxc-2; do
+  mysql_exec 127.0.0.1 "FLUSH BINARY LOGS;" "$pod"
+done
+sleep 75
 create_backup pitr-gap-base || fail "PITR gap base backup failed"
 kubectl -n "$MYSQL_NAMESPACE" patch pxc "$MYSQL_CLUSTER" --type=merge \
   -p '{"spec":{"backup":{"pitr":{"enabled":false}}}}' >/dev/null
@@ -1173,7 +1198,7 @@ done
 ! kubectl -n "$MYSQL_NAMESPACE" get deployment "${MYSQL_CLUSTER}-pitr" >/dev/null 2>&1 \
   || fail "PITR collector did not stop for gap injection"
 mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
-  "REPLACE INTO kubeauto_restore.pitr_marker VALUES (102, 'intentional-binlog-gap');"
+  "REPLACE INTO kubeauto_restore.pitr_marker VALUES (103, 'intentional-binlog-gap');"
 for pod in ${MYSQL_CLUSTER}-pxc-0 ${MYSQL_CLUSTER}-pxc-1 ${MYSQL_CLUSTER}-pxc-2; do
   mysql_exec 127.0.0.1 "FLUSH BINARY LOGS; PURGE BINARY LOGS BEFORE NOW();" "$pod"
 done
@@ -1181,7 +1206,7 @@ kubectl -n "$MYSQL_NAMESPACE" patch pxc "$MYSQL_CLUSTER" --type=merge \
   -p '{"spec":{"backup":{"pitr":{"enabled":true}}}}' >/dev/null
 wait_pitr_deployment_ready || fail "PITR collector did not restart after gap injection"
 mysql_exec "${MYSQL_CLUSTER}-haproxy.${MYSQL_NAMESPACE}.svc" \
-  "REPLACE INTO kubeauto_restore.pitr_marker VALUES (103, 'after-binlog-gap');"
+  "REPLACE INTO kubeauto_restore.pitr_marker VALUES (104, 'after-binlog-gap');"
 for pod in ${MYSQL_CLUSTER}-pxc-0 ${MYSQL_CLUSTER}-pxc-1 ${MYSQL_CLUSTER}-pxc-2; do
   mysql_exec 127.0.0.1 "FLUSH BINARY LOGS;" "$pod"
 done

@@ -96,7 +96,7 @@ class PerconaPxcDocumentationTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, all_text)
         for document in FILES.values():
-            self.assertIn("v1.1（独立 MySQL/PXC 分路交付版）", document)
+            self.assertIn("v1.2（生产实践对齐版）", document)
 
     def test_development_keeps_mysql_gate_independent(self):
         text = FILES["development-manual.md"]

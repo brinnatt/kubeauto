@@ -1,10 +1,10 @@
 meta:
   version: 1
-  updated: "2026-08-19"
+  updated: "2026-08-21"
   component: percona-pxc
   scope: "Independent MySQL middleware delivery branch; does not replace the enterprise core matrix"
   runner: bash tests/run_enterprise_regression.sh --mysql-only
-  result: PENDING
+  result: PASS
 
 versions:
   operator: "1.20.0"
@@ -15,17 +15,17 @@ versions:
   kubernetes: "1.33.6"
 
 cases:
-  - {id: MYSQL-01, group: static, desc: "Version, Chart SHA256, image and six-repository contracts", status: pending, evidence: ""}
-  - {id: MYSQL-02, group: preflight, desc: "Clean namespace, node capacity, failure domains and StorageClass R/W", status: pass, evidence: "2026-08-20 clean baseline; three failure domains; three 20Gi PVCs completed write/read verification"}
-  - {id: MYSQL-03, group: supply-chain, desc: "All pinned images materialized in the local Registry with manifest evidence", status: pending, evidence: ""}
-  - {id: MYSQL-04, group: install, desc: "Operator, CRD, PXC 3/3, HAProxy 3/3 and PVC readiness", status: pending, evidence: ""}
-  - {id: MYSQL-05, group: sql, desc: "TLS connection, Primary write, replicas read and least-privilege negative checks", status: pass, evidence: "2026-08-20 VERIFY_CA success; wrong-CA failure; Primary/Synced/Ready on all members; least-privilege DML success and DDL/GRANT refusal"}
-  - {id: MYSQL-06, group: quorum, desc: "Single PXC loss keeps Primary; two-node loss refuses unsafe writes", status: pending, evidence: ""}
-  - {id: MYSQL-07, group: transfer, desc: "Pod reconstruction returns through IST/SST to Primary and Synced", status: pass, evidence: "2026-08-20 old Pod UID disappeared; new UID became Ready; IST/SST evidence observed; cluster recovered 3/3"}
-  - {id: MYSQL-08, group: secrets, desc: "System password rotation converges; old credential fails and new credential succeeds", status: pass, evidence: "2026-08-20 rotated root Secret; new credential succeeded and old credential failed"}
-  - {id: MYSQL-09, group: backup, desc: "Full backup reaches Succeeded and the object is readable", status: pending, evidence: ""}
-  - {id: MYSQL-10, group: restore, desc: "Full restore preserves the expected marker and creates a new backup baseline", status: pending, evidence: ""}
-  - {id: MYSQL-11, group: pitr, desc: "PITR positive target and binlog-gap negative refusal", status: pending, evidence: ""}
-  - {id: MYSQL-12, group: performance, desc: "Fixed sysbench baseline, concurrency ladder and single-node-failure measurements", status: pending, evidence: ""}
-  - {id: MYSQL-13, group: idempotence, desc: "Second install causes no unintended credential, PVC or database rollout change", status: pending, evidence: ""}
-  - {id: MYSQL-14, group: cleanup, desc: "Scoped cleanup removes only test resources and emits MYSQL_CLEAN_VERIFY_PASS", status: pending, evidence: ""}
+  - {id: MYSQL-01, group: static, desc: "Version, Chart SHA256, image and six-repository contracts", status: pass, evidence: "2026-08-21 current gate: pinned GA versions and Chart SHA256 passed"}
+  - {id: MYSQL-02, group: preflight, desc: "Clean namespace, node capacity, failure domains and StorageClass R/W", status: pass, evidence: "2026-08-21 current gate: clean namespace, six Ready nodes, three failure domains and PVC read/write passed"}
+  - {id: MYSQL-03, group: supply-chain, desc: "All pinned images materialized in the local Registry with manifest evidence", status: pass, evidence: "2026-08-21 current gate: five Percona and three support images manifest/digest verified and materialized"}
+  - {id: MYSQL-04, group: install, desc: "Operator, CRD, PXC 3/3, HAProxy 3/3 and PVC readiness", status: pass, evidence: "2026-08-21 current gate: Operator/CRD, PXC 3/3, HAProxy 3/3 and four Bound PVCs Ready"}
+  - {id: MYSQL-05, group: sql, desc: "TLS connection, Primary write, replicas read and least-privilege negative checks", status: pass, evidence: "2026-08-21 current gate: VERIFY_CA, Primary/Synced/Ready, application DML and DDL/GRANT refusal passed"}
+  - {id: MYSQL-06, group: quorum, desc: "Single PXC loss keeps Primary; two-node loss refuses unsafe writes", status: pass, evidence: "2026-08-21 current gate: one-node write continuity and two-member Non-Primary unsafe-write refusal passed"}
+  - {id: MYSQL-07, group: transfer, desc: "Pod reconstruction returns through IST/SST to Primary and Synced", status: pass, evidence: "2026-08-21 current gate: reconstructed Pod UID Ready with IST/SST evidence and cluster 3/3 recovery"}
+  - {id: MYSQL-08, group: secrets, desc: "System password rotation converges; old credential fails and new credential succeeds", status: pass, evidence: "2026-08-21 current gate: new root credential succeeded and old credential failed"}
+  - {id: MYSQL-09, group: backup, desc: "Full backup reaches Succeeded and the object is readable", status: pass, evidence: "2026-08-21 current gate: full-backup Succeeded; 297 S3 objects, 81303377 bytes, sample SHA256 verified"}
+  - {id: MYSQL-10, group: restore, desc: "Full restore preserves the expected marker and creates a new backup baseline", status: pass, evidence: "2026-08-21 current gate: full-restore Succeeded, expected marker boundary verified, post-restore baseline readable"}
+  - {id: MYSQL-11, group: pitr, desc: "PITR positive target and binlog-gap negative refusal", status: pass, evidence: "2026-08-21 current gate: PXC_PITR_RESTORED with exact UUID:N boundary; BinlogGapDetected condition and pitr-gap-refusal Failed with official safety reason"}
+  - {id: MYSQL-12, group: performance, desc: "Fixed sysbench baseline, concurrency ladder and single-node-failure measurements", status: pass, evidence: "2026-08-21 current gate: concurrency 1/4/16 TPS 49.77/226.00/990.34; single-node-loss TPS 588.34; zero command failures"}
+  - {id: MYSQL-13, group: idempotence, desc: "Second install causes no unintended credential, PVC or database rollout change", status: pass, evidence: "2026-08-21 current gate: second production-role run preserved Pod, PVC and Secret identities"}
+  - {id: MYSQL-14, group: cleanup, desc: "Scoped cleanup removes only test resources and emits MYSQL_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-08-21 current gate: two MYSQL_CLEAN_VERIFY_PASS markers and MYSQL_PXC_DELIVERY_BRANCH_PASS"}

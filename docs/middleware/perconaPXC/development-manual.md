@@ -1,7 +1,7 @@
 # Percona XtraDB Cluster（PXC）开发手册
 
-> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
-> **最后核验：** 2026-08-20
+> **文档版本：** v1.2（生产实践对齐版）
+> **最后核验：** 2026-08-21
 > **适用对象：** kubeauto 主仓及五个 sibling 仓库的开发、测试、发布和文档维护人员
 > **变更原则：** PXC 是独立 middleware 分路；除非有可复现证据证明现有核心功能存在缺陷，不修改已交付的 Kubernetes、Nacos、RocketMQ 和存储代码。
 
@@ -33,6 +33,8 @@
 ### 1.1 当前状态和开发授权边界
 
 本手册是当前实现的开发契约。任何后续变更仍必须先读取 `AGENTS.md`、MySQL 测试矩阵、现有 addon 代码和锁定版本官方源码，再把变更与仓库真实结构对齐。
+
+> **已交付代码边界：** PXC 是独立 middleware 分路。测试失败时先证明是新增分路、测试门禁、环境/供应链还是共享代码缺陷；没有 100% 可复现证据，不修改已经交付的 Kubernetes、Nacos、RocketMQ 和存储主链路。
 
 PXC 变更默认只允许触及：新增 MySQL 配置、独立 role/templates、MySQL 制品集合、MySQL 单元/契约/现场测试和本目录文档。若测试暴露核心代码问题，必须先以最小复现证明根因和影响面，不能为让 PXC 测试通过顺手重构已交付主链路。
 
@@ -99,6 +101,8 @@ sequenceDiagram
 
 安装 role 不能隐式联网拉取未知 Chart 或镜像。download 阶段负责供应链，addon 阶段只消费已经验证的本地制品；缺制品时明确失败并给出固定补救入口。
 
+> **网络受限环境：** `hub.talkedu.cn`、Docker Hub 和 Percona 官方地址属于正式来源；动态代理/加速器只可由测试 runner 通过运行时参数临时注入，完成 manifest/digest 校验后立即移除，严禁写入常量、CI、默认配置、脚本或企业文档。
+
 ### 2.2 模块拆分原则
 
 建议按“校验、Operator、集群、状态、备份能力”拆分 task include，避免一个数百行 task 文件同时处理下载、Secret、Helm 和 SQL。每个 include 必须有清晰输入、幂等判据和失败消息。模板只做结构化渲染，不在 Jinja 中堆叠业务判断。
@@ -164,6 +168,8 @@ flowchart LR
 ```
 
 正式路径的顺序是：已双推的 `hub.talkedu.cn/kubeauto/<发布名>` → Docker Hub `brinnatt/<发布名>` → Percona 官方上游。每个候选都要验证 manifest/digest。临时测试加速源不得成为该顺序的一部分，也不得写入常量、CI、模板、脚本默认值、文档命令或测试矩阵。
+
+> **供应链回滚：** 任一候选的 checksum、manifest 或 digest 不一致时，删除本次临时对象并保留上一版已验证制品；不能用“能拉到镜像”替代版本和摘要校验，也不能把临时代理地址固化成 fallback。
 
 ## 第四章、配置与模板契约
 
@@ -290,6 +296,8 @@ flowchart LR
 
 每个现场阶段至少写入：`started_at`、`finished_at`、阶段名、输入版本、命令摘要、结果、`rc`、失败分类和证据路径。最终 PASS 必须同时满足：预期 terminal marker、durable `rc=0`、零 failure marker、矩阵当前 evidence 和 clean verify。
 
+> **失败不是新基线：** 失败尝试产生的 CR、PVC、对象存储前缀、临时 Chart、镜像 tag 和猜测性代码必须按所有权清理或回收；只有干净环境重新运行并产生 terminal marker、durable `rc=0`、零 failure marker 和 clean verify，才可以更新矩阵为 pass。
+
 Secret value、TLS 私钥、对象存储 key、数据库密码和 kubeconfig token 不进入 evidence。日志采集器必须有脱敏测试，不能靠人工事后删密码。
 
 ### 6.2 失败原子性
@@ -304,6 +312,8 @@ Secret value、TLS 私钥、对象存储 key、数据库密码和 kubeconfig tok
 
 自动清理只处理本次运行创建且带唯一 run id 的对象；无 run id、所有权不明或名称超出 allowlist 时立即停止，不能“尽量清理”。
 
+> **回滚与取证优先级：** 清理动作不得先于证据采集。涉及数据的失败先保留 CR status、Pod/PVC、wsrep、对象列表、事件和日志；修复未通过时回收错误代码与实验室残留，不能用删除现场来制造“通过”。
+
 清理必须满足：
 
 1. 删除测试 CR、测试 namespace、测试 PVC、测试 Job 和测试对象存储前缀；
@@ -316,6 +326,8 @@ Secret value、TLS 私钥、对象存储 key、数据库密码和 kubeconfig tok
 
 PXC 日常变更只运行 MySQL 独立单元、契约和现场矩阵。若改动共享下载器、Registry、Ansible 公共入口、Kubernetes 核心资源或现有 addon 行为，说明影响已超出独立分路；此时先做影响分析，由交付负责人决定是否扩大测试，而不是开发者通过文档声明规避。
 
+> **测试范围：** 按当前交付约定，PXC 文档、role、PXC 制品和独立 runner 的日常变更不自动触发 full enterprise test；一旦证据显示共享功能行为被改变，必须停止“独立分路”结论并重新评估 full test 范围。
+
 ## 第七章、文档与发布门禁
 
 PXC 任何可见变更必须同步：
@@ -327,6 +339,8 @@ PXC 任何可见变更必须同步：
 - docs 技术栈索引；
 - mysql 独立测试矩阵；
 - 六仓 CI、镜像 tag、digest 和 fallback。
+
+> **文档同步规则：** 测试中真实遇到的异常必须回写用户与运维手册的引用块，至少包含现象、证据、处置动作、禁止动作和回滚边界；不能只在测试脚本注释中保留经验。
 
 发布前运行文档契约、目标单元测试、Shell/YAML/Helm 静态校验和 MySQL 独立现场门禁。按用户要求，不把 full enterprise test 作为 PXC 日常交付门禁；只有证据表明 PXC 变更影响核心功能时，才由负责人重新评估范围。
 
@@ -351,3 +365,15 @@ PXC 任何可见变更必须同步：
 - [ ] 正向、负向、失败清理和 clean verify 均有测试。
 - [ ] 用户手册命令与真实自动化入口一致。
 - [ ] MySQL 独立 matrix 是当前运行证据，不借用历史 PASS。
+
+### 7.3 本轮回归经验的固定契约
+
+| 已验证问题 | 必须保持的实现/文档契约 |
+|---|---|
+| PITR GTID 误取 Galera 状态 | 只使用同一会话的 `GTID_SUBTRACT(@@GLOBAL.gtid_executed, ...)`，并要求单一 `UUID:N` |
+| PITR Deployment 异步重建 | 等待函数必须有界重试并在超时输出 CR/事件诊断 |
+| PITR 恢复后的新 timeline | gap 基线前等待 collector 完整上传周期，不复用旧 timeline 缓存 |
+| 双节点失去多数派 | 保持 `Non-Primary` 安全拒写，不引入自动 unsafe bootstrap |
+| 中国镜像拉取 | 正式代码只保留固定来源；动态加速器只能 runtime-only 测试注入 |
+
+> **交付确认：** 本轮 `MYSQL-01` 至 `MYSQL-14` 全部通过，且独立门禁记录 durable `rc=0`、零 failure marker 和清理验证。该结果不替代后续版本的当前回归。

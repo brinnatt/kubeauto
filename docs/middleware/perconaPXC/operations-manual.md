@@ -1,12 +1,12 @@
 # Percona XtraDB Cluster（PXC）用户与运维手册
 
-> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
-> **最后核验：** 2026-08-20
+> **文档版本：** v1.2（生产实践对齐版）
+> **最后核验：** 2026-08-21
 > **适用系统：** kubeauto Kubernetes v1.33.6
 > **适用组件：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、HAProxy 2.8.18-1
 > **官方主线：** [Quickstart](https://docs.percona.com/percona-operator-for-mysql/pxc/quickstart.html)、[Connect](https://docs.percona.com/percona-operator-for-mysql/pxc/connect.html)、[Debug](https://docs.percona.com/percona-operator-for-mysql/pxc/debug.html)、[Backups and restore](https://docs.percona.com/percona-operator-for-mysql/pxc/backups-restore.html)
 
-本文按 drafts 企业文档规范编写：每个操作都有执行位置、文件归属、前置条件、命令、预期结果、异常分流和回滚边界。当前实现通过独立 MySQL role 和固定 runner 交付；命令中使用 `<...>` 的位置参数必须由客户环境评审后替换，不能直接复制示例凭据。
+本文按 drafts 企业文档规范编写：主线路只保留客户需要依次执行的动作；异常处理、回滚和注意事项使用引用块集中说明。当前实现通过独立 MySQL role 和固定 runner 交付；命令中使用 `<...>` 的位置参数必须由客户环境评审后替换，不能直接复制示例凭据。
 
 ## 目录
 
@@ -52,6 +52,46 @@ PXC_WORKDIR 是管理节点本地路径，不是 Operator 读取路径。Operato
 | MySQL 独立现场门禁 | 已实现，使用 `tests/run_enterprise_regression.sh --mysql-only` |
 | 现有核心矩阵 | 不修改、不重新签字 |
 
+### 1.3 客户首次部署主线路
+
+以下是唯一推荐的首次部署顺序。每一步都必须看到“完成标志”后再进入下一步；不要跳到后面的故障章节寻找替代安装命令。
+
+主线路使用 kubeauto 的固定入口。下面的 `<cluster>` 是 `kubecli new` 创建的集群名，配置文件为 `clusters/<cluster>/config.yml`；不要在目标节点上直接执行临时 Helm 或 `kubectl set image`：
+
+```bash
+set -Eeuo pipefail
+CLUSTER="<cluster>"
+CONFIG="clusters/${CLUSTER}/config.yml"
+test -s "$CONFIG"
+# 在 CONFIG 中设置 mysql_install: "yes"、StorageClass、容量和 Secret 引用
+kubecli download -E mysql
+kubecli setup "$CLUSTER" 07
+```
+
+若客户采用 `kubecli setup <cluster> 90` 一键流程，仍须在执行前完成本手册第 2～4 章，并在 90 完成后执行第 6～10 章验收；`07` 只是独立 addon 步骤，不会替代集群基础设施和 CNI 前置条件。
+
+| 步骤 | 执行动作 | 完成标志 |
+|---|---|---|
+| 1 | 完成第 2、3 章容量、节点、StorageClass、权限和存储读写预检 | 3 个故障域可调度，预检 PVC 写入/读取成功 |
+| 2 | 按第 4 章准备受控 Chart、固定镜像和密码/TLS/对象存储 Secret | SHA256、tag/digest、Secret key 对账完成 |
+| 3 | 在 kubeauto 配置中设置 `mysql_install: "yes"`，执行生产 role | role rc=0，Operator Deployment 和 CRD Ready |
+| 4 | 等待第 6 章控制面和数据面状态 | PXC 3/3、HAProxy 3/3、PVC Bound、三个不同节点 |
+| 5 | 按第 7 章完成 TLS、Primary 写入、replicas 读取和最小权限验证 | marker 可读回，越权和错误 CA 被拒绝 |
+| 6 | 按第 10 章创建全量备份并进行恢复抽检 | Backup `Succeeded`，对象可读且校验值可保存 |
+| 7 | 保存第 13 章签收证据并执行限定清理（测试环境） | 当前矩阵证据完整，输出 `MYSQL_CLEAN_VERIFY_PASS` |
+
+```mermaid
+flowchart LR
+    A[容量/存储预检] --> B[受控制品与 Secret]
+    B --> C[kubeauto role]
+    C --> D[PXC/HAProxy/PVC Ready]
+    D --> E[SQL/TLS/权限]
+    E --> F[全量备份与恢复]
+    F --> G[证据签收]
+```
+
+> **主线路禁止事项：** 不在主线路中手工 bootstrap、删除 PVC、关闭 TLS 校验、使用 `percona.com/unsafe-pitr` 或直接修改 Operator 管理的 StatefulSet。这些动作只有在本文对应的异常/回滚引用块中、完成取证并得到审批后才可考虑。
+
 ## 第二章、部署目标和容量规划
 
 Percona 官方建议生产使用 3–5 个 PXC 节点；偶数节点会削弱多数派判断，7 个以上节点会增加写事务确认成本。本文一期采用 3 个 PXC、3 个 HAProxy、每个 PXC 独立 PVC 和主机反亲和。
@@ -78,7 +118,7 @@ flowchart TB
 | 存储 | 支持故障后重新挂载的 CSI | 把 Hostpath 当成跨节点高可用 |
 | 备份 | 独立 S3/Azure 兼容存储 | 只依赖三份在线副本 |
 
-官方系统要求是至少 3 个节点、每节点 2 CPU、2 GiB RAM、至少 60 GiB 可用于 PV；这是安装门槛，不是生产容量。生产容量至少计算：
+官方系统要求是至少 3 个节点、每节点 2 CPU、2 GiB RAM、至少 60 GiB 可用于 PV；这是安装门槛，不是生产容量。kubeauto 的生产默认值为每个 PXC 2 CPU/4 GiB、100 GiB PVC；独立门禁使用较小的测试资源，不能把测试值当作客户容量。生产容量至少计算：
 
 ```text
 PXC PVC = 当前数据 + 索引 + 临时表 + binlog/gcache + 增长窗口
@@ -106,6 +146,8 @@ PXC_PREFLIGHT
 ```
 
 预期：至少 3 个可调度节点 Ready；目标 StorageClass 存在；所需权限为 yes。首次部署时 CRD 尚不存在，`create perconaxtradbclusters` 可能返回 no；应在第五章安装 CRD 后重新检查并得到 yes。只有节点 Ready 不能证明存储可用。
+
+> **注意：实验室与生产参数不同。** `tests/helpers/mysql-regression.sh` 为了在专用测试集群完成门禁使用 1 CPU/2 GiB 请求、20 GiB PVC；这只证明功能链路和故障语义，不证明客户容量。上线必须使用配置文件中的生产默认值或经过容量评审的更高值。
 
 ### 3.2 创建并确认命名空间
 
@@ -263,7 +305,7 @@ PXC_CHART_VERIFY
 | CRD | 官方 Chart/bundle | Kubernetes API | Operator/webhook | Helm 安装时创建 |
 | Operator Deployment | Helm | mysql-operator | Kubernetes | Deployment reconcile |
 
-本文采用独立 Operator 命名空间并只监听 `mysql`，避免无必要的集群级全命名空间监听。`operator-values.yaml` 的目标内容如下；字段已经按 `pxc-operator-1.20.0` 官方 `values.yaml` 对照：
+本文采用独立 Operator 命名空间并只监听 `mysql`，避免无必要的集群级全命名空间监听。正式交付由 kubeauto role 消费仓库内已校验的 Chart 和本地 Registry；以下 values 片段用于说明渲染契约，字段已经按 `pxc-operator-1.20.0` 官方 `values.yaml` 对照：
 
 ```yaml
 operatorImageRepository: registry.talkschool.cn:5000/brinnatt/percona-xtradb-cluster-operator
@@ -290,7 +332,7 @@ resources:
 
 `operatorImageRepository` 由 Chart 使用 `appVersion=1.20.0` 组成最终镜像引用。正式编码时必须执行 `helm template`，证明渲染结果使用本地 Registry、目标命名空间和正确 RBAC，再允许安装。
 
-当前仓库尚无 vendored Chart 和 kubeauto 入口，不能在生产执行：
+脱离 kubeauto 的手工路径只有在客户已经自行准备并校验 vendored Chart 时才可执行；不能从网络直接安装未知版本：
 
 ```bash
 bash <<'PXC_OPERATOR_INSTALL'
@@ -311,6 +353,8 @@ PXC_OPERATOR_INSTALL
 ```
 
 预期：Helm deployed、Operator Deployment Ready、CRD Established=True、最后一项权限检查为 yes；Operator 日志无 webhook、RBAC、镜像和 leader election 错误。若 Deployment 实际名称因后续 Chart 模板调整而变化，以 `helm get manifest pxc-operator -n mysql-operator` 的当前渲染结果为准，文档和自动化必须同步更新。
+
+> **回滚边界：Operator 安装失败。** 先保存 Helm manifest、values、CRD 状态、事件和 Operator 日志。若尚未创建 PXC CR，只按发布流程卸载本次 Helm release；若已经存在 PXC/备份/恢复资源，不得直接删除 CRD 或命名空间，应转到第 11.5 节的回滚判定。
 
 ## 第六章、创建数据库集群
 
@@ -439,6 +483,8 @@ PXC_READY
 
 预期：六个 Pod Ready；三个 PXC 位于三个不同的 `kubernetes.io/hostname`；每个 PXC PVC Bound；两个 Service 和 EndpointSlice 存在。随后使用第七章真实 SQL 验证 wsrep 和业务路径，才能签收。
 
+> **异常分流：Pod Ready 但 CR 不是 `ready`，或 PVC 已 Bound 但 SQL 不可用。** 这是控制面与数据面不一致，先保留 `kubectl get pxc,pod,pvc,events -o yaml`、Operator 日志和 wsrep 状态，再进入第 12 章；不要通过增加副本、删除 PVC 或重启全部 Pod 试错。
+
 ## 第七章、应用连接和 SQL 验收
 
 ### 7.1 连接入口和客户端要求
@@ -461,6 +507,8 @@ mysql --protocol=TCP \
 预期：TLS 握手成功，业务账号只能访问授权 schema，错误密码失败，root 不用于业务连接。
 
 客户端必须校验 CA 和 Service DNS。集群外应用若通过内部负载均衡接入，证书 SAN 必须包含实际访问 FQDN；不能为解决证书错误改用 `--ssl-mode=REQUIRED`、关闭 hostname 校验或把数据库暴露公网。
+
+> **注意：读写入口不可互换。** `cluster1-haproxy` 是 primary 写入口；`cluster1-haproxy-replicas` 仅用于只读流量。强 read-after-write 业务继续走 primary，应用连接池必须支持 Service 后端变化和事务重试边界。
 
 ### 7.2 wsrep 健康验收
 
@@ -547,6 +595,8 @@ flowchart LR
 
 删除 Pod 只用于独立门禁，不等同于节点故障测试。若业务写操作在切换窗口失败，必须记录错误码、连接池重连时间和事务是否已经提交；只有可判定幂等性的事务才允许应用层重试。
 
+> **回滚：SQL 验收失败。** 不要修改 PXC 参数或清理 PVC 来“恢复”验收。先区分 TLS/账号/Service、复制状态和业务 SQL 三类原因；保留 marker、错误码和 wsrep 快照，修复后从同一 marker 重新验证。
+
 ## 第八章、日常运维和变更
 
 ### 8.1 日常巡检
@@ -592,6 +642,8 @@ PXC_ONE_NODE_MAINTENANCE
 ```
 
 `kubectl drain` 必须受到 PDB 保护；若驱逐被拒绝，先调查副本、PDB、备份或同步状态，不删除 PDB 强行驱逐。主机维护结束后执行 `kubectl uncordon <节点>`，等待重建节点完成 IST 或 SST、三个节点重新 Synced、HAProxy 后端恢复，再结束窗口。若离线时间超出 gcache，SST 属于预期但必须评估 donor 负载。
+
+> **注意：一次只允许一个 PXC 成员离线。** 两个成员同时维护会把剩余成员置于 `Non-Primary`，此时写入必须拒绝。任何需要同时维护多个故障域的变更都必须改为停写并走升级/灾备方案。
 
 ### 8.3 扩容和缩容
 
@@ -664,6 +716,8 @@ flowchart TD
 | Backup/PITR | 最近成功时间、失败数、binlog gap、latestRestorableTime |
 
 PXC 没有脱离业务的官方 TPS 保证值。性能签收必须使用客户真实 schema、固定数据集和固定版本，保存版本 digest、节点规格、StorageClass、sysbench 参数、TPS、P95/P99、错误率、flow control、CPU、IO 和网络。
+
+> **性能证据边界：** 本轮独立门禁记录的 1/4/16 线程 TPS 为 49.77/226.00/990.34，单节点故障为 588.34；这些数字只描述当前测试集群和测试负载，不是客户 SLO 或容量承诺。上线容量必须按客户数据量、SLO 和故障余量重新压测。
 
 ### 9.1 测试前冻结条件
 
@@ -784,6 +838,8 @@ PXC_BACKUP
 
 只有 `.status.state=Succeeded`、storageName/destination 正确、对象存储制品可读且大小合理，才进入升级或破坏性变更。Failed 时保存 `.status.error`、Backup Job/Pod、事件、XtraBackup 日志和对象存储请求错误；修复后创建新名称的 Backup CR，不覆盖失败证据。
 
+> **回滚：全量备份失败。** 不得继续升级、删除旧 PVC 或执行恢复。保留失败 CR 和对象存储请求证据，修复凭据、CA、容量或网络后使用新 Backup CR 名称重试；新备份未 `Succeeded` 前，旧备份仍是唯一可用基线。
+
 ### 10.3 全量恢复演练
 
 恢复会停止目标 PXC 并改写数据，必须在隔离演练集群先验证；生产同集群恢复必须有事故审批、停止业务写入、成功备份和明确回退点。`cluster1-restore.yaml` 的 v1.20.0 官方字段如下：
@@ -818,6 +874,8 @@ PXC_RESTORE
 
 恢复完成后重新执行第 6.1、7.2、7.4 节：PXC/HAProxy Ready、全部节点 Primary/Synced、系统和业务用户认证正常、备份点之前的 marker 存在、备份点之后的测试 marker 符合预期。最后创建一个新的全量备份，避免继续依赖旧恢复链。
 
+> **回滚：恢复后的业务校验不通过。** 不要在原目标上反复覆盖恢复。冻结写入并保存 Restore CR、目标时间、marker、GTID、Pod/Operator 日志；按事故审批选择另一个经过验证的备份在隔离集群恢复，再通过应用切换或数据补偿回滚。
+
 ### 10.4 PITR 前置条件和恢复
 
 PITR 需要至少一个成功全量备份和此后的连续 binlog。先在 CR 中启用 `spec.backup.pitr.enabled=true`，等待 Backup CR 的 `PITRReady` condition 和 `latestRestorableTime`，再做破坏性演练。禁止在上传前 purge binlog。
@@ -851,22 +909,32 @@ spec:
       storageName: s3-prod
 ```
 
-`type` 可为 `latest`、`date` 或 `transaction`；transaction 使用单个 `UUID:N` GTID。目标时间必须晚于全量备份且不晚于 `latestRestorableTime`。应用方式和等待字段与 10.3 相同，资源名称改为当前 PITR Restore CR。
+`type` 可为 `latest`、`date` 或 `transaction`。目标时间必须晚于全量备份且不晚于 `latestRestorableTime`。应用方式和等待字段与 10.3 相同，资源名称改为当前 PITR Restore CR。
+
+`transaction` 使用 MySQL GTID 格式的单个 `UUID:N`，其语义不是“最后一笔需要保留的事务”，而是“恢复边界后紧随的第一笔事务”。Operator 从该 GTID 起排除事务，因此，若要求恢复后保留事务 T100、排除 T101，应把 T101 的 GTID 写入 `spec.pitr.gtid`。不得使用 `wsrep_cluster_state_uuid` 和 `wsrep_last_committed` 拼接该值；二者描述 Galera 状态，不等同于 MySQL binlog GTID。
+
+生产演练应在执行边界后事务的同一数据库会话中，对执行前后的 `@@GLOBAL.gtid_executed` 调用 `GTID_SUBTRACT()`。结果必须严格为一个 `UUID:N`；若为空、包含范围或包含多个 UUID，说明期间存在并发事务，不能猜测或截取字符串，应停止恢复并在受控写入窗口重新捕获。该规则与 Operator v1.20.0 官方文档所述“目标 GTID 是恢复后第一笔事务”以及 Recoverer 的 `--exclude-gtids` 实现一致。
 
 检测到 binlog gap 时默认拒绝不安全恢复，不添加 `percona.com/unsafe-pitr` 绕过审批。应选择 gap 之前的安全点、其他完整备份链或由 DBA/业务负责人批准的数据补偿方案，并明确实际 RPO。
 
+> **PITR 注意：** PITR 恢复会形成新的 Galera timeline。重新启用 collector 后必须确认 Deployment 已重建、完成一个上传周期并重新创建安全基线；不要把旧 timeline 的 binlog 当作新 timeline 的连续链。GTID 必须是恢复边界之后的第一笔单一 `UUID:N` 事务，不能从 `wsrep_*` 状态变量拼接。
+
 ### 10.5 备份恢复故障分流
 
-| 阶段 | 现象 | 优先证据 | 常见原因 |
-|---|---|---|---|
-| Starting | 长期不进入 Running | CR status、Job、调度事件 | 资源不足、RBAC、镜像、并发限制 |
-| Running | 超时/无进度 | XtraBackup 日志、PVC IO、对象请求 | 慢盘、限流、网络、bucket 权限 |
-| Upload | 403/TLS 失败 | endpoint、CA、Secret key、对象日志 | 凭据、时钟、CA、endpoint 配置 |
-| Restore | 停在 Stopping/Restoring | Restore status、PXC Pod、Job | 业务连接未停、对象损坏、空间不足 |
-| PITR | PITRReady=False/gap | condition、latestRestorableTime、binlog 日志 | 上传中断、purge、路径漂移 |
-| 验证 | CR 成功但业务不对 | marker、schema、GTID、目标时间 | 选错备份/时间、验证口径错误 |
+> **异常分流表：**
+>
+> | 阶段 | 现象 | 优先证据 | 常见原因 |
+> |---|---|---|---|
+> | Starting | 长期不进入 Running | CR status、Job、调度事件 | 资源不足、RBAC、镜像、并发限制 |
+> | Running | 超时/无进度 | XtraBackup 日志、PVC IO、对象请求 | 慢盘、限流、网络、bucket 权限 |
+> | Upload | 403/TLS 失败 | endpoint、CA、Secret key、对象日志 | 凭据、时钟、CA、endpoint 配置 |
+> | Restore | 停在 Stopping/Restoring | Restore status、PXC Pod、Job | 业务连接未停、对象损坏、空间不足 |
+> | PITR | PITRReady=False/gap | condition、latestRestorableTime、binlog 日志 | 上传中断、purge、路径漂移 |
+> | 验证 | CR 成功但业务不对 | marker、schema、GTID、目标时间 | 选错备份/时间、验证口径错误 |
 
 不要删除失败 Job、Backup/Restore CR 或 Pod 后才开始取证。失败恢复可能已经停止目标集群或写入部分数据，必须先确认状态和官方恢复语义，再决定重试或回到新的干净目标集群。
+
+> **异常处理顺序：** 先保存 CR status、事件、Operator/XtraBackup 日志和对象存储请求；再判断是凭据、TLS、容量、网络、binlog 连续性还是目标数据选择错误；最后才创建新的 Backup/Restore CR。不得用删除失败资源的方式掩盖失败原因。
 
 ## 第十一章、升级、回滚和下线
 
@@ -956,6 +1024,8 @@ SmartUpdate 应一次处理一个数据库节点。每个节点结束后检查�
 > **回滚：升级中出现 PXC 不收敛或业务数据面失败**
 > 保留 Operator 日志、CR status、Pod events、镜像 digest、备份状态和数据库日志；停止继续升级，确认多数派和备份可用，再选择官方支持的恢复路径。禁止删除 PVC 后声称回滚完成。
 
+> **升级回滚判定：** Operator 尚未滚动数据库且 CRD 兼容时，才考虑回退 Operator/Chart；数据库系统表或数据格式已经变化时，优先使用验证过的备份恢复或新集群迁移。任何回滚路径都必须重新完成 SQL、Primary/Synced、备份和清理验收。
+
 | 情形 | 首选路径 | 前提 |
 |---|---|---|
 | Operator 升级失败，数据库未滚动 | 回退到官方支持的 Operator/CRD 组合 | 新 CRD 未产生不可逆 schema 变化 |
@@ -980,6 +1050,8 @@ PXC_DECOMMISSION_PREFLIGHT
 ```
 
 先把上述输出与变更单中的固定资源清单对账，再执行删除。`percona.com/delete-pxc-pods-in-order` finalizer 会影响删除顺序，但不代表 PVC 可以自动删除。对象存储备份的保留/销毁是独立审批。只有 Kubernetes 资源、PVC、对象存储前缀、DNS/负载均衡、监控和密码系统条目全部按策略处理后，下线才闭环。
+
+> **注意：下线不可逆。** 删除 PVC 和对象存储前缀不是普通清理操作。必须先完成最终全量备份、抽样校验、恢复责任人签字和保留期确认；共享 `mysql-operator` 命名空间不得随单个 PXC 下线删除。
 
 ## 第十二章、故障排查
 
@@ -1038,6 +1110,8 @@ flowchart TD
 
 性能问题重点看 wsrep_flow_control_paused、wsrep_local_cert_failures、HAProxy backend、PVC 延迟和 SST 日志；TPS 低不能直接归因于 PXC 产品缺陷。
 
+> **故障归因：** 先区分供应链、测试门禁、环境/存储、Operator、PXC/Galera、HAProxy/Service 和应用 SQL。只有在干净环境中稳定复现、排除压测机和外部依赖，并与锁定版本官方行为不符时，才提交产品缺陷。
+
 ### 12.2 供应链、CRD 和 Operator
 
 | 检查 | 命令/证据 | 判断 |
@@ -1078,34 +1152,38 @@ kubectl get csinode
 PXC_SCHEDULING_DIAG
 ```
 
-PVC 名称必须以现场 `kubectl get pvc` 为准；如果与示例不同，不应直接复制 describe 命令。常见分流：
+PVC 名称必须以现场 `kubectl get pvc` 为准；如果与示例不同，不应直接复制 describe 命令。
 
-- `FailedScheduling` + anti-affinity：可用故障域不足，不能把反亲和删除后签收；
-- `FailedScheduling` + Insufficient：requests 超过剩余资源，先做容量调整；
-- PVC Pending：StorageClass、WaitForFirstConsumer、拓扑、quota 或 provisioner；
-- Multi-Attach/mount error：旧节点未卸载、CSI node/plugin、设备或文件系统；
-- Bound 但 MySQL IO 错误：进入节点/CSI/文件系统日志，不能只看 Kubernetes 对象。
+> **异常分流：**
+>
+> - `FailedScheduling` + anti-affinity：可用故障域不足，不能把反亲和删除后签收；
+> - `FailedScheduling` + Insufficient：requests 超过剩余资源，先做容量调整；
+> - PVC Pending：StorageClass、WaitForFirstConsumer、拓扑、quota 或 provisioner；
+> - Multi-Attach/mount error：旧节点未卸载、CSI node/plugin、设备或文件系统；
+> - Bound 但 MySQL IO 错误：进入节点/CSI/文件系统日志，不能只看 Kubernetes 对象。
 
 ### 12.4 PXC/Galera 非 Primary 或不同步
 
 先在所有存活节点执行第 7.2 节查询并按时间对齐日志：
 
-| 状态 | 含义 | 动作 |
-|---|---|---|
-| `Primary` + `Synced` | 节点可服务 | 继续看 HAProxy/应用 |
-| `Joining`/`Donor` | IST/SST 进行中 | 检查进度、donor 资源、网络和空间 |
-| `Non-Primary` | 未形成多数派 | 查节点和网络故障，不强制写 |
-| `wsrep_ready=OFF` | 当前不接受 wsrep 业务 | 查 state、日志和成员视图 |
-| recv queue 持续升高 | 节点应用复制变慢 | 查慢节点 CPU/IO/大事务 |
-| flow control 持续升高 | 集群被慢节点节流 | 找出队列和磁盘异常节点 |
+> **状态分流：**
+>
+> | 状态 | 含义 | 动作 |
+> |---|---|---|
+> | `Primary` + `Synced` | 节点可服务 | 继续看 HAProxy/应用 |
+> | `Joining`/`Donor` | IST/SST 进行中 | 检查进度、donor 资源、网络和空间 |
+> | `Non-Primary` | 未形成多数派 | 查节点和网络故障，不强制写 |
+> | `wsrep_ready=OFF` | 当前不接受 wsrep 业务 | 查 state、日志和成员视图 |
+> | recv queue 持续升高 | 节点应用复制变慢 | 查慢节点 CPU/IO/大事务 |
+> | flow control 持续升高 | 集群被慢节点节流 | 找出队列和磁盘异常节点 |
 
-故障演练还必须区分两种恢复语义：
-
-| 现象 | 结论 | 处理 |
-|---|---|---|
-| `size=1`、`status=Non-Primary` | 少数派，继续写入会破坏安全边界 | 保留日志和 `grastate.dat`，等待多数成员恢复；不得 bootstrap |
-| 所有 PXC Pod 同时停止并出现 `FULL_PXC_CLUSTER_CRASH` | 全量崩溃恢复流程 | 按日志给出的最高 seqno 节点恢复，随后逐节点验证 |
-| `status=Primary` 但 Ready/HAProxy 不一致 | 控制面和数据面尚未收敛 | 先看 Operator、PDB、StatefulSet 事件，再检查 wsrep |
+> **故障恢复语义：**
+>
+> | 现象 | 结论 | 处理 |
+> |---|---|---|
+> | `size=1`、`status=Non-Primary` | 少数派，继续写入会破坏安全边界 | 保留日志和 `grastate.dat`，等待多数成员恢复；不得 bootstrap |
+> | 所有 PXC Pod 同时停止并出现 `FULL_PXC_CLUSTER_CRASH` | 全量崩溃恢复流程 | 按日志给出的最高 seqno 节点恢复，随后逐节点验证 |
+> | `status=Primary` 但 Ready/HAProxy 不一致 | 控制面和数据面尚未收敛 | 先看 Operator、PDB、StatefulSet 事件，再检查 wsrep |
 
 ```bash
 bash <<'PXC_QUORUM_DIAG'
@@ -1165,3 +1243,18 @@ Pod OOMKilled 先保存 limits、节点内存、MySQL buffer 配置、峰值连�
 - [ ] 全量备份、恢复、PITR 正向和 binlog gap 负向均有当前证据。
 - [ ] 升级、回滚、监控和告警均有当前证据。
 - [ ] MySQL 独立矩阵 rc=0、零失败标记、最终清理通过；不能借用核心矩阵历史 PASS。
+
+### 13.1 本版本专项回归证据
+
+| 范围 | 当前证据 |
+|---|---|
+| 控制面/存储 | Operator、CRD、PXC 3/3、HAProxy 3/3、PVC Bound，三个 PXC 位于不同故障域 |
+| SQL/安全 | TLS `VERIFY_CA`、Primary 写入、replicas 读取、最小权限拒绝、root 密码轮换 |
+| 故障 | 单节点保持 Primary；双节点丢失进入 `Non-Primary` 并拒绝危险写入；Pod 重建完成 IST/SST |
+| 数据保护 | 全量备份对象数量/字节数/SHA256；全量恢复后 marker 边界和新备份基线；PITR 精确 GTID |
+| 负向恢复 | binlog gap 产生 `BinlogGapDetected`，不安全 PITR 被官方安全原因拒绝 |
+| 性能 | 1/4/16 线程 TPS 49.77/226.00/990.34；单节点故障 588.34；零命令失败 |
+| 幂等/清理 | 二次 role 保留 Pod/PVC/Secret 身份；两次 `MYSQL_CLEAN_VERIFY_PASS` |
+| 交付门禁 | `MYSQL_PXC_FULL_GATE_PASS`、durable `rc=0`、failure markers=0、`MYSQL_PXC_DELIVERY_BRANCH_PASS` |
+
+> **证据使用规则：** 上表是本版本独立分路的当前证据，不是客户环境容量承诺，也不能替代后续版本的重新回归。客户签收时应将同等字段替换为现场实际值，并保存原始日志和 digest。

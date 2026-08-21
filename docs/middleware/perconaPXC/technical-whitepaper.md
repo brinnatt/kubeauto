@@ -1,7 +1,7 @@
 # Percona XtraDB Cluster（PXC）技术白皮书
 
-> **文档版本：** v1.1（独立 MySQL/PXC 分路交付版）
-> **最后核验：** 2026-08-20
+> **文档版本：** v1.2（生产实践对齐版）
+> **最后核验：** 2026-08-21
 > **锁定版本：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、XtraBackup 8.4.0-5.1、HAProxy 2.8.18-1
 > **官方依据：** [Architecture](https://docs.percona.com/percona-operator-for-mysql/pxc/architecture.html)、[Replication](https://docs.percona.com/percona-operator-for-mysql/pxc/replication.html)、[HAProxy](https://docs.percona.com/percona-operator-for-mysql/pxc/haproxy-conf.html)、[Storage](https://docs.percona.com/percona-operator-for-mysql/pxc/storage.html)
 
@@ -57,6 +57,8 @@ PXC 使用 virtually synchronous replication。事务提交前，write-set 已�
 ### 1.3 数据和 SQL 约束
 
 生产业务表应使用 InnoDB，并为写事务提供明确主键。非事务表、超大事务、热点单行、长时间锁、批量 DDL 和依赖特定 MySQL 行为的语句必须在锁定版本上验证。PXC 能运行 MySQL 协议不等于任意单机 MySQL workload 可以无改造迁移。
+
+> **适用边界：** PXC 不承诺跨地域双写、任意 DDL 无锁变更、无限只读扩展或跨故障域自动灾备。业务若需要这些能力，应在架构评审中单独设计，不能把 PXC 的三份在线副本当作备份或跨地域保护。
 
 ## 第二章、组件和总体架构
 
@@ -116,9 +118,11 @@ Operator 故障首先影响声明式变更、扩缩容、备份恢复和自愈�
 
 PXC 采用 Galera 虚拟同步复制。事务先在接入节点本地执行，提交阶段提取被修改行的 write-set，通过组通信获得全局顺序并在各成员认证。认证通过后进入 apply/commit；冲突事务回滚。最慢节点、网络 RTT、磁盘延迟和事务冲突都会增加提交延迟。
 
-### 3.5 故障状态判定与自动恢复边界
+### 3.1 故障状态判定与自动恢复边界
 
 故障演练必须区分“成员非计划消失”和“全体成员同时停止”两类状态。三节点中只剩一个仍能看到原组成员时，正确的安全观察值是 `wsrep_cluster_size=1`、`wsrep_cluster_status=Non-Primary`，写事务必须拒绝；禁止通过 `wsrep_cluster_address` 或手工 `pc.bootstrap=YES` 绕过多数派。全体成员同时停止后，PXC/Operator 的 `autoRecovery` 可依据持久化恢复位置选择最新节点重新组成组件，这是全量崩溃恢复流程，不等同于少数派写入授权。
+
+> **故障处置边界：** `Non-Primary` 是安全保护状态，不是“服务异常所以强制恢复可写”的提示。必须保留所有节点的 wsrep 状态、事件、日志和 grastate/seqno；只有在全体节点停止且完成官方 crash-recovery 取证后，才由 DBA 选择安全序列。本文不提供可复制的通用 bootstrap 命令。
 
 ```mermaid
 flowchart TD
@@ -143,7 +147,7 @@ flowchart LR
     COMMIT --> ACK[客户端成功]
 ```
 
-### 3.1 write-set 认证和冲突
+### 3.2 write-set 认证和冲突
 
 认证不是在事务执行前对全局数据库加锁，而是在提交阶段比较并发 write-set。两个连接可以在不同 PXC 节点同时更新同一热点行，最后只有一个获得兼容顺序，另一个以冲突/死锁类错误回滚。
 
@@ -162,7 +166,7 @@ sequenceDiagram
 
 降低冲突的首要方式是业务设计：缩短事务、避免热点行、固定更新顺序、限制批量写入、优先把写流量收敛到 primary Service。重试必须有次数、退避和幂等约束；不能对支付、库存等非幂等事务遇到任何错误就无条件重放。
 
-### 3.2 apply 队列和 flow control
+### 3.3 apply 队列和 flow control
 
 成员收到并认证 write-set 后由 apply 线程落到本地。如果某节点 CPU、磁盘或锁处理变慢，接收队列上升；达到阈值时 Galera flow control 会要求组内其他节点暂缓发送，使集群保持可追赶状态。
 
@@ -177,13 +181,15 @@ flowchart LR
 
 因此 PXC 写吞吐接近“最慢健康成员”的能力，不是三个节点写能力相加。`wsrep_flow_control_paused` 持续上升时，应定位单点慢盘、资源节流、长事务、SST 或网络，而不是先提高连接数。
 
-### 3.3 DDL 和大事务
+### 3.4 DDL 和大事务
 
 集群 DDL 通常通过 Total Order Isolation（TOI）按全局顺序执行，保证所有节点 schema 一致，但长时间 ALTER 会阻塞或显著影响业务。Rolling Schema Upgrade（RSU）让节点逐个脱离同步执行，使用不当会造成临时或永久 schema 不一致，不能作为默认生产捷径。
 
 上线 DDL 前必须用接近生产的数据量验证执行时间、锁行为、临时空间、复制影响和回滚路径。大事务会生成大 write-set，占用内存、网络和 apply 时间；应拆成可审计批次，并用业务 marker 验证每批结果。
 
-### 3.4 多数派和脑裂
+> **注意：** 不要把 RSU 或在线 DDL 当作默认回滚方案。DDL 已经在多数节点提交后，修改 CR 或镜像不能撤销 schema；必须依赖经过验证的备份恢复、应用兼容窗口或新集群迁移。
+
+### 3.5 多数派和脑裂
 
 Galera 通过成员视图和 quorum 形成 Primary Component。只有多数派组件允许安全写入，少数派会阻止写操作。
 
@@ -200,7 +206,7 @@ Primary Component 是数据库协议层成员视图，不等同于 Kubernetes Re
 
 全体停止后的恢复不能简单“任选一个 Pod 启动”。必须比较节点最后状态、sequence number 和安全启动标志，选择最新安全节点建立新 Primary Component，再让其他节点加入。错误 bootstrap 可能把较旧副本当成权威并丢失事务。
 
-### 3.5 IST、SST 和 gcache
+### 3.6 IST、SST 和 gcache
 
 节点短暂离线且 donor 仍保留缺失 write-set 时使用 IST；新节点或缺少历史时使用 SST。SST 会消耗 donor 的磁盘、CPU、网络和业务带宽，必须设置维护窗口并监控。
 
@@ -356,6 +362,8 @@ RPO 由全量备份频率、binlog 上传间隔和 gap 决定；RTO 由备份大
 
 Restore CR Succeeded 说明 Operator 工作流达到成功状态，不证明选对了备份、目标时间、schema 或业务记录。恢复验收至少包含：Primary/Synced、账号/TLS、关键表行数和校验、备份前后 marker、应用查询、以及恢复后的新全量备份。
 
+> **恢复回滚：** 恢复前要保留当前目标的最终备份和切换点；恢复后业务校验失败时冻结写入，不在同一目标上反复覆盖，改在隔离集群用另一份验证备份恢复，再通过应用切换或数据补偿回退。
+
 PITR 检测到 binlog gap 时拒绝不安全恢复是数据保护机制。绕过 gap 可能得到语义不完整的数据库；只能在业务/DBA 明确接受实际数据损失并有补偿方案时另行审批。
 
 ## 第八章、安全、可观测性和容量
@@ -400,6 +408,8 @@ flowchart LR
 ```
 
 证书验收包含正确 CA 成功、错误 CA 失败、错误主机名失败、有效期/时钟正确，以及轮换期间连接和 Operator reconcile 行为。
+
+> **安全注意：** 禁止以 `ssl-mode=REQUIRED`、跳过 hostname 校验、明文 endpoint 或公网暴露管理端口作为临时修复。证书、Secret、对象存储密钥和数据库密码不得进入 Git、镜像层、命令历史或回归证据。
 
 ### 8.3 从指标到告警
 
@@ -455,6 +465,8 @@ flowchart LR
 
 压测机达到 CPU/网络上限、数据集完全在缓存中、运行时间过短或只报告平均 TPS，都会产生误导。性能签收应先定义客户 SLO 和终止条件，再执行测试；不应测完后挑选有利指标。
 
+> **性能边界：** 本版本独立门禁的 TPS 仅是专用测试资源上的可重复样本，不是 PXC 或客户环境的保证值。容量结论必须重新固定客户硬件、数据量、StorageClass、线程阶梯和故障余量，并同时报告 P99、错误率和 wsrep 指标。
+
 ### 9.2 容量拐点和上线余量
 
 线程增加但 TPS 不再上升、P99/错误率/flow control 快速恶化的位置是容量拐点。生产上线容量应保留节点故障、备份和 SST 期间的余量，不能把三节点都健康时的峰值作为可持续额度。扩容前先证明瓶颈属于 CPU、内存、连接、存储、网络还是事务冲突；不同根因的优化措施不同。
@@ -464,3 +476,17 @@ flowchart LR
 本方案不承诺跨地域双写、无限读扩展、任意 MySQL SQL 兼容、PXC 替代备份、Hostpath 提供跨节点高可用，也不允许用旧日志证明新版本通过。
 
 正式交付必须具备当前版本镜像/Chart digest、Primary/Synced、真实 SQL、单节点故障、备份恢复、PITR、性能、监控、升级回滚和清理证据。完整来源见[官方依据与版本基线](./official-sources.md)。
+
+### 10.1 本版本实践回顾
+
+最近一轮独立回归暴露并修复了三类容易被文档忽略的生产问题：PITR transaction 必须捕获恢复边界之后的第一笔单一 GTID；重新启用 PITR 时 Operator 可能短暂删除旧 Deployment；PITR 恢复会开启新的 Galera timeline，gap 基线必须等待完整上传周期。上述规则已写入[用户与运维手册](./operations-manual.md)并由 `MYSQL-11` 门禁验证。
+
+| 回归主题 | 生产含义 | 当前结论 |
+|---|---|---|
+| 单节点故障 | 多数派继续服务，节点恢复走 IST/SST | 通过，禁止同时停止两个成员 |
+| 双节点故障 | 剩余成员进入 `Non-Primary` 并拒绝危险写入 | 通过，禁止手工 bootstrap 绕过 quorum |
+| 全量恢复/PITR | 需要 marker、GTID、时间和新备份基线共同验证 | 通过，不能只看 CR `Succeeded` |
+| binlog gap | 不连续链必须拒绝不安全恢复 | 通过，未使用 `unsafe-pitr` 绕过 |
+| 性能 | 需要并发阶梯和故障期间指标 | 通过，结果不作为容量承诺 |
+
+> **证据边界：** `MYSQL-01` 至 `MYSQL-14` 的 PASS 只证明本版本独立分路在当前专用环境中达到交付门禁；任何版本、镜像、Chart、共享下载器或存储实现变更，都必须重新生成当前证据。
