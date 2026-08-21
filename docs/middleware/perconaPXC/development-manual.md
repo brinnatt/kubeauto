@@ -1,6 +1,6 @@
 # Percona XtraDB Cluster（PXC）开发手册
 
-> **文档版本：** v1.2（生产实践对齐版）
+> **文档版本：** v1.3（生产运维深化版）
 > **最后核验：** 2026-08-21
 > **适用对象：** kubeauto 主仓及五个 sibling 仓库的开发、测试、发布和文档维护人员
 > **变更原则：** PXC 是独立 middleware 分路；除非有可复现证据证明现有核心功能存在缺陷，不修改已交付的 Kubernetes、Nacos、RocketMQ 和存储代码。
@@ -56,7 +56,7 @@ flowchart TB
     CONST[common/constants.py] --> DOWNLOAD[kubecli download -E mysql]
     CONST --> CONFIG[conf/config.yml mysql_*]
     CONFIG --> TASK[roles/cluster-addon/tasks/mysql.yml]
-    TASK --> TEMPLATE[templates/perconaPXC]
+    TASK --> TEMPLATE[templates/percona-pxc]
     TEMPLATE --> CR[PXC Operator/CR]
     DOWNLOAD --> REG[本地 Registry]
     REG --> CR
@@ -69,7 +69,7 @@ flowchart TB
 | common/constants.py | Operator、PXC、XtraBackup、HAProxy、Fluent Bit 版本和 component_images mysql |
 | conf/config.yml | mysql_install、命名空间、副本、StorageClass、PVC、TLS、备份和 PITR |
 | roles/cluster-addon/tasks/percona-pxc.yml | Namespace、Operator、CRD、Secret 引用、CR 发布和状态等待 |
-| roles/cluster-addon/templates/perconaPXC | Operator values、PXC CR、Backup/Restore/PITR CR |
+| roles/cluster-addon/templates/percona-pxc | Operator values、PXC CR、Backup/Restore/PITR CR |
 | roles/cluster-addon/files | 官方 Chart/CRD vendored 包和 SHA256 |
 | tests/helpers/mysql-regression.sh | 独立现场门禁、取证、durable rc 和清理 |
 | tests/mysql-test-matrix.yaml | MySQL 专属状态、证据、覆盖率和 clean verify |
@@ -121,6 +121,24 @@ sequenceDiagram
 重复执行相同配置不得无故轮换密码、重建 PVC、滚动 PXC 或改写用户手工管理的对象。所有由 kubeauto 管理的资源应使用稳定名称和 labels/annotations，server-side apply 的 field manager 固定；对不归 kubeauto 管理的字段不得抢占所有权。
 
 删除路径必须按固定 label 和 namespace 解析具体资源，再与预期集合对账。默认 uninstall 保留 PVC 和备份；数据删除只能由显式高风险开关和审批触发，且单元测试证明不会匹配其他中间件。
+
+### 2.4 客户脚本的幂等与日志契约
+
+《用户与运维手册》中的每个 Bash heredoc 都是受测试约束的交付接口。新增或修改脚本时必须同步维护脚本索引，并满足以下门禁：
+
+| 契约 | 开发要求 | 契约测试 |
+|---|---|---|
+| 功能边界 | 明确稳定输入、生产影响、本地产物、验收范围和下一步 | 脚本名必须进入完整索引，不允许出现未说明脚本 |
+| 阶段日志 | 每个阶段先输出 `[n/N]`；日志写对象、状态和耗时，不输出 Secret value | 每个 heredoc 至少有阶段日志 |
+| 等待心跳 | 长等待在状态变化时立即输出，状态不变最长每 5 分钟输出 `elapsed_seconds` | 存储、Pod、扩容、压测、备份和恢复脚本必须包含心跳字段 |
+| 终端标志 | 所有硬门禁之后只输出一个唯一终端标志；诊断使用 `COLLECTION_PASS health_verified=false` | 标志全局唯一，且是脚本最后一条日志 |
+| 声明式收敛 | 相同配置不换 UID、不重建 PVC；Helm 输入完全相同时不增加 release revision | 固定 field manager、Chart 和用户 values 对账 |
+| 固定目标变更 | 节点、容量、版本、密码轮换以审批 ID 或稳定目标为身份；已完成时只验收 | 禁止从迁移后的 Pod 动态选择下一节点；密码 ID 与密码系统固定版本同时核验 |
+| 一次性 CR | Backup/Restore 同名对象只允许完全相同 spec；同名异参必须失败 | server dry-run 后比较 live/desired spec，首次使用 `create` |
+| 临时资源 | 创建前校验唯一 run ID 或归属标签；成功和失败都按精确名称与标签回收 | 禁止接管无归属对象，清理后查询必须为空 |
+| 证据原子性 | `mktemp` 创建唯一临时目录，全部门禁通过后 `mv`；失败目录只供诊断 | 禁止按秒拼接可碰撞 `.tmp` 路径，禁止覆盖旧证据 |
+
+“命令第二次返回 0”不是幂等证明。契约测试之外，现场门禁还要记录第一次和第二次执行前后的 CR/Pod/PVC/Secret UID、目标字段、Helm revision、临时对象集合和终端标志；任何非预期滚动、身份变化或第二个业务动作都按失败处理。
 
 ## 第三章、版本、Chart 和镜像
 
@@ -287,6 +305,24 @@ flowchart LR
 固定客户 schema、数据量、线程、读写比例和持续时间，记录 P99、错误率、wsrep_flow_control_paused、认证冲突、CPU、IOPS、网络 RTT、HAProxy backend 和 SST 影响。性能阈值必须来自当前干净环境实测，不从官方宣传或旧机器结果复制。
 
 性能代码要输出机器可读原始结果和人可读摘要，测试开始时记录所有控制变量。线程阶梯、正常负载、节点故障和 SST 场景分别编号；任何一次改变资源或参数都产生新基线，不覆盖旧结果。
+
+### 5.4 存储扩容能力的新增门禁
+
+当前模板只渲染固定 `mysql_pvc_size`，现有 `MYSQL-02` 只证明建卷、Bound 和真实读写。后续若要把 Operator Volume Expansion 或自动 `storageScaling` 升级为 kubeauto 正式能力，不能只增加一个模板字段，至少应新增独立矩阵项（建议 `MYSQL-15`）并覆盖：
+
+| 场景 | 必须证明 |
+|---|---|
+| 正向扩容 | `AllowVolumeExpansion=true`，配置源从旧值变为新值，三块 PVC request/status 和三节点文件系统全部扩大 |
+| 在线业务 | 扩容期间 Primary/Synced 和真实业务 marker 持续可读写，记录 P99、错误率和 flow control |
+| Operator 状态 | `pvc-resize-in-progress` 出现后消失，`.status.storageAutoscaling` 与 PVC 实际值一致 |
+| 配额拒绝 | ResourceQuota/后端容量不足时明确失败，CR 回退语义和 Kubernetes 后续重试可观察 |
+| 部分成功 | 不尝试缩小已扩 PVC；再次执行的目标值不小于现存最大 PVC |
+| 幂等 | 相同容量重跑不滚动 PXC、不重建 PVC、不改变 Secret |
+| 清理 | 回收测试 quota、临时 StorageClass/数据和证据，不误删其他 PVC |
+
+自动扩容还必须验证 trigger、growthStep、maxSize、达到上限、一个 PVC 达到上限导致整体停止、与外部 autoscaler 互斥等官方语义。完成当前干净现场证据前，文档只能把它标为官方能力和预生产辅助线，不能把矩阵改成 pass。
+
+> **所有权要求：** 若新增 `mysql_storage_scaling_*` 配置，必须由 `conf/config.yml`、Jinja 模板、server-side apply field manager、单元测试和运维手册共同维护。不得依赖生产现场长期 `kubectl patch` 形成无法由 kubeauto 重建的漂移。
 
 ## 第六章、现场证据和失败清理
 

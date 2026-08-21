@@ -1,6 +1,6 @@
 # Percona XtraDB Cluster（PXC）技术白皮书
 
-> **文档版本：** v1.2（生产实践对齐版）
+> **文档版本：** v1.3（生产运维深化版）
 > **最后核验：** 2026-08-21
 > **锁定版本：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、XtraBackup 8.4.0-5.1、HAProxy 2.8.18-1
 > **官方依据：** [Architecture](https://docs.percona.com/percona-operator-for-mysql/pxc/architecture.html)、[Replication](https://docs.percona.com/percona-operator-for-mysql/pxc/replication.html)、[HAProxy](https://docs.percona.com/percona-operator-for-mysql/pxc/haproxy-conf.html)、[Storage](https://docs.percona.com/percona-operator-for-mysql/pxc/storage.html)
@@ -331,6 +331,26 @@ HAProxy 可以把新连接切到健康节点，不能透明搬迁已经建立的
 
 主机反亲和只保证调度时尽量/强制分散，不能自动形成机架、电源、交换机或可用区级隔离。生产应把 `kubernetes.io/hostname` 与真实故障域映射清楚；若三台节点共享同一存储控制器或电源，逻辑三副本仍存在共同失效点。
 
+### 6.3 磁盘写满为何会演变为集群性能或可用性问题
+
+单个 PXC 成员的磁盘水位不是该节点的局部问题。可用空间不足会先影响临时表、binlog、gcache、redo/undo 和在线 DDL；随后出现 fsync 延迟、recv queue 增长和 flow control，最慢成员会限制整个同步复制集群。磁盘完全写满后，成员可能退出服务或无法完成 IST/SST；若运维同时重启多个成员，问题会从容量故障升级为多数派故障。
+
+```mermaid
+flowchart LR
+    A[业务/索引/binlog 增长] --> B[可用空间下降]
+    B --> C[IO 尾延迟和临时空间压力]
+    C --> D[recv queue/flow control]
+    D --> E[全体提交 P99 上升]
+    B --> F[写满/成员退出]
+    F --> G{仍有多数派?}
+    G -->|是| H[降级运行并扩容/恢复]
+    G -->|否| I[Non-Primary 拒绝不安全写]
+```
+
+扩容必须区分三个层面：PXC CR/PVC 的请求容量、CSI/PV 的实际容量、Pod 内文件系统可见容量。只修改 CR 是意图，PVC `status.capacity` 证明底层卷扩展，`df` 才证明文件系统可使用新增空间；三层缺一都不能关闭容量事件。Kubernetes 在线 PVC 只能扩大，不能靠修改 CR 缩小回滚。
+
+Percona Operator v1.20.0 的 `storageScaling.enableVolumeScaling` 和自动 autoscaling 属于官方 GA 能力，但产品能力不等于 kubeauto 当前分路已签收。当前 `MYSQL-02` 证明三块固定容量 PVC Bound 且真实读写；在线扩容、部分扩容失败和不支持扩容卷的逐卷重建仍需独立门禁。该边界避免把官方说明、实验室推断和本项目证据混为一谈。
+
 ## 第七章、备份、恢复和 PITR
 
 Operator 使用 XtraBackup 创建 Backup CR 并将结果写入 S3/Azure 兼容存储。成功条件包括 Backup CR Succeeded、对象存储制品完整可读、集群名、时间和路径正确。Job Completed 不足以签收。
@@ -488,5 +508,7 @@ flowchart LR
 | 全量恢复/PITR | 需要 marker、GTID、时间和新备份基线共同验证 | 通过，不能只看 CR `Succeeded` |
 | binlog gap | 不连续链必须拒绝不安全恢复 | 通过，未使用 `unsafe-pitr` 绕过 |
 | 性能 | 需要并发阶梯和故障期间指标 | 通过，结果不作为容量承诺 |
+| 固定 PVC/真实读写 | 三成员 PVC Bound 且数据目录可写可读 | 通过，生产容量仍需评审 |
+| 在线 PVC 扩容 | CR、PVC、CSI、文件系统和 wsrep 全链路 | 官方支持；当前分路未回归，不标记已交付 |
 
 > **证据边界：** `MYSQL-01` 至 `MYSQL-14` 的 PASS 只证明本版本独立分路在当前专用环境中达到交付门禁；任何版本、镜像、Chart、共享下载器或存储实现变更，都必须重新生成当前证据。

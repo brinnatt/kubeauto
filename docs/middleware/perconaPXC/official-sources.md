@@ -1,6 +1,6 @@
 # 官方依据与版本基线
 
-> **文档版本：** v1.2（生产实践对齐版）
+> **文档版本：** v1.3（生产运维深化版）
 > **最后核验：** 2026-08-21
 > **适用范围：** Percona Operator for MySQL/PXC v1.20.0 文档集的版本、源码和官方功能证据
 > **维护要求：** 版本升级时必须重新核对 Release、Chart tag、CR/CRD 和 supported software，不能只修改版本字符串。
@@ -44,6 +44,9 @@
 | TLS | [TLS](https://docs.percona.com/percona-operator-for-mysql/pxc/TLS.html) |
 | 用户与密码轮换 | [Users](https://docs.percona.com/percona-operator-for-mysql/pxc/users.html) |
 | 监控 | [Monitoring](https://docs.percona.com/percona-operator-for-mysql/pxc/monitoring.html) |
+| 节点与存储扩容 | [Scaling the cluster](https://docs.percona.com/percona-operator-for-mysql/pxc/scaling.html) |
+| 存储故障排查 | [Check storage](https://docs.percona.com/percona-operator-for-mysql/pxc/debug-storage.html) |
+| Kubernetes PVC 扩容语义 | [Expanding Persistent Volumes Claims](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#expanding-persistent-volumes-claims) |
 | 官方源码 | [Operator v1.20.0 source](https://github.com/percona/percona-xtradb-cluster-operator/tree/v1.20.0) |
 | 官方 CR 源码 | [`deploy/cr.yaml`](https://raw.githubusercontent.com/percona/percona-xtradb-cluster-operator/v1.20.0/deploy/cr.yaml) |
 | 官方 CRD/bundle | [`deploy/bundle.yaml`](https://raw.githubusercontent.com/percona/percona-xtradb-cluster-operator/v1.20.0/deploy/bundle.yaml) |
@@ -54,5 +57,6 @@
 2. 官方文档中的 `LoadBalancer`、S3、cert-manager、PMM 等能力不是 kubeauto 默认交付，必须以本项目后续实现和独立门禁为准。
 3. 官方示例中的 `perconalab/*:main-*` 是开发示例，不能用于生产镜像。生产必须使用正式版本 tag，并在镜像进入本地 Registry 前记录 digest。
 4. 官方支持平台列表不等于 kubeauto 所有发行版均已通过 PXC 门禁；Anolis/openEuler/openSUSE 需另行验证，不能借用核心集群测试结果。
+5. Operator v1.20.0 官方支持 `storageScaling.enableVolumeScaling` 和自动 autoscaling；Kubernetes PVC 不能原地缩小。当前 kubeauto 矩阵尚未包含在线扩容场景，文档只能提供预检和演练路径，不能用官方 GA 状态替代本项目现场证据。
 
 > **版本与实践边界：** 官方文档解释产品能力和版本语义，kubeauto 的 role、镜像供应链、客户参数、清理范围和当前 14 项独立门禁决定本项目是否可以交付。两者不一致时，先暂停发布，核对锁定 tag 的源码、CRD、测试证据和变更影响；不能用官方示例或历史日志直接签收客户环境。

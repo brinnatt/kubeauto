@@ -1,6 +1,6 @@
 # Percona XtraDB Cluster（PXC）用户与运维手册
 
-> **文档版本：** v1.2（生产实践对齐版）
+> **文档版本：** v1.3（生产运维深化版）
 > **最后核验：** 2026-08-21
 > **适用系统：** kubeauto Kubernetes v1.33.6
 > **适用组件：** Percona Operator for MySQL v1.20.0、PXC 8.4.8-8.1、HAProxy 2.8.18-1
@@ -26,17 +26,100 @@
 
 ## 第一章、使用约定和状态
 
-### 1.1 执行环境
+### 1.1 统一执行契约
 
-命令从已配置目标集群 kubeconfig 的 Linux 管理节点执行。数据库密码、TLS 私钥和对象存储密钥由密码系统或 Kubernetes Secret 注入，不写入本文档、Git、终端日志或截图。平台团队在管理节点建立本次交付目录，保存 CR、values、校验和、验收输出和回滚清单：
+命令从已配置目标集群 kubeconfig 的 Linux 管理节点执行。数据库密码、TLS 私钥和对象存储密钥由密码系统或 Kubernetes Secret 注入，不写入本文档、Git、终端日志或截图。全文沿用以下执行契约：
+
+| 项目 | 统一约定 |
+|---|---|
+| 执行主机 | 已配置目标生产集群 kubeconfig 的 Linux 管理节点，不在 PXC、HAProxy 或 Operator Pod 内启动管理脚本 |
+| 执行账号 | 平台运维账号；能够写交付目录，并具备对应步骤列出的 Kubernetes RBAC 权限 |
+| 权威配置 | `clusters/<cluster>/config.yml` 和 kubeauto 渲染文件；现场 CR 是控制器输入，不应成为脱离配置源的长期分叉 |
+| 成功判定 | 脚本退出码为 `0`，所有 `test`、`jq -e`、`kubectl wait` 门禁通过，并出现代码块最后一行的明确成功标志 |
+| 失败判定 | 脚本提前退出、缺少最后成功标志或任一硬门禁失败，均表示本步骤未通过；不得只凭 Pod `Running` 或部分命令输出继续 |
+| 重复执行 | 标注可重跑的脚本会以相同权威输入收敛；可重跑不表示可以无审批地变更密码、PVC、镜像、备份或恢复目标 |
+| 日志用途 | 正常日志说明执行阶段和验收结果；异常日志用于确定供应链、存储、Operator、Galera、代理或应用层根因，不以日志数量代替健康判定 |
+
+正常主线脚本统一显示 `[n/N]` 进度，失败时由 `set -Eeuo pipefail` 返回非零退出码，最后一行输出唯一成功标志。需要证据的脚本先写临时目录，全部门禁通过后再原子移动到正式证据目录；失败的临时目录不作为签收结果。
+
+每段脚本前的正文说明其功能、输入、资源影响和验收目标；脚本日志遵循以下语义。客户判断结果时必须读取业务日志，不能只看 shell 是否返回：
+
+| 日志形式 | 含义 | 是否可继续 |
+|---|---|---|
+| `[n/N] 动作说明` | 当前正在操作的对象和目的；等待阶段会持续输出状态 | 等待本代码块最终标志 |
+| `key=value` | 本步骤实际观测值，例如副本、节点、容量、状态和证据路径 | 与本节预期值对账 |
+| `*_PASS` / `*_READY` | 本脚本定义的硬门禁全部通过 | 可以进入下一主线步骤 |
+| `*_SUCCEEDED` | Operator 管理的单个 CR 已到成功终态，但外部对象或业务数据仍需验证 | 只能进入紧随其后的对象/业务验收 |
+| `*_SUBMITTED` | 变更已提交，但控制器或业务验收尚未结束 | 不可签收，继续执行紧随其后的验收 |
+| `*_COLLECTION_PASS` | 诊断资料采集完整，不代表系统健康 | 依据日志和分流表定位根因 |
+| 缺少最终标志 | 脚本中途失败；终端最后一条命令附近是首个调查入口 | 不可继续，不得人工补写 PASS |
+
+本文不把“第二次没有报错”当作幂等。每段脚本必须符合以下一种可验证语义：
+
+| 脚本类型 | 重复执行契约 | 验证方式 |
+|---|---|---|
+| 声明式收敛 | 同一配置重复 apply/Helm/kubeauto setup，不更换资源身份、不重建 PVC、不产生第二套对象 | 对账 UID、resourceVersion、目标字段和 Ready 状态 |
+| 只读验收/诊断 | 不修改生产对象；每次使用唯一证据目录，旧证据不覆盖 | 比较执行前后资源身份，检查证据目录和最终 marker |
+| 固定目标变更 | 以变更 ID、目标节点、目标版本或目标容量作为稳定输入；目标已完成时只验证并返回 | 日志显示 `already_converged=true` 或再次收敛到同一目标 |
+| 临时测试资源 | 使用固定所有权 label 或唯一 run ID；成功和失败均按 allowlist 回收 | 清理后查询为空，不匹配客户已有资源 |
+
+恢复、备份、密码轮换等业务动作不能通过“重新生成一个随机输入”实现幂等。相同变更 ID 必须指向相同目标；需要发起新动作时使用新的审批 ID，并保留旧动作证据。
+
+### 1.1.1 脚本功能、影响和幂等索引
+
+下表是全文脚本的执行索引。运行脚本前必须先核对“稳定输入”和“资源影响”；运行后必须取得对应终端标志。`只读` 表示不修改 Kubernetes 生产对象，但可能在管理节点生成新的证据目录。`收敛` 表示仅在现场状态与权威输入不一致时执行变更，目标已满足时只做验收。一次性业务动作使用固定审批 ID 或固定 CR 名作为动作身份；发起新动作必须换用新身份，不能覆盖旧对象。
+
+| 脚本 | 功能与稳定输入 | 资源影响和产物 | 终端标志与重跑语义 |
+|---|---|---|---|
+| `PXC_WORKDIR` | 创建固定版本交付目录 | 管理节点目录、`evidence/`、`backup/` | `PXC_WORKDIR_READY`；目录存在时校验并复用 |
+| `PXC_DEPLOY` | 以 `CLUSTER` 和其 `config.yml` 执行 kubeauto MySQL role | 下载锁定制品，收敛 Operator/PXC | `PXC_KUBEAUTO_DEPLOY_PASS`；相同配置由 role 收敛 |
+| `PXC_PREFLIGHT` | 检查版本、节点、StorageClass 和 RBAC | 只读 | `PXC_PREFLIGHT_PASS`；可重复检查 |
+| `PXC_NAMESPACES` | 创建或复用两个固定命名空间 | 声明式收敛 Namespace | `PXC_NAMESPACES_READY`；不更换 UID |
+| `PXC_STORAGE` | 验证固定预检 PVC 的真实挂载读写 | 创建带专用归属标签的 PVC/Pod，写入 marker | `PXC_STORAGE_PREFLIGHT_PASS`；拒绝接管无归属或异属对象 |
+| `PXC_STORAGE_CLEAN` | 回收存储预检对象 | 只删除名称和归属标签同时匹配的 PVC/Pod | `PXC_STORAGE_PREFLIGHT_CLEAN_PASS`；对象不存在时成功 |
+| `PXC_ARTIFACT` | 对账四个锁定镜像的 tag/digest | 只读本地镜像元数据 | `PXC_ARTIFACT_INSPECT_PASS`；可重复检查 |
+| `PXC_CHART_VERIFY` | 校验固定 Chart SHA256 和压缩包 | 只读本地制品 | `PXC_CHART_VERIFY_PASS`；可重复检查 |
+| `PXC_OPERATOR_INSTALL` | 从 vendored Chart 安装或收敛 Operator | Helm release、CRD、RBAC | `PXC_OPERATOR_INSTALL_PASS`；固定 Chart/values 收敛 |
+| `PXC_SECRET_CHECK` | 验证系统用户 Secret 契约 | 只读 Secret，绝不输出值 | `PXC_SECRET_CONTRACT_PASS`；可重复检查 |
+| `PXC_APPLY` | dry-run 后发布固定 PXC CR | server-side apply 同一 CR | `PXC_CLUSTER_APPLY_SUBMITTED`；随后执行 Ready 验收 |
+| `PXC_READY` | 验证 CR、Pod、PVC、故障域和入口 | 只读等待 | `PXC_CONTROL_DATA_READY`；可重复验收 |
+| `PXC_CLIENT_CONNECT` | 验证业务 TLS 连接 | 只读 SQL 查询 | `PXC_CLIENT_TLS_CONNECT_PASS`；可重复验收 |
+| `PXC_WSREP` | 验证三成员 Primary/Synced | 只读 wsrep 查询 | `PXC_WSREP_HEALTH_PASS`；可重复验收 |
+| `PXC_DAILY` | 执行每日生产硬门禁 | 只读集群，生成唯一证据目录 | `PXC_DAILY_ACCEPTANCE_PASS`；每次保留独立证据 |
+| `PXC_ONE_NODE_MAINTENANCE` | 排空审批指定的 `TARGET_NODE` | cordon/drain 固定节点 | `PXC_ONE_NODE_MAINTENANCE_PASS`；重跑不选择第二节点 |
+| `PXC_SCALE` | 收敛到 `TARGET_SIZE` | 仅在配置和 CR 未收敛时执行步骤 07 | `PXC_HORIZONTAL_SCALE_SUBMITTED`；固定目标重跑只验收 |
+| `PXC_STORAGE_AUDIT` | 采集 PVC、文件系统、SC 和事件 | 只读集群，生成唯一证据目录 | `PXC_STORAGE_CAPACITY_AUDIT_COLLECTION_PASS`；不覆盖旧证据，不表示容量健康 |
+| `PXC_VOLUME_EXPANSION` | 将所有数据卷扩大到 `NEW_SIZE` | 仅在目标未满足时启用协调并执行步骤 07 | `PXC_VOLUME_EXPANSION_READY`；已扩到同一容量时只验收 |
+| `PXC_ROTATE_PASSWORD` | 按 `ROTATION_ID` 和密码系统固定输入轮换一个 Secret key | 原子更新 Secret 值和变更 ID | `PXC_PASSWORD_ROTATION_SUBMITTED`；相同 ID/输入只验收，不重复轮换 |
+| `PXC_SYSBENCH` | 完成 prepare、预热、压测、判定和 cleanup | 创建唯一 Pod/测试表，成功失败均回收 | `PXC_PERFORMANCE_ACCEPTANCE_PASS`；每次唯一 run ID，不接管旧 Pod |
+| `PXC_PERFORMANCE_DIAG` | 采集性能分层诊断资料 | 只读集群，生成唯一证据目录 | `PXC_PERFORMANCE_DIAG_COLLECTION_PASS`；不表示健康 |
+| `PXC_BACKUP` | 执行固定名称的一次备份动作 | 首次创建 Backup CR；重跑读取同一 CR | `PXC_BACKUP_CR_SUCCEEDED`；同名异参立即拒绝，随后验对象 |
+| `PXC_RESTORE` | 执行固定名称的一次恢复动作 | 首次创建 Restore CR；会改写目标数据 | `PXC_RESTORE_CR_SUCCEEDED`；同名异参立即拒绝 |
+| `PXC_PITR_PREFLIGHT` | 验证 PITR 连续性和最晚时间 | 只读 | `PXC_PITR_PREFLIGHT_PASS`；可重复检查 |
+| `PXC_UPGRADE_PREFLIGHT` | 冻结升级前状态 | 只读集群，生成唯一证据目录 | `PXC_UPGRADE_PREFLIGHT_PASS`；不覆盖旧基线 |
+| `PXC_OPERATOR_UPGRADE` | 收敛 Operator 到审批版本 | Helm release、CRD、Operator 工作负载 | `PXC_OPERATOR_UPGRADE_PASS`；固定 Chart/values 收敛 |
+| `PXC_DATABASE_UPGRADE` | 收敛 PXC/XtraBackup/HAProxy 版本 | server-side apply 并触发 SmartUpdate | `PXC_DATABASE_UPGRADE_READY`；相同清单只验收 rollout |
+| `PXC_DECOMMISSION_PREFLIGHT` | 生成下线对象清单 | 只读，不删除任何对象 | `PXC_DECOMMISSION_PREFLIGHT_COLLECTION_PASS`；不表示已下线 |
+| `PXC_DIAG` | 统一采集对象、事件和日志 | 只读集群，生成唯一证据目录 | `PXC_DIAGNOSTIC_COLLECTION_PASS`；`health_verified=false` |
+| `PXC_OPERATOR_DIAG` | 定位 Helm/CRD/RBAC/Operator 层 | 只读 | `PXC_OPERATOR_DIAG_COLLECTION_PASS`；`health_verified=false` |
+| `PXC_SCHEDULING_DIAG` | 定位 Pod/PVC/CSI 调度层 | 只读 | `PXC_SCHEDULING_DIAG_COLLECTION_PASS`；`health_verified=false` |
+| `PXC_QUORUM_DIAG` | 采集成员可达性和多数派状态 | 只读 | `PXC_QUORUM_DIAG_COLLECTION_PASS`；`health_verified=false` |
+| `PXC_HAPROXY_DIAG` | 采集 Service、Endpoint 和代理日志 | 只读 | `PXC_HAPROXY_DIAG_COLLECTION_PASS`；`health_verified=false` |
+
+日志不是装饰信息。阶段开始前先输出 `[n/N]`，循环等待期间在状态变化时或最长每 5 分钟输出一次 `elapsed_seconds` 心跳，硬门禁后才输出唯一终端标志。脚本异常退出时，终端标志不会出现；保留的 `.tmp` 证据只能用于诊断，不能改名冒充成功证据。
+
+平台团队先在管理节点建立本次交付目录，保存 CR、values、校验和、验收输出和回滚清单：
 
 ```bash
 bash <<'PXC_WORKDIR'
 set -Eeuo pipefail
 umask 077
 PXC_WORKDIR="$PWD/percona-pxc-1.20.0"
+printf '[1/2] 创建或复用固定版本交付目录：%s\n' "$PXC_WORKDIR"
 install -d -m 0750 "$PXC_WORKDIR" "$PXC_WORKDIR/evidence" "$PXC_WORKDIR/backup"
-printf 'PXC_WORKDIR=%s\n' "$PXC_WORKDIR"
+printf '[2/2] 验证证据目录可写且权限受控\n'
+test -w "$PXC_WORKDIR/evidence"
+printf 'PXC_WORKDIR_READY path=%s\n' "$PXC_WORKDIR"
 PXC_WORKDIR
 ```
 
@@ -56,16 +139,23 @@ PXC_WORKDIR 是管理节点本地路径，不是 Operator 读取路径。Operato
 
 以下是唯一推荐的首次部署顺序。每一步都必须看到“完成标志”后再进入下一步；不要跳到后面的故障章节寻找替代安装命令。
 
-主线路使用 kubeauto 的固定入口。下面的 `<cluster>` 是 `kubecli new` 创建的集群名，配置文件为 `clusters/<cluster>/config.yml`；不要在目标节点上直接执行临时 Helm 或 `kubectl set image`：
+主线路使用 kubeauto 的固定入口。下面的 `<cluster>` 是 `kubecli new` 创建的集群名，配置文件为 `clusters/<cluster>/config.yml`；脚本检查配置文件、准备固定 MySQL 制品，再执行独立 addon 步骤。它会修改目标集群，重复执行语义由 kubeauto role 的幂等契约保证；不要在目标节点上直接执行临时 Helm 或 `kubectl set image`：
 
 ```bash
+bash <<'PXC_DEPLOY'
 set -Eeuo pipefail
 CLUSTER="<cluster>"
 CONFIG="clusters/${CLUSTER}/config.yml"
+printf '[1/3] 检查 kubeauto 集群配置：%s\n' "$CONFIG"
 test -s "$CONFIG"
 # 在 CONFIG 中设置 mysql_install: "yes"、StorageClass、容量和 Secret 引用
+printf '配置文件存在：cluster=%s bytes=%s\n' "$CLUSTER" "$(wc -c <"$CONFIG")"
+printf '[2/3] 下载并校验 MySQL/PXC 固定制品\n'
 kubecli download -E mysql
+printf '[3/3] 执行 cluster-addon 的 Percona PXC 步骤 07\n'
 kubecli setup "$CLUSTER" 07
+printf 'PXC_KUBEAUTO_DEPLOY_PASS cluster=%s config=%s\n' "$CLUSTER" "$CONFIG"
+PXC_DEPLOY
 ```
 
 若客户采用 `kubecli setup <cluster> 90` 一键流程，仍须在执行前完成本手册第 2～4 章，并在 90 完成后执行第 6～10 章验收；`07` 只是独立 addon 步骤，不会替代集群基础设施和 CNI 前置条件。
@@ -89,6 +179,31 @@ flowchart LR
     E --> F[全量备份与恢复]
     F --> G[证据签收]
 ```
+
+### 1.4 生产运行线路
+
+首次交付只占数据库生命周期的一小部分。上线后按下图运行；日常巡检和备份验证是生产主线，容量变更、性能压测、恢复和升级是受审批的辅助线，应在对应窗口单独执行。
+
+```mermaid
+flowchart LR
+    A[每日硬门禁巡检] --> B[容量/性能趋势]
+    B --> C[备份新鲜度和 PITR]
+    C --> D[月度恢复演练]
+    D --> E[季度故障/容量演练]
+    E --> A
+    B -.达到水位.-> S[容量变更辅助线]
+    B -.SLO 异常.-> P[性能诊断辅助线]
+    C -.恢复事件.-> R[恢复应急辅助线]
+    A -.版本变更.-> U[升级回滚辅助线]
+```
+
+| 线路 | 执行频率 | 入口 | 完成标志 |
+|---|---|---|---|
+| 日常运维主线 | 每日或每班 | 8.1 节 | `PXC_DAILY_ACCEPTANCE_PASS` |
+| 备份与恢复主线 | 每日检查、按月演练 | 第 10 章 | Backup/Restore `Succeeded`，业务校验通过 |
+| 容量变更辅助线 | 达到审批水位时 | 8.4 节 | PVC 请求值、实际容量和文件系统容量一致 |
+| 性能诊断辅助线 | SLO 趋势异常或变更前后 | 第 9 章 | 原始日志、摘要和 wsrep 前后快照完整 |
+| 故障应急辅助线 | 告警或业务故障时 | 第 12 章 | 先取证、再归因、修复后重跑日常硬门禁 |
 
 > **主线路禁止事项：** 不在主线路中手工 bootstrap、删除 PVC、关闭 TLS 校验、使用 `percona.com/unsafe-pitr` 或直接修改 Operator 管理的 StatefulSet。这些动作只有在本文对应的异常/回滚引用块中、完成取证并得到审批后才可考虑。
 
@@ -130,18 +245,47 @@ PXC PVC = 当前数据 + 索引 + 临时表 + binlog/gcache + 增长窗口
 
 ### 3.1 Kubernetes、节点和权限
 
+本脚本只读检查 Kubernetes 版本、Ready 节点、StorageClass 和安装所需 RBAC，不创建资源。CRD 尚未安装时，PXC CR 权限只记录为预检查结果；第五章安装 CRD 后必须重新得到 `yes`。
+
 ```bash
 bash <<'PXC_PREFLIGHT'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+printf '[1/5] 验证 kubectl、jq、Helm、Python 和 PyYAML 客户端依赖\n'
+for command in kubectl jq helm python3; do
+  command -v "$command" >/dev/null
+done
+python3 -c 'import yaml; print("PyYAML_READY version=" + yaml.__version__)'
+printf '[2/5] 读取 Kubernetes 客户端和服务端版本\n'
 kubectl version
+printf '[3/5] 统计 Ready 节点并显示故障域\n'
 kubectl get nodes -o wide
+READY_NODES="$(kubectl get nodes -o json | jq '[.items[] | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))] | length')"
+test "$READY_NODES" -ge 3
+printf '节点门禁通过：ready_nodes=%s required=3\n' "$READY_NODES"
+printf '[4/5] 列出可供容量评审的 StorageClass\n'
 kubectl get sc
-kubectl auth can-i create namespaces
-kubectl auth can-i get pods -n mysql
-kubectl auth can-i create perconaxtradbclusters.pxc.percona.com -n mysql
-kubectl auth can-i create secrets -n mysql
-kubectl auth can-i create persistentvolumeclaims -n mysql
+test "$(kubectl get sc -o json | jq '.items | length')" -gt 0
+printf '[5/5] 验证平台账号的 Kubernetes RBAC\n'
+for permission in \
+  'create namespaces ' \
+  'get pods mysql' \
+  'create secrets mysql' \
+  'create persistentvolumeclaims mysql'; do
+  read -r verb resource namespace <<<"$permission"
+  args=(auth can-i "$verb" "$resource")
+  [[ -n "${namespace:-}" ]] && args+=(-n "$namespace")
+  result="$(kubectl "${args[@]}")"
+  printf 'RBAC：verb=%s resource=%s namespace=%s allowed=%s\n' \
+    "$verb" "$resource" "${namespace:-cluster}" "$result"
+  test "$result" = yes
+done
+PXC_CR_PERMISSION="$(kubectl auth can-i create \
+  perconaxtradbclusters.pxc.percona.com -n mysql 2>/dev/null || true)"
+printf 'PXC CR 预检查：allowed=%s；CRD 安装后必须为 yes\n' \
+  "${PXC_CR_PERMISSION:-resource-not-installed}"
+printf 'PXC_PREFLIGHT_PASS ready_nodes=%s storage_classes=%s\n' \
+  "$READY_NODES" "$(kubectl get sc -o json | jq '.items | length')"
 PXC_PREFLIGHT
 ```
 
@@ -151,16 +295,25 @@ PXC_PREFLIGHT
 
 ### 3.2 创建并确认命名空间
 
-`mysql-operator` 由平台团队维护，承载 Operator Deployment、Webhook 和 RBAC；`mysql` 由平台团队维护，承载 PXC CR、PVC、Service、Backup 和 Restore CR。命名空间存在不代表可以覆盖其中已有资源，执行前先确认归属：
+`mysql-operator` 由平台团队维护，承载 Operator Deployment、Webhook 和 RBAC；`mysql` 由平台团队维护，承载 PXC CR、PVC、Service、Backup 和 Restore CR。以下脚本以声明式方式创建或复用两个命名空间，并硬判断其为 Active；命名空间存在不代表可以覆盖其中已有资源，执行前先确认归属：
 
 ```bash
 bash <<'PXC_NAMESPACES'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+printf '[1/3] 查看两个命名空间是否已存在\n'
 kubectl get namespace mysql-operator mysql 2>/dev/null || true
+printf '[2/3] 以声明式方式创建或收敛命名空间\n'
 kubectl create namespace mysql-operator --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace mysql --dry-run=client -o yaml | kubectl apply -f -
+printf '[3/3] 验证命名空间状态\n'
 kubectl get namespace mysql-operator mysql
+for namespace in mysql-operator mysql; do
+  phase="$(kubectl get namespace "$namespace" -o jsonpath='{.status.phase}')"
+  printf 'namespace=%s phase=%s\n' "$namespace" "$phase"
+  test "$phase" = Active
+done
+printf 'PXC_NAMESPACES_READY operator_namespace=mysql-operator database_namespace=mysql\n'
 PXC_NAMESPACES
 ```
 
@@ -176,6 +329,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: pxc-storage-preflight
   namespace: mysql
+  labels:
+    app.kubernetes.io/managed-by: kubeauto-pxc-preflight
+    kubeauto.talkedu.cn/purpose: storage-preflight
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: <客户批准的 StorageClass>
@@ -192,6 +348,9 @@ kind: Pod
 metadata:
   name: pxc-storage-preflight
   namespace: mysql
+  labels:
+    app.kubernetes.io/managed-by: kubeauto-pxc-preflight
+    kubeauto.talkedu.cn/purpose: storage-preflight
 spec:
   restartPolicy: Never
   containers:
@@ -209,7 +368,7 @@ spec:
         claimName: pxc-storage-preflight
 ```
 
-PVC 和测试 Pod 文件保存在 PXC_WORKDIR，由平台团队维护，消费者是 Kubernetes API：
+PVC 和测试 Pod 文件保存在 PXC_WORKDIR，由平台团队维护，消费者是 Kubernetes API。脚本创建一次性 PVC/Pod，等待真实挂载后写入并读回 marker；它会创建两个固定名称的临时资源，成功后必须执行紧随其后的清理脚本：
 
 ```bash
 bash <<'PXC_STORAGE'
@@ -217,26 +376,126 @@ set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
 test -d "$PXC_WORKDIR"
+wait_field() {
+  local kind="$1" name="$2" jsonpath="$3" expected="$4"
+  local value="" last="__unset__" attempt
+  for attempt in $(seq 1 10); do
+    value="$(kubectl -n mysql get "$kind/$name" \
+      -o "jsonpath=${jsonpath}" 2>/dev/null || true)"
+    if [[ "$value" != "$last" || $((attempt % 10)) -eq 0 ]]; then
+      printf '等待资源：kind=%s name=%s state=%s expected=%s elapsed_seconds=%s\n' \
+        "$kind" "$name" "${value:-missing}" "$expected" "$((attempt * 30))"
+      last="$value"
+    fi
+    [[ "$value" == "$expected" ]] && return 0
+    (( attempt < 10 ))
+    sleep 30
+  done
+  return 1
+}
+cleanup_storage_on_error() {
+  local rc=$? kind owner purpose evidence remaining attempt
+  (( rc == 0 )) && return 0
+  set +e
+  evidence="$(mktemp "$PXC_WORKDIR/evidence/storage-preflight-failed.XXXXXX.log")"
+  {
+    kubectl -n mysql get pod,pvc pxc-storage-preflight -o wide || true
+    kubectl -n mysql describe pod pxc-storage-preflight || true
+    kubectl -n mysql describe pvc pxc-storage-preflight || true
+  } >"$evidence" 2>&1
+  for kind in pod pvc; do
+    owner="$(kubectl -n mysql get "$kind/pxc-storage-preflight" \
+      -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' \
+      2>/dev/null || true)"
+    purpose="$(kubectl -n mysql get "$kind/pxc-storage-preflight" \
+      -o jsonpath='{.metadata.labels.kubeauto\.talkedu\.cn/purpose}' \
+      2>/dev/null || true)"
+    if [[ "$owner" == kubeauto-pxc-preflight && \
+      "$purpose" == storage-preflight ]]; then
+      kubectl -n mysql delete "$kind/pxc-storage-preflight" \
+        --ignore-not-found --wait=false >/dev/null || true
+    fi
+  done
+  for attempt in $(seq 1 30); do
+    remaining="$(kubectl -n mysql get pod,pvc -o name 2>/dev/null | \
+      grep -c '/pxc-storage-preflight$' || true)"
+    printf '失败清理进度：remaining=%s elapsed_seconds=%s\n' \
+      "$remaining" "$((attempt * 10))" >&2
+    [[ "$remaining" -eq 0 ]] && break
+    if (( attempt < 30 )); then sleep 10; fi
+  done
+  printf 'PXC_STORAGE_PREFLIGHT_FAILED rc=%s evidence=%s cleanup_complete=%s\n' \
+    "$rc" "$evidence" "$([[ "$remaining" -eq 0 ]] && printf true || printf false)" >&2
+  exit "$rc"
+}
+trap cleanup_storage_on_error EXIT
+printf '[1/5] 检查固定名称资源的归属；拒绝接管客户对象\n'
+for kind in pvc pod; do
+  if kubectl -n mysql get "$kind/pxc-storage-preflight" >/dev/null 2>&1; then
+    owner="$(kubectl -n mysql get "$kind/pxc-storage-preflight" \
+      -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}')"
+    purpose="$(kubectl -n mysql get "$kind/pxc-storage-preflight" \
+      -o jsonpath='{.metadata.labels.kubeauto\.talkedu\.cn/purpose}')"
+    test "$owner" = kubeauto-pxc-preflight
+    test "$purpose" = storage-preflight
+    printf '资源归属通过：kind=%s owner=%s purpose=%s\n' \
+      "$kind" "$owner" "$purpose"
+  fi
+done
+printf '[2/5] 创建或收敛存储预检 PVC 并等待 Bound\n'
 kubectl apply -f "$PXC_WORKDIR/storage-preflight-pvc.yaml"
-kubectl -n mysql wait --for=jsonpath='{.status.phase}'=Bound pvc/pxc-storage-preflight --timeout=5m
+wait_field pvc pxc-storage-preflight '{.status.phase}' Bound
+printf '[3/5] 创建或复用挂载预检卷的诊断 Pod 并等待 Ready\n'
 kubectl apply -f "$PXC_WORKDIR/storage-preflight-pod.yaml"
-kubectl -n mysql wait --for=condition=Ready pod/pxc-storage-preflight --timeout=5m
+wait_field pod pxc-storage-preflight \
+  '{.status.conditions[?(@.type=="Ready")].status}' True
+printf '[4/5] 在真实挂载点幂等写入并读回 marker\n'
 kubectl -n mysql exec pxc-storage-preflight -- sh -c 'printf pxc-storage-ok >/data/marker && test "$(cat /data/marker)" = pxc-storage-ok'
+printf '[5/5] 输出 PVC、Pod、节点和卷信息\n'
 kubectl -n mysql get pvc,pod pxc-storage-preflight -o wide
+trap - EXIT
+printf 'PXC_STORAGE_PREFLIGHT_PASS pvc=pxc-storage-preflight marker=pxc-storage-ok\n'
 PXC_STORAGE
 ```
 
 预期：PVC Bound、Pod Ready、marker 写入和读取成功。验收后只删除本次测试资源。
 
-清理命令只处理上述两个固定名称；删除后应确认不存在残留：
+清理命令只处理上述两个固定名称，并在删除后硬判断不存在残留；该操作不可替换成通配符清理：
 
 ```bash
 bash <<'PXC_STORAGE_CLEAN'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
-kubectl -n mysql delete pod/pxc-storage-preflight --ignore-not-found --wait=true
-kubectl -n mysql delete pvc/pxc-storage-preflight --ignore-not-found --wait=true
-test -z "$(kubectl -n mysql get pod,pvc -o name | grep 'pxc-storage-preflight' || true)"
+printf '[1/3] 对账固定名称资源归属；无归属或异属对象不得删除\n'
+for kind in pod pvc; do
+  if kubectl -n mysql get "$kind/pxc-storage-preflight" >/dev/null 2>&1; then
+    test "$(kubectl -n mysql get "$kind/pxc-storage-preflight" \
+      -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}')" \
+      = kubeauto-pxc-preflight
+    test "$(kubectl -n mysql get "$kind/pxc-storage-preflight" \
+      -o jsonpath='{.metadata.labels.kubeauto\.talkedu\.cn/purpose}')" \
+      = storage-preflight
+  fi
+done
+printf '[2/3] 按固定名称和已验证归属删除预检 Pod、PVC\n'
+kubectl -n mysql delete pod/pxc-storage-preflight --ignore-not-found --wait=false
+kubectl -n mysql delete pvc/pxc-storage-preflight --ignore-not-found --wait=false
+printf '[3/3] 验证固定名称资源已完全删除\n'
+last_remaining=""
+for attempt in $(seq 1 30); do
+  remaining="$(kubectl -n mysql get pod,pvc -o name | \
+    grep -c '/pxc-storage-preflight$' || true)"
+  if [[ "$remaining" != "$last_remaining" || $((attempt % 3)) -eq 0 ]]; then
+    printf '清理进度：remaining=%s elapsed_seconds=%s\n' \
+      "$remaining" "$((attempt * 10))"
+    last_remaining="$remaining"
+  fi
+  [[ "$remaining" -eq 0 ]] && break
+  (( attempt < 30 ))
+  sleep 10
+done
+test "$remaining" -eq 0
+printf 'PXC_STORAGE_PREFLIGHT_CLEAN_PASS namespace=mysql\n'
 PXC_STORAGE_CLEAN
 ```
 
@@ -265,25 +524,32 @@ PXC_STORAGE_CLEAN
 
 这些发布名已进入 MySQL 制品集合和独立门禁。正式拉取顺序为 TalkEdu 私仓、Docker Hub 已发布副本、Percona 官方上游；公共加速器只允许在测试命令行临时注入，不能写入代码、CI、默认配置或本文档。
 
-镜像必须经固定候选拉取、inspect、tag/push、本地 Registry manifest 和 digest 验证；Chart/CRD 必须 vendored 并通过 SHA256。以下命令用于交付前核对本地 Registry：
+镜像必须经固定候选拉取、inspect、tag/push、本地 Registry manifest 和 digest 验证；Chart/CRD 必须 vendored 并通过 SHA256。以下脚本只读检查四个核心镜像是否已进入本地 Docker image store，并逐项打印 tag 和 image ID；它是现场存在性检查，源/目标 manifest digest 对账仍由 kubeauto 下载门禁负责：
 
 ```bash
 bash <<'PXC_ARTIFACT'
 set -Eeuo pipefail
+printf '[1/2] 检查四个锁定版本镜像\n'
+checked=0
 for image in \
   percona-xtradb-cluster-operator:1.20.0 \
   percona-xtradb-cluster:8.4.8-8.1 \
   percona-xtrabackup:8.4.0-5.1 \
   haproxy:2.8.18-1; do
-  docker image inspect "registry.talkschool.cn:5000/brinnatt/$image" \
-    --format '{{.RepoTags}} {{.Id}}'
+  result="$(docker image inspect "registry.talkschool.cn:5000/brinnatt/$image" \
+    --format '{{join .RepoTags ","}} {{.Id}}')"
+  printf '镜像通过：image=%s result=%s\n' "$image" "$result"
+  checked=$((checked + 1))
 done
+printf '[2/2] 验证检查数量\n'
+test "$checked" -eq 4
+printf 'PXC_ARTIFACT_INSPECT_PASS checked=%s\n' "$checked"
 PXC_ARTIFACT
 ```
 
 预期：四个镜像均存在，tag 与锁定版本一致。签收还必须保存各源镜像和本地镜像的 repo digest/manifest 对账结果；仅有本地 image ID 不足以证明供应链一致。
 
-Chart 和 CRD 必须先进入受控 vendored 目录，再由发布代码引用。下载阶段保存官方 URL、文件大小和 SHA256；校验失败时删除临时文件，不能覆盖旧制品：
+Chart 和 CRD 必须先进入受控 vendored 目录，再由发布代码引用。以下脚本校验 Chart SHA256，再读取 tar 索引证明压缩包结构完整；不安装任何资源。下载阶段保存官方 URL、文件大小和 SHA256；校验失败时删除临时文件，不能覆盖旧制品：
 
 ```bash
 bash <<'PXC_CHART_VERIFY'
@@ -291,8 +557,12 @@ set -Eeuo pipefail
 PXC_WORKDIR="<第一章输出的绝对路径>"
 test -d "$PXC_WORKDIR/vendor"
 cd "$PXC_WORKDIR/vendor"
+printf '[1/2] 校验 pxc-operator Chart SHA256\n'
 sha256sum -c pxc-operator-1.20.0.tgz.sha256
+printf '[2/2] 验证 Chart 压缩包可完整读取\n'
 tar -tzf pxc-operator-1.20.0.tgz >/dev/null
+printf 'PXC_CHART_VERIFY_PASS chart=pxc-operator-1.20.0.tgz bytes=%s\n' \
+  "$(wc -c <pxc-operator-1.20.0.tgz)"
 PXC_CHART_VERIFY
 ```
 
@@ -332,7 +602,7 @@ resources:
 
 `operatorImageRepository` 由 Chart 使用 `appVersion=1.20.0` 组成最终镜像引用。正式编码时必须执行 `helm template`，证明渲染结果使用本地 Registry、目标命名空间和正确 RBAC，再允许安装。
 
-脱离 kubeauto 的手工路径只有在客户已经自行准备并校验 vendored Chart 时才可执行；不能从网络直接安装未知版本：
+脱离 kubeauto 的手工路径只有在客户已经自行准备并校验 vendored Chart 时才可执行。脚本安装/升级 Helm release，等待 Operator Deployment 和 CRD，再验证目标命名空间的 PXC CR 创建权限；它会修改集群控制面，不能从网络直接安装未知版本：
 
 ```bash
 bash <<'PXC_OPERATOR_INSTALL'
@@ -340,15 +610,48 @@ set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
 test -d "$PXC_WORKDIR"
-helm upgrade --install pxc-operator \
-  "$PXC_WORKDIR/vendor/pxc-operator-1.20.0.tgz" \
-  --namespace mysql-operator --create-namespace \
-  --values "$PXC_WORKDIR/operator-values.yaml" \
-  --wait --timeout 10m
+test -s "$PXC_WORKDIR/vendor/pxc-operator-1.20.0.tgz"
+test -s "$PXC_WORKDIR/operator-values.yaml"
+printf '[1/4] 对账 Helm Chart 和用户 values；完全一致时不新增 release revision\n'
+CURRENT_CHART="$(helm -n mysql-operator list -o json 2>/dev/null | jq -r \
+  '.[] | select(.name == "pxc-operator") | .chart' || true)"
+CURRENT_VALUES="$(helm -n mysql-operator get values pxc-operator \
+  -o json 2>/dev/null || printf '{}')"
+DESIRED_VALUES="$(python3 -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1], encoding="utf-8")) or {}, sort_keys=True))' "$PXC_WORKDIR/operator-values.yaml")"
+if [[ "$CURRENT_CHART" == pxc-operator-1.20.0 ]] && \
+  jq -e --argjson desired "$DESIRED_VALUES" '. == $desired' \
+    <<<"$CURRENT_VALUES" >/dev/null; then
+  printf 'Helm release 已收敛：chart=%s already_converged=true\n' "$CURRENT_CHART"
+else
+  helm upgrade --install pxc-operator \
+    "$PXC_WORKDIR/vendor/pxc-operator-1.20.0.tgz" \
+    --namespace mysql-operator --create-namespace \
+    --values "$PXC_WORKDIR/operator-values.yaml" \
+    --wait --timeout 10m --history-max 10
+fi
+printf '[2/4] 等待 Operator Deployment 完成 rollout\n'
 kubectl -n mysql-operator rollout status deployment/pxc-operator --timeout=10m
-kubectl wait --for=condition=Established \
-  crd/perconaxtradbclusters.pxc.percona.com --timeout=2m
-kubectl auth can-i create perconaxtradbclusters.pxc.percona.com -n mysql
+printf '[3/4] 等待 PXC CRD Established\n'
+last_established="__unset__"
+for attempt in $(seq 1 12); do
+  established="$(kubectl get crd perconaxtradbclusters.pxc.percona.com \
+    -o jsonpath='{.status.conditions[?(@.type=="Established")].status}' \
+    2>/dev/null || true)"
+  if [[ "$established" != "$last_established" || $((attempt % 3)) -eq 0 ]]; then
+    printf 'CRD 进度：established=%s elapsed_seconds=%s\n' \
+      "${established:-missing}" "$((attempt * 10))"
+    last_established="$established"
+  fi
+  [[ "$established" == True ]] && break
+  (( attempt < 12 ))
+  sleep 10
+done
+test "$established" = True
+printf '[4/4] 验证 PXC CR 创建权限\n'
+PXC_CR_ALLOWED="$(kubectl auth can-i create perconaxtradbclusters.pxc.percona.com -n mysql)"
+printf 'RBAC：resource=perconaxtradbclusters namespace=mysql allowed=%s\n' "$PXC_CR_ALLOWED"
+test "$PXC_CR_ALLOWED" = yes
+printf 'PXC_OPERATOR_INSTALL_PASS namespace=mysql-operator release=pxc-operator\n'
 PXC_OPERATOR_INSTALL
 ```
 
@@ -360,19 +663,26 @@ PXC_OPERATOR_INSTALL
 
 Operator 管理系统用户 Secret、TLS Secret 和内部认证关系。平台团队负责 Secret 来源、权限、轮换和备份；应用团队只获得业务库最小权限。不要猜测 Secret 字段格式；自定义 secretsName 时必须以 v1.20.0 官方 users 文档和 CRD schema 为准。
 
-生产系统用户密码由密码系统生成后写入 `cluster1-secrets`，Secret 至少包含实际启用组件要求的 `root`、`xtrabackup`、`monitor`、`proxyadmin`、`operator` 和 `replication` 键。本文不提供默认密码；禁止使用官方开发示例密码。创建完成后只检查键名，不输出值：
+生产系统用户密码由密码系统生成后写入 `cluster1-secrets`，Secret 至少包含实际启用组件要求的 `root`、`xtrabackup`、`monitor`、`proxyadmin`、`operator` 和 `replication` 键。以下脚本只验证 Secret 和六个 key 存在且非空，不输出任何值，也不修改 Secret。本文不提供默认密码；禁止使用官方开发示例密码：
 
 ```bash
 bash <<'PXC_SECRET_CHECK'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+printf '[1/2] 确认系统用户 Secret 存在\n'
 kubectl -n mysql get secret cluster1-secrets >/dev/null
+printf '[2/2] 逐项验证必需 key 非空；日志只输出 key 名\n'
+checked=0
 for key in root xtrabackup monitor proxyadmin operator replication; do
   value="$(kubectl -n mysql get secret cluster1-secrets \
     -o "jsonpath={.data.${key}}" | base64 -d)"
   test -n "$value"
+  printf 'Secret key 通过：name=cluster1-secrets key=%s\n' "$key"
+  checked=$((checked + 1))
   unset value
 done
+test "$checked" -eq 6
+printf 'PXC_SECRET_CONTRACT_PASS secret=cluster1-secrets keys=%s\n' "$checked"
 PXC_SECRET_CHECK
 ```
 
@@ -445,7 +755,7 @@ spec:
 
 `cluster1-backup-s3` 的键名和内容必须按 v1.20.0 [Backup storage](https://docs.percona.com/percona-operator-for-mysql/pxc/backups-storage.html) 创建并由密码系统注入。不得把 access key、secret key 或 CA 私钥写进 CR。PITR 一期默认关闭；完成全量备份、对象存储 TLS 和 binlog 连续性门禁后再单独变更为 true。
 
-发布后保存 CR、事件和资源状态：
+以下脚本先让 API Server 按当前 CRD 校验清单，再以固定 field manager 提交 PXC CR，最后打印 CR 和派生资源。该步骤会创建或更新数据库集群，但只表示声明已提交，不能替代 6.1 节 Ready 验收：
 
 ```bash
 bash <<'PXC_APPLY'
@@ -454,30 +764,71 @@ export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
 test -d "$PXC_WORKDIR"
 test -s "$PXC_WORKDIR/cluster1-pxc.yaml"
+printf '[1/3] 使用 API Server 对 PXC CR 做 dry-run 校验\n'
 kubectl apply --dry-run=server -f "$PXC_WORKDIR/cluster1-pxc.yaml" >/dev/null
+printf '[2/3] 以固定 field manager 发布 PXC CR\n'
 kubectl apply --server-side --field-manager=kubeauto-mysql -f "$PXC_WORKDIR/cluster1-pxc.yaml"
+printf '[3/3] 输出 Operator 当前接收的 CR 和派生资源状态\n'
 kubectl -n mysql get pxc cluster1 -o yaml
 kubectl -n mysql get pxc,pod,pvc,svc -o wide
+printf 'PXC_CLUSTER_APPLY_SUBMITTED cluster=cluster1 namespace=mysql\n'
 PXC_APPLY
 ```
 
 ### 6.1 安装后控制面和数据面验收
 
-不要用 `kubectl apply` 返回 0 或 Pod Running 结束验收。先等待固定的 3 个 PXC 和 3 个 HAProxy Pod Ready，再核对副本分布、PVC 和 Service：
+不要用 `kubectl apply` 返回 0 或 Pod Running 结束验收。以下脚本等待固定的 3 个 PXC 和 3 个 HAProxy Pod Ready，硬判断 CR ready、三个 PXC 故障域、三块 Bound PVC、两个 Service 和写入口 EndpointSlice；脚本只读等待，不修改资源：
 
 ```bash
 bash <<'PXC_READY'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+wait_pod_ready() {
+  local pod="$1" ready="" last="__unset__" attempt
+  for attempt in $(seq 1 60); do
+    ready="$(kubectl -n mysql get "pod/$pod" \
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+      2>/dev/null || true)"
+    if [[ "$ready" != "$last" || $((attempt % 10)) -eq 0 ]]; then
+      printf '等待 Pod：name=%s ready=%s elapsed_seconds=%s timeout_seconds=1800\n' \
+        "$pod" "${ready:-missing}" "$((attempt * 30))"
+      last="$ready"
+    fi
+    [[ "$ready" == True ]] && return 0
+    (( attempt < 60 ))
+    sleep 30
+  done
+  return 1
+}
+printf '[1/5] 逐个等待 3 个 PXC 和 3 个 HAProxy Pod Ready\n'
 for pod in \
   cluster1-pxc-0 cluster1-pxc-1 cluster1-pxc-2 \
   cluster1-haproxy-0 cluster1-haproxy-1 cluster1-haproxy-2; do
-  kubectl -n mysql wait --for=condition=Ready "pod/$pod" --timeout=30m
+  wait_pod_ready "$pod"
 done
+printf '[2/5] 验证 PXC CR 控制器状态和故障域分布\n'
+test "$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.status.state}')" = ready
+PXC_NODES="$(kubectl -n mysql get pod -l app.kubernetes.io/component=pxc \
+  -o jsonpath='{range .items[*]}{.spec.nodeName}{"\n"}{end}' | sort -u | wc -l)"
+test "$PXC_NODES" -eq 3
 kubectl -n mysql get pod -o custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,READY:.status.containerStatuses[*].ready'
+printf '故障域通过：distinct_pxc_nodes=%s required=3\n' "$PXC_NODES"
+printf '[3/5] 验证三块 PXC 数据 PVC 均为 Bound\n'
+PVC_BOUND="$(kubectl -n mysql get pvc -l app.kubernetes.io/instance=cluster1 -o json | jq \
+  '[.items[] | select(.metadata.name | startswith("datadir-")) | select(.status.phase == "Bound")] | length')"
+test "$PVC_BOUND" -eq 3
 kubectl -n mysql get pvc -o wide
+printf '存储通过：bound_datadir_pvc=%s required=3\n' "$PVC_BOUND"
+printf '[4/5] 验证写入口、只读入口和写入口 EndpointSlice\n'
 kubectl -n mysql get service cluster1-haproxy cluster1-haproxy-replicas
 kubectl -n mysql get endpointslice -l kubernetes.io/service-name=cluster1-haproxy
+ENDPOINTS="$(kubectl -n mysql get endpointslice \
+  -l kubernetes.io/service-name=cluster1-haproxy -o json | jq \
+  '[.items[].endpoints[]? | select(.conditions.ready == true)] | length')"
+test "$ENDPOINTS" -gt 0
+printf '[5/5] 汇总控制面和数据面基础状态\n'
+printf 'PXC_CONTROL_DATA_READY state=ready pxc=3/3 haproxy=3/3 pvc=%s nodes=%s endpoints=%s\n' \
+  "$PVC_BOUND" "$PXC_NODES" "$ENDPOINTS"
 PXC_READY
 ```
 
@@ -495,13 +846,20 @@ PXC_READY
 | cluster1-haproxy-replicas | 3306 | Replica 只读入口 | 报表/查询，不允许写 |
 | cluster1-haproxy | 33062 | 管理健康检查 | 不给业务暴露 |
 
-应用使用连接池、连接超时、事务重试和主节点切换重连；不能把 PXC Pod 名写进应用配置。客户端密码交互输入：
+应用使用连接池、连接超时、事务重试和主节点切换重连；不能把 PXC Pod 名写进应用配置。以下连接探针从客户管理端通过 Primary Service 建立 VERIFY_CA 会话并返回服务端身份和 TLS cipher；`-p` 交互读取密码，命令行和日志不保存密码：
 
 ```bash
+bash <<'PXC_CLIENT_CONNECT'
+set -Eeuo pipefail
+printf '[1/2] 通过 Primary Service 建立 VERIFY_CA 连接；请按提示输入业务账号密码\n'
 mysql --protocol=TCP \
   -h cluster1-haproxy.mysql.svc.cluster.local -P 3306 \
   -u <业务账号> -p \
-  --ssl-mode=VERIFY_CA --ssl-ca=<客户 CA 文件>
+  --ssl-mode=VERIFY_CA --ssl-ca="<客户 CA 文件>" \
+  --batch --execute="SELECT @@hostname AS backend, CURRENT_USER() AS account; SHOW SESSION STATUS LIKE 'Ssl_cipher';"
+printf '[2/2] 连接、身份查询和 TLS 会话检查均已返回成功\n'
+printf 'PXC_CLIENT_TLS_CONNECT_PASS service=cluster1-haproxy port=3306 ssl_mode=VERIFY_CA\n'
+PXC_CLIENT_CONNECT
 ```
 
 预期：TLS 握手成功，业务账号只能访问授权 schema，错误密码失败，root 不用于业务连接。
@@ -512,7 +870,7 @@ mysql --protocol=TCP \
 
 ### 7.2 wsrep 健康验收
 
-在每个 PXC Pod 上执行只读状态查询。以下命令从 Kubernetes Secret 读取密码但不打印密码，结束时立即清空本地变量：
+在每个 PXC Pod 上执行只读状态查询。以下脚本从 Kubernetes Secret 读取密码但不打印密码，逐节点输出 wsrep 观测值，并硬判断 size/Primary/Synced/Ready/Connected；结束时立即清空本地变量：
 
 ```bash
 bash <<'PXC_WSREP'
@@ -520,19 +878,28 @@ set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 ROOT_PASSWORD="$(kubectl -n mysql get secret cluster1-secrets -o jsonpath='{.data.root}' | base64 -d)"
 trap 'unset ROOT_PASSWORD' EXIT
+test -n "$ROOT_PASSWORD"
 WSREP_QUERY="SHOW GLOBAL STATUS WHERE Variable_name IN
   ('wsrep_cluster_size','wsrep_cluster_status','wsrep_local_state_comment',
    'wsrep_ready','wsrep_connected','wsrep_flow_control_paused',
    'wsrep_local_recv_queue','wsrep_local_cert_failures');"
+printf '[1/2] 查询三个 PXC 成员的 wsrep 状态\n'
 for pod in cluster1-pxc-0 cluster1-pxc-1 cluster1-pxc-2; do
-  printf '\n[%s]\n' "$pod"
-  printf '%s\n' "$ROOT_PASSWORD" | kubectl -n mysql exec -i "$pod" -- sh -eu -c '
+  status="$(printf '%s\n' "$ROOT_PASSWORD" | kubectl -n mysql exec -i "$pod" -c pxc -- sh -eu -c '
     IFS= read -r MYSQL_PWD
     export MYSQL_PWD
-    mysql -uroot --batch --skip-column-names -e "$1"
+    mysql -uroot -h127.0.0.1 --batch --skip-column-names -e "$1"
     unset MYSQL_PWD
-  ' sh "$WSREP_QUERY"
+  ' sh "$WSREP_QUERY")"
+  printf 'wsrep 节点：pod=%s\n%s\n' "$pod" "$status"
+  grep -qx $'wsrep_cluster_size\t3' <<<"$status"
+  grep -qx $'wsrep_cluster_status\tPrimary' <<<"$status"
+  grep -qx $'wsrep_local_state_comment\tSynced' <<<"$status"
+  grep -qx $'wsrep_ready\tON' <<<"$status"
+  grep -qx $'wsrep_connected\tON' <<<"$status"
 done
+printf '[2/2] 三个成员均满足 Primary/Synced/Ready/Connected\n'
+printf 'PXC_WSREP_HEALTH_PASS cluster_size=3 members=3\n'
 PXC_WSREP
 ```
 
@@ -601,43 +968,211 @@ flowchart LR
 
 ### 8.1 日常巡检
 
-每日保存 PXC、Pod、PVC、Service、事件和 Operator 日志；数据库执行第 7.2 节状态查询，记录 wsrep_cluster_size、wsrep_cluster_status、wsrep_local_state_comment、wsrep_ready、wsrep_flow_control_paused、wsrep_local_recv_queue 和 wsrep_local_cert_failures。
+每日巡检不是信息采集任务，而是生产硬门禁。以下脚本同时判定控制器状态、PXC/HAProxy 副本、PVC、三节点 wsrep、文件系统水位、最近成功备份和 PITR 连续性；只有全部通过才原子保存证据并输出成功标志。
+
+运行前按客户 SLO 设置 `PXC_BACKUP_MAX_AGE_HOURS`，按容量策略设置 `PXC_MAX_USED_PERCENT`。示例默认值 `26` 小时和 `80%` 只是每日备份/计划扩容的起始门限，不是所有客户的统一标准。
 
 ```bash
 bash <<'PXC_DAILY'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
+NAMESPACE="${PXC_NAMESPACE:-mysql}"
+OPERATOR_NAMESPACE="${PXC_OPERATOR_NAMESPACE:-mysql-operator}"
+CLUSTER="${PXC_CLUSTER:-cluster1}"
+EXPECTED_PXC="${PXC_EXPECTED_SIZE:-3}"
+EXPECTED_HAPROXY="${PXC_EXPECTED_HAPROXY_SIZE:-3}"
+MAX_USED_PERCENT="${PXC_MAX_USED_PERCENT:-80}"
+BACKUP_MAX_AGE_HOURS="${PXC_BACKUP_MAX_AGE_HOURS:-26}"
 test -d "$PXC_WORKDIR"
-OUT="$PXC_WORKDIR/evidence/daily-$(date +%Y%m%d%H%M%S)"
-install -d -m 0750 "$OUT"
-kubectl -n mysql get pxc,pod,sts,pvc,svc -o wide >"$OUT/objects.txt"
-kubectl -n mysql get events --sort-by=.lastTimestamp >"$OUT/events.txt"
-kubectl -n mysql-operator logs deployment/pxc-operator \
-  --since=24h >"$OUT/operator.log" 2>&1
-kubectl -n mysql top pod >"$OUT/pod-top.txt" 2>&1 || true
+for value in "$EXPECTED_PXC" "$EXPECTED_HAPROXY" \
+  "$MAX_USED_PERCENT" "$BACKUP_MAX_AGE_HOURS"; do
+  [[ "$value" =~ ^[0-9]+$ ]]
+done
+(( EXPECTED_PXC >= 3 && EXPECTED_PXC % 2 == 1 ))
+(( EXPECTED_HAPROXY >= 3 && EXPECTED_HAPROXY % 2 == 1 ))
+(( MAX_USED_PERCENT > 0 && MAX_USED_PERCENT < 100 ))
+(( BACKUP_MAX_AGE_HOURS > 0 ))
+
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+TMP="$(mktemp -d "$PXC_WORKDIR/evidence/.daily-${STAMP}.XXXXXX")"
+RUN_SUFFIX="${TMP##*.daily-${STAMP}.}"
+OUT="$PXC_WORKDIR/evidence/daily-${STAMP}-${RUN_SUFFIX}"
+trap 'rc=$?; if (( rc != 0 )); then printf "PXC_DAILY_FAILED rc=%s temporary_evidence=%s\n" "$rc" "$TMP" >&2; fi' EXIT
+chmod 0750 "$TMP"
+
+printf '[1/6] 检查 CR、Pod、HAProxy 和 PVC\n'
+kubectl -n "$NAMESPACE" get pxc "$CLUSTER" -o json >"$TMP/pxc.json"
+jq -e --argjson pxc "$EXPECTED_PXC" --argjson haproxy "$EXPECTED_HAPROXY" '
+  .status.state == "ready" and
+  .status.pxc.ready == $pxc and
+  .status.haproxy.ready == $haproxy
+' "$TMP/pxc.json" >/dev/null
+kubectl -n "$NAMESPACE" get pod -o json >"$TMP/pods.json"
+pxc_ready="$(jq '[.items[] | select(.metadata.labels["app.kubernetes.io/component"] == "pxc") | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))] | length' "$TMP/pods.json")"
+haproxy_ready="$(jq '[.items[] | select(.metadata.labels["app.kubernetes.io/component"] == "haproxy") | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))] | length' "$TMP/pods.json")"
+test "$pxc_ready" -eq "$EXPECTED_PXC"
+test "$haproxy_ready" -eq "$EXPECTED_HAPROXY"
+kubectl -n "$NAMESPACE" get pvc \
+  -l "app.kubernetes.io/instance=$CLUSTER" -o json >"$TMP/pvc.json"
+jq -e --argjson expected "$EXPECTED_PXC" '
+  (.items | length) >= $expected and
+  all(.items[]; .status.phase == "Bound" and (.status.capacity.storage // "") != "")
+' "$TMP/pvc.json" >/dev/null
+printf '控制面通过：PXC=%s/%s HAProxy=%s/%s\n' \
+  "$pxc_ready" "$EXPECTED_PXC" "$haproxy_ready" "$EXPECTED_HAPROXY"
+
+printf '[2/6] 检查每个 PXC 成员的 Primary、Synced 和 Ready\n'
+SECRET_NAME="$(jq -r '.spec.secretsName // empty' "$TMP/pxc.json")"
+test -n "$SECRET_NAME"
+ROOT_PASSWORD="$(kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" -o jsonpath='{.data.root}' | base64 -d)"
+test -n "$ROOT_PASSWORD"
+: >"$TMP/wsrep.tsv"
+for ordinal in $(seq 0 $((EXPECTED_PXC - 1))); do
+  pod="${CLUSTER}-pxc-${ordinal}"
+  status="$(printf '%s\n' "$ROOT_PASSWORD" | kubectl -n "$NAMESPACE" \
+    exec -i "$pod" -c pxc -- sh -eu -c '
+      IFS= read -r MYSQL_PWD
+      export MYSQL_PWD
+      mysql -uroot --protocol=TCP -h127.0.0.1 -Nse \
+        "SHOW GLOBAL STATUS WHERE Variable_name IN
+        ('"'"'wsrep_cluster_size'"'"','"'"'wsrep_cluster_status'"'"',
+         '"'"'wsrep_local_state_comment'"'"','"'"'wsrep_ready'"'"',
+         '"'"'wsrep_connected'"'"','"'"'wsrep_flow_control_paused'"'"',
+         '"'"'wsrep_local_recv_queue'"'"','"'"'wsrep_local_cert_failures'"'"');"
+      unset MYSQL_PWD
+    ')"
+  grep -qx $'wsrep_cluster_size\t'"$EXPECTED_PXC" <<<"$status"
+  grep -qx $'wsrep_cluster_status\tPrimary' <<<"$status"
+  grep -qx $'wsrep_local_state_comment\tSynced' <<<"$status"
+  grep -qx $'wsrep_ready\tON' <<<"$status"
+  grep -qx $'wsrep_connected\tON' <<<"$status"
+  awk -v pod="$pod" 'BEGIN {OFS="\t"} {print pod,$1,$2}' <<<"$status" \
+    >>"$TMP/wsrep.tsv"
+  printf 'wsrep 通过：%s Primary/Synced/Ready\n' "$pod"
+done
+unset ROOT_PASSWORD
+
+printf '[3/6] 检查数据库文件系统容量水位\n'
+: >"$TMP/filesystem.tsv"
+for ordinal in $(seq 0 $((EXPECTED_PXC - 1))); do
+  pod="${CLUSTER}-pxc-${ordinal}"
+  line="$(kubectl -n "$NAMESPACE" exec "$pod" -c pxc -- \
+    sh -eu -c "df -Pk /var/lib/mysql | awk 'NR == 2 {gsub(/%/, \"\", \$5); print \$2,\$3,\$4,\$5}'")"
+  read -r total_kb used_kb available_kb used_percent <<<"$line"
+  [[ "$used_percent" =~ ^[0-9]+$ ]]
+  (( used_percent < MAX_USED_PERCENT ))
+  printf '%s\t%s\t%s\t%s\t%s%%\n' \
+    "$pod" "$total_kb" "$used_kb" "$available_kb" "$used_percent" \
+    | tee -a "$TMP/filesystem.tsv"
+done
+
+printf '[4/6] 检查最近成功全量备份和 PITR 连续性\n'
+kubectl -n "$NAMESPACE" get pxc-backup -o json >"$TMP/backups.json"
+latest_backup="$(jq -r '
+  [.items[] | select(.status.state == "Succeeded" and (.status.completed // "") != "")]
+  | sort_by(.status.completed) | last
+  | if . == null then "" else [.metadata.name,.status.completed,
+      (.status.latestRestorableTime // "")] | @tsv end
+' "$TMP/backups.json")"
+test -n "$latest_backup"
+IFS=$'\t' read -r backup_name backup_completed latest_restorable <<<"$latest_backup"
+backup_epoch="$(date -u -d "$backup_completed" +%s)"
+now_epoch="$(date -u +%s)"
+backup_age_hours="$(( (now_epoch - backup_epoch) / 3600 ))"
+(( backup_age_hours >= 0 && backup_age_hours <= BACKUP_MAX_AGE_HOURS ))
+pitr_enabled="$(jq -r '.spec.backup.pitr.enabled // false' "$TMP/pxc.json")"
+if [[ "$pitr_enabled" == true ]]; then
+  test -n "$latest_restorable"
+  jq -e --arg name "$backup_name" '
+    .items[] | select(.metadata.name == $name) |
+    [ .status.conditions[]?
+      | select(.type == "PITRReady" and .status == "False"
+        and .reason == "BinlogGapDetected") ] | length == 0
+  ' "$TMP/backups.json" >/dev/null
+fi
+printf '备份通过：name=%s age_hours=%s pitr=%s latest_restorable=%s\n' \
+  "$backup_name" "$backup_age_hours" "$pitr_enabled" "${latest_restorable:-disabled}"
+
+printf '[5/6] 保存对象、事件、资源和 Operator 日志\n'
+kubectl -n "$NAMESPACE" get pxc,pod,sts,pvc,svc -o wide >"$TMP/objects.txt"
+kubectl -n "$NAMESPACE" get events --sort-by=.lastTimestamp >"$TMP/events.txt"
+kubectl -n "$OPERATOR_NAMESPACE" logs deployment/pxc-operator \
+  --since=24h >"$TMP/operator.log" 2>&1
+if ! kubectl -n "$NAMESPACE" top pod >"$TMP/pod-top.txt" 2>&1; then
+  printf 'metrics API 不可用；数据库硬门禁已完成，监控链路需单独修复\n' \
+    | tee "$TMP/metrics-warning.txt"
+fi
+
+printf '[6/6] 原子发布巡检证据\n'
+test ! -e "$OUT"
+mv "$TMP" "$OUT"
+TMP=""
+trap - EXIT
+printf 'PXC_DAILY_ACCEPTANCE_PASS evidence=%s\n' "$OUT"
 PXC_DAILY
 ```
 
-预期：期望副本均 Ready、无新增 Warning、PVC 使用率低于客户告警阈值、Operator 无持续 reconcile 错误。`kubectl top` 不可用属于监控链路问题，应单独记录，不能用 `|| true` 把整体巡检标记成成功。
+`wsrep_flow_control_paused`、`wsrep_local_recv_queue` 和 `wsrep_local_cert_failures` 被保存为趋势证据，但单次值不适合作为所有业务共用的硬阈值。连续升高时进入 9.4 节性能诊断；`kubectl top` 不可用会生成独立告警文件，不会伪造资源监控已通过。脚本提前退出或没有 `PXC_DAILY_ACCEPTANCE_PASS` 时，本班次巡检失败。
+
+> **异常处理：日常巡检失败。** 保留临时证据路径和终端错误，按失败阶段进入 12.2～12.6 节；不得删除失败证据后补写成功结论。数据库状态恢复后必须完整重跑本节，新的成功目录不能覆盖旧失败现场。
 
 ### 8.2 单节点计划维护
 
-一次只维护一个 PXC 节点。维护窗口开始前必须有成功备份、Primary/Synced 状态和业务 marker；确认当前没有 Backup/Restore Job 或 SST。以 `cluster1-pxc-2` 所在节点为例：
+一次只维护一个 PXC 节点。维护窗口开始前必须有成功备份、Primary/Synced 状态和业务 marker；确认当前没有 Backup/Restore Job 或 SST。`TARGET_NODE` 必须来自已批准变更单，不能在脚本内从当前 Pod 动态反推：Pod 第一次驱逐后可能迁移到另一节点，若重跑时再次反推，会错误排空第二个故障域。以下脚本对同一 `TARGET_NODE` 可重复执行；已 cordon/drain 时只验证收敛状态：
 
 ```bash
 bash <<'PXC_ONE_NODE_MAINTENANCE'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
-TARGET_POD="cluster1-pxc-2"
-TARGET_NODE="$(kubectl -n mysql get pod "$TARGET_POD" -o jsonpath='{.spec.nodeName}')"
+TARGET_NODE="<变更单批准的固定 Kubernetes 节点名>"
 test -n "$TARGET_NODE"
-kubectl cordon "$TARGET_NODE"
-kubectl -n mysql get pxc-backup
+kubectl get node "$TARGET_NODE" >/dev/null
+wait_pod_ready() {
+  local pod="$1" ready="" last="__unset__" attempt
+  for attempt in $(seq 1 60); do
+    ready="$(kubectl -n mysql get "pod/$pod" \
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+      2>/dev/null || true)"
+    if [[ "$ready" != "$last" || $((attempt % 10)) -eq 0 ]]; then
+      printf '维护恢复进度：pod=%s ready=%s elapsed_seconds=%s\n' \
+        "$pod" "${ready:-missing}" "$((attempt * 30))"
+      last="$ready"
+    fi
+    [[ "$ready" == True ]] && return 0
+    (( attempt < 60 ))
+    sleep 30
+  done
+  return 1
+}
+printf '[1/4] 验证维护前集群、备份和恢复任务状态\n'
+test "$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.status.state}')" = ready
 kubectl -n mysql get pod -o wide
+kubectl -n mysql get pxc-backup,pxc-restore -o wide
+ACTIVE_BACKUPS="$(kubectl -n mysql get pxc-backup -o json | jq \
+  '[.items[] | select(.status.state != "Succeeded" and .status.state != "Failed")] | length')"
+ACTIVE_RESTORES="$(kubectl -n mysql get pxc-restore -o json | jq \
+  '[.items[] | select(.status.state != "Succeeded" and .status.state != "Failed")] | length')"
+test "$ACTIVE_BACKUPS" -eq 0
+test "$ACTIVE_RESTORES" -eq 0
+printf '[2/4] 将固定目标节点设为不可调度；重复执行不会选择其他节点\n'
+WAS_UNSCHEDULABLE="$(kubectl get node "$TARGET_NODE" -o jsonpath='{.spec.unschedulable}')"
+if [[ "$WAS_UNSCHEDULABLE" == true ]]; then
+  printf '节点已 cordon：node=%s already_converged=true\n' "$TARGET_NODE"
+else
+  kubectl cordon "$TARGET_NODE"
+fi
+printf '[3/4] 排空同一固定节点并由 PDB 保护多数派\n'
 kubectl drain "$TARGET_NODE" --ignore-daemonsets --delete-emptydir-data --timeout=20m
-kubectl -n mysql wait --for=condition=Ready "pod/$TARGET_POD" --timeout=30m
+printf '[4/4] 等待三个 PXC 成员在可用节点上全部恢复 Ready\n'
+for pod in cluster1-pxc-0 cluster1-pxc-1 cluster1-pxc-2; do
+  wait_pod_ready "$pod"
+done
 kubectl -n mysql get pod -o wide
+test -z "$(kubectl -n mysql get pod -l app.kubernetes.io/component=pxc \
+  --field-selector "spec.nodeName=$TARGET_NODE" -o name)"
+printf 'PXC_ONE_NODE_MAINTENANCE_PASS target_node=%s pxc_ready=3 already_converged=%s\n' \
+  "$TARGET_NODE" "$WAS_UNSCHEDULABLE"
 PXC_ONE_NODE_MAINTENANCE
 ```
 
@@ -645,50 +1180,406 @@ PXC_ONE_NODE_MAINTENANCE
 
 > **注意：一次只允许一个 PXC 成员离线。** 两个成员同时维护会把剩余成员置于 `Non-Primary`，此时写入必须拒绝。任何需要同时维护多个故障域的变更都必须改为停写并走升级/灾备方案。
 
-### 8.3 扩容和缩容
+### 8.3 PXC 节点水平扩容和缩容
 
-扩容只能采用奇数 size，生产通常从 3 扩到 5；不能从 3 改为 4。扩容前确认至少两个新故障域具备 CPU、内存和动态卷容量，预估 SST 的网络和存储压力：
+本节改变 PXC 成员数量，不增加已有 PVC 的容量。扩容只能采用奇数 size，生产通常从 3 扩到 5；不能从 3 改为 4。`CHANGE_ID`、`TARGET_SIZE` 和 `KUBEAUTO_CLUSTER` 是稳定输入，必须先把 `mysql_pxc_size` 写入 `clusters/<cluster>/config.yml`。脚本先解析权威配置并拒绝配置漂移；同一变更 ID 的变更前快照只创建一次，重跑不会用变更后的 CR 覆盖它。CR 已为目标值时不重复触发 setup；否则通过 kubeauto 权威入口收敛，不直接 patch 现场 CR：
 
 ```bash
 bash <<'PXC_SCALE'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
+KUBEAUTO_CLUSTER="<kubeauto 集群名>"
+CHANGE_ID="<审批变更 ID，例如 CHG-20260821-002>"
+TARGET_SIZE=5
 test -d "$PXC_WORKDIR"
-kubectl -n mysql get pxc cluster1 -o yaml >"$PXC_WORKDIR/backup/cluster1-before-scale.yaml"
-kubectl -n mysql patch pxc cluster1 --type=merge -p '{"spec":{"pxc":{"size":5}}}'
-kubectl -n mysql wait --for=condition=Ready \
-  pod/cluster1-pxc-3 pod/cluster1-pxc-4 --timeout=60m
+[[ "$CHANGE_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$ ]]
+[[ "$TARGET_SIZE" =~ ^[0-9]+$ ]]
+(( TARGET_SIZE >= 3 && TARGET_SIZE % 2 == 1 ))
+CONFIG="clusters/${KUBEAUTO_CLUSTER}/config.yml"
+test -s "$CONFIG"
+wait_pod_ready() {
+  local pod="$1" ready="" last="__unset__" attempt
+  for attempt in $(seq 1 120); do
+    ready="$(kubectl -n mysql get "pod/$pod" \
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+      2>/dev/null || true)"
+    if [[ "$ready" != "$last" || $((attempt % 10)) -eq 0 ]]; then
+      printf '扩缩容进度：pod=%s ready=%s elapsed_seconds=%s\n' \
+        "$pod" "${ready:-missing}" "$((attempt * 30))"
+      last="$ready"
+    fi
+    [[ "$ready" == True ]] && return 0
+    (( attempt < 120 ))
+    sleep 30
+  done
+  return 1
+}
+CONFIG_SIZE="$(python3 -c 'import sys, yaml; data = yaml.safe_load(open(sys.argv[1], encoding="utf-8")); print(data.get("mysql_pxc_size", ""))' "$CONFIG")"
+test "$CONFIG_SIZE" -eq "$TARGET_SIZE"
+CURRENT_SIZE="$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.spec.pxc.size}')"
+printf '[1/4] 冻结本次变更前 PXC CR；相同变更 ID 不覆盖原快照\n'
+BEFORE="$PXC_WORKDIR/backup/cluster1-before-scale-${CHANGE_ID}.yaml"
+if [[ -e "$BEFORE" ]]; then
+  test -s "$BEFORE"
+  printf '变更前快照已保留：path=%s already_converged=true\n' "$BEFORE"
+elif [[ "$CURRENT_SIZE" -eq "$TARGET_SIZE" ]]; then
+  printf '目标已经收敛但缺少该变更 ID 的变更前快照；拒绝伪造历史证据：change_id=%s target=%s\n' \
+    "$CHANGE_ID" "$TARGET_SIZE" >&2
+  exit 1
+else
+  BEFORE_TMP="$(mktemp "$PXC_WORKDIR/backup/.cluster1-before-scale-${CHANGE_ID}.XXXXXX")"
+  if ! kubectl -n mysql get pxc cluster1 -o yaml >"$BEFORE_TMP" || \
+    [[ ! -s "$BEFORE_TMP" ]]; then
+    rm -f -- "$BEFORE_TMP"
+    exit 1
+  fi
+  mv "$BEFORE_TMP" "$BEFORE"
+fi
+printf '[2/4] 对账权威配置、当前成员数与审批目标：config=%s current=%s target=%s\n' \
+  "$CONFIG_SIZE" "$CURRENT_SIZE" "$TARGET_SIZE"
+if [[ "$CURRENT_SIZE" -ne "$TARGET_SIZE" ]]; then
+  printf '从 kubeauto 权威配置执行步骤 07；配置必须已设置 mysql_pxc_size=%s\n' "$TARGET_SIZE"
+  kubecli setup "$KUBEAUTO_CLUSTER" 07
+else
+  printf '成员数已收敛：already_converged=true\n'
+fi
+test "$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.spec.pxc.size}')" \
+  -eq "$TARGET_SIZE"
+printf '[3/4] 逐个等待目标数量的全部成员 Ready\n'
+for ordinal in $(seq 0 $((TARGET_SIZE - 1))); do
+  wait_pod_ready "cluster1-pxc-${ordinal}"
+done
+printf '[4/4] 输出节点和 PVC 分布；随后执行 wsrep 和业务 marker 验收\n'
 kubectl -n mysql get pod,pvc -o wide
+printf 'PXC_HORIZONTAL_SCALE_SUBMITTED change_id=%s target_size=%s already_converged=true next=wsrep-business-validation\n' \
+  "$CHANGE_ID" "$TARGET_SIZE"
 PXC_SCALE
 ```
 
-`cluster1-before-scale.yaml` 是变更记录，不是数据库备份。扩容完成条件是 5 个节点均 Synced、`wsrep_cluster_size=5`、HAProxy 后端正常、业务 marker 可读写。缩容前先确认被移除节点无备份、恢复或 SST 任务，保留对应 PVC 的处理审批；缩容不是删除 PVC 的授权。
+`cluster1-before-scale-<CHANGE_ID>.yaml` 是变更记录，不是数据库备份。扩容完成条件是目标数量的节点均 Synced、`wsrep_cluster_size` 等于 `TARGET_SIZE`、HAProxy 后端正常、业务 marker 可读写。缩容前先确认被移除节点无备份、恢复或 SST 任务，保留对应 PVC 的处理审批；缩容不是删除 PVC 的授权。
 
-### 8.4 系统用户密码轮换
+### 8.4 存储水位、磁盘满和 PVC 扩容
+
+#### 8.4.1 容量模型和处置水位
+
+PXC 每个成员拥有独立 PVC，但三份副本保存的是同一业务数据；增加 PXC 节点不会降低已有节点的数据盘使用率。容量计划必须同时考虑数据和索引、临时表、binlog、Galera gcache、SST 临时空间、在线 DDL 峰值以及 CSI/文件系统保留空间。
+
+```mermaid
+flowchart TD
+    A[容量趋势或磁盘告警] --> B{业务数据增长还是异常增长}
+    B -->|业务增长| C[核对增长率和保留期]
+    B -->|异常增长| D[定位大表/binlog/临时文件/日志]
+    C --> E{StorageClass 可在线扩容}
+    D --> F[先停止异常增长并保全证据]
+    F --> E
+    E -->|是且已预生产演练| G[Operator Volume Expansion]
+    E -->|否或未演练| H[新卷迁移/恢复变更]
+    G --> I[请求值/实际卷/文件系统/wsrep 验收]
+    H --> I
+```
+
+下表是制定客户阈值的方法，不是硬编码的统一告警值。正式阈值必须根据“达到 100% 前剩余处理时间”反推，并写入监控系统。
+
+| 水位 | 典型起始值 | 必须动作 | 禁止动作 |
+|---|---:|---|---|
+| 趋势观察 | 60%～70% | 计算 7/30/90 日增长率，核对大表、binlog 和备份增长 | 不因当前仍可写而关闭告警 |
+| 计划扩容 | 70%～80% | 创建变更单、成功全量备份、在同 CSI 预生产演练扩容 | 不等到业务写失败才申请容量 |
+| 高风险 | 80%～90% | 冻结大批量导入/DDL，确认 CSI 后端和 quota，执行已演练方案 | 不手工删除 `/var/lib/mysql` 文件 |
+| 应急 | 90% 以上或预计窗口内耗尽 | 限制增长、保全现场、启动容量应急；必要时按业务预案降级写入 | 不删除 PVC，不随意 purge binlog，不并行重启多个 PXC 节点 |
+
+#### 8.4.2 容量审计脚本
+
+以下脚本只读，不执行扩容。它将 PVC 请求值/实际容量、文件系统使用率、StorageClass 扩容能力、ResourceQuota、事件和节点分布写入原子证据目录。最后的成功标志表示审计数据完整，不表示当前水位符合客户阈值；是否扩容以输出的 `used_percent` 和客户策略判定。
+
+```bash
+bash <<'PXC_STORAGE_AUDIT'
+set -Eeuo pipefail
+export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+PXC_WORKDIR="<第一章输出的绝对路径>"
+NAMESPACE="${PXC_NAMESPACE:-mysql}"
+CLUSTER="${PXC_CLUSTER:-cluster1}"
+EXPECTED_PXC="${PXC_EXPECTED_SIZE:-3}"
+test -d "$PXC_WORKDIR"
+[[ "$EXPECTED_PXC" =~ ^[0-9]+$ ]]
+
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+TMP="$(mktemp -d "$PXC_WORKDIR/evidence/.storage-audit-${STAMP}.XXXXXX")"
+RUN_SUFFIX="${TMP##*.storage-audit-${STAMP}.}"
+OUT="$PXC_WORKDIR/evidence/storage-audit-${STAMP}-${RUN_SUFFIX}"
+trap 'rc=$?; if (( rc != 0 )); then printf "PXC_STORAGE_AUDIT_FAILED rc=%s evidence=%s\n" "$rc" "$TMP" >&2; fi' EXIT
+chmod 0750 "$TMP"
+
+printf '[1/4] 读取 PXC 和 PVC 权威状态\n'
+kubectl -n "$NAMESPACE" get pxc "$CLUSTER" -o json >"$TMP/pxc.json"
+STORAGE_CLASS="$(jq -r '.spec.pxc.volumeSpec.persistentVolumeClaim.storageClassName' "$TMP/pxc.json")"
+test -n "$STORAGE_CLASS"
+kubectl -n "$NAMESPACE" get pvc \
+  -l "app.kubernetes.io/instance=$CLUSTER" -o json >"$TMP/pvc.json"
+jq -e --argjson expected "$EXPECTED_PXC" '
+  [.items[] | select(.metadata.name | startswith("datadir-"))] as $datadir |
+  ($datadir | length) == $expected and
+  all($datadir[]; .status.phase == "Bound" and
+    (.spec.resources.requests.storage // "") != "" and
+    (.status.capacity.storage // "") != "")
+' "$TMP/pvc.json" >/dev/null
+jq -r '.items[] | select(.metadata.name | startswith("datadir-")) |
+  [.metadata.name,.spec.resources.requests.storage,.status.capacity.storage,
+   .spec.volumeName,.spec.storageClassName] | @tsv' "$TMP/pvc.json" \
+  | tee "$TMP/pvc-capacity.tsv"
+
+printf '[2/4] 读取每个数据库成员的文件系统容量\n'
+: >"$TMP/filesystem.tsv"
+for ordinal in $(seq 0 $((EXPECTED_PXC - 1))); do
+  pod="${CLUSTER}-pxc-${ordinal}"
+  kubectl -n "$NAMESPACE" exec "$pod" -c pxc -- \
+    sh -eu -c "df -Pk /var/lib/mysql | awk 'NR == 2 {gsub(/%/, \"\", \$5); print \$2,\$3,\$4,\$5}'" \
+    | awk -v pod="$pod" 'BEGIN {OFS="\t"} {print pod,$1,$2,$3,$4}' \
+    | tee -a "$TMP/filesystem.tsv"
+done
+test "$(wc -l <"$TMP/filesystem.tsv")" -eq "$EXPECTED_PXC"
+
+printf '[3/4] 检查 StorageClass、quota、事件和拓扑\n'
+kubectl get sc "$STORAGE_CLASS" -o json >"$TMP/storageclass.json"
+ALLOW_EXPANSION="$(jq -r '.allowVolumeExpansion // false' "$TMP/storageclass.json")"
+kubectl -n "$NAMESPACE" get resourcequota,limitrange -o yaml >"$TMP/quota-limits.yaml"
+kubectl -n "$NAMESPACE" get events --sort-by=.lastTimestamp >"$TMP/events.txt"
+kubectl -n "$NAMESPACE" get pod -l app.kubernetes.io/component=pxc \
+  -o custom-columns='POD:.metadata.name,NODE:.spec.nodeName,READY:.status.conditions[?(@.type=="Ready")].status' \
+  >"$TMP/topology.txt"
+
+printf '[4/4] 发布容量证据\n'
+test ! -e "$OUT"
+mv "$TMP" "$OUT"
+TMP=""
+trap - EXIT
+printf 'PXC_STORAGE_CAPACITY_AUDIT_COLLECTION_PASS evidence=%s storage_class=%s allowVolumeExpansion=%s health_verified=false\n' \
+  "$OUT" "$STORAGE_CLASS" "$ALLOW_EXPANSION"
+PXC_STORAGE_AUDIT
+```
+
+`pvc-capacity.tsv` 中第二列是声明请求值，第三列是底层卷上报容量；`filesystem.tsv` 的列依次为 Pod、总 KiB、已用 KiB、可用 KiB、使用百分比。扩容只有在这三层全部增长后才完成，不能只看到 CR 已修改就关闭告警。
+
+#### 8.4.3 磁盘即将耗尽或已经写满
+
+> **应急辅助线：** 先冻结会继续放大空间的批量导入、在线 DDL 和非必要写任务，保存第 12.1 节证据，再确认是业务数据、索引、binlog、临时文件、SST 残留还是容器日志增长。MySQL 数据文件、redo/undo、Galera gcache 和 binlog 之间存在一致性关系，禁止直接 `rm` `/var/lib/mysql` 下的文件。启用 PITR 时，手工 purge binlog 可能制造不可恢复区间；必须先确认成功全量备份、`latestRestorableTime` 和保留策略。
+>
+> **写满后的处置顺序：** 限制新增写入 -> 确认多数派和存活节点 -> 保全 CR/PVC/PV/CSI/MySQL 日志 -> 选择已演练的在线扩容或新卷恢复 -> 文件系统可写后检查 InnoDB/Galera 状态 -> 完整执行 8.1 节。不得通过删除 PVC、强制 bootstrap 或同时重启三节点“腾空间”。
+
+#### 8.4.4 在线 PVC 扩容的交付边界
+
+Percona Operator v1.20.0 官方支持 `spec.storageScaling.enableVolumeScaling`，并要求 StorageClass 的 `AllowVolumeExpansion: true`。Operator 扩容期间添加 `pvc-resize-in-progress` annotation，完成后删除；`.status.storageAutoscaling` 记录 `currentSize`、`lastResizeTime`、`resizeCount` 和错误。Kubernetes PVC 只能扩大，不能原地缩小。
+
+当前 kubeauto 模板交付并验证了固定 `mysql_pvc_size`、20 GiB 测试 PVC 的 Bound/真实读写和生产默认 100 GiB，但尚未在 `MYSQL-01` 至 `MYSQL-14` 中执行在线扩容。模板也未把 `storageScaling` 暴露为 kubeauto 配置项。因此：
+
+| 能力 | 当前证据 | 对客户的承诺 |
+|---|---|---|
+| 固定容量建卷和真实读写 | `MYSQL-02` 当前通过 | 已交付 |
+| 容量采集、告警和空间治理 | 本节只读 SOP | 可直接使用，阈值需客户评审 |
+| Operator 在线 Volume Expansion | 官方 v1.20.0 GA 能力 | 必须在同 CSI/StorageClass 预生产演练后按变更单启用 |
+| Operator 自动 `storageScaling.autoscaling` | 官方 v1.20.0 GA 能力 | 当前分路未配置、未回归，不得宣称已交付 |
+| 不支持扩容卷的逐 PVC 重建 | 官方高风险手工路径 | 当前分路未回归，不是本版本生产主线 |
+
+以下是在线扩容的预生产演练脚本。执行者必须先把 `clusters/<cluster>/config.yml` 中 `mysql_pvc_size` 更新为经审批的 `NEW_SIZE`；脚本通过固定 kubeauto `07` 步骤发布新的权威容量，不能用临时 `kubectl edit` 形成配置漂移。只有同一 CSI 演练完整通过后，才能把完全相同的步骤纳入生产变更单。
+
+```bash
+bash <<'PXC_VOLUME_EXPANSION'
+set -Eeuo pipefail
+export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+PXC_WORKDIR="<第一章输出的绝对路径>"
+KUBEAUTO_CLUSTER="<kubeauto 集群名>"
+NAMESPACE="${PXC_NAMESPACE:-mysql}"
+CLUSTER="${PXC_CLUSTER:-cluster1}"
+EXPECTED_PXC="${PXC_EXPECTED_SIZE:-3}"
+NEW_SIZE="<审批后的新容量，例如 150Gi>"
+CONFIG="clusters/${KUBEAUTO_CLUSTER}/config.yml"
+test -d "$PXC_WORKDIR"
+test -s "$CONFIG"
+[[ "$NEW_SIZE" =~ ^[1-9][0-9]*(Gi|Ti)$ ]]
+[[ "$EXPECTED_PXC" =~ ^[0-9]+$ ]]
+command -v numfmt >/dev/null
+CONFIG_SIZE="$(python3 -c 'import sys, yaml; data = yaml.safe_load(open(sys.argv[1], encoding="utf-8")); print(data.get("mysql_pvc_size", ""))' "$CONFIG")"
+test "$CONFIG_SIZE" = "$NEW_SIZE"
+
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+TMP="$(mktemp -d "$PXC_WORKDIR/evidence/.volume-expansion-${STAMP}.XXXXXX")"
+RUN_SUFFIX="${TMP##*.volume-expansion-${STAMP}.}"
+OUT="$PXC_WORKDIR/evidence/volume-expansion-${STAMP}-${RUN_SUFFIX}"
+chmod 0750 "$TMP"
+trap 'rc=$?; if (( rc != 0 )); then printf "PXC_VOLUME_EXPANSION_FAILED rc=%s temporary_evidence=%s\n" "$rc" "$TMP" >&2; fi' EXIT
+
+printf '[1/6] 冻结扩容前证据和备份门禁\n'
+kubectl -n "$NAMESPACE" get pxc "$CLUSTER" -o yaml >"$TMP/pxc-before.yaml"
+kubectl -n "$NAMESPACE" get pvc \
+  -l "app.kubernetes.io/instance=$CLUSTER" -o json >"$TMP/pvc-before.json"
+mapfile -t CURRENT_REQUESTS < <(jq -r '
+  .items[] | select(.metadata.name | startswith("datadir-")) |
+  .spec.resources.requests.storage' "$TMP/pvc-before.json")
+test "${#CURRENT_REQUESTS[@]}" -eq "$EXPECTED_PXC"
+TARGET_BYTES="$(numfmt --from=iec-i "$NEW_SIZE")"
+NEEDS_RESIZE=false
+for current_size in "${CURRENT_REQUESTS[@]}"; do
+  if [[ "$current_size" != "$NEW_SIZE" ]]; then
+    current_bytes="$(numfmt --from=iec-i "$current_size")"
+    (( TARGET_BYTES > current_bytes ))
+    NEEDS_RESIZE=true
+  fi
+done
+latest_backup_state="$(kubectl -n "$NAMESPACE" get pxc-backup -o json | jq -r '
+  [.items[] | select((.status.completed // "") != "")]
+  | sort_by(.status.completed) | last | .status.state // "")"
+test "$latest_backup_state" = Succeeded
+STORAGE_CLASS="$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" \
+  -o jsonpath='{.spec.pxc.volumeSpec.persistentVolumeClaim.storageClassName}')"
+test "$(kubectl get sc "$STORAGE_CLASS" -o jsonpath='{.allowVolumeExpansion}')" = true
+printf '扩容输入：config_size=%s target=%s needs_resize=%s storage_class=%s\n' \
+  "$CONFIG_SIZE" "$NEW_SIZE" "$NEEDS_RESIZE" "$STORAGE_CLASS"
+
+printf '[2/6] 仅在需要扩容时启用 Operator Volume Expansion 协调\n'
+SCALING_ENABLED="$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" \
+  -o jsonpath='{.spec.storageScaling.enableVolumeScaling}')"
+if [[ "$NEEDS_RESIZE" == true && "$SCALING_ENABLED" != true ]]; then
+  kubectl -n "$NAMESPACE" patch pxc "$CLUSTER" --type=merge \
+    -p '{"spec":{"storageScaling":{"enableVolumeScaling":true}}}'
+else
+  printf '协调状态无需修改：enabled=%s already_converged=%s\n' \
+    "${SCALING_ENABLED:-false}" "$([[ "$NEEDS_RESIZE" == false ]] && printf true || printf false)"
+fi
+
+printf '[3/6] 仅在 CR 尚未达到目标时从 kubeauto 权威配置发布容量\n'
+CURRENT_CR_SIZE="$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" \
+  -o jsonpath='{.spec.pxc.volumeSpec.persistentVolumeClaim.resources.requests.storage}')"
+if [[ "$CURRENT_CR_SIZE" != "$NEW_SIZE" ]]; then
+  kubecli setup "$KUBEAUTO_CLUSTER" 07
+else
+  printf 'CR 容量已收敛：current=%s target=%s already_converged=true\n' \
+    "$CURRENT_CR_SIZE" "$NEW_SIZE"
+fi
+test "$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" \
+  -o jsonpath='{.spec.pxc.volumeSpec.persistentVolumeClaim.resources.requests.storage}')" \
+  = "$NEW_SIZE"
+
+printf '[4/6] 等待全部 PVC 请求值、实际容量和 annotation 收敛\n'
+last_progress=""
+for attempt in $(seq 1 180); do
+  kubectl -n "$NAMESPACE" get pvc \
+    -l "app.kubernetes.io/instance=$CLUSTER" -o json >"$TMP/pvc-current.json"
+  resized="$(jq -r --arg size "$NEW_SIZE" --argjson expected "$EXPECTED_PXC" '
+    [.items[] | select(.metadata.name | startswith("datadir-"))] as $p |
+    (($p | length) == $expected and
+     all($p[]; .spec.resources.requests.storage == $size and
+       .status.capacity.storage == $size))
+  ' "$TMP/pvc-current.json")"
+  resizing_annotation="$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" -o json | jq -r '
+    [.metadata.annotations // {} | to_entries[]?
+      | select(.key | contains("pvc-resize-in-progress"))] | length')"
+  progress="resized=${resized} annotation_count=${resizing_annotation}"
+  if [[ "$progress" != "$last_progress" || $((attempt % 30)) -eq 0 ]]; then
+    printf '等待扩容：attempt=%s elapsed_seconds=%s %s\n' \
+      "$attempt" "$((attempt * 10))" "$progress"
+    last_progress="$progress"
+  fi
+  if [[ "$resized" == true && "$resizing_annotation" -eq 0 ]]; then
+    break
+  fi
+  (( attempt < 180 ))
+  sleep 10
+done
+test "$resized" = true
+test "$resizing_annotation" -eq 0
+
+printf '[5/6] 验证文件系统和集群健康\n'
+: >"$TMP/filesystem-after.tsv"
+for ordinal in $(seq 0 $((EXPECTED_PXC - 1))); do
+  pod="${CLUSTER}-pxc-${ordinal}"
+  kubectl -n "$NAMESPACE" exec "$pod" -c pxc -- df -Pk /var/lib/mysql \
+    | awk -v pod="$pod" 'NR == 2 {print pod"\t"$2"\t"$3"\t"$4"\t"$5}' \
+    | tee -a "$TMP/filesystem-after.tsv"
+done
+test "$(wc -l <"$TMP/filesystem-after.tsv")" -eq "$EXPECTED_PXC"
+test "$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" -o jsonpath='{.status.state}')" = ready
+
+printf '[6/6] 保存最终状态；随后必须完整执行 8.1 节\n'
+kubectl -n "$NAMESPACE" get pxc "$CLUSTER" -o yaml >"$TMP/pxc-after.yaml"
+kubectl -n "$NAMESPACE" get pvc \
+  -l "app.kubernetes.io/instance=$CLUSTER" -o wide >"$TMP/pvc-after.txt"
+test ! -e "$OUT"
+mv "$TMP" "$OUT"
+TMP=""
+trap - EXIT
+printf 'PXC_VOLUME_EXPANSION_READY new_size=%s evidence=%s next=daily-acceptance\n' \
+  "$NEW_SIZE" "$OUT"
+PXC_VOLUME_EXPANSION
+```
+
+> **扩容失败和回滚边界：** 先保存 CR annotation、`.status.storageAutoscaling`、PVC conditions/events、ResourceQuota、StorageClass、CSI Controller/Node 日志和云存储事件。配额或后端容量不足时，Operator 可能把 CR 请求值恢复为原值，但 Kubernetes 仍可能继续重试；部分 PVC 已扩大时无法缩回。再次启用前，CR 的目标容量必须不小于当前最大的 PVC。禁止把 CR 改回更小值后宣称回滚成功。
+>
+> **StorageClass 不支持在线扩容：** Percona 官方手工路径会 orphan StatefulSet，并逐个删除旧 Pod/PVC 后通过 SST 重建新卷。该过程涉及数据卷删除、donor 容量、SST 时长和多数派风险，当前 kubeauto 分路没有专项回归，不能照抄到生产。应优先迁移到支持扩容的 CSI，或以新 PXC 集群从已验证备份恢复并切换业务；两种方案都必须单独演练 RPO/RTO 和回切。
+
+### 8.5 系统用户密码轮换
 
 Operator v1.20.0 官方行为是：修改 `spec.secretsName` 指向的 Secret 后，Operator 在数秒内更新数据库用户，并同步内部 `internal-cluster1` Secret。禁止改 `secretsName`，禁止手工修改 `internal-cluster1`。
 
-轮换单个 key 时由密码系统写入新值；以下命令演示安全输入和 server-side apply，不把密码放进命令行参数或文件：
+轮换单个 key 时由密码系统按变更 ID 导出固定值。`ROTATION_ID` 和 `ROTATION_INPUT` 共同构成本次稳定输入；输入文件必须位于受控临时目录、权限为 `0400` 或 `0600`，由密码系统流程在变更结束后回收。脚本不把密码或其可离线猜测的摘要写入 annotation。相同 ID 重跑时读取同一密码系统版本，与 Secret 当前 data 完全一致才返回；同一 ID 下出现值漂移时立即停止，不静默覆盖。新一轮轮换必须使用新的 ID 和新的密码系统版本：
 
 ```bash
 bash <<'PXC_ROTATE_PASSWORD'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
-read -r -s -p 'New password: ' NEW_PASSWORD
-printf '\n'
-test -n "$NEW_PASSWORD"
 ROTATE_KEY="<待轮换 key>"
-PATCH_VALUE="$(printf '%s' "$NEW_PASSWORD" | base64 --wrap=0)"
-printf '{"data":{"%s":"%s"}}' "$ROTATE_KEY" "$PATCH_VALUE" | \
-  kubectl -n mysql patch secret cluster1-secrets --type=merge --patch-file=/dev/stdin
-unset NEW_PASSWORD PATCH_VALUE ROTATE_KEY
+ROTATION_ID="<审批变更 ID，例如 CHG-20260821-001-v1>"
+ROTATION_INPUT="<密码系统按 ROTATION_ID 导出的临时文件绝对路径>"
+[[ "$ROTATE_KEY" =~ ^[a-z][a-z0-9_-]*$ ]]
+(( ${#ROTATE_KEY} <= 32 ))
+test -n "$ROTATION_ID"
+test -f "$ROTATION_INPUT"
+INPUT_MODE="$(stat -c '%a' "$ROTATION_INPUT")"
+[[ "$INPUT_MODE" == 400 || "$INPUT_MODE" == 600 ]]
+ANNOTATION_KEY="kubeauto.io/password-rotation-${ROTATE_KEY}"
+printf '[1/3] 读取密码系统固定输入并对账轮换 ID；不输出密码\n'
+EXPECTED_VALUE="$(base64 --wrap=0 <"$ROTATION_INPUT")"
+test -n "$EXPECTED_VALUE"
+CURRENT_ROTATION="$(kubectl -n mysql get secret cluster1-secrets -o json | \
+  jq -r --arg key "$ANNOTATION_KEY" '.metadata.annotations[$key] // ""')"
+CURRENT_VALUE="$(kubectl -n mysql get secret cluster1-secrets \
+  -o "jsonpath={.data.${ROTATE_KEY}}")"
+test -n "$CURRENT_VALUE"
+printf '密码轮换输入：key=%s current_id=%s target_id=%s input_mode=%s\n' \
+  "$ROTATE_KEY" "${CURRENT_ROTATION:-none}" "$ROTATION_ID" "$INPUT_MODE"
+if [[ "$CURRENT_ROTATION" == "$ROTATION_ID" ]]; then
+  if [[ "$CURRENT_VALUE" != "$EXPECTED_VALUE" ]]; then
+    printf '同一轮换 ID 的 Secret 值与密码系统版本不一致；停止覆盖：key=%s rotation_id=%s\n' \
+      "$ROTATE_KEY" "$ROTATION_ID" >&2
+    exit 1
+  fi
+  printf '相同轮换已应用：already_converged=true\n'
+else
+  printf '[2/3] 原子写入固定密码值和轮换 ID；新 ID 必须实际改变密码\n'
+  test "$CURRENT_VALUE" != "$EXPECTED_VALUE"
+  jq -n --arg key "$ROTATE_KEY" --arg value "$EXPECTED_VALUE" \
+    --arg annotation "$ANNOTATION_KEY" --arg rotation "$ROTATION_ID" \
+    '{metadata:{annotations:{($annotation):$rotation}},data:{($key):$value}}' | \
+    kubectl -n mysql patch secret cluster1-secrets --type=merge \
+      --patch-file=/dev/stdin >/dev/null
+  test "$(kubectl -n mysql get secret cluster1-secrets \
+    -o "jsonpath={.data.${ROTATE_KEY}}")" = "$EXPECTED_VALUE"
+fi
+printf '[3/3] 验证 Secret 轮换 ID 和 data 均与密码系统固定输入一致\n'
+test "$(kubectl -n mysql get secret cluster1-secrets -o json | \
+  jq -r --arg key "$ANNOTATION_KEY" '.metadata.annotations[$key]')" \
+  = "$ROTATION_ID"
+test "$(kubectl -n mysql get secret cluster1-secrets \
+  -o "jsonpath={.data.${ROTATE_KEY}}")" = "$EXPECTED_VALUE"
+printf 'PXC_PASSWORD_ROTATION_SUBMITTED key=%s rotation_id=%s already_converged=true\n' \
+  "$ROTATE_KEY" "$ROTATION_ID"
+unset ROTATE_KEY ROTATION_ID ROTATION_INPUT INPUT_MODE ANNOTATION_KEY \
+  CURRENT_ROTATION CURRENT_VALUE EXPECTED_VALUE
 PXC_ROTATE_PASSWORD
 ```
 
 先轮换低风险账号并验证 Operator 日志和连接，再按变更单轮换 root、monitor、proxyadmin、xtrabackup、operator、replication。每个账号都要证明新凭据成功、旧凭据失败、PXC/HAProxy/备份任务稳定；应用账号采用双凭据或连接池滚动刷新，避免瞬时全断。
 
-### 8.5 TLS 证书轮换
+### 8.6 TLS 证书轮换
 
 证书轮换必须遵循 v1.20.0 [Update certificates](https://docs.percona.com/percona-operator-for-mysql/pxc/tls-update.html)，先确认当前是 Operator 自动生成、cert-manager 还是自定义 Secret，三种路径不能混用。
 
@@ -731,33 +1622,283 @@ PXC 没有脱离业务的官方 TPS 保证值。性能签收必须使用客户�
 | 负载 | 工具版本、线程、连接、读写比例、事务隔离级别、持续时间 |
 | 健康 | 测试前后 wsrep、HAProxy backend、备份/SST 是否运行 |
 
-基准测试账号只授权 `pxc_benchmark`，测试结束即吊销。密码由运行环境的密码系统以 `SYSBENCH_PASSWORD` 注入，不写入脚本和 Git。宿主机管理员可能读取进程参数，因此生产业务密码不得用于 sysbench。
+基准测试账号只授权 `pxc_benchmark`，测试结束即吊销。密码系统将专用密码写入独立 Kubernetes Secret 的 `password` key，sysbench Pod 通过 `secretKeyRef` 读取；密码不进入脚本、Git、证据或管理节点进程参数。生产业务密码不得用于 sysbench。
+
+性能签收前创建 `$PXC_WORKDIR/performance-slo.tsv`，每个线程阶梯一行，五列依次为线程数、最低 TPS、最大 P95 毫秒、最大 P99 毫秒、最大错误率百分比。阈值由业务、DBA 和平台共同批准，不能用本实验室的结果代填：
+
+```text
+# threads min_tps max_p95_ms max_p99_ms max_error_percent
+1  <客户批准值> <客户批准值> <客户批准值> <客户批准值>
+4  <客户批准值> <客户批准值> <客户批准值> <客户批准值>
+16 <客户批准值> <客户批准值> <客户批准值> <客户批准值>
+```
 
 ### 9.2 prepare、run 和 cleanup
+
+以下脚本完整执行 prepare、预热、1/4/16 线程阶梯、P95/P99 独立采样、wsrep 前后快照、SLO 判定和 cleanup。sysbench 每轮只汇报一个配置的 percentile，因此 P95 和 P99 来自相同参数下的两次独立样本，报告中不得把两者伪装成同一次事务样本。正式容量测试应增加重复轮次并报告中位数和离散度。
 
 ```bash
 bash <<'PXC_SYSBENCH'
 set -Eeuo pipefail
+export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
+NAMESPACE="${PXC_NAMESPACE:-mysql}"
+CLUSTER="${PXC_CLUSTER:-cluster1}"
+EXPECTED_PXC="${PXC_EXPECTED_SIZE:-3}"
+SYSBENCH_THREADS="${SYSBENCH_THREADS:-1 4 16}"
+SYSBENCH_TIME="${SYSBENCH_TIME:-600}"
+SYSBENCH_WARMUP_TIME="${SYSBENCH_WARMUP_TIME:-60}"
+SYSBENCH_TABLES="${SYSBENCH_TABLES:-16}"
+SYSBENCH_TABLE_SIZE="${SYSBENCH_TABLE_SIZE:-100000}"
+SYSBENCH_HOST="${SYSBENCH_HOST:-${CLUSTER}-haproxy.${NAMESPACE}.svc}"
+SYSBENCH_USER="${SYSBENCH_USER:-pxc_benchmark}"
+SYSBENCH_DATABASE="${SYSBENCH_DATABASE:-pxc_benchmark}"
+SYSBENCH_IMAGE="<私有 Registry 中已锁定 digest 的 sysbench 1.1 镜像>"
+BENCHMARK_SECRET="${PXC_BENCHMARK_SECRET:-pxc-benchmark-credentials}"
+INTERNAL_TLS_SECRET="${PXC_INTERNAL_TLS_SECRET:-${CLUSTER}-ssl-internal}"
+SLO_FILE="$PXC_WORKDIR/performance-slo.tsv"
 test -d "$PXC_WORKDIR"
-SYSBENCH_THREADS="<例如 16>"
-SYSBENCH_TIME="<例如 600>"
-SYSBENCH_HOST="<HAProxy primary Service>"
-SYSBENCH_USER="<基准测试账号>"
-: "${SYSBENCH_PASSWORD:?由密码系统注入临时基准测试密码}"
-mkdir -p "$PXC_WORKDIR/evidence/sysbench"
-sysbench oltp_read_write \
-  --db-driver=mysql --mysql-host="$SYSBENCH_HOST" --mysql-port=3306 \
-  --mysql-user="$SYSBENCH_USER" --mysql-password="$SYSBENCH_PASSWORD" \
-  --mysql-db=pxc_benchmark --mysql-ssl=on \
-  --tables=16 --table-size=100000 \
-  --threads="$SYSBENCH_THREADS" --time="$SYSBENCH_TIME" \
-  run | tee "$PXC_WORKDIR/evidence/sysbench/run-$(date +%Y%m%d%H%M%S).log"
-unset SYSBENCH_PASSWORD
+test -s "$SLO_FILE"
+command -v jq >/dev/null
+[[ "$SYSBENCH_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]]
+for value in "$EXPECTED_PXC" "$SYSBENCH_TIME" "$SYSBENCH_WARMUP_TIME" \
+  "$SYSBENCH_TABLES" "$SYSBENCH_TABLE_SIZE"; do
+  [[ "$value" =~ ^[0-9]+$ ]]
+done
+test -n "$(kubectl -n "$NAMESPACE" get secret "$BENCHMARK_SECRET" \
+  -o jsonpath='{.data.password}')"
+kubectl -n "$NAMESPACE" get secret "$INTERNAL_TLS_SECRET" >/dev/null
+
+STAMP="$(date -u +%Y%m%dt%H%M%Sz)"
+TMP="$(mktemp -d "$PXC_WORKDIR/evidence/.sysbench-${STAMP}.XXXXXX")"
+RUN_SUFFIX="${TMP##*.sysbench-${STAMP}.}"
+RUN_ID="${STAMP}-${RUN_SUFFIX,,}"
+OUT="$PXC_WORKDIR/evidence/sysbench-${RUN_ID}"
+SYSBENCH_POD="pxc-sysbench-${RUN_ID}"
+PREPARED=false
+chmod 0750 "$TMP"
+
+wait_benchmark_pod() {
+  local ready="" last="__unset__" attempt
+  for attempt in $(seq 1 10); do
+    ready="$(kubectl -n "$NAMESPACE" get "pod/$SYSBENCH_POD" \
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+      2>/dev/null || true)"
+    if [[ "$ready" != "$last" || $((attempt % 10)) -eq 0 ]]; then
+      printf 'sysbench Pod 进度：pod=%s ready=%s elapsed_seconds=%s\n' \
+        "$SYSBENCH_POD" "${ready:-missing}" "$((attempt * 30))"
+      last="$ready"
+    fi
+    [[ "$ready" == True ]] && return 0
+    (( attempt < 10 ))
+    sleep 30
+  done
+  return 1
+}
+
+delete_benchmark_pod() {
+  local remaining="" last="" attempt
+  kubectl -n "$NAMESPACE" delete pod "$SYSBENCH_POD" \
+    --ignore-not-found --wait=false >/dev/null
+  for attempt in $(seq 1 30); do
+    remaining="$(kubectl -n "$NAMESPACE" get pod "$SYSBENCH_POD" \
+      -o name 2>/dev/null || true)"
+    if [[ "$remaining" != "$last" || $((attempt % 3)) -eq 0 ]]; then
+      printf 'sysbench 清理进度：pod=%s remaining=%s elapsed_seconds=%s\n' \
+        "$SYSBENCH_POD" "$([[ -n "$remaining" ]] && printf 1 || printf 0)" \
+        "$((attempt * 10))"
+      last="$remaining"
+    fi
+    [[ -z "$remaining" ]] && return 0
+    (( attempt < 30 ))
+    sleep 10
+  done
+  return 1
+}
+
+sysbench_exec() {
+  local operation="$1" threads="$2" duration="$3" percentile="$4"
+  kubectl -n "$NAMESPACE" exec "$SYSBENCH_POD" -- sh -eu -c '
+    exec sysbench /usr/share/sysbench/oltp_read_write.lua \
+      --db-driver=mysql --mysql-host="$1" --mysql-port=3306 \
+      --mysql-user="$2" --mysql-password="$MYSQL_PASSWORD" \
+      --mysql-db="$3" --mysql-ssl=VERIFY_CA \
+      --mysql-ssl-ca=/etc/mysql/ssl-internal/ca.crt \
+      --mysql_storage_engine=innodb --tables="$4" --table-size="$5" \
+      --threads="$6" --time="$7" --events=0 --report-interval=5 \
+      --rand-type=pareto --percentile="$8" --mysql-ignore-errors=all "$9"
+  ' sh "$SYSBENCH_HOST" "$SYSBENCH_USER" "$SYSBENCH_DATABASE" \
+    "$SYSBENCH_TABLES" "$SYSBENCH_TABLE_SIZE" "$threads" "$duration" \
+    "$percentile" "$operation"
+}
+
+cleanup_on_exit() {
+  rc=$?
+  if [[ "$PREPARED" == true ]]; then
+    sysbench_exec cleanup 1 0 95 >>"$TMP/cleanup-on-error.log" 2>&1 || true
+  fi
+  delete_benchmark_pod || true
+  if (( rc != 0 )); then
+    printf 'PXC_SYSBENCH_FAILED rc=%s temporary_evidence=%s\n' "$rc" "$TMP" >&2
+  fi
+  exit "$rc"
+}
+trap cleanup_on_exit EXIT
+
+wsrep_snapshot() {
+  local target="$1" secret_name admin_secret_value pod status
+  secret_name="$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" \
+    -o jsonpath='{.spec.secretsName}')"
+  test -n "$secret_name"
+  admin_secret_value="$(kubectl -n "$NAMESPACE" get secret "$secret_name" \
+    -o jsonpath='{.data.root}' | base64 -d)"
+  test -n "$admin_secret_value"
+  : >"$target"
+  for ordinal in $(seq 0 $((EXPECTED_PXC - 1))); do
+    pod="${CLUSTER}-pxc-${ordinal}"
+    status="$(printf '%s\n' "$admin_secret_value" | kubectl -n "$NAMESPACE" \
+      exec -i "$pod" -c pxc -- sh -eu -c '
+        IFS= read -r MYSQL_PWD
+        export MYSQL_PWD
+        mysql -uroot -h127.0.0.1 -Nse \
+          "SHOW GLOBAL STATUS WHERE Variable_name IN
+          ('"'"'wsrep_cluster_status'"'"','"'"'wsrep_local_state_comment'"'"',
+           '"'"'wsrep_flow_control_paused'"'"','"'"'wsrep_local_recv_queue'"'"',
+           '"'"'wsrep_local_cert_failures'"'"','"'"'wsrep_local_bf_aborts'"'"');"
+        unset MYSQL_PWD
+      ')"
+    awk -v pod="$pod" 'BEGIN {OFS="\t"} {print pod,$1,$2}' <<<"$status" \
+      >>"$target"
+  done
+  unset admin_secret_value
+}
+
+printf '[1/7] 创建集群内受控 sysbench Pod 并冻结测试输入\n'
+test -z "$(kubectl -n "$NAMESPACE" get pod "$SYSBENCH_POD" \
+  -o name 2>/dev/null || true)"
+kubectl -n "$NAMESPACE" create -f - <<PXC_SYSBENCH_POD
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${SYSBENCH_POD}
+  namespace: ${NAMESPACE}
+  labels:
+    kubeauto.io/component: percona-pxc-benchmark
+    kubeauto.io/run-id: ${RUN_ID}
+spec:
+  restartPolicy: Never
+  containers:
+    - name: sysbench
+      image: ${SYSBENCH_IMAGE}
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/sh", "-c", "exec sleep 86400"]
+      env:
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ${BENCHMARK_SECRET}
+              key: password
+      resources:
+        requests: {cpu: "1", memory: 512Mi}
+        limits: {cpu: "4", memory: 2Gi}
+      volumeMounts:
+        - name: pxc-internal-ca
+          mountPath: /etc/mysql/ssl-internal
+          readOnly: true
+  volumes:
+    - name: pxc-internal-ca
+      secret:
+        secretName: ${INTERNAL_TLS_SECRET}
+PXC_SYSBENCH_POD
+wait_benchmark_pod
+kubectl -n "$NAMESPACE" get pod "$SYSBENCH_POD" -o yaml >"$TMP/sysbench-pod.yaml"
+kubectl -n "$NAMESPACE" exec "$SYSBENCH_POD" -- sysbench --version \
+  | tee "$TMP/sysbench-version.txt"
+kubectl -n "$NAMESPACE" get pxc,pod,pvc,svc -o wide >"$TMP/topology.txt"
+kubectl -n "$NAMESPACE" top pod >"$TMP/pod-top-before.txt"
+cp "$SLO_FILE" "$TMP/performance-slo.tsv"
+wsrep_snapshot "$TMP/wsrep-before.tsv"
+
+printf '[2/7] 准备固定数据集\n'
+sysbench_exec prepare 1 0 95 2>&1 | tee "$TMP/prepare.log"
+PREPARED=true
+
+printf '[3/7] 预热缓存和连接路径\n'
+sysbench_exec run 4 "$SYSBENCH_WARMUP_TIME" 95 2>&1 | tee "$TMP/warmup.log"
+
+printf '[4/7] 执行线程阶梯和 P95/P99 独立样本\n'
+printf 'threads\tpercentile\ttps\tlatency_ms\terrors\tevents\terror_percent\n' \
+  >"$TMP/results.tsv"
+for threads in $SYSBENCH_THREADS; do
+  [[ "$threads" =~ ^[0-9]+$ ]]
+  (( threads > 0 ))
+  for percentile in 95 99; do
+    log="$TMP/run-t${threads}-p${percentile}.log"
+    sysbench_exec run "$threads" "$SYSBENCH_TIME" "$percentile" \
+      2>&1 | tee "$log"
+    tps="$(awk '/transactions:/ {gsub(/[()]/, ""); print $(NF-2)}' "$log" | tail -1)"
+    latency="$(awk -v key="${percentile}th percentile:" \
+      'index($0,key) {print $NF}' "$log" | tail -1)"
+    errors="$(awk '/ignored errors:/ {print $3}' "$log" | tail -1)"
+    events="$(awk '/total number of events:/ {print $NF}' "$log" | tail -1)"
+    errors="${errors:-0}"
+    [[ "$tps" =~ ^[0-9]+([.][0-9]+)?$ ]]
+    [[ "$latency" =~ ^[0-9]+([.][0-9]+)?$ ]]
+    [[ "$errors" =~ ^[0-9]+$ && "$events" =~ ^[0-9]+$ ]]
+    error_percent="$(awk -v e="$errors" -v n="$events" \
+      'BEGIN {if (n == 0) exit 1; printf "%.6f", e * 100 / n}')"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$threads" "$percentile" "$tps" "$latency" "$errors" "$events" \
+      "$error_percent" | tee -a "$TMP/results.tsv"
+  done
+done
+
+printf '[5/7] 采集压测后 wsrep、资源和 Kubernetes 事件\n'
+wsrep_snapshot "$TMP/wsrep-after.tsv"
+kubectl -n "$NAMESPACE" top pod >"$TMP/pod-top-after.txt"
+kubectl -n "$NAMESPACE" get events --sort-by=.lastTimestamp >"$TMP/events.txt"
+
+printf '[6/7] 按客户 SLO 逐线程硬判定\n'
+tested=0
+while read -r threads min_tps max_p95 max_p99 max_error; do
+  [[ -z "${threads:-}" || "$threads" == \#* ]] && continue
+  for value in "$threads" "$min_tps" "$max_p95" "$max_p99" "$max_error"; do
+    [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]]
+  done
+  p95_tps="$(awk -F '\t' -v t="$threads" '$1 == t && $2 == 95 {print $3}' "$TMP/results.tsv")"
+  p95="$(awk -F '\t' -v t="$threads" '$1 == t && $2 == 95 {print $4}' "$TMP/results.tsv")"
+  p99="$(awk -F '\t' -v t="$threads" '$1 == t && $2 == 99 {print $4}' "$TMP/results.tsv")"
+  test -n "$p95_tps" && test -n "$p95" && test -n "$p99"
+  max_observed_error="$(awk -F '\t' -v t="$threads" \
+    '$1 == t && $7 > max {max=$7} END {print max+0}' "$TMP/results.tsv")"
+  awk -v actual="$p95_tps" -v limit="$min_tps" 'BEGIN {exit !(actual >= limit)}'
+  awk -v actual="$p95" -v limit="$max_p95" 'BEGIN {exit !(actual <= limit)}'
+  awk -v actual="$p99" -v limit="$max_p99" 'BEGIN {exit !(actual <= limit)}'
+  awk -v actual="$max_observed_error" -v limit="$max_error" \
+    'BEGIN {exit !(actual <= limit)}'
+  printf 'SLO 通过：threads=%s tps=%s p95=%s p99=%s error=%s%%\n' \
+    "$threads" "$p95_tps" "$p95" "$p99" "$max_observed_error"
+  tested=$((tested + 1))
+done <"$SLO_FILE"
+test "$tested" -eq "$(wc -w <<<"$SYSBENCH_THREADS")"
+
+printf '[7/7] 清理测试数据并原子发布证据\n'
+sysbench_exec cleanup 1 0 95 2>&1 | tee "$TMP/cleanup.log"
+PREPARED=false
+delete_benchmark_pod
+test -z "$(kubectl -n "$NAMESPACE" get pod "$SYSBENCH_POD" \
+  -o name 2>/dev/null || true)"
+test ! -e "$OUT"
+mv "$TMP" "$OUT"
+TMP=""
+trap - EXIT
+printf 'PXC_PERFORMANCE_ACCEPTANCE_PASS evidence=%s\n' "$OUT"
 PXC_SYSBENCH
 ```
 
-首次运行前用完全相同的连接和表参数执行 `prepare`；每轮测试前确认数据量一致，每个场景预热后至少运行客户批准的稳定时长。所有场景完成后执行 `cleanup`，再删除专用 schema 和账号。prepare/cleanup 的输出也保存到 evidence，任何 SQL 错误都判该轮无效。
+没有 `PXC_PERFORMANCE_ACCEPTANCE_PASS` 时不得使用该轮结论。`cleanup-on-error.log` 只证明脚本尝试回收专用测试表；失败后还必须核对 schema、账号和正在运行的 sysbench 进程，清理干净才能重跑。测试结束后按账号管理流程吊销专用账号。
+
+> **生产保护：** 默认只在影子环境或批准的压测窗口执行。压测会真实消耗 PXC CPU、内存、网络和存储 IOPS，并产生 binlog/备份增量；不得在未评估容量时直接对生产主 Service 运行。单节点故障、SST 和存储压力场景必须单独审批，不能混入基础线程阶梯。
 
 ### 9.3 场景矩阵和判定
 
@@ -785,7 +1926,78 @@ flowchart TD
     F -->|否| H[CPU/锁/慢 SQL/存储/网络]
 ```
 
-先比较三节点是否存在单点慢盘或资源节流，再查看慢 SQL、锁等待和事务设计。只有在相同数据集、相同资源、相同版本上稳定复现，并排除压测机瓶颈和环境抖动后，才进入产品缺陷分析。
+先运行以下只读诊断脚本。它把三节点 wsrep、MySQL 线程/锁/慢查询摘要、Pod 资源、PVC、事件和 PXC 日志按同一时间戳保存，避免只依据 TPS 猜测根因：
+
+```bash
+bash <<'PXC_PERFORMANCE_DIAG'
+set -Eeuo pipefail
+export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+PXC_WORKDIR="<第一章输出的绝对路径>"
+NAMESPACE="${PXC_NAMESPACE:-mysql}"
+CLUSTER="${PXC_CLUSTER:-cluster1}"
+EXPECTED_PXC="${PXC_EXPECTED_SIZE:-3}"
+test -d "$PXC_WORKDIR"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+TMP="$(mktemp -d "$PXC_WORKDIR/evidence/.performance-diag-${STAMP}.XXXXXX")"
+RUN_SUFFIX="${TMP##*.performance-diag-${STAMP}.}"
+OUT="$PXC_WORKDIR/evidence/performance-diag-${STAMP}-${RUN_SUFFIX}"
+chmod 0750 "$TMP"
+trap 'rc=$?; if (( rc != 0 )); then printf "PXC_PERFORMANCE_DIAG_FAILED rc=%s evidence=%s\n" "$rc" "$TMP" >&2; fi' EXIT
+
+printf '[1/4] 采集 Kubernetes 资源和存储状态\n'
+kubectl -n "$NAMESPACE" get pxc,pod,pvc,svc -o wide >"$TMP/objects.txt"
+kubectl -n "$NAMESPACE" top pod >"$TMP/pod-top.txt"
+kubectl -n "$NAMESPACE" get events --sort-by=.lastTimestamp >"$TMP/events.txt"
+
+printf '[2/4] 采集三节点 wsrep、线程、锁和 InnoDB 摘要\n'
+SECRET_NAME="$(kubectl -n "$NAMESPACE" get pxc "$CLUSTER" \
+  -o jsonpath='{.spec.secretsName}')"
+test -n "$SECRET_NAME"
+ROOT_PASSWORD="$(kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" \
+  -o jsonpath='{.data.root}' | base64 -d)"
+test -n "$ROOT_PASSWORD"
+for ordinal in $(seq 0 $((EXPECTED_PXC - 1))); do
+  pod="${CLUSTER}-pxc-${ordinal}"
+  printf '%s\n' "$ROOT_PASSWORD" | kubectl -n "$NAMESPACE" \
+    exec -i "$pod" -c pxc -- sh -eu -c '
+      IFS= read -r MYSQL_PWD
+      export MYSQL_PWD
+      mysql -uroot -h127.0.0.1 -e "
+        SHOW GLOBAL STATUS WHERE Variable_name IN
+          ('"'"'Threads_connected'"'"','"'"'Threads_running'"'"',
+           '"'"'Slow_queries'"'"','"'"'Innodb_buffer_pool_reads'"'"',
+           '"'"'Innodb_buffer_pool_read_requests'"'"','"'"'wsrep_flow_control_paused'"'"',
+           '"'"'wsrep_local_recv_queue'"'"','"'"'wsrep_local_cert_failures'"'"',
+           '"'"'wsrep_local_bf_aborts'"'"');
+        SELECT * FROM performance_schema.data_lock_waits;
+        SHOW ENGINE INNODB STATUS;"
+      unset MYSQL_PWD
+    ' >"$TMP/${pod}-mysql.txt"
+done
+unset ROOT_PASSWORD
+
+printf '[3/4] 采集数据库和代理日志\n'
+for ordinal in $(seq 0 $((EXPECTED_PXC - 1))); do
+  kubectl -n "$NAMESPACE" logs "${CLUSTER}-pxc-${ordinal}" -c pxc \
+    --since=30m >"$TMP/${CLUSTER}-pxc-${ordinal}.log" 2>&1
+done
+for ordinal in $(seq 0 2); do
+  kubectl -n "$NAMESPACE" logs "${CLUSTER}-haproxy-${ordinal}" -c haproxy \
+    --since=30m >"$TMP/${CLUSTER}-haproxy-${ordinal}.log" 2>&1
+done
+
+printf '[4/4] 原子发布诊断证据\n'
+test ! -e "$OUT"
+mv "$TMP" "$OUT"
+TMP=""
+trap - EXIT
+printf 'PXC_PERFORMANCE_DIAG_COLLECTION_PASS evidence=%s health_verified=false\n' "$OUT"
+PXC_PERFORMANCE_DIAG
+```
+
+日志字段按以下顺序解释：`wsrep_flow_control_paused` 上升表示集群因慢成员节流；`wsrep_local_recv_queue` 只在单节点持续升高时优先调查该节点 CPU/IO；`wsrep_local_cert_failures` 和 `wsrep_local_bf_aborts` 指向热点写和并发事务冲突；`Threads_running` 高但 wsrep 正常时继续看慢 SQL、锁和连接池；三节点同时出现存储延迟时调查 CSI/后端，只有单节点异常时调查该节点/PV。
+
+只有在相同数据集、相同资源、相同版本上稳定复现，并排除压测机、连接池、网络、CSI 和环境抖动后，才进入产品缺陷分析。修复参数、SQL 或资源后必须重跑完全相同的基线，不能用改变了多个变量的新结果宣称问题已修复。
 
 ## 第十章、备份、恢复和 PITR
 
@@ -824,15 +2036,55 @@ bash <<'PXC_BACKUP'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
+BACKUP_NAME="cluster1-before-change"
 test -d "$PXC_WORKDIR"
-kubectl apply -f "$PXC_WORKDIR/cluster1-backup.yaml"
-kubectl -n mysql wait --for=jsonpath='{.status.state}'=Succeeded \
-  pxc-backup/cluster1-before-change --timeout=2h
-test "$(kubectl -n mysql get pxc-backup cluster1-before-change \
+test -s "$PXC_WORKDIR/cluster1-backup.yaml"
+printf '[1/4] 校验固定 Backup CR；已存在时必须名称和 spec 完全相同\n'
+DESIRED_BACKUP="$(kubectl apply --dry-run=server \
+  -f "$PXC_WORKDIR/cluster1-backup.yaml" -o json)"
+jq -e --arg name "$BACKUP_NAME" '
+  .metadata.name == $name and .metadata.namespace == "mysql" and
+  .spec.pxcCluster == "cluster1" and .spec.storageName == "s3-prod"
+' <<<"$DESIRED_BACKUP" >/dev/null
+if LIVE_BACKUP="$(kubectl -n mysql get pxc-backup "$BACKUP_NAME" \
+  -o json 2>/dev/null)"; then
+  cmp <(jq -S '.spec' <<<"$DESIRED_BACKUP") \
+    <(jq -S '.spec' <<<"$LIVE_BACKUP")
+  printf '同一备份动作已存在：name=%s uid=%s already_converged=true\n' \
+    "$BACKUP_NAME" "$(jq -r '.metadata.uid' <<<"$LIVE_BACKUP")"
+else
+  kubectl create -f "$PXC_WORKDIR/cluster1-backup.yaml"
+fi
+printf '[2/4] 等待备份终态；状态变化或每五分钟输出一次心跳\n'
+last_state="__unset__"
+for attempt in $(seq 1 240); do
+  state="$(kubectl -n mysql get pxc-backup "$BACKUP_NAME" \
+    -o jsonpath='{.status.state}' 2>/dev/null || true)"
+  if [[ "$state" != "$last_state" || $((attempt % 10)) -eq 0 ]]; then
+    printf '备份进度：name=%s state=%s elapsed_seconds=%s\n' \
+      "$BACKUP_NAME" "${state:-Pending}" "$((attempt * 30))"
+    last_state="$state"
+  fi
+  [[ "$state" == Succeeded ]] && break
+  [[ "$state" == Failed ]] && {
+    kubectl -n mysql get pxc-backup "$BACKUP_NAME" -o yaml >&2
+    exit 1
+  }
+  (( attempt < 240 ))
+  sleep 30
+done
+test "$state" = Succeeded
+printf '[3/4] 对账备份存储名和对象目标\n'
+test "$(kubectl -n mysql get pxc-backup "$BACKUP_NAME" \
   -o jsonpath='{.status.storageName}')" = "s3-prod"
-test -n "$(kubectl -n mysql get pxc-backup cluster1-before-change \
+DESTINATION="$(kubectl -n mysql get pxc-backup "$BACKUP_NAME" \
   -o jsonpath='{.status.destination}')"
-kubectl -n mysql describe pxc-backup cluster1-before-change
+test -n "$DESTINATION"
+printf '备份目标通过：storage=s3-prod destination=%s\n' "$DESTINATION"
+printf '[4/4] 输出 Backup CR 事件和终态摘要\n'
+kubectl -n mysql describe pxc-backup "$BACKUP_NAME"
+printf 'PXC_BACKUP_CR_SUCCEEDED name=%s state=Succeeded storage=s3-prod destination=%s next=object-validation\n' \
+  "$BACKUP_NAME" "$DESTINATION"
 PXC_BACKUP
 ```
 
@@ -860,15 +2112,53 @@ bash <<'PXC_RESTORE'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
+RESTORE_NAME="cluster1-restore-before-change"
 test -d "$PXC_WORKDIR"
 test -s "$PXC_WORKDIR/cluster1-restore.yaml"
+printf '[1/5] 确认源备份已经成功，禁止从失败备份恢复\n'
 test "$(kubectl -n mysql get pxc-backup cluster1-before-change \
   -o jsonpath='{.status.state}')" = "Succeeded"
-kubectl apply --dry-run=server -f "$PXC_WORKDIR/cluster1-restore.yaml" >/dev/null
-kubectl apply -f "$PXC_WORKDIR/cluster1-restore.yaml"
-kubectl -n mysql wait --for=jsonpath='{.status.state}'=Succeeded \
-  pxc-restore/cluster1-restore-before-change --timeout=4h
-kubectl -n mysql describe pxc-restore cluster1-restore-before-change
+printf '[2/5] 让 API Server 校验固定 Restore CR 的名称和恢复目标\n'
+DESIRED_RESTORE="$(kubectl apply --dry-run=server \
+  -f "$PXC_WORKDIR/cluster1-restore.yaml" -o json)"
+jq -e --arg name "$RESTORE_NAME" '
+  .metadata.name == $name and .metadata.namespace == "mysql" and
+  .spec.pxcCluster == "cluster1" and
+  .spec.backupName == "cluster1-before-change"
+' <<<"$DESIRED_RESTORE" >/dev/null
+printf '[3/5] 创建恢复动作；同名对象存在时必须 spec 完全相同\n'
+if LIVE_RESTORE="$(kubectl -n mysql get pxc-restore "$RESTORE_NAME" \
+  -o json 2>/dev/null)"; then
+  cmp <(jq -S '.spec' <<<"$DESIRED_RESTORE") \
+    <(jq -S '.spec' <<<"$LIVE_RESTORE")
+  printf '同一恢复动作已存在：name=%s uid=%s already_converged=true\n' \
+    "$RESTORE_NAME" "$(jq -r '.metadata.uid' <<<"$LIVE_RESTORE")"
+else
+  kubectl create -f "$PXC_WORKDIR/cluster1-restore.yaml"
+fi
+printf '[4/5] 等待恢复终态；状态变化或每五分钟输出一次心跳\n'
+last_state="__unset__"
+for attempt in $(seq 1 480); do
+  state="$(kubectl -n mysql get pxc-restore "$RESTORE_NAME" \
+    -o jsonpath='{.status.state}' 2>/dev/null || true)"
+  if [[ "$state" != "$last_state" || $((attempt % 10)) -eq 0 ]]; then
+    printf '恢复进度：name=%s state=%s elapsed_seconds=%s\n' \
+      "$RESTORE_NAME" "${state:-Pending}" "$((attempt * 30))"
+    last_state="$state"
+  fi
+  [[ "$state" == Succeeded ]] && break
+  [[ "$state" == Failed ]] && {
+    kubectl -n mysql get pxc-restore "$RESTORE_NAME" -o yaml >&2
+    exit 1
+  }
+  (( attempt < 480 ))
+  sleep 30
+done
+test "$state" = Succeeded
+printf '[5/5] 输出 Restore CR 事件和终态；业务数据仍需按本节后续步骤验收\n'
+kubectl -n mysql describe pxc-restore "$RESTORE_NAME"
+printf 'PXC_RESTORE_CR_SUCCEEDED name=%s state=Succeeded next=business-validation\n' \
+  "$RESTORE_NAME"
 PXC_RESTORE
 ```
 
@@ -878,16 +2168,26 @@ PXC_RESTORE
 
 ### 10.4 PITR 前置条件和恢复
 
-PITR 需要至少一个成功全量备份和此后的连续 binlog。先在 CR 中启用 `spec.backup.pitr.enabled=true`，等待 Backup CR 的 `PITRReady` condition 和 `latestRestorableTime`，再做破坏性演练。禁止在上传前 purge binlog。
+PITR 需要至少一个成功全量备份和此后的连续 binlog。以下只读脚本输出所有 PITR condition，硬判断没有 `BinlogGapDetected` 且 `latestRestorableTime` 非空；可安全重复执行。先在 CR 中启用 `spec.backup.pitr.enabled=true`，再做破坏性演练。禁止在上传前 purge binlog。
 
 ```bash
 bash <<'PXC_PITR_PREFLIGHT'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+BACKUP_NAME="cluster1-before-change"
+printf '[1/3] 读取 PITRReady condition 和原因\n'
 kubectl -n mysql get pxc-backup cluster1-before-change \
   -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}{"\n"}{end}'
-kubectl -n mysql get pxc-backup cluster1-before-change \
-  -o jsonpath='{.status.latestRestorableTime}{"\n"}'
+printf '[2/3] 拒绝存在 BinlogGapDetected 的恢复链\n'
+GAP_COUNT="$(kubectl -n mysql get pxc-backup "$BACKUP_NAME" -o json | jq \
+  '[.status.conditions[]? | select(.type == "PITRReady" and .status == "False" and .reason == "BinlogGapDetected")] | length')"
+test "$GAP_COUNT" -eq 0
+printf '[3/3] 验证并输出当前最晚可恢复时间\n'
+LATEST_RESTORABLE="$(kubectl -n mysql get pxc-backup "$BACKUP_NAME" \
+  -o jsonpath='{.status.latestRestorableTime}')"
+test -n "$LATEST_RESTORABLE"
+printf 'PXC_PITR_PREFLIGHT_PASS backup=%s latest_restorable_time=%s gap_count=%s\n' \
+  "$BACKUP_NAME" "$LATEST_RESTORABLE" "$GAP_COUNT"
 PXC_PITR_PREFLIGHT
 ```
 
@@ -953,20 +2253,36 @@ spec:
 
 ### 11.2 升级前证据冻结
 
+以下脚本只读采集 Helm、CRD、PXC、PVC、备份和事件，先写临时目录，采集完整后原子发布；重复执行生成新的时间戳证据，不覆盖旧升级基线。
+
 ```bash
 bash <<'PXC_UPGRADE_PREFLIGHT'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
 test -d "$PXC_WORKDIR"
-OUT="$PXC_WORKDIR/evidence/pre-upgrade-$(date +%Y%m%d%H%M%S)"
-install -d -m 0750 "$OUT"
-helm -n mysql-operator get all pxc-operator >"$OUT/operator-helm.txt"
-kubectl get crd perconaxtradbclusters.pxc.percona.com -o yaml >"$OUT/pxc-crd.yaml"
-kubectl -n mysql get pxc cluster1 -o yaml >"$OUT/cluster1.yaml"
-kubectl -n mysql get pod,pvc,svc -o wide >"$OUT/objects.txt"
-kubectl -n mysql get pxc-backup -o wide >"$OUT/backups.txt"
-kubectl -n mysql get events --sort-by=.lastTimestamp >"$OUT/events.txt"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+TMP="$(mktemp -d "$PXC_WORKDIR/evidence/.pre-upgrade-${STAMP}.XXXXXX")"
+RUN_SUFFIX="${TMP##*.pre-upgrade-${STAMP}.}"
+OUT="$PXC_WORKDIR/evidence/pre-upgrade-${STAMP}-${RUN_SUFFIX}"
+chmod 0750 "$TMP"
+trap 'rc=$?; if (( rc != 0 )); then printf "PXC_UPGRADE_PREFLIGHT_FAILED rc=%s evidence=%s\n" "$rc" "$TMP" >&2; fi' EXIT
+printf '[1/4] 冻结 Helm release 和 CRD\n'
+helm -n mysql-operator get all pxc-operator >"$TMP/operator-helm.txt"
+kubectl get crd perconaxtradbclusters.pxc.percona.com -o yaml >"$TMP/pxc-crd.yaml"
+printf '[2/4] 冻结 PXC CR、Pod、PVC 和 Service\n'
+kubectl -n mysql get pxc cluster1 -o yaml >"$TMP/cluster1.yaml"
+kubectl -n mysql get pod,pvc,svc -o wide >"$TMP/objects.txt"
+printf '[3/4] 冻结备份清单和 Kubernetes 事件\n'
+kubectl -n mysql get pxc-backup -o wide >"$TMP/backups.txt"
+kubectl -n mysql get events --sort-by=.lastTimestamp >"$TMP/events.txt"
+printf '[4/4] 验证当前集群 ready 并原子发布证据\n'
+test "$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.status.state}')" = ready
+test ! -e "$OUT"
+mv "$TMP" "$OUT"
+TMP=""
+trap - EXIT
+printf 'PXC_UPGRADE_PREFLIGHT_PASS evidence=%s state=ready\n' "$OUT"
 PXC_UPGRADE_PREFLIGHT
 ```
 
@@ -974,7 +2290,7 @@ PXC_UPGRADE_PREFLIGHT
 
 ### 11.3 Operator 和 CRD 升级
 
-目标 Chart 必须已经 vendored 并校验，values 中只修改经评审字段：
+目标 Chart 必须已经 vendored 并校验，values 中只修改经评审字段。`TARGET_OPERATOR_VERSION` 是稳定输入；Helm 以同一 Chart/values 重复执行会收敛到相同 release 资源，`--history-max` 限制历史增长。脚本只在 Operator/CRD 和现有 PXC 均恢复 ready 后返回成功：
 
 ```bash
 bash <<'PXC_OPERATOR_UPGRADE'
@@ -983,14 +2299,47 @@ export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
 TARGET_OPERATOR_VERSION="<已批准目标版本>"
 test -s "$PXC_WORKDIR/vendor/pxc-operator-${TARGET_OPERATOR_VERSION}.tgz"
-helm upgrade pxc-operator \
-  "$PXC_WORKDIR/vendor/pxc-operator-${TARGET_OPERATOR_VERSION}.tgz" \
-  --namespace mysql-operator \
-  --values "$PXC_WORKDIR/operator-values.yaml" \
-  --wait --timeout 10m
+test -s "$PXC_WORKDIR/operator-values.yaml"
+printf '[1/4] 对账当前 Helm Chart 和审批目标\n'
+CURRENT_CHART="$(helm -n mysql-operator list -o json | jq -r \
+  '.[] | select(.name == "pxc-operator") | .chart')"
+printf 'Operator 版本：current_chart=%s target_version=%s\n' \
+  "$CURRENT_CHART" "$TARGET_OPERATOR_VERSION"
+printf '[2/4] 对账固定 Chart 和用户 values；完全一致时不新增 release revision\n'
+CURRENT_VALUES="$(helm -n mysql-operator get values pxc-operator -o json)"
+DESIRED_VALUES="$(python3 -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1], encoding="utf-8")) or {}, sort_keys=True))' "$PXC_WORKDIR/operator-values.yaml")"
+if [[ "$CURRENT_CHART" == "pxc-operator-${TARGET_OPERATOR_VERSION}" ]] && \
+  jq -e --argjson desired "$DESIRED_VALUES" '. == $desired' \
+    <<<"$CURRENT_VALUES" >/dev/null; then
+  printf 'Operator release 已收敛：chart=%s already_converged=true\n' "$CURRENT_CHART"
+else
+  helm upgrade --install pxc-operator \
+    "$PXC_WORKDIR/vendor/pxc-operator-${TARGET_OPERATOR_VERSION}.tgz" \
+    --namespace mysql-operator \
+    --values "$PXC_WORKDIR/operator-values.yaml" \
+    --wait --timeout 10m --history-max 10
+fi
+printf '[3/4] 等待 Operator Deployment 和 CRD\n'
 kubectl -n mysql-operator rollout status deployment/pxc-operator --timeout=10m
-kubectl wait --for=condition=Established \
-  crd/perconaxtradbclusters.pxc.percona.com --timeout=2m
+last_established="__unset__"
+for attempt in $(seq 1 12); do
+  established="$(kubectl get crd perconaxtradbclusters.pxc.percona.com \
+    -o jsonpath='{.status.conditions[?(@.type=="Established")].status}' \
+    2>/dev/null || true)"
+  if [[ "$established" != "$last_established" || $((attempt % 3)) -eq 0 ]]; then
+    printf 'CRD 进度：established=%s elapsed_seconds=%s\n' \
+      "${established:-missing}" "$((attempt * 10))"
+    last_established="$established"
+  fi
+  [[ "$established" == True ]] && break
+  (( attempt < 12 ))
+  sleep 10
+done
+test "$established" = True
+printf '[4/4] 验证升级未破坏现有 PXC 数据面状态\n'
+test "$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.status.state}')" = ready
+printf 'PXC_OPERATOR_UPGRADE_PASS target_version=%s pxc_state=ready\n' \
+  "$TARGET_OPERATOR_VERSION"
 PXC_OPERATOR_UPGRADE
 ```
 
@@ -998,7 +2347,7 @@ PXC_OPERATOR_UPGRADE
 
 ### 11.4 PXC、XtraBackup 和 HAProxy 滚动升级
 
-在 Git 管理的 `cluster1-pxc.yaml` 同时更新 `spec.crVersion` 及经过兼容性批准的镜像，不直接 `kubectl set image` 修改 Operator 管理资源。先执行 server-side dry-run，再 apply：
+在 Git 管理的 `cluster1-pxc.yaml` 同时更新 `spec.crVersion` 及经过兼容性批准的镜像，不直接 `kubectl set image` 修改 Operator 管理资源。server-side apply 使用固定 field manager，相同清单重复执行收敛到相同对象；脚本等待 StatefulSet rollout 和 CR ready，但业务 SQL、备份和性能仍须执行 11.5 节：
 
 ```bash
 bash <<'PXC_DATABASE_UPGRADE'
@@ -1006,10 +2355,19 @@ set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
 test -s "$PXC_WORKDIR/cluster1-pxc.yaml"
+printf '[1/4] 让 API Server 使用当前 CRD 校验目标数据库清单\n'
 kubectl apply --dry-run=server -f "$PXC_WORKDIR/cluster1-pxc.yaml" >/dev/null
+printf '[2/4] 以固定 field manager 收敛 PXC、XtraBackup 和 HAProxy 版本\n'
 kubectl apply --server-side --field-manager=kubeauto-mysql \
   -f "$PXC_WORKDIR/cluster1-pxc.yaml"
+printf '[3/4] 等待 Operator 管理的 PXC StatefulSet 完成滚动\n'
+kubectl -n mysql rollout status statefulset/cluster1-pxc --timeout=60m
+printf '[4/4] 验证 CR ready 并输出实际 Pod 镜像和节点\n'
+test "$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.status.state}')" = ready
 kubectl -n mysql get pod -o wide
+kubectl -n mysql get pod -l app.kubernetes.io/instance=cluster1 \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .spec.containers[*]}{.name}={.image}{" "}{end}{"\n"}{end}'
+printf 'PXC_DATABASE_UPGRADE_READY state=ready next=chapter-11.5-validation\n'
 PXC_DATABASE_UPGRADE
 ```
 
@@ -1035,17 +2393,22 @@ SmartUpdate 应一次处理一个数据库节点。每个节点结束后检查�
 
 ### 11.6 下线和数据清理
 
-下线顺序：停止业务写入 → 最终全量备份并验证 → 导出 CR 元数据/PVC 清单 → 删除 PXC CR → 确认数据保留策略 → 卸载 Operator → 按审批逐个删除 PVC 和备份。禁止 `kubectl delete pvc --all` 或未解析路径的递归删除。
+下线顺序：停止业务写入 → 最终全量备份并验证 → 导出 CR 元数据/PVC 清单 → 删除 PXC CR → 确认数据保留策略 → 卸载 Operator → 按审批逐个删除 PVC 和备份。以下脚本只读列出待下线对象供变更单对账，可重复执行且不删除任何资源。禁止 `kubectl delete pvc --all` 或未解析路径的递归删除。
 
 ```bash
 bash <<'PXC_DECOMMISSION_PREFLIGHT'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+printf '[1/4] 确认目标 PXC CR\n'
 kubectl -n mysql get pxc cluster1
+printf '[2/4] 列出目标集群 PVC；每个名称必须进入保留或销毁清单\n'
 kubectl -n mysql get pvc -l app.kubernetes.io/instance=cluster1 -o name
+printf '[3/4] 列出全部 Backup/Restore CR，确认没有运行中任务\n'
 kubectl -n mysql get pxc-backup -o wide
 kubectl -n mysql get pxc-restore -o wide
+printf '[4/4] 列出命名空间对象；本脚本不执行删除\n'
 kubectl -n mysql get all,secret,configmap -o name
+printf 'PXC_DECOMMISSION_PREFLIGHT_COLLECTION_PASS namespace=mysql cluster=cluster1 destructive=false\n'
 PXC_DECOMMISSION_PREFLIGHT
 ```
 
@@ -1057,25 +2420,34 @@ PXC_DECOMMISSION_PREFLIGHT
 
 ### 12.1 统一取证
 
+本脚本只读采集对象、事件以及 Operator/PXC 当前和 previous 日志。组件日志读取失败会记录在对应文件中而不阻断其他证据采集；最终 `COLLECTION_PASS` 仅表示取证流程完成，不表示数据库健康。
+
 ```bash
 bash <<'PXC_DIAG'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
 PXC_WORKDIR="<第一章输出的绝对路径>"
 test -d "$PXC_WORKDIR"
-OUT="$PXC_WORKDIR/evidence/diag-$(date +%Y%m%d%H%M%S)"
-install -d -m 0750 "$OUT"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+OUT="$(mktemp -d "$PXC_WORKDIR/evidence/diag-${STAMP}.XXXXXX")"
+chmod 0750 "$OUT"
+printf '[1/4] 采集 PXC、Pod、StatefulSet、PVC 和 Service\n'
 kubectl -n mysql get pxc,pod,sts,pvc,svc -o wide > "$OUT/objects.txt"
 kubectl -n mysql describe pxc cluster1 > "$OUT/pxc-describe.txt"
+printf '[2/4] 采集按时间排序的 Kubernetes 事件\n'
 kubectl -n mysql get events --sort-by=.lastTimestamp > "$OUT/events.txt"
+printf '[3/4] 采集 Operator 当前日志；读取失败保留错误文本\n'
 kubectl -n mysql-operator logs deploy/pxc-operator --tail=300 > "$OUT/operator.log" 2>&1 || true
+printf '[4/4] 逐节点采集 PXC 当前和 previous 日志\n'
 for pod in cluster1-pxc-0 cluster1-pxc-1 cluster1-pxc-2; do
+  printf '采集日志：pod=%s current=true previous=true\n' "$pod"
   kubectl -n mysql logs "$pod" --all-containers=true --tail=500 \
     >"$OUT/${pod}.log" 2>&1 || true
   kubectl -n mysql logs "$pod" --all-containers=true --previous --tail=500 \
     >"$OUT/${pod}-previous.log" 2>&1 || true
 done
-printf 'diagnostic_dir=%s\n' "$OUT"
+printf 'PXC_DIAGNOSTIC_COLLECTION_PASS evidence=%s files=%s health_verified=false\n' \
+  "$OUT" "$(find "$OUT" -maxdepth 1 -type f | wc -l)"
 PXC_DIAG
 ```
 
@@ -1122,16 +2494,23 @@ flowchart TD
 | Helm | `helm status/get values/get manifest` | release、values 和实际渲染 |
 | Operator | Deployment、leader、日志 | webhook、RBAC、reconcile/panic |
 
+以下脚本只读显示 Helm release、实际 values、CRD、Operator 工作负载和最近日志，用于判断失败位于 Chart/CRD/RBAC/Webhook 还是 reconcile；重复执行不改变资源。
+
 ```bash
 bash <<'PXC_OPERATOR_DIAG'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+printf '[1/4] 读取 Helm release 状态和实际 values\n'
 helm -n mysql-operator status pxc-operator
 helm -n mysql-operator get values pxc-operator --all
+printf '[2/4] 读取 PXC CRD Established/served/storage 信息\n'
 kubectl get crd perconaxtradbclusters.pxc.percona.com -o wide
+printf '[3/4] 读取 Operator Deployment、Pod、Service 和 EndpointSlice\n'
 kubectl -n mysql-operator get deploy,pod,svc,endpointslice -o wide
 kubectl -n mysql-operator describe deployment/pxc-operator
+printf '[4/4] 输出 Operator 最近 500 行日志；从 webhook/RBAC/reconcile 关键字开始定位\n'
 kubectl -n mysql-operator logs deployment/pxc-operator --tail=500
+printf 'PXC_OPERATOR_DIAG_COLLECTION_PASS namespace=mysql-operator health_verified=false\n'
 PXC_OPERATOR_DIAG
 ```
 
@@ -1139,16 +2518,29 @@ PXC_OPERATOR_DIAG
 
 ### 12.3 Pending、PVC 和调度
 
+以下脚本只读解析当前 `cluster1-pxc-0` 实际引用的 datadir PVC，再采集 Pod/PVC describe、节点可分配资源和 CSINode。它不依赖示例 PVC 名，可在 Operator 命名规则不变但卷 UID 变化时重复执行。
+
 ```bash
 bash <<'PXC_SCHEDULING_DIAG'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+TARGET_POD="cluster1-pxc-0"
+printf '[1/4] 列出 Pod 和 PVC 当前状态\n'
 kubectl -n mysql get pod -o wide
 kubectl -n mysql get pvc -o wide
-kubectl -n mysql describe pod cluster1-pxc-0
-kubectl -n mysql describe pvc datadir-cluster1-pxc-0
+printf '[2/4] 从目标 Pod 解析 datadir PVC，不猜测名称\n'
+DATA_PVC="$(kubectl -n mysql get pod "$TARGET_POD" -o json | jq -r '
+  .spec.volumes[] | select(.name == "datadir") | .persistentVolumeClaim.claimName')"
+test -n "$DATA_PVC"
+printf '调度对象：pod=%s data_pvc=%s\n' "$TARGET_POD" "$DATA_PVC"
+printf '[3/4] 输出目标 Pod 和实际 PVC 的事件、调度与挂载详情\n'
+kubectl -n mysql describe pod "$TARGET_POD"
+kubectl -n mysql describe pvc "$DATA_PVC"
+printf '[4/4] 输出节点可分配资源和 CSI 节点注册\n'
 kubectl get node -o custom-columns='NAME:.metadata.name,TAINTS:.spec.taints,ALLOCATABLE_CPU:.status.allocatable.cpu,ALLOCATABLE_MEM:.status.allocatable.memory'
 kubectl get csinode
+printf 'PXC_SCHEDULING_DIAG_COLLECTION_PASS pod=%s pvc=%s health_verified=false\n' \
+  "$TARGET_POD" "$DATA_PVC"
 PXC_SCHEDULING_DIAG
 ```
 
@@ -1189,13 +2581,31 @@ PVC 名称必须以现场 `kubectl get pvc` 为准；如果与示例不同，不
 bash <<'PXC_QUORUM_DIAG'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+SECRET_NAME="$(kubectl -n mysql get pxc cluster1 -o jsonpath='{.spec.secretsName}')"
+ROOT_PASSWORD="$(kubectl -n mysql get secret "$SECRET_NAME" -o jsonpath='{.data.root}' | base64 -d)"
+test -n "$ROOT_PASSWORD"
+trap 'unset ROOT_PASSWORD' EXIT
+printf '[1/3] 逐个查询可访问成员的 wsrep 安全状态\n'
 for pod in cluster1-pxc-0 cluster1-pxc-1 cluster1-pxc-2; do
-  kubectl -n mysql exec "$pod" -c pxc -- mysql -uroot -p \
-    --batch --skip-column-names -e \
-    "SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_cluster_size','wsrep_cluster_status','wsrep_local_state_comment','wsrep_ready');" \
-    || true
+  if status="$(printf '%s\n' "$ROOT_PASSWORD" | kubectl -n mysql exec -i "$pod" -c pxc -- sh -eu -c '
+    IFS= read -r MYSQL_PWD
+    export MYSQL_PWD
+    mysql -uroot -h127.0.0.1 --batch --skip-column-names -e \
+      "SHOW GLOBAL STATUS WHERE Variable_name IN
+      ('"'"'wsrep_cluster_size'"'"','"'"'wsrep_cluster_status'"'"',
+       '"'"'wsrep_local_state_comment'"'"','"'"'wsrep_ready'"'"');"
+    unset MYSQL_PWD
+  ' 2>&1)"; then
+    printf '成员状态：pod=%s reachable=true\n%s\n' "$pod" "$status"
+  else
+    printf '成员状态：pod=%s reachable=false error=%s\n' "$pod" "$status"
+  fi
 done
-kubectl -n mysql get pxc,pod,pdb,events --sort-by=.lastTimestamp
+printf '[2/3] 读取 PXC、Pod 和 PDB，判断多数派及驱逐保护\n'
+kubectl -n mysql get pxc,pod,pdb -o wide
+printf '[3/3] 按时间输出 Kubernetes 事件\n'
+kubectl -n mysql get events --sort-by=.lastTimestamp
+printf 'PXC_QUORUM_DIAG_COLLECTION_PASS members=3 health_verified=false\n'
 PXC_QUORUM_DIAG
 ```
 
@@ -1205,15 +2615,23 @@ PXC_QUORUM_DIAG
 
 ### 12.5 HAProxy、Service 和应用连接
 
+以下脚本只读检查 Service/EndpointSlice、三个 HAProxy 日志和 NetworkPolicy。单个代理日志不可读时记录错误并继续采集其他代理，最终标志只表示资料完整。
+
 ```bash
 bash <<'PXC_HAPROXY_DIAG'
 set -Eeuo pipefail
 export KUBECONFIG="<目标 kubeconfig 的绝对路径>"
+printf '[1/3] 读取 Service 和 EndpointSlice，确认是否存在可用后端\n'
 kubectl -n mysql get service,endpointslice -l app.kubernetes.io/instance=cluster1 -o wide
+printf '[2/3] 逐个读取 HAProxy 最近 300 行日志\n'
 for pod in cluster1-haproxy-0 cluster1-haproxy-1 cluster1-haproxy-2; do
-  kubectl -n mysql logs "$pod" -c haproxy --tail=300
+  if ! kubectl -n mysql logs "$pod" -c haproxy --tail=300; then
+    printf 'HAProxy 日志不可读：pod=%s；继续采集其他实例\n' "$pod" >&2
+  fi
 done
+printf '[3/3] 读取可能限制客户端或代理流量的 NetworkPolicy\n'
 kubectl -n mysql get networkpolicy
+printf 'PXC_HAPROXY_DIAG_COLLECTION_PASS instances=3 health_verified=false\n'
 PXC_HAPROXY_DIAG
 ```
 

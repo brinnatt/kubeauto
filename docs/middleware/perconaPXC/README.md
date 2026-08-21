@@ -1,6 +1,6 @@
 # Percona XtraDB Cluster（PXC）企业级部署、运维与开发文档
 
-> **文档版本：** v1.2（生产实践对齐版）
+> **文档版本：** v1.3（生产运维深化版）
 > **最后核验：** 2026-08-21
 > **Operator：** Percona Operator for MySQL based on PXC v1.20.0
 > **数据库：** Percona XtraDB Cluster 8.4.8-8.1
@@ -63,6 +63,31 @@ flowchart LR
 > **主线路边界：** 不要把 `kubectl delete pvc`、手工 `pc.bootstrap=YES`、关闭 TLS 校验、`unsafe-pitr` 或修改 Operator 管理的 StatefulSet 当作部署步骤。它们属于高风险例外，只能在对应引用块和审批流程中使用。
 
 > **两条制品路径：** kubeauto 正式 role 从受控的 vendored Chart 和本地 Registry 消费制品；`hub.talkedu.cn` 是中国交付路径的优先来源。动态公共加速器只能作为一次性测试运行参数，不能写入 role、CI、默认配置或本目录文档。
+
+### 1.2 上线后的生产运维主线
+
+数据库交付完成后，客户主要沿以下线路工作。每个入口都在《用户与运维手册》中提供可复制脚本、阶段进度、等待心跳、退出码硬门禁、原子证据目录和唯一终端标志；异常、回滚和高风险操作位于引用块，不混入正常主线。全部脚本都声明并实现可验证的幂等语义：只读脚本不修改生产对象，声明式脚本以同一权威输入收敛，固定目标变更以审批 ID/目标值防止二次动作，临时资源以唯一 run ID 或归属标签创建并在成功、失败时限定回收。
+
+```mermaid
+flowchart LR
+    A[每日健康硬门禁] --> B[容量和性能趋势]
+    B --> C[全量备份/PITR 新鲜度]
+    C --> D[恢复演练]
+    D --> E[升级/故障演练]
+    E --> A
+    B -.容量水位.-> S[磁盘治理/PVC 扩容辅助线]
+    B -.SLO 异常.-> P[性能诊断辅助线]
+```
+
+| 长期任务 | 运维手册入口 | 可签收结果 |
+|---|---|---|
+| 每日/每班巡检 | 8.1 | `PXC_DAILY_ACCEPTANCE_PASS`，控制面、wsrep、PVC、容量、备份和 PITR 同时通过 |
+| 容量审计 | 8.4.2 | `PXC_STORAGE_CAPACITY_AUDIT_COLLECTION_PASS health_verified=false`，请求容量、实际卷和文件系统证据完整，容量健康另按客户水位判定 |
+| 性能基线 | 9.2 | `PXC_PERFORMANCE_ACCEPTANCE_PASS`，客户 SLO 逐线程硬判定且测试数据已清理 |
+| 备份恢复 | 第 10 章 | Backup/Restore `Succeeded` 加业务 marker/GTID 校验 |
+| 故障取证 | 第 12 章 | 同一时间戳的分层证据；修复后重新通过日常硬门禁 |
+
+> **PVC 扩容状态：** Percona Operator v1.20.0 提供 GA Volume Expansion 和自动存储扩容能力，但当前 kubeauto `MYSQL-01` 至 `MYSQL-14` 只验证了固定容量建卷和真实读写，未验证在线扩容。运维手册 8.4 提供基于官方行为的预生产演练辅助线，并明确当前交付边界；未在同 CSI 演练通过前不得对客户宣称该能力已签收。
 
 ## 第二章、文档与实现状态
 
