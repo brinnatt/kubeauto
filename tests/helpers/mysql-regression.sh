@@ -11,8 +11,8 @@ REGISTRY_HOST="registry.talkschool.cn:5000"
 REGISTRY_IP="${MYSQL_REGISTRY_IP:-$(hostname -I | awk '{print $1}')}"
 REGISTRY_NAME="kubeauto-mysql-registry"
 REGISTRY_DATA="/var/lib/kubeauto-mysql-registry"
-SOURCE_PREFIX="${MYSQL_IMAGE_SOURCE_PREFIX:-docker.io}"
-SOURCE_FALLBACK_PREFIX="${MYSQL_IMAGE_SOURCE_FALLBACK_PREFIX:-}"
+SOURCE_PREFIX="${MYSQL_IMAGE_SOURCE_PREFIX:-hub.talkedu.cn}"
+SOURCE_FALLBACK_PREFIX="${MYSQL_IMAGE_SOURCE_FALLBACK_PREFIX:-docker.io}"
 VERIFY_PREFIXES="${MYSQL_IMAGE_VERIFY_PREFIXES:-${MYSQL_IMAGE_VERIFY_PREFIX:-}}"
 STAGE_NODE="${MYSQL_IMAGE_STAGE_NODE:-}"
 MARKER="kubeauto-mysql-gate"
@@ -148,6 +148,8 @@ source_repository() {
       percona/haproxy) printf 'kubeauto/percona-haproxy\n' ;;
       percona/fluentbit) printf 'kubeauto/percona-fluentbit\n' ;;
       minio/minio) printf 'kubeauto/minio\n' ;;
+      minio/mc) printf 'kubeauto/minio-mc\n' ;;
+      perconalab/sysbench) printf 'kubeauto/percona-sysbench\n' ;;
       *) printf '%s\n' "$repository" ;;
     esac
     return
@@ -429,10 +431,14 @@ if ss -lnt | awk '{print $4}' | grep -Eq '(^|:)5000$'; then
   echo "REGISTRY_REUSED endpoint=127.0.0.1:5000"
 else
   install -d -m 0700 "$REGISTRY_DATA"
-  docker pull docker.io/library/registry:2.8.3 >/dev/null
+  registry_image=hub.talkedu.cn/kubeauto/registry:2.8.3
+  if ! docker pull "$registry_image" >/dev/null; then
+    registry_image=docker.io/library/registry:2.8.3
+    docker pull "$registry_image" >/dev/null
+  fi
   docker run -d --restart=no --name "$REGISTRY_NAME" --label kubeauto.mysql-gate=true \
     -e REGISTRY_STORAGE_DELETE_ENABLED=true \
-    -p 5000:5000 -v "$REGISTRY_DATA:/var/lib/registry" docker.io/library/registry:2.8.3 >/dev/null
+    -p 5000:5000 -v "$REGISTRY_DATA:/var/lib/registry" "$registry_image" >/dev/null
 fi
 for attempt in $(seq 1 30); do
   curl -fsS --max-time 3 http://127.0.0.1:5000/v2/ >/dev/null && break

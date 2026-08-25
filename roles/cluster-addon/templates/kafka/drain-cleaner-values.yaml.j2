@@ -1,0 +1,75 @@
+replicaCount: 2
+image:
+  registry: registry.talkschool.cn:5000
+  repository: brinnatt
+  name: strimzi-drain-cleaner
+  tag: {{ strimzi_drain_cleaner_ver }}
+  pullPolicy: IfNotPresent
+certManager:
+  create: false
+secret:
+  create: false
+  ca_bundle: {{ kafka_drain_cleaner_ca_bundle }}
+namespace:
+  create: false
+  name: {{ kafka_drain_cleaner_namespace }}
+podDisruptionBudget:
+  create: true
+  minAvailable: 1
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 384Mi
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: strimzi-drain-cleaner
+        topologyKey: {{ kafka_topology_key }}
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: {{ kafka_topology_key }}
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app: strimzi-drain-cleaner
+env:
+  - name: STRIMZI_DRAIN_KAFKA
+    value: "true"
+  - name: STRIMZI_DRAIN_ZOOKEEPER
+    value: "false"
+  - name: STRIMZI_DENY_EVICTION
+    value: "true"
+  - name: STRIMZI_CERTIFICATE_WATCH_ENABLED
+    value: "true"
+  - name: STRIMZI_CERTIFICATE_WATCH_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+  - name: STRIMZI_CERTIFICATE_WATCH_POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+webhook:
+  failurePolicy: Fail
+  timeoutSeconds: 10
+  namespaceSelector:
+    matchLabels:
+      kubeauto.io/middleware: kafka

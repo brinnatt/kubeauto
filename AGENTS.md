@@ -11,17 +11,21 @@ Before changing code or running a lab test, read:
 3. The relevant production code and unit/contract tests
 4. The matching official documentation and source for the pinned component version
 
+For a new middleware branch, also read and follow `docs/middleware/delivery-playbook.md`.
+
 Inspect all six sibling repositories under `/home/brinnatt/projects` before and after a change. Preserve unrelated user changes.
 
 ## Non-negotiable delivery rules
 
 - Treat the six repositories as one release unit. Audit constants, image tags, Dockerfiles, GitHub Actions, TalkEdu private-registry push, Docker Hub push, and fallback order after every relevant change.
+- For every future feature branch that depends on external images, make `kubeauto-ext-images-dockerfile` an artifact prerequisite rather than discovering images during live testing. Inventory production, upgrade, rollback, backup, performance and test-infrastructure images; reuse an existing exact pin or add an official-source, version-pinned Dockerfile under the owning functional directory; register it in the dual-push CI matrix; pass the catalog validator; and verify the TalkEdu and Docker Hub manifests/digests after publication before starting the normal live gate. Prefer the TalkEdu copy in China. Treat a dynamic public mirror only as a temporary runtime bridge before fixed artifacts are published; never make repeated public downloads the normal test path.
 - Prefer `hub.talkedu.cn` and Huawei mirrors for the China delivery path; retain Docker Hub/upstream fallbacks. Downloads must be checksum-verified and atomically replaced so partial files cannot be accepted.
 - Preserve the pinned accelerator and fallback configuration in already-delivered code unless a bug is proven with current evidence. For a newly added middleware branch, public accelerators and proxy mirrors are test-time, runtime-only aids because they may disappear or be blocked without notice; never persist a dynamically discovered accelerator in that branch's production code, CI, documentation or default configuration. Inject temporary test sources through non-persisted runtime parameters and verify checksums or manifest digests before use.
 - Use the smallest readable, maintainable, Pythonic change consistent with upstream design.
 - Reproduce from a verified clean lab before calling a failure a product bug. Separate test-gate, environment, supply-chain, runtime, Kubernetes, controller, and product failures with evidence.
 - A failed attempted fix is not a new baseline. Remove its speculative code and lab residue before continuing.
 - Change affected matrix entries to pending while work is in progress. Mark them pass only after a current clean run produces auditable evidence. Historical logs never substitute for a current run.
+- Customer-facing middleware documentation covers exactly four content types: user manual, operations manual, technical whitepaper and development manual. Keep the technical whitepaper and development manual separate; combine the user and operations content into one `operations-manual.md` when the component follows the established PXC style. Integrate official references into the applicable whitepaper or development manual. Do not deliver proposal/review drafts, retrospectives, project-status narratives, internal test chronology, standalone source indexes or an extra README as customer documentation. Write from the customer's product, task and operational perspective with formal terminology, continuous executable main paths and clearly quoted exception/rollback/risk branches.
 
 ## Fixed lab authority
 

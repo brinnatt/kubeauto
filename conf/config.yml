@@ -342,6 +342,59 @@ mysql_pitr_bucket: ""
 mysql_pitr_upload_interval: 60
 
 
+# Apache Kafka is an independent, opt-in middleware branch managed by Strimzi.
+# The production baseline requires three schedulable failure domains and block
+# storage with volume expansion. Kafka 4.x is KRaft-only; ZooKeeper is not used.
+kafka_install: "no"
+strimzi_operator_ver: "__strimzi_operator__"
+kafka_ver: "__kafka__"
+kafka_metadata_ver: "__kafka_metadata__"
+strimzi_drain_cleaner_ver: "__strimzi_drain_cleaner__"
+kafka_namespace: "kafka"
+kafka_operator_namespace: "kafka-operator"
+kafka_drain_cleaner_namespace: "kafka-drain-cleaner"
+kafka_cluster_name: "kafka-prod"
+kafka_storage_class: ""
+kafka_controller_size: 3
+kafka_broker_size: 3
+kafka_controller_pvc_size: "20Gi"
+kafka_broker_pvc_size: "100Gi"
+kafka_delete_claim: false
+kafka_topology_key: "kubernetes.io/hostname"
+kafka_operator_replicas: 2
+kafka_controller_cpu_request: "500m"
+kafka_controller_memory_request: "1Gi"
+kafka_controller_cpu_limit: "2"
+kafka_controller_memory_limit: "2Gi"
+kafka_controller_heap: "768m"
+kafka_broker_cpu_request: "2"
+kafka_broker_memory_request: "4Gi"
+kafka_broker_cpu_limit: "4"
+kafka_broker_memory_limit: "8Gi"
+kafka_broker_heap: "3g"
+kafka_cruise_control_enabled: true
+kafka_metrics_enabled: true
+kafka_monitoring_release_label: "prometheus"
+kafka_drain_cleaner_enabled: true
+kafka_bootstrap_resources_enabled: true
+kafka_app_user: "kafka-app"
+kafka_app_password_secret: ""
+kafka_app_password_secret_key: "password"
+kafka_default_topic: "kubeauto-events"
+kafka_default_group_prefix: "kubeauto-"
+kafka_default_topic_partitions: 6
+kafka_default_topic_retention_ms: 604800000
+kafka_user_producer_byte_rate: 10485760
+kafka_user_consumer_byte_rate: 10485760
+kafka_user_request_percentage: 50
+kafka_default_transactional_id_prefix: "kubeauto-"
+kafka_cluster_ca_validity_days: 365
+kafka_cluster_ca_renewal_days: 30
+kafka_drain_cleaner_ca_valid_days: 3650
+kafka_drain_cleaner_cert_valid_days: 825
+kafka_drain_cleaner_cert_renew_before_days: 30
+
+
 # network-check not installed by default
 network_check_enabled: false
 network_check_schedule: "*/5 * * * *"

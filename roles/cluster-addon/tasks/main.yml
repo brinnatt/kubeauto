@@ -43,6 +43,9 @@
 - import_tasks: percona-pxc.yml
   when: 'mysql_install == "yes"'
 
+- import_tasks: kafka.yml
+  when: 'kafka_install == "yes"'
+
 - import_tasks: cilium_connectivity_check.yml
   when: 'CLUSTER_NETWORK == "cilium" and cilium_connectivity_check|bool'
 

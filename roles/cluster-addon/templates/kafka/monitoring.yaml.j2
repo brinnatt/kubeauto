@@ -1,0 +1,106 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ kafka_cluster_name }}
+  namespace: {{ kafka_namespace }}
+  labels:
+    release: {{ kafka_monitoring_release_label }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ kafka_namespace }}
+  selector:
+    matchLabels:
+      strimzi.io/cluster: {{ kafka_cluster_name }}
+  podMetricsEndpoints:
+    - port: tcp-prometheus
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: strimzi-cluster-operator
+  namespace: {{ kafka_operator_namespace }}
+  labels:
+    release: {{ kafka_monitoring_release_label }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ kafka_operator_namespace }}
+  selector:
+    matchLabels:
+      name: strimzi-cluster-operator
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ kafka_cluster_name }}
+  namespace: {{ kafka_namespace }}
+  labels:
+    release: {{ kafka_monitoring_release_label }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka
+spec:
+  groups:
+    - name: kafka.availability
+      rules:
+        - alert: KafkaUnderReplicatedPartitions
+          expr: max(kafka_server_replicamanager_underreplicatedpartitions{namespace="{{ kafka_namespace }}"}) > 0
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: "Kafka 存在副本不同步分区"
+            description: "集群 {{ kafka_cluster_name }} 的分区副本连续 5 分钟未全部进入 ISR。"
+        - alert: KafkaOfflinePartitions
+          expr: max(kafka_controller_kafkacontroller_offlinepartitionscount{namespace="{{ kafka_namespace }}"}) > 0
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: "Kafka 存在离线分区"
+            description: "集群 {{ kafka_cluster_name }} 存在无 Leader 分区，业务读写可能失败。"
+        - alert: KafkaNoActiveController
+          expr: max(kafka_controller_kafkacontroller_activecontrollercount{namespace="{{ kafka_namespace }}"}) < 1
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: "Kafka 无活动控制器"
+            description: "集群 {{ kafka_cluster_name }} 未观测到活动 KRaft Controller。"
+        - alert: KafkaConsumerLagHigh
+          expr: max(kafka_consumergroup_lag{namespace="{{ kafka_namespace }}"}) by (consumergroup, topic) > 10000
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: "Kafka 消费积压超过基线"
+            description: "消费组 {{ '{{' }} $labels.consumergroup {{ '}}' }} 在 Topic {{ '{{' }} $labels.topic {{ '}}' }} 的 lag 连续 10 分钟超过 10000。"
+        - alert: KafkaMetricsAbsent
+          expr: absent(kafka_server_replicamanager_underreplicatedpartitions{namespace="{{ kafka_namespace }}"})
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: "Kafka Broker 指标缺失"
+            description: "连续 10 分钟未采集到集群 {{ kafka_cluster_name }} 的 Broker 指标。"
+    - name: kafka.capacity
+      rules:
+        - alert: KafkaPersistentVolumeFillingUp
+          expr: |
+            (
+              kubelet_volume_stats_available_bytes{namespace="{{ kafka_namespace }}"}
+              /
+              kubelet_volume_stats_capacity_bytes{namespace="{{ kafka_namespace }}"}
+            ) < 0.15
+          for: 15m
+          labels: {severity: warning}
+          annotations:
+            summary: "Kafka PVC 可用空间低于 15%"
+            description: "PVC {{ '{{' }} $labels.persistentvolumeclaim {{ '}}' }} 剩余空间持续低于 15%，应先控制写入和保留量，再执行扩容。"

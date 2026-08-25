@@ -7,3 +7,7 @@ CLUSTER_DNS_SVC_IP: "{{ SERVICE_CIDR.split('.')[0] }}.{{ SERVICE_CIDR.split('.')
 # for production storage and image preparation.
 mysql_ready_retries: 270
 mysql_ready_delay: 10
+
+# Kafka first creation includes KRaft quorum, PVC and Cruise Control startup.
+kafka_ready_retries: 240
+kafka_ready_delay: 10

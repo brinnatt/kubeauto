@@ -1,0 +1,101 @@
+replicas: {{ kafka_operator_replicas | int }}
+watchNamespaces:
+  - {{ kafka_namespace }}
+watchAnyNamespace: false
+defaultImageRegistry: registry.talkschool.cn:5000
+defaultImageRepository: brinnatt
+defaultImageTag: {{ strimzi_operator_ver }}
+image:
+  registry: registry.talkschool.cn:5000
+  repository: brinnatt
+  name: strimzi-operator
+  tag: {{ strimzi_operator_ver }}
+  pullPolicy: IfNotPresent
+kafka:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-kafka
+    tagPrefix: {{ strimzi_operator_ver }}
+kafkaConnect:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-kafka
+    tagPrefix: {{ strimzi_operator_ver }}
+kafkaMirrorMaker2:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-kafka
+    tagPrefix: {{ strimzi_operator_ver }}
+kafkaExporter:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-kafka
+    tagPrefix: {{ strimzi_operator_ver }}
+cruiseControl:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-kafka
+    tagPrefix: {{ strimzi_operator_ver }}
+topicOperator:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-operator
+    tag: {{ strimzi_operator_ver }}
+userOperator:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-operator
+    tag: {{ strimzi_operator_ver }}
+kafkaInit:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt
+    name: strimzi-operator
+    tag: {{ strimzi_operator_ver }}
+leaderElection:
+  enable: true
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  unhealthyPodEvictionPolicy: IfHealthyBudget
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            name: strimzi-cluster-operator
+        topologyKey: {{ kafka_topology_key }}
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: {{ kafka_topology_key }}
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        name: strimzi-cluster-operator
+resources:
+  requests:
+    cpu: 200m
+    memory: 384Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+generateNetworkPolicy: true
+generatePodDisruptionBudget: true
+createGlobalResources: true
+createAggregateRoles: false

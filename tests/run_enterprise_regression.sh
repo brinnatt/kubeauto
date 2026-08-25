@@ -34,6 +34,12 @@ MYSQL_RUNTIME_IMAGE_PREFIX="${MYSQL_IMAGE_SOURCE_PREFIX:-${2:-}}"
 MYSQL_RUNTIME_VERIFY_PREFIXES="${MYSQL_IMAGE_VERIFY_PREFIXES:-${MYSQL_IMAGE_VERIFY_PREFIX:-${3:-}}}"
 MYSQL_RUNTIME_STAGE_NODE="${MYSQL_IMAGE_STAGE_NODE:-${4:-}}"
 MYSQL_RUNTIME_IMAGE_FALLBACK_PREFIX="${MYSQL_IMAGE_SOURCE_FALLBACK_PREFIX:-${5:-}}"
+KAFKA_TEST_HOST="${KAFKA_TEST_HOST:-root@master-aio}"
+KAFKA_TEST_JUMPER="${KAFKA_TEST_JUMPER:-root@192.168.122.2}"
+KAFKA_RUNTIME_IMAGE_PREFIX="${KAFKA_IMAGE_SOURCE_PREFIX:-}"
+KAFKA_RUNTIME_IMAGE_FALLBACK_PREFIX="${KAFKA_IMAGE_FALLBACK_PREFIX:-}"
+KAFKA_RUNTIME_IMAGE_VERIFY_PREFIX="${KAFKA_IMAGE_VERIFY_PREFIX:-}"
+KAFKA_RUNTIME_STORAGE_IMAGE_PREFIX="${KAFKA_LAB_IMAGE_SOURCE_PREFIX:-}"
 LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
 MODE="${1:-run}"
 mkdir -p "${ROOT}/logs"
@@ -49,6 +55,7 @@ ssh141() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFil
 ssh142() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST142" "$@"; }
 ssh143() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST143" "$@"; }
 ssh_mysql() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -J "$MYSQL_TEST_JUMPER" "$MYSQL_TEST_HOST" "$@"; }
+ssh_kafka() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -J "$KAFKA_TEST_JUMPER" "$KAFKA_TEST_HOST" "$@"; }
 scp138() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 scp137() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 
@@ -199,11 +206,48 @@ echo '[CANCEL] label=${label} state=stopped pid='\"\$pid\"
 matrix_counts() {
   local matrix="$ROOT/tests/enterprise-test-matrix.yaml"
   [[ "$MODE" == --mysql-* ]] && matrix="$ROOT/tests/mysql-test-matrix.yaml"
+  [[ "$MODE" == --kafka-* ]] && matrix="$ROOT/tests/kafka-test-matrix.yaml"
   printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pass' "$matrix" || true)" \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$matrix" || true)" \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: fail' "$matrix" || true)"
 }
+
+if [[ "$MODE" == "--kafka-status" ]]; then
+  echo "========== Kafka independent gate =========="
+  remote_job_summary ssh_kafka '' /tmp/kubeauto-kafka-gate /tmp/kubeauto-kafka-live.log || true
+  remote_log_tail ssh_kafka '' /tmp/kubeauto-kafka-live.log 60
+  echo "========== Kafka cluster preflight =========="
+  ssh_kafka "kubectl version 2>/dev/null || true; kubectl get nodes -o wide 2>/dev/null || true; kubectl get storageclass -o custom-columns=NAME:.metadata.name,PROVISIONER:.provisioner,EXPAND:.allowVolumeExpansion 2>/dev/null || true; echo kafka-workloads; kubectl -n kafka get kafka,kafkanodepool,kafkarebalance,kafkatopic,kafkauser,pod,pvc,svc -o wide 2>/dev/null || true; kubectl -n kafka-operator get deployment,pod -o wide 2>/dev/null || true; kubectl -n kafka-drain-cleaner get deployment,pod,pdb -o wide 2>/dev/null || true; echo toolchain; for command in helm ansible-playbook skopeo docker jq openssl; do printf '%s=' \"\$command\"; command -v \"\$command\" || true; done; echo registry-port; ss -lntp '( sport = :5000 )' || true; docker ps -a --filter publish=5000 --format 'name={{.Names}} image={{.Image}} labels={{.Labels}} ports={{.Ports}}' 2>/dev/null || true; echo capacity; kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory,EPHEMERAL:.status.allocatable.ephemeral-storage"
+  echo "========== Kafka node storage prerequisites =========="
+  ssh_kafka 'for ip in $(kubectl get nodes -o wide --no-headers | awk '\''{print $6}'\''); do ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 "root@${ip}" '\''printf "node=%s iscsiadm=%s iscsid=%s mountpropagation=%s\\n" "$(hostname)" "$(command -v iscsiadm 2>/dev/null || echo missing)" "$(systemctl is-active iscsid 2>/dev/null || true)" "$(findmnt -o PROPAGATION -n / 2>/dev/null || echo unknown)"; lsblk -d -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS'\'' || true; done'
+  echo "========== Kafka matrix =========="
+  matrix_counts
+  echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--kafka-follow" ]]; then
+  ssh_kafka "tail -n 100 -F /tmp/kubeauto-kafka-live.log"
+  exit 0
+fi
+
+if [[ "$MODE" == "--kafka-cancel" ]]; then
+  cancel_remote_job kafka ssh_kafka '' /tmp/kubeauto-kafka-gate
+  echo KAFKA_CANCEL_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--kafka-clean-only" ]]; then
+  cancel_remote_job kafka ssh_kafka '' /tmp/kubeauto-kafka-gate
+  KUBEAUTO_SSH_JUMP="$KAFKA_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$KAFKA_TEST_HOST"
+  ssh_kafka "chmod 0755 /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh /usr/local/kubeauto/tests/helpers/kafka-lab-storage.sh"
+  ssh_kafka "bash /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh"
+  ssh_kafka "bash /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh --verify"
+  echo KAFKA_CLEAN_ONLY_PASS
+  exit 0
+fi
 
 if [[ "$MODE" == "--mysql-status" ]]; then
   echo "========== MySQL/PXC independent gate =========="
@@ -483,6 +527,62 @@ if [[ "$MODE" == "--mysql-only" ]]; then
     exit 1
   fi
   echo MYSQL_PXC_DELIVERY_BRANCH_PASS
+  matrix_counts
+  echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--kafka-only" ]]; then
+  echo "========== Independent Kafka delivery gate =========="
+  cancel_remote_job kafka ssh_kafka '' /tmp/kubeauto-kafka-gate
+  echo ">>> focused Kafka unit and contract tests"
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest \
+    tests.unit.test_kafka_delivery \
+    tests.unit.test_six_repo_version_sync -v
+
+  echo ">>> sync source through fixed Kafka jumper"
+  KUBEAUTO_SSH_JUMP="$KAFKA_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$KAFKA_TEST_HOST"
+  ssh_kafka "chmod 0755 /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh /usr/local/kubeauto/tests/helpers/kafka-lab-storage.sh /usr/local/kubeauto/tests/helpers/kafka-regression.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
+
+  kafka_runtime_env=""
+  if [[ -n "$KAFKA_RUNTIME_IMAGE_PREFIX" ]]; then
+    printf -v kafka_runtime_prefix_quoted '%q' "$KAFKA_RUNTIME_IMAGE_PREFIX"
+    kafka_runtime_env="KAFKA_IMAGE_SOURCE_PREFIX=${kafka_runtime_prefix_quoted}"
+  fi
+  if [[ -n "$KAFKA_RUNTIME_IMAGE_FALLBACK_PREFIX" ]]; then
+    printf -v kafka_runtime_fallback_quoted '%q' "$KAFKA_RUNTIME_IMAGE_FALLBACK_PREFIX"
+    kafka_runtime_env+=" KAFKA_IMAGE_FALLBACK_PREFIX=${kafka_runtime_fallback_quoted}"
+  fi
+  if [[ -n "$KAFKA_RUNTIME_IMAGE_VERIFY_PREFIX" ]]; then
+    printf -v kafka_runtime_verify_prefix_quoted '%q' "$KAFKA_RUNTIME_IMAGE_VERIFY_PREFIX"
+    kafka_runtime_env+=" KAFKA_IMAGE_VERIFY_PREFIX=${kafka_runtime_verify_prefix_quoted}"
+  fi
+  if [[ -n "$KAFKA_RUNTIME_STORAGE_IMAGE_PREFIX" ]]; then
+    printf -v kafka_runtime_storage_prefix_quoted '%q' "$KAFKA_RUNTIME_STORAGE_IMAGE_PREFIX"
+    kafka_runtime_env+=" KAFKA_LAB_IMAGE_SOURCE_PREFIX=${kafka_runtime_storage_prefix_quoted}"
+  fi
+
+  echo ">>> scoped Kafka cleanup before run"
+  ssh_kafka "bash /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh"
+  ssh_kafka "bash /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh --verify"
+  ssh_kafka "rm -f /tmp/kubeauto-kafka-live.log /tmp/kubeauto-kafka-gate.pid /tmp/kubeauto-kafka-gate.exit; nohup env ${kafka_runtime_env} bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-kafka-gate KAFKA_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/kafka-regression.sh >/tmp/kubeauto-kafka-live.log 2>&1 </dev/null &"
+  kafka_rc=0
+  monitor_remote_job \
+    kafka ssh_kafka '' /tmp/kubeauto-kafka-gate \
+    /tmp/kubeauto-kafka-live.log KAFKA_FULL_GATE_PASS || kafka_rc=$?
+
+  cleanup_rc=0
+  echo ">>> scoped Kafka cleanup after run"
+  ssh_kafka "bash /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh" || cleanup_rc=$?
+  ssh_kafka "bash /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh --verify" || cleanup_rc=$?
+  if [[ "$kafka_rc" -ne 0 || "$cleanup_rc" -ne 0 ]]; then
+    echo "[FAIL] Kafka gate rc=${kafka_rc}; cleanup rc=${cleanup_rc}" >&2
+    exit 1
+  fi
+  echo KAFKA_DELIVERY_BRANCH_PASS
   matrix_counts
   echo
   exit 0
@@ -1413,7 +1513,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--mysql-source-probe|--mysql-node-ingest-abort|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--kafka-only|--kafka-clean-only|--kafka-status|--kafka-follow|--kafka-cancel|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 

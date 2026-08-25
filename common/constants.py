@@ -176,6 +176,25 @@ class KubeConstant:
     v_pxc_operator_chart_sha256: str = field(
         default="b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf"
     )
+    v_strimzi_operator: str = field(default="1.2.0", metadata={
+        "refer_github": "https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.2.0",
+        "refer_docs": "https://strimzi.io/docs/operators/1.2.0/",
+        "description": "Stable Strimzi release supporting Kafka 4.3.1 and Kubernetes 1.30-1.36",
+    })
+    v_kafka: str = field(default="4.3.1", metadata={
+        "refer_docs": "https://kafka.apache.org/43/",
+        "description": "Current supported Apache Kafka 4.3 bugfix release; KRaft only",
+    })
+    v_kafka_metadata: str = field(default="4.3-IV0")
+    v_strimzi_drain_cleaner: str = field(default="1.6.1", metadata={
+        "refer_github": "https://github.com/strimzi/drain-cleaner/releases/tag/1.6.1",
+    })
+    v_strimzi_operator_chart_sha256: str = field(
+        default="0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd"
+    )
+    v_strimzi_drain_cleaner_chart_sha256: str = field(
+        default="ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+    )
 
     # path for storing some important files
     BASE_PATH: str = field(default="/usr/local/kubeauto", metadata={
@@ -344,5 +363,10 @@ class KubeConstant:
                 f"brinnatt/percona-xtrabackup:{self.v_pxc_xtrabackup}",
                 f"brinnatt/percona-haproxy:{self.v_pxc_haproxy}",
                 f"brinnatt/percona-fluentbit:{self.v_pxc_fluentbit}",
+            ],
+            "kafka": [
+                f"brinnatt/strimzi-operator:{self.v_strimzi_operator}",
+                f"brinnatt/strimzi-kafka:{self.v_strimzi_operator}-kafka-{self.v_kafka}",
+                f"brinnatt/strimzi-drain-cleaner:{self.v_strimzi_drain_cleaner}",
             ],
         }

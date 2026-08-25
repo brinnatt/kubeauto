@@ -216,6 +216,7 @@ class PerconaPxcDeliveryTests(unittest.TestCase):
     def test_ext_images_ci_and_dockerfiles_match_constants(self):
         repo = PROJECTS / "kubeauto-ext-images-dockerfile"
         ci = (repo / ".github" / "workflows" / "build.yml").read_text()
+        image_root = repo / "middleware" / "percona-pxc"
         images = {
             "percona-xtradb-cluster-operator": "1.20.0",
             "percona-xtradb-cluster": "8.4.8-8.1",
@@ -224,8 +225,8 @@ class PerconaPxcDeliveryTests(unittest.TestCase):
             "percona-fluentbit": "5.0.6-1",
         }
         for name, tag in images.items():
-            dockerfile_path = f"./{name}/Dockerfile"
-            context_path = f"./{name}/"
+            dockerfile_path = f"./middleware/percona-pxc/{name}/Dockerfile"
+            context_path = f"./middleware/percona-pxc/{name}/"
             self.assertRegex(
                 ci,
                 rf"(?s)dockerfile:\s*{re.escape(dockerfile_path)}.*?"
@@ -233,7 +234,7 @@ class PerconaPxcDeliveryTests(unittest.TestCase):
                 rf"tag:\s*['\"]?{re.escape(tag)}['\"]?.*?"
                 rf"ctx:\s*{re.escape(context_path)}",
             )
-            dockerfile = (repo / name / "Dockerfile").read_text()
+            dockerfile = (image_root / name / "Dockerfile").read_text()
             self.assertFalse((repo / f"Dockerfile.{name}").exists())
             upstream = name.removeprefix("percona-")
             if name == "percona-haproxy":
@@ -489,15 +490,19 @@ fi
         args = resources[1]["spec"]["template"]["spec"]["containers"][0]["args"]
         self.assertEqual(args[-1], ":9001")
 
-    def test_mysql_gate_defaults_to_official_sources_without_public_accelerators(self):
-        self.assertIn('SOURCE_PREFIX="${MYSQL_IMAGE_SOURCE_PREFIX:-docker.io}"', MYSQL_GATE)
+    def test_mysql_gate_prefers_private_images_with_official_fallback(self):
+        self.assertIn('SOURCE_PREFIX="${MYSQL_IMAGE_SOURCE_PREFIX:-hub.talkedu.cn}"', MYSQL_GATE)
+        self.assertIn('SOURCE_FALLBACK_PREFIX="${MYSQL_IMAGE_SOURCE_FALLBACK_PREFIX:-docker.io}"', MYSQL_GATE)
         self.assertIn('official_manifest_digest()', MYSQL_GATE)
         self.assertIn('registry_manifest_digest()', MYSQL_GATE)
         self.assertIn('Docker-Content-Digest'.lower(), MYSQL_GATE.lower())
         self.assertIn('two-independent-runtime-manifest-digests', MYSQL_GATE)
         self.assertIn('pulled_digest" == "$expected_digest', MYSQL_GATE)
         self.assertIn('docker.io/library/registry:2.8.3', MYSQL_GATE)
+        self.assertIn('hub.talkedu.cn/kubeauto/registry:2.8.3', MYSQL_GATE)
         self.assertIn('percona/percona-xtradb-cluster:8.4.8-8.1', MYSQL_GATE)
+        self.assertIn("minio/mc) printf 'kubeauto/minio-mc", MYSQL_GATE)
+        self.assertIn("perconalab/sysbench) printf 'kubeauto/percona-sysbench", MYSQL_GATE)
         production_files = (
             CLUSTER_TEMPLATE,
             OPERATOR_VALUES,

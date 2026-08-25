@@ -17,6 +17,15 @@ def _read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+def _image_dockerfile(name: str) -> Path:
+    if not EXT_IMAGES.is_dir():
+        return EXT_IMAGES / name / "Dockerfile"
+    matches = list(EXT_IMAGES.glob(f"**/{name}/Dockerfile"))
+    if len(matches) != 1:
+        raise AssertionError(f"expected one Dockerfile for {name}, found {matches}")
+    return matches[0]
+
+
 class TestCiliumOperatorImageComposition(unittest.TestCase):
     """Cilium chart helper: repository-cloud-suffix:tag (cloud defaults to generic)."""
 
@@ -143,7 +152,7 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
     }
 
     def test_openebs_kubectl_uses_official_dl_k8s_io(self):
-        df = EXT_IMAGES / "openebs-kubectl" / "Dockerfile"
+        df = _image_dockerfile("openebs-kubectl")
         if not df.is_file():
             self.skipTest("ext-images not mounted")
         text = df.read_text(encoding="utf-8")
@@ -177,7 +186,7 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
         # Hook image is configurable; chart default is third-party, we override in values.
         values = _read("roles/cluster-addon/templates/openebs/values.yaml.j2")
         self.assertIn("brinnatt/openebs-kubectl", values)
-        dockerfile = EXT_IMAGES / "openebs-kubectl" / "Dockerfile"
+        dockerfile = _image_dockerfile("openebs-kubectl")
         if not dockerfile.is_file():
             self.skipTest("ext-images dockerfile repo not mounted")
         self.assertIn("dl.k8s.io", dockerfile.read_text(encoding="utf-8"))
@@ -195,7 +204,7 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
         )
 
     def test_provisioner_localpv_tag_is_430_not_432(self):
-        df = EXT_IMAGES / "provisioner-localpv" / "Dockerfile"
+        df = _image_dockerfile("provisioner-localpv")
         if not df.is_file():
             self.skipTest("ext-images not mounted")
         text = df.read_text(encoding="utf-8")
@@ -214,7 +223,7 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
         missing = []
         wrong = []
         for name, prefix in self.EXPECTED_FROM.items():
-            df = EXT_IMAGES / name / "Dockerfile"
+            df = _image_dockerfile(name)
             if not df.is_file():
                 missing.append(name)
                 continue

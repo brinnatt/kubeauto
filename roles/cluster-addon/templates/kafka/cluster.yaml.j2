@@ -1,0 +1,326 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ kafka_cluster_name }}-metrics
+  namespace: {{ kafka_namespace }}
+  labels:
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka
+data:
+  kafka-metrics-config.yml: |
+    lowercaseOutputName: true
+    rules:
+      - pattern: 'kafka.server<type=(.+), name=(.+)PerSec\w*, topic=(.+)><>Count'
+        name: kafka_server_$1_$2_total
+        type: COUNTER
+        labels:
+          topic: "$3"
+      - pattern: 'kafka.server<type=(.+), name=(.+)PerSec\w*><>Count'
+        name: kafka_server_$1_$2_total
+        type: COUNTER
+      - pattern: 'kafka.server<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value'
+        name: kafka_server_$1_$2
+        type: GAUGE
+        labels:
+          topic: "$3"
+          partition: "$4"
+      - pattern: 'kafka.server<type=(.+), name=(.+)><>Value'
+        name: kafka_server_$1_$2
+        type: GAUGE
+      - pattern: 'kafka.controller<type=(.+), name=(.+)><>Value'
+        name: kafka_controller_$1_$2
+        type: GAUGE
+      - pattern: 'kafka.network<type=(.+), name=(.+)><>Value'
+        name: kafka_network_$1_$2
+        type: GAUGE
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: controller
+  namespace: {{ kafka_namespace }}
+  labels:
+    strimzi.io/cluster: {{ kafka_cluster_name }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka-controller
+spec:
+  replicas: {{ kafka_controller_size | int }}
+  roles:
+    - controller
+  storage:
+    type: persistent-claim
+    class: {{ kafka_storage_class }}
+    size: {{ kafka_controller_pvc_size }}
+    deleteClaim: {{ kafka_delete_claim | bool | lower }}
+    kraftMetadata: shared
+  resources:
+    requests:
+      cpu: {{ kafka_controller_cpu_request }}
+      memory: {{ kafka_controller_memory_request }}
+    limits:
+      cpu: {{ kafka_controller_cpu_limit }}
+      memory: {{ kafka_controller_memory_limit }}
+  jvmOptions:
+    -Xms: {{ kafka_controller_heap }}
+    -Xmx: {{ kafka_controller_heap }}
+    gcLoggingEnabled: true
+  template:
+    pod:
+      terminationGracePeriodSeconds: 120
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  strimzi.io/cluster: {{ kafka_cluster_name }}
+                  strimzi.io/pool-name: controller
+              topologyKey: {{ kafka_topology_key }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ kafka_topology_key }}
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              strimzi.io/cluster: {{ kafka_cluster_name }}
+              strimzi.io/pool-name: controller
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: broker
+  namespace: {{ kafka_namespace }}
+  labels:
+    strimzi.io/cluster: {{ kafka_cluster_name }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka-broker
+spec:
+  replicas: {{ kafka_broker_size | int }}
+  roles:
+    - broker
+  storage:
+    type: persistent-claim
+    class: {{ kafka_storage_class }}
+    size: {{ kafka_broker_pvc_size }}
+    deleteClaim: {{ kafka_delete_claim | bool | lower }}
+    kraftMetadata: shared
+  resources:
+    requests:
+      cpu: {{ kafka_broker_cpu_request }}
+      memory: {{ kafka_broker_memory_request }}
+    limits:
+      cpu: {{ kafka_broker_cpu_limit }}
+      memory: {{ kafka_broker_memory_limit }}
+  jvmOptions:
+    -Xms: {{ kafka_broker_heap }}
+    -Xmx: {{ kafka_broker_heap }}
+    gcLoggingEnabled: true
+  template:
+    pod:
+      terminationGracePeriodSeconds: 300
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  strimzi.io/cluster: {{ kafka_cluster_name }}
+                  strimzi.io/pool-name: broker
+              topologyKey: {{ kafka_topology_key }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ kafka_topology_key }}
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              strimzi.io/cluster: {{ kafka_cluster_name }}
+              strimzi.io/pool-name: broker
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: {{ kafka_cluster_name }}
+  namespace: {{ kafka_namespace }}
+  labels:
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka
+spec:
+  kafka:
+    version: {{ kafka_ver }}
+    metadataVersion: {{ kafka_metadata_ver }}
+    listeners:
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: scram-sha-512
+        networkPolicyPeers:
+          - podSelector: {}
+          - namespaceSelector:
+              matchLabels:
+                kubeauto.io/kafka-client: "true"
+    authorization:
+      type: simple
+    rack:
+      topologyKey: {{ kafka_topology_key }}
+    config:
+      auto.create.topics.enable: false
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+      offsets.topic.num.partitions: 50
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      transaction.state.log.num.partitions: 50
+      unclean.leader.election.enable: false
+      num.partitions: {{ kafka_default_topic_partitions | int }}
+{% if kafka_metrics_enabled | bool %}
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: {{ kafka_cluster_name }}-metrics
+          key: kafka-metrics-config.yml
+{% endif %}
+    template:
+      podDisruptionBudget:
+        maxUnavailable: 1
+  clusterCa:
+    generateSecretOwnerReference: false
+    validityDays: {{ kafka_cluster_ca_validity_days | int }}
+    renewalDays: {{ kafka_cluster_ca_renewal_days | int }}
+  clientsCa:
+    generateSecretOwnerReference: false
+    validityDays: {{ kafka_cluster_ca_validity_days | int }}
+    renewalDays: {{ kafka_cluster_ca_renewal_days | int }}
+  entityOperator:
+    topicOperator:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    userOperator:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+{% if kafka_cruise_control_enabled | bool %}
+  cruiseControl:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 2Gi
+{% if kafka_metrics_enabled | bool %}
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: {{ kafka_cluster_name }}-metrics
+          key: kafka-metrics-config.yml
+{% endif %}
+    autoRebalance:
+      - mode: add-brokers
+      - mode: remove-brokers
+{% endif %}
+{% if kafka_metrics_enabled | bool %}
+  kafkaExporter:
+    groupRegex: ".*"
+    topicRegex: ".*"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+{% endif %}
+{% if kafka_bootstrap_resources_enabled | bool %}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ kafka_default_topic }}
+  namespace: {{ kafka_namespace }}
+  labels:
+    strimzi.io/cluster: {{ kafka_cluster_name }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka-topic
+spec:
+  partitions: {{ kafka_default_topic_partitions | int }}
+  replicas: 3
+  config:
+    cleanup.policy: delete
+    retention.ms: {{ kafka_default_topic_retention_ms | int }}
+    min.insync.replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: {{ kafka_app_user }}
+  namespace: {{ kafka_namespace }}
+  labels:
+    strimzi.io/cluster: {{ kafka_cluster_name }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: kafka-user
+spec:
+  authentication:
+    type: scram-sha-512
+{% if kafka_app_password_secret | length > 0 %}
+    password:
+      valueFrom:
+        secretKeyRef:
+          name: {{ kafka_app_password_secret }}
+          key: {{ kafka_app_password_secret_key }}
+{% endif %}
+  authorization:
+    type: simple
+    acls:
+      - type: allow
+        host: "*"
+        operations:
+          - Read
+          - Write
+          - Describe
+          - DescribeConfigs
+        resource:
+          type: topic
+          name: {{ kafka_default_topic }}
+          patternType: literal
+      - type: allow
+        host: "*"
+        operations:
+          - Read
+          - Describe
+        resource:
+          type: group
+          name: {{ kafka_default_group_prefix }}
+          patternType: prefix
+      - type: allow
+        host: "*"
+        operations:
+          - Write
+          - Describe
+        resource:
+          type: transactionalId
+          name: {{ kafka_default_transactional_id_prefix }}
+          patternType: prefix
+      - type: allow
+        host: "*"
+        operations:
+          - Describe
+          - IdempotentWrite
+        resource:
+          type: cluster
+  quotas:
+    producerByteRate: {{ kafka_user_producer_byte_rate | int }}
+    consumerByteRate: {{ kafka_user_consumer_byte_rate | int }}
+    requestPercentage: {{ kafka_user_request_percentage | int }}
+{% endif %}

@@ -72,6 +72,9 @@ _BRINATT_UPSTREAM_FALLBACKS = {
     "brinnatt/percona-xtrabackup": "percona/percona-xtrabackup",
     "brinnatt/percona-haproxy": "percona/haproxy",
     "brinnatt/percona-fluentbit": "percona/fluentbit",
+    "brinnatt/strimzi-operator": "quay.io/strimzi/operator",
+    "brinnatt/strimzi-kafka": "quay.io/strimzi/kafka",
+    "brinnatt/strimzi-drain-cleaner": "quay.io/strimzi/drain-cleaner",
 }
 
 _BRINATT_PREFIX = "brinnatt/"

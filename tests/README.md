@@ -83,12 +83,23 @@ bash tests/run_enterprise_regression.sh --tier3-tools-only
 bash tests/run_enterprise_regression.sh --mysql-only
 bash tests/run_enterprise_regression.sh --mysql-status
 bash tests/run_enterprise_regression.sh --mysql-follow
+bash tests/run_enterprise_regression.sh --kafka-only
+bash tests/run_enterprise_regression.sh --kafka-status
+bash tests/run_enterprise_regression.sh --kafka-follow
+bash tests/run_enterprise_regression.sh --kafka-clean-only
 ```
 
 `--mysql-only` owns the independent Percona PXC matrix in
 `mysql-test-matrix.yaml`. It uses the dedicated six-node MySQL laboratory,
 does not enter the delivered core topology or `--all-delivery`, and always
 performs scoped PXC cleanup and verification before and after the run.
+
+`--kafka-only` owns the independent Strimzi/Kafka matrix in
+`kafka-test-matrix.yaml`. It uses the approved six-node Kafka laboratory,
+does not enter the delivered core topology, PXC branch, or `--all-delivery`,
+and always performs Kafka-owned cleanup and verification before and after the
+run. Use `--kafka-status` and `--kafka-follow` for durable state and live logs;
+use `--kafka-cancel` only to stop the Kafka-owned durable job.
 
 The runner is authoritative because it centralizes SSH, source synchronization, remote launch, durable PID/exit state, foreground log streaming, heartbeat, silent-stall diagnostics, final markers, and cleanup. Do not replace it with a sequence of manually approved SSH commands.
 

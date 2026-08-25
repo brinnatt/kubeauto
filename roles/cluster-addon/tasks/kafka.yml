@@ -1,0 +1,390 @@
+- name: 校验 Kafka 配置
+  assert:
+    that:
+      - kafka_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - kafka_operator_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - kafka_drain_cleaner_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - kafka_cluster_name is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - kafka_app_user is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - kafka_app_password_secret | length == 0 or kafka_app_password_secret is match('^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$')
+      - kafka_app_password_secret | length == 0 or kafka_app_password_secret_key is match('^[A-Za-z0-9._-]+$')
+      - kafka_default_topic is match('^[a-zA-Z0-9._-]+$')
+      - kafka_storage_class | length > 0
+      - kafka_topology_key | length > 0
+      - kafka_controller_size | int == 3
+      - kafka_broker_size | int >= 3
+      - kafka_operator_replicas | int >= 2
+      - kafka_controller_pvc_size is match('^[1-9][0-9]*(Gi|Ti)$')
+      - kafka_broker_pvc_size is match('^[1-9][0-9]*(Gi|Ti)$')
+      - kafka_default_topic_partitions | int >= 3
+      - (kafka_cluster_ca_renewal_days | int) < (kafka_cluster_ca_validity_days | int)
+      - (kafka_drain_cleaner_cert_renew_before_days | int) < (kafka_drain_cleaner_cert_valid_days | int)
+    fail_msg: >-
+      Kafka 配置无效：必须提供 StorageClass 和拓扑键；KRaft Controller 固定为 3；
+      Broker 不少于 3；Operator 不少于 2；PVC、Topic 和证书周期必须满足生产约束。
+
+- name: 创建 Kafka 渲染目录
+  file:
+    path: "{{ cluster_dir }}/yml/kafka"
+    state: directory
+    mode: "0700"
+
+- name: 校验 Strimzi Chart SHA256
+  command:
+    argv:
+      - sha256sum
+      - --check
+      - "{{ item }}"
+  args:
+    chdir: "{{ base_dir }}/roles/cluster-addon/files"
+  loop:
+    - "strimzi-kafka-operator-{{ strimzi_operator_ver }}.tgz.sha256"
+    - "strimzi-drain-cleaner-{{ strimzi_drain_cleaner_ver }}.tgz.sha256"
+  changed_when: false
+
+- name: 渲染 Strimzi Operator 和 Kafka 配置
+  template:
+    src: "kafka/{{ item.src }}"
+    dest: "{{ cluster_dir }}/yml/kafka/{{ item.dest }}"
+    mode: "0600"
+  loop:
+    - {src: operator-values.yaml.j2, dest: operator-values.yaml}
+    - {src: cluster.yaml.j2, dest: cluster.yaml}
+    - {src: monitoring.yaml.j2, dest: monitoring.yaml}
+
+- name: 创建并标记 Kafka 命名空间
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for ns in {{ kafka_operator_namespace }} {{ kafka_namespace }} {{ kafka_drain_cleaner_namespace }}; do
+      $KC create namespace "$ns" --dry-run=client -o yaml | $KC apply -f -
+      test "$($KC get namespace "$ns" -o jsonpath='{.status.phase}')" = Active
+    done
+    for ns in {{ kafka_operator_namespace }} {{ kafka_namespace }} {{ kafka_drain_cleaner_namespace }}; do
+      $KC label namespace "$ns" app.kubernetes.io/managed-by=kubeauto \
+        kubeauto.io/component=kafka --overwrite
+    done
+    $KC label namespace {{ kafka_namespace }} kubeauto.io/middleware=kafka --overwrite
+  args:
+    executable: /bin/bash
+  register: kafka_namespace_apply
+  changed_when: "'created' in kafka_namespace_apply.stdout or 'labeled' in kafka_namespace_apply.stdout"
+
+- name: 应用或升级 Strimzi CRD
+  shell: |
+    set -Eeuo pipefail
+    CHART={{ (base_dir + '/roles/cluster-addon/files/strimzi-kafka-operator-' + strimzi_operator_ver + '.tgz') | quote }}
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    mapfile -t CRD_FILES < <(
+      tar -tzf "$CHART" | grep -E '^[^/]+/crds/[^/]+\.ya?ml$' | sort
+    )
+    crd_count="$(printf '%s\n' "${CRD_FILES[@]}" | wc -l)"
+    test "$crd_count" -eq 10
+    for crd_file in "${CRD_FILES[@]}"; do
+      tar -xOf "$CHART" "$crd_file" \
+        | $KC apply --server-side --field-manager=kubeauto-kafka-crd -f -
+    done
+  args:
+    executable: /bin/bash
+  register: kafka_crd_apply
+  changed_when: "'created' in kafka_crd_apply.stdout or 'serverside-applied' in kafka_crd_apply.stdout"
+
+- name: 等待 Strimzi CRD 建立
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for crd in kafkas.kafka.strimzi.io kafkanodepools.kafka.strimzi.io \
+      kafkatopics.kafka.strimzi.io kafkausers.kafka.strimzi.io \
+      kafkarebalances.kafka.strimzi.io strimzipodsets.core.strimzi.io; do
+      $KC wait --for=condition=Established "crd/$crd" --timeout=2m
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 安装或升级 Strimzi Cluster Operator
+  command:
+    argv:
+      - "{{ base_dir }}/extra-bin/helm"
+      - upgrade
+      - --install
+      - strimzi-kafka-operator
+      - "{{ base_dir }}/roles/cluster-addon/files/strimzi-kafka-operator-{{ strimzi_operator_ver }}.tgz"
+      - --namespace
+      - "{{ kafka_operator_namespace }}"
+      - --values
+      - "{{ cluster_dir }}/yml/kafka/operator-values.yaml"
+      - --wait
+      - --timeout
+      - 10m
+      - --history-max
+      - "10"
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  register: kafka_operator_helm
+  changed_when: "'has been upgraded' in kafka_operator_helm.stdout or 'has been installed' in kafka_operator_helm.stdout"
+
+- name: 等待 Strimzi Cluster Operator 就绪
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    $KC -n {{ kafka_operator_namespace }} rollout status \
+      deployment/strimzi-cluster-operator --timeout=10m
+    test "$($KC -n {{ kafka_operator_namespace }} get deployment strimzi-cluster-operator \
+      -o jsonpath='{.status.readyReplicas}')" = "{{ kafka_operator_replicas | int }}"
+    $KC auth can-i create kafkas.kafka.strimzi.io -n {{ kafka_namespace }} | grep -qx yes
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 收敛 Drain Cleaner webhook 证书
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    NS={{ kafka_drain_cleaner_namespace | quote }}
+    SECRET=strimzi-drain-cleaner
+    SERVICE="strimzi-drain-cleaner.${NS}.svc"
+    TMP="$(mktemp -d)"
+    trap 'rm -rf "$TMP"' EXIT
+
+    valid=false
+    rotated=false
+    if $KC -n "$NS" get secret "$SECRET" >/dev/null 2>&1; then
+      if $KC -n "$NS" get secret "$SECRET" -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMP/ca.crt" \
+        && $KC -n "$NS" get secret "$SECRET" -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMP/tls.crt" \
+        && $KC -n "$NS" get secret "$SECRET" -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMP/tls.key"; then
+        cert_pub="$(openssl x509 -in "$TMP/tls.crt" -pubkey -noout 2>/dev/null | sha256sum | awk '{print $1}' || true)"
+        key_pub="$(openssl pkey -in "$TMP/tls.key" -pubout 2>/dev/null | sha256sum | awk '{print $1}' || true)"
+        if openssl x509 -in "$TMP/ca.crt" -checkend $(({{ kafka_drain_cleaner_cert_renew_before_days | int }} * 86400)) -noout >/dev/null 2>&1 \
+          && openssl x509 -in "$TMP/tls.crt" -checkend $(({{ kafka_drain_cleaner_cert_renew_before_days | int }} * 86400)) -noout >/dev/null 2>&1 \
+          && openssl verify -CAfile "$TMP/ca.crt" "$TMP/tls.crt" >/dev/null 2>&1 \
+          && openssl x509 -in "$TMP/tls.crt" -noout -checkhost "$SERVICE" >/dev/null 2>&1 \
+          && [ -n "$cert_pub" ] && [ "$cert_pub" = "$key_pub" ]; then
+          valid=true
+        fi
+      fi
+    fi
+
+    if [ "$valid" != true ]; then
+      rm -f "$TMP"/*
+      openssl genrsa -out "$TMP/ca.key" 4096 >/dev/null 2>&1
+      openssl req -x509 -new -sha256 -key "$TMP/ca.key" \
+        -subj "/CN=kubeauto-strimzi-drain-cleaner-ca" \
+        -days {{ kafka_drain_cleaner_ca_valid_days | int }} -out "$TMP/ca.crt" >/dev/null 2>&1
+      openssl genrsa -out "$TMP/tls.key" 3072 >/dev/null 2>&1
+      openssl req -new -sha256 -key "$TMP/tls.key" \
+        -subj "/CN=${SERVICE}" -out "$TMP/tls.csr" >/dev/null 2>&1
+      printf '%s\n' \
+        'basicConstraints=critical,CA:FALSE' \
+        'keyUsage=critical,digitalSignature,keyEncipherment' \
+        'extendedKeyUsage=serverAuth' \
+        "subjectAltName=DNS:${SERVICE},DNS:strimzi-drain-cleaner.${NS},DNS:strimzi-drain-cleaner" \
+        >"$TMP/server.ext"
+      openssl x509 -req -sha256 -in "$TMP/tls.csr" \
+        -CA "$TMP/ca.crt" -CAkey "$TMP/ca.key" -CAcreateserial \
+        -days {{ kafka_drain_cleaner_cert_valid_days | int }} \
+        -extfile "$TMP/server.ext" -out "$TMP/tls.crt" >/dev/null 2>&1
+      $KC -n "$NS" create secret generic "$SECRET" \
+        --from-file=ca.crt="$TMP/ca.crt" \
+        --from-file=tls.crt="$TMP/tls.crt" \
+        --from-file=tls.key="$TMP/tls.key" \
+        --dry-run=client -o yaml | $KC apply -f - >/dev/null
+      rotated=true
+    fi
+    ca_bundle="$($KC -n "$NS" get secret "$SECRET" -o jsonpath='{.data.ca\.crt}')"
+    [[ "$ca_bundle" =~ ^[A-Za-z0-9+/=]+$ ]]
+    printf 'rotated=%s\n%s\n' "$rotated" "$ca_bundle"
+  args:
+    executable: /bin/bash
+  register: kafka_drain_cleaner_certificate
+  changed_when: "'rotated=true' in kafka_drain_cleaner_certificate.stdout"
+  no_log: true
+  when: kafka_drain_cleaner_enabled | bool
+
+- name: 保存 Drain Cleaner CA 公钥包
+  set_fact:
+    kafka_drain_cleaner_ca_bundle: "{{ kafka_drain_cleaner_certificate.stdout_lines[-1] }}"
+  no_log: true
+  when: kafka_drain_cleaner_enabled | bool
+
+- name: 渲染 Drain Cleaner 配置
+  template:
+    src: kafka/drain-cleaner-values.yaml.j2
+    dest: "{{ cluster_dir }}/yml/kafka/drain-cleaner-values.yaml"
+    mode: "0600"
+  when: kafka_drain_cleaner_enabled | bool
+
+- name: 安装或升级 Strimzi Drain Cleaner
+  command:
+    argv:
+      - "{{ base_dir }}/extra-bin/helm"
+      - upgrade
+      - --install
+      - strimzi-drain-cleaner
+      - "{{ base_dir }}/roles/cluster-addon/files/strimzi-drain-cleaner-{{ strimzi_drain_cleaner_ver }}.tgz"
+      - --namespace
+      - "{{ kafka_drain_cleaner_namespace }}"
+      - --values
+      - "{{ cluster_dir }}/yml/kafka/drain-cleaner-values.yaml"
+      - --wait
+      - --timeout
+      - 10m
+      - --history-max
+      - "10"
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  register: kafka_drain_cleaner_helm
+  changed_when: "'has been upgraded' in kafka_drain_cleaner_helm.stdout or 'has been installed' in kafka_drain_cleaner_helm.stdout"
+  when: kafka_drain_cleaner_enabled | bool
+
+- name: 验证 Drain Cleaner webhook
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    $KC -n {{ kafka_drain_cleaner_namespace }} rollout status \
+      deployment/strimzi-drain-cleaner --timeout=10m
+    test "$($KC -n {{ kafka_drain_cleaner_namespace }} get deployment strimzi-drain-cleaner \
+      -o jsonpath='{.status.readyReplicas}')" = 2
+    test "$($KC get validatingwebhookconfiguration strimzi-drain-cleaner \
+      -o jsonpath='{.webhooks[0].failurePolicy}')" = Fail
+    test "$($KC get validatingwebhookconfiguration strimzi-drain-cleaner \
+      -o jsonpath='{.webhooks[0].namespaceSelector.matchLabels.kubeauto\.io/middleware}')" = kafka
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: kafka_drain_cleaner_enabled | bool
+
+- name: 在 API Server 校验 Kafka 清单
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for attempt in $(seq 1 12); do
+      if $KC apply --dry-run=server --field-manager=kubeauto-kafka \
+        -f "{{ cluster_dir }}/yml/kafka/cluster.yaml"; then
+        exit 0
+      fi
+      if [ "$attempt" -eq 12 ]; then
+        $KC -n {{ kafka_operator_namespace }} get pod -o wide || true
+        $KC -n {{ kafka_operator_namespace }} logs deployment/strimzi-cluster-operator --tail=200 || true
+        exit 1
+      fi
+      sleep 5
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 校验外部 Kafka 用户密码 Secret
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    encoded="$($KC -n {{ kafka_namespace }} get secret {{ kafka_app_password_secret }} \
+      -o jsonpath='{.data.{{ kafka_app_password_secret_key }}}')"
+    test -n "$encoded"
+    test "$(printf '%s' "$encoded" | base64 -d | wc -c)" -ge 32
+  args:
+    executable: /bin/bash
+  changed_when: false
+  no_log: true
+  when: kafka_app_password_secret | length > 0
+
+- name: 发布 Kafka KRaft 集群
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - apply
+      - --server-side
+      - --field-manager=kubeauto-kafka
+      - -f
+      - "{{ cluster_dir }}/yml/kafka/cluster.yaml"
+  register: kafka_cluster_apply
+  changed_when: "'created' in kafka_cluster_apply.stdout or 'serverside-applied' in kafka_cluster_apply.stdout"
+
+- name: 等待 Kafka 控制面和数据面就绪
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for attempt in $(seq 1 {{ kafka_ready_retries }}); do
+      kafka_ready="$($KC -n {{ kafka_namespace }} get kafka {{ kafka_cluster_name }} \
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)"
+      controller_ready="$($KC -n {{ kafka_namespace }} get pod \
+        -l strimzi.io/cluster={{ kafka_cluster_name }},strimzi.io/pool-name=controller \
+        -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+        2>/dev/null | grep -cx True || true)"
+      broker_ready="$($KC -n {{ kafka_namespace }} get pod \
+        -l strimzi.io/cluster={{ kafka_cluster_name }},strimzi.io/pool-name=broker \
+        -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' \
+        2>/dev/null | grep -cx True || true)"
+      pvc_bound="$($KC -n {{ kafka_namespace }} get pvc \
+        -l strimzi.io/cluster={{ kafka_cluster_name }} \
+        -o jsonpath='{range .items[*]}{.status.phase}{"\n"}{end}' 2>/dev/null \
+        | grep -cx Bound || true)"
+      if [ "$kafka_ready" = True ] \
+        && [ "$controller_ready" -eq {{ kafka_controller_size | int }} ] \
+        && [ "$broker_ready" -eq {{ kafka_broker_size | int }} ] \
+        && [ "$pvc_bound" -ge $(({{ kafka_controller_size | int }} + {{ kafka_broker_size | int }})) ]; then
+        if [ "{{ kafka_bootstrap_resources_enabled | bool | lower }}" = true ]; then
+          resources_ready=false
+          for resource_attempt in $(seq 1 120); do
+            if $KC -n {{ kafka_namespace }} get \
+              kafkatopic/{{ kafka_default_topic }} kafkauser/{{ kafka_app_user }} \
+              >/dev/null 2>&1 \
+              && $KC -n {{ kafka_namespace }} wait --for=condition=Ready \
+                kafkatopic/{{ kafka_default_topic }} kafkauser/{{ kafka_app_user }} \
+                --timeout=30s >/dev/null 2>&1; then
+              resources_ready=true
+              break
+            fi
+            if [ $((resource_attempt % 12)) -eq 0 ]; then
+              echo "KAFKA_BOOTSTRAP_RESOURCE_WAIT attempt=${resource_attempt}/120"
+              $KC -n {{ kafka_namespace }} get kafkatopic,kafkauser -o wide || true
+            fi
+            sleep 5
+          done
+          test "$resources_ready" = true
+        fi
+        echo "KAFKA_CONTROL_PLANE_READY kafka=${kafka_ready} controllers=${controller_ready} brokers=${broker_ready} pvc=${pvc_bound}"
+        exit 0
+      fi
+      if [ $((attempt % 6)) -eq 0 ]; then
+        echo "KAFKA_WAIT_HEARTBEAT attempt=${attempt}/{{ kafka_ready_retries }} kafka=${kafka_ready:-missing} controllers=${controller_ready} brokers=${broker_ready} pvc=${pvc_bound}"
+        $KC -n {{ kafka_namespace }} get kafka,kafkanodepool,pod,pvc -o wide || true
+      fi
+      sleep {{ kafka_ready_delay }}
+    done
+    $KC -n {{ kafka_namespace }} get kafka,kafkanodepool,kafkatopic,kafkauser,pod,pvc,svc -o wide || true
+    $KC -n {{ kafka_namespace }} get events --sort-by=.lastTimestamp | tail -100 || true
+    $KC -n {{ kafka_operator_namespace }} logs deployment/strimzi-cluster-operator --tail=300 || true
+    exit 1
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 检测 Prometheus Operator 监控 CRD
+  shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    $KC get crd podmonitors.monitoring.coreos.com prometheusrules.monitoring.coreos.com >/dev/null 2>&1
+  args:
+    executable: /bin/bash
+  register: kafka_monitoring_crds
+  changed_when: false
+  failed_when: false
+  when: kafka_metrics_enabled | bool
+
+- name: 发布 Kafka 采集和告警规则
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - apply
+      - --server-side
+      - --field-manager=kubeauto-kafka-monitoring
+      - -f
+      - "{{ cluster_dir }}/yml/kafka/monitoring.yaml"
+  register: kafka_monitoring_apply
+  changed_when: "'created' in kafka_monitoring_apply.stdout or 'serverside-applied' in kafka_monitoring_apply.stdout"
+  when:
+    - kafka_metrics_enabled | bool
+    - kafka_monitoring_crds.rc == 0

@@ -225,7 +225,7 @@ bash tests/run_unit_tests.sh
 
 最小闭环：
 
-1. **镜像**：在 `kubeauto-ext-images-dockerfile` 增加（或复用）镜像目录，CI matrix 增加 tag。
+1. **镜像**：先盘点生产、升级、回滚、备份、压测和测试基础设施镜像；在 `kubeauto-ext-images-dockerfile` 对应功能目录增加（或复用）镜像，CI matrix 增加双推 tag。
 2. **常量**：`KubeConstant` 增加版本字段；`component_images["mycomp"] = ["brinnatt/..."]`。
 3. **角色**：`roles/cluster-addon/tasks/mycomp.yml` + templates；在 `tasks/main.yml` 按开关 `include_tasks`。
 4. **配置**：`conf/config.yml` 增加 `mycomp_install: false` 等开关与必要变量。
@@ -270,7 +270,10 @@ flowchart TD
 
 ### 3.8.5、kubeauto-ext-images-dockerfile
 
-- 每个子目录一个组件镜像；CI matrix 的 `tag:` 是同步测试的对照源。
+- 根目录仅按 `platform/`、`middleware/`、`tooling/` 分域，每个叶目录一个镜像；不得继续平铺组件目录。
+- 中间件主镜像位于 `middleware/<component>/`，该功能专属的升级、回滚、性能和测试基础设施镜像位于同目录的 `test-support/` 或 `test-storage/`。
+- 新功能应先完成所需镜像的官方版本锁定和双推，再进行现场回归；临时公共代理不能替代固定物料仓。
+- CI matrix 的 `tag:` 是同步测试的对照源，`python3 scripts/validate_catalog.py` 必须证明 Dockerfile 与矩阵一一对应。
 - 所有对外标签使用 `brinnatt/<name>:<tag>`；CI 同时推送到 `hub.talkedu.cn/kubeauto/<name>:<tag>`。
 
 ---

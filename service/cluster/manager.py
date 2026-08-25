@@ -598,6 +598,10 @@ class ClusterManager:
             "__pxc_xtrabackup__": kc.v_pxc_xtrabackup,
             "__pxc_haproxy__": kc.v_pxc_haproxy,
             "__pxc_fluentbit__": kc.v_pxc_fluentbit,
+            "__strimzi_operator__": kc.v_strimzi_operator,
+            "__kafka__": kc.v_kafka,
+            "__kafka_metadata__": kc.v_kafka_metadata,
+            "__strimzi_drain_cleaner__": kc.v_strimzi_drain_cleaner,
         }
 
     @staticmethod

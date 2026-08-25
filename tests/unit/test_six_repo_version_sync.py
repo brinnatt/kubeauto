@@ -32,7 +32,7 @@ class TestSixRepoVersionSync(unittest.TestCase):
         """v_json_mock must match ext-images CI matrix tag (talkedu dual-push)."""
         ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
         m = re.search(
-            r"dockerfile:\s*\./json-mock/Dockerfile.*?tag:\s*([^\n#]+)",
+            r"dockerfile:\s*\./tooling/test-support/json-mock/Dockerfile.*?tag:\s*([^\n#]+)",
             ci,
             re.S,
         )
@@ -88,14 +88,14 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
     def test_json_mock_dockerfile_pins_node20(self):
         """Dockerfile must stay on Node >=18.13 + pinned json-server (v1.3.1 contract)."""
-        df = (EXT_IMAGES / "json-mock" / "Dockerfile").read_text()
+        df = (EXT_IMAGES / "tooling/test-support/json-mock" / "Dockerfile").read_text()
         self.assertIn("node:20.", df)
         self.assertIn("json-server@0.17.4", df)
 
     def _ci_tag(self, dockerfile_dir: str) -> str:
         ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
         m = re.search(
-            rf"dockerfile:\s*\./{re.escape(dockerfile_dir)}/Dockerfile.*?tag:\s*([^\n#]+)",
+            rf"dockerfile:\s*\./(?:[\w.-]+/)*{re.escape(dockerfile_dir)}/Dockerfile.*?tag:\s*([^\n#]+)",
             ci,
             re.S,
         )
@@ -161,13 +161,13 @@ class TestSixRepoVersionSync(unittest.TestCase):
         """Every brinnatt image pin in component_images must have matching CI tag (no local fork)."""
         ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
         # Matrix rows: image: brinnatt/<name> … tag: <tag> (talkedu_image may sit between).
-        ci_pins: dict[str, str] = {}
+        ci_pins: dict[str, set[str]] = {}
         for m in re.finditer(
             r"image:\s*brinnatt/([\w.-]+).*?^\s*tag:\s*([^\n#]+)",
             ci,
             re.M | re.S,
         ):
-            ci_pins[m.group(1)] = m.group(2).strip().strip("'\"")
+            ci_pins.setdefault(m.group(1), set()).add(m.group(2).strip().strip("'\""))
 
         bad = []
         for component, images in self.kc.component_images.items():
@@ -183,9 +183,12 @@ class TestSixRepoVersionSync(unittest.TestCase):
                 # rocketmq-operator:latest is transitional; CI may pin a concrete tag
                 if tag == "latest":
                     continue
-                got = ci_pins[name]
-                if got != tag and got != tag.lstrip("v") and f"v{got}" != tag:
-                    bad.append(f"{component}:{name} ci={got} const={tag}")
+                published = ci_pins[name]
+                if not any(
+                    got == tag or got == tag.lstrip("v") or f"v{got}" == tag
+                    for got in published
+                ):
+                    bad.append(f"{component}:{name} ci={sorted(published)} const={tag}")
         self.assertEqual(bad, [], msg=f"component_images vs CI drift: {bad}")
 
     def test_nacos_mysql_fixture_is_published_by_ext_images_ci(self):
@@ -194,14 +197,14 @@ class TestSixRepoVersionSync(unittest.TestCase):
         tag = self._ci_tag("mysql")
         self.assertRegex(
             ci,
-            r"(?s)dockerfile:\s*\./mysql/Dockerfile.*?"
+            r"(?s)dockerfile:\s*\./middleware/nacos/test-support/mysql/Dockerfile.*?"
             r"image:\s*brinnatt/mysql.*?"
             r"talkedu_image:\s*hub\.talkedu\.cn/kubeauto/mysql.*?"
-            rf"tag:\s*['\"]?{re.escape(tag)}['\"]?.*?ctx:\s*\./mysql/",
+            rf"tag:\s*['\"]?{re.escape(tag)}['\"]?.*?ctx:\s*\./middleware/nacos/test-support/mysql/",
         )
         self.assertIn(
             f"FROM docker.io/library/mysql:{tag}",
-            (EXT_IMAGES / "mysql" / "Dockerfile").read_text(),
+            (EXT_IMAGES / "middleware/nacos/test-support/mysql" / "Dockerfile").read_text(),
         )
 
         fixture_tags = set()
