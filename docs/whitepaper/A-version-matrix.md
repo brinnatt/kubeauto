@@ -68,7 +68,7 @@ DNS 在 setup 步骤 **07**（`07.cluster-addon.yml`）安装；CNI 在步骤 **
 
 | 组件 | 版本 | 常量 |
 |------|------|------|
-| kube-prometheus-stack chart | 75.7.0 | `v_promchart` |
+| kube-prometheus-stack chart | 88.0.0 | `v_promchart` |
 | ingress-nginx chart | 4.13.0 | `v_ingressnginx` |
 | ingress-nginx controller 镜像 | v1.13.0 | `v_ingress_nginx_controller` |
 | kube-webhook-certgen | v1.6.0 | `v_webhook_certgen` |
@@ -84,13 +84,16 @@ DNS 在 setup 步骤 **07**（`07.cluster-addon.yml`）安装；CNI 在步骤 **
 
 | 镜像 | Tag |
 |------|-----|
-| kube-state-metrics | v2.16.0 |
-| prometheus | v3.4.2 |
-| alertmanager | v0.28.1 |
-| grafana | 12.0.2 |
-| prometheus-operator | v0.83.0 |
-| prometheus-config-reloader | v0.83.0 |
-| node-exporter | v1.9.1 |
+| kube-state-metrics | v2.18.0 |
+| prometheus | v3.13.1-distroless |
+| alertmanager | v0.33.1 |
+| grafana | 13.1.1 |
+| prometheus-operator | v0.93.0 |
+| prometheus-config-reloader | v0.93.0 |
+| prometheus-admission-webhook | v0.93.0 |
+| prometheus-webhook-certgen | 1.8.5 |
+| node-exporter | v1.12.1 |
+| busybox（Grafana init） | 1.37 |
 | k8s-sidecar | 1.30.5 |
 
 ### A.6.2 OpenEBS / CSI 相关

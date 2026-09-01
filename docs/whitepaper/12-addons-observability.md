@@ -124,7 +124,7 @@ flowchart TB
 | **kube-state-metrics** | 将 Kubernetes 对象状态转为指标 |
 | **node-exporter** | 主机层 CPU / 磁盘 / 网络等 |
 | **Alertmanager** | 告警路由、分组、抑制与接收 |
-| **Grafana** | 可视化；本项目 values 含初始管理员口令（交付后必须修改） |
+| **Grafana** | 可视化；首次安装生成随机管理员口令并保存于 Kubernetes Secret |
 
 ### 12.5.2 抓取路径（结合本项目）
 
@@ -158,15 +158,17 @@ sequenceDiagram
 |----|-----|
 | 开关 | `prom_install`（默认 `no`） |
 | Namespace | `monitor` |
-| Chart | `kube-prometheus-stack-75.7.0.tgz`（`v_promchart`） |
+| Chart | `kube-prometheus-stack-88.0.0.tgz`（`v_promchart`） |
 | Values | `templates/prometheus/values.yaml.j2` |
 | etcd 抓取证书 | 角色内 cfssl 签发 → Secret `monitor/etcd-client-cert` |
 | NodePort | Prometheus 30901、Alertmanager 30902、Grafana 30903 等 |
+| 高可用 | Prometheus 2 副本、Alertmanager 3 副本、独立 admission webhook 2 副本；均配置 PDB，核心有状态组件采用硬反亲和 |
+| 持久化 | 设置 `prom_storage_class` 后，Prometheus、Alertmanager 与 Grafana 均使用 PVC；生产必须使用已验证的 StorageClass |
 
 镜像钉扎示例（均为 `brinnatt/*`，完整列表见 `component_images["prometheus"]` 与 values）：
 
-- prometheus v3.4.2、alertmanager v0.28.1、grafana 12.0.2  
-- operator v0.83.0、node-exporter v1.9.1、kube-state-metrics v2.16.0  
+- prometheus v3.13.1-distroless、alertmanager v0.33.1、grafana 13.1.1
+- operator/config-reloader/admission-webhook v0.93.0、node-exporter v1.12.1、kube-state-metrics v2.18.0
 
 可选：`prometheus-dingtalk` webhook（`download -E prometheus-dingtalk`）。
 
@@ -174,12 +176,14 @@ sequenceDiagram
 
 ### 12.5.4 交付验收
 
-1. `kubectl get pods -n monitor` 全部 Running/Ready。  
-2. 经 NodePort 打开 Grafana，数据源默认 Prometheus 可查询 `up`。  
-3. `etcd` 目标为 up（证书 Secret 存在且未过期）。  
-4. 故意制造告警（如杀一个 node-exporter）验证 Alertmanager 通路。  
-5. 修改默认 Grafana 口令并记录于甲方密码库。  
-6. 确认节点 Allocatable 与监控栈 requests 不导致控制面饥饿。
+1. `kubectl get pods -n monitor` 全部 Running/Ready，Prometheus、Alertmanager 和 webhook 副本分布在不同节点。
+2. 所有监控 PVC 为 `Bound`，PDB 的 `ALLOWED DISRUPTIONS` 与副本规模一致。
+3. Prometheus Targets API 中 apiserver、etcd、kubelet、CoreDNS、node-exporter、kube-state-metrics、scheduler、controller-manager 与 kube-proxy 全部为 `up`，`lastError` 为空。
+4. Rules API 中每条规则 `health=ok` 且 `lastError` 为空。
+5. 使用 Secret 中的随机管理员凭据登录 Grafana，确认 Prometheus 数据源与内置 Dashboard 可用。
+6. 用可回收测试规则验证 Alertmanager 分组、抑制、触发和恢复通知，再删除测试规则。
+7. 删除一个 Prometheus Pod 后确认 StatefulSet 重建、PVC UID 不变且重启前历史样本仍可查询。
+8. 确认节点 Allocatable 与监控栈 requests 不导致控制面饥饿。
 
 ## 12.6 ingress-nginx
 

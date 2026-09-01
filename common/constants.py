@@ -76,8 +76,33 @@ class KubeConstant:
         "description": "None-official"
     })
     # Pack / component image pins (brinnatt/* dual-publish tags)
-    v_kube_state_metrics: str = field(default="v2.16.0")
+    v_kube_state_metrics: str = field(default="v2.18.0", metadata={
+        "refer_github": "https://github.com/kubernetes/kube-state-metrics/releases/tag/v2.18.0",
+    })
     v_webhook_certgen: str = field(default="v1.6.0")
+    v_prometheus_operator: str = field(default="v0.93.0", metadata={
+        "refer_github": "https://github.com/prometheus-operator/prometheus-operator/releases/tag/v0.93.0",
+    })
+    v_prometheus_config_reloader: str = field(default="v0.93.0")
+    v_prometheus: str = field(default="v3.13.1-distroless", metadata={
+        "refer_github": "https://github.com/prometheus/prometheus/releases/tag/v3.13.1",
+    })
+    v_alertmanager: str = field(default="v0.33.1", metadata={
+        "refer_github": "https://github.com/prometheus/alertmanager/releases/tag/v0.33.1",
+    })
+    v_node_exporter: str = field(default="v1.12.1", metadata={
+        "refer_github": "https://github.com/prometheus/node_exporter/releases/tag/v1.12.1",
+    })
+    v_grafana: str = field(default="13.1.1", metadata={
+        "refer_github": "https://github.com/grafana/grafana/releases/tag/v13.1.1",
+    })
+    v_busybox: str = field(default="1.37", metadata={
+        "refer_hub": "https://hub.docker.com/_/busybox",
+        "description": "Pinned official BusyBox init image required by Grafana persistence setup.",
+    })
+    v_k8s_sidecar: str = field(default="1.30.5")
+    v_prometheus_admission_webhook: str = field(default="v0.93.0")
+    v_prometheus_webhook_certgen: str = field(default="1.8.5")
     v_ingress_nginx_controller: str = field(default="v1.13.0")
     # v1.3.1: Node 20 + pinned json-server@0.17.4 (v1.3.0 used Node 18.10 + unpinned npm → CrashLoop)
     v_json_mock: str = field(default="v1.3.1")
@@ -150,7 +175,7 @@ class KubeConstant:
     v_nfsprovisioner: str = field(default="v4.0.2", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner"
     })
-    v_promchart: str = field(default="75.7.0", metadata={
+    v_promchart: str = field(default="88.0.0", metadata={
         "refer_github": "https://github.com/prometheus/prometheus",
         "refer_docs": "https://prometheus.io/",
         "refer_helm": "https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack"
@@ -343,14 +368,16 @@ class KubeConstant:
             ],
             "prometheus": [
                 f"brinnatt/kube-state-metrics:{self.v_kube_state_metrics}",
-                f"brinnatt/kube-webhook-certgen:{self.v_webhook_certgen}",
-                "brinnatt/grafana:12.0.2",
-                "brinnatt/k8s-sidecar:1.30.5",
-                "brinnatt/prometheus-config-reloader:v0.83.0",
-                "brinnatt/prometheus-operator:v0.83.0",
-                "brinnatt/alertmanager:v0.28.1",
-                "brinnatt/node-exporter:v1.9.1",
-                "brinnatt/prometheus:v3.4.2",
+                f"brinnatt/prometheus-webhook-certgen:{self.v_prometheus_webhook_certgen}",
+                f"brinnatt/prometheus-admission-webhook:{self.v_prometheus_admission_webhook}",
+                f"brinnatt/grafana:{self.v_grafana}",
+                f"brinnatt/busybox:{self.v_busybox}",
+                f"brinnatt/k8s-sidecar:{self.v_k8s_sidecar}",
+                f"brinnatt/prometheus-config-reloader:{self.v_prometheus_config_reloader}",
+                f"brinnatt/prometheus-operator:{self.v_prometheus_operator}",
+                f"brinnatt/alertmanager:{self.v_alertmanager}",
+                f"brinnatt/node-exporter:{self.v_node_exporter}",
+                f"brinnatt/prometheus:{self.v_prometheus}",
             ],
             # Optional example receiver (roles/cluster-addon/templates/prometheus/dingtalk-webhook.yaml)
             # v0.3.0 is Docker Schema 1 (rejected by modern buildx); upstream stable is v2.1.0.

@@ -219,7 +219,7 @@ tier2_matrix:
     - {id: T2-AD-02, value: metrics-server, status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-28 clean Docker upgrade gate: bounded startup wait then metrics-server 1/1 Running before and after upgrade."}
     - {id: T2-AD-03, value: node-local-dns, status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-08-02 clean Docker upgrade gate: node-local-dns was Ready and carried in-cluster service-name resolution used by successful production HTTP writes/read-backs before and after v1.33.5→v1.33.6; UPGRADE_GATE_PASS and final clean verified."}
     - {id: T2-AD-04, value: ingress-nginx (brinnatt/ingress-nginx-controller), status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-27 clean G8b: Helm wait passed; deployed image registry.talkschool.cn:5000/brinnatt/ingress-nginx-controller:v1.13.0."}
-    - {id: T2-AD-05, value: prometheus (brinnatt/*), status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-27 clean G8b: monitor namespace 6 pods Ready; operator image brinnatt/prometheus-operator:v0.83.0 and Prometheus v3.4.2."}
+    - {id: T2-AD-05, value: prometheus (brinnatt/*), status: pass, evidence: "2026-09-01 dedicated Prometheus branch passed PROMETHEUS_DELIVERY_BRANCH_PASS, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; kube-prometheus-stack 88.0.0 / Prometheus v3.13.1 verified."}
     - {id: T2-AD-06, value: dashboard/kong (brinnatt/*), status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-27 clean G8b: dashboard api/auth/kong/scraper/web all Running; dashboard image asserted brinnatt/dashboard-api:1.14.0."}
     - {id: T2-AD-07, value: openebs localpv 4.3.0 (brinnatt/provisioner-localpv), status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-27 clean G8b: openebs namespace Ready; provisioner image asserted brinnatt/provisioner-localpv:4.3.0."}
     - {id: T2-AD-08, value: local-path-provisioner, status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-27 clean G8b: local-path-provisioner 1/1 Running."}
@@ -247,11 +247,18 @@ tier2_matrix:
     - {id: T2-CX-02, desc: "K8s 控制面/proxy/pause 镜像 tag=v_k8s_bin/v_pause 与 ext-images CI 一致", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-25 test_ecosystem_ci_tags_match_kubeauto_constants passed"}
     - {id: T2-CX-03, desc: "CNI(calico/flannel/cilium/kube-router/kube-ovn)+DNS 与 CI 一致", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-25 test_ecosystem_ci_tags_match_kubeauto_constants passed"}
     - {id: T2-CX-04, desc: "component_images 全量 brinnatt pin 存在于 ext-images CI（无本地分叉）", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-25 test_component_images_tags_exist_in_ext_images_ci passed"}
-    - {id: T2-CX-05, desc: "监控栈 prometheus/grafana/alertmanager/dingtalk 与 CI 一致", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-25 test_component_images_tags_exist_in_ext_images_ci passed"}
+    - {id: T2-CX-05, desc: "监控栈 prometheus/grafana/alertmanager/dingtalk 与 CI 一致", status: pass, evidence: "2026-09-01 six-repo sync tests and Prometheus artifact gate passed; 14 dual-architecture manifests/digests verified, followed by PROMETHEUS_DELIVERY_BRANCH_PASS and LAB_CLEAN_VERIFY_PASS."}
     - {id: T2-CX-06, desc: "存储/消息/注册中心 addon pins（openebs/minio/rocketmq/nacos）与 CI 一致", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-25 test_component_images_tags_exist_in_ext_images_ci passed"}
     - {id: T2-CX-07, desc: "cgroup systemd/v1/v2 + reserved 合同默认（与六仓无关但同属兼容签字）", status: pass, evidence: "2026-08-04 current all-delivery: Docker/Containerd reserved gates, systemd podruntime.slice/NO_DOUBLE_SLICE assertions, unit contracts and final cleanup all passed."}
     - {id: T2-CX-08, desc: "Live：G8 CNI 矩阵 + G8b addon 冒烟后仍无镜像漂移/ImagePull", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-27 clean regression: flannel/cilium/kube-router/kube-ovn/calico-iptables all Ready; G8b dashboard/openebs/prometheus/local-path/ingress used brinnatt images; no ErrImagePull/ImagePullBackOff; rc=0/failure_markers=0."}
     - {id: T2-CX-09, desc: "SYS_RESERVED 计入 Allocatable；ENFORCE 默认 no（防 system.slice 饿死控制面）", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-27 clean G11 asserted SYS_RESERVED_ENABLED=yes and SYS_RESERVED_ENFORCE=no on 137/138; live Allocatable and control-plane/addon readiness passed."}
+
+prometheus_delivery:
+  - {id: PROM-01, desc: "kube-prometheus-stack 88.0.0 全新七节点 HA 安装", status: pass, evidence: "2026-09-01 clean run: PROMETHEUS_FULL_GATE_PASS chart=88.0.0, PROMETHEUS_GATE_EXIT rc=0."}
+  - {id: PROM-02, desc: "Prometheus 2 副本、Alertmanager 3 副本、Grafana/PVC 持久化", status: pass, evidence: "2026-09-01 clean run passed HA anti-affinity, replicas=2/3, pvc_bound=6, Grafana dashboards=27, and persistence/idempotency checks."}
+  - {id: PROM-03, desc: "Targets/Rules API、Available 条件、控制面/etcd/kubelet/CoreDNS 采集", status: pass, evidence: "2026-09-01 clean run passed targets healthy=56/56, endpoint counts, rules/default-alert health and Available conditions."}
+  - {id: PROM-04, desc: "重复 addon 执行、Pod 重启与数据保持", status: pass, evidence: "2026-09-01 clean run passed Alertmanager grouping/inhibition/firing/resolved, idempotency, Grafana Secret/PVC UID and TSDB history preservation."}
+  - {id: PROM-05, desc: "失败诊断、销毁和前后 LAB_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-09-01 clean run passed controlled failure diagnostics, destroy, PROMETHEUS_DELIVERY_BRANCH_PASS and final LAB_CLEAN_VERIFY_PASS."}
 
 tier3_tools:
   - {id: T3-TL-01, tool: CalicoPolicyCli, status: pass, evidence: "2026-08-04 ROCKY8_TOOLS_BUILD_PASS; real Rocky 8/glibc2.28 startup passed; TIER3_TOOLS_GATE_PASS."}
@@ -279,6 +286,7 @@ execution_groups:
   G10: {name: "交付缺口 P0/P1 (LVM/NFS/MQ/Nacos/Hubble/HA/Rocky)", priority: P0, status: pass}
   G11: {name: "Node Allocatable reserved (合同 KUBE/SYS)", priority: P0, status: pass}
   G12: {name: "六仓+生态兼容（K8s/CNI/addon/监控）", priority: P0, status: pass}
+  G13: {name: "Prometheus 专项七节点分路", priority: P0, status: pass}
 
 coverage_summary:
   tier0_total: 12
@@ -294,8 +302,8 @@ coverage_summary:
   tier1_jumper_total: 2
   tier1_jumper_pass: 2
   tier1_jumper_pending: 0
-  tier2_total: 61
-  tier2_pass: 61
+  tier2_total: 66
+  tier2_pass: 66
   tier2_partial: 0
   tier2_open: 0
   tier2_na: 0
@@ -308,4 +316,4 @@ coverage_summary:
   all_nodes_ready: false
   final_lab_clean: true
   overall_assessment: |
-    PASS（2026-08-07）：114/114 项 PASS、0 项 PENDING、0 项 FAIL。当前 --all-delivery 输出 ENTERPRISE_DELIVERY_ALL_PASS 和 durable ENTERPRISE_DELIVERY_ALL_EXIT rc=0；所有子门禁零 failure marker，最终 LAB_CLEAN_VERIFY_PASS；218/218 单元测试、shell 语法和 diff 检查通过。
+    PASS（2026-09-01）：119/119 项 PASS、0 项 PENDING、0 项 FAIL。Prometheus 专项七节点分路已通过 PROMETHEUS_FULL_GATE_PASS、PROMETHEUS_DELIVERY_BRANCH_PASS，所有 durable gate rc=0、failure marker=0，最终 LAB_CLEAN_VERIFY_PASS；全量单元测试、六仓同步、制品 catalog 和 diff 检查通过。

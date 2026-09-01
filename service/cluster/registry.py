@@ -63,6 +63,8 @@ _BRINATT_UPSTREAM_FALLBACKS = {
     "brinnatt/k8s-sidecar": "quay.io/kiwigrid/k8s-sidecar",
     "brinnatt/prometheus-config-reloader": "quay.io/prometheus-operator/prometheus-config-reloader",
     "brinnatt/prometheus-operator": "quay.io/prometheus-operator/prometheus-operator",
+    "brinnatt/prometheus-admission-webhook": "quay.io/prometheus-operator/admission-webhook",
+    "brinnatt/prometheus-webhook-certgen": "ghcr.io/jkroepke/kube-webhook-certgen",
     "brinnatt/alertmanager": "quay.io/prometheus/alertmanager",
     "brinnatt/node-exporter": "quay.io/prometheus/node-exporter",
     "brinnatt/prometheus": "quay.io/prometheus/prometheus",

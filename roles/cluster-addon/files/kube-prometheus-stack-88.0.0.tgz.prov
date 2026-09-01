@@ -1,0 +1,95 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: Chart Source
+      url: https://github.com/prometheus-community/helm-charts
+    - name: Upstream Project
+      url: https://github.com/prometheus-operator/kube-prometheus
+    - name: Upgrade Process
+      url: https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/README.md#upgrading-chart
+  artifacthub.io/operator: "true"
+apiVersion: v2
+appVersion: v0.93.0
+dependencies:
+- - condition: crds.enabled
+  name: crds
+  repository: ""
+  version: 0.0.0
+- - condition: kubeStateMetrics.enabled
+  name: kube-state-metrics
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 8.0.0
+- - condition: nodeExporter.enabled
+  name: prometheus-node-exporter
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 4.56.1
+- - condition: grafana.enabled
+  name: grafana
+  repository: https://grafana-community.github.io/helm-charts
+  version: 12.10.0
+- - condition: windowsMonitoring.enabled
+  name: prometheus-windows-exporter
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 0.12.*
+description: kube-prometheus-stack collects Kubernetes manifests, Grafana dashboards,
+  and Prometheus rules combined with documentation and scripts to provide easy to
+  operate end-to-end Kubernetes cluster monitoring with Prometheus using the Prometheus
+  Operator.
+home: https://github.com/prometheus-operator/kube-prometheus
+icon: https://raw.githubusercontent.com/prometheus/prometheus.github.io/master/assets/prometheus_logo-cb55bb5c346.png
+keywords:
+- - operator
+- - prometheus
+- - kube-prometheus
+kubeVersion: '>=1.25.0-0'
+maintainers:
+- - email: andrew@quadcorps.co.uk
+  name: andrewgkew
+  url: https://github.com/andrewgkew
+- - email: gianrubio@gmail.com
+  name: gianrubio
+  url: https://github.com/gianrubio
+- - email: github.gkarthiks@gmail.com
+  name: gkarthiks
+  url: https://github.com/gkarthiks
+- - email: kube-prometheus-stack@sisti.pt
+  name: GMartinez-Sisti
+  url: https://github.com/GMartinez-Sisti
+- - email: github@jkroepke.de
+  name: jkroepke
+  url: https://github.com/jkroepke
+- - email: miroslav.hadzhiev@gmail.com
+  name: Xtigyro
+  url: https://github.com/Xtigyro
+- - email: quentin.bisson@gmail.com
+  name: QuentinBisson
+  url: https://github.com/QuentinBisson
+name: kube-prometheus-stack
+sources:
+- - https://github.com/prometheus-community/helm-charts
+- - https://github.com/prometheus-operator/kube-prometheus
+type: application
+version: 88.0.0
+
+...
+files:
+  kube-prometheus-stack-88.0.0.tgz: sha256:f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32
+-----BEGIN PGP SIGNATURE-----
+
+wsFcBAEBCgAQBQJqbDhyCRAnJSsWgkh0OwAA+JAQAEdCq2UCVY31XXJL0p6fqO5q
+nQmyn04iHyA9rc17OuhM3yIclPLCB9wSYvg4ox/Fnt0rvq2eFGlNu3wktxtJp8Pq
+LyWCss/IYLp4ooXWrdLdo9nEU0vS36E/a2lXKSHuxqeSwG70eNnum68rIKhUy6IS
+V4lhvpFeQJKasuFREB7D9uDNlI/PqMiPY4rQ2uG1R/rBjnmzdQkhatcUaCVnG+7d
+8AlmGkbZE0JrDeZAKzuK2mA5vGYVTE0cBgSWOsg7YPOPK/2Fe/bPuK5YgMMVNstJ
+vRtnGayUYtdp5VeCO6sUkX/AAm7E8TxrIoBqKh4nB2yFI+GVvEx7fA+VbVR/wwgt
+6kP8/uhL8rhXGVJhjReuHIYhODXQ/VO8EihRxqJok+DZnQ/idGl+Clr1bxzqQcUg
+IGlS4Zca/5+86Ez0h8sfCkAXAu0F3I2mw7XridtKnXLlcQWRuxhlOVlL2zHxSNWT
+oMxQeh2au26qecvEMV6O0dT5NDTY27o60jJz3fCPsguzLtxCnbtQg+sSX4xlMvm1
+g4v1+4LQbIoxHKicwgmKmf8ZtYzwx+3brDv+85fl3FN4tdl7cq14G2BAv6V3NNb8
+vXjXzoG70hx4zj4X4tx0NsiaSj85iYBowfbOViav8n0/9ubW3clTixZI3EhJVaHS
+TFxKXt8Y/EHEgAeGeP6z
+=Hyaj
+-----END PGP SIGNATURE-----

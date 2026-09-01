@@ -73,7 +73,7 @@ for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-sched
   printf "unit_%s=%s\\n" "$unit" "${state:-unknown}"
   case "$state" in inactive|unknown) ;; *) bad=1 ;; esac
 done
-for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/docker /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/docker /etc/crictl.yaml /etc/kube-lb; do
+for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/docker /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/docker /etc/crictl.yaml /etc/kube-lb /opt/local-path-provisioner; do
   if test -e "$path"; then echo "residue=$path"; bad=1; fi
 done
 if findmnt -rn -o TARGET | grep -E "^/run/(cilium|calico)(/|$)" | grep -q .; then
@@ -103,7 +103,7 @@ for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-sched
   printf "unit_%s=%s\\n" "$unit" "${state:-unknown}"
   case "$state" in inactive|unknown) ;; *) bad=1 ;; esac
 done
-for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/crictl.yaml /etc/kube-lb /data/registry /var/snap/docker/common/kubeauto-registry /var/tmp/kubeauto-registry-reboot.expected; do
+for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/crictl.yaml /etc/kube-lb /opt/local-path-provisioner /data/registry /var/snap/docker/common/kubeauto-registry /var/tmp/kubeauto-registry-reboot.expected; do
   if test -e "$path"; then echo "residue=$path"; bad=1; fi
 done
 if findmnt -rn -o TARGET | grep -E "^/run/(cilium|calico)(/|$)" | grep -q .; then
@@ -177,7 +177,7 @@ ipvsadm -C 2>/dev/null
 rm -rf /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/docker /var/lib/etcd \
   /etc/kubernetes /etc/cni /etc/containerd /etc/docker /etc/crictl.yaml \
   /etc/calico /var/lib/calico /run/calico /etc/cilium /run/cilium /sys/fs/bpf/cilium \
-  /opt/kubeauto_prepare_tasks /root/.kube/config \
+  /opt/kubeauto_prepare_tasks /opt/local-path-provisioner /root/.kube/config \
   /etc/systemd/system/kubelet.service /etc/systemd/system/kube-proxy.service \
   /etc/systemd/system/containerd.service /etc/systemd/system/docker.service \
   /etc/systemd/system/cri-dockerd.service /etc/systemd/system/kube-lb.service \
@@ -242,7 +242,7 @@ ipvsadm -C 2>/dev/null
 rm -rf /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/etcd \
   /etc/kubernetes /etc/cni /etc/containerd /etc/crictl.yaml \
   /etc/calico /var/lib/calico /run/calico /etc/cilium /run/cilium /sys/fs/bpf/cilium \
-  /opt/kubeauto_prepare_tasks /root/.kube/config \
+  /opt/kubeauto_prepare_tasks /opt/local-path-provisioner /root/.kube/config \
   /etc/systemd/system/kubelet.service /etc/systemd/system/kube-proxy.service \
   /etc/systemd/system/containerd.service /etc/systemd/system/cri-dockerd.service \
   /etc/systemd/system/kube-lb.service \

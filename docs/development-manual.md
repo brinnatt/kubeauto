@@ -338,7 +338,7 @@ kubectl get pods -A
 
 ```bash
 kubecli download -E prometheus
-# 打开 clusters/demo/config.yml 中 prom_install 等开关后重跑 addon 步骤
+# 打开 clusters/demo/config.yml 中 prom_install，并为生产设置 prom_storage_class
 kubecli setup demo 07
 ```
 
@@ -475,7 +475,9 @@ A：`bash tests/run_unit_tests.sh` 即可覆盖契约与常量；安装路径仍
 2. Values：`templates/prometheus/values.yaml.j2`（镜像、NodePort、存储类）  
 3. 版本：`v_promchart` + `component_images["prometheus"]` + ext-images CI  
 4. etcd 抓取证书任务在 `tasks/prometheus.yml`——改 CA 轮换时确认 Secret 重建  
-5. 实验室必须在 ≥16C/32G 且 Allocatable 默认开启的节点验证，观察 apiserver 是否被饿死  
+5. Chart tgz 与 `.prov` 必须校验 SHA256 和签名，镜像必须先完成 TalkEdu/Docker Hub 双推并核对 manifest digest
+6. 使用 `bash tests/run_enterprise_regression.sh --prometheus-only` 验证全新安装、幂等、HA/PDB/PVC、Targets/Rules、Grafana、告警触发/恢复、失败恢复、升级回滚、Pod 重建和 PromQL 并发
+7. 实验室须按容量规划验证 Node Allocatable，观察 apiserver 是否被监控栈资源峰值挤压
 
 ### 3.15.6、改下载与私仓
 

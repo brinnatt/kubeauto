@@ -8,6 +8,17 @@
     - name: 创建命名空间{{ prom_namespace }}
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create ns {{ prom_namespace }}"
       when: "prom_namespace not in ns_info.stdout"
+
+    - name: 创建 Grafana 管理员 Secret（仅首次安装生成随机口令）
+      shell: |
+        set -Eeuo pipefail
+        KC="{{ cluster_dir }}/kubectl.kubeconfig"
+        if ! kubectl --kubeconfig="$KC" -n "{{ prom_namespace }}" get secret grafana-admin >/dev/null 2>&1; then
+          password="$(openssl rand -hex 24)"
+          kubectl --kubeconfig="$KC" -n "{{ prom_namespace }}" create secret generic grafana-admin \
+            --from-literal=admin-user=admin \
+            --from-literal=admin-password="$password" >/dev/null
+        fi
     
     - name: get etcd-client-cert info
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig get secrets -n {{ prom_namespace }}"

@@ -93,6 +93,13 @@ class TestDeliveryProcessContract(unittest.TestCase):
             RUNNER,
         )
 
+    def test_delivery_runner_validates_matrix_before_gates(self):
+        validator = "tests/helpers/validate-test-matrix.py"
+        self.assertIn(validator, RUNNER)
+        self.assertLess(
+            RUNNER.index(validator), RUNNER.index('if [[ "$MODE" == "--mysql-only" ]]')
+        )
+
     def test_all_delivery_mode_composes_every_signoff_gate(self):
         start = RUNNER.index('if [[ "$MODE" == "--all-delivery" ]]')
         end = RUNNER.index('if [[ "$MODE" == "--status" ]]')

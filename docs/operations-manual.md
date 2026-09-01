@@ -1722,16 +1722,29 @@ kubectl get pods -n kube-system | grep -E 'dashboard|kong'
 |----|-----|
 | 开关 | `prom_install`（默认 `"no"`） |
 | 命名空间 | `prom_namespace`（默认 `monitor`） |
-| 存储类 | `prom_storage_class`（可空；持久化前须先有可用 StorageClass） |
-| Chart | `prom_chart_ver` |
+| 存储类 | `prom_storage_class`（生产必须设置为已验证的 StorageClass；实验环境可使用 `local-path`） |
+| Chart | `prom_chart_ver`（当前 `88.0.0`） |
+| 高可用 | Prometheus 2 副本、Alertmanager 3 副本、admission webhook 2 副本；PDB + 硬反亲和 |
+| 主要镜像 | Prometheus `v3.13.1-distroless`、Alertmanager `v0.33.1`、Grafana `13.1.1`、Operator `v0.93.0` |
 | 下载 | `kubecli download -E prometheus`；可选钉钉 webhook：`-E prometheus-dingtalk` |
 | 安装 | 置 `"yes"` 后 `kubecli setup <cluster> 07` |
 
-角色会为 etcd 抓取签发客户端证书 Secret（`monitor/etcd-client-cert`）。资源消耗较大，须在已配置 Node Allocatable 的充足节点上启用。
+角色会为 etcd 抓取签发客户端证书 Secret（`monitor/etcd-client-cert`），并在首次安装时创建 `monitor/grafana-admin`，其管理员口令为随机值且重复执行不会轮换。启用持久化前须先安装并验证 StorageClass；六个有状态副本合计需要六个 RWO PVC。资源消耗较大，须在已配置 Node Allocatable 的充足节点上启用。
 
 ```bash
-kubectl get pods -n monitor
+kubectl get pods,pvc,pdb -n monitor -o wide
+kubectl -n monitor get secret grafana-admin \
+  -o jsonpath='{.data.admin-password}' | base64 -d; echo
+
+# API 验收建议通过受控端口转发执行，不要长期暴露管理接口
+kubectl -n monitor port-forward svc/prometheus-operated 9090:9090
+curl -fsS http://127.0.0.1:9090/api/v1/targets | jq \
+  '[.data.activeTargets[] | select(.health != "up" or .lastError != "")]'
+curl -fsS http://127.0.0.1:9090/api/v1/rules | jq \
+  '[.data.groups[].rules[] | select(.health != "ok" or .lastError != "")]'
 ```
+
+以上两个 `jq` 结果均应为空数组。升级前必须备份 values 与 Grafana/Prometheus 数据，使用 Helm history 记录当前 revision；受控升级后验证 Targets、Rules、Grafana 数据源及告警触发/恢复，失败时回滚到上一 `deployed` revision。不得通过删除 PVC 处理升级失败。
 
 ##### 1.3.3.7.5、ingress-nginx
 

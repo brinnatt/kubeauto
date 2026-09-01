@@ -40,9 +40,22 @@ KAFKA_RUNTIME_IMAGE_PREFIX="${KAFKA_IMAGE_SOURCE_PREFIX:-}"
 KAFKA_RUNTIME_IMAGE_FALLBACK_PREFIX="${KAFKA_IMAGE_FALLBACK_PREFIX:-}"
 KAFKA_RUNTIME_IMAGE_VERIFY_PREFIX="${KAFKA_IMAGE_VERIFY_PREFIX:-}"
 KAFKA_RUNTIME_STORAGE_IMAGE_PREFIX="${KAFKA_LAB_IMAGE_SOURCE_PREFIX:-}"
+PROM_TEST_HOST="${PROM_TEST_HOST:-root@192.168.122.2}"
+PROM_TEST_JUMPER="${PROM_TEST_JUMPER:-}"
 LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
 MODE="${1:-run}"
 mkdir -p "${ROOT}/logs"
+
+# The coverage summary is a delivery claim, so validate it from the YAML
+# details before any gate can run or emit a PASS marker. Independent middleware
+# branches own separate matrix schemas and are validated by their own gates.
+if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* ]]; then
+  matrix_python="$ROOT/.venv/bin/python"
+  [[ -x "$matrix_python" ]] || matrix_python="$(command -v python3.12 || command -v python3)"
+  "$matrix_python" "$ROOT/tests/helpers/validate-test-matrix.py" \
+    "$ROOT/tests/enterprise-test-matrix.yaml" | tee -a "$LOG"
+fi
+
 # Preserve the invoking terminal before later phases redirect their audit log.
 # The final remote tail is deliberately written to these descriptors.
 exec 3>&1 4>&2
@@ -56,6 +69,11 @@ ssh142() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFil
 ssh143() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$HOST143" "$@"; }
 ssh_mysql() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -J "$MYSQL_TEST_JUMPER" "$MYSQL_TEST_HOST" "$@"; }
 ssh_kafka() { ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -J "$KAFKA_TEST_JUMPER" "$KAFKA_TEST_HOST" "$@"; }
+ssh_prom() {
+  local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+  [[ -n "$PROM_TEST_JUMPER" ]] && args+=(-J "$PROM_TEST_JUMPER")
+  ssh "${args[@]}" "$PROM_TEST_HOST" "$@"
+}
 scp138() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 scp137() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 
@@ -585,6 +603,67 @@ if [[ "$MODE" == "--kafka-only" ]]; then
   echo KAFKA_DELIVERY_BRANCH_PASS
   matrix_counts
   echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--prometheus-only" ]]; then
+  echo "========== Independent Prometheus delivery gate =========="
+  cancel_remote_job prometheus ssh_prom '' /tmp/kubeauto-prometheus-gate
+  prom_nodes=(
+    192.168.122.243 192.168.122.246 192.168.122.217
+    192.168.122.210 192.168.122.216 192.168.122.193
+  )
+  prometheus_cleanup() {
+    local gate_rc=$? cleanup_rc=0
+    trap - EXIT INT TERM
+    set +e
+    echo ">>> mandatory Prometheus lab cleanup"
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --rocky-only "${prom_nodes[@]}" || cleanup_rc=$?
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --rocky-only "${prom_nodes[@]}" || cleanup_rc=$?
+    ssh_prom "rm -rf /usr/local/kubeauto/clusters/prometheus-gate /usr/local/kubeauto/clusters/prometheus-gate.hosts" || cleanup_rc=$?
+    if [[ "$gate_rc" -eq 0 && "$cleanup_rc" -ne 0 ]]; then
+      gate_rc=$cleanup_rc
+    fi
+    if [[ "$gate_rc" -eq 0 ]]; then
+      echo PROMETHEUS_DELIVERY_BRANCH_PASS
+      matrix_counts
+      echo
+    fi
+    exit "$gate_rc"
+  }
+  trap prometheus_cleanup EXIT INT TERM
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest tests.unit.test_prometheus_delivery tests.unit.test_six_repo_version_sync -v
+  echo ">>> clean and verify six Prometheus Kubernetes nodes"
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --rocky-only "${prom_nodes[@]}"
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --rocky-only "${prom_nodes[@]}"
+  echo ">>> bootstrap Prometheus control key to six Kubernetes nodes"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$PROM_TEST_HOST" \
+    "${prom_nodes[@]/#/root@}"
+  echo ">>> sync source through Prometheus control host"
+  if [[ -n "$PROM_TEST_JUMPER" ]]; then
+    KUBEAUTO_SSH_JUMP="$PROM_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+      bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$PROM_TEST_HOST"
+  else
+    KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$PROM_TEST_HOST"
+  fi
+  ssh_prom "chmod 0755 /usr/local/kubeauto/tests/helpers/prometheus-artifact-gate.sh /usr/local/kubeauto/tests/helpers/prometheus-regression.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
+  echo ">>> verify Prometheus dual-push manifests and platform indexes"
+  prom_artifact_gate_cmd="bash /usr/local/kubeauto/tests/helpers/prometheus-artifact-gate.sh"
+  if [[ -n "${PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX:-}" ]]; then
+    printf -v prom_verify_prefix_quoted '%q' "$PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX"
+    prom_artifact_gate_cmd="env PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX=${prom_verify_prefix_quoted} ${prom_artifact_gate_cmd}"
+  fi
+  ssh_prom "$prom_artifact_gate_cmd"
+  ssh_prom "rm -f /tmp/kubeauto-prometheus-live.log /tmp/kubeauto-prometheus-gate.pid /tmp/kubeauto-prometheus-gate.exit; nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-prometheus-gate PROMETHEUS_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/prometheus-regression.sh >/tmp/kubeauto-prometheus-live.log 2>&1 </dev/null &"
+  prom_rc=0
+  monitor_remote_job prometheus ssh_prom '' /tmp/kubeauto-prometheus-gate \
+    /tmp/kubeauto-prometheus-live.log PROMETHEUS_FULL_GATE_PASS || prom_rc=$?
+  if [[ "$prom_rc" -ne 0 ]]; then
+    echo "[FAIL] Prometheus gate failed rc=${prom_rc}" >&2
+    exit 1
+  fi
   exit 0
 fi
 
@@ -1513,7 +1592,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--kafka-only|--kafka-clean-only|--kafka-status|--kafka-follow|--kafka-cancel|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--prometheus-only|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--kafka-only|--kafka-clean-only|--kafka-status|--kafka-follow|--kafka-cancel|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 

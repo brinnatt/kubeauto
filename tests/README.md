@@ -14,6 +14,12 @@ A delivery run is complete only when all of the following are true:
 - the six-repository compatibility tests pass;
 - final cleanup emits `LAB_CLEAN_VERIFY_PASS`.
 
+Before any enterprise gate starts, the runner executes
+`helpers/validate-test-matrix.py`. This parses the YAML and recalculates every
+Tier total/status count and the overall `N/N` declaration from the item
+details. It rejects stale summaries, duplicate IDs, missing/unknown statuses,
+or any non-pass item; a delivery gate cannot emit PASS while this check fails.
+
 Do not mark a matrix item pass from historical evidence. A Pod merely existing or showing `Running` is insufficient when the component has multiple containers, asynchronous custom resources, readiness conditions, data-path checks, or a required business read/write operation.
 
 For a newly created Kubernetes cluster, Node/Pod `Ready` is also insufficient.
