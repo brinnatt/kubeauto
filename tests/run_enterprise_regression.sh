@@ -52,8 +52,10 @@ mkdir -p "${ROOT}/logs"
 if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* ]]; then
   matrix_python="$ROOT/.venv/bin/python"
   [[ -x "$matrix_python" ]] || matrix_python="$(command -v python3.12 || command -v python3)"
+  matrix_validation_args=("$ROOT/tests/enterprise-test-matrix.yaml")
+  [[ "${KUBEAUTO_MATRIX_WIP:-0}" == 1 ]] || matrix_validation_args+=(--require-pass)
   "$matrix_python" "$ROOT/tests/helpers/validate-test-matrix.py" \
-    "$ROOT/tests/enterprise-test-matrix.yaml" | tee -a "$LOG"
+    "${matrix_validation_args[@]}" | tee -a "$LOG"
 fi
 
 # Preserve the invoking terminal before later phases redirect their audit log.
@@ -85,9 +87,12 @@ pid=missing
 rc=missing
 state=starting
 test -r '${state_prefix}.pid' && pid=\$(cat '${state_prefix}.pid')
-if test -r '${state_prefix}.exit'; then
+if test -r '${state_prefix}.pid' && test -r '${state_prefix}.exit' && test -r '${state_prefix}.finalized'; then
   rc=\$(cat '${state_prefix}.exit')
   state=exited
+elif test -r '${state_prefix}.exit'; then
+  rc=\$(cat '${state_prefix}.exit')
+  state=finalizing
 elif test \"\$pid\" != missing && kill -0 \"\$pid\" 2>/dev/null; then
   state=running
 elif test \"\$pid\" != missing; then
@@ -468,7 +473,7 @@ monitor_remote_job() {
     fi
 
     case "$state" in
-      running|starting)
+      running|starting|finalizing)
         ;;
       exited)
         kill "$stream_pid" 2>/dev/null || true
@@ -648,7 +653,7 @@ if [[ "$MODE" == "--prometheus-only" ]]; then
   else
     KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$PROM_TEST_HOST"
   fi
-  ssh_prom "chmod 0755 /usr/local/kubeauto/tests/helpers/prometheus-artifact-gate.sh /usr/local/kubeauto/tests/helpers/prometheus-regression.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
+  ssh_prom "chmod 0755 /usr/local/kubeauto/tests/helpers/prometheus-artifact-gate.sh /usr/local/kubeauto/tests/helpers/prometheus-optional-artifact-gate.sh /usr/local/kubeauto/tests/helpers/prometheus-optional-regression.sh /usr/local/kubeauto/tests/helpers/prometheus-regression.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
   echo ">>> verify Prometheus dual-push manifests and platform indexes"
   prom_artifact_gate_cmd="bash /usr/local/kubeauto/tests/helpers/prometheus-artifact-gate.sh"
   if [[ -n "${PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX:-}" ]]; then
@@ -656,7 +661,12 @@ if [[ "$MODE" == "--prometheus-only" ]]; then
     prom_artifact_gate_cmd="env PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX=${prom_verify_prefix_quoted} ${prom_artifact_gate_cmd}"
   fi
   ssh_prom "$prom_artifact_gate_cmd"
-  ssh_prom "rm -f /tmp/kubeauto-prometheus-live.log /tmp/kubeauto-prometheus-gate.pid /tmp/kubeauto-prometheus-gate.exit; nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-prometheus-gate PROMETHEUS_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/prometheus-regression.sh >/tmp/kubeauto-prometheus-live.log 2>&1 </dev/null &"
+  prom_runtime_env=""
+  if [[ -n "${PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX:-}" ]]; then
+    printf -v prom_runtime_prefix_quoted '%q' "$PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX"
+    prom_runtime_env="PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX=${prom_runtime_prefix_quoted}"
+  fi
+  ssh_prom "rm -f /tmp/kubeauto-prometheus-live.log /tmp/kubeauto-prometheus-gate.pid /tmp/kubeauto-prometheus-gate.exit /tmp/kubeauto-prometheus-gate.finalized; nohup env ${prom_runtime_env} bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-prometheus-gate PROMETHEUS_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/prometheus-regression.sh >/tmp/kubeauto-prometheus-live.log 2>&1 </dev/null &"
   prom_rc=0
   monitor_remote_job prometheus ssh_prom '' /tmp/kubeauto-prometheus-gate \
     /tmp/kubeauto-prometheus-live.log PROMETHEUS_FULL_GATE_PASS || prom_rc=$?
@@ -773,6 +783,9 @@ if [[ "$MODE" == "--all-delivery" ]]; then
 fi
 
 if [[ "$MODE" == "--status" ]]; then
+  echo "========== Prometheus delivery gate =========="
+  remote_job_summary ssh_prom '' /tmp/kubeauto-prometheus-gate /tmp/kubeauto-prometheus-live.log || true
+  remote_log_tail ssh_prom '' /tmp/kubeauto-prometheus-live.log 120
   echo "========== development-host full delivery =========="
   local_all_delivery_pid=missing
   local_all_delivery_rc=missing

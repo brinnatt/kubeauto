@@ -28,8 +28,32 @@
 - import_tasks: openebs.yml
   when: 'openebs_install == "yes" and "openebs-localpv-provisioner" not in pod_info.stdout'
 
+- name: 拒绝未启用核心栈时单独启用 Prometheus 扩展
+  ansible.builtin.assert:
+    that:
+      - prom_install | default("no") | string | lower == "yes"
+    fail_msg: >-
+      prom_thanos_install、prom_adapter_install 或 prom_blackbox_install 不能脱离
+      prom_install 使用；请先设置 prom_install: "yes"，或将扩展开关恢复为 "no"。
+  when: >-
+    prom_install | default("no") | string | lower != "yes" and
+    ((prom_thanos_install | default("no") | string | lower) == "yes" or
+     (prom_adapter_install | default("no") | string | lower) == "yes" or
+     (prom_blackbox_install | default("no") | string | lower) == "yes")
+
 - import_tasks: prometheus.yml
-  when: '"kube-prometheus-operator" not in pod_info.stdout and prom_install == "yes"'
+  # Prometheus values, certificates and the Helm release must reconcile on
+  # every addon run. Pod presence is not evidence that the installed chart
+  # matches the requested version or configuration.
+  when: 'prom_install == "yes"'
+
+- import_tasks: prometheus-optional.yml
+  when: >-
+    prom_install == "yes" and
+    ((prom_thanos_install | default("no") | string | lower) == "yes" or
+     (prom_adapter_install | default("no") | string | lower) == "yes" or
+     (prom_blackbox_install | default("no") | string | lower) == "yes" or
+     (prom_optional_uninstall | default("no") | string | lower) == "yes")
 
 - import_tasks: minio.yml
   when: 'minio_install == "yes" and "minio-operator" not in pod_info.stdout'

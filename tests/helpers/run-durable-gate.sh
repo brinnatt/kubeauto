@@ -12,11 +12,13 @@ shift 2
 }
 
 printf '%s\n' "$$" > "${STATE_PREFIX}.pid"
-rm -f "${STATE_PREFIX}.exit"
+rm -f "${STATE_PREFIX}.exit" "${STATE_PREFIX}.finalized"
 set +e
 "$@"
 rc=$?
 set -e
 printf '%s\n' "$rc" > "${STATE_PREFIX}.exit"
+# This fence is written only after the child and its EXIT diagnostics return.
+printf '%s\n' "$rc" > "${STATE_PREFIX}.finalized"
 printf '%s rc=%s\n' "$EXIT_LABEL" "$rc"
 exit "$rc"

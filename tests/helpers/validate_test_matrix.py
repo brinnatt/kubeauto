@@ -59,7 +59,7 @@ def _assert_equal(errors: list[str], label: str, actual: int, expected: int) -> 
         errors.append(f"{label}: declared={actual}, calculated={expected}")
 
 
-def validate_matrix(path: Path) -> list[str]:
+def validate_matrix(path: Path, require_pass: bool = False) -> list[str]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         return ["matrix root must be a mapping"]
@@ -123,21 +123,21 @@ def validate_matrix(path: Path) -> list[str]:
         )
         _assert_equal(errors, "overall_assessment.pass", declared_pass, calculated_pass)
         _assert_equal(errors, "overall_assessment.total", declared_total, len(all_items))
-    elif overall:
+    elif overall and require_pass:
         errors.append("overall_assessment has no numeric pass/total declaration")
 
-    if any(str(item.get("status", "")).lower() != "pass" for item in all_items):
+    if require_pass and any(str(item.get("status", "")).lower() != "pass" for item in all_items):
         errors.append("matrix contains non-pass item(s); delivery PASS is prohibited")
     return errors
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print(f"usage: {argv[0]} MATRIX.yaml", file=sys.stderr)
+    if len(argv) not in (2, 3) or (len(argv) == 3 and argv[2] != "--require-pass"):
+        print(f"usage: {argv[0]} MATRIX.yaml [--require-pass]", file=sys.stderr)
         return 2
     path = Path(argv[1])
     try:
-        errors = validate_matrix(path)
+        errors = validate_matrix(path, require_pass=len(argv) == 3)
     except (OSError, ValueError, TypeError, yaml.YAMLError) as exc:
         print(f"MATRIX_VALIDATION_FAIL path={path}: {exc}", file=sys.stderr)
         return 1

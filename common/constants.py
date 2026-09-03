@@ -103,6 +103,15 @@ class KubeConstant:
     v_k8s_sidecar: str = field(default="1.30.5")
     v_prometheus_admission_webhook: str = field(default="v0.93.0")
     v_prometheus_webhook_certgen: str = field(default="1.8.5")
+    v_thanos: str = field(default="v0.41.0", metadata={
+        "refer_github": "https://github.com/thanos-io/thanos/releases/tag/v0.41.0",
+    })
+    v_prometheus_adapter: str = field(default="v0.12.0", metadata={
+        "refer_github": "https://github.com/kubernetes-sigs/prometheus-adapter/releases/tag/v0.12.0",
+    })
+    v_blackbox_exporter: str = field(default="v0.27.0", metadata={
+        "refer_github": "https://github.com/prometheus/blackbox_exporter/releases/tag/v0.27.0",
+    })
     v_ingress_nginx_controller: str = field(default="v1.13.0")
     # v1.3.1: Node 20 + pinned json-server@0.17.4 (v1.3.0 used Node 18.10 + unpinned npm → CrashLoop)
     v_json_mock: str = field(default="v1.3.1")
@@ -368,6 +377,11 @@ class KubeConstant:
             ],
             "prometheus": [
                 f"brinnatt/kube-state-metrics:{self.v_kube_state_metrics}",
+                # Chart 75.7.0's upgrade hook uses the official ingress-nginx
+                # certgen contract (update RBAC); chart 88.0.0 uses 1.8.5
+                # and patch RBAC. Keep the baseline artifact available for
+                # the isolated cross-version delivery gate.
+                f"brinnatt/kube-webhook-certgen:{self.v_webhook_certgen}",
                 f"brinnatt/prometheus-webhook-certgen:{self.v_prometheus_webhook_certgen}",
                 f"brinnatt/prometheus-admission-webhook:{self.v_prometheus_admission_webhook}",
                 f"brinnatt/grafana:{self.v_grafana}",
@@ -383,6 +397,11 @@ class KubeConstant:
             # v0.3.0 is Docker Schema 1 (rejected by modern buildx); upstream stable is v2.1.0.
             "prometheus-dingtalk": [
                 "brinnatt/prometheus-webhook-dingtalk:v2.1.0",
+            ],
+            "prometheus-optional": [
+                f"brinnatt/thanos:{self.v_thanos}",
+                f"brinnatt/prometheus-adapter:{self.v_prometheus_adapter}",
+                f"brinnatt/blackbox-exporter:{self.v_blackbox_exporter}",
             ],
             "mysql": [
                 f"brinnatt/percona-xtradb-cluster-operator:{self.v_pxc_operator}",

@@ -95,6 +95,10 @@ Dashboard 绑定高权限 ServiceAccount 时风险极高。本项目提供 admin
 
 ## 12.5 kube-prometheus-stack
 
+### 12.5.0 可选扩展边界
+
+核心栈和扩展采用独立开关且默认关闭：`prom_install` 控制 kube-prometheus-stack；`prom_thanos_install`、`prom_adapter_install`、`prom_blackbox_install` 分别控制 Thanos、prometheus-adapter 和 blackbox-exporter，三者均要求核心已启用，不会被测试或其他插件隐式安装。Thanos 提供跨副本查询/去重（配置对象存储 Secret 后才承担长期块存储）；Adapter 将 PromQL 结果注册为 Custom Metrics API；Blackbox 通过显式 Probe 从调用方视角探测外部入口。配置、安装、回滚和验收见 `docs/middleware/prometheus/operations-manual.md`。
+
 ### 12.5.1 机制架构
 
 ```mermaid

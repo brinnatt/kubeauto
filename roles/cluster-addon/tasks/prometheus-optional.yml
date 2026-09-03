@@ -1,0 +1,211 @@
+---
+- name: 校验 Prometheus 可选扩展配置
+  ansible.builtin.assert:
+    that:
+      - prom_thanos_install | default("no") | string | lower in ["yes", "no"]
+      - prom_adapter_install | default("no") | string | lower in ["yes", "no"]
+      - prom_blackbox_install | default("no") | string | lower in ["yes", "no"]
+      - prom_optional_uninstall | default("no") | string | lower in ["yes", "no"]
+      - prom_thanos_replicas | default(2) | int >= 2
+      - prom_blackbox_replicas | default(2) | int >= 2
+      - prom_blackbox_probe_targets | default([]) is sequence
+      - prom_blackbox_probe_targets | default([]) is not string
+      - (prom_thanos_install | default("no") | string | lower != "yes") or (prom_thanos_objectstorage_secret | default("") | length == 0 or prom_thanos_objectstorage_secret is match('^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$'))
+    fail_msg: >-
+      Prometheus 可选扩展配置无效。扩展不会隐式安装核心栈；Thanos/Adapter/Blackbox
+      必须在 prom_install=yes 时显式启用，副本数至少为 2。
+
+- name: 校验 Blackbox Probe 目标
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+      - item.name is defined
+      - item.name is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - item.module is defined
+      - item.module is match('^[a-zA-Z0-9_.-]+$')
+      - item.url is defined
+      - item.url is match('^https?://\\S+$')
+    fail_msg: >-
+      prom_blackbox_probe_targets 的每一项必须是 name/module/url，name 为 DNS 标签，
+      module 为 blackbox-exporter 模块名，url 必须是 http 或 https 地址。
+  loop: "{{ prom_blackbox_probe_targets | default([]) }}"
+  when: (prom_blackbox_install | default("no") | string | lower) == "yes"
+
+- name: 显式卸载 Prometheus 可选扩展
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    HELM={{ base_dir }}/extra-bin/helm
+    $KC -n {{ prom_namespace }} delete deployment/thanos-querier --ignore-not-found --wait=true
+    $KC -n {{ prom_namespace }} delete service/thanos-querier --ignore-not-found --wait=true
+    $KC -n {{ prom_namespace }} delete probe -l kubeauto.io/component=prometheus-optional --ignore-not-found --wait=true
+    $HELM uninstall thanos-querier -n {{ prom_namespace }} --kubeconfig {{ cluster_dir }}/kubectl.kubeconfig --wait || true
+    $HELM uninstall prometheus-adapter -n {{ prom_namespace }} --kubeconfig {{ cluster_dir }}/kubectl.kubeconfig --wait || true
+    $HELM uninstall blackbox-exporter -n {{ prom_namespace }} --kubeconfig {{ cluster_dir }}/kubectl.kubeconfig --wait || true
+    $HELM upgrade prometheus --install -n {{ prom_namespace }} --kubeconfig {{ cluster_dir }}/kubectl.kubeconfig \
+      -f {{ cluster_dir }}/yml/prom-values.yaml \
+      {{ base_dir }}/roles/cluster-addon/files/kube-prometheus-stack-{{ prom_chart_ver }}.tgz \
+      --wait --timeout 20m
+  args:
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  when: (prom_optional_uninstall | default("no") | string | lower) == "yes"
+
+- name: 安装或升级 Thanos Querier
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC={{ cluster_dir }}/kubectl.kubeconfig
+    HELM={{ base_dir }}/extra-bin/helm
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    discovery="$($KC -n {{ prom_namespace }} get svc -o json | jq -r '[.items[] | select(.metadata.name | endswith("-prometheus-thanos-discovery")) | .metadata.name] | .[0] // empty')"
+    test -n "$discovery"
+    cat <<EOF | $KC apply -f -
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: thanos-querier
+      namespace: {{ prom_namespace }}
+      labels: {app: thanos-querier, kubeauto.io/component: prometheus-optional}
+    spec:
+      replicas: {{ prom_thanos_replicas | default(2) | int }}
+      selector: {matchLabels: {app: thanos-querier}}
+      template:
+        metadata: {labels: {app: thanos-querier, kubeauto.io/component: prometheus-optional}}
+        spec:
+          containers:
+          - name: thanos
+            image: registry.talkschool.cn:5000/brinnatt/thanos:v0.41.0
+            args: [query, --endpoint=dnssrv+_grpc._tcp.$discovery.{{ prom_namespace }}.svc.cluster.local, --endpoint=dns+$discovery.{{ prom_namespace }}.svc.cluster.local:10901, --query.replica-label=prometheus_replica, --http-address=0.0.0.0:9090]
+            ports: [{name: http, containerPort: 9090}]
+            readinessProbe: {httpGet: {path: /-/ready, port: http}}
+            resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 1, memory: 1Gi}}
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: thanos-querier
+      namespace: {{ prom_namespace }}
+      labels: {kubeauto.io/component: prometheus-optional}
+    spec:
+      selector: {app: thanos-querier}
+      ports: [{name: http, port: 9090, targetPort: http}]
+    EOF
+    $KC -n {{ prom_namespace }} rollout status deployment/thanos-querier --timeout=10m
+  args:
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  when:
+    - (prom_thanos_install | default("no") | string | lower) == "yes"
+    - (prom_optional_uninstall | default("no") | string | lower) != "yes"
+
+- name: 安装或升级 Prometheus Adapter
+  ansible.builtin.command:
+    argv:
+      - "{{ base_dir }}/extra-bin/helm"
+      - upgrade
+      - --install
+      - prometheus-adapter
+      - "{{ base_dir }}/roles/cluster-addon/files/prometheus-adapter-5.3.0.tgz"
+      - --namespace
+      - "{{ prom_namespace }}"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --set
+      - image.repository=registry.talkschool.cn:5000/brinnatt/prometheus-adapter
+      - --set
+      - image.tag=v0.12.0
+      - --set
+      - "prometheus.url={{ prom_adapter_prometheus_url | default('http://prometheus-operated.' + prom_namespace + '.svc.cluster.local', true) }}"
+      - --set
+      - prometheus.port=9090
+      - --set
+      - metricsRelistInterval=1m
+      - --set
+      - rules.default=true
+      - --wait
+      - --timeout
+      - 10m
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  when:
+    - (prom_adapter_install | default("no") | string | lower) == "yes"
+    - (prom_optional_uninstall | default("no") | string | lower) != "yes"
+
+- name: 等待 Prometheus Adapter Custom Metrics API
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    $KC -n {{ prom_namespace }} rollout status deployment/prometheus-adapter --timeout=10m
+    for i in $(seq 1 60); do
+      if $KC get apiservice v1beta1.custom.metrics.k8s.io -o json 2>/dev/null |
+        jq -e '[.status.conditions[]? | select(.type == "Available" and .status == "True")] | length == 1' >/dev/null; then
+        exit 0
+      fi
+      sleep 5
+    done
+    echo "custom.metrics.k8s.io APIService unavailable" >&2
+    exit 1
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when:
+    - (prom_adapter_install | default("no") | string | lower) == "yes"
+    - (prom_optional_uninstall | default("no") | string | lower) != "yes"
+
+- name: 安装或升级 Blackbox Exporter
+  ansible.builtin.command:
+    argv:
+      - "{{ base_dir }}/extra-bin/helm"
+      - upgrade
+      - --install
+      - blackbox-exporter
+      - "{{ base_dir }}/roles/cluster-addon/files/prometheus-blackbox-exporter-11.3.1.tgz"
+      - --namespace
+      - "{{ prom_namespace }}"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --set
+      - "image.registry=registry.talkschool.cn:5000"
+      - --set
+      - image.repository=brinnatt/blackbox-exporter
+      - --set
+      - image.tag=v0.27.0
+      - --set
+      - fullnameOverride=blackbox-exporter
+      - --set
+      - replicaCount={{ prom_blackbox_replicas | default(2) | int }}
+      - --wait
+      - --timeout
+      - 10m
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  when:
+    - (prom_blackbox_install | default("no") | string | lower) == "yes"
+    - (prom_optional_uninstall | default("no") | string | lower) != "yes"
+
+- name: 应用显式 Blackbox Probe 目标
+  ansible.builtin.template:
+    src: prometheus/blackbox-probe.yaml.j2
+    dest: "{{ cluster_dir }}/yml/prometheus-blackbox-probe.yaml"
+    mode: "0600"
+  when:
+    - (prom_blackbox_install | default("no") | string | lower) == "yes"
+    - (prom_optional_uninstall | default("no") | string | lower) != "yes"
+    - (prom_blackbox_probe_targets | default([]) | length) > 0
+
+- name: 提交 Blackbox Probe 目标
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+      - apply
+      - -f
+      - "{{ cluster_dir }}/yml/prometheus-blackbox-probe.yaml"
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  when:
+    - (prom_blackbox_install | default("no") | string | lower) == "yes"
+    - (prom_optional_uninstall | default("no") | string | lower) != "yes"
+    - (prom_blackbox_probe_targets | default([]) | length) > 0

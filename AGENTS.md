@@ -27,6 +27,79 @@ Inspect all six sibling repositories under `/home/brinnatt/projects` before and 
 - Change affected matrix entries to pending while work is in progress. Mark them pass only after a current clean run produces auditable evidence. Historical logs never substitute for a current run.
 - Customer-facing middleware documentation covers exactly four content types: user manual, operations manual, technical whitepaper and development manual. Keep the technical whitepaper and development manual separate; combine the user and operations content into one `operations-manual.md` when the component follows the established PXC style. Integrate official references into the applicable whitepaper or development manual. Do not deliver proposal/review drafts, retrospectives, project-status narratives, internal test chronology, standalone source indexes or an extra README as customer documentation. Write from the customer's product, task and operational perspective with formal terminology, continuous executable main paths and clearly quoted exception/rollback/risk branches.
 
+## Test-engineering and execution-efficiency contract
+
+Test helpers, runners, templates, matrix validators and diagnostics are production
+delivery code. A test-gate bug that consumes a clean lab run is a delivery defect,
+not an acceptable testing cost. Preserve 100% acceptance coverage; reduce waste by
+ordering evidence correctly, never by skipping scenarios.
+
+- Before any stateful or full-chain run, every changed test artifact must pass its
+  cheapest relevant contract checks: shell syntax, YAML/JSON parsing, template
+  rendering, resource name/namespace/ownership assertions, marker/exit-state
+  assertions and focused unit tests. A static contract failure blocks live work.
+- New or changed assertions must first run in the narrowest focused branch that
+  proves the assertion against its owning product path. Only after that branch is
+  green may the fixed runner start one clean full middleware regression. Do not
+  restart a full lab merely to discover syntax, quoting, resource-name, namespace,
+  port-forward, selector or marker mistakes.
+- Exercise customer behavior through the product entry point (`config.yml` plus
+  the documented `kubecli` workflow). Direct Helm, kubectl or SSH may provide
+  diagnostics, fixtures or independent API checks, but cannot replace evidence
+  that the product configuration rendered and converged correctly.
+- On every failed gate, preserve its first failure, durable state and diagnostics;
+  classify it as product, test-gate, environment, supply-chain, runtime or
+  Kubernetes/controller failure before changing code. A test-gate fix requires a
+  regression unit/contract test for the exact cause before any rerun. Change one
+  causal layer at a time and remove rejected attempts and lab residue.
+- Use the runner's durable status, log and focused modes to reuse a validated
+  clean boundary. Do not duplicate completed setup or repeat unrelated scenarios.
+  A complete clean regression remains mandatory after accepted changes, with its
+  terminal marker, durable `rc=0`, zero failure markers, current matrix evidence
+  and final `LAB_CLEAN_VERIFY_PASS`.
+- Never optimize by downgrading coverage, accepting partial evidence, marking
+  matrix items early or treating a running Pod as a business result. The only
+  acceptable efficiency gain is preventing invalid test code from reaching an
+  expensive live environment.
+
+### Mandatory test-gate change ladder
+
+This ladder is mandatory whenever a helper, runner, fixture, test template,
+diagnostic, matrix validator or test assertion changes.  It applies equally to
+new middleware and maintenance of delivered branches.
+
+1. Classify the proposed change before running it: product code, test-gate code,
+   environment/supply-chain, or a combination.  Record the owning scenario, the
+   exact product entry point, the expected success marker, and the smallest
+   command that can disprove the assumption.  Do not describe a test-gate
+   failure as a product failure without that proof.
+2. Complete the static preflight appropriate to every changed file before any
+   remote mutation: shell syntax and strict-mode control flow; Python import and
+   focused unit tests; YAML/JSON parsing; Ansible syntax; Helm/template render;
+   resource name, namespace, selector, port, image, ownership, marker and exit
+   contracts.  Add or update a deterministic unit/contract test for the exact
+   defect before its next live execution.
+3. Run the narrowest fixed-runner branch that reaches the changed assertion.
+   Its setup, cleanup and diagnostics remain runner-owned.  A failed preflight
+   or focused gate blocks a full middleware run; fix the single proven causal
+   layer, re-run its contract, then re-run only that focused branch.
+4. Start exactly one clean full middleware regression only after the affected
+   focused gate is green.  Reuse a verified clean boundary only when the runner
+   proves there is no stale process, cluster, registry data, port-forward or
+   test-owned resource; otherwise perform the normal cleanup and verification.
+5. After a full-chain failure, collect the first failing command, durable exit
+   state, rendered inputs, owned-resource state, Pod descriptions/events and
+   relevant controller logs before editing.  Stop the scenario at a failed
+   prerequisite: never spend the remaining stages of an invalid run merely to
+   collect secondary failures.
+
+Every live-launch update must state the completed ladder level, the evidence
+that unlocked it, and the next permitted level.  No test-only shortcut may
+replace the product entry point, and no direct command may silently mutate a
+customer path merely to make a test convenient.  The full acceptance contract
+still requires current clean evidence for every affected matrix item; this
+ladder removes invalid executions, not customer coverage.
+
 ## Fixed lab authority
 
 - Development only: `192.168.47.129` (`brinnatt`); never use it as a test node.

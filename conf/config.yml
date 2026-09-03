@@ -235,6 +235,26 @@ prom_namespace: "monitor"
 prom_storage_class: ""
 prom_chart_ver: "__prom_chart__"
 
+# Prometheus extensions are independent and disabled by default.  Each one
+# requires prom_install=yes; enabling an extension never installs the core
+# stack implicitly.  Thanos uses the Prometheus Operator sidecar plus a
+# dedicated Querier, Adapter exposes Custom Metrics API, and Blackbox creates
+# the exporter service (Probe objects are opt-in via prom_blackbox_probe_targets).
+prom_thanos_install: "no"
+prom_thanos_replicas: 2
+prom_thanos_objectstorage_secret: ""
+prom_adapter_install: "no"
+# Empty means the core Prometheus Service. Set an explicit Thanos Querier URL
+# only after prom_thanos_install has converged and its Store API is healthy.
+prom_adapter_prometheus_url: ""
+prom_blackbox_install: "no"
+prom_blackbox_replicas: 2
+# Each target is a mapping: {name: DNS-label, module: blackbox module,
+# url: http(s) target}. An empty list installs no Probe and performs no probe.
+prom_blackbox_probe_targets: []
+# Set to yes only for an explicit, reviewed uninstall of optional releases.
+prom_optional_uninstall: "no"
+
 
 # minio not installed by default
 minio_install: "no"

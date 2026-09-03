@@ -138,6 +138,40 @@ When a gate fails:
 
 Examples captured by the current gates include registry HTTP readiness instead of container state, SHA256 validation and atomic restaging of Docker runtime artifacts, asynchronous RocketMQ Broker reconciliation, real LVM/NFS read/write, official Nacos schema import with external MySQL, MinIO Tenant health, and 9/9 executed network-check jobs.
 
+## Test-gate change protocol
+
+Test helpers, runners, fixtures, diagnostics, templates and matrix validators
+are delivery code.  They must be validated before they are allowed to consume a
+clean lab.  Preserve every acceptance scenario, but execute the following
+evidence ladder in order:
+
+1. Classify the failure and change as product, test gate, environment,
+   supply-chain, runtime, Kubernetes/controller, or a proven combination.
+   Name the owning matrix scenario, product entry point, terminal marker and
+   smallest disproof command.
+2. Pass the changed artifact's lowest-cost checks first: syntax/import checks,
+   focused unit and contract tests, structured-data parsing, render checks, and
+   resource contracts for names, namespaces, selectors, ports, images,
+   ownership, markers and durable exit state.
+3. Add a deterministic regression test for a proven test-gate defect, then use
+   the narrowest fixed-runner branch that executes the affected product path.
+   A static or focused failure blocks the full middleware gate.
+4. Only a green focused gate unlocks one clean full middleware regression.
+   The runner decides whether a prior clean boundary can be reused; stale
+   processes, clusters, registries, port-forwards or test-owned resources force
+   normal cleanup and `LAB_CLEAN_VERIFY_PASS` first.
+5. On a live failure, capture the first failed command, durable exit state,
+   rendered inputs, resource state, Pod descriptions/events and controller logs
+   before changing code.  Abort after a failed prerequisite rather than running
+   unrelated later stages to obtain secondary failures.
+
+For each live launch, the log must identify the completed ladder level, the
+evidence that unlocked it and the next permitted level.  Direct Helm, kubectl
+or SSH remains diagnostic-only unless the test has already exercised the same
+behavior through the documented `config.yml` and `kubecli` product entry point.
+This protocol is an efficiency control, not a coverage waiver: matrix status,
+durable `rc=0`, zero failure markers and final cleanup remain mandatory.
+
 ## China image-source contract
 
 For a Docker Hub-origin fixture in an already-delivered path, preserve its explicit, reviewable fallback list. The existing gates try the pinned `docker.sparkcr.cn/<upstream-image>` accelerator before direct Docker Hub, retain the applicable TalkEdu and Huawei candidates, and keep the upstream reference last. A mirror-discovery page such as `https://status.anye.xyz/` is for operator review only; never consume its current recommendations dynamically in a delivery run.

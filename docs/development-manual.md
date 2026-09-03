@@ -479,6 +479,8 @@ A：`bash tests/run_unit_tests.sh` 即可覆盖契约与常量；安装路径仍
 6. 使用 `bash tests/run_enterprise_regression.sh --prometheus-only` 验证全新安装、幂等、HA/PDB/PVC、Targets/Rules、Grafana、告警触发/恢复、失败恢复、升级回滚、Pod 重建和 PromQL 并发
 7. 实验室须按容量规划验证 Node Allocatable，观察 apiserver 是否被监控栈资源峰值挤压
 
+Prometheus 扩展遵循与 Kafka/PXC 相同的可选组件契约：`prom_thanos_install`、`prom_adapter_install`、`prom_blackbox_install` 默认 `"no"`，且依赖 `prom_install: "yes"`。安装入口由 `roles/cluster-addon/tasks/prometheus-optional.yml` 统一收敛，固定 Chart/镜像先通过制品门禁；卸载使用显式 `prom_optional_uninstall: "yes"`，不自动删除 PVC。三份客户文档必须同步描述开关、原理、使用路径和回滚边界。
+
 ### 3.15.6、改下载与私仓
 
 | 类 | 文件 |

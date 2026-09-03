@@ -1,3 +1,6 @@
+import subprocess
+import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -11,6 +14,7 @@ GAPS_FULLCHAIN = (
     ROOT / "tests" / "helpers" / "delivery-gaps-fullchain.sh"
 ).read_text()
 HANDBOOK = (ROOT / "tests" / "README.md").read_text()
+AGENTS = (ROOT / "AGENTS.md").read_text()
 GITIGNORE = (ROOT / ".gitignore").read_text()
 SOURCE_SYNC = (ROOT / "tests" / "helpers" / "sync-kubeauto.sh").read_text()
 CONTROL_SSH_BOOTSTRAP = (
@@ -32,6 +36,7 @@ REGISTRY_REBOOT_GATE = (
     ROOT / "tests" / "helpers" / "registry-reboot-gate.sh"
 ).read_text()
 BUILD_ENTRYPOINT = (ROOT / "build.py").read_text()
+DURABLE_GATE = ROOT / "tests" / "helpers" / "run-durable-gate.sh"
 
 
 class TestDeliveryProcessContract(unittest.TestCase):
@@ -55,6 +60,43 @@ class TestDeliveryProcessContract(unittest.TestCase):
             self.assertIn(required, RUNNER)
         self.assertIn('lab-wipe-nodes.sh" --verify', RUNNER)
         self.assertIn("LAB_CLEAN_VERIFY_PASS", LAB_WIPE)
+
+    def test_durable_terminal_fence_waits_for_child_exit_diagnostics(self):
+        with tempfile.TemporaryDirectory(prefix="kubeauto-durable-gate-") as temporary:
+            workdir = Path(temporary)
+            state_prefix = workdir / "state"
+            trap_started = workdir / "trap-started"
+            child = workdir / "child.sh"
+            child.write_text(
+                "#!/usr/bin/env bash\n"
+                "trap 'touch \"$1\"; sleep 0.3; echo CHILD_EXIT_DIAGNOSTICS' EXIT\n"
+                "exit 7\n"
+            )
+            child.chmod(0o755)
+            process = subprocess.Popen(
+                [
+                    "bash",
+                    str(DURABLE_GATE),
+                    str(state_prefix),
+                    "DURABLE_TEST_EXIT",
+                    "bash",
+                    str(child),
+                    str(trap_started),
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            deadline = time.monotonic() + 3
+            while not trap_started.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(trap_started.exists(), "child EXIT trap did not start")
+            self.assertFalse((workdir / "state.finalized").exists())
+            output, _ = process.communicate(timeout=3)
+            self.assertEqual(process.returncode, 7)
+            self.assertEqual((workdir / "state.exit").read_text().strip(), "7")
+            self.assertEqual((workdir / "state.finalized").read_text().strip(), "7")
+            self.assertLess(output.index("CHILD_EXIT_DIAGNOSTICS"), output.index("DURABLE_TEST_EXIT rc=7"))
 
     def test_status_reports_rocky8_customer_binary_build(self):
         status = RUNNER.split('if [[ "$MODE" == "--status" ]]', 1)[1].split(
@@ -99,6 +141,8 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertLess(
             RUNNER.index(validator), RUNNER.index('if [[ "$MODE" == "--mysql-only" ]]')
         )
+        self.assertIn("KUBEAUTO_MATRIX_WIP", RUNNER)
+        self.assertIn("--require-pass", RUNNER)
 
     def test_all_delivery_mode_composes_every_signoff_gate(self):
         start = RUNNER.index('if [[ "$MODE" == "--all-delivery" ]]')
@@ -380,10 +424,30 @@ class TestDeliveryProcessContract(unittest.TestCase):
             self.assertNotIn("python3 -c 'from common", source, relative)
 
     def test_repository_has_root_agent_contract(self):
-        agents = (ROOT / "AGENTS.md").read_text()
-        self.assertIn("tests/enterprise-test-matrix.yaml", agents)
-        self.assertIn("LAB_CLEAN_VERIFY_PASS", agents)
-        self.assertIn("six sibling repositories", agents)
+        self.assertIn("tests/enterprise-test-matrix.yaml", AGENTS)
+        self.assertIn("LAB_CLEAN_VERIFY_PASS", AGENTS)
+        self.assertIn("six sibling repositories", AGENTS)
+
+    def test_test_gate_change_ladder_is_a_permanent_delivery_contract(self):
+        for required in (
+            "Mandatory test-gate change ladder",
+            "Classify the proposed change before running it",
+            "Complete the static preflight",
+            "narrowest fixed-runner branch",
+            "Start exactly one clean full middleware regression only after",
+            "prerequisite: never spend the remaining stages",
+            "completed ladder level",
+        ):
+            self.assertIn(required, AGENTS)
+        for required in (
+            "## Test-gate change protocol",
+            "lowest-cost checks first",
+            "deterministic regression test for a proven test-gate defect",
+            "A static or focused failure blocks the full middleware gate",
+            "Abort after a failed prerequisite",
+            "completed ladder level",
+        ):
+            self.assertIn(required, HANDBOOK)
 
     def test_live_cluster_pass_requires_application_read_write(self):
         jumper = (ROOT / "tests" / "helpers" / "regression-jumper.sh").read_text()

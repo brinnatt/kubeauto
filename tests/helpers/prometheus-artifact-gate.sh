@@ -4,6 +4,7 @@ set -Eeuo pipefail
 
 images=(
   kube-state-metrics:v2.18.0
+  kube-webhook-certgen:v1.6.0
   prometheus-webhook-certgen:1.8.5
   prometheus-admission-webhook:v0.93.0
   busybox:1.37

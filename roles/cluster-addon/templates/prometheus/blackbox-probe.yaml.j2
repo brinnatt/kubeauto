@@ -1,0 +1,26 @@
+{% for target in (prom_blackbox_probe_targets | default([])) %}
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: kubeauto-blackbox-{{ target.name }}
+  namespace: {{ prom_namespace }}
+  labels:
+    release: prometheus
+    kubeauto.io/component: prometheus-optional
+spec:
+  jobName: kubeauto-blackbox-{{ target.name }}
+  interval: 30s
+  scrapeTimeout: 10s
+  module: {{ target.module }}
+  prober:
+    url: blackbox-exporter.{{ prom_namespace }}.svc.cluster.local:9115
+    scheme: http
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - {{ target.url | quote }}
+{% if not loop.last %}
+---
+{% endif %}
+{% endfor %}

@@ -1746,6 +1746,16 @@ curl -fsS http://127.0.0.1:9090/api/v1/rules | jq \
 
 以上两个 `jq` 结果均应为空数组。升级前必须备份 values 与 Grafana/Prometheus 数据，使用 Helm history 记录当前 revision；受控升级后验证 Targets、Rules、Grafana 数据源及告警触发/恢复，失败时回滚到上一 `deployed` revision。不得通过删除 PVC 处理升级失败。
 
+**Prometheus 可选扩展（默认全部关闭）**
+
+| 能力 | 开关 | 依赖与入口 |
+|---|---|---|
+| Thanos Querier/Sidecar | `prom_thanos_install` | 依赖 `prom_install: "yes"`；Querier Service `thanos-querier`；对象存储凭据由 `prom_thanos_objectstorage_secret` 指向 Secret |
+| prometheus-adapter | `prom_adapter_install` | 依赖核心栈；注册 `custom.metrics.k8s.io`；可用 `prom_adapter_prometheus_url` 指向 Thanos Querier |
+| blackbox-exporter | `prom_blackbox_install` | 依赖核心栈；创建 exporter Service；Probe 目标必须由用户显式提交 |
+
+扩展使用固定本地 Chart/镜像并纳入同一回归分路，不会因测试自动启用。显式卸载前将 `prom_optional_uninstall: "yes"` 执行一次 setup，完成后恢复 `"no"`；PVC 默认保留。详见 `docs/middleware/prometheus/operations-manual.md`。
+
 ##### 1.3.3.7.5、ingress-nginx
 
 | 项 | 值 |
