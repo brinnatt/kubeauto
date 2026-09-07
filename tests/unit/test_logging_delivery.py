@@ -14,6 +14,7 @@ from jinja2 import Environment, StrictUndefined
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = (ROOT / "conf/config.yml").read_text()
 TASKS = (ROOT / "roles/cluster-addon/tasks/logging.yml").read_text()
+ADDON_TASKS = (ROOT / "roles/cluster-addon/tasks/main.yml").read_text()
 INGRESS_TASKS = (ROOT / "roles/cluster-addon/tasks/ingress-nginx.yml").read_text()
 EFK = (ROOT / "roles/cluster-addon/templates/logging/efk.yaml.j2").read_text()
 DIRECT = (ROOT / "roles/cluster-addon/templates/logging/fluent-bit-direct.yaml.j2").read_text()
@@ -379,7 +380,7 @@ class LoggingDeliveryContracts(unittest.TestCase):
         self.assertIn('--cacert "$tls_tmp/tls.crt"', REGRESSION)
         self.assertIn('--resolve loki.logging.test:19443:127.0.0.1', REGRESSION)
         self.assertIn('get secret logging-loki-gateway-client -o jsonpath', REGRESSION)
-        self.assertNotIn('echo LOGGING_LOKI_INSTALL_GATE_PASS\n  echo LOGGING_FULL_GATE_PASS', REGRESSION)
+        self.assertNotIn('LOGGING_LOKI_INSTALL_GATE_PASS', REGRESSION)
         self.assertIn('kubectl uncordon "$node"', REGRESSION)
         self.assertIn('hub.talkedu.cn/kubeauto+runtime-registry', REGRESSION)
         self.assertIn('logging-master-246 logging-master-217', REGRESSION)
@@ -408,6 +409,10 @@ class LoggingDeliveryContracts(unittest.TestCase):
             self.assertIn(marker, REGRESSION)
         self.assertIn("kubectl -n logging apply -f - <<'YAML'", REGRESSION)
         self.assertIn("name: logging-minio-data", REGRESSION)
+        self.assertIn("Keep the object-store fixture durable across the restart/recovery gate", REGRESSION)
+        self.assertIn('"claimName":"logging-minio-data"', REGRESSION)
+        self.assertIn('restart_loki_gateway_forward\n      change_id="logging-loki-change-', REGRESSION)
+        self.assertIn('rollout status statefulset/loki --timeout=20m\n      restart_loki_gateway_forward', REGRESSION)
         self.assertIn("/api/datasources/uid/${grafana_ds_uid}/health", REGRESSION)
         self.assertIn("/api/v1/query_range", REGRESSION)
         self.assertIn("curl --connect-timeout 5 --max-time 20 -fsS -u", REGRESSION)
@@ -472,6 +477,11 @@ class LoggingDeliveryContracts(unittest.TestCase):
         self.assertIn("json_status=$status count=$count error=$error", REGRESSION)
         self.assertIn("LOGGING_CHANGE_DATA_WAIT 36", REGRESSION)
         self.assertIn("LOGGING_SECRET_ROTATION_WAIT 36", REGRESSION)
+        self.assertIn(
+            '      start_es_forward\n'
+            '      "${es_curl[@]}" -fsS --get --data-urlencode "q=$smoke_marker"',
+            REGRESSION,
+        )
         self.assertIn('term:{"message.keyword":$marker}', REGRESSION)
         self.assertIn("select(.[1] | contains($marker))", REGRESSION)
         self.assertNotIn("select(.[1] == $marker)", REGRESSION)
@@ -545,6 +555,11 @@ class LoggingDeliveryContracts(unittest.TestCase):
             INGRESS_TASKS.index("deployment/ingress-nginx-controller"),
             INGRESS_TASKS.index("name: 提示 WARNNING"),
         )
+        ingress_import = ADDON_TASKS.index("- import_tasks: ingress-nginx.yml")
+        prometheus_import = ADDON_TASKS.index("- import_tasks: prometheus.yml")
+        logging_import = ADDON_TASKS.index("- import_tasks: logging.yml")
+        self.assertLess(ingress_import, prometheus_import)
+        self.assertLess(ingress_import, logging_import)
 
     def test_eck_artifacts_match_official_digest(self) -> None:
         expected = {

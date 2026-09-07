@@ -35,6 +35,10 @@ run_extended_cases() {
     # retained; this does not pretend that an unsupported data-format downgrade
     # is a valid rollback.
     if [[ "$LOGGING_SOLUTION" == loki ]]; then
+      # LOGGING-37 restarts the object store and may close the existing
+      # diagnostic port-forward. Re-establish it before the upgrade boundary
+      # so a stale local socket cannot mask the product result.
+      restart_loki_gateway_forward
       change_id="logging-loki-change-$(date +%s)"
       change_marker="${change_id}-retained"
       kubectl -n logging-smoke run "$change_marker" \
@@ -57,11 +61,13 @@ run_extended_cases() {
       loki_revision_changed="$($HELM status loki --namespace logging -o json | jq -r '.version')"
       [[ "$loki_revision_changed" -gt "$loki_revision_before" ]]
       kubectl -n logging rollout status statefulset/loki --timeout=20m
+      restart_loki_gateway_forward
       change_response="$(loki_query "{namespace=\"logging-smoke\",pod=\"${change_marker}\"}")"
       jq -e --arg marker "$change_marker" \
         'any(.data.result[]?.values[]?; .[1] | contains($marker))' <<<"$change_response" >/dev/null
       "$HELM" rollback loki "$loki_revision_before" --namespace logging --wait --timeout 20m
       kubectl -n logging rollout status statefulset/loki --timeout=20m
+      restart_loki_gateway_forward
       loki_revision_rolled_back="$($HELM status loki --namespace logging -o json | jq -r '.version')"
       [[ "$loki_revision_rolled_back" -gt "$loki_revision_changed" ]]
       loki_pvcs_after="$(kubectl -n logging get pvc -l app.kubernetes.io/component=single-binary -o json \
@@ -75,6 +81,9 @@ run_extended_cases() {
       change_id="logging-efk-change-$(date +%s)"
       efk_pvcs_before="$(kubectl -n logging get pvc -l common.k8s.elastic.co/type=elasticsearch -o json \
         | jq -Sc '[.items[] | {name:.metadata.name,uid:.metadata.uid}] | sort_by(.name)')"
+      # The idempotent setup may recreate the Service endpoints. Re-establish
+      # the diagnostic forward and wait for the ES API before querying data.
+      start_es_forward
       "${es_curl[@]}" -fsS --get --data-urlencode "q=$smoke_marker" \
         "https://${es_tls_name}:19200/k8s-*/_count" | jq -e '.count > 0' >/dev/null
       config_restore_file="$(mktemp)"
@@ -883,6 +892,27 @@ else
   kubectl -n logging patch deployment minio --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args","value":["server","/data","--console-address",":9001"]}]' >/dev/null
   kubectl -n logging expose deployment minio --name=minio --port=9000 --target-port=9000 >/dev/null
   kubectl -n logging expose deployment minio --name=minio-console --port=9001 --target-port=9001 >/dev/null
+  # Keep the object-store fixture durable across the restart/recovery gate.
+  # Without a PVC, restarting this disposable deployment erases all buckets
+  # and makes Loki fail its compactor startup with NoSuchBucket.
+  kubectl -n logging apply -f - <<'YAML'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logging-minio-data
+  labels:
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: logging
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests: {storage: 10Gi}
+YAML
+  kubectl -n logging patch deployment minio --type=json -p='[
+    {"op":"add","path":"/spec/template/spec/volumes","value":[{"name":"data","persistentVolumeClaim":{"claimName":"logging-minio-data"}}]},
+    {"op":"add","path":"/spec/template/spec/containers/0/volumeMounts","value":[{"name":"data","mountPath":"/data"}]}
+  ]' >/dev/null
   kubectl -n logging rollout status deployment/minio --timeout=180s
   # S3 bucket creation must use AWS Signature V4.  A plain HTTP PUT is
   # intentionally rejected by MinIO (InvalidRequest), so use the pinned
@@ -1090,6 +1120,12 @@ if [[ "$LOGGING_SOLUTION" == loki ]]; then
       if [[ "$http" == 200 && "$status" == success && "$count" == 1 ]]; then
         rm -f "$response_file" "$curl_error"
         return 0
+      fi
+      if [[ "$curl_rc" -ne 0 ]]; then
+        # Loki rollouts can close an existing local forward after the Service
+        # endpoint changes. Rebuild the diagnostic channel before retrying so
+        # transport churn cannot be misclassified as a data-path failure.
+        restart_loki_gateway_forward || true
       fi
       sleep 5
     done
@@ -1358,7 +1394,11 @@ YAML
   [[ "$retained_count" =~ ^[0-9]+$ && "$retained_count" -gt 0 ]]
   case_pass LOGGING-37 object-storage-restart-retained-readability
   run_extended_cases
-  echo LOGGING_LOKI_INSTALL_GATE_PASS
+  if [[ -n "$LOGGING_FOCUS_CASE" ]]; then
+    echo "LOGGING_FOCUSED_GATE_PASS case=$LOGGING_FOCUS_CASE"
+  else
+    echo LOGGING_FULL_GATE_PASS
+  fi
   exit 0
 fi
 kubectl -n logging get elasticsearches logging >/dev/null

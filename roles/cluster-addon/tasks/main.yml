@@ -28,6 +28,11 @@
 - import_tasks: openebs.yml
   when: 'openebs_install == "yes" and "openebs-localpv-provisioner" not in pod_info.stdout'
 
+- import_tasks: ingress-nginx.yml
+  # Ingress-backed middleware resources must not be applied until the
+  # controller deployment has converged and its admission path is usable.
+  when: '(ingress_nginx_install | default("no") | string | lower) == "yes"'
+
 - name: 拒绝未启用核心栈时单独启用 Prometheus 扩展
   ansible.builtin.assert:
     that:
@@ -78,6 +83,3 @@
 
 - import_tasks: network_check.yml
   when: 'network_check_enabled|bool and CLUSTER_NETWORK != "cilium"'
-
-- import_tasks: ingress-nginx.yml
-  when: '(ingress_nginx_install | default("no") | string | lower) == "yes"'
