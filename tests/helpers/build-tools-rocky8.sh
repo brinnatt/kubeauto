@@ -53,8 +53,12 @@ docker run --rm --name "$CONTAINER" \
     bash roles/prepare/files/huawei-mirror-rhel.sh
     dnf install -y epel-release
     bash roles/prepare/files/huawei-mirror-rhel.sh
-    dnf install -y python3.12 python3.12-pip python3.12-devel gcc openssl-devel libffi-devel
+    # Rocky 8.10 base expat is too old for the Python 3.12 pyexpat module.
+    # Upgrade it before any pip invocation so the build cannot hit an ABI mismatch.
+    dnf install -y expat expat-devel python3.12 python3.12-pip python3.12-devel gcc openssl-devel libffi-devel
+    dnf upgrade -y expat expat-devel
     alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+    python3.12 -c "import pyexpat"
     python3 build.py --tools-only
     test "$(getconf GNU_LIBC_VERSION)" = "glibc 2.28"
     for tool in $TOOL_LIST; do

@@ -17,7 +17,9 @@ for script_path in tool_scripts:
     name = script_path.stem
     a = Analysis(
         [script_str],
-        pathex=[str(project_root)],
+        # Keep analysis rooted at the script itself: tools are standalone CLIs
+        # and must never resolve kubeauto application modules from project_root.
+        pathex=[str(script_path.parent)],
         binaries=[],
         datas=[],
         hiddenimports=[],

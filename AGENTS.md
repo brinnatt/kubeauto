@@ -13,6 +13,47 @@ Before changing code or running a lab test, read:
 
 For a new middleware branch, also read and follow `docs/middleware/delivery-playbook.md`.
 
+### Independent `tools/` boundary and delivery path
+
+`tools/` is a separate product surface, not part of kubeauto core or any
+middleware branch. Every Python file below `tools/` is a complete standalone
+CLI and must remain independently buildable, runnable and supportable.
+
+- A tool may use only the Python standard library and explicitly documented,
+  pinned third-party packages required by that tool. It must not import or call
+  `common/`, `controller/`, `model/`, `service/`, `kubecli.py`, `runtime_hook.py`,
+  another repository, or another `tools/` script/module. Do not add a shared
+  helper to make tools appear independent; duplicate a small local helper when
+  that is the clearest standalone design.
+- `tools-onefile.spec` must produce one executable per script. Its analysis
+  path, hidden imports and data files must not pull kubeauto application
+  modules. A tool change is reviewed as a tool release even when core code is
+  unchanged.
+- Tools use the dedicated matrix and runner in `tests/tools-test-matrix.yaml`
+  and `tests/run_tools_regression.sh`. They do not consume, alter or inherit
+  PASS evidence from `enterprise-test-matrix.yaml`, middleware matrices, or
+  the core `run_enterprise_regression.sh` path. The core and middleware gates
+  must not call a tools gate as an implicit prerequisite.
+- Before review approval, the tools matrix remains `pending` and no live lab
+  mutation is allowed. The review package must include the exact product
+  command, expected marker, official documentation/source reference, fixture
+  boundary, cleanup scope and smallest disproof command for every case.
+- The tools ladder is: matrix/schema validation and AST import-boundary check;
+  Python syntax/import smoke and focused deterministic tests; isolated CLI
+  contract tests; one clean per-tool integration scenario; one clean complete
+  tools regression; then scoped cleanup verification. A failure stops at the
+  first unmet prerequisite and is classified before code changes.
+- Tool tests must exercise the tool's own CLI entry point. Direct `kubectl`,
+  `docker`, database clients, SSH or broker commands are diagnostics/fixtures
+  only and cannot replace tool evidence. External services and temporary
+  fixtures are owned by the tools runner and are removed on success, failure
+  and interruption.
+- A tools delivery PASS requires current matrix evidence for every applicable
+  item, durable runner `rc=0`, zero failure markers, all required success
+  markers, SHA256/build provenance for frozen artifacts, and final
+  `TOOLS_CLEAN_VERIFY_PASS`. Historical Tier3 `--help` evidence is not a tools
+  delivery sign-off.
+
 Inspect all six sibling repositories under `/home/brinnatt/projects` before and after a change. Preserve unrelated user changes.
 
 ## Non-negotiable delivery rules
@@ -112,6 +153,17 @@ ladder removes invalid executions, not customer coverage.
 - Anolis compatibility control: `192.168.47.141` (`root`, verified Anolis OS 23.3).
 - openEuler compatibility control: `192.168.47.142` (`root`, verified openEuler 22.03 LTS-SP4).
 - openSUSE compatibility control: `192.168.47.143` (`root`, verified openSUSE Leap 16.0).
+- Supplemental large-capacity pool (available to this single Codex session for
+  middleware, Prometheus, EFK and other resource-heavy tests):
+  `192.168.122.2`, `192.168.122.217`, `192.168.122.243`, `192.168.122.246`,
+  `192.168.122.193`, `192.168.122.210`, `192.168.122.216` (all currently
+  Rocky Linux 9.8, `root`; `.2` is the control host and the other six form the
+  disposable cluster pool). These hosts are not assigned to a permanent
+  feature; the runner must lease them per scenario and prevent overlap.
+- `192.168.122.1` is permanently forbidden. Any address not explicitly listed
+  in this section is forbidden as a test machine, inventory host, SSH target,
+  Registry endpoint or fallback. Historical fixtures containing other
+  `192.168.122.*` addresses must not be reused.
 - Disable reserved resources on small-memory 131-136. Exercise the real 2 CPU + 4 GiB reservation behavior only on 137/138; keep the customer sizing baseline (16 CPU / 32 GiB) distinct from the smaller lab capacity.
 - Use key authentication with `BatchMode=yes`. Do not copy the existing lab fallback credential into new files or print it in logs/output.
 - Snapshot restores may remove SSH keys on all test hosts. Restore access through the fixed lab bootstrap helper using the runtime-only `LAB_SSH_PASSWORD`; never persist the fallback credential.

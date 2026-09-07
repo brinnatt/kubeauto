@@ -107,6 +107,31 @@ and always performs Kafka-owned cleanup and verification before and after the
 run. Use `--kafka-status` and `--kafka-follow` for durable state and live logs;
 use `--kafka-cancel` only to stop the Kafka-owned durable job.
 
+`run_tools_regression.sh` owns the separate `tools-test-matrix.yaml` branch.
+The branch is independent from the enterprise and middleware runners: every
+script under `tools/` is built and tested as a standalone CLI, with its own
+import-boundary, security, functional, recovery and cleanup evidence. During
+review, run only:
+
+```bash
+bash tests/run_tools_regression.sh --preflight
+bash tests/run_tools_regression.sh --status
+```
+
+The tools matrix contains 53 executable scenarios plus an 89-item
+`functional_inventory`. The inventory is the public-function checklist for all
+nine CLIs: every command/role/data path/configuration mode/remote path and
+failure-recovery behavior must point to a CLI, functional, security or recovery
+case. Build success and `--help` are never sufficient evidence for an inventory
+item. A functional case is PASS only after its isolated fixture reaches the
+documented product result, verifies read-back/state/exit markers, and completes
+scoped cleanup; partial execution remains pending.
+
+The matrix remains `pending` until review approves fixtures, credentials,
+external-service versions and live cleanup scope. `--full` is review-gated;
+Tier3 `--help` results in the enterprise matrix are not tools delivery
+evidence.
+
 The runner is authoritative because it centralizes SSH, source synchronization, remote launch, durable PID/exit state, foreground log streaming, heartbeat, silent-stall diagnostics, final markers, and cleanup. Do not replace it with a sequence of manually approved SSH commands.
 
 ## Required lifecycle
