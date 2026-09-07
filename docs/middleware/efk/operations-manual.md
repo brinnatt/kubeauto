@@ -286,3 +286,176 @@ bash tests/run_enterprise_regression.sh --logging-follow
 ```
 
 交付签收必须同时满足：三条客户可选路线取得当前 clean evidence；矩阵 `44/44`；主进程输出 `LOGGING_FULL_GATE_PASS`；durable 状态为 `LOGGING_GATE_EXIT rc=0`；零 failure marker；最终输出 `LOGGING_CLEAN_VERIFY_PASS`；单元测试、六仓契约和总交付回归全部通过。缺少任何一项都不能以“部分通过”交付。
+
+## 15. 每日、每周和每月工作节奏
+
+### 15.1 每日值班检查（15 分钟内）
+
+先确认入口、后端和采集器，再确认数据，不要从“某个 Pod 是 Running”推导平台健康：
+
+```bash
+KC="kubectl --kubeconfig=clusters/<cluster>/kubectl.kubeconfig"
+$KC -n logging get pods -o wide
+$KC -n logging get pvc
+$KC -n logging get events --sort-by=.lastTimestamp | tail -n 30
+```
+
+EFK direct 或 Kafka-buffer：
+
+```bash
+$KC -n logging get elasticsearch logging -o jsonpath='{.status.health}{" "}{.status.availableNodes}{"/"}{.status.expectedNodes}{"\n"}'
+$KC -n logging get kibana logging -o jsonpath='{.status.health}{" "}{.status.availableNodes}{"/"}{.status.expectedNodes}{"\n"}'
+$KC -n logging get pods -l app.kubernetes.io/name=fluent-bit
+```
+
+通过受控 API 通道查询 Elasticsearch，不在命令行写入密码：
+
+```bash
+ES_POD="$($KC -n logging get pod -l common.k8s.elastic.co/type=elasticsearch -o jsonpath='{.items[0].metadata.name}')"
+$KC -n logging port-forward "pod/$ES_POD" 19200:9200 >/tmp/es-forward.log 2>&1 & ES_PF=$!
+trap 'kill "$ES_PF" 2>/dev/null || true' EXIT
+curl --fail-with-body --cacert ./secrets/logging-es-ca.crt \
+  --resolve logging-es-http.logging.svc:19200:127.0.0.1 \
+  -u "${ES_USER:?从密码库注入}:${ES_PASSWORD:?从密码库注入}" \
+  https://logging-es-http.logging.svc:19200/_cluster/health?pretty
+curl --fail-with-body --cacert ./secrets/logging-es-ca.crt \
+  --resolve logging-es-http.logging.svc:19200:127.0.0.1 \
+  -u "${ES_USER}:${ES_PASSWORD}" \
+  'https://logging-es-http.logging.svc:19200/_cat/indices/k8s-*?format=json&bytes=gb'
+```
+
+Kafka-buffer 额外检查消费者组：
+
+```bash
+$KC -n kafka get kafkatopic efk-replay -o yaml
+$KC -n kafka get kafkauser efk-pipeline -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}{"\n"}'
+$KC -n logging logs -l app.kubernetes.io/name=logstash --since=15m | grep -E 'error|retry|dead.?letter' || true
+```
+
+Loki：
+
+```bash
+$KC -n logging get statefulset loki -o jsonpath='{.status.readyReplicas}{"/"}{.spec.replicas}{"\n"}'
+$KC -n logging get ring -o name 2>/dev/null || true
+$KC -n logging get pods -l app.kubernetes.io/name=alloy
+```
+
+每日必须记录：后端健康状态、最老未处理事件时间、PVC 使用率、最近一次快照状态、Kafka lag（如适用）、查询 P95 和 firing 告警。任何一项无法取得数据都应创建事件，而不是填写“正常”。
+
+### 15.2 每周巡检
+
+- 查看 Elasticsearch `_cat/shards`，确认没有持续 `UNASSIGNED`；对未分配分片执行 `_cluster/allocation/explain`，记录原因后再处理。
+- 查看 ILM/SLM 执行历史，确认最近一次删除和快照均有成功记录；失败策略不得通过手工删除状态掩盖。
+- 查看 Loki 对象存储错误、compactor、ingester WAL 恢复日志和查询慢日志，统计高基数标签 Top N。
+- 统计每节点 Fluent Bit/Alloy 读取文件数量、重试次数、丢弃计数和 positions 文件大小。
+- 在非高峰时段运行固定查询集，保存响应时间和结果数量；查询窗口、标签、用户权限必须保持一致。
+
+### 15.3 每月和季度工作
+
+- 每月审查保留期、日均/峰值日志量、索引膨胀率、对象存储成本和未来 90 天容量预测。
+- 每月抽样检查日志脱敏规则，确认 Token、Cookie、身份证号等敏感字段未进入后端。
+- 每季度在隔离索引或隔离集群执行一次真实恢复，验证时间范围、文档数、权限和应用查询，不得只验证文件存在。
+- 每季度进行一次单成员故障和一次节点维护演练，记录 RTO、数据缺口和重复率。
+
+## 16. 日志增长过快、索引和磁盘处置
+
+### 16.1 先定位增长来源
+
+增长过快时先冻结证据（时间、索引、Namespace、Pod、采集器），再采取删除动作：
+
+```bash
+curl --fail-with-body --cacert ./secrets/logging-es-ca.crt \
+  --resolve logging-es-http.logging.svc:19200:127.0.0.1 -u "$ES_AUTH" \
+  'https://logging-es-http.logging.svc:19200/_cat/indices/k8s-*?h=index,docs.count,store.size,creation.date.string&s=store.size:desc&format=json'
+curl --fail-with-body --cacert ./secrets/logging-es-ca.crt \
+  --resolve logging-es-http.logging.svc:19200:127.0.0.1 -u "$ES_AUTH" \
+  -H 'content-type: application/json' -X POST \
+  'https://logging-es-http.logging.svc:19200/k8s-*/_search?size=0' \
+  -d '{"aggs":{"by_namespace":{"terms":{"field":"kubernetes.namespace_name.keyword","size":50}}}}'
+```
+
+对 Loki，先使用窄时间窗口和低基数标签查询；不要使用 `{job=~".*"}` 这类全量正则扫描。检查 Alloy stream 数量、`loki_write` 重试和对象存储 prefix 增长，确认是生产流量、解析重复还是异常循环输出。
+
+### 16.2 正常清理
+
+EFK 的正常清理由 ILM 执行。需要提前清理时，先列出候选完整索引并获得变更审批，再按索引删除；禁止按通配符删除未核验名称：
+
+```bash
+curl --fail-with-body --cacert ./secrets/logging-es-ca.crt \
+  --resolve logging-es-http.logging.svc:19200:127.0.0.1 -u "$ES_AUTH" \
+  -X DELETE 'https://logging-es-http.logging.svc:19200/k8s-2026.08.01'
+```
+
+删除后等待 segment merge 并复查磁盘，不要立即判定空间已经回收。Loki 的删除必须使用已评审的 retention/schema 或 compactor 机制；直接删除对象存储 prefix 会破坏索引与 chunk 对应关系，禁止作为日常清理手段。
+
+### 16.3 磁盘接近满的应急顺序
+
+1. 记录当前 `_cluster/health`、PVC 使用率、最大索引、最近快照和业务事件；暂停非必要的高噪声应用输出。
+2. 当 Elasticsearch 达到 high/flood-stage 水位时，先按批准的保留策略删除最老完整索引，确认 `_cat/indices` 中已消失，再观察 merge 和水位。
+3. 删除仍不足时，临时降低保留期并让 ILM 执行；不得删除当前热索引、`.security-*` 或 `.kibana*`。
+4. 仅在清理动作保护了可运行空间后扩容 PVC。先确认 StorageClass `allowVolumeExpansion: true`，逐个 PVC 扩容并观察文件系统：
+
+```bash
+$KC get storageclass <storage-class> -o jsonpath='{.allowVolumeExpansion}{"\n"}'
+$KC -n logging patch pvc/<es-pvc-name> --type=merge \
+  -p '{"spec":{"resources":{"requests":{"storage":"300Gi"}}}}'
+$KC -n logging get pvc/<es-pvc-name> -w
+```
+
+5. 扩容后验证 Elasticsearch 节点磁盘、分片分配、写入和查询；保留事件和审批记录。
+
+Loki 磁盘满时优先保护 WAL 和对象存储上传路径：暂停高噪声采集、按 retention 清理已确认的对象数据，再扩容 PVC。不要删除 `/var/lib/alloy` 或 Loki WAL 目录来“腾空间”，那会丢失未确认批次和读取位置。
+
+> **回滚：误删或清理后数据不完整**
+>
+> 立即停止进一步删除，保存后端和对象存储审计日志。EFK 从最近成功 SLM 快照恢复到隔离索引，再与当前索引比较时间范围和文档数；Loki 按对象存储版本/复制副本恢复缺失 prefix，并保持原 schema、租户和加密配置。恢复验证完成前不得把隔离数据直接覆盖生产索引。
+
+## 17. 常见异常定位手册
+
+### 17.1 日志完全不可见
+
+按数据链从左到右逐层验证：源 Pod 是否产生日志，节点文件是否有新增，Fluent Bit/Alloy 是否读取，输出是否被认证或 NetworkPolicy 拒绝，后端是否接受，查询时间范围和权限是否正确。每层保存一个唯一标志和计数，禁止同时修改采集器、后端和网络策略。
+
+### 17.2 EFK 为 yellow/red
+
+```bash
+curl --fail-with-body --cacert ./secrets/logging-es-ca.crt \
+  --resolve logging-es-http.logging.svc:19200:127.0.0.1 -u "$ES_AUTH" \
+  'https://logging-es-http.logging.svc:19200/_cluster/health?level=indices&pretty'
+curl --fail-with-body --cacert ./secrets/logging-es-ca.crt \
+  --resolve logging-es-http.logging.svc:19200:127.0.0.1 -u "$ES_AUTH" \
+  -H 'content-type: application/json' -X POST \
+  'https://logging-es-http.logging.svc:19200/_cluster/allocation/explain' -d '{}'
+```
+
+先区分未分配副本、节点离线、磁盘水位、分片过滤和恢复速度。不能通过把副本数改为 0 或删除 PVC 伪造 green；恢复故障节点或容量后重新观察分片恢复。
+
+### 17.3 Kafka lag 持续增长
+
+确认 Producer 是否仍在写入、Topic 分区是否足够、Logstash Pod 是否 Ready、消费者组是否发生 rebalance、Elasticsearch 是否限流。维护期间 lag 增长是可接受的暂态，恢复验收必须证明 lag 回到 0 且固定批次在 Elasticsearch 可查；只看到 Logstash 日志“connected”不算恢复。
+
+### 17.4 Loki 查询慢或结果为空
+
+先缩小时间范围和标签选择，再检查 querier、gateway、对象存储和 ingester 日志。结果为空时确认租户/认证、stream 标签和日志时间戳（纳秒）是否正确；查询窗口错误不能归因于采集丢失。高基数标签应回收为正文过滤字段，并重新评估写入和查询资源。
+
+### 17.5 TLS、认证或权限失败
+
+检查证书 SAN、有效期、签发 CA、Secret 键名和服务 DNS；用错误密码验证 401，用正确密码验证 200，再确认后端 writer 的索引范围。禁止使用 `-k`、跳过证书验证或给采集器绑定管理员角色。Secret 更新后必须滚动重启读取环境变量的消费者。
+
+## 18. 客户操作记录模板
+
+每次生产操作至少记录以下字段，并与变更单关联：
+
+| 字段 | 示例含义 |
+| --- | --- |
+| change ID | 唯一变更编号 |
+| 影响路线 | `efk/direct`、`efk/kafka-buffer` 或 `loki` |
+| 起止时间与操作者 | 用于审计和 RTO 统计 |
+| 变更前证据 | 健康、PVC、快照、lag、唯一日志标志 |
+| 实际命令与结果 | 不包含密码、Token 或私钥 |
+| 失败分类 | 产品、环境、供应链、运行时、Kubernetes/controller 或操作错误 |
+| 回滚条件与结果 | 精确 revision、快照或对象副本 |
+| 变更后验收 | 新写入、历史查询、告警恢复、容量和权限 |
+| 数据保留决定 | 删除索引/对象前的审批和保留期限 |
+
+该记录是客户长期运维资产，不应以终端截图替代；密码库、审计系统和对象存储审计日志分别保存敏感数据和操作证据。

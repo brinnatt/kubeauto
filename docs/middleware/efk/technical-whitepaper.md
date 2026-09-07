@@ -124,3 +124,101 @@ Prometheus 同时观察采集器与后端。验收逐副本读取 targets 与 ru
 Kubeauto 使用默认关闭的 `logging_install`、唯一 `logging_solution`、声明式模板、稳定名称和所有权标签。相同输入重复执行应保留 PVC/Secret UID 和数据；不同路线必须安全拒绝。正常、失败和中断清理分别验证，限定删除日志资源，不修改已交付中间件。
 
 生产交付结论由当前代码、固定制品、三条路线现场证据、44 项矩阵、durable `rc=0`、零失败标志、文档契约和 clean verify 共同形成。官方支持但未由本项目验证的能力不属于已交付范围。
+
+## 10. Kubernetes 日志生命周期
+
+Kubernetes 本身只负责节点上的短期容器日志。容器写入 `stdout` 或 `stderr` 后，容器运行时按 CRI 格式写入节点文件，通常由 `/var/log/containers/*.log` 软链接到 Pod 对应文件。kubelet 的日志轮转参数（`containerLogMaxSize`、`containerLogMaxFiles`）决定节点本地窗口；它们不会把日志复制到集群，也不会延长后端保留期。节点级采集器必须以只读方式挂载这些路径，并使用 Pod、Namespace、Container 元数据补充事件上下文。
+
+采集器的状态分为三层：
+
+1. 文件读取偏移。Fluent Bit 的 DB 文件和 Alloy 的 positions 文件记录已经读取的字节位置，防止采集器重启后从文件开头重复读取。
+2. 发送缓冲。内存缓冲吸收瞬时后端延迟；磁盘缓冲或 WAL 吸收滚动重启和短时间网络中断。容量不足时必须产生可观察的丢弃或阻塞指标，不能静默覆盖旧数据。
+3. 后端确认。只有收到 Elasticsearch、Kafka 或 Loki 的成功响应，才可把批次视为交付。HTTP 200 只表示服务端接受请求，不表示快照已完成或生命周期策略已执行。
+
+因此，`kubectl logs`、采集器本地文件和后端查询必须使用同一唯一标志与时间窗口进行端到端核对。只检查 DaemonSet `Ready` 会遗漏解析失败、认证失败、索引拒绝和对象存储不可用。
+
+官方依据：[Kubernetes Logging Architecture](https://kubernetes.io/docs/concepts/cluster-administration/logging/)、[CRI logging](https://kubernetes.io/docs/concepts/cluster-administration/logging/#logging-at-the-node-level) 和 [Kubelet Configuration API](https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/)。
+
+## 11. EFK 内部机制
+
+### 11.1 ECK 调谐链
+
+ECK Operator 监听 `Elasticsearch`、`Kibana`、`PodDisruptionBudget` 和证书 Secret。用户提交 CR 后，Operator 计算期望的 StatefulSet、Service、PVC、TLS 证书和安全配置，并持续比较实际状态。StatefulSet 的 Pod 名称和 PVC 名称稳定，因此节点重建不会自动丢失数据；删除 PVC 则是不可逆的数据操作。
+
+ECK 生成的 `logging-es-http` Service 只提供稳定入口，真正的集群健康由 Elasticsearch API 决定。Operator 的 `health`、`availableNodes` 和 `version` 条件用于控制面状态；业务验收仍必须查询 `_cluster/health`、`_cat/nodes`、`_cat/shards` 和一次真实写入/读取。
+
+### 11.2 Elasticsearch 集群、分片和写入
+
+Elasticsearch 集群先通过 master 选举形成集群状态，再将索引分为主分片和副本分片。本文默认每个 `k8s-*` 索引使用 3 个主分片、1 个副本；主分片负责写入路由，副本在主分片故障时提升为可服务副本。分片数量在索引创建后不能原地减少，过多分片会消耗堆内存和集群状态，过少分片会限制并行度，因此应按每日字节量、查询并发和节点数评审，而不是按 Pod 数量机械设置。
+
+写入路径依次经过连接认证、索引模板匹配、解析/ingest、主分片确认和副本同步。`refresh` 使文档可搜索，`flush` 把事务日志安全落盘，segment merge 则合并只读段并回收删除文档空间。删除索引或文档不会立即释放磁盘，空间通常在 merge 后回收；磁盘紧张时必须优先删除完整旧索引或降低保留期，不能反复执行单文档删除期待即时腾出空间。
+
+### 11.3 ILM、模板和 SLM 的边界
+
+Index Template 只影响模板创建之后匹配模式的新索引；它不会回写旧索引。ILM policy 由索引上的 `index.lifecycle.name` 触发，按 hot、warm、cold、delete 等阶段执行，删除动作必须经过客户保留审批。SLM 以 repository 为目标生成快照，快照完成后才具备恢复意义；repository 可用不等于最近快照成功。恢复演练必须把索引恢复到隔离名称，禁止覆盖当前写入索引或 `.security-*`、`.kibana*` 系统索引。
+
+### 11.4 Fluent Bit 管线
+
+Fluent Bit 的 Tail input 读取 CRI 文件，Kubernetes filter 通过 API 缓存 Pod 元数据，Parser 将时间、stream 和 message 分离，输出插件再按批次发送。API 元数据读取失败不应阻断原始日志发送，但会降低标签完整性；因此应同时监控 `kubernetes` filter 错误和 output retry。direct 输出的确认边界是 Elasticsearch HTTP 响应，Kafka-buffer 输出的确认边界是 Kafka broker 对 Topic 分区的确认。
+
+Kafka-buffer 不提供跨 Kafka 与 Elasticsearch 的事务。Logstash 使用持久化队列和固定消费者组读取分区，写入 Elasticsearch 成功后提交 offset；进程崩溃可能导致同一批次重新处理，语义是至少一次。消费者组 lag 下降到零只表示读取追上最新 offset，不代表 Elasticsearch 已建立快照。
+
+## 12. Loki 与 Alloy 内部机制
+
+Loki 将日志流定义为一组标签与有序日志行。写入请求先按标签计算 stream，ingester 在内存中构建 chunk 并写 WAL，达到切块条件或超时后把 chunk 和索引写入对象存储。Querier 根据 TSDB index 找到候选 chunk，再在查询时过滤正文；因此 Loki 的成本和性能主要由标签基数、时间范围、并发和 chunk 大小决定，而不是日志正文是否包含某个单词。
+
+`replication_factor: 3` 使一个 stream 的写入发送到三个 ingester 成员；ring 使用成员心跳和 token 负责分片路由。单成员故障时，剩余成员可继续读取已有数据，重建成员通过 WAL 和对象存储追赶。复制因子不能防止三个故障域同时失效，也不能替代对象存储的跨区域复制。
+
+Alloy 的 file source 读取 CRI 文件，loki.process 负责解析、丢弃和字段转换，loki.write 负责批量、重试和认证发送。positions 文件只记录读取位置，不是日志备份。把高基数字段（request ID、用户 ID、完整 URL）提升为标签会导致 stream 数量爆炸；这类字段应保留在正文或结构化 metadata 中，在查询时使用过滤器。
+
+Gateway 是认证和路由边界：客户端先通过 Basic Auth，再由 Gateway 转发读写路径。对象存储保存 chunks、TSDB index、ruler 和 admin 数据；本地 PVC 只承担 WAL、缓存和恢复窗口。对象存储桶、schema、租户 ID 或加密密钥变化会影响历史数据可读性，不能把 Helm rollback 当作数据格式回滚。
+
+## 13. 可观测性、SLO 与容量模型
+
+建议把日志平台 SLO 分成四个可独立归因的指标：
+
+| SLO | 测量方法 | 主要归因 |
+| --- | --- | --- |
+| 端到端可查询延迟 | 生成唯一日志后测量采集时间到查询成功时间 | 采集器、网络、后端刷新/ingester |
+| 接收成功率 | 发送批次数与后端成功响应数比较 | 认证、限流、磁盘和对象存储 |
+| 查询成功率与 P95/P99 | 固定查询集按时间窗口统计 | 分片、标签基数、并发和缓存 |
+| 恢复时间 | 故障注入到健康与数据可读的时间 | 控制器、PVC、备份和人工操作 |
+
+EFK 容量初算：
+
+```text
+每日原始量 = 峰值字节/秒 × 86400
+可搜索物理量 = 每日原始量 × 实测膨胀系数 × (1 + 副本数)
+保留空间 = 可搜索物理量 × 保留天数 × 1.30 安全余量
+```
+
+还必须加入 segment merge、快照临时空间、节点重建和系统页缓存。达到 flood-stage 水位后 Elasticsearch 可能对索引设置只读保护；处理顺序应是停止非必要写入、删除已批准的旧索引、确认 merge/快照状态，再扩容或迁移数据。
+
+Loki 容量按对象存储写入量、压缩率、复制/WAL 窗口和查询缓存估算。标签基数应设置预算并通过 `loki_index_gateway`、querier 查询耗时和 stream 数量持续观察。无法从单次吞吐测试推导十年容量，必须用高峰数据、保留期和增长率做滚动预测。
+
+## 14. 威胁模型与信任边界
+
+日志可能包含 Token、Cookie、身份证号和业务密钥。采集过滤应在进入后端前完成，访问控制则在后端查询时再次执行。Elasticsearch writer 仅拥有 `k8s-*` 的写入和 monitor 权限；Loki/Alloy ServiceAccount 不得读取 Secret；Kibana/Grafana 用户权限按索引或租户授权。日志脱敏失败属于数据泄露事件，不得用“后端已加密”替代源头过滤。
+
+TLS 信任链包含服务端证书、SAN、客户端 CA、有效期和 DNS。`insecureSkipVerify`、`curl -k`、把密码放入 URL 或把 Secret 复制到 ConfigMap 都会破坏信任边界。NetworkPolicy 只允许采集器访问 DNS、Kubernetes API、目标后端和必要的监控端点；策略部署后必须验证 DNS、API 和数据路径，避免把网络策略误判为后端故障。
+
+## 15. 变更、升级与恢复决策
+
+组件升级的风险顺序是：镜像/Chart 变更、CRD schema 变更、应用数据格式变更、存储和认证变更。镜像与 Chart 可通过固定 revision 回滚；CRD 和数据格式通常只能前滚修复，或在隔离集群从变更前快照恢复。每次变更必须记录 change ID、目标版本、values/manifest、PVC UID、快照 ID、唯一日志标志和回滚条件。
+
+恢复决策遵循以下顺序：
+
+1. 单 Pod 故障：让控制器重建，确认 PVC UID、节点分布和业务查询。
+2. 单节点/故障域故障：先恢复调度和容量，再观察副本/分片重建，禁止手工删除未分配分片。
+3. 后端磁盘满：先暂停非必要写入，按保留策略删除旧索引或对象，再扩容；保留数据的删除必须经过审批。
+4. 集群级数据损坏：停止写入，保护现有 PVC 和对象存储，选择最近成功快照或跨区域副本恢复到隔离名称，完成文档数、时间范围和权限核对后切换入口。
+
+## 16. 官方依据与适用边界
+
+- [ECK 3.5 文档](https://www.elastic.co/guide/en/cloud-on-k8s/3.5/index.html)、[Elasticsearch 9.5 参考](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html)
+- [Elasticsearch Index Lifecycle Management](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html)、[Snapshot Lifecycle Management](https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management.html)
+- [Fluent Bit Manual](https://docs.fluentbit.io/manual/)、[Tail input](https://docs.fluentbit.io/manual/pipeline/inputs/tail)、[Kubernetes filter](https://docs.fluentbit.io/manual/pipeline/filters/kubernetes)
+- [Loki architecture](https://grafana.com/docs/loki/latest/get-started/architecture/)、[Loki storage](https://grafana.com/docs/loki/latest/configure/storage/)、[Loki labels](https://grafana.com/docs/loki/latest/get-started/labels/)
+- [Grafana Alloy](https://grafana.com/docs/alloy/latest/)、[loki.source.file](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.file/)
+
+这些链接解释的是组件的通用官方行为；本项目交付范围仍以固定版本、渲染模板、配置前置条件和当前专项矩阵为准。官方文档支持但本项目没有实测的功能不得写成“已交付”。

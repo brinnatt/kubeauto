@@ -111,3 +111,75 @@ cleanup 必须可重复执行。验证不仅检查 namespace 不存在，还检�
 - Alloy Kubernetes 安装：<https://grafana.com/docs/alloy/latest/set-up/install/kubernetes/>
 
 评审固定版本行为时优先对应 tag 的官方发布说明、Chart/CRD 和源码，不用 latest 页面覆盖固定版本事实。链接、版本、许可证和兼容性在每次交付时重新核验。
+
+## 10. 配置到资源的完整映射
+
+下面的映射是评审、故障定位和变更影响分析的唯一索引。新增变量必须同时更新 `conf/config.yml`、Jinja 模板、本文和文档契约测试。
+
+| 配置 | direct / Kafka 资源 | Loki 资源 | 变更风险 |
+| --- | --- | --- | --- |
+| `logging_install` | 是否执行整个日志任务 | 是否执行整个日志任务 | 关闭只允许无资源，不得保留孤儿对象 |
+| `logging_solution` | `efk.yaml` 与 Fluent Bit 分支 | Loki/Alloy Helm values | 改变路线会触发 ownership 拒绝 |
+| `logging_efk_delivery` | direct 或 Kafka Topic/Logstash | 不适用 | 不得双写 |
+| `logging_efk_es_nodes` | Elasticsearch NodeSet 节点调度 | 不适用 | 必须三台不同可调度节点 |
+| `logging_efk_storage_class`/`logging_loki_storage_class` | ES/Loki PVC | Loki WAL/cache PVC | PVC 创建后不可原地更换 StorageClass |
+| `logging_efk_snapshot_*` | S3 repository/SLM | 不适用 | endpoint、CA、bucket 变化影响恢复 |
+| `logging_loki_bucket_*` | 不适用 | chunks/ruler/admin 前缀 | schema 与桶前缀必须保持一致 |
+
+模板评审必须回答三个问题：资源由谁拥有、Secret 从哪里来、失败后哪个控制器负责重试。若回答不了，不能通过代码评审。
+
+## 11. EFK 渲染与调谐细节
+
+`logging.yml` 的顺序是有意设计的：先验证路线和 ownership，再创建 namespace；先安装 Ingress 并等待 controller Ready，再应用依赖 admission 的资源；先应用 ECK CRD/Operator，再应用 Elasticsearch/Kibana；先等待 TLS 和管理 Secret，再创建 writer、ILM、模板、快照仓库和采集 Secret；最后才发布 Fluent Bit。任何一步失败都不得继续后续资源。
+
+ECK 清单使用 server-side apply 与独立 field manager；业务清单使用 `kubeauto-logging-efk`。CRD 已由 Kubeauto field manager 管理时，Helm 或 kubectl 不得重新夺取同一字段；升级 CRD 必须先查 schema 与 conversion webhook，再进行 dry-run。
+
+Elasticsearch writer bootstrap 使用临时 port-forward 和 ECK CA。port-forward 只用于 API 诊断和引导，不写入工作负载配置；API 请求必须校验证书 SAN。引导生成的采集 Secret 只含专用 writer 凭据，绝不能复制 `elastic` 管理密码。
+
+Kafka-buffer 的资源依赖顺序是 Kafka CR Ready、KafkaUser Secret 出现、Topic/ACL 生效、客户端 CA 派生、Fluent Bit Kafka output、Logstash consumer group。不能通过把 SASL 密码写入 ConfigMap 或 values 绕过 Secret 尚未就绪。
+
+## 12. Loki/Alloy values 设计细节
+
+Loki values 必须明确写出：三个 single-binary 副本、required anti-affinity、`replication_factor: 3`、TSDB schema、对象存储 endpoint/CA、WAL、Gateway Basic Auth、资源 requests/limits、PDB 和 ServiceMonitor。省略这些字段会让 Chart 使用随版本变化的默认值，不能视为生产配置。
+
+Alloy values 必须明确写出：CRI 文件 glob、Kubernetes discovery、metadata relabel、低基数标签、positions 路径、write endpoint、TLS CA、客户端 Secret 和重试/批量参数。将任意 Pod label 全量提升为 Loki label 是禁止的高基数变更；增加标签前必须给出基数预算、查询用例和压测证据。
+
+## 13. 代码变更工作流
+
+1. 新字段先在配置中提供默认值和关闭行为，明确是否影响两条路线。
+2. 在模板中使用 StrictUndefined 兼容写法，给资源、Secret、Service、selector 加稳定名称。
+3. 在 `test_logging_delivery.py` 增加渲染、互斥、ownership、marker 和禁止泄露断言。
+4. 更新三份客户文档的配置表、运维动作和机制边界。
+5. 更新 `logging-test-matrix.yaml`，将受影响 case 置为 pending，禁止沿用历史 pass。
+6. 执行 focused contract；只有 focused 通过才允许远端 runner。
+
+修改已有资源前先判断字段由 Kubernetes、ECK、Strimzi、Helm 还是 Kubeauto field manager 拥有。对 Operator 生成字段直接 patch 会在下一轮调谐被覆盖；正确做法是修改 CR 或 values，再观察 generation、observedGeneration 和 controller event。PVC、Secret、TLS CA、索引模板和数据 schema 的修改必须写出迁移与回滚路径。
+
+## 14. 证据边界与失败分类
+
+| 证据 | 能证明什么 | 不能证明什么 |
+| --- | --- | --- |
+| Helm lint/template | YAML、values 和模板语法 | API schema、Admission、业务可用 |
+| server dry-run | API schema、字段类型和准入 | 控制器已完成调谐、数据可写 |
+| Pod Ready | 容器探针成功 | 日志已接收、查询和恢复 |
+| 后端 HTTP 200 | 本次请求被接受 | 快照成功、历史数据完整 |
+| `LOGGING_CASE_PASS` | 一个明确场景完成 | 其他场景或另一条路线 |
+| clean verify | 测试资源按边界回收 | 客户生产数据已备份 |
+
+失败必须分类为产品、test-gate、环境、供应链、运行时或 Kubernetes/controller。不能把“脚本未等待控制器收敛”报告为产品故障，也不能用历史通过日志替代当前 clean evidence。测试门禁修复必须先补精确 focused contract，再运行一次完整回归。
+
+## 15. 交付前审查
+
+版本、Chart、镜像 digest、许可证、官方链接、入口、Secret、端口、资源名和清理边界必须在三份文档中一致。配置示例只能包含资源名，不得包含密码、Token、私钥或动态代理。
+
+固定交付命令：
+
+```bash
+./.venv/bin/python tests/helpers/validate-test-matrix.py tests/logging-test-matrix.yaml --require-pass
+bash tests/run_unit_tests.sh
+bash tests/run_enterprise_regression.sh --logging-only
+```
+
+必须取得 `LOGGING_FULL_GATE_PASS`、`LOGGING_GATE_EXIT rc=0`、零 failure marker、`44/44` 和 `LOGGING_CLEAN_VERIFY_PASS`。三条路线都要有当前证据；只跑其中一条不能宣称日志能力交付。
+
+版本变更后还要检查六仓常量、Dockerfile、CI 双推矩阵、TalkEdu manifest digest、Docker Hub 回退、下载列表和文档链接。任何新镜像先进入 ext-images 制品门禁，再开始现场测试。
