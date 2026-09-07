@@ -1,0 +1,147 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: logging
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+spec:
+  version: {{ logging_elasticsearch_ver }}
+  secureSettings:
+    - secretName: {{ logging_efk_snapshot_secret }}
+  http:
+    tls:
+      selfSignedCertificate: {disabled: false}
+  nodeSets:
+    - name: data
+      count: 3
+      config:
+        node.store.allow_mmap: false
+        xpack.security.enabled: true
+        xpack.security.http.ssl.enabled: true
+        s3.client.default.endpoint: {{ logging_efk_snapshot_endpoint | quote }}
+        s3.client.default.region: {{ logging_efk_snapshot_region | quote }}
+        s3.client.default.path_style_access: {{ logging_efk_snapshot_path_style | bool | lower }}
+      podTemplate:
+        metadata:
+          labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values: {{ logging_efk_es_nodes | to_json }}
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels: {elasticsearch.k8s.elastic.co/cluster-name: logging}
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: elasticsearch
+              image: registry.talkschool.cn:5000/brinnatt/elasticsearch:{{ logging_elasticsearch_ver }}
+              env:
+                - {name: ES_JAVA_OPTS, value: "-Xms{{ logging_efk_es_heap }} -Xmx{{ logging_efk_es_heap }}"}
+              resources:
+                requests: {memory: {{ logging_efk_es_memory_request }}}
+                limits: {memory: {{ logging_efk_es_memory_limit }}}
+      volumeClaimTemplates:
+        - metadata: {name: elasticsearch-data}
+          spec:
+            accessModes: [ReadWriteOnce]
+            storageClassName: {{ logging_efk_storage_class }}
+            resources: {requests: {storage: {{ logging_efk_es_pvc_size }}}}
+  updateStrategy:
+    changeBudget: {maxUnavailable: 1}
+  volumeClaimDeletePolicy: DeleteOnScaledownOnly
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: logging
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+spec:
+  version: {{ logging_kibana_ver }}
+  count: {{ logging_efk_kibana_replicas | int }}
+  elasticsearchRef: {name: logging}
+  podTemplate:
+    metadata:
+      labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: {kibana.k8s.elastic.co/name: logging}
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: kibana
+          image: registry.talkschool.cn:5000/brinnatt/kibana:{{ logging_kibana_ver }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: logging-kibana
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+{% if logging_ingress_controller == 'ingress-nginx' %}
+  annotations: {nginx.ingress.kubernetes.io/backend-protocol: HTTPS}
+{% endif %}
+spec:
+  ingressClassName: {{ logging_ingress_class }}
+  tls:
+    - hosts: [{{ logging_efk_kibana_host }}]
+      secretName: {{ logging_ingress_tls_secret }}
+  rules:
+    - host: {{ logging_efk_kibana_host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: logging-kb-http, port: {name: https}}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: logging-efk
+  namespace: {{ logging_namespace }}
+  labels: {release: {{ logging_monitoring_release_label }}, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+spec:
+  groups:
+    - name: fluent-bit.rules
+      rules:
+        - alert: FluentBitTargetDown
+          expr: 'up{namespace="{{ logging_namespace }}",service="fluent-bit{{ '-kafka' if logging_efk_delivery == 'kafka-buffer' else '' }}"} == 0 or absent(up{namespace="{{ logging_namespace }}",service="fluent-bit{{ '-kafka' if logging_efk_delivery == 'kafka-buffer' else '' }}"})'
+          for: 5m
+          labels: {severity: critical, team: platform}
+          annotations: {summary: "Fluent Bit target is unavailable", description: "A logging collector target has been unavailable for five minutes."}
+        - alert: FluentBitOutputErrors
+          expr: sum by (pod) (rate(fluentbit_output_errors_total{namespace="{{ logging_namespace }}"}[5m])) > 0
+          for: 10m
+          labels: {severity: warning, team: platform}
+          annotations: {summary: "Fluent Bit output errors continue", description: "A logging collector continues to report output errors."}
+        - alert: FluentBitRetriesFailed
+          expr: increase(fluentbit_output_retries_failed_total{namespace="{{ logging_namespace }}"}[10m]) > 0
+          for: 1m
+          labels: {severity: critical, team: platform}
+          annotations: {summary: "Fluent Bit retries are exhausted", description: "A logging collector abandoned a batch after exhausting retries."}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: logging-fluent-bit
+  namespace: {{ logging_namespace }}
+  labels: {release: {{ logging_monitoring_release_label }}, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fluent-bit{{ '-kafka' if logging_efk_delivery == 'kafka-buffer' else '' }}
+  namespaceSelector:
+    matchNames: [{{ logging_namespace }}]
+  endpoints:
+    - port: http-metrics
+      path: /api/v1/metrics/prometheus
+      interval: 30s

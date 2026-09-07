@@ -112,6 +112,23 @@ class KubeConstant:
     v_blackbox_exporter: str = field(default="v0.27.0", metadata={
         "refer_github": "https://github.com/prometheus/blackbox_exporter/releases/tag/v0.27.0",
     })
+    # Logging production baseline.  The ECK manifests and Helm charts are
+    # vendored and checksum-gated by the logging artifact branch.
+    v_eck_operator: str = field(default="3.5.0", metadata={
+        "refer_docs": "https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/install-using-yaml-manifest-quickstart",
+    })
+    v_elasticsearch: str = field(default="9.5.1", metadata={
+        "refer_docs": "https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-deployment-quickstart",
+    })
+    v_kibana: str = field(default="9.5.1")
+    v_fluent_bit: str = field(default="5.1.1", metadata={
+        "refer_docs": "https://docs.fluentbit.io/manual",
+    })
+    v_logstash: str = field(default="9.5.1")
+    v_loki_chart: str = field(default="18.9.0")
+    v_loki: str = field(default="3.7.6")
+    v_alloy_chart: str = field(default="1.11.1")
+    v_alloy: str = field(default="1.18.1")
     v_ingress_nginx_controller: str = field(default="v1.13.0")
     # v1.3.1: Node 20 + pinned json-server@0.17.4 (v1.3.0 used Node 18.10 + unpinned npm → CrashLoop)
     v_json_mock: str = field(default="v1.3.1")
@@ -402,6 +419,25 @@ class KubeConstant:
                 f"brinnatt/thanos:{self.v_thanos}",
                 f"brinnatt/prometheus-adapter:{self.v_prometheus_adapter}",
                 f"brinnatt/blackbox-exporter:{self.v_blackbox_exporter}",
+            ],
+            "logging-efk": [
+                f"brinnatt/eck-operator:{self.v_eck_operator}",
+                f"brinnatt/elasticsearch:{self.v_elasticsearch}",
+                f"brinnatt/kibana:{self.v_kibana}",
+                f"brinnatt/fluent-bit:{self.v_fluent_bit}",
+                f"brinnatt/logstash:{self.v_logstash}",
+            ],
+            "logging-loki": [
+                f"brinnatt/loki:{self.v_loki}",
+                f"brinnatt/alloy:{self.v_alloy}",
+                "brinnatt/loki-gateway:1.31-alpine",
+                f"brinnatt/access-log-exporter:0.4.11",
+                f"brinnatt/loki-canary:{self.v_loki}",
+                "brinnatt/memcached:1.6.45-alpine",
+                "brinnatt/memcached-exporter:v0.17.0",
+                "brinnatt/k8s-sidecar:2.10.1",
+                "brinnatt/prometheus-config-reloader:v0.91.0",
+                "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z",
             ],
             "mysql": [
                 f"brinnatt/percona-xtradb-cluster-operator:{self.v_pxc_operator}",

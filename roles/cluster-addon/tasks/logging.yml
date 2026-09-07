@@ -1,0 +1,342 @@
+---
+# Logging has two deliberately exclusive production implementations.  Keep
+# all rejection checks before namespace creation so a mistaken config cannot
+# leave partial logging resources in a delivered cluster.
+- name: Validate logging route and production prerequisites
+  ansible.builtin.assert:
+    that:
+      - logging_solution in ['efk', 'loki']
+      - logging_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - prom_install | default('no') | string | lower == 'yes'
+      - logging_monitoring_release_label | length > 0
+      - (logging_solution != 'efk') or (logging_efk_delivery in ['direct', 'kafka-buffer'])
+      - (logging_solution != 'efk') or (logging_efk_es_nodes | length == 3)
+      - (logging_solution != 'efk') or (logging_efk_es_nodes | unique | length == 3)
+      - (logging_solution != 'efk') or (logging_efk_storage_class | length > 0)
+      - (logging_solution != 'efk') or (logging_efk_es_pvc_size is match('^[1-9][0-9]*(Gi|Ti)$'))
+      - (logging_solution != 'efk') or (logging_efk_es_memory_request == '8Gi')
+      - (logging_solution != 'efk') or (logging_efk_es_memory_limit == '8Gi')
+      - (logging_solution != 'efk') or (logging_efk_es_heap == '4g')
+      - (logging_solution != 'efk') or (logging_efk_kibana_replicas | int == 2)
+      - (logging_solution != 'efk') or (logging_efk_kibana_host | length > 0)
+      - (logging_solution != 'efk') or (logging_ingress_controller in ['traefik', 'ingress-nginx'])
+      - (logging_solution != 'efk') or (logging_ingress_class | length > 0)
+      - (logging_solution != 'efk') or (logging_ingress_tls_secret | length > 0)
+      - (logging_solution != 'efk') or (logging_efk_snapshot_endpoint is match('^https?://'))
+      - (logging_solution != 'efk') or (logging_efk_snapshot_region | length > 0)
+      - (logging_solution != 'efk') or (logging_efk_snapshot_bucket | length > 0)
+      - (logging_solution != 'efk') or (logging_efk_snapshot_secret | length > 0)
+      - (logging_solution != 'efk') or (logging_efk_writer_secret | length > 0)
+      - (logging_solution != 'efk') or (logging_efk_delivery != 'kafka-buffer') or (kafka_install | default('no') | string | lower == 'yes')
+      - (logging_solution != 'loki') or (logging_loki_storage_secret | length > 0)
+      - (logging_solution != 'loki') or (logging_loki_storage_endpoint is match('^https?://'))
+      - (logging_solution != 'loki') or (logging_loki_storage_region | length > 0)
+      - (logging_solution != 'loki') or (logging_loki_bucket_chunks | length > 0)
+      - (logging_solution != 'loki') or (logging_loki_bucket_ruler | length > 0)
+      - (logging_solution != 'loki') or (logging_loki_bucket_admin | length > 0)
+      - (logging_solution != 'loki') or (logging_loki_gateway_auth_secret | length > 0)
+      - (logging_solution != 'loki') or (logging_loki_gateway_client_secret | length > 0)
+      - (logging_solution != 'loki') or (logging_loki_ingress_host | length > 0)
+      - (logging_solution != 'loki') or (logging_ingress_class | length > 0)
+      - (logging_solution != 'loki') or (logging_ingress_tls_secret | length > 0)
+    fail_msg: >-
+      日志平台配置或前置条件无效。必须在 EFK、Loki 中选择唯一方案；两条路线均依赖已交付
+      Prometheus。EFK 固定三节点、8Gi/4Gi ES 基线、Kibana 双副本、TLS 与快照引用；Kafka
+      缓冲仅允许复用已启用的 Kafka 分路，禁止创建第二个 Strimzi Operator。
+
+- name: Discover existing kubeauto logging ownership before mutation
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    existing="$($KC get namespace {{ logging_namespace }} -o jsonpath='{.metadata.labels.kubeauto\.io/logging-solution}' 2>/dev/null || true)"
+    if [ -n "$existing" ] && [ "$existing" != {{ logging_solution | quote }} ]; then
+      echo "existing kubeauto logging solution=$existing, requested={{ logging_solution }}" >&2
+      exit 42
+    fi
+    if [ {{ logging_solution | quote }} = efk ]; then
+      $KC -n {{ logging_namespace }} get statefulset -l kubeauto.io/component=loki --ignore-not-found -o name | grep -q . && exit 43 || true
+    else
+      $KC -n {{ logging_namespace }} get elasticsearch,kibana -l app.kubernetes.io/managed-by=kubeauto --ignore-not-found -o name | grep -q . && exit 44 || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Create and mark the logging namespace after ownership preflight
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    $KC create namespace {{ logging_namespace }} --dry-run=client -o yaml | $KC apply -f -
+    $KC label namespace {{ logging_namespace }} app.kubernetes.io/managed-by=kubeauto kubeauto.io/component=logging kubeauto.io/logging-solution={{ logging_solution }} --overwrite
+  args:
+    executable: /bin/bash
+
+- name: Mark Kafka-buffer logging namespace as a Kafka client
+  ansible.builtin.command: >-
+    kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+    label namespace {{ logging_namespace }} kubeauto.io/kafka-client=true --overwrite
+  when:
+    - logging_solution == 'efk'
+    - logging_efk_delivery == 'kafka-buffer'
+
+- name: Verify EFK target nodes, storage and secret references
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for node in {{ logging_efk_es_nodes | join(' ') }}; do
+      $KC get node "$node" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | grep -qx True
+      unsched="$($KC get node "$node" -o jsonpath='{.spec.unschedulable}' || true)"
+      [ "$unsched" != true ]
+    done
+    $KC get storageclass {{ logging_efk_storage_class | quote }} >/dev/null
+    for secret in {{ logging_ingress_tls_secret | quote }} {{ logging_efk_snapshot_secret | quote }} {{ logging_efk_writer_secret | quote }}; do
+      $KC -n {{ logging_namespace }} get secret "$secret" >/dev/null
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: logging_solution == 'efk'
+
+- name: Verify Loki secret references
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for secret in {{ logging_loki_storage_secret | quote }} {{ logging_loki_gateway_auth_secret | quote }} {{ logging_loki_gateway_client_secret | quote }} {{ logging_ingress_tls_secret | quote }}; do
+      $KC -n {{ logging_namespace }} get secret "$secret" >/dev/null
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: logging_solution == 'loki'
+
+- name: Create logging render directory
+  ansible.builtin.file:
+    path: "{{ cluster_dir }}/yml/logging"
+    state: directory
+    mode: '0700'
+
+- name: Enforce Elasticsearch virtual-memory baseline on selected nodes
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for node in {{ logging_efk_es_nodes | join(' ') }}; do
+      # Kubernetes node names are not guaranteed to resolve on the control host;
+      # use the API-advertised InternalIP for the host-level sysctl operation.
+      target="$($KC get node "$node" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')"
+      test -n "$target"
+      ssh -o BatchMode=yes -o ConnectTimeout=10 "root@$target" \
+        'sysctl -w vm.max_map_count=1048576 >/dev/null; value=$(sysctl -n vm.max_map_count); test "$value" -ge 1048576'
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: logging_solution == 'efk'
+
+- name: Render EFK resources
+  ansible.builtin.template:
+    src: "logging/{{ item }}"
+    dest: "{{ cluster_dir }}/yml/logging/{{ item | regex_replace('\\.j2$', '') }}"
+    mode: '0600'
+  loop:
+    - efk.yaml.j2
+  when: logging_solution == 'efk'
+
+- name: Render direct Fluent Bit resources
+  ansible.builtin.template:
+    src: logging/fluent-bit-direct.yaml.j2
+    dest: "{{ cluster_dir }}/yml/logging/fluent-bit-direct.yaml"
+    mode: '0600'
+  when: logging_solution == 'efk' and logging_efk_delivery == 'direct'
+
+- name: Render Kafka-buffer Fluent Bit resources
+  ansible.builtin.template:
+    src: logging/fluent-bit-kafka.yaml.j2
+    dest: "{{ cluster_dir }}/yml/logging/fluent-bit-kafka.yaml"
+    mode: '0600'
+  when: logging_solution == 'efk' and logging_efk_delivery == 'kafka-buffer'
+
+- name: Render Loki and Alloy values
+  ansible.builtin.template:
+    src: "logging/{{ item }}"
+    dest: "{{ cluster_dir }}/yml/logging/{{ item | regex_replace('\\.j2$', '') }}"
+    mode: '0600'
+  loop:
+    - loki-values.yaml.j2
+    - alloy-values.yaml.j2
+  when: logging_solution == 'loki'
+
+- name: Apply ECK CRDs and operator with fixed official manifests
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    cd {{ base_dir }}/roles/cluster-addon/files
+    printf '%s  %s\n' \
+      0e126dbd003f8f98c9b84f2af6263b5ac8a00b52cd9a6d6da225aa3af66cc13c eck-3.5.0-crds.yaml \
+      | sha256sum --check
+    printf '%s  %s\n' \
+      450f59d5026341226c54bbd3fafb68adcf99de8c674b47e32c22fae8aa183bf7 eck-3.5.0-operator.yaml \
+      | sha256sum --check
+    $KC apply --server-side --field-manager=kubeauto-eck-crd -f eck-3.5.0-crds.yaml
+    # Reclaim the operator image field previously touched by kubectl set image;
+    # this keeps repeated setup 07 runs idempotent without changing the image.
+    $KC apply --server-side --force-conflicts --field-manager=kubeauto-eck-operator -f eck-3.5.0-operator.yaml
+    $KC -n elastic-system set image statefulset/elastic-operator \
+      manager=registry.talkschool.cn:5000/brinnatt/eck-operator:{{ logging_eck_ver }}
+    $KC -n elastic-system rollout status statefulset/elastic-operator --timeout=10m
+  args:
+    executable: /bin/bash
+  when: logging_solution == 'efk'
+
+- name: Server validate and apply EFK selected delivery resources
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    ROOT="{{ cluster_dir }}/yml/logging"
+    $KC apply --dry-run=server -f "$ROOT/efk.yaml"
+    $KC apply --server-side --force-conflicts --field-manager=kubeauto-logging-efk -f "$ROOT/efk.yaml"
+  args:
+    executable: /bin/bash
+  when: logging_solution == 'efk'
+
+- name: Bootstrap least-privilege Elasticsearch writer before Fluent Bit
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    tmp="$(mktemp -d)"
+    trap 'kill "${pf_pid:-0}" >/dev/null 2>&1 || true; rm -rf "$tmp"' EXIT
+    for _ in $(seq 1 120); do
+      ca_encoded="$($KC -n {{ logging_namespace }} get secret logging-es-http-certs-public -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)"
+      admin_encoded="$($KC -n {{ logging_namespace }} get secret logging-es-elastic-user -o jsonpath='{.data.elastic}' 2>/dev/null || true)"
+      [ -n "$ca_encoded" ] && [ -n "$admin_encoded" ] && break
+      sleep 5
+    done
+    [ -n "$ca_encoded" ] && [ -n "$admin_encoded" ]
+    printf '%s' "$ca_encoded" | base64 -d >"$tmp/ca.crt"
+    admin="$(printf '%s' "$admin_encoded" | base64 -d)"
+    user="$($KC -n {{ logging_namespace }} get secret {{ logging_efk_writer_secret }} -o jsonpath='{.data.username}' | base64 -d)"
+    password="$($KC -n {{ logging_namespace }} get secret {{ logging_efk_writer_secret }} -o jsonpath='{.data.password}' | base64 -d)"
+    # ECK certificates identify the Kubernetes service DNS name, not localhost.
+    es_tls_name="logging-es-http.{{ logging_namespace }}.svc"
+    es_url="https://${es_tls_name}:19200"
+    es_curl=(curl --resolve "${es_tls_name}:19200:127.0.0.1" --cacert "$tmp/ca.crt" -u "elastic:$admin")
+    es_request() {
+      local step="$1"
+      shift
+      if ! "${es_curl[@]}" --fail-with-body "$@" >/dev/null; then
+        echo "ELASTIC_BOOTSTRAP_FAIL step=${step}" >&2
+        return 1
+      fi
+    }
+    $KC -n {{ logging_namespace }} wait pod --for=condition=Ready \
+      -l common.k8s.elastic.co/type=elasticsearch --timeout=120s >/dev/null
+    ready_pod="$($KC -n {{ logging_namespace }} get pod \
+      -l common.k8s.elastic.co/type=elasticsearch -o jsonpath='{.items[0].metadata.name}')"
+    test -n "$ready_pod"
+    $KC -n {{ logging_namespace }} port-forward "pod/$ready_pod" 19200:9200 >"$tmp/pf.log" 2>&1 & pf_pid=$!
+    for _ in $(seq 1 60); do "${es_curl[@]}" -fsS "$es_url" >/dev/null 2>&1 && break; sleep 5; done
+    es_request role -H 'content-type: application/json' \
+      -X PUT "${es_url}/_security/role/logging_writer" \
+      -d '{"cluster":["monitor"],"indices":[{"names":["k8s-*"],"privileges":["auto_configure","create","create_doc","index","view_index_metadata"]}],"applications":[],"run_as":[],"metadata":{}}'
+    es_request user -H 'content-type: application/json' \
+      -X PUT "${es_url}/_security/user/$user" \
+      -d "{\"password\":\"$password\",\"roles\":[\"logging_writer\"],\"enabled\":true}"
+    es_request ilm -H 'content-type: application/json' \
+      -X PUT "${es_url}/_ilm/policy/k8s-retention" \
+      -d '{"policy":{"phases":{"hot":{"actions":{}},"delete":{"min_age":"{{ logging_efk_retention_days }}d","actions":{"delete":{}}}}}}'
+    es_request index-template -H 'content-type: application/json' \
+      -X PUT "${es_url}/_index_template/k8s-logs" \
+      -d '{"index_patterns":["k8s-*"] ,"template":{"settings":{"number_of_shards":3,"number_of_replicas":1,"index.lifecycle.name":"k8s-retention"}}}'
+    repo_body="$(jq -cn \
+      --arg bucket {{ logging_efk_snapshot_bucket | quote }} \
+      '{type:"s3",settings:{bucket:$bucket,base_path:"elasticsearch/logging",compress:true}}')"
+    es_request snapshot-repository -H 'content-type: application/json' \
+      -X PUT "${es_url}/_snapshot/logging-s3" -d "$repo_body" >/dev/null
+    es_request snapshot-verify -H 'content-type: application/json' \
+      -X POST "${es_url}/_snapshot/logging-s3/_verify" >/dev/null
+    slm_body="$(jq -cn \
+      --argjson retention {{ logging_efk_retention_days | int }} \
+      '{schedule:"0 30 17 * * ?",name:"logging-daily",repository:"logging-s3",config:{indices:["k8s-*"] ,include_global_state:false},retention:{expire_after:"\($retention)d",min_count:7,max_count:60}}')"
+    es_request slm -H 'content-type: application/json' \
+      -X PUT "${es_url}/_slm/policy/logging-daily" -d "$slm_body"
+    $KC -n {{ logging_namespace }} create secret generic logging-fluent-bit-es-auth \
+      --from-literal=ES_USERNAME="$user" --from-literal=ES_PASSWORD="$password" \
+      --dry-run=client -o yaml | $KC apply -f - >/dev/null
+  args:
+    executable: /bin/bash
+  when: logging_solution == 'efk'
+
+- name: Apply EFK collector resources after writer bootstrap
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    ROOT="{{ cluster_dir }}/yml/logging"
+    if [ {{ logging_efk_delivery | quote }} = direct ]; then
+      $KC apply --dry-run=server -f "$ROOT/fluent-bit-direct.yaml"
+      $KC apply --server-side --field-manager=kubeauto-logging-efk -f "$ROOT/fluent-bit-direct.yaml"
+    else
+      $KC apply --dry-run=server -f "$ROOT/fluent-bit-kafka.yaml"
+      $KC apply --server-side --field-manager=kubeauto-logging-efk -f "$ROOT/fluent-bit-kafka.yaml"
+    fi
+  args:
+    executable: /bin/bash
+  when: logging_solution == 'efk'
+
+- name: Derive Kafka logging client Secret after Strimzi user reconciliation
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    password=""
+    for _ in $(seq 1 120); do
+      password="$($KC -n {{ kafka_namespace }} get secret {{ logging_efk_kafka_user }} \
+        -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
+      [ -n "$password" ] && break
+      sleep 5
+    done
+    test -n "$password"
+    $KC -n {{ logging_namespace }} create secret generic logging-efk-kafka-client \
+      --from-literal=username={{ logging_efk_kafka_user | quote }} \
+      --from-literal=password="$password" --dry-run=client -o yaml \
+      | $KC apply -f - >/dev/null
+    $KC -n {{ logging_namespace }} label secret logging-efk-kafka-client \
+      app.kubernetes.io/managed-by=kubeauto kubeauto.io/component=logging --overwrite
+    $KC -n {{ kafka_namespace }} get secret {{ kafka_cluster_name }}-cluster-ca-cert -o json \
+      | jq 'del(.metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp, .metadata.managedFields)
+          | .metadata.namespace="{{ logging_namespace }}"
+          | .metadata.name="logging-kafka-cluster-ca-cert"
+          | .metadata.labels={"app.kubernetes.io/managed-by":"kubeauto","kubeauto.io/component":"logging"}' \
+      | $KC apply -f - >/dev/null
+  args:
+    executable: /bin/bash
+  no_log: true
+  when: logging_solution == 'efk' and logging_efk_delivery == 'kafka-buffer'
+
+- name: Check fixed Loki and Alloy chart checksums before Helm rendering
+  ansible.builtin.command:
+    argv:
+      - sha256sum
+      - --check
+      - "{{ item }}"
+  args:
+    chdir: "{{ base_dir }}/roles/cluster-addon/files"
+  loop:
+    - loki-18.9.0.tgz.sha256
+    - alloy-1.11.1.tgz.sha256
+  changed_when: false
+  when: logging_solution == 'loki'
+
+- name: Install Loki chart and Alloy collector for the selected Loki route
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="{{ cluster_dir }}/kubectl.kubeconfig"
+    HELM="{{ base_dir }}/extra-bin/helm"
+    $HELM upgrade --install loki "{{ base_dir }}/roles/cluster-addon/files/loki-18.9.0.tgz" \
+      --namespace {{ logging_namespace }} --create-namespace \
+      --kubeconfig "$KC" -f "{{ cluster_dir }}/yml/logging/loki-values.yaml" --timeout 20m
+    $HELM upgrade --install alloy "{{ base_dir }}/roles/cluster-addon/files/alloy-1.11.1.tgz" \
+      --namespace {{ logging_namespace }} --create-namespace \
+      --kubeconfig "$KC" -f "{{ cluster_dir }}/yml/logging/alloy-values.yaml" --timeout 20m
+    kubectl --kubeconfig="$KC" -n {{ logging_namespace }} rollout status statefulset/loki --timeout=20m
+    kubectl --kubeconfig="$KC" -n {{ logging_namespace }} rollout status daemonset/alloy --timeout=20m
+  args:
+    executable: /bin/bash
+  when: logging_solution == 'loki'

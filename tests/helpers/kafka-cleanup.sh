@@ -252,6 +252,24 @@ helm -n "$KAFKA_DRAIN_CLEANER_NAMESPACE" uninstall strimzi-drain-cleaner --wait 
 helm -n "$KAFKA_OPERATOR_NAMESPACE" uninstall strimzi-kafka-operator --wait >/dev/null 2>&1 || true
 kubectl delete validatingwebhookconfiguration strimzi-drain-cleaner --ignore-not-found >/dev/null 2>&1 || true
 
+# Namespace deletion cannot clear local-path PVC protection while a broker
+# process is still terminating. The Kafka CR and node pools are gone above,
+# so explicitly remove the disposable gate PVCs before deleting the namespace.
+if namespace_is_owned "$KAFKA_NAMESPACE"; then
+  mapfile -t broker_pods < <(
+    kubectl -n "$KAFKA_NAMESPACE" get pod \
+      -l "strimzi.io/cluster=${KAFKA_CLUSTER},strimzi.io/name=${KAFKA_CLUSTER}-kafka" \
+      -o name 2>/dev/null || true
+  )
+  if (( ${#broker_pods[@]} > 0 )); then
+    echo "KAFKA_CLEAN_STAGE_BEGIN action=force-delete-owned-broker-pods count=${#broker_pods[@]}"
+    kubectl -n "$KAFKA_NAMESPACE" delete "${broker_pods[@]}" \
+      --grace-period=0 --force --wait=false >/dev/null 2>&1 || true
+  fi
+  kubectl -n "$KAFKA_NAMESPACE" delete pvc --all --ignore-not-found \
+    --wait=true --timeout=2m >/dev/null 2>&1 || true
+fi
+
 echo "KAFKA_CLEAN_STAGE_BEGIN action=delete-owned-namespaces"
 for namespace in "$KAFKA_NAMESPACE" "$KAFKA_OPERATOR_NAMESPACE" "$KAFKA_DRAIN_CLEANER_NAMESPACE"; do
   if namespace_is_owned "$namespace"; then
@@ -282,6 +300,15 @@ mapfile -t owned_cluster_resources < <(
 )
 if (( ${#owned_cluster_resources[@]} > 0 )); then
   kubectl delete --wait=true "${owned_cluster_resources[@]}" >/dev/null
+fi
+if [[ -e /var/tmp/kubeauto-kafka-crds-owned ]]; then
+  mapfile -t known_strimzi_cluster_resources < <(
+    kubectl get clusterrole,clusterrolebinding -o name 2>/dev/null \
+      | grep -E '(^|/)(strimzi-|kafka-)' || true
+  )
+  if (( ${#known_strimzi_cluster_resources[@]} > 0 )); then
+    kubectl delete --wait=true "${known_strimzi_cluster_resources[@]}" >/dev/null
+  fi
 fi
 
 if [[ -e /var/tmp/kubeauto-kafka-crds-owned ]]; then

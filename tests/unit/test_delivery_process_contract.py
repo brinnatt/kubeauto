@@ -134,6 +134,10 @@ class TestDeliveryProcessContract(unittest.TestCase):
             "^[[:space:]]*-[[:space:]]*\\{id:.*status: pending",
             RUNNER,
         )
+        self.assertIn(
+            'surface" == logging ]] && matrix="$ROOT/tests/logging-test-matrix.yaml"',
+            RUNNER,
+        )
 
     def test_delivery_runner_validates_matrix_before_gates(self):
         validator = "tests/helpers/validate-test-matrix.py"

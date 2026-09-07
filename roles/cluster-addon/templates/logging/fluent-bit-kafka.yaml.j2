@@ -1,0 +1,236 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-kafka-config
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk-kafka}
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush 1
+        Parsers_File /fluent-bit/etc/parsers.conf
+        HTTP_Server On
+        HTTP_Listen 0.0.0.0
+        HTTP_Port 2020
+        Health_Check On
+        storage.path /buffers/storage
+        storage.sync normal
+        storage.checksum on
+        storage.metrics on
+    [INPUT]
+        Name tail
+        Path /var/log/containers/*.log
+        Tag kube.*
+        Parser cri
+        DB /buffers/tail.db
+        Mem_Buf_Limit 10MB
+        storage.type filesystem
+    [FILTER]
+        Name kubernetes
+        Match kube.*
+        Kube_URL https://kubernetes.default.svc:443
+        Kube_CA_File /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix kube.var.log.containers.
+        Merge_Log On
+        Keep_Log On
+    [OUTPUT]
+        Name kafka
+        Match kube.*
+        Brokers {{ kafka_cluster_name }}-kafka-bootstrap.{{ kafka_namespace }}.svc:9093
+        Topics {{ logging_efk_kafka_topic }}
+        rdkafka.security.protocol SASL_SSL
+        rdkafka.sasl.mechanisms SCRAM-SHA-512
+        rdkafka.sasl.username ${KAFKA_USERNAME}
+        rdkafka.sasl.password ${KAFKA_PASSWORD}
+        rdkafka.ssl.ca.location /fluent-bit/kafka-ca/ca.crt
+        rdkafka.enable.ssl.certificate.verification true
+        rdkafka.request.required.acks all
+        rdkafka.enable.idempotence true
+        rdkafka.retries 10
+        storage.total_limit_size 20G
+  parsers.conf: |
+    [PARSER]
+        Name cri
+        Format regex
+        Regex ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$
+        Time_Key time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+        Time_Keep On
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: {{ logging_efk_kafka_topic }}
+  namespace: {{ kafka_namespace }}
+  labels: {strimzi.io/cluster: {{ kafka_cluster_name }}, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk-kafka}
+spec: {partitions: 6, replicas: 3, config: {cleanup.policy: delete}}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: {{ logging_efk_kafka_user }}
+  namespace: {{ kafka_namespace }}
+  labels: {strimzi.io/cluster: {{ kafka_cluster_name }}, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk-kafka}
+spec:
+  authentication: {type: scram-sha-512}
+  authorization:
+    type: simple
+    acls:
+      - {type: allow, operations: [Read, Write, Describe], resource: {type: topic, name: {{ logging_efk_kafka_topic }}, patternType: literal}}
+      - {type: allow, operations: [Read, Describe], resource: {type: group, name: {{ logging_efk_kafka_group }}, patternType: literal}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluent-bit
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, app.kubernetes.io/component: logging-efk-kafka}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: logging-fluent-bit-kafka
+  labels: {app.kubernetes.io/managed-by: kubeauto, app.kubernetes.io/component: logging-efk-kafka}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: logging-fluent-bit-kafka
+  labels: {app.kubernetes.io/managed-by: kubeauto, app.kubernetes.io/component: logging-efk-kafka}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: logging-fluent-bit-kafka}
+subjects:
+  - kind: ServiceAccount
+    name: fluent-bit
+    namespace: {{ logging_namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-kafka-logstash
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk-kafka}
+data:
+  logstash.yml: |
+    api.http.host: "0.0.0.0"
+    api.http.port: 9600
+  logstash.conf: |
+    input {
+      kafka {
+        bootstrap_servers => "{{ kafka_cluster_name }}-kafka-bootstrap.{{ kafka_namespace }}.svc:9093"
+        topics => ["{{ logging_efk_kafka_topic }}"]
+        group_id => "{{ logging_efk_kafka_group }}"
+        consumer_threads => 3
+        codec => json
+        security_protocol => "SASL_SSL"
+        sasl_mechanism => "SCRAM-SHA-512"
+        sasl_jaas_config => "org.apache.kafka.common.security.scram.ScramLoginModule required username='${KAFKA_USERNAME}' password='${KAFKA_PASSWORD}';"
+        ssl_truststore_type => "PEM"
+        ssl_truststore_location => "/usr/share/logstash/kafka-ca/ca.crt"
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["https://logging-es-http.{{ logging_namespace }}.svc:9200"]
+        index => "k8s-kafka-%%{+YYYY.MM.dd}"
+        user => "${ES_USERNAME}"
+        password => "${ES_PASSWORD}"
+        manage_template => false
+        ilm_enabled => false
+        ssl_enabled => true
+        ssl_certificate_authorities => ["/usr/share/logstash/es-ca/ca.crt"]
+        action => "create"
+      }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluent-bit-kafka
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/name: fluent-bit-kafka, app.kubernetes.io/managed-by: kubeauto, app.kubernetes.io/component: logging-efk-kafka}
+spec:
+  selector: {app.kubernetes.io/name: fluent-bit-kafka}
+  ports: [{name: http-metrics, port: 2020, targetPort: http-metrics}]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit-kafka
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/name: fluent-bit-kafka, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk-kafka}
+spec:
+  selector: {matchLabels: {app.kubernetes.io/name: fluent-bit-kafka}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: fluent-bit-kafka}}
+    spec:
+      serviceAccountName: fluent-bit
+      containers:
+        - name: fluent-bit
+          image: registry.talkschool.cn:5000/brinnatt/fluent-bit:{{ logging_fluent_bit_ver }}
+          args: [--config=/fluent-bit/etc/fluent-bit.conf]
+          ports: [{name: http-metrics, containerPort: 2020}]
+          readinessProbe: {httpGet: {path: /api/v1/health, port: http-metrics}}
+          livenessProbe: {httpGet: {path: /api/v1/health, port: http-metrics}, periodSeconds: 30}
+          resources:
+            requests: {cpu: 50m, memory: 100Mi}
+            limits: {cpu: 500m, memory: 500Mi}
+          env:
+            - {name: KAFKA_USERNAME, valueFrom: {secretKeyRef: {name: logging-efk-kafka-client, key: username}}}
+            - {name: KAFKA_PASSWORD, valueFrom: {secretKeyRef: {name: logging-efk-kafka-client, key: password}}}
+          volumeMounts:
+            - {name: config, mountPath: /fluent-bit/etc/fluent-bit.conf, subPath: fluent-bit.conf, readOnly: true}
+            - {name: config, mountPath: /fluent-bit/etc/parsers.conf, subPath: parsers.conf, readOnly: true}
+            - {name: logs, mountPath: /var/log, readOnly: true}
+            - {name: buffer, mountPath: /buffers}
+            - {name: kafka-ca, mountPath: /fluent-bit/kafka-ca, readOnly: true}
+      volumes:
+        - {name: config, configMap: {name: fluent-bit-kafka-config}}
+        - {name: logs, hostPath: {path: /var/log}}
+        - {name: buffer, hostPath: {path: /var/lib/fluent-bit, type: DirectoryOrCreate}}
+        - {name: kafka-ca, secret: {secretName: logging-kafka-cluster-ca-cert}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/name: logstash, app.kubernetes.io/managed-by: kubeauto, app.kubernetes.io/component: logging-efk-kafka}
+spec:
+  replicas: {{ logging_efk_logstash_replicas | int }}
+  selector: {matchLabels: {app.kubernetes.io/name: logstash}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: logstash}}
+    spec:
+      containers:
+        - name: logstash
+          image: registry.talkschool.cn:5000/brinnatt/logstash:{{ logging_logstash_ver | default(logging_elasticsearch_ver) }}
+          resources:
+            requests: {cpu: 500m, memory: 1Gi}
+            limits: {cpu: "2", memory: 2Gi}
+          ports: [{name: http, containerPort: 9600}]
+          startupProbe: {httpGet: {path: /, port: http}, periodSeconds: 10, failureThreshold: 30}
+          readinessProbe: {httpGet: {path: /, port: http}, periodSeconds: 10, failureThreshold: 12}
+          livenessProbe: {httpGet: {path: /, port: http}, initialDelaySeconds: 60, periodSeconds: 30}
+          env:
+            - {name: KAFKA_USERNAME, valueFrom: {secretKeyRef: {name: logging-efk-kafka-client, key: username}}}
+            - {name: KAFKA_PASSWORD, valueFrom: {secretKeyRef: {name: logging-efk-kafka-client, key: password}}}
+            - {name: ES_USERNAME, valueFrom: {secretKeyRef: {name: logging-fluent-bit-es-auth, key: ES_USERNAME}}}
+            - {name: ES_PASSWORD, valueFrom: {secretKeyRef: {name: logging-fluent-bit-es-auth, key: ES_PASSWORD}}}
+          volumeMounts:
+            - {name: pipeline, mountPath: /usr/share/logstash/pipeline/logstash.conf, subPath: logstash.conf, readOnly: true}
+            - {name: settings, mountPath: /usr/share/logstash/config/logstash.yml, subPath: logstash.yml, readOnly: true}
+            - {name: kafka-ca, mountPath: /usr/share/logstash/kafka-ca, readOnly: true}
+            - {name: es-ca, mountPath: /usr/share/logstash/es-ca, readOnly: true}
+      volumes:
+        - {name: pipeline, configMap: {name: fluent-bit-kafka-logstash}}
+        - {name: settings, configMap: {name: fluent-bit-kafka-logstash}}
+        - {name: kafka-ca, secret: {secretName: logging-kafka-cluster-ca-cert}}
+        - {name: es-ca, secret: {secretName: logging-es-http-certs-public}}

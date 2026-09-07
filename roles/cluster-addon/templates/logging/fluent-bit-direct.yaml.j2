@@ -1,0 +1,173 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush 5
+        Daemon Off
+        Log_Level info
+        Parsers_File /fluent-bit/etc/parsers.conf
+        HTTP_Server On
+        HTTP_Listen 0.0.0.0
+        HTTP_Port 2020
+        Health_Check On
+        HC_Errors_Count 5
+        HC_Retry_Failure_Count 5
+        HC_Period 60
+        storage.path /buffers/storage
+        storage.sync normal
+        storage.checksum on
+        storage.backlog.mem_limit 50M
+        storage.metrics on
+    [INPUT]
+        Name tail
+        Path /var/log/containers/*.log
+        Tag kube.*
+        Parser cri
+        DB /buffers/tail-containers.db
+        DB.Sync Normal
+        DB.Locking True
+        Mem_Buf_Limit 50MB
+        Skip_Long_Lines On
+        Refresh_Interval 10
+        Rotate_Wait 30
+        storage.type filesystem
+    [FILTER]
+        Name kubernetes
+        Match kube.*
+        Kube_URL https://kubernetes.default.svc:443
+        Kube_CA_File /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix kube.var.log.containers.
+        Merge_Log On
+        Keep_Log On
+        Labels On
+        Annotations Off
+        K8S-Logging.Parser Off
+        K8S-Logging.Exclude Off
+        Buffer_Size 0
+    [OUTPUT]
+        Name es
+        Match kube.*
+        Host logging-es-http.{{ logging_namespace }}.svc
+        Port 9200
+        TLS On
+        TLS.Verify On
+        TLS.CA_File /fluent-bit/tls/ca.crt
+        HTTP_User ${ES_USERNAME}
+        HTTP_Passwd ${ES_PASSWORD}
+        Logstash_Format On
+        Logstash_Prefix k8s
+        Logstash_DateFormat %Y.%m.%d
+        Suppress_Type_Name On
+        Generate_ID On
+        Replace_Dots On
+        Retry_Limit False
+        storage.total_limit_size 10G
+        Workers 2
+  parsers.conf: |
+    [PARSER]
+        Name cri
+        Format regex
+        Regex ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$
+        Time_Key time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+        Time_Keep On
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluent-bit
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: logging-fluent-bit
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: logging-fluent-bit
+  labels: {app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: logging-fluent-bit}
+subjects:
+  - kind: ServiceAccount
+    name: fluent-bit
+    namespace: {{ logging_namespace }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluent-bit
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/name: fluent-bit, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+spec:
+  selector: {app.kubernetes.io/name: fluent-bit}
+  ports: [{name: http-metrics, port: 2020, targetPort: http-metrics}]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  namespace: {{ logging_namespace }}
+  labels: {app.kubernetes.io/name: fluent-bit, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}
+spec:
+  selector: {matchLabels: {app.kubernetes.io/name: fluent-bit}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: fluent-bit, app.kubernetes.io/managed-by: kubeauto, kubeauto.io/component: logging-efk}}
+    spec:
+      serviceAccountName: fluent-bit
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: fluent-bit
+          image: registry.talkschool.cn:5000/brinnatt/fluent-bit:{{ logging_fluent_bit_ver }}
+          args: [--config=/fluent-bit/etc/fluent-bit.conf]
+          envFrom: [{secretRef: {name: logging-fluent-bit-es-auth}}]
+          ports: [{name: http-metrics, containerPort: 2020}]
+          resources:
+            requests: {cpu: 50m, memory: 100Mi}
+            limits: {cpu: 500m, memory: 500Mi}
+          startupProbe:
+            httpGet: {path: /api/v1/health, port: http-metrics}
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: {path: /api/v1/health, port: http-metrics}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/v1/health, port: http-metrics}
+            periodSeconds: 30
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+            readOnlyRootFilesystem: true
+            seccompProfile: {type: RuntimeDefault}
+          volumeMounts:
+            - {name: config, mountPath: /fluent-bit/etc/fluent-bit.conf, subPath: fluent-bit.conf, readOnly: true}
+            - {name: config, mountPath: /fluent-bit/etc/parsers.conf, subPath: parsers.conf, readOnly: true}
+            - {name: logs, mountPath: /var/log, readOnly: true}
+            - {name: storage, mountPath: /buffers}
+            - {name: tls, mountPath: /fluent-bit/tls, readOnly: true}
+      volumes:
+        - {name: config, configMap: {name: fluent-bit-config}}
+        - {name: logs, hostPath: {path: /var/log}}
+        - {name: storage, hostPath: {path: /var/lib/fluent-bit, type: DirectoryOrCreate}}
+        - {name: tls, secret: {secretName: logging-es-http-certs-public}}

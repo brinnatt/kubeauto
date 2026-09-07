@@ -100,6 +100,7 @@ flowchart TB
 | 15 | 安全基线与生命周期 | [whitepaper/15-security-lifecycle.md](./whitepaper/15-security-lifecycle.md) |
 | 16 | **持久化存储与 OpenEBS** | [whitepaper/16-storage-openebs.md](./whitepaper/16-storage-openebs.md) |
 | 17 | **其他存储与中间件插件** | [whitepaper/17-storage-middleware-addons.md](./whitepaper/17-storage-middleware-addons.md) |
+| 日志平台 | **EFK / Loki 互斥生产路线** | [EFK/Loki 技术白皮书](./middleware/efk/technical-whitepaper.md) |
 | 附录 A | 版本矩阵与官方文档索引 | [whitepaper/A-version-matrix.md](./whitepaper/A-version-matrix.md) |
 
 跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。Percona PXC 独立中间件文档见[目录入口](./middleware/perconaPXC/README.md)，包含白皮书、用户/运维手册、开发手册和锁定版本的官方依据。

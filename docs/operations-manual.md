@@ -442,6 +442,8 @@ kubecli new k8s-main
 ```bash
 kubecli setup k8s-main 90          # 或 all
 # 分步：01 prepare → 02 etcd → 03 runtime → 04 kube-master → 05 kube-node → 06 network → 07 cluster-addon
+
+日志平台（EFK 或 Loki）为独立可选分路，配置、操作、故障和清理见[EFK/Loki 用户与运维手册](./middleware/efk/operations-manual.md)。
 ```
 
 6. **验收**：`kubectl get nodes`；`kubectl get pods -A`；按需执行 `tests/helpers/verify-node-reserved.sh`。

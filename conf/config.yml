@@ -415,6 +415,68 @@ kafka_drain_cleaner_cert_valid_days: 825
 kafka_drain_cleaner_cert_renew_before_days: 30
 
 
+# Logging is an independent production branch.  It remains inert until both
+# logging_install=yes and exactly one logging_solution are selected.  The
+# role never accepts plaintext credentials: create the referenced Secrets and
+# ConfigMaps through the customer's secret-management workflow first.
+logging_install: "no"
+logging_solution: ""
+logging_namespace: "logging"
+logging_transition_change_id: ""
+logging_monitoring_release_label: "prometheus"
+logging_eck_ver: "3.5.0"
+logging_elasticsearch_ver: "9.5.1"
+logging_kibana_ver: "9.5.1"
+logging_fluent_bit_ver: "5.1.1"
+logging_loki_ver: "3.7.6"
+logging_loki_chart_ver: "18.9.0"
+logging_alloy_ver: "1.18.1"
+logging_alloy_chart_ver: "1.11.1"
+# EFK direct is Fluent Bit -> Elasticsearch. kafka-buffer replaces that output
+# with Fluent Bit -> Kafka -> Logstash -> Elasticsearch; it never dual-writes.
+logging_efk_delivery: "direct"
+logging_efk_es_nodes: []
+logging_efk_storage_class: ""
+logging_efk_es_pvc_size: "200Gi"
+logging_efk_es_memory_request: "8Gi"
+logging_efk_es_memory_limit: "8Gi"
+logging_efk_es_heap: "4g"
+logging_efk_kibana_replicas: 2
+logging_efk_kibana_host: ""
+logging_ingress_controller: ""
+logging_ingress_class: ""
+logging_ingress_tls_secret: ""
+logging_efk_snapshot_endpoint: ""
+logging_efk_snapshot_region: ""
+logging_efk_snapshot_bucket: ""
+logging_efk_snapshot_path_style: false
+logging_efk_snapshot_secret: ""
+logging_efk_snapshot_ca_configmap: ""
+logging_efk_writer_secret: ""
+logging_efk_writer_user: "fluent-bit"
+logging_efk_retention_days: 30
+logging_efk_kafka_topic: "efk-replay"
+logging_efk_kafka_group: "efk-replay"
+logging_efk_kafka_user: "efk-pipeline"
+logging_efk_logstash_replicas: 2
+# Loki uses an existing S3-compatible object store and pre-created Secrets.
+logging_loki_storage_secret: ""
+logging_loki_storage_ca_configmap: ""
+logging_loki_storage_class: ""
+logging_loki_storage_endpoint: ""
+logging_loki_memory_request: "2Gi"
+logging_loki_memory_limit: "4Gi"
+logging_loki_tolerate_control_plane: false
+logging_loki_storage_region: ""
+logging_loki_bucket_chunks: ""
+logging_loki_bucket_ruler: ""
+logging_loki_bucket_admin: ""
+logging_loki_gateway_auth_secret: ""
+logging_loki_gateway_client_secret: ""
+logging_loki_ingress_host: ""
+logging_loki_retention_days: 30
+
+
 # network-check not installed by default
 network_check_enabled: false
 network_check_schedule: "*/5 * * * *"

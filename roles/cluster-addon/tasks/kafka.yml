@@ -114,6 +114,9 @@
       - "{{ kafka_operator_namespace }}"
       - --values
       - "{{ cluster_dir }}/yml/kafka/operator-values.yaml"
+      # CRDs are applied above with the kubeauto field manager; Helm must not
+      # re-apply them and conflict with that ownership.
+      - --skip-crds
       - --wait
       - --timeout
       - 10m

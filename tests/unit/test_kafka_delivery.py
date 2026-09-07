@@ -120,6 +120,9 @@ class KafkaDeliveryTests(unittest.TestCase):
         self.assertIsInstance(tasks, list)
         self.assertTrue(tasks)
 
+    def test_operator_helm_does_not_retake_preapplied_crd_ownership(self):
+        self.assertIn("- --skip-crds", TASKS)
+
     @classmethod
     def setUpClass(cls):
         cls.kc = KubeConstant()
@@ -380,6 +383,11 @@ class KafkaDeliveryTests(unittest.TestCase):
             "mapfile -t owned_crds",
             "if (( ${#owned_crds[@]} > 0 ))",
             "action=delete-owned-cluster-resources",
+            "known_strimzi_cluster_resources",
+            "action=force-delete-owned-broker-pods",
+            "strimzi.io/name=${KAFKA_CLUSTER}-kafka",
+            "--grace-period=0 --force --wait=false",
+            "--wait=true --timeout=2m",
             "kubeauto.io/component=kafka,strimzi.io/cluster=${KAFKA_CLUSTER}",
         ):
             self.assertIn(phrase, CLEANUP)

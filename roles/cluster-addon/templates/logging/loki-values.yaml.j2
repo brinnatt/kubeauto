@@ -1,0 +1,114 @@
+deploymentMode: Monolithic
+test: {enabled: false}
+global:
+  image:
+    registry: registry.talkschool.cn:5000
+defaults:
+  extraArgs: ["-config.expand-env=true"]
+{% if logging_loki_storage_endpoint.startswith('https://') %}
+  extraEnv:
+    - {name: SSL_CERT_FILE, value: /etc/loki/object-storage-ca/ca.crt}
+{% endif %}
+  extraEnvFrom:
+    - secretRef: {name: {{ logging_loki_storage_secret }}}
+{% if logging_loki_storage_endpoint.startswith('https://') %}
+  extraVolumes:
+    - name: object-storage-ca
+      configMap: {name: {{ logging_loki_storage_ca_configmap }}}
+  extraVolumeMounts:
+    - {name: object-storage-ca, mountPath: /etc/loki/object-storage-ca, readOnly: true}
+{% endif %}
+loki:
+  image:
+    repository: brinnatt/loki
+    tag: "{{ logging_loki_ver }}"
+  auth_enabled: false
+  commonConfig: {replication_factor: 3}
+  storage:
+    type: s3
+    bucketNames:
+      chunks: ${LOKI_BUCKET_CHUNKS}
+      ruler: ${LOKI_BUCKET_RULER}
+      admin: ${LOKI_BUCKET_ADMIN}
+    s3:
+      endpoint: ${LOKI_S3_ENDPOINT}
+      region: ${LOKI_S3_REGION}
+      accessKeyId: ${LOKI_S3_ACCESS_KEY}
+      secretAccessKey: ${LOKI_S3_SECRET_KEY}
+      s3ForcePathStyle: true
+      insecure: false
+  limits_config:
+    retention_period: {{ logging_loki_retention_days | int * 24 }}h
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index: {prefix: index_, period: 24h}
+  compactor: {retention_enabled: true, delete_request_store: s3}
+singleBinary:
+  enabled: true
+  replicas: 3
+  persistence:
+    enabled: true
+    storageClass: {{ logging_loki_storage_class | default('') | quote }}
+    size: 50Gi
+  resources:
+    requests: {cpu: 500m, memory: {{ logging_loki_memory_request | default('2Gi') | quote }} }
+    limits: {cpu: "2", memory: {{ logging_loki_memory_limit | default('4Gi') | quote }} }
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels: {app.kubernetes.io/component: single-binary}
+          topologyKey: kubernetes.io/hostname
+{% if logging_loki_tolerate_control_plane | default(false) | bool %}
+  tolerations:
+    - key: node.kubernetes.io/unschedulable
+      operator: Exists
+      effect: NoSchedule
+{% endif %}
+read: {replicas: 0}
+write: {replicas: 0}
+backend: {replicas: 0}
+gateway:
+  enabled: true
+  image: {repository: brinnatt/loki-gateway, tag: "1.31-alpine"}
+  metrics:
+    image: {repository: brinnatt/access-log-exporter, tag: "0.4.11"}
+  ingress:
+    enabled: true
+    ingressClassName: {{ logging_ingress_class | quote }}
+    hosts:
+      - host: {{ logging_loki_ingress_host | quote }}
+        paths:
+          - {path: /, pathType: Prefix}
+    tls:
+      - secretName: {{ logging_ingress_tls_secret | quote }}
+        hosts: [{{ logging_loki_ingress_host | quote }}]
+  basicAuth: {enabled: true, existingSecret: {{ logging_loki_gateway_auth_secret }}}
+chunksCache:
+  enabled: true
+  replicas: 2
+resultsCache:
+  enabled: true
+  replicas: 2
+lokiCanary:
+  enabled: true
+  image: {repository: brinnatt/loki-canary, tag: "{{ logging_loki_ver }}"}
+memcached:
+  image: {repository: brinnatt/memcached, tag: "1.6.45-alpine"}
+memcachedExporter:
+  image: {repository: brinnatt/memcached-exporter, tag: "v0.17.0"}
+sidecar:
+  image:
+    repository: brinnatt/k8s-sidecar
+    tag: "2.10.1"
+monitoring:
+  dashboards: {enabled: true, labels: {grafana_dashboard: "1"}}
+  rules: {enabled: true, labels: {release: {{ logging_monitoring_release_label }}}}
+  alerts: {enabled: true, labels: {release: {{ logging_monitoring_release_label }}}}
+  serviceMonitor: {enabled: true, labels: {release: {{ logging_monitoring_release_label }}}}

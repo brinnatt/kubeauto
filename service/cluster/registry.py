@@ -77,6 +77,21 @@ _BRINATT_UPSTREAM_FALLBACKS = {
     "brinnatt/strimzi-operator": "quay.io/strimzi/operator",
     "brinnatt/strimzi-kafka": "quay.io/strimzi/kafka",
     "brinnatt/strimzi-drain-cleaner": "quay.io/strimzi/drain-cleaner",
+    # Logging images use official upstream origins as a bounded migration
+    # fallback until the corresponding dual-push tags are present everywhere.
+    "brinnatt/eck-operator": "docker.elastic.co/eck/eck-operator",
+    "brinnatt/elasticsearch": "docker.elastic.co/elasticsearch/elasticsearch",
+    "brinnatt/kibana": "docker.elastic.co/kibana/kibana",
+    "brinnatt/fluent-bit": "cr.fluentbit.io/fluent/fluent-bit",
+    "brinnatt/logstash": "docker.elastic.co/logstash/logstash",
+    "brinnatt/loki": "grafana/loki",
+    "brinnatt/alloy": "grafana/alloy",
+    "brinnatt/loki-gateway": "nginxinc/nginx-unprivileged",
+    "brinnatt/access-log-exporter": "ghcr.io/jkroepke/access-log-exporter",
+    "brinnatt/loki-canary": "grafana/loki-canary",
+    "brinnatt/memcached": "memcached",
+    "brinnatt/memcached-exporter": "prom/memcached-exporter",
+    "brinnatt/k8s-sidecar": "kiwigrid/k8s-sidecar",
 }
 
 _BRINATT_PREFIX = "brinnatt/"
@@ -308,6 +323,12 @@ class RegistryManager:
         upstream = _BRINATT_UPSTREAM_FALLBACKS.get(repo)
         if upstream:
             upstream_ref = f"{upstream}:{tag}"
+            # A previous interrupted download may have completed the upstream
+            # pull but not the local brinnatt tag. Reuse that verified local
+            # image before spending another network timeout on public sources.
+            if self.docker.image_exists(upstream_ref):
+                self.docker.tag_image(upstream_ref, image)
+                return
             if upstream_ref not in candidates:
                 candidates.append(upstream_ref)
         if repo in _GHCR_PULL_FALLBACKS:

@@ -42,6 +42,8 @@ KAFKA_RUNTIME_IMAGE_VERIFY_PREFIX="${KAFKA_IMAGE_VERIFY_PREFIX:-}"
 KAFKA_RUNTIME_STORAGE_IMAGE_PREFIX="${KAFKA_LAB_IMAGE_SOURCE_PREFIX:-}"
 PROM_TEST_HOST="${PROM_TEST_HOST:-root@192.168.122.2}"
 PROM_TEST_JUMPER="${PROM_TEST_JUMPER:-}"
+LOGGING_TEST_HOST="${LOGGING_TEST_HOST:-root@192.168.122.2}"
+LOGGING_TEST_JUMPER="${LOGGING_TEST_JUMPER:-}"
 LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
 MODE="${1:-run}"
 mkdir -p "${ROOT}/logs"
@@ -49,7 +51,7 @@ mkdir -p "${ROOT}/logs"
 # The coverage summary is a delivery claim, so validate it from the YAML
 # details before any gate can run or emit a PASS marker. Independent middleware
 # branches own separate matrix schemas and are validated by their own gates.
-if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* ]]; then
+if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* ]]; then
   matrix_python="$ROOT/.venv/bin/python"
   [[ -x "$matrix_python" ]] || matrix_python="$(command -v python3.12 || command -v python3)"
   matrix_validation_args=("$ROOT/tests/enterprise-test-matrix.yaml")
@@ -75,6 +77,11 @@ ssh_prom() {
   local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
   [[ -n "$PROM_TEST_JUMPER" ]] && args+=(-J "$PROM_TEST_JUMPER")
   ssh "${args[@]}" "$PROM_TEST_HOST" "$@"
+}
+ssh_logging() {
+  local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+  [[ -n "$LOGGING_TEST_JUMPER" ]] && args+=(-J "$LOGGING_TEST_JUMPER")
+  ssh "${args[@]}" "$LOGGING_TEST_HOST" "$@"
 }
 scp138() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 scp137() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
@@ -228,8 +235,10 @@ echo '[CANCEL] label=${label} state=stopped pid='\"\$pid\"
 
 matrix_counts() {
   local matrix="$ROOT/tests/enterprise-test-matrix.yaml"
-  [[ "$MODE" == --mysql-* ]] && matrix="$ROOT/tests/mysql-test-matrix.yaml"
-  [[ "$MODE" == --kafka-* ]] && matrix="$ROOT/tests/kafka-test-matrix.yaml"
+  local surface="${1:-$MODE}"
+  [[ "$surface" == --mysql-* || "$surface" == mysql-* ]] && matrix="$ROOT/tests/mysql-test-matrix.yaml"
+  [[ "$surface" == --kafka-* || "$surface" == kafka-* ]] && matrix="$ROOT/tests/kafka-test-matrix.yaml"
+  [[ "$surface" == --logging-* || "$surface" == logging-* || "$surface" == logging ]] && matrix="$ROOT/tests/logging-test-matrix.yaml"
   printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pass' "$matrix" || true)" \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$matrix" || true)" \
@@ -457,7 +466,7 @@ monitor_remote_job() {
     fi
 
     if (( monitor_now - last_heartbeat_at >= 30 )); then
-      echo "[HEARTBEAT] time=$(date '+%F %T %Z') label=$label elapsed=$((monitor_now-monitor_started_at))s $summary $(matrix_counts)"
+      echo "[HEARTBEAT] time=$(date '+%F %T %Z') label=$label elapsed=$((monitor_now-monitor_started_at))s $summary $(matrix_counts "$label")"
       last_heartbeat_at=$monitor_now
     fi
 
@@ -498,6 +507,59 @@ monitor_remote_job() {
     sleep 10
   done
 }
+
+if [[ "$MODE" == "--logging-status" ]]; then
+  echo "========== Logging independent gate =========="
+  remote_job_summary ssh_logging '' /tmp/kubeauto-logging-gate /tmp/kubeauto-logging-live.log || true
+  remote_log_tail ssh_logging '' /tmp/kubeauto-logging-live.log 100
+  echo "========== Logging route resources =========="
+  ssh_logging "kubectl get ns logging -o jsonpath='solution={.metadata.labels.kubeauto\\.io/logging-solution} phase={.status.phase}' 2>/dev/null || true; echo; kubectl -n logging get pod,sts,deploy,ds,pvc,svc -o wide 2>/dev/null || true"
+  echo "========== Logging matrix =========="
+  printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s\n' \
+    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pass' "$ROOT/tests/logging-test-matrix.yaml" || true)" \
+    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$ROOT/tests/logging-test-matrix.yaml" || true)" \
+    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: fail' "$ROOT/tests/logging-test-matrix.yaml" || true)"
+  exit 0
+fi
+
+if [[ "$MODE" == "--logging-follow" ]]; then
+  ssh_logging "tail -n 100 -F /tmp/kubeauto-logging-live.log"
+  exit 0
+fi
+
+if [[ "$MODE" == "--logging-only" ]]; then
+  echo "========== Independent Logging delivery gate =========="
+  cancel_remote_job logging ssh_logging '' /tmp/kubeauto-logging-gate
+  unit_python="$ROOT/.venv/bin/python"; [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" "$ROOT/tests/helpers/validate-test-matrix.py" "$ROOT/tests/logging-test-matrix.yaml" | tee -a "$LOG"
+  "$unit_python" -m unittest \
+    tests.unit.test_logging_delivery \
+    tests.unit.test_logging_documentation \
+    tests.unit.test_six_repo_version_sync -v
+  KUBEAUTO_SSH_JUMP="$LOGGING_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$LOGGING_TEST_HOST"
+  ssh_logging "chmod 0755 /usr/local/kubeauto/tests/helpers/logging-*.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
+  logging_solution="${LOGGING_SOLUTION:-efk}"
+  [[ "$logging_solution" == efk || "$logging_solution" == loki ]] || { echo "invalid LOGGING_SOLUTION=$logging_solution" >&2; exit 2; }
+  logging_delivery="${LOGGING_EFK_DELIVERY:-direct}"
+  [[ "$logging_delivery" == direct || "$logging_delivery" == kafka-buffer ]] || { echo "invalid LOGGING_EFK_DELIVERY=$logging_delivery" >&2; exit 2; }
+  logging_focus_case="${LOGGING_FOCUS_CASE:-}"
+  [[ -z "$logging_focus_case" || "$logging_focus_case" == extended || "$logging_focus_case" =~ ^LOGGING-(38|39|40|41|42|43|44)$ ]] || { echo "invalid LOGGING_FOCUS_CASE=$logging_focus_case" >&2; exit 2; }
+  logging_success_marker=LOGGING_FULL_GATE_PASS
+  [[ -z "$logging_focus_case" ]] || logging_success_marker=LOGGING_FOCUSED_GATE_PASS
+  ssh_logging "rm -f /tmp/kubeauto-logging-live.log /tmp/kubeauto-logging-gate.pid /tmp/kubeauto-logging-gate.exit /tmp/kubeauto-logging-gate.finalized; nohup env LOGGING_SOLUTION=$logging_solution LOGGING_EFK_DELIVERY=$logging_delivery LOGGING_FOCUS_CASE=$logging_focus_case bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-logging-gate LOGGING_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/logging-regression.sh >/tmp/kubeauto-logging-live.log 2>&1 </dev/null &"
+  logging_rc=0
+  monitor_remote_job logging ssh_logging '' /tmp/kubeauto-logging-gate /tmp/kubeauto-logging-live.log "$logging_success_marker" || logging_rc=$?
+  cleanup_rc=0
+  ssh_logging "bash /usr/local/kubeauto/tests/helpers/logging-cleanup.sh" || cleanup_rc=$?
+  if [[ "$logging_solution" == efk && "$logging_delivery" == kafka-buffer ]]; then
+    ssh_logging "bash /usr/local/kubeauto/tests/helpers/kafka-cleanup.sh" || cleanup_rc=$?
+  fi
+  ssh_logging "bash /usr/local/kubeauto/tests/helpers/logging-cleanup.sh" --verify || cleanup_rc=$?
+  [[ "$logging_rc" -eq 0 && "$cleanup_rc" -eq 0 ]] || exit 1
+  echo LOGGING_DELIVERY_BRANCH_PASS
+  exit 0
+fi
 
 if [[ "$MODE" == "--mysql-only" ]]; then
   echo "========== Independent MySQL/PXC delivery gate =========="

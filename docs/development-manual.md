@@ -223,6 +223,8 @@ bash tests/run_unit_tests.sh
 
 ## 3.7、新增可选插件（addon）
 
+日志平台的完整接入契约、互斥路线和 44 项专项矩阵见[EFK/Loki 开发手册](./middleware/efk/development-manual.md)。
+
 最小闭环：
 
 1. **镜像**：先盘点生产、升级、回滚、备份、压测和测试基础设施镜像；在 `kubeauto-ext-images-dockerfile` 对应功能目录增加（或复用）镜像，CI matrix 增加双推 tag。

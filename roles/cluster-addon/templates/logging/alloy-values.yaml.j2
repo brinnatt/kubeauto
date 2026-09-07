@@ -1,0 +1,121 @@
+image:
+  repository: brinnatt/alloy
+  tag: "{{ logging_alloy_ver }}"
+global:
+  image:
+    registry: registry.talkschool.cn:5000
+controller:
+  type: daemonset
+  hostNetwork: false
+  priorityClassName: system-node-critical
+  tolerations:
+    - operator: Exists
+  updateStrategy: {type: RollingUpdate}
+  volumes:
+    extra:
+      - name: alloy-storage
+        hostPath: {path: /var/lib/alloy, type: DirectoryOrCreate}
+alloy:
+  enableReporting: false
+  storagePath: /var/lib/alloy
+  clustering: {enabled: false}
+  envFrom:
+    - secretRef: {name: {{ logging_loki_gateway_client_secret }}}
+  extraEnv:
+    - name: NODE_NAME
+      valueFrom: {fieldRef: {fieldPath: spec.nodeName}}
+  mounts:
+    varlog: true
+    extra:
+      - name: alloy-storage
+        mountPath: /var/lib/alloy
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+  configMap:
+    content: |
+      logging {
+        level = "info"
+        format = "logfmt"
+      }
+      discovery.kubernetes "pods" {
+        role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + sys.env("NODE_NAME")
+        }
+      }
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+        rule {
+          target_label = "cluster"
+          replacement  = "{{ logging_cluster_name | default('kubeauto') }}"
+        }
+      }
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.pod_logs.receiver]
+      }
+      loki.process "pod_logs" {
+        stage.drop {
+          older_than          = "167h"
+          drop_counter_reason = "outside_loki_acceptance_window"
+        }
+        forward_to = [loki.write.default.receiver]
+        stage.static_labels { values = {source = "kubernetes"} }
+      }
+      loki.write "default" {
+        endpoint {
+          url = "http://loki-gateway.{{ logging_namespace }}.svc.cluster.local/loki/api/v1/push"
+          basic_auth {
+            username = sys.env("LOKI_GATEWAY_USERNAME")
+            password = sys.env("LOKI_GATEWAY_PASSWORD")
+          }
+        }
+      }
+rbac:
+  # Alloy receives its gateway credentials through envFrom; it must not be
+  # able to read arbitrary Secrets from the cluster. Keep only the discovery
+  # permissions used by this configuration instead of the chart's broad
+  # optional-component defaults.
+  create: true
+  rules:
+    - apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
+      resources: ["endpoints", "endpointslices", "ingresses", "pods", "services"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods", "pods/log", "namespaces"]
+      verbs: ["get", "list", "watch"]
+  clusterRules:
+    - apiGroups: [""]
+      resources: ["nodes"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["nodes/pods", "nodes/metrics"]
+      verbs: ["get", "list", "watch"]
+    - nonResourceURLs: ["/metrics"]
+      verbs: ["get"]
+serviceMonitor:
+  enabled: true
+  additionalLabels: {release: {{ logging_monitoring_release_label }}}
+configReloader:
+  image:
+    registry: registry.talkschool.cn:5000
+    repository: brinnatt/prometheus-config-reloader
+    tag: "v0.91.0"

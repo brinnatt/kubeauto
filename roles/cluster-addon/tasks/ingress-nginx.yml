@@ -32,6 +32,12 @@
       environment:
         KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
 
+    - name: 等待 ingress-nginx controller 就绪后再允许 admission 资源
+      shell: >-
+        kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+        -n {{ ingress_nginx_namespace }} rollout status
+        deployment/ingress-nginx-controller --timeout=10m
+
     - name: 提示 WARNNING
       debug:
         msg: "ingress-nginx 只会部署到有如下标签的节点：ingress-controller/provider=ingress-nginx"

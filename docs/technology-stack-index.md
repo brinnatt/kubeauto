@@ -38,6 +38,7 @@ flowchart LR
 | 资源治理 | Node Allocatable、QoS、Eviction | kube/system reserved；system 不默认硬限 | [第 11 章](./whitepaper/11-allocatable-qos.md) | [§1.1.4](./operations-manual.md#114为系统守护进程预留计算资源node-allocatable) | 专章 |
 | 指标 | metrics-server | 即时资源指标，不做历史存储 | [第 12 章](./whitepaper/12-addons-observability.md#123-metrics-server) | [插件安装](./operations-manual.md#1337集成插件) | 架构 + SOP |
 | 监控 | Prometheus Operator、Prometheus、Alertmanager、Grafana | 可选；本地镜像；etcd TLS 抓取 | [第 12 章](./whitepaper/12-addons-observability.md#125-kube-prometheus-stack) | [Prometheus](./operations-manual.md#13374prometheus) | 架构 + SOP |
+| 日志 | ECK/Elasticsearch/Kibana/Fluent Bit 或 Loki/Alloy | 两条路线互斥；默认关闭；依赖 Prometheus | [EFK/Loki 白皮书](./middleware/efk/technical-whitepaper.md) | [EFK/Loki 运维手册](./middleware/efk/operations-manual.md) | 架构 + SOP |
 | 入口 | ingress-nginx | NodePort + 节点标签；可接 ex-lb | [第 12 章](./whitepaper/12-addons-observability.md#126-ingress-nginx) | [Ingress](./operations-manual.md#13375ingress-nginx) | 架构 + SOP |
 | UI | Kubernetes Dashboard + Kong | 可选；高权限账号必须治理 | [第 12 章](./whitepaper/12-addons-observability.md#124-kubernetes-dashboard) | [Dashboard](./operations-manual.md#13373dashboard) | 架构 + SOP |
 | 本地存储 | OpenEBS Hostpath / LVM | 两条独立本地卷链路，不自带副本/RWX | [第 16 章](./whitepaper/16-storage-openebs.md) | [§1.3.4](./operations-manual.md#134openebs-生产运维) | 专章 + 完整 SOP |
