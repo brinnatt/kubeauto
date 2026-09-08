@@ -765,6 +765,10 @@ def _validate_explicit_host_interfaces(
 ) -> None:
     """创建 HostEndpoint 前校验：禁止 auto；每个节点须有注解或有效的 --interface 兜底。"""
     base = (cli_interface or "").strip()
+    if base and base != "*" and not re.match(r"^[A-Za-z0-9_.-]{1,63}$", base):
+        raise CalicoHostFwError(
+            "--interface 仅允许真实网卡名（字母、数字、点、下划线、连字符）或通配 '*'"
+        )
     if base.lower() == "auto":
         raise CalicoHostFwError(
             "主机层创建 HostEndpoint 时禁止使用 --interface auto；"
@@ -779,6 +783,10 @@ def _validate_explicit_host_interfaces(
         ov = ""
         if isinstance(ann, dict):
             ov = (ann.get(NODE_HOST_INTERFACE_ANNOTATION) or "").strip()
+        if ov and ov != "*" and not re.match(r"^[A-Za-z0-9_.-]{1,63}$", ov):
+            raise CalicoHostFwError(
+                f"节点 {name!r} 的 {NODE_HOST_INTERFACE_ANNOTATION} 注解含非法网卡名"
+            )
         if not ov and not base:
             missing.append(name)
     if missing:

@@ -21,8 +21,8 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertEqual(validate_matrix(MATRIX), [])
         text = MATRIX.read_text(encoding="utf-8")
         self.assertIn("status: review", text)
-        self.assertIn("pass: 28", text)
-        self.assertIn("pending: 25", text)
+        self.assertIn("pass: 33", text)
+        self.assertIn("pending: 22", text)
 
     def test_tools_matrix_require_pass_rejects_review_baseline(self):
         errors = validate_matrix(MATRIX, require_pass=True)
@@ -41,7 +41,7 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertTrue(all(cap["case_ids"] and set(cap["case_ids"]) <= case_ids for cap in capabilities))
 
     def test_stale_summary_is_rejected(self):
-        text = MATRIX.read_text(encoding="utf-8").replace("pending: 25", "pending: 24", 1)
+        text = MATRIX.read_text(encoding="utf-8").replace("pending: 22", "pending: 21", 1)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tools.yaml"
             path.write_text(text, encoding="utf-8")
@@ -55,6 +55,8 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertIn("--build-only", text)
         self.assertIn("TOOLS_BUILD_EXIT", text)
         self.assertIn("flock -n 9", text)
+        self.assertIn("run-durable-gate.sh", text)
+        self.assertIn("TOOLS_CALICO_EXIT", text)
         self.assertNotIn("run_enterprise_regression.sh", text)
 
     def test_rocky8_build_repairs_python_expat_abi_before_pip(self):
@@ -66,6 +68,28 @@ class ToolsMatrixContractTests(unittest.TestCase):
         probe = build.index('python3.12 -c "import pyexpat"')
         self.assertLess(install, upgrade)
         self.assertLess(upgrade, probe)
+
+    def test_calico_interface_input_is_constrained_before_manifest_generation(self):
+        source = (ROOT / "tools/k8stools/CalicoPolicyCli.py").read_text(encoding="utf-8")
+        self.assertIn("仅允许真实网卡名", source)
+        self.assertIn("含非法网卡名", source)
+
+    def test_calico_cases_distinguish_the_live_gate_from_kdd_architecture(self):
+        data = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
+        cases = {case["id"]: case for case in data["test_cases"]}
+        calico = [case for case in cases.values() if case["tool"] == "CalicoPolicyCli"]
+        self.assertTrue(calico)
+        self.assertEqual(cases["TL-CAL-07"]["status"], "pass")
+        self.assertEqual(cases["TL-CAL-08"]["status"], "na")
+
+    def test_calico_live_fixture_uses_supported_delete_arguments(self):
+        fixture = (ROOT / "tests/helpers/calico-live-regression.sh").read_text(encoding="utf-8")
+        self.assertNotIn('--delete-hostendpoints --hep-prefix', fixture)
+        self.assertIn('CALICO_LIVE_REGRESSION_PASS', fixture)
+        self.assertIn('registry.talkschool.cn:5000/brinnatt/busybox:1.37', fixture)
+        self.assertNotIn('image: busybox:', fixture)
+        self.assertIn('--dry-run=client', fixture)
+        self.assertIn('--dry-run=server', fixture)
 
 
 if __name__ == "__main__":

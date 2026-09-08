@@ -3,7 +3,7 @@
 
 meta:
   version: 1
-  updated: "2026-09-07"
+  updated: "2026-09-08"
   status: review
   runner: tests/run_tools_regression.sh
   scope: "tools/ 下每个脚本都是独立 CLI；禁止依赖 kubeauto 核心、middleware、其它 tools 或其它工程。"
@@ -55,11 +55,14 @@ test_cases:
   - {id: TL-OVPN-04, tool: OvpnUserCli, category: security, scenario: "重复签发、CN 注入、越权输出路径和 revoke 未确认保护", command: "对同一用户重复 create；传入含 shell 元字符 CN/路径", expected: "拒绝或按文档幂等；不执行 shell；不写 PKI 外路径", status: pass, evidence: "用户确认 OvpnUserCli 已在生产使用并完成验证"}
   - {id: TL-OVPN-05, tool: OvpnUserCli, category: recovery, scenario: "revoke + gen-crl、serial 归档及中断回收", command: "create -> revoke -> status，并在 gen-crl 阶段中断", expected: "crl.pem/index/归档状态一致；失败不留下半成品；可重试", status: pass, evidence: "用户确认 OvpnUserCli 已在生产使用并完成验证"}
 
-  - {id: TL-CAL-01, tool: CalicoPolicyCli, category: build, scenario: "无 kubeauto 模块导入的 onefile 构建", command: "python3 -m compileall -q tools/k8stools/CalicoPolicyCli.py && build tools-only", expected: "独立产物可执行，导入边界检查通过", status: pass, evidence: "2026-09-07 tools build-only；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；CalicoPolicyCli sha256=21942b73884a9b82aaa38cda57e1cc5c4dac93a57ba9b2c33d0b0b86b3a51592；--help 通过"}
-  - {id: TL-CAL-02, tool: CalicoPolicyCli, category: cli, scenario: "context/traffic-layer/executor 显式参数合同", command: "python3 tools/k8stools/CalicoPolicyCli.py --help", expected: "缺 context、host executor 或 pod namespace 均在变更前拒绝", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；参数帮助合同可加载"}
-  - {id: TL-CAL-03, tool: CalicoPolicyCli, category: functional, scenario: "plan/validate/apply/delete 的 kubectl 与 calicoctl 路径", command: "固定 fake kubectl/calicoctl + 隔离 kubeconfig 执行 plan/validate/apply/delete", expected: "host/both 分层调用正确；backup/post-verify 可核对对象", status: pending}
-  - {id: TL-CAL-04, tool: CalicoPolicyCli, category: security, scenario: "无 --confirm 不变更、context 错配和 manifest 注入", command: "apply 不带 --confirm；传入恶意 context/文件", expected: "无写操作；参数安全；拒绝 kubectl/calicoctl 混用", status: pending}
-  - {id: TL-CAL-05, tool: CalicoPolicyCli, category: recovery, scenario: "分阶段 apply 失败回滚与备份留存", command: "fake executor 在 GNP/HEP/NetPol 各阶段注入失败", expected: "首个失败停止；备份可恢复；删除仅触及工具标签资源；清理通过", status: pending}
+  - {id: TL-CAL-01, tool: CalicoPolicyCli, category: build, scenario: "无 kubeauto 模块导入的 onefile 构建", command: "python3 -m compileall -q tools/k8stools/CalicoPolicyCli.py && build tools-only", expected: "独立产物可执行，导入边界检查通过", status: pass, evidence: "2026-09-08 tools runner --build-only；Rocky 8.10/glibc 2.28；CalicoPolicyCli SHA256=ae1836b90e8e6e25d1ed0d1e81ad813359accafe2706fe9afdee28a09085c573；--help 通过"}
+  - {id: TL-CAL-02, tool: CalicoPolicyCli, category: cli, scenario: "context/traffic-layer/executor 显式参数合同", command: "python3 tools/k8stools/CalicoPolicyCli.py --help", expected: "缺 context、host executor 或 pod namespace 均在变更前拒绝", status: pass, evidence: "2026-09-08：preflight/plan/validate/apply/delete/nodes 均显式 context；host/both 缺 executor、pod/both 缺 namespace、非法 interface 均在变更前 rc=1"}
+  - {id: TL-CAL-03, tool: CalicoPolicyCli, category: functional, scenario: "etcd 数据存储下 host layer 的 plan/validate/apply/delete", command: "192.168.122.243 context-cluster1：calicoctl etcd 模式执行 nodes/plan/validate/apply/delete", expected: "host 分层调用正确；backup/post-verify 可核对对象；允许源成功、拒绝源失败", status: pass, evidence: "2026-09-08 durable live：Calico v3.28.4/bgp etcd；GNP+6 HEP staged apply、backup、post-verify；.243:39091 allow、.193 deny；delete 后对象归零"}
+  - {id: TL-CAL-04, tool: CalicoPolicyCli, category: security, scenario: "无 --confirm 不变更、context 错配和 manifest 注入", command: "apply 不带 --confirm；传入恶意 context/文件", expected: "无写操作；参数安全；拒绝 kubectl/calicoctl 混用", status: pass, evidence: "2026-09-08 durable live：pod server/client dry-run 不落库；无 --confirm rc=1；恶意 interface 无注入文件；host executor 明确使用 calicoctl"}
+  - {id: TL-CAL-05, tool: CalicoPolicyCli, category: recovery, scenario: "分阶段 apply 失败回滚与备份留存", command: "fake executor 在 GNP/HEP/NetPol 各阶段注入失败", expected: "首个失败停止；备份可恢复；删除仅触及工具标签资源；清理通过", status: pass, evidence: "2026-09-08 durable live：wrapper 令 GNP 成功、HEP rc=42；工具立即停止；专用 GNP 清理；HEP/端口/monitor 恢复"}
+  - {id: TL-CAL-06, tool: CalicoPolicyCli, category: functional, scenario: "pod layer NetworkPolicy 的 plan/validate/apply/delete", command: "隔离 monitor 测试 Pod，使用 traffic-layer=pod 与 kubectl 完成读写闭环", expected: "NetworkPolicy 命名空间/标签/端口正确；允许源成功、拒绝源失败；删除后恢复基线", status: pass, evidence: "2026-09-08 durable live：monitor 目标 Pod 与独立允许/拒绝 Pod；server dry-run、validate、apply --post-verify；允许 Pod HTTP 成功，拒绝 Pod超时；delete 恢复"}
+  - {id: TL-CAL-07, tool: CalicoPolicyCli, category: functional, scenario: "etcd 数据存储下 both layer 的分阶段 apply/delete", command: "192.168.122.243 context-cluster1：--traffic-layer both --executor calicoctl --apply-staged，主机 Calico 和 Pod NetworkPolicy 分别下发", expected: "按 GNP -> HEP -> NetworkPolicy 三阶段执行；host/pod 允许源成功、非允许主机源拒绝；重复 delete 幂等且基线恢复", status: pass, evidence: "2026-09-08 durable live：both 39093 三阶段成功；.243 host 与允许 Pod 成功，.193 host 与拒绝 Pod 均拒绝；连续两次 delete 成功，资源归零"}
+  - {id: TL-CAL-08, tool: CalicoPolicyCli, category: functional, scenario: "Kubernetes API（KDD/Calico CRD）executor 路径", command: "启用 projectcalico.org CRD 的隔离集群执行 executor=kubectl host/both", expected: "GNP/HEP 经 Kubernetes API 成功读写；与 calicoctl 路径结果一致", status: na, evidence: "2026-09-08：授权集群为 Calico v3.28.4 etcd 数据存储，kubectl api-resources 无 projectcalico.org CRD；本架构不适用，保留为独立 KDD 环境门禁"}
 
   - {id: TL-KB-01, tool: KubeBackupCli, category: build, scenario: "Kubernetes client/yaml/tenacity 依赖固定且独立构建", command: "python3 -m compileall -q tools/k8stools/KubeBackupCli.py && build tools-only", expected: "onefile 可启动，依赖版本与构建 SHA256 可追溯", status: pass, evidence: "2026-09-07 tools build-only；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；KubeBackupCli sha256=d2a1e24fc56f646e8b78dd07c1a63eeb50dc8d9d87ca18310e7f19a185bf7294；--help 通过"}
   - {id: TL-KB-02, tool: KubeBackupCli, category: cli, scenario: "backup/restore 参数、命名空间映射和 dry-run 合同", command: "python3 tools/k8stools/KubeBackupCli.py --help", expected: "非法资源、映射、路径和 context 非 0；帮助可用", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；参数帮助合同可加载"}
@@ -133,8 +136,8 @@ functional_inventory:
     - {id: CAL-F-03, operation: "plan：生成 GNP/HEP/NetworkPolicy 预演清单", case_ids: [TL-CAL-03]}
     - {id: CAL-F-04, operation: "validate：kubectl/calicoctl 资源和策略核验", case_ids: [TL-CAL-03]}
     - {id: CAL-F-05, operation: "apply host：calicoctl HostEndpoint/GNP 写入", case_ids: [TL-CAL-03]}
-    - {id: CAL-F-06, operation: "apply pod：kubectl NetworkPolicy 写入", case_ids: [TL-CAL-03]}
-    - {id: CAL-F-07, operation: "apply both、dry-run client/server 与 executor 分层", case_ids: [TL-CAL-03, TL-CAL-04]}
+    - {id: CAL-F-06, operation: "apply pod：kubectl NetworkPolicy 写入", case_ids: [TL-CAL-06]}
+    - {id: CAL-F-07, operation: "apply both、dry-run client/server 与 executor 分层", case_ids: [TL-CAL-04, TL-CAL-06, TL-CAL-07]}
     - {id: CAL-F-08, operation: "delete：按工具标签删除并保留非工具资源", case_ids: [TL-CAL-03, TL-CAL-05]}
     - {id: CAL-F-09, operation: "--confirm、context/namespace/接口显式约束", case_ids: [TL-CAL-04]}
     - {id: CAL-F-10, operation: "分阶段失败停止、备份、恢复和清理", case_ids: [TL-CAL-05]}
@@ -209,10 +212,10 @@ functional_inventory:
     - {id: SR-F-12, operation: "FE/BE/CN 部署失败、清理、超时和重试", case_ids: [TL-SR-05]}
 
 coverage_summary:
-  total: 53
-  pass: 28
-  pending: 25
+  total: 56
+  pass: 33
+  pending: 22
   fail: 0
   skip: 0
-  na: 0
-  overall_assessment: "评审稿：28/53 PASS，25 项 pending；构建/CLI/独立性静态门禁已通过，live 测试仍需评审批准"
+  na: 1
+  overall_assessment: "全矩阵 33/56 PASS、22 pending、1 na；Calico 当前 etcd 交付范围 7/7 PASS，live durable rc=0 且 TOOLS_CLEAN_VERIFY_PASS；KDD CRD 路径因当前架构不适用单列 na"

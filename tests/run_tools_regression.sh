@@ -23,11 +23,12 @@ fi
 
 usage() {
   cat <<'EOF'
-用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--full]
+用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--full]
 
   --preflight  校验 tools 矩阵、脚本语法和独立导入边界（无远程变更）
   --status     输出当前 tools 矩阵状态
   --build-only 在固定 Rocky 8.10/glibc 2.28 环境构建并校验九个冻结工具
+  --calico-live 在授权 Calico 集群运行 CalicoPolicyCli 完整 host/pod/both 回归
   --full       仅在矩阵全部 pass 且显式批准后进入 live（评审阶段拒绝）
 EOF
 }
@@ -88,6 +89,46 @@ PY
     test "$(find "$stage" -maxdepth 1 -type f | wc -l)" -eq "${#TOOLS[@]}"
     sha256sum "$stage"/*
     echo "TOOLS_BUILD_PASS count=${#TOOLS[@]} glibc=2.28"
+    ;;
+  --calico-live)
+    CALICO_HOST="${CALICO_TEST_HOST:-root@192.168.122.243}"
+    CALICO_CONTEXT="${CALICO_TEST_CONTEXT:-context-cluster1}"
+    CALICO_DENY_HOST="${CALICO_TEST_DENY_HOST:-192.168.122.193}"
+    [[ "$CALICO_HOST" == root@192.168.122.243 ]] || { echo "CALICO_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    [[ "$CALICO_DENY_HOST" == 192.168.122.193 ]] || { echo "CALICO_LIVE_BLOCKED_UNAUTHORIZED_DENY_SOURCE" >&2; exit 2; }
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    lock="${TMPDIR:-/tmp}/kubeauto-tools-calico-run.lock"
+    exec 9>"$lock"
+    flock -n 9 || { echo "CALICO_LIVE_BLOCKED: another tools run owns $lock" >&2; exit 2; }
+    state="${TMPDIR:-/tmp}/kubeauto-tools-calico-live"
+    gate_log="$ROOT/logs/tools-calico-live-$(date +%Y%m%d-%H%M%S).log"
+    stage="$(mktemp -d /tmp/kubeauto-calico-live.XXXXXX)"
+    cleanup_live() {
+      set +e
+      rm -rf "$stage"
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$CALICO_HOST" \
+        "rm -f /tmp/CalicoPolicyCli.py /tmp/calico-live-regression.sh" >/dev/null 2>&1
+    }
+    trap cleanup_live EXIT INT TERM
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/k8stools/CalicoPolicyCli.py" \
+      "$CALICO_HOST:/tmp/CalicoPolicyCli.py"
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tests/helpers/calico-live-regression.sh" \
+      "$CALICO_HOST:/tmp/calico-live-regression.sh"
+    rm -f "${state}.pid" "${state}.exit" "${state}.finalized"
+    set +e
+    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$state" TOOLS_CALICO_EXIT \
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$CALICO_HOST" \
+      "chmod 0755 /tmp/calico-live-regression.sh; CALICO_TOOL=/tmp/CalicoPolicyCli.py CALICO_CONTEXT='$CALICO_CONTEXT' CALICO_DENY_HOST='$CALICO_DENY_HOST' bash /tmp/calico-live-regression.sh" \
+      2>&1 | tee "$gate_log"
+    gate_rc=${PIPESTATUS[0]}
+    set -e
+    test "$gate_rc" -eq 0
+    test "$(cat "${state}.exit")" = 0
+    test "$(cat "${state}.finalized")" = 0
+    grep -q '^CALICO_LIVE_REGRESSION_PASS ' "$gate_log"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$CALICO_HOST" \
+      "! calicoctl get globalnetworkpolicy kubeauto-delivery-cal-host-39091 >/dev/null 2>&1; ! calicoctl get globalnetworkpolicy kubeauto-delivery-cal-both-39093 >/dev/null 2>&1; ! kubectl get networkpolicy -n monitor kubeauto-delivery-cal-pod-39092 kubeauto-delivery-cal-pod-39093 >/dev/null 2>&1; for p in 39091 39092 39093; do ! ss -ltn 'sport = :'\$p | tail -n +2 | grep -q .; done"
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=calico host=$CALICO_HOST"
     ;;
   --full)
     if [[ "${TOOLS_MATRIX_APPROVED:-no}" != yes ]]; then
