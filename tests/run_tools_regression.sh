@@ -23,12 +23,14 @@ fi
 
 usage() {
   cat <<'EOF'
-用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--full]
+用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--kube-backup-live|--kube-publish-live|--full]
 
   --preflight  校验 tools 矩阵、脚本语法和独立导入边界（无远程变更）
   --status     输出当前 tools 矩阵状态
   --build-only 在固定 Rocky 8.10/glibc 2.28 环境构建并校验九个冻结工具
   --calico-live 在授权 Calico 集群运行 CalicoPolicyCli 完整 host/pod/both 回归
+  --kube-backup-live 在授权 Kubernetes 集群运行 KubeBackupCli 完整备份/恢复回归
+  --kube-publish-live 在授权 Docker/nerdctl 主机运行 KubePublishCli 完整镜像回归
   --full       仅在矩阵全部 pass 且显式批准后进入 live（评审阶段拒绝）
 EOF
 }
@@ -129,6 +131,69 @@ PY
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$CALICO_HOST" \
       "! calicoctl get globalnetworkpolicy kubeauto-delivery-cal-host-39091 >/dev/null 2>&1; ! calicoctl get globalnetworkpolicy kubeauto-delivery-cal-both-39093 >/dev/null 2>&1; ! kubectl get networkpolicy -n monitor kubeauto-delivery-cal-pod-39092 kubeauto-delivery-cal-pod-39093 >/dev/null 2>&1; for p in 39091 39092 39093; do ! ss -ltn 'sport = :'\$p | tail -n +2 | grep -q .; done"
     echo "TOOLS_CLEAN_VERIFY_PASS scope=calico host=$CALICO_HOST"
+    ;;
+  --kube-backup-live)
+    KUBE_BACKUP_HOST="${KUBE_BACKUP_TEST_HOST:-root@192.168.122.243}"
+    KUBE_BACKUP_CONTEXT="${KUBE_BACKUP_TEST_CONTEXT:-context-cluster1}"
+    [[ "$KUBE_BACKUP_HOST" == root@192.168.122.243 ]] || { echo "KUBE_BACKUP_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    lock="${TMPDIR:-/tmp}/kubeauto-tools-kube-backup-run.lock"
+    exec 9>"$lock"
+    flock -n 9 || { echo "KUBE_BACKUP_LIVE_BLOCKED: another KubeBackup run owns $lock" >&2; exit 2; }
+    state="${TMPDIR:-/tmp}/kubeauto-tools-kube-backup-live"
+    gate_log="$ROOT/logs/tools-kube-backup-live-$(date +%Y%m%d-%H%M%S).log"
+    set +e
+    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$state" TOOLS_KUBE_BACKUP_EXIT \
+      env PYTHON="$PY" bash "$ROOT/tests/helpers/kube-backup-live-regression.sh" \
+      "$ROOT/tools/k8stools/KubeBackupCli.py" "$KUBE_BACKUP_HOST" "$KUBE_BACKUP_CONTEXT" \
+      2>&1 | tee "$gate_log"
+    gate_rc=${PIPESTATUS[0]}
+    set -e
+    test "$gate_rc" -eq 0
+    test "$(cat "${state}.exit")" = 0
+    test "$(cat "${state}.finalized")" = 0
+    grep -q '^KUBE_BACKUP_LIVE_REGRESSION_PASS ' "$gate_log"
+    grep -q '^KUBE_BACKUP_CLEAN_VERIFY_PASS ' "$gate_log"
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=kube-backup host=$KUBE_BACKUP_HOST"
+    ;;
+  --kube-publish-live)
+    KUBE_PUBLISH_HOST="${KUBE_PUBLISH_TEST_HOST:-root@192.168.122.2}"
+    KUBE_PUBLISH_TARGETS="${KUBE_PUBLISH_TEST_TARGETS:-192.168.122.217:22 192.168.122.210-210:22 192.168.122.216:22}"
+    [[ "$KUBE_PUBLISH_HOST" == root@192.168.122.2 ]] || { echo "KUBE_PUBLISH_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    [[ "$KUBE_PUBLISH_TARGETS" == "192.168.122.217:22 192.168.122.210-210:22 192.168.122.216:22" ]] || { echo "KUBE_PUBLISH_LIVE_BLOCKED_UNAUTHORIZED_TARGETS" >&2; exit 2; }
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    lock="${TMPDIR:-/tmp}/kubeauto-tools-kube-publish-run.lock"
+    exec 9>"$lock"
+    flock -n 9 || { echo "KUBE_PUBLISH_LIVE_BLOCKED: another KubePublish run owns $lock" >&2; exit 2; }
+    state="/tmp/kubeauto-tools-kube-publish-live"
+    remote_log="/tmp/kubeauto-tools-kube-publish-live.log"
+    gate_log="$ROOT/logs/tools-kube-publish-live-$(date +%Y%m%d-%H%M%S).log"
+    cleanup_publish_live() {
+      set +e
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KUBE_PUBLISH_HOST" \
+        "rm -f /tmp/KubePublishCli.py /tmp/kube-publish-live-regression.sh /tmp/run-durable-gate.sh '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized'" >/dev/null 2>&1
+    }
+    trap cleanup_publish_live EXIT INT TERM
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/k8stools/KubePublishCli.py" \
+      "$ROOT/tests/helpers/kube-publish-live-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$KUBE_PUBLISH_HOST:/tmp/"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KUBE_PUBLISH_HOST" \
+      "chmod 0755 /tmp/kube-publish-live-regression.sh /tmp/run-durable-gate.sh; rm -f '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized'; nohup env KUBE_PUBLISH_TOOL=/tmp/KubePublishCli.py KUBE_PUBLISH_TARGETS='$KUBE_PUBLISH_TARGETS' bash /tmp/run-durable-gate.sh '$state' TOOLS_KUBE_PUBLISH_EXIT bash /tmp/kube-publish-live-regression.sh >'$remote_log' 2>&1 </dev/null &"
+    while ! ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KUBE_PUBLISH_HOST" "test -s '${state}.exit'" >/dev/null 2>&1; do
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KUBE_PUBLISH_HOST" "tail -n 30 '$remote_log'" || true
+      sleep 10
+    done
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KUBE_PUBLISH_HOST" "cat '$remote_log'" | tee "$gate_log"
+    gate_rc="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KUBE_PUBLISH_HOST" "cat '${state}.exit'")"
+    test "$gate_rc" -eq 0
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KUBE_PUBLISH_HOST" "test \"$(cat '${state}.finalized')\" = 0"
+    grep -q '^KUBE_PUBLISH_LIVE_REGRESSION_PASS ' "$gate_log"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KUBE_PUBLISH_HOST" \
+      "! test -e /tmp/kubeauto-kp-live; ! docker image inspect 127.0.0.1:5000/kubeauto-kp-live:v1 >/dev/null 2>&1"
+    for target in 192.168.122.217 192.168.122.210 192.168.122.216; do
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "root@$target" \
+        "! nerdctl -n kubeauto-kp-live image inspect 127.0.0.1:5000/kubeauto-kp-live:v1 >/dev/null 2>&1"
+    done
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=kube-publish host=$KUBE_PUBLISH_HOST targets=3"
     ;;
   --full)
     if [[ "${TOOLS_MATRIX_APPROVED:-no}" != yes ]]; then

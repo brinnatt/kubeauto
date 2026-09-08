@@ -120,6 +120,18 @@ class InputValidator:
         if '..' in namespace:
             return False
         return bool(re.match(r'^[a-z0-9.-]+$', namespace))
+
+    @staticmethod
+    def validate_image_reference(image: str) -> bool:
+        """Validate an OCI-style image reference before it reaches a runtime or SSH shell."""
+        if not isinstance(image, str) or not image or len(image) > 1024:
+            return False
+        return bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._/@:+-]*', image))
+
+    @staticmethod
+    def validate_ssh_username(username: str) -> bool:
+        """Accept the portable Linux account-name subset used by OpenSSH."""
+        return bool(isinstance(username, str) and re.fullmatch(r'[a-z_][a-z0-9_-]*[$]?', username))
     
     @staticmethod
     def sanitize_path(path: str, base_dir: Optional[Path] = None) -> Optional[Path]:
@@ -533,6 +545,7 @@ class SSHManager:
     def _build_ssh_options(self, use_control_master: bool = True) -> List[str]:
         """构建SSH选项"""
         ssh_options = [
+            "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=10",
             "-o", "ServerAliveInterval=60",
             "-o", "ServerAliveCountMax=3",
@@ -596,6 +609,7 @@ class SSHManager:
         
         # SCP使用-P而不是-p指定端口
         scp_options = [
+            "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=10",
             "-P", str(self.port),
         ]
@@ -739,7 +753,7 @@ def pack_images(images: List[str], runtime: str, output_dir: str, namespace: str
     Returns:
         (是否成功, 本次创建的文件列表) - 用于失败时清理
     """
-    if not images:
+    if not images or any(not InputValidator.validate_image_reference(image) for image in images):
         logger.error("未指定要打包的镜像")
         return False, []
 
@@ -783,7 +797,7 @@ def delete_images(
         strict_host_key_checking: bool = True
 ) -> bool:
     """删除镜像功能 - 支持本地和远程删除"""
-    if not images:
+    if not images or any(not InputValidator.validate_image_reference(image) for image in images):
         logger.error("未指定要删除的镜像")
         return False
 
@@ -920,17 +934,16 @@ def _delete_images_remote(
             if ssh:
                 ssh.close()
 
-    if success_hosts > 0:
+    if success_hosts == len(hosts):
         logger.info(f"\n✓ 删除完成: {success_hosts}/{len(hosts)} 个主机成功")
         return True
-    else:
-        logger.error("\n✗ 删除失败")
-        return False
+    logger.error(f"\n✗ 删除未完成: {success_hosts}/{len(hosts)} 个主机成功")
+    return False
 
 
 def download_images(images: List[str], runtime: str, namespace: str = "k8s.io") -> bool:
     """下载镜像功能"""
-    if not images:
+    if not images or any(not InputValidator.validate_image_reference(image) for image in images):
         logger.error("未指定要下载的镜像")
         return False
 
@@ -963,6 +976,13 @@ def distribute_images(
         logger.error("未指定远程主机")
         return False
 
+    if any(not InputValidator.validate_hostname(host) or not InputValidator.validate_port(port) for host, port in hosts):
+        logger.error("远程主机或端口无效")
+        return False
+    if not InputValidator.validate_ssh_username(ssh_user):
+        logger.error("SSH用户名无效")
+        return False
+
     images_dir = Path(images_dir)
     if not images_dir.exists():
         logger.error(f"镜像目录不存在: {images_dir}")
@@ -972,6 +992,7 @@ def distribute_images(
 
     # 获取所有tar文件
     tar_files = list(images_dir.glob("*.tar"))
+    tar_files = [tar_file for tar_file in tar_files if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*\.tar', tar_file.name)]
     if not tar_files:
         logger.error(f"在 {images_dir} 中没有找到.tar文件")
         return False
@@ -1048,12 +1069,11 @@ def distribute_images(
             if ssh:
                 ssh.close()
 
-    if success_hosts > 0:
+    if success_hosts == len(hosts):
         logger.info(f"\n✓ 分发完成: {success_hosts}/{len(hosts)} 个主机成功")
         return True
-    else:
-        logger.error("\n✗ 分发失败")
-        return False
+    logger.error(f"\n✗ 分发未完成: {success_hosts}/{len(hosts)} 个主机成功")
+    return False
 
 
 def parse_host_with_port(host_str: str) -> Tuple[str, int]:
@@ -1526,7 +1546,7 @@ def main():
     # 显示帮助
     if args.help:
         show_examples()
-        return
+        return 0
 
     # 加载配置文件（如果指定）
     config = {}
@@ -1660,6 +1680,23 @@ def main():
     # 验证参数逻辑
     errors = []
 
+    # Validate every value before any runtime, filesystem, or SSH side effect.
+    for image in images_to_download + images_to_pack + images_to_delete:
+        if not InputValidator.validate_image_reference(image):
+            errors.append(f"镜像引用无效: {image!r}")
+    for host_token in hosts_to_delete + hosts_to_distribute:
+        host, port = parse_host_with_port(host_token)
+        if not InputValidator.validate_hostname(host) or not InputValidator.validate_port(port):
+            errors.append(f"远程主机或端口无效: {host_token!r}")
+    if not InputValidator.validate_ssh_username(args.ssh_user):
+        errors.append(f"SSH用户名无效: {args.ssh_user!r}")
+    if not InputValidator.sanitize_path(args.output_dir):
+        errors.append(f"输出目录路径无效: {args.output_dir}")
+    if args.tar:
+        tar_path = InputValidator.sanitize_path(args.tar)
+        if not tar_path or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*\.tar', tar_path.name):
+            errors.append(f"指定的tar文件名或路径无效: {args.tar}")
+
     # 检查--delete只能单独使用
     if should_delete and (should_pack or should_download or should_distribute):
         errors.append("--delete 只能单独使用，不能与其他操作组合")
@@ -1712,7 +1749,7 @@ def main():
         for error in errors:
             print(f"  ✗ {error}")
         print("\n使用 -h 查看完整示例")
-        return
+        return 2
 
     # 如果指定了tar文件，先复制到输出目录
     if args.tar:
@@ -1720,7 +1757,7 @@ def main():
         manager = ImageManager(args.local_runtime, args.namespace)
         if not manager.save_specific_tar(args.tar, args.output_dir):
             logger.error("处理tar文件失败")
-            return
+            return 1
 
     # 执行删除（如果需要）
     if should_delete:
@@ -1743,14 +1780,14 @@ def main():
         )
         if not success:
             logger.error("删除失败")
-            return
+            return 1
 
     # 执行下载（如果需要）
     if should_download:
         success = download_images(images_to_download, args.local_runtime, args.namespace)
         if not success:
             logger.error("下载失败")
-            return
+            return 1
 
     # 执行打包（如果需要）
     packed_files = []  # 跟踪本次会话产生的文件，用于失败时清理
@@ -1758,7 +1795,7 @@ def main():
         success, packed_files = pack_images(images_to_pack, args.local_runtime, args.output_dir, args.namespace)
         if not success:
             logger.error("打包失败")
-            return
+            return 1
 
     # 执行分发（如果需要）
     if should_distribute:
@@ -1786,18 +1823,19 @@ def main():
         if not success:
             logger.warning("分发失败，清理本次会话产生的文件（保证原子性）")
             cleanup_session_files(packed_files)
-            return
+            return 1
 
     # 如果用户指定了--cleanup，在所有操作成功后清理旧的自动生成文件
     if args.cleanup:
         cleanup_old_auto_files(args.output_dir)
 
     logger.info("=== 所有操作完成 ===")
+    return 0
 
 
 if __name__ == "__main__":
     try:
-        main()
+        raise SystemExit(main())
     except KeyboardInterrupt:
         logger.info("\n操作被用户中断")
         sys.exit(1)

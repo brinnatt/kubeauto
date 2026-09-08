@@ -21,8 +21,8 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertEqual(validate_matrix(MATRIX), [])
         text = MATRIX.read_text(encoding="utf-8")
         self.assertIn("status: review", text)
-        self.assertIn("pass: 33", text)
-        self.assertIn("pending: 22", text)
+        self.assertIn("pass: 39", text)
+        self.assertIn("pending: 16", text)
 
     def test_tools_matrix_require_pass_rejects_review_baseline(self):
         errors = validate_matrix(MATRIX, require_pass=True)
@@ -41,7 +41,7 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertTrue(all(cap["case_ids"] and set(cap["case_ids"]) <= case_ids for cap in capabilities))
 
     def test_stale_summary_is_rejected(self):
-        text = MATRIX.read_text(encoding="utf-8").replace("pending: 22", "pending: 21", 1)
+        text = MATRIX.read_text(encoding="utf-8").replace("pending: 16", "pending: 15", 1)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tools.yaml"
             path.write_text(text, encoding="utf-8")
@@ -57,7 +57,25 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertIn("flock -n 9", text)
         self.assertIn("run-durable-gate.sh", text)
         self.assertIn("TOOLS_CALICO_EXIT", text)
+        self.assertIn("--kube-backup-live", text)
+        self.assertIn("TOOLS_KUBE_BACKUP_EXIT", text)
+        self.assertIn('env PYTHON="$PY" bash', text)
+        self.assertIn("KUBE_PUBLISH_TOOL=/tmp/KubePublishCli.py", text)
         self.assertNotIn("run_enterprise_regression.sh", text)
+
+    def test_kube_backup_live_fixture_is_scoped_and_exercises_the_cli(self):
+        fixture = (ROOT / "tests/helpers/kube-backup-live-regression.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("root@192.168.122.243", fixture)
+        forbidden_host = "192.168.122." + "1"
+        self.assertNotIn(forbidden_host, fixture)
+        self.assertIn("KUBE_BACKUP_LIVE_REGRESSION_PASS", fixture)
+        self.assertIn("KUBE_BACKUP_CLEAN_VERIFY_PASS", fixture)
+        self.assertIn("--include-crds", fixture)
+        self.assertIn("--namespace-mapping", fixture)
+        self.assertIn("--merge-patch-kind", fixture)
+        self.assertIn("'configmap kb-config'", fixture)
 
     def test_rocky8_build_repairs_python_expat_abi_before_pip(self):
         build = (ROOT / "tests" / "helpers" / "build-tools-rocky8.sh").read_text(

@@ -1987,7 +1987,13 @@ class KubernetesClient:
                     except (TypeError, ValueError, AttributeError):
                         items_dict = {}
                 return items_dict.get('items', [])
-            except (ResourceNotFoundError, ApiException):
+            except ResourceNotFoundError:
+                continue
+            except ApiException as exc:
+                # A permission failure is an incomplete backup, not an empty
+                # resource list. Preserve it so the CLI exits non-zero.
+                if exc.status in (401, 403):
+                    raise
                 continue
 
         try:
@@ -2013,8 +2019,15 @@ class KubernetesClient:
                             return items.to_dict().get('items', [])
                         elif isinstance(items, dict):
                             return items.get('items', [])
-                except (ApiException, ResourceNotFoundError, AttributeError, KeyError) as e:
-                    logger.error(f"Failed to get resource: {e}")
+                except ResourceNotFoundError:
+                    continue
+                except ApiException as exc:
+                    logger.error(f"Failed to get resource: {exc}")
+                    if exc.status in (401, 403):
+                        raise
+                    continue
+                except (AttributeError, KeyError) as exc:
+                    logger.error(f"Failed to get resource: {exc}")
                     continue
         except (AttributeError, KeyError, TypeError) as e:
             logger.warning(f"Failed to discover resource {resource_type}: {e}")
@@ -2579,12 +2592,27 @@ class KubernetesBackupManager:
 
                     scope = spec.get("scope", "Namespaced")
                     if scope == "Cluster":
-                        items = resource.get().to_dict().get('items', [])
+                        items = resource.get(
+                            label_selector=self.config.label_selector,
+                            field_selector=self.config.field_selector,
+                        ).to_dict().get('items', [])
                     else:
                         items = []
-                        for namespace in self.k8s_client.list_namespaces():
+                        # A namespace-scoped backup must never enumerate CRs in
+                        # other namespaces.  "all" retains the documented
+                        # cluster-wide behavior.
+                        namespaces = (
+                            self.k8s_client.list_namespaces()
+                            if self.config.namespace == "all"
+                            else [self.config.namespace]
+                        )
+                        for namespace in namespaces:
                             try:
-                                ns_items = resource.get(namespace=namespace).to_dict().get('items', [])
+                                ns_items = resource.get(
+                                    namespace=namespace,
+                                    label_selector=self.config.label_selector,
+                                    field_selector=self.config.field_selector,
+                                ).to_dict().get('items', [])
                                 items.extend(ns_items)
                             except (ApiException, ResourceNotFoundError, AttributeError, KeyError) as e:
                                 logger.warning(f"Failed to get {crd_kind} in namespace {namespace}: {e}")
