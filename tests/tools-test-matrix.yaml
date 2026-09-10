@@ -3,7 +3,7 @@
 
 meta:
   version: 1
-  updated: "2026-09-08"
+  updated: "2026-09-10"
   status: review
   runner: tests/run_tools_regression.sh
   scope: "tools/ 下每个脚本都是独立 CLI；禁止依赖 kubeauto 核心、middleware、其它 tools 或其它工程。"
@@ -25,7 +25,9 @@ meta:
     kubernetes_api: "https://kubernetes.io/docs/reference/using-api/api-concepts/"
     docker_save_load: "https://docs.docker.com/engine/reference/commandline/save/"
     nerdctl: "https://github.com/containerd/nerdctl/blob/main/docs/README.md"
-    kafka: "https://kafka.apache.org/documentation/"
+    kafka: "https://kafka.apache.org/43/documentation.html"
+    kafka_source: "https://github.com/apache/kafka/tree/4.3.1"
+    strimzi_kafka_source: "https://github.com/strimzi/strimzi-kafka-operator/tree/1.2.0"
     mysql: "https://dev.mysql.com/doc/refman/8.4/en/"
     percona_xtrabackup: "https://docs.percona.com/percona-xtrabackup/8.4/"
     starrocks: "https://docs.starrocks.io/"
@@ -36,7 +38,7 @@ tool_catalog:
   CalicoPolicyCli: {path: tools/k8stools/CalicoPolicyCli.py, entrypoint: "python3 tools/k8stools/CalicoPolicyCli.py", official: [calico, kubernetes_api]}
   KubeBackupCli: {path: tools/k8stools/KubeBackupCli.py, entrypoint: "python3 tools/k8stools/KubeBackupCli.py", official: [kubernetes_api]}
   KubePublishCli: {path: tools/k8stools/KubePublishCli.py, entrypoint: "python3 tools/k8stools/KubePublishCli.py", official: [docker_save_load, nerdctl, pyinstaller]}
-  KafkaCli: {path: tools/kafka/KafkaCli.py, entrypoint: "python3 tools/kafka/KafkaCli.py", official: [kafka, pyinstaller]}
+  KafkaCli: {path: tools/kafka/KafkaCli.py, entrypoint: "python3 tools/kafka/KafkaCli.py", official: [kafka, kafka_source, strimzi_kafka_source, pyinstaller]}
   MigrationCli: {path: tools/mysqltools/MigrationCli.py, entrypoint: "python3 tools/mysqltools/MigrationCli.py", official: [mysql]}
   MyBackupCli: {path: tools/mysqltools/MyBackupCli.py, entrypoint: "python3 tools/mysqltools/MyBackupCli.py", official: [percona_xtrabackup, mysql]}
   StarCli: {path: tools/starrocks/StarCli.py, entrypoint: "python3 tools/starrocks/StarCli.py", official: [starrocks, pyinstaller]}
@@ -76,11 +78,11 @@ test_cases:
   - {id: TL-KP-04, tool: KubePublishCli, category: security, scenario: "SSH 参数、路径穿越、恶意镜像名和 delete 保护", command: "传入 ../、shell 元字符、错误 key/host 与 delete fixture", expected: "拒绝危险输入；不删除非工具资源；无命令注入", status: pass, evidence: "2026-09-08 durable live：恶意镜像/host/tar 名称在 runtime/SSH 前非0；sentinel 未创建；删除仅作用于测试 tag，源镜像保留；KUBE_PUBLISH_LIVE_REGRESSION_PASS"}
   - {id: TL-KP-05, tool: KubePublishCli, category: recovery, scenario: "分发中断的原子清理与可重试", command: "远端模拟中断/部分失败后检查 output_dir", expected: "本次生成 tar 全部回收；已有用户文件保留；重试可完成", status: pass, evidence: "2026-09-08 durable live：.246:1 目标故障返回非0，自动 tar 全部回收且用户文件保留；随后 .217 重试成功；KUBE_PUBLISH_LIVE_REGRESSION_PASS"}
 
-  - {id: TL-KAF-01, tool: KafkaCli, category: build, scenario: "Kafka CLI 独立 onefile 构建及冻结子进程环境", command: "python3 -m compileall -q tools/kafka/KafkaCli.py && build tools-only", expected: "产物可执行，版本/依赖/ SHA256 可追溯", status: pass, evidence: "2026-09-07 tools build-only；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；KafkaCli sha256=627e1764fb249b1197132e3e572e962ca33ab7ebc24922201c259eba74d54c22；--help 通过"}
-  - {id: TL-KAF-02, tool: KafkaCli, category: cli, scenario: "配置解析、broker/topic/group 参数和帮助合同", command: "python3 tools/kafka/KafkaCli.py --help", expected: "缺配置/非法 broker/topic 非 0；secret 不回显", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；参数帮助合同可加载"}
-  - {id: TL-KAF-03, tool: KafkaCli, category: functional, scenario: "官方 Kafka broker 生产/消费、topic/group 状态闭环", command: "隔离 broker 执行 create/produce/consume/describe", expected: "消息 key/value 可核对，offset/group 状态与 Kafka API 一致", status: pending}
-  - {id: TL-KAF-04, tool: KafkaCli, category: security, scenario: "TLS/SASL 凭据保护、命令注入和错误 broker 隔离", command: "fake broker + 恶意 config/用户名/密码执行", expected: "凭据不进日志；拒绝注入；连接失败快速明确", status: pending}
-  - {id: TL-KAF-05, tool: KafkaCli, category: recovery, scenario: "超时、重试、消费中断和临时文件清理", command: "在 produce/consume 各阶段断开 broker", expected: "退出码稳定；无孤儿进程/临时凭据；重试不重复错误副作用", status: pending}
+  - {id: TL-KAF-01, tool: KafkaCli, category: build, scenario: "Kafka CLI 独立 onefile 构建及冻结子进程环境", command: "python3 -m compileall -q tools/kafka/KafkaCli.py && build tools-only", expected: "产物可执行，版本/依赖/ SHA256 可追溯", status: pass, evidence: "2026-09-10 当前源码 build-only；Rocky 8.10/glibc 2.28；构建镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；PyInstaller 6.16.0；KafkaCli.py sha256=5645a340055a61de2763617d6263246b77d8b0691845a57703d25f8054f7c975；onefile sha256=ec303de0092d1992c1a6f75957d01a83558d68fd88453942b80f97aa760ad393；TOOLS_BUILD_PASS count=9 glibc=2.28"}
+  - {id: TL-KAF-02, tool: KafkaCli, category: cli, scenario: "配置解析、broker/topic/group 参数和帮助合同", command: "python3 tools/kafka/KafkaCli.py --help", expected: "缺配置/非法 broker/topic 非 0；secret 不回显", status: pass, evidence: "2026-09-10 当前源码 Kafka 聚焦契约 10/10 PASS、tools/Kafka 聚焦合计 21/21 PASS、TOOLS_PREFLIGHT_PASS；覆盖 help、JSON/CLI 覆盖、batch extra_properties 序列化、非法 topic/group/max-messages 和子进程参数顺序"}
+  - {id: TL-KAF-03, tool: KafkaCli, category: functional, scenario: "官方 Kafka broker 生产/消费、topic/group 状态闭环", command: "隔离 broker 执行 create/produce/consume/describe", expected: "消息 key/value 可核对，offset/group 状态与 Kafka API 一致", status: pass, evidence: "2026-09-10 logs/tools-kafka-live-20260910-214513.log（sha256=978eb8fe56e731253c43361a9c3896aa76b63b032906bacf26729d9e8dc0460f）：Kafka 4.3.1 standalone、systemd/no-systemd、controller-only/broker-only、3 controller 动态 quorum、2 broker RF=2；Topic CRUD、双 broker produce/consume 精确读回、group/lag=0、status/metrics/metrics-json、动态配置、preferred election、reassignment/decommission 全通过；KAFKA_CLI_LIVE_REGRESSION_PASS 与 KAFKA_CLI_MULTINODE_REGRESSION_PASS"}
+  - {id: TL-KAF-04, tool: KafkaCli, category: security, scenario: "TLS/SASL 凭据保护、命令注入和错误 broker 隔离", command: "fake broker + 恶意 config/用户名/密码执行", expected: "凭据不进日志；拒绝注入；连接失败快速明确", status: pass, evidence: "2026-09-10 同轮 durable live：SASL_PLAINTEXT 与 SASL_SSL 均完成真实 Topic/消息闭环；错误凭据、非法 consumer group/max-messages/extra_properties 在副作用前非0；secret 未进入日志；固定 quay.io/strimzi/kafka:1.2.0-kafka-4.3.1 manifest digest=sha256:fef34b5438e8556cc08c01f3e254e47346f061b53a4e38d4289853777e0ea7f1"}
+  - {id: TL-KAF-05, tool: KafkaCli, category: recovery, scenario: "超时、重试、消费中断和临时文件清理", command: "在 produce/consume 各阶段断开 broker", expected: "退出码稳定；无孤儿进程/临时凭据；重试不重复错误副作用", status: pass, evidence: "2026-09-10 同轮 durable live：broker 停止时操作快速非0，恢复后重试成功；长 produce/consume 进程树 SIGTERM 后非0且无 consumer 泄漏；Topic delete/clean/clean-data 幂等；TOOLS_KAFKA_EXIT rc=0、KAFKA_DURABLE_STATUS rc=0 finalized=0；控制机及5节点清除进程、目录、脚本、远端日志、PID/exit/finalized 与临时 client properties 后 TOOLS_CLEAN_VERIFY_PASS"}
 
   - {id: TL-MIG-01, tool: MigrationCli, category: build, scenario: "MySQL 迁移工具独立构建与 pymysql 版本锁定", command: "python3 -m compileall -q tools/mysqltools/MigrationCli.py && build tools-only", expected: "产物可执行，构建 provenance/SHA256 完整", status: pass, evidence: "2026-09-07 tools build-only；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；MigrationCli sha256=6daefb315f8dbe72131ba34cfb57017322c65e3d1f5b8f97654e6082a4d677be；--help 通过"}
   - {id: TL-MIG-02, tool: MigrationCli, category: cli, scenario: "源/目标连接、版本探测、升级路径和配置合同", command: "python3 tools/mysqltools/MigrationCli.py --help", expected: "密码不回显；非法版本/连接参数非 0", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；PyMySQL 依赖可加载，参数帮助合同可加载"}
@@ -213,9 +215,9 @@ functional_inventory:
 
 coverage_summary:
   total: 56
-  pass: 39
-  pending: 16
+  pass: 42
+  pending: 13
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "全矩阵 39/56 PASS、16 pending、1 na；Calico 当前 etcd 交付范围 7/7 PASS；KubeBackup/KubePublish 全功能 durable live rc=0 且 TOOLS_CLEAN_VERIFY_PASS；KDD CRD 路径因当前架构不适用单列 na"
+  overall_assessment: "全矩阵 42/56 PASS、13 pending、1 na；KafkaCli 5/5 当前构建/CLI/全功能/安全/恢复均 PASS，durable rc=0/finalized=0 且 TOOLS_CLEAN_VERIFY_PASS；Calico 当前 etcd 交付范围 7/7 PASS；KubeBackup/KubePublish 全功能 durable live rc=0 且清理通过；KDD CRD 路径因当前架构不适用单列 na"

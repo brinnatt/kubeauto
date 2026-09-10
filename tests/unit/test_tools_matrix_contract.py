@@ -21,8 +21,8 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertEqual(validate_matrix(MATRIX), [])
         text = MATRIX.read_text(encoding="utf-8")
         self.assertIn("status: review", text)
-        self.assertIn("pass: 39", text)
-        self.assertIn("pending: 16", text)
+        self.assertIn("pass: 42", text)
+        self.assertIn("pending: 13", text)
 
     def test_tools_matrix_require_pass_rejects_review_baseline(self):
         errors = validate_matrix(MATRIX, require_pass=True)
@@ -41,7 +41,7 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertTrue(all(cap["case_ids"] and set(cap["case_ids"]) <= case_ids for cap in capabilities))
 
     def test_stale_summary_is_rejected(self):
-        text = MATRIX.read_text(encoding="utf-8").replace("pending: 16", "pending: 15", 1)
+        text = MATRIX.read_text(encoding="utf-8").replace("pending: 13", "pending: 12", 1)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tools.yaml"
             path.write_text(text, encoding="utf-8")
@@ -86,6 +86,31 @@ class ToolsMatrixContractTests(unittest.TestCase):
         probe = build.index('python3.12 -c "import pyexpat"')
         self.assertLess(install, upgrade)
         self.assertLess(upgrade, probe)
+
+    def test_kafka_live_gate_persists_evidence_then_removes_all_remote_state(self):
+        runner = RUNNER.read_text(encoding="utf-8")
+        fixture = (ROOT / "tests/helpers/kafka-cli-multinode-regression.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("KAFKA_FIXTURE_DIGEST=sha256:", runner)
+        self.assertIn("KAFKA_FIXTURE_REPOSITORY=quay.io/strimzi/kafka", runner)
+        self.assertIn('$KAFKA_FIXTURE_REPOSITORY@$KAFKA_FIXTURE_DIGEST', runner)
+        self.assertNotIn('$KAFKA_FIXTURE_IMAGE@$KAFKA_FIXTURE_DIGEST', runner)
+        self.assertIn('KAFKA_DURABLE_STATUS rc=$gate_rc finalized=$finalized_rc', runner)
+        self.assertIn("cleanup_kafka_live() (", runner)
+        self.assertIn("'${state}.pid' '${state}.exit' '${state}.finalized'", runner)
+        self.assertIn("! test -e '$remote_log'", runner)
+        self.assertIn("kafkacli-*.client.properties", runner)
+        pre_clean = runner.index('echo "KAFKA_LIVE_STAGE pre-clean"')
+        pre_clean_verified = runner.index('echo "KAFKA_LIVE_STAGE pre-clean-verified"')
+        lease = runner.index('echo "KAFKA_LIVE_STAGE lease-acquire', pre_clean_verified)
+        self.assertLess(pre_clean, pre_clean_verified)
+        self.assertLess(pre_clean_verified, lease)
+        cleanup = runner.index("cleanup_kafka_live", runner.index("grep -q '^KAFKA_CLI_MULTINODE"))
+        clean_marker = runner.index("TOOLS_CLEAN_VERIFY_PASS scope=kafka", cleanup)
+        self.assertLess(cleanup, clean_marker)
+        self.assertIn('>"$MULTI_ROOT/broker-down.out"', fixture)
+        self.assertNotIn(">/tmp/kafka-cli-multi-broker-down.out", fixture)
 
     def test_calico_interface_input_is_constrained_before_manifest_generation(self):
         source = (ROOT / "tools/k8stools/CalicoPolicyCli.py").read_text(encoding="utf-8")

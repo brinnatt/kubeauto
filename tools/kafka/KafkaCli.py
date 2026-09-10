@@ -6,7 +6,7 @@ Apache Kafka KRaft 部署与运维：生成配置与 systemd、调用发行版 b
   用户可见说明分散在：本段、下方 KAFKACLI_PARSER_DESCRIPTION、show_examples() 分步示例（§0～§10 及附录）、argparse 各选项 help、
   kafka.json.example 注释与 deployment_note（拓扑与 §0/§4/§5 对应）。行为以 main() 分支及 _resolve_kafka_client_config、
   KafkaDeployer、_run_remote_deploy 等实现为准；修改其一须核对其它各处。JSON 配置键名与命令行长选项对应（下划线）。
-  分步示例默认「运维机 / 跳板机 + --target-host」；示例 IP 与 tools/kafka/kafka.json.example 一致（192.168.47.140～142 为 controller，143～145 为 broker）。
+  分步示例默认「运维机 / 跳板机 + --target-host」；示例主机名与 tools/kafka/kafka.json.example 一致（controller-1～3.example.internal 为 controller，broker-1～3.example.internal 为 broker）。
 
 常用环境变量：
   KAFKA_CLI_TIMEOUT、KAFKA_LOG_DIR、KAFKA_CLI_ASSUME_VERSION
@@ -1498,6 +1498,15 @@ class ConfigGenerator:
     controller 须显式 controller_listen_host / controller_listen_port；broker 须显式 broker_listen_host / broker_listen_port（或由 --listeners 完全自定义）。
     """
 
+    # Kafka defaults these internal topics to RF=3. A standalone combined node
+    # has exactly one broker, so leaving that default prevents consumer groups
+    # and transactions from ever initializing.
+    _STANDALONE_INTERNAL_TOPIC_PROPERTIES = {
+        "offsets.topic.replication.factor": "1",
+        "transaction.state.log.replication.factor": "1",
+        "transaction.state.log.min.isr": "1",
+    }
+
     @staticmethod
     def generate_combined_standalone_properties(
             node_id: int,
@@ -1511,6 +1520,7 @@ class ConfigGenerator:
             "process.roles": "broker,controller",
             "node.id": str(node_id),
             "log.dirs": log_dirs,
+            **ConfigGenerator._STANDALONE_INTERNAL_TOPIC_PROPERTIES,
             **_kraft_combined_listener_properties(advertised_host, listeners_override),
         }
         if extra_properties:
@@ -1531,6 +1541,7 @@ class ConfigGenerator:
             "process.roles": "broker,controller",
             "node.id": str(node_id),
             "log.dirs": log_dirs,
+            **ConfigGenerator._STANDALONE_INTERNAL_TOPIC_PROPERTIES,
             **_kraft_combined_sasl_plain_listener_properties(advertised_host, sasl_username, sasl_password),
         }
         if extra_properties:
@@ -1559,6 +1570,7 @@ class ConfigGenerator:
             "process.roles": "broker,controller",
             "node.id": str(node_id),
             "log.dirs": log_dirs,
+            **ConfigGenerator._STANDALONE_INTERNAL_TOPIC_PROPERTIES,
             **_kraft_combined_sasl_ssl_listener_properties(advertised_host, sasl_username, sasl_password, ssl_stack),
         }
         if extra_properties:
@@ -3624,6 +3636,80 @@ class KafkaTopicManager:
             return None
 
 
+class KafkaRecordManager:
+    """通过 Kafka 官方 console producer/consumer 完成消息闭环。"""
+
+    def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
+        self.bin_dir = Path(kafka_home).resolve() / "bin"
+        self.bootstrap_server = bootstrap_server
+        self.command_config = command_config
+
+    def _command(self, name: str, tail: List[str]) -> List[str]:
+        script = self.bin_dir / name
+        if not script.is_file():
+            raise CommandExecutionError(f"未找到 Kafka CLI 脚本: {script}")
+        ok, msg = _validate_bootstrap_server(self.bootstrap_server)
+        if not ok:
+            raise CommandExecutionError(msg)
+        cc_err = _validate_command_config_path(self.command_config)
+        if cc_err:
+            raise CommandExecutionError(cc_err)
+        cmd = [str(script)]
+        if self.command_config:
+            cmd.extend(["--command-config", self.command_config])
+        cmd.extend(["--bootstrap-server", self.bootstrap_server])
+        cmd.extend(tail)
+        return cmd
+
+    def produce(self, topic: str, message: str, timeout: Optional[int] = None) -> bool:
+        ok, msg = _validate_topic_name(topic)
+        if not ok:
+            logger.error(msg, extra={"to_stdout": True})
+            return False
+        if message is None:
+            logger.error("produce 消息不能为空", extra={"to_stdout": True})
+            return False
+        try:
+            run_command(
+                self._command("kafka-console-producer.sh", ["--topic", _normalize_topic_name(topic)]),
+                input=str(message) + "\n", capture_output=True,
+                timeout=timeout or _kafka_cli_timeout_sec(120),
+            )
+            logger.info("✓ 消息已写入 Topic: %s", _normalize_topic_name(topic), extra={"to_stdout": True})
+            return True
+        except CommandExecutionError as e:
+            logger.error("produce 失败: %s", e, extra={"to_stdout": True})
+            return False
+
+    def consume(self, topic: str, group: Optional[str], max_messages: int,
+                timeout: Optional[int] = None) -> Optional[str]:
+        ok, msg = _validate_topic_name(topic)
+        if not ok:
+            logger.error(msg, extra={"to_stdout": True})
+            return None
+        if max_messages < 1 or max_messages > 100000:
+            logger.error("--max-messages 必须在 1..100000", extra={"to_stdout": True})
+            return None
+        if group and not re.match(r"^[A-Za-z0-9._-]+$", group):
+            logger.error("consumer group 名称包含非法字符", extra={"to_stdout": True})
+            return None
+        # timeout-ms bounds the official console consumer even when fewer records
+        # than max_messages are available; the subprocess timeout remains the
+        # outer safety net for a wedged broker.
+        tail = ["--topic", _normalize_topic_name(topic), "--from-beginning",
+                "--max-messages", str(max_messages), "--timeout-ms", "60000",
+                "--command-property", "auto.offset.reset=earliest"]
+        if group:
+            tail.extend(["--group", group.strip()])
+        try:
+            r = run_command(self._command("kafka-console-consumer.sh", tail),
+                            capture_output=True, timeout=timeout or _kafka_cli_timeout_sec(120))
+            return r.stdout or ""
+        except CommandExecutionError as e:
+            logger.error("consume 失败: %s", e, extra={"to_stdout": True})
+            return None
+
+
 class KafkaConsumerGroupManager:
     """kafka-consumer-groups.sh 封装。"""
 
@@ -4164,6 +4250,35 @@ class KafkaBrokerDecommission:
             return False
 
 
+class KafkaLeaderElectionManager:
+    """封装 Kafka 官方 kafka-leader-election.sh 的 preferred 副本选主。"""
+
+    def __init__(self, kafka_home: str, bootstrap_server: str, command_config: Optional[str] = None):
+        self.bin_dir = Path(kafka_home).resolve() / "bin"
+        self.bootstrap_server = bootstrap_server
+        self.command_config = command_config
+        self._script = self.bin_dir / "kafka-leader-election.sh"
+
+    def elect_preferred_replicas(self) -> bool:
+        """对全部分区请求 preferred leader election，不接受隐式 shell 参数。"""
+        if not self._script.is_file():
+            logger.error("未找到 preferred replica election 脚本: %s", self._script, extra={"to_stdout": True})
+            return False
+        try:
+            _build_bootstrap_cmd(
+                self._script,
+                self.bootstrap_server,
+                ["--election-type", "PREFERRED", "--all-topic-partitions"],
+                self.command_config,
+                timeout=_kafka_cli_timeout_sec(120),
+            )
+            logger.info("✓ 已提交 preferred replica election", extra={"to_stdout": True})
+            return True
+        except CommandExecutionError as e:
+            logger.error("preferred replica election 失败: %s", e, extra={"to_stdout": True})
+            return False
+
+
 def _parse_bootstrap_server(bs: str, default_port: int = DEFAULT_BROKER_PORT) -> Tuple[str, int]:
     """解析单个 host:port 为 (host, port)。若为逗号列表须先取 _first_bootstrap_segment(...) 再解析。"""
     s = (bs or "").strip() or "localhost"
@@ -4611,6 +4726,35 @@ def _build_remote_command(
     return "kafkacli " + " ".join(shlex.quote(a) for a in filtered)
 
 
+def _serialize_batch_option_value(value: Any) -> str:
+    """Serialize structured node config values without turning JSON into Python repr."""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return str(value)
+
+
+def _resolve_extra_properties(raw_value: Any) -> Optional[Dict[str, str]]:
+    """Return validated server properties from JSON config or --extra-properties."""
+    if raw_value is None or raw_value == "":
+        return None
+    value = raw_value
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError as ex:
+            raise ValueError(f"--extra-properties 必须是 JSON 对象: {ex.msg}") from ex
+    if not isinstance(value, dict):
+        raise ValueError("--extra-properties 必须是 JSON 对象")
+    properties: Dict[str, str] = {}
+    for key, item in value.items():
+        if not isinstance(key, str) or not key.strip() or "\n" in key or "\r" in key:
+            raise ValueError("extra_properties 的键必须是非空单行字符串")
+        if isinstance(item, (dict, list)) or item is None:
+            raise ValueError(f"extra_properties[{key!r}] 的值必须是标量")
+        properties[key] = str(item)
+    return properties
+
+
 def _run_remote_deploy(
         target_host: str,
         args: argparse.Namespace,
@@ -4728,7 +4872,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 
 【如何阅读下方选项】每一行格式为「长选项 / 短选项」+ 含义；带默认值的会在行尾标出。
 【新手怎么用】运行「kafkacli -h」后阅读文末「分步示例」：建议从 §0 顺序读至 §10（附录 standalone 为可选补充）。
-  分步示例默认以「运维机 / 跳板机 / 堡垒机侧发起 SSH」为主（--target-host 指向各 Kafka 节点）；与 tools/kafka/kafka.json.example 中示例拓扑（192.168.47.140～142 为 controller，143～145 为 broker）一致。
+  分步示例默认以「运维机 / 跳板机 / 堡垒机侧发起 SSH」为主（--target-host 指向各 Kafka 节点）；与 tools/kafka/kafka.json.example 中示例拓扑（controller-1～3.example.internal 为 controller，broker-1～3.example.internal 为 broker）一致。
   多节点、--batch 批量等场景在对应章节说明了执行顺序（批量为串行 SSH）与参数含义。
 【远程与批量】--target-host 支持 [IPv6]:port；--batch 时 nodes[] 单项可覆盖 ssh_user / ssh_port / ssh_key 等（仅该节点 SSH，不写入远程 kafkacli 参数）。
 【典型用法】
@@ -4746,7 +4890,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
   多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
-【多节点 Controller 与 kafka-storage】部署 controller 须必选 --controller-scope single|cluster（或 JSON controller_scope）。cluster：首台空盘仅允许 --generate-cluster-id（禁止手填 cluster.id）；第 2 台起须使用与首台同一 cluster.id（首台输出）且 --join-quorum（format --no-initial-controllers）。single：单台 controller，空盘可用 --generate-cluster-id 或 --cluster-id。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
+【多节点 Controller 与 kafka-storage】部署 controller 须必选 --controller-scope single|cluster（或 JSON controller_scope）。cluster：首台空盘仅允许 --generate-cluster-id（禁止手填 cluster.id）；第 2 台起须使用与首台同一 cluster.id（首台输出）且 --join-quorum（format --no-initial-controllers），启动为 observer 后须在该新节点执行 --quorum-add-controller 将其加入动态仲裁。single：单台 controller，空盘可用 --generate-cluster-id 或 --cluster-id。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
 【Controller / Broker 监听与 kafka-storage（Kafka 4.x）】--deploy controller 须显式指定 --controller-listen-host（及可选 --controller-listen-port，默认 9093；JSON 兼容 controller_port）用于 CONTROLLER 监听绑定；--deploy broker 须显式指定 --broker-listen-host（及可选 --broker-listen-port，默认 9092）用于业务监听绑定；均禁止仅回环，且与 --advertised-host（宣告）分工不同。kafka-storage format 会加载完整 KafkaConfig；broker 须声明 controller.listener.names（脚本默认写 CONTROLLER）及 listener.security.protocol.map（须含 CONTROLLER:PLAINTEXT 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
 【部署前置与失败回滚】
@@ -4807,13 +4951,13 @@ def show_examples():
   · 执行位置：下列命令默认在「已能 SSH 到数据中心内各 Kafka 节点」的运维机上输入（堡垒机单跳或多跳时，可先在 ~/.ssh/config 配好 Host 别名与 ProxyJump，再把 --target-host 写成该别名）。
   · 不写 --target-host：表示 kafkacli 在当前 shell 所在机执行（你已登录到目标机时与远程等价）。
   · 本文件与 kafka.json.example 共用的示例拓扑（node.id 全局唯一）：
-      Controller：192.168.47.140（node 1）、192.168.47.141（node 2）、192.168.47.142（node 3）
-      Broker：    192.168.47.143（node 4）、192.168.47.144（node 5）、192.168.47.145（node 6）
+      Controller：controller-1.example.internal（node 1）、controller-2.example.internal（node 2）、controller-3.example.internal（node 3）
+      Broker：    broker-1.example.internal（node 4）、broker-2.example.internal（node 5）、broker-3.example.internal（node 6）
   （说明：KRaft 下「controller 与 broker」是进程角色不同，但 node.id 是同一套全局编号，不能两套各从 1 开始。）
   · node.id（--node-id）：凡加入同一 KRaft 集群的进程（不论角色）共用一套编号，须全集群唯一；
       例如 controller 已使用 1、2、3，则第一台 broker 应使用 4（或任意尚未占用的正整数），不可再填 1。
   · 公共变量（写入各节点 controller.quorum.bootstrap.servers，须与各 controller 实际监听及 advertised 一致）:
-      export QUORUM="192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093"
+      export QUORUM="controller-1.example.internal:9093,controller-2.example.internal:9093,controller-3.example.internal:9093"
   · kafkacli：运维脚本；--kafka-home 为 Kafka 解压目录（在目标机上存在的路径）。
   · 部署角色（KRaft）：standalone=单进程 broker+controller；controller=仅仲裁；broker=仅数据面。同一集群可多 controller + 多 broker。
   · --target-host：SSH 登录哪台机器执行本条 kafkacli；一条命令只对应一台主机；多台则多次执行并更换 --target-host。
@@ -4831,33 +4975,33 @@ def show_examples():
 ------------------------------------------------------------------------
 §1 最小闭环：跳板机远程初始化首台 controller 并联检验收
 ------------------------------------------------------------------------
-  下列命令在运维机上执行；首台 controller 落在 192.168.47.140，记下输出中的 CLUSTER_ID。
+  下列命令在运维机上执行；首台 controller 落在 controller-1.example.internal，记下输出中的 CLUSTER_ID。
   步骤 1 — 远程部署首台（空盘仅 --generate-cluster-id）:
-   kafkacli --target-host 192.168.47.140 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
-     --advertised-host 192.168.47.140 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+   kafkacli --target-host controller-1.example.internal --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host controller-1.example.internal --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
      --node-id 1 --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
 
   步骤 2 — 仍在运维机：仅验 Controller 元数据面（不要带 --bootstrap-server，以免误连本机 9092）:
-   kafkacli --target-host 192.168.47.140 --status --kafka-home /opt/kafka \\
-     --bootstrap-controller 192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093
-  （若已按 §4 装完全部 controller，可将 --bootstrap-controller 写为多地址；仅首台就绪时只写 192.168.47.140:9093 亦可。）
+   kafkacli --target-host controller-1.example.internal --status --kafka-home /opt/kafka \\
+     --bootstrap-controller controller-1.example.internal:9093,controller-2.example.internal:9093,controller-3.example.internal:9093
+  （若已按 §4 装完全部 controller，可将 --bootstrap-controller 写为多地址；仅首台就绪时只写 controller-1.example.internal:9093 亦可。）
 
 ------------------------------------------------------------------------
 §2 启用 SASL（在 PLAINTEXT 集群上幂等切换；须先完成 §4 或等价的 broker 部署）
 ------------------------------------------------------------------------
-  在跳板机对单台 broker 远程覆盖为 SASL_PLAINTEXT（示例为 192.168.47.143；须已有数据目录与 cluster.id）:
-   kafkacli --target-host 192.168.47.143 --deploy broker --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
-     --kafka-home /opt/kafka --advertised-host 192.168.47.143 --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
+  在跳板机对单台 broker 远程覆盖为 SASL_PLAINTEXT（示例为 broker-1.example.internal；须已有数据目录与 cluster.id）:
+   kafkacli --target-host broker-1.example.internal --deploy broker --deploy-sasl-plain --kafka-user admin --kafka-password '***' \\
+     --kafka-home /opt/kafka --advertised-host broker-1.example.internal --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
      --node-id 4 --cluster-id <CLUSTER_ID> --controller-quorum-bootstrap-servers "$QUORUM" \\
      --log-dirs /var/kafka/logs --use-disk-cluster-id
   说明：脚本会写目标机 ${kafka_home}/config/kafkacli.client.properties（0600）；后续远程 --status、--topic-* 等同理加 --target-host。
 
   自建 PKI 的 SASL_SSL（keystore/truststore 在目标机路径；下例路径须存在）:
-   kafkacli --target-host 192.168.47.143 --deploy broker --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
+   kafkacli --target-host broker-1.example.internal --deploy broker --deploy-sasl-ssl --kafka-user admin --kafka-password '***' \\
      --ssl-keystore-path /secure/kafka.server.p12 --ssl-keystore-password '***' \\
      --ssl-truststore-path /secure/kafka.truststore.jks --ssl-truststore-password '***' \\
-     --kafka-home /opt/kafka --advertised-host 192.168.47.143 --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
+     --kafka-home /opt/kafka --advertised-host broker-1.example.internal --broker-listen-host 0.0.0.0 --broker-listen-port 9092 \\
      --node-id 4 --cluster-id <CLUSTER_ID> --controller-quorum-bootstrap-servers "$QUORUM" \\
      --log-dirs /var/kafka/logs --use-disk-cluster-id
 
@@ -4879,30 +5023,36 @@ def show_examples():
   【部署顺序】须先完成全部 controller 仲裁就绪，再部署各 broker。
 
   分步 A — 首台 controller（与 §1 步骤 1 相同，可二选一执行）:
-   kafkacli --target-host 192.168.47.140 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
-     --advertised-host 192.168.47.140 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+   kafkacli --target-host controller-1.example.internal --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host controller-1.example.internal --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
      --node-id 1 --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log --generate-cluster-id
    # 若用 JSON：须含 controller_scope、advertised_host、controller_listen_host、metadata_log_dir、log_dirs、generate_cluster_id 等
 
   分步 B — 第 2、3 台 controller（须 CLUSTER_ID 与首台输出一致）:
-   kafkacli --target-host 192.168.47.141 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
-     --advertised-host 192.168.47.141 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+   kafkacli --target-host controller-2.example.internal --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host controller-2.example.internal --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
      --node-id 2 --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
-   kafkacli --target-host 192.168.47.142 --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
-     --advertised-host 192.168.47.142 --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
+  kafkacli --target-host controller-3.example.internal --deploy controller --controller-scope cluster --kafka-home /opt/kafka \\
+     --advertised-host controller-3.example.internal --controller-listen-host 0.0.0.0 --controller-listen-port 9093 \\
      --node-id 3 --cluster-id <CLUSTER_ID> --join-quorum --controller-quorum-bootstrap-servers "$QUORUM" \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
 
+  分步 B2 — 逐台启动第 2、3 台后，在各自节点将 observer 加入动态仲裁：
+   kafkacli --target-host controller-2.example.internal --quorum-add-controller --kafka-home /opt/kafka \\
+     --bootstrap-controller controller-1.example.internal:9093
+   kafkacli --target-host controller-3.example.internal --quorum-add-controller --kafka-home /opt/kafka \\
+     --bootstrap-controller controller-1.example.internal:9093
+
   分步 C — 三台 broker（node 4～6；CLUSTER_ID 与仲裁一致）:
-   kafkacli --target-host 192.168.47.143 --deploy broker --kafka-home /opt/kafka --advertised-host 192.168.47.143 \\
+   kafkacli --target-host broker-1.example.internal --deploy broker --kafka-home /opt/kafka --advertised-host broker-1.example.internal \\
      --broker-listen-host 0.0.0.0 --broker-listen-port 9092 --node-id 4 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
-   kafkacli --target-host 192.168.47.144 --deploy broker --kafka-home /opt/kafka --advertised-host 192.168.47.144 \\
+   kafkacli --target-host broker-2.example.internal --deploy broker --kafka-home /opt/kafka --advertised-host broker-2.example.internal \\
      --broker-listen-host 0.0.0.0 --broker-listen-port 9092 --node-id 5 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
-   kafkacli --target-host 192.168.47.145 --deploy broker --kafka-home /opt/kafka --advertised-host 192.168.47.145 \\
+   kafkacli --target-host broker-3.example.internal --deploy broker --kafka-home /opt/kafka --advertised-host broker-3.example.internal \\
      --broker-listen-host 0.0.0.0 --broker-listen-port 9092 --node-id 6 --cluster-id <CLUSTER_ID> \\
      --controller-quorum-bootstrap-servers "$QUORUM" --log-dirs /var/kafka/logs
    # Kafka 4.x：脚本生成 server-broker-*.properties 含 controller.listener.names 等，供 kafka-storage format。
@@ -4930,69 +5080,69 @@ def show_examples():
     · --bootstrap-server：连 Broker 业务端口（常见 9092），produce/consume 侧；可与官方一致写多个 host:port（逗号分隔）。
     · --bootstrap-controller：连 Controller 元数据端口（常见 9093）；仅在「只装了 Controller、尚未装 Broker」时作为客户端入口；亦可逗号分隔多台。
   只验 Controller 时不要带 --bootstrap-server（否则易误连「执行机本机」的 9092）。若你已是目标机本机登录、且不写 --target-host，可在该机上用 --bootstrap-controller 127.0.0.1:9093 做最简验收（须进程监听本机）。
-  在运维机对装有 Kafka 的节点远程执行（示例连到 192.168.47.143 上的 kafkacli 与配置）:
-   kafkacli --target-host 192.168.47.143 --status --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092 \\
-     --bootstrap-controller 192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093
+  在运维机对装有 Kafka 的节点远程执行（示例连到 broker-1.example.internal 上的 kafkacli 与配置）:
+   kafkacli --target-host broker-1.example.internal --status --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092 \\
+     --bootstrap-controller controller-1.example.internal:9093,controller-2.example.internal:9093,controller-3.example.internal:9093
   仅 Controller、尚未部署 Broker 时，不要带 --bootstrap-server；可只对首台 controller 远程 status:
-   kafkacli --target-host 192.168.47.140 --status --kafka-home /opt/kafka --bootstrap-controller 192.168.47.140:9093
+   kafkacli --target-host controller-1.example.internal --status --kafka-home /opt/kafka --bootstrap-controller controller-1.example.internal:9093
   放通防火墙；脚本会对 bootstrap 列表首项做 TCP 预检。
    export KAFKA_SASL_USERNAME=admin KAFKA_SASL_PASSWORD='***'
-   kafkacli --target-host 192.168.47.143 --status --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
-   kafkacli --target-host 192.168.47.143 --metrics --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
-   kafkacli --target-host 192.168.47.143 --metrics-json --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host broker-1.example.internal --status --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
+   kafkacli --target-host broker-1.example.internal --metrics --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
+   kafkacli --target-host broker-1.example.internal --metrics-json --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
   仅 Controller、尚未部署 Broker 时：--metrics 中依赖 9092 的段落可能失败，可先只看 quorum 段或仅用 --bootstrap-controller 做 --status；全量指标须待 Broker 就绪后再采。
   动态添加 controller（须显式 bootstrap，无默认）:
-   kafkacli --target-host 192.168.47.140 --quorum-add-controller --kafka-home /opt/kafka \\
-     --bootstrap-controller 192.168.47.140:9093,192.168.47.141:9093,192.168.47.142:9093
+   kafkacli --target-host controller-1.example.internal --quorum-add-controller --kafka-home /opt/kafka \\
+     --bootstrap-controller controller-1.example.internal:9093,controller-2.example.internal:9093,controller-3.example.internal:9093
 
 ------------------------------------------------------------------------
 §7 Topic / Consumer Group（均在跳板机对 broker 节点远程执行）
 ------------------------------------------------------------------------
   （--topic-create / --topic-delete 对已存在/已缺失按工具输出做幂等处理，见 Topic 分组说明。）
-   kafkacli --target-host 192.168.47.143 --topic-create --topic my-topic --partitions 6 --replication-factor 3 \\
-     --kafka-home /opt/kafka --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
-   kafkacli --target-host 192.168.47.143 --topic-list --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
-   kafkacli --target-host 192.168.47.143 --topic-describe --topic my-topic --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
-   kafkacli --target-host 192.168.47.143 --group-describe --consumer-group my-consumer --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host broker-1.example.internal --topic-create --topic my-topic --partitions 6 --replication-factor 3 \\
+     --kafka-home /opt/kafka --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
+   kafkacli --target-host broker-1.example.internal --topic-list --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
+   kafkacli --target-host broker-1.example.internal --topic-describe --topic my-topic --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
+   kafkacli --target-host broker-1.example.internal --group-describe --consumer-group my-consumer --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
 
 ------------------------------------------------------------------------
 §8 Broker 下线与分区迁移（在运维机远程执行；plan.json 须放在目标机可访问路径，或在本机配合 scp）
 ------------------------------------------------------------------------
-   kafkacli --target-host 192.168.47.143 --broker-decommission-generate --broker-list 4,5 \\
-     --kafka-home /opt/kafka --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host broker-1.example.internal --broker-decommission-generate --broker-list 4,5 \\
+     --kafka-home /opt/kafka --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
   # 若使用 --topics-to-move-json-file，路径须已在目标机存在且可读；不存在时脚本报错退出，不会静默改用空 topic 列表。
   # 将输出中的 Current partition reassignment configuration 保存为 plan.json（须为远程 kafkacli 可访问的路径，必要时先 scp）。
-   kafkacli --target-host 192.168.47.143 --broker-decommission-execute --reassignment-json-file /var/tmp/plan.json \\
+   kafkacli --target-host broker-1.example.internal --broker-decommission-execute --reassignment-json-file /var/tmp/plan.json \\
      --throttle 1048576 --kafka-home /opt/kafka
-   kafkacli --target-host 192.168.47.143 --broker-decommission-verify --reassignment-json-file /var/tmp/plan.json \\
+   kafkacli --target-host broker-1.example.internal --broker-decommission-verify --reassignment-json-file /var/tmp/plan.json \\
      --kafka-home /opt/kafka
-  # 迁移完成后在对应节点卸载示例: kafkacli --target-host 192.168.47.143 --clean --deploy broker --node-id 4 ...
+  # 迁移完成后在对应节点卸载示例: kafkacli --target-host broker-1.example.internal --clean --deploy broker --node-id 4 ...
 
 ------------------------------------------------------------------------
 §9 清理与重装（远程；--clean 默认不删数据目录；删数据用 --clean-data 或配合 --force）
 ------------------------------------------------------------------------
-  在跳板机卸载远程节点上的本脚本安装的 unit 与生成配置（示例：controller 节点 192.168.47.140）:
-   kafkacli --target-host 192.168.47.140 --clean --deploy controller --node-id 1 --kafka-home /opt/kafka \\
+  在跳板机卸载远程节点上的本脚本安装的 unit 与生成配置（示例：controller 节点 controller-1.example.internal）:
+   kafkacli --target-host controller-1.example.internal --clean --deploy controller --node-id 1 --kafka-home /opt/kafka \\
      --metadata-log-dir /var/kafka/metadata-log --log-dirs /var/kafka/controller-log
   抹盘须加 --clean-data 或与 --force 联用（见 --clean 帮助）。
   与 --deploy 联用的先卸再装（示例为附录实验机；生产节点请谨慎）:
    kafkacli --target-host <LAB_IP> --deploy standalone --clean-first --force --kafka-home /opt/kafka \\
      --advertised-host <LAB_IP> --node-id 1 --log-dirs /var/kafka/logs --generate-cluster-id
-   kafkacli --target-host 192.168.47.143 --config-describe-broker --kafka-home /opt/kafka --config-entity-name 4
-   kafkacli --target-host 192.168.47.143 --config-describe-topic --topic my-topic --kafka-home /opt/kafka \\
-     --bootstrap-server 192.168.47.143:9092,192.168.47.144:9092,192.168.47.145:9092
+   kafkacli --target-host broker-1.example.internal --config-describe-broker --kafka-home /opt/kafka --config-entity-name 4
+   kafkacli --target-host broker-1.example.internal --config-describe-topic --topic my-topic --kafka-home /opt/kafka \\
+     --bootstrap-server broker-1.example.internal:9092,broker-2.example.internal:9092,broker-3.example.internal:9092
 
 ------------------------------------------------------------------------
 §10 生产环境上线前自检（可逐项勾选）
 ------------------------------------------------------------------------
-  [ ] 自运维机经堡垒机 SSH 可达各 192.168.47.140～145；必要时已配置 ~/.ssh/config（含 ProxyJump）
+  [ ] 自运维机经堡垒机 SSH 可达各 controller-1～3.example.internal 与 broker-1～3.example.internal；必要时已配置 ~/.ssh/config（含 ProxyJump）
   [ ] 各节点已安装兼容版本 Java，--kafka-home 路径正确，数据目录权限与磁盘空间满足要求
   [ ] 网络与安全组放行业务端口与 Controller 端口，各节点之间按规划互通
   [ ] --controller-quorum-bootstrap-servers 与实际监听、advertised 一致；controller/broker 已分别设置 listen 与 advertised
@@ -5198,6 +5348,12 @@ def main():
         " --deploy broker 且非脚本默认 PLAINTEXT 简单模板时，须在 extra_properties（或 JSON）中补全 controller.listener.names、listener.security.protocol.map（Kafka 4.x kafka-storage 需要）。",
     )
     g_dep.add_argument(
+        "--extra-properties",
+        metavar="JSON",
+        help="附加或覆盖 server.properties 的 JSON 对象，例如 '{\"offsets.topic.replication.factor\":\"2\"}'。"
+        " 命令行优先于 JSON 配置的 extra_properties；批量 nodes 的对象会以此形式安全传递。",
+    )
+    g_dep.add_argument(
         "--initial-controllers",
         metavar="LIST",
         help="多 controller 首次集群化时的 initial-controllers 参数（见 kafka-storage.sh format）。",
@@ -5386,6 +5542,16 @@ def main():
     g_cg.add_argument("--group-describe", action="store_true", help="描述消费组详情与 Lag；须 --consumer-group。")
     g_cg.add_argument("--consumer-group", metavar="NAME", help="消费组 id。")
 
+    g_rec = parser.add_argument_group(
+        "消息生产与消费（Kafka 官方 console CLI）",
+        "须 --kafka-home、--bootstrap-server 与 --topic；入口由本工具调用官方 kafka-console-* 脚本。",
+    )
+    g_rec.add_argument("--produce", action="store_true", help="向 Topic 写入一条消息；消息由 --message 或 --input-file 提供。")
+    g_rec.add_argument("--consume", action="store_true", help="从 Topic 消费消息并输出；可指定 --consumer-group。")
+    g_rec.add_argument("--message", help="produce 的单条消息内容；不得与 --input-file 同时使用。")
+    g_rec.add_argument("--input-file", metavar="PATH", help="produce 时逐行发送的消息文件。")
+    g_rec.add_argument("--max-messages", type=int, default=1, metavar="N", help="consume 最多读取消息数（1..100000）。")
+
     g_met = parser.add_argument_group(
         "指标采集",
         "一次性汇总连通性、Quorum、副本、Topic/Group 规模、Lag 等。"
@@ -5410,7 +5576,7 @@ def main():
     g_q.add_argument(
         "--quorum-add-controller",
         action="store_true",
-        help="向现有 Quorum 动态添加 controller（kafka-metadata-quorum add-controller）。"
+        help="向现有 Quorum 动态添加 controller（kafka-metadata-quorum add-controller）；须用 --command-config 指定新 controller 配置。"
         " 须指定 --bootstrap-controller 和/或 --bootstrap-server（均可多地址）；无默认地址。",
     )
 
@@ -5424,6 +5590,11 @@ def main():
         "--broker-decommission-generate",
         action="store_true",
         help="生成迁出副本方案；须 --broker-list，可选 --topics-to-move-json-file。",
+    )
+    g_br.add_argument(
+        "--preferred-replica-election",
+        action="store_true",
+        help="请求全部分区切换至 preferred replica leader（kafka-leader-election.sh）。",
     )
     g_br.add_argument(
         "--broker-decommission-execute",
@@ -5502,7 +5673,7 @@ def main():
                         argv_parts.append(key)
                 elif v is not None and str(v).strip() != "":
                     argv_parts.append(key)
-                    argv_parts.append(str(v))
+                    argv_parts.append(_serialize_batch_option_value(v))
             # 全局 config 中的 kafka_home 等若 node 未覆盖则从 config 取
             base = config.get("kafka_home") or args.kafka_home
             if base and "--kafka-home" not in argv_parts:
@@ -5620,6 +5791,34 @@ def main():
             print(out)
         sys.exit(EXIT_OK if out else EXIT_ERROR)
 
+    if getattr(args, "produce", False) or getattr(args, "consume", False):
+        _require(kafka_home, "--produce/--consume 需指定 --kafka-home")
+        _require((args.bootstrap_server or config.get("bootstrap_server")),
+                 "--produce/--consume 需指定 --bootstrap-server")
+        topic = _get_opt(args, config, "topic")
+        _require(topic, "--produce/--consume 需指定 --topic")
+        _require(not (args.produce and args.consume), "--produce 与 --consume 不能同时使用")
+        records = KafkaRecordManager(kafka_home, bootstrap, cmd_config)
+        if args.produce:
+            _require(not (args.message is not None and args.input_file), "--message 与 --input-file 不能同时使用")
+            if args.input_file:
+                try:
+                    messages = Path(args.input_file).read_text(encoding="utf-8").splitlines()
+                except OSError as e:
+                    logger.error("读取 --input-file 失败: %s", e, extra={"to_stdout": True})
+                    sys.exit(EXIT_ERROR)
+                _require(bool(messages), "--input-file 不能为空")
+                success = all(records.produce(topic, m) for m in messages)
+            else:
+                _require(args.message is not None, "--produce 需指定 --message 或 --input-file")
+                success = records.produce(topic, args.message)
+            sys.exit(EXIT_OK if success else EXIT_ERROR)
+        out = records.consume(topic, _get_opt(args, config, "consumer_group"), args.max_messages)
+        if out is None:
+            sys.exit(EXIT_ERROR)
+        print(out, end="" if out.endswith("\n") or not out else "\n")
+        sys.exit(EXIT_OK)
+
     if getattr(args, "metrics", False) or getattr(args, "metrics_json", False):
         _require(kafka_home, "--metrics 需指定 --kafka-home")
         bc_metrics = (args.bootstrap_controller or config.get("bootstrap_controller") or "").strip() or None
@@ -5683,6 +5882,11 @@ def main():
             command_config=cmd_config,
         )
         sys.exit(EXIT_OK if qm.add_controller() else EXIT_ERROR)
+
+    if getattr(args, "preferred_replica_election", False):
+        _require(kafka_home, "--preferred-replica-election 需指定 --kafka-home")
+        election = KafkaLeaderElectionManager(kafka_home, bootstrap, cmd_config)
+        sys.exit(EXIT_OK if election.elect_preferred_replicas() else EXIT_ERROR)
 
     if getattr(args, "broker_decommission_generate", False):
         _require(kafka_home, "--broker-decommission-generate 需指定 --kafka-home")
@@ -5786,7 +5990,16 @@ def main():
 
     enable_systemd = not (args.no_systemd or config.get("no_systemd", False))
     java_home = args.java_home or config.get("java_home")
-    extra_properties = config.get("extra_properties") or config.get("server_properties")
+    raw_extra_properties = (
+        args.extra_properties
+        if getattr(args, "extra_properties", None) is not None
+        else config.get("extra_properties") or config.get("server_properties")
+    )
+    try:
+        extra_properties = _resolve_extra_properties(raw_extra_properties)
+    except ValueError as e:
+        logger.error(str(e), extra={"to_stdout": True})
+        sys.exit(EXIT_ERROR)
 
     want_plain = bool(getattr(args, "deploy_sasl_plain", False) or config.get("deploy_sasl_plain"))
     want_ssl = bool(getattr(args, "deploy_sasl_ssl", False) or config.get("deploy_sasl_ssl"))

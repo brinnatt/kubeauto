@@ -23,12 +23,13 @@ fi
 
 usage() {
   cat <<'EOF'
-用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--kube-backup-live|--kube-publish-live|--full]
+用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--full]
 
   --preflight  校验 tools 矩阵、脚本语法和独立导入边界（无远程变更）
   --status     输出当前 tools 矩阵状态
   --build-only 在固定 Rocky 8.10/glibc 2.28 环境构建并校验九个冻结工具
   --calico-live 在授权 Calico 集群运行 CalicoPolicyCli 完整 host/pod/both 回归
+  --kafka-live 在授权 122.2 控制机运行 KafkaCli 独立 Kafka 发行版全功能回归
   --kube-backup-live 在授权 Kubernetes 集群运行 KubeBackupCli 完整备份/恢复回归
   --kube-publish-live 在授权 Docker/nerdctl 主机运行 KubePublishCli 完整镜像回归
   --full       仅在矩阵全部 pass 且显式批准后进入 live（评审阶段拒绝）
@@ -155,6 +156,83 @@ PY
     grep -q '^KUBE_BACKUP_LIVE_REGRESSION_PASS ' "$gate_log"
     grep -q '^KUBE_BACKUP_CLEAN_VERIFY_PASS ' "$gate_log"
     echo "TOOLS_CLEAN_VERIFY_PASS scope=kube-backup host=$KUBE_BACKUP_HOST"
+    ;;
+  --kafka-live)
+    KAFKA_HOST="${KAFKA_TEST_HOST:-root@192.168.122.2}"
+    KAFKA_MULTI_NODES=(192.168.122.217 192.168.122.246 192.168.122.193 192.168.122.210 192.168.122.216)
+    KAFKA_MULTI_ROOT=/tmp/kafka-cli-multi
+    KAFKA_FIXTURE_REPOSITORY=quay.io/strimzi/kafka
+    KAFKA_FIXTURE_IMAGE=quay.io/strimzi/kafka:1.2.0-kafka-4.3.1
+    KAFKA_FIXTURE_DIGEST=sha256:fef34b5438e8556cc08c01f3e254e47346f061b53a4e38d4289853777e0ea7f1
+    [[ "$KAFKA_HOST" == root@192.168.122.2 ]] || { echo "KAFKA_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    lock="${TMPDIR:-/tmp}/kubeauto-tools-kafka-run.lock"; exec 9>"$lock"
+    flock -n 9 || { echo "KAFKA_LIVE_BLOCKED: another Kafka run owns $lock" >&2; exit 2; }
+    state="${TMPDIR:-/tmp}/kubeauto-tools-kafka-live"; remote_log=/tmp/kafka-cli-live.log
+    gate_log="$ROOT/logs/tools-kafka-live-$(date +%Y%m%d-%H%M%S).log"
+    kafka_lease_token="kafka-tools-$$-$(date +%s)"
+    kafka_leases_ready=no
+    cleanup_kafka_live() (
+      set +e
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KAFKA_HOST" \
+        "pkill -f '[k]afka.Kafka.*kafka-cli-' || true; rm -f /tmp/KafkaCli.py /tmp/kafka-cli-live-regression.sh /tmp/kafka-cli-multinode-regression.sh /tmp/run-durable-gate.sh '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized' /tmp/kafka-cli-multi-broker-down.out; rm -rf /tmp/kafka-cli-live '$KAFKA_MULTI_ROOT'"
+      if [[ "$kafka_leases_ready" == yes ]]; then
+        for node in "${KAFKA_MULTI_NODES[@]}"; do
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
+            "if test -f '$KAFKA_MULTI_ROOT/.lease' && test \"\$(cat '$KAFKA_MULTI_ROOT/.lease')\" = '$kafka_lease_token'; then pkill -f '[k]afka.Kafka.*kafka-cli-multi' || true; rm -rf '$KAFKA_MULTI_ROOT'; fi" || true
+        done
+      fi
+    )
+    trap cleanup_kafka_live EXIT INT TERM
+    echo "KAFKA_LIVE_STAGE pre-clean"
+    cleanup_kafka_live
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KAFKA_HOST" \
+      "! pgrep -af '[k]afka.Kafka.*kafka-cli-'; ! test -e /tmp/KafkaCli.py; ! test -e /tmp/kafka-cli-live-regression.sh; ! test -e /tmp/kafka-cli-multinode-regression.sh; ! test -e /tmp/run-durable-gate.sh; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'; ! test -e /tmp/kafka-cli-multi-broker-down.out; ! test -d /tmp/kafka-cli-live; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
+    for node in "${KAFKA_MULTI_NODES[@]}"; do
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
+        "! pgrep -af '[k]afka.Kafka.*kafka-cli-multi'; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
+    done
+    echo "KAFKA_LIVE_STAGE pre-clean-verified"
+    echo "KAFKA_LIVE_STAGE lease-acquire nodes=${#KAFKA_MULTI_NODES[@]}"
+    for node in "${KAFKA_MULTI_NODES[@]}"; do
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
+        "mkdir '$KAFKA_MULTI_ROOT' && printf '%s' '$kafka_lease_token' >'$KAFKA_MULTI_ROOT/.lease'" \
+        || { echo "KAFKA_LIVE_BLOCKED_LEASE host=$node" >&2; exit 2; }
+    done
+    kafka_leases_ready=yes
+    echo "KAFKA_LIVE_STAGE control-fixture-extract"
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/kafka/KafkaCli.py" "$ROOT/tests/helpers/kafka-cli-live-regression.sh" "$ROOT/tests/helpers/kafka-cli-multinode-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$KAFKA_HOST:/tmp/"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "rm -rf /tmp/kafka-cli-live '$KAFKA_MULTI_ROOT'; mkdir -p '$KAFKA_MULTI_ROOT'; cid=\$(docker create '$KAFKA_FIXTURE_IMAGE'); docker cp \"\$cid:/opt/kafka\" '$KAFKA_MULTI_ROOT/kafka'; docker rm \"\$cid\" >/dev/null; tar -C '$KAFKA_MULTI_ROOT' -czf '$KAFKA_MULTI_ROOT/kafka.tgz' kafka; test -x '$KAFKA_MULTI_ROOT/kafka/bin/kafka-storage.sh'"
+    fixture_repo_digests="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "docker image inspect '$KAFKA_FIXTURE_IMAGE' --format '{{json .RepoDigests}}'")"
+    [[ "$fixture_repo_digests" == *"$KAFKA_FIXTURE_REPOSITORY@$KAFKA_FIXTURE_DIGEST"* ]] || { echo "KAFKA_FIXTURE_DIGEST_MISMATCH" >&2; exit 3; }
+    echo "KAFKA_LIVE_STAGE node-fixture-distribute"
+    for node in "${KAFKA_MULTI_NODES[@]}"; do
+      echo "KAFKA_LIVE_STAGE node-fixture-copy host=$node"
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" \
+        "scp -o BatchMode=yes -o StrictHostKeyChecking=yes '$KAFKA_MULTI_ROOT/kafka.tgz' 'root@$node:$KAFKA_MULTI_ROOT/kafka.tgz'"
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
+        "if ! command -v tar >/dev/null 2>&1; then dnf install -y tar || exit 40; fi; if ! command -v java >/dev/null 2>&1; then dnf install -y java-17-openjdk-headless || exit 41; fi; tar -C '$KAFKA_MULTI_ROOT' -xzf '$KAFKA_MULTI_ROOT/kafka.tgz'; rm -f '$KAFKA_MULTI_ROOT/kafka.tgz'; test -x '$KAFKA_MULTI_ROOT/kafka/bin/kafka-storage.sh'"
+    done
+    echo "KAFKA_LIVE_STAGE durable-launch"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "chmod 0755 /tmp/kafka-cli-live-regression.sh /tmp/kafka-cli-multinode-regression.sh /tmp/run-durable-gate.sh; rm -f '${state}.pid' '${state}.exit' '${state}.finalized'; nohup env KAFKA_TOOL=/tmp/KafkaCli.py KAFKA_HOME='$KAFKA_MULTI_ROOT/kafka' KAFKA_MULTI_ROOT='$KAFKA_MULTI_ROOT' KAFKA_SSH_KEY=/root/.ssh/id_ed25519 bash /tmp/run-durable-gate.sh '$state' TOOLS_KAFKA_EXIT bash -c 'bash /tmp/kafka-cli-live-regression.sh && bash /tmp/kafka-cli-multinode-regression.sh' >'$remote_log' 2>&1 </dev/null &"
+    echo "KAFKA_LIVE_STAGE durable-follow"
+    while ! ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "test -s '${state}.exit'" >/dev/null 2>&1; do ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "tail -n 20 '$remote_log'" || true; sleep 10; done
+    {
+      echo "KAFKA_FIXTURE_IMAGE image=$KAFKA_FIXTURE_IMAGE digest=$KAFKA_FIXTURE_DIGEST"
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "cat '$remote_log'"
+    } | tee "$gate_log"
+    gate_rc="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "cat '${state}.exit'")"; test "$gate_rc" -eq 0
+    finalized_rc="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "cat '${state}.finalized'")"; test "$finalized_rc" -eq 0
+    echo "KAFKA_DURABLE_STATUS rc=$gate_rc finalized=$finalized_rc" | tee -a "$gate_log"
+    grep -q '^KAFKA_CLI_LIVE_REGRESSION_PASS ' "$gate_log"
+    grep -q '^KAFKA_CLI_MULTINODE_REGRESSION_PASS ' "$gate_log"
+    cleanup_kafka_live
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "! pgrep -af '[k]afka.Kafka.*kafka-cli-'; ! test -e /tmp/KafkaCli.py; ! test -e /tmp/kafka-cli-live-regression.sh; ! test -e /tmp/kafka-cli-multinode-regression.sh; ! test -e /tmp/run-durable-gate.sh; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'; ! test -e /tmp/kafka-cli-multi-broker-down.out; ! test -d /tmp/kafka-cli-live; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
+    for node in "${KAFKA_MULTI_NODES[@]}"; do
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
+        "! pgrep -af '[k]afka.Kafka.*kafka-cli-multi'; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
+    done
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=kafka host=$KAFKA_HOST nodes=${#KAFKA_MULTI_NODES[@]}" | tee -a "$gate_log"
     ;;
   --kube-publish-live)
     KUBE_PUBLISH_HOST="${KUBE_PUBLISH_TEST_HOST:-root@192.168.122.2}"
