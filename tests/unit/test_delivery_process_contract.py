@@ -432,6 +432,16 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertIn("LAB_CLEAN_VERIFY_PASS", AGENTS)
         self.assertIn("six sibling repositories", AGENTS)
 
+    def test_ext_images_rule_has_examples_without_a_duplicate_tools_policy(self):
+        self.assertNotIn("### Tools fixture and external-artifact supply chain", AGENTS)
+        rules = AGENTS.split("## Non-negotiable delivery rules", 1)[1]
+        example = rules.split("Example (illustrative", 1)[1]
+        self.assertIn("mysql:8.0.46", example)
+        self.assertIn("StarRocks-3.5.12-centos-amd64.tar.gz", example)
+        self.assertIn("kafka_2.13-4.3.1.tgz", example)
+        self.assertIn("GitHub Actions", example)
+        self.assertIn("hub.talkedu.cn", example)
+
     def test_test_gate_change_ladder_is_a_permanent_delivery_contract(self):
         for required in (
             "Mandatory test-gate change ladder",

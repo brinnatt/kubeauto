@@ -54,42 +54,13 @@ CLI and must remain independently buildable, runnable and supportable.
   `TOOLS_CLEAN_VERIFY_PASS`. Historical Tier3 `--help` evidence is not a tools
   delivery sign-off.
 
-### Tools fixture and external-artifact supply chain
-
-Tools live tests must consume a reviewed, frozen artifact catalog. Test
-fixtures, database images, backup utilities and large archives are owned by
-`kubeauto-ext-images-dockerfile`; do not discover or download them repeatedly
-from public registries during a lab run. Register each artifact with its
-official source, exact version, owner, Dockerfile/context (or checksum),
-upstream digest, published tags and cleanup scope before the affected matrix
-case can leave `pending`.
-
-The external-image repository's GitHub Actions workflow is the publication
-boundary: it pulls from the international upstream source and pushes the same
-immutable build to both `hub.talkedu.cn/kubeauto/<name>:<tag>` and the agreed
-Docker Hub target. A live runner in China pulls the verified TalkEdu manifest
-first and uses Docker Hub/upstream only as the documented fallback. The runner
-must verify the manifest digest (and SHA256 for files) before use, record the
-artifact provenance in its durable log, and fail closed on a mismatch. GitHub
-Actions is not a live-test dependency; after publication the lab must work
-without public-network access.
-
-For the MySQL tool branch this catalog must cover the tested MySQL
-`8.0.46`, a pinned `8.4.x`, and a pinned `9.x` logical-migration fixture, plus
-the officially compatible Percona XtraBackup image and a minimal Rocky Linux
-packaging image for large fixtures such as StarRocks/Kafka archives. Do not
-claim XtraBackup support for a MySQL release until Percona's compatibility
-documentation confirms that combination; unsupported combinations are an
-explicit `na` boundary case, never an inferred pass. Fixture leases, temporary
-credentials, backup directories, archives and containers belong to the tools
-runner and must be removed on success, failure and interruption.
-
 Inspect all six sibling repositories under `/home/brinnatt/projects` before and after a change. Preserve unrelated user changes.
 
 ## Non-negotiable delivery rules
 
 - Treat the six repositories as one release unit. Audit constants, image tags, Dockerfiles, GitHub Actions, TalkEdu private-registry push, Docker Hub push, and fallback order after every relevant change.
 - For every future feature branch that depends on external images, make `kubeauto-ext-images-dockerfile` an artifact prerequisite rather than discovering images during live testing. Inventory production, upgrade, rollback, backup, performance and test-infrastructure images; reuse an existing exact pin or add an official-source, version-pinned Dockerfile under the owning functional directory; register it in the dual-push CI matrix; pass the catalog validator; and verify the TalkEdu and Docker Hub manifests/digests after publication before starting the normal live gate. Prefer the TalkEdu copy in China. Treat a dynamic public mirror only as a temporary runtime bridge before fixed artifacts are published; never make repeated public downloads the normal test path.
+  Example (illustrative): a MySQL test may reuse published `mysql:8.0.46`, `mysql:8.4.x` and `mysql:9.x` images; a minimal Rocky Linux image may package a large file such as `StarRocks-3.5.12-centos-amd64.tar.gz`; Kafka tests may package `kafka_2.13-4.3.1.tgz` or `apache/kafka:4.3.1`. GitHub Actions, running against international upstream sources, can build and dual-push the same immutable artifact to the TalkEdu Huawei Cloud registry and Docker Hub. After the dual-push succeeds, China test and delivery paths pull `hub.talkedu.cn` first for high-speed access and retain the verified Docker Hub/upstream fallback, so normal testing does not depend on repeated downloads or continued public-network availability.
 - Prefer `hub.talkedu.cn` and Huawei mirrors for the China delivery path; retain Docker Hub/upstream fallbacks. Downloads must be checksum-verified and atomically replaced so partial files cannot be accepted.
 - Preserve the pinned accelerator and fallback configuration in already-delivered code unless a bug is proven with current evidence. For a newly added middleware branch, public accelerators and proxy mirrors are test-time, runtime-only aids because they may disappear or be blocked without notice; never persist a dynamically discovered accelerator in that branch's production code, CI, documentation or default configuration. Inject temporary test sources through non-persisted runtime parameters and verify checksums or manifest digests before use.
 - Use the smallest readable, maintainable, Pythonic change consistent with upstream design.
