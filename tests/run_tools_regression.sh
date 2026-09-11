@@ -23,7 +23,7 @@ fi
 
 usage() {
   cat <<'EOF'
-用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--full]
+用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--migration-live|--mybackup-live|--full]
 
   --preflight  校验 tools 矩阵、脚本语法和独立导入边界（无远程变更）
   --status     输出当前 tools 矩阵状态
@@ -32,6 +32,8 @@ usage() {
   --kafka-live 在授权 122.2 控制机运行 KafkaCli 独立 Kafka 发行版全功能回归
   --kube-backup-live 在授权 Kubernetes 集群运行 KubeBackupCli 完整备份/恢复回归
   --kube-publish-live 在授权 Docker/nerdctl 主机运行 KubePublishCli 完整镜像回归
+  --migration-live 在授权 122.2 控制机运行 MigrationCli MySQL 逻辑迁移回归
+  --mybackup-live 在授权 122.2 控制机运行 MyBackupCli XtraBackup 全功能回归
   --full       仅在矩阵全部 pass 且显式批准后进入 live（评审阶段拒绝）
 EOF
 }
@@ -272,6 +274,66 @@ PY
         "! nerdctl -n kubeauto-kp-live image inspect 127.0.0.1:5000/kubeauto-kp-live:v1 >/dev/null 2>&1"
     done
     echo "TOOLS_CLEAN_VERIFY_PASS scope=kube-publish host=$KUBE_PUBLISH_HOST targets=3"
+    ;;
+  --migration-live)
+    MIGRATION_HOST="${MIGRATION_TEST_HOST:-root@192.168.122.2}"
+    [[ "$MIGRATION_HOST" == root@192.168.122.2 ]] || { echo "MIGRATION_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    lock="${TMPDIR:-/tmp}/kubeauto-tools-migration-run.lock"; exec 9>"$lock"
+    flock -n 9 || { echo "MIGRATION_LIVE_BLOCKED: another Migration run owns $lock" >&2; exit 2; }
+    state="${TMPDIR:-/tmp}/kubeauto-tools-migration-live"
+    gate_log="$ROOT/logs/tools-migration-live-$(date +%Y%m%d-%H%M%S).log"
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/mysqltools/MigrationCli.py" "$MIGRATION_HOST:/tmp/MigrationCli-tools-live.py"
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tests/helpers/migration-live-regression.sh" "$MIGRATION_HOST:/tmp/migration-live-regression.sh"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MIGRATION_HOST" \
+      "rm -rf /tmp/tools-mig-venv; python3 -m venv /tmp/tools-mig-venv; /tmp/tools-mig-venv/bin/pip install --no-input --disable-pip-version-check PyMySQL==1.1.2 cryptography==44.0.2 >/dev/null"
+    rm -f "${state}.pid" "${state}.exit" "${state}.finalized"
+    set +e
+    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$state" TOOLS_MIGRATION_EXIT \
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$MIGRATION_HOST" \
+      "chmod 0755 /tmp/migration-live-regression.sh; MIGRATION_TOOL=/tmp/MigrationCli-tools-live.py MIGRATION_PYTHON=/tmp/tools-mig-venv/bin/python bash /tmp/migration-live-regression.sh" \
+      2>&1 | tee "$gate_log"
+    gate_rc=${PIPESTATUS[0]}
+    set -e
+    test "$gate_rc" -eq 0
+    test "$(cat "${state}.exit")" = 0
+    test "$(cat "${state}.finalized")" = 0
+    grep -q '^MIGRATION_CLI_LIVE_REGRESSION_PASS ' "$gate_log"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MIGRATION_HOST" \
+      "! docker ps -a --format '{{.Names}}' | grep -Eq '^(tools-mig-src|tools-mig-tgt|tools-mig-tgt9)$'; ! test -e /tmp/MigrationCli-tools-live.py; ! test -e /tmp/migration-live-regression.sh; ! test -e /tmp/migration-live.json; ! test -e /tmp/migration-dry-run.json; ! test -e /tmp/migration-dry.log; ! test -e /tmp/migration-structure-only.json; ! test -e /tmp/migration-definer.json; ! test -e /tmp/migration-definer.log; ! test -e /tmp/migration-invalid.json; ! test -e /tmp/migration-invalid.log; ! test -e /tmp/migration-unreachable.json; ! test -e /tmp/migration-unreachable.log; ! test -d /tmp/migration-live-report; ! test -d /tmp/migration-dry-report; ! test -d /tmp/migration-structure-report; ! test -d /tmp/migration-definer-report; ! test -d /tmp/migration-invalid-report; ! test -d /tmp/migration-unreachable-report; ! test -d /tmp/tools-mig-venv"
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=migration host=$MIGRATION_HOST" | tee -a "$gate_log"
+    ;;
+  --mybackup-live)
+    MYBACKUP_HOST="${MYBACKUP_TEST_HOST:-root@192.168.122.2}"
+    [[ "$MYBACKUP_HOST" == root@192.168.122.2 ]] || { echo "MYBACKUP_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    bash -n "$ROOT/tests/helpers/mybackup-cli-live-regression.sh"
+    lock="${TMPDIR:-/tmp}/kubeauto-tools-mybackup-run.lock"; exec 9>"$lock"
+    flock -n 9 || { echo "MYBACKUP_LIVE_BLOCKED: another MyBackup run owns $lock" >&2; exit 2; }
+    state="${TMPDIR:-/tmp}/kubeauto-tools-mybackup-live"
+    gate_log="$ROOT/logs/tools-mybackup-live-$(date +%Y%m%d-%H%M%S).log"
+    remote_log=/tmp/tools-mybackup-live.log
+    cleanup_mybackup_live() {
+      set +e
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$MYBACKUP_HOST" \
+        "docker rm -f tools-mbk-mysql >/dev/null 2>&1 || true; rm -rf /tmp/tools-mbk-live /tmp/MyBackupCli-tools-live.py /tmp/mybackup-cli-live-regression.sh /tmp/run-durable-gate.sh '$remote_log' /tmp/mybackup-9x.out /tmp/tools-mybackup-file.log" >/dev/null 2>&1 || true
+    }
+    trap cleanup_mybackup_live EXIT INT TERM
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/mysqltools/MyBackupCli.py" "$ROOT/tests/helpers/mybackup-cli-live-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$MYBACKUP_HOST:/tmp/"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "mv /tmp/MyBackupCli.py /tmp/MyBackupCli-tools-live.py"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "chmod 0755 /tmp/mybackup-cli-live-regression.sh /tmp/run-durable-gate.sh; rm -f '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized'; nohup env MYBACKUP_TOOL=/tmp/MyBackupCli-tools-live.py MYBACKUP_PYTHON=python3 bash /tmp/run-durable-gate.sh '$state' TOOLS_MYBACKUP_EXIT bash /tmp/mybackup-cli-live-regression.sh >'$remote_log' 2>&1 </dev/null &"
+    while ! ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "test -s '${state}.exit'" >/dev/null 2>&1; do
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "tail -n 30 '$remote_log'" || true
+      sleep 10
+    done
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "cat '$remote_log' 2>/dev/null; cat /tmp/tools-mybackup-file.log 2>/dev/null" | tee "$gate_log"
+    gate_rc="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "cat '${state}.exit'")"; test "$gate_rc" -eq 0
+    finalized_rc="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "cat '${state}.finalized'")"; test "$finalized_rc" -eq 0
+    grep -q '^MYBACKUP_CLI_LIVE_REGRESSION_PASS ' "$gate_log"
+    cleanup_mybackup_live
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "rm -f '${state}.pid' '${state}.exit' '${state}.finalized'"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "! docker ps -a --format '{{.Names}}' | grep -qx tools-mbk-mysql; ! test -e /tmp/MyBackupCli-tools-live.py; ! test -e /tmp/mybackup-cli-live-regression.sh; ! test -e /tmp/tools-mbk-live; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'"
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=mybackup host=$MYBACKUP_HOST" | tee -a "$gate_log"
     ;;
   --full)
     if [[ "${TOOLS_MATRIX_APPROVED:-no}" != yes ]]; then

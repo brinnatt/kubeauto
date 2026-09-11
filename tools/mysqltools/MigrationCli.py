@@ -94,6 +94,7 @@ KNOWN_OPTION_KEYS = frozenset({
     "row_count_tolerance_pct", "rollback_on_failure", "report_dir",
     "net_read_timeout", "net_write_timeout", "disk_space_margin",
     "skip_version_check", "complete_insert",
+    "table_checksum",
 })
 
 
@@ -169,6 +170,7 @@ class MigrationOptions:
     disk_space_margin: float = 1.3
     skip_version_check: bool = False
     complete_insert: bool = False
+    table_checksum: bool = False
 
 
 @dataclass
@@ -317,22 +319,12 @@ def classify_release(version_string: str, version_tuple: Tuple[int, int, int]) -
                 series_id=f"{major}.{minor}",
                 track=track, series_label=label, is_eol=eol, is_known_series=True,
             )
-        if minor > 4:
-            return MySQLReleaseInfo(
-                version_string=version_string,
-                version_tuple=version_tuple,
-                major=major, minor=minor, patch=patch,
-                series_id=f"{major}.{minor}",
-                track=ReleaseTrack.INNOVATION,
-                series_label=f"8.{minor} (未在元数据登记的新系列)",
-                is_eol=False, is_known_series=False,
-            )
         raise RuntimeError(
             f"无法识别的 MySQL 8.x 次版本 {major}.{minor}，"
-            "请确认服务器 VERSION() 输出正确"
+            "官方 Upgrade Paths 当前仅覆盖 8.0-8.4，请先完成兼容性评审"
         )
 
-    if major >= 9:
+    if major == 9:
         return MySQLReleaseInfo(
             version_string=version_string,
             version_tuple=version_tuple,
@@ -344,7 +336,7 @@ def classify_release(version_string: str, version_tuple: Tuple[int, int, int]) -
         )
 
     raise RuntimeError(
-        f"MySQL {major}.{minor} 不在支持范围，本工具仅支持 8.0+ 及 9.x Innovation"
+        f"MySQL {major}.{minor} 不在支持范围，本工具仅支持 MySQL 8.0-8.4 与 9.x Innovation"
     )
 
 
@@ -357,7 +349,7 @@ def _is_innovation_8(info: MySQLReleaseInfo) -> bool:
 
 
 def _is_innovation_9(info: MySQLReleaseInfo) -> bool:
-    return info.major >= 9
+    return info.major == 9
 
 
 def validate_expected_version(
@@ -507,7 +499,12 @@ class MySQLCompatibilityEngine:
                 "Innovation -> LTS（如 8.3 -> 8.4），"
                 "官方推荐路径，支持 in-place 与 logical dump/load"
             )
-            in_place = True
+            in_place = src.series_id == "8.3"
+            if not in_place:
+                warns.append(
+                    f"官方 Upgrade Paths 未将 {src.series_id} -> 8.4 列为直接原地路径；"
+                    "请先升级至 8.3 或使用逻辑 dump/load"
+                )
             return MigrationCategory.INNOVATION_TO_LTS, notes, warns, in_place
 
         if _is_innovation_8(src) and _is_innovation_9(tgt):
@@ -536,7 +533,13 @@ class MySQLCompatibilityEngine:
                     "自 8.0 LTS 升级至 9.x 时，官方建议经 8.4 LTS 过渡；"
                     "逻辑迁移可直达但需验证 authentication/sql_mode 等变更"
                 )
-            in_place = True
+                in_place = False
+                warns.append(
+                    "官方不允许 8.0 直接原地升级至 9.x；必须先升级到 8.4 LTS，"
+                    "本次仅按逻辑 dump/load 处理"
+                )
+            else:
+                in_place = True
             return MigrationCategory.TO_INNOVATION, notes, warns, in_place
 
         if _is_lts_series(src) and _is_innovation_8(tgt):
@@ -717,6 +720,21 @@ class HostConcurrencyLimiter:
 # ---------------------------------------------------------------------------
 class CredentialManager:
     @staticmethod
+    def _escape_option_value(value: str) -> str:
+        """Quote a value using MySQL option-file escaping rules.
+
+        MySQL clients parse backslash escapes in option files.  Writing a raw
+        password therefore changes passwords containing ``\\``, quotes or
+        newlines.  Double-quoted values and explicit escaping preserve the
+        bytes supplied by the caller while keeping the temporary file valid.
+        """
+        escaped = str(value).replace("\\", "\\\\")
+        escaped = escaped.replace('"', '\\"')
+        escaped = escaped.replace("\n", "\\n").replace("\r", "\\r")
+        escaped = escaped.replace("\t", "\\t")
+        return f'"{escaped}"'
+
+    @staticmethod
     @contextmanager
     def defaults_extra_file(config: DatabaseConfig, options: MigrationOptions):
         fd, path = tempfile.mkstemp(prefix="mysql_migration_", suffix=".cnf")
@@ -724,14 +742,12 @@ class CredentialManager:
             os.chmod(path, 0o600)
             lines = [
                 "[client]",
-                f"host={config.host}",
+                f"host={CredentialManager._escape_option_value(config.host)}",
                 f"port={config.port}",
-                f"user={config.user}",
-                f"password={config.password}",
-                "default-character-set=utf8mb4",
-                f"ssl-mode={options.ssl_mode.value}",
-                f"net_read_timeout={options.net_read_timeout}",
-                f"net_write_timeout={options.net_write_timeout}",
+                f"user={CredentialManager._escape_option_value(config.user)}",
+                f"password={CredentialManager._escape_option_value(config.password)}",
+                'default-character-set="utf8mb4"',
+                f'ssl-mode="{options.ssl_mode.value}"',
             ]
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 fh.write("\n".join(lines) + "\n")
@@ -950,6 +966,9 @@ def build_migration_options(
         args, "skip_version_check", cfg, "skip_version_check"
     )
     opts.complete_insert = _cli_or_cfg_bool(args, "complete_insert", cfg, "complete_insert")
+    opts.table_checksum = _cli_or_cfg_bool(
+        args, "table_checksum", cfg, "table_checksum"
+    )
     return opts
 
 
@@ -966,6 +985,10 @@ class DatabaseConnector:
     def get_connection(self, database: Optional[str] = None):
         conn = None
         db = database if database is not None else self.config.database
+        # Administrative statements (version probes, CREATE/DROP DATABASE) do
+        # not require selecting the mysql system schema. Avoiding that default
+        # schema keeps the CLI usable with least-privilege accounts.
+        connect_db = None if db == "mysql" else db
         ssl_args = {}
         if self.options.ssl_mode == SslMode.REQUIRED:
             ssl_args["ssl"] = {"check_hostname": False}
@@ -975,7 +998,7 @@ class DatabaseConnector:
                 port=self.config.port,
                 user=self.config.user,
                 password=self.config.password,
-                database=db,
+                database=connect_db,
                 charset="utf8mb4",
                 client_flag=CLIENT.MULTI_STATEMENTS,
                 connect_timeout=30,
@@ -1122,6 +1145,17 @@ class DatabaseConnector:
                 )
                 row = cursor.fetchone()
                 return int(row[0] if row else 0)
+
+    def get_table_checksum(self, table: str) -> int:
+        table = self.validate_identifier(table)
+        db = self.validate_identifier(self.config.database)
+        with self.get_connection(db) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(f"CHECKSUM TABLE `{table}` EXTENDED")
+                row = cursor.fetchone()
+        if not row or row[1] is None:
+            raise RuntimeError(f"表 {db}.{table} 无法生成 CHECKSUM")
+        return int(row[1])
 
 
 # ---------------------------------------------------------------------------
@@ -1319,8 +1353,9 @@ class MySQLDumpManager:
 
     def _register_dump_path(self, path: str) -> str:
         abs_path = os.path.abspath(path)
+        temp_root = os.path.abspath(self.temp_dir)
         with self._lock:
-            if not abs_path.startswith(os.path.abspath(self.temp_dir)):
+            if os.path.commonpath((temp_root, abs_path)) != temp_root:
                 raise ValueError(f"Dump path outside temp directory: {path}")
             self._active_files.add(abs_path)
         return abs_path
@@ -1515,11 +1550,30 @@ class MySQLDumpManager:
             cmd = self.build_mysql_command(config, cnf)
             self.logger.log_command(f"{' '.join(cmd)} < {abs_dump}", to_stdout=False)
 
-            if abs_dump.endswith(".gz"):
-                with gzip.open(abs_dump, "rb") as gz:
-                    rc, err = self._run_subprocess(
-                        cmd, self.options.import_timeout, stdin_file=gz
-                    )
+            is_gzip = abs_dump.endswith(".gz")
+            if not is_gzip:
+                with open(abs_dump, "rb") as probe:
+                    is_gzip = probe.read(2) == b"\x1f\x8b"
+            if is_gzip:
+                # GzipFile exposes the compressed file descriptor to Popen;
+                # materialize decompressed bytes into a regular temp file so
+                # mysql cannot bypass Python's decompression layer.
+                expanded = self._register_dump_path(
+                    os.path.join(self.temp_dir, f"{os.path.basename(abs_dump)}.expanded")
+                )
+                try:
+                    with gzip.open(abs_dump, "rb") as gz, open(expanded, "wb") as out:
+                        shutil.copyfileobj(gz, out, length=1024 * 1024)
+                    with open(expanded, "rb") as fh:
+                        rc, err = self._run_subprocess(
+                            cmd, self.options.import_timeout, stdin_file=fh
+                        )
+                finally:
+                    self._active_files.discard(os.path.abspath(expanded))
+                    try:
+                        os.remove(expanded)
+                    except OSError:
+                        pass
             else:
                 with open(abs_dump, "rb") as fh:
                     rc, err = self._run_subprocess(
@@ -1544,8 +1598,14 @@ class MigrationValidator:
         source: DatabaseConnector,
         target: DatabaseConnector,
         mode: MigrationMode,
+        checksum_strict: bool = True,
     ) -> Dict[str, Any]:
-        report = {"table_count_match": False, "tables": [], "passed": False}
+        report = {
+            "table_count_match": False,
+            "tables": [],
+            "passed": False,
+            "checksum_comparable": checksum_strict,
+        }
         src_tables = source.get_tables()
         tgt_tables = target.get_tables()
         src_names = {t.name for t in src_tables}
@@ -1581,6 +1641,26 @@ class MigrationValidator:
                 "exact": use_exact,
             }
             report["tables"].append(entry)
+
+            if self.options.table_checksum:
+                source_checksum = source.get_table_checksum(st.name)
+                target_checksum = target.get_table_checksum(st.name)
+                entry["source_checksum"] = source_checksum
+                entry["target_checksum"] = target_checksum
+                entry["checksum_match"] = source_checksum == target_checksum
+                if source_checksum != target_checksum:
+                    message = (
+                        f"  {st.name}: CHECKSUM 不一致 "
+                        f"(源 {source_checksum}, 目标 {target_checksum})"
+                    )
+                    if checksum_strict:
+                        mismatches.append(entry)
+                        self.logger.log_error(message, to_stdout=True)
+                        continue
+                    self.logger.log_warning(
+                        message + "；跨版本/row format 差异仅记录，不作为失败依据",
+                        to_stdout=True,
+                    )
 
             if src_rows == tgt_rows:
                 self.logger.log_progress(
@@ -1809,10 +1889,12 @@ class MigrationManager:
                     audit["migration_strategy"] = "whole_db"
 
                 if not task.options.dry_run:
-                    audit["validation"] = self.validator.validate(
+                    # 每个任务可以覆盖全局校验选项；不能复用初始化时的全局 validator。
+                    audit["validation"] = MigrationValidator(opts).validate(
                         DatabaseConnector(task.source, opts),
                         DatabaseConnector(task.target, opts),
                         task.source.mode,
+                        checksum_strict=(src_info.version_tuple == tgt_info.version_tuple),
                     )
 
                 audit["status"] = "completed"
@@ -1871,7 +1953,7 @@ USER_GUIDE = r"""
   * 分表迁移 (per_table): 先迁结构，再逐表迁数据
   * GTID 策略: auto / off / on / commented
   * 迁移前预检: 版本策略、磁盘、目标库是否为空、存储引擎
-  * 迁移后校验: 表数量一致 + 行数对比（估算或精确 COUNT）
+  * 迁移后校验: 表数量一致 + 行数对比（估算或精确 COUNT），可选 CHECKSUM TABLE
   * 安全: 临时 cnf 传密码(0600)、DEFINER 自动修复、目标非空保护
   * 审计: JSON 报告含完整 compatibility 分析
 
@@ -1989,6 +2071,9 @@ MySQL 官方版本模型 (参见 mysql-releases.html):
                            亿级表耗时长，建议低峰期或仅对核心库开启。
                            默认: 小表精确/估算，>1000万行用 information_schema 估算。
 
+  --table-checksum         迁移后执行官方 CHECKSUM TABLE ... EXTENDED，
+                           对比源/目标表内容并写入审计报告；会产生读锁并增加耗时。
+
   --skip-version-check     跳过源/目标/client 版本兼容性提示。
 
 【输出】
@@ -2050,6 +2135,7 @@ MySQL 官方版本模型 (参见 mysql-releases.html):
     dump_timeout                int       86400       dump 超时(秒)
     import_timeout              int       172800      import 超时(秒)
     exact_row_count             bool      false       精确 COUNT 校验
+    table_checksum              bool      false       CHECKSUM TABLE EXTENDED 校验
     row_count_threshold         int       10000000    超过此行数用估算校验
     row_count_tolerance_pct     float     5.0         估算行数允许偏差百分比
     rollback_on_failure         bool      false       失败时删除目标库
@@ -2088,7 +2174,7 @@ MySQL 官方版本模型 (参见 mysql-releases.html):
   options.dump_timeout = 86400
   options.import_timeout = 172800
   options.keep_dump_files = true    # 首次建议保留便于排错
-  校验: 默认估算；核心表可二次跑 --exact-row-count
+  校验: 默认估算；核心表可二次跑 --exact-row-count 或 --table-checksum
 
 【场景 G】仅迁结构（如预建库）
   source.mode = "structure_only"
@@ -2111,7 +2197,7 @@ MySQL 官方版本模型 (参见 mysql-releases.html):
      - 整库模式: 一次 mysqldump
   3. 后处理: DEFINER 修复 -> gzip 压缩(可选)
   4. 导入: mysql 客户端 stdin 流式导入
-  5. 校验: 表名集合 + 行数
+  5. 校验: 表名集合 + 行数；可选 CHECKSUM TABLE EXTENDED
   6. 输出: JSON 审计报告
 
   分表模式进度保存在内存 migration_progress.tables_done；
@@ -2402,6 +2488,14 @@ def parse_arguments():
         help=(
             "用 SELECT COUNT(*) 精确校验每张表行数。"
             "亿级表极慢；默认对小表精确、大表用 information_schema 估算"
+        ),
+    )
+    validate.add_argument(
+        "--table-checksum",
+        action="store_true",
+        help=(
+            "使用官方 CHECKSUM TABLE ... EXTENDED 对每张表做内容校验；"
+            "会锁定读取并可能显著增加耗时"
         ),
     )
     validate.add_argument(

@@ -132,6 +132,26 @@ external-service versions and live cleanup scope. `--full` is review-gated;
 Tier3 `--help` results in the enterprise matrix are not tools delivery
 evidence.
 
+### Tools artifact gate
+
+The independent MySQL tool branch has an additional supply-chain gate. Its
+fixtures must be registered and published by
+`kubeauto-ext-images-dockerfile`'s GitHub Actions dual-push workflow before a
+live run: the same immutable artifact must be available at
+`hub.talkedu.cn/kubeauto/<name>:<tag>` and the matching Docker Hub target.
+Record the official source, exact version, manifest digest or file SHA256,
+owner and cleanup scope in the tools matrix. The runner pulls the TalkEdu
+copy first and verifies the digest before handing a fixture to a test host;
+dynamic mirror discovery and repeated public downloads are prohibited.
+
+For `MigrationCli`, the live matrix requires fixed MySQL `8.0.46`, one pinned
+`8.4.x` and one pinned `9.x` logical-migration fixture. For `MyBackupCli`, use
+only a MySQL/XtraBackup combination explicitly supported by Percona's
+compatibility documentation. A MySQL 9.x physical-backup combination without
+that official support is an explicit boundary (`na`), not a pass. GitHub
+Actions may fetch upstream artifacts, but the lab must remain runnable when
+public network access is unavailable.
+
 The runner is authoritative because it centralizes SSH, source synchronization, remote launch, durable PID/exit state, foreground log streaming, heartbeat, silent-stall diagnostics, final markers, and cleanup. Do not replace it with a sequence of manually approved SSH commands.
 
 ## Required lifecycle

@@ -54,6 +54,36 @@ CLI and must remain independently buildable, runnable and supportable.
   `TOOLS_CLEAN_VERIFY_PASS`. Historical Tier3 `--help` evidence is not a tools
   delivery sign-off.
 
+### Tools fixture and external-artifact supply chain
+
+Tools live tests must consume a reviewed, frozen artifact catalog. Test
+fixtures, database images, backup utilities and large archives are owned by
+`kubeauto-ext-images-dockerfile`; do not discover or download them repeatedly
+from public registries during a lab run. Register each artifact with its
+official source, exact version, owner, Dockerfile/context (or checksum),
+upstream digest, published tags and cleanup scope before the affected matrix
+case can leave `pending`.
+
+The external-image repository's GitHub Actions workflow is the publication
+boundary: it pulls from the international upstream source and pushes the same
+immutable build to both `hub.talkedu.cn/kubeauto/<name>:<tag>` and the agreed
+Docker Hub target. A live runner in China pulls the verified TalkEdu manifest
+first and uses Docker Hub/upstream only as the documented fallback. The runner
+must verify the manifest digest (and SHA256 for files) before use, record the
+artifact provenance in its durable log, and fail closed on a mismatch. GitHub
+Actions is not a live-test dependency; after publication the lab must work
+without public-network access.
+
+For the MySQL tool branch this catalog must cover the tested MySQL
+`8.0.46`, a pinned `8.4.x`, and a pinned `9.x` logical-migration fixture, plus
+the officially compatible Percona XtraBackup image and a minimal Rocky Linux
+packaging image for large fixtures such as StarRocks/Kafka archives. Do not
+claim XtraBackup support for a MySQL release until Percona's compatibility
+documentation confirms that combination; unsupported combinations are an
+explicit `na` boundary case, never an inferred pass. Fixture leases, temporary
+credentials, backup directories, archives and containers belong to the tools
+runner and must be removed on success, failure and interruption.
+
 Inspect all six sibling repositories under `/home/brinnatt/projects` before and after a change. Preserve unrelated user changes.
 
 ## Non-negotiable delivery rules

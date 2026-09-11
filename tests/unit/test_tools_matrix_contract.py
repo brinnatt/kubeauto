@@ -21,8 +21,8 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertEqual(validate_matrix(MATRIX), [])
         text = MATRIX.read_text(encoding="utf-8")
         self.assertIn("status: review", text)
-        self.assertIn("pass: 42", text)
-        self.assertIn("pending: 13", text)
+        self.assertIn("pass: 48", text)
+        self.assertIn("pending: 7", text)
 
     def test_tools_matrix_require_pass_rejects_review_baseline(self):
         errors = validate_matrix(MATRIX, require_pass=True)
@@ -40,8 +40,27 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(capabilities), 80)
         self.assertTrue(all(cap["case_ids"] and set(cap["case_ids"]) <= case_ids for cap in capabilities))
 
+    def test_live_artifacts_require_ext_images_dual_push_and_digest_evidence(self):
+        data = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
+        artifacts = data["meta"]["artifact_prerequisites"]
+        self.assertEqual(artifacts["owner_repository"], "kubeauto-ext-images-dockerfile")
+        self.assertEqual(artifacts["publication"], "GitHub Actions dual-push")
+        self.assertEqual(artifacts["primary_registry"], "hub.talkedu.cn/kubeauto")
+        self.assertIn("manifest digest or SHA256", artifacts["required_evidence"])
+        self.assertEqual(
+            artifacts["mysql_tools"]["migration"],
+            [
+                "hub.talkedu.cn/kubeauto/mysql:8.0.46@sha256:0b6938c55ad3ef982d41cfa3ee01a63074cd5c9f3907487badeda53f6feb14da",
+                "hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4@sha256:0a3e659b9fb960330299e2a1847414f6185c573a3fd2cf1320221066904ea77d",
+                "hub.talkedu.cn/kubeauto/mysql-9.2:9.2.0@sha256:867954f8c74131e891c2d3501560abbb7548ab8f439245c2feb4648f99b0caeb",
+            ],
+        )
+        prerequisites = "\n".join(data["meta"]["live_prerequisites"])
+        self.assertIn("双推", prerequisites)
+        self.assertIn("无动态镜像发现", prerequisites)
+
     def test_stale_summary_is_rejected(self):
-        text = MATRIX.read_text(encoding="utf-8").replace("pending: 13", "pending: 12", 1)
+        text = MATRIX.read_text(encoding="utf-8").replace("pending: 7", "pending: 6", 1)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tools.yaml"
             path.write_text(text, encoding="utf-8")

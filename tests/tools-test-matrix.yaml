@@ -3,7 +3,7 @@
 
 meta:
   version: 1
-  updated: "2026-09-10"
+  updated: "2026-09-11"
   status: review
   runner: tests/run_tools_regression.sh
   scope: "tools/ 下每个脚本都是独立 CLI；禁止依赖 kubeauto 核心、middleware、其它 tools 或其它工程。"
@@ -17,6 +17,21 @@ meta:
     - "评审批准本矩阵及 fixture/凭据边界"
     - "clean lab wipe + verify"
     - "固定版本依赖与官方来源可审计（镜像/包 checksum 或 manifest digest）"
+    - "kubeauto-ext-images-dockerfile GitHub Actions 已将同一固定制品双推到 hub.talkedu.cn 与 Docker Hub，且两端 manifest digest 已核验"
+    - "现场优先使用 hub.talkedu.cn；无动态镜像发现、无重复公网下载，公网不可用时正常测试路径仍可执行"
+  artifact_prerequisites:
+    owner_repository: "kubeauto-ext-images-dockerfile"
+    publication: "GitHub Actions dual-push"
+    primary_registry: "hub.talkedu.cn/kubeauto"
+    fallback_registry: "Docker Hub brinnatt"
+    required_evidence: ["official source", "exact version", "manifest digest or SHA256", "owner", "cleanup scope"]
+    mysql_tools:
+      migration:
+        - "hub.talkedu.cn/kubeauto/mysql:8.0.46@sha256:0b6938c55ad3ef982d41cfa3ee01a63074cd5c9f3907487badeda53f6feb14da"
+        - "hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4@sha256:0a3e659b9fb960330299e2a1847414f6185c573a3fd2cf1320221066904ea77d"
+        - "hub.talkedu.cn/kubeauto/mysql-9.2:9.2.0@sha256:867954f8c74131e891c2d3501560abbb7548ab8f439245c2feb4648f99b0caeb"
+      physical_backup: ["Percona-supported MySQL/XtraBackup combination only"]
+      packaging: ["pinned minimal Rocky Linux fixture image"]
   official_sources:
     python_subprocess: "https://docs.python.org/3/library/subprocess.html"
     pyinstaller: "https://pyinstaller.org/en/stable/operating-mode.html"
@@ -84,17 +99,17 @@ test_cases:
   - {id: TL-KAF-04, tool: KafkaCli, category: security, scenario: "TLS/SASL 凭据保护、命令注入和错误 broker 隔离", command: "fake broker + 恶意 config/用户名/密码执行", expected: "凭据不进日志；拒绝注入；连接失败快速明确", status: pass, evidence: "2026-09-10 同轮 durable live：SASL_PLAINTEXT 与 SASL_SSL 均完成真实 Topic/消息闭环；错误凭据、非法 consumer group/max-messages/extra_properties 在副作用前非0；secret 未进入日志；固定 quay.io/strimzi/kafka:1.2.0-kafka-4.3.1 manifest digest=sha256:fef34b5438e8556cc08c01f3e254e47346f061b53a4e38d4289853777e0ea7f1"}
   - {id: TL-KAF-05, tool: KafkaCli, category: recovery, scenario: "超时、重试、消费中断和临时文件清理", command: "在 produce/consume 各阶段断开 broker", expected: "退出码稳定；无孤儿进程/临时凭据；重试不重复错误副作用", status: pass, evidence: "2026-09-10 同轮 durable live：broker 停止时操作快速非0，恢复后重试成功；长 produce/consume 进程树 SIGTERM 后非0且无 consumer 泄漏；Topic delete/clean/clean-data 幂等；TOOLS_KAFKA_EXIT rc=0、KAFKA_DURABLE_STATUS rc=0 finalized=0；控制机及5节点清除进程、目录、脚本、远端日志、PID/exit/finalized 与临时 client properties 后 TOOLS_CLEAN_VERIFY_PASS"}
 
-  - {id: TL-MIG-01, tool: MigrationCli, category: build, scenario: "MySQL 迁移工具独立构建与 pymysql 版本锁定", command: "python3 -m compileall -q tools/mysqltools/MigrationCli.py && build tools-only", expected: "产物可执行，构建 provenance/SHA256 完整", status: pass, evidence: "2026-09-07 tools build-only；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；MigrationCli sha256=6daefb315f8dbe72131ba34cfb57017322c65e3d1f5b8f97654e6082a4d677be；--help 通过"}
+  - {id: TL-MIG-01, tool: MigrationCli, category: build, scenario: "MySQL 迁移工具独立构建与 pymysql 版本锁定", command: "python3 -m compileall -q tools/mysqltools/MigrationCli.py && build tools-only", expected: "产物可执行，构建 provenance/SHA256 完整", status: pass, evidence: "2026-09-11 当前源码 tools build-only；Rocky 8.10/glibc 2.28；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；MigrationCli onefile sha256=cac5473b0aa9b4a9a869dfb3de28dab7c510e03d46d24b9e66c478a32dc50789；TOOLS_BUILD_PASS count=9"}
   - {id: TL-MIG-02, tool: MigrationCli, category: cli, scenario: "源/目标连接、版本探测、升级路径和配置合同", command: "python3 tools/mysqltools/MigrationCli.py --help", expected: "密码不回显；非法版本/连接参数非 0", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；PyMySQL 依赖可加载，参数帮助合同可加载"}
-  - {id: TL-MIG-03, tool: MigrationCli, category: functional, scenario: "MySQL 8.0/8.4 隔离实例 schema/data 迁移核验", command: "按官方 upgrade path 执行 dry-run -> migrate -> checksum/readback", expected: "对象/行数/checksum 一致，官方不支持路径明确阻断", status: pending}
-  - {id: TL-MIG-04, tool: MigrationCli, category: security, scenario: "SQL/主机参数注入、最小权限和 destructive 操作确认", command: "恶意 schema/table/host 与无确认 destructive 参数", expected: "参数化/白名单生效；无确认不写目标；凭据不落盘", status: pending}
-  - {id: TL-MIG-05, tool: MigrationCli, category: recovery, scenario: "迁移中断、回滚标记、临时 dump/gzip 回收和重试", command: "在 dump/import/verify 阶段注入断连", expected: "首错可诊断；目标不被伪装为成功；临时文件与锁清理", status: pending}
+  - {id: TL-MIG-03, tool: MigrationCli, category: functional, scenario: "MySQL 8.0.46/8.4.x/9.x 隔离实例 schema/data 迁移核验", command: "使用 ext-images 双推且 digest 固定的镜像，按官方 upgrade path 执行 dry-run -> migrate -> checksum/readback", expected: "对象/行数/checksum 一致，官方不支持路径明确阻断", status: pass, evidence: "2026-09-11 logs/tools-migration-live-20260911-082316.log sha256=0b28d366429dcc7b21d305889a69670368f1886352be4e6e4c6c7342599bff41；TalkEdu mysql:8.0.46、mysql-8.4:8.4.4、mysql-9.2:9.2.0 固定 digest；8.0->8.4 分表/gzip/checksum，8.4->9.2 整库，dry-run、structure-only、读回通过；MIGRATION_CLI_LIVE_REGRESSION_PASS、TOOLS_MIGRATION_EXIT rc=0、TOOLS_CLEAN_VERIFY_PASS。"}
+  - {id: TL-MIG-04, tool: MigrationCli, category: security, scenario: "SQL/主机参数注入、最小权限和 destructive 操作确认", command: "恶意 schema/table/host 与无确认 destructive 参数", expected: "参数化/白名单生效；无确认不写目标；凭据不落盘", status: pass, evidence: "同轮 live 使用最小权限账号；bad;drop 标识符和不可达源在副作用前非0且目标不存在；option-file 0600 并自动删除；TOOLS_CLEAN_VERIFY_PASS。"}
+  - {id: TL-MIG-05, tool: MigrationCli, category: recovery, scenario: "迁移中断、回滚标记、临时 dump/gzip 回收和重试", command: "在 dump/import/verify 阶段注入断连", expected: "首错可诊断；目标不被伪装为成功；临时文件与锁清理", status: pass, evidence: "同轮不可达源首错为连接失败、负向 durable rc 非0且无目标副作用；gzip 展开文件 finally 回收；成功/失败路径均验证容器、报告、脚本、venv 清理；TOOLS_MIGRATION_EXIT rc=0、TOOLS_CLEAN_VERIFY_PASS。"}
 
-  - {id: TL-MBK-01, tool: MyBackupCli, category: build, scenario: "XtraBackup 兼容环境 onefile 构建", command: "python3 -m compileall -q tools/mysqltools/MyBackupCli.py && build tools-only", expected: "产物可执行，XtraBackup 官方版本/ SHA256 已记录", status: pass, evidence: "2026-09-07 tools build-only；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；MyBackupCli sha256=7375f34b1c473e4118e0be78a049e6aab3efbbe6f4c618c7997c10a796d08488；--help 通过"}
+  - {id: TL-MBK-01, tool: MyBackupCli, category: build, scenario: "XtraBackup 兼容环境 onefile 构建", command: "python3 -m compileall -q tools/mysqltools/MyBackupCli.py && build tools-only", expected: "产物可执行，XtraBackup 官方版本/ SHA256 已记录", status: pass, evidence: "2026-09-11 当前源码 tools build-only；Rocky 8.10/glibc 2.28；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；MyBackupCli onefile sha256=dd90f5885c15d8fe628f7b5302f8c8e9131487f6ee185cb72e266b662f4ab2a6；TOOLS_BUILD_PASS count=9"}
   - {id: TL-MBK-02, tool: MyBackupCli, category: cli, scenario: "全量/增量/压缩/恢复参数和配置权限合同", command: "python3 tools/mysqltools/MyBackupCli.py --help", expected: "非法目录/配置/选项非 0；密码文件权限受控", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；参数帮助合同可加载"}
-  - {id: TL-MBK-03, tool: MyBackupCli, category: functional, scenario: "Percona XtraBackup 全量+增量 prepare/restore 数据校验", command: "隔离 MySQL 实例执行 full -> incremental -> prepare -> restore -> readback", expected: "按官方文档 prepare 成功，数据 checksum 一致", status: pending}
-  - {id: TL-MBK-04, tool: MyBackupCli, category: security, scenario: "备份目录穿越、锁竞争、敏感配置和 destructive restore 保护", command: "恶意路径/并发执行/无确认 restore", expected: "路径限制、单实例锁、敏感信息脱敏、无确认不覆盖", status: pending}
-  - {id: TL-MBK-05, tool: MyBackupCli, category: recovery, scenario: "磁盘满/进程中断后的临时文件和锁回收", command: "在 copy/prepare/restore 阶段注入 ENOSPC/SIGINT", expected: "半成品不冒充备份；锁释放；可从干净边界重试", status: pending}
+  - {id: TL-MBK-03, tool: MyBackupCli, category: functional, scenario: "Percona XtraBackup 官方兼容组合的全量+增量 prepare/restore 数据校验", command: "使用 ext-images 双推且 digest 固定的 MySQL/XtraBackup 镜像执行 full -> incremental -> prepare -> restore -> readback", expected: "按官方文档 prepare 成功，数据 checksum 一致；未获官方支持的 9.x 组合不伪报 PASS", status: pass, evidence: "2026-09-11 logs/tools-mybackup-live-20260911-090303.log sha256=10e5890ba3551ad04ba7ff69bd2c720468f11ce579839770d9b6c77ec0064ec4；TalkEdu MySQL 8.4.4 digest=sha256:0a3e659b9fb960330299e2a1847414f6185c573a3fd2cf1320221066904ea77d、Percona XtraBackup 8.4.0-5.1 digest=sha256:add39f4f46a5f6712527d0cedff99b85f9867339d557acf2796563413b3865ea；full/incr/binlog/checksum/prepare/decompress/copy-back/restore/readback 全通过，MYBACKUP_CLI_LIVE_REGRESSION_PASS、TOOLS_MYBACKUP_EXIT rc=0、TOOLS_CLEAN_VERIFY_PASS。"}
+  - {id: TL-MBK-04, tool: MyBackupCli, category: security, scenario: "备份目录穿越、锁竞争、敏感配置和 destructive restore 保护", command: "恶意路径/并发执行/无确认 restore", expected: "路径限制、单实例锁、敏感信息脱敏、无确认不覆盖", status: pass, evidence: "2026-09-11 同轮日志 logs/tools-mybackup-live-20260911-090303.log sha256=10e5890ba3551ad04ba7ff69bd2c720468f11ce579839770d9b6c77ec0064ec4：真实 CLI restore 无确认被拒、密码脱敏、锁竞争返回失败且不误报成功，9.x 物理备份明确拒绝；TOOLS_CLEAN_VERIFY_PASS。"}
+  - {id: TL-MBK-05, tool: MyBackupCli, category: recovery, scenario: "磁盘满/进程中断后的临时文件和锁回收", command: "在 copy/prepare/restore 阶段注入 ENOSPC/SIGINT", expected: "半成品不冒充备份；锁释放；可从干净边界重试", status: pass, evidence: "2026-09-11 同轮日志 logs/tools-mybackup-live-20260911-090303.log sha256=10e5890ba3551ad04ba7ff69bd2c720468f11ce579839770d9b6c77ec0064ec4：真实 CLI 注入 ENOSPC 后无 .backup_ok 半成品且重试成功（MYBACKUP_ENOSPC_RECOVERY_PASS）；prepare 阶段 SIGINT 后服务自动恢复并重试成功（MYBACKUP_SIGINT_RECOVERY_PASS）；锁释放、容器/脚本/工作目录/state 清理通过，TOOLS_MYBACKUP_EXIT rc=0、TOOLS_CLEAN_VERIFY_PASS。"}
 
   - {id: TL-SR-01, tool: StarCli, category: build, scenario: "StarRocks CLI 独立 onefile 构建", command: "python3 -m compileall -q tools/starrocks/StarCli.py && build tools-only", expected: "产物可执行，distro/子进程环境与 SHA256 可追溯", status: pass, evidence: "用户确认 StarCli 已在生产使用并完成验证"}
   - {id: TL-SR-02, tool: StarCli, category: cli, scenario: "FE host/query port/deploy/status 参数合同", command: "python3 tools/starrocks/StarCli.py --help", expected: "非法 host/port/deploy type 非 0；密码不回显", status: pass, evidence: "用户确认 StarCli 已在生产使用并完成验证"}
@@ -215,9 +230,9 @@ functional_inventory:
 
 coverage_summary:
   total: 56
-  pass: 42
-  pending: 13
+  pass: 48
+  pending: 7
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "全矩阵 42/56 PASS、13 pending、1 na；KafkaCli 5/5 当前构建/CLI/全功能/安全/恢复均 PASS，durable rc=0/finalized=0 且 TOOLS_CLEAN_VERIFY_PASS；Calico 当前 etcd 交付范围 7/7 PASS；KubeBackup/KubePublish 全功能 durable live rc=0 且清理通过；KDD CRD 路径因当前架构不适用单列 na"
+  overall_assessment: "全矩阵 48/56 PASS、7 pending、1 na；MigrationCli 与 MyBackupCli 当前构建/CLI/全功能/安全/恢复均通过 durable live 且 TOOLS_CLEAN_VERIFY_PASS；KafkaCli 5/5、Calico 当前 etcd 交付范围 7/7、KubeBackup/KubePublish 全功能 durable live 均通过；KDD CRD 路径因当前架构不适用单列 na"
