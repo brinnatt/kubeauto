@@ -23,7 +23,7 @@ fi
 
 usage() {
   cat <<'EOF'
-用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--migration-live|--mybackup-live|--full]
+用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--migration-live|--mybackup-live|--star-live|--full]
 
   --preflight  校验 tools 矩阵、脚本语法和独立导入边界（无远程变更）
   --status     输出当前 tools 矩阵状态
@@ -34,6 +34,7 @@ usage() {
   --kube-publish-live 在授权 Docker/nerdctl 主机运行 KubePublishCli 完整镜像回归
   --migration-live 在授权 122.2 控制机运行 MigrationCli MySQL 逻辑迁移回归
   --mybackup-live 在授权 122.2 控制机运行 MyBackupCli XtraBackup 全功能回归
+  --star-live    在授权 122.2 控制机使用已登记 StarRocks 固定归档运行 StarCli 全功能回归
   --full       仅在矩阵全部 pass 且显式批准后进入 live（评审阶段拒绝）
 EOF
 }
@@ -92,8 +93,11 @@ PY
       test -x "$stage/$tool"
     done
     test "$(find "$stage" -maxdepth 1 -type f | wc -l)" -eq "${#TOOLS[@]}"
+    # Keep the target-built binary as the only live input; a developer-host
+    # dist/ binary can require a newer glibc than the Rocky 8.10 contract.
+    install -m 0755 "$stage/StarCli" "$ROOT/dist/StarCli-rocky8"
     sha256sum "$stage"/*
-    echo "TOOLS_BUILD_PASS count=${#TOOLS[@]} glibc=2.28"
+    echo "TOOLS_BUILD_PASS count=${#TOOLS[@]} glibc=2.28 starcli=$ROOT/dist/StarCli-rocky8"
     ;;
   --calico-live)
     CALICO_HOST="${CALICO_TEST_HOST:-root@192.168.122.243}"
@@ -334,6 +338,75 @@ PY
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "rm -f '${state}.pid' '${state}.exit' '${state}.finalized'"
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "! docker ps -a --format '{{.Names}}' | grep -qx tools-mbk-mysql; ! test -e /tmp/MyBackupCli-tools-live.py; ! test -e /tmp/mybackup-cli-live-regression.sh; ! test -e /tmp/tools-mbk-live; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'"
     echo "TOOLS_CLEAN_VERIFY_PASS scope=mybackup host=$MYBACKUP_HOST" | tee -a "$gate_log"
+    ;;
+  --star-live)
+    STAR_HOST="${STARCLI_TEST_HOST:-root@192.168.122.2}"
+    STAR_ARCHIVE="${STARCLI_ARCHIVE:-}"
+    STAR_ARCHIVE_REMOTE="${STARCLI_ARCHIVE_REMOTE:-}"
+    STAR_ARCHIVE_SHA256="${STARCLI_ARCHIVE_SHA256:-}"
+    STARCLI_BINARY="${STARCLI_BINARY:-$ROOT/dist/StarCli-rocky8}"
+    [[ "$STAR_HOST" == root@192.168.122.2 ]] || { echo "STARCLI_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    bash -n "$ROOT/tests/helpers/starcli-live-regression.sh"
+    "$PY" "$ROOT/tests/helpers/starcli-contract-test.py"
+    [[ -n "$STAR_ARCHIVE_SHA256" ]] || {
+      echo "STARCLI_LIVE_BLOCKED_ARTIFACT: provide the fixed, dual-pushed StarRocks archive SHA256" >&2
+      exit 2
+    }
+    forbidden_prefix="192.168.122."
+    forbidden_host="${forbidden_prefix}1"
+    [[ "$STAR_ARCHIVE" != *"$forbidden_host"* ]] || { echo "STARCLI_LIVE_BLOCKED_FORBIDDEN_ADDRESS" >&2; exit 2; }
+    if [[ -n "$STAR_ARCHIVE_REMOTE" ]]; then
+      [[ "$STAR_ARCHIVE_REMOTE" == /root/StarRocks-3.5.12-centos-amd64.tar.gz ]] || { echo "STARCLI_LIVE_BLOCKED_ARTIFACT_PATH" >&2; exit 2; }
+      remote_archive="$STAR_ARCHIVE_REMOTE"
+    else
+      [[ -n "$STAR_ARCHIVE" && -f "$STAR_ARCHIVE" ]] || { echo "STARCLI_LIVE_BLOCKED_ARTIFACT_MISSING: $STAR_ARCHIVE" >&2; exit 2; }
+      remote_archive=/tmp/starrocks-fixed.tar.gz
+    fi
+    [[ -x "$STARCLI_BINARY" ]] || { echo "STARCLI_LIVE_BLOCKED_BINARY: build dist/StarCli first" >&2; exit 2; }
+    lock="${TMPDIR:-/tmp}/kubeauto-tools-starcli-run.lock"; exec 9>"$lock"
+    flock -n 9 || { echo "STARCLI_LIVE_BLOCKED: another StarCli run owns $lock" >&2; exit 2; }
+    state="${TMPDIR:-/tmp}/kubeauto-tools-starcli-live"
+    gate_log="$ROOT/logs/tools-starcli-live-$(date +%Y%m%d-%H%M%S).log"
+    remote_log=/tmp/starcli-live.log
+    verify_star_live_clean() {
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$STAR_HOST" \
+        "for unit in starrocks-cn starrocks-be starrocks-fe; do test ! -e /etc/systemd/system/\$unit.service || exit 1; ! systemctl is-active --quiet \$unit || exit 1; done; test ! -e /tmp/starcli-live; ps -eo comm=,args= | awk '\$1 == \"java\" || \$1 == \"starrocks_be\" { if (index(\$0, \"/tmp/starcli-live/\")) found=1 } END { exit found }'"
+    }
+    cleanup_star_live() {
+      set +e
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$STAR_HOST" \
+        "for unit in starrocks-cn starrocks-be starrocks-fe; do systemctl disable --now \$unit >/dev/null 2>&1 || true; systemctl kill --kill-who=all \$unit >/dev/null 2>&1 || true; rm -f /etc/systemd/system/\$unit.service; done; systemctl daemon-reload >/dev/null 2>&1 || true; rm -rf /tmp/starcli-live /tmp/StarCli.py /tmp/StarCli-tools-live.py /tmp/starcli-live-regression.sh /tmp/run-durable-gate.sh '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized'" >/dev/null 2>&1 || true
+    }
+    trap cleanup_star_live EXIT INT TERM
+    echo "STARCLI_LIVE_STAGE pre-clean"
+    verify_star_live_clean
+    echo "STARCLI_LIVE_STAGE pre-clean-verified"
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$STARCLI_BINARY" "$STAR_HOST:/tmp/StarCli"
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tests/helpers/starcli-live-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$STAR_HOST:/tmp/"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$STAR_HOST" "mv /tmp/StarCli /tmp/StarCli.py; rm -f '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized'; chmod 0755 /tmp/StarCli.py /tmp/starcli-live-regression.sh /tmp/run-durable-gate.sh"
+    if [[ -z "$STAR_ARCHIVE_REMOTE" ]]; then
+      scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$STAR_ARCHIVE" "$STAR_HOST:/tmp/starrocks-fixed.tar.gz"
+    fi
+    set +e
+    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$state" TOOLS_STARCLI_EXIT \
+      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$STAR_HOST" \
+      "STARCLI_TOOL=/tmp/StarCli.py STARCLI_ARCHIVE='$remote_archive' STARCLI_ARCHIVE_SHA256='$STAR_ARCHIVE_SHA256' bash /tmp/starcli-live-regression.sh" \
+      2>&1 | tee "$gate_log"
+    gate_rc=${PIPESTATUS[0]}
+    set -e
+    test "$gate_rc" -eq 0
+    test "$(cat "${state}.exit")" = 0
+    test "$(cat "${state}.finalized")" = 0
+    grep -q '^STARCLI_LIVE_REGRESSION_PASS ' "$gate_log"
+    cleanup_star_live
+    for _ in $(seq 1 30); do
+      verify_star_live_clean && break
+      sleep 1
+    done
+    verify_star_live_clean
+    rm -f "${state}.pid" "${state}.exit" "${state}.finalized"
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=starcli host=$STAR_HOST" | tee -a "$gate_log"
     ;;
   --full)
     if [[ "${TOOLS_MATRIX_APPROVED:-no}" != yes ]]; then

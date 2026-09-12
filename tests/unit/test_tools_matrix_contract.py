@@ -80,7 +80,26 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertIn("TOOLS_KUBE_BACKUP_EXIT", text)
         self.assertIn('env PYTHON="$PY" bash', text)
         self.assertIn("KUBE_PUBLISH_TOOL=/tmp/KubePublishCli.py", text)
+        self.assertIn("--star-live", text)
+        self.assertIn("TOOLS_STARCLI_EXIT", text)
+        self.assertIn('"$STARCLI_BINARY" "$STAR_HOST:/tmp/StarCli"', text)
+        self.assertIn("STARCLI_LIVE_STAGE pre-clean-verified", text)
+        self.assertIn("systemctl kill --kill-who=all", text)
+        self.assertIn('test "$(cat "${state}.exit")" = 0', text)
+        star_branch = text[text.index("  --star-live)"):]
+        self.assertNotIn('"cat \'${state}.exit\'"', star_branch)
         self.assertNotIn("run_enterprise_regression.sh", text)
+
+    def test_starcli_live_fixture_keeps_product_entrypoint_and_negative_cleanup(self):
+        fixture = (ROOT / "tests/helpers/starcli-live-regression.sh").read_text(encoding="utf-8")
+        self.assertIn('STARCLI_ARCHIVE_SHA256', fixture)
+        self.assertIn('--setup --root-password', fixture)
+        self.assertIn('--storage-root-path "../outside"', fixture)
+        self.assertIn('--root-password "$PASSWORD" --user root --group root >/tmp/starcli-invalid.out', fixture)
+        self.assertIn("grep -Eqi", fixture)
+        self.assertIn("不能同时", fixture)
+        self.assertIn('STARCLI_LIVE_REGRESSION_PASS', fixture)
+        self.assertIn('rm -f /tmp/starcli-invalid.out', fixture)
 
     def test_kube_backup_live_fixture_is_scoped_and_exercises_the_cli(self):
         fixture = (ROOT / "tests/helpers/kube-backup-live-regression.sh").read_text(

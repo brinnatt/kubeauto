@@ -166,7 +166,10 @@ class InputValidator:
     @staticmethod
     def validate_port(port: int) -> bool:
         """验证端口号范围"""
-        return MIN_PORT <= port <= MAX_PORT
+        # argparse produces integers, but callers and JSON may provide other
+        # numeric types.  A port is an integer token, not merely a value in
+        # the numeric range (and bool is an int subclass in Python).
+        return isinstance(port, int) and not isinstance(port, bool) and MIN_PORT <= port <= MAX_PORT
 
     @staticmethod
     def validate_ip_or_cidr(ip_cidr: str) -> bool:
@@ -1639,7 +1642,7 @@ class StarRocksDeployer:
         except Exception as e:
             logger.error(f"获取本机IP失败: {e}", extra={"to_stdout": True})
 
-        if not node_ip or node_ip == "127.0.0.1":
+        if not node_ip or (node_ip == "127.0.0.1" and not _is_local_host(fe_host)):
             logger.error("无法获取本机有效IPv4地址，无法完成集群校验", extra={"to_stdout": True})
             return False
 
@@ -1710,13 +1713,21 @@ class StarRocksDeployer:
         except Exception as e:
             logger.error(f"获取本机IP失败: {e}", extra={"to_stdout": True})
 
-        if not node_ip or node_ip == "127.0.0.1":
+        # Loopback is a valid single-host FE/BE/CN fixture when the FE itself
+        # is local.  Keep rejecting an unresolved loopback for a remote FE,
+        # where silently dropping 127.0.0.1 could target the wrong node.
+        if not node_ip or (node_ip == "127.0.0.1" and not _is_local_host(fe_host)):
             logger.error("无法获取本机有效IPv4地址，无法完成集群校验", extra={"to_stdout": True})
             return False
 
         # 检查节点是否在集群中
-        heartbeat_port = DEFAULT_BE_PORTS['heartbeat_service_port'] if node_type.lower() == 'be' else DEFAULT_CN_PORTS[
+        node_type_lower = node_type.lower()
+        heartbeat_default = (DEFAULT_BE_PORTS if node_type_lower == 'be' else DEFAULT_CN_PORTS)[
             'heartbeat_service_port']
+        config_path_func = self.CONFIG_PATHS.get(node_type_lower)
+        config_path = config_path_func(self.starrocks_home) if config_path_func else None
+        heartbeat_port = (self._parse_port_from_config(config_path, "heartbeat_service_port")
+                          if config_path else None) or heartbeat_default
         sql = "SHOW BACKENDS;" if node_type_upper == "BE" else "SHOW COMPUTE NODES;"
         success, output = self._execute_sql(fe_host, fe_query_port, sql, password=password)
         if not success:
@@ -3309,6 +3320,7 @@ class StarRocksDeployer:
                             password: Optional[str] = None) -> bool:
         """显示集群状态"""
         print("=== 集群状态 ===")
+        all_success = True
 
         # 显示FE节点
         print("\nFE节点:")
@@ -3320,6 +3332,7 @@ class StarRocksDeployer:
             else:
                 print("(无FE节点)")
         else:
+            all_success = False
             print(f"查询FE节点失败: {output}")
             logger.warning(f"查询FE节点失败: {output}", extra={"to_stdout": True})
 
@@ -3333,6 +3346,7 @@ class StarRocksDeployer:
             else:
                 print("(无BE节点)")
         else:
+            all_success = False
             print(f"查询BE节点失败: {output}")
             logger.warning(f"查询BE节点失败: {output}", extra={"to_stdout": True})
 
@@ -3346,10 +3360,11 @@ class StarRocksDeployer:
             else:
                 print("(无CN节点)")
         else:
+            all_success = False
             print(f"查询CN节点失败: {output}")
             logger.warning(f"查询CN节点失败: {output}", extra={"to_stdout": True})
 
-        return True
+        return all_success
 
     def deploy_be(
             self,
@@ -3796,6 +3811,9 @@ def load_json_config(config_file: str) -> Dict[str, Any]:
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
+        if not isinstance(config, dict):
+            logger.error("配置文件顶层必须是JSON对象", extra={"to_stdout": True})
+            sys.exit(1)
         logger.info(f"✓ 加载配置文件: {config_file}", extra={"to_stdout": True})
         return config
     except json.JSONDecodeError as ex:
@@ -4426,7 +4444,7 @@ def main():
     parser.add_argument(
         "--fe-query-port",
         type=int,
-        default=9030,
+        default=None,
         help="FE查询端口 (默认: 9030)"
     )
 
@@ -4527,11 +4545,14 @@ def main():
                 user="root",
                 group="root"
             )
-            deployer.show_cluster_status(
+            status_success = deployer.show_cluster_status(
                 fe_host=fe_host_status,
                 fe_query_port=fe_query_port_status,
                 password=root_password
             )
+            if not status_success:
+                logger.error("=== 集群状态查询失败 ===", extra={"to_stdout": True})
+                sys.exit(1)
         except Exception as e:
             logger.error(f"显示集群状态失败: {e}", extra={"to_stdout": True})
             sys.exit(1)
@@ -4562,7 +4583,7 @@ def main():
 
         # 获取FE主机地址（用于从集群移除节点）
         fe_host_clean = config.get("fe_host") or args.fe_host
-        fe_query_port_clean = config.get("fe_query_port") or args.fe_query_port or 9030
+        fe_query_port_clean = config.get("fe_query_port") or args.fe_query_port or config.get("query_port") or 9030
         password_clean = config.get("root_password") or args.root_password
 
         # 校验 fe_host_clean（如果提供）
@@ -4621,11 +4642,12 @@ def main():
     # 执行部署
     # 配置优先级: 命令行参数 > 配置文件 > 默认值
     success = False
+    deployed_fe_query_port = None
     enable_systemd = not (args.no_systemd or (config.get("enable_systemd") is False))
 
     # 自动加入集群参数
     fe_host = args.fe_host or config.get("fe_host")
-    fe_query_port = args.fe_query_port or config.get("fe_query_port") or 9030
+    fe_query_port = args.fe_query_port or config.get("fe_query_port") or config.get("query_port") or 9030
 
     # 校验 fe_host（如果提供）
     if fe_host and not InputValidator.validate_hostname(fe_host):
@@ -4642,6 +4664,7 @@ def main():
                     config.get("rpc_port") or DEFAULT_FE_PORTS['rpc_port'])
         query_port = args.query_port if args.query_port is not None else (
                     config.get("query_port") or DEFAULT_FE_PORTS['query_port'])
+        deployed_fe_query_port = query_port
         edit_log_port = args.edit_log_port if args.edit_log_port is not None else (
                     config.get("edit_log_port") or DEFAULT_FE_PORTS['edit_log_port'])
         priority_networks = args.priority_networks or config.get("priority_networks")
@@ -4789,7 +4812,7 @@ def main():
         # Post-deployment setup
         if args.setup:
             fe_host_setup = args.fe_host or config.get("fe_host") or "127.0.0.1"
-            fe_query_port_setup = args.fe_query_port or config.get("fe_query_port") or 9030
+            fe_query_port_setup = args.fe_query_port or config.get("fe_query_port") or deployed_fe_query_port or config.get("query_port") or 9030
             root_password = args.root_password or config.get("root_password")
 
             # 校验 fe_host_setup
@@ -4803,7 +4826,7 @@ def main():
                 logger.info("等待FE启动完成...", extra={"to_stdout": True})
                 time.sleep(10)
 
-            deployer.setup_cluster(
+            setup_success = deployer.setup_cluster(
                 fe_host=fe_host_setup,
                 fe_query_port=fe_query_port_setup,
                 root_password=root_password,
@@ -4812,11 +4835,14 @@ def main():
                 parallel_fragment_exec_instance_num=config.get("parallel_fragment_exec_instance_num", 1),
                 max_user_connections=config.get("max_user_connections", 1000)
             )
+            if not setup_success:
+                logger.error("=== Post-deployment设置失败 ===", extra={"to_stdout": True})
+                sys.exit(1)
 
         # 显示集群状态
         if args.status:
             fe_host_status = args.fe_host or config.get("fe_host") or "127.0.0.1"
-            fe_query_port_status = args.fe_query_port or config.get("fe_query_port") or 9030
+            fe_query_port_status = args.fe_query_port or config.get("fe_query_port") or deployed_fe_query_port or config.get("query_port") or 9030
             root_password = args.root_password or config.get("root_password")
 
             # 校验 fe_host_status
@@ -4825,11 +4851,14 @@ def main():
                 logger.error("FE主机地址必须是有效的IPv4地址或主机名", extra={"to_stdout": True})
                 sys.exit(1)
 
-            deployer.show_cluster_status(
+            status_success = deployer.show_cluster_status(
                 fe_host=fe_host_status,
                 fe_query_port=fe_query_port_status,
                 password=root_password
             )
+            if not status_success:
+                logger.error("=== 集群状态查询失败 ===", extra={"to_stdout": True})
+                sys.exit(1)
     else:
         logger.error("=== 部署失败 ===", extra={"to_stdout": True})
         sys.exit(1)
