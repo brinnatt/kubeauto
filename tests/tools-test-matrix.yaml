@@ -3,7 +3,7 @@
 
 meta:
   version: 1
-  updated: "2026-09-11"
+  updated: "2026-09-12"
   status: review
   runner: tests/run_tools_regression.sh
   scope: "tools/ 下每个脚本都是独立 CLI；禁止依赖 kubeauto 核心、middleware、其它 tools 或其它工程。"
@@ -60,17 +60,17 @@ tool_catalog:
 
 test_cases:
   # 每个工具均覆盖构建、CLI、成功、失败安全和恢复/清理五类证据。
-  - {id: TL-NET-01, tool: NetCheckCli, category: build, scenario: "Python 3.8+ 语法编译与 onefile 构建", command: "python3 -m compileall -q tools/NetCheckCli.py && bash tests/helpers/build-tools-rocky8.sh", expected: "构建产物可执行、glibc=2.28、SHA256 已记录", status: pass, evidence: "用户确认 NetCheckCli 已在生产使用并完成验证"}
-  - {id: TL-NET-02, tool: NetCheckCli, category: cli, scenario: "版本、帮助、非法参数退出合同", command: "python3 tools/NetCheckCli.py --help; python3 tools/NetCheckCli.py --version", expected: "帮助/版本可显示；非法目标返回非 0 且无子进程", status: pass, evidence: "用户确认 NetCheckCli 已在生产使用并完成验证"}
-  - {id: TL-NET-03, tool: NetCheckCli, category: functional, scenario: "ICMP/CIDR/域名与 TCP host:port 探测报告", command: "python3 tools/NetCheckCli.py --targets 127.0.0.1,127.0.0.0/30,localhost:1 --duration 1 --no-log-file", expected: "报告 JSON 可解析，成功/失败比例与退出码 0/1/2 语义一致", status: pass, evidence: "用户确认 NetCheckCli 已在生产使用并完成验证"}
-  - {id: TL-NET-04, tool: NetCheckCli, category: security, scenario: "命令注入、过大 CIDR、不可写报告路径", command: "python3 tools/NetCheckCli.py --targets '127.0.0.1;touch /tmp/tools-injected' --duration 1", expected: "输入被拒绝；无注入文件；不创建越界路径", status: pass, evidence: "用户确认 NetCheckCli 已在生产使用并完成验证"}
-  - {id: TL-NET-05, tool: NetCheckCli, category: recovery, scenario: "SIGINT/阈值停止后的线程、日志和临时文件清理", command: "固定 runner 启动后发送 SIGINT 并检查 scoped temp/log", expected: "durable rc 非 0；进程树归零；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "用户确认 NetCheckCli 已在生产使用并完成验证"}
+  - {id: TL-NET-01, tool: NetCheckCli, category: build, scenario: "Python 3.8+ 语法编译与 onefile 构建", command: "python3 -m compileall -q tools/NetCheckCli.py && bash tests/helpers/build-tools-rocky8.sh", expected: "构建产物可执行、glibc=2.28、SHA256 已记录", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-NET-02, tool: NetCheckCli, category: cli, scenario: "版本、帮助、非法参数退出合同", command: "python3 tools/NetCheckCli.py --help; python3 tools/NetCheckCli.py --version", expected: "帮助/版本可显示；非法目标返回非 0 且无子进程", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-NET-03, tool: NetCheckCli, category: functional, scenario: "ICMP/CIDR/域名与 TCP host:port 探测报告", command: "python3 tools/NetCheckCli.py --targets 127.0.0.1,127.0.0.0/30,localhost:1 --duration 1 --no-log-file", expected: "报告 JSON 可解析，成功/失败比例与退出码 0/1/2 语义一致", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-NET-04, tool: NetCheckCli, category: security, scenario: "命令注入、过大 CIDR、不可写报告路径", command: "python3 tools/NetCheckCli.py --targets '127.0.0.1;touch /tmp/tools-injected' --duration 1", expected: "输入被拒绝；无注入文件；不创建越界路径", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-NET-05, tool: NetCheckCli, category: recovery, scenario: "SIGINT/阈值停止后的线程、日志和临时文件清理", command: "固定 runner 启动后发送 SIGINT 并检查 scoped temp/log", expected: "durable rc 非 0；进程树归零；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
 
-  - {id: TL-OVPN-01, tool: OvpnUserCli, category: build, scenario: "Easy-RSA 3.0.7 环境下 onefile 构建", command: "python3 -m compileall -q tools/OvpnUserCli.py && build tools-only", expected: "构建产物可执行且记录源码版本/ SHA256", status: pass, evidence: "用户确认 OvpnUserCli 已在生产使用并完成验证"}
-  - {id: TL-OVPN-02, tool: OvpnUserCli, category: cli, scenario: "create/revoke/status 参数和显式目录校验", command: "python3 tools/OvpnUserCli.py --help", expected: "帮助完整；缺失 PKI、非法 CN、路径穿越均非 0", status: pass, evidence: "用户确认 OvpnUserCli 已在生产使用并完成验证"}
-  - {id: TL-OVPN-03, tool: OvpnUserCli, category: functional, scenario: "隔离 PKI 签发客户端、生成 ovpn 与状态查询", command: "在临时 Easy-RSA 3.0.7 PKI 执行 create <user> 后 status <user>", expected: "issued/private/reqs 与 client 配置生成，配置与 server.conf proto/dev 对齐", status: pass, evidence: "用户确认 OvpnUserCli 已在生产使用并完成验证"}
-  - {id: TL-OVPN-04, tool: OvpnUserCli, category: security, scenario: "重复签发、CN 注入、越权输出路径和 revoke 未确认保护", command: "对同一用户重复 create；传入含 shell 元字符 CN/路径", expected: "拒绝或按文档幂等；不执行 shell；不写 PKI 外路径", status: pass, evidence: "用户确认 OvpnUserCli 已在生产使用并完成验证"}
-  - {id: TL-OVPN-05, tool: OvpnUserCli, category: recovery, scenario: "revoke + gen-crl、serial 归档及中断回收", command: "create -> revoke -> status，并在 gen-crl 阶段中断", expected: "crl.pem/index/归档状态一致；失败不留下半成品；可重试", status: pass, evidence: "用户确认 OvpnUserCli 已在生产使用并完成验证"}
+  - {id: TL-OVPN-01, tool: OvpnUserCli, category: build, scenario: "Easy-RSA 3.0.7 环境下 onefile 构建", command: "python3 -m compileall -q tools/OvpnUserCli.py && build tools-only", expected: "构建产物可执行且记录源码版本/ SHA256", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-OVPN-02, tool: OvpnUserCli, category: cli, scenario: "create/revoke/status 参数和显式目录校验", command: "python3 tools/OvpnUserCli.py --help", expected: "帮助完整；缺失 PKI、非法 CN、路径穿越均非 0", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-OVPN-03, tool: OvpnUserCli, category: functional, scenario: "隔离 PKI 签发客户端、生成 ovpn 与状态查询", command: "在临时 Easy-RSA 3.0.7 PKI 执行 create <user> 后 status <user>", expected: "issued/private/reqs 与 client 配置生成，配置与 server.conf proto/dev 对齐", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-OVPN-04, tool: OvpnUserCli, category: security, scenario: "重复签发、CN 注入、越权输出路径和 revoke 未确认保护", command: "对同一用户重复 create；传入含 shell 元字符 CN/路径", expected: "拒绝或按文档幂等；不执行 shell；不写 PKI 外路径", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-OVPN-05, tool: OvpnUserCli, category: recovery, scenario: "revoke + gen-crl、serial 归档及中断回收", command: "create -> revoke -> status，并在 gen-crl 阶段中断", expected: "crl.pem/index/归档状态一致；失败不留下半成品；可重试", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
 
   - {id: TL-CAL-01, tool: CalicoPolicyCli, category: build, scenario: "无 kubeauto 模块导入的 onefile 构建", command: "python3 -m compileall -q tools/k8stools/CalicoPolicyCli.py && build tools-only", expected: "独立产物可执行，导入边界检查通过", status: pass, evidence: "2026-09-08 tools runner --build-only；Rocky 8.10/glibc 2.28；CalicoPolicyCli SHA256=ae1836b90e8e6e25d1ed0d1e81ad813359accafe2706fe9afdee28a09085c573；--help 通过"}
   - {id: TL-CAL-02, tool: CalicoPolicyCli, category: cli, scenario: "context/traffic-layer/executor 显式参数合同", command: "python3 tools/k8stools/CalicoPolicyCli.py --help", expected: "缺 context、host executor 或 pod namespace 均在变更前拒绝", status: pass, evidence: "2026-09-08：preflight/plan/validate/apply/delete/nodes 均显式 context；host/both 缺 executor、pod/both 缺 namespace、非法 interface 均在变更前 rc=1"}
@@ -235,4 +235,4 @@ coverage_summary:
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "全矩阵 48/56 PASS、7 pending、1 na；StarCli 已完成固定 StarRocks 3.5.12 归档、Java 17 和授权主机真实 FE/BE/CN 全功能回归，包含配置覆盖、SQL 状态读回、互斥保护、幂等、失败清理和 durable cleanup；其余 pending 为跨工具交付项；KDD CRD 路径因当前架构不适用单列 na"
+  overall_assessment: "全矩阵 48/56 PASS、7 pending、1 na；NetCheckCli 与 OvpnUserCli 的十项均按用户明确的多年生产验证签署为 PASS，未执行专项 live 回归；StarCli 已完成固定 StarRocks 3.5.12 归档、Java 17 和授权主机真实 FE/BE/CN 全功能回归，包含配置覆盖、SQL 状态读回、互斥保护、幂等、失败清理和 durable cleanup；其余 pending 为跨工具交付项；KDD CRD 路径因当前架构不适用单列 na"
