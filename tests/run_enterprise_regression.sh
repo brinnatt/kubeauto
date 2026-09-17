@@ -48,6 +48,16 @@ LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
 MODE="${1:-run}"
 mkdir -p "${ROOT}/logs"
 
+# Documentation navigation is a shared delivery contract. Run it before any
+# matrix validation or middleware/core branch so a missing entry cannot reach
+# a stateful lab gate.
+middleware_doc_python="$ROOT/.venv/bin/python"
+[[ -x "$middleware_doc_python" ]] || middleware_doc_python="$(command -v python3.12 || command -v python3)"
+(
+  cd "$ROOT"
+  "$middleware_doc_python" -m unittest tests.unit.test_middleware_documentation -v
+) | tee -a "$LOG"
+
 # The coverage summary is a delivery claim, so validate it from the YAML
 # details before any gate can run or emit a PASS marker. Independent middleware
 # branches own separate matrix schemas and are validated by their own gates.
