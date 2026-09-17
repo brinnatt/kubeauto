@@ -21,7 +21,12 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 
 | 中间件 | 文档入口 | 当前状态 |
 |---|---|---|
-| **Percona PXC** | [docs/middleware/perconaPXC/README.md](./docs/middleware/perconaPXC/README.md) | PXC 技术白皮书、用户/运维手册、开发手册与官方版本依据；当前为编码前方案 |
+| **Percona PXC** | [用户与运维手册](./docs/middleware/perconaPXC/operations-manual.md) · [技术白皮书](./docs/middleware/perconaPXC/technical-whitepaper.md) · [开发手册](./docs/middleware/perconaPXC/development-manual.md) | 已交付 |
+| **Apache Kafka on Kubernetes** | [用户与运维手册](./docs/middleware/kafka/operations-manual.md) · [技术白皮书](./docs/middleware/kafka/technical-whitepaper.md) · [开发手册](./docs/middleware/kafka/development-manual.md) | 已交付 |
+| **Prometheus 监控平台** | [用户与运维手册](./docs/middleware/prometheus/operations-manual.md) · [技术白皮书](./docs/middleware/prometheus/technical-whitepaper.md) · [开发手册](./docs/middleware/prometheus/development-manual.md) | 已交付 |
+| **EFK / Loki 日志平台** | [用户与运维手册](./docs/middleware/efk/operations-manual.md) · [技术白皮书](./docs/middleware/efk/technical-whitepaper.md) · [开发手册](./docs/middleware/efk/development-manual.md) | 已交付 |
+
+全部中间件的统一交付要求、状态定义和组件导航见[中间件文档入口](./docs/middleware/README.md)。组件“已交付”表示当前专项矩阵、供应链、幂等、清理和企业文档门禁均已通过；具体版本和适用边界以各组件手册及其专项矩阵为准。
 
 白皮书分章（架构评审请从这里进）：
 

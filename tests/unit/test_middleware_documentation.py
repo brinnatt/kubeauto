@@ -4,10 +4,27 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+MIDDLEWARE_ROOT = ROOT / "docs" / "middleware"
 PLAYBOOK = (ROOT / "docs" / "middleware" / "delivery-playbook.md").read_text(
     encoding="utf-8"
 )
-INDEX = (ROOT / "docs" / "middleware" / "README.md").read_text(encoding="utf-8")
+INDEX = (MIDDLEWARE_ROOT / "README.md").read_text(encoding="utf-8")
+ROOT_README = (ROOT / "README.md").read_text(encoding="utf-8")
+OPERATIONS = (ROOT / "docs" / "operations-manual.md").read_text(encoding="utf-8")
+WHITEPAPER = (ROOT / "docs" / "technical-whitepaper.md").read_text(encoding="utf-8")
+DEVELOPMENT = (ROOT / "docs" / "development-manual.md").read_text(encoding="utf-8")
+STACK_INDEX = (ROOT / "docs" / "technology-stack-index.md").read_text(encoding="utf-8")
+STANDARD_MANUALS = (
+    "operations-manual.md",
+    "technical-whitepaper.md",
+    "development-manual.md",
+)
+COMPONENTS = {
+    "perconaPXC": "Percona PXC",
+    "kafka": "Apache Kafka on Kubernetes",
+    "prometheus": "Prometheus 监控平台",
+    "efk": "EFK / Loki 日志平台",
+}
 
 
 class MiddlewareDocumentationTests(unittest.TestCase):
@@ -70,15 +87,26 @@ class MiddlewareDocumentationTests(unittest.TestCase):
         self.assertNotIn("Percona PXC 复盘", INDEX)
 
     def test_index_gives_each_component_the_same_document_set(self):
-        for component_path in ("perconaPXC", "kafka"):
-            for document in (
-                "operations-manual.md",
-                "technical-whitepaper.md",
-                "development-manual.md",
-            ):
+        component_directories = sorted(
+            path.name for path in MIDDLEWARE_ROOT.iterdir() if path.is_dir()
+        )
+        self.assertEqual(component_directories, sorted(COMPONENTS))
+        for component_path, component_name in COMPONENTS.items():
+            for document in STANDARD_MANUALS:
+                self.assertTrue((MIDDLEWARE_ROOT / component_path / document).is_file())
                 self.assertIn(f"{component_path}/{document}", INDEX)
-        self.assertIn("| Percona PXC | 已交付 |", INDEX)
-        self.assertIn("| Apache Kafka on Kubernetes | 已交付 |", INDEX)
+                self.assertIn(
+                    f"./docs/middleware/{component_path}/{document}", ROOT_README
+                )
+            self.assertIn(f"| {component_name} | 已交付 |", INDEX)
+            self.assertIn(f"**{component_name}**", ROOT_README)
+
+    def test_customer_navigation_has_one_complete_middleware_entry(self):
+        for document in (ROOT_README, OPERATIONS, WHITEPAPER, DEVELOPMENT, STACK_INDEX):
+            self.assertIn("middleware/README.md", document)
+        for component_path in COMPONENTS:
+            for document in STANDARD_MANUALS[:2]:
+                self.assertIn(f"middleware/{component_path}/{document}", STACK_INDEX)
 
     def test_index_links_resolve_and_playbook_fences_are_balanced(self):
         link_pattern = re.compile(r"\[[^]]+\]\(([^)]+)\)")
