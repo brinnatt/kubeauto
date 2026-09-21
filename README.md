@@ -28,6 +28,14 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 
 全部中间件的统一交付要求、状态定义和组件导航见[中间件文档入口](./docs/middleware/README.md)。组件“已交付”表示当前专项矩阵、供应链、幂等、清理和企业文档门禁均已通过；具体版本和适用边界以各组件手册及其专项矩阵为准。
 
+独立存储分路：
+
+| 存储技术栈 | 文档入口 | 当前范围 |
+|---|---|---|
+| **Ceph Tentacle** | [九模块文档](./docs/storage/README.md) | 官方 Architecture、Cephadm、RADOS、CephFS、RBD、RGW、MGR、Dashboard、Monitoring 的 OEM 提炼；尚未声明 kubeauto 安装/验收能力 |
+
+存储分路与中间件分路完全独立，Ceph 文档按官方九个模块组织，不使用中间件文档集合或专项矩阵状态。
+
 白皮书分章（架构评审请从这里进）：
 
 | 章 | 内容 |

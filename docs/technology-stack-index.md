@@ -42,6 +42,7 @@ flowchart LR
 | 入口 | ingress-nginx | NodePort + 节点标签；可接 ex-lb | [第 12 章](./whitepaper/12-addons-observability.md#126-ingress-nginx) | [Ingress](./operations-manual.md#13375ingress-nginx) | 架构 + SOP |
 | UI | Kubernetes Dashboard + Kong | 可选；高权限账号必须治理 | [第 12 章](./whitepaper/12-addons-observability.md#124-kubernetes-dashboard) | [Dashboard](./operations-manual.md#13373dashboard) | 架构 + SOP |
 | 本地存储 | OpenEBS Hostpath / LVM | 两条独立本地卷链路，不自带副本/RWX | [第 16 章](./whitepaper/16-storage-openebs.md) | [§1.3.4](./operations-manual.md#134openebs-生产运维) | 专章 + 完整 SOP |
+| 分布式存储 | Ceph Tentacle（RADOS、CephFS、RBD、RGW、MGR） | 独立存储分路；当前为官方九模块知识文档，尚未声明 kubeauto 安装/验收能力 | [Ceph 九模块文档](./storage/README.md) | [Ceph 九模块文档](./storage/README.md) | 文档提炼；实现待建 |
 | 简易本地存储 | Rancher local-path-provisioner | 目录型本地卷；不执行容量硬限制 | [第 17 章](./whitepaper/17-storage-middleware-addons.md#172-rancher-local-path-provisioner) | [存储供给](./operations-manual.md#13376存储供给) | 架构 + SOP |
 | 共享文件 | NFS subdir external provisioner | 依赖客户 NFS 服务；自身只是动态子目录控制器 | [第 17 章](./whitepaper/17-storage-middleware-addons.md#173-nfs-subdir-external-provisioner) | [存储供给](./operations-manual.md#13376存储供给) | 架构 + SOP |
 | 对象存储 | MinIO Operator/Tenant | 依赖已验证 SC；应用副本不等于底层卷副本 | [第 12 章](./whitepaper/12-addons-observability.md#128-minio) | [MinIO](./operations-manual.md#13377minio) | 架构 + 安装 |

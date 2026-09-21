@@ -9,6 +9,7 @@
 - [技术栈导航与文档覆盖矩阵](./technology-stack-index.md)（集中入口、官方来源与章节质量门槛）
 - 仓库入口：[README.md](../README.md)
 - [中间件企业文档](./middleware/README.md)：Percona PXC、Apache Kafka、Prometheus、EFK/Loki 的独立接入、专项测试与客户文档入口
+- [存储分路](./storage/README.md)：Ceph Tentacle 九个官方模块的独立知识文档入口；不继承 middleware 的文档或测试契约
 
 > 开发前建议至少读完白皮书第 6（PKI）、8（CRI）、13（制品）、14（kubecli）章，避免改配置时破坏信任链或版本契约。
 

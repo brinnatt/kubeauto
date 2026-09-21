@@ -17,6 +17,7 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 - [技术栈索引](./technology-stack-index.md)：集中查找组件原理、项目入口、运维章节与官方来源
 - 仓库入口：[README.md](../README.md)
 - [中间件企业文档](./middleware/README.md)：Percona PXC、Apache Kafka、Prometheus、EFK/Loki 的用户与运维手册、技术白皮书和开发手册
+- [存储分路](./storage/README.md)：Ceph Tentacle Architecture、Cephadm、RADOS、CephFS、RBD、RGW、MGR、Dashboard、Monitoring 文档；当前不代表已启用 Ceph 运行能力
 
 ## 1.1、前言
 

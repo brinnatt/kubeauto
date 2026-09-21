@@ -101,9 +101,10 @@ flowchart TB
 | 16 | **持久化存储与 OpenEBS** | [whitepaper/16-storage-openebs.md](./whitepaper/16-storage-openebs.md) |
 | 17 | **其他存储与中间件插件** | [whitepaper/17-storage-middleware-addons.md](./whitepaper/17-storage-middleware-addons.md) |
 | 中间件 | **Percona PXC、Apache Kafka、Prometheus、EFK/Loki** | [中间件企业文档](./middleware/README.md) |
+| 存储分路 | **Ceph Tentacle 九个官方模块** | [存储分路入口](./storage/README.md) |
 | 附录 A | 版本矩阵与官方文档索引 | [whitepaper/A-version-matrix.md](./whitepaper/A-version-matrix.md) |
 
-跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。独立中间件的用户与运维手册、技术白皮书、开发手册及锁定版本依据，统一从[中间件文档入口](./middleware/README.md)进入；当前包含 Percona PXC、Apache Kafka、Prometheus 和 EFK/Loki。
+跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。独立中间件文档从[中间件文档入口](./middleware/README.md)进入；Ceph 等存储技术从完全独立的[存储分路入口](./storage/README.md)进入。Ceph 当前仅提供官方 Tentacle 九模块知识文档，不宣称 kubeauto 已实现其安装、CSI 或现场验收。
 
 ---
 
