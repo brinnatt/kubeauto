@@ -1543,6 +1543,72 @@ ceph osd map <pool-name> <object-name> [namespace]
 
 输出必须结合 epoch、Up/Acting Set、复合 PG state 和时间线解释。单个 `HEALTH_OK` 不替代容量、故障域和恢复演练证据。
 
+### 25.5 从业务 SLO 反推保护、容量与恢复窗口
+
+架构评审不能从“有多少块盘”开始，而要从业务允许失去什么、允许中断多久开始。把以下变量写入设计基线：
+
+| 变量 | 含义 | 必须由谁确认 |
+|---|---|---|
+| `L` | 需要承诺的逻辑数据量，含保留期内增长 | 业务与容量负责人 |
+| `R` | raw protection factor；复制池为 `size`，EC 池为 `(K+M)/K` | 存储架构师 |
+| `C` | 合格 OSD 的总 raw capacity，不含系统盘和不可用设备 | 硬件与存储负责人 |
+| `F` | 最大计划故障域的 raw capacity，例如最大一台 host 或一个 rack | 机房与存储负责人 |
+| `U` | 允许的最大稳态利用率，必须低于相关 nearfull/backfillfull/full 门槛 | 运维负责人 |
+| `B` | 故障后可供 recovery 使用的端到端有效带宽 | 网络、硬件与业务负责人 |
+
+忽略 BlueStore、对象对齐和 pool 元数据等额外开销时，最基础的 raw 需求是 `L × R`。真正的恢复约束更严格：
+
+```text
+L × R < U × (C - F)
+T_recovery >= bytes_to_rebuild / min(network_available,
+                                     source_read,
+                                     target_write,
+                                     encode_or_checksum_capacity)
+```
+
+第一式要求最大故障域离线后，目标保护级别仍能在剩余设备上重建且不撞水位；第二式只是理论下界，业务 I/O、CRUSH 不均衡、慢盘、backfill reservation 和 recovery 限流都会延长时间。生产设计应使用实测 p95/p99 吞吐和最大 failure domain，而不是链路标称速率或平均主机容量。
+
+```mermaid
+flowchart LR
+  SLO[RPO / RTO / 延迟 SLO] --> P[选择 replica 或 K+M]
+  P --> FD[定义最大 failure domain]
+  FD --> CAP[验证故障后容量不越 backfillfull]
+  CAP --> BW[测业务并发下 recovery 带宽]
+  BW --> TIME[得到实际恢复窗口]
+  TIME --> RISK{窗口内重叠故障风险可接受?}
+  RISK -->|否| REDESIGN[增加故障域/带宽/余量或提高保护]
+  REDESIGN --> P
+  RISK -->|是| DRILL[故障演练并冻结基线]
+```
+
+若公式只在“各 OSD 完全均匀”时成立，设计仍不合格。还要分别对每条 CRUSH rule、device class、pool 和最大 bucket 检查 `ceph osd df tree` 的真实倾斜；某个 SSD root 已到 backfillfull 时，HDD root 的空闲容量不能救它。
+
+### 25.6 故障影响矩阵：先判断哪个平面失去权威
+
+| 故障 | 直接丢失的能力 | 仍可能工作的路径 | 不能据此作出的结论 | 恢复验收 |
+|---|---|---|---|---|
+| MON 失去多数派 | 新 map、auth ticket、配置和成员变更不能形成权威提交 | 持有有效 map/ticket 的既有会话可能短时继续访问未变化数据 | “已有 I/O 还在跑”不等于控制面可用 | quorum 恢复；epoch 前进；新客户端能认证并完成 I/O |
+| Active MGR 失败 | 当前管理模块、指标和编排入口中断直到 standby 接管 | RADOS 数据路径与 MON quorum 不应因此停止 | `ceph -s` 管理体验异常不等于对象数据已丢失 | standby 成为 active；模块恢复；编排状态与 daemon 实际一致 |
+| Primary OSD/host 失败 | 受影响 PG 重新 peering，副本/分片数下降 | 满足 `min_size` 且找到权威历史的 PG 可 degraded 服务 | OSD 重新 `up` 不等于 PG 已 clean | Up/Acting 收敛；无 unfound；恢复到目标保护；业务校验通过 |
+| Active MDS 失败 | 对应 CephFS rank 的元数据服务短暂切换 | RBD、RGW 和 RADOS 不依赖 MDS；CephFS data objects 仍在 RADOS | 数据池可读不等于 namespace 操作可用 | standby 接管 rank；journal replay 完成；目录、锁、写入语义通过 |
+| RGW 实例失败 | 该 HTTP endpoint/session 中断 | 其他 RGW 可继续使用同一 RADOS 后端 | RADOS 健康不等于 S3/Swift endpoint 健康 | VIP/LB 摘除失败实例；认证、PUT/GET/DELETE 与 bucket index 正常 |
+| Public network 分区 | client 到 MON/OSD/MDS/RGW 的路径受影响 | cluster network 可能仍承载 OSD peer 流量 | 后端 heartbeat 正常不等于客户端可访问 | 所有授权 client subnet 重连并读写；无地址发布或 MTU 错误 |
+| Cluster network 分区 | OSD heartbeat、replication、recovery 路径受影响 | public 侧 endpoint 可能仍监听 | endpoint 可连不等于写入能达到副本确认条件 | OSD peer 双向连通；无误判 down；PG 回到目标保护 |
+
+这张表的用途是阻止跨层误判：每次故障先找权威状态所在平面，再检查依赖它的客户路径，最后做上层业务验证。不能用 daemon `running`、端口监听或单个 `HEALTH_OK` 替代端到端验收。
+
+### 25.7 架构变更的停止、回退与不可逆边界
+
+| 变更阶段 | 可以做什么 | 不能误称为什么 |
+|---|---|---|
+| 候选 map/spec 尚未应用 | 丢弃候选文件，重新模拟映射、容量和 failure-domain failure | 不需要把未生效方案称为“回滚” |
+| 新 map 已提交、PG 正在 remap/recovery | 停止下一批；保存当前 epoch、before/candidate map、PG 状态和负载；先恢复容量、网络或故障设备 | 重新注入旧 CRUSH 规则不会撤销已经发生的 I/O，还可能触发反向迁移 |
+| 新布局已 `active+clean` | 若业务要求恢复旧布局，把它当成一次新的完整变更，再做模拟、容量门禁和迁移观察 | “改回配置文本”不是无成本回退 |
+| 已降低副本、执行 `osd lost` 或 `mark_unfound_lost` | 只能按已记录的数据裁决和备份恢复处理 | 这些操作不能由 map 回退找回已放弃的数据 |
+| 已写入新的 striping/layout 或 EC profile | 通过新 image/pool/filesystem layout 和受控数据迁移切换 | 既有对象的 striping、EC profile 不能靠原地改参数重写 |
+
+上线 CRUSH、PG、保护级别或网络变更时，统一停止条件是：不可用 PG 增加、unfound 出现、目标 OSD 达到 backfillfull、quorum 或 client feature 不满足、业务错误率/延迟越过批准阈值。停止意味着不再提交下一批变更并保留现场，不等于立即反向修改 map；在权威历史尚未确认时来回切换布局，只会增加需要 peering 和迁移的状态。
+
 ## 26. 最终心智模型
 
 Ceph 的扩展性来自“计算位置而非查询位置”：客户端和 OSD 共享 Cluster Map，用 object hash、PG 与 CRUSH 得到目标，客户端直连 primary。MON 只对少量集群状态形成强一致，不承载海量数据路径。

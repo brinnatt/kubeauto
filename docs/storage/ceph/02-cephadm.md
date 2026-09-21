@@ -233,6 +233,18 @@ flowchart TD
 
 只同步 Ceph 主镜像会让 bootstrap 表面成功、监控或入口在 reconcile 时失败。内部 registry 应使用受信 CA；insecure registry 是需要审批和退出计划的例外，不是默认设计。
 
+`--registry-json` 不只是让 bootstrap 主机完成一次 pull：cephadm 会登录该 registry，并把登录信息保存到集群配置数据库，后续加入的受管主机也可使用它。凭据因此属于集群级 secret，JSON 文件必须 `0600`、置于受控临时目录并在导入后销毁；配置数据库和 MON 备份也必须按含密材料保护。
+
+Registry 密码、token 或 CA 轮换不能等到升级窗口才发现。官方运行期入口是：
+
+```bash
+ceph cephadm registry-login <registry> <username> <password>
+```
+
+该命令会让 orchestrator 在受管主机登录；主机一旦被判断为 online，cephadm 还可能立即补建此前缺失的 `crash`、`node-exporter` 或其他 daemon。因此轮换前先保证 service spec、host 状态和目标 image 都正确，轮换时观察 `orch ps --refresh` 与 events，不能把它当成无副作用的“只写密码”命令。密码作为参数可能进入 shell history、审计或进程观测面，应从受控运维入口注入、禁止命令回显并在操作后按企业 secret 流程清理；需要只登录单台主机时，可在该主机使用受权限保护的 JSON 执行 `cephadm registry-login --registry-json <file> --fsid <fsid>`，但它不能冒充全体受管主机已完成轮换。
+
+轮换验收必须同时证明：所有目标主机 runtime 登录有效；Ceph 主 image 和辅助 image 均能按固定 digest 拉取；新加或重装主机能完成 reconcile；旧凭据已撤销；没有 `UPGRADE_FAILED_PULL` 或 daemon image 漂移。任一主机认证失败就停止升级、扩容和 redeploy，不通过改用浮动 tag 或临时公共镜像绕过。
+
 ### 5.3 SSH 三种模式
 
 | 模式 | 主机信任 | Bootstrap 输入 | 轮换 |
@@ -874,7 +886,7 @@ ceph orch device replace host02 /dev/disk/by-id/<verified-id> --clear
 ceph cephadm osd activate host02
 ```
 
-它扫描并部署缺失 OSD daemon。Registry 登录也可能触发该主机其他缺失 daemon 的 reconcile；先确保 host 不在 offline/maintenance。若为测试取出 cephadm private key，验证后立即删除且不写日志。
+它扫描并部署缺失 OSD daemon。私有 registry 场景先执行集群级 `ceph cephadm registry-login`，并确认该主机实际能拉取固定 image；登录动作也可能触发该主机其他缺失 daemon 的 reconcile，因此先确保 service spec 正确，并明确是否要让 host 退出 offline/maintenance。若为测试取出 cephadm private key，验证后立即删除且不写日志。
 
 ## 15. MON：quorum、网络与 CRUSH location
 
@@ -2717,6 +2729,67 @@ flowchart TD
 5. 首个错误停批，保留 events/logs，不清洗现场。
 6. 全部完成后执行 release-specific post actions。
 7. 恢复 autoscale 原值，核对辅助服务 image，完成故障切换验证。
+
+### 34.5 Service Spec 变更与可证明回退
+
+端口、placement、network、image、TLS、custom config 和 daemon 参数都走同一主线。以下“旧声明”只能恢复编排意图，不能自动撤销期间已经发生的数据迁移、客户端请求或外部系统变更：
+
+```bash
+ceph orch ls --service_name <service> --export > <service>.before.yaml
+ceph orch ps --service_name <service> --refresh --format yaml \
+  > <service>.daemons.before.yaml
+ceph orch apply -i <service>.candidate.yaml --dry-run
+ceph orch apply -i <service>.candidate.yaml
+ceph orch ls --service_name <service> --refresh --format yaml
+ceph orch ps --service_name <service> --refresh --format yaml
+```
+
+```mermaid
+flowchart TD
+  B[导出旧 spec 与 daemon/image 事实] --> D[candidate dry-run]
+  D --> P{placement/network/端口/证书可满足?}
+  P -->|否| X[不 apply，修正候选]
+  P -->|是| A[apply]
+  A --> R[观察 service/daemon events 与 reconcile]
+  R --> H{daemon、Ceph health、业务探针均合格?}
+  H -->|是| S[导出收敛后的 spec 并签字]
+  H -->|否| T[停止下一批并保存 first failure]
+  T --> C{旧 spec 仍与当前数据/外部依赖兼容?}
+  C -->|是| O[重应用旧 spec，必要时 redeploy]
+  C -->|否| F[按服务恢复方案修复前进或恢复数据]
+```
+
+停止条件包括：placement 意外删除实例、端口冲突、证书/SAN 不匹配、image digest 不一致、PG/业务错误扩大、入口 failover 失败。回退后必须再次等待 reconcile，并用真实协议探针验证；仅看到旧 YAML 已接受不算恢复。`custom_configs`、mount、image 或启动参数变化通常需要 reconfig/redeploy，不能假设 apply 已更新正在运行的容器。
+
+不同服务还要处理自身不可逆副作用：OSD/CRUSH 变化会迁移数据；RGW multisite period 和 zone 不是由 RGW daemon spec 自动回退；删除 Prometheus `--force` 已丢失历史指标；客户端在入口切换期间的成功写入不能由旧 ingress spec 撤销；MDS、iSCSI、NFS、SMB 的客户端状态需要各自 drain/reconnect。变更单必须把“恢复声明”和“恢复业务状态”分开验收。
+
+### 34.6 控制面恢复资料包与恢复演练
+
+Service Spec 不是 Ceph 备份。客户必须按恢复对象分层保存材料：
+
+| 恢复对象 | 必须保存的材料 | 明确不包含什么 |
+|---|---|---|
+| 编排意图 | `ceph orch ls --export`、host inventory/labels/location、tuned profiles、image digest、版本 | 不包含 RADOS 数据，也不保证 MON/auth/config-key 可恢复 |
+| 集群配置与放置 | `ceph config dump`、OSD/CRUSH map、pool 与 filesystem/RGW/NFS/SMB/iSCSI 配置清单 | 文本导出不能代替一致 MON store |
+| 身份与 secret | CephX entity/caps/keyring、cephadm SSH 身份、registry 凭据、cert/key 与外部 IDP/NMS secret | 普通工单和日志不得保存明文副本 |
+| MON 控制状态 | 按官方一致性方法取得并验证的 MON store 备份，记录 FSID、epoch、release、owner/ACL/xattr | 运行中直接复制 RocksDB 目录不构成一致备份 |
+| 服务后端状态 | `.nfs`、`.smb`、iSCSI config pool、RGW realm/period/zone、业务 pool 和应用备份 | 重建 daemon 容器不会重建这些数据或外部 DNS/LB/IDP |
+| 外部依赖 | registry、CA、DNS、NTP、VIP、firewall、OIDC、NMS、客户端配置与恢复联系人 | cephadm 不拥有这些系统的可用性 |
+
+资料包生成前记录 `ceph -s`、FSID、quorum、版本、当前 epoch 和时间；生成后按文件分类做 SHA256、加密、访问控制、异地副本和恢复负责人登记。`ceph config-key dump`、auth/keyring、registry 和 cert key 含直接接管集群的秘密，只能进入加密的受限 secret 包，不能与可广泛分发的 spec/config 清单混放。
+
+恢复演练必须在隔离环境证明以下顺序，而不是只证明归档可解压：确认 FSID 与目标资产；恢复 MON quorum 和可用 MGR；保持 cephadm paused；核对 maps、auth、config-key 与 service specs；恢复主机 SSH/registry；分批恢复编排；最后验证 RADOS 与每种对外协议的真实 I/O。任何 FSID、MON store 时代、设备身份或 secret 来源无法证明时立即停止，不能把另一个集群的“更新文件”混入事故集群。
+
+```mermaid
+flowchart LR
+  PKG[加密恢复资料包] --> ID[FSID/epoch/资产核验]
+  ID --> MON[恢复 MON quorum]
+  MON --> MGR[恢复可用 MGR，编排保持 paused]
+  MGR --> MAP[核对 maps/auth/config-key/spec]
+  MAP --> HOST[恢复 SSH/registry/hosts]
+  HOST --> REC[分批 resume/reconcile]
+  REC --> IO[RADOS 与各协议 I/O 验收]
+```
 
 ## 35. 交付验收矩阵
 

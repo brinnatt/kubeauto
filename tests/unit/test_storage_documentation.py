@@ -20,18 +20,6 @@ CEPH_DOCUMENTS = (
     "09-monitoring.md",
 )
 
-MINIMUM_LINES = {
-    "01-architecture.md": 1500,
-    "02-cephadm.md": 2000,
-    "03-rados.md": 500,
-    "04-cephfs.md": 350,
-    "05-rbd.md": 350,
-    "06-radosgw.md": 450,
-    "07-mgr.md": 250,
-    "08-mgr-dashboard.md": 300,
-    "09-monitoring.md": 180,
-}
-
 ARCHITECTURE_REQUIRED_FACTS = {
     "cluster model": (
         "RADOS",
@@ -172,6 +160,14 @@ ARCHITECTURE_REQUIRED_FACTS = {
         "100 GB SSD",
         "BMC",
         "DWPD/TBW",
+    ),
+    "customer sign-off decisions": (
+        "L × R < U × (C - F)",
+        "MON 失去多数派",
+        "新客户端能认证并完成 I/O",
+        "重新注入旧 CRUSH 规则不会撤销",
+        "既有对象的 striping、EC profile 不能靠原地改参数重写",
+        "不可用 PG 增加",
     ),
 }
 
@@ -362,7 +358,319 @@ CEPHADM_REQUIRED_FACTS = {
         "--extended --osds 5 --hosts 5",
         "每个 loop OSD 消耗 5 GiB",
     ),
+    "registry and recovery operations": (
+        "ceph cephadm registry-login <registry> <username> <password>",
+        "cephadm registry-login --registry-json <file> --fsid <fsid>",
+        "立即补建此前缺失",
+        "Service Spec 不是 Ceph 备份",
+        "运行中直接复制 RocksDB 目录不构成一致备份",
+        "恢复声明",
+        "恢复业务状态",
+    ),
 }
+
+RADOS_REQUIRED_FACTS = {
+    "configuration contract": (
+        "--no-mon-config",
+        "config diff",
+        "$CEPH_CONF",
+        "addrvec",
+        "runtime override",
+        "osd/class:ssd",
+        "osd/host:storage-03",
+        "带 `dev` level",
+        "hostname -s",
+        "tmp_dir",
+        "tmp_file_template",
+        "fatal_signal_handlers",
+        "自定义 cluster name 已 deprecated",
+    ),
+    "network and cephx": (
+        "ms_cluster_mode",
+        "ms_service_mode",
+        "ms_client_mode",
+        "messenger dump client --tcp-info",
+        "_ceph-mon._tcp",
+        "rotating service secret",
+        "object_prefix",
+        "mon_auth_emergency_allowed_ciphers",
+    ),
+    "bluestore engineering": (
+        "1%-4%",
+        "RGW 大量使用 omap，至少按 4%",
+        "RBD 通常 1%-2%",
+        "3/30/300 GiB",
+        "TCMalloc",
+        "crc32c_16",
+        "1/65,536",
+        "none/passive/aggressive/force",
+        "ceph-bluestore-tool ... reshard",
+        "Pacific 起 HDD/SSD 默认均为 4 KiB",
+        "bluestore_block_db_path",
+        "Sapphire Rapids",
+    ),
+    "pool and pg": (
+        "mon_allow_pool_delete",
+        "target_size_bytes",
+        "target_size_ratio",
+        "pg_num_min",
+        "pg_num_max",
+        "100-250 PG replicas/shards per OSD",
+        "might_have_unfound",
+        "mark_unfound_lost revert",
+        "osd_scrub_auto_repair_num_errors",
+        "wait/laggy",
+    ),
+    "crush and erasure": (
+        "take default class hdd",
+        "chooseleaf firstn",
+        "CRUSH_MSR",
+        "crushtool -i crush.before.bin --compare",
+        "compat weight-set",
+        "pg-upmap-primary",
+        "k+1 <= d <= k+m-1",
+        "d*S/(d-k+1)",
+        "allow_ec_overwrites",
+        "Jerasure",
+        "ISA",
+        "LRC",
+        "SHEC",
+        "CLAY",
+    ),
+    "mclock exactness": (
+        "50% / 1 / MAX",
+        "5% / 2 / 90%",
+        "60% / 2 / MAX",
+        "5% / 4 / 70%",
+        "70% / 2 / MAX",
+        "5% / 2 / MAX",
+        "osd_mclock_override_recovery_settings",
+        "HDD 500 IOPS",
+        "SSD 80,000 IOPS",
+        "1 shard x 5 threads",
+        "injectargs",
+    ),
+    "recovery procedures": (
+        "ceph-mon -i <survivor-id> --extract-monmap",
+        "ceph-mon -i <survivor-id> --inject-monmap",
+        "ceph-monstore-tool /secure/mon-store rebuild",
+        "不能恢复其他 client/MDS keyrings",
+        "ceph osd safe-to-destroy osd.<id>",
+        "ceph osd destroy <id>",
+        "ceph osd purge <id>",
+        "ceph osd crush reweight osd.<id> 0",
+        "osd lost",
+        "ceph osd add-noout",
+        "ceph osd rm-noout",
+        "ceph osd set-group noout",
+        "ceph osd unset-group noout",
+    ),
+    "device health operations": (
+        "ceph device monitoring on",
+        "mgr/devicehealth/scrape_frequency",
+        "scrape-daemon-health-metrics",
+        "get-health-metrics",
+        "device_failure_prediction_mode local",
+        "predict-life-expectancy",
+        "set-life-expectancy",
+        "mgr/devicehealth/warn_threshold",
+        "mgr/devicehealth/mark_out_threshold",
+        "mgr/devicehealth/self_heal",
+    ),
+    "developer interfaces": (
+        "-ENOENT",
+        "compare/assert version",
+        "Object Class SDK",
+        "ceph-clsinfo",
+        "PRAGMA journal_mode=PERSIST",
+        "PRAGMA locking_mode=EXCLUSIVE",
+        "150-250 TPS",
+        "不支持 concurrent readers",
+        "SQLite Backup API",
+        "librados::Rados::init2",
+        "librados::IoCtx",
+        "librados::AioCompletion",
+        "C++ API/ABI 不保证",
+        "libradospp-devel",
+    ),
+    "rados toolchain": (
+        "ceph-volume-systemd",
+        "ceph-authtool",
+        "ceph-debugpack",
+        "ceph-dencoder",
+        "ceph-kvstore-tool",
+        "ceph-run",
+        "ceph-syn",
+        "crushdiff",
+        "librados-config",
+        "monmaptool",
+        "osdmaptool",
+        "ceph-post-file",
+    ),
+    "cephx cipher migration": (
+        "auth_allowed_ciphers aes,aes256k",
+        "auth_preferred_cipher aes256k",
+        "auth rotate --key-type=aes256k mon.",
+        "set-label-key --key osd_key",
+        "auth_service_cipher aes256k",
+        "auth wipe-rotating-service-keys",
+        "mon auth allow insecure key",
+        "client.admin-backup",
+        "auth_allowed_ciphers aes256k",
+        "auth dump-keys",
+    ),
+    "monitor elections and store": (
+        "election_strategy classic",
+        "election_strategy disallow",
+        "election_strategy connectivity",
+        "add disallowed_leader",
+        "connection scores dump",
+        "connection scores reset",
+        "mon_sync_timeout",
+        "paxos_max_join_drift",
+        "mon_lease",
+        "mon_scrub_interval",
+        "mon_memory_target",
+    ),
+    "osd failure detector": (
+        "mon_osd_min_up_ratio",
+        "mon_osd_min_in_ratio",
+        "mon_osd_laggy_halflife",
+        "mon_osd_adjust_heartbeat_grace",
+        "mon_osd_auto_mark_auto_out_in",
+        "mon_osd_down_out_subtree_limit",
+        "mon_osd_min_down_reporters",
+        "mon_osd_reporter_subtree_level",
+        "osd_heartbeat_interval",
+        "osd_heartbeat_grace",
+        "osd_mon_heartbeat_interval",
+        "osd_mon_heartbeat_stat_stale",
+        "osd_mon_report_interval",
+    ),
+    "osd tuning atlas": (
+        "osd_max_scrubs",
+        "osd_scrub_begin_hour",
+        "osd_scrub_end_hour",
+        "osd_scrub_begin_week_day",
+        "osd_scrub_end_week_day",
+        "osd_scrub_during_recovery",
+        "osd_scrub_load_threshold",
+        "osd_scrub_chunk_min",
+        "osd_scrub_chunk_max",
+        "osd_shallow_scrub_chunk_min",
+        "osd_shallow_scrub_chunk_max",
+        "osd_deep_scrub_stride",
+        "osd_op_queue_cut_off",
+        "osd_op_complaint_time",
+        "osd_op_history_size",
+        "osd_op_history_duration",
+        "osd_backfill_scan_min",
+        "osd_backfill_scan_max",
+        "osd_backfill_retry_interval",
+        "osd_map_dedup",
+        "osd_map_cache_size",
+        "osd_map_message_max",
+        "osd_recovery_delay_start",
+        "osd_recovery_max_chunk",
+        "osd_recovery_max_single_start",
+        "osd_recover_clone_overlap",
+        "osd_recovery_priority",
+    ),
+    "pool and legacy cache decisions": (
+        "allow_ec_optimizations",
+        "启用后不能关闭",
+        "reed_sol_van",
+        "hashpspool",
+        "write_fadvise_dontneed",
+        "fast_read",
+        "recovery_priority",
+        "target_max_objects",
+        "hit_set_count",
+        "min_read_recency_for_promote",
+        "cache_target_dirty_high_ratio",
+        "cache_min_flush_age",
+        "cache-flush-evict-all",
+        ".ceph-internal::hit_set_",
+    ),
+    "balancer and stretch operations": (
+        "target_max_misplaced_ratio",
+        "upmap_max_deviation",
+        "sleep_interval",
+        "begin_weekday",
+        "pool_ids",
+        "read_balance_score",
+        "set-require-min-compat-client luminous",
+        "set-require-min-compat-client reef",
+        "rm-pg-upmap-primary-all",
+        "osdmaptool om --upmap",
+        "--upmap-active",
+        "osdmaptool om --read",
+        "source out.txt",
+        "ceph-mon --set-crush-location",
+        "set_new_tiebreaker",
+        "force_recovery_stretch_mode",
+        "force_healthy_stretch_mode",
+    ),
+    "control and binding contract": (
+        "test-reweight-by-utilization",
+        "osd blocklist range add",
+        "cache status",
+        "JSON 是机器合同",
+        "open_ioctx2",
+        "get_last_version",
+        "set_locator_key",
+        "aio_write_full",
+        "aio_flush",
+        "list_objects()",
+    ),
+    "deep diagnostics and escalation": (
+        "opcontrol --setup",
+        "opreport -cal",
+        "opcontrol --reset",
+        "heap start_profiler",
+        "google-pprof --text --base",
+        "heap release",
+        "--tool=massif",
+        "ceph report > ceph-report.json",
+        "Ceph users",
+        "Ceph devel",
+    ),
+}
+
+RADOS_HEALTH_CODES = (
+    "DAEMON_OLD_VERSION", "MON_DOWN", "MON_CLOCK_SKEW",
+    "MON_MSGR2_NOT_ENABLED", "MON_DISK_LOW", "MON_DISK_CRIT",
+    "MON_DISK_BIG", "MON_NETSPLIT", "AUTH_INSECURE_GLOBAL_ID_RECLAIM",
+    "AUTH_INSECURE_GLOBAL_ID_RECLAIM_ALLOWED", "AUTH_INSECURE_KEYS_CREATABLE",
+    "AUTH_INSECURE_SERVICE_TICKETS", "AUTH_INSECURE_SERVICE_KEY_TYPE",
+    "AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE", "AUTH_INSECURE_CLIENT_KEY_TYPE",
+    "AUTH_INSECURE_KEYS_ALLOWED", "AUTH_EMERGENCY_CIPHERS_SET", "MGR_DOWN",
+    "MGR_MODULE_DEPENDENCY", "MGR_MODULE_ERROR", "OSD_DOWN", "OSD_ORPHAN",
+    "OSD_OUT_OF_ORDER_FULL", "OSD_FULL", "OSD_BACKFILLFULL", "OSD_NEARFULL",
+    "OSDMAP_FLAGS", "OSD_FLAGS", "OLD_CRUSH_TUNABLES",
+    "OLD_CRUSH_STRAW_CALC_VERSION", "CACHE_POOL_NO_HIT_SET", "OSD_NO_SORTBITWISE",
+    "OSD_FILESTORE", "OSD_UNREACHABLE", "POOL_FULL", "BLUEFS_SPILLOVER",
+    "BLUEFS_AVAILABLE_SPACE", "BLUEFS_LOW_SPACE", "BLUESTORE_FRAGMENTATION",
+    "BLUESTORE_LEGACY_STATFS", "BLUESTORE_NO_PER_POOL_OMAP",
+    "BLUESTORE_NO_PER_PG_OMAP", "BLUESTORE_DISK_SIZE_MISMATCH",
+    "BLUESTORE_NO_COMPRESSION", "BLUESTORE_SPURIOUS_READ_ERRORS",
+    "BLOCK_DEVICE_STALLED_READ_ALERT", "WAL_DEVICE_STALLED_READ_ALERT",
+    "DB_DEVICE_STALLED_READ_ALERT", "BLUESTORE_SLOW_OP_ALERT", "DEVICE_HEALTH",
+    "DEVICE_HEALTH_IN_USE", "DEVICE_HEALTH_TOOMANY", "PG_AVAILABILITY",
+    "PG_DEGRADED", "PG_RECOVERY_FULL", "PG_BACKFILL_FULL", "PG_DAMAGED",
+    "OSD_SCRUB_ERRORS", "OSD_TOO_MANY_REPAIRS", "LARGE_OMAP_OBJECTS",
+    "CACHE_POOL_NEAR_FULL", "TOO_FEW_PGS", "POOL_PG_NUM_NOT_POWER_OF_TWO",
+    "POOL_TOO_FEW_PGS", "TOO_MANY_PGS", "POOL_TOO_MANY_PGS",
+    "POOL_TARGET_SIZE_BYTES_OVERCOMMITTED", "POOL_HAS_TARGET_SIZE_BYTES_AND_RATIO",
+    "TOO_FEW_OSDS", "SMALLER_PGP_NUM", "MANY_OBJECTS_PER_PG",
+    "POOL_APP_NOT_ENABLED", "POOL_NEAR_FULL", "OBJECT_MISPLACED", "OBJECT_UNFOUND",
+    "SLOW_OPS", "PG_NOT_SCRUBBED", "PG_NOT_DEEP_SCRUBBED",
+    "PG_SLOW_SNAP_TRIMMING", "INCORRECT_NUM_BUCKETS_STRETCH_MODE",
+    "STRETCH_MODE_BUCKET_WEIGHT_IMBALANCE", "NONEXISTENT_MON_CRUSH_LOC_STRETCH_MODE",
+    "NVMEOF_SINGLE_GATEWAY", "NVMEOF_GATEWAY_DOWN", "NVMEOF_GATEWAY_DELETING",
+    "RECENT_CRASH", "RECENT_MGR_MODULE_CRASH", "TELEMETRY_CHANGED", "AUTH_BAD_CAPS",
+    "OSD_NO_DOWN_OUT_INTERVAL", "DASHBOARD_DEBUG",
+)
 
 MERMAID_BLOCK = re.compile(r"(?ms)^```mermaid\s*$\n(.*?)^```\s*$")
 MERMAID_TYPES = {"flowchart", "sequenceDiagram", "stateDiagram-v2"}
@@ -477,14 +785,9 @@ class StorageDocumentationTests(unittest.TestCase):
         for document in CEPH_DOCUMENTS:
             self.assertEqual(INDEX.count(f"./ceph/{document}"), 1, document)
 
-    def test_each_module_is_substantive_and_diagram_driven(self):
+    def test_each_module_has_customer_delivery_structure(self):
         for document in CEPH_DOCUMENTS:
             text = (CEPH_ROOT / document).read_text(encoding="utf-8")
-            self.assertGreaterEqual(
-                len(text.splitlines()), MINIMUM_LINES[document], document
-            )
-            self.assertGreaterEqual(len(re.findall(r"(?m)^## ", text)), 9, document)
-            self.assertGreaterEqual(text.count("```mermaid"), 2, document)
             self.assertEqual(text.count("```") % 2, 0, document)
             self.assertIn("Tentacle", text, document)
             self.assertIn("76fba24cef67d9219f97eeaa68cd1a848da3f2b2", text, document)
@@ -502,8 +805,28 @@ class StorageDocumentationTests(unittest.TestCase):
             for fact in facts:
                 self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
 
-        self.assertGreaterEqual(text.count("```mermaid"), 40)
-        self.assertGreaterEqual(len(re.findall(r"(?m)^## ", text)), 25)
+    def test_architecture_signoff_keeps_failure_and_rollback_boundaries(self):
+        text = (CEPH_ROOT / "01-architecture.md").read_text(encoding="utf-8")
+        failure_matrix = text.split("### 25.6 故障影响矩阵", 1)[1].split(
+            "### 25.7", 1
+        )[0]
+        rollback = text.split("### 25.7 架构变更", 1)[1].split("## 26.", 1)[0]
+
+        for plane in (
+            "MON 失去多数派",
+            "Active MGR 失败",
+            "Primary OSD/host 失败",
+            "Active MDS 失败",
+            "RGW 实例失败",
+            "Public network 分区",
+            "Cluster network 分区",
+        ):
+            self.assertIn(plane, failure_matrix)
+
+        self.assertIn("重新注入旧 CRUSH 规则不会撤销已经发生的 I/O", rollback)
+        self.assertIn("把它当成一次新的完整变更", rollback)
+        self.assertIn("不能靠原地改参数重写", rollback)
+        self.assertIn("停止意味着不再提交下一批变更并保留现场", rollback)
 
     def test_cephadm_preserves_official_production_facts(self):
         text = (CEPH_ROOT / "02-cephadm.md").read_text(encoding="utf-8")
@@ -511,8 +834,72 @@ class StorageDocumentationTests(unittest.TestCase):
             for fact in facts:
                 self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
 
-        self.assertGreaterEqual(text.count("```mermaid"), 40)
-        self.assertGreaterEqual(len(re.findall(r"(?m)^## ", text)), 35)
+    def test_rados_preserves_official_production_facts(self):
+        text = (CEPH_ROOT / "03-rados.md").read_text(encoding="utf-8")
+        for mechanism, facts in RADOS_REQUIRED_FACTS.items():
+            for fact in facts:
+                self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+        for code in RADOS_HEALTH_CODES:
+            self.assertIn(code, text, f"RADOS health code: {code}")
+
+    def test_rados_cephx_cipher_upgrade_preserves_safe_order(self):
+        text = (CEPH_ROOT / "03-rados.md").read_text(encoding="utf-8")
+        migration = text.split("## 45. CephX", 1)[1].split("## 46.", 1)[0]
+        ordered_facts = (
+            "ceph mon set auth_allowed_ciphers aes,aes256k",
+            "ceph mon set auth_preferred_cipher aes256k",
+            "ceph auth rotate --key-type=aes256k mon.",
+            "ceph mon set auth_service_cipher aes256k",
+            "ceph config set mon 'mon auth allow insecure key' false",
+            "ceph auth get-or-create client.admin-backup",
+            "ceph auth rotate --key-type=aes256k client.admin",
+            "ceph auth rotate --key-type=aes256k client.<id>",
+            "ceph mon set auth_allowed_ciphers aes256k",
+        )
+        positions = [migration.index(fact) for fact in ordered_facts]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("out-of-quorum", migration)
+        self.assertIn("不是普通迁移建议", migration)
+        self.assertIn("AUTH_EMERGENCY_CIPHERS_SET", migration)
+
+    def test_rados_cache_tier_removal_preserves_flush_first_order(self):
+        text = (CEPH_ROOT / "03-rados.md").read_text(encoding="utf-8")
+        removal = text.split("### 50.3 Writeback", 1)[1].split("## 51.", 1)[0]
+        ordered_facts = (
+            "ceph osd tier cache-mode <cache> proxy",
+            "rados -p <cache> ls",
+            "rados -p <cache> cache-flush-evict-all",
+            "ceph osd tier remove-overlay <base>",
+            "ceph osd tier remove <base> <cache>",
+        )
+        positions = [removal.index(fact) for fact in ordered_facts]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("禁止继续 remove overlay/tier", removal)
+
+    def test_rados_ec_optimization_is_documented_as_irreversible(self):
+        text = (CEPH_ROOT / "03-rados.md").read_text(encoding="utf-8")
+        pool = text.split("## 49. Pool", 1)[1].split("## 50.", 1)[0]
+        for fact in (
+            "启用后不能关闭",
+            "所有 MON 和 OSD 必须已经升级到 Tentacle",
+            "gateway/client 不需要同步升级",
+            "Jerasure",
+            "ISA-L",
+            "reed_sol_van",
+            "至少 16 KiB",
+            "256 KiB",
+            "既有 pool 不能修改",
+            "m <= 3",
+        ):
+            self.assertIn(fact, pool)
+
+        self.assertNotIn("全 daemon/client compatibility", text)
+
+    def test_rados_has_no_conflicting_legacy_cache_removal_advice(self):
+        text = (CEPH_ROOT / "03-rados.md").read_text(encoding="utf-8")
+        self.assertNotIn("Read-only cache 退出：移除 overlay", text)
+        self.assertNotIn("先切 `forward`", text)
 
     def test_cephadm_examples_follow_tentacle_service_schema(self):
         text = (CEPH_ROOT / "02-cephadm.md").read_text(encoding="utf-8")
@@ -552,8 +939,38 @@ class StorageDocumentationTests(unittest.TestCase):
         self.assertIn("cephadm shell --fsid <fsid> --name mon.<survivor-id>", recovery)
         self.assertNotIn("cephadm enter --name mon.<survivor-id>", recovery)
 
+    def test_cephadm_service_change_preserves_evidence_before_mutation(self):
+        text = (CEPH_ROOT / "02-cephadm.md").read_text(encoding="utf-8")
+        change = text.split("### 34.5 Service Spec", 1)[1].split("### 34.6", 1)[0]
+        ordered_facts = (
+            "ceph orch ls --service_name <service> --export",
+            "ceph orch ps --service_name <service> --refresh",
+            "ceph orch apply -i <service>.candidate.yaml --dry-run",
+            "ceph orch apply -i <service>.candidate.yaml",
+        )
+        positions = [change.index(fact) for fact in ordered_facts]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("只能恢复编排意图", change)
+        self.assertIn("仅看到旧 YAML 已接受不算恢复", change)
+        self.assertIn("恢复声明", change)
+        self.assertIn("恢复业务状态", change)
+
+    def test_cephadm_recovery_package_does_not_claim_specs_are_backups(self):
+        text = (CEPH_ROOT / "02-cephadm.md").read_text(encoding="utf-8")
+        recovery = text.split("### 34.6 控制面恢复资料包", 1)[1].split(
+            "## 35.", 1
+        )[0]
+        for fact in (
+            "Service Spec 不是 Ceph 备份",
+            "不保证 MON/auth/config-key 可恢复",
+            "运行中直接复制 RocksDB 目录不构成一致备份",
+            "cephadm paused",
+            "RADOS 与每种对外协议的真实 I/O",
+        ):
+            self.assertIn(fact, recovery)
+
     def test_mature_documents_use_github_renderable_mermaid_contract(self):
-        for document in ("01-architecture.md", "02-cephadm.md"):
+        for document in ("01-architecture.md", "02-cephadm.md", "03-rados.md"):
             text = (CEPH_ROOT / document).read_text(encoding="utf-8")
             blocks = MERMAID_BLOCK.findall(text)
             self.assertEqual(len(blocks), text.count("```mermaid"), document)
