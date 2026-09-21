@@ -12,6 +12,8 @@ Cephadm 不是“用容器启动 Ceph”的脚本。它由三个相互约束的�
 | 主机执行面 | SSH、主机 cephadm、systemd、Podman/Docker | 拉镜像、生成 unit/config、控制容器、扫描设备 | 不决定期望副本数 |
 | Ceph 数据面 | MON/MGR/OSD/MDS/RGW 等 daemon | quorum、对象、元数据、协议和业务 I/O | 不保存完整部署意图 |
 
+Cephadm 从 bootstrap 的单 MON/单 MGR 种子开始，通过 orchestrator interface 扩展并管理完整生命周期，客户可使用 Ceph CLI 或 Dashboard GUI 操作。它不依赖 Ansible、Rook 或 Salt；这些工具可以自动化 cephadm 未覆盖的外围任务，但不得与 cephadm 同时管理同一 daemon、systemd unit 或持久配置，否则 reconcile 会反复覆盖对方的结果。
+
 ```mermaid
 flowchart LR
   OP[管理员提交 Service Spec] --> MGR[active MGR cephadm module]
@@ -88,6 +90,8 @@ ceph df detail
 | 磁盘 | OS/OSD 盘按 WWN/serial 对账 | 误擦系统盘或旧数据盘 |
 | 权限 | root 或 passwordless sudo 专用用户 | 远端动作执行一半失败 |
 
+Docker 场景可评估启用 Docker Live Restore，使 Docker Engine 重启期间已有容器继续运行；它不保证 daemon 能被管理、不替代 systemd、MON quorum 或业务 HA，也不能覆盖主机重启、容器自身退出和不兼容 daemon 配置变更。启用前后必须演练 runtime reload/restart、容器存活、systemd 状态和 cephadm 后续 reconcile。Podman 版本必须与当前 Ceph 兼容矩阵匹配，不能仅以“能启动一个容器”判定兼容。
+
 ```mermaid
 flowchart TD
   H[候选主机] --> N{hostname 精确一致?}
@@ -115,6 +119,17 @@ chmod +x cephadm
 ```
 
 `cephadm list-images` 是 air-gap 镜像清单的起点，包含 Ceph 和辅助服务；它不是只同步主 Ceph image 的理由。生产下载应由企业制品库承接，固定完整 reference 并记录 manifest digest。
+
+发行版路径与 curl 路径互斥，同一主机不要混用。官方示例分别为 Ubuntu `apt install -y cephadm`、CentOS Stream/Fedora `dnf install cephadm`、SUSE `zypper install -y cephadm`；必须先确认发行版仓库确实提供目标 Tentacle 版本。curl 取得的 standalone executable 足以 bootstrap，但长期运维应安装到系统 PATH：
+
+```bash
+./cephadm add-repo --release tentacle
+./cephadm install
+which cephadm
+cephadm version
+```
+
+官方最低运行条件是 Python 3.6；出现 `bad interpreter` 时先验证实际解释器，可用 `python3.8 ./cephadm <args>` 诊断。生产支持范围仍以目标 OS、Ceph 构建和安全维护中的 Python 组合为准，不能因为达到 3.6 就忽略已 EOL 的解释器。
 
 ## 4. Bootstrap 控制面
 
@@ -264,9 +279,13 @@ ssh-copy-id -f -i ceph.pub root@host02
 ssh root@host02 hostname
 ceph orch host add host02 10.20.0.12
 ceph orch host ls --detail
+ceph orch host ls --host-pattern 'osd[0-9]+' --format yaml
+ceph orch host ls --label osd --host-status offline --detail
 ```
 
 `host add` 名必须与远端 `hostname` 完全相等。FQDN 或短名都可，但集群内统一；最好显式传 IP，避免 DNS 漂移改变 SSH 目标。
+
+`--host-pattern` 按正则匹配 inventory hostname，`--label` 与 `--host-status` 可叠加过滤；当前状态过滤主要使用 `offline`、`maintenance`。容量审计和维护窗口不要只看无过滤的总数，应保存带 `--detail --format yaml` 的目标集合，逐台确认地址、标签、状态和 daemon 数。
 
 ```yaml
 service_type: host
@@ -304,6 +323,8 @@ stateDiagram-v2
 | `_no_autotune_memory` | 不自动调整该主机 OSD memory | 必须人工配置容量 |
 
 `host drain` 默认添加 `_no_schedule` 和 `_no_conf_keyring`；`--keep-conf-keyring` 只添加 `_no_schedule`。
+
+`_admin` 不是另一套复制机制：bootstrap 会给首主机加该标签，并通过 cephadm 的 client-keyring 管理把 `client.admin` 与 `ceph.conf` 持续分发到匹配主机。新增 `_admin` 会扩大可完全控制集群的凭据落盘范围；移除标签后必须验证受管文件已按 placement 收敛，并确认仍保留至少一个经过授权的管理入口。
 
 ### 7.3 Maintenance
 
@@ -389,7 +410,16 @@ ceph cephadm clear-key
 ceph cephadm clear-ssh-config
 ```
 
-私钥和 SSH config 存在 MON config-key 中，对所有 MGR 可见。变更 key 后重启或 failover MGR 重新加载。自定义 config 不能引用只存在于某个管理员 shell 的临时路径。
+私钥和 SSH config 存在 MON config-key 中，对所有 MGR 可见。变更 key 后重启或 failover MGR 重新加载。还可直接导入身份材料：
+
+```bash
+ceph config-key set mgr/cephadm/ssh_identity_key -i <private-key-file>
+ceph config-key set mgr/cephadm/ssh_identity_pub -i <public-key-file>
+# CA-signed 模式使用 signed certificate，不再同时提供普通 public key
+ceph config-key set mgr/cephadm/ssh_identity_cert -i <signed-cert-file>
+```
+
+官方默认 SSH config 使用 `StrictHostKeyChecking no` 和 `UserKnownHostsFile /dev/null`，便于自动纳管，但不提供主机身份验证。生产建议通过 `ceph cephadm set-ssh-config -i` 注入企业 host CA/known-hosts 策略并演练 MGR failover。另一种 `mgr/cephadm/ssh_config_file` 路径方式不推荐：该路径必须同时存在于所有 MGR 容器；宿主机路径为 `/var/lib/ceph/<fsid>/mgr.<id>`，容器内为 `/var/lib/ceph/mgr/ceph-<id>`。不能引用只存在于某个管理员 shell 或单台 active MGR 的临时路径。
 
 ```mermaid
 flowchart LR
@@ -446,6 +476,8 @@ ceph orch apply -i rgw.site-a.yaml
 
 同一 service 的后一次 apply 覆盖前一次。连续执行 `apply mon host1`、`host2`、`host3` 不会累加，最后只剩 host3 的期望；必须一次声明完整 placement。
 
+主机与多个 service 可以放进同一个以 `---` 分隔的多文档 YAML，由一次 `ceph orch apply -i cluster.yaml` 提交；bootstrap 也可通过 `--apply-spec` 消费整份集群 spec。SSH key 必须在 host 文档被接纳前已部署到目标主机。一次提交便于版本化完整意图，但不是跨 service 的数据库事务：任一对象失败时，要用 `orch ls --export`、events 和逐项状态确认哪些对象已经收敛，修正原文件后重应用，不能假定整体自动回滚。
+
 ### 10.2 Placement 算法
 
 ```mermaid
@@ -488,7 +520,18 @@ extra_entrypoint_args:
 ceph orch redeploy <service-name>
 ```
 
-Managed daemon 手工删除会被自动重建；先设 unmanaged 才能保持手工拓扑。特殊无 spec 的 OSD service 始终 unmanaged。
+Managed daemon 手工删除会被自动重建；先设 unmanaged 才能保持手工拓扑。完整的例外操作闭环是：
+
+```bash
+ceph orch ls --service_name <service> --export > <service>.yaml
+ceph orch set-unmanaged <service>
+ceph orch daemon add <daemon-type> --placement=<placement>
+ceph orch daemon rm <daemon-name>... [--force]
+ceph orch set-managed <service>
+ceph orch apply -i <service>.yaml --dry-run
+```
+
+手工增加前必须先设 unmanaged；恢复 managed 后，reconcile 会按原 placement 判断，多出的手工 daemon 可能被删除。对 managed service 手工 `daemon rm`，cephadm 会在数秒内补回实例。没有对应 spec、仅用于跟踪孤立 OSD 的特殊 `osd` service 永远是 unmanaged，对它执行 `set-managed`/`set-unmanaged` 会报找不到 service。
 
 ## 11. 状态缓存与 daemon 动作
 
@@ -504,7 +547,13 @@ ceph orch daemon redeploy <daemon> [--image <image>]
 ceph orch daemon rotate-key <daemon>
 ```
 
-`orch ps` 默认可能缓存约 10 分钟；看 `REFRESHED` 或使用 `--refresh`，缓存周期由 `daemon_cache_timeout` 控制。MDS/OSD/MGR rotate-key 无需重启，其他 daemon 需要适当重启。
+`orch ps` 默认可能缓存约 10 分钟；看 `REFRESHED` 或使用 `--refresh`，缓存周期由 `daemon_cache_timeout` 控制。事故期间可临时缩短，但会增加主机查询负载：
+
+```bash
+ceph config set mgr mgr/cephadm/daemon_cache_timeout 60
+```
+
+调查结束后恢复原值。MDS/OSD/MGR rotate-key 无需重启，其他 daemon 需要适当重启。
 
 ```mermaid
 flowchart LR
@@ -614,6 +663,11 @@ spec:
     size: "800G:4T"
     limit: 2
   db_slots: 6
+  block_db_size: 400G
+  block_wal_size: 4G
+  osds_per_device: 1
+  data_allocate_fraction: 1.0
+  method: lvm
   encrypted: true
   crush_device_class: hdd
 ```
@@ -654,6 +708,60 @@ flowchart LR
 `db_slots`/`wal_slots` 把高速盘切给多个 OSD。过小 DB 会 spill 到慢盘，过度共享会扩大 NVMe 故障半径。大多数场景 WAL 与 DB 共置；独立 WAL 需基准与故障论证。
 
 `encrypted: true` 使用 LUKS；Tentacle 支持 `tpm2: true` 为 LUKS2 enrollment 使用 TPM2。必须验证固件升级、主板更换和灾难恢复。`crush_device_class` 可在 service 或 `paths` 单盘粒度指定；创建后核对 `ceph osd tree` 和 pool rule。
+
+DriveGroup 的部署控制字段必须在变更评审中逐项解释：
+
+| 字段 | Tentacle 语义 | 生产约束 |
+|---|---|---|
+| `block_db_size` | 覆盖每个 OSD 的 BlueStore DB 大小，整数或容量字符串 | 先按 RocksDB 增长和高速盘总容量验算，不能让 `db_slots * block_db_size` 超卖 |
+| `block_wal_size` | 覆盖 BlueStore WAL 大小 | 大多数负载与 DB 共置即可；独立 WAL 必须有延迟基准 |
+| `osds_per_device` | 每个 data device 创建的 OSD 数 | NVMe 或双执行器盘可大于 1；HDD 通常保持 1，并计入内存、CPU、PG 和故障半径 |
+| `data_allocate_fraction` | 使用 data device 的比例，范围 `(0, 1.0]` | 留白不是备份；必须验证后续分区/LVM 操作不会破坏 OSD |
+| `method` | `lvm` 或 `raw` | 默认优先成熟的 LVM 路径；raw 仅支持 BlueStore，迁移和恢复工具链要先验证 |
+| `objectstore` | 当前源码只接受 `bluestore` | `filestore` 仅是历史字段语义，不得用于 Tentacle 新建 OSD |
+| `preview_only` | 将 spec 作为预览声明处理 | 不能替代命令行 `--dry-run` 的变更前证据 |
+| `osd_id_claims` | host 到待复用 OSD ID 列表 | 仅用于已确认 replacement/destroyed 身份，不能人工猜测 ID |
+
+`data_devices` 必填，placement 不能为空；只有 `data_devices` 允许 `all: true`，DB、WAL 和 legacy journal selector 使用 `all` 会被 schema 拒绝。`block_db_size`、`block_wal_size` 接受整数或字符串，但仍应使用明确容量字符串避免人工换算错误。`journal_devices`、`journal_size`、`data_directories` 是历史兼容字段；Tentacle 新部署只设计 BlueStore data/DB/WAL。
+
+多个磁盘布局必须使用多个唯一 service ID，按主机标签隔离，不能用一个宽泛 selector 抢盘：
+
+```yaml
+service_type: osd
+service_id: capacity-hdd
+placement:
+  label: osd-capacity
+spec:
+  data_devices:
+    rotational: 1
+  db_devices:
+    rotational: 0
+    limit: 2
+  db_slots: 5
+---
+service_type: osd
+service_id: performance-nvme
+placement:
+  label: osd-performance
+spec:
+  data_devices:
+    rotational: 0
+    size: "3T:8T"
+  osds_per_device: 2
+  crush_device_class: nvme
+```
+
+```mermaid
+flowchart TD
+  I[device inventory] --> L{主机磁盘布局标签}
+  L -->|capacity| H[HDD data + SSD DB slots]
+  L -->|performance| N[NVMe data + 多 OSD]
+  H & N --> D[dry-run 保存 device/serial/role/size]
+  D --> Q{DB/WAL 容量和故障半径合格?}
+  Q -->|否| R[修改 selector 与容量]
+  Q -->|是| A[apply]
+  A --> V[核验 OSD ID、设备、LV、class、CRUSH]
+```
 
 ### 13.5 OSD memory autotune
 
@@ -973,7 +1081,27 @@ flowchart TD
 
 ### 17.2 HTTPS、wildcard 与同步职责
 
-RGW spec 可内嵌 PEM private key + certificate 并设置 `ssl: true`。也可：
+RGW 企业证书必须通过真实 schema 字段 `rgw_frontend_ssl_certificate` 提供，值是按顺序拼接的 PEM private key 和 certificate chain，并设置 `ssl: true`：
+
+```yaml
+service_type: rgw
+service_id: site-a
+spec:
+  ssl: true
+  rgw_frontend_port: 8443
+  rgw_frontend_ssl_certificate: |
+    -----BEGIN PRIVATE KEY-----
+    ...
+    -----END PRIVATE KEY-----
+    -----BEGIN CERTIFICATE-----
+    ...leaf certificate...
+    -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    ...intermediate CA...
+    -----END CERTIFICATE-----
+```
+
+`|` 必须保留换行。应用前验证 private key 匹配 leaf certificate、SAN、用途、完整 chain 和过期时间；应用后从客户端完成 TLS hostname verification，不能只检查 8443 端口。也可让 CertMgr 生成证书：
 
 ```yaml
 spec:
@@ -985,7 +1113,21 @@ spec:
     - s3.example.com
 ```
 
-`wildcard_enabled` 默认 false；开启后自签证书加入 `*.s3.example.com`，只覆盖一个 DNS label 层级。使用企业证书时核验完整链、私钥匹配、SAN 和 virtual-hosted-style bucket DNS。
+`generate_cert: true` 必须同时设置 `ssl: true`，并与 `rgw_frontend_ssl_certificate` 互斥。`wildcard_enabled` 默认 false；开启后自签证书加入 `*.s3.example.com`，只覆盖一个 DNS label 层级。使用企业证书时核验完整链、私钥匹配、SAN 和 virtual-hosted-style bucket DNS。
+
+RGW ServiceSpec 的其他控制面不能混为普通 `rgw_frontend_extra_args`：
+
+| 字段 | 用途 | 生产要求 |
+|---|---|---|
+| `rgw_realm_token` | 将 RGW service 接入已有 realm 的 bootstrap token | 按 secret 保存，不进入 Git、shell history 或普通工单 |
+| `update_endpoints` | 允许编排更新 zone endpoints | 先确认 period 和多站点变更责任，避免覆盖外部管理结果 |
+| `zone_endpoints` | 逗号分隔的明确 endpoint 列表 | 所有站点可解析、TLS 名称匹配且健康检查可达 |
+| `only_bind_port_on_networks` | 只在顶层 `networks` 匹配地址监听 | 每台 placement host 必须真实拥有匹配地址 |
+| `rgw_user_counters_cache` / `_size` | 启用并设置用户操作计数缓存 | 高基数会消耗内存，按观测目标和用户规模压测 |
+| `rgw_bucket_counters_cache` / `_size` | 启用并设置桶操作计数缓存 | 桶数量大时同样需要容量评估 |
+| `data_pool_attributes` | realm bootstrap 创建 data pool 时定义 replicated/EC 属性 | 默认按 EC 解析；EC 必须同时提供 `k`、`m`，不接受手工 `erasure_code_profile` |
+
+指定 `rgw_realm` 时必须同时指定 `rgw_zone`，反之亦然；frontend type 只接受 `beast` 或兼容保留的 `civetweb`。这些校验应在 `apply --dry-run` 阶段通过，而不是等 daemon 反复退出。
 
 ```yaml
 spec:
@@ -1031,6 +1173,21 @@ spec:
   virtual_ip: 10.40.0.100/24
   frontend_port: 443
   monitor_port: 1967
+  ssl: true
+  ssl_cert: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+  ssl_key: |
+    -----BEGIN PRIVATE KEY-----
+    ...
+    -----END PRIVATE KEY-----
+  ssl_ciphers: [<approved-cipher>]
+  ssl_options: [no-sslv3]
+  enable_stats: true
+  monitor_user: admin
+  monitor_password: <secret>
+  keepalived_password: <secret>
   virtual_interface_networks:
     - 10.40.0.0/24
   use_keepalived_multicast: false
@@ -1040,6 +1197,14 @@ spec:
 ```
 
 也可用 `virtual_ips_list` 配多个 VIP，每个 IP 建立一个 virtual router；VIP 数量不得超过 ingress 节点数。`first_virtual_router_id` 默认 50，有效 1-255，多 ingress 服务要避免 ID 冲突。Keepalived 默认 unicast，设置 multicast 后使用 `224.0.0.18`。
+
+Ingress schema 的硬校验如下：
+
+- `backend_service` 必填；非 `keepalive_only` 模式同时要求 `frontend_port` 和 `monitor_port`；
+- `virtual_ip` 与 `virtual_ips_list` 二选一，不能同时存在，也不能都为空；
+- `health_check_interval` 只接受整数加 `s`、`m` 或 `h`，例如 `2s`、`1m`；
+- `ssl_dh_param` 可提供审核过的 DH 参数；`ssl_ciphers`、`ssl_options` 必须与企业 TLS 基线一致；
+- monitor 和 keepalived password 是 secret，不能使用示例默认值，也不能写入公开 spec 仓库。
 
 Cephadm 依据目标 subnet 上已有 IP 选择 VIP 接口，而不是接受接口名。若 VIP subnet 没有已有地址，可在正确接口配置不可路由 dummy IP，并让 `virtual_interface_networks` 匹配该 dummy network。官方建议至少 3 个 RGW 和 3 个 ingress host。
 
@@ -1064,9 +1229,13 @@ spec:
   port: 12049
   monitoring_port: 19000
   enable_nfsv3: false
+  enable_nlm: false
+  idmap_conf:
+    General:
+      Domain: example.com
 ```
 
-配置保存在 `.nfs` pool，export 由 `ceph nfs export ...` 或 Dashboard 管理。服务 running 后还需从客户端 mount、创建、读回、锁和 failover 验收。
+配置保存在 `.nfs` pool，export 由 `ceph nfs export ...` 或 Dashboard 管理。`idmap_conf` 按节和键生成 NFS idmapping 配置，域必须与客户端一致，否则文件可访问但 UID/GID 映射错误。`enable_nlm` 默认 false，仅在确实需要 Network Lock Manager 的 NFSv3 兼容场景开启；同时验证锁恢复、grace period 和 failover。服务 running 后还需从客户端 mount、创建、读回、锁和 failover 验收。
 
 ### 18.2 HAProxy + Keepalived 模式
 
@@ -1209,6 +1378,9 @@ spec:
 | `cluster_meta_uri` | `clustered` 必需，RADOS pseudo-URI |
 | `cluster_lock_uri` | `clustered` 必需，CTDB cluster lock 的 RADOS pseudo-URI |
 | `cluster_public_addrs` | clustered 模式由 CTDB 管理的浮动地址与 destination network |
+| `remote_control_ssl_cert` | SMB remote-control 服务证书 |
+| `remote_control_ssl_key` | remote-control 对应私钥 |
+| `remote_control_ca_cert` | 校验 remote-control 对端的 CA |
 
 未设置 `clustered` 时，多 Samba 实例没有透明状态迁移，不能宣称 HA。配置可放 `.smb` pool 的 cluster namespace：
 
@@ -1223,6 +1395,8 @@ ceph config-key set smb/config/tango/config.json -i /tmp/config.json
 ```
 
 使用推荐 URI 命名时 cephadm 自动生成最小 CephX 访问。HTTP(S) 配置的可用性、TLS 与鉴权由管理员负责。域模式高度依赖 DNS；宿主机或 `custom_dns` 必须可解析且可达 AD。
+
+CTDB public address 必须映射到实际 destination interface/network。应用前执行 `cephadm list-networks`，以 cephadm 看到的接口到 CIDR 映射核对 `cluster_public_addrs`；错误映射会让 VIP 不漂移或漂到不可达接口。remote-control TLS 材料按 secret 管理，应用后分别验证控制面完整链、双向信任、证书轮换和 SMB 445 数据面。
 
 ```mermaid
 flowchart TD
@@ -1303,14 +1477,50 @@ spec:
   protocol: https
 ```
 
-可覆盖的 image 选项包括 Prometheus、Grafana、Alertmanager、node-exporter、Loki、Promtail、HAProxy、Keepalived、SNMP gateway、Elasticsearch 和 Jaeger 三组件。设置后必须 redeploy 对应服务；自定义 image 会阻断 cephadm 的自动辅助组件升级，需管理员持续更新。恢复默认：
+没有显式覆盖时，ServiceSpec 使用以下监听端口：
+
+| 服务 | 默认端口 | 专属控制字段 |
+|---|---:|---|
+| Prometheus | 9095 | `retention_time`、`retention_size`、`targets`、`only_bind_port_on_networks` |
+| node-exporter | 9100 | 通用 network/port/placement |
+| Alertmanager | 9093；集群监听另占 9094 | `user_data.webhook_urls`、`secure`、`only_bind_port_on_networks`；业务端口不得设为 9094 |
+| Grafana | 3000 | `protocol`、`anonymous_access`、`initial_admin_password`、`only_bind_port_on_networks` |
+| Loki | 3100 | 通用 network/port/placement |
+| Promtail | 9080 | 通用 network/port/placement |
+
+`only_bind_port_on_networks: true` 只有在顶层 `networks` 与每台目标主机接口确实匹配时才能启用。`targets` 用于显式外部 scrape/通知目标时，应验证 DNS、TLS、认证和失败超时；不能把“配置已保存”当作 target 已被采集。
+
+可覆盖的 image 配置键为：`container_image_prometheus`、`container_image_grafana`、`container_image_alertmanager`、`container_image_node_exporter`、`container_image_loki`、`container_image_promtail`、`container_image_haproxy`、`container_image_keepalived`、`container_image_snmp_gateway`、`container_image_elasticsearch`、`container_image_jaeger_agent`、`container_image_jaeger_collector`、`container_image_jaeger_query`。默认 image 的运行时权威清单由 `cephadm list-images` 输出；源码定义位于 `src/python-common/ceph/cephadm/images.py`。设置自定义 image 后必须 redeploy 对应服务，并由管理员持续更新，否则 cephadm 不会自动替换该辅助组件。恢复默认：
 
 ```bash
 ceph config rm mgr mgr/cephadm/container_image_prometheus
 ceph orch redeploy prometheus
 ```
 
-Cephadm 的 Jinja2 模板可通过 `mgr/cephadm/services/...` config-key 覆盖，包括 Alertmanager、Grafana、ingress、iSCSI、mgmt-gateway、NFS、node-exporter、NVMe-oF、OAuth2、Prometheus、Loki 和 Promtail。例：
+Cephadm 的 Jinja2 模板通过 `mgr/cephadm/services/...` config-key 覆盖。Tentacle 支持的完整键名是：
+
+```text
+services/alertmanager/alertmanager.yml
+services/alertmanager/web.yml
+services/grafana/ceph-dashboard.yml
+services/grafana/grafana.ini
+services/ingress/haproxy.cfg
+services/ingress/keepalived.conf
+services/iscsi/iscsi-gateway.cfg
+services/mgmt-gateway/external_server.conf
+services/mgmt-gateway/internal_server.conf
+services/mgmt-gateway/nginx.conf
+services/nfs/ganesha.conf
+services/node-exporter/web.yml
+services/nvmeof/ceph-nvmeof.conf
+services/oauth2-proxy/oauth2-proxy.conf
+services/prometheus/prometheus.yml
+services/prometheus/web.yml
+services/loki.yml
+services/promtail.yml
+```
+
+对应官方模板在 `src/pybind/mgr/cephadm/templates` 下使用相同路径并追加 `.j2`。例：
 
 ```bash
 ceph config-key set mgr/cephadm/services/prometheus/prometheus.yml \
@@ -1400,6 +1610,14 @@ spec:
   virtual_ip: 10.60.0.100
   ssl_protocols: [TLSv1.2, TLSv1.3]
   ssl_ciphers: [<approved-cipher>]
+  ssl_prefer_server_ciphers: "on"
+  ssl_session_tickets: "off"
+  ssl_session_timeout: 10m
+  ssl_session_cache: "shared:SSL:10m"
+  server_tokens: "off"
+  ssl_stapling: "on"
+  ssl_stapling_verify: "on"
+  enable_health_check_endpoint: true
   ssl_cert: |
     -----BEGIN CERTIFICATE-----
     ...
@@ -1409,6 +1627,8 @@ spec:
 ```
 
 修改 TLS 1.2 cipher 需要按当前安全基线审核；TLS 1.3 自带安全 cipher 集，盲目覆盖可能失去前向保密或重新启用弱算法。
+
+端口只接受 1-65535，`ssl_protocols` 只接受 `TLSv1.2`、`TLSv1.3`。`ssl_prefer_server_ciphers`、`ssl_session_tickets`、`ssl_stapling`、`ssl_stapling_verify` 是字符串开关，只接受 `on|off`，不是 YAML boolean；`server_tokens` 接受 `on|off|build|string`。session timeout 是数字加 `s/m/h/d`。`ssl_session_cache` 接受 `off`、`none`、`builtin[:size]` 或 `shared:name:size`。启用 stapling 前必须验证 issuer chain、OCSP 可达性和故障策略，否则会把证书增强项变成入口故障点。
 
 Mgmt-gateway 自身 HA 要部署多个实例并配置 keepalive-only ingress，二者 `virtual_ip` 必须完全相同：
 
@@ -1451,15 +1671,22 @@ spec:
   provider_display_name: Corporate OIDC
   client_id: <client-id>
   oidc_issuer_url: https://idp.example.com/realms/ceph
+  redirect_url: https://ceph-mgmt.example.com/oauth2/callback
+  allowlist_domains:
+    - .example.com
   client_secret: <secret>
-  cookie_secret: <secret>
-  ssl_certificate: |
+  cookie_secret: <16-24-or-32-byte-secret>
+  ssl_cert: |
     -----BEGIN CERTIFICATE-----
     ...
-  ssl_certificate_key: |
+  ssl_key: |
     -----BEGIN PRIVATE KEY-----
     ...
 ```
+
+> **官方文档漂移说明**：Tentacle 的 `oauth2-proxy.rst` 示例仍写 `ssl_certificate`、`ssl_certificate_key`，但同一提交 `OAuth2ProxySpec` 的真实 schema 是 `ssl_cert`、`ssl_key`。本文以可执行源码 schema 为准，并由契约测试禁止旧字段重新出现。
+
+`provider_display_name`、`client_id`、`client_secret` 必须是非空字符串；issuer 和显式 redirect 必须是同时具有 scheme 与 authority 的 URL。`https_address` 格式为 `host:port`。`cookie_secret` 可以是 URL-safe base64 或普通字符串，但解码后的真实长度必须为 16、24 或 32 bytes，以满足 AES key 长度；不要把占位字符串 `<secret>` 原样投入生产。`allowlist_domains` 限制登录或退出后的安全重定向域，必须使用最小集合，避免 open redirect。
 
 OAuth2 service 可作为无状态实例由 mgmt-gateway round-robin；IDP 自身 HA 属于外部责任。官方同一页的 HA 描述称可多实例，而 Limitations 又称 oauth2-proxy 自身 HA 不受支持。生产按保守边界处理：多实例可做进程冗余，但不宣称端到端 HA，必须实测 session/cookie、redirect 和 IDP 故障。
 
@@ -1481,7 +1708,7 @@ sequenceDiagram
   App-->>User: 应用响应
 ```
 
-验证 issuer discovery、client secret、redirect URI、cookie secret 长度/轮换、TLS chain 和 claims。部署成功后 cephadm 自动 redeploy mgmt-gateway 接入认证。Image 由 `container_image_oauth2_proxy` 控制，修改后 redeploy。
+验证 issuer discovery、client secret、redirect URI、cookie secret 长度/轮换、TLS chain、allowlist 和 claims。部署成功后 cephadm 自动 redeploy mgmt-gateway 接入认证。Image 由 `container_image_oauth2_proxy` 控制，修改后执行 `ceph orch redeploy oauth2-proxy`。
 
 ## 23. SNMP Gateway、Tracing 与自定义容器
 
@@ -1549,6 +1776,7 @@ spec:
   entrypoint: /usr/bin/app
   uid: 1000
   gid: 1000
+  privileged: false
   args: ["--net=host", "--cpus=2"]
   ports: [8080, 8443]
   envs: ["PORT=8080"]
@@ -1561,11 +1789,21 @@ spec:
   files:
     CONFIG_DIR/app.conf:
       - mode=production
+  init_containers:
+    - image: registry.example.com/app/init:<digest-pin>
+      entrypoint: /usr/bin/prepare
+      entrypoint_args: ["/var/lib/app"]
+      volume_mounts:
+        DATA_DIR: /var/lib/app
+      envs: ["MODE=verify"]
+      privileged: false
 ```
 
 相对 mount source、dirs 和 files 都位于 `/var/lib/ceph/<fsid>/<daemon-name>`。文件父目录须由 `dirs` 创建；字符串内容要双引号并用 `\n`，多行可用字符串列表。
 
 Init container 可独立指定 image、entrypoint、entrypoint_args、volume_mounts、envs、privileged；省略 image/mount/privileged 时继承主容器。它们按顺序在主进程前执行，总运行时间不能超过 200 秒，否则 service 启动失败。
+
+`service_id` 与 `image` 必填。顶层 `privileged` 默认 false，只有经过主机安全审批且无法用 capability/设备映射满足时才开启。`args` 是容器 runtime 参数，与通用 `extra_container_args` 互斥；`files` 与 `custom_configs` 同样互斥，因为两组字段承担相同文件注入职责。Secret 不得放进 `args` 或 `envs`；优先用权限受控的挂载文件和外部 secret 生命周期。
 
 ```mermaid
 flowchart LR
@@ -1622,6 +1860,16 @@ stateDiagram-v2
 
 Host/service scope 的 get/set/rm 都必须携带 selector；否则可能操作错误实体或被拒绝。
 
+CertMgr 初始全局对象至少包含 `cephadm_root_ca_cert` 和 `cephadm_root_ca_key`；其余证书、私钥和 entity 由已加载的 service handler 按 Tentacle 版本动态注册。不要从旧版本静态清单猜名称，运行时先建立以下三方对账：
+
+```bash
+ceph orch certmgr entity ls
+ceph orch certmgr cert ls --show-details
+ceph orch certmgr key ls
+```
+
+对账表必须记录 entity、对象名、scope、service/hostname selector、签发者、SAN、到期日、是否 user-provided 和消费它的 daemon。`cert ls`/`key ls` 是当前集群可操作名称的权威集合；源码 `known_certs`/`known_keys` 是版本能力集合，二者差异意味着服务尚未注册、配置尚未加载或升级迁移未完成。
+
 ### 24.4 运维命令
 
 ```bash
@@ -1675,6 +1923,9 @@ ceph auth get-or-create client.fs > /etc/ceph/ceph.client.fs.keyring
 不要把 `client.admin` 分给应用。为每个应用创建最小 caps 的 entity，再让 cephadm 按 placement 管理文件：
 
 ```bash
+ceph auth get-or-create-key client.rbd \
+  mon 'profile rbd' mgr 'profile rbd' \
+  osd 'profile rbd pool=my_rbd_pool'
 ceph orch client-keyring set client.app 'label:app' \
   --mode 0600 \
   --owner 1000:1000 \
@@ -1753,6 +2004,14 @@ ceph config set global mon_cluster_log_to_journald false
 
 文件通常位于 `/var/log/ceph/<fsid>/`，cephadm 在各主机管理 logrotate。若选择文件日志，官方建议关闭 journald 避免双写容量。日志级别升高前评估磁盘和性能，并设置恢复时间。
 
+文件日志的轮换入口是 `/etc/logrotate.d/ceph.<fsid>`。修改前保存原文件，按日志增长率、事故保留期和磁盘告警设计 rotation，升级后复核 cephadm 是否重新生成配置。cephadm 自身在既有集群的持久日志目的地由下列配置控制，可取单值或逗号组合：
+
+```bash
+ceph config set mgr mgr/cephadm/cephadm_log_destination syslog
+ceph config set mgr mgr/cephadm/cephadm_log_destination file,syslog
+ceph config set mgr mgr/cephadm/cephadm_log_destination file
+```
+
 ### 26.3 cephadm 自身日志与集群事件
 
 Cephadm 可向 stderr、syslog、journald 或 file 输出。全局 `cephadm --log-dest=file|syslog` 控制当前执行；bootstrap 的 `--log-to-file` 是集群 daemon 行为，二者不能混淆。
@@ -1810,6 +2069,8 @@ flowchart TD
 
 检查属于早期风险信号，不是所有异常都要求立刻把所有主机改成完全一致。例如计划内 kernel 滚动期间会短暂不同；应记录窗口和完成条件，而非永久 mute。
 
+官方提供 `mgr/cephadm/warn_on_stray_hosts`、`warn_on_stray_daemons` 和 `warn_on_failed_host_check` 开关，但关闭它们只隐藏告警，不修复主机、daemon 或 SSH/runtime 故障。只有在外部监控已经覆盖、例外有到期时间和 owner 时才能临时关闭；窗口结束必须恢复 true 并确认 `ceph health detail` 无残留。
+
 ### 27.1 配置检查控制面
 
 Cephadm 在每次 host scan 后比较 OS、磁盘与网络事实。Operations 类 health check 在 module 启用时始终运行；cluster configuration checks 是可选的：
@@ -1847,12 +2108,17 @@ ceph osd pool unset noautoscale
 
 ```bash
 ceph orch upgrade check <target-image>
+# 官方 release 版本入口：由 container_image_base 与 v<version> 组成目标 image
+ceph orch upgrade start --ceph-version <version>
+# 私有仓库、digest pin 或非标准构建使用完整 image
 ceph orch upgrade start --image <target-image>
 ceph orch upgrade status
 ceph -W cephadm
 ceph progress
 ceph versions
 ```
+
+`--ceph-version X.Y.Z` 默认把 `mgr/cephadm/container_image_base`（默认 `docker.io/ceph/ceph`）与 `vX.Y.Z` 组合。企业私库、开发构建或 digest pin 不应伪装成 version，直接使用 `--image <complete-reference>`。启动前保存 `container_image_base` 当前值并在每台主机验证完全相同的 manifest digest。
 
 升级顺序固定为：
 
@@ -1900,6 +2166,24 @@ flowchart TD
 - 仍受固定类型顺序约束；
 - 旧 release 不支持 stagger 时，先普通升级 standby MGR，failover，再完成 MGR，使支持新参数的 MGR 接管。
 
+带限制参数的 `upgrade start` 会先校验选项，期间可能拉取目标镜像，因此命令返回较慢不等于卡死；同时观察 cephadm event、registry 和目标主机 runtime。MGR 批次完成后，Prometheus、node-exporter 等 monitoring daemon 会被刷新；即使其组件版本不变，也可能发生 redeploy，必须把监控短暂抖动纳入窗口。
+
+从不支持 `redeploy --image` 的早期 cephadm 进入 stagger 能力时，先确认至少两个 MGR，再逐个处理 standby：
+
+```bash
+# 新一些的旧版本
+ceph orch daemon redeploy mgr.<standby-id> --image <target-image>
+
+# 极早期版本没有 --image 时
+ceph config set mgr container_image <target-image>
+ceph orch daemon redeploy mgr.<standby-id>
+
+ceph mgr fail
+ceph orch upgrade start --image <target-image> --daemon-types mgr
+```
+
+每一步都要验证新 active MGR 已运行目标版本，禁止在没有 standby 时强制 failover。
+
 每批验收：目标实例版本、daemon health、PG、quorum、业务延迟和读写，全部达标才进入下一批。
 
 ### 28.5 停止不是回滚
@@ -1926,6 +2210,8 @@ ceph orch update service <service-type> <image>
 ```
 
 分别核验 Prometheus、Grafana、NFS、iSCSI 等 image digest 和兼容性。禁止用 `latest` 绕过失败检查。
+
+核心 daemon 全部完成并不代表宿主机工具已完成。升级验收后，把各管理主机的 `cephadm` 包更新到与新 release 兼容的版本；不使用 `cephadm shell`、依赖宿主机 CLI 的环境同时更新 `ceph-common`。最后重新执行 `cephadm version`、`ceph -v`、`ceph versions`，确认本地 CLI、编排器和全部 daemon 没有意外版本漂移。
 
 ```mermaid
 stateDiagram-v2
@@ -1963,7 +2249,14 @@ ceph -W cephadm --watch-debug
 ceph health detail
 ```
 
-`ceph orch pause` 停止后台 reconcile，但现有 daemon 继续运行；`resume` 恢复。Disable cephadm module 的影响更大，不能作为普通暂停替代。暂停期间所有漂移都会积累，恢复前先 dry-run/导出 spec 评估将发生的批量动作。
+`ceph orch pause` 停止大多数后台 reconcile，但仍周期性刷新 host、daemon 和 device inventory；现有 daemon 继续运行，`resume` 恢复。完全禁用编排器的精确命令是：
+
+```bash
+ceph orch set backend ''
+ceph mgr module disable cephadm
+```
+
+它会令全部 `ceph orch ...` 命令不可用，但既有容器和 systemd unit 继续运行和随主机启动。恢复时先 `ceph mgr module enable cephadm`，再 `ceph orch set backend cephadm`，导出/审查 spec 后才恢复变更。完全 disable 的影响远大于 pause，不能作为普通暂停替代；暂停期间所有漂移都会积累。
 
 ### 29.2 主机与 SSH
 
@@ -1975,6 +2268,29 @@ ceph cephadm get-pub-key
 ```
 
 从 active MGR 所在主机/容器语境复现 SSH，检查 hostname、known hosts、key、signed cert、sudo、Python、runtime、时间。管理员工作站能登录不能证明 MGR 能登录。
+
+下面的闭环导出的是 cephadm 实际使用的身份和配置，不用管理员自己的 key 替代。调试目录必须在受控管理节点创建，默认拒绝其他用户读取：
+
+```bash
+umask 077
+ssh_debug_dir="$(mktemp -d /tmp/cephadm-ssh.XXXXXX)"
+
+cephadm shell -- ceph config-key get mgr/cephadm/ssh_identity_key \
+  > "${ssh_debug_dir}/cephadm_private_key"
+chmod 0600 "${ssh_debug_dir}/cephadm_private_key"
+cephadm shell -- ceph cephadm get-ssh-config \
+  > "${ssh_debug_dir}/ssh_config"
+cephadm shell -- ceph cephadm get-pub-key \
+  > "${ssh_debug_dir}/ceph.pub"
+
+ssh -F "${ssh_debug_dir}/ssh_config" \
+  -i "${ssh_debug_dir}/cephadm_private_key" \
+  <cephadm-ssh-user>@<target-host> hostname
+```
+
+在目标主机用 cephadm 实际登录用户核验公钥是 `authorized_keys` 中的一整行，并核对目录/文件 owner、mode 和 sshd 策略；默认 root 模式对应 `/root/.ssh/authorized_keys`。若使用 SSH CA-signed certificate，普通 `get-pub-key`/`authorized_keys` 检查不是完整证据，还要验证 `ssh_identity_cert`、目标 sshd 的 `TrustedUserCAKeys`、principal 和有效期。若 config-key 中没有身份，先证明是 key 丢失而非读取了错误 FSID，再选择 `ceph cephadm generate-ssh-key` 或经审批的 `ceph cephadm set-ssh-key -i -`；两者会改变整个编排面的登录身份，必须把新公钥部署到所有目标主机并逐台 `check-host`，不能只修一台。
+
+复现完成立即安全销毁导出的私钥和临时材料，例如对明确文件逐个执行 `shred -u`，再 `rmdir "${ssh_debug_dir}"`；不把私钥放进工单、聊天、普通日志或版本库。若底层文件系统/快照不保证覆盖擦除，应从一开始就在加密临时卷中操作，并按密钥泄露流程轮换集群 SSH 身份。
 
 ### 29.3 systemd 与容器
 
@@ -1988,13 +2304,74 @@ cephadm logs --name <daemon>
 cephadm unit --name <daemon> status
 cephadm shell --name <daemon>
 cephadm enter --name <daemon>
+podman ps -a --format json | jq -r '.[] | .Image // .ImageID'
 ```
 
-数据目录通常为 `/var/lib/ceph/<fsid>/<daemon-name>`。先以 `cephadm ls` 证明 FSID/daemon ownership，再触碰目录。手工运行容器只用于重现启动错误，不能长期绕开 systemd 和 orchestrator。
+数据目录通常为 `/var/lib/ceph/<fsid>/<daemon-name>`。`/var/lib/ceph/<fsid>/<daemon-name>/unit.run` 是 cephadm 生成的真实容器启动包装，可用于核对 image、mount、network、entrypoint 和参数；只读保存后再分析，不直接把它改成长期配置。先以 `cephadm ls` 证明 FSID/daemon ownership，再触碰目录。手工运行容器只用于重现启动错误，不能长期绕开 systemd 和 orchestrator。
+
+单主机全量取证应固定 FSID，并同时保存 `cephadm ls`、每个 daemon 的 cephadm 日志与 systemd 状态。以下脚本只读采集，不因某个 inactive/failed unit 返回非零而丢弃其他证据：
+
+```bash
+umask 077
+evidence_dir="$(mktemp -d /tmp/cephadm-evidence.XXXXXX)"
+fsid="$(cephadm shell -- ceph fsid)"
+cephadm ls > "${evidence_dir}/cephadm-ls.json"
+
+jq -r '.[].name' "${evidence_dir}/cephadm-ls.json" |
+while IFS= read -r name; do
+  cephadm logs --fsid "${fsid}" --name "${name}" \
+    > "${evidence_dir}/${name}.log" 2>&1
+  printf '%s\n' "$?" > "${evidence_dir}/${name}.log.rc"
+
+  systemctl status --no-pager "ceph-${fsid}@${name}.service" \
+    > "${evidence_dir}/${name}.systemd" 2>&1
+  printf '%s\n' "$?" > "${evidence_dir}/${name}.systemd.rc"
+done
+```
+
+在每台相关主机分别执行，不能从一台主机的 `cephadm ls` 推断全局 daemon。`cephadm logs --fsid` 可避免多集群主机命中错误 FSID；还应按事故时间窗补充对应 unit 的 `journalctl`、runtime inspect 和 image digest。日志可能包含主机地址、bucket/client 名、命令参数和路径，交付前要保留原始受限副本、制作脱敏副本并记录 SHA256；不要在采集脚本中用 `|| true` 抹掉每条命令的返回码。
 
 ### 29.4 配置、端口与证书
 
 对“进程反复退出”按顺序确认：实际 container command、挂载文件、配置解析、端口占用、SELinux/AppArmor、文件 owner、证书/key、registry image digest。Spec 里的值、生成文件和进程参数必须三方一致。
+
+进入目标 daemon 容器后，使用 admin socket 读取有效配置和支持动作：
+
+```bash
+cephadm enter --name <daemon-name>
+ceph --admin-daemon /var/run/ceph/ceph-<daemon-name>.asok config show
+ceph --admin-daemon /var/run/ceph/ceph-<daemon-name>.asok help
+```
+
+需要操作 MON store 或 OSD object store 时，让 cephadm 按 daemon 身份挂载正确数据目录和工具环境：
+
+```bash
+cephadm unit --name mon.<host> stop
+cephadm shell --name mon.<host>
+ceph-monstore-tool /var/lib/ceph/mon/ceph-<host> get monmap > monmap
+monmaptool --print monmap
+
+# OSD 必须先确认停止、设备和 FSID，再选择 ceph-objectstore-tool 的只读或修复动作
+cephadm shell --name osd.<id>
+ceph-objectstore-tool --help
+```
+
+`ceph-monstore-tool`、`ceph-objectstore-tool` 可以直接改变持久状态。生产默认先做只读检查和块级/目录级副本，只有官方恢复步骤明确要求且变更获批时才写入。
+
+Bootstrap 或新增 MON 出现下列任一错误：
+
+```text
+ERROR: Failed to infer CIDR network for mon ip ...; pass --skip-mon-network to configure it later
+Must set public_network config option or specify a CIDR network, ceph addrvec, or plain IP
+```
+
+先证明目标 MON 地址所属 CIDR、路由和每台 MON 接口一致，再设置：
+
+```bash
+ceph config set mon public_network <mon-cidr>[,<additional-mon-cidr>...]
+```
+
+不要用过宽 CIDR 消除报错；它会让后续 MON placement 选择错误接口。
 
 ```mermaid
 flowchart LR
@@ -2009,25 +2386,142 @@ flowchart LR
 
 ### 30.1 恢复 MON quorum
 
-先区分“少数 MON 离线”与“全部 MON 丢失 quorum”。只要多数派仍在，修复/重建单个 MON；不要提取 monmap 全量重构。全部 quorum 丢失时，从确认最新且完整的存活 MON 数据目录/容器提取 monmap，按官方 restore-quorum 流程重建最小多数派。
+先区分“少数 MON 离线”“网络分区”与“所有 MON 确实无法形成多数派”。只要原 monmap 的多数派能够恢复，就修复网络、时钟、磁盘或单个 MON，不执行手工 monmap 注入。两个分区都仍有可读取 store 时，必须先隔离并证明不会形成双边写入；不能凭主机启动时间选择一边。
+
+只有原多数派无法恢复且事故指挥人批准收缩 monmap 时，才执行下面的破坏性恢复。开始前冻结配置、auth、pool、CRUSH 和编排变更，记录所有 MON 的主机、daemon ID、FSID、image、unit 状态、数据目录、磁盘/文件系统状态和最后日志。停止条件包括：候选 store 的 FSID 不一致、无法证明哪份 store 最新完整、monmap 无法读取、备份空间不足，或故障实为网络分区。
 
 ```mermaid
 flowchart TD
-  Q[MON 无 quorum] --> A{仍有多数派可恢复?}
-  A -->|是| S[修复故障 MON 网络/磁盘/进程]
-  A -->|否| D[冻结写变更并盘点 MON 数据]
-  D --> N[选最新完整 MON store]
-  N --> M[提取/修复 monmap]
-  M --> R[重建最小 quorum]
-  R --> V[验证 epoch/auth/maps]
-  V --> E[逐个扩回目标 MON 数]
+  Q[MON 无 quorum] --> A{原多数派可恢复?}
+  A -->|是| S[修复网络/时钟/磁盘/进程]
+  A -->|否| P{已排除网络分区并识别权威 store?}
+  P -->|否| X[停止并升级事故决策]
+  P -->|是| D[停止全部 MON 并备份每个 store]
+  D --> M[从权威 store 提取 monmap]
+  M --> R[删除非存活 MON 并注入]
+  R --> O[只启动权威 MON]
+  O --> V{形成 quorum 且 maps 一致?}
+  V -->|否| X
+  V -->|是| E[隔离旧 store并逐个扩回 MON]
 ```
 
-手工注入 monmap 会改变一致性根，必须保留原数据副本、FSID、epoch 和每一步输出。恢复 quorum 后先核验 OSD/CRUSH/auth/config maps，再恢复编排。
+**第一步：停止全部 MON 并取得一致备份。** 通过 SSH 登录每台 MON 主机，逐台执行；多集群主机必须带正确 FSID。为避免 quorum 恢复瞬间 active MGR 按旧 MON spec 自动 reconcile，同时记录并停止全部 MGR unit；这不会修改 MON store，且后面只恢复一个已确认的 MGR。确认 unit 已停止后，把 `/var/lib/ceph/<fsid>/mon.<id>` 按 owner、ACL、xattr 和硬链接不变地复制到独立受保护介质。备份目录不能与故障盘共用故障域，也不能把正在变化的 RocksDB 目录当一致备份。
+
+```bash
+# 在每一台 MON 主机执行，并替换占位符
+cephadm ls | jq '.[] | select(.name == "mon.<id>") |
+  {fsid, name, state, container_image_id, data_dir}'
+cephadm unit --fsid <fsid> --name mon.<id> stop
+systemctl is-active "ceph-<fsid>@mon.<id>.service"
+
+# 在每一台 MGR 主机记录身份后停止；不要停止 OSD
+cephadm ls | jq '.[] | select(.name | startswith("mgr.")) |
+  {fsid, name, state, container_image_id, data_dir}'
+cephadm unit --fsid <fsid> --name mgr.<id> stop
+```
+
+`systemctl is-active` 应返回 `inactive`；任何 MON 仍在运行都禁止进入下一步。对每份停止后的 store 保存校验清单、容量和备份位置，原目录只读保留，禁止先删除所谓“坏 MON”。
+
+**第二步：选择唯一权威 MON。** 结合最后成功形成 quorum 的时间、MON 日志、store 可读性和 map epoch 选择一份最新完整 store。以该 MON 身份启动一次性 cephadm shell，挂载它的离线 store，提取而不是凭记忆重建 monmap：
+
+```bash
+cephadm shell --fsid <fsid> --name mon.<survivor-id>
+
+# 以下命令在 cephadm shell 打开的维护容器中执行
+ceph-mon -i <survivor-id> --extract-monmap /tmp/monmap
+cp --preserve=all /tmp/monmap /tmp/monmap.before
+monmaptool --print /tmp/monmap.before
+```
+
+这里不能使用 `cephadm enter`：Tentacle 同提交源码中它通过 runtime `exec` 进入正在运行的 daemon 容器，而本流程已经停止所有 MON。`cephadm shell --name` 才是官方同一故障章节给出的离线 daemon 工具入口，会按 daemon 身份挂载对应数据目录。
+
+打印结果中的 FSID 必须等于事故集群 FSID；保存 `epoch`、`min_mon_release`、election strategy、每个 MON ID 和 v1/v2 地址。若 FSID 不同、地址属于另一集群、文件为空或命令报 store 损坏，立即停止，回到备份评估，不能继续 `--inject-monmap`。
+
+**第三步：从副本中删除所有不准备启动的 MON。** `monmaptool --rm` 使用的是 daemon ID，不带 `mon.` 前缀。每删一个都重新打印；最终 monmap 只保留本次确认要启动的权威 MON，FSID 不得变化：
+
+```bash
+# 仍在权威 MON 的 cephadm shell 维护容器中
+monmaptool /tmp/monmap --rm <failed-id-1>
+monmaptool /tmp/monmap --rm <failed-id-2>
+monmaptool --print /tmp/monmap
+
+# 最后一次人工复核通过后才写入权威 store
+ceph-mon -i <survivor-id> --inject-monmap /tmp/monmap
+exit
+```
+
+删除对象必须与“最终打印结果”和变更单逐项一致。不要删除仍计划作为初始 quorum 成员的 ID；不要把新 IP 顺手塞进本次灾难恢复。`monmap.before`、修改后 monmap、命令输出和 SHA256 都要导出到受保护证据目录，容器 `/tmp` 不是持久备份。
+
+**第四步：只启动权威 MON 并验证最小 quorum。** 其余 MON unit 保持停止，避免带旧 monmap 的 store 回来干扰恢复：
+
+```bash
+cephadm unit --fsid <fsid> --name mon.<survivor-id> start
+ceph -s
+ceph quorum_status --format json-pretty
+ceph mon dump
+
+# 在任何 MGR 回来之前冻结 cephadm scheduler，再只启动一个已核对的 MGR
+ceph config-key set mgr/cephadm/pause true
+cephadm unit --fsid <fsid> --name mgr.<mgr-id> start
+ceph mgr dump
+```
+
+验收标准是 `quorum_names` 只包含预期存活成员、`mon dump` 的 FSID/epoch/地址与注入后 monmap 一致，并且命令连续多次稳定返回。`mgr.<mgr-id>` 必须使用第一步记录的真实 MGR daemon ID；若没有任何可启动 MGR，则保持 pause config-key 并执行 30.2。单 MON quorum 只用于恢复，不满足生产容错。若不能形成 quorum，停止反复 inject；保存 MON 日志和当前 store，回到注入前副本定位首个失败。
+
+**第五步：隔离旧 store，核对集群 maps，再恢复编排。** quorum 恢复后立即暂停 cephadm 调度，防止旧 placement 把已从 monmap 删除的实例自动拉起；如 MGR 尚未恢复，先完成 30.2，再执行本步骤。
+
+```bash
+ceph orch pause
+ceph osd dump
+ceph osd crush dump
+ceph auth list
+ceph config dump
+ceph mgr dump
+ceph orch ls --service_name mon --export
+```
+
+`auth list` 含敏感能力与身份信息，证据必须限制访问。逐项验证 OSD map、CRUSH map、auth database、config database 和 MGR map 与事故前基线一致；任何关键 map 回退或未知变更都阻止业务恢复。将被删除 MON 的原数据目录归档到安全位置，确保 live MON DB 扩展、compaction 和归档副本均有足够空间；在新 quorum 达到目标冗余并完成恢复演练前不得销毁归档。
+
+把 MON service spec 的期望 placement 先改为当前权威主机，再恢复调度；随后一次只增加一个跨故障域 MON，每次等待其进入 quorum、同步完成并稳定观察后再增加下一个：
+
+```bash
+ceph orch apply mon --placement="<survivor-host>"
+ceph orch resume
+ceph orch apply mon --placement="<survivor-host>,<new-host-1>"
+ceph quorum_status --format json-pretty
+ceph orch apply mon --placement="<survivor-host>,<new-host-1>,<new-host-2>"
+ceph quorum_status --format json-pretty
+```
+
+最终恢复奇数个、跨故障域的 3 或 5 MON，验证连续选举、单 MON 故障、主机重启和客户端 I/O。旧 MON 数据目录只有在新 quorum 充分冗余、归档可恢复且变更负责人签字后才能删除。手工注入 monmap 改变了一致性根；完整交付证据必须包含原 store 备份、前后 monmap、FSID、epoch、quorum 演进、各 map 对账和业务验收。
 
 ### 30.2 没有可用 MGR
 
-MON quorum 正常但所有 MGR 不可用时，cephadm orchestrator 命令无法工作。可通过 cephadm 手工部署临时 MGR，使用现有 FSID、mon config 和新建的正确 MGR auth；待 MGR active 后立即由 service spec 纳管，部署 standby，并移除临时/stray 状态。
+MON quorum 正常但所有 MGR 不可用时，cephadm orchestrator 命令无法工作。使用仍可访问 MON 的 admin 环境，按以下顺序手工部署临时 MGR：
+
+```bash
+# 1. 暂停 cephadm scheduler，防止恢复后立即删除临时实例
+ceph config-key set mgr/cephadm/pause true
+
+# 2. 创建目标 MGR 身份并保存完整 keyring
+ceph auth get-or-create mgr.<host>.<id> \
+  mon "profile mgr" osd "allow *" mds "allow *" > mgr.keyring
+
+# 3. 生成最小配置并取得该 MGR 应使用的 image
+ceph config generate-minimal-conf > ceph.conf
+ceph config get "mgr.<host>.<id>" container_image
+
+# 4. 生成 cephadm deploy 输入；输出文件按 secret 保护
+jq -n --rawfile config ceph.conf --rawfile keyring mgr.keyring \
+  '{config: $config, keyring: $keyring}' > config-json.json
+chmod 0600 mgr.keyring ceph.conf config-json.json
+
+# 5. 在目标主机以现有 FSID 部署
+cephadm --image <container-image> deploy \
+  --fsid <fsid> --name mgr.<host>.<id> --config-json config-json.json
+```
+
+`container_image` 为空时，从仍存活 daemon 的 `cephadm ls`/runtime inspect 取得已验证的同 release image，不能猜 tag。新 MGR active 后恢复/应用正式 MGR service spec、部署 standby、确认临时实例已纳入或安全移除，再执行 `ceph orch resume` 清除 scheduler pause，并销毁临时 keyring/config 文件。
 
 临时 MGR 是恢复控制面的桥，不得成为无 spec 的长期实例。验收 `ceph -s`、`ceph mgr dump`、cephadm module 和 `ceph orch status`。
 
@@ -2271,7 +2765,206 @@ flowchart TD
 | Cert 告警 | owner、scope、SAN、expiry | 直接 rm certificate |
 | Adoption 后 unit 被改回 | 旧 Ansible/Salt/cron 控制器 | 再次 adopt 全部 daemon |
 
-## 37. 官方事实基线与许可
+## 37. 实现、扩展与规模化边界
+
+这一章覆盖 Cephadm 官方索引直接纳入的 developer/design 文档。它们同时包含现有实现、开发方法和未来设计讨论；三者必须严格区分，不能把 proposal 当作已经可用的生产命令。
+
+### 37.1 对象命名与 reconcile 执行模型
+
+| 名称 | 精确定义 | 示例 |
+|---|---|---|
+| `service_type` | ServiceSpec 定义的服务类型 | `mon`、`mgr`、`rgw`、`ingress` |
+| `service_id` | 同一类型下的服务标识；部分类型不需要 | `site-a` |
+| `service_name` | `<service_type>.<service_id>` | `rgw.site-a` |
+| `daemon_type` | daemon 类型；通常等于 service type，但 ingress 产生 `haproxy`、`keepalived` | `haproxy` |
+| `daemon_id` | 通常为 `<service_id>.<hostname>.<random>`；OSD 固定为数字 ID | `site-a.gw01.abc123` |
+| `daemon_name` | `<daemon_type>.<daemon_id>` | `rgw.site-a.gw01.abc123` |
+
+管理员 CLI、orchestrator module、MON config-key 和目标主机之间不是一次调用完成全部工作：CLI 写入意图，active MGR 的 cephadm module 在 `serve()` 循环中读取缓存、调度远端动作、更新状态并持续 reconcile。
+
+```mermaid
+sequenceDiagram
+  participant CLI as ceph orch CLI
+  participant MON as MON command/config-key
+  participant MGR as active MGR cephadm
+  participant Cache as host/daemon/device cache
+  participant Host as target host
+  CLI->>MON: 提交或查询
+  MON->>MGR: command handler
+  MGR->>Cache: 写入期望/读取事实
+  MGR-->>CLI: 返回已接受或缓存状态
+  loop serve reconcile
+    MGR->>Host: SSH/agent 查询或执行
+    Host-->>MGR: inventory/daemon/result
+    MGR->>Cache: 更新事实与 event
+  end
+```
+
+MGR command handler 会阻塞同一 MON command 处理线程；客户端按 `Ctrl-C` 只终止本地等待，不会取消 MGR 内正在执行的调用。在 cephadm 扩展中，同步 CLI handler 最多执行 `O(1)` 次网络调用，其余远端工作必须异步交给 `serve()` 等后台线程。客户看到 CLI 超时时，先查 cephadm event 和 MGR 日志，不能立即重复提交同一个破坏性动作。
+
+### 37.2 主机抓取、缓存与规模化
+
+官方 scalability notes 描述的基线是：cephadm 管理全部注册主机，周期性获取 disk、daemon、network/firewall 等事实；历史实现最多并行抓取 10 台主机、约每 6 分钟一轮，磁盘和 daemon 等检查在单主机上顺序执行。`--refresh` 会绕过等待但增加瞬时负载。
+
+cephadm-exporter 通过 HTTP 提供 host metadata，缩短扫描时间，但并未自动消除全部规模问题：
+
+- SSH 与 HTTP 两种传输并存，认证、超时和故障模式不同；
+- standalone `cephadm` 不便随意引入外部 HTTP server 依赖；
+- 主机元数据进入 MON config-key、MGR memory 或 RADOS pool 的耐久性需求不同；
+- 单纯扩大 worker pool 只降低总墙钟时间，远端单机耗时不变，复杂度下界仍接近 `O(hosts) + O(daemons)`；
+- 所有改进都必须保持升级兼容或与旧路径完全隔离。
+
+这些数字来自官方“Notes and Thoughts”，不是 Tentacle 的容量 SLA。生产容量验证要测量 P50/P95 host refresh、完整 reconcile 周期、MGR CPU/内存、MON config-key 增长、SSH/HTTP 失败率和 `orch ps --refresh` 延迟，并以目标主机/daemon 数量压测。
+
+```mermaid
+flowchart TD
+  H[主机与 daemon 数增长] --> P[周期扫描队列增长]
+  P --> C[状态缓存变旧]
+  C --> O[运维决策使用旧事实]
+  P --> M[MGR/SSH/HTTP 压力]
+  E[cephadm-exporter] --> F[缩短单次事实采集]
+  F --> P
+  T[规模压测与告警] --> O
+  T --> M
+```
+
+### 37.3 Compliance 设计与已实现配置检查
+
+官方 compliance-check 文档是设计讨论，不是已承诺 CLI。文档提出利用 `HostFacts`/`gather-facts` 缓存，按默认 12 小时间隔检查 OS vendor/major、SELinux/AppArmor、systemd daemon、订阅状态、MTU、link speed 和 public/cluster 网络一致性，并聚合为 WARN；还设想 `ceph cephadm compliance ...` 命令族。
+
+Tentacle 客户操作必须使用本手册第 27 章已经验证的 `ceph cephadm config-check ...` 和 `CEPHADM_CHECK_*` 健康码。禁止把下列 proposal 写进自动化或运行手册：
+
+```text
+ceph cephadm compliance enable|disable|status
+ceph cephadm compliance enable-check|disable-check <name>
+ceph cephadm compliance set-check-interval|get-check-interval
+```
+
+设计价值在于建立检查原则：host status 必须进入上下文，一次呈现全部平台问题，允许受控 opt-out，并把 OS、硬件和网络视为 Ceph 稳定性的一部分。实际命令面以 `ceph --help` 和当前 module schema 为准。
+
+### 37.4 Host maintenance 的实现与设计来源
+
+官方设计把 maintenance 定义为以下状态机：先检查移除主机是否影响数据可用性；对 host CRUSH subtree 设置 `noout`；停止并 disable 该主机 Ceph target；退出时逆序恢复。当前 `ceph orch host maintenance enter/exit` 已实现这一生产工作流，并增加 `--force`、`--yes-i-really-mean-it`、离线退出等现实分支。
+
+```mermaid
+flowchart TD
+  R[maintenance request] --> D{data availability safe?}
+  D -->|否| X[拒绝]
+  D -->|是| S{secondary service impact?}
+  S --> W[列出 MGR/RGW/monitoring/gateway 影响]
+  W --> N[host subtree noout]
+  N --> T[stop + disable ceph target]
+  T --> M[host status maintenance]
+  M --> E[exit: enable/start target]
+  E --> O[清除 noout 并验证服务]
+```
+
+设计文档提出的 `--check` 二阶段交互、维护窗口超时、第三方告警静默插件和 SLA 记录属于未来方向，不能假定存在。当前变更单必须自行列出非原生服务影响，包括 MGR、Prometheus、Grafana、Alertmanager、RGW、HAProxy、iSCSI 和 NFS-Ganesha。
+
+### 37.5 设备与 OSD 工作流：当前能力和设计提案
+
+官方设计文档把设备管理分成 inventory、add、remove、replace 四条链。当前可执行事实是：
+
+1. `ceph orch device ls --wide --refresh` 返回 host、path、type、serial、size、health、LED 和 available/reject reason；大规模环境要关注返回延迟和缓存年龄。
+2. `daemon add osd` 是明确设备的一次性入口；DriveGroup 是持续声明，未来匹配盘和 zap 后重新 available 的盘会自动被消费。
+3. `orch osd rm` 负责迁移 PG 后删除，`rm status` 显示进度，`rm stop` 取消仍可取消的队列，`device zap` 清理签名。
+4. `--replace` 保留 destroyed OSD ID，后续以设备 replacement 或 `osd_id_claims` 复用。
+
+设计提案指出声明式 DriveGroup 可能在新增盘、清盘和高流量窗口自动触发 OSD 创建及 rebalance，并提出 device/host 两种 UI、确认页、预计时间，以及 immediate、按 OSD 分阶段、按 host 分阶段引入容量。它不是当前 CLI 已自动实现的策略。生产用下面的人工门禁获得同等安全性：
+
+```mermaid
+flowchart LR
+  I[盘点 serial/size/health/available] --> P[dry-run 与原始容量汇总]
+  P --> F[按 rack/host 检查容量和故障域平衡]
+  F --> C{空集群初始化?}
+  C -->|是| B[审批后批量创建]
+  C -->|否| W[小批创建并限制 recovery/backfill]
+  W --> V[每批验证 latency/PG/business I/O]
+  V --> W
+  B --> E[最终 OSD/CRUSH/class 验收]
+  W --> E
+```
+
+### 37.6 Cephadm 开发与验证路径
+
+客户需要扩展或定位 cephadm 本身时，官方提供多条环境路径，适用边界不同：
+
+| 路径 | 特征 | 适用与限制 |
+|---|---|---|
+| `vstart --cephadm` | MON/MGR 等可由 vstart 启动，额外 daemon 交给 cephadm | 适合快速改 MGR/cephadm；vstart daemon 会显示 stray，不等价于真实生产集群 |
+| `cstart.sh` + `cpatch` | 建立正常 cephadm 集群，把本地构建 patch 进稳定 FSID 对应 image | 更接近客户集群；变更 image 后需重启目标 daemon，结束用 `ckill.sh` 清理 |
+| `bootstrap --shared_ceph_folder` | 把源码目录共享给容器，无需完整编译 Ceph | 适合 Python MGR 模块；源码变化后重启 MGR |
+| kcli VM plan | 多 VM、可选择 OS/CPU/磁盘，接近 QE/生产 | 固定 kcli image tag，避免 rolling release 破坏复现；完整删除 VM/磁盘 |
+| cephadm box | Podman-in-Podman 或 Docker 的快速实验环境 | 官方标记 experimental；loop device 不是生产盘，Podman OSD 支持有限，Docker privileged 有宿主机风险 |
+
+最小开发命令示意：
+
+```bash
+# vstart
+MON=1 MGR=1 OSD=0 MDS=0 ../src/vstart.sh -d -n -x --cephadm
+
+# 更接近生产的容器集群
+sudo ../src/cstart.sh
+sudo ../src/script/cpatch -t <generated-image> --py
+sudo ../src/ckill.sh
+
+# shared source
+sudo ./cephadm bootstrap --mon-ip 127.0.0.1 \
+  --skip-mon-network --skip-monitoring-stack --single-host-defaults \
+  --skip-dashboard --shared_ceph_folder <ceph-source>
+
+# kcli：固定经过验证的容器 tag 后创建并检查三节点 plan
+kcli create plan -u \
+  https://github.com/karmab/kcli-plans/blob/master/ceph/ceph_cluster.yml
+kcli list vms
+kcli ssh ceph-node-00
+# 开发 MGR/Dashboard 时把宿主机源码共享给 plan
+kcli create plan -u \
+  https://github.com/karmab/kcli-plans/blob/master/ceph/ceph_cluster.yml \
+  -P ceph_dev_folder=<absolute-ceph-source>
+
+# Dashboard 前端必须先生成 bundle，watch 完成后再刷新浏览器
+cd <ceph-source>/src/pybind/mgr/dashboard/frontend
+NG_CLI_ANALYTICS=false npm ci
+npm run build -- --deleteOutputPath=false --watch
+
+# experimental box 生命周期
+cd src/cephadm/box
+./box.py -v cluster setup
+./box.py -v cluster start
+sudo ./box.py -v cluster start --extended --osds 5 --hosts 5
+./box.py -v cluster bash
+./box.py cluster list
+./box.py cluster cleanup
+./box.py cluster down
+```
+
+`vstart --cephadm` 默认使用本地 `~/.ssh/id_dsa[.pub]` 作为无口令 root SSH 的实验 key，且 vstart 启动的 daemon 没有 service spec，因此出现 stray warning 是预期开发现象，不应通过生产告警豁免掩盖。`cstart.sh` 在 build 目录保存稳定 FSID，以其前 8 位生成 `quay.io/ceph-ci/ceph:<tag>`；`cpatch --py` 不包含 Dashboard，改完 image 后要重启目标 daemon 或 `ceph-$(cat fsid).target` 才加载新代码。shared-source 模式中 `pybind/mgr/` 变更同样要重启 MGR。
+
+Dashboard watch build 出现 `Localized bundle generation complete.` 才表示前端 bundle 已重新生成；`npm ci`、目录 owner 和 Node 依赖失败属于开发环境问题，不能通过把宿主目录放宽为全局可写来规避。kcli 使用 rolling release，企业复现实验必须把验证过的容器 tag、plan URL/commit、VM image、CPU、内存和磁盘参数一并固定，结束后删除 plan 创建的 VM 与磁盘。
+
+Cephadm box 的 `--extended` 才会按参数增加 host/OSD；未带它时单独给 `--hosts`/`--osds` 不改变集群。每个 loop OSD 消耗 5 GiB 空间；Podman-in-Podman 的 OSD 支持仍未完成，Docker engine 会启用 privileged 容器，官方记录过导致图形会话退出的风险，SELinux 与源码目录权限也可能引发非生产性失败。它是 experimental 开发设施，不是兼容性或数据耐久性证据。
+
+这些入口只属于隔离开发环境，不能在生产节点使用 `--shared_ceph_folder`、loop OSD、development image 或 privileged nested runtime。任何实验结束都要验证 VM、container、loop device、VG/LV、network 和 registry image 已清理；`cluster cleanup/down` 的输出不能替代宿主机实际残留检查。
+
+### 37.7 构建 cephadm 与制品溯源
+
+新版 cephadm 是 Python Zip Application，不再是复制单个源码脚本。官方构建入口：
+
+```bash
+./src/cephadm/build.py \
+  -SCEPH_GIT_VER=<full-commit> \
+  -SCEPH_GIT_NICE_VER=<describe> \
+  -SCEPH_RELEASE=tentacle \
+  -B rpm \
+  ./cephadm
+./cephadm version --verbose
+sha256sum ./cephadm
+```
+
+版本 metadata 支持 `CEPH_GIT_VER`、`CEPH_GIT_NICE_VER`、`CEPH_RELEASE`、`CEPH_RELEASE_NAME`、`CEPH_RELEASE_TYPE`；bundled dependencies 模式为 `pip`、`rpm` 或 `none`。`version --verbose` 会显示构建 metadata、bundled packages 和 zip root entries。企业交付必须保存源码提交、构建参数、依赖模式、构建日志、SHA256 和签名，并证明运行制品与审核源码一致。
+
+## 38. 官方事实基线与许可
 
 本文覆盖 Tentacle `doc/cephadm/` 的直属模块：
 
@@ -2284,4 +2977,6 @@ flowchart TD
 - `snmp-gateway.rst`、`tracing.rst`、`custom-container.rst`；
 - `certmgr.rst`、`client-setup.rst`、`upgrade.rst`、`adoption.rst`。
 
-事实版本：Ceph 官方 Tentacle 快照提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。正文对官方重复内容按生产生命周期重新编排，保留默认值、限制、警告、破坏性边界和失败恢复语义。Ceph Authors and Contributors，文档许可 CC BY-SA 3.0。
+同时覆盖索引直接级联的 `doc/dev/cephadm/`：`index.rst`、`compliance-check.rst`、`host-maintenance.rst`、`scalability-notes.rst`、`developing-cephadm.rst`、`design/storage_devices_and_osds.rst`，以及 RST `autoclass` 动态展开的 `ServiceSpec`、`DriveGroupSpec` 和相关校验源码。设计提案均已与 Tentacle 当前实现明确分栏，不作为现有功能承诺。
+
+事实版本：Ceph 官方 Tentacle 快照提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。正文对官方重复内容按生产生命周期重新编排，保留默认值、字段、限制、警告、破坏性边界和失败恢复语义；当同一提交的 RST 示例与可执行 schema 冲突时，正文明确记录漂移并以源码为准。Ceph Authors and Contributors，文档许可 CC BY-SA 3.0。

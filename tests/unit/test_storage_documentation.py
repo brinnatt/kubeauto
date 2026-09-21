@@ -182,6 +182,8 @@ CEPHADM_REQUIRED_FACTS = {
         "--registry-json",
         "--apply-spec",
         "--single-host-defaults",
+        "orchestrator interface",
+        "Ansible、Rook 或 Salt",
         "osd_crush_chooseleaf_type = 0",
         "osd_pool_default_size = 2",
         "mgr_standby_modules = false",
@@ -197,6 +199,9 @@ CEPHADM_REQUIRED_FACTS = {
         "_no_autotune_memory",
         "--with-summary",
         "/etc/sysctl.d/<profile>-cephadm-tuned-profile.conf",
+        "--host-status offline",
+        "ssh_identity_cert",
+        "StrictHostKeyChecking no",
     ),
     "service specification": (
         "CEPHADM_INVALID_CONFIG_OPTION",
@@ -208,6 +213,10 @@ CEPHADM_REQUIRED_FACTS = {
         "split: false",
         "custom_configs",
         "daemon_cache_timeout",
+        "ceph orch set-unmanaged <service>",
+        "ceph orch set-managed <service>",
+        "ceph orch daemon rm <daemon-name>",
+        "daemon_cache_timeout 60",
     ),
     "osd lifecycle": (
         "device_enhanced_scan",
@@ -224,6 +233,12 @@ CEPHADM_REQUIRED_FACTS = {
         "ceph orch device replace",
         "Is being replaced",
         "osd activate",
+        "block_db_size",
+        "block_wal_size",
+        "osds_per_device",
+        "data_allocate_fraction",
+        "osd_id_claims",
+        "method: lvm",
     ),
     "core services": (
         "public_network",
@@ -235,6 +250,13 @@ CEPHADM_REQUIRED_FACTS = {
         "first_virtual_router_id",
         "keepalive_only",
         "enable_haproxy_protocol",
+        "rgw_frontend_ssl_certificate",
+        "rgw_realm_token",
+        "only_bind_port_on_networks",
+        "data_pool_attributes",
+        "enable_nlm",
+        "idmap_conf",
+        "keepalived_password",
     ),
     "gateway services": (
         "trusted_ip_list",
@@ -246,6 +268,15 @@ CEPHADM_REQUIRED_FACTS = {
         "oauth2-proxy",
         "CEPH-MIB.txt",
         "200 秒",
+        "remote_control_ssl_cert",
+        "cephadm list-networks",
+        "ssl_session_tickets",
+        "enable_health_check_endpoint",
+        "redirect_url",
+        "allowlist_domains",
+        "16、24 或 32 bytes",
+        "init_containers",
+        "互斥",
     ),
     "monitoring": (
         "secure_monitoring_stack",
@@ -256,6 +287,10 @@ CEPHADM_REQUIRED_FACTS = {
         "anonymous_access",
         "custom_alerts.yml",
         "ceph orch rm prometheus --force",
+        "Prometheus | 9095",
+        "node-exporter | 9100",
+        "services/mgmt-gateway/nginx.conf",
+        "container_image_jaeger_query",
     ),
     "certificate management": (
         "CEPHADM_CERT_ERROR",
@@ -266,6 +301,8 @@ CEPHADM_REQUIRED_FACTS = {
         "cert-key set",
         "generate-certificates",
         "config-check ls",
+        "cephadm_root_ca_cert",
+        "cephadm_root_ca_key",
     ),
     "upgrade controls": (
         "ceph osd pool set noautoscale",
@@ -276,6 +313,10 @@ CEPHADM_REQUIRED_FACTS = {
         "daemon_types",
         "ceph orch upgrade stop",
         "ceph orch update service",
+        "--ceph-version <version>",
+        "container_image_base",
+        "cephadm` 包更新",
+        "container_image <target-image>",
     ),
     "recovery and adoption": (
         "cephadm:v1",
@@ -287,6 +328,39 @@ CEPHADM_REQUIRED_FACTS = {
         "--no-ceph-conf",
         "/var/lib/systemd/coredump",
         "cephadm rm-cluster --force --zap-osds --fsid",
+        "/unit.run",
+        "ceph --admin-daemon",
+        "ceph-monstore-tool",
+        "ceph-objectstore-tool",
+        "Failed to infer CIDR network",
+        "ceph orch set backend ''",
+        "--config-json config-json.json",
+        "cephadm logs --fsid",
+        "cephadm_private_key",
+        "--extract-monmap /tmp/monmap",
+        "monmaptool /tmp/monmap --rm",
+        "--inject-monmap /tmp/monmap",
+        "ceph orch resume",
+    ),
+    "implementation and scalability": (
+        "service_name",
+        "O(1)",
+        "serve()",
+        "最多并行抓取 10 台主机",
+        "compliance enable|disable|status",
+        "proposal",
+        "vstart --cephadm",
+        "cstart.sh",
+        "--shared_ceph_folder",
+        "cephadm box",
+        "Python Zip Application",
+        "version --verbose",
+        "Docker Live Restore",
+        "多文档 YAML",
+        "on|off|build|string",
+        "NG_CLI_ANALYTICS=false npm ci",
+        "--extended --osds 5 --hosts 5",
+        "每个 loop OSD 消耗 5 GiB",
     ),
 }
 
@@ -439,6 +513,44 @@ class StorageDocumentationTests(unittest.TestCase):
 
         self.assertGreaterEqual(text.count("```mermaid"), 40)
         self.assertGreaterEqual(len(re.findall(r"(?m)^## ", text)), 35)
+
+    def test_cephadm_examples_follow_tentacle_service_schema(self):
+        text = (CEPH_ROOT / "02-cephadm.md").read_text(encoding="utf-8")
+        oauth = text.split("### 22.2 OAuth2 Proxy", 1)[1].split("## 23.", 1)[0]
+        rgw = text.split("### 17.2 HTTPS", 1)[1].split("### 17.3", 1)[0]
+
+        self.assertIn("ssl_cert:", oauth)
+        self.assertIn("ssl_key:", oauth)
+        self.assertIn("redirect_url:", oauth)
+        self.assertIn("allowlist_domains:", oauth)
+        self.assertNotRegex(oauth, r"(?m)^\s+ssl_certificate:\s*$")
+        self.assertNotRegex(oauth, r"(?m)^\s+ssl_certificate_key:\s*$")
+
+        self.assertIn("rgw_frontend_ssl_certificate:", rgw)
+        self.assertIn("`generate_cert: true` 必须同时设置 `ssl: true`", rgw)
+
+    def test_cephadm_quorum_recovery_preserves_official_destructive_order(self):
+        text = (CEPH_ROOT / "02-cephadm.md").read_text(encoding="utf-8")
+        recovery = text.split("### 30.1 恢复 MON quorum", 1)[1].split(
+            "### 30.2", 1
+        )[0]
+
+        ordered_facts = (
+            "cephadm unit --fsid <fsid> --name mon.<id> stop",
+            "--extract-monmap /tmp/monmap",
+            "monmaptool /tmp/monmap --rm",
+            "--inject-monmap /tmp/monmap",
+            "mon.<survivor-id> start",
+            "ceph quorum_status --format json-pretty",
+            "ceph orch pause",
+            "ceph orch resume",
+        )
+        positions = [recovery.index(fact) for fact in ordered_facts]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("FSID 必须等于事故集群 FSID", recovery)
+        self.assertIn("其余 MON unit 保持停止", recovery)
+        self.assertIn("cephadm shell --fsid <fsid> --name mon.<survivor-id>", recovery)
+        self.assertNotIn("cephadm enter --name mon.<survivor-id>", recovery)
 
     def test_mature_documents_use_github_renderable_mermaid_contract(self):
         for document in ("01-architecture.md", "02-cephadm.md"):
