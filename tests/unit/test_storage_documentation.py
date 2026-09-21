@@ -22,7 +22,7 @@ CEPH_DOCUMENTS = (
 
 MINIMUM_LINES = {
     "01-architecture.md": 1500,
-    "02-cephadm.md": 400,
+    "02-cephadm.md": 2000,
     "03-rados.md": 500,
     "04-cephfs.md": 350,
     "05-rbd.md": 350,
@@ -175,6 +175,121 @@ ARCHITECTURE_REQUIRED_FACTS = {
     ),
 }
 
+CEPHADM_REQUIRED_FACTS = {
+    "bootstrap contract": (
+        "--cluster-network",
+        "--output-dir",
+        "--registry-json",
+        "--apply-spec",
+        "--single-host-defaults",
+        "osd_crush_chooseleaf_type = 0",
+        "osd_pool_default_size = 2",
+        "mgr_standby_modules = false",
+        "--ssh-signed-cert",
+        "2.2.1 明确不可用",
+    ),
+    "host lifecycle": (
+        "--keep-conf-keyring",
+        "--zap-osd-devices",
+        "--rm-crush-entry",
+        "--yes-i-really-mean-it",
+        "_no_conf_keyring",
+        "_no_autotune_memory",
+        "--with-summary",
+        "/etc/sysctl.d/<profile>-cephadm-tuned-profile.conf",
+    ),
+    "service specification": (
+        "CEPHADM_INVALID_CONFIG_OPTION",
+        "CEPHADM_FAILED_SET_OPTION",
+        "count_per_host",
+        "regex:",
+        "extra_container_args",
+        "extra_entrypoint_args",
+        "split: false",
+        "custom_configs",
+        "daemon_cache_timeout",
+    ),
+    "osd lifecycle": (
+        "device_enhanced_scan",
+        "lsmcli ldl",
+        "all-available-devices",
+        "filter_logic: OR",
+        "db_slots",
+        "wal_slots",
+        "tpm2: true",
+        "autotune_memory_target_ratio",
+        "osd_memory_target 16G",
+        "--replace",
+        "destroyed",
+        "ceph orch device replace",
+        "Is being replaced",
+        "osd activate",
+    ),
+    "core services": (
+        "public_network",
+        "crush_locations",
+        "max_mds",
+        "disable_multisite_sync_traffic",
+        "rgw_exit_timeout_secs",
+        "virtual_ips_list",
+        "first_virtual_router_id",
+        "keepalive_only",
+        "enable_haproxy_protocol",
+    ),
+    "gateway services": (
+        "trusted_ip_list",
+        "cluster_meta_uri",
+        "cluster_lock_uri",
+        "cephfs-proxy",
+        "TCP 445",
+        "mgmt-gateway",
+        "oauth2-proxy",
+        "CEPH-MIB.txt",
+        "200 秒",
+    ),
+    "monitoring": (
+        "secure_monitoring_stack",
+        "admin/admin",
+        "service_discovery_port",
+        "retention_time",
+        "retention_size",
+        "anonymous_access",
+        "custom_alerts.yml",
+        "ceph orch rm prometheus --force",
+    ),
+    "certificate management": (
+        "CEPHADM_CERT_ERROR",
+        "certificate_automated_rotation_enabled",
+        "certificate_duration_days",
+        "certificate_renewal_threshold_days",
+        "certificate_check_period",
+        "cert-key set",
+        "generate-certificates",
+        "config-check ls",
+    ),
+    "upgrade controls": (
+        "ceph osd pool set noautoscale",
+        "mgr -> mon -> crash -> osd -> mds -> rgw",
+        "mgr/orchestrator/fail_fs=true",
+        "UPGRADE_NO_STANDBY_MGR",
+        "UPGRADE_FAILED_PULL",
+        "daemon_types",
+        "ceph orch upgrade stop",
+        "ceph orch update service",
+    ),
+    "recovery and adoption": (
+        "cephadm:v1",
+        "ceph config assimilate-conf",
+        "cephadm adopt --style legacy",
+        "仅支持 BlueStore OSD",
+        "MON config-key",
+        "/var/lib/ceph/<fsid>/removed",
+        "--no-ceph-conf",
+        "/var/lib/systemd/coredump",
+        "cephadm rm-cluster --force --zap-osds --fsid",
+    ),
+}
+
 MERMAID_BLOCK = re.compile(r"(?ms)^```mermaid\s*$\n(.*?)^```\s*$")
 MERMAID_TYPES = {"flowchart", "sequenceDiagram", "stateDiagram-v2"}
 
@@ -316,52 +431,61 @@ class StorageDocumentationTests(unittest.TestCase):
         self.assertGreaterEqual(text.count("```mermaid"), 40)
         self.assertGreaterEqual(len(re.findall(r"(?m)^## ", text)), 25)
 
-    def test_architecture_mermaid_uses_github_renderable_contract(self):
-        text = (CEPH_ROOT / "01-architecture.md").read_text(encoding="utf-8")
-        blocks = MERMAID_BLOCK.findall(text)
-        self.assertEqual(len(blocks), text.count("```mermaid"))
+    def test_cephadm_preserves_official_production_facts(self):
+        text = (CEPH_ROOT / "02-cephadm.md").read_text(encoding="utf-8")
+        for mechanism, facts in CEPHADM_REQUIRED_FACTS.items():
+            for fact in facts:
+                self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
 
-        for index, block in enumerate(blocks, start=1):
-            lines = [line.strip() for line in block.splitlines() if line.strip()]
-            diagram_type = lines[0].split()[0]
-            self.assertIn(diagram_type, MERMAID_TYPES, f"diagram {index}")
-            self.assertNotRegex(block, r"%%\{|<script|\bicon:|@\{")
+        self.assertGreaterEqual(text.count("```mermaid"), 40)
+        self.assertGreaterEqual(len(re.findall(r"(?m)^## ", text)), 35)
 
-            if diagram_type == "flowchart":
-                subgraphs = sum(line.startswith("subgraph ") for line in lines)
-                ends = sum(line == "end" for line in lines)
-                self.assertEqual(subgraphs, ends, f"flowchart {index}")
+    def test_mature_documents_use_github_renderable_mermaid_contract(self):
+        for document in ("01-architecture.md", "02-cephadm.md"):
+            text = (CEPH_ROOT / document).read_text(encoding="utf-8")
+            blocks = MERMAID_BLOCK.findall(text)
+            self.assertEqual(len(blocks), text.count("```mermaid"), document)
 
-            if diagram_type == "sequenceDiagram":
-                participants = []
-                for line in lines[1:]:
-                    match = re.fullmatch(
-                        r"participant\s+([A-Za-z_][A-Za-z0-9_]*)\s+as\s+.+",
-                        line,
-                    )
-                    if match:
-                        participants.append(match.group(1))
-                self.assertEqual(
-                    len(participants), len(set(participants)), f"sequence {index}"
-                )
+            for index, block in enumerate(blocks, start=1):
+                diagram = f"{document} diagram {index}"
+                lines = [line.strip() for line in block.splitlines() if line.strip()]
+                diagram_type = lines[0].split()[0]
+                self.assertIn(diagram_type, MERMAID_TYPES, diagram)
+                self.assertNotRegex(block, r"%%\{|<script|\bicon:|@\{", diagram)
 
-                messages = [
-                    re.fullmatch(
-                        r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:->>|-->>)"
-                        r"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*.+",
-                        line,
-                    )
-                    for line in lines[1:]
-                    if "->>" in line or "-->>" in line
-                ]
-                self.assertTrue(all(messages), f"sequence {index}")
-                for message in messages:
-                    self.assertIn(message.group(1), participants, f"sequence {index}")
-                    self.assertIn(message.group(2), participants, f"sequence {index}")
+                if diagram_type == "flowchart":
+                    subgraphs = sum(line.startswith("subgraph ") for line in lines)
+                    ends = sum(line == "end" for line in lines)
+                    self.assertEqual(subgraphs, ends, diagram)
 
-            if diagram_type == "stateDiagram-v2":
-                self.assertIn("[*]", block, f"state diagram {index}")
-                self.assertRegex(block, r"(?m)^\s*\S+\s+-->\s+\S+")
+                if diagram_type == "sequenceDiagram":
+                    participants = []
+                    for line in lines[1:]:
+                        match = re.fullmatch(
+                            r"participant\s+([A-Za-z_][A-Za-z0-9_]*)\s+as\s+.+",
+                            line,
+                        )
+                        if match:
+                            participants.append(match.group(1))
+                    self.assertEqual(len(participants), len(set(participants)), diagram)
+
+                    messages = [
+                        re.fullmatch(
+                            r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:->>|-->>)"
+                            r"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*.+",
+                            line,
+                        )
+                        for line in lines[1:]
+                        if "->>" in line or "-->>" in line
+                    ]
+                    self.assertTrue(all(messages), diagram)
+                    for message in messages:
+                        self.assertIn(message.group(1), participants, diagram)
+                        self.assertIn(message.group(2), participants, diagram)
+
+                if diagram_type == "stateDiagram-v2":
+                    self.assertIn("[*]", block, diagram)
+                    self.assertRegex(block, r"(?m)^\s*\S+\s+-->\s+\S+", diagram)
 
     def test_content_is_not_replaced_by_coverage_claims(self):
         combined = "\n".join(
