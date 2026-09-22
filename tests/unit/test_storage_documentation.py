@@ -1,4 +1,6 @@
+import os
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -672,6 +674,65 @@ RADOS_HEALTH_CODES = (
     "OSD_NO_DOWN_OUT_INTERVAL", "DASHBOARD_DEBUG",
 )
 
+CEPHFS_REQUIRED_FACTS = {
+    "filesystem ownership and protection": (
+        "ceph fs volume create cephfs --placement='label:mds'",
+        "ceph fs new cephfs cephfs.meta cephfs.data",
+        "Pacific 起新建集群自动开启多 FS",
+        "已有集群若未开启",
+        "Metadata pool 必须 replicated",
+        "默认 data pool 由 `fs new` 固定",
+        "ceph fs rm <fs> --yes-i-really-mean-it",
+        "ceph fs volume rm <fs> --yes-i-really-mean-it",
+        "ceph fs rm_data_pool",
+    ),
+    "isolation and durability": (
+        "路径 cap 只限制 MDS 管理的目录树",
+        "独立 RADOS namespace",
+        "OSD namespace caps",
+        "MDS_CLIENTS_BROKEN_ROOTSQUASH",
+        "client_mds_auth_caps",
+        "`ceph fs authorize` 不会自动削减已有 caps",
+        "成功 `fclose()` 不保证数据已经落盘",
+        "fsync()",
+        "以同一密钥直连 RADOS 不能读取另一 namespace",
+    ),
+    "mds and clients": (
+        "balance_automate true",
+        "动态 balancer 默认关闭",
+        "bal_rank_mask 0x3",
+        "standby_count_wanted",
+        "mds_reconnect_timeout",
+        "cap revoke 长期无响应的自动驱逐**默认关闭**",
+        "`EVENT_SEGMENT`",
+        "`mds_log_minor_segments_per_major_segment`",
+        "replay 必须从包含 subtree map 的 major segment 开始",
+        "osd blocklist ls",
+        "Java bindings 已不由 CI 测试",
+    ),
+    "subvolume and snapshot correctness": (
+        "ceph fs subvolume authorized_list",
+        "ceph fs clone status",
+        "--retain-snapshots",
+        "snapshot_clone_no_wait",
+        "snap-schedule retention add",
+        "--if-version=<observed>",
+        "sets[set-id].version",
+        "若返回 `ESTALE`，条件操作**未执行**",
+        "TIMEDOUT",
+    ),
+    "mirror and recovery": (
+        "ceph fs snapshot mirror enable cephfs",
+        "ceph fs snapshot mirror peer_bootstrap create",
+        "只支持一个 mirror peer",
+        "多 daemon 未经过充分验证",
+        "last_synced_snap",
+        "cephfs-data-scan pg_files",
+        "不能原地覆盖坏文件",
+        "仅适用于单 active MDS 且集群没有其他 CephFS",
+    ),
+}
+
 MERMAID_BLOCK = re.compile(r"(?ms)^```mermaid\s*$\n(.*?)^```\s*$")
 MERMAID_TYPES = {"flowchart", "sequenceDiagram", "stateDiagram-v2"}
 
@@ -842,6 +903,209 @@ class StorageDocumentationTests(unittest.TestCase):
 
         for code in RADOS_HEALTH_CODES:
             self.assertIn(code, text, f"RADOS health code: {code}")
+
+    def test_cephfs_preserves_tentacle_production_boundaries(self):
+        text = (CEPH_ROOT / "04-cephfs.md").read_text(encoding="utf-8")
+        for mechanism, facts in CEPHFS_REQUIRED_FACTS.items():
+            for fact in facts:
+                self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+        lifecycle = text.split("### 23.3 删除、改名", 1)[1].split(
+            "## 24.", 1
+        )[0]
+        self.assertIn("**不删除** metadata/data pools", lifecycle)
+        self.assertIn("删除 FS、data/metadata pools", lifecycle)
+        self.assertIn("只要仍有任意 file layout 引用，文件即不可用", lifecycle)
+
+        mirroring = text.split("### 27.2 建立同一条", 1)[1].split(
+            "### 27.3", 1
+        )[0]
+        self.assertLess(
+            mirroring.index("ceph mgr module enable mirroring"),
+            mirroring.index("ceph fs snapshot mirror enable cephfs"),
+        )
+        self.assertNotIn("ceph fs mirror enable cephfs", mirroring)
+        self.assertIn("read -r -s -p '目的站 mirror token: ' mirror_token", mirroring)
+        self.assertIn('peer_bootstrap import cephfs "$mirror_token"', mirroring)
+        self.assertIn("unset mirror_token", mirroring)
+        self.assertNotIn("<secure-token>", mirroring)
+
+        mds = text.split("### 25.2 升缩 rank", 1)[1].split(
+            "### 25.3", 1
+        )[0]
+        self.assertNotIn("`ceph fs subvolume pin <fs>", mds)
+        self.assertIn("未注册该 CLI", mds)
+
+        quiesce = text.split("### 26.4 多客户端一致性", 1)[1].split(
+            "## 27.", 1
+        )[0]
+        self.assertIn(
+            '--release --await --if-version="$observed_version"', quiesce
+        )
+        self.assertIn('s = json.load(sys.stdin)["sets"][sys.argv[1]]', quiesce)
+        self.assertIn('s["state"]["name"] != "QUIESCED"', quiesce)
+        self.assertIn('set(s["members"]) != expected', quiesce)
+        self.assertNotIn("assert ", quiesce)
+
+    def test_cephfs_quiesce_example_stops_and_releases_on_each_failure(self):
+        text = (CEPH_ROOT / "04-cephfs.md").read_text(encoding="utf-8")
+        section = text.split("### 26.4 多客户端一致性", 1)[1].split(
+            "## 27.", 1
+        )[0]
+        script = re.search(r"(?s)```bash\n(.*?)\n```", section).group(1)
+        mock_ceph = r'''
+ceph() {
+  case "$*" in
+    'fs subvolume getpath cephfs app --group_name team')
+      printf '/volumes/team/app/1\n'; return 0 ;;
+    'fs subvolume getpath cephfs db --group_name team')
+      printf '/volumes/team/db/1\n'; return 0 ;;
+  esac
+  if [[ "$*" == *'--if-version=0 --timeout=60 --expiration=120' ]]; then
+    printf 'CREATE\n' >&2
+    [[ "${MOCK_CREATE_FAILURE:-}" != 1 ]]
+    return
+  fi
+  if [[ "$*" == *'--cancel --await' ]]; then
+    printf 'CANCEL\n' >&2; return 0
+  fi
+  if [[ "$*" == *'--release --await --if-version='* ]]; then
+    printf 'RELEASE\n' >&2
+    [[ "${MOCK_RELEASE_FAILURE:-}" != 1 ]]
+    return
+  fi
+  if [[ "$*" == *'--await' ]]; then
+    printf 'AWAIT\n' >&2
+    local db_member='/volumes/team/db/1'
+    if [[ "${MOCK_WRONG_MEMBER:-}" == 1 ]]; then
+      db_member='/volumes/team/other/1'
+    fi
+    printf '{"sets":{"%s":{"version":3,"state":{"name":"QUIESCED"},"members":{"file:/volumes/team/app/1":{"excluded":false,"state":{"name":"QUIESCED"}},"file:%s":{"excluded":false,"state":{"name":"QUIESCED"}}}}}}\n' "${4#--set-id=}" "$db_member"
+    return 0
+  fi
+  if [[ "$*" == 'fs subvolume snapshot create cephfs '* ]]; then
+    printf 'SNAPSHOT:%s\n' "$6" >&2
+    [[ "$6" != "${MOCK_SNAPSHOT_FAILURE:-}" ]]
+    return
+  fi
+  printf 'Unexpected Ceph call: %s\n' "$*" >&2
+  return 99
+}
+'''
+
+        def run_fixture(**variables):
+            result = subprocess.run(
+                ["bash", "-c", mock_ceph + "\n" + script],
+                capture_output=True,
+                text=True,
+                env={**os.environ, **variables},
+                timeout=10,
+                check=False,
+            )
+            return result.returncode, result.stdout + result.stderr
+
+        rc, trace = run_fixture()
+        self.assertEqual(rc, 0, trace)
+        for marker in ("CREATE", "AWAIT", "SNAPSHOT:app", "SNAPSHOT:db", "RELEASE"):
+            self.assertIn(marker, trace)
+        self.assertNotIn("CANCEL", trace)
+
+        for variables, required, forbidden in (
+            ({"MOCK_SNAPSHOT_FAILURE": "app"}, "SNAPSHOT:app", "SNAPSHOT:db"),
+            ({"MOCK_SNAPSHOT_FAILURE": "db"}, "SNAPSHOT:db", "RELEASE"),
+            ({"MOCK_WRONG_MEMBER": "1"}, "AWAIT", "SNAPSHOT:app"),
+            ({"MOCK_WRONG_MEMBER": "1", "PYTHONOPTIMIZE": "1"}, "AWAIT", "SNAPSHOT:app"),
+            ({"MOCK_RELEASE_FAILURE": "1"}, "RELEASE", "候选一致快照"),
+        ):
+            with self.subTest(variables=variables):
+                rc, trace = run_fixture(**variables)
+                self.assertNotEqual(rc, 0, trace)
+                self.assertIn(required, trace)
+                self.assertNotIn(forbidden, trace)
+                self.assertIn("CANCEL", trace)
+
+        rc, trace = run_fixture(MOCK_CREATE_FAILURE="1")
+        self.assertNotEqual(rc, 0, trace)
+        self.assertIn("CREATE", trace)
+        self.assertIn("本次 quiesce set=team-backup-", trace)
+        self.assertNotIn("CANCEL", trace)
+        self.assertNotIn("SNAPSHOT", trace)
+
+    def test_cephfs_nfs_and_recovery_examples_fail_closed(self):
+        text = (CEPH_ROOT / "04-cephfs.md").read_text(encoding="utf-8")
+        nfs = text.split("### 30.2 NFS-Ganesha", 1)[1].split("### 30.3", 1)[0]
+        self.assertLess(nfs.index("NFS_ALLOWED_CIDR:?"), nfs.index("cluster create team-nfs"))
+        for fact in (
+            '--client_addr "$NFS_ALLOWED_CIDR"',
+            "--squash root_squash",
+            "--sectype sys",
+            "access_type=none",
+            "--sectype krb5p",
+        ):
+            self.assertIn(fact, nfs)
+        self.assertNotIn("每个 export 背后是独立 libcephfs 客户端", nfs)
+
+        recovery = text.split("### 29.2 journal/table/data-scan", 1)[1].split(
+            "### 29.3", 1
+        )[0]
+        self.assertIn("所有 `scan_extents` worker 成功结束", recovery)
+        self.assertLess(recovery.index("所有 `scan_extents` worker 成功结束"),
+                        recovery.index("`scan_inodes` worker 开始"))
+        for table in ("mds0_sessionmap", "mds0_inotable", "mds_snaptable"):
+            self.assertIn(f'rados -p "$CEPHFS_METADATA_POOL" stat {table}', recovery)
+        self.assertIn("refuse_client_sessions true", text)
+        self.assertNotRegex(text, r"\brefuse_client_session\b")
+        self.assertNotIn("后才考虑生产", text.split("## 17.", 1)[1].split("## 18.", 1)[0])
+
+    def test_cephfs_nfs_example_rejects_unbounded_clients_before_creating_export(self):
+        text = (CEPH_ROOT / "04-cephfs.md").read_text(encoding="utf-8")
+        nfs = text.split("### 30.2 NFS-Ganesha", 1)[1].split("### 30.3", 1)[0]
+        script = re.search(r"(?s)```bash\n(.*?)\n```", nfs).group(1)
+        mock_ceph = 'ceph() { printf "NFS:%s\\n" "$*" >&2; }\n'
+        for cidr in (None, "0.0.0.0/00", "::/0", "invalid"):
+            with self.subTest(cidr=cidr):
+                env = os.environ.copy()
+                env.pop("NFS_ALLOWED_CIDR", None)
+                if cidr is not None:
+                    env["NFS_ALLOWED_CIDR"] = cidr
+                result = subprocess.run(
+                    ["bash", "-c", mock_ceph + script],
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    timeout=10,
+                    check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("NFS:", result.stderr)
+
+        result = subprocess.run(
+            ["bash", "-c", mock_ceph + script],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "NFS_ALLOWED_CIDR": "192.0.2.0/24"},
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--client_addr 192.0.2.0/24", result.stderr)
+        self.assertIn("--squash root_squash --sectype sys", result.stderr)
+
+    def test_cephfs_recovery_does_not_hide_loss_behind_repaired_markers(self):
+        text = (CEPH_ROOT / "04-cephfs.md").read_text(encoding="utf-8")
+        recovery = text.split("## 29. 元数据 scrub", 1)[1].split(
+            "## 30.", 1
+        )[0]
+        for fact in (
+            "先卸载/fence client",
+            "journal export",
+            "journal reset",
+            "只是标注 rank 已由**外部操作**修好",
+            "重置 session 后所有客户端须重新挂载/重启",
+            "--force --recover",
+            "多 active MDS 或多个 FS 的恢复步骤尚未有同样证明",
+        ):
+            self.assertIn(fact, recovery)
 
     def test_rados_cephx_cipher_upgrade_preserves_safe_order(self):
         text = (CEPH_ROOT / "03-rados.md").read_text(encoding="utf-8")
