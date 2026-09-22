@@ -2,6 +2,8 @@
 
 > `ceph-mgr` 从 Luminous 起是正常集群的必需组件。它不参加 MON Paxos，也不保存业务对象；它维护集群运行视图，并承载 orchestrator、Dashboard、Prometheus、alerts、crash、telemetry 等可插拔模块。
 
+> **官方边界（交付必读）**：本文以 Ceph Tentacle 官方源码树 `doc/mgr/` 为事实基线（核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`）。命令和参数按官方文档抄录并重新组织；本仓库没有把这些步骤宣称为已在客户环境实测。生产执行前必须按目标版本、后端（cephadm/Rook）、网络、认证和变更窗口逐项验收。`accepted`、`scheduled`、HTTP 2xx 或模块已启用都不等于后端 daemon 已 ready。
+
 ## 1. Active/Standby 与数据来源
 
 ```mermaid
@@ -37,12 +39,54 @@ ceph mgr module enable <module>
 ceph mgr module disable <module>
 ceph config get mgr mgr/<module>/<option>
 ceph config set mgr mgr/<module>/<option> <value>
-ceph tell mgr module self-test
+ceph mgr module ls --format=json-pretty
+ceph mgr services
 ```
 
-`module ls` 区分 always-on、enabled、disabled 和 error modules。Always-on 模块随 release 固定，不能像普通模块关闭。启用模块可能开放端口、创建 service、向外发送数据或需要 Python dependency；变更前检查 module options、URI 和安全边界。
+`module ls` 区分 always-on、enabled、disabled 和 error modules。Always-on 模块随 release 固定，不能像普通模块关闭；例如 `crash` 是 always-on，但是否自动上传仍取决于 `ceph-crash` 和对应 CephX 权限。启用模块可能开放端口、创建 service、向外发送数据或需要 Python dependency；变更前检查 module options、URI 和安全边界。只有 active MGR 执行普通模块；实现 `MgrStandbyModule` 的模块才会在 standby 上运行并可重定向到 active。
 
 模块命令通过 `COMMANDS`/CLI API 注册；配置用 module option schema 定义 type/default/runtime，持久化数据用 KV store。模块线程不得阻塞 MGR 主事件处理；长操作应异步并报告 progress。
+
+### 2.1 官方启动、故障切换和初始模块语义
+
+官方手工安装的最小闭环是创建 `mgr.<name>` keyring，把它放到 `mgr data` 目录，再启动 `ceph-mgr -i <name>`：
+
+```bash
+ceph auth get-or-create mgr.<name> mon 'allow profile mgr' osd 'allow *' mds 'allow *'
+ceph-mgr -i <name>
+ceph status
+ceph mgr fail <mgr-name>              # 仅在计划切换且 standby 健康时使用
+```
+
+`ceph status` 中的 `active`、`active (starting)`、`standby` 是不同状态；`active (starting)` 尚未完成初始化，命令会排队。MON 依据 `mon_mgr_beacon_grace` 判断 active 是否失联并提升 standby；MGR 之间不需要 quorum。旧客户端若缺少 MGR capability，可能出现 `EACCES`，按官方方式给客户端补 `mgr allow *`，不能用扩大到 `client.admin` 代替定位权限问题。
+
+首次启动时 `mgr_initial_modules` 只用于 bootstrap；集群生命周期后续不再反复覆盖模块状态。大集群可按官方建议启用共享对象缓存：
+
+```bash
+ceph config set mgr mgr_ttl_cache_expire_seconds 10
+ceph daemon mgr.<name> perf dump
+```
+
+官方建议约 500+ OSD 或 10k+ PG 时评估 10 秒 TTL，并以 `mgr.cache_hit`/`mgr.cache_miss` 与延迟证据决定；不是所有集群都应盲目设置。
+
+`mgr_stats_period_autotune` 默认开启，队列深度超过 `mgr_stats_period_autotune_queue_threshold`（默认 100）时会提高统计周期，且有效周期不会超过 60 秒。只有在明确测量后才固定 `mgr_stats_period`。
+
+### 2.2 模块配置、日志和 KV store 的官方语义
+
+模块面向用户的 typed option 必须声明在 `MODULE_OPTIONS`，通过 `get_module_option`/`set_module_option` 读取和写入；未声明 option 会抛异常。小型内部状态使用 `get_store`/`set_store`/`get_store_prefix`，写入会等待 MON 持久化，不能把它当作进程内 cache；大对象或二进制配置才考虑 module pool/RADOS。模块升级要保存 schema version，并为删除/回滚定义迁移路径。
+
+官方日志控制命令如下：
+
+```bash
+ceph config get mgr mgr/<module>/log_level
+ceph config set mgr mgr/<module>/log_level <info|debug|critical|error|warning|>
+ceph config set mgr mgr/<module>/log_level ''       # 回退到 mgr 日志级别
+ceph config set mgr mgr/<module>/log_to_file true
+ceph config get mgr mgr/<module>/log_to_file
+ceph config set mgr mgr/<module>/log_to_file false
+```
+
+开启文件日志后，消息只写入 `<mgr日志文件>.<module>.log`，不再写入 MGR 主日志。生产排障结束后应恢复最小日志级别并检查敏感值未进入日志。
 
 ## 3. Orchestrator 是抽象接口，不是部署实现
 
@@ -63,7 +107,22 @@ sequenceDiagram
   O-->>U: orch ls/ps/events
 ```
 
-`ceph orch set backend <name>` 选择 backend；切换 backend 不会自动迁移所有权。Orchestrator plugin 实现 completion、inventory、placement、service spec、daemon action 和 error translation；异步 completion 必须区分 persistent（已保存）与 effective（已生效）。
+`ceph orch set backend <name>` 选择 backend；切换 backend 不会自动迁移所有权。Orchestrator plugin 实现 completion、inventory、placement、service spec、daemon action 和 error translation；异步 completion 必须区分 persistent（已保存）与 effective（已生效）。官方错误模型区分 `NoOrchestrator`、`NotImplementedError`、`OrchestratorValidationError` 和 completion 内的执行错误，调用方不能把所有错误折叠成空列表。
+
+官方接口明确：orchestrator 只管理 Ceph 服务，不是通用 Linux 配置管理器（**not a general purpose framework for managing Linux servers**）；主机必须先被底层 orchestrator 认识；不处理 multipath。`host` 是物理机主机名，不是 pod/container 名；`service type`（如 `mon`、`osd`、`mds`、`rgw`、`nfs`）与逻辑 `service`、具体 `daemon` 必须分开。
+
+```bash
+ceph orch status [--detail]
+ceph orch set backend <module>
+ceph orch set backend ""                 # 官方禁用 orchestrator
+ceph orch apply mds <fs_name> [--placement=<placement>] [--dry-run]
+ceph orch apply rgw <name> [--realm=<realm>] [--zone=<zone>] [--port=<port>] [--ssl] [--placement=<placement>] [--dry-run]
+ceph orch apply nfs <name> <pool> [--namespace=<namespace>] [--placement=<placement>] [--dry-run]
+ceph orch rm <service_name> [--force]
+ceph orch <start|stop|restart|redeploy|reconfig> <service_name>
+```
+
+最后一组 service action 是 cephadm 容器 daemon 的命令；Rook 或其他 backend 不应假设支持。官方实现矩阵还明确 Rook/cephadm 对 `apply`、host/device、upgrade 等命令的支持不同，客户交付前必须以 `ceph orch status` 和目标 backend 文档为准。
 
 ## 4. 管理和可观测模块
 
@@ -81,11 +140,47 @@ sequenceDiagram
 
 Prometheus module 可配置地址、端口、scrape interval、RBD stats pools/images、standby behavior、health history；抓取超时应小于 Prometheus scrape timeout。大规模 per-image stats 会增加 MGR/OSD 开销。
 
+Prometheus 官方默认监听 `0.0.0.0:9283`，配置变更后必须重启模块；抓取间隔建议不低于 10 秒、常用 15 秒，并与 Prometheus scrape interval 对齐。大集群默认启用 cache；cache 过期时 `stale_cache_strategy=fail` 返回 503，`return` 返回旧数据。反向代理场景可将 standby behavior 设为 `error`，再设置 400--599 的 `standby_error_status_code`：
+
+```bash
+ceph mgr module enable prometheus
+ceph config set mgr mgr/prometheus/server_addr 0.0.0.0
+ceph config set mgr mgr/prometheus/server_port 9283
+ceph config set mgr mgr/prometheus/scrape_interval 15
+ceph config set mgr mgr/prometheus/stale_cache_strategy fail
+ceph config set mgr mgr/prometheus/standby_behaviour error
+ceph config set mgr mgr/prometheus/standby_error_status_code 503
+ceph config set mgr mgr/prometheus/rbd_stats_pools 'pool1,pool2/namespace'
+ceph config set mgr mgr/prometheus/rbd_stats_pools_refresh_interval 600
+```
+
+`rbd_stats_pools` 是 `pool[/namespace]` 列表，不是任意 image glob；写 `*` 会扫描所有 pool/namespace，必须先估算 cardinality。Tentacle 默认不从 prometheus module 输出 daemon perf counters（由 `ceph-exporter` 承担），确需旧行为才设置 `exclude_perf_counters=false`。健康历史可用 `ceph healthcheck history ls` / `clear` 管理。
+
 ## 5. 外部系统集成模块
 
 Influx module 把 metrics 推到 InfluxDB；Telegraf 通过 socket 向 agent 发送；两者是 push 集成。Prometheus 是 pull。重复启用会形成多条观测链，需定义权威告警源。
 
 Telemetry 明确征得管理员同意后向 Ceph 社区发送匿名 cluster/device/channel 数据；启用需要接受 Community Data License 并选择 channel。先用 `ceph telemetry preview` 审核字段；含客户、主机、设备可识别信息时按合规要求决定是否开启。
+
+官方 channel 是 `basic`、`crash`、`device`、`ident`、`perf`；其中 `ident` 默认关闭，`perf` 默认关闭。报告不包含 pool/object 内容、主机名或设备序列号，但 ident 由用户主动提供。完整的审批/发送闭环：
+
+```bash
+ceph telemetry status
+ceph telemetry preview
+ceph telemetry preview-device
+ceph telemetry preview-all
+ceph telemetry channel ls
+ceph telemetry collection ls
+ceph telemetry diff
+ceph telemetry on --license sharing-1-0
+ceph telemetry enable channel <channel_name>
+ceph telemetry send
+ceph config set mgr mgr/telemetry/interval 72
+ceph config set mgr mgr/telemetry/proxy https://<proxy>:<port>
+ceph telemetry off
+```
+
+`smartmontools >= 7.0` 是 device report 的官方前置条件；发送是异步操作，不能把 CLI 返回当作上传完成。`leaderboard`、contact、description、ident channel 都是额外的主动选择。
 
 Localpool 按 CRUSH subtree 自动创建本地 pool，适用于特定 locality 需求；错误参数会大量创建 pool/PG。Hello 是开发示例，不是生产服务。
 
@@ -95,9 +190,33 @@ Rook backend 通过 Kubernetes/Rook CR 管理 daemon；RGW module 提供 realm/z
 
 服务模块的配置对象与真实业务对象不同：删除 MGR module 配置不等于删除 RADOS pools/FS/bucket；反之，底层对象被手工删除会使模块状态悬空。
 
+### 6.1 官方服务模块最小命令面
+
+| 模块 | 官方启用/入口 | 关键事实 |
+|---|---|---|
+| `alerts` | `ceph mgr module enable alerts`；`ceph alerts send` | SMTP 简单告警；MGR 故障时无法发送，不是 Alertmanager 替代品 |
+| `crash` | always-on；`ceph auth get-or-create client.crash mon 'profile crash' mgr 'profile crash'` | `ceph-crash.service` 通过 `ceph crash post` 上传；`archive` 不删除，`prune` 才按天清理 |
+| `progress` | `ceph progress on/off/json/clear` | PG recovery event 默认关闭，启用会增加 MON CPU |
+| `insights` | `ceph mgr module enable insights`; `ceph insights`; `ceph insights prune-health <hours>` | 报告含最近 24 小时 health/crash 摘要、maps、配置和 OSD metadata |
+| `iostat` | `ceph mgr module enable iostat`; `ceph iostat -p <seconds>` | 即时吞吐/IOPS，Ctrl-C 停止 |
+| `localpool` | `ceph mgr module enable localpool` | `subtree/failure_domain/pg_num/num_rep/min_size/prefix` 通过 module config 控制，会自动创建 pool |
+| `diskprediction_local` | `ceph mgr module enable diskprediction_local`; `device_failure_prediction_mode local` | 至少 6 份设备健康数据；官方内部预测准确率约 70%，不是介质验收 |
+| `influx` | `ceph mgr module enable influx` | 配置 hostname/username/password/interval/database/port/ssl/verify_ssl/threads/batch_size；`ceph influx self-test` |
+| `telegraf` | `ceph mgr module enable telegraf` | `ceph telegraf config-set address|interval`；支持 UDP/TCP/UNIX socket 的 Influx line format |
+| `cli_api` | `ceph mgr module enable cli_api` | `ceph mgr cli <command> <param>`；`cli_benchmark` 仅用于基准，不是业务 API |
+
+`mds_autoscaler` 只依据 FS 的 `max_mds` 和 `standby_count_wanted` 请求 MDS 数量；它不依据 latency 自动决定 `max_mds`。`rgw` module 的 realm bootstrap/zone create 依赖 orchestrator，并不取代 RGW 数据面配置。
+
+CLI API 的官方基准入口是：
+
+```bash
+ceph mgr cli_benchmark <number of calls> <number of threads> <command> <param>
+ceph mgr cli_benchmark 100 10 get osd_map
+```
+
 ## 7. CLI API 与 REST API
 
-CLI API 将注册命令、参数类型、权限和返回结构暴露给自动化；Ceph RESTful API 由 MGR module 提供。调用者必须处理 `EINVAL/ENOENT/EBUSY/EPERM`、异步状态和 active MGR failover，不能解析人类表格作为稳定协议；优先 JSON/YAML formatter。
+CLI API 将注册命令、参数类型、权限和返回结构暴露给自动化；Ceph RESTful API 由 Dashboard 这个 MGR module 提供。调用者必须处理 `EINVAL/ENOENT/EBUSY/EPERM`、异步状态和 active MGR failover，不能解析人类表格作为稳定协议；优先 JSON/YAML formatter。
 
 ```bash
 ceph <command> --format json
@@ -135,7 +254,7 @@ Debug plugin、feature toggle、MOTD 等 Dashboard plugin 通过标准接口扩�
 手工部署 MGR 的最小闭环是：创建 `mgr.<id>` CephX entity 和 keyring；把 daemon 放入集群；确认 MON map 出现 active/standby。MGR key 默认使用 `profile mgr`，它需要读取 maps、daemon reports 并执行模块注册的管理动作。自定义 caps 过窄会表现为模块部分可见、部分命令 `EACCES`，不应直接改为 admin 掩盖根因。
 
 ```bash
-ceph auth get-or-create mgr.node-a mon 'profile mgr' osd 'allow *' mds 'allow *'
+ceph auth get-or-create mgr.node-a mon 'allow profile mgr' osd 'allow *' mds 'allow *'
 ceph mgr dump
 ceph mgr fail <active-name>       # 计划切换前确认 standby 健康
 ceph config set mgr mgr_stats_period 5
@@ -251,9 +370,47 @@ flowchart LR
 
 操作闭环包含 cluster create/list/info/update/delete，ingress IP 查看，自定义 cluster config set/get/reset；export create/delete/list/info，以及 JSON spec create/update。JSON 更新要保留 export id 与 pseudo path 唯一性，避免客户端重连到不同后端。
 
+官方 cluster 入口（仅适用于已配置的 orchestrator）如下：
+
+```bash
+ceph mgr module enable nfs
+ceph nfs cluster create <cluster_id> [<placement>] [--ingress] \
+  [--virtual_ip <value>] \
+  [--ingress-mode {default|keepalive-only|haproxy-standard|haproxy-protocol}] \
+  [--port <int>] [--enable-nfsv3]
+ceph nfs cluster info [<cluster_id>]
+ceph nfs cluster ls
+ceph nfs cluster rm <cluster_id>
+ceph orch ls --service_name=nfs.<cluster_id>
+ceph orch ls --service_name=ingress.nfs.<cluster_id>
+```
+
+默认只启用 NFSv4；`--enable-nfsv3` 才同时启用 v3/v4。`keepalive-only` 只允许一个 Ganesha daemon；`haproxy-standard` 不向后端暴露 client IP，IP export 限制不能工作；`haproxy-protocol` 保留 client IP，但要求 Ganesha >= 5.0。官方明确 ingress/deployment 是异步的，需以 `ceph orch ls` 观察最终状态；Rook backend 不支持 `ceph nfs cluster info`，应按官方说明查看 Rook Service/NodePort。
+
+例如启用保留客户端地址的模式时，官方参数形态是 `--ingress-mode haproxy-protocol`；该模式只在 Ganesha 5.0 或更高版本成立。
+
 Ganesha 配置层级由内置 common config、cluster custom config 和 export block 合并；手工编辑 daemon container 内文件不会持久。CephFS export 的 user 必须有目标 path caps；RGW export 的 bucket/user 能力与 S3 权限分开验证。Mount 用 NFSv4 pseudo path，客户端看不到 CephFS 原始路径。
 
 故障时依次检查 orchestrator daemon、ingress/VIP、Ganesha log、RADOS config object、FSAL CephX/RGW credential、backend health 和 client lease。删除 cluster 前先迁移/卸载 client；删除管理对象不等于自动删除 CephFS 数据或 bucket。
+
+export 的官方命令面如下：
+
+```bash
+ceph nfs export create cephfs --cluster-id <cluster_id> --pseudo-path <pseudo_path> \
+  --fsname <fsname> [--readonly] [--path=/path/in/cephfs] \
+  [--client_addr <value>...] [--squash <value>] [--sectype <value>...] [--cmount_path <value>]
+ceph nfs export create rgw --cluster-id <cluster_id> --pseudo-path <pseudo_path> \
+  --bucket <bucket_name> [--user-id <user-id>] [--readonly] \
+  [--client_addr <value>...] [--squash <value>] [--sectype <value>...]
+ceph nfs export create rgw --cluster-id <cluster_id> --pseudo-path <pseudo_path> \
+  --user-id <user-id> [--readonly] [--client_addr <value>...] [--squash <value>]
+ceph nfs export rm <cluster_id> <pseudo_path>
+ceph nfs export ls <cluster_id> [--detailed]
+ceph nfs export info <cluster_id> <pseudo_path>
+ceph nfs export apply <cluster_id> -i <json_or_ganesha_file>
+```
+
+`pseudo_path` 必须是 NFSv4 pseudo filesystem 中唯一的绝对路径；JSON 更新必须描述完整新状态，CephFS export 的 `fsal.user_id` 由模块自动生成，不能手工改写。官方还明确 Dashboard 创建的 export 与 NFS CLI export 不兼容，不要交叉管理。
 
 ## 17. SMB 管理：声明式资源与 CephFS Proxy
 
@@ -262,6 +419,29 @@ SMB module 既支持 imperative CLI，也支持一组声明式资源：cluster�
 声明式 apply 应把整组资源作为期望状态校验，资源 id 稳定，删除动作显式。域加入失败时保留 join-auth 与 DNS/time/Kerberos 证据，不要反复创建同名机器账户。用户组资源适合 standalone/user mode，不能与企业 AD 权威混淆。
 
 客户端通过 SMB 访问 share，Samba daemon 通过 CephFS VFS 或 CephFS Proxy sidecar 访问数据。Proxy 把 CephFS client 隔离到独立 sidecar，改善 daemon 生命周期边界，但引入额外 socket/process 故障点和功能限制。验收包括 SMB dialect、签名/加密、ACL、case behavior、failover、open handle 和 CephFS caps，不只测试 `smbclient ls`。
+
+Tentacle 的 SMB 模块只支持 SMB2/SMB3，不支持 SMB1；模块要求 cephadm orchestrator。Imperative 入口保持官方参数：
+
+```bash
+ceph mgr module enable smb
+ceph smb cluster create <cluster_id> {user|active-directory} \
+  [--domain-realm=<domain_realm>] [--domain-join-user-pass=<user%pass>] \
+  [--define-user-pass=<user%pass>] [--custom-dns=<ip>] [--placement=<placement>] \
+  [--clustering={default|always|never}] [--password-filter={none|base64}] \
+  [--password-filter-out={none|base64|hidden}]
+ceph smb cluster ls [--format=<format>]
+ceph smb cluster rm <cluster_id>
+ceph smb share create <cluster_id> <share_id> <cephfs_volume> <path> \
+  [--share-name=<share_name>] [--subvolume=<subvolume>] [--readonly]
+ceph smb share ls <cluster_id> [--format=<format>]
+ceph smb share rm <cluster_id> <share_id>
+ceph smb apply [--format=<format>] [--password-filter=<password_filter>] \
+  [--password-filter-out=<password_filter_out>] -i <json_or_yaml>
+ceph smb show [resource_name...] [--format=<format>] [--results={collapsed|full}] \
+  [--password-filter={none|base64|hidden}]
+```
+
+声明式资源的官方类型包括 `ceph.smb.cluster`、`ceph.smb.share`、`ceph.smb.join.auth`、`ceph.smb.usersgroups` 和 `ceph.smb.tls.credential`。密码输入/输出过滤器是 `none`、`base64`、`hidden`，默认输出 JSON；secret 不应写入普通审计日志。AD 模式还必须有可解析的 DNS、同步时间和 Kerberos/机器账户条件，失败时保留原始 join 证据再处理，不能反复创建同名资源。
 
 ## 18. RGW、Rook 与 MDS Autoscaler 模块
 
@@ -273,7 +453,19 @@ MDS Autoscaler 根据每个 FS 的 `max_mds`/standby 需求请求 orchestrator �
 
 ## 19. REST API、CLI API 与稳定自动化
 
-Ceph RESTful API 提供 OpenAPI specification、版本化 endpoint、认证与授权。客户端先发现 active service URI，使用受限 credential，通过 TLS 调用；版本升级时以 schema 而非 UI 请求猜接口。API 返回的异步 task 要轮询最终状态，HTTP 2xx 不必然代表底层 daemon 已 ready。
+Ceph RESTful API **由 Dashboard module 提供**，地址与 Dashboard 相同、基路径是 `/api`，不是独立的通用 MGR 服务。官方 API 使用 HTTP/1.1、JSON、MIME content negotiation；认证是 JWT/OAuth 2.0 bearer token，并以每个 endpoint 的 `Accept: application/vnd.ceph.api.v<major>.<minor>+json` 指定版本：
+
+```bash
+curl -X POST 'https://<dashboard>/api/auth' \
+  -H 'Accept: application/vnd.ceph.api.v1.0+json' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"<user>","password":"<password>"}'
+curl -X GET 'https://<dashboard>/api/osd' \
+  -H 'Accept: application/vnd.ceph.api.v1.0+json' \
+  -H 'Authorization: Bearer <token>'
+```
+
+认证和授权是两个检查点；HTTP 2xx 不等于后端 daemon ready。官方警告部分 endpoint 仍在演进，major 版本变化可能不兼容，客户自动化必须固定 endpoint MIME 版本并按 schema 处理响应。
 
 CLI API Commands module 暴露 CLI command schema，帮助自动化发现 prefix、参数和权限。脚本优先 `--format json`/YAML 并检查 exit code；表格列、颜色和进度文本不是稳定接口。对 active MGR failover，应重新发现 URI、重建连接并用 operation id/资源状态判断是否需要重试。
 
@@ -298,4 +490,4 @@ sequenceDiagram
 
 ## 20. 官方基线与许可
 
-来源：Ceph Tentacle 官方 `doc/mgr/`（Dashboard 除外），核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+来源：Ceph Tentacle 官方 `doc/mgr/`（含 `ceph_api/index.rst` 与 Dashboard API 约束），核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。

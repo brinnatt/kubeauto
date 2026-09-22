@@ -832,6 +832,80 @@ REQUIRED_DOMAINS = {
     ),
 }
 
+MGR_REQUIRED_FACTS = {
+    "administrator": (
+        "allow profile mgr",
+        "active (starting)",
+        "mon_mgr_beacon_grace",
+        "mgr_initial_modules",
+        "mgr_ttl_cache_expire_seconds",
+        "mgr_stats_period_autotune_queue_threshold",
+        "mgr.cache_hit",
+    ),
+    "module lifecycle": (
+        "ceph mgr module ls --format=json-pretty",
+        "always-on",
+        "MgrStandbyModule",
+        "log_to_file",
+        "get_store_prefix",
+        "MODULE_OPTIONS",
+    ),
+    "orchestrator contract": (
+        "ceph orch set backend \"\"",
+        "ceph orch apply mds",
+        "ceph orch <start|stop|restart|redeploy|reconfig>",
+        "not a general purpose framework",
+        "multipath",
+        "OrchestratorValidationError",
+    ),
+    "prometheus": (
+        "server_port 9283",
+        "stale_cache_strategy fail",
+        "standby_behaviour error",
+        "rbd_stats_pools_refresh_interval",
+        "exclude_perf_counters",
+        "healthcheck history",
+    ),
+    "telemetry": (
+        "telemetry preview-device",
+        "telemetry preview-all",
+        "telemetry collection ls",
+        "telemetry diff",
+        "--license sharing-1-0",
+        "smartmontools >= 7.0",
+    ),
+    "service modules": (
+        "ceph crash post",
+        "ceph insights prune-health",
+        "ceph iostat -p",
+        "diskprediction_local",
+        "ceph influx self-test",
+        "ceph telegraf config-set",
+        "ceph mgr cli_benchmark",
+    ),
+    "nfs": (
+        "--ingress-mode haproxy-protocol",
+        "--enable-nfsv3",
+        "ceph nfs export apply",
+        "pseudo_path",
+        "Dashboard 创建的 export",
+    ),
+    "smb": (
+        "SMB2/SMB3",
+        "ceph smb apply",
+        "ceph.smb.join.auth",
+        "ceph.smb.tls.credential",
+        "password-filter-out",
+    ),
+    "rest and cli api": (
+        "由 Dashboard module 提供",
+        "/api/auth",
+        "application/vnd.ceph.api.v1.0+json",
+        "Authorization: Bearer",
+        "ceph mgr cli <command> <param>",
+    ),
+}
+
 RBD_REQUIRED_FACTS = {
     "encryption": (
         "`krbd` 当前不支持",
@@ -1060,6 +1134,19 @@ class StorageDocumentationTests(unittest.TestCase):
         for mechanism, facts in CEPHADM_REQUIRED_FACTS.items():
             for fact in facts:
                 self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+    def test_mgr_preserves_official_tentacle_facts(self):
+        text = (CEPH_ROOT / "07-mgr.md").read_text(encoding="utf-8")
+        for mechanism, facts in MGR_REQUIRED_FACTS.items():
+            for fact in facts:
+                self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+        self.assertIn(
+            "ceph auth get-or-create client.crash mon 'profile crash' mgr 'profile crash'",
+            text,
+        )
+        self.assertLess(text.index("ceph telemetry preview"), text.index("ceph telemetry on --license"))
+        self.assertIn("HTTP 2xx 不等于后端 daemon ready", text)
 
     def test_radosgw_preserves_tentacle_production_facts(self):
         text = (CEPH_ROOT / "06-radosgw.md").read_text(encoding="utf-8")
