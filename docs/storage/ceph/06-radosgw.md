@@ -89,6 +89,116 @@ Tentacle 主要使用 Beast frontend。配置包括 endpoint/port、SSL、线程
 
 虚拟主机风格 S3 需要 DNS wildcard 和证书 SAN；path-style 与 virtual-host-style 的 canonical request 不同。代理必须正确保留 Host、scheme、client IP 和大对象 streaming/chunked headers，否则 SignatureDoesNotMatch。
 
+### 5.1 cephadm 部署 RGW 的生产主路径
+
+cephadm 的职责边界必须先钉死：它创建和编排 `radosgw` daemon，配置来自
+Monitor configuration database；它不会自动创建或修改 realm、zonegroup、zone
+和 period。先完成对象网关的 realm/zone 配置，再让 service spec 引用这些名称；
+否则 daemon 可能以默认端口 80 启动，但并不代表它已经接入预期的多站点拓扑。
+
+```bash
+# 先把网关主机纳入明确的 placement 集合；label 名称可按企业规范命名
+ceph orch host label add rgw-01 rgw
+ceph orch host label add rgw-02 rgw
+
+# 单站点或已存在 realm/zone 的最小部署
+ceph orch apply rgw object-gw \
+  --placement="label:rgw count-per-host:2" \
+  --port=8080
+
+# 多站点必须显式绑定 realm、zonegroup、zone；--dry-run 先审阅计划
+ceph orch apply rgw east \
+  --realm=myrealm --zonegroup=us-east-zg-1 --zone=us-east-1 \
+  --placement="2 rgw-01 rgw-02" --port=8080 --dry-run
+ceph orch apply rgw east \
+  --realm=myrealm --zonegroup=us-east-zg-1 --zone=us-east-1 \
+  --placement="2 rgw-01 rgw-02" --port=8080
+```
+
+需要控制网络、Beast 参数和优雅退出时，提交完整 service spec。`count_per_host`
+允许一台网关运行多个连续端口的实例；`networks` 限制监听网络；
+`rgw_frontend_extra_args` 会与 spec 中的 frontend 参数合并为空格分隔的
+`rgw_frontends` 值。
+
+```yaml
+service_type: rgw
+service_id: east
+placement:
+  label: rgw
+  count_per_host: 2
+networks:
+  - 10.20.30.0/24
+spec:
+  rgw_realm: myrealm
+  rgw_zonegroup: us-east-zg-1
+  rgw_zone: us-east-1
+  rgw_frontend_type: beast
+  rgw_frontend_port: 8080
+  rgw_frontend_extra_args:
+    - "tcp_nodelay=1"
+    - "max_header_size=65536"
+  rgw_exit_timeout_secs: 120
+  # 仅当该 service 不承担向外发送 multisite 日志时启用
+  # disable_multisite_sync_traffic: true
+```
+
+`disable_multisite_sync_traffic: true` 只关闭该 daemon 的发送线程，仍可能接收
+其他 zone 的复制流量；若要完全隔离，必须同时从 zonegroup/zone replication
+endpoints 移除它。cephadm 部署中 RGW 优雅退出默认等待在途请求（通常 120 秒），
+期间拒绝新请求；修改 `rgw_exit_timeout_secs` 后必须执行
+`ceph orch redeploy east`（或对单 daemon 执行 `ceph orch daemon redeploy`），
+否则旧容器不会加载新值。
+
+启用 HTTPS 时证书和私钥必须作为 YAML literal block 提交，保留换行；不能把
+折叠后的单行 PEM 当作证书：
+
+```yaml
+service_type: rgw
+service_id: east-https
+placement:
+  label: rgw
+  count_per_host: 1
+spec:
+  ssl: true
+  rgw_frontend_port: 8443
+  rgw_frontend_ssl_certificate: |
+    -----BEGIN PRIVATE KEY-----
+    <private-key-lines>
+    -----END PRIVATE KEY-----
+    -----BEGIN CERTIFICATE-----
+    <certificate-and-chain-lines>
+    -----END CERTIFICATE-----
+```
+
+自签证书和虚拟主机 wildcard SAN 可由 cephadm 生成，但必须把客户端访问的
+zonegroup hostname 纳入证书：
+
+```yaml
+service_type: rgw
+service_id: east-wildcard
+placement:
+  label: rgw
+  count_per_host: 1
+spec:
+  ssl: true
+  generate_cert: true
+  wildcard_enabled: true
+  zonegroup_hostnames:
+    - s3.example.com
+  rgw_frontend_port: 8443
+```
+
+```bash
+ceph orch apply -i east-wildcard.yaml
+ceph orch ps --service_name east-wildcard --refresh
+ceph orch ls --service_name east-wildcard --export
+```
+
+`wildcard_enabled` 默认关闭；打开后证书包含 `*.s3.example.com`，只解决证书
+覆盖问题，不会替代 DNS、LB 的 Host 保留或 S3 SigV4 addressing 配置。部署后必须
+用真实签名请求完成 PUT/GET/DELETE，并同时检查 `ceph orch ps`、RGW 日志和 TLS
+链，而不是把容器为 `Running` 当成业务就绪。
+
 ## 6. 用户、Tenant、Account 与密钥
 
 传统 RGW user 有 uid、display name、access/secret key、Swift subuser/key、caps、quota、max buckets。Tenant 在名称中隔离用户和 bucket。Account/IAM 模型进一步在 account 下管理 root user、IAM users/groups/roles/policies。
@@ -105,6 +215,79 @@ Secret 只在创建/轮换时进入密码系统，不写 shell history、Git 或
 
 Admin caps（如 `users=*`、`buckets=*`、`metadata=*`）控制 Admin Ops API，不是 S3 bucket policy。普通 S3 应用不应取得 admin caps。
 
+### 6.1 Account/IAM 的命令闭环与迁移边界
+
+Account 是可选的 AWS/IAM 风格资源边界。创建 account 后，必须创建一个
+`account-root` 用户作为管理入口；root credential 只用于 IAM 用户、组、角色和
+策略管理，业务程序应使用最小权限 IAM user/role。Account 用户创建 bucket 和
+object 时，资源 owner、ACL、usage 和 quota 都归 account，而不是归发起请求的
+IAM user；因此迁移前后的计费和权限结果会发生永久变化。
+
+```bash
+# 创建 account；不指定 --account-id 时由 RGW 生成 RGW+17 位数字 ID
+radosgw-admin account create \
+  --account-name=payments --email=storage-admin@example.com
+
+# 从命令输出或 account info 取得 account id 后创建 root user
+radosgw-admin user create --uid=payments-root \
+  --display-name=payments-root \
+  --account-id=<account-id> --account-root \
+  --gen-access-key --gen-secret
+
+# 统计和配额必须以 account scope 查询/启用
+radosgw-admin account stats --account-id=<account-id> --sync-stats
+radosgw-admin quota set --quota-scope=account --account-id=<account-id> \
+  --max-size=10G
+radosgw-admin quota enable --quota-scope=account --account-id=<account-id>
+radosgw-admin quota set --quota-scope=bucket --account-id=<account-id> \
+  --max-objects=1000000
+radosgw-admin quota enable --quota-scope=bucket --account-id=<account-id>
+```
+
+Account root credential 可通过兼容 AWS CLI 的 IAM API 创建业务 user、access key
+并附加官方托管策略；endpoint 必须显式指向 RGW，不能让 CLI 默认连接 AWS：
+
+```bash
+aws --profile rgwroot configure set endpoint_url https://rgw.example.com
+aws --profile rgwroot iam create-user --user-name Alice
+aws --profile rgwroot iam create-access-key --user-name Alice
+aws --profile rgwroot iam attach-user-policy --user-name Alice \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+# 将返回的 Alice key 写入受控 secret provider 后再做业务验证
+aws --profile rgw-app configure set endpoint_url https://rgw.example.com
+aws --profile rgw-app s3 mb s3://account-owned-bucket
+```
+
+Account 用户默认没有任何 IAM allow；root 必须通过 `iam:PutUserPolicy`/
+`iam:AttachUserPolicy`、group policy 或 role policy 授予能力。Policy 的
+principal 在 account 内使用 user name（而传统 user 使用 uid），account ID 常见
+于 `arn:aws:iam::RGW<17-digits>:user/<name>`；迁移策略时必须同步检查 ARN、ACL
+和 bucket policy。
+
+已有传统 user 迁移是不可逆的 ownership 变更，不能当作临时绑定：
+
+```bash
+radosgw-admin user info --uid=<uid>                 # 迁移前保存 owner/keys/policy
+radosgw-admin user modify --uid=<uid> --account-id=<account-id>
+radosgw-admin user info --uid=<uid>                 # 验证 account_id 与 display name
+radosgw-admin account stats --account-id=<account-id> --sync-stats
+```
+
+迁移后该 user 的所有 bucket owner 转为 account，account membership 不能移除；
+IAM `UserName` 还必须符合 `^[\w+=,.@-]+$`，否则要先修正 `display-name`。由于
+account user 没有默认 allow，迁移后应先附加等价的最小策略，再切换应用。旧 user
+拥有的 notification topics 不会自动转成 account-owned topic：旧 topic 仍可能
+工作，但不再能由 SNS Topic API 管理。启用 `notification_v2` 后，重建同名 account
+topic、按原 notification ID 更新 bucket 配置，确认不再引用旧 topic 后才能执行：
+
+```bash
+radosgw-admin topic rm --topic=<old-topic> [--tenant=<tenant>]
+```
+
+删除 account 前必须清点 users、roles、groups、buckets、topics 和跨 account
+policy；`account rm` 不是对象迁移工具，先完成业务侧导出/删除及多站点同步确认。
+
 ## 7. S3 验签、Policy、IAM、STS 和 MFA
 
 S3 Signature V4 由 method、canonical URI/query/headers、payload hash、credential scope、时间和 secret 共同计算。常见 403 根因包括时钟偏差、代理改 Host/header、URI 编码差异、region/scope、错误 secret，而不只是 policy deny。
@@ -114,6 +297,75 @@ S3 Signature V4 由 method、canonical URI/query/headers、payload hash、creden
 MFA 可保护敏感操作/版本删除；TOTP seed 和恢复流程属于高敏信息。OIDC provider/Keycloak 将外部 JWT claims 映射到 web identity role，必须校验 issuer、audience、JWKS、TLS 和 clock。LDAP、Keystone 是其他认证入口，各自 token/role 到 RGW 权限映射独立。
 
 OPA 可外置授权决策，但增加网络依赖和失败模式；明确 OPA 不可用时 fail-open/fail-closed，生产通常要求 fail-closed。
+
+### 7.1 STS Lite：减少外部 IdP 压力的可执行配置
+
+STS Lite 只实现 `GetSessionToken` 这条简化路径：先用 Keystone/LDAP 或本地长期
+S3 credential 认证，再签发短期 access key、secret key 和 session token；短期
+credential 继承原 credential 的权限。它不是完整 AWS STS/IAM，不能把
+`AssumeRole`、web identity、session tags 等能力默认推断到 STS Lite。
+
+生产启用前，在所有 RGW daemon 上配置一致的 token 加密 key，并显式打开 STS
+认证路径。`rgw_sts_key` 是 base64 编码的 key，必须由密码系统生成和保管；不能
+写进 Git、命令历史或普通日志。`rgw_s3_auth_use_sts=true` 后，S3 请求会验证
+STS token，key 不一致会导致跨 daemon/跨 zone 的 token 立即失效。
+
+```ini
+[client.radosgw.<instance>]
+rgw_sts_key = <base64-encoded-key>
+rgw_s3_auth_use_sts = true
+rgw_sts_max_session_duration = 43200
+```
+
+可用系统随机源生成 key（输出仅写入受控 secret store）：
+
+```bash
+openssl rand -base64 32
+```
+
+调用者必须被授予 `sts:GetSessionToken`，并明确要求临时认证才能访问 S3；官方
+示例使用 admin cap 添加 user policy：
+
+```bash
+radosgw-admin caps add --uid=<uid> --caps="user-policy=*"
+```
+
+随后通过支持 IAM user policy 的 Admin Ops/S3 API 将策略附加到该用户。策略至少应区分长期 credential 与临时 credential，例如拒绝
+`sts:authentication=false` 的 `s3:*`，并只允许 `sts:GetSessionToken`：
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Effect":"Deny","Action":"s3:*","Resource":"*",
+     "Condition":{"BoolIfExists":{"sts:authentication":"false"}}},
+    {"Effect":"Allow","Action":"sts:GetSessionToken","Resource":"*",
+     "Condition":{"BoolIfExists":{"sts:authentication":"false"}}}
+  ]
+}
+```
+
+`DurationSeconds` 默认 3600 秒，默认最大值 43200 秒，可由
+`rgw_sts_max_session_duration` 调整；`SerialNumber` 和 `TokenCode` 只有启用
+MFA 时才随请求提供。客户端收到 response 后必须把三件 credential 一起注入 SDK：
+
+```python
+sts = boto3.client("sts", endpoint_url=rgw_url, region_name="")
+token = sts.get_session_token(DurationSeconds=3600)
+creds = token["Credentials"]
+s3 = boto3.client(
+    "s3", endpoint_url=rgw_url, region_name="",
+    aws_access_key_id=creds["AccessKeyId"],
+    aws_secret_access_key=creds["SecretAccessKey"],
+    aws_session_token=creds["SessionToken"],
+)
+```
+
+过期 token 必须重新获取；不要把 403 当作网络重试无限重放。更换
+`rgw_sts_key` 会使仍在有效期内的 token 失效，应安排所有 RGW 滚动更新并通知
+客户端重新取 token。Keystone/LDAP 的初次认证仍受 IdP 可用性、TLS、clock skew
+和 token cache 影响；STS Lite 只是减少后续 S3 请求的 IdP 压力，不能消除这些
+初次认证依赖。
 
 ## 8. S3 与 Swift API 的对象语义
 
@@ -194,6 +446,89 @@ Bucket notification 把对象事件发送到 Kafka、AMQP、HTTP 等 topic/endpo
 
 Bucket logging 将访问日志写入目标 bucket，注意日志递归、成本、敏感字段和生命周期。Lua scripting 可在 RGW request hooks 执行逻辑，脚本异常/耗时直接影响请求；限制 API、资源和发布流程。S3 Select 在服务端过滤 CSV/JSON/Parquet（按版本能力），减少传输但消耗 RGW CPU/memory。
 
+### 13.1 Notification 的 topic、持久队列和重试
+
+启用通知 API 前，`rgw_enable_apis` 必须包含 `notifications`。Topic 是按 tenant
+归属的 endpoint 定义，bucket notification 再把事件、prefix/suffix/tag/metadata
+过滤器绑定到一个或多个 topic；topic 与 notification 是多对多关系。配置变更后
+必须重新创建关联 notification 才能可靠刷新 endpoint 属性。
+
+跨 zone 使用通知时，先确认所有 cooperating RGW/OSD 已升级并支持
+`notification_v2`，再在 zone 和 zonegroup 层启用；period commit 后后台会把既有
+v1 topic/notification 转换为 v2，转换期间不要同时做 topic ownership 迁移：
+
+```bash
+radosgw-admin zone modify --rgw-zone=<zone> --enable-feature=notification_v2
+radosgw-admin period update --commit
+radosgw-admin zonegroup modify --rgw-zonegroup=<zonegroup> \
+  --enable-feature=notification_v2
+radosgw-admin period update --commit
+```
+
+如果仍有旧版本 zone 不支持该 feature，不能只在 master 强行打开；先完成所有 zone
+的版本/feature 支持检查，否则 v2 元数据无法可靠同步。
+
+```bash
+# 只展示 topic 生命周期和持久队列观测；endpoint credential 不能写入 shell history
+radosgw-admin topic list --tenant=<tenant>
+radosgw-admin topic get --topic=<topic> --tenant=<tenant>
+radosgw-admin topic stats --topic=<topic> --tenant=<tenant>
+radosgw-admin topic dump --topic=<topic> --tenant=<tenant> --max-entries=100
+radosgw-admin topic rm --topic=<topic> --tenant=<tenant>
+```
+
+HTTP、AMQP 0.9.1、Kafka endpoint 的 TLS 和 ack 语义不同：AMQP 的
+`none|broker|routable`、Kafka 的 `none|broker` 是到达确认层级，不代表最终消费
+成功；Kafka SASL 支持 PLAIN、SCRAM-SHA-256/512、GSSAPI、OAUTHBEARER。HTTP
+topic 默认校验证书，AMQP/Kafka 的 `ca-location` 会替代系统 CA。用户名、密码、
+私钥口令必须通过 HTTPS 提交；Kafka 未使用 TLS 时，只有显式打开
+`rgw_allow_notification_secrets_in_cleartext` 才允许创建，生产应保持关闭。
+
+异步持久通知的关键属性是 `persistent=true`、`time_to_live`、`max_retries` 和
+`retry_sleep_duration`。TTL 或重试数为 0 表示无限保留/无限重试；endpoint 长期
+不可达会填满 log pool，使触发对象操作返回 503。同步模式把 endpoint RTT 加到
+请求延迟，但即便通知失败，触发对象操作仍视为成功；异步模式先将事件持久化，
+触发操作只在事件成功落盘后确认，随后由 worker 重试。消费者必须用 event id 加
+bucket/key/version 去重并容忍乱序。
+
+### 13.2 Bucket logging 的安全前置条件和失败语义
+
+启用前先创建独立 log bucket，并满足全部硬约束：不能与 source bucket 相同，不能
+在 log bucket 上再启用 logging、encryption（包括 SSE-S3）、compression 或
+RequestPayer；source/log bucket 必须在同一 zonegroup，可跨 account 但要有 policy。
+log bucket 可启用 object lock 默认保留期，但仍需评估容量和合规期。
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "AllowLoggingFromSourceBucket",
+    "Effect": "Allow",
+    "Principal": {"Service": "logging.s3.amazonaws.com"},
+    "Action": "s3:PutObject",
+    "Resource": "arn:aws:s3:::log-bucket/prefix*",
+    "Condition": {
+      "StringEquals": {"aws:SourceAccount": "<source-account-id>"},
+      "ArnLike": {"aws:SourceArn": "arn:aws:s3:::source-bucket"}
+    }
+  }]
+}
+```
+
+只有 source bucket owner 可启停 logging；即使 source 与 log bucket 同属一个 owner，
+log bucket policy 仍必须允许 `logging.s3.amazonaws.com` 执行 `s3:PutObject`。
+日志对象默认约 5 分钟或达到 128 MiB 才滚动到 log bucket，写入是异步的；
+`radosgw-admin bucket logging list --bucket=<source-bucket>` 查看仍在 pending 的
+log objects。关闭 logging、修改配置或删除 source bucket 会触发 flush，但在 flush
+完成前 log bucket 可能出现时间空洞。
+
+Standard 模式在 bucket 操作完成后写日志，日志失败不回滚原操作；Journal 模式先
+写日志，PutObject、CompleteMultipartUpload、CopyObject、ACL、legal hold、retention
+和 tagging 等失败项会阻断原操作（DeleteObject/DeleteObjects 等例外不一定阻断）。
+因此 Journal 适合审计不可丢失但能接受写延迟的路径，Standard 适合业务可用性优先
+且能容忍日志短暂缺口的路径；两种模式都要单独监控 log bucket quota，因为 quota
+超限时 Journal 会失败、Standard 会跳过日志但继续业务操作。
+
 ## 14. Cache、压缩、D3N、去重和硬件加速
 
 RGW metadata/data cache 减少 RADOS 访问，多个 RGW 依赖通知保持 cache coherence；TTL/容量过大增加陈旧窗口。D3N 在本地 NVMe 缓存 data objects，需容量、淘汰和故障验证。Compression 按 placement 设置 algorithm；监控 eligible/compressed bytes 和 CPU。
@@ -217,6 +552,28 @@ radosgw-admin lc list
 指标至少分 GET/PUT/DELETE/LIST/multipart 的请求率、字节、latency、4xx/5xx，按 daemon/zone 聚合；另看 bucket index、sync lag、GC/LC backlog、KMS/notification endpoint、frontend connections 和 RADOS pool。
 
 Orphan 工具查找未被 bucket index 引用的 raw objects，扫描成本高且误删不可恢复。先完成 bucket index check、备份列表和 dry-run，再按官方版本工具清理。
+
+### 15.1 配置参考中的高影响参数
+
+配置项应放在适用的 `[client.radosgw.<instance>]` 或统一的 `[client]`/`[global]`
+范围；只写 instance section 时，未指定 instance 的 `radosgw-admin` 不会继承该值。
+生产变更先 `ceph config dump` 保存旧值和 effective config，再滚动 redeploy，避免
+把某个 daemon 的局部值误当成全局策略。
+
+| 类别 | 官方参数 | 生产含义与边界 |
+|---|---|---|
+| Frontend | `rgw_frontends`、`rgw_frontend_type`、`rgw_thread_pool_size` | listener、Beast 参数和 worker 并发；线程增大前先测 CPU、连接数和 RADOS latency |
+| 超时 | `rgw_op_thread_timeout`、`rgw_op_thread_suicide_timeout`、`rgw_exit_timeout_secs` | 控制单请求、异常 worker 和 shutdown drain；不能用无限 timeout 掩盖慢后端 |
+| 生命周期 | `rgw_enable_lc_threads`、`rgw_lc_max_worker`、`rgw_lc_max_wp_worker` | 每个 zone 至少一个 LC worker；大量 bucket 与单 bucket 大对象分别调两个 worker 参数 |
+| GC | `rgw_enable_gc_threads`、`rgw_gc_max_objs`、`rgw_gc_obj_min_wait`、`rgw_gc_processor_period`、`rgw_gc_max_concurrent_io` | 删除后的 tail 延迟回收；提高并发需观察 OSD latency 和 raw capacity，部分参数需重启 |
+| Quota | `rgw_bucket_quota_ttl`、`rgw_user_quota_bucket_sync_interval`、`rgw_user_quota_sync_interval` | quota 统计有 TTL/同步窗口，不要把瞬时 quota 数字当作强实时计量 |
+| Multisite | `rgw_run_sync_thread`、`rgw_data_log_num_shards`、`rgw_md_log_max_shards`、`rgw_data_sync_poll_interval`、`rgw_meta_sync_poll_interval` | shard 与 poll 调度；`rgw_data_log_num_shards` 和 `rgw_md_log_max_shards` 在 sync 启动后不可随意修改 |
+| 日志 | `rgw_enable_ops_log`、`rgw_enable_usage_log`、`rgw_ops_log_rados`、`rgw_usage_log_flush_threshold`、`rgw_log_http_headers` | access/ops/usage 是不同日志面；HTTP header 可能含敏感信息，必须设置保留和脱敏策略 |
+| TLS/外部服务 | `rgw_verify_ssl`、Keystone/Vault/KMIP/Barbican 的 endpoint、CA、token/path | 关闭 TLS 校验只应作为隔离诊断，生产保持校验并监控证书/密钥轮换 |
+
+典型配置变更必须按“记录 -> dry-run/静态检查 -> 单 daemon -> 真实业务 -> 扩大范围”
+执行。特别是 multisite log shard 数量一旦有 sync marker 就不是普通滚动参数；需要
+迁移或新建 zone 时按官方兼容路径处理，不能直接在运行中的集群上改值。
 
 ## 16. Frontend、URI、代理和连接生命周期
 
@@ -399,6 +756,60 @@ Reshard 创建新的 bucket instance，复制 index entries，再原子切换 bu
 
 建立新 realm 的顺序：在主站创建 realm -> master zonegroup -> master zone -> system user/endpoint -> period update --commit；次站 pull realm/period，用 system credential 创建本地 zone/pools/endpoints，启动 RGW 后观察 metadata/data sync。
 
+### 25.1 从空环境建立双站点的命令顺序
+
+下面命令在已经准备好的两个独立 Ceph storage cluster 上执行。多站点至少需要
+两个 cluster 和每站一个或多个 RGW；高延迟 WAN 上把一个 Ceph cluster 横跨地域
+并不等价于多站点，且不建议这样部署。示例中的 pool 删除只适用于全新、尚未写入
+数据的 zone，生产环境不得照抄删除命令。
+
+**主站（master zonegroup/master zone）：**
+
+```bash
+radosgw-admin realm create --rgw-realm=prod --default
+radosgw-admin zonegroup create --rgw-zonegroup=cn-east \
+  --endpoints=https://rgw-east.example.com --rgw-realm=prod --master --default
+radosgw-admin zone create --rgw-zonegroup=cn-east --rgw-zone=cn-east-1 \
+  --endpoints=https://rgw-east.example.com --master
+
+# system user 仅用于站点间拉取 period；secret 进入 secret store
+radosgw-admin user create --uid=multisite-sync \
+  --display-name="Multisite Sync" --system
+radosgw-admin zone modify --rgw-zone=cn-east-1 \
+  --access-key=<system-access-key> --secret=<system-secret>
+radosgw-admin period update --rgw-realm=prod --commit
+
+# cephadm 只部署 daemon，不替代上面的 realm/zone 配置
+ceph orch apply rgw east --realm=prod --zonegroup=cn-east \
+  --zone=cn-east-1 --placement="2 rgw-east-01 rgw-east-02" --port=8443
+```
+
+**次站（secondary zone）：**
+
+```bash
+# 从 master gateway 拉取 realm 以及当前 period；非默认 realm 要显式指定
+radosgw-admin realm pull --rgw-realm=prod \
+  --url=https://rgw-east.example.com \
+  --access-key=<system-access-key> --secret=<system-secret>
+radosgw-admin realm default --rgw-realm=prod
+
+# 不使用 --master/--default；默认 active-active，若要只读才加 --read-only
+radosgw-admin zone create --rgw-zonegroup=cn-east \
+  --rgw-zone=cn-west-1 --access-key=<system-access-key> \
+  --secret=<system-secret> --endpoints=https://rgw-west.example.com
+radosgw-admin period update --rgw-realm=prod --commit
+
+ceph orch apply rgw west --realm=prod --zonegroup=cn-east \
+  --zone=cn-west-1 --placement="2 rgw-west-01 rgw-west-02" --port=8443
+radosgw-admin sync status
+```
+
+`realm pull` 同时取得远端当前 period；次站创建 zone 后的 period commit 会递增
+epoch，所有 daemon 必须加载新 period。元数据操作（用户、realm、zone 配置）应
+在 master zone 执行；bucket 请求可以到任一 active zone，但涉及 master metadata
+时会重定向或在 master 不可用时失败。把 secondary 建成 `--read-only` 只适用于
+明确的 active-passive 设计，不能再声称它具备 active-active 写能力。
+
 ```mermaid
 sequenceDiagram
   participant A as Site A master
@@ -418,6 +829,15 @@ Period commit 是全局配置事务：只有 master zone 能产生新 period；e
 Zone feature 控制 resharding、sync policy、notification 等跨站能力；不同 release/feature 不兼容时先滚动升级到共同能力集。Read-only zone 拒绝普通写；archive zone 保存对象版本历史，不能作为普通 active-active 站点。
 
 Failover 的权威序列：阻止旧 master 写 -> 等 metadata/data sync caught up -> 把目标 zone 标为 master/default -> 新 period commit -> 更新 DNS/LB -> 业务验证。旧站不可达时记录各 sync shard marker 估算 RPO后强切。Failback 不应简单把 master 标志改回：先把旧站作为 secondary 对齐新历史，确认冲突/落后清零，再计划切换。
+
+切换前至少保存 `radosgw-admin period get`、`zonegroup get`、`zone get` 和每个
+sync shard marker。正常切换要求旧 master 停止写入，`radosgw-admin sync status`
+显示 metadata/data caught up；然后在目标站完成 promote、period commit，最后
+切换 LB/DNS，并用真实 S3 PUT/GET/DELETE、版本对象和 bucket listing 验证。旧站
+不可达时必须把最后 caught-up marker、业务写入时间和估计 RPO 写入变更记录；不要
+把“目标站 daemon 已启动”当成数据已齐全。恢复旧站时先让它作为 secondary 完成
+同步，处理冲突和未同步 marker，再做下一次有计划的 promote，不能直接把 master
+标志改回造成双 master 写入。
 
 ## 26. Sync policy、flow、pipe 与同步模块
 

@@ -930,6 +930,72 @@ RBD_REQUIRED_FACTS = {
     ),
 }
 
+RADOSGW_REQUIRED_FACTS = {
+    "cephadm deployment": (
+        "ceph orch apply rgw",
+        "service_type: rgw",
+        "count_per_host",
+        "rgw_frontend_type: beast",
+        "rgw_frontend_extra_args",
+        "rgw_realm",
+        "rgw_zonegroup",
+        "rgw_exit_timeout_secs",
+        "generate_cert: true",
+        "wildcard_enabled: true",
+        "ceph orch redeploy",
+    ),
+    "account lifecycle": (
+        "radosgw-admin account create",
+        "--account-root",
+        "account stats",
+        "quota-scope=account",
+        "quota-scope=bucket",
+        "所有 bucket owner 转为 account",
+        "account membership 不能移除",
+        "notification topics",
+    ),
+    "sts lite": (
+        "rgw_sts_key",
+        "rgw_s3_auth_use_sts",
+        "GetSessionToken",
+        "DurationSeconds",
+        "43200",
+        "sts:authentication",
+        "aws_session_token",
+    ),
+    "multisite lifecycle": (
+        "realm create",
+        "zonegroup create",
+        "zone create",
+        "realm pull",
+        "period update --rgw-realm=prod --commit",
+        "radosgw-admin sync status",
+        "RPO",
+        "不能直接把 master",
+    ),
+    "notifications and logging": (
+        "topic stats",
+        "topic dump",
+        "notification_v2",
+        "persistent=true",
+        "max_retries",
+        "rgw_allow_notification_secrets_in_cleartext",
+        "logging.s3.amazonaws.com",
+        "bucket logging list",
+        "Standard 模式",
+        "Journal 模式",
+    ),
+    "configuration guardrails": (
+        "rgw_lc_max_worker",
+        "rgw_gc_max_concurrent_io",
+        "rgw_bucket_quota_ttl",
+        "rgw_data_log_num_shards",
+        "rgw_md_log_max_shards",
+        "rgw_enable_ops_log",
+        "rgw_verify_ssl",
+    ),
+}
+
 
 class StorageDocumentationTests(unittest.TestCase):
     def test_ceph_is_an_independent_nine_document_storage_branch(self):
@@ -992,6 +1058,33 @@ class StorageDocumentationTests(unittest.TestCase):
         for mechanism, facts in CEPHADM_REQUIRED_FACTS.items():
             for fact in facts:
                 self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+    def test_radosgw_preserves_tentacle_production_facts(self):
+        text = (CEPH_ROOT / "06-radosgw.md").read_text(encoding="utf-8")
+        for mechanism, facts in RADOSGW_REQUIRED_FACTS.items():
+            for fact in facts:
+                self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+        multisite = text.split("### 25.1 从空环境建立双站点的命令顺序", 1)[1]
+        self.assertLess(
+            multisite.index("radosgw-admin realm create"),
+            multisite.index("radosgw-admin zonegroup create"),
+        )
+        self.assertLess(
+            multisite.index("radosgw-admin period update --rgw-realm=prod --commit"),
+            multisite.index("radosgw-admin realm pull"),
+        )
+
+        logging = text.split("### 13.2 Bucket logging 的安全前置条件和失败语义", 1)[1]
+        self.assertIn("不能与 source bucket 相同", logging)
+        self.assertIn("不能\n在 log bucket 上再启用 logging", logging)
+        self.assertIn("同一 zonegroup", logging)
+        self.assertIn("s3:PutObject", logging)
+        self.assertIn("logging.s3.amazonaws.com", logging)
+
+    def test_radosgw_does_not_duplicate_frontend_uri_rule(self):
+        text = (CEPH_ROOT / "06-radosgw.md").read_text(encoding="utf-8")
+        self.assertEqual(text.count("URI 解析同时受"), 1)
 
     def test_rados_preserves_official_production_facts(self):
         text = (CEPH_ROOT / "03-rados.md").read_text(encoding="utf-8")
@@ -1404,7 +1497,12 @@ ceph() {
             self.assertIn(fact, recovery)
 
     def test_mature_documents_use_github_renderable_mermaid_contract(self):
-        for document in ("01-architecture.md", "02-cephadm.md", "03-rados.md"):
+        for document in (
+            "01-architecture.md",
+            "02-cephadm.md",
+            "03-rados.md",
+            "06-radosgw.md",
+        ):
             text = (CEPH_ROOT / document).read_text(encoding="utf-8")
             blocks = MERMAID_BLOCK.findall(text)
             self.assertEqual(len(blocks), text.count("```mermaid"), document)
