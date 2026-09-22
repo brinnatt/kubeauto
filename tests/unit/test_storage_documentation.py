@@ -950,6 +950,7 @@ RADOSGW_REQUIRED_FACTS = {
         "account stats",
         "quota-scope=account",
         "quota-scope=bucket",
+        "quota enable --quota-scope=user --uid=app",
         "所有 bucket owner 转为 account",
         "account membership 不能移除",
         "notification topics",
@@ -970,8 +971,9 @@ RADOSGW_REQUIRED_FACTS = {
         "realm pull",
         "period update --rgw-realm=prod --commit",
         "radosgw-admin sync status",
+        "rgw_sync_obj_etag_verify",
         "RPO",
-        "不能直接把 master",
+        "zone modify --rgw-zone=<secondary-zone> --master --default",
     ),
     "notifications and logging": (
         "topic stats",
@@ -1081,6 +1083,8 @@ class StorageDocumentationTests(unittest.TestCase):
         self.assertIn("同一 zonegroup", logging)
         self.assertIn("s3:PutObject", logging)
         self.assertIn("logging.s3.amazonaws.com", logging)
+
+        self.assertNotIn("--enabled true", text)
 
     def test_radosgw_does_not_duplicate_frontend_uri_rule(self):
         text = (CEPH_ROOT / "06-radosgw.md").read_text(encoding="utf-8")
@@ -1265,6 +1269,10 @@ ceph() {
             self.assertIn(command, mirroring)
         self.assertIn("--force", mirroring)
         self.assertIn("split-brain", mirroring)
+        self.assertIn(
+            "rbd mirror pool peer bootstrap import --site-name dc-b --direction rx-tx volumes token",
+            mirroring,
+        )
         self.assertNotIn("Journal mode 是默认模式", mirroring)
 
         migration = text.split("## 19. Live migration", 1)[1].split(

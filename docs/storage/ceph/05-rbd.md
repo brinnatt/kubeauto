@@ -323,7 +323,7 @@ Mirroring 有两层开关：pool default namespace 与每个非默认 namespace 
 ```bash
 rbd mirror pool enable volumes image
 rbd mirror pool peer bootstrap create volumes --site-name dc-a
-rbd mirror pool peer bootstrap import --direction rx-tx volumes token --site-name dc-b
+rbd mirror pool peer bootstrap import --site-name dc-b --direction rx-tx volumes token
 rbd mirror pool peer add volumes client.rbd-mirror-peer@<remote-cluster-name> \
   --remote-mon-host <remote-mon-1>,<remote-mon-2> \
   --remote-key-file /run/secrets/remote-mirror.key

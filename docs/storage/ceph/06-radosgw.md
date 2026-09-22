@@ -2,6 +2,10 @@
 
 > RGW 把 S3/Swift HTTP 语义映射到 RADOS。企业设计必须同时理解请求前端、身份/IAM、bucket index、data placement、多站点日志、加密密钥与异步通知；“RGW Pod 可访问”只证明进程入口，不证明对象业务和数据保护。
 
+本文中带有 Ceph CLI、cephadm、AWS CLI 的主路径均按 Tentacle 官方文档命令整理；
+其后的验收、风险和故障说明是对官方语义的拆解，不把未在本环境实测的结果写成
+成功保证。版本、部署方式和外部服务差异仍必须以对应官方参数约束为准。
+
 ## 1. 一次对象请求经过哪些层
 
 ```mermaid
@@ -205,9 +209,10 @@ ceph orch ls --service_name east-wildcard --export
 
 ```bash
 radosgw-admin user create --uid app --display-name 'Application'
-radosgw-admin key create --uid app --key-type s3 --gen-access-key --gen-secret
-radosgw-admin user modify --uid app --max-buckets 100
-radosgw-admin quota set --uid app --quota-scope user --max-size <bytes> --enabled true
+radosgw-admin key create --uid=app --key-type=s3 --gen-access-key --gen-secret
+radosgw-admin user modify --uid=app --max-buckets=100
+radosgw-admin quota set --quota-scope=user --uid=app --max-size=<bytes>
+radosgw-admin quota enable --quota-scope=user --uid=app
 radosgw-admin user info --uid app
 ```
 
@@ -423,6 +428,16 @@ KMS 的 HA、TLS CA、token/role、key version、rotation 和灾备与 RGW 同�
 ## 12. Multisite 数据与元数据同步
 
 Master zone 产生 metadata changes，各 zone 的 sync threads 分 shard 拉取 mdlog/datalog/bilog 并重放。Sync status 要分别看 metadata、data、各 shard marker 和 recovering/failing entries。
+
+官方默认在对象同步成功后不再做后续校验；需要跨 HTTP 拉取或多站点同步的对象
+完整性校验时，可在所有相关 RGW 上启用 `rgw_sync_obj_etag_verify=true`。该选项
+使用 MD5 校验传输数据，官方同时注明会增加计算开销、降低性能；它不是未实测
+环境下可以默认开启的性能无损保证。
+
+```ini
+[client.radosgw.<instance>]
+rgw_sync_obj_etag_verify = true
+```
 
 ```mermaid
 flowchart LR
@@ -806,9 +821,10 @@ radosgw-admin sync status
 
 `realm pull` 同时取得远端当前 period；次站创建 zone 后的 period commit 会递增
 epoch，所有 daemon 必须加载新 period。元数据操作（用户、realm、zone 配置）应
-在 master zone 执行；bucket 请求可以到任一 active zone，但涉及 master metadata
-时会重定向或在 master 不可用时失败。把 secondary 建成 `--read-only` 只适用于
-明确的 active-passive 设计，不能再声称它具备 active-active 写能力。
+在 master zone 执行；secondary 会把 bucket 操作重定向到 master，master 不可用
+时 bucket 操作失败，但官方说明 object 操作仍可成功。把 secondary 建成
+`--read-only` 只适用于明确的 active-passive 设计；active-active 场景必须移除
+该只读状态后再接收写入。
 
 ```mermaid
 sequenceDiagram
@@ -828,16 +844,73 @@ Period commit 是全局配置事务：只有 master zone 能产生新 period；e
 
 Zone feature 控制 resharding、sync policy、notification 等跨站能力；不同 release/feature 不兼容时先滚动升级到共同能力集。Read-only zone 拒绝普通写；archive zone 保存对象版本历史，不能作为普通 active-active 站点。
 
-Failover 的权威序列：阻止旧 master 写 -> 等 metadata/data sync caught up -> 把目标 zone 标为 master/default -> 新 period commit -> 更新 DNS/LB -> 业务验证。旧站不可达时记录各 sync shard marker 估算 RPO后强切。Failback 不应简单把 master 标志改回：先把旧站作为 secondary 对齐新历史，确认冲突/落后清零，再计划切换。
+Failover 只按官方命令顺序执行，不把“promote”当成未定义的抽象动作。先停止旧
+master 的 RGW 写入并确认目标 zone 的 metadata sync 已完成；否则官方明确警告，
+未完成的 metadata entries 在新 master 上可能丢失。旧 master 正在处理 metadata
+时也应先关闭其 RGW，再提升目标 zone。
+
+```bash
+# 在目标 secondary zone 执行（active-active）
+radosgw-admin zone modify --rgw-zone=<secondary-zone> --master --default
+
+# 仅 active-passive 且目标 zone 原先为只读时，使用官方这一条替代上一条
+radosgw-admin zone modify --rgw-zone=<secondary-zone> --master --default \
+  --read-only=false
+radosgw-admin period update --commit
+```
+
+官方 systemd 部署随后执行：
+
+```bash
+systemctl restart ceph-radosgw@rgw.`hostname -s`
+```
+
+cephadm 集群没有上述 systemd unit，不能照抄 `systemctl`；应按 cephadm service
+生命周期对 RGW service/daemon 执行 redeploy，并在 `radosgw-admin sync status`
+和真实 S3 读写验证后再切换 DNS/LB。这个部署差异是运行方式差异，不改变官方的
+zone/period 命令顺序。
+
+目标 zone 生成新 period 后，旧 master 若要重新加入，应从新 master 拉取 period
+再启动 gateway；官方给出的 systemd 路径为：
+
+```bash
+radosgw-admin period pull --url=https://<new-master-gateway> \
+  --access-key=<system-access-key> --secret=<system-secret>
+systemctl restart ceph-radosgw@rgw.`hostname -s`
+```
+
+cephadm 部署仍以同一 `period pull` 为配置动作，之后用对应 service/daemon redeploy
+替代 systemd restart。
+
+旧站不可达时保留最后 sync shard marker、业务写入时间和估计 RPO；不要把目标
+daemon 启动当成数据已齐全。
 
 切换前至少保存 `radosgw-admin period get`、`zonegroup get`、`zone get` 和每个
 sync shard marker。正常切换要求旧 master 停止写入，`radosgw-admin sync status`
-显示 metadata/data caught up；然后在目标站完成 promote、period commit，最后
-切换 LB/DNS，并用真实 S3 PUT/GET/DELETE、版本对象和 bucket listing 验证。旧站
-不可达时必须把最后 caught-up marker、业务写入时间和估计 RPO 写入变更记录；不要
-把“目标站 daemon 已启动”当成数据已齐全。恢复旧站时先让它作为 secondary 完成
-同步，处理冲突和未同步 marker，再做下一次有计划的 promote，不能直接把 master
-标志改回造成双 master 写入。
+显示 metadata/data caught up；然后执行上述官方 zone/period 命令，最后切换 LB/DNS，
+并用真实 S3 PUT/GET/DELETE、版本对象和 bucket listing 验证。
+
+官方的 failback 顺序同样必须完整执行：恢复站先从当前 master 拉取最新 realm/period，
+再把恢复站设为 master/default，提交 period，重启恢复站；如果另一站需要只读，再
+设置 `--read-only`、再次提交 period 并重启另一站。不要省略中间的 `realm pull` 或
+period commit。
+
+```bash
+# 在恢复站执行
+radosgw-admin realm pull --url=https://<current-master-gateway> \
+  --access-key=<system-access-key> --secret=<system-secret>
+radosgw-admin zone modify --rgw-zone=<recovered-zone> --master --default
+radosgw-admin period update --commit
+systemctl restart ceph-radosgw@rgw.`hostname -s`
+
+# active-passive 需要恢复 secondary 的只读边界
+radosgw-admin zone modify --rgw-zone=<secondary-zone> --read-only
+radosgw-admin period update --commit
+systemctl restart ceph-radosgw@rgw.`hostname -s`
+```
+
+cephadm 部署按同一官方配置顺序完成后，用对应 RGW service/daemon redeploy 替代
+`systemctl restart`；不得把 systemd 命令在容器化部署中当作可执行步骤。
 
 ## 26. Sync policy、flow、pipe 与同步模块
 
