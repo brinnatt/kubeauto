@@ -832,6 +832,104 @@ REQUIRED_DOMAINS = {
     ),
 }
 
+RBD_REQUIRED_FACTS = {
+    "encryption": (
+        "`krbd` 当前不支持",
+        "encryption load",
+        "AES-128/AES-256",
+        "xts-plain64",
+        "启用 `journaling` 的 image 不能",
+        "effective size",
+        "read-modify-write",
+        "rbd-nbd",
+    ),
+    "mirroring": (
+        "init-only",
+        "primary/non-primary",
+        "rx-only",
+        "mirror snapshot",
+        "mirror image demote",
+        "mirror image promote",
+        "mirror image resync",
+        "entries behind",
+    ),
+    "migration": (
+        "source 被标记为 read-only",
+        "当前不支持 live migration",
+        "compression、encryption、backing files、external data files",
+        "thick-provisioned raw snapshot exports",
+        "rbd migration prepare",
+        "rbd migration execute",
+        "rbd migration commit",
+        "rbd migration abort",
+    ),
+    "lifecycle": (
+        "--allow-shrink",
+        "trash restore",
+        "deferment",
+        "image ID",
+        "rbd pool init",
+        "--expires-at",
+        "mgr 'profile rbd",
+        "snaptrim",
+        "format 2",
+        "跨 pool",
+        "--exclusive",
+        "--image-shared",
+    ),
+    "cache_and_replay": (
+        "persistent-on-write",
+        "persistent-on-flush",
+        "rbd persistent-cache flush",
+        "rbd persistent-cache invalidate",
+        "ceph-immutable-object-cache",
+        "--read-only",
+    ),
+    "integrations": (
+        "clusterID",
+        "FSID",
+        "volumeMode: Block",
+        "ReadWriteOnce",
+        "reclaimPolicy: Delete",
+        "ceph nvmeof subsystem add",
+        "ceph nvmeof namespace add",
+        "connect-all",
+        "CHAP",
+    ),
+    "config reference": (
+        "rbd_compression_hint",
+        "rbd_read_from_replica_policy",
+        "rbd_default_order",
+        "rbd_cache_max_dirty_age",
+        "GFS/OCFS",
+        "rbd_qos_schedule_tick_min",
+        "rbd_qos_exclude_ops",
+    ),
+    "customer signoff integrations": (
+        "images",
+        "volumes",
+        "backups",
+        "vms",
+        "client.cinder-backup",
+        "rbd_flatten_volume_from_snapshot",
+        "show_image_direct_url",
+        "ceph-csi-encryption-kms-config",
+        "quay.io/cephcsi/cephcsi:canary",
+        "nomad plugin status ceph-csi",
+        "allow_privileged = true",
+        "iSCSI gateway 自 2022 年 11 月进入 maintenance",
+        "iscsiadm -m discovery",
+        "multipath -ll",
+        "gwtop",
+        "rbd-wnbd",
+        "SCSI Persistent Reservations",
+        "client.cloudstack",
+        "storage pool",
+        "nvme-fabrics",
+        "nvme list-subsys",
+    ),
+}
+
 
 class StorageDocumentationTests(unittest.TestCase):
     def test_ceph_is_an_independent_nine_document_storage_branch(self):
@@ -1056,6 +1154,78 @@ ceph() {
         self.assertIn("refuse_client_sessions true", text)
         self.assertNotRegex(text, r"\brefuse_client_session\b")
         self.assertNotIn("后才考虑生产", text.split("## 17.", 1)[1].split("## 18.", 1)[0])
+
+    def test_rbd_signoff_preserves_tentacle_customer_boundaries(self):
+        text = (CEPH_ROOT / "05-rbd.md").read_text(encoding="utf-8")
+        for mechanism, facts in RBD_REQUIRED_FACTS.items():
+            for fact in facts:
+                self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+        mirroring = text.split("## 18. Mirroring", 1)[1].split(
+            "## 19. Live migration", 1
+        )[0]
+        for command in (
+            "mirror image demote",
+            "mirror image promote",
+            "mirror image resync",
+        ):
+            self.assertIn(command, mirroring)
+        self.assertIn("--force", mirroring)
+        self.assertIn("split-brain", mirroring)
+        self.assertNotIn("Journal mode 是默认模式", mirroring)
+
+        migration = text.split("## 19. Live migration", 1)[1].split(
+            "## 20. Kernel", 1
+        )[0]
+        ordered = (
+            "先停止所有以读写方式打开 source 的客户端",
+            "`prepare` 成功后 source 被标记为 read-only",
+            "`execute` 在后台复制",
+            "`commit` 删除 cross-links",
+            "`abort` 只在 commit 前",
+        )
+        positions = [migration.index(fact) for fact in ordered]
+        self.assertEqual(positions, sorted(positions))
+
+        encryption = text.split("## 17. 加密格式", 1)[1].split(
+            "## 18. Mirroring", 1
+        )[0]
+        self.assertLess(encryption.index("encryption format"), encryption.index("encryption load"))
+        self.assertIn("未执行 `encryption load` 的打开上下文仍可按 raw image 读写", encryption)
+        self.assertIn("不能由 RBD client format/encrypt", encryption)
+
+        lifecycle = text.split("## 2. Pool", 1)[1].split(
+            "## 3. Image", 1
+        )[0]
+        self.assertIn("--allow-shrink", lifecycle)
+        self.assertIn("trash restore", lifecycle)
+        self.assertIn("deferment", lifecycle)
+
+    def test_rbd_dangerous_operations_are_fail_closed(self):
+        text = (CEPH_ROOT / "05-rbd.md").read_text(encoding="utf-8")
+        replay = text.split("`rbd-replay` 先", 1)[1].split("## 20.", 1)[0]
+        self.assertIn("默认会写入并可能破坏", replay)
+        self.assertIn("--read-only", replay)
+
+        qemu = text.split("## 20. Kernel", 1)[1].split("## 21.", 1)[0]
+        self.assertIn("cache=writeback", qemu)
+        self.assertIn("flush", qemu)
+        self.assertIn("raw 格式", qemu)
+
+        csi = text.split("## 22. Kubernetes", 1)[1].split("## 23.", 1)[0]
+        self.assertIn("clusterID", csi)
+        self.assertIn("等于 Ceph FSID", csi)
+        self.assertIn("ReadWriteOnce", csi)
+        self.assertIn("不等于物理 fencing", csi)
+
+        openstack = text.split("## 21. OpenStack", 1)[1].split(
+            "## 22. Kubernetes", 1
+        )[0]
+        cinder = openstack.split("Cinder 的 RBD backend", 1)[1].split(
+            "Nova/libvirt", 1
+        )[0]
+        self.assertLess(cinder.index("backup_driver"), cinder.index("[ceph]"))
+        self.assertIn("backup_ceph_pool = backups", cinder)
 
     def test_cephfs_nfs_example_rejects_unbounded_clients_before_creating_export(self):
         text = (CEPH_ROOT / "04-cephfs.md").read_text(encoding="utf-8")
