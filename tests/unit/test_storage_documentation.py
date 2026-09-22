@@ -906,6 +906,91 @@ MGR_REQUIRED_FACTS = {
     ),
 }
 
+DASHBOARD_REQUIRED_FACTS = {
+    "tls and endpoint": (
+        "create-self-signed-cert",
+        "ssl_server_port",
+        "ceph mgr fail mgr",
+        "mgr module disable dashboard",
+        "mgr/dashboard/server_addr",
+        "mgr/dashboard/$name/server_addr",
+        "mgr/dashboard/ssl false",
+        "TCP `8443`",
+        "`8080`",
+        "`::`",
+    ),
+    "users and policy": (
+        "set-pwd-policy-enabled",
+        "set-pwd-policy-check-complexity-enabled",
+        "ac-user-set-password-hash",
+        "bcrypt",
+        "set-account-lockout-attempts",
+        "set-account-lockout-attempts 0",
+        "ac-role-add-scope-perms",
+        "ac-role-del-scope-perms",
+        "ac-user-add-roles",
+        "ac-user-del-roles",
+        "dashboard-settings",
+        "--pwd_update_required",
+    ),
+    "rgw and iscsi": (
+        "set-rgw-credentials",
+        "set-rgw-api-admin-resource",
+        "set-rgw-api-ssl-verify",
+        "iscsi-gateway-add",
+        "set-iscsi-api-ssl-verification",
+    ),
+    "grafana and alerting": (
+        "set-grafana-api-url",
+        "set-grafana-frontend-api-url",
+        "reset-grafana-api-url",
+        "allow_embedding",
+        "Dashboard1",
+        "localhost:9283",
+        "vonage-status-panel",
+        "grafana-piechart-panel",
+        "/api/prometheus_receiver",
+        "set-alertmanager-api-host",
+        "set-prometheus-api-host",
+        "Silence update",
+    ),
+    "sso": (
+        "sso setup saml2",
+        "/auth/saml2/metadata",
+        "ceph orch apply mgmt-gateway --enable_auth=true",
+        "sso enable oauth2",
+        "python-saml",
+    ),
+    "audit and plugins": (
+        "set-audit-api-enabled",
+        "set-audit-api-log-payload",
+        "dashboard feature status",
+        "dashboard feature enable",
+        "dashboard debug status",
+        "dashboard motd set",
+        "standby_behaviour",
+        "redirect_resolve_ip_addr",
+        "request `unique_id`",
+    ),
+    "proxy and troubleshooting": (
+        "option httpchk GET /",
+        "http-check expect status 200",
+        "ceph mgr module ls | jq .enabled_modules",
+        "ceph config get mgr log_to_file",
+        "ceph config-key get mgr/dashboard/crt",
+        "ceph tell mgr config set debug_mgr 20",
+        "ceph config reset <change-sequence-number>",
+    ),
+    "central logs and issue reporting": (
+        "mgr/cephadm/log_to_cluster_level debug",
+        "mon_cluster_log_to_file true",
+        "LogQL",
+        "set-issue-tracker-api-key",
+        "ceph dashboard create issue",
+        "core_ceph",
+    ),
+}
+
 RBD_REQUIRED_FACTS = {
     "encryption": (
         "`krbd` 当前不支持",
@@ -1147,6 +1232,23 @@ class StorageDocumentationTests(unittest.TestCase):
         )
         self.assertLess(text.index("ceph telemetry preview"), text.index("ceph telemetry on --license"))
         self.assertIn("HTTP 2xx 不等于后端 daemon ready", text)
+
+    def test_dashboard_preserves_official_tentacle_facts(self):
+        text = (CEPH_ROOT / "08-mgr-dashboard.md").read_text(encoding="utf-8")
+        for mechanism, facts in DASHBOARD_REQUIRED_FACTS.items():
+            for fact in facts:
+                self.assertIn(fact.lower(), text.lower(), f"{mechanism}: {fact}")
+
+        self.assertIn("ceph dashboard set-audit-api-enabled <true|false>", text)
+        self.assertIn("ceph dashboard set-audit-api-log-payload <true|false>", text)
+        self.assertNotIn("ceph dashboard ac-user-lock", text)
+        self.assertNotIn("ceph dashboard ac-user-unlock", text)
+        self.assertIn("官方字段中没有独立的“后端业务结果”字段", text)
+        self.assertLess(
+            text.index("set-alertmanager-api-host"),
+            text.index("自签名 Prometheus/Alertmanager"),
+        )
+        self.assertNotIn("审计日志字段不等同于后端业务成功证明", text)
 
     def test_radosgw_preserves_tentacle_production_facts(self):
         text = (CEPH_ROOT / "06-radosgw.md").read_text(encoding="utf-8")
