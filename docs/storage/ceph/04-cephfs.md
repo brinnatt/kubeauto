@@ -949,4 +949,4 @@ LazyIO 明确**放宽**多客户端缓存一致性。`client_force_lazyio` 是�
 | 保护与灾备 | quiesce 所有成员仍处于正确版本，目标快照内容一致，实测同步滞后与单一写者切换 | mirror 有 peer 但目录 failed，或者切换后原站仍能写 |
 | 故障恢复 | MDS failover、受损 metadata 与坏 data PG 分别演练，备份恢复、scrub 与业务 I/O 通过 | reset/mark repaired 替代数据修复，未保留旧历史即清理恢复现场 |
 
-参考资料：Ceph Tentacle CephFS 管理、挂载、镜像、子卷、恢复与开发接口文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle CephFS 管理、挂载、镜像、子卷、恢复与开发接口文档。Ceph authors and contributors，CC BY-SA 3.0。

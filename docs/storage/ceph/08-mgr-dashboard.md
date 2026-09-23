@@ -811,4 +811,4 @@ ceph dashboard create issue \
 
 ## 30. 参考资料与许可
 
-参考资料：Ceph Tentacle Dashboard 与 Dashboard plugin 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle Dashboard 与 Dashboard plugin 文档。Ceph authors and contributors，CC BY-SA 3.0。

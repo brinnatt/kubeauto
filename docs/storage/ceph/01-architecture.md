@@ -1632,4 +1632,4 @@ Ceph 的可靠性来自“保存可证明的历史而非盲目复制”：primar
 
 ## 27. 官方基线与许可
 
-参考资料：Ceph Tentacle Architecture、MON、CephX、MON/OSD interaction、PG monitoring/peering、scrub、EC、cache tiering、hardware 与 network 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`（2026-09-17）。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle Architecture、MON、CephX、MON/OSD interaction、PG monitoring/peering、scrub、EC、cache tiering、hardware 与 network 文档。Ceph authors and contributors，CC BY-SA 3.0。

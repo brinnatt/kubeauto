@@ -2687,6 +2687,6 @@ ceph health detail -f json-pretty
 
 ## 55. 参考资料与许可
 
-参考资料：Ceph Tentacle RADOS configuration、operations、troubleshooting、API 与 man page；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。命令执行前仍以目标 Tentacle package build、`ceph versions`、daemon schema 和集群 effective config 为准；混合版本时取实际执行该行为的 daemon 能力，不以客户端 CLI 新旧替代服务端事实。
+参考资料：Ceph Tentacle RADOS configuration、operations、troubleshooting、API 与 man page。命令执行前仍以目标 Tentacle package build、`ceph versions`、daemon schema 和集群 effective config 为准；混合版本时取实际执行该行为的 daemon 能力，不以客户端 CLI 新旧替代服务端事实。
 
 Ceph 文档版权归 Ceph authors and contributors，文档许可为 CC BY-SA 3.0。

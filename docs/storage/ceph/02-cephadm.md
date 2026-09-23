@@ -3052,4 +3052,4 @@ Ceph Tentacle cephadm 参考资料包括：
 
 开发与设计参考资料包括 `doc/dev/cephadm/` 下的 `index.rst`、`compliance-check.rst`、`host-maintenance.rst`、`scalability-notes.rst`、`developing-cephadm.rst`、`design/storage_devices_and_osds.rst`，以及 RST `autoclass` 动态展开的 `ServiceSpec`、`DriveGroupSpec` 和相关校验源码。设计提案不构成现有功能承诺。
 
-文档版本：Ceph Tentacle `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。RST 示例与同版本可执行 schema 冲突时，以 schema 为准。Ceph Authors and Contributors，文档许可 CC BY-SA 3.0。
+文档版本：Ceph Tentacle。RST 示例与同版本可执行 schema 冲突时，以 schema 为准。Ceph Authors and Contributors，文档许可 CC BY-SA 3.0。

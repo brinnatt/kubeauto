@@ -1013,4 +1013,4 @@ Bucket index 异常先 stats/check/bi list，不先 rebuild；KMS 错误保存 k
 
 ## 32. 参考资料与许可
 
-参考资料：Ceph Tentacle RADOS Gateway 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle RADOS Gateway 文档。Ceph authors and contributors，CC BY-SA 3.0。

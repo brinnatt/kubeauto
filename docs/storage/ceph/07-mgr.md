@@ -490,4 +490,4 @@ sequenceDiagram
 
 ## 20. 官方基线与许可
 
-参考资料：Ceph Tentacle MGR、Ceph API 与 Dashboard API 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle MGR、Ceph API 与 Dashboard API 文档。Ceph authors and contributors，CC BY-SA 3.0。

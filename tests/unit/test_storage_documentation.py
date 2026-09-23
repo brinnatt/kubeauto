@@ -827,7 +827,7 @@ REQUIRED_DOMAINS = {
         "ceph_rgw_metadata",
         "ceph_mds_metadata",
         "rbd_stats_pools",
-        "rate(latency_sum",
+        "rate(ceph_osd_op_latency_sum",
         "Alertmanager silence",
     ),
 }
@@ -1176,10 +1176,9 @@ class StorageDocumentationTests(unittest.TestCase):
             text = (CEPH_ROOT / document).read_text(encoding="utf-8")
             self.assertEqual(text.count("```") % 2, 0, document)
             self.assertIn("Tentacle", text, document)
-            self.assertIn("76fba24cef67d9219f97eeaa68cd1a848da3f2b2", text, document)
             self.assertIn("CC BY-SA 3.0", text, document)
 
-    def test_01_08_use_objective_product_language(self):
+    def test_ceph_modules_use_objective_product_language(self):
         forbidden_phrases = (
             "本文",
             "本仓库",
@@ -1194,7 +1193,7 @@ class StorageDocumentationTests(unittest.TestCase):
             "签字",
             "拒签",
         )
-        for document in CEPH_DOCUMENTS[:8]:
+        for document in CEPH_DOCUMENTS:
             text = (CEPH_ROOT / document).read_text(encoding="utf-8")
             for phrase in forbidden_phrases:
                 self.assertNotIn(phrase, text, f"{document}: {phrase}")
