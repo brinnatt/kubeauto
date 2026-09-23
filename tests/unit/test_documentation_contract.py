@@ -1,4 +1,6 @@
 import re
+import string
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -14,9 +16,75 @@ DATA_ADDONS = (ROOT / "docs/whitepaper/17-storage-middleware-addons.md").read_te
 OPEN_EBS_ROLE_README = (
     ROOT / "roles/cluster-addon/templates/openebs/readme.md"
 ).read_text()
+CUSTOMER_MARKDOWN = (ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md")))
+
+
+def prose_lines(document):
+    """Yield Markdown lines with fenced and inline code removed."""
+    fence_marker = None
+    fence_length = 0
+    for line_number, line in enumerate(document.read_text(encoding="utf-8").splitlines(), 1):
+        fence = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if fence:
+            marker = fence.group(1)
+            if fence_marker is None:
+                fence_marker = marker[0]
+                fence_length = len(marker)
+            elif (
+                marker[0] == fence_marker
+                and len(marker) >= fence_length
+                and not fence.group(2).strip()
+            ):
+                fence_marker = None
+                fence_length = 0
+            continue
+        if fence_marker is None:
+            yield line_number, re.sub(r"(`+).*?\1", "CODE", line)
+    if fence_marker is not None:
+        raise AssertionError(f"unclosed Markdown fence in {document.relative_to(ROOT)}")
+
+
+def is_markdown_punctuation(character):
+    return character in string.punctuation or unicodedata.category(character).startswith("P")
 
 
 class DocumentationContractTests(unittest.TestCase):
+    def test_customer_markdown_uses_github_supported_math_delimiters(self):
+        r"""GitHub documents dollar delimiters and math fences, not \(...\) or \[...\]."""
+        unsupported = re.compile(r"\\[()[\]]")
+        for document in CUSTOMER_MARKDOWN:
+            for line_number, line in prose_lines(document):
+                self.assertIsNone(
+                    unsupported.search(line),
+                    f"unsupported GitHub math delimiter in "
+                    f"{document.relative_to(ROOT)}:{line_number}",
+                )
+
+    def test_customer_markdown_strong_emphasis_delimiters_can_open_and_close(self):
+        """Enforce GFM left- and right-flanking rules for strong emphasis."""
+        strong = re.compile(r"\*\*([^*\n]+?)\*\*")
+        for document in CUSTOMER_MARKDOWN:
+            for line_number, line in prose_lines(document):
+                for match in strong.finditer(line):
+                    content = match.group(1)
+                    preceding = line[match.start() - 1] if match.start() else "\n"
+                    following = line[match.end()] if match.end() < len(line) else "\n"
+                    can_open = not content[0].isspace() and (
+                        not is_markdown_punctuation(content[0])
+                        or preceding.isspace()
+                        or is_markdown_punctuation(preceding)
+                    )
+                    can_close = not content[-1].isspace() and (
+                        not is_markdown_punctuation(content[-1])
+                        or following.isspace()
+                        or is_markdown_punctuation(following)
+                    )
+                    self.assertTrue(
+                        can_open and can_close,
+                        f"strong emphasis delimiter violates GFM rules in "
+                        f"{document.relative_to(ROOT)}:{line_number}: {match.group(0)}",
+                    )
+
     def test_openebs_customer_entry_points_are_linked(self):
         for text in (README, WHITEPAPER, OPERATIONS, DEVELOPMENT, STACK_INDEX):
             self.assertIn("16-storage-openebs.md", text)

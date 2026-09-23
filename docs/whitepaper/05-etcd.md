@@ -54,15 +54,15 @@ etcd 集群基于 Raft 共识协议。稳态下成员角色为：
 
 ### 5.3.2 多数派（quorum）公式
 
-设集群有 \(N\) 个成员，法定人数（quorum）为：
+设集群有 $N$ 个成员，法定人数（quorum）为：
 
-\[
-\text{quorum} = \lfloor N/2 \rfloor + 1
-\]
+```math
+\operatorname{quorum} = \left\lfloor \frac{N}{2} \right\rfloor + 1
+```
 
 因此：
 
-| 成员数 \(N\) | quorum | 可容忍故障数 |
+| 成员数 $N$ | quorum | 可容忍故障数 |
 |-------------|--------|--------------|
 | 1 | 1 | 0 |
 | 3 | 2 | 1 |
@@ -135,7 +135,7 @@ kubeauto 中的关键设计：
 请仔细读这两行的不对称：
 
 1. **监听**同时包含本机 HTTPS 与本机 HTTP 回环。
-2. **广告（advertise）**只宣告 HTTPS 地址。
+2. **广告（advertise）** 只宣告 HTTPS 地址。
 
 含义是：集群成员互相告知「请用 HTTPS 连我的 2379」；本机 `http://127.0.0.1:2379` 仅便于本机探测或受限运维场景，**不是**给远程 apiserver 用的入口。远程客户端（其他节点上的 apiserver）必须走 `https://<etcd-ip>:2379`，并携带客户端证书。
 
