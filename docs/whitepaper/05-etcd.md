@@ -54,15 +54,17 @@ etcd 集群基于 Raft 共识协议。稳态下成员角色为：
 
 ### 5.3.2 多数派（quorum）公式
 
-设集群有 $N$ 个成员，法定人数（quorum）为：
+设集群共有 N 个成员，法定人数（quorum）的计算规则为：
 
-```math
-\operatorname{quorum} = \left\lfloor \frac{N}{2} \right\rfloor + 1
+```text
+quorum = floor(N / 2) + 1
 ```
+
+其中 `floor` 表示向下取整。
 
 因此：
 
-| 成员数 $N$ | quorum | 可容忍故障数 |
+| 成员数 N | quorum | 可容忍故障数 |
 |-------------|--------|--------------|
 | 1 | 1 | 0 |
 | 3 | 2 | 1 |

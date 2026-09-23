@@ -49,16 +49,25 @@ def is_markdown_punctuation(character):
 
 
 class DocumentationContractTests(unittest.TestCase):
-    def test_customer_markdown_uses_github_supported_math_delimiters(self):
-        r"""GitHub documents dollar delimiters and math fences, not \(...\) or \[...\]."""
-        unsupported = re.compile(r"\\[()[\]]")
+    def test_customer_markdown_avoids_optional_math_renderers(self):
+        """Keep customer docs portable across GitHub and desktop Markdown readers."""
+        math_fence = re.compile(r"(?im)^ {0,3}(?:`{3,}|~{3,})math\s*$")
+        inline_math = re.compile(r"(?<!\\)\$(?![\s$])[^$\n]+?(?<![\s\\])\$")
+        tex_markup = re.compile(
+            r"\\[()[\]]|\\(?:operatorname|frac|left|right|lfloor|rfloor|text)\b"
+        )
         for document in CUSTOMER_MARKDOWN:
+            self.assertIsNone(
+                math_fence.search(document.read_text(encoding="utf-8")),
+                f"optional math fence in {document.relative_to(ROOT)}",
+            )
             for line_number, line in prose_lines(document):
-                self.assertIsNone(
-                    unsupported.search(line),
-                    f"unsupported GitHub math delimiter in "
-                    f"{document.relative_to(ROOT)}:{line_number}",
-                )
+                for pattern in (inline_math, tex_markup):
+                    self.assertIsNone(
+                        pattern.search(line),
+                        f"optional math markup in "
+                        f"{document.relative_to(ROOT)}:{line_number}",
+                    )
 
     def test_customer_markdown_strong_emphasis_delimiters_can_open_and_close(self):
         """Enforce GFM left- and right-flanking rules for strong emphasis."""
