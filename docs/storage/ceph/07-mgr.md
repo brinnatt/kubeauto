@@ -2,7 +2,7 @@
 
 > `ceph-mgr` 从 Luminous 起是正常集群的必需组件。它不参加 MON Paxos，也不保存业务对象；它维护集群运行视图，并承载 orchestrator、Dashboard、Prometheus、alerts、crash、telemetry 等可插拔模块。
 
-> **官方边界（交付必读）**：本文以 Ceph Tentacle 官方源码树 `doc/mgr/` 为事实基线（核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`）。命令和参数按官方文档抄录并重新组织；本仓库没有把这些步骤宣称为已在客户环境实测。生产执行前必须按目标版本、后端（cephadm/Rook）、网络、认证和变更窗口逐项验收。`accepted`、`scheduled`、HTTP 2xx 或模块已启用都不等于后端 daemon 已 ready。
+> MGR module、orchestrator backend 和外部服务共同构成管理面。生产执行必须匹配目标版本、后端（cephadm/Rook）、网络、认证和变更窗口；`accepted`、`scheduled`、HTTP 2xx 或模块已启用都不等于后端 daemon 已 ready。
 
 ## 1. Active/Standby 与数据来源
 
@@ -122,7 +122,7 @@ ceph orch rm <service_name> [--force]
 ceph orch <start|stop|restart|redeploy|reconfig> <service_name>
 ```
 
-最后一组 service action 是 cephadm 容器 daemon 的命令；Rook 或其他 backend 不应假设支持。官方实现矩阵还明确 Rook/cephadm 对 `apply`、host/device、upgrade 等命令的支持不同，客户交付前必须以 `ceph orch status` 和目标 backend 文档为准。
+最后一组 service action 是 cephadm 容器 daemon 的命令；Rook 或其他 backend 不应假设支持。官方实现矩阵还明确 Rook/cephadm 对 `apply`、host/device、upgrade 等命令的支持不同，生产启用前必须以 `ceph orch status` 和目标 backend 文档为准。
 
 ## 4. 管理和可观测模块
 
@@ -160,7 +160,7 @@ ceph config set mgr mgr/prometheus/rbd_stats_pools_refresh_interval 600
 
 Influx module 把 metrics 推到 InfluxDB；Telegraf 通过 socket 向 agent 发送；两者是 push 集成。Prometheus 是 pull。重复启用会形成多条观测链，需定义权威告警源。
 
-Telemetry 明确征得管理员同意后向 Ceph 社区发送匿名 cluster/device/channel 数据；启用需要接受 Community Data License 并选择 channel。先用 `ceph telemetry preview` 审核字段；含客户、主机、设备可识别信息时按合规要求决定是否开启。
+Telemetry 明确征得管理员同意后向 Ceph 社区发送匿名 cluster/device/channel 数据；启用需要接受 Community Data License 并选择 channel。先用 `ceph telemetry preview` 审核字段；含组织、主机、设备可识别信息时按合规要求决定是否开启。
 
 官方 channel 是 `basic`、`crash`、`device`、`ident`、`perf`；其中 `ident` 默认关闭，`perf` 默认关闭。报告不包含 pool/object 内容、主机名或设备序列号，但 ident 由用户主动提供。完整的审批/发送闭环：
 
@@ -292,7 +292,7 @@ ceph orch host ls
 
 Orchestrator plugin 的 completion 表达异步动作。Persistent completion 表示请求已保存、即使 active MGR 重启也应继续；effective completion 表示实际基础设施已达到结果。批处理能把多个 inventory/service 请求合并，调用方仍要逐项读取异常。错误应转换为稳定的 `OrchestratorError`/errno 与事件，不能只写 log 后返回空列表。
 
-接口明确排除通用 SSH/配置管理器职责；backend 不负责任意客户脚本。切换 `ceph orch set backend` 只改变后续 API 接收者，原 backend 创建的 daemon、CR 或 systemd unit 不会自动迁移。禁用 backend 前必须盘点所有权与回收路径。
+接口明确排除通用 SSH/配置管理器职责；backend 不负责任意站点脚本。切换 `ceph orch set backend` 只改变后续 API 接收者，原 backend 创建的 daemon、CR 或 systemd unit 不会自动迁移。禁用 backend 前必须盘点所有权与回收路径。
 
 ## 12. Module 开发模型：命令、配置、通知和退出
 
@@ -309,7 +309,7 @@ MGR module 通常继承 `MgrModule`，standby 服务继承 `MgrStandbyModule`。
 
 Module 可订阅 notify（map、health、command 等），通过 `send_command` 异步调用 MON/OSD/MDS；MON 暂不可用时不能在主线程无限阻塞。访问 RADOS/CephFS 要建立独立 handle 并在 shutdown 关闭。跨 module 调用只用公开 remote method，并处理目标未启用/active 切换。
 
-Health check 必须带稳定 code、severity、summary、detail，并在故障消失后主动清除。Service URI 通过 `set_uri` 发布；standby URI 可提供重定向，但客户端要容忍 active 改变。日志使用 module logger，key、token、bucket secret 和客户对象名按敏感级别脱敏。
+Health check 必须带稳定 code、severity、summary、detail，并在故障消失后主动清除。Service URI 通过 `set_uri` 发布；standby URI 可提供重定向，但客户端要容忍 active 改变。日志使用 module logger，key、token、bucket secret 和业务对象名按敏感级别脱敏。
 
 ## 13. Prometheus、Influx、Telegraf 与指标标签
 
@@ -325,7 +325,7 @@ series ~= images x metrics_per_image x daemon/path labels
 
 Influx module 主动把 pool/OSD 指标写入 InfluxDB，包括 stored/max_avail/objects、read/write bytes、op latency 等；配置 endpoint、database、user、password、interval 和 TLS。Telegraf module 把指标发往 agent socket。Push 失败会积累日志而非自动形成可靠消息队列，监控端要告警 last successful send。
 
-同一环境可同时启用 pull/push，但必须指定哪个是 SLO 和告警权威，避免 Prometheus 与 Influx 因聚合周期不同产生互相矛盾的客户报告。
+同一环境可同时启用 pull/push，但必须指定哪个是 SLO 和告警权威，避免 Prometheus 与 Influx 因聚合周期不同产生互相矛盾的运营报告。
 
 ## 14. Alerts、Crash、Progress、Insights 与 DiskPrediction
 
@@ -341,7 +341,7 @@ Iostat module 提供即时集群 IOPS/throughput 视图；它是聚合瞬时值�
 
 ## 15. Telemetry：明确同意、字段审查和网络边界
 
-Telemetry 默认不应在客户不知情时外发。启用前查看 `ceph telemetry preview`、`show-device` 和 channel 内容，接受 Community Data License，并明确 contact/description 是否填写。Channel 分为 basic、crash、device、ident 等，不同 channel 的匿名化和可识别风险不同。
+Telemetry 默认不应在未经数据所有者知情和批准时外发。启用前查看 `ceph telemetry preview`、`show-device` 和 channel 内容，接受 Community Data License，并明确 contact/description 是否填写。Channel 分为 basic、crash、device、ident 等，不同 channel 的匿名化和可识别风险不同。
 
 ```bash
 ceph telemetry status
@@ -351,7 +351,7 @@ ceph telemetry channel ls
 ceph telemetry send
 ```
 
-配置 collection interval、proxy 与 endpoint 后，监控 last upload/error。Device report 即使移除直接标识，也可能通过型号、规模、时间组合形成指纹；按客户数据分类审批。Leaderboard 是主动公开选择，不应随 telemetry 一并默认开启。关闭 telemetry 后验证定时发送已停止，并按保留策略处理本地 report。
+配置 collection interval、proxy 与 endpoint 后，监控 last upload/error。Device report 即使移除直接标识，也可能通过型号、规模、时间组合形成指纹；按数据分类策略审批。Leaderboard 是主动公开选择，不应随 telemetry 一并默认开启。关闭 telemetry 后验证定时发送已停止，并按保留策略处理本地 report。
 
 ## 16. NFS 管理：cluster、ingress、export 和配置层级
 
@@ -465,7 +465,7 @@ curl -X GET 'https://<dashboard>/api/osd' \
   -H 'Authorization: Bearer <token>'
 ```
 
-认证和授权是两个检查点；HTTP 2xx 不等于后端 daemon ready。官方警告部分 endpoint 仍在演进，major 版本变化可能不兼容，客户自动化必须固定 endpoint MIME 版本并按 schema 处理响应。
+认证和授权是两个检查点；HTTP 2xx 不等于后端 daemon ready。官方警告部分 endpoint 仍在演进，major 版本变化可能不兼容，自动化必须固定 endpoint MIME 版本并按 schema 处理响应。
 
 CLI API Commands module 暴露 CLI command schema，帮助自动化发现 prefix、参数和权限。脚本优先 `--format json`/YAML 并检查 exit code；表格列、颜色和进度文本不是稳定接口。对 active MGR failover，应重新发现 URI、重建连接并用 operation id/资源状态判断是否需要重试。
 
@@ -490,4 +490,4 @@ sequenceDiagram
 
 ## 20. 官方基线与许可
 
-来源：Ceph Tentacle 官方 `doc/mgr/`（含 `ceph_api/index.rst` 与 Dashboard API 约束），核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle MGR、Ceph API 与 Dashboard API 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。

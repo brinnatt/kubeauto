@@ -2,7 +2,7 @@
 
 > Dashboard 是 active MGR 上的 HTTPS Web UI 与 REST API。它聚合 Ceph 状态并调用 orchestrator/服务 API，既能观察也能执行 OSD purge、RBD rollback、client eviction 等高风险动作，因此必须把 TLS、RBAC、SSO、审计和后端可用性作为同一管理面设计。
 
-> **官方边界（交付必读）**：本文以 Ceph Tentacle 官方 `doc/mgr/dashboard.rst` 及其 Dashboard plugin include 为事实基线，核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。命令按官方语法整理；本仓库没有把 Dashboard、IdP、Grafana、Prometheus 或 Alertmanager 声明为已在客户环境实测。HTTP 成功、页面 toast 或登录跳转都不等于后端资源操作已经完成。
+Dashboard、IdP、Grafana、Prometheus 与 Alertmanager 必须按目标环境分别验证。HTTP 成功、页面 toast 或登录跳转都不等于后端资源操作已经完成。
 
 Dashboard 是 `ceph-mgr` module：后端基于 CherryPy 并提供自有 REST API，WebUI 基于 Angular/TypeScript。它从早期只读监控面发展为可执行资源管理的控制面，并支持运行时国际化（I18N）。通过发行版安装 `ceph-mgr-dashboard` 时，依赖由包管理器处理；只有从源码开发 Dashboard 才进入 `src/pybind/mgr/dashboard/README.rst` 与 `HACKING.rst` 的开发流程。
 
@@ -114,7 +114,7 @@ Dashboard 可查看 host 上的 daemon、Ceph version、device inventory、SMART
 - purge 删除 OSD map/CRUSH/auth；
 - device create/zap 改写磁盘；
 - scrub/repair 消耗 I/O，repair 可能选择副本；
-- recovery profile 改变客户与恢复资源竞争。
+- recovery profile 改变业务 I/O 与恢复流量的资源竞争。
 
 执行前后仍要保存 CLI JSON、events 和业务验证，Dashboard toast 不是最终证据。
 
@@ -173,7 +173,7 @@ flowchart TD
 
 “页面某功能不可用”通常是后端模块、权限或 API 配置问题，不要先清 Dashboard 数据。登录失败检查 account lockout、密码过期、SSO claim/clock/cookie；定位 Dashboard 用 `ceph mgr services`；证书错误检查实际返回链而非配置文件名。
 
-Dashboard 可生成 issue report，但上传前清除 host、IP、user、bucket 和 secret 等客户信息。
+Dashboard 可生成 issue report，但上传前清除 host、IP、user、bucket、secret 和业务数据等敏感信息。
 
 ## 14. 启用、per-MGR 配置与证书切换
 
@@ -213,7 +213,7 @@ openssl req -new -nodes -x509 \
   -keyout dashboard.key -out dashboard.crt -extensions v3_ca
 ```
 
-该命令生成自签材料；生产仍须按企业 PKI 流程签发包含实际访问 FQDN/VIP SAN 的证书。不要照抄示例中的 CN、十年有效期或文件权限作为客户基线。
+该命令生成自签材料；生产仍须按企业 PKI 流程签发包含实际访问 FQDN/VIP SAN 的证书。示例中的 CN、十年有效期和文件权限不能直接作为生产基线。
 
 ```bash
 ceph dashboard set-ssl-certificate node-a -i node-a.crt
@@ -245,7 +245,7 @@ ceph dashboard set-rest-requests-timeout 45
 
 Dashboard 从 service map/realm 找 RGW endpoint。若 daemon advertised hostname 从浏览器/MGR 不可解析，可按 daemon override hostname；修复 DNS 后应 unset override，避免永久漂移。REST request timeout 默认 45 秒，调大只容忍慢后端，不修复 RGW/RADOS latency。
 
-自签 RGW 证书可临时 `set-rgw-api-ssl-verify False`，但这同时失去 CA 和 hostname 校验。生产导入正确 CA/SAN 并恢复验证。验证不仅打开 RGW 页面，还应创建受限 test user/bucket、读取 quota/versioning，并确认 Dashboard user 无客户 payload 超权。
+自签 RGW 证书可临时 `set-rgw-api-ssl-verify False`，但这同时失去 CA 和 hostname 校验。生产导入正确 CA/SAN 并恢复验证。验证不仅打开 RGW 页面，还应创建受限 test user/bucket、读取 quota/versioning，并确认 Dashboard user 无业务 payload 超权。
 
 ```bash
 ceph dashboard set-rgw-api-ssl-verify False
@@ -468,7 +468,7 @@ Dashboard plugin 通过标准 hook 加载。Feature toggles 控制 UI 功能显�
 | Grafana 空图 | 双 URL、iframe policy、datasource、metric series/time range |
 | Failover 后失败 | 新 active config/cert、service URI、LB health/session |
 
-Issue report 上传前删除 hostname、IP、FSID、username、bucket/object、key/token 和内部 URL；保留版本、health code、匿名化时间线与 stack trace。问题解决以原失败 API和客户操作成功为准，不以 UI toast 消失为准。
+Issue report 上传前删除 hostname、IP、FSID、username、bucket/object、key/token 和内部 URL；保留版本、health code、匿名化时间线与 stack trace。问题解决以原失败 API 和业务操作成功为准，不以 UI toast 消失为准。
 
 ## 23. Feature toggles、Debug、MOTD 与官方 proxy 参数
 
@@ -569,7 +569,7 @@ ceph dashboard ac-role-add-scope-perms \
 ceph dashboard ac-user-set-roles bob rbd/pool-manager read-only
 ```
 
-`read-only` 明确不包含 `dashboard-settings`。交付时据此建立权限矩阵：每个岗位列出 scope、允许动作、拒绝动作和验证 endpoint；先给只读，再逐项增加权限。回滚角色变更时恢复变更前 `ac-role-show` 和 `ac-user-show` 结果，而不是直接删除仍被其他用户引用的角色。
+`read-only` 明确不包含 `dashboard-settings`。权限矩阵应为每个岗位列出 scope、允许动作、拒绝动作和验证 endpoint；先给只读，再逐项增加权限。回滚角色变更时恢复变更前 `ac-role-show` 和 `ac-user-show` 结果，而不是直接删除仍被其他用户引用的角色。
 
 ## 25. Grafana 与 Prometheus 的完整官方接入链
 
@@ -632,7 +632,7 @@ grafana-cli plugins install grafana-piechart-panel
 wget https://raw.githubusercontent.com/ceph/ceph/main/monitoring/ceph-mixin/dashboards_out/ceph-cluster.json
 ```
 
-该 URL 的 `main` 是官方文档原示例，但它是可变引用。生产交付应把已审核 JSON 固定到目标 Ceph source commit 并校验摘要，不能在每次部署时无校验地消费 `main`。
+该 URL 的 `main` 是官方文档原示例，但它是可变引用。生产环境应把已审核 JSON 固定到目标 Ceph source commit 并校验摘要，不能在每次部署时无校验地消费 `main`。
 
 6. 官方手工示例允许 anonymous Viewer，并要求 Grafana 6.2.0-beta1 起显式开启 embedding：
 
@@ -697,7 +697,7 @@ backend dashboard_back_ssl
   server z <HOST>:<PORT> check check-ssl verify none
 ```
 
-这是官方配置形态，不是可直接复制的客户成品：`verify none` 不校验 backend 证书；客户生产配置必须依据所选 TLS trust boundary 配置可信 CA/hostname，或明确 passthrough 的证书归属。MGR failover 恰好发生在两次 HAProxy health check 之间时，旧 active 可能返回指向内部不可解析地址的 HTTP 303。固定入口场景应把 standby 设为 error，并让代理只选择返回 200 的 active：
+该示例不能未经评审直接用于生产：`verify none` 不校验 backend 证书；生产配置必须依据所选 TLS trust boundary 配置可信 CA/hostname，或明确 passthrough 的证书归属。MGR failover 恰好发生在两次 HAProxy health check 之间时，旧 active 可能返回指向内部不可解析地址的 HTTP 303。固定入口场景应把 standby 设为 error，并让代理只选择返回 200 的 active：
 
 ```bash
 ceph config set mgr mgr/dashboard/standby_behaviour error
@@ -790,9 +790,9 @@ ceph dashboard create issue \
 
 官方 project 为 `dashboard`、`block`、`object`、`file_system`、`ceph_manager`、`orchestrator`、`ceph_volume`、`core_ceph`；tracker type 为 `bug` 或 `feature`。WebUI 的右上角 settings 菜单也提供 `Raise an issue`。
 
-创建前必须脱敏，并确认 API key 文件权限和生命周期。客户事故证据留在客户审批的工单系统；只有获得授权后才向公共 tracker 提交，且不得包含 hostname、IP、FSID、用户名、bucket/object、内部 URL、secret、token 或原始客户数据。
+创建前必须脱敏，并确认 API key 文件权限和生命周期。事故原始证据保留在受控工单系统；只有获得授权后才向公共 tracker 提交，且不得包含 hostname、IP、FSID、用户名、bucket/object、内部 URL、secret、token 或原始业务数据。
 
-## 29. 客户签字验收矩阵
+## 29. 生产验收矩阵
 
 | 域 | 必须证明的结果 | 失败时不得误判为成功 |
 |---|---|---|
@@ -807,8 +807,8 @@ ceph dashboard create issue \
 | 故障取证 | request ID/unique_id、MGR 日志和后端事件可关联 | 开启 debug 后没有复现 |
 | 回滚 | 配置、角色、代理、日志级别恢复且回读正确 | 只执行了反向命令 |
 
-本矩阵是交付验收方法，不声称本仓库已替客户环境执行。生产签字应附目标版本、配置前后快照、命令退出状态、API/业务读回、MGR failover 证据、风险批准和回滚结果。
+生产验收记录应附目标版本、配置前后快照、命令退出状态、API/业务读回、MGR failover 证据、风险批准和回滚结果。
 
-## 30. 官方基线与许可
+## 30. 参考资料与许可
 
-来源：Ceph Tentacle 官方 `doc/mgr/dashboard.rst`，核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle Dashboard 与 Dashboard plugin 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。

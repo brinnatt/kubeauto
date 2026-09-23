@@ -401,7 +401,7 @@ ceph tell mds.<name> dump_ops_in_flight
 
 ### 23.1 先定故障域、协议与数据语义
 
-| 客户决策 | 必须提前写清的条件 | 不成立时的后果 |
+| 设计决策 | 必须提前写清的条件 | 不成立时的后果 |
 |---|---|---|
 | 元数据可用性 | metadata pool 副本及 CRUSH host/rack failure domain，MON quorum，至少一名 active MDS 和不同故障域的 standby；按压测热集给 MDS 分配内存 | data pool 完好也无法完成路径解析、授权、rename 与 MDS journal 持久化 |
 | 文件数据 | 默认数据池的保护方式不可在原 FS 内直接替换；额外数据池的 class、pool/namespace 与 EC overwrite 支持分别验证 | layout 指向的池失效时对应文件不可读；只看 metadata pool 的健康会漏报文件损坏 |
@@ -425,7 +425,7 @@ flowchart TD
 
 ### 23.2 建立文件系统：自动与手工路径的分界
 
-在已有健康 Ceph 集群上，先确认 metadata/data OSD 的容量和故障域、`ceph -s`、`ceph osd pool ls detail`、MDS placement 与 standby 资源；此处执行的是客户**Ceph** 管理入口，不会安装或自动创建底层 OSD。使用 cephadm 等支持的 orchestrator 时：
+在已有健康 Ceph 集群上，先确认 metadata/data OSD 的容量和故障域、`ceph -s`、`ceph osd pool ls detail`、MDS placement 与 standby 资源；此处使用现有 **Ceph** 管理入口，不会安装或自动创建底层 OSD。使用 cephadm 等支持的 orchestrator 时：
 
 ```bash
 ceph fs volume create cephfs --placement='label:mds'
@@ -437,7 +437,7 @@ ceph fs dump
 
 `fs volume create` 创建 FS、metadata/data pools，并请求 orchestrator 部署 MDS；是否实际部署成功仍须以 `fs status` 的 active rank 和 `orch ps` 的 daemon 证实。已有池可以用 `--data-pool`、`--meta-pool` 指定，volume 接口的 placement 不接受 YAML placement 文件。`volume info` 的 `pools`、`mon_addrs`、`used_size`、`pending_subvolume_deletions` 对容量、客户端发现和删除回收各有意义，不可只看 volume name。
 
-需要明确池名、device class 或 CRUSH rule 时，走手工分层创建；下面的 pool 名称和保护参数必须先按客户故障域设计，不能把示例照搬到现有生产数据：
+需要明确池名、device class 或 CRUSH rule 时，走手工分层创建；下面的 pool 名称和保护参数必须先按目标故障域设计，不能把示例照搬到现有生产数据：
 
 ```bash
 ceph osd pool create cephfs.meta
@@ -482,7 +482,7 @@ ceph fs set-default cephfs
 
 ```mermaid
 flowchart LR
-  C[客户主体 client.team] --> MON[MON: 只见被授权 FS]
+  C[客户端主体 client.team] --> MON[MON: 只见被授权 FS]
   MON --> MDS[MDS: 指定 subtree + r/rw/p/s]
   MDS --> OSD[OSD: CephFS data tag + namespace]
   MDS --> KM[Kernel/FUSE: mount root + uid/gid + quota]
@@ -490,7 +490,7 @@ flowchart LR
   KM --> CHECK2[验证旁路 subtree 不能越权]
 ```
 
-普通客户只读或读写路径可以从 `ceph fs authorize <fs> client.<id> <path> r|rw` 开始，检查 `ceph auth get client.<id>` 的 `mon`、`mds`、`osd` 三段，而不是把生成的 keyring 直接给多租户共享。`mds allow r` 与 `allow rw path=` 可组合，但 path 限制只对 MDS 生效；OSD 授权通常是 data pool tag，**不会自动限定到一位客户的路径**。需防御相互不信任的客户端时，给各租户的数据目录指定不同的 `ceph.dir.layout.pool_namespace`，配合严格的 OSD namespace caps 与单独 key；迁移旧文件必须复制到新布局，修改父目录 layout 不能重写原对象。`pool_namespace` 不创建独立 pool 资源或 I/O 限额。
+普通客户端的只读或读写路径可以从 `ceph fs authorize <fs> client.<id> <path> r|rw` 开始，检查 `ceph auth get client.<id>` 的 `mon`、`mds`、`osd` 三段，而不是把生成的 keyring 直接给多租户共享。`mds allow r` 与 `allow rw path=` 可组合，但 path 限制只对 MDS 生效；OSD 授权通常是 data pool tag，**不会自动限定到单个主体的路径**。需防御相互不信任的客户端时，给各租户的数据目录指定不同的 `ceph.dir.layout.pool_namespace`，配合严格的 OSD namespace caps 与单独 key；迁移旧文件必须复制到新布局，修改父目录 layout 不能重写原对象。`pool_namespace` 不创建独立 pool 资源或 I/O 限额。
 
 修改 `ceph.*` layout、quota、charmap 必须给 MDS `p`；创建/删除 snapshot 必须给 `s`（与 `p` 同时出现时顺序为 `rwps`）。普通 `rw` 客户端不应拥有这两项。客户端真实安全验收包括：能挂自己 subtree、不能挂其他 subtree、自己路径能写并 fsync、以同一密钥直连 RADOS 不能读取另一 namespace 的对象、无权用户不能修改 quota/snapshot。MON 的 fsname 过滤可隐藏其他 FS，但 `ceph health detail` 等信息仍可能泄漏别的 daemon 状态，不是机密隔离边界。CIDR cap 只约束来源网络，不替代主机身份和最小权限。
 
@@ -515,7 +515,7 @@ ceph-fuse --id team --client_fs cephfs -r /teams/team /mnt/team-fuse
 
 持久化时使用 `_netdev` 和正确的 network-online/secret 依赖；FUSE 的 fstab type 是 `fuse.ceph`，选项使用 `ceph.id=<id>` 与按需 `ceph.client_mountpoint=<CephFS 路径>`。挂载了 path cap 下的子树，内核 quota 还可能需要其 quota root **父目录**的读取能力；不验证此条件就声称 quota 生效不合格。子目录下 `df` 默认可能显示 quota 余量，`client quota df = false` 可改回全 FS 显示，不改变真正容量/配额。`getfattr -d` 不列出 Ceph 虚拟 xattr，应以 `getfattr -n ceph.quota.max_bytes <dir>` 等准确键验证。
 
-Windows `ceph-dokan` 单独做路径/ACL、盘符、uid/gid、符号链接、大小写与断线重连测试，不将 Linux 合格结论直接移植。`libcephfs` 直连需要进程自己的权限、生命周期和 errno 处理；Java binding 在 Tentacle 官方注明没有 CI 测试，生产必须独立资格验证，不能默认可交付。
+Windows `ceph-dokan` 单独做路径/ACL、盘符、uid/gid、符号链接、大小写与断线重连测试，不将 Linux 合格结论直接移植。`libcephfs` 直连需要进程自己的权限、生命周期和 errno 处理；Java binding 在 Tentacle 官方注明没有 CI 测试，生产必须独立资格验证，不能默认具备生产资格。
 
 ### 24.3 会话故障的安全驱逐
 
@@ -543,7 +543,7 @@ ceph fs set cephfs allow_standby_replay true
 ceph fs dump
 ```
 
-`allow_standby_replay` 可让一个 standby 跟随一个 rank 的 journal，加快这个 rank 的接管；**跟随者不能再接管其他 rank**。若给某 rank 配 standby-replay，最好每个 active rank 都有匹配容量，另外保留普通 standby；`mds_join_fs` 是倾向匹配某 FS 的策略而非绝对隔离，在缺少合适 standby 时可能退而选用无 affinity 或其他 FS standby。`up:standby_replay` 不处理客户元数据请求；`down:failed`、`down:damaged`、`down:stopped` 是 rank 的状态，不是某个 daemon 状态。
+`allow_standby_replay` 可让一个 standby 跟随一个 rank 的 journal，加快这个 rank 的接管；**跟随者不能再接管其他 rank**。若给某 rank 配 standby-replay，最好每个 active rank 都有匹配容量，另外保留普通 standby；`mds_join_fs` 是倾向匹配某 FS 的策略而非绝对隔离，在缺少合适 standby 时可能退而选用无 affinity 或其他 FS standby。`up:standby_replay` 不处理客户端元数据请求；`down:failed`、`down:damaged`、`down:stopped` 是 rank 的状态，不是某个 daemon 状态。
 
 ### 25.2 升缩 rank 时必须先验证分区策略
 
@@ -556,7 +556,7 @@ ceph fs set cephfs balance_automate true
 
 前提是新增 rank 有**额外** MDS daemon 和 standby，metadata pool 健康；若只新增 `max_mds`，没有空闲 daemon 会产生 `MDS_UP_LESS_THAN_MAX`。官方 Tentacle 中动态 balancer 默认关闭；启用前先确定哪些 rank 放自动迁移子树，哪些 rank 留给固定 pin。`bal_rank_mask 0x3` 允许 balancer 在 rank 0/1，`0x0` 禁用该范围，`-1`/`all` 为所有 active ranks。默认不要单靠 balancer 承诺热点目录性能；目录碎片只能让一个目录的 dentry 分布到多个 fragment，根目录本身不能碎片化。
 
-独立租户子树可按不同策略选择：`ceph.dir.pin=<rank>` 固定 export pin（`-1` 取消）；`ceph.dir.pin.distributed=1` 把直属子树散到多个 rank；`ceph.dir.pin.random=<fraction>` 按比例散子目录，默认上限约 `.01`，大量子树会使跨 rank 操作、cache/日志开销扩大。就近父目录的显式 pin 与 ephemeral pin 可以互相覆盖。可在 volume 管理对象上用 `ceph fs subvolumegroup pin <fs> <group> distributed 1`，命中的是其下属子卷，而不是对全部 FS 随机重排。官方 `fs-volumes.rst` 文字还列出 `fs subvolume pin`，但同一 Tentacle 提交的 `src/pybind/mgr/volumes/module.py` **未注册该 CLI**；单独对子卷 pin 请使用目录级 `setfattr -n ceph.dir.pin...` 并核对结果，不能把未实现的文档示例交给客户执行。Directory fragment 常见 size split 约 10,000 entries、默认 3 bits 切 8 片，hard limit 约 100,000/片，达到会对新建返回 ENOSPC，绝不是 data pool 容量满的唯一解释。
+独立租户子树可按不同策略选择：`ceph.dir.pin=<rank>` 固定 export pin（`-1` 取消）；`ceph.dir.pin.distributed=1` 把直属子树散到多个 rank；`ceph.dir.pin.random=<fraction>` 按比例散子目录，默认上限约 `.01`，大量子树会使跨 rank 操作、cache/日志开销扩大。就近父目录的显式 pin 与 ephemeral pin 可以互相覆盖。可在 volume 管理对象上用 `ceph fs subvolumegroup pin <fs> <group> distributed 1`，命中的是其下属子卷，而不是对全部 FS 随机重排。官方 `fs-volumes.rst` 文字还列出 `fs subvolume pin`，但同版本 `src/pybind/mgr/volumes/module.py` **未注册该 CLI**；单独对子卷 pin 应使用目录级 `setfattr -n ceph.dir.pin...` 并核对结果，未实现的文档示例不得进入生产操作。Directory fragment 常见 size split 约 10,000 entries、默认 3 bits 切 8 片，hard limit 约 100,000/片，达到会对新建返回 ENOSPC，绝不是 data pool 容量满的唯一解释。
 
 降低 `max_mds` 时等待多余 rank 经 `up:stopping` 转移子树、flush journal 并成为 standby，再做下一步；强杀 stopping daemon 会引入不必要的 failover。子树迁移过程中 exporter/importer 先 discover/freeze、journal 记录交接与权威变更，然后通知第三方 rank、解冻；多次回摆与 slow request 同现要停止连续调参，先检查权威迁移和应用热点。发生 degraded/damaged 时不按常规流程加减 `max_mds`，官方在不健康时要求显式确认且警告可能进一步失稳。
 
@@ -697,13 +697,13 @@ print(s["version"])
 ' "$set_id" "$app_path" "$db_path")
 ceph fs subvolume snapshot create cephfs app "$snapshot_name" --group_name team
 ceph fs subvolume snapshot create cephfs db "$snapshot_name" --group_name team
-# 并发改成员、超时或释放失败均触发取消和拒签；不删除已有快照证据
+# 并发改成员、超时或释放失败均触发取消和验收失败；不删除已有快照证据
 ceph fs quiesce cephfs --set-id="$set_id" --release --await --if-version="$observed_version"
 quiesce_open=0
 printf '候选一致快照：set=%s snapshot=%s；仍须业务隔离恢复校验\n' "$set_id" "$snapshot_name"
 ```
 
-`--timeout` 是每个成员达到 `QUIESCED` 的时限；任一超时整个 set 为 `TIMEDOUT` 并解除 I/O 阻塞。`--expiration` 在整组进入 `QUIESCED` 后计时，到期自动 `EXPIRED` 恢复 I/O；不能依赖“人工稍后 release”作为唯一防死锁机制。示例的 60/120 秒只是演示值，必须保证整个创建/验证/释放窗口低于业务批准的过期时间。未指定 timeout 的新 set 默认 0，可能立即 TIMEDOUT。非 await 的 include/exclude/reset/cancel/release 都是异步命令返回当前状态，不代表完成；`--await` 的等待可由 `--await-for` 单独限制。持续写控制器应记录返回的 `sets[set-id].version`，release 时携带 `--if-version=<observed>`，避免其他管理员中途 exclude 成员后仍给部分一致的快照签字；若返回 `ESTALE`，条件操作**未执行**，本次所有 snapshot 都不能作为一致恢复点。脚本在已确认自己创建 set 的前提下尝试 cancel/await，失败则保留现场并由值班人员核验，不能原样重试、覆盖旧快照或把冲突当成功。若首次创建命令失败但服务端状态未知，须按记录的唯一 set ID 排查；不得盲目 cancel 一个未证明属于本次作业的 set。
+`--timeout` 是每个成员达到 `QUIESCED` 的时限；任一超时整个 set 为 `TIMEDOUT` 并解除 I/O 阻塞。`--expiration` 在整组进入 `QUIESCED` 后计时，到期自动 `EXPIRED` 恢复 I/O；不能依赖“人工稍后 release”作为唯一防死锁机制。示例的 60/120 秒只是演示值，必须保证整个创建/验证/释放窗口低于业务批准的过期时间。未指定 timeout 的新 set 默认 0，可能立即 TIMEDOUT。非 await 的 include/exclude/reset/cancel/release 都是异步命令返回当前状态，不代表完成；`--await` 的等待可由 `--await-for` 单独限制。持续写控制器应记录返回的 `sets[set-id].version`，release 时携带 `--if-version=<observed>`，避免其他管理员中途 exclude 成员后仍接受部分一致的快照；若返回 `ESTALE`，条件操作**未执行**，本次所有 snapshot 都不能作为一致恢复点。脚本在已确认自己创建 set 的前提下尝试 cancel/await，失败则保留现场并由值班人员核验，不能原样重试、覆盖旧快照或把冲突当成功。若首次创建命令失败但服务端状态未知，须按记录的唯一 set ID 排查；不得盲目 cancel 一个未证明属于本次作业的 set。
 
 ## 27. 快照镜像、RPO 与跨站切换
 
@@ -711,7 +711,7 @@ printf '候选一致快照：set=%s snapshot=%s；仍须业务隔离恢复校验
 
 CephFS 镜像通过快照按目录异步同步到远端 FS，顺序是复制 snapshot 数据后在目的目录创建**同名**快照。源/目标集群均需 Pacific 或更高。Mgr `mirroring` module 负责登记和分配目录，`cephfs-mirror` daemon 实际传输；仅执行 MON 的 `fs mirror enable` 会缺少模块创建的 `cephfs_mirror` index object，daemon 可能变 `failed`。应用的真实 RPO 至少是“产生可用快照的间隔 + 等待及同步延迟”；不是以 daemon 存活或目录已注册作为 RPO 证据。
 
-同一 FS 当前只支持一个 mirror peer。官方虽描述多个 daemon 可按目录分摊负载和重平衡，也明确建议先部署**单 daemon**，多 daemon 未经过充分验证；不能把添加 3 个 mirror daemon 直接解释成已验证的 HA 服务。仅镜像普通文件、目录与 symlink，socket、设备等其他 inode 类型不复制。目的 FS 默认为只读运营目标，但 CephFS 不自动强制这个约束；必须靠目的地客户 caps、运维流程禁止写入，并实测误写拦截。
+同一 FS 当前只支持一个 mirror peer。官方虽描述多个 daemon 可按目录分摊负载和重平衡，也明确建议先部署**单 daemon**，多 daemon 未经过充分验证；不能把添加 3 个 mirror daemon 直接解释成已验证的 HA 服务。仅镜像普通文件、目录与 symlink，socket、设备等其他 inode 类型不复制。目的 FS 默认为只读运营目标，但 CephFS 不自动强制这个约束；必须靠目的地写入主体的 caps 和运维流程禁止写入，并实测误写拦截。
 
 ### 27.2 建立同一条完整的同步路径
 
@@ -749,7 +749,7 @@ ceph fs snapshot mirror ls cephfs
 ceph fs snapshot mirror daemon status
 ```
 
-Token 内含目的 MON 地址、FSID、key 等可接管数据，必须由目的站的受控 secret 通道交付，不得写入普通工单、日志或 shell history。上例 `read -s` 只避免键入时回显与 history；**Tentacle CLI 仍要求把 token 作为进程参数传入**，运行时同机具有进程检查权限者可能读取它。因此只能在访问受控的管理节点与受限操作窗口执行，审计日志不得采集命令参数，按客户密钥管理规范处理令牌及导入后的 peer 凭据；不能将 `read -s` 误报为彻底消除泄漏。上面代码按注释分别在源/目的集群执行，不能作为单机脚本跨集群顺序运行。替代方式 `peer_add <fs> client.<id>@<remote-cluster> [<remote-fs>] [<remote-mon>] [<cephx-key>]` 需要源 MGR 与镜像主机具备远端配置和 key，后两项直接在命令行传递有泄密面，因此优先 bootstrap/import。命令中的目录必须是 FS 内**绝对路径**，不能包含宿主机 mount 前缀；父子目录不可同时注册镜像，系统会规范化 `..` 并拒绝重复/嵌套注册。需要撤销时先停止 schedule 和写入，核对 `peer_list` 的 UUID，再 `ceph fs snapshot mirror remove <fs> <path>`、`peer_remove <fs> <uuid>`、最终禁用镜像，不能对仍在同步的目标直接改派。
+Token 内含目的 MON 地址、FSID、key 等可接管数据，必须通过目的站的受控 secret 通道传递，不得写入普通工单、日志或 shell history。上例 `read -s` 只避免键入时回显与 history；**Tentacle CLI 仍要求把 token 作为进程参数传入**，运行时同机具有进程检查权限者可能读取它。因此只能在访问受控的管理节点与受限操作窗口执行，审计日志不得采集命令参数，并按密钥管理规范处理令牌及导入后的 peer 凭据；不能将 `read -s` 误报为彻底消除泄漏。上面代码按注释分别在源/目的集群执行，不能作为单机脚本跨集群顺序运行。替代方式 `peer_add <fs> client.<id>@<remote-cluster> [<remote-fs>] [<remote-mon>] [<cephx-key>]` 需要源 MGR 与镜像主机具备远端配置和 key，后两项直接在命令行传递有泄密面，因此优先 bootstrap/import。命令中的目录必须是 FS 内**绝对路径**，不能包含宿主机 mount 前缀；父子目录不可同时注册镜像，系统会规范化 `..` 并拒绝重复/嵌套注册。需要撤销时先停止 schedule 和写入，核对 `peer_list` 的 UUID，再 `ceph fs snapshot mirror remove <fs> <path>`、`peer_remove <fs> <uuid>`、最终禁用镜像，不能对仍在同步的目标直接改派。
 
 ### 27.3 判断是否真的在追赶、失败如何止损
 
@@ -875,7 +875,7 @@ ceph fs set <fs> joinable true
 ceph fs status <fs>
 ```
 
-`--recover` 使 rank 0 以 existing/failed 状态等待接管，防止 MDS 以新空 FS 初始化覆盖原有元数据；若 CSI 等应用依赖 FSCID，先核对并按批准的原值传 `--fscid`。恢复的 FSMap 只带默认配置，须从恢复资料包重新应用 standby、required client features、附加 data pools、client caps 与相关镜像/快照调度；不能凭“新 FS 名等于旧 FS 名”声明恢复完毕。最终隔离挂载、抽样全部关键路径与大文件校验、metadata scrub 无新损坏、业务写入 `fsync`/断线重连、镜像和备份重新锚定新的权威快照，才有资格开放客户流量。
+`--recover` 使 rank 0 以 existing/failed 状态等待接管，防止 MDS 以新空 FS 初始化覆盖原有元数据；若 CSI 等应用依赖 FSCID，先核对并按批准的原值传 `--fscid`。恢复的 FSMap 只带默认配置，须从恢复资料包重新应用 standby、required client features、附加 data pools、client caps 与相关镜像/快照调度；不能凭“新 FS 名等于旧 FS 名”声明恢复完毕。最终隔离挂载、抽样全部关键路径与大文件校验、metadata scrub 无新损坏、业务写入 `fsync`/断线重连、镜像和备份重新锚定新的权威快照，才有资格开放业务流量。
 
 ## 30. 应用语义、协议出口与调优边界
 
@@ -892,7 +892,7 @@ CephFS 的路径、权限、文件锁和多客户端 cap 协同使它通常比 N
 
 ### 30.2 NFS-Ganesha 是额外的 stateful 故障层
 
-无法原生挂 CephFS 的客户可部署 NFS-Ganesha 的 `FSAL_CEPH`；导出可能共享同一个 libcephfs 客户端（FSAL 的 mount 配置相同时），须对**实际共享的身份**逐项检查 CephX path caps 与所有导出目录。优先 `ceph nfs cluster/export` 由 MGR 和 orchestrator 管理，手工安装配置仅用于现有特殊运维模式。以下在独立 Bash 进程中运行，前提是批准 placement、对外 IP、故障域、客户端 CIDR，且网关与客户端都在受信网络；`AUTH_SYS` 依赖受信客户端提供 uid/gid，不能为不可信租户提供身份保障：
+无法原生挂载 CephFS 的环境可部署 NFS-Ganesha 的 `FSAL_CEPH`；导出可能共享同一个 libcephfs 客户端（FSAL 的 mount 配置相同时），须对**实际共享的身份**逐项检查 CephX path caps 与所有导出目录。优先 `ceph nfs cluster/export` 由 MGR 和 orchestrator 管理，手工安装配置仅用于现有特殊运维模式。以下在独立 Bash 进程中运行，前提是批准 placement、对外 IP、故障域、客户端 CIDR，且网关与客户端都在受信网络；`AUTH_SYS` 依赖受信客户端提供 uid/gid，不能为不可信租户提供身份保障：
 
 ```bash
 #!/usr/bin/env bash
@@ -917,13 +917,13 @@ ceph nfs export ls team-nfs --detailed
 
 `export info` 必须确认外层 `access_type=none`，`clients` 中**只有批准的地址**且该项为读写及 `root_squash`；Tentacle 源码对提供 `--client_addr` 的 export 正是按此生成，单看顶层 squash `none` 会误判，但少了 `clients` 限制确实是不安全的。官方 CLI 在未指定 `--client_addr` 时默认对所有客户端开放，未指定 `--squash` 时默认 `no_root_squash`，因此两个参数缺一不可。用获批准 CIDR 内、外的客户端分别试挂，验证外部拒绝、root 被 squash、普通用户依实际 UID/GID 正反例读写；生产还要以网关防火墙约束 TCP 2049。需要对**不可信**客户端提供身份验证和加密时，先部署和验证网关/客户端的 Kerberos keytab、DNS 与时钟，再只允许 `--sectype krb5p`，客户端带 `sec=krb5p` 挂载；不能在未配置 Kerberos 时仅改一个参数就宣布安全，也不能同时开放 `sys` 降级协商。
 
-内核/应用主机从批准网段通过 `mount -t nfs -o nfsvers=4.1,proto=tcp,sec=sys <gateway>:/team <mountpoint>` 校验，实测 NFSv4.1+ session、create/fsync/rename、锁与 failover 后 client recovery。验证 gateway RADOS 配置 pool 中的 NFS state/锁恢复数据，不因 MDS/OSD `HEALTH_OK` 就断言 NFS 可用。入口 VIP、DNS、LB、外部认证、安全模式与 export 层 squash/client CIDR 是额外风险边界；误配为 root 不 squash 或导出根超过 CephX cap 应拒签。SMB 共享等协议转换也会改变大小写、ACL 与锁语义，不得用原生 Linux CephFS 压测结果代替。
+内核/应用主机从批准网段通过 `mount -t nfs -o nfsvers=4.1,proto=tcp,sec=sys <gateway>:/team <mountpoint>` 校验，实测 NFSv4.1+ session、create/fsync/rename、锁与 failover 后 client recovery。验证 gateway RADOS 配置 pool 中的 NFS state/锁恢复数据，不因 MDS/OSD `HEALTH_OK` 就断言 NFS 可用。入口 VIP、DNS、LB、外部认证、安全模式与 export 层 squash/client CIDR 是额外风险边界；误配为 root 不 squash 或导出根超过 CephX cap 时不得通过验收。SMB 共享等协议转换也会改变大小写、ACL 与锁语义，不得用原生 Linux CephFS 压测结果代替。
 
 ### 30.3 字符映射、LazyIO、实验机制各自独立
 
 CephFS 默认目录项按不含 `/` 与 NUL 的字节名处理。Charmap 针对**该目录下的条目**设置 UTF-8、NFD/NFC/NFKD/NFKC normalization 和是否 case sensitive；新建子目录继承配置，既有子树不会被改名。目录必须为空且不在 snapshot 中才能变更/移除，大小写不敏感会把原本不同名字折叠为同一项。可通过 `setfattr -n ceph.dir.casesensitive -v 0 <empty-dir>`、`getfattr -n ceph.dir.charmap <dir>` 校验；不支持的旧客户端可能无法安全更新目录，需以客户端 feature 检查和 required client feature 共同控准入，而不是临时删现有目录的 charmap。底层保留 `alternate_name` 原始拼写供兼容的客户端重建显示，MDS 存的是规范化后的 name；数据导出或异构客户端测试要覆盖同音不同码位、大小写冲突与快照恢复。
 
-LazyIO 明确**放宽**多客户端缓存一致性。`client_force_lazyio` 是全局开启，应用通常应在自己的 `libcephfs` handle 上逐文件启用；写方 `lazyio_propagate` 后，等应用自身所有 writer 的 barrier，读方 `lazyio_synchronize` 后再读取，当前只实现整个文件（offset/count 为 0）的传播/同步。未建立 barrier 的共享目录不得启用，也不能把它包装成“CephFS 默认加速开关”。Inline data 已 deprecated 且未获得生产支持；Mantle Lua balancer 官方明确仅用于研究开发，不可给客户生产集群执行实验脚本。启用实验 feature 还可能在 MON map 留下不可抹除的历史启用标记。
+LazyIO 明确**放宽**多客户端缓存一致性。`client_force_lazyio` 是全局开启，应用通常应在自己的 `libcephfs` handle 上逐文件启用；写方 `lazyio_propagate` 后，等应用自身所有 writer 的 barrier，读方 `lazyio_synchronize` 后再读取，当前只实现整个文件（offset/count 为 0）的传播/同步。未建立 barrier 的共享目录不得启用，也不能把它包装成“CephFS 默认加速开关”。Inline data 已 deprecated 且未获得生产支持；Mantle Lua balancer 官方明确仅用于研究开发，不可在生产集群执行实验脚本。启用实验 feature 还可能在 MON map 留下不可抹除的历史启用标记。
 
 ### 30.4 配置及性能诊断按因果层操作
 
@@ -935,18 +935,18 @@ LazyIO 明确**放宽**多客户端缓存一致性。`client_force_lazyio` 是�
 | Purge queue 增长 | `purge_queue.pq_item_in_journal`、`pq_executing_ops`、`pq_executed`；`filer_max_purge_ops`、`mds_max_purge_files/ops/ops_per_pg` | 每 rank 有独立 purge queue；先清除 data pool slow/full/recovery，再逐阶增加并发并看业务延迟 |
 | Client 性能/配置 | `ceph fs perf stats`、`cephfs-top --dumpfs <fs>`；`ceph config help <option>` 查询 `Can update at runtime` | 区分 global client counters 和 rank 维度 stale `delayed_ranks`；任何调试选项结束后按记录恢复 |
 
-`cephfs-top` 的 `stats` MGR plugin 默认未启用；可创建独立只读 `client.fstop`（MON/MDS/OSD/MGR `allow r`），不将 admin key 交给监控终端。`ceph fs perf stats` JSON 的 global metrics 与 per-rank metrics 不同，`delayed_ranks` 表示 rank 到 0 上报迟滞；不能在 metrics 断流时误报“客户端不忙”。Purge queue 的 `pq_executing` 是文件，`pq_executing_ops` 是关联 RADOS 操作，两者不可混算。对 `mds_min_caps_per_client`、`mds_session_cache_liveness_*`、`mds_tick_interval` 等内部节流选项先用 `ceph config help`/`ceph config get` 校验目标版本默认及是否运行期可修改，再按因果层回滚，不把示例参数永久写入客户默认配置。
+`cephfs-top` 的 `stats` MGR plugin 默认未启用；可创建独立只读 `client.fstop`（MON/MDS/OSD/MGR `allow r`），不将 admin key 交给监控终端。`ceph fs perf stats` JSON 的 global metrics 与 per-rank metrics 不同，`delayed_ranks` 表示 rank 到 0 上报迟滞；不能在 metrics 断流时误报“客户端不忙”。Purge queue 的 `pq_executing` 是文件，`pq_executing_ops` 是关联 RADOS 操作，两者不可混算。对 `mds_min_caps_per_client`、`mds_session_cache_liveness_*`、`mds_tick_interval` 等内部节流选项先用 `ceph config help`/`ceph config get` 校验目标版本默认及是否运行期可修改，再按因果层回滚，不把示例参数永久写入生产默认配置。
 
-## 31. 客户验收矩阵与许可
+## 31. 生产验收与许可
 
-| 验收场景 | 客户可直接验证的结果 | 明确拒签条件 |
+| 验收场景 | 可直接验证的结果 | 不得通过的条件 |
 |---|---|---|
 | 建立/挂载 | 不同故障域 MDS active/standby，kernel/FUSE 按指定 FS/path 挂载，写入 fsync 后新客户端读回 | 无合格 standby、隐式挂错 FS、metadata pool 不可写 |
 | 身份/租户 | MDS path、MON fsname、OSD namespace 三层正反例，业务 key 不具备 p/s 等管理权限 | 只测 POSIX 路径却能直读其他租户 RADOS 对象 |
 | 数据语义 | create/rename/link/lock/截断、并发跨 object 的应用处理、full 下 fsync/ENOSPC 演练 | 以成功 close 代替数据持久化、以快照代替应用事务 |
 | 规模/性能 | 实际工作集下测热点目录/metadata p99、cap recall、balancer/pin、standby 接管 | 只看 `max_mds` 已设或 daemon running 就宣布可扩容 |
-| 子卷与容量 | clone 完成后恢复校验，quota 短暂超额与 pool raw 水位独立监控，trash/purge 完成 | 克隆还在进行或删除已返回但 pool 空间未回收就签字 |
+| 子卷与容量 | clone 完成后恢复校验，quota 短暂超额与 pool raw 水位独立监控，trash/purge 完成 | 克隆仍在进行，或删除已返回但 pool 空间尚未回收 |
 | 保护与灾备 | quiesce 所有成员仍处于正确版本，目标快照内容一致，实测同步滞后与单一写者切换 | mirror 有 peer 但目录 failed，或者切换后原站仍能写 |
-| 故障恢复 | MDS failover、受损 metadata 与坏 data PG 分别演练，备份恢复、scrub 与客户 I/O 通过 | reset/mark repaired 替代数据修复，未保留旧历史即清理恢复现场 |
+| 故障恢复 | MDS failover、受损 metadata 与坏 data PG 分别演练，备份恢复、scrub 与业务 I/O 通过 | reset/mark repaired 替代数据修复，未保留旧历史即清理恢复现场 |
 
-本文基于 Ceph Tentacle 官方 `doc/cephfs/`（含管理、挂载、镜像、子卷、恢复与开发接口）整理，核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle CephFS 管理、挂载、镜像、子卷、恢复与开发接口文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。

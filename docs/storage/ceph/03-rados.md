@@ -1,6 +1,6 @@
 # RADOS 存储集群全解（Tentacle）
 
-> RADOS 是所有 Ceph 接口的共同数据平面。配置解析、pool/PG/CRUSH 放置、OSD/MON 一致性和设备故障恢复共同决定客户 I/O 是否可用、持久且可预测。
+> RADOS 是所有 Ceph 接口的共同数据平面。配置解析、pool/PG/CRUSH 放置、OSD/MON 一致性和设备故障恢复共同决定业务 I/O 是否可用、持久且可预测。
 
 ## 1. RADOS 运行边界
 
@@ -200,7 +200,7 @@ flowchart LR
   Q --> DISK[device IOPS/bandwidth]
 ```
 
-调高 recovery 并不创造磁盘性能，只会把延迟转移给客户 I/O；过度压低会延长 degraded window。应同时观察 client latency、degraded objects、recovery bytes、OSD queue、network 和 device utilization。
+调高 recovery 并不创造磁盘性能，只会把延迟转移给业务 I/O；过度压低会延长 degraded window。应同时观察 client latency、degraded objects、recovery bytes、OSD queue、network 和 device utilization。
 
 Scrub 比较对象 metadata/size；deep-scrub 读取数据并校验 checksum。`noscrub/nodeep-scrub` flag 只用于受控窗口，结束后清除并确认 backlog。Inconsistent PG repair 可能选择错误副本，先用 inconsistent object 输出、checksum、版本和应用副本证明权威数据。
 
@@ -269,7 +269,7 @@ sequenceDiagram
 
 ## 14. 生产验收闭环
 
-RADOS 交付不能止于 `ceph -s`。至少证明：MON quorum 故障切换；OSD/host 故障后 PG 恢复；replicated/EC 真实读写；CRUSH failure domain；nearfull 告警；scrub/deep-scrub；key caps 正反例；网络和 mClock 下的业务延迟；OSD replacement；配置重启后持久；最终回到 `active+clean` 且无 unmanaged residue。
+RADOS 生产验收不能止于 `ceph -s`。至少证明：MON quorum 故障切换；OSD/host 故障后 PG 恢复；replicated/EC 真实读写；CRUSH failure domain；nearfull 告警；scrub/deep-scrub；key caps 正反例；网络和 mClock 下的业务延迟；OSD replacement；配置重启后持久；最终回到 `active+clean` 且无 unmanaged residue。
 
 ## 15. 配置解析、mask、metavariable 与 MON 发现
 
@@ -1302,7 +1302,7 @@ flowchart TD
   D --> A
 ```
 
-`revert` 不支持 EC；若对象是新建且无旧版本，也会变成删除。`delete` 永久忘记对象。两者都只在所有可能位置已探测、备份/应用 owner 签字且接受数据缺口后执行。
+`revert` 不支持 EC；若对象是新建且无旧版本，也会变成删除。`delete` 永久忘记对象。两者都只在所有可能位置已探测、备份/应用 owner 批准且接受数据缺口后执行。
 
 ### 36.5 inconsistent 与 repair
 
@@ -1427,7 +1427,7 @@ Profile 被 pool 引用时不能删除。用 `--force --yes-i-really-mean-it` �
 
 ### 38.2 五类插件
 
-| plugin | 关键参数/算法 | 客户决策点 |
+| plugin | 关键参数/算法 | 设计决策点 |
 |---|---|---|
 | `isa` | `reed_sol_van`、`cauchy` | Tentacle 默认 plugin，ISA-L 加速，确认 CPU/build |
 | `jerasure` | Vandermonde、Cauchy、Liberation/Blaum-Roth 等 | 历史兼容与 technique 参数多，需专项 benchmark |
@@ -1721,7 +1721,7 @@ Debug 表示 `file level/memory level`；高 file level 可迅速填满 MON/OSD 
 
 ### 41.6 社区升级证据包
 
-外部求助前运行 `ceph report` 并附版本、部署方式、完整 error、最小复现、时间线、相关 daemon logs/maps；去除 key、token、客户对象名/IP 等敏感信息。`ceph-debugpack` 会收集 binary、config、logs、core 和 cluster report，出站前必须逐项脱敏审查，不能直接上传生产包。
+外部求助前运行 `ceph report` 并附版本、部署方式、完整 error、最小复现、时间线、相关 daemon logs/maps；去除 key、token、业务对象名/IP 等敏感信息。`ceph-debugpack` 会收集 binary、config、logs、core 和 cluster report，出站前必须逐项脱敏审查，不能直接上传生产包。
 
 ## 42. librados、Object Class 与 libcephsqlite 开发合同
 
@@ -1781,7 +1781,7 @@ finally:
     cluster.shutdown()
 ```
 
-C/C++ 由 `librados-dev`/`librados-devel` 提供头文件和库；Python module 版本应与 cluster feature 兼容。Java/PHP binding 的分发和 API surface 不同，交付必须锁定 package version并跑连接、auth、pool、object、AIO/exception 的合同测试。
+C/C++ 由 `librados-dev`/`librados-devel` 提供头文件和库；Python module 版本应与 cluster feature 兼容。Java/PHP binding 的分发和 API surface 不同，生产必须锁定 package version 并跑连接、auth、pool、object、AIO/exception 的合同测试。
 
 ### 42.4 Object Class SDK
 
@@ -1808,7 +1808,7 @@ flowchart TD
 
 建议 page size 与 object stripe/cache 联合压测。`PRAGMA journal_mode=PERSIST` 通过覆写 journal header 避免每事务删对象；`PRAGMA locking_mode=EXCLUSIVE` 在单使用者场景减少锁往返，阻止其他 client。WAL 仅在 exclusive lock mode 可用，因为 normal mode 所需 shared memory 不受支持。
 
-官方量级提示：RADOS VFS 可能比本地 SSD 慢 3-10 倍；小事务约 30 ms，exclusive 约 15 ms，exclusive+WAL 可约 2-5 ms/150-250 TPS，必须以客户网络/pool 实测。当前不支持 concurrent readers，所有 access 受单 exclusive lock；temporary tables 不受 Ceph VFS 支持。
+官方量级提示：RADOS VFS 可能比本地 SSD 慢 3-10 倍；小事务约 30 ms，exclusive 约 15 ms，exclusive+WAL 可约 2-5 ms/150-250 TPS，必须以目标网络与 pool 实测。当前不支持 concurrent readers，所有 access 受单 exclusive lock；temporary tables 不受 Ceph VFS 支持。
 
 ```bash
 rados --pool=<pool> --striper get app.db local.db
@@ -1842,13 +1842,13 @@ flowchart TD
 | `ceph-authtool` | 离线创建、查看、合并 keyring 与 caps | 输出含 secret；文件 `0600`，避免 shell history |
 | `ceph-conf` | 只读配置文件/compiled defaults | 不读 MON DB；现代 effective value 用 daemon/config show |
 | `ceph-clsinfo` | 查看 object class binary 的 name/version/architecture | 不证明所有 OSD 已部署同一 binary |
-| `ceph-debugpack` | 打包 binaries、logs、config、core、report | 可能含 secret/客户数据，出站前脱敏 |
+| `ceph-debugpack` | 打包 binaries、logs、config、core、report | 可能含 secret/业务数据，出站前脱敏 |
 | `ceph-dencoder` | encode/decode/dump Ceph data structure，做跨版本兼容测试 | build/version 必须与 artifact 匹配，不直接写生产 store |
 | `ceph-mon` | MON daemon；mkfs、extract/inject monmap 等离线恢复 | inject/mkfs 必须确认 daemon 停止、FSID 和备份 |
 | `ceph-osd` | OSD daemon；mkfs/show config 等低层入口 | 部署优先 ceph-volume/cephadm，避免绕过 identity 管理 |
 | `ceph-kvstore-tool` | 离线查看/修改 RocksDB 或 BlueStore KV/omap | 修改前停 daemon并复制 store；普通排障先 list/get/crc |
 | `ceph-run` | daemon 因特定 crash signal 退出时以前台方式重启 | 不是 orchestrator/systemd health policy 替代品 |
-| `ceph-syn` | 通过 userspace client 对 CephFS 生成合成 workload | 仅测试环境；不是 RADOS 客户业务验收工具 |
+| `ceph-syn` | 通过 userspace client 对 CephFS 生成合成 workload | 仅测试环境；不是 RADOS 业务验收工具 |
 | `crushdiff` | 结合 OSDMap/PG dump 估算新 CRUSH map 移动 PG/object/bytes | 估算依赖快照，执行前仍用当前 epoch复核 |
 | `crushtool` | 创建、编译、反编译、测试 CRUSH map | `setcrushmap` 前保存旧 map、测试 mapping 与 remap |
 | `librados-config` | 显示 installed librados version/version code | 不证明 daemon/client feature compatibility |
@@ -1884,9 +1884,9 @@ rados -p <pool> --namespace <ns> rm probe.bin
 
 `rados bench` 会创建 benchmark objects，必须使用隔离 pool/namespace 并在结束运行 cleanup；不能在上层应用 pool 随意跑。Object 名相同但 namespace 不同是不同对象。`--all` listing/删除是高危范围扩张，自动化显式写 pool 与 namespace。
 
-## 44. 生产变更模板与客户验收
+## 44. 生产变更与验收
 
-### 44.1 每次变更的签字字段
+### 44.1 每次变更的批准字段
 
 | 字段 | 必填内容 |
 |---|---|
@@ -1907,10 +1907,10 @@ flowchart TD
   E --> V[故障/重启/业务验收]
   V --> H{全部证据通过?}
   H -->|否| R
-  H -->|是| S[签字与归档]
+  H -->|是| S[批准与归档]
 ```
 
-### 44.2 RADOS 交付矩阵
+### 44.2 RADOS 验收矩阵
 
 | 域 | 必须执行 | 通过证据 |
 |---|---|---|
@@ -1944,7 +1944,7 @@ ceph health mute ls
 
 ```mermaid
 flowchart LR
-  H[HEALTH_OK 或已签字 exception] --> P[所有 PG active+clean]
+  H[HEALTH_OK 或已批准 exception] --> P[所有 PG active+clean]
   P --> Q[无 unfound/inconsistent]
   Q --> F[无遗留 flags/mutes/runtime overrides]
   F --> C[容量与 CRUSH failure-domain 合格]
@@ -1952,7 +1952,7 @@ flowchart LR
   B --> D[证据归档]
 ```
 
-允许签字的 exception 必须是客户明确接受的长期状态，并含 code、影响、补救期限；不能把 `HEALTH_WARN` 泛化为“Ceph 常见”。变更创建的 benchmark object、临时 pool、key、debug level、map 文件、device light、mute、flag 和临时 admin credential 必须清理。
+允许验收的 exception 必须经过明确批准，并含 code、影响、补救期限；不能把 `HEALTH_WARN` 泛化为“Ceph 常见”。变更创建的 benchmark object、临时 pool、key、debug level、map 文件、device light、mute、flag 和临时 admin credential 必须清理。
 
 ### 44.4 禁止跨越的红线
 
@@ -1967,7 +1967,7 @@ flowchart LR
 
 ## 45. CephX `aes` 到 `aes256k`：Tentacle 生产迁移合同
 
-Tentacle 将 CephX 密钥类型升级视为一项有顺序约束的集群迁移，而不是一次全局开关。认证链包含 entity credential、service ticket、rotating service secret 和已经建立的 session；只改 `auth_allowed_ciphers` 既不会轮换旧 key，也不会立即替换存量 ticket。cephadm 与 Rook 可以处理 daemon key 的迁移，但 **cephadm 不处理 client key**，应用、内核挂载、备份节点和离线管理节点仍由客户逐一盘点。
+Tentacle 将 CephX 密钥类型升级视为一项有顺序约束的集群迁移，而不是一次全局开关。认证链包含 entity credential、service ticket、rotating service secret 和已经建立的 session；只改 `auth_allowed_ciphers` 既不会轮换旧 key，也不会立即替换存量 ticket。cephadm 与 Rook 可以处理 daemon key 的迁移，但 **cephadm 不处理 client key**，应用、内核挂载、备份节点和离线管理节点仍须逐一盘点。
 
 ```mermaid
 flowchart LR
@@ -2193,7 +2193,7 @@ stateDiagram-v2
 
 OSD 以小于约 6 秒的随机间隔检查 peer，默认约 20 秒 grace 后可报告对方 down。默认需要来自不同 host/CRUSH subtree 的两个 reporter；`mon_osd_reporter_subtree_level` 决定“独立报告者”的共同祖先层级，避免同一坏交换机后的 OSD 集体误判远端。OSD 自身若超过 `mon_osd_report_timeout` 未向 MON 报告，也会被判 down；状态、PG stats、`up_thru` 等事件触发报告，另有周期报告兜底。无法 peering 时，OSD 每 `osd_mon_heartbeat_interval` 向 MON 请求新 map。
 
-| 控制域 | 参数 | 客户应理解的合同 |
+| 控制域 | 参数 | 运行合同 |
 |---|---|---|
 | Peer heartbeat | `osd_heartbeat_interval`、`osd_heartbeat_grace` | interval 影响探测频度，grace 是疑似故障等待；放大只会延迟发现 |
 | OSD -> MON | `osd_mon_heartbeat_interval`、`osd_mon_heartbeat_stat_stale`、`osd_mon_report_interval` | peering/map 请求、统计陈旧与周期报告不是同一 timeout |
@@ -2552,7 +2552,7 @@ ceph pg dump -f json > pgdump.json
 ceph health detail -f json > health.json
 ```
 
-脚本应锁定客户 Tentacle build 的 schema fixture，未知/缺失字段 fail closed；混合版本阶段按实际返回 schema 做兼容分支，不能回退到 grep plain 输出。
+脚本应锁定目标 Tentacle build 的 schema fixture，未知/缺失字段 fail closed；混合版本阶段按实际返回 schema 做兼容分支，不能回退到 grep plain 输出。
 
 ## 53. librados/Python：可开发、可重试、可验收的接口合同
 
@@ -2574,11 +2574,11 @@ Python `Rados.list_pools/create_pool/pool_exists/delete_pool` 需要已连接 cl
 
 资源释放顺序是 completion -> ioctx -> cluster。callback 尚未返回时不能释放 buffer/ioctx/cluster；fork 后不能复用父进程已连接 handle。每个 worker 使用明确 client identity、config/keyring 和 timeout，禁止默认落到 `client.admin`。
 
-C client 用 `rados_create2`/`rados_conf_read_file`/`rados_connect`，链接 `-lrados`；C++ 用 `librados::Rados::init2`、`librados::IoCtx` 与 `librados::AioCompletion`。官方明确 **C++ API/ABI 不保证跨 Ceph major release 稳定**，客户应用每次 major 升级必须针对锁定的 headers/library 重新编译、重新链接，并跑完整合同测试，不能只替换动态库。Debian/Ubuntu 使用 `librados-dev`，RHEL 系使用 `librados2-devel` 与 `libradospp-devel`；构建产物记录 package NEVRA/version 和 link provenance。
+C client 用 `rados_create2`/`rados_conf_read_file`/`rados_connect`，链接 `-lrados`；C++ 用 `librados::Rados::init2`、`librados::IoCtx` 与 `librados::AioCompletion`。官方明确 **C++ API/ABI 不保证跨 Ceph major release 稳定**，应用每次 major 升级必须针对锁定的 headers/library 重新编译、重新链接，并跑完整合同测试，不能只替换动态库。Debian/Ubuntu 使用 `librados-dev`，RHEL 系使用 `librados2-devel` 与 `libradospp-devel`；构建产物记录 package NEVRA/version 和 link provenance。
 
 ### 53.2 Object、xattr、snapshot 与 locator key
 
-| 能力 | Python/C 语义 | 客户设计边界 |
+| 能力 | Python/C 语义 | 设计边界 |
 |---|---|---|
 | `write` | 从 offset 覆盖范围，不自动截断尾部 | 要替换整个 value 用 `write_full` |
 | `write_full` | 原子替换单 object 内容 | 不跨 object 原子 |
@@ -2594,7 +2594,7 @@ Object iterator `list_objects()` 是按 PG 分片遍历，在并发创建/删除
 
 ### 53.3 AIO 与不确定结果
 
-Python/C 覆盖 `aio_write`、`aio_write_full`、`aio_append`、`aio_read` 和 `aio_flush`。提交成功只代表请求进入异步路径；completion 的 oncomplete/onsafe 语义、buffer 所有权和 release 时机以锁定 binding 为准。官方 C API 展示 complete 与 safe 等待，现代实现可能合并持久语义，客户代码不能从旧教程推断双 ack。
+Python/C 覆盖 `aio_write`、`aio_write_full`、`aio_append`、`aio_read` 和 `aio_flush`。提交成功只代表请求进入异步路径；completion 的 oncomplete/onsafe 语义、buffer 所有权和 release 时机以锁定 binding 为准。官方 C API 展示 complete 与 safe 等待，现代实现可能合并持久语义，应用代码不能从旧教程推断双 ack。
 
 ```mermaid
 flowchart TD
@@ -2675,7 +2675,7 @@ ms_print massif.out.<pid>
 
 ### 54.3 向供应商或社区升级问题
 
-运维问题使用 Ceph users 渠道；疑似 bug、开发版/测试包或自编译问题使用 Ceph devel 渠道。任何外发先走客户脱敏与授权，不上传 keyring、auth dump、对象内容、core 中的敏感数据或内部地址。最小证据包包括：
+运维问题使用 Ceph users 渠道；疑似 bug、开发版/测试包或自编译问题使用 Ceph devel 渠道。任何外发先完成脱敏与授权，不上传 keyring、auth dump、对象内容、core 中的敏感数据或内部地址。最小证据包包括：
 
 ```bash
 ceph report > ceph-report.json
@@ -2683,10 +2683,10 @@ ceph versions
 ceph health detail -f json-pretty
 ```
 
-同时附 Tentacle exact build/commit、复现时间线、第一条错误、受影响业务、最小复现与反证、daemon/host/device 日志、相关 map epoch、已尝试操作和当前是否仍可复现。`ceph report` 是官方建议的上下文入口，但不能替代目标 PG query、crash backtrace 或 profile。外发后仍保留内部原始 evidence 与 SHA256，供应商建议在生产执行前按本文变更模板评审。
+同时附 Tentacle exact build/commit、复现时间线、第一条错误、受影响业务、最小复现与反证、daemon/host/device 日志、相关 map epoch、已尝试操作和当前是否仍可复现。`ceph report` 是官方建议的上下文入口，但不能替代目标 PG query、crash backtrace 或 profile。外发后仍保留内部原始 evidence 与 SHA256；供应商建议在生产执行前按变更流程评审。
 
-## 55. 官方事实基线与许可
+## 55. 参考资料与许可
 
-本文事实基线为 Ceph Tentacle 官方 `doc/rados/` 的 configuration、operations、troubleshooting、API 与 man-page 级联内容，核验源码提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。命令执行前仍以客户锁定的 Tentacle package build、`ceph versions`、daemon schema 和目标集群 effective config 为准；混合版本时取实际执行该行为的 daemon 能力，不以客户端 CLI 新旧替代服务端事实。
+参考资料：Ceph Tentacle RADOS configuration、operations、troubleshooting、API 与 man page；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。命令执行前仍以目标 Tentacle package build、`ceph versions`、daemon schema 和集群 effective config 为准；混合版本时取实际执行该行为的 daemon 能力，不以客户端 CLI 新旧替代服务端事实。
 
-Ceph 文档版权归 Ceph authors and contributors，文档许可为 CC BY-SA 3.0。本文以生产任务、决策边界和可验证证据重新组织，不以页面跳转或覆盖声明替代机制内容。
+Ceph 文档版权归 Ceph authors and contributors，文档许可为 CC BY-SA 3.0。

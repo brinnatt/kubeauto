@@ -1064,7 +1064,7 @@ RBD_REQUIRED_FACTS = {
         "rbd_qos_schedule_tick_min",
         "rbd_qos_exclude_ops",
     ),
-    "customer signoff integrations": (
+    "integration contracts": (
         "images",
         "volumes",
         "backups",
@@ -1171,13 +1171,39 @@ class StorageDocumentationTests(unittest.TestCase):
         for document in CEPH_DOCUMENTS:
             self.assertEqual(INDEX.count(f"./ceph/{document}"), 1, document)
 
-    def test_each_module_has_customer_delivery_structure(self):
+    def test_each_module_has_stable_document_structure(self):
         for document in CEPH_DOCUMENTS:
             text = (CEPH_ROOT / document).read_text(encoding="utf-8")
             self.assertEqual(text.count("```") % 2, 0, document)
             self.assertIn("Tentacle", text, document)
             self.assertIn("76fba24cef67d9219f97eeaa68cd1a848da3f2b2", text, document)
             self.assertIn("CC BY-SA 3.0", text, document)
+
+    def test_01_08_use_objective_product_language(self):
+        forbidden_phrases = (
+            "本文",
+            "本仓库",
+            "官方边界",
+            "交付必读",
+            "未实测",
+            "事实基线",
+            "核验提交",
+            "覆盖声明",
+            "来源：",
+            "交付",
+            "签字",
+            "拒签",
+        )
+        for document in CEPH_DOCUMENTS[:8]:
+            text = (CEPH_ROOT / document).read_text(encoding="utf-8")
+            for phrase in forbidden_phrases:
+                self.assertNotIn(phrase, text, f"{document}: {phrase}")
+            self.assertNotRegex(text, r"客户(?!端)", document)
+            self.assertNotRegex(
+                text,
+                r"我们|我方|你可以|你需要|接下来|本手册|本指南|重新组织",
+                document,
+            )
 
     def test_each_module_keeps_its_required_mechanism_domains(self):
         for document, domains in REQUIRED_DOMAINS.items():

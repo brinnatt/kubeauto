@@ -1,6 +1,6 @@
 # Cephadm：从裸机到可持续运维的生产编排手册
 
-> 适用版本：Ceph Tentacle。本文以官方 `doc/cephadm/` 全模块为事实基线，核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。目标不是复述目录，而是给出一条可执行、可验收、可停止、可恢复的生产主线。
+> 适用版本：Ceph Tentacle。Cephadm 生产生命周期必须形成可执行、可验收、可停止、可恢复的闭环。
 
 ## 1. Cephadm 的工作模型
 
@@ -12,7 +12,7 @@ Cephadm 不是“用容器启动 Ceph”的脚本。它由三个相互约束的�
 | 主机执行面 | SSH、主机 cephadm、systemd、Podman/Docker | 拉镜像、生成 unit/config、控制容器、扫描设备 | 不决定期望副本数 |
 | Ceph 数据面 | MON/MGR/OSD/MDS/RGW 等 daemon | quorum、对象、元数据、协议和业务 I/O | 不保存完整部署意图 |
 
-Cephadm 从 bootstrap 的单 MON/单 MGR 种子开始，通过 orchestrator interface 扩展并管理完整生命周期，客户可使用 Ceph CLI 或 Dashboard GUI 操作。它不依赖 Ansible、Rook 或 Salt；这些工具可以自动化 cephadm 未覆盖的外围任务，但不得与 cephadm 同时管理同一 daemon、systemd unit 或持久配置，否则 reconcile 会反复覆盖对方的结果。
+Cephadm 从 bootstrap 的单 MON/单 MGR 种子开始，通过 orchestrator interface 扩展并管理完整生命周期，管理员可使用 Ceph CLI 或 Dashboard GUI 操作。它不依赖 Ansible、Rook 或 Salt；这些工具可以自动化 cephadm 未覆盖的外围任务，但不得与 cephadm 同时管理同一 daemon、systemd unit 或持久配置，否则 reconcile 会反复覆盖对方的结果。
 
 ```mermaid
 flowchart LR
@@ -35,7 +35,7 @@ flowchart LR
 3. `ceph orch ps --refresh`、events、systemd/container 是否健康；
 4. RADOS、CephFS、RBD、S3、NFS 或 iSCSI 的真实读写是否成功。
 
-容器 `running` 只覆盖第三项的一部分，绝不等于交付成功。
+容器 `running` 只覆盖第三项的一部分，绝不等于生产就绪。
 
 ## 2. 统一的生产变更闭环
 
@@ -1696,7 +1696,7 @@ spec:
     ...
 ```
 
-> **官方文档漂移说明**：Tentacle 的 `oauth2-proxy.rst` 示例仍写 `ssl_certificate`、`ssl_certificate_key`，但同一提交 `OAuth2ProxySpec` 的真实 schema 是 `ssl_cert`、`ssl_key`。本文以可执行源码 schema 为准，并由契约测试禁止旧字段重新出现。
+> **版本差异**：Tentacle 的 `oauth2-proxy.rst` 示例仍写 `ssl_certificate`、`ssl_certificate_key`，但同版本 `OAuth2ProxySpec` 的可执行 schema 是 `ssl_cert`、`ssl_key`。有效配置必须使用 `ssl_cert` 与 `ssl_key`。
 
 `provider_display_name`、`client_id`、`client_secret` 必须是非空字符串；issuer 和显式 redirect 必须是同时具有 scheme 与 authority 的 URL。`https_address` 格式为 `host:port`。`cookie_secret` 可以是 URL-safe base64 或普通字符串，但解码后的真实长度必须为 16、24 或 32 bytes，以满足 AES key 长度；不要把占位字符串 `<secret>` 原样投入生产。`allowlist_domains` 限制登录或退出后的安全重定向域，必须使用最小集合，避免 open redirect。
 
@@ -1908,7 +1908,7 @@ ceph orch certmgr key rm <key_name> --service_name <service>
 ceph orch certmgr generate-certificates <module>
 ```
 
-官方 RST 的生成命令处存在 `cehp` 拼写错误，本文按真实 CLI `ceph` 给出。上传 pair 前在离线环境验证 PEM、私钥匹配、issuer、chain、SAN、KeyUsage 和有效期。替换流程：
+官方 RST 的生成命令处存在 `cehp` 拼写错误；有效 CLI 为 `ceph`。上传 pair 前在离线环境验证 PEM、私钥匹配、issuer、chain、SAN、KeyUsage 和有效期。替换流程：
 
 ```mermaid
 flowchart TD
@@ -2341,7 +2341,7 @@ while IFS= read -r name; do
 done
 ```
 
-在每台相关主机分别执行，不能从一台主机的 `cephadm ls` 推断全局 daemon。`cephadm logs --fsid` 可避免多集群主机命中错误 FSID；还应按事故时间窗补充对应 unit 的 `journalctl`、runtime inspect 和 image digest。日志可能包含主机地址、bucket/client 名、命令参数和路径，交付前要保留原始受限副本、制作脱敏副本并记录 SHA256；不要在采集脚本中用 `|| true` 抹掉每条命令的返回码。
+在每台相关主机分别执行，不能从一台主机的 `cephadm ls` 推断全局 daemon。`cephadm logs --fsid` 可避免多集群主机命中错误 FSID；还应按事故时间窗补充对应 unit 的 `journalctl`、runtime inspect 和 image digest。日志可能包含主机地址、bucket/client 名、命令参数和路径；归档或外发前保留原始受限副本、制作脱敏副本并记录 SHA256。不要在采集脚本中用 `|| true` 抹掉每条命令的返回码。
 
 ### 29.4 配置、端口与证书
 
@@ -2505,7 +2505,7 @@ ceph orch apply mon --placement="<survivor-host>,<new-host-1>,<new-host-2>"
 ceph quorum_status --format json-pretty
 ```
 
-最终恢复奇数个、跨故障域的 3 或 5 MON，验证连续选举、单 MON 故障、主机重启和客户端 I/O。旧 MON 数据目录只有在新 quorum 充分冗余、归档可恢复且变更负责人签字后才能删除。手工注入 monmap 改变了一致性根；完整交付证据必须包含原 store 备份、前后 monmap、FSID、epoch、quorum 演进、各 map 对账和业务验收。
+最终恢复奇数个、跨故障域的 3 或 5 MON，验证连续选举、单 MON 故障、主机重启和客户端 I/O。旧 MON 数据目录只有在新 quorum 充分冗余、归档可恢复且变更获得批准后才能删除。手工注入 monmap 改变了一致性根；恢复记录必须包含原 store 备份、前后 monmap、FSID、epoch、quorum 演进、各 map 对账和业务验收。
 
 ### 30.2 没有可用 MGR
 
@@ -2752,7 +2752,7 @@ flowchart TD
   P -->|是| A[apply]
   A --> R[观察 service/daemon events 与 reconcile]
   R --> H{daemon、Ceph health、业务探针均合格?}
-  H -->|是| S[导出收敛后的 spec 并签字]
+  H -->|是| S[导出收敛后的 spec 并归档]
   H -->|否| T[停止下一批并保存 first failure]
   T --> C{旧 spec 仍与当前数据/外部依赖兼容?}
   C -->|是| O[重应用旧 spec，必要时 redeploy]
@@ -2765,7 +2765,7 @@ flowchart TD
 
 ### 34.6 控制面恢复资料包与恢复演练
 
-Service Spec 不是 Ceph 备份。客户必须按恢复对象分层保存材料：
+Service Spec 不是 Ceph 备份。恢复材料必须按对象分层保存：
 
 | 恢复对象 | 必须保存的材料 | 明确不包含什么 |
 |---|---|---|
@@ -2791,13 +2791,13 @@ flowchart LR
   REC --> IO[RADOS 与各协议 I/O 验收]
 ```
 
-## 35. 交付验收矩阵
+## 35. 生产验收矩阵
 
 | 域 | 必须证明的结果 | 主要命令/探针 |
 |---|---|---|
 | 控制面 | MON quorum、MGR active+standby、cephadm available | `ceph -s`、`quorum_status`、`mgr dump`、`orch status` |
 | 主机 | 名称、SSH、runtime、时间、网络、标签正确 | `host ls --detail`、`check-host` |
-| 声明 | 所有 service spec 可导出并与交付配置一致 | `orch ls --export` |
+| 声明 | 所有 service spec 可导出并与批准配置一致 | `orch ls --export` |
 | Daemon | running/desired、版本、image digest、events 正常 | `orch ps --refresh`、`ceph versions` |
 | OSD | 设备身份、布局、加密、class、up/in 正确 | `device ls --wide`、`osd tree`、`ceph-volume` |
 | 数据 | PG clean，容量与恢复余量满足设计 | `ceph -s`、`ceph df detail`、`pg stat` |
@@ -2818,7 +2818,7 @@ flowchart TD
   P --> S[各协议真实 I/O]
   S --> F[单故障切换]
   F --> R[恢复演练]
-  R --> A[客户验收]
+  R --> A[生产验收]
 ```
 
 ## 36. 快速判定表：看到现象先去哪里
@@ -2873,7 +2873,7 @@ sequenceDiagram
   end
 ```
 
-MGR command handler 会阻塞同一 MON command 处理线程；客户端按 `Ctrl-C` 只终止本地等待，不会取消 MGR 内正在执行的调用。在 cephadm 扩展中，同步 CLI handler 最多执行 `O(1)` 次网络调用，其余远端工作必须异步交给 `serve()` 等后台线程。客户看到 CLI 超时时，先查 cephadm event 和 MGR 日志，不能立即重复提交同一个破坏性动作。
+MGR command handler 会阻塞同一 MON command 处理线程；客户端按 `Ctrl-C` 只终止本地等待，不会取消 MGR 内正在执行的调用。在 cephadm 扩展中，同步 CLI handler 最多执行 `O(1)` 次网络调用，其余远端工作必须异步交给 `serve()` 等后台线程。CLI 超时时先查 cephadm event 和 MGR 日志，不能立即重复提交同一个破坏性动作。
 
 ### 37.2 主机抓取、缓存与规模化
 
@@ -2905,7 +2905,7 @@ flowchart TD
 
 官方 compliance-check 文档是设计讨论，不是已承诺 CLI。文档提出利用 `HostFacts`/`gather-facts` 缓存，按默认 12 小时间隔检查 OS vendor/major、SELinux/AppArmor、systemd daemon、订阅状态、MTU、link speed 和 public/cluster 网络一致性，并聚合为 WARN；还设想 `ceph cephadm compliance ...` 命令族。
 
-Tentacle 客户操作必须使用本手册第 27 章已经验证的 `ceph cephadm config-check ...` 和 `CEPHADM_CHECK_*` 健康码。禁止把下列 proposal 写进自动化或运行手册：
+Tentacle 的有效操作入口是 `ceph cephadm config-check ...` 和 `CEPHADM_CHECK_*` 健康码。下列 proposal 尚未形成可用 CLI，不能写入自动化或运行手册：
 
 ```text
 ceph cephadm compliance enable|disable|status
@@ -2960,12 +2960,12 @@ flowchart LR
 
 ### 37.6 Cephadm 开发与验证路径
 
-客户需要扩展或定位 cephadm 本身时，官方提供多条环境路径，适用边界不同：
+扩展或定位 cephadm 本身时，官方提供多条开发环境路径，适用边界不同：
 
 | 路径 | 特征 | 适用与限制 |
 |---|---|---|
 | `vstart --cephadm` | MON/MGR 等可由 vstart 启动，额外 daemon 交给 cephadm | 适合快速改 MGR/cephadm；vstart daemon 会显示 stray，不等价于真实生产集群 |
-| `cstart.sh` + `cpatch` | 建立正常 cephadm 集群，把本地构建 patch 进稳定 FSID 对应 image | 更接近客户集群；变更 image 后需重启目标 daemon，结束用 `ckill.sh` 清理 |
+| `cstart.sh` + `cpatch` | 建立正常 cephadm 集群，把本地构建 patch 进稳定 FSID 对应 image | 更接近生产集群；变更 image 后需重启目标 daemon，结束用 `ckill.sh` 清理 |
 | `bootstrap --shared_ceph_folder` | 把源码目录共享给容器，无需完整编译 Ceph | 适合 Python MGR 模块；源码变化后重启 MGR |
 | kcli VM plan | 多 VM、可选择 OS/CPU/磁盘，接近 QE/生产 | 固定 kcli image tag，避免 rolling release 破坏复现；完整删除 VM/磁盘 |
 | cephadm box | Podman-in-Podman 或 Docker 的快速实验环境 | 官方标记 experimental；loop device 不是生产盘，Podman OSD 支持有限，Docker privileged 有宿主机风险 |
@@ -3035,11 +3035,11 @@ Cephadm box 的 `--extended` 才会按参数增加 host/OSD；未带它时单独
 sha256sum ./cephadm
 ```
 
-版本 metadata 支持 `CEPH_GIT_VER`、`CEPH_GIT_NICE_VER`、`CEPH_RELEASE`、`CEPH_RELEASE_NAME`、`CEPH_RELEASE_TYPE`；bundled dependencies 模式为 `pip`、`rpm` 或 `none`。`version --verbose` 会显示构建 metadata、bundled packages 和 zip root entries。企业交付必须保存源码提交、构建参数、依赖模式、构建日志、SHA256 和签名，并证明运行制品与审核源码一致。
+版本 metadata 支持 `CEPH_GIT_VER`、`CEPH_GIT_NICE_VER`、`CEPH_RELEASE`、`CEPH_RELEASE_NAME`、`CEPH_RELEASE_TYPE`；bundled dependencies 模式为 `pip`、`rpm` 或 `none`。`version --verbose` 会显示构建 metadata、bundled packages 和 zip root entries。制品溯源必须保存源码提交、构建参数、依赖模式、构建日志、SHA256 和签名，并证明运行制品与审核源码一致。
 
-## 38. 官方事实基线与许可
+## 38. 参考资料与许可
 
-本文覆盖 Tentacle `doc/cephadm/` 的直属模块：
+Ceph Tentacle cephadm 参考资料包括：
 
 - `index.rst`、`compatibility.rst`、`install.rst`；
 - `host-management.rst`、`operations.rst`、`troubleshooting.rst`；
@@ -3050,6 +3050,6 @@ sha256sum ./cephadm
 - `snmp-gateway.rst`、`tracing.rst`、`custom-container.rst`；
 - `certmgr.rst`、`client-setup.rst`、`upgrade.rst`、`adoption.rst`。
 
-同时覆盖索引直接级联的 `doc/dev/cephadm/`：`index.rst`、`compliance-check.rst`、`host-maintenance.rst`、`scalability-notes.rst`、`developing-cephadm.rst`、`design/storage_devices_and_osds.rst`，以及 RST `autoclass` 动态展开的 `ServiceSpec`、`DriveGroupSpec` 和相关校验源码。设计提案均已与 Tentacle 当前实现明确分栏，不作为现有功能承诺。
+开发与设计参考资料包括 `doc/dev/cephadm/` 下的 `index.rst`、`compliance-check.rst`、`host-maintenance.rst`、`scalability-notes.rst`、`developing-cephadm.rst`、`design/storage_devices_and_osds.rst`，以及 RST `autoclass` 动态展开的 `ServiceSpec`、`DriveGroupSpec` 和相关校验源码。设计提案不构成现有功能承诺。
 
-事实版本：Ceph 官方 Tentacle 快照提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。正文对官方重复内容按生产生命周期重新编排，保留默认值、字段、限制、警告、破坏性边界和失败恢复语义；当同一提交的 RST 示例与可执行 schema 冲突时，正文明确记录漂移并以源码为准。Ceph Authors and Contributors，文档许可 CC BY-SA 3.0。
+文档版本：Ceph Tentacle `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。RST 示例与同版本可执行 schema 冲突时，以 schema 为准。Ceph Authors and Contributors，文档许可 CC BY-SA 3.0。

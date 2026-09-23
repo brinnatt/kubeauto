@@ -2,7 +2,7 @@
 
 > RBD 把一个逻辑块设备 image 条带成 RADOS 对象。它的生产难点不是 `rbd create`，而是 feature 组合、客户端缓存、exclusive lock、snapshot/clone 依赖、加密、镜像复制和各接入层的故障语义。
 
-## 1. 从客户块地址到 RADOS 对象
+## 1. 从客户端块地址到 RADOS 对象
 
 ```mermaid
 flowchart LR
@@ -68,7 +68,7 @@ rbd device unmap /dev/rbd0
 
 Krbd map 后是 Linux block device；librbd 被 QEMU、OpenStack、CSI 等进程内调用。Map 成功不等于文件系统可多主挂载。普通 ext4/xfs 不能由多主机同时读写；需要单写者 fencing 或真正 cluster filesystem。
 
-Librbd cache 有 writeback/writethrough/writearound 等行为：write-around 和 write-back 在未超过 `rbd_cache_max_dirty` 时可先返回，write-around 不从 cache 服务读请求；write-through 只有数据到达所有副本后才返回但仍可从 cache 读。`rbd_cache_writethrough_until_flush` 用来保护不会发 flush 的旧客户。QEMU/guest cache、host page cache、librbd cache 和 OSD cache 可能叠加；断电语义取决于 flush/FUA 是否完整传递。cache 是每个 client、每个 image 的本地状态，GFS/OCFS 不能借此获得跨主机一致性。
+Librbd cache 有 writeback/writethrough/writearound 等行为：write-around 和 write-back 在未超过 `rbd_cache_max_dirty` 时可先返回，write-around 不从 cache 服务读请求；write-through 只有数据到达所有副本后才返回但仍可从 cache 读。`rbd_cache_writethrough_until_flush` 用来保护不会发 flush 的旧客户端。QEMU/guest cache、host page cache、librbd cache 和 OSD cache 可能叠加；断电语义取决于 flush/FUA 是否完整传递。cache 是每个 client、每个 image 的本地状态，GFS/OCFS 不能借此获得跨主机一致性。
 
 Persistent Write Log cache 把未落远端的写日志放本地持久介质，Persistent Read-only cache 缓存读数据。前者故障恢复依赖 cache 文件与 image identity，不能把本地 cache 当成可随意删除的临时目录；后者只适合不可变/只读场景并需处理失效。
 
@@ -267,7 +267,7 @@ QoS 是 librbd 客户端侧 token bucket，可分别限制总/读/写 IOPS 与 B
 
 生产配置评审至少保留以下参数矩阵（global/pool/image 的实际生效值以 `ceph config get`、`rbd config image get` 为准）：
 
-| 类别 | 关键参数 | 客户决策边界 |
+| 类别 | 关键参数 | 设计决策边界 |
 |---|---|---|
 | cache | `rbd_cache`、`rbd_cache_policy`、`rbd_cache_size`、`rbd_cache_max_dirty`、`rbd_cache_target_dirty`、`rbd_cache_max_dirty_age` | cache 是每个 client、每个 image 的本地缓存；GFS/OCFS 不能依赖它获得跨主机一致性；writeback 必须有可靠 flush/FUA |
 | compatibility | `rbd_default_features`、`rbd_default_order`、`rbd_default_clone_format` | 默认 feature 必须落在最老 krbd/QEMU/CSI kernel 的交集；format 2 才支持现代 clone/snapshot 能力 |
@@ -421,7 +421,7 @@ Windows `rbd-wnbd` service 通过 Windows Network Block Device 映射 image。Ma
 
 Windows 需要特别防范“盘号漂移”：Hyper-V 若按 disk number 引用，重启后枚举变化可能把 VM 接到错误盘；优先用稳定 location/path，启动前核对 image identity。CSV 支持、自动 mount、partition 操作和 Hyper-V address 都有版本限制。排障同时查看 Windows Event Log、service 状态、mapping list、Ceph health 和 watcher；不要只在磁盘管理器反复 online/offline。
 
-Windows 交付验收应显式区分两类映射：给 Hyper-V 直通的盘保持 `offline`，给 Windows 主机分区/文件系统使用的盘才 `online` 且清除 read-only。`rbd-wnbd` 默认 mapping 持久化并在 service 启动时重建；临时盘使用 `-onon-persistent`。服务注册和映射检查示例：
+Windows 生产验收应显式区分两类映射：给 Hyper-V 直通的盘保持 `offline`，给 Windows 主机分区/文件系统使用的盘才 `online` 且清除 read-only。`rbd-wnbd` 默认 mapping 持久化并在 service 启动时重建；临时盘使用 `-onon-persistent`。服务注册和映射检查示例：
 
 ```powershell
 sc.exe create rbd-wnbd binPath= "C:\ceph\rbd-wnbd.exe service" start= auto
@@ -554,7 +554,7 @@ ceph auth get-or-create client.kubernetes \
 ceph mon dump  # 记录 fsid 与 v1 monitor 地址；clusterID 必须等于 Ceph FSID
 ```
 
-以下是可作为生产模板的配置骨架；`<FSID>`、monitor、key、固定 ceph-csi release 和镜像 digest 必须由交付清单替换：
+以下是可作为生产模板的配置骨架；`<FSID>`、monitor、key、固定 ceph-csi release 和镜像 digest 必须由批准的环境清单替换：
 
 ```yaml
 apiVersion: v1
@@ -617,7 +617,7 @@ spec:
   resources: {requests: {storage: 10Gi}}
 ```
 
-按固定 release 的官方 RBAC、controller 和 node plugin manifests 部署后，检查 controller/node 数量、CSI socket、注册状态和日志，再创建一个挂载该 PVC 的 Pod，完成写入、删除 Pod、重新调度和读回。`volumeMode: Block` 则直接交付原始设备，必须使用对应的 raw-block Pod；不能把 filesystem 的 mount/扩容假设套到 Block。官方 access mode 只是 Kubernetes 调度语义：RBD 普通文件系统不能因为声明 `ReadWriteMany` 就获得多主写一致性，`ReadWriteOnce` 也不等于物理 fencing；节点失联还要验证 VolumeAttachment 清理、blocklist、exclusive-lock 和强制 detach。`reclaimPolicy: Delete` 只表示 CSI 回收意图，不等于安全擦除或 trash 已清空。
+按固定 release 的官方 RBAC、controller 和 node plugin manifests 部署后，检查 controller/node 数量、CSI socket、注册状态和日志，再创建一个挂载该 PVC 的 Pod，完成写入、删除 Pod、重新调度和读回。`volumeMode: Block` 直接提供原始设备，必须使用对应的 raw-block Pod；不能把 filesystem 的 mount/扩容假设套到 Block。官方 access mode 只是 Kubernetes 调度语义：RBD 普通文件系统不能因为声明 `ReadWriteMany` 就获得多主写一致性，`ReadWriteOnce` 也不等于物理 fencing；节点失联还要验证 VolumeAttachment 清理、blocklist、exclusive-lock 和强制 detach。`reclaimPolicy: Delete` 只表示 CSI 回收意图，不等于安全擦除或 trash 已清空。
 
 ## 23. Nomad/ceph-csi：controller、node 与持久卷验收
 
@@ -779,4 +779,4 @@ with rados.Rados(conffile="/etc/ceph/ceph.conf", name="client.app") as cluster:
 
 ## 27. 官方基线与许可
 
-来源：Ceph Tentacle 官方 `doc/rbd/`，核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle RBD 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。

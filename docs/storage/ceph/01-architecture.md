@@ -1,6 +1,6 @@
 # Ceph 架构全解（Tentacle）
 
-> 本文回答一个核心问题：Ceph 为什么能在没有中心对象目录和中心数据网关的前提下，让大量客户端并行访问 PB 到 EB 级对象、块和文件数据，并在设备、主机、机架和网络持续变化时维持一致性与可用性。
+> Ceph 在没有中心对象目录和中心数据网关的前提下，支持大量客户端并行访问 PB 到 EB 级对象、块和文件数据，并在设备、主机、机架和网络持续变化时维持一致性与可用性。
 
 Ceph 把对象、块和文件统一建立在 RADOS（Reliable Autonomic Distributed Object Store）之上。理解 Ceph 不能只记 daemon 名称；必须能沿着一笔 I/O 解释地图从哪里来、对象如何计算到 PG、PG 如何计算到 OSD、谁接受写入、谁生成副本或纠删码分片、何时向客户端确认，以及故障以后哪一份历史具有权威性。
 
@@ -8,7 +8,7 @@ Ceph 把对象、块和文件统一建立在 RADOS（Reliable Autonomic Distribu
 
 ```mermaid
 flowchart TB
-  subgraph client_semantics[客户语义层]
+  subgraph client_semantics[客户端语义层]
     RBD[RBD<br/>thin provision / snapshot / clone]
     RGW[RGW<br/>S3 / Swift]
     FS[CephFS<br/>POSIX]
@@ -29,7 +29,7 @@ flowchart TB
     POOL[Pool<br/>保护与访问策略边界]
     PG[Placement Group<br/>对象集合与恢复单元]
     CRUSH[CRUSH<br/>拓扑感知的确定性放置]
-    PRIMARY[Primary OSD<br/>唯一接收该 PG 客户写]
+    PRIMARY[Primary OSD<br/>唯一接收该 PG 客户端写]
     PEERS[Replica OSD / EC shard OSD]
     BLUE[(BlueStore devices)]
   end
@@ -327,7 +327,7 @@ Auth/service tickets 都有 TTL，客户端必须续期。服务端通常保留�
 
 同一 service 默认通常保留三代 rotating service secret。旧 ticket 标明加密它的 `secret_id`，服务可用对应代际解开；这让当前 secret 轮换时，尚未到期的 ticket 不会瞬间全部失效。初始认证之后的服务消息还可按配置使用 session key 签名，以检测有限的在途篡改；签名仍不等于加密。
 
-Tentacle 还必须把 credential key type 升级纳入生命周期：允许新旧 cipher 共存，设置新 key 的首选 cipher，逐个轮换 `mon/mgr/osd/mds` 和客户端 key，确认不安全 key 告警清除，切换 rotating service cipher，最后移除旧 cipher。顺序错误会让 daemon 或 `client.admin` 无法再次认证。`cephadm` 和 Rook 可自动化 daemon 侧步骤，客户端 key 分发仍是客户责任。
+Tentacle 还必须把 credential key type 升级纳入生命周期：允许新旧 cipher 共存，设置新 key 的首选 cipher，逐个轮换 `mon/mgr/osd/mds` 和客户端 key，确认不安全 key 告警清除，切换 rotating service cipher，最后移除旧 cipher。顺序错误会让 daemon 或 `client.admin` 无法再次认证。`cephadm` 和 Rook 可自动化 daemon 侧步骤，客户端 key 分发仍由运维流程负责。
 
 ### 5.8 Keyring 搜索、`client.admin` 与最小权限
 
@@ -356,7 +356,7 @@ mds '<CephFS path/layout/snapshot capability>'
 
 `r` 允许读；MON 至少需要它才能取 map。`w` 允许对象写；`x` 在 OSD 上允许调用 class method、在 MON 上允许 auth 操作。`class-read/class-write` 是比 `x` 更窄的 Object Class 权限。任何 OSD cap 若未限制 pool，默认可触及所有 pool，这是权限审查中最危险的遗漏之一。
 
-| 客户身份 | 建议最小权限例 | 不能省略的边界 |
+| 客户端身份 | 建议最小权限例 | 不能省略的边界 |
 |---|---|---|
 | 单 pool `librados` 应用 | `mon 'allow r'`；`osd 'allow rw pool=orders namespace=prod'` | 若调用 Object Class，再按需加 `x` 或 class 子权限 |
 | 只读 RBD | `mon 'profile rbd'`；`mgr 'profile rbd-read-only pool=images'`；`osd 'profile rbd-read-only pool=images'` | pool/namespace 在支持该参数的服务上保持一致 |
@@ -713,8 +713,8 @@ Replicated pool 默认由 primary 服务读取。`primary-affinity` 范围 `0..1
 | 概念 | 精确定义 | 常见观察 |
 |---|---|---|
 | Up Set | 当前 CRUSH/OSDMap 期望承载该 PG shard 的 OSD | 数据将迁入的目标集合 |
-| Acting Set | 当前有可工作 shard、负责处理请求的集合 | 客户请求实际由它处理 |
-| Primary | Acting Set 第一个 OSD | 唯一接受该 PG 客户写并组织 peering |
+| Acting Set | 当前有可工作 shard、负责处理请求的集合 | 客户端请求实际由它处理 |
+| Primary | Acting Set 第一个 OSD | 唯一接受该 PG 客户端写并组织 peering |
 | Replica | Acting Set 其余 OSD | 接受 primary subop 或 shard 写 |
 
 稳定时二者相同。扩容、故障、恢复或 `pg_temp` 期间可不同：旧 Acting Set 继续服务，数据向新 Up Set 迁移。`ceph pg map` 会同时显示两者。
@@ -1170,7 +1170,7 @@ flowchart TB
 
 条带与复制/EC 独立：每个条带对象随后按 pool 保护。所有对象在同一 pool，使用同一 CRUSH 和 ACL。数据写入后不能原地改变既有 striping 参数，上线前须按真实负载验证。
 
-## 20. 三种客户接口如何复用 RADOS
+## 20. 三种客户端接口如何复用 RADOS
 
 ### 20.1 RGW
 
@@ -1349,7 +1349,7 @@ fio --name=/dev/sdX --ioengine=libaio --direct=1 --fsync=1 \
 
 ### 22.4 官方最低值与采购基线不能混为一谈
 
-官方 minimum 是“daemon 能运行”的下界，不是客户生产 sizing 结论：
+官方 minimum 是“daemon 能运行”的下界，不是生产 sizing 结论：
 
 | 进程/资源 | 官方最低或建议 | 生产解释 |
 |---|---|---|
@@ -1595,7 +1595,7 @@ flowchart LR
 | Public network 分区 | client 到 MON/OSD/MDS/RGW 的路径受影响 | cluster network 可能仍承载 OSD peer 流量 | 后端 heartbeat 正常不等于客户端可访问 | 所有授权 client subnet 重连并读写；无地址发布或 MTU 错误 |
 | Cluster network 分区 | OSD heartbeat、replication、recovery 路径受影响 | public 侧 endpoint 可能仍监听 | endpoint 可连不等于写入能达到副本确认条件 | OSD peer 双向连通；无误判 down；PG 回到目标保护 |
 
-这张表的用途是阻止跨层误判：每次故障先找权威状态所在平面，再检查依赖它的客户路径，最后做上层业务验证。不能用 daemon `running`、端口监听或单个 `HEALTH_OK` 替代端到端验收。
+这张表用于阻止跨层误判：每次故障先找权威状态所在平面，再检查依赖它的业务访问路径，最后做上层业务验证。不能用 daemon `running`、端口监听或单个 `HEALTH_OK` 替代端到端验收。
 
 ### 25.7 架构变更的停止、回退与不可逆边界
 
@@ -1632,4 +1632,4 @@ Ceph 的可靠性来自“保存可证明的历史而非盲目复制”：primar
 
 ## 27. 官方基线与许可
 
-本文以 Ceph Tentacle 官方 Architecture 模块及其直接承担原理说明的 MON、CephX、MON/OSD interaction、PG monitoring/peering、scrub、EC、cache tiering、hardware 和 network 材料为事实基线，并按客户理解路径重新组织。官方源文件 `doc/architecture.rst`，核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`（2026-09-17）。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle Architecture、MON、CephX、MON/OSD interaction、PG monitoring/peering、scrub、EC、cache tiering、hardware 与 network 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`（2026-09-17）。Ceph authors and contributors，CC BY-SA 3.0。

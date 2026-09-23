@@ -2,9 +2,7 @@
 
 > RGW 把 S3/Swift HTTP 语义映射到 RADOS。企业设计必须同时理解请求前端、身份/IAM、bucket index、data placement、多站点日志、加密密钥与异步通知；“RGW Pod 可访问”只证明进程入口，不证明对象业务和数据保护。
 
-本文中带有 Ceph CLI、cephadm、AWS CLI 的主路径均按 Tentacle 官方文档命令整理；
-其后的验收、风险和故障说明是对官方语义的拆解，不把未在本环境实测的结果写成
-成功保证。版本、部署方式和外部服务差异仍必须以对应官方参数约束为准。
+Ceph CLI、cephadm 与 AWS CLI 的操作必须匹配 Tentacle 参数约束。版本、部署方式和外部服务差异均纳入执行前检查；命令返回成功不替代对象业务、数据保护和故障恢复验证。
 
 ## 1. 一次对象请求经过哪些层
 
@@ -431,8 +429,7 @@ Master zone 产生 metadata changes，各 zone 的 sync threads 分 shard 拉取
 
 官方默认在对象同步成功后不再做后续校验；需要跨 HTTP 拉取或多站点同步的对象
 完整性校验时，可在所有相关 RGW 上启用 `rgw_sync_obj_etag_verify=true`。该选项
-使用 MD5 校验传输数据，官方同时注明会增加计算开销、降低性能；它不是未实测
-环境下可以默认开启的性能无损保证。
+使用 MD5 校验传输数据会增加计算开销并降低性能；该选项不能作为无性能影响的默认配置。
 
 ```ini
 [client.radosgw.<instance>]
@@ -1014,6 +1011,6 @@ Bucket index 异常先 stats/check/bi list，不先 rebuild；KMS 错误保存 k
 
 恢复验收必须执行：新建 user/account 和最小 policy；SigV4 PUT/HEAD/range GET/COPY/DELETE；multipart；version/delete marker；lifecycle/GC；SSE 解密；notification 去重；reshard；quota；多站同步与计划切换。最终检查 raw capacity、index consistency、sync lag、LC/GC/notification queue 和所有外部 IdP/KMS endpoint。
 
-## 32. 官方基线与许可
+## 32. 参考资料与许可
 
-来源：Ceph Tentacle 官方 `doc/radosgw/`，核验提交 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
+参考资料：Ceph Tentacle RADOS Gateway 文档；文档版本 `76fba24cef67d9219f97eeaa68cd1a848da3f2b2`。Ceph authors and contributors，CC BY-SA 3.0。
