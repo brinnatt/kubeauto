@@ -110,35 +110,37 @@ use `--kafka-cancel` only to stop the Kafka-owned durable job.
 `run_tools_regression.sh` owns the separate `tools-test-matrix.yaml` branch.
 The branch is independent from the enterprise and middleware runners: every
 script under `tools/` is built and tested as a standalone CLI, with its own
-import-boundary, security, functional, recovery and cleanup evidence. During
-review, run only:
+import-boundary, security, functional, recovery and cleanup evidence. Before
+review approval, only the non-mutating entry points are allowed:
 
 ```bash
 bash tests/run_tools_regression.sh --preflight
 bash tests/run_tools_regression.sh --status
 ```
 
-The tools matrix contains 55 executable scenarios plus an 89-item
+The tools matrix contains 68 executable scenarios plus a 101-item
 `functional_inventory`. The inventory is the public-function checklist for all
-nine CLIs: every command/role/data path/configuration mode/remote path and
+ten CLIs: every command/role/data path/configuration mode/remote path and
 failure-recovery behavior must point to a CLI, functional, security or recovery
 case. Build success and `--help` are never sufficient evidence for an inventory
 item. A functional case is PASS only after its isolated fixture reaches the
 documented product result, verifies read-back/state/exit markers, and completes
 scoped cleanup; partial execution remains pending.
 
-The matrix remains `pending` until review approves fixtures, credentials,
-external-service versions and live cleanup scope. `--full` is review-gated;
-Tier3 `--help` results in the enterprise matrix are not tools delivery
-evidence.
+New or changed matrix cases remain `pending` until review approves fixtures,
+credentials, external-service versions and live cleanup scope. The current
+matrix is approved, and `--full` still requires the explicit
+`TOOLS_MATRIX_APPROVED=yes` gate; Tier3 `--help` results in the enterprise
+matrix are not tools delivery evidence.
 
 ### Tools artifact gate
 
-The independent MySQL tool branch has an additional supply-chain gate. Its
-fixtures must be registered and published by
+The independent MySQL tool branch has an additional supply-chain gate. New
+fixtures must normally be registered and published by
 `kubeauto-ext-images-dockerfile`'s GitHub Actions dual-push workflow before a
-live run: the same immutable artifact must be available at
-`hub.talkedu.cn/kubeauto/<name>:<tag>` and the matching Docker Hub target.
+live run. A fixture already published in TalkEdu Hub may be consumed directly
+when the matrix pins its current manifest digest, owner and cleanup scope and
+the delivery does not modify or republish that artifact.
 Record the official source, exact version, manifest digest or file SHA256,
 owner and cleanup scope in the tools matrix. The runner pulls the TalkEdu
 copy first and verifies the digest before handing a fixture to a test host;

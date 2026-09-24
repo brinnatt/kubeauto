@@ -21,6 +21,9 @@ CN_HTTP=18042
 CN_HEARTBEAT=18052
 CN_BRPC=18063
 PASSWORD='starcli-live-password'
+MYSQL_CLIENT_IMAGE=hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4
+MYSQL_CLIENT_DIGEST=sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83
+MYSQL_CLIENT_REF="${MYSQL_CLIENT_IMAGE%:*}@$MYSQL_CLIENT_DIGEST"
 
 fail() { echo "STARCLI_LIVE_FAIL: $*" >&2; exit 1; }
 run() { echo "+ $*"; "$@"; }
@@ -31,6 +34,9 @@ cleanup() {
   [[ -x "$TOOL" ]] && "$TOOL" --deploy be --starrocks-home "$HOME_SR" --fe-host "$FE_HOST" --fe-query-port "$FE_QUERY" --root-password "$PASSWORD" --clean --force --user root --group root >/dev/null 2>&1 || true
   [[ -x "$TOOL" ]] && "$TOOL" --deploy fe --starrocks-home "$HOME_SR" --fe-host "$FE_HOST" --fe-query-port "$FE_QUERY" --root-password "$PASSWORD" --clean --force --user root --group root >/dev/null 2>&1 || true
   rm -f /tmp/starcli-invalid.out
+  docker ps -aq --filter 'name=^/starcli-mysql-client-' | while read -r container; do
+    [[ -n "$container" ]] && docker rm -f "$container" >/dev/null 2>&1 || true
+  done
   rm -rf "$ROOT"
 }
 trap cleanup EXIT INT TERM
@@ -39,8 +45,47 @@ test -f "$ARCHIVE" || fail "fixed StarRocks archive missing: $ARCHIVE"
 echo "$ARCHIVE_SHA256  $ARCHIVE" | sha256sum -c - >/dev/null || fail "archive SHA256 mismatch"
 command -v java >/dev/null 2>&1 || fail "Java 17 prerequisite missing"
 java -version 2>&1 | grep -Eq 'version "(17|[2-9][0-9])' || fail "Java 17+ prerequisite missing"
+command -v docker >/dev/null 2>&1 || fail "Docker prerequisite missing for isolated mysql client"
+run timeout --signal=TERM --kill-after=15s 20m docker pull "$MYSQL_CLIENT_IMAGE"
+docker image inspect "$MYSQL_CLIENT_REF" >/dev/null 2>&1 || fail "mysql client image digest mismatch"
 rm -rf "$ROOT"; mkdir -p "$ROOT"
-run tar -xzf "$ARCHIVE" -C "$ROOT"
+run python3 - "$ARCHIVE" "$ROOT" <<'PY'
+import copy
+import os
+import sys
+import tarfile
+
+archive, destination = sys.argv[1:]
+destination = os.path.realpath(destination)
+with tarfile.open(archive, mode="r:gz") as source:
+    members = source.getmembers()
+    member_names = {member.name.rstrip("/") for member in members}
+    safe_members = []
+    for member in members:
+        target = os.path.realpath(os.path.join(destination, member.name))
+        if os.path.commonpath((destination, target)) != destination:
+            raise SystemExit(f"archive member escapes destination: {member.name!r}")
+        if member.issym() and os.path.isabs(member.linkname):
+            sibling = os.path.normpath(
+                os.path.join(os.path.dirname(member.name), os.path.basename(member.linkname))
+            )
+            if sibling not in member_names:
+                raise SystemExit(
+                    f"absolute archive link has no sibling target: {member.name!r}"
+                )
+            member = copy.copy(member)
+            member.linkname = os.path.basename(member.linkname)
+        safe_members.append(member)
+    source.extractall(destination, members=safe_members, filter="data")
+PY
+mkdir -p "$ROOT/bin"
+cat >"$ROOT/bin/mysql" <<EOF
+#!/usr/bin/env bash
+exec docker run --rm --name "starcli-mysql-client-\$\$" --pull=never --network host \
+  -e MYSQL_PWD --entrypoint mysql "$MYSQL_CLIENT_REF" "\$@"
+EOF
+chmod 0755 "$ROOT/bin/mysql"
+export PATH="$ROOT/bin:$PATH"
 found_home="$(find "$ROOT" -mindepth 1 -maxdepth 2 -type d -name fe -printf '%h\n' | head -1)"
 test -n "$found_home" || fail "archive has no StarRocks FE layout"
 mv "$found_home" "$HOME_SR"

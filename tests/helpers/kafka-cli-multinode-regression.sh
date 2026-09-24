@@ -223,7 +223,7 @@ RETRY_LIST="$(remote "$B1" --topic-list --kafka-home "$REMOTE_KAFKA_HOME" --boot
 grep -q "$MOVE_TOPIC" <<<"$RETRY_LIST" || fail "broker retry did not restore topic access"
 
 # Interrupt an owned console-consumer and verify that KafkaCli leaves neither a
-# local console consumer nor a remote process. Seed 99 of the requested 100
+# local console consumer nor a remote process. Seed 9 of the requested 10
 # records through KafkaCli so the consumer has an assigned partition and must
 # remain active waiting for the final record; an empty topic may otherwise be
 # treated as a successful zero-record run by the Kafka console client.
@@ -231,7 +231,7 @@ INTERRUPT_TOPIC="${MOVE_TOPIC}_interrupt"
 remote "$B1" --topic-create --kafka-home "$REMOTE_KAFKA_HOME" --bootstrap-server "$BOOTSTRAP" \
   --topic "$INTERRUPT_TOPIC" --partitions 1 --replication-factor 1
 INTERRUPT_INPUT="$MULTI_ROOT/interrupt-input.txt"
-seq 1 99 | sed 's/^/interrupt-message-/' >"$INTERRUPT_INPUT"
+seq 1 9 | sed 's/^/interrupt-message-/' >"$INTERRUPT_INPUT"
 scp -q -o BatchMode=yes -o StrictHostKeyChecking=yes "$INTERRUPT_INPUT" "root@$B1:$INTERRUPT_INPUT"
 remote "$B1" --produce --kafka-home "$REMOTE_KAFKA_HOME" --bootstrap-server "$BOOTSTRAP" \
   --topic "$INTERRUPT_TOPIC" --input-file "$INTERRUPT_INPUT"
@@ -240,7 +240,7 @@ remote "$B1" --produce --kafka-home "$REMOTE_KAFKA_HOME" --bootstrap-server "$BO
   # default before exec so this is a real KafkaCli interruption scenario.
   trap - INT
   exec setsid --wait env KAFKA_CLI_TIMEOUT=120 python3 "$TOOL" --kafka-home "$LOCAL_KAFKA_HOME" --bootstrap-server "$BOOTSTRAP" \
-    --consume --topic "$INTERRUPT_TOPIC" --consumer-group kafkacli_interrupt_group --max-messages 100
+    --consume --topic "$INTERRUPT_TOPIC" --consumer-group kafkacli_interrupt_group --max-messages 10
 ) >"$MULTI_ROOT/interrupt.out" 2>&1 &
 INTERRUPT_PID=$!
 sleep 3

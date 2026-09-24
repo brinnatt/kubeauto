@@ -5,7 +5,8 @@ set -Eeuo pipefail
 TOOL=${KUBE_PUBLISH_TOOL:?KUBE_PUBLISH_TOOL is required}
 TARGETS=${KUBE_PUBLISH_TARGETS:-192.168.122.217:22 192.168.122.210-210:22 192.168.122.216:22}
 NAMESPACE=kubeauto-kp-live
-SOURCE_IMAGE=brinnatt/json-mock:v1.3.1
+SOURCE_IMAGE=hub.talkedu.cn/kubeauto/pause@sha256:1d048b53f4285cc9d20fbb8d7be785c50e9e4ccf4cf1194d9b176001862d900a
+SOURCE_PACK_IMAGE=hub.talkedu.cn/kubeauto/pause:3.10
 TEST_IMAGE=127.0.0.1:5000/kubeauto-kp-live:v1
 BASE=/tmp/kubeauto-kp-live
 PACK_DIR="$BASE/pack"
@@ -13,6 +14,20 @@ RECOVERY_DIR="$BASE/recovery"
 USER_FILE="$RECOVERY_DIR/customer-kept.txt"
 
 cli() { python3 "$TOOL" "$@"; }
+
+manifest_contains() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+import tarfile
+
+with tarfile.open(sys.argv[1], "r") as archive:
+    stream = archive.extractfile("manifest.json")
+    if stream is None:
+        raise SystemExit("manifest.json is not a regular file")
+    manifest = stream.read().decode("utf-8")
+raise SystemExit(0 if sys.argv[2] in manifest else 1)
+PY
+}
 
 remote_cleanup() {
   local host
@@ -53,11 +68,22 @@ mkdir -p "$PACK_DIR" "$RECOVERY_DIR"
 printf '%s\n' customer-data > "$USER_FILE"
 remote_cleanup
 
-# Fixture ownership: tag and publish a pre-existing local image under a unique test tag.
-docker image inspect "$SOURCE_IMAGE" >/dev/null
+# Fixture boundary: consume only the matrix-pinned TalkEdu artifact, then own the
+# temporary registry tag and every copy distributed by this run.
+SOURCE_REPO_DIGESTS=$(docker image inspect "$SOURCE_IMAGE" --format '{{json .RepoDigests}}')
+[[ "$SOURCE_REPO_DIGESTS" == *"\"$SOURCE_IMAGE\""* ]] || {
+  echo "KUBE_PUBLISH_FIXTURE_DIGEST_MISMATCH image=$SOURCE_IMAGE" >&2
+  exit 3
+}
+SOURCE_ID=$(docker image inspect "$SOURCE_IMAGE" --format '{{.Id}}')
+SOURCE_PACK_ID=$(docker image inspect "$SOURCE_PACK_IMAGE" --format '{{.Id}}')
+[[ "$SOURCE_PACK_ID" == "$SOURCE_ID" ]] || {
+  echo "KUBE_PUBLISH_FIXTURE_TAG_MISMATCH image=$SOURCE_PACK_IMAGE" >&2
+  exit 3
+}
 docker tag "$SOURCE_IMAGE" "$TEST_IMAGE"
 docker push "$TEST_IMAGE" >/dev/null
-SOURCE_ID=$(docker image inspect "$TEST_IMAGE" --format '{{.Id}}')
+[[ "$(docker image inspect "$TEST_IMAGE" --format '{{.Id}}')" == "$SOURCE_ID" ]]
 
 # download -> pack -> distribute validates Docker input, nerdctl namespace, host:port and range expansion.
 printf 'yes\n' | cli --delete "$TEST_IMAGE"
@@ -79,10 +105,10 @@ cat >"$BASE/config.json" <<EOF
 EOF
 CONFIG_DIR="$BASE/config-pack"
 mkdir -p "$CONFIG_DIR"
-cli --config "$BASE/config.json" --pack "$SOURCE_IMAGE" --output-dir "$CONFIG_DIR"
+cli --config "$BASE/config.json" --pack "$SOURCE_PACK_IMAGE" --output-dir "$CONFIG_DIR"
 CONFIG_TAR=$(find "$CONFIG_DIR" -maxdepth 1 -type f -name 'images_batch_*.tar' -print -quit)
-tar -xOf "$CONFIG_TAR" manifest.json | grep -F "$SOURCE_IMAGE" >/dev/null
-! tar -xOf "$CONFIG_TAR" manifest.json | grep -F "$TEST_IMAGE" >/dev/null
+manifest_contains "$CONFIG_TAR" "$SOURCE_PACK_IMAGE"
+! manifest_contains "$CONFIG_TAR" "$TEST_IMAGE"
 
 # Security checks must fail before runtime/SSH execution and not create the sentinel.
 SENTINEL=/tmp/kubeauto-kp-live-injected

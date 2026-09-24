@@ -58,6 +58,23 @@ class MigrationCliContractTests(unittest.TestCase):
         self.assertIn("/tmp/migration-live-regression.sh", helper)
         self.assertIn("/tmp/migration-live-report", helper)
 
+    def test_live_runner_uses_fixture_container_mysql_clients(self):
+        helper = (ROOT / "tests/helpers/migration-live-regression.sh").read_text()
+        runner = (ROOT / "tests/run_tools_regression.sh").read_text()
+        for name in ("tools-mig-client80", "tools-mig-client84", "tools-mig-client92"):
+            self.assertIn(name, helper)
+            self.assertIn(name, runner)
+        self.assertIn("-P13306) container=\"$CLIENT80\"", helper)
+        self.assertIn("-P13307) container=\"$CLIENT84\"", helper)
+        self.assertIn("-P13308) container=\"$CLIENT92\"", helper)
+        self.assertIn(
+            'exec docker exec -i "$container" mysql "$@"', helper
+        )
+        self.assertIn(
+            'exec docker exec -i "$container" mysqldump "$@"', helper
+        )
+        self.assertNotRegex(helper, r"(?m)^\s*mysql\s")
+
     def test_option_file_escapes_special_credentials_and_is_private(self):
         cfg = MOD.DatabaseConfig(
             host="db.example",

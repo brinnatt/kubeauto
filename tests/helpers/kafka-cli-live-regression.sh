@@ -10,6 +10,16 @@ run_sasl(){
   echo "+ KafkaCli SASL command (credentials injected through environment)"
   env KAFKA_SASL_USERNAME=kafkacli_user KAFKA_SASL_PASSWORD=kafkacli_secret "$@"
 }
+new_cluster_id(){
+  local output cluster_id
+  if ! output="$("$HOME_K/bin/kafka-storage.sh" random-uuid 2>&1)"; then
+    printf '%s\n' "$output" >&2
+    fail "kafka-storage random-uuid failed"
+  fi
+  cluster_id="$(printf '%s\n' "$output" | grep -E '^[A-Za-z0-9_-]{20,30}$' | tail -n 1 || true)"
+  [[ "$cluster_id" =~ ^[A-Za-z0-9_-]{20,30}$ ]] || fail "invalid cluster id"
+  printf '%s\n' "$cluster_id"
+}
 stop_broker(){
   [[ -f "$PIDFILE" ]] && kill "$(cat "$PIDFILE")" 2>/dev/null || true
   pkill -f "$HOME_K/bin/kafka.Kafka" 2>/dev/null || true
@@ -32,8 +42,8 @@ cleanup(){
 trap cleanup EXIT INT TERM
 
 rm -rf "$DATA" "$ROOT/config-fixture"; mkdir -p "$DATA/logs" "$DATA/meta"
-CID="$($HOME_K/bin/kafka-storage.sh random-uuid | tail -n 1)"
-[[ "$CID" =~ ^[A-Za-z0-9_-]{20,30}$ ]] || fail "invalid cluster id"
+echo "KAFKA_CLI_LIVE_STAGE standalone-cluster-id"
+CID="$(new_cluster_id)"
 run python3 "$TOOL" --deploy standalone --kafka-home "$HOME_K" --cluster-id "$CID" --node-id 1 --advertised-host 127.0.0.1 --log-dirs "$DATA/logs" --metadata-log-dir "$DATA/meta" --no-systemd --user root --group root
 CFG="$HOME_K/config/server-standalone.properties"; test -s "$CFG" || fail "generated config missing"
 start_broker
@@ -74,7 +84,7 @@ if grep -q kafkacli-message "$ROOT/error.log"; then fail "message leaked into er
 # commands without placing a password on a command line or in test output.
 clean_standalone
 rm -rf "$DATA"; mkdir -p "$DATA/logs" "$DATA/meta"
-CID="$($HOME_K/bin/kafka-storage.sh random-uuid | tail -n 1)"
+CID="$(new_cluster_id)"
 run_sasl python3 "$TOOL" --deploy standalone --deploy-sasl-plain --kafka-home "$HOME_K" --cluster-id "$CID" --node-id 1 --advertised-host 127.0.0.1 --log-dirs "$DATA/logs" --metadata-log-dir "$DATA/meta" --no-systemd --user root --group root
 test "$(stat -c %a "$HOME_K/config/kafkacli.client.properties")" = 600 || fail "SASL client properties mode"
 start_broker
@@ -92,7 +102,7 @@ rm -rf "$DATA" "$ROOT/pki"; mkdir -p "$DATA/logs" "$DATA/meta" "$ROOT/pki"
 keytool -genkeypair -noprompt -alias kafka -keyalg RSA -keysize 2048 -validity 2 -storetype PKCS12 -keystore "$ROOT/pki/kafka.p12" -storepass fixturepass -keypass fixturepass -dname 'CN=127.0.0.1' -ext 'SAN=ip:127.0.0.1' >"$ROOT/keytool.log" 2>&1
 keytool -exportcert -rfc -alias kafka -keystore "$ROOT/pki/kafka.p12" -storetype PKCS12 -storepass fixturepass -file "$ROOT/pki/kafka.crt" >>"$ROOT/keytool.log" 2>&1
 keytool -importcert -noprompt -alias kafka -file "$ROOT/pki/kafka.crt" -storetype PKCS12 -keystore "$ROOT/pki/trust.p12" -storepass fixturepass >>"$ROOT/keytool.log" 2>&1
-CID="$($HOME_K/bin/kafka-storage.sh random-uuid | tail -n 1)"
+CID="$(new_cluster_id)"
 run_sasl python3 "$TOOL" --deploy standalone --deploy-sasl-ssl --kafka-home "$HOME_K" --cluster-id "$CID" --node-id 1 --advertised-host 127.0.0.1 --log-dirs "$DATA/logs" --metadata-log-dir "$DATA/meta" --no-systemd --user root --group root --ssl-keystore-path "$ROOT/pki/kafka.p12" --ssl-keystore-password fixturepass --ssl-truststore-path "$ROOT/pki/trust.p12" --ssl-truststore-password fixturepass
 nohup "$HOME_K/bin/kafka-server-start.sh" "$HOME_K/config/server-standalone.properties" >"$ROOT/server.log" 2>&1 & echo $! >"$PIDFILE"
 for _ in $(seq 1 60); do (echo >/dev/tcp/127.0.0.1/9092) >/dev/null 2>&1 && break; sleep 1; done
@@ -106,7 +116,7 @@ grep -q ssl-message <<<"$SSL_OUT" || fail "SASL_SSL message readback"
 # fixture above and must remove its unit during scoped cleanup.
 clean_standalone
 rm -rf "$DATA"; mkdir -p "$DATA/logs" "$DATA/meta"
-CID="$($HOME_K/bin/kafka-storage.sh random-uuid | tail -n 1)"
+CID="$(new_cluster_id)"
 run python3 "$TOOL" --deploy standalone --kafka-home "$HOME_K" --cluster-id "$CID" --node-id 1 --advertised-host 127.0.0.1 --log-dirs "$DATA/logs" --metadata-log-dir "$DATA/meta" --user root --group root --verify
 systemctl is-active --quiet kafka-standalone.service || fail "systemd service is not active"
 clean_standalone
@@ -117,7 +127,7 @@ test ! -e /etc/systemd/system/kafka-standalone.service || fail "systemd unit lea
 # from the combined-node scenarios above.
 SPLIT="$ROOT/split"; CTRL_PORT=19093; BROKER_PORT=19092; CTRL_ID=10; BROKER_ID=11
 rm -rf "$SPLIT"; mkdir -p "$SPLIT/controller-meta" "$SPLIT/controller-logs" "$SPLIT/broker-logs"
-CID="$($HOME_K/bin/kafka-storage.sh random-uuid | tail -n 1)"
+CID="$(new_cluster_id)"
 run python3 "$TOOL" --deploy controller --controller-scope single --kafka-home "$HOME_K" --cluster-id "$CID" --node-id "$CTRL_ID" --advertised-host 127.0.0.1 --controller-listen-host 0.0.0.0 --controller-listen-port "$CTRL_PORT" --controller-quorum-bootstrap-servers "127.0.0.1:$CTRL_PORT" --metadata-log-dir "$SPLIT/controller-meta" --log-dirs "$SPLIT/controller-logs" --no-systemd --user root --group root
 nohup "$HOME_K/bin/kafka-server-start.sh" "$HOME_K/config/controller-${CTRL_ID}.properties" >"$SPLIT/controller.log" 2>&1 &
 for _ in $(seq 1 60); do (echo >/dev/tcp/127.0.0.1/$CTRL_PORT) >/dev/null 2>&1 && break; sleep 1; done

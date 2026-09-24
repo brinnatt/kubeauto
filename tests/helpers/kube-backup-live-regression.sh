@@ -59,7 +59,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
+        image: hub.talkedu.cn/kubeauto/busybox@sha256:3e0b302381acd9c4092a89b51ccc8727534f044b2b3db17f55575e27f62ec6cc
         command: ["sh", "-c", "sleep 3600"]
         env:
         - {name: DOMAIN_NAME, value: api.kb-fixture}
@@ -110,7 +110,16 @@ primary="$WORKDIR/primary"
 
 run_tool backup "${common[@]}" --namespace "$SOURCE_NS" --resources deployments,services,configmaps,secrets,roles,rolebindings --label-selector 'app=kb-demo,tier=backend' --tar --backup-name primary --output-dir "$WORKDIR" --max-workers 8
 test -f "$primary.tar.gz"
-tar -tzf "$primary.tar.gz" | grep -q 'backup-metadata.json'
+"$PYTHON_BIN" - "$primary.tar.gz" <<'PY'
+import pathlib
+import sys
+import tarfile
+
+with tarfile.open(sys.argv[1], mode="r:gz") as archive:
+    if not any(pathlib.PurePosixPath(member.name).name == "backup-metadata.json"
+               for member in archive.getmembers()):
+        raise SystemExit("backup archive is missing backup-metadata.json")
+PY
 "$PYTHON_BIN" - "$primary" <<'PY'
 import pathlib, sys, yaml
 base = pathlib.Path(sys.argv[1])

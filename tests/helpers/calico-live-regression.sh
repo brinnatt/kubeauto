@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 TOOL=${CALICO_TOOL:?CALICO_TOOL is required}
 CTX=${CALICO_CONTEXT:-context-cluster1}
-NS=monitor
+NS=kubeauto-tools-calico-live
 DENY_HOST=${CALICO_DENY_HOST:-192.168.122.193}
 HOST_POLICY=kubeauto-delivery-cal-host-39091
 BOTH_POLICY=kubeauto-delivery-cal-both-39093
@@ -19,6 +19,7 @@ PORT_HOST=39091
 PORT_POD=39092
 PORT_BOTH=39093
 HTTP_PIDS=()
+NS_CREATED=0
 
 cli() {
   python3 "$TOOL" --no-log-file --context "$CTX" "$@"
@@ -34,9 +35,14 @@ cleanup() {
   cli delete --traffic-layer pod --port "$PORT_POD" -n "$NS" --k8s-np-name "$HOST_NP" >/dev/null 2>&1 || true
   cli delete --traffic-layer pod --port "$PORT_BOTH" -n "$NS" --k8s-np-name "$BOTH_NP" >/dev/null 2>&1 || true
   kubectl delete pod "$POD" "$PROBE" "$DENY_PROBE" -n "$NS" --ignore-not-found >/dev/null 2>&1 || true
+  if [[ "$NS_CREATED" -eq 1 ]]; then
+    kubectl delete namespace "$NS" --ignore-not-found --wait=true >/dev/null 2>&1 || true
+  fi
   rm -rf "$BACKUP" /tmp/calico-delivery-fail-calicoctl.sh /tmp/calico-delivery-fail-count
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 monitor_clean() {
   local bad
@@ -60,6 +66,23 @@ test_port() {
   fi
 }
 
+wait_pod_ready() {
+  local pod=$1
+  if ! kubectl wait --for=condition=Ready "pod/$pod" -n "$NS" --timeout=120s; then
+    kubectl get pod "$pod" -n "$NS" -o wide >&2 || true
+    kubectl describe pod "$pod" -n "$NS" >&2 || true
+    kubectl get events -n "$NS" --sort-by=.lastTimestamp >&2 || true
+    return 1
+  fi
+}
+
+if kubectl get namespace "$NS" >/dev/null 2>&1; then
+  echo "CALICO_LIVE_NAMESPACE_NOT_CLEAN namespace=$NS" >&2
+  exit 1
+fi
+kubectl create namespace "$NS" >/dev/null
+NS_CREATED=1
+echo "CALICO_LIVE_NAMESPACE_CREATED namespace=$NS"
 monitor_clean
 rm -rf "$BACKUP"
 mkdir -p "$BACKUP"
@@ -101,10 +124,10 @@ metadata:
 spec:
   containers:
   - name: http
-    image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
+    image: hub.talkedu.cn/kubeauto/busybox@sha256:3e0b302381acd9c4092a89b51ccc8727534f044b2b3db17f55575e27f62ec6cc
     command: ["sh", "-c", "echo calico-delivery > /tmp/index.html; httpd -f -p $PORT_POD -h /tmp & httpd -f -p $PORT_BOTH -h /tmp; wait"]
 YAML
-kubectl wait --for=condition=Ready pod/"$POD" -n "$NS" --timeout=120s
+wait_pod_ready "$POD"
 POD_IP=$(kubectl get pod "$POD" -n "$NS" -o jsonpath='{.status.podIP}')
 cat <<YAML | kubectl apply -f -
 apiVersion: v1
@@ -115,10 +138,10 @@ metadata:
 spec:
   containers:
   - name: probe
-    image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
+    image: hub.talkedu.cn/kubeauto/busybox@sha256:3e0b302381acd9c4092a89b51ccc8727534f044b2b3db17f55575e27f62ec6cc
     command: ["sh", "-c", "sleep 3600"]
 YAML
-kubectl wait --for=condition=Ready pod/"$PROBE" -n "$NS" --timeout=120s
+wait_pod_ready "$PROBE"
 PROBE_IP=$(kubectl get pod "$PROBE" -n "$NS" -o jsonpath='{.status.podIP}')
 cat <<YAML | kubectl apply -f -
 apiVersion: v1
@@ -129,10 +152,10 @@ metadata:
 spec:
   containers:
   - name: probe
-    image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
+    image: hub.talkedu.cn/kubeauto/busybox@sha256:3e0b302381acd9c4092a89b51ccc8727534f044b2b3db17f55575e27f62ec6cc
     command: ["sh", "-c", "sleep 3600"]
 YAML
-kubectl wait --for=condition=Ready pod/"$DENY_PROBE" -n "$NS" --timeout=120s
+wait_pod_ready "$DENY_PROBE"
 cli plan --traffic-layer pod -n "$NS" --pod-label kubeauto-calico-delivery=target \
   --k8s-np-name "$HOST_NP" -a "$PROBE_IP/32" --port "$PORT_POD" >/tmp/calico-pod-plan.yaml
 grep -q 'kind: NetworkPolicy' /tmp/calico-pod-plan.yaml

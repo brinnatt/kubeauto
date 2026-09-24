@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = ROOT / "tools" / "k8stools" / "KubePublishCli.py"
+LIVE_FIXTURE = ROOT / "tests" / "helpers" / "kube-publish-live-regression.sh"
 
 
 def load_tool_module():
@@ -70,6 +71,22 @@ class KubePublishCliContractTests(unittest.TestCase):
     def test_partial_remote_distribution_is_failure(self):
         source = TOOL.read_text(encoding="utf-8")
         self.assertIn("if success_hosts == len(hosts):", source)
+
+    def test_live_fixture_uses_an_immutable_talkedu_image(self):
+        fixture = LIVE_FIXTURE.read_text(encoding="utf-8")
+        self.assertIn(
+            "hub.talkedu.cn/kubeauto/pause@sha256:"
+            "1d048b53f4285cc9d20fbb8d7be785c50e9e4ccf4cf1194d9b176001862d900a",
+            fixture,
+        )
+        self.assertIn("KUBE_PUBLISH_FIXTURE_DIGEST_MISMATCH", fixture)
+        self.assertIn(".RepoDigests", fixture)
+        self.assertNotIn("brinnatt/json-mock", fixture)
+
+    def test_live_fixture_reads_manifests_with_the_python_standard_library(self):
+        fixture = LIVE_FIXTURE.read_text(encoding="utf-8")
+        self.assertIn("import tarfile", fixture)
+        self.assertNotIn("tar -xOf", fixture)
 
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@ ROOT=/tmp/tools-mbk-live
 MYSQL_CTN=tools-mbk-mysql
 PXB_IMAGE="${MYBACKUP_PXB_IMAGE:-hub.talkedu.cn/kubeauto/percona-xtrabackup:8.4.0-5.1}"
 MYSQL_IMAGE="${MYBACKUP_MYSQL_IMAGE:-hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4}"
-PXB_DIGEST="${MYBACKUP_PXB_DIGEST:-sha256:add39f4f46a5f6712527d0cedff99b85f9867339d557acf2796563413b3865ea}"
-MYSQL_DIGEST="${MYBACKUP_MYSQL_DIGEST:-sha256:0a3e659b9fb960330299e2a1847414f6185c573a3fd2cf1320221066904ea77d}"
+PXB_DIGEST="${MYBACKUP_PXB_DIGEST:-sha256:6f3f3735320eb77e7bb00300b37efd9a0cc797c34e2c637a2f687c77504d94b5}"
+MYSQL_DIGEST="${MYBACKUP_MYSQL_DIGEST:-sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83}"
 PASSWORD='ToolPass_8_4'; CONFIG="$ROOT/backup.json"; MARKER='mybackup_fixture'
 cleanup() {
   set +e
@@ -19,6 +19,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 docker rm -f "$MYSQL_CTN" >/dev/null 2>&1 || true; rm -rf "$ROOT"; mkdir -p "$ROOT/mysql" "$ROOT/bin"; chown 999:999 "$ROOT/mysql"
+timeout --signal=TERM --kill-after=15s 20m docker pull "$PXB_IMAGE"
+timeout --signal=TERM --kill-after=15s 20m docker pull "$MYSQL_IMAGE"
 pxb_repo_digests="$(docker image inspect "$PXB_IMAGE" --format '{{json .RepoDigests}}')"
 mysql_repo_digests="$(docker image inspect "$MYSQL_IMAGE" --format '{{json .RepoDigests}}')"
 [[ "$pxb_repo_digests" == *"hub.talkedu.cn/kubeauto/percona-xtrabackup@$PXB_DIGEST"* ]] || { echo "MYBACKUP_FIXTURE_DIGEST_MISMATCH kind=pxb expected=$PXB_DIGEST actual=$pxb_repo_digests" >&2; exit 3; }

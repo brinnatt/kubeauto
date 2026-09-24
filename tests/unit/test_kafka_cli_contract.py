@@ -100,6 +100,10 @@ class KafkaCliContractTest(unittest.TestCase):
 
     def test_interrupt_fixture_uses_reliable_term_and_exits_nonzero(self):
         text = (ROOT / "tests/helpers/kafka-cli-multinode-regression.sh").read_text()
+        self.assertIn("seq 1 9 |", text)
+        self.assertIn("--max-messages 10", text)
+        self.assertNotIn("seq 1 99 |", text)
+        self.assertNotIn("--max-messages 100", text)
         self.assertIn("trap - INT", text)
         self.assertIn("exec setsid --wait env KAFKA_CLI_TIMEOUT", text)
         self.assertIn("INTERRUPT_FRONTIER=", text)

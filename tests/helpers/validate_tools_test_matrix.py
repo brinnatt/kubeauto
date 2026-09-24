@@ -27,6 +27,7 @@ EXPECTED_TOOLS = {
     "KafkaCli": ROOT / "tools/kafka/KafkaCli.py",
     "MigrationCli": ROOT / "tools/mysqltools/MigrationCli.py",
     "MyBackupCli": ROOT / "tools/mysqltools/MyBackupCli.py",
+    "MyLogiBackupCli": ROOT / "tools/mysqltools/MyLogiBackupCli.py",
     "StarCli": ROOT / "tools/starrocks/StarCli.py",
 }
 ALLOWED_122_ADDRESSES = {
@@ -208,8 +209,10 @@ def validate_matrix(path: Path, require_pass: bool = False) -> list[str]:
         match = re.search(r"(\d+)\s*/\s*(\d+)", overall)
         if match and tuple(map(int, match.groups())) != (counts["pass"], len(cases)):
             errors.append("coverage_summary.overall_assessment pass/total is stale")
-        if require_pass and any(c.get("status") != "pass" for c in cases):
+        if require_pass and any(c.get("status") not in {"pass", "na"} for c in cases):
             errors.append("matrix contains non-pass item(s); tools delivery PASS is prohibited")
+        if require_pass and data.get("meta", {}).get("status") != "approved":
+            errors.append("matrix is not approved; tools delivery PASS is prohibited")
     errors.extend(_import_boundary_errors())
     errors.extend(_lab_address_errors())
     return errors

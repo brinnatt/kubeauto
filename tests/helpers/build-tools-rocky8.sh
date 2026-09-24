@@ -8,7 +8,7 @@ PRIMARY_IMAGE="docker.sparkcr.cn/rockylinux/rockylinux:8.10"
 HUAWEI_IMAGE="swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/rockylinux/rockylinux:8.10"
 FALLBACK_IMAGE="rockylinux/rockylinux:8.10"
 CONTAINER=kubeauto-rocky8-tools-build
-TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
+TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 
 [[ "$SOURCE" == /tmp/kubeauto-rocky8-build-source ]]
 [[ "$OUTPUT" == /tmp/kubeauto-rocky8-tools-output ]]
