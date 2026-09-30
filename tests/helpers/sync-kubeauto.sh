@@ -43,7 +43,12 @@ rsync -az \
   -e "$RSYNC_SSH" \
   "$SRC/" "${TARGET}:${REMOTE_BASE}/"
 
-ssh "${SSH_OPTIONS[@]}" "$TARGET" "bash -s" <<REMOTE
+REMOTE_SETUP_ENV=()
+if [[ -n "${KUBEAUTO_SYNC_PIP_INDEX_URL:-}" ]]; then
+  printf -v PIP_INDEX_QUOTED '%q' "$KUBEAUTO_SYNC_PIP_INDEX_URL"
+  REMOTE_SETUP_ENV+=("PIP_INDEX_URL=$PIP_INDEX_QUOTED")
+fi
+ssh "${SSH_OPTIONS[@]}" "$TARGET" "env ${REMOTE_SETUP_ENV[*]} bash -s" <<REMOTE
 set -euo pipefail
 if [[ "${KUBEAUTO_SYNC_SKIP_CONTROL_SETUP:-0}" == 1 ]]; then
   test -f /usr/local/kubeauto/kubecli.py

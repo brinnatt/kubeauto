@@ -1,0 +1,28 @@
+- name: Validate and prepare Ceph hosts
+  hosts: ceph
+  any_errors_fatal: true
+  gather_facts: "{{ ceph_install | default('no') | string | lower == 'yes' }}"
+  become: true
+  roles:
+    - role: ceph
+      ceph_phase: prepare
+      when: ceph_install | default('no') | string | lower == 'yes'
+
+- name: Bootstrap and reconcile the cephadm cluster
+  hosts: ceph_bootstrap
+  gather_facts: "{{ ceph_install | default('no') | string | lower == 'yes' }}"
+  become: true
+  roles:
+    - role: ceph
+      ceph_phase: cluster
+      when: ceph_install | default('no') | string | lower == 'yes'
+
+- name: Reconcile external Ceph-CSI on Kubernetes
+  hosts: localhost
+  gather_facts: "{{ ceph_install | default('no') | string | lower == 'yes' and ceph_csi_install | default('no') | string | lower == 'yes' }}"
+  roles:
+    - role: ceph
+      ceph_phase: csi
+      when:
+        - ceph_install | default('no') | string | lower == 'yes'
+        - ceph_csi_install | default('no') | string | lower == 'yes'

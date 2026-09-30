@@ -1,0 +1,67 @@
+commonLabels:
+  app.kubernetes.io/managed-by: kubeauto
+  kubeauto.io/component: ceph-csi
+
+configMapName: ceph-csi-rbd-config
+cephConfConfigMapName: ceph-csi-rbd-ceph-conf
+kmsConfigMapName: ceph-csi-rbd-encryption-kms-config
+
+csiConfig:
+  - clusterID: {{ ceph_cluster_fsid.stdout | trim }}
+    monitors:
+{% for mon in (ceph_mon_dump.stdout | from_json).mons %}
+      - "{{ (mon.public_addrs.addrvec | selectattr('type', 'equalto', 'v2') | map(attribute='addr') | first) | regex_replace('/[0-9]+$', '') }}"
+{% endfor %}
+
+nodeplugin:
+  registrar:
+    image:
+      repository: registry.talkschool.cn:5000/brinnatt/csi-node-driver-registrar
+      tag: {{ ceph_csi_registrar_ver }}
+      pullPolicy: IfNotPresent
+  plugin:
+    image:
+      repository: registry.talkschool.cn:5000/brinnatt/cephcsi
+      tag: {{ ceph_csi_ver }}
+      pullPolicy: IfNotPresent
+
+provisioner:
+  replicaCount: {{ ceph_csi_provisioner_replicas | int }}
+  provisioner:
+    image:
+      repository: registry.talkschool.cn:5000/brinnatt/csi-provisioner
+      tag: {{ ceph_csi_provisioner_ver }}
+      pullPolicy: IfNotPresent
+  attacher:
+    image:
+      repository: registry.talkschool.cn:5000/brinnatt/csi-attacher
+      tag: {{ ceph_csi_attacher_ver }}
+      pullPolicy: IfNotPresent
+  resizer:
+    image:
+      repository: registry.talkschool.cn:5000/brinnatt/csi-resizer
+      tag: {{ ceph_csi_resizer_ver }}
+      pullPolicy: IfNotPresent
+  snapshotter:
+    image:
+      repository: registry.talkschool.cn:5000/brinnatt/csi-snapshotter
+      tag: {{ ceph_csi_snapshotter_ver }}
+      pullPolicy: IfNotPresent
+
+storageClass:
+  create: true
+  name: {{ ceph_csi_rbd_storage_class }}
+  clusterID: {{ ceph_cluster_fsid.stdout | trim }}
+  pool: {{ ceph_csi_rbd_pool }}
+  imageFeatures: layering
+  provisionerSecret: csi-rbd-secret
+  controllerExpandSecret: csi-rbd-secret
+  controllerPublishSecret: csi-rbd-secret
+  nodeStageSecret: csi-rbd-secret
+  reclaimPolicy: Delete
+  allowVolumeExpansion: true
+  fstype: ext4
+
+secret:
+  create: false
+  name: csi-rbd-secret

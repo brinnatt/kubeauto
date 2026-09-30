@@ -21,6 +21,34 @@
 192.168.1.4 k8s_nodename='worker-01'
 192.168.1.5 k8s_nodename='worker-02'
 
+# [optional] independent Ceph hosts. Repeat the same host in its service-role
+# groups. OSD paths must be stable /dev/disk/by-id entries; never use /dev/sdX.
+[ceph]
+#192.168.2.11 ceph_hostname='ceph-01' ceph_devices='/dev/disk/by-id/wwn-DISK1,/dev/disk/by-id/wwn-DISK2' ceph_device_ids='SERIAL1,SERIAL2' ceph_db_devices='/dev/disk/by-id/wwn-DB1' ceph_db_device_ids='DBSERIAL1'
+#192.168.2.12 ceph_hostname='ceph-02' ceph_devices='/dev/disk/by-id/wwn-DISK3,/dev/disk/by-id/wwn-DISK4' ceph_device_ids='SERIAL3,SERIAL4' ceph_db_devices='/dev/disk/by-id/wwn-DB2' ceph_db_device_ids='DBSERIAL2'
+#192.168.2.13 ceph_hostname='ceph-03' ceph_devices='/dev/disk/by-id/wwn-DISK5,/dev/disk/by-id/wwn-DISK6' ceph_device_ids='SERIAL5,SERIAL6' ceph_db_devices='/dev/disk/by-id/wwn-DB3' ceph_db_device_ids='DBSERIAL3'
+
+[ceph_bootstrap]
+#192.168.2.11
+
+[ceph_mon]
+#192.168.2.11
+#192.168.2.12
+#192.168.2.13
+
+[ceph_mgr]
+#192.168.2.11
+#192.168.2.12
+
+[ceph_osd]
+#192.168.2.11
+#192.168.2.12
+#192.168.2.13
+
+[ceph_rgw]
+#192.168.2.11
+#192.168.2.12
+
 # [optional] harbor server, a private docker registry
 # 'NEW_INSTALL': 'true' to install a harbor server; 'false' to integrate with existed one
 [harbor]

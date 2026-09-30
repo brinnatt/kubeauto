@@ -1,0 +1,17 @@
+- name: Validate Ceph role phase
+  ansible.builtin.assert:
+    that:
+      - ceph_phase in ['prepare', 'cluster', 'csi']
+    fail_msg: "ceph_phase must be prepare, cluster or csi"
+
+- name: Run Ceph host preparation
+  ansible.builtin.include_tasks: prepare.yml
+  when: ceph_phase == 'prepare'
+
+- name: Run cephadm cluster reconciliation
+  ansible.builtin.include_tasks: cluster.yml
+  when: ceph_phase == 'cluster'
+
+- name: Run external Ceph-CSI reconciliation
+  ansible.builtin.include_tasks: csi.yml
+  when: ceph_phase == 'csi'

@@ -129,7 +129,110 @@ which cephadm
 cephadm version
 ```
 
-官方最低运行条件是 Python 3.6；出现 `bad interpreter` 时先验证实际解释器，可用 `python3.8 ./cephadm <args>` 诊断。生产支持范围仍以目标 OS、Ceph 构建和安全维护中的 Python 组合为准，不能因为达到 3.6 就忽略已 EOL 的解释器。
+官方安装文档中的 Python 3.6 下限不能直接用于本项目固定的 `20.2.4` executable：该制品内置依赖要求 Python 3.8 及以上，Python 3.6 无法执行。必须使用发行版维护的解释器实际执行 `cephadm version` 验证，不以系统 `python3` 的名称推断兼容性，也不替换系统 Python。
+
+### 3.3 Kubeauto 声明式部署入口
+
+Kubeauto 使用 cephadm 管理 Ceph daemon，使用独立的 `08` 步骤执行主机准入、
+集群声明收敛及可选 Ceph-CSI 接入。以下路径适用于由 Kubeauto 管理的集群；
+后续原生 Ceph 命令用于诊断、验收或有变更记录的运维，不替代产品部署入口。
+
+在控制机创建集群配置目录：
+
+```bash
+CLUSTER=production-ceph
+kubecli new "$CLUSTER"
+```
+
+编辑 `/usr/local/kubeauto/clusters/production-ceph/hosts`，按
+`conf/hosts.multi-node` 的 Ceph 分组定义 bootstrap、MON、MGR、OSD 和可选 RGW
+主机。`ceph_hostname` 必须与远端主机名相同；每台 OSD 主机的 `ceph_devices`
+与 `ceph_device_ids` 一一对应，使用 `/dev/disk/by-id/` 路径及实际 WWN/serial。
+独立 DB 盘通过 `ceph_db_devices` 和 `ceph_db_device_ids` 声明。
+不得选择系统盘、已挂载设备或含未知数据的设备，也不得以扫描全部空盘替代显式声明。
+
+在同目录 `config.yml` 中启用所需能力，并将网络替换为实际规划值：
+
+```yaml
+ceph_install: "yes"
+ceph_container_runtime: "auto"
+ceph_public_network: "10.20.0.0/24"
+ceph_cluster_network: "10.21.0.0/24"
+ceph_replication_size: 3
+ceph_monitoring_install: "yes"
+ceph_dashboard_install: "yes"
+ceph_rgw_install: "yes"
+ceph_csi_install: "yes"
+```
+
+制品准备与部署通过同一产品入口执行：
+
+```bash
+kubecli download -D
+kubecli download -E ceph
+kubecli setup "$CLUSTER" 08
+```
+
+下载入口优先使用 TalkEdu 固定镜像，保留已登记的上游回退。cephadm 由
+`kubeauto-ext-bin:1.16.0` 打包官方 `20.2.4` 可执行文件，经既有制品提取路径
+取得；构建和安装前均须匹配固定 SHA256。安装后按本章控制面、服务收敛和
+业务读写标准验收。
+
+`ceph_container_runtime` 支持 `auto`、`podman`、`docker`。自动模式优先复用已安装的
+Podman，其次 Docker；无运行时时 Ubuntu 20 使用项目既有 Docker 制品安装路径，
+其他发行版安装原生 Podman。显式选择 Podman 时仍须满足其版本要求。
+RPM、DEB 和 SUSE 主机分别使用本发行版包管理器安装依赖；Debian 系使用 `dmsetup`，
+不使用 RPM 包名 `device-mapper`。时间服务按发行版使用 `chrony` 或 `chronyd`。
+
+Kubeauto 将 checksum 不变的 cephadm 保存于 `/usr/local/libexec/kubeauto/cephadm`，
+选择能实际执行该制品的 Python，并通过 `/usr/local/sbin/cephadm` 启动。
+RHEL 8 系安装独立的 `python39`，不修改系统解释器。MGR 使用上游
+`cephadm-package` 模式，经 `/usr/bin/cephadm` 调用同一启动入口，避免远程执行重新
+选用不兼容的系统 Python。已有发行版 cephadm 不会被静默覆盖。
+该模式在官方源码中固定使用 SSH 用户 `cephadm`，并不采用 `root` 用户设置。
+产品创建无登录密码的专用系统账号，以独立公钥认证并授予上游要求的免密 root sudo；
+已有非本产品所有的同名账号会被拒绝，不会被接管。账号、私钥和 sudo 配置须按
+特权管理凭据保护，不得将该账号用于普通登录或其他应用。
+Ubuntu 26.04 的 Python 3.14 目标需要固定的 Ansible core 2.20 执行环境；
+产品仅在原生 Ansible 与既有 2.18 执行环境均无法运行目标模块时选用它。
+
+> **升级责任：** 此模式不依赖 MGR 分发宿主 cephadm。升级制品基线时必须先更新
+> 所有宿主的固定制品、校验值和启动入口，再执行 daemon 升级；仅改变容器镜像不能
+> 替代宿主制品升级。`08` 的再次执行仍检查已有 FSID、磁盘归属和实际版本。
+
+> **前置条件：** 启用 Ceph-CSI 时，目标 Kubernetes 集群必须已就绪，
+> 同目录的 `kubectl.kubeconfig` 必须有效；新建 Kubernetes 与 Ceph 的组合部署
+> 可使用 `kubecli setup "$CLUSTER" 90`。仅部署外部 Ceph 时设置
+> `ceph_csi_install: "no"`，不要求 Kubernetes API。
+>
+> **客户端兼容：** Ceph 20.2.4 新建集群使用 `aes256k` CephX 密钥；Ceph-CSI
+> 固定为官方修复该认证兼容问题的 `v3.17.1`，使用同版本 Chart。
+> 官方列出的 `v3.17.1` 已测试 Kubernetes 版本为 1.34–1.36；本产品固定的
+> Kubernetes 1.33.6 不在该列表中，不能将组件 GA 状态等同于该组合的官方验证。
+> 该组合须取得当前完整现场回归证据后才能用于生产，并在升级时重新核验兼容性。
+>
+> RBD 与 CephFS
+> 默认 CSI 身份使用 `aes256k`，此时 RBD 与 CephFS 内核客户端必须同时支持
+> 安全 msgr2 和 `aes256k`。
+> 新密钥类型的上游内核支持始于 Linux 7.0；企业内核须核验发行版回补及实际模块，
+> 不能由 Rocky 8/9/10 或 Ubuntu 22/24/26 的发行版名称推断支持。
+> 无此能力的节点可安装发行版支持且带回补的内核并重启；普通更新/HWE 不保证具备。
+> 对无法升级内核的既有环境，可显式设置 `ceph_csi_client_key_type: "aes"` 与
+> `ceph_csi_legacy_aes_risk_accepted: "yes"`，继续使用 GA 的内核 RBD/CephFS
+> 客户端，仍须具备安全 msgr2。此选项仅给两个最小权限 CSI 身份使用旧 CephX
+> 凭据；MON 的新凭据首选类型和服务票据仍为 `aes256k`，创建后关闭旧密钥创建许可。
+> 旧 `aes` 凭据受 CVE-2025-30156 影响，集群将产生安全告警；应限制 Ceph
+> 网络访问、保护 CSI Secret，并在内核可用后安排密钥迁移。该风险提示不是安全等效
+> 声明。任何路径均需实际挂载、故障恢复和性能验收。产品不会自动升级目标内核、
+> 降低 msgr2 传输安全或切换至 Alpha RBD-NBD。
+>
+> **部署边界：** 默认主方案使用独立 Ceph 存储节点与外部 Kubernetes CSI。
+> 不得将未调整端口的默认配置直接用于混部：RGW 与 RBD CSI 节点指标均使用
+> 宿主机 `8080`，Ceph Alertmanager 集群监听与 Calico 控制器指标均使用
+> `9094`。混部需单独规划端口、内存与调度并验证，不属于本主方案验收范围。
+>
+> **异常处理：** 制品校验、设备身份或已有集群所有权检查失败时停止部署，
+> 保留首个失败和原始数据。不得绕过 checksum 或磁盘准入断言。
 
 ## 4. Bootstrap 控制面
 
@@ -3051,5 +3154,18 @@ Ceph Tentacle cephadm 参考资料包括：
 - `certmgr.rst`、`client-setup.rst`、`upgrade.rst`、`adoption.rst`。
 
 开发与设计参考资料包括 `doc/dev/cephadm/` 下的 `index.rst`、`compliance-check.rst`、`host-maintenance.rst`、`scalability-notes.rst`、`developing-cephadm.rst`、`design/storage_devices_and_osds.rst`，以及 RST `autoclass` 动态展开的 `ServiceSpec`、`DriveGroupSpec` 和相关校验源码。设计提案不构成现有功能承诺。
+
+宿主执行模式依据 Ceph v20.2.4 `src/pybind/mgr/cephadm/serve.py`
+的 `cephadm-package` 分支及 `/usr/bin/cephadm` 入口。
+官方源码地址：`https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/cephadm/serve.py`。
+控制端与受管端 Python 范围依据 Ansible 官方兼容表
+`https://docs.ansible.com/projects/ansible-core/devel/reference_appendices/release_and_maintenance.html`；
+Ansible 2.20/2.21 支持受管端 Python 3.9–3.14，不据此放宽旧版 Ansible 的范围。
+
+Ceph-CSI 新密钥兼容修复依据官方 `v3.17.1` 发布说明
+`https://github.com/ceph/ceph-csi/releases/tag/v3.17.1`。
+CephX 安全边界依据 CVE-2025-30156 公告
+`https://docs.ceph.com/en/latest/security/CVE-2025-30156/`；
+内核实现依据 `https://github.com/torvalds/linux/blob/v7.0/net/ceph/crypto.c`。
 
 文档版本：Ceph Tentacle。RST 示例与同版本可执行 schema 冲突时，以 schema 为准。Ceph Authors and Contributors，文档许可 CC BY-SA 3.0。

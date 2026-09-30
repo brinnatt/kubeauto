@@ -1,6 +1,6 @@
 # Kubeauto 存储分路
 
-存储分路是与 `docs/middleware/` 完全独立的产品分路。它不复用中间件的文档类型、专项矩阵或状态词；每个存储技术栈按官方产品模块组织文档。当前首个技术栈为 Ceph Tentacle，严格对应官方九个入口：
+存储分路是与 `docs/middleware/` 完全独立的产品分路。它不复用中间件的三文件文档类型；每个存储技术栈按官方产品模块组织文档。当前首个技术栈为 Ceph Tentacle，严格对应官方九个入口：
 
 | # | Ceph 模块 | 本项目文档 |
 |---:|---|---|
@@ -30,4 +30,4 @@ flowchart LR
     C & D & E --> F[存储分路文档]
 ```
 
-Ceph 的对象、块、文件接口共用 RADOS 数据平面；cephadm 负责集群生命周期，MGR/ Dashboard/ Monitoring 提供控制、管理和观测能力。文档中的命令用于理解官方行为和后续产品实现设计，尚不表示 kubeauto 已经交付 Ceph 安装或 CSI 集成。
+Ceph 的对象、块、文件接口共用 RADOS 数据平面；cephadm 负责集群生命周期，MGR/ Dashboard/ Monitoring 提供控制、管理和观测能力。Kubeauto 的 Cephadm 与外置 Ceph-CSI 实现已进入验证，当前 28 项专项矩阵仍为 pending；这些文档及未完成的现场验证均不表示已经交付。

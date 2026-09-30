@@ -104,7 +104,7 @@ flowchart TB
 | 存储分路 | **Ceph Tentacle 九个官方模块** | [存储分路入口](./storage/README.md) |
 | 附录 A | 版本矩阵与官方文档索引 | [whitepaper/A-version-matrix.md](./whitepaper/A-version-matrix.md) |
 
-跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。独立中间件文档从[中间件文档入口](./middleware/README.md)进入；Ceph 等存储技术从完全独立的[存储分路入口](./storage/README.md)进入。Ceph 当前仅提供官方 Tentacle 九模块知识文档，不宣称 kubeauto 已实现其安装、CSI 或现场验收。
+跨组件集中检索见[技术栈导航与文档覆盖矩阵](./technology-stack-index.md)。独立中间件文档从[中间件文档入口](./middleware/README.md)进入；Ceph 等存储技术从完全独立的[存储分路入口](./storage/README.md)进入。Cephadm 独立集群与外置 Ceph-CSI 已进入实现验证，专项矩阵仍为 pending；九模块文档结构保持独立，现场门禁完成前不宣称交付。
 
 ---
 

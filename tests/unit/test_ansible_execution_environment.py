@@ -264,6 +264,85 @@ class TestExecutionEnvironmentRunner(unittest.TestCase):
         native_run.assert_not_called()
         ee_run.assert_called_once()
 
+    def test_python314_target_uses_220_only_after_native_and_218_fail(self):
+        manager = ClusterManager.__new__(ClusterManager)
+        manager.clusters_dir = Path("/unused")
+        manager.base_path = Path("/usr/local/kubeauto")
+        manager.kube_constant = SimpleNamespace(v_ansible_core="2.18.6")
+        inventory = Path("/tmp/python314-target.hosts")
+        ee_inventory = Path("/tmp/python314-ee.hosts")
+        ee_result = SimpleNamespace(rc=0)
+        with (
+            patch("service.cluster.manager.ansible_python_policy") as native_policy,
+            patch(
+                "service.cluster.manager._prepare_inventory_with_python",
+                side_effect=[
+                    NoCompatibleAnsibleTargetPython("2.16", "3.6-3.12", ["python314-target"]),
+                    NoCompatibleAnsibleTargetPython("2.18", "3.8-3.13", ["python314-target"]),
+                    ee_inventory,
+                ],
+            ) as prepare,
+            patch.object(manager, "_write_ansible_cfg"),
+            patch.object(manager, "_ansible_runner_envvars", return_value={}),
+            patch.object(
+                manager, "_run_playbook_in_execution_environment", return_value=ee_result
+            ) as ee_run,
+            patch("service.cluster.manager.ansible_runner.run") as native_run,
+            patch("service.cluster.manager.get_host_ip", return_value="192.168.47.130"),
+        ):
+            result = manager._run_playbook(
+                "cluster", Path("/tmp/playbook.yml"), inventory=inventory, extra_vars={}
+            )
+
+        self.assertIs(result, ee_result)
+        self.assertEqual([call.args[1].core_version for call in prepare.call_args_list[1:]],
+                         [(2, 18), (2, 20)])
+        self.assertEqual(ee_run.call_args.kwargs["core_version"], (2, 20))
+        native_run.assert_not_called()
+
+    def test_python314_execution_image_uses_its_own_pinned_tag(self):
+        manager = ClusterManager.__new__(ClusterManager)
+        manager.kube_constant = SimpleNamespace(
+            ansible_execution_image="brinnatt/ansible:2.18.6",
+            ansible_py314_execution_image="brinnatt/ansible:2.20.9",
+        )
+        with patch("service.cluster.registry.RegistryManager._ensure_image_local") as ensure:
+            self.assertEqual(manager._ensure_ansible_execution_image((2, 20)),
+                             "brinnatt/ansible:2.20.9")
+            ensure.assert_called_once_with("brinnatt/ansible:2.20.9")
+
+    def test_python314_runner_path_selects_the_220_virtualenv(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            inventory = root / "source.hosts"
+            inventory.write_text("[all]\npython314-target\n", encoding="utf-8")
+            manager = ClusterManager.__new__(ClusterManager)
+            manager.base_path = root
+            manager.kube_constant = SimpleNamespace(
+                v_ansible_core_py314="2.20.9",
+            )
+            with (
+                patch.object(
+                    manager, "_ensure_ansible_execution_image",
+                    return_value="brinnatt/ansible:2.20.9",
+                ),
+                patch("service.cluster.manager.ansible_runner.run") as run,
+                patch("service.cluster.manager._effective_user_home", return_value=root),
+            ):
+                manager._run_playbook_in_execution_environment(
+                    tmp_dir=tmp_dir,
+                    playbook="/usr/local/kubeauto/playbooks/08.ceph.yml",
+                    inventory=inventory,
+                    extravars={},
+                    cmdline="",
+                    envvars={},
+                    kubeconfig=root / "kubectl.kubeconfig",
+                    core_version=(2, 20),
+                )
+            self.assertTrue(run.call_args.kwargs["envvars"]["PATH"].startswith(
+                "/opt/ansible-core-2.20.9/bin:"
+            ))
+
     def test_native_nonzero_result_raises_domain_error_and_cleans_inventory(self):
         manager = ClusterManager.__new__(ClusterManager)
         manager.base_path = Path("/usr/local/kubeauto")

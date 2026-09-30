@@ -57,6 +57,7 @@ _PLAYBOOK_MAP_SETUP = {
     "05": "05.kube-node.yml", "kube-node": "05.kube-node.yml",
     "06": "06.network.yml", "network": "06.network.yml",
     "07": "07.cluster-addon.yml", "cluster-addon": "07.cluster-addon.yml",
+    "08": "08.ceph.yml", "ceph": "08.ceph.yml",
     "90": "90.setup.yml", "all": "90.setup.yml",
     "10": "10.ex-lb.yml", "ex-lb": "10.ex-lb.yml",
     "11": "11.harbor.yml", "harbor": "11.harbor.yml",
@@ -602,6 +603,14 @@ class ClusterManager:
             "__kafka__": kc.v_kafka,
             "__kafka_metadata__": kc.v_kafka_metadata,
             "__strimzi_drain_cleaner__": kc.v_strimzi_drain_cleaner,
+            "__ceph__": kc.v_ceph,
+            "__ceph_upgrade_source__": kc.v_ceph_upgrade_source,
+            "__ceph_csi__": kc.v_ceph_csi,
+            "__ceph_csi_registrar__": kc.v_ceph_csi_registrar,
+            "__ceph_csi_provisioner__": kc.v_ceph_csi_provisioner,
+            "__ceph_csi_attacher__": kc.v_ceph_csi_attacher,
+            "__ceph_csi_resizer__": kc.v_ceph_csi_resizer,
+            "__ceph_csi_snapshotter__": kc.v_ceph_csi_snapshotter,
         }
 
     @staticmethod
@@ -637,11 +646,12 @@ class ClusterManager:
             encoding="utf-8",
         )
 
-    def _ensure_ansible_execution_image(self) -> str:
+    def _ensure_ansible_execution_image(self, core_version: tuple[int, int] = (2, 18)) -> str:
         """Ensure the dual-pushed EE image is available under its canonical tag."""
         from service.cluster.registry import RegistryManager
 
-        image = self.kube_constant.ansible_execution_image
+        image = (self.kube_constant.ansible_py314_execution_image
+                 if core_version == (2, 20) else self.kube_constant.ansible_execution_image)
         RegistryManager()._ensure_image_local(image)
         return image
 
@@ -655,6 +665,7 @@ class ClusterManager:
         cmdline: str,
         envvars: dict,
         kubeconfig: Path,
+        core_version: tuple[int, int] = (2, 18),
     ):
         """Run through Ansible Runner's documented container isolation interface."""
         private = Path(tmp_dir)
@@ -662,7 +673,7 @@ class ClusterManager:
         inventory_dir.mkdir()
         shutil.copy2(inventory, inventory_dir / "hosts")
 
-        image = self._ensure_ansible_execution_image()
+        image = self._ensure_ansible_execution_image(core_version)
         resource_root = Path(get_resource_path("roles")).resolve().parent
         base_path = self.base_path.resolve()
         mounts = [f"{base_path}:{base_path}:rw"]
@@ -682,12 +693,16 @@ class ClusterManager:
             mounts.append("/etc/hosts:/etc/hosts:ro")
 
         ee_envvars = dict(envvars)
+        ee_bin = (
+            f"/opt/ansible-core-{self.kube_constant.v_ansible_core_py314}/bin:"
+            if core_version == (2, 20) else ""
+        )
         ee_envvars.update(
             {
                 "ANSIBLE_CONFIG": "/runner/ansible.cfg",
                 "HOME": str(user_home),
                 "PATH": (
-                    f"{base_path}/kube-bin:{base_path}/extra-bin:"
+                    f"{ee_bin}{base_path}/kube-bin:{base_path}/extra-bin:"
                     "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
                 ),
             }
@@ -695,7 +710,7 @@ class ClusterManager:
         if kubeconfig.exists():
             ee_envvars["KUBECONFIG"] = str(kubeconfig)
         logger.warning(
-            f"Using isolated ansible-core {self.kube_constant.v_ansible_core} "
+            f"Using isolated ansible-core {core_version[0]}.{core_version[1]} "
             f"execution image {image}; the native package remains unchanged.",
             extra=LOG_STDOUT,
         )
@@ -746,6 +761,7 @@ class ClusterManager:
         kubeconfig_path = self.clusters_dir / cluster / "kubectl.kubeconfig"
         native_policy = ansible_python_policy()
         use_execution_environment = False
+        execution_core_version = (2, 18)
         try:
             prepared_inv = _prepare_inventory_with_python(inv, native_policy)
         except NoCompatibleAnsibleTargetPython as exc:
@@ -753,10 +769,16 @@ class ClusterManager:
                 f"{exc} Switching this playbook run to the audited execution environment.",
                 extra=LOG_STDOUT,
             )
-            ee_policy = ansible_python_policy_for_core((2, 18))
-            prepared_inv = _prepare_inventory_with_python(
-                inv, ee_policy, execution_environment=True
-            )
+            try:
+                prepared_inv = _prepare_inventory_with_python(
+                    inv, ansible_python_policy_for_core((2, 18)), execution_environment=True
+                )
+            except NoCompatibleAnsibleTargetPython:
+                execution_core_version = (2, 20)
+                prepared_inv = _prepare_inventory_with_python(
+                    inv, ansible_python_policy_for_core(execution_core_version),
+                    execution_environment=True,
+                )
             use_execution_environment = True
         try:
             with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
@@ -773,6 +795,7 @@ class ClusterManager:
                         cmdline=cmdline or "",
                         envvars=envvars,
                         kubeconfig=kubeconfig_path,
+                        core_version=execution_core_version,
                     )
                 else:
                     result = ansible_runner.run(

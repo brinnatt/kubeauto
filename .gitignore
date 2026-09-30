@@ -8,4 +8,5 @@
 logs/*.log
 logs/*.out
 logs/*.pid
+logs/ceph-focused-green
 !logs/README.md

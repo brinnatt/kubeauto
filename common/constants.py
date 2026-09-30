@@ -49,12 +49,13 @@ class KubeConstant:
             "control package's Python support range; CI dual-pushed by ext-images."
         ),
     })
+    v_ansible_core_py314: str = field(default="2.20.9")
     v_k8s_bin: str = field(default="v1.33.6", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.15.0", metadata={
+    v_extra_bin: str = field(default="1.16.0", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
         "description": (
             "ext-bin pack tag; includes containerd/crictl/nerdctl/helm and the "
@@ -138,6 +139,24 @@ class KubeConstant:
     v_csi_provisioner: str = field(default="v5.2.0")
     v_csi_resizer: str = field(default="v1.11.2")
     v_csi_snapshotter: str = field(default="v7.0.0")
+    v_ceph: str = field(default="20.2.4", metadata={
+        "refer_docs": "https://docs.ceph.com/en/tentacle/",
+        "refer_github": "https://github.com/ceph/ceph/releases/tag/v20.2.4",
+        "description": "Ceph Tentacle security and bug-fix baseline managed by cephadm",
+    })
+    v_ceph_upgrade_source: str = field(default="20.2.3")
+    v_cephadm_sha256: str = field(
+        default="5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f"
+    )
+    v_ceph_csi: str = field(default="v3.17.1", metadata={
+        "refer_github": "https://github.com/ceph/ceph-csi/releases/tag/v3.17.1",
+        "description": "GA RBD/CephFS CSI release tested upstream with Kubernetes 1.34-1.36",
+    })
+    v_ceph_csi_registrar: str = field(default="v2.16.0")
+    v_ceph_csi_provisioner: str = field(default="v6.2.0")
+    v_ceph_csi_attacher: str = field(default="v4.11.0")
+    v_ceph_csi_resizer: str = field(default="v2.1.0")
+    v_ceph_csi_snapshotter: str = field(default="v8.5.0")
 
     @property
     def k8s_bin_pack_tags(self):
@@ -305,6 +324,11 @@ class KubeConstant:
         """Dual-pushed Ansible execution environment used only when required."""
         return f"brinnatt/ansible:{self.v_ansible_core}"
 
+    @property
+    def ansible_py314_execution_image(self) -> str:
+        """Dual-pushed execution environment for Python 3.14 targets."""
+        return f"brinnatt/ansible:{self.v_ansible_core_py314}"
+
     def nerdctl_bin_url(self, version: str | None = None) -> str:
         """Upstream minimal nerdctl tarball (amd64/arm64); packaged into ext-bin."""
         ver = (version or self.v_nerdctl).lstrip("v")
@@ -365,6 +389,24 @@ class KubeConstant:
                 f"brinnatt/csi-snapshotter:{self.v_csi_snapshotter}",
                 f"brinnatt/csi-provisioner:{self.v_csi_provisioner}",
                 f"brinnatt/snapshot-controller:{self.v_snapshot_controller}",
+            ],
+            "ceph": [
+                f"brinnatt/ansible:{self.v_ansible_core_py314}",
+                f"brinnatt/ceph:v{self.v_ceph}",
+                f"brinnatt/ceph:v{self.v_ceph_upgrade_source}",
+                f"brinnatt/cephcsi:{self.v_ceph_csi}",
+                f"brinnatt/csi-node-driver-registrar:{self.v_ceph_csi_registrar}",
+                f"brinnatt/csi-provisioner:{self.v_ceph_csi_provisioner}",
+                f"brinnatt/csi-attacher:{self.v_ceph_csi_attacher}",
+                f"brinnatt/csi-resizer:{self.v_ceph_csi_resizer}",
+                f"brinnatt/csi-snapshotter:{self.v_ceph_csi_snapshotter}",
+                "brinnatt/ceph-prometheus:v3.6.0",
+                "brinnatt/ceph-alertmanager:v0.28.1",
+                "brinnatt/ceph-node-exporter:v1.9.1",
+                "brinnatt/ceph-grafana:12.3.1",
+                "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z",
+                f"brinnatt/busybox:{self.v_busybox}",
+                f"brinnatt/json-mock:{self.v_json_mock}",
             ],
             "rocketmq": [
                 "brinnatt/rocketmq-operator:latest",

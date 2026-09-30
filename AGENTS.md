@@ -68,6 +68,9 @@ Inspect all six sibling repositories under `/home/brinnatt/projects` before and 
 - A failed attempted fix is not a new baseline. Remove its speculative code and lab residue before continuing.
 - Change affected matrix entries to pending while work is in progress. Mark them pass only after a current clean run produces auditable evidence. Historical logs never substitute for a current run.
 - Customer-facing middleware documentation covers exactly four content types: user manual, operations manual, technical whitepaper and development manual. Keep the technical whitepaper and development manual separate; combine the user and operations content into one `operations-manual.md` when the component follows the established PXC style. Integrate official references into the applicable whitepaper or development manual. Do not deliver proposal/review drafts, retrospectives, project-status narratives, internal test chronology, standalone source indexes or an extra README as customer documentation. Write from the customer's product, task and operational perspective with formal terminology, continuous executable main paths and clearly quoted exception/rollback/risk branches.
+- Ceph is an explicitly approved exception: preserve the nine modular documents
+  in `docs/storage/ceph/`. Fix proven documentation bugs only; do not restructure
+  or consolidate them to match the general middleware document layout.
 
 ## Test-engineering and execution-efficiency contract
 
@@ -161,6 +164,21 @@ ladder removes invalid executions, not customer coverage.
   Rocky Linux 9.8, `root`; `.2` is the control host and the other six form the
   disposable cluster pool). These hosts are not assigned to a permanent
   feature; the runner must lease them per scenario and prevent overlap.
+- Ceph-priority shared pool (available to this single Codex session; each host
+  has three additional test disks): `192.168.122.135` (`ceph-01`),
+  `192.168.122.40` (`ceph-02`), `192.168.122.72` (`ceph-03`),
+  `192.168.122.212` (`mceph-01`), `192.168.122.165` (`mceph-02`) and
+  `192.168.122.238` (`mceph-03`) (all `root`). Prefer this pool for Ceph
+  because its extra disks are reserved for destructive storage scenarios, but
+  it remains a shared pool and may be leased to other tests when ownership,
+  disk allowlists and cleanup boundaries do not overlap.
+- Additional Ceph OS-qualification controls supplied by the delivery owner:
+  Rocky Linux 10.2 `192.168.47.145` (`root`), Ubuntu 24.04
+  `192.168.47.146` (`ly`, authorized root via sudo), and Ubuntu 26.04
+  `192.168.47.147` (`ly`, authorized root via sudo). Use only for the
+  Ceph qualification branch after BatchMode key bootstrap; do not persist
+  their passwords. A qualification result requires the actual host OS and
+  kernel to pass the secure msgr2 plus `aes256k` client probe.
 - `192.168.122.1` is permanently forbidden. Any address not explicitly listed
   in this section is forbidden as a test machine, inventory host, SSH target,
   Registry endpoint or fallback. Historical fixtures containing other

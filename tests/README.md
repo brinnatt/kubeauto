@@ -39,11 +39,29 @@ implementation is `helpers/kubernetes-production-smoke.sh`.
 | Debian node | 192.168.47.128 | brinnatt + sudo | Debian compatibility |
 | Reserved/runtime | 192.168.47.137 | root | Rocky 8.10, 8 CPU / about 16 GiB currently provisioned; live 2 CPU + 4 GiB reservation gate |
 | AIO/control/reserved | 192.168.47.138 | ubuntu + sudo | Ubuntu AIO and primary regression control |
+| Ceph OS qualification | 192.168.47.145 | root | Rocky Linux 10.2; Ceph qualification only |
+| Ceph OS qualification | 192.168.47.146 | ly + sudo | Ubuntu 24.04; Ceph qualification only |
+| Ceph OS qualification | 192.168.47.147 | ly + sudo | Ubuntu 26.04; Ceph qualification only |
 | Ansible compatibility | 192.168.47.141 | root | Anolis OS 23.3 clean-snapshot control path |
 | Ansible compatibility | 192.168.47.142 | root | openEuler 22.03 LTS-SP4 clean-snapshot control path |
 | Ansible compatibility | 192.168.47.143 | root | openSUSE Leap 16.0 clean-snapshot control path |
+| Ceph-priority shared | 192.168.122.135, .40, .72 | root | ceph-01 through ceph-03; three additional test disks per host |
+| Ceph-priority shared | 192.168.122.212, .165, .238 | root | mceph-01 through mceph-03; three additional test disks per host |
 
-The current external load-balancer VIP is `192.168.47.250:8443`. Addresses 140 and 147 belong to retired kubeauto lab layouts and must not appear in active regression configuration. Addresses 141-143 are dedicated compatibility controls and must not be silently reused as ordinary Kubernetes nodes. A negative unit-test fixture may contain a retired address only to prove that it is removed.
+The current external load-balancer VIP is `192.168.47.250:8443`. Address 140
+belongs to a retired kubeauto lab layout and must not appear in active
+regression configuration. Address 147 is reserved exclusively for the Ceph
+Ubuntu 26.04 qualification profile and must not be reused by the core or
+other middleware topology. Addresses 141-143 are dedicated compatibility
+controls and must not be silently reused as ordinary Kubernetes nodes. A
+negative unit-test fixture may contain a retired address only to prove that it
+is removed.
+
+The six Ceph-priority hosts are shared, lease-controlled capacity rather than a
+permanent exclusive allocation. Ceph tests get first use because each host has
+three additional disks intended for destructive storage scenarios. Every
+runner must resolve and record the exact disk serial/WWN allowlist before any
+write, and must release the host lease only after scoped cleanup verification.
 
 The production reserved-resource sizing baseline remains 16 CPU / 32 GiB. The
 smaller 137 lab host validates the effective 2 CPU + 4 GiB Allocatable delta and
@@ -93,6 +111,16 @@ bash tests/run_enterprise_regression.sh --kafka-only
 bash tests/run_enterprise_regression.sh --kafka-status
 bash tests/run_enterprise_regression.sh --kafka-follow
 bash tests/run_enterprise_regression.sh --kafka-clean-only
+bash tests/run_enterprise_regression.sh --ceph-probe
+bash tests/run_enterprise_regression.sh --ceph-os-probe
+bash tests/run_enterprise_regression.sh --ceph-lab-bootstrap
+bash tests/run_enterprise_regression.sh --ceph-lab-python-bootstrap
+bash tests/run_enterprise_regression.sh --ceph-supply-chain-only
+bash tests/run_enterprise_regression.sh --ceph-slow-osd-fixed
+bash tests/run_enterprise_regression.sh --ceph-only
+bash tests/run_enterprise_regression.sh --ceph-status
+bash tests/run_enterprise_regression.sh --ceph-follow
+bash tests/run_enterprise_regression.sh --ceph-clean-only
 ```
 
 `--mysql-only` owns the independent Percona PXC matrix in
@@ -106,6 +134,88 @@ does not enter the delivered core topology, PXC branch, or `--all-delivery`,
 and always performs Kafka-owned cleanup and verification before and after the
 run. Use `--kafka-status` and `--kafka-follow` for durable state and live logs;
 use `--kafka-cancel` only to stop the Kafka-owned durable job.
+
+`--ceph-only` owns the independent Cephadm/Ceph-CSI matrix in
+`ceph-test-matrix.yaml`. The six Ceph-priority hosts provide standalone storage;
+the default control is `root@192.168.47.130`, which can reach both lab subnets.
+Kubernetes uses masters/etcd `192.168.47.134-136` and workers
+`192.168.47.131`, `192.168.47.132`, `192.168.47.137`, with reserved resources
+disabled for this branch. The two pools are
+leased separately and must pass read-only clean checks before installation.
+The existing `k8s-dev` cluster in the supplemental Rocky 9 pool is not touched.
+Every destructive device is bound to a current serial/WWN allowlist on storage
+hosts only. Product destroy validates its inventory against the leased compute
+hosts; Ceph FSID purge and disk checks never target compute hosts.
+Default host-network ports prevent unmodified co-location: RGW and RBD CSI
+metrics both use `8080`, and Ceph Alertmanager and Calico controllers use `9094`.
+This branch validates standalone storage plus external CSI, not hyperconvergence.
+`--ceph-probe` is read-only. `--ceph-os-probe` separately checks the six real OS
+profiles and their selected kernel client capabilities without marking OS
+qualification PASS. Ubuntu 26.04 requires the pinned Ansible 2.20.9 execution
+image for Python 3.14; dual-published manifests are a live qualification
+prerequisite. If a snapshot reset leaves one of the six
+authoritative Ceph hosts named `localhost`, `--ceph-lab-bootstrap` may restore
+only its registered hostname; it refuses to overwrite any other identity and
+does not touch storage devices. The focused modes, beginning with
+`--ceph-slow-osd-fixed`, install only their required clean prerequisites, run
+one fault scenario, and perform scoped cleanup; they remain blocked until the
+ext-bin 1.16.0 and image catalogs have matching TalkEdu/Docker Hub digests
+by default; the ext-bin image contains the checksum-pinned official cephadm.
+The runner writes `ceph_csi_install: "no"` into its generated `config.yml` before
+the product `08` entry converges standalone Ceph, then restores `"yes"` before
+the normal `90` entry deploys Kubernetes and reconciles Ceph/CSI. This exposes
+independent Ceph prerequisite failures before the more
+expensive platform setup without omitting the combined product path.
+Before enabling Ceph, the same product `08` entry must succeed with the default
+disabled configuration, without gathering facts or creating any FSID/owner marker.
+`--ceph-only` requires a successful `--ceph-slow-osd-fixed` run, durable `rc=0`,
+zero failure markers and final cleanup for the same source fingerprint.
+Changes to the covered product or test files invalidate that prerequisite.
+`--ceph-probe` and the focused/full prerequisites require the actual compute
+`libceph` module to support secure msgr2 before creating fault devices or
+deploying storage. The default `aes256k` credential additionally requires the
+new key support (Linux 7.0 or a verified vendor backport). The explicit legacy
+`aes` compatibility profile still uses GA kernel RBD/CephFS and secure msgr2;
+the runner records its CVE-2025-30156 warning and must verify real mount,
+read/write, recovery and performance behavior. Ceph-CSI is pinned to v3.17.1.
+A module preflight is not business evidence. The runner never selects Alpha
+RBD-NBD or silently downgrades the selected credential policy.
+The final Ceph gate additionally requires current real-host qualification for
+Rocky 8/9/10 and Ubuntu 22/24/26 in `os_qualification`; Ubuntu 20 is outside
+the supported qualification set because it is end-of-life. Its SHA256-bound
+evidence records the OS, kernel, Python, runtime, actual product command,
+orchestrator remote convergence, secure RBD/CephFS read-back, idempotence,
+durable exit and cleanup. A container package-profile test or the fixed
+Rocky 9 storage/Rocky 8 compute lab cannot certify another OS version. Missing
+profiles block final sign-off before a new full-chain launch; focused work
+remains available. Matrix status/evidence changes do not invalidate the OS
+source binding (`ceph_gate_fingerprint --without-matrix`); product/gate changes do.
+`--ceph-lab-python-bootstrap` is an explicit lab environment recovery mode for
+the six clean Rocky 8.10 compute hosts, not a production Python policy change.
+It leases the pool, installs distribution-owned Python 3.12 from AppStream,
+verifies RPM integrity and system-interpreter package ownership, then runs
+100 standard-library import probes per host and 30 native Ansible ping rounds.
+A failed prerequisite stops the mode without a success marker. The native RPM
+may update an automatic `python3` alternative; the runner does not override
+the distribution's links or remove the original interpreter. These probes
+are environment evidence, not Ceph business or cross-OS delivery evidence.
+Both Ceph-CSI charts are rendered with the product defaults before node access
+bootstrap or live installation. The preflight rejects cross-release resource
+ownership collisions, wrong namespaces and unowned ConfigMap mounts.
+Every string in the Ceph task files also passes Jinja syntax parsing; Ansible
+`--syntax-check` alone does not catch embedded shell/template delimiter conflicts.
+When publication is explicitly authorized outside CI, the runtime-only
+`CEPH_ARTIFACT_MODE=manual-talkedu` mode verifies every TalkEdu image manifest and
+the official cephadm SHA256/version without claiming Docker Hub publication.
+`CEPHADM_FILE` may supply a locally downloaded executable; the fixed runner
+verifies its pinned checksum before transfer and atomically stages it after a
+second remote check. Temporary download accelerators are not persisted. Both
+modes keep the full business, fault, recovery and cleanup acceptance coverage.
+Ceph cleanup verifies stopped Kubernetes runtimes, orphan `k8s.io` shim process
+trees and known CNI links as well as Ceph and disk state. It refuses active
+Kubernetes/runtime or foreign containerd namespaces. Stopping containerd alone
+is not cleanup evidence: the official service uses `KillMode=process` and its
+shims may keep node-cache and other host-network fixtures alive.
 
 `run_tools_regression.sh` owns the separate `tools-test-matrix.yaml` branch.
 The branch is independent from the enterprise and middleware runners: every

@@ -1,0 +1,394 @@
+- name: Inspect pre-existing Ceph cluster state
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -ceu
+      - |
+        if test -f /etc/ceph/kubeauto-owned-fsid; then
+          cat /etc/ceph/kubeauto-owned-fsid
+          exit 0
+        fi
+        if test -e /etc/ceph/ceph.conf ||
+           find /var/lib/ceph -mindepth 1 -maxdepth 1 -type d \
+             -regextype posix-extended \
+             -regex '.*/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
+             -print -quit | grep -q .; then
+          echo 'unowned Ceph state exists; refusing takeover' >&2
+          exit 1
+        fi
+        cat /proc/sys/kernel/random/uuid
+  register: ceph_requested_fsid
+  changed_when: false
+
+- name: Validate the requested Ceph FSID
+  ansible.builtin.assert:
+    that:
+      - ceph_requested_fsid.stdout is match('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+
+- name: Inspect the exact requested Ceph cluster
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, --image, "{{ ceph_image }}", shell, --fsid, "{{ ceph_requested_fsid.stdout }}", --, ceph, fsid]
+  register: ceph_existing_fsid
+  changed_when: false
+  failed_when: false
+
+- name: Reject an inaccessible or mismatched existing Ceph cluster
+  ansible.builtin.assert:
+    that:
+      - ceph_existing_fsid.rc == 0 or ceph_owned_fsid == ''
+      - ceph_existing_fsid.rc != 0 or ceph_existing_fsid.stdout | trim == ceph_requested_fsid.stdout
+    fail_msg: "Existing Ceph cluster does not match kubeauto ownership; refusing reconciliation"
+
+- name: Create Ceph configuration directory
+  ansible.builtin.file:
+    path: /etc/ceph
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Record the exact Ceph FSID before bootstrap
+  ansible.builtin.copy:
+    content: "{{ ceph_requested_fsid.stdout }}\n"
+    dest: /etc/ceph/kubeauto-owned-fsid
+    owner: root
+    group: root
+    mode: "0600"
+  when: ceph_owned_fsid == ''
+
+- name: Create the dedicated cephadm SSH identity
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -q
+      - -t
+      - ed25519
+      - -N
+      - ""
+      - -C
+      - kubeauto-cephadm
+      - -f
+      - /etc/ceph/kubeauto-cephadm
+    creates: /etc/ceph/kubeauto-cephadm
+  no_log: true
+
+- name: Read the cephadm public key
+  ansible.builtin.slurp:
+    src: /etc/ceph/kubeauto-cephadm.pub
+  register: cephadm_public_key
+  no_log: true
+
+- name: Ensure the package-mode SSH directory exists on every Ceph host
+  ansible.builtin.file:
+    path: /home/cephadm/.ssh
+    state: directory
+    owner: cephadm
+    group: cephadm
+    mode: "0700"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['ceph'] }}"
+
+- name: Authorize only the dedicated cephadm public key
+  ansible.builtin.lineinfile:
+    path: /home/cephadm/.ssh/authorized_keys
+    line: "{{ cephadm_public_key.content | b64decode | trim }}"
+    create: true
+    owner: cephadm
+    group: cephadm
+    mode: "0600"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['ceph'] }}"
+  no_log: true
+
+- name: Render bootstrap configuration
+  ansible.builtin.template:
+    src: bootstrap.conf.j2
+    dest: /etc/ceph/kubeauto-bootstrap.conf
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Render explicit host and service specification
+  ansible.builtin.template:
+    src: cluster-spec.yml.j2
+    dest: /etc/ceph/kubeauto-cluster-spec.yml
+    owner: root
+    group: root
+    mode: "0600"
+
+# Applying the spec here would repeat ssh-copy-id without the dedicated identity.
+- name: Bootstrap the pinned cephadm cluster
+  ansible.builtin.command:
+    argv: >-
+      {{
+        ['/usr/local/sbin/cephadm', '--image', ceph_image, 'bootstrap',
+         '--fsid', ceph_requested_fsid.stdout,
+         '--mon-ip', (ansible_host | default(inventory_hostname)),
+         '--config', '/etc/ceph/kubeauto-bootstrap.conf',
+         '--ssh-user', 'cephadm',
+         '--ssh-private-key', '/etc/ceph/kubeauto-cephadm',
+         '--ssh-public-key', '/etc/ceph/kubeauto-cephadm.pub',
+         '--skip-monitoring-stack']
+        + ((ceph_cluster_network | default('') | length > 0) |
+           ternary(['--cluster-network', ceph_cluster_network], []))
+        + ((ceph_dashboard_install | default('yes') | string | lower == 'yes') |
+           ternary([], ['--skip-dashboard']))
+      }}
+  when: ceph_existing_fsid.rc != 0
+  register: ceph_bootstrap_result
+  no_log: true
+
+- name: Use the upstream host-installed cephadm execution mode
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, config, set, mgr, mgr/cephadm/mode, cephadm-package]
+  changed_when: false
+
+- name: Reconcile the declarative cephadm service specification
+  ansible.builtin.command:
+    argv:
+      - /usr/local/sbin/cephadm
+      - shell
+      - --mount
+      - /etc/ceph/kubeauto-cluster-spec.yml:/etc/ceph/kubeauto-cluster-spec.yml:ro
+      - --
+      - ceph
+      - orch
+      - apply
+      - -i
+      - /etc/ceph/kubeauto-cluster-spec.yml
+  register: ceph_spec_apply
+  changed_when: "'Scheduled' in ceph_spec_apply.stdout or 'Created' in ceph_spec_apply.stdout"
+
+- name: Pin cephadm monitoring images before their services exist
+  ansible.builtin.command:
+    argv:
+      - /usr/local/sbin/cephadm
+      - shell
+      - --
+      - ceph
+      - config
+      - set
+      - mgr
+      - "mgr/cephadm/container_image_{{ item.key }}"
+      - "{{ item.value }}"
+  loop:
+    - {key: prometheus, value: "{{ ceph_prometheus_image }}"}
+    - {key: alertmanager, value: "{{ ceph_alertmanager_image }}"}
+    - {key: node_exporter, value: "{{ ceph_node_exporter_image }}"}
+    - {key: grafana, value: "{{ ceph_grafana_image }}"}
+  when: ceph_monitoring_install | default('yes') | string | lower == 'yes'
+  changed_when: false
+
+- name: Render monitoring service specification
+  ansible.builtin.template:
+    src: monitoring-spec.yml.j2
+    dest: /etc/ceph/kubeauto-monitoring-spec.yml
+    owner: root
+    group: root
+    mode: "0600"
+  when: ceph_monitoring_install | default('yes') | string | lower == 'yes'
+
+- name: Apply pinned monitoring services
+  ansible.builtin.command:
+    argv:
+      - /usr/local/sbin/cephadm
+      - shell
+      - --mount
+      - "/etc/ceph/kubeauto-monitoring-spec.yml:/etc/ceph/kubeauto-monitoring-spec.yml:ro"
+      - --
+      - ceph
+      - orch
+      - apply
+      - -i
+      - /etc/ceph/kubeauto-monitoring-spec.yml
+  when: ceph_monitoring_install | default('yes') | string | lower == 'yes'
+  register: ceph_monitoring_apply
+  changed_when: "'Scheduled' in ceph_monitoring_apply.stdout or 'Created' in ceph_monitoring_apply.stdout"
+
+- name: Resolve the declared OSD count
+  ansible.builtin.set_fact:
+    ceph_expected_osds: "{{ groups['ceph_osd'] | map('extract', hostvars, 'ceph_device_list') | map('length') | sum }}"
+
+- name: Wait for the declared MON MGR and OSD daemons
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, orch, ps, --refresh, --format, json]
+  register: ceph_daemon_state
+  changed_when: false
+  retries: 180
+  delay: 10
+  until:
+    - ceph_daemon_state.rc == 0
+    - (ceph_daemon_state.stdout | from_json | selectattr('daemon_type', 'equalto', 'mon') | selectattr('status_desc', 'equalto', 'running') | list | length) == groups['ceph_mon'] | length
+    - (ceph_daemon_state.stdout | from_json | selectattr('daemon_type', 'equalto', 'mgr') | selectattr('status_desc', 'equalto', 'running') | list | length) == groups['ceph_mgr'] | length
+    - (ceph_daemon_state.stdout | from_json | selectattr('daemon_type', 'equalto', 'osd') | selectattr('status_desc', 'equalto', 'running') | list | length) == ceph_expected_osds | int
+
+- name: Wait for every declared MON to join quorum
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, quorum_status, --format, json]
+  register: ceph_quorum_state
+  changed_when: false
+  retries: 60
+  delay: 10
+  until:
+    - ceph_quorum_state.rc == 0
+    - (ceph_quorum_state.stdout | from_json).quorum_names | sort == (groups['ceph_mon'] | map('extract', hostvars, 'ceph_hostname') | list | sort)
+
+- name: Identify the supported pre-fix upgrade source
+  ansible.builtin.set_fact:
+    ceph_legacy_source_release: "{{ ceph_image.endswith(':v20.2.3') }}"
+
+- name: Require the old upgrade source to use its native client keys
+  ansible.builtin.assert:
+    that: ceph_csi_client_key_type | default('aes256k') == 'aes'
+    fail_msg: "Ceph 20.2.3 does not implement --key-type; upgrade it before using aes256k clients"
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - ceph_legacy_source_release | bool
+
+- name: Keep new credentials and service tickets on the authenticated cipher
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, mon, set, "{{ item }}", aes256k]
+  loop:
+    - auth_preferred_cipher
+    - auth_service_cipher
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - not ceph_legacy_source_release | bool
+  changed_when: false
+
+- name: Allow the explicitly accepted legacy client key type
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, mon, set, auth_allowed_ciphers, "aes,aes256k"]
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - ceph_csi_client_key_type | default('aes256k') == 'aes'
+    - not ceph_legacy_source_release | bool
+  changed_when: false
+
+- name: List existing pools
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, osd, pool, ls]
+  register: ceph_pool_list
+  changed_when: false
+  when: ceph_csi_install | default('no') | string | lower == 'yes'
+
+- name: Create the Ceph-CSI RBD pool
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, osd, pool, create, "{{ ceph_csi_rbd_pool }}"]
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - ceph_csi_rbd_pool not in ceph_pool_list.stdout_lines
+
+- name: Initialize the Ceph-CSI RBD pool
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, rbd, pool, init, "{{ ceph_csi_rbd_pool }}"]
+  when: ceph_csi_install | default('no') | string | lower == 'yes'
+  changed_when: false
+
+- name: List existing CephFS volumes
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, fs, ls, --format, json]
+  when: ceph_csi_install | default('no') | string | lower == 'yes'
+  register: cephfs_volume_list
+  changed_when: false
+
+- name: Create the CephFS volume
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, fs, volume, create, "{{ ceph_csi_cephfs_name }}"]
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - ceph_csi_cephfs_name not in (cephfs_volume_list.stdout | from_json | map(attribute='name') | list)
+  register: cephfs_volume_create
+
+- name: List CephFS subvolume groups for Ceph-CSI
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, fs, subvolumegroup, ls, "{{ ceph_csi_cephfs_name }}", --format, json]
+  register: ceph_csi_subvolume_groups
+  changed_when: false
+  when: ceph_csi_install | default('no') | string | lower == 'yes'
+
+- name: Create the Ceph-CSI subvolume group
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, fs, subvolumegroup, create, "{{ ceph_csi_cephfs_name }}", csi]
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - "'csi' not in (ceph_csi_subvolume_groups.stdout | from_json | map(attribute='name') | list)"
+
+- name: Create only the selected Ceph-CSI client key type
+  when: ceph_csi_install | default('no') | string | lower == 'yes'
+  block:
+    - name: Permit legacy key creation only during this reconciliation
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/cephadm, shell, --, ceph, config, set, mon, mon_auth_allow_insecure_key, "true"]
+      when:
+        - ceph_csi_client_key_type | default('aes256k') == 'aes'
+        - not ceph_legacy_source_release | bool
+      changed_when: false
+
+    - name: Create least-privilege Ceph-CSI identities
+      ansible.builtin.command:
+        argv: "{{ item + ((ceph_legacy_source_release | bool) | ternary([], ['--key-type=' ~ (ceph_csi_client_key_type | default('aes256k'))])) }}"
+      loop:
+        - [/usr/local/sbin/cephadm, shell, --, ceph, auth, get-or-create, client.csi-rbd, mon, "profile rbd", mgr, "profile rbd pool={{ ceph_csi_rbd_pool }}", osd, "profile rbd pool={{ ceph_csi_rbd_pool }}"]
+        - [/usr/local/sbin/cephadm, shell, --, ceph, auth, get-or-create, client.csi-cephfs, mon, "allow r", mgr, "allow rw", mds, "allow rw", osd, "allow rw tag cephfs metadata={{ ceph_csi_cephfs_name }}, allow rw tag cephfs data={{ ceph_csi_cephfs_name }}"]
+      no_log: true
+      changed_when: false
+  always:
+    - name: Disallow creation of further insecure keys
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/cephadm, shell, --, ceph, config, set, mon, mon_auth_allow_insecure_key, "false"]
+      when:
+        - ceph_csi_client_key_type | default('aes256k') == 'aes'
+        - not ceph_legacy_source_release | bool
+      changed_when: false
+
+- name: Read CephX key types without exposing credentials
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, auth, dump-keys, --format, json]
+  register: ceph_csi_auth_dump
+  changed_when: false
+  no_log: true
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - not ceph_legacy_source_release | bool
+
+- name: Refuse to reuse Ceph-CSI credentials of a different key type
+  ansible.builtin.assert:
+    that:
+      - >-
+        ((ceph_csi_auth_dump.stdout | from_json).data.secrets
+        | selectattr('entity.type_str', 'equalto', 'client')
+        | selectattr('entity.id', 'equalto', item)
+        | map(attribute='auth.key.type_str') | list)
+        == [ceph_csi_client_key_type | default('aes256k')]
+    fail_msg: "Existing Ceph-CSI key type differs from the selected policy; rotate the CSI credentials deliberately before retrying"
+  loop: [csi-rbd, csi-cephfs]
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - not ceph_legacy_source_release | bool
+
+- name: Report the accepted legacy CephX exposure
+  ansible.builtin.debug:
+    msg: >-
+      CEPH_LEGACY_AES_WARNING: CSI clients use legacy CephX aes credentials.
+      CVE-2025-30156 remains applicable to those credentials; restrict MON/OSD
+      network access, protect CSI Secrets, review auth health warnings and
+      migrate these clients to aes256k after a supported kernel upgrade.
+  when:
+    - ceph_csi_install | default('no') | string | lower == 'yes'
+    - ceph_csi_client_key_type | default('aes256k') == 'aes'
+
+- name: Wait for cephadm services to converge
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, health, --format, json]
+  register: ceph_health_result
+  changed_when: false
+  retries: 120
+  delay: 10
+  until:
+    - ceph_health_result.rc == 0
+    - (ceph_health_result.stdout | from_json).status in ['HEALTH_OK', 'HEALTH_WARN']
+
+- name: Report Ceph cluster reconciliation
+  ansible.builtin.debug:
+    msg: "CEPH_CLUSTER_RECONCILE_PASS fsid={{ ceph_requested_fsid.stdout }}"

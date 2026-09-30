@@ -1,0 +1,24 @@
+- name: Require Kubernetes nodes for external Ceph-CSI
+  ansible.builtin.assert:
+    that:
+      - ((groups['kube_master'] | default([])) + (groups['kube_node'] | default([]))) | length > 0
+    fail_msg: "ceph_csi_install=yes requires Kubernetes nodes with secure msgr2 support"
+
+- name: Validate the selected Ceph-CSI client credential policy
+  ansible.builtin.assert:
+    that:
+      - ceph_csi_client_key_type | default('aes256k') in ['aes256k', 'aes']
+      - ceph_csi_client_key_type | default('aes256k') != 'aes' or ceph_csi_legacy_aes_risk_accepted | default('no') | string | lower == 'yes'
+    fail_msg: >-
+      Legacy CephX aes requires ceph_csi_legacy_aes_risk_accepted=yes;
+      see CVE-2025-30156 before enabling old kernel clients.
+
+- name: Require secure Ceph kernel clients on every Kubernetes node
+  ansible.builtin.script:
+    cmd: "kernel-client-check.py {{ ceph_csi_client_key_type | default('aes256k') }}"
+    executable: "{{ hostvars[item].ansible_python_interpreter | default('/usr/bin/python3') }}"
+  delegate_to: "{{ item }}"
+  become: true
+  loop: "{{ ((groups['kube_master'] | default([])) + (groups['kube_node'] | default([]))) | unique | list }}"
+  register: ceph_kernel_clients
+  changed_when: false

@@ -57,6 +57,28 @@ class TestSupportMatrix(unittest.TestCase):
         policy = _lookup_matrix((2, 18))
         self.assertTrue(validate_remote_interpreter_version("3.13", policy))
 
+    def test_released_220_221_support_ubuntu26_without_relaxing_older_policies(self):
+        for core in ((2, 20), (2, 21)):
+            with self.subTest(core=core):
+                policy = _lookup_matrix(core)
+                self.assertEqual(policy.control_min, (3, 12))
+                self.assertEqual(policy.control_max, (3, 14))
+                self.assertEqual(policy.target_module_runtime_min, (3, 9))
+                self.assertTrue(validate_remote_interpreter_version("3.14", policy))
+                self.assertFalse(validate_remote_interpreter_version("3.8", policy))
+                self.assertFalse(validate_remote_interpreter_version("3.15", policy))
+                command = detect_target_python_cmd(policy)
+                self.assertIn("/usr/bin/python3.14", command)
+                self.assertIn("sys.version_info[:2] <= (3, 14)", command)
+                native = AnsibleCoreProbeResult(
+                    version=core, attempts=(), control_python_version=(3, 14),
+                    executable_path="/usr/bin/ansible", package_owner="deb:ansible-core",
+                )
+                self.assertTrue(ansible_core_probe_is_compatible(native))
+        self.assertFalse(validate_remote_interpreter_version("3.14", _lookup_matrix((2, 19))))
+        with self.assertRaises(AnsibleCoreDetectionError):
+            _lookup_matrix((2, 22))
+
     def test_detection_command_enforces_upper_bound(self):
         command = detect_target_python_cmd(_lookup_matrix((2, 10)))
         self.assertIn("sys.version_info[:2] >= (3, 5)", command)

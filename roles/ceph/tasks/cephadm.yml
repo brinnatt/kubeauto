@@ -1,0 +1,177 @@
+- name: Read the staged cephadm checksum before installation
+  ansible.builtin.stat:
+    path: "{{ base_dir }}/extra-bin/cephadm"
+    checksum_algorithm: sha256
+  delegate_to: localhost
+  run_once: true
+  register: cephadm_staged
+
+- name: Require the exact official cephadm artifact
+  ansible.builtin.assert:
+    that:
+      - cephadm_staged.stat.isreg | default(false)
+      - cephadm_staged.stat.checksum | default('') == '5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f'
+    fail_msg: "Staged cephadm does not match the official 20.2.4 SHA256; refusing installation"
+  run_once: true
+
+- name: Refuse a distribution-owned or foreign cephadm entry point
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -ceu
+      - |
+        if test -e /usr/bin/cephadm || test -L /usr/bin/cephadm; then
+          test -L /usr/bin/cephadm
+          test "$(readlink /usr/bin/cephadm)" = /usr/local/sbin/cephadm
+        fi
+        if test -e /usr/local/sbin/cephadm || test -L /usr/local/sbin/cephadm; then
+          test ! -L /usr/local/sbin/cephadm
+          checksum="$(sha256sum /usr/local/sbin/cephadm)"
+          if test "${checksum%% *}" != 5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f; then
+            grep -Fxq '# kubeauto-owned launcher; the official artifact remains checksum-identical.' /usr/local/sbin/cephadm
+          fi
+        fi
+  changed_when: false
+
+- name: Create the private cephadm artifact directory
+  ansible.builtin.file:
+    path: /usr/local/libexec/kubeauto
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the checksum-gated cephadm executable
+  ansible.builtin.copy:
+    src: "{{ base_dir }}/extra-bin/cephadm"
+    dest: /usr/local/libexec/kubeauto/cephadm
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Select a Python that actually starts the pinned cephadm
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -ceu
+      - |
+        for py in "$1" /usr/bin/python3 /usr/bin/python3.14 /usr/bin/python3.13 \
+          /usr/bin/python3.12 /usr/bin/python3.11 /usr/bin/python3.10 \
+          /usr/bin/python3.9 /usr/bin/python3.8; do
+          test -x "$py" || continue
+          "$py" -c 'import sys; sys.exit(sys.version_info < (3, 8))' || continue
+          if "$py" /usr/local/libexec/kubeauto/cephadm version >/dev/null 2>&1; then
+            printf '%s\n' "$py"
+            exit 0
+          fi
+        done
+        echo 'No installed Python can execute the checksum-pinned cephadm; Python 3.8+ is required' >&2
+        exit 1
+      - kubeauto-ceph-python
+      - "{{ ansible_facts.python.executable }}"
+  register: cephadm_python_probe
+  changed_when: false
+
+- name: Install the interpreter-specific cephadm launcher
+  ansible.builtin.copy:
+    content: |
+      #!/bin/sh
+      # kubeauto-owned launcher; the official artifact remains checksum-identical.
+      exec {{ cephadm_python_probe.stdout | quote }} /usr/local/libexec/kubeauto/cephadm {{ '--docker' if ceph_host_runtime == 'docker' else '' }} "$@"
+    dest: /usr/local/sbin/cephadm
+    owner: root
+    group: root
+    mode: "0755"
+
+# Tentacle's supported cephadm-package mode executes this exact absolute path.
+- name: Expose the owned cephadm launcher to the upstream orchestrator
+  ansible.builtin.file:
+    src: /usr/local/sbin/cephadm
+    dest: /usr/bin/cephadm
+    state: link
+
+- name: Read installed cephadm version
+  ansible.builtin.command: /usr/local/sbin/cephadm version
+  register: cephadm_version_result
+  changed_when: false
+
+- name: Require the configured exact cephadm Tentacle version
+  ansible.builtin.assert:
+    that:
+      - "'cephadm version ' + ceph_ver + ' ' in cephadm_version_result.stdout"
+      - "'tentacle (stable)' in cephadm_version_result.stdout"
+    fail_msg: "cephadm version {{ ceph_ver }} Tentacle is required"
+
+- name: Validate the complete upstream host requirements
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/cephadm, check-host, --expect-hostname, "{{ ansible_hostname }}"]
+  changed_when: false
+
+# Upstream package mode hard-codes the SSH account, even with --ssh-user root.
+- name: Inspect the package-mode SSH account before taking ownership
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -ceu
+      - |
+        owned=0
+        if test -e /etc/ceph/kubeauto-owned-ssh-user; then
+          test "$(cat /etc/ceph/kubeauto-owned-ssh-user)" = cephadm:/home/cephadm
+          owned=1
+        fi
+        status=0
+        account="$(getent passwd cephadm)" || status=$?
+        test "$status" = 0 -o "$status" = 2
+        if test "$status" = 0; then
+          test "$owned" = 1
+          test "$(cut -d: -f6 <<<"$account")" = /home/cephadm
+          test "$(cut -d: -f7 <<<"$account")" = /bin/bash
+        fi
+        status=0
+        getent group cephadm >/dev/null || status=$?
+        test "$status" = 0 -o "$status" = 2
+        if test "$status" = 0; then test "$owned" = 1; fi
+        if test -e /home/cephadm || test -e /etc/sudoers.d/kubeauto-cephadm; then
+          test "$owned" = 1
+        fi
+        test ! -L /home/cephadm
+  changed_when: false
+
+- name: Prepare the host identity ownership directory
+  ansible.builtin.file:
+    path: /etc/ceph
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Record dedicated account creation intent before creating it
+  ansible.builtin.copy:
+    content: "cephadm:/home/cephadm\n"
+    dest: /etc/ceph/kubeauto-owned-ssh-user
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Create the package-mode SSH group
+  ansible.builtin.group:
+    name: cephadm
+    system: true
+
+- name: Create the package-mode SSH account without a login password
+  ansible.builtin.user:
+    name: cephadm
+    group: cephadm
+    system: true
+    home: /home/cephadm
+    create_home: true
+    shell: /bin/bash
+
+- name: Grant the upstream package-mode root execution contract
+  ansible.builtin.copy:
+    content: "cephadm ALL=(root) NOPASSWD: ALL\n"
+    dest: /etc/sudoers.d/kubeauto-cephadm
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s

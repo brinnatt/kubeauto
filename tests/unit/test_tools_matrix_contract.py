@@ -12,7 +12,10 @@ from pathlib import Path
 
 import yaml
 
-from tests.helpers.validate_tools_test_matrix import validate_matrix
+from tests.helpers.validate_tools_test_matrix import (
+    _unapproved_lab_addresses,
+    validate_matrix,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +24,12 @@ RUNNER = ROOT / "tests" / "run_tools_regression.sh"
 
 
 class ToolsMatrixContractTests(unittest.TestCase):
+    def test_lab_address_validator_rejects_unapproved_tools_host(self):
+        self.assertEqual(
+            _unapproved_lab_addresses("ssh root@192.168.122.1 true\n"),
+            {"192.168.122.1"},
+        )
+
     def test_tools_matrix_summary_matches_cases(self):
         self.assertEqual(validate_matrix(MATRIX), [])
         data = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))

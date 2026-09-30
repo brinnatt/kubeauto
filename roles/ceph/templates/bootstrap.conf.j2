@@ -1,0 +1,16 @@
+[global]
+public_network = {{ ceph_public_network }}
+{% if ceph_cluster_network | default('') | length > 0 %}
+cluster_network = {{ ceph_cluster_network }}
+{% endif %}
+osd_pool_default_size = {{ ceph_replication_size | int }}
+mon_allow_pool_delete = false
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+ms_cluster_mode = secure
+ms_service_mode = secure
+ms_client_mode = secure
+
+[mgr]
+mgr/cephadm/mode = cephadm-package

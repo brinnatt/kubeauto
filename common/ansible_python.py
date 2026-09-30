@@ -60,7 +60,7 @@ from common.utils import run_command
 
 logger = setup_logger(__name__)
 
-# Source: ansible-core support matrix (control / target columns), 2.12–2.19.
+# Source: ansible-core support matrix (control / target columns), 2.12–2.21.
 # Legacy 2.9/2.10 rows follow the archived official support matrix.  Their
 # distro packages are still shipped by enterprise distributions such as
 # openEuler and Ubuntu, but they cannot execute modules on arbitrary future
@@ -69,6 +69,7 @@ logger = setup_logger(__name__)
 AnsibleCoreVersion = Tuple[int, int]
 
 _PYTHON_CANDIDATES: Sequence[str] = (
+    "/usr/bin/python3.14",
     "/usr/bin/python3.13",
     "/usr/bin/python3.12",
     "/usr/bin/python3.11",
@@ -95,6 +96,8 @@ _MATRIX: dict[AnsibleCoreVersion, tuple[tuple[int, int], Optional[tuple[int, int
     (2, 17): ((3, 10), (3, 12), (3, 7), (3, 12), (3, 9)),
     (2, 18): ((3, 11), (3, 13), (3, 8), (3, 13), (3, 9)),
     (2, 19): ((3, 11), (3, 13), (3, 8), (3, 13), (3, 9)),
+    (2, 20): ((3, 12), (3, 14), (3, 9), (3, 14), (3, 9)),
+    (2, 21): ((3, 12), (3, 14), (3, 9), (3, 14), (3, 9)),
 }
 
 

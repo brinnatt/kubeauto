@@ -1,0 +1,195 @@
+- name: Validate Ceph topology once
+  ansible.builtin.assert:
+    that:
+      - groups['ceph'] | default([]) | length >= 3
+      - groups['ceph_bootstrap'] | default([]) | length == 1
+      - groups['ceph_mon'] | default([]) | length >= 3
+      - groups['ceph_mon'] | length % 2 == 1
+      - groups['ceph_mgr'] | default([]) | length >= 2
+      - groups['ceph_osd'] | default([]) | length >= 3
+      - groups['ceph_bootstrap'] | difference(groups['ceph']) | length == 0
+      - groups['ceph_mon'] | difference(groups['ceph']) | length == 0
+      - groups['ceph_mgr'] | difference(groups['ceph']) | length == 0
+      - groups['ceph_osd'] | difference(groups['ceph']) | length == 0
+      - ceph_public_network | length > 0
+      - ceph_public_network is match('^[0-9a-fA-F:.]+/[0-9]{1,3}$')
+      - ceph_replication_size | int >= 2
+      - ceph_replication_size | int <= groups['ceph_osd'] | length
+    fail_msg: >-
+      Ceph requires one bootstrap host, an odd MON quorum of at least three,
+      two MGR hosts, three OSD hosts and an explicit public CIDR.
+  run_once: true
+
+- name: Validate optional RGW topology
+  ansible.builtin.assert:
+    that:
+      - groups['ceph_rgw'] | default([]) | length >= 2
+      - groups['ceph_rgw'] | difference(groups['ceph']) | length == 0
+    fail_msg: "ceph_rgw_install=yes requires at least two [ceph_rgw] hosts"
+  when: ceph_rgw_install | default('no') | string | lower == 'yes'
+  run_once: true
+
+- name: Qualify Ceph-CSI clients before preparing storage hosts
+  ansible.builtin.import_tasks: client-preflight.yml
+  when: ceph_csi_install | default('no') | string | lower == 'yes'
+  run_once: true
+
+- name: Check for a kubeauto-owned Ceph FSID on the bootstrap host
+  ansible.builtin.stat:
+    path: /etc/ceph/kubeauto-owned-fsid
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+  register: ceph_owner_marker_stat
+
+- name: Read the kubeauto-owned Ceph FSID
+  ansible.builtin.slurp:
+    src: /etc/ceph/kubeauto-owned-fsid
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+  register: ceph_owner_marker_content
+  when: ceph_owner_marker_stat.stat.exists
+
+- name: Resolve the exact owned FSID for device validation
+  ansible.builtin.set_fact:
+    ceph_owned_fsid: "{{ (ceph_owner_marker_content.content | b64decode | trim) if ceph_owner_marker_stat.stat.exists else '' }}"
+
+- name: Validate the existing ownership marker
+  ansible.builtin.assert:
+    that:
+      - ceph_owned_fsid == '' or ceph_owned_fsid is match('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+    fail_msg: "Invalid kubeauto Ceph ownership marker; refusing disk reconciliation"
+
+- name: Reject foreign Ceph daemon state on every host
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -ceu
+      - |
+        owned_fsid="$1"
+        while IFS= read -r fsid; do
+          test -n "$owned_fsid" && test "$fsid" = "$owned_fsid" || exit 1
+        done < <(find /var/lib/ceph -mindepth 1 -maxdepth 1 -type d \
+          -regextype posix-extended \
+          -regex '.*/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
+          -printf '%f\n')
+      - kubeauto-ceph-state-check
+      - "{{ ceph_owned_fsid }}"
+  changed_when: false
+
+- name: Normalize this host's OSD device declarations
+  ansible.builtin.set_fact:
+    ceph_device_list: "{{ (ceph_devices | default('')).split(',') | map('trim') | reject('equalto', '') | list }}"
+    ceph_device_id_list: "{{ (ceph_device_ids | default('')).split(',') | map('trim') | reject('equalto', '') | list }}"
+    ceph_db_device_list: "{{ (ceph_db_devices | default('')).split(',') | map('trim') | reject('equalto', '') | list }}"
+    ceph_db_device_id_list: "{{ (ceph_db_device_ids | default('')).split(',') | map('trim') | reject('equalto', '') | list }}"
+  when: inventory_hostname in groups['ceph_osd']
+
+- name: Require stable paths and one SERIAL or WWN allowlist value per OSD device
+  ansible.builtin.assert:
+    that:
+      - ceph_hostname | default('') | length > 0
+      - ceph_hostname == ansible_hostname
+      - ceph_device_list | length > 0
+      - ceph_device_list | length == ceph_device_id_list | length
+      - ceph_db_device_list | length == ceph_db_device_id_list | length
+      - ceph_device_list | intersect(ceph_db_device_list) | length == 0
+      - >-
+        (item.0 is match('^/dev/disk/by-id/')) or
+        (ceph_allow_test_mappers | default(false) | bool and
+         item.0 is match('^/dev/mapper/kubeauto-ceph-'))
+      - item.1 is match('^[A-Za-z0-9_.:+-]+$')
+    fail_msg: >-
+      OSD devices must use /dev/disk/by-id and pair with an exact serial/WWN.
+      Only a runtime ceph_allow_test_mappers=true override may admit a
+      /dev/mapper/kubeauto-ceph-* runner-owned fault-injection alias.
+  loop: "{{ (ceph_device_list | zip(ceph_device_id_list) | list) + (ceph_db_device_list | zip(ceph_db_device_id_list) | list) }}"
+  when: inventory_hostname in groups['ceph_osd']
+
+- name: Install official cephadm host prerequisites
+  ansible.builtin.import_tasks: host-prerequisites.yml
+
+- name: Enable time synchronization
+  ansible.builtin.service:
+    name: "{{ 'chrony' if ansible_os_family == 'Debian' else 'chronyd' }}"
+    state: started
+    enabled: true
+
+- name: Prepare the pinned host cephadm before inspecting existing OSDs
+  ansible.builtin.import_tasks: cephadm.yml
+
+- name: Verify every declared disk identity and unused state
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -ceu
+      - |
+        set -o pipefail
+        path="$1"
+        expected="$2"
+        owned_fsid="$3"
+        resolved="$(readlink -f -- "$path")"
+        test -b "$resolved"
+        root_source="$(findmnt -n -o SOURCE /)"
+        root_real="$(readlink -f -- "$root_source")"
+        root_ancestors="$(lsblk -srnp -o PATH "$root_real")"
+        if grep -Fxq "$resolved" <<<"$root_ancestors"; then
+          echo 'refusing a root filesystem device or backing disk' >&2
+          exit 1
+        fi
+        type="$(lsblk -dn -o TYPE "$resolved" | xargs)"
+        fstype="$(lsblk -dn -o FSTYPE "$resolved" | xargs)"
+        mounts="$(lsblk -dn -o MOUNTPOINT "$resolved" | xargs)"
+        serial="$(lsblk -dn -o SERIAL "$resolved" | xargs)"
+        wwn="$(lsblk -dn -o WWN "$resolved" | xargs)"
+        if [[ "$path" == /dev/mapper/kubeauto-ceph-* ]]; then
+          test "${CEPH_ALLOW_TEST_MAPPERS:-false}" = true
+          test "$type" = lvm -o "$type" = crypt -o "$type" = disk -o "$type" = dm
+          test "$expected" = "dm:${path##*/}"
+        else
+          test "$type" = disk
+          test "$expected" = "$serial" -o "$expected" = "$wwn"
+        fi
+        test -z "$mounts"
+        device_tree="$(lsblk -J -o NAME "$resolved")"
+        pv_inventory="$(pvs --reportformat json -o pv_name)"
+        has_pv="$(python3 -c '
+        import json, os, sys
+        paths = [os.path.realpath(row["pv_name"].strip())
+                 for report in json.load(sys.stdin)["report"] for row in report["pv"]]
+        print(int(sys.argv[1] in paths))
+        ' "$resolved" <<<"$pv_inventory")"
+        if test -z "$fstype" && test "$has_pv" = 0; then
+          python3 -c '
+        import json, sys
+        devices = json.load(sys.stdin)["blockdevices"]
+        assert len(devices) == 1 and not devices[0].get("children"), "device has partitions or holders"
+        ' <<<"$device_tree"
+          printf 'CEPH_DISK_IDENTITY_PASS state=unused path=%s serial=%s wwn=%s\n' "$path" "$serial" "$wwn"
+          exit 0
+        fi
+        test -x /usr/local/sbin/cephadm
+        mapfile -t fsids < <(find /var/lib/ceph -mindepth 1 -maxdepth 1 -type d \
+          -regextype posix-extended \
+          -regex '.*/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
+          -printf '%f\n')
+        test -n "$owned_fsid"
+        test "${fsids[*]}" = "$owned_fsid"
+        /usr/local/sbin/cephadm ceph-volume --fsid "$owned_fsid" -- lvm list "$resolved" --format json |
+          python3 -c '
+        import json, sys
+        expected = sys.argv[1]
+        data = json.load(sys.stdin)
+        entries = [entry for rows in data.values() for entry in rows]
+        assert entries
+        fsids = {entry.get("tags", {}).get("ceph.cluster_fsid") for entry in entries}
+        assert fsids == {expected}, (fsids, expected)
+        ' "$owned_fsid"
+        printf 'CEPH_DISK_IDENTITY_PASS state=owned fsid=%s path=%s serial=%s wwn=%s\n' \
+          "${fsids[0]}" "$path" "$serial" "$wwn"
+      - kubeauto-ceph-device-check
+      - "{{ item.0 }}"
+      - "{{ item.1 }}"
+      - "{{ ceph_owned_fsid }}"
+  environment:
+    CEPH_ALLOW_TEST_MAPPERS: "{{ (ceph_allow_test_mappers | default(false) | bool) | ternary('true', 'false') }}"
+  changed_when: false
+  loop: "{{ (ceph_device_list | zip(ceph_device_id_list) | list) + (ceph_db_device_list | zip(ceph_db_device_id_list) | list) }}"
+  when: inventory_hostname in groups['ceph_osd']

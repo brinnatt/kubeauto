@@ -1,0 +1,16 @@
+---
+service_type: node-exporter
+placement:
+  host_pattern: '*'
+---
+service_type: prometheus
+placement:
+  count: 2
+---
+service_type: alertmanager
+placement:
+  count: 3
+---
+service_type: grafana
+placement:
+  count: 1

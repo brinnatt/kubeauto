@@ -61,6 +61,65 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertIn('lab-wipe-nodes.sh" --verify', RUNNER)
         self.assertIn("LAB_CLEAN_VERIFY_PASS", LAB_WIPE)
 
+    def test_supervisor_counts_ceph_failures_even_with_zero_durable_exit(self):
+        function = "remote_job_summary()" + RUNNER.split("remote_job_summary()", 1)[1].split("remote_log_tail()", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="kubeauto-supervisor-") as temporary:
+            directory = Path(temporary)
+            prefix = directory / "state"
+            for suffix, content in (("pid", "999999999"), ("exit", "0"), ("finalized", "0")):
+                (directory / f"state.{suffix}").write_text(content)
+            log = directory / "live.log"
+            for marker in ("CEPH_STAGE_FAIL id=CEPH-13 class=test-gate", "CEPH_CONTRACT_FAIL reason=fixture", "[FAIL] fixture"):
+                with self.subTest(marker=marker):
+                    log.write_text(f"{marker}\nCEPH_DELIVERY_PASS\n")
+                    script = function + f"\nlocal_ssh() {{ bash -lc \"$1\"; }}\nremote_job_summary local_ssh '' '{prefix}' '{log}'\n"
+                    result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("rc=0", result.stdout)
+                    self.assertIn("failure_markers=1", result.stdout)
+
+    def test_supervisor_process_snapshot_cannot_block_on_stuck_pstree(self):
+        function = "remote_process_tree()" + RUNNER.split("remote_process_tree()", 1)[1].split("remote_diagnostics()", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="kubeauto-process-snapshot-") as temporary:
+            directory = Path(temporary)
+            pstree = directory / "pstree"
+            pstree.write_text("#!/bin/sh\nsleep 30\n")
+            pstree.chmod(0o755)
+            function = function.replace("timeout -k 1s 5s pstree", f"timeout -k 1s 5s {pstree}")
+            prefix = directory / "state"
+            script = function + f"""
+printf '%s\n' $$ >'{prefix}.pid'
+local_ssh() {{ eval "$1"; }}
+remote_process_tree local_ssh '' '{prefix}'
+"""
+            started = time.monotonic()
+            result = subprocess.run(["bash", "-c", script], text=True,
+                                    capture_output=True, timeout=9)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertLess(time.monotonic() - started, 8)
+            self.assertIn("process_tree_snapshot=unavailable_or_timed_out", result.stdout)
+
+    def test_cancel_does_not_treat_an_exited_zombie_as_a_live_process(self):
+        function = "cancel_remote_job()" + RUNNER.split("cancel_remote_job()", 1)[1].split("matrix_counts()", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="kubeauto-cancel-") as temporary:
+            prefix = Path(temporary) / "state"
+            process = subprocess.Popen(["bash", "-c", "exit 0"])
+            try:
+                deadline = time.monotonic() + 2
+                while time.monotonic() < deadline:
+                    state = subprocess.run(["ps", "-p", str(process.pid), "-o", "stat="], text=True, capture_output=True).stdout.strip()
+                    if state.startswith("Z"):
+                        break
+                    time.sleep(0.01)
+                self.assertTrue(state.startswith("Z"), state)
+                Path(f"{prefix}.pid").write_text(str(process.pid))
+                script = function + f"\nlocal_ssh() {{ bash -lc \"$1\"; }}\ncancel_remote_job fixture local_ssh '' '{prefix}'\n"
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("state=not-running", result.stdout)
+            finally:
+                process.wait(timeout=3)
+
     def test_durable_terminal_fence_waits_for_child_exit_diagnostics(self):
         with tempfile.TemporaryDirectory(prefix="kubeauto-durable-gate-") as temporary:
             workdir = Path(temporary)
@@ -246,6 +305,7 @@ class TestDeliveryProcessContract(unittest.TestCase):
     def test_active_test_code_has_no_retired_lab_address(self):
         allowed_paths = {
             ROOT / "tests" / "README.md",
+            ROOT / "tests" / "ceph-test-matrix.yaml",
             ROOT / "tests" / "unit" / "test_delivery_process_contract.py",
             ROOT / "tests" / "unit" / "test_registry_ready.py",
         }

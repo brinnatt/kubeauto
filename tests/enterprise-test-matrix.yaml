@@ -7,11 +7,11 @@
 
 meta:
   version: 3
-  updated: "2026-09-03"
+  updated: "2026-09-29"
   environment_updated: "2026-08-04"
   runner: tests/run_enterprise_regression.sh
   regression_log: "logs/enterprise-delivery-20260807-1009.log"
-  regression_result: "PASS - current --all-delivery completed with ENTERPRISE_DELIVERY_ALL_EXIT rc=0, all durable gates rc=0, zero failure markers, and final LAB_CLEAN_VERIFY_PASS"
+  regression_result: "PENDING - current Ansible 2.20/2.21 and Python 3.14 compatibility qualification is incomplete; retained all-delivery logs are historical evidence, not current sign-off"
   regression_evidence:
     all_delivery: "logs/enterprise-delivery-20260807-1009.log: ENTERPRISE_DELIVERY_ALL_PASS; ENTERPRISE_DELIVERY_ALL_EXIT rc=0; final LAB_CLEAN_VERIFY_PASS"
     jumper: "192.168.47.130:/tmp/kubeauto-jumper-live.log"
@@ -136,7 +136,7 @@ tier0_foundation:
   - {id: T0-08, group: G0, desc: kubecli completion short/long flags, status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-26 unit completion cases and 138 G1 passed"}
   - {id: T0-09, group: G0, desc: "local registry ready wait (stop→start; download -D/-X/-E no EOF)", status: pass, evidence: "2026-08-04 current authoritative all-delivery gate passed with its required terminal marker, durable rc=0, failure_markers=0 and post-gate LAB_CLEAN_VERIFY_PASS; 2026-07-26 lab wipe removed local_registry; 138 download -D/-X/-E recreated, waited and uploaded successfully"}
   - {id: T0-10, group: G0, desc: "autonomous delivery process contract (one entry, durable state, live stream, heartbeat, clean verify, current lab, isolated logs)", status: pass, evidence: "2026-08-04 authoritative --all-delivery emitted durable state, foreground stream, 30s heartbeats and 60s silent-stall diagnostics; every gate ended rc=0/failure_markers=0 and final LAB_CLEAN_VERIFY_PASS."}
-  - {id: T0-11, group: G0, desc: "cross-distribution native Ansible package install and Python compatibility", status: pass, evidence: "2026-08-04 current controls: openEuler 142 native ansible 2.9.27, openSUSE 143 native ansible-core 2.18.3/Python 3.13.5 and Anolis 141 audited execution environment all passed; package/container cleanup passed."}
+  - {id: T0-11, group: G0, desc: "cross-distribution native Ansible package install and Python compatibility", status: pending, evidence: "Ansible 2.20/2.21 Python 3.14 policy repair requires current compatibility evidence; prior 2.9/2.18 controls do not certify Ubuntu 26."}
   - {id: T0-12, group: G0, desc: "local_registry restart=always across Docker SDK/CLI and host reboot", status: pass, evidence: "2026-08-07 current full --all-delivery: focused SDK/CLI policy assertions, real 138 host reboot, no kubecli after reboot, automatic local_registry HTTP recovery, persistent fixture manifest digest unchanged (sha256:f8bb41d7285336a0c27787f9ba3d7372bc5ff3d0ef7d977d0467a673289545ad); REGISTRY_REBOOT_PREP_EXIT rc=0, ENTERPRISE_DELIVERY_ALL_EXIT rc=0, zero failure markers, final LAB_CLEAN_VERIFY_PASS."}
 
 tier1_commands:
@@ -281,7 +281,7 @@ tier3_tools:
   - {id: T3-TL-09, tool: OvpnUserCli, status: pass, evidence: "2026-08-04 ROCKY8_TOOLS_BUILD_PASS; real Rocky 8/glibc2.28 startup passed; TIER3_TOOLS_GATE_PASS."}
 
 execution_groups:
-  G0: {name: "基础层", priority: P0, status: pass}
+  G0: {name: "基础层", priority: P0, status: pending}
   G1: {name: "CLI 冒烟", priority: P0, status: pass}
   G2: {name: "集群创建", priority: P0, status: pass}
   G3: {name: "集群运维", priority: P0, status: pass}
@@ -299,8 +299,8 @@ execution_groups:
 
 coverage_summary:
   tier0_total: 12
-  tier0_pass: 12
-  tier0_pending: 0
+  tier0_pass: 11
+  tier0_pending: 1
   tier1_total: 26
   tier1_pass: 26
   tier1_pending: 0
@@ -326,4 +326,4 @@ coverage_summary:
   all_nodes_ready: false
   final_lab_clean: true
   overall_assessment: |
-    PASS（2026-09-03）：当前 127/127 项 PASS；Prometheus 独立分路完成当前清洁六节点回归、可选分路验收、双仓制品门禁、durable rc=0、零 failure marker 和最终 LAB_CLEAN_VERIFY_PASS。
+    PENDING：当前 126/127 项 PASS；Ansible 2.20/2.21 与 Python 3.14 的兼容修复须取得当前现场证据后签收，其余既有分路证据保持不变。

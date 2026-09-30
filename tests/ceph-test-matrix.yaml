@@ -1,0 +1,389 @@
+meta:
+  version: 1
+  updated: "2026-09-29"
+  component: ceph
+  scope: "Independent cephadm-managed Ceph and external Ceph-CSI delivery branch"
+  runner: bash tests/run_enterprise_regression.sh --ceph-only
+  result: PENDING
+
+versions:
+  ceph: "20.2.4"
+  cephadm_sha256: "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f"
+  ceph_csi: "v3.17.1"
+  kubernetes: "1.33.6"
+
+laboratory:
+  control: 192.168.47.130
+  storage_hosts: [192.168.122.135, 192.168.122.40, 192.168.122.72, 192.168.122.212, 192.168.122.165, 192.168.122.238]
+  kubernetes_masters: [192.168.47.134, 192.168.47.135, 192.168.47.136]
+  kubernetes_workers: [192.168.47.131, 192.168.47.132, 192.168.47.137]
+  os_qualification_hosts:
+    rocky10: 192.168.47.145
+    ubuntu24: 192.168.47.146
+    ubuntu26: 192.168.47.147
+  os_qualification_access: "Runtime-authorized key or password bootstrap; credentials are not stored in the matrix"
+  boundary: "Standalone storage plus external CSI; disjoint leased host pools; read-only clean preflight refuses existing clusters; small compute nodes have reserved resources disabled; no 300-OSD scalability or hyperconvergence claim"
+
+references:
+  cephadm: https://docs.ceph.com/en/tentacle/cephadm/
+  cephadm_remote_source: https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/cephadm/serve.py
+  ansible_python_matrix: https://docs.ansible.com/projects/ansible-core/devel/reference_appendices/release_and_maintenance.html
+  rhel8_python312: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/8.10_release_notes/new-features
+  ceph_health: https://docs.ceph.com/en/tentacle/rados/operations/health-checks/
+  ceph_troubleshooting: https://docs.ceph.com/en/tentacle/rados/troubleshooting/troubleshooting-osd/
+  ceph_csi: https://github.com/ceph/ceph-csi/tree/v3.17.1
+  ceph_csi_auth_fix: https://github.com/ceph/ceph-csi/releases/tag/v3.17.1
+  cephx_security: https://docs.ceph.com/en/latest/security/CVE-2025-30156/
+  kernel_cephx_source: https://github.com/torvalds/linux/blob/v7.0/net/ceph/crypto.c
+  minio_mc_release: https://github.com/minio/mc/releases/tag/RELEASE.2025-04-08T15-39-49Z
+  aws_sigv4: https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
+  aws_ebs_metrics: https://docs.aws.amazon.com/ebs/latest/userguide/using_cloudwatch_ebs.html
+  azure_disk_metrics: https://learn.microsoft.com/en-us/azure/virtual-machines/disks-metrics
+  oracle_volume_metrics: https://docs.oracle.com/en-us/iaas/Content/Block/References/volumemetrics.htm
+  alibaba_ebs_monitoring: https://www.alibabacloud.com/help/en/ebs/user-guide/view-the-monitoring-information-of-a-disk
+  huawei_evs: https://support.huaweicloud.com/intl/en-us/productdesc-evs/
+
+# These qualifications are additional release prerequisites, not substitutes
+# for the 28 business/fault cases. Container rootfs/package tests cannot qualify
+# the host kernel, systemd, orchestrator remote execution or kernel CSI path.
+os_qualification:
+  product_command: 'kubecli setup "$CLUSTER" 08; kubecli setup "$CLUSTER" 08'
+  fixture_boundary: "Real authorized host OS and kernel; leased storage and compute nodes; no automatic system-disk reinstallation"
+  acceptance: "Pinned cephadm version/check-host and orchestrator remote daemon convergence; secure msgr2 plus selected CephX client key type; explicit legacy-aes risk acceptance on old kernels; RBD/CephFS write/read hash, recovery and performance; second product run; durable rc=0; zero failure markers; scoped cleanup"
+  evidence_boundary: "Current source fingerprint excluding matrix status/evidence; SHA256-bound JSON under ignored logs/; exact OS/kernel/Python/runtime and run ID"
+  profiles:
+    - {id: CEPH-OS-ROCKY8, os_id: rocky, major: "8", host: 192.168.47.134, ssh_user: root, client_key_type: aes, status: pending, evidence: null}
+    - {id: CEPH-OS-ROCKY9, os_id: rocky, major: "9", host: 192.168.122.2, ssh_user: root, client_key_type: aes256k, status: pending, evidence: null}
+    - {id: CEPH-OS-ROCKY10, os_id: rocky, major: "10", host: 192.168.47.145, ssh_user: root, client_key_type: aes256k, status: pending, evidence: null}
+    - {id: CEPH-OS-UBUNTU22, os_id: ubuntu, major: "22", host: 192.168.47.138, ssh_user: ubuntu, client_key_type: aes, status: pending, evidence: null}
+    - {id: CEPH-OS-UBUNTU24, os_id: ubuntu, major: "24", host: 192.168.47.146, ssh_user: ly, client_key_type: aes256k, status: pending, evidence: null}
+    - {id: CEPH-OS-UBUNTU26, os_id: ubuntu, major: "26", host: 192.168.47.147, ssh_user: ly, client_key_type: aes256k, status: pending, evidence: null}
+
+documentation_alignment:
+  01-architecture.md: [CEPH-03, CEPH-04, CEPH-05, CEPH-06, CEPH-11, CEPH-12, CEPH-15, CEPH-23]
+  02-cephadm.md: [CEPH-02, CEPH-05, CEPH-06, CEPH-26, CEPH-28]
+  03-rados.md: [CEPH-07, CEPH-12, CEPH-13, CEPH-14, CEPH-15, CEPH-16, CEPH-17, CEPH-18, CEPH-21, CEPH-23, CEPH-24, CEPH-25]
+  04-cephfs.md: [CEPH-09, CEPH-12, CEPH-13, CEPH-14, CEPH-15, CEPH-17, CEPH-18, CEPH-24, CEPH-25]
+  05-rbd.md: [CEPH-08, CEPH-11, CEPH-12, CEPH-13, CEPH-14, CEPH-15, CEPH-16, CEPH-17, CEPH-24, CEPH-25]
+  06-radosgw.md: [CEPH-10, CEPH-11, CEPH-12, CEPH-13, CEPH-14, CEPH-15, CEPH-17, CEPH-24, CEPH-25]
+  07-mgr.md: [CEPH-05, CEPH-06, CEPH-26, CEPH-27]
+  08-mgr-dashboard.md: [CEPH-27]
+  09-monitoring.md: [CEPH-13, CEPH-14, CEPH-16, CEPH-17, CEPH-18, CEPH-19, CEPH-20, CEPH-21, CEPH-22, CEPH-25, CEPH-27]
+
+# Every live case starts pending. A case moves to pass only with current run-ID
+# evidence, durable rc=0, zero failure markers and scoped cleanup verification.
+cases:
+  - id: CEPH-01
+    group: static
+    desc: "Exact Ceph 20.2.4, cephadm checksum, Ceph-CSI v3.17.1 and sidecar pins"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-static-only"
+    expected_marker: "CEPH_STATIC_CONTRACT_PASS"
+    official_reference: "Ceph v20.2.4 release and Ceph-CSI v3.17.1 tag/source"
+    fixture_boundary: "six repositories; read-only"
+    cleanup_scope: "none"
+    disproof_command: "python3 -m unittest tests.unit.test_ceph_delivery"
+
+  - id: CEPH-02
+    group: supply-chain
+    desc: "Exact cephadm SHA256/version, Python-3.14 Ansible EE and all image manifests; default dual publication, or explicitly authorized runtime manual-talkedu publication with truthful provenance"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-supply-chain-only"
+    expected_marker: "CEPH_SUPPLY_CHAIN_PASS"
+    official_reference: "Ceph 20.2.4 cephadm list-images; Ansible core 2.20 Python 3.14 support; Ceph-CSI v3.17.1 chart values; archived MinIO mc RELEASE.2025-04-08T15-39-49Z official GitHub assets and SHA256"
+    fixture_boundary: "TalkEdu catalog; Docker Hub comparison and ext-bin 1.16.0 containing cephadm in default dual mode; checksum-gated runtime-only cephadm staging during explicitly authorized temporary CI outages"
+    cleanup_scope: "manifest probes are read-only"
+    disproof_command: "bash tests/helpers/ceph-regression.sh --supply-chain-only"
+
+  - id: CEPH-03
+    group: preflight
+    desc: "Six leased Rocky 9 storage hosts plus six separate Rocky 8 compute hosts; time sync, network, disk identity and CPU/memory qualify; secure msgr2 and selected CephX key-type preflight block mutation on unsupported compute kernels; clean preflight refuses existing Kubernetes/runtime state; product installs missing runtime"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-probe"
+    expected_marker: "CEPH_HOST_PROBE_PASS"
+    official_reference: "Ceph Tentacle cephadm host requirements; Ceph-CSI v3.17.1 AES256 kernel requirements; Linux v7.0 net/ceph/crypto.c"
+    fixture_boundary: "approved Ceph-priority storage pool and separate 131/132/134/135/136/137 compute pool; read-only probe; explicit --ceph-lab-python-bootstrap prepares distribution-owned Python 3.12 without hand-editing interpreter links or changing production policy; native RPM alternatives scriptlets remain authoritative"
+    cleanup_scope: "none"
+    disproof_command: "bash tests/run_enterprise_regression.sh --ceph-probe"
+
+  - id: CEPH-04
+    group: disk-safety
+    desc: "Every test disk resolves to its recorded stable path and identity, with SERIAL/WWN required outside the fixed lab"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-probe"
+    expected_marker: "CEPH_DISK_ALLOWLIST_PASS"
+    official_reference: "Ceph cephadm OSD service specification and device inventory"
+    fixture_boundary: "three additional disks on each leased Ceph host"
+    cleanup_scope: "only allowlisted disk identities and kubeauto-ceph-* mappings"
+    disproof_command: "bash tests/helpers/ceph-regression.sh --disk-preflight-only"
+
+  - id: CEPH-05
+    group: install
+    desc: "Disabled product 08 skips facts and FSID creation; enabled cephadm bootstrap, three MON in quorum, at least two MGR and explicit per-host OSD specs converge; separate Kubernetes DNS and cross-node Service HTTP write/read pass"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_CLUSTER_INSTALL_PASS"
+    official_reference: "Ceph Tentacle cephadm bootstrap, host management and service specs"
+    fixture_boundary: "one runner-owned FSID on six storage hosts; three-master/three-worker Kubernetes on separate leased compute hosts"
+    cleanup_scope: "runner-owned FSID, units, containers and allowlisted disks on storage hosts only; product destroy, stopped k8s.io process trees and known CNI links on leased compute hosts only, refusing active Kubernetes/runtime or foreign shims"
+    disproof_command: "cephadm shell -- ceph orch ps --format json"
+
+  - id: CEPH-06
+    group: idempotence
+    desc: "Second product run preserves FSID, OSD IDs, auth identities and daemon placement"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_IDEMPOTENCE_PASS"
+    official_reference: "Ceph Tentacle cephadm declarative service management"
+    fixture_boundary: "installed runner-owned cluster"
+    cleanup_scope: "none during comparison"
+    disproof_command: "cephadm shell -- ceph orch ls --format json"
+
+  - id: CEPH-07
+    group: data
+    desc: "RADOS replicated pool write/read preserves deterministic object hash"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_RADOS_DATA_PASS"
+    official_reference: "Ceph Tentacle RADOS operations"
+    fixture_boundary: "runner-owned RBD pool and kubeauto-marker object"
+    cleanup_scope: "runner-owned pool and object with the FSID"
+    disproof_command: "cephadm shell -- rados -p kubernetes-rbd stat kubeauto-marker"
+
+  - id: CEPH-08
+    group: csi-rbd
+    desc: "External Ceph-CSI provisions RBD PVC and a Kubernetes workload verifies write/read hash"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_CSI_RBD_PASS"
+    official_reference: "Ceph-CSI v3.17.1 RBD deployment and examples"
+    fixture_boundary: "FSID-owned ceph-csi namespace, named StorageClass and fixed regression PVC/Pod"
+    cleanup_scope: "regression namespace PVC/Pod and CSI-owned RBD image"
+    disproof_command: "kubectl --kubeconfig=/usr/local/kubeauto/clusters/ceph-gate/kubectl.kubeconfig get pvc -n ceph-regression"
+
+  - id: CEPH-09
+    group: csi-cephfs
+    desc: "External Ceph-CSI provisions CephFS RWX PVC and two workloads verify shared data hash"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_CSI_CEPHFS_PASS"
+    official_reference: "Ceph-CSI v3.17.1 CephFS deployment and examples"
+    fixture_boundary: "FSID-owned ceph-csi namespace, named StorageClass and fixed regression PVC/Pods"
+    cleanup_scope: "regression namespace PVC/Pods and CSI-owned subvolume"
+    disproof_command: "kubectl --kubeconfig=/usr/local/kubeauto/clusters/ceph-gate/kubectl.kubeconfig get volumeattachment,pv,pvc -A"
+
+  - id: CEPH-10
+    group: rgw
+    desc: "AWS-spec SigV4 fixed-object PUT and pinned mc bucket/get/list/delete verify cross-client hash and negative auth"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_RGW_S3_PASS"
+    official_reference: "Ceph Tentacle RADOS Gateway S3 authentication, Ceph v20.2.4 rgw_auth_s3.cc strict signed-header check, and AWS S3 SigV4 header-based authentication"
+    fixture_boundary: "Fixed regression RGW user and bucket on runner-owned FSID; test-only Python standard-library signer on the control host and published mc Pod client; neither curl 7.85.0 nor mc streaming PUT 403 counts as PASS"
+    cleanup_scope: "regression objects, bucket and RGW user"
+    disproof_command: "cephadm shell -- radosgw-admin bucket stats --bucket kubeauto-ceph-test"
+
+  - id: CEPH-11
+    group: security
+    desc: "Least-privilege CSI and S3 identities work; wrong keys and cross-pool RBD access fail"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_SECURITY_PASS"
+    official_reference: "Ceph Tentacle CephX capabilities and Ceph-CSI secrets"
+    fixture_boundary: "runner-owned auth entities and namespaces"
+    cleanup_scope: "runner-owned auth entities"
+    disproof_command: "cephadm shell -- ceph auth get client.csi-rbd"
+
+  - id: CEPH-12
+    group: failure
+    desc: "One OSD down preserves sampled RADOS/RBD/CephFS/S3 service and returns to clean PG state"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_OSD_DOWN_RECOVERY_PASS"
+    official_reference: "Ceph Tentacle OSD state and PG recovery"
+    fixture_boundary: "one selected runner-owned OSD daemon"
+    cleanup_scope: "restart selected daemon and wait for active+clean"
+    disproof_command: "cephadm shell -- ceph health detail"
+
+  - id: CEPH-13
+    group: slow-osd-p0
+    desc: "One up/in OSD on fixed dm-delay records iostat await/queue depth, Ceph commit_latency/apply_latency and historic slow ops alongside mixed RADOS/RBD/CephFS/S3 workload p95/p99"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-slow-osd-fixed"
+    expected_marker: "CEPH_SLOW_OSD_FIXED_PASS"
+    official_reference: "Ceph SLOW_OPS and BLUESTORE_SLOW_OP_ALERT; AWS VolumeAvgReadLatency/VolumeAvgWriteLatency/VolumeQueueLength/VolumeStalledIOCheck"
+    fixture_boundary: "one Ceph-created block LV bound to the recorded FSID/OSD/physical disk; its native linear table is changed to dm-delay; OSD remains up/in without I/O error"
+    cleanup_scope: "restore the exact original native LV table, remove runner-owned disk aliases and zap only the owned FSID during scoped cleanup"
+    disproof_command: "cephadm shell -- ceph daemon osd.ID dump_historic_ops"
+
+  - id: CEPH-14
+    group: slow-osd-p0
+    desc: "Intermittent dm-delay stalls are detected by mixed-workload p99 and compared with the healthy baseline"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-slow-osd-intermittent"
+    expected_marker: "CEPH_SLOW_OSD_INTERMITTENT_PASS"
+    official_reference: "Ceph historic ops; Alibaba Cloud EBS IOHang and latency diagnostics"
+    fixture_boundary: "one verified Ceph-created block LV with a bounded native dm-delay on/off schedule"
+    cleanup_scope: "stop injector and restore the exact original native LV table"
+    disproof_command: "iostat -x 1 10"
+
+  - id: CEPH-15
+    group: slow-osd-p0
+    desc: "dm-delay slow OSD is measurably worse than a fully down OSD under the same mixed-workload shape"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-slow-vs-down"
+    expected_marker: "CEPH_SLOW_VS_DOWN_PASS"
+    official_reference: "Ceph DEVICE_HEALTH_IN_USE and SLOW_OPS guidance"
+    fixture_boundary: "same OSD and 12-iteration sequential mixed-workload shape; distinct object keys"
+    cleanup_scope: "restore mapping and daemon; wait active+clean"
+    disproof_command: "cephadm shell -- ceph osd perf"
+
+  - id: CEPH-16
+    group: throttling
+    desc: "Healthy/25-IOPS/recovered phases verify the exact physical device io.max and io.stat deltas, in-flight iostat/OSD metrics, sustained RADOS latency impact and concurrent mixed-business latency"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-osd-throttle"
+    expected_marker: "CEPH_OSD_THROTTLE_CLASSIFICATION_PASS"
+    official_reference: "Linux 5.14 cgroup v2 io.max/io.stat; systemd 252 IOReadIOPSMax/IOWriteIOPSMax; Ceph v20.2.4 ObjBencher JSON; AWS VolumeIOPSExceededCheck; Oracle VolumeThrottledIOs; Azure disk consumed percentage"
+    fixture_boundary: "one runner-owned OSD unit and allowlisted physical disk; each phase runs 30-second 4-KiB RADOS writes in 4-MiB objects at concurrency 32 alongside four mixed operations; runtime IOPS limit 25 only during the limited phase"
+    cleanup_scope: "remove runtime systemd I/O limit and verify it is absent"
+    disproof_command: "iostat -x 1 10"
+
+  - id: CEPH-17
+    group: slow-osd-p0
+    desc: "An up/in slow OSD plus another OSD's recovery/backfill quantifies foreground p99; active recovery on PGs containing the slow OSD must overlap business sampling"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-slow-osd-recovery"
+    expected_marker: "CEPH_SLOW_OSD_RECOVERY_PASS"
+    official_reference: "Ceph v20.2.4 PGMap.cc pg_stats; PG states recovering/backfilling; RADOS --max-objects and named benchmark cleanup"
+    fixture_boundary: "one delayed up/in OSD; mark another replica of a populated PG out; at most 128 4-MiB benchmark objects (512 MiB logical) in runner-owned RBD pool"
+    cleanup_scope: "restore mapping, reintegrate both OSDs, active+clean and named benchmark cleanup; failure removes the owned FSID"
+    disproof_command: "cephadm shell -- ceph -s"
+
+  - id: CEPH-18
+    group: contention
+    desc: "Deep-scrub competition requires scrubbing+deep state to overlap business p95/p99 sampling and returns all PGs clean"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-scrub-contention"
+    expected_marker: "CEPH_SCRUB_CONTENTION_PASS"
+    official_reference: "Ceph v20.2.4 PGMap.cc pg_stats; PG states scrubbing/deep; deep scrub data checksums; RADOS --max-objects"
+    fixture_boundary: "new runner-owned single-PG replicated pool with autoscaling off; 1024 4-MiB objects (4 GiB logical); refuse a pre-existing fixture pool"
+    cleanup_scope: "wait active+clean and delete only the newly created fixture pool; failure removes the owned FSID"
+    disproof_command: "cephadm shell -- ceph pg dump pgs_brief"
+
+  - id: CEPH-19
+    group: bluefs
+    desc: "BlueFS DB mapping delay is correlated with its affected OSDs and mixed-workload p99"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-bluefs-slow"
+    expected_marker: "CEPH_BLUEFS_SLOW_PASS"
+    official_reference: "Ceph BLUEFS_SPILLOVER and BlueStore slow operation health checks"
+    fixture_boundary: "the selected OSD's Ceph-created DB LV bound to its FSID and allowlisted DB disk; never an unknown block device"
+    cleanup_scope: "restore the exact original DB LV table and wait for active+clean"
+    disproof_command: "cephadm shell -- ceph health detail"
+
+  - id: CEPH-20
+    group: differential
+    desc: "RocksDB compaction, OSD cgroup memory and swap evidence is recorded for non-media diagnosis"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-slow-osd-differential"
+    expected_marker: "CEPH_SLOW_OSD_DIFFERENTIAL_PASS"
+    official_reference: "Ceph OSD troubleshooting and memory configuration"
+    fixture_boundary: "selected OSD daemon; read-only cgroup/swap evidence and one bounded RocksDB compaction"
+    cleanup_scope: "no persistent memory or swap changes"
+    disproof_command: "cephadm shell -- ceph daemon osd.ID perf dump"
+
+  - id: CEPH-21
+    group: differential
+    desc: "Hot-object PG placement and repeated writes are recorded as a non-media comparison input"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-hot-pg-differential"
+    expected_marker: "CEPH_HOT_PG_DIFFERENTIAL_PASS"
+    official_reference: "Ceph PG mapping, primary affinity and OSD performance counters"
+    fixture_boundary: "run-ID object set with known PG mappings"
+    cleanup_scope: "remove the runner-owned hot object with its pool"
+    disproof_command: "cephadm shell -- ceph osd map POOL OBJECT"
+
+  - id: CEPH-22
+    group: differential
+    desc: "Controlled network latency/loss is injected on a routed non-loopback interface and mixed-workload latency is recorded"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-network-vs-disk"
+    expected_marker: "CEPH_NETWORK_VS_DISK_PASS"
+    official_reference: "Ceph network troubleshooting and OSD slow request diagnosis"
+    fixture_boundary: "one run-ID tc qdisc on the selected Ceph interface"
+    cleanup_scope: "remove only the owned netem qdisc and verify it is absent"
+    disproof_command: "tc -s qdisc show"
+
+  - id: CEPH-23
+    group: remediation
+    desc: "Capacity and CRUSH state are recorded; one OSD is marked out and stopped only after safe-to-destroy succeeds"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-slow-osd-remediate"
+    expected_marker: "CEPH_SLOW_OSD_REMEDIATION_PASS"
+    official_reference: "Ceph device health and OSD replacement procedures"
+    fixture_boundary: "one selected runner-owned OSD with current OSD tree and capacity snapshot"
+    cleanup_scope: "replace/reactivate selected OSD and reach active+clean"
+    disproof_command: "cephadm shell -- ceph osd safe-to-destroy ID"
+
+  - id: CEPH-24
+    group: integrity
+    desc: "After the fault sequence RADOS object, RBD filesystem, CephFS shared file and S3 object hashes remain exact"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_POST_FAULT_INTEGRITY_PASS"
+    official_reference: "Ceph data integrity, scrubbing, RBD, CephFS and RGW documentation"
+    fixture_boundary: "immutable pre-fault run-ID dataset"
+    cleanup_scope: "remove dataset only after all hashes are recorded"
+    disproof_command: "cephadm shell -- ceph health detail"
+
+  - id: CEPH-25
+    group: performance
+    desc: "Fixed healthy RADOS/RBD/CephFS/S3 baseline records request latency, error-free completion and p95/p99"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-performance"
+    expected_marker: "CEPH_PERFORMANCE_BASELINE_PASS"
+    official_reference: "Ceph benchmark guidance; AWS, Azure, Oracle, Alibaba and Huawei block-storage performance dimensions"
+    fixture_boundary: "fixed 15-operation sequential mixed-workload sample"
+    cleanup_scope: "run-ID clients and data"
+    disproof_command: "cephadm shell -- rados bench --help"
+
+  - id: CEPH-26
+    group: upgrade
+    desc: "Pinned previous Tentacle patch upgrades to 20.2.4 with explicit noout release and retains hashes"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-upgrade"
+    expected_marker: "CEPH_UPGRADE_PASS"
+    official_reference: "Ceph Tentacle cephadm upgrade procedure"
+    fixture_boundary: "runner-owned upgrade cluster and immutable dataset"
+    cleanup_scope: "unset flags and finish/recover the orchestrator upgrade"
+    disproof_command: "cephadm shell -- ceph versions"
+
+  - id: CEPH-27
+    group: observability
+    desc: "Dashboard and monitoring services expose daemon and health signals; a controlled warning changes and recovers the exported health metric"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-only"
+    expected_marker: "CEPH_OBSERVABILITY_PASS"
+    official_reference: "Ceph Tentacle monitoring and Dashboard documentation"
+    fixture_boundary: "cephadm-owned monitoring services and run-ID alert fixture"
+    cleanup_scope: "remove alert fixture; keep product monitoring services"
+    disproof_command: "cephadm shell -- ceph orch ps --service_name prometheus"
+
+  - id: CEPH-28
+    group: cleanup
+    desc: "Success and handled failure paths remove owned Kubernetes/Ceph resources, mappings, disk signatures, orphan k8s.io process trees and known CNI links; verification rejects runtime residue"
+    status: pending
+    product_command: "bash tests/run_enterprise_regression.sh --ceph-clean-only"
+    expected_marker: "CEPH_CLEAN_VERIFY_PASS"
+    official_reference: "Ceph Tentacle cephadm purging: stop orchestration before rm-cluster and OSD zap; containerd v2.1.4 official unit uses KillMode=process and shims survive service stop"
+    fixture_boundary: "disjoint leased storage/compute host sets, validated product inventory, recorded FSID, dm names and SERIAL/WWN allowlist"
+    cleanup_scope: "strictly runner-owned resources and stopped k8s.io fixtures on leased hosts; refuse active Kubernetes/runtime or foreign shims; foreign filesystems and signatures remain untouched"
+    disproof_command: "bash tests/helpers/ceph-cleanup.sh --verify"
+
+coverage_summary:
+  total: 28
+  pass: 0
+  pending: 28
+  fail: 0
+  overall_assessment: "0/28 PENDING"

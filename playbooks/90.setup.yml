@@ -71,3 +71,6 @@
 - hosts: localhost
   roles:
   - cluster-addon
+
+# Optional independent storage branch. Its role is inert unless ceph_install=yes.
+- import_playbook: 08.ceph.yml

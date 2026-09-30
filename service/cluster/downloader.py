@@ -213,7 +213,7 @@ class DownloadManager:
         try:
             # Continue past optional/unmirrorable tags (e.g. hubble-ui, dingtalk) so
             # core component images still land in the local registry.
-            self.registry.upload_to_registry(images, fail_fast=False)
+            self.registry.upload_to_registry(images, fail_fast=component == "ceph")
         except Exception as e:
             logger.error(f"[DOWNLOAD] Failed to upload {component} images — {e}", extra=LOG_STDOUT)
             raise DownloadError(f"Failed to upload {component} images: {e}")

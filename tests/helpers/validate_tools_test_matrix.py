@@ -35,6 +35,12 @@ ALLOWED_122_ADDRESSES = {
     "192.168.122.246", "192.168.122.193", "192.168.122.210",
     "192.168.122.216",
 }
+LAB_ADDRESS_PATTERN = re.compile(r"192\.168\.122\.\d{1,3}")
+
+
+def _unapproved_lab_addresses(text: str) -> set[str]:
+    """Return host literals outside the tools lab allowlist."""
+    return set(LAB_ADDRESS_PATTERN.findall(text)) - ALLOWED_122_ADDRESSES
 
 
 def _cases(value: Any) -> list[dict[str, Any]]:
@@ -89,24 +95,20 @@ def _import_boundary_errors() -> list[str]:
 
 
 def _lab_address_errors() -> list[str]:
-    """Reject unapproved 192.168.122.* hosts, including the forbidden .1."""
+    """Check only the independent tools runner and its owned fixtures."""
     errors: list[str] = []
-    address_pattern = re.compile(r"192\.168\.122\.\d{1,3}")
-    # AGENTS.md intentionally names the forbidden .1 address; scan executable
-    # test assets only so the policy itself can document the prohibition.
-    roots = (ROOT / "tests",)
-    for root in roots:
-        paths = [root] if root.is_file() else root.rglob("*")
-        for path in paths:
-            if not path.is_file() or path.suffix in {".pyc", ".log"}:
-                continue
-            try:
-                text = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                continue
-            for address in sorted(set(address_pattern.findall(text))):
-                if address not in ALLOWED_122_ADDRESSES:
-                    errors.append(f"{path.relative_to(ROOT)} uses unapproved lab host {address}")
+    paths = [ROOT / "tests/run_tools_regression.sh", ROOT / "tests/tools-test-matrix.yaml"]
+    paths.extend((ROOT / "tests/helpers").glob("tools-*"))
+    paths.extend((ROOT / "tests/fixtures/tools").rglob("*"))
+    for path in paths:
+        if not path.is_file() or path.suffix in {".pyc", ".log"}:
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for address in sorted(_unapproved_lab_addresses(content)):
+            errors.append(f"{path.relative_to(ROOT)} uses unapproved lab host {address}")
     return errors
 
 

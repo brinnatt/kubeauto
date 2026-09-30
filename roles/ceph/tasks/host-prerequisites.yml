@@ -1,0 +1,103 @@
+- name: Validate the Ceph host package and runtime profile
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['RedHat', 'Debian', 'Suse']
+      - ceph_container_runtime | default('auto') in ['auto', 'podman', 'docker']
+    fail_msg: "Ceph hosts require a supported distribution package manager and auto/podman/docker runtime"
+
+- name: Inspect existing Ceph container engines
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -ceu
+      - |
+        if command -v podman >/dev/null; then echo podman
+        elif command -v docker >/dev/null; then echo docker
+        fi
+  register: ceph_existing_runtime
+  changed_when: false
+
+- name: Select the distribution-native Ceph prerequisites
+  ansible.builtin.set_fact:
+    ceph_host_runtime: >-
+      {{ ceph_container_runtime if ceph_container_runtime | default('auto') != 'auto'
+         else (ceph_existing_runtime.stdout | trim if ceph_existing_runtime.stdout | trim
+         else ('docker' if ansible_distribution == 'Ubuntu' and
+               ansible_distribution_major_version | string == '20' else 'podman')) }}
+    ceph_host_packages: >-
+      {{ ['lvm2', 'chrony', 'smartmontools', 'sysstat', 'sudo',
+          'dmsetup' if ansible_os_family == 'Debian' else 'device-mapper']
+         + (['python39'] if ansible_os_family == 'RedHat' and
+            ansible_distribution_major_version | string == '8' else []) }}
+
+# RHEL 8's python3-dnf is tied to Python 3.6. Do not respawn new Ansible modules there.
+- name: Install Ceph prerequisites through the native RPM CLI
+  ansible.builtin.command:
+    argv: "{{ ['dnf', 'install', '-y'] + ceph_host_packages + (['podman'] if ceph_host_runtime == 'podman' else []) }}"
+  environment:
+    LC_ALL: C
+  register: ceph_rpm_packages
+  changed_when: "'Nothing to do.' not in ceph_rpm_packages.stdout"
+  when: ansible_os_family == 'RedHat'
+
+- name: Refresh native DEB package indexes before resolving Ceph prerequisites
+  ansible.builtin.command:
+    argv: [apt-get, update]
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    LC_ALL: C
+  changed_when: false
+  when: ansible_os_family == 'Debian'
+
+- name: Install Ceph prerequisites through the native DEB CLI
+  ansible.builtin.command:
+    argv: "{{ ['apt-get', 'install', '-y'] + ceph_host_packages + (['podman'] if ceph_host_runtime == 'podman' else []) }}"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    LC_ALL: C
+  register: ceph_deb_packages
+  changed_when: "'0 upgraded, 0 newly installed, 0 to remove' not in ceph_deb_packages.stdout"
+  when: ansible_os_family == 'Debian'
+
+- name: Install Ceph prerequisites through the native SUSE package manager
+  ansible.builtin.package:
+    name: "{{ ceph_host_packages + (['podman'] if ceph_host_runtime == 'podman' else []) }}"
+    state: present
+  when: ansible_os_family == 'Suse'
+
+- name: Check whether the selected Docker executable is already installed
+  ansible.builtin.command:
+    argv: [/bin/sh, -c, "command -v docker"]
+  register: ceph_docker_executable
+  failed_when: ceph_docker_executable.rc not in [0, 1]
+  changed_when: false
+  when: ceph_host_runtime == 'docker'
+
+- name: Reuse the delivered Docker installation path when missing
+  ansible.builtin.include_role:
+    name: docker
+  when:
+    - ceph_host_runtime == 'docker'
+    - ceph_docker_executable.rc == 1
+
+- name: Start the selected Docker service
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: ceph_host_runtime == 'docker'
+
+- name: Read the selected Podman version
+  ansible.builtin.command:
+    argv: [podman, version, --format, "{{ '{{' }}.Client.Version{{ '}}' }}"]
+  register: ceph_podman_version
+  changed_when: false
+  when: ceph_host_runtime == 'podman'
+
+- name: Reject Podman versions outside the pinned upstream contract
+  ansible.builtin.assert:
+    that:
+      - ceph_podman_version.stdout | trim is version('2.0.2', '>=')
+      - ceph_podman_version.stdout | trim != '2.2.1'
+    fail_msg: "Selected Podman is incompatible with Ceph; install a supported native version or select Docker"
+  when: ceph_host_runtime == 'podman'

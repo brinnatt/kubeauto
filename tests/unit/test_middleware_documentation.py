@@ -2,6 +2,8 @@ import re
 import unittest
 from pathlib import Path
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[2]
 MIDDLEWARE_ROOT = ROOT / "docs" / "middleware"
@@ -91,6 +93,16 @@ def root_names():
         ):
             names[component] = match.group(1).strip()
     return names
+
+
+def component_matrix_is_pass(matrix, component, matrix_name):
+    if matrix_name == "enterprise-test-matrix.yaml":
+        cases = matrix.get(component + "_delivery", [])
+        return bool(cases) and all(
+            case.get("status") == "pass" and bool(case.get("evidence"))
+            for case in cases
+        )
+    return matrix.get("meta", {}).get("result") == "PASS"
 
 
 class MiddlewareDocumentationTests(unittest.TestCase):
@@ -184,13 +196,26 @@ class MiddlewareDocumentationTests(unittest.TestCase):
         for component, matrix_name in matrices.items():
             matrix_path = ROOT / "tests" / matrix_name
             self.assertTrue(matrix_path.is_file(), matrix_name)
-            matrix = matrix_path.read_text(encoding="utf-8")
-            result_is_pass = bool(
-                re.search(r"(?m)^\s*result:\s*PASS\s*$", matrix)
-                or re.search(r"(?m)^\s*regression_result:\s*[\"']PASS\b", matrix)
-            )
+            matrix = yaml.safe_load(matrix_path.read_text(encoding="utf-8"))
+            result_is_pass = component_matrix_is_pass(matrix, component, matrix_name)
             if indexed_statuses()[component] == "已交付":
                 self.assertTrue(result_is_pass, f"{component} matrix is not PASS")
+
+    def test_shared_matrix_status_is_bound_only_to_complete_component_cases(self):
+        matrix = {
+            "meta": {"regression_result": "PENDING"},
+            "tier0_foundation": [{"status": "pending"}],
+            "prometheus_delivery": [{"id": "PROM-01", "status": "pass", "evidence": "current fixture"}],
+        }
+        self.assertTrue(component_matrix_is_pass(matrix, "prometheus", "enterprise-test-matrix.yaml"))
+        self.assertFalse(component_matrix_is_pass(matrix, "unknown", "enterprise-test-matrix.yaml"))
+        for status, evidence in (("pending", "current fixture"), ("fail", "current fixture"), ("pass", "")):
+            with self.subTest(status=status, evidence=evidence):
+                matrix["prometheus_delivery"] = [{"id": "PROM-01", "status": status, "evidence": evidence}]
+                self.assertFalse(component_matrix_is_pass(matrix, "prometheus", "enterprise-test-matrix.yaml"))
+        matrix["meta"]["regression_result"] = "PASS"
+        matrix["prometheus_delivery"] = []
+        self.assertFalse(component_matrix_is_pass(matrix, "prometheus", "enterprise-test-matrix.yaml"))
 
     def test_customer_navigation_has_one_complete_middleware_entry(self):
         for document in (ROOT_README, OPERATIONS, WHITEPAPER, DEVELOPMENT, STACK_INDEX):

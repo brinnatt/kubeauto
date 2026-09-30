@@ -44,6 +44,8 @@ PROM_TEST_HOST="${PROM_TEST_HOST:-root@192.168.122.2}"
 PROM_TEST_JUMPER="${PROM_TEST_JUMPER:-}"
 LOGGING_TEST_HOST="${LOGGING_TEST_HOST:-root@192.168.122.2}"
 LOGGING_TEST_JUMPER="${LOGGING_TEST_JUMPER:-}"
+CEPH_TEST_HOST="${CEPH_TEST_HOST:-root@192.168.47.130}"
+CEPH_TEST_JUMPER="${CEPH_TEST_JUMPER:-}"
 LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
 MODE="${1:-run}"
 mkdir -p "${ROOT}/logs"
@@ -61,7 +63,7 @@ middleware_doc_python="$ROOT/.venv/bin/python"
 # The coverage summary is a delivery claim, so validate it from the YAML
 # details before any gate can run or emit a PASS marker. Independent middleware
 # branches own separate matrix schemas and are validated by their own gates.
-if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* ]]; then
+if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* && "$MODE" != --ceph-* ]]; then
   matrix_python="$ROOT/.venv/bin/python"
   [[ -x "$matrix_python" ]] || matrix_python="$(command -v python3.12 || command -v python3)"
   matrix_validation_args=("$ROOT/tests/enterprise-test-matrix.yaml")
@@ -92,6 +94,11 @@ ssh_logging() {
   local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
   [[ -n "$LOGGING_TEST_JUMPER" ]] && args+=(-J "$LOGGING_TEST_JUMPER")
   ssh "${args[@]}" "$LOGGING_TEST_HOST" "$@"
+}
+ssh_ceph() {
+  local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+  [[ -n "$CEPH_TEST_JUMPER" ]] && args+=(-J "$CEPH_TEST_JUMPER")
+  ssh "${args[@]}" "$CEPH_TEST_HOST" "$@"
 }
 scp138() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
 scp137() { scp -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 "$@"; }
@@ -140,7 +147,7 @@ if test -r '${remote_log}'; then
   # same log before recovering and emitting the required terminal marker.
   # Count only explicit script failures here; the durable exit record is
   # checked independently by monitor_remote_job.
-  failures=\$(grep -Ec '^\\[FAIL\\]' '${remote_log}' 2>/dev/null || true)
+  failures=\$(grep -Ec '^\\[FAIL\\]|^CEPH_STAGE_FAIL( |$)|^CEPH_CONTRACT_FAIL( |$)' '${remote_log}' 2>/dev/null || true)
   latest=\$(grep -E '^==========|^>>> |^\\[PASS\\]|^\\[FAIL\\]|^\\[WAIT\\]|^REGRESSION_' '${remote_log}' 2>/dev/null | tail -n 1 || true)
 else
   latest='log-not-created'
@@ -173,9 +180,10 @@ root=missing
 test -r '${state_prefix}.pid' && root=\$(cat '${state_prefix}.pid')
 echo process_tree_root=\"\$root\"
 if test \"\$root\" != missing && command -v pstree >/dev/null 2>&1; then
-  pstree -ap \"\$root\" || true
+  timeout -k 1s 5s pstree -ap \"\$root\" || echo process_tree_snapshot=unavailable_or_timed_out
 else
-  ps -eo pid,ppid,etime,stat,wchan:24,cmd --forest | head -n 160
+  timeout -k 1s 5s ps -eo pid,ppid,etime,stat,wchan:24,cmd --forest | head -n 160 ||
+    echo process_tree_snapshot=unavailable_or_timed_out
 fi
 "
   printf -v quoted_script '%q' "$remote_script"
@@ -190,7 +198,7 @@ remote_diagnostics() {
   local ssh_function="$1" privilege="$2" remote_log="$3"
   echo "========== AUTOMATIC FAILURE DIAGNOSTICS =========="
   remote_log_tail "$ssh_function" "$privilege" "$remote_log" 160
-  "$ssh_function" "ps -eo pid,ppid,etime,stat,cmd | grep -E '[r]egression|[k]ubecli|[a]nsible-playbook' || true"
+  "$ssh_function" "timeout -k 1s 5s ps -eo pid,ppid,etime,stat,cmd | grep -E '[r]egression|[k]ubecli|[a]nsible-playbook' || true"
 }
 
 cancel_remote_job() {
@@ -200,7 +208,12 @@ cancel_remote_job() {
 set -euo pipefail
 pid=missing
 test -r '${state_prefix}.pid' && pid=\$(cat '${state_prefix}.pid')
-if test \"\$pid\" = missing || ! kill -0 \"\$pid\" 2>/dev/null; then
+process_running() {
+  local process_state
+  process_state=\$(ps -p \"\$1\" -o stat= 2>/dev/null) || return 1
+  [[ -n \"\$process_state\" && \"\$process_state\" != Z* && \"\$process_state\" != X* ]]
+}
+if test \"\$pid\" = missing || ! process_running \"\$pid\"; then
   echo '[CANCEL] label=${label} state=not-running pid='\"\$pid\"
   exit 0
 fi
@@ -221,14 +234,22 @@ kill -TERM \"\$pid\" 2>/dev/null || true
 for attempt in \$(seq 1 15); do
   alive=
   for candidate in \$targets \"\$pid\"; do
-    kill -0 \"\$candidate\" 2>/dev/null && alive=\"\$alive \$candidate\"
+    process_running \"\$candidate\" && alive=\"\$alive \$candidate\"
   done
   test -z \"\$alive\" && break
   sleep 1
 done
 for candidate in \$targets \"\$pid\"; do kill -KILL \"\$candidate\" 2>/dev/null || true; done
+for attempt in \$(seq 1 10); do
+  alive=
+  for candidate in \$targets \"\$pid\"; do
+    process_running \"\$candidate\" && alive=\"\$alive \$candidate\"
+  done
+  test -z \"\$alive\" && break
+  sleep 1
+done
 for candidate in \$targets \"\$pid\"; do
-  if kill -0 \"\$candidate\" 2>/dev/null; then
+  if process_running \"\$candidate\"; then
     echo '[FAIL] label=${label} process-survived pid='\"\$candidate\" >&2
     exit 1
   fi
@@ -249,6 +270,14 @@ matrix_counts() {
   [[ "$surface" == --mysql-* || "$surface" == mysql-* ]] && matrix="$ROOT/tests/mysql-test-matrix.yaml"
   [[ "$surface" == --kafka-* || "$surface" == kafka-* ]] && matrix="$ROOT/tests/kafka-test-matrix.yaml"
   [[ "$surface" == --logging-* || "$surface" == logging-* || "$surface" == logging ]] && matrix="$ROOT/tests/logging-test-matrix.yaml"
+  [[ "$surface" == --ceph-* || "$surface" == ceph-* || "$surface" == ceph ]] && matrix="$ROOT/tests/ceph-test-matrix.yaml"
+  if [[ "$matrix" == "$ROOT/tests/ceph-test-matrix.yaml" ]]; then
+    printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
+      "$(grep -Ec '^[[:space:]]+status: pass$' "$matrix" || true)" \
+      "$(grep -Ec '^[[:space:]]+status: pending$' "$matrix" || true)" \
+      "$(grep -Ec '^[[:space:]]+status: fail$' "$matrix" || true)"
+    return
+  fi
   printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pass' "$matrix" || true)" \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$matrix" || true)" \
@@ -517,6 +546,336 @@ monitor_remote_job() {
     sleep 10
   done
 }
+
+ceph_nodes=(
+  192.168.122.135 192.168.122.40 192.168.122.72
+  192.168.122.212 192.168.122.165 192.168.122.238
+  192.168.47.134 192.168.47.135 192.168.47.136
+  192.168.47.131 192.168.47.132 192.168.47.137
+)
+
+printf -v ceph_artifact_env 'CEPH_ARTIFACT_MODE=%q PYTHONFAULTHANDLER=1' "${CEPH_ARTIFACT_MODE:-dual}"
+
+prepare_ceph_control_environment() {
+  ssh_ceph 'set -euo pipefail
+    if ! command -v python3.12 >/dev/null; then
+      source /etc/os-release
+      test "$ID" = rocky || { echo "Ceph control requires Python 3.12 with pip" >&2; exit 1; }
+      dnf install -y python3.12 python3.12-pip
+    fi
+    if ! python3.12 -c "import pyexpat"; then
+      dnf upgrade -y expat
+      python3.12 -c "import pyexpat"
+    fi
+    command -v skopeo >/dev/null || dnf install -y skopeo
+    python3.12 -m ensurepip --version
+    if test -x /usr/local/kubeauto/.venv/bin/python &&
+       ! /usr/local/kubeauto/.venv/bin/python -m pip --version >/dev/null 2>&1; then
+      /usr/local/kubeauto/.venv/bin/python -m ensurepip --upgrade
+    fi
+    echo CEPH_CONTROL_PYTHON_PASS'
+}
+
+prepare_ceph_control_artifacts() {
+  ssh_ceph 'set -euo pipefail
+    cd /usr/local/kubeauto
+    .venv/bin/python kubecli.py download -D </dev/null
+    echo CEPH_CONTROL_ARTIFACTS_PASS'
+}
+
+verify_ceph_ansible_syntax() {
+  ssh_ceph 'set -euo pipefail
+    cd /usr/local/kubeauto
+    export ANSIBLE_ROLES_PATH=/usr/local/kubeauto/roles
+    python3.12 - <<"PY"
+from pathlib import Path
+from ansible.parsing.dataloader import DataLoader
+
+paths = sorted(Path("roles/ceph/tasks").glob("*.yml"))
+assert paths, "Ceph task files are missing"
+loader = DataLoader()
+for path in paths:
+    tasks = loader.load_from_file(str(path))
+    assert isinstance(tasks, list) and tasks, path
+print("CEPH_NATIVE_TASK_YAML_PASS files=%d" % len(paths))
+PY
+    for playbook in playbooks/08.ceph.yml playbooks/90.setup.yml; do
+      ansible-playbook -i conf/hosts.multi-node "$playbook" --syntax-check -e @conf/config.yml
+    done
+    echo CEPH_ANSIBLE_SYNTAX_PASS
+    .venv/bin/python tests/helpers/ceph_contract.py task-templates --base /usr/local/kubeauto
+    .venv/bin/python tests/helpers/ceph_contract.py csi-render \
+      --base /usr/local/kubeauto --helm /usr/local/kubeauto/extra-bin/helm'
+}
+
+ceph_gate_fingerprint() {
+  {
+    find "$ROOT/roles/ceph" -type f ! -path '*/__pycache__/*' ! -name '*.pyc'
+    find "$ROOT/roles/docker" -type f ! -path '*/__pycache__/*' ! -name '*.pyc'
+    printf '%s\n' "$ROOT/roles/prepare/tasks/podruntime-slice.yml"
+    printf '%s\n' "$ROOT"/tests/helpers/ceph-*.sh \
+      "$ROOT/tests/helpers/ceph_contract.py" "$ROOT/tests/unit/test_ceph_delivery.py" \
+      "$ROOT/tests/helpers/ceph_s3_put.py" \
+      "$ROOT/tests/helpers/ceph_runtime_cleanup.py" \
+      "$ROOT/tests/helpers/kubernetes-production-smoke.sh" \
+      "$ROOT/tests/run_enterprise_regression.sh" \
+      "$ROOT/common/constants.py" "$ROOT/service/cluster/downloader.py" \
+      "$ROOT/common/ansible_python.py" \
+      "$ROOT/service/cluster/manager.py" "$ROOT/playbooks/08.ceph.yml" \
+      "$ROOT/playbooks/90.setup.yml" "$ROOT/conf/config.yml" "$ROOT/conf/hosts.multi-node"
+    if [[ "${1:-}" != --without-matrix ]]; then
+      printf '%s\n' "$ROOT/tests/ceph-test-matrix.yaml"
+    fi
+  } | sort | xargs sha256sum | sha256sum | awk '{print $1}'
+}
+
+require_ceph_focused_evidence() {
+  local fingerprint mode
+  if [[ ! -s "$ROOT/logs/ceph-focused-green" ]] ||
+     ! read -r fingerprint mode <"$ROOT/logs/ceph-focused-green" ||
+     [[ "$fingerprint" != "$(ceph_gate_fingerprint)" || "$mode" != --slow-osd-fixed ]]; then
+    echo '[FAIL] Ceph full gate requires a successful --ceph-slow-osd-fixed run and cleanup for the current source' >&2
+    return 1
+  fi
+  echo "CEPH_FOCUSED_PREREQUISITE_PASS fingerprint=$fingerprint mode=$mode"
+}
+
+stage_cephadm_artifact() {
+  [[ -n "${CEPHADM_FILE:-}" ]] || return 0
+  local expected=5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f
+  local checksum remote_part quoted_part
+  checksum="$(sha256sum "$CEPHADM_FILE")"
+  [[ "${checksum%% *}" == "$expected" ]] || {
+    echo "[FAIL] cephadm SHA256 mismatch; refusing transfer" >&2
+    return 1
+  }
+  remote_part="/usr/local/kubeauto/extra-bin/.cephadm-${BASHPID}.part"
+  printf -v quoted_part '%q' "$remote_part"
+  local scp_options=(-o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10)
+  [[ -n "$CEPH_TEST_JUMPER" ]] && scp_options+=(-J "$CEPH_TEST_JUMPER")
+  ssh_ceph 'install -d -m 0755 /usr/local/kubeauto/extra-bin'
+  scp "${scp_options[@]}" "$CEPHADM_FILE" "${CEPH_TEST_HOST}:${remote_part}"
+  ssh_ceph "set -euo pipefail; trap 'rm -f $quoted_part' EXIT; printf '%s  %s\\n' '$expected' $quoted_part | sha256sum -c -; chmod 0755 $quoted_part; mv -f $quoted_part /usr/local/kubeauto/extra-bin/cephadm"
+  echo "CEPHADM_STAGE_PASS version=20.2.4 sha256=$expected"
+}
+
+if [[ "$MODE" == "--ceph-supply-chain-only" ]]; then
+  bash "$ROOT/tests/run_enterprise_regression.sh" --ceph-static-only
+  echo ">>> ladder level 2 complete: artifact contracts passed; next is the read-only supply-chain gate"
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  stage_cephadm_artifact
+  verify_ceph_ansible_syntax
+  ssh_ceph "$ceph_artifact_env bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh --supply-chain-only"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-static-only" ]]; then
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest \
+    tests.unit.test_ceph_delivery tests.unit.test_storage_documentation \
+    tests.unit.test_six_repo_version_sync -v
+  python3 "$ROOT/../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py"
+  for ceph_script in "$ROOT"/tests/helpers/ceph-*.sh; do
+    bash -n "$ceph_script"
+  done
+  echo CEPH_STATIC_CONTRACT_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-status" ]]; then
+  echo "========== Ceph independent gate =========="
+  remote_job_summary ssh_ceph '' /tmp/kubeauto-ceph-gate /tmp/kubeauto-ceph-live.log || true
+  remote_log_tail ssh_ceph '' /tmp/kubeauto-ceph-live.log 100
+  echo "========== Ceph cluster state =========="
+  ssh_ceph "if test -s /var/lib/kubeauto-ceph-test/fsid; then ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@192.168.122.135 '/usr/local/sbin/cephadm shell -- ceph -s; /usr/local/sbin/cephadm shell -- ceph health detail; /usr/local/sbin/cephadm shell -- ceph orch ps' 2>/dev/null || true; fi"
+  echo "========== Ceph matrix =========="
+  matrix_counts ceph
+  echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-follow" ]]; then
+  ssh_ceph "tail -n 100 -F /tmp/kubeauto-ceph-live.log"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-cancel" ]]; then
+  cancel_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate
+  echo CEPH_CANCEL_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-lab-bootstrap" ]]; then
+  echo "========== Ceph lab hostname bootstrap =========="
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest tests.unit.test_ceph_delivery -v
+  bash -n "$ROOT/tests/helpers/ceph-lab-hostname-bootstrap.sh"
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
+    "${ceph_nodes[@]/#/root@}"
+  ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-lab-hostname-bootstrap.sh; bash /usr/local/kubeauto/tests/helpers/ceph-lab-hostname-bootstrap.sh"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-lab-python-bootstrap" ]]; then
+  bash "$ROOT/tests/run_enterprise_regression.sh" --ceph-static-only
+  echo ">>> ladder level 2 complete: fixture contracts passed; next is the scoped native compute Python environment bootstrap"
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
+    root@192.168.47.134 root@192.168.47.135 root@192.168.47.136 \
+    root@192.168.47.131 root@192.168.47.132 root@192.168.47.137
+  ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh --compute-python-bootstrap"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-probe" ]]; then
+  echo "========== Ceph read-only host and disk probe =========="
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest tests.unit.test_ceph_delivery tests.unit.test_storage_documentation -v
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
+    "${ceph_nodes[@]/#/root@}"
+  ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-*.sh; bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh --disk-preflight-only"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-os-probe" ]]; then
+  echo "========== Ceph real-host OS read-only preflight =========="
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest tests.unit.test_ceph_delivery tests.unit.test_ansible_execution_environment -q
+  bash -n "$ROOT/tests/helpers/ceph-os-probe.sh"
+  bash "$ROOT/tests/helpers/ceph-os-probe.sh"
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-clean-only" ]]; then
+  cancel_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
+    "${ceph_nodes[@]/#/root@}"
+  ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-host-probe.sh /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh; if test ! -s /var/lib/kubeauto-ceph-test/disk-allowlist || test \"\$(wc -l < /var/lib/kubeauto-ceph-test/disk-allowlist)\" -ne 18; then bash /usr/local/kubeauto/tests/helpers/ceph-host-probe.sh; fi; bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh; bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify"
+  echo CEPH_CLEAN_ONLY_PASS
+  exit 0
+fi
+
+case "$MODE" in
+  --ceph-slow-osd-fixed|--ceph-slow-osd-intermittent|--ceph-slow-vs-down|--ceph-osd-throttle|--ceph-slow-osd-recovery|--ceph-scrub-contention|--ceph-bluefs-slow|--ceph-slow-osd-differential|--ceph-hot-pg-differential|--ceph-network-vs-disk|--ceph-slow-osd-remediate|--ceph-performance|--ceph-upgrade)
+    echo "========== Ceph focused delivery gate: $MODE =========="
+    if [[ "$MODE" == --ceph-slow-osd-fixed && -e "$ROOT/logs/ceph-focused-green" ]]; then
+      unlink "$ROOT/logs/ceph-focused-green"
+    fi
+    cancel_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate
+    echo ">>> ladder level 2: static Ceph contracts and image catalog"
+    unit_python="$ROOT/.venv/bin/python"
+    [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+    "$unit_python" -m unittest \
+      tests.unit.test_ceph_delivery \
+      tests.unit.test_storage_documentation \
+      tests.unit.test_six_repo_version_sync -v
+    python3 "$ROOT/../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py"
+    for ceph_script in \
+      "$ROOT/tests/helpers/ceph-host-probe.sh" \
+      "$ROOT/tests/helpers/ceph-cleanup.sh" \
+      "$ROOT/tests/helpers/ceph-regression.sh"; do
+      bash -n "$ceph_script"
+    done
+    python3 -m py_compile "$ROOT/tests/helpers/ceph_contract.py"
+    focused_fingerprint="$(ceph_gate_fingerprint)"
+    echo ">>> ladder level 2 local contracts passed: prepare control dependencies and validate Ansible/Chart contracts before node access"
+    prepare_ceph_control_environment
+    KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=0 \
+      bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+    stage_cephadm_artifact
+    prepare_ceph_control_artifacts
+    verify_ceph_ansible_syntax
+    echo ">>> ladder level 2 complete: unit/catalog/shell/Ansible/template contracts passed; next permitted level 3 is one clean focused Ceph scenario"
+    bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
+      "${ceph_nodes[@]/#/root@}"
+    ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-*.sh /usr/local/kubeauto/tests/helpers/ceph_contract.py /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
+    remote_ceph_mode="--${MODE#--ceph-}"
+    ssh_ceph "rm -f /tmp/kubeauto-ceph-live.log /tmp/kubeauto-ceph-gate.pid /tmp/kubeauto-ceph-gate.exit /tmp/kubeauto-ceph-gate.finalized; nohup env $ceph_artifact_env bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ceph-gate CEPH_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh '$remote_ceph_mode' >/tmp/kubeauto-ceph-live.log 2>&1 </dev/null &"
+    focused_rc=0
+    monitor_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate \
+      /tmp/kubeauto-ceph-live.log CEPH_FOCUSED_BRANCH_PASS || focused_rc=$?
+    cleanup_rc=0
+    ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh" || cleanup_rc=$?
+    ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify" || cleanup_rc=$?
+    if [[ "$focused_rc" -ne 0 || "$cleanup_rc" -ne 0 ]]; then
+      echo "[FAIL] Ceph focused gate rc=${focused_rc}; cleanup rc=${cleanup_rc}" >&2
+      exit 1
+    fi
+    echo "CEPH_FOCUSED_DELIVERY_PASS mode=$remote_ceph_mode"
+    if [[ "$MODE" == --ceph-slow-osd-fixed ]]; then
+      [[ "$focused_fingerprint" == "$(ceph_gate_fingerprint)" ]] || {
+        echo '[FAIL] Ceph source changed during focused execution; rerun the focused gate' >&2
+        exit 1
+      }
+      mkdir -p "$ROOT/logs"
+      printf '%s %s\n' "$focused_fingerprint" "$remote_ceph_mode" >"$ROOT/logs/ceph-focused-green"
+    fi
+    exit 0
+    ;;
+esac
+
+if [[ "$MODE" == "--ceph-only" ]]; then
+  echo "========== Independent Ceph delivery gate =========="
+  require_ceph_focused_evidence
+  qualification_python="$ROOT/.venv/bin/python"
+  [[ -x "$qualification_python" ]] || qualification_python="$(command -v python3)"
+  "$qualification_python" "$ROOT/tests/helpers/ceph_contract.py" os-qualification \
+    --matrix "$ROOT/tests/ceph-test-matrix.yaml" \
+    --source-sha256 "$(ceph_gate_fingerprint --without-matrix)"
+  cancel_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate
+  echo ">>> ladder level 2: static Ceph and six-repository contracts"
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest \
+    tests.unit.test_ceph_delivery \
+    tests.unit.test_storage_documentation \
+    tests.unit.test_six_repo_version_sync -v
+  python3 "$ROOT/../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py"
+  for ceph_script in \
+    "$ROOT/tests/helpers/ceph-host-probe.sh" \
+    "$ROOT/tests/helpers/ceph-cleanup.sh" \
+    "$ROOT/tests/helpers/ceph-regression.sh"; do
+    bash -n "$ceph_script"
+  done
+  echo ">>> ladder level 4 unlocked by current focused PASS and static contracts: one clean full regression"
+  prepare_ceph_control_environment
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=0 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  stage_cephadm_artifact
+  prepare_ceph_control_artifacts
+  verify_ceph_ansible_syntax
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
+    "${ceph_nodes[@]/#/root@}"
+  ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-*.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
+  ssh_ceph "test ! -s /var/lib/kubeauto-ceph-test/disk-allowlist || bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh"
+  ssh_ceph "rm -f /tmp/kubeauto-ceph-live.log /tmp/kubeauto-ceph-gate.pid /tmp/kubeauto-ceph-gate.exit /tmp/kubeauto-ceph-gate.finalized; nohup env $ceph_artifact_env bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ceph-gate CEPH_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh >/tmp/kubeauto-ceph-live.log 2>&1 </dev/null &"
+  ceph_rc=0
+  monitor_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate \
+    /tmp/kubeauto-ceph-live.log CEPH_DELIVERY_PASS || ceph_rc=$?
+  cleanup_rc=0
+  ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh" || cleanup_rc=$?
+  ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify" || cleanup_rc=$?
+  if [[ "$ceph_rc" -ne 0 || "$cleanup_rc" -ne 0 ]]; then
+    echo "[FAIL] Ceph gate rc=${ceph_rc}; cleanup rc=${cleanup_rc}" >&2
+    exit 1
+  fi
+  echo CEPH_DELIVERY_BRANCH_PASS
+  matrix_counts ceph
+  echo
+  exit 0
+fi
 
 if [[ "$MODE" == "--logging-status" ]]; then
   echo "========== Logging independent gate =========="

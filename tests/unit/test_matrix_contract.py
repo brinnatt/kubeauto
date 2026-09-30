@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 from tests.helpers.validate_test_matrix import validate_matrix
 
 
@@ -16,6 +18,12 @@ MATRIX = ROOT / "tests" / "enterprise-test-matrix.yaml"
 class MatrixContractTests(unittest.TestCase):
     def test_enterprise_matrix_is_internally_consistent(self):
         self.assertEqual(validate_matrix(MATRIX), [])
+
+    def test_pending_enterprise_matrix_does_not_claim_current_pass(self):
+        errors = validate_matrix(MATRIX, require_pass=True)
+        if any("non-pass" in error for error in errors):
+            data = yaml.safe_load(MATRIX.read_text(encoding="utf-8"))
+            self.assertNotRegex(data["meta"]["regression_result"], r"^\s*PASS\b")
 
     def test_delivery_mode_rejects_pending_matrix(self):
         text = MATRIX.read_text(encoding="utf-8")

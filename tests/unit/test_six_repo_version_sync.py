@@ -43,9 +43,14 @@ class TestSixRepoVersionSync(unittest.TestCase):
     def test_ansible_execution_image_ci_tag_matches_constant(self):
         """Conditional EE must keep the TalkEdu/Docker Hub CI tag in sync."""
         self.assertEqual(self._ci_tag("alpine-ansible"), self.kc.v_ansible_core)
+        self.assertEqual(self._ci_tag("python314"), self.kc.v_ansible_core_py314)
         self.assertEqual(
             self.kc.ansible_execution_image,
             f"brinnatt/ansible:{self.kc.v_ansible_core}",
+        )
+        self.assertEqual(
+            self.kc.ansible_py314_execution_image,
+            f"brinnatt/ansible:{self.kc.v_ansible_core_py314}",
         )
 
     def test_json_mock_templates_match_constant(self):
@@ -85,6 +90,33 @@ class TestSixRepoVersionSync(unittest.TestCase):
         self.assertIn("cri-dockerd-${CRI_DOCKERD_VER}.${ARCH}.tgz", sh)
         self.assertIn("docker-runtime-artifacts.sha256", ext)
         self.assertIn("sha256sum docker-compose docker-buildx cri-dockerd", ext)
+
+    def test_ceph_release_set_matches_ext_images_and_ext_bin(self):
+        ext = (EXT_BIN / "Dockerfile").read_text()
+        self.assertIn(
+            "Kubernetes 1.34-1.36",
+            KubeConstant.__dataclass_fields__["v_ceph_csi"].metadata["description"],
+        )
+        documentation = (KA / "docs/storage/ceph/02-cephadm.md").read_text()
+        self.assertIn("Kubernetes 1.33.6 不在该列表中", documentation)
+        self.assertIn(f"ENV CEPHADM_VER={self.kc.v_ceph}\n", ext)
+        self.assertIn(f"ENV CEPHADM_SHA256={self.kc.v_cephadm_sha256}\n", ext)
+        self.assertEqual(self.kc.v_cephadm_sha256, "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f")
+        expected = {
+            "ceph": {f"v{self.kc.v_ceph}", f"v{self.kc.v_ceph_upgrade_source}"},
+            "ceph-csi": {self.kc.v_ceph_csi},
+            "ceph-csi-node-driver-registrar": {self.kc.v_ceph_csi_registrar},
+            "ceph-csi-provisioner": {self.kc.v_ceph_csi_provisioner},
+            "ceph-csi-attacher": {self.kc.v_ceph_csi_attacher},
+            "ceph-csi-resizer": {self.kc.v_ceph_csi_resizer},
+            "ceph-csi-snapshotter": {self.kc.v_ceph_csi_snapshotter},
+        }
+        for directory, tags in expected.items():
+            if directory == "ceph":
+                actual = {self._ci_tag("ceph"), self._ci_tag("ceph-20.2.3")}
+            else:
+                actual = {self._ci_tag(directory)}
+            self.assertEqual(actual, tags, f"Ceph release drift for {directory}")
 
     def test_json_mock_dockerfile_pins_node20(self):
         """Dockerfile must stay on Node >=18.13 + pinned json-server (v1.3.1 contract)."""

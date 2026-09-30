@@ -415,6 +415,46 @@ kafka_drain_cleaner_cert_valid_days: 825
 kafka_drain_cleaner_cert_renew_before_days: 30
 
 
+# Ceph is an independent cephadm-managed storage cluster. It does not run as a
+# Kubernetes addon and remains inert until explicitly enabled. OSD devices are
+# declared per host in the [ceph] inventory group with stable by-id paths.
+ceph_install: "no"
+ceph_container_runtime: "auto"
+ceph_ver: "__ceph__"
+ceph_upgrade_source_ver: "__ceph_upgrade_source__"
+ceph_public_network: ""
+ceph_cluster_network: ""
+ceph_replication_size: 3
+ceph_monitoring_install: "yes"
+ceph_dashboard_install: "yes"
+ceph_rgw_install: "yes"
+ceph_rgw_port: 8080
+ceph_image: "hub.talkedu.cn/kubeauto/ceph:v__ceph__"
+ceph_prometheus_image: "hub.talkedu.cn/kubeauto/ceph-prometheus:v3.6.0"
+ceph_alertmanager_image: "hub.talkedu.cn/kubeauto/ceph-alertmanager:v0.28.1"
+ceph_node_exporter_image: "hub.talkedu.cn/kubeauto/ceph-node-exporter:v1.9.1"
+ceph_grafana_image: "hub.talkedu.cn/kubeauto/ceph-grafana:12.3.1"
+# External Ceph-CSI is optional because the Ceph cluster may serve non-Kubernetes
+# clients. Enabling it requires an already-created kubeconfig for this cluster.
+ceph_csi_install: "no"
+# Use aes only for older kernel CSI clients after accepting the CephX risk.
+# The default keeps the stronger key type and does not relax cluster auth.
+ceph_csi_client_key_type: "aes256k"
+ceph_csi_legacy_aes_risk_accepted: "no"
+ceph_csi_ver: "__ceph_csi__"
+ceph_csi_namespace: "ceph-csi"
+ceph_csi_rbd_pool: "kubernetes-rbd"
+ceph_csi_cephfs_name: "kubernetes-cephfs"
+ceph_csi_rbd_storage_class: "ceph-rbd"
+ceph_csi_cephfs_storage_class: "cephfs"
+ceph_csi_provisioner_replicas: 3
+ceph_csi_registrar_ver: "__ceph_csi_registrar__"
+ceph_csi_provisioner_ver: "__ceph_csi_provisioner__"
+ceph_csi_attacher_ver: "__ceph_csi_attacher__"
+ceph_csi_resizer_ver: "__ceph_csi_resizer__"
+ceph_csi_snapshotter_ver: "__ceph_csi_snapshotter__"
+
+
 # Logging is an independent production branch.  It remains inert until both
 # logging_install=yes and exactly one logging_solution are selected.  The
 # role never accepts plaintext credentials: create the referenced Secrets and

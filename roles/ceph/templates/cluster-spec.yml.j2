@@ -1,0 +1,67 @@
+{% for host in groups['ceph'] %}
+---
+service_type: host
+hostname: {{ hostvars[host].ceph_hostname }}
+addr: {{ hostvars[host].ansible_host | default(host) }}
+labels:
+{% if host in groups['ceph_bootstrap'] %}
+  - _admin
+{% endif %}
+{% if host in groups['ceph_mon'] %}
+  - mon
+{% endif %}
+{% if host in groups['ceph_mgr'] %}
+  - mgr
+{% endif %}
+{% if host in groups['ceph_osd'] %}
+  - osd
+{% endif %}
+{% if host in groups['ceph_rgw'] | default([]) %}
+  - rgw
+{% endif %}
+{% endfor %}
+---
+service_type: mon
+placement:
+  label: mon
+  count: {{ groups['ceph_mon'] | length }}
+---
+service_type: mgr
+placement:
+  label: mgr
+  count: {{ groups['ceph_mgr'] | length }}
+{% for host in groups['ceph_osd'] %}
+---
+service_type: osd
+service_id: kubeauto-{{ hostvars[host].ceph_hostname | regex_replace('[^A-Za-z0-9_.-]', '-') }}
+placement:
+  hosts:
+    - {{ hostvars[host].ceph_hostname }}
+spec:
+  data_devices:
+    paths:
+{% for device in hostvars[host].ceph_devices.split(',') | map('trim') | reject('equalto', '') %}
+      - {{ device }}
+{% endfor %}
+{% set db_devices = hostvars[host].ceph_db_devices | default('') | string %}
+{% if db_devices | length > 0 %}
+  db_devices:
+    paths:
+{% for device in db_devices.split(',') | map('trim') | reject('equalto', '') %}
+      - {{ device }}
+{% endfor %}
+  db_slots: {{ hostvars[host].ceph_devices.split(',') | map('trim') | reject('equalto', '') | list | length }}
+{% endif %}
+  filter_logic: AND
+  method: lvm
+{% endfor %}
+{% if ceph_rgw_install | default('no') | string | lower == 'yes' %}
+---
+service_type: rgw
+service_id: kubeauto
+placement:
+  label: rgw
+  count: {{ groups['ceph_rgw'] | length }}
+spec:
+  rgw_frontend_port: {{ ceph_rgw_port | int }}
+{% endif %}
