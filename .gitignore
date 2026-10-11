@@ -11,5 +11,6 @@ logs/*.pid
 logs/ceph-focused-green
 logs/ceph-os-qualification/
 logs/ceph-cases/
+logs/ext-images-delivery/
 logs/ceph-rocky9-inflight-dependencies.json
 !logs/README.md
