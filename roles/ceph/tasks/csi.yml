@@ -28,7 +28,7 @@
   ansible.builtin.command:
     argv:
       - sha256sum
-      - --check
+      - -c
       - "{{ role_path }}/files/{{ item }}.sha256"
     chdir: "{{ role_path }}/files"
   loop:

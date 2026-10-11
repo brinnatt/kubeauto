@@ -183,13 +183,19 @@ Podman，其次 Docker；无运行时时 Ubuntu 20 使用项目既有 Docker 制
 其他发行版安装原生 Podman。显式选择 Podman 时仍须满足其版本要求。
 RPM、DEB 和 SUSE 主机分别使用本发行版包管理器安装依赖；Debian 系使用 `dmsetup`，
 不使用 RPM 包名 `device-mapper`。时间服务按发行版使用 `chrony` 或 `chronyd`。
+Ubuntu 26.04 默认的 Rust `install` 不能处理宿主 NSS 中不存在的容器数字 UID/GID，
+会导致官方 cephadm 生成的 daemon 启动命令失败。产品安装发行版维护的
+`gnu-coreutils`（`https://packages.ubuntu.com/resolute/gnu-coreutils`），仅在 cephadm
+私有命令目录中提供 GNU `install`，由启动入口选择并写入 daemon 启动命令。
+系统默认 coreutils 和官方 cephadm 制品保持原样；不要为绕过该问题创建同 UID 的宿主账号。
 
 Kubeauto 将 checksum 不变的 cephadm 保存于 `/usr/local/libexec/kubeauto/cephadm`，
 选择能实际执行该制品的 Python，并通过 `/usr/local/sbin/cephadm` 启动。
-RHEL 8 系安装独立的 `python39`，不修改系统解释器。MGR 使用上游
-`cephadm-package` 模式，经 `/usr/bin/cephadm` 调用同一启动入口，避免远程执行重新
-选用不兼容的系统 Python。已有发行版 cephadm 不会被静默覆盖。
-该模式在官方源码中固定使用 SSH 用户 `cephadm`，并不采用 `root` 用户设置。
+RHEL 8 系安装独立的 `python39`，不修改系统解释器。MGR 使用支持滚动升级的上游
+`root` 执行模式；该模式仍允许专用非 root SSH 用户，远程命令经 sudo 执行。
+产品仅为 `cephadm` 账号设置 sudo `secure_path`，通过私有 `python3` 链接选择已验证
+的解释器，并在 Ubuntu 26.04 上选择 GNU `install`。发行版 Python、coreutils 和
+`/usr/bin/cephadm` 保持原样。不要使用禁止 `orch upgrade` 的 `cephadm-package` 模式。
 产品创建无登录密码的专用系统账号，以独立公钥认证并授予上游要求的免密 root sudo；
 已有非本产品所有的同名账号会被拒绝，不会被接管。账号、私钥和 sudo 配置须按
 特权管理凭据保护，不得将该账号用于普通登录或其他应用。
@@ -3156,7 +3162,7 @@ Ceph Tentacle cephadm 参考资料包括：
 开发与设计参考资料包括 `doc/dev/cephadm/` 下的 `index.rst`、`compliance-check.rst`、`host-maintenance.rst`、`scalability-notes.rst`、`developing-cephadm.rst`、`design/storage_devices_and_osds.rst`，以及 RST `autoclass` 动态展开的 `ServiceSpec`、`DriveGroupSpec` 和相关校验源码。设计提案不构成现有功能承诺。
 
 宿主执行模式依据 Ceph v20.2.4 `src/pybind/mgr/cephadm/serve.py`
-的 `cephadm-package` 分支及 `/usr/bin/cephadm` 入口。
+的 `root` 分支以及 `ssh.py` 的非 root 用户 sudo 执行路径；`upgrade.py` 定义升级与密钥轮换的完成条件。
 官方源码地址：`https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/cephadm/serve.py`。
 控制端与受管端 Python 范围依据 Ansible 官方兼容表
 `https://docs.ansible.com/projects/ansible-core/devel/reference_appendices/release_and_maintenance.html`；

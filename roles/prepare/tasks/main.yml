@@ -76,6 +76,8 @@
         regexp: "{{ K8S_NODENAME }} .* flag by kubeauto"
         line: "{{ inventory_hostname }}    {{ K8S_NODENAME }} # flag by kubeauto"
       delegate_to: "{{ groups.kube_master[0] }}"
+      # Delegation still runs one fork per host; serialize shared-file updates.
+      throttle: 1
       tags: set_hosts
 
     # distribute /etc/hosts in the master[0] to all hosts

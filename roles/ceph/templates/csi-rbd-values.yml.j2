@@ -54,6 +54,7 @@ storageClass:
   clusterID: {{ ceph_cluster_fsid.stdout | trim }}
   pool: {{ ceph_csi_rbd_pool }}
   imageFeatures: layering
+  mapOptions: krbd:ms_mode=secure
   provisionerSecret: csi-rbd-secret
   controllerExpandSecret: csi-rbd-secret
   controllerPublishSecret: csi-rbd-secret

@@ -215,7 +215,7 @@ class PerconaPxcDeliveryTests(unittest.TestCase):
 
     def test_ext_images_ci_and_dockerfiles_match_constants(self):
         repo = PROJECTS / "kubeauto-ext-images-dockerfile"
-        ci = (repo / ".github" / "workflows" / "build.yml").read_text()
+        catalog = json.loads((repo / "catalog.json").read_text())
         image_root = repo / "middleware" / "percona-pxc"
         images = {
             "percona-xtradb-cluster-operator": "1.20.0",
@@ -227,13 +227,12 @@ class PerconaPxcDeliveryTests(unittest.TestCase):
         for name, tag in images.items():
             dockerfile_path = f"./middleware/percona-pxc/{name}/Dockerfile"
             context_path = f"./middleware/percona-pxc/{name}/"
-            self.assertRegex(
-                ci,
-                rf"(?s)dockerfile:\s*{re.escape(dockerfile_path)}.*?"
-                rf"image:\s*brinnatt/{re.escape(name)}.*?"
-                rf"tag:\s*['\"]?{re.escape(tag)}['\"]?.*?"
-                rf"ctx:\s*{re.escape(context_path)}",
-            )
+            rows = [row for row in catalog if row["dockerfile"] == dockerfile_path]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["image"], f"brinnatt/{name}")
+            self.assertEqual(rows[0]["talkedu_image"], f"hub.talkedu.cn/kubeauto/{name}")
+            self.assertEqual(rows[0]["tag"], tag)
+            self.assertEqual(rows[0]["ctx"], context_path)
             dockerfile = (image_root / name / "Dockerfile").read_text()
             self.assertFalse((repo / f"Dockerfile.{name}").exists())
             upstream = name.removeprefix("percona-")

@@ -597,6 +597,7 @@ parameters:
   pool: kubernetes
   imageFormat: "2"
   imageFeatures: layering
+  mapOptions: krbd:ms_mode=secure
   csi.storage.k8s.io/provisioner-secret-name: csi-rbd-secret
   csi.storage.k8s.io/provisioner-secret-namespace: default
   csi.storage.k8s.io/controller-expand-secret-name: csi-rbd-secret
@@ -618,6 +619,8 @@ spec:
 ```
 
 按固定 release 的官方 RBAC、controller 和 node plugin manifests 部署后，检查 controller/node 数量、CSI socket、注册状态和日志，再创建一个挂载该 PVC 的 Pod，完成写入、删除 Pod、重新调度和读回。`volumeMode: Block` 直接提供原始设备，必须使用对应的 raw-block Pod；不能把 filesystem 的 mount/扩容假设套到 Block。官方 access mode 只是 Kubernetes 调度语义：RBD 普通文件系统不能因为声明 `ReadWriteMany` 就获得多主写一致性，`ReadWriteOnce` 也不等于物理 fencing；节点失联还要验证 VolumeAttachment 清理、blocklist、exclusive-lock 和强制 detach。`reclaimPolicy: Delete` 只表示 CSI 回收意图，不等于安全擦除或 trash 已清空。
+
+要求在途加密时，krbd 必须显式使用 `ms_mode=secure`。Ceph 20.2.4 的官方 `src/krbd.cc` 默认请求 `prefer-crc`，而 Monitor 默认允许 `secure crc`；仅配置 `ms_service_mode=secure` 不能保证 Monitor 连接加密。上例通过 Ceph-CSI 官方 `mapOptions` 强制安全模式，Kubeauto 生成的 RBD StorageClass 使用相同设置。
 
 ## 23. Nomad/ceph-csi：controller、node 与持久卷验收
 

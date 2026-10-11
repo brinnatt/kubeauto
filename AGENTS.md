@@ -66,7 +66,14 @@ Inspect all six sibling repositories under `/home/brinnatt/projects` before and 
 - Use the smallest readable, maintainable, Pythonic change consistent with upstream design.
 - Reproduce from a verified clean lab before calling a failure a product bug. Separate test-gate, environment, supply-chain, runtime, Kubernetes, controller, and product failures with evidence.
 - A failed attempted fix is not a new baseline. Remove its speculative code and lab residue before continuing.
-- Change affected matrix entries to pending while work is in progress. Mark them pass only after a current clean run produces auditable evidence. Historical logs never substitute for a current run.
+- Track acceptance per matrix item. Mark a module pass as soon as its product
+  gate has current success markers, durable module rc=0, zero failure markers
+  and verified cleanup of its owned fixtures; do not wait for unrelated modules
+  or the final full run. On a proven related change, return only affected items
+  to pending and record the dependency and disproof command. Evidence for
+  unchanged dependencies remains valid; unknown dependencies require impact
+  analysis, not automatic reuse or blanket invalidation. Module progress does
+  not substitute for final clean full-run sign-off.
 - Customer-facing middleware documentation covers exactly four content types: user manual, operations manual, technical whitepaper and development manual. Keep the technical whitepaper and development manual separate; combine the user and operations content into one `operations-manual.md` when the component follows the established PXC style. Integrate official references into the applicable whitepaper or development manual. Do not deliver proposal/review drafts, retrospectives, project-status narratives, internal test chronology, standalone source indexes or an extra README as customer documentation. Write from the customer's product, task and operational perspective with formal terminology, continuous executable main paths and clearly quoted exception/rollback/risk branches.
 - Ceph is an explicitly approved exception: preserve the nine modular documents
   in `docs/storage/ceph/`. Fix proven documentation bugs only; do not restructure
@@ -98,14 +105,17 @@ ordering evidence correctly, never by skipping scenarios.
   regression unit/contract test for the exact cause before any rerun. Change one
   causal layer at a time and remove rejected attempts and lab residue.
 - Use the runner's durable status, log and focused modes to reuse a validated
-  clean boundary. Do not duplicate completed setup or repeat unrelated scenarios.
+  boundary. A focused repair restores and verifies only the failed module's
+  owned objects, faults, flags and processes; retain healthy shared prerequisites
+  and unchanged completed evidence. Before reuse, verify ownership, dependency
+  identity, shared service health, data integrity and absence of fault residue.
+  Rebuild only the smallest dependent environment when these checks fail or
+  cannot prove isolation. Do not duplicate setup or repeat unrelated scenarios.
   A complete clean regression remains mandatory after accepted changes, with its
   terminal marker, durable `rc=0`, zero failure markers, current matrix evidence
   and final `LAB_CLEAN_VERIFY_PASS`.
-- Never optimize by downgrading coverage, accepting partial evidence, marking
-  matrix items early or treating a running Pod as a business result. The only
-  acceptable efficiency gain is preventing invalid test code from reaching an
-  expensive live environment.
+- Never optimize by downgrading coverage, accepting incomplete module evidence
+  or treating a running Pod as a business result.
 
 ### Mandatory test-gate change ladder
 
@@ -125,13 +135,14 @@ new middleware and maintenance of delivered branches.
    contracts.  Add or update a deterministic unit/contract test for the exact
    defect before its next live execution.
 3. Run the narrowest fixed-runner branch that reaches the changed assertion.
-   Its setup, cleanup and diagnostics remain runner-owned.  A failed preflight
+   Its setup, module-scoped cleanup and diagnostics remain runner-owned. A failed preflight
    or focused gate blocks a full middleware run; fix the single proven causal
    layer, re-run its contract, then re-run only that focused branch.
-4. Start exactly one clean full middleware regression only after the affected
-   focused gate is green.  Reuse a verified clean boundary only when the runner
-   proves there is no stale process, cluster, registry data, port-forward or
-   test-owned resource; otherwise perform the normal cleanup and verification.
+4. Finish the affected module gates before starting one final clean full
+   middleware regression. A healthy runner-owned baseline is reusable for
+   focused gates; an existing cluster alone is not residue. The runner must
+   prove no stale fault, foreign resource or failed-module fixture remains.
+   The final full run still requires its normal clean setup and final cleanup.
 5. After a full-chain failure, collect the first failing command, durable exit
    state, rendered inputs, owned-resource state, Pod descriptions/events and
    relevant controller logs before editing.  Stop the scenario at a failed
@@ -200,6 +211,11 @@ ladder removes invalid executions, not customer coverage.
 
 Use the fixed runner instead of ad-hoc SSH command sequences. It owns source sync, durable remote state, foreground streaming, heartbeat, diagnostics, cleanup, and evidence collection.
 
-Every stateful scenario requires clean verification before and after execution. Success requires the expected terminal marker, durable `rc=0`, zero failure markers, updated matrix evidence, and final `LAB_CLEAN_VERIFY_PASS`.
+Every stateful scenario requires verification of its declared cleanup scope
+before and after execution. A focused module may preserve a verified healthy
+runner-owned baseline, but must emit its scoped-clean marker and durable rc=0.
+Final delivery requires the complete clean regression, expected terminal marker,
+durable rc=0, zero failure markers, current matrix evidence and final
+`LAB_CLEAN_VERIFY_PASS`; individual module passes do not imply delivery PASS.
 
 Do not commit runtime logs, PID files, Python caches, remote cluster directories, or registry data. Preserve reusable knowledge in tests, helpers, the matrix, or documentation.

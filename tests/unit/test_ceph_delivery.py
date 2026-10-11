@@ -15,7 +15,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -51,9 +51,538 @@ KERNEL_SPEC = importlib.util.spec_from_file_location("ceph_kernel_check", KERNEL
 assert KERNEL_SPEC and KERNEL_SPEC.loader
 CEPH_KERNEL = importlib.util.module_from_spec(KERNEL_SPEC)
 KERNEL_SPEC.loader.exec_module(CEPH_KERNEL)
+QUALIFICATION_PATH = ROOT / "tests/helpers/ceph_os_qualification.py"
+QUALIFICATION_SPEC = importlib.util.spec_from_file_location("ceph_os_qualification", QUALIFICATION_PATH)
+assert QUALIFICATION_SPEC and QUALIFICATION_SPEC.loader
+CEPH_QUALIFICATION = importlib.util.module_from_spec(QUALIFICATION_SPEC)
+QUALIFICATION_SPEC.loader.exec_module(CEPH_QUALIFICATION)
+RELAY_SPEC = importlib.util.spec_from_file_location("ceph_ssh_fixture", ROOT / "tests/helpers/ceph_ssh_fixture.py")
+assert RELAY_SPEC and RELAY_SPEC.loader
+CEPH_RELAY = importlib.util.module_from_spec(RELAY_SPEC)
+RELAY_SPEC.loader.exec_module(CEPH_RELAY)
 
 
 class TestCephDelivery(unittest.TestCase):
+    def test_intermittent_requests_have_equal_payloads_and_complete_on_off_windows(self) -> None:
+        function = re.search(r"(?ms)^sample_intermittent_latency\(\) \{.*?^\}", self.regression).group()
+        for delay, failed_write in ((0, False), (2500, False), (2500, True)):
+            with self.subTest(delay=delay, failed_write=failed_write), tempfile.TemporaryDirectory() as directory:
+                script = function + '''
+STATE_DIR="$1"
+SLOW_MAPPER=owned-mapper
+RBD_POOL=owned-pool
+FAILED_WRITE="$3"
+echo linear >"$STATE_DIR/mode"
+mapper_table() { echo "$2" >"$STATE_DIR/mode"; echo "transition:$2" >>"$STATE_DIR/trace"; }
+put_intermittent_payload() {
+  [[ "$*" == owned-object ]] || return 43
+  [[ "$FAILED_WRITE" == 0 ]] || return 23
+  echo "write:$(cat "$STATE_DIR/mode")" >>"$STATE_DIR/trace"
+}
+business_once() { echo business >>"$STATE_DIR/trace"; }
+latency_quantile() { echo 1; }
+set -euo pipefail
+sample_intermittent_latency phase owned-object "$2"
+'''
+                result = subprocess.run(["bash", "-c", script, "fixture", directory, str(delay),
+                                         "1" if failed_write else "0"], capture_output=True, text=True)
+                rows = (Path(directory) / "trace").read_text().splitlines()
+                if failed_write:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn("business", rows)
+                    self.assertNotIn("count=18", result.stdout)
+                    continue
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(rows.count("business"), 18)
+                self.assertEqual(rows.count("write:delay"), 9 if delay else 0)
+                self.assertEqual(rows.count("write:linear"), 9 if delay else 18)
+                transitions = [row for row in rows if row.startswith("transition:")]
+                self.assertEqual(transitions, ["transition:delay", "transition:linear"] * 3 if delay else [])
+                self.assertEqual(len((Path(directory) / "phase.latency").read_text().splitlines()), 18)
+
+    def test_intermittent_payload_is_local_to_client_and_cleans_up_on_write_failure(self) -> None:
+        function = re.search(r"(?ms)^put_intermittent_payload\(\) \{.*?^\}", self.regression).group()
+        for failed_write in (False, True):
+            with self.subTest(failed_write=failed_write), tempfile.TemporaryDirectory() as directory:
+                script = function + '''
+STATE_DIR="$1"
+RBD_POOL=owned-pool
+CEPH_BOOTSTRAP=owned-host
+FAILED_WRITE="$2"
+ssh_node() {
+  [[ "$1" == owned-host ]] || return 41
+  local -a command
+  eval "command=($2)"
+  [[ "${command[*]:0:5}" == '/usr/local/sbin/cephadm shell -- bash -ceu' ]] || return 42
+  bash "${command[@]:4}"
+}
+mktemp() { command mktemp "$STATE_DIR/payload-XXXXXX"; }
+dd() {
+  [[ "$1" == if=/dev/urandom && "$3 $4 $5" == 'bs=1M count=32 status=none' ]] || return 43
+  printf payload >"${2#of=}"
+}
+rados() {
+  [[ "$1 $2 $3 $4" == '-p owned-pool put owned-object' ]] || return 44
+  [[ -f "$5" && "$(cat "$5")" == payload ]] || return 45
+  printf '%s\\n' "$5" >"$STATE_DIR/owned-payload"
+  [[ "$FAILED_WRITE" == 0 ]] || return 23
+}
+export STATE_DIR FAILED_WRITE
+export -f mktemp dd rados
+set -euo pipefail
+put_intermittent_payload owned-object
+'''
+                result = subprocess.run(["bash", "-c", script, "fixture", directory,
+                                         "1" if failed_write else "0"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 23 if failed_write else 0, result.stderr)
+                payload = Path((Path(directory) / "owned-payload").read_text().strip())
+                self.assertFalse(payload.exists())
+
+    def test_observability_matches_every_active_health_check_and_recovers_its_gauge(self) -> None:
+        import copy
+        for legacy in (False, True):
+            key_type = "aes" if legacy else "aes256k"
+            base = {name: {"severity": "HEALTH_WARN"} for name in
+                    ("AUTH_INSECURE_CLIENT_KEY_TYPE", "AUTH_INSECURE_KEYS_ALLOWED")} if legacy else {}
+            for phase in ("baseline", "warning", "recovered"):
+                checks = {**base}
+                if phase == "warning":
+                    checks["OSDMAP_FLAGS"] = {"severity": "HEALTH_WARN"}
+                status = int(bool(checks))
+                health = {"status": "HEALTH_WARN" if checks else "HEALTH_OK", "checks": checks}
+                metrics = f"ceph_health_status {status}.0\n" + "".join(
+                    f'ceph_health_detail{{severity="HEALTH_WARN",name="{name}"}} 1.0\n'
+                    for name in base)
+                if phase != "baseline":
+                    metrics += ('ceph_health_detail{name="OSDMAP_FLAGS",severity="HEALTH_WARN"} '
+                                + ("1.0" if phase == "warning" else "0.0") + "\n")
+                with self.subTest(legacy=legacy, phase=phase):
+                    self.assertEqual(CEPH_CONTRACT.assert_observability_health(health, metrics, key_type, phase), status)
+                faults = [(health, "", key_type), (health, metrics + metrics, key_type),
+                          (health, metrics.replace(f"ceph_health_status {status}.0", "ceph_health_status 2.0"), key_type)]
+                unexpected = copy.deepcopy(health)
+                unexpected["checks"]["OSD_DOWN"] = {"severity": "HEALTH_WARN"}
+                faults.append((unexpected, metrics, key_type))
+                inconsistent = {**health, "status": "HEALTH_ERR"}
+                faults.append((inconsistent, metrics, key_type))
+                if phase == "baseline":
+                    existing_flag = {"status": "HEALTH_WARN", "checks": {
+                        **checks, "OSDMAP_FLAGS": {"severity": "HEALTH_WARN"}}}
+                    existing_metrics = metrics.replace("ceph_health_status 0.0", "ceph_health_status 1.0")
+                    existing_metrics += 'ceph_health_detail{name="OSDMAP_FLAGS",severity="HEALTH_WARN"} 1.0\n'
+                    faults.append((existing_flag, existing_metrics, key_type))
+                if legacy:
+                    faults.append((health, metrics, "aes256k"))
+                    faults.append((health, metrics.replace('name="AUTH_INSECURE_CLIENT_KEY_TYPE"} 1.0',
+                                                          'name="AUTH_INSECURE_CLIENT_KEY_TYPE"} 0.0'), key_type))
+                if phase != "baseline":
+                    faults.append((health, re.sub(r"^ceph_health_detail\{name=\"OSDMAP_FLAGS\".*\n", "", metrics, flags=re.M), key_type))
+                for bad_health, bad_metrics, policy in faults:
+                    with self.subTest(legacy=legacy, phase=phase, bad_metrics=bad_metrics), self.assertRaises(ValueError):
+                        CEPH_CONTRACT.assert_observability_health(bad_health, bad_metrics, policy, phase)
+
+    def test_observability_preserves_the_accepted_legacy_health_warning(self) -> None:
+        rotation_wait = "wait_rotating_keys_expire() {" + self.regression.split(
+            "wait_rotating_keys_expire() {", 1)[1].split("\nwait_observability_health()", 1)[0]
+        function = rotation_wait + "\nverify_observability() {" + self.regression.split(
+            "verify_observability() {", 1
+        )[1].split("\nverify_idempotence()", 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            script = f"""
+set -euo pipefail
+STATE_DIR='{directory}'
+CONTRACT_SCRIPT='{CONTRACT_PATH}'
+CEPH_CSI_CLIENT_KEY_TYPE=aes
+stage() {{ :; }}
+pass() {{ :; }}
+fail() {{ echo "$*" >&2; return 1; }}
+wait_clean() {{ :; }}
+sleep() {{ :; }}
+wait_observability_health() {{
+  printf '%s\\n' "$1" >>'{directory}/phases'
+  if [[ "$1" == warning ]]; then test -f '{directory}/noout';
+  else test ! -f '{directory}/noout'; fi
+  echo 1
+}}
+python3() {{
+  if [[ "$1" == - ]]; then while IFS= read -r line; do :; done; echo 1;
+  else '{sys.executable}' "$@"; fi
+}}
+ceph_shell() {{
+  printf '%s\\n' "$*" >>'{directory}/commands'
+  case "$*" in
+    'ceph mgr module ls --format json') echo '{{"enabled_modules":["dashboard","prometheus"]}}' ;;
+    'ceph orch ps --service_name '*) echo '[{{"status_desc":"running"}}]' ;;
+    'ceph mgr services --format json') echo '{{"prometheus":"http://127.0.0.1:9283"}}' ;;
+    'ceph osd pool set kubeauto-observability size 1 '*|\
+    'ceph config set mon mon_allow_pool_size_one '*) echo 'EPERM: pool size one is disabled' >&2; return 1 ;;
+    'ceph osd set noout') touch '{directory}/noout' ;;
+    'ceph osd unset noout') unlink '{directory}/noout' ;;
+    'ceph health detail --format json') echo '{{"status":"HEALTH_WARN","checks":{{"AUTH_INSECURE_CLIENT_KEY_TYPE":{{"severity":"HEALTH_WARN"}},"AUTH_INSECURE_KEYS_ALLOWED":{{"severity":"HEALTH_WARN"}}}}}}' ;;
+  esac
+}}
+{function}
+verify_observability
+"""
+            result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("CEPH_OBSERVABILITY_PASS", result.stdout)
+            self.assertEqual((Path(directory) / "phases").read_text().splitlines(),
+                             ["baseline", "warning", "recovered"])
+            commands = (Path(directory) / "commands").read_text()
+            self.assertIn("ceph osd set noout", commands)
+            self.assertIn("ceph osd unset noout", commands)
+            self.assertFalse((Path(directory) / "noout").exists())
+            self.assertNotIn("ceph osd pool", commands)
+            self.assertNotIn("mon_allow_pool_size_one", commands)
+            self.assertNotIn("auth_", commands)
+            self.assertNotIn("health mute", commands)
+
+    def test_observability_wait_retries_exporter_lag_and_rejects_failure(self) -> None:
+        function = "wait_observability_health() {" + self.regression.split(
+            "wait_observability_health() {", 1
+        )[1].split("\nverify_observability()", 1)[0]
+        for broken in (False, True):
+            with self.subTest(broken=broken), tempfile.TemporaryDirectory() as directory:
+                script = f"""
+set -euo pipefail
+STATE_DIR='{directory}'
+CONTRACT_SCRIPT=parser
+CEPH_CSI_CLIENT_KEY_TYPE=aes
+sleep() {{ :; }}
+ceph_shell() {{ echo '{{}}'; }}
+python3() {{
+  while IFS= read -r line; do :; done
+  if [[ '{broken}' == True || ! -f '{directory}/scraped' ]]; then
+    touch '{directory}/scraped'; echo 'exporter stale' >&2; return 1
+  fi
+  [[ "$*" == 'parser monitoring-health --metrics-url http://127.0.0.1:9283/metrics --key-type aes --phase recovered' ]]
+  echo 1
+}}
+{function}
+wait_observability_health recovered http://127.0.0.1:9283/metrics
+"""
+                result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, not broken, result.stderr)
+                if broken:
+                    self.assertIn("exporter stale", result.stderr)
+                else:
+                    self.assertEqual(result.stdout.strip(), "1")
+
+    def test_observability_parser_cli_fetches_the_official_metrics_shape(self) -> None:
+        import http.server
+        import threading
+        body = b'ceph_health_status 1.0\nceph_health_detail{name="AUTH_INSECURE_CLIENT_KEY_TYPE",severity="HEALTH_WARN"} 1.0\n'
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            health = json.dumps({"status": "HEALTH_WARN", "checks": {
+                "AUTH_INSECURE_CLIENT_KEY_TYPE": {"severity": "HEALTH_WARN"}}})
+            for policy in ("aes", "aes256k"):
+                result = subprocess.run([sys.executable, str(CONTRACT_PATH), "monitoring-health",
+                                         "--metrics-url", f"http://127.0.0.1:{server.server_port}/metrics",
+                                         "--key-type", policy, "--phase", "baseline"],
+                                        input=health, text=True, capture_output=True)
+                self.assertEqual(result.returncode == 0, policy == "aes", result.stderr)
+                if policy == "aes":
+                    self.assertEqual(result.stdout.strip(), "1")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+    def test_observability_focused_gate_uses_the_product_and_owned_cleanup(self) -> None:
+        self.assertIn("--ceph-observability|", self.runner)
+        main = self.regression.split("main() {", 1)[1]
+        focused = main.split("--performance|--upgrade|--observability|--security)", 1)[1].split("\n      ;;", 1)[0]
+        self.assertLess(focused.index("prepare_or_reuse_focused_environment"), focused.index('run_slow_device_scenario "$MODE"'))
+        self.assertIn("retain_focused_baseline", focused)
+        self.assertIn("trap focused_failure_cleanup EXIT", focused)
+        self.assertIn("CEPH_FOCUSED_BRANCH_PASS", focused)
+        scenarios = self.regression.split("run_slow_device_scenario() {", 1)[1].split("\nrun_all_slow_device_scenarios()", 1)[0]
+        self.assertIn("--observability) verify_observability", scenarios)
+        cleanup = (ROOT / "tests/helpers/ceph-cleanup.sh").read_text()
+        prefix = 'for state_file in "${STATE_DIR}"/*.latency'
+        state_cleanup = prefix + cleanup.split(prefix, 1)[1].split("\ndone", 1)[0] + "\ndone"
+        with tempfile.TemporaryDirectory() as directory:
+            owned = Path(directory) / "observability-last-error"
+            foreign = Path(directory) / "foreign-diagnostic"
+            owned.write_text("first failure")
+            foreign.write_text("preserve")
+            result = subprocess.run(["bash", "-ceu", f"STATE_DIR='{directory}'\n{state_cleanup}"],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(owned.exists())
+            self.assertEqual(foreign.read_text(), "preserve")
+
+    def test_qualification_registry_relay_is_exact_and_uses_http_readiness(self) -> None:
+        command = CEPH_RELAY.rule("192.168.47.130", 23500, "-A")
+        self.assertIn("192.168.47.130/32 --dport 5000", command)
+        self.assertIn("--comment kubeauto-ceph-qualification-registry", command)
+        for target, port in (("192.168.47.134", 23500), ("192.168.47.130", 23400),
+                             ("192.168.122.1", 23500), ("192.168.47.130", 23501)):
+            with self.subTest(target=target, port=port), self.assertRaises(ValueError):
+                CEPH_RELAY.rule(target, port, "-A")
+        with patch.object(CEPH_RELAY, "remote", return_value=SimpleNamespace(returncode=0)) as remote:
+            self.assertTrue(CEPH_RELAY.probe(CEPH_RELAY.STORAGE[3], "192.168.47.130"))
+        self.assertIn("http://192.168.47.130:5000/v2/", remote.call_args.args[1])
+        self.assertIn("curl", remote.call_args.args[1])
+        self.assertIn("--fail", remote.call_args.args[1])
+
+    def test_qualification_relay_recovers_lost_master_without_changing_owned_rules(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ssh-relay.json"
+            host = CEPH_RELAY.STORAGE[0]
+            row = {"host": host, "socket": str(path.parent / ("ssh-relay-" + host + ".sock")),
+                   "targets": [["192.168.47.134", 23400], ["192.168.47.138", 23401]]}
+            path.write_text(json.dumps([row]))
+            for alive in (True, False):
+                with self.subTest(alive=alive), \
+                        patch.object(CEPH_RELAY, "execute", return_value=SimpleNamespace(returncode=0 if alive else 255)), \
+                        patch.object(CEPH_RELAY, "remote") as remote, \
+                        patch.object(CEPH_RELAY, "probe", return_value=True) as probe, \
+                        patch.object(CEPH_RELAY, "connect") as connect:
+                    CEPH_RELAY.refresh(path)
+                    self.assertEqual(connect.call_count, 0 if alive else 1)
+                    if alive:
+                        remote.assert_not_called()
+                        probe.assert_not_called()
+                    else:
+                        connect.assert_called_once_with(row)
+                        self.assertEqual(remote.call_count, 2)
+                        self.assertTrue(all(" -C " in call.args[1] for call in remote.call_args_list))
+                        self.assertEqual(probe.call_count, 2)
+            self.assertTrue(path.exists())
+
+    def test_qualification_relay_recovery_refuses_missing_ownership_and_foreign_listeners(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ssh-relay.json"
+            host = CEPH_RELAY.STORAGE[0]
+            row = {"host": host, "socket": str(path.parent / ("ssh-relay-" + host + ".sock")),
+                   "targets": [["192.168.47.134", 23400]]}
+            for invalid in (dict(row, host="192.168.122.1"), dict(row, socket="/tmp/foreign.sock"),
+                            dict(row, targets=[["192.168.47.129", 23400]])):
+                path.write_text(json.dumps([invalid]))
+                with patch.object(CEPH_RELAY, "execute") as execute, \
+                        patch.object(CEPH_RELAY, "remote") as remote, self.assertRaises(ValueError):
+                    CEPH_RELAY.refresh(path)
+                execute.assert_not_called()
+                remote.assert_not_called()
+            path.write_text(json.dumps([row]))
+            with patch.object(CEPH_RELAY, "execute", return_value=SimpleNamespace(returncode=255)), \
+                    patch.object(CEPH_RELAY, "remote", side_effect=subprocess.CalledProcessError(1, ["iptables"])), \
+                    patch.object(CEPH_RELAY, "connect") as connect, self.assertRaises(subprocess.CalledProcessError):
+                CEPH_RELAY.refresh(path)
+            connect.assert_not_called()
+            with patch.object(CEPH_RELAY, "execute", return_value=SimpleNamespace(returncode=255)), \
+                    patch.object(CEPH_RELAY, "remote"), \
+                    patch.object(CEPH_RELAY, "connect", side_effect=subprocess.CalledProcessError(255, ["ssh"])), \
+                    patch.object(CEPH_RELAY, "probe") as probe, self.assertRaises(subprocess.CalledProcessError):
+                CEPH_RELAY.refresh(path)
+            probe.assert_not_called()
+            self.assertTrue(path.exists(), "failed recovery must leave its cleanup ownership journal")
+
+    def test_qualification_network_probe_exercises_listener_loss_and_recovery(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ssh-relay.json"
+            host = CEPH_RELAY.STORAGE[0]
+            row = {"host": host, "socket": str(path.parent / ("ssh-relay-" + host + ".sock")),
+                   "targets": [["192.168.47.134", 23400]]}
+            path.write_text(json.dumps([row]))
+            with patch.object(CEPH_RELAY, "execute") as execute, \
+                    patch.object(CEPH_RELAY, "remote") as remote, patch.object(CEPH_RELAY, "refresh") as refresh:
+                CEPH_RELAY.verify_reconnect(path)
+            self.assertIn("exit", execute.call_args.args[0])
+            self.assertIn("sport = :23400", remote.call_args.args[1])
+            refresh.assert_called_once_with(path)
+        main = self.regression.split("main() {", 1)[1]
+        qualification = main.split("--os-qualification-legacy|", 1)[1].split("\n      ;;", 1)[0]
+        self.assertIn("ceph_ssh_fixture.py\" maintain", qualification)
+        self.assertLess(qualification.index("stop_relay_watch"), qualification.index('bash "$BASE/tests/helpers/ceph-cleanup.sh"',
+                        qualification.index("cleanup_business_fixtures")))
+        cleanup = self.regression.split("failure_cleanup() {", 1)[1].split("\nprepare_focused_environment()", 1)[0]
+        self.assertLess(cleanup.index("stop_relay_watch"), cleanup.index("cleanup_business_fixtures"))
+
+    def test_qualification_registry_relay_journals_before_mutation_and_only_targets_compute(self) -> None:
+        journal, launches, rules, probes = [], [], [], []
+        def save(_, rows):
+            journal.append(json.loads(json.dumps(rows)))
+        def probe(host, target):
+            probes.append((host, target))
+            return (host, target) in probes[:-1]
+        def remote(host, command, check=True):
+            rules.append((host, command))
+            if " -A " in command:
+                self.assertEqual(journal[-1][-1]["host"], host)
+            return SimpleNamespace(returncode=1 if " -C " in command else 0)
+        def launch(argv):
+            launches.append(argv)
+            self.assertEqual(journal[-1][-1]["targets"], [["192.168.47.130", 23500]])
+            self.assertIn("127.0.0.1:23500:127.0.0.1:5000", argv)
+            self.assertEqual(argv[-1], "root@" + journal[-1][-1]["host"])
+        with patch.object(CEPH_RELAY, "save", side_effect=save), \
+                patch.object(CEPH_RELAY, "probe", side_effect=probe), \
+                patch.object(CEPH_RELAY, "remote", side_effect=remote), \
+                patch.object(CEPH_RELAY, "execute", side_effect=launch), \
+                patch.object(Path, "exists", return_value=False):
+            CEPH_RELAY.setup(Path("/var/lib/kubeauto-ceph-test/ssh-relay.json"), "rocky9")
+        self.assertEqual(journal[0], [])
+        self.assertEqual([row["host"] for row in journal[-1]], list(CEPH_RELAY.STORAGE[3:]))
+        self.assertEqual(len(launches), 3)
+        self.assertEqual({host for host, _ in rules}, set(CEPH_RELAY.STORAGE[3:]))
+
+    def test_qualification_registry_relay_skips_direct_paths_and_removes_exact_owned_rules(self) -> None:
+        with patch.object(CEPH_RELAY, "save"), patch.object(CEPH_RELAY, "probe", return_value=True), \
+                patch.object(CEPH_RELAY, "remote") as remote, patch.object(CEPH_RELAY, "execute") as execute, \
+                patch.object(Path, "exists", return_value=False):
+            CEPH_RELAY.setup(Path("/var/lib/kubeauto-ceph-test/ssh-relay.json"), "rocky9")
+        remote.assert_not_called()
+        execute.assert_not_called()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ssh-relay.json"
+            host = CEPH_RELAY.STORAGE[3]
+            row = {"host": host, "socket": str(path.parent / ("ssh-relay-" + host + ".sock")),
+                   "targets": [["192.168.47.130", 23500]]}
+            path.write_text(json.dumps([dict(row, host=CEPH_RELAY.STORAGE[0])]))
+            with patch.object(CEPH_RELAY, "remote") as remote, self.assertRaises(ValueError):
+                CEPH_RELAY.cleanup(path)
+            remote.assert_not_called()
+            path.write_text(json.dumps([row]))
+            calls = []
+            def remote_ok(host, command, check=True):
+                calls.append(command)
+                return SimpleNamespace(returncode=1 if " -C " in command and len(calls) > 1 else 0)
+            with patch.object(CEPH_RELAY, "remote", side_effect=remote_ok), patch.object(CEPH_RELAY, "execute"):
+                CEPH_RELAY.cleanup(path)
+            self.assertFalse(path.exists())
+            removed = [command for command in calls if " -D " in command]
+            self.assertEqual(len(removed), 1)
+            self.assertIn("192.168.47.130/32 --dport 5000", removed[0])
+            self.assertIn("sport = :23500", calls[-1])
+
+    def test_qualification_network_runner_rejects_invalid_profile_before_sync(self) -> None:
+        branch = self.runner.split('if [[ "$MODE" == "--ceph-qualification-network-only" ]]; then', 1)[1].split("\nfi", 1)[0]
+        self.assertIn('CEPH_QUALIFICATION_NETWORK_PROFILE:-legacy', branch)
+        self.assertIn('legacy|modern|rocky9', branch)
+        self.assertLess(branch.index('legacy|modern|rocky9'), branch.index('sync-kubeauto.sh'))
+        self.assertIn('--profile $network_profile', branch)
+        self.assertEqual(branch.count('ceph-cleanup.sh --verify'), 2)
+        self.assertLess(branch.index('ceph-cleanup.sh --verify'), branch.index('nohup'))
+        self.assertLess(branch.rindex('ceph-cleanup.sh --verify'), branch.index('echo CEPH_QUALIFICATION_NETWORK_DELIVERY_PASS'))
+
+    def test_background_relay_launch_does_not_wait_for_inherited_output_pipes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            pidfile = Path(directory) / "child.pid"
+            code = "import os,time,sys; pid=os.fork(); " \
+                   "open(sys.argv[1], 'w').write(str(pid)) if pid else time.sleep(30)"
+            original_run = subprocess.run
+            def bounded_run(argv, **kwargs):
+                kwargs["timeout"] = 2
+                return original_run(argv, **kwargs)
+            try:
+                with patch.object(CEPH_RELAY.subprocess, "run", side_effect=bounded_run):
+                    result = CEPH_RELAY.execute([sys.executable, "-c", code, str(pidfile), "-f"])
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, "")
+            finally:
+                if pidfile.exists():
+                    os.kill(int(pidfile.read_text()), 15)
+
+    def test_qualification_relay_limits_rules_to_authorized_ssh_peers(self) -> None:
+        for host, port in (("192.168.122.1", 23400), ("192.168.47.134", 22),
+                           ("192.168.47.129", 23400)):
+            with self.subTest(host=host, port=port), self.assertRaises(ValueError):
+                CEPH_RELAY.rule(host, port, "-A")
+        command = CEPH_RELAY.rule("192.168.47.134", 23400, "-A")
+        self.assertIn("192.168.47.134/32 --dport 22", command)
+        self.assertIn("--comment kubeauto-ceph-qualification-ssh", command)
+        self.assertNotIn("6800", command)
+        with patch.object(CEPH_RELAY, "execute") as execute, self.assertRaises(ValueError):
+            CEPH_RELAY.remote("192.168.122.1", "true")
+        execute.assert_not_called()
+
+    def test_qualification_relay_journals_before_listener_and_survives_partial_failure(self) -> None:
+        path = Path("/var/lib/kubeauto-ceph-test/ssh-relay.json")
+        journal = []
+        def save(_, rows):
+            journal.append(json.loads(json.dumps(rows)))
+        def launch(argv):
+            self.assertEqual(journal[-1][0]["host"], CEPH_RELAY.STORAGE[0])
+            self.assertIn("ExitOnForwardFailure=yes", argv)
+            self.assertIn("127.0.0.1:23400:192.168.47.134:22", argv)
+            raise RuntimeError("listener failure")
+        with patch.object(CEPH_RELAY, "save", side_effect=save), \
+                patch.object(CEPH_RELAY, "probe", return_value=False), \
+                patch.object(CEPH_RELAY, "remote", return_value=SimpleNamespace(returncode=1)), \
+                patch.object(CEPH_RELAY, "execute", side_effect=launch), \
+                patch.object(Path, "exists", return_value=False), self.assertRaisesRegex(RuntimeError, "listener failure"):
+            CEPH_RELAY.setup(path, "legacy")
+        self.assertEqual(journal[0], [])
+        self.assertEqual(len(journal[-1]), 1)
+
+    def test_qualification_relay_cleanup_refuses_foreign_journal_and_retains_failed_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ssh-relay.json"
+            host = CEPH_RELAY.STORAGE[0]
+            row = {"host": host, "socket": str(path.parent / ("ssh-relay-" + host + ".sock")),
+                   "targets": [["192.168.47.134", 23400]]}
+            foreign = dict(row, host="192.168.122.1")
+            path.write_text(json.dumps([row, foreign]))
+            with patch.object(CEPH_RELAY, "remote") as remote, self.assertRaises(ValueError):
+                CEPH_RELAY.cleanup(path)
+            remote.assert_not_called()
+            path.write_text(json.dumps([row]))
+            with patch.object(CEPH_RELAY, "remote", return_value=SimpleNamespace(returncode=255, stderr="SSH down")), \
+                    patch.object(CEPH_RELAY, "execute") as execute, self.assertRaises(RuntimeError):
+                CEPH_RELAY.cleanup(path)
+            execute.assert_not_called()
+            self.assertTrue(path.exists())
+            calls = []
+            def remote_ok(host, command, check=True):
+                calls.append(command)
+                return SimpleNamespace(returncode=(1 if " -C " in command and len(calls) > 1 else 0))
+            with patch.object(CEPH_RELAY, "remote", side_effect=remote_ok), \
+                    patch.object(CEPH_RELAY, "execute"):
+                CEPH_RELAY.cleanup(path)
+            self.assertFalse(path.exists())
+            self.assertEqual(sum(" -D " in command for command in calls), 1)
+
+    def test_qualification_relay_cleanup_waits_for_async_master_shutdown(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ssh-relay.json"
+            host = CEPH_RELAY.STORAGE[0]
+            socket = path.parent / ("ssh-relay-" + host + ".sock")
+            socket.touch()
+            path.write_text(json.dumps([{"host": host, "socket": str(socket), "targets": []}]))
+            def shutdown(_):
+                socket.unlink()
+            with patch.object(CEPH_RELAY, "execute"), patch.object(CEPH_RELAY, "remote"), \
+                    patch.object(CEPH_RELAY.time, "sleep", side_effect=shutdown) as wait:
+                CEPH_RELAY.cleanup(path)
+            wait.assert_called_once_with(0.1)
+            self.assertFalse(path.exists())
+        self.assertLess(self.cleanup.index('  quiesce_owned_managers "$fsid"'),
+                        self.cleanup.index('ceph_ssh_fixture.py" cleanup'))
+
+    def test_qualification_relay_does_not_mutate_directly_reachable_management_paths(self) -> None:
+        with patch.object(CEPH_RELAY, "save"), patch.object(CEPH_RELAY, "probe", return_value=True), \
+                patch.object(CEPH_RELAY, "remote") as remote, patch.object(CEPH_RELAY, "execute") as execute, \
+                patch.object(Path, "exists", return_value=False):
+            CEPH_RELAY.setup(Path("/var/lib/kubeauto-ceph-test/ssh-relay.json"), "modern")
+        remote.assert_not_called()
+        execute.assert_not_called()
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.constants = KubeConstant()
@@ -418,6 +947,10 @@ set -- /dev/disk/by-id/fixture fixture-serial 12345678-1234-1234-1234-123456789a
                         self.assertEqual(runtime, expected)
                         self.assertIn("dmsetup" if family == "Debian" else "device-mapper", packages)
                         self.assertEqual("python39" in packages, family == "RedHat" and major == "8")
+                        needs_gnu = distribution == "Ubuntu" and int(major) >= 26
+                        self.assertEqual("gnu-coreutils" in packages, needs_gnu)
+                        self.assertEqual(environment.from_string(profile["ceph_use_gnu_install"]).render(
+                            **variables).strip(), str(needs_gnu))
                         self.assertNotIn("podman", packages)
         rpm = next(task for task in tasks if task["name"].endswith("native RPM CLI"))
         self.assertIn("ansible.builtin.command", rpm)
@@ -448,12 +981,63 @@ set -- /dev/disk/by-id/fixture fixture-serial 12345678-1234-1234-1234-123456789a
                     expected.append("--docker")
                 self.assertEqual(log.read_text().splitlines(), expected + ["shell", "--", "a b", "$(false)"])
         self.assertNotIn("dest: /usr/bin/python", self.role)
-        self.assertIn("mgr/cephadm/mode = cephadm-package",
+        self.assertIn("mgr/cephadm/mode = root",
                       (ROOT / "roles/ceph/templates/bootstrap.conf.j2").read_text())
         exposure = next(task["ansible.builtin.file"] for task in tasks
-                        if task["name"] == "Expose the owned cephadm launcher to the upstream orchestrator")
-        self.assertEqual(exposure["dest"], "/usr/bin/cephadm")
-        self.assertEqual(exposure["src"], "/usr/local/sbin/cephadm")
+                        if task["name"] == "Expose the verified Python only to the dedicated orchestrator")
+        self.assertEqual(exposure["dest"], "/usr/local/libexec/kubeauto/cephadm-bin/python3")
+        self.assertEqual(exposure["src"], "{{ cephadm_python_probe.stdout | trim }}")
+        self.assertFalse(exposure["follow"])
+        self.assertNotIn("dest: /usr/bin/cephadm", self.role)
+
+    def test_ubuntu_rust_install_compatibility_is_private_to_cephadm(self) -> None:
+        import shlex
+
+        tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/cephadm.yml").read_text())
+        block = next(task for task in tasks if task["name"] == "Prepare the official GNU install compatibility path")
+        self.assertEqual(block["when"], "ceph_use_gnu_install | bool")
+        alias = next(task["ansible.builtin.file"] for task in block["block"]
+                     if task["name"] == "Expose GNU install only to the owned cephadm launcher")
+        self.assertEqual(alias["src"], "/usr/bin/gnuinstall")
+        self.assertEqual(alias["state"], "link")
+        self.assertFalse(alias["follow"])
+        self.assertEqual((alias["owner"], alias["group"]), ("root", "root"))
+        launcher = next(task["ansible.builtin.copy"]["content"] for task in tasks
+                        if task["name"] == "Install the interpreter-specific cephadm launcher")
+        environment = Environment()
+        environment.filters["quote"] = shlex.quote
+        for selected in (False, True):
+            with self.subTest(gnu=selected), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                private, system = root / "private", root / "system"
+                private.mkdir()
+                system.mkdir()
+                (system / "install").write_text("#!/bin/sh\nexit 42\n")
+                (system / "install").chmod(0o755)
+                gnu = root / "gnuinstall"
+                gnu.write_text('#!/bin/sh\nprintf "%s\\n" "$@" >"$CEPH_INSTALL_ARGUMENTS"\n')
+                gnu.chmod(0o755)
+                (private / "install").symlink_to(gnu)
+                interpreter = root / "interpreter"
+                interpreter.write_text('#!/bin/sh\ncommand -v install >"$CEPH_INSTALL_DISCOVERY"\n'
+                                       'exec install -d -m0770 -o 167 -g 167 "$CEPH_INSTALL_TEST_DIR"\n')
+                interpreter.chmod(0o755)
+                content = environment.from_string(launcher).render(
+                    ceph_use_gnu_install=selected,
+                    ceph_host_runtime="podman", cephadm_python_probe={"stdout": str(interpreter)})
+                content = content.replace(str(Path(alias["dest"]).parent), str(private))
+                result = subprocess.run(["/bin/sh", "-c", content], capture_output=True, text=True,
+                                        env={**os.environ, "PATH": str(system),
+                                             "CEPH_INSTALL_ARGUMENTS": str(root / "arguments"),
+                                             "CEPH_INSTALL_DISCOVERY": str(root / "discovery"),
+                                             "CEPH_INSTALL_TEST_DIR": str(root / "run-dir")})
+                self.assertEqual(result.returncode, 0 if selected else 42, result.stderr)
+                self.assertEqual((root / "discovery").read_text().strip(),
+                                 str((private if selected else system) / "install"))
+                if selected:
+                    self.assertEqual((root / "arguments").read_text().splitlines(),
+                                     ["-d", "-m0770", "-o", "167", "-g", "167", str(root / "run-dir")])
+        self.assertNotIn("coreutils-from-gnu", (ROOT / "roles/ceph/tasks/host-prerequisites.yml").read_text())
 
     def test_cephadm_probe_executes_candidates_and_rejects_an_unusable_artifact(self) -> None:
         tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/cephadm.yml").read_text())
@@ -484,10 +1068,10 @@ set -- /dev/disk/by-id/fixture fixture-serial 12345678-1234-1234-1234-123456789a
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout.strip(), str(preferred if failure == "none" else fallback))
 
-    def test_cephadm_refuses_foreign_entrypoints_and_preserves_them(self) -> None:
+    def test_cephadm_refuses_foreign_launchers_and_preserves_system_entrypoints(self) -> None:
         tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/cephadm.yml").read_text())
         guard = next(task["ansible.builtin.command"]["argv"][2] for task in tasks
-                     if task["name"] == "Refuse a distribution-owned or foreign cephadm entry point")
+                     if task["name"] == "Refuse a foreign cephadm launcher")
         for fixture in ("absent", "owned", "package", "foreign-link", "foreign-local", "local-link", "legacy"):
             with self.subTest(fixture=fixture), tempfile.TemporaryDirectory() as directory:
                 system = Path(directory) / "system-cephadm"
@@ -510,12 +1094,55 @@ set -- /dev/disk/by-id/fixture fixture-serial 12345678-1234-1234-1234-123456789a
                     body = body.replace(self.constants.v_cephadm_sha256, hashlib.sha256(local.read_bytes()).hexdigest())
                 before = {path: path.read_bytes() for path in (system, local) if path.is_file()}
                 result = subprocess.run(["bash", "-ceu", body], text=True, capture_output=True)
-                self.assertEqual(result.returncode == 0, fixture in {"absent", "owned", "legacy"}, result.stderr)
+                self.assertEqual(result.returncode == 0,
+                                 fixture in {"absent", "owned", "legacy", "package", "foreign-link"}, result.stderr)
                 self.assertEqual(before, {path: path.read_bytes() for path in before})
         prepare = yaml.safe_load((ROOT / "roles/ceph/tasks/prepare.yml").read_text())
         install = next(i for i, task in enumerate(prepare) if task.get("ansible.builtin.import_tasks") == "cephadm.yml")
         disks = next(i for i, task in enumerate(prepare) if task["name"] == "Verify every declared disk identity and unused state")
         self.assertLess(install, disks)
+
+    def test_upgrade_capable_mode_uses_a_private_interpreter_and_account_scoped_sudo_path(self) -> None:
+        tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/cephadm.yml").read_text())
+        bootstrap = (ROOT / "roles/ceph/templates/bootstrap.conf.j2").read_text()
+        self.assertIn("mgr/cephadm/mode = root", bootstrap)
+        cluster = yaml.safe_load((ROOT / "roles/ceph/tasks/cluster.yml").read_text())
+        mode = next(task for task in cluster if task["name"] == "Use the upstream upgrade-capable cephadm execution mode")
+        self.assertEqual(mode["ansible.builtin.command"]["argv"][-2:], ["mgr/cephadm/mode", "root"])
+        private = next(task for task in tasks if task["name"] == "Create the private orchestrator command directory")
+        self.assertEqual(private["ansible.builtin.file"], {
+            "path": "/usr/local/libexec/kubeauto/cephadm-bin", "state": "directory",
+            "owner": "root", "group": "root", "mode": "0755"})
+        alias = next(task for task in tasks if task["name"] == "Expose the verified Python only to the dedicated orchestrator")
+        sudoers = next(task for task in tasks if task["name"] == "Grant the dedicated orchestrator root execution contract")
+        probe = next(task for task in tasks if task["name"] == "Verify the actual orchestrator sudo interpreter selection")
+        self.assertLess(tasks.index(private), tasks.index(alias))
+        self.assertLess(tasks.index(alias), tasks.index(sudoers))
+        self.assertLess(tasks.index(sudoers), tasks.index(probe))
+        self.assertEqual(probe["ansible.builtin.command"]["argv"], ["sudo", "-u", "cephadm", "sudo", "-n", "which", "python3"])
+        condition = Environment().from_string("{{ " + probe["failed_when"] + " }}")
+        for rc, selected in ((0, alias["ansible.builtin.file"]["dest"]), (1, ""), (0, "/usr/bin/python3")):
+            with self.subTest(rc=rc, selected=selected):
+                self.assertEqual(condition.render(cephadm_sudo_python={"rc": rc, "stdout": selected}),
+                                 str(rc != 0 or selected != alias["ansible.builtin.file"]["dest"]))
+        policy_path = sudoers["ansible.builtin.copy"]["content"].splitlines()[0].split("secure_path=", 1)[1]
+        self.assertTrue(policy_path.startswith("/usr/local/libexec/kubeauto/cephadm-bin:"))
+        self.assertNotIn("Defaults secure_path=", sudoers["ansible.builtin.copy"]["content"])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private_bin, system_bin = root / "private", root / "system"
+            private_bin.mkdir()
+            system_bin.mkdir()
+            old_python = system_bin / "python3"
+            old_python.write_text("#!/bin/sh\nexit 42\n")
+            old_python.chmod(0o755)
+            (private_bin / "python3").symlink_to(sys.executable)
+            selected_path = str(private_bin) + ":" + str(system_bin) + ":/usr/bin:/bin"
+            result = subprocess.run(["/bin/sh", "-ceu", 'py=$(which python3); "$py" -c "print(123)"'],
+                                    env={**os.environ, "PATH": selected_path}, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, "123\n")
+            self.assertEqual(old_python.read_text(), "#!/bin/sh\nexit 42\n")
 
     def test_deb_indexes_and_existing_docker_have_explicit_prerequisite_contracts(self) -> None:
         tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/host-prerequisites.yml").read_text())
@@ -887,10 +1514,10 @@ prepare_focused_environment
         self.assertLess(tasks.index(authorize), tasks.index(bootstrap))
         self.assertLess(tasks.index(bootstrap), tasks.index(reconcile))
 
-    def test_package_mode_identity_refuses_foreign_accounts_groups_homes_and_sudoers(self) -> None:
+    def test_dedicated_identity_refuses_foreign_accounts_groups_homes_and_sudoers(self) -> None:
         tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/cephadm.yml").read_text())
         guard = next(task["ansible.builtin.command"]["argv"][2] for task in tasks
-                     if task["name"] == "Inspect the package-mode SSH account before taking ownership")
+                     if task["name"] == "Inspect the dedicated SSH account before taking ownership")
         for fault in ("none", "owned", "foreign-account", "foreign-group", "foreign-home", "foreign-sudoers",
                       "bad-marker", "relocated", "shell", "getent-error", "symlink"):
             with self.subTest(fault=fault), tempfile.TemporaryDirectory() as directory:
@@ -927,8 +1554,15 @@ getent() {{
         self.assertNotIn("password", account)
         sudoers = next(task["ansible.builtin.copy"] for task in tasks
                        if task.get("ansible.builtin.copy", {}).get("dest") == "/etc/sudoers.d/kubeauto-cephadm")
-        self.assertEqual(sudoers["content"], "cephadm ALL=(root) NOPASSWD: ALL\n")
+        self.assertEqual(sudoers["content"],
+                         "Defaults:cephadm secure_path=/usr/local/libexec/kubeauto/cephadm-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n"
+                         "cephadm ALL=(root) NOPASSWD: ALL\n")
         self.assertEqual(sudoers["validate"], "/usr/sbin/visudo -cf %s")
+        with tempfile.TemporaryDirectory() as directory:
+            policy = Path(directory) / "sudoers"
+            policy.write_text(sudoers["content"])
+            result = subprocess.run(["visudo", "-cf", str(policy)], text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_account_cleanup_requires_exact_owner_and_home_before_deletion(self) -> None:
         block = self.cleanup.split("    if test -e /etc/ceph/kubeauto-owned-ssh-user; then", 1)[1].split(
@@ -1005,6 +1639,38 @@ userdel() {{ test '{fault}' != busy-user; }}
             self.assertIn(f"deployment/{deployment}", csi_tasks)
             self.assertIn(f"daemonset/{daemonset}", csi_tasks)
 
+    def test_csi_chart_checksum_command_accepts_gnu_and_busybox_and_rejects_tampering(self) -> None:
+        tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/csi.yml").read_text())
+        task = next(task for task in tasks
+                    if task["name"] == "Verify vendored official Ceph-CSI Chart checksums")
+        command = task["ansible.builtin.command"]
+        implementations = [["sha256sum"]]
+        if busybox := shutil.which("busybox"):
+            implementations.append([busybox, "sha256sum"])
+        for implementation in implementations:
+            for archive in task["loop"]:
+                with self.subTest(implementation=implementation, archive=archive), \
+                        tempfile.TemporaryDirectory() as directory:
+                    role = Path(directory)
+                    files = role / "files"
+                    files.mkdir()
+                    source = ROOT / "roles/ceph/files"
+                    shutil.copyfile(source / archive, files / archive)
+                    shutil.copyfile(source / (archive + ".sha256"), files / (archive + ".sha256"))
+                    variables = {"role_path": str(role), "item": archive}
+                    environment = Environment()
+                    argv = implementation + [environment.from_string(arg).render(**variables)
+                                             for arg in command["argv"][1:]]
+                    cwd = environment.from_string(command["chdir"]).render(**variables)
+                    valid = subprocess.run(argv, cwd=cwd, text=True, capture_output=True, timeout=10)
+                    self.assertEqual(valid.returncode, 0, valid.stderr)
+                    with (files / archive).open("ab") as stream:
+                        stream.write(b"tampered")
+                    invalid = subprocess.run(argv, cwd=cwd, text=True, capture_output=True, timeout=10)
+                    self.assertNotEqual(invalid.returncode, 0)
+        self.assertEqual(command["argv"][1], "-c")
+        self.assertFalse(task["changed_when"])
+
     def test_csi_values_render_against_pinned_chart_schema(self) -> None:
         env = Environment(autoescape=False)
         env.filters["from_json"] = json.loads
@@ -1049,6 +1715,8 @@ userdel() {{ test '{fault}' != busy-user; }}
                 self.assertEqual(rendered["storageClass"]["clusterID"], fsid)
                 if component == "cephfs":
                     self.assertEqual(rendered["storageClass"].get("kernelMountOptions"), "ms_mode=secure")
+                else:
+                    self.assertEqual(rendered["storageClass"].get("mapOptions"), "krbd:ms_mode=secure")
                 for key in ("configMapName", "cephConfConfigMapName", "kmsConfigMapName"):
                     name = rendered.get(key, chart_values[key])
                     self.assertNotIn(name, configmap_owners, f"ConfigMap {name} is owned by both CSI releases")
@@ -1084,6 +1752,31 @@ userdel() {{ test '{fault}' != busy-user; }}
             ]}, "ceph-csi")
         self.assertIn("ceph_contract.py csi-render", self.runner)
 
+    def test_csi_render_requires_secure_requests_in_both_storage_classes(self) -> None:
+        native_run = subprocess.run
+        for fault in ("none", "prefer-crc", "crc", "missing", "duplicate"):
+            with self.subTest(fault=fault):
+                def rendered(argv, **kwargs):
+                    if argv[0] != "helm":
+                        return native_run(argv, **kwargs)
+                    rbd = argv[2] == "ceph-csi-rbd"
+                    option = "mapOptions" if rbd else "kernelMountOptions"
+                    mode = "krbd:ms_mode=secure" if rbd else "ms_mode=secure"
+                    row = {"kind": "StorageClass", "metadata": {"name": "ceph-rbd" if rbd else "cephfs"},
+                           "parameters": {option: mode}}
+                    if rbd and fault in {"prefer-crc", "crc"}:
+                        row["parameters"][option] = "krbd:ms_mode=" + fault
+                    documents = [] if rbd and fault == "missing" else [row]
+                    if rbd and fault == "duplicate":
+                        documents.append(row)
+                    return SimpleNamespace(stdout="\n---\n".join(yaml.safe_dump(x) for x in documents))
+                with patch.object(CEPH_CONTRACT.subprocess, "run", side_effect=rendered):
+                    if fault == "none":
+                        CEPH_CONTRACT.render_csi_preflight(ROOT, "helm")
+                    else:
+                        with self.assertRaisesRegex(ValueError, "secure msgr2"):
+                            CEPH_CONTRACT.render_csi_preflight(ROOT, "helm")
+
     def test_matrix_status_summary_and_slow_osd_causal_chain(self) -> None:
         cases = self.matrix["cases"]
         self.assertTrue(cases)
@@ -1096,8 +1789,14 @@ userdel() {{ test '{fault}' != busy-user; }}
             for key in ("product_command", "expected_marker", "official_reference", "fixture_boundary", "cleanup_scope", "disproof_command"):
                 self.assertTrue(case.get(key), f"{case['id']} missing {key}")
             if case["status"] == "pass":
-                for fact in (case["expected_marker"], "run_id=", "CEPH_GATE_EXIT rc=0", "failure_markers=0", "LAB_CLEAN_VERIFY_PASS"):
+                for fact in (case["expected_marker"], "run_id=", "durable_rc=0", "failure_markers=0", "record=", "sha256="):
                     self.assertIn(fact, case.get("evidence", ""))
+                evidence = case["evidence"]
+                if case["id"] in {"CEPH-01", "CEPH-02"}:
+                    self.assertTrue("CEPH_STATIC_EXIT rc=0" in evidence or "CEPH_GATE_EXIT rc=0" in evidence)
+                else:
+                    self.assertIn("CEPH_GATE_EXIT rc=0", evidence)
+                    self.assertTrue("LAB_CLEAN_VERIFY_PASS" in evidence or "CEPH_MODULE_CLEAN_VERIFY_PASS" in evidence)
         if self.matrix["meta"]["result"] == "PASS":
             self.assertEqual(summary["pass"], len(cases))
         body = (ROOT / "tests/ceph-test-matrix.yaml").read_text()
@@ -1146,11 +1845,17 @@ userdel() {{ test '{fault}' != busy-user; }}
         import copy
         self.assertEqual(CEPH_CONTRACT.qualify_os_matrix(ROOT / "tests/ceph-test-matrix.yaml"), 6)
         fingerprint = "a" * 64
-        with self.assertRaisesRegex(ValueError, "incomplete"):
-            CEPH_CONTRACT.qualify_os_matrix(ROOT / "tests/ceph-test-matrix.yaml", fingerprint)
+        with tempfile.TemporaryDirectory() as directory:
+            matrix = Path(directory) / "pending.yaml"
+            pending = copy.deepcopy(self.matrix)
+            pending["os_qualification"]["profiles"][0]["status"] = "pending"
+            matrix.write_text(yaml.safe_dump(pending))
+            with self.assertRaisesRegex(ValueError, "incomplete"):
+                CEPH_CONTRACT.qualify_os_matrix(matrix, fingerprint)
         markers = [
             "CEPH_HOST_VERSION_PASS", "CEPH_CHECK_HOST_PASS", "CEPH_ORCH_REMOTE_PASS",
             "CEPH_CSI_RBD_PASS", "CEPH_CSI_CEPHFS_PASS", "CEPH_IDEMPOTENCE_PASS",
+            "CEPH_OS_RECOVERY_PASS", "CEPH_OS_PERFORMANCE_PASS",
             "CEPH_CLEAN_VERIFY_PASS", "LAB_CLEAN_VERIFY_PASS",
         ]
         for fault in ("none", "missing-profile", "duplicate", "stale", "artifact", "identity", "rc",
@@ -1168,7 +1873,8 @@ userdel() {{ test '{fault}' != busy-user; }}
                         cephadm_sha256=self.constants.v_cephadm_sha256, durable_rc=0, failure_markers=0,
                         fixture_kind="real-host", secure_msgr2=True, aes256k=True, run_id="unit-fixture",
                         client_key_type=row["client_key_type"], legacy_aes_risk_accepted=row["client_key_type"] == "aes",
-                        host="authorized-host-fixture", kernel="vendor-kernel", python="vendor-python",
+                        host=row["host"], kernel="vendor-kernel", python="vendor-python",
+                        performance={"operations": 16, "errors": 0, "p95_ms": 10, "p99_ms": 20},
                         runtime="podman", product_command="kubecli setup fixture 08", markers=markers[:],
                     )
                     if index == 0:
@@ -1218,6 +1924,321 @@ userdel() {{ test '{fault}' != busy-user; }}
         self.assertIn('if [[ "$MODE" == "--ceph-os-probe" ]]', self.runner)
         self.assertEqual({row["ssh_user"] for row in self.matrix["os_qualification"]["profiles"]},
                          {"root", "ubuntu", "ly"})
+
+    def test_qualification_inventory_refuses_missing_foreign_and_reassigned_hosts(self) -> None:
+        import copy
+        for profile in ("legacy", "modern", "rocky9"):
+            script = f"""
+KUBEAUTO_BASE='{ROOT}'
+set -- --os-qualification-{profile}
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+[[ "$CEPH_CSI_CLIENT_KEY_TYPE" == '{"aes" if profile == "legacy" else "aes256k"}' ]] || exit 98
+python3 - "${{KUBE_HOSTS[@]}}" separator "${{CEPH_HOSTS[@]}}" mgr "${{QUALIFICATION_HOSTS[@]}}" <<'PY'
+import json, sys
+args=sys.argv[1:]
+c=args[:args.index('separator')]
+s=args[args.index('separator')+1:args.index('mgr')]
+m=args[args.index('mgr')+1:]
+d={{'_meta': {{'hostvars': dict.fromkeys(c+s, {{}})}}}}
+for name, hosts in [('etcd',c[:3]),('kube_master',c[:3]),('kube_node',c[3:]),
+                    ('ceph',s),('ceph_bootstrap',s[:1]),('ceph_mon',s[:3]),
+                    ('ceph_mgr',s[:2]+m),('ceph_osd',s[:6]),('ceph_rgw',s[:2])]:
+    d[name]={{'hosts': hosts}}
+print(json.dumps(d))
+PY
+"""
+            result = subprocess.run(["bash", "-c", script], text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            data = json.loads(result.stdout)
+            CEPH_CONTRACT.assert_qualification_inventory(data, profile)
+            self.assertNotIn("192.168.122.2", data["_meta"]["hostvars"])
+            subnet_prefixes = {host.rsplit('.', 1)[0] for host in data["kube_master"]["hosts"] + data["kube_node"]["hosts"]}
+            self.assertEqual(len(subnet_prefixes), 1, "qualification Kubernetes must not cross the NAT boundary")
+            # The official RBD node DaemonSet uses hostNetwork and listens on
+            # 8080. Cordon does not exclude DaemonSets; keep RGW hosts outside
+            # every Kubernetes role when the product uses its default ports.
+            with tarfile.open(ROOT / "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz") as chart:
+                values = yaml.safe_load(chart.extractfile("ceph-csi-rbd/values.yaml"))
+                daemonset = chart.extractfile("ceph-csi-rbd/templates/nodeplugin-daemonset.yaml").read().decode()
+            self.assertIn("hostNetwork: true", daemonset)
+            self.assertTrue(values["nodeplugin"]["httpMetrics"]["enabled"])
+            product_defaults = yaml.safe_load((ROOT / "conf/config.yml").read_text())
+            if values["nodeplugin"]["httpMetrics"]["containerPort"] == product_defaults["ceph_rgw_port"]:
+                self.assertFalse(set(data["ceph_rgw"]["hosts"]) &
+                                 set(data["kube_master"]["hosts"] + data["kube_node"]["hosts"]),
+                                 "RGW and host-network CSI metrics would occupy the same port")
+            for fault in ("foreign", "missing", "reassigned"):
+                bad = copy.deepcopy(data)
+                if fault == "foreign":
+                    bad["_meta"]["hostvars"]["192.168.122.1"] = {}
+                elif fault == "missing":
+                    bad["ceph_osd"]["hosts"].pop()
+                else:
+                    bad["kube_node"]["hosts"] = bad["ceph_mon"]["hosts"]
+                with self.subTest(profile=profile, fault=fault), self.assertRaises(ValueError):
+                    CEPH_CONTRACT.assert_qualification_inventory(bad, profile)
+
+    def test_qualification_workloads_pin_the_real_host_and_own_only_their_pvcs(self) -> None:
+        fixture = CEPH_QUALIFICATION.manifests("ceph-os-rocky10", "ceph-qual-145")
+        claims = [x for x in fixture["items"] if x["kind"] == "PersistentVolumeClaim"]
+        pod = fixture["items"][-1]
+        self.assertEqual(pod["spec"]["nodeName"], "ceph-qual-145")
+        self.assertEqual({x["spec"]["storageClassName"] for x in claims}, {"ceph-rbd", "cephfs"})
+        self.assertEqual({x["persistentVolumeClaim"]["claimName"] for x in pod["spec"]["volumes"]},
+                         {x["metadata"]["name"] for x in claims})
+        self.assertTrue(all(x["metadata"]["namespace"] == "ceph-os-rocky10" for x in fixture["items"][1:]))
+        with self.assertRaises(ValueError):
+            CEPH_QUALIFICATION.manifests("ceph-os-rocky10", "invalid; hostname")
+
+    def test_qualification_uses_kubelet_lowercase_node_name_and_original_ceph_hostname(self) -> None:
+        host = next(row["host"] for row in self.matrix["os_qualification"]["profiles"]
+                    if row["id"] == "CEPH-OS-UBUNTU26")
+        hostname = "ly-VMware-Virtual-Platform"
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            names = state / "qualification-hostnames.json"
+            with patch.object(CEPH_QUALIFICATION, "remote", side_effect=lambda target, command:
+                              hostname if target == host else "lab-" + target.rsplit(".", 1)[1]), \
+                    patch.object(CEPH_QUALIFICATION, "manifests", wraps=CEPH_QUALIFICATION.manifests) as render:
+                CEPH_QUALIFICATION.prepare_hostnames(names, "modern")
+                render.assert_any_call("ceph-os-preflight", hostname.lower())
+            self.assertEqual(json.loads(names.read_text())[host]["selected"], hostname)
+            inventory = state / "hosts"
+            inventory.write_text(f"{host} k8s_nodename='original'\n")
+            CEPH_QUALIFICATION.rewrite_inventory(inventory, state / "qualification-hostnames.json")
+            self.assertEqual(inventory.read_text(), f"{host} k8s_nodename='{hostname.lower()}'\n")
+            def remote(target, command):
+                if "orch ps" in command:
+                    return json.dumps([{"hostname": hostname, "daemon_type": "mgr", "status_desc": "running"}])
+                if "/etc/os-release" in command:
+                    return "ubuntu|26.04|7.0.0|Python 3.14.4"
+                if command.endswith(" version"):
+                    return "cephadm version 20.2.4 tentacle (stable)"
+                if command.startswith("sha256sum "):
+                    return self.constants.v_cephadm_sha256 + "  cephadm"
+                self.assertEqual(command, "/usr/local/sbin/cephadm check-host --expect-hostname " + hostname)
+                return ""
+            def run(argv, input_text=None, **kwargs):
+                if argv[0] == "ssh":
+                    return json.dumps({"secure_msgr2": True, "aes256k": True})
+                self.assertIn("apply", argv)
+                fixture = json.loads(input_text)
+                self.assertEqual(fixture["items"][-1]["spec"]["nodeName"], hostname.lower())
+                raise RuntimeError("fixture boundary reached")
+            with patch.dict(CEPH_QUALIFICATION.TARGETS, modern=[host]), \
+                    patch.object(CEPH_QUALIFICATION, "remote", side_effect=remote), \
+                    patch.object(CEPH_QUALIFICATION, "run", side_effect=run), \
+                    redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(RuntimeError, "fixture boundary reached"):
+                    CEPH_QUALIFICATION.qualify(SimpleNamespace(
+                        base=ROOT, state=state, profile="modern", run_id="unit-fixture", fingerprint="a" * 64))
+
+    def test_qualification_cgroup_probe_rejects_podman_hybrid_root(self) -> None:
+        self.assertFalse(CEPH_QUALIFICATION.split_cgroup_compatible("tmpfs\n1:name=systemd:/session\n0::/\n"))
+        for metadata in ("tmpfs\n1:name=systemd:/session\n", "cgroup2fs\n0::/session\n",
+                         "tmpfs\n0::/session\n", "no-podman\n"):
+            self.assertTrue(CEPH_QUALIFICATION.split_cgroup_compatible(metadata))
+        with self.assertRaises(ValueError):
+            CEPH_QUALIFICATION.split_cgroup_compatible("unknown\n")
+        with patch.object(CEPH_QUALIFICATION, "remote", return_value="tmpfs\n0::/\n") as remote, \
+                patch.object(CEPH_QUALIFICATION.subprocess, "run") as mutation:
+            with self.assertRaisesRegex(ValueError, "Podman split"):
+                CEPH_QUALIFICATION.runtime_preflight("legacy")
+            mutation.assert_not_called()
+            self.assertEqual(remote.call_count, 1)
+
+    def test_manifest_probe_skips_tag_enumeration_and_bounds_upstream_retries(self) -> None:
+        body = self.regression.split("manifest_digest() {", 1)[1].split("\n}", 1)[0]
+        for missing in (False, True):
+            script = """set -euo pipefail
+skopeo() {
+  test "$1" = inspect
+  test "$2" = --no-tags
+  test "$3" = --retry-times
+  test "$4" = 3
+  test "$5" = --format
+  test "$6" = '{{.Digest}}'
+  test "$7" = docker://hub.talkedu.cn/kubeauto/ceph:v20.2.4
+  test "$MISSING" = false || return 7
+  printf '%s\\n' 'sha256:verified-fixture'
+}
+timeout() { test "$1" = 90; shift; "$@"; }
+manifest_digest() {""" + body + "\n}\nmanifest_digest hub.talkedu.cn/kubeauto/ceph:v20.2.4"
+            with self.subTest(missing=missing):
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True,
+                                        env={**os.environ, "MISSING": str(missing).lower()})
+                self.assertEqual(result.returncode, 7 if missing else 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), "" if missing else "sha256:verified-fixture")
+
+    def test_qualification_runtime_recovery_refuses_live_or_foreign_state(self) -> None:
+        with patch.object(CEPH_QUALIFICATION, "remote", side_effect=["tmpfs\n0::/\n", RuntimeError("live state")]) as remote, \
+                patch.object(CEPH_QUALIFICATION.subprocess, "run") as reboot:
+            with self.assertRaisesRegex(RuntimeError, "live state"):
+                CEPH_QUALIFICATION.runtime_preflight("legacy", recover=True)
+            reboot.assert_not_called()
+            check = remote.call_args.args[1]
+            for boundary in ("/etc/kubernetes", "kubeauto-owned-fsid", "kubelet containerd",
+                             "podman ps -aq", "docker ps -aq", "/var/lib/ceph"):
+                self.assertIn(boundary, check)
+
+    def test_qualification_runtime_recovery_requires_a_new_boot_and_healthy_state(self) -> None:
+        for unchanged in (False, True):
+            responses = ["tmpfs\n0::/\n", "", "old-boot", "old-boot" if unchanged else "new-boot"]
+            if not unchanged:
+                responses += ["tmpfs\n1:name=systemd:/session\n", "cgroup2fs\n0::/session\n"]
+            with self.subTest(unchanged=unchanged), \
+                    patch.object(CEPH_QUALIFICATION, "remote", side_effect=responses), \
+                    patch.object(CEPH_QUALIFICATION.subprocess, "run", return_value=SimpleNamespace(returncode=255)) as reboot, \
+                    patch.object(CEPH_QUALIFICATION.time, "monotonic", side_effect=[0, 0, 241]), \
+                    patch.object(CEPH_QUALIFICATION.time, "sleep"):
+                if unchanged:
+                    with self.assertRaisesRegex(RuntimeError, "did not recover"):
+                        CEPH_QUALIFICATION.runtime_preflight("legacy", recover=True)
+                else:
+                    CEPH_QUALIFICATION.runtime_preflight("legacy", recover=True)
+                self.assertEqual(reboot.call_args.args[0][-2:], ["root@192.168.47.134", "systemctl reboot"])
+
+    def test_qualification_runtime_guard_precedes_storage_and_recovery_is_leased(self) -> None:
+        gate = (ROOT / "tests/helpers/ceph-regression.sh").read_text().split(
+            "--os-qualification-legacy|--os-qualification-modern|--os-qualification-rocky9)", 1)[1]
+        self.assertLess(gate.index("runtime-preflight"), gate.index("verify_supply_chain"))
+        self.assertLess(gate.index("runtime-preflight"), gate.index("prepare_fault_mappers"))
+        wrapper = self.runner.split('if [[ "$MODE" == "--ceph-lab-runtime-bootstrap" ]]; then', 1)[1].split("\nfi", 1)[0]
+        self.assertLess(wrapper.index("ceph-cleanup.sh --verify"), wrapper.index("--recover"))
+        for contract in ("run-durable-gate.sh", "monitor_remote_job ceph-runtime", "CEPH_RUNTIME_EXIT",
+                         "CEPH_QUALIFICATION_RUNTIME_PASS", "CEPH_LAB_RUNTIME_DELIVERY_PASS"):
+            self.assertIn(contract, wrapper)
+        helper = QUALIFICATION_PATH.read_text()
+        for lease in ("kubeauto-ceph-priority.lock", "kubeauto-ceph-compute.lock"):
+            self.assertIn(lease, helper)
+        self.assertIn("fcntl.LOCK_EX | fcntl.LOCK_NB", helper)
+
+    def test_qualification_network_includes_both_authorized_mgr_subnets(self) -> None:
+        import ipaddress
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yml"
+            path.write_text("ceph_cluster_network: 192.168.122.0/24\n")
+            CEPH_QUALIFICATION.configure(path)
+            data = yaml.safe_load(path.read_text())
+            # cephadm bootstrap matches actual interface subnet keys. A /16
+            # covering both /24s does not satisfy this upstream check.
+            configured = data["ceph_public_network"].split(',')
+            self.assertEqual(set(configured), {"192.168.122.0/24", "192.168.47.0/24"})
+            networks = [ipaddress.ip_network(value) for value in configured]
+            for hosts in CEPH_QUALIFICATION.TARGETS.values():
+                self.assertTrue(all(any(ipaddress.ip_address(host) in network for network in networks)
+                                    for host in hosts))
+            self.assertEqual(data["ceph_cluster_network"], "192.168.122.0/24")
+            self.assertEqual(data["ceph_monitoring_install"], "no")
+            self.assertFalse(data["ENABLE_SETTING_HOSTNAME"])
+
+    def test_qualification_idempotence_checks_credentials_independently_of_helm_history(self) -> None:
+        import copy
+        credentials = {"items": [{"metadata": {"name": name, "uid": name + "-uid"},
+                                  "data": {"userID": "fixture", "userKey": "fixture-key"}}
+                                 for name in ("csi-rbd-secret", "csi-cephfs-secret")]}
+        before = CEPH_QUALIFICATION.credential_snapshot(credentials)
+        after = copy.deepcopy(credentials)
+        after["items"].append({"metadata": {"name": "sh.helm.release.v1.ceph-csi-rbd.v2", "uid": "revision-uid"},
+                               "data": {"release": "fixture-revision"}})
+        self.assertEqual(before, CEPH_QUALIFICATION.credential_snapshot(after))
+        for field in ("uid", "userKey"):
+            changed = copy.deepcopy(after)
+            if field == "uid":
+                changed["items"][0]["metadata"][field] = "replaced"
+            else:
+                changed["items"][0]["data"][field] = "rotated"
+            self.assertNotEqual(before, CEPH_QUALIFICATION.credential_snapshot(changed))
+        with self.assertRaises(ValueError):
+            CEPH_QUALIFICATION.credential_snapshot({"items": credentials["items"][:1]})
+
+    def test_public_network_validation_accepts_official_comma_separated_cidrs(self) -> None:
+        tasks = yaml.safe_load((ROOT / "roles/ceph/tasks/prepare.yml").read_text())
+        expression = next(x for x in tasks[0]["ansible.builtin.assert"]["that"] if "reject('match'" in x)
+        environment = Environment()
+        environment.tests["match"] = lambda value, pattern: re.match(pattern, value) is not None
+        validate = environment.compile_expression(expression)
+        for value, expected in (("192.168.122.0/24", True), ("2001:db8::/64", True),
+                                ("192.168.122.0/24,192.168.47.0/24", True),
+                                ("192.168.122.0/24, 2001:db8::/64", True),
+                                ("", False), ("192.168.122.0/24,", False),
+                                ("192.168.122.0/24,,192.168.47.0/24", False),
+                                ("192.168.122.0/24,hostname", False)):
+            with self.subTest(value=value):
+                self.assertEqual(validate(ceph_public_network=value), expected)
+
+    def test_qualification_publishes_only_finished_current_clean_evidence(self) -> None:
+        import copy
+        fingerprint = "a" * 64
+        markers = ["CEPH_HOST_VERSION_PASS", "CEPH_CHECK_HOST_PASS", "CEPH_ORCH_REMOTE_PASS",
+                   "CEPH_CSI_RBD_PASS", "CEPH_CSI_CEPHFS_PASS", "CEPH_IDEMPOTENCE_PASS",
+                   "CEPH_OS_RECOVERY_PASS", "CEPH_OS_PERFORMANCE_PASS"]
+        for fault in ("none", "previous-pass", "rc", "finalization", "cleanup", "failure", "stale", "wrong-host", "missing-marker", "incomplete-draft", "wrong-os", "artifact", "no-kernel", "bypass"):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory)
+                (base / "tests").mkdir()
+                matrix = base / "tests/ceph-test-matrix.yaml"
+                data = copy.deepcopy(self.matrix)
+                matrix.write_text(yaml.safe_dump(data))
+                # Match the real matrix's inline rows without changing production formatting.
+                initial_content = (ROOT / "tests/ceph-test-matrix.yaml").read_text()
+                if fault == "previous-pass":
+                    initial_content = re.sub(
+                        r"(?m)^(\s+- \{id: CEPH-OS-[^\n]*?, status: )(?:pending|pass|fail)",
+                        lambda match: match[1] + "pass", initial_content,
+                    )
+                content = re.sub(
+                    r"(?m)^(\s+- \{id: CEPH-OS-[^\n]*?, status: )(?:pending|pass|fail)(, evidence: ).*(\})$",
+                    lambda match: match[1] + "pending" + match[2] + "null" + match[3],
+                    initial_content,
+                )
+                matrix.write_text(content)
+                rows = [x for x in data["os_qualification"]["profiles"] if x["host"] in CEPH_QUALIFICATION.TARGETS["legacy"]]
+                drafts = {x["id"]: dict(id=x["id"], host=x["host"], run_id="unit-run",
+                                       os_id=x["os_id"], major=x["major"], cephadm_sha256=self.constants.v_cephadm_sha256,
+                                       kernel="vendor-kernel", python="vendor-python", runtime="podman",
+                                       product_command="kubecli setup ceph-gate 08",
+                                       source_sha256=fingerprint, markers=markers[:], fixture_kind="real-host",
+                                       secure_msgr2=True, client_key_type=x["client_key_type"],
+                                       legacy_aes_risk_accepted=True, performance={"operations": 16, "errors": 0,
+                                                                                "p95_ms": 10, "p99_ms": 20}) for x in rows}
+                if fault == "stale":
+                    drafts[rows[-1]["id"]]["source_sha256"] = "b" * 64
+                if fault == "wrong-host":
+                    drafts[rows[-1]["id"]]["host"] = "192.168.122.1"
+                if fault == "incomplete-draft":
+                    drafts[rows[-1]["id"]]["markers"].pop()
+                changes = {"wrong-os": ("major", "99"), "artifact": ("cephadm_sha256", "b" * 64),
+                           "no-kernel": ("kernel", ""), "bypass": ("product_command", "kubectl apply -f fixture")}
+                if fault in changes:
+                    key, value = changes[fault]
+                    drafts[rows[-1]["id"]][key] = value
+                log = "\n".join(marker + " id=" + row["id"] for row in rows for marker in markers)
+                log += "\nCEPH_OS_QUALIFICATION_BRANCH_PASS profile=legacy\nCEPH_CLEAN_VERIFY_PASS\nLAB_CLEAN_VERIFY_PASS\n"
+                if fault == "cleanup":
+                    log = log.replace("LAB_CLEAN_VERIFY_PASS", "")
+                elif fault == "failure":
+                    log += "CEPH_STAGE_FAIL id=CEPH-08 class=product\n"
+                elif fault == "missing-marker":
+                    log = log.replace("CEPH_CSI_RBD_PASS id=" + rows[-1]["id"], "")
+                def commands(argv, **kwargs):
+                    command = argv[-1]
+                    if command.endswith("live.log"):
+                        return log
+                    if command.endswith(".finalized"):
+                        return "1\n1" if fault == "rc" else "0" if fault == "finalization" else "0\n0"
+                    return json.dumps(drafts[Path(command).stem])
+                args = SimpleNamespace(base=base, profile="legacy", run_id="unit-run",
+                                       fingerprint=fingerprint, control="root@192.168.47.130", jumper="")
+                with patch.object(CEPH_QUALIFICATION, "run", side_effect=commands):
+                    if fault in {"none", "previous-pass"}:
+                        CEPH_QUALIFICATION.finalize(args)
+                        updated = yaml.safe_load(matrix.read_text())["os_qualification"]["profiles"]
+                        self.assertEqual(sum(x["status"] == "pass" for x in updated), 2)
+                    else:
+                        with self.assertRaises(ValueError):
+                            CEPH_QUALIFICATION.finalize(args)
+                        self.assertEqual(matrix.read_text(), content)
 
     def test_os_probe_python_heredocs_are_valid(self) -> None:
         script = (ROOT / "tests/helpers/ceph-os-probe.sh").read_text()
@@ -1315,7 +2336,13 @@ ssh_node() {{
   fi
 }}
 wait_clean() {{ :; }}
-sample_business_latency() {{
+sample_intermittent_latency() {{
+  test "$2" = latency-slow-fixed-2 && test "$3" = 0 || return 1
+  if [[ "$1" = fixed-healthy ]]; then
+    echo 100 >"$STATE_DIR/fixed-healthy.latency"
+    echo count=18
+    return
+  fi
   echo 2000 >"$STATE_DIR/slow-fixed.latency"
   touch "$STATE_DIR/in-flight"
   for _ in $(seq 1 100); do
@@ -1324,10 +2351,12 @@ sample_business_latency() {{
   done
   test -f "$STATE_DIR/iostat-seen" && test -f "$STATE_DIR/osd-perf-seen" && test -f "$STATE_DIR/health-seen" || return 1
   unlink "$STATE_DIR/in-flight"
-  echo count=15
+  echo count=18
 }}
 ceph_shell() {{
   case "$*" in
+    'ceph osd map kubernetes-rbd latency-slow-fixed-1 --format json') echo '{{"acting":[1,2,3]}}' ;;
+    'ceph osd map kubernetes-rbd latency-slow-fixed-2 --format json') echo '{{"acting":[1,7,3]}}' ;;
     'ceph health detail')
       if [[ -f "$STATE_DIR/in-flight" ]]; then
         touch "$STATE_DIR/health-seen"
@@ -1352,7 +2381,75 @@ run_fixed_slow_osd
             self.assertIn("IOSTAT_IN_FLIGHT", result.stdout)
             self.assertIn("OSD_PERF_IN_FLIGHT", result.stdout)
             self.assertIn("CEPH_SLOW_OSD_FIXED_PASS", result.stdout)
+            self.assertIn("object=latency-slow-fixed-2", result.stdout)
+            self.assertIn("CEPH_FIXED_SAMPLE phase=healthy count=18", result.stdout)
             self.assertFalse((Path(temporary) / "slow-fixed.summary").exists())
+
+    def test_fixed_slow_fault_compares_matching_targeted_phases_and_keeps_failed_samples(self) -> None:
+        for slow_p99 in (5000, 4000):
+            with self.subTest(slow_p99=slow_p99), tempfile.TemporaryDirectory() as temporary:
+                script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+STATE_DIR='{temporary}'
+OSD_ID=7
+# Reproduce the unrelated 12.325-second baseline from the live first failure.
+ensure_performance_baseline() {{ BASELINE_P99=12325; }}
+mapper_table() {{ echo "$2 $3" >>"$STATE_DIR/faults"; }}
+ssh_node() {{ :; }}
+wait_clean() {{ :; }}
+sample_intermittent_latency() {{
+  test "$2" = latency-slow-fixed-1 && test "$3" = 0 || return 99
+  echo "$1 $2 $3" >>"$STATE_DIR/phases"
+  if [[ "$1" = fixed-healthy ]]; then
+    echo 2000 >"$STATE_DIR/fixed-healthy.latency"
+  else
+    echo {slow_p99} >"$STATE_DIR/slow-fixed.latency"
+    command sleep .1
+  fi
+  echo count=18
+}}
+ceph_shell() {{
+  case "$*" in
+    'ceph osd map kubernetes-rbd latency-slow-fixed-1 --format json') echo '{{"acting":[1,7,3]}}' ;;
+    'ceph health detail') echo SLOW_OPS ;;
+    'ceph osd dump') echo 'osd.7 up   in weight 1' ;;
+    *) : ;;
+  esac
+}}
+sleep() {{ command sleep .01; }}
+run_fixed_slow_osd
+"""
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5)
+                self.assertEqual((Path(temporary) / "phases").read_text().splitlines(), [
+                    "fixed-healthy latency-slow-fixed-1 0", "slow-fixed latency-slow-fixed-1 0"])
+                self.assertIn(f"healthy_p99=2000 slow_p99={slow_p99}", result.stdout)
+                if slow_p99 == 5000:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn("CEPH_SLOW_OSD_FIXED_PASS", result.stdout)
+                    self.assertEqual((Path(temporary) / "faults").read_text().splitlines(), ["delay 3000", "linear 0"])
+                    self.assertFalse((Path(temporary) / "slow-fixed.summary").exists())
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("id=CEPH-13 class=test-gate", result.stderr)
+                    self.assertNotIn("CEPH_SLOW_OSD_FIXED_PASS", result.stdout)
+                    self.assertTrue((Path(temporary) / "slow-fixed.summary").exists())
+
+    def test_fixed_slow_fault_rejects_missing_target_before_any_injection(self) -> None:
+        script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+OSD_ID=7
+ensure_performance_baseline() {{ :; }}
+seq() {{ printf '%s\\n' 1 2; }}
+ceph_shell() {{ echo '{{"acting":[1,2,3]}}'; }}
+mapper_table() {{ echo UNREACHABLE_FAULT; }}
+sample_intermittent_latency() {{ echo UNREACHABLE_SAMPLE; }}
+if run_fixed_slow_osd; then exit 42; fi
+"""
+        result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("no workload PG contains the selected slow OSD", result.stderr)
+        self.assertNotIn("UNREACHABLE", result.stdout)
+        self.assertNotIn("CEPH_SLOW_OSD_FIXED_PASS", result.stdout)
 
     def test_io_throttle_samples_before_restoration_and_requires_effect(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1369,7 +2466,8 @@ ssh_node() {{
   case "$*" in
     *set-property*)
       if [[ "$*" == *'IOWriteIOPSMax=/dev/disk/by-id/fixture 25'* ]]; then limited=true; else limited=false; fi ;;
-    *lsblk*) echo 252:16 ;;
+    *lsblk*)
+      if [[ "$*" == *'lsblk -dnr '* ]]; then echo 252:16; else printf '252:16 \\n'; fi ;;
     *io.max*)
       value=max
       [[ "$limited" != true ]] || value=25
@@ -1398,6 +2496,24 @@ run_osd_throttle
             self.assertIn("CEPH_IOPS_EFFECT_PASS", result.stdout)
             self.assertIn("CEPH_OSD_THROTTLE_CLASSIFICATION_PASS", result.stdout)
 
+    def test_io_throttle_rejects_bad_device_before_registering_recovery(self) -> None:
+        script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+awk() {{ echo /dev/disk/by-id/fixture; }}
+ssh_node() {{ echo malformed; }}
+if (run_osd_throttle); then exit 42; fi
+set +e
+run_osd_throttle
+rc=$?
+test "$rc" != 0 && test -z "$THROTTLE_UNIT" || exit 43
+restore_throttle || exit 44
+"""
+        # The function's invalid identity must stop even when an enclosing
+        # conditional disables errexit, without registering a bogus unit.
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("class=test-gate reason=invalid cgroup device identity", result.stderr)
+
     def test_network_fault_refuses_loopback_route(self) -> None:
         script = f"""
 source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
@@ -1407,6 +2523,62 @@ run_network_differential
         result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("invalid or loopback interface", result.stderr)
+
+    def test_remediation_waits_for_actual_unit_and_osdmap_transitions(self) -> None:
+        for desired, samples in (
+            ("down", [("active", 1, 0), ("inactive", 1, 0), ("inactive", 0, 0)]),
+            ("up", [("inactive", 0, 1), ("active", 0, 1), ("active", 1, 0), ("active", 1, 1)]),
+        ):
+            with self.subTest(desired=desired), tempfile.TemporaryDirectory() as directory:
+                script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+STATE_DIR='{directory}'
+FSID_FILE="$STATE_DIR/fsid"
+printf '%s\\n' 25000000-0000-4000-8000-000000000001 >"$FSID_FILE"
+echo 0 >"$STATE_DIR/polls"
+OSD_ID=0
+ssh_node() {{
+  [[ "$*" == *'--property=ActiveState --value'* ]] || return 42
+  polls=$(<"$STATE_DIR/polls")
+  echo $((polls+1)) >"$STATE_DIR/polls"
+  command python3 -c 'import json,os,sys; print(json.loads(os.environ["STATE_SAMPLES"])[int(sys.argv[1])][0])' "$polls"
+}}
+ceph_shell() {{
+  test "$*" = 'ceph osd dump --format json'
+  polls=$(<"$STATE_DIR/polls")
+  command python3 -c 'import json,os,sys; _,up,inside=json.loads(os.environ["STATE_SAMPLES"])[int(sys.argv[1])-1]; print(json.dumps({{"osds":[{{"osd":0,"up":up,"in":inside}}]}}))' "$polls"
+}}
+sleep() {{ :; }}
+wait_remediation_osd_state '{desired}'
+test "$(<"$STATE_DIR/polls")" = {len(samples)}
+"""
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5,
+                                        env={**os.environ, "STATE_SAMPLES": json.dumps(samples)})
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn(f"desired={desired}", result.stdout)
+                self.assertTrue((Path(directory) / f"remediation-osd-{desired}.json").exists())
+        remediation = self.regression.split("run_slow_remediation() {", 1)[1].split("\n}", 1)[0]
+        self.assertLess(remediation.index('daemon stop'), remediation.index('wait_remediation_osd_state down'))
+        self.assertLess(remediation.index('wait_remediation_osd_state down'), remediation.index('daemon start'))
+        self.assertLess(remediation.index('wait_remediation_osd_state up'), remediation.rindex('wait_clean'))
+
+    def test_remediation_rejects_unconverged_state_at_its_wait_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+STATE_DIR='{directory}'
+FSID_FILE="$STATE_DIR/fsid"
+echo 25000000-0000-4000-8000-000000000001 >"$FSID_FILE"
+OSD_ID=0
+ssh_node() {{ echo active; }}
+ceph_shell() {{ echo '{{"osds":[{{"osd":0,"up":0,"in":0}}]}}'; }}
+sleep() {{ SECONDS=$((SECONDS+301)); }}
+if wait_remediation_osd_state up; then exit 42; fi
+"""
+            result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("within 300 seconds", result.stderr)
+            self.assertNotIn("CEPH_REMEDIATION_OSD_STATE_PASS", result.stdout)
 
     def test_cgroup_io_parsers_bind_the_exact_physical_device(self) -> None:
         raw = "253:2 rbytes=10 wbytes=20 rios=1 wios=2\n252:16 wios=8 rios=4 wbytes=40 rbytes=30\n"
@@ -1428,7 +2600,7 @@ run_network_differential
     def test_throttle_requires_sustained_io_actual_impact_and_recovery(self) -> None:
         before = {"device": "252:16", "time": 10, "wios": 10}
         after = {"device": "252:16", "time": 40, "wios": 730}
-        benchmark = {"bench": {"total_time_run": "30", "total_writes_made": "500", "average_latency": "0.2"}}
+        benchmark = {"total_time_run": "30", "total_writes_made": "500", "average_latency": "0.2"}
         evidence = CEPH_CONTRACT.throttle_phase_evidence(benchmark, before, after)
         self.assertEqual(evidence["write_iops"], 24)
         for changed in ({"device": "253:2"}, {"time": 20}, {"wios": 10}, {"time": float("nan")}):
@@ -1436,7 +2608,9 @@ run_network_differential
                 CEPH_CONTRACT.throttle_phase_evidence(benchmark, before, {**after, **changed})
         for changed in ({"total_time_run": "5"}, {"total_time_run": "nan"}, {"total_writes_made": "0"}, {"average_latency": "nan"}):
             with self.subTest(benchmark=changed), self.assertRaises(ValueError):
-                CEPH_CONTRACT.throttle_phase_evidence({"bench": {**benchmark["bench"], **changed}}, before, after)
+                CEPH_CONTRACT.throttle_phase_evidence({**benchmark, **changed}, before, after)
+        with self.assertRaises(KeyError):
+            CEPH_CONTRACT.throttle_phase_evidence({"bench": benchmark}, before, after)
         healthy = {"write_iops": 1000, "average_latency": .01}
         recovered = {"write_iops": 900, "average_latency": .015}
         CEPH_CONTRACT.assert_throttle_effect(healthy, evidence, recovered, 25)
@@ -1469,17 +2643,21 @@ python3() {{
 }}
 ceph_shell() {{
   case "$*" in
-    *'bench 30 write -b 4096 --object-size 4194304 -t 32'*)
+    *'timeout 240 rados -p kubernetes-rbd bench 120 write -b 131072 --object-size 4194304 -t 8'*)
       command sleep .5
       touch "$STATE_DIR/bench-finished"
-      echo '{{"bench":{{"total_time_run":30,"total_writes_made":500,"average_latency":0.2}}}}' ;;
+      echo 'hints = 1'
+      echo '{{"total_time_run":120,"total_writes_made":500,"average_latency":0.2}}' ;;
     'ceph osd perf') kill -0 "$INJECTOR_PID"; echo OSD_PERF_IN_FLIGHT ;;
     *'cleanup --run-name kubeauto-throttle-limited') touch "$STATE_DIR/bench-cleaned" ;;
     *) return 1 ;;
   esac
 }}
 ssh_node() {{ kill -0 "$INJECTOR_PID"; echo IOSTAT_IN_FLIGHT; }}
-sample_business_latency() {{ kill -0 "$INJECTOR_PID"; echo count=4; }}
+sample_business_latency() {{
+  test "$1" = throttle-limited && test "$2" = 4
+  kill -0 "$INJECTOR_PID"; echo count=4
+}}
 run_throttle_phase limited
 test -f "$STATE_DIR/bench-cleaned"
 """
@@ -1488,6 +2666,32 @@ test -f "$STATE_DIR/bench-cleaned"
             self.assertIn("IOSTAT_IN_FLIGHT", result.stdout)
             self.assertIn("OSD_PERF_IN_FLIGHT", result.stdout)
             self.assertIn('"write_iops": 24.0', result.stdout)
+
+    def test_throttle_rejects_samples_after_submission_even_while_draining(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+STATE_DIR='{directory}'
+read_osd_cgroup_io() {{ echo IO_STAT_FIXTURE; }}
+python3() {{ cat >/dev/null; echo '{{"device":"252:16","time":10,"wios":10}}'; }}
+ceph_shell() {{
+  if [[ "$*" == *'bench 120 write'* ]]; then
+    command sleep 2
+  else touch "$STATE_DIR/unreachable"; fi
+}}
+ssh_node() {{ kill -0 "$INJECTOR_PID"; }}
+# The caller's conditional disables errexit: expiry must explicitly return.
+trap 'kill "$INJECTOR_PID" 2>/dev/null || true; wait "$INJECTOR_PID" 2>/dev/null || true' EXIT
+sample_business_latency() {{ kill -0 "$INJECTOR_PID"; echo count=4; }}
+# Simulate a full window of sampling without sleeping two minutes. The
+# benchmark child remains alive, representing ObjBencher's drain phase.
+eval "$(declare -f run_throttle_phase | sed '/summary=/a\\  SECONDS=$((started + duration))')"
+if run_throttle_phase limited; then exit 42; fi
+test ! -e "$STATE_DIR/unreachable"
+"""
+            result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("benchmark did not span the mixed workload phase=limited", result.stderr)
 
     def test_s3_wrong_key_targets_the_real_gateway(self) -> None:
         self.assertIn('RGW_ENDPOINT="${rgw_ip}:8080"', self.regression)
@@ -1499,6 +2703,172 @@ test -f "$STATE_DIR/bench-cleaned"
         self.assertNotIn('"RGW_ACCESS":access,"RGW_SECRET":secret', self.regression)
         self.assertIn("secretKeyRef: {name: rgw-client, key: MC_HOST_ceph}", self.regression)
         self.assertNotIn("--from-literal=secret=", self.regression)
+
+    def test_os_qualification_streams_product_failure_before_cleanup(self) -> None:
+        source = QUALIFICATION_PATH.read_text()
+        product_call = source.split('run(cli + ["setup", "ceph-gate", "08"', 1)[1].split(")", 1)[0]
+        self.assertIn("stream_output=True", product_call)
+        for rc in (0, 1):
+            with self.subTest(rc=rc):
+                script = f"""
+import importlib.util
+spec = importlib.util.spec_from_file_location('qualification', '{QUALIFICATION_PATH}')
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+module.run(['/bin/sh', '-c', 'printf "FIRST_ANSIBLE_STDOUT_FAILURE\\\\n"; exit {rc}'],
+           input_text='', stream_output=True)
+"""
+                result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
+                                        timeout=5)
+                self.assertEqual(result.returncode == 0, rc == 0, result.stderr)
+                self.assertIn("FIRST_ANSIBLE_STDOUT_FAILURE", result.stdout)
+                if rc:
+                    self.assertIn("command failed rc=1", result.stderr)
+        with patch.object(CEPH_QUALIFICATION.subprocess, "run", return_value=SimpleNamespace(
+                returncode=0, stdout='{"value": 1}', stderr="")) as execute:
+            self.assertEqual(CEPH_QUALIFICATION.run(["fixture"]), '{"value": 1}')
+        self.assertEqual(execute.call_args.kwargs["stdout"], subprocess.PIPE)
+        self.assertEqual(execute.call_args.kwargs["stderr"], subprocess.PIPE)
+
+    def test_s3_negative_gate_requires_structured_authentication_denial(self) -> None:
+        # mc's ordinary output contains only Message, not the S3 Code or HTTP status.
+        message = "The request signature we calculated does not match the signature you provided."
+        response = {"status": "error", "error": {"cause": {"message": message,
+                    "error": {"Code": "SignatureDoesNotMatch", "Message": message}}}}
+        for code in ("SignatureDoesNotMatch", "AccessDenied", "InvalidAccessKeyId"):
+            with self.subTest(code=code):
+                response["error"]["cause"]["error"]["Code"] = code
+                self.assertEqual(CEPH_CONTRACT.assert_s3_auth_denied(json.dumps(response)), code)
+        for raw in (message, "", "{}", "[]", "null",
+                    json.dumps({"status": "success"}),
+                    json.dumps({"status": "error", "error": {"cause": {"error": {}}}}),
+                    json.dumps({"status": "error", "error": {"cause": {"error": {
+                        "Code": "InternalError", "Message": "403 AccessDenied"}}}}),
+                    json.dumps({"status": "error", "error": {"cause": {"error": {
+                        "Code": "RequestTimeTooSkewed"}}}}),
+                    json.dumps({"status": "error", "error": {"cause": {"error": {}}}})):
+            with self.subTest(raw=raw), self.assertRaises((ValueError, KeyError, TypeError, AttributeError)):
+                CEPH_CONTRACT.assert_s3_auth_denied(raw)
+
+    def test_security_focused_gate_rejects_transport_errors_and_success(self) -> None:
+        function = "verify_security() {" + self.regression.split("verify_security() {", 1)[1].split(
+            "\nrun_upgrade()", 1)[0]
+        response = {"status": "error", "error": {"cause": {"error": {"Code": "SignatureDoesNotMatch"}}}}
+        for raw, rc, expected in ((json.dumps(response), 1, True),
+                                  ('{"status":"error","error":{"cause":{"error":{}}}}', 1, False),
+                                  ("connection refused: 403", 1, False),
+                                  ("invalid secret key", 1, False),
+                                  (json.dumps(response), 0, False)):
+            with self.subTest(raw=raw, rc=rc):
+                # Bind stdout only: kubectl's stderr exit notice is not mc JSON.
+                script = f"""
+set -euo pipefail
+CONTRACT_SCRIPT='{CONTRACT_PATH}'
+RBD_POOL=fixture
+TEST_NAMESPACE=fixture
+RGW_ACCESS=fixture
+RGW_ENDPOINT=192.0.2.10:8080
+CEPH_BOOTSTRAP=fixture
+K=(fixture_kubectl)
+stage() {{ :; }}
+pass() {{ :; }}
+fail() {{ echo "$*" >&2; exit 1; }}
+ceph_shell() {{ echo '[]'; }}
+rados_security_probe() {{
+  if [[ "$2" == wrong ]]; then echo "couldn't connect to cluster: (13) Permission denied"; return 1; fi
+  if [[ "$1" == kubeauto-security-denied ]]; then echo 'rados_nobjects_list_next2: Operation not permitted'; return 1; fi
+}}
+fixture_kubectl() {{
+  [[ "$*" == *'MC_HOST_bad=http://fixture:wrong@192.0.2.10:8080 mc --json ls bad' ]]
+  printf '%s\\n' "$S3_FIXTURE"
+  echo 'command terminated with exit code {rc}' >&2
+  return {rc}
+}}
+{function}
+verify_security
+"""
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True,
+                                        env={**os.environ, "S3_FIXTURE": raw}, timeout=5)
+                self.assertEqual(result.returncode == 0, expected, result.stdout + result.stderr)
+                self.assertEqual("CEPH_SECURITY_PASS" in result.stdout, expected)
+        self.assertIn("--ceph-security|", self.runner)
+        scenarios = self.regression.split("run_slow_device_scenario() {", 1)[1].split(
+            "\nrun_all_slow_device_scenarios()", 1)[0]
+        self.assertIn("--security) verify_security", scenarios)
+        self.assertIn('"$mode" == --security', scenarios)
+
+    def test_cephx_security_requires_authentication_and_capability_denials(self) -> None:
+        auth = "couldn't connect to cluster: (13) Permission denied"
+        caps = "rados_nobjects_list_next2: Operation not permitted"
+        for phase, output, rc, expected in (
+            ("wrong", auth, 1, True), ("cross", caps, 1, True),
+            ("wrong", "malformed secret", 1, False),
+            ("wrong", "failed to fetch mon config", 1, False),
+            ("wrong", auth, 124, False), ("wrong", auth, 255, False),
+            ("wrong", auth, 0, False), ("cross", caps, 0, False),
+            ("cross", auth, 1, False), ("cross", "connection refused", 1, False),
+            ("cross", caps, 124, False), ("authorized", "", 1, False),
+            ("foreign-pool", "", 1, False),
+        ):
+            with self.subTest(phase=phase, rc=rc), tempfile.TemporaryDirectory() as directory:
+                script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+CONTRACT_SCRIPT='{CONTRACT_PATH}'
+STATE_DIR='{directory}'
+K=(fixture_kubectl)
+fixture_kubectl() {{ echo '{{"status":"error","error":{{"cause":{{"error":{{"Code":"SignatureDoesNotMatch"}}}}}}}}'; return 1; }}
+rados_security_probe() {{
+  if [[ "$2" = wrong ]]; then phase=wrong
+  elif [[ "$1" = kubeauto-security-denied ]]; then phase=cross
+  else phase=authorized; fi
+  if [[ "$phase" = "$FAIL_PHASE" ]]; then printf '%s\\n' "$FAIL_OUTPUT"; return "$FAIL_RC"; fi
+  case "$phase" in
+    wrong) echo "couldn't connect to cluster: (13) Permission denied"; return 1 ;;
+    cross) echo 'rados_nobjects_list_next2: Operation not permitted'; return 1 ;;
+  esac
+}}
+ceph_shell() {{
+  case "$*" in
+    'ceph osd pool ls --format json')
+      if [[ "$FAIL_PHASE" = foreign-pool ]]; then echo '["kubeauto-security-denied"]'; else echo '[]'; fi ;;
+    *'pool create'*|*'pool rm'*) touch "$STATE_DIR/pool-mutated" ;;
+  esac
+}}
+verify_security
+"""
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5,
+                    env={**os.environ, "FAIL_PHASE": phase, "FAIL_OUTPUT": output, "FAIL_RC": str(rc)})
+                self.assertEqual(result.returncode == 0, expected, result.stdout + result.stderr)
+                self.assertEqual("CEPH_SECURITY_PASS" in result.stdout, expected)
+                if phase in {"authorized", "wrong", "foreign-pool"} and not expected:
+                    self.assertFalse((Path(directory) / "pool-mutated").exists())
+
+    def test_security_client_generates_wrong_key_inside_the_quoted_client(self) -> None:
+        script = f"""
+source <(sed '$d' '{ROOT / 'tests/helpers/ceph-regression.sh'}')
+ceph-authtool() {{ test "$*" = --gen-print-key; echo fixture-wrong; }}
+ceph() {{ test "$*" = 'auth get-key client.csi-rbd'; echo fixture-valid; }}
+rados() {{
+  [[ "$*" = '--no-mon-config --id csi-rbd --key fixture-wrong -p fixture-pool ls' ]] || return 42
+  echo "couldn't connect to cluster: (13) Permission denied" >&2
+  return 1
+}}
+export -f ceph-authtool ceph rados
+ssh_node() {{
+  [[ "$2" != *fixture-wrong* && "$2" != *fixture-valid* ]] || return 43
+  local -a probe_argv
+  eval "probe_argv=($2)"
+  test "${{probe_argv[0]}}" = /usr/local/sbin/cephadm
+  test "${{probe_argv[3]}}" = timeout && test "${{probe_argv[4]}}" = 30
+  bash -ceu "${{probe_argv[@]:7}}"
+}}
+rc=0
+diagnostic="$(rados_security_probe fixture-pool wrong 2>&1)" || rc=$?
+test "$rc" = 1
+grep -Fxq "couldn't connect to cluster: (13) Permission denied" <<<"$diagnostic"
+"""
+        result = subprocess.run(["bash", "-c", script], text=True, capture_output=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_pg_activity_requires_real_work_not_waiting_or_partial_scrub(self) -> None:
         row = {"pgid": "1.0", "state": "active+recovering", "acting": [7, 8, 9]}
@@ -1519,9 +2889,15 @@ test -f "$STATE_DIR/bench-cleaned"
                 CEPH_CONTRACT.assert_pg_activity(document, "recovery")
 
     def test_recovery_target_is_another_replica_of_a_populated_slow_osd_pg(self) -> None:
-        row = {"pgid": "1.0", "state": "active+clean", "acting": [7, 8, 9], "stat_sum": {"num_bytes": 4194304}}
+        row = {"pgid": "1.0", "state": "active+clean", "acting": [7, 8, 9],
+               "acting_primary": 7, "stat_sum": {"num_bytes": 33554432}}
         self.assertEqual(CEPH_CONTRACT.recovery_target({"pg_stats": [row]}, 7), 8)
-        for changed in ({"acting": [7]}, {"acting": [8, 9, 10]}, {"stat_sum": {"num_bytes": 0}}, {"state": "active+degraded"}):
+        healthy_primary = {**row, "acting": [10, 8, 7], "acting_primary": 10}
+        self.assertEqual(CEPH_CONTRACT.recovery_target({"pg_stats": [healthy_primary, row]}, 7), 8)
+        for changed in ({"acting": [7]}, {"acting": [8, 9, 10]},
+                        {"acting": [10, 8, 7], "acting_primary": 10},
+                        {"acting_primary": None}, {"stat_sum": {"num_bytes": 33554431}},
+                        {"stat_sum": {"num_bytes": 0}}, {"state": "active+degraded"}):
             with self.subTest(changed=changed), self.assertRaises(ValueError):
                 CEPH_CONTRACT.recovery_target({"pg_stats": [{**row, **changed}]}, 7)
 
@@ -1566,11 +2942,15 @@ sample_during_pg_activity CEPH-18 scrub-contention deep-scrub fixture-pool
                     self.assertIn("count=12", result.stdout)
                 else:
                     self.assertIn("no PG activity overlapped", result.stderr)
+                snapshots = (Path(directory) / "scrub-contention.pg-samples.jsonl").read_text().splitlines()
+                self.assertTrue(snapshots)
+                self.assertTrue(all(json.loads(raw)["pg_stats"] for raw in snapshots))
 
     def test_contention_fixtures_are_bounded_and_use_independent_recovery_osd(self) -> None:
         recovery = self.regression.split("run_slow_recovery() {", 1)[1].split("\n}", 1)[0]
         scrub = self.regression.split("run_scrub_contention() {", 1)[1].split("\n}", 1)[0]
         self.assertIn("--max-objects 128", recovery)
+        self.assertIn("-b 33554432", recovery)
         self.assertIn('ceph osd out "$RECOVERY_OSD_ID"', recovery)
         self.assertNotIn('ceph osd out "$OSD_ID"', recovery)
         self.assertIn('ceph osd in "$RECOVERY_OSD_ID"', recovery)
@@ -1588,6 +2968,69 @@ sample_during_pg_activity CEPH-18 scrub-contention deep-scrub fixture-pool
             21: (20, ["ceph-osd"]),
         }
         self.assertEqual(CEPH_RUNTIME.fixture_processes(processes), {10, 11, 12, 13})
+
+    def test_runtime_rbd_cleanup_refuses_foreign_or_unbound_devices_and_verification_residue(self) -> None:
+        fsid = "247f255b-e21b-4c2e-9e8d-337356d646b6"
+        for selected, clean, foreign in (("", True, False), (fsid, False, False),
+                                         (fsid, True, True)):
+            with self.subTest(selected=selected, clean=clean, foreign=foreign), \
+                    tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                for index, owner in enumerate([fsid] + (["foreign"] if foreign else [])):
+                    device = root / "devices" / str(index)
+                    device.mkdir(parents=True)
+                    (device / "cluster_fsid").write_text(owner)
+                with patch.object(CEPH_RUNTIME, "RBD_SYSFS", root), \
+                        patch.object(CEPH_RUNTIME.subprocess, "Popen") as mutation:
+                    with self.assertRaises(ValueError):
+                        CEPH_RUNTIME.cleanup_kernel_rbd(clean, selected)
+                    mutation.assert_not_called()
+
+    def test_runtime_rbd_cleanup_uses_exact_fsid_and_kernel_remove_interface(self) -> None:
+        fsid = "247f255b-e21b-4c2e-9e8d-337356d646b6"
+        for single_major in (False, True):
+            with self.subTest(single_major=single_major), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                device = root / "devices/0"
+                device.mkdir(parents=True)
+                (device / "cluster_fsid").write_text(fsid)
+                remove = root / ("remove_single_major" if single_major else "remove")
+                remove.touch()
+                real_popen = subprocess.Popen
+                def unmap(argv, **kwargs):
+                    self.assertEqual(argv[-2:], ["0", str(remove)])
+                    self.assertEqual(kwargs["stdout"], subprocess.DEVNULL)
+                    self.assertEqual(kwargs["stderr"], subprocess.DEVNULL)
+                    process = real_popen(argv, **kwargs)
+                    def wait(timeout):
+                        self.assertEqual(timeout, 30)
+                        rc = process.wait(timeout=timeout)
+                        self.assertEqual(remove.read_text(), "0 force")
+                        (device / "cluster_fsid").unlink()
+                        device.rmdir()
+                        return rc
+                    return SimpleNamespace(wait=wait, kill=process.kill)
+                with patch.object(CEPH_RUNTIME, "RBD_SYSFS", root), \
+                        patch.object(CEPH_RUNTIME.subprocess, "Popen", side_effect=unmap):
+                    CEPH_RUNTIME.cleanup_kernel_rbd(True, fsid)
+                    CEPH_RUNTIME.cleanup_kernel_rbd(False, fsid)
+
+    def test_runtime_rbd_timeout_does_not_wait_again_for_an_uninterruptible_child(self) -> None:
+        fsid = "247f255b-e21b-4c2e-9e8d-337356d646b6"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            device = root / "devices/0"
+            device.mkdir(parents=True)
+            (device / "cluster_fsid").write_text(fsid)
+            process = Mock()
+            process.wait.side_effect = subprocess.TimeoutExpired("unmap", 30)
+            with patch.object(CEPH_RUNTIME, "RBD_SYSFS", root), \
+                    patch.object(CEPH_RUNTIME.subprocess, "Popen", return_value=process):
+                with self.assertRaisesRegex(ValueError, "scoped host recovery"):
+                    CEPH_RUNTIME.cleanup_kernel_rbd(True, fsid)
+            process.wait.assert_called_once_with(timeout=30)
+            process.kill.assert_called_once_with()
+            process.communicate.assert_not_called()
 
     def test_runtime_probe_supports_native_rocky8_python_without_pip(self) -> None:
         tree = ast.parse(RUNTIME_PATH.read_text(), feature_version=(3, 6))
@@ -1912,6 +3355,23 @@ exit 19
         no_owner = self.cleanup.split('if [[ ! -f "$OWNER_FILE" ]]', 1)[1].split('\nfi', 1)[0]
         self.assertNotIn("cleanup_kubernetes_runtime", no_owner)
 
+    def test_cleanup_releases_bound_kernel_clients_before_purge_and_zaps_only_osd_hosts(self) -> None:
+        release = self.cleanup.index('cleanup_kubernetes_runtime "$fsid"')
+        self.assertLess(self.cleanup.index('remote_fsid="$('), release)
+        self.assertLess(release, self.cleanup.index('quiesce_owned_managers "$fsid"'))
+        selection = self.cleanup.split("    zap_arg=\n", 1)[1].split('    "${SSH[@]}"', 1)[0]
+        storage = self.matrix["laboratory"]["storage_hosts"][0]
+        manager = next(row["host"] for row in self.matrix["os_qualification"]["profiles"]
+                       if row["id"] == "CEPH-OS-UBUNTU26")
+        for host, expected in ((storage, "--zap-osds"), (manager, "")):
+            with self.subTest(host=host):
+                script = f"CEPH_OSD_HOSTS=('{storage}'); host='{host}'; zap_arg=\n" + selection
+                result = subprocess.run(["bash", "-ceu", script + '\nprintf "%s" "$zap_arg"'],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, expected)
+        self.assertIn("rm-cluster --force $zap_arg --fsid", self.cleanup)
+
     def test_compute_lease_refuses_concurrent_owner_before_writing_state(self) -> None:
         function = "acquire_host_lease() {" + self.regression.split("acquire_host_lease() {", 1)[1].split(
             "\nssh_node()", 1
@@ -1960,6 +3420,8 @@ acquire_host_lease
         function = "prepare_product_cluster() {" + self.regression.split(
             "prepare_product_cluster() {", 1
         )[1].split("\nwait_clean()", 1)[0]
+        inventory_check = "verify_product_inventory() {" + self.regression.split(
+            "verify_product_inventory() {", 1)[1].split("\nconfigure_product()", 1)[0]
         for mode, expected, actual in (
             ("--slow-osd-fixed", "20.2.4", "20.2.4"),
             ("--bluefs-slow", "20.2.4", "20.2.4"),
@@ -2028,6 +3490,7 @@ ceph_shell() {{
   esac
 }}
 {configure}
+{inventory_check}
 {function}
 prepare_product_cluster
 """
@@ -2048,19 +3511,13 @@ prepare_product_cluster
         function = 'require_ceph_focused_evidence() {' + self.runner.split(
             'require_ceph_focused_evidence() {', 1
         )[1].split('\nstage_cephadm_artifact()', 1)[0]
-        for evidence in (None, "stale --slow-osd-fixed", "current --upgrade", "current --slow-osd-fixed"):
-            with self.subTest(evidence=evidence), tempfile.TemporaryDirectory() as directory:
-                logs = Path(directory) / "logs"
-                logs.mkdir()
-                if evidence is not None:
-                    (logs / "ceph-focused-green").write_text(evidence + "\n")
-                script = f"ROOT='{directory}'\nceph_gate_fingerprint() {{ echo current; }}\n{function}\nrequire_ceph_focused_evidence"
-                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True)
-                self.assertEqual(result.returncode == 0, evidence == "current --slow-osd-fixed", result.stderr)
+        self.assertIn('ceph_case_evidence.py" require', function)
+        self.assertIn('--cases CEPH-13', function)
+        self.assertNotIn('ceph_gate_fingerprint', function)
         full = self.runner.split('if [[ "$MODE" == "--ceph-only" ]]', 1)[1].split('\nfi', 1)[0]
         self.assertLess(full.index("require_ceph_focused_evidence"), full.index("cancel_remote_job"))
         focus = self.runner.split('case "$MODE" in\n  --ceph-slow-osd-fixed', 1)[1].split('\nesac', 1)[0]
-        self.assertLess(focus.index('if [[ "$focused_rc" -ne 0'), focus.index('>"$ROOT/logs/ceph-focused-green"'))
+        self.assertLess(focus.index('if [[ "$focused_rc" -ne 0'), focus.index('ceph_evidence_publish --baseline --completed'))
 
     def test_ceph_source_fingerprint_ignores_bytecode_but_tracks_runtime_dependencies(self) -> None:
         function = "ceph_gate_fingerprint() {" + self.runner.split(
@@ -2467,6 +3924,181 @@ create_mapper 192.168.122.135 kubeauto-ceph-slow-data0 /dev/disk/by-path/pci-fix
         self.assertLess(upgrade.index("versions --expected 20.2.3"), upgrade.index("ceph osd set noout"))
         self.assertIn("versions --expected 20.2.4", upgrade)
 
+    def test_upgrade_status_contract_accepts_the_official_terminal_text_only(self) -> None:
+        for status in (
+            "There are no upgrades in progress currently.",
+            "\nThere are no upgrades in progress currently.\n",
+            '{"in_progress": false, "is_paused": false}',
+        ):
+            with self.subTest(status=status):
+                result = subprocess.run(
+                    [sys.executable, str(CONTRACT_PATH), "upgrade-complete"],
+                    input=status, text=True, capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "CEPH_UPGRADE_STATUS_COMPLETE_PASS\n")
+        for status in (
+            "", "Upgrade complete", "There are no upgrades in progress currently. ERROR",
+            "{}", "[]", "null", '{"in_progress": true}',
+            '{"in_progress": 0}', '{"in_progress": "false"}',
+            '{"in_progress": false, "is_paused": true}',
+        ):
+            with self.subTest(status=status):
+                result = subprocess.run(
+                    [sys.executable, str(CONTRACT_PATH), "upgrade-complete"],
+                    input=status, text=True, capture_output=True,
+                )
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertNotIn("CEPH_UPGRADE_STATUS_COMPLETE_PASS", result.stdout)
+
+    def test_rotating_key_wait_preserves_the_strict_monitoring_baseline(self) -> None:
+        target = "AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE"
+        legacy = {name: {"severity": "HEALTH_WARN"} for name in
+                  ("AUTH_INSECURE_CLIENT_KEY_TYPE", "AUTH_INSECURE_KEYS_ALLOWED")}
+        health = {"status": "HEALTH_WARN", "checks": {**legacy, target: {"severity": "HEALTH_WARN"}}}
+        self.assertTrue(CEPH_CONTRACT.rotating_keys_pending(health, "aes"))
+        self.assertTrue(CEPH_CONTRACT.rotating_keys_pending(
+            {"status": "HEALTH_WARN", "checks": {target: {"severity": "HEALTH_WARN"}}}, "aes256k"))
+        self.assertFalse(CEPH_CONTRACT.rotating_keys_pending({"status": "HEALTH_WARN", "checks": legacy}, "aes"))
+        for name in ("OSD_DOWN", "OSDMAP_FLAGS", "AUTH_INSECURE_SERVICE_TICKETS",
+                     "AUTH_INSECURE_SERVICE_KEY_TYPE", "AUTH_INSECURE_KEYS_CREATABLE"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                CEPH_CONTRACT.rotating_keys_pending(
+                    {**health, "checks": {**health["checks"], name: {"severity": "HEALTH_WARN"}}}, "aes")
+        with self.assertRaises(ValueError):
+            CEPH_CONTRACT.rotating_keys_pending(health, "aes256k")
+        with self.assertRaises(ValueError):
+            CEPH_CONTRACT.assert_observability_health(health, "", "aes", "baseline")
+
+        function = "wait_rotating_keys_expire() {" + self.regression.split(
+            "wait_rotating_keys_expire() {", 1)[1].split("\nwait_observability_health()", 1)[0]
+        for state in ("expired", "already_clean", "timeout", "unsafe", "old_version",
+                      "running", "old_cipher", "bad_ttl"):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:
+                pending = json.dumps(health)
+                clean = json.dumps({"status": "HEALTH_WARN", "checks": legacy})
+                unsafe = json.dumps({**health, "checks": {**health["checks"],
+                    "AUTH_INSECURE_SERVICE_TICKETS": {"severity": "HEALTH_ERR"}}})
+                script = f"""
+set -euo pipefail
+CONTRACT_SCRIPT='{CONTRACT_PATH}'
+CEPH_CSI_CLIENT_KEY_TYPE=aes
+fail() {{ echo "$*" >&2; return 1; }}
+sleep() {{
+  if [[ '{state}' == timeout ]]; then SECONDS=$((SECONDS + 11000)); fi
+}}
+ceph_shell() {{
+  local count=0
+  test ! -f '{directory}/count' || read -r count <'{directory}/count'
+  case "$*" in
+    'ceph health detail --format json')
+      count=$((count+1)); echo "$count" >'{directory}/count'
+      if [[ '{state}' == unsafe ]]; then printf '%s\\n' '{unsafe}';
+      elif [[ '{state}' == already_clean ]] || [[ '{state}' == expired && "$count" -gt 2 ]]; then printf '%s\\n' '{clean}';
+      else printf '%s\\n' '{pending}'; fi ;;
+    'ceph versions --format json')
+      version=20.2.4; [[ '{state}' != old_version ]] || version=20.2.3
+      printf '{{"overall":{{"ceph version %s (fixture) tentacle (stable)":21}}}}\\n' "$version" ;;
+    'ceph orch upgrade status --format json')
+      if [[ '{state}' == running ]]; then echo '{{"in_progress":true}}';
+      else echo 'There are no upgrades in progress currently.'; fi ;;
+    'ceph mon dump --format json')
+      cipher=aes256k; [[ '{state}' != old_cipher ]] || cipher=aes
+      printf '{{"auth_service_cipher":{{"name":"%s"}}}}\\n' "$cipher" ;;
+    'ceph config get mon auth_service_ticket_ttl')
+      if [[ '{state}' == bad_ttl ]]; then echo nan; else echo 3600.000000; fi ;;
+    *) echo "unexpected command: $*" >&2; return 1 ;;
+  esac
+}}
+{function}
+wait_rotating_keys_expire
+echo ROTATION_WAIT_FINISHED
+"""
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True,
+                    env={**os.environ, "PATH": str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"]})
+                if state in {"expired", "already_clean"}:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("ROTATION_WAIT_FINISHED", result.stdout)
+                    if state == "expired":
+                        self.assertIn("CEPH_ROTATING_KEYS_EXPIRED_PASS", result.stdout)
+                        self.assertIn("budget_seconds=10920", result.stdout)
+                else:
+                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertNotIn("ROTATION_WAIT_FINISHED", result.stdout)
+                    self.assertNotIn("CEPH_ROTATING_KEYS_EXPIRED_PASS", result.stdout)
+        observability = self.regression.split("verify_observability() {", 1)[1].split("verify_idempotence()", 1)[0]
+        self.assertLess(observability.index("wait_rotating_keys_expire"),
+                        observability.index("wait_observability_health baseline"))
+        self.assertNotIn("wipe-rotating", function)
+        self.assertNotIn("config set", function)
+
+    def test_upgrade_waits_for_orchestrator_completion_and_exact_versions_together(self) -> None:
+        function = "run_upgrade() {" + self.regression.split(
+            "run_upgrade() {", 1
+        )[1].split("\nmapper_table()", 1)[0]
+        for state in ("complete", "official", "wrong_version", "running", "missing", "paused", "budget"):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:
+                script = f"""
+set -euo pipefail
+CONTRACT_SCRIPT='{CONTRACT_PATH}'
+CEPH_CURRENT_IMAGE=hub.talkedu.cn/kubeauto/ceph:v20.2.4
+CLUSTER=ceph-gate
+KUBECLI=(product)
+stage() {{ :; }}
+pass() {{ :; }}
+fail() {{ echo "$*" >&2; return 1; }}
+sleep() {{ if [[ '{state}' == budget ]]; then SECONDS=$((SECONDS + 6000)); fi; }}
+seq() {{ printf '1\\n2\\n3\\n'; }}
+configure_product() {{ :; }}
+product() {{ touch '{directory}/product'; }}
+verify_post_fault_hashes() {{ touch '{directory}/hashes'; }}
+ceph_shell() {{
+  local count=0 version=20.2.3
+  test ! -f '{directory}/count' || read -r count <'{directory}/count'
+  case "$*" in
+    'ceph orch upgrade status --format json')
+      count=$((count + 1)); echo "$count" >'{directory}/count'
+      case '{state}' in
+        complete|official)
+          if ((count == 1)); then echo '{{"in_progress": true}}';
+          elif [[ '{state}' == official ]]; then printf '\\nThere are no upgrades in progress currently.\\n';
+          else echo '{{"in_progress": false}}'; fi ;;
+        wrong_version) echo 'There are no upgrades in progress currently.' ;;
+        running|budget) echo '{{"in_progress": true}}' ;;
+        missing) echo '{{}}' ;;
+        paused) echo '{{"in_progress": true, "is_paused": true}}' ;;
+      esac ;;
+    'ceph versions --format json')
+      if [[ '{state}' != wrong_version ]] && ((count > 0 && count != 2)); then version=20.2.4; fi
+      printf '{{"overall": {{"ceph version %s (fixture) tentacle (stable)": 18}}}}\\n' "$version" ;;
+    'ceph osd unset noout')
+      [[ ('{state}' == complete || '{state}' == official) && "$count" == 3 ]]
+      touch '{directory}/released' ;;
+    'ceph osd set noout'|'ceph orch upgrade start --image '* ) : ;;
+    *) echo "unexpected command: $*" >&2; return 1 ;;
+  esac
+}}
+{function}
+run_upgrade
+"""
+                result = subprocess.run(["bash", "-c", script], text=True, capture_output=True,
+                                        env={**os.environ, "PATH": str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"]})
+                if state in {"complete", "official"}:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn("CEPH_UPGRADE_PASS", result.stdout)
+                    for marker in ("released", "product", "hashes"):
+                        self.assertTrue((Path(directory) / marker).exists())
+                else:
+                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn("not all daemons upgraded" if state == "wrong_version"
+                                  else "cephadm upgrade did not finish", result.stderr)
+                    self.assertNotIn("CEPH_UPGRADE_PASS", result.stdout)
+                    for marker in ("released", "product", "hashes"):
+                        self.assertFalse((Path(directory) / marker).exists())
+                    if state == "budget":
+                        self.assertEqual((Path(directory) / "count").read_text().strip(), "1")
+                        self.assertIn("within the runner wait budget", result.stderr)
+
     def test_cleanup_refuses_unknown_owner_and_unstable_disk(self) -> None:
         cleanup = ROOT / "tests/helpers/ceph-cleanup.sh"
         with tempfile.TemporaryDirectory() as directory:
@@ -2528,8 +4160,7 @@ prepare_fault_mappers
         tag = "RELEASE.2025-04-08T15-39-49Z"
         image = "brinnatt/minio-mc"
         catalog = PROJECTS / "kubeauto-ext-images-dockerfile"
-        workflow = yaml.safe_load((catalog / ".github/workflows/build.yml").read_text())
-        entries = workflow["jobs"]["docker"]["strategy"]["matrix"]["include"]
+        entries = json.loads((catalog / "catalog.json").read_text())
         publications = [entry for entry in entries if entry["image"] == image]
         self.assertEqual(len(publications), 1)
         publication = publications[0]
@@ -2720,7 +4351,8 @@ stage_cephadm_artifact
         self.assertIn("linux/amd64,linux/arm64", ext_workflow)
         for registry in ("hub.talkedu.cn/kubeauto", "docker.io/brinnatt"):
             self.assertIn(f"{registry}/kubeauto-ext-bin:{self.constants.v_extra_bin}", self.regression)
-        workflow = (PROJECTS / "kubeauto-ext-images-dockerfile/.github/workflows/build.yml").read_text()
+        catalog = json.loads((PROJECTS / "kubeauto-ext-images-dockerfile/catalog.json").read_text())
+        contexts = {row["ctx"] for row in catalog}
         for context in (
             "middleware/ceph/ceph", "middleware/ceph/ceph-csi",
             "middleware/ceph/ceph-csi-provisioner", "middleware/ceph/ceph-csi-attacher",
@@ -2729,7 +4361,7 @@ stage_cephadm_artifact
             "middleware/ceph/ceph-alertmanager", "middleware/ceph/ceph-node-exporter",
             "middleware/ceph/ceph-grafana",
         ):
-            self.assertIn(context, workflow)
+            self.assertIn(f"./{context}/", contexts)
 
 
 if __name__ == "__main__":

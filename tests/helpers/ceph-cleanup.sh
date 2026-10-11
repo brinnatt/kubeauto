@@ -24,6 +24,13 @@ KUBE_HOSTS=(
   192.168.47.134 192.168.47.135 192.168.47.136
   192.168.47.131 192.168.47.132 192.168.47.137
 )
+CEPH_OSD_HOSTS=("${CEPH_HOSTS[@]}")
+QUALIFICATION_PROFILE=
+if [[ -f "$STATE_DIR/qualification-profile" ]]; then
+  source "$BASE/tests/helpers/ceph-qualification-topology.sh"
+  QUALIFICATION_PROFILE="$(<"$STATE_DIR/qualification-profile")"
+  qualification_topology "$QUALIFICATION_PROFILE"
+fi
 SSH_BIN="${CEPH_SSH_BIN:-ssh}"
 SSH=("$SSH_BIN" -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
   -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
@@ -85,21 +92,22 @@ validate_allowlist() {
     fi
   done <"$ALLOWLIST"
   [[ "$lines" -eq 18 ]] || fail "allowlist line count=$lines expected=18"
-  for host in "${CEPH_HOSTS[@]}"; do
+  for host in "${CEPH_OSD_HOSTS[@]}"; do
     [[ "${host_counts[$host]:-0}" -eq 3 ]] || fail "allowlist disk count host=$host count=${host_counts[$host]:-0}"
   done
 }
 
 cleanup_kubernetes_runtime() {
-  local host
+  local host fsid="$1"
   for host in "${KUBE_HOSTS[@]}"; do
-    "${SSH[@]}" "root@${host}" 'if command -v python3 >/dev/null; then exec python3 - --clean; else exec /usr/libexec/platform-python - --clean; fi' \
+    "${SSH[@]}" "root@${host}" "if command -v python3 >/dev/null; then exec python3 - --clean --ceph-fsid '$fsid'; else exec /usr/libexec/platform-python - --clean --ceph-fsid '$fsid'; fi" \
       <"$BASE/tests/helpers/ceph_runtime_cleanup.py" || fail "stopped Kubernetes fixture cleanup failed host=$host"
   done
 }
 
 verify_clean() {
   local fsid="${CEPH_TEST_FSID:-}" host mapper_host mapper_name backing
+  [[ ! -e "$STATE_DIR/ssh-relay.json" ]] || fail "qualification SSH relay remains"
   [[ ! -e "$CLUSTER_DIR" ]] || fail "runner-owned Kubernetes cluster directory remains"
   [[ -n "$fsid" ]] || [[ ! -s "$FSID_FILE" ]] || fsid="$(<"$FSID_FILE")"
   if [[ -n "$fsid" ]]; then
@@ -138,7 +146,7 @@ verify_clean() {
     " || fail "Ceph residue remains host=$host"
   done
   for host in "${KUBE_HOSTS[@]}"; do
-    "${SSH[@]}" "root@${host}" 'if command -v python3 >/dev/null; then exec python3 -; else exec /usr/libexec/platform-python -; fi' \
+    "${SSH[@]}" "root@${host}" "if command -v python3 >/dev/null; then exec python3 - --ceph-fsid '$fsid'; else exec /usr/libexec/platform-python - --ceph-fsid '$fsid'; fi" \
       <"$BASE/tests/helpers/ceph_runtime_cleanup.py" || fail "Kubernetes runtime residue remains host=$host"
   done
   if [[ -s "$ALLOWLIST" ]]; then
@@ -192,19 +200,6 @@ fi
 [[ "$(<"$OWNER_FILE")" == "$OWNER_VALUE" ]] || fail "owner marker mismatch"
 validate_allowlist
 
-if [[ -e "$CLUSTER_DIR" ]]; then
-  [[ -d "$CLUSTER_DIR" && ! -L "$CLUSTER_DIR" ]] || fail "unexpected cluster directory type"
-  ansible-inventory -i "$CLUSTER_DIR/hosts" --list |
-    python3 "$BASE/tests/helpers/ceph_contract.py" lab-inventory \
-      --compute "${KUBE_HOSTS[@]}" --storage "${CEPH_HOSTS[@]}" ||
-    fail "refusing cluster destroy outside the leased host pools"
-  kubecli=(python3 "${BASE}/kubecli.py")
-  [[ ! -x "${BASE}/.venv/bin/python" ]] || kubecli=("${BASE}/.venv/bin/python" "${BASE}/kubecli.py")
-  "${kubecli[@]}" destroy ceph-gate </dev/null || fail "product cluster destroy failed"
-  [[ ! -e "$CLUSTER_DIR" ]] || fail "product destroy left cluster directory"
-fi
-cleanup_kubernetes_runtime
-
 fsid="${CEPH_TEST_FSID:-}"
 [[ -n "$fsid" ]] || [[ ! -s "$FSID_FILE" ]] || fsid="$(<"$FSID_FILE")"
 remote_fsid="$("${SSH[@]}" "root@${CEPH_HOSTS[0]}" 'test ! -f /etc/ceph/kubeauto-owned-fsid || cat /etc/ceph/kubeauto-owned-fsid' </dev/null)" ||
@@ -216,20 +211,42 @@ if [[ -n "$remote_fsid" ]]; then
 else
   [[ -z "$fsid" ]] || fail "local FSID exists without remote ownership marker"
 fi
+
+if [[ -e "$CLUSTER_DIR" ]]; then
+  [[ -d "$CLUSTER_DIR" && ! -L "$CLUSTER_DIR" ]] || fail "unexpected cluster directory type"
+  inventory_check=(lab-inventory --compute "${KUBE_HOSTS[@]}" --storage "${CEPH_HOSTS[@]}")
+  if [[ -n "$QUALIFICATION_PROFILE" ]]; then
+    inventory_check=(qualification-inventory --profile "$QUALIFICATION_PROFILE")
+  fi
+  ansible-inventory -i "$CLUSTER_DIR/hosts" --list |
+    python3 "$BASE/tests/helpers/ceph_contract.py" "${inventory_check[@]}" ||
+    fail "refusing cluster destroy outside the leased host pools"
+  kubecli=(python3 "${BASE}/kubecli.py")
+  [[ ! -x "${BASE}/.venv/bin/python" ]] || kubecli=("${BASE}/.venv/bin/python" "${BASE}/kubecli.py")
+  "${kubecli[@]}" destroy ceph-gate </dev/null || fail "product cluster destroy failed"
+  [[ ! -e "$CLUSTER_DIR" ]] || fail "product destroy left cluster directory"
+fi
+cleanup_kubernetes_runtime "$fsid"
 if [[ -n "$fsid" ]]; then
   [[ "$fsid" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] || fail "invalid FSID"
   quiesce_owned_managers "$fsid"
   for host in "${CEPH_HOSTS[@]}"; do
     echo "CEPH_STAGE_BEGIN id=CEPH-28 action=remove-fsid host=$host fsid=$fsid"
+    zap_arg=
+    [[ " ${CEPH_OSD_HOSTS[*]} " != *" $host "* ]] || zap_arg=--zap-osds
     "${SSH[@]}" "root@${host}" "
       if test -e '/var/lib/ceph/$fsid' && test -x /usr/local/sbin/cephadm; then
-        /usr/local/sbin/cephadm rm-cluster --force --zap-osds --fsid '$fsid'
+        /usr/local/sbin/cephadm rm-cluster --force $zap_arg --fsid '$fsid'
       elif test -e '/var/lib/ceph/$fsid'; then
         echo 'cephadm unavailable for owned FSID cleanup' >&2
         exit 1
       fi
     "
   done
+fi
+
+if [[ -e "$STATE_DIR/ssh-relay.json" ]]; then
+  python3 "$BASE/tests/helpers/ceph_ssh_fixture.py" cleanup --path "$STATE_DIR/ssh-relay.json"
 fi
 
 if [[ -s "$MAPPER_FILE" ]]; then
@@ -284,7 +301,7 @@ CEPH_CLEAN_PREVERIFY=1 CEPH_TEST_FSID="$fsid" verify_clean
 for state_file in "$FSID_FILE" "$MAPPER_FILE" "$OWNER_FILE" "${STATE_DIR}/lease-owner" "${STATE_DIR}/fault-tables"; do
   [[ ! -e "$state_file" ]] || unlink "$state_file"
 done
-for state_file in "${STATE_DIR}"/*.latency "${STATE_DIR}/rados.sha256" "${STATE_DIR}/csi-marker" "${STATE_DIR}/slow-fixed.summary" "${STATE_DIR}/slow-recovery.summary" "${STATE_DIR}/scrub-contention.summary"; do
+for state_file in "${STATE_DIR}"/*.latency "${STATE_DIR}/rados.sha256" "${STATE_DIR}/csi-marker" "${STATE_DIR}/slow-fixed.summary" "${STATE_DIR}/slow-recovery.summary" "${STATE_DIR}/scrub-contention.summary" "${STATE_DIR}/observability-last-error"; do
   [[ ! -e "$state_file" ]] || unlink "$state_file"
 done
 for phase in healthy limited recovered; do
@@ -292,4 +309,9 @@ for phase in healthy limited recovered; do
     [[ ! -e "$state_file" ]] || unlink "$state_file"
   done
 done
+if [[ -n "$QUALIFICATION_PROFILE" ]]; then
+  python3 "$BASE/tests/helpers/ceph_os_qualification.py" restore-hostnames \
+    --path "$STATE_DIR/qualification-hostnames.json"
+  unlink "$STATE_DIR/qualification-profile"
+fi
 CEPH_TEST_FSID="$fsid" verify_clean

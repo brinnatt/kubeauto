@@ -78,7 +78,7 @@
   register: cephadm_public_key
   no_log: true
 
-- name: Ensure the package-mode SSH directory exists on every Ceph host
+- name: Ensure the dedicated SSH directory exists on every Ceph host
   ansible.builtin.file:
     path: /home/cephadm/.ssh
     state: directory
@@ -138,9 +138,9 @@
   register: ceph_bootstrap_result
   no_log: true
 
-- name: Use the upstream host-installed cephadm execution mode
+- name: Use the upstream upgrade-capable cephadm execution mode
   ansible.builtin.command:
-    argv: [/usr/local/sbin/cephadm, shell, --, ceph, config, set, mgr, mgr/cephadm/mode, cephadm-package]
+    argv: [/usr/local/sbin/cephadm, shell, --, ceph, config, set, mgr, mgr/cephadm/mode, root]
   changed_when: false
 
 - name: Reconcile the declarative cephadm service specification

@@ -14,6 +14,41 @@ from typing import Dict, List, Set, Tuple
 
 
 CNI_LINK = re.compile(r"^(nodelocaldns|kube-ipvs0|cali[0-9a-f]+|vxlan\.calico)$")
+RBD_SYSFS = Path("/sys/bus/rbd")
+
+
+def cleanup_kernel_rbd(clean: bool, fsid: str) -> None:
+    if fsid and not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", fsid):
+        raise ValueError("invalid cleanup FSID")
+    directory = RBD_SYSFS / "devices"
+    devices = list(directory.iterdir()) if directory.exists() else []
+    # Validate every mapping before removing any device. Never read config_info,
+    # which can contain credentials; cluster_fsid is the kernel ownership key.
+    for device in devices:
+        if not device.name.isdigit() or not fsid or (device / "cluster_fsid").read_text().strip() != fsid:
+            raise ValueError("foreign or unbound kernel RBD mapping; refusing cleanup")
+    if devices and not clean:
+        raise ValueError("kernel RBD fixture residue remains")
+    remove = RBD_SYSFS / "remove_single_major"
+    if not remove.exists():
+        remove = RBD_SYSFS / "remove"
+    for device in devices:
+        argv = ["/bin/sh", "-ceu", 'printf "%s force" "$1" >"$2"',
+                "kubeauto-rbd-cleanup", device.name, str(remove)]
+        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            rc = process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            # A D-state kernel write cannot be killed immediately. Do not
+            # wait again or retain SSH output descriptors after reporting it.
+            process.kill()
+            raise ValueError("kernel RBD unmap blocked; scoped host recovery is required")
+        if rc:
+            raise subprocess.CalledProcessError(rc, argv)
+    if directory.exists() and list(directory.iterdir()):
+        raise ValueError("kernel RBD fixture residue remains after unmap")
+    print("CEPH_KERNEL_CLIENT_CLEAN_VERIFY_PASS rbd=0")
 
 
 def read_processes() -> Dict[int, Tuple[int, List[str]]]:
@@ -59,7 +94,7 @@ def send_signal(pids: Set[int], sig: int) -> None:
             pass
 
 
-def run(clean: bool) -> None:
+def run(clean: bool, fsid: str = "") -> None:
     if Path("/etc/kubernetes").exists():
         raise ValueError("Kubernetes configuration remains; product destroy must run first")
     for unit in ("kubelet", "containerd"):
@@ -87,15 +122,17 @@ def run(clean: bool) -> None:
     links = cni_links()
     if remaining or links:
         raise ValueError(f"Kubernetes fixture residue: pids={sorted(remaining)} links={links}")
+    cleanup_kernel_rbd(clean, fsid)
     print("CEPH_RUNTIME_CLEAN_VERIFY_PASS shims=0 cni_links=0")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--ceph-fsid", default="")
     args = parser.parse_args()
     try:
-        run(args.clean)
+        run(args.clean, args.ceph_fsid)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"CEPH_RUNTIME_CLEAN_FAIL reason={error}", file=sys.stderr)
         return 1

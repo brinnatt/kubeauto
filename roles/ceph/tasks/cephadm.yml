@@ -14,16 +14,12 @@
     fail_msg: "Staged cephadm does not match the official 20.2.4 SHA256; refusing installation"
   run_once: true
 
-- name: Refuse a distribution-owned or foreign cephadm entry point
+- name: Refuse a foreign cephadm launcher
   ansible.builtin.command:
     argv:
       - /bin/bash
       - -ceu
       - |
-        if test -e /usr/bin/cephadm || test -L /usr/bin/cephadm; then
-          test -L /usr/bin/cephadm
-          test "$(readlink /usr/bin/cephadm)" = /usr/local/sbin/cephadm
-        fi
         if test -e /usr/local/sbin/cephadm || test -L /usr/local/sbin/cephadm; then
           test ! -L /usr/local/sbin/cephadm
           checksum="$(sha256sum /usr/local/sbin/cephadm)"
@@ -40,6 +36,35 @@
     owner: root
     group: root
     mode: "0755"
+
+- name: Create the private orchestrator command directory
+  ansible.builtin.file:
+    path: /usr/local/libexec/kubeauto/cephadm-bin
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# Ubuntu 26's Rust install rejects Ceph container IDs absent from host NSS.
+# Keep the distribution GNU binary private to cephadm's command lookup.
+- name: Prepare the official GNU install compatibility path
+  when: ceph_use_gnu_install | bool
+  block:
+    - name: Verify the distribution GNU install executable
+      ansible.builtin.command:
+        argv: [/usr/bin/gnuinstall, --version]
+      register: ceph_gnu_install_version
+      changed_when: false
+      failed_when: "ceph_gnu_install_version.rc != 0 or 'GNU coreutils' not in ceph_gnu_install_version.stdout"
+
+    - name: Expose GNU install only to the owned cephadm launcher
+      ansible.builtin.file:
+        src: /usr/bin/gnuinstall
+        dest: /usr/local/libexec/kubeauto/cephadm-bin/install
+        state: link
+        owner: root
+        group: root
+        follow: false
 
 - name: Install the checksum-gated cephadm executable
   ansible.builtin.copy:
@@ -72,23 +97,28 @@
   register: cephadm_python_probe
   changed_when: false
 
+- name: Expose the verified Python only to the dedicated orchestrator
+  ansible.builtin.file:
+    src: "{{ cephadm_python_probe.stdout | trim }}"
+    dest: /usr/local/libexec/kubeauto/cephadm-bin/python3
+    state: link
+    owner: root
+    group: root
+    follow: false
+
 - name: Install the interpreter-specific cephadm launcher
   ansible.builtin.copy:
     content: |
       #!/bin/sh
       # kubeauto-owned launcher; the official artifact remains checksum-identical.
+      {% if ceph_use_gnu_install | default(false) %}
+      export PATH=/usr/local/libexec/kubeauto/cephadm-bin:"$PATH"
+      {% endif %}
       exec {{ cephadm_python_probe.stdout | quote }} /usr/local/libexec/kubeauto/cephadm {{ '--docker' if ceph_host_runtime == 'docker' else '' }} "$@"
     dest: /usr/local/sbin/cephadm
     owner: root
     group: root
     mode: "0755"
-
-# Tentacle's supported cephadm-package mode executes this exact absolute path.
-- name: Expose the owned cephadm launcher to the upstream orchestrator
-  ansible.builtin.file:
-    src: /usr/local/sbin/cephadm
-    dest: /usr/bin/cephadm
-    state: link
 
 - name: Read installed cephadm version
   ansible.builtin.command: /usr/local/sbin/cephadm version
@@ -107,8 +137,7 @@
     argv: [/usr/local/sbin/cephadm, check-host, --expect-hostname, "{{ ansible_hostname }}"]
   changed_when: false
 
-# Upstream package mode hard-codes the SSH account, even with --ssh-user root.
-- name: Inspect the package-mode SSH account before taking ownership
+- name: Inspect the dedicated SSH account before taking ownership
   ansible.builtin.command:
     argv:
       - /bin/bash
@@ -153,12 +182,12 @@
     group: root
     mode: "0600"
 
-- name: Create the package-mode SSH group
+- name: Create the dedicated SSH group
   ansible.builtin.group:
     name: cephadm
     system: true
 
-- name: Create the package-mode SSH account without a login password
+- name: Create the dedicated SSH account without a login password
   ansible.builtin.user:
     name: cephadm
     group: cephadm
@@ -167,11 +196,24 @@
     create_home: true
     shell: /bin/bash
 
-- name: Grant the upstream package-mode root execution contract
+# Upstream root mode uses sudo which python3, then sudo <python> <managed artifact>.
+# Scope its command lookup to this account; never replace the host interpreter.
+- name: Grant the dedicated orchestrator root execution contract
   ansible.builtin.copy:
-    content: "cephadm ALL=(root) NOPASSWD: ALL\n"
+    content: |
+      Defaults:cephadm secure_path=/usr/local/libexec/kubeauto/cephadm-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      cephadm ALL=(root) NOPASSWD: ALL
     dest: /etc/sudoers.d/kubeauto-cephadm
     owner: root
     group: root
     mode: "0440"
     validate: /usr/sbin/visudo -cf %s
+
+- name: Verify the actual orchestrator sudo interpreter selection
+  ansible.builtin.command:
+    argv: [sudo, -u, cephadm, sudo, -n, which, python3]
+  register: cephadm_sudo_python
+  changed_when: false
+  failed_when: >-
+    cephadm_sudo_python.rc != 0 or
+    cephadm_sudo_python.stdout | trim != '/usr/local/libexec/kubeauto/cephadm-bin/python3'

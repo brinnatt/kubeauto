@@ -6,6 +6,7 @@ under a different tag — that breaks talkedu/Docker Hub pull order.
 from __future__ import annotations
 
 import re
+import json
 import unittest
 from pathlib import Path
 
@@ -27,18 +28,11 @@ class TestSixRepoVersionSync(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.kc = KubeConstant()
+        cls.catalog = json.loads((EXT_IMAGES / "catalog.json").read_text())
 
     def test_json_mock_ci_tag_matches_constant(self):
-        """v_json_mock must match ext-images CI matrix tag (talkedu dual-push)."""
-        ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
-        m = re.search(
-            r"dockerfile:\s*\./tooling/test-support/json-mock/Dockerfile.*?tag:\s*([^\n#]+)",
-            ci,
-            re.S,
-        )
-        self.assertIsNotNone(m, "json-mock missing from ext-images CI matrix")
-        tag = m.group(1).strip().strip("'\"")
-        self.assertEqual(tag, self.kc.v_json_mock)
+        """v_json_mock must match the dual-push catalog tag."""
+        self.assertEqual(self._ci_tag("json-mock"), self.kc.v_json_mock)
 
     def test_ansible_execution_image_ci_tag_matches_constant(self):
         """Conditional EE must keep the TalkEdu/Docker Hub CI tag in sync."""
@@ -125,14 +119,10 @@ class TestSixRepoVersionSync(unittest.TestCase):
         self.assertIn("json-server@0.17.4", df)
 
     def _ci_tag(self, dockerfile_dir: str) -> str:
-        ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
-        m = re.search(
-            rf"dockerfile:\s*\./(?:[\w.-]+/)*{re.escape(dockerfile_dir)}/Dockerfile.*?tag:\s*([^\n#]+)",
-            ci,
-            re.S,
-        )
-        self.assertIsNotNone(m, f"{dockerfile_dir} missing from ext-images CI")
-        return m.group(1).strip().strip("'\"")
+        entries = [row for row in self.catalog
+                   if Path(row["dockerfile"]).parent.name == dockerfile_dir]
+        self.assertEqual(len(entries), 1, f"{dockerfile_dir} missing or duplicated in ext-images catalog")
+        return entries[0]["tag"]
 
     def test_ecosystem_ci_tags_match_kubeauto_constants(self):
         """No six-repo fragmentation: CNI/DNS/control-plane/monitor pins must match constants."""
@@ -191,15 +181,9 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
     def test_component_images_tags_exist_in_ext_images_ci(self):
         """Every brinnatt image pin in component_images must have matching CI tag (no local fork)."""
-        ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
-        # Matrix rows: image: brinnatt/<name> … tag: <tag> (talkedu_image may sit between).
         ci_pins: dict[str, set[str]] = {}
-        for m in re.finditer(
-            r"image:\s*brinnatt/([\w.-]+).*?^\s*tag:\s*([^\n#]+)",
-            ci,
-            re.M | re.S,
-        ):
-            ci_pins.setdefault(m.group(1), set()).add(m.group(2).strip().strip("'\""))
+        for row in self.catalog:
+            ci_pins.setdefault(row["image"].removeprefix("brinnatt/"), set()).add(row["tag"])
 
         bad = []
         for component, images in self.kc.component_images.items():
@@ -225,15 +209,13 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
     def test_nacos_mysql_fixture_is_published_by_ext_images_ci(self):
         """Every Nacos MySQL fixture reference must match one dual-pushed image."""
-        ci = (EXT_IMAGES / ".github/workflows/build.yml").read_text()
         tag = self._ci_tag("mysql")
-        self.assertRegex(
-            ci,
-            r"(?s)dockerfile:\s*\./middleware/nacos/test-support/mysql/Dockerfile.*?"
-            r"image:\s*brinnatt/mysql.*?"
-            r"talkedu_image:\s*hub\.talkedu\.cn/kubeauto/mysql.*?"
-            rf"tag:\s*['\"]?{re.escape(tag)}['\"]?.*?ctx:\s*\./middleware/nacos/test-support/mysql/",
-        )
+        rows = [row for row in self.catalog
+                if row["dockerfile"] == "./middleware/nacos/test-support/mysql/Dockerfile"]
+        self.assertEqual(rows, [{"dockerfile": "./middleware/nacos/test-support/mysql/Dockerfile",
+                                 "ctx": "./middleware/nacos/test-support/mysql/",
+                                 "image": "brinnatt/mysql",
+                                 "talkedu_image": "hub.talkedu.cn/kubeauto/mysql", "tag": tag}])
         self.assertIn(
             f"FROM docker.io/library/mysql:{tag}",
             (EXT_IMAGES / "middleware/nacos/test-support/mysql" / "Dockerfile").read_text(),

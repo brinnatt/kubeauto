@@ -6,12 +6,14 @@ STATE_PREFIX=/tmp/kubeauto-regression-jumper
 export PYTHONPATH=/usr/local/kubeauto
 export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 
-rm -f "${STATE_PREFIX}.exit"
+rm -f "${STATE_PREFIX}.exit" "${STATE_PREFIX}.finalized" "${STATE_PREFIX}.finalized.part"
 printf '%s\n' "$$" > "${STATE_PREFIX}.pid"
 finish() {
   local rc=$?
   trap - EXIT
   printf '%s\n' "$rc" > "${STATE_PREFIX}.exit"
+  printf '%s\n' "$rc" > "${STATE_PREFIX}.finalized.part"
+  mv -f "${STATE_PREFIX}.finalized.part" "${STATE_PREFIX}.finalized"
   exit "$rc"
 }
 trap finish EXIT

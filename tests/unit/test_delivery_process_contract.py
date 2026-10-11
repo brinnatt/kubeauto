@@ -78,6 +78,36 @@ class TestDeliveryProcessContract(unittest.TestCase):
                     self.assertIn("rc=0", result.stdout)
                     self.assertIn("failure_markers=1", result.stdout)
 
+    def test_jumper_prep_finalizes_success_and_failure_for_the_supervisor(self):
+        prep = (ROOT / "tests/helpers/regression-jumper-prep.sh").read_text()
+        startup = prep.split("\n# -a installs", 1)[0]
+        summary = "remote_job_summary()" + RUNNER.split("remote_job_summary()", 1)[1].split("remote_log_tail()", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="kubeauto-jumper-finalizer-") as temporary:
+            directory = Path(temporary)
+            prefix = directory / "state"
+            for rc in (0, 7):
+                with self.subTest(rc=rc):
+                    for suffix in ("exit", "finalized", "finalized.part"):
+                        (directory / f"state.{suffix}").write_text("42\n")
+                    script = startup.replace(
+                        "STATE_PREFIX=/tmp/kubeauto-regression-jumper", f'STATE_PREFIX="{prefix}"')
+                    script += '\ntest ! -e "${STATE_PREFIX}.exit"\ntest ! -e "${STATE_PREFIX}.finalized"\n'
+                    script += 'test ! -e "${STATE_PREFIX}.finalized.part"\n'
+                    result = subprocess.run(["bash", "-c", script + f"exit {rc}\n"],
+                                            text=True, capture_output=True, timeout=5)
+                    self.assertEqual(result.returncode, rc, result.stderr)
+                    for suffix in ("exit", "finalized"):
+                        self.assertEqual((directory / f"state.{suffix}").read_text(), f"{rc}\n")
+                    self.assertFalse((directory / "state.finalized.part").exists())
+                    log = directory / "live.log"
+                    log.write_text(f"REGRESSION_JUMPER_EXIT rc={rc}\n")
+                    script = summary + f'\nlocal_ssh() {{ bash -c "$1"; }}\nremote_job_summary local_ssh "" "{prefix}" "{log}"\n'
+                    result = subprocess.run(["bash", "-c", script], text=True,
+                                            capture_output=True, timeout=5)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("state=exited", result.stdout)
+                    self.assertIn(f"rc={rc}", result.stdout)
+
     def test_supervisor_process_snapshot_cannot_block_on_stuck_pstree(self):
         function = "remote_process_tree()" + RUNNER.split("remote_process_tree()", 1)[1].split("remote_diagnostics()", 1)[0]
         with tempfile.TemporaryDirectory(prefix="kubeauto-process-snapshot-") as temporary:
@@ -310,6 +340,13 @@ remote_process_tree local_ssh '' '{prefix}'
             ROOT / "tests" / "unit" / "test_registry_ready.py",
         }
         offenders = []
+        ceph_qualification_paths = {
+            ROOT / "tests/run_enterprise_regression.sh",
+            ROOT / "tests/helpers/ceph_contract.py",
+            ROOT / "tests/helpers/ceph-qualification-topology.sh",
+            ROOT / "tests/helpers/ceph_os_qualification.py",
+            ROOT / "tests/helpers/ceph_ssh_fixture.py",
+        }
         for path in (ROOT / "tests").rglob("*"):
             if not path.is_file() or "__pycache__" in path.parts:
                 continue
@@ -317,6 +354,8 @@ remote_process_tree local_ssh '' '{prefix}'
                 continue
             text = path.read_text(errors="ignore")
             for address in ("192.168.47.140", "192.168.47.147"):
+                if address == "192.168.47.147" and path in ceph_qualification_paths:
+                    continue
                 if address in text:
                     offenders.append(f"{path.relative_to(ROOT)}: {address}")
         self.assertEqual([], offenders)
@@ -508,7 +547,9 @@ remote_process_tree local_ssh '' '{prefix}'
             "Classify the proposed change before running it",
             "Complete the static preflight",
             "narrowest fixed-runner branch",
-            "Start exactly one clean full middleware regression only after",
+            "Finish the affected module gates before starting one final clean full",
+            "retain healthy shared prerequisites",
+            "not automatic reuse or blanket invalidation",
             "prerequisite: never spend the remaining stages",
             "completed ladder level",
         ):

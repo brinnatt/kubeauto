@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 import tarfile
 import unittest
@@ -324,7 +325,7 @@ class KafkaDeliveryTests(unittest.TestCase):
 
     def test_ext_images_ci_and_dockerfiles_match_release_contract(self):
         repo = PROJECTS / "kubeauto-ext-images-dockerfile"
-        ci = (repo / ".github" / "workflows" / "build.yml").read_text()
+        catalog = json.loads((repo / "catalog.json").read_text())
         image_root = repo / "middleware" / "kafka" / "strimzi"
         expected = {
             "strimzi-operator": ("1.2.0", "quay.io/strimzi/operator:1.2.0"),
@@ -332,21 +333,21 @@ class KafkaDeliveryTests(unittest.TestCase):
             "strimzi-drain-cleaner": ("1.6.1", "quay.io/strimzi/drain-cleaner:1.6.1"),
         }
         for name, (tag, upstream) in expected.items():
-            self.assertRegex(
-                ci,
-                rf"(?s)dockerfile:\s*\./middleware/kafka/strimzi/{name}/Dockerfile.*?"
-                rf"image:\s*brinnatt/{name}.*?"
-                rf"talkedu_image:\s*hub\.talkedu\.cn/kubeauto/{name}.*?"
-                rf"tag:\s*['\"]?{re.escape(tag)}['\"]?.*?ctx:\s*\./middleware/kafka/strimzi/{name}/",
-            )
+            rows = [row for row in catalog
+                    if row["dockerfile"] == f"./middleware/kafka/strimzi/{name}/Dockerfile"]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["image"], f"brinnatt/{name}")
+            self.assertEqual(rows[0]["talkedu_image"], f"hub.talkedu.cn/kubeauto/{name}")
+            self.assertEqual(rows[0]["tag"], tag)
+            self.assertEqual(rows[0]["ctx"], f"./middleware/kafka/strimzi/{name}/")
             self.assertIn(f"FROM {upstream}", (image_root / name / "Dockerfile").read_text())
             self.assertFalse((repo / f"Dockerfile.{name}").exists())
 
-        self.assertRegex(
-            ci,
-            r"(?s)middleware/kafka/test-support/strimzi-kafka-4\.3\.0/Dockerfile.*?"
-            r"image:\s*brinnatt/strimzi-kafka.*?tag:\s*['\"]?1\.2\.0-kafka-4\.3\.0",
-        )
+        support = [row for row in catalog if row["dockerfile"] ==
+                   "./middleware/kafka/test-support/strimzi-kafka-4.3.0/Dockerfile"]
+        self.assertEqual(len(support), 1)
+        self.assertEqual((support[0]["image"], support[0]["tag"]),
+                         ("brinnatt/strimzi-kafka", "1.2.0-kafka-4.3.0"))
         longhorn_root = repo / "middleware" / "kafka" / "test-storage" / "longhorn"
         self.assertEqual(len(list(longhorn_root.glob("*/Dockerfile"))), 13)
 

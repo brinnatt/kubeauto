@@ -613,10 +613,15 @@ ceph_gate_fingerprint() {
     find "$ROOT/roles/ceph" -type f ! -path '*/__pycache__/*' ! -name '*.pyc'
     find "$ROOT/roles/docker" -type f ! -path '*/__pycache__/*' ! -name '*.pyc'
     printf '%s\n' "$ROOT/roles/prepare/tasks/podruntime-slice.yml"
+    printf '%s\n' "$ROOT/roles/prepare/tasks/main.yml"
     printf '%s\n' "$ROOT"/tests/helpers/ceph-*.sh \
       "$ROOT/tests/helpers/ceph_contract.py" "$ROOT/tests/unit/test_ceph_delivery.py" \
       "$ROOT/tests/helpers/ceph_s3_put.py" \
       "$ROOT/tests/helpers/ceph_runtime_cleanup.py" \
+      "$ROOT/tests/helpers/ceph_os_qualification.py" \
+      "$ROOT/tests/helpers/ceph_ssh_fixture.py" \
+      "$ROOT/tests/helpers/prepare_hosts_contract.py" \
+      "$ROOT/tests/unit/test_prepare_hosts_contract.py" \
       "$ROOT/tests/helpers/kubernetes-production-smoke.sh" \
       "$ROOT/tests/run_enterprise_regression.sh" \
       "$ROOT/common/constants.py" "$ROOT/service/cluster/downloader.py" \
@@ -630,14 +635,8 @@ ceph_gate_fingerprint() {
 }
 
 require_ceph_focused_evidence() {
-  local fingerprint mode
-  if [[ ! -s "$ROOT/logs/ceph-focused-green" ]] ||
-     ! read -r fingerprint mode <"$ROOT/logs/ceph-focused-green" ||
-     [[ "$fingerprint" != "$(ceph_gate_fingerprint)" || "$mode" != --slow-osd-fixed ]]; then
-    echo '[FAIL] Ceph full gate requires a successful --ceph-slow-osd-fixed run and cleanup for the current source' >&2
-    return 1
-  fi
-  echo "CEPH_FOCUSED_PREREQUISITE_PASS fingerprint=$fingerprint mode=$mode"
+  "$middleware_doc_python" "$ROOT/tests/helpers/ceph_case_evidence.py" require \
+    --root "$ROOT" --cases CEPH-13
 }
 
 stage_cephadm_artifact() {
@@ -659,6 +658,8 @@ stage_cephadm_artifact() {
   echo "CEPHADM_STAGE_PASS version=20.2.4 sha256=$expected"
 }
 
+source "$ROOT/tests/helpers/ceph_evidence_runner.sh"
+
 if [[ "$MODE" == "--ceph-supply-chain-only" ]]; then
   bash "$ROOT/tests/run_enterprise_regression.sh" --ceph-static-only
   echo ">>> ladder level 2 complete: artifact contracts passed; next is the read-only supply-chain gate"
@@ -666,18 +667,35 @@ if [[ "$MODE" == "--ceph-supply-chain-only" ]]; then
     bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
   stage_cephadm_artifact
   verify_ceph_ansible_syntax
-  ssh_ceph "$ceph_artifact_env bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh --supply-chain-only"
+  ceph_evidence_begin CEPH-02
+  ssh_ceph "$ceph_artifact_env bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ceph-supply CEPH_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh --supply-chain-only" \
+    | tee "$CEPH_EVIDENCE_STAGE/live.log"
+  ssh_ceph 'cat /tmp/kubeauto-ceph-supply.exit /tmp/kubeauto-ceph-supply.finalized' >"$CEPH_EVIDENCE_STAGE/durable.exit"
+  ceph_evidence_publish --readonly
   exit 0
 fi
 
 if [[ "$MODE" == "--ceph-static-only" ]]; then
+  if [[ "${CEPH_STATIC_CHILD:-0}" != 1 ]]; then
+    ceph_evidence_begin CEPH-01
+    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$CEPH_EVIDENCE_STAGE/static" CEPH_STATIC_EXIT \
+      env CEPH_STATIC_CHILD=1 bash "$ROOT/tests/run_enterprise_regression.sh" --ceph-static-only \
+      2>&1 | tee "$CEPH_EVIDENCE_STAGE/live.log"
+    { cat "$CEPH_EVIDENCE_STAGE/static.exit"; cat "$CEPH_EVIDENCE_STAGE/static.finalized"; } \
+      >"$CEPH_EVIDENCE_STAGE/durable.exit"
+    ceph_evidence_publish --readonly
+    exit 0
+  fi
   unit_python="$ROOT/.venv/bin/python"
   [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
   "$unit_python" -m unittest \
     tests.unit.test_ceph_delivery tests.unit.test_storage_documentation \
-    tests.unit.test_six_repo_version_sync -v
+    tests.unit.test_six_repo_version_sync tests.unit.test_ceph_case_evidence tests.unit.test_ceph_baseline -v
   python3 "$ROOT/../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py"
   for ceph_script in "$ROOT"/tests/helpers/ceph-*.sh; do
+    bash -n "$ceph_script"
+  done
+  for ceph_script in "$ROOT/tests/helpers/ceph_focused_baseline.sh" "$ROOT/tests/helpers/ceph_evidence_runner.sh"; do
     bash -n "$ceph_script"
   done
   echo CEPH_STATIC_CONTRACT_PASS
@@ -721,6 +739,23 @@ if [[ "$MODE" == "--ceph-lab-bootstrap" ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == "--ceph-lab-runtime-bootstrap" ]]; then
+  bash "$ROOT/tests/run_enterprise_regression.sh" --ceph-static-only
+  echo '>>> ladder level 2 complete: cgroup rejection/recovery contracts passed; next permitted level 3 is clean qualification runtime recovery'
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  ssh_ceph 'bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify'
+  cancel_remote_job ceph-runtime ssh_ceph '' /tmp/kubeauto-ceph-runtime
+  ssh_ceph 'rm -f /tmp/kubeauto-ceph-runtime.log /tmp/kubeauto-ceph-runtime.pid /tmp/kubeauto-ceph-runtime.exit /tmp/kubeauto-ceph-runtime.finalized; nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ceph-runtime CEPH_RUNTIME_EXIT python3 /usr/local/kubeauto/tests/helpers/ceph_os_qualification.py runtime-preflight --profile legacy --recover >/tmp/kubeauto-ceph-runtime.log 2>&1 </dev/null &'
+  runtime_rc=0
+  monitor_remote_job ceph-runtime ssh_ceph '' /tmp/kubeauto-ceph-runtime \
+    /tmp/kubeauto-ceph-runtime.log CEPH_QUALIFICATION_RUNTIME_PASS || runtime_rc=$?
+  ssh_ceph 'bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify'
+  [[ "$runtime_rc" == 0 ]] || exit "$runtime_rc"
+  echo CEPH_LAB_RUNTIME_DELIVERY_PASS
+  exit 0
+fi
+
 if [[ "$MODE" == "--ceph-lab-python-bootstrap" ]]; then
   bash "$ROOT/tests/run_enterprise_regression.sh" --ceph-static-only
   echo ">>> ladder level 2 complete: fixture contracts passed; next is the scoped native compute Python environment bootstrap"
@@ -756,6 +791,44 @@ if [[ "$MODE" == "--ceph-os-probe" ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == "--ceph-prepare-hosts-only" ]]; then
+  "$middleware_doc_python" -m unittest tests.unit.test_prepare_hosts_contract -v
+  echo '>>> ladder level 2 complete; next permitted level 3: exact delegated product task on a private temporary file; no node or cluster mutation'
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  ssh_ceph 'rm -f /tmp/kubeauto-prepare-hosts.log /tmp/kubeauto-prepare-hosts.pid /tmp/kubeauto-prepare-hosts.exit /tmp/kubeauto-prepare-hosts.finalized; nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-prepare-hosts PREPARE_HOSTS_EXIT python3 /usr/local/kubeauto/tests/helpers/prepare_hosts_contract.py >/tmp/kubeauto-prepare-hosts.log 2>&1 </dev/null &'
+  monitor_remote_job prepare-hosts ssh_ceph '' /tmp/kubeauto-prepare-hosts \
+    /tmp/kubeauto-prepare-hosts.log PREPARE_HOSTS_CONTRACT_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--ceph-qualification-network-only" ]]; then
+  network_profile="${CEPH_QUALIFICATION_NETWORK_PROFILE:-legacy}"
+  case "$network_profile" in
+    legacy|modern|rocky9) ;;
+    *) echo '[FAIL] invalid Ceph qualification network profile' >&2; exit 1 ;;
+  esac
+  echo '>>> ladder level 2: qualification network fixture syntax and deterministic boundary contracts'
+  unit_python="$ROOT/.venv/bin/python"
+  [[ -x "$unit_python" ]] || unit_python="$(command -v python3)"
+  "$unit_python" -m unittest tests.unit.test_ceph_delivery tests.unit.test_delivery_process_contract -q
+  "$unit_python" -m py_compile "$ROOT/tests/helpers/ceph_ssh_fixture.py"
+  KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$CEPH_TEST_HOST"
+  echo '>>> ladder level 2 complete; next permitted level 3: management/Registry fixture only, no cluster or disk mutation'
+  cancel_remote_job ceph-network ssh_ceph '' /tmp/kubeauto-ceph-network
+  ssh_ceph 'bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify'
+  ssh_ceph "rm -f /tmp/kubeauto-ceph-network.log /tmp/kubeauto-ceph-network.pid /tmp/kubeauto-ceph-network.exit /tmp/kubeauto-ceph-network.finalized; nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ceph-network CEPH_NETWORK_EXIT python3 /usr/local/kubeauto/tests/helpers/ceph_ssh_fixture.py probe --path /var/lib/kubeauto-ceph-test/ssh-relay.json --profile $network_profile >/tmp/kubeauto-ceph-network.log 2>&1 </dev/null &"
+  network_rc=0
+  monitor_remote_job ceph-network ssh_ceph '' /tmp/kubeauto-ceph-network \
+    /tmp/kubeauto-ceph-network.log CEPH_QUALIFICATION_NETWORK_FOCUSED_PASS || network_rc=$?
+  ssh_ceph "python3 /usr/local/kubeauto/tests/helpers/ceph_ssh_fixture.py cleanup --path /var/lib/kubeauto-ceph-test/ssh-relay.json"
+  ssh_ceph 'bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify'
+  [[ "$network_rc" == 0 ]] || exit "$network_rc"
+  echo CEPH_QUALIFICATION_NETWORK_DELIVERY_PASS
+  exit 0
+fi
+
 if [[ "$MODE" == "--ceph-clean-only" ]]; then
   cancel_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate
   KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
@@ -763,16 +836,14 @@ if [[ "$MODE" == "--ceph-clean-only" ]]; then
   bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
     "${ceph_nodes[@]/#/root@}"
   ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-host-probe.sh /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh; if test ! -s /var/lib/kubeauto-ceph-test/disk-allowlist || test \"\$(wc -l < /var/lib/kubeauto-ceph-test/disk-allowlist)\" -ne 18; then bash /usr/local/kubeauto/tests/helpers/ceph-host-probe.sh; fi; bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh; bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify"
+  ssh_ceph 'test ! -s /var/lib/kubeauto-ceph-test/fsid; test ! -e /var/lib/kubeauto-ceph-test/focused-baseline.json || unlink /var/lib/kubeauto-ceph-test/focused-baseline.json'
   echo CEPH_CLEAN_ONLY_PASS
   exit 0
 fi
 
 case "$MODE" in
-  --ceph-slow-osd-fixed|--ceph-slow-osd-intermittent|--ceph-slow-vs-down|--ceph-osd-throttle|--ceph-slow-osd-recovery|--ceph-scrub-contention|--ceph-bluefs-slow|--ceph-slow-osd-differential|--ceph-hot-pg-differential|--ceph-network-vs-disk|--ceph-slow-osd-remediate|--ceph-performance|--ceph-upgrade)
+  --ceph-slow-osd-fixed|--ceph-slow-osd-intermittent|--ceph-slow-vs-down|--ceph-osd-throttle|--ceph-slow-osd-recovery|--ceph-scrub-contention|--ceph-bluefs-slow|--ceph-slow-osd-differential|--ceph-hot-pg-differential|--ceph-network-vs-disk|--ceph-slow-osd-remediate|--ceph-performance|--ceph-upgrade|--ceph-observability|--ceph-security|--ceph-os-qualification-legacy|--ceph-os-qualification-modern|--ceph-os-qualification-rocky9)
     echo "========== Ceph focused delivery gate: $MODE =========="
-    if [[ "$MODE" == --ceph-slow-osd-fixed && -e "$ROOT/logs/ceph-focused-green" ]]; then
-      unlink "$ROOT/logs/ceph-focused-green"
-    fi
     cancel_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate
     echo ">>> ladder level 2: static Ceph contracts and image catalog"
     unit_python="$ROOT/.venv/bin/python"
@@ -780,7 +851,7 @@ case "$MODE" in
     "$unit_python" -m unittest \
       tests.unit.test_ceph_delivery \
       tests.unit.test_storage_documentation \
-      tests.unit.test_six_repo_version_sync -v
+      tests.unit.test_six_repo_version_sync tests.unit.test_ceph_case_evidence tests.unit.test_ceph_baseline -v
     python3 "$ROOT/../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py"
     for ceph_script in \
       "$ROOT/tests/helpers/ceph-host-probe.sh" \
@@ -789,7 +860,23 @@ case "$MODE" in
       bash -n "$ceph_script"
     done
     python3 -m py_compile "$ROOT/tests/helpers/ceph_contract.py"
-    focused_fingerprint="$(ceph_gate_fingerprint)"
+    qualification_fingerprint="$(ceph_gate_fingerprint --without-matrix)"
+    qualification_run_id="ceph-os-$(date -u +%Y%m%dT%H%M%SZ)-${BASHPID}"
+    if [[ "$MODE" == --ceph-os-qualification-* ]]; then
+      qualification_cases=()
+      case "${MODE##*qualification-}" in
+        legacy) qualification_cases=(CEPH-OS-ROCKY8 CEPH-OS-UBUNTU22) ;;
+        modern) qualification_cases=(CEPH-OS-ROCKY10 CEPH-OS-UBUNTU24 CEPH-OS-UBUNTU26) ;;
+        rocky9) qualification_cases=(CEPH-OS-ROCKY9) ;;
+      esac
+      qualification_snapshot="$ROOT/logs/ceph-os-qualification/${qualification_run_id}-before.json"
+      "$unit_python" "$ROOT/tests/helpers/ceph_case_evidence.py" snapshot --root "$ROOT" \
+        --snapshot "$qualification_snapshot" --cases "${qualification_cases[@]}"
+    else
+      focused_cases=(CEPH-02 CEPH-03 CEPH-04 CEPH-05 CEPH-07 CEPH-08 CEPH-09 CEPH-10 CEPH-11 CEPH-12)
+      for number in $(seq -w 13 27); do focused_cases+=("CEPH-$number"); done
+      ceph_evidence_begin "${focused_cases[@]}"
+    fi
     echo ">>> ladder level 2 local contracts passed: prepare control dependencies and validate Ansible/Chart contracts before node access"
     prepare_ceph_control_environment
     KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=0 \
@@ -798,6 +885,14 @@ case "$MODE" in
     prepare_ceph_control_artifacts
     verify_ceph_ansible_syntax
     echo ">>> ladder level 2 complete: unit/catalog/shell/Ansible/template contracts passed; next permitted level 3 is one clean focused Ceph scenario"
+    remote_success_marker=CEPH_FOCUSED_BRANCH_PASS
+    if [[ "$MODE" == --ceph-os-qualification-* ]]; then
+      ceph_nodes+=(192.168.47.138 192.168.47.145 192.168.47.146 192.168.47.147)
+      remote_success_marker=CEPH_OS_QUALIFICATION_BRANCH_PASS
+      printf -v qualification_env ' CEPH_SOURCE_SHA256=%q CEPH_QUALIFICATION_RUN_ID=%q' \
+        "$qualification_fingerprint" "$qualification_run_id"
+      ceph_artifact_env+="$qualification_env"
+    fi
     bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$CEPH_TEST_HOST" \
       "${ceph_nodes[@]/#/root@}"
     ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-*.sh /usr/local/kubeauto/tests/helpers/ceph_contract.py /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
@@ -805,22 +900,32 @@ case "$MODE" in
     ssh_ceph "rm -f /tmp/kubeauto-ceph-live.log /tmp/kubeauto-ceph-gate.pid /tmp/kubeauto-ceph-gate.exit /tmp/kubeauto-ceph-gate.finalized; nohup env $ceph_artifact_env bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ceph-gate CEPH_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh '$remote_ceph_mode' >/tmp/kubeauto-ceph-live.log 2>&1 </dev/null &"
     focused_rc=0
     monitor_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate \
-      /tmp/kubeauto-ceph-live.log CEPH_FOCUSED_BRANCH_PASS || focused_rc=$?
+      /tmp/kubeauto-ceph-live.log "$remote_success_marker" || focused_rc=$?
     cleanup_rc=0
-    ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh" || cleanup_rc=$?
-    ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify" || cleanup_rc=$?
+    if [[ "$MODE" == --ceph-os-qualification-* ]]; then
+      ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh" || cleanup_rc=$?
+      ssh_ceph "bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh --verify" || cleanup_rc=$?
+    else
+      ceph_verify_or_cleanup_focused || cleanup_rc=$?
+    fi
     if [[ "$focused_rc" -ne 0 || "$cleanup_rc" -ne 0 ]]; then
       echo "[FAIL] Ceph focused gate rc=${focused_rc}; cleanup rc=${cleanup_rc}" >&2
       exit 1
     fi
     echo "CEPH_FOCUSED_DELIVERY_PASS mode=$remote_ceph_mode"
-    if [[ "$MODE" == --ceph-slow-osd-fixed ]]; then
-      [[ "$focused_fingerprint" == "$(ceph_gate_fingerprint)" ]] || {
-        echo '[FAIL] Ceph source changed during focused execution; rerun the focused gate' >&2
+    if [[ "$MODE" == --ceph-os-qualification-* ]]; then
+      [[ "$qualification_fingerprint" == "$(ceph_gate_fingerprint --without-matrix)" ]] || {
+        echo '[FAIL] Ceph source changed during OS qualification' >&2
         exit 1
       }
-      mkdir -p "$ROOT/logs"
-      printf '%s %s\n' "$focused_fingerprint" "$remote_ceph_mode" >"$ROOT/logs/ceph-focused-green"
+      "$unit_python" "$ROOT/tests/helpers/ceph_os_qualification.py" finalize \
+        --base "$ROOT" --profile "${MODE##*qualification-}" --run-id "$qualification_run_id" \
+        --fingerprint "$qualification_fingerprint" --control "$CEPH_TEST_HOST" --jumper "$CEPH_TEST_JUMPER"
+      "$unit_python" "$ROOT/tests/helpers/ceph_case_evidence.py" bind-os --root "$ROOT" \
+        --snapshot "$qualification_snapshot" --cases "${qualification_cases[@]}" --source-sha256 "$qualification_fingerprint"
+    else
+      ceph_evidence_collect_remote
+      ceph_evidence_publish --baseline --completed
     fi
     exit 0
     ;;
@@ -841,7 +946,7 @@ if [[ "$MODE" == "--ceph-only" ]]; then
   "$unit_python" -m unittest \
     tests.unit.test_ceph_delivery \
     tests.unit.test_storage_documentation \
-    tests.unit.test_six_repo_version_sync -v
+    tests.unit.test_six_repo_version_sync tests.unit.test_ceph_case_evidence tests.unit.test_ceph_baseline -v
   python3 "$ROOT/../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py"
   for ceph_script in \
     "$ROOT/tests/helpers/ceph-host-probe.sh" \
@@ -849,6 +954,10 @@ if [[ "$MODE" == "--ceph-only" ]]; then
     "$ROOT/tests/helpers/ceph-regression.sh"; do
     bash -n "$ceph_script"
   done
+  full_cases=()
+  for number in $(seq -w 1 28); do full_cases+=("CEPH-$number"); done
+  ceph_evidence_begin "${full_cases[@]}"
+  printf '%s\n' CEPH_STATIC_CONTRACT_PASS >"$CEPH_EVIDENCE_STAGE/preflight.log"
   echo ">>> ladder level 4 unlocked by current focused PASS and static contracts: one clean full regression"
   prepare_ceph_control_environment
   KUBEAUTO_SSH_JUMP="$CEPH_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=0 \
@@ -860,6 +969,7 @@ if [[ "$MODE" == "--ceph-only" ]]; then
     "${ceph_nodes[@]/#/root@}"
   ssh_ceph "chmod 0755 /usr/local/kubeauto/tests/helpers/ceph-*.sh /usr/local/kubeauto/tests/helpers/run-durable-gate.sh"
   ssh_ceph "test ! -s /var/lib/kubeauto-ceph-test/disk-allowlist || bash /usr/local/kubeauto/tests/helpers/ceph-cleanup.sh"
+  ssh_ceph 'test ! -s /var/lib/kubeauto-ceph-test/fsid; test ! -e /var/lib/kubeauto-ceph-test/focused-baseline.json || unlink /var/lib/kubeauto-ceph-test/focused-baseline.json'
   ssh_ceph "rm -f /tmp/kubeauto-ceph-live.log /tmp/kubeauto-ceph-gate.pid /tmp/kubeauto-ceph-gate.exit /tmp/kubeauto-ceph-gate.finalized; nohup env $ceph_artifact_env bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-ceph-gate CEPH_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/ceph-regression.sh >/tmp/kubeauto-ceph-live.log 2>&1 </dev/null &"
   ceph_rc=0
   monitor_remote_job ceph ssh_ceph '' /tmp/kubeauto-ceph-gate \
@@ -871,6 +981,11 @@ if [[ "$MODE" == "--ceph-only" ]]; then
     echo "[FAIL] Ceph gate rc=${ceph_rc}; cleanup rc=${cleanup_rc}" >&2
     exit 1
   fi
+  ceph_evidence_collect_remote
+  { cat "$CEPH_EVIDENCE_STAGE/preflight.log"; cat "$CEPH_EVIDENCE_STAGE/live.log"; } \
+    >"$CEPH_EVIDENCE_STAGE/combined.log"
+  mv "$CEPH_EVIDENCE_STAGE/combined.log" "$CEPH_EVIDENCE_STAGE/live.log"
+  ceph_evidence_publish --full
   echo CEPH_DELIVERY_BRANCH_PASS
   matrix_counts ceph
   echo

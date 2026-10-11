@@ -12,11 +12,80 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 from collections.abc import Iterable
 from pathlib import Path
 
 
 IDENTITY_RE = re.compile(r"^[A-Za-z0-9_.:+-]+$")
+
+
+def assert_s3_auth_denied(raw: str) -> str:
+    """Read the pinned mc JSON error, rather than its human-readable message."""
+    document = json.loads(raw)
+    if not isinstance(document, dict) or document.get("status") != "error":
+        raise ValueError("S3 negative test did not return an error response")
+    code = document["error"]["cause"]["error"]["Code"]
+    if code not in {"AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"}:
+        raise ValueError("S3 negative test did not return an authentication denial")
+    return code
+
+
+def assert_upgrade_complete(status: str) -> None:
+    """The pinned orchestrator CLI returns text at completion, even for JSON."""
+    if status.strip() == "There are no upgrades in progress currently.":
+        return
+    document = json.loads(status)
+    if not isinstance(document, dict) or document.get("in_progress") is not False:
+        raise ValueError("orchestrator upgrade is not complete")
+    if document.get("is_paused") is True:
+        raise ValueError("orchestrator upgrade is paused")
+
+
+def rotating_keys_pending(document: dict, key_type: str) -> bool:
+    """Permit waiting for the documented post-upgrade transition, never PASS it."""
+    target = "AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE"
+    checks = document["checks"]
+    if target not in checks:
+        return False
+    allowed = {"AUTH_INSECURE_CLIENT_KEY_TYPE", "AUTH_INSECURE_KEYS_ALLOWED"} if key_type == "aes" else set()
+    if (set(checks) - allowed != {target} or document["status"] != "HEALTH_WARN"
+            or any(row["severity"] != "HEALTH_WARN" for row in checks.values())):
+        raise ValueError("rotating-key transition contains unrelated or unsafe health checks")
+    return True
+
+
+def assert_observability_health(document: dict, metrics: str, key_type: str, phase: str) -> int:
+    """Match the official aggregate and per-check gauges without hiding warnings."""
+    if key_type not in {"aes", "aes256k"} or phase not in {"baseline", "warning", "recovered"}:
+        raise ValueError("invalid monitoring phase or client key type")
+    checks = document["checks"]
+    allowed = {"AUTH_INSECURE_CLIENT_KEY_TYPE", "AUTH_INSECURE_KEYS_ALLOWED"} if key_type == "aes" else set()
+    target = "OSDMAP_FLAGS"
+    expected = {target} if phase == "warning" else set()
+    if set(checks) - allowed != expected:
+        raise ValueError(f"unexpected health checks in {phase}: {sorted(checks)}")
+    if any(row["severity"] != "HEALTH_WARN" for row in checks.values()):
+        raise ValueError("monitoring fixture has an unaccepted health severity")
+    status = 1 if checks else 0
+    if document["status"] != ("HEALTH_WARN" if checks else "HEALTH_OK"):
+        raise ValueError("health status does not match its checks")
+    aggregate = re.findall(r"^ceph_health_status(?:\{[^}]*\})?\s+([0-9.]+)$", metrics, re.M)
+    if len(aggregate) != 1 or float(aggregate[0]) != status:
+        raise ValueError("exported aggregate health does not match current Ceph health")
+    samples = {}
+    for labels, value in re.findall(r"^ceph_health_detail\{([^}]*)\}\s+([0-9.]+)$", metrics, re.M):
+        labels = dict(re.findall(r'(\w+)="([^"\\]*)"', labels))
+        name = labels["name"]
+        if name in samples or float(value) not in {0, 1}:
+            raise ValueError("invalid or duplicate health-check gauge")
+        samples[name] = (float(value), labels["severity"])
+    active = {name for name, (value, _) in samples.items() if value == 1}
+    if active != set(checks) or any(samples[name][1] != row["severity"] for name, row in checks.items()):
+        raise ValueError("exported health checks do not match current Ceph health")
+    if phase == "recovered" and samples.get(target) != (0, "HEALTH_WARN"):
+        raise ValueError("controlled warning gauge did not recover to zero")
+    return status
 
 
 def qualify_os_matrix(matrix: Path, source_sha256: str | None = None) -> int:
@@ -49,6 +118,7 @@ def qualify_os_matrix(matrix: Path, source_sha256: str | None = None) -> int:
     required_markers = {
         "CEPH_HOST_VERSION_PASS", "CEPH_CHECK_HOST_PASS", "CEPH_ORCH_REMOTE_PASS",
         "CEPH_CSI_RBD_PASS", "CEPH_CSI_CEPHFS_PASS", "CEPH_IDEMPOTENCE_PASS",
+        "CEPH_OS_RECOVERY_PASS", "CEPH_OS_PERFORMANCE_PASS",
         "CEPH_CLEAN_VERIFY_PASS", "LAB_CLEAN_VERIFY_PASS",
     }
     for row in profiles:
@@ -62,7 +132,21 @@ def qualify_os_matrix(matrix: Path, source_sha256: str | None = None) -> int:
         evidence = json.loads(raw)
         if (evidence["id"], evidence["os_id"], evidence["major"]) != (row["id"], row["os_id"], row["major"]):
             raise ValueError("OS evidence identity mismatch: " + row["id"])
-        if evidence["source_sha256"] != source_sha256 or evidence["cephadm_sha256"] != data["versions"]["cephadm_sha256"]:
+        if evidence.get("host") != row["host"]:
+            raise ValueError("OS evidence host mismatch: " + row["id"])
+        performance = evidence.get("performance", {})
+        if (performance.get("errors") != 0 or performance.get("operations", 0) < 16
+                or not 0 < performance.get("p95_ms", 0) <= performance.get("p99_ms", 0)):
+            raise ValueError("OS evidence lacks successful measured performance: " + row["id"])
+        if "dependencies" in evidence:
+            try:
+                from ceph_case_evidence import validate_record
+            except ModuleNotFoundError:
+                from tests.helpers.ceph_case_evidence import validate_record
+            validate_record(logs.parent, evidence)
+        elif evidence["source_sha256"] != source_sha256:
+            raise ValueError("OS evidence belongs to a different source/artifact: " + row["id"])
+        if evidence["cephadm_sha256"] != data["versions"]["cephadm_sha256"]:
             raise ValueError("OS evidence belongs to a different source/artifact: " + row["id"])
         if evidence["durable_rc"] != 0 or evidence["failure_markers"] != 0:
             raise ValueError("OS qualification did not exit cleanly: " + row["id"])
@@ -94,6 +178,34 @@ def assert_lab_inventory(data: dict, compute: list[str], storage: list[str]) -> 
         group = data.get(name, {})
         if group.get("children") or set(group.get("hosts", [])) != set(hosts):
             raise ValueError(f"inventory role differs from the leased pool: {name}")
+
+
+def assert_qualification_inventory(data: dict, profile: str) -> None:
+    """Allow co-location only in the exact disposable qualification fixtures."""
+    disks = ["192.168.122." + suffix for suffix in ("135", "40", "72", "212", "165", "238")]
+    if profile == "legacy":
+        compute = ["192.168.47." + suffix for suffix in ("134", "135", "136", "131", "132", "137", "138")]
+        targets = ["192.168.47.134", "192.168.47.138"]
+        storage = disks + targets
+    elif profile == "modern":
+        targets = ["192.168.47.145", "192.168.47.146", "192.168.47.147"]
+        compute = targets + targets
+        storage = disks + targets
+    elif profile == "rocky9":
+        targets = ["192.168.122.238"]
+        compute = disks[3:] + disks[3:]
+        storage = disks
+    else:
+        raise ValueError("unknown qualification profile")
+    expected = {"etcd": compute[:3], "kube_master": compute[:3], "kube_node": compute[3:],
+                "ceph": storage, "ceph_bootstrap": disks[:1], "ceph_mon": disks[:3],
+                "ceph_mgr": disks[:2] + targets, "ceph_osd": disks, "ceph_rgw": disks[:2]}
+    if set(data.get("_meta", {}).get("hostvars", {})) != set(compute + storage):
+        raise ValueError("qualification inventory includes foreign or missing hosts")
+    for name, hosts in expected.items():
+        group = data.get(name, {})
+        if group.get("children") or set(group.get("hosts", [])) != set(hosts):
+            raise ValueError("qualification inventory role mismatch: " + name)
 
 
 def _walk_devices(devices: Iterable[dict]) -> Iterable[dict]:
@@ -313,12 +425,15 @@ def pg_rows(document: dict) -> list[dict]:
 def recovery_target(document: dict, slow_osd: int) -> int:
     for row in pg_rows(document):
         acting = row.get("acting", [])
+        # The primary pushes local data to a replacement replica. Merely
+        # retaining a slow secondary can leave recovery on healthy disks.
         if (row.get("state") == "active+clean" and slow_osd in acting
-                and row.get("stat_sum", {}).get("num_bytes", 0) > 0):
+                and row.get("acting_primary") == slow_osd
+                and row.get("stat_sum", {}).get("num_bytes", 0) >= 33554432):
             for osd in acting:
                 if type(osd) is int and osd >= 0 and osd != slow_osd:
                     return osd
-    raise ValueError("no populated clean PG has another replica alongside the slow OSD")
+    raise ValueError("no clean PG with at least 32 MiB has the slow OSD as primary and another replica")
 
 
 def assert_pg_activity(document: dict, activity: str, osd_id: int | None = None) -> None:
@@ -361,7 +476,8 @@ def assert_cgroup_iops_limit(raw: str, device: str, expected: str) -> None:
 
 
 def throttle_phase_evidence(benchmark: dict, before: dict, after: dict) -> dict:
-    bench = benchmark["bench"]
+    # JSONFormatter emits the root section's fields directly in v20.2.4.
+    bench = benchmark
     elapsed = float(after["time"]) - float(before["time"])
     writes = int(after["wios"]) - int(before["wios"])
     latency = float(bench["average_latency"])
@@ -497,6 +613,11 @@ def render_csi_preflight(base: Path, helm: str) -> None:
                 "--namespace", namespace, "--values", str(values),
             ], check=True, text=True, capture_output=True, timeout=60)
             releases[release] = [row for row in yaml.safe_load_all(result.stdout) if row]
+            storage_classes = [row for row in releases[release] if row["kind"] == "StorageClass"]
+            security_option = "mapOptions" if component == "rbd" else "kernelMountOptions"
+            expected_mode = "krbd:ms_mode=secure" if component == "rbd" else "ms_mode=secure"
+            if len(storage_classes) != 1 or storage_classes[0]["parameters"].get(security_option) != expected_mode:
+                raise ValueError(f"{release} StorageClass does not require secure msgr2")
     assert_csi_resource_ownership(releases, namespace)
     print(f"CEPH_CSI_RENDER_PASS releases={len(releases)} resources={sum(map(len, releases.values()))}")
 
@@ -507,6 +628,8 @@ def main() -> int:
     inventory_parser = subparsers.add_parser("lab-inventory")
     inventory_parser.add_argument("--compute", nargs=6, required=True)
     inventory_parser.add_argument("--storage", nargs=6, required=True)
+    qualification_inventory = subparsers.add_parser("qualification-inventory")
+    qualification_inventory.add_argument("--profile", choices=("legacy", "modern", "rocky9"), required=True)
     host_parser = subparsers.add_parser("host-probe")
     host_parser.add_argument("--host", required=True)
     host_parser.add_argument("--hostname", required=True)
@@ -533,6 +656,14 @@ def main() -> int:
     os_parser.add_argument("--matrix", type=Path, required=True)
     os_parser.add_argument("--source-sha256")
     subparsers.add_parser("pg-clean")
+    subparsers.add_parser("upgrade-complete")
+    subparsers.add_parser("s3-auth-denied")
+    rotating_parser = subparsers.add_parser("rotating-keys-pending")
+    rotating_parser.add_argument("--key-type", choices=("aes", "aes256k"), required=True)
+    monitoring_parser = subparsers.add_parser("monitoring-health")
+    monitoring_parser.add_argument("--metrics-url", required=True)
+    monitoring_parser.add_argument("--key-type", choices=("aes", "aes256k"), required=True)
+    monitoring_parser.add_argument("--phase", choices=("baseline", "warning", "recovered"), required=True)
     target_parser = subparsers.add_parser("recovery-target")
     target_parser.add_argument("--osd-id", type=int, required=True)
     activity_parser = subparsers.add_parser("pg-activity")
@@ -567,7 +698,21 @@ def main() -> int:
             render_csi_preflight(args.base, args.helm)
             return 0
         raw = sys.stdin.read()
-        if args.command == "lab-inventory":
+        if args.command == "s3-auth-denied":
+            print("CEPH_S3_AUTH_DENIED_PASS code=" + assert_s3_auth_denied(raw))
+        elif args.command == "upgrade-complete":
+            assert_upgrade_complete(raw)
+            print("CEPH_UPGRADE_STATUS_COMPLETE_PASS")
+        elif args.command == "rotating-keys-pending":
+            print("true" if rotating_keys_pending(json.loads(raw), args.key_type) else "false")
+        elif args.command == "monitoring-health":
+            with urllib.request.urlopen(args.metrics_url, timeout=10) as response:
+                metrics = response.read().decode()
+            print(assert_observability_health(json.loads(raw), metrics, args.key_type, args.phase))
+        elif args.command == "qualification-inventory":
+            assert_qualification_inventory(json.loads(raw), args.profile)
+            print("CEPH_QUALIFICATION_INVENTORY_PASS profile=" + args.profile)
+        elif args.command == "lab-inventory":
             assert_lab_inventory(json.loads(raw), args.compute, args.storage)
             print("CEPH_LAB_INVENTORY_PASS storage=6 compute=6")
         elif args.command == "host-probe":

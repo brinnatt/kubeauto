@@ -113,10 +113,18 @@ bash tests/run_enterprise_regression.sh --kafka-follow
 bash tests/run_enterprise_regression.sh --kafka-clean-only
 bash tests/run_enterprise_regression.sh --ceph-probe
 bash tests/run_enterprise_regression.sh --ceph-os-probe
+bash tests/run_enterprise_regression.sh --ceph-qualification-network-only
+bash tests/run_enterprise_regression.sh --ceph-prepare-hosts-only
+bash tests/run_enterprise_regression.sh --ceph-os-qualification-legacy
+bash tests/run_enterprise_regression.sh --ceph-os-qualification-modern
+bash tests/run_enterprise_regression.sh --ceph-os-qualification-rocky9
 bash tests/run_enterprise_regression.sh --ceph-lab-bootstrap
 bash tests/run_enterprise_regression.sh --ceph-lab-python-bootstrap
+bash tests/run_enterprise_regression.sh --ceph-lab-runtime-bootstrap
 bash tests/run_enterprise_regression.sh --ceph-supply-chain-only
 bash tests/run_enterprise_regression.sh --ceph-slow-osd-fixed
+bash tests/run_enterprise_regression.sh --ceph-observability
+bash tests/run_enterprise_regression.sh --ceph-security
 bash tests/run_enterprise_regression.sh --ceph-only
 bash tests/run_enterprise_regression.sh --ceph-status
 bash tests/run_enterprise_regression.sh --ceph-follow
@@ -157,8 +165,12 @@ prerequisite. If a snapshot reset leaves one of the six
 authoritative Ceph hosts named `localhost`, `--ceph-lab-bootstrap` may restore
 only its registered hostname; it refuses to overwrite any other identity and
 does not touch storage devices. The focused modes, beginning with
-`--ceph-slow-osd-fixed`, install only their required clean prerequisites, run
-one fault scenario, and perform scoped cleanup; they remain blocked until the
+`--ceph-slow-osd-fixed`, run one owning scenario and verify its cleanup scope.
+Prefer a healthy runner-owned baseline for focused repairs: verify its FSID,
+product dependencies, node/resource identities, credentials, business hashes
+and absence of injected faults before reuse. Restore the module's own faults
+and fixtures without rebuilding unrelated prerequisites; if isolation cannot
+be proved, rebuild the smallest affected environment. They remain blocked until the
 ext-bin 1.16.0 and image catalogs have matching TalkEdu/Docker Hub digests
 by default; the ext-bin image contains the checksum-pinned official cephadm.
 The runner writes `ceph_csi_install: "no"` into its generated `config.yml` before
@@ -168,9 +180,28 @@ independent Ceph prerequisite failures before the more
 expensive platform setup without omitting the combined product path.
 Before enabling Ceph, the same product `08` entry must succeed with the default
 disabled configuration, without gathering facts or creating any FSID/owner marker.
-`--ceph-only` requires a successful `--ceph-slow-osd-fixed` run, durable `rc=0`,
-zero failure markers and final cleanup for the same source fingerprint.
-Changes to the covered product or test files invalidate that prerequisite.
+Publish each completed module as `pass` after its marker, durable `rc=0`, zero
+failure markers and declared cleanup scope are verified. Bind evidence to the
+product and owning test dependencies; a related change returns only affected
+items to `pending`. Matrix progress, documentation and unrelated test changes
+do not invalidate completed business evidence. Keep the aggregate delivery
+result `PENDING` until one clean complete `--ceph-only` run passes all 28 cases,
+the full case ledger, durable exit and final `LAB_CLEAN_VERIFY_PASS`.
+`--ceph-only` also requires current slow-OSD and six-OS qualification evidence.
+`--ceph-security` exercises the same product `08`/`90` path and business fixtures,
+then verifies wrong CephX/S3 credentials and cross-pool denial before owned cleanup.
+The pinned mc JSON error code proves S3 authentication rejection; a connection,
+client-argument or unrelated service error cannot satisfy the negative test.
+The upgrade gate requires both exact target daemon versions and the official
+orchestrator's `in_progress=false`; version convergence can precede daemon-key
+rotation and monitoring redeployments.
+The pinned [orchestrator CLI](https://github.com/ceph/ceph/blob/v20.2.4/src/pybind/mgr/orchestrator/module.py)
+returns `There are no upgrades in progress currently.`
+at completion even with `--format json`; the gate accepts that exact terminal
+response as well as an explicit completed status object, and rejects other text.
+Its bounded 90-minute wall-time budget
+includes CLI time, and a budget expiry records the last upgrade status for
+classification rather than certifying a product failure from the timeout alone.
 `--ceph-probe` and the focused/full prerequisites require the actual compute
 `libceph` module to support secure msgr2 before creating fault devices or
 deploying storage. The default `aes256k` credential additionally requires the
@@ -180,6 +211,20 @@ the runner records its CVE-2025-30156 warning and must verify real mount,
 read/write, recovery and performance behavior. Ceph-CSI is pinned to v3.17.1.
 A module preflight is not business evidence. The runner never selects Alpha
 RBD-NBD or silently downgrades the selected credential policy.
+The monitoring focused gate preserves explicitly accepted legacy-key warnings.
+It matches the aggregate health gauge and every active per-check gauge against
+Ceph health JSON, rejects unrelated warnings, and verifies the controlled
+`OSDMAP_FLAGS` gauge changes from inactive to active and back to zero through
+one runner-owned `noout` maintenance flag, which must be absent at baseline.
+The aggregate returns to its accepted baseline; security warnings are not muted.
+After an upgrade, the gate waits for the official
+`AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE` transition to expire naturally before
+sampling that baseline. Waiting requires exact target daemon versions, completed
+orchestration, an active `aes256k` service cipher and no unrelated health checks.
+The fixed lab permits at most three service-ticket TTL intervals plus two minutes
+(default TTL: one hour). It neither shortens TTL nor wipes rotating keys; the final
+baseline still rejects the transition warning. See the official
+[health-check procedure](https://docs.ceph.com/en/tentacle/rados/operations/health-checks/#auth-insecure-rotating-service-key-type).
 The final Ceph gate additionally requires current real-host qualification for
 Rocky 8/9/10 and Ubuntu 22/24/26 in `os_qualification`; Ubuntu 20 is outside
 the supported qualification set because it is end-of-life. Its SHA256-bound
@@ -190,6 +235,66 @@ Rocky 9 storage/Rocky 8 compute lab cannot certify another OS version. Missing
 profiles block final sign-off before a new full-chain launch; focused work
 remains available. Matrix status/evidence changes do not invalidate the OS
 source binding (`ceph_gate_fingerprint --without-matrix`); product/gate changes do.
+The OS qualification modes own three exact inventories. The legacy round uses
+Rocky 8 and Ubuntu 22 with explicitly accepted `aes`; the modern round uses
+Rocky 10 and Ubuntu 24/26 with `aes256k`, and the rocky9 round qualifies Rocky 9
+with `aes256k` on the Ceph-priority pool. Each Kubernetes topology remains
+within one reachable lab subnet; modern hosts use the product's supported
+overlapping master/worker groups. Rocky 9 also overlaps master/worker groups
+on the last three storage hosts, keeping the RGW hosts outside Kubernetes:
+the official host-network RBD metrics and default RGW both bind TCP/8080,
+and cordon does not exclude DaemonSets. The existing `.122.2` Kubernetes
+cluster is not used. Qualification deliberately co-locates selected MGR or
+non-RGW OSD fixtures with CSI clients on the Ceph-priority pool and authorized
+OS controls, disables unconstrained monitoring placement, and preserves
+hostnames (restoring the temporary Rocky 10 localhost fixture). This fixture
+is not a customer hyperconvergence qualification. Each selected host must run
+an orchestrator-deployed MGR and a node-pinned CSI Pod, verify both secure
+kernel mounts, persistent hashes after detach/remount, 16 fsync samples with
+zero errors, and an idempotent second product execution preserving PVC/Pod
+and CSI credential identity. Draft JSON is published to ignored
+`logs/ceph-os-qualification/` and bound to the matrix only after the supervisor
+verifies current source, durable `rc=0`, zero failure markers and scoped cleanup.
+The qualification runner probes storage-node-to-OS-host TCP/22 separately from
+control SSH. For this NAT-separated lab only, failed management paths use
+runner-owned loopback SSH reverse forwards from the authorized control and
+exact `/32`, TCP/22 OUTPUT redirects. Ceph data traffic is not redirected.
+The journal precedes mutation; cleanup removes the exact tagged rules, SSH
+control processes and listeners before the clean marker. Customer configuration
+and production SSH policy do not inherit this fixture.
+The runner maintains journal-owned SSH masters throughout qualification. A lost
+master is reconnected only while its exact NAT rules remain; foreign listeners
+or missing rules block recovery. The network focused gate deliberately stops an
+owned master, verifies listener removal, restores transport, and then cleans it.
+The watcher is stopped before scoped cleanup, including handled failures.
+`--ceph-qualification-network-only` proves this fixture and its cleanup under
+both host leases and durable supervision before a qualification cluster launch.
+`--ceph-prepare-hosts-only` exercises the exact production delegated hosts task
+with eight local inventory fixtures and a private temporary file. It checks all
+entries and an unrelated line after insertion and an idempotent second run.
+Ansible delegation retains parallel forks, so the shared-file update uses
+`throttle: 1` as prescribed by the official delegation guide. A missing node
+entry can prevent API Server kubelet log/exec access even after a Job completes.
+Its runtime-only `CEPH_QUALIFICATION_NETWORK_PROFILE=rocky9` selection also
+verifies Registry HTTP `/v2/` from the last three Ceph hosts. If TCP/5000 to the
+authorized control is unreachable, exact `/32` OUTPUT redirects use a separate
+loopback reverse forward to that control's local Registry. Directly reachable
+paths are untouched. Journaled rules, listeners and SSH masters are removed
+before the clean marker. This lab fixture does not change customer image paths.
+Qualification also rejects a cgroup-v1 host with a transient hybrid `0::/`
+entry before storage mutation. Podman 4.9's official split-cgroup path prefers
+that root entry and refuses it, including after a Calico cgroup2 mount is removed.
+After scoped cleanup, `--ceph-lab-runtime-bootstrap` holds both host leases,
+refuses live services/containers/Ceph data, reboots only affected legacy
+qualification hosts, and verifies a changed boot ID and restored cgroup state.
+It does not change kernel boot options, customer configuration or OCI runtimes.
+An installed Ubuntu lab image may retain an enabled `file:/cdrom` source after
+its installation media is removed. An `apt-get update` failure naming that
+missing Release file is a package-source environment failure. Preserve the
+original source and disable only the verified stale stanza using the official
+APT [`Enabled: no` field](https://manpages.ubuntu.com/manpages/resolute/en/man5/sources.list.5.html);
+require a successful `apt-get -o APT::Update::Error-Mode=any update` before
+rerunning qualification. Keep this lab repair out of the production role.
 `--ceph-lab-python-bootstrap` is an explicit lab environment recovery mode for
 the six clean Rocky 8.10 compute hosts, not a production Python policy change.
 It leases the pool, installs distribution-owned Python 3.12 from AppStream,
@@ -216,6 +321,17 @@ trees and known CNI links as well as Ceph and disk state. It refuses active
 Kubernetes/runtime or foreign containerd namespaces. Stopping containerd alone
 is not cleanup evidence: the official service uses `KillMode=process` and its
 shims may keep node-cache and other host-network fixtures alive.
+Before purging the storage FSID, cleanup verifies its ownership marker and
+releases kernel RBD mappings whose sysfs `cluster_fsid` matches that FSID;
+foreign or unbound mappings block cleanup. Only allowlisted OSD hosts use
+`rm-cluster --zap-osds`; MGR-only qualification hosts do not scan or zap disks.
+An unmap blocked in kernel D-state fails after a bounded wait, without waiting
+again for the uninterruptible child. Preserve that failure, then verify whether
+the mapping has disappeared before considering host recovery. A normal reboot
+may itself wait on the blocked client; an accepted reboot request is not
+recovery evidence. Require a changed boot ID, restored BatchMode SSH and zero
+owned kernel mappings, then rerun `--ceph-clean-only` and require its final
+`LAB_CLEAN_VERIFY_PASS` before starting another qualification round.
 
 `run_tools_regression.sh` owns the separate `tools-test-matrix.yaml` branch.
 The branch is independent from the enterprise and middleware runners: every
@@ -270,14 +386,22 @@ The runner is authoritative because it centralizes SSH, source synchronization, 
 
 For every stateful run:
 
-1. Stop a stale durable job that owns the same hosts.
-2. Run `bash tests/helpers/lab-wipe-nodes.sh`.
-3. Run `bash tests/helpers/lab-wipe-nodes.sh --verify` and require `LAB_CLEAN_VERIFY_PASS`.
+1. Refuse an active durable job that owns the same hosts; stop only a verified stale owned job.
+2. For a focused repair, restore only its owned faults, fixtures and processes.
+   Retain a healthy runner-owned baseline after verifying ownership, dependencies,
+   service health, business hashes and absence of fault residue. If isolation
+   cannot be proved, clean the smallest affected environment through its runner.
+   Full regression uses its normal complete cleanup.
+3. Require the declared scoped-clean marker before a focused run, or
+   `LAB_CLEAN_VERIFY_PASS` before a full run.
 4. Sync current source to the relevant control host.
 5. Launch through `run-durable-gate.sh` and the top-level supervisor.
 6. Stream every remote log line to the foreground console.
 7. Emit a heartbeat every 30 seconds. After 60 seconds with no new log bytes, print durable state and a process-tree diagnostic.
-8. On success, failure, lost SSH, or interrupted monitoring, wipe and verify again before another scenario.
+8. On success or failure, verify the module's declared cleanup scope before reuse.
+   A monitoring disconnect alone does not invalidate a durable remote workload;
+   reconnect and inspect its state before recovery. A completed full regression
+   always requires final complete cleanup and `LAB_CLEAN_VERIFY_PASS`.
 
 The remote workload must survive a local SSH/tail disconnect. The `.pid` and `.exit` state files are authoritative; a missing exit record is a failed/lost run, not a pass.
 
@@ -313,10 +437,11 @@ evidence ladder in order:
 3. Add a deterministic regression test for a proven test-gate defect, then use
    the narrowest fixed-runner branch that executes the affected product path.
    A static or focused failure blocks the full middleware gate.
-4. Only a green focused gate unlocks one clean full middleware regression.
-   The runner decides whether a prior clean boundary can be reused; stale
-   processes, clusters, registries, port-forwards or test-owned resources force
-   normal cleanup and `LAB_CLEAN_VERIFY_PASS` first.
+4. Complete the affected focused module gates, then run one final clean full
+   middleware regression. The runner may reuse healthy owned prerequisites
+   between focused modules; stale faults, foreign resources or unverifiable
+   identities require cleanup of the smallest affected dependency boundary.
+   The final full run requires normal complete cleanup and `LAB_CLEAN_VERIFY_PASS`.
 5. On a live failure, capture the first failed command, durable exit state,
    rendered inputs, resource state, Pod descriptions/events and controller logs
    before changing code.  Abort after a failed prerequisite rather than running
@@ -373,7 +498,11 @@ The last group must not be used for final sign-off: it predates parts of the cur
 
 ## Matrix state transitions
 
-Before implementation, set affected entries to `pending`. During work, record commands and exact evidence, but do not declare pass. After the clean live run and final cleanup, update:
+Before implementation, set only affected entries to `pending` and record the
+changed dependency. Publish a module as `pass` as soon as its complete current
+product evidence, durable `rc=0`, zero failure markers and declared scoped cleanup
+are verified; do not wait for unrelated modules or the final full run. Unknown
+dependencies require impact analysis before reuse. After a completed gate, update:
 
 - the item status and evidence;
 - its execution-group status;

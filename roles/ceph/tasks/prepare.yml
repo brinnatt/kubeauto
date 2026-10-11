@@ -12,12 +12,12 @@
       - groups['ceph_mgr'] | difference(groups['ceph']) | length == 0
       - groups['ceph_osd'] | difference(groups['ceph']) | length == 0
       - ceph_public_network | length > 0
-      - ceph_public_network is match('^[0-9a-fA-F:.]+/[0-9]{1,3}$')
+      - ceph_public_network.split(',') | map('trim') | reject('match', '^[0-9a-fA-F:.]+/[0-9]{1,3}$') | list | length == 0
       - ceph_replication_size | int >= 2
       - ceph_replication_size | int <= groups['ceph_osd'] | length
     fail_msg: >-
       Ceph requires one bootstrap host, an odd MON quorum of at least three,
-      two MGR hosts, three OSD hosts and an explicit public CIDR.
+      two MGR hosts, three OSD hosts and explicit comma-separated public CIDRs.
   run_once: true
 
 - name: Validate optional RGW topology

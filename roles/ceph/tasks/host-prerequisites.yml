@@ -19,6 +19,7 @@
 
 - name: Select the distribution-native Ceph prerequisites
   ansible.builtin.set_fact:
+    ceph_use_gnu_install: "{{ ansible_distribution == 'Ubuntu' and ansible_distribution_major_version | int >= 26 }}"
     ceph_host_runtime: >-
       {{ ceph_container_runtime if ceph_container_runtime | default('auto') != 'auto'
          else (ceph_existing_runtime.stdout | trim if ceph_existing_runtime.stdout | trim
@@ -28,7 +29,9 @@
       {{ ['lvm2', 'chrony', 'smartmontools', 'sysstat', 'sudo',
           'dmsetup' if ansible_os_family == 'Debian' else 'device-mapper']
          + (['python39'] if ansible_os_family == 'RedHat' and
-            ansible_distribution_major_version | string == '8' else []) }}
+            ansible_distribution_major_version | string == '8' else [])
+         + (['gnu-coreutils'] if ansible_distribution == 'Ubuntu' and
+            ansible_distribution_major_version | int >= 26 else []) }}
 
 # RHEL 8's python3-dnf is tied to Python 3.6. Do not respawn new Ansible modules there.
 - name: Install Ceph prerequisites through the native RPM CLI

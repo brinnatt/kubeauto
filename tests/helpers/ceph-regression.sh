@@ -29,6 +29,18 @@ KUBE_HOSTS=(
   192.168.47.134 192.168.47.135 192.168.47.136
   192.168.47.131 192.168.47.132 192.168.47.137
 )
+CEPH_OSD_HOSTS=("${CEPH_HOSTS[@]}")
+QUALIFICATION_HOSTS=()
+QUALIFICATION_PROFILE=
+case "$MODE" in
+  --os-qualification-legacy) QUALIFICATION_PROFILE=legacy ;;
+  --os-qualification-modern) QUALIFICATION_PROFILE=modern ;;
+  --os-qualification-rocky9) QUALIFICATION_PROFILE=rocky9 ;;
+esac
+if [[ -n "$QUALIFICATION_PROFILE" ]]; then
+  source "$BASE/tests/helpers/ceph-qualification-topology.sh"
+  qualification_topology "$QUALIFICATION_PROFILE"
+fi
 SSH=(ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
   -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
 SLOW_HOST=192.168.122.135
@@ -38,6 +50,9 @@ CEPH_CURRENT_IMAGE=hub.talkedu.cn/kubeauto/ceph:v20.2.4
 CEPH_SOURCE_IMAGE=hub.talkedu.cn/kubeauto/ceph:v20.2.3
 ARTIFACT_MODE="${CEPH_ARTIFACT_MODE:-dual}"
 CEPH_CSI_CLIENT_KEY_TYPE="${CEPH_CSI_CLIENT_KEY_TYPE:-aes}"
+case "$QUALIFICATION_PROFILE" in
+  modern|rocky9) CEPH_CSI_CLIENT_KEY_TYPE=aes256k ;;
+esac
 [[ "$CEPH_CSI_CLIENT_KEY_TYPE" == aes || "$CEPH_CSI_CLIENT_KEY_TYPE" == aes256k ]] || {
   echo "invalid CEPH_CSI_CLIENT_KEY_TYPE" >&2
   exit 2
@@ -51,6 +66,7 @@ RGW_SECRET=
 RGW_ENDPOINT=
 START_EPOCH=$(date +%s)
 INJECTOR_PID=
+RELAY_WATCH_PID=
 THROTTLE_UNIT=
 THROTTLE_DEVICE=
 THROTTLE_MAJOR_MINOR=
@@ -133,7 +149,7 @@ PY
 
 manifest_digest() {
   local image="$1"
-  skopeo inspect --format '{{.Digest}}' "docker://${image}"
+  timeout 90 skopeo inspect --no-tags --retry-times 3 --format '{{.Digest}}' "docker://${image}"
 }
 
 verify_supply_chain() {
@@ -392,13 +408,19 @@ write_inventory() {
     echo '[kube_master]'
     for host in "${KUBE_HOSTS[@]:0:3}"; do printf "%s k8s_nodename='ceph-master-%s'\n" "$host" "${host##*.}"; done
     echo '[kube_node]'
-    for host in "${KUBE_HOSTS[@]:3:3}"; do printf "%s k8s_nodename='ceph-worker-%s'\n" "$host" "${host##*.}"; done
+    for host in "${KUBE_HOSTS[@]:3}"; do printf "%s k8s_nodename='ceph-worker-%s'\n" "$host" "${host##*.}"; done
     echo '[ceph]'
-    for host in "${CEPH_HOSTS[@]}"; do inventory_line "$host"; echo; done
+    for host in "${CEPH_HOSTS[@]}"; do
+      if [[ " ${CEPH_OSD_HOSTS[*]} " == *" $host "* ]]; then
+        inventory_line "$host"; echo
+      else
+        printf "%s ceph_hostname='%s'\n" "$host" "$(ssh_node "$host" 'hostname -s' </dev/null)"
+      fi
+    done
     echo '[ceph_bootstrap]'; echo "$CEPH_BOOTSTRAP"
     echo '[ceph_mon]'; printf '%s\n' "${CEPH_HOSTS[@]:0:3}"
-    echo '[ceph_mgr]'; printf '%s\n' "${CEPH_HOSTS[@]:0:2}"
-    echo '[ceph_osd]'; printf '%s\n' "${CEPH_HOSTS[@]}"
+    echo '[ceph_mgr]'; printf '%s\n' "${CEPH_HOSTS[@]:0:2}" "${QUALIFICATION_HOSTS[@]}"
+    echo '[ceph_osd]'; printf '%s\n' "${CEPH_OSD_HOSTS[@]}"
     echo '[ceph_rgw]'; printf '%s\n' "${CEPH_HOSTS[@]:0:2}"
     cat <<EOF
 [harbor]
@@ -421,6 +443,18 @@ k8s_nodename=''
 ansible_user=root
 EOF
   } >"$destination"
+  if [[ -n "$QUALIFICATION_PROFILE" ]]; then
+    python3 "$BASE/tests/helpers/ceph_os_qualification.py" inventory \
+      --path "$destination" --hostnames "$STATE_DIR/qualification-hostnames.json"
+  fi
+}
+
+verify_product_inventory() {
+  if [[ -n "${QUALIFICATION_PROFILE:-}" ]]; then
+    python3 "$CONTRACT_SCRIPT" qualification-inventory --profile "$QUALIFICATION_PROFILE"
+  else
+    python3 "$CONTRACT_SCRIPT" lab-inventory --compute "${KUBE_HOSTS[@]}" --storage "${CEPH_HOSTS[@]}"
+  fi
 }
 
 configure_product() {
@@ -453,6 +487,9 @@ data.update({
 with open(path, "w", encoding="utf-8") as stream:
     yaml.safe_dump(data, stream, sort_keys=False)
 PY
+  if [[ -n "${QUALIFICATION_PROFILE:-}" ]]; then
+    python3 "$BASE/tests/helpers/ceph_os_qualification.py" config --path "$CLUSTER_DIR/config.yml"
+  fi
 }
 
 verify_disabled_product() {
@@ -484,9 +521,7 @@ prepare_product_cluster() {
   "${KUBECLI[@]}" download -E ceph </dev/null
   "${KUBECLI[@]}" new "$CLUSTER" </dev/null
   write_inventory "$CLUSTER_DIR/hosts"
-  ansible-inventory -i "$CLUSTER_DIR/hosts" --list |
-    python3 "$CONTRACT_SCRIPT" lab-inventory \
-      --compute "${KUBE_HOSTS[@]}" --storage "${CEPH_HOSTS[@]}" ||
+  ansible-inventory -i "$CLUSTER_DIR/hosts" --list | verify_product_inventory ||
     fail CEPH-05 test-gate "product inventory differs from the leased host pools"
   verify_disabled_product
   configure_product "$image" no
@@ -665,22 +700,58 @@ s3_sigv4_put() {
   echo "$diagnostic"
 }
 
+rados_security_probe() {
+  local pool="$1" credential="$2" command
+  [[ "$credential" == valid || "$credential" == wrong ]] || return 1
+  # Generate a correctly encoded, unregistered key; a malformed literal can
+  # fail before authentication. Credentials stay inside the disposable client.
+  printf -v command '%q ' /usr/local/sbin/cephadm shell -- timeout 30 bash -ceu '
+    if test "$2" = wrong; then
+      key=$(ceph-authtool --gen-print-key)
+    else
+      key=$(ceph auth get-key client.csi-rbd)
+    fi
+    rados --no-mon-config --id csi-rbd --key "$key" -p "$1" ls >/dev/null
+  ' ceph-security "$pool" "$credential"
+  ssh_node "$CEPH_BOOTSTRAP" "$command"
+}
+
 verify_security() {
   stage CEPH-11 negative-auth-and-caps
-  if ceph_shell rados --id csi-rbd --key AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA== -p "$RBD_POOL" ls >/dev/null 2>&1; then
+  local diagnostic rc=0
+  rados_security_probe "$RBD_POOL" valid >/dev/null || {
+    fail CEPH-11 test-gate "valid CSI identity did not access its authorized pool"
+    return 1
+  }
+  diagnostic="$(rados_security_probe "$RBD_POOL" wrong 2>&1)" || rc=$?
+  if ((rc == 0)); then
     fail CEPH-11 product "invalid CephX key unexpectedly succeeded"
+    return 1
+  fi
+  if [[ "$rc" != 1 ]] || ! grep -Fxq "couldn't connect to cluster: (13) Permission denied" <<<"$diagnostic"; then
+    fail CEPH-11 test-gate "wrong CephX key failed without the pinned authentication denial rc=$rc"
+    return 1
   fi
   local s3_error
-  if s3_error="$("${K[@]}" -n "$TEST_NAMESPACE" exec s3-client -- env MC_HOST_bad="http://${RGW_ACCESS}:wrong@${RGW_ENDPOINT}" mc ls bad 2>&1)"; then
+  if s3_error="$("${K[@]}" -n "$TEST_NAMESPACE" exec s3-client -- env MC_HOST_bad="http://${RGW_ACCESS}:wrong@${RGW_ENDPOINT}" mc --json ls bad)"; then
     fail CEPH-11 product "invalid S3 credential unexpectedly succeeded"
   fi
-  [[ "$s3_error" =~ [Aa]ccess[[:space:]]*[Dd]enied|InvalidAccessKeyId|SignatureDoesNotMatch|403 ]] ||
+  python3 "$CONTRACT_SCRIPT" s3-auth-denied <<<"$s3_error" ||
     fail CEPH-11 test-gate "S3 negative test failed without an authentication denial"
+  ceph_shell ceph osd pool ls --format json | python3 -c 'import json,sys; assert "kubeauto-security-denied" not in json.load(sys.stdin)' || {
+    fail CEPH-11 test-gate "security fixture pool already exists"
+    return 1
+  }
   ceph_shell ceph osd pool create kubeauto-security-denied >/dev/null
-  if ssh_node "$CEPH_BOOTSTRAP" \
-    "/usr/local/sbin/cephadm shell -- bash -ceu 'key=\$(ceph auth get-key client.csi-rbd); rados --id csi-rbd --key \"\$key\" -p kubeauto-security-denied ls'" \
-    >/dev/null 2>&1; then
+  rc=0
+  diagnostic="$(rados_security_probe kubeauto-security-denied valid 2>&1)" || rc=$?
+  if ((rc == 0)); then
     fail CEPH-11 product "pool-scoped CSI identity accessed another pool"
+    return 1
+  fi
+  if [[ "$rc" != 1 ]] || ! grep -Fxq 'rados_nobjects_list_next2: Operation not permitted' <<<"$diagnostic"; then
+    fail CEPH-11 test-gate "cross-pool access failed without the pinned OSD capability denial rc=$rc"
+    return 1
   fi
   ceph_shell ceph config set mon mon_allow_pool_delete true
   ceph_shell ceph osd pool rm kubeauto-security-denied kubeauto-security-denied --yes-i-really-really-mean-it >/dev/null
@@ -695,18 +766,26 @@ run_upgrade() {
     python3 "$CONTRACT_SCRIPT" versions --expected 20.2.3 ||
     fail CEPH-26 test-gate "upgrade source daemons are not all 20.2.3"
   ceph_shell ceph osd set noout
-  ceph_shell ceph orch upgrade start --image "$CEPH_CURRENT_IMAGE"
-  local attempt versions status
-  for attempt in $(seq 1 180); do
+  ceph_shell ceph orch upgrade start --image "$CEPH_CURRENT_IMAGE" ||
+    fail CEPH-26 Kubernetes/controller "cephadm rejected the requested upgrade"
+  # Include all service redeployments and post-version CephX rotation. The
+  # budget is wall time, not just sleeps between potentially slow CLI calls.
+  local attempt versions status started=$SECONDS
+  for attempt in $(seq 1 540); do
+    ((SECONDS - started < 5400)) || break
     status="$(ceph_shell ceph orch upgrade status --format json)"
     versions="$(ceph_shell ceph versions --format json)"
-    if python3 "$CONTRACT_SCRIPT" versions --expected 20.2.4 <<<"$versions" >/dev/null 2>&1; then
+    # Version convergence can precede cephadm's daemon-key rotation and finalization.
+    if python3 "$CONTRACT_SCRIPT" versions --expected 20.2.4 <<<"$versions" >/dev/null 2>&1 &&
+       python3 "$CONTRACT_SCRIPT" upgrade-complete <<<"$status" >/dev/null 2>&1; then
       break
     fi
-    ((attempt % 6 == 0)) && echo "CEPH_WAIT_HEARTBEAT id=CEPH-26 elapsed=$((attempt * 10)) state=$status"
+    ((attempt % 6 == 0)) && echo "CEPH_WAIT_HEARTBEAT id=CEPH-26 elapsed=$((SECONDS - started)) state=$status"
     sleep 10
   done
   python3 "$CONTRACT_SCRIPT" versions --expected 20.2.4 <<<"$versions" >/dev/null || fail CEPH-26 product "not all daemons upgraded"
+  python3 "$CONTRACT_SCRIPT" upgrade-complete <<<"$status" >/dev/null 2>&1 ||
+    fail CEPH-26 test-gate "cephadm upgrade did not finish within the runner wait budget; last_status=$status"
   ceph_shell ceph osd unset noout
   configure_product "$CEPH_CURRENT_IMAGE"
   "${KUBECLI[@]}" setup "$CLUSTER" 08 -e ceph_allow_test_mappers=true </dev/null
@@ -837,13 +916,23 @@ restore_throttle() {
 
 run_throttle_phase() {
   local phase="$1" before after summary file="$STATE_DIR/throttle-$1.bench.json"
+  local duration=120 started
   before="$(read_osd_cgroup_io io.stat | python3 "$CONTRACT_SCRIPT" io-snapshot --device "$THROTTLE_MAJOR_MINOR")"
-  ceph_shell timeout 180 rados -p "$RBD_POOL" bench 30 write -b 4096 --object-size 4194304 -t 32 \
+  # 128 KiB exceeds this fixture's 64 KiB deferred-write threshold. Eight
+  # in-flight writes bound the throttled queue; all three phases use the same
+  # two-minute demand window without the previous 1 MiB/32-writer bulk load.
+  started=$SECONDS
+  ceph_shell timeout 240 rados -p "$RBD_POOL" bench "$duration" write -b 131072 --object-size 4194304 -t 8 \
     --no-cleanup --run-name "kubeauto-throttle-$phase" --format json >"$file" &
   INJECTOR_PID=$!
   ssh_node "$SLOW_HOST" 'iostat -y -x 1 3'
   summary="$(sample_business_latency "throttle-$phase" 4)"
-  kill -0 "$INJECTOR_PID" 2>/dev/null || fail CEPH-16 test-gate "benchmark did not span the mixed workload phase=$phase"
+  # ObjBencher drains pending writes after its submission window. A live
+  # process alone cannot prove that the full mixed sample saw sustained demand.
+  if ((SECONDS - started >= duration)) || ! kill -0 "$INJECTOR_PID" 2>/dev/null; then
+    fail CEPH-16 test-gate "benchmark did not span the mixed workload phase=$phase"
+    return 1
+  fi
   ceph_shell ceph osd perf
   wait "$INJECTOR_PID" || {
     cat "$file"
@@ -854,8 +943,13 @@ run_throttle_phase() {
   after="$(read_osd_cgroup_io io.stat | python3 "$CONTRACT_SCRIPT" io-snapshot --device "$THROTTLE_MAJOR_MINOR")"
   echo "CEPH_THROTTLE_SAMPLE phase=$phase before=$before after=$after mixed='$summary'"
   cat "$file"
-  python3 "$CONTRACT_SCRIPT" throttle-phase --before "$before" --after "$after" \
-    <"$file" >"$STATE_DIR/throttle-$phase.json" || fail CEPH-16 test-gate "invalid sustained I/O sample phase=$phase"
+  # v20.2.4 prints this allocation-hint line outside its JSON formatter.
+  [[ "$(head -n 1 "$file")" == 'hints = 1' ]] || {
+    fail CEPH-16 test-gate "unexpected RADOS benchmark preamble phase=$phase"
+    return 1
+  }
+  tail -n +2 "$file" | python3 "$CONTRACT_SCRIPT" throttle-phase --before "$before" --after "$after" \
+    >"$STATE_DIR/throttle-$phase.json" || fail CEPH-16 test-gate "invalid sustained I/O sample phase=$phase"
   echo "CEPH_THROTTLE_PHASE phase=$phase evidence=$(<"$STATE_DIR/throttle-$phase.json")"
   ceph_shell rados -p "$RBD_POOL" cleanup --run-name "kubeauto-throttle-$phase" >/dev/null
 }
@@ -863,9 +957,30 @@ run_throttle_phase() {
 run_fixed_slow_osd() {
   ensure_performance_baseline
   stage CEPH-13 fixed-dm-delay
+  local candidate object= mapping healthy_summary healthy_p99 summary p99 health observed_health=false
+  for candidate in $(seq 1 64); do
+    mapping="$(ceph_shell ceph osd map "$RBD_POOL" "latency-slow-fixed-$candidate" --format json)"
+    if python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(int(sys.argv[1]) not in d["acting"])' \
+      "$OSD_ID" <<<"$mapping"; then
+      object="latency-slow-fixed-$candidate"
+      break
+    fi
+  done
+  [[ -n "$object" ]] || {
+    fail CEPH-13 test-gate "no workload PG contains the selected slow OSD"
+    return 1
+  }
+  printf 'CEPH_FIXED_TARGET osd=%s object=%s mapping=%s\n' "$OSD_ID" "$object" "$mapping"
+  # Reuse the proven 32 MiB, four-path sampler without its ON/OFF toggling.
+  # Both phases address the same PG; the fixed fault remains externally owned.
+  healthy_summary="$(sample_intermittent_latency fixed-healthy "$object" 0)" || {
+    fail CEPH-13 test-gate "targeted healthy workload failed"
+    return 1
+  }
+  healthy_p99="$(latency_quantile "$STATE_DIR/fixed-healthy.latency" .99)"
+  echo "CEPH_FIXED_SAMPLE phase=healthy $healthy_summary"
   mapper_table "$SLOW_MAPPER" delay 3000
-  local summary p99 health observed_health=false
-  sample_business_latency slow-fixed 15 >"$STATE_DIR/slow-fixed.summary" &
+  sample_intermittent_latency slow-fixed "$object" 0 >"$STATE_DIR/slow-fixed.summary" &
   INJECTOR_PID=$!
   while kill -0 "$INJECTOR_PID" 2>/dev/null; do
     health="$(ceph_shell ceph health detail)"
@@ -883,40 +998,86 @@ run_fixed_slow_osd() {
   }
   INJECTOR_PID=
   summary="$(<"$STATE_DIR/slow-fixed.summary")"
-  unlink "$STATE_DIR/slow-fixed.summary"
   p99="$(latency_quantile "$STATE_DIR/slow-fixed.latency" .99)"
+  echo "CEPH_FIXED_SAMPLE phase=slow $summary healthy_p99=$healthy_p99 slow_p99=$p99"
   ceph_shell ceph daemon "osd.${OSD_ID}" dump_historic_ops
   ceph_shell ceph osd dump | grep -Eq "^osd\.${OSD_ID} up[[:space:]].* in[[:space:]]" || fail CEPH-13 product "slow OSD did not remain up/in"
-  ((p99 > BASELINE_P99 * 2 && p99 > 1000)) || fail CEPH-13 product "slow p99 did not cross threshold"
+  ((p99 > healthy_p99 * 2 && p99 > 1000)) || {
+    fail CEPH-13 test-gate "targeted workload did not demonstrate its latency exposure healthy_p99=$healthy_p99 slow_p99=$p99"
+    return 1
+  }
   [[ "$observed_health" == true ]] ||
     fail CEPH-13 product "Ceph did not expose a slow-operation health signal"
   echo "CEPH_SLOW_OSD_EVIDENCE device_await_queue=iostat osd_commit_latency_apply_latency=ceph_osd_perf pg_slow_ops=historic business_p95_p99='$summary' RBD=checked CephFS=checked S3=checked"
   mapper_table "$SLOW_MAPPER" linear 0
   wait_clean
-  pass CEPH-13 "$summary osd=$OSD_ID remained=up/in"
+  unlink "$STATE_DIR/slow-fixed.summary"
+  pass CEPH-13 "healthy='$healthy_summary' slow='$summary' osd=$OSD_ID object=$object remained=up/in"
   echo CEPH_SLOW_OSD_FIXED_PASS
 }
 
+put_intermittent_payload() {
+  local command
+  # Generate inside the disposable client, so control SSH throughput does not
+  # dominate storage latency. Both phases retain the same 32 MiB payload.
+  printf -v command '%q ' /usr/local/sbin/cephadm shell -- bash -ceu '
+    payload=$(mktemp)
+    trap '\''rm -f -- "$payload"'\'' EXIT
+    dd if=/dev/urandom of="$payload" bs=1M count=32 status=none
+    rados -p "$1" put "$2" "$payload"
+  ' ceph-intermittent "$RBD_POOL" "$1"
+  ssh_node "$CEPH_BOOTSTRAP" "$command"
+}
+
+sample_intermittent_latency() {
+  local label="$1" object="$2" delay_ms="$3" file i start end
+  file="$STATE_DIR/${label}.latency"
+  : >"$file"
+  for i in $(seq 1 18); do
+    if ((delay_ms > 0)); then
+      # Three complete requests in each ON/OFF window, repeated three times.
+      # A five-second timer can clear the fault before deferred I/O reaches it.
+      case $(((i - 1) % 6)) in
+        0) mapper_table "$SLOW_MAPPER" delay "$delay_ms" || return 1 ;;
+        3) mapper_table "$SLOW_MAPPER" linear 0 || return 1 ;;
+      esac
+    fi
+    start=$(date +%s%N)
+    # Exceed BlueStore's small/deferred write size and address a verified PG.
+    # Healthy and fault samples have the same payload and four business paths.
+    put_intermittent_payload "$object" || return 1
+    business_once "${label}-${i}" || return 1
+    end=$(date +%s%N)
+    echo $(((end - start) / 1000000)) >>"$file"
+    printf 'CEPH_INTERMITTENT_REQUEST phase=%s iteration=%s delay_ms=%s bytes=33554432\n' \
+      "$label" "$i" "$((delay_ms > 0 && (i - 1) % 6 < 3 ? delay_ms : 0))" >&2
+  done
+  printf 'count=18 p95=%s p99=%s bytes_per_request=33554432\n' \
+    "$(latency_quantile "$file" .95)" "$(latency_quantile "$file" .99)"
+}
+
 run_intermittent_slow_osd() {
-  ensure_performance_baseline
   stage CEPH-14 intermittent-dm-delay
-  (
-    for _ in 1 2 3; do
-      mapper_table "$SLOW_MAPPER" delay 2500
-      sleep 5
-      mapper_table "$SLOW_MAPPER" linear 0
-      sleep 5
-    done
-  ) &
-  INJECTOR_PID=$!
-  local summary p99
-  summary="$(sample_business_latency slow-intermittent 18)"
-  wait "$INJECTOR_PID"
-  INJECTOR_PID=
+  local candidate object= mapping healthy_summary summary healthy_p99 p99
+  for candidate in $(seq 1 64); do
+    mapping="$(ceph_shell ceph osd map "$RBD_POOL" "latency-slow-intermittent-$candidate" --format json)"
+    if python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(int(sys.argv[1]) not in d["acting"])' \
+      "$OSD_ID" <<<"$mapping"; then
+      object="latency-slow-intermittent-$candidate"
+      break
+    fi
+  done
+  [[ -n "$object" ]] || fail CEPH-14 test-gate "no workload PG contains the selected slow OSD"
+  printf 'CEPH_INTERMITTENT_TARGET osd=%s object=%s mapping=%s\n' "$OSD_ID" "$object" "$mapping"
+  healthy_summary="$(sample_intermittent_latency intermittent-healthy "$object" 0)" ||
+    fail CEPH-14 test-gate "targeted healthy workload failed"
+  healthy_p99="$(latency_quantile "$STATE_DIR/intermittent-healthy.latency" .99)"
+  summary="$(sample_intermittent_latency slow-intermittent "$object" 2500)" ||
+    fail CEPH-14 test-gate "targeted intermittent workload failed"
   mapper_table "$SLOW_MAPPER" linear 0
   p99="$(latency_quantile "$STATE_DIR/slow-intermittent.latency" .99)"
-  ((p99 > BASELINE_P99 * 2)) || fail CEPH-14 product "intermittent p99 not detected"
-  pass CEPH-14 "$summary"
+  ((p99 > healthy_p99 * 2)) || fail CEPH-14 test-gate "intermittent workload did not demonstrate its latency exposure"
+  pass CEPH-14 "healthy='$healthy_summary' intermittent='$summary' osd=$OSD_ID object=$object cycles=3"
   echo CEPH_SLOW_OSD_INTERMITTENT_PASS
 }
 
@@ -947,9 +1108,14 @@ run_slow_vs_down() {
 
 run_osd_throttle() {
   stage CEPH-16 cgroup-io-throttling-classification
-  THROTTLE_UNIT="ceph-$(<"$FSID_FILE")@osd.${OSD_ID}.service"
   THROTTLE_DEVICE="$(awk -F'|' -v name="$SLOW_MAPPER" '$2 == name {print $3}' "$MAPPER_FILE")"
-  THROTTLE_MAJOR_MINOR="$(ssh_node "$SLOW_HOST" "lsblk -dn -o MAJ:MIN '$THROTTLE_DEVICE'")"
+  # Aligned lsblk output includes padding; cgroup device IDs require raw text.
+  THROTTLE_MAJOR_MINOR="$(ssh_node "$SLOW_HOST" "lsblk -dnr -o MAJ:MIN '$THROTTLE_DEVICE'")"
+  [[ "$THROTTLE_MAJOR_MINOR" =~ ^[0-9]+:[0-9]+$ ]] || {
+    fail CEPH-16 test-gate "invalid cgroup device identity before throttle setup"
+    return 1
+  }
+  THROTTLE_UNIT="ceph-$(<"$FSID_FILE")@osd.${OSD_ID}.service"
   read_osd_cgroup_io io.max | python3 "$CONTRACT_SCRIPT" io-limit \
     --device "$THROTTLE_MAJOR_MINOR" --expected max || fail CEPH-16 environment "OSD has a pre-existing IOPS ceiling"
   run_throttle_phase healthy
@@ -974,10 +1140,12 @@ sample_during_pg_activity() {
   local id="$1" label="$2" activity="$3" pool="$4" observed=false snapshot
   local -a assertion=(pg-activity --activity "$activity")
   [[ "$activity" != recovery ]] || assertion+=(--osd-id "$OSD_ID")
+  : >"$STATE_DIR/$label.pg-samples.jsonl"
   sample_business_latency "$label" 12 >"$STATE_DIR/$label.summary" &
   INJECTOR_PID=$!
   while kill -0 "$INJECTOR_PID" 2>/dev/null; do
     snapshot="$(ceph_shell ceph pg ls-by-pool "$pool" --format json)"
+    printf '%s\n' "$snapshot" >>"$STATE_DIR/$label.pg-samples.jsonl"
     if kill -0 "$INJECTOR_PID" 2>/dev/null &&
        python3 "$CONTRACT_SCRIPT" "${assertion[@]}" <<<"$snapshot" >/dev/null 2>&1; then
       observed=true
@@ -996,11 +1164,28 @@ sample_during_pg_activity() {
 
 run_slow_recovery() {
   stage CEPH-17 slow-plus-recovery
-  ceph_shell timeout 180 rados -p "$RBD_POOL" bench 120 write -b 4194304 -t 16 \
+  local attempt snapshot
+  # Bound the fixture to 4 GiB, with 32 MiB objects so the slow primary has
+  # enough disk reads to overlap the business sample instead of moving tiny
+  # existing latency objects from a healthy primary before the first probe.
+  ceph_shell timeout 180 rados -p "$RBD_POOL" bench 120 write -b 33554432 -t 16 \
     --max-objects 128 --no-cleanup --run-name kubeauto-recovery --format json
   wait_clean
-  RECOVERY_OSD_ID="$(ceph_shell ceph pg ls-by-pool "$RBD_POOL" --format json |
-    python3 "$CONTRACT_SCRIPT" recovery-target --osd-id "$OSD_ID")"
+  # MON PG statistics can lag the just-completed writes. Wait only for the
+  # populated-primary contract, retaining the last snapshot for diagnostics.
+  for attempt in $(seq 1 12); do
+    snapshot="$(ceph_shell ceph pg ls-by-pool "$RBD_POOL" --format json)"
+    printf '%s\n' "$snapshot" >"$STATE_DIR/recovery-prepare.json"
+    if RECOVERY_OSD_ID="$(python3 "$CONTRACT_SCRIPT" recovery-target --osd-id "$OSD_ID" <<<"$snapshot")"; then
+      break
+    fi
+    sleep 1
+  done
+  [[ "$RECOVERY_OSD_ID" =~ ^[0-9]+$ ]] || {
+    fail CEPH-17 test-gate "no populated slow-primary PG before recovery injection"
+    return 1
+  }
+  echo "CEPH_RECOVERY_TARGET slow_primary=$OSD_ID removed_replica=$RECOVERY_OSD_ID snapshot=$snapshot"
   mapper_table "$SLOW_MAPPER" delay 2500
   ceph_shell ceph osd out "$RECOVERY_OSD_ID"
   sample_during_pg_activity CEPH-17 slow-recovery recovery "$RBD_POOL"
@@ -1103,6 +1288,36 @@ run_network_differential() {
   echo CEPH_NETWORK_VS_DISK_PASS
 }
 
+wait_remediation_osd_state() {
+  local desired="$1" expected_unit=inactive started=$SECONDS attempt=0 unit_state snapshot
+  [[ "$desired" == down || "$desired" == up ]] || return 1
+  [[ "$desired" != up ]] || expected_unit=active
+  local unit="ceph-$(<"$FSID_FILE")@osd.${OSD_ID}.service"
+  while ((SECONDS - started < 300)); do
+    unit_state="$(ssh_node "$SLOW_HOST" "systemctl show '$unit' --property=ActiveState --value")" || return 1
+    snapshot="$(ceph_shell ceph osd dump --format json)" || return 1
+    printf '%s\n' "$snapshot" >"$STATE_DIR/remediation-osd-$desired.json"
+    if [[ "$unit_state" == "$expected_unit" ]] &&
+       python3 -c '
+import json, sys
+rows = [row for row in json.load(sys.stdin)["osds"] if row["osd"] == int(sys.argv[1])]
+assert len(rows) == 1
+row = rows[0]
+assert row["up"] == int(sys.argv[2] == "up")
+assert sys.argv[2] == "down" or row["in"] == 1
+' \
+         "$OSD_ID" "$desired" <<<"$snapshot" >/dev/null 2>&1; then
+      echo "CEPH_REMEDIATION_OSD_STATE_PASS osd=$OSD_ID desired=$desired unit=$unit_state"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    ((attempt % 6 != 0)) || echo "CEPH_WAIT_HEARTBEAT id=CEPH-23 desired=$desired unit=$unit_state elapsed=$((SECONDS - started))"
+    sleep 5
+  done
+  fail CEPH-23 Kubernetes/controller "OSD did not reach actual unit/OSDMap state=$desired within 300 seconds"
+  return 1
+}
+
 run_slow_remediation() {
   stage CEPH-23 safe-slow-osd-remediation
   ceph_shell ceph df
@@ -1111,8 +1326,11 @@ run_slow_remediation() {
   wait_clean
   ceph_shell ceph osd safe-to-destroy "$OSD_ID" >/dev/null || fail CEPH-23 product "OSD not safe to stop after backfill"
   ceph_shell ceph orch daemon stop "osd.${OSD_ID}"
+  # cephadm returns a scheduled action, not a completed systemd transition.
+  wait_remediation_osd_state down
   ceph_shell ceph orch daemon start "osd.${OSD_ID}"
   ceph_shell ceph osd in "$OSD_ID"
+  wait_remediation_osd_state up
   wait_clean
   pass CEPH-23 capacity_CRUSH_safe_to_destroy_and_reintegration_complete
   echo CEPH_SLOW_OSD_REMEDIATION_PASS
@@ -1126,7 +1344,7 @@ run_post_fault_integrity() {
 
 run_slow_device_scenario() {
   local mode="$1"
-  [[ "$mode" == --performance || "$mode" == --upgrade ]] || prepare_slow_osd_context
+  [[ "$mode" == --performance || "$mode" == --upgrade || "$mode" == --observability || "$mode" == --security ]] || prepare_slow_osd_context
   case "$mode" in
     --upgrade) run_upgrade ;;
     --slow-osd-fixed) run_fixed_slow_osd ;;
@@ -1141,6 +1359,8 @@ run_slow_device_scenario() {
     --network-vs-disk) run_network_differential ;;
     --slow-osd-remediate) run_slow_remediation ;;
     --performance) ensure_performance_baseline ;;
+    --observability) verify_observability ;;
+    --security) verify_security ;;
     *) fail CEPH-13 test-gate "unknown focused mode=$mode" ;;
   esac
   ceph_shell ceph config rm global osd_op_complaint_time >/dev/null 2>&1 || true
@@ -1156,59 +1376,74 @@ run_all_slow_device_scenarios() {
   run_post_fault_integrity
 }
 
+wait_rotating_keys_expire() {
+  local health pending ttl budget started=$SECONDS
+  health="$(ceph_shell ceph health detail --format json)"
+  pending="$(python3 "$CONTRACT_SCRIPT" rotating-keys-pending --key-type "$CEPH_CSI_CLIENT_KEY_TYPE" <<<"$health")" ||
+    fail CEPH-27 test-gate "unsafe health state during rotating-key transition"
+  [[ "$pending" == true ]] || return 0
+  ceph_shell ceph versions --format json | python3 "$CONTRACT_SCRIPT" versions --expected 20.2.4 >/dev/null ||
+    fail CEPH-27 test-gate "cannot wait for rotating keys before all daemons are upgraded"
+  ceph_shell ceph orch upgrade status --format json | python3 "$CONTRACT_SCRIPT" upgrade-complete >/dev/null ||
+    fail CEPH-27 test-gate "cannot wait for rotating keys before upgrade completion"
+  ceph_shell ceph mon dump --format json |
+    python3 -c 'import json,sys; assert json.load(sys.stdin)["auth_service_cipher"]["name"] == "aes256k"' ||
+    fail CEPH-27 test-gate "new rotating service cipher is not active"
+  ttl="$(ceph_shell ceph config get mon auth_service_ticket_ttl)"
+  budget="$(python3 -c 'import math,sys; ttl=float(sys.argv[1]); assert math.isfinite(ttl) and 0 < ttl <= 3600; print(math.ceil(3*ttl)+120)' "$ttl")" ||
+    fail CEPH-27 environment "rotating-key TTL is outside the fixed lab wait budget"
+  echo "CEPH_ROTATING_KEYS_WAIT_BEGIN ttl_seconds=$ttl budget_seconds=$budget"
+  while ((SECONDS - started < budget)); do
+    health="$(ceph_shell ceph health detail --format json)"
+    pending="$(python3 "$CONTRACT_SCRIPT" rotating-keys-pending --key-type "$CEPH_CSI_CLIENT_KEY_TYPE" <<<"$health")" ||
+      fail CEPH-27 test-gate "unsafe health state while waiting for rotating keys"
+    if [[ "$pending" == false ]]; then
+      echo "CEPH_ROTATING_KEYS_EXPIRED_PASS elapsed_seconds=$((SECONDS - started))"
+      return 0
+    fi
+    echo "CEPH_WAIT_HEARTBEAT id=CEPH-27 action=natural-key-expiry elapsed=$((SECONDS - started)) budget=$budget"
+    sleep 30
+  done
+  fail CEPH-27 test-gate "old rotating keys did not expire within three TTL intervals"
+}
+
+wait_observability_health() {
+  local phase="$1" metrics_url="$2" sample attempt
+  for attempt in $(seq 1 30); do
+    if sample="$(ceph_shell ceph health detail --format json | python3 "$CONTRACT_SCRIPT" monitoring-health \
+      --metrics-url "$metrics_url" --key-type "$CEPH_CSI_CLIENT_KEY_TYPE" --phase "$phase" \
+      2>"$STATE_DIR/observability-last-error")"; then
+      printf '%s\n' "$sample"
+      return 0
+    fi
+    sleep 2
+  done
+  cat "$STATE_DIR/observability-last-error" >&2
+  return 1
+}
+
 verify_observability() {
   stage CEPH-27 monitoring-dashboard
   ceph_shell ceph mgr module ls --format json | python3 -c 'import json,sys; d=json.load(sys.stdin); assert "dashboard" in d["enabled_modules"]; assert "prometheus" in d["enabled_modules"]'
   for service in prometheus alertmanager node-exporter grafana; do
     ceph_shell ceph orch ps --service_name "$service" --format json | python3 -c 'import json,sys; rows=json.load(sys.stdin); assert rows and all(x["status_desc"]=="running" for x in rows)'
   done
-  local metrics_url initial_metric warning_metric recovered_metric health
+  local metrics_url initial_metric warning_metric recovered_metric
   metrics_url="$(ceph_shell ceph mgr services --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["prometheus"].rstrip("/") + "/metrics")')"
-  initial_metric="$(python3 - "$metrics_url" <<'PY'
-import re, sys, urllib.request
-body = urllib.request.urlopen(sys.argv[1], timeout=10).read().decode()
-match = re.search(r"^ceph_health_status(?:\{[^}]*\})?\s+([0-9.]+)$", body, re.M)
-assert match
-print(int(float(match.group(1))))
-PY
-)"
-  [[ "$initial_metric" -eq 0 ]] || fail CEPH-27 product "cluster was not healthy before observability injection"
-  ceph_shell ceph osd pool create kubeauto-observability 1 >/dev/null
-  ceph_shell ceph osd pool set kubeauto-observability size 1 --yes-i-really-mean-it >/dev/null
-  ceph_shell ceph config set mon mon_warn_on_pool_no_redundancy true
-  warning_metric=0
-  for _ in $(seq 1 30); do
-    health="$(ceph_shell ceph health detail || true)"
-    warning_metric="$(python3 - "$metrics_url" <<'PY'
-import re, sys, urllib.request
-body = urllib.request.urlopen(sys.argv[1], timeout=10).read().decode()
-match = re.search(r"^ceph_health_status(?:\{[^}]*\})?\s+([0-9.]+)$", body, re.M)
-print(int(float(match.group(1))) if match else -1)
-PY
-)"
-    [[ "$health" == *"POOL_NO_REDUNDANCY"* && "$warning_metric" -gt 0 ]] && break
-    sleep 2
-  done
-  [[ "$health" == *"POOL_NO_REDUNDANCY"* && "$warning_metric" -gt 0 ]] || fail CEPH-27 product "controlled health warning was not exported"
-  ceph_shell ceph osd pool set kubeauto-observability size 3 >/dev/null
+  wait_rotating_keys_expire
+  initial_metric="$(wait_observability_health baseline "$metrics_url")" ||
+    fail CEPH-27 product "unexpected health state or inconsistent exported baseline"
+  # The accepted baseline rejects existing map flags before this owned fixture.
+  ceph_shell ceph osd set noout
+  warning_metric="$(wait_observability_health warning "$metrics_url")" ||
+    fail CEPH-27 product "controlled health warning was not exported"
+  [[ "$warning_metric" -eq 1 ]] || fail CEPH-27 test-gate "invalid warning health gauge"
+  ceph_shell ceph osd unset noout
   wait_clean
-  recovered_metric=-1
-  for _ in $(seq 1 30); do
-    recovered_metric="$(python3 - "$metrics_url" <<'PY'
-import re, sys, urllib.request
-body = urllib.request.urlopen(sys.argv[1], timeout=10).read().decode()
-match = re.search(r"^ceph_health_status(?:\{[^}]*\})?\s+([0-9.]+)$", body, re.M)
-print(int(float(match.group(1))) if match else -1)
-PY
-)"
-    [[ "$recovered_metric" -eq 0 ]] && break
-    sleep 2
-  done
-  [[ "$recovered_metric" -eq 0 ]] || fail CEPH-27 product "health metric did not recover"
-  ceph_shell ceph config set mon mon_allow_pool_delete true
-  ceph_shell ceph osd pool rm kubeauto-observability kubeauto-observability --yes-i-really-really-mean-it >/dev/null
-  ceph_shell ceph config set mon mon_allow_pool_delete false
-  ceph_shell ceph config rm mon mon_warn_on_pool_no_redundancy >/dev/null 2>&1 || true
+  recovered_metric="$(wait_observability_health recovered "$metrics_url")" ||
+    fail CEPH-27 product "controlled health gauge did not recover"
+  [[ "$recovered_metric" == "$initial_metric" ]] || fail CEPH-27 product "aggregate health did not return to its accepted baseline"
+  echo "CEPH_OBSERVABILITY_SAMPLE baseline=$initial_metric warning=$warning_metric recovered=$recovered_metric check=OSDMAP_FLAGS transition=0-1-0"
   pass CEPH-27 dashboard_monitoring_health_metric_trigger_and_recovery_verified
   echo CEPH_OBSERVABILITY_PASS
 }
@@ -1254,6 +1489,13 @@ cleanup_business_fixtures() {
   fi
 }
 
+stop_relay_watch() {
+  [[ -n "$RELAY_WATCH_PID" ]] || return 0
+  kill "$RELAY_WATCH_PID" 2>/dev/null || true
+  wait "$RELAY_WATCH_PID" || true
+  RELAY_WATCH_PID=
+}
+
 failure_cleanup() {
   local rc=$?
   trap - EXIT INT TERM
@@ -1265,6 +1507,7 @@ failure_cleanup() {
     exit 1
   }
   set +e
+  stop_relay_watch
   if [[ -n "$INJECTOR_PID" ]]; then
     kill "$INJECTOR_PID" >/dev/null 2>&1
     wait "$INJECTOR_PID" >/dev/null 2>&1
@@ -1313,6 +1556,44 @@ main() {
   require_commands
   verify_matrix_contract
   case "$MODE" in
+    --os-qualification-legacy|--os-qualification-modern|--os-qualification-rocky9)
+      acquire_host_lease
+      [[ ! -e "$STATE_DIR/qualification-profile" ]] || fail CEPH-28 test-gate "unfinished qualification cleanup"
+      verify_compute_kernel_clients
+      python3 "$BASE/tests/helpers/ceph_os_qualification.py" runtime-preflight --profile "$QUALIFICATION_PROFILE"
+      verify_supply_chain
+      run_host_probe
+      validate_allowlist_shape
+      bash "$BASE/tests/helpers/ceph-cleanup.sh" --verify
+      printf '%s\n' "$QUALIFICATION_PROFILE" >"$STATE_DIR/qualification-profile"
+      printf '%s\n' kubeauto-ceph-regression >"$OWNER_FILE"
+      trap failure_cleanup EXIT
+      trap 'exit 130' INT
+      trap 'exit 143' TERM
+      python3 "$BASE/tests/helpers/ceph_ssh_fixture.py" setup \
+        --path "$STATE_DIR/ssh-relay.json" --profile "$QUALIFICATION_PROFILE"
+      python3 "$BASE/tests/helpers/ceph_ssh_fixture.py" maintain --path "$STATE_DIR/ssh-relay.json" &
+      RELAY_WATCH_PID=$!
+      python3 "$BASE/tests/helpers/ceph_os_qualification.py" prepare-hostnames \
+        --path "$STATE_DIR/qualification-hostnames.json" --profile "$QUALIFICATION_PROFILE"
+      prepare_fault_mappers
+      prepare_product_cluster
+      wait_clean
+      verify_rados_data
+      deploy_business_fixtures
+      deploy_rgw_fixture
+      kill -0 "$RELAY_WATCH_PID" || fail CEPH-03 test-gate "qualification management relay watcher stopped"
+      python3 "$BASE/tests/helpers/ceph_os_qualification.py" qualify --profile "$QUALIFICATION_PROFILE" \
+        --base "$BASE" --state "$STATE_DIR" --run-id "$CEPH_QUALIFICATION_RUN_ID" \
+        --fingerprint "$CEPH_SOURCE_SHA256"
+      kill -0 "$RELAY_WATCH_PID" || fail CEPH-03 test-gate "qualification management relay watcher stopped"
+      cleanup_business_fixtures
+      stop_relay_watch
+      bash "$BASE/tests/helpers/ceph-cleanup.sh"
+      trap - EXIT INT TERM
+      echo "CEPH_OS_QUALIFICATION_BRANCH_PASS profile=$QUALIFICATION_PROFILE"
+      return
+      ;;
     --compute-python-bootstrap)
       acquire_host_lease
       bootstrap_compute_python
@@ -1329,22 +1610,22 @@ main() {
       validate_allowlist_shape
       return
       ;;
-    --slow-osd-fixed|--slow-osd-intermittent|--slow-vs-down|--osd-throttle|--slow-osd-recovery|--scrub-contention|--bluefs-slow|--slow-osd-differential|--hot-pg-differential|--network-vs-disk|--slow-osd-remediate|--performance|--upgrade)
+    --slow-osd-fixed|--slow-osd-intermittent|--slow-vs-down|--osd-throttle|--slow-osd-recovery|--scrub-contention|--bluefs-slow|--slow-osd-differential|--hot-pg-differential|--network-vs-disk|--slow-osd-remediate|--performance|--upgrade|--observability|--security)
       acquire_host_lease
-      trap failure_cleanup EXIT
+      source "$BASE/tests/helpers/ceph_focused_baseline.sh"
+      trap focused_failure_cleanup EXIT
       trap 'exit 130' INT
       trap 'exit 143' TERM
-      prepare_focused_environment
+      prepare_or_reuse_focused_environment
       run_slow_device_scenario "$MODE"
       run_post_fault_integrity
-      cleanup_business_fixtures
-      bash "$BASE/tests/helpers/ceph-cleanup.sh"
+      retain_focused_baseline
       trap - EXIT INT TERM
       echo "CEPH_FOCUSED_BRANCH_PASS mode=$MODE"
       return
       ;;
     full) ;;
-    *) echo "usage: $0 [--compute-python-bootstrap|--supply-chain-only|--disk-preflight-only|--slow-osd-fixed|--slow-osd-intermittent|--slow-vs-down|--osd-throttle|--slow-osd-recovery|--scrub-contention|--bluefs-slow|--slow-osd-differential|--hot-pg-differential|--network-vs-disk|--slow-osd-remediate|--performance|--upgrade]" >&2; return 2 ;;
+    *) echo "usage: $0 [--compute-python-bootstrap|--supply-chain-only|--disk-preflight-only|--slow-osd-fixed|--slow-osd-intermittent|--slow-vs-down|--osd-throttle|--slow-osd-recovery|--scrub-contention|--bluefs-slow|--slow-osd-differential|--hot-pg-differential|--network-vs-disk|--slow-osd-remediate|--performance|--upgrade|--observability|--security]" >&2; return 2 ;;
   esac
 
   acquire_host_lease
