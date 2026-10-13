@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "scope": "Redis opt-in protected Operator only; original five-image publication preserved",
+  "workflow_conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "head": "14fc7bd8486fabf5f8d0a42362f4205991785461",
+  "run_id": 38305667726,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/38305667726",
+  "artifact_sha256": {
+    "image-plan.zip": "sha256:5b3fc36d25ce11bc867bbfc7b2fe9810d704ba77d1a9b130429496674db9c59c",
+    "plan-evidence-1.zip": "sha256:025019fc3a5de3eaebd90e1986af2d5dc27d9040ac0d90ee84bb6ff1c929419d",
+    "release-evidence-0-1.zip": "sha256:2ba9fe952414b523817548f988839e2a6992c12d7b67ebde9edc2aeadd8d5cf9"
+  },
+  "images": [
+    {
+      "digest": "sha256:24071119e04497d596d4c66fb7df636bffc212452ae0e1eaa1080572a6b471cd",
+      "fingerprint": "020668ed5a303d7b36439d3bf22951dd3bf774d481f2735e172958a9651dc6b7",
+      "head": "14fc7bd8486fabf5f8d0a42362f4205991785461",
+      "key": "brinnatt/redis-operator:0.27.0-kubeauto.1",
+      "platforms": {
+        "linux/amd64": "sha256:59b248cb90f2e9775dc750ff81aa799caf37d07f6da724e41ba349ce3f356d7f",
+        "linux/arm64": "sha256:8b30f366f8e855988e68d57b18f121999fa58d6ff4169138354f78e4d7c774d6"
+      },
+      "schema": 1,
+      "source_digest": "sha256:25799bf10231167ee1cb76a21cc7b1890ed521cbdb6d1724a912ee07b02fd958",
+      "source_ref": "quay.io/opstree/redis-operator:v0.27.0",
+      "dockerhub_ref": "brinnatt/redis-operator:0.27.0-kubeauto.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis-operator:0.27.0-kubeauto.1"
+    }
+  ],
+  "fingerprint_verification": "Published Git blob contents and canonical checkout permissions; local umask permissions do not alter source identity",
+  "delivery_source_readback": {
+    "checked_at": "2026-10-12T20:55:57.328312+00:00",
+    "control_host": "192.168.47.130",
+    "entry_point": "bash tests/run_enterprise_regression.sh --redis-protected-artifacts",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "d5d45057eb1166cf6102d629ab4b66561c45fcf6529e18d69b1d8586a40d589d",
+    "gate_sha256": "01716593effd282cb6894007f722c24ab5b852d017eb53f04d5d3da200fa6af9",
+    "manifests": [
+      {
+        "marker": "REDIS_ARTIFACT_MANIFEST",
+        "image": "hub.talkedu.cn/kubeauto/redis-operator:0.27.0-kubeauto.1",
+        "digest": "sha256:24071119e04497d596d4c66fb7df636bffc212452ae0e1eaa1080572a6b471cd",
+        "platforms": {
+          "amd64": "sha256:59b248cb90f2e9775dc750ff81aa799caf37d07f6da724e41ba349ce3f356d7f",
+          "arm64": "sha256:8b30f366f8e855988e68d57b18f121999fa58d6ff4169138354f78e4d7c774d6"
+        }
+      }
+    ],
+    "marker": "REDIS_ARTIFACTS_PASS count=1 verification=actions-and-current-talkedu",
+    "cleanup_scope": "Read-only; no fixtures or remote mutation"
+  }
+}

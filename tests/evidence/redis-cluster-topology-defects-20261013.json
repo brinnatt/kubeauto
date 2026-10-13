@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "classification": "product configuration",
+  "acceptance": "failure diagnosis; no PASS claim",
+  "affected_cases": [
+    "REDIS-12",
+    "REDIS-13",
+    "REDIS-14",
+    "REDIS-15"
+  ],
+  "entry": "config.yml + kubecli setup redis-cluster-gate 07 --tags redis",
+  "diagnostics_sha256": {
+    "kubeauto-redis-cluster-probe.log": "70347fd198075294fd5fbe64b15cd0327143ad3351a81dd4a67fcef924d5c804",
+    "kubeauto-redis-cluster-probe-current.log": "c1af86003f5d608f82268ae28cc2bab7b95b50e2a64b4f669bea8eb34bbca633",
+    "kubeauto-redis-cluster-graph-probe.log": "28fd1fd5a9f7d8ac90ab3c198ae7dad484efa1092b762d3f12560140af1518fe"
+  },
+  "causes": [
+    {
+      "cause": "untolerated unschedulable nodes counted by default topology spread Ignore policy",
+      "proof": "three schedulable workers; three cordoned NoSchedule masters; follower-3 Pending with topology-spread mismatch",
+      "fix": "Cluster leader/follower nodeTaintsPolicy Honor",
+      "official": "https://github.com/kubernetes/kubernetes/blob/v1.33.6/pkg/scheduler/framework/plugins/podtopologyspread/common.go"
+    },
+    {
+      "cause": "uniform role distribution collocated the observed real replication groups",
+      "proof": "real CLUSTER NODES maps followers 0/3 to leader0, 1/4 to leader1, 2/5 to leader2; each entire group shares its worker",
+      "fix": "same immutable pod-index anti-affinity between leader and first-round follower, both directions; preserve live replication graph gate",
+      "official": "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/k8sutils/redis.go",
+      "selection_boundary": "Observed 0/3, 1/4, 2/5 grouping is current evidence, not a guaranteed mapping: Operator uses modulo contact seed without --cluster-master-id; Redis CLI chooses the master with least replicas. The declared anti-affinity contract does not replace live real-graph verification.",
+      "official_cli": "https://github.com/redis/redis/blob/8.10.2/src/redis-cli.c"
+    }
+  ],
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cluster-install",
+  "cleanup": "First three failed installs naturally exited durable rc=1 with REDIS_CLUSTER_FIXTURE_CLEAN_PASS; shared Sentinel, core and CSI retained healthy. Revised install remains pending.",
+  "unchanged_dependencies": "Sentinel templates and other middleware unaffected; existing unrelated module evidence retained; final full regression remains required",
+  "rejected_attempt": {
+    "configuration": "same-index hard anti-affinity plus follower maxSkew=1",
+    "first_failure": "follower-2 Pending: anti-affinity excludes empty domain; spread excludes the two occupied domains",
+    "correction": "follower maxSkew=2; deterministic test proves every allowed OrderedReady prefix can finish while using all three domains"
+  }
+}

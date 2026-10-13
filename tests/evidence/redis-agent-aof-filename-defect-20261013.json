@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "classification": "Redis product migration persistence filename incompatibility",
+  "affected_cases": [
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml + kubecli setup redis-gate 07 --tags redis",
+  "first_failure": {
+    "directory": "logs/redis-cases/upgrade-prepare-20261013-073200",
+    "durable_rc": 1,
+    "reason": "Legacy agent selected Appendonly.aof while the current agent selects appendonly.aof; legacy logs show new empty AOF files instead of reading the retained current files",
+    "log_sha256": "95fa0cc8c373ed86e4b94ec4f0c2b08b4d08138998da4b8597c1287a093f275e"
+  },
+  "official_references": [
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/ef33adb71ce1bffb0ab1fce593625c320dc6164e/internal/agent/bootstrap/redis/config.go",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/71954323c9191e6171f3eb04f80bb46a5f128306/internal/agent/bootstrap/redis/config.go"
+  ],
+  "proof": "The pinned source sets Appendfilename=Appendonly.aof in 0.26 and appendfilename=appendonly.aof in 0.27. The external config is included last by both agents. Legacy business diagnostics captured creation of Appendonly.aof.1.base.rdb and Appendonly.aof.1.incr.aof; current recovery loaded appendonly.aof files.",
+  "fix": "Declare appendfilename=appendonly.aof in product startup configuration for both modes. Seed and WAITAOF current business before the first legacy declaration; verify acknowledged value and absolute expiry at every migration boundary.",
+  "static_regression": "Exact template contract fails without the explicit filename; 67 related contracts and complete Redis static gate pass after the fix",
+  "cleanup": "Original failed runner restored current product configuration, retained PVCs, removed journal and legacy Chart; subsequent read-only product health check passed",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-upgrade-prepare",
+  "live_result": "pass",
+  "impact_analysis": "The current 0.27 effective AOF filename is unchanged. The product change removes an implicit version-dependent default; runtime migration acceptance remains pending. No unrelated product or Ceph changes.",
+  "live_qualification": {
+    "directory": "logs/redis-cases/upgrade-prepare-20261013-075331",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "dcbfa0c21c825c63639d51060ea5fe7dc48e40c3cc54f82885e5db774171f0be",
+    "launch_source_sha256": "3b6eb78629884c4b1a9f34d1a62c26d58677d8dfb0e08afc4470645ea59b99b2",
+    "acceptance": "Legacy fixture, retained seeded current business and absolute TTL, current recovery and owned cleanup; not full upgrade module"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "classification": "test-gate: capacity restoration accepted before actual rollout finished",
+  "affected_cases": [
+    "REDIS-18",
+    "REDIS-19",
+    "REDIS-24"
+  ],
+  "first_failure": {
+    "directory": "logs/redis-cases/full-20261013-112152",
+    "stage": "observability",
+    "log_sha256": "620ee38521012441261827dcf5409e7d80830e754872f327f7a31cbf9b412581",
+    "stage_log_sha256": "f60bab642351c699d187f9d518a302948b74a54b06e71274b49f6ac214d0b65c",
+    "durable_rc": 1,
+    "cleanup_rc": 0
+  },
+  "root_cause": "Capacity original memory configuration setup returned on healthy old Pods before asynchronous Operator template rollout. Prometheus started at 03:48:51Z with frozen member IP targets, but all data Pods restarted after fixture creation (primary Ready-to-accept at 03:49:20Z); no stale policies and replication healthy at failure. Initial scraper never reached three current exporters; cached pre-rollout port-forward also blocked key cleanup.",
+  "fix": "Capacity product setup additionally verifies requested memory value in exact StatefulSet template, observed generation, completed current/update revision and three ready/updated replicas, each owned member revision/env and actual CONFIG GET maxmemory. Original restoration requires this boundary before scoped clean; new required restoration marker. No production or observability workaround changes.",
+  "smallest_disproof": "python -m unittest tests.unit.test_redis_capacity_gate.RedisCapacityTests.test_memory_restore_requires_target_template_rollout_and_actual_runtime -v; fixed --redis-capacity then --redis-observability",
+  "contract_before_sha256": "93cec0fa094ba7195abeb316301f4597271acc0dc3da6c31333ea5f8e05672be",
+  "contract_after_sha256": "a4305070bf5a2c71334b641fa0e77b845baf30daeab9f89b35b07b4723ff47df",
+  "static_evidence": "tests/evidence/redis-capacity-boundary-static-20261013.json",
+  "live_result": "pass",
+  "official": [
+    {
+      "url": "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/k8sutils/statefulset.go",
+      "sha256": "b586e32fd9d68664fc3b91f69ba9f6a130293d2fe1c3681b6baa15497b10df58"
+    },
+    {
+      "url": "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/",
+      "sha256": "2b33d40a93dd1ca39e0a50198a2b52707d76a02b9b8ece817b9cb4ae7636e1fc"
+    }
+  ],
+  "dependency_impact": "Changed capacity convergence boundary and its marker. REDIS-18 and immediate dependent REDIS-19 pending. Cluster rebalance only uses unchanged capacity.growth_target; its prior qualification retained. Other collector modules have no new marker requirement. Final full run binds current hashes.",
+  "cleanup": "Full failure stopped at observability; runner completed exact Redis/PV/CSI/core cleanup rc=0 and final LAB_CLEAN_VERIFY_PASS. Fresh scoped baseline rebuild is runner-owned.",
+  "live_evidence": [
+    {
+      "path": "tests/evidence/redis-capacity-20261013-121825.json",
+      "sha256": "feaa2588f30edeaf2341124a25df6a993fddf227f7be1bcfd1953beb70871040"
+    },
+    {
+      "path": "tests/evidence/redis-observability-20261013-122434.json",
+      "sha256": "e329c9f0ac6d0795a6ede2aef2616df8823dc4e4e0a47246d7eb6a51a549c9fc"
+    }
+  ]
+}

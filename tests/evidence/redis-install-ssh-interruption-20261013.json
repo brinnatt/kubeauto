@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "classification": "environment: transient SSH close on missing worker 133",
+  "first_failure_log_sha256": "bed7c4f08fca2242cce78570e1759eedc47dbb153f2a69a0484293157caa791b",
+  "failure": "Ansible stat /usr/local/bin/nerdctl on 133 lost shared SSH connection; only worker 133 failed, Redis/CSI not installed. Five-node core healthy.",
+  "recovery": "Existing fixed --redis-install-repair verified exact five-node/no-foreign baseline, key access and native Python imports; resumed only missing worker through product setup 01/03/05/06, then CSI and Redis normal installation.",
+  "recovery_log_sha256": "41fb65c3b2a4a08fef4ffec69b2ba9de972850ed59fa8738b6ca0b55ccc5de8e",
+  "recovery_rc": 0,
+  "product_changes": "none",
+  "cleanup": "Install owned client removed; healthy leased baseline retained and verified by subsequent capacity/observability module gates; final full runner will clean before/after its clean installation."
+}

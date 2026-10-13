@@ -414,6 +414,57 @@ kafka_drain_cleaner_ca_valid_days: 3650
 kafka_drain_cleaner_cert_valid_days: 825
 kafka_drain_cleaner_cert_renew_before_days: 30
 
+# Redis is an independent, opt-in middleware branch managed by the OpsTree
+# Redis Operator. Sentinel is the default high-availability mode; Cluster is
+# selected explicitly when sharding is required. Secrets and TLS material are
+# referenced by name and are never written to this file.
+redis_install: "no"
+redis_operator_ver: "__redis_operator__"
+redis_operator_image_ver: "__redis_operator_image__"
+redis_crd_upgrade_requested: false              # 显式更新已有 CRD；拒绝外部/共享消费者并先保存 schema 备份
+redis_ver: "__redis__"
+redis_cluster_image_ver: "__redis_cluster_image__" # Cluster ASM 状态修订；Sentinel 继续使用 redis_ver
+redis_exporter_ver: "__redis_exporter__"
+redis_mode: "sentinel"
+redis_namespace: "redis"
+redis_operator_namespace: "redis-operator"
+redis_name: "redis-prod"
+redis_storage_class: ""
+redis_pvc_size: "20Gi"
+redis_sentinel_replicas: 3
+redis_replication_replicas: 3
+redis_cluster_shards: 3
+redis_cluster_replicas: 2
+redis_operator_replicas: 2
+redis_topology_key: "kubernetes.io/hostname"
+redis_password_secret: ""
+redis_password_secret_key: "password"
+redis_tls_secret: ""
+redis_acl_secret: ""
+redis_exporter_enabled: true
+redis_exporter_cpu_request: "100m"
+redis_exporter_memory_request: "128Mi"
+redis_cpu_request: "500m"
+redis_memory_request: "1Gi"
+redis_cpu_limit: "2"
+redis_memory_limit: "2Gi"
+redis_maxmemory_percent: 70
+redis_min_replicas_to_write: 1
+redis_min_replicas_max_lag: 10
+redis_appendfsync: "everysec"
+# Reserved for the future independent backup branch; automatic backup is not
+# implemented in this Redis delivery and must remain disabled.
+redis_backup_enabled: false
+redis_backup_schedule: "0 2 * * *"
+redis_backup_s3_secret: ""
+redis_backup_bucket: ""
+redis_backup_endpoint: ""
+redis_backup_retention_days: 7
+# Explicit one-shot export; directory must be new and owned by this request.
+# Export does not mean independently restored/offsite backup acceptance.
+redis_snapshot_requested: false
+redis_snapshot_directory: ""
+
 
 # Ceph is an independent cephadm-managed storage cluster. It does not run as a
 # Kubernetes addon and remains inert until explicitly enabled. OSD devices are

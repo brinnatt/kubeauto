@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "classification": "upstream Redis ASM cluster-state cache defect",
+  "acceptance": "Current product 3->4->3 rebalance PASS; complete GA sign-off still pending full clean regression",
+  "affected_cases": [
+    "REDIS-12",
+    "REDIS-13",
+    "REDIS-14",
+    "REDIS-15",
+    "REDIS-21",
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "entry": "config.yml + kubecli setup redis-cluster-gate 07 --tags redis",
+  "first_failure": {
+    "durable_status": "state=exited pid=1937616 rc=1 bytes=320821 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "107672fd78b839b476cf87e0b64f7b8debe6bff4e89f27643665bc2f9d9fc10c",
+    "diagnostics_sha256": "f9e306538cf0569fc9e0f45075d3c6571ca67cdbe711a7b47657d31edba306e5",
+    "observed": "4 primary slot owners, 8 exact replicas, 16384 assigned/OK slots; target leader-3 cluster_size=3 while other primaries report 4; product convergence health timed out"
+  },
+  "official": [
+    "https://github.com/redis/redis/blob/8.10.2/src/redis-cli.c",
+    "https://github.com/redis/redis/blob/8.10.2/src/cluster_legacy.c",
+    "https://github.com/redis/redis/blob/8.10.2/src/cluster_asm.c"
+  ],
+  "root_cause": "ASM_EVENT_TAKEOVER changes local slot ownership but schedules only CLUSTER_TODO_BROADCAST_PONG, omitting CLUSTER_TODO_UPDATE_STATE. clusterUpdateState recomputes cluster size, majority safety and failover quorum. Redis CLI automatically uses ASM for all compatible nodes. Traditional SETSLOT schedules UPDATE_STATE.",
+  "official_source_sha256": {
+    "redis-cli.c": "b4702d325898c236afca9646a6c74fce450650423558a67c602cab53098e2520",
+    "cluster_legacy.c": "772f2dca1fbb8f555a5be89b80caab273b20d2470b9b0147e6c38f5c89aff8ff",
+    "cluster_asm.c": "53c9ca72c7405ead1a6c0b56f84a387c8cf355a407d09f0adb1a189de7d0b153"
+  },
+  "upstream_checked": "Latest stable release 8.10.2; current unstable ASM takeover also omits UPDATE_STATE",
+  "failure_recovery": {
+    "markers": [
+      "REDIS_CLUSTER_RESIZE_ROLLBACK_PASS shards=3 data=verified",
+      "REDIS_CLUSTER_FUNCTIONS_CLEAN_PASS uuid-library=absent",
+      "REDIS_CLUSTER_KEYS_CLEAN_PASS uuid-keys=absent topology=healthy"
+    ],
+    "result": "Product reverted to 3 primary/6 replica baseline; retained values checked before key deletion; fault journal removed by runner before rollback success marker. Owned retained scale PVCs reserved for final cleanup."
+  },
+  "smallest_disproof": "Fixed build ASM target cache regression; then fixed --redis-cluster-rebalance through config+kubecli, exact size/graph/slots/data/Functions/absolute TTL/write barrier/PVC identity; unchanged health assertions",
+  "proposed_fix": "Independent 8.10.2-kubeauto.1 Redis image; add UPDATE_STATE to ASM_EVENT_TAKEOVER before sleep flags; original runtime/tag preserved; no Operator or test health workaround",
+  "first_artifact_gate": {
+    "run": 38311688490,
+    "head": "de0cd34e810ca17797bbccf8d9335bd9f6a5d451",
+    "conclusion": "failure",
+    "archive_sha256": "71f8edb94ba26def05502c8d9209be59c0b00c45f738e8812d0664f35aa9580a",
+    "classification": "artifact fixture prerequisite failure; cause pending actual CLUSTER INFO/NODES diagnostics",
+    "first_failure": "Unpatched four-node fixture baseline timed out before ASM command or source backport was applied",
+    "recovery": "Build-owned Redis processes terminated by ExitStack, temporary directory removed; no formal image published, no Redis lab runtime changes",
+    "next_boundary": "Run original published image baseline before compilation; inspect four actual views before changing the fixture assumption"
+  },
+  "artifact_fixture_root_cause": {
+    "run": 38312843498,
+    "head": "750598eabf6f17438ca06ee52f78d56fa52c3ca5",
+    "archive_sha256": "6c0fef3be7d1f8166c2c27ce091e4c9932bb4256fac2fbdd93f0eb2a4050e928",
+    "classification": "test-gate CLI output contract",
+    "official_source": "https://github.com/redis/redis/blob/8.10.2/src/redis-cli.c",
+    "cause": "cliSendCommand marks CLUSTER INFO/NODES output_raw=1; cliFormatReply verbatim takes precedence over --json. Build control parsed raw text as JSON; wait masked ValueError and diagnostics then failed with JSONDecodeError. Original cluster startup logs show all four nodes reached OK.",
+    "fix": "Explicit --raw for INFO/NODES; JSON only for other commands; parser errors no longer treated as transient waits; exact mocked output and early-failure regressions added",
+    "contract": "37/37 artifact tests and 131 catalog entries PASS after correcting a numeric clock mock; server backport unchanged; original rejected runs published no formal image",
+    "contract_sha256": "962e20db5c538367c7639859e775b2b9f33f83b695b811380faea9a3e16ff599"
+  },
+  "arm64_build_first_failure": {
+    "run_id": 38313470370,
+    "head": "e583f5e9760c9f621e62aaa5449ecdebfdd5a989",
+    "artifact_sha256": "sha256:f113ba7fa6d4c8ff10c77ad9dfb8dfb3a619ec89d92052a6b98d70284e266dd4",
+    "classification": "build test environment: QEMU ARM64 fork/smaps probe",
+    "first_failure": "Original Redis binary exited before ASM fixture creation due to ARM64-COW-BUG probe; AMD64 published-original negative control passed",
+    "official_sources": {
+      "server": "sha256:ecdf2e32f3ff9a92214d068ead2a8a3fab3c7c5a875be775a84fabb03d8986e5",
+      "syscheck": "sha256:450ce7345919f080c0fd761637fd9eb919a5b202f20bb54ca8554070bd1ee457"
+    },
+    "fix_boundary": "Only build-owned ARM64 Redis processes receive upstream ignore-warnings ARM64-COW-BUG; no final-stage environment or production config override",
+    "contracts": "38/38 ext image tests PASS; catalog 131/131 PASS",
+    "cancelled_redundant_run": 38313562133
+  },
+  "build_port_first_failure": {
+    "run_id": 38314480959,
+    "head": "d032f18e6c6c92bb68d9fd3f86100a19da110420",
+    "artifact_sha256": "sha256:ff7e82725c683451f1aa519ee7947fd65d06a54a55375f07c50d26ccb738f925",
+    "classification": "Redis build test-gate shared fixed-port/readiness defect",
+    "first_failure": "Four ARM64-owned children exited with Address already in use, but PING accepted an existing fixture listener; cluster create then failed",
+    "fix": "RUN --network=none confines build fixtures to independent loopback namespaces; readiness rejects an exited owned process before contacting any socket",
+    "official_source": "https://docs.docker.com/reference/dockerfile/#run---networknone",
+    "source_sha256": "b8027b9e33d2e033446574d1f84e2ccbc011936e823331158bb0b403acade7ae",
+    "contracts": "39/39 image tests PASS; catalog 131/131 PASS",
+    "live_scope": "One image; AMD64/ARM64 controls required; no experimental cluster mutation"
+  },
+  "module_inventory_first_failure": {
+    "run_id": 38315720767,
+    "head": "ce6f27f237eb6fe34c9e1970dd7ed8063eb9be4b",
+    "artifact_sha256": "8c6fd0c587c9252e46c1d22af8a7de62f3a37c7d4c9a290d52d63052125f655c",
+    "classification": "build test-gate: four shared libraries versus five registered modules",
+    "observed": "Both architectures published-original ASM negative controls passed; AMD64 compiled-original negative control and patched positive control passed. Runtime smoke count assertion rejected built-in vectorset.",
+    "proof": "Original pinned image RESP3 five records, four .so paths plus vectorset path empty; fixed runner runtime-modules-20261013-063718 durable rc=0 and scoped-clean",
+    "official": "https://github.com/redis/redis/blob/8.10.2/src/module.c#L13450",
+    "fix": "Exact identity/version/path/args inventory including built-in vectorset; no weakening of ASM or runtime health assertions"
+  },
+  "artifact_acceptance": {
+    "run_id": 38317877300,
+    "head": "46a21a8e94867080f7d764c9ab317e8d74d67c6e",
+    "conclusion": "success",
+    "evidence": "tests/evidence/redis-state-refresh-images-20261013.json",
+    "original_negative_controls": 2,
+    "compiled_negative_controls": 2,
+    "patched_positive_controls": 2,
+    "runtime_modules_json_tls_controls": 2,
+    "cleanup_markers": 8,
+    "current_talkedu_readback": "pass",
+    "live_cluster_acceptance": "pass"
+  },
+  "live_evidence": "tests/evidence/redis-cluster-rebalance-20261013-084055.json",
+  "live_result": "pass",
+  "live_proof": "Twelve-member expansion with exact per-member state/size/slot/replica budget, Functions, retained values and absolute expiry; nine-member scale-in retains original PVC UIDs; scoped-clean and durable rc=0. Health assertions unchanged."
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "classification": "Redis product CRD printer contract defect",
+  "acceptance": "Fixed product CRD path PASS; REDIS-22 remains pending actual version migration and rollback",
+  "owning_case": "REDIS-22",
+  "first_failure": "kubectl multi-document JSON output was parsed as one JSON root; Extra data at second CRD",
+  "official_source": "https://github.com/kubernetes/cli-runtime/blob/v0.33.6/pkg/printers/json.go",
+  "official_source_sha256": "4cbdb0a5703ae02e74d6b73edaf8782b7a95c256df267ac71f249d378c728955",
+  "durable_status": "state=exited pid=1980102 rc=1 bytes=250812 pass_markers=0 failure_markers=0 latest=",
+  "log_sha256": "f194182a6d57cdc620d474664cda656044ff1bd0a32f7e3bfae74f711ffe37c5",
+  "recovery": "No CRD server dry-run/apply or schema backup reached; product input restored, fault journal removed after healthy topology and UUID key cleanup; shared baseline retained",
+  "fix": "Decode entire kubectl JSON object stream, then require exactly four official CRDs; apply the same contract to client dry-run, server dry-run and real apply",
+  "smallest_disproof": "Focused mixed List/multiple-object/partial/junk parser tests; then --redis-crd-upgrade product entry only",
+  "fixed_gate": {
+    "directory": "logs/redis-cases/crd-upgrade-20261013-055503",
+    "durable_status": "state=exited pid=1982683 rc=0 bytes=4850 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "5fbd687d5ab97f27fe6d01930c552cd1b39722b6a4efdfe308aa2f21c5f67c30",
+    "markers": [
+      "REDIS_CRD_PRODUCT_UPGRADE_PASS entry=config+kubecli data-and-pvc=retained acceptance=partial-no-version-migration",
+      "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=crd-upgrade product-schema-backups=retained",
+      "REDIS_FOCUSED_MODULE_PASS module=crd-upgrade",
+      "REDIS_GATE_EXIT rc=0"
+    ],
+    "entry": "config.yml redis_crd_upgrade_requested=true plus kubecli setup redis-gate 07 --tags redis",
+    "cleanup": "Request reset to false; UUID keys/fault journal absent; product schema backup retained"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-11"
+  ],
+  "acceptance": "complete focused maintenance qualification",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "modules": [
+    {
+      "evidence": "tests/evidence/redis-maintenance-rolling-20261013-064152.json",
+      "sha256": "85a5083134e0a7374457b45d4a6efa748c92eb4b1e4657b36d669d5e992f696a",
+      "module": "maintenance-rolling",
+      "dependency_impact": {
+        "roles/cluster-addon/templates/redis/config.yaml.j2": "Explicit appendfilename matches unchanged effective lowercase current agent value; proved by current upgrade, password/TLS and idempotence gates.",
+        "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "Only legacy 0.26 feature default removal; current 0.27 real Chart render unchanged.",
+        "roles/cluster-addon/files/redis-health.py": "Current REDISCLI_AUTH priority unchanged; only missing/empty current fallback to legacy auth added.",
+        "roles/cluster-addon/files/redis-snapshot.py": "Legacy auth fallback and revised Cluster image validation; Sentinel maintenance does not execute snapshot.",
+        "tests/helpers/redis-focused-gate.sh": "New upgrade/snapshot dispatch; maintenance path unchanged except scoped repair dispatch documented in cleanup-order defect.",
+        "tests/helpers/redis-maintenance-gate.py": "Only spare restoration and explicit repair changed; rolling has no spare and restoration is a no-op. Verified current complete drain and exact deterministic contracts; see cleanup-order defect."
+      }
+    },
+    {
+      "evidence": "tests/evidence/redis-maintenance-drain-20261013-070754.json",
+      "sha256": "5f2cc6cc1bced6807a89ad75b3ede8d79131eb6ea4067610dd0fcfddeec274ac",
+      "module": "maintenance-drain",
+      "dependency_impact": {
+        "roles/cluster-addon/templates/redis/config.yaml.j2": "Explicit appendfilename matches unchanged effective lowercase current agent value; proved by current upgrade, password/TLS and idempotence gates.",
+        "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "Only legacy 0.26 feature default removal; current 0.27 real Chart render unchanged.",
+        "roles/cluster-addon/files/redis-health.py": "Current REDISCLI_AUTH priority unchanged; only missing/empty current fallback to legacy auth added.",
+        "roles/cluster-addon/files/redis-snapshot.py": "Legacy auth fallback and revised Cluster image validation; Sentinel maintenance does not execute snapshot.",
+        "tests/helpers/redis-focused-gate.sh": "New upgrade/snapshot dispatch; maintenance path unchanged except scoped repair dispatch documented in cleanup-order defect."
+      }
+    },
+    {
+      "evidence": "tests/evidence/redis-password-rotation-20261013-081217.json",
+      "sha256": "f11fe2a831947d636d037075f06b3a43b0bc4fa3a7cca51dbbedfc5b97c94d1b",
+      "module": "password-rotation",
+      "dependency_impact": {}
+    },
+    {
+      "evidence": "tests/evidence/redis-tls-rotation-20261013-081343.json",
+      "sha256": "bd694bf6d86b4befaba5fe54232252c01b065d4e0a7964bc5fc832d16a9b7c67",
+      "module": "tls-rotation",
+      "dependency_impact": {}
+    },
+    {
+      "evidence": "tests/evidence/redis-idempotence-20261013-081843.json",
+      "sha256": "28170fa7b870985b81ad12129f7abae7505043e6d2c4721b475ec7ef708416b0",
+      "module": "idempotence",
+      "dependency_impact": {}
+    }
+  ],
+  "markers": [
+    "REDIS_ROLLING_MAINTENANCE_PASS",
+    "REDIS_NODE_DRAIN_PASS",
+    "REDIS_PASSWORD_ROTATION_PASS",
+    "REDIS_TLS_ROTATION_PASS",
+    "REDIS_IDEMPOTENCE_PASS"
+  ],
+  "cleanup_scope": "Each owning module scoped cleanup verified; healthy runner-owned baseline retained. Final clean full run remains mandatory."
+}

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "classification": "Redis evidence collector Ansible stdout JSON representation defect",
+  "affected_cases": [
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "first_failure": {
+    "product_durable_status": "state=exited pid=2258906 rc=0 bytes=4702 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "9d59c31855b2d91e131a0c585837afa7df650eac99f508530191bbeb28d0e4e5",
+    "observed": "Product CRD marker inside Ansible stdout_lines JSON string; business, data/PVC and scoped cleanup complete; collector rejected raw-line-only marker recognition."
+  },
+  "fix": "Decode only complete single-line JSON strings beginning REDIS_; exact marker token, durable state and failure-marker rejection retained. Product unchanged.",
+  "contract": "Real output regression fails before fix; six evidence/full-evidence contracts pass after fix; frozen original live log passes same verifier.",
+  "smallest_disproof": "--redis-crd-upgrade",
+  "live_result": "pass",
+  "evidence": "tests/evidence/redis-crd-upgrade-20261013-092624.json",
+  "official": "https://docs.ansible.com/ansible-core/2.16/collections/ansible/builtin/command_module.html#return-values",
+  "live_evidence": "tests/evidence/redis-crd-upgrade-20261013-092958.json"
+}

@@ -75,6 +75,10 @@
 - import_tasks: kafka.yml
   when: 'kafka_install == "yes"'
 
+- import_tasks: redis.yml
+  when: 'redis_install | default("no") | string | lower == "yes"'
+  tags: [redis]
+
 - import_tasks: logging.yml
   when: 'logging_install | default("no") | string | lower == "yes"'
 

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-01",
+    "REDIS-02",
+    "REDIS-03"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --redis-static-only",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "static_tests": 82,
+  "markers": [
+    "REDIS_STAGE_BEGIN stage=static-syntax",
+    "REDIS_MATRIX_VALIDATION_PASS path=tests/redis-test-matrix.yaml",
+    "REDIS_STAGE_BEGIN stage=static-contracts",
+    "REDIS_STAGE_BEGIN stage=official-chart-render",
+    "REDIS_HELM_RENDER_PASS resources=4",
+    "REDIS_STORAGE_HELM_RENDER_PASS resources=44",
+    "REDIS_STAGE_BEGIN stage=ansible-entry-contract",
+    "REDIS_ISOLATED_TASKS_PASS count=16",
+    "REDIS_DISABLED_CHECK_PASS changed=0",
+    "REDIS_STATIC_GATE_PASS"
+  ],
+  "log_sha256": "a7e7047182fc55856534e6aecf470cc70c66454ba9fb5ec434b356bd4becc6b9",
+  "dependencies": {
+    "tests/helpers/redis-static.sh": "578b8ddf95eec67e40d159e7bb725da230a56e6ac41ea09ce5e25a341b208eb0",
+    "tests/unit/test_redis_delivery.py": "2b55a4416eeb5eff4e826b08d5310807203c8381595ccfc163a8f042263b1b53",
+    "tests/unit/test_redis_focused_gate.py": "b72566c039485ce49385f19911d4ff2e93375e2ce9a475db5282ed6a3bab26d9",
+    "tests/unit/test_six_repo_version_sync.py": "432cd127a220e7fed734c46ae2ee2b9bf2c639dd897e465421865e71fbcc215e",
+    "roles/cluster-addon/tasks/redis.yml": "2c1fdeaed946b5454995f6d09711454fe6266e53f34b68e8b3f9daf204ae9291",
+    "roles/cluster-addon/tasks/main.yml": "a5deca94856706aa7b099d3a1a3d74ebf58ab75d2c34f8ec377406c5191e17a2",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "e1daba0f62a85fccbb69e8e37300a8efd1336ed2147153120137a084263e2d68",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "conf/config.yml": "577a6595bf2062f89cbaa6cfb2fbef0cd78a28382a973448ba1e2b25b55da8bc",
+    "common/constants.py": "5316b7c5f7fa50d3802dc3e7d65258091c690784d25dbfb8e4e00b4fde83dff3"
+  },
+  "fixtures": "Temporary render/cache directory removed by EXIT trap; no SSH, source sync, registry pull or live lab mutation",
+  "catalog": "IMAGE_CATALOG_VALIDATION_PASS rows=129 dockerfiles=129"
+}

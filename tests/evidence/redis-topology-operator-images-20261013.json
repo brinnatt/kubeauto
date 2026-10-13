@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "scope": "Pinned Redis Operator cross-domain replica admission revision; existing original and kubeauto.1 tags preserved",
+  "workflow_conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "head": "bb433e287dc1a1e6f0de6ad70d143710981b12dd",
+  "run_id": 38353113783,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/38353113783",
+  "artifact_sha256": {
+    "release-evidence-0-1.zip": "sha256:63222972b8a952ee66b4ca9fbdd57f23aaebc6a5f43843b069e3a6c54c340f63",
+    "image-plan.zip": "sha256:8dd81feef3b3c0a03066ceb3684085953bd409e6b5946451888e05d4e8a1b2a9",
+    "plan-evidence-1.zip": "sha256:489ab18608372b2fa7644eb7482e4a642f71b2c4431ad3820f0a563d28d52b52"
+  },
+  "images": [
+    {
+      "digest": "sha256:e1cd50afdd7133f619b8f49058d15c98147533d89091e2bf9615b316411e2417",
+      "fingerprint": "ed352ffb93266ecbae2f342fc4f022f73b0011977535232c4bdcd408451681e3",
+      "head": "bb433e287dc1a1e6f0de6ad70d143710981b12dd",
+      "key": "brinnatt/redis-operator:0.27.0-kubeauto.2",
+      "platforms": {
+        "linux/amd64": "sha256:722d57ba838599a8ab497eaad53663ebc4f810e807bc7602e7c500c889fbb319",
+        "linux/arm64": "sha256:c84c8e916036cbe90039430011ce531e866c5b308dbdd8319da6d866143caee7"
+      },
+      "schema": 1,
+      "source_digest": "sha256:25799bf10231167ee1cb76a21cc7b1890ed521cbdb6d1724a912ee07b02fd958",
+      "source_ref": "quay.io/opstree/redis-operator:v0.27.0",
+      "dockerhub_ref": "brinnatt/redis-operator:0.27.0-kubeauto.2",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis-operator:0.27.0-kubeauto.2"
+    }
+  ],
+  "fingerprint_verification": "Canonical Git blobs and index modes match the Actions frozen source/context fingerprint; exactly one image selected.",
+  "delivery_source_readback": {
+    "checked_at": "2026-10-13T05:58:43.160783+00:00",
+    "control_host": "192.168.47.130",
+    "entry_point": "bash tests/run_enterprise_regression.sh --redis-protected-artifacts",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "ae463d4658d81c2ce7cb7ab44f52f58f25671998f50d4525940ff3cc4f394a05",
+    "gate_sha256": "cce740a471c803f73295dd3b66a372e24378643d93f6ff6d2c3fae66c816a772"
+  }
+}

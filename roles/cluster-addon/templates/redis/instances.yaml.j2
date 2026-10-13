@@ -1,0 +1,290 @@
+{% set runtime_version = redis_cluster_image_ver if redis_mode == 'cluster' else redis_ver %}
+{% set image = 'registry.talkschool.cn:5000/brinnatt/redis:' ~ runtime_version %}
+{% set exporter = 'registry.talkschool.cn:5000/brinnatt/redis-exporter:' ~ redis_exporter_ver %}
+{% set dynamic = [
+  'appendfsync ' ~ redis_appendfsync,
+  'min-replicas-to-write ' ~ (redis_min_replicas_to_write | int),
+  'min-replicas-max-lag ' ~ (redis_min_replicas_max_lag | int),
+  'cluster-require-full-coverage yes'
+] %}
+{% if redis_mode == 'cluster' %}
+{% set dynamic = dynamic + ['cluster-migration-barrier ' ~ (redis_cluster_replicas | int)] %}
+{% endif %}
+{% if redis_mode == 'sentinel' %}
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisReplication
+metadata:
+  name: {{ redis_name }}
+  annotations:
+    kubeauto.io/sentinel-addressing: pod-dns
+  labels:
+    kubeauto.io/managed-by: kubeauto
+    kubeauto.io/component: redis
+    kubeauto.io/mode: sentinel
+spec:
+  clusterSize: {{ redis_replication_replicas | int }}
+  pdb: {enabled: true, minAvailable: 2}
+  podSecurityContext:
+    runAsUser: 999
+    fsGroup: 999
+  kubernetesConfig:
+    image: {{ image }}
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests: {cpu: {{ redis_cpu_request | quote }}, memory: {{ redis_memory_request | quote }}}
+      limits: {cpu: {{ redis_cpu_limit | quote }}, memory: {{ redis_memory_limit | quote }}}
+{% if redis_password_secret | length > 0 %}
+    redisSecret:
+      name: {{ redis_password_secret }}
+      key: {{ redis_password_secret_key }}
+{% endif %}
+  redisConfig:
+    additionalRedisConfig: {{ redis_name }}-config
+{% if redis_maxmemory_percent | int > 0 %}
+    maxMemoryPercentOfLimit: {{ redis_maxmemory_percent | int }}
+{% endif %}
+    dynamicConfig:
+{% for line in dynamic %}
+      - {{ line | quote }}
+{% endfor %}
+{% if redis_tls_secret | length > 0 %}
+  TLS:
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+    secret:
+      secretName: {{ redis_tls_secret }}
+{% endif %}
+{% if redis_acl_secret | length > 0 %}
+  acl:
+    secret:
+      secretName: {{ redis_acl_secret }}
+      items:
+        - key: user.acl
+          path: user.acl
+{% endif %}
+  redisExporter:
+    enabled: {{ redis_exporter_enabled | bool | lower }}
+    image: {{ exporter }}
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+        value: "false"
+    resources:
+      requests: {cpu: {{ redis_exporter_cpu_request | quote }}, memory: {{ redis_exporter_memory_request | quote }}}
+  storage:
+    keepAfterDelete: true
+    volumeClaimTemplate:
+      spec:
+        storageClassName: {{ redis_storage_class }}
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: {{ redis_pvc_size }}}
+  topologySpreadConstraints:
+    - maxSkew: 1
+      minDomains: 3
+      topologyKey: {{ redis_topology_key }}
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          kubeauto.io/component: redis
+          kubeauto.io/mode: sentinel
+          role: replication
+---
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisSentinel
+metadata:
+  name: {{ redis_name }}-sentinel
+  labels:
+    kubeauto.io/managed-by: kubeauto
+    kubeauto.io/component: redis
+    kubeauto.io/mode: sentinel
+    kubeauto.io/resource: sentinel
+spec:
+  clusterSize: {{ redis_sentinel_replicas | int }}
+  pdb: {enabled: true, minAvailable: 2}
+  podSecurityContext:
+    runAsUser: 999
+    fsGroup: 999
+  redisSentinelConfig:
+    additionalSentinelConfig: {{ redis_name }}-config
+    redisReplicationName: {{ redis_name }}
+    masterGroupName: mymaster
+    quorum: '2'
+    downAfterMilliseconds: '5000'
+    failoverTimeout: '60000'
+    # Stable Pod DNS survives rescheduling; Pod IPs do not.
+    resolveHostnames: 'yes'
+    announceHostnames: 'yes'
+{% if redis_password_secret | length > 0 %}
+    redisReplicationPassword:
+      secretKeyRef:
+        name: {{ redis_password_secret }}
+        key: {{ redis_password_secret_key }}
+{% endif %}
+  kubernetesConfig:
+    image: {{ image }}
+    imagePullPolicy: IfNotPresent
+{% if redis_password_secret | length > 0 %}
+    redisSecret:
+      name: {{ redis_password_secret }}
+      key: {{ redis_password_secret_key }}
+{% endif %}
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+  redisExporter:
+    enabled: {{ redis_exporter_enabled | bool | lower }}
+    image: {{ exporter }}
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+        value: "false"
+    resources:
+      requests: {cpu: {{ redis_exporter_cpu_request | quote }}, memory: {{ redis_exporter_memory_request | quote }}}
+{% if redis_tls_secret | length > 0 %}
+  TLS:
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+    secret:
+      secretName: {{ redis_tls_secret }}
+{% endif %}
+  topologySpreadConstraints:
+    - maxSkew: 1
+      minDomains: 3
+      topologyKey: {{ redis_topology_key }}
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          kubeauto.io/component: redis
+          kubeauto.io/mode: sentinel
+          role: sentinel
+{% else %}
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisCluster
+metadata:
+  name: {{ redis_name }}
+  annotations:
+    kubeauto.io/protected-cluster-lifecycle: v1
+  labels:
+    kubeauto.io/managed-by: kubeauto
+    kubeauto.io/component: redis
+    kubeauto.io/mode: cluster
+spec:
+  clusterSize: {{ redis_cluster_shards | int }}
+  clusterVersion: v8
+  persistenceEnabled: true
+  podSecurityContext:
+    runAsUser: 999
+    fsGroup: 999
+  kubernetesConfig:
+    image: {{ image }}
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests: {cpu: {{ redis_cpu_request | quote }}, memory: {{ redis_memory_request | quote }}}
+      limits: {cpu: {{ redis_cpu_limit | quote }}, memory: {{ redis_memory_limit | quote }}}
+{% if redis_password_secret | length > 0 %}
+    redisSecret:
+      name: {{ redis_password_secret }}
+      key: {{ redis_password_secret_key }}
+{% endif %}
+  redisConfig:
+    additionalRedisConfig: {{ redis_name }}-config
+{% if redis_maxmemory_percent | int > 0 %}
+    maxMemoryPercentOfLimit: {{ redis_maxmemory_percent | int }}
+{% endif %}
+    dynamicConfig:
+{% for line in dynamic %}
+      - {{ line | quote }}
+{% endfor %}
+{% if redis_tls_secret | length > 0 %}
+  TLS:
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+    secret:
+      secretName: {{ redis_tls_secret }}
+{% endif %}
+{% if redis_acl_secret | length > 0 %}
+  acl:
+    secret:
+      secretName: {{ redis_acl_secret }}
+      items:
+        - key: user.acl
+          path: user.acl
+{% endif %}
+  redisLeader:
+    replicas: {{ redis_cluster_shards | int }}
+    # v0.27.0 mounts startup config from each role, not the root redisConfig.
+    redisConfig:
+      additionalRedisConfig: {{ redis_name }}-config
+    pdb: {enabled: true, minAvailable: {{ (redis_cluster_shards | int) - 1 }}}
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: {{ redis_topology_key }}
+            matchLabelKeys: [apps.kubernetes.io/pod-index]
+            labelSelector:
+              matchLabels:
+                app: {{ redis_name }}-follower
+    topologySpreadConstraints:
+      - maxSkew: 1
+        minDomains: 3
+        nodeTaintsPolicy: Honor
+        topologyKey: {{ redis_topology_key }}
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            kubeauto.io/component: redis
+            kubeauto.io/mode: cluster
+            role: leader
+  redisFollower:
+    replicas: {{ (redis_cluster_shards | int) * (redis_cluster_replicas | int) }}
+    redisConfig:
+      additionalRedisConfig: {{ redis_name }}-config
+    pdb: {enabled: true, maxUnavailable: 1}
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: {{ redis_topology_key }}
+            matchLabelKeys: [apps.kubernetes.io/pod-index]
+            labelSelector:
+              matchLabels:
+                app: {{ redis_name }}-leader
+    topologySpreadConstraints:
+      - maxSkew: 2
+        minDomains: 3
+        nodeTaintsPolicy: Honor
+        topologyKey: {{ redis_topology_key }}
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            kubeauto.io/component: redis
+            kubeauto.io/mode: cluster
+            role: follower
+  redisExporter:
+    enabled: {{ redis_exporter_enabled | bool | lower }}
+    image: {{ exporter }}
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+        value: "false"
+    resources:
+      requests: {cpu: {{ redis_exporter_cpu_request | quote }}, memory: {{ redis_exporter_memory_request | quote }}}
+  storage:
+    keepAfterDelete: true
+    volumeClaimTemplate:
+      spec:
+        storageClassName: {{ redis_storage_class }}
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: {{ redis_pvc_size }}}
+    nodeConfVolume: true
+    nodeConfVolumeClaimTemplate:
+      spec:
+        storageClassName: {{ redis_storage_class }}
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 1Gi}
+{% endif %}

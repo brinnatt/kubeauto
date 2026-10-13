@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "official_index": "https://ot-container-kit.github.io/helm-charts/index.yaml",
+  "release": "https://github.com/OT-CONTAINER-KIT/helm-charts/releases/tag/redis-operator-0.26.0",
+  "asset_id": 521238096,
+  "chart_version": "0.26.0",
+  "operator_version": "0.26.0",
+  "sha256": "75c22256179e2d2e58bb9df23ffff3b69a90db0d7fe1384099bcf220a70c090b",
+  "scope": "Redis upgrade fixture; not the production default"
+}

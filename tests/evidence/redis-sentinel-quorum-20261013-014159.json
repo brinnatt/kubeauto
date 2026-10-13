@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-09"
+  ],
+  "module": "sentinel-quorum",
+  "acceptance": "complete module",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-sentinel-quorum",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_FOCUSED_FAULT_CLEAN_PASS",
+    "REDIS_SENTINEL_QUORUM_PASS majority=lost unsafe-promotion=denied stale-primary-write=denied restored=healthy digest=verified",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=sentinel-quorum",
+    "REDIS_FOCUSED_MODULE_PASS module=sentinel-quorum",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "423efed0f1d85063075d61288145da0a208478c0ac6b4e709624aa80b22bd6ab",
+  "durable_status_sha256": "647242d552a6694d25136e4e996d285f3a8238987a62c91593d9f685bc9cf84c",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "38cb0fbd7b30f75512df1d0499db3b48b9446c9e2cee2ee9b39218d321b461d9",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "eec04a7c496a6505e3faffde24161c0a1fb3a27ca91e6f3b07122c86b497afc0",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "roles/cluster-addon/files/redis-snapshot.py": "d4ef5989ec0786348dda2f79788dbaa5124353fd7054b81dc6bec801dbf528e5",
+    "tests/helpers/redis-focused-gate.py": "369f43d04904392e41f429b024217f6e2ec33027b940d0a13f7e2d244b3fe215",
+    "tests/helpers/redis-focused-gate.sh": "abe4717c2b02a2b36c5da59a0ea83db740596d4014d117e938a39b91b7f1e124"
+  },
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained"
+}

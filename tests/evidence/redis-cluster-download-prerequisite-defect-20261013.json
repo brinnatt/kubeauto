@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "classification": "Redis Cluster test-gate product download prerequisite omission",
+  "affected_cases": [
+    "REDIS-12",
+    "REDIS-24"
+  ],
+  "product_entry": "kubecli download -E redis, then config.yml + kubecli setup redis-cluster-gate 07 --tags redis",
+  "first_failure": {
+    "durable_status": "state=lost pid=2180824 rc=missing bytes=273676 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "0e525759e2b473818c3c59fd06c3db8f46c2d62af061d2fd3722e81c277fa816",
+    "readonly_diagnostics_sha256": "10359213cef5a9f0975c6cec8cce87c99287ced10b609fc8c7e2e12664a88ca5",
+    "observed": "Published revised image absent from internal registry; first leader image pull returns NotFound. Operator init and exporter images present. Canceled invalid wait after preserving diagnostics; no delivery exit accepted."
+  },
+  "root_cause": "Independent install helper ran setup without the documented preceding product download; read-only dual-registry artifact gate proves publication, not import to customer internal registry. Existing core/registry baseline predates the new image publication.",
+  "fix": "Run product download before any source seed, ownership journal or Cluster fixture mutation. Download failure blocks installation. No production code or images changed.",
+  "smallest_disproof": "python -m unittest tests.unit.test_redis_cluster_gate.RedisClusterTests.test_install_download_failure_blocks_fixture_and_source_mutation; fixed --redis-cluster-install",
+  "static_regression": {
+    "before": "Missing download reaches source mutation; exact contract fails",
+    "after": "14 Cluster contracts and 222 static contracts pass; both Chart renders and default disabled check pass"
+  },
+  "cleanup": "Original failed Cluster objects, private directory and journal removed by automatic recovery; fixed sentinel-repair removed 1 proven owned residual key. Current install validates all fixture boundaries absent before new mutation; successful source retention and scoped-clean verified.",
+  "live_result": "pass",
+  "official": [
+    "https://kubernetes.io/docs/concepts/containers/images/#imagepullbackoff"
+  ],
+  "customer_mainline": "docs/middleware/redis/operations-manual.md section 3.3",
+  "source_recovery": {
+    "durable_status": "state=exited pid=2184834 rc=0 bytes=3969 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "3615e2b521e4207e0ae8e45222f18dcf371c76919e43c8b27830977a8ca760bd",
+    "result": "1 proven UUID-owned key removed; source business healthy; PVC UIDs retained; scoped-clean"
+  },
+  "live_evidence": "tests/evidence/redis-cluster-install-20261013-082706.json",
+  "official_document_sha256": "b0acd13a8bac2fff60b6f6bd9ff4451007785f85702dc67ca4998465615e56dd"
+}

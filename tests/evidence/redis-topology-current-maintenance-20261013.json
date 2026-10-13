@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-11"
+  ],
+  "acceptance": "complete focused maintenance qualification",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "modules": [
+    {
+      "module": "maintenance-rolling",
+      "evidence": "tests/evidence/redis-maintenance-rolling-20261013-143411.json",
+      "sha256": "a3f32db82c0c09c978be1ca874b9ebfcf156fc1a4828b80d10ff3ba92f0ed03f",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    },
+    {
+      "module": "maintenance-drain",
+      "evidence": "tests/evidence/redis-maintenance-drain-20261013-145257.json",
+      "sha256": "ba1292922f3cdbae2b29eff18446837158d4b03887b094e3493e168401e0892a",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    },
+    {
+      "module": "password-rotation",
+      "evidence": "tests/evidence/redis-password-rotation-20261013-153231.json",
+      "sha256": "1a5f3fb40de0f4e6b71c37415c9947fe7ca36d98b845dec49859b3af62fe401e",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    },
+    {
+      "module": "tls-rotation",
+      "evidence": "tests/evidence/redis-tls-rotation-20261013-153417.json",
+      "sha256": "3fb685f8dc621cebc6b4f74c6b8e94b73e4140d4e38ffd15a71b127ad957b810",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    },
+    {
+      "module": "idempotence",
+      "evidence": "tests/evidence/redis-idempotence-20261013-153928.json",
+      "sha256": "d585cc7701aea394296a3e81d7c9479ec6973af4b7ee379c49ec5c0335ff0c76",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    }
+  ],
+  "cleanup_scope": "Every module verified its owned scoped cleanup and healthy runner baseline; final clean full run remains mandatory"
+}

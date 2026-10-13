@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-22"
+  ],
+  "module": "upgrade-sentinel",
+  "acceptance": "partial matrix item",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-upgrade-sentinel",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_UPGRADE_FIXTURE_PASS alias=127.0.0.1:5000/brinnatt/redis-operator:0.26.0 digest=sha256:d7b8e419ba7388c3a227c0f273f71100f894d1d79b7830e175c17bc04ee52830",
+    "REDIS_UPGRADE_FIXTURE_PASS alias=127.0.0.1:5000/brinnatt/redis:8.10.1 digest=sha256:1305abb7689caa17f4ea0809312082599647f793f884b0054749df003667ca41",
+    "REDIS_UPGRADE_LEGACY_BASELINE_PASS product-entry=config+kubecli versions={\"redis_operator_ver\": \"0.26.0\", \"redis_operator_image_ver\": \"0.26.0\", \"redis_ver\": \"8.10.1\"} data-and-pvc=retained",
+    "REDIS_OPERATOR_VERSION_UPGRADE_PASS product-entry=config+kubecli versions={\"redis_operator_ver\": \"0.27.0\", \"redis_operator_image_ver\": \"0.27.0-kubeauto.2\", \"redis_ver\": \"8.10.1\"} data-and-pvc=retained",
+    "REDIS_SERVER_VERSION_UPGRADE_PASS product-entry=config+kubecli versions={\"redis_operator_ver\": \"0.27.0\", \"redis_operator_image_ver\": \"0.27.0-kubeauto.2\", \"redis_ver\": \"8.10.2\"} data-and-pvc=retained",
+    "REDIS_OPERATOR_SUPPORTED_ROLLBACK_PASS product-entry=config+kubecli versions={\"redis_operator_ver\": \"0.26.0\", \"redis_operator_image_ver\": \"0.26.0\", \"redis_ver\": \"8.10.2\"} data-and-pvc=retained",
+    "REDIS_SERVER_SUPPORTED_ROLLBACK_PASS product-entry=config+kubecli versions={\"redis_operator_ver\": \"0.26.0\", \"redis_operator_image_ver\": \"0.26.0\", \"redis_ver\": \"8.10.1\"} data-and-pvc=retained",
+    "REDIS_UPGRADE_FINAL_CURRENT_PASS product-entry=config+kubecli versions={\"redis_operator_ver\": \"0.27.0\", \"redis_operator_image_ver\": \"0.27.0-kubeauto.2\", \"redis_ver\": \"8.10.2\"} data-and-pvc=retained",
+    "REDIS_SENTINEL_VERSION_UPGRADE_PASS operator=0.26.0-to-0.27.0 redis=8.10.1-to-8.10.2 schema=explicit supported-rollback=qualified-pair",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_UPGRADE_SCOPED_CLEAN_PASS requested=false target=current fixture-chart=removed",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=upgrade-sentinel",
+    "REDIS_FOCUSED_MODULE_PASS module=upgrade-sentinel",
+    "REDIS_GATE_EXIT rc=0",
+    "REDIS_CRD_UPGRADE_PASS definitions=4 stored-versions=retained shared-consumers=absent changed=false",
+    "REDIS_CRD_UPGRADE_PASS definitions=4 stored-versions=retained shared-consumers=absent changed=false",
+    "REDIS_CRD_UPGRADE_PASS definitions=4 stored-versions=retained shared-consumers=absent changed=false"
+  ],
+  "log_sha256": "b95023beadbcf6cdee0135eba27cebfd0e876dc1f48b38fd5e4405cd8fac9163",
+  "durable_status_sha256": "7af31f69b4f9fd6a3c45e94b2ab53db46691e651d0e8996ee9f52f7555068be1",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "ad61af86c41322567d87ad22eb69ecb42800274b1d5c26e34c22d57ebe925b49",
+    "common/constants.py": "85fe4df9598a351ccb5133c6cf0a2bae67a830b46ea5e573737c52bfe4a3e83b",
+    "conf/config.yml": "a3376075984a2906952271eded03cde27301b5ee25938ca032d97c68c06ee1c4",
+    "service/cluster/manager.py": "65662dd493caa147b3d4fe616a65c03df0ca1e05ee2832448378c8524cb67cd0",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "19a0410b2d6c1e290c155cdda21f6103eff4972a30ee9cd2ed1422ab6757801b",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "05a0192df7c593a99aee9438689da4ab62bc911c2661d2f79fef073867caa570",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "d6fa019ac68ec75d8b01eb74e214bb1b829250d7091c7b461574cfd0acb72a50",
+    "roles/cluster-addon/files/redis-health.py": "13d63f9a5d58bd67b743dd0468665a4d3910c7e27311937a03414b8f35ca693a",
+    "roles/cluster-addon/files/redis-snapshot.py": "4f269982838e882f0f11b2a719198b07d88da031f2f0dce116c33f60e8d1aeb3",
+    "roles/cluster-addon/files/redis-operator-rbac.py": "4700c5efe25b090efc72d7eafb3f83c0ba78dee59e78801adadf04a3f8156a9a",
+    "roles/cluster-addon/files/redis-operator-rbac.sh": "2ebefe9e4f10fcedf1da1a8d953f523634808ddf64e4749e178592828ce48aa2",
+    "tests/helpers/redis-focused-gate.py": "22715fed676ebaf7996f88d3ed4fbdac973c018515d5f81d672a884559df5b1b",
+    "tests/helpers/redis-focused-gate.sh": "de1e0dc3d380d5fad9bda2706e41de7b355595d340adda191bedcc62c2b7623f",
+    "tests/helpers/redis-upgrade-gate.py": "565c33d2660f1323ee147d16c4d7f0b06b79b5e12d6fb17f7f0d6ad8e3034180",
+    "roles/cluster-addon/files/redis-crd.py": "33849d7a46d7159b1e77ef3cd85960add194af144a0fa588e536453fa4e20e8c"
+  },
+  "launch_source_sha256": "d13e393f6bbc95cfda444b3f84a7a4eec51354ec21b591b2b37547ba0a174df5",
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained"
+}

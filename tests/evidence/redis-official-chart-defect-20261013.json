@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "classification": "Redis artifact packaging defect",
+  "root_cause": "Locally repacked source Chart omitted templates/aggregate-roles.yaml and changed Chart metadata compared with the official release asset. The production package must preserve the complete official artifact.",
+  "official_release": "https://github.com/OT-CONTAINER-KIT/helm-charts/releases/tag/redis-operator-0.27.0",
+  "asset_id": 624041570,
+  "old_sha256": "a4e4bf44cbba894e5b4f09bc34994ddf98445b393175a77b3cd55ac0d34969b2",
+  "official_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f",
+  "fix": "Unmodified upstream release package, official SHA256/provenance, complete archive regression. Explicit rbac.aggregate=false preserves dedicated Operator RBAC and prevents default builtin-role aggregation.",
+  "changed_boundary": "Redis Chart/constants/contracts/docs only; image catalog and other middleware unchanged",
+  "impact": "REDIS-01..03 static rerun; current Cluster product configuration convergence gate; final fresh install and upgrade require this full package. Existing Sentinel data/security/fault evidence kept because underlying Redis/Replication/Sentinel source and manifest fields are unchanged.",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cluster-config",
+  "static_evidence": "tests/evidence/redis-official-chart-static-20261013.json",
+  "unit_log_sha256": "cfdc2eaa1dd5244c9a6fe72965bd0a4fca893069c93b2347ec2f2d57cb79e0e9",
+  "unit_result": "833/833 PASS",
+  "live_acceptance": {
+    "directory": "logs/redis-cases/cluster-config-20261013-050440",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "0995b438eb266b127e00714cea510797e934ffe1d414e91e73c902379405a7a3",
+    "status_sha256": "928780c56e487a01a3a02877c22999518b82db37ba862d8c8d57940ab2ae7d4c",
+    "marker": "REDIS_CLUSTER_STARTUP_CONFIG_PASS; REDIS_FOCUSED_SCOPED_CLEAN_PASS module=cluster-config; REDIS_GATE_EXIT rc=0"
+  }
+}

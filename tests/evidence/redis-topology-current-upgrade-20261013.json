@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-22"
+  ],
+  "acceptance": "complete focused upgrade qualification",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "modules": [
+    {
+      "module": "crd-upgrade",
+      "evidence": "tests/evidence/redis-crd-upgrade-20261013-150116.json",
+      "sha256": "cf4a17ab2c77e46d50ac0d210ae4e107adc8d7a7b47bd0c5dff061a02d40ce7e",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    },
+    {
+      "module": "upgrade-cluster",
+      "evidence": "tests/evidence/redis-upgrade-cluster-20261013-150237.json",
+      "sha256": "3a69eeca0cce53feff33a61423e18797935d32394c2a100b14d5fd63f44f3cf8",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    },
+    {
+      "module": "upgrade-sentinel",
+      "evidence": "tests/evidence/redis-upgrade-sentinel-20261013-154518.json",
+      "sha256": "8d522e2d7534ba81cdaac97ff0837b713ecd866cfaffcc66a1286b80fd239f4e",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    }
+  ],
+  "cleanup_scope": "Every module verified its owned scoped cleanup and healthy runner baseline; final clean full run remains mandatory"
+}

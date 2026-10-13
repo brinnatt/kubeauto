@@ -1,5 +1,56 @@
 # Enterprise regression handbook
 
+## Redis 独立交付分路
+
+Redis 的验收权威为 `redis-test-matrix.yaml`，产品入口是目标部署目录的
+`config.yml` 与 `kubecli setup redis-gate 07 --tags redis`。Cluster 使用独立部署
+目录 `redis-cluster-gate`，保留源 Sentinel 数据边界。不得借用其它中间件或核心
+矩阵的 PASS，也不得用安装 smoke 签收 24 项完整验收。
+
+先执行 `--redis-static-only`，再执行只读 `--redis-artifacts`。镜像必须已经具备
+TalkEdu/Docker Hub 双架构发布证据，现场不能临时发现新的公共镜像源。
+状态、日志、退出码和失败诊断由总运行器的 durable wrapper 管理；聚焦模块
+只复用身份、服务、数据和无故障残留均已核验的 runner 基线。
+
+| 固定入口 | 证据边界 |
+| --- | --- |
+| `--redis-full-clean-verify` | 完整门禁父租约、durable 子阶段与只读清理验证的最窄资格；不安装环境、不执行业务模块、不签收完整回归 |
+| `--redis-cleanup-qualification` | 实际清理 CLI 的正常、外部资源拒绝和真实中断后重入；限定 UUID 命名空间，保留外部 canary，随后回收全部测试材料 |
+| `--redis-platform` | 六节点身份、三个可调度故障域、时钟偏差、Pod 内 DNS，以及独立 CSI PVC 读写/扩容/保留与回收 |
+| `--redis-install-only` | 专属核心/CSI/Redis 安装；保留健康基线，不是完整交付 |
+| `--redis-sentinel-data` / `--redis-sentinel-security` | TLS 业务发现、读写、TTL，以及错误凭据/CA/ACL 拒绝 |
+| `--redis-sentinel-failure` / `--redis-sentinel-quorum` | 单主切换、仲裁拒绝与恢复 |
+| `--redis-maintenance-rolling` / `--redis-maintenance-drain` | 两组 StatefulSet 顺序滚动、PDB 与 Eviction API drain；临时借用已租约 master 134 补齐故障域，恢复 taint/调度、CSI、主机服务和限定数据目录 |
+| `--redis-tls-rotation` / `--redis-password-rotation` / `--redis-idempotence` | 维护项的部分证据，不单独签收整个维护项 |
+| `--redis-persistence` / `--redis-backup` | AOF 部分证据；产品快照与独立 RDB 恢复分别核验 |
+| `--redis-capacity-lag` / `--redis-capacity` | 先最窄复制滞后，再完整内存、磁盘和 PVC 扩容 |
+| `--redis-observability` / `--redis-performance` | 实际抓取/告警与固定负载的业务、延迟和资源证据 |
+| `--redis-stability-faults` / `--redis-stability` | 先限定 Pod、两个 Operator 进程和白名单 worker 真重启；再至少 30 分钟 Sentinel/Cluster 持续业务、持久化与数据/PVC 保留，不以故障准备项代替 soak |
+| `--redis-upgrade-prepare` / `--redis-upgrade-sentinel` | Sentinel-only 固定旧夹具准备，以及 config+kubecli 的 0.26→0.27 CRD/控制器与 8.10.1→8.10.2 滚动升级和限定版本对回退；结束保留当前固定版本 |
+| `--redis-upgrade-cluster` | 固定 3 主 6 副本、受保护控制器下的 8.10.1↔8.10.2 修订镜像滚动迁移；逐成员版本、绝对 TTL、槽位、持久化和 PVC 保留，结束恢复当前镜像 |
+| `--redis-crd-upgrade` | 显式产品请求更新固定官方 Chart 的四项 CRD，拒绝共享消费者并保存 schema 备份，核验 Sentinel/Cluster 数据与 PVC；这是最窄更新路径，不替代实际版本升级/回退验收 |
+| `--redis-cluster-install` / `--redis-cluster-data` | 独立 Cluster、真实复制图、完整槽位、MOVED/ASK/事务边界 |
+| `--redis-cluster-snapshot` | 独立一次性产品请求目录，三主 RDB 的 CRC/SHA256、完整无重叠槽范围及源 PVC 保留；不替代 Cluster 全拓扑灾备恢复 |
+| `--redis-cluster-primary-fault` / `--redis-cluster-failure` | 先主故障夹具，再副本重建、多数派拒写和完整恢复 |
+| `--redis-cluster-rebalance-seed` / `--redis-cluster-rebalance` | 先种子、确认、TTL 与清理，再产品驱动的 3→4→3 |
+| `--redis-cluster-repair` | 限定旧故障测试键恢复，不签收任何故障或扩缩容项 |
+| `--redis-cluster-clean` | 核验身份与故障 journal 后，回收失败的独立 Cluster；可限定恢复尚未注入故障的 stability seed 阶段，保留源 Sentinel 业务、PVC 和共享依赖，不签收安装或完整清理项 |
+| `--redis-cluster-config` | 通过产品入口验证两角色启动配置、真实挂载和有效参数，以及变更后的数据/PVC 保留；不替代完整故障、扩缩与交付验收 |
+| `--redis-cluster-probe` / `--redis-dns-probe` | 只读资源、真实成员与 DNS 诊断，不是业务 PASS |
+
+上述入口都通过 `bash tests/run_enterprise_regression.sh MODE </dev/null` 调用。
+不得直接启动远端 helper，或以临时 SSH/Helm 序列绕过租约、预检和证据采集。
+Sentinel 密码轮换须先于共享认证 Secret 的独立 Cluster 安装；轮换门禁在修改前
+拒绝其它 Redis 声明共享待轮换 Secret。Cluster 使用独立 CA，不能据此假定密码和 ACL 也独立。
+Cluster 进程故障必须从所属白名单节点的宿主 PID namespace 发信号，核验精确
+容器与进程身份以及实际 `T` 状态；容器内 PID 1 信号返回成功不足以证明暂停。
+
+每个新断言先过对应确定性契约，再运行最窄分支；该分支通过后才能执行完整
+模块。模块 PASS 需要业务标志、scoped clean、durable `rc=0` 和零失败标志。
+最终 `--redis-only` 还必须重新建立干净现场、覆盖所有矩阵项、完成限定回收并
+取得 `REDIS_CLEAN_VERIFY_PASS` 与 `LAB_CLEAN_VERIFY_PASS`。若完整场景实现不齐，
+运行器必须明确拒绝交付，不将已完成模块的合集包装为完整回归。
+
 `tests/` is the executable delivery knowledge base for kubeauto. It captures the reusable lessons from the Cursor-era regression work and the 2026-07-25 through 2026-07-29 Codex full-chain run. The source of truth is executable evidence, not a narrative claim or an old log.
 
 ## Acceptance contract

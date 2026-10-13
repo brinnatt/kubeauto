@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-06"
+  ],
+  "partial_case_ids": [
+    "REDIS-11"
+  ],
+  "module": "idempotence",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-idempotence",
+  "entry_point": "kubecli setup redis-gate 07 --tags redis",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_CONTROL_PLANE_READY mode=sentinel",
+    "REDIS_DATA_PLANE_READY mode=sentinel members=6",
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_IDEMPOTENCE_PASS resource-uids=unchanged business-digest=unchanged",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=idempotence",
+    "REDIS_FOCUSED_MODULE_PASS module=idempotence",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "f330a64f1a7e2ad14e8f18a503e19b568a13b0f94cce9596c5080952684ef4b1",
+  "durable_status_sha256": "355eb667102bb5c910a41661e49543028d8c4a3d2604ddd49ec54a8abe14a204",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2c1fdeaed946b5454995f6d09711454fe6266e53f34b68e8b3f9daf204ae9291",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "e1daba0f62a85fccbb69e8e37300a8efd1336ed2147153120137a084263e2d68",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "eec04a7c496a6505e3faffde24161c0a1fb3a27ca91e6f3b07122c86b497afc0",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "909b23e4ff28df6bc397c32eb9a37ebb9b1f1cf937fcc804a3c8502ea0c7d8a5",
+    "tests/helpers/redis-focused-gate.py": "b1ff902b35dd4e978873785da86ebd074c5792c2462f360f75d1950e2c9cab3f",
+    "tests/helpers/redis-focused-gate.sh": "bb6d6281899bfb45935fbabc7ff217fb384e9b0bc234d8ea4045a71391283b20"
+  },
+  "cleanup_scope": "Invocation UUID key, TLS sockets, port-forward processes and temporary credentials removed; control kubeconfig restored; verified healthy core/CSI/Redis baseline retained",
+  "control_host": "192.168.47.130",
+  "preceding_install_evidence": "tests/evidence/redis-install-20261012.json",
+  "product_fix": "CR integer Quantity 1 became string 1 after Operator Update and conflicted with SSA. Quoted resources and upstream client-side apply restored repeat convergence without force; business resources retained all UIDs."
+}

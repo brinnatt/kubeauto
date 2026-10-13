@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run_id": 37753406582,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582",
+  "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+  "workflow_conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "images": [
+    {
+      "digest": "sha256:804a932395d1516b7a34f87aa0b65ba60dbf447bcb1d83cc23323de9c89f83f4",
+      "fingerprint": "d7e496c8615700a460781fef65b49dde1ee8ac063f05a09a8c3b2bf216120b3b",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/prometheus:v3.13.1-distroless",
+      "platforms": {
+        "linux/amd64": "sha256:6a7c9e777248e5e862be12852f1aee25b505af1c4c151dc621ab249b2c01b403",
+        "linux/arm64": "sha256:42dcfe75d4d6bd1dd9843666930be1538cad814acd54fa033255618412e3036f"
+      },
+      "schema": 1,
+      "source_digest": "sha256:214f8427c8fba80c327bb94a75feb802ae12f2d6ca30812aa6e7d22f09bbea80",
+      "source_ref": "quay.io/prometheus/prometheus:v3.13.1-distroless",
+      "dockerhub_ref": "brinnatt/prometheus:v3.13.1-distroless",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus:v3.13.1-distroless"
+    }
+  ],
+  "input_review": "Current committed catalog mapping, context modes/content and build-policy fingerprint match successful full acceptance; unrelated new Redis catalog entries do not alter this artifact.",
+  "artifact_sha256": {
+    "37753406582-run.json": "sha256:f878eb5dc1a35cce015beb6d91d92c52c2540b9f10693f85b5821db5b1e273a9",
+    "37753406582-verified-records.json": "sha256:2b803834c794a74b03a5b1dea0c503301c937d12f877fe18f1d7b1b02860f782"
+  }
+}

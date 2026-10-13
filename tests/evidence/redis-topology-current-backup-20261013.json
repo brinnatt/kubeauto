@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-17"
+  ],
+  "acceptance": "complete focused backup qualification",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "modules": [
+    {
+      "module": "backup",
+      "evidence": "tests/evidence/redis-backup-20261013-141921.json",
+      "sha256": "d80804e5d9724ab245d337c6ba3029a7a3cd6652ecd5041f9f3a5fc5fd82d510",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    },
+    {
+      "module": "cluster-snapshot",
+      "evidence": "tests/evidence/redis-cluster-snapshot-20261013-142047.json",
+      "sha256": "ba13f7b1c5fa2014e5f1a935353b364f17989f793fafe5ab845089214f4035b3",
+      "dependency_impact": {},
+      "dependency_identity": "all current dependency SHA256 values match executed source",
+      "durable_rc": 0,
+      "failure_markers": 0
+    }
+  ],
+  "cleanup_scope": "Every module verified its owned scoped cleanup and healthy runner baseline; final clean full run remains mandatory"
+}

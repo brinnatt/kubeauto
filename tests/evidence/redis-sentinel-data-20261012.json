@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-07"
+  ],
+  "module": "sentinel-data",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-sentinel-data",
+  "entry_point": "Existing config.yml + kubecli setup redis-gate 07 --tags redis; authenticated TLS Sentinel client",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_CONTROL_PLANE_READY mode=sentinel",
+    "REDIS_DATA_PLANE_READY mode=sentinel members=6",
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_SENTINEL_CLIENT_PASS discovery=three-views replicas=2 tls-hostname=verified sha256=18d825330abab0665357446b797ad0710cd27c74b195909f55374f0d7c840c3f",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=sentinel-data",
+    "REDIS_FOCUSED_MODULE_PASS module=sentinel-data",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "229c7d89da76370fc52dc74b3a71719fb10b74e53eb0a572664cc65cc8031510",
+  "durable_status_sha256": "c01a3795f679f134c2dea29153c2b8e15388795cca8d023d12881bef938a273b",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "4f69bacf80f66e7443854b484c03108a1949082e433ee42559857caee39330df",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "5fc645c2cdb772a74f88d21cc3449b3e3088cc79eb2dfc0ff02861141578456e",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "eec04a7c496a6505e3faffde24161c0a1fb3a27ca91e6f3b07122c86b497afc0",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "909b23e4ff28df6bc397c32eb9a37ebb9b1f1cf937fcc804a3c8502ea0c7d8a5",
+    "tests/helpers/redis-focused-gate.py": "dff943ac29758454124fc88ec8e7fdae40f55d0055198893de1d6dd81924728d",
+    "tests/helpers/redis-focused-gate.sh": "bb6d6281899bfb45935fbabc7ff217fb384e9b0bc234d8ea4045a71391283b20"
+  },
+  "cleanup_scope": "Invocation UUID business key, TLS sockets, port-forward processes and temporary credential directory removed; verified healthy runner-owned core/CSI/Redis retained",
+  "control_host": "192.168.47.130",
+  "impact_analysis": {
+    "negative-control-forward-isolation": "Only fresh=True security negative controls bypass shared forward; Sentinel data uses unchanged default reuse=True. Current default-reuse and process-reaping contracts pass; no product input changed.",
+    "quantity-apply-fix": "Rendered CPU string 1 equals current CPU string 1; idempotence confirms all Redis/Operator business resource UIDs and business digest unchanged. TLS/ACL/config bytes, image pins and protocol tests unchanged; data/security acceptance remains valid."
+  }
+}

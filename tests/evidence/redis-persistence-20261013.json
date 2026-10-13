@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-16"
+  ],
+  "acceptance": "complete module",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "evidence": {
+    "tests/evidence/redis-aof-persistence-20261012.json": "d35e9fe2a57767585de4773318613c2fa7522dbf346ac32d4276fa51af85a698",
+    "tests/evidence/redis-backup-20261013-004133.json": "2f4be3c60ffda13beb0ec8db0cbb7c04d290ebb9d2bf3a7f448e37926df94fb2"
+  },
+  "markers": [
+    "REDIS_AOF_PERSISTENCE_PASS",
+    "REDIS_RDB_RESTART_PASS",
+    "REDIS_INDEPENDENT_RDB_RESTORE_PASS"
+  ],
+  "impact_analysis": "Same verified runner-owned cluster and source PVCs. DNS product, persistence declarations, health and focused library hashes match. Later TLS/password rotations retain PVCs and data and do not change AOF/RDB policy. Independent RDB target disabled AOF, verified CRC/types/count/digest/absolute TTL, then changed process run ID while retaining its volume and new writes.",
+  "cleanup_scope": "Both durable module runs removed owned keys/client processes; the independent restore Pod, files and config request were removed/restored. Shared core/CSI retained healthy."
+}

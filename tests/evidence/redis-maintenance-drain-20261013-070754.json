@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-11"
+  ],
+  "module": "maintenance-drain",
+  "acceptance": "partial matrix item",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-maintenance-drain",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_MAINTENANCE_SPARE_PASS node=redis-node-134 lease=existing-core csi=ready",
+    "REDIS_NODE_DRAIN_PASS node=redis-node-131 eviction-api=used pdb=unchanged data-and-pvc=retained",
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_MAINTENANCE_NODE_CLEAN_PASS scheduling-and-taints=restored spare-csi=removed",
+    "REDIS_CLUSTER_KEYS_CLEAN_PASS uuid-keys=absent topology=healthy",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=maintenance-drain",
+    "REDIS_FOCUSED_MODULE_PASS module=maintenance-drain",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "9897a900445c3ea71f5386c8298c82889045c1645442bfcefc08a323f28a23b3",
+  "durable_status_sha256": "7b1307cb10edb6be2b312b799cfa4a64dc4632b6ab183ed92b6d916ae4c676fa",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "fc5ae3e7123f607879c201c384fe66b2f1bd7c5928c1d7e5084b844f7a22dc3f",
+    "common/constants.py": "47d5baf0e853b8433356c4b6afaa873963b02c4ac76e339016555bcd2ef094bd",
+    "conf/config.yml": "a3376075984a2906952271eded03cde27301b5ee25938ca032d97c68c06ee1c4",
+    "service/cluster/manager.py": "65662dd493caa147b3d4fe616a65c03df0ca1e05ee2832448378c8524cb67cd0",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "19a0410b2d6c1e290c155cdda21f6103eff4972a30ee9cd2ed1422ab6757801b",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "8ed71fc4b22011846d070d5797c4826d0a6e05c68190fee295c76991ca1aa01b",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "83d952ed9cf2824bbfc7c96fe5a83c6b0f30dd1fbadc58fa203c369b46523899",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "roles/cluster-addon/files/redis-snapshot.py": "d4ef5989ec0786348dda2f79788dbaa5124353fd7054b81dc6bec801dbf528e5",
+    "tests/helpers/redis-focused-gate.py": "22715fed676ebaf7996f88d3ed4fbdac973c018515d5f81d672a884559df5b1b",
+    "tests/helpers/redis-focused-gate.sh": "cec29aa05ee91a404116a8b46b6dd22e9a093972bcbc405f33be7b5e9deababa",
+    "tests/helpers/redis-maintenance-gate.py": "02e39a90522395d4aeb850460e05a739bfed899ebff94100ea83e5bbac5bc631",
+    "tests/helpers/redis-stability-gate.py": "08d20d6e698b07b57a87532d17c69e9973e53154320d0d25ac4a02cd8f1dceee",
+    "tests/helpers/redis-lab-storage.py": "2e7682980939c2d60faec9ca31875c9184737e7d59c9da42dfecc649763a8bff"
+  },
+  "launch_source_sha256": "512b0c0d948a8582deed59fc4c98b42bcce771a67222368236db2355036e48fd",
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained"
+}

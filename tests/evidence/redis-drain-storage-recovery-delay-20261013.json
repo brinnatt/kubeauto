@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "classification": "runtime/storage fixture: Longhorn instance-manager recovery and volume attachment delay; not Redis product",
+  "acceptance": "first failure only; no PASS",
+  "product_entry": "config.yml+kubecli baseline; real kubectl Eviction API diagnostic fixture",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-maintenance-drain",
+  "durable_rc": 1,
+  "first_failure": "Sentinel data PVC remained attaching; health timeout elapsed305s; target Redis container not started",
+  "diagnostics": "logs/redis-cases/maintenance-drain-20261013-143822",
+  "diagnostic_sha256": {
+    "kubeauto-redis-topology-drain-volume-20261013.json": "3107ede22441aee20500c67762c1e39aadfed5325ebd4ca448128e893baa387d",
+    "kubeauto-redis-topology-drain-engine-diagnostics-20261013.log": "8fde8a30b9c35b0cb9773db83153c09f0fbf364203618de9bce51b42eb6f0784",
+    "kubeauto-redis-topology-drain-worker-storage-20261013.log": "ec1308084b0f4abdaef579f89a0c1410aac598ba983fbc6d15462224c0dea173"
+  },
+  "recovery": "Longhorn automatically recovered instance manager; finally uncordoned131, evacuated134 storage through owner, verified both complete Redis modes, restored134 scheduling/taints and removed spare CSI. REDIS_MAINTENANCE_NODE_CLEAN_PASS; no cleanup failure.",
+  "next": "Read fixed official Longhorn drain behavior; unchanged smallest fixed --redis-maintenance-drain rerun with baseline identity/no-fault/healthy services verification; no timeout widening or product change",
+  "preserve": "All accepted Cluster data, backup/snapshot, failure, rebalance and rolling qualification; failed drain does not invalidate other independent module evidence",
+  "resolution": {
+    "kind": "unchanged focused rerun after scoped restore",
+    "evidence": "tests/evidence/redis-maintenance-drain-20261013-145257.json",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "scoped_clean": "verified",
+    "log_sha256": "b2ff921cac1266f60224503339c5cefd13433cf17586679cb8fe94cb723ab7d2",
+    "product_and_test_code_change": "none",
+    "official": "https://longhorn.io/docs/1.10.1/maintenance/maintenance/"
+  }
+}

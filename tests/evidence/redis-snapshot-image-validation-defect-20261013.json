@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "classification": "Redis product snapshot CLI image validation defect",
+  "affected_cases": [
+    "REDIS-17",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml redis_cluster_image_ver=8.10.2-kubeauto.1 + kubecli setup TARGET 07 --tags redis-snapshot",
+  "proof": "redis.yml passes the accepted revised Cluster image tag, but redis-snapshot.py rejects it before Kubernetes mutation; deterministic CLI regression failed at the image check instead of reaching the next directory preflight",
+  "first_contract_log_sha256": "6bfb33c8c7583167a65704b662c8022c245c35c79fbb7dfb78d92b44c23b1561",
+  "official_reference": "https://github.com/redis/redis/blob/8.10.2/src/redis-cli.c",
+  "fix": "Accept the same positive kubeauto revision suffix as the Redis product task; foreign registry and zero revision remain rejected",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cluster-snapshot",
+  "live_result": "pending revised Cluster image publication and fresh fixture",
+  "impact_analysis": "Only the image acceptance regex changed; export, authentication, CRC/transfer, source-role stability and cleanup algorithms unchanged. Retain existing independent Sentinel restore evidence; qualify Cluster export before REDIS-17 pass."
+}

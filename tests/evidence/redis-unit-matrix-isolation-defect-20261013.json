@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "classification": "test-gate: non-isolated unit inputs, no remote mutation",
+  "affected_cases": [
+    "REDIS-01",
+    "REDIS-02",
+    "REDIS-03",
+    "REDIS-24"
+  ],
+  "first_failure_log_sha256": "511292b00389f9c7080adaee462892c049f4208efada389c0ebf4643ba0e5ad9",
+  "root_cause": "Two rejection unit tests consumed live matrix state. With all 23 prerequisite cases passing, full launcher entered static again, recursively spawning itself. Direct helper test could also enter real full run.",
+  "fix": "Fixed temporary matrix with only REDIS-01 pending; unchanged real preflight stdin against fixture root via test-local wrapper; block unexpected Python and external CLI calls; timeout=15. No production or real matrix acceptance bypass.",
+  "smallest_disproof": "python -m unittest tests.unit.test_redis_delivery.RedisDeliveryTests.test_basic_smoke_cannot_emit_a_ga_delivery_marker tests.unit.test_redis_delivery.RedisDeliveryTests.test_full_launcher_rejects_pending_qualification_before_remote_calls -v",
+  "static_evidence": "tests/evidence/redis-isolated-static-20261013.json",
+  "static_tests": 240,
+  "unit_tests": 895,
+  "static_rc": 0,
+  "unit_rc": 0,
+  "official": "https://docs.python.org/3.12/library/subprocess.html",
+  "official_sha256": "48f3c7606979fcfc0b88c7efbe0540dec7744d02a109f455452a7a79b5ebde5b",
+  "cleanup": "Stopped local recursive process tree; temporary test fixtures removed; SSH/rsync stubs prevented remote mutation; qualified lab retained."
+}

@@ -226,7 +226,7 @@ class MiddlewareDocumentationTests(unittest.TestCase):
 
     def test_shared_navigation_gate_precedes_all_delivery_modes(self):
         gate = RUNNER.index("tests.unit.test_middleware_documentation")
-        for mode in ("--mysql-only", "--kafka-only", "--prometheus-only", "--logging-only"):
+        for mode in ("--mysql-only", "--kafka-only", "--redis-only", "--prometheus-only", "--logging-only"):
             self.assertLess(gate, RUNNER.index(f'if [[ "$MODE" == "{mode}" ]]'), mode)
 
     def test_index_links_resolve_and_playbook_fences_are_balanced(self):

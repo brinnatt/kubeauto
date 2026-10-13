@@ -12,5 +12,6 @@
 | Apache Kafka on Kubernetes | 已交付 | [用户与运维手册](kafka/operations-manual.md) · [技术白皮书](kafka/technical-whitepaper.md) · [开发手册](kafka/development-manual.md) | [Kafka 矩阵](../../tests/kafka-test-matrix.yaml) |
 | Prometheus 监控平台 | 已交付 | [用户与运维手册](prometheus/operations-manual.md) · [技术白皮书](prometheus/technical-whitepaper.md) · [开发手册](prometheus/development-manual.md) | [企业矩阵 Prometheus 分路](../../tests/enterprise-test-matrix.yaml) |
 | EFK / Loki 日志平台 | 已交付 | [用户与运维手册](efk/operations-manual.md) · [技术白皮书](efk/technical-whitepaper.md) · [开发手册](efk/development-manual.md) | [日志矩阵](../../tests/logging-test-matrix.yaml) |
+| Redis 高可用与分片 | 已交付 | [用户与运维手册](redis/operations-manual.md) · [技术白皮书](redis/technical-whitepaper.md) · [开发手册](redis/development-manual.md) | [Redis 矩阵](../../tests/redis-test-matrix.yaml) |
 
 组件状态以当前专项矩阵为准。只有完整现场证据达到 100% PASS，并同时通过供应链、幂等、清理和文档门禁，组件状态才能标记为“已交付”。

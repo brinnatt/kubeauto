@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-06"
+  ],
+  "module": "sentinel-repair",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-sentinel-repair",
+  "entry_point": "kubecli setup redis-gate 07 --tags redis",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_REPAIR_DATA_BOUNDARY_PASS identity=current sole-primary=verified replicas=2",
+    "REDIS_CONTROL_PLANE_READY mode=sentinel",
+    "REDIS_DATA_PLANE_READY mode=sentinel members=6",
+    "REDIS_SENTINEL_DNS_REPAIR_PASS discovery=current pvc-uids=retained owned-keys-cleaned=1",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=sentinel-repair",
+    "REDIS_FOCUSED_MODULE_PASS module=sentinel-repair",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "432df8eaf68f742044e6c50c68107859ddb215d944f3370f866bf20ff2128730",
+  "durable_status_sha256": "a1be46a8549b7fff32f9b96edc15ca028a995c6837f71cc11b21945de34226af",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "38cb0fbd7b30f75512df1d0499db3b48b9446c9e2cee2ee9b39218d321b461d9",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "eec04a7c496a6505e3faffde24161c0a1fb3a27ca91e6f3b07122c86b497afc0",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "tests/helpers/redis-focused-gate.py": "9923af8527377ecebbce9da5d3904367c42ed0d733eedf22876da095ad5c61a5",
+    "tests/helpers/redis-focused-gate.sh": "ec3196aa76470aac91272e6a72b512ae8ecc23c7b233e84fce354913dd246ae5"
+  },
+  "cleanup_scope": "Verified product convergence, current Sentinel discovery, retained original PVCs, prior failed invocation UUID key cleaned and current scoped keys/processes removed",
+  "first_failure": "Product: independent Sentinel IP addressing retained all obsolete data Pod IPs after a full data process rollout. Official stable DNS fields, ordered Sentinel declaration and exact current endpoint health validation restore convergence. Affected REDIS-03 and REDIS-06 through REDIS-10 returned to pending; pins and disabled scope unchanged."
+}

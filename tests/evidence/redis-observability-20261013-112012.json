@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-19"
+  ],
+  "module": "observability",
+  "acceptance": "complete module",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-observability",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_OBSERVABILITY_ARTIFACT_PASS current-talkedu=verified dual-push=accepted-inputs digest=sha256:804a932395d1516b7a34f87aa0b65ba60dbf447bcb1d83cc23323de9c89f83f4",
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_OBSERVABILITY_SCRAPER_RECONNECT_PASS owned-pod=changed product-pods=retained",
+    "REDIS_OBSERVABILITY_ALERT_PASS member=redis-gate-data-1 state=firing",
+    "REDIS_FOCUSED_FAULT_CLEAN_PASS",
+    "REDIS_OBSERVABILITY_EVENTS_PASS current-uid=5e37a323-a1b1-4732-ab82-0588febdd73a recovered-startup-warnings=0 unresolved-warnings=0",
+    "REDIS_OBSERVABILITY_PASS redis-up=three-members metrics=memory,clients,commands alert=fired-and-cleared events=verified business-digest=retained",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=observability",
+    "REDIS_FOCUSED_MODULE_PASS module=observability",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "d07049dc3d9a103e6f43ecef694bd3ef666d17b8739eb4cc584be7cd74955f60",
+  "durable_status_sha256": "50cf64c17a9a37c84de59a7888f21b589a16d11a6f65edbb59537d5e7d4e241a",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "fc5ae3e7123f607879c201c384fe66b2f1bd7c5928c1d7e5084b844f7a22dc3f",
+    "common/constants.py": "47d5baf0e853b8433356c4b6afaa873963b02c4ac76e339016555bcd2ef094bd",
+    "conf/config.yml": "a3376075984a2906952271eded03cde27301b5ee25938ca032d97c68c06ee1c4",
+    "service/cluster/manager.py": "65662dd493caa147b3d4fe616a65c03df0ca1e05ee2832448378c8524cb67cd0",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "19a0410b2d6c1e290c155cdda21f6103eff4972a30ee9cd2ed1422ab6757801b",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "05a0192df7c593a99aee9438689da4ab62bc911c2661d2f79fef073867caa570",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "633d38ad6860386b86373a0ea31a5d66b07dfdeab11b0cc8046a239785b5d78d",
+    "roles/cluster-addon/files/redis-health.py": "13d63f9a5d58bd67b743dd0468665a4d3910c7e27311937a03414b8f35ca693a",
+    "roles/cluster-addon/files/redis-snapshot.py": "4f269982838e882f0f11b2a719198b07d88da031f2f0dce116c33f60e8d1aeb3",
+    "tests/helpers/redis-focused-gate.py": "22715fed676ebaf7996f88d3ed4fbdac973c018515d5f81d672a884559df5b1b",
+    "tests/helpers/redis-focused-gate.sh": "de1e0dc3d380d5fad9bda2706e41de7b355595d340adda191bedcc62c2b7623f",
+    "tests/helpers/redis-observability-gate.py": "9724f4288f9e4fe4138b824d0946ad209d249c161d03fa19e76b83a513bf4d8c",
+    "tests/evidence/redis-observability-images-20261013.json": "0cbc520504fd26edacb457e6ab3c33561e06e88bc5891b06102b96eeb7118051"
+  },
+  "launch_source_sha256": "a3eb94e8a933a130f9c3d2510c451468cf1dd86f748e355f02306234c0bb02ab",
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained"
+}

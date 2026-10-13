@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "classification": "Redis upgrade test-gate legacy fixture schema downgrade defect",
+  "affected_cases": [
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml + kubecli setup redis-gate 07 --tags redis",
+  "first_failure": {
+    "durable_status": "state=exited pid=2141552 rc=1 bytes=207037 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "cd6384c0fde7362f8edb54850cbde7316d7d43abfc076b262ad0769e6fd87aae",
+    "reason": "Preparing legacy Operator on an already-current schema incorrectly requested application of legacy Chart CRDs; server-side dry-run rejected Helm spec.versions ownership conflict"
+  },
+  "official_references": [
+    "https://helm.sh/docs/chart_best_practices/custom_resource_definitions/",
+    "https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts"
+  ],
+  "proof": "Legacy prepare is controller/runtime rollback on current schema. Explicit schema request caused .spec.versions conflicts with helm. Product dry-run correctly refused before schema mutation. Current-image cleanup succeeded with changed=false and removed the owned journal/legacy chart.",
+  "fix": "Retain installed forward CRDs during legacy prepare, like supported controller rollback; current schema request remains explicit during forward qualification. No force-conflicts, no product ownership relaxation, no legacy schema rollback claim.",
+  "static_regression": "Exact mocked legacy preparation regression failed with crd=True before repair; fixed upgrade and CRD contracts passed",
+  "cleanup": "REDIS_UPGRADE_SCOPED_CLEAN_PASS requested=false target=current fixture-chart=removed; failed preparation did not mutate schema",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-upgrade-prepare",
+  "live_result": "pass",
+  "impact_analysis": "Only Upgrade.execute legacy declaration changed. Existing product CRD ownership protection and unrelated Redis/Ceph paths unchanged.",
+  "live_qualification": {
+    "directory": "logs/redis-cases/upgrade-prepare-20261013-075331",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "dcbfa0c21c825c63639d51060ea5fe7dc48e40c3cc54f82885e5db774171f0be",
+    "launch_source_sha256": "3b6eb78629884c4b1a9f34d1a62c26d58677d8dfb0e08afc4470645ea59b99b2",
+    "acceptance": "Legacy fixture, retained seeded current business and absolute TTL, current recovery and owned cleanup; not full upgrade module"
+  }
+}

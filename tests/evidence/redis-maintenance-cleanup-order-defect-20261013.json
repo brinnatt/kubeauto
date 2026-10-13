@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "classification": "Redis maintenance test-gate cleanup ordering defect",
+  "affected_cases": [
+    "REDIS-11",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml + kubecli setup redis-gate 07 --tags redis; no customer product code changed",
+  "first_failure": {
+    "durable_status": "state=exited pid=2113778 rc=1 bytes=274474 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "154f319ca6fe381abe59aa960a4d083310a23f9b5f69c2ef6af539c30db6f43c",
+    "reason": "restore deleted the temporary Longhorn node immediately after removing its storage label, before waiting for manager/CSI removal and upstream admission conditions; original helper did not retain admission stderr"
+  },
+  "official": "https://github.com/longhorn/longhorn-manager/blob/v1.10.1/webhook/resources/node/validator.go",
+  "official_source_sha256": "e1ea7bd9fea27a60ba68eec1e2ac266ee2ce5a4c7fd3cdfee1960ebf25fa110b",
+  "proof": "Pinned Delete validator requires Ready!=True, reason=ManagerPodMissing or KubernetesNodeGone, allowScheduling=false, zero replicas and engines. Current read-only diagnostics show ManagerPodMissing at 22:59:58Z, after failed deletion; server dry-run now permits deletion. Deterministic tests block each incomplete precondition independently.",
+  "fix": "Wait for all spare storage Pods to disappear and every upstream deletion precondition before delete; repair restores only the original journal UID/run and its exact business keys.",
+  "cleanup": "Current complete drain: original scheduling/taints and spare host restored; CSI/Longhorn spare absent; business/PVC retained; UUID keys absent; durable rc=0, zero failure markers, scoped clean",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-maintenance-repair; then --redis-maintenance-drain",
+  "live_result": "pass",
+  "impact_analysis": "Only maintenance restore and explicit maintenance-repair dispatch changed. Other focused module dispatch and production inputs unchanged; prior business evidence is retained. Maintenance rolling uses no spare and restore remains a no-op; the final clean run will exercise its unchanged path again.",
+  "live_evidence": "tests/evidence/redis-maintenance-drain-20261013-070754.json",
+  "repair": {
+    "runner": "bash tests/run_enterprise_regression.sh --redis-maintenance-repair",
+    "durable_status": "state=exited pid=2123167 rc=0 bytes=1145 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "e408cc84a30b3fca67eeeb4f827fe85cb4626ed550fc5785a8a59641984ae1d1",
+    "marker": "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=maintenance-repair"
+  }
+}

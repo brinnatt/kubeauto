@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "case": "REDIS-14",
+  "classification": "test-gate",
+  "acceptance": "pending; no product failure or PASS claim",
+  "first_failure": "primary-promotion bounded wait expired; all peer CLUSTER NODES still report original primary connected",
+  "first_log_sha256": "90a73167a20cff5d6e8638a23436ff46f00237aa63d4483388c644055680cddf",
+  "cause": "CLIENT KILL manages normal/replication client connections, not independent Cluster bus clusterLink sockets; policy alone did not terminate those current links. A fixed seed also must not read its deliberately isolated view.",
+  "official": "https://github.com/redis/redis/blob/8.10.2/src/cluster_legacy.c",
+  "fix": "Superseded: the first in-container PID 1 SIGSTOP attempt did not stop namespace init. The accepted fixture sends signals from the ancestor host PID namespace after exact CRI Pod UID/container ID/PID start/cgroup verification and requires actual T state.",
+  "regression": [
+    "test_pause_requires_host_state_and_keeps_exact_identity_for_cleanup",
+    "test_successful_signal_return_without_T_is_rejected",
+    "test_topology_seed_excludes_the_deliberately_isolated_member"
+  ],
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cluster-primary-fault",
+  "cleanup": "Original cleanup marker claim was incomplete; later primary-fault log records REDIS_CLUSTER_FAILURE_CLEANUP_FAIL. Recovery branch cluster-repair-20261013-025322 verified and removed 3 exact legacy failure fixtures, Cluster/Sentinel healthy, scoped-clean, durable rc=0 and zero failure markers.",
+  "recovery_log_sha256": "28e8f37936588636ef0fd162444a6e6b206b2a66eccd9d1502180f2d6cd27c40",
+  "official_pid_namespace": "https://man7.org/linux/man-pages/man7/pid_namespaces.7.html",
+  "official_cri": "https://github.com/kubernetes-sigs/cri-tools/blob/v1.34.0/cmd/crictl/container.go"
+}

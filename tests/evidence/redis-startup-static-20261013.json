@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-01",
+    "REDIS-02",
+    "REDIS-03"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --redis-static-only",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "static_tests": 158,
+  "markers": [
+    "REDIS_MATRIX_VALIDATION_PASS path=tests/redis-test-matrix.yaml",
+    "REDIS_CLUSTER_PROCESS_FAULT_CLEAN_PASS outcome=resumed",
+    "REDIS_HELM_RENDER_PASS resources=4",
+    "REDIS_STORAGE_HELM_RENDER_PASS resources=44",
+    "REDIS_ISOLATED_TASKS_PASS count=17",
+    "REDIS_DISABLED_CHECK_PASS changed=0",
+    "REDIS_STATIC_GATE_PASS"
+  ],
+  "log_sha256": "2355ad9ae5699997ea468a98e3e27f5ec25aab84e3ffd5eb379274d6624eb4a9",
+  "dependencies": {
+    "conf/config.yml": "577a6595bf2062f89cbaa6cfb2fbef0cd78a28382a973448ba1e2b25b55da8bc",
+    "common/constants.py": "5316b7c5f7fa50d3802dc3e7d65258091c690784d25dbfb8e4e00b4fde83dff3",
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "81dd4bf680a7b2d8d07ef9d4aaad93c8897fdb745885d71625e2259848772042",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "8ed71fc4b22011846d070d5797c4826d0a6e05c68190fee295c76991ca1aa01b",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "roles/cluster-addon/files/redis-operator-0.27.0.tgz": "a4e4bf44cbba894e5b4f09bc34994ddf98445b393175a77b3cd55ac0d34969b2",
+    "tests/helpers/redis-static.sh": "b94c4feb1031bb0df1db5dfe47b359c9aebd71069c664725f0e4c4f1748d2f1e",
+    "tests/unit/test_redis_backup_gate.py": "32377e1bf6b05c8dfd63df39bf4045e68a58db1561025c386dc174046bd187ce",
+    "tests/unit/test_redis_cluster_gate.py": "adbbf6f230abad73d602b966db2ae32f48185ea67b98a15418f74e62089dd432",
+    "tests/unit/test_redis_cluster_process.py": "dcae2886a3f1d4604af862d8b08bf62f22d9624307b62222c888c3be990dd2fd",
+    "tests/unit/test_redis_cluster_client_gate.py": "f8e31ed4fd336ba13dfa7c933310ca6de5d07b3c2920f25e82d2e2364b56de69",
+    "tests/unit/test_redis_rotation_gate.py": "5e8f378f376cecff14a09715a70aee4a107f4e1ec0bd543323ce607bd45051a9",
+    "tests/unit/test_redis_capacity_gate.py": "96239f20218221e46e3a3efaa0b809a7ec1d33a4cb3e1ac7bd3552ce5e695e20",
+    "tests/unit/test_redis_evidence.py": "b41c36aff35c2c299a97e4192002658e6abec97975a9d462e696ec9f716cd990",
+    "tests/unit/test_redis_delivery.py": "6f298c1fdcf9eb1eab29e32a6af9a85f13f55091d9f2e7c1ca612699608ce378",
+    "tests/unit/test_redis_performance_gate.py": "b48aaec6d8a3e1da0809dedd28791baa9b3684834dd3d078c5f5c4dc0ef8c66f",
+    "tests/unit/test_redis_focused_gate.py": "d70d819e2896d22f068351586912fbf0e99b10e735218e011ba2d66c48b2dab4",
+    "tests/unit/test_redis_observability_gate.py": "7744b903c069d551a2e0cb8e5a753bbce076a75841825c525d70be223d9cb793",
+    "tests/unit/test_redis_cluster_rebalance_gate.py": "6efe7be33e146cf3fa45cee6d7a1c13cdcd30a5cdff5416d8ac6200d3c22fde2",
+    "tests/unit/test_redis_cluster_failure_gate.py": "c1f7baf258cb49a3e0bc9e13886e2e39f42edf88fd811820af862a58965df990"
+  },
+  "catalog": "IMAGE_CATALOG_VALIDATION_PASS rows=129 dockerfiles=129",
+  "cleanup_scope": "Local temporary syntax/render/cache files removed by runner EXIT trap; no live mutation",
+  "navigation_tests": 12
+}

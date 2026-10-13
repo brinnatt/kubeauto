@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "classification": "test-gate",
+  "case": "REDIS-13",
+  "first_failure": "CLUSTER SLOTS primary endpoint hostname rejected by IP-only fixture map before first write",
+  "source": "Operator v0.27.0 bootstrap config sets cluster-preferred-endpoint-type hostname",
+  "official": "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/agent/bootstrap/redis/config.go",
+  "first_log_sha256": "aec456c7da869aecbc9dd126b7cb11b53d22cd6e43969c68d0fe3d329e737365",
+  "fix": "Accept exact actual member Pod IP and FQDN generated from pod hostname/subdomain/namespace; reject foreign domain, slot, port and arbitrary reply text",
+  "regression": "test_official_preferred_hostname_maps_only_actual_owned_member_fqdn",
+  "cleanup": "Failure occurred while calculating owner before first SET or ASK flag; no key or slot mutation reached. Cluster/source health was verified before first owner lookup. Healthy installation retained; next focused baseline must prove current identity, health and absence of stale journals.",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cluster-data",
+  "acceptance": "pending; no PASS claim"
+}

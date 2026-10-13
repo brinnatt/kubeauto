@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-20"
+  ],
+  "module": "performance",
+  "acceptance": "complete module",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-performance",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_PERFORMANCE_PASS percentiles=50,95,99 errors=0 replica-digests=verified resources=cpu,memory,pvc,network",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=performance",
+    "REDIS_FOCUSED_MODULE_PASS module=performance",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "c8ffd7569f350061f5f85ea45ca27307d8495714b34e637be08d956bff93c572",
+  "durable_status_sha256": "f9445e3456aa9a62c624bed5684a312d59991374e6060ae54f1166660ae11980",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "38cb0fbd7b30f75512df1d0499db3b48b9446c9e2cee2ee9b39218d321b461d9",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "eec04a7c496a6505e3faffde24161c0a1fb3a27ca91e6f3b07122c86b497afc0",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "roles/cluster-addon/files/redis-snapshot.py": "227763b2708706da8c4f4dd703e5ed79fbd84e1fb51f0d2a408e361711c908d0",
+    "tests/helpers/redis-focused-gate.py": "9923af8527377ecebbce9da5d3904367c42ed0d733eedf22876da095ad5c61a5",
+    "tests/helpers/redis-focused-gate.sh": "790efafc66f1bf1d7a3d341fff92a35cf27c5e9861878e98e57ce85d9c00b315",
+    "tests/helpers/redis-performance-gate.py": "1109b4b18c2c3486441e514f6251011c7ec0febe8a8b55329fae1bc817d8f585"
+  },
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained",
+  "performance": {
+    "duration_seconds": 60.000392310961615,
+    "errors": 0,
+    "latency_ms": {
+      "50": 0.6359179969877005,
+      "95": 0.9394619846716523,
+      "99": 1.7954729846678674
+    },
+    "operations": 86832,
+    "operations_per_second": 1447.1905375214765,
+    "payload_sha256": "eef59de1d582fb6c7b844745c6224f9da4f9c6a12fcc133cd8255f18a673c349",
+    "resources": {
+      "redis-gate-data-0": {
+        "cpu_ns": 1703788810,
+        "memory_bytes": 19927040,
+        "pvc_used_bytes": 39833600,
+        "rx_bytes": 42557361,
+        "tx_bytes": 1592702
+      },
+      "redis-gate-data-1": {
+        "cpu_ns": 3215777106,
+        "memory_bytes": 11198464,
+        "pvc_used_bytes": 49152,
+        "rx_bytes": 3132514,
+        "tx_bytes": 102432552
+      },
+      "redis-gate-data-2": {
+        "cpu_ns": 1679395805,
+        "memory_bytes": 11550720,
+        "pvc_used_bytes": 45056,
+        "rx_bytes": 41637455,
+        "tx_bytes": 1632533
+      }
+    },
+    "workload": {
+      "connections": 1,
+      "keys": 100,
+      "pipelining": false,
+      "tls": true,
+      "transport": "managed kubectl port-forward; includes transport overhead",
+      "value_bytes": 1024,
+      "write_read_ratio": "1:1"
+    }
+  }
+}

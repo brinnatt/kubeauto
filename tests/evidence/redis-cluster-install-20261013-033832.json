@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-12"
+  ],
+  "module": "cluster-install",
+  "acceptance": "complete module",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-cluster-install",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_CLUSTER_INSTALL_PASS shards=3 replicas-per-shard=2 members=9 slots=16384 tls-ping-and-real-roles=verified product-entry=verified sentinel-data-and-pvc-uids=retained",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=cluster-install",
+    "REDIS_FOCUSED_MODULE_PASS module=cluster-install",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "ba9356514352427db1a452e5c2b2b60d08677316a692a29004403991deaff547",
+  "durable_status_sha256": "1defa8dfed8178329d6fc1e903058aa1ef500337f0c4b6dceb096331778a9a06",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "94461c1bc05b65d1226b59d872a4b43fcfc9385ebad08943901d4e0c6caacf5d",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "8ed71fc4b22011846d070d5797c4826d0a6e05c68190fee295c76991ca1aa01b",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "roles/cluster-addon/files/redis-snapshot.py": "d4ef5989ec0786348dda2f79788dbaa5124353fd7054b81dc6bec801dbf528e5",
+    "tests/helpers/redis-focused-gate.py": "e41042521b42d6c032926297c84471103569c5032e40610e8448adcde0d25913",
+    "tests/helpers/redis-focused-gate.sh": "ce9e0237f0e4a0b7a3fa184fe25f2a2ed6795bc9c3fd04f34ffc70ec4ee7521b",
+    "tests/helpers/redis-cluster-gate.py": "94308ff4f78ffa3e43762755aaa2fc57a93eaa980dc8435655875090331c2d9c",
+    "tests/helpers/redis-lab-config.py": "68ee8d40ed83d49bea476405358d7634d79f71c339983c51bb65f1a236a92f20"
+  },
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained"
+}

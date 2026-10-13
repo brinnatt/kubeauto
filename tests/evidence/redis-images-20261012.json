@@ -1,0 +1,150 @@
+{
+  "artifact_sha256": {
+    "image-plan.zip": "sha256:f96f61904be5d8c2b48f40ed29dfe2299de266f04544f51b8f6e0dd01033e302",
+    "plan-evidence-1.zip": "sha256:378f0352647a240bc3d978376741bac30f6994bb7ca9053b8fb19244e55dc082",
+    "release-evidence-0-1.zip": "sha256:b6fcae5c49de1938a0d4aa1d06ad721abdc7a7cd56e83d011e601f571d580d7f"
+  },
+  "delivery_source_readback": {
+    "checked_at": "2026-10-12T13:35:42.856408+00:00",
+    "cleanup_scope": "read-only; no remote mutation or owned fixtures",
+    "control_host": "192.168.122.2",
+    "durable_rc": 0,
+    "entry_point": "bash tests/run_enterprise_regression.sh --redis-artifacts",
+    "failure_markers": 0,
+    "gate_sha256": "d354886764cdfdf62947afa605de4f43f4467666a00a23dcca3f81529fcd2f05",
+    "log_sha256": "28efec3e20efb41f3633b622636f13c65f432a45df05b5db8ad098c64a6c34bd",
+    "manifests": [
+      {
+        "digest": "sha256:310541c8133bebf29b12176c62ff8c9d8c19dc0fad91ad49327cad2ae2e2a2b6",
+        "image": "hub.talkedu.cn/kubeauto/redis-operator-upgrade-fixture:0.26.0",
+        "marker": "REDIS_ARTIFACT_MANIFEST",
+        "platforms": {
+          "amd64": "sha256:d7b8e419ba7388c3a227c0f273f71100f894d1d79b7830e175c17bc04ee52830",
+          "arm64": "sha256:5fc45a988e200a1b9c25d748a17ffce798165567b27979dc93c50f452a937d6a"
+        }
+      },
+      {
+        "digest": "sha256:f240574c6ee838e957102d65b955e43904a54c04c12dbc415a876003618cbea2",
+        "image": "hub.talkedu.cn/kubeauto/redis-upgrade-fixture:8.10.1",
+        "marker": "REDIS_ARTIFACT_MANIFEST",
+        "platforms": {
+          "amd64": "sha256:1305abb7689caa17f4ea0809312082599647f793f884b0054749df003667ca41",
+          "arm64": "sha256:2f6b0c76eed23d68ee17b6c918c34f281bef7ab3d3e04921cfbf38af55268c59"
+        }
+      },
+      {
+        "digest": "sha256:37c838ccbc82f17c0b00c312c863a069c703d5bd7da60c997d9aa9937dc37863",
+        "image": "hub.talkedu.cn/kubeauto/redis-exporter:v1.93.0",
+        "marker": "REDIS_ARTIFACT_MANIFEST",
+        "platforms": {
+          "amd64": "sha256:1083d903f6af21df7170e202d7361a8ef0cf69ef3c5110738ee49bd8ebf233cd",
+          "arm64": "sha256:c0aaae2a195c9595231ffd73ebc614b95a443338459205519b2bfe0f67696979"
+        }
+      },
+      {
+        "digest": "sha256:0570acd9f427075946b641f63d7370db7f37bea559b68e3e9d66724e24d8ae75",
+        "image": "hub.talkedu.cn/kubeauto/redis:8.10.2",
+        "marker": "REDIS_ARTIFACT_MANIFEST",
+        "platforms": {
+          "amd64": "sha256:aaa2b263193861149652679f3bd3cb0c173d2b3bccee62bc78beef9b20fc746d",
+          "arm64": "sha256:0d429a738927fabc9a297d67564a947d48c3749b7a4e3accfb09c4c37fa85a76"
+        }
+      },
+      {
+        "digest": "sha256:4aaf008da24ebe70c9ea1981ecf61b2380c35e4581ef22085956d8001ada266a",
+        "image": "hub.talkedu.cn/kubeauto/redis-operator:0.27.0",
+        "marker": "REDIS_ARTIFACT_MANIFEST",
+        "platforms": {
+          "amd64": "sha256:1221cb61eec53722ec1c0346cdcb041f7324daa7a5d8a170fb26695c9b4ce498",
+          "arm64": "sha256:c02bc85776c1de1c715f7c98ade67eb18518135698e85739199e063c0df9dae0"
+        }
+      }
+    ],
+    "marker": "REDIS_ARTIFACTS_PASS count=5 verification=actions-and-current-talkedu"
+  },
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "head": "07a7021274dfc365aabd746ce0a24ec4c91078f4",
+  "images": [
+    {
+      "digest": "sha256:4aaf008da24ebe70c9ea1981ecf61b2380c35e4581ef22085956d8001ada266a",
+      "dockerhub_ref": "brinnatt/redis-operator:0.27.0",
+      "fingerprint": "4a71ececcddae1229c08513efe3fb89303f637f733a102e16daf6c0a376e4126",
+      "head": "07a7021274dfc365aabd746ce0a24ec4c91078f4",
+      "key": "brinnatt/redis-operator:0.27.0",
+      "platforms": {
+        "linux/amd64": "sha256:1221cb61eec53722ec1c0346cdcb041f7324daa7a5d8a170fb26695c9b4ce498",
+        "linux/arm64": "sha256:c02bc85776c1de1c715f7c98ade67eb18518135698e85739199e063c0df9dae0"
+      },
+      "schema": 1,
+      "source_digest": "sha256:25799bf10231167ee1cb76a21cc7b1890ed521cbdb6d1724a912ee07b02fd958",
+      "source_ref": "quay.io/opstree/redis-operator:v0.27.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis-operator:0.27.0"
+    },
+    {
+      "digest": "sha256:0570acd9f427075946b641f63d7370db7f37bea559b68e3e9d66724e24d8ae75",
+      "dockerhub_ref": "brinnatt/redis:8.10.2",
+      "fingerprint": "7e22700cdf034b4168c36a873bcabaaaf6597a6b3c56af3add3b154ed8dddff0",
+      "head": "07a7021274dfc365aabd746ce0a24ec4c91078f4",
+      "key": "brinnatt/redis:8.10.2",
+      "platforms": {
+        "linux/amd64": "sha256:aaa2b263193861149652679f3bd3cb0c173d2b3bccee62bc78beef9b20fc746d",
+        "linux/arm64": "sha256:0d429a738927fabc9a297d67564a947d48c3749b7a4e3accfb09c4c37fa85a76"
+      },
+      "schema": 1,
+      "source_digest": "sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6",
+      "source_ref": "redis:8.10.2",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis:8.10.2"
+    },
+    {
+      "digest": "sha256:37c838ccbc82f17c0b00c312c863a069c703d5bd7da60c997d9aa9937dc37863",
+      "dockerhub_ref": "brinnatt/redis-exporter:v1.93.0",
+      "fingerprint": "7883d316aeacd7482cab419df4770abe24ec57b1bfbab13041136fbfc78a5bb1",
+      "head": "07a7021274dfc365aabd746ce0a24ec4c91078f4",
+      "key": "brinnatt/redis-exporter:v1.93.0",
+      "platforms": {
+        "linux/amd64": "sha256:1083d903f6af21df7170e202d7361a8ef0cf69ef3c5110738ee49bd8ebf233cd",
+        "linux/arm64": "sha256:c0aaae2a195c9595231ffd73ebc614b95a443338459205519b2bfe0f67696979"
+      },
+      "schema": 1,
+      "source_digest": "sha256:6ca518a72f30f7f576ef92963de1b91d3c3f5fd3aeac949f878bfda183587820",
+      "source_ref": "oliver006/redis_exporter:v1.93.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis-exporter:v1.93.0"
+    },
+    {
+      "digest": "sha256:f240574c6ee838e957102d65b955e43904a54c04c12dbc415a876003618cbea2",
+      "dockerhub_ref": "brinnatt/redis-upgrade-fixture:8.10.1",
+      "fingerprint": "adc4e7e7964fdd731f98c54098af3b02491120665f293ad88adb4a1b659aa2a8",
+      "head": "07a7021274dfc365aabd746ce0a24ec4c91078f4",
+      "key": "brinnatt/redis-upgrade-fixture:8.10.1",
+      "platforms": {
+        "linux/amd64": "sha256:1305abb7689caa17f4ea0809312082599647f793f884b0054749df003667ca41",
+        "linux/arm64": "sha256:2f6b0c76eed23d68ee17b6c918c34f281bef7ab3d3e04921cfbf38af55268c59"
+      },
+      "schema": 1,
+      "source_digest": "sha256:8a1efc5f479551822b47424ccae982026b633f28818eab0387348120a61e10e2",
+      "source_ref": "redis:8.10.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis-upgrade-fixture:8.10.1"
+    },
+    {
+      "digest": "sha256:310541c8133bebf29b12176c62ff8c9d8c19dc0fad91ad49327cad2ae2e2a2b6",
+      "dockerhub_ref": "brinnatt/redis-operator-upgrade-fixture:0.26.0",
+      "fingerprint": "c03c2e5b6ecbf8694ca976c9f8267cac3fe6647b73e2c47e7766cc5a4a2fd552",
+      "head": "07a7021274dfc365aabd746ce0a24ec4c91078f4",
+      "key": "brinnatt/redis-operator-upgrade-fixture:0.26.0",
+      "platforms": {
+        "linux/amd64": "sha256:d7b8e419ba7388c3a227c0f273f71100f894d1d79b7830e175c17bc04ee52830",
+        "linux/arm64": "sha256:5fc45a988e200a1b9c25d748a17ffce798165567b27979dc93c50f452a937d6a"
+      },
+      "schema": 1,
+      "source_digest": "sha256:1c6818e5e50553f9f3c1b91a8824ae5c1999a0c9416c794ca51431b7f0cb48c3",
+      "source_ref": "quay.io/opstree/redis-operator:v0.26.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis-operator-upgrade-fixture:0.26.0"
+    }
+  ],
+  "run_id": 38248377778,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/38248377778",
+  "schema": 1,
+  "scope": "Redis five-image changed publication; not a full catalog rebuild",
+  "workflow_conclusion": "success"
+}

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "official_index": "https://ot-container-kit.github.io/helm-charts/index.yaml",
+  "release": "https://github.com/OT-CONTAINER-KIT/helm-charts/releases/tag/redis-operator-0.27.0",
+  "asset_id": 624041570,
+  "chart_version": "0.27.0",
+  "operator_version": "0.27.0",
+  "sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f",
+  "scope": "Unmodified official release archive; full templates and CRDs",
+  "expected_files": 16
+}

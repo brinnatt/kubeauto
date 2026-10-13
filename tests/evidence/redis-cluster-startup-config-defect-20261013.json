@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "classification": "product configuration",
+  "acceptance": "Startup configuration fix focused PASS; full affected module/fresh installation/final GA still pending",
+  "affected_cases": [
+    "REDIS-12",
+    "REDIS-13",
+    "REDIS-14",
+    "REDIS-15"
+  ],
+  "root_cause": "Operator v0.27.0 CreateRedisLeader/CreateRedisFollower mount ExternalConfig exclusively from per-role RedisConfig.AdditionalRedisConfig. Root-level RedisConfig.DynamicConfig is applied at runtime only after bootstrap. Current root-only template omitted startup ConfigMap volume/include on all Cluster members. Fresh live CONFIG GET before Ready returned migration barrier=1 despite requested 2.",
+  "official": [
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/k8sutils/redis-cluster.go",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/agent/bootstrap/redis/config.go",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/api/rediscluster/v1beta2/rediscluster_types.go"
+  ],
+  "source_sha256": {
+    "internal/k8sutils/redis-cluster.go": "d9f6fb9d3da366cc490e54eeb411ec9a1a96dd138bf0c8c447dbe6d07b5be9e7",
+    "internal/agent/bootstrap/redis/config.go": "bc40ca55cb67a695bca050cc15f860e468e04908f9b9e5baf0eb928705343593",
+    "api/rediscluster/v1beta2/rediscluster_types.go": "305e91051f38c4dc9fad2e82a368d4786ac9cf1c6bba7697d597709f1402de16"
+  },
+  "diagnostics_sha256": "cfa79d456b6c57856e0647a55afd74ca09c86ae7313be37e9b46693010f50988",
+  "fix": "Add matching additionalRedisConfig references under redisLeader.redisConfig and redisFollower.redisConfig; retain root dynamic/maxmemory config. Sentinel unchanged.",
+  "smallest_disproof": "--redis-cluster-config verifies actual init/data mounts, generated include without reading secrets, effective settings, durable data/TTL and preserved PVC identities through config.yml + kubecli; then fresh install and complete affected gates.",
+  "focused_first_failure": {
+    "classification": "test-gate rollout/cleanup timing",
+    "durable_status": "state=exited pid=1881023 rc=1 bytes=335580 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "67578610c66cf8e3191e33e12e4735f4917d55ddf0f91a1110b28d09aa7092ab",
+    "diagnostics": "logs/redis-cases/cluster-config-20261013-034223",
+    "cause": "Product setup health accepted old Ready Pods while the Operator had not yet rolled out per-role ConfigMap mounts. New mount assertion ran too early; cleanup then routed against an updating Pod without podIP. Product convergence and data retention not yet signed off.",
+    "fix": "Wait for all nine non-terminating Ready Pods to carry declared external-config mount and podIP; clear stale port-forward routes and verify product health before assertions or key cleanup. Strict startup UUID/name/value recovery with atomic compare-delete."
+  },
+  "owned_key_recovery": {
+    "durable_status": "state=exited pid=1885185 rc=0 bytes=990 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "91f420dd618c03f54229996e649a29ebfe40bf0fda65b881954731857e3e0d4f",
+    "diagnostics": "logs/redis-cases/cluster-config-repair-20261013-034709",
+    "result": "27 strictly bounded remaining startup fixture keys recovered from original 32-key set; original Cluster/Sentinel/core/CSI retained healthy; no GA claim"
+  },
+  "focused_verification": {
+    "durable_status": "state=exited pid=1887892 rc=0 bytes=4510 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "f9d90870e8013543448a8f6daaf820046ae0e812ff202824d8697c8d31004a88",
+    "diagnostics": "logs/redis-cases/cluster-config-20261013-034935",
+    "markers": [
+      "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+      "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+      "REDIS_CLUSTER_STARTUP_CONFIG_PASS members=9 init-and-data-mounts=verified generated-include=verified effective-settings=verified data-and-pvc-uids=retained",
+      "REDIS_CLUSTER_KEYS_CLEAN_PASS uuid-keys=absent topology=healthy",
+      "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=cluster-config",
+      "REDIS_FOCUSED_MODULE_PASS module=cluster-config",
+      "REDIS_GATE_EXIT rc=0"
+    ]
+  }
+}

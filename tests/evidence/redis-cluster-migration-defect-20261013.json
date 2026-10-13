@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "classification": "product configuration",
+  "acceptance": "failure diagnosis; no PASS claim",
+  "affected_cases": [
+    "REDIS-12",
+    "REDIS-13",
+    "REDIS-14",
+    "REDIS-15"
+  ],
+  "entry": "config.yml + kubecli setup redis-cluster-gate 07 --tags redis",
+  "first_failure": "scale-out health timed out after 608 seconds: actual primary replica counts 2/1/2/3 instead of 2/2/2/2",
+  "root_cause": "Default cluster-migration-barrier=1 allows an existing replica to migrate to the new orphaned primary during Operator scale-out. The Operator also adds two new replicas there; a source primary falls to one replica. During rollback the extra original replica is forgotten as part of the removed shard, so its running Pod still has a live replication link but other peers know only 8 of the expected 9 members.",
+  "migration_log": "follower-4 at 2026-10-12T19:06:52.582Z: Migrating to orphaned master b30cb87fb669aca0af43f63277d2a2f46460ba9f",
+  "official": [
+    "https://github.com/redis/redis/blob/8.10.2/redis.conf",
+    "https://github.com/redis/redis/blob/8.10.2/src/cluster_legacy.c",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/k8sutils/redis.go"
+  ],
+  "official_operator_source_sha256": "5f0d7244534e037a55a60bb883a9637cdfd2523ffe4dc6f9e199592313de24dc",
+  "diagnostics_sha256": {
+    "kubeauto-redis-scale-out-check-probe.log": "b6878cc3e0273c5ed2f05be59a0eeceb198edbe53105f2e19df9b8f35f25f879",
+    "kubeauto-redis-scale-in-recovery-probe.log": "c4eb9382028b4fd56d3b504bec97a39c026d5c94f97df6f1087f5051ad9901fe"
+  },
+  "proposed_fix": "Cluster only: startup and dynamic cluster-migration-barrier equal declared replicas per shard. An exact-budget primary cannot donate a replica; a primary above budget may still donate. Preserve min-replicas write protection and automatic failover.",
+  "smallest_disproof": "fresh --redis-cluster-install with actual CONFIG GET, then --redis-cluster-rebalance-seed and --redis-cluster-rebalance",
+  "cleanup": "Failed Cluster scoped cleanup PASS: owned CR, data/node-conf PVCs, TLS, config and directory absent; shared Sentinel source business/declaration/PVC identities, Operator/core/CSI retained; durable rc=0, zero failure markers.",
+  "unchanged_dependencies": "Sentinel templates, Ceph and other middleware unchanged; unaffected module evidence retained.",
+  "failed_run": {
+    "diagnostics": "logs/redis-cases/cluster-rebalance-20261013-033139",
+    "durable_rc": 1,
+    "log_sha256": "74bc0d5c034ec407311fc7f9477e4837912a455d68c7cf68a41b8b27dededf23"
+  },
+  "cleanup_evidence": {
+    "diagnostics": "logs/redis-cases/cluster-clean-20261013-033307",
+    "log_sha256": "5ee0a51910888e9ab9ae1baf50fe46dc1c7d99e7c191b070bd676c66fe95bfbc",
+    "durable_status": "state=exited pid=1875556 rc=0 bytes=781 pass_markers=0 failure_markers=0 latest="
+  },
+  "startup_dependency": "tests/evidence/redis-cluster-startup-config-defect-20261013.json; per-role mounts focused PASS, generated include and actual parameters verified on all nine members",
+  "fixed_baseline_seed": {
+    "diagnostics": "logs/redis-cases/cluster-rebalance-seed-20261013-035159",
+    "durable_status": "state=exited pid=1895218 rc=0 bytes=847 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "aa286a0fc4d08019e267c2de4bc6b23005f1fb366ef91c2e120939972e3f8d5c"
+  }
+}

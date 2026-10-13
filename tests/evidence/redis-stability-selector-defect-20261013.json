@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "classification": "test-gate selector defect",
+  "acceptance": "PENDING; faults-only failed before Operator or worker restart; no soak acceptance",
+  "owning_case": "REDIS-21",
+  "entry": "config.yml product baseline + fixed --redis-stability-faults",
+  "first_failure": "Operator Pod lookup used app.kubernetes.io/instance=redis-operator; official Chart Pod selector is name=redis-operator",
+  "official_reference": "https://github.com/OT-CONTAINER-KIT/helm-charts/releases/tag/redis-operator-0.27.0",
+  "chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f",
+  "durable_status": "state=exited pid=1956052 rc=1 bytes=226636 pass_markers=0 failure_markers=0 latest=",
+  "log_sha256": "27dc27accc2da49a5a3b9bf25621c28ef791607b475f6cc4529894b8a9d239ef",
+  "recovery": "Data/PVC retained after successful Pod restart, both Sentinel/Cluster health passed, UUID keys removed and restart journal cleared; Operator/worker mutation was not reached",
+  "fix": "Read verified Helm Deployment selector, match its Pod template, validate two active replicas before seed/fault; revalidate Deployment UID and selector immediately before rollout",
+  "smallest_disproof": "Selector/foreign-identity regression + official Helm render assertion; then fixed --redis-stability-faults only",
+  "focused_fix_acceptance": {
+    "durable_status": "state=exited pid=1965354 rc=0 bytes=4509 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "ff29487aaea5fc4b67cd1114241da54b80f1598bd8d9429632bcc329c00a1973",
+    "markers": [
+      "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+      "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+      "REDIS_STABILITY_POD_RESTART_PASS uid=replaced data-and-pvc=retained",
+      "REDIS_STABILITY_OPERATOR_RESTART_PASS processes=2 data-and-pvc=retained",
+      "REDIS_STABILITY_NODE_RESTART_PASS boot-id=changed node-uid=retained data-and-pvc=retained",
+      "REDIS_STABILITY_FAULTS_PASS acceptance=partial-no-soak",
+      "REDIS_CLUSTER_KEYS_CLEAN_PASS uuid-keys=absent topology=healthy",
+      "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+      "REDIS_STABILITY_RESTART_CLEAN_PASS faults=none data-keys=absent",
+      "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=stability-faults",
+      "REDIS_FOCUSED_MODULE_PASS module=stability-faults"
+    ],
+    "matrix_signoff": "REDIS-21 remains pending; no thirty-minute soak in this branch"
+  }
+}

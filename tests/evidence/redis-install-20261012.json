@@ -1,0 +1,51 @@
+{
+  "case_ids": [
+    "REDIS-06"
+  ],
+  "cleanup_scope": "Temporary client Pod and business keys removed; validated healthy dedicated cluster, CSI, and Redis baseline retained for focused gates",
+  "control_host": "192.168.47.130",
+  "durable_rc": 0,
+  "durable_status_sha256": "312f9d860f9e410b7a7eef37b382c1565a5540d03f57ec29f3a9350ea6332ae2",
+  "entry_point": "kubecli setup redis-gate 07 --tags redis",
+  "failure_markers": 0,
+  "kubernetes": "1.33.6",
+  "log_sha256": "ef82ebe79ec7d42fc9abcaf403ddaae88f2916c891fbde3e1f77bade3720bf83",
+  "markers": [
+    "REDIS_STAGE_BEGIN stage=lab-baseline",
+    "REDIS_CORE_BASELINE_VERIFIED uid=2c773f9a-22b1-4c2d-9888-6c43800725c0",
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_LAB_CONFIG_PASS kubernetes=1.33.6 resources=lab-only",
+    "REDIS_STAGE_BEGIN stage=credentials",
+    "REDIS_STAGE_BEGIN stage=product-install",
+    "REDIS_STAGE_BEGIN stage=preflight mode=--install-only",
+    "REDIS_CONFIG_PASS namespace=redis-gate name=redis-gate-data mode=sentinel",
+    "REDIS_STAGE_BEGIN stage=product-entry mode=--install-only",
+    "REDIS_STAGE_BEGIN stage=control-data",
+    "REDIS_DATA_DIGEST_PASS mode=sentinel sha256=695840da5718217df2ff8d668d23b208467528bead9717c5e87ceadd5fb21066 ttl=300",
+    "REDIS_SENTINEL_DISCOVERY_PASS master=172.30.113.75",
+    "REDIS_BUSINESS_DATA_PASS mode=sentinel",
+    "REDIS_STAGE_PASS stage=control-data mode=sentinel",
+    "REDIS_INSTALL_SMOKE_PASS",
+    "REDIS_INSTALL_SCOPED_CLEAN_PASS",
+    "REDIS_INSTALL_MODULE_PASS",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "module": "install",
+  "nodes": [
+    "192.168.47.131",
+    "192.168.47.132",
+    "192.168.47.133",
+    "192.168.47.134",
+    "192.168.47.135",
+    "192.168.47.136"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --redis-install-repair",
+  "schema": 1,
+  "scoped_clean_marker": "REDIS_INSTALL_SCOPED_CLEAN_PASS",
+  "terminal_marker": "REDIS_INSTALL_MODULE_PASS",
+  "versions": {
+    "exporter": "v1.93.0",
+    "operator": "0.27.0",
+    "redis": "8.10.2"
+  }
+}

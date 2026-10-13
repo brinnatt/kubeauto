@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "classification": "upstream Redis Operator Cluster lifecycle defect",
+  "acceptance": "PENDING; no patch or GA acceptance yet",
+  "affected_cases": [
+    "REDIS-12",
+    "REDIS-13",
+    "REDIS-14",
+    "REDIS-15",
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "root_cause": "With min-replicas-to-write=1 active at startup, redis-cli add-node executes FUNCTION RESTORE before CLUSTER MEET and fails NOREPLICAS on the unreplicated empty new primary. Operator v0.27.0 adds the primary, rebalances empty primaries, then adds followers; failures are logged without propagation. All Pods Ready does not establish cluster membership.",
+  "official": [
+    "https://github.com/redis/redis/blob/8.10.2/src/redis-cli.c",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/releases/tag/v0.27.0",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/k8sutils/cluster-scaling.go",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/k8sutils/redis.go",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/controller/rediscluster/rediscluster_controller.go"
+  ],
+  "source_sha256": {
+    "internal/k8sutils/cluster-scaling.go": "c84d019edae5431e892fd3ca2e9041d56dadd520429ad8d21d845a8f463f50fe",
+    "internal/k8sutils/redis.go": "5f0d7244534e037a55a60bb883a9637cdfd2523ffe4dc6f9e199592313de24dc",
+    "internal/controller/rediscluster/rediscluster_controller.go": "ba89d2e1f3c53607fca23f18d52ee03baaac629ac5aa5acb24b80f136609dcc3"
+  },
+  "upstream_latest_checked": "v0.27.0; main HEAD 71954323c9191e6171f3eb04f80bb46a5f128306",
+  "smallest_disproof": "Product config.yml redis_cluster_shards=3\u21924\u21923 via kubecli setup redis-cluster-gate 07 --tags redis, --redis-cluster-rebalance; full membership, exact replica graph, Functions, slots, data, absolute TTL, PVC identity and write protection required.",
+  "first_failure": {
+    "durable_status": "state=exited pid=1900912 rc=1 bytes=415783 pass_markers=0 failure_markers=0 latest=",
+    "diagnostics": "logs/redis-cases/cluster-rebalance-20261013-040557",
+    "log_sha256": "b038b6e0b13475e88e19a208c87e508da9000e7707cf66a2b9d080932b3f8135",
+    "controller_diagnostics_sha256": "85d0d7121939dccd5b8c42a4715cb26afd35458805395c7a6eb13f38da7d4373"
+  },
+  "failure_recovery": {
+    "markers": [
+      "REDIS_CLUSTER_RESIZE_ROLLBACK_PASS shards=3 data=verified",
+      "REDIS_CLUSTER_KEYS_CLEAN_PASS uuid-keys=absent topology=healthy"
+    ],
+    "result": "Product configuration and 9-member cluster recovered; bounded test keys removed; retained owned PVCs remain reserved for fixture final cleanup. Sentinel/core/CSI retained. No PASS claim."
+  },
+  "candidate": {
+    "scope": "Opt-in RedisCluster annotation; all non-Cluster and unannotated source paths retain upstream behavior. No write protection relaxation.",
+    "artifact": "brinnatt/redis-operator:0.27.0-kubeauto.1",
+    "acceptance": "Source/unit/build/publication PASS; live acceptance PENDING",
+    "source_contract_log_sha256": "ab0bc8da98165387525150bb6a0a55caf3e10972a1af63c48489e5562b0d62fb",
+    "upstream_k8sutils_log_sha256": "c6edc697ffe8fce2230e358935f4c6af65252d683412a1b7b9a9f657acc4cfe3",
+    "catalog": "130/130; 27 artifact contracts PASS",
+    "reason_for_patch": "Latest release and upstream main are both v0.27.0 commit 71954323c9191e6171f3eb04f80bb46a5f128306; no newer official fix.",
+    "implementation": "admit only singleton/no-slot/no-data/no-Functions primary using CLUSTER MEET; preserve existing graph and explicitly assign missing followers; verify online synchronization and canonical Function library identities before rebalance; retain retiring replicas during reshard; persist owned identities before destructive stage and validate reentry boundaries.",
+    "packaging_first_failure": {
+      "run_id": 38304756934,
+      "sha": "8f13972c8bd5bec10b171208bbb80e44b872839a",
+      "classification": "artifact packaging dependency conflict",
+      "cause": "UBI pinned base includes curl-minimal; installing complete curl conflicts with its existing provider. No Redis lab mutation occurred.",
+      "log_sha256": "9ecbc99b12e2fa10b254efd9269f4bfff9821f702b6050dc5190cefa585b06ac",
+      "fix": "Reuse curl-minimal, matching the same pinned UBI provider in existing MinIO artifacts; exact package-provider regression and patch-format scope contract added.",
+      "static_result": "130 catalog entries and 29 artifact tests PASS",
+      "next_sha": "50c03ec"
+    },
+    "packaging_second_failure": {
+      "run_id": 38305084562,
+      "sha": "50c03ec5fe28ccf45c72367ca6d393c3cf024855",
+      "classification": "artifact build-input checksum defect",
+      "cause": "65-digit checksum rejected before build; no lab mutation",
+      "log_sha256": "88a6520a86af8e674d0db1ca1a618a7dfa376cfb7da0f317380d15522251241f",
+      "fix": "Replace complete checksum; assert 64 digits and exact identity",
+      "static_result": "130 catalog entries and 30 artifact contracts PASS"
+    },
+    "publication_evidence": "tests/evidence/redis-protected-operator-images-20261013.json"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-22"
+  ],
+  "acceptance": "complete focused upgrade qualification",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "modules": [
+    {
+      "evidence": "tests/evidence/redis-upgrade-sentinel-20261013-075759.json",
+      "sha256": "e15e54389e937e1c76aafa3e62a3962856329612ddf8cfcb9e36d55f145475ba",
+      "module": "upgrade-sentinel",
+      "dependency_impact": {
+        "roles/cluster-addon/templates/redis/config.yaml.j2": "Cluster-only unsupported 8.10.1 bus option is version-qualified; Sentinel branch/current effective config unchanged. Current Cluster upgrade proves old/current compatibility.",
+        "tests/helpers/redis-focused-gate.sh": "Only upgrade-cluster-repair allowlist/dispatch added; normal Sentinel and CRD dispatch unchanged."
+      }
+    },
+    {
+      "evidence": "tests/evidence/redis-upgrade-cluster-20261013-091005.json",
+      "sha256": "a09b8a4f00bbe48df37d3b716cae8aacf56486a4f1d82cc5617932a1d843716d",
+      "module": "upgrade-cluster",
+      "dependency_impact": {}
+    },
+    {
+      "evidence": "tests/evidence/redis-crd-upgrade-20261013-092958.json",
+      "sha256": "c32b3b3ff109f3f4553d5a47348e04b50ad3e16f5a212789f73589675958c08d",
+      "module": "crd-upgrade",
+      "dependency_impact": {}
+    }
+  ],
+  "markers": [
+    "REDIS_OPERATOR_VERSION_UPGRADE_PASS",
+    "REDIS_OPERATOR_SUPPORTED_ROLLBACK_PASS",
+    "REDIS_SERVER_VERSION_UPGRADE_PASS",
+    "REDIS_SERVER_SUPPORTED_ROLLBACK_PASS",
+    "REDIS_CLUSTER_VERSION_UPGRADE_PASS",
+    "REDIS_CLUSTER_SUPPORTED_ROLLBACK_PASS",
+    "REDIS_CRD_PRODUCT_UPGRADE_PASS"
+  ],
+  "scope": "Real Sentinel 0.26->0.27 controller and Redis 8.10.1->8.10.2 version migration/rollback, real fixed-topology Cluster patch migration/rollback, explicit current forward CRD product request. No old-schema downgrade or arbitrary cross-major rollback promised.",
+  "cleanup_scope": "Current pinned versions and original configs restored; per-run keys/journals removed; source PVC UIDs retained; current schema backup remains owned for final lab cleanup."
+}

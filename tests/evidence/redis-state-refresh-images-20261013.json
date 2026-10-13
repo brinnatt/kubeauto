@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "scope": "Redis opt-in Cluster ASM state-refresh runtime; original Sentinel image preserved",
+  "workflow_conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "head": "46a21a8e94867080f7d764c9ab317e8d74d67c6e",
+  "run_id": 38317877300,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/38317877300",
+  "artifact_sha256": {
+    "image-plan.zip": "sha256:a541989a105477add81238879e978c30e474c18d1a165f55d8df1438d372aa63",
+    "plan-evidence-1.zip": "sha256:5569f2c668429a7ed17b2b00147130b4f62c290d94ef38a28d7102639c7d7d71",
+    "release-evidence-0-1.zip": "sha256:9720f2cf0a73f0fd1582ec141f7c643decf9c73a9bc3979f66257ca57e1e327c"
+  },
+  "images": [
+    {
+      "digest": "sha256:ef29a6173446911dbb60cb91903fb750720fb589e0b1a307e760cce30036ddd1",
+      "fingerprint": "90da7542afc44e0c9a3e5d614e3f379252c999ae46c2875fc43896b4be995c49",
+      "head": "46a21a8e94867080f7d764c9ab317e8d74d67c6e",
+      "key": "brinnatt/redis:8.10.2-kubeauto.1",
+      "platforms": {
+        "linux/amd64": "sha256:dc297833d52428737be9994c70accdfe3de3c42fa9d8034bd446dc46ea672b00",
+        "linux/arm64": "sha256:9dee6b4661395fc59facb26cea835c8ec61eb7843e0aeeaa0ef65f68b64d0f5c"
+      },
+      "schema": 1,
+      "source_digest": "sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6",
+      "source_ref": "redis:8.10.2@sha256:2c2dff791878316e3b083188be0d578423b24813cdda5de0e80ea4f7b3e6bfd6",
+      "dockerhub_ref": "brinnatt/redis:8.10.2-kubeauto.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis:8.10.2-kubeauto.1"
+    }
+  ],
+  "fingerprint_verification": "Frozen image-plan mapping, build policy and exact published Git blob contents with canonical checkout permissions match current source",
+  "build_acceptance": {
+    "linux/amd64": {
+      "original_negative_control": true,
+      "compiled_negative_control": true,
+      "patched_asm_data_and_absolute_expiry": true,
+      "official_modules_json_and_tls": true,
+      "fixture_processes_reaped": true
+    },
+    "linux/arm64": {
+      "original_negative_control": true,
+      "compiled_negative_control": true,
+      "patched_asm_data_and_absolute_expiry": true,
+      "official_modules_json_and_tls": true,
+      "fixture_processes_reaped": true
+    }
+  },
+  "release_log_sha256": "3e52ab7c5f0ba854a397bf6684075c5196be3787fd70fff28e3deb1c09d38e70",
+  "delivery_source_readback": {
+    "checked_at": "2026-10-12T23:55:22.119314+00:00",
+    "control_host": "192.168.47.130",
+    "entry_point": "bash tests/run_enterprise_regression.sh --redis-cluster-artifacts",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "df8d499369ebbeaa431122c9e82482d6469834b8ca72dc0931d7094765470097",
+    "gate_sha256": "b278bd15a78cec9b159c09adeed8a61ed50583e2751473dd084df2772151cbd0",
+    "manifests": [
+      {
+        "marker": "REDIS_ARTIFACT_MANIFEST",
+        "image": "hub.talkedu.cn/kubeauto/redis:8.10.2-kubeauto.1",
+        "digest": "sha256:ef29a6173446911dbb60cb91903fb750720fb589e0b1a307e760cce30036ddd1",
+        "platforms": {
+          "amd64": "sha256:dc297833d52428737be9994c70accdfe3de3c42fa9d8034bd446dc46ea672b00",
+          "arm64": "sha256:9dee6b4661395fc59facb26cea835c8ec61eb7843e0aeeaa0ef65f68b64d0f5c"
+        }
+      }
+    ],
+    "marker": "REDIS_ARTIFACTS_PASS count=1 verification=actions-and-current-talkedu",
+    "cleanup_scope": "Read-only; no fixtures or remote mutation"
+  }
+}

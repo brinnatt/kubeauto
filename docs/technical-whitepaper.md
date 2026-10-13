@@ -100,7 +100,7 @@ flowchart TB
 | 15 | 安全基线与生命周期 | [whitepaper/15-security-lifecycle.md](./whitepaper/15-security-lifecycle.md) |
 | 16 | **持久化存储与 OpenEBS** | [whitepaper/16-storage-openebs.md](./whitepaper/16-storage-openebs.md) |
 | 17 | **其他存储与中间件插件** | [whitepaper/17-storage-middleware-addons.md](./whitepaper/17-storage-middleware-addons.md) |
-| 中间件 | **Percona PXC、Apache Kafka、Prometheus、EFK/Loki** | [中间件企业文档](./middleware/README.md) |
+| 中间件 | **Percona PXC、Apache Kafka、Redis、Prometheus、EFK/Loki** | [中间件企业文档](./middleware/README.md) |
 | 存储分路 | **Ceph Tentacle 九个官方模块** | [存储分路入口](./storage/README.md) |
 | 附录 A | 版本矩阵与官方文档索引 | [whitepaper/A-version-matrix.md](./whitepaper/A-version-matrix.md) |
 

@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ redis_name }}-config
+  namespace: {{ redis_namespace }}
+  labels:
+    kubeauto.io/managed-by: kubeauto
+    kubeauto.io/component: redis
+data:
+  redis-additional.conf: |
+    appendonly yes
+    # Agent versions must not choose different case-sensitive AOF filenames.
+    appendfilename "appendonly.aof"
+    appendfsync {{ redis_appendfsync }}
+    maxmemory-policy noeviction
+    min-replicas-to-write {{ redis_min_replicas_to_write | int }}
+    min-replicas-max-lag {{ redis_min_replicas_max_lag | int }}
+{% if redis_mode == 'cluster' %}
+    cluster-require-full-coverage yes
+{% if (redis_cluster_image_ver.split('-')[0].split('.') | map('int') | list) >= [8, 10, 2] %}
+    cluster-bus-port-protected-mode yes
+{% endif %}
+    # Keep the declared redundancy while the Operator adds a new shard.
+    cluster-migration-barrier {{ redis_cluster_replicas | int }}
+{% endif %}
+{% if redis_tls_secret | length > 0 %}
+    tls-auth-clients yes
+{% endif %}
+  redis-sentinel-additional.conf: |
+{% if redis_tls_secret | length > 0 %}
+    tls-auth-clients yes
+{% else %}
+    # No TLS configuration requested.
+{% endif %}

@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "classification": "Redis production startup-template version compatibility defect plus test-gate forced-rollback recovery omission",
+  "affected_cases": [
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml + kubecli setup redis-cluster-gate 07 --tags redis",
+  "first_failure": {
+    "durable_status": "state=lost pid=2222017 rc=missing bytes=16069 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "c723fd648910751015aef55f127fff5fdffa82369f298033fd9c892f02f066aa",
+    "redis_log_sha256": "db13babc9874d167661afeee4cafa676dae0dd7ca26a30728f987d799b696f75",
+    "observed": "Actual 8.10.1 rejects unresolved cluster-bus-port-protected-mode yes; leader-2 CrashLoop blocks OrderedReady migration. Current template restored by original failure cleanup but failed old Pod remains; stopped invalid recovery wait, no pass accepted."
+  },
+  "official_source": {
+    "8.10.1/redis.conf": "09f1da536854d8392a6fc26e8fc4355c2abc9d3edf08dcc43d6d4a111458358d",
+    "8.10.1/src-config.c": "a6b68c291d3129ff8c54ce4510ac1ab42abffc900b54c680c348df82afe036dd",
+    "8.10.2/redis.conf": "5ae0cda89cc3ab7a399280f92ee840a476a8a230249a1b8a138e589ecf522345",
+    "8.10.2/src-config.c": "a600d92c78d1c9afb4fc89ffbc2c5307fc6b4c3ae588a93273071b9b5e3050c4"
+  },
+  "root_cause": "8.10.1 config registration has no cluster-bus-port-protected-mode; 8.10.2 registers it. Startup template originally emitted it for every Cluster runtime. Kubernetes forced rollback also requires failed old Pods to be rebuilt after template restoration.",
+  "fix": "Numeric version-aware generation retains protection for current 8.10.2-kubeauto.1. Recovery uses product setup, then CAS-deletes only unready old-image members whose complete owner graph and restored templates match; preserves original data, PVCs and fault UUID.",
+  "static_regression": "Old-version exact render failed before fix; 64 product tests and 6 rollback contracts pass, including foreign identity/config/namespace boundaries and child-process reaping. Complete static gate passes.",
+  "impact_analysis": "Current pinned production startup parameters unchanged; prior current installation, data, failure, rebalance and backup evidence remains valid after this bounded analysis. Only older 8.10.1 Cluster request gains compatible rendering. New dispatch applies exclusively to upgrade-cluster-repair; normal other module paths unchanged. Final clean full regression remains mandatory.",
+  "smallest_disproof": "--redis-upgrade-cluster-repair, then --redis-upgrade-cluster",
+  "live_result": "pass",
+  "official": [
+    "https://github.com/redis/redis/blob/8.10.1/src/config.c",
+    "https://github.com/redis/redis/blob/8.10.2/src/config.c",
+    "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#forced-rollback"
+  ],
+  "recovery_evidence": {
+    "directory": "logs/redis-cases/upgrade-cluster-repair-20261013-090753",
+    "durable_status": "state=exited pid=2231193 rc=0 bytes=4692 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "727f6a36db37223b68b346c3f909d7640b420afef344e1e980f8148e410d2789",
+    "result": "pass; all original UUID values/positive TTL, PVC identity, product convergence and scoped cleanup verified",
+    "rebuilt_pods": [
+      "REDIS_CLUSTER_ROLLBACK_MEMBER_REBUILD pod=redis-gate-cluster-data-leader-2 restored-template=verified uid-precondition=verified"
+    ]
+  },
+  "live_evidence": "tests/evidence/redis-upgrade-cluster-20261013-091005.json",
+  "live_proof": "All nine real 8.10.1 and 8.10.2 revised-image servers qualified; upgrade, supported fixed-topology rollback and current restoration retain data/absolute TTL/AOF durability/PVC identities; scoped-clean and durable rc=0."
+}

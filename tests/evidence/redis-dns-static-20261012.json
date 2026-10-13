@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-01",
+    "REDIS-02",
+    "REDIS-03"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --redis-static-only",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "static_tests": 85,
+  "markers": [
+    "REDIS_STAGE_BEGIN stage=static-syntax",
+    "REDIS_MATRIX_VALIDATION_PASS path=tests/redis-test-matrix.yaml",
+    "REDIS_STAGE_BEGIN stage=static-contracts",
+    "REDIS_STAGE_BEGIN stage=official-chart-render",
+    "REDIS_HELM_RENDER_PASS resources=4",
+    "REDIS_STORAGE_HELM_RENDER_PASS resources=44",
+    "REDIS_STAGE_BEGIN stage=ansible-entry-contract",
+    "REDIS_ISOLATED_TASKS_PASS count=17",
+    "REDIS_DISABLED_CHECK_PASS changed=0",
+    "REDIS_STATIC_GATE_PASS"
+  ],
+  "log_sha256": "bf8a0e24dd1dda8694a109a60b1421aab832ecceb73f599ca3ace29f11c9aed3",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "38cb0fbd7b30f75512df1d0499db3b48b9446c9e2cee2ee9b39218d321b461d9",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "eec04a7c496a6505e3faffde24161c0a1fb3a27ca91e6f3b07122c86b497afc0",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "tests/helpers/redis-focused-gate.py": "9923af8527377ecebbce9da5d3904367c42ed0d733eedf22876da095ad5c61a5",
+    "tests/helpers/redis-focused-gate.sh": "ec3196aa76470aac91272e6a72b512ae8ecc23c7b233e84fce354913dd246ae5"
+  },
+  "fixtures": "Temporary directory removed by EXIT trap; no live mutation",
+  "catalog": "IMAGE_CATALOG_VALIDATION_PASS rows=129 dockerfiles=129"
+}

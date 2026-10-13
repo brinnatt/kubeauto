@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-18"
+  ],
+  "module": "capacity",
+  "acceptance": "complete module",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-capacity",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_MEMORY_WATERMARK_PASS product-percent=50 filled-keys=100 oom=denied existing-key=retained post-reclaim-write=verified",
+    "REDIS_CAPACITY_REPLICATION_RESET_PASS upstream-connections=1",
+    "REDIS_FOCUSED_FAULT_CLEAN_PASS",
+    "REDIS_REPLICATION_LAG_PASS isolated-replica=stale healthy-ack=1 recovered-acks=2 digest=verified",
+    "REDIS_BOUNDED_DISK_PRESSURE_PASS bytes=134217728 reserve-min=268435456 fsync=verified digest=retained file=removed",
+    "REDIS_PVC_MEMBER_EXPANSION_PASS claim=redis-gate-data-redis-gate-data-0 target=3Gi filesystem=verified",
+    "REDIS_PVC_MEMBER_EXPANSION_PASS claim=redis-gate-data-redis-gate-data-1 target=3Gi filesystem=verified",
+    "REDIS_PVC_MEMBER_EXPANSION_PASS claim=redis-gate-data-redis-gate-data-2 target=3Gi filesystem=verified",
+    "REDIS_PVC_EXPANSION_PASS members=3 pvc-and-pod-uids=retained product-reconcile=verified digest=retained",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_CAPACITY_SCOPED_CLEAN_PASS keys=absent fault=absent pressure-file=absent original-memory-config=restored grown-product-pvcs=retained",
+    "REDIS_CAPACITY_PASS memory-watermark=verified replica-lag=recovered bounded-disk=verified product-pvc-expansion=verified data=retained",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=capacity",
+    "REDIS_FOCUSED_MODULE_PASS module=capacity",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "d8847e3ebdbbcab3d501f151c71011dc21ff443efd51b736f6b6f822acfd789e",
+  "durable_status_sha256": "8a808d579de870dd383b069065210439b0e24b23282dec7a52393578c0086358",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "38cb0fbd7b30f75512df1d0499db3b48b9446c9e2cee2ee9b39218d321b461d9",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "eec04a7c496a6505e3faffde24161c0a1fb3a27ca91e6f3b07122c86b497afc0",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "1b92898680863e1d95d67ab11b80a0b59a0723c5275743a2026b251f732f8fc1",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "roles/cluster-addon/files/redis-snapshot.py": "d4ef5989ec0786348dda2f79788dbaa5124353fd7054b81dc6bec801dbf528e5",
+    "tests/helpers/redis-focused-gate.py": "c52e6230575e724920bb97ddf86357a9fe744886862eeabab2c35a5e87d70cf7",
+    "tests/helpers/redis-focused-gate.sh": "abe4717c2b02a2b36c5da59a0ea83db740596d4014d117e938a39b91b7f1e124",
+    "tests/helpers/redis-capacity-gate.py": "d13c1e8d047361e16df610448aadad4bdb34d70a49028ed6eaf024e9c123c611",
+    "tests/helpers/redis-lab-storage.py": "2e7682980939c2d60faec9ca31875c9184737e7d59c9da42dfecc649763a8bff"
+  },
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained"
+}

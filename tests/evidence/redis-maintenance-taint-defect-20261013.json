@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "classification": "Redis maintenance test-gate prerequisite contract",
+  "affected_cases": [
+    "REDIS-11",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml + kubecli setup redis-gate 07 --tags redis; existing master cordon from core role is unchanged",
+  "first_failure": {
+    "durable_status": "state=exited pid=2109963 rc=1 bytes=246623 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "f93ad4d9c3b0500a430002f5fd7260955b4fdc37fef6784e903a2195b16632cd",
+    "reason": "spare_contract rejected the official node.kubernetes.io/unschedulable NoSchedule taint on the already-cordoned leased master 134"
+  },
+  "proof": "Actual node 134 is Ready, correct UID/IP, no storage label, spec.unschedulable=true; core wait-node-ready.yml intentionally cordons masters; pinned Kubernetes node lifecycle controller creates this standard taint",
+  "official": "https://github.com/kubernetes/kubernetes/blob/v1.33.6/pkg/controller/nodelifecycle/node_lifecycle_controller.go",
+  "official_source_sha256": "1b331fd0427550a648170115815a10ea56e0d76637a35b55ae49f8edcad9c35e",
+  "fix": "Accept only the standard unschedulable taint when spec.unschedulable is true; preserve recorded taints and scheduling for restoration; all unknown taints still refused",
+  "static_regression": "Exact taint regression failed before repair and all five maintenance contracts passed after repair",
+  "cleanup": "Current complete drain: original scheduling/taints and spare host restored; CSI/Longhorn spare absent; business/PVC retained; UUID keys absent; durable rc=0, zero failure markers, scoped clean",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-maintenance-drain",
+  "live_result": "pass",
+  "live_evidence": "tests/evidence/redis-maintenance-drain-20261013-070754.json"
+}

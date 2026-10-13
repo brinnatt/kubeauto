@@ -265,6 +265,31 @@ class KubeConstant:
     v_strimzi_drain_cleaner_chart_sha256: str = field(
         default="ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
     )
+    # Redis middleware baseline.  Redis 8 is distributed under the
+    # AGPLv3/RSALv2/SSPLv1 tri-license; the product path selects AGPLv3.
+    v_redis_operator: str = field(default="0.27.0", metadata={
+        "refer_github": "https://github.com/OT-CONTAINER-KIT/redis-operator/releases/tag/v0.27.0",
+        "refer_docs": "https://redis-operator.opstree.dev/",
+        "description": "OpsTree Redis Operator supporting standalone, replication, Sentinel and Cluster",
+    })
+    v_redis_operator_image: str = field(default="0.27.0-kubeauto.2", metadata={
+        "description": "Pinned v0.27.0 source build with opt-in protected RedisCluster lifecycle",
+    })
+    v_redis: str = field(default="8.10.2", metadata={
+        "refer_github": "https://github.com/redis/redis/releases/tag/8.10.2",
+        "refer_docs": "https://redis.io/docs/latest/",
+        "description": "Redis Open Source security patch release; AGPLv3 delivery profile",
+    })
+    v_redis_cluster_image: str = field(default="8.10.2-kubeauto.1", metadata={
+        "description": "Redis 8.10.2 ASM takeover state refresh; Cluster-only pinned source build",
+    })
+    v_redis_exporter: str = field(default="v1.93.0", metadata={
+        "refer_github": "https://github.com/oliver006/redis_exporter/releases/tag/v1.93.0",
+        "description": "Redis Exporter pinned monitoring image",
+    })
+    v_redis_operator_chart_sha256: str = field(
+        default="4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+    )
 
     # path for storing some important files
     BASE_PATH: str = field(default="/usr/local/kubeauto", metadata={
@@ -492,5 +517,11 @@ class KubeConstant:
                 f"brinnatt/strimzi-operator:{self.v_strimzi_operator}",
                 f"brinnatt/strimzi-kafka:{self.v_strimzi_operator}-kafka-{self.v_kafka}",
                 f"brinnatt/strimzi-drain-cleaner:{self.v_strimzi_drain_cleaner}",
+            ],
+            "redis": [
+                f"brinnatt/redis-operator:{self.v_redis_operator_image}",
+                f"brinnatt/redis:{self.v_redis}",
+                f"brinnatt/redis:{self.v_redis_cluster_image}",
+                f"brinnatt/redis-exporter:{self.v_redis_exporter}",
             ],
         }

@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-22"
+  ],
+  "module": "upgrade-cluster",
+  "acceptance": "partial matrix item",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-upgrade-cluster",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_CLUSTER_LEGACY_VERSION_PASS redis=8.10.1 protected-controller=retained",
+    "REDIS_CLUSTER_VERSION_UPGRADE_PASS redis=8.10.1-to-8.10.2 data-expiry-and-pvc=retained",
+    "REDIS_CLUSTER_SUPPORTED_ROLLBACK_PASS qualification=fixed-topology-patch-pair data=retained",
+    "REDIS_CLUSTER_VERSION_QUALIFICATION_PASS current-image=restored topology=3+6",
+    "REDIS_CLUSTER_KEYS_CLEAN_PASS uuid-keys=absent topology=healthy",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_CLUSTER_UPGRADE_CLEAN_PASS config=restored uuid-keys=absent journal=removed",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=upgrade-cluster",
+    "REDIS_FOCUSED_MODULE_PASS module=upgrade-cluster",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "b5a5a5c26f788c7367f3475a9ad1d3d5d4db108a48022ff00fa5a3788bb01bdf",
+  "durable_status_sha256": "63d9366f4ebd090ad51008325da1cb6ad62af7dfeb7d2e612c6a7ca847043754",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "fc5ae3e7123f607879c201c384fe66b2f1bd7c5928c1d7e5084b844f7a22dc3f",
+    "common/constants.py": "47d5baf0e853b8433356c4b6afaa873963b02c4ac76e339016555bcd2ef094bd",
+    "conf/config.yml": "a3376075984a2906952271eded03cde27301b5ee25938ca032d97c68c06ee1c4",
+    "service/cluster/manager.py": "65662dd493caa147b3d4fe616a65c03df0ca1e05ee2832448378c8524cb67cd0",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "19a0410b2d6c1e290c155cdda21f6103eff4972a30ee9cd2ed1422ab6757801b",
+    "roles/cluster-addon/templates/redis/config.yaml.j2": "05a0192df7c593a99aee9438689da4ab62bc911c2661d2f79fef073867caa570",
+    "roles/cluster-addon/templates/redis/operator-values.yaml.j2": "633d38ad6860386b86373a0ea31a5d66b07dfdeab11b0cc8046a239785b5d78d",
+    "roles/cluster-addon/files/redis-health.py": "13d63f9a5d58bd67b743dd0468665a4d3910c7e27311937a03414b8f35ca693a",
+    "roles/cluster-addon/files/redis-snapshot.py": "4f269982838e882f0f11b2a719198b07d88da031f2f0dce116c33f60e8d1aeb3",
+    "tests/helpers/redis-focused-gate.py": "22715fed676ebaf7996f88d3ed4fbdac973c018515d5f81d672a884559df5b1b",
+    "tests/helpers/redis-focused-gate.sh": "6399c587b34feb83e26aa277f51e0a5f6c76f4d094ef053bb25aa4bbcb1b300b",
+    "tests/helpers/redis-cluster-upgrade-gate.py": "fa6a14e0d6fede4cc5948f063997cff22a3b10a4aa6911e7a6256ed7ff6b7172",
+    "tests/helpers/redis-upgrade-gate.py": "f4406cc2f9ffafe1913bfbd33f50e5535f13d81e55b1fdc331e74586c1c7e295"
+  },
+  "launch_source_sha256": "d3a9a5be9f443122c1bcd2155f60eca0e787c877ace8767dcc1a4bc4965e4d67",
+  "cleanup_scope": "Runner-owned UUID fixture keys, fault policies, temporary Pods, private files and client/port-forward processes; healthy shared core and CSI retained"
+}

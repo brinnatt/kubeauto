@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "classification": "Redis product health and snapshot CLI legacy authentication incompatibility",
+  "affected_cases": [
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml + kubecli setup redis-gate 07 --tags redis",
+  "first_failure": {
+    "directory": "logs/redis-cases/upgrade-prepare-20261013-074431",
+    "reason": "Product Redis CLI checked only REDISCLI_AUTH; the pinned legacy agent exposes REDIS_PASSWORD, so the six health PING requests return NOAUTH",
+    "log_sha256": "004a5c3caec105d11b7c3e098c464e0e49f832a53e98fdfb38156ebb5efe7b9e",
+    "durable_rc": 1
+  },
+  "official_references": [
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/tree/ef33adb71ce1bffb0ab1fce593625c320dc6164e/internal/k8sutils",
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/tree/71954323c9191e6171f3eb04f80bb46a5f128306/internal/k8sutils",
+    "https://redis.io/docs/latest/develop/tools/cli/#host-port-password-and-database"
+  ],
+  "proof": "Read-only diagnostics identify REDIS_PASSWORD as the only auth environment key on all six legacy members. Product CLI prefix PING returns rc=1 and NOAUTH on all six. Independent authenticated TLS INFO proves one master, two synchronized replicas and reachable Sentinel quorum; this is a CLI authentication failure, not proof of failed replication.",
+  "fix": "Health and snapshot prefer REDISCLI_AUTH, fall back to REDIS_PASSWORD when empty/missing, normalize CRLF and export to redis-cli. No credentials in argv, diagnostics or exception output.",
+  "static_regression": "Exact subprocess contract first fails for both helpers with legacy-only and empty-current environments; after repair it accepts both forms and current-variable precedence. Related contracts and complete Redis static gate pass.",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-upgrade-prepare",
+  "live_result": "pass",
+  "impact_analysis": "Current 0.27 authentication precedence and CRLF behavior remain unchanged. New support covers the fixed legacy upgrade fixture; unrelated middleware and Ceph are untouched.",
+  "live_qualification": {
+    "directory": "logs/redis-cases/upgrade-prepare-20261013-075331",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "dcbfa0c21c825c63639d51060ea5fe7dc48e40c3cc54f82885e5db774171f0be",
+    "launch_source_sha256": "3b6eb78629884c4b1a9f34d1a62c26d58677d8dfb0e08afc4470645ea59b99b2",
+    "acceptance": "Legacy fixture, retained seeded current business and absolute TTL, current recovery and owned cleanup; not full upgrade module"
+  }
+}

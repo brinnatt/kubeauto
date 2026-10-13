@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "classification": "Redis cleanup test-gate ownership defect",
+  "affected_cases": [
+    "REDIS-23",
+    "REDIS-24"
+  ],
+  "cause": "Helm release name alone is not cluster-scoped RBAC ownership; an equal release name in a different namespace must be retained, and official RBAC need not carry the assumed app.kubernetes.io/instance label",
+  "official": "https://github.com/helm/helm/blob/v3.19.0/pkg/action/validate.go",
+  "fix": "Inspect exact meta.helm.sh/release-name and meta.helm.sh/release-namespace annotations; reject scoped survivors and preserve other releases",
+  "contract": "test_cleanup_rbac_verification_is_scoped_to_exact_helm_release_namespace; current and foreign release namespace paths verified",
+  "live_evidence": "tests/evidence/redis-cleanup-qualification-20261013-064024.json",
+  "live_result": "normal, foreign refusal and interrupted recovery all passed while the healthy existing redis-gate-operator release remained; durable rc=0 and scoped-clean",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cleanup-qualification"
+}

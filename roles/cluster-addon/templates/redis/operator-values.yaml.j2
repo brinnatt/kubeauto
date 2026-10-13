@@ -1,0 +1,40 @@
+redisOperator:
+  name: redis-operator
+  imageName: registry.talkschool.cn:5000/brinnatt/redis-operator
+  imageTag: "{{ redis_operator_image_ver | default('0.27.0-kubeauto.2') }}"
+  initContainerImageTag: "{{ redis_operator_image_ver | default('0.27.0-kubeauto.2') }}"
+  imagePullPolicy: IfNotPresent
+  watchNamespace: "{{ redis_namespace }}"
+  serviceDNSDomain: cluster.local
+  metrics:
+    enabled: true
+# The official Redis image requires the operator-generated configuration.
+# This pinned upstream Alpha path is qualified by the Redis delivery matrix;
+# maxmemory=0 must not silently disable authentication or persistence.
+featureGates:
+{% if redis_operator_ver | default('0.27.0') == '0.26.0' %}
+  # v0.26 Chart declares this key, but its pinned binary does not register it.
+  # Helm null removes the incompatible default during values coalescing.
+  AvoidCommandLinePassword: null
+{% endif %}
+  GenerateConfigInInitContainer: true
+replicas: {{ redis_operator_replicas | int }}
+rbac:
+  enabled: true
+  scope: cluster
+  # Keep Redis CR permissions out of the platform's builtin user roles.
+  aggregate: false
+serviceAccountName: redis-operator
+podSecurityContext:
+  runAsNonRoot: true
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "classification": "focused full-lab cleanup qualification",
+  "records": [
+    {
+      "directory": "logs/redis-cases/lab-clean-20261013-102128",
+      "durable_status": "state=exited pid=2380902 rc=0 bytes=8454 pass_markers=0 failure_markers=0 latest=",
+      "log_sha256": "19fa6efd6847917e48f6a4b069577851470647461e31ddab2980485fd6c1faca",
+      "marker": "REDIS_LAB_CLEANUP_PASS"
+    },
+    {
+      "directory": "logs/redis-cases/lab-clean-20261013-102832",
+      "durable_status": "state=exited pid=2383471 rc=0 bytes=3616 pass_markers=0 failure_markers=0 latest=",
+      "log_sha256": "a97da6eaaa3f21ee03a19b3964679648768d64158727de8023b91d42c05b5a8d",
+      "marker": "REDIS_LAB_CLEAN_VERIFY_PASS"
+    }
+  ],
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "cleanup_scope": "Owned Redis, PVC/PV, Longhorn CSI, core services and both Redis deployment directories; exact leased nodes 131-136; unrelated directories and registry cache preserved",
+  "next_permitted_level": "4: clean full Redis regression"
+}

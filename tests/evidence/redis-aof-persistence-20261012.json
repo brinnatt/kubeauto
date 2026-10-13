@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-16"
+  ],
+  "module": "persistence",
+  "acceptance": "partial; independent RDB restore required before REDIS-16 PASS",
+  "runner": "bash tests/run_enterprise_regression.sh --redis-persistence",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "REDIS_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "REDIS_FOCUSED_BASELINE_PASS identity=current faults=none",
+    "REDIS_AOF_PERSISTENCE_PASS fsync=three-members checkpoint=rdb-ok process-uids=all-replaced pvc-uids=retained digest=verified ttl=verified",
+    "REDIS_FOCUSED_KEYS_CLEAN_PASS",
+    "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=persistence",
+    "REDIS_FOCUSED_MODULE_PASS module=persistence",
+    "REDIS_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "3a5b00da17a6ca1c765e6c4a6fe14911648409c9cec6c605609260fc12dd0a30",
+  "durable_status_sha256": "b37b827739d31fb1157d7f948fa40653c4c6a770cd111261dd56b8f84a5d46b5",
+  "dependencies": {
+    "roles/cluster-addon/tasks/redis.yml": "2951fdf5de983b5c19b779961621c1d5eaa56bf28d64ba7425f59ea04d453f75",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "38cb0fbd7b30f75512df1d0499db3b48b9446c9e2cee2ee9b39218d321b461d9",
+    "roles/cluster-addon/files/redis-health.py": "62f7d789043ba702369052b6a22826c3a51d0ccfbbabbe90421150fef8ea6fa9",
+    "tests/helpers/redis-focused-gate.py": "9923af8527377ecebbce9da5d3904367c42ed0d733eedf22876da095ad5c61a5"
+  },
+  "cleanup_scope": "Owned UUID business key, clients and port-forward processes removed; healthy shared core and CSI retained; all source PVC UIDs verified",
+  "impact_analysis": "Current DNS product convergence preceded the run; later helper dispatch additions do not alter the persistence method or its product dependencies."
+}

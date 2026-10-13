@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "classification": "Pinned Operator 0.26 Chart/binary feature-gate mismatch",
+  "affected_cases": [
+    "REDIS-22",
+    "REDIS-24"
+  ],
+  "product_entry": "config.yml redis_operator_ver=0.26.0 + kubecli setup redis-gate 07 --tags redis",
+  "first_failure": {
+    "durable_status": "state=exited pid=2143510 rc=1 bytes=202693 pass_markers=0 failure_markers=0 latest=",
+    "log_sha256": "fc160852f191f7299f9f896eabdb457acb1bb5e380cca0eaa84bb0e47ff504a0",
+    "reason": "Helm wait failed because the official legacy Operator exited on unregistered AvoidCommandLinePassword emitted by its Chart defaults"
+  },
+  "official_references": [
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.26.0/internal/features/features.go",
+    "https://github.com/helm/helm/blob/v3.19.0/pkg/chartutil/coalesce.go"
+  ],
+  "official_source_sha256": {
+    "operator026-features.go": "794f0d6e3af3d8f8e195a4fba514bec8d0dbdc5e1c30585d16743598426f3bd3",
+    "operator026-cmd.go": "2175dd95d3aa6aad80441fd8a34c2391d3004d7cf361eeee858c78be1ae23678",
+    "helm-coalesce.go": "ed103615a69be5be3361df46241052eaa825f03c22b755b93a5be4d8d971de90"
+  },
+  "proof": "Official v0.26.0 registry contains only GenerateConfigInInitContainer; pinned Chart defaults also emit AvoidCommandLinePassword=false. Current read-only controller log names that exact unsupported gate. Helm coalesce removes a default key when the overriding value is null.",
+  "fix": "Only redis_operator_ver=0.26.0 overrides AvoidCommandLinePassword=null. Real pinned legacy Chart render now emits exactly GenerateConfigInInitContainer=true; 0.27 product output remains unchanged.",
+  "static_regression": "Exact legacy template regression failed before repair; 68 contracts and legacy/current Helm rendering passed",
+  "cleanup": "Failed gate restored current controller/runtime, retained data/PVC and current CRDs, removed journal and fixture Chart",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-upgrade-prepare",
+  "live_result": "pass",
+  "impact_analysis": "Redis legacy-controller compatibility branch only; other versions, middleware and Ceph untouched.",
+  "live_qualification": {
+    "directory": "logs/redis-cases/upgrade-prepare-20261013-075331",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "log_sha256": "dcbfa0c21c825c63639d51060ea5fe7dc48e40c3cc54f82885e5db774171f0be",
+    "launch_source_sha256": "3b6eb78629884c4b1a9f34d1a62c26d58677d8dfb0e08afc4470645ea59b99b2",
+    "acceptance": "Legacy fixture, retained seeded current business and absolute TTL, current recovery and owned cleanup; not full upgrade module"
+  }
+}

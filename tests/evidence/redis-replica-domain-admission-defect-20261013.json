@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "classification": "product: protected Cluster replica admission",
+  "acceptance": "first failure; no PASS claim",
+  "product_entry": "config.yml + kubecli setup redis-cluster-gate 07 --tags redis",
+  "expected_marker": "REDIS_CLUSTER_INSTALL_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cluster-install",
+  "first_run_directory": "logs/redis-cases/full-20261013-122643",
+  "durable_rc": 1,
+  "cleanup_rc": 0,
+  "cleanup_markers": [
+    "REDIS_CLEAN_VERIFY_PASS",
+    "LAB_CLEAN_VERIFY_PASS",
+    "REDIS_LAB_CLEAN_VERIFY_PASS"
+  ],
+  "diagnostics_sha256": "5a3c1a002935ddfc2c248caadbfb1310563e9a6b024537f7ee9a639ea92052a5",
+  "actual_replication_groups": {
+    "62227ed7001301e4caff5fec77a9b34b7e97c9a0": {
+      "primary": {
+        "pod": "redis-gate-cluster-data-leader-2",
+        "domain": "redis-node-133"
+      },
+      "replicas": [
+        {
+          "pod": "redis-gate-cluster-data-follower-1",
+          "domain": "redis-node-131"
+        },
+        {
+          "pod": "redis-gate-cluster-data-follower-4",
+          "domain": "redis-node-133"
+        }
+      ]
+    },
+    "793fe701d442ed8ebff39828334a8e54dfd28fb7": {
+      "primary": {
+        "pod": "redis-gate-cluster-data-leader-1",
+        "domain": "redis-node-132"
+      },
+      "replicas": [
+        {
+          "pod": "redis-gate-cluster-data-follower-5",
+          "domain": "redis-node-132"
+        },
+        {
+          "pod": "redis-gate-cluster-data-follower-2",
+          "domain": "redis-node-132"
+        }
+      ]
+    },
+    "582ab16cf9e02802c2bc4fe1af370de6916dbd96": {
+      "primary": {
+        "pod": "redis-gate-cluster-data-leader-0",
+        "domain": "redis-node-131"
+      },
+      "replicas": [
+        {
+          "pod": "redis-gate-cluster-data-follower-0",
+          "domain": "redis-node-132"
+        },
+        {
+          "pod": "redis-gate-cluster-data-follower-3",
+          "domain": "redis-node-131"
+        }
+      ]
+    }
+  },
+  "root_cause": "protectedTarget sorts random Redis node IDs and balances counts; it does not bind true replica placement to declared Kubernetes failure domains. Pod-index anti-affinity alone does not prove true Redis parent ownership.",
+  "fix": "Plan every remaining replica slot against actual configured node-label domains, retain all known parent relationships, require at least one off-domain replica per primary, refuse impossible plans before admission. Add only list-nodes permission through a pinned Helm post-renderer; Helm retains resource ownership and cleanup.",
+  "affected_cases": [
+    "REDIS-01",
+    "REDIS-03",
+    "REDIS-04",
+    "REDIS-06",
+    "REDIS-11",
+    "REDIS-12",
+    "REDIS-13",
+    "REDIS-14",
+    "REDIS-15",
+    "REDIS-17",
+    "REDIS-21",
+    "REDIS-22",
+    "REDIS-23",
+    "REDIS-24"
+  ],
+  "unaffected_boundary": "Ceph and all other middleware unchanged. Redis server, TLS, Sentinel, persistence and capacity source behavior unchanged; final full run will re-exercise all current inputs.",
+  "official": [
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/v0.27.0/internal/k8sutils/redis.go",
+    "https://github.com/redis/redis/blob/8.10.2/src/redis-cli.c",
+    "https://helm.sh/docs/v3/topics/advanced/"
+  ]
+}

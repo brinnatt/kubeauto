@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "REDIS-17"
+  ],
+  "acceptance": "complete focused backup qualification",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "modules": [
+    {
+      "evidence": "tests/evidence/redis-backup-20261013-080906.json",
+      "sha256": "01a40ac93127434f11b8a1e99e13a789068cc1a959bfa310dbc023aa60fe32e3",
+      "module": "backup",
+      "dependency_impact": {
+        "docs/middleware/redis/operations-manual.md": "Added section 8 rotation instructions only; independently extracted offline restore Bash path in section 9 is unchanged. Final full run consumes current document."
+      }
+    },
+    {
+      "evidence": "tests/evidence/redis-cluster-snapshot-20261013-084915.json",
+      "sha256": "29e062a285eb687259cb6f59e29828b101a0d24bc7180df07b5f667f13ec7269",
+      "module": "cluster-snapshot",
+      "dependency_impact": {}
+    }
+  ],
+  "markers": [
+    "REDIS_INDEPENDENT_RDB_RESTORE_PASS",
+    "REDIS_OFFLINE_RDB_VERIFY_PASS",
+    "REDIS_CLUSTER_SNAPSHOT_PASS"
+  ],
+  "scope": "Sentinel isolated restoration and exact customer offline script, plus three Cluster shard exports; Cluster global consistent disaster restoration remains outside the promised capability.",
+  "cleanup_scope": "Original source config and PVCs retained; temporary export/restore Pods, offline container/volume, private directories and UUID keys removed by each runner."
+}

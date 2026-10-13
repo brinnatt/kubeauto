@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "classification": "test-gate: recovered startup event misclassified as active failure",
+  "affected_cases": [
+    "REDIS-19",
+    "REDIS-24"
+  ],
+  "first_failure": {
+    "directory": "logs/redis-cases/full-20261013-103720",
+    "stage": "observability",
+    "log_sha256": "6194e9f6a60498dad03f19a2eb23fd71cc263dffb560720cfa827347ab1605f9",
+    "stage_log_sha256": "62ce46f7fd437046dd2405381d5acaa9318246e212f43b9f32c6c5c54924aa0c",
+    "durable_rc": 1,
+    "cleanup_rc": 0
+  },
+  "root_cause": "Current Prometheus Pod initial readiness connection refused before process listened. Later all scrape, alert firing/clearing and business checks succeeded. Name-only historical event selection rejected every Warning, without Pod UID/readiness transition semantics.",
+  "fix": "Bind lifecycle to current fixture Pod UID/name/namespace, healthy Running/Ready containers with zero restarts, and Scheduled/Started events. Only exact current-IP readiness connection-refused messages last observed no later than Ready transition are classified recovered; unknown or post-ready warnings remain failures. Require separate events success marker in evidence. No product changes.",
+  "smallest_disproof": "python -m unittest tests.unit.test_redis_observability_gate tests.unit.test_redis_evidence tests.unit.test_redis_full_evidence -v; bash tests/run_enterprise_regression.sh --redis-observability",
+  "contract_before_sha256": "5c3d641e47f45482d8d4c53e80fdad3446202b5e7ccf2b653561fe049240fb05",
+  "contract_after_sha256": "9f2f12d9bdc0f9f85d82024a737d9105c986200afbc656b509351cd714d7fbd9",
+  "static_evidence": "tests/evidence/redis-lifecycle-static-20261013.json",
+  "live_result": "pass",
+  "official": [
+    {
+      "path": "/tmp/kubeauto-redis-official-startup-probe.html",
+      "sha256": "e73fcec5a6fe631d4f04ab6cc5f73029360344ebc139b88c2959c750fd126db1"
+    },
+    {
+      "path": "/tmp/kubeauto-redis-official-prober-worker.go",
+      "sha256": "d90ebf9a550ac8d8dffe4d951eb0c7a506d58b5095c7c941b2e57bb4c71ec146"
+    },
+    {
+      "path": "/tmp/kubeauto-redis-official-prober-prober_manager.go",
+      "sha256": "74878780a3354b57d6a1d04bbeaf1c1aa8ae9d1d5b300232de7bc9d090942a27"
+    },
+    {
+      "path": "/tmp/kubeauto-redis-official-prober.go",
+      "sha256": "f2641a0679aa408a3700691b3de8302f982c2d4f4119fb15be88c146d5d06d5a"
+    }
+  ],
+  "source_reference": "Kubernetes v1.33.6 pkg/kubelet/prober/{worker,prober_manager,prober}.go",
+  "rejected_attempt": "Startup-probe-only hypothesis rejected after official prober source proved failed startup also records Warning; proposed test removed, no speculative fixture/production code or live mutation introduced.",
+  "dependency_impact": "Only observability assertion and its required extra marker changed. Other modules have no observability logic or added marker requirements; prior independent business qualifications retained. Final full run binds current shared collector source.",
+  "cleanup": "Failed full chain completed Redis/PV/CSI/core cleanup rc=0 with final LAB_CLEAN_VERIFY_PASS. Fresh focused install is runner-owned.",
+  "live_evidence": "tests/evidence/redis-observability-20261013-112012.json",
+  "live_evidence_sha256": "864478e94be7f8b548af528a1e1f905b3201e8c87be9571e34b236d81b8339f5"
+}

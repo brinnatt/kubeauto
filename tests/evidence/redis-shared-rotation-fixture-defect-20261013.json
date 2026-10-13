@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "classification": "test-gate execution order and shared fixture boundary",
+  "owning_scenario": "Sentinel password rotation after independent Cluster installation; stability seed",
+  "first_failure": "logs/redis-cases/stability-20261013-152404",
+  "durable_rc": 1,
+  "first_command": "Cluster client AUTH on first stability sample",
+  "root_cause": "Cluster fixture uses Sentinel auth/ACL Secret; Sentinel-only rotation intentionally rolls its six members, leaving Cluster processes with former credentials. The normal full runner already rotates before Cluster installation.",
+  "official_source": [
+    "https://github.com/OT-CONTAINER-KIT/redis-operator/blob/71954323c9191e6171f3eb04f80bb46a5f128306/internal/k8sutils/redis-cluster.go#L196",
+    "https://kubernetes.io/docs/concepts/configuration/secret/#using-a-secret"
+  ],
+  "product_entry": "config.yml + kubecli setup --tags redis remains unchanged",
+  "repair_scope": "Refuse foreign shared Secret consumers before test rotation. cluster-clean may dispose only verified seed-stage failure, clean its exact UUID Sentinel key, and retain source declarations/PVC/core/CSI; all injected-fault stages refused.",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --redis-cluster-clean; then --redis-password-rotation before new --redis-cluster-install",
+  "expected_markers": [
+    "REDIS_STABILITY_SEED_RECOVERY_PASS",
+    "REDIS_CLUSTER_FAILED_FIXTURE_RECOVERY_PASS",
+    "REDIS_ROTATION_CONSUMER_PREFLIGHT_PASS"
+  ],
+  "contracts": {
+    "log": "/tmp/kubeauto-redis-shared-credential-contracts-20261013.log",
+    "rc": 0
+  },
+  "failure_provenance": {
+    "first-run.log": "63c60321debd8e1859e0d02f0c485db19cf8c198e6482ed72669d28147b4a091",
+    "durable-status.txt": "751144f0e53adb459b583f103866a82521bd2aac0802f5870c4c652472ccebfd",
+    "launch-source.json": "1e6ebf9f29782ec6e3e9e705ca427ae0bcd7f1261b62d836d921c93ba89c6688"
+  },
+  "resolution": {
+    "directory": "logs/redis-cases/cluster-clean-20261013-153034",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "required_markers": [
+      "REDIS_STABILITY_SEED_RECOVERY_PASS",
+      "REDIS_CLUSTER_FAILED_FIXTURE_RECOVERY_PASS",
+      "REDIS_FOCUSED_SCOPED_CLEAN_PASS module=cluster-clean",
+      "REDIS_GATE_EXIT rc=0"
+    ],
+    "sha256": {
+      "first-run.log": "4cba0a4eb3bd08531c27f827d27b68b2a69928093787c3becb100c01d7366811",
+      "durable-status.txt": "184ae079257e95a1b1d87d1103a76a14aa16c9e63b1abc0f68e75e4393044398"
+    }
+  },
+  "static": {
+    "log": "/tmp/kubeauto-redis-shared-credential-final-static-20261013.log",
+    "cases": 252,
+    "rc": 0
+  },
+  "all_units": {
+    "log": "/tmp/kubeauto-redis-shared-credential-all-units-20261013.log",
+    "cases": 907,
+    "rc": 0
+  },
+  "rotation_requalification": [
+    "tests/evidence/redis-password-rotation-20261013-153231.json",
+    "tests/evidence/redis-tls-rotation-20261013-153417.json"
+  ]
+}

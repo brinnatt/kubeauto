@@ -1,0 +1,320 @@
+---
+# Redis middleware is deliberately isolated from the other addon branches.
+# The role owns the Operator and Redis CRs; the Operator owns StatefulSets,
+# Services, PVCs and failover. No task performs an imperative role change.
+- name: 校验 Redis 配置
+  ansible.builtin.assert:
+    that:
+      - redis_mode in ['sentinel', 'cluster']
+      - redis_ver is match('^8[.][0-9]+[.][0-9]+$')
+      - redis_mode != 'cluster' or redis_cluster_image_ver is match('^8[.][0-9]+[.][0-9]+(-kubeauto[.][1-9][0-9]*)?$')
+      - redis_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - redis_operator_namespace is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - redis_namespace != redis_operator_namespace
+      - redis_name is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - redis_storage_class | length > 0
+      - redis_pvc_size is match('^[1-9][0-9]*(Gi|Ti)$')
+      - redis_sentinel_replicas | int == 3
+      - redis_replication_replicas | int >= 3
+      - redis_cluster_shards | int >= 3
+      - redis_cluster_replicas | int >= 1
+      - redis_operator_replicas | int >= 2
+      - redis_topology_key | length > 0
+      - redis_maxmemory_percent | int == 0 or (redis_maxmemory_percent | int >= 50 and redis_maxmemory_percent | int <= 80)
+      - redis_min_replicas_to_write | int >= 0
+      - redis_min_replicas_max_lag | int >= 1
+      - redis_appendfsync in ['always', 'everysec']
+      - not (redis_backup_enabled | bool)
+      - redis_password_secret | length == 0 or redis_password_secret is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - redis_password_secret | length == 0 or redis_password_secret_key is match('^[A-Za-z0-9._-]+$')
+      - redis_tls_secret | length == 0 or redis_tls_secret is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+      - redis_mode != 'cluster' or redis_tls_secret | length > 0
+      - redis_acl_secret | length == 0 or redis_acl_secret is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')
+    fail_msg: >-
+      Redis 配置无效：模式必须为 sentinel 或 cluster；必须提供 StorageClass；Sentinel 固定 3 个；
+      Cluster 至少 3 个分片；内存水位、最小副本写入保护必须满足生产约束；当前版本不接受未实现的自动备份开关。
+
+- name: 创建 Redis 渲染目录
+  ansible.builtin.file:
+    path: "{{ cluster_dir }}/yml/redis"
+    state: directory
+    mode: '0700'
+
+- name: 校验 Redis Operator Chart SHA256
+  ansible.builtin.command:
+    argv:
+      - sha256sum
+      - --check
+      - "redis-operator-{{ redis_operator_ver }}.tgz.sha256"
+  args:
+    chdir: "{{ base_dir }}/roles/cluster-addon/files"
+  changed_when: false
+
+- name: 渲染 Redis Operator 与实例资源
+  ansible.builtin.template:
+    src: "redis/{{ item.src }}"
+    dest: "{{ cluster_dir }}/yml/redis/{{ item.dest }}"
+    mode: '0600'
+  loop:
+    - {src: operator-values.yaml.j2, dest: operator-values.yaml}
+    - {src: instances.yaml.j2, dest: instances.yaml}
+    - {src: config.yaml.j2, dest: config.yaml}
+
+- name: 创建并标记 Redis 命名空间
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    for ns in {{ redis_operator_namespace | quote }} {{ redis_namespace | quote }}; do
+      existing="$($KC get namespace "$ns" --ignore-not-found -o name)"
+      if [[ -n "$existing" ]]; then
+        component="$($KC get namespace "$ns" -o jsonpath='{.metadata.labels.kubeauto\.io/component}')"
+        manager="$($KC get namespace "$ns" -o jsonpath='{.metadata.labels.kubeauto\.io/managed-by}')"
+        [[ "$component" == redis && "$manager" == kubeauto ]] || {
+          echo "Redis 拒绝占用非本组件命名空间: $ns" >&2; exit 1;
+        }
+      else
+        $KC create namespace "$ns" --dry-run=client -o yaml | $KC apply --server-side --field-manager=kubeauto-redis -f -
+        $KC label namespace "$ns" kubeauto.io/managed-by=kubeauto kubeauto.io/component=redis
+      fi
+      test "$($KC get namespace "$ns" -o jsonpath='{.status.phase}')" = Active
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 校验 Redis 外部 Secret 已存在且包含所需键
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    check_key() {
+      local secret="$1" key="$2"
+      # Parse dictionary keys literally: JSONPath treats dots in tls.crt as
+      # field separators unless escaped. Secret content never reaches output.
+      $KC -n {{ redis_namespace | quote }} get secret "$secret" -o json |
+        python3 -c 'import json,sys; data=json.load(sys.stdin).get("data",{}); raise SystemExit(0 if data.get(sys.argv[1]) else 1)' "$key" || {
+          echo "Redis Secret $secret 不可读取或缺少键 $key" >&2; return 1;
+        }
+    }
+    {% if redis_password_secret | length > 0 %}
+    check_key {{ redis_password_secret | quote }} {{ redis_password_secret_key | quote }}
+    {% endif %}
+    {% if redis_tls_secret | length > 0 %}
+    check_key {{ redis_tls_secret | quote }} tls.crt
+    check_key {{ redis_tls_secret | quote }} tls.key
+    check_key {{ redis_tls_secret | quote }} ca.crt
+    {% endif %}
+    {% if redis_acl_secret | length > 0 %}
+    check_key {{ redis_acl_secret | quote }} user.acl
+    {% endif %}
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 显式受控更新已有 Redis CRD
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/redis-crd.py"
+      - --chart
+      - "{{ base_dir }}/roles/cluster-addon/files/redis-operator-{{ redis_operator_ver }}.tgz"
+      - --chart-sha256-file
+      - "{{ base_dir }}/roles/cluster-addon/files/redis-operator-{{ redis_operator_ver }}.tgz.sha256"
+      - --helm
+      - "{{ base_dir }}/extra-bin/helm"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --namespace
+      - "{{ redis_namespace }}"
+      - --backup-parent
+      - "{{ cluster_dir }}/yml/redis/crd-backups"
+  register: redis_crd_upgrade
+  changed_when: "'changed=true' in redis_crd_upgrade.stdout"
+  when: redis_crd_upgrade_requested | default(false) | bool
+
+- name: 输出 Redis CRD 更新验收结果
+  ansible.builtin.debug:
+    msg: "{{ redis_crd_upgrade.stdout_lines }}"
+  when: redis_crd_upgrade_requested | default(false) | bool
+
+- name: 安装或升级 Redis Operator
+  ansible.builtin.command:
+    argv:
+      - "{{ base_dir }}/extra-bin/helm"
+      - upgrade
+      - --install
+      - redis-operator
+      - "{{ base_dir }}/roles/cluster-addon/files/redis-operator-{{ redis_operator_ver }}.tgz"
+      - --namespace
+      - "{{ redis_operator_namespace }}"
+      - --values
+      - "{{ cluster_dir }}/yml/redis/operator-values.yaml"
+      - --wait
+      - --timeout
+      - 10m
+      - --history-max
+      - '10'
+      - --post-renderer
+      - "{{ base_dir }}/roles/cluster-addon/files/redis-operator-rbac.sh"
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+    REDIS_POST_RENDER_PYTHON: "{{ ansible_playbook_python }}"
+  register: redis_operator_helm
+  changed_when: "'has been upgraded' in redis_operator_helm.stdout or 'has been installed' in redis_operator_helm.stdout"
+
+- name: 拒绝 Redis 模式切换造成的遗留资源
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    {% if redis_mode == 'sentinel' %}
+    existing="$($KC -n {{ redis_namespace | quote }} get rediscluster {{ redis_name | quote }} --ignore-not-found -o name)"
+    if [[ -n "$existing" ]]; then
+      echo "Redis 模式切换被拒绝：命名空间中已存在 RedisCluster/{{ redis_name }}；请先完成受控下线和数据迁移。" >&2
+      exit 1
+    fi
+    {% else %}
+    repl="$($KC -n {{ redis_namespace | quote }} get redisreplication {{ redis_name | quote }} --ignore-not-found -o name)"
+    sent="$($KC -n {{ redis_namespace | quote }} get redissentinel {{ (redis_name ~ '-sentinel') | quote }} --ignore-not-found -o name)"
+    if [[ -n "$repl" || -n "$sent" ]]; then
+      echo "Redis 模式切换被拒绝：命名空间中已存在 Sentinel 资源；请先完成受控下线和数据迁移。" >&2
+      exit 1
+    fi
+    {% endif %}
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 应用 Redis 持久化启动配置
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+      - apply
+      - --server-side
+      - --field-manager=kubeauto-redis
+      - --namespace
+      - "{{ redis_namespace }}"
+      - --filename
+      - "{{ cluster_dir }}/yml/redis/config.yaml"
+  register: redis_config_apply
+  changed_when: "'created' in redis_config_apply.stdout or 'configured' in redis_config_apply.stdout"
+
+- name: 等待 Redis Operator 就绪
+  ansible.builtin.shell: |
+    set -Eeuo pipefail
+    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+    $KC -n {{ redis_operator_namespace }} rollout status deployment/redis-operator --timeout=10m
+    ready="$($KC -n {{ redis_operator_namespace }} get deployment redis-operator -o jsonpath='{.status.readyReplicas}')"
+    test "$ready" = "{{ redis_operator_replicas | int }}"
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: 先声明 Sentinel DNS 与复制关联
+  # The replication init environment reads this matching RedisSentinel CR.
+  # Publish it before creating/reconciling replication, avoiding an IP-mode race.
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+      - apply
+      - --field-manager=kubeauto-redis
+      - --namespace
+      - "{{ redis_namespace }}"
+      - --selector=kubeauto.io/resource=sentinel
+      - --filename
+      - "{{ cluster_dir }}/yml/redis/instances.yaml"
+  register: redis_sentinel_declaration
+  changed_when: "'created' in redis_sentinel_declaration.stdout or 'configured' in redis_sentinel_declaration.stdout"
+  when: redis_mode == 'sentinel'
+
+- name: 应用 Redis 实例声明
+  # Match upstream CR workflow. The Operator serializes resource.Quantity into
+  # canonical strings (e.g. 1000m -> 1); SSA compares their raw representation
+  # and conflicts with the controller's Update ownership on a repeated apply.
+  # Three-way client apply preserves omitted controller defaults and status.
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+      - apply
+      - --field-manager=kubeauto-redis
+      - --namespace
+      - "{{ redis_namespace }}"
+      - --filename
+      - "{{ cluster_dir }}/yml/redis/instances.yaml"
+  register: redis_instances_apply
+  changed_when: "'created' in redis_instances_apply.stdout or 'configured' in redis_instances_apply.stdout"
+
+- name: 等待 Redis 控制面和数据面收敛
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/redis-health.py"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --namespace
+      - "{{ redis_namespace }}"
+      - --name
+      - "{{ redis_name }}"
+      - --mode
+      - "{{ redis_mode }}"
+      - --replication-replicas
+      - "{{ redis_replication_replicas | int }}"
+      - --shards
+      - "{{ redis_cluster_shards | int }}"
+      - --replicas-per-shard
+      - "{{ redis_cluster_replicas | int }}"
+      - --topology-key
+      - "{{ redis_topology_key }}"
+      - --wait
+      - '600'
+      - "{{ '--tls' if redis_tls_secret | length > 0 else '--no-tls' }}"
+  register: redis_health
+  changed_when: false
+
+- name: 输出 Redis 就绪验收结果
+  ansible.builtin.debug:
+    msg: "{{ redis_health.stdout_lines }}"
+
+- name: Redis 独立快照导出
+  when: redis_snapshot_requested | default(false) | bool
+  tags: [redis-snapshot]
+  block:
+    - name: 校验 Redis 快照请求
+      ansible.builtin.assert:
+        that:
+          - redis_password_secret | length > 0
+          - redis_tls_secret | length > 0
+          - redis_snapshot_directory is match('^/')
+          - redis_snapshot_directory | length > 1
+        fail_msg: Redis 快照要求认证、TLS 和本次请求专用的新绝对目录；导出后仍须独立存储与恢复验收。
+
+    - name: 导出并验证 Redis RDB 制品
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ base_dir }}/roles/cluster-addon/files/redis-snapshot.py"
+          - --kubeconfig
+          - "{{ cluster_dir }}/kubectl.kubeconfig"
+          - --namespace
+          - "{{ redis_namespace }}"
+          - --name
+          - "{{ redis_name }}"
+          - --mode
+          - "{{ redis_mode }}"
+          - --image
+          - "registry.talkschool.cn:5000/brinnatt/redis:{{ redis_cluster_image_ver if redis_mode == 'cluster' else redis_ver }}"
+          - --password-secret
+          - "{{ redis_password_secret }}"
+          - --password-key
+          - "{{ redis_password_secret_key }}"
+          - --tls-secret
+          - "{{ redis_tls_secret }}"
+          - --directory
+          - "{{ redis_snapshot_directory }}"
+      register: redis_snapshot
+      changed_when: true
+
+    - name: 输出 Redis 快照导出结果
+      ansible.builtin.debug:
+        msg: "{{ redis_snapshot.stdout_lines }}"

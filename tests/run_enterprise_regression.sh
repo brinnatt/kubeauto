@@ -44,6 +44,8 @@ PROM_TEST_HOST="${PROM_TEST_HOST:-root@192.168.122.2}"
 PROM_TEST_JUMPER="${PROM_TEST_JUMPER:-}"
 LOGGING_TEST_HOST="${LOGGING_TEST_HOST:-root@192.168.122.2}"
 LOGGING_TEST_JUMPER="${LOGGING_TEST_JUMPER:-}"
+REDIS_TEST_HOST="${REDIS_TEST_HOST:-root@192.168.47.130}"
+REDIS_TEST_JUMPER="${REDIS_TEST_JUMPER:-}"
 CEPH_TEST_HOST="${CEPH_TEST_HOST:-root@192.168.47.130}"
 CEPH_TEST_JUMPER="${CEPH_TEST_JUMPER:-}"
 LOG="${ROOT}/logs/enterprise-regression-$(date +%Y%m%d-%H%M).log"
@@ -63,7 +65,7 @@ middleware_doc_python="$ROOT/.venv/bin/python"
 # The coverage summary is a delivery claim, so validate it from the YAML
 # details before any gate can run or emit a PASS marker. Independent middleware
 # branches own separate matrix schemas and are validated by their own gates.
-if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* && "$MODE" != --ceph-* ]]; then
+if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* && "$MODE" != --redis-* && "$MODE" != --ceph-* ]]; then
   matrix_python="$ROOT/.venv/bin/python"
   [[ -x "$matrix_python" ]] || matrix_python="$(command -v python3.12 || command -v python3)"
   matrix_validation_args=("$ROOT/tests/enterprise-test-matrix.yaml")
@@ -94,6 +96,11 @@ ssh_logging() {
   local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
   [[ -n "$LOGGING_TEST_JUMPER" ]] && args+=(-J "$LOGGING_TEST_JUMPER")
   ssh "${args[@]}" "$LOGGING_TEST_HOST" "$@"
+}
+ssh_redis() {
+  local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
+  [[ -n "$REDIS_TEST_JUMPER" ]] && args+=(-J "$REDIS_TEST_JUMPER")
+  ssh "${args[@]}" "$REDIS_TEST_HOST" "$@"
 }
 ssh_ceph() {
   local args=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2)
@@ -270,6 +277,7 @@ matrix_counts() {
   [[ "$surface" == --mysql-* || "$surface" == mysql-* ]] && matrix="$ROOT/tests/mysql-test-matrix.yaml"
   [[ "$surface" == --kafka-* || "$surface" == kafka-* ]] && matrix="$ROOT/tests/kafka-test-matrix.yaml"
   [[ "$surface" == --logging-* || "$surface" == logging-* || "$surface" == logging ]] && matrix="$ROOT/tests/logging-test-matrix.yaml"
+  [[ "$surface" == --redis-* || "$surface" == redis-* || "$surface" == redis ]] && matrix="$ROOT/tests/redis-test-matrix.yaml"
   [[ "$surface" == --ceph-* || "$surface" == ceph-* || "$surface" == ceph ]] && matrix="$ROOT/tests/ceph-test-matrix.yaml"
   if [[ "$matrix" == "$ROOT/tests/ceph-test-matrix.yaml" ]]; then
     printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
@@ -283,6 +291,210 @@ matrix_counts() {
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$matrix" || true)" \
     "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: fail' "$matrix" || true)"
 }
+
+if [[ "$MODE" == "--redis-static-only" ]]; then
+  bash "$ROOT/tests/helpers/redis-static.sh"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-artifacts" || "$MODE" == "--redis-protected-artifacts" || "$MODE" == "--redis-cluster-artifacts" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 || "$REDIS_TEST_HOST" == root@192.168.122.2 ]] || exit 1
+  echo '>>> Read-only Redis dual-push manifest verification; no source sync or mutation'
+  redis_evidence_env=""
+  redis_evidence="${REDIS_PUBLICATION_EVIDENCE_FILE:-$ROOT/tests/evidence/redis-images-20261012.json}"
+  redis_artifact_arg=""
+  if [[ "$MODE" == "--redis-protected-artifacts" ]]; then
+    redis_evidence="${REDIS_PROTECTED_PUBLICATION_EVIDENCE_FILE:-$ROOT/tests/evidence/redis-topology-operator-images-20261013.json}"
+    redis_artifact_arg="--protected-operator"
+  elif [[ "$MODE" == "--redis-cluster-artifacts" ]]; then
+    redis_evidence="${REDIS_CLUSTER_PUBLICATION_EVIDENCE_FILE:-$ROOT/tests/evidence/redis-state-refresh-images-20261013.json}"
+    redis_artifact_arg="--cluster-runtime"
+  fi
+  if [[ -f "$redis_evidence" ]]; then
+    redis_evidence_env="$($middleware_doc_python - "$redis_evidence" <<'PY'
+import json, shlex, sys
+from pathlib import Path
+payload = json.dumps(json.loads(Path(sys.argv[1]).read_text()), separators=(',', ':'))
+print('REDIS_PUBLISHED_EVIDENCE=' + shlex.quote(payload))
+PY
+)"
+  fi
+  ssh_redis "env $redis_evidence_env python3 -u - $redis_artifact_arg" < "$ROOT/tests/helpers/redis-artifacts.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-probe" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 || "$REDIS_TEST_HOST" == root@192.168.122.2 ]] || {
+    echo '[FAIL] Redis probe requires an authorized control host' >&2
+    exit 1
+  }
+  echo '>>> Redis read-only environment probe; no installation or cleanup'
+  ssh_redis 'set -eu; hostname; . /etc/os-release; printf "OS=%s VERSION=%s\n" "$ID" "$VERSION_ID"; for tool in kubectl helm ansible-playbook kubecli docker skopeo python3 gh; do command -v "$tool" || true; done; if kubectl --request-timeout=10s get nodes -o wide; then kubectl --request-timeout=10s get sc,ns,pv; else echo REDIS_PROBE_CURRENT_CONTEXT_UNREACHABLE; fi; ls -d /usr/local/kubeauto/clusters/* /root/.kube/* 2>/dev/null || true; docker ps --format "{{.Names}} {{.Image}}" 2>/dev/null || true'
+  echo '>>> Verify dedicated core-pool cleanliness and control-to-node key access'
+  ssh_redis 'bash -s -- --verify --rocky-only 192.168.47.131 192.168.47.132 192.168.47.133 192.168.47.134 192.168.47.135 192.168.47.136' \
+    < "$ROOT/tests/helpers/lab-wipe-nodes.sh"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-storage-artifacts" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 || "$REDIS_TEST_HOST" == root@192.168.122.2 ]] || exit 1
+  redis_storage_env="$($middleware_doc_python - "$ROOT/tests/evidence/redis-storage-images-20261012.json" <<'PY'
+import json, shlex, sys
+from pathlib import Path
+print('REDIS_STORAGE_PUBLICATION_EVIDENCE=' + shlex.quote(json.dumps(json.loads(Path(sys.argv[1]).read_text()))))
+PY
+)"
+  ssh_redis "env $redis_storage_env /usr/local/kubeauto/.venv/bin/python -u - artifacts" \
+    < "$ROOT/tests/helpers/redis-lab-storage.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-install-diagnostics" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  redis_diagnostics="$ROOT/logs/redis-cases/install-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$redis_diagnostics"
+  remote_job_summary ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log > "$redis_diagnostics/durable-status.txt"
+  ssh_redis 'cat /tmp/kubeauto-redis-live.log' > "$redis_diagnostics/first-run.log"
+  cat "$redis_diagnostics/durable-status.txt"
+  sha256sum "$redis_diagnostics/first-run.log"
+  echo "REDIS_DIAGNOSTICS_SAVED directory=$redis_diagnostics"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-observability-artifacts" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  redis_observability_env="$($middleware_doc_python - "$ROOT/tests/evidence/redis-observability-images-20261013.json" <<'PY'
+import json, shlex, sys
+from pathlib import Path
+print('REDIS_OBSERVABILITY_PUBLICATION_EVIDENCE=' + shlex.quote(json.dumps(json.loads(Path(sys.argv[1]).read_text()))))
+PY
+)"
+  ssh_redis "env $redis_observability_env /usr/local/kubeauto/.venv/bin/python -u - artifacts" \
+    < "$ROOT/tests/helpers/redis-observability-gate.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-node-probe" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  ssh_redis 'ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2 root@192.168.47.133 bash -s' \
+    < "$ROOT/tests/helpers/redis-node-probe.sh"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-maintenance-diagnostics" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 && -z "$REDIS_TEST_JUMPER" ]] || exit 1
+  ssh_redis 'set -eu
+    export KUBECONFIG=/usr/local/kubeauto/clusters/redis-gate/kubectl.kubeconfig
+    kubectl get node redis-node-131 redis-node-134 -o json
+    kubectl -n redis-lab-storage get nodes.longhorn.io -o json
+    kubectl -n redis-lab-storage get replicas.longhorn.io -o json
+    kubectl -n redis-lab-storage get pods -o wide
+    cat /usr/local/kubeauto/clusters/redis-gate/redis-maintenance-fault.json
+    kubectl -n redis-lab-storage delete nodes.longhorn.io redis-node-134 --dry-run=server -o name || true'
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-storage-diagnostics" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 && -z "$REDIS_TEST_JUMPER" ]] || exit 1
+  ssh_redis 'set -eu
+    export KUBECONFIG=/usr/local/kubeauto/clusters/redis-gate/kubectl.kubeconfig
+    kubectl get nodes -o json
+    kubectl -n redis-gate get pvc -o json
+    kubectl get pv -o json
+    kubectl -n redis-lab-storage get volumes.longhorn.io -o json
+    kubectl -n redis-lab-storage get pods -o wide
+    for pod in $(kubectl -n redis-lab-storage get pods -l app=longhorn-csi-plugin -o name); do
+      kubectl -n redis-lab-storage logs "$pod" -c longhorn-csi-plugin --tail=120
+    done'
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-health-probe" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  ssh_redis 'set -eu
+    export KUBECONFIG=/usr/local/kubeauto/clusters/redis-gate/kubectl.kubeconfig
+    kubectl get nodes -o wide
+    for ns in redis-gate redis-gate-operator; do
+      kubectl -n "$ns" get pods,pvc,svc -o wide
+      kubectl -n "$ns" get events --sort-by=.lastTimestamp
+    done
+    kubectl -n redis-gate get redisreplication,redissentinel -o wide
+    for pod in $(kubectl -n redis-gate-operator get pods -o name); do
+      kubectl -n redis-gate-operator logs "$pod" --all-containers --prefix --tail=40
+    done'
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-cluster-probe" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  ssh_redis '/usr/local/kubeauto/.venv/bin/python -u -' < "$ROOT/tests/helpers/redis-cluster-probe.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-dns-probe" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  ssh_redis '/usr/local/kubeauto/.venv/bin/python -u -' < "$ROOT/tests/helpers/redis-dns-probe.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-sentinel-diagnostics" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  ssh_redis '/usr/local/kubeauto/.venv/bin/python -u -' < "$ROOT/tests/helpers/redis-sentinel-probe.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-idempotence-diagnostics" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  ssh_redis '/usr/local/kubeauto/.venv/bin/python -u -' < "$ROOT/tests/helpers/redis-idempotence-probe.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-health-check-probe" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  ssh_redis 'python3 -u - --kubeconfig /usr/local/kubeauto/clusters/redis-gate/kubectl.kubeconfig --namespace redis-gate --name redis-gate-data --mode sentinel --tls --wait 0' \
+    < "$ROOT/roles/cluster-addon/files/redis-health.py"
+  exit 0
+fi
+
+
+if [[ "$MODE" == "--redis-source-identity" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 && -z "$REDIS_TEST_JUMPER" ]] || exit 1
+  ssh_redis '/usr/local/kubeauto/.venv/bin/python - --capture stability --root /usr/local/kubeauto' \
+    < "$ROOT/tests/helpers/redis-evidence.py"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-status" ]]; then
+  echo "========== Redis independent gate =========="
+  remote_job_summary ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log || true
+  remote_log_tail ssh_redis '' /tmp/kubeauto-redis-live.log 60
+  echo "========== Redis matrix =========="
+  matrix_counts
+  echo
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-follow" ]]; then
+  ssh_redis "tail -n 100 -F /tmp/kubeauto-redis-live.log"
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-cancel" ]]; then
+  cancel_remote_job redis ssh_redis '' /tmp/kubeauto-redis-gate
+  echo REDIS_CANCEL_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-clean-only" ]]; then
+  cancel_remote_job redis ssh_redis '' /tmp/kubeauto-redis-gate
+  KUBEAUTO_SSH_JUMP="$REDIS_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$REDIS_TEST_HOST"
+  ssh_redis "chmod 0755 /usr/local/kubeauto/tests/helpers/redis-cleanup.sh"
+  ssh_redis "bash /usr/local/kubeauto/tests/helpers/redis-cleanup.sh"
+  ssh_redis "bash /usr/local/kubeauto/tests/helpers/redis-cleanup.sh --verify"
+  echo REDIS_CLEAN_ONLY_PASS
+  exit 0
+fi
 
 if [[ "$MODE" == "--kafka-status" ]]; then
   echo "========== Kafka independent gate =========="
@@ -1098,6 +1310,129 @@ if [[ "$MODE" == "--mysql-only" ]]; then
   echo MYSQL_PXC_DELIVERY_BRANCH_PASS
   matrix_counts
   echo
+  exit 0
+fi
+
+if [[ "$MODE" == --redis-sentinel-data || "$MODE" == --redis-sentinel-security || "$MODE" == --redis-idempotence || "$MODE" == --redis-sentinel-failure || "$MODE" == --redis-sentinel-quorum || "$MODE" == --redis-persistence || "$MODE" == --redis-sentinel-repair || "$MODE" == --redis-tls-rotation || "$MODE" == --redis-password-rotation || "$MODE" == --redis-rotation-repair || "$MODE" == --redis-backup || "$MODE" == --redis-performance || "$MODE" == --redis-observability || "$MODE" == --redis-capacity || "$MODE" == --redis-capacity-lag || "$MODE" == --redis-cluster-install || "$MODE" == --redis-cluster-clean || "$MODE" == --redis-cluster-config || "$MODE" == --redis-cluster-config-repair || "$MODE" == --redis-cluster-data || "$MODE" == --redis-cluster-failure || "$MODE" == --redis-cluster-primary-fault || "$MODE" == --redis-cluster-repair || "$MODE" == --redis-cluster-rebalance || "$MODE" == --redis-cluster-rebalance-seed || "$MODE" == --redis-stability-faults || "$MODE" == --redis-stability || "$MODE" == --redis-crd-upgrade || "$MODE" == --redis-platform || "$MODE" == --redis-maintenance-rolling || "$MODE" == --redis-maintenance-drain || "$MODE" == --redis-maintenance-repair || "$MODE" == --redis-upgrade-prepare || "$MODE" == --redis-upgrade-sentinel || "$MODE" == --redis-cleanup-qualification || "$MODE" == --redis-upgrade-cluster || "$MODE" == --redis-upgrade-cluster-repair || "$MODE" == --redis-runtime-modules || "$MODE" == --redis-cluster-snapshot ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 && -z "$REDIS_TEST_JUMPER" ]] || exit 1
+  bash "$ROOT/tests/helpers/redis-static.sh"
+  redis_module="${MODE#--redis-}"
+  # Refuse overlapping execution before source sync or state replacement.
+  ssh_redis 'if test -f /tmp/kubeauto-redis-gate.pid; then pid=$(cat /tmp/kubeauto-redis-gate.pid); case "$pid" in ""|*[!0-9]*) exit 1;; esac; if kill -0 "$pid" 2>/dev/null; then exit 1; fi; fi'
+  KUBEAUTO_SSH_JUMP="$REDIS_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$REDIS_TEST_HOST"
+  ssh_redis 'set -eu; if test -f /tmp/kubeauto-redis-live.log; then install -d -m 0700 /var/tmp/kubeauto-redis-history; archive=$(mktemp -d /var/tmp/kubeauto-redis-history/run.XXXXXX); cp /tmp/kubeauto-redis-live.log "$archive/"; for suffix in pid exit finalized; do if test -f "/tmp/kubeauto-redis-gate.$suffix"; then cp "/tmp/kubeauto-redis-gate.$suffix" "$archive/"; fi; done; echo "REDIS_PREVIOUS_EVIDENCE_SAVED directory=$archive"; fi'
+  redis_diagnostics="$ROOT/logs/redis-cases/$redis_module-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$redis_diagnostics"
+  ssh_redis "/usr/local/kubeauto/.venv/bin/python /usr/local/kubeauto/tests/helpers/redis-evidence.py --capture $redis_module --root /usr/local/kubeauto" \
+    > "$redis_diagnostics/launch-source.json"
+  ssh_redis "nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-redis-gate REDIS_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/redis-focused-gate.sh $redis_module >/tmp/kubeauto-redis-live.log 2>&1 </dev/null &"
+  redis_module_rc=0
+  monitor_remote_job redis ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log "REDIS_FOCUSED_MODULE_PASS module=$redis_module" || redis_module_rc=$?
+  remote_job_summary ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log > "$redis_diagnostics/durable-status.txt"
+  ssh_redis 'cat /tmp/kubeauto-redis-live.log' > "$redis_diagnostics/first-run.log"
+  echo "REDIS_DIAGNOSTICS_SAVED directory=$redis_diagnostics"
+  if [[ "$redis_module_rc" -eq 0 ]]; then
+    case "$redis_module" in
+      sentinel-data|sentinel-security|sentinel-failure|sentinel-quorum|idempotence|persistence|tls-rotation|password-rotation|backup|performance|observability|capacity|cluster-install|cluster-data|cluster-failure|cluster-rebalance|stability|platform|maintenance-rolling|maintenance-drain|upgrade-sentinel|upgrade-cluster|cleanup-qualification|crd-upgrade|cluster-snapshot)
+        "${REDIS_PYTHON:-$ROOT/.venv/bin/python}" "$ROOT/tests/helpers/redis-evidence.py" "$redis_module" "$redis_diagnostics" \
+          "$ROOT/tests/evidence/redis-${redis_diagnostics##*/}.json" --update-matrix || redis_module_rc=$?;;
+    esac
+  fi
+  exit "$redis_module_rc"
+fi
+
+if [[ "$MODE" == "--redis-lab-clean-only" || "$MODE" == "--redis-lab-clean-verify" || "$MODE" == "--redis-full-clean-verify" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 && -z "$REDIS_TEST_JUMPER" ]] || exit 1
+  bash "$ROOT/tests/helpers/redis-static.sh"
+  ssh_redis 'if test -f /tmp/kubeauto-redis-gate.pid; then pid=$(cat /tmp/kubeauto-redis-gate.pid); case "$pid" in ""|*[!0-9]*) exit 1;; esac; if kill -0 "$pid" 2>/dev/null; then exit 1; fi; fi'
+  KUBEAUTO_SSH_JUMP="$REDIS_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$REDIS_TEST_HOST"
+  redis_clean_mode=--verify
+  redis_clean_marker=REDIS_LAB_CLEAN_VERIFY_PASS
+  redis_clean_helper=redis-lab-clean-gate.sh
+  if [[ "$MODE" == --redis-lab-clean-only ]]; then
+    redis_clean_mode=--clean
+    redis_clean_marker=REDIS_LAB_CLEANUP_PASS
+  fi
+  if [[ "$MODE" == --redis-full-clean-verify ]]; then
+    redis_clean_mode=--clean-verify
+    redis_clean_marker=REDIS_FULL_LEASE_VERIFY_PASS
+    redis_clean_helper=redis-full-gate.sh
+  fi
+  redis_diagnostics="$ROOT/logs/redis-cases/lab-clean-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$redis_diagnostics"
+  ssh_redis "nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-redis-gate REDIS_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/$redis_clean_helper $redis_clean_mode >/tmp/kubeauto-redis-live.log 2>&1 </dev/null &"
+  redis_clean_rc=0
+  monitor_remote_job redis ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log "$redis_clean_marker" || redis_clean_rc=$?
+  remote_job_summary ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log > "$redis_diagnostics/durable-status.txt"
+  ssh_redis 'cat /tmp/kubeauto-redis-live.log' > "$redis_diagnostics/first-run.log"
+  echo "REDIS_DIAGNOSTICS_SAVED directory=$redis_diagnostics"
+  exit "$redis_clean_rc"
+fi
+
+if [[ "$MODE" == "--redis-install-watch" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 ]] || exit 1
+  monitor_remote_job redis ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log REDIS_INSTALL_MODULE_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-install-only" || "$MODE" == "--redis-install-repair" ]]; then
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 && -z "$REDIS_TEST_JUMPER" ]] || exit 1
+  bash "$ROOT/tests/helpers/redis-static.sh"
+  redis_install_argument=--fresh
+  if [[ "$MODE" == --redis-install-repair ]]; then
+    redis_install_argument=--repair-core
+  else
+    bash "$ROOT/tests/run_enterprise_regression.sh" --redis-artifacts
+    bash "$ROOT/tests/run_enterprise_regression.sh" --redis-storage-artifacts
+  fi
+  # Existing jobs and evidence are preserved; this focused gate never cancels
+  # an active run or removes its durable state merely to start a new one.
+  ssh_redis 'if test -f /tmp/kubeauto-redis-gate.pid; then pid=$(cat /tmp/kubeauto-redis-gate.pid); case "$pid" in ""|*[!0-9]*) exit 1;; esac; if kill -0 "$pid" 2>/dev/null; then exit 1; fi; fi'
+  KUBEAUTO_SSH_JUMP="$REDIS_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$REDIS_TEST_HOST"
+  ssh_redis 'set -eu; if test -f /tmp/kubeauto-redis-live.log; then install -d -m 0700 /var/tmp/kubeauto-redis-history; archive=$(mktemp -d /var/tmp/kubeauto-redis-history/run.XXXXXX); cp /tmp/kubeauto-redis-live.log "$archive/"; for suffix in pid exit finalized; do if test -f "/tmp/kubeauto-redis-gate.$suffix"; then cp "/tmp/kubeauto-redis-gate.$suffix" "$archive/"; fi; done; echo "REDIS_PREVIOUS_EVIDENCE_SAVED directory=$archive"; fi'
+  ssh_redis "nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-redis-gate REDIS_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/redis-install-gate.sh $redis_install_argument >/tmp/kubeauto-redis-live.log 2>&1 </dev/null &"
+  monitor_remote_job redis ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log REDIS_INSTALL_MODULE_PASS
+  exit 0
+fi
+
+if [[ "$MODE" == "--redis-only" ]]; then
+  echo "========== Independent Redis delivery gate =========="
+  [[ "$REDIS_TEST_HOST" == root@192.168.47.130 && -z "$REDIS_TEST_JUMPER" ]] || exit 1
+  # Qualification must be complete before any remote synchronization/mutation.
+  bash "$ROOT/tests/helpers/redis-regression.sh" --preflight
+  bash "$ROOT/tests/helpers/redis-static.sh"
+  for redis_artifact_mode in --redis-artifacts --redis-protected-artifacts --redis-cluster-artifacts \
+                             --redis-storage-artifacts --redis-observability-artifacts; do
+    bash "$ROOT/tests/run_enterprise_regression.sh" "$redis_artifact_mode"
+  done
+  ssh_redis 'if test -f /tmp/kubeauto-redis-gate.pid; then pid=$(cat /tmp/kubeauto-redis-gate.pid); case "$pid" in ""|*[!0-9]*) exit 1;; esac; if kill -0 "$pid" 2>/dev/null; then exit 1; fi; fi'
+  echo ">>> sync source through fixed Redis control path"
+  KUBEAUTO_SSH_JUMP="$REDIS_TEST_JUMPER" KUBEAUTO_SYNC_SKIP_CONTROL_SETUP=1 \
+    bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$REDIS_TEST_HOST"
+  redis_diagnostics="$ROOT/logs/redis-cases/full-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$redis_diagnostics"
+  ssh_redis '/usr/local/kubeauto/.venv/bin/python /usr/local/kubeauto/tests/helpers/redis-evidence.py --capture full --root /usr/local/kubeauto' \
+    > "$redis_diagnostics/launch-source.json"
+  ssh_redis 'set -eu; if test -f /tmp/kubeauto-redis-live.log; then install -d -m 0700 /var/tmp/kubeauto-redis-history; archive=$(mktemp -d /var/tmp/kubeauto-redis-history/run.XXXXXX); cp /tmp/kubeauto-redis-live.log "$archive/"; for suffix in pid exit finalized; do if test -f "/tmp/kubeauto-redis-gate.$suffix"; then cp "/tmp/kubeauto-redis-gate.$suffix" "$archive/"; fi; done; fi'
+  ssh_redis "nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh /tmp/kubeauto-redis-gate REDIS_GATE_EXIT bash /usr/local/kubeauto/tests/helpers/redis-full-gate.sh --full >/tmp/kubeauto-redis-live.log 2>&1 </dev/null &"
+  redis_rc=0
+  monitor_remote_job redis ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log REDIS_DELIVERY_BRANCH_PASS || redis_rc=$?
+  remote_job_summary ssh_redis '' /tmp/kubeauto-redis-gate /tmp/kubeauto-redis-live.log > "$redis_diagnostics/durable-status.txt"
+  ssh_redis 'cat /tmp/kubeauto-redis-live.log' > "$redis_diagnostics/first-run.log"
+  redis_stage_directory="$(sed -n 's/^REDIS_FULL_EVIDENCE_DIRECTORY path=//p' "$redis_diagnostics/first-run.log")"
+  [[ "$redis_stage_directory" =~ ^/var/tmp/kubeauto-redis-full\.[a-zA-Z0-9]+$ ]] || exit 1
+  mkdir "$redis_diagnostics/stages"
+  ssh_redis "tar -C '$redis_stage_directory' -cf - ." | tar -C "$redis_diagnostics/stages" -xf -
+  echo "REDIS_DIAGNOSTICS_SAVED directory=$redis_diagnostics"
+  [[ "$redis_rc" == 0 ]] || exit "$redis_rc"
+  "${REDIS_PYTHON:-$ROOT/.venv/bin/python}" "$ROOT/tests/helpers/redis-full-evidence.py" "$redis_diagnostics" \
+    "$ROOT/tests/evidence/redis-${redis_diagnostics##*/}.json"
+  matrix_counts
+  echo
+  echo REDIS_DELIVERY_BRANCH_PASS
   exit 0
 fi
 
@@ -2151,7 +2486,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--prometheus-only|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--kafka-only|--kafka-clean-only|--kafka-status|--kafka-follow|--kafka-cancel|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--prometheus-only|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--kafka-only|--kafka-clean-only|--kafka-status|--kafka-follow|--kafka-cancel|--redis-static-only|--redis-artifacts|--redis-storage-artifacts|--redis-install-only|--redis-install-repair|--redis-install-watch|--redis-install-diagnostics|--redis-node-probe|--redis-health-probe|--redis-probe|--redis-only|--redis-clean-only|--redis-status|--redis-follow|--redis-cancel|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 

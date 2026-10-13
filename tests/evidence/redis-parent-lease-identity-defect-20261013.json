@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "classification": "test-gate lease pathname versus file identity",
+  "affected_cases": [
+    "REDIS-01",
+    "REDIS-02",
+    "REDIS-03",
+    "REDIS-24"
+  ],
+  "first_failure": {
+    "directory": "logs/redis-cases/full-20261013-103010",
+    "log_sha256": "53e2eaadfb6078ffd65acbbd3896f989fbb130266356232a140612b96973df7f",
+    "stage": "clean-before",
+    "durable_rc": 1,
+    "mutation": "none: rejected before clean baseline verification"
+  },
+  "root_cause": "Rocky /var/lock symlink resolves to /run/lock; inherited fd9 readlink path cannot equal noncanonical configured lease path. All three Redis child gates used pathname equality.",
+  "fix": "Bash -ef compares device/inode of exact fd9 and expected lease; preserves rejection of foreign descriptors and replacement files. Added fixed focused full-clean verification without install or delivery marker.",
+  "smallest_disproof": "python -m unittest tests.unit.test_redis_lab_clean_gate tests.unit.test_redis_full_gate -v; bash tests/run_enterprise_regression.sh --redis-full-clean-verify",
+  "contract_before_sha256": "9a8456c87776f4c099a88728bdcbff313f8f5fd45fd6184dfc55e32d80a5b547",
+  "contract_after_sha256": "81ecb300e0dd10060f17c87d29f095a13a9f00835e6ce262f4528b894f50d05a",
+  "static_evidence": "tests/evidence/redis-full-lease-static-20261013.json",
+  "live_result": "pass",
+  "live_log_sha256": "351f17df8c080871966266252ea55542428b63f22e516f224c29065b5d92d2c0",
+  "durable_status": "state=exited pid=2384673 rc=0 bytes=3930 pass_markers=0 failure_markers=0 latest=",
+  "markers": [
+    "REDIS_FULL_LEASE_VERIFY_PASS",
+    "REDIS_LAB_CLEAN_VERIFY_PASS",
+    "LAB_CLEAN_VERIFY_PASS"
+  ],
+  "official": "https://www.gnu.org/software/bash/manual/html_node/Bash-Conditional-Expressions.html",
+  "official_sha256": "401cf8ecf01b3aeb29423a6c5fb6f971083fbb733d4e4020261a6b022e9709fd",
+  "dependency_impact": "Existing focused gates ran without inherited parent lease, so unchanged non-parent path and business assertions remain qualified. Only full inherited lease path was defective; no product source or customer manual changes. Final full run binds current helper hashes.",
+  "cleanup": "Dedicated cluster directories already absent; fixed real verification confirms all exact six nodes clean; no new cluster fixtures created."
+}

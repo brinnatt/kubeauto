@@ -219,3 +219,34 @@ durable rc=0, zero failure markers, current matrix evidence and final
 `LAB_CLEAN_VERIFY_PASS`; individual module passes do not imply delivery PASS.
 
 Do not commit runtime logs, PID files, Python caches, remote cluster directories, or registry data. Preserve reusable knowledge in tests, helpers, the matrix, or documentation.
+
+## 六仓协作与安全边界
+
+请使用中文协作。先读适用的父目录及本仓 AGENTS.md，再读测试矩阵、运行手册和所涉及固定版本的官方文档、源码。不得用历史 PASS 或猜测替代当前证据。
+
+每次进入六仓中的任一仓，先完成一次六仓信息审计：读取以下六份 AGENTS.md，检查各仓 `git status --short`、当前分支及 HEAD，并阅读本次依赖所涉及的 Dockerfile、有效 workflow 和版本定义；交付前再次检查。读取不等于授权修改，保护已有用户改动和正在运行的其它任务。
+
+| 仓库（均位于 `/home/brinnatt/projects`） | 权威职责与依赖 |
+| --- | --- |
+| `kubeauto` | 产品配置、版本常量、安装与运维入口、测试矩阵和实验室运行手册；`common/constants.py`、`conf/config.yml`、`tests/README.md`、`tests/enterprise-test-matrix.yaml` |
+| `kubeauto-dockerfile` | 按 kubeauto release tag 构建产品运行镜像；Dockerfile、`.github/workflows/build_and_push.yml` |
+| `kubeauto-k8s-bin-dockerfile` | Kubernetes 六项二进制；Dockerfile、`multi-platform-download.sh`、`.github/workflows/build.yml` |
+| `kubeauto-ext-bin-dockerfile` | `/extra` 扩展二进制及校验清单；Dockerfile、下载脚本、workflow；依赖 sp1 固定制品 |
+| `kubeauto-ext-bin-sp1-dockerfile` | `/ext-bin` 中 nginx、chrony、keepalived 编译制品；Dockerfile、workflow；由 ext-bin 消费 |
+| `kubeauto-ext-images-dockerfile` | 外部组件及其运维、升级、测试镜像目录；Dockerfile、CI matrix、catalog validator、发布证据 |
+
+各仓可以独立开发。独立变更只修改所属产品；跨仓变更先列出实际依赖映射、受影响版本/消费者、验证入口及清理边界，再按依赖顺序推进。六仓是兼容性审计单元，不意味着每次都重建全部镜像或回归无关功能。缺少某仓、指引或依赖证据时先定位本地路径和现有文档，明确缺口，不自行假定兼容。
+
+涉及制品时核对消费者常量/模板、Dockerfile 固定版本、有效 Actions 触发条件、AMD64/ARM64、TalkEdu 与 Docker Hub tag/digest、下载校验和回退顺序。国内路径优先 `hub.talkedu.cn/kubeauto`，保留已验证的 Docker Hub/上游回退；禁止把临时发现的公共代理固化到新功能。新增中间件须先读 `kubeauto/docs/middleware/delivery-playbook.md`，制品通过后才能进入现场门禁。
+
+不修改不相关功能、既有制品、workflow 或 Ceph 文档结构。只有当前证据证明缺陷时，才在明确的影响范围内修复。拒绝的修复须撤回其代码和测试残留。测试和发布使用所属仓的固定入口，保留首失败、durable 状态、成功标志与清理证据；禁止以其它仓 PASS 替代本仓验收。实验主机白名单、共享资源租约和清理权限以 `kubeauto/AGENTS.md` 为准；没有租约不得借用现存集群，开发机不得作为测试节点。
+
+## GitHub 认证与发布证据入口
+
+本开发环境的 `ext-image-delivery` fine-grained GitHub 凭据位于 `/home/brinnatt/.ext-image-env`（应为文件属主私有、权限 `0600`）。它是受保护的凭据材料，**不是保证可 source 的 shell env 文件**。不得提交、复制到兄弟仓/远程节点、打印内容、启用 shell trace，或把 token 放入命令行、URL、日志和异常输出。
+
+需要访问私有仓 Actions 时，先检查现有 `gh` 认证或该文件的存在与权限；在进程内存中读取并只向 `api.github.com` 的 Authorization header 注入凭据。使用 GitHub REST API 官方版本 `2022-11-28`；下载 artifact 的签名重定向 URL 时不转发 Authorization header。凭据名称不代表对所有仓都具备权限：核验目标仓最小读取/操作权限，401/403 分类为认证/授权问题，不当作网络不可达。已有授权内自主读取发布证据；不得因开发机 Docker Hub 不通就索要已提供的凭据、扩大 token 权限或重建成功制品。
+
+Git 源码传输和 Actions API 使用不同认证边界。现有 `origin` 使用 GitHub SSH；先通过 `GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=10' git ls-remote origin refs/heads/dev` 核验读取、目标分支和 SHA，再使用同一固定 Git 入口提交已验证的所属仓变更。Actions token 的仓库元数据即使显示 `push/admin`，也不能证明 token 获得 `contents=read/write`；遇到 `Resource not accessible by personal access token` 时检查 `X-Accepted-GitHub-Permissions`，并复用现有 SSH Git 认证，不索取重复凭据或扩大 token 权限。源码推送前审查明确文件列表，保留无关用户改动；推送后由 Actions 凭据读取并核验真实 run、SHA 和制品。
+
+发布/触发前核对仓库、分支、SHA、workflow mode 与所选镜像数量。记录 run URL、结论、输入 fingerprint、两端双架构 digest、artifact SHA256 和 durable rc；失败先按所属仓阶梯定位，不全量重跑。凭据读取方法依照官方认证说明：https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api 。本地路径仅为认证入口，客户文档和镜像中不得包含它或任何秘密。
