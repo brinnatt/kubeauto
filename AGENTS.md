@@ -13,6 +13,17 @@ Before changing code or running a lab test, read:
 
 For a new middleware branch, also read and follow `docs/middleware/delivery-playbook.md`.
 
+### 企业文档质量契约
+
+编写、修订或评审技术文档前，必须读取并执行 `docs/documentation-quality-standard.md`；中间件同时遵守交付规范第九章。该标准是六仓文档质量的单一权威来源，适用于客户内容、操作步骤、原理解释、参考及文档相关提示词。
+
+- 必须盘点并通读交付技术栈相关的全部官方文档、参考、发布说明与依赖资料，锁定版本/commit，维护逐主题阅读与正文覆盖映射。漏项、不可访问和未验证项明确登记，不得声称已通读或用官网链接代替解释。
+- 以 Ceph 九模块文档的机制解释和生产闭环为质量标杆。按读者任务组织新手成功路径、常用生产操作、进阶专题、参数速查和故障入口；逐节讲清机制因果、选择依据、操作、结果、限制与恢复，不能只列功能和命令。
+- 准确且多使用 Mermaid mindmap、flowchart、sequenceDiagram、stateDiagram 或数据图表解释复杂关系，渲染并核对图文；不以字数、图数、标题齐全或关键词作为质量验收。
+- 生产步骤必须明确版本、角色、位置、上下文、输入来源、前置检查、产品入口、等待/超时、预期业务结果、失败停止、回退和复验；性能、稳定性、安全、容量、数据保护与特殊场景均须有可判断的依据。
+- 来源覆盖、内容评审、静态契约、实际操作验证及两类读者走读分别记录。产品 GA 或语法 PASS 不能替代文档质量签收；未按新标准复核的既有手册不得自动声明合格。
+- 文档工作不授权修改无关功能或 Ceph 九份标杆文档；按实际影响执行最小验证，纯标准变更不启动实验室回归。
+
 ### Independent `tools/` boundary and delivery path
 
 `tools/` is a separate product surface, not part of kubeauto core or any
