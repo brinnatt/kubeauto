@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "tag": "3.11.17-redis6.4.0-cli8.10.2",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "talkedu_digest": "sha256:deedf892aba62f965c1530eff817378927a02e3c63dc1e7e6488400e1f8ead1b",
+  "dockerhub_digest": "sha256:deedf892aba62f965c1530eff817378927a02e3c63dc1e7e6488400e1f8ead1b",
+  "run_id": 38493189662,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/38493189662",
+  "head": "c0b4ef192af4d500201f02b026f4804ec91068b8",
+  "workflow_conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "images": [
+    {
+      "digest": "sha256:deedf892aba62f965c1530eff817378927a02e3c63dc1e7e6488400e1f8ead1b",
+      "fingerprint": "40d5005b3bdfd7d2ce6eb4cedf29adc30a4c4a1c46f362c1d59cd63528dda9ed",
+      "head": "c0b4ef192af4d500201f02b026f4804ec91068b8",
+      "key": "brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2",
+      "platforms": {
+        "linux/amd64": "sha256:afc39321d08850657de3376009c03ee4857b5ebd67850a251957fcf67281ab72",
+        "linux/arm64": "sha256:afdcb8bd2cb29d6e2a1176bb65d5da29db12e005759d937b5f71a8f0dcd7ab8c"
+      },
+      "schema": 1,
+      "source_digest": "sha256:5887f265d8d44d8b4734d3658b21d668edf5aaf92e4945bc0c984afbfab105d3",
+      "source_ref": "python:3.11.17-bookworm",
+      "dockerhub_ref": "brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2"
+    }
+  ],
+  "artifact_sha256": {
+    "release-evidence-0-1.zip": "sha256:4e9d85902ab31023c9bd5523ffa8bcf232c65c511129ef420c8017e9864aebfd"
+  },
+  "verification_boundary": "Actions build and formal-tag readback on both registries and architectures; current China TalkEdu readback mandatory before Pod launch",
+  "input_fingerprint_verification": "Committed Git context modes/content, catalog mapping and build policy match Actions fingerprint; development Dockerfile mode0664 differs from Git/Actions0644, content unchanged",
+  "source_pin": {
+    "python": "3.11.17",
+    "redis_py": "6.4.0",
+    "redis_cli_commit": "498ecd0d6d007db11ddb3aea9428552598a78622",
+    "wheel_sha256": "f0544fa9604264e9464cdf4814e7d4830f74b165d52f2a330a760a88dd248b7f"
+  }
+}
