@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-43"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-registry-qualification",
+  "result": "FAIL at local static prerequisite; no live launch",
+  "classification": "Local CPython3.12.14 runtime failure; exact cause unknown",
+  "rc": 139,
+  "first_failure": "SIGSEGV in yaml/scanner.py get_token while test_crd_renderer_accepts_kubectl_per_object_json_and_list parsed unchanged official CRD",
+  "log": "logs/mongodb-static/20261018-v55/registry-launch-runtime-failure.log",
+  "log_sha256": "4d6c92b6d2c1edc5938f39abdd49a088f65fbffb79ae15d184942b068752958c",
+  "focused": "logs/mongodb-static/20261018-v55/registry-launch-runtime-focused.log",
+  "focused_rc": 0,
+  "focused_sha256": "dee6350dc05b66f991cbaf44eb90971f7d53ae58fb4beed6ab145eec0b7c00b1",
+  "input_freeze": "/tmp/kubeauto-mongodb-registry-v19-executed-hashes.txt",
+  "cleanup": "No source sync, SSH lease or remote mutation; prior complete LAB_CLEAN_VERIFY_PASS retained",
+  "decision": "Exact owning test passed unchanged; retry same fixed launcher once with original runtime and inputs. No product or test-code change."
+}

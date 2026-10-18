@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-19"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-logical-backup",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_BACKUP_STORAGE_READY tls=ca-and-hostname-verified",
+    "MONGODB_BACKUP_SEED_PASS",
+    "MONGODB_BACKUP_OBJECTS_VERIFIED count=18 checksums=sha256",
+    "MONGODB_WORKLOAD_CLEAN_PASS",
+    "MONGODB_LOGICAL_BACKUP_SCOPED_CLEAN_PASS retained=owned-backup-artifact",
+    "MONGODB_LOGICAL_BACKUP_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "durable_status": "state=exited pid=85280 rc=0 bytes=12546 pass_markers=22 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "cd9a3a8fe1de8b429f29c6a2a58bc646a7ed5f7302290f638b2cfac1e9834665",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "tests/helpers/mongodb-backups.py": "708f45e60441dd9aeee63b4c2ccba6782c5b28196b07d1d0ebc04e6b32897233",
+    "tests/helpers/mongodb-lab.py": "043091447654b9ecb1a34fb72c4e97644fcf47c95485b16c948adbcc3895355d",
+    "tests/helpers/mongodb-scenarios.py": "68054489abfbbaf06d92cac4d4825c8b2c79ae44f281a6590867fdb14b0f339e",
+    "tests/helpers/mongodb-install-gate.sh": "cb0969529963b772ce84b48c4df3a626b073d16577953caadf30fbf64763c60a",
+    "tests/helpers/mongodb-runner.sh": "656dda54868bed25e1d24a2cdf3db6adb24bf1fbe660cc2a038465d111236020",
+    "tests/unit/test_mongodb_backups.py": "26ac14f2b1a10e4b46ea79eb20533b7ed08219e31e89021ce296113e682fe558"
+  },
+  "verified_artifact": {
+    "uid": "0335e52a-1511-4c35-9819-c567aa44ce7a",
+    "destination": "s3://mongodb-backup-d5ea6173d3257ea7/backup/2026-10-15T13:55:05Z",
+    "metadata": {
+      "type": "logical",
+      "name": "2026-10-15T13:55:05Z",
+      "mongodb_version": "8.0.32-14",
+      "pbm_version": "2.15.0",
+      "fcv": "8.0",
+      "start_ts": 1792072506,
+      "last_write_ts": {
+        "T": 1792072511,
+        "I": 5
+      },
+      "size": 53400
+    },
+    "objects": [
+      {
+        "key": "backup/2026-10-15T13:55:05Z.pbm.json",
+        "size": 2320,
+        "sha256": "0e774e75309ae1864a3d543174a7d64e8ade4d9c64cd4a6d36bba60fb0b037c2"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmAgents.gz",
+        "size": 321,
+        "sha256": "6cb96868fe18213a1d1d3a9071eb0345f66c538992c8cdb0380f50073b752d9d"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmBackups.gz",
+        "size": 804,
+        "sha256": "51f078ea73f14f71f917867db31eabe065397239592ea989e9c7a0cfa645ee35"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmCmd.gz",
+        "size": 181,
+        "sha256": "b22d579e70680ae8fbebdda5bbc661ecbcabc112b3ec0cf3b38453446e5d251a"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmConfig.gz",
+        "size": 428,
+        "sha256": "e16de613a5bc1b2ec841cdd94f1591007a04b052febd180a84998a14e5bee2dc"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmLock.gz",
+        "size": 189,
+        "sha256": "635ed4755272f0422d8153839d6eda4e62e0d9f700a969f8ae86ad627387d117"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmLog.gz",
+        "size": 2591,
+        "sha256": "99aea596ff2cc4b02702315e46a8d02356de555b3660f8f26f826fb10d06d3ba"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmOpLog.gz",
+        "size": 214,
+        "sha256": "6f6739d5eef86a850b701684db15efabe23fcce71f34b13b3a92fe7dd63d66d8"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmRRoles.gz",
+        "size": 314,
+        "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmRUsers.gz",
+        "size": 1766,
+        "sha256": "af81ba78465bed4dbee2bd29d04b49bfbf358042337b7550138757de03b7021c"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.system.roles.gz",
+        "size": 314,
+        "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.system.users.gz",
+        "size": 1762,
+        "sha256": "905adcb0db14ad2db0f4fe1d461314c62fc3375020d9ba6c08e1e4cf3d454f3c"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.system.version.gz",
+        "size": 109,
+        "sha256": "9630c39ad730a3209adf63d35d8dafad47baddd06184adbc95dce25adf62c294"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/appdb.mongodb_gate_c4c2091c6592bb84_documents.gz",
+        "size": 59,
+        "sha256": "5f3abd65f8c2187291196099dd4d5ef0ebd5275b206b4c36942f893299b95faf"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/config.settings.gz",
+        "size": 163,
+        "sha256": "9607e9d7899e21ed56baf72aad598d251519f4fb16716528cb509f130aaf06d6"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/meta.pbm",
+        "size": 4820,
+        "sha256": "6d026f1392ca4020157353b0447b2cfc7bace31cea48568746965e844e39cc2a"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/metadata.json",
+        "size": 10453,
+        "sha256": "fde56613d48d564fa160026c4f4f3c99225a04a9d69a7aba3092c6a192cbdc60"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/oplog/20261015135506-15.20261015135511-5.gz",
+        "size": 6082,
+        "sha256": "20b0f7f7ab79a2ae67b35feea51adb549c482711e322a6f9dea1a93ee9527f52"
+      }
+    ],
+    "source_prefix": "mongodb_gate_c4c2091c6592bb84"
+  },
+  "cleanup": "Original product configuration converged; run-ID seed collections and UID-owned business client removed. Accepted backup CR and UID-owned TLS S3 fixture/PVC retained for independent restore; not final lab cleanup.",
+  "impact_analysis": {
+    "scope": "Later local edits add independent-target restoration and optional fixture cluster names. Executed hashes above describe the actual backup run; backup request, mc CA/CLI, remote-object verification and original-configuration recovery behavior are unchanged.",
+    "target_failure_recovery": "Independent-target inventory failure affected rendered source scratch files only. Restore-clean run 20261015-221026 verified source CR/PVC/Secret identities unchanged, repaired rendering through the source kubecli entry point and passed source health with durable rc=0 and zero failure markers. Backup object checksums are re-read before target restore."
+  }
+}

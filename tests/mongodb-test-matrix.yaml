@@ -1,0 +1,575 @@
+meta:
+  version: 1
+  updated: '2026-10-18'
+  component: mongodb
+  scope: Independent default-disabled Percona MongoDB branch; replica-set and explicit sharding; no reuse of
+    other component PASS
+  runner: bash tests/run_enterprise_regression.sh --mongodb-only
+  result: PASS
+  coverage: {total: 43, pass: 43, pending: 0, fail: 0}
+  regression_log: logs/mongodb-cases/full-20261018-042852/first-run.log
+  regression_result: 'PASS: 43/43 accepted; one clean complete 41-step regression, durable rc=0, zero failure markers and final LAB_CLEAN_VERIFY_PASS'
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb
+  evidence_policy: Each case needs its own current assertions, durable rc=0, zero failure markers, identity-bound
+    fixture cleanup; full delivery additionally requires final clean complete regression
+versions:
+  operator: 1.23.1
+  operator_chart: 1.23.2
+  operator_chart_sha256: 80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9
+  server: 8.0.32-14
+  backup: 2.15.0
+  fluentbit: 5.1.2-1
+  exporter: 0.53.0
+  upgrade_operator: 1.23.0
+  upgrade_operator_chart: 1.23.1
+  upgrade_operator_chart_sha256: 08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd
+  upgrade_server: 8.0.26-11
+  upgrade_fluentbit: 5.0.9-1
+  kubernetes: 1.33.6
+cases:
+- id: MONGODB-01
+  group: static
+  desc: Pinned versions, Chart SHA256, image mapping, CRD schema and isolated Ansible tags
+  status: pass
+  evidence: tests/evidence/mongodb-static-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_STATIC_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/helm.html
+  fixture: local temporary render directory; no cluster mutation
+  cleanup: remove temporary render files
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-static
+- id: MONGODB-02
+  group: disabled
+  desc: Default-disabled product execution creates no MongoDB resources or downloads
+  status: pass
+  evidence: tests/evidence/mongodb-static-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=no
+  success_marker: MONGODB_DISABLED_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/helm.html
+  fixture: local disabled config
+  cleanup: remove temporary config
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-disabled
+- id: MONGODB-03
+  group: validation
+  desc: Invalid topology, names, quantities, TLS and backup configuration fail before mutation
+  status: pass
+  evidence: tests/evidence/mongodb-static-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_VALIDATION_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/operator.html
+  fixture: local invalid configuration table
+  cleanup: remove rendered invalid inputs
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-validation
+- id: MONGODB-04
+  group: artifacts
+  desc: Production and upgrade images have identical dual-registry amd64/arm64 manifests; reused fixtures retain
+    exact pins
+  status: pass
+  evidence: tests/evidence/mongodb-artifacts-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_ARTIFACTS_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/versions.html
+  fixture: read-only publication artifacts and registry manifests
+  cleanup: no registry deletion
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-artifacts
+- id: MONGODB-05
+  group: platform
+  desc: Actual Kubernetes 1.33.6 API reconciliation; CPU x86-64-v3/AVX or ARMv8.2 and node capacity are checked
+  status: pass
+  evidence: tests/evidence/mongodb-platform-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_PLATFORM_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/System-Requirements.html
+  fixture: leased nodes; read-only hardware/API probes
+  cleanup: release lease on failure; no foreign cluster mutation
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-platform
+- id: MONGODB-06
+  group: preflight
+  desc: Owned clean cluster, three failure domains, DNS, time, networking and bounded capacity
+  status: pass
+  evidence: tests/evidence/mongodb-preflight-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_PREFLIGHT_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/System-Requirements.html
+  fixture: runner-owned disposable cluster and namespace allowlist
+  cleanup: owned cluster only after UID/IP/lease verification
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-preflight
+- id: MONGODB-07
+  group: storage
+  desc: CSI RWO write/read, durable remount, expansion and failure-domain scheduling
+  status: pass
+  evidence: tests/evidence/mongodb-storage-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_STORAGE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/storage.html
+  fixture: owned probe PVC/Pod and dedicated StorageClass
+  cleanup: delete probe objects and wait for owned volume deletion
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-storage
+- id: MONGODB-08
+  group: install
+  desc: Product installs Operator/CRDs and three data-bearing voters on separate nodes with retained PVCs
+  status: pass
+  evidence: tests/evidence/mongodb-install-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_INSTALL_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/replication.html
+  fixture: default replica-set config through kubecli
+  cleanup: keep verified healthy baseline; delete module probe
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-install
+- id: MONGODB-09
+  group: data
+  desc: Authenticated TLS client CRUD, BSON types, bulk operations, unique/compound/TTL indexes and exact data
+    digest
+  status: pass
+  evidence: tests/evidence/mongodb-data-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_DATA_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/connect.html
+  fixture: run-ID collections in appdb and least-privilege application account configured through the product
+  cleanup: drop run-ID collections and UID-owned client; preserve configured application account
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-data
+- id: MONGODB-10
+  group: transactions
+  desc: Multi-document transaction commit/abort, majority+journal writes, snapshot reads and bounded timeout
+    semantics
+  status: pass
+  evidence: tests/evidence/mongodb-transactions-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_TRANSACTIONS_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/connect.html
+  fixture: run-ID transaction collections
+  cleanup: drop owned transaction collections
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-transactions
+- id: MONGODB-11
+  group: failover
+  desc: Primary and secondary Pod loss under retrying workload elects one primary without losing acknowledged
+    writes
+  status: pass
+  evidence: tests/evidence/mongodb-failover-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_FAILOVER_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/replication.html
+  fixture: owned member faults plus run-ID workload ledger
+  cleanup: restore all members; compare acknowledged ledger; delete probes
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-failover
+- id: MONGODB-12
+  group: quorum
+  desc: Two-of-three member loss rejects majority writes within deadline; no unsafe promotion; recovery preserves
+    committed data
+  status: pass
+  evidence: tests/evidence/mongodb-quorum-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_QUORUM_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/replication.html
+  fixture: two owned process/network faults and bounded client
+  cleanup: remove faults in finally; all three members healthy
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-quorum
+- id: MONGODB-13
+  group: rebuild
+  desc: Empty secondary volume rebuilds from healthy members and catches up with exact digest
+  status: pass
+  evidence: tests/evidence/mongodb-rebuild-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_REBUILD_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/storage.html
+  fixture: one disposable owned secondary PVC; baseline backup mandatory
+  cleanup: restore replica-set health and remove replacement fixture
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-rebuild
+- id: MONGODB-14
+  group: maintenance
+  desc: Node drain respects PDB; rolling restart preserves majority and client continuity
+  status: pass
+  evidence: tests/evidence/mongodb-maintenance-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_MAINTENANCE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/constraints.html
+  fixture: owned member node drain and run-ID workload
+  cleanup: uncordon leased node; restore PDB and all members
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-maintenance
+- id: MONGODB-15
+  group: security
+  desc: TLS hostname/CA validation, plaintext refusal, wrong password and cross-database/admin privilege denial
+  status: pass
+  evidence: tests/evidence/mongodb-security-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_SECURITY_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/TLS.html
+  fixture: isolated TLS clients and least-privilege account
+  cleanup: remove clients and temporary accounts; preserve system secrets
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-security
+- id: MONGODB-16
+  group: rotation
+  desc: System/application password and TLS CA/certificate rotation; new identity succeeds and revoked identity
+    fails
+  status: pass
+  evidence: tests/evidence/mongodb-rotation-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_ROTATION_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/users.html
+  fixture: owned Secrets with bounded rotation and client checks
+  cleanup: restore converged trusted configuration; remove old test credentials
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-rotation
+- id: MONGODB-17
+  group: encryption
+  desc: WiredTiger at-rest encryption remains enabled; isolated recovery rejects missing/wrong key; escrow
+    key restores data
+  status: pass
+  evidence: tests/evidence/mongodb-encryption-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_ENCRYPTION_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/encryption.html
+  fixture: isolated restore target with deliberately incorrect key
+  cleanup: delete failed target then verify healthy source and correct-key target
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-encryption
+- id: MONGODB-18
+  group: network
+  desc: NetworkPolicy allows application/replication/backup/monitoring traffic and denies an unauthorized client
+  status: pass
+  evidence: tests/evidence/mongodb-network-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_NETWORK_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/expose.html
+  fixture: owned policies and allowed/denied client Pods
+  cleanup: remove injected client/policy; verify baseline connectivity
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-network
+- id: MONGODB-19
+  group: logical-backup
+  desc: Logical full backup completes; remote metadata and non-zero data objects are readable with recorded
+    checksums
+  status: pass
+  evidence: tests/evidence/mongodb-logical-backup-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_LOGICAL_BACKUP_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups.html
+  fixture: owned S3 prefix and backup CR
+  cleanup: retain only module artifact until restore; remove owned prefix afterward
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-logical-backup
+- id: MONGODB-20
+  group: logical-restore
+  desc: Logical restore into isolated new cluster preserves BSON, indexes, users and expected backup boundary
+  status: pass
+  evidence: tests/evidence/mongodb-logical-restore-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_LOGICAL_RESTORE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups-restore.html
+  fixture: separate owned target; matching system credentials/key/topology
+  cleanup: delete target and owned restored volumes; preserve source
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-logical-restore
+- id: MONGODB-21
+  group: physical-backup
+  desc: Physical full backup completes with readable metadata/data and exact version/topology identity
+  status: pass
+  evidence: tests/evidence/mongodb-physical-backup-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_PHYSICAL_BACKUP_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups.html
+  fixture: owned physical backup CR and isolated object prefix
+  cleanup: retain artifact for physical restore then delete owned prefix
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-physical-backup
+- id: MONGODB-22
+  group: physical-restore
+  desc: Physical restore into isolated target reaches consistent data/index boundary; failed restore is not
+    treated as rollback
+  status: pass
+  evidence: tests/evidence/mongodb-physical-restore-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_PHYSICAL_RESTORE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups-restore.html
+  fixture: isolated same-version encrypted target
+  cleanup: delete failed/successful target and owned volumes; verify source
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-physical-restore
+- id: MONGODB-23
+  group: pitr
+  desc: PITR establishes baseline and continuous oplog; latestRestorableTime covers target; exact before/after
+    marker boundary restores
+  status: pass
+  evidence: tests/evidence/mongodb-pitr-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_PITR_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups-pitr.html
+  fixture: owned baseline/oplog prefix and independent target
+  cleanup: stop PITR on fixture; delete owned target/prefix
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-pitr
+- id: MONGODB-24
+  group: backup-refusal
+  desc: Wrong S3 credentials, unavailable storage, unhealthy quorum and missing oplog fail safely without false
+    success
+  status: pass
+  evidence: tests/evidence/mongodb-backup-refusal-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_BACKUP_REFUSAL_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups-pitr.html
+  fixture: isolated backup settings/prefix; source configuration snapshot
+  cleanup: restore backup configuration and agent health; remove failed CRs/prefix
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-backup-refusal
+- id: MONGODB-25
+  group: retention
+  desc: Backup schedules, retention and deletion remove only expired owned objects; retained backup still restores
+  status: pass
+  evidence: tests/evidence/mongodb-retention-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_RETENTION_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups-scheduled.html
+  fixture: isolated short retention prefix and schedule
+  cleanup: restore schedule; remove owned prefix after target validation
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-retention
+- id: MONGODB-26
+  group: disaster-recovery
+  desc: Loss of source cluster recovers new cluster using off-cluster backup plus escrowed system credentials
+    and encryption/TLS material
+  status: pass
+  evidence: tests/evidence/mongodb-disaster-recovery-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_DISASTER_RECOVERY_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups-restore.html
+  fixture: separate disposable source/target, off-cluster object store
+  cleanup: delete only DR fixture clusters, volumes, secrets and prefix
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-disaster-recovery
+- id: MONGODB-27
+  group: sharding-install
+  desc: Explicit two shards x three members, three config members and three mongos reconcile through product
+    configuration
+  status: pass
+  evidence: tests/evidence/mongodb-sharding-install-20261016.json
+  product_entry: kubecli new mongodb-sharding-gate; edit clusters/mongodb-sharding-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-sharding-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_SHARDING_INSTALL_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/sharding.html
+  fixture: owned sharded cluster on leased pool
+  cleanup: retain verified sharded baseline; delete installation probe
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-sharding-install
+- id: MONGODB-28
+  group: sharding-data
+  desc: Routed CRUD, shard-key validation, distributed transactions, chunk migration and cross-shard digest
+  status: pass
+  evidence: tests/evidence/mongodb-sharding-data-20261016.json
+  product_entry: kubecli new mongodb-sharding-gate; edit clusters/mongodb-sharding-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-sharding-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_SHARDING_DATA_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/sharding.html
+  fixture: run-ID sharded database and routed clients
+  cleanup: drop run-ID database; wait for balancer convergence
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-sharding-data
+- id: MONGODB-29
+  group: sharding-failure
+  desc: Shard primary/config member/mongos loss recovers; majority loss refuses unsafe writes
+  status: pass
+  evidence: tests/evidence/mongodb-sharding-faults-20261016.json
+  product_entry: kubecli new mongodb-sharding-gate; edit clusters/mongodb-sharding-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-sharding-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_SHARDING_FAILURE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/sharding.html
+  fixture: owned faults in each sharded role
+  cleanup: remove every fault; verify each replica set and router
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-sharding-failure
+- id: MONGODB-30
+  group: sharding-scale
+  desc: Add shard, migrate populated chunks, drain/remove shard and retain exact data/index digest
+  status: pass
+  evidence: tests/evidence/mongodb-sharding-scale-20261016.json
+  product_entry: kubecli new mongodb-sharding-gate; edit clusters/mongodb-sharding-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-sharding-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_SHARDING_SCALE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/sharding.html
+  fixture: owned temporary shard and run-ID chunk data
+  cleanup: finish drain; remove temporary shard only after data proves migration
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-sharding-scale
+- id: MONGODB-31
+  group: sharding-restore
+  desc: Coordinated backup/PITR restores data and chunk/catalog consistency across all shards
+  status: pass
+  evidence: tests/evidence/mongodb-sharding-restore-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_SHARDING_RESTORE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/backups-restore.html
+  fixture: isolated sharded restore target and object prefix
+  cleanup: delete target, owned volumes and prefix; verify source
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-sharding-restore
+- id: MONGODB-32
+  group: replica-scale
+  desc: Three-to-five-to-three supported member scaling preserves votes, majority, data and PVC retention boundaries
+  status: pass
+  evidence: tests/evidence/mongodb-replica-scale-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_REPLICA_SCALE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/scaling.html
+  fixture: temporary members on leased failure domains
+  cleanup: return to three healthy members; handle retained owned PVCs explicitly
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-replica-scale
+- id: MONGODB-33
+  group: capacity
+  desc: PVC expansion under load, bounded disk pressure, replication lag and recovery prove no silent data
+    loss
+  status: pass
+  evidence: tests/evidence/mongodb-capacity-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_CAPACITY_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/storage.html
+  fixture: small disposable data set/volume and bounded fault
+  cleanup: remove filler/fault; verify volume size, replication and digest
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-capacity
+- id: MONGODB-34
+  group: observability
+  desc: Existing Prometheus scrapes exporter with least privilege; controlled member/lag/capacity/backup alerts
+    fire and resolve
+  status: pass
+  evidence: tests/evidence/mongodb-observability-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_OBSERVABILITY_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/monitoring.html
+  fixture: owned exporter targets, alert rules and controlled faults
+  cleanup: remove faults; resolve alerts; delete module-only monitoring probes
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-observability
+- id: MONGODB-35
+  group: performance
+  desc: Fixed data size and read/write mix, concurrency 1/4/16, duration, ops/s, P50/P95/P99, error counts
+    and node-failure workload
+  status: pass
+  evidence: tests/evidence/mongodb-performance-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_PERFORMANCE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/System-Requirements.html
+  fixture: owned workload database and latency samples
+  cleanup: delete workload data/clients; report measured resource/bottleneck profile
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-performance
+- id: MONGODB-36
+  group: stability
+  desc: Sustained two-topology workload with Pod/node/Operator restarts and end-to-end acknowledged-write ledger
+  status: pass
+  evidence: tests/evidence/mongodb-stability-20261018.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_STABILITY_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/replication.html
+  fixture: owned soak workload and fault journal
+  cleanup: remove faults; verify healthy source and ledger; remove owned workload
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-stability
+- id: MONGODB-37
+  group: upgrade
+  desc: Pinned 1.23.0/8.0.26-11 to 1.23.1/8.0.32-14 Operator/CRD and rolling patch upgrade preserve data under
+    load
+  status: pass
+  evidence: tests/evidence/mongodb-upgrade-20261017.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_UPGRADE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/update.html
+  fixture: separate isolated old-version fixture; pre-upgrade backup
+  cleanup: delete upgrade fixture after post-upgrade data and backup verification
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-upgrade
+- id: MONGODB-38
+  group: rollback
+  desc: Supported image rollback conditions are checked independently from FCV; incompatible rollback refuses
+    and recovers from backup
+  status: pass
+  evidence: tests/evidence/mongodb-rollback-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_ROLLBACK_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/update-major.html
+  fixture: isolated upgrade target with recorded FCV and backup
+  cleanup: restore known-compatible target; never downgrade production data blindly
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-rollback
+- id: MONGODB-39
+  group: idempotence
+  desc: Second kubecli execution preserves database/Pod/PVC/Secret identities, certificates and backup schedule
+    without unintended rollout
+  status: pass
+  evidence: tests/evidence/mongodb-idempotence-20261015.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_IDEMPOTENCE_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/helm.html
+  fixture: before/after canonical product snapshots
+  cleanup: remove snapshots and probes; keep healthy baseline
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-idempotence
+- id: MONGODB-40
+  group: ownership
+  desc: Foreign namespace/CRD/volume/resource identity refuses adoption and cleanup without changing foreign
+    resources
+  status: pass
+  evidence: tests/evidence/mongodb-ownership-20261016.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_OWNERSHIP_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/helm.html
+  fixture: explicit foreign-labelled disposable fixtures with independent owner
+  cleanup: remove fixtures only via fixture owner; compare foreign object snapshots
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-ownership
+- id: MONGODB-41
+  group: cleanup
+  desc: Success, failure and interruption cleanup remove owned workloads/volumes/faults/processes while preserving
+    foreign resources
+  status: pass
+  evidence: tests/evidence/mongodb-cleanup-complete-20261017.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_CLEANUP_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/delete.html
+  fixture: separate owned cleanup fixtures and durable process state
+  cleanup: verify complete scope; restore node flags and release all leases
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-cleanup
+- id: MONGODB-42
+  group: documentation
+  desc: Three formal manuals and novice/experienced task paths match current product entry points and measured
+    limitations
+  status: pass
+  evidence: tests/evidence/mongodb-documentation.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_DOCUMENTATION_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/index.html
+  fixture: local formal customer documentation and current evidence
+  cleanup: local temporary render files only
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-documentation
+- id: MONGODB-43
+  group: full
+  desc: Final clean complete branch has all current cases, durable rc=0, zero failure markers and final LAB_CLEAN_VERIFY_PASS
+  status: pass
+  evidence: tests/evidence/mongodb-full-20261018.json
+  product_entry: kubecli new mongodb-gate; edit clusters/mongodb-gate/config.yml; kubecli download -E mongodb;
+    kubecli setup mongodb-gate 07 --tags mongodb; mongodb_install=yes
+  success_marker: MONGODB_FULL_PASS
+  official: https://docs.percona.com/percona-operator-for-mongodb/index.html
+  fixture: fresh runner-leased full MongoDB environment
+  cleanup: MONGODB_CLEAN_VERIFY_PASS then LAB_CLEAN_VERIFY_PASS and lease release
+  disproof: bash tests/run_enterprise_regression.sh --mongodb-only
+sources:
+  operator: https://github.com/percona/percona-server-mongodb-operator/tree/a4367b91e914abe73bacf85e9a7f4b587addd40c
+  operator_docs: https://github.com/percona/k8spsmdb-docs/tree/e81024c295e8ebaf9cc06766cb2564e6e3308b02
+  server_docs: https://github.com/percona/psmdb-docs/tree/10bd40c99426316dfc264c16f2221d335876dbab
+  backup: https://github.com/percona/percona-backup-mongodb/tree/9641a911c853ecc79614816c0266cb53819cd5df
+  charts: https://github.com/percona/percona-helm-charts/tree/2af1f993e0f06760e023f21e33ab9b9e8dda7b4f
+  exporter: https://github.com/percona/mongodb_exporter/tree/v0.53.0

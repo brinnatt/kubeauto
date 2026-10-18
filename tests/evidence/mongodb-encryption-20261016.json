@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-17"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-encryption",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "durable_status": "state=exited pid=247610 rc=0 bytes=24281 pass_markers=37 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "6d0a8114faf652f0be2ca78796a30c23b4e739a9b07a836d0acff92a451869a2",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "38632d891727a85fa401046ddf47a23cc8888477109a08b26e327d0caaf2aec8",
+    "roles/cluster-addon/files/mongodb.py": "e26715f3387d9bc483d1625cb979f4f078a7f389a3dca1717c0d9da1780450bf",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "54c4bc852b347bf93b042fc92ced671066a9c414d3b59f100543ba78cae964a4",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "123c0887b7ec3ed7a1241e0c0fa30dc0f4b91b8f63407a7397acb44f58e9145b",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "37fd64d5982868817c473c8b67b057528283a528b841ee36ceab77c29435dd0b",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-lab.py": "e03592cd869b3fb4abd9c5002e43eba2822d704de21dc6ab3781f56057df543b",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-scenarios.py": "8d5c983a5906fab74c4cd812e28a3398333781c7334442cd54c45a81518d548e",
+    "tests/helpers/mongodb-static.sh": "ae2fde51b016c3c846533e61c4e2043ecee65fedca31adf0207d213af80d7b41",
+    "tests/unit/test_mongodb_delivery.py": "c0ca649dc4e68a180a094d26806c759a3c66304a8e82e662da598c077f0e2f91",
+    "tests/unit/test_mongodb_lab.py": "d2fc74b71e604b0898e0083f7818ea1c4f8a655732dcc755af753d3f3e55ec8b",
+    "tests/unit/test_mongodb_matrix.py": "3e744ac27bf960e5af452911b7ae015c4edcb17bbd5f4a6f1e3563b0ebed31dd",
+    "tests/unit/test_mongodb_platform.py": "62b580cf111e03f843e13bffe1ba72ac5b13d306448d5e6280c0585f21a6399e",
+    "tests/unit/test_mongodb_scenarios.py": "8c191eca52a7f2d23960928cd96bcd6d5cd9a837f7e96480906cbecd71ec2b9a",
+    "tests/unit/test_mongodb_storage.py": "708349da7fc1d5fbc767e3fb7372ff7a973d4bc4ed52049f3b77505da3cbbadf",
+    "tests/helpers/mongodb-install-gate.sh": "986f977f083cc986fe1d4410d67b4e1dda259e045ae8c56919bd1129dd394cdf",
+    "tests/helpers/mongodb-runner.sh": "45571e730f4b8a44c89942104515afba22eb51753f08bd29a9b6ba9787700739",
+    "tests/helpers/mongodb-backups.py": "286fb40327f77e34208208557f04ebac65b0b54fab80fc1950c943d075a09fc8",
+    "tests/unit/test_mongodb_backups.py": "355527977bf81fceb9133ef91a5d74432af3a01f2e5f1a509785f3f31718f660",
+    "tests/helpers/mongodb-sharding.py": "9fa6850157db95905e584710e916ad886c2b751fa1517eefb8b12ef9a0d68feb",
+    "tests/unit/test_mongodb_sharding.py": "800a652fd9ad323dd4314f9b6d598069d6978192846b2e71c9cffe174269cd0c"
+  },
+  "scope": "Missing-key preflight refusal with unchanged target CR/PVC declarations; independent valid wrong32-byte key triggers failed named Restore and pinned native keydb/OpenSSL bad-decrypt/WT_PANIC evidence. Same physical backup then restores with original escrowed key; BSON Decimal128/index/application authentication/backup boundary pass. Wrong and correct targets and their PVs removed; source preserved.",
+  "markers": [
+    "MONGODB_ENCRYPTION_MISSING_KEY_PASS preflight=refused cr-pvc=unchanged",
+    "MONGODB_ENCRYPTION_WRONG_KEY_PASS restore=error native-key-error=verified",
+    "MONGODB_TARGET_RESTORE_DATA_PASS bson=true index=true user-restored=true boundary=true",
+    "MONGODB_ENCRYPTION_ESCROW_KEY_PASS bson-index-user-boundary=verified",
+    "MONGODB_ENCRYPTION_SCOPED_CLEAN_PASS failed-and-correct-targets=absent source=healthy",
+    "MONGODB_ENCRYPTION_PASS"
+  ],
+  "native_observation": {
+    "observation": {
+      "target_uid": "80ea4dfe-b10a-4a92-951c-a6ac65f26cc1",
+      "restore_uid": "7e7dc478-7dba-40ea-a893-f254f450e9e0",
+      "restore_state": "error",
+      "pbm_name": "2026-10-15T20:13:08.444141624Z",
+      "rejection": {
+        "rc": 1,
+        "output_sha256": "cd0eeff13095f9f69dcd45a98d7dc63293fa32f9d22460383cae8220dbcef1d5"
+      },
+      "members": [
+        {
+          "name": "mongodb-gate-physical-restore-rs0-0",
+          "uid": "a6776309-ab74-4e3b-92e3-69fc8b139f69",
+          "files": [
+            {
+              "path": "/data/db/pbm.restore.log",
+              "rc": 0,
+              "sha256": "9304faa9b7fcc623cb57c4d60e7c9e1f821498ed5cb6648bf3b15c2e464995cf",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": true,
+                "openssl_bad_decrypt": false,
+                "wiredtiger_panic": false
+              }
+            },
+            {
+              "path": "/tmp/mongod.log",
+              "rc": 0,
+              "sha256": "e58f7413c11b51088c1738b5a0fd0dbe24a2875158e966147095d47833f22cef",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": false,
+                "openssl_bad_decrypt": false,
+                "wiredtiger_panic": false
+              }
+            },
+            {
+              "path": "/tmp/pbm-agent.log",
+              "rc": 0,
+              "sha256": "c315985c9e4cff67a48e8e10ae3674e6d7caf1cc49f3499a0dc092064d2b40a3",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": true,
+                "openssl_bad_decrypt": true,
+                "wiredtiger_panic": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "mongodb-gate-physical-restore-rs0-1",
+          "uid": "0b271523-c8ca-40e5-8543-957d22ad9da2",
+          "files": [
+            {
+              "path": "/data/db/pbm.restore.log",
+              "rc": 0,
+              "sha256": "153717563987f4d60f217b4a1b4558fd6ef47b8e61727b27adfefa79e952908d",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": true,
+                "openssl_bad_decrypt": false,
+                "wiredtiger_panic": false
+              }
+            },
+            {
+              "path": "/tmp/mongod.log",
+              "rc": 0,
+              "sha256": "6951e92c1935246772a82b43f6b61fb0cdb6c967ad3dc4b9a3a6af1016ca69c7",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": false,
+                "openssl_bad_decrypt": false,
+                "wiredtiger_panic": false
+              }
+            },
+            {
+              "path": "/tmp/pbm-agent.log",
+              "rc": 0,
+              "sha256": "f014833876c2a0f046be1ca3d8ca75298a5a862cff082ae9daeb2f2b86e061f1",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": true,
+                "openssl_bad_decrypt": true,
+                "wiredtiger_panic": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "mongodb-gate-physical-restore-rs0-2",
+          "uid": "8328e676-70c8-4edf-9152-bbbe7d7b3a71",
+          "files": [
+            {
+              "path": "/data/db/pbm.restore.log",
+              "rc": 0,
+              "sha256": "e05586ba94809e4d6222b9a5fa5632fb8b95b34672d9469d59d2dc0b23f6e6f5",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": true,
+                "openssl_bad_decrypt": false,
+                "wiredtiger_panic": false
+              }
+            },
+            {
+              "path": "/tmp/mongod.log",
+              "rc": 0,
+              "sha256": "a155ba0aba19e67c1d3c6cd7d934f03ecda7b0a9f09c5443f30a3b1bfb0b38cd",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": false,
+                "openssl_bad_decrypt": false,
+                "wiredtiger_panic": false
+              }
+            },
+            {
+              "path": "/tmp/pbm-agent.log",
+              "rc": 0,
+              "sha256": "ab9caaf0ba7eda21251f15460d176fe432c8aa8a3dc10664fb2825422a732219",
+              "fingerprints": {
+                "explicit_key_error": false,
+                "keydb_context": true,
+                "openssl_bad_decrypt": true,
+                "wiredtiger_panic": true
+              }
+            }
+          ]
+        }
+      ],
+      "native_failure_proven": true
+    },
+    "rejections": {
+      "missing_key": {
+        "rc": 1,
+        "output_sha256": "1c7801441a31d994111b1837f7be722a28d107251c8c507448aeae92ffffbe15"
+      },
+      "wrong_key": {
+        "rc": 1,
+        "output_sha256": "cd0eeff13095f9f69dcd45a98d7dc63293fa32f9d22460383cae8220dbcef1d5"
+      }
+    },
+    "target_journal_absent": true,
+    "target_fault_absent": true,
+    "source_uid": "64341da5-4ed2-411d-b219-3ff2dc2bbc0d"
+  },
+  "native_running_diagnostic": {
+    "target_uid": "80ea4dfe-b10a-4a92-951c-a6ac65f26cc1",
+    "restore_uid": "7e7dc478-7dba-40ea-a893-f254f450e9e0",
+    "state": "running",
+    "pbm_name": "2026-10-15T20:13:08.444141624Z",
+    "members": [
+      {
+        "name": "mongodb-gate-physical-restore-rs0-0",
+        "uid": "a6776309-ab74-4e3b-92e3-69fc8b139f69",
+        "rc": 0,
+        "sha256": "85dc8170168051fa1004908f0a89780051dee927612935a68a44bbf66051bc78",
+        "flags": {
+          "explicit_key_error": false,
+          "keydb_context": true,
+          "openssl_bad_decrypt": true,
+          "wiredtiger_panic": true
+        },
+        "native_lines": [
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC",
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC",
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC"
+        ]
+      },
+      {
+        "name": "mongodb-gate-physical-restore-rs0-1",
+        "uid": "0b271523-c8ca-40e5-8543-957d22ad9da2",
+        "rc": 0,
+        "sha256": "07360d039173dbd6cca9df6478ae2796affdbf1bfa61c96749af49c89471e6c2",
+        "flags": {
+          "explicit_key_error": false,
+          "keydb_context": true,
+          "openssl_bad_decrypt": true,
+          "wiredtiger_panic": true
+        },
+        "native_lines": [
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC",
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC",
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC"
+        ]
+      },
+      {
+        "name": "mongodb-gate-physical-restore-rs0-2",
+        "uid": "8328e676-70c8-4edf-9152-bbbe7d7b3a71",
+        "rc": 0,
+        "sha256": "0262bd46b4549a71f18a0b887874d764ddfaf8e1f0a9b4f2b0dee8ca86f489e2",
+        "flags": {
+          "explicit_key_error": false,
+          "keydb_context": true,
+          "openssl_bad_decrypt": true,
+          "wiredtiger_panic": true
+        },
+        "native_lines": [
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC",
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC",
+          "libcrypto: error:1C800064:Provider routines::bad decrypt:providers/implementations/ciphers/ciphercommon_block.c:112:",
+          "setting return code to WT_PANIC"
+        ]
+      }
+    ]
+  },
+  "cleanup": "Both target graphs, data PVC/PVs and target fault journal absent; source identity/health verified and source backup preserved. Final full clean regression remains pending.",
+  "official_sources": [
+    "https://github.com/percona/percona-server-mongodb/blob/56859c0e5b35965ea391b7d04c4cac64de6d02c8/src/mongo/db/storage/wiredtiger/encryption_extension.c",
+    "https://github.com/percona/percona-server-mongodb-operator/blob/v1.23.1/build/physical-restore-ps-entry.sh"
+  ]
+}

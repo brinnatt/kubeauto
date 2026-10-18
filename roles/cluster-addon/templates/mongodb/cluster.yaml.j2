@@ -1,0 +1,228 @@
+{% macro data_member(rsname, size) %}
+name: {{ rsname }}
+size: {{ size | int }}
+affinity:
+  antiAffinityTopologyKey: kubernetes.io/hostname
+podDisruptionBudget:
+  maxUnavailable: 1
+annotations:
+  kubeauto.io/credentials-revision: {{ mongodb_secret_revision | default('initial') | to_json }}
+labels:
+  kubeauto.io/component: mongodb
+  app.kubernetes.io/managed-by: kubeauto
+configuration: |
+  net:
+    tls:
+      allowConnectionsWithoutCertificates: true
+  security:
+    enableEncryption: true
+    encryptionCipherMode: AES256-CBC
+  storage:
+    wiredTiger:
+      engineConfig:
+        cacheSizeGB: {{ mongodb_cache_size_gb | float }}
+resources:
+  requests:
+    cpu: {{ mongodb_cpu_request | to_json }}
+    memory: {{ mongodb_memory_request | to_json }}
+  limits:
+    cpu: {{ mongodb_cpu_limit | to_json }}
+    memory: {{ mongodb_memory_limit | to_json }}
+volumeSpec:
+  persistentVolumeClaim:
+    storageClassName: {{ mongodb_storage_class | to_json }}
+    accessModes: [ReadWriteOnce]
+    resources:
+      requests:
+        storage: {{ mongodb_pvc_size | to_json }}
+{% if mongodb_exporter_enabled | bool %}
+sidecars:
+  - name: mongodb-exporter
+    image: registry.talkschool.cn:5000/brinnatt/mongodb-exporter:{{ mongodb_exporter_ver }}
+    args:
+      - --mongodb.uri=mongodb://$(POD_NAME).{{ mongodb_name }}-{{ rsname }}.{{ mongodb_namespace }}.svc.cluster.local:27017/admin?directConnection=true&tls=true&tlsCAFile=/etc/mongodb-ssl/ca.crt
+      - --collector.replicasetstatus
+      - --collector.diagnosticdata
+    env:
+      - name: POD_NAME
+        valueFrom:
+          fieldRef: {fieldPath: metadata.name}
+      - name: MONGODB_USER
+        valueFrom:
+          secretKeyRef: {name: {{ mongodb_users_secret }}, key: MONGODB_CLUSTER_MONITOR_USER}
+      - name: MONGODB_PASSWORD
+        valueFrom:
+          secretKeyRef: {name: {{ mongodb_users_secret }}, key: MONGODB_CLUSTER_MONITOR_PASSWORD}
+    ports:
+      - {name: mongo-metrics, containerPort: 9216}
+    volumeMounts:
+      - {name: ssl, mountPath: /etc/mongodb-ssl, readOnly: true}
+    resources:
+      requests:
+        cpu: {{ mongodb_exporter_cpu_request | to_json }}
+        memory: {{ mongodb_exporter_memory_request | to_json }}
+      limits: {cpu: "500m", memory: "256Mi"}
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities: {drop: [ALL]}
+{% endif %}
+{% endmacro %}
+apiVersion: psmdb.percona.com/v1
+kind: PerconaServerMongoDB
+metadata:
+  name: {{ mongodb_name }}
+  namespace: {{ mongodb_namespace }}
+  labels:
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: mongodb
+  annotations:
+    kubeauto.io/encryption-key-sha256: {{ mongodb_encryption_revision | default('initial') | to_json }}
+  finalizers:
+    - percona.com/delete-psmdb-pods-in-order
+spec:
+  crVersion: {{ mongodb_operator_ver | to_json }}
+  image: registry.talkschool.cn:5000/brinnatt/percona-server-mongodb:{{ mongodb_ver }}
+  initImage: registry.talkschool.cn:5000/brinnatt/percona-server-mongodb-operator:{{ mongodb_operator_ver }}
+{% if mongodb_logrotate | default({}) %}
+  initContainerSecurityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+      add: [CHOWN, DAC_OVERRIDE]
+{% endif %}
+  imagePullPolicy: IfNotPresent
+  pause: false
+{% if mongodb_volume_expansion_enabled | default(false) | bool %}
+  storageScaling:
+    enableVolumeScaling: true
+    autoscaling:
+      enabled: false
+{% endif %}
+  updateStrategy: SmartUpdate
+  upgradeOptions:
+    apply: disabled
+    setFCV: false
+  tls:
+    mode: requireTLS
+    allowInvalidCertificates: false
+    certManagementPolicy: userProvidedOnly
+  unsafeFlags:
+    tls: false
+    replsetSize: false
+    mongosSize: false
+    terminationGracePeriod: false
+    backupIfUnhealthy: false
+  defaultRWConcern:
+    readConcern: majority
+    writeConcern:
+      w: majority
+      wtimeout: {{ mongodb_write_timeout_ms | int }}
+  secrets:
+    users: {{ mongodb_users_secret }}
+    ssl: {{ mongodb_tls_secret }}
+    sslInternal: {{ mongodb_tls_internal_secret }}
+    encryptionKey: {{ mongodb_encryption_key_secret }}
+{% if mongodb_users | length %}
+  users:
+{{ mongodb_users | to_nice_yaml(indent=2) | indent(4, true) }}
+{% endif %}
+  replsets:
+{% for rs in mongodb_replsets %}
+    - {{ data_member(rs.name, rs.size) | trim | indent(6) }}
+{% endfor %}
+  sharding:
+    enabled: {{ mongodb_sharding_enabled | bool | lower }}
+{% if mongodb_sharding_enabled | bool %}
+    configsvrReplSet:
+{{ data_member('cfg', mongodb_config_size) | trim | indent(6, true) }}
+    mongos:
+      size: {{ mongodb_mongos_size | int }}
+      configuration: |
+        net:
+          tls:
+            allowConnectionsWithoutCertificates: true
+      affinity:
+        antiAffinityTopologyKey: kubernetes.io/hostname
+      podDisruptionBudget: {maxUnavailable: 1}
+      expose: {type: ClusterIP}
+      annotations:
+        kubeauto.io/credentials-revision: {{ mongodb_secret_revision | default('initial') | to_json }}
+      resources:
+        requests:
+          cpu: {{ mongodb_mongos_cpu_request | to_json }}
+          memory: {{ mongodb_mongos_memory_request | to_json }}
+        limits:
+          cpu: {{ mongodb_mongos_cpu_limit | to_json }}
+          memory: {{ mongodb_mongos_memory_limit | to_json }}
+{% endif %}
+  logcollector:
+    enabled: {{ mongodb_logcollector_enabled | bool | lower }}
+    image: registry.talkschool.cn:5000/brinnatt/percona-fluentbit:{{ mongodb_fluentbit_ver }}
+{% if mongodb_logrotate | default({}) %}
+    logrotate:
+      schedule: {{ ('*/' ~ mongodb_logrotate.interval_minutes ~ ' * * * *') | to_json }}
+      configuration: |
+{% for role in ['mongod', 'mongos'] %}
+        /data/db/logs/{{ role }}.full.log {
+           daily
+           maxsize {{ mongodb_logrotate.max_size_mb }}M
+           rotate {{ mongodb_logrotate.retain }}
+           missingok
+           nocompress
+           notifempty
+           copytruncate
+           sharedscripts
+           prerotate
+               mongosh "mongodb://${MONGODB_USER}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/admin" \
+                       --eval 'db.adminCommand({ logRotate: 1 })'
+               find /data/db/logs/ -type f -name '{{ role }}.log.*' -mtime +7 -delete
+           endscript
+        }
+{% endfor %}
+{% endif %}
+    resources:
+      requests: {cpu: "100m", memory: "100Mi"}
+      limits: {cpu: "500m", memory: "256Mi"}
+  backup:
+    enabled: {{ mongodb_backup_enabled | bool | lower }}
+    image: registry.talkschool.cn:5000/brinnatt/percona-backup-mongodb:{{ mongodb_backup_ver }}
+    resources:
+      requests: {cpu: "200m", memory: "256Mi"}
+      limits: {cpu: "1", memory: "1Gi"}
+    pitr:
+      enabled: {{ mongodb_pitr_enabled | bool | lower }}
+      oplogOnly: false
+      oplogSpanMin: {{ mongodb_pitr_oplog_span_min | int }}
+{% if mongodb_backup_enabled | bool %}
+    storages:
+      {{ mongodb_backup_storage_name }}:
+        type: {{ mongodb_backup_storage_type }}
+        {{ mongodb_backup_storage_type }}:
+          bucket: {{ mongodb_backup_bucket | to_json }}
+          prefix: {{ mongodb_backup_prefix | to_json }}
+          region: {{ mongodb_backup_region | to_json }}
+          endpointUrl: {{ mongodb_backup_endpoint | to_json }}
+          credentialsSecret: {{ mongodb_backup_credentials_secret }}
+          insecureSkipTLSVerify: false
+          forcePathStyle: {{ mongodb_backup_force_path_style | bool | lower }}
+{% if mongodb_backup_storage_type == 'minio' %}
+          secure: true
+{% if mongodb_backup_ca_secret | length %}
+          caBundle:
+            name: {{ mongodb_backup_ca_secret }}
+            key: {{ mongodb_backup_ca_key | to_json }}
+{% endif %}
+{% endif %}
+    tasks:
+      - name: daily-full
+        enabled: {{ mongodb_backup_schedule_enabled | default(true) | bool | lower }}
+        schedule: {{ mongodb_backup_schedule | to_json }}
+        type: {{ mongodb_backup_schedule_type }}
+        storageName: {{ mongodb_backup_storage_name }}
+        retention:
+          type: count
+          count: {{ mongodb_backup_retention_count | int }}
+          deleteFromStorage: true
+{% endif %}

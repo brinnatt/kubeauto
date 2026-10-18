@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-23"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-pitr",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "durable_status": "state=exited pid=142777 rc=0 bytes=20710 pass_markers=33 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "0ed9ebed40314652fd9e0573b7b0d90ae68373eb7ee32a6d57b359c150075c66",
+  "markers": [
+    "MONGODB_PITR_OPLOG_PASS objects=1 target-covered=true checksums=sha256",
+    "MONGODB_PITR_RESTORED_BOUNDARY_PASS before=included after=excluded",
+    "MONGODB_RESTORE_TARGET_CLEAN_PASS source-pvc-and-secrets=preserved target-pv=absent",
+    "MONGODB_PITR_SCOPED_CLEAN_PASS retained=verified-pitr-backup",
+    "MONGODB_PITR_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "b94aae1b08eb71dc84556d57baf960ac0dae49abc5498031cd7ad767c58a4027",
+    "tests/helpers/mongodb-backups.py": "7921001c278a1186ee3aed74dc56ffc8d3c09e3c2059be54a22d87ca8de2c48d",
+    "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+    "tests/helpers/mongodb-scenarios.py": "34204da0f9067ddda6e2330dc6df7351582add9a012eb1d0c4b561f1f861e489",
+    "tests/helpers/mongodb-install-gate.sh": "8bf4888d832d6882eb30d2522c0d5ec7f845ceee1a3f6222b65c26c40691b328",
+    "tests/helpers/mongodb-runner.sh": "391ee54d0dece424c9f1b3ceba98cbc4e4acd07ff2b2cb56a1073b8cde9e4eb5"
+  },
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "scope": "Independent TLS object storage; logical baseline and nonzero SHA256-verified rs0 oplog; server-clock UTC restore point covered by latestRestorableTime. Independent empty target with separate CR/PVC/PV/CA and absent application user restored one Decimal128 document, its value index and application authentication plus before-PITR marker; after-PITR and after-backup markers absent. This is not large-data, all-BSON or sharded PITR evidence.",
+  "cleanup": "PITR disabled and original source configuration restored; source test collections/client absent. Independent target CR/controller graph/PVC/PV/credentials/deployment removed. Source identities and health preserved; verified backup fixture retained.",
+  "impact_analysis": "Executed the pre-timeline helper hash shown above. The later helper change adds a physical-only read-only diagnostic context; logical/PITR operations remain unchanged and the logical context is a no-op. No blanket invalidation of unchanged source/backup evidence."
+}

@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-22"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-physical-restore",
+  "durable_rc": 1,
+  "failure_markers": 3,
+  "durable_status": "state=exited pid=119351 rc=1 bytes=24678 pass_markers=21 failure_markers=3 latest=MONGODB_GATE_EXIT rc=1",
+  "log_sha256": "ff6bf17759cf020145b6637468b4933aef558d7541f939451f3c360b50c06917",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "b94aae1b08eb71dc84556d57baf960ac0dae49abc5498031cd7ad767c58a4027",
+    "tests/helpers/mongodb-backups.py": "a95358c36f77ab5c87cfa72bc7b6755b57a38e18fe7ec74da8ca3b4e1899b8c5",
+    "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+    "tests/helpers/mongodb-scenarios.py": "81178c76a104168183eff3f1aaca8526c9a2870a1314f38db3dd2b80b48b1b99",
+    "tests/helpers/mongodb-install-gate.sh": "bb4d57e892d564f900cfebdc35f7fc4fb716e5e130bcd209ceba7add45b2321a",
+    "tests/helpers/mongodb-runner.sh": "a3cb6bb4e6580d534cfb071abb0c319d891f86350cba6b60a4c92ed604be9cc6"
+  },
+  "classification": [
+    "database-runtime",
+    "controller-cleanup"
+  ],
+  "first_failure": "Restore reached ready/pbmName; after restart target rs0-1 repeatedly entered rollback due to diverged oplog and crashed with assertion 31049: No stable timestamp available to recover to. Other two members could not satisfy the mandatory three-member health gate. Root cause remains under investigation.",
+  "wait_interruption": "After preserving fatal logs, terminated only the verified target health child of durable PID 119351 with SIGTERM; Ansible rc=-15 triggered runner finally cleanup. Supervisor remained running.",
+  "diagnostics": {
+    "private_control_directory": "/var/tmp/kubeauto-mongodb-install.physical-crash-4scrf7ep",
+    "mongod-full.txt": "87addaad0a52dd1ad3644d6c3e78940b099cfa3f6e4a85deed2fa9fa29449914",
+    "pbm-restore-0.txt": "f00958e4fba2cab2e9b634616077b945f9e8e59f9ed213c62012640ded9e52e7",
+    "pbm-restore-1-agent.txt": "4f46fadb6c51525e90182924a34aff824f83ea3bd6f66d619b8c32c8df7f9db9",
+    "pbm-restore-2.txt": "795f183a8df564442403228ed9cfde2933fe04fa00f508861c92b7e3690d729b"
+  },
+  "secondary_failure": "Target CR deletion blocked by percona.com/delete-psmdb-pods-in-order; Operator cannot query unavailable ordinal 1 to set ordinal 0 primary. Scoped recovery pending.",
+  "previous_attempt": {
+    "schema": 1,
+    "case_ids": [
+      "MONGODB-22"
+    ],
+    "runner": "bash tests/run_enterprise_regression.sh --mongodb-physical-restore",
+    "durable_rc": 1,
+    "failure_markers": 3,
+    "log_sha256": "4ba94e6dffdb05dcce84652045a76cff582f674007df55488727d512b1e6a609",
+    "dependencies": {
+      "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+      "tests/helpers/mongodb-backups.py": "15d9aa5883736e35025d2dccd8121b662d034baa78c67dced418b093a9bb893e",
+      "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+      "tests/helpers/mongodb-scenarios.py": "caea5178da2c630f65a5b80c5fe0117573103f106ea498ce79f592b48fb852a1",
+      "tests/helpers/mongodb-install-gate.sh": "bb4d57e892d564f900cfebdc35f7fc4fb716e5e130bcd209ceba7add45b2321a",
+      "tests/helpers/mongodb-runner.sh": "a3cb6bb4e6580d534cfb071abb0c319d891f86350cba6b60a4c92ed604be9cc6"
+    },
+    "classification": [
+      "product",
+      "test-gate"
+    ],
+    "first_failure": "Product rejected Operator ready physical restore because status.completed is absent; live status contains ready and pbmName.",
+    "secondary_failure": "Cleanup rejected PDB UID replacement despite verified replacement StatefulSet ownership; source and target retained for bounded recovery.",
+    "official_source": "percona/percona-server-mongodb-operator a4367b91e914abe73bacf85e9a7f4b587addd40c pkg/controller/perconaservermongodbrestore/physical.go: status done -> ready; StatefulSets deleted and recreated",
+    "related_evidence": "Logical restore returned to pending because the shared product completion predicate changed; backup predicates retain completed/destination requirements.",
+    "next_disproof": "bash tests/run_enterprise_regression.sh --mongodb-restore-clean; bash tests/run_enterprise_regression.sh --mongodb-physical-restore"
+  },
+  "next_disproof": "A fresh isolated physical restore with complete DNS, Operator and per-member restart/election timeline; current physical-restore item remains fail.",
+  "cleanup_recovery": {
+    "runner": "bash tests/run_enterprise_regression.sh --mongodb-restore-clean",
+    "durable_rc": 0,
+    "failure_markers": 0,
+    "durable_status": "state=exited pid=132225 rc=0 bytes=715 pass_markers=4 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+    "log_sha256": "d924b1fa5fc14312b5494c28b61697af7ec3b3bd134fdf95e5d3e374dc7e809e",
+    "scope": "Deleting independent target only; exact ordered finalizer removed with UID/resourceVersion/old-finalizer tests after ownership, all volume claimRefs and unchanged source identities were verified. All target CR/workload/PVC/PVs absent; source TLS, encryption and three-member health passed. Verified source backups retained.",
+    "dependencies": {
+      "tests/helpers/mongodb-backups.py": "7921001c278a1186ee3aed74dc56ffc8d3c09e3c2059be54a22d87ca8de2c48d",
+      "tests/unit/test_mongodb_backups.py": "4a889bbf0ff3d671aaaababc5c7b31b05f22fc3130a7d23691a0a682d5e5ffee"
+    }
+  },
+  "investigation": "All three PBM nodes reported successful restore. Restored ordinal 1 elected term 9; Operator later executed handleReplicaSetNoPrimary while peers had DNS NXDOMAIN, followed by config version 90003/term 10 and rollback to backup common point. Need distinguish DNS/controller recovery interaction from PBM timestamp handling; no speculative product workaround applied.",
+  "upstream_related_work": {
+    "url": "https://github.com/percona/percona-server-mongodb-operator/pull/1926",
+    "title": "K8SPSMDB-1211: handle FULL CLUSTER CRASH error during the restore",
+    "observed": "2026-10-15",
+    "state": "open; not merged",
+    "relevance": "The author describes physical restore erroneously triggering FULL CLUSTER CRASH recovery and proposes retaining the restore-in-progress annotation while handling recovery after StatefulSet recreation. The pinned 1.23.1 reconcileCluster checks only the StatefulSet annotation before its ReplicaSetNoPrimary recovery, which force-reconfigures the first ready member. This supports investigation of the controller timing; it does not establish the complete cause of this run or provide a released fix.",
+    "boundary": "No unreleased image, upstream patch, DNS workaround, PVC reset or reduced member-health assertion has been adopted. The failed gate remains failed."
+  }
+}

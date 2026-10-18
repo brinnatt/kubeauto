@@ -265,6 +265,17 @@ class KubeConstant:
     v_strimzi_drain_cleaner_chart_sha256: str = field(
         default="ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
     )
+    # Official tested MongoDB composition (Operator v1.23.1 deploy/cr.yaml).
+    v_mongodb_operator: str = field(default="1.23.1")
+    v_mongodb_operator_chart: str = field(default="1.23.2")
+    v_mongodb_operator_chart_sha256: str = field(
+        default="80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9"
+    )
+    v_mongodb: str = field(default="8.0.32-14")
+    v_mongodb_backup: str = field(default="2.15.0")
+    v_mongodb_fluentbit: str = field(default="5.1.2-1")
+    v_mongodb_exporter: str = field(default="0.53.0")
+
     # Redis middleware baseline.  Redis 8 is distributed under the
     # AGPLv3/RSALv2/SSPLv1 tri-license; the product path selects AGPLv3.
     v_redis_operator: str = field(default="0.27.0", metadata={
@@ -517,6 +528,13 @@ class KubeConstant:
                 f"brinnatt/strimzi-operator:{self.v_strimzi_operator}",
                 f"brinnatt/strimzi-kafka:{self.v_strimzi_operator}-kafka-{self.v_kafka}",
                 f"brinnatt/strimzi-drain-cleaner:{self.v_strimzi_drain_cleaner}",
+            ],
+            "mongodb": [
+                f"brinnatt/percona-server-mongodb-operator:{self.v_mongodb_operator}",
+                f"brinnatt/percona-server-mongodb:{self.v_mongodb}",
+                f"brinnatt/percona-backup-mongodb:{self.v_mongodb_backup}",
+                f"brinnatt/percona-fluentbit:{self.v_mongodb_fluentbit}",
+                f"brinnatt/mongodb-exporter:{self.v_mongodb_exporter}",
             ],
             "redis": [
                 f"brinnatt/redis-operator:{self.v_redis_operator_image}",

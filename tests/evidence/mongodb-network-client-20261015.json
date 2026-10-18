@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-18"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-network-client",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_CORE_IDENTITY_PASS cluster_uid=4ddd4664-de27-41af-a579-93ed34c6fb03",
+    "MONGODB_NETWORK_ALLOWED_PASS",
+    "MONGODB_NETWORK_DENIED_PASS transport=blocked",
+    "MONGODB_NETWORK_RECOVERED_PASS",
+    "MONGODB_WORKLOAD_CLEAN_PASS",
+    "MONGODB_NETWORK_CLIENT_SCOPED_CLEAN_PASS",
+    "MONGODB_NETWORK_CLIENT_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "d3e359600b38a563b99ad0af5e919ad0c4c3ce647bfed2f0bbf1d2456b9b758e",
+  "durable_status": "state=exited pid=75388 rc=0 bytes=555 pass_markers=7 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "tests/helpers/mongodb-lab.py": "2366ef954d7ee9743035b7859a801375f8d1652fb0f5615610395713ed52c05f",
+    "tests/helpers/mongodb-scenarios.py": "d9e1ba98fab0a231023a2124936d34dd826cba28c379b4774e4fb94d4cf28ed9",
+    "tests/helpers/mongodb-install-gate.sh": "cb0969529963b772ce84b48c4df3a626b073d16577953caadf30fbf64763c60a",
+    "tests/helpers/mongodb-runner.sh": "656dda54868bed25e1d24a2cdf3db6adb24bf1fbe660cc2a038465d111236020",
+    "tests/unit/test_mongodb_scenarios.py": "6f4e5cb8bfcf48798567e54aeb656bf9f906b04a5a039895b13c8e090ca210e6"
+  },
+  "cleanup": "client admission label restored; run-ID collection dropped; UID-owned client absent; product policy unchanged",
+  "coverage": "partial: application admission/denial/recovery only; backup and monitoring pending"
+}

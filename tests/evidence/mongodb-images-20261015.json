@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "run_id": 38688279296,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/38688279296",
+  "workflow_conclusion": "success",
+  "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+  "mode": "changed",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "artifact_sha256": "0ed50f8fece05cc5d03bc8afdfa059c2372e856a732e7f02bdeb3a6860dea4b9",
+  "images": [
+    {
+      "digest": "sha256:4cd23d97bdfe34727550b4e54353b6e27fdf33025518d95ddf4221c6aaf8d177",
+      "fingerprint": "e49c30742b673f04d35078da35f13bba4c0ac31f2e247dd1b8665a5a4621c148",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/mongodb-exporter:0.53.0",
+      "platforms": {
+        "linux/amd64": "sha256:927eb1696816d3a71a7651c00b96ae355f2b97be927dc3134914c1d733a722f6",
+        "linux/arm64": "sha256:8d9b1241eda534bdaa6c91c51567f367e86b32be3b9ff3af2d1afb001418fc42"
+      },
+      "schema": 1,
+      "source_digest": "sha256:0214e482b2cd4b1849f9f4dcef90d328a99ba3727dd1103e7da48b42060bcec1",
+      "source_ref": "docker.io/percona/mongodb_exporter:0.53.0",
+      "dockerhub_ref": "brinnatt/mongodb-exporter:0.53.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/mongodb-exporter:0.53.0",
+      "dockerhub_digest": "sha256:4cd23d97bdfe34727550b4e54353b6e27fdf33025518d95ddf4221c6aaf8d177",
+      "talkedu_digest": "sha256:4cd23d97bdfe34727550b4e54353b6e27fdf33025518d95ddf4221c6aaf8d177"
+    },
+    {
+      "digest": "sha256:0c891015cc34bf9f06302e5359513db8c1c9629211fd6a6b476e2da7fc4626b7",
+      "fingerprint": "3848683791c54483c80d4eab0c14bfec4d559899544c95a749398a35da674cbe",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/percona-backup-mongodb:2.15.0",
+      "platforms": {
+        "linux/amd64": "sha256:d6b3b5d25e26165a95ab8a60b9d0564188a37af9b15af7b81fa94cd4d7dad9c1",
+        "linux/arm64": "sha256:d626490c6eecf5469a239bc6b70665477ab2989aedfbfa287181c7d76c836d84"
+      },
+      "schema": 1,
+      "source_digest": "sha256:12dcba7f1b55e00eb1b49dac51427d942c221b826d621d6bfad926a9d959a7c5",
+      "source_ref": "docker.io/percona/percona-backup-mongodb:2.15.0",
+      "dockerhub_ref": "brinnatt/percona-backup-mongodb:2.15.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-backup-mongodb:2.15.0",
+      "dockerhub_digest": "sha256:0c891015cc34bf9f06302e5359513db8c1c9629211fd6a6b476e2da7fc4626b7",
+      "talkedu_digest": "sha256:0c891015cc34bf9f06302e5359513db8c1c9629211fd6a6b476e2da7fc4626b7"
+    },
+    {
+      "digest": "sha256:52b8a57cb1a3b467b922a6d403e31d501791b4950823fd8ac97293082367c9f1",
+      "fingerprint": "622dcf3ccf0317e33b1396df23da85c97472eb7b685ecfaf18d3c852f9601553",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/percona-fluentbit:5.0.9-1",
+      "platforms": {
+        "linux/amd64": "sha256:9c9ed1678156e4b1ce44406b84a828597b1f0cb01e1cf97a66a42e341db732ec",
+        "linux/arm64": "sha256:85402f6cc69b2c53e7b76667fa6a8ff87c5deda39f0ecd6203a3dc870fbcc633"
+      },
+      "schema": 1,
+      "source_digest": "sha256:030e3faf454e93c19d9cfa1ec85ba6943fe293f5bd29fb04533a1b3de8c78bd6",
+      "source_ref": "docker.io/percona/fluentbit:5.0.9-1",
+      "dockerhub_ref": "brinnatt/percona-fluentbit:5.0.9-1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-fluentbit:5.0.9-1",
+      "dockerhub_digest": "sha256:52b8a57cb1a3b467b922a6d403e31d501791b4950823fd8ac97293082367c9f1",
+      "talkedu_digest": "sha256:52b8a57cb1a3b467b922a6d403e31d501791b4950823fd8ac97293082367c9f1"
+    },
+    {
+      "digest": "sha256:0341c4ca368ba45a5abc92c5c5febf62884ce750af95b71601f696bbf8b4f8be",
+      "fingerprint": "340363530c614f5de9929a5763c8047e42ca38752624e59448f9502b90edeb6f",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/percona-fluentbit:5.1.2-1",
+      "platforms": {
+        "linux/amd64": "sha256:9f774d177b551cdf73e3ab612440eb7e4d1184633616c000dcc0c5eeb618d5da",
+        "linux/arm64": "sha256:e9aa0f2e1cdcb056a87a3b69881f443df76c5f28fab87aafa0218b5036fe73e5"
+      },
+      "schema": 1,
+      "source_digest": "sha256:4926d7d003ca09c826a3dea5d9ccd0ba158296880471bcec82ef38f95617b913",
+      "source_ref": "docker.io/percona/fluentbit:5.1.2-1",
+      "dockerhub_ref": "brinnatt/percona-fluentbit:5.1.2-1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-fluentbit:5.1.2-1",
+      "dockerhub_digest": "sha256:0341c4ca368ba45a5abc92c5c5febf62884ce750af95b71601f696bbf8b4f8be",
+      "talkedu_digest": "sha256:0341c4ca368ba45a5abc92c5c5febf62884ce750af95b71601f696bbf8b4f8be"
+    },
+    {
+      "digest": "sha256:af9706657fdf06f140f0e84118dd01ff199312c227b4b7767205c197bed7c220",
+      "fingerprint": "86e4b8b9bf1f53005911f01e1f60112648d8dfcce861bbfa80d7a2fe490dd196",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/percona-server-mongodb-operator:1.23.0",
+      "platforms": {
+        "linux/amd64": "sha256:03029f7adb4b4aa4a9ecc5800a9d5b337b05a7b645bd47a4e20dd65b72504e25",
+        "linux/arm64": "sha256:6b70be0b7bdbc50e9f652f9c080d24e55c49d985de5cfe875bd9eee5f73a44e3"
+      },
+      "schema": 1,
+      "source_digest": "sha256:feaff989e25346716d85be9ea918593f89ad7481d30e033df21e0a764a6a484e",
+      "source_ref": "docker.io/percona/percona-server-mongodb-operator:1.23.0",
+      "dockerhub_ref": "brinnatt/percona-server-mongodb-operator:1.23.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-server-mongodb-operator:1.23.0",
+      "dockerhub_digest": "sha256:af9706657fdf06f140f0e84118dd01ff199312c227b4b7767205c197bed7c220",
+      "talkedu_digest": "sha256:af9706657fdf06f140f0e84118dd01ff199312c227b4b7767205c197bed7c220"
+    },
+    {
+      "digest": "sha256:6181bd09b28d877503679f731c65ff453c93039e42f178ad20cad86fba329d5d",
+      "fingerprint": "ff225de3fd19a23a5d4ab50c7605ed37cf0ba8e9e1ad28259377501c518608dc",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/percona-server-mongodb-operator:1.23.1",
+      "platforms": {
+        "linux/amd64": "sha256:41fb84536c39b6b263f3cc699d1fa78d35fb43e3c21d2937e9c324c5c7312669",
+        "linux/arm64": "sha256:151c71eb9b20b924d3dff865db710b5408ab148c5c446acd4478f22a16eec123"
+      },
+      "schema": 1,
+      "source_digest": "sha256:78c87b933e184b9af36dbb0078751862c75934c1521c33d3be4d0a38aa58dd0a",
+      "source_ref": "docker.io/percona/percona-server-mongodb-operator:1.23.1",
+      "dockerhub_ref": "brinnatt/percona-server-mongodb-operator:1.23.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-server-mongodb-operator:1.23.1",
+      "dockerhub_digest": "sha256:6181bd09b28d877503679f731c65ff453c93039e42f178ad20cad86fba329d5d",
+      "talkedu_digest": "sha256:6181bd09b28d877503679f731c65ff453c93039e42f178ad20cad86fba329d5d"
+    },
+    {
+      "digest": "sha256:ae61ad843eb1013ae8ecfeef4302acc83f288a24f0e77675af32e6b791821e1f",
+      "fingerprint": "e3436563c13039742841a39cc109809cb493ea143258a8ed6241462e86bf2c1f",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/percona-server-mongodb:8.0.26-11",
+      "platforms": {
+        "linux/amd64": "sha256:0b6221962436af9e78da45a971a55d2eb652eec510ea6fb31119f5a119502c0c",
+        "linux/arm64": "sha256:8594ccfe7981a2e088c64804b4be01df0cf18803cecd7ac5af90da2069458bb2"
+      },
+      "schema": 1,
+      "source_digest": "sha256:53f89c001997627554e6afc0feb5906209ba109f4f98c62f2ca8456c214af60c",
+      "source_ref": "docker.io/percona/percona-server-mongodb:8.0.26-11",
+      "dockerhub_ref": "brinnatt/percona-server-mongodb:8.0.26-11",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-server-mongodb:8.0.26-11",
+      "dockerhub_digest": "sha256:ae61ad843eb1013ae8ecfeef4302acc83f288a24f0e77675af32e6b791821e1f",
+      "talkedu_digest": "sha256:ae61ad843eb1013ae8ecfeef4302acc83f288a24f0e77675af32e6b791821e1f"
+    },
+    {
+      "digest": "sha256:84d236b03d32a4d758fd5cdd08dead3447b2d9771a40e445e56013f0219d2d01",
+      "fingerprint": "9929edf75807ec1b18af600446267f6add48099f02bd939c7e2c660a1f5de570",
+      "head": "fbaac485178b25a7d81d8109e1605107f72c1701",
+      "key": "brinnatt/percona-server-mongodb:8.0.32-14",
+      "platforms": {
+        "linux/amd64": "sha256:56a1ca647fef62dbfc2e24c3aafbbc4013d4a4ebfd95558fd0084967898d8e1c",
+        "linux/arm64": "sha256:6200657e7aad6ba9e0cbdf5063481e8232c6df6470380921f5287aebbc2b3bc8"
+      },
+      "schema": 1,
+      "source_digest": "sha256:5ba5f240d2dc98bc6236ab1d79c0862c4b62dba9d98cd0ffdf716c30473d2d11",
+      "source_ref": "docker.io/percona/percona-server-mongodb:8.0.32-14",
+      "dockerhub_ref": "brinnatt/percona-server-mongodb:8.0.32-14",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-server-mongodb:8.0.32-14",
+      "dockerhub_digest": "sha256:84d236b03d32a4d758fd5cdd08dead3447b2d9771a40e445e56013f0219d2d01",
+      "talkedu_digest": "sha256:84d236b03d32a4d758fd5cdd08dead3447b2d9771a40e445e56013f0219d2d01"
+    }
+  ]
+}

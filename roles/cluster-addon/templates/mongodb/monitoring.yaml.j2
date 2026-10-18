@@ -1,0 +1,39 @@
+{% if mongodb_exporter_enabled | bool %}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ mongodb_name }}-metrics
+  namespace: {{ mongodb_namespace }}
+  labels:
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: mongodb
+    kubeauto.io/mongodb-cluster: {{ mongodb_name }}
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/instance: {{ mongodb_name }}
+    app.kubernetes.io/name: percona-server-mongodb
+    app.kubernetes.io/component: mongod
+  ports:
+    - {name: metrics, port: 9216, targetPort: mongo-metrics}
+{% if mongodb_service_monitor_enabled | bool %}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ mongodb_namespace }}-{{ mongodb_name }}
+  namespace: {{ mongodb_monitoring_namespace }}
+  labels:
+    release: {{ mongodb_monitoring_release }}
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: mongodb
+spec:
+  namespaceSelector:
+    matchNames: [{{ mongodb_namespace }}]
+  selector:
+    matchLabels:
+      kubeauto.io/mongodb-cluster: {{ mongodb_name }}
+  endpoints:
+    - {port: metrics, interval: 30s, scrapeTimeout: 10s}
+{% endif %}
+{% endif %}

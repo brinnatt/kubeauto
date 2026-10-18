@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-34"
+  ],
+  "scope": "failed narrow scrape precondition; no module acceptance",
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-observability-scrape",
+  "current_run": "logs/mongodb-cases/observability-scrape-20261016-121841",
+  "durable_status": "state=exited pid=508180 rc=1 bytes=8908 pass_markers=3 failure_markers=2 latest=MONGODB_GATE_EXIT rc=1",
+  "durable_rc": 1,
+  "failure_markers": 2,
+  "log_sha256": "8e8a476b9e2b6ba3173868b466611a1632edc8787e3bc8b6951b3c055aa375f5",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "38632d891727a85fa401046ddf47a23cc8888477109a08b26e327d0caaf2aec8",
+    "docs/middleware/mongodb/development-manual.md": "1a5790956dd5fd12ac931a5f403160396b35d02f44e2c44e18fc5a4b31b4bccb",
+    "docs/middleware/mongodb/operations-manual.md": "5bf7c44809f4f742e3efe8df652b4672406fd32dc81ebe0b85ee919c88cd15b3",
+    "docs/middleware/mongodb/technical-whitepaper.md": "8199766965224f954e7cf2b3a4439af57fdcc589022931225b83110035f62692",
+    "roles/cluster-addon/files/mongodb.py": "cc7c737d096979b92d9413810c80f92e9e7da3263d0f2695207c559c34fd34b8",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "d64a6340af4ffa41d2e93045feec47860134c6f40110f426c0ba04d13d8f520f",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "123c0887b7ec3ed7a1241e0c0fa30dc0f4b91b8f63407a7397acb44f58e9145b",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "9d640240dd40489cfedee0ce21d04850c60d123f44621f5b81a5b8f054f97d9a",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/README.md": "2c3325e7496c9635e436eeb1f2b71718ba499a1b45ceb1f8ee7088ca908c721f",
+    "tests/evidence/mongodb-images-20261015.json": "779a8401cc0242c6ab0dd21df87148295acbe4447c44a4f4888b48a89ad73b92",
+    "tests/evidence/mongodb-support-images-20261015.json": "219782d16c9507929e9ab902545ad6638c4c843aded2bebef52c8df97231ad2d",
+    "tests/helpers/mongodb-backups.py": "0872c66d5cd6edbb314e4e1387886134c8322073c4f2faa2b24eff1b9e2d044b",
+    "tests/helpers/mongodb-install-gate.sh": "e3897d87cfc01f3b6a9b28d4ace2552f813055c7760cf55646bb509f8f6e2d2a",
+    "tests/helpers/mongodb-lab-storage.py": "020954cbe16501a3c6163312d37139f5ec486b2a115d02ee7995e741df56f09b",
+    "tests/helpers/mongodb-lab.py": "d2423903a33a1d334e03611fcba9fbd18d50118ef7f4feaced4441eca49dd629",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "c4d4ea068eafa2d4d5f0db5502c944c830d63fddecd046ee3af7468c10f6e6b9",
+    "tests/helpers/mongodb-runner.sh": "645eabd744a89431a085ecd4d0384e15118f479dccca2493094b7e6f8a30c6a7",
+    "tests/helpers/mongodb-scenarios.py": "2dfca94e8651f226bc0245a42d3a5bb963c6f076fd2236146c943ea83b074a79",
+    "tests/helpers/mongodb-sharding.py": "c121e0c509cd35bef92b90e2d2460e7b94da2e0fc674117db9e4c5acaa350668",
+    "tests/helpers/mongodb-static.sh": "ff851762d8385c75673738fc8612325f65bceaba752fa1e65a833b5ce37e368a",
+    "tests/helpers/validate_mongodb_matrix.py": "4c288e96a66801f0cd3574837cec5c55f2e7852c01234d2f1009efe658d9fc12",
+    "tests/mongodb-test-matrix.yaml": "6f27d9969ccfdbf448226e84caf6ca3304fe83d8f77edb57906133c38f33cbf3",
+    "tests/run_enterprise_regression.sh": "dae5dba3092121035932fc44c59a45dcc652c19a57e0e56a6496b7fb69bb918b",
+    "tests/unit/test_mongodb_backups.py": "4355ba1771bbbd07157aa65c25454523b469bafaa3cdb08edc7e9b316091ec0c",
+    "tests/unit/test_mongodb_delivery.py": "c025c4a280c0f523e274d37c9e09b53417b8966432ccbe1a5925de99e64ecffa",
+    "tests/unit/test_mongodb_lab.py": "a38301e58809eff41f94034d858297be3e3df0ea9c37ff9dd017941b913f5945",
+    "tests/unit/test_mongodb_matrix.py": "29e57d59784b88229df1ce89c21146d76673f6203234c18a9a149847d87aea76",
+    "tests/unit/test_mongodb_platform.py": "ac01b605fc7f32b6077add986a406d9d1580199c002e19a2227c4a0c0e361074",
+    "tests/unit/test_mongodb_scenarios.py": "6cbe11a2ca8f6ef554f19e18e1d71e2db3cd6d99770b30acf5968110dff127ed",
+    "tests/unit/test_mongodb_sharding.py": "28cadcc7419dfc662973142da0888ed53d2bba9f52c3129d61b80e4b839131fc",
+    "tests/unit/test_mongodb_storage.py": "5f7a95ba4c44b82e93a5d2cef3d7875e597b0336042034e16ce98be7bec10004"
+  },
+  "classification": "test-gate assumption differs from pinned upstream system-user model",
+  "first_failure": "monitor find unexpectedly succeeds against assertion requiring rejection; cleanup succeeded before failure propagation",
+  "cleanup": "MONGODB_OBSERVABILITY_SCOPED_CLEAN_PASS; all three retained backup object inventories verified; source unchanged",
+  "official_source": {
+    "commit": "a4367b91e914abe73bacf85e9a7f4b587addd40c",
+    "path": "pkg/controller/perconaservermongodb/mgo.go",
+    "functions": [
+      "getRoles",
+      "system role initialization explainRole"
+    ],
+    "conclusion": "clusterMonitor user has explainRole with wildcard find; application and pbmConfig reads permitted, application writes not granted"
+  },
+  "read_only_diagnostic": {
+    "roles": [
+      "clusterMonitor@admin",
+      "directShardOperations@admin",
+      "explainRole@admin",
+      "read@local"
+    ],
+    "find_appdb_ok": 1,
+    "find_pbmConfig_ok": 1,
+    "filter": "_id exists:false; no stored documents returned"
+  },
+  "result": "FAIL preserved; M34 remains pending"
+}

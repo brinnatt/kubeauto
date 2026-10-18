@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-28"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-sharding-data",
+  "durable_rc": 1,
+  "failure_markers": 2,
+  "durable_status": "state=exited pid=179975 rc=1 bytes=1105 pass_markers=3 failure_markers=2 latest=MONGODB_GATE_EXIT rc=1",
+  "log_sha256": "9998d668b4f9c4ce1180f7c7b44e3e7f9cbed5bbf01172e94d9e251a63c25fc0",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "09bba31619bee82a4cc4d213df205b57b647cffcbafe177b243b42d169411670",
+    "roles/cluster-addon/files/mongodb.py": "b94aae1b08eb71dc84556d57baf960ac0dae49abc5498031cd7ad767c58a4027",
+    "roles/cluster-addon/tasks/mongodb.yml": "54c4bc852b347bf93b042fc92ced671066a9c414d3b59f100543ba78cae964a4",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "102833e71f0968f05b214ff4f2247aa66a2a200a4cfaa02b7c240dddda2d381a",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "37fd64d5982868817c473c8b67b057528283a528b841ee36ceab77c29435dd0b",
+    "tests/helpers/mongodb-backups.py": "443a3190b83a5ef99dc6a57c93d53a8a736bb17bf2ce97cd7ff631e0bf70a2c3",
+    "tests/helpers/mongodb-install-gate.sh": "567a52856913c4f3e34de8c75dfa0e9153e2d026c07fbd28e379f8d5340d5aec",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-lab.py": "92fecc8b8233db9052a143b4279205b50449d681d3d930ec3163ee7919947977",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-runner.sh": "031f69b444d12665fa11f7d6dc55b8c0cfe6f4f33c03ad38300e4de957451e1d",
+    "tests/helpers/mongodb-scenarios.py": "0127bcfc57dddea095ed9cf5babd4b5f112b05b84184d83456dc22f050ba2ba3",
+    "tests/helpers/mongodb-sharding.py": "28b9500b9e31dc3771ab4da9ec41b344dafc3e0dceab35ac4a8b702a68922184",
+    "tests/helpers/mongodb-static.sh": "ae2fde51b016c3c846533e61c4e2043ecee65fedca31adf0207d213af80d7b41"
+  },
+  "classification": "test-gate",
+  "first_failure": "SHARD_LAYOUT chunk lookup used numeric query comparisons against BSON MinKey/MaxKey bounds; type-bracketing returned no matching chunk.",
+  "root_cause_evidence": "Read-only mongos aggregate $documents plus original $match returned zero rows for both tenant=-1 and tenant=1. Same fixtures with $expr BSON comparison each returned the expected rs0/rs1 row. No database was created by these probes. MongoDB r8.0.32 src/mongo/db/matcher/expression_leaf.cpp ComparisonMatchExpression::matchesSingleElement returns false for different canonical types except RHS MinKey/MaxKey; here RHS is numeric.",
+  "official_source": "https://github.com/mongodb/mongo/blob/r8.0.32/src/mongo/db/matcher/expression_leaf.cpp",
+  "cleanup": "MONGODB_SHARDING_DATABASE_CLEAN_PASS and scoped-clean passed; run-ID database/client absent, both product-created clusters healthy and source identity retained. No cluster rebuild is required."
+}

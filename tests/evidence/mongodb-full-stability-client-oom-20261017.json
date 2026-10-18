@@ -1,0 +1,364 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-36",
+    "MONGODB-43"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-only",
+  "current_run": "logs/mongodb-cases/full-20261017-115553",
+  "durable_status": "state=exited pid=1082477 rc=1 bytes=937560 pass_markers=936 failure_markers=4 latest=MONGODB_GATE_EXIT rc=1",
+  "durable_rc": 1,
+  "failure_markers": 4,
+  "classification": "test-gate: fixed long-running client memory budget",
+  "first_failure": "MONGODB fault performance client exited137; recorded Pod OOMKilled, memory cgroup usage=limit524288KiB; kernel CONSTRAINT_MEMCG killed mongosh and its client group. Client mongodb-node-238 differs from rebooted mongodb-node-212.",
+  "diagnostics": "logs/mongodb-failures/20261017-v17-stability",
+  "completed_modules": [
+    {
+      "failure_markers": 0,
+      "log_sha256": "79954a751fd98eb11d9e1a3829c3dcba849a89be8a26422b6885e123a963300f",
+      "marker": "MONGODB_ARTIFACTS_PASS",
+      "marker_present": true,
+      "module": "artifacts",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "1ba08d912494532df023ca9fe7ec59489f84ba95a642ef499f08644131180f9e",
+      "marker": "MONGODB_UPGRADE_PASS",
+      "marker_present": true,
+      "module": "upgrade",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "dc07450143eba3f6d67900f301181468e0ae7c3ec2ac7ce18f7465e0f07a55f3",
+      "marker": "MONGODB_CLEAN_VERIFY_PASS",
+      "marker_present": true,
+      "module": "clean",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "49d6fb3c0ba48570638e2159f8e1062c77f20856ca38dd6860977146d1022182",
+      "marker": "MONGODB_INSTALL_PASS",
+      "marker_present": true,
+      "module": "install",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "24d4f17860947b364aa17e45aaf34bf935740985baebd1f7cef435cee35214b9",
+      "marker": "MONGODB_PLATFORM_PASS",
+      "marker_present": true,
+      "module": "platform",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "61483db16f14d7e0cea47c800e4ab5db42c8ccab059d9c920580794bab238c32",
+      "marker": "MONGODB_PREFLIGHT_PASS",
+      "marker_present": true,
+      "module": "preflight",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "3acaf362712f328fb32a288cdd63f295ff20b4edc972f2f1697c0945c1d06b8c",
+      "marker": "MONGODB_STORAGE_PASS",
+      "marker_present": true,
+      "module": "storage",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "f48cce635115bb0706358cb6e7c72b7b42448f940535d01c6ad21a84b10d4dc4",
+      "marker": "MONGODB_DATA_PASS",
+      "marker_present": true,
+      "module": "data",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "ba02fd4d2731cdaa1e36138c1ec40a34d5fd7991344956b91f61c2b79277880f",
+      "marker": "MONGODB_TRANSACTIONS_PASS",
+      "marker_present": true,
+      "module": "transactions",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "d97721d8a93cf5e13c2b2d55fbe189548b188438b7d0a4880a2c4f143254ea62",
+      "marker": "MONGODB_SECURITY_PASS",
+      "marker_present": true,
+      "module": "security",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "b546ce4ff85a15de2727ffb506cac158ffa09b385fdf24723ec3df1831b63e5a",
+      "marker": "MONGODB_FAILOVER_PASS",
+      "marker_present": true,
+      "module": "failover",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "3bb08c04f41ad5a488f02b352b6382945d19a3752d8bd4bb8cedb25b8e592a7e",
+      "marker": "MONGODB_QUORUM_PASS",
+      "marker_present": true,
+      "module": "quorum",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "dd8f9e350b79bc030fb40ca3e06c458ff218f99dd22b9c7f0d9566feefea1dc1",
+      "marker": "MONGODB_REBUILD_PASS",
+      "marker_present": true,
+      "module": "rebuild",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "fc7ef04774e437eeb89c738adf30249c49a0ca3b8b3dbd863bdbab7910b2fbf9",
+      "marker": "MONGODB_MAINTENANCE_PASS",
+      "marker_present": true,
+      "module": "maintenance",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "c53cc570a0b53cf6fa252e69174e0647cb2e0be3b75cc79cd2994d6692f391a8",
+      "marker": "MONGODB_ROTATION_PASS",
+      "marker_present": true,
+      "module": "rotation",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "822b67eb65a410d42d5513faa5f93ab84e9ee187055fca52f1cc049dbd4bca7e",
+      "marker": "MONGODB_LOGICAL_BACKUP_PASS",
+      "marker_present": true,
+      "module": "logical-backup",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "829dcbf195bcd5e3a484e3bdc1a4829a10bc0ce40b9fea01157151661a19f5f7",
+      "marker": "MONGODB_LOGICAL_RESTORE_PASS",
+      "marker_present": true,
+      "module": "logical-restore",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "2e7ce6f09cb4db06739709e2cfef494a8773d5192f67240570f9c1a8cb060b62",
+      "marker": "MONGODB_PHYSICAL_BACKUP_PASS",
+      "marker_present": true,
+      "module": "physical-backup",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "5e2737f5ea39e444b81d9433505652ba1c52f6d562400ff8d0fb01ed4ce26dd2",
+      "marker": "MONGODB_PHYSICAL_RESTORE_PASS",
+      "marker_present": true,
+      "module": "physical-restore",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "a5c8085c5ac48a1986d7d0f69284ad0c34d3c2123d7d5ec98c156828ee60b1b1",
+      "marker": "MONGODB_PITR_PASS",
+      "marker_present": true,
+      "module": "pitr",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "c908d69561f17d7f013c87dd8e900c0f116e1b7b6c20da0fb4addad0dc802796",
+      "marker": "MONGODB_ENCRYPTION_PASS",
+      "marker_present": true,
+      "module": "encryption",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "23d60422dab78de16ce1df1e6b674d8ec9ab5ca715b472d3ea746859508dcfee",
+      "marker": "MONGODB_BACKUP_REFUSAL_PASS",
+      "marker_present": true,
+      "module": "backup-refusal",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "97ea6088cc2363bc480676ba66e39ae8f72205a570c11d09e21a35ce8031b5cc",
+      "marker": "MONGODB_RETENTION_PASS",
+      "marker_present": true,
+      "module": "retention",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "9c417b3f3b5cdf3df3572376bea74f2732949edbc9808cc72c7219aceeebb648",
+      "marker": "MONGODB_DISASTER_RECOVERY_PASS",
+      "marker_present": true,
+      "module": "disaster-recovery",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "5679ca3340ecbf34b8471018779724b5fa678bdd90511f2fd150ef7ba7da4bca",
+      "marker": "MONGODB_NETWORK_PASS",
+      "marker_present": true,
+      "module": "network",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "38dbf687cd2789b2d2c664f15957cba2a0fc7258e72dce61e4f1641dc611e7da",
+      "marker": "MONGODB_SHARDING_INSTALL_PASS",
+      "marker_present": true,
+      "module": "sharding-install",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "30c11f492c40219e51de80730ae4924ef8edf36dd57ab5060d9f99d5c8e2e49f",
+      "marker": "MONGODB_SHARDING_DATA_PASS",
+      "marker_present": true,
+      "module": "sharding-data",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "2f6b5e3139c2cb203de363da83e4eb487868928f73d16ab9c964bc4a0141d4c8",
+      "marker": "MONGODB_SHARDING_FAILURE_PASS",
+      "marker_present": true,
+      "module": "sharding-failure",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "8f09759b97afd0a21388314b372ed133865b2d7cc8f2bd94580f5e77ee95e6ec",
+      "marker": "MONGODB_SHARDING_SCALE_PASS",
+      "marker_present": true,
+      "module": "sharding-scale",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "7414d18ca9703db5f72b3a12928573feb152f7b418f56811e283d93975a6e08a",
+      "marker": "MONGODB_SHARDING_CLEAN_PASS",
+      "marker_present": true,
+      "module": "sharding-clean",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "eb494797c8ad95a65fe343ca05f0f50e96317db9050da89b2ad7db3740134fbe",
+      "marker": "MONGODB_SHARDING_RESTORE_PASS",
+      "marker_present": true,
+      "module": "sharding-restore",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "4535183a6519a5026f5eaba5d0969bf2d3c7dd3e35c356dd5de3904eadeccbb0",
+      "marker": "MONGODB_REPLICA_SCALE_PASS",
+      "marker_present": true,
+      "module": "replica-scale",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "c78a83c31cc9449a7bdf742988de9d3e84d40ddee11db1a6f8dc33ad1a1f635f",
+      "marker": "MONGODB_CAPACITY_PASS",
+      "marker_present": true,
+      "module": "capacity",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "c4c733b4cd29e4e28aca2f5b567cfd3c287ac6773cfb4d3a1dbbbdc23e0f95e5",
+      "marker": "MONGODB_OBSERVABILITY_PASS",
+      "marker_present": true,
+      "module": "observability",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "5aa3cbf97b1941a74443cf53720fce4960f2602a60ae8cb18d138abe338a1286",
+      "marker": "MONGODB_PERFORMANCE_PASS",
+      "marker_present": true,
+      "module": "performance",
+      "rc": 0
+    },
+    {
+      "failure_markers": 0,
+      "log_sha256": "758cf722746b2c0f185be992b4e29c45b270e534d0cc914b2cbc11b9a31d9b48",
+      "marker": "MONGODB_STABILITY_PASS",
+      "marker_present": false,
+      "module": "stability",
+      "rc": 1
+    }
+  ],
+  "cleanup": "MONGODB_STABILITY_PHASE_SCOPED_CLEAN_PASS topology=sharded and MONGODB_FAILURE_CLEANUP rc=0; target, client and faults removed, original healthy source/core/CSI/backups retained for focused repair; final lab cleanup not yet run",
+  "pending": "M36 requires focused and full module reacceptance after the test-gate fix; M43 requires a new clean complete full run",
+  "log_sha256": "5ebede1334c51fd975a34e25c79f6c2a9986d824689d5fc1b5a5d8ce04404731",
+  "plan_sha256": "9fd7c84813cbb598fc76cd246bc44ff1d3fa45ed5186d8a066b8fcb2dc07c1ab",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "49c70286a132a7cfbe595df79503ca6f576ccc8db1ff7bacc47ff473c2509560",
+    "docs/middleware/mongodb/development-manual.md": "8821c532c546ccd689f2f0fc8f997e6cccfcfe3124f29853d17a0f6f21030a0b",
+    "docs/middleware/mongodb/operations-manual.md": "4ae7c866ac4ed1c57dff9d45f60b6534d7bbad426690bbf151007eb8e232dfaa",
+    "docs/middleware/mongodb/technical-whitepaper.md": "3b7680025532865be26214204c5ba5990ac58785dcc08226ea39f963cc1757fa",
+    "roles/cluster-addon/files/mongodb.py": "630515d49c36990037c7fe0e564a2844f3e5589c3a1d7e9112f0748d1544d1aa",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "d64a6340af4ffa41d2e93045feec47860134c6f40110f426c0ba04d13d8f520f",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "7997da0a3f0573fbbf8eb40e6cd564efa14bb919c4c2ea48fc87b830828e8c45",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "9d640240dd40489cfedee0ce21d04850c60d123f44621f5b81a5b8f054f97d9a",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/README.md": "d9ce7f87238636ee6c254b143cf45e4c8908455e5dd7731eabc93ac07dfd5ec8",
+    "tests/evidence/mongodb-images-20261015.json": "779a8401cc0242c6ab0dd21df87148295acbe4447c44a4f4888b48a89ad73b92",
+    "tests/evidence/mongodb-support-images-20261015.json": "219782d16c9507929e9ab902545ad6638c4c843aded2bebef52c8df97231ad2d",
+    "tests/helpers/mongodb-backups.py": "e932139eb0c5ff5c65a5bcd57968d97e6eef54f8afb6f25db65d8ee3b95378ee",
+    "tests/helpers/mongodb-install-gate.sh": "8502cfd1fe95467fd6430dfe9f2c4b9beefc42b12934dff476a8d62263809000",
+    "tests/helpers/mongodb-lab-storage.py": "3d9af7287f0f8b36e81f7cdb1e1455cc93437aca73e1d3b7968c7f5760aa8c07",
+    "tests/helpers/mongodb-lab.py": "8154d5821e9fe2ffd3194cc0d3398a7dfebe70974087ef3edc230f4257125362",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "6df05591755027db90e22490febdb22296d1192e355950ca0e75afb8fccdc8d2",
+    "tests/helpers/mongodb-runner.sh": "fef1bbe5d6ef13d16d1578153fc2aab1e773c4f3f124cc483b9acc2366f9d5c4",
+    "tests/helpers/mongodb-scenarios.py": "5fdfffc2e78f918c1b5fb7ff566a2a5bc5624b5c38be76e28f23d7b97748f1f2",
+    "tests/helpers/mongodb-sharding.py": "c121e0c509cd35bef92b90e2d2460e7b94da2e0fc674117db9e4c5acaa350668",
+    "tests/helpers/mongodb-static.sh": "ff851762d8385c75673738fc8612325f65bceaba752fa1e65a833b5ce37e368a",
+    "tests/helpers/validate_mongodb_matrix.py": "4c288e96a66801f0cd3574837cec5c55f2e7852c01234d2f1009efe658d9fc12",
+    "tests/mongodb-test-matrix.yaml": "bc3d47ddc885c0a073a23eb13a4cfac304ef4afc24580ff0c93038fa3d9755fc",
+    "tests/run_enterprise_regression.sh": "dae5dba3092121035932fc44c59a45dcc652c19a57e0e56a6496b7fb69bb918b",
+    "tests/unit/test_mongodb_backups.py": "0cdc5a2ea5170edb23a334c602f6301d6e142e91fe8898a94418b725e91095e0",
+    "tests/unit/test_mongodb_delivery.py": "ea12c7637b47fb7a16176abefa5803148c9c4a343a857cc9da5b9d5692f76796",
+    "tests/unit/test_mongodb_lab.py": "761b39ca0460e663028e3848f8e678eaefd2a867d93a7efbd52e42a3da54bacf",
+    "tests/unit/test_mongodb_matrix.py": "29e57d59784b88229df1ce89c21146d76673f6203234c18a9a149847d87aea76",
+    "tests/unit/test_mongodb_platform.py": "6da5b34301281a71e0d88cebd031eef001e911d320ddcbfe42353fe53b5075ed",
+    "tests/unit/test_mongodb_scenarios.py": "ef373c5033514ae4256b98e148a139252626631a44ea6d6539d32c191d2b420b",
+    "tests/unit/test_mongodb_sharding.py": "28cadcc7419dfc662973142da0888ed53d2bba9f52c3129d61b80e4b839131fc",
+    "tests/unit/test_mongodb_storage.py": "bc85317dd8cd61d03d32e19b6c09769dc7c844bd21ea25191c4e9a6a928777e8"
+  },
+  "result": "FAIL; no acceptance from incomplete stability or remaining modules",
+  "repair_scope": {
+    "classification": "test-gate",
+    "affected_cases": [
+      "MONGODB-36",
+      "MONGODB-43"
+    ],
+    "change": "Only stability workload clients request/limit 1Gi; default clients and production resources unchanged; workload duration/concurrency/data/assertions preserved",
+    "disproof": "bash tests/run_enterprise_regression.sh --mongodb-stability-faults; then --mongodb-stability",
+    "official_resource_semantics": "Kubernetes website release-1.33 resource management blob fee82acdc6cded9ce2d3000191a02c1a70638de3; cgroup memory limit enforced by kernel OOM, scheduling uses requests",
+    "unaffected_evidence": "Other completed module behavior and formal manual bodies unchanged; previous complete stability evidence retained as historical, current M36 pending"
+  }
+}

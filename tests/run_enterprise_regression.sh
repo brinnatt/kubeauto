@@ -65,7 +65,7 @@ middleware_doc_python="$ROOT/.venv/bin/python"
 # The coverage summary is a delivery claim, so validate it from the YAML
 # details before any gate can run or emit a PASS marker. Independent middleware
 # branches own separate matrix schemas and are validated by their own gates.
-if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* && "$MODE" != --redis-* && "$MODE" != --ceph-* ]]; then
+if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* && "$MODE" != --redis-* && "$MODE" != --ceph-* && "$MODE" != --mongodb-* ]]; then
   matrix_python="$ROOT/.venv/bin/python"
   [[ -x "$matrix_python" ]] || matrix_python="$(command -v python3.12 || command -v python3)"
   matrix_validation_args=("$ROOT/tests/enterprise-test-matrix.yaml")
@@ -148,14 +148,14 @@ fi
 passes=0
 failures=0
 if test -r '${remote_log}'; then
-  passes=\$(grep -c '^\\[PASS\\]' '${remote_log}' 2>/dev/null || true)
+  passes=\$(grep -Ec '^\\[PASS\\]|^MONGODB_[A-Z_]*PASS( |$)' '${remote_log}' 2>/dev/null || true)
   # A durable non-zero exit is authoritative for Ansible failures.  A
   # controlled retry can legitimately leave an earlier failed=1 recap in the
   # same log before recovering and emitting the required terminal marker.
   # Count only explicit script failures here; the durable exit record is
   # checked independently by monitor_remote_job.
-  failures=\$(grep -Ec '^\\[FAIL\\]|^CEPH_STAGE_FAIL( |$)|^CEPH_CONTRACT_FAIL( |$)' '${remote_log}' 2>/dev/null || true)
-  latest=\$(grep -E '^==========|^>>> |^\\[PASS\\]|^\\[FAIL\\]|^\\[WAIT\\]|^REGRESSION_' '${remote_log}' 2>/dev/null | tail -n 1 || true)
+  failures=\$(grep -Ec '^\\[FAIL\\]|^CEPH_STAGE_FAIL( |$)|^CEPH_CONTRACT_FAIL( |$)|^MONGODB_[A-Z_]*(FAIL|FIRST_FAILURE)( |$)' '${remote_log}' 2>/dev/null || true)
+  latest=\$(grep -E '^==========|^>>> |^\\[PASS\\]|^\\[FAIL\\]|^\\[WAIT\\]|^REGRESSION_|^MONGODB_' '${remote_log}' 2>/dev/null | tail -n 1 || true)
 else
   latest='log-not-created'
 fi
@@ -279,7 +279,8 @@ matrix_counts() {
   [[ "$surface" == --logging-* || "$surface" == logging-* || "$surface" == logging ]] && matrix="$ROOT/tests/logging-test-matrix.yaml"
   [[ "$surface" == --redis-* || "$surface" == redis-* || "$surface" == redis ]] && matrix="$ROOT/tests/redis-test-matrix.yaml"
   [[ "$surface" == --ceph-* || "$surface" == ceph-* || "$surface" == ceph ]] && matrix="$ROOT/tests/ceph-test-matrix.yaml"
-  if [[ "$matrix" == "$ROOT/tests/ceph-test-matrix.yaml" ]]; then
+  [[ "$surface" == --mongodb-* || "$surface" == mongodb-* || "$surface" == mongodb ]] && matrix="$ROOT/tests/mongodb-test-matrix.yaml"
+  if [[ "$matrix" == "$ROOT/tests/ceph-test-matrix.yaml" || "$matrix" == "$ROOT/tests/mongodb-test-matrix.yaml" ]]; then
     printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
       "$(grep -Ec '^[[:space:]]+status: pass$' "$matrix" || true)" \
       "$(grep -Ec '^[[:space:]]+status: pending$' "$matrix" || true)" \
@@ -871,6 +872,12 @@ stage_cephadm_artifact() {
 }
 
 source "$ROOT/tests/helpers/ceph_evidence_runner.sh"
+
+if [[ "$MODE" == --mongodb-* ]]; then
+  source "$ROOT/tests/helpers/mongodb-runner.sh"
+  mongodb_dispatch "$MODE"
+  exit $?
+fi
 
 if [[ "$MODE" == "--ceph-supply-chain-only" ]]; then
   bash "$ROOT/tests/run_enterprise_regression.sh" --ceph-static-only

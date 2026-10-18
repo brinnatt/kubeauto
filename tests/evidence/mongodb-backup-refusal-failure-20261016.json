@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-24"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-backup-refusal",
+  "result": "failed-before-negative-controls",
+  "classification": "environment/storage-capacity",
+  "durable_status": "state=exited pid=344755 rc=137 bytes=8258 pass_markers=19 failure_markers=1 latest=MONGODB_GATE_EXIT rc=137",
+  "durable_rc": 137,
+  "failure_markers": 1,
+  "log_sha256": "aa3f7acf6b4d452e22fd756a4c87b36ee8d09bfbd64106754a4dc663453148b3",
+  "current_run": "logs/mongodb-cases/backup-refusal-20261016-071021",
+  "first_failure": {
+    "classification": "environment/storage-capacity",
+    "observed": [
+      {
+        "namespace": "mongodb-gate",
+        "object": "mongodb-gate-logical-restore-rs0-2",
+        "reason": "FailedScheduling",
+        "message": "0/6 nodes are available: 1 node(s) didn't match pod anti-affinity rules, 2 node(s) did not have enough free storage, 3 node(s) were unschedulable. preemption: 0/6 nodes are available: 1 No preemption victims found for incoming pod, 5 Preemption is not helpful for scheduling."
+      },
+      {
+        "namespace": "mongodb-gate",
+        "object": "mongodb-gate-logical-restore-rs0-2",
+        "reason": "FailedScheduling",
+        "message": "0/6 nodes are available: 1 node(s) didn't match pod anti-affinity rules, 2 node(s) did not have enough free storage, 3 node(s) were unschedulable. preemption: 0/6 nodes are available: 1 No preemption victims found for incoming pod, 5 Preemption is not helpful for scheduling."
+      }
+    ],
+    "interpretation": "Third independent target member Pending while two peers ready;CSI aggregate capacity exhausted with retained independent sharded baseline. Failure is before negative controls;no M24 acceptance."
+  },
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "38632d891727a85fa401046ddf47a23cc8888477109a08b26e327d0caaf2aec8",
+    "roles/cluster-addon/files/mongodb.py": "168135e31ff7c44ab76341a3aff5c70f93b82bb22fec36319aded130a73f5ede",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "dc4d48a37250d6674ae0d39d3e41a954c5ff857345a977ac46f97cb11ad201a5",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "123c0887b7ec3ed7a1241e0c0fa30dc0f4b91b8f63407a7397acb44f58e9145b",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "9d640240dd40489cfedee0ce21d04850c60d123f44621f5b81a5b8f054f97d9a",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-lab.py": "33f9fd36a6adbf49b67e53200353184dd978751769e0c44f12dd502aa7e0836f",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-scenarios.py": "ef66abba4c938e8e3c4c8fe3323dcdc7ab83b383e398930c19cf0464033387ad",
+    "tests/helpers/mongodb-static.sh": "7bdaa6fdc7bab2408fa8583fb84f51028722b73fa47e704c984c694cbda88edb",
+    "tests/unit/test_mongodb_delivery.py": "ba49b581325174d8ed0b79c647af690a38cd29b6c5dabda3e98e439d0e663a5d",
+    "tests/unit/test_mongodb_lab.py": "afb20c7326164aa7d76521e1bf4dcab949b160dff5314490070f9495f412b4b2",
+    "tests/unit/test_mongodb_matrix.py": "3e744ac27bf960e5af452911b7ae015c4edcb17bbd5f4a6f1e3563b0ebed31dd",
+    "tests/unit/test_mongodb_platform.py": "62b580cf111e03f843e13bffe1ba72ac5b13d306448d5e6280c0585f21a6399e",
+    "tests/unit/test_mongodb_scenarios.py": "b781e0fad314854a8e101a8a9564a63143721bc697eda99d6e24cde20d137572",
+    "tests/unit/test_mongodb_storage.py": "708349da7fc1d5fbc767e3fb7372ff7a973d4bc4ed52049f3b77505da3cbbadf",
+    "tests/helpers/mongodb-install-gate.sh": "54ad480c3544a5d459b42d87b91c9b24f2f38e44a7db90ed79554d6db665bd51",
+    "tests/helpers/mongodb-runner.sh": "33d1ed8593c4a6542d3314d0b21c01554d095e0d610ac5981eac80be3dfd7f55",
+    "tests/helpers/mongodb-backups.py": "a4651ce2ca7d0029231f9c882aa711b83a7266e4186f268b381c9e7f23afe9ff",
+    "tests/unit/test_mongodb_backups.py": "0bee580748e6537c1bca0bdbfdaee5b1c626c31ea994cb580f83d9d61100dfd7",
+    "tests/helpers/mongodb-sharding.py": "c121e0c509cd35bef92b90e2d2460e7b94da2e0fc674117db9e4c5acaa350668",
+    "tests/unit/test_mongodb_sharding.py": "28cadcc7419dfc662973142da0888ed53d2bba9f52c3129d61b80e4b839131fc",
+    "docs/middleware/mongodb/operations-manual.md": "99aaad5208e7c8f8d16d396aa9340d80f9197a1e735d2ce914a9d3c04a7269bd",
+    "docs/middleware/mongodb/technical-whitepaper.md": "9847dc15c2e32fd831028f1cad60e4147d4f682f3d603fa74c67e0950b859ef9",
+    "docs/middleware/mongodb/development-manual.md": "187651de47f0f8cd6ed8b0803ea0c8b03824c29b0e9435f2a2035a440a2170f3",
+    "tests/mongodb-test-matrix.yaml": "1d7f0a2f8ae0529ea11e59ed0f8a049d08d5374f003b1e65bd383ff7a079df56",
+    "tests/README.md": "b51ae68ee78738c7c79435ef051d726b1c0983565c244a3327f60cd16032a502",
+    "tests/run_enterprise_regression.sh": "dae5dba3092121035932fc44c59a45dcc652c19a57e0e56a6496b7fb69bb918b"
+  },
+  "controlled_stop": {
+    "runner": "bash tests/run_enterprise_regression.sh --mongodb-backup-refusal-stop",
+    "rc": 0,
+    "marker": "MONGODB_BACKUP_REFUSAL_STOPPED recovery=required journal=preserved",
+    "log_sha256": "b246cb419c60ed3a23a19ced2f439f261bb17e1deb56ff163bd40e0d278fe807",
+    "contract_tests": 100,
+    "static_tests": 290
+  },
+  "recovery": {
+    "target": {
+      "run": "logs/mongodb-cases/restore-clean-20261016-071940",
+      "durable_status": "state=exited pid=349272 rc=0 bytes=762 pass_markers=4 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+      "rc": 0,
+      "marker": "MONGODB_RESTORE_CLEAN_PASS",
+      "log_sha256": "2feecc614184c9ceea9c95e8a5b0f6535135c8b01dfa68eb94837aae95a745c1"
+    },
+    "capacity_release": {
+      "run": "logs/mongodb-cases/sharding-clean-20261016-072133",
+      "durable_status": "state=exited pid=350654 rc=0 bytes=842 pass_markers=2 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+      "rc": 0,
+      "marker": "MONGODB_SHARDING_CLEAN_PASS target-volumes=absent source-preserved=true",
+      "log_sha256": "8be6ebfecbdcb66772770ba955d733a3da85992ba296cd603ace550b8f990ba8"
+    },
+    "scope": "Failed independent target and accepted sharded fixture graph/volumes removed using owning runners;original source and accepted backup objects retained;no source resizing or safety relaxation."
+  }
+}

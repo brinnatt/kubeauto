@@ -1,0 +1,238 @@
+---
+# Own the declaration, not the Operator's StatefulSets or member roles.
+- name: 创建 MongoDB 私有渲染目录
+  ansible.builtin.file:
+    path: "{{ cluster_dir }}/yml/mongodb"
+    state: directory
+    mode: "0700"
+
+- name: 保存 MongoDB 非敏感声明参数
+  ansible.builtin.copy:
+    content: "{{ vars | dict2items | selectattr('key', 'match', '^mongodb_') | items2dict | to_nice_json }}"
+    dest: "{{ cluster_dir }}/yml/mongodb/input.json"
+    mode: "0600"
+
+- name: 在任何集群变更前校验 MongoDB 参数
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - validate
+      - --config
+      - "{{ cluster_dir }}/yml/mongodb/input.json"
+  changed_when: false
+
+- name: 校验固定 MongoDB Operator Chart SHA256
+  ansible.builtin.command:
+    argv:
+      - sha256sum
+      - --check
+      - "{{ base_dir }}/roles/cluster-addon/files/psmdb-operator-{{ mongodb_operator_chart_ver }}.tgz.sha256"
+  args:
+    chdir: "{{ base_dir }}/roles/cluster-addon/files"
+  changed_when: false
+
+- name: 核验 MongoDB 资源所有权、凭据及故障域
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - preflight
+      - --config
+      - "{{ cluster_dir }}/yml/mongodb/input.json"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+  register: mongodb_preflight_result
+  changed_when: false
+
+- name: 固定 MongoDB 凭据与数据加密身份
+  ansible.builtin.set_fact:
+    mongodb_secret_revision: "{{ (mongodb_preflight_result.stdout | from_json).secret_revision }}"
+    mongodb_encryption_revision: "{{ (mongodb_preflight_result.stdout | from_json).encryption_revision }}"
+    mongodb_operator_trust: "{{ (mongodb_preflight_result.stdout | from_json).operator_trust }}"
+
+- name: 渲染 MongoDB Operator、数据库及监控声明
+  ansible.builtin.template:
+    src: "mongodb/{{ item }}.yaml.j2"
+    dest: "{{ cluster_dir }}/yml/mongodb/{{ item }}.yaml"
+    mode: "0600"
+  loop: [operator-values, cluster, monitoring, network-policy]
+
+- name: 核验共享 MongoDB CRD 并执行显式受控升级
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - crds
+      - --config
+      - "{{ cluster_dir }}/yml/mongodb/input.json"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --chart
+      - "{{ base_dir }}/roles/cluster-addon/files/psmdb-operator-{{ mongodb_operator_chart_ver }}.tgz"
+  register: mongodb_crd_result
+  changed_when: "'changed=0' not in mongodb_crd_result.stdout"
+
+- name: 安装或升级限定命名空间的 MongoDB Operator
+  ansible.builtin.command:
+    argv:
+      - "{{ base_dir }}/extra-bin/helm"
+      - upgrade
+      - --install
+      - mongodb-operator
+      - "{{ base_dir }}/roles/cluster-addon/files/psmdb-operator-{{ mongodb_operator_chart_ver }}.tgz"
+      - --namespace
+      - "{{ mongodb_namespace }}"
+      - --values
+      - "{{ cluster_dir }}/yml/mongodb/operator-values.yaml"
+      - --post-renderer
+      - python3
+      - "--post-renderer-args={{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - --post-renderer-args=operator-render
+      - --post-renderer-args=--config
+      - "--post-renderer-args={{ cluster_dir }}/yml/mongodb/input.json"
+      - --post-renderer-args=--manifest
+      - "--post-renderer-args={{ cluster_dir }}/yml/mongodb/operator-values.yaml"
+      - --wait
+      - --timeout
+      - 10m
+      - --history-max
+      - "10"
+  environment:
+    KUBECONFIG: "{{ cluster_dir }}/kubectl.kubeconfig"
+  changed_when: true
+
+- name: 等待 MongoDB Operator 与 CRD 就绪
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - wait
+      - --for=condition=Established
+      - crd/perconaservermongodbs.psmdb.percona.com
+      - crd/perconaservermongodbbackups.psmdb.percona.com
+      - crd/perconaservermongodbrestores.psmdb.percona.com
+      - --timeout=120s
+  changed_when: false
+
+- name: API Server 校验 MongoDB 声明
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - apply
+      - --dry-run=server
+      - --server-side
+      - --field-manager=kubeauto-mongodb
+      - -f
+      - "{{ cluster_dir }}/yml/mongodb/cluster.yaml"
+  changed_when: false
+
+- name: 发布 MongoDB 入口网络隔离规则
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - apply
+      - --server-side
+      - --field-manager=kubeauto-mongodb
+      - -f
+      - "{{ cluster_dir }}/yml/mongodb/network-policy.yaml"
+  when: mongodb_network_policy_enabled | bool
+  changed_when: true
+
+- name: 按显式配置移除 MongoDB 自有入口隔离规则
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - --namespace
+      - "{{ mongodb_namespace }}"
+      - delete
+      - networkpolicy
+      - "{{ mongodb_name }}-access"
+      - --ignore-not-found
+  when: not (mongodb_network_policy_enabled | bool)
+  register: mongodb_network_delete
+  changed_when: "'deleted' in mongodb_network_delete.stdout"
+
+- name: 首次启用 MongoDB 计划前等待备份代理就绪
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - prepare-backup
+      - --config
+      - "{{ cluster_dir }}/yml/mongodb/input.json"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --manifest
+      - "{{ cluster_dir }}/yml/mongodb/cluster.yaml"
+  when: mongodb_backup_enabled | bool and mongodb_backup_schedule_enabled | default(true) | bool
+  register: mongodb_backup_prepare
+  changed_when: "'MONGODB_BACKUP_AGENTS_READY' in mongodb_backup_prepare.stdout"
+
+- name: 发布 MongoDB 声明
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - apply
+      - --server-side
+      - --field-manager=kubeauto-mongodb
+      - -f
+      - "{{ cluster_dir }}/yml/mongodb/cluster.yaml"
+  register: mongodb_apply_result
+  changed_when: "'created' in mongodb_apply_result.stdout or 'serverside-applied' in mongodb_apply_result.stdout"
+
+- name: 等待 MongoDB 当前代次、副本仲裁、PVC 与加密状态
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - health
+      - --config
+      - "{{ cluster_dir }}/yml/mongodb/input.json"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+  changed_when: false
+
+- name: 发布 MongoDB 指标采集入口
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - apply
+      - --server-side
+      - --field-manager=kubeauto-mongodb
+      - -f
+      - "{{ cluster_dir }}/yml/mongodb/monitoring.yaml"
+  when: mongodb_exporter_enabled | bool
+  register: mongodb_monitoring_result
+  changed_when: "'created' in mongodb_monitoring_result.stdout or 'serverside-applied' in mongodb_monitoring_result.stdout"
+
+- name: 执行不可变 MongoDB 备份及显式恢复请求
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - operations
+      - --config
+      - "{{ cluster_dir }}/yml/mongodb/input.json"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+  when: mongodb_requests | length > 0
+  changed_when: true
+
+- name: 复验 MongoDB 操作后的集群一致性状态
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/mongodb.py"
+      - health
+      - --config
+      - "{{ cluster_dir }}/yml/mongodb/input.json"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+  when: mongodb_requests | length > 0
+  changed_when: false

@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-17"
+  ],
+  "scope": "First failed narrow encryption branch; matrix remains pending",
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-encryption",
+  "durable_rc": 1,
+  "failure_markers": 2,
+  "durable_status": "state=exited pid=236238 rc=1 bytes=14283 pass_markers=24 failure_markers=2 latest=MONGODB_GATE_EXIT rc=1",
+  "log_sha256": "1eec987b71c6cee9bb8ce8837b34c52f57139cf28d3d6cdac0749994bba1532f",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "38632d891727a85fa401046ddf47a23cc8888477109a08b26e327d0caaf2aec8",
+    "roles/cluster-addon/files/mongodb.py": "e26715f3387d9bc483d1625cb979f4f078a7f389a3dca1717c0d9da1780450bf",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "54c4bc852b347bf93b042fc92ced671066a9c414d3b59f100543ba78cae964a4",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "123c0887b7ec3ed7a1241e0c0fa30dc0f4b91b8f63407a7397acb44f58e9145b",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "37fd64d5982868817c473c8b67b057528283a528b841ee36ceab77c29435dd0b",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-lab.py": "92fecc8b8233db9052a143b4279205b50449d681d3d930ec3163ee7919947977",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-scenarios.py": "8d5c983a5906fab74c4cd812e28a3398333781c7334442cd54c45a81518d548e",
+    "tests/helpers/mongodb-static.sh": "ae2fde51b016c3c846533e61c4e2043ecee65fedca31adf0207d213af80d7b41",
+    "tests/unit/test_mongodb_delivery.py": "c0ca649dc4e68a180a094d26806c759a3c66304a8e82e662da598c077f0e2f91",
+    "tests/unit/test_mongodb_lab.py": "1539ccd635954df7de905a554b9c3e92baf972c90f22b11e6b6f2368a77f25e6",
+    "tests/unit/test_mongodb_matrix.py": "3e744ac27bf960e5af452911b7ae015c4edcb17bbd5f4a6f1e3563b0ebed31dd",
+    "tests/unit/test_mongodb_platform.py": "62b580cf111e03f843e13bffe1ba72ac5b13d306448d5e6280c0585f21a6399e",
+    "tests/unit/test_mongodb_scenarios.py": "8c191eca52a7f2d23960928cd96bcd6d5cd9a837f7e96480906cbecd71ec2b9a",
+    "tests/unit/test_mongodb_storage.py": "708349da7fc1d5fbc767e3fb7372ff7a973d4bc4ed52049f3b77505da3cbbadf",
+    "tests/helpers/mongodb-install-gate.sh": "986f977f083cc986fe1d4410d67b4e1dda259e045ae8c56919bd1129dd394cdf",
+    "tests/helpers/mongodb-runner.sh": "45571e730f4b8a44c89942104515afba22eb51753f08bd29a9b6ba9787700739",
+    "tests/helpers/mongodb-backups.py": "1ef8ba7322a1a071d63f4b23d92e269bd5962db4dcc13ddc950a29b0726cac3c",
+    "tests/unit/test_mongodb_backups.py": "88523130d3a0a846c8766064f6442f9962f97d8fb33f421cb3aeccdb40320eef",
+    "tests/helpers/mongodb-sharding.py": "9fa6850157db95905e584710e916ad886c2b751fa1517eefb8b12ef9a0d68feb",
+    "tests/unit/test_mongodb_sharding.py": "800a652fd9ad323dd4314f9b6d598069d6978192846b2e71c9cffe174269cd0c"
+  },
+  "classification": "test-gate/native-log observation incomplete; final Restore state not preserved",
+  "first_failure": "MongoDB wrong-key restore lacks the pinned native encryption failure evidence",
+  "observed": [
+    "Physical backup103 object SHA256 reverified",
+    "Missing key refused at product preflight; target CR/PVC declarations unchanged",
+    "Wrong-key physical restore entered running",
+    "Read-only container-file diagnostic observed bad decrypt on three members, but original native lines were not preserved before cleanup"
+  ],
+  "evidence_gap": "Container stdout and S3 PBM buffer logs do not establish native key-database failure. Final Restore error state was not independently retained. This attempt does not prove M17.",
+  "pbm_observation": {
+    "restore": "2026-10-15T19:47:41.558184572Z",
+    "pbm_cluster_error_sha256": "6d08016459929cd561e8affb00f902662350fcc2ab5884f175476d9933798b31",
+    "cluster_error_present": true,
+    "members": [
+      {
+        "member": 0,
+        "sha256": "082f1e6ee621b558e82e993d8366750b0616c47a53b14b899f92743a3d9df980",
+        "terms": {
+          "libcrypto:": false,
+          "bad decrypt": false,
+          "setting return code to WT_PANIC": false,
+          "/data/db/keydb": false,
+          "WiredTiger error": false,
+          "encryption": false
+        }
+      },
+      {
+        "member": 1,
+        "sha256": "b3805d5883b02e166448521ff554dcdc5b8857f545c3389ef5eb7a096b23afae",
+        "terms": {
+          "libcrypto:": false,
+          "bad decrypt": false,
+          "setting return code to WT_PANIC": false,
+          "/data/db/keydb": false,
+          "WiredTiger error": false,
+          "encryption": false
+        }
+      },
+      {
+        "member": 2,
+        "sha256": "e214253ca61a2f9d348be052e2b6f6591cf68980eb80a9218879321b9d9701c2",
+        "terms": {
+          "libcrypto:": false,
+          "bad decrypt": false,
+          "setting return code to WT_PANIC": false,
+          "/data/db/keydb": false,
+          "WiredTiger error": false,
+          "encryption": false
+        }
+      }
+    ]
+  },
+  "cleanup": "cleanup_rc=0; target resources and volumes removed by owning runner, source health verified; physical backup preserved",
+  "next": "Add deterministic contract for pinned OpenSSL key-database failure branch, read actual internal log files and preserve sanitized observations before cleanup, then rerun same focused product gate with correct-key positive restore."
+}

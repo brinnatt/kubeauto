@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-27"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-sharding-install",
+  "durable_rc": 1,
+  "durable_status": "state=exited pid=170176 rc=1 bytes=5842 pass_markers=10 failure_markers=3 latest=MONGODB_GATE_EXIT rc=1",
+  "log_sha256": "441178ff32ef9bff36e2d66c1b7536d0ddff7218be1c0fccc22dd57409d1c180",
+  "classification": "product and independent test-gate cleanup defect",
+  "first_failure": "TLS mongos business client received MongoServerSelectionError. All three routers recorded SSLHandshakeFailed code 141: No SSL certificate provided by peer; connection rejected.",
+  "root_cause": "data_member configuration permits SCRAM clients without client certificates under requireTLS; mongos configuration omitted the equivalent option. Official mongosContainerArgs uses clusterAuthMode=x509 and requireTLS; custom mongos.configuration is the supported interface.",
+  "cleanup_failure": "Client UID/run ID existed only in the failed process; cleanup could not recover it in a new process. Target journal and exact original observed client identity retained.",
+  "client_evidence": {
+    "uid": "5ff8a23e-cf0a-4cdc-bc8d-05039100f311",
+    "run_id": "mongodb_gate_754075103a363f0c"
+  },
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "09bba31619bee82a4cc4d213df205b57b647cffcbafe177b243b42d169411670",
+    "roles/cluster-addon/files/mongodb.py": "b94aae1b08eb71dc84556d57baf960ac0dae49abc5498031cd7ad767c58a4027",
+    "roles/cluster-addon/tasks/mongodb.yml": "54c4bc852b347bf93b042fc92ced671066a9c414d3b59f100543ba78cae964a4",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "3cd0a7715438ad77b94970c7b4e7c77b041fa7f37858194787ceca2dde1e066e",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "37fd64d5982868817c473c8b67b057528283a528b841ee36ceab77c29435dd0b",
+    "tests/helpers/mongodb-backups.py": "443a3190b83a5ef99dc6a57c93d53a8a736bb17bf2ce97cd7ff631e0bf70a2c3",
+    "tests/helpers/mongodb-install-gate.sh": "47638019bbb81aec7322fa9d118afc8bcb2949b57ec39d5033ca2df65d014420",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-lab.py": "92fecc8b8233db9052a143b4279205b50449d681d3d930ec3163ee7919947977",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-runner.sh": "f6f9047990d84262f9d47f28c0bed4de91fc7d264a70559a64d6fcf24e1a59f6",
+    "tests/helpers/mongodb-scenarios.py": "34204da0f9067ddda6e2330dc6df7351582add9a012eb1d0c4b561f1f861e489",
+    "tests/helpers/mongodb-sharding.py": "c962b679616a6f1927a070a4133375d571af1939ae14dcc6a2a49d1c9f71f03c",
+    "tests/helpers/mongodb-static.sh": "ae2fde51b016c3c846533e61c4e2043ecee65fedca31adf0207d213af80d7b41"
+  },
+  "scope": "Not a sharding acceptance PASS; source replica set identity remains protected. Next permitted gate: scoped target cleanup after exact contracts and static preflight.",
+  "cleanup_attempts": [
+    {
+      "durable_rc": 1,
+      "classification": "test-gate",
+      "first_failure": "client recovery compared the full Secret volume object; Kubernetes defaultMode=420 caused a false target mismatch before any deletion",
+      "log_sha256": "512b37c06d2cb04095bb26a23a2e7d1fa5224d11706f3c2d91860d3db903eeaa",
+      "fix_contract": "test_cross_process_client_cleanup_requires_recorded_uid_run_and_exact_target now uses API defaultMode and projected token volume; exact target CA and Secret refs remain mandatory"
+    }
+  ],
+  "cleanup_recovery": {
+    "runner": "bash tests/run_enterprise_regression.sh --mongodb-sharding-clean",
+    "durable_rc": 0,
+    "durable_status": "state=exited pid=174700 rc=0 bytes=842 pass_markers=2 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+    "log_sha256": "8be6ebfecbdcb66772770ba955d733a3da85992ba296cd603ace550b8f990ba8",
+    "scope": "Explicit original client UID/run ID, complete resource graph and PV claimRefs checked; client, target CR/workloads/Secrets/PVC/PVs absent; source identities and healthy encrypted TLS replica set retained. No finalizer override required."
+  }
+}

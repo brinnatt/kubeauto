@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ mongodb_name }}-access
+  namespace: {{ mongodb_namespace }}
+  labels:
+    app.kubernetes.io/managed-by: kubeauto
+    kubeauto.io/component: mongodb
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: percona-server-mongodb
+      app.kubernetes.io/instance: {{ mongodb_name }}
+  policyTypes: [Ingress]
+  ingress:
+    - ports: [{protocol: TCP, port: 27017}]
+      from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: percona-server-mongodb
+              app.kubernetes.io/instance: {{ mongodb_name }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: mongodb-operator
+        - podSelector:
+            matchLabels:
+{{ mongodb_client_selector | to_nice_yaml(indent=2) | indent(14, true) }}
+{% for namespace in mongodb_client_namespaces %}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ namespace }}
+          podSelector:
+            matchLabels:
+{{ mongodb_client_selector | to_nice_yaml(indent=2) | indent(14, true) }}
+{% endfor %}
+{% if mongodb_exporter_enabled | bool %}
+    - ports: [{protocol: TCP, port: 9216}]
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ mongodb_monitoring_namespace }}
+{% endif %}

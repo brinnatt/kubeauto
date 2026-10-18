@@ -1,0 +1,13 @@
+replicaCount: 1
+fullnameOverride: mongodb-operator
+image:
+  repository: registry.talkschool.cn:5000/brinnatt/percona-server-mongodb-operator
+  tag: {{ mongodb_operator_ver | to_json }}
+  pullPolicy: IfNotPresent
+disableTelemetry: true
+watchAllNamespaces: false
+# Consumed by the existing Python helper through Helm's post-renderer interface.
+kubeautoBackupTrust: {{ mongodb_operator_trust | default({}) | to_json }}
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {cpu: "1", memory: 512Mi}

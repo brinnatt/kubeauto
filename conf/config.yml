@@ -597,3 +597,81 @@ HARBOR_SELF_SIGNED_CERT: true
 
 # install extra component
 HARBOR_WITH_TRIVY: false
+
+# Percona MongoDB: opt-in, three data-bearing voters; sharding is explicit.
+# Create the referenced TLS/user/encryption Secrets in mongodb_namespace first.
+# Passwords and private keys must never be stored in this configuration.
+mongodb_install: "no"
+mongodb_operator_ver: "__mongodb_operator__"
+mongodb_operator_chart_ver: "__mongodb_operator_chart__"
+mongodb_ver: "__mongodb__"
+mongodb_backup_ver: "__mongodb_backup__"
+mongodb_fluentbit_ver: "__mongodb_fluentbit__"
+mongodb_exporter_ver: "__mongodb_exporter__"
+mongodb_namespace: "mongodb"
+mongodb_name: "mongodb-prod"
+mongodb_storage_class: ""
+mongodb_pvc_size: "100Gi"
+mongodb_volume_expansion_enabled: false   # 显式允许按 PVC 声明扩容；不启用自动扩容，不支持缩容
+mongodb_replsets:
+  - {name: rs0, size: 3}
+mongodb_sharding_enabled: false
+mongodb_config_size: 3
+mongodb_mongos_size: 3
+mongodb_users_secret: "mongodb-prod-users"
+mongodb_tls_secret: "mongodb-prod-tls"
+mongodb_tls_internal_secret: "mongodb-prod-tls-internal"
+mongodb_encryption_key_secret: "mongodb-prod-encryption-key"
+# Optional application users: [{name: app, db: appdb, passwordSecretRef:
+#   {name: app-password, key: password}, roles: [{name: readWrite, db: appdb}]}]
+mongodb_users: []
+mongodb_cpu_request: "1"
+mongodb_memory_request: "2Gi"
+mongodb_cpu_limit: "2"
+mongodb_memory_limit: "4Gi"
+mongodb_cache_size_gb: 1
+mongodb_mongos_cpu_request: "500m"
+mongodb_mongos_memory_request: "512Mi"
+mongodb_mongos_cpu_limit: "1"
+mongodb_mongos_memory_limit: "1Gi"
+mongodb_write_timeout_ms: 10000
+mongodb_logcollector_enabled: true
+# Empty keeps the official daily/uncompressed policy. Explicit override requires
+# interval_minutes (1-30), max_size_mb (1-1024), retain (1-30).
+mongodb_logrotate: {}
+mongodb_exporter_enabled: true
+mongodb_exporter_cpu_request: "100m"
+mongodb_exporter_memory_request: "128Mi"
+mongodb_service_monitor_enabled: false
+mongodb_monitoring_namespace: "monitoring"
+mongodb_monitoring_release: "prometheus"
+# Requires a NetworkPolicy-capable CNI. Application Pods must match this label;
+# additional namespaces are explicit. Replication and the local Operator remain allowed.
+mongodb_network_policy_enabled: true
+mongodb_client_selector: {kubeauto.io/mongodb-client: "true"}
+mongodb_client_namespaces: []
+mongodb_backup_enabled: false
+# s3 uses a HTTPS URL; minio uses hostname:port with secure=true and optional CA Secret.
+mongodb_backup_storage_type: "s3"
+mongodb_backup_storage_name: "main"
+mongodb_backup_bucket: ""
+mongodb_backup_prefix: ""
+mongodb_backup_region: "us-east-1"
+mongodb_backup_endpoint: ""
+mongodb_backup_credentials_secret: ""
+mongodb_backup_ca_secret: ""
+mongodb_backup_ca_key: "ca.crt"
+mongodb_backup_force_path_style: true
+mongodb_backup_schedule_enabled: true     # 仅控制计划；false 仍允许按需备份和恢复
+mongodb_backup_schedule: "0 2 * * *"
+mongodb_backup_schedule_type: "logical"
+mongodb_backup_retention_count: 7
+mongodb_pitr_enabled: false
+mongodb_pitr_oplog_span_min: 10
+mongodb_ready_timeout: 1800
+# Explicit CRD changes require a separate approved maintenance operation.
+mongodb_crd_upgrade: false
+# Immutable one-shot backup/restore requests. Reusing a name with different
+# inputs fails. A restore additionally requires the current target CR UID.
+mongodb_requests: []
+mongodb_request_timeout: 7200

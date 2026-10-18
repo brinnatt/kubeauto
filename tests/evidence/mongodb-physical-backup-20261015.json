@@ -1,0 +1,570 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-21"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-physical-backup",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_BACKUP_STORAGE_READY tls=ca-and-hostname-verified",
+    "MONGODB_BACKUP_SEED_PASS",
+    "MONGODB_BACKUP_OBJECTS_VERIFIED count=103 checksums=sha256",
+    "MONGODB_WORKLOAD_CLEAN_PASS",
+    "MONGODB_PHYSICAL_BACKUP_SCOPED_CLEAN_PASS retained=owned-backup-artifact",
+    "MONGODB_PHYSICAL_BACKUP_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "durable_status": "state=exited pid=106188 rc=0 bytes=11691 pass_markers=22 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "789ee3b63e52507d9b86483ffd5a47e1dabcfa4769dc6dc52c4f48ccb1f56c37",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "tests/helpers/mongodb-backups.py": "da2d2c600380448f3fd4800c04ed3a6c5175923663d05b59bfe08f1f5e2ee129",
+    "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+    "tests/helpers/mongodb-scenarios.py": "3cd8b6a825dbc46f9ba135584279ac51180c2bbd977e7560d5261df406a87b05",
+    "tests/helpers/mongodb-install-gate.sh": "b1ae82b6436ccfe0aa65c718be294d2473f1d07f57eb00e81cb8411fa999f965",
+    "tests/helpers/mongodb-runner.sh": "813e49e9ce7b2c95957293df8ee14b10954bcee1fe150d6f7869aef1f2a79a02",
+    "tests/unit/test_mongodb_backups.py": "ab5d7ca11d4a8838cc719f257c4bef9374a2ffb1e5ccd4170b00c8a657fe7b81"
+  },
+  "verified_artifact": {
+    "uid": "a4ea298a-6d23-4005-8680-c61e736557c3",
+    "destination": "s3://mongodb-backup-1f4f6cdd07f187b4/backup/2026-10-15T14:35:04Z",
+    "metadata": {
+      "type": "physical",
+      "name": "2026-10-15T14:35:04Z",
+      "mongodb_version": "8.0.32-14",
+      "pbm_version": "2.15.0",
+      "fcv": "8.0",
+      "start_ts": 1792074905,
+      "last_write_ts": {
+        "T": 1792074907,
+        "I": 1
+      },
+      "size": 1030144,
+      "replsets": [
+        "rs0"
+      ]
+    },
+    "objects": [
+      {
+        "key": "backup/2026-10-15T14:35:04Z.pbm.json",
+        "size": 2783,
+        "sha256": "c3831bf967d8047a12324419da61299794886e048284a2e20c136f03d7de0bcc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/WiredTiger.backup.gz",
+        "size": 6094,
+        "sha256": "a0617877907dce6955ef972d4827930e627672450484d7416b746ce477491fc5"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/WiredTiger.gz",
+        "size": 64,
+        "sha256": "c9dfe71e9c06811241189c082d586620384047e94af54ed30ef0575bef9547a8"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/WiredTigerHS.wt.gz",
+        "size": 12610,
+        "sha256": "0776081a1d5c79b22338e084b55365b7b8b75599eb10dca420a65f7abef81d5b"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/_mdb_catalog.wt.gz",
+        "size": 12427,
+        "sha256": "95e885bc6811f2cbc1fcec0522fe65dc95e5f193e0a94b2a14e66c5e285e8e65"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-0-11884365307237520837.wt.gz",
+        "size": 18837,
+        "sha256": "7616756093521de36976dfe590af450fa4053cffd0fc98f9337a78ebf8e04dab"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-0-15443522245390908467.wt.gz",
+        "size": 2573,
+        "sha256": "a3445680f77cfa843afd9c59d32b85b8738f5ff0b9835d2ed71a4dfc4db85d79"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-0-17148573967160144776.wt.gz",
+        "size": 4075,
+        "sha256": "ac8bad65f36c13110c364b3c31a4fcf1007e06023e5e368ebee419c4e593f195"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-10-11884365307237520837.wt.gz",
+        "size": 2424,
+        "sha256": "0588a44973e8db32868c96be336537bd1e466faf29580b0d8ff650beb7e22e96"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-10-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-11-4233692095122588295.wt.gz",
+        "size": 2975,
+        "sha256": "e86d8234e64560c3d945413ffd3987d543848846238274eac0b96e6b478a7909"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-12-11884365307237520837.wt.gz",
+        "size": 1951,
+        "sha256": "e175e9dc393cbe406102f14e2ae7556a297cf7b7b122d4fe5681e89bd91a7555"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-12-15443522245390908467.wt.gz",
+        "size": 3871,
+        "sha256": "329c7c9fbf8fc50f97fcf169e3f0ef4e1bb836cd2e3e551e41a49754b4b68ad1"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-14-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-14-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-15-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-16-15443522245390908467.wt.gz",
+        "size": 2781,
+        "sha256": "2a3bdef35e7dc54af49902a4c4be82dd2238b624c2891113604d4106da8258ea"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-17-4233692095122588295.wt.gz",
+        "size": 5208,
+        "sha256": "aa701ef3791458f22a2ab036c60a6caa688ea10ff9a856f99a28bb9da0845a84"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-2-11884365307237520837.wt.gz",
+        "size": 2751,
+        "sha256": "3cdf372bbef4e39b98d52aa8485a13e68eeab4719f435b47e305994c0742f463"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-2-15443522245390908467.wt.gz",
+        "size": 444089,
+        "sha256": "0972f39a056fd69e57362d7adbb012774fa32a8f17e452d54ac20d93f4aa259c"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-20-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-20-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-23-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-24-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-26-15443522245390908467.wt.gz",
+        "size": 10672,
+        "sha256": "d0cfad0545c69a8827e978db181c798bb84cc50847c9f061ac875448b72b8971"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-26-4233692095122588295.wt.gz",
+        "size": 8900,
+        "sha256": "3fa2287d74a5d5c2cb2a409c7f05366621d43946fd85c90de6ee35f0265eb214"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-29-15443522245390908467.wt.gz",
+        "size": 3879,
+        "sha256": "54a174941590a9b04f407b906f995278046c0416034d8f8c1181357cbb2d7570"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-3-15443522245390908467.wt.gz",
+        "size": 5687,
+        "sha256": "6612c453453faf6570f1d2fd876af573742ec34165fb021102e39fc18d83954d"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-30-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-32-15443522245390908467.wt.gz",
+        "size": 3233,
+        "sha256": "e73bda523a9ce4fbec6ed476c58c06767f6285de68741ef751580f97b33a0ebf"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-32-4233692095122588295.wt.gz",
+        "size": 5117,
+        "sha256": "4075f3f8b04dd0ab2e0ad2dda560c3c70eb4772d93f2cfb30c43c347c1660982"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-34-15443522245390908467.wt.gz",
+        "size": 6496,
+        "sha256": "5fffe2951c9626cb0f6e6b92b6d1575b0ec5ccfbf9dbe03ffc0da7bf810216a7"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-4-11884365307237520837.wt.gz",
+        "size": 1967,
+        "sha256": "8edd21b7ac01ec5a36a612b334e599aad58216a0949029e096c104b4525e4952"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-4-4233692095122588295.wt.gz",
+        "size": 3239,
+        "sha256": "d64690acc56d1d6c5df3ba3d46809517d67e586e73f09db6c1be1fe3a099dd67"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-5-14884284479024316667.wt.gz",
+        "size": 2008,
+        "sha256": "10200c8cbcdf2c9f359562d8237e7476007d71f8d22070aa292fd30d90a3cbbe"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-5-15443522245390908467.wt.gz",
+        "size": 1962,
+        "sha256": "9aba14df20036230779bb37aff82d9e2df72c8b782eec53b1ea69d2ff933a1e1"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-6-11884365307237520837.wt.gz",
+        "size": 2697,
+        "sha256": "44fdd45f76bc54763397ff877b651d946ef9227b0afb9027193e3e50153708b1"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-6-4233692095122588295.wt.gz",
+        "size": 17968,
+        "sha256": "0feecc4798c7c2ccc9dd4139318310971ab7cd5633b0a991920d021205b1fda3"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-7-15443522245390908467.wt.gz",
+        "size": 5283,
+        "sha256": "2b8c0f4e8d3c976f23b8623b2189aa0c9213f3506c439fb69866ec90eee3cdc5"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/collection-8-11884365307237520837.wt.gz",
+        "size": 1935,
+        "sha256": "e25fed7b89fa7da0ea8c565ab9b2580272eed4cade4cf22fb3c5b3b7bf0f9e58"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/filelist.pbm",
+        "size": 16563,
+        "sha256": "b816e7325ebcc949657249f2d0e43796a397277af8e3cc260f45cdd2d1f3a6e5"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-1-11884365307237520837.wt.gz",
+        "size": 4498,
+        "sha256": "bc9c6ecf04ab5c689de35582052d5fe239c937be8cbff3e3016fbf751c18321f"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-1-15443522245390908467.wt.gz",
+        "size": 2425,
+        "sha256": "ad405cb15d52f25d005349bc9f9d2407c10e60882a54987217fad57b83de5e98"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-1-17148573967160144776.wt.gz",
+        "size": 3904,
+        "sha256": "d05fc3f1038cca7a7315dec0101d8933416fea7522731ae8523cbd4a5b4403ec"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-10-4233692095122588295.wt.gz",
+        "size": 5792,
+        "sha256": "7396d95444e79182c9ee835bd17c420cc42f0dd38e9dc44d49101d0d43284187"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-11-11884365307237520837.wt.gz",
+        "size": 1930,
+        "sha256": "eb9f332f040b2a066b36455eb4b5ba5fe06f7efab9ac6cf4040110b4b72bb1c6"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-11-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-12-4233692095122588295.wt.gz",
+        "size": 2695,
+        "sha256": "12af950642302c8bb37bc457eafb9ff524352d962ad3bb852b4786f2e646d39a"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-13-11884365307237520837.wt.gz",
+        "size": 1904,
+        "sha256": "d831d62c7cc6d6c7aa72482a5d1a6a06d9540f7ba46e2fd4b9e7a83375176cc3"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-13-15443522245390908467.wt.gz",
+        "size": 2819,
+        "sha256": "0ca64ef66b79c9997918218a52b1cb2f11986343f208a5e53529ff91818a525f"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-13-4233692095122588295.wt.gz",
+        "size": 2730,
+        "sha256": "5fadd906e28b6e198b95c441eed97278751c26a635bf11ed7ad449e43d392317"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-15-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-16-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-17-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-18-15443522245390908467.wt.gz",
+        "size": 2373,
+        "sha256": "66900e5aa26fb0f08275a75a8d5d67a1e83ea61b50394dcc903803bbdf65602c"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-18-4233692095122588295.wt.gz",
+        "size": 4194,
+        "sha256": "96e42259eea16cb1a7c21b9c77f88c7ec7ab1d02ecef563579ed0d410d4560f4"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-19-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-19-4233692095122588295.wt.gz",
+        "size": 4348,
+        "sha256": "4da15166bca2c3aebbcf700b5836cb5c15e43f3f859e5029b00717d707bcb167"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-21-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-21-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-22-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-22-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-23-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-24-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-25-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-25-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-27-15443522245390908467.wt.gz",
+        "size": 2590,
+        "sha256": "599cbfec0a06715826bcd7579a75ea976289d36e830f66061c799f7bdc898862"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-27-4233692095122588295.wt.gz",
+        "size": 4154,
+        "sha256": "1b1ce769a67b7da131edf96b22e6cfafc2f12f4866d84f79557ad649dd808053"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-28-15443522245390908467.wt.gz",
+        "size": 2696,
+        "sha256": "5ca6cd4156d26514443d41ce064aa6b60ddcab3acbc854e7fa14032320f8daa0"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-28-4233692095122588295.wt.gz",
+        "size": 4260,
+        "sha256": "6786126785716ba05004a35a6290d11138ee66b397bfa53362bff0c4a1e28df2"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-29-4233692095122588295.wt.gz",
+        "size": 4364,
+        "sha256": "17f282e1de56b298a17892643425e555120387f058faa64869f2a8741424812d"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-3-11884365307237520837.wt.gz",
+        "size": 2151,
+        "sha256": "c39b0b1f4b752e5ff8b61f70f63faf194ec4d05f23776c4cbcca7cdb88534800"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-30-15443522245390908467.wt.gz",
+        "size": 2412,
+        "sha256": "301f879d461d6a0cc19961816052c50ddee60ba56c19124b5d514f9c90af1530"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-31-15443522245390908467.wt.gz",
+        "size": 2528,
+        "sha256": "9cd3d7264e627cc4049cda58b62be910e5a44ab0086f279a3527e90038d6a9ec"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-31-4233692095122588295.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-33-15443522245390908467.wt.gz",
+        "size": 2339,
+        "sha256": "ec51f0f60dcb81ea74c4e17776fe743d562ea4909df917a7d00ea1b948cd53c5"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-33-4233692095122588295.wt.gz",
+        "size": 4364,
+        "sha256": "052a2affe3c76d5dc15e49b90a9b9a04be63286a6d258ea7f311870929a82b3a"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-35-15443522245390908467.wt.gz",
+        "size": 8645,
+        "sha256": "8ddf4327c8404cbc763323fc472c8827d6dc0a0d5c00eaa9729153d9a7a0d0d2"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-36-15443522245390908467.wt.gz",
+        "size": 4153,
+        "sha256": "982120b398dd09c9177bd639c1fe76db62662a24cdc14eeb5ab57b5906f9c4c7"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-4-15443522245390908467.wt.gz",
+        "size": 1879,
+        "sha256": "dc49304294b62997e309c0876bad860f62359a372ce4b6639892b30e334c3ef0"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-5-11884365307237520837.wt.gz",
+        "size": 1902,
+        "sha256": "331970239b0c8604dd7ace477e6e2c752f689daeaed49846a35d6cb21feed119"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-5-4233692095122588295.wt.gz",
+        "size": 2786,
+        "sha256": "e77afa500de20ee27da1f8e6f8dcb4ef693068e175ff87b9fba6fd449b750adf"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-6-14884284479024316667.wt.gz",
+        "size": 1944,
+        "sha256": "60dd852f649d24be9aa5145967c9e60e031b54a270bd6d506ac618331a49c570"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-6-15443522245390908467.wt.gz",
+        "size": 1911,
+        "sha256": "a5b5201e6ad0da2efd28af7aa9499570e2b39fb9de49718a6f44704e92ecbd82"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-7-11884365307237520837.wt.gz",
+        "size": 1905,
+        "sha256": "bd930dbcf1ea831d3c0536e340faaeb7dc3e262c2ca94145c32ec20c44d63895"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-7-14884284479024316667.wt.gz",
+        "size": 1892,
+        "sha256": "14d0c84abf6726da4c30b78978b8e5916ba8749d71e8673bec11358053dc6fd6"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-7-4233692095122588295.wt.gz",
+        "size": 7118,
+        "sha256": "feca5bfa298a452ff7623d0a60770cde42a0dec593d927da80c06a9fd56fffb9"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-8-15443522245390908467.wt.gz",
+        "size": 3490,
+        "sha256": "5375eb49722aa0adaeea369fe7742d6024cca1dd6a360d3ae6291e13eea63495"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-8-4233692095122588295.wt.gz",
+        "size": 5739,
+        "sha256": "75986be7369f788033d8ecd5637aef6afb407a7ddd807db730cd8f07b98b0fc5"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-9-11884365307237520837.wt.gz",
+        "size": 1902,
+        "sha256": "a5efbac468363905014cf3f9b33bbce827b386d8646bc5a9a397e680d0456e5f"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-9-15443522245390908467.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/index-9-4233692095122588295.wt.gz",
+        "size": 6170,
+        "sha256": "39d6ca268bbd112ff06497f33004e6c6cc1d21c26d5361e1d7360d3b0fe175ae"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/journal/WiredTigerLog.0000000010.gz",
+        "size": 145011,
+        "sha256": "2dc4a36774988b8494d55faae062c09e2f941e89765123c7990c49a88ef30565"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/journal/WiredTigerLog.0000000011.gz",
+        "size": 107357,
+        "sha256": "14438cc0419652d0e7b591bd576456365223624aa8652111f6ee4c369ee1a7d6"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/key.db/WiredTiger.backup.gz",
+        "size": 988,
+        "sha256": "467367f685807f06ed8ecd52e22cb6ab630d0867454dc1a71201fe38bf7eb660"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/key.db/WiredTiger.gz",
+        "size": 64,
+        "sha256": "c9dfe71e9c06811241189c082d586620384047e94af54ed30ef0575bef9547a8"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/key.db/WiredTigerHS.wt.gz",
+        "size": 55,
+        "sha256": "8256fda335107e602e5b2ef0417042794ef0c607039df3683b926870619942fc"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/key.db/WiredTigerLog.0000000010.gz",
+        "size": 5851,
+        "sha256": "b50a3d5a4a1fcb16510d082b66f1842b928de24f9771001b4bb844115af5331c"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/key.db/WiredTigerLog.0000000011.gz",
+        "size": 5474,
+        "sha256": "c0d271da97ee740035d8944da6903f7af5996768dcac680b60d1edad45df85a0"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/key.db/key.wt.gz",
+        "size": 3244,
+        "sha256": "233ebb05587f578c0a5ec5c1270566fef5f1e0de0d3b4e6ae8dff55e20ffa06c"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/key.db/parameters.wt.gz",
+        "size": 3989,
+        "sha256": "ed5c5bef9bdf2a05d739eb57f3005eee79a65b40ce5a9e570292ff5205865efd"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/sizeStorer.wt.gz",
+        "size": 7583,
+        "sha256": "956fee64a5790ce21d57aee742b6cab9a555f4b5fafb9759838e0796010ac683"
+      },
+      {
+        "key": "backup/2026-10-15T14:35:04Z/rs0/storage.bson.gz.0-114",
+        "size": 115,
+        "sha256": "5f668370655b10b1c50975ec603afa8b0cd7d6641bf0f98842faedb7da34812e"
+      }
+    ],
+    "source_prefix": "mongodb_gate_2446635c4935eadd"
+  },
+  "scope": "One Decimal128 document and value index, encrypted rs0 physical backup; metadata requires server 8.0.32-14, PBM 2.15.0, FCV 8.0, exactly rs0; 103 objects independently read and SHA256 recorded.",
+  "cleanup": "Original product configuration restored; source healthy; workload and client absent; owned TLS S3 PVC and successful Backup CR retained for independent recovery."
+}

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-06"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-preflight",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_PREFLIGHT_SCOPED_CLEAN_PASS read-only=true",
+    "MONGODB_PREFLIGHT_PASS owned=true worker-domains=3 pressure=none clock=bounded capacity=bounded",
+    "MONGODB_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "1c9fe9649c87971e9e3933e37defddcd8cac3480c3c770daa9a7a4a7f3b55861",
+  "durable_status": "state=exited pid=70313 rc=0 bytes=872 pass_markers=10 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "dependencies": {
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-lab.py": "2366ef954d7ee9743035b7859a801375f8d1652fb0f5615610395713ed52c05f",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-install-gate.sh": "cb0969529963b772ce84b48c4df3a626b073d16577953caadf30fbf64763c60a",
+    "tests/helpers/mongodb-runner.sh": "656dda54868bed25e1d24a2cdf3db6adb24bf1fbe660cc2a038465d111236020"
+  },
+  "cleanup": "read-only gate; no fixture or fault created; verified owned core/CSI retained",
+  "prerequisites": {
+    "tests/evidence/mongodb-platform-20261015.json": "a02a1f17bfb01f316fa49775845ea824bc0fdb15d3dde61069c38176a3d05aa3"
+  }
+}

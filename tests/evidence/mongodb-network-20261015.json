@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-18"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-network",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "durable_status": "state=exited pid=135359 rc=0 bytes=7707 pass_markers=13 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "f3ef489f5e79e8eb0676dfabac5619f01db74e8c3e24800f0c5f783090c97cca",
+  "markers": [
+    "MONGODB_NETWORK_ALLOWED_PASS",
+    "MONGODB_NETWORK_DENIED_PASS transport=blocked",
+    "MONGODB_NETWORK_RECOVERED_PASS",
+    "MONGODB_NETWORK_METRICS_DENIED_PASS members=3",
+    "MONGODB_NETWORK_METRICS_ALLOWED_PASS members=3",
+    "MONGODB_NETWORK_MONITOR_DATABASE_DENIED_PASS",
+    "MONGODB_NETWORK_REPLICATION_PASS voters=3",
+    "MONGODB_NETWORK_BACKUP_PATH_PASS retained-logical-backup=checksums-verified",
+    "MONGODB_NETWORK_METRICS_DENIED_PASS members=3",
+    "MONGODB_WORKLOAD_CLEAN_PASS",
+    "MONGODB_NETWORK_SCOPED_CLEAN_PASS",
+    "MONGODB_NETWORK_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "b94aae1b08eb71dc84556d57baf960ac0dae49abc5498031cd7ad767c58a4027",
+    "tests/helpers/mongodb-backups.py": "7921001c278a1186ee3aed74dc56ffc8d3c09e3c2059be54a22d87ca8de2c48d",
+    "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+    "tests/helpers/mongodb-scenarios.py": "34204da0f9067ddda6e2330dc6df7351582add9a012eb1d0c4b561f1f861e489",
+    "tests/helpers/mongodb-install-gate.sh": "8bf4888d832d6882eb30d2522c0d5ec7f845ceee1a3f6222b65c26c40691b328",
+    "tests/helpers/mongodb-runner.sh": "391ee54d0dece424c9f1b3ceba98cbc4e4acd07ff2b2cb56a1073b8cde9e4eb5"
+  },
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "backup_dependency": "tests/evidence/mongodb-logical-backup-20261015.json",
+  "scope": "Application allow/deny/recovery; all three exporters denied outside monitoring namespace, then HTTP 200/mongodb_up=1 after product configuration permits namespace. Monitoring permission cannot access database port. w:3+j confirms replication. Remote logical-backup objects re-read and SHA256 matches unchanged accepted dependency. Original policy and namespace restored through product; CR/PVC/Secret identities/data unchanged; owned workload/client/journal removed; source health passed.",
+  "prior_failure": "tests/evidence/mongodb-network-failure-20261015.json"
+}

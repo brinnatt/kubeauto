@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-18"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-network",
+  "durable_rc": 1,
+  "failure_markers": 2,
+  "durable_status": "state=exited pid=133522 rc=1 bytes=721 pass_markers=5 failure_markers=2 latest=MONGODB_GATE_EXIT rc=1",
+  "log_sha256": "fe8fdf164898b612409668a5f1a3874c4a9efacca6b796c48486df5c14768325",
+  "first_failure": "MONGODB_NETWORK_METRICS_DENIED_PASS missing; mongosh rc=1 without the controlled JS runtime error marker. Application allow/deny/recovery passed. No monitoring configuration or network fault journal was applied yet.",
+  "classification": "test-gate",
+  "cleanup": "MONGODB_WORKLOAD_CLEAN_PASS and client removed; original policy/configuration untouched.",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "b94aae1b08eb71dc84556d57baf960ac0dae49abc5498031cd7ad767c58a4027",
+    "tests/helpers/mongodb-backups.py": "7921001c278a1186ee3aed74dc56ffc8d3c09e3c2059be54a22d87ca8de2c48d",
+    "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+    "tests/helpers/mongodb-scenarios.py": "81178c76a104168183eff3f1aaca8526c9a2870a1314f38db3dd2b80b48b1b99",
+    "tests/helpers/mongodb-install-gate.sh": "8bf4888d832d6882eb30d2522c0d5ec7f845ceee1a3f6222b65c26c40691b328",
+    "tests/helpers/mongodb-runner.sh": "391ee54d0dece424c9f1b3ceba98cbc4e4acd07ff2b2cb56a1073b8cde9e4eb5"
+  },
+  "root_cause": "mongosh 2.10.0 --file parser rejects await inside the top-level try block before executing HTTP probes. The previous Node VM check ran an async wrapper absent from the actual gate input.",
+  "diagnostic_attempt": {
+    "durable_status": "state=exited pid=134435 rc=1 bytes=810 pass_markers=5 failure_markers=2 latest=MONGODB_GATE_EXIT rc=1",
+    "log_sha256": "ce04dda6001eff99b624ebad3fcbd79fdd9269501a605bbaeb37873c75cd668b",
+    "private_client_error": "/tmp/kubeauto-mongodb-install.client-rt7k1h_1/client-error.txt",
+    "error": "SyntaxError: await is only allowed within async functions and at the top levels of modules. (19:14)"
+  },
+  "fix": "Only async HTTP/TLS assertions opt into an explicit async function; synchronous product assertions unchanged. Regression contract and six actual Script parser/VM branches pass."
+}

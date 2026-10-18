@@ -79,6 +79,10 @@
   when: 'redis_install | default("no") | string | lower == "yes"'
   tags: [redis]
 
+- import_tasks: mongodb.yml
+  when: 'mongodb_install | default("no") | string | lower == "yes"'
+  tags: [mongodb]
+
 - import_tasks: logging.yml
   when: 'logging_install | default("no") | string | lower == "yes"'
 

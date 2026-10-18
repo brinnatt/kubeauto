@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-40"
+  ],
+  "scope": "focused-product-fix-only; full M40 remains pending",
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-ownership-pvc",
+  "current_run": "logs/mongodb-cases/ownership-pvc-20261016-075430",
+  "durable_status": "state=exited pid=368275 rc=0 bytes=978 pass_markers=4 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "MONGODB_OWNERSHIP_PVC_REFUSAL_PASS product-rc=nonzero foreign-pvc-and-data=unchanged database=absent",
+    "MONGODB_OWNERSHIP_PVC_SCOPED_CLEAN_PASS independent-fixtures=absent source=unchanged",
+    "MONGODB_OWNERSHIP_PVC_PASS"
+  ],
+  "log_sha256": "8246a9b3d822bc56bdfa9ee043039f2d0b46cfaa27d734ff1815e06f58d4c4e8",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "38632d891727a85fa401046ddf47a23cc8888477109a08b26e327d0caaf2aec8",
+    "roles/cluster-addon/files/mongodb.py": "88163ab47b1839ef9512c58249c9e8c44e64fc96b2f30ec2e3e62b21d6d1bac0",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "d64a6340af4ffa41d2e93045feec47860134c6f40110f426c0ba04d13d8f520f",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "123c0887b7ec3ed7a1241e0c0fa30dc0f4b91b8f63407a7397acb44f58e9145b",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "9d640240dd40489cfedee0ce21d04850c60d123f44621f5b81a5b8f054f97d9a",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/helpers/mongodb-lab-storage.py": "ecd16b6885bd723ce9c0d5532bf71b13e52bd863fafc60820f185a8727c97396",
+    "tests/helpers/mongodb-lab.py": "b7c1d3cab846bc94a48ccc674a2b2564b02a2dd82803101ee2a60df98ed6544d",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-scenarios.py": "fd978799e9d108a0cd0aca86d12ce35a7c6e6d7b127babd1d7f7418154dd5b9e",
+    "tests/helpers/mongodb-static.sh": "f7598864d729181fffbd0dfb427dcf782241c26bd32637b31ad65fc08383b163",
+    "tests/unit/test_mongodb_delivery.py": "c118f896e08442cc3f0efb6426a3272d4ced0f875d743867aa3b8a91b432a741",
+    "tests/unit/test_mongodb_lab.py": "aace49f8951d8081b00c489114d8ffcee6617d52e7818d555a181073a6f6cda1",
+    "tests/unit/test_mongodb_matrix.py": "3e744ac27bf960e5af452911b7ae015c4edcb17bbd5f4a6f1e3563b0ebed31dd",
+    "tests/unit/test_mongodb_platform.py": "62b580cf111e03f843e13bffe1ba72ac5b13d306448d5e6280c0585f21a6399e",
+    "tests/unit/test_mongodb_scenarios.py": "6e27f2d0079969e27743af0e7172f45edf446203ff9794d984a05a151a564925",
+    "tests/unit/test_mongodb_storage.py": "2cf77eed4438cd7c49777526bee23c7be4d2a78b2fc272c6aaa6557796fc9719",
+    "tests/helpers/mongodb-install-gate.sh": "39baffecd88cc03a3c59a8d8de83aa20b6db0e2f7221957ba07f2248175dface",
+    "tests/helpers/mongodb-runner.sh": "b16a9459612b7cc68334e9760fa6d7afe2c8e24de43f7126c7a3fc094917c74a",
+    "tests/helpers/mongodb-backups.py": "8ce9c61ca5a04b4a8cf6bbce81ef4970e87253f421cae8dd92755de183cec021",
+    "tests/unit/test_mongodb_backups.py": "0e1cf2c54c6cd65c78c6ef54fb5b1588a3fc3804e026b030ac10875ce552b778",
+    "tests/helpers/mongodb-sharding.py": "c121e0c509cd35bef92b90e2d2460e7b94da2e0fc674117db9e4c5acaa350668",
+    "tests/unit/test_mongodb_sharding.py": "28cadcc7419dfc662973142da0888ed53d2bba9f52c3129d61b80e4b839131fc",
+    "docs/middleware/mongodb/operations-manual.md": "012bae513b2a59ba377b863eb47af9a9553f93da2c4d421ee10568a9b36e2622",
+    "docs/middleware/mongodb/technical-whitepaper.md": "3d1827dcc6340493ea96fee2e614a7008d70abf54934919c4595ffddc7c03048",
+    "docs/middleware/mongodb/development-manual.md": "e79714cdb3af31242b0c383efef047e83a1ba1b7c8bba4a970b07234cbf17d9c",
+    "tests/mongodb-test-matrix.yaml": "1d7f0a2f8ae0529ea11e59ed0f8a049d08d5374f003b1e65bd383ff7a079df56",
+    "tests/README.md": "d613882e39ce8ed7d2dd7c5993eefef3f37b2a317a52fbc3723e610a260555e7"
+  },
+  "official_source": [
+    "https://github.com/kubernetes/kubernetes/blob/v1.33.6/pkg/controller/statefulset/stateful_pod_control.go#L341",
+    "https://github.com/percona/percona-server-mongodb-operator/blob/a4367b91e914abe73bacf85e9a7f4b587addd40c/pkg/controller/perconaservermongodb/volumes.go#L398"
+  ],
+  "result": "PASS focused existing PVC protection only; no full ownership or cleanup qualification implied"
+}

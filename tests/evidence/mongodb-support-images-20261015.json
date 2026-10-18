@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "run_id": 37753406582,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582",
+  "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+  "workflow_conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "images": [
+    {
+      "digest": "sha256:05058bae34c42f4d65dc362d980eb95de259110bd60034eeb2f763a9f40e417e",
+      "fingerprint": "fb1b94be1466a6c4b1fc88ced6d86093d0e790ba63b3857f922fb73e769c3e8a",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/json-mock:v1.3.1",
+      "platforms": {
+        "linux/amd64": "sha256:9a67eb8fe38a6a484841c01477381ebe03172b30e6903de3de5b286dce515a77",
+        "linux/arm64": "sha256:29f9c53fc61c88e022394d177faa3abf89d731472cac89effd5b72a6df0308ae"
+      },
+      "schema": 1,
+      "source_digest": "sha256:b2c8e0eb8a6aeeae33b2711f8f516003e27ee45804e270468d937b3214f2f0cc",
+      "source_ref": "docker.io/library/node:20.18.1-bookworm-slim",
+      "dockerhub_ref": "brinnatt/json-mock:v1.3.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/json-mock:v1.3.1"
+    },
+    {
+      "digest": "sha256:4bf8762fa1eb1d8159f6241679246b2c3ab058da601828c698b848f1fe3fc4cb",
+      "fingerprint": "8818d2a12020595391b5510d327d97223e33e72ede5747f1caf8e88d3bb65ad7",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/minio:RELEASE.2025-04-08T15-41-24Z",
+      "platforms": {
+        "linux/amd64": "sha256:47824d8720d3b6bd38d843f0029d1a7ac2e3ee7bcd7d235af11a3faf13a465b2",
+        "linux/arm64": "sha256:240b30b85f03234a867f14df64a3c5ba7019c0df41649128d83521623a8fd2b2"
+      },
+      "schema": 1,
+      "source_digest": "sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "source_ref": "registry.access.redhat.com/ubi9/ubi-minimal:9.6@sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "dockerhub_ref": "brinnatt/minio:RELEASE.2025-04-08T15-41-24Z",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/minio:RELEASE.2025-04-08T15-41-24Z"
+    },
+    {
+      "digest": "sha256:1f5f83212f089e7184a09798248d7c7faeeff0f0ac70f9943ee8e1f5ab2b1e9e",
+      "fingerprint": "b9475a4b2038d960e350ce700d70fe6f4b02b2ccfc9071e3564cfe338def37a1",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z",
+      "platforms": {
+        "linux/amd64": "sha256:b17b834fd06c1647698eacd0622f67616453417d2010ffc18b0150750c1b7749",
+        "linux/arm64": "sha256:004bb3056a7d87fff5dc352bcbb14e0dba95a929f787eee89409a0eb6e64afb1"
+      },
+      "schema": 1,
+      "source_digest": "sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "source_ref": "registry.access.redhat.com/ubi9/ubi-minimal:9.6@sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "dockerhub_ref": "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/minio-mc:RELEASE.2025-04-08T15-39-49Z"
+    },
+    {
+      "digest": "sha256:804a932395d1516b7a34f87aa0b65ba60dbf447bcb1d83cc23323de9c89f83f4",
+      "fingerprint": "d7e496c8615700a460781fef65b49dde1ee8ac063f05a09a8c3b2bf216120b3b",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/prometheus:v3.13.1-distroless",
+      "platforms": {
+        "linux/amd64": "sha256:6a7c9e777248e5e862be12852f1aee25b505af1c4c151dc621ab249b2c01b403",
+        "linux/arm64": "sha256:42dcfe75d4d6bd1dd9843666930be1538cad814acd54fa033255618412e3036f"
+      },
+      "schema": 1,
+      "source_digest": "sha256:214f8427c8fba80c327bb94a75feb802ae12f2d6ca30812aa6e7d22f09bbea80",
+      "source_ref": "quay.io/prometheus/prometheus:v3.13.1-distroless",
+      "dockerhub_ref": "brinnatt/prometheus:v3.13.1-distroless",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus:v3.13.1-distroless"
+    },
+    {
+      "digest": "sha256:9bb752f4cbf2a4297bd8faf2f07162ebc78f9072407e3bdb8ea25fa89305d424",
+      "fingerprint": "b022691af23fdb92f05389b90bbe18fa934de5c539aa2d613edd9438064c337b",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/kube-state-metrics:v2.18.0",
+      "platforms": {
+        "linux/amd64": "sha256:8eafce7d31ba34dd1bc0762671c20c63d2f5555ab48fec8c5d59aecf3a1bafb0",
+        "linux/arm64": "sha256:88995aec796db5fe80a3a6b299b2a0084bd0c8e923252e09e5535de9c226658a"
+      },
+      "schema": 1,
+      "source_digest": "sha256:1545919b72e3ae035454fc054131e8d0f14b42ef6fc5b2ad5c751cafa6b2130e",
+      "source_ref": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+      "dockerhub_ref": "brinnatt/kube-state-metrics:v2.18.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/kube-state-metrics:v2.18.0",
+      "input_review": {
+        "method": "official release fingerprint on Git checkout bytes and 0644 tracked mode; working tree bytes identical; local umask 0664 is not CI checkout mode",
+        "current_fingerprint": "b022691af23fdb92f05389b90bbe18fa934de5c539aa2d613edd9438064c337b",
+        "current_manifest_validation": "logs/mongodb-cases/artifacts-20261016-094811/first-run.log; durable rc0, zero failure markers; exact index and child digests verified"
+      }
+    }
+  ],
+  "artifact_sha256": {
+    "37753406582-verified-records.json": "sha256:2b803834c794a74b03a5b1dea0c503301c937d12f877fe18f1d7b1b02860f782",
+    "37753406582-run.json": "sha256:f878eb5dc1a35cce015beb6d91d92c52c2540b9f10693f85b5821db5b1e273a9"
+  },
+  "input_review": "Current committed catalog mapping, Git checkout context modes/content and build-policy fingerprints match the accepted dual-registry, dual-architecture publication. Working content was compared byte-for-byte; no business acceptance is reused."
+}
