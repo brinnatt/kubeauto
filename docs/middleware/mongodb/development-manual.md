@@ -8,6 +8,7 @@
 - 修改备份/恢复：[不可变请求](#不可变请求)、[恢复状态与健康](#恢复状态与健康)。
 - 更新版本或镜像：[六仓依赖和固定制品](#六仓依赖和固定制品)。
 - 修改测试：[验证阶梯与清理](#验证阶梯与清理)。
+- 维护实测结果与客户说明：[实测数据与客户文档的维护](#实测数据与客户文档的维护)。
 - 发布文档和功能：[发布判据](#发布判据)。
 
 ## 配置到资源的路径
@@ -132,6 +133,31 @@ bash tests/run_enterprise_regression.sh --mongodb-follow
 清理先核验完整资源图与所有卷，再开始删除。外部资源、未知 finalizer、重新绑定的卷或改变的核心身份必须阻断删除。仅针对已进入删除流程的独立一次性目标，可在完整验证后以 UID/resourceVersion/旧 finalizer 的 JSON test 限定恢复；这个机制不授权修复客户数据库或解除正常集群保护。
 
 无安装 journal 的清理也必须证明目标图和卷均不存在。核心已建而 MongoDB CRD 不存在时，只跳过不存在的自定义 API，继续验证 Kubernetes 原生资源；API 不可达不能当作对象不存在。
+
+## 实测数据与客户文档的维护
+
+客户文档的数据应能从当前能力证据定位回原始输入与输出。`tests/mongodb-test-matrix.yaml` 负责能力映射；`tests/evidence/mongodb-full-20261018.json` 记录完整运行的模块、日志 SHA256、退出状态与执行时冻结输入；文档评审记录单独绑定三手册正文。它们回答不同问题，不能用产品 PASS 替代文字评审，也不能把后来修改的文档摘要写回历史执行输入并声称重新运行。
+
+| 客户说明 | 实现与结果定位 | 更新时必须保留的口径 |
+| --- | --- | --- |
+| 模型、类型、索引及事务 | M09/M10 与 M28；data、transactions、sharding-data 日志 | 199 条为 CRUD 后结果；区分正确性与查询性能，解释性订单模型不声称实测 |
+| majority、故障和追赶 | M11–M14/M29/M33；failover、quorum、rebuild、capacity | 确认账本、角色/身份、拒绝原因与逐成员摘要；未测接管时间不填 RTO |
+| 恢复、保留及原材料 | M17/M19–M26/M31；backup/restore、PITR、encryption、retention、disaster-recovery | 新目标、BSON/索引/账号、前后边界、对象 SHA；数据库源丢失与整站丢失分别判断 |
+| 权限、轮换和告警 | M15/M16/M18/M34；security、rotation、network、observability | 允许与拒绝均验证；monitor 的跨库 find、MinIO 删除 TLS 例外不能删去 |
+| 性能与持续负载 | M35/M36；`MONGODB_PERFORMANCE_PROFILE`、`MONGODB_STABILITY_PROFILE` | 精确阶段、负载、实际 elapsed、样本和账本；小数据集不外推容量，重试次数不当失败交易数 |
+| 扩缩与升级 | M30/M32/M33/M37/M38 | 有数据的迁移、完整索引、投票、卷身份；固定版本对和独立恢复回退出口 |
+
+性能 worker 位于 `tests/helpers/mongodb-scenarios.py` 的 `PERFORMANCE_WORKER`，每个 worker 建立独立连接并预热，窗口内四读一次账本 upsert，账本键包含 phase/worker/sequence。`performance_result` 汇总全部样本，以实际 elapsed 计算 ops/s，nearest-rank 取 P50/P95/P99；单操作样本包含首次尝试到最终成功的受控重试等待。`Performance` 和 `Stability` 随后逐条核对已确认写入，不仅检查总数。当前允许错误仅针对受控故障，不能据此替业务驱动定义一组任意可重试错误。
+
+`Performance.resources()` 消费 kubelet stats summary，采样包含数据库 Pod 和客户端的 working set、累计 CPU、网络字节及卷占用。正文只能称时间点采样，不能称峰值或直接把 `cpu_ns` 当 CPU 使用率；Pod 重建后累计计数的差值也需核对 UID 与计时边界。稳定性测试客户端的内存及 TLS 状态维护是测试负载实现，不是产品新增连接能力。
+
+维护流程先固定版本和客户问题，再复用相关官方主题与现有证据，在正文写出条件、实际结果、解释与边界。新增/改变生产操作时补最小验证；纯解释、图形或已有数据整理，执行文档检查，不新建实验室或重复 GA。必要的本地入口为：
+
+```bash
+bash tests/run_enterprise_regression.sh --mongodb-documentation
+```
+
+此入口校验已完成人工内容检查的记录与当前文本/证据绑定，不会自动判断解释是否透彻。作者须先完成一次全文内容检查、首次部署与熟练运维两条文档路径、图形实际渲染和图文核对，并分别记录来源、静态与操作证据；未安排独立评审或客户验收时不得冒称完成。文档修改后的新记录保留历史执行摘要，以明确的影响分析复用未变产品证据。
 
 ## 发布判据
 
