@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "classification": "test-gate",
+  "status": "contract-pass-no-live",
+  "ladder_completed": 2,
+  "next_permitted_level": 3,
+  "next_fixed_command": "bash tests/run_enterprise_regression.sh --longhorn-v1-ownership-operations-v2-failure-platform",
+  "v1_scopes": [
+    "ownership",
+    "operations",
+    "system-restore",
+    "disaster-recovery",
+    "v1-upgrade-lifecycle",
+    "observability"
+  ],
+  "v2_scopes": [
+    "failure-remaining",
+    "platform-install",
+    "middleware",
+    "interrupt-qualification"
+  ],
+  "concurrency_boundary": "Two existing source-pool branches; only V1 owns independent .149 target and temporary shared kubeconfig writes. V2 uses its explicit source kubeconfig. Original operations nine and platform three remain unchanged.",
+  "contracts": {
+    "tests": 40,
+    "rc": 0,
+    "durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "failure_markers": 0
+  },
+  "frozen_inputs": {
+    "tests/helpers/longhorn-parallel.sh": "44a5408ad6b76779ed305b30181d1c628d44bb438e4e401cd79c8c8545b2e330",
+    "tests/helpers/longhorn-parallel.py": "463e79217aa9eeed21741670e2367bccfe13dfcd93199874aa33517fabc9baba",
+    "tests/unit/test_longhorn_parallel.py": "5cbe6c165d4adb99fa594fc2ab7407b3b2c9ecb6418691e0d9a9a0a59d242c66"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/next-parallel-ready-20261021/continuation-contract/files.json": "974e8e0bba7e019abb9a0ce3bdec78e636f73005fe05ccca8cb0565c72bfaff6",
+    "logs/longhorn-cases/next-parallel-ready-20261021/continuation-contract/parallel-contract.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/next-parallel-ready-20261021/continuation-contract/sha256.json": "8996d9857adc8dbfb62b8ac857cbafd4177a1902a1fbcf69975a9657f1706700",
+    "logs/longhorn-cases/next-parallel-ready-20261021/continuation-contract/handoff.md": "c79e316494feac7977c169f177ff3b1f607189203c1a11969fa0fc36f45f4653",
+    "logs/longhorn-cases/next-parallel-ready-20261021/continuation-contract/parallel-contract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/next-parallel-ready-20261021/continuation-contract/parallel-contract.log": "348d748877c8fec6bbbd8a7c4de3b16bbcaa7747a28429c53d2318bfc37b0b91",
+    "logs/longhorn-cases/next-parallel-ready-20261021/continuation-contract/three-file.patch": "bcaac05f85c27b4fd79ebe7653e908c982b4af2aae1c71491fe3fa89e5eff6a0"
+  },
+  "live_pass": false,
+  "overall_delivery_pass": false
+}

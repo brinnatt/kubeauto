@@ -1,0 +1,50 @@
+{
+  "classification": "test-gate",
+  "contracts": {
+    "failure_markers": 0,
+    "rc": 0,
+    "tests": 36
+  },
+  "coverage_boundary": "Original ownership/install and operations gates; remaining six V2 failure cases then original runtime/coexist/drain stages. Each original stage retains its verifier, durable exit and scoped cleanup. No original full-copy replay, no complete LONGHORN-50 or GA inferred.",
+  "date": "2026-10-21",
+  "frozen_inputs": {
+    "tests/helpers/longhorn-live.sh": "97f2097ea17f84f7be7b9a0d1de95807fc671e91c66216b1e9d29c7e770f9eff",
+    "tests/helpers/longhorn-parallel.py": "8208ec16be12f4c1a125fd8409d9f4879a7f7cc189d2e1fa1725ec6a5d53d618",
+    "tests/helpers/longhorn-parallel.sh": "7efa879350febb4dc6d3d2d6f6c35a24801dc1edb3ec2be6cc4262630aad366f",
+    "tests/helpers/longhorn-runner.sh": "da19a81740c7c10163738268a5903dd5620053c638d8cb24506576a8643c80fb",
+    "tests/helpers/longhorn-v2-runtime-resources.sh": "bb09e6f8bb9511f5e51d3d8b79588b4b1e02847bb7dc5a5a0e4384a98dc09145",
+    "tests/unit/test_longhorn_parallel.py": "413b3ba5b4219eff8e560372ecbc9fc7ee34d773aecff9329199218cb376481b",
+    "tests/unit/test_longhorn_v2_runtime_resources_shell.py": "b68104c654b80560fb0b31d84f44265c5a91e7bf342d76204d1ad9ee48c58660"
+  },
+  "ladder_completed": 2,
+  "live_pass": false,
+  "next_fixed_command": "bash tests/run_enterprise_regression.sh --longhorn-v1-ownership-operations-v2-failure-platform",
+  "next_permitted_level": 3,
+  "official_recovery_contract": "tests/evidence/longhorn-v2-readonly-remaining-contract-20261021.json",
+  "overall_delivery_pass": false,
+  "owning_contracts": {
+    "failure_markers": 0,
+    "log": "logs/longhorn-cases/parallel-continuation-20261021/owning-contracts-repaired.log",
+    "rc": 0,
+    "tests": 25
+  },
+  "preserved_first_failure": {
+    "cause": "Legacy fixture expected a shared kubeconfig rollback, but the runtime gate does not own or write that context. Fixture now models the concurrent foreign update and proves it survives all original success/failure/interruption/cleanup exits.",
+    "classification": "test-gate-fixture",
+    "failures": 9,
+    "log": "logs/longhorn-cases/parallel-continuation-20261021/owning-contracts.log",
+    "tests": 25
+  },
+  "prior_adoption_inputs_changed": false,
+  "raw_logs": {
+    "logs/longhorn-cases/parallel-continuation-20261021/continuation.patch": "1caee808b91a8ff761fe39e8a23147302a2190bd7d68390318c954d7e3115d29",
+    "logs/longhorn-cases/parallel-continuation-20261021/handoff.md": "8c0bafb4defa2508a4d8aa2deb79490df9ed88a5fcc21a86f3d36e4c02ca9f87",
+    "logs/longhorn-cases/parallel-continuation-20261021/integrated-contracts.log": "520c1974ee568bb72b577d324d027846e21eec24be638a20c53b1d836576cd1e",
+    "logs/longhorn-cases/parallel-continuation-20261021/owning-contracts-repaired.log": "73c0a03250da11c93c4cdc4d79537178c7d44ca09db8507ac92533f8f4dbe7d6",
+    "logs/longhorn-cases/parallel-continuation-20261021/owning-contracts.log": "0265afd3c03de16dc325c095c43231fafb0ade35b1938963bbd9734baffff4f9",
+    "logs/longhorn-cases/parallel-continuation-20261021/static.json": "c6bb50e4305e6fe0f28227ec82a5988f7567778175f04e0838f55e8f1b97ccb8"
+  },
+  "root_cause": "The V2 runtime-resource gate restored a shared kubeconfig it never owned or wrote; removing that copy/restore prevents overwriting concurrent V1 context updates. Two original stage chains now advance independently under the existing three-lock parent.",
+  "schema": 1,
+  "status": "contract-pass-no-live"
+}

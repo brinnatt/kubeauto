@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "cases": [
+    "LONGHORN-23",
+    "LONGHORN-37",
+    "LONGHORN-44",
+    "LONGHORN-51",
+    "LONGHORN-53"
+  ],
+  "ladder_completed": 2,
+  "next_permitted": "After publication, exact freeze and runner-owned healthy baseline verification, run the narrow owning scenario. Running V1 source remains untouched.",
+  "rc": 0,
+  "tests": 68,
+  "failure_markers": 0,
+  "commands": [
+    ".venv/bin/python -m unittest tests.unit.test_longhorn_last_replica tests.unit.test_longhorn_last_replica_shell tests.unit.test_longhorn_v2_runtime_resources tests.unit.test_longhorn_v2_runtime_resources_shell tests.unit.test_longhorn_v1_middleware tests.unit.test_longhorn_remaining_public_routes -v",
+    ".venv/bin/python tests/helpers/validate_longhorn_matrix.py",
+    "bash -n tests/helpers/longhorn-{runner,live,static}.sh"
+  ],
+  "files": {
+    "tests/helpers/longhorn-last-replica.py": "b7a021a7d814ed43a1857060f9e1d868e343e2ee7b46734edce8b5870c3641da",
+    "tests/helpers/longhorn-last-replica.sh": "f80453b4a557b9d36869d92d4efc71d44f0eed62bf7fd2a39d3684634402a956",
+    "tests/helpers/longhorn-v2-runtime-resources.py": "d182e2c5c88345043a83d21e74d188e5745df1f1347b8e0ad75dadd28afeac22",
+    "tests/helpers/longhorn-v2-runtime-resources.sh": "562897a2169093c5a230724a4656e04cdff8e5d171532ab47e2416a455a0c782",
+    "tests/helpers/longhorn-v1-middleware.py": "82db217c17262230a8981dd770b00dfe7b2e553ff36e7dabf19d6ad87e319da1",
+    "tests/helpers/longhorn-v1-middleware.sh": "397db19c3a76e60164936d76e574ae3d4711413978de8eef770951a28541c521",
+    "tests/helpers/longhorn-runner.sh": "4344436d14aca805c709e34f801d5e93a881c44d589d614e7e7da6b06dd01dc1",
+    "tests/helpers/longhorn-live.sh": "930b2823d8107c4d84ed342ca0c031151f551bd88013b2614a7418bd3482ec91",
+    "tests/helpers/longhorn-static.sh": "06e063ff354997bf42223a58c5c0a335e333082227e8b3cd8b9ff693c39b1789",
+    "tests/unit/test_longhorn_remaining_public_routes.py": "ccebeea449a6820e6e229ddbe92def0f7f3c497b8cce768a2444da4ee0bc77e9",
+    "tests/unit/test_longhorn_v2_runtime_resources_shell.py": "64c35006ed4e4c51492f50586ad1a2f1682179494cc6d9fed01487029b4ad308"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/remaining-entrypoints-contract-20261021/contracts.log": "67dff779bf7f57e4b127113480b8204a3cca9abf5b20fc87abbc9b34fe25d14d"
+  },
+  "boundary": "Local static and real-shell fixture contracts only. No source sync, live module PASS, full-row coverage or GA claim. Existing full static preceded these entrypoint additions; changed contracts were checked narrowly. V2 runtime wrapper rejects prior receipts before mutation; cleanup mode never runs business, preserves first rc and restores control kubeconfig. Middleware and last-replica retain their independently scoped driver ownership contracts."
+}

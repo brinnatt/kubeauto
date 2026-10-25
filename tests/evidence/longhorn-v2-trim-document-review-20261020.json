@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "V2 TRIM result paragraphs/table and qualification/matrix status accuracy; no customer command or diagram changed",
+  "checks": {
+    "sources": "Pinned official TRIM and V1/V2 deletion differences reused; Manager excludes writable volume-head from Snapshot CR reconciliation, SPDK lvstore allocation and 30s native sampling checked",
+    "content": "2GiB single-volume/three-replica AIO conditions, 64MiB real filler, guest free bytes, 118489088/189792256/118489088 per-disk allocation and preserved data identity match current frozen raw results; attribution and physical-reclaim limits explicit",
+    "novice_path": "Existing explicit V2 class, install, application use and approved selected-volume UI TRIM path preserve inputs, waits, failure stop and recovery exits",
+    "experienced_path": "TRIM task distinguishes guest, V1 sparse-file, V2 lvstore and physical allocation; whitepaper table explains valid-snapshot retention, native merge, remount and sample convergence",
+    "operation_evidence": "117 frozen inputs match remote; original snapshot UID, replica/disk identity, confirmed cross-node data, durable rc0, no failure marker, scoped clean and independent empty-business baseline verified",
+    "diagrams": "No Mermaid changed; existing render evidence reused",
+    "static": "44 storage/middleware documentation contracts and 54-item matrix validator passed"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-trim-qualification-20261020.json",
+  "product_evidence_sha256": "f3200e0116ede845fbaa4714934a7f425a326670c8e0f95bf61f12b3d5f400b7",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "98e31e70922cf9e30eb03b2d9e51b35ba1994b9a5971bd88617d913dbebdd68f",
+    "docs/storage/longhorn/technical-whitepaper.md": "eadc589542169e4cd4bfba493887ddce837b1b35fc5bca337c9e36a3fd893b24"
+  }
+}

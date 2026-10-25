@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "case": "LONGHORN-49",
+  "classification": "test-gate",
+  "rc": 0,
+  "tests": 35,
+  "ladder_completed": 2,
+  "next_permitted": "root integration into fixed runner and narrow supplement branch after original three-replica linked qualifier",
+  "inputs": {
+    "tests/helpers/longhorn-v2-linked-lifecycle.sh": "eefda8285474dff64803fe26ecd7aa5d46eb621d26919af3dbfc3ded861eb057",
+    "tests/unit/test_longhorn_v2_linked_lifecycle_shell.py": "a2cf2ee07f6044011a5e38a43f495caf2c270b905dd5d37882174a7a259150ca"
+  },
+  "business_contract": "dependency rebuild + independent restore + helper scoped clean + helper PASS all mandatory",
+  "cleanup_contract": "journal required for cleanup-only; active supervised relay remains live through flag restoration; qualification original backup baseline compared before/after; installation health before/after; preserve durable work/status/first failure",
+  "boundary": "No live mutation or matrix PASS. Independent supplement does not replace original three-replica linked qualifier. Shared dispatch untouched.",
+  "files": {
+    "logs/longhorn-cases/linked-lifecycle-shell-contract-20261021/contracts.log": "a57cdb3a195eaeca045685c0b671d9ab218f113a5c0182ab5285a8c09ac6ec2c"
+  }
+}

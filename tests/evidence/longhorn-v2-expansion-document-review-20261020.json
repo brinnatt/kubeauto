@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "Only V2 expansion result paragraphs and matrix verification boundaries; no new customer command or diagram",
+  "checks": {
+    "sources": "Pinned official expansion/encryption/important-notes conclusions reused; new encrypted V2 header label and mapper distinction checked against Manager 1.12.1",
+    "content": "Capacity units, three variants, above-old-boundary fsync/readback, original UID/LUKS identity and data digest match frozen current evidence; separate logical/raw/filesystem capacity and old-volume/RWX/performance limits",
+    "novice_path": "Existing explicit V2 class, product installation and continuous application PVC expansion procedure retain their inputs, context, wait, stop and recovery exits",
+    "experienced_path": "Capacity task provides V2 measured outcomes and limits; architecture chapter explains header, mapping and filesystem causal stages",
+    "operation_evidence": "Three variant markers/remounts, durable rc=0, zero failure markers, 114 matching frozen inputs, independent empty-business and original-disk baseline readback",
+    "diagrams": "No Mermaid changed; previous render evidence reused",
+    "static": "44 storage/middleware documentation contracts passed"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-expansion-qualification-20261020.json",
+  "product_evidence_sha256": "dd6b509e30ad9f1275e65395ddf1a08dfcafe0eedfc009243367c976f3b37629",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "28f03a233dd37f186186cab427a0332604b210193ce5e6f1a878817377d3d570",
+    "docs/storage/longhorn/technical-whitepaper.md": "465067af1300e0a67e508059535645b5896f64eec7bd21d8c17b39d1e1d9acb2"
+  }
+}

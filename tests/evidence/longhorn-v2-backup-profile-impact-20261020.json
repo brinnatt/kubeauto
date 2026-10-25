@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-20",
+  "classification": "test-gate",
+  "scope": "Shared external backup fixture profile extension; product code, customer defaults and published images unchanged",
+  "dependency": "tests/helpers/longhorn-backups.py consumed by lab.backup_store and downstream backup/account/retention/recovery helpers",
+  "affected_pending": {
+    "LONGHORN-14": {
+      "historical_evidence": "tests/evidence/longhorn-backup-20261019.json",
+      "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null"
+    },
+    "LONGHORN-15": {
+      "historical_evidence": "tests/evidence/longhorn-backup-refusal-20261019.json",
+      "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-backup-refusal </dev/null"
+    },
+    "LONGHORN-16": {
+      "historical_evidence": "tests/evidence/longhorn-recurring-20261020.json",
+      "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-recurring </dev/null"
+    },
+    "LONGHORN-31": {
+      "historical_evidence": "tests/evidence/longhorn-encryption-20261019.json",
+      "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-encryption </dev/null"
+    },
+    "LONGHORN-40": {
+      "historical_evidence": "tests/evidence/longhorn-uninstall-20261020.json",
+      "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-uninstall </dev/null"
+    }
+  },
+  "preserved": "Original frozen evidence remains valid for its original inputs and measured documentation; unrelated V1 and complete V2 volume module evidence unchanged",
+  "qualification_commands": [
+    "bash tests/run_enterprise_regression.sh --longhorn-v2-backup-store-qualification",
+    "bash tests/run_enterprise_regression.sh --longhorn-v2-backup-qualification"
+  ],
+  "checks": "Default endpoints, legacy V1 receipt compatibility, exact port/mount boundary, real TLS pass and wrong-CA refusal tested. New V2 runtime must still qualify before business; changed shared fixture does not inherit old current-input PASS.",
+  "cleanup": "Run-owned Pod UID/spec, namespace UID, SSH socket inode, original listener process/boot/start ticks, off-cluster container/image/ports/mounts and private directory. Business/native backup consumers before target/secret restoration, then store and transport."
+}

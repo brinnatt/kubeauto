@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "case": "LONGHORN-51",
+  "classification": "test-gate",
+  "status": "contract-pass-no-live",
+  "ladder_completed": 2,
+  "next_permitted_level": 3,
+  "product_entry": "config.yml + kubecli setup longhorn-v2-gate 09",
+  "expected_markers": [
+    "LONGHORN_V2_MAINTENANCE_PASS",
+    "LONGHORN_V2_MAINTENANCE_SCOPED_CLEAN_PASS"
+  ],
+  "contracts": {
+    "tests": 57,
+    "rc": 0,
+    "failure_markers": 0
+  },
+  "frozen_inputs": {
+    "tests/helpers/longhorn-runner.sh": "2e1e345299083f8d197fe85b94ecd5682cf5d778671c7914f615d1c5505a660e",
+    "tests/helpers/longhorn-static.sh": "e6bedbc9145e2497cac42f6630f69f4aa9eb054e1592005ce237814a669014a5",
+    "tests/helpers/longhorn-v2-runtime-resources.py": "7bf08531d1f433aed8da0d5fcc739b62b15acd9443bb405a4a1acc82b43d165c",
+    "tests/helpers/longhorn-v2-disk-lifecycle.py": "681e7bb3dd20d7a5fc6081f244f12e6fb760ff71f62c8b30d846a86fc740d434",
+    "tests/unit/test_longhorn_v2_runtime_resources.py": "2994d9e3300d1b6f0449b4fcacec06a6859969697c6ef3711af41b9c08b30dff",
+    "tests/helpers/longhorn-v2-maintenance.py": "252ddc393ef228ec51e31b59cf6ac61e7da4eb6f6a936b7d83062f032928b7e2",
+    "tests/unit/test_longhorn_v2_maintenance.py": "418aa4efe3a4bfeeecedcffe4d7d0f4edf3434f4db63e77484d64c273402f454"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/canonical51-integration-20261021/adoption-intersection.json": "2d2dbbc9d91569c7a74f2660b0f865bac85b5ec542d1724874ebe25820ed6b16",
+    "logs/longhorn-cases/canonical51-integration-20261021/files.json": "57cf218474605960ebb85f987da74fbea94025d0cc17b5f7fdc052614bcceb36",
+    "logs/longhorn-cases/canonical51-integration-20261021/integration.patch": "a10505e32fce62d0c843647651fc5b24a8609383aa8ffc85fcab8b16a600168c",
+    "logs/longhorn-cases/canonical51-integration-20261021/interrupt-reuse-impact.json": "dd73a9aa4826d25ab6b4ec2f89522765d20b02c05702bfa4dc807b14eb364e7d",
+    "logs/longhorn-cases/canonical51-integration-20261021/handoff-sha256.json": "d66f9762ef3ea38294dfa42b46c30a2773a0f069bb2d118ee41762f6ba5f2106",
+    "logs/longhorn-cases/canonical51-integration-20261021/handoff.md": "4ae84c57f4d0ca759f83c58c860b9b535e09029634d41af3b21180b0760e0012",
+    "logs/longhorn-cases/canonical51-integration-20261021/contracts.log": "c86adab73369f41487320d544ceb55cb02aefd897a9b2dd2aa3bb62d504a7172",
+    "logs/longhorn-cases/canonical51-integration-20261021/install-prerequisites.json": "c49175416a29c5b8af8299e3bb3600dd241a65cda26459adb57d936512583a99",
+    "logs/longhorn-cases/canonical51-integration-20261021/platform-prerequisites.json": "620f37ddd2da159b19ab7aa768e35671c4a932d73855feb8b61eb43b09827c27",
+    "logs/longhorn-cases/canonical51-integration-20261021/affected-wiring-contracts.log": "389e1e4225b6296bf750d6d12ad56df55a55b337f17ecaaaf665860e964ff91b"
+  },
+  "scope": "Finite seven owning-scope consumer; two real pre-host CPU refusals in original runtime gate; existing disk readback/topology observations and unique verifier. No product-code changes or live mutation.",
+  "prior_adoption_79_inputs_changed": false,
+  "live_pass": false,
+  "overall_delivery_pass": false,
+  "known_gap": "Current .2 image polling/interrupt/polling is not covered by default-polling adoption. Next original V2 chain refreshes only the original interrupt owning scope before 51/full43 readiness; no compatibility waiver or replay of manager/install/target.",
+  "affected_wiring_contracts": {
+    "tests": 27,
+    "rc": 0,
+    "failure_markers": 0
+  }
+}

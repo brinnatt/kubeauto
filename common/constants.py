@@ -157,6 +157,34 @@ class KubeConstant:
     v_ceph_csi_attacher: str = field(default="v4.11.0")
     v_ceph_csi_resizer: str = field(default="v2.1.0")
     v_ceph_csi_snapshotter: str = field(default="v8.5.0")
+    v_longhorn: str = field(default="1.12.1", metadata={
+        "refer_github": "https://github.com/longhorn/longhorn/releases/tag/v1.12.1",
+        "description": "Independent Longhorn V1 storage; does not replace middleware test fixtures",
+    })
+    v_longhorn_upgrade_source: str = field(default="1.12.0")
+    v_longhorn_snapshot_controller: str = field(default="v8.6.0")
+
+    @staticmethod
+    def longhorn_image_tags(version):
+        """Pinned Chart composition plus the reviewed target IM TLS correction."""
+        if version not in ("1.12.0", "1.12.1"):
+            raise ValueError("Unsupported Longhorn version")
+        target = version == "1.12.1"
+        tags = {"longhorn-" + name: "v" + version for name in (
+            "engine", "manager", "ui", "instance-manager", "share-manager", "backing-image-manager")}
+        tags.update({
+            "longhorn-support-bundle-kit": "v0.0.92" if target else "v0.0.86",
+            "longhorn-csi-attacher": "v4.12.0",
+            "longhorn-csi-provisioner": "v5.3.0" if target else "v5.3.0-20260514",
+            "longhorn-csi-node-driver-registrar": "v2.17.0",
+            "longhorn-csi-resizer": "v2.2.1" if target else "v2.1.0-20260514",
+            "longhorn-csi-snapshotter": "v8.6.0" if target else "v8.5.0-20260514",
+            "longhorn-livenessprobe": "v2.19.0",
+        })
+        if target:
+            tags["longhorn-instance-manager"] = "v1.12.1-kubeauto.3"
+            tags["longhorn-manager"] = "v1.12.1-kubeauto.1"
+        return tags
 
     @property
     def k8s_bin_pack_tags(self):
@@ -426,6 +454,11 @@ class KubeConstant:
                 f"brinnatt/csi-provisioner:{self.v_csi_provisioner}",
                 f"brinnatt/snapshot-controller:{self.v_snapshot_controller}",
             ],
+            "longhorn": sorted({
+                f"brinnatt/{name}:{tag}"
+                for version in (self.v_longhorn, self.v_longhorn_upgrade_source)
+                for name, tag in self.longhorn_image_tags(version).items()
+            } | {f"brinnatt/snapshot-controller:{self.v_longhorn_snapshot_controller}"}),
             "ceph": [
                 f"brinnatt/ansible:{self.v_ansible_core_py314}",
                 f"brinnatt/ceph:v{self.v_ceph}",

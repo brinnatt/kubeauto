@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "classification": "read-only dependency impact analysis",
+  "cases": [
+    "LONGHORN-44",
+    "LONGHORN-46"
+  ],
+  "status": "unchanged-host-page-mechanisms-proven-only",
+  "historical_resource_evidence": {
+    "path": "tests/evidence/longhorn-v2-resources-qualification-20261020.json",
+    "sha256": "c133be838c83b80e85654f990b60d0f41388e5331b90f051fad21cb05e09f105",
+    "raw_verified": {
+      "logs/longhorn-cases/v2-resources-qualification-20261020-141534/durable-status.txt": "7ee215c9f28ad4e05d644089abf706c203cc0a8f40fe0988a6e28256ac2c632c",
+      "logs/longhorn-cases/v2-resources-qualification-20261020-141534/gate.log": "fe6170ae1564afcaebb1a256ac33dfa6e9cddabeda0d72dac89dfb5414e0df02"
+    }
+  },
+  "old_resource_helper": {
+    "path": "logs/longhorn-cases/v2-aio-install-qualification-20261020-141857/frozen-source/tests/helpers/longhorn-v2-resources.py",
+    "sha256": "ca3dd955604f7f774e2f3b442bb0c7ee4c0eafccd8c44b22eab0a63beb4bdf12"
+  },
+  "current_resource_helper": {
+    "path": "tests/helpers/longhorn-v2-resources.py",
+    "sha256": "d34504c8411e78c561596b1f3f522c4ed9757bb8ae303dcd5d644307617df6dd"
+  },
+  "unchanged_function_asts": [
+    "host_script",
+    "fixture",
+    "product",
+    "record_path",
+    "no_storage",
+    "probe",
+    "validate_host",
+    "read_record",
+    "refresh_kubelet",
+    "prepare",
+    "verify",
+    "restore",
+    "resolve_completed_write",
+    "main"
+  ],
+  "only_changed_existing_function": "qualification_current: select same historical evidence path through finite full-run material resolver; all existing assertions unchanged",
+  "added_functions": [
+    "full_material",
+    "evidence_path"
+  ],
+  "material_resolver": {
+    "path": "tests/helpers/longhorn-full-material.py",
+    "sha256": "f0ff846f46e8570a31fffa3b0dc21ffcdfcdb16682ea9b8a9db9efc1f4b297a0",
+    "historical_path_equivalence_observed": true,
+    "full_run_mode": "separate original full-run module contracts; missing current-run evidence refuses fallback"
+  },
+  "guards_unchanged": {
+    "tests/helpers/longhorn-install-input-compatibility.py": "a82813412dc883434d13223951fe38d7a6bcc3ec72f5c3436e6b4fa46d965e91",
+    "tests/helpers/longhorn-lab.py": "ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b"
+  },
+  "remote_mutation": false,
+  "matrix_modified": false,
+  "new_qualification_pass": false,
+  "boundary": "Only the host/hugepage helper mechanism delta is classified. No current platform/install adoption, host state, resource reservation, .3 release, full LONGHORN-44/46, final full clean regression or customer sign-off is asserted. Consume alongside exact current source/target .3 adoption and owning module health evidence; do not weaken immutable .2 guards or rewrite historical evidence."
+}

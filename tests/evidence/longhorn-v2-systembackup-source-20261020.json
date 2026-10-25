@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-20",
+  "status": "source-only",
+  "version": "Longhorn 1.12.1 replicated V2",
+  "scope": "V2 SystemBackup disabled-policy resource bundle and attached-volume SystemRestore refusal qualification only; not actual detached restore, absent-volume reconstruction, DR or complete LONGHORN-48",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "backupstore_commit": "e5f4ddc47e4d372169fb4efcfbae5848e7bc1739",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/advanced-resources/system-backup-restore/backup-longhorn-system/",
+    "https://longhorn.io/docs/1.12.1/advanced-resources/system-backup-restore/restore-longhorn-system/"
+  ],
+  "conclusions": [
+    "Default target stores a resource ZIP plus JSON cfg; Config.Checksum is the complete ZIP SHA256. The archive includes metadata.yaml and native YAML lists under the SystemBackup name prefix.",
+    "metadata.yaml is encoded by manager util.EncodeToYAMLFile using gopkg.in/yaml.v2 v2.4.0; systemBackupMeta has json tags only, so keys are lowercase Go field names (longhornnamespaceuuid, not the JSON misspelling longhornNamspaceUUID). Resource YAML lists use Kubernetes printers.YAMLPrinter separately and retain native JSON schema.",
+    "Pinned bundle includes BackupTargets as well as documented resources, but no Secret, Pod or Node lists. It is not a full Kubernetes backup. Backup target credentials and node/disk admission must exist independently.",
+    "Resource-only disabled policy does not create volume data backups. Read every existing referenced volume backup object independently; Ready alone does not prove data recovery.",
+    "Missing non-standby volumes are recreated using LastBackup recorded in the bundled Volume.status; a later backup appearing in the store does not automatically replace this recorded source. Existing Volume/PV/PVC are not rolled back.",
+    "Restore requires all volumes detached. Deleting a SystemRestore aborts remaining rollout through its owning Job cleanup; completed steps are not transactionally rolled back. Exact recovery semantics require their own integration gate.",
+    "The source qualification may validate cfg/ZIP, original namespace/Volume/PV/PVC/SC UIDs, expected LastBackup, exact attached-volume refusal and source cross-node readback. It cannot stand in for actual detached SystemRestore, absent-volume reconstruction, independent DR or final delivery PASS."
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/advanced-resources/system-backup-restore/backup-longhorn-system.md": "877a8c9eeef5d73c1240afb044fa8ff3bc0c409bddcb97e2aacd84d69c98a0d2",
+    "website-ssh/content/docs/1.12.1/advanced-resources/system-backup-restore/restore-longhorn-system.md": "6805b272ea82c334dedfe76870848f2197ef31e09edfb1c513589de68b01e9d0",
+    "manager-1.12.1/controller/system_backup_controller.go": "4911bce2f361ac189915590a4e2bce12cd5dda4a843a0a0641eb6e30c43d59a1",
+    "manager-1.12.1/controller/system_restore_controller.go": "976c5a1032847f68c5d7d6328bbfd0a076ead85f461762dbd6f38c78817b1f02",
+    "manager-1.12.1/controller/system_rollout_controller.go": "30bd2b50c262de285820dddf71799fa7f000e7582a2c3697637184193835c052",
+    "backupstore/systembackup/system_backup.go": "5b217ca7d704a81ae55e358a42ee065d0b66b414a4e8540e363e71507ec9eb98",
+    "backupstore/util/util.go": "2e4f44a1a5a5873270c706dcc0208a3ad6872a051ec1e564afe4b6a8665e36d8",
+    "manager-1.12.1/util/util.go": "4090a8ea19464321528aeaec609cee3d5524fce9f804cdc0d4432557a49b5092",
+    "manager-1.12.1/vendor/gopkg.in/yaml.v2/yaml.go": "b905eb379b8a9a4d3d744b74846f407829bb60de3a42e89945f56b7840227eca",
+    "manager-1.12.1/engineapi/system_backup.go": "54df40ec5a29cec946beffe6ddac2d6273fb32bb26609a032b1087ab704d51d0"
+  },
+  "classification": "test-gate integration using existing config+kubecli requests; no new production API",
+  "project_entrypoint": "config.yml longhorn_requests + kubecli setup longhorn-v2-gate 09",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-systembackup-qualification",
+  "expected_marker": "LONGHORN_V2_SYSTEMBACKUP_QUALIFICATION_PASS",
+  "checksum_correction": "GetFileChecksum uses sha256.New, unlike the truncated SHA512 GetChecksum for block content. Corrects prior source interpretation; historical first-failure logs remain unchanged."
+}

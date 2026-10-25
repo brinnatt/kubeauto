@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "Recovery after host checks and shared snapshot creation, before Longhorn Helm release. Does not sign off native uninstall hook, nonempty uninstall or interruption cleanup.",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-install-recover",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_RECOVER_PASS",
+  "scoped_clean_marker": "LONGHORN_RECOVER_SCOPED_CLEAN_PASS",
+  "product_entry": "config.yml longhorn_action=uninstall + kubecli setup longhorn-gate 09",
+  "result": "Product config+kubecli no-release guard succeeded; 9 shared snapshot resources preserved by UID/spec/RBAC identity; no owned bootstrap Node metadata existed (cleanup retry/replacement paths covered by deterministic contracts). Namespace removed by original UID after graph verification; original core and disk qualification retained; transport cleaned.",
+  "files": {
+    "logs/longhorn-cases/recover-20261019-044616/gate.log": "60154972755b0768af72c3020d255463d708d706bd8d16fb2c3b34cb60a0ff92",
+    "logs/longhorn-cases/recover-20261019-044616/durable-status.txt": "cb38bafa175d27ba40e8f6c865f2925d599356a9a30cae1c7cefe0e99abed893",
+    "logs/longhorn-cases/recover-20261019-052141/gate.log": "c32e319036dce7ad3f444fde3afc91d2a11959a1f2eaa57f9e5b33b2ddce4087",
+    "logs/longhorn-cases/recover-20261019-052141/durable-status.txt": "d62948fa93aaf4b34ebcbf62700e0cc40c9db806c08ed579bea86801cdd53df3",
+    "roles/longhorn/files/longhorn.py": "55789daadd765fa5d5585b370095c5ea6acd121454c7de767d2b1b5956d23843",
+    "tests/helpers/longhorn-lab.py": "e9ff8ff3254736072efe76dcc80d5b0f5ac13545d834087dbf84c94649fed158",
+    "tests/unit/test_longhorn_delivery.py": "3809fcfc7bf5ad0a37310b80e66751f57b434242a3a82048f5464665dba0ea83",
+    "tests/unit/test_longhorn_lab.py": "adfeddefd50021f94706584142f48f57b8652c5f239531c06de1e60fe4452a1b"
+  }
+}

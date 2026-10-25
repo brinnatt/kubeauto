@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "local-proof-only",
+  "upstream_instance_manager_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+  "vendored_spdk_engine_commit": "d19dbb3abcea",
+  "go_toolchain": "go1.26.0",
+  "toolchain_provenance": "/tmp/kubeauto-longhorn-research/go-toolchain-selection-20261021.json",
+  "scope": "Two-call minimal upstream patch red/green and real loopback mutually authenticated TLS protocol fixture. Both original paths bypass injected factory and fail the regression. Patched EngineGet source-mode precheck and destination ReplicaSnapshotCloneDstStart use the injected TLS factory and succeed; sentinel error propagation and native ERR/in-progress handling also pass. No real SPDK, volume clone, build image, publication or live acceptance. LONGHORN-49 remains pending.",
+  "command": "GOTOOLCHAIN=local GOPROXY=off GOFLAGS=-mod=vendor go test ./vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk -run \"^TestLinkedClone(UsesInjectedServiceClientFactory|AuthenticatedRPCPaths)$\" -count=1 -v",
+  "patch": "logs/longhorn-cases/linked-tls-local-proof-20261021/longhorn-spdk-linked-tls-factory.patch",
+  "artifacts": {
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-fixed-focused.log": "d3cacec9e8fb66d957d2d7dece58146abc6d990b8eaaad393b89df98fdbfabcf",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/engine_linked_tls_test.go": "512ae63ae7eff5b5324497c9efb19fa416c192ed04d3eaa5f53c7e526a62ae62",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/engine_linked_tls_transport_test.go": "233ad4af61f3330aec184a0e0d1e121ee3a88469159b3c0441788846330dd862",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/longhorn-spdk-linked-tls-factory.patch": "1cae3c251062c0890b4beadefba887f85f0a98c37372b6940b817ff5f2f08bba",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-fixed-transport.log": "eb0f6f8c1df4361d76376bbccbc5a6a1a12d3ebd6da79017c159d0fc0de1152b",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-original-focused.log": "b2590d241f9543d2c9ab2c5f72be037f1bf1dfbb62c376029bd24dfdfacc2898"
+  }
+}

@@ -1,3 +1,6 @@
+# Storage converges before optional middleware creates its PVCs.
+- import_playbook: 09.longhorn.yml
+
 # to install clust-addons
 - hosts: localhost
   roles:

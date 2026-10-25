@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "classification": "test-gate implementation and exact fixture-race repair",
+  "status": "pass",
+  "matrix_item": "LONGHORN-22",
+  "matrix_item_complete": false,
+  "live_executed": false,
+  "ladder_completed": 2,
+  "next_permitted": 3,
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09; accepted confirmed-write and cross-node remount business path",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v1_storage_faults tests.unit.test_longhorn_v1_storage_faults_shell tests.unit.test_longhorn_remaining_public_routes -v",
+  "tests": 24,
+  "rc": 0,
+  "expected_marker": "LONGHORN_NETWORK_FAILURE_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-network-failure </dev/null",
+  "scope": "V1 exact established engine-to-one-replica data TCP partition; original identities, degraded replica, one CSI attachment, confirmed/fresh ledgers, full replica rebuild, remount and owned-rule restoration",
+  "official_sources": [
+    "Longhorn engine 1.12.1 pkg/util.ParseAddresses and pkg/backend/remote",
+    "https://longhorn.io/docs/1.12.1/references/networking/",
+    "https://longhorn.io/docs/1.12.1/high-availability/"
+  ],
+  "frozen_inputs": {
+    "tests/helpers/longhorn-v1-storage-faults.py": "1c012a816313ee14bc1e2b8aa215cac97054a691c6b17c30129e1e50e32df813",
+    "tests/helpers/longhorn-v1-storage-faults.sh": "e101da123fa92dbd4bc0536e32d99825e785bf0c0a9c1ceb63efb3ee6b4ace49",
+    "tests/unit/test_longhorn_v1_storage_faults.py": "af5c717e59ae85b9e2ba103e26c76b80459dd6340b96f021a449053963ef8e34",
+    "tests/unit/test_longhorn_v1_storage_faults_shell.py": "6778d1394eb9ade2416a030f3dcf0086d7a03ef54e17dc29713ec89076a1eb8e",
+    "tests/unit/test_longhorn_remaining_public_routes.py": "c2fe73d5154bc2b9f33613fb2701950ba28424774bd26b1419f081a14dd327ea"
+  },
+  "raw_contract_log": {
+    "path": "/tmp/longhorn-v1-storage-faults-contract-20261021.log",
+    "sha256": "4170fac2059eb91fc1efb375b54fc403aa12faafa4f07b0f464c60fa2f26528c"
+  },
+  "excluded": "Physical disk restoration (LONGHORN-19) is deliberately not a live route until safe filesystem recovery is qualified.",
+  "validation_notes": [
+    "An added public upgrade-alias contract separately passed after the original 24-method run; production storage-fault assertions unchanged."
+  ]
+}

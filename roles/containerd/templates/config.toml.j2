@@ -111,7 +111,8 @@ imports = []
       conf_dir = '/etc/cni/net.d'
       max_conf_num = 1
       setup_serially = false
-      conf_template = '/etc/cni/net.d/10-default.conf'
+      # On worker joins the network DaemonSet supplies CNI; do not generate a bridge.
+      conf_template = '{{ "" if NODE_TO_ADD is defined and inventory_hostname not in groups["kube_master"] else "/etc/cni/net.d/10-default.conf" }}'
       ip_pref = ''
       use_internal_loopback = false
 

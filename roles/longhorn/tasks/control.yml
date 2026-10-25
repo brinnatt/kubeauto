@@ -1,0 +1,76 @@
+- name: Create private Longhorn declaration directory
+  ansible.builtin.file:
+    path: "{{ cluster_dir }}/yml/longhorn"
+    state: directory
+    mode: "0700"
+
+- name: Bind Kubernetes inventory identities to Longhorn
+  ansible.builtin.set_fact:
+    longhorn_inventory_nodes: "{{ ((groups['kube_master'] | default([])) + (groups['kube_node'] | default([]))) | unique | list }}"
+    longhorn_client_nodes: "{{ groups['kube_node'] | default([]) | unique | list }}"
+    longhorn_kubelet_root: "{{ KUBELET_ROOT_DIR | default('/var/lib/kubelet') }}"
+    longhorn_disk_receipts: {}
+    longhorn_block_receipts: {}
+
+- name: Collect current allowlisted filesystem receipts
+  ansible.builtin.set_fact:
+    longhorn_disk_receipts: "{{ longhorn_disk_receipts | combine({item: hostvars[item].longhorn_host_check.stdout | from_json}) }}"
+  loop: "{{ longhorn_storage_nodes }}"
+  when:
+    - longhorn_phase == 'reconcile'
+    - longhorn_action == 'present'
+
+- name: Collect current V2 platform and raw disk receipts
+  ansible.builtin.set_fact:
+    longhorn_block_receipts: "{{ longhorn_block_receipts | combine({item: hostvars[item].longhorn_block_host_check.stdout | from_json}) }}"
+  loop: "{{ longhorn_v2_nodes }}"
+  when:
+    - longhorn_phase == 'reconcile'
+    - longhorn_action == 'present'
+
+- name: Collect full-scope V2 block retirement host checks
+  ansible.builtin.set_fact:
+    longhorn_block_retirement_receipts: "{{ longhorn_block_retirement_receipts | default({}) | combine({item: hostvars[item].longhorn_block_retirement_check.stdout | from_json}) }}"
+  loop: "{{ longhorn_retire_block_disks | default([]) | map(attribute='node') | unique | list }}"
+  when:
+    - longhorn_phase == 'reconcile'
+    - longhorn_action == 'retire-block-disks'
+
+- name: Save secret-free Longhorn configuration
+  ansible.builtin.copy:
+    content: "{{ vars | dict2items | selectattr('key', 'match', '^longhorn_') | rejectattr('key', 'equalto', 'longhorn_host_check') | items2dict | to_nice_json }}"
+    dest: "{{ cluster_dir }}/yml/longhorn/input.json"
+    mode: "0600"
+
+- name: Validate Longhorn inputs without accessing hosts or Kubernetes
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ role_path }}/files/longhorn.py"
+      - validate
+      - --config
+      - "{{ cluster_dir }}/yml/longhorn/input.json"
+  changed_when: false
+
+- name: Check or reconcile the Longhorn product
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ role_path }}/files/longhorn.py"
+      - "{{ longhorn_phase }}"
+      - --config
+      - "{{ cluster_dir }}/yml/longhorn/input.json"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --helm
+      - "{{ base_dir }}/extra-bin/helm"
+  register: longhorn_control_result
+  changed_when: "longhorn_phase == 'reconcile' and 'changed=1' in longhorn_control_result.stdout"
+  when: longhorn_install | string | lower in ['yes', 'true']
+
+- name: Bind approved host filesystems to current cluster and node identities
+  ansible.builtin.set_fact:
+    longhorn_host_context: "{{ lookup('file', cluster_dir + '/yml/longhorn/host-context.json') | from_json }}"
+  when:
+    - longhorn_phase == 'preflight'
+    - longhorn_install | string | lower in ['yes', 'true']

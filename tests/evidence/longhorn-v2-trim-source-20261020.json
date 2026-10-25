@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-20",
+  "status": "source-only",
+  "version": "Longhorn 1.12.1 replicated V2",
+  "official_documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "instance_manager_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+  "notes": [
+    "Official data-engine comparison supports Filesystem Trim for replicated V2; guest free space is not backend allocation.",
+    "Pinned SPDK disk.go lvstoreToDisk reports FreeSize = FreeClusters * ClusterSize; defaultClusterSize is 1 MiB. Manager disk_utils.go maps that value to Node diskStatus.storageAvailable; disk_monitor.go samples every 30 seconds.",
+    "Use exclusive UID-bound single-volume disks and wait for asynchronous native disk-stat convergence. Do not use guest df or V1 st_blocks as V2 physical allocation proof.",
+    "Pinned instance-manager pkg/proxy/volume.go V2DataEngineProxyOps.VolumeUnmapMarkSnapChainRemovedSet returns Unimplemented; do not modify that V1 flag to enable V2 trim.",
+    "Pinned SPDK Replica.SnapshotDelete invokes BdevLvolDelete, updates child allocation and active chain; V2 may immediately remove snapshot metadata. Require original snapshot UID before deletion and absence after convergence; never require a V1 removed-head-parent residue.",
+    "Preserve confirmed data, original volume/replica/native disk identities; remove only the probe's snapshot; reattach normally before retrying trim. Do not enable discard on encrypted mappings or issue SPDK write RPCs. No live TRIM evidence claimed.",
+    "Manager controller/engine_controller.go excludes reserved volume-head from Snapshot CR reconciliation. V2 snapshot list can report its writable head as usercreated=true; the gate must exclude that entry while refusing all other unowned user snapshots. Confirmed by the focused failed-state record and seven deterministic TRIM contracts; no operation PASS claimed."
+  ],
+  "scope": "Source and integration design evidence for LONGHORN-47 V2 TRIM only; no operation PASS",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/trim-filesystem/",
+    "https://longhorn.io/docs/1.12.1/data-engine-comparison/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-a-snapshot/"
+  ],
+  "source_sha256": {
+    "manager-1.12.1/controller/monitor/disk_monitor.go": "4dcdaa31ba9635a8c7c19fc00200366140883de926a9e9edbd2b79ea57c42f42",
+    "manager-1.12.1/controller/monitor/disk_utils.go": "732047ccc7aabda5fbd6f5cedfa8d23e30b9e900a109a8864f9db9a6829a1bd8",
+    "instance-manager-1.12.1/pkg/proxy/volume.go": "93036e493b66d46fdfbdd12d925169f5262402c4ee5218f75a7af207d668d5f3",
+    "instance-manager-1.12.1/vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/disk.go": "62215fd23d99d9af38268af63472c4462588393ed9cb2f8edac3ca6c0a69e053",
+    "instance-manager-1.12.1/vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/replica.go": "94760b83b74a57f8d451a8cbfe90f4e360f579bce828eab8734312b247c7f73a",
+    "manager-1.12.1/controller/engine_controller.go": "e55230285992f56365b385d52f457a6ac9f1a00815c09acf3eb2cbf04e8045a4"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "acceptance": {
+    "boundary": "Failure and cleanup preservation only; no accepted maintenance business or final clean full delivery inferred.",
+    "matrix_24_pass": false,
+    "module_pass": false,
+    "overall_delivery_pass": false
+  },
+  "case": "LONGHORN-24",
+  "classification": "test-gate",
+  "cleanup": {
+    "all_workers_schedulable_untainted": true,
+    "business_fixture_marker": "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+    "drain_policy_unchanged": "block-if-contains-last-replica",
+    "failure_marker_preserved": true,
+    "global_balance_unchanged": "disabled",
+    "namespace_pvc_pv_volume_absent": true,
+    "original_frozen_code_only": true,
+    "original_journals_retired_and_recovered_receipt_preserved": true,
+    "own_business_relay_processes_absent": true,
+    "own_replicas_engines_absent": true,
+    "registry_marker": "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+    "status": "verified",
+    "strict_three_replica_and_data_recovery": "Original clean passed its strict scale3 and data check before fixture deletion; verified by frozen implementation order and subsequent clean marker, not an independent captured three-replica snapshot."
+  },
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-ownership-tail-v2-failure-tail",
+  "date": "2026-10-21",
+  "durable": {
+    "inner_exit": 143,
+    "module_exit": 143,
+    "module_finalized": 143,
+    "parent_v1_exit": 143,
+    "parent_v1_finalized": 143
+  },
+  "first_failure": {
+    "cause": "Per-volume replicaAutoBalance=ignored resolves to unchanged global disabled; native healthy excess replicas are not deleted, so strict one-replica prerequisite cannot converge. Parent intentionally stopped only exact owned test business after proof; original wait had reached 749 seconds, not a completed timeout.",
+    "phase": "maintenance-product-path",
+    "rc": 143,
+    "stop_evidence": "logs/longhorn-cases/continuation-tail-live-20261021/confirmed-gate-stop-3/stdout.json"
+  },
+  "frozen_inputs": {
+    "count": 782,
+    "manifest_sha256": "bd15d995a6084576fccd19825a264214648a98c9bd686e5ab8048cc9b7ee1d4f",
+    "remote_original_dependencies_verified": {
+      "tests/helpers/longhorn-faults.py": "bf7298d8c0186dfe8fabf51838b8e09290122f3ff8c074dc4bfc4a4dc52ca38c",
+      "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+      "tests/helpers/longhorn-maintenance.py": "6df03e84d589eee585de8ebe85f935d47610caeb2eb29d92f9359051a8c09b59",
+      "tests/helpers/longhorn-maintenance.sh": "fc16b918a0de7220df44b265ca4b5e0643072343b62868cc19e7b51f76babfa7"
+    }
+  },
+  "official_source": {
+    "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "component": "longhorn-manager",
+    "function": "cleanupAutoBalancedReplicas",
+    "path": "controller/volume_controller.go",
+    "sha256": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/continuation-tail-live-20261021/confirmed-gate-stop-3/rc": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/continuation-tail-live-20261021/confirmed-gate-stop-3/request.py": "62a7643fdbca2a5ba78f5cfb01c2b272e22391a93603b9ea0e75c884387092f8",
+    "logs/longhorn-cases/continuation-tail-live-20261021/confirmed-gate-stop-3/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/continuation-tail-live-20261021/confirmed-gate-stop-3/stdout.json": "6b74feb65b129a4df220a9c3108a727ca7cd518b14deecf17c17f4b06e46bff0",
+    "logs/longhorn-cases/continuation-tail-live-20261021/diagnostic-maintenance-replica-one/capture.json": "e557b65e5cb977d710da794a0786e45f6e1a109400334365b350fb5d8bbf9baf",
+    "logs/longhorn-cases/continuation-tail-live-20261021/diagnostic-maintenance-replica-one/capture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/continuation-tail-live-20261021/diagnostic-maintenance-replica-one/global-balance.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/continuation-tail-live-20261021/diagnostic-maintenance-replica-one/global-replica-auto-balance.json": "899b3adaa6d683314757f5391773dbf3fe781a099e591da6146f5833da06bbc9",
+    "logs/longhorn-cases/continuation-tail-live-20261021/diagnostic-maintenance-replica-one/resources.json": "4b7154c606dd7d2d672004c7fdc2ad7874bb53a85db522229329fc00a1b9a9fd",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/capture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-maintenance-recovered-b7cc0878b40368f7.json": "0490f615dcdd1fd8b5aa952739a813a0e68575fa2d43b51e5612894666d2233d",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-maintenance.AdGWoL/business.log": "4ed381cab93a2824e2a2ae700373e56de16b1cbccfa3deaf72ed53b27741ee11",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-maintenance.AdGWoL/events.txt": "85222cb03385bc91574b759d5cbe37862e5e7591b01dcbbf31271cd7b4613a11",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-maintenance.AdGWoL/exit": "9d9b18720961e9b4689fd763b85e7b6f36160ccd3a8a1c9ddc5103bb0f66c396",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-maintenance.AdGWoL/first-failure.status": "0f180be2bde2aa065bfda26f657006b72e09a08ce835e1878f30ab4462dce9b5",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-maintenance.AdGWoL/pods.txt": "2f6f515ceb2eafe5b5db371fda97db2f32cd6b81da2851c60f2de2f887c44b2e",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel-v1.ajsQ3j/maintenance.exit": "9d9b18720961e9b4689fd763b85e7b6f36160ccd3a8a1c9ddc5103bb0f66c396",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel-v1.ajsQ3j/maintenance.finalized": "9d9b18720961e9b4689fd763b85e7b6f36160ccd3a8a1c9ddc5103bb0f66c396",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel-v1.ajsQ3j/maintenance.log": "8545b0188d8da6b86c3df679f400b752a8980372a68809b4c5ccd1d47163d6ef",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel-v1.ajsQ3j/maintenance.pid": "eacbe6df5138b1a40807b5247a45c031fe00c9bc166d5eea80d6f9b341525569",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel.mxigLk/v1.exit": "9d9b18720961e9b4689fd763b85e7b6f36160ccd3a8a1c9ddc5103bb0f66c396",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel.mxigLk/v1.finalized": "9d9b18720961e9b4689fd763b85e7b6f36160ccd3a8a1c9ddc5103bb0f66c396",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel.mxigLk/v1.log": "b26b82eef977dd64c9b9876a11731da466fc26c1d223926558f00b4e876b5e32",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/raw/var/tmp/kubeauto-longhorn-parallel.mxigLk/v1.pid": "1c2a2346218382a8e2b18cff6321f02619c1802575e8d35061360f66e2845cca",
+    "logs/longhorn-cases/maintenance-replica-balance-repair-20261021/original-cleanup-1792596585039187714/state.json": "724dcf9f772cc0c5f200629ce2484a28822639d7e3e905911b31c71e3e32f7f9"
+  },
+  "schema": 1,
+  "scope": "Original frozen782 maintenance single-replica prerequisite and owned failure cleanup only",
+  "status": "failed",
+  "version": "1.12.1"
+}

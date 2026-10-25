@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "reviewed-scoped",
+  "scope": "Author content and two reader-path review of actual V2 absent-volume SystemRestore results, provenance, asynchronous binding and single-cluster limits; not independent/customer review or full documentation acceptance",
+  "source_evidence": "tests/evidence/longhorn-v2-systemrestore-source-20261020.json",
+  "product_evidence": "tests/evidence/longhorn-v2-systemrestore-qualification-20261020.json",
+  "checks": [
+    {
+      "requirement": "Explain recovery beyond resource package readability",
+      "chapter": "technical-whitepaper.md#恢复系统恢复与-dr-的区别",
+      "verification": "Read current successful qualification raw observation and independent baseline readback: actual source deletion, new three UIDs, backup/provenance/binding, 14680064-byte exact backup hash, exclusion of post-backup hash, cross-node remount and preserved raw identity",
+      "resolution": "Two result tables distinguish earlier resource-only package from actual reconstruction; ZIP sizes/resource counts belong to separate inputs, no combined SLA or independent DR claim"
+    },
+    {
+      "requirement": "Operator can judge completion and stop",
+      "chapter": "operations-manual.md#系统备份与全新集群恢复",
+      "verification": "Public source/target contexts, approved Namespace/Secret input, detached/no-consumer prerequisite and product request remain intact; new identity/binding checks use existing get outputs and source map",
+      "resolution": "Explicit new Volume/PV/PVC UID and claimRef, provenance/capacity/modes/reclaim, bounded 600-second Bound review, stop before consumers on mismatch; existing failure/material-preservation branch retained"
+    },
+    {
+      "requirement": "Maintain exact official URL and native state semantics",
+      "chapter": "development-manual.md#操作请求与幂等",
+      "verification": "Pinned backupstore GetSystemBackupURL cleans getSystemBackupURI with filepath.Join; manager writes final URL annotation; reconstruction and Pod-to-Job-to-request UID checks passed",
+      "resolution": "Explain exact canonical URL, separate volume-backup pointer and bounded asynchronous binding; no weak name-only adoption"
+    },
+    {
+      "requirement": "Beginner path",
+      "verification": "Source configuration and protected-claim map -> approved target Namespace/Secret -> same-version Longhorn -> product request -> Completed plus new binding/data/replicas -> consumer enable -> failure stop/material retention. Single-cluster evidence explicitly does not qualify new site prerequisites"
+    },
+    {
+      "requirement": "Experienced operator path",
+      "verification": "Task index reaches precise SystemRestore chapter; native fields, timeout, data boundary, rollout diagnosis and official source link are directly retrievable"
+    }
+  ],
+  "defects_closed": [
+    "Ambiguous namespace-preservation wording clarified: original Longhorn namespace preserved; business Namespace retained during reconstruction and fixture-cleaned afterward",
+    "Earlier resource-only scope no longer reads as blanket denial of separately verified actual restore",
+    "Reconstructed volume terminology distinguishes new API UID from original volume identity"
+  ],
+  "static": {
+    "shell_fences": 40,
+    "bash_n": "pass",
+    "documentation_contracts": 44,
+    "changed_mermaid_diagrams": 0,
+    "new_documentation_live_run_required": false,
+    "product_evidence_reused": true
+  },
+  "limitations": "Independent DR target remains unspecified; full LONGHORN-48, LONGHORN-42 and final clean all-Longhorn regression remain pending. No customer sign-off, application consistency or RPO/RTO measurement inferred.",
+  "files": {
+    "docs/storage/longhorn/development-manual.md": "d9d6ba9f9e489094dad32fcd443f0103c7e00096820dae27b95231515bf5438a",
+    "docs/storage/longhorn/operations-manual.md": "af73a974be6dc8e680ad0f103da25ceaf24a4c411f8ca4a6af9747d0739f77ef",
+    "docs/storage/longhorn/technical-whitepaper.md": "ac9f4737014704b98fa991535121a279a0ec203e527d734134d66e024e1ed600"
+  },
+  "static_log_sha256": "d9653ba6084c36c4ab126f1b88cf14d791bca92b3aa5db571dacc8d9d2de1a18"
+}

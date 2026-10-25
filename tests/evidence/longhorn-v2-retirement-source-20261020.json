@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "scope": "Source-derived V2 disk retirement completion criteria and pending matrix45/documentation correction",
+  "official_source": {
+    "topic": "V2 retirement cannot use Node diskStatus disappearance as runtime release proof",
+    "version": "1.12.1",
+    "commits": {
+      "manager": "8320238242e8c804325d9588ec1db10feb9f36b8",
+      "instance_manager": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+      "SPDK_engine": "d19dbb3abcea"
+    },
+    "files": [
+      "controller/node_controller.go",
+      "controller/monitor/disk_utils.go",
+      "webhook/resources/node/validator.go",
+      "pkg/disk/disk.go",
+      "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/disk.go",
+      "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/disk/aio/aio.go",
+      "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/disk/nvme/nvme.go",
+      "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/disk/virtio-blk/virtio-blk.go"
+    ],
+    "conclusion": "NodeController.alignDiskSpecAndStatus logs DiskDelete error but still deletes diskStatus. AIO DiskDelete unregisters bdev and propagates errors; NVMe DiskDelete logs certain detach/unbind errors but returns true,nil. Virtio-blk differs: its relevant errors propagate. Native status/RPC success are insufficient retirement proof. Require actual disk/bdev/controller absence, restored original PCI binding where applicable, hardware identity, drained data graph and healthy business before releasing receipts/removing hardware. No product retirement implementation or field reproduction is added; do not classify this source finding as a reproduced runtime product bug.",
+    "mapped_to": "LONGHORN-45;operations-manual.md#v2-裸盘禁调度驱逐与取消;technical-whitepaper.md#裸盘驱动决定设备所有权与恢复方法",
+    "evidence": "Pinned source inspection, full current local document links/YAML/Bash checks and2 existing focused matrix contracts; V2 runtime/retirement remains pending."
+  },
+  "review": {
+    "classification": "Author scoped content/two-reader-path review only; no independent review or field qualification",
+    "novice_path": "Raw-disk maintenance stops at declared unsupported retirement boundary and retains receipts; does not follow V1 format/mount/removal steps. Controlled eviction/cancel path remains usable at its stated static-only boundary.",
+    "experienced_path": "Source explains divergent controller/API/runtime states and driver-specific error propagation; pending case45 requires independent release proof instead of disappearance-only acceptance. No unqualified recovery command or assurance added.",
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 121,
+        "yaml_blocks": 20,
+        "bash_blocks": 34
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "3196e8601b656d9fe8b5eb5b9230206f72cb7dc625cf28c1d1cf3921184d7b2d",
+        "docs/storage/longhorn/technical-whitepaper.md": "b109b2bd7934c59cf001ec45b87955e7df7ec8526c32d4300059885396baf51a",
+        "docs/storage/longhorn/development-manual.md": "1c5e054284b49c1ff02a6753d3a6cf2a6d99ab6ebc8f558abca0065c318398f3"
+      }
+    },
+    "initial_static_issue": "New YAML plain-scalar text ended in colon; parser rejected line969 before live use. Corrected punctuation; existing exact-matrix schema contract and invalid-matrix contracts pass. No runner/product fix or remote mutation."
+  },
+  "matrix_status": "LONGHORN-45 pending; no field PASS",
+  "boundary": "No retirement action, receipt release, PCI bind/unbind, test fixture or upstream change; active recurring68 inputs untouched. Current complete static459 evidence remains scoped to unchanged product/test code; this document/matrix addition uses local content/schema checks.",
+  "files": {
+    "logs/longhorn-cases/v2-retirement-source-20261020/v2-retirement-doc-check.json": "ac4e1f9a4eb2945ca85975db9df7662669f764921615529c53f0404811d9ab35",
+    "logs/longhorn-cases/v2-retirement-source-20261020/source-snippets.json": "19ce883b7d3b4a78125df8d19c17cbce3a11685284125dbda183a0e741ca06ba",
+    "logs/longhorn-cases/v2-retirement-source-20261020/reading-map.json": "669e00b9e7b90292584f1539a97b8edbcf7f759934c220e4803ad30ddc2beb40",
+    "logs/longhorn-cases/v2-retirement-source-20261020/v2-retirement-matrix-contract.log": "7b240d110353507a2c42e922b1556a061d12128800e031e549584ed949a774f6",
+    "logs/longhorn-cases/v2-retirement-source-20261020/review.json": "644cea902223028cecfb54021154d9e53c380c84889520ae9395e39a4043527b"
+  }
+}

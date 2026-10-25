@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "V2 frontend versus LUKS mapper explanation only; no customer command or diagram change",
+  "checks": {
+    "sources": "Pinned Manager crypto.VolumeMapper and NodeStageVolume; SPDK initiator GetEndpoint and GetLonghornDevicePath prove /dev/longhorn raw alias and separate -encrypted mapper",
+    "content": "Distinguishes raw frontend presence from an open encryption mapping and retains block-device-number identity checks; the source finding is not a live encrypted-volume PASS",
+    "novice_path": "No deployment step, required input or operation order changed",
+    "experienced_path": "Existing encryption-probe section now locates the engine-specific mapping ambiguity and explains capacity/closure checks",
+    "static": "75 targeted encryption, V2 install and documentation contracts passed after final edits",
+    "diagrams": "No diagram changed"
+  },
+  "input_sha256": {
+    "docs/storage/longhorn/development-manual.md": "9779f47177e1e12b881152ad04d9f30dd2ccf0ed8436bb74115b3233964d93d6"
+  },
+  "source_evidence": "tests/evidence/longhorn-v2-expansion-preflight-stop-20261020.json",
+  "operation_evidence": "Pending focused V2 expansion; existing V1 default semantics retained and covered by current deterministic contracts"
+}

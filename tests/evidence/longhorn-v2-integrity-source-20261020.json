@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-20",
+  "status": "source-only",
+  "scope": "LONGHORN-48 V2 on-demand snapshot checksum integration; not corruption detection, all-data rehash or complete acceptance",
+  "version": "Longhorn 1.12.1 replicated V2",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/advanced-resources/data-integrity/on-demand-snapshot-data-integrity/",
+    "https://longhorn.io/docs/1.12.1/advanced-resources/data-integrity/snapshot-data-integrity-check/"
+  ],
+  "conclusions": [
+    "Volume.Spec.snapshotHashingRequestedAt and Status.lastOnDemandSnapshotHashingCompleteAt identify asynchronous requests. The website final completion paragraph uses an incorrect alternate field; pinned API and controller define the authoritative spelling.",
+    "The controller acknowledges when all relevant existing user snapshots have a checksum; node events enqueue only user snapshots missing checksums. Existing checksums do not prove this request reread all snapshot data.",
+    "checksumCalculatedAt updates only when checksum changes or is initially written. A previously hashed snapshot need not advance its timestamp for a successful new request.",
+    "At least two RW replicas and enabled/fast-check policy are required. fast-check cannot establish detection of filesystem-unaware bit rot; enabled periodic hashing increases IO. Do not overlap purge, rebuild, restore or migration.",
+    "Qualify the documented native CR operation only after config+kubecli native/CSI snapshots and independent restore boundaries. Limit per-volume fast-check to the disposable owned source, UID/RV/spec-test the patch, retain global policy identities, and verify cross-node source data before UID-scoped cleanup.",
+    "Official snapshot hashing performance figures use historical Kubernetes v1.24.4+rke2r1, AWS c5d.2xlarge and NVMe/st1 disks. They explain IO cost but are not V2 1.12.1 sizing, throughput or SLA evidence.",
+    "V2 hashes SPDK snapshot lvol ranges; rehash=false reuses an existing checksum. Its fixed SnapshotHashStatus leaves historical silentlyCorrupted detection disabled; Manager cross-replica checksum comparison remains a different mechanism. Do not infer V1 filesystem/mtime behavior or universal bit-rot repair for V2."
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/advanced-resources/data-integrity/on-demand-snapshot-data-integrity.md": "3daa0574da407577035daed5eddc9d9de7c8b31c7a009386cc6a7079641cfc99",
+    "website-ssh/content/docs/1.12.1/advanced-resources/data-integrity/snapshot-data-integrity-check.md": "0a94449951b094a8d64359422b7dad0d8ce870c2b7f5c49a0a60cec5984c2a59",
+    "manager-1.12.1/controller/node_controller.go": "08de384d8dbc0ef21f327b80c15f59e30013ace0237156fb74ac6ce5ce25c7a1",
+    "manager-1.12.1/controller/volume_controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "manager-1.12.1/controller/monitor/snapshot_monitor.go": "58f3f90fe8c67cd1c57e0b580132a395242a548fe30b4f44a4904ce59f1571df",
+    "manager-1.12.1/webhook/resources/volume/validator.go": "a5ef728e5c7758dc081d8e0b93fec6275746052f77cc308955ef9cc2d5ba0908",
+    "instance-manager-1.12.1/pkg/proxy/snapshot.go": "6d8d2897f3917d9523e80d38567c1d90116ebc1fb664f5bbf36245162d7603fe",
+    "instance-manager-1.12.1/vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/replica.go": "94760b83b74a57f8d451a8cbfe90f4e360f579bce828eab8734312b247c7f73a",
+    "manager-1.12.1/types/types.go": "203e22a4598c8d20889d290bb9827ec64ba0d8bed16ebdb27c28545ab701f0c0",
+    "manager-1.12.1/datastore/longhorn.go": "f18a875f352eb0b25785d1d4ebac22901a2179c648d3b5ae36936c329934486b"
+  },
+  "project_entrypoint": "config.yml + kubecli setup DEPLOYMENT 09, then documented UID-bound native Volume CR checksum request",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-integrity-qualification",
+  "expected_marker": "LONGHORN_V2_INTEGRITY_QUALIFICATION_PASS",
+  "classification": "test-gate plus documented native operation; no new product configuration API",
+  "coverage_boundary": "Does not complete V1 corruption/isolation export LONGHORN-30, V2 corruption detection, periodic full rehash, DR/SystemRestore or complete LONGHORN-48.",
+  "instance_manager_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+  "spdk_engine_commit": "d19dbb3abcea"
+}

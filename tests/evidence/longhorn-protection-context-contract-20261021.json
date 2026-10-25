@@ -1,0 +1,44 @@
+{
+  "adoption_inputs_changed": false,
+  "change": "Remove only the three shared-context snapshot/restore blocks; preserve original business, identity, cleanup and durable contracts. Existing fixtures now explicitly model an unrelated owner update.",
+  "classification": "test-gate",
+  "contracts": {
+    "failure_markers": 0,
+    "legacy_same_contract_expected_rc": 1,
+    "rc": 0,
+    "real_shell_foreign_replace_subcases": 6,
+    "shell_syntax_rc": 0,
+    "tests": 52
+  },
+  "date": "2026-10-21",
+  "inputs": {
+    "tests/helpers/longhorn-static.sh": "3fe1433bca30774891566b8615812eed92a75f312969fcfb05c78aa70ba5057c",
+    "tests/helpers/longhorn-v2-disaster.sh": "48f97a622f57c440d4378935baed3be28ffe5c080c1963f0be0c1fc8d881828c",
+    "tests/helpers/longhorn-v2-dr-failover.sh": "284af84b45749416e71cc55f37abebc784622d983953d772c148fcecdd52352f",
+    "tests/helpers/longhorn-v2-dr-store.sh": "b7721f474f24116448d70d539bc54fa24aca5ad92f4ab776aecbfb967a4954da",
+    "tests/unit/test_longhorn_protection_context.py": "72ca36a3480b6af685c59642414702c19944238370655e8c49080ca473151f1c",
+    "tests/unit/test_longhorn_v2_disaster.py": "47a3db9eeb53232731acb627bc71f8d64079b4a5b3c2a7687d214e8e1efc8954",
+    "tests/unit/test_longhorn_v2_dr_failover.py": "b4a897e9b1931daf59ad98864fd54e54fa1584f8a449df85d9b02b44b2aeda15",
+    "tests/unit/test_longhorn_v2_dr_store.py": "a11af839ec3e5770fc7425da4e64ee0b541887f618cab7b6d393c1a612488218"
+  },
+  "ladder_completed": 2,
+  "live_pass": false,
+  "next_permitted_level": 3,
+  "overall_delivery_pass": false,
+  "owning_scope": "LONGHORN-43 fixed disjoint V1 backup/refusal/recurring and V2 data-protection branches",
+  "raw_logs": {
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-context/context.patch": "0f73bfe21c559769779bd1fc34530aa247765f040780f971ac504075b41a914a",
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-context/handoff.md": "6f2c3bf9b4fd4cd44934aada822b2321ac39032e50e941e13c4036763d4ac50e",
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-context/legacy-disproof.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-context/legacy-disproof.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-context/legacy-disproof.log": "8727bcb444e57ab39a860ac6f9c2593050ff59ded30946b4a912194163fe1b95",
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-context/owning-tests.patch": "4ad00be391dc32ad36483cfd67db05203e907df68e2f04a2881c83a455103552",
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-context/static.patch": "e302c6f1255f3651b222331a89992ea03c64fdeee3c68a5513ce51eee08f4750",
+    "logs/longhorn-cases/parallel-continuation-20261021/protection-owning-integrated.log": "7756a9dce2cfec9c174515bf1420e18729ec70f99acf30d64c879b6c6c05af63"
+  },
+  "remote_inputs_changed": false,
+  "reuse_boundary": "Original accepted LONGHORN-48 business scenarios and upstream mechanism conclusions retain their frozen evidence. This local contract proves context ownership only; the changed shells still require their owning live branch in the final clean regression. No new business PASS is inferred.",
+  "root_cause": "The three V2 DR shells restored a shared kubeconfig they do not own or write; this could overwrite a concurrent V1 update. Product 09 and relay paths use dedicated cluster kubeconfigs and owned SSH channels.",
+  "schema": 1,
+  "status": "contract-pass-no-live"
+}

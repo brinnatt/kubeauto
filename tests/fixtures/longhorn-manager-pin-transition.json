@@ -1,0 +1,20 @@
+{
+  "scope": "manager-linked-eviction-pin-only",
+  "old_tag": "v1.12.1",
+  "new_tag": "v1.12.1-kubeauto.1",
+  "inputs": {
+    "common/constants.py": {
+      "old_sha256": "b092db75def9860e47cb78361102db5277ef9acbdf9ad0fdb15bec29cd6050f9",
+      "sha256": "e4a637967452f3560e43af794eedde30ad57c398a898da98ee0501d1d05dd5f0"
+    },
+    "roles/longhorn/files/images.json": {
+      "old_sha256": "4f8946d9eb7253446c51e7169a66dee96a96bdc5ace20e488e2df790da830c83",
+      "sha256": "af5bf33eac62d7c4a379a50627b41c7a4983a6cf57761e2573eb9d058d024ca1"
+    }
+  },
+  "publication": {
+    "path": "tests/evidence/longhorn-manager-eviction-publication-20261024.json",
+    "sha256": "a908acddf74d8e928faa61aac6d7662f88e4186e5c8942fa656d3b17e447d97c"
+  },
+  "evidence_boundary": "Eligibility of unchanged historical mechanisms only. Linked eviction, new Manager runtime and final full require fresh product-path results. Full-copy has no linked protected parents: all healthy replicas remain deletable and the one-line predicate is equivalent there."
+}

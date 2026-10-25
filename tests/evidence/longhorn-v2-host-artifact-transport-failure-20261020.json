@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "failed",
+  "classification": "supply-chain/read-only registry transport",
+  "scope": "Host qualification launch stopped at artifact prerequisite; no lease/source sync or host mutation",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-host-qualification",
+  "rc": 1,
+  "verified_before_failure": 29,
+  "unreturned_records": [
+    "brinnatt/prometheus:v3.13.1-distroless"
+  ],
+  "local_status": {
+    "failure_markers": 1,
+    "log_sha256": "2ca4b6bb68bcaaa680af5a369fbfcc962f8dd8b3efc2ee62143c21813db4f0e4",
+    "marker": "LONGHORN_ARTIFACTS_PASS",
+    "marker_present": false,
+    "rc": 1
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/artifacts-20261020-135033/gate.log": "2ca4b6bb68bcaaa680af5a369fbfcc962f8dd8b3efc2ee62143c21813db4f0e4",
+    "logs/longhorn-cases/artifacts-20261020-135033/status.json": "74e46c8bc7ffd88520415ba3db457e7b747bb0d51ff572ccd120fd671515b161"
+  },
+  "diagnostic_readback": {
+    "image": "brinnatt/prometheus:v3.13.1-distroless",
+    "result": "exact recorded index and linux/amd64, linux/arm64 manifests matched on immediate read-only retry",
+    "boundary": "Original URLError did not expose its nested reason; no claim of DNS/TLS/timeout root cause, and no code/artifact change"
+  }
+}

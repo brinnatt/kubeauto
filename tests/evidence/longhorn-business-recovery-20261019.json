@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "scope": "Scoped recovery of the failed backup business fixture; healthy storage and core retained. No LONGHORN-14 or full cleanup-delivery acceptance.",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-business-recover </dev/null",
+  "status": "pass",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_BUSINESS_CLEAN_PASS",
+  "scoped_clean_marker": "LONGHORN_BUSINESS_CLEAN_SCOPED_CLEAN_PASS",
+  "checks": [
+    "All persisted namespace resources inspected; only fixed read-only PodMetrics endpoint excluded",
+    "Original UID-bound business Pods, PVC, Retain PV, Longhorn Volume and namespace removed",
+    "Backup target, Secret and external object store already retired by original failed run",
+    "Registry transport removed and baseline storage/core healthy"
+  ],
+  "files": {
+    "logs/longhorn-cases/business-clean-20261019-072140/frozen-source.txt": "64b43c815e6bc07aa40e6253e6e9330338c658af8bdd27aefc4129e35c6395ba",
+    "logs/longhorn-cases/business-clean-20261019-072140/durable-status.txt": "e9032b88821c9478e3bef9904ebbafe6696a986d4d45b4e87059bd21944853df",
+    "logs/longhorn-cases/business-clean-20261019-072140/gate.log": "a386f44a6e63284c8c750eed3f10a3a9b8db222f173cdd69bc8c428a89294b03"
+  }
+}

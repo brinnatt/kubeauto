@@ -1,0 +1,86 @@
+{
+  "boundary": "Worker-only existing observer suspension. No V2 lab transport/adoption change. Exact original PID/argv/starttick/control-boot/UID and original volume/run ownership required; restore same process before cleanup. Local contracts do not sign a live module.",
+  "classification": "test-gate",
+  "contract_tests": 31,
+  "date": "2026-10-21",
+  "durable": {
+    "failure_markers": 0,
+    "finalized": 0,
+    "log_sha256": "b18b2087ae728c83b7aefdab506fa71c17021446aa285c0e5c42031924dc9801",
+    "rc": 0,
+    "terminal_count": 1
+  },
+  "files": {
+    "tests/helpers/longhorn-static.sh": {
+      "after_sha256": "b7d9b0fd07af00a2d97e6bb995fca795904ed59c3284bd824064bb2e5e2f92b9",
+      "before_sha256": "48ea2cf22ebb2fb1962c398db4022fe2272cdb9b324427e42f32e58e8e74f111"
+    },
+    "tests/helpers/longhorn-v2-reboot-relay.py": {
+      "after_sha256": "4565f7806acd19570aa26d72e89a32a666561d8e6ac9d91d2aa6bdfb9b611374",
+      "before_sha256": null
+    },
+    "tests/helpers/longhorn-v2-runtime-faults.py": {
+      "after_sha256": "453101a0b0ee1350f692b0a08648bc4e99968637e8e24a320c89ff346e44f4ac",
+      "before_sha256": "6ec517544b9bef8b13d93c66f7a119e63e7584da40f2ab3fb33bce064f1bd2c3"
+    },
+    "tests/unit/test_longhorn_v2_reboot_relay.py": {
+      "after_sha256": "cbbd518b7296677ded0f7e26ee43285589e93b312b6a36b599ac482e5c28873a",
+      "before_sha256": null
+    },
+    "tests/unit/test_longhorn_v2_runtime_faults.py": {
+      "after_sha256": "f778d9652d8285c4c26f25abbff49606ca988f677b392f89604da2e177394b7c",
+      "before_sha256": "3734bb5b6cde4e155939bf6f792f7ef14ac60c81bf76f50b92dd4e942e98929d"
+    }
+  },
+  "ladder_completed": 2,
+  "live_worker_pass": false,
+  "local_fixture_cleanup": {
+    "all_observer_pids_gone": [
+      867298,
+      867299
+    ],
+    "processes_replaced": false,
+    "scope": "temporary directory, exact spawned observer and its local short-lived child only"
+  },
+  "next_permitted_level": 3,
+  "official_sources": [
+    {
+      "finding": "remote exit status or SSH error 255",
+      "url": "https://man.openbsd.org/ssh#EXIT_STATUS"
+    },
+    {
+      "sha256": "39d8320ae1ede683fcf25c9dbcac9020a45b2527afa34d8e09f4a73e9e4e3ed8",
+      "url": "https://raw.githubusercontent.com/openssh/openssh-portable/V_9_6_P1/ssh.c"
+    },
+    {
+      "finding": "SIGSTOP stops and cannot be caught/blocked; SIGCONT continues the same stopped process",
+      "sha256": "6ab11c524ae2c90beb2dc121ce345e2b54fcca2c008e96672e73e0e933f538db",
+      "url": "https://man7.org/linux/man-pages/man7/signal.7.html"
+    }
+  ],
+  "overall_longhorn_delivery_pass": false,
+  "patch_sha256": "212979f0e254d0622adfd160338e88ed750e0a069c487d5d293e3a2a1c649e15",
+  "raw_failure_capture": {
+    "live_ssh_rc_was_not_logged": true,
+    "mismatches": 0,
+    "original_pre_reboot_owner_sha256": "300d28551d1d2e3f14f413a5eb3b7b6c7e2c872fd39642ff578a4805ceee9493",
+    "path": "logs/longhorn-cases/continuation-tail-live-20261021/worker-reboot-failed-archive/capture.json",
+    "raw_files": 19,
+    "remote_frozen_inputs": 782,
+    "sha256": "a6e9cc53f845f5ffd4e8d2a194457d9682e993e431a719d4a8141a16948b1ae3"
+  },
+  "remote_mutated": false,
+  "schema": 1,
+  "shared_changed": true,
+  "shared_contract": {
+    "log": "logs/longhorn-cases/operations-worker-tail-live-20261021/reboot-relay-contract.log",
+    "rc": 0,
+    "sha256": "cf06dfbe5118dc36f3219edfd96193440259b6e202c3811ffae8bbebf6f89861",
+    "tests": 31
+  },
+  "status": "contract-pass",
+  "unchanged_transport": {
+    "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+    "tests/helpers/longhorn-v2-lab.py": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368"
+  }
+}

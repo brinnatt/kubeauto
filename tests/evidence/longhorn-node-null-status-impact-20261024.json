@@ -1,0 +1,149 @@
+{
+  "additional_focused_contracts": {
+    "exit": {
+      "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/identity-cpu.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/identity-cpu.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/identity-cpu.log",
+      "sha256": "643ee47a3b9511ff8a68ec1e48c0b52a296b4bdbc7312cb2025de82e3b2d2117"
+    }
+  },
+  "additional_tests": 80,
+  "bootstrap_cert_repair": {
+    "cause": "Successful add-node regenerates worker leaf/key. Rebind to actual issued matching files under original CA/Node; native empty disk declarations are recreated while default-disk label remains config. Explicit native label false precedes empty disk removal.",
+    "classification": "test-gate and documented native operations",
+    "contracts": {
+      "exit": {
+        "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/bootstrap-cert.exit",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "finalized": {
+        "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/bootstrap-cert.finalized",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "log": {
+        "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/bootstrap-cert.log",
+        "sha256": "325f56505a78dc4e0186d12dce5672b24659b018c9f7075bc256bf6f0786df69"
+      }
+    },
+    "failed_parent": {
+      "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-retirement-fixed-owning-20261024/terminal.json",
+      "sha256": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3"
+    },
+    "prefix": {
+      "path": "tests/evidence/longhorn-node-retirement-prefix-20261024.json",
+      "sha256": "ee72a20b3da6c422bf7601b6ac7a9426e8134b2d0ea5eb50022581e9ca771629"
+    },
+    "tests": 62
+  },
+  "changed_inputs": {
+    "roles/longhorn/files/longhorn.py": "246651e1773dcf6bdcf5972f81a4b0aaee2dab9999997bfb11d5549fd166b578",
+    "tests/helpers/longhorn-im-revision-3-adopt.py": "ee530fe9a532655cdf01184c4e33642088a56b1fe2de34c08ffdf650282fe15f",
+    "tests/helpers/longhorn-node-lifecycle.py": "22ad555f13bb8979edcd1969b3a6e0623a11ccc6a23b51f44cec1a7dad769c68",
+    "tests/helpers/longhorn-node-local.sh": "8b7df9cc3114a96bcf3e8f3fb3b1fa1270000d61604b0177478ea47a0fdc760b",
+    "tests/helpers/longhorn-v2-cpu-isolation.py": "7e92344f1f9aeaa0afb9672316400cfbc35ff37a2fb5e4ba7909a14baffb1120",
+    "tests/unit/test_longhorn_delivery.py": "eb86a2db3262712b50361878b3d9b09003ccfa29420c80a9b362d4e3177fb57b",
+    "tests/unit/test_longhorn_im_revision_3_adopt.py": "602f997d5b8a9b5e058120ae9252446503036dce233ac9933be5ac84c5a956f1",
+    "tests/unit/test_longhorn_im_revision_evidence.py": "01d9da5649a7b904fd137fbc20e3c3f2913966e7faf403925f3fd75d99dff307",
+    "tests/unit/test_longhorn_node_lifecycle.py": "f9987b459c435bcf377cb652989815e11ccdba9bdd24d54dcb240b9ce04fea64",
+    "tests/unit/test_longhorn_node_local_shell.py": "a13928f968224805701414ab64eec631e2f878bfd9af97695a84e9dd08a74131",
+    "tests/unit/test_longhorn_v2.py": "fa3574250f823e9c8de0b8d001dd5d9dfc21f4715fc40535a41479ffa989afb8",
+    "tests/unit/test_longhorn_v2_cpu_isolation.py": "f6db1d8b48bf5b20b5820c088719c3561bc492d91b2ad88b0a20375020ba10c3"
+  },
+  "classification": {
+    "product": "Initial native diskStatus map or entry may be null; health must wait rather than crash. Accepted block-disk receipt still refuses missing observed identity.",
+    "test_gate": "Identity/data-bound continuation of the original uncommitted add; historical .2 fixtures restore original SHA, .3 historical reader reconstructs exact source SHA only."
+  },
+  "contracts": {
+    "exit": {
+      "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/binding-fixed.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/binding-fixed.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/contracts-fixed.log",
+      "sha256": "98d8d6a8d506dc4834cae750df77333a0e2d10feffd307c2fa572b0822825b29"
+    }
+  },
+  "cpu_reuse": "Read-only exact complete-source reverse-SHA via existing .3 gate_input_current; CPU business/host policy functions unchanged. Unknown product byte changes still refuse.",
+  "date": "2026-10-24",
+  "evidence_reuse_boundary": "Only three missing-observation reads change; populated Ready/Schedulable/UUID/driver checks unchanged. Existing successful modules retain their declared scope; pending25 and final clean full must exercise current product. No prior failed parent changed to PASS.",
+  "first_failure": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-lifecycle-fixed-owning-20261024/terminal.json",
+    "sha256": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3"
+  },
+  "first_failure_work": "/var/tmp/kubeauto-longhorn-node-local.S8Fqm7",
+  "identity_guard_correction": "Filesystem UUID differs from native diskUUID. Read-only findmnt + stable-device blkid bind original ext4; non-symlink longhorn-disk.cfg binds native diskUUID and config SHA. Preserve both in retry intent.",
+  "matrix_gap": [
+    "LONGHORN-01",
+    "LONGHORN-25",
+    "LONGHORN-43"
+  ],
+  "native_state": {
+    "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/native-state.json",
+    "sha256": "8a3dda83d25adafdb51f45a778e5a266df47c2550642cb42301d74a92f1eae6b"
+  },
+  "next": "Fixed node-lifecycle resume through config+kubecli add-node; original host/boot/certificates/core/native disk UUID/data and three original healthy replicas required. No format/setup/data replay.",
+  "official": {
+    "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "contract": "NodeStatus.DiskStatus optional/nullable; alignDiskSpecAndStatus initializes nil map and entries.",
+    "source_sha256": {
+      "controller/node_controller.go": "08de384d8dbc0ef21f327b80c15f59e30013ace0237156fb74ac6ce5ce25c7a1",
+      "k8s/pkg/apis/longhorn/v1beta2/node.go": "944142a3f1146001c170f585125a99574af169ab7142ae52488a9a460c39735f"
+    },
+    "version": "1.12.1"
+  },
+  "original_product": {
+    "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/original-longhorn.py",
+    "sha256": "8a842e6260e307cb41d40154f8e0d2b96bd172efcf1be3a20c99116338cb92c1"
+  },
+  "overall_delivery_pass": false,
+  "pre_live_static_failure": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-null-status-resume-owning-20261024/launch.log",
+    "sha256": "7d48f268a6916f1b74c52e0280be57f1822650d8746e2b18b6551feeee550645"
+  },
+  "previous_impact": {
+    "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/impact-before-bootstrap-cert.json",
+    "sha256": "b7f114b667e0ca7a1f61f0d94dd637bbbed54bf1a7f7d8f050e1cfb2d24ac091"
+  },
+  "product_diff": {
+    "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/product.diff",
+    "sha256": "3133d94e2f97a9d5d274178c16e5f20cb5d289e54a9d1c455f6df3192fde9f80"
+  },
+  "retirement_fix": {
+    "cause": "Official Node validator checks old per-disk allowScheduling and storageScheduled. Disable disk and observe zero scheduled storage before deletion; no admission bypass.",
+    "classification": "test-gate",
+    "continuation": "Exact completed prefix only; original failed parent remains failed, current identity and data checked before owned retirement.",
+    "contracts": {
+      "exit": {
+        "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/retirement-fixed.exit",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "finalized": {
+        "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/retirement-fixed.finalized",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "log": {
+        "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/retirement-fixed.log",
+        "sha256": "0bda7c565569096bbbc79823a1c0f0aa7e173997155edbcb9e5d58b13bab6906"
+      }
+    },
+    "prefix": {
+      "path": "tests/evidence/longhorn-node-retirement-prefix-20261024.json",
+      "sha256": "d7fad7f6a35459d11c67bcfd140d9d07dd3bffb4bee3b7ef4d1397d070da35c9"
+    },
+    "tests": 60
+  },
+  "schema": 1,
+  "skipped": 3,
+  "status": "contract-pass-owning-pending",
+  "tests": 323
+}

@@ -1,6 +1,20 @@
 # Kubeauto 存储分路
 
-存储分路是与 `docs/middleware/` 完全独立的产品分路。它不复用中间件的三文件文档类型；每个存储技术栈按官方产品模块组织文档。当前首个技术栈为 Ceph Tentacle，严格对应官方九个入口：
+存储技术栈位于 `docs/storage/`，是与中间件完全独立的产品分路，使用独立产品入口、专项矩阵和清理边界。Longhorn 沿用中间件的三份正式手册，合并用户与运维内容；Ceph 保留已批准的九模块结构。
+
+## Longhorn
+
+| 正式内容 | 文档入口 |
+| --- | --- |
+| 用户与运维 | [operations-manual.md](./longhorn/operations-manual.md) |
+| 技术白皮书 | [technical-whitepaper.md](./longhorn/technical-whitepaper.md) |
+| 开发与维护 | [development-manual.md](./longhorn/development-manual.md) |
+
+Longhorn 1.12.1 面向动态持久卷及中间件存储，范围包括 V1 文件系统盘与 V2 裸块盘。当前处于开发与验证阶段，[54 项专项矩阵](../../tests/longhorn-test-matrix.yaml)逐项记录结果；既有 V1 业务证据不覆盖 V2，V2 现场验收尚未完成，不能据此声明交付。已有中间件的 1.10.1 存储夹具不替代本分路验收。
+
+## Ceph 九模块
+
+Ceph Tentacle 严格对应官方九个入口：
 
 | # | Ceph 模块 | 本项目文档 |
 |---:|---|---|

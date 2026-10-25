@@ -2,6 +2,10 @@
 
 - hosts: localhost
   tasks:
+    - import_tasks: ../roles/longhorn/tasks/removal-guard.yml
+      vars:
+        longhorn_removal_node_ip: "{{ NODE_TO_DEL }}"
+
     - fail: msg="{{ NODE_TO_DEL }} is NOT a worker node!"
       when: "NODE_TO_DEL not in groups['kube_node']"
 

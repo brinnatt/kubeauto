@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "classification": "Complete local repository unit suite with Python allocator diagnostics",
+  "command": "env PYTHONFAULTHANDLER=1 PYTHONMALLOC=debug bash tests/run_unit_tests.sh",
+  "rc": 0,
+  "tests": 1712,
+  "duration_seconds": 147.862,
+  "unittest_failure_summary_count": 0,
+  "source_inputs_compared": 133,
+  "prerequisites": {
+    "isolated_original_failing_test": "1test OK rc=0",
+    "owning_mongodb_module_with_allocator_diagnostics": "131tests OK rc=0",
+    "owning_mongodb_source_and_charts": "4inputs equal Git HEAD"
+  },
+  "first_failure": "tests/evidence/longhorn-v2-iobuf-unit-first-failure-20261020.json",
+  "limitation": "Prior default-allocator process exited139 with segmentation fault. Root cause remains unresolved; no product/test code changed to hide it. This current PASS explicitly uses PYTHONMALLOC=debug and does not assert that the earlier runtime failure was fixed. No V2 field or final delivery claim.",
+  "previous_evidence": "tests/evidence/longhorn-v2-exclusive-unit-20261020.json",
+  "files": {
+    "logs/longhorn-cases/v2-iobuf-unit-20261020/v2-iobuf-unit-mongodb-module.log": "67b103bf2587a13ad4a32d6d0d5d2ecafe4599691db454ec124cd991145cc6ac",
+    "logs/longhorn-cases/v2-iobuf-unit-20261020/v2-iobuf-unit-retry.log": "36156dad02b25251dc13aa92b791be637aeafa8c0e13f5fa2d04c5c1c6c2038d",
+    "logs/longhorn-cases/v2-iobuf-unit-20261020/v2-iobuf-unit-retry.status.json": "54370ab27a680c315e609b84729dafe22be7bef53a42c0149ff58acb4560ee39",
+    "logs/longhorn-cases/v2-iobuf-unit-20261020/v2-iobuf-unit-start.json": "651eb70c7ddc1c532502356930393e2565b29f460204158edfc6cd873825e164",
+    "logs/longhorn-cases/v2-iobuf-unit-20261020/v2-iobuf-unit-mongodb-isolated.log": "d3be9e63d4537cf2be2d618d3567a923fd76611cea24b8dec7b4d6a1c92967ac",
+    "logs/longhorn-cases/v2-iobuf-unit-20261020/input-final.json": "651eb70c7ddc1c532502356930393e2565b29f460204158edfc6cd873825e164"
+  }
+}

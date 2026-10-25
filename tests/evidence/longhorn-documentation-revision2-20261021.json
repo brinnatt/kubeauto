@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-42",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-documentation",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_DOCUMENTATION_PASS",
+  "scoped_clean_marker": "LONGHORN_DOCUMENTATION_SCOPED_CLEAN_PASS",
+  "document_sha256": {
+    "docs/storage/longhorn/development-manual.md": "91d43767a55ad19afb2d04215d8a360108e3668660dbf58695572eabaecbae3c",
+    "docs/storage/longhorn/operations-manual.md": "7b1c863de245b379936ded1a725f0c622e2103456f1c3db0836af2b78af89abd",
+    "docs/storage/longhorn/technical-whitepaper.md": "db096612cc87dd93123ed748a05e7bf7f4c93b572e98a66c5608111b88692f60"
+  },
+  "content_review_evidence": "tests/evidence/longhorn-documentation-revision2-content-review-20261021.json",
+  "source_coverage": {
+    "status": "pass",
+    "version": "1.12.1",
+    "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "total": 168,
+    "read": 146,
+    "excluded_with_reason": 22,
+    "unclassified": 0,
+    "cited_official_pages_in_read_inventory": 29,
+    "record": "logs/longhorn-cases/documentation-content-review-20261021/reused-reading-map.json",
+    "boundary": "Reused prior scoped official readings and conclusions; no new whole-site reading claim or upstream GA converted to project PASS."
+  },
+  "reader_paths": {
+    "novice": {
+      "status": "pass",
+      "scope": "Author document walk-through; no reader/field execution claimed",
+      "path": [
+        "规划与公共会话",
+        "选择V1文件系统盘或V2稳定身份裸盘",
+        "主机/页池/CPU预算与PKI",
+        "config+download+setup09",
+        "显式引擎StorageClass与PVC/应用Pod",
+        "fsync确认、跨节点重挂摘要",
+        "外部备份与新目标恢复"
+      ],
+      "checks": "版本、角色、管理位置、DEPLOYMENT/KUBECONFIG和凭据来源在进入命令前确定；V2跳过V1格式化；应用示例保留节点约束、等待与业务判据；输入未知、超时和数据不符均停止。无默认context或作者隐藏环境。",
+      "integrity_addendum": {
+        "status": "pass",
+        "finding": "Main install/use path unchanged. Rescue is an expert-approved exception requiring isolated original system, complete independent copy, allowlists and recovery plan; no new executable production steps."
+      }
+    },
+    "experienced": {
+      "status": "pass",
+      "scope": "Author task/index/parameter/incident path check; no independent reviewer claimed",
+      "path": [
+        "任务索引定位任务",
+        "公共上下文和任务专用前置",
+        "读取原UID/config/容量与备份",
+        "单项产品或明确原生操作",
+        "等待原生终态和业务结果",
+        "按原值/原身份恢复并限定回收"
+      ],
+      "checks": "扩容、checksum、full-copy/linked、计划、SystemRestore/DR、节点盘、故障、安全、升级与退出均有对应入口；参数速查区分默认/省略/0及动态或停卷；两份故障账本、外部引用块与新目标业务是结果判据，Pod Ready不代签；原生保护拒绝不强拆finalizer。",
+      "integrity_addendum": {
+        "status": "pass",
+        "finding": "Incident section identifies stop/write protection, source consistency, isolated comparison and readback, restoration and qualification boundaries. Developer section connects launcher adaptation, service writes and UID/file-identity cleanup rejection."
+      }
+    }
+  },
+  "rendered_diagrams": 8,
+  "files": {
+    "tests/evidence/longhorn-documentation-revision2-content-review-20261021.json": "ec8ce0f51c51b5aa93e53d056f0ea7205b556b431a7a279c23e834b00749c942",
+    "logs/longhorn-cases/documentation-20261021-181927/status.json": "2b237b5e711aa920fbbaa53c28a564d2d5dd276945145287c52a8eab5cbccb71",
+    "logs/longhorn-cases/documentation-20261021-181927/gate.log": "995e824cbccb4cacd64a9ce66d808eafaa4ef23701b4d71eb1316d2f20ad5ea8",
+    "logs/longhorn-cases/documentation-revision2-20261021/contracts.log": "8a03e883d24547e47c9782665b7b794c2cb13586b7c9aadd9fbeae79c2f6f244",
+    "tests/helpers/longhorn-documentation.py": "8cee00b5c9aa4443056c2ddd248f04587adf6ca1c604384764edc89a3d741840",
+    "logs/longhorn-cases/documentation-integrity-addendum-20261022/previous-acceptance.json": "e2fb192d22308f99459fd27f50f0cfe624c7e78e05a0ec849e2fede3bfd69eb8",
+    "logs/longhorn-cases/documentation-integrity-addendum-20261022/content-review.json": "082366c9a211e6e97cc31d5d7c7b1aca5016cb3bb4ddc2cbe3074cce6546d7be",
+    "logs/longhorn-cases/documentation-integrity-addendum-20261022/contracts.log": "f8a8d6a8ac2781043f2ee0910f048e70df44a870b463a0a73ac91baa13916159",
+    "logs/longhorn-cases/documentation-20261022-055432/status.json": "7cada756e40ef6dcf42549d2991331bd4b1fcb4b2d5ca3def93dc05e7c6685f0",
+    "logs/longhorn-cases/documentation-20261022-055432/gate.log": "1597b009a4c2ed46b49b50a9894e00dea6635eeef1bd2d6e3dd0735f065f5cc3"
+  },
+  "boundary": "Retains accepted .2 TLS/source+target adoption documentation and unchanged manual content/rendering; adds accepted V1 isolated-export measurements and precise helper/customer interface boundary. Scoped author content/two reader paths checked, 53 deterministic contracts and fixed local documentation gate rc0, zero failures. No new live operation, independent/customer signature or full GA claim."
+}

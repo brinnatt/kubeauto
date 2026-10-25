@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -550,6 +551,42 @@ fi
         self.assertIn('"$pxc_ready_pods" == 3', function)
         self.assertIn('"$haproxy_ready_pods" == 3', function)
 
+
+
+class ChartChecksumCLI(unittest.TestCase):
+    def check_chart(self, prefix):
+        task = next(row for row in yaml.safe_load(TASKS) if row.get('name') == '校验 Percona Operator Chart SHA256')
+        env = Environment(undefined=StrictUndefined)
+        with tempfile.TemporaryDirectory(prefix='pxc checksum ') as temporary:
+            context = {'base_dir': temporary, 'pxc_operator_ver': '1.20.0'}
+            directory = Path(temporary)/'roles/cluster-addon/files'
+            directory.mkdir(parents=True)
+            chart = directory/CHART.name
+            manifest = directory/(CHART.name+'.sha256')
+            payload = CHART.read_bytes()
+            chart.write_bytes(payload)
+            manifest.write_bytes(CHART.with_name(CHART.name+'.sha256').read_bytes())
+            argv = [env.from_string(value).render(context) for value in task['command']['argv']]
+            command = prefix+argv[1:] if prefix else argv
+            cwd = env.from_string(task['args']['chdir']).render(context)
+            valid = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
+            self.assertEqual(valid.returncode, 0, valid.stderr)
+            self.assertIn(CHART.name+': OK', valid.stdout)
+            chart.write_bytes(payload+b'corrupt')
+            corrupt = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
+            self.assertNotEqual(corrupt.returncode, 0)
+            self.assertIn('FAILED', corrupt.stdout+corrupt.stderr)
+            chart.unlink()
+            missing = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertFalse(task['changed_when'])
+
+    def test_actual_chart_checksum_command_accepts_valid_and_refuses_corrupt_or_missing_gnu(self):
+        self.check_chart([])
+
+    @unittest.skipUnless(shutil.which('busybox'), 'BusyBox CLI unavailable')
+    def test_actual_chart_checksum_command_accepts_valid_and_refuses_corrupt_or_missing_busybox(self):
+        self.check_chart([shutil.which('busybox'), 'sha256sum'])
 
 if __name__ == "__main__":
     unittest.main()

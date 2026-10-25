@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "status": "pass",
+  "scope": "v2-raid-status-finite-reuse",
+  "product_behavior_changed": true,
+  "mechanism": "prior-RW-absent-from-configured-RAID-becomes-ERR",
+  "publication_evidence": {
+    "path": "tests/evidence/longhorn-v2-raid-status-publication-20261022.json",
+    "sha256": "d01bd8723dd49e4a7bccd93a0e44047a6ef6692e4be2f04016c1a85c8a319a22"
+  },
+  "adoption_evidence": {
+    "path": "tests/evidence/longhorn-v2-im-revision-3-adopt-qualification-20261022.json",
+    "sha256": "3937e740a7a6e661aa2983728f494d043ee0ec6f1ab6ee9b4908208e32087fad"
+  },
+  "previous_evidence": {
+    "path": "tests/evidence/longhorn-v2-im-revision-2-adopt-qualification-20261021.json",
+    "sha256": "af1f5ba5fa39f8d7b5b1493e480b447c44bef3bae8258de86603dc632f942478"
+  },
+  "source_contract": {
+    "path": "tests/evidence/longhorn-v2-raid-status-source-contract-20261022.json",
+    "sha256": "0b8d4ac6af0dd5308303553b06f46e3ab4e04832710697f1c3c54788978a5f6b"
+  },
+  "single_disk": {
+    "path": "tests/evidence/longhorn-v2-failure-single-disk-revision3-20261023.json",
+    "sha256": "7a93c99575994bb8a031d410b3ed4c4992bb2bb7647fc8a3e97151208633d4cf"
+  },
+  "full_copy_impact": {
+    "path": "tests/evidence/longhorn-v2-full-copy-reuse-impact-20261021.json",
+    "sha256": "73e2123c9e201df3b9b2a5160fc4cb41d9a224f5ad1e9f311a55916d5d90f4d3"
+  },
+  "legacy_failure_scopes": {
+    "replica-im": {
+      "path": "tests/evidence/longhorn-v2-failure-replica-im-20261021.json",
+      "sha256": "7bfc5bd41253081b83c68925c889efbe0071883de3b3cb38a5562b1563afbaa6"
+    },
+    "manager": {
+      "path": "tests/evidence/longhorn-v2-failure-manager-20261021.json",
+      "sha256": "a635f720ac4094ecee1b98027948a4ffeeee18888aa99dea2ecf1522a46cc791"
+    },
+    "attached-spdk": {
+      "path": "tests/evidence/longhorn-v2-failure-attached-spdk-20261021.json",
+      "sha256": "561682e869b3b1401380e383a8eaa2ff29ada692ebe3e2ddb1ac305169c34a54"
+    },
+    "remote-spdk": {
+      "path": "tests/evidence/longhorn-v2-failure-remote-spdk-20261021.json",
+      "sha256": "3994fa6e110e6ea750501a1ef6bc4aa3ef006188cfa2d4f34a9f725aa2226fd2"
+    },
+    "replica-network": {
+      "path": "tests/evidence/longhorn-v2-failure-replica-network-20261021.json",
+      "sha256": "3f0e5a44e1f2de67f001ae59fef4f96e90ccc7deefadc19df6dff7caef04ffa2"
+    },
+    "worker-reboot": {
+      "path": "tests/evidence/longhorn-v2-failure-worker-reboot-20261021.json",
+      "sha256": "536ee63a6c24f91003ed851b2de67183111324d67be2e5ff554f2eb7a0c07adc"
+    }
+  },
+  "scope_impacts": {
+    "replica-im": "Historical .2 owning gate killed the replica IM process and proved native failure, three-replica recovery, both acknowledged ledgers, remount and cleanup. Original missing-namespace validation already marks ERR; .3 additionally marks a prior RW whose still-present namespace lost configured membership. It never promotes ERR or changes recovery. Reuse this accepted process-loss behavior under the explicit .3 transition, without relabeling it .3 live evidence; current .3 single-disk covers the added membership condition and final clean full repeats the whole failure module.",
+    "manager": "Manager restart changes control-plane ownership, not the healthy RAID configured member set. The .3-only RW membership condition remains false for retained healthy members. Preserve the original .2 durable business, recovery and cleanup result; adoption proves actual .3 runtime and data integrity. Final full still exercises the complete current manager-loss product path.",
+    "attached-spdk": "The owning .2 gate killed the attached engine SPDK process. Existing non-running guard skips validation; native reconstruction recreates the RAID with its configured members. .3 does not change process recreation, state/restore/expand/clone guards or ledger/remount semantics. Preserve the original accepted scope and its real .2 tag; final full exercises the current binary.",
+    "remote-spdk": "The .2 remote target SPDK-loss gate already proved namespace/replica failure and reconstruction. Its original missing/invalid NVMe branch remains intact. The added configured-member test can only downgrade a still-present stale RW earlier and cannot revive ERR or alter a configured healthy survivor. The .3 disk gate validates that new condition; retain historical process-loss recovery and cleanup, with current full regression mandatory.",
+    "replica-network": "The .2 owned network-fault evidence proves isolation, native replica handling, restored rules, original/fresh acknowledged data and cleanup. .3 changes neither network injection nor recovery; it adds an ERR transition only when RAID has ceased using a former RW namespace. Earlier safe failure observation does not weaken the historical eventual-recovery assertions. Keep its .2 identity explicit and require the final .3 full module.",
+    "worker-reboot": "The .2 reboot gate proves the same node/disk identity returns, IM/native recreation, acknowledged-data recovery and scoped cleanup. Missing old namespaces already used the original ERR path; .3 adds the stale-present-membership condition while preserving non-running and operation guards. This reuses only that historical runtime fault scope. It does not sign LONGHORN-51 maintenance worker evidence with a different baseline binding; that distinct gap still needs its owning proof.",
+    "full-copy": "The immutable full-copy impact already binds two original accepted copy scopes and unchanged owning product/fixture functions. .3 retains all four .2 TLS changes and clone/restore/expand/not-running guards byte-for-byte; the new RW membership predicate does not trigger on correctly configured healthy post-copy members and skips active cloning. Preserve the two historical copy results and original .2 dependency via this explicit additional edge. This is finite source/behavior analysis, not new .3 copy execution; the final current full still covers copy behavior."
+  },
+  "historical_scope_count": 6,
+  "historical_tags_preserved": true,
+  "new_runtime_claim": "Only separately bound .3 adoption and single-disk execution are current .3 live results.",
+  "complete_longhorn_50_pass": false,
+  "overall_longhorn_delivery_pass": false
+}

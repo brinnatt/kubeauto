@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-only",
+  "matrix_item": "LONGHORN-49",
+  "version": "Longhorn 1.12.1 V2 AIO",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_reference": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/"
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/csi-volume-clone.md": "63ef0190e451a7a39a8fb09ea66075311bd042e2bb9cb4038d7b6f45cdfac774",
+    "manager-1.12.1/webhook/resources/volume/validator.go": "a5ef728e5c7758dc081d8e0b93fec6275746052f77cc308955ef9cc2d5ba0908"
+  },
+  "classification": "test-gate extension; product full-copy class and CSI provisioning unchanged",
+  "owning_scenario": "Full-copy clone remains independent after source native volume and replicas are retired",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-full-copy-lifecycle-qualification",
+  "expected_marker": "LONGHORN_V2_FULL_COPY_LIFECYCLE_QUALIFICATION_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-full-copy-lifecycle-qualification",
+  "conclusions": [
+    "Official full-copy creates an independent copy. Pinned admission protects linked-clone parents from deletion, while completed full-copy has no such storage dependency.",
+    "Require completed full-copy and healthy three-node source/clone replicas before retiring any source object. Verify both application write directions first.",
+    "Only retire source Pod/PVC/Retain PV/Volume by recorded UIDs, with UID/resourceVersion API DELETE preconditions. Reject replacements across the entire source graph before first deletion. Refuse any remaining referring PV; wait for detached volume and native source replicas to disappear.",
+    "Keep the clone mounted through source deletion, confirm bytes, remount on another node and confirm new fsynced writes with original clone PVC/PV/Volume and replica identities.",
+    "Reuse the private general business journal for interruption recovery and scoped cleanup; no snapshot-finalizer manipulation or installation teardown."
+  ],
+  "coverage_boundary": "Local source and deterministic contracts only until live qualification; no linked/nested dependency migration, expansion, backups, complete LONGHORN-49 or final delivery PASS."
+}

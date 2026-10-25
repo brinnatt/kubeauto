@@ -1,0 +1,84 @@
+{
+  "status": "pass",
+  "scope": "LONGHORN-25 local deterministic contracts only; no remote mutation or live PASS",
+  "classification": "test-gate",
+  "ladder_completed": 2,
+  "next_permitted": "parent fixed-runner focused branch after LONGHORN-54 source release and root static wiring checks",
+  "tests": 24,
+  "rc": 0,
+  "failure_markers": 0,
+  "product_entry": "config.yml + supervised kubecli add-node longhorn-gate 192.168.47.148 longhorn-node-148, guarded del-node/del-master, setup 09, empty-node del-node",
+  "success_marker": "LONGHORN_NODE_LIFECYCLE_PASS",
+  "cleanup_marker": "LONGHORN_NODE_LIFECYCLE_SCOPED_CLEAN_PASS",
+  "smallest_disproof": "LONGHORN_V2_RELEASE_PROOF=/absolute/runner/54-release.json bash tests/run_enterprise_regression.sh --longhorn-node-lifecycle </dev/null",
+  "files": {
+    "tests/helpers/longhorn-node-lifecycle.py": "2e464d16cc596ed6e466dc7de3282cf05c582695ed789efa98e22fc83d0a7b16",
+    "tests/helpers/longhorn-node-lifecycle.sh": "3417a604644a97baf3cfca49fcf09dd465ca9226c90513daa6fde2c4d058fed6",
+    "tests/unit/test_longhorn_node_lifecycle.py": "cbfa56d8210d7372bfba1b9ec699a387ec548f1b41e68378b75f0e90592cc980",
+    "tests/unit/test_longhorn_node_lifecycle_shell.py": "53021f80858daf508174e040131ef420b9c8c6258ebc5e8a82a77ca6cbb93d9e"
+  },
+  "contracts": "logs/longhorn-cases/node-lifecycle-contract-20261021/contracts.log",
+  "contracts_sha256": "c5d953d4131812b6d3e4058391ea716ab92fdd126ce38edab9e52f7766765f5b",
+  "official": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "topics": [
+      "1.12.1/maintenance/maintenance/",
+      "1.12.1/nodes-and-volumes/nodes/default-disk-and-node-config/",
+      "1.12.1/nodes-and-volumes/nodes/disks-or-nodes-eviction/"
+    ],
+    "conclusions": [
+      "Default disk annotations bootstrap only an empty node; retire by excluding the receiving host from the data allowlist and product setup 09 before product del-node, preventing disk recreation.",
+      "Eviction requires scheduling disabled; reduce the temporary four-replica count to original three because only three original fault domains remain after retirement.",
+      "After Kubernetes Node deletion the upstream controller may remove the Longhorn Node automatically; otherwise wait for KubernetesNodeGone and delete only the recorded native UID."
+    ]
+  },
+  "execution": {
+    "receiving_host": "192.168.47.148",
+    "dependency": "LONGHORN-54 fully retires original V2 source, restores raw disk and pages, releases parent ownership, then emits SHA-bound host release receipt. 25 immediately rechecks lease, stable disk/machine identity, blank signatures/holders/mounts, clean-host verifier and zero hugepages.",
+    "original_core": "Original six node owner.nodes and node_uids are never rewritten; private adapter accepts only original exact inventory or product one-worker extension.",
+    "application": "Own three-replica CSI V1 volume precedes node expansion; 3 to 4 keeps original replica UIDs, 4 to 3 evacuation retires receiving host; cross-node remount confirms original SHA256 payload.",
+    "refusals": "Before invoking either destructive CLI prove a native scheduling/disk declaration necessarily blocks the first Longhorn guard; exact product refusal and unchanged core, binding, native UID/spec, inventory and application data required.",
+    "cleanup": "No adoption of unknown creation UID. Retire only recorded empty receiving node, no force/lazy unmount, UUID-guarded wipe, restore host files/iSCSI and original config/inventory, fixed host clean verifier and fresh blank disk probe.",
+    "no_new_images": true
+  },
+  "release_proof_schema": {
+    "status": "pass",
+    "signed_scope": "v2-source-host-release",
+    "host": "192.168.47.148",
+    "durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "cleanup": {
+      "host_clean_verified": true,
+      "raw_disk_clean_verified": true,
+      "page_pool_restored": true
+    },
+    "markers": [
+      "LONGHORN_V2_SOURCE_HOST_RELEASE_PASS"
+    ],
+    "owner_run_id": "original V2 owner UUID",
+    "source_cluster_uid": "original kube-system UID",
+    "released_at": "ISO8601 with timezone",
+    "original_raw_disk": {
+      "machine_id": "32 lowercase hex",
+      "path": "/dev/disk/by-id/...",
+      "identity": "original WWN/serial",
+      "size_bytes": 107374182400
+    },
+    "raw_logs": [
+      {
+        "path": "absolute durable log path",
+        "sha256": "SHA256; log must contain exact line LONGHORN_V2_SOURCE_HOST_RELEASE_PASS host=192.168.47.148"
+      }
+    ]
+  },
+  "source_files": {
+    "logs/longhorn-cases/node-lifecycle-contract-20261021/longhorn-manager-validator.go": "eba31a4670b2a17f16fd6367c8d45e6dd991abb0a90ed24cb2a00de3cdb0e66f",
+    "logs/longhorn-cases/node-lifecycle-contract-20261021/longhorn-manager-node_controller.go": "08de384d8dbc0ef21f327b80c15f59e30013ace0237156fb74ac6ce5ce25c7a1",
+    "logs/longhorn-cases/node-lifecycle-contract-20261021/website-default-disk-and-node-config.md": "0bff59f714251301bf54c937c7df43e4b124d88ef25606163ec5de63e3f6cd86",
+    "logs/longhorn-cases/node-lifecycle-contract-20261021/website-disks-or-nodes-eviction.md": "22ac589d02894ffe94640aae0e505b8729509dac37fb6b32e39b60e7224c32fe",
+    "logs/longhorn-cases/node-lifecycle-contract-20261021/website-maintenance.md": "4626c7358a5c104e62f45534d269f95d1b4320b9f8c7763b59cf9ae2009706ec"
+  }
+}

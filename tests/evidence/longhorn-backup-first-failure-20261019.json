@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-14",
+  "status": "failed",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null",
+  "rc": 1,
+  "failure_markers": 5,
+  "classification": "test-gate fixture and cleanup defects; not a Longhorn data-plane defect",
+  "first_failure": {
+    "stage": "product reconcile BackupTarget UPDATE",
+    "official_error": "credential validation error(s): invalid trailing newline in AWS_CERT",
+    "source": "longhorn-manager 8320238242e8c804325d9588ec1db10feb9f36b8 webhook/resources/backuptarget/validator.go validateCredentialSecret"
+  },
+  "cleanup_failure": {
+    "stage": "check_business_graph before any deletion",
+    "error": "KeyError: uid",
+    "resource": "pods.metrics.k8s.io",
+    "apiVersion": "metrics.k8s.io/v1beta1",
+    "kind": "PodMetrics",
+    "metadata_keys": [
+      "creationTimestamp",
+      "name",
+      "namespace"
+    ],
+    "source": "kubernetes-sigs/metrics-server v0.8.0 pkg/storage/pod.go GetMetrics"
+  },
+  "recovery_state": "Scoped fixed-runner recovery passed with durable rc=0 and zero failure markers; healthy storage retained.",
+  "files": {
+    "logs/longhorn-cases/backup-20261019-070812/durable-status.txt": "25f100b46288cb891c3b0a2a8b8abc5981d3ad53222c013947c1fb51a48d5914",
+    "logs/longhorn-cases/backup-20261019-070812/first-traceback.txt": "c36458d53070fbfea0512ce7559bd27e8a3e3eb4e958f0139391f868698dd175",
+    "logs/longhorn-cases/backup-20261019-070812/frozen-source.txt": "5ac6930707a617c1abbf9b4af1d7f575c4782f4a3bb2946ed18efc00d4552ecb",
+    "logs/longhorn-cases/backup-20261019-070812/gate.log": "c78d510f95bcbbce0d1040a90bbea7219b5610fffad4fba725ada886d3528007",
+    "logs/longhorn-cases/backup-20261019-070812/storage-diagnostics.txt": "70a6d56cc721f828d90be6b42c059775e585a81245f5701e6e72fbdc50ee1569"
+  },
+  "recovery_evidence": "tests/evidence/longhorn-business-recovery-20261019.json"
+}

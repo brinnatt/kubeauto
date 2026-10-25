@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-08",
+  "date": "2026-10-19",
+  "status": "failed",
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-rwo",
+  "rc": 1,
+  "failure_markers": 4,
+  "root_cause": "Attachment competitor and remount reader reused Pod/reader; current UID overwrote the deleted competitor UID while its Events remained. RWX shared the same name reuse.",
+  "verified_behavior": [
+    "RWO filesystem conflict refused by Kubernetes",
+    "Three independent replicas",
+    "9437184 fsynced bytes match SHA256 after cross-worker remount"
+  ],
+  "not_executed": [
+    "ReadWriteOncePod",
+    "Raw Block"
+  ],
+  "cleanup": "Protection stopped at unrecognized historical Events; business namespace, Pod, PVC, PV and Longhorn Volume retained. Registry transport removed; storage installation healthy.",
+  "event_recovery": {
+    "namespace": "longhorn-business-047f4cfe7440729d",
+    "namespace_uid": "c63d7e3d-fa53-4434-9dad-23115b280230",
+    "objects": {
+      "PersistentVolumeClaim/data": "f349aa60-910b-455d-98d7-66aa2de86bac",
+      "Pod/reader": "5eb67593-7421-41ee-a637-0b0a8c6e8adb",
+      "Pod/writer": "36925ccc-2bd7-448a-80fd-1a3f8992d2b7"
+    },
+    "events": [
+      {
+        "metadata": {
+          "creationTimestamp": "2026-10-18T23:54:45Z",
+          "name": "reader.18dfc4e9f988e27e",
+          "uid": "ed395346-ed76-444e-aeac-96d61209c293"
+        },
+        "reason": "Scheduled",
+        "reference": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "reader",
+          "namespace": "longhorn-business-047f4cfe7440729d",
+          "resourceVersion": "54347",
+          "uid": "af9fd5db-3955-4416-bfeb-d9cbf190094d"
+        },
+        "resource": "events"
+      },
+      {
+        "metadata": {
+          "creationTimestamp": "2026-10-18T23:54:45Z",
+          "name": "reader.18dfc4e9fd8681ec",
+          "uid": "e5750c6f-beab-4155-9146-3cd1dbd796bc"
+        },
+        "reason": "FailedAttachVolume",
+        "reference": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "reader",
+          "namespace": "longhorn-business-047f4cfe7440729d",
+          "resourceVersion": "54348",
+          "uid": "af9fd5db-3955-4416-bfeb-d9cbf190094d"
+        },
+        "resource": "events"
+      }
+    ]
+  },
+  "official_source": "https://github.com/kubernetes/api/blob/v0.33.6/core/v1/types.go#L7050",
+  "files": {
+    "logs/longhorn-cases/rwo-20261019-074649/business-diagnostics.txt": "6cb9c109dcb7b6a28d35cfd68ba252d83968d9bc41e4541020b8c205ee083a35",
+    "logs/longhorn-cases/rwo-20261019-074649/durable-status.txt": "87c02b10eab41013462eecb9d828cde06cf497d45a3a30275be54d04e975f7ee",
+    "logs/longhorn-cases/rwo-20261019-074649/first-failure.txt": "cb464206a54ba82780df349c00aa94f381831aad02c174581ab4799004629f2a",
+    "logs/longhorn-cases/rwo-20261019-074649/frozen-source.txt": "fc6438bfcaff7e28aa89fcf33136478067ff14c33a48c82b912d1b64dbb646fa",
+    "logs/longhorn-cases/rwo-20261019-074649/gate.log": "331eedc134aa9b4dba6482aa0bea5ddac35b81e3f24b31aabd549eb4ca37b0ae"
+  }
+}

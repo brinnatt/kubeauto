@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "pass",
+  "scope": "deterministic account-client refusal contracts only; not live qualification",
+  "client_version": "RELEASE.2025-04-08T15-39-49Z",
+  "client_commit": "e929f89ceeedc48a45611382be9882db0bf1921d",
+  "binary_sha256": "43d44d801a936e48390c8d2dc02c1c1cc1e973becbe71897f28ca06a9f456489",
+  "official_source": "mc cmd/client-s3.go:getObjectStat and cmd/client-errors.go:PathInsufficientPermission,ObjectMissing",
+  "fixture_boundary": "developer-local loopback HTTP fixture, synthetic credentials, no Kubernetes/lab access; temporary mc config removed and HTTP server closed in finally",
+  "observations": [
+    {
+      "command": [
+        "cat",
+        "lh/fixture-bucket/denied"
+      ],
+      "rc": 1,
+      "stdout": "{\"status\":\"error\",\"error\":{\"message\":\"Unable to read from `lh/fixture-bucket/denied`.\",\"cause\":{\"message\":\"Insufficient permissions to access this path `http://127.0.0.1:46341/fixture-bucket/denied`\",\"error\":{\"Path\":\"http://127.0.0.1:46341/fixture-bucket/denied\"}},\"type\":\"fatal\"}}\n",
+      "stderr": "",
+      "prior_code_only_rejects": true,
+      "exact_mapping_accepts": true
+    },
+    {
+      "command": [
+        "stat",
+        "lh/fixture-bucket/missing"
+      ],
+      "rc": 1,
+      "stdout": "{\"status\":\"error\",\"error\":{\"message\":\"Unable to stat `lh/fixture-bucket/missing`.\",\"cause\":{\"message\":\"Object does not exist\",\"error\":{}},\"type\":\"fatal\"}}\n",
+      "stderr": "",
+      "prior_code_only_rejects": true,
+      "exact_mapping_accepts": true
+    }
+  ],
+  "checks": {
+    "prior_code_only_reproduced_false_negative": true,
+    "exact_cause_operation_and_target_required": true,
+    "mismatched_targets_causes_operations_status_codes_and_multiple_documents_rejected": true,
+    "focused_accounts_and_runner_tests": 57
+  },
+  "files": {
+    "/home/brinnatt/projects/kubeauto/tests/helpers/longhorn-accounts.py": "6be4d57c322b291d270821e75f85b5ec11c0fbb18450675bfc6b28123c536c8b",
+    "/home/brinnatt/projects/kubeauto/tests/unit/test_longhorn_accounts.py": "6f01de33a85ce93405fbcc09dfdacbc587ca4e9c8ca35c895c4bca8ef9ac7d70",
+    "/tmp/kubeauto-longhorn-research/reproduce-mc-refusal-json.py": "cbac38e59a1f27c1ceab5b8adcce4d29f70202386e4dc235643ceff8efe09ceb",
+    "/tmp/kubeauto-longhorn-research/mc-refusal-json-native-contract.log": "4291eac5645e9782369e5e85cea9f1b8e84a57506093c94c081e60a421a126bc",
+    "/tmp/kubeauto-longhorn-research/accounts-mapped-refusal-contracts.log": "a17b5a918c8e2a664c30b573bd6b39ffa5fe07544f4db3597fa63032f09e66d2"
+  }
+}

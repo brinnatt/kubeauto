@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "contract-pass",
+  "classification": "test-gate",
+  "scope": "Local level 2 focused contracts for missing referenced backup block, exact native refusal, recoverable escrow and separate fixed recovery route; no live mutation or matrix PASS.",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_broken_restore tests.unit.test_longhorn_v2_linked_clones tests.unit.test_longhorn_v2_data_protection -v",
+  "rc": 0,
+  "tests": 26,
+  "new_broken_restore_tests": 8,
+  "checks": [
+    "Exact cfg-referenced block receipt and escrow byte identity before original deletion",
+    "Copy/delete lost-response readback and safe original-preserving recovery",
+    "Unknown stat errors, symlinks, foreign identities, changed source/escrow or missing material block cleanup",
+    "Unconfirmed native create repairs source but keeps native target, escrow and journal",
+    "Native engine refusal requires exact target UID, requested backup, missing block key and native NoSuchKey; timeout is failure",
+    "Real Bash wrapper failure, missing marker, baseline drift and unresolved fault block downstream store deletion; recovery reaches journal before empty baseline",
+    "Shell syntax, Python compilation and 54-case matrix validator"
+  ],
+  "source_evidence": "tests/evidence/longhorn-v2-broken-restore-source-20261021.json",
+  "frozen_inputs": {
+    "tests/helpers/longhorn-v2-broken-restore.py": "3f3145b055b4b32bea728350cefac4870e2e24fc2f00993f9ca4bc532126dc51",
+    "tests/helpers/longhorn-v2-broken-restore.sh": "b82ada8268e8b8c1323e80a8331784c4c2a68507eaaad89f8267c1434c711c63",
+    "tests/unit/test_longhorn_v2_broken_restore.py": "c7654339d5ef0f1856a87ed51cf46a788b76a51f89348a0e299f768e10e0f657",
+    "tests/helpers/longhorn-runner.sh": "3875842565ecca10463473a142213306b23a0b7cddfd367c30599de10a2720d7",
+    "tests/helpers/longhorn-live.sh": "5ed9bd69a6198880ed57b08550538157d40c764b444a3a078409400b9c2f1db3",
+    "tests/helpers/longhorn-static.sh": "109d86df6a41b7be66e77312b69b6ac082f75c6b97395d6ec1530a7018118e94"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/broken-restore-contract-20261021/focused.log": "9f685abdcec5850d2e651019853384190cf3bd3c03deb3f5bad9b9c1c406f556"
+  },
+  "boundary": "Remaining: complete fixed-runner static/artifact prerequisite, narrow live refusal and new-CSI recovery evidence, module composition and final clean full regression. Earlier ten composed subcases stay valid within their frozen inputs, not a substitute for broken-chain coverage."
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "source-and-design-only",
+  "case": "LONGHORN-48 enabled-detached scheduling and periodic full request subset",
+  "classification": "test-gate: new focused assertion of existing product schedule parameters plus documented native Setting operation",
+  "product_entry": "config.yml longhorn_recurring_jobs.parameters.full-backup-interval + kubecli setup longhorn-v2-gate 09; native Setting explicitly UID/RV-guarded as documented operational interface",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-detached-backup-qualification",
+  "expected_marker": "LONGHORN_V2_DETACHED_BACKUP_QUALIFICATION_PASS",
+  "smallest_disproof": "same fixed focused command after local static preflight; not launched yet",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots/"
+  ],
+  "conclusions": [
+    "Detached policy permits temporary native attachment. Observe attached state without workload consumers, completed requests and return to detached; do not require detached throughout execution.",
+    "app/recurring_job.go increments status.executionCount before NewJob captures it. app/recurringjob/volume.go requests full iff executionCount modulo interval is zero. Failures or skipped jobs can consume counts. Bind exact Starting volume job fields from successful Pod to its Job owner and Backup.spec.snapshotName/backupMode.",
+    "An incremental request can produce a full initial backend backup; IsIncremental=false alone cannot validate the periodic parameter.",
+    "Use backup-force-create to obtain recovery points without new writes. Reuse official mature block-upload mechanism; read actual config and every referenced object, then independent restore, source-write isolation and cross-node readback.",
+    "Stop exact owned schedule before restoring original Setting UID/value, then clean business and backup/store/relay fixtures. Unknown identity or mutation response retains journal."
+  ],
+  "reuse": [
+    "tests/evidence/longhorn-v2-recurring-source-20261020.json",
+    "tests/evidence/longhorn-v2-backup-source-20261020.json",
+    "tests/evidence/longhorn-v2-recurring-backup-qualification-20261020.json"
+  ],
+  "scope": "Does not sign off DR, LONGHORN-48 module, all acceptance or physical block corruption overwrite; no new image required",
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots.md": "6dffd2015e7b320287f1392ddf59511fd6ce3b4fb8e2e369588e1071db04b41b",
+    "manager-1.12.1/app/recurring_job.go": "a2d308fbc2abbed62706f4c804a9dc0b0f953c86e147e34182a78542028c03b7",
+    "manager-1.12.1/app/recurringjob/job.go": "fc0f1342aeaa7588d74eef9ea3a052be042a4eab483f3ea643a6611b2af496b1",
+    "manager-1.12.1/app/recurringjob/volume.go": "ddf2ef96d55f0f4846ef9707dce09cf4ea803331d841036cdb2ca5e4fcbc6717"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-16 prerequisite only",
+  "date": "2026-10-19",
+  "status": "pending",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-recurring-rotation-qualification </dev/null",
+  "durable_pid": 2754674,
+  "rc": 1,
+  "failure_markers": 2,
+  "classification": "test-gate:300s unselected-cycle drain did not cover native recurringjob BackupProcessStartTimeout90 iterations at5s plus next Cron cycle",
+  "first_failure": "TimeoutError: credential-source-unselected-cycle after300s",
+  "observed": {
+    "first_scheduled_backup_uid": "a8f248bf-e9e7-463b-a657-20e76038f9da",
+    "replacement_scheduled_backup_uid": "7940725a-bcd9-49f7-8a4a-0825d83561b4",
+    "failed_backup_uid": "df0b2e48-cca7-48be-9319-0c674204a1b6",
+    "failed_backup_name": "backup-18e1ee579ecd4fb4",
+    "failed_backup_state": "Error; progress0; InvalidAccessKeyId",
+    "refusal_path": "post-admission Backup Error; new pre-admission branch not exercised in this run"
+  },
+  "cleanup": "Original target reference and schedules restored/stopped; scoped credential accounts, Secrets, business volumes, native backups and backup store/transport cleaned. Registry transport cleaned and original installation healthy; overall rc remains1. No qualification PASS.",
+  "boundary": "68 remote product/gate inputs match pre-run frozen evidence. Later local nativeUUID/drain fixes were not synced into this failed run.",
+  "official_source": "longhorn-manager v1.12.1 8320238242e8c804325d9588ec1db10feb9f36b8 app/recurringjob/constant.go and volume.go waitForBackupProcessStart",
+  "repair_contract": "tests/unit/test_longhorn_recurring_rotation_business.py test_revoked_backup_drain_allows_native_start_timeout_and_next_unselected_cycle;300s red,600s green",
+  "files": {
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-232447/durable-status.txt": "47f053911828008f7cfcb6bbfd512abd5e1d3795766820539cf2cf230d1afbfe",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-232447/first-failure-diagnostics.txt": "c0453954570b73b9bc8bbc3b8b0c1cdc5d3a435df0bfb8027ee8afb5f3d71d16",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-232447/gate.log": "9cf797e572d68b2b2983e437dfd9c622c527b8f25798b410c1a3ae3a20d725df",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-232447/final-frozen-source.json": "6d75e36503665422db954775575b2426667686ea81ba417ae6bf365d9a35e8b6"
+  }
+}

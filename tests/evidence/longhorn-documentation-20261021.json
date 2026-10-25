@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "case": "LONGHORN-42",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-documentation",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_DOCUMENTATION_PASS",
+  "scoped_clean_marker": "LONGHORN_DOCUMENTATION_SCOPED_CLEAN_PASS",
+  "document_sha256": {
+    "docs/storage/longhorn/development-manual.md": "ed6d882a1cd8e0065fb47ddcdc09c40c01578b7a0bcdabb4b5b4afaa8358b506",
+    "docs/storage/longhorn/operations-manual.md": "afc4555701e320a237bc79edd911c3c6a2f4675a9c91daf51688d828fed24010",
+    "docs/storage/longhorn/technical-whitepaper.md": "db096612cc87dd93123ed748a05e7bf7f4c93b572e98a66c5608111b88692f60"
+  },
+  "content_review_evidence": "tests/evidence/longhorn-documentation-content-review-20261021.json",
+  "source_coverage": {
+    "status": "pass",
+    "version": "1.12.1",
+    "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "total": 168,
+    "read": 146,
+    "excluded_with_reason": 22,
+    "unclassified": 0,
+    "cited_official_pages_in_read_inventory": 29,
+    "record": "logs/longhorn-cases/documentation-content-review-20261021/reused-reading-map.json",
+    "boundary": "Reused prior scoped official readings and conclusions; no new whole-site reading claim or upstream GA converted to project PASS."
+  },
+  "reader_paths": {
+    "novice": {
+      "status": "pass",
+      "scope": "Author document walk-through; no reader/field execution claimed",
+      "path": [
+        "规划与公共会话",
+        "选择V1文件系统盘或V2稳定身份裸盘",
+        "主机/页池/CPU预算与PKI",
+        "config+download+setup09",
+        "显式引擎StorageClass与PVC/应用Pod",
+        "fsync确认、跨节点重挂摘要",
+        "外部备份与新目标恢复"
+      ],
+      "checks": "版本、角色、管理位置、DEPLOYMENT/KUBECONFIG和凭据来源在进入命令前确定；V2跳过V1格式化；应用示例保留节点约束、等待与业务判据；输入未知、超时和数据不符均停止。无默认context或作者隐藏环境。"
+    },
+    "experienced": {
+      "status": "pass",
+      "scope": "Author task/index/parameter/incident path check; no independent reviewer claimed",
+      "path": [
+        "任务索引定位任务",
+        "公共上下文和任务专用前置",
+        "读取原UID/config/容量与备份",
+        "单项产品或明确原生操作",
+        "等待原生终态和业务结果",
+        "按原值/原身份恢复并限定回收"
+      ],
+      "checks": "扩容、checksum、full-copy/linked、计划、SystemRestore/DR、节点盘、故障、安全、升级与退出均有对应入口；参数速查区分默认/省略/0及动态或停卷；两份故障账本、外部引用块与新目标业务是结果判据，Pod Ready不代签；原生保护拒绝不强拆finalizer。"
+    }
+  },
+  "rendered_diagrams": 8,
+  "files": {
+    "tests/evidence/longhorn-documentation-content-review-20261021.json": "935b8b11db16bdac199d0d181f5425e54483bf60699b8eef7e8f2a7a45b53b08",
+    "logs/longhorn-cases/documentation-20261021-135503/gate.log": "2fdf29dd13a9193f2dab9718c2363037143fa50cfe3013826902f7d8686101e7",
+    "logs/longhorn-cases/documentation-20261021-135503/status.json": "2d2916ba55326e73565ab86180a3ddff2aa14a748cd0e11c6091cfa60cc20fce",
+    "tests/helpers/longhorn-documentation.py": "21296cb233516d6bac48091b1ed6cd98eb7c59056f7615a836ea07a19623f53c",
+    "tests/helpers/longhorn-runner.sh": "97cd1321da9b5ca2ac4ecbecdf88aeb084eebc3b2d6d0e040ea22d4ed6d02ecc",
+    "tests/unit/test_longhorn_documentation.py": "bc04cda5d17e4c3025a57343902e12a16ea3a3eae3198c192da2bc920ec2cbc6"
+  },
+  "boundary": "Three formal manuals, author content/source/two-reader-path review and fixed local evidence gate. No live execution, independent customer review or customer signature claimed; overall product matrix remains pending."
+}

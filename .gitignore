@@ -15,6 +15,7 @@ logs/mongodb-cases/
 logs/mongodb-failures/
 logs/mongodb-static/
 logs/mongodb-documentation/
+logs/longhorn-cases/
 logs/ext-images-delivery/
 logs/ceph-rocky9-inflight-dependencies.json
 !logs/README.md

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-29",
+  "date": "2026-10-19",
+  "status": "failed",
+  "class": "test-gate",
+  "rc": 1,
+  "durable_pid": 2399678,
+  "first_failure": "The finish hook constructs a new Probe with snapshot=\"\". A still-reported, usercreated snapshot with the original run-owned name is rejected as unowned after remount; ownership was not carried in prepare proof.",
+  "observations": "Native actions succeeded after network-path repair; all original replicas measured baseline 111247360, snapshot-retained 178364416, deleted-file-valid-snapshot 178425856 bytes. Final trim/reclaim assertions were not reached.",
+  "cleanup": "Business and Registry transport scoped cleanup markers; core identity and installation health passed; healthy baseline retained.",
+  "next_scope": "Keep network-path repair proven by the owning branch. Consult pinned V1 engine deletion/purge rules; bind only original snapshot name+UID and deletion state across phases; reject replaced or valid snapshots and all foreign snapshots.",
+  "files": {
+    "logs/longhorn-cases/trim-20261019-135836/trim-snapshot-contract-red.log": "0926ce4b572525b3d934ae84d7ca2c17323d57ba94cecf732aee2a7d09159f9b",
+    "logs/longhorn-cases/trim-20261019-135836/frozen-source.txt": "d98090e050dfdf860248486ebd69435c86f1805003e2039d0f31dc2e607d1983",
+    "logs/longhorn-cases/trim-20261019-135836/durable-status.txt": "16acaad535510c123d39abd5ac0f19ecdcfa2f8451f8a7b5fa9cb81b5524802a",
+    "logs/longhorn-cases/trim-20261019-135836/trim-repaired-traceback.log": "abe1afd3afbb95e045da2c15dc625fa41b13dfc93e7e04ac4a27f1870e9e3da4",
+    "logs/longhorn-cases/trim-20261019-135836/trim-snapshot-contract-green.log": "d69d3f2e25fe0ef4da38ee12c04412a32c323e7e99531fa1e6ff03ada32e642f",
+    "logs/longhorn-cases/trim-20261019-135836/trim-repaired-business-diagnostics.log": "86de5cd24b1f6b35b56449beeabd3ef3a2fdc573b5f0ac669d093560be573601",
+    "logs/longhorn-cases/trim-20261019-135836/gate.log": "0e520935828d3d5ae6cce6093e5a0e33e7f9802071cb3cb7de1483cfd2cf0a94"
+  },
+  "official_reference": {
+    "documentation": "https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-a-snapshot/#data-engine-behavioral-differences",
+    "engine_commit": "1fa902f0061b84b92af445c38392bfeb99faffb2",
+    "engine_files": [
+      "pkg/replica/replica.go:processPrepareRemoveDisks",
+      "pkg/replica/replica.go:UnmapAt"
+    ]
+  },
+  "repair_contracts": {
+    "red": "Original retained Removed V1 snapshot rejected in both persisted-CR and absent-CR subcases",
+    "green": "10 TRIM and 44 documentation contracts; refuses replaced UID, wrong volume/request/proof, valid or non-deleting snapshot, and any foreign user snapshot",
+    "product_or_policy_changes": false
+  }
+}

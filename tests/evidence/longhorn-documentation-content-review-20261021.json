@@ -1,0 +1,1021 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "case": "LONGHORN-42 content/source/reader-path review",
+  "status": "author-content-review-pass",
+  "classification": "Author complete-manual content and two-reader-path check, reusing unchanged fixed official readings and scoped evidence. No independent review, customer sign-off or live operation. Fixed-runner acceptance is separate.",
+  "document_sha256": {
+    "docs/storage/longhorn/development-manual.md": "ed6d882a1cd8e0065fb47ddcdc09c40c01578b7a0bcdabb4b5b4afaa8358b506",
+    "docs/storage/longhorn/operations-manual.md": "afc4555701e320a237bc79edd911c3c6a2f4675a9c91daf51688d828fed24010",
+    "docs/storage/longhorn/technical-whitepaper.md": "db096612cc87dd93123ed748a05e7bf7f4c93b572e98a66c5608111b88692f60"
+  },
+  "source_coverage": {
+    "status": "pass",
+    "version": "1.12.1",
+    "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "total": 168,
+    "read": 146,
+    "excluded_with_reason": 22,
+    "unclassified": 0,
+    "cited_official_pages_in_read_inventory": 29,
+    "record": "logs/longhorn-cases/documentation-content-review-20261021/reused-reading-map.json",
+    "boundary": "Reused prior scoped official readings and conclusions; no new whole-site reading claim or upstream GA converted to project PASS."
+  },
+  "content_review": {
+    "status": "pass",
+    "coverage": [
+      {
+        "requirement": "正式范围、导航及两种磁盘",
+        "sections": "全部三份手册导言及运维手册#数据引擎与磁盘选择",
+        "finding": "区分 host diskType 与 PVC volumeMode；V2 自 1.12.0 GA，experimental UBLK/sharded 单列；AIO/PCI/现场缺口保留",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "V2 机制、资源与设备归属",
+        "sections": "technical-whitepaper.md#v1-与-v2-的数据面选择；operations-manual.md#数据引擎与磁盘选择；development-manual.md#v2-集成契约",
+        "finding": "SPDK RAID1/lvol 与共享 IM、mask 与独占 CPU、hugepages 与 anonymous 调度差别、iobuf 与 QoS、AIO 与 PCI 接管和 runtime 退役判据有机制、例子及停止恢复；不承诺未验收路径",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "首次生产路径",
+        "sections": "operations-manual.md#规划与操作上下文 至 #独立-pvc-与确认写入",
+        "finding": "角色、位置、kubeconfig、inventory、主机与 PKI 输入、产品入口、1800/600 秒等待、PVC/副本/确认文件与重挂及幂等检查连续；V2 不覆盖为 V1 模板",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "权限、访问模式与消费者迁移",
+        "sections": "operations-manual.md#访问模式和文件权限、#中间件消费与存储迁移；白皮书 PVC/RWX 机制与实践",
+        "finding": "RWO/RWOP/Block/RWX 区分；十类消费者字段与代码相符；按各应用入口新建或迁移，数据库冗余叠加及共同故障域说明；已测 RWX 权限/锁与无持锁故障范围分开",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "副本确认、重建与故障",
+        "sections": "technical-whitepaper.md#副本与故障恢复；operations-manual.md#故障恢复",
+        "finding": "不称多数派协议，不把 write 成功等同事务持久；WO/RW、revision counter、重建方式和资源因果解释；进程故障、engine/IM/Manager 样本保留 I/O 错误、重试、人工重建和未测断电/节点/网络边界；新增V2远端IM和Manager正常DELETE分别解释84.87/44.243秒的计时边界、319+20/205+19确认条数、原客户端rc=0/零重试与跨节点读回，不能推导附着端或断电。",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "容量、副本变更与扩容",
+        "sections": "两份用户文档的容量章节、#加盘换盘与副本均衡",
+        "finding": "调度公式区分 reserved 与 minimum available 的分母，Bfree/Bavail 和配额边界；副本期望与实际回收分开；扩容三层容量/新区间数据，不能缩容，V2 分支及静态/实测范围明确",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "TRIM、快照链与物理空间",
+        "sections": "白皮书快照链、TRIM 同卷测量；operations-manual.md#保留删除和-trim",
+        "finding": "解释稀疏链读索引、removed/CR 保留、有效快照与 unmap；实测区分应用空闲与宿主分配，禁止直接删副本文件或用 V1 CR 断言验 V2",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "性能、官方成果与外推",
+        "sections": "technical-whitepaper.md#当前文件系统基线如何解释、#如何使用官方规模与性能报告；operations-manual.md#性能与稳定性验证",
+        "finding": "本项目热缓存/小数据/单客户端与历史官方 1.6.x EC2 规模数据分别列硬件、版本、负载和缺失条件；分位与吞吐分母、窗口非峰值、重建碎片影响解释清楚，不外推 SLA 或 V2 阈值",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "快照、克隆与恢复隔离",
+        "sections": "operations-manual.md#创建与恢复快照、#从现有-pvc-克隆隔离工作副本；白皮书对应机制实践",
+        "finding": "原生/动态/静态 CSI 接口与容量未知语义分开；新目标身份、容量、副本、时间边界及双向隔离，V1 克隆等容量和中间单副本状态明确；源卷保留；补齐V2 full-copy源退役后先旧摘要重挂再新写的真实顺序；linked/nested解释同盘依赖与叶到根退出，默认TLS下在已证明的上游缺陷处前置停止，发布与采用证据未完成不放行。",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "备份目标、保护与恢复",
+        "sections": "operations-manual.md#备份与恢复；白皮书对应全量/增量、拒绝与恢复实践",
+        "finding": "外部故障域、稳定密钥、CA 去首尾空白、URL/轮询和最小权限；目标 available、Completed、引用块可读与新卷恢复分层；凭据/TLS/网络分类，禁止对象库直接过期块",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "周期计划、保留及轮换",
+        "sections": "operations-manual.md#计划保留与凭据轮换；白皮书三项周期实践；开发手册计划语义",
+        "finding": "UTC/时区、选择、detached 跳过、retain 与本地快照数量、任务计数的 full 间隔、卷级错误不保证 Job 失败、在途排空及 Foreground 删除说明；实际账户撤销、失败点与恢复数据分开，396秒不是承诺",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "系统恢复、DR 与回切",
+        "sections": "operations-manual.md#系统恢复与站点灾备；technical-whitepaper.md#恢复系统恢复与-dr-的区别",
+        "finding": "完整数据保护现有十一项组合已形成真实业务结果；正文区分资源包、同集群缺失卷恢复和独立DR，明确应用Namespace/Secret另备，Completed后等待Bound、双向软件隔离和目标新数据回主站新卷；不外推独立SystemRestore或基础设施fencing。",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "节点磁盘维护、救援及孤儿",
+        "sections": "operations-manual.md#节点与磁盘生命周期、#故障恢复；白皮书相关机制",
+        "finding": "V1 挂载和 V2 裸盘操作分支，禁调度不搬数据、驱逐/取消顺序、最终空盘/实例与附着检查、额外盘开机挂载保护；孤儿类型/不可逆删除、全部副本故障保留、隔离拷贝救援未交付边界明确",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "密钥、证书、网络与监控",
+        "sections": "operations-manual.md#安全维护；technical-whitepaper.md#安全与运维边界",
+        "finding": "LUKS头/容量与 Secret 替换不重加密、keyslot/派生边界；mTLS 启动加载和分阶段 CA 撤回；9500同时暴露 API 信任边界，HA webhook、真实允许拒绝和指标过时/缺失分开；监控任务当前待验",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "升级及退出",
+        "sections": "operations-manual.md#升级与恢复出口、#下线与保留；白皮书对应章节",
+        "finding": "1.12.0 源版本恢复点、pre-upgrade 与已迁移状态、V1在线/V2停卷、不可降级、新备份复验；Bound/Retain/Released 非空拒绝、原生 hook、外部备份与共享快照保留、guard/receipt 身份和主机保留边界",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "开发维护、接口及证据",
+        "sections": "development-manual.md 全文；operations-manual.md#参数速查；白皮书#依据与验证范围",
+        "finding": "配置/控制器/主机职责，固定制品集合、只在歧义查源码、节点并发、request UID与摘要、计划ledger、原生CSI无标签、54项独立验收；官方旧默认/指标/字段逐项校正而不修改无关消费者",
+        "result": "pass",
+        "basis": "Reuse fixed official topic readings and prior full content check; review current changes and their operation-evidence mapping."
+      },
+      {
+        "requirement": "中断模式变更与进程生命周期",
+        "sections": "operations-manual.md#v2-运维分支与停止条件；technical-whitepaper.md#spdk-的性能收益依赖资源保障；development-manual.md#验证与交付",
+        "basis": "固定1.12.1中断模式主题、产品入口与本轮partial证据",
+        "finding": "附着时拒绝；分离后polling→interrupt→polling，原Setting/3 IM UID保持、每次3 Pod UID替换；原9 MiB和新19条账本跨节点读回。正文有true/false产品操作、600/1800秒观察、失败停步、恢复原值与消费者，不声称CPU节约或性能等价。",
+        "result": "pass"
+      }
+    ],
+    "closed_defects": [
+      {
+        "defect": "新实践后白皮书导言仍只称两个克隆/故障子场景，生命周期总述笼统称V2业务恢复尚未验收",
+        "fix": "按完整数据保护、克隆/故障/中断的不同范围表述，保留完整运维和最终交付pending；正文末验证范围同步",
+        "verification": "Current whole-document content and scope check; evidence51 scopes remain distinct."
+      },
+      {
+        "defect": "开发手册仍称TLS修复仅为未构建提案；完成评审期间又取得正式发布结果",
+        "fix": "按双架构双仓receipt写明固定派生标签、相同索引digest与真实TLS测试；保持产品采用和linked资格pending，不将制品成功写作项目通过",
+        "verification": "正式receipt核验status=pass,durable_rc=0,zero failure,single image；同SHA Actions attempt2及双仓digest；root已固定源码消费者新pin，现场采用及linked资格仍pending。"
+      },
+      {
+        "defect": "既有渲染映射只有7图，而linked依赖解释使当前正文实际有8图",
+        "fix": "验证原7图源摘要保持，使用已缓存Mermaid11.12.0与Chrome渲染第8图并查看PNG；所有8图逐一登记",
+        "verification": "New SVG/PNG archived; visual directions, labels, layout and current source matched."
+      }
+    ],
+    "open_blocking_document_defects": []
+  },
+  "reader_paths": {
+    "novice": {
+      "status": "pass",
+      "scope": "Author document walk-through; no reader/field execution claimed",
+      "path": [
+        "规划与公共会话",
+        "选择V1文件系统盘或V2稳定身份裸盘",
+        "主机/页池/CPU预算与PKI",
+        "config+download+setup09",
+        "显式引擎StorageClass与PVC/应用Pod",
+        "fsync确认、跨节点重挂摘要",
+        "外部备份与新目标恢复"
+      ],
+      "checks": "版本、角色、管理位置、DEPLOYMENT/KUBECONFIG和凭据来源在进入命令前确定；V2跳过V1格式化；应用示例保留节点约束、等待与业务判据；输入未知、超时和数据不符均停止。无默认context或作者隐藏环境。"
+    },
+    "experienced": {
+      "status": "pass",
+      "scope": "Author task/index/parameter/incident path check; no independent reviewer claimed",
+      "path": [
+        "任务索引定位任务",
+        "公共上下文和任务专用前置",
+        "读取原UID/config/容量与备份",
+        "单项产品或明确原生操作",
+        "等待原生终态和业务结果",
+        "按原值/原身份恢复并限定回收"
+      ],
+      "checks": "扩容、checksum、full-copy/linked、计划、SystemRestore/DR、节点盘、故障、安全、升级与退出均有对应入口；参数速查区分默认/省略/0及动态或停卷；两份故障账本、外部引用块与新目标业务是结果判据，Pod Ready不代签；原生保护拒绝不强拆finalizer。"
+    }
+  },
+  "checks": {
+    "status": "pass",
+    "checks": {
+      "local_links": 214,
+      "yaml_blocks": 22,
+      "bash_blocks": 44,
+      "heredocs": 5,
+      "inline_c": 9
+    },
+    "contract_tests": {
+      "modules": [
+        "test_storage_documentation",
+        "test_middleware_documentation",
+        "test_documentation_contract"
+      ],
+      "tests": 53,
+      "rc": 0,
+      "log": "logs/longhorn-cases/documentation-content-review-20261021/contracts.log"
+    },
+    "rendering": {
+      "status": "pass",
+      "total": 8,
+      "reused": 7,
+      "newly_rendered_and_viewed": 1,
+      "diagrams": [
+        {
+          "document": "docs/storage/longhorn/operations-manual.md",
+          "index": 0,
+          "source_sha256": "94838bffa49df7d93e4bf305384e2af5ce09b413877846fdda8854311474661e",
+          "status": "reused-render-and-visual-review",
+          "evidence": "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json",
+          "boundary": "Previously rendered and visually reviewed source identity retained in archived review. Historical /tmp images are no longer available; no new rendering or new visual review of these seven diagrams is claimed."
+        },
+        {
+          "document": "docs/storage/longhorn/operations-manual.md",
+          "index": 1,
+          "source_sha256": "645492b3ab3bd5845800f8655a85a7dcb8307343eea8d69dfcf94b108ba1a331",
+          "status": "reused-render-and-visual-review",
+          "evidence": "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json",
+          "boundary": "Previously rendered and visually reviewed source identity retained in archived review. Historical /tmp images are no longer available; no new rendering or new visual review of these seven diagrams is claimed."
+        },
+        {
+          "document": "docs/storage/longhorn/technical-whitepaper.md",
+          "index": 0,
+          "source_sha256": "187c80ba6e5646e56e5b570e44fa3306a63a4e0d0adf76c97ad0d087c37ae2c6",
+          "status": "reused-render-and-visual-review",
+          "evidence": "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json",
+          "boundary": "Previously rendered and visually reviewed source identity retained in archived review. Historical /tmp images are no longer available; no new rendering or new visual review of these seven diagrams is claimed."
+        },
+        {
+          "document": "docs/storage/longhorn/technical-whitepaper.md",
+          "index": 1,
+          "source_sha256": "a4a80009499d12280ef917ba392a9b28f1c8bf15d6f65068156da07847364910",
+          "status": "reused-render-and-visual-review",
+          "evidence": "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json",
+          "boundary": "Previously rendered and visually reviewed source identity retained in archived review. Historical /tmp images are no longer available; no new rendering or new visual review of these seven diagrams is claimed."
+        },
+        {
+          "document": "docs/storage/longhorn/technical-whitepaper.md",
+          "index": 2,
+          "source_sha256": "3257eb8bc2f9eb06e951e0896946d2b5700e97e2deb0b0de3bf2b3be0fea5dcb",
+          "status": "reused-render-and-visual-review",
+          "evidence": "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json",
+          "boundary": "Previously rendered and visually reviewed source identity retained in archived review. Historical /tmp images are no longer available; no new rendering or new visual review of these seven diagrams is claimed."
+        },
+        {
+          "document": "docs/storage/longhorn/technical-whitepaper.md",
+          "index": 3,
+          "source_sha256": "a9196441b9ac92f123793e281766c1a939f045b86d6e2e49f90b88ce7c40ffb7",
+          "status": "reused-render-and-visual-review",
+          "evidence": "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json",
+          "boundary": "Previously rendered and visually reviewed source identity retained in archived review. Historical /tmp images are no longer available; no new rendering or new visual review of these seven diagrams is claimed."
+        },
+        {
+          "document": "docs/storage/longhorn/development-manual.md",
+          "index": 0,
+          "source_sha256": "df90ab2cbeda456b3224fd728b92a6a81630dccb1c5e6f54a23086d1c5b97ee4",
+          "status": "reused-render-and-visual-review",
+          "evidence": "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json",
+          "boundary": "Previously rendered and visually reviewed source identity retained in archived review. Historical /tmp images are no longer available; no new rendering or new visual review of these seven diagrams is claimed."
+        },
+        {
+          "document": "docs/storage/longhorn/technical-whitepaper.md",
+          "index": 4,
+          "source_sha256": "2a1e709cae9075b492de4fec775e1b10968aa545d625f4e1b90e930fc1d1804a",
+          "status": "rendered-and-visually-reviewed",
+          "renderer": "Mermaid 11.12.0 in Chrome 131.0.6778.204; npm-cache tarball SHA512 verified",
+          "svg": "logs/longhorn-cases/documentation-content-review-20261021/linked-clone.svg",
+          "png": "logs/longhorn-cases/documentation-content-review-20261021/linked-clone.png",
+          "finding": "Viewed PNG: nested to linked and linked to source references point to their correct parents; each read baseline points to the appropriate entry snapshot; both snapshots belong to the corresponding parent. Labels and all edges are visible without overlap or clipping."
+        }
+      ]
+    },
+    "boundary": "Syntax, links, source/render identity and deterministic contracts are separate from author content review and operation evidence."
+  },
+  "operation_evidence": [
+    {
+      "path": "tests/evidence/longhorn-backup-20261019.json",
+      "sha256": "d5120e447d2e145ac52139fd06d15759fedf5e8f7eabd9ec9b75cfb066e44d2c",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 4,
+      "boundary": "Full/incremental external S3-compatible TLS backup and independent new-volume restores only; no scheduled retention, credential refusal, DR, system restore, disaster durability or full delivery acceptance. Prior failures are retained separately. Frozen source records actual remote inputs before subsequent local performance changes."
+    },
+    {
+      "path": "tests/evidence/longhorn-backup-accounts-qualification-20261019.json",
+      "sha256": "d718ed74830b654ecc2f8f4dd6bf89e12245251dbb2d4de5207a1c147d3a9171",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 4,
+      "boundary": "Focused prerequisite qualification only; full LONGHORN-16 and final delivery remain pending. 66 actual synchronized inputs unchanged during execution."
+    },
+    {
+      "path": "tests/evidence/longhorn-backup-refusal-20261019.json",
+      "sha256": "d41783eaf7b41bad2f41f63add92a646b038cdcae793ba602dda18efbf6c2321",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused backup-refusal acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-clone-20261019.json",
+      "sha256": "cf19b529f27c9877408208c31cdfcf5f24660117f3a5373c5d012cf3cdaa88fd",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused clone acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-encryption-20261019.json",
+      "sha256": "322ac564cfd948cc55e497ecc135b5377bc6110416bbd2a6a6d60d3fc56d37b2",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "One original complete gate covers Filesystem, Block and encrypted full/incremental backup/restore on three independent filesystem disks; no assembly of focused runs. The62actual launch inputs were captured before later local network/security integration. New scenario dispatch/cleanup code is separately static-tested; this evidence does not claim mTLS/network/full delivery acceptance."
+    },
+    {
+      "path": "tests/evidence/longhorn-engine-failure-20261019.json",
+      "sha256": "e6a49b7c924c476f502d997697014dac048088cefd6ea6c0f543ffe3b5e0ce34",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 4,
+      "boundary": "Focused engine-failure acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-expansion-20261019.json",
+      "sha256": "0c497e65e5c8fee43f8e446db96e64c0834ec519220a565cac3bf3af494fce19",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused expansion acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-idempotence-20261019.json",
+      "sha256": "552e89e910ad044c85f46256e6f798404a8e3d15acea02aae6dace7de6ab299a",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused idempotence acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-install-20261020.json",
+      "sha256": "549d996f04e861a1b6ada3863bfc39070e531d03d4954a1213b78679b7ec3c6e",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 74,
+      "boundary": "Current client-inventory selector and V1 per-client InstanceManager health accepted through fresh product installation. Healthy six-node core and previously qualified exact disk fixture reused after complete native/host recovery. V1 installation only; no V2, full native uninstall or complete clean delivery acceptance. Supplemental read-only diagnostic began before the new CRDs/Pods were created and includes historical host logs; those do not identify a current install failure."
+    },
+    {
+      "path": "tests/evidence/longhorn-network-policy-20261019.json",
+      "sha256": "02a68b1731023949ea6cc594c235a0e01a5b9682b6db430422b262e7f1cb3407",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Current default policy semantics: paired positive controls and36formal native timeout observations; same-namespace metrics and HA dry-run paths. No external Prometheus, webhook source-CIDR refusal, mTLS or full-delivery claim. Source captured at launch before subsequent local-only security improvements."
+    },
+    {
+      "path": "tests/evidence/longhorn-performance-20261019.json",
+      "sha256": "4fb9edf2f9db3d407727835513c96ac4851aedddc65dac9f43b4cd03bc766432",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused performance acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs. This run used the frozen host checker before the subsequent open-iscsi version-refusal change; no installation/platform qualification for that change is inferred. Warm-cache single-client buffered filesystem baseline only; no production limit or 30-minute stability/fault evidence."
+    },
+    {
+      "path": "tests/evidence/longhorn-reclaim-20261019.json",
+      "sha256": "86a9b2156f3131bf4755fd165ad062bd6bf66ceb5ddbd018c08c0e5cd5745eeb",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused reclaim acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-recurring-20261020.json",
+      "sha256": "11e1b1b52a885c1b9ebeea535e646d5b3eeee830cb37e8ec495c1fdde0f42cfb",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 74,
+      "boundary": "V1 recurring module only. Does not qualify V2, other pending cases, clean full-run acceptance or production SLA."
+    },
+    {
+      "path": "tests/evidence/longhorn-recurring-backup-qualification-20261019.json",
+      "sha256": "d1acb0fcb2f5a8120ebf354903a61738b96dc44c39e6212cfd0d413cc3b1a247",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 4,
+      "boundary": "Focused prerequisite qualification only; full LONGHORN-16 and final delivery remain pending. 67 actual synchronized inputs unchanged during execution."
+    },
+    {
+      "path": "tests/evidence/longhorn-recurring-snapshot-qualification-20261019.json",
+      "sha256": "2e07437354ceb1382f82dfa1867d12e4f7e478d79cdc6b6ac6d2859cfc5cf193",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 4,
+      "boundary": "Focused prerequisite qualification only; full LONGHORN-16 and final delivery remain pending. 67 actual synchronized inputs unchanged during execution."
+    },
+    {
+      "path": "tests/evidence/longhorn-replica-failure-20261019.json",
+      "sha256": "354d53596434d3374067faf33b764054f1d94e59d75155a060fff1e73d9cbd49",
+      "status": "partial",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Single replica process-fault subcase only. Physical disk failure and full LONGHORN-19 acceptance remain pending; no fault RTO, power-loss or full delivery guarantee. Frozen inputs record the corrected58file source."
+    },
+    {
+      "path": "tests/evidence/longhorn-replica-scale-20261019.json",
+      "sha256": "5d7e06cf2d37211eb1627670653b5e8cba4ff04579f45af78ea26855d1744d94",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused replica-scale acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-rwo-20261019.json",
+      "sha256": "7bac6913bcaaef5e644f08d514c60cda5ae9147f67b37606a1d582d588c2d604",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "This focused module does not establish RWX, backup, fault, performance, upgrade or full clean delivery acceptance. Historical failed attempt and scoped recovery remain separately recorded."
+    },
+    {
+      "path": "tests/evidence/longhorn-rwx-20261019.json",
+      "sha256": "9cf0abd25783a2c37bd43fb0c92bc128432fc2304d287f8eab62698fb55e6d46",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused rwx acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-security-20261019.json",
+      "sha256": "cf568c32373d2a4e1e378f57dff20ee8e5c6225f8958cfc348a1c9496cf7afc0",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 4,
+      "boundary": "One complete frozen63-file run; no focused-result assembly. Maintained one owned2GiB V1 three-replica volume, detached and zero native processes before every trust mutation/restart; actual new-only-CA CSI mount/read, then reverse staged recovery to exact original materials and cross-worker data proof. Does not prove uninterrupted online certificate reload, encryption of all V1 replica traffic, UI identity federation or full Longhorn delivery. Later local-only accounts/recurring helpers were not executed inputs of this run."
+    },
+    {
+      "path": "tests/evidence/longhorn-snapshot-20261019.json",
+      "sha256": "01630cbb0b8c1c1f4ebaefe786ca875aa33e7413a250b21e22f011afb662a096",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 4,
+      "boundary": "Focused snapshot acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-trim-20261019.json",
+      "sha256": "a3156ce904e748098d18ab52a3aeef28f8dd8e253212b2e9003e3b95e04b90a5",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 3,
+      "boundary": "Focused trim acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs."
+    },
+    {
+      "path": "tests/evidence/longhorn-uninstall-20261020.json",
+      "sha256": "42bf8171aa1d7ca93aa0efdda1fa3c460ca0137b4d0ac3a3f2ba3ada3a6dd4e0",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 75,
+      "boundary": "V1 1.12.1 owned installation removed through actual native hook. External backup survives target fixture retirement, source removal and uninstall, with full readback after namespace/CRDs disappear. Target is explicitly disconnected before source fixture cleanup; does not independently test connected-target uninstall safeguard. Shared snapshot identities/core preserved, own disk/host/store/transport fixtures cleaned. Does not sign off interruption cleanup, V2, other pending modules or final clean full regression."
+    },
+    {
+      "path": "tests/evidence/longhorn-uninstall-refusal-qualification-20261020.json",
+      "sha256": "ad5d68b6751065f5d390db77368d7fe7aa7b0b687f0a2d17af2aed86d51a1531",
+      "status": "qualification-pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 75,
+      "boundary": "Bound and Released nonempty protection only. Healthy original core/storage retained. No empty-store uninstall, external backup retention, interruption or clean full-run acceptance. Later local retention-qualification additions are not part of this executed source."
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-aio-install-qualification-20261020.json",
+      "sha256": "98e84e53cf1be8c150d375f1b98bc123656b7f636f8f2db3f97e133930efb41c",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 115,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-backup-qualification-20261020.json",
+      "sha256": "23f5f943d1904251fd6798241a02ce48092122a20508edcc21178756494c70bf",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 126,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-backup-refusal-qualification-20261020.json",
+      "sha256": "16d3410e8fbff2e6b8859ff7632207f3eda12405ce97f81ca4f7938792c9b409",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 126,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-broken-restore-qualification-20261021.json",
+      "sha256": "19c55c473d52fde0da1f297d7df5eeed83128c83b15314c31e391ac37f105978",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 210,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-data-protection-complete-20261021.json",
+      "sha256": "7db8158d801ba05b70f5e14c3c37471b0b32227505e7268bb63198262c4d518e",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/development-manual.md",
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 213,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-detached-backup-qualification-20261020.json",
+      "sha256": "33f25413934eedde286508b191019e364d3f701fb6b50ffd721ddb3ee8402d88",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/development-manual.md",
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 160,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-dr-activation-qualification-20261021.json",
+      "sha256": "64812bf58b29ad72d2e43e891df8cb7a2b608ff71173167099db6df567afcd32",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 196,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-dr-failback-qualification-20261021.json",
+      "sha256": "39e2bdc03f356604ea7ac97d6f91d139f076bc1dc39d64051626ddbf924c8b75",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 198,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-dr-standby-qualification-20261021.json",
+      "sha256": "d60ab13a32a9dfc5c326c7d14cf080676df2f4916b83f458bbb66a6954a78870",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 190,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-encryption-qualification-20261020.json",
+      "sha256": "32b58ed73d40c40c80a59664f64f9974f9fef6ac72cff993055f3cb75c5d9fce",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 118,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-expansion-qualification-20261020.json",
+      "sha256": "dd6b509e30ad9f1275e65395ddf1a08dfcafe0eedfc009243367c976f3b37629",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 118,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-full-copy-clone-qualification-20261020.json",
+      "sha256": "61b80a074e4cdd79d2afb02e05e8be7dfc9a7a030b56ea391a86795b46152ba7",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 137,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-full-copy-lifecycle-qualification-20261021.json",
+      "sha256": "2ff9a3379429aa1af4c5c63193192989194fcd85c7721e0968b6352abbe26003",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/development-manual.md",
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 235,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-integrity-qualification-20261020.json",
+      "sha256": "cb6eda5c1ebe40d2589ff02297d31598d33171bb3c92f6225d379d80af6d81bb",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md"
+      ],
+      "bound_files_verified": 137,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-interrupt-manager-partial-20261021.json",
+      "sha256": "1f4be83e6539d431f160399174f6820162cb1db329c741087b16075a89f07930",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/development-manual.md",
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 342,
+      "boundary": "Only signed_scope passed. Original parallel parent failed in V1 security and remains failed; no complete LONGHORN-50/51 or final clean full delivery PASS."
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-reclaim-qualification-20261020.json",
+      "sha256": "254678546a15cf3f98e7e23aef08e6a7ddbf4262c5da57120250db342b89e8bc",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 121,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-recurring-backup-qualification-20261020.json",
+      "sha256": "9605ecf95b9e5ce516f43203d508c0d2476f9c2705e1d762159aa740d9447f89",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 134,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-recurring-rotation-qualification-20261020.json",
+      "sha256": "af98b790ad75f247776b97d16f65c5b04a09b23f9b6ef13bb85f05d7a6edc8c1",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 134,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-recurring-snapshot-qualification-20261020.json",
+      "sha256": "eb2ff1ecee2837dad6807473ee2f18dd9c57006f1c0c7955cca794eb6ef7fba4",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 131,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-replica-im-loss-qualification-20261021.json",
+      "sha256": "fa7dee6637e1fc7c290dc67a28fd92f1df27493522cb28e45256ec95d38e22c5",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/development-manual.md",
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 237,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-resources-balloon-first-failure-20261020.json",
+      "sha256": "b143f323dd622a70f6c9a7f88c2cd95a6ce06bbda6a5796caa36893c3ef669f2",
+      "status": "fail",
+      "rc": 1,
+      "failure_markers": 2,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md"
+      ],
+      "bound_files_verified": 111,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-snapshot-qualification-20261020.json",
+      "sha256": "3bfd9f8cbb2bf03df3dd0c4ecddf419ce8cff3c22323c478289a4ccfd45fc9d8",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 121,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-systembackup-qualification-20261020.json",
+      "sha256": "751ed83d8cbe85912cfe4d1cba5f91cd8e27129fd7fa42931e6743ce4e4704c1",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 145,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-systemrestore-qualification-20261020.json",
+      "sha256": "b16a4f5e9bb7caf98e6e4ad5c2496137f1b796a547e98ae9620eb94b53125f9e",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 150,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-trim-qualification-20261020.json",
+      "sha256": "f3200e0116ede845fbaa4714934a7f425a326670c8e0f95bf61f12b3d5f400b7",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 121,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-volume-modes-qualification-20261020.json",
+      "sha256": "d75e1d8da6abfd808996c456018818b6a7455f6b7e1939bc1da8c0c0f2556bdd",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 119,
+      "boundary": null
+    },
+    {
+      "path": "tests/evidence/longhorn-v2-volumes-20261020.json",
+      "sha256": "1f5a3cb9f2e9000c68bf605b3dc723bda3f888b6504355460606067a7a8b955a",
+      "status": "pass",
+      "rc": 0,
+      "failure_markers": 0,
+      "documents": [
+        "docs/storage/longhorn/operations-manual.md",
+        "docs/storage/longhorn/technical-whitepaper.md"
+      ],
+      "bound_files_verified": 121,
+      "boundary": null
+    }
+  ],
+  "operation_evidence_integrity": {
+    "status": "pass",
+    "records": 51,
+    "bound_files_verified": 4631,
+    "record": "logs/longhorn-cases/documentation-content-review-20261021/operation-evidence-readback.json"
+  },
+  "boundaries": [
+    "Official capabilities, document acceptance and project GA readiness are separate claims.",
+    "Data protection48 complete;49/50/51 cited subcases do not sign complete items; raw parent failure remains failed.",
+    "No new cluster, live fault, image publication or test runner was added for writing.",
+    "Fixed TLS artifact is now published; linked product path remains blocked until product adoption and owning qualifications.",
+    "Seven old renders are reused by archived source identity; only new eighth render has newly generated/viewed assets."
+  ],
+  "files": {
+    "logs/longhorn-cases/documentation-content-review-20261021/reused-reading-map.json": "b14c1fab0608ab8a504d757203a7d3f33d0d4aad74b002d17fafd86e8e06a6c1",
+    "logs/longhorn-cases/documentation-content-review-20261021/renderer-provenance.json": "6ba4dadcc848b17cc6dd0a6336a1d5d777f1a30a6276d00d27fb1c1dca95192a",
+    "logs/longhorn-cases/documentation-content-review-20261021/screenshot.log": "92050b1ff5db8a0bc1afc005096b0f8f6932ed081323645cdc3bbd9331087de7",
+    "logs/longhorn-cases/documentation-content-review-20261021/linked-clone.png": "1fa366adc2c02a9135dce451da62ccc863b23c4e12da9664f0e3d8dbb1f2293f",
+    "logs/longhorn-cases/documentation-content-review-20261021/chrome-render.log": "e39206b1c4132ff000fd248281f90cd1d9f376b660087fc4cc0150b434d5aab2",
+    "logs/longhorn-cases/documentation-content-review-20261021/linked-clone.mmd": "446dcfb3f423d445bda44319c61a75128a2f5face819fd8bc386c59dc5e0689b",
+    "logs/longhorn-cases/documentation-content-review-20261021/contracts.log": "388338f53d0375a439255ef29e7cf005b84cb453e39fe432d140988427173107",
+    "logs/longhorn-cases/documentation-content-review-20261021/linked-clone.svg": "52c789940ff1709822c2fe6d5cd409d415a79eb6b55af83c64cf6f5996530ad0",
+    "logs/longhorn-cases/documentation-content-review-20261021/operation-evidence-readback.json": "e331df0a2b0412c4201382b3614aea242cd6f85d9f90ab17788195adca8b8267",
+    "logs/longhorn-cases/documentation-content-review-20261021/static-checks.json": "88d45a5920c9dea88a244ab504d117dbca07eb9e0a343b3e6f70cddc25d3ce87",
+    "logs/longhorn-cases/documentation-content-review-20261021/snapshot/tests/longhorn-test-matrix.yaml": "aaa64fde01200c7ae9e733121d1743c3cb042f71f8be8da7627d405b552efeef",
+    "logs/longhorn-cases/documentation-content-review-20261021/snapshot/docs/documentation-quality-standard.md": "a17ef188697d9d89788be976f494cd318aeead487fb179afc91ca8de069f02fc",
+    "logs/longhorn-cases/documentation-content-review-20261021/snapshot/docs/middleware/delivery-playbook.md": "449d31810f8fe68204978f98f902ff10f178816395cf28db9228ce090ce52e32",
+    "logs/longhorn-cases/documentation-content-review-20261021/snapshot/docs/storage/longhorn/operations-manual.md": "afc4555701e320a237bc79edd911c3c6a2f4675a9c91daf51688d828fed24010",
+    "logs/longhorn-cases/documentation-content-review-20261021/snapshot/docs/storage/longhorn/technical-whitepaper.md": "db096612cc87dd93123ed748a05e7bf7f4c93b572e98a66c5608111b88692f60",
+    "logs/longhorn-cases/documentation-content-review-20261021/snapshot/docs/storage/longhorn/development-manual.md": "ed6d882a1cd8e0065fb47ddcdc09c40c01578b7a0bcdabb4b5b4afaa8358b506",
+    "tests/evidence/longhorn-backup-20261019.json": "d5120e447d2e145ac52139fd06d15759fedf5e8f7eabd9ec9b75cfb066e44d2c",
+    "tests/evidence/longhorn-backup-accounts-qualification-20261019.json": "d718ed74830b654ecc2f8f4dd6bf89e12245251dbb2d4de5207a1c147d3a9171",
+    "tests/evidence/longhorn-backup-refusal-20261019.json": "d41783eaf7b41bad2f41f63add92a646b038cdcae793ba602dda18efbf6c2321",
+    "tests/evidence/longhorn-clone-20261019.json": "cf19b529f27c9877408208c31cdfcf5f24660117f3a5373c5d012cf3cdaa88fd",
+    "tests/evidence/longhorn-encryption-20261019.json": "322ac564cfd948cc55e497ecc135b5377bc6110416bbd2a6a6d60d3fc56d37b2",
+    "tests/evidence/longhorn-engine-failure-20261019.json": "e6a49b7c924c476f502d997697014dac048088cefd6ea6c0f543ffe3b5e0ce34",
+    "tests/evidence/longhorn-expansion-20261019.json": "0c497e65e5c8fee43f8e446db96e64c0834ec519220a565cac3bf3af494fce19",
+    "tests/evidence/longhorn-idempotence-20261019.json": "552e89e910ad044c85f46256e6f798404a8e3d15acea02aae6dace7de6ab299a",
+    "tests/evidence/longhorn-install-20261020.json": "549d996f04e861a1b6ada3863bfc39070e531d03d4954a1213b78679b7ec3c6e",
+    "tests/evidence/longhorn-network-policy-20261019.json": "02a68b1731023949ea6cc594c235a0e01a5b9682b6db430422b262e7f1cb3407",
+    "tests/evidence/longhorn-performance-20261019.json": "4fb9edf2f9db3d407727835513c96ac4851aedddc65dac9f43b4cd03bc766432",
+    "tests/evidence/longhorn-reclaim-20261019.json": "86a9b2156f3131bf4755fd165ad062bd6bf66ceb5ddbd018c08c0e5cd5745eeb",
+    "tests/evidence/longhorn-recurring-20261020.json": "11e1b1b52a885c1b9ebeea535e646d5b3eeee830cb37e8ec495c1fdde0f42cfb",
+    "tests/evidence/longhorn-recurring-backup-qualification-20261019.json": "d1acb0fcb2f5a8120ebf354903a61738b96dc44c39e6212cfd0d413cc3b1a247",
+    "tests/evidence/longhorn-recurring-snapshot-qualification-20261019.json": "2e07437354ceb1382f82dfa1867d12e4f7e478d79cdc6b6ac6d2859cfc5cf193",
+    "tests/evidence/longhorn-replica-failure-20261019.json": "354d53596434d3374067faf33b764054f1d94e59d75155a060fff1e73d9cbd49",
+    "tests/evidence/longhorn-replica-scale-20261019.json": "5d7e06cf2d37211eb1627670653b5e8cba4ff04579f45af78ea26855d1744d94",
+    "tests/evidence/longhorn-rwo-20261019.json": "7bac6913bcaaef5e644f08d514c60cda5ae9147f67b37606a1d582d588c2d604",
+    "tests/evidence/longhorn-rwx-20261019.json": "9cf0abd25783a2c37bd43fb0c92bc128432fc2304d287f8eab62698fb55e6d46",
+    "tests/evidence/longhorn-security-20261019.json": "cf568c32373d2a4e1e378f57dff20ee8e5c6225f8958cfc348a1c9496cf7afc0",
+    "tests/evidence/longhorn-snapshot-20261019.json": "01630cbb0b8c1c1f4ebaefe786ca875aa33e7413a250b21e22f011afb662a096",
+    "tests/evidence/longhorn-trim-20261019.json": "a3156ce904e748098d18ab52a3aeef28f8dd8e253212b2e9003e3b95e04b90a5",
+    "tests/evidence/longhorn-uninstall-20261020.json": "42bf8171aa1d7ca93aa0efdda1fa3c460ca0137b4d0ac3a3f2ba3ada3a6dd4e0",
+    "tests/evidence/longhorn-uninstall-refusal-qualification-20261020.json": "ad5d68b6751065f5d390db77368d7fe7aa7b0b687f0a2d17af2aed86d51a1531",
+    "tests/evidence/longhorn-v2-aio-install-qualification-20261020.json": "98e84e53cf1be8c150d375f1b98bc123656b7f636f8f2db3f97e133930efb41c",
+    "tests/evidence/longhorn-v2-backup-qualification-20261020.json": "23f5f943d1904251fd6798241a02ce48092122a20508edcc21178756494c70bf",
+    "tests/evidence/longhorn-v2-backup-refusal-qualification-20261020.json": "16d3410e8fbff2e6b8859ff7632207f3eda12405ce97f81ca4f7938792c9b409",
+    "tests/evidence/longhorn-v2-broken-restore-qualification-20261021.json": "19c55c473d52fde0da1f297d7df5eeed83128c83b15314c31e391ac37f105978",
+    "tests/evidence/longhorn-v2-data-protection-complete-20261021.json": "7db8158d801ba05b70f5e14c3c37471b0b32227505e7268bb63198262c4d518e",
+    "tests/evidence/longhorn-v2-detached-backup-qualification-20261020.json": "33f25413934eedde286508b191019e364d3f701fb6b50ffd721ddb3ee8402d88",
+    "tests/evidence/longhorn-v2-dr-activation-qualification-20261021.json": "64812bf58b29ad72d2e43e891df8cb7a2b608ff71173167099db6df567afcd32",
+    "tests/evidence/longhorn-v2-dr-failback-qualification-20261021.json": "39e2bdc03f356604ea7ac97d6f91d139f076bc1dc39d64051626ddbf924c8b75",
+    "tests/evidence/longhorn-v2-dr-standby-qualification-20261021.json": "d60ab13a32a9dfc5c326c7d14cf080676df2f4916b83f458bbb66a6954a78870",
+    "tests/evidence/longhorn-v2-encryption-qualification-20261020.json": "32b58ed73d40c40c80a59664f64f9974f9fef6ac72cff993055f3cb75c5d9fce",
+    "tests/evidence/longhorn-v2-expansion-qualification-20261020.json": "dd6b509e30ad9f1275e65395ddf1a08dfcafe0eedfc009243367c976f3b37629",
+    "tests/evidence/longhorn-v2-full-copy-clone-qualification-20261020.json": "61b80a074e4cdd79d2afb02e05e8be7dfc9a7a030b56ea391a86795b46152ba7",
+    "tests/evidence/longhorn-v2-full-copy-lifecycle-qualification-20261021.json": "2ff9a3379429aa1af4c5c63193192989194fcd85c7721e0968b6352abbe26003",
+    "tests/evidence/longhorn-v2-integrity-qualification-20261020.json": "cb6eda5c1ebe40d2589ff02297d31598d33171bb3c92f6225d379d80af6d81bb",
+    "tests/evidence/longhorn-v2-interrupt-manager-partial-20261021.json": "1f4be83e6539d431f160399174f6820162cb1db329c741087b16075a89f07930",
+    "tests/evidence/longhorn-v2-reclaim-qualification-20261020.json": "254678546a15cf3f98e7e23aef08e6a7ddbf4262c5da57120250db342b89e8bc",
+    "tests/evidence/longhorn-v2-recurring-backup-qualification-20261020.json": "9605ecf95b9e5ce516f43203d508c0d2476f9c2705e1d762159aa740d9447f89",
+    "tests/evidence/longhorn-v2-recurring-rotation-qualification-20261020.json": "af98b790ad75f247776b97d16f65c5b04a09b23f9b6ef13bb85f05d7a6edc8c1",
+    "tests/evidence/longhorn-v2-recurring-snapshot-qualification-20261020.json": "eb2ff1ecee2837dad6807473ee2f18dd9c57006f1c0c7955cca794eb6ef7fba4",
+    "tests/evidence/longhorn-v2-replica-im-loss-qualification-20261021.json": "fa7dee6637e1fc7c290dc67a28fd92f1df27493522cb28e45256ec95d38e22c5",
+    "tests/evidence/longhorn-v2-resources-balloon-first-failure-20261020.json": "b143f323dd622a70f6c9a7f88c2cd95a6ce06bbda6a5796caa36893c3ef669f2",
+    "tests/evidence/longhorn-v2-snapshot-qualification-20261020.json": "3bfd9f8cbb2bf03df3dd0c4ecddf419ce8cff3c22323c478289a4ccfd45fc9d8",
+    "tests/evidence/longhorn-v2-systembackup-qualification-20261020.json": "751ed83d8cbe85912cfe4d1cba5f91cd8e27129fd7fa42931e6743ce4e4704c1",
+    "tests/evidence/longhorn-v2-systemrestore-qualification-20261020.json": "b16a4f5e9bb7caf98e6e4ad5c2496137f1b796a547e98ae9620eb94b53125f9e",
+    "tests/evidence/longhorn-v2-trim-qualification-20261020.json": "f3200e0116ede845fbaa4714934a7f425a326670c8e0f95bf61f12b3d5f400b7",
+    "tests/evidence/longhorn-v2-volume-modes-qualification-20261020.json": "d75e1d8da6abfd808996c456018818b6a7455f6b7e1939bc1da8c0c0f2556bdd",
+    "tests/evidence/longhorn-v2-volumes-20261020.json": "1f5a3cb9f2e9000c68bf605b3dc723bda3f888b6504355460606067a7a8b955a",
+    "logs/longhorn-cases/documentation-content-review-20261021/derived-im-publication-receipt.json": "43cabb364c27c0d4d118e5aecd649590b21d4b3af50ebc41c976d9bc2735edfb"
+  },
+  "artifact_evidence": [
+    {
+      "path": "logs/longhorn-cases/documentation-content-review-20261021/derived-im-publication-receipt.json",
+      "sha256": "43cabb364c27c0d4d118e5aecd649590b21d4b3af50ebc41c976d9bc2735edfb",
+      "status": "pass",
+      "scope": "single-derived-instance-manager-image-publication",
+      "boundary": "Build/publication only; product adoption and linked field acceptance remain pending."
+    }
+  ]
+}

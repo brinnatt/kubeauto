@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "owning_scope": "exact .1 -> .2 adoption, with independent observation before sequential batch consumers",
+  "ladder_level_completed": 2,
+  "next_permitted_level": 3,
+  "rc": 0,
+  "tests": 15,
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_im_revision_adopt tests.unit.test_longhorn_im_revision_evidence -q",
+  "inputs": {
+    "tests/helpers/longhorn-im-revision-adopt.py": "722881e91b5d00f4394e1d7d8a664eccedb1cf5033c9ac02d023119e23a1a724",
+    "tests/helpers/longhorn-v2-im-adopt.sh": "9c995c8276d138de6060acd45d40ec423a80b1492adac1151e42ea76e57c1e5d",
+    "tests/unit/test_longhorn_im_revision_adopt.py": "9881c03de519213de2ee3e67ab2c0cc0e7116f6869f0aaa8b7d268136d4a661f",
+    "tests/unit/test_longhorn_im_revision_evidence.py": "2057c033f2dac2fa0c6389f15637028327545eb027d0d1071b60508ce4f1b6b5"
+  },
+  "files": {
+    "logs/longhorn-cases/im-revision-2-readback-contract-20261021/contracts.log": "c07a976fa15d3b4aa7f2d3a84ded3ca36292f2746645d63992fa06d0e869af33"
+  },
+  "root_cause": "V1 backup batch continues into mutations and uninstall; independent acceptance readback after parent completion can no longer observe the adopted empty healthy storage.",
+  "change": "Adoption wrapper obtains a separate-process readback after relay/core cleanup and before durable exit/PASS. It binds the completed business log, exact plan and all inputs, original namespace/disk identity, new manager identity, current health, empty business and absent adoption journal. Late failure preserves its own rc and private first failure. Historical .1 path remains unchanged.",
+  "rejected_paths": [
+    "foreign baseline/managers",
+    "incomplete business log",
+    "failed health",
+    "existing or symlink adoption journal",
+    "missing/failed readback or missing JSON receipt",
+    "unsafe release proof or missing lifecycle input"
+  ],
+  "boundary": "Local deterministic contracts only, no live PASS, no blanket evidence invalidation and no new upstream qualification."
+}

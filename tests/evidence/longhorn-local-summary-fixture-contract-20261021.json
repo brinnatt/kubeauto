@@ -1,0 +1,21 @@
+{
+  "after_sha256": "4b2aeaa97d1dab8f8032bb59f451e0d23308fe618831e75e295465813ed244af",
+  "before_sha256": "3aea5a8ee8029aa55a9c7f6b87d44cad70301334cd541d9ca8a18d63b87f280c",
+  "cause": "Direct extracted Python summary test omitted mode argv added by ownership importer; real shell already passes mode.",
+  "changed_file": "tests/unit/test_longhorn_gate.py",
+  "classification": "test-gate fixture",
+  "contracts": {
+    "log": "logs/longhorn-cases/operations-worker-tail-live-20261021/local-summary-repair-contract.log",
+    "rc": 0,
+    "sha256": "ebdda8e77fa379a7a2f52299d4db38250df4c78dbdf6fde074b38c8d0d190b58",
+    "tests": 2
+  },
+  "date": "2026-10-21",
+  "first_failure": "logs/longhorn-cases/operations-worker-tail-live-20261021/local-summary-first-disproof.json",
+  "ladder_completed": 2,
+  "next_permitted_level": 3,
+  "no_product_or_remote_change": true,
+  "overall_longhorn_delivery_pass": false,
+  "schema": 1,
+  "status": "contract-pass"
+}

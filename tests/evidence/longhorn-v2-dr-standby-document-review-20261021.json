@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "partial",
+  "classification": "Author scoped source/content and two-reader-path review; no independent review or whole-manual sign-off",
+  "scope": "New independent shared-store and two-point V2 standby practice paragraphs in the existing three manuals; prior full-manual review reused. No new operational mutation or diagram.",
+  "official_version": "1.12.1",
+  "official_commits": {
+    "website": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager": "8320238242e8c804325d9588ec1db10feb9f36b8"
+  },
+  "reused_review": "tests/evidence/longhorn-full-content-document-review-20261020.json",
+  "official_topics": [
+    "DR volume same backup target, standby read-only state and native activation",
+    "Backup discovery and VolumeController actual Engine restore completion",
+    "Separate V2 EngineFrontend API",
+    "BackupTarget cache-only retirement; existing native retention implementation"
+  ],
+  "product_evidence": [
+    "tests/evidence/longhorn-v2-dr-store-qualification-20261021.json",
+    "tests/evidence/longhorn-v2-dr-standby-qualification-20261021.json"
+  ],
+  "content_checks": [
+    "Exact 9 MiB / 12.25 MiB source data, backup object counts and compressed transfer sizes match raw product results",
+    "No PV or writable frontend and same native volume/engine/replica/raw disk identity documented",
+    "Actual target Engine restore is distinguished from discovery; no target application hash claimed",
+    "Source-independent access is direct TLS to external server with precise wrong-CA refusal",
+    "Source configuration restoration in fixture cleanup is distinguished from a product disconnect instruction",
+    "No activation, failback, target HA, RPO/RTO or performance capacity claim from standby results"
+  ],
+  "reader_paths": {
+    "novice": "Enter shared DR context, identify source/target, configure same external store, obtain verified backup, create standby, inspect actual restore before any fencing or activation. New practice paragraph gives applicable conditions and stops short of unverified business takeover.",
+    "experienced": "Enter DR task index or whitepaper mechanism section, compare requested/restored backup IDs and separate EngineFrontend/PV exposure, inspect exact metrics and limits, follow existing isolation/activation/failback procedure and recovery branches."
+  },
+  "checks": {
+    "status": "pass",
+    "checks": {
+      "local_links": 181,
+      "yaml_blocks": 20,
+      "bash_blocks": 41
+    },
+    "document_sha256": {
+      "docs/storage/longhorn/operations-manual.md": "4242448f7f7954a9742960a592a4d3a6a3419beb15462a124a8e2a3633762509",
+      "docs/storage/longhorn/technical-whitepaper.md": "bac091354148b1f51effb233fe4a4de226d304e10e066ff7ea21f2a4067ebe17",
+      "docs/storage/longhorn/development-manual.md": "fe9519ba4b35843e3edf2bc8a52cb8fc3d712c56b180b73618924d73d753c75e"
+    }
+  },
+  "documentation_contracts": {
+    "count": 44,
+    "result": "pass"
+  },
+  "diagram_review": "No diagram changed; reuse existing rendered identity-bound diagram evidence.",
+  "boundaries": [
+    "LONGHORN-42 and full manuals sign-off remain pending",
+    "No independent reviewer, customer approval or new live document replay claimed",
+    "Activation/failback code is under separate product-integration gates, not accepted by this document review"
+  ],
+  "raw_logs": {
+    "logs/longhorn-cases/v2-dr-standby-document-review-20261021/operations-manual.md": "4242448f7f7954a9742960a592a4d3a6a3419beb15462a124a8e2a3633762509",
+    "logs/longhorn-cases/v2-dr-standby-document-review-20261021/v2-dr-standby-document-static-20261021.json": "4b54b7c0ae7bff828ee237e75843eaf744eca89c580fa4afe7b8613b4618a855",
+    "logs/longhorn-cases/v2-dr-standby-document-review-20261021/v2-dr-standby-document-contract-20261021.log": "1f506d103f89756d5c409e64abf417c0cee6f4b611a10afad1702b0738ceb8e3",
+    "logs/longhorn-cases/v2-dr-standby-document-review-20261021/technical-whitepaper.md": "bac091354148b1f51effb233fe4a4de226d304e10e066ff7ea21f2a4067ebe17",
+    "logs/longhorn-cases/v2-dr-standby-document-review-20261021/development-manual.md": "fe9519ba4b35843e3edf2bc8a52cb8fc3d712c56b180b73618924d73d753c75e"
+  }
+}

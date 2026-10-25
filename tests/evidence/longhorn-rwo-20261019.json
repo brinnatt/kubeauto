@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-08",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-rwo </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_RWO_PASS",
+  "scoped_clean_marker": "LONGHORN_RWO_SCOPED_CLEAN_PASS",
+  "checks": {
+    "variants": [
+      {
+        "access_mode": "ReadWriteOnce",
+        "volume_mode": "Filesystem",
+        "conflict_refused": true,
+        "fsync_bytes": 9437184,
+        "remount_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+        "cross_worker_hash_equal": true,
+        "business_fixtures_clean": true
+      },
+      {
+        "access_mode": "ReadWriteOncePod",
+        "volume_mode": "Filesystem",
+        "conflict_refused": true,
+        "fsync_bytes": 9437184,
+        "remount_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+        "cross_worker_hash_equal": true,
+        "business_fixtures_clean": true
+      },
+      {
+        "access_mode": "ReadWriteOnce",
+        "volume_mode": "Block",
+        "conflict_refused": true,
+        "fsync_bytes": 9437184,
+        "remount_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+        "cross_worker_hash_equal": true,
+        "business_fixtures_clean": true
+      }
+    ],
+    "replica_nodes": [
+      "longhorn-node-165",
+      "longhorn-node-212",
+      "longhorn-node-238"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "registry_transport_removed": true
+  },
+  "boundary": "This focused module does not establish RWX, backup, fault, performance, upgrade or full clean delivery acceptance. Historical failed attempt and scoped recovery remain separately recorded.",
+  "files": {
+    "logs/longhorn-cases/rwo-20261019-080919/durable-status.txt": "b6a817e39f4dd0b4e498c058daf222561de10f7a0a5beafbb62bc8874a0aae42",
+    "logs/longhorn-cases/rwo-20261019-080919/frozen-source.txt": "57e7202f9d672d21b407d76cc7b8dbdf31e7522c197eba987c64bec45f5e4f8b",
+    "logs/longhorn-cases/rwo-20261019-080919/gate.log": "df82256fb3fe399b09e0a6cd8567af39eeb0a7ee1db81874e4f1d4bc2ebfba77"
+  }
+}

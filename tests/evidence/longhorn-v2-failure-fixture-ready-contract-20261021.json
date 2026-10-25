@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "status": "test-gate-static-failure-repaired",
+  "classification": "test-gate",
+  "remote_mutation": false,
+  "root_cause": "Fast fake relay shutdown raced Python SIGTERM handler initialization; business stage rc0 remained valid but fixture relay wait produced rc143. The fixture now waits for an explicit ready file after handler registration. Production helper unchanged.",
+  "first_failure": {
+    "path": "logs/longhorn-cases/v1-post-revision-backups-v2-failure-20261021/launch.log",
+    "sha256": "bee087136b804b4c3cae90fc1561411b896d0472592e7342182edabe149aaaf5",
+    "rc": 1
+  },
+  "contract": {
+    "path": "logs/longhorn-cases/v1-post-revision-backups-v2-failure-20261021/relay-ready-contract.log",
+    "sha256": "5f917c9372f25e262ddfaf59bd8fbc77ffc344728e100d7df8bed60e0c794fdf",
+    "tests": 8,
+    "rc": 0
+  },
+  "changed_file": "tests/unit/test_longhorn_v2_failure_runner.py",
+  "boundary": "Static-only failure; no live scenario or matrix PASS."
+}

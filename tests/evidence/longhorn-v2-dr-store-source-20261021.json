@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-and-design-only",
+  "classification": "test-gate for LONGHORN-48 shared-store integration",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-store-qualification",
+  "product_entry": "Existing source and target installed via config + kubecli; target backupTarget/Secret reference configured through config + kubecli setup longhorn-v2-dr-target 09",
+  "expected_marker": "LONGHORN_V2_DR_STORE_QUALIFICATION_PASS",
+  "smallest_disproof": "The same fixed focused qualification after static contracts pass",
+  "official_commits": {
+    "documentation": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager": "8320238242e8c804325d9588ec1db10feb9f36b8"
+  },
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-disaster-recovery-volumes/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/set-backup-target/"
+  ],
+  "official_behavior": "DR clusters consume exactly the same external backup target. S3-compatible endpoint/CA credentials belong to each cluster. Native target discovery and restore depend on independent access to that store.",
+  "project_assertion": "Keep the exact source-owned published MinIO fixture; remove and verify absence of the source transport Pod/tunnel before target qualification. .149 directly verifies the external TLS endpoint with valid CA and rejects the wrong CA specifically as a certificate-verification error. The target creates its own UID-bound credential and converges BackupTarget through config+kubecli. No source Pod is required for target access.",
+  "prerequisites": [
+    "Current three-node V2 source and independent one-node target installation evidence",
+    "Frozen cluster/node/namespace/hardware/native-disk identities and empty business baselines",
+    "Existing verified image artifacts; no new image/version/publication dependency",
+    "Fixed runner shared lease and both owned Registry supervisors"
+  ],
+  "cleanup": "Recover target input and binding first; any remaining target Volume, backup CR, changed identity, credential or unknown create result retains the shared backend. The target Consumer never owns container/server teardown. Only after its binding retires may the original source Store clean its own server and transport. Clean both Registry channels, restore control kubeconfig and compare both baselines. Do not wipe disks or remove either healthy installation.",
+  "scope": "Shared-store prerequisite only. No standby restore, fencing, activation, failback, target-site HA or complete LONGHORN-48 PASS. No production code or sibling repository changes."
+}

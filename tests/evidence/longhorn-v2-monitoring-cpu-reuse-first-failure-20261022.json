@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-53",
+  "status": "pending",
+  "classification": "test-gate prerequisite ordering",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-remaining-v2-monitoring",
+  "owning_command": "bash tests/run_enterprise_regression.sh --longhorn-v2-observability-performance",
+  "rc": 1,
+  "first_failure": {
+    "phase": "cpu-evidence-reuse",
+    "exception": "ValueError: CPU reuse product configuration differs",
+    "cause": "CPU verifier requires original config and no monitoring receipt; pending owned monitoring changed current config and retains that receipt. Strict original cleanup must run first.",
+    "product_fault_proven": false,
+    "monitoring_cleanup_reached": false,
+    "new_monitoring_setup_reached": false
+  },
+  "observed_config_binding": {
+    "config_sha256": "1dc836563ce857346d1960ad298a5d753191c8449f0000fc3d36d6682f3d3544",
+    "cpu_completed_config_sha256": "99062f7fde31be257664fc144c5888726d289c200263c728c3cf3425e9518b75",
+    "monitor_original_input_sha256": "99062f7fde31be257664fc144c5888726d289c200263c728c3cf3425e9518b75",
+    "cpu_completed_receipt_sha256": "6da5b7d847e32376ae5989257ce789523f2b551a17a2dd2c75197ca4cc61ec54",
+    "monitor_current_is_allowed": true,
+    "changed_config_keys": [
+      "longhorn_monitoring_enabled",
+      "longhorn_monitoring_namespace",
+      "longhorn_storage_classes",
+      "prom_install",
+      "prom_namespace",
+      "prom_storage_class"
+    ]
+  },
+  "durable": {
+    "v2_exit": "1",
+    "v2_finalized": "1",
+    "cpu_exit": "1",
+    "cpu_finalized": "1",
+    "wrapper_exit": "1",
+    "wrapper_finalized": "0"
+  },
+  "remote_parent": "/var/tmp/kubeauto-longhorn-parallel.OkUjGa",
+  "remote_v2": "/var/tmp/kubeauto-longhorn-v2-observability.4SJYoU",
+  "remote_input_verification": {
+    "count": 832,
+    "mismatches": 0,
+    "manifest_sha256": "dcea2cd5f0da296f23dabcdc1ee88220d9de52d879f67a8f5e3c22cdb1e423d2"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/00-v2.log": "c2332f28752a00db1207ba5ee0be58cb987e68675061fbcdf5f51b89d362ee70",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/01-v2.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/02-v2.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/03-cpu-evidence-reuse.log": "51d4d0462b56914f83ae125022fdae4d93e6a36d6feda90d66d904518631d6ab",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/04-cpu-evidence-reuse.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/05-cpu-evidence-reuse.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/06-first-failure.status": "d6490cb4bf70dd390ba80d672e819380c74b57abaeb0c4bf6483422cf8abc47b",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/07-exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/08-finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/09-events.txt": "f6a799565872ef0d922c31733f0d4186863e1d2befb7585a2919f925529b6034",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/10-pods.txt": "e2f397fc731af7a020af03d9d7000893f8882c6dad988df5b9da5a3b9c072901",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/11-longhorn-v2-monitoring.json": "3d50c917e1e8008b5ce0a012469f03f02e47ccfff67d03cd163d4101cc983054",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/12-config.yml": "1dc836563ce857346d1960ad298a5d753191c8449f0000fc3d36d6682f3d3544",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/raw/13-longhorn-v2-cpu-isolation-20261022.json": "a12b4a495ad92e5e6e435c578bef5ddbaa7afac4b6e94aa9a9de4c523f45cb3b",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/capture.json": "4c98e671826685e1ba8abce36fadf6d537477f43a7419a41a74af0b492b5e06c",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/root-cause.json": "01dfebacaaf645f3808403b041862979626acbd8d80959513e8b528a9c12870f",
+    "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v2-cpu-reuse-first-failure/remote-frozen-verification.json": "3b0243dfe2511d75ed743a3f0eed4a352399c24b77aad6fe201a8b5257fb4821"
+  },
+  "next": "Run original strict journal cleanup before unchanged complete CPU proof; exact real-verifier order contract before focused fixed runner",
+  "boundary": "CPU accepted evidence is retained; failed continuation and parent are not PASS. No monitoring business or GA claimed."
+}

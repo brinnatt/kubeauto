@@ -22,9 +22,9 @@ _CLUSTER_COMMANDS = {
 }
 # Setup step values (for setup <cluster> <step> completion)
 _SETUP_STEPS = [
-    "01", "02", "03", "04", "05", "06", "07", "08", "90", "10", "11",
+    "01", "02", "03", "04", "05", "06", "07", "08", "09", "90", "10", "11",
     "prepare", "etcd", "container-runtime", "kube-master", "kube-node",
-    "network", "cluster-addon", "ceph", "all", "ex-lb", "harbor",
+    "network", "cluster-addon", "ceph", "longhorn", "all", "ex-lb", "harbor",
 ]
 
 _BASH_COMPLETION_SCRIPT = r'''# Bash completion for kubecli (supports: python3 kubecli.py / kubecli / kubecli.py)
@@ -170,6 +170,7 @@ class KubeautoCLI:
   06/network       Setup network plugin
   07/cluster-addon Setup cluster addons
   08/ceph          Setup an independent cephadm cluster and optional Ceph-CSI
+  09/longhorn      Reconcile independent Longhorn V1 storage and operations
   90/all           Run all setup steps
   10/ex-lb         Install external load balancer
   11/harbor        Install Harbor registry"""

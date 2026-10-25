@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "status": "causal-observation-pass",
+  "product_gate": {
+    "path": "tests/evidence/longhorn-v2-failure-single-disk-revision3-20261023.json",
+    "sha256": "7a93c99575994bb8a031d410b3ed4c4992bb2bb7647fc8a3e97151208633d4cf"
+  },
+  "read_only": true,
+  "native_snapshots": 11,
+  "native_rpc_calls": 33,
+  "all_native_rpc_rc0": true,
+  "observations": [
+    {
+      "utc": "2026-10-23T10:16:26.577577+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "RW",
+      "scsi_restored": false
+    },
+    {
+      "utc": "2026-10-23T10:16:27.381980+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "RW",
+      "scsi_restored": false
+    },
+    {
+      "utc": "2026-10-23T10:16:28.177512+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "RW",
+      "scsi_restored": false
+    },
+    {
+      "utc": "2026-10-23T10:16:28.987112+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "RW",
+      "scsi_restored": false
+    },
+    {
+      "utc": "2026-10-23T10:16:29.849274+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "ERR",
+      "scsi_restored": false
+    },
+    {
+      "utc": "2026-10-23T10:16:30.687801+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "ERR",
+      "scsi_restored": false
+    },
+    {
+      "utc": "2026-10-23T10:16:31.519956+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "ERR",
+      "scsi_restored": false
+    },
+    {
+      "utc": "2026-10-23T10:16:32.361329+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "ERR",
+      "scsi_restored": true
+    },
+    {
+      "utc": "2026-10-23T10:16:33.165247+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": false,
+      "unnamed_unconfigured_slots": 1,
+      "raid_state": "online",
+      "operational_members": 2,
+      "cr_mode": "ERR",
+      "scsi_restored": true
+    },
+    {
+      "utc": "2026-10-23T10:17:06.092850+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": true,
+      "unnamed_unconfigured_slots": 0,
+      "raid_state": "online",
+      "operational_members": 3,
+      "cr_mode": "RW",
+      "scsi_restored": true
+    },
+    {
+      "utc": "2026-10-23T10:17:06.891377+00:00",
+      "replica": "pvc-3e7be86a-64d6-4dff-a1fc-da02c7952645-r-6cb7e7e3",
+      "namespace_present": true,
+      "configured_member": true,
+      "unnamed_unconfigured_slots": 0,
+      "raid_state": "online",
+      "operational_members": 3,
+      "cr_mode": "RW",
+      "scsi_restored": true
+    }
+  ],
+  "boundary": "Read-only native samples are independent observations with UTC acquisition completion; CR and RPC requests are not an atomic snapshot. Original owning fault/business/remount/cleanup gate separately signs the subcase. No complete LONGHORN-50 or final GA claim.",
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-failure-single-disk-20261023/native-fault/status.json": "56e1eca8c7e276f4ddb138a7e0a8f84d5083fb4b77364eb696b7390a2466cd1b",
+    "logs/longhorn-cases/revision3-v2-failure-single-disk-20261023/native-fault/native-fault.jsonl": "8e5c2314dee7ec395041f0b31367c5d5955ca75b0d7d9f2da5fedfd39723a1af",
+    "logs/longhorn-cases/revision3-v2-failure-single-disk-20261023/native-fault/native-fault.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

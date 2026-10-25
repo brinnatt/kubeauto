@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "classification": "test-gate",
+  "matrix_item": "LONGHORN-54",
+  "first_failure": "logs/longhorn-cases/manager-v2-cleanup-linked-current-owning-20261024/launch.log",
+  "cause": "Dispatch ownership contract incorrectly required LONGHORN-49 to remain pending after complete module acceptance.",
+  "repair": "Assert owning group and terminal marker independent of acceptance state.",
+  "live_mutation": false,
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_clones -v",
+  "tests": 8,
+  "rc": 0,
+  "files": {
+    "tests/unit/test_longhorn_v2_clones.py": "a60e0726bc60db0ece784eff78c3d211bb926be89365b5893aaa89f5b46635e0"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/clone-matrix-owner-contract-20261024/contract.log": "5430e9d57d0e0e716996c4c4e1cadad15c58c8efaa6fb72dafc1a03bb77b6b49"
+  }
+}

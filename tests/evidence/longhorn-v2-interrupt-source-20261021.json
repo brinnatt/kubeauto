@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-only",
+  "matrix_item": "LONGHORN-51",
+  "version": "Longhorn 1.12.1 V2 AIO",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_reference": [
+    "https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/interrupt-mode/"
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/advanced-resources/v2-data-engine/interrupt-mode.md": "acb8838c3c347481b9660a9966d1b2c5891cbb7c757c60773579303734ced11a",
+    "website-ssh/content/docs/1.12.1/advanced-resources/v2-data-engine/hugepage-configuration.md": "65bb2a425d81227aa63966bf5d7c89cea6ae1da5b252801fc02606df00b16b36",
+    "manager-1.12.1/controller/instance_manager_controller.go": "1fee262c9f7eba35b0ced04ddf37e3b705e3f389fd0d9f184db13d80eb290653",
+    "manager-1.12.1/k8s/pkg/apis/longhorn/v1beta2/instancemanager.go": "7a34335c44d696248f93e6062816464990d5185d45efa6252c82b566e28d8b52"
+  },
+  "classification": "test-gate extension; product and host startup-resource code unchanged",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-interrupt-qualification",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-interrupt-qualification",
+  "expected_marker": "LONGHORN_V2_INTERRUPT_QUALIFICATION_PASS",
+  "conclusions": [
+    "The setting is global and requires all V2 volumes detached; qualify attached refusal through config+kubecli without native mutations.",
+    "Pinned InstanceManagerController compares native status.dataEngineStatus.v2.interruptModeEnabled and recreates idle manager Pods. Verify original CR UID/spec and new Pod UIDs/actual flags, not a Setting value alone.",
+    "Keep one owned original three-replica AIO volume and its PVC/PV identity across both startup transitions. Read original payload on another node in interrupt mode and verify separately fsynced ledger plus original bytes on a third node after restoring polling.",
+    "Bind installation namespace UID separately from the business namespace UID. On every exit, restore the original product declaration and native profile before normal business cleanup; unknown or replaced objects retain journals.",
+    "Do not combine hugepage/memory/CPU/iobuf changes or claim performance equivalence. The documented residual CPU and NVMe/TCP hybrid polling remain upstream behavior.",
+    "Without a runtime-profile journal, cleanup can finish before a relay starts. With a journal, missing relay stops before client deletion and retains both journals. Two deterministic red cases reproduced the distinction before the exact fix."
+  ],
+  "coverage_boundary": "Source and local implementation only. No live acceptance, complete LONGHORN-51, abrupt fault, native PCI, anonymous/exclusive resource combination or final delivery PASS."
+}

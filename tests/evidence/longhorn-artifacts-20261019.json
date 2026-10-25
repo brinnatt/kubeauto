@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-04",
+  "status": "pass",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-artifacts </dev/null",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_ARTIFACTS_PASS",
+  "scoped_clean_marker": "LONGHORN_ARTIFACTS_SCOPED_CLEAN_PASS",
+  "images": 30,
+  "boundary": "Read-only current TalkEdu manifest verification, published dual-registry/dual-architecture Actions records and current build-context fingerprints; no product or cluster acceptance.",
+  "files": {
+    "logs/longhorn-cases/artifacts-20261019-010653/status.json": "3eb4839930df85d19be3137575c64e7073e8c34f2f672816ccaf1e1a111d49d0",
+    "logs/longhorn-cases/artifacts-20261019-010653/gate.log": "9e527c38395fed1c5e522ef7ba44273186e9583ebb04929596f95f3e71437799",
+    "tests/helpers/longhorn-artifacts.py": "20128fc1a8c02af70e71b588ced5fb9698c797ca11f11af348876cb178b067da",
+    "tests/evidence/longhorn-images-20261019.json": "5c2f60e571cd0b65488a447282037bf3a553c36d2eb5a45446fa654577cf55e8",
+    "tests/evidence/mongodb-support-images-20261015.json": "219782d16c9507929e9ab902545ad6638c4c843aded2bebef52c8df97231ad2d",
+    "tests/evidence/redis-documentation-client-images-20261014.json": "4443cfeef4bccaf58498c7eb3099244c610e5100c6cf124d586923284ed72917"
+  }
+}

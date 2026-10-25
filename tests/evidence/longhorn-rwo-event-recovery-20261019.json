@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "pass",
+  "scope": "Event UID-overwrite failure scoped recovery; healthy core and storage retained. No LONGHORN-08 or final-delivery acceptance.",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-business-recover </dev/null",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_BUSINESS_CLEAN_PASS",
+  "scoped_clean_marker": "LONGHORN_BUSINESS_CLEAN_SCOPED_CLEAN_PASS",
+  "checks": [
+    "Exact archived two-Event identity proof only; namespace and complete current object ledger matched",
+    "UID-bound Pod/PVC/Retain PV/Longhorn Volume/namespace retired",
+    "Registry transport removed; storage and core identity/health verified"
+  ],
+  "files": {
+    "logs/longhorn-cases/business-clean-20261019-080404/durable-status.txt": "e4c424b05b11af85afa75b812b95097cdc7b4eec246e05718debf33da0c594b4",
+    "logs/longhorn-cases/business-clean-20261019-080404/frozen-source.txt": "8ae3be0ec5806582cdc13c434cc7dc351d8b2d7dc6d4206a47bce5788a16203b",
+    "logs/longhorn-cases/business-clean-20261019-080404/gate.log": "7328e22b0522ecd595c64ac82e535d68980bb33c0515bf009879baabd6abe54a",
+    "tests/evidence/longhorn-rwo-first-failure-20261019.json": "d6c21896e9261e795fc9be66f10c2fbacbf9d98063d64d1c36077db740a45ea3"
+  }
+}

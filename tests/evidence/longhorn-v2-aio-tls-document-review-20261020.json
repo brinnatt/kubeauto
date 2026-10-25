@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "Changed V2 AIO installation-result paragraphs and TLS preflight explanation only; reuse prior full-document review, no changed diagram or production command",
+  "checks": {
+    "official_source": "CPython v3.12.12 SSL reference and pinned Longhorn 1.12.1 mTLS/data-engine behavior; source references and product first-failure evidence retained",
+    "project_results": "Current AIO evidence rc=0, zero failure markers, three native block disks/IMs, 9437184-byte fsync/remount hash, and independent empty-business readback verified",
+    "novice_path": "V2 AIO prerequisites -> common PKI/download/setup 09 -> explicit V2 class -> business PVC/reattachment remain linked; host block versus application Filesystem distinguished",
+    "experienced_path": "Static-only statements narrowed to still-unverified CPU/eviction/PCI/retirement cases; current AIO prerequisite does not imply full V2 or performance/DR sign-off",
+    "content": "Exact topology/version/resource settings and measured checksum included; whitepaper explains data path, manual gives results and operational boundary; no invented timing/RTO or capacity promise",
+    "static": "44 documentation contracts passed before final prose correction; next fixed runner checks complete current source",
+    "diagrams": "No diagram was changed; existing rendered-diagram evidence remains applicable"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-aio-install-qualification-20261020.json",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "cada28949364763cd84bf50af67424a8c3b03636de93e81179dbaf67d5c52e6d",
+    "docs/storage/longhorn/technical-whitepaper.md": "83056e89deeb36118d91f6b25a6c1ee5d4a81b9110a9baf95ee696d4d3915d67",
+    "docs/storage/longhorn/development-manual.md": "f4460d43fa41b8fb2f9bf920293efadf14556aef0aabe633a7cc090e46b6c73b"
+  }
+}

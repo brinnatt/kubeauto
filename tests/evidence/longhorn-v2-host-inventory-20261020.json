@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-44 prerequisite only",
+  "status": "pending",
+  "classification": "environment inventory only; no cluster borrowing or mutation, no V2 product gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-host-inputs </dev/null",
+  "rc": 0,
+  "hosts_read": 16,
+  "finding": "Six disk-pool and seven capacity-pool nodes run5.14; Ubuntu138 runs5.15. Debian128 and openSUSE143 run6.12 but have2CPUs/about4GiB and only partitioned system disks. No qualified three-node raw-disk V2 environment in inspected candidates.",
+  "exclusions": "145-147 are Ceph-only by AGENTS.md; authorization requested before any Longhorn use. No forbidden192.168.122.1 or development host targeted.",
+  "boundary": "Loaded modules do not establish module availability; disk listing does not prove blankness, independent media, approved identity or ownership. Native hardware and V2 integration acceptance remain pending.",
+  "files": {
+    "logs/longhorn-cases/v2-host-inventory-20261020/inventory.log": "0d7dedfa67988513f3aae1648a8cd7786d5f08b6f5fb8442e421c4585db2594b"
+  },
+  "source_sha256": {
+    "tests/helpers/longhorn-runner.sh": "72d565f4730f9ea8ead4db7c92bd28972ea022499b2a800f189a8f3eb904c77f",
+    "tests/unit/test_longhorn_gate.py": "d34bf2bb905671512ac5d89c882e7227c2c64dd6bd72682c52eadded561d909c"
+  }
+}

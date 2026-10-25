@@ -1,0 +1,14 @@
+{
+  "classification": "test-gate/historical-fixture",
+  "matrix_item": "LONGHORN-52",
+  "remote_mutation": false,
+  "first_failure": "completed installation compatibility input changed: tests/helpers/longhorn-lab.py",
+  "cause": "Immutable .2 fixture copied current .3 GC helper while expecting historical SHA",
+  "repair": "Pin the historical lab source fixture and verify exact SHA; leave runtime .2 compatibility guard unchanged",
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-resume-20261023/launch.log": "191b9fba505daf7102c70961c3fa0972bf0aa0f91dddbb55092d7eb35b98d9e2",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-resume-20261023/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-resume-20261023/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-resume-20261023/terminal.json": "0340a0d79d55b5a401a6c4521738bb1d70794be4b6b967cfe03f34b73f87f36e"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "partial",
+  "classification": "author content/path review and local static checks; no product or whole-document sign-off",
+  "scope": "V2 correction and affected novice/experienced task paths; author document review, no independent reviewer or live reenactment",
+  "static_contract_tests": 44,
+  "checks": {
+    "local_links": 105,
+    "yaml_blocks": 13,
+    "bash_blocks": 20
+  },
+  "remaining": [
+    "Native PCI/disk retirement and V2 field gates44-54 remain pending; corresponding task instructions must be reconciled with their eventual product evidence.",
+    "Original whole-document remaining tasks (system recovery/DR/monitoring/upgrade continuous procedures and pending operations evidence) remain open; this scoped review does not sign off all three manuals."
+  ],
+  "files": {
+    "logs/longhorn-cases/v2-document-review-20261019/reading-map.json": "a23a28b10273b8f1fe56ee3bae03af5be42dd8fe2caf684688ce073b14e0640f",
+    "logs/longhorn-cases/v2-document-review-20261019/document-review.json": "64fe5498ed58741e44e8a6ba83cead4fee41cd3452da4497e34dbc0300d3b5ef",
+    "logs/longhorn-cases/v2-document-review-20261019/contracts.log": "6e29ed706e980fa119c58a494e45f6f950d1d3f04d06f46180a79d1e5732eade",
+    "logs/longhorn-cases/v2-document-review-20261019/static.json": "d277dde424d007d29e5103a520528ca63647b2bdf89a90efb0215ce65e558565"
+  },
+  "document_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "127ac1d1aa88d2a2d5f2a7bffc8bcf3da54a63e71bff6c3139a17043a330552f",
+    "docs/storage/longhorn/technical-whitepaper.md": "dc1a73d96485538c3e531ebc1061a3c872bd89b73fdc0fdb91b7e3c480d23466",
+    "docs/storage/longhorn/development-manual.md": "56f9be295cf9e2c1ad2ac99ac8973e2adbaa9c884366af1d943492d241097fd5"
+  }
+}

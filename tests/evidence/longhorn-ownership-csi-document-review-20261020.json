@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-42 CSI ownership sections only",
+  "status": "scoped-author-review-pass",
+  "checks": {
+    "status": "pass",
+    "checks": {
+      "local_links": 130,
+      "yaml_blocks": 20,
+      "bash_blocks": 34
+    },
+    "document_sha256": {
+      "docs/storage/longhorn/operations-manual.md": "3aa8c4443721d610597768a80f4de38bbe8b6204baffe9918ec28b07b348fde1",
+      "docs/storage/longhorn/technical-whitepaper.md": "e55129ad21688594b0fb6879d370b7b52bb81a33f28effd878d544000f86c89c",
+      "docs/storage/longhorn/development-manual.md": "6817f0a66d9540a964b5683a4d9f33e7d43e8de3f8c2924b831b6430d62d194d"
+    },
+    "additional_checks": {
+      "heredocs": 3,
+      "inline_c": 5,
+      "unchanged_rendered_diagrams": 7
+    },
+    "boundary": "Static document checks; diagrams reuse existing rendering and visual review by source identity. No new field test or independent content review."
+  },
+  "official_source_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_source_sha256": {
+    "csi/deployment.go": "6e53b48901483cf3df28043f90cfb279481a3a7c00922ffa163b1d8db21c0cc4",
+    "csi/deployment_util.go": "0e07446d7ccc44178ef76efd5b8b33ad01121d6a413472ea379d0a479288eb7f"
+  },
+  "review_items": [
+    {
+      "section": "development-manual.md#操作请求与幂等",
+      "result": "pass",
+      "finding": "Native driver is created without Helm labels; deployer may delete/recreate on version/commit changes. Guard checks presence only for first install without local receipt. Valid receipt reentry remains allowed; does not bind a permanent driver UID."
+    },
+    {
+      "section": "operations-manual.md#规划与操作上下文",
+      "result": "pass",
+      "finding": "Novice path identifies existing release/CRD/driver before setup and stops for original owner/consumer review. It does not advise driver deletion, label adoption or fabricated receipts. Experienced operator can distinguish native driver from Chart-managed resources using linked fixed source."
+    }
+  ],
+  "product_evidence": [
+    "tests/evidence/longhorn-ownership-csi-gap-20261020.json",
+    "tests/evidence/longhorn-ownership-csi-refusal-qualification-20261020.json"
+  ],
+  "boundary": "Author checks of the newly changed CSI sections, both novice and experienced reader paths and document static checks only. Reuses previous unchanged diagrams and uninstall-section review; no new live run for writing, no independent reviewer, no complete LONGHORN-42 sign-off."
+}

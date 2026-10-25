@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "status": "contract-pass",
+  "classification": "test-gate historical input consumer compatibility",
+  "matrix_items": [
+    "LONGHORN-01",
+    "LONGHORN-50",
+    "LONGHORN-43"
+  ],
+  "product_entry": "bash tests/run_enterprise_regression.sh --longhorn-only",
+  "smallest_disproof": ".venv/bin/python tests/helpers/longhorn-full-evidence.py ready",
+  "tests": 97,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "contracts": {
+    "log": {
+      "path": "logs/longhorn-cases/full-node-handoff-readiness-contract-20261024/contracts-v3.log",
+      "sha256": "4f62ae387b49d7e8ba90df77f006eb0fbeaf96c508cd279128d264ed7773c78c"
+    },
+    "exit": {
+      "path": "logs/longhorn-cases/full-node-handoff-readiness-contract-20261024/contracts-v3.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/full-node-handoff-readiness-contract-20261024/contracts-v3.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "current_impact": {
+    "path": "tests/evidence/longhorn-linked-legacy-dependency-impact-20261024.json",
+    "sha256": "34e9b9740770df937b1543e18440b596f2f86fe4c62d68ccd9a2e959c01903b7"
+  },
+  "prior_impact": {
+    "path": "logs/longhorn-cases/full-node-handoff-readiness-contract-20261024/previous-impact.json",
+    "sha256": "18658e9572888d5a7710a0974a0f835629df50880d2202486e4a63dc258fd8dc"
+  },
+  "first_failure": {
+    "path": "logs/longhorn-cases/full-node-handoff-readiness-contract-20261024/first-failure.txt",
+    "sha256": "cb1a477ac8f679cc0fe38171f288d450142a5b35a953c8af33daf944ee1b9bc2"
+  },
+  "nullable_consumer_first_failure": {
+    "path": "logs/longhorn-cases/full-node-handoff-readiness-contract-20261024/nullable-adoption-consumer-first-failure.txt",
+    "sha256": "8f544964fcb8903c51b83bb64be9ef12899e414d5a4505336cee546757918910"
+  },
+  "boundary": "Verified only exact historical source/current handoffs; all nine focused original fault scopes remain verified, not complete LONGHORN-50 or final full. Current static is still required before live launch."
+}

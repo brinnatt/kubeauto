@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-and-design-only",
+  "classification": "test-gate integration of documented native DR tasks; no production or supply-chain change",
+  "owning_scenario": "LONGHORN-48 independent V2 DR handoff",
+  "official_version": "1.12.1",
+  "official_commits": {
+    "website": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager": "8320238242e8c804325d9588ec1db10feb9f36b8"
+  },
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-disaster-recovery-volumes/",
+    "https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/create-volumes/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/set-backup-target/"
+  ],
+  "specific_source_checks": {
+    "controller/volume_controller.go": "checkAndInitVolumeRestore sets restoreInitiated and restoreRequired; checkAndFinishVolumeRestore waits actual Engine lastRestoredBackup and clears restoreRequired only on completion; detached before initialization cannot prove restoration.",
+    "datastore/kubernetes.go": "NewPVManifestForVolume/NewPVManifest provide Retain static PV with existing native volumeHandle and matching claim binding. Explicit claim UID prebinding avoids dynamic replacement.",
+    "k8s/pkg/apis/longhorn/v1beta2/volumeattachment.go": "AttachmentTickets are native attachment intents; source fence requires no tickets.",
+    "k8s/pkg/apis/longhorn/v1beta2/enginefrontend.go": "EngineFrontend is the V2 business endpoint, separate from internal Engine export."
+  },
+  "product_entry": "Existing source/target config.yml + kubecli setup09 for installation and each snapshot/backup request. Documented native Volume API for standby/activation/disableFrontend and native static PV/PVC for existing restored volumes; never replace installation/backup evidence with direct Helm or clients.",
+  "stages": {
+    "activation": {
+      "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-activation-qualification",
+      "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-activation-qualification",
+      "expected_marker": "LONGHORN_V2_DR_ACTIVATION_QUALIFICATION_PASS",
+      "assertions": "Full then changed incremental source backup and standby actual restoration; workflow refuses absent fence without calling native activation. Retire original fixture writer/claim/Retain PV, detach normally, disable frontend, verify no PV/claim/Pods/tickets and stopped Engine/EngineFrontend. Record and re-read same source proof before native activation. Bind original target Volume through static PV/PVC, read latest confirmed source hash, confirm target-side write and unchanged source fence."
+    },
+    "failback": {
+      "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-failback-qualification",
+      "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-failback-qualification",
+      "expected_marker": "LONGHORN_V2_DR_FAILBACK_QUALIFICATION_PASS",
+      "prerequisite": "The activation focused branch must first pass, with scoped cleanup and current frozen dependencies.",
+      "assertions": "New target full backup with each referenced object read/hashed; source discovers original backup URL and restores a new V2 three-replica native volume. Require restore initialization/completion and original source URL. Retire target writer/PVC/PV and verify reverse fence before mounting new main-site claim. New UID must differ from both obsolete original and recovery volume, and old source remains fenced. Confirm recovered target writes and a new main-site write.",
+      "prerequisite_enforcement": "The fixed shell entry checks activation evidence and unchanged full business Python dependencies, both installation identities and independently verified empty baselines before any transport or fixture cleanup. The shell-only added prerequisite guard does not change already-qualified activation behavior; its deterministic contracts exercise missing, incomplete, drifted and unclean evidence."
+    }
+  },
+  "fixture_boundary": "Exact original three-node source and independent one-node target installations; new original source workload, one standby/recovery native volume, own target static namespace/PV/PVC/client and optional new source return volume with separate context journal. Both installations and original raw media are preserved.",
+  "cleanup": "Before backend or cache disconnection, retire restore/recovery consumers and exact owned native targets. Verify all UID/spec/claim bindings and full namespace graph, refuse unknown creation outcomes. Restore target cache then source cache while proving external backup receipts unchanged; clean business journals/namespaces and original source through existing guard, restore original credentials/references, then original source Store removes its own backend/transports. Restore both Registry channels and control kubeconfig; compare both empty baselines.",
+  "failure_diagnostics": "Private durable first failure, exact rendered inputs and context journals, both clusters native volume/engine/frontend/replica/attachment/backup graph, Pod descriptions/events and Manager logs. Never print credentials or persist supplied passwords.",
+  "coverage_boundary": "Planned fixture handoff with independently verifiable software fencing; not a hypervisor power-off/BMC or sudden complete source-site loss exercise. Native Longhorn API cannot establish remote-site fencing. Single-node target does not demonstrate target-site node HA. Activation qualification does not sign off failback or complete LONGHORN-48.",
+  "full_module": {
+    "classification": "test-gate composition only; no product, images or individual business assertion change",
+    "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-data-protection",
+    "expected_marker": "LONGHORN_V2_DATA_PROTECTION_PASS",
+    "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-data-protection",
+    "coverage": "10 independently qualified child workflows: integrity includes snapshots; SystemBackup includes independent full/incremental backup recovery; failback includes independent TLS, two-point standby and guarded activation. Other children cover backup refusal, four recurring paths, detached periodic full and absent-volume SystemRestore.",
+    "cleanup": "Each child owns its recovery and must emit scoped-clean. Stop on its first unmet prerequisite; preserve child logs. Aggregate owns only its private logs and checks both original baselines before/after. Healthy source and target installations remain."
+  }
+}

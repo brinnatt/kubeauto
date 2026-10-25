@@ -1,0 +1,37 @@
+{
+  "boundary": "Private probe module admits exactly the three source hosts and released .149 receiver. Real collect/assess runs under subprocess fixture and proves all four reads precede owner creation; default V2 probe remains unchanged. Generated default-only failed directory archived after exact product-template comparison, with three leases and durable rc=0. No disk/core installation occurred.",
+  "changed_inputs": {
+    "tests/helpers/longhorn-node-local.py": "dac050fa78752c8c0490367dacffa080acb3dcac2a7323375b043f4da509973e",
+    "tests/unit/test_longhorn_node_local.py": "969aae8d8dae9cf30e690027314fc3e0d2dab62547f5a38ba2a38afeb2837162"
+  },
+  "classification": "test-gate",
+  "contracts": {
+    "log": {
+      "path": "logs/longhorn-cases/node25-four-host-probe-contract-20261024/contract.log",
+      "sha256": "8a4bc077f95ec32da6d8e91674afa44141655183d2ae453d293a7e042da0b0e2"
+    },
+    "rc": 0,
+    "tests": 18
+  },
+  "first_failure": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-bound-owning-20261024/launch.log",
+    "sha256": "bbc0f095bc4c06989f48cb92a39b56200593811f928bd984b997caac237b73e9"
+  },
+  "matrix_gap": "LONGHORN-25",
+  "overall_delivery_pass": false,
+  "product_behavior_changed": false,
+  "red": {
+    "path": "logs/longhorn-cases/node25-four-host-probe-contract-20261024/red.log",
+    "sha256": "610e4140c6bd414a7455375194986631de35d7e7b8b18da1dd4d9cd838393923"
+  },
+  "schema": 1,
+  "status": "contract-pass-owning-pending",
+  "terminal": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-bound-owning-20261024/terminal.json",
+    "sha256": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3"
+  },
+  "unconfigured_recovery": {
+    "path": "logs/longhorn-cases/node25-four-host-probe-contract-20261024/unconfigured-recovery.log",
+    "sha256": "daf5df00235d1f3c3c4ec96f339b759dbcd1f89670e452b407ea854c49db282c"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "case": "LONGHORN-32",
+  "status": "failed",
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-v2-control-qualification",
+  "owning_module": "security",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "first_failure": {
+    "exception": "ValueError: TLS manager Pod placement differs",
+    "function": "Rotation.children",
+    "source": "tests/helpers/longhorn-security.py",
+    "frozen_source_line": 274,
+    "private_traceback_sha256": "7c357a95bc143f5829cc1489f6f0db32a880d81d052732221b02db9c8849ed70"
+  },
+  "cause": "The readiness predicate treated an unbound DaemonSet replacement Pod, or a terminating predecessor overlapping its replacement, as foreign placement before checking convergence. It must validate controller ownership and any assigned node, then wait for the transition to finish. The failing callback object JSON was not captured, so these two transition cases cannot be distinguished retrospectively.",
+  "official_source": {
+    "version": "Kubernetes v1.33.6",
+    "url": "https://github.com/kubernetes/kubernetes/blob/v1.33.6/pkg/controller/daemon/daemon_controller.go",
+    "blob_sha": "3041f5ab93b3b943aa1bd8af253e6dfbeab48ae8",
+    "mechanism": "Creates Pods with target NodeAffinity before scheduler binding and ignores terminating predecessor Pods when reconciling replacements."
+  },
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_security.RotationContracts.test_components_bind_parent_node_image_secret_and_readiness -v",
+  "deterministic_result": "The original predicate fails both valid transition fixtures. The repaired predicate passes them while rejecting foreign parents, assigned foreign nodes and excess active Pods. Full security focused rerun remains required.",
+  "parent_durable": {
+    "pid": 769836,
+    "rc": 1,
+    "finalized": 1
+  },
+  "independent_results": {
+    "v1_idempotence": "durable rc=0; post-recovery independent health still required",
+    "v2_interrupt_manager": "durable rc=0; independent source/target readback captured; separate qualification archive required"
+  },
+  "files": {
+    "logs/longhorn-cases/v1-v2-control-qualification-20261021-093957/gate.log": "1bfe0e77f2945a1b2bf802734b8bff92cc6bb685c80762c519b70e40e496993f",
+    "logs/longhorn-cases/v1-v2-control-qualification-20261021-093957/durable-status.txt": "18fb2db1aa0e765fd0b86c41984fe2508d9fb83f87972088803b3a43fad3a2f9"
+  },
+  "recovery": "Preserve the original TLS escrow and business journal; run the fixed business-clean entry with the corrected predicate, verify original trust/identity and empty business baseline, then rerun only security. No node wipe, reinstallation or successful V2 rerun."
+}

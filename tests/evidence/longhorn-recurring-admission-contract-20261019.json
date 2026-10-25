@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "pass",
+  "classification": "test-gate deterministic contracts only",
+  "case": "LONGHORN-16 prerequisite",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_recurring_rotation tests.unit.test_longhorn_recurring_rotation_business -v",
+  "tests": 9,
+  "rc": 0,
+  "root_cause": "Native webhook refuses unavailable target before Backup creation; original gate expected only Backup Error.",
+  "official_source": "longhorn-manager8320238242e8c804325d9588ec1db10feb9f36b8 webhook/resources/backup/validator.go Create",
+  "checks": [
+    "Both post-admission and pre-admission paths preserve distinct evidence.",
+    "New job and snapshot plus full recurring owner chain; exact single-line job/volume/snapshot refusal.",
+    "Native InvalidAccessKeyId and original target/Secret UID+digest; Pod identity before/after log read.",
+    "Replacement, wrong error, old work, broken owner chain, split/foreign logs and concurrent Backup fail closed.",
+    "Full flow repairs pre-admission refusal and independently restores without fabricated failed Backup metadata."
+  ],
+  "live": "focused qualification running; no field/module PASS claimed",
+  "files": {
+    "tests/helpers/longhorn-recurring-rotation.py": "ec2a34def0cbbaf14ae35536198ceb8c4bd9b63aa0e78ae720017e1f0e407d24",
+    "tests/unit/test_longhorn_recurring_rotation.py": "d95f96237557926b5b3f08be305033c99c72da593812a8e238841bcf9fcd6f68",
+    "tests/unit/test_longhorn_recurring_rotation_business.py": "8229f318fdbd950a380be04d45fe0bf6c59248643f3ca06d9bdfbae14c5b2b2a",
+    "logs/longhorn-cases/rotation-admission-contract-20261019/green.log": "66b7987c99cd41facde09390fa400dec39ae90340fde0fc84fc189bc30231661",
+    "logs/longhorn-cases/rotation-admission-contract-20261019/red.log": "eb968e7e3bd685b75ac213985955972d12b449f336c928a527e36f81ae2e1842"
+  }
+}

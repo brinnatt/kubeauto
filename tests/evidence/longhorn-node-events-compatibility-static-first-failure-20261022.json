@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-01",
+  "status": "pending",
+  "classification": "test-gate evidence compatibility dependency",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-remaining-v2-monitoring",
+  "owning_command": "bash tests/run_enterprise_regression.sh --longhorn-static-only",
+  "rc": 1,
+  "first_failure": {
+    "operation": "read_completed_plan -> volume_baseline unit/contract test",
+    "cause": "Exact completed-installation compatibility mapping still names helper hash before reviewed Event-only change",
+    "errors": 3,
+    "changed_input": "tests/helpers/longhorn-lab.py",
+    "expected_sha256": "aafa5439085668fe5cb6e28c3ae61170cb4d38c32e262d7e359ead752bcb4ec3",
+    "actual_sha256": "ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b"
+  },
+  "local_durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "remote_source_sync": false,
+  "remote_mutation": false,
+  "raw_evidence": {
+    "logs/longhorn-cases/node-events-cpu-order-continuation-20261022/launch.log": "5780c0ce49a62f797b43b7ebd741f2d24996c6f0f37f2288d6f4a144a2c16f44",
+    "logs/longhorn-cases/node-events-cpu-order-continuation-20261022/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-cpu-order-continuation-20261022/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/static-20261022-062620/gate.log": "a4f573e41c64ab368fdd826cf598be25f71b1475d0d6c00b0fa80378d0437c99",
+    "logs/longhorn-cases/node-events-cpu-order-continuation-20261022/launch-review.json": "ad9fef0e785e695f107727921fd36e074e7cfb683c1d344ad71245b03985fb54",
+    "logs/longhorn-cases/node-events-cpu-order-continuation-20261022/frozen-inputs.json": "ce6fad9ad4b14060dd4eea955572053a2b9fa00839769db1a33235e14e7c3484"
+  },
+  "scope": "Only current static acceptance returns pending; 30 unrelated accepted scopes retain evidence. No product defect or installation invalidity claimed.",
+  "next": "Review exact finite compatibility mapping, real read_plan and volume_baseline positive/refusal contracts; then full current static before focused live."
+}

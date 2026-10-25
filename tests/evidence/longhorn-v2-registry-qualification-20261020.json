@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "status": "pass",
+  "rc": 0,
+  "failure_markers": 0,
+  "transport_fingerprint": "d03ec80593a22ff6fb286b307b1aeb87e8c74fc923d7b7306085a3ae3df35994",
+  "executed_helper_sha256": "7bdcccd17a2636dc85a1e8b373e8fc43adf74e952230b75c4314bc51208d4979",
+  "lifetime_samples": 8,
+  "previous_evidence": {
+    "path": "logs/longhorn-cases/ssh-connect-qualification-20261025/prior-longhorn-v2-registry-qualification-20261020.json",
+    "sha256": "0b0e68e6e5fbea97c5610bbd3d6b7167abbb0dab5345effa82ab7a88be4801fd"
+  },
+  "files": {
+    "logs/longhorn-cases/ssh-connect-qualification-20261025/v2-registry-qualification.log": "c44a37ed447b91bb868cfdffd649b1526c2e174272b04b05688eaae295fc9df2",
+    "logs/longhorn-cases/ssh-connect-qualification-20261025/v2-registry-qualification.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/ssh-connect-qualification-20261025/v2-registry-qualification.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/ssh-connect-qualification-20261025/accepted.json": "f97ba670235690741ce668b7a66c2261f91d85cf9a8a45a23b080c6aa167d8b6"
+  },
+  "boundary": "Registry prerequisite only, no business GA; V1 additionally proves actual remote RPC across delayed TCP availability"
+}

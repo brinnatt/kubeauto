@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "contract-pass",
+  "classification": "test-gate ordering defect; separate from observed upstream TLS clone failure",
+  "cause": "claim() waited for a Ready workload before reading cloneStatus. CSI refuses attachment until cloning completes, so a native failed state spent the full client timeout instead of stopping at the failed prerequisite.",
+  "fix": "After original PVC/PV/Volume binding, require native clone completed before creating the workload; fail immediately on failed clone state. The running qualification stays on its original frozen code until its owned exit.",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_linked_clones tests.unit.test_longhorn_v2_broken_restore tests.unit.test_longhorn_v2_data_protection -v",
+  "rc": 0,
+  "tests": 27,
+  "expected_old_input_reproduction_rc": 1,
+  "frozen_inputs": {
+    "tests/helpers/longhorn-v2-linked-clones.py": "58c4747713e5282963faf60007187a0aac21737388d7ad947861a9774d19f2f8",
+    "tests/unit/test_longhorn_v2_linked_clones.py": "fef3002d8d97480d07f50975c740d09b41f990b827a9a1efb8be9995bf5c2e60"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/linked-native-first-observation-20261021/ordering-fixed-focused.log": "371b6e5fe9f0f9f5403413d91aa8dc6a594a8565dd4f5609d30018cb7985d22a",
+    "logs/longhorn-cases/linked-native-first-observation-20261021/ordering-first-failure.log": "445f8f4d24c2178afa886fc82ab8325079186ad45f55244fe5360ee645ce2592"
+  },
+  "boundary": "No live fixed-runner qualification yet; current full static evidence predates this ordering fix. No upstream image change or TLS disablement."
+}

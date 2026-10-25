@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "case": "LONGHORN-51",
+  "classification": "test-gate",
+  "status": "contract-pass-no-live",
+  "ladder_completed": 2,
+  "next_permitted_level": 3,
+  "product_entry": "config.yml + kubecli setup longhorn-v2-gate 09 + 07",
+  "next_fixed_command": "bash tests/run_enterprise_regression.sh --longhorn-v2-middleware",
+  "expected_markers": [
+    "LONGHORN_V2_MIDDLEWARE_PASS",
+    "LONGHORN_V2_MIDDLEWARE_SCOPED_CLEAN_PASS"
+  ],
+  "contracts": {
+    "tests": 37,
+    "rc": 0,
+    "failure_markers": 0
+  },
+  "inputs": {
+    "tests/helpers/longhorn-v1-middleware.py": "d9bf10004af78d9a4aa3889d707810d2d21f5f89878ce11bb29123e1bd04931d",
+    "tests/helpers/longhorn-v2-middleware.py": "b15aa477d57d3cafb60b04f310102e730a8b929323d69908aad5734b7bab57c0",
+    "tests/helpers/longhorn-v2-middleware.sh": "e3b9464df4d9ab785d9eef1f5b359ec596f760f6b0d446618fe4a9d49f11d37a",
+    "tests/helpers/longhorn-runner.sh": "a2b2e00d101ff7ce793d1bb928c53528ba9e6816eba3688e726fa6e6ea192ccb",
+    "tests/helpers/longhorn-live.sh": "3b980b8b270c4e4dd24b2bdbd55c29aa28de1c7c70bef5e7b3ca3667d86bf8f6",
+    "tests/unit/test_longhorn_v2_middleware.py": "44fb23bede472408615648f5ed6ebd0b8feaebf4d13ef2bc9fca9f13a8adadcc",
+    "tests/helpers/longhorn-static.sh": "a799e89bd0a9c2544fb32b8eee72df1842d2d78a0f3dbcd8f4c8e0d6070a2f73",
+    "tests/helpers/longhorn-parallel.sh": "57706151505203d7f1d9bd3ce7c78d1b6d7da342c0c36e9b3518d28d37f50d00",
+    "tests/helpers/longhorn-parallel.py": "2956cbaf7a4470bcaf3b1777f934b7b3d20a3f374953894d9d7ae3d7d3328aa5",
+    "tests/unit/test_longhorn_parallel.py": "a202f5aae3ad26a931c5884eb75e28c3783ffc99819e1d7cb09ebc66fe64d207"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/middleware51-integration-20261021/contracts.log": "f60afb4c942e1fb198c918b37bf3e306f62f2f4805035eaf6fbd08d28d8bad04",
+    "logs/longhorn-cases/middleware51-integration-20261021/parallel-increment-review.json": "6f55221970f3929f308666a0135c398653d9815650183678e6fb47bd43939b66",
+    "logs/longhorn-cases/middleware51-integration-20261021/parallel-contracts.log": "27c3baf262a35f5a330691db86c0bc23b9fab4f734c7a424bc38113313eb2f9b"
+  },
+  "scope": "V1 engine/disk hooks retain defaults; V2 adapter reuses SQL/dump/restore/member recovery, checks explicit raw-disk and monitoring bindings, native engine/node-disable refusals. No new images or lab mutation.",
+  "live_pass": false,
+  "overall_delivery_pass": false,
+  "parallel_contracts": {
+    "tests": 38,
+    "rc": 0,
+    "failure_markers": 0,
+    "scope": "V2 advances failure→platform→middleware while V1 progresses independently; middleware failures, missing cleanup and duplicate terminal cannot pass."
+  },
+  "combined_fixed_command": "bash tests/run_enterprise_regression.sh --longhorn-v1-ownership-operations-v2-failure-platform"
+}

@@ -1,0 +1,1078 @@
+LONGHORN_DURABLE_WORK path=/var/tmp/kubeauto-longhorn-v2-incomplete.RsfjdH
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+[2026-10-25 10:53:55] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.16): control node managed by distribution RPM/deb, target module runtime Python >=3.8
+[2026-10-25 10:53:55] [INFO] [service.cluster.manager] Setting up cluster with playbook 09.longhorn.yml.
+[2026-10-25 10:53:55] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-10-25 10:53:55] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, calico: v3.28.4
+[2026-10-25 10:53:56] [WARNING] [service.cluster.manager] ansible-core 2.16 cannot manage target Python on 192.168.47.147; required Python 3.8-3.12. Switching this playbook run to the audited execution environment.
+[2026-10-25 10:53:57] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 10:53:57] [WARNING] [service.cluster.manager] Using isolated ansible-core 2.20 execution image brinnatt/ansible:2.20.9; the native package remains unchanged.
+
+PLAY [Validate Longhorn configuration and ownership before host changes] *******
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;36mskipping: [localhost] => (item=192.168.47.146) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.147) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.148) [0m
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;35m[0m
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Prepare every Longhorn client and verify allowlisted filesystem mounts] ***
+
+TASK [Gathering Facts] *********************************************************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=15
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/host.yml for 192.168.47.146, 192.168.47.147, 192.168.47.148[0m
+
+TASK [longhorn : Require a supported native Linux package family] **************
+[0;35m[0m
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Reject foreign disk receipts before changing host dependencies] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Reject an active multipath service before changing packages] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Bind the secret-free V2 host declaration to current API identities] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Verify static CPU policy on every Longhorn client before host mutation] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Qualify V2 kernel resources and raw disk identities before host mutation] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on RedHat] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Debian] ***
+[0;35m[0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Suse] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Load required V1 client modules] ******************************
+[0;32mok: [192.168.47.148] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.146] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.146] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.147] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.148] => (item=nfs)[0m
+[0;32mok: [192.168.47.146] => (item=nfs)[0m
+[0;32mok: [192.168.47.147] => (item=nfs)[0m
+
+TASK [longhorn : Persist required client modules] ******************************
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Load V2 modules only on explicitly selected qualified nodes] ***
+[0;32mok: [192.168.47.146] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.148] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.147] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.146] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.148] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.147] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.146] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=nvme_tcp)[0m
+
+TASK [longhorn : Persist V2 modules without changing hugepages or CPU policy] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Enable the iSCSI daemon] **************************************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Copy the read-only Longhorn host checker] *********************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Verify client prerequisites and current filesystem identity] ***
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Create host ownership directory] ******************************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Preserve the current filesystem receipt] **********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Create the kubelet mount guard directory] *********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.148][0m
+[0;36mskipping: [192.168.47.147][0m
+
+TASK [longhorn : Require the actual data mount before kubelet starts] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Reload systemd after the mount guard changes] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Verify loaded V2 prerequisites and raw device identities] *****
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Create private V2 ownership directory] ************************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Save the cluster node and hardware bound V2 receipt] **********
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.148][0m
+
+PLAY [Verify every explicitly approved V2 disk before native retirement] *******
+
+TASK [Inspect exact host ownership and stable hardware for approved AIO disks] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Reconcile Longhorn storage and immutable operations] *********************
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;32mok: [localhost] => (item=192.168.47.146)[0m
+[0;32mok: [localhost] => (item=192.168.47.147)[0m
+[0;32mok: [localhost] => (item=192.168.47.148)[0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=30
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Release exact V2 host receipts after independently observed native SPDK absence] ***
+
+TASK [Release only the approved host disk identities while preserving media] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Release native V2 disk receipts only after every host confirms exact retirement] ***
+
+TASK [Start the full-scope host release receipt set] ***************************
+[0;36mskipping: [localhost][0m
+
+TASK [Bind every actual host release result to the control operation] **********
+[0;36mskipping: [localhost][0m
+
+TASK [Save the secret-free completed host release proofs] **********************
+[0;36mskipping: [localhost][0m
+
+TASK [Release exact control identities and retain the completed retirement journal] ***
+[0;36mskipping: [localhost][0m
+
+PLAY [Release owned host mount guards only after native uninstall completes] ***
+
+TASK [Verify every host receipt before releasing the first mount guard] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Bind V2 receipt release to the original cluster node and disk declarations] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.148][0m
+[0;36mskipping: [192.168.47.147][0m
+
+TASK [Verify every V2 receipt before releasing host ownership] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact owned receipts and guards while retaining mounted data] ****
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Reload systemd after releasing the owned kubelet mount guard] ************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact V2 ownership receipts while preserving raw media] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY RECAP *********************************************************************
+[0;32m192.168.47.146[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.147[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.148[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;33mlocalhost[0m                  : [0;32mok=16  [0m [0;33mchanged=2   [0m unreachable=0    failed=0    [0;36mskipped=12  [0m rescued=0    ignored=0   
+[2026-10-25 10:54:32] [INFO] [service.cluster.manager] Cluster setup completed (playbook 09.longhorn.yml).
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_LAB_WAIT stage=linked-source-bound elapsed=0
+LONGHORN_LAB_WAIT stage=linked-source-ready elapsed=0
+LONGHORN_LAB_WAIT stage=linked-source-ready elapsed=5
+LONGHORN_LAB_WAIT stage=linked-source-ready elapsed=10
+[2026-10-25 10:54:56] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.16): control node managed by distribution RPM/deb, target module runtime Python >=3.8
+[2026-10-25 10:54:56] [INFO] [service.cluster.manager] Setting up cluster with playbook 09.longhorn.yml.
+[2026-10-25 10:54:56] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-10-25 10:54:56] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, calico: v3.28.4
+[2026-10-25 10:54:57] [WARNING] [service.cluster.manager] ansible-core 2.16 cannot manage target Python on 192.168.47.147; required Python 3.8-3.12. Switching this playbook run to the audited execution environment.
+[2026-10-25 10:54:59] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 10:54:59] [WARNING] [service.cluster.manager] Using isolated ansible-core 2.20 execution image brinnatt/ansible:2.20.9; the native package remains unchanged.
+
+PLAY [Validate Longhorn configuration and ownership before host changes] *******
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;36mskipping: [localhost] => (item=192.168.47.146) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.147) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.148) [0m
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;35m[0m
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Prepare every Longhorn client and verify allowlisted filesystem mounts] ***
+
+TASK [Gathering Facts] *********************************************************
+[0;32mok: [192.168.47.146][0m
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=15
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/host.yml for 192.168.47.146, 192.168.47.147, 192.168.47.148[0m
+
+TASK [longhorn : Require a supported native Linux package family] **************
+[0;35m[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.[0m
+[0;35mOrigin: /usr/local/kubeauto/roles/longhorn/tasks/host.yml:3:11[0m
+[0;35m[0m
+[0;35m1 - name: Require a supported native Linux package family[0m
+[0;35m2   ansible.builtin.assert:[0m
+[0;35m3     that: ansible_os_family in ['RedHat', 'Debian', 'Suse'][0m
+[0;35m            ^ column 11[0m
+[0;35m[0m
+[0;35mUse `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.[0m
+[0;35m[0m
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Reject foreign disk receipts before changing host dependencies] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Reject an active multipath service before changing packages] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Bind the secret-free V2 host declaration to current API identities] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Verify static CPU policy on every Longhorn client before host mutation] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Qualify V2 kernel resources and raw disk identities before host mutation] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on RedHat] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Debian] ***
+[0;35m[0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Suse] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Load required V1 client modules] ******************************
+[0;32mok: [192.168.47.146] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.146] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.147] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.148] => (item=nfs)[0m
+[0;32mok: [192.168.47.146] => (item=nfs)[0m
+[0;32mok: [192.168.47.147] => (item=nfs)[0m
+
+TASK [longhorn : Persist required client modules] ******************************
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.146][0m
+
+TASK [longhorn : Load V2 modules only on explicitly selected qualified nodes] ***
+[0;32mok: [192.168.47.146] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.147] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.148] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.146] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.148] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.147] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.146] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=nvme_tcp)[0m
+
+TASK [longhorn : Persist V2 modules without changing hugepages or CPU policy] ***
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Enable the iSCSI daemon] **************************************
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.146][0m
+
+TASK [longhorn : Copy the read-only Longhorn host checker] *********************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Verify client prerequisites and current filesystem identity] ***
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Create host ownership directory] ******************************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.148][0m
+[0;36mskipping: [192.168.47.147][0m
+
+TASK [longhorn : Preserve the current filesystem receipt] **********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Create the kubelet mount guard directory] *********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Require the actual data mount before kubelet starts] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Reload systemd after the mount guard changes] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Verify loaded V2 prerequisites and raw device identities] *****
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Create private V2 ownership directory] ************************
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Save the cluster node and hardware bound V2 receipt] **********
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+PLAY [Verify every explicitly approved V2 disk before native retirement] *******
+
+TASK [Inspect exact host ownership and stable hardware for approved AIO disks] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Reconcile Longhorn storage and immutable operations] *********************
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;32mok: [localhost] => (item=192.168.47.146)[0m
+[0;32mok: [localhost] => (item=192.168.47.147)[0m
+[0;32mok: [localhost] => (item=192.168.47.148)[0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=30
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Release exact V2 host receipts after independently observed native SPDK absence] ***
+
+TASK [Release only the approved host disk identities while preserving media] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Release native V2 disk receipts only after every host confirms exact retirement] ***
+
+TASK [Start the full-scope host release receipt set] ***************************
+[0;36mskipping: [localhost][0m
+
+TASK [Bind every actual host release result to the control operation] **********
+[0;36mskipping: [localhost][0m
+
+TASK [Save the secret-free completed host release proofs] **********************
+[0;36mskipping: [localhost][0m
+
+TASK [Release exact control identities and retain the completed retirement journal] ***
+[0;36mskipping: [localhost][0m
+
+PLAY [Release owned host mount guards only after native uninstall completes] ***
+
+TASK [Verify every host receipt before releasing the first mount guard] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Bind V2 receipt release to the original cluster node and disk declarations] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Verify every V2 receipt before releasing host ownership] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact owned receipts and guards while retaining mounted data] ****
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Reload systemd after releasing the owned kubelet mount guard] ************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact V2 ownership receipts while preserving raw media] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY RECAP *********************************************************************
+[0;32m192.168.47.146[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.147[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.148[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;33mlocalhost[0m                  : [0;32mok=16  [0m [0;33mchanged=2   [0m unreachable=0    failed=0    [0;36mskipped=12  [0m rescued=0    ignored=0   
+[2026-10-25 10:55:34] [INFO] [service.cluster.manager] Cluster setup completed (playbook 09.longhorn.yml).
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_LAB_WAIT stage=incomplete-clone-pv-bound elapsed=0
+[2026-10-25 10:55:43] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.16): control node managed by distribution RPM/deb, target module runtime Python >=3.8
+[2026-10-25 10:55:43] [INFO] [service.cluster.manager] Setting up cluster with playbook 09.longhorn.yml.
+[2026-10-25 10:55:43] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-10-25 10:55:43] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, calico: v3.28.4
+[2026-10-25 10:55:44] [WARNING] [service.cluster.manager] ansible-core 2.16 cannot manage target Python on 192.168.47.147; required Python 3.8-3.12. Switching this playbook run to the audited execution environment.
+[2026-10-25 10:55:46] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 10:55:46] [WARNING] [service.cluster.manager] Using isolated ansible-core 2.20 execution image brinnatt/ansible:2.20.9; the native package remains unchanged.
+
+PLAY [Validate Longhorn configuration and ownership before host changes] *******
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;36mskipping: [localhost] => (item=192.168.47.146) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.147) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.148) [0m
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;35m[0m
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Prepare every Longhorn client and verify allowlisted filesystem mounts] ***
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=15
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/host.yml for 192.168.47.146, 192.168.47.147, 192.168.47.148[0m
+
+TASK [longhorn : Require a supported native Linux package family] **************
+[0;35m[0m
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Reject foreign disk receipts before changing host dependencies] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.148][0m
+[0;36mskipping: [192.168.47.147][0m
+
+TASK [longhorn : Reject an active multipath service before changing packages] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Bind the secret-free V2 host declaration to current API identities] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Verify static CPU policy on every Longhorn client before host mutation] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Qualify V2 kernel resources and raw disk identities before host mutation] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on RedHat] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Debian] ***
+[0;35m[0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Suse] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Load required V1 client modules] ******************************
+[0;32mok: [192.168.47.146] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.146] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.148] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.147] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.146] => (item=nfs)[0m
+[0;32mok: [192.168.47.148] => (item=nfs)[0m
+[0;32mok: [192.168.47.147] => (item=nfs)[0m
+
+TASK [longhorn : Persist required client modules] ******************************
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Load V2 modules only on explicitly selected qualified nodes] ***
+[0;32mok: [192.168.47.146] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.148] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.147] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.146] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.148] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.147] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.146] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=nvme_tcp)[0m
+
+TASK [longhorn : Persist V2 modules without changing hugepages or CPU policy] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Enable the iSCSI daemon] **************************************
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Copy the read-only Longhorn host checker] *********************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Verify client prerequisites and current filesystem identity] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Create host ownership directory] ******************************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Preserve the current filesystem receipt] **********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Create the kubelet mount guard directory] *********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Require the actual data mount before kubelet starts] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Reload systemd after the mount guard changes] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Verify loaded V2 prerequisites and raw device identities] *****
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Create private V2 ownership directory] ************************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Save the cluster node and hardware bound V2 receipt] **********
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+PLAY [Verify every explicitly approved V2 disk before native retirement] *******
+
+TASK [Inspect exact host ownership and stable hardware for approved AIO disks] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Reconcile Longhorn storage and immutable operations] *********************
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;32mok: [localhost] => (item=192.168.47.146)[0m
+[0;32mok: [localhost] => (item=192.168.47.147)[0m
+[0;32mok: [localhost] => (item=192.168.47.148)[0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=30
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Release exact V2 host receipts after independently observed native SPDK absence] ***
+
+TASK [Release only the approved host disk identities while preserving media] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Release native V2 disk receipts only after every host confirms exact retirement] ***
+
+TASK [Start the full-scope host release receipt set] ***************************
+[0;36mskipping: [localhost][0m
+
+TASK [Bind every actual host release result to the control operation] **********
+[0;36mskipping: [localhost][0m
+
+TASK [Save the secret-free completed host release proofs] **********************
+[0;36mskipping: [localhost][0m
+
+TASK [Release exact control identities and retain the completed retirement journal] ***
+[0;36mskipping: [localhost][0m
+
+PLAY [Release owned host mount guards only after native uninstall completes] ***
+
+TASK [Verify every host receipt before releasing the first mount guard] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Bind V2 receipt release to the original cluster node and disk declarations] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Verify every V2 receipt before releasing host ownership] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact owned receipts and guards while retaining mounted data] ****
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Reload systemd after releasing the owned kubelet mount guard] ************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact V2 ownership receipts while preserving raw media] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY RECAP *********************************************************************
+[0;32m192.168.47.146[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.147[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.148[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;33mlocalhost[0m                  : [0;32mok=16  [0m [0;33mchanged=2   [0m unreachable=0    failed=0    [0;36mskipped=12  [0m rescued=0    ignored=0   
+[2026-10-25 10:56:23] [INFO] [service.cluster.manager] Cluster setup completed (playbook 09.longhorn.yml).
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_LAB_WAIT stage=incomplete-clone-restored-completed elapsed=0
+LONGHORN_LAB_WAIT stage=incomplete-clone-restored-completed elapsed=5
+LONGHORN_LAB_WAIT stage=incomplete-clone-restored-completed elapsed=10
+LONGHORN_LAB_WAIT stage=incomplete-clone-restored-completed elapsed=15
+LONGHORN_LAB_WAIT stage=linked-clone-ready elapsed=0
+LONGHORN_LAB_WAIT stage=linked-clone-ready elapsed=5
+LONGHORN_LAB_WAIT stage=linked-clone-ready elapsed=10
+LONGHORN_LAB_WAIT stage=linked-clone-ready elapsed=15
+LONGHORN_V2_INCOMPLETE_CLONE_RESULT {"disk_identity_and_settings_restored": true, "negative": {"after_state": "initiated", "before_state": "initiated", "clone_uid": "f62f3a4b-d986-4a0f-abaf-da1597bbedc5", "completed_positive_control": false, "nested_name": "nested-dryrun-918c07f54b3608ea", "server_dry_run": true, "uid_and_spec_unchanged": true}, "positive": {"after_state": "completed", "before_state": "completed", "clone_uid": "f62f3a4b-d986-4a0f-abaf-da1597bbedc5", "completed_positive_control": true, "nested_name": "nested-dryrun-918c07f54b3608ea", "server_dry_run": true, "uid_and_spec_unchanged": true}, "real_csi_pv_uid": "71913b36-eb6b-47c2-bdea-4ca4706af633", "source_replica_identities": {"pvc-1d75f95a-b8ae-4a9b-9b93-429f3e4df1e8-r-0912e90b": {"node": "longhorn-node-146", "uid": "3e2a4463-ea3b-430a-94ad-ceb6a96f0cc6"}, "pvc-1d75f95a-b8ae-4a9b-9b93-429f3e4df1e8-r-8dad7c2f": {"node": "longhorn-node-147", "uid": "1baa1d00-c842-49ef-b2b3-65bc39f41454"}, "pvc-1d75f95a-b8ae-4a9b-9b93-429f3e4df1e8-r-e6a0a4ed": {"node": "longhorn-node-148", "uid": "03d07451-2629-43a1-bb0b-ec4d07b68074"}}}
+LONGHORN_LAB_WAIT stage=linked-pod-clean-clone elapsed=0
+LONGHORN_LAB_WAIT stage=linked-pod-clean-clone elapsed=5
+LONGHORN_LAB_WAIT stage=linked-pod-clean-clone elapsed=10
+LONGHORN_LAB_WAIT stage=linked-pod-clean-clone elapsed=15
+LONGHORN_LAB_WAIT stage=linked-pod-clean-clone elapsed=20
+LONGHORN_LAB_WAIT stage=linked-pod-clean-clone elapsed=25
+LONGHORN_LAB_WAIT stage=linked-pod-clean-clone elapsed=30
+LONGHORN_LAB_WAIT stage=linked-pod-clean-source elapsed=0
+LONGHORN_LAB_WAIT stage=linked-pod-clean-source elapsed=5
+LONGHORN_LAB_WAIT stage=linked-pod-clean-source elapsed=10
+LONGHORN_LAB_WAIT stage=linked-pod-clean-source elapsed=15
+LONGHORN_LAB_WAIT stage=linked-pod-clean-source elapsed=20
+LONGHORN_LAB_WAIT stage=linked-pod-clean-source elapsed=25
+LONGHORN_LAB_WAIT stage=linked-pod-clean-source elapsed=30
+LONGHORN_LAB_WAIT stage=linked-volume-clean-clone elapsed=0
+LONGHORN_LAB_WAIT stage=linked-claim-clean-source elapsed=0
+LONGHORN_LAB_WAIT stage=linked-volume-clean-source elapsed=0
+LONGHORN_LAB_WAIT stage=linked-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=linked-namespace-clean elapsed=5
+LONGHORN_V2_LINKED_FIXTURES_CLEAN_PASS
+LONGHORN_V2_INCOMPLETE_CLONE_FIXTURES_CLEAN_PASS
+LONGHORN_V2_INCOMPLETE_CLONE_BUSINESS_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_INCOMPLETE_CLONE_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_V2_INCOMPLETE_CLONE_QUALIFICATION_PASS
+LONGHORN_V2_INCOMPLETE_CLONE_QUALIFICATION_EXIT rc=0

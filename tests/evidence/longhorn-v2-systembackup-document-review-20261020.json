@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "reviewed-scoped",
+  "scope": "SystemBackup evidence publication, native serialization/nullable polling explanation and pre-existing independent Namespace prerequisite; author content and two reader-path review, not customer sign-off or actual SystemRestore PASS",
+  "official_basis": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "backupstore_commit": "e5f4ddc47e4d372169fb4efcfbae5848e7bc1739",
+    "source_evidence": "tests/evidence/longhorn-v2-systembackup-source-20261020.json"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-systembackup-qualification-20261020.json",
+  "checks": [
+    {
+      "task": "Source backup and target restore prerequisite",
+      "chapter": "operations-manual.md#系统备份与全新集群恢复",
+      "defect": "Business Namespace was not explicitly included in target prerequisites; archive namespace UUID could be confused with a Namespace manifest",
+      "resolution": "Explain exclusions, retain source PV claimRef/PVC/volume mapping and namespace list, hand over controlled inputs, apply only approved Namespace declarations before SystemRestore and require Active. Fail closed on missing/Terminating/foreign Namespace; no consumers launched",
+      "path_review": "Public source and target contexts established separately; independent variables defined from approved input; original object ownership and recovery materials retained. No implied whole-cluster restore"
+    },
+    {
+      "task": "Assess what the resource package proves",
+      "chapter": "technical-whitepaper.md#恢复系统恢复与-dr-的区别",
+      "resolution": "Publish measured topology, disabled-policy rationale, exact ZIP/cfg sizes, SHA256/member/resource counts, four original UIDs and bundled lastBackup, attached refusal and confirmed source cross-node bytes/hash. Explicitly exclude absent-volume reconstruction, DR and SLA"
+    },
+    {
+      "task": "Maintain native polling and format compatibility",
+      "chapter": "development-manual.md#操作请求与幂等",
+      "resolution": "Explain nullable conditions with native terminal checks, yaml.v2 lowercase metadata versus Kubernetes resource schema, full-file SHA256 versus truncated block SHA512, private failure preservation and namespace boundary"
+    },
+    {
+      "task": "Beginner route",
+      "result": "Read planning context -> source identity/data prerequisites -> source product request -> independent target install/Namespace/Secret prerequisites -> Ready-source check -> product restore -> binding and business verification -> stop/recovery. Existing true SystemRestore remains pending; no new live claim"
+    },
+    {
+      "task": "Experienced operator route",
+      "result": "SystemRestore task explicitly establishes target context, mapping/Namespace inputs, no-consumer and detached constraints, timeout and failure exit; serialization details and evidence interpretation have direct chapter links"
+    }
+  ],
+  "static": {
+    "shell_fences": 40,
+    "bash_n": "pass",
+    "fixed_runner_static_evidence": "tests/evidence/longhorn-v1-snapshot-current-static-20261020.json",
+    "changed_mermaid_diagrams": 0,
+    "new_live_execution_required_for_documentation": false
+  },
+  "limitations": "Scoped follow-up to prior full content review; no independent reviewer or customer execution claimed. Product SystemRestore/DR modules and final complete regression remain pending.",
+  "files": {
+    "docs/storage/longhorn/operations-manual.md": "838624467b0ae7ab4786be7fc52a889897b6958b8505816d40f8ec2ab49a672f",
+    "docs/storage/longhorn/technical-whitepaper.md": "cfc16736f450492eab64ba57756cae2fee2407572d34f02622225d71b35e5704",
+    "docs/storage/longhorn/development-manual.md": "330ae81ecc67cb9270c64c4fa6f1d550330e33884f610aa5291a53d5d9cffee3"
+  }
+}

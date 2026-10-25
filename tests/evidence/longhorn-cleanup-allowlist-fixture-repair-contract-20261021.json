@@ -1,0 +1,27 @@
+{
+  "after_sha256": "46a54cbf905ce666b34aeab7c892536b2eb5f537f195fbf692219df574d176be",
+  "ast": "pass",
+  "before_sha256": "663c97c77c9f31a445bd904b451b43f1e40101c71feb7765956342271ec8dae3",
+  "changed_file": "tests/unit/test_longhorn_cleanup.py",
+  "classification": "test-gate/contract fixture",
+  "contract_finalized": 0,
+  "contract_rc": 0,
+  "date": "2026-10-21",
+  "exact_contract": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest -v tests.unit.test_longhorn_cleanup.WiringContracts.test_cleanup_launch_passes_both_allowlists_before_the_durable_boundary",
+  "first_static_rc": 1,
+  "first_static_remote_sync": false,
+  "next": "fixed launcher reruns current static then artifacts before remote source sync",
+  "overall_delivery_pass": false,
+  "owning_scenario": "cleanup launch allowlists under new fixed continuation enum",
+  "raw_evidence": {
+    "logs/longhorn-cases/continuation-tail-ready-20261021/contracts/cleanup-allowlist-repair.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/continuation-tail-ready-20261021/contracts/cleanup-allowlist-repair.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/continuation-tail-ready-20261021/contracts/cleanup-allowlist-repair.log": "05c3a5fb224ebe5b3f628ff08b99ec4b5fc16beded952e6465233c9fed80142d",
+    "logs/longhorn-cases/continuation-tail-ready-20261021/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/continuation-tail-ready-20261021/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/continuation-tail-ready-20261021/launch.log": "3dea878c9cfe810b59ddac294d84bf97259fc6618970c4789b07fc787d5a0ae5"
+  },
+  "repair": "Extract remote case allowlist and require complete cleanup and cleanup-qualification members independent of order. Existing end-to-end local launch contract still rejects absent membership or accidental transport prerequisites.",
+  "root_cause": "Mock matched a fixed allowlist textual prefix instead of exact mode membership. Adding a valid leading mode made it reject before real remote work. Production cleanup and lease behavior were unchanged.",
+  "schema": 1
+}

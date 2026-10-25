@@ -1,0 +1,71 @@
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=ownership-request-ready-foreign elapsed=0
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=15
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_OWNERSHIP_REQUEST_PRODUCT_REFUSAL_VERIFIED scenario=foreign
+LONGHORN_OWNERSHIP_REQUEST_SNAPSHOT_BOUND_FOR_CLEANUP scenario=foreign
+LONGHORN_LAB_WAIT stage=ownership-request-ready-immutable elapsed=0
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=15
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_OWNERSHIP_REQUEST_PRODUCT_REFUSAL_VERIFIED scenario=immutable
+LONGHORN_OWNERSHIP_REQUEST_SNAPSHOT_BOUND_FOR_CLEANUP scenario=immutable
+LONGHORN_OWNERSHIP_REQUEST_REFUSAL_VERIFIED
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=16
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=21
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=26
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=16
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1916174f985c5a2ea2050fdf3dff9917a1cb0a861a18fb79315d17ac29a30756 replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=16
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=21
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=26
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_OWNERSHIP_REQUEST_BUSINESS_PASS
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_OWNERSHIP_REQUEST_REFUSAL_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_OWNERSHIP_REQUEST_REFUSAL_QUALIFICATION_PASS
+LONGHORN_OWNERSHIP_REQUEST_REFUSAL_QUALIFICATION_EXIT rc=0

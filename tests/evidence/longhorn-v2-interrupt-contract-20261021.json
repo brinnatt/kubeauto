@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass-local-contracts",
+  "matrix_item": "LONGHORN-51 (local only)",
+  "classification": "test-gate code; no lab mutation or product failure",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_interrupt -v",
+  "tests": 14,
+  "rc": 0,
+  "coverage": [
+    "native setting/manager/Pod identity and actual interrupt flags/status",
+    "separate installation and business namespace authority",
+    "guarded config+kubecli input recovery on success and failure",
+    "foreign or active native consumers and client replacement refusal",
+    "recovery before business cleanup and unknown-state journal retention",
+    "missing-relay refusal only when a profile journal exists; CLI reaches no-change cleanup",
+    "real shell, real result verifier, cleanup-only entry before empty business baseline, relay/business/result/cleanup/core failures",
+    "both native Pod transitions, original payload, exact acknowledged ledger and cross-node readback result contract"
+  ],
+  "code_sha256": {
+    "tests/helpers/longhorn-v2-interrupt.py": "1312f9dc46224a8636d172f575d247d449cb497e5283b74ebc0e803ed48037ee",
+    "tests/unit/test_longhorn_v2_interrupt.py": "a147ecf52486299eb4361e364af816758c165fb57341a6302611edba94c855da",
+    "tests/helpers/longhorn-v2-volumes.sh": "afd9f591769c4c5f4b9cccbdfc19bac229606b060d5d4146f58b86a7e54ac67c",
+    "tests/helpers/longhorn-runner.sh": "bbe23025e6c469afe1341b77c2a87715e8f46944ab0cdba9c7153300988e76cd",
+    "tests/helpers/longhorn-live.sh": "2e00a6a6e1fdfd103627ec08aafecdcf33a6062db5c73b022c4800c906235190"
+  },
+  "raw_logs": {
+    "/tmp/kubeauto-longhorn-research/v2-interrupt-no-relay-red-20261021.log": "5b010a153902f10febfb1a7ea5666a3eae09ed3bd425b56010c7af84a5b212bd",
+    "/tmp/kubeauto-longhorn-research/v2-interrupt-no-relay-green-20261021.log": "38a5a1929d62ef39a31c088c741b33b9b1baeb09bf9451a4af2a89afbc34b032",
+    "/tmp/kubeauto-longhorn-research/v2-interrupt-shell-contract-20261021.log": "1267093b070be574a789fced5efd02ac8a2c4e7ba7413b8fac1c56e377babbaf",
+    "/tmp/kubeauto-longhorn-research/v2-interrupt-shell-fixed-contract-20261021.log": "b8e537d9700ee16ceedbad9623a318c68c5b9a87f6c1cb1d20c6f42b1ae21ad3"
+  },
+  "limit": "Local contracts only; live qualification and complete maintenance acceptance remain pending."
+}

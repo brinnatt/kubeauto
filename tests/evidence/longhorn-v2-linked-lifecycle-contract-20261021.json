@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "case": "LONGHORN-49",
+  "classification": "test-gate",
+  "rc": 0,
+  "tests": 30,
+  "product_entry": "config.yml + supervised kubecli setup longhorn-gate 09",
+  "expected_marker": "LONGHORN_V2_LINKED_LIFECYCLE_PASS",
+  "cleanup_marker": "LONGHORN_V2_LINKED_LIFECYCLE_SCOPED_CLEAN_PASS",
+  "inputs": {
+    "tests/helpers/longhorn-v2-linked-lifecycle.py": "5710094a08496c2bef9a12440b377d85b01a8ad4867f870d126b3bcfd3e42505",
+    "tests/unit/test_longhorn_v2_linked_lifecycle.py": "1946ce652140a25ffe6b69d52b3a12e05039b3796389c54d5ca82433506a211b"
+  },
+  "official_sources": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "version": "1.12.1"
+  },
+  "boundary": "Static contracts only. No live mutation, dispatch, matrix PASS, legacy fixture creation or full delivery claimed. Legacy refusal adapter requires the real 1.12.0-to-1.12.1 upgrade fixture. Original three-replica linked qualifier remains required.",
+  "files": {
+    "logs/longhorn-cases/linked-lifecycle-contract-20261021/volume-validator.go": "a5ef728e5c7758dc081d8e0b93fec6275746052f77cc308955ef9cc2d5ba0908",
+    "logs/longhorn-cases/linked-lifecycle-contract-20261021/types.go": "203e22a4598c8d20889d290bb9827ec64ba0d8bed16ebdb27c28545ab701f0c0",
+    "logs/longhorn-cases/linked-lifecycle-contract-20261021/volume-controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "logs/longhorn-cases/linked-lifecycle-contract-20261021/csi-volume-clone-api.md": "63ef0190e451a7a39a8fb09ea66075311bd042e2bb9cb4038d7b6f45cdfac774",
+    "logs/longhorn-cases/linked-lifecycle-contract-20261021/important-notes.md": "1abede80371b1728244d7eba15841660076e1c5ea752c07a69da526c74f6c4cf",
+    "logs/longhorn-cases/linked-lifecycle-contract-20261021/contracts.log": "08891360d4d8a7ac62f820f86d68cf14565fa9977c4e8c0992494b6a8b179d68"
+  }
+}

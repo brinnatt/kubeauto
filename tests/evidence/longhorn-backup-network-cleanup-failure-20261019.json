@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-14",
+  "status": "failed",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null",
+  "rc": 1,
+  "durable_pid": 2218441,
+  "failure_markers": 6,
+  "classification": {
+    "primary": "Environment network interruption: contemporaneous development-to-jumper No route to host, Registry forwarding HTTP probe failure on .135 and supervisor exit stopping dependent product preflight. Exact underlying kubectl stderr was not retained; no product bug conclusion. Read-only original-source preflight subsequently passed.",
+    "cleanup": "Test-gate defect: backup tunnel local SSH control socket retired while original remote listener remained; cleanup waited without the exact-identity stop fallback already used by Registry cleanup."
+  },
+  "observed": {
+    "full_backup": {
+      "backup": "backup-full-23a4df83fa433c3302fb3c0d",
+      "incremental": false,
+      "newly_uploaded_bytes": 137260,
+      "objects": {
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/backups/backup_backup-full-23a4df83fa433c3302fb3c0d.cfg": {
+          "sha256": "2bd59729334c0db0684610b6552de1e142604be3365553740954f7c51bdcf813",
+          "size": 6928
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/13/2b/132b445e21b24decbec6fd02c299953def5ab76d09a5a836aba926c4dceef6ac.blk": {
+          "sha256": "f5a7cd3c8252dd1573d4c72cadec1440878b2163451574bae3cb6a9947e41ab5",
+          "size": 8901
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/35/18/3518b058593b44950e0152dc388c7de8478968ba8b547f6d5f910a5edd12460e.blk": {
+          "sha256": "06e8d898219c6055e3a52e2a15fff51244702fd8234214c231a372c5055bfe73",
+          "size": 8901
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+          "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+          "size": 8265
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/74/68/7468f55578c6a0e7cd429fed356518784ac85b4080846f99bd699bfe5d355de2.blk": {
+          "sha256": "0e4cdf60492bf2d6844abb19e90780816e788f0fa10b37af59462c5dd1cd4836",
+          "size": 9400
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/78/48/7848bd70eca562b7c06892327c8f20a808aa5d2b3664451aba932141f33fe81e.blk": {
+          "sha256": "8463c27f1dc556d75763faeedef5bbb82d82132ec7da7cd264fe1753fa010856",
+          "size": 8901
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+          "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+          "size": 8301
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/8d/f5/8df5ea58d06936d650c1ecb0c06bc8619abace032e4f799bd413d388215a2395.blk": {
+          "sha256": "ee260488ee526639e223a62d9980cdbbb65e45614f71dd3c4e230b4e53954f11",
+          "size": 10442
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+          "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+          "size": 8301
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+          "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+          "size": 8305
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/a0/5f/a05fb4890eefc1601a5025f9f2a70e2c7d782b75dfad0a0e3160a996319282b3.blk": {
+          "sha256": "5f3a3b8ec044b3ecc62b3d57f169bf53c32ffe49b35ffdca66700293e7242766",
+          "size": 8901
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+          "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+          "size": 8301
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/aa/16/aa16707f0c3508c77f220cc92a42604f0f0ffd11a259688568e6d3a1d14182d5.blk": {
+          "sha256": "4e889ecc55dbcaeb12648162c40d406181620e92f5500499dcc6061461813c0f",
+          "size": 8437
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/cc/3a/cc3a2850d97133816d00e693d5329e318cc2d4bf954ca76ba2f3bac14d895cbd.blk": {
+          "sha256": "8e7063479b3531035158c99da92473524328ec604d12660959511dae9c3fa81c",
+          "size": 8901
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+          "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+          "size": 8301
+        },
+        "backupstore/volumes/d7/74/pvc-2c985c78-9337-410e-91dc-03909e36694f/blocks/ea/2c/ea2c80e313a3560219a9351b35527b4561c2d989b44253051fdd30e3dba5af00.blk": {
+          "sha256": "1e21486c2b7efc885163101804def2d5f45e1a20c4c8046082b7c162578586aa",
+          "size": 14702
+        }
+      },
+      "reuploaded_bytes": 41325,
+      "size": 2147483648,
+      "volume": "pvc-2c985c78-9337-410e-91dc-03909e36694f"
+    },
+    "incremental_backup_completed": false,
+    "restores_completed": false,
+    "native_backups_and_backup_volume_removed": true,
+    "business_fixtures_removed": true,
+    "product_target_and_credential_restored": true,
+    "registry_transport_removed": true,
+    "installation_healthy": true,
+    "backup_store_and_orphan_tunnel_cleanup": "pending scoped recovery"
+  },
+  "boundary": "Full backup object readback alone does not establish LONGHORN-14 acceptance. No force-finalizer, owner-status patch, disk mutation or existing middleware change. Source was frozen before local RWX/diagnostic and cleanup changes.",
+  "files": {
+    "logs/longhorn-cases/backup-20261019-082756/cleanup-first-failure.txt": "8f17b06b428250b779f09b37a5b63a4bf7b415854cfcb870e17305390b776886",
+    "logs/longhorn-cases/backup-20261019-082756/durable-status.txt": "2e953188b3f77f8319a1232fa7234d3d1531dbfedf8ca445875742e33372eb44",
+    "logs/longhorn-cases/backup-20261019-082756/first-failure.txt": "f5521f6d02d3f0747158a26217f3ccb56f533eb719b94f98d2569288da43f483",
+    "logs/longhorn-cases/backup-20261019-082756/frozen-source.txt": "d9aff0f7ec1d83f90c8acfe21e05bc1e327809313a8ac337f7ca363627d502df",
+    "logs/longhorn-cases/backup-20261019-082756/gate.log": "5a39f5a46a4b4ce9fecd727ff7143ec5fb8bd1fdce507337705203201b5af2df",
+    "logs/longhorn-cases/backup-20261019-082756/native-state.txt": "f8aaae6f487aa6c7a066c6d362a3832b18974556cc136a4f467b0bb7b781c5c4",
+    "logs/longhorn-cases/backup-20261019-082756/preflight-readback.txt": "49ba822e2e9fdc399da53a1cfcffaca0cd50c6304e958fb5f144efa13fa8aa1a",
+    "logs/longhorn-cases/backup-20261019-082756/transport-diagnostics.txt": "cbf83d17fecc4986e3a8068a88d63d9a698043eff8891d51fc5ccc85d848d89d"
+  }
+}

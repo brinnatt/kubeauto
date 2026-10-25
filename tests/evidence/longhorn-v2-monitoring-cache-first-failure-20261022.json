@@ -1,0 +1,228 @@
+{
+  "schema": 1,
+  "status": "failed",
+  "classification": "test-gate artifact inventory role/merge defect; not Longhorn product or resource failure",
+  "matrix_item": "LONGHORN-53",
+  "matrix_item_status": "pending",
+  "capture": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/capture-initial/capture.json",
+    "sha256": "ce7d35cdc893ad83e517b32d6c043461df6f7f0b59449b73506c082999f34f53"
+  },
+  "source_manifest": {
+    "path": "/home/brinnatt/projects/kubeauto/logs/longhorn-cases/stability-observability-parallel-20261022/frozen-inputs.json",
+    "sha256": "09676f601925628cee8a1d10675997468eb206438033b939ffa224820eb44947"
+  },
+  "source_count": 812,
+  "source_before_after_match": true,
+  "owning_source": {
+    "path": "/home/brinnatt/projects/kubeauto/logs/longhorn-cases/stability-observability-parallel-20261022/frozen-source/tests/helpers/longhorn-v2-monitoring.py",
+    "sha256": "d8356d8b4fb144fe9c1df63e2c925f93ba799da930c893c7ac5c9957f0f8948e"
+  },
+  "first_phase": "monitoring-product-setup",
+  "first_error": "ValueError: monitoring artifact inventory overlaps the base inventory",
+  "first_failure_status": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/capture-initial/raw/var/tmp/kubeauto-longhorn-v2-observability.uVGhhk/first-failure.status",
+    "sha256": "7869172c967604e271b2470f80be68bd99e61ebede81f9e453875887ca394adb"
+  },
+  "raw_log": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/capture-initial/raw/var/tmp/kubeauto-longhorn-v2-observability.uVGhhk/monitoring-product-setup.log",
+    "sha256": "aae42e55bb925ba4bae2fe8f36852b65a0012ddf231d72ff502d3824feefc8bf"
+  },
+  "stage_exit": 1,
+  "stage_finalized": 1,
+  "module_exit": 1,
+  "module_cleanup_finalized": 0,
+  "module_exit_receipt": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/capture-initial/raw/var/tmp/kubeauto-longhorn-v2-observability.uVGhhk/exit",
+    "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+  },
+  "module_cleanup_receipt": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/capture-initial/raw/var/tmp/kubeauto-longhorn-v2-observability.uVGhhk/finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "parent_v2_exit": 1,
+  "parent_v2_finalized": 1,
+  "parallel_parent_still_running_at_capture": true,
+  "real_monitoring_admission": {
+    "boundary": "Scheduler request admission; separate runtime MemAvailable and pressure checks remain mandatory.",
+    "chart_sha256": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32",
+    "host_headroom_bytes_per_node": 268435456,
+    "placement": {
+      "prometheus-grafana-0": "longhorn-node-147",
+      "prometheus-kube-prometheus-admission-create-0": "longhorn-node-146",
+      "prometheus-kube-prometheus-admission-patch-0": "longhorn-node-146",
+      "prometheus-kube-prometheus-alertmanager-0": "longhorn-node-146",
+      "prometheus-kube-prometheus-alertmanager-1": "longhorn-node-147",
+      "prometheus-kube-prometheus-alertmanager-2": "longhorn-node-148",
+      "prometheus-kube-prometheus-operator-0": "longhorn-node-146",
+      "prometheus-kube-prometheus-operator-webhook-0": "longhorn-node-146",
+      "prometheus-kube-prometheus-operator-webhook-1": "longhorn-node-147",
+      "prometheus-kube-prometheus-prometheus-0": "longhorn-node-146",
+      "prometheus-kube-prometheus-prometheus-1": "longhorn-node-148",
+      "prometheus-kube-state-metrics-0": "longhorn-node-146",
+      "prometheus-prometheus-node-exporter@longhorn-node-146": "longhorn-node-146",
+      "prometheus-prometheus-node-exporter@longhorn-node-147": "longhorn-node-147",
+      "prometheus-prometheus-node-exporter@longhorn-node-148": "longhorn-node-148"
+    },
+    "remaining_requests": {
+      "longhorn-node-146": {
+        "cpu": 3.9250000000000007,
+        "memory": 212189184.0
+      },
+      "longhorn-node-147": {
+        "cpu": 5.125,
+        "memory": 3820580864.0
+      },
+      "longhorn-node-148": {
+        "cpu": 4.225,
+        "memory": 629571584.0
+      }
+    },
+    "runtime_memory": {
+      "192.168.47.146": {
+        "Hugepagesize": 2097152,
+        "MemAvailable": 4073598976,
+        "MemTotal": 8272592896
+      },
+      "192.168.47.147": {
+        "Hugepagesize": 2097152,
+        "MemAvailable": 3541770240,
+        "MemTotal": 7734915072
+      },
+      "192.168.47.148": {
+        "Hugepagesize": 2097152,
+        "MemAvailable": 4398694400,
+        "MemTotal": 8272642048
+      }
+    },
+    "storage": {
+      "longhorn-node-146": {
+        "available": 106953703424,
+        "disk_uuid": "7b23d33c-3d90-41ae-9723-f53a9f018901",
+        "maximum": 106953703424,
+        "schedulable_bytes": 80215277568.0
+      },
+      "longhorn-node-147": {
+        "available": 106953703424,
+        "disk_uuid": "b9be10bd-23b4-4a62-885c-ba634ac74469",
+        "maximum": 106953703424,
+        "schedulable_bytes": 80215277568.0
+      },
+      "longhorn-node-148": {
+        "available": 106953703424,
+        "disk_uuid": "473a8278-cd66-4e94-bc47-4eca3982dd4a",
+        "maximum": 106953703424,
+        "schedulable_bytes": 80215277568.0
+      }
+    },
+    "values_sha256": "f1b0a1f5a9809b70287d306726ff13e380bd840df1b45f2ea36c16e5af7d42cb"
+  },
+  "overlaps": [
+    {
+      "base_group": "mongo_support",
+      "key": "brinnatt/prometheus:v3.13.1-distroless",
+      "identity_fields_equal": [
+        "digest",
+        "source_digest",
+        "platforms",
+        "talkedu_ref",
+        "dockerhub_ref",
+        "source_ref",
+        "fingerprint"
+      ],
+      "base": {
+        "digest": "sha256:804a932395d1516b7a34f87aa0b65ba60dbf447bcb1d83cc23323de9c89f83f4",
+        "source_digest": "sha256:214f8427c8fba80c327bb94a75feb802ae12f2d6ca30812aa6e7d22f09bbea80",
+        "platforms": {
+          "linux/amd64": "sha256:6a7c9e777248e5e862be12852f1aee25b505af1c4c151dc621ab249b2c01b403",
+          "linux/arm64": "sha256:42dcfe75d4d6bd1dd9843666930be1538cad814acd54fa033255618412e3036f"
+        },
+        "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus:v3.13.1-distroless",
+        "dockerhub_ref": "brinnatt/prometheus:v3.13.1-distroless",
+        "source_ref": "quay.io/prometheus/prometheus:v3.13.1-distroless",
+        "fingerprint": "d7e496c8615700a460781fef65b49dde1ee8ac063f05a09a8c3b2bf216120b3b"
+      },
+      "monitoring": {
+        "digest": "sha256:804a932395d1516b7a34f87aa0b65ba60dbf447bcb1d83cc23323de9c89f83f4",
+        "source_digest": "sha256:214f8427c8fba80c327bb94a75feb802ae12f2d6ca30812aa6e7d22f09bbea80",
+        "platforms": {
+          "linux/amd64": "sha256:6a7c9e777248e5e862be12852f1aee25b505af1c4c151dc621ab249b2c01b403",
+          "linux/arm64": "sha256:42dcfe75d4d6bd1dd9843666930be1538cad814acd54fa033255618412e3036f"
+        },
+        "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus:v3.13.1-distroless",
+        "dockerhub_ref": "brinnatt/prometheus:v3.13.1-distroless",
+        "source_ref": "quay.io/prometheus/prometheus:v3.13.1-distroless",
+        "fingerprint": "d7e496c8615700a460781fef65b49dde1ee8ac063f05a09a8c3b2bf216120b3b"
+      },
+      "base_full_row_sha256": "d02bc880fe159e1df703de95289c7b78cc5580012dab2fde637000435a589432",
+      "monitoring_full_row_sha256": "c835fcd69cfb60a2b7684465664c281e68e0ed9428c24ba7c253dc1389748a7e"
+    },
+    {
+      "base_group": "mongo_support",
+      "key": "brinnatt/kube-state-metrics:v2.18.0",
+      "identity_fields_equal": [
+        "digest",
+        "source_digest",
+        "platforms",
+        "talkedu_ref",
+        "dockerhub_ref",
+        "source_ref",
+        "fingerprint"
+      ],
+      "base": {
+        "digest": "sha256:9bb752f4cbf2a4297bd8faf2f07162ebc78f9072407e3bdb8ea25fa89305d424",
+        "source_digest": "sha256:1545919b72e3ae035454fc054131e8d0f14b42ef6fc5b2ad5c751cafa6b2130e",
+        "platforms": {
+          "linux/amd64": "sha256:8eafce7d31ba34dd1bc0762671c20c63d2f5555ab48fec8c5d59aecf3a1bafb0",
+          "linux/arm64": "sha256:88995aec796db5fe80a3a6b299b2a0084bd0c8e923252e09e5535de9c226658a"
+        },
+        "talkedu_ref": "hub.talkedu.cn/kubeauto/kube-state-metrics:v2.18.0",
+        "dockerhub_ref": "brinnatt/kube-state-metrics:v2.18.0",
+        "source_ref": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+        "fingerprint": "b022691af23fdb92f05389b90bbe18fa934de5c539aa2d613edd9438064c337b"
+      },
+      "monitoring": {
+        "digest": "sha256:9bb752f4cbf2a4297bd8faf2f07162ebc78f9072407e3bdb8ea25fa89305d424",
+        "source_digest": "sha256:1545919b72e3ae035454fc054131e8d0f14b42ef6fc5b2ad5c751cafa6b2130e",
+        "platforms": {
+          "linux/amd64": "sha256:8eafce7d31ba34dd1bc0762671c20c63d2f5555ab48fec8c5d59aecf3a1bafb0",
+          "linux/arm64": "sha256:88995aec796db5fe80a3a6b299b2a0084bd0c8e923252e09e5535de9c226658a"
+        },
+        "talkedu_ref": "hub.talkedu.cn/kubeauto/kube-state-metrics:v2.18.0",
+        "dockerhub_ref": "brinnatt/kube-state-metrics:v2.18.0",
+        "source_ref": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+        "fingerprint": "b022691af23fdb92f05389b90bbe18fa934de5c539aa2d613edd9438064c337b"
+      },
+      "base_full_row_sha256": "ada09e375014f6e5644eabdb81edf20ebc2ac72702bbdfa71e4df178c726d219",
+      "monitoring_full_row_sha256": "8e9535c0cf926448214a9cf0822fe927da5e02a8245ddd2d454838e7524a27a4"
+    }
+  ],
+  "root_cause": "Two already-published exact monitoring artifacts also occur as Mongo test-support images. Blanket overlap rejection fails before monitoring namespace/product installation. Cache uses support membership to select longhorn-lab/ prefix; naive key dedup would cache these artifacts at the wrong role path.",
+  "scoped_cleanup": {
+    "journals_absent": {
+      "longhorn-v2-cpu-isolation.json": true,
+      "longhorn-v2-monitoring.json": true,
+      "longhorn-v2-observability.json": true
+    },
+    "monitoring_namespaces": [],
+    "monitoring_storageclasses": [],
+    "native_volumes": 0,
+    "persistent_volumes": 0,
+    "raw_api_bound_to_capture": true,
+    "volume_baseline_and_relay_clean_markers_present": true
+  },
+  "cpu_stage_reusable_evidence": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/cpu-stage-evidence.json",
+    "sha256": "789aa1bd15cf83535d3f84f1f193644652582925b09eca10cdc18eb550cfaa0e"
+  },
+  "overall_delivery_pass": false,
+  "date": "2026-10-22",
+  "version": "1.12.1",
+  "case": "LONGHORN-53",
+  "complete_matrix_item": false,
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-stability-v2-observability </dev/null",
+  "accepted_fix_review": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-root-review-20261022.json",
+    "sha256": "699d4aef687fc19081be86ac09f7c031e5031b9c57118e16f3f9342146533709"
+  }
+}

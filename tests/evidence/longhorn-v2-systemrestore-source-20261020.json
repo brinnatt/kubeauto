@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "source-only",
+  "classification": "test-gate integration; existing production SystemBackup/SystemRestore config+kubecli APIs unchanged",
+  "owning_case": "LONGHORN-48",
+  "version": "Longhorn 1.12.1 replicated V2 AIO",
+  "scope": "Single-cluster reconstruction of absent Volume/PV/PVC from an external full backup and disabled-policy resource package, original namespace preserved; not an independent DR site or full data-protection module",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "backupstore_commit": "e5f4ddc47e4d372169fb4efcfbae5848e7bc1739",
+  "official_reference": [
+    "https://longhorn.io/docs/1.12.1/advanced-resources/system-backup-restore/backup-longhorn-system/",
+    "https://longhorn.io/docs/1.12.1/advanced-resources/system-backup-restore/restore-longhorn-system/"
+  ],
+  "conclusions": [
+    "restoreVolumes uses the bundled LastBackup for a missing non-standby volume. Existing objects are not rolled back. Data point is the backup time, not the bundle time.",
+    "All existing volumes must be detached. Preserve exact external package and every full-backup referenced object before and after deleting original UID-bound source objects.",
+    "SystemRestore creates longhorn-system-rollout-NAME Job with a controller ownerReference to the SystemRestore UID. Its Pods must bind to the actual Job UID and complete successfully.",
+    "PV recreation waits until native data restore is finished, clears the original ClaimRef, and PVC recreation binds the original PV name in the pre-existing namespace. Volume/PV/PVC get new API UIDs.",
+    "Reconstructed objects use longhorn.io/last-system-restored and -at; Volume additionally records longhorn.io/last-system-restored-backup. Existing shared resources can receive last-skipped-system-restored annotations.",
+    "Deleting SystemRestore aborts its Job and remaining rollout, without transactional rollback. Unverified recovery preserves source package, volume backup, target resources, private ledger and external store.",
+    "restorePersistentVolumeClaims returns after API creation; Kubernetes PVC/PV binding converges asynchronously. Completed rollout must be followed by a bounded binding/data-restore wait, then strict UID/provenance/capacity checks. This integration assumption was corrected before any remote launch.",
+    "GetSystemBackupURL uses filepath.Join on getSystemBackupURI, removing its trailing slash; the exact last-system-restored annotation is therefore the target plus backupstore/system-backups/v1.12.1/name without a trailing slash. A failure from assuming the URI helper output equals the final URL is archived separately as a test-gate defect, not a product failure."
+  ],
+  "project_entrypoint": "config.yml longhorn_requests + kubecli setup longhorn-v2-gate 09",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-systemrestore-qualification",
+  "expected_marker": "LONGHORN_V2_SYSTEMRESTORE_QUALIFICATION_PASS",
+  "fixture_boundary": "Original .146-.148 leased V2 baseline; one random 2Gi three-replica source, own namespace/clients, own full backup/snapshot and resource bundle, precise restore Job/Pod chain, independent TLS object-store fixture. No raw disk wipe or shared cluster replacement.",
+  "cleanup_scope": "After verified business recovery, retire original-UID restore and Job/Pods, resource bundle, current-UID business objects and exact original backup/BackupVolume; full namespace graph permits historical UIDs only for original Events. Restore target/credentials and store, verify original raw-disk and core identities. Unconfirmed or unverified restore stops cleanup and preserves material.",
+  "contract_tests": "tests.unit.test_longhorn_v2_systemrestore",
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/advanced-resources/system-backup-restore/backup-longhorn-system.md": "877a8c9eeef5d73c1240afb044fa8ff3bc0c409bddcb97e2aacd84d69c98a0d2",
+    "website-ssh/content/docs/1.12.1/advanced-resources/system-backup-restore/restore-longhorn-system.md": "6805b272ea82c334dedfe76870848f2197ef31e09edfb1c513589de68b01e9d0",
+    "manager-1.12.1/controller/system_rollout_controller.go": "30bd2b50c262de285820dddf71799fa7f000e7582a2c3697637184193835c052",
+    "manager-1.12.1/controller/system_restore_controller.go": "976c5a1032847f68c5d7d6328bbfd0a076ead85f461762dbd6f38c78817b1f02",
+    "manager-1.12.1/datastore/longhorn.go": "f18a875f352eb0b25785d1d4ebac22901a2179c648d3b5ae36936c329934486b",
+    "backupstore/systembackup/system_backup.go": "5b217ca7d704a81ae55e358a42ee065d0b66b414a4e8540e363e71507ec9eb98"
+  }
+}

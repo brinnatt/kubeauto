@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "fail",
+  "classification": "test-gate",
+  "scope": "LONGHORN-50/rebuild-qos",
+  "reason": "1 GiB buffered filler with final-only fsync exhausted 256 MiB client memory cgroup",
+  "pod_uid": "f8cc4361-1d48-4443-83e7-e7875419f647",
+  "exit": 137,
+  "kernel_memory_bytes": {
+    "anon": 21696512,
+    "file": 239009792,
+    "file_dirty": 230588416,
+    "file_writeback": 8388608
+  },
+  "repair": "fsync and advise DONTNEED after each 4 MiB block; retain 1 GiB and all QoS assertions",
+  "cleanup": "original runner still owns disk restoration, QoS restoration and business cleanup",
+  "matrix_pass": false,
+  "ga_ready": false,
+  "raw_evidence": {
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/fadvise.html": "c20bf33268cf95fce13dd66f405d1ef415c6c668ca149cf21b639fde12151251",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/events.json": "5ed2723601e381ff9f062686ce8d047cd5850ca8b1900cdab235908e46951dcf",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/native.json": "91de1c5588cfb2846ff3d0a34694b5615a09b524336dc97ebb2d65dec3c095b5",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/business-pods.json": "c604f40609aac58fac1c4e7f06107ae3e8c8d1d892fe79d1cf7f05b00a87483d",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/cgroup-v2.html": "b478c1bae99899df476d6b4989cbb516f7ca93c5f009cdff64b802bbc24f3d4b",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/kernel.log": "f360ed4b883b859ebae716d6ce44948617f2d254bd51dc5c372b4d7b4d9d9b0c",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/first-failure.json": "c1a6a652a0174dabf4d18d289bb56060bcc251cf8ad67af9bb7984ee714e8094",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/fsync.html": "f0a986d21500222ecb69580fc7a910f346c6b1ff1005ca515501fb05bb5d91f5"
+  },
+  "contract_followup": {
+    "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/contract.log",
+    "sha256": "aa24ceb297ff09720a46998c63b68e267e3e316723cb9ed7bb44c0fe16e76e45",
+    "tests": 22,
+    "rc": 0
+  },
+  "receipt_correction": {
+    "initial_receipt_sha256": "95d80c28bf1d1817bf3c1586be08c37b72084b888c803507fc9b12431742b2c1",
+    "initial_receipt": "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/first-failure-initial-receipt.json",
+    "reason": "Original diagnostics unchanged; the local contract log was extended for the secondary detached-client cleanup defect and is now bound separately."
+  }
+}

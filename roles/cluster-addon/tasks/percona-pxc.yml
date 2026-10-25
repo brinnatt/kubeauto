@@ -40,7 +40,7 @@
   command:
     argv:
       - sha256sum
-      - --check
+      - -c
       - "{{ base_dir }}/roles/cluster-addon/files/pxc-operator-{{ pxc_operator_ver }}.tgz.sha256"
   args:
     chdir: "{{ base_dir }}/roles/cluster-addon/files"

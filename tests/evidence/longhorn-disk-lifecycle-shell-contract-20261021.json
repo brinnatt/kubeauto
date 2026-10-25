@@ -1,0 +1,29 @@
+{
+  "status": "pass",
+  "scope": "LONGHORN-26 local shell and deterministic Python contracts, no live PASS",
+  "classification": "test-gate",
+  "ladder_completed": 2,
+  "tests": 25,
+  "rc": 0,
+  "failure_markers": 0,
+  "files": {
+    "tests/helpers/longhorn-disk-lifecycle.sh": "b562722e820ac04a921872900f52a3d3db04984c833de7947e3bbbeb99a44f7d",
+    "tests/unit/test_longhorn_disk_lifecycle_shell.py": "502a1c4257624ecac83c1c7e6744dcc6e63b9685c33785a43f849ac4888635c7",
+    "tests/fixtures/longhorn-v1-qualified-disks.txt": "fd50cf8ccb3b1f1e0b1efa0a1b7fc576cf84f897af6d5f59460cb87f412ee7c9"
+  },
+  "log": "logs/longhorn-cases/disk-lifecycle-contract-20261021/contracts-complete.log",
+  "normal_mode": "disk-lifecycle",
+  "cleanup_mode": "disk-lifecycle-cleanup",
+  "terminal_marker": "LONGHORN_DISK_LIFECYCLE_GATE_PASS",
+  "business_marker": "LONGHORN_DISK_LIFECYCLE_PASS",
+  "scoped_clean_marker": "LONGHORN_DISK_LIFECYCLE_GATE_SCOPED_CLEAN_PASS",
+  "allowlist_provenance": {
+    "source_evidence": "tests/evidence/longhorn-disk-qualification-20261019.json",
+    "source_raw": "logs/longhorn-cases/pool-probe-20261019-005820/gate.log",
+    "source_sha256": "ee46d37d2e184ed45f0550ac6718d37a2e8ad28517e60e76f637bffaa13a8f02",
+    "purpose": "Exact accepted 18-disk input only; selected unused devices must immediately pass fresh hardware identity, no signature, no children, no mounts before any format intent."
+  },
+  "failure_contract": "original nonzero rc retained; actual journal required for cleanup-only; normal helper proof markers+scoped clean required; late relay/health/cleanup failure creates first-failure.status; relay/core scoped recovery before durable atomic status; no cleanup PASS on empty invocation",
+  "next_permitted": "parent public/static wiring then the focused fixed-runner branch",
+  "cleanup_order": "cleanup-only checks original core/transport and real journal, then restores disk flags and fixtures before product health; main-disk scheduling can legitimately be disabled in failed journal"
+}

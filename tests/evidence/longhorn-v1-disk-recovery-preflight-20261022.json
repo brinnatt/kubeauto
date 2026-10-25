@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "classification": "test-gate recovery precondition cycle",
+  "case": "LONGHORN-19",
+  "status": "focused-contract-pass-live-pending",
+  "ladder_completed": 2,
+  "next_permitted": 3,
+  "tests": 54,
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09, original V1 confirmed-write fixture",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-disk-failure-cleanup",
+  "expected_marker": "LONGHORN_DISK_FAILURE_CLEANUP_PASS",
+  "business_acceptance_excluded": "Cleanup proves original boot, filesystem, native replicas, installation health and fixture cleanup; complete --longhorn-disk-failure still required for LONGHORN-19.",
+  "fault_boundary": "Only original journaled disk victim may be unready. Other nodes must be Ready with unchanged cluster/node UID/IP; original exclusive volume, engine native UUID, IM/Pod, attachment and two RW survivor identities required. Disk lease and stable hardware verified before restoration. Normal source/core health contracts unchanged.",
+  "first_failure": {
+    "durable_exit": 1,
+    "finalized": 1,
+    "phase": "preflight",
+    "restoration_executed": false,
+    "raw": {
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/tmp/kubeauto-longhorn-live.log": "a62cbdc02176b5f2572be1f7665ba69f33c602bab3fe199de8e988bde6d1dabc",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/tmp/kubeauto-longhorn-gate.pid": "feea2ac1f1d69353431a69e6366f52901153f32d9228655f737e7ee5f9f1d0ce",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/tmp/kubeauto-longhorn-gate.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/tmp/kubeauto-longhorn-gate.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/usr/local/kubeauto/clusters/longhorn-gate/longhorn-lab-owner.json": "51ca6cdd89d10fe81f7f74cbccb248bb7070e741ded59d572382cb7a37e207f6",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/usr/local/kubeauto/clusters/longhorn-gate/longhorn-install-business.json": "ebb6cfea208a08ab3e5f6a58fec30c10573c2d2b7aa570e0db502190e1baedfe",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/var/tmp/kubeauto-longhorn-disk-failure.nZvMae/first-failure.status": "c38971c33df73c3e5ae68abd0c334309cc5aa2aa1968a618e25be9a07496cce4",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/var/tmp/kubeauto-longhorn-disk-failure.nZvMae/pods.txt": "7099936c95558b2c49fb4c914c3f445c1c0cf39d404a87d1c0339fe0680d6ecf",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/var/tmp/kubeauto-longhorn-disk-failure.nZvMae/events.txt": "f872e6df7ee22daf483accb9dca032abf1892b67aa43db00d62af78f8baa608f",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/var/tmp/kubeauto-longhorn-disk-failure.nZvMae/storage.txt": "a279bc5a3ffde3efd0e0e4eb67a0d8cbaaa9804364f0e981535f608a2136a33f",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/var/tmp/kubeauto-longhorn-disk-failure.nZvMae/status": "52511e03fc8133cdbdcc58eed1509535b50581eaffd44a3caffd7c5c2c36f83c",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/first-failure-capture.json": "8aaa6a1c7acbb54cf190937c7ca3c2878dc52e22abdcda6de502a3b0d754b284",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/precondition-disproof.json": "37217d6316ad88ea12dbf0061a713845c7f308ca6bc9476f8003c58de4d2cb83",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/disprove-preconditions.py": "3b25f8f603d915f200f715a231c51b0e44114a81d50b2304c28daf168ab5cf96",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/nodes-after-preflight.json": "a526c0a9172141d75b6451c9708c8fa83e696c2cb1056f46d22d525600ccf80b",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/native-after-preflight.json": "7f19f8373820c7a0a4ff0e10ae622220e61f28b10c8e86ca4a086a86727b50ef",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/host-after-preflight.json": "91d7c83789b0c96f7606b98b1a7f8b68d43ab10d1d28365c083f23f709f919f8",
+      "logs/longhorn-cases/disk-recovery-preflight-20261022/first-failure/var/tmp/kubeauto-longhorn-failure-6dexn99x.txt": "bcdcbd1345f47ae1ba1dcf349dc4b78d2cc70b476fa82cd8e98beb2f212f7c7a"
+    }
+  },
+  "patch_sha256": "af52a973cc4cd282ebc6e751557c43fdd930e8a3be6c092d887e26da0e061598",
+  "inputs": {
+    "tests/helpers/longhorn-v1-storage-faults.py": "99434294b5bc4904d7f49e7d68e906455a6799aab9bc409a1aca8fb9dcce941f",
+    "tests/helpers/longhorn-control-faults.py": "eb814351e39d10e847733c3594d5f31aa97235dc4fff744c84cd4de402fd1ce7",
+    "tests/helpers/longhorn-v1-storage-faults.sh": "251fdbaab45c7b7fb1e570709a9d5fcf0631155ba71603bfa47a2ea0e1b7430e",
+    "tests/unit/test_longhorn_v1_storage_faults.py": "b1998f15a3f345cf6b841bb521497405bd9efaf8c942625650592d99ff521baf",
+    "tests/unit/test_longhorn_v1_storage_faults_shell.py": "8646766e753e2910b8ab2922683f8a5e1f14c2bb0d52ee5400239927e8a3b0cb"
+  },
+  "contract_logs": {
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/red-real-callee.log": "8ddb11eb0a3c389468e031547a4f06cdf751704bcad8925e6224302879d55868",
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/green.log": "036ab5a3f24c7fe8828243e30664e6b8d91d426c5f4dcf60531c0c4cd2266bec"
+  },
+  "official": {
+    "node_failure_url": "https://longhorn.io/docs/1.12.1/high-availability/node-failure/",
+    "node_failure_sha256": "fbd1cb4ede34df566d5a60e7b32396decb14e5cada5ac5c456848a497b0fb96c",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "local_manager_source": "/home/brinnatt/.local/share/kubeauto-longhorn-release/failure-50-source/manager/volume_controller.go",
+    "manager_source_sha256": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "conclusion": "Controller counts RW replicas and marks volume degraded below desired count; recovery cannot require three healthy replicas before restoring original failed disk."
+  }
+}

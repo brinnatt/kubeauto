@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "batch": 807,
+  "case": "LONGHORN-50",
+  "status": "failure-under-causal-analysis",
+  "classification": "runtime dataplane fault observed; unresolved native status propagation versus assertion integration",
+  "product_bug_proven": false,
+  "test_gate_bug_proven": false,
+  "timeout_changed": false,
+  "original_failure": "TimeoutError at v2-raw-disk-native-replica-failure after original 180 second budget",
+  "durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "fault_identity": {
+    "address": "192.168.47.148",
+    "node_uid": "b542e085-a057-4d60-848c-cca7f1f8f26c",
+    "volume_uid": "aa5f565e-662b-45f9-b982-f11079bd2d41",
+    "replica": "pvc-ab24206f-4771-45da-94f0-52aaee7c76f7-r-4a0010f6",
+    "replica_uid": "5800cc93-532a-478a-a085-b44c98bb13aa",
+    "disk_uuid": "473a8278-cd66-4e94-bc47-4eca3982dd4a",
+    "hardware_identity": "0x6000c291151ae8bf1378c3493902d84e",
+    "machine_id": "46248a8062e04431866a3baeb6382335",
+    "boot_id": "25409dbb-c54f-40c1-880d-65712f0f4984"
+  },
+  "observations": {
+    "kernel_time_utc": "2026-10-21T16:34:11Z",
+    "kernel_write_errors": 4,
+    "original_target_aio_errors": 4,
+    "original_engine_nvme_internal_device_errors": 4,
+    "original_engine_raid_base_fail_log": "16:34:11.631746 _raid_bdev_fail_base_bdev: Failing base bdev in slot 2 (pvc-ab24206f-4771-45da-94f0-52aaee7c76f7-r-4a0010f6n1) of raid bdev pvc-ab24206f-4771-45da-94f0-52aaee7c76f7-e-0",
+    "offline_snapshot_utc": "2026-10-21T16:36:51.891034+00:00",
+    "offline_snapshot_scsi_state": "offline",
+    "failure_snapshot_replica_currentState": "running",
+    "failure_snapshot_replica_failedAt": "",
+    "failure_snapshot_engine_mode": "RW",
+    "writer_ack_count": 779,
+    "writer_retry_count": 0,
+    "writer_last_sequence": 778,
+    "writer_last_file_mtime_utc": "2026-10-21T16:37:16.337691+00:00",
+    "writer_contract": "pwrite 65536 bytes then fsync before each ACK; interval .25 s; duration1500; original verify waits4ACK before injecting, no stop until recovered"
+  },
+  "cleanup": {
+    "runner_owns": true,
+    "host_scsi_running": true,
+    "original_business_clean_marker": true,
+    "volume_baseline_business_objects": 0,
+    "registry_clean": true,
+    "parent_v2_rc": 1,
+    "remaining_v2_dependents_started": false
+  },
+  "limits": [
+    "No contemporaneous native engine/replica RPC response was preserved; CR and IM process-status plus timestamped original-Pod logs are preserved instead.",
+    "AIO mapping and cumulative bdev_get_iostat were observed after cleanup, not during the fault. They cannot establish a fault-window I/O rate or replace the saved fault-time log and CR evidence.",
+    "Four physical errors occurred at the start of the fault; do not claim errors continued for the full 180 seconds.",
+    "Ledger records contain no individual timestamps; last file mtime bounds the final output but is not a per-record latency measurement.",
+    "Product block-retire rpc_snapshot failed a separate bdev_lvol_get_lvstores query; only independent direct bdev_get_bdevs/iostat successful responses are used. No retirement capability conclusion is drawn."
+  ],
+  "next_minimal_disproof": "Compare pinned longhorn-spdk-engine RAID base-bdev membership/failure observation and replica-mode synchronization against the saved original RAID fail event; do not change Longhorn or extend timeout without causal proof.",
+  "scenario": "single-disk",
+  "frozen_batch": 807,
+  "overall_longhorn_delivery_pass": false,
+  "complete_matrix_item": false,
+  "rc": 1,
+  "raw_evidence": {
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/aio-binding.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/first-failure-full.json": "b4d62b80c65a276cb4e741fd89e32f405fb825c217df48f068a156cef5ea96f6",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/aio-binding.json": "18efb6fa6396f50576d973b9fc4cf7d03a18c517fc577acb37c1abf1c4cdcf86",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/original-im-logs.json": "5b7c7b100cafd5bbbac64f7b1ac2b10965b73a1cf3940e9d85d238abd8a0ef36",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/before-degraded.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/first-failure-full.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/original-im-logs.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/before-degraded.json": "f924c3212652179ceed629d97710aad26c8c75369d1034a9073924177722165b",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/single-disk-native-first-failure/failure-observation.json": "caee90ac4baa2c00749ed711b5892ac1dbbf1b6d829e819093a61f84203f6835"
+  },
+  "previous_distinct_failure": {
+    "evidence": "tests/evidence/longhorn-v2-single-disk-first-failure-20261022.json",
+    "batch": 803,
+    "boundary": "Earlier missing-worker-source error preceded fault injection. This batch reached real offline disk I/O and RAID removal; its failure must not inherit the earlier diagnosis."
+  },
+  "frozen_inputs": {
+    "path": "logs/longhorn-cases/operations-disk-tail-live-20261022/frozen-inputs.json",
+    "sha256": "345cfc42a7e98e9a79e5cad0ab2d0cea1166a53b326dd14e4d3f21dd61955ad1"
+  },
+  "boundary": "Failed focused single-disk scope only; retains its real durable rc=1. Healthy independent V1 parent branch remains running; no parent success or delivery sign-off."
+}

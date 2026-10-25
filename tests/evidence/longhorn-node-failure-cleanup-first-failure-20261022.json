@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-20",
+  "status": "pending",
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-remaining-v2-monitoring",
+  "scope": "Original node-failure-cleanup only; not a product or node-failure acceptance",
+  "rc": 1,
+  "failure": {
+    "operation": "maintenance.clean -> generated -> check_business_graph",
+    "message": "foreign resource in business namespace: events"
+  },
+  "event_recovery": {
+    "namespace": "longhorn-business-223d1360f155e334",
+    "namespace_uid": "7dc94818-d716-48ec-b9d9-3805f092bde4",
+    "objects": {
+      "Deployment/application": "dfa800a7-aae5-474b-9ebc-6f4398b6f771",
+      "PersistentVolumeClaim/data": "00aa4198-e041-4294-8717-0fce6304a25e",
+      "Pod/application-c85b5988f-7lg77": "4e65f846-27f1-449f-89d6-04d42019ceec",
+      "Pod/application-c85b5988f-vbj4s": "d1070cdf-2ffc-4c1f-a091-2581c45b279c",
+      "Pod/writer": "67fc9f10-2f4f-4c6e-ba99-01bae0e943bb",
+      "ReplicaSet/application-c85b5988f": "cdd527f0-6e2c-4310-840c-144a6cbdf173"
+    },
+    "events": [
+      {
+        "metadata": {
+          "uid": "9e774a8a-4a85-4538-a794-32f57e86f64f",
+          "name": "application-c85b5988f-7lg77.18e0aa050e9e3239",
+          "creationTimestamp": "2026-10-21T21:53:10Z"
+        },
+        "reference": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "application-c85b5988f-7lg77",
+          "namespace": "longhorn-business-223d1360f155e334"
+        },
+        "reason": "TaintManagerEviction",
+        "resource": "events",
+        "details": {
+          "namespace": "longhorn-business-223d1360f155e334",
+          "creationTimestamp": "2026-10-21T21:53:10Z",
+          "reason": "TaintManagerEviction",
+          "type": "Normal",
+          "source": {
+            "component": "taint-eviction-controller"
+          },
+          "controller": "taint-eviction-controller",
+          "text": "Marking for deletion Pod longhorn-business-223d1360f155e334/application-c85b5988f-7lg77"
+        }
+      },
+      {
+        "metadata": {
+          "uid": "c0950399-6839-4b83-a4a6-3e7f528cf250",
+          "name": "application-c85b5988f-rv8fm.18e0aa05138ae580",
+          "creationTimestamp": "2026-10-21T21:53:10Z"
+        },
+        "reference": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "application-c85b5988f-rv8fm",
+          "namespace": "longhorn-business-223d1360f155e334",
+          "resourceVersion": "984489",
+          "uid": "beaac9b2-a8ab-4d73-af10-0e24f94d1725"
+        },
+        "reason": "Scheduled",
+        "resource": "events",
+        "details": {
+          "namespace": "longhorn-business-223d1360f155e334",
+          "creationTimestamp": "2026-10-21T21:53:10Z",
+          "reason": "Scheduled",
+          "type": "Normal",
+          "source": {},
+          "controller": "default-scheduler",
+          "text": "Successfully assigned longhorn-business-223d1360f155e334/application-c85b5988f-rv8fm to longhorn-node-165"
+        }
+      },
+      {
+        "metadata": {
+          "uid": "c39c17b2-f2f0-437d-a78a-e1db8e265617",
+          "name": "application-c85b5988f-rv8fm.18e0aa0517dad996",
+          "creationTimestamp": "2026-10-21T21:53:10Z"
+        },
+        "reference": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "application-c85b5988f-rv8fm",
+          "namespace": "longhorn-business-223d1360f155e334",
+          "resourceVersion": "984492",
+          "uid": "beaac9b2-a8ab-4d73-af10-0e24f94d1725"
+        },
+        "reason": "FailedAttachVolume",
+        "resource": "events",
+        "details": {
+          "namespace": "longhorn-business-223d1360f155e334",
+          "creationTimestamp": "2026-10-21T21:53:10Z",
+          "reason": "FailedAttachVolume",
+          "type": "Warning",
+          "source": {
+            "component": "attachdetach-controller"
+          },
+          "controller": "attachdetach-controller",
+          "text": "Multi-Attach error for volume \"pvc-00aa4198-e041-4294-8717-0fce6304a25e\" Volume is already used by pod(s) application-c85b5988f-7lg77"
+        }
+      },
+      {
+        "metadata": {
+          "uid": "0afd897d-d6ec-4c9b-b9b9-3b2d24418596",
+          "name": "application-c85b5988f-rv8fm.18e0aa0d63fe57e2",
+          "creationTimestamp": "2026-10-21T21:53:46Z"
+        },
+        "reference": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "application-c85b5988f-rv8fm",
+          "namespace": "longhorn-business-223d1360f155e334",
+          "resourceVersion": "984492",
+          "uid": "beaac9b2-a8ab-4d73-af10-0e24f94d1725"
+        },
+        "reason": "SuccessfulAttachVolume",
+        "resource": "events",
+        "details": {
+          "namespace": "longhorn-business-223d1360f155e334",
+          "creationTimestamp": "2026-10-21T21:53:46Z",
+          "reason": "SuccessfulAttachVolume",
+          "type": "Normal",
+          "source": {
+            "component": "attachdetach-controller"
+          },
+          "controller": "attachdetach-controller",
+          "text": "AttachVolume.Attach succeeded for volume \"pvc-00aa4198-e041-4294-8717-0fce6304a25e\" "
+        }
+      }
+    ]
+  },
+  "boundary": "Four exact archived Events grant no Pod/PVC/controller ownership. Original namespace UID and complete object receipts must still match.",
+  "raw_capture": {
+    "path": "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v1-node-cleanup/node-cleanup-first-failure/capture.json",
+    "sha256": "85d6d529a9c9d47d6737e94db63ce1fbd3819b211508bad17a1c419f99b5b820",
+    "inputs": 832,
+    "mismatches": 0
+  },
+  "official_source": "https://github.com/kubernetes/kubernetes/blob/v1.33.6/pkg/controller/tainteviction/taint_eviction.go#L591",
+  "not_accepted": [
+    "owning node cleanup",
+    "owning node loss and reboot",
+    "GA readiness"
+  ],
+  "durable": {
+    "remote_top": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "parent_v1": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "parent_v2": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "node_cleanup": {
+      "exit": 1,
+      "finalized": 1
+    }
+  },
+  "terminal_capture": {
+    "path": "logs/longhorn-cases/node-monitoring-continuation-20261022/archive-v1-node-cleanup/terminal/capture.json",
+    "sha256": "299fec903f849cc681bedd62195fe3427f619d8fd3a32662ac315e75cf5fd354",
+    "inputs": 832,
+    "mismatches": 0
+  },
+  "cleanup": "Original worker scheduling now restored. Business graph protection retained the namespace, application, PVC/PV/native volume and original journals. No business data readback or full cleanup success.",
+  "local_durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "local_terminal_review": "logs/longhorn-cases/node-monitoring-continuation-20261022/terminal-review.json",
+  "future_event_capture_boundary": "New node path journals generated Pods before owned DELETE and at migration/cleanup. Polling does not prove observation of every arbitrary transient Pod; unknown future resources still refuse cleanup."
+}

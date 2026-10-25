@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "V2 TRIM measurement mechanism and snapshot/unsupported-V1-flag differences only; source/content review, no live V2 TRIM claim",
+  "checks": {
+    "sources": "Official 1.12.1 trim, engine comparison and snapshot-deletion topics read; pinned SPDK cluster/free-size, Manager mapping/30-second interval and V2 unmap-flag Unimplemented source checked",
+    "content": "Separates guest df, V1 sparse-file blocks, V2 lvstore allocation and physical hypervisor/SSD reclamation; whole-disk attribution requires isolated consumers and asynchronous convergence; no automatic snapshot-loss recommendation",
+    "novice_path": "Existing approved UI Trim task retains role/context, healthy-volume prerequisites, 600-second stop and data verification; explanation changes no command or customer input",
+    "experienced_path": "Both manuals identify V2 native disk fields, shared-disk attribution limit and live-merge behavior; original UID and retained recovery point remain authoritative",
+    "operation_evidence": "Official/source mechanism only; live V2 TRIM remains pending and V1 measurement table remains explicitly V1",
+    "diagrams": "No Mermaid source changed",
+    "static": "44 documentation contracts passed"
+  },
+  "source_evidence": "tests/evidence/longhorn-v2-trim-source-20261020.json",
+  "source_evidence_sha256": "3e691ea39489168302fc8089f20b13ee585fe5e63407be6ea4e0b390ebfcaf50",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "de50e1741c9d431fc8c1d46574a65704c3e7d5b46f420777f051cc471caa931d",
+    "docs/storage/longhorn/technical-whitepaper.md": "2b091d6223f2593adf0baa97fd316bcc31f7e19450cedbfdbdaf7f3ce5bd1732"
+  }
+}

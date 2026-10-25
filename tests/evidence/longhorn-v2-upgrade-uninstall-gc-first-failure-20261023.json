@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "classification": "test-gate",
+  "matrix_item": "LONGHORN-52",
+  "owning_entry": "config.yml + kubecli setup longhorn-gate 09 (native uninstall), fixed --longhorn-v2-upgrade-lifecycle",
+  "first_failure": "ValueError: foreign resource in business namespace: pods",
+  "cause": "Helm native uninstall returned before background GC removed two original longhorn-ui Pods; strict graph inspection ran during termination",
+  "source_store_empty": true,
+  "customer_data_changed": false,
+  "preserved_stage": "retiring-empty-new",
+  "terminal": {
+    "runner_rc": 1,
+    "observer_rc": 0,
+    "terminal": true,
+    "remote_inputs_equal": true,
+    "native_rc": null
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/terminal.json": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/target-relay.log": "890e3006c7d9929e3567fdf6a99f8b8f237bb76259628de353738953b3a0e1f7",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/source-relay.log": "1ab28d838723a313ae014dc1245f164af9f57a12e2e7acbcfb2ac68daae5c87b",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/preflight.log": "cad03fcba129ca765b78cd3fbbe16337ed9a462f9518d5a069ed00bdea3222d4",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/first-failure.status": "a5a303c3f5ae9d5ae66407a34c43303fac8914c712b81c96a602219e8a653742",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/longhorn-v2-dr-target-pods.txt": "f10c93a0391b9e11d7b17950b1f11ab00b97202bee493bc8ea98ed42dfcd86f2",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/longhorn-v2-gate-events.txt": "c396c010b2a4cbb037097d0a41fef127d294095b478a48a3e789f45a8fbfe343",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/longhorn-v2-gate-pods.txt": "19eefae2b18fc8f9381fe093a8825533bc08ff03b5f9733b2a8199b47bdd7abd",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/status": "38c5e1e95b13045847e1775157e84326cadb283199555c5760b76ac8cec4209c",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/prepare.log": "63c8d91ac3ce8ec04f0b5d31a3689aff9e487405df794b84afe34f6c5715103b",
+    "logs/longhorn-cases/revision3-v2-upgrade-artifact-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.RDiLIa/longhorn-v2-dr-target-events.txt": "f6a799565872ef0d922c31733f0d4186863e1d2befb7585a2919f925529b6034"
+  },
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-upgrade-lifecycle",
+  "expected_exit": "LONGHORN_V2_UPGRADE_GATE_PASS + scoped-clean + durable rc=0; no PASS asserted by this failure record",
+  "official_conditions": "Kubernetes 1.33.6 background dependent GC; reuse pinned official source cache maintenance-gc-repair-20261022/official; Helm 3.19.0 --wait does not make namespace-dependent graph empty"
+}

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-23",
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "ladder_completed": 2,
+  "next_permitted_level": 3,
+  "next_command": "bash tests/run_enterprise_regression.sh --longhorn-last-replica",
+  "expected_marker": "LONGHORN_LAST_REPLICA_GATE_PASS",
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_last_replica.RealScaleContracts -v",
+  "inputs": {
+    "tests/helpers/longhorn-last-replica.py": "18cc17b170335d46c8b83c701fe87dcfeea1803f3c4acd60bbe61faf0ab95365",
+    "tests/unit/test_longhorn_last_replica.py": "e19b79345fc8ac892cf50cfb19cfd7cd5ae65661d0cc5b805e5d8e56a6eaf8c5",
+    "tests/helpers/longhorn-maintenance.py": "2baa13e9640ec2ff23cc6c4f57746036d2ca009727cfbf34832af7c097618142",
+    "tests/helpers/longhorn-last-replica.sh": "f80453b4a557b9d36869d92d4efc71d44f0eed62bf7fd2a39d3684634402a956"
+  },
+  "contracts": {
+    "tests": 57,
+    "rc": 0,
+    "failure_markers": 0,
+    "log": "/home/brinnatt/.local/share/kubeauto-longhorn-release/last23-balance-precondition-20261022/contracts.log",
+    "sha256": "0e9e18abf54e15238358ee2e6923e8973a9aa89f07b73a62b50ec8236e5b73bd"
+  },
+  "red": {
+    "file": "/home/brinnatt/.local/share/kubeauto-longhorn-release/last23-balance-precondition-20261022/red.log",
+    "sha256": "a1b3bb0d954926e4b4f7c6eb53719ce799afeddff46e7b3bd6df01317bcebad4",
+    "result": "Original actual maintenance.scale rejects disabled-policy native convergence; no success-marker stub"
+  },
+  "official": {
+    "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "source": "controller/volume_controller.go",
+    "sha256": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "behavior": "cleanupExtraHealthyReplicas delegates to cleanupAutoBalancedReplicas, which returns without deletion for disabled effective balance"
+  },
+  "change": "Reuse unchanged maintenance temporary_replica_balance and restore_replica_balance. A fresh isolated helper module binds its existing journal writer to the LONGHORN-23 business record. Persist exact original UID/policy before the volume-only patch, reduce to one, require dry-run rejection, restore three and original policy. Failure cleanup restores original policy before data/backups can retire; changed identity/policy refuses deletion. No global Setting change, source product change or maintenance code change.",
+  "coverage": [
+    "Four original policies; real downscale/dry-run/upscale call order and policy restoration",
+    "Policy intent persisted to owning business journal before patch; no foreign maintenance receipt",
+    "Guard refusal failure retains original policy intent for recovery",
+    "Unknown policy/replaced volume rejected before any patch",
+    "Cleanup refuses external policy drift before touching recovery material",
+    "Existing fault, immutable ACK, backup ownership, scheduling and wrapper durable contracts"
+  ],
+  "syntax": "Python 3.8 AST, shell syntax, matrix schema and git diff --check passed",
+  "first_failure": "tests/evidence/longhorn-last-replica-first-failure-20261022.json",
+  "boundary": "No live PASS. Only focused owning rerun permitted; final full run remains blocked until owning gates pass."
+}

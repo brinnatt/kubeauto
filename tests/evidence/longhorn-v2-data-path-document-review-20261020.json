@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "scope": "Author review of added V2 data-path diagram and recurring-retention explanation; no whole-document or product sign-off",
+  "review": {
+    "date": "2026-10-20",
+    "status": "partial",
+    "scope": "Author review of added V2 data-path diagram and recurring-retention explanation; no whole-document or product sign-off",
+    "source": "longhorn-instance-manager cfd63a673e3047ca176185619565d5a81d33ec1c vendor SPDK engine d19dbb3abcea; Engine.Create, disk.go and replica.go; Manager832023 retention deletion source",
+    "visual_review": "Rendered SVG and PNG; author visually checked labels, arrows, three fault domains, one expanded replica branch, alternative AIO/PCI routes and shared resource boundary. No clipping or parse errors observed.",
+    "novice_path": "V1/V2 selection → distinguish backend raw disk and application volumeMode → follow V2 resource/host setup and explicit pending scope. Diagram does not suggest direct physical RAID preparation.",
+    "experienced_path": "Separately diagnose client frontend, Engine/Replica, lvstore and raw disk; shared spdk_tgt failure has multiple-volume impact. Deleting retained Backup is excluded from recovery sources; wait native GC without manual object-store block deletion.",
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 108,
+        "yaml_blocks": 17,
+        "bash_blocks": 28
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "04295e83b365725abab2897a1e76daaf69c3c74a15a4df29946b3eadac456d04",
+        "docs/storage/longhorn/technical-whitepaper.md": "71d9331501b808f15a30415b8dd106517ef6ae2e178ffb5c884b14a4540af7df",
+        "docs/storage/longhorn/development-manual.md": "afd8a1567ab1493b83ceb035fa755036fa619d6d65e31ea0801972a8ecffbb05"
+      }
+    },
+    "documentation_contracts": 44,
+    "remaining": "V2 native PCI lifecycle, exact retired-media release, V2 field environment/gates and other pending product scenarios; final overall manual sign-off remains open.",
+    "diagram_reuse": "All seven current Mermaid sources match rendered sources by content hash: six unchanged diagrams reuse previous rendering; newly added V2 data path rendered and visually reviewed separately."
+  },
+  "files": {
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/v2-data-path.png": "a9231cd889a4efa6effd32b3e098aa89227477c65cc090f22b01a9861c702064",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/v2-data-path.svg": "c1edf7e4067d4aefca45b8ea70c8684ac80961b17abb80ee522b3d5e5f836878",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/v2-data-path.mmd": "bf44452da594c358ec93ef3f513c2564b801e67caccba02b9cad597455db9966",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/contracts.log": "41e16ce4ec19081fc30d167e908c50dae819806ca1162683485cb31af4a38662",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/static.json": "5f57969ab823357fc03bc9f0ed45d3522a6243130b4f6f96965c1ccaade813ba",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/review.json": "4716deff0157a9c970aea2c4dc7edd7116d5889b38c8cdb4635a4208daba6c42",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/previous-review.json": "36652a4d8ac8977dc86ca3d00d8cad75f34998d549ba4e37da7f18d584501dfc",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/reading-map.json": "2ff233cbd909555f741aea2bdcc8fc5fc32727070937df9f7942fdbc059871fc",
+    "logs/longhorn-cases/v2-data-path-document-review-20261020/current-diagram-render-map.json": "0e7df79e75d1848eff7dad004845436559f6aabb63e984736af76816bc819e0c"
+  },
+  "previous_evidence": "tests/evidence/longhorn-recovery-operations-document-review-20261020.json"
+}

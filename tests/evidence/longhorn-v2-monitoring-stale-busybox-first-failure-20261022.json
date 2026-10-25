@@ -1,0 +1,154 @@
+{
+  "case": "LONGHORN-53",
+  "classification": "supply-chain/environment fixture identity conflict; product not reached; verification guard correct",
+  "complete_matrix_item": false,
+  "durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "frozen_inputs_sha256": "fdf5569ddc0a513b70ab2777febfca7f496e0199b5b8c6e058ee02f371706896",
+  "identity": {
+    "actual": {
+      "config": {
+        "digest": "sha256:a8f8fb219750d2088168478eea8c2dd014a4b18eca4441596c19d9987b69e4e8",
+        "mediaType": "application/vnd.docker.container.image.v1+json",
+        "size": 939
+      },
+      "layers": [
+        {
+          "digest": "sha256:2a9999ca1f0186d6d98a4e628ba4f3e469837cfa2902dd73601e6dcd0f701a6d",
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 2280996
+        }
+      ],
+      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "schemaVersion": 2
+    },
+    "actual_config_revision": "5223a7c061ef53871ee0645b082ed980c67ea246",
+    "actual_manifest": "sha256:8f1a668e052ad7136e3fc9feac3cbb9707d92ad46b32050bc1f797d21ec3970d",
+    "expected": {
+      "config": {
+        "digest": "sha256:23e2ac3a4aa2b54b1ab9d1b67729a36bc5b330bb2bc8ec4c8474e1e428d143cd",
+        "mediaType": "application/vnd.oci.image.config.v1+json",
+        "size": 607
+      },
+      "layers": [
+        {
+          "digest": "sha256:68fe9bff2ad4ad46da3e58db03faa64eb73c0ff16d546b0c42539eaa9854cb7f",
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "size": 2211514
+        }
+      ],
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "schemaVersion": 2
+    },
+    "expected_child": "sha256:94dee190d1e5f7dce9017bfe7113441013efb471bfe3964f031e8906a95df781",
+    "expected_release_head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+    "key": "brinnatt/busybox:1.37"
+  },
+  "matrix_status": "pending",
+  "next": "Reviewed single-key fixture recovery through fixed focused monitoring setup; unchanged product identity guard and existing CPU evidence.",
+  "overall_longhorn_delivery_pass": false,
+  "parent_status": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "preserved_scopes": {
+    "cpu_reuse_scope": {
+      "cleanup_rc": 0,
+      "raw_log": "LONGHORN_V2_CORE_IDENTITY_PASS nodes=3\nLONGHORN_LAB_INSTALLATION_HEALTHY\nLONGHORN_V2_CPU_ISOLATION_REUSE_PASS\nLONGHORN_V2_OBSERVABILITY_STAGE_EXIT rc=0\n",
+      "rc": 0,
+      "unique_marker": "LONGHORN_V2_CPU_ISOLATION_REUSE_PASS"
+    },
+    "source_im_imageID": "sha256:d93015f031ca679c1206b5e81058b7e0f52c5d7ab9a51d46dd85a5aa58218dcb",
+    "source_im_pods": [
+      {
+        "containers": [
+          {
+            "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.2",
+            "imageID": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager@sha256:d93015f031ca679c1206b5e81058b7e0f52c5d7ab9a51d46dd85a5aa58218dcb",
+            "name": "instance-manager",
+            "ready": true,
+            "restartCount": 0
+          }
+        ],
+        "name": "instance-manager-3d703711dd7a742153cd76d04213344b",
+        "node": "longhorn-node-146",
+        "phase": "Running",
+        "uid": "039b7493-32cb-443c-bd29-527bc05cafc5"
+      },
+      {
+        "containers": [
+          {
+            "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.2",
+            "imageID": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager@sha256:d93015f031ca679c1206b5e81058b7e0f52c5d7ab9a51d46dd85a5aa58218dcb",
+            "name": "instance-manager",
+            "ready": true,
+            "restartCount": 0
+          }
+        ],
+        "name": "instance-manager-8631b4d9b061b43fa546012b31a810b7",
+        "node": "longhorn-node-147",
+        "phase": "Running",
+        "uid": "9fb49138-3afc-4654-8988-6331007ff126"
+      },
+      {
+        "containers": [
+          {
+            "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.2",
+            "imageID": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager@sha256:d93015f031ca679c1206b5e81058b7e0f52c5d7ab9a51d46dd85a5aa58218dcb",
+            "name": "instance-manager",
+            "ready": true,
+            "restartCount": 0
+          }
+        ],
+        "name": "instance-manager-f2ff63a01d6fac578f3ace24431e4ee3",
+        "node": "longhorn-node-148",
+        "phase": "Running",
+        "uid": "6b4a16de-d26e-43a1-8718-868f89bd90f5"
+      }
+    ],
+    "unstarted": "monitoring deploy and sustained business observation not entered",
+    "verified_cache_images": [
+      "brinnatt/prometheus:v3.13.1-distroless",
+      "brinnatt/prometheus-operator:v0.93.0",
+      "brinnatt/prometheus-config-reloader:v0.93.0",
+      "brinnatt/prometheus-admission-webhook:v0.93.0",
+      "brinnatt/prometheus-webhook-certgen:1.8.5",
+      "brinnatt/alertmanager:v0.33.1",
+      "brinnatt/grafana:13.1.1",
+      "brinnatt/k8s-sidecar:1.30.5"
+    ]
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/artifact-manifest.json": "2e8bf2f73a1160418250f9c31d0386c16ea5080a78d78e4619c242f20ca7bafd",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/busybox-config-and-im-readonly.json": "c45ce00f82b1167d15b414dcaede3e1b45de600e3c4a44bf67bcc80a6d582bab",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/busybox-config-and-im-readonly.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/busybox-scope-readonly.json": "139ab1b38be6eaec959cffe4b5e14a8f05b2fb5d5254346314df60cdbadedca0",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/busybox-scope-readonly.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/first-failure-and-minimal-reconcile-plan.json": "85d9f439a5ec7bfacd26e3c98e557e4f4e1ccf0c1b7e942f497457f59f25dac8",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/frozen-inputs.json": "fdf5569ddc0a513b70ab2777febfca7f496e0199b5b8c6e058ee02f371706896",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/manifest-readonly-inventory.json": "8a0142ef10eff6e66a7d15fa3aada391912c13b6b63111605a65b70d6dd5ecf9",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/manifest-readonly-inventory.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/registry-product-provenance-readonly.json": "03b7cd9b3a6770623cd46773cef9c304a9465127321fbef7ff3155aca7ce7a54",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/registry-product-provenance-readonly.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/v2-inner-monitoring-product-setup.log": "1c041528d5d2dac5983513e37a50b5deca44e6c424cd1f31678a5eb1955fc0ae",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/v2-inner-monitoring-product-setup.log.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/v2-parent.log": "ee692b500b5ebf80897018b14ffd0db54e6ee24d246dd55fbcefe5c57050ffb6",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/v2-parent.log.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-monitoring-resume-20261022/archive-v2-cache-first-failure/v2-stream.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "reason": {
+    "durable_rc": 1,
+    "inner": "/var/tmp/kubeauto-longhorn-v2-observability.JBULaD",
+    "parent": "/var/tmp/kubeauto-longhorn-parallel.imbicD",
+    "phase": "monitoring-product-setup",
+    "reason": "cached busybox single-manifest config and layer identities differ from the fixed published AMD64 child; not an index-selection or media-translation-only mismatch"
+  },
+  "remote_input_verification": {
+    "count": 817,
+    "mismatches": 0
+  },
+  "schema": 1,
+  "status": "failed"
+}

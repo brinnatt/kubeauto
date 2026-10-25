@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "classification": "test-gate",
+  "scope": "Correct 3 manager vs 6 CSI Pod propagation assertion; independent read-only focused path alongside V2 source/target adoption",
+  "tests": 44,
+  "ladder_completed": 2,
+  "next": 3,
+  "official_source": {
+    "repository": "longhorn/longhorn-manager",
+    "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "path": "csi/deployment.go",
+    "sha256": "6e53b48901483cf3df28043f90cfb279481a3a7c00922ffa163b1d8db21c0cc4"
+  },
+  "inputs": {
+    "tests/helpers/longhorn-platform.py": "991ee0dd5f0b476fcb05fafa8c81de313b0842d691ff58656be886943a175be4",
+    "tests/helpers/longhorn-platform.sh": "a4830d4b7895bf2147948698a448929c471902a35eae9f01d12ed91f9316b821",
+    "tests/unit/test_longhorn_platform.py": "65246a61b1a3d87b887dd7cd73c91082583b3176ff4719826d026c6d8f4b1186",
+    "tests/helpers/longhorn-parallel.sh": "6ac2d0218d8ccc07d06681b56b637b7d90b4a5fe421ecc7abb2d39de4fabe108",
+    "tests/helpers/longhorn-parallel.py": "b4355b0a3d7b402681c302ea1b0cc361eecfdb27740e10457878e10cff82e035",
+    "tests/unit/test_longhorn_parallel.py": "94aa185b2e5406592c0bdabc48add3e2fc0ffd72f53fde448a52e2e676702cef"
+  },
+  "log": "logs/longhorn-cases/platform-csi-topology-contract-20261021/contracts.log"
+}

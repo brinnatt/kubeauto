@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass-contract-only",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_manager_loss -v",
+  "rc": 0,
+  "tests": 9,
+  "raw_logs": {
+    "/tmp/kubeauto-longhorn-research/v2-manager-loss-shell-contract-20261021.log": "e6a5bfa7f153a716a594bcddec8816334585da1da40c7f61834ebbd45400f8e4"
+  },
+  "coverage": [
+    "foreign/replaced/unready native consumers, pin and TLS refusal",
+    "intent before native DELETE; double-read replacement refusal",
+    "same parent/config and different manager Pod; unchanged IM and native instance identities",
+    "recovery before cleanup, unknown state retained",
+    "recomputed acknowledged prefix/fresh ledger and original payload cross-node readback",
+    "real shell qualification/recovery branches, real verifier and failure propagation",
+    "business adapter restoration and fixed dispatcher/static registration"
+  ],
+  "initial_local_failure": {
+    "classification": "unit fixture used an impossible duplicate API name for an extra IM; changed to a distinct foreign name",
+    "log": "/tmp/kubeauto-longhorn-research/v2-manager-loss-initial-contract-20261021.log",
+    "sha256": "38a7c97ad3895c3c363aeb5bc3d6e40b76e93603dcb407a8162a0a4870d5f314"
+  },
+  "coverage_boundary": "Deterministic local contracts only; no remote mutation or live PASS."
+}

@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "Longhorn core prerequisite only; no Longhorn storage acceptance",
+  "setup_command": "bash tests/run_enterprise_regression.sh --longhorn-core",
+  "business_command": "bash tests/run_enterprise_regression.sh --longhorn-core-smoke",
+  "rc": 0,
+  "failure_markers": 0,
+  "business_marker": "KUBERNETES_PRODUCTION_SMOKE_PASS",
+  "scoped_clean_marker": "LONGHORN_CORE_SMOKE_SCOPED_CLEAN_PASS",
+  "topology": {
+    "kubernetes": "1.33.6",
+    "control_nodes": [
+      "192.168.122.135",
+      "192.168.122.40",
+      "192.168.122.72"
+    ],
+    "workers": [
+      "192.168.122.212",
+      "192.168.122.165",
+      "192.168.122.238"
+    ]
+  },
+  "business": {
+    "server_node": "longhorn-node-212",
+    "client_node": "longhorn-node-165",
+    "path": "cluster DNS -> ClusterIP -> cross-node HTTP POST and GET",
+    "result": "PRODUCTION_SMOKE_HTTP_RW_OK"
+  },
+  "health": "Post-smoke read-only diagnostics show all six Calico and node-local-dns pods, CoreDNS and metrics-server Ready; original setup alone checked Node Ready and did not prove network business.",
+  "input_boundary": "Core setup used its earlier synchronized inputs. The subsequent smoke used the new focused helper; those runs are distinct evidence, not a re-labeling of the earlier setup.",
+  "fingerprints": {
+    "production_smoke_helper_sha256": "c4014cdafd47af4b9128c012a291d6009dc0a3876e7fe340ab4ba63e2c9f93c0",
+    "smoke_function_sha256": "b5c8d0d960e5a552363f6ee67d548772031d9064a070da8ecd0af030ca107281"
+  },
+  "files": {
+    "logs/longhorn-cases/core-20261019-025450/gate.log": "6b17bb1db711a47f081b4ffb076e4ac6837e906fd9b5db8d6a42c6e928cb1ba7",
+    "logs/longhorn-cases/core-20261019-025450/durable-status.txt": "0461c7a96410266dcd71cdba51c0122ca9d04368b14310985205ea5182fc9fa6",
+    "logs/longhorn-cases/core-smoke-20261019-035352/gate.log": "65921d1fc1ccac0966901d0c8eb00889b26452262e109f1c1541c95c59cfbb53",
+    "logs/longhorn-cases/core-smoke-20261019-035352/durable-status.txt": "78ccca28590178f16b776de325b451852cc9a3059d29538cc43aebbbe3664766",
+    "logs/longhorn-cases/core-smoke-20261019-035352/qualified-diagnostics.log": "63d2368f77028766037e4095f24f7ddbc30352a2d3db9297b2aa8c6413117fa1",
+    "tests/helpers/kubernetes-production-smoke.sh": "c4014cdafd47af4b9128c012a291d6009dc0a3876e7fe340ab4ba63e2c9f93c0"
+  }
+}

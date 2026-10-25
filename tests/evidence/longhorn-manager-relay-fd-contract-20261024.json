@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "classification": "test-gate",
+  "scope": "manager-adoption-relay-lease-inheritance",
+  "version": "1.12.1",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "tests": 113,
+  "change": "Only pass_fds=(7,8,9) on the new Manager relay child; existing exact lease and process identity refusals remain unchanged. Real isolated child runs actual require_lease on private lock files and refuses unrelated fd40.",
+  "product_or_image_changed": false,
+  "original_real_failure": {
+    "path": "logs/longhorn-cases/manager-v2-linked-acceptance-ast-fixed-owning-20261024/raw/tmp/kubeauto-longhorn-live.log",
+    "sha256": "b8f986d170d284f198760ccbfb3e1ca78354b6f6be8ae98b46fde62f9c1bfc1e"
+  },
+  "original_remote_durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "classification_record": {
+    "path": "logs/longhorn-cases/manager-relay-fd-contract-20261024/classification.json",
+    "sha256": "d4b27613359b4ca9198c94f79e74af74f19caf12e390698ac3a7f3cc8660e09e"
+  },
+  "red": {
+    "log": {
+      "path": "logs/longhorn-cases/manager-relay-fd-contract-20261024/red-exact.log",
+      "sha256": "4801b3a51478c7f753bf97d850f7b9d9121de6865d2425e64c5da9c865e9ccfb"
+    },
+    "exit": {
+      "path": "logs/longhorn-cases/manager-relay-fd-contract-20261024/red-exact.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/manager-relay-fd-contract-20261024/red-exact.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    }
+  },
+  "contracts": {
+    "log": {
+      "path": "logs/longhorn-cases/manager-relay-fd-contract-20261024/gate.log",
+      "sha256": "958a6780bc453b35d831d0ec802664318f93e5f818db231a21733d83195af06b"
+    },
+    "exit": {
+      "path": "logs/longhorn-cases/manager-relay-fd-contract-20261024/gate.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/manager-relay-fd-contract-20261024/gate.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "changed_files": {
+    "tests/helpers/longhorn-manager-adopt.py": "6b74d4b848889184f8e9dd71ed718d0418063ccd93c452ec021cb5ce1f0dce17",
+    "tests/unit/test_longhorn_manager_adopt.py": "2fb4327b91088748db0b6e6f5866abe7274b583998dfe427cc526c5406d9d634"
+  },
+  "boundary": "Focused contracts permit retry of the actual adoption prerequisite; no linked business or whole GA acceptance."
+}

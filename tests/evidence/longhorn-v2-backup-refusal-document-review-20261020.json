@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "Author content and two reader-path checks of V2 backup refusal/recovery result paragraphs only; no command/diagram changed, not whole-document sign-off",
+  "checks": {
+    "source": "Pinned 1.12.1 backup-target topic and BackupTargetController ListSystemBackup availability semantics reused; error classes remain distinct.",
+    "content": "Operations target-unavailable task and whitepaper target-access/refusal section reproduce the three native refusals, absent requests/backend objects, per-case credential restoration, 15 object reads, independent 2GiB restore and 12320768-byte source remount with exact old/new hashes from the same run.",
+    "novice_path": "Existing task supplies execution context, non-secret target identity check, classified recovery and config+kubecli reentry; actual data/restore result makes success observable after available=true.",
+    "experienced_path": "Explains pre-admission stop versus data recovery, scoped credential changes and unchanged original disk/target identity; transient mid-transfer faults, object corruption, rotation, schedules and site DR remain outside this qualification.",
+    "operation_evidence": "Reused the newly completed frozen 122-input qualifier, durable rc0, zero failure markers, scoped clean and independent original empty-business/backup/raw-disk baseline; prose did not trigger another lab run.",
+    "static": "44 storage/middleware documentation contracts and 54-case matrix validator passed.",
+    "diagrams": "No diagram changed; existing rendering reused."
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-backup-refusal-qualification-20261020.json",
+  "product_evidence_sha256": "16d3410e8fbff2e6b8859ff7632207f3eda12405ce97f81ca4f7938792c9b409",
+  "static_log": "logs/longhorn-cases/v2-backup-refusal-qualification-20261020-175151/document-contracts.log",
+  "static_log_sha256": "f4623e84c4a3daf477b85d5c7fa7592188c81661e4a079419322882c9398337c",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "615f9898a9cedcf7d38614349feac7519cd1de869dc1be285e8814be98d6565f",
+    "docs/storage/longhorn/technical-whitepaper.md": "e1d2af321e39f089c2e50d215f597a4e6644802379e6227a7a486fd7cdcffb3f"
+  }
+}

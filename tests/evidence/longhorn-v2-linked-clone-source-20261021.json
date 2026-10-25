@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-only",
+  "scope": "LONGHORN-49 narrow new linked/nested clone qualification design, not complete clone or live acceptance",
+  "version": "Longhorn 1.12.1 replicated V2 AIO",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "classification": "test-gate; existing product linked-clone StorageClass behavior, no production change or new image",
+  "product_entry": "config.yml longhorn_storage_classes with clone_mode=linked-clone plus kubecli setup CLUSTER 09, followed by customer CSI PVC dataSource workflow",
+  "expected_marker": "LONGHORN_V2_LINKED_CLONE_QUALIFICATION_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-linked-clone-qualification",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/"
+  ],
+  "conclusions": [
+    "The new 1.12.1 linked-clone architecture shares SPDK blocks; each child replica references one same-node/same-disk source replica. Three healthy copies and completed clone state are independent prerequisites.",
+    "Nested clone creation waits for the first clone to complete. Initial data, child-to-parent isolation and parent-to-child isolation are verified separately at both graph edges, then read again after cross-node client remount.",
+    "Pinned admission blocks source Volume deletion, entrypoint Snapshot deletion, source Replica deletion and source replica-count decrease when all replicas have dependents; a clone cannot increase above its source replica count. Use independent server dry-run refusal checks so a missing guard cannot destroy the application graph.",
+    "A separate mixed-StorageClass journal owns exact PVC/PV/Volume identities and dependency order. Remove all consumers before nested, clone and source; never pass protected entrypoints through generic snapshot-first deletion or strip finalizers. Read surviving parents after child retirement.",
+    "The current data-protection run keeps its original frozen inputs; this new helper is local-only until that run finishes and the fixed runner integration and static ladder pass.",
+    "Recovery reaches the exact owning journal before demanding an empty-volume baseline. Dangling or live symlinks, replaced namespace/PV/class identity, foreign consumers or a disappeared namespace with retained PV/native objects stop without losing the journal. The cleanup marker is distinct from business qualification. Before releasing that journal or deleting the fixture class, require the admitted empty Longhorn Volume/PV baseline again; an unbound CSI-created native object remains unidentified and must not be deleted by inferred name."
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/csi-volume-clone.md": "63ef0190e451a7a39a8fb09ea66075311bd042e2bb9cb4038d7b6f45cdfac774",
+    "manager-1.12.1/webhook/resources/volume/validator.go": "a5ef728e5c7758dc081d8e0b93fec6275746052f77cc308955ef9cc2d5ba0908",
+    "manager-1.12.1/webhook/resources/snapshot/validator.go": "4035cb26f4e1bc3aad4c39fc9a67a5c1952b690ba305701cb932f80e53f4ebf9",
+    "manager-1.12.1/webhook/resources/replica/validator.go": "57ae1404794b74660a2c8bf01a0154f34bbdd709fe627354427389d1f890afe1",
+    "manager-1.12.1/controller/volume_controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "manager-1.12.1/datastore/longhorn.go": "f18a875f352eb0b25785d1d4ebac22901a2179c648d3b5ae36936c329934486b"
+  },
+  "coverage_boundary": "No live PASS; not full-copy source deletion, dependency eviction/rebuild, expansion/backup restore, incomplete-source creation refusal or legacy migration; these remain under LONGHORN-49.",
+  "cleanup_entry": "bash tests/run_enterprise_regression.sh --longhorn-v2-linked-clone-cleanup"
+}

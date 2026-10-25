@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-29",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-trim </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2410267,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_TRIM_PASS",
+  "scoped_clean_marker": "LONGHORN_TRIM_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_TRIM_RESULT {\"after\": {\"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3\": 111329280, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3\": 111329280, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff\": 111329280}, \"baseline\": {\"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3\": 111251456, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3\": 111251456, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff\": 111251456}, \"confirmed_sha256\": \"1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a\", \"filler_bytes\": 67108864, \"filler_sha256\": \"c2ef861243eca4c3a36b2c6006c4745cb2bf258352e41683ae09d3e142a1e184\", \"guest_freed_bytes\": 67108864, \"replicas\": {\"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3\": {\"node\": \"longhorn-node-165\", \"uid\": \"ef897bbb-d473-453f-b016-a9a60b5a6fac\"}, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3\": {\"node\": \"longhorn-node-212\", \"uid\": \"3e316302-2025-4005-9d43-614b8775b66e\"}, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff\": {\"node\": \"longhorn-node-238\", \"uid\": \"90a2942c-4063-45c3-898c-6e7c52355cfa\"}}, \"retained\": {\"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3\": 178425856, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3\": 178425856, \"pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff\": 178425856}, \"snapshot\": {\"name\": \"trim-85af50d0b58ff05b28da04b8\", \"uid\": \"cc2772d3-dc31-49ae-b062-0db2bb066453\"}}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_TRIM_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_TRIM_SCOPED_CLEAN_PASS",
+      "LONGHORN_TRIM_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "measurements": {
+      "after": {
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3": 111329280,
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3": 111329280,
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff": 111329280
+      },
+      "baseline": {
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3": 111251456,
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3": 111251456,
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff": 111251456
+      },
+      "confirmed_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+      "filler_bytes": 67108864,
+      "filler_sha256": "c2ef861243eca4c3a36b2c6006c4745cb2bf258352e41683ae09d3e142a1e184",
+      "guest_freed_bytes": 67108864,
+      "replicas": {
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3": {
+          "node": "longhorn-node-165",
+          "uid": "ef897bbb-d473-453f-b016-a9a60b5a6fac"
+        },
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3": {
+          "node": "longhorn-node-212",
+          "uid": "3e316302-2025-4005-9d43-614b8775b66e"
+        },
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff": {
+          "node": "longhorn-node-238",
+          "uid": "90a2942c-4063-45c3-898c-6e7c52355cfa"
+        }
+      },
+      "retained": {
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3": 178425856,
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3": 178425856,
+        "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff": 178425856
+      },
+      "snapshot": {
+        "name": "trim-85af50d0b58ff05b28da04b8",
+        "uid": "cc2772d3-dc31-49ae-b062-0db2bb066453"
+      }
+    },
+    "reclaimed_bytes_per_original_replica": {
+      "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-47a611f3": 67096576,
+      "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-7b5375f3": 67096576,
+      "pvc-47fe8288-1caf-48a8-8970-1f6b53209708-r-fc93c6ff": 67096576
+    },
+    "measurement_boundary": "Worker filesystem st_blocks*512 for each original replica directory; not hypervisor backing-store or SSD physical release."
+  },
+  "boundary": "Focused trim acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/trim-20261019-141727/durable-status.txt": "67dc72e5b2f1b77b16718ea064a0e5dc9f21378af2f3236a3247f9daf316eb68",
+    "logs/longhorn-cases/trim-20261019-141727/frozen-source.txt": "0ea26903e724bce53b09026115373f121d7801cd4e22a12801367d454dcaa1fd",
+    "logs/longhorn-cases/trim-20261019-141727/gate.log": "3b175daf7e9bb89a96ba3494b97083d9642cec1444978766b1f975a43c34a42e"
+  }
+}

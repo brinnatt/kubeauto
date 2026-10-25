@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-only",
+  "matrix_item": "LONGHORN-48",
+  "classification": "test-gate; no production or image change",
+  "gap": "The ten composed subcases do not inject an invalid referenced backup block. Normal restores and target/credential refusal do not prove broken-chain handling. Matrix remains pending.",
+  "version": "Longhorn 1.12.1 replicated V2 AIO",
+  "source_commits": {
+    "website": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "backupstore": "e5f4ddc47e4d372169fb4efcfbae5848e7bc1739",
+    "instance_manager": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+    "manager": "8320238242e8c804325d9588ec1db10feb9f36b8"
+  },
+  "product_entry": "Existing config.yml + kubecli setup 09 source/backup workflow followed by official native restore CR negative probe and normal CSI independent recovery. No Helm bypass.",
+  "planned_marker": "LONGHORN_V2_BROKEN_RESTORE_QUALIFICATION_PASS",
+  "planned_smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-broken-restore-qualification",
+  "conclusions": [
+    "V2 instance-manager proxies EngineBackupRestore to SPDK, whose Replica.backupRestore calls backupstore.RestoreDeltaBlockBackup. Restore reads, decompresses and verifies every referenced block; source backup metadata presence alone is insufficient.",
+    "Missing block reads retry at 1,5,30,60,120,300 seconds (516 seconds plus IO). An engine-level missing-key failure must be observed with exact requested backup, failed volume UID and referenced key. Timeout by itself is not refusal evidence.",
+    "Error state prevents restarting the same failed SPDK restoration. Retire the precisely owned failed restore target through native deletion, repair the original block from verified escrow, then use a new CSI target for successful recovery; do not edit status or force finalizers.",
+    "Only a runner-created isolated bucket and an exact cfg-referenced block are eligible. Journal intent before changes, verify original and escrow byte hashes, handle lost copy/delete responses by readback, never overwrite a different original or delete unknown objects. On ambiguity retain journal and stop downstream store cleanup.",
+    "The gate must preserve first failure and restore its own fault before normal business/store cleanup on success, failure or interruption. It must verify new recovery data/time boundary/write isolation and source cross-node integrity."
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/backup-and-restore/create-a-backup.md": "7186a58ad08a0808a0a27a44da257b144a4178c31a19d70b1508d4112173e9aa",
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/backup-and-restore/restore-from-a-backup.md": "24f3b73b439e30c8093ae9b91d0e4485005c061aa742146da2525fe6b6a284c1",
+    "backupstore/deltablock.go": "eb6e080ef371ae3fb1cbf51f6613786a69a6bf2f316fa96039ecf6e2b6caf58e",
+    "backupstore/util.go": "641ed12a322c351fcd108d94c1550543f5bfa3de409862805c9b8207f83516b9",
+    "instance-manager-1.12.1/pkg/proxy/backup.go": "f4c47ad2711107f48e6813bcf3722fa25f0f732eea3590364681c2f235766b5b",
+    "instance-manager-1.12.1/vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/replica.go": "94760b83b74a57f8d451a8cbfe90f4e360f579bce828eab8734312b247c7f73a",
+    "manager-1.12.1/controller/engine_controller.go": "e55230285992f56365b385d52f457a6ac9f1a00815c09acf3eb2cbf04e8045a4"
+  },
+  "boundary": "Design/source evidence only. Helper, focused contracts and live qualification not yet implemented or run; not complete matrix or delivery acceptance."
+}

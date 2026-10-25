@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-only",
+  "matrix_item": "LONGHORN-50",
+  "version": "Longhorn 1.12.1 V2 AIO",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "instance_manager_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/high-availability/node-failure.md": "a3350ff56564bd37ab277e86c09b1ca8c583a7d6b8723e22b767dd91075cda0b",
+    "manager-1.12.1/controller/instance_manager_controller.go": "1fee262c9f7eba35b0ced04ddf37e3b705e3f389fd0d9f184db13d80eb290653",
+    "manager-1.12.1/datastore/longhorn.go": "f18a875f352eb0b25785d1d4ebac22901a2179c648d3b5ae36936c329934486b",
+    "manager-1.12.1/k8s/pkg/apis/longhorn/v1beta2/instancemanager.go": "7a34335c44d696248f93e6062816464990d5185d45efa6252c82b566e28d8b52",
+    "instance-manager-linked-tls-proof/pkg/instance/instance.go": "25d137108f706542a93b952d2ce8dbd9e599e5986191f0545d50b205741e1e0b"
+  },
+  "official_reference": [
+    "https://longhorn.io/docs/1.12.1/high-availability/node-failure/",
+    "https://github.com/longhorn/longhorn-manager/blob/8320238242e8c804325d9588ec1db10feb9f36b8/controller/instance_manager_controller.go"
+  ],
+  "classification": "test-gate extension; no product behavior or image pin changed",
+  "owning_scenario": "UID-scoped loss and native recreation of a remote replica SPDK instance-manager Pod under fsync-confirmed I/O",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-replica-im-loss-qualification",
+  "expected_marker": "LONGHORN_V2_REPLICA_IM_LOSS_QUALIFICATION_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-replica-im-loss-qualification",
+  "conclusions": [
+    "V2 native instances use SPDK APIs; V1 process UUID deletion is not reused. Pod loss sets the native IM state to error, clears instance maps and triggers controller recreation subject to node, resource and retry constraints.",
+    "Volume ownerReferences intentionally lack controller=true; the InstanceManager-to-Pod ownerReference requires controller=true. Require exact pinned image, SPDK flag, TLS mount, parent identity and remote replica placement.",
+    "Refuse any other Volume, foreign native CR assignment or extra SPDK consumer. Inject one normal Kubernetes Pod DELETE with original UID/resourceVersion preconditions, never force deletion, host reboot or raw-disk writes.",
+    "Persist fault intent before DELETE, including uncertain API response. Block business cleanup until native recovery is proved; preserve the journal on failure. The shell trap uses the same guarded cleanup path.",
+    "Require a different Ready Pod under the original IM UID/spec, original raw-disk three-node replicas healthy, original client continuing fsync-confirmed writes, a separate post-recovery ledger and cross-node verification of both ledgers and original payload."
+  ],
+  "coverage_boundary": "Source and deterministic contracts only until the narrow live gate passes. Normal Pod DELETE can include graceful shutdown and does not prove power loss, sudden node loss, engine faults, network isolation, rebuilding QoS, or the complete LONGHORN-50 module."
+}

@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "classification": "test-gate",
+  "status": "focused-cleanup-qualified",
+  "scope": "LONGHORN-50/rebuild-qos dirty-page budget and failed-client recovery",
+  "first_failure": {
+    "path": "tests/evidence/longhorn-v2-qos-dirty-cache-first-failure-20261023.json",
+    "sha256": "146d11d3e95e60991c529a32b03b480f1f8ebd961ebd7c274b777c684fca9c64"
+  },
+  "changes": {
+    "tests/helpers/longhorn-v2-disk-faults.py": "0f0cf44b8dd509718f9758fcd37c28a0f9c4daa2afa8e1b512f86b310256715e",
+    "tests/unit/test_longhorn_v2_disk_faults.py": "f9c017ad7c54c37151b7f4bd985dfa438a6af433fa172746ca815f5e0173f98d"
+  },
+  "causes": [
+    "Final-only fsync charged 230588416 bytes of dirty cache to the 256 MiB client memory cgroup.",
+    "OOM terminated the bare Pod, detached the volume, and made the old attached-three-replica cleanup precondition impossible."
+  ],
+  "repair": [
+    "Each 4 MiB write is fsynced before POSIX_FADV_DONTNEED; full 1 GiB payload and checksum remain.",
+    "Only the original UID-bound bare client with Failed/OOMKilled/137 admits a journaled recovery client on the original node/claim; three-replica health is still required before QoS restoration and native deletion."
+  ],
+  "contract": {
+    "tests": 22,
+    "rc": 0,
+    "log": {
+      "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/qos-dirty-cache-first-failure/contract.log",
+      "sha256": "aa24ceb297ff09720a46998c63b68e267e3e316723cb9ed7bb44c0fe16e76e45"
+    }
+  },
+  "complete_static": {
+    "result": {
+      "path": "logs/longhorn-cases/static-20261023-183947/status.json",
+      "sha256": "e08f12af632d1ca2c5d55fae8bfbd5338fce4c3852825c0aac00efa6e10513e4"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/static-20261023-183947/gate.log",
+      "sha256": "1677729a04889978f0fd86c4f2d0a2978400f145aa9f58692b407bb4f106ef52"
+    }
+  },
+  "owning_cleanup": {
+    "path": "logs/longhorn-cases/revision3-qos-owned-cleanup-20261023/scoped-result.json",
+    "sha256": "9e49c80c3a89e30fe3fca74fb6e62c1b0523673b4625e3d7b7e0665a52f07f35"
+  },
+  "before": {
+    "path": "logs/longhorn-cases/revision3-qos-owned-cleanup-20261023/plan-before.json",
+    "sha256": "46ca48af99d0d88587a0e77e82f4145e419c2222aa1c3bfb981d23b021595e00"
+  },
+  "after": {
+    "path": "logs/longhorn-cases/revision3-qos-owned-cleanup-20261023/plan-after.json",
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "production_101_input_closure_unchanged": true,
+  "ladder_completed": 3,
+  "next": "Original QoS owning business scope now running; full chain remains blocked until affected owning assertions pass.",
+  "longhorn_50_pass": false,
+  "ga_ready": false
+}

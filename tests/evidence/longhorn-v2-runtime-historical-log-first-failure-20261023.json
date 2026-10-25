@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "status": "first-failure-preserved",
+  "classification": "test-gate",
+  "matrix_item": "LONGHORN-52 continuation prerequisite",
+  "remote_mutation": false,
+  "first_failure": "historical adoption log verifier used new-adoption current input check after reviewed routing change",
+  "repair": "explicit historical log mode keeps exact original plan and business receipt; new-adoption and all product checks remain strict",
+  "current_contract_tests": 89,
+  "actual_adoption_log_verified": true,
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-routing-historical-contract-20261023/contract.log": "3fa9300be69db8aa17514b5d3a7908cc336128b8c81765aabc71caa7e3c9bf6f",
+    "logs/longhorn-cases/revision3-routing-historical-contract-20261023/contract.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/revision3-routing-historical-contract-20261023/contract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  }
+}

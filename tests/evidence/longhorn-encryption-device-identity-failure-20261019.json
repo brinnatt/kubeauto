@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-31",
+  "date": "2026-10-19",
+  "status": "failed",
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-encryption </dev/null",
+  "durable_pid": 2440823,
+  "rc": 1,
+  "first_failure": "device_probe: crypto mapping does not refer to the owned raw device",
+  "cause": "Path.resolve compares different block-device aliases by filename; Longhorn duplicates the iSCSI device node rather than guaranteeing a symlink to cryptsetup device path. Compare block type and st_rdev instead.",
+  "key_fault_injected": false,
+  "cleanup": {
+    "business_fixtures": true,
+    "transport": true,
+    "original_installation_healthy": true
+  },
+  "official_source": "Engine 1fa902f0061b84b92af445c38392bfeb99faffb2 vendor/github.com/longhorn/go-iscsi-helper/longhorndev/dev.go createDev -> util.DuplicateDevice -> util/util.go DuplicateDevice -> unix.Mknod(major, minor)",
+  "repair": {
+    "class": "test-gate only; no product change",
+    "red_contract": "same device number with distinct device node paths rejects before repair",
+    "green_contract": "9 encryption contracts passed; different device number and nonblock backing path still reject",
+    "next_level": "complete level2 then same focused level3; no full middleware regression"
+  },
+  "files": {
+    "logs/longhorn-cases/encryption-20261019-151545/device-identity-green.log": "5d9dd15feaf4414cde4060fa0dd7d45095488a85dc8f86416e3bbdbc3072aed0",
+    "logs/longhorn-cases/encryption-20261019-151545/device-identity-red.log": "cd95563b9f4c9c800d50d7bf07202b3c9a74ae1a1c6987fd852b862c93ebcbd7",
+    "logs/longhorn-cases/encryption-20261019-151545/device-observation.json": "84e892a2ad39221c36a16d6a7f5a9cee74e5bba7105014229768ca9ce60286df",
+    "logs/longhorn-cases/encryption-20261019-151545/durable-status.txt": "32d250a4e9fc6bc044787415b760c1128396b767ce5cd8ca525c880de25e0426",
+    "logs/longhorn-cases/encryption-20261019-151545/engine-iscsi-dev.go": "48bd37c453ffb0f71528b82a804f2632045608e9d68a96ba3041fdb45e7ccc33",
+    "logs/longhorn-cases/encryption-20261019-151545/first-failure.txt": "c64fd7fe199b658a4397028d002b951e6bd84993dc8d2d567813d30b76aa1ec0",
+    "logs/longhorn-cases/encryption-20261019-151545/frozen-source.txt": "535685eb78f461a249cff711efcae217b347ed1ed7a65a44964dca742d89c0c0",
+    "logs/longhorn-cases/encryption-20261019-151545/gate.log": "1238b9fe322a1486bb39290bb4f6067659714d2cf73beb359dcb6822d47cc36e",
+    "logs/longhorn-cases/encryption-20261019-151545/owned-diagnostics.txt": "a08e463431187d6e768b0845f405d691f6c061aa94c207d920fe8dd1f4a69209",
+    "logs/longhorn-cases/encryption-20261019-151545/engine-iscsi-util.go": "3d7d43badc2caa0ee808db2597390a4ab426862359111a5942a105e95537302c"
+  }
+}

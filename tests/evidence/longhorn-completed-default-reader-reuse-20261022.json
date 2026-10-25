@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "classification": "test-gate dependency impact review; not matrix acceptance",
+  "scope": "Completed .2 source and target installations on the normal historical-evidence path only",
+  "pairs": {
+    "tests/helpers/longhorn-lab.py": [
+      "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+      "ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b"
+    ],
+    "tests/helpers/longhorn-v2-install.py": [
+      "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4",
+      "c6a9bf7a0755aad74ae2ed30381845fcfb1cf1f5364eb5d67307e017609feb2d"
+    ],
+    "tests/helpers/longhorn-v2-dr-target-install.py": [
+      "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+      "2c3e9c9b4ab6fcd79d34002f1e58c0fd0492e32d79c2d74323abc6afc0383d33"
+    ],
+    "tests/helpers/longhorn-v2-upgrade-baseline.py": [
+      "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87",
+      "dcaef1fbd558cb9de9aedf8e0635ccf6a439a7151ca4f3541b9c9469023cfcdd"
+    ]
+  },
+  "plan_sha256": "f953daa0490a77e2559f9f228421c03b60b92fe348b11848d06a1d6339876a89",
+  "findings": [
+    "Longhorn product source, image catalog, native disk guards and both immutable published .2 artifacts match the accepted plan.",
+    "The existing lab cache/Event transition and its original contract/evidence remain required.",
+    "Target core_current differs only in evidence selection through the full-run resolver, which returns the same historical path outside a full run.",
+    "Source volume_baseline adds full-run and continuation branches and .3 adoption; the reviewed default .2 path has no such runtime input or .3 accepted evidence.",
+    "Upgrade-baseline adds full-run initial-install reading and immutable .3 tag selection; the current catalog still selects the accepted .2 adoption."
+  ],
+  "proposed_guard": "Preserve the old exact cohort unchanged. Permit a separate four-file exact cohort only with this pinned review, the same cache/Event proof and every original plan/publication/identity check; reject full/continuation mode and .3 adoption evidence. New adoption keeps using the original read_plan.",
+  "matrix_gap": [
+    "LONGHORN-17",
+    "LONGHORN-18",
+    "LONGHORN-35",
+    "LONGHORN-36"
+  ],
+  "owning_product_entry": "config.yml + kubecli, beginning with --longhorn-system-restore",
+  "expected_marker": "LONGHORN_SYSTEM_RESTORE_PASS",
+  "smallest_disproof": "Focused completed-adoption evidence contracts, then bash tests/run_enterprise_regression.sh --longhorn-system-restore",
+  "remote_mutation": false,
+  "matrix_pass_claim": false
+}

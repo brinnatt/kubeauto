@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-16 prerequisite only",
+  "date": "2026-10-19",
+  "status": "pending",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-recurring-rotation-qualification </dev/null",
+  "durable_pid": 2723749,
+  "rc": 1,
+  "failure_markers": 4,
+  "classification": "test-gate: expected only post-admission Backup Error, but native webhook can reject unavailable target before Backup CR creation",
+  "first_failure": "TimeoutError: selected-revoked-key-native-backup-error after 600s",
+  "observed": {
+    "first_scheduled_backup_uid": "6497053a-750d-4811-bffa-cded373930b7",
+    "replacement_scheduled_backup_uid": "b981306f-f930-41c1-a840-97dd60f0b3c3",
+    "old_revoked_key": "InvalidAccessKeyId; replacement key positive control succeeded",
+    "selected_revoked_key": "BackupTarget unavailable with native InvalidAccessKeyId; new snapshot ready; webhook rejected backup creation; no new Backup CR",
+    "job_pod_uid": "98e5ff8e-c676-401f-85ab-17f3dad3fa0f",
+    "job_pod_phase": "Succeeded; not backup success",
+    "private_native_log_sha256": "f86f8ec1779dd859e02e1057dbd9423515399046a98a1f4f3e6143463420e2be"
+  },
+  "cleanup": "Inner recovery recorded CommandError and ValueError; outer EXIT finally stopped schedules, removed owned credentials/accounts/native backups/business/store/transports and verified original six-node healthy core/storage. Overall rc remains 1, no module PASS.",
+  "boundary": "67 synchronized inputs unchanged during the failed run. Later business diagnostics lack the journal removed by successful outer cleanup; this does not establish a new product failure. Admission refusal repair and new focused evidence remain required.",
+  "official_source": "longhorn-manager v1.12.1 8320238242e8c804325d9588ec1db10feb9f36b8 webhook/resources/backup/validator.go Create",
+  "files": {
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-220528/durable-status.txt": "208a725c6ad7f19fbafb8556da9a3de7acd21336911d8de9c908106fc29d5555",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-220528/final-frozen-source.txt": "57763b0b83a3b3c7eaec8d820e8858aa26744179eb48ea6c465ff79bf34914c8",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-220528/first-failure-diagnostics.txt": "e492f05e7a6397e886f0c03101b3f851e3a2cc371feef3cc0349265904e1220e",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-220528/frozen-source.txt": "57763b0b83a3b3c7eaec8d820e8858aa26744179eb48ea6c465ff79bf34914c8",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-220528/gate.log": "35bebf86722ef661f6a4783df910cb3e50e636e7a310698ee66e1f94229b6a21"
+  }
+}

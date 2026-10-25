@@ -1,0 +1,1332 @@
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=attachment-competitor-clean elapsed=0
+LONGHORN_EXCLUSIVE_ATTACHMENT_VERIFIED access=ReadWriteOnce mode=Filesystem
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-volume-detached elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_RWO_VARIANT_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_EXCLUSIVE_ATTACHMENT_VERIFIED access=ReadWriteOncePod mode=Filesystem
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_RWO_VARIANT_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_LAB_WAIT stage=attachment-competitor-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_EXCLUSIVE_ATTACHMENT_VERIFIED access=ReadWriteOnce mode=Block
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_RWO_VARIANT_PASS
+LONGHORN_RWO_BUSINESS_PASS
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-second-client-ready elapsed=0
+LONGHORN_LAB_WAIT stage=rwx-second-client-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-lock-held elapsed=0
+LONGHORN_RWX_LOCKS_VERIFIED exclusion=two-clients release=verified
+LONGHORN_LAB_WAIT stage=rwx-probes-started elapsed=0
+LONGHORN_LAB_WAIT stage=rwx-share-manager-replacement elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-share-manager-replacement elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=0
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=5
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=15
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=25
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=30
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=35
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=40
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=45
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=50
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=55
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=60
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=65
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=70
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=75
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=80
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=85
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=90
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=95
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=100
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=105
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=110
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=115
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=120
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=125
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=130
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=135
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=140
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=145
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=150
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=155
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-probe-completion elapsed=160
+LONGHORN_RWX_CLIENT_RESULT {"client": "writer", "confirmed": 327, "errors": 0, "max_latency_s": 14.625727137005015}
+LONGHORN_RWX_CLIENT_RESULT {"client": "reader", "confirmed": 326, "errors": 0, "max_latency_s": 14.593093756993767}
+LONGHORN_RWX_RECOVERY_VERIFIED old_uid=7c034139-148a-4cc3-9aa0-62cfef8c4e96 new_uid=7cfeace7-91fa-4c11-b015-7f1f8eaf9f9a share_manager_ready_s=10.774 observation_s=177.818
+LONGHORN_LAB_WAIT stage=rwx-reader-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-reader-clean elapsed=5
+LONGHORN_LAB_WAIT stage=rwx-reader-clean elapsed=10
+LONGHORN_LAB_WAIT stage=rwx-reader-clean elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-reader-clean elapsed=20
+LONGHORN_LAB_WAIT stage=rwx-reader-clean elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=rwx-reader-clean elapsed=30
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-volume-detached elapsed=0
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_RWX_BUSINESS_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_VOLUME_MODES_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_V2_VOLUME_MODES_QUALIFICATION_PASS
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=0
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=10
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=16
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=21
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=26
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=31
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=37
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=42
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=47
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=52
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=58
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=63
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=68
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=73
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=79
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_ONLINE_EXPANSION_VERIFIED mode=Filesystem encrypted=false measurement={"capacity_bytes": 4152066048, "offset": 2148532224, "sha256": "3e2cd4fc593b115b7a92862cedc72eb19b261949b0c5c8c426b43ee7e0aca840"}
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_EXPANSION_VARIANT_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=0
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_ONLINE_EXPANSION_VERIFIED mode=Block encrypted=false measurement={"capacity_bytes": 4294967296, "offset": 2148532224, "sha256": "0e6d2644254eb77a28e15e098391cf3c260f288c33f55b570f187dfb2fd6d816"}
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=20
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=30
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_EXPANSION_VARIANT_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=20
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=0
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=5
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=16
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=21
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=26
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=31
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=37
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=42
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=47
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=52
+LONGHORN_LAB_WAIT stage=online-expansion-capacity elapsed=58
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_ONLINE_EXPANSION_VERIFIED mode=Filesystem encrypted=true measurement={"capacity_bytes": 4152066048, "offset": 2148532224, "sha256": "a9e1b7d58b31fea1eb4127cff1697e7d00714a6b62b0ec6048ce506671a29d91"}
+LONGHORN_V2_ENCRYPTED_EXPANSION_CAPACITY_VERIFIED {"luks_uuid": "05320da2-d8d2-4da3-9eb1-4fc23934745e", "mapped_bytes": 4294967296, "raw_bytes": 4311744512}
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=25
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_EXPANSION_VARIANT_PASS
+LONGHORN_EXPANSION_BUSINESS_PASS
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_EXPANSION_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_V2_EXPANSION_QUALIFICATION_PASS
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=retained-writer-removed elapsed=0
+LONGHORN_LAB_WAIT stage=retained-writer-removed elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=retained-writer-removed elapsed=10
+LONGHORN_LAB_WAIT stage=retained-writer-removed elapsed=15
+LONGHORN_LAB_WAIT stage=retained-writer-removed elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=retained-writer-removed elapsed=25
+LONGHORN_LAB_WAIT stage=retained-pv-rebound elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=retained-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=retained-reader-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=retained-reader-ready elapsed=10
+LONGHORN_RETAIN_REBIND_VERIFIED pv=pvc-e15c57e1-2d22-4557-96eb-1b7ff365a47b sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=30
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_RECLAIM_BUSINESS_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=30
+LONGHORN_LAB_WAIT stage=delete-policy-pv-reclaimed elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_DELETE_POLICY_RECLAIM_VERIFIED volume=pvc-39cc47ae-7a20-4cca-aa8a-91de0ea13cd6
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_INSTALL_BUSINESS_PASS
+LONGHORN_V2_EXPECTED_PRODUCT_REFUSAL_VERIFIED
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_V2_EXPECTED_PRODUCT_REFUSAL_VERIFIED
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_RECLAIM_BUSINESS_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_RECLAIM_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_V2_RECLAIM_QUALIFICATION_PASS
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=5
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=15
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=25
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=30
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-wrong elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-wrong elapsed=5
+LONGHORN_LAB_WAIT stage=encryption-refused-wrong elapsed=10
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=0
+LONGHORN_ENCRYPTION_ORIGINAL_KEY_RESTORED variant=wrong
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=5
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=15
+LONGHORN_ENCRYPTION_REFUSAL_VERIFIED {"data_sha256": "d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee", "key_restored": true, "mapping_closed_before_refusal": true, "mode": "Filesystem", "original_device": {"luks_uuid": "b7cc3fc2-ba2e-491d-9994-d031935d9d66", "mapped_bytes": 2147483648, "raw_bytes": 2164260864}, "variant": "wrong"}
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=5
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=15
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=20
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=30
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-missing elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-refused-missing elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-missing elapsed=10
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-missing elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=0
+LONGHORN_ENCRYPTION_ORIGINAL_KEY_RESTORED variant=missing
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=5
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_ENCRYPTION_REFUSAL_VERIFIED {"data_sha256": "d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee", "key_restored": true, "mapping_closed_before_refusal": true, "mode": "Filesystem", "original_device": {"luks_uuid": "b7cc3fc2-ba2e-491d-9994-d031935d9d66", "mapped_bytes": 2147483648, "raw_bytes": 2164260864}, "variant": "missing"}
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=25
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_ENCRYPTION_VARIANT_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=15
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=20
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=10
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=20
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=25
+LONGHORN_LAB_WAIT stage=encryption-client-gone-writer elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-wrong elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-refused-wrong elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-wrong elapsed=10
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_ENCRYPTION_ORIGINAL_KEY_RESTORED variant=wrong
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=10
+LONGHORN_ENCRYPTION_REFUSAL_VERIFIED {"data_sha256": "d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee", "key_restored": true, "mapping_closed_before_refusal": true, "mode": "Block", "original_device": {"luks_uuid": "3c4362c2-64ec-4449-bd8d-4ef3119647f9", "mapped_bytes": 2147483648, "raw_bytes": 2164260864}, "variant": "wrong"}
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=5
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=15
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=20
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-wrong-recovered elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-missing elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-refused-missing elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-refused-missing elapsed=10
+LONGHORN_LAB_WAIT stage=encryption-client-gone-key-missing elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-device-closed elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_ENCRYPTION_ORIGINAL_KEY_RESTORED variant=missing
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=0
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=5
+LONGHORN_LAB_WAIT stage=encryption-original-key-remount elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_ENCRYPTION_REFUSAL_VERIFIED {"data_sha256": "d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee", "key_restored": true, "mapping_closed_before_refusal": true, "mode": "Block", "original_device": {"luks_uuid": "3c4362c2-64ec-4449-bd8d-4ef3119647f9", "mapped_bytes": 2147483648, "raw_bytes": 2164260864}, "variant": "missing"}
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=20
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=25
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-volume-detached elapsed=0
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_ENCRYPTION_VARIANT_PASS
+LONGHORN_V2_ENCRYPTION_BUSINESS_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_ENCRYPTION_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_V2_ENCRYPTION_QUALIFICATION_PASS
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_LAB_WAIT stage=business-pvc-bound elapsed=0
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=5
+LONGHORN_LAB_WAIT stage=business-writer-ready elapsed=10
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 0, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 0, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 0}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=1
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 0, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 0, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=7
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 0, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=13
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 0, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=19
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=25
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=31
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=37
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=43
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=49
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=55
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=61
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=67
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=73
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=79
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-baseline elapsed=85
+LONGHORN_V2_TRIM_ALLOCATION stage=baseline bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+[2026-10-25 17:25:11] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.16): control node managed by distribution RPM/deb, target module runtime Python >=3.8
+[2026-10-25 17:25:11] [INFO] [service.cluster.manager] Setting up cluster with playbook 09.longhorn.yml.
+[2026-10-25 17:25:11] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-10-25 17:25:11] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, calico: v3.28.4
+[2026-10-25 17:25:12] [WARNING] [service.cluster.manager] ansible-core 2.16 cannot manage target Python on 192.168.47.147; required Python 3.8-3.12. Switching this playbook run to the audited execution environment.
+[2026-10-25 17:25:13] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 17:25:13] [WARNING] [service.cluster.manager] Using isolated ansible-core 2.20 execution image brinnatt/ansible:2.20.9; the native package remains unchanged.
+
+PLAY [Validate Longhorn configuration and ownership before host changes] *******
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;36mskipping: [localhost] => (item=192.168.47.146) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.147) [0m
+[0;36mskipping: [localhost] => (item=192.168.47.148) [0m
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;35m[0m
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Prepare every Longhorn client and verify allowlisted filesystem mounts] ***
+
+TASK [Gathering Facts] *********************************************************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=15
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/host.yml for 192.168.47.146, 192.168.47.147, 192.168.47.148[0m
+
+TASK [longhorn : Require a supported native Linux package family] **************
+[0;35m[0m
+[0;32mok: [192.168.47.146] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.147] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+[0;32mok: [192.168.47.148] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Reject foreign disk receipts before changing host dependencies] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Reject an active multipath service before changing packages] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Bind the secret-free V2 host declaration to current API identities] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Verify static CPU policy on every Longhorn client before host mutation] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Qualify V2 kernel resources and raw disk identities before host mutation] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on RedHat] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Debian] ***
+[0;35m[0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Install native iSCSI, NFS and encryption dependencies on Suse] ***
+[0;35m[0m
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Load required V1 client modules] ******************************
+[0;32mok: [192.168.47.146] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=iscsi_tcp)[0m
+[0;32mok: [192.168.47.146] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.148] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.147] => (item=dm_crypt)[0m
+[0;32mok: [192.168.47.146] => (item=nfs)[0m
+[0;32mok: [192.168.47.148] => (item=nfs)[0m
+[0;32mok: [192.168.47.147] => (item=nfs)[0m
+
+TASK [longhorn : Persist required client modules] ******************************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Load V2 modules only on explicitly selected qualified nodes] ***
+[0;32mok: [192.168.47.147] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.146] => (item=vfio_pci)[0m
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+[0;32mok: [192.168.47.148] => (item=vfio_pci)[0m
+[0;32mok: [192.168.47.147] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.146] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.148] => (item=uio_pci_generic)[0m
+[0;32mok: [192.168.47.146] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.147] => (item=nvme_tcp)[0m
+[0;32mok: [192.168.47.148] => (item=nvme_tcp)[0m
+
+TASK [longhorn : Persist V2 modules without changing hugepages or CPU policy] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Enable the iSCSI daemon] **************************************
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Copy the read-only Longhorn host checker] *********************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Verify client prerequisites and current filesystem identity] ***
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Create host ownership directory] ******************************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Preserve the current filesystem receipt] **********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Create the kubelet mount guard directory] *********************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Require the actual data mount before kubelet starts] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Reload systemd after the mount guard changes] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [longhorn : Verify loaded V2 prerequisites and raw device identities] *****
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+[0;32mok: [192.168.47.148][0m
+
+TASK [longhorn : Create private V2 ownership directory] ************************
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.147][0m
+
+TASK [longhorn : Save the cluster node and hardware bound V2 receipt] **********
+[0;32mok: [192.168.47.148][0m
+[0;32mok: [192.168.47.146][0m
+[0;32mok: [192.168.47.147][0m
+
+PLAY [Verify every explicitly approved V2 disk before native retirement] *******
+
+TASK [Inspect exact host ownership and stable hardware for approved AIO disks] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Reconcile Longhorn storage and immutable operations] *********************
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+[0;32mok: [localhost] => {[0m
+[0;32m    "changed": false,[0m
+[0;32m    "msg": "All assertions passed"[0m
+[0;32m}[0m
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+[0;36mincluded: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost[0m
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+[0;32mok: [localhost] => (item=192.168.47.146)[0m
+[0;32mok: [localhost] => (item=192.168.47.147)[0m
+[0;32mok: [localhost] => (item=192.168.47.148)[0m
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+[0;33mchanged: [localhost][0m
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=30
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_PRODUCT_HEARTBEAT step=longhorn-setup elapsed=45
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+[0;32mok: [localhost][0m
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+[0;36mskipping: [localhost][0m
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+[0;36mskipping: [localhost][0m
+
+PLAY [Release exact V2 host receipts after independently observed native SPDK absence] ***
+
+TASK [Release only the approved host disk identities while preserving media] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY [Release native V2 disk receipts only after every host confirms exact retirement] ***
+
+TASK [Start the full-scope host release receipt set] ***************************
+[0;36mskipping: [localhost][0m
+
+TASK [Bind every actual host release result to the control operation] **********
+[0;36mskipping: [localhost][0m
+
+TASK [Save the secret-free completed host release proofs] **********************
+[0;36mskipping: [localhost][0m
+
+TASK [Release exact control identities and retain the completed retirement journal] ***
+[0;36mskipping: [localhost][0m
+
+PLAY [Release owned host mount guards only after native uninstall completes] ***
+
+TASK [Verify every host receipt before releasing the first mount guard] ********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Bind V2 receipt release to the original cluster node and disk declarations] ***
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Verify every V2 receipt before releasing host ownership] *****************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact owned receipts and guards while retaining mounted data] ****
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Reload systemd after releasing the owned kubelet mount guard] ************
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+TASK [Release exact V2 ownership receipts while preserving raw media] **********
+[0;36mskipping: [192.168.47.146][0m
+[0;36mskipping: [192.168.47.147][0m
+[0;36mskipping: [192.168.47.148][0m
+
+PLAY RECAP *********************************************************************
+[0;32m192.168.47.146[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.147[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;32m192.168.47.148[0m             : [0;32mok=18  [0m changed=0    unreachable=0    failed=0    [0;36mskipped=18  [0m rescued=0    ignored=0   
+[0;33mlocalhost[0m                  : [0;32mok=16  [0m [0;33mchanged=2   [0m unreachable=0    failed=0    [0;36mskipped=12  [0m rescued=0    ignored=0   
+[2026-10-25 17:26:02] [INFO] [service.cluster.manager] Cluster setup completed (playbook 09.longhorn.yml).
+LONGHORN_REQUEST_INPUT_RESTORED
+LONGHORN_V2_TRIM_ALLOCATION stage=snapshot-retained bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 186646528, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 185597952, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 186646528, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 185597952, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=1
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 186646528, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 185597952, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=7
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 186646528, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 187695104}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=13
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 186646528, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 187695104}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=19
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 186646528, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 187695104}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 187695104}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=31
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 187695104}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=37
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=43
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 187695104, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=49
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=55
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=61
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=67
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=73
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=79
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=86
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=92
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=98
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=104
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=110
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-settled-deleted-file-valid-snapshot elapsed=116
+LONGHORN_V2_TRIM_ALLOCATION stage=deleted-file-valid-snapshot bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}
+LONGHORN_LAB_WAIT stage=v2-trim-original-snapshot-deleted elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=0
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=10
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=20
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=writer-deleted elapsed=30
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=0
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=5
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=10
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-reader-ready elapsed=20
+LONGHORN_V2_TRIM_ALLOCATION stage=after-delete-remount-trim bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 185597952, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_LAB_WAIT stage=v2-trim-actual-lvstore-reclaim elapsed=1
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=after-delete-remount-trim bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 185597952, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_LAB_WAIT stage=v2-trim-actual-lvstore-reclaim elapsed=7
+LONGHORN_V2_TRIM_ALLOCATION stage=after-delete-remount-trim bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 185597952, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_LAB_WAIT stage=v2-trim-actual-lvstore-reclaim elapsed=13
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=after-delete-remount-trim bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_LAB_WAIT stage=v2-trim-actual-lvstore-reclaim elapsed=19
+LONGHORN_V2_TRIM_ALLOCATION stage=after-delete-remount-trim bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 185597952}
+LONGHORN_LAB_WAIT stage=v2-trim-actual-lvstore-reclaim elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_TRIM_ALLOCATION stage=after-delete-remount-trim bytes={"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}
+LONGHORN_V2_TRIM_RESULT {"after": {"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}, "baseline": {"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 118489088, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 118489088}, "confirmed_sha256": "d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee", "filler_bytes": 67108864, "filler_sha256": "dad0ad90d58d8fe63a37dea9817ee7b0170ecb295afe91da0dee98b1625b984b", "guest_freed_bytes": 67108864, "measurement": "exclusive SPDK lvstore used bytes via native disk status; not hypervisor physical allocation", "replicas": {"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": {"node": "longhorn-node-147", "uid": "b6d0745b-3055-455f-8f99-8bac9869d28d"}, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": {"node": "longhorn-node-146", "uid": "358bdd6e-642a-4c2e-a32d-61de2e80975c"}, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": {"node": "longhorn-node-148", "uid": "1a9553aa-e803-4884-b6d6-0024e9755550"}}, "retained": {"pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-3c97a242": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-dba6afd0": 189792256, "pvc-ef88f602-833e-426b-94aa-2c01071058f1-r-e5cbe80f": 189792256}, "snapshot": {"name": "trim-6743b355240191fdd20ae487", "uid": "2647a279-4619-4e65-a867-2ec9743f0616"}}
+LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=d1740db3d090d5dbe812a6da566a4817c6af20d6333f406256be23cf6d0e02ee replica_nodes=longhorn-node-146,longhorn-node-147,longhorn-node-148
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=5
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=10
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=15
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=20
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=25
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-pods-clean elapsed=30
+LONGHORN_LAB_WAIT stage=business-pv-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-native-volume-clean elapsed=0
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=business-namespace-clean elapsed=5
+LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_TRIM_BUSINESS_PASS
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true
+LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_TRIM_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_V2_TRIM_QUALIFICATION_PASS
+LONGHORN_V2_VOLUMES_SCOPED_CLEAN_PASS
+LONGHORN_V2_VOLUMES_PASS
+LONGHORN_FULL_CHILD_EXIT rc=0

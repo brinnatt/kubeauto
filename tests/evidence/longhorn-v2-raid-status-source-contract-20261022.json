@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-50",
+  "date": "2026-10-22",
+  "status": "source-contract-pass",
+  "scope": "Pinned 1.12.1 upstream Engine validator and candidate patch only; no image build/publication/adoption or live recovery acceptance.",
+  "source_defect_reproduced": true,
+  "runtime_causal_proof_complete": false,
+  "runtime_limit": "Batch 807 preserved kernel/AIO/NVMe errors and original RAID fail event, but not contemporaneous direct RAID RPC JSON. The source contracts reproduce three official removal states; the original fixed live single-disk gate must still verify actual status convergence and recovery.",
+  "source_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+  "archive_sha256": "2c7a3e4440e1f8d46c0be31aae3bb4832a988f77417525fab51ced76260bddfe",
+  "red": {
+    "rc": 1,
+    "log_sha256": "b64615619c96b12756a33bc2afb7e640b996d63302e1d2d54adbd807ebf012d1",
+    "failures": [
+      "removed-rw",
+      "absent-rw",
+      "removed-unnamed-slot"
+    ],
+    "reason": "old mode RW and updateRequired false despite namespace no longer configured in RAID"
+  },
+  "green": {
+    "rc": 0,
+    "log_sha256": "ecc38aa691a5458d53ddc44fde4069813efae1bc2d25e4011ebb8846593f17f2",
+    "top_level_tests": [
+      "TestRaidRemovedMemberUpdatesReplicaMode",
+      "TestRaidMemberValidationPreservesOperationGuards",
+      "TestLinkedCloneUsesInjectedServiceClientFactory",
+      "TestLinkedCloneAuthenticatedRPCPaths",
+      "TestLinkedCloneReplicaTLSFactories",
+      "TestLinkedCloneReplicaAuthenticatedRPCPaths"
+    ],
+    "new_subcases": 13
+  },
+  "candidate_patch": {
+    "sha256": "b74b2232435a30a7cc995382ec53192e7eae206f6c0dc78838727dd71e398380",
+    "production_changed_lines": 18,
+    "owning_function": "Engine.validateReplicaStatusMapNoLock",
+    "condition": "Only prior RW backend absent from the verified RAID configured-member set becomes ERR and sets existing updateRequired; no new recovery mechanism."
+  },
+  "guards": "Configured RW and healthy survivor unchanged; WO and existing ERR preserved; missing/non-RAID does not create a member set; original restore/expand/clone/not-running guards unchanged.",
+  "actual_json_null_fixture": true,
+  "tls_preserved": {
+    "patch_sha256": "e71ec8761625e9e8d3522d7033c2ea67b5b3e899ad97ad86d48aedf966aef653",
+    "replica_go_identical_to_2_patch_result": true,
+    "engine_go_only_raid_status_hunk_differs_from_2_patch_result": true,
+    "original_3_test_files_identical": true
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/raid-status-source-contract/red-green.json": "21a896d32a76d9c2ff1e6c6a1f8f4f2afecec8f4f9eba2e658a84664d8bca8aa",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/raid-status-source-contract/red.log": "b64615619c96b12756a33bc2afb7e640b996d63302e1d2d54adbd807ebf012d1",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/raid-status-source-contract/green.log": "ecc38aa691a5458d53ddc44fde4069813efae1bc2d25e4011ebb8846593f17f2",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/raid-status-source-contract/raid-status.patch": "b74b2232435a30a7cc995382ec53192e7eae206f6c0dc78838727dd71e398380",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/raid-status-source-contract/engine_raid_status_test.go": "16fc8646321fc290aa1982a232fe6a6b5616903e6bdf3565e5d0b6bb50d20bb2",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/raid-status-source-contract/review.md": "dc5b53840c8c1c935122923bca1b630e909a165cd8403dd99f9dbd6f254c6b6d"
+  },
+  "first_failure": {
+    "path": "tests/evidence/longhorn-v2-single-disk-native-first-failure-20261022.json",
+    "sha256": "a59b25b2177af5f9f0ded5262cbf1cf3c8545564b7771ad7b283fbc62db8b216"
+  },
+  "matrix_status": "pending",
+  "complete_matrix_item": false,
+  "overall_longhorn_delivery_pass": false,
+  "next_fixed_live_gate": "bash tests/run_enterprise_regression.sh --longhorn-v2-failure-single-disk </dev/null"
+}

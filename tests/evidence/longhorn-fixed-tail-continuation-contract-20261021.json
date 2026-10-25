@@ -1,0 +1,61 @@
+{
+  "changed_files": {
+    "tests/helpers/longhorn-live.sh": {
+      "after": "892d4a3f0c2c80866163374f2d3072148b9578162d54a4602a30e3b9661eebe4",
+      "before": "3b980b8b270c4e4dd24b2bdbd55c29aa28de1c7c70bef5e7b3ca3667d86bf8f6",
+      "file": "delivery/tests/helpers/longhorn-live.sh"
+    },
+    "tests/helpers/longhorn-parallel.py": {
+      "after": "0452433bc62bd09bb5c3833d44e377df8410d66fe58cdb82836e539c6e37d48f",
+      "before": "463e79217aa9eeed21741670e2367bccfe13dfcd93199874aa33517fabc9baba",
+      "file": "delivery/tests/helpers/longhorn-parallel.py"
+    },
+    "tests/helpers/longhorn-parallel.sh": {
+      "after": "7ff85e002efdeafc8442245bb40cddcc216321e371dd4fbea1cbf8046d2f059e",
+      "before": "44a5408ad6b76779ed305b30181d1c628d44bb438e4e401cd79c8c8545b2e330",
+      "file": "delivery/tests/helpers/longhorn-parallel.sh"
+    },
+    "tests/helpers/longhorn-runner.sh": {
+      "after": "eaf50bb5e24b6afeac30584d8fe27743c4679751c3d6a58a7807b2b54ef6a9cd",
+      "before": "2e1e345299083f8d197fe85b94ecd5682cf5d778671c7914f615d1c5505a660e",
+      "file": "delivery/tests/helpers/longhorn-runner.sh"
+    },
+    "tests/unit/test_longhorn_parallel.py": {
+      "after": "b27d8eb1b3821e79b30cd99602ad7056448bdfc416ea3a4b0287f62eaef6236f",
+      "before": "5cbe6c165d4adb99fa594fc2ab7407b3b2c9ecb6418691e0d9a9a0a59d242c66",
+      "file": "delivery/tests/unit/test_longhorn_parallel.py"
+    }
+  },
+  "classification": "test-gate/fixed continuation wiring",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-ownership-tail-v2-failure-tail",
+  "contracts": {
+    "applied_sources_match_tested_candidate": true,
+    "ast_and_shell_syntax": "pass",
+    "finalized": 0,
+    "rc": 0,
+    "tests": 45
+  },
+  "date": "2026-10-21",
+  "ladder_completed": 2,
+  "next_permitted_level": 3,
+  "overall_delivery_pass": false,
+  "preserved_scope": [
+    "installed V1 and accepted CSI/preinstall/class",
+    "three accepted V2 failure scopes",
+    "original failure states and first diagnostics",
+    "parent three leases, independent contexts, durable ownership and cleanup"
+  ],
+  "raw_evidence": {
+    "logs/longhorn-cases/continuation-tail-ready-20261021/contracts/parallel-contract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/continuation-tail-ready-20261021/contracts/parallel-contract.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/continuation-tail-ready-20261021/contracts/parallel-contract.log": "d5d8665f228118962bcc6a4743aaf51274edbdda0cb910717d7248a99acb228f"
+  },
+  "schema": 1,
+  "scope": {
+    "v1": "controller/request then original operations/systemrestore/DR/upgrade/observability",
+    "v2": "original focused remote-spdk then remaining five failures/platform/install/middleware/interrupt"
+  },
+  "signed_scope": "five-file fixed continuation contracts only",
+  "status": "contract-pass-live-pending",
+  "success_marker": "LONGHORN_V1_OWNERSHIP_TAIL_V2_FAILURE_TAIL_PASS"
+}

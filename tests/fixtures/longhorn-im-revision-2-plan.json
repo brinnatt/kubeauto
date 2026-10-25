@@ -1,0 +1,1457 @@
+{
+  "schema": 1,
+  "old_tag": "v1.12.1-kubeauto.1",
+  "new_tag": "v1.12.1-kubeauto.2",
+  "publication_evidence": {
+    "path": "tests/evidence/longhorn-v2-linked-tls-rebuild-publication-20261021.json",
+    "sha256": "939012d360ebfa845769803edc0951c8f43bda1bebb8d23643dbd997275988b7"
+  },
+  "profiles": {
+    "v1": {
+      "previous_evidence": {
+        "path": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+        "sha256": "39f2a8b85270f6932e2cd5f36eec396c85a0bdd4b7c2dedfa4de15798be687ca"
+      },
+      "inputs": {
+        "common/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/ansible_python.py": {
+          "old_sha256": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+          "sha256": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/constants.py": {
+          "old_sha256": "53a9f32d54cd1701cf6055ef3819ed0df54ecd6b175c647ef88875e4b7a9d817",
+          "sha256": "facc38557a1b89dc11d8c5c3a3a9da061e6a14fa42020b354b40c694286df204",
+          "source": "tests/evidence/longhorn-v2-linked-tls-rebuild-publication-20261021.json",
+          "impact": "Only target 1.12.1 Instance Manager .1 -> .2; keep all source-version and other component image pins and fallback ordering unchanged."
+        },
+        "common/docker_jsonmessage.py": {
+          "old_sha256": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+          "sha256": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/exceptions.py": {
+          "old_sha256": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+          "sha256": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/logger.py": {
+          "old_sha256": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+          "sha256": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/mirrors.py": {
+          "old_sha256": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+          "sha256": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/os.py": {
+          "old_sha256": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+          "sha256": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/utils.py": {
+          "old_sha256": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+          "sha256": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "conf/config.yml": {
+          "old_sha256": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+          "sha256": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/cluster/cli.py": {
+          "old_sha256": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+          "sha256": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "kubecli.py": {
+          "old_sha256": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+          "sha256": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/cluster/models.py": {
+          "old_sha256": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+          "sha256": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/01.prepare.yml": {
+          "old_sha256": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+          "sha256": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/02.etcd.yml": {
+          "old_sha256": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+          "sha256": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/03.runtime.yml": {
+          "old_sha256": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+          "sha256": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/04.kube-master.yml": {
+          "old_sha256": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+          "sha256": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/05.kube-node.yml": {
+          "old_sha256": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+          "sha256": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/06.network.yml": {
+          "old_sha256": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+          "sha256": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/07.cluster-addon.yml": {
+          "old_sha256": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+          "sha256": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/08.ceph.yml": {
+          "old_sha256": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+          "sha256": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/09.longhorn.yml": {
+          "old_sha256": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+          "sha256": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+          "impact": "Product setup09 consumes reviewed Longhorn operation propagation; no direct live file replacement substitutes for setup09."
+        },
+        "playbooks/10.ex-lb.yml": {
+          "old_sha256": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+          "sha256": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/11.harbor.yml": {
+          "old_sha256": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+          "sha256": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/21.addetcd.yml": {
+          "old_sha256": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+          "sha256": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/22.addnode.yml": {
+          "old_sha256": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+          "sha256": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/23.addmaster.yml": {
+          "old_sha256": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+          "sha256": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/31.deletcd.yml": {
+          "old_sha256": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+          "sha256": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/32.delnode.yml": {
+          "old_sha256": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+          "sha256": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/33.delmaster.yml": {
+          "old_sha256": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+          "sha256": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/90.setup.yml": {
+          "old_sha256": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+          "sha256": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/91.start.yml": {
+          "old_sha256": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+          "sha256": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/92.stop.yml": {
+          "old_sha256": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+          "sha256": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/93.upgrade.yml": {
+          "old_sha256": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+          "sha256": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/94.backup.yml": {
+          "old_sha256": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+          "sha256": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/95.restore.yml": {
+          "old_sha256": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+          "sha256": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/96.update-certs.yml": {
+          "old_sha256": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+          "sha256": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/99.clean.yml": {
+          "old_sha256": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+          "sha256": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/defaults/main.yml": {
+          "old_sha256": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+          "sha256": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/block-check.py": {
+          "old_sha256": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+          "sha256": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+          "impact": "Block-disk lifecycle admission and receipt behavior; preserve existing machine/node/hardware/native disk UUID. Exact old/new file hashes bound to this plan."
+        },
+        "roles/longhorn/files/block-retire.py": {
+          "old_sha256": null,
+          "source": "Pinned Longhorn 1.12.1 official source and exact product consumer; tests/evidence/longhorn-upgrade-legacy-contract-20261021.json and local block retirement contracts",
+          "impact": "New exact owning product/upgrade identity consumer, fully frozen; normal product setup09 behavior remains subject to owning focused acceptance.",
+          "sha256": "0b74d4eef783c5bc352e1941562c5f96321a1d3c1473c04f31df71aa2a6ed4f6"
+        },
+        "roles/longhorn/files/host-check.py": {
+          "old_sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/images.json": {
+          "old_sha256": "b6d0fb3ce3084f704ad0429267d41df3b63d97167a524690f6dca52f2fc543d7",
+          "sha256": "7b6e0291d14ca3c868236b40d3c04e640a868f0bc3095b63a6542a4fd53aa2a7",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+          "impact": "Only 1.12.1 longhorn-instance-manager .1 -> .2: four reviewed injected TLS-factory paths; all other images/versions unchanged."
+        },
+        "roles/longhorn/files/longhorn-1.12.0.tgz": {
+          "old_sha256": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+          "sha256": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": {
+          "old_sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+          "sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.1.tgz": {
+          "old_sha256": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+          "sha256": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": {
+          "old_sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+          "sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn.py": {
+          "old_sha256": "5c907f2966bed67e1bde6441efe89f994bd2cbc9277a5c2da2002e8b83b15e24",
+          "sha256": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+          "impact": "LONGHORN-44/45/17/53 integration changes: block-disk lifecycle, V2 isolation/rebuild policy and V1 upgrade readiness; preserve omitted native settings. Verify config+kubecli convergence, native identity and business fsync/remount. Owning focused contracts are prerequisites, not upstream mechanism requalification."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": {
+          "old_sha256": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+          "sha256": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": {
+          "old_sha256": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+          "sha256": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": {
+          "old_sha256": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+          "sha256": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": {
+          "old_sha256": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+          "sha256": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": {
+          "old_sha256": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+          "sha256": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": {
+          "old_sha256": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+          "sha256": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/control.yml": {
+          "old_sha256": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+          "sha256": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+          "impact": "Ansible control entry invokes reviewed operation behavior; verify through customer setup09."
+        },
+        "roles/longhorn/tasks/host.yml": {
+          "old_sha256": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+          "sha256": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/main.yml": {
+          "old_sha256": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+          "sha256": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/removal-guard.yml": {
+          "old_sha256": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+          "sha256": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "runtime_hook.py": {
+          "old_sha256": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+          "sha256": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/docker.py": {
+          "old_sha256": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+          "sha256": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/downloader.py": {
+          "old_sha256": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+          "sha256": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/manager.py": {
+          "old_sha256": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+          "sha256": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/registry.py": {
+          "old_sha256": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+          "sha256": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-im-revision-adopt.py": {
+          "old_sha256": null,
+          "sha256": "722881e91b5d00f4394e1d7d8a664eccedb1cf5033c9ac02d023119e23a1a724",
+          "source": "tests/evidence/longhorn-im-revision-2-readback-contract-20261021.json and accepted .1 predecessor",
+          "impact": "Bind all exact prior/current product and lifecycle inputs plus completed .2 publication. Reuse product setup09/fsync/remount/cleanup; require independent process readback before downstream mutations."
+        },
+        "tests/helpers/longhorn-lab.py": {
+          "old_sha256": "3da185169e3b9696b886e61711530d0a268cb1a0f87aa35d1868e88f903e97bc",
+          "sha256": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+          "source": "tests/evidence/longhorn-backup-volume-delete-rv-contract-20261021.json; Kubernetes v1.33.6 storage Preconditions.Check and Longhorn 1.12.1 BackupVolume controller",
+          "impact": "Only owned BackupVolume cleanup retries an exact resourceVersion conflict within 60 seconds; preserve UID/source/default-target guards and first unrelated failure."
+        },
+        "tests/helpers/longhorn-v2-core.py": {
+          "old_sha256": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+          "sha256": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-dr-target-install.py": {
+          "old_sha256": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+          "sha256": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-dr-target.py": {
+          "old_sha256": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+          "sha256": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-im-adopt.py": {
+          "old_sha256": "f6dda8c08649c573145443eb67bc44218e2f8a80e076c5330c8898d1b61aa06b",
+          "sha256": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+          "impact": "Bounded adoption lifecycle helper; exact deterministic contracts and config+kubecli product entry, fsync/remount and cleanup are required."
+        },
+        "tests/helpers/longhorn-v2-im-adopt.sh": {
+          "source": "tests/evidence/longhorn-im-revision-2-readback-contract-20261021.json",
+          "impact": "Freeze the owning wrapper: independent current-health/baseline/input readback must complete after cleanup and before a later batch module mutates or uninstalls storage.",
+          "old_sha256": "1e2bc856cf951ab6f24133754d68a768e7459536750c8520b732b904921e7d89",
+          "sha256": "9c995c8276d138de6060acd45d40ec423a80b1492adac1151e42ea76e57c1e5d"
+        },
+        "tests/helpers/longhorn-v2-install.py": {
+          "old_sha256": "8a80b390ba0ea48e811cf990ab096c3974e4d426b46d7f0c930eb0372cde5d0c",
+          "sha256": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4",
+          "source": "tests/evidence/longhorn-upgrade-legacy-contract-20261021.json; tests/unit/test_longhorn_im_revision_evidence.py",
+          "impact": "Consume only exact accepted .2 adoption or complete LONGHORN-52 new-installation transition; preserve original .1 and native disk identity guards."
+        },
+        "tests/helpers/longhorn-v2-lab.py": {
+          "old_sha256": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+          "sha256": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+          "source": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-upgrade-baseline.py": {
+          "old_sha256": null,
+          "source": "Pinned Longhorn 1.12.1 official source and exact product consumer; tests/evidence/longhorn-upgrade-legacy-contract-20261021.json and local block retirement contracts",
+          "impact": "New exact owning product/upgrade identity consumer, fully frozen; normal product setup09 behavior remains subject to owning focused acceptance.",
+          "sha256": "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87"
+        }
+      }
+    },
+    "v2": {
+      "previous_evidence": {
+        "path": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json",
+        "sha256": "8e9780d32f6d85c4c851b6d0e126667bf7d3975ae3ba7b82b337c2f4ab4baf25"
+      },
+      "inputs": {
+        "common/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/ansible_python.py": {
+          "old_sha256": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+          "sha256": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/constants.py": {
+          "old_sha256": "53a9f32d54cd1701cf6055ef3819ed0df54ecd6b175c647ef88875e4b7a9d817",
+          "sha256": "facc38557a1b89dc11d8c5c3a3a9da061e6a14fa42020b354b40c694286df204",
+          "source": "tests/evidence/longhorn-v2-linked-tls-rebuild-publication-20261021.json",
+          "impact": "Only target 1.12.1 Instance Manager .1 -> .2; keep all source-version and other component image pins and fallback ordering unchanged."
+        },
+        "common/docker_jsonmessage.py": {
+          "old_sha256": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+          "sha256": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/exceptions.py": {
+          "old_sha256": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+          "sha256": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/logger.py": {
+          "old_sha256": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+          "sha256": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/mirrors.py": {
+          "old_sha256": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+          "sha256": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/os.py": {
+          "old_sha256": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+          "sha256": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/utils.py": {
+          "old_sha256": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+          "sha256": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "conf/config.yml": {
+          "old_sha256": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+          "sha256": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/cluster/cli.py": {
+          "old_sha256": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+          "sha256": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "kubecli.py": {
+          "old_sha256": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+          "sha256": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/cluster/models.py": {
+          "old_sha256": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+          "sha256": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/01.prepare.yml": {
+          "old_sha256": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+          "sha256": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/02.etcd.yml": {
+          "old_sha256": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+          "sha256": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/03.runtime.yml": {
+          "old_sha256": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+          "sha256": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/04.kube-master.yml": {
+          "old_sha256": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+          "sha256": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/05.kube-node.yml": {
+          "old_sha256": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+          "sha256": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/06.network.yml": {
+          "old_sha256": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+          "sha256": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/07.cluster-addon.yml": {
+          "old_sha256": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+          "sha256": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/08.ceph.yml": {
+          "old_sha256": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+          "sha256": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/09.longhorn.yml": {
+          "old_sha256": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+          "sha256": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json",
+          "impact": "Product setup09 consumes reviewed Longhorn operation propagation; no direct live file replacement substitutes for setup09."
+        },
+        "playbooks/10.ex-lb.yml": {
+          "old_sha256": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+          "sha256": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/11.harbor.yml": {
+          "old_sha256": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+          "sha256": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/21.addetcd.yml": {
+          "old_sha256": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+          "sha256": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/22.addnode.yml": {
+          "old_sha256": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+          "sha256": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/23.addmaster.yml": {
+          "old_sha256": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+          "sha256": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/31.deletcd.yml": {
+          "old_sha256": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+          "sha256": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/32.delnode.yml": {
+          "old_sha256": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+          "sha256": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/33.delmaster.yml": {
+          "old_sha256": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+          "sha256": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/90.setup.yml": {
+          "old_sha256": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+          "sha256": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/91.start.yml": {
+          "old_sha256": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+          "sha256": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/92.stop.yml": {
+          "old_sha256": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+          "sha256": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/93.upgrade.yml": {
+          "old_sha256": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+          "sha256": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/94.backup.yml": {
+          "old_sha256": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+          "sha256": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/95.restore.yml": {
+          "old_sha256": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+          "sha256": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/96.update-certs.yml": {
+          "old_sha256": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+          "sha256": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/99.clean.yml": {
+          "old_sha256": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+          "sha256": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/defaults/main.yml": {
+          "old_sha256": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+          "sha256": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/block-check.py": {
+          "old_sha256": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+          "sha256": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json",
+          "impact": "Block-disk lifecycle admission and receipt behavior; preserve existing machine/node/hardware/native disk UUID. Exact old/new file hashes bound to this plan."
+        },
+        "roles/longhorn/files/block-retire.py": {
+          "old_sha256": null,
+          "source": "Pinned Longhorn 1.12.1 official source and exact product consumer; tests/evidence/longhorn-upgrade-legacy-contract-20261021.json and local block retirement contracts",
+          "impact": "New exact owning product/upgrade identity consumer, fully frozen; normal product setup09 behavior remains subject to owning focused acceptance.",
+          "sha256": "0b74d4eef783c5bc352e1941562c5f96321a1d3c1473c04f31df71aa2a6ed4f6"
+        },
+        "roles/longhorn/files/host-check.py": {
+          "old_sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/images.json": {
+          "old_sha256": "b6d0fb3ce3084f704ad0429267d41df3b63d97167a524690f6dca52f2fc543d7",
+          "sha256": "7b6e0291d14ca3c868236b40d3c04e640a868f0bc3095b63a6542a4fd53aa2a7",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json",
+          "impact": "Only 1.12.1 longhorn-instance-manager .1 -> .2: four reviewed injected TLS-factory paths; all other images/versions unchanged."
+        },
+        "roles/longhorn/files/longhorn-1.12.0.tgz": {
+          "old_sha256": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+          "sha256": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": {
+          "old_sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+          "sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.1.tgz": {
+          "old_sha256": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+          "sha256": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": {
+          "old_sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+          "sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn.py": {
+          "old_sha256": "5c907f2966bed67e1bde6441efe89f994bd2cbc9277a5c2da2002e8b83b15e24",
+          "sha256": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json",
+          "impact": "LONGHORN-44/45/17/53 integration changes: block-disk lifecycle, V2 isolation/rebuild policy and V1 upgrade readiness; preserve omitted native settings. Verify config+kubecli convergence, native identity and business fsync/remount. Owning focused contracts are prerequisites, not upstream mechanism requalification."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": {
+          "old_sha256": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+          "sha256": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": {
+          "old_sha256": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+          "sha256": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": {
+          "old_sha256": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+          "sha256": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": {
+          "old_sha256": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+          "sha256": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": {
+          "old_sha256": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+          "sha256": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": {
+          "old_sha256": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+          "sha256": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/control.yml": {
+          "old_sha256": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+          "sha256": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json",
+          "impact": "Ansible control entry invokes reviewed operation behavior; verify through customer setup09."
+        },
+        "roles/longhorn/tasks/host.yml": {
+          "old_sha256": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+          "sha256": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/main.yml": {
+          "old_sha256": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+          "sha256": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/removal-guard.yml": {
+          "old_sha256": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+          "sha256": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "runtime_hook.py": {
+          "old_sha256": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+          "sha256": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/docker.py": {
+          "old_sha256": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+          "sha256": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/downloader.py": {
+          "old_sha256": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+          "sha256": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/manager.py": {
+          "old_sha256": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+          "sha256": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/registry.py": {
+          "old_sha256": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+          "sha256": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-im-revision-adopt.py": {
+          "old_sha256": null,
+          "sha256": "722881e91b5d00f4394e1d7d8a664eccedb1cf5033c9ac02d023119e23a1a724",
+          "source": "tests/evidence/longhorn-im-revision-2-readback-contract-20261021.json and accepted .1 predecessor",
+          "impact": "Bind all exact prior/current product and lifecycle inputs plus completed .2 publication. Reuse product setup09/fsync/remount/cleanup; require independent process readback before downstream mutations."
+        },
+        "tests/helpers/longhorn-lab.py": {
+          "old_sha256": "3da185169e3b9696b886e61711530d0a268cb1a0f87aa35d1868e88f903e97bc",
+          "sha256": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+          "source": "tests/evidence/longhorn-backup-volume-delete-rv-contract-20261021.json; Kubernetes v1.33.6 storage Preconditions.Check and Longhorn 1.12.1 BackupVolume controller",
+          "impact": "Only owned BackupVolume cleanup retries an exact resourceVersion conflict within 60 seconds; preserve UID/source/default-target guards and first unrelated failure."
+        },
+        "tests/helpers/longhorn-v2-core.py": {
+          "old_sha256": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+          "sha256": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-dr-target-install.py": {
+          "old_sha256": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+          "sha256": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-dr-target.py": {
+          "old_sha256": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+          "sha256": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-im-adopt.py": {
+          "old_sha256": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+          "sha256": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-im-adopt.sh": {
+          "source": "tests/evidence/longhorn-im-revision-2-readback-contract-20261021.json",
+          "impact": "Freeze the owning wrapper: independent current-health/baseline/input readback must complete after cleanup and before a later batch module mutates or uninstalls storage.",
+          "old_sha256": "2116d58a3b811d9ce0837552fc6b8bd7390398ce79e542f8c70bc77cc499c8fc",
+          "sha256": "9c995c8276d138de6060acd45d40ec423a80b1492adac1151e42ea76e57c1e5d"
+        },
+        "tests/helpers/longhorn-v2-install.py": {
+          "old_sha256": "8bde06fed14b12c5a22e7e3b099500d106a58b7432239df629e295959d15725b",
+          "sha256": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4",
+          "source": "tests/evidence/longhorn-upgrade-legacy-contract-20261021.json; tests/unit/test_longhorn_im_revision_evidence.py",
+          "impact": "Consume only exact accepted .2 adoption or complete LONGHORN-52 new-installation transition; preserve original .1 and native disk identity guards."
+        },
+        "tests/helpers/longhorn-v2-lab.py": {
+          "old_sha256": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+          "sha256": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+          "source": "tests/evidence/longhorn-v2-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-upgrade-baseline.py": {
+          "old_sha256": null,
+          "source": "Pinned Longhorn 1.12.1 official source and exact product consumer; tests/evidence/longhorn-upgrade-legacy-contract-20261021.json and local block retirement contracts",
+          "impact": "New exact owning product/upgrade identity consumer, fully frozen; normal product setup09 behavior remains subject to owning focused acceptance.",
+          "sha256": "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87"
+        }
+      }
+    },
+    "v2-dr-target": {
+      "previous_evidence": {
+        "path": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json",
+        "sha256": "4af8f35b026bae267bd301034eb36edb7e82d2796c732d43c5c5073cab0c4aff"
+      },
+      "inputs": {
+        "common/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/ansible_python.py": {
+          "old_sha256": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+          "sha256": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/constants.py": {
+          "old_sha256": "53a9f32d54cd1701cf6055ef3819ed0df54ecd6b175c647ef88875e4b7a9d817",
+          "sha256": "facc38557a1b89dc11d8c5c3a3a9da061e6a14fa42020b354b40c694286df204",
+          "source": "tests/evidence/longhorn-v2-linked-tls-rebuild-publication-20261021.json",
+          "impact": "Only target 1.12.1 Instance Manager .1 -> .2; keep all source-version and other component image pins and fallback ordering unchanged."
+        },
+        "common/docker_jsonmessage.py": {
+          "old_sha256": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+          "sha256": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/exceptions.py": {
+          "old_sha256": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+          "sha256": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/logger.py": {
+          "old_sha256": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+          "sha256": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/mirrors.py": {
+          "old_sha256": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+          "sha256": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/os.py": {
+          "old_sha256": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+          "sha256": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "common/utils.py": {
+          "old_sha256": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+          "sha256": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "conf/config.yml": {
+          "old_sha256": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+          "sha256": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "controller/cluster/cli.py": {
+          "old_sha256": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+          "sha256": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "kubecli.py": {
+          "old_sha256": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+          "sha256": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "model/cluster/models.py": {
+          "old_sha256": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+          "sha256": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/01.prepare.yml": {
+          "old_sha256": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+          "sha256": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/02.etcd.yml": {
+          "old_sha256": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+          "sha256": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/03.runtime.yml": {
+          "old_sha256": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+          "sha256": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/04.kube-master.yml": {
+          "old_sha256": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+          "sha256": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/05.kube-node.yml": {
+          "old_sha256": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+          "sha256": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/06.network.yml": {
+          "old_sha256": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+          "sha256": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/07.cluster-addon.yml": {
+          "old_sha256": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+          "sha256": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/08.ceph.yml": {
+          "old_sha256": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+          "sha256": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/09.longhorn.yml": {
+          "old_sha256": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+          "sha256": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json",
+          "impact": "Product setup09 consumes reviewed Longhorn operation propagation; no direct live file replacement substitutes for setup09."
+        },
+        "playbooks/10.ex-lb.yml": {
+          "old_sha256": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+          "sha256": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/11.harbor.yml": {
+          "old_sha256": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+          "sha256": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/21.addetcd.yml": {
+          "old_sha256": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+          "sha256": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/22.addnode.yml": {
+          "old_sha256": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+          "sha256": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/23.addmaster.yml": {
+          "old_sha256": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+          "sha256": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/31.deletcd.yml": {
+          "old_sha256": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+          "sha256": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/32.delnode.yml": {
+          "old_sha256": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+          "sha256": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/33.delmaster.yml": {
+          "old_sha256": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+          "sha256": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/90.setup.yml": {
+          "old_sha256": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+          "sha256": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/91.start.yml": {
+          "old_sha256": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+          "sha256": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/92.stop.yml": {
+          "old_sha256": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+          "sha256": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/93.upgrade.yml": {
+          "old_sha256": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+          "sha256": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/94.backup.yml": {
+          "old_sha256": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+          "sha256": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/95.restore.yml": {
+          "old_sha256": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+          "sha256": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/96.update-certs.yml": {
+          "old_sha256": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+          "sha256": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "playbooks/99.clean.yml": {
+          "old_sha256": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+          "sha256": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/defaults/main.yml": {
+          "old_sha256": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+          "sha256": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/block-check.py": {
+          "old_sha256": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+          "sha256": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json",
+          "impact": "Block-disk lifecycle admission and receipt behavior; preserve existing machine/node/hardware/native disk UUID. Exact old/new file hashes bound to this plan."
+        },
+        "roles/longhorn/files/block-retire.py": {
+          "old_sha256": null,
+          "source": "Pinned Longhorn 1.12.1 official source and exact product consumer; tests/evidence/longhorn-upgrade-legacy-contract-20261021.json and local block retirement contracts",
+          "impact": "New exact owning product/upgrade identity consumer, fully frozen; normal product setup09 behavior remains subject to owning focused acceptance.",
+          "sha256": "0b74d4eef783c5bc352e1941562c5f96321a1d3c1473c04f31df71aa2a6ed4f6"
+        },
+        "roles/longhorn/files/host-check.py": {
+          "old_sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/images.json": {
+          "old_sha256": "b6d0fb3ce3084f704ad0429267d41df3b63d97167a524690f6dca52f2fc543d7",
+          "sha256": "7b6e0291d14ca3c868236b40d3c04e640a868f0bc3095b63a6542a4fd53aa2a7",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json",
+          "impact": "Only 1.12.1 longhorn-instance-manager .1 -> .2: four reviewed injected TLS-factory paths; all other images/versions unchanged."
+        },
+        "roles/longhorn/files/longhorn-1.12.0.tgz": {
+          "old_sha256": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+          "sha256": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": {
+          "old_sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+          "sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.1.tgz": {
+          "old_sha256": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+          "sha256": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": {
+          "old_sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+          "sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/longhorn.py": {
+          "old_sha256": "5c907f2966bed67e1bde6441efe89f994bd2cbc9277a5c2da2002e8b83b15e24",
+          "sha256": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json",
+          "impact": "LONGHORN-44/45/17/53 integration changes: block-disk lifecycle, V2 isolation/rebuild policy and V1 upgrade readiness; preserve omitted native settings. Verify config+kubecli convergence, native identity and business fsync/remount. Owning focused contracts are prerequisites, not upstream mechanism requalification."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": {
+          "old_sha256": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+          "sha256": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": {
+          "old_sha256": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+          "sha256": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": {
+          "old_sha256": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+          "sha256": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": {
+          "old_sha256": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+          "sha256": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": {
+          "old_sha256": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+          "sha256": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": {
+          "old_sha256": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+          "sha256": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/control.yml": {
+          "old_sha256": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+          "sha256": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+          "source": "Longhorn v1.12.1 official documentation and pinned manager/IM source; accepted .1 receipt tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json",
+          "impact": "Ansible control entry invokes reviewed operation behavior; verify through customer setup09."
+        },
+        "roles/longhorn/tasks/host.yml": {
+          "old_sha256": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+          "sha256": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/main.yml": {
+          "old_sha256": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+          "sha256": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "roles/longhorn/tasks/removal-guard.yml": {
+          "old_sha256": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+          "sha256": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "runtime_hook.py": {
+          "old_sha256": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+          "sha256": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/__init__.py": {
+          "old_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/docker.py": {
+          "old_sha256": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+          "sha256": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/downloader.py": {
+          "old_sha256": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+          "sha256": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/manager.py": {
+          "old_sha256": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+          "sha256": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "service/cluster/registry.py": {
+          "old_sha256": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+          "sha256": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-im-revision-adopt.py": {
+          "old_sha256": null,
+          "sha256": "722881e91b5d00f4394e1d7d8a664eccedb1cf5033c9ac02d023119e23a1a724",
+          "source": "tests/evidence/longhorn-im-revision-2-readback-contract-20261021.json and accepted .1 predecessor",
+          "impact": "Bind all exact prior/current product and lifecycle inputs plus completed .2 publication. Reuse product setup09/fsync/remount/cleanup; require independent process readback before downstream mutations."
+        },
+        "tests/helpers/longhorn-lab.py": {
+          "old_sha256": "3da185169e3b9696b886e61711530d0a268cb1a0f87aa35d1868e88f903e97bc",
+          "sha256": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+          "source": "tests/evidence/longhorn-backup-volume-delete-rv-contract-20261021.json; Kubernetes v1.33.6 storage Preconditions.Check and Longhorn 1.12.1 BackupVolume controller",
+          "impact": "Only owned BackupVolume cleanup retries an exact resourceVersion conflict within 60 seconds; preserve UID/source/default-target guards and first unrelated failure."
+        },
+        "tests/helpers/longhorn-v2-core.py": {
+          "old_sha256": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+          "sha256": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-dr-target-install.py": {
+          "old_sha256": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+          "sha256": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-dr-target.py": {
+          "old_sha256": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+          "sha256": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-im-adopt.py": {
+          "old_sha256": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+          "sha256": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-im-adopt.sh": {
+          "source": "tests/evidence/longhorn-im-revision-2-readback-contract-20261021.json",
+          "impact": "Freeze the owning wrapper: independent current-health/baseline/input readback must complete after cleanup and before a later batch module mutates or uninstalls storage.",
+          "old_sha256": "2116d58a3b811d9ce0837552fc6b8bd7390398ce79e542f8c70bc77cc499c8fc",
+          "sha256": "9c995c8276d138de6060acd45d40ec423a80b1492adac1151e42ea76e57c1e5d"
+        },
+        "tests/helpers/longhorn-v2-install.py": {
+          "old_sha256": "8bde06fed14b12c5a22e7e3b099500d106a58b7432239df629e295959d15725b",
+          "sha256": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4",
+          "source": "tests/evidence/longhorn-upgrade-legacy-contract-20261021.json; tests/unit/test_longhorn_im_revision_evidence.py",
+          "impact": "Consume only exact accepted .2 adoption or complete LONGHORN-52 new-installation transition; preserve original .1 and native disk identity guards."
+        },
+        "tests/helpers/longhorn-v2-lab.py": {
+          "old_sha256": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+          "sha256": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+          "source": "tests/evidence/longhorn-v2-dr-target-im-adopt-qualification-20261021.json frozen_inputs exact unchanged pin",
+          "impact": "Unchanged accepted delivery input; no mechanism retest required."
+        },
+        "tests/helpers/longhorn-v2-upgrade-baseline.py": {
+          "old_sha256": null,
+          "source": "Pinned Longhorn 1.12.1 official source and exact product consumer; tests/evidence/longhorn-upgrade-legacy-contract-20261021.json and local block retirement contracts",
+          "impact": "New exact owning product/upgrade identity consumer, fully frozen; normal product setup09 behavior remains subject to owning focused acceptance.",
+          "sha256": "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87"
+        }
+      }
+    }
+  }
+}

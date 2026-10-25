@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "classification": "finite historical host/page dependency reuse; not matrix PASS",
+  "cases": [
+    "LONGHORN-44",
+    "LONGHORN-46"
+  ],
+  "mechanism_review": {
+    "path": "tests/evidence/longhorn-v2-resources-mechanism-impact-20261022.json",
+    "sha256": "f0c3dabdb4ef3e83fef7e6f46f7e4165e65231b24e2e84ce58ff5e4b10466d50"
+  },
+  "resource_helper": {
+    "path": "tests/helpers/longhorn-v2-resources.py",
+    "old": "ca3dd955604f7f774e2f3b442bb0c7ee4c0eafccd8c44b22eab0a63beb4bdf12",
+    "current": "d34504c8411e78c561596b1f3f522c4ed9757bb8ae303dcd5d644307617df6dd"
+  },
+  "resolver": {
+    "path": "tests/helpers/longhorn-full-material.py",
+    "sha256": "f0ff846f46e8570a31fffa3b0dc21ffcdfcdb16682ea9b8a9db9efc1f4b297a0"
+  },
+  "completed_installation_review": {
+    "path": "tests/evidence/longhorn-completed-default-reader-reuse-20261022.json",
+    "sha256": "7cb5eb5f79640cf05fac92631e677f5435040e3ed35c70a07a484c1009235396"
+  },
+  "finding": "Host/page state mutation, rollback and verification function ASTs are unchanged. Only qualification_current selects the same historical path through the finite resolver outside a full run. Original evidence/raw/durable and exact original/current helper hashes remain required. Completed .2 installation is independently checked by its separate reviewed adapter; this supersedes the mechanism reviews earlier .3-only pairing assumption, without claiming .3 adoption or accepting its product fix.",
+  "boundary": "Historical input reuse only when full-run environment is absent; unknown helper/resolver/review drift and full-run context refuse. Current identity, hardware, runtime profile/business and cleanup assertions remain required."
+}

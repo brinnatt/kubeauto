@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "classification": "test-gate",
+  "matrix_item": "LONGHORN-49",
+  "failed_parent_retained": "logs/longhorn-cases/manager-v2-linked-acceptance-relay-fixed-owning-20261024",
+  "terminal": {
+    "runner_rc": 1,
+    "observer_rc": 0,
+    "terminal": true,
+    "remote_inputs_equal": true,
+    "native_rc": null
+  },
+  "first_failure": "Exact snapshot-controller v8.6.0 informer cache miss incorrectly treated as terminal, followed by detached-engine snapshot deletion before native graph retirement.",
+  "official_source_sha256": "150335c4af597e663ca504b84d7252532b1da9c7c9364434beca6e2c35f8da32",
+  "contracts": {
+    "red": "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/linked-snapshot-race-candidate/red.log",
+    "green": "/home/brinnatt/.local/share/kubeauto-longhorn-release/raid-status-3-publication-20261023/linked-snapshot-race-candidate/green.log",
+    "passing_count": 17
+  },
+  "changed_files": {
+    "tests/helpers/longhorn-v2-linked-lifecycle.py": "ef1c4f6c6f7d2543750853586c13977ccacf60f0a0c3b17c04e4c993dfacb0c1",
+    "tests/unit/test_longhorn_v2_linked_lifecycle.py": "2def9f1cce0f2c61eb9f6a6c9be92defd77053f8bda89fc58a2a65214fccc304"
+  },
+  "product_entry": "config.yml + kubecli setup 09; owning --longhorn-v2-linked-lifecycle-qualification",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-linked-lifecycle-cleanup then --longhorn-v2-linked-lifecycle-qualification",
+  "expected_markers": [
+    "LONGHORN_V2_LINKED_LIFECYCLE_CLEANUP_PASS",
+    "LONGHORN_V2_LINKED_LIFECYCLE_QUALIFICATION_PASS"
+  ],
+  "overall_delivery_pass": false
+}

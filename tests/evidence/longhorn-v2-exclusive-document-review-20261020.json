@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "scope": "Optional CPU Manager exclusive mode, resource calculation and operational recovery path; native disk driver request/status interface clarification",
+  "review": {
+    "classification": "author content and two-reader task-path review; no independent review or field qualification",
+    "scope": "Optional CPU Manager exclusive mode, resource calculation and operational recovery path; native disk driver request/status interface clarification",
+    "novice_path": "Existing healthy V2 mask path → platform-owned static policy preparation → stop consumers with original replica counts and data checks → all-volume detached/all-node policy preflight → config core count + product09 → native IM/Pod resources → original consumers/data/new writes. Missing policy or failure preserves stopped state.",
+    "experienced_path": "Core count precedence, actual kubelet root/checkpoint, full Longhorn Node policy set, integer rounded CPU budget/overrides and Guaranteed Pod contract have direct references; return-to-mask requires detached volumes and per-host online-ID membership. No edits to checkpoint or automatic host policy change.",
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 110,
+        "yaml_blocks": 17,
+        "bash_blocks": 30
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "1308668ec80debe80a85436ec7c78699ede067a9c027cec857b4d5aa111eedab",
+        "docs/storage/longhorn/technical-whitepaper.md": "ce49579fb1dd282744860de12991404bf71af487b3a286a8b399f4a598dcf73d",
+        "docs/storage/longhorn/development-manual.md": "dce8dad3098931974600e2801795b5836954cf7966d5e009e932146ec1850013"
+      }
+    },
+    "added_inline_python_ast": 2,
+    "diagrams": "Seven Mermaid sources unchanged from previous rendered mapping; rendering evidence reused by content identity.",
+    "remaining": "All V2 field cases44-54 remain pending; native PCI and per-disk retirement/replacement not implemented; full document sign-off remains open.",
+    "native_driver_review": "Checked pinned official multi-disk VirtIO auto+BDF example, actual Helm-rendered Node spec enum and status schema, Manager type and SPDK detector. Source/selection path is distinct from runtime driver status; no new product capability or field result inferred.",
+    "specific_correction": "Empty healthy V2 installations may change resource settings; the detached check accepts zero volumes and retains explicit cluster/native-policy prechecks. Exact supported core-count range documented."
+  },
+  "files": {
+    "logs/longhorn-cases/v2-exclusive-document-review-20261020/reading-map.json": "77b21d98aaa2bdd5a841de4d9d2dd3fca3a4d44f9f2c329126d7e7200bb628bb",
+    "logs/longhorn-cases/v2-exclusive-document-review-20261020/static.json": "e3c2aa1b34bb42c216f17d7276eb0944605280ae87f217396d7f5fe4b64fafac",
+    "logs/longhorn-cases/v2-exclusive-document-review-20261020/review.json": "49da0839ec1a8cc01b03bf32eabb6f019725735adb3aa14fe11ddc3a54558124",
+    "logs/longhorn-cases/v2-exclusive-document-review-20261020/current-diagram-render-map.json": "0e7df79e75d1848eff7dad004845436559f6aabb63e984736af76816bc819e0c",
+    "logs/longhorn-cases/v2-exclusive-document-review-20261020/v2-native-driver-schema.json": "f7018f98e89655e03ed4030e98d6b6a6a90df16a9124369df181efd07d58e6d0"
+  },
+  "previous_evidence": "tests/evidence/longhorn-v2-data-path-document-review-20261020.json"
+}

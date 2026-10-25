@@ -1,0 +1,79 @@
+{
+  "boundary": "Complete LONGHORN-03 only. Six complete original scopes are reused with their frozen verifiers and dependency/data continuity. Historical failed parents retain their actual statuses. No final clean regression or customer sign-off inferred.",
+  "case": "LONGHORN-03",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-ownership-evidence-import",
+  "contract": {
+    "rc": 0,
+    "shell_syntax": "pass",
+    "tests": 13
+  },
+  "date": "2026-10-21",
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "failure_markers": 0,
+  "frozen_import_sources": {
+    "tests/README.md": "cd18000f43cd91190b372d3f1bb76b943ff3cb01c0da8a9730d939bb41efdcd3",
+    "tests/helpers/longhorn-ownership-evidence.py": "eeb3a22fd56444a9e6890d7e24cc881423321062b911e717d7140a4705a89b69",
+    "tests/helpers/longhorn-runner.sh": "d27c72c6ffff231455638cdb5c1a0fbd9dd42c26faf559030659004b06b41ef1",
+    "tests/helpers/longhorn-static.sh": "48ea2cf22ebb2fb1962c398db4022fe2272cdb9b324427e42f32e58e8e74f111",
+    "tests/unit/test_longhorn_ownership_evidence.py": "85f774f18329a04b70aabe617a003623aa4e27240f126a7a581dec3c35c412da"
+  },
+  "instance_manager_version": "v1.12.1-kubeauto.2",
+  "observation": {
+    "case": "LONGHORN-03",
+    "old_failed_parent_promoted": false,
+    "product_dependencies": 106,
+    "raw_files": 30,
+    "request_sha256": "f33957dfcee26459a85b6d17b70f7aa16a9b781fcf9cd8aa961d7ee0238febb2",
+    "stages": [
+      {
+        "stage": "ownership-csi-refusal-qualification",
+        "verifier_output": "LONGHORN_OWNERSHIP_STAGE_VERIFIED stage=ownership-csi-refusal-qualification durable_rc=0 finalized=0"
+      },
+      {
+        "stage": "ownership-preinstall-refusal-qualification",
+        "verifier_output": "LONGHORN_OWNERSHIP_STAGE_VERIFIED stage=ownership-preinstall-refusal-qualification durable_rc=0 finalized=0"
+      },
+      {
+        "stage": "install",
+        "verifier_output": "LONGHORN_OWNERSHIP_STAGE_VERIFIED stage=install durable_rc=0 finalized=0"
+      },
+      {
+        "stage": "ownership-class-refusal-qualification",
+        "verifier_output": "LONGHORN_OWNERSHIP_STAGE_VERIFIED stage=ownership-class-refusal-qualification durable_rc=0 finalized=0"
+      },
+      {
+        "branch": "ownership-controller-refusal-qualification",
+        "failure_markers": 0,
+        "log_sha256": "0d4c4f2ed32a65d68ad5c4b692a47413d8e9bafecf1ff85a40a6d4724eaf7355",
+        "rc": 0
+      },
+      {
+        "branch": "ownership-request-refusal-qualification",
+        "failure_markers": 0,
+        "log_sha256": "c4ba0c0257758b37fc40e9aef773ef3a8eca03d64839c01adf45ffa728e508f0",
+        "rc": 0
+      }
+    ]
+  },
+  "old_failed_parent_promoted": false,
+  "overall_longhorn_delivery_pass": false,
+  "product_entry": "Six original config.yml + kubecli ownership scopes; read-only current frozen evidence aggregation",
+  "raw_evidence": {
+    "logs/longhorn-cases/ownership-evidence-20261021-232201/gate.log": "b91d9128cf6bcc80f82886da71e56f987539026f768c8faebf5e0a01f9a03c8e",
+    "logs/longhorn-cases/ownership-evidence-20261021-232201/ownership.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/ownership-evidence-20261021-232201/ownership.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/ownership-evidence-20261021-232201/ownership.pid": "8c1037606a66327b277134474df54e9e4a332437fe60e3574ac248a48cb9a2de",
+    "logs/longhorn-cases/ownership-evidence-20261021-232201/status.json": "60a4fcfdf9cf79f7103f8a617329f413118f11f2e99e426ce0920b508ca7a4c2",
+    "logs/longhorn-cases/ownership-import-contract-20261021.log": "7b6a9af05d73c17c4e7fcfe1bb88869d4fe281d580dc1781628dc94ccc7ac557",
+    "tests/evidence/longhorn-ownership-six-stage-candidate-20261021.json": "f33957dfcee26459a85b6d17b70f7aa16a9b781fcf9cd8aa961d7ee0238febb2"
+  },
+  "rc": 0,
+  "schema": 1,
+  "scoped_clean_marker": "LONGHORN_OWNERSHIP_SCOPED_CLEAN_PASS",
+  "status": "pass",
+  "success_marker": "LONGHORN_OWNERSHIP_PASS",
+  "version": "1.12.1"
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "classification": "test-gate recovery path",
+  "matrix_item": "LONGHORN-50 (local contract only)",
+  "product_entry": "config.yml + kubecli setup longhorn-v2-gate 09, with runner-owned UID-scoped fault injection and cleanup",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-replica-im-loss-cleanup",
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_control_faults",
+  "expected_marker": "LONGHORN_V2_REPLICA_IM_LOSS_CLEANUP_PASS",
+  "root_cause": "The qualification requires an empty business baseline; it cannot be reused to recover a fault journal left after an uncertain native recovery. Recovery must enter its guarded journal before the empty-business prerequisite.",
+  "assertions": [
+    "The cleanup-only shell branch enters guarded recovery without the qualification empty-business precheck.",
+    "Recovery refuses foreign parent/Pod and unknown outcomes, preserving the journal and preventing business deletion.",
+    "Post-recovery cleanup must pass empty-business, original disk and core/relay checks. Failure blocks both terminal success and scoped-clean markers.",
+    "Cleanup never invokes business or its result verifier and cannot emit LONGHORN_V2_REPLICA_IM_LOSS_QUALIFICATION_PASS.",
+    "Expected-failure CLI diagnostics remain inside a private 0600 local test fixture."
+  ],
+  "rc": 0,
+  "tests": 9,
+  "fixture_boundary": "Local fake API/relay/CLI under TemporaryDirectory; no SSH or cluster mutation. Real result verifier executes via the CLI.",
+  "cleanup_scope": "All local fixtures and expected-failure private diagnostics; production diagnostic retention is unchanged.",
+  "source_evidence": "tests/evidence/longhorn-v2-replica-im-loss-source-20261021.json",
+  "frozen_inputs": {
+    "tests/helpers/longhorn-v2-control-faults.py": "6860cad735bebeb34a2c1c05beb28d61222ed54995ad06e1d926286528e61ab0",
+    "tests/helpers/longhorn-v2-volumes.sh": "784649a01abb5616d176343d0c8556463833fdbe23bdfa0594b11e27080e9010",
+    "tests/helpers/longhorn-runner.sh": "ce2a22517396097a2485bf22ad190b324588172c759c487ad0a7cc37430602c8",
+    "tests/helpers/longhorn-live.sh": "5b5e19be688b802f0ade436ffad658b49db65d141045e2a7dd2917bce8204a8a",
+    "tests/unit/test_longhorn_v2_control_faults.py": "5cc83ae32616ad1585100434da12865581e6eacbafc3cf005b4a0475a7fc84e7"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/v2-replica-im-loss-reentry-contract-20261021/focused.log": "3cd3b94d58ce3fb690ac22ea48f8e71dad69092c291663a5b409266254e9531d"
+  },
+  "boundary": "No live cleanup, fault qualification, complete LONGHORN-50 or delivery PASS."
+}

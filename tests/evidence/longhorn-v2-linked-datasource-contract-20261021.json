@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "classification": "test-gate; pre-live deterministic defect",
+  "owning_scenario": "LONGHORN-49 linked/nested clone PVC dataSource orchestration",
+  "product_entry": "config.yml clone_mode=linked-clone + kubecli setup CLUSTER 09, then CSI PVC dataSource source -> clone -> nested",
+  "expected_marker": "LONGHORN_V2_LINKED_CLONE_QUALIFICATION_PASS",
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_linked_clones.LinkedCloneContracts.test_business_builds_source_clone_nested_pvc_datasource_chain -v",
+  "first_failure": {
+    "rc": 1,
+    "observation": "Business called claim(clone) and claim(nested) without parent arguments, selecting an empty source-class volume instead of the intended CSI clone graph. Deterministic assertion proved the exact missing edges before live execution.",
+    "raw_log": "logs/longhorn-cases/linked-datasource-contract-20261021/first-failure.log"
+  },
+  "fixed_verification": {
+    "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_linked_clones tests.unit.test_longhorn_v2_clones tests.unit.test_longhorn_v2_data_protection -v",
+    "rc": 0,
+    "tests": 26,
+    "failures": 0,
+    "errors": 0
+  },
+  "next_permitted_level": "Fixed runner complete current static preflight after active data-protection gate completes, then isolated linked-clone qualification. No live clone or complete clone PASS.",
+  "source_sha256": {
+    "tests/helpers/longhorn-v2-linked-clones.py": "c06ff2be1958d31a804cecc826a31637b939b6e20e69d5120347f973806fe2b0",
+    "tests/unit/test_longhorn_v2_linked_clones.py": "a3210895c6d8ed57ff500ea577c76bf72e7cb478bc50db21549d581bf2c42e2a"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/linked-datasource-contract-20261021/fixed-focused.log": "78848d33c3a4d38704aa2842ae5470aa990ecfffe6a9ca0a619caf95c97e82a6",
+    "logs/longhorn-cases/linked-datasource-contract-20261021/first-failure.log": "4bc49847068840f68e3ea051659f2c824225f984bc27e143efca46588e1681ad"
+  },
+  "initial_test_fixture_error": {
+    "classification": "test fixture; no live execution",
+    "observation": "The first local test attempt returned an existing StorageClass from its get mock and stopped with ValueError: linked class already exists before reaching the intended orchestration assertion. The mock was corrected to return absent, then the created class. The first attempt log was overwritten; its tool output remains in the conversation, so it is not claimed as retained raw evidence.",
+    "subsequent_disproof": "first-failure.log is the subsequent exact missing-parent assertion against the original helper, followed by the 26-test fixed verification."
+  }
+}

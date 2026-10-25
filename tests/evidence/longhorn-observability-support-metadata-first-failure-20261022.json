@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-34",
+  "status": "failed",
+  "matrix_status": "pending",
+  "complete_matrix_item": false,
+  "classification": "test-gate metadata refusal; exact rejected size/owner subcondition not retained before automatic support-bundle deletion",
+  "first_failure": "ValueError: support bundle owner or private download size is invalid",
+  "owning_phase": "bounded-business",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-observability",
+  "version": "1.12.1",
+  "instance_manager_version": "v1.12.1-kubeauto.2",
+  "pid": "1038733",
+  "durable": {
+    "local_exit": 1,
+    "remote_exit": 1,
+    "module_exit": 1,
+    "business_exit": 1,
+    "local_finalized": 1,
+    "remote_finalized": 1,
+    "module_finalized": 0,
+    "business_finalized": 1
+  },
+  "frozen_input_count": 888,
+  "remote_before_after_equal": true,
+  "terminal_capture_sha256": "8b7ea812435b08312b3554a8489ee2bbf509a902d75af8056fc6b4f4ed2cba2a",
+  "scope_completed": [
+    "product monitoring and real filesystem/manager scrape",
+    "four real alert trigger and recovery lifecycles",
+    "native replica ERR/degraded and restored three original replicas",
+    "confirmed pre/post-recovery fsync ledgers",
+    "bounded 512MiB allocation and native reclamation",
+    "real full backup and backend object receipt",
+    "business/store/monitoring cleanup and original empty healthy filesystem baseline"
+  ],
+  "scope_not_completed": [
+    "support bundle metadata/download/CRC acceptance",
+    "original-payload cross-node remount after complete observability actions",
+    "LONGHORN-34 acceptance"
+  ],
+  "observations": {
+    "alerts": [
+      {
+        "active": false,
+        "alert": "KubeautoLonghorn21c85906532349a5Degraded",
+        "observed_at": 1792661124.1642408,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": false,
+        "alert": "KubeautoLonghorn21c85906532349a5Space",
+        "observed_at": 1792661125.5917208,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": false,
+        "alert": "KubeautoLonghorn21c85906532349a5Missing",
+        "observed_at": 1792661127.020377,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": true,
+        "alert": "KubeautoLonghorn21c85906532349a5Backup",
+        "observed_at": 1792661212.0728865,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": true,
+        "alert": "KubeautoLonghorn21c85906532349a5Degraded",
+        "observed_at": 1792661413.020122,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": false,
+        "alert": "KubeautoLonghorn21c85906532349a5Degraded",
+        "observed_at": 1792661434.826176,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": true,
+        "alert": "KubeautoLonghorn21c85906532349a5Space",
+        "observed_at": 1792661498.3155072,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": false,
+        "alert": "KubeautoLonghorn21c85906532349a5Space",
+        "observed_at": 1792661545.041872,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": false,
+        "alert": "KubeautoLonghorn21c85906532349a5Backup",
+        "observed_at": 1792661840.7124393,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": true,
+        "alert": "KubeautoLonghorn21c85906532349a5Missing",
+        "observed_at": 1792661952.3636181,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      },
+      {
+        "active": false,
+        "alert": "KubeautoLonghorn21c85906532349a5Missing",
+        "observed_at": 1792661988.218226,
+        "volume_uid": "b815283c-758d-49bc-a888-dcfafbd909ea"
+      }
+    ],
+    "metadata_gap": "Read-only captures bind exact support-bundle UID, owner, name, 33% generation progress and dependent Pod identities. Ready-state filesize was not retained. No size value, archive success or product failure is inferred. Historical exact-resourceVersion read attempts did not recover the deleted metadata."
+  },
+  "cleanup": {
+    "module_finalized": 0,
+    "network_rules_removed": true,
+    "original_replica_uids_unchanged": true,
+    "baseline": {
+      "longhorn-node-165": {
+        "available": 105067315200,
+        "disk": "kubeauto-data",
+        "disk_uuid": "8fc73bdb-07f6-4b37-926c-ea169ad08d07",
+        "maximum": 105089261568,
+        "node_uid": "a642e2e5-2a91-4644-9b30-cb62d041f94e",
+        "reserved": 10508926156,
+        "scheduled": 0
+      },
+      "longhorn-node-212": {
+        "available": 105067315200,
+        "disk": "kubeauto-data",
+        "disk_uuid": "673d17b9-d1c5-4383-bab3-c562e6ef3187",
+        "maximum": 105089261568,
+        "node_uid": "45402ae8-cba5-4daa-a286-9ecc414e6b98",
+        "reserved": 10508926156,
+        "scheduled": 0
+      },
+      "longhorn-node-238": {
+        "available": 105067315200,
+        "disk": "kubeauto-data",
+        "disk_uuid": "0d5eb5c4-d4c5-407f-b82b-5d8bf7f93278",
+        "maximum": 105089261568,
+        "node_uid": "77535cdb-725e-4063-a89b-e77daab3cc63",
+        "reserved": 10508926156,
+        "scheduled": 0
+      }
+    }
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/52e19595afa7630c6c8ce8125b199aee3216b5551eb063d266527d0faa30a81f": "52e19595afa7630c6c8ce8125b199aee3216b5551eb063d266527d0faa30a81f",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/d27e8e62cd929e5b8dd4b32b38a412ec6ea9ba4d113e804a3f0e013ae166397d": "d27e8e62cd929e5b8dd4b32b38a412ec6ea9ba4d113e804a3f0e013ae166397d",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/51ca6cdd89d10fe81f7f74cbccb248bb7070e741ded59d572382cb7a37e207f6": "51ca6cdd89d10fe81f7f74cbccb248bb7070e741ded59d572382cb7a37e207f6",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/26115637d45639f2c193fbf37d143fb7e149bbd1d5b597bcc31a819903096828": "26115637d45639f2c193fbf37d143fb7e149bbd1d5b597bcc31a819903096828",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/50ca44e821f3bba0b77e2b3604bae6c93e29c3ea650beae0d36c4b8628050a59": "50ca44e821f3bba0b77e2b3604bae6c93e29c3ea650beae0d36c4b8628050a59",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/db9673ba243fd20a1ccfc38af762f06980edab790de8f0262e9a9a3c1c708be8": "db9673ba243fd20a1ccfc38af762f06980edab790de8f0262e9a9a3c1c708be8",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/9f7fb9017c80f8129b61e1c4beb7cd7b716d148e8d2b3c8bf4270954346a831c": "9f7fb9017c80f8129b61e1c4beb7cd7b716d148e8d2b3c8bf4270954346a831c",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/eab0aa37ba96fe588264fa636b30fa55963794094688dcbec8fef9ab414bfc12": "eab0aa37ba96fe588264fa636b30fa55963794094688dcbec8fef9ab414bfc12",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/33a81f4b0319f2c86459f91bd0aadd30e9ee6a929904186cd8637b5d820862a6": "33a81f4b0319f2c86459f91bd0aadd30e9ee6a929904186cd8637b5d820862a6",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/b256de257b8c3936967b75735b096d2a0f60048030f8890647fa7eaf504466a0": "b256de257b8c3936967b75735b096d2a0f60048030f8890647fa7eaf504466a0",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/launch.pid": "4b8fdfc09d442be5502864c64ea805bc5fbf6918748ee870a4f4cef1358f1e16",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/launch.log": "5449ce244b23e5aa7440e803e22644f9c7516c5513c080767b3310f33ef399a8",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/capture-0132.json": "8b7ea812435b08312b3554a8489ee2bbf509a902d75af8056fc6b4f4ed2cba2a",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/frozen-inputs.json": "d5aa6f18fa0e7c90cf3d82986c5201cad160fcbb2a7638ee916eaf0e797d9135",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/capture-0101.json": "5b95b01a1f51fc783893825caac27fc9c9e6bf90e843f24fee759e1c7ac017c0",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/remote-archive/objects/72301dcf354441a212724d196c771549d5425bdaa324aa165e2e2d91635fbf2a": "72301dcf354441a212724d196c771549d5425bdaa324aa165e2e2d91635fbf2a",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support_history_readonly.py": "ec197ca66d4af6acd0e666a1feb90acf3a49ad5dd7aa69b790989aa2280ef3fe",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support_readonly_2.py": "143ed070c62e39157bd424cb933fdce5eb56b4e732e1994da79c5b660d7ecae7",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support-retained-log.json": "bd2a3dab5073995ae6a491cec0432336a321519d76629fc9d403f67b50b4e9c1",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support-readonly.json": "84432e15bb4d14e320814d2f1b6f590b0c430604ec9556ca149e14514c103a66",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support-readonly-2.json": "02fe159b23effa35b64d869296247a8190a907454958376a575d592029feaa1a",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support_readonly.py": "84afdef0c188fa7855d7e3a08c59204697f0d33d4f331024f547364670ddd8f6",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support_retained_log.py": "1d09d638e962eec9555dc8aa5751a8c69336f96adf93b83e66f2444d9e5beb15",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support-history-readonly.json": "382244b088ab180b36adae63b60904f4227b718011bfa2592818e9441d26b358",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/support-readonly-2.log": "12113e101b20a8ec5a513b96e4d7e1d0d3a268c194da02a25a43a164e242d18b",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/network-readonly.json": "1632483b3bddca4161476fc7aa9d274f863ec1a637290eb3ad0f0f1d0a92b668",
+    "logs/longhorn-cases/observability-34-confirmed-io-business-20261022/network_readonly.py": "4704b7393abe625b942ae1d9a1557297df84ae4296f12df8d027e04daefdd25c"
+  },
+  "boundary": "Preserves failed parent, observed subcases and clean restoration only. Does not grant a module/matrix PASS, overall GA or customer sign-off."
+}

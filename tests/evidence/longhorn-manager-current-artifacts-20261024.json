@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "status": "pass",
+  "matrix_item": "LONGHORN-04",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-artifacts",
+  "version": "1.12.1",
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "rc": 0,
+  "failure_markers": 0,
+  "images_verified": 30,
+  "frozen_inputs": {
+    "common/constants.py": "e4a637967452f3560e43af794eedde30ad57c398a898da98ee0501d1d05dd5f0",
+    "roles/longhorn/files/images.json": "af5bf33eac62d7c4a379a50627b41c7a4983a6cf57761e2573eb9d058d024ca1",
+    "tests/evidence/longhorn-images-20261021.json": "a91d6d04a17d1df57566ee7ff96abff8db96570e8455530d51618f01bbe33364",
+    "tests/evidence/longhorn-manager-eviction-publication-20261024.json": "a908acddf74d8e928faa61aac6d7662f88e4186e5c8942fa656d3b17e447d97c",
+    "tests/helpers/longhorn-artifacts.py": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/manager-image-inventory-current-20261024/gate.log": "b1cf040acbb20f70e2ee1321c0b09be9f381b5334179130b51e39c8231d8ab1b",
+    "logs/longhorn-cases/manager-image-inventory-current-20261024/gate.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/manager-image-inventory-current-20261024/gate.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "publication": "tests/evidence/longhorn-manager-eviction-publication-20261024.json",
+  "overall_longhorn_delivery_pass": false,
+  "boundary": "Current exact runtime/upgrade/support inventory and independent China manifest readback; dual-registry/dual-architecture verification and build fingerprints bind original successful Actions receipts. No product adoption or GA claim."
+}

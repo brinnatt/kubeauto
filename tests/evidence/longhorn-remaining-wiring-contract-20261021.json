@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "scope": "Static wiring and isolated supervision contracts only; no live module PASS",
+  "classification": "test-gate",
+  "ladder_completed": 2,
+  "next": 3,
+  "owning_scenarios": [
+    "LONGHORN-49",
+    "LONGHORN-50",
+    "V1 remaining security/backup/recurring/encryption/uninstall"
+  ],
+  "inputs": {
+    "tests/helpers/longhorn-runner.sh": "de6062c018722a0d0e1e119c255a33bb395cfa5508be1a4e54af75a7c5a9a129",
+    "tests/helpers/longhorn-live.sh": "d188922895adca54880b8176f8ff03621d19560d23ba9ee6062d8199d0740dd8",
+    "tests/helpers/longhorn-static.sh": "026a96d19b1b373c7fe6cc8705b5c80d1f3f8b39e656e54bff8104d1580ef26c",
+    "tests/helpers/longhorn-parallel.sh": "de45cd89c32c0ef2d5da4a669adceae83775206b2888666c0e1c7c544f122ef6",
+    "tests/helpers/longhorn-parallel.py": "96b378e322d31ef77b7f4aafd4392beb373aab16fd6d8af458d987239e41733f",
+    "tests/helpers/longhorn-v2-linked-acceptance.sh": "ecac8d76d9cd8818b954ae6605a3de58a4fe896e805ac4a734ebf2f971e1ffee",
+    "tests/unit/test_longhorn_parallel.py": "717e03961c6d7c632a1d495ebb8d35bee2802cf965abd24f1468efb920f23626",
+    "tests/unit/test_longhorn_v2_failure_runner.py": "c932d4e53fa34caa4c8326190d7d30277f42ca547e18652ceeca16bb031ee2e8",
+    "tests/unit/test_longhorn_v2_linked_lifecycle_shell.py": "fed65a746d30520b4ef816e474eec5f960a49227be987b80eecbdb3636810694"
+  },
+  "test_runs": {
+    "linked_wiring": 40,
+    "parallel_remaining": 29,
+    "failure_complete": 65,
+    "remaining_public_and_ordering_addendum": 2
+  },
+  "logs": {
+    "logs/longhorn-cases/remaining-wiring-contract-20261021/longhorn-parallel-remaining-contract.log": "5fdfaee0b7b391079468af414dc0fbaef3db4a40b3ebef5d20cefe0851bbab8c",
+    "logs/longhorn-cases/remaining-wiring-contract-20261021/longhorn-failure-complete-contract.log": "c0505570903096346540fe15c59b1b4b063dcbfcb73e799eb0fe1a8ccc7020a3",
+    "logs/longhorn-cases/remaining-wiring-contract-20261021/longhorn-linked-wiring-contract.log": "6aaed3c02b69c04cae20cd64161ef3bbbac68f88722f39c888eedb08f0a022e7",
+    "logs/longhorn-cases/remaining-wiring-contract-20261021/remaining-public-contract.log": "18dd884837b0358b200c118876f1e2f1a75674745286a6a6cfe8a03e4175f4ac"
+  }
+}

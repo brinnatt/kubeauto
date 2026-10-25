@@ -3,6 +3,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -353,12 +354,35 @@ remote_process_tree local_ssh '' '{prefix}'
             if path in allowed_paths:
                 continue
             text = path.read_text(errors="ignore")
+            # .147 was subsequently authorized for the isolated Longhorn V2
+            # branch. Keep the exception scoped to its helpers and evidence.
+            longhorn_path = (
+                (path.parent == ROOT / 'tests/helpers' and path.name.startswith('longhorn-')) or
+                (path.parent == ROOT / 'tests/unit' and path.name.startswith('test_longhorn_')) or
+                (path.parent == ROOT / 'tests/fixtures' and path.name.startswith('longhorn-') and path.name.endswith('.py.txt')) or
+                (path.parent == ROOT / 'tests/evidence' and path.name.startswith('longhorn-') and path.suffix == '.json')
+            )
             for address in ("192.168.47.140", "192.168.47.147"):
-                if address == "192.168.47.147" and path in ceph_qualification_paths:
+                if address == "192.168.47.147" and (path in ceph_qualification_paths or longhorn_path):
                     continue
                 if address in text:
                     offenders.append(f"{path.relative_to(ROOT)}: {address}")
         self.assertEqual([], offenders)
+
+    def test_longhorn_source_fixture_address_exception_preserves_forbidden_hosts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);fixture=root/'tests/fixtures/longhorn-reviewed.py.txt'
+            fixture.parent.mkdir(parents=True)
+            with patch.dict(globals(),{'ROOT':root}):
+                fixture.write_text('192.168.47.147')
+                self.test_active_test_code_has_no_retired_lab_address()
+                fixture.write_text('192.168.47.140')
+                with self.assertRaises(AssertionError):
+                    self.test_active_test_code_has_no_retired_lab_address()
+                fixture.unlink()
+                other=root/'tests/fixtures/foreign.py.txt';other.write_text('192.168.47.147')
+                with self.assertRaises(AssertionError):
+                    self.test_active_test_code_has_no_retired_lab_address()
 
     def test_cleanup_script_uses_current_authority(self):
         self.assertIn("JUMPER=192.168.47.130", LAB_WIPE)
@@ -405,6 +429,35 @@ remote_process_tree local_ssh '' '{prefix}'
         self.assertIn("sudo -S -p ''", helper)
         self.assertIn("sudo -n true", helper)
         self.assertNotIn("123456", helper)
+
+    def test_sudo_bootstrap_admits_authorized_ubuntu24_and_rejects_unknown_account(self):
+        import os
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            ssh = base / 'ssh'
+            ssh.write_text('''#!/bin/bash
+set -eu
+if [[ ! -f "$BOOTSTRAP_TEST_STATE" ]]; then
+  touch "$BOOTSTRAP_TEST_STATE"
+  exit 1
+fi
+if [[ "${!#}" == *"sudo -S"* ]]; then
+  read -r supplied
+  [[ "$supplied" == "$LAB_SUDO_PASSWORD" ]]
+fi
+''')
+            ssh.chmod(0o700)
+            for account, expected in (('ubuntu24', 0), ('unknown', 2)):
+                state = base / account
+                environment = dict(os.environ, PATH=str(base) + ':' + os.environ['PATH'],
+                                   LAB_SUDO_PASSWORD='synthetic-test-value', BOOTSTRAP_TEST_STATE=str(state))
+                result = subprocess.run(['bash', str(ROOT / 'tests/helpers/lab-sudo-bootstrap.sh'),
+                                         account + '@192.0.2.1'], env=environment,
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(expected, result.returncode, result.stderr)
+                self.assertNotIn(environment['LAB_SUDO_PASSWORD'], result.stdout + result.stderr)
+                if not expected:
+                    self.assertIn('LAB_SUDO_BOOTSTRAP_PASS', result.stdout)
 
     def test_native_ansible_gate_sync_needs_no_remote_rsync(self):
         start = RUNNER.index('if [[ "$MODE" == "--ansible-os-only" ]]')

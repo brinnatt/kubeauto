@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "independent CPU isolation stage only; LONGHORN-53 and failed parallel parent are not signed",
+  "original_source_manifest": {
+    "path": "logs/longhorn-cases/stability-observability-parallel-20261022/frozen-inputs.json",
+    "sha256": "09676f601925628cee8a1d10675997468eb206438033b939ffa224820eb44947",
+    "count": 812
+  },
+  "source": {
+    "original_helper_sha256": "860900d529a155e5a7d99af9951075900c04f6c23024febd2dfdd8a320e2b277",
+    "functions": {
+      "effective": "b44a9201b209c4134a2574fbf9f70ca55e75d198dcca6d9d05bbb104230b34fb",
+      "host_masks": "209b58e1285566f68812a75c3003abbe453c91bfdd87873f4b3a1508ac5541ba",
+      "remote": "5e65fffbd03ed85e334913e6c8b7dd25e7778996cef5e99129e316b7b89a82eb",
+      "save": "a28ca991d9ce2950c277e895f7b6b8d90992a8c5e61f159dc109358aee30b000",
+      "empty": "9e202ea96cae36db134f80ca31bfb9723bd8e87330cb05ab613d0268985e5968",
+      "managers": "c9221f4d8d5fe350287ccfc559a672d668ea95938212685d9af14509a85b17b1",
+      "override": "f1d5be4b90cbc277f0a6b0904e924339ef1514fe2557e8f9a805abd0c723409c",
+      "apply": "e5d336fd62478153a7ddd37eaef7e242a7547f51da27d32d35962c180eade818",
+      "observe": "47a0eb2869fff43e1a9e28e76f7179443ebe69797dd18d882a539759d8fda6d9",
+      "receipt": "12452a61d5613da4e00fd9801412341838a39402baa1824f8aaa3ea90f44621e",
+      "clean": "948d29a11bd69989607be9926a94d2725ca003e68d1bbae5dfea9e2e8667f967",
+      "business": "321be7c0f9ed1baea7e74fb3d03854d992047d735a93cb58ee2ce85f03da01dc"
+    },
+    "files": {
+      "roles/longhorn/files/longhorn.py": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282"
+    }
+  },
+  "owner": {
+    "run_id": "67125100-c9da-4acd-ae31-f081ae18f9e7",
+    "cluster_uid": "421f4a73-8c31-4a06-aa22-7fcf708e220f",
+    "namespace_uid": "9ec3e296-f79e-411d-b329-e4384a80ae6e",
+    "node_uids": {
+      "longhorn-node-146": "cfa0210c-181c-4b36-9417-e9f61d6fe790",
+      "longhorn-node-147": "98bede3a-af3c-4e3d-b152-b757add8f8f5",
+      "longhorn-node-148": "b542e085-a057-4d60-848c-cca7f1f8f26c"
+    },
+    "raw_disks": {
+      "192.168.47.146": {
+        "identity": "0x6000c292b1dff02d87d8ecfff129b68f",
+        "machine_id": "270ecc032d084267b6cb8679f57f8648",
+        "original_hostname": "ly",
+        "path": "/dev/disk/by-id/wwn-0x6000c292b1dff02d87d8ecfff129b68f",
+        "size_bytes": 107374182400
+      },
+      "192.168.47.147": {
+        "identity": "0x6000c29477cd8bc575db9909d5e68523",
+        "machine_id": "8662aa2722c5488bad627298b2e7caa5",
+        "original_hostname": "ly-VMware-Virtual-Platform",
+        "path": "/dev/disk/by-id/wwn-0x6000c29477cd8bc575db9909d5e68523",
+        "size_bytes": 107374182400
+      },
+      "192.168.47.148": {
+        "identity": "0x6000c291151ae8bf1378c3493902d84e",
+        "machine_id": "46248a8062e04431866a3baeb6382335",
+        "original_hostname": "ly",
+        "path": "/dev/disk/by-id/wwn-0x6000c291151ae8bf1378c3493902d84e",
+        "size_bytes": 107374182400
+      }
+    }
+  },
+  "remote_stage": {
+    "directory": "/var/tmp/kubeauto-longhorn-v2-observability.uVGhhk",
+    "files": {
+      "cpu-isolation.log": "9c9f96f52888faf9b60879deb3f5202c2a932160ec09bfb43b465619d9944d4c",
+      "cpu-isolation.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "cpu-isolation.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "completed": {
+    "name": "longhorn-v2-cpu-isolation-completed-e28d1c5ac9e61b0a.json",
+    "sha256": "6da5b7d847e32376ae5989257ce789523f2b551a17a2dd2c75197ca4cc61ec54"
+  },
+  "hosts": {
+    "192.168.47.146": {
+      "path": "/var/lib/kubeauto-longhorn-cpu-7c2ef5ab-fd94-4d38-a542-82ceaef61919-completed.json",
+      "sha256": "e27ca851354e784b0686962ab7cb8b09596a957212bd396cf8fec2fce981cf37",
+      "machine_id": "270ecc032d084267b6cb8679f57f8648"
+    },
+    "192.168.47.147": {
+      "path": "/var/lib/kubeauto-longhorn-cpu-e774f463-7aab-4ab8-9b82-c622f9afe367-completed.json",
+      "sha256": "38da0696c25f0b32a347bbac77bb9ca38d9a82ed50ac37cad5cded58dc46f97a",
+      "machine_id": "8662aa2722c5488bad627298b2e7caa5"
+    },
+    "192.168.47.148": {
+      "path": "/var/lib/kubeauto-longhorn-cpu-13a4ae80-7faf-439f-83cf-1fd29249e182-completed.json",
+      "sha256": "acb43a22f2b6438877625f0e3adf607958d295df1ba59c683e0940bc71ce4e73",
+      "machine_id": "46248a8062e04431866a3baeb6382335"
+    }
+  },
+  "archive": {
+    "capture": {
+      "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/capture-initial/capture.json",
+      "sha256": "ce7d35cdc893ad83e517b32d6c043461df6f7f0b59449b73506c082999f34f53"
+    },
+    "host_policies": {
+      "path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring53-cache-overlap-fix-20261022/host-policy-capture.json",
+      "sha256": "74e77c8a15ceb97db5416d44145fd917ea2d0ff7c633494bb7eabeb36ff05fd6"
+    },
+    "remote_read_boundary": "Archive paths are local provenance only; verifier reads only explicit remote_stage, completed and host paths."
+  },
+  "overall_delivery_pass": false
+}

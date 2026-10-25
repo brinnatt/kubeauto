@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-42",
+  "status": "pass",
+  "complete_matrix_item": true,
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-documentation",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_DOCUMENTATION_PASS",
+  "scoped_clean_marker": "LONGHORN_DOCUMENTATION_SCOPED_CLEAN_PASS",
+  "content_review_evidence": "tests/evidence/longhorn-documentation-revision2-content-review-20261021.json",
+  "content_review_sha256": "da364abd8cee808816dd1530b98a7a0401c9a81bd10a9f6c17d225fb4b4cb8d3",
+  "document_sha256": {
+    "docs/storage/longhorn/development-manual.md": "91d43767a55ad19afb2d04215d8a360108e3668660dbf58695572eabaecbae3c",
+    "docs/storage/longhorn/operations-manual.md": "11314bee60773625329e3295556573d94e0cda68bf3c7b3484f854ac8ebccfc6",
+    "docs/storage/longhorn/technical-whitepaper.md": "23be18eeb0537dfa1b4c6515f43b64e953dcdc72aa71c65ef182d2ba973eaf93"
+  },
+  "rendered_diagrams": 8,
+  "durable": {
+    "local_exit": 0,
+    "local_finalized": 0
+  },
+  "changes": "LONGHORN-37 actual same-cluster logical recovery, write isolation and member persistence integrated into two manuals; .2 publication state corrected. All other content/source and reader-path review reused by exact input and diagram hashes.",
+  "files": {
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/launch.log": "8294c5bb05f9fa8c7c4d1b372ba49e9c1a37b74b0c4e07d1d89ab13346e8ea3f",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/launch.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/launch.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/acceptance-preparation.json": "f040b79f5bbab75c2abd70202b7b1eec36c0c2e2991f89da5672d8ef3d5adb8d",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/review.json": "660f8c67651f4213a3ecce230d6e8a8a2771e8e53bfbb8af7cc5e51d3e8f557b",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/previous-content-review.json": "ec8ce0f51c51b5aa93e53d056f0ea7205b556b431a7a279c23e834b00749c942",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/candidate-content-review.json": "da364abd8cee808816dd1530b98a7a0401c9a81bd10a9f6c17d225fb4b4cb8d3",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/prepare_acceptance.py": "76527e6d0364be144980d41eb5f0ce561f0b4a5cd1a83b2732eeae5834222f62",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/apply_at_boundary.py": "cc213bd09f7ccc891fecc16014166a75ed3bd9b9151ecaeaec36e42bc1638cd0",
+    "logs/longhorn-cases/docs-middleware-37-preparation-20261022/accept_at_boundary.py": "d82db15a319ed0c29f60240e01b41ddbfe9a2fc48dd1e439282892479dcd254c",
+    "logs/longhorn-cases/documentation-20261022-180138/status.json": "f6a0c384e3bc55cbaa1f6b5272050a5a226d995504a0ef20388c2dbea9b35468",
+    "logs/longhorn-cases/documentation-20261022-180138/gate.log": "8efe0a75f3c0a393a0228f990b3f2b705bddf64a3b7076c3bb599544ec167169"
+  },
+  "boundary": "Author source/content/reader-path and current machine-bound documentation acceptance only; no independent reader/customer signature, new remote operation or overall GA. Product branches retain their actual matrix state."
+}

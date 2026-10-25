@@ -1,0 +1,85 @@
+{
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "cases": [
+    "LONGHORN-23"
+  ],
+  "ladder_completed": 2,
+  "next_permitted": "Root fixed-runner narrow last-replica on the original empty and healthy V1 six-node baseline, with all dependencies/current artifact identities checked; child performs no remote mutation",
+  "rc": 0,
+  "tests": 43,
+  "tests_new": 23,
+  "failure_markers": 0,
+  "command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-last-replica.sh last-replica",
+  "cleanup_command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-last-replica.sh last-replica-cleanup",
+  "product_entry": "config.yml + kubecli setup via lab.run_requests, product V1 Delete StorageClass, product full-backup request and CSI restore; native replica scaling and UID/RV dry-run deletion are official operational assertions, native process deletion is an owned fault fixture",
+  "success_markers": [
+    "LONGHORN_LAST_REPLICA_DELETE_REFUSED",
+    "LONGHORN_LAST_REPLICA_BACKUP_RESTORE_TESTED",
+    "LONGHORN_LAST_REPLICA_PROCESSES_STOPPED",
+    "LONGHORN_LAST_REPLICA_IO_REFUSED",
+    "LONGHORN_LAST_REPLICA_RECOVERY",
+    "LONGHORN_LAST_REPLICA_SCOPED_CLEAN_PASS",
+    "LONGHORN_LAST_REPLICA_PASS",
+    "LONGHORN_LAST_REPLICA_GATE_PASS"
+  ],
+  "files": {
+    "tests/helpers/longhorn-last-replica.py": "b7a021a7d814ed43a1857060f9e1d868e343e2ee7b46734edce8b5870c3641da",
+    "tests/helpers/longhorn-last-replica.sh": "f80453b4a557b9d36869d92d4efc71d44f0eed62bf7fd2a39d3684634402a956",
+    "tests/unit/test_longhorn_last_replica.py": "2352f8f4d7836525fc8b15dfa58d138c60568eb524f3de3a7ce91aae478b3cfe",
+    "tests/unit/test_longhorn_last_replica_shell.py": "a2c8aa25844d8fe423d529295ef9f7519487a94e7205d25b7a1d5347713fa8ae"
+  },
+  "dependencies": {
+    "tests/helpers/longhorn-lab.py": "3da185169e3b9696b886e61711530d0a268cb1a0f87aa35d1868e88f903e97bc",
+    "tests/helpers/longhorn-backups.py": "a40c3b2b65c17545f295b1f03eaf68e1a71119553dba979df0b250e2eaebe3f9",
+    "tests/helpers/longhorn-v2-all-replicas.py": "72c03dd4ed7ee9dd62047d19394f7b7165e6f312f557718f3c9fa700825ea785",
+    "tests/helpers/longhorn-faults.py": "bf7298d8c0186dfe8fabf51838b8e09290122f3ff8c074dc4bfc4a4dc52ca38c",
+    "tests/helpers/longhorn-control-faults.py": "4c9f9f0c48cf80475465078ea4b6d3327fe0aba07eb649e2549c8bbc51ad37da",
+    "tests/helpers/longhorn-v1-stability.py": "eb77c21ba3d4beae06f9653d8f5163df1a3cc4110503e4d4137f485fbb1336e1",
+    "tests/helpers/longhorn-maintenance.py": "6df03e84d589eee585de8ebe85f935d47610caeb2eb29d92f9359051a8c09b59",
+    "roles/longhorn/files/longhorn.py": "63e43015670777282ff4d8ad23100922886ab5616ff34171dc6e20cedfa07b79",
+    "roles/longhorn/files/images.json": "b6d0fb3ce3084f704ad0429267d41df3b63d97167a524690f6dca52f2fc543d7"
+  },
+  "contracts": "logs/longhorn-cases/last-replica-contract-20261021/contracts.log",
+  "contracts_sha256": "aea61410f8a560d7a880a8d895d9dca9ed1d4fa59bf8abbe2aac686f2e199dd9",
+  "official": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "sources": {
+      "recover-volume.md": "8449b1cae95d444362da5e3ab0884c8e79d6c18435ae58ba20a7e5bbb526b00a",
+      "corrupted-replica.md": "9ff757cb885d6d75acf32db6eca8a6124f615ada2a33ae885d35d733327a7f1a",
+      "settings.md": "53d13c53138edbd4845242fef52a7f4af955c0f4433ce4d622cf265edb86a039",
+      "volume-controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+      "replica-validator.go": "57ae1404794b74660a2c8bf01a0154f34bbdd709fe627354427389d1f890afe1"
+    },
+    "references": [
+      "https://longhorn.io/docs/1.12.1/high-availability/recover-volume/",
+      "https://longhorn.io/docs/1.12.1/references/settings/#automatic-salvage",
+      "https://github.com/longhorn/longhorn-manager/blob/8320238242e8c804325d9588ec1db10feb9f36b8/webhook/resources/replica/validator.go",
+      "https://github.com/longhorn/longhorn-manager/blob/8320238242e8c804325d9588ec1db10feb9f36b8/controller/volume_controller.go"
+    ]
+  },
+  "reuse": [
+    "LONGHORN-24 owns last-replica drain/PDB refusal; LONGHORN-23 does not duplicate it and requires its current evidence for the full matrix scope",
+    "longhorn-v2-all-replicas.py unchanged generic full-backup, restore-tested CSI data boundary, immutable ACK verification, normal preflight retirement; no V2 fixture/scenario/disk fault invoked",
+    "longhorn-faults.py exact Volume/Replica/IM/Pod/path/image/native UUID identity and UUID-precondition process deletion",
+    "longhorn-maintenance.py native numberOfReplicas operational change and independent healthy replica wait",
+    "longhorn-v1-stability.py exclusive source/actual engine and lease owner identity"
+  ],
+  "scope": "V1 native process unavailability only; physical filesystem/disk fault and hypervisor failure are not claimed. Product autoSalvage=false is required before mutation, reasserted through config+kubecli and same Setting UID verified; never directly set policy, clear failedAt or request salvage. Last available native Replica DELETE has dryRun=All and UID/resourceVersion preconditions and must return the pinned webhook refusal, so an upstream guard defect cannot destroy data. Scale back to three. Full backup is restored and ACK/payload verified before any fault. Resolve the entire three-replica native scope twice read-only, journal original node scheduling and every intent before mutation, disable only Longhorn scheduling to stop replacement, then concurrently delete exact processes; drain all futures and retain errors/results on partial failure. Only explicit in-Pod storage errno and no ACK counts as I/O refusal, not exec timeout. Require original three Replica UIDs/healthyAt/failedAt and original engine UID faulted with no salvage. Restore all original scheduling values, require persistent refusal, retire original writer normally, restore the same backup to a new identity and verify old ACK/payload plus fresh fsync ledger after cross-worker remount. Independently re-read full external receipt before verified=true. On failure restore scheduling and retain unverified source, backups and journal. On success CSI Delete removes owned data, then external store; wrapper preserves first failure, restores control kubeconfig, and rejects late cleanup/health/relay failures. No live execution, matrix PASS or GA claim. Ownership repair supersedes initial package: cleanup never adopts same-run material merely because generic graph validation passes; current module token must bind intent, business and private store first write. Partial setup has an owned cleanup path; repeat cleanup is an owner-proven no-op.",
+  "ownership_repair": {
+    "classification": "test-gate",
+    "cause": "Shared generic business/store cleanup was callable without proving this module ownership; the previous static package is superseded",
+    "receipts": [
+      "longhorn-last-replica-intent.json",
+      "longhorn-last-replica-complete.json"
+    ],
+    "contract": "Before Store.prepare: refuse existing shared business/store/control receipts, native volumes, backup resources and Longhorn PVs. Freeze run/cluster/random token intent. Private Store lab proxy tags its FIRST and every subsequent store receipt write. Business journal includes same identity at first write and retains it. Cleanup validates all shared receipt owners and foreign control records before any mutation. Without business journal, only an owned intent plus an owned partial-store receipt allows store cleanup. Retire intent to a complete receipt after shared materials are absent. Repeated clean accepts only current retired receipt and absent shared scope and calls no store/business cleanup. Foreign business, foreign store, unrelated control receipt, orphan directory, missing owner or newly appeared shared state stops without mutation.",
+    "focused_tests": [
+      "foreignbusiness/foreignstore/foreigncontrol with and without intent",
+      "first Store receipt tagging and partial-prepare cleanup",
+      "admission rejects shared files and native data before store creation",
+      "repeat-clean only retired current owner plus absent materials; new foreign store refused"
+    ]
+  }
+}

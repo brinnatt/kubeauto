@@ -1,0 +1,36 @@
+{
+  "affected_acceptance": [
+    "LONGHORN-41",
+    "LONGHORN-43"
+  ],
+  "boundary": "Only V2, exact 32-hex ID, aborted-before-upgrade stage, original 1.12.0 runtime, same run/core/node identities, no migrated/new-version fields, owner-private regular file; unknown and partial archives retain refusal.",
+  "changed_files": {
+    "tests/helpers/longhorn-cleanup.py": "fe547e6421b15b9ee708f218ed5347eaff6ee80f356f21006db362b798dc15ae",
+    "tests/unit/test_longhorn_cleanup.py": "f5bba053ec9659831c94431c9f24d283eb9615b9c09253f36bd9805f669f0f09"
+  },
+  "classification": "test-gate",
+  "contract_receipts": {
+    "exit": {
+      "path": "logs/longhorn-cases/revision3-abort-archive-contract-20261024/contract-fixed.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/revision3-abort-archive-contract-20261024/contract-fixed.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/revision3-abort-archive-contract-20261024/contract-fixed.log",
+      "sha256": "dec784c528ce4164e23416df8001bc55bf3d6d01b8bd0a27fd27e9253e64e7fe"
+    }
+  },
+  "expected_marker": "LONGHORN_CLEANUP_PASS",
+  "next_focused_entry": "bash tests/run_enterprise_regression.sh --longhorn-cleanup",
+  "product_or_image_changed": false,
+  "retained_acceptance": [
+    "LONGHORN-52",
+    "unchanged full-copy scopes and other owning product paths"
+  ],
+  "root_cause": "Generic cleanup did not classify the exact completed upgrade-aborted archive emitted by the original upgrade owner.",
+  "schema": 1,
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_cleanup.Routing.test_only_exact_completed_same_core_upgrade_abort_is_passive -v"
+}

@@ -1,0 +1,24 @@
+{
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "cases": [
+    "LONGHORN-17",
+    "LONGHORN-18"
+  ],
+  "ladder_completed": 2,
+  "next_permitted": "root fixed-runner narrow recovery consumer after full consumer contracts; this helper alone does not sign either matrix item",
+  "rc": 0,
+  "tests": 11,
+  "failure_markers": 0,
+  "files": {
+    "tests/helpers/longhorn-v1-recovery-target.py": "4022a131de34546e45e8331457636024e46c286e8dbd23c9640a252fced8d32b",
+    "tests/unit/test_longhorn_v1_recovery_target.py": "20c00d6a3cc722e18601a153e19755e3768383892802b191ce0daec98c2e478c"
+  },
+  "shared_host_function_sha256": "dd8408b8b9d5b71d916f926f1ff685b208b847d5bb4df20f7b3976dd3549cadc",
+  "contracts": "logs/longhorn-cases/v1-recovery-target-contract-20261021/contracts.log",
+  "contracts_sha256": "ee898ab705131865ede68abefd4b1b828759d94fd6f89be7999a3f64a8bd6618",
+  "interface": "fixture() -> install,lab; Target(lab,install).prepare(pid), ready(), read(), reassert(pid), clean(pid). ready gives managers and v1_disk_uuid; read.v1_disk.uuid is the original added filesystem native disk UUID.",
+  "product_entry": "explicit target config.yml v1+v2, budget acknowledgement, original raw AIO configuration retained, added one-replica longhorn-recovery-v1 class, supervised kubecli setup 09",
+  "scope": "One independently owned 24GiB loop/ext4 fixture on .149 root filesystem, 8GiB free prerequisite, no physical-media performance or target HA. Exact frozen shared host function is reused by inspection, not copied. Original raw machine/path/identity/size owner snapshot, native raw declarations/UUID, core/namespace/credentials/original SC/CRD UIDs retained. Native V1/V2 managers may change during supported system restore; their runtime and raw boundaries are rechecked.",
+  "cleanup": "Require no volumes, replicas or backing-image datasource; UID/RV bound removal of exact owned V1 disk including partial product stage before class creation; restore exact original product bytes/pure-V2 profile; delete only class UID; release exact host guard/receipt before loop unmount/removal; original retained identity/native disk declarations/V2 installation health must all match. No remote mutation was performed."
+}

@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "reviewed-change",
+  "scope": "Missing referenced block diagnosis, refusal, repair and actual recovery observations only. Does not sign off all three Longhorn manuals or LONGHORN-42.",
+  "official_sources_reused": [
+    "tests/evidence/longhorn-v2-broken-restore-source-20261021.json",
+    "tests/evidence/longhorn-v2-broken-restore-event-contract-20261021.json"
+  ],
+  "operational_evidence_reused": "tests/evidence/longhorn-v2-broken-restore-qualification-20261021.json",
+  "content_review": {
+    "reviewer": "primary author; no independent review claimed",
+    "mechanism": "Backup reference map versus target availability; fixed retry sum; native event before engine monitoring reset; error UID/key correlation; exact repair and fresh target.",
+    "boundaries": "One missing block; no arbitrary bit corruption, multiple-object loss, transaction consistency, site HA or production RTO extrapolation.",
+    "observations": "Two actual independent CSI restore points, write isolation, 17039360-byte cross-node source readback, verified scoped cleanup and original baselines."
+  },
+  "reader_paths": {
+    "novice": "Document-only check: reestablish deployment/KUBECONFIG from common context, follow backup/new-volume task, stop before application activation on error; source and trusted backup retained.",
+    "experienced": "Document-only check: missing-block heading distinguishes target access from object completeness, correlates original native identities and directs to diagnostic/new-volume recovery tasks.",
+    "lab_executed_for_document_review": false
+  },
+  "static_checks": {
+    "focused_tests": 37,
+    "rc": 0,
+    "mermaid_changes": false
+  },
+  "content_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "3b7fdfcb1c79f192bc859352904d3eedbcb90f5ac55f890574b26d3a4292846a",
+    "docs/storage/longhorn/technical-whitepaper.md": "0ab91d8a809c49d73f842f9d96739b73154004a35ce9cad246a1f7123f20e80b"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/broken-restore-document-review-20261021/focused-contract.log": "84a07a9edaef762a8fa53860020e8a289dc1e354fad0cdc022695cb834d09460"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "status": "pass",
+  "classification": "test-gate assertion parameterization",
+  "scope": "V1/V2 SystemBackup bundle and SystemRestore provenance validator reuse; no product or remote mutation",
+  "ladder_completed": 2,
+  "rc": 0,
+  "tests": 40,
+  "failure_markers": 0,
+  "files": {
+    "tests/helpers/longhorn-v2-systembackup.py": "e72ea455a3229c4a696163861e6ae1fcceba516e228b47292b09384d93dc206f",
+    "tests/helpers/longhorn-v2-systemrestore.py": "9efe79a628f8d02af65f02087f5fbf7bf0237fbc295f21e527ee50c857c9a62a",
+    "tests/unit/test_longhorn_v2_systembackup.py": "62e89eed67688649bfeb94a67ebd621337c5b33a20e655cde3572186b9384da0",
+    "tests/unit/test_longhorn_v2_systemrestore.py": "bf86610dfa044202802d7f5b2bc408b0905a577ea9cd60c3cdd7f4cf9888ea1c"
+  },
+  "previous_frozen_inputs": {
+    "tests/helpers/longhorn-v2-systembackup.py": "8015b808effc180b32faa9e316fd50e7f49fe2db59311a8dc0c2d175e2fe44a2",
+    "tests/helpers/longhorn-v2-systemrestore.py": "694efaf5fd6ee53cdbb6491b8c5728c1245a1cfb93c65561195d5e6b26bebd76"
+  },
+  "defaults": {
+    "data_engine": "v2",
+    "replicas": 3
+  },
+  "new_explicit_scope": {
+    "data_engine": "v1",
+    "replicas": 1
+  },
+  "semantic_proof": "Remove newly added invalid-parameter guards/state plumbing/keyword parameters and specialize new arguments to their defaults: entire production helper module AST equals original SHA-bound accepted helper, not merely selected assertions. Original pre-change bytes match frozen inputs in original qualification JSON.",
+  "reuse": [
+    "tests/evidence/longhorn-v2-systembackup-qualification-20261020.json",
+    "tests/evidence/longhorn-v2-systemrestore-qualification-20261020.json"
+  ],
+  "unchanged_paths": [
+    "V2 default v2/3 replica assertions",
+    "ZIP/config raw SHA256 and archive schema/security checks",
+    "restore new UID/provenance/old UID rejection",
+    "PV/PVC CSI binding/capacity checks",
+    "production SystemBackup/SystemRestore workflow",
+    "cleanup and object ownership checks"
+  ],
+  "affected_new_path": "Only explicit V1 callers need new focused live gate; V2 original raw evidence remains immutable. No inference of V1 live PASS.",
+  "contract_log": "logs/longhorn-cases/system-engine-parameter-contract-20261021/contracts.log",
+  "contract_log_sha256": "6cb65f77d4e6f7fa128f4561c2304a95b0d69476ad633a4d2b46e36ca5c6d594"
+}

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "classification": "test-gate",
+  "scope": "Deterministic native-event identity rejection and actual captured CR/event replay only; active old-input gate still pending exit/cleanup. No new live or module acceptance.",
+  "root_cause": "VolumeController.ReconcileEngineReplicaState emits native Warning FailedRestore against the exact Volume UID, then the stopped engine ResetMonitoringEngineStatus clears restoreStatus. Five-second current-state polling can miss the transient engine map.",
+  "upstream_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "sources": {
+    "controller/volume_controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "controller/engine_controller.go": "e55230285992f56365b385d52f457a6ac9f1a00815c09acf3eb2cbf04e8045a4",
+    "datastore/longhorn.go": "f18a875f352eb0b25785d1d4ebac22901a2179c648d3b5ae36936c329934486b"
+  },
+  "accepted_evidence": "Exact block and native missing-key message in Engine restoreStatus, or controller-owned FailedRestore event for original Volume UID/name/API/namespace and a current native replica owned by that Volume and Engine, with current requested backup identity and restoreRequired checked. Timeout alone is never success.",
+  "negative_event_cases": 15,
+  "focused_tests": 29,
+  "terminal_event_tests": 2,
+  "composition": "Full module now requires all eleven owning branches, with broken restore first and failed or incomplete child markers preventing later stages. Original ten-branch evidence remains partial.",
+  "changed_files": {
+    "tests/helpers/longhorn-v2-broken-restore.py": "be0b6c48abe7101c55cd82c45e09c5988a6f03a4fa51b55198b79943976f6fb2",
+    "tests/unit/test_longhorn_v2_broken_restore.py": "5e4081e07c7baac89b2bce8a1720c734966e387d0df919de62c2ddc916f7cc05",
+    "tests/helpers/longhorn-v2-data-protection.sh": "a960f925642179dcf1d8b867cf6d415e750d89fe47cb32c3d6965e9a21b0a292",
+    "tests/unit/test_longhorn_v2_data_protection.py": "c750e55307941405ba0a70704a4cdd7b749233ae0a860a1232535f2ffcfc98f5"
+  },
+  "product_entry": "config.yml + kubecli backup and independent CSI restore; native CR negative probe",
+  "expected_marker": "LONGHORN_V2_BROKEN_RESTORE_QUALIFICATION_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-broken-restore-qualification",
+  "raw_logs": {
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/broken-restore-events-green.log": "da8607d182222c04c2eb57756b46c21f795203a690753c7fde937b338029d8ec",
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/data-protection-complete-composition-green.log": "8b1abd3781fbe9aef82da66cc0d8645c9df87d931501b45a92d8b7d098faa852",
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/broken-restore-events-red.log": "7187226dfb0b71982fdcc2bb44d23c771e4b39be9e1e83be0e6a0cc0c1d1c71c",
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/broken-restore-native-event-replay.log": "6038cee6575e2f5f501433d6cf7b177b2e41832270f6162b463eff5f9cf03644",
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/replay-broken-restore-native-event.py": "32c97c52bd3e9a1efb53b9c261bd31f53651a0e4333ecdf29dee9a1a7ceeb9b8",
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/data-protection-complete-composition-red.log": "a6990951edf97ca257f9e364a69560f899d63bb602994c814ef516061aba74c0",
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/private-native-state.json": "d2ff1c46dce7e599993ec3b4b57af431d3c95b57dc9b305e297c73a1efb0a7f1",
+    "logs/longhorn-cases/broken-restore-event-contract-20261021/broken-restore-events-terminal-green.log": "6a8c06c461589e7cc1f13ab70f8e84d35e68685eee2f89d797eab94a2fed39b9"
+  }
+}

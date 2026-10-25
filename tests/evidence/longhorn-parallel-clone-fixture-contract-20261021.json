@@ -1,0 +1,33 @@
+{
+  "classification": "test-gate-fixture",
+  "date": "2026-10-21",
+  "first_failure": {
+    "errors": 5,
+    "failures": 4,
+    "static_directory": "logs/longhorn-cases/static-20261021-200337",
+    "tests": 59
+  },
+  "focused_result": {
+    "rc": 0,
+    "tests": 36
+  },
+  "frozen_inputs": {
+    "tests/helpers/longhorn-parallel.py": "8208ec16be12f4c1a125fd8409d9f4879a7f7cc189d2e1fa1725ec6a5d53d618",
+    "tests/helpers/longhorn-parallel.sh": "7efa879350febb4dc6d3d2d6f6c35a24801dc1edb3ec2be6cc4262630aad366f",
+    "tests/helpers/longhorn-v2-linked-acceptance.sh": "6b2124e4ea91a419a7c8ca60de14581d422d8b3b86abda3a0fd53fd9d8c2ab18",
+    "tests/unit/test_longhorn_parallel.py": "e02958d2430f9347bcee42e561ac75519b5555d07d07ea5e39921b44492173de"
+  },
+  "live_mutation": false,
+  "next_command": "bash tests/run_enterprise_regression.sh --longhorn-static-only",
+  "overall_delivery_pass": false,
+  "product_behavior_changed": false,
+  "raw_logs": {
+    "logs/longhorn-cases/parallel-continuation-20261021/current-static/launch.log": "253e18afd2923151fa2cffbec3b5daab8fdb7ab4eaed01b69bea9cc77179e3af",
+    "logs/longhorn-cases/parallel-continuation-20261021/current-static/parallel-fixture-repair.log": "05bc602d605e94e8b15d8428fdddb97babdea9538c5ced2f8b7da0a5330f3e73",
+    "logs/longhorn-cases/static-20261021-200337/gate.log": "54f95bc4d7c7048b6cfe1d2bc95d7ecafc10fd60f4a579d9b73d74c49ab7b8dd",
+    "logs/longhorn-cases/static-20261021-200337/status.json": "2d42db76129c154d6313b16b49bcaf083bae73e9b02f34858dedd782e815119b"
+  },
+  "root_cause": "Parallel fixture lacked read-only snapshot/stage-receipt interfaces already consumed by the pending canonical clone aggregate. Original 36 contracts now include those finite interfaces; business, failure, durable and cleanup assertions remain.",
+  "schema": 1,
+  "status": "focused-contract-pass-no-live"
+}

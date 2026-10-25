@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "partial",
+  "classification": "Author scoped content and two-reader-path review; no independent review or whole-manual sign-off",
+  "scope": "Three existing manuals: actual planned V2 activation and reverse-fenced failback results, same exact version and topology, source and target write/read distinctions and safety boundaries. Existing DR production steps retained; no new command or diagram.",
+  "official_version": "1.12.1",
+  "official_commits": {
+    "website": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager": "8320238242e8c804325d9588ec1db10feb9f36b8"
+  },
+  "source_record": "tests/evidence/longhorn-v2-dr-handoff-source-20261021.json",
+  "reused_reviews": [
+    "tests/evidence/longhorn-full-content-document-review-20261020.json",
+    "tests/evidence/longhorn-v2-dr-standby-document-review-20261021.json"
+  ],
+  "product_evidence": [
+    "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-activation-qualification",
+    "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-failback-qualification"
+  ],
+  "content_checks": [
+    "Actual latest-source read of 12845056 bytes and SHA256 matches incremental point",
+    "Recovery 18087936-byte fsync-confirmed write is later captured in a new full backup, 26 referenced objects individually read and hashed, and actually read from the new main-site volume",
+    "Distinct native identities, original source fencing, reverse fencing and exact static claims are stated with their causal roles",
+    "Final main-site write is explicitly fsync acknowledgement, not an invented post-power-loss or cross-node readback",
+    "Workflow unfenced refusal is distinguished from native Longhorn API capability; planned software isolation is distinguished from infrastructure fencing and complete site loss",
+    "Single-node target and compressible workload limits are stated; no production RPO/RTO, HA, capacity or throughput extrapolation",
+    "Customer procedure keeps application consistency and owner-approved loss window; no test cleanup or private context substituted for production steps"
+  ],
+  "reader_paths": {
+    "novice": "From DR task, establish independent target/store, inspect the approved actually restored point, retain source isolation, activate existing volume and follow static binding/application verification. New practice connects that sequence to observed data without replacing the production prerequisites.",
+    "experienced": "From DR index or mechanism section, inspect exact source/target/native identities and recovery hash; follow return-to-new-volume flow and reverse isolation, use stated unknown-result stop conditions and existing recovery branches. Developer entry identifies protected native fields, current evidence gate and independent context journals."
+  },
+  "static_checks": {
+    "status": "pass",
+    "checks": {
+      "local_links": 184,
+      "yaml_blocks": 20,
+      "bash_blocks": 41
+    },
+    "document_sha256": {
+      "docs/storage/longhorn/operations-manual.md": "ee4c8b807ea4af9dd9b895494e001ee8095087657f2fccf24515cf5c33b33753",
+      "docs/storage/longhorn/technical-whitepaper.md": "c8e943b30cec979ffc8eb45539e71c09baab0fc835069bbe693099067619b4c4",
+      "docs/storage/longhorn/development-manual.md": "5a820f6583821b117833ffeac6c7304024ddfe39ce9c0c9ae410ed258d0ff024"
+    }
+  },
+  "documentation_contracts": {
+    "count": 44,
+    "status": "pass"
+  },
+  "diagram_review": "No diagram changed; prior rendered diagram review reused. Existing state diagram matches observed direction of planned isolation, activation and return.",
+  "boundaries": [
+    "LONGHORN-42 remains pending",
+    "No independent reviewer, customer approval or complete-manual claim",
+    "No extra live run for documentary wording; existing exact product results reused"
+  ],
+  "raw_logs": {
+    "logs/longhorn-cases/v2-dr-handoff-document-review-20261021/operations-manual.md": "ee4c8b807ea4af9dd9b895494e001ee8095087657f2fccf24515cf5c33b33753",
+    "logs/longhorn-cases/v2-dr-handoff-document-review-20261021/v2-dr-handoff-document-contract-20261021.log": "4df5fe5342c4f837fd206cdeca28b39a6669828ce31a008ddbd9fd41ebc13b16",
+    "logs/longhorn-cases/v2-dr-handoff-document-review-20261021/technical-whitepaper.md": "c8e943b30cec979ffc8eb45539e71c09baab0fc835069bbe693099067619b4c4",
+    "logs/longhorn-cases/v2-dr-handoff-document-review-20261021/development-manual.md": "5a820f6583821b117833ffeac6c7304024ddfe39ce9c0c9ae410ed258d0ff024",
+    "logs/longhorn-cases/v2-dr-handoff-document-review-20261021/v2-dr-handoff-document-static-20261021.json": "91db33492c182f8f6f8a37e1a8a99f31f20513bd5cd2982a6eef2d1f2d1cac0a"
+  }
+}

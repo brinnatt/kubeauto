@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "case": "LONGHORN-52",
+  "rc": 0,
+  "tests": 12,
+  "product_entry": "config.yml + supervised kubecli setup longhorn-v2-gate 09",
+  "modes": [
+    "configure-old",
+    "business",
+    "clean"
+  ],
+  "expected_marker": "LONGHORN_V2_UPGRADE_PASS",
+  "cleanup_marker": "LONGHORN_V2_UPGRADE_SCOPED_CLEAN_PASS",
+  "inputs": {
+    "tests/helpers/longhorn-upgrade-lifecycle.py": "df31f130982b22dacfb64df2b617a02f137577a649c33e1516c95faee51d108a",
+    "tests/unit/test_longhorn_upgrade_lifecycle.py": "fb53a8efc879f70188b402f0b55ed743786e49729000211db5f908df5151df0c"
+  },
+  "official_sources": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "old_manager_commit": "fcba150e04d609c944b53cb92f7cd8adf32d7585",
+    "new_manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "versions": [
+      "1.12.0",
+      "1.12.1"
+    ]
+  },
+  "scope": [
+    "Actual old Manager image IDs and pinned Chart CRD schemas",
+    "Source-version checksum and UID-bound SystemBackup, full plain/encrypted volume backups",
+    "Independent one-replica target pre/post restore; separate encryption key/class without replacing DR credentials",
+    "Unready/missing SystemBackup, attached V2, real old linked clone and completed-version downgrade rejection",
+    "All source V2 instances stopped before supervised Manager upgrade",
+    "Retained volume/PVC/PV/CRD/key/disk identities and unchanged old LUKS usable size",
+    "Fresh post-upgrade data, backup and target restore; native bounded cleanup",
+    "Shared official V1 UI/API EngineUpgrade adapter; this does not sign LONGHORN-35/36"
+  ],
+  "boundary": "Local contracts only; no SSH, live dispatch, old-source installation or matrix PASS. Requires the source pool to finish current scenarios and be normally retired before configure-old. Target .149 stays 1.12.1; no target HA claim. Incomplete/unknown rollout preserves source and backup diagnostics and deliberately cannot emit scoped-clean. Fixed runner must own failure-stage recovery before retry.",
+  "files": {
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/longhorn-49-legacy-boundary.patch": "8574eeaa3e2b441744322f5d8fbba536524046b83831281188641b31c0fb725b",
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/deploy_upgrade_upgrade-engine.md": "72a45251bf752e37b8feaa2ea9a4826f1ac66abd242a92ce8f3fb038e39a08de",
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/longhorn-manager-upgrade.md": "9fbcfc8f176e513fe8dfa65c415b21dd9229f0ce2ee6fcc5bb96fe95f5cdd2b2",
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/manager-v1.12.0-ref.json": "683fb4d2b60aa99cd3415b033e92c908fe425c3b64429b49ae6d624344ba87a5",
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/deploy_upgrade__index.md": "9c049d6f221ea65bfc683f8f7bd44df2c8c3cfe3de5d7a2cc9c1790382dcf28e",
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/system-backup.md": "877a8c9eeef5d73c1240afb044fa8ff3bc0c409bddcb97e2aacd84d69c98a0d2",
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/contracts.log": "dbeed60e8aea439e4ab49f95de85d93654bba0cf169fc0c1093c8448a1b3da66",
+    "logs/longhorn-cases/upgrade-lifecycle-contract-20261021/manager-volume.go": "6e3a816bc0ac3ae077947640be07aa7d5f117360ddfb1e8a1db049115582a12a"
+  }
+}

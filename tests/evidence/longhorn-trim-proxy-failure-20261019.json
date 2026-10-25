@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-29",
+  "date": "2026-10-19",
+  "status": "failed",
+  "class": "test-gate",
+  "rc": 1,
+  "durable_pid": 2392815,
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-trim </dev/null",
+  "first_failure": "Initial trim native action used API Server Service proxy; default Longhorn manager ingress policy does not admit that source. Client header wait expired at 30 seconds. Independent read-only GET via both service proxy forms also timed out; manager-Pod-local GET to its actual Pod IP succeeded. No filler or snapshot operation reached.",
+  "cleanup": "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS and LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS; final installation health succeeded; healthy shared baseline retained.",
+  "repair_scope": "Trim test helper only: identity-bound manager Pod curl to native endpoint; no product or network policy change, no retry.",
+  "smallest_disproof": "python -m unittest tests.unit.test_longhorn_trim -v, then fixed runner --longhorn-trim",
+  "files": {
+    "logs/longhorn-cases/trim-20261019-134537/command-error.txt": "394a012b13571d1c83127004301b897bc3afa0e33b0224cfb7d521bc33621783",
+    "logs/longhorn-cases/trim-20261019-134537/durable-status.txt": "c85f9bded26930941a2c5bb91a7b9cf33620527d0a4f99bc65ad8246ded8b22b",
+    "logs/longhorn-cases/trim-20261019-134537/failure.txt": "6dd6938fd6a8d214ec5ebe869fb37d048616d826e3a9f776527dcceed2ac5e49",
+    "logs/longhorn-cases/trim-20261019-134537/frozen-source.txt": "e7eac9e7dbe3970ef1b817e79bc469f246e57f3915c1336e4e49f499d00b22f4",
+    "logs/longhorn-cases/trim-20261019-134537/gate.log": "c8995e4ca1cf9431356ebf021f18fb279017d733555165483196fe56518b7ac1",
+    "logs/longhorn-cases/trim-20261019-134537/trim-api-document-contract.log": "7dde548b461bdf45c3e21fdc3f1ab4629012df8bdb10c3d3bb28dace0121ef79",
+    "logs/longhorn-cases/trim-20261019-134537/trim-first-manager-full.log": "43ed25436b2a474df406e676b42a7c19a67470e47ddca7e2ee445f28cdb26525",
+    "logs/longhorn-cases/trim-20261019-134537/trim-local-api.json": "17218f678413b8015ec1b328d0c316a536eb1b0433e4085d3e9d7caf740c7c1d",
+    "logs/longhorn-cases/trim-20261019-134537/trim-manager-pods.json": "9cac7df4bb676440ec0a2da8fff689c84f96662818160e969ab26518c6ce6ea0",
+    "logs/longhorn-cases/trim-20261019-134537/trim-networkpolicies.json": "ddfe6ed9b89e47ab3a50bfadcb71021aa4027e8482e659f07ae9390586fe598d",
+    "logs/longhorn-cases/trim-20261019-134537/trim-proxy-contract-green.log": "2ff0e8ef307558f4fae5b120b448b71d6d711015a5ecbfc9b11762ddbb8043e4",
+    "logs/longhorn-cases/trim-20261019-134537/trim-proxy-contract-red.log": "7947274a1ffe15e819414c69cf0be3e31421e602b36bc09a0599ef5aacc978fd"
+  },
+  "official_reference": "https://github.com/longhorn/longhorn/blob/f349c091c50700cb6cb8a4df8aaa29ea214bdd48/chart/templates/network-policies/manager-network-policy.yaml",
+  "repair_contracts": {
+    "red": "2 selected tests: 9 failing subcases before repair",
+    "green": "9 focused tests passed after repair",
+    "current_static": "274 shared and focused contracts plus 12 navigation contracts passed; actual live source separately frozen",
+    "product_changes": false,
+    "network_policy_changes": false
+  }
+}

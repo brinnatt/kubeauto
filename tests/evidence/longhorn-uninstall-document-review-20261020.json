@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "scoped-author-review-pass",
+  "case": "LONGHORN-42 affected sections only",
+  "version": "Longhorn1.12.1",
+  "official_source_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_source_sha256": {
+    "controller/uninstall_controller.go": "bf325efc7cd4354351da29a8ee9b86dbe87a11cdd49e2a9075ec0d3f3dd57fd6",
+    "controller/utils.go": "5ccfd255b6ee75dff9094e602eb9fa8758a2598be092f03e8fdcf9de63f4c14c",
+    "app/daemon.go": "84f182fe654d34de48ba2ac96ffec97431f01c5ed34cadbbbe86d4b1291ef6a7",
+    "webhook/cert/rotate.go": "8909534028e16c431a21217790bf178d8cbffac3f3d6981eb32c380657c04b9a"
+  },
+  "checks": {
+    "status": "pass",
+    "checks": {
+      "local_links": 130,
+      "yaml_blocks": 20,
+      "bash_blocks": 34
+    },
+    "document_sha256": {
+      "docs/storage/longhorn/operations-manual.md": "8192bd394bc00b7d28e36b374221e57cd92c9b307fd8602363f75d954578c688",
+      "docs/storage/longhorn/technical-whitepaper.md": "e55129ad21688594b0fb6879d370b7b52bb81a33f28effd878d544000f86c89c",
+      "docs/storage/longhorn/development-manual.md": "5c3b3ece01e64b0b17eea71e257b38e3532bf33014c016f9ccd6c0c5ced32b92"
+    },
+    "additional_checks": {
+      "heredocs": 3,
+      "inline_c": 5,
+      "unchanged_rendered_diagrams": 7
+    },
+    "boundary": "Static document checks; diagrams reuse existing rendering and visual review by source identity. No new field test or independent content review."
+  },
+  "review_items": [
+    {
+      "requirement": "Default backup target update versus stopping/disconnecting protection",
+      "section": "docs/storage/longhorn/operations-manual.md#配置独立备份目标",
+      "finding": "Nonempty URL triggers product update. Empty config does not clear live URL or stop schedules. Online Backup/BackupVolume deletion can propagate to remote objects. Existing secret/target rejection and retained-backup qualification results are reused.",
+      "result": "pass"
+    },
+    {
+      "requirement": "Bound/Released Retain safety and independent recovery",
+      "section": "docs/storage/longhorn/technical-whitepaper.md#升级和退出成本",
+      "finding": "Four actual product refusals and9437184-byte rebind digest are stated with V1/topology conditions and no empty-uninstall claim. Official target clearing is explained separately from independently reading all referenced objects and restoring application data.",
+      "result": "pass"
+    },
+    {
+      "requirement": "Native residual namespace metadata and customer ownership",
+      "section": "docs/storage/longhorn/operations-manual.md#下线与保留",
+      "finding": "Two fixed native Lease factories explained against exact deleteLease omissions. Product leaves namespace/customer secrets. Explicit resource/UID/consumer review required before any separately approved namespace removal; no wildcard Lease deletion recipe.",
+      "result": "pass"
+    },
+    {
+      "requirement": "Novice end-to-end path",
+      "section": "operations-manual.md#下线与保留",
+      "finding": "Shared management context, actual deployment config backup, approved uninstall intent,product09,1800-second window, release/CRD/PV checks, role-specific guard release and no-wipe boundary are continuous. V1 filesystem and V2 raw receipt paths are distinguished. Recovery retains evidence and avoids finalizer removal.",
+      "result": "pass"
+    },
+    {
+      "requirement": "Experienced operator lookup and interpretation",
+      "section": "technical-whitepaper.md#升级和退出成本;development-manual.md#操作请求与幂等;operations-manual.md#下线与保留",
+      "finding": "Mechanisms and exact version sources distinguish deletion confirmation, PV consumers, namespace metadata, local CR cleanup, backup backend retention and host state. Source qualification and project results remain distinct; V2 live and full-delivery gaps remain explicit.",
+      "result": "pass"
+    },
+    {
+      "requirement": "Current installation and complete retirement results, without overstatement",
+      "section": "docs/storage/longhorn/technical-whitepaper.md#依据与验证范围;docs/storage/longhorn/technical-whitepaper.md#升级和退出成本",
+      "finding": "Corrected stale installation pending statement using current LONGHORN-06 evidence. The full LONGHORN-40 result explains the separate 2 GiB logical capacity, one backup configuration,15 referenced blocks and volume.cfg, four actual readback phases, independent restore/source write boundary and shared snapshot9 identities. Explicit fixture target disconnect does not prove every connected-target native safeguard. V2 and final-delivery gaps remain stated.",
+      "result": "pass"
+    }
+  ],
+  "operation_evidence_reused": [
+    "tests/evidence/longhorn-uninstall-refusal-qualification-20261020.json",
+    "tests/evidence/longhorn-uninstall-backup-qualification-20261020.json",
+    "tests/evidence/longhorn-uninstall-host-recovery-20261020.json",
+    "tests/evidence/longhorn-install-20261020.json",
+    "tests/evidence/longhorn-uninstall-20261020.json"
+  ],
+  "boundary": "Author review of affected installation-result/backup-target/retirement/native-Lease explanations and two reader paths only. No independent reviewer/customer signoff, no new customer action from documentation, no whole-manual LONGHORN-42 PASS, no final clean full regression.7 existing diagrams retained by exact rendered source identity."
+}

@@ -1,0 +1,624 @@
+#!/usr/bin/env python3
+"""V2 AIO installation prerequisite; reuse owned credentials and business I/O.
+
+This narrow gate does not sign off dual-engine or complete platform qualification.
+"""
+import argparse
+from functools import partial
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+import yaml
+
+BASE = Path('/usr/local/kubeauto')
+
+
+def load(name):
+    spec = importlib.util.spec_from_file_location(name.replace('-', '_'), BASE/'tests/helpers'/name)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def fixture():
+    core = load('longhorn-v2-core.py')
+    _, lab = core.fixture()
+    # Existing business helpers deliberately receive their owning module.
+    sys.modules[lab.__name__] = lab
+    def product_step(pid, step, *, expected_refusal=None):
+        supervise(lab, pid, step, expected_refusal=expected_refusal)
+    lab.supervise_core = product_step
+    def restore():
+        restore_hosts(lab)
+    lab.restore_hosts = restore
+    original = lab.healthy_replicas
+    def v2_replicas(volume):
+        return healthy_replicas(lab, original, volume)
+    lab.healthy_replicas = v2_replicas
+    return core, lab
+
+
+def supervise(lab, relay_pid, step, *, expected_refusal=None):
+    lab.owner()
+    identity = lab.process_identity(relay_pid)
+    expected = [str(Path(__file__).resolve()).encode(), b'relay-maintain']
+    if not identity or identity[0][-2:] != expected:
+        raise ValueError('V2 installation requires its exact live Registry supervisor')
+    commands = {'longhorn-download': ['download', '-E', 'longhorn'],
+                'longhorn-setup': ['setup', lab.CLUSTER, '09'],
+                'longhorn-destroy': ['destroy', lab.CLUSTER]}
+    argv = [sys.executable, str(BASE/'kubecli.py'), *commands[step]]
+    with tempfile.TemporaryFile(mode='w+') as observation:
+        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, start_new_session=True,
+            stdout=observation if expected_refusal else None,
+            stderr=subprocess.STDOUT if expected_refusal else None)
+        started = heartbeat = time.monotonic()
+        with lab.scoped_cleanup(lambda: lab.stop_product(process, argv)):
+            while process.poll() is None:
+                if lab.process_identity(relay_pid) != identity:
+                    raise ValueError('V2 installation relay exited; stopping dependent product step')
+                now = time.monotonic()
+                if now-started >= 7200:
+                    raise TimeoutError('V2 product step exceeded two hours')
+                if now-heartbeat >= 15:
+                    print('LONGHORN_V2_PRODUCT_HEARTBEAT step=' + step + ' elapsed=' + str(int(now-started)), flush=True)
+                    heartbeat = now
+                time.sleep(1)
+            if expected_refusal:
+                observation.seek(0)
+                output = observation.read()
+                if not process.returncode or ('LONGHORN_PRODUCT_FAIL reason=' + expected_refusal) not in output:
+                    path = lab.DIRECTORY/('v2-unexpected-refusal-' + uuid.uuid4().hex + '.json')
+                    lab.write_private(path, {'rc': process.returncode, 'output': output})
+                    raise ValueError('V2 product did not return the exact expected refusal')
+                print('LONGHORN_V2_EXPECTED_PRODUCT_REFUSAL_VERIFIED', flush=True)
+            elif process.returncode:
+                raise ValueError('V2 product step failed: ' + step + ' rc=' + str(process.returncode))
+
+
+def host_files(lab):
+    return dict(lab.host_files(), **{
+        '/etc/modules-load.d/kubeauto-longhorn-v2.conf': b'vfio_pci\nuio_pci_generic\nnvme_tcp\n'})
+
+
+def multipath_script():
+    return '''import hashlib,json,subprocess,sys
+from pathlib import Path
+request=json.load(sys.stdin)
+def run(argv):
+ return subprocess.run(argv,text=True,capture_output=True,check=True,timeout=30).stdout
+def snapshot():
+ units={}
+ for name in ('multipathd.service','multipathd.socket'):
+  row=dict(line.split('=',1) for line in run(['systemctl','show',name,'--property=LoadState,ActiveState,UnitFileState']).splitlines() if '=' in line)
+  assert row['LoadState'] in ('loaded','not-found') and row['ActiveState'] in ('active','inactive'), 'unstable multipath unit'
+  assert row.get('UnitFileState','') in ('','enabled','disabled','static','indirect'), 'unsupported multipath enable state'
+  units[name]=row
+ if units['multipathd.service']['ActiveState']=='active':
+  maps=json.loads(run(['multipathd','show','maps','json']))
+  assert maps.get('maps')==[], 'multipath maps have consumers'
+ dm={p.parent.name:(p/'uuid').read_text().strip() for p in Path('/sys/block').glob('dm-*/dm')}
+ assert not any(value.startswith('mpath-') for value in dm.values()), 'multipath device remains'
+ configs={}
+ for path in [Path('/etc/multipath.conf'),*sorted(Path('/etc/multipath/conf.d').glob('*'))]:
+  assert not path.is_symlink(), 'symlink multipath configuration'
+  if path.exists():
+   assert path.is_file(), 'unexpected multipath configuration object'
+   configs[str(path)]=hashlib.sha256(path.read_bytes()).hexdigest()
+ return {'machine_id':Path('/etc/machine-id').read_text().strip(),
+  'boot_id':Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+  'units':units,'dm':dm,'configs':configs}
+before=snapshot()
+action=request['action']
+if action!='probe':
+ assert before==request['expected'], 'multipath fixture state changed'
+ if action=='stop':
+  for name in ('multipathd.socket','multipathd.service'):
+   if before['units'][name]['ActiveState']=='active':run(['systemctl','stop',name])
+ elif action=='restore':
+  original=request['original']
+  assert all(before[key]==original[key] for key in ('machine_id','boot_id','dm','configs')), 'multipath original identity changed'
+  for name in ('multipathd.socket','multipathd.service'):
+   assert before['units'][name]['UnitFileState']==original['units'][name]['UnitFileState'], 'multipath enable state changed'
+   if original['units'][name]['ActiveState']=='active':run(['systemctl','start',name])
+ elif action!='check':raise ValueError('unknown multipath fixture action')
+after=snapshot()
+if action=='stop':
+ expected=json.loads(json.dumps(before))
+ for unit in expected['units'].values():unit['ActiveState']='inactive'
+ assert after==expected, 'multipath stop changed unrelated host state'
+if action=='restore':assert after==request['original'], 'multipath original state not restored'
+print(json.dumps(after,sort_keys=True))
+'''
+
+
+def multipath(lab, node, action, **request):
+    return json.loads(lab.remote(node, ['python3', '-c', multipath_script()],
+        stdin=json.dumps(dict(request, action=action)), timeout=120).stdout)
+
+
+def capture_hosts(lab):
+    lab.core_identity()
+    state = lab.owner()
+    if state.get('host_state'):
+        raise ValueError('V2 host state is already journaled')
+    expected = {name: hashlib.sha256(data).hexdigest() for name, data in host_files(lab).items()}
+    hosts = {}
+    for node in lab.NODES:
+        hosts[node] = json.loads(lab.remote(node, ['python3', '-c', lab.host_state_script()],
+            stdin=json.dumps({'action': 'capture', 'expected': expected})).stdout)
+        original = multipath(lab, node, 'probe')
+        if original['machine_id'] != state['raw_disks'][node]['machine_id']:
+            raise ValueError('V2 multipath host identity changed')
+        hosts[node]['multipath'] = {'original': original, 'current': original, 'phase': 'planned'}
+    state['host_state'] = {'expected': expected, 'nodes': hosts}
+    lab.write_private(lab.STATE, state)
+    print('LONGHORN_V2_HOST_STATE_JOURNALED nodes=3 packages=retained modules=retained', flush=True)
+
+
+def quiesce_multipath(lab):
+    lab.core_identity()
+    state = lab.owner()
+    rows = state['host_state']['nodes']
+    if set(rows) != set(lab.NODES) or lab.get('namespace', 'longhorn-system'):
+        raise ValueError('V2 multipath preparation requires its pre-install host journal')
+    for node, row in rows.items():
+        entry = row['multipath']
+        if entry['phase'] != 'planned':
+            raise ValueError('V2 multipath preparation cannot adopt a previous attempt')
+        multipath(lab, node, 'check', expected=entry['current'])
+    for node, row in rows.items():
+        entry = row['multipath']
+        entry['phase'] = 'stop-intent'
+        lab.write_private(lab.STATE, state)
+        entry['current'] = multipath(lab, node, 'stop', expected=entry['current'])
+        entry['phase'] = 'stopped'
+        lab.write_private(lab.STATE, state)
+    print('LONGHORN_V2_MULTIPATH_QUIESCED nodes=3 maps=0 enable_state=unchanged', flush=True)
+
+
+def restore_hosts(lab):
+    lab.core_identity()
+    state = lab.owner()
+    journal = state.get('host_state')
+    if not journal or set(journal['nodes']) != set(lab.NODES):
+        raise ValueError('V2 host restoration requires all original host records')
+    lab.execute([sys.executable, BASE/'roles/longhorn/files/longhorn.py', 'guard',
+                 '--kubeconfig', lab.DIRECTORY/'kubectl.kubeconfig'])
+    installed = {name: hashlib.sha256(data).hexdigest() for name, data in host_files(lab).items()}
+    for node, before in journal['nodes'].items():
+        entry = before['multipath']
+        if entry['phase'] not in ('planned', 'stopped', 'restored'):
+            raise ValueError('ambiguous V2 multipath write; retain host journal')
+        multipath(lab, node, 'check', expected=entry['current'])
+    for action in ('check', 'restore'):
+        for node, before in journal['nodes'].items():
+            lab.remote(node, ['python3', '-c', lab.host_state_script()], stdin=json.dumps({
+                'action': action, 'expected': journal['expected'], 'installed': installed, 'before': before}))
+    for node, before in journal['nodes'].items():
+        entry = before['multipath']
+        entry['phase'] = 'restore-intent'
+        lab.write_private(lab.STATE, state)
+        entry['current'] = multipath(lab, node, 'restore', expected=entry['current'], original=entry['original'])
+        entry['phase'] = 'restored'
+        lab.write_private(lab.STATE, state)
+    state['host_state'] = None
+    lab.write_private(lab.STATE, state)
+    print('LONGHORN_V2_HOST_STATE_RESTORED nodes=3 packages=retained modules=retained', flush=True)
+
+
+def recover_host_qualification(lab):
+    """Recover only the exact journal left by the socket-order qualification."""
+    lab.core_identity()
+    evidence = json.loads((BASE/'tests/evidence/longhorn-v2-host-multipath-first-failure-20261020.json').read_text())
+    original = evidence['recovery_journal']
+    journal = lab.owner().get('host_state')
+    digest = hashlib.sha256((json.dumps(original, sort_keys=True) + '\n').encode()).hexdigest()
+    if (evidence['status'] != 'failed' or evidence['classification'] != 'test-gate' or
+            digest != evidence['recovery_journal_sha256'] or journal != original):
+        raise ValueError('V2 host recovery requires the exact first-failure journal')
+    if set(journal['nodes']) != set(lab.NODES) or lab.get('namespace', 'longhorn-system'):
+        raise ValueError('V2 host recovery refuses installed or foreign storage')
+    lab.execute([sys.executable, BASE/'roles/longhorn/files/longhorn.py', 'guard',
+                 '--kubeconfig', lab.DIRECTORY/'kubectl.kubeconfig'])
+    actual = {}
+    for node, row in journal['nodes'].items():
+        entry = row['multipath']
+        expected = json.loads(json.dumps(entry['current']))
+        if node == '192.168.47.146':
+            if entry['phase'] != 'restore-intent':
+                raise ValueError('unexpected partially restored host phase')
+            expected['units']['multipathd.service']['ActiveState'] = 'active'
+        elif entry['phase'] != 'stopped':
+            raise ValueError('unexpected remaining host phase')
+        actual[node] = multipath(lab, node, 'check', expected=expected)
+    installed = {name: hashlib.sha256(data).hexdigest() for name, data in host_files(lab).items()}
+    for node, row in journal['nodes'].items():
+        lab.remote(node, ['python3', '-c', lab.host_state_script()], stdin=json.dumps({
+            'action': 'check', 'expected': journal['expected'], 'installed': installed, 'before': row}))
+    state = lab.owner()
+    lab.write_private(lab.DIRECTORY/('v2-host-recovery-original-' + digest + '.json'), original)
+    entry = state['host_state']['nodes']['192.168.47.146']['multipath']
+    entry['phase'] = 'recovery-stop-intent'
+    lab.write_private(lab.STATE, state)
+    entry['current'] = multipath(lab, '192.168.47.146', 'stop', expected=actual['192.168.47.146'])
+    entry['phase'] = 'stopped'
+    lab.write_private(lab.STATE, state)
+    restore_hosts(lab)
+    print('LONGHORN_V2_HOST_FIRST_FAILURE_RECOVERED original_journal_sha256=' + digest, flush=True)
+
+
+def configure(lab):
+    lab.verify_core_smoke()
+    load('longhorn-v2-resources.py').verify(lab)
+    state = lab.owner()
+    if state.get('namespace_uid') or lab.get('namespace', 'longhorn-system'):
+        raise ValueError('V2 initial installation requires no previous namespace')
+    path = lab.DIRECTORY/'config.yml'
+    if path.is_symlink():
+        raise ValueError('symlink V2 installation configuration')
+    config = yaml.safe_load(path.read_text())
+    if config['longhorn_version'] != '1.12.1' or config['longhorn_install'] != 'no':
+        raise ValueError('V2 qualification requires the pinned disabled starting configuration')
+    disks = {}
+    for node in lab.NODES:
+        row = state['raw_disks'][node]
+        disks[node] = [{'name': 'kubeauto-block', 'path': row['path'], 'identity': row['identity'],
+                        'disk_driver': 'aio', 'storage_reserved': 1024**3}]
+    config.update(longhorn_data_engines=['v2'], longhorn_allow_engine_coexistence=False,
+        longhorn_storage_nodes=[], longhorn_v2_nodes=list(lab.NODES), longhorn_block_disks=disks,
+        longhorn_v2_cpu_mask='0x1', longhorn_v2_cpu_cores=0, longhorn_v2_cpu_reservation_percentage=25,
+        longhorn_v2_memory_mib=2048, longhorn_v2_hugepages=True)
+    for storage_class in config['longhorn_storage_classes']:
+        storage_class['data_engine'] = 'v2'
+    # Credentials are created by the established owned fixture, never literals.
+    path.write_text(yaml.safe_dump(config, sort_keys=False))
+    lab.prepare_credentials()
+    print('LONGHORN_V2_AIO_CONFIGURED engines=v2 raw_disks=3 classes=v2', flush=True)
+
+
+def healthy_replicas(lab, original, volume_name):
+    result = original(volume_name)
+    if result is None:
+        return None
+    volume = lab.get('volumes.longhorn.io', volume_name, 'longhorn-system')
+    if volume.get('spec', {}).get('dataEngine') != 'v2':
+        raise ValueError('V2 business volume silently selected another data engine')
+    disks = {}
+    for node in lab.NODES:
+        name = 'longhorn-node-' + node.rsplit('.', 1)[1]
+        current = lab.get('nodes.longhorn.io', name, 'longhorn-system')
+        disk = current.get('spec', {}).get('disks', {}).get('kubeauto-block', {})
+        status = current.get('status', {}).get('diskStatus', {}).get('kubeauto-block', {})
+        expected = lab.owner()['raw_disks'][node]
+        if (disk.get('diskType') != 'block' or disk.get('diskDriver') != 'aio' or
+                disk.get('path') != expected['path'] or not status.get('diskUUID')):
+            raise ValueError('V2 business disk differs from the pinned raw device')
+        disks[name] = status['diskUUID']
+    replicas = [r for r in lab.get('replicas.longhorn.io', namespace='longhorn-system')['items']
+                if r['spec']['volumeName'] == volume_name]
+    for replica in replicas:
+        spec = replica['spec']
+        if spec.get('dataEngine') != 'v2' or spec.get('diskID') != disks.get(spec['nodeID']):
+            raise ValueError('V2 replica is not stored on its node-qualified raw disk')
+    return result
+
+
+def health(lab):
+    lab.installation_health()
+    for setting, expected in (('v1-data-engine', 'false'), ('v2-data-engine', 'true')):
+        if lab.get('settings.longhorn.io', setting, 'longhorn-system').get('value') != expected:
+            raise ValueError('V2-only engine selection did not converge')
+    managers = lab.get('instancemanagers.longhorn.io', namespace='longhorn-system')['items']
+    if len(managers) != 3 or any(im['spec'].get('dataEngine') != 'v2' for im in managers):
+        raise ValueError('V2-only instance-manager topology differs')
+    print('LONGHORN_V2_AIO_INSTALLATION_HEALTHY nodes=3 instance_managers=3 v1_disabled=true', flush=True)
+
+
+def qualification_input_current(evidence, name, diagnostics=None):
+    """Accept an exact pin, or an explicitly reviewed dependency compatibility proof."""
+    original = evidence['frozen_inputs'].get(name)
+    current = hashlib.sha256((BASE/name).read_bytes()).hexdigest()
+    if current == original:
+        return True
+    compatible = evidence.get('compatible_inputs', {}).get(name, {})
+    if compatible.get('original_sha256') != original or compatible.get('sha256') != current:
+        return adopted_input_current(evidence, name, current, diagnostics)
+    path = BASE/compatible['evidence']
+    return (path.is_file() and not path.is_symlink() and
+            hashlib.sha256(path.read_bytes()).hexdigest() == compatible['evidence_sha256'])
+
+
+def adopted_input_current(evidence, name, current, diagnostics=None):
+    """Consume a completed IM adoption without rewriting historical evidence."""
+    if revision_adopted_input_current(evidence, name, current, diagnostics):
+        return True
+    if name not in ('roles/longhorn/files/longhorn.py', 'tests/helpers/longhorn-lab.py'):
+        return False
+    if not evidence.get('frozen_inputs', {}).get(name):
+        return False
+    for profile in ('v2', 'v2-dr-target'):
+        path = BASE/'tests/evidence'/('longhorn-'+profile+'-im-adopt-qualification-20261021.json')
+        if path.is_symlink() or not path.is_file():
+            continue
+        accepted = json.loads(path.read_text())
+        proof = accepted.get('input_compatibility', {}).get(name, {})
+        original = evidence['frozen_inputs'].get(name)
+        if proof.get('original_sha256') != original:
+            prior = evidence.get('compatible_inputs', {}).get(name, {})
+            prior_path = BASE/prior.get('evidence', '')
+            if (prior.get('original_sha256') != original or
+                    prior.get('sha256') != proof.get('original_sha256') or
+                    prior_path.is_symlink() or not prior_path.is_file() or
+                    hashlib.sha256(prior_path.read_bytes()).hexdigest() != prior.get('evidence_sha256')):
+                continue
+        readback = accepted.get('independent_readback', {})
+        identity = accepted.get('baseline_identity', {})
+        if (accepted.get('status') != 'pass' or accepted.get('rc') != 0 or
+                accepted.get('failure_markers') != 0 or
+                accepted.get('signed_scope') != profile+'-im-adopt-qualification' or
+                accepted.get('version') != '1.12.1' or
+                accepted.get('instance_manager_version') != 'v1.12.1-kubeauto.1' or
+                accepted.get('remote_input_verification', {}).get('mismatches') != 0 or
+                not all(readback.get(key) is True for key in
+                        ('installation_healthy', 'empty_business', 'adoption_journal_absent')) or
+                readback.get('baseline', {}).get('baseline_identity') != identity or
+                not evidence.get('baseline_identity') or
+                any(identity.get(key) != value for key, value in evidence['baseline_identity'].items()) or
+                accepted.get('frozen_inputs', {}).get(name) != current or
+                proof.get('sha256') != current):
+            continue
+        return True
+    return False
+
+
+def revision_adopted_input_current(evidence, name, current, diagnostics=None):
+    """Bind old qualification -> accepted .1 -> reviewed .2 -> actual input.
+
+    This consumes independently completed .2 evidence. The original .1 guard
+    remains unchanged and cannot accept a .2 tag or an unreviewed input.
+    """
+    original = evidence.get('frozen_inputs', {}).get(name)
+    if not original or not evidence.get('baseline_identity'):
+        return False
+    for profile in ('v2', 'v2-dr-target'):
+        path = BASE/'tests/evidence'/('longhorn-'+profile+'-im-revision-2-adopt-qualification-20261021.json')
+        if path.is_symlink() or not path.is_file():
+            continue
+        try:
+            accepted = json.loads(path.read_text())
+            readback = accepted.get('independent_readback', {})
+            identity = accepted.get('baseline_identity', {})
+            if (accepted.get('status') != 'pass' or accepted.get('rc') != 0 or
+                    accepted.get('failure_markers') != 0 or accepted.get('durable') != {'exit': 0, 'finalized': 0} or
+                    accepted.get('signed_scope') != profile+'-im-revision-2-adopt-qualification' or
+                    accepted.get('version') != '1.12.1' or
+                    accepted.get('instance_manager_version') != 'v1.12.1-kubeauto.2' or
+                    accepted.get('remote_input_verification', {}).get('mismatches') != 0 or
+                    not all(readback.get(key) is True for key in
+                            ('installation_healthy', 'empty_business', 'adoption_journal_absent')) or
+                    readback.get('baseline', {}).get('baseline_identity') != identity or
+                    any(identity.get(key) != value for key, value in evidence['baseline_identity'].items())):
+                continue
+            revision = load('longhorn-im-revision-adopt.py')
+            revision.BASE = BASE
+            compatibility = load('longhorn-install-input-compatibility.py')
+            compatibility.BASE = BASE
+            plan, selected, prior, plan_sha = compatibility.read_completed_plan(revision, profile)
+            transition = {'plan': {'path': revision.PLAN, 'sha256': plan_sha},
+                'previous_evidence': selected['previous_evidence'],
+                'publication_evidence': plan['publication_evidence'],
+                'old_tag': revision.OLD_TAG, 'new_tag': revision.NEW_TAG}
+            inputs = {key: row['sha256'] for key, row in selected['inputs'].items()}
+            before = prior['independent_readback']['baseline']
+            managers = readback.get('managers', {})
+            previous_managers = prior['independent_readback']['managers']
+            if (accepted.get('transition') != transition or accepted.get('plan_sha256') != plan_sha or
+                    accepted.get('frozen_inputs') != inputs or
+                    not compatibility.input_current(name, inputs.get(name), current) or
+                    identity != prior['baseline_identity'] or
+                    readback['baseline'].get('native_block_receipt_sha256') != before.get('native_block_receipt_sha256') or
+                    not before.get('native_block_receipt_sha256') or
+                    not managers or any(not row.get('uid') or not row['image'].endswith(':'+revision.NEW_TAG)
+                        for row in managers.values()) or
+                    len({row['uid'] for row in managers.values()}) != len(managers) or
+                    {row['uid'] for row in managers.values()} & {row['uid'] for row in previous_managers.values()} or
+                    {row['node'] for row in managers.values()} != {row['node'] for row in previous_managers.values()} or
+                    len(managers) != len(previous_managers)):
+                continue
+            # An older module may already have a bound compatibility proof into
+            # the .1 adoption's original input. Verify that edge before using
+            # the .1 input_compatibility edge; never infer transitive hashes.
+            old = prior['frozen_inputs'].get(name)
+            if not old or selected['inputs'][name]['old_sha256'] != old:
+                continue
+            if original != old:
+                proof = prior.get('input_compatibility', {}).get(name, {})
+                if proof.get('sha256') != old:
+                    continue
+                if proof.get('original_sha256') != original:
+                    compatible = evidence.get('compatible_inputs', {}).get(name, {})
+                    reference = Path(compatible.get('evidence', ''))
+                    if (reference.is_absolute() or '..' in reference.parts or
+                            compatible.get('original_sha256') != original or
+                            compatible.get('sha256') != proof.get('original_sha256') or
+                            revision.digest(BASE/reference) != compatible.get('evidence_sha256')):
+                        continue
+            # read_plan verifies every current file, exact .1 evidence SHA and
+            # publication SHA, so the single requested input cannot hide drift.
+            return True
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            if diagnostics is not None:
+                diagnostics.append(profile+': '+str(error))
+            continue
+    return False
+
+
+def volume_baseline(lab):
+    transition = BASE/'tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json'
+    if transition.exists() or transition.is_symlink():
+        # A normal 52 uninstall/reinstall creates a new namespace and native
+        # node UIDs. Only its independently accepted, fully bound transition
+        # may supply those new identities; the original guards stay intact.
+        upgrade = load('longhorn-v2-upgrade-baseline.py'); upgrade.BASE = BASE
+        baseline = upgrade.accepted(lab)
+        accepted = json.loads(transition.read_text())
+        evidence = {'status': 'pass', 'rc': 0, 'failure_markers': 0,
+            'frozen_inputs': accepted['frozen_inputs'], 'baseline_identity': baseline['baseline_identity'],
+            'native_block_receipt_sha256': baseline['native_block_receipt_sha256']}
+    else:
+        evidence = json.loads((BASE/'tests/evidence/longhorn-v2-aio-install-qualification-20261020.json').read_text())
+    if evidence['status'] != 'pass' or evidence['rc'] or evidence['failure_markers']:
+        raise ValueError('V2 volume modes require their completed installation qualification')
+    for name in ('roles/longhorn/files/longhorn.py', 'roles/longhorn/files/block-check.py',
+                 'tests/helpers/longhorn-lab.py', 'tests/helpers/longhorn-v2-lab.py', 'tests/helpers/longhorn-v2-core.py'):
+        diagnostics = []
+        if not qualification_input_current(evidence, name, diagnostics):
+            if diagnostics:
+                raise ValueError('V2 installation prerequisite proof rejected for '+name+': '+ '; '.join(diagnostics))
+            raise ValueError('V2 installation prerequisite input changed: '+name)
+    state = lab.owner()
+    if any(state.get(key) != value for key, value in evidence['baseline_identity'].items()):
+        raise ValueError('V2 volume baseline installation identity changed')
+    receipt = lab.DIRECTORY/'yml/longhorn/block-disks.json'
+    if receipt.is_symlink() or hashlib.sha256(receipt.read_bytes()).hexdigest() != evidence['native_block_receipt_sha256']:
+        raise ValueError('V2 native block identity receipt changed')
+    for row in json.loads(receipt.read_text())['nodes'].values():
+        native = lab.get('nodes.longhorn.io', row['name'], 'longhorn-system')
+        if (not native or native['metadata']['uid'] != row['longhorn_node_uid'] or
+                any(native['status'].get('diskStatus', {}).get(name, {}).get('diskUUID') != disk['disk_uuid']
+                    for name, disk in row['disks'].items())):
+            raise ValueError('V2 original native node or block disk identity changed')
+    health(lab)
+    records = ('longhorn-install-business.json', 'longhorn-encryption-key.json',
+               'longhorn-request-input.json', 'longhorn-reclaim-class.json')
+    if (any((lab.DIRECTORY/name).exists() or (lab.DIRECTORY/name).is_symlink() for name in records) or
+            lab.get('volumes.longhorn.io', namespace='longhorn-system')['items'] or
+            any(pv.get('spec', {}).get('csi', {}).get('driver') == 'driver.longhorn.io'
+                for pv in lab.get('pv')['items']) or
+            any(ns['metadata']['name'].startswith('longhorn-business-') for ns in lab.get('namespaces')['items'])):
+        raise ValueError('V2 volume baseline has remaining business fixtures')
+    print('LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0', flush=True)
+
+
+def verify_expansion(lab, original, journal, payload, digest, *, block=False):
+    """Keep CSI expansion assertions and check V2's new encrypted-size contract."""
+    volume = lab.get('volumes.longhorn.io', journal['volume'], 'longhorn-system')
+    if (not volume or volume['metadata']['uid'] != journal['volume_uid'] or
+            volume['spec'].get('dataEngine') != 'v2' or volume['spec'].get('frontend') != 'blockdev'):
+        raise ValueError('V2 expansion requires its original block-device frontend volume')
+    encrypted = journal['storage_class'] == 'longhorn-encrypted'
+    before = None
+    if encrypted:
+        if volume['metadata'].get('labels', {}).get('v2-encrypted-volume-with-luks-header') != 'true':
+            raise ValueError('new V2 encrypted volume lacks the 1.12.1 LUKS reservation label')
+        probe = lab.load_helper('longhorn-encryption.py').Probe(lab, data_engine='v2')
+        before = probe.host_probe(lab.WORKERS[0], journal, True)
+        if (before['mapped_bytes'] != 2*1024**3 or
+                before['raw_bytes'] != 2*1024**3 + 16*1024**2 or not before['luks_uuid']):
+            raise ValueError('new V2 encrypted volume does not expose its full requested capacity')
+    original(journal, payload, digest, block=block)
+    if encrypted:
+        after = probe.host_probe(lab.WORKERS[0], journal, True)
+        if (after['luks_uuid'] != before['luks_uuid'] or after['mapped_bytes'] != 4*1024**3 or
+                after['raw_bytes'] != 4*1024**3 + 16*1024**2):
+            raise ValueError('V2 encrypted expansion changed LUKS identity or lost usable capacity')
+        print('LONGHORN_V2_ENCRYPTED_EXPANSION_CAPACITY_VERIFIED ' + json.dumps(after, sort_keys=True), flush=True)
+
+
+def expansion_suite(lab):
+    original = lab.verify_expansion
+    def verify(journal, payload, digest, *, block=False):
+        verify_expansion(lab, original, journal, payload, digest, block=block)
+    lab.verify_expansion = verify
+    try:
+        lab.expansion_suite()
+    finally:
+        lab.verify_expansion = original
+
+
+def encryption_suite(lab):
+    original = lab.load_helper
+    def helper(name):
+        module = original(name)
+        if name == 'longhorn-encryption.py':
+            module.Probe = partial(module.Probe, data_engine='v2')
+        return module
+    lab.load_helper = helper
+    try:
+        for block in (False, True):
+            lab.business('encryption', block=block, storage_class='longhorn-encrypted')
+    finally:
+        lab.load_helper = original
+    print('LONGHORN_V2_ENCRYPTION_BUSINESS_PASS', flush=True)
+
+
+def trim_suite(lab, relay_pid):
+    original = lab.load_helper
+    def helper(name):
+        return original('longhorn-v2-trim.py' if name == 'longhorn-trim.py' else name)
+    lab.load_helper = helper
+    try:
+        lab.business('trim', relay_pid=relay_pid)
+    finally:
+        lab.load_helper = original
+
+
+def recover(lab, relay_pid):
+    """Native recovery after credentials exist; host-only recovery before that."""
+    lab.core_identity()
+    state = lab.owner()
+    if state.get('namespace_uid'):
+        lab.recover_installation(relay_pid)
+    else:
+        if lab.get('namespace', 'longhorn-system') or lab.get('crd', 'volumes.longhorn.io'):
+            raise ValueError('V2 pre-install recovery refuses unowned storage resources')
+        if state.get('host_state'):
+            restore_hosts(lab)
+    print('LONGHORN_V2_AIO_INSTALLATION_RECOVERY_PASS', flush=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('mode', choices=('configure', 'capture-hosts', 'quiesce-multipath', 'restore-hosts', 'recover-host-qualification', 'relay-maintain',
+        'relay-ensure', 'relay-clean', 'cache', 'supervise', 'health', 'volume-baseline', 'business-rwo', 'business-rwx', 'business-expansion', 'business-reclaim', 'business-encryption', 'business-trim', 'business-snapshot', 'business', 'business-clean', 'recover'))
+    parser.add_argument('--relay-pid', type=int, default=0)
+    parser.add_argument('--step', choices=('longhorn-download', 'longhorn-setup'))
+    args = parser.parse_args()
+    _, lab = fixture()
+    lab.require_lease()
+    if args.mode == 'supervise':
+        if args.step is None:
+            parser.error('--step is required')
+        supervise(lab, args.relay_pid, args.step)
+    else:
+        {'configure': lambda: configure(lab), 'capture-hosts': lambda: capture_hosts(lab),
+         'quiesce-multipath': lambda: quiesce_multipath(lab),
+         'restore-hosts': lambda: restore_hosts(lab),
+         'recover-host-qualification': lambda: recover_host_qualification(lab), 'relay-maintain': lab.relay_maintain,
+         'relay-ensure': lab.relay_ensure, 'relay-clean': lab.relay_cleanup, 'cache': lab.cache_artifacts,
+         'health': lambda: health(lab), 'volume-baseline': lambda: volume_baseline(lab),
+         'business-rwo': lab.rwo_suite,
+         'business-expansion': lambda: expansion_suite(lab),
+         'business-reclaim': lambda: lab.reclaim_suite(args.relay_pid),
+         'business-encryption': lambda: encryption_suite(lab),
+         'business-trim': lambda: trim_suite(lab, args.relay_pid),
+         'business-snapshot': lambda: lab.business('snapshot', relay_pid=args.relay_pid),
+         'business-rwx': lambda: lab.business('rwx', relay_pid=args.relay_pid, access_mode='ReadWriteMany'), 'business': lambda: lab.business(relay_pid=args.relay_pid),
+         'business-clean': lambda: lab.cleanup_business(relay_pid=args.relay_pid),
+         'recover': lambda: recover(lab, args.relay_pid)}[args.mode]()
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (ValueError, KeyError, TypeError, OSError, TimeoutError) as error:
+        print('LONGHORN_V2_INSTALL_FAIL reason=' + str(error), file=sys.stderr)
+        sys.exit(1)

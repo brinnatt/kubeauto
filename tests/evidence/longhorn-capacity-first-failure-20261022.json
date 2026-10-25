@@ -1,0 +1,108 @@
+{
+  "acceptance": {
+    "boundary": "Failure preservation and reusable healthy-state handoff only. LONGHORN-24 remains independently accepted; both failed parent states remain unchanged.",
+    "matrix_28_pass": false,
+    "module_pass": false,
+    "overall_delivery_pass": false
+  },
+  "case": "LONGHORN-28",
+  "classification": "test-gate",
+  "cleanup": {
+    "boundary": "Source cluster is empty of capacity business volumes/replicas/engines, original disks/settings restored, workers Ready/schedulable and no owned loop/mount remains. Retained receipt must be handled through owning recovery before rerunning capacity. No module success inferred.",
+    "business_passed": false,
+    "original_receipt_clean": true,
+    "read_only_health_checks": {
+      "all_running_storage_pods_ready": true,
+      "all_source_data_plane_volumes_absent": true,
+      "all_source_nodes_ready": true,
+      "all_workers_schedulable": true,
+      "clean_receipt_true": true,
+      "old_namespace_absent": true,
+      "original_business_journal_absent": true,
+      "original_disk_map_restored": true,
+      "own_disk_mount_image_loop_absent": true,
+      "settings_restored": true,
+      "three_parent_locks_no_holder": true
+    },
+    "retained_receipt": "longhorn-capacity.json remains clean=true; original failed recovery early-return does not retire it",
+    "status": "original-scoped-finally-restored-verified-read-only"
+  },
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-v2-disk-tail </dev/null",
+  "completed_observations_not_module_pass": {
+    "application_recovery_marker": false,
+    "bounded_filesystem_total_bytes": 4143677440,
+    "capacity_business_pass": false,
+    "full_disk_replica_error_observed": false,
+    "longhorn_storage_available_bytes": 419430400,
+    "low_space_native_refusal": true,
+    "minimum_available_percentage": "25"
+  },
+  "date": "2026-10-22",
+  "durable": {
+    "module_exit": 1,
+    "module_finalized": 1,
+    "root_exit": 1,
+    "root_finalized": 1,
+    "v1_exit": 1,
+    "v1_finalized": 1,
+    "v2_exit": 1,
+    "v2_finalized": 1
+  },
+  "first_failure": {
+    "assertion": "if full['free'] > 1024**2: raise ValueError('bounded disk did not reach actual ENOSPC capacity')",
+    "exception": "ValueError: bounded disk did not reach actual ENOSPC capacity",
+    "file": "tests/helpers/longhorn-capacity.py",
+    "full_return_value": "not captured; only free > 1 MiB is proven",
+    "line": 372,
+    "phase": "capacity-product-path",
+    "proven_boundary": "The host full-allocation helper returned, but the fixture rejected its f_bfree-derived free count before saving row.full and before the application 64 MiB write or native replica-error check.",
+    "rc": 1,
+    "root_cause_boundary": "This first-failure record establishes the failing test-gate assumption and preserves its cleanup. Filesystem allocation semantics and the minimal correction are owned by a separate private repair; do not invent unrecorded free/ENOSPC values.",
+    "upstream_product_failure_proven": false
+  },
+  "frozen_inputs": {
+    "before_after_mismatches": 0,
+    "count": 807,
+    "manifest_sha256": "345cfc42a7e98e9a79e5cad0ab2d0cea1166a53b326dd14e4d3f21dd61955ad1",
+    "owning_dependencies": {
+      "roles/longhorn/files/longhorn.py": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+      "tests/helpers/longhorn-capacity.py": "badcd0f99eb13fd2b7cd22536817a906609cc3e1b27daab6e488277520c834ad",
+      "tests/helpers/longhorn-capacity.sh": "d82423967d48afd2a10a09bc068c23e715d46181da763fcba5fb04137b7f80a7",
+      "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c"
+    }
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/capture.json": "d0ced910a3e8f4450359c2be3f37ff2786aac893d545e3f607093beb7caa5e1b",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/tmp/kubeauto-longhorn-gate.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/tmp/kubeauto-longhorn-gate.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/tmp/kubeauto-longhorn-gate.pid": "f47d3d5f03e3a4b9bc506a2f82f2cc70339c926c35ddb316a2e2e4c4a5068b7c",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/tmp/kubeauto-longhorn-live.log": "80e843168e68ae005f2bed657ac328a4936078867c899b2f91a0a96608f4eb38",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel-v1.Q4MSpB/capacity.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel-v1.Q4MSpB/capacity.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel-v1.Q4MSpB/capacity.log": "8341eb90705cafb88a74afb50520146e4b0dffcff71e479f624d03c489352b45",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel-v1.Q4MSpB/capacity.pid": "7211feebe7c0e164240e133b7c0537e465c5e2c2e28957ac3b0424d6f0c585fe",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v1.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v1.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v1.log": "1f70fc2c57e828d409f6a608b3699ce635a82fdb7da7d72177065ee2526898d3",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v1.pid": "2111d57b6c8364959cecc0061d87b4fc2ab1d99480b304a3c36e7894016d2088",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v2.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v2.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v2.log": "ed437a826ae03cf4b2970c55036561c615629a327754a84703df06f3e7d135ab",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-failure-final/raw/var/tmp/kubeauto-longhorn-parallel.R5T5Lu/v2.pid": "bfe46849cc4a89362935692f7fade0d3bb078fbb6e438527aa74cc144320f5f9",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-observation-1792602369303464589/capture.json": "8d31f45e86aac20bdb9138e945e1c159fc5243255c276d06d4386ff8c7a70440",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-observation-1792602369303464589/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-capacity.json": "d8e5fe9164efd2227c4a04691f45c4ec4b3dbdee6ad0a2cfa51c9d68288bb40f",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-observation-1792602369303464589/raw/var/tmp/kubeauto-longhorn-capacity.9NsY4Z/business.log": "31827f5c379fb8a1fa42fae62204c41660f636f271f17bcfd4c837cb9c27f1dc",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-observation-1792602369303464589/raw/var/tmp/kubeauto-longhorn-capacity.9NsY4Z/first-failure.status": "96e90c456fb4c46f94acab95fa347f961401731f73c4d50ee6acb8e78a46ffba",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-observation-1792602369303464589/raw/var/tmp/kubeauto-longhorn-parallel-v1.Q4MSpB/capacity.log": "063cb812136911a4f0170d7c8c3fc65b857e187af6f02553b2b3d480f096c7b4",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/capacity-first-observation-1792602369303464589/raw/var/tmp/kubeauto-longhorn-parallel-v1.Q4MSpB/capacity.pid": "7211feebe7c0e164240e133b7c0537e465c5e2c2e28957ac3b0424d6f0c585fe",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/frozen-inputs.json": "345cfc42a7e98e9a79e5cad0ab2d0cea1166a53b326dd14e4d3f21dd61955ad1",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/v1-reusable-boundary/capture.json": "08ff4a441ffc0e18202a67e0c0bcf618487f71b86517a8a4abd680d8ed8b1217",
+    "logs/longhorn-cases/operations-disk-tail-live-20261022/v1-reusable-boundary/summary.json": "c50e65a258b261eb7b5c75f6d31234217016387135079175bd1e4ba0b976e0f4"
+  },
+  "schema": 1,
+  "scope": "Original frozen807 capacity full-disk fixture admission assertion and original cleanup only",
+  "status": "failed",
+  "version": "1.12.1"
+}

@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "case": "LONGHORN-44",
+  "status": "first-failure-test-gate-fixed-awaiting-owning-rerun",
+  "classification": "test-gate",
+  "product_bug_proven": false,
+  "test_gate_bug_proven": true,
+  "rc": 1,
+  "durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "remote_pid": "2025492",
+  "root_cause": "Each resource profile reuses the original /data/fault-ledger on one PVC; O_EXCL correctly rejects the second creation. Candidate assigns one token/profile hash path for writer and independent verifier; keeps earlier bytes and same-name refusal.",
+  "cleanup": {
+    "first_attempt_failure_retained": true,
+    "outer_runner_recovered": true,
+    "scoped_clean_marker": true,
+    "final_installation_health": true
+  },
+  "local_supervisor": "Interrupted; original local exit/finalized absent and not synthesized. Independent observer binds actual remote durable records.",
+  "complete_matrix_item": false,
+  "raw_evidence": {
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/e4ddeff0a35f3cc5729920138394bef186e0285a88cbf7d8394f46847b1fe79c": "e4ddeff0a35f3cc5729920138394bef186e0285a88cbf7d8394f46847b1fe79c",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/acc724e6d5d4041fd6935aa6aaa73bf3bb1328428ffd381aef11751671e62e37": "acc724e6d5d4041fd6935aa6aaa73bf3bb1328428ffd381aef11751671e62e37",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/ebe8f888330baf09aeae82cf35d543f3132a13e072301e16a01db4d884f57e94": "ebe8f888330baf09aeae82cf35d543f3132a13e072301e16a01db4d884f57e94",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/7bbc6e9be43051fc761424a94b93501b378406a421b088d5a31dd6b083da4791": "7bbc6e9be43051fc761424a94b93501b378406a421b088d5a31dd6b083da4791",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/86f067f30c3edab2182ae9b8da2b7c47d9f945ac48ff7f5aafa3e48385a29c05": "86f067f30c3edab2182ae9b8da2b7c47d9f945ac48ff7f5aafa3e48385a29c05",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/caa3b01b839afd7367b636f4c7bdba49809f7f47b591c6e3eeff4010c70dbe5e": "caa3b01b839afd7367b636f4c7bdba49809f7f47b591c6e3eeff4010c70dbe5e",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/9fe3571ea7b90bed08be16329e5c0355b42a757212547a6f9591c7db400acbc6": "9fe3571ea7b90bed08be16329e5c0355b42a757212547a6f9591c7db400acbc6",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/0054e79baae126a287eb44b05607561830c017a8e0882489aac588638c68ec87": "0054e79baae126a287eb44b05607561830c017a8e0882489aac588638c68ec87",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/661cd301ff9cdf49193c973aa0a1b8e868de1f2f317a64a3b352e232433d5555": "661cd301ff9cdf49193c973aa0a1b8e868de1f2f317a64a3b352e232433d5555",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/6dfa10cd529ee5c96eefb8c572a30278737b4a46e4d2adeff1a0a5bb60e670d5": "6dfa10cd529ee5c96eefb8c572a30278737b4a46e4d2adeff1a0a5bb60e670d5",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/785eaaedbaf734f36f85db95fb5b3531c6d96e7eb12a4e317d4a4eabe7278655": "785eaaedbaf734f36f85db95fb5b3531c6d96e7eb12a4e317d4a4eabe7278655",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/8027c9b96c2aac6644d928ae6c3116618ea4e7b1a42ecec0add2e6a3f3d2d88e": "8027c9b96c2aac6644d928ae6c3116618ea4e7b1a42ecec0add2e6a3f3d2d88e",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/0263eaddd10132a57370c80476817f82f76b3d1f57c1577580ca71ba4654bb54": "0263eaddd10132a57370c80476817f82f76b3d1f57c1577580ca71ba4654bb54",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/a00520c79abf6e4eb39aa504b4db670633ae76c961eba45fe845774b9dcb431a": "a00520c79abf6e4eb39aa504b4db670633ae76c961eba45fe845774b9dcb431a",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/8d804ef22b4581291ee953028ef340f77a06551154f0ed384455a053d73287ae": "8d804ef22b4581291ee953028ef340f77a06551154f0ed384455a053d73287ae",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/d1a7f18dd5641652ffaae5ef52d6887eb10f0ef3cfbed67c16d6c925dd9070be": "d1a7f18dd5641652ffaae5ef52d6887eb10f0ef3cfbed67c16d6c925dd9070be",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/ff1073f7a4e3599962275cf83e7df6b9b88a83e4cfa45261a011b12cbae74528": "ff1073f7a4e3599962275cf83e7df6b9b88a83e4cfa45261a011b12cbae74528",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/2ae265da2d123bfbc4f6cf2c78abd86e22202d0dc9283330d67a554a41e381fe": "2ae265da2d123bfbc4f6cf2c78abd86e22202d0dc9283330d67a554a41e381fe",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/f7a90af806d5c6205f341ff722833fcdd0fc171bf2cbdb458ebe2a78ab391259": "f7a90af806d5c6205f341ff722833fcdd0fc171bf2cbdb458ebe2a78ab391259",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/e2d44ff1c77486c20deedcf441b28a59f107e7c9d8cfe1ca8914648903d87378": "e2d44ff1c77486c20deedcf441b28a59f107e7c9d8cfe1ca8914648903d87378",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/objects/16380221f8b7dd3b097a3f11402a78ae4ac29d48216cd8d04fa483e2924ba75b": "16380221f8b7dd3b097a3f11402a78ae4ac29d48216cd8d04fa483e2924ba75b",
+    "logs/longhorn-cases/v2-resized-followup-registry-retry-20261023/v2-platform/reconnected-observer/capture-0020.json": "0714de2243d913a4f79b91c9df30e9530e82ad8613da2cf93e8ef361261a1af9",
+    "logs/longhorn-cases/v2-runtime-profile-ledger-fix-20261023/first-failure.stderr": "a61cc5799fcbfcb092435b09e0eea5bd8175e1f6640d48d6a4661d6a66aaaf1d",
+    "logs/longhorn-cases/v2-runtime-profile-ledger-fix-20261023/red.log": "d00bb4b27b3a7f6d10c33f25128c3d64ed2e65a2dc3afe629a58669bd27bccd9",
+    "logs/longhorn-cases/v2-runtime-profile-ledger-fix-20261023/green.log": "5365b6987736c489d111a76b09494f8367ffdc80bdffdd2aa6f0fb23e13c6eac",
+    "logs/longhorn-cases/v2-runtime-profile-ledger-fix-20261023/integrated-contracts.log": "ad67faba4c6f90ef87fd2c4cff8a4864c9689fb937d1963bff000ba52b5e554e"
+  },
+  "observer_inputs_verified": 915,
+  "contracts": {
+    "owning_existing_and_new_tests": 137,
+    "rc": 0
+  },
+  "ga_ready": false,
+  "customer_signed": false
+}

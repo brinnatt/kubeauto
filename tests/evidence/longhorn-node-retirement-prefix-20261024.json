@@ -1,0 +1,71 @@
+{
+  "boundary": "Reuse only completed product add, real healthy fourth replica and two protected deletion refusals. Parent remains failed; current host, native/config/disk identity, original certificates, config/inventory and original data must be revalidated. Retirement/new readback and final cleanup remain pending. Fresh final full must execute the entire case.",
+  "business_log": "/var/tmp/kubeauto-longhorn-node-local.6cgQPv/business.log",
+  "business_log_sha256": "29b43d80b4beb747d598f15c9fbb9733a3e72019b4594df80d35243eadaa50c4",
+  "certificate_boundary": "Product add-node regenerated leaf/key after pre-add intent; current worker files equal successful product-issued control sources, leaf verifies original unchanged CA and CN names same original Node.",
+  "certificates": {
+    "ca.pem": "63659a35ff693f2b8c5a98069e829517cd667fb8c65cd6a1b75b7f4b8e763d60",
+    "kubelet-key.pem": "b27cf5678386869782b88dd407ca255fc79280dcc1bcaee16138e30a97d1e965",
+    "kubelet.pem": "8679e083e678a282922d822960c779513b4bb87600f713555272c796a4d190c5"
+  },
+  "classification": "test-gate: official node validator requires disk allowScheduling=false and storageScheduled=0 before removal",
+  "functions": {
+    "complete_add": "e2f9f146122e70a1b0933bfcb242abad6687bf94c9c797491d4aa51569dc83b9",
+    "refusal": "34d65592fcaae560b9e970c5841572ff95694b01a75057c297fe2b908dffe35b",
+    "supervise": "e30bcda4c518d72cc3944252e558d49e1750f580f9e8970132f9dcc5ec2470d9"
+  },
+  "journal_sha256": "205bb716f6e72b9108277529f29f7845b57ad1296e5d884cc4d87c44ae7c851e",
+  "matrix_gap": "LONGHORN-25",
+  "original_business_log": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-native-identity-fixed-owning-20261024/raw/var/tmp/kubeauto-longhorn-node-local.6cgQPv/business.log",
+    "sha256": "29b43d80b4beb747d598f15c9fbb9733a3e72019b4594df80d35243eadaa50c4"
+  },
+  "original_failed_durable": {
+    "exit": {
+      "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-native-identity-fixed-owning-20261024/launch.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-native-identity-fixed-owning-20261024/launch.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    }
+  },
+  "original_failed_terminal": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-native-identity-fixed-owning-20261024/terminal.json",
+    "sha256": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3"
+  },
+  "original_journal": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-native-identity-fixed-owning-20261024/raw/usr/local/kubeauto/clusters/longhorn-node-gate/longhorn-node-lifecycle.json",
+    "sha256": "205bb716f6e72b9108277529f29f7845b57ad1296e5d884cc4d87c44ae7c851e"
+  },
+  "overall_delivery_pass": false,
+  "post_add_certificate_readback": {
+    "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/post-add-issued-certificates.json",
+    "sha256": "6bc7841b958238ae891ab986ace151a2bf822f0479ace8b94807b7c71f1d43de"
+  },
+  "post_add_certificate_subject": {
+    "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/post-add-certificate-subject.txt",
+    "sha256": "034e4d7302fc4ae6de5703bb609a425b78eec60e79a9fbe145f7cf114aaa41e9"
+  },
+  "previous_prefix": {
+    "path": "logs/longhorn-cases/node25-null-disk-status-first-failure-20261024/prefix-before-post-add-certificate-binding.json",
+    "sha256": "d7fad7f6a35459d11c67bcfd140d9d07dd3bffb4bee3b7ef4d1397d070da35c9"
+  },
+  "product_sha256": "246651e1773dcf6bdcf5972f81a4b0aaee2dab9999997bfb11d5549fd166b578",
+  "remote_receipts": [
+    {
+      "path": "/var/tmp/kubeauto-longhorn-node-local.6cgQPv/business.log",
+      "sha256": "29b43d80b4beb747d598f15c9fbb9733a3e72019b4594df80d35243eadaa50c4"
+    },
+    {
+      "path": "/var/tmp/kubeauto-longhorn-node-local.6cgQPv/first-failure.status",
+      "sha256": "90d2adedb774bfe9247ab85cfdb719c3a0c2767dad5c6ff8ac794fdc28ecb388"
+    },
+    {
+      "path": "/var/tmp/kubeauto-longhorn-node-local.6cgQPv/status",
+      "sha256": "d4aa030fa58d8b2766e42ca12be033b884f407b7d6a8d4426854d3142fdf8722"
+    }
+  ],
+  "schema": 1,
+  "status": "completed-prefix-only"
+}

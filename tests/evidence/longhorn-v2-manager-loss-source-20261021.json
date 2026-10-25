@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "source-only",
+  "matrix_item": "LONGHORN-50 (manager Pod subcase)",
+  "classification": "test-gate extension; product and runtime unchanged",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_reference": [
+    "https://longhorn.io/docs/1.12.1/concepts/#11-the-longhorn-manager-and-the-longhorn-engine",
+    "https://longhorn.io/docs/1.12.1/concepts/#12-the-instance-manager"
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/concepts.md": "d775fdfb7d5defa218181b28b21397a98557b5a5fe0465ddf8975088cb9a1690",
+    "manager-1.12.1/controller/instance_manager_controller.go": "1fee262c9f7eba35b0ced04ddf37e3b705e3f389fd0d9f184db13d80eb290653",
+    "manager-1.12.1/controller/volume_controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "longhorn/templates/daemonset-sa.yaml": "37d6edc017c1f9dec56d4ad8553d889506d40896a260784dc4e37d7ea3546a47"
+  },
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-manager-loss-qualification",
+  "expected_marker": "LONGHORN_V2_MANAGER_LOSS_QUALIFICATION_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-manager-loss-qualification",
+  "conclusions": [
+    "Manager is the per-node control-plane DaemonSet; V2 SPDK targets live in separate InstanceManager-owned Pods. Normal manager Pod DELETE does not simulate host or SPDK failure.",
+    "Pinned InstanceManagerController ownership and VolumeController EngineFrontend creation use native CR ownership; verify one Volume, one engine/frontend and three original replicas, not V1 process RPCs.",
+    "Persist intent before UID/RV DELETE. Require original DaemonSet UID/spec, a different Ready manager Pod, unchanged three IM CR/spec/Pod identities and original native instance identities with the original client fsync ledger, fresh writes and cross-node readback.",
+    "Restore the component before business cleanup on success, error or interruption. A recovery-only run does not output the qualification success marker."
+  ],
+  "coverage_boundary": "Local implementation only; no live or complete LONGHORN-50 acceptance."
+}

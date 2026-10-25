@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "scoped-content-review-complete",
+  "scope": "New explicit single-replica sizing/limitations and CSI control-plane topology paragraphs only; not a fresh full-document review or product acceptance",
+  "sources": [
+    "https://longhorn.io/docs/1.12.1/references/settings/#default-replica-count",
+    "https://longhorn.io/docs/1.12.1/references/helm-values/"
+  ],
+  "mechanism_checks": [
+    "UI default and StorageClass replica inputs are separate; neither changes existing volumes",
+    "One online replica and one CSI controller have no node HA; external backup is a separate recovery dependency",
+    "Three-replica production recommendation/default preserved; one/two-client controller counts preserve hard anti-affinity",
+    "No live single-node or DR PASS claimed from static tests"
+  ],
+  "reader_paths": {
+    "new_operator": "Recommended three-node configuration remains the continuous main path; single-node scope, explicit sizing inputs and non-HA consequence appear before installation. Existing core/role/context and disk preparation steps still apply.",
+    "experienced_operator": "Replica quick reference differentiates engine UI default from per-class setting and existing-volume operations; development section maps four official Chart keys to environment variables and separate target assertions."
+  },
+  "static_evidence": "tests/evidence/longhorn-v2-dr-target-install-static-20261020.json",
+  "documents": {
+    "docs/storage/longhorn/operations-manual.md": "422b8ff2fa80d58c517862b850fd807890a8e3691d6b2b6a79a38d68f026a2ce",
+    "docs/storage/longhorn/technical-whitepaper.md": "edb14ead31b485d04ee4851f41749973fedaf70d9045a1f520513e977111d90d",
+    "docs/storage/longhorn/development-manual.md": "48e92cea8edcfb69276e2f0b93cfcf6cc2abadea090f69bf7c350b54a388dede"
+  },
+  "live_evidence": "Target transport/core prerequisites only; target Longhorn installation and all DR business remain separate gates; no customer sign-off claim"
+}

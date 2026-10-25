@@ -1,0 +1,314 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-40 focused recovery",
+  "status": "fail",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-install-recover </dev/null",
+  "durable_pid": 2991359,
+  "rc": 1,
+  "failure_markers": 2,
+  "classification": "Test-gate host restoration ownership journal retained the initial host-check digest; subsequent verified config+kubecli product re-entry installed the current checker. All six original files were absent, and current host bytes match executed frozen product source exactly. Disk cleanup and native lease identity checks passed; host/namespace/backend cleanup unfinished. No product failure or delivery PASS.",
+  "first_failure": "restore_hosts -> host_state_script: AssertionError: foreign host file",
+  "source_sha256": {
+    "common/constants.py": "6e24da41869b4d8e9b12f84f6003848047021247229cc81619277c5f0c4da2a9",
+    "conf/config.yml": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+    "controller/cluster/cli.py": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+    "playbooks/01.prepare.yml": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+    "playbooks/02.etcd.yml": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+    "playbooks/03.runtime.yml": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+    "playbooks/04.kube-master.yml": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+    "playbooks/05.kube-node.yml": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+    "playbooks/06.network.yml": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+    "playbooks/07.cluster-addon.yml": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+    "playbooks/08.ceph.yml": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+    "playbooks/09.longhorn.yml": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+    "playbooks/10.ex-lb.yml": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+    "playbooks/11.harbor.yml": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+    "playbooks/21.addetcd.yml": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+    "playbooks/22.addnode.yml": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+    "playbooks/23.addmaster.yml": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+    "playbooks/31.deletcd.yml": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+    "playbooks/32.delnode.yml": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+    "playbooks/33.delmaster.yml": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+    "playbooks/90.setup.yml": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+    "playbooks/91.start.yml": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+    "playbooks/92.stop.yml": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+    "playbooks/93.upgrade.yml": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+    "playbooks/94.backup.yml": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+    "playbooks/95.restore.yml": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+    "playbooks/96.update-certs.yml": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+    "playbooks/99.clean.yml": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+    "roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+    "roles/longhorn/files/block-check.py": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+    "roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "roles/longhorn/files/images.json": "7b88ed7707911baf1af25604d32d9c426a45759383aa992d14d4f934bc88d74c",
+    "roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+    "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+    "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "roles/longhorn/files/longhorn.py": "a957f79f4cbc6e6027b0ab7db879070326b21039910c3ab1116877ccf7c0a1ac",
+    "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "roles/longhorn/tasks/control.yml": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+    "roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "service/cluster/downloader.py": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+    "service/cluster/manager.py": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+    "tests/helpers/longhorn-accounts.py": "3647198a2e473b353045d59288a4d15f858b1ff70d5317eff83e6420c0d5e83b",
+    "tests/helpers/longhorn-artifacts.py": "20128fc1a8c02af70e71b588ced5fb9698c797ca11f11af348876cb178b067da",
+    "tests/helpers/longhorn-backups.py": "b2dc409eb7b23ad6e5b22cb5676393ffa56a474aa0054547f39e2894591be8d2",
+    "tests/helpers/longhorn-control-faults.py": "24dd18e80a946d2d94c2180b323186bff32311843d40c5536ef3e7d7ac105c08",
+    "tests/helpers/longhorn-encryption.py": "c20b15821b477a342dd9a35cf14c9c3a67a08bd3b4457334a07427b020e2636b",
+    "tests/helpers/longhorn-faults.py": "7467dc8c8e547b436b070c8d22505120522733cee85b46bf0f642c5b005adf7e",
+    "tests/helpers/longhorn-lab.py": "baf2237c0b0101f458b314358ec510c1e4c42185c9ea31b6bdc30d66ff757c6e",
+    "tests/helpers/longhorn-live.sh": "fc5e1bdaafee87395b7dbd43e0828daf2a282f5b351b299b8889122d7cf0dfc9",
+    "tests/helpers/longhorn-network.py": "00a09ab173e54a430523bede4e7b42fd6427f4e43af43d52fb03d7232548c97a",
+    "tests/helpers/longhorn-performance.py": "352989226e1a2909b6eea43741bc6bba74bcbfe4f3cf09e4b414d2e24322e564",
+    "tests/helpers/longhorn-recurring-backup.py": "d5156c8c7d7ad4deba279d11024b52c8fb2d72df4e5c9581ad5e523e2b45be27",
+    "tests/helpers/longhorn-recurring-rotation.py": "dbb3f0f8bcbcebf290a260e0eb801f3315a3a5dda9a742ee394c8120f0ae82d0",
+    "tests/helpers/longhorn-recurring.py": "ed866f4925896c272dc7e4154ea6b417495efdfbb3d030fd1630f58d900c79c1",
+    "tests/helpers/longhorn-runner.sh": "92dab9f7f5aa99a665b1a67d1826e3d8d15402cdd08411b6d4b325b9a75cb506",
+    "tests/helpers/longhorn-security.py": "0604fff266a4d85fc682ecbcf188a2e61bdc6a3d948e652a204b6d94c3bd91ce",
+    "tests/helpers/longhorn-static.sh": "e2bad30eb003c17cd63da4b7bcc4ba27d0c70572cd136762bea13d9804f18a02",
+    "tests/helpers/longhorn-trim.py": "6544f860c0529a1e4606a09c7bd4542defef03d23f22af4303d4e0420d7bfe36",
+    "tests/helpers/longhorn-uninstall.py": "c2116dd574626dc82f1e31d8c956d1fbfd20f96fc365a5151eb24270b437f264",
+    "tests/helpers/validate_longhorn_matrix.py": "b6fa02088a454c3c9ed65f304774b0a2b15f81ccf4a0ad9c925b0a1a18029acd",
+    "tests/run_enterprise_regression.sh": "d4493af2180d619306ed684728c8bd1f4ae9758b9d721e8bcd222575b9aa99c3"
+  },
+  "host_file_observations": [
+    {
+      "host": "192.168.122.135",
+      "host_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": {
+          "sha256": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+          "symlink": false
+        },
+        "/usr/local/sbin/kubeauto-longhorn-host-check": {
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "symlink": false
+        }
+      },
+      "journal_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "6bf8f75ac1428bebf5981896c463545b15d2614446639d9d5200c8135837cd7c"
+      },
+      "original_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": null,
+        "/usr/local/sbin/kubeauto-longhorn-host-check": null
+      },
+      "source_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573"
+      }
+    },
+    {
+      "host": "192.168.122.40",
+      "host_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": {
+          "sha256": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+          "symlink": false
+        },
+        "/usr/local/sbin/kubeauto-longhorn-host-check": {
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "symlink": false
+        }
+      },
+      "journal_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "6bf8f75ac1428bebf5981896c463545b15d2614446639d9d5200c8135837cd7c"
+      },
+      "original_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": null,
+        "/usr/local/sbin/kubeauto-longhorn-host-check": null
+      },
+      "source_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573"
+      }
+    },
+    {
+      "host": "192.168.122.72",
+      "host_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": {
+          "sha256": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+          "symlink": false
+        },
+        "/usr/local/sbin/kubeauto-longhorn-host-check": {
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "symlink": false
+        }
+      },
+      "journal_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "6bf8f75ac1428bebf5981896c463545b15d2614446639d9d5200c8135837cd7c"
+      },
+      "original_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": null,
+        "/usr/local/sbin/kubeauto-longhorn-host-check": null
+      },
+      "source_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573"
+      }
+    },
+    {
+      "host": "192.168.122.212",
+      "host_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": {
+          "sha256": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+          "symlink": false
+        },
+        "/usr/local/sbin/kubeauto-longhorn-host-check": {
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "symlink": false
+        }
+      },
+      "journal_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "6bf8f75ac1428bebf5981896c463545b15d2614446639d9d5200c8135837cd7c"
+      },
+      "original_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": null,
+        "/usr/local/sbin/kubeauto-longhorn-host-check": null
+      },
+      "source_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573"
+      }
+    },
+    {
+      "host": "192.168.122.165",
+      "host_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": {
+          "sha256": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+          "symlink": false
+        },
+        "/usr/local/sbin/kubeauto-longhorn-host-check": {
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "symlink": false
+        }
+      },
+      "journal_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "6bf8f75ac1428bebf5981896c463545b15d2614446639d9d5200c8135837cd7c"
+      },
+      "original_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": null,
+        "/usr/local/sbin/kubeauto-longhorn-host-check": null
+      },
+      "source_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573"
+      }
+    },
+    {
+      "host": "192.168.122.238",
+      "host_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": {
+          "sha256": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+          "symlink": false
+        },
+        "/usr/local/sbin/kubeauto-longhorn-host-check": {
+          "sha256": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+          "symlink": false
+        }
+      },
+      "journal_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "6bf8f75ac1428bebf5981896c463545b15d2614446639d9d5200c8135837cd7c"
+      },
+      "original_files": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": null,
+        "/usr/local/sbin/kubeauto-longhorn-host-check": null
+      },
+      "source_expected": {
+        "/etc/modules-load.d/kubeauto-longhorn.conf": "315f27aaebf8d6aad5af4491676ce945f29f7e6e5ab9d6f8dd0c67aa4a56cad7",
+        "/usr/local/sbin/kubeauto-longhorn-host-check": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573"
+      }
+    }
+  ],
+  "files": {
+    "logs/longhorn-cases/recover-20261020-041303/durable-status.txt": "647f4120232a21dd4a18a44d38137550180b8ded3a1cc135985332d96f4198a1",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/common/constants.py": "6e24da41869b4d8e9b12f84f6003848047021247229cc81619277c5f0c4da2a9",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/conf/config.yml": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/controller/cluster/cli.py": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/01.prepare.yml": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/02.etcd.yml": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/03.runtime.yml": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/04.kube-master.yml": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/05.kube-node.yml": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/06.network.yml": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/07.cluster-addon.yml": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/08.ceph.yml": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/09.longhorn.yml": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/10.ex-lb.yml": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/11.harbor.yml": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/21.addetcd.yml": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/22.addnode.yml": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/23.addmaster.yml": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/31.deletcd.yml": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/32.delnode.yml": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/33.delmaster.yml": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/90.setup.yml": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/91.start.yml": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/92.stop.yml": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/93.upgrade.yml": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/94.backup.yml": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/95.restore.yml": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/96.update-certs.yml": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/playbooks/99.clean.yml": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/block-check.py": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/images.json": "7b88ed7707911baf1af25604d32d9c426a45759383aa992d14d4f934bc88d74c",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/longhorn.py": "a957f79f4cbc6e6027b0ab7db879070326b21039910c3ab1116877ccf7c0a1ac",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/tasks/control.yml": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/service/cluster/downloader.py": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/service/cluster/manager.py": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-accounts.py": "3647198a2e473b353045d59288a4d15f858b1ff70d5317eff83e6420c0d5e83b",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-artifacts.py": "20128fc1a8c02af70e71b588ced5fb9698c797ca11f11af348876cb178b067da",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-backups.py": "b2dc409eb7b23ad6e5b22cb5676393ffa56a474aa0054547f39e2894591be8d2",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-control-faults.py": "24dd18e80a946d2d94c2180b323186bff32311843d40c5536ef3e7d7ac105c08",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-encryption.py": "c20b15821b477a342dd9a35cf14c9c3a67a08bd3b4457334a07427b020e2636b",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-faults.py": "7467dc8c8e547b436b070c8d22505120522733cee85b46bf0f642c5b005adf7e",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-lab.py": "baf2237c0b0101f458b314358ec510c1e4c42185c9ea31b6bdc30d66ff757c6e",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-live.sh": "fc5e1bdaafee87395b7dbd43e0828daf2a282f5b351b299b8889122d7cf0dfc9",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-network.py": "00a09ab173e54a430523bede4e7b42fd6427f4e43af43d52fb03d7232548c97a",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-performance.py": "352989226e1a2909b6eea43741bc6bba74bcbfe4f3cf09e4b414d2e24322e564",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-recurring-backup.py": "d5156c8c7d7ad4deba279d11024b52c8fb2d72df4e5c9581ad5e523e2b45be27",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-recurring-rotation.py": "dbb3f0f8bcbcebf290a260e0eb801f3315a3a5dda9a742ee394c8120f0ae82d0",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-recurring.py": "ed866f4925896c272dc7e4154ea6b417495efdfbb3d030fd1630f58d900c79c1",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-runner.sh": "92dab9f7f5aa99a665b1a67d1826e3d8d15402cdd08411b6d4b325b9a75cb506",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-security.py": "0604fff266a4d85fc682ecbcf188a2e61bdc6a3d948e652a204b6d94c3bd91ce",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-static.sh": "e2bad30eb003c17cd63da4b7bcc4ba27d0c70572cd136762bea13d9804f18a02",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-trim.py": "6544f860c0529a1e4606a09c7bd4542defef03d23f22af4303d4e0420d7bfe36",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/longhorn-uninstall.py": "c2116dd574626dc82f1e31d8c956d1fbfd20f96fc365a5151eb24270b437f264",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/helpers/validate_longhorn_matrix.py": "b6fa02088a454c3c9ed65f304774b0a2b15f81ccf4a0ad9c925b0a1a18029acd",
+    "logs/longhorn-cases/recover-20261020-041303/frozen-source/tests/run_enterprise_regression.sh": "d4493af2180d619306ed684728c8bd1f4ae9758b9d721e8bcd222575b9aa99c3",
+    "logs/longhorn-cases/recover-20261020-041303/gate.log": "fb7fb29208b338fea7d0ea2a024712a9691db4f4ad24c29797aeb20034892f3f",
+    "logs/longhorn-cases/recover-20261020-041303/uninstall-host-assertion-diagnostic-20261020.log": "615140ce98e58d69c4b02beb14558655b7ce811bc95aea71a056a1c009c1054b",
+    "logs/longhorn-cases/recover-20261020-041303/uninstall-host-file-original-identities-20261020.log": "720d37b91a72517103a02a4fd3cedb1734f78eeee8807b5b1a4b5a7071693934",
+    "logs/longhorn-cases/recover-20261020-041303/uninstall-native-lease-recover-final-fingerprint.log": "563b54b0424b5683e501f2608f51d430cc799a20bfa621eb88cb88878bad92d4",
+    "logs/longhorn-cases/recover-20261020-041303/uninstall-native-lease-recover-start-fingerprint.json": "55581ab7c45d3849e52f3c3970d37ee5a0548b496120aadfe0860d6493bf4dc7",
+    "logs/longhorn-cases/recover-20261020-041303/uninstall-recover-host-command-error-20261020.log": "6acffdce7a83da528db81e9c2911dc5d3c530056ef3cf7214a741bb3edd7cfb6",
+    "logs/longhorn-cases/recover-20261020-041303/uninstall-recover-host-first-diagnostic-20261020.log": "fd91b979636d477581142a23894c10593ee21d0c7d8623b3dbbfc31a05bf9b7c"
+  }
+}

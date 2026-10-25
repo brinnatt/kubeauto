@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "reviewed-delta",
+  "scope": "Added V2 linked/nested operation, shared-block dependency explanation and development contract, including the current 1.12.1 authenticated TLS implementation limit. One self-review of this documentation delta; not independent review, customer sign-off or LONGHORN-42 complete documentation acceptance.",
+  "standard": "docs/documentation-quality-standard.md (especially 3.1,7.1,8,11,12)",
+  "sources": [
+    "tests/evidence/longhorn-v2-linked-clone-source-20261021.json",
+    "tests/evidence/longhorn-v2-linked-tls-source-gap-20261021.json",
+    "tests/evidence/longhorn-v2-linked-tls-first-failure-20261021.json",
+    "tests/evidence/longhorn-v2-full-copy-clone-qualification-20261020.json"
+  ],
+  "content_review": [
+    "Separate Kubernetes identities and COW write views from same-node/same-disk source dependence; explain source entrypoint protection, replica-count limits, nested creation and rebuild prerequisites",
+    "Continuous source UID/data/checkpoint input, config+kubecli class creation, explicit PVC datasource chain, workload readback/isolation, native graph verification and leaf-to-root retirement with parent readback",
+    "State the observed TLS combination defect before any new linked creation, preserve the security configuration and point to the already verified full-copy workflow; describe the two-call source patch only as unbuilt/unpublished proposal",
+    "Use current frozen-source/first-error/three-node TLS and plaintext health evidence without presenting a failed qualifier as business PASS; no new source-reading or live GA solely for writing"
+  ],
+  "reader_paths": {
+    "first_time": "Task index -> current TLS stop condition -> verified full-copy alternative. Future fixed-artifact path explains roles, shared context, source identity/capacity/checkpoint, append-only class, clone then completed nested, exact expected data and isolation, timeouts, failure stop and dependency-aware return.",
+    "experienced": "Task section -> exact PVC/PV/Volume identities -> cloneStatus/entrypoint/Replica same-disk ancestry -> three views and cross-node readback -> guards, retained data and safe retirement. Development source/version mapping distinguishes upstream defect from runner delayed-failure ordering."
+  },
+  "static_checks": {
+    "yaml_blocks": 2,
+    "bash_blocks": 3,
+    "embedded_python_parsed": true,
+    "local_anchor_targets_present": true,
+    "mermaid": "Current inline graph exactly matches the previously rendered and visually checked mmd/PNG; stale earlier SVG is not used."
+  },
+  "diagram": {
+    "/tmp/kubeauto-longhorn-research/linked-whitepaper-section-20261021.mmd": "446dcfb3f423d445bda44319c61a75128a2f5face819fd8bc386c59dc5e0689b",
+    "/tmp/kubeauto-longhorn-research/linked-whitepaper-section-20261021.png": "3163f2e6ec08c3a3cda24e571cfb2bb302095ab5c2e5e577bb4f6e23e0ebf402"
+  },
+  "files": {
+    "docs/storage/longhorn/operations-manual.md": "531bd7b45feb5251e2c4713ac4d8282ae17e195bc6bd10585fd130aa1ffa3cb6",
+    "docs/storage/longhorn/technical-whitepaper.md": "8e539d373c0db171d2bcf0f5d5ab42fa91e7ebee95f4c3a446feb09ac87543f1",
+    "docs/storage/longhorn/development-manual.md": "864c52e4f4ff457bfd66498af3996d3ec3c0338bb17d80544e49f2931f4c3fb2"
+  },
+  "boundary": "The linked/nested allowed path still requires a fixed immutable image and current qualification. Expansion, dependency eviction/rebuild, backup restoration and legacy operation cases remain pending. This documentation check neither repeats upstream GA nor substitutes for product matrix acceptance."
+}

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "Author check of V2 snapshot result paragraphs only; no customer command or diagram changed; not complete document acceptance",
+  "checks": {
+    "sources": "Reused pinned native/CSI snapshot full-copy official topics and CSI controller integration source, recorded separately in longhorn-v2-snapshot-source-20261020.json",
+    "content": "Checked native reentry/immutable refusal, two independent 2 GiB restores, 9 MiB old versus 13369344-byte new source hashes and write isolation against archived gate.log; excluded multi-volume/database consistency, integrity scan and external recovery claims",
+    "novice_path": "Operations creating/restoring snapshots retains explicit class, source/target identities, static capacity fallback, wait and failure stop; measured old/new boundary explains what readback must prove",
+    "experienced_path": "Whitepaper local snapshot time-boundary section distinguishes full-copy isolation from local-replica protection; static readiness caveat and source hash remain linked to restore task",
+    "operation_evidence": "Reuse successful frozen 117-input snapshot qualification; no additional live run for result prose",
+    "diagrams": "No diagram changed; existing render evidence reused",
+    "static": "44 storage/middleware documentation contracts previously passed; final current static gate remains required"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-snapshot-qualification-20261020.json",
+  "product_evidence_sha256": "3bfd9f8cbb2bf03df3dd0c4ecddf419ce8cff3c22323c478289a4ccfd45fc9d8",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "33ed0a050b5bca9e573005e2de78290a917599fb15b2860481752567b000e059",
+    "docs/storage/longhorn/technical-whitepaper.md": "52e4b35b810366e632b17da5721624cc8a093c087f56ab517fbf825da8a7acd2"
+  }
+}

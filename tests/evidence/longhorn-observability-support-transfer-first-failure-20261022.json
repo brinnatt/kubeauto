@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-34",
+  "status": "failed",
+  "classification": "confirmed test-gate diagnostic gap; triggering exec-transfer cause unresolved",
+  "first_failure": "Native completed bundle transfer through kubectl exec ended rc=1 with a short response. No curl error code or timeout observed. Only stderr SHA was retained, so a product, Kubernetes stream or network cause cannot yet be assigned.",
+  "transfer": {
+    "curl_codes": [],
+    "elapsed_s": 50.672271293005906,
+    "expected_bytes": 223693032,
+    "rc": 1,
+    "received_bytes": 190337019,
+    "stderr_sha256": "8f9ef85df76e666eb801255de41dae0a5d185af5622db705deb224ba13e64edc",
+    "timeout": false,
+    "unexpected_eof": false
+  },
+  "durable": {
+    "runner_exit": 1,
+    "runner_finalized": 1,
+    "module_exit": 1,
+    "module_cleanup_rc": 0
+  },
+  "cleanup": "Original source identity and filesystem UUIDs retained; application/backup/monitoring/registry fixtures removed; zero scheduled bytes on all three original filesystem disks.",
+  "valid_scope_retained": "Earlier module and stability evidence are unchanged. Monitoring setup and real four-alert observations are archived but do not sign incomplete LONGHORN-34.",
+  "next_disproof": "Preserve private stderr with the same owning support download path, then the fixed --longhorn-observability-support branch; no speculative product fix or blind complete rerun.",
+  "raw_evidence": {
+    "logs/longhorn-cases/observability-34-complete-20261022/remote-archive/objects/527e29521bc66dc260dbf214eb668c2ad86457b5fedbb0c2da1240d070a23873": "527e29521bc66dc260dbf214eb668c2ad86457b5fedbb0c2da1240d070a23873",
+    "logs/longhorn-cases/observability-34-complete-20261022/remote-archive/capture-0126.json": "4d919b8fd279b1fb0d1ac4c72dbfb687c496473a0583346711b5ef935b0e55a9",
+    "logs/longhorn-cases/observability-34-complete-20261022/frozen-inputs.json": "5ccc45d6a54f82fcf4d873e19509097ef5c51a789918fd4622090f618726373d",
+    "logs/longhorn-cases/observability-34-complete-20261022/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-complete-20261022/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-complete-20261022/remote-archive/objects/63f74bbcb075784a23ee9ffdf85c0358dfcf8d20051b603cfc4b9acff205d107": "63f74bbcb075784a23ee9ffdf85c0358dfcf8d20051b603cfc4b9acff205d107",
+    "logs/longhorn-cases/observability-34-complete-20261022/remote-archive/objects/eab0aa37ba96fe588264fa636b30fa55963794094688dcbec8fef9ab414bfc12": "eab0aa37ba96fe588264fa636b30fa55963794094688dcbec8fef9ab414bfc12",
+    "logs/longhorn-cases/observability-34-complete-20261022/remote-archive/objects/4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-complete-20261022/remote-archive/objects/9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  }
+}

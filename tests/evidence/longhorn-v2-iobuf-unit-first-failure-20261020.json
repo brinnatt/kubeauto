@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "fail",
+  "classification": "Local CPython process crash while parsing unchanged MongoDB chart; root cause unresolved, no Longhorn or MongoDB product bug inferred",
+  "command": "env PYTHONFAULTHANDLER=1 bash tests/run_unit_tests.sh",
+  "rc": 139,
+  "first_failing_test": "test_mongodb_backups.MongoDBBackupTests.test_upgrade_fixed_entry_and_exact_chart_schema_refuse_new_schema_as_old",
+  "first_stack_boundary": "yaml.scanner.get_token \u2192 yaml.safe_load_all \u2192 tests/helpers/mongodb-backups.py:upgrade_crds",
+  "focused_disproof": {
+    "command": ".venv/bin/python -m unittest tests.unit.test_mongodb_backups.MongoDBBackupTests.test_upgrade_fixed_entry_and_exact_chart_schema_refuse_new_schema_as_old -v",
+    "rc": 0,
+    "result": "1test OK; no crash reproduced"
+  },
+  "source_inputs_unchanged": 133,
+  "owning_inputs_equal_git_HEAD": {
+    "tests/helpers/mongodb-backups.py": "c61911ca07b2217b0f6161fc0a83cd8d0cb460d536dab06e5a7c90a969607030",
+    "tests/unit/test_mongodb_backups.py": "4ff6825073adbdc71eb313a88ba78bb2bb713f89ece9bcf7ec9826bd44bb5df4",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9"
+  },
+  "python_version": "3.12.14 (main, Oct  9 2026, 01:30:04) [GCC 12.3.0]",
+  "decision": "No product/test-gate code changed in response. Preserve first crash; run owning module with Python allocator diagnostics before any full local retry. Active remote recurring gate is independent and remains under original frozen inputs.",
+  "files": {
+    "logs/longhorn-cases/v2-iobuf-unit-first-failure-20261020/v2-iobuf-unit-start.json": "651eb70c7ddc1c532502356930393e2565b29f460204158edfc6cd873825e164",
+    "logs/longhorn-cases/v2-iobuf-unit-first-failure-20261020/v2-iobuf-unit-mongodb-isolated.log": "d3be9e63d4537cf2be2d618d3567a923fd76611cea24b8dec7b4d6a1c92967ac",
+    "logs/longhorn-cases/v2-iobuf-unit-first-failure-20261020/v2-iobuf-unit.log": "a51d29c9e6b7b50c8decb2cd2c3d90f112e5d995ba658a990d5b11ff9f035293"
+  }
+}

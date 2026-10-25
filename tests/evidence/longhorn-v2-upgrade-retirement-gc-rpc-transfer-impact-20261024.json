@@ -1,0 +1,282 @@
+{
+  "additional_gate_change": "Exact reverse-SHA compatibility for the single no-params retirement RPC correction. Historical read only; new installation/adoption remains exact current SHA. Other product pins and all prior origins stay strict.",
+  "affected_acceptance": "52 must recover original retired endpoint then prove exact original host state. 50 final full cleanup must exercise the strengthened post-native-deletion endpoint check; prior business results are retained without claiming their former host cleanup was sufficient.",
+  "archive_scanner_dependency": {
+    "path": "logs/longhorn-cases/revision3-archive-dependency-contract-20261024/provenance.json",
+    "sha256": "4fa323d5a7f66c82a2ca72bf1690a13a0da70c88bf5111d905e5214d329fc48d"
+  },
+  "backup_handoff_repair": {
+    "business_binding_initialized_once": true,
+    "classification": "test-gate",
+    "first_failure": {
+      "path": "tests/evidence/longhorn-v2-upgrade-backup-handoff-first-failure-20261024.json",
+      "sha256": "d8e784fb8cf9d2e35cd24d41e527c75f4499ff7b865b3ca2237509ebc083d4df"
+    },
+    "resume_reentry": "Exact original journal bytes plus original handoff hash only; no business-state replay"
+  },
+  "changes": {
+    "tests/helpers/longhorn-cleanup.py": {
+      "origins": {
+        "2565eec8b345356a91b2b34254015850ef3750899b7a0d467a27d270aab41346": {
+          "path": "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-handoff-20261024/frozen-source/tests/helpers/longhorn-cleanup.py",
+          "sha256": "2565eec8b345356a91b2b34254015850ef3750899b7a0d467a27d270aab41346"
+        }
+      },
+      "sha256": "fe547e6421b15b9ee708f218ed5347eaff6ee80f356f21006db362b798dc15ae"
+    },
+    "tests/helpers/longhorn-im-revision-3-adopt.py": {
+      "origins": {
+        "2bd6e9bf0469e00d0046659042e081aee94a38b4ce792ff034767d4b24045f9e": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-im-revision-3-adopt.py",
+          "sha256": "2bd6e9bf0469e00d0046659042e081aee94a38b4ce792ff034767d4b24045f9e"
+        },
+        "33d02bbdf525007aafb87263b39df50f655560b45cdafd3ec1be68eb794f9101": {
+          "path": "logs/longhorn-cases/revision3-refusal-order-contract-20261023/original/tests/helpers/longhorn-im-revision-3-adopt.py",
+          "sha256": "33d02bbdf525007aafb87263b39df50f655560b45cdafd3ec1be68eb794f9101"
+        },
+        "7eb52fa2fb4ab2cc46ab4750efde5a26fc81d4726951cc07af1aa43781dbb882": {
+          "path": "logs/longhorn-cases/revision3-linked-private-contract-20261024/original/tests/helpers/longhorn-im-revision-3-adopt.py",
+          "sha256": "7eb52fa2fb4ab2cc46ab4750efde5a26fc81d4726951cc07af1aa43781dbb882"
+        },
+        "84afbf049726d7aa96d4e771ffae6b3dc17cad6732852dabff1a203459f88414": {
+          "path": "logs/longhorn-cases/revision3-v2-linked-after-cleanup-owning-20261024/frozen-source/tests/helpers/longhorn-im-revision-3-adopt.py",
+          "sha256": "84afbf049726d7aa96d4e771ffae6b3dc17cad6732852dabff1a203459f88414"
+        },
+        "8e26133fc81ccaddb73e38f336d74d4caf60e325afa598e359c631bfe9e80674": {
+          "path": "logs/longhorn-cases/revision3-v2-disk-lifecycle-rpc-evidence-fixed-owning-20261024/frozen-source/tests/helpers/longhorn-im-revision-3-adopt.py",
+          "sha256": "8e26133fc81ccaddb73e38f336d74d4caf60e325afa598e359c631bfe9e80674"
+        },
+        "b4f78cce5faa5ad835b1b8e8f54f642e49ad5fcd23892ef0abf2588c5062b1f0": {
+          "path": "logs/longhorn-cases/revision3-gc-repair-contract-20261023/original/tests/helpers/longhorn-im-revision-3-adopt.py",
+          "sha256": "b4f78cce5faa5ad835b1b8e8f54f642e49ad5fcd23892ef0abf2588c5062b1f0"
+        },
+        "b7c5e97786a1979334d3ba47d52492c209a7be25f34b1c8c282c56d28a3d67c5": {
+          "path": "logs/longhorn-cases/revision3-retirement-rpc-contract-20261024/original/tests/helpers/longhorn-im-revision-3-adopt.py",
+          "sha256": "b7c5e97786a1979334d3ba47d52492c209a7be25f34b1c8c282c56d28a3d67c5"
+        }
+      },
+      "sha256": "e887a2f0933d1bcbcdc92313603ae8f19f7917cf814e198eebd96c968cc9a8c9"
+    },
+    "tests/helpers/longhorn-lab.py": {
+      "origins": {
+        "1d2942337fae0605293057c864608b21f7035c5c7a560616ffc9bd8f638eca43": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-lab.py",
+          "sha256": "1d2942337fae0605293057c864608b21f7035c5c7a560616ffc9bd8f638eca43"
+        },
+        "b2e599e9da2940a03d88693698735d58c67e03dccfbb03757113b0ff728dffcd": {
+          "path": "logs/longhorn-cases/revision3-endpoint-repair-contract-20261023/original/tests/helpers/longhorn-lab.py",
+          "sha256": "b2e599e9da2940a03d88693698735d58c67e03dccfbb03757113b0ff728dffcd"
+        },
+        "ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b": {
+          "path": "logs/longhorn-cases/revision3-gc-repair-contract-20261023/original/tests/helpers/longhorn-lab.py",
+          "sha256": "ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b"
+        }
+      },
+      "sha256": "1d2942337fae0605293057c864608b21f7035c5c7a560616ffc9bd8f638eca43"
+    },
+    "tests/helpers/longhorn-runner.sh": {
+      "origins": {
+        "412f5e8a49d4e47e3dbe3ed13a3a14df05809c87eb032c293f5d145bfd622fac": {
+          "path": "logs/longhorn-cases/revision3-v2-disk-lifecycle-rpc-evidence-fixed-owning-20261024/frozen-source/tests/helpers/longhorn-runner.sh",
+          "sha256": "412f5e8a49d4e47e3dbe3ed13a3a14df05809c87eb032c293f5d145bfd622fac"
+        }
+      },
+      "sha256": "ed1c9ab9b8697a0b333d482826b9ceeecc88d31a5c7b6ddd6fd323bafb93a481"
+    },
+    "tests/helpers/longhorn-upgrade-lifecycle.py": {
+      "origins": {
+        "4df77dc93bd496cb4cf2bdaeef4550e8f7b97c208175956377bf7a524aa736a2": {
+          "path": "logs/longhorn-cases/revision3-backup-handoff-contract-20261024/original/tests/helpers/longhorn-upgrade-lifecycle.py",
+          "sha256": "4df77dc93bd496cb4cf2bdaeef4550e8f7b97c208175956377bf7a524aa736a2"
+        },
+        "825f00a98eb6a1a80cab5d23d84c0b9305fe271d233e3faa11d923bd88007444": {
+          "path": "logs/longhorn-cases/revision3-refusal-order-contract-20261023/original/tests/helpers/longhorn-upgrade-lifecycle.py",
+          "sha256": "825f00a98eb6a1a80cab5d23d84c0b9305fe271d233e3faa11d923bd88007444"
+        },
+        "dc8580db49121dca88668b74db5edf0dbde1574ba019007e9d18ade654a540b7": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-upgrade-lifecycle.py",
+          "sha256": "dc8580db49121dca88668b74db5edf0dbde1574ba019007e9d18ade654a540b7"
+        }
+      },
+      "sha256": "6968ac87350a77d12b989557b3363a3b4d30ae2cb5eb85ab37e678c834233622"
+    },
+    "tests/helpers/longhorn-v2-clone.py": {
+      "origins": {
+        "15c981d737b9ec5aafe004bf6da2dc0c27b67286774ef576cd2a4af6896ba712": {
+          "path": "logs/longhorn-cases/revision3-refusal-order-contract-20261023/original/tests/helpers/longhorn-v2-clone.py",
+          "sha256": "15c981d737b9ec5aafe004bf6da2dc0c27b67286774ef576cd2a4af6896ba712"
+        },
+        "2e4538be4b278d4a046431d5874529d94e8a2a12dd51c5139647fc2162c2aa70": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-v2-clone.py",
+          "sha256": "2e4538be4b278d4a046431d5874529d94e8a2a12dd51c5139647fc2162c2aa70"
+        }
+      },
+      "sha256": "2e4538be4b278d4a046431d5874529d94e8a2a12dd51c5139647fc2162c2aa70"
+    },
+    "tests/helpers/longhorn-v2-linked-acceptance.sh": {
+      "origins": {
+        "6b2124e4ea91a419a7c8ca60de14581d422d8b3b86abda3a0fd53fd9d8c2ab18": {
+          "path": "logs/longhorn-cases/revision3-linked-private-contract-20261024/original/tests/helpers/longhorn-v2-linked-acceptance.sh",
+          "sha256": "6b2124e4ea91a419a7c8ca60de14581d422d8b3b86abda3a0fd53fd9d8c2ab18"
+        }
+      },
+      "sha256": "42323196bee775ad03ff614c90b1b008d70a51e743a21cc388d3d25f37fc22ca"
+    },
+    "tests/helpers/longhorn-v2-runtime-continuation.py": {
+      "origins": {
+        "1cd2fef58fe23dba2cc65d49bc8036f245782f199826202c9ba8f844b32c3bda": {
+          "path": "logs/longhorn-cases/revision3-gc-repair-contract-20261023/original/tests/helpers/longhorn-v2-runtime-continuation.py",
+          "sha256": "1cd2fef58fe23dba2cc65d49bc8036f245782f199826202c9ba8f844b32c3bda"
+        },
+        "350657449db1bc2509640e32d036a8c114cd97fdd70070e9434c215af11b5210": {
+          "path": "logs/longhorn-cases/revision3-refusal-order-contract-20261023/original/tests/helpers/longhorn-v2-runtime-continuation.py",
+          "sha256": "350657449db1bc2509640e32d036a8c114cd97fdd70070e9434c215af11b5210"
+        },
+        "671431cae755adb2efbf17b2f3c7a15454bbb73fc232a060b27b35b319805901": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-v2-runtime-continuation.py",
+          "sha256": "671431cae755adb2efbf17b2f3c7a15454bbb73fc232a060b27b35b319805901"
+        }
+      },
+      "sha256": "671431cae755adb2efbf17b2f3c7a15454bbb73fc232a060b27b35b319805901"
+    },
+    "tests/helpers/longhorn-v2-upgrade-baseline.py": {
+      "origins": {
+        "dcaef1fbd558cb9de9aedf8e0635ccf6a439a7151ca4f3541b9c9469023cfcdd": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-v2-upgrade-baseline.py",
+          "sha256": "dcaef1fbd558cb9de9aedf8e0635ccf6a439a7151ca4f3541b9c9469023cfcdd"
+        }
+      },
+      "sha256": "26e39b49914c7ecc1c32486e64e023a867da1a16c2e3bb80796e2d61d102e9d7"
+    },
+    "tests/helpers/longhorn-v2-upgrade-lifecycle.sh": {
+      "origins": {
+        "5ab3e815ac69a784d6b56782ffc3eded55f43408d93f98ebd22afb4c078ce24e": {
+          "path": "logs/longhorn-cases/revision3-refusal-order-contract-20261023/original/tests/helpers/longhorn-v2-upgrade-lifecycle.sh",
+          "sha256": "5ab3e815ac69a784d6b56782ffc3eded55f43408d93f98ebd22afb4c078ce24e"
+        },
+        "dc3cdfdf6725892b65d7ab0051ecf2a7512e30ba38b2f5a47cb62b9deec867bd": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-v2-upgrade-lifecycle.sh",
+          "sha256": "dc3cdfdf6725892b65d7ab0051ecf2a7512e30ba38b2f5a47cb62b9deec867bd"
+        },
+        "f94954b7c7f8d0a66bd6f8269335ad4d097a37649ff993e4801727d1d447bba3": {
+          "path": "logs/longhorn-cases/revision3-gc-repair-contract-20261023/original/tests/helpers/longhorn-v2-upgrade-lifecycle.sh",
+          "sha256": "f94954b7c7f8d0a66bd6f8269335ad4d097a37649ff993e4801727d1d447bba3"
+        }
+      },
+      "sha256": "60b2ec0f6491ba1f06027923ba3d2e0330b34d70b3fa8f14aa5ddea2fd125e5c"
+    },
+    "tests/helpers/longhorn-v2-upgrade-prepare.py": {
+      "origins": {
+        "8565233ccb9f5f7fe79009392a31e62410822dbc94e7ac98268e4087aa1f2707": {
+          "path": "logs/longhorn-cases/revision3-refusal-order-contract-20261023/original/tests/helpers/longhorn-v2-upgrade-prepare.py",
+          "sha256": "8565233ccb9f5f7fe79009392a31e62410822dbc94e7ac98268e4087aa1f2707"
+        },
+        "8af6dfca440a0fb23fffa85abf6595afb0364fef6f3c58743e6d0f773d020c55": {
+          "path": "logs/longhorn-cases/revision3-legacy-expansion-contract-20261024/original/tests/helpers/longhorn-v2-upgrade-prepare.py",
+          "sha256": "8af6dfca440a0fb23fffa85abf6595afb0364fef6f3c58743e6d0f773d020c55"
+        },
+        "ca0092abe44498ce2ea4db98db7efc86f29f45878d863ea8996afeb9b221f752": {
+          "path": "logs/longhorn-cases/revision3-gc-repair-contract-20261023/original/tests/helpers/longhorn-v2-upgrade-prepare.py",
+          "sha256": "ca0092abe44498ce2ea4db98db7efc86f29f45878d863ea8996afeb9b221f752"
+        },
+        "ce9d79b39182f2dd615bfc37752d89efa861d3356642c57e5f1c65db5d21107a": {
+          "path": "logs/longhorn-cases/revision3-endpoint-repair-contract-20261023/original/tests/helpers/longhorn-v2-upgrade-prepare.py",
+          "sha256": "ce9d79b39182f2dd615bfc37752d89efa861d3356642c57e5f1c65db5d21107a"
+        }
+      },
+      "sha256": "f4d734f0958e04f183d4fdbd64010174f5703f02fb3f3c205e7bf908ae04b242"
+    }
+  },
+  "contract_receipts": {
+    "exit": {
+      "path": "logs/longhorn-cases/revision3-retirement-transfer-final-contract-20261024/contract.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/revision3-retirement-transfer-final-contract-20261024/contract.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/revision3-retirement-transfer-final-contract-20261024/contract.log",
+      "sha256": "b49bf5b9f83bd77930342f8e5e3a4c831ac938f254354820c1c59317b87949f1"
+    }
+  },
+  "endpoint_contract_test": {
+    "path": "tests/unit/test_longhorn_v2_endpoint_cleanup.py",
+    "sha256": "e48bf13a82a3a8725ceb0344715101d2a37460906b2e473a8cc52c9813d5121f"
+  },
+  "endpoint_first_failure": {
+    "path": "tests/evidence/longhorn-v2-upgrade-dm-residue-first-failure-20261023.json",
+    "sha256": "f8296945cc488d4eb8c6d417b9f24a899df4313de158c073409d2771990a0ca2"
+  },
+  "first_failure": {
+    "path": "tests/evidence/longhorn-v2-upgrade-uninstall-gc-first-failure-20261023.json",
+    "sha256": "b7b07553ec168aa4b0459949c7447bf755e6d49e4983eae345cd76d4d78559ee"
+  },
+  "historical_fixture_repair": {
+    "boundary": "Only isolated .2 fixtures receive exact historical bytes; runtime adapters retain current-byte refusal.",
+    "failure": {
+      "path": "tests/evidence/longhorn-v2-upgrade-gc-static-fixture-first-failure-20261023.json",
+      "sha256": "1b00c79ac984b32cb0b61cc6e93ec150cabb6dc7b4e19f0db0e1b4979cfa1f3a"
+    },
+    "source": {
+      "path": "tests/fixtures/longhorn-lab-reviewed-ed237430.py.txt",
+      "sha256": "ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b"
+    },
+    "test": {
+      "path": "tests/unit/test_longhorn_im_revision_evidence.py",
+      "sha256": "4ee2dc0012040ce95e1ddd83eb511c7c73989f100f7cf4e4b5e52b1dc112a44e"
+    }
+  },
+  "impact_analysis": {
+    "path": "logs/longhorn-cases/revision3-refusal-order-contract-20261023/impact-analysis.json",
+    "sha256": "f3ee6dd95a783cfcf813b8362c5a40c819bb1e724819de545fc0d32bef6e5325"
+  },
+  "legacy_expansion_repair": {
+    "boundary": "Owned legacy PVC request precedes native expansion refusal; a completed rollout may resume only from its original journal and two protected old-version restore points. Failure parent remains rc=1 and is validated separately from the successful continuation.",
+    "classification": "test-gate",
+    "coverage": 361,
+    "first_failure": "tests/evidence/longhorn-v2-upgrade-legacy-expansion-first-failure-20261024.json",
+    "product_or_image_changed": false
+  },
+  "linked_permissions_repair": {
+    "boundary": "private umask before actual tee/durable creation; retain strict reader and real failed parent; exact original-source and contract transport only",
+    "classification": "test-gate",
+    "first_failure": {
+      "path": "logs/longhorn-cases/revision3-linked-private-contract-20261024/classification.json",
+      "sha256": "face4bd94f2257a8dda226f14173f97f4f5ddd05eae68fa03d347eae2c42c1ae"
+    },
+    "permission_inventory": {
+      "path": "logs/longhorn-cases/revision3-linked-private-contract-20261024/first-failure-stat.txt",
+      "sha256": "7529503503fc79207de94f9d2960ba77c3a5774953b15180984b98b5bdaed163"
+    },
+    "product_or_image_changed": false,
+    "red": {
+      "path": "logs/longhorn-cases/revision3-linked-private-contract-20261024/red.log",
+      "sha256": "e3c0e9b28ba2e32521edf022ac67d0891fd5ce35c26f88c3cda917d480fbdd08"
+    }
+  },
+  "official_sources": [
+    "https://v1-33.docs.kubernetes.io/docs/concepts/architecture/garbage-collection/",
+    "https://github.com/kubernetes/kubernetes/blob/v1.33.6/pkg/controller/garbagecollector/garbagecollector.go",
+    "Pinned longhorn-spdk-engine EngineFrontend.Delete and go-spdk-helper Initiator.stopWithoutLock: nonforced linear DM removal before NVMe disconnect; no upstream teardown cause inferred without runtime logs"
+  ],
+  "owning_gap": "LONGHORN-52 retirement and pre-upgrade fixture recovery; LONGHORN-49 clone-inert cleanup compatibility",
+  "previous_impact": {
+    "path": "tests/evidence/longhorn-v2-upgrade-retirement-gc-impact-20261023.json",
+    "sha256": "c76a8ab0fce612eae82e323bc7baa481e4796ff505e7c8eff8b3e206586aa818"
+  },
+  "product_behavior_changed": false,
+  "refusal_order_first_failure": {
+    "path": "tests/evidence/longhorn-v2-upgrade-refusal-order-first-failure-20261023.json",
+    "sha256": "8342efa6e6a6770784aa58fc39e570c5746ded9cf19777dc796a82179674ee06"
+  },
+  "schema": 1,
+  "scope": "v2-upgrade-retirement-gc-repair",
+  "separate_product_change": {
+    "behavior": "Parameterless read-only SPDK queries omit params:{}; busy/drained/native/host identity and mutation guards unchanged. Historical install, adoption and upgrade did not execute retire-block-disks, so their valid evidence is retained.45 and final full must prove retirement with current product.",
+    "complete_retirement_acceptance": false,
+    "file": "roles/longhorn/files/block-retire.py"
+  },
+  "transfer_impact": "Add exact raw-evidence transfer before launching ordinary gates. Existing sources/receipts remain immutable; current runner and driver are the only new gate changes. No product behavior change."
+}

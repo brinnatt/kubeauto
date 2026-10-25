@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-31",
+  "status": "pending",
+  "focused_status": "pass",
+  "phase": "block",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-encryption-block </dev/null",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable_pid": 2460469,
+  "success_marker": "LONGHORN_ENCRYPTION_BLOCK_PASS",
+  "scoped_clean_marker": "LONGHORN_ENCRYPTION_BLOCK_SCOPED_CLEAN_PASS",
+  "observations": [
+    {
+      "data_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+      "key_restored": true,
+      "mapping_closed_before_refusal": true,
+      "mode": "Block",
+      "original_device": {
+        "luks_uuid": "9295a3a5-2915-4738-a9a5-4999c8a4a238",
+        "mapped_bytes": 2147483648,
+        "raw_bytes": 2164260864
+      },
+      "variant": "wrong"
+    },
+    {
+      "data_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+      "key_restored": true,
+      "mapping_closed_before_refusal": true,
+      "mode": "Block",
+      "original_device": {
+        "luks_uuid": "9295a3a5-2915-4738-a9a5-4999c8a4a238",
+        "mapped_bytes": 2147483648,
+        "raw_bytes": 2164260864
+      },
+      "variant": "missing"
+    }
+  ],
+  "cross_worker_verified_bytes": 9437184,
+  "cleanup": {
+    "business": true,
+    "original_key": true,
+    "transport": true,
+    "storage_healthy": true
+  },
+  "boundary": "Block-only repair gate passed. Encrypted backup and the all-phase gate remain mandatory before LONGHORN-31 acceptance; no full delivery inference.",
+  "files": {
+    "logs/longhorn-cases/encryption-block-20261019-155453/durable-status.txt": "4b2d4468aad129a778e39a7bc1f5ac3f956572702cacb94fd41e448f07822eb2",
+    "logs/longhorn-cases/encryption-block-20261019-155453/frozen-source.txt": "597d6903aeeb5aeb5a9db32311cf6953d5dc7c8efc686df83e366cda093b7ac2",
+    "logs/longhorn-cases/encryption-block-20261019-155453/gate.log": "26090582bd41125ca974b2c8988b41e4f830a7d0a92d21304f8b0bf06a29a254"
+  }
+}

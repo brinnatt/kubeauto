@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "Only V2 AIO access-mode result paragraphs, RWX client interpretation and current verification boundary; prior full-document review reused, no production operation or diagram changed",
+  "checks": {
+    "sources": "Pinned Longhorn 1.12.1 data-engine comparison and full RWX topic reused; NFS recovery and access-mode boundaries match current program and official explanation",
+    "content": "Both manuals explain actual raw-block backend with independent application modes; RWX counts, maximum operation time and Ready timing have explicit separate meanings; no zero-interruption or engine-performance extrapolation",
+    "novice_path": "V2 AIO selection -> PKI/setup09 -> explicit V2 class -> business verification remains continuous; the added results do not introduce new required inputs or commands",
+    "experienced_path": "Access-mode section and AIO verification paragraphs identify actual conditions, conflict placement, recovery scope and pending operations",
+    "operation_evidence": "Current V2 access-mode evidence has durable rc=0, zero failure markers, four remounts, 2-client recovery and independent UID/disk/empty-business baseline readback",
+    "diagrams": "No Mermaid source changed; retained render evidence remains applicable",
+    "static": "44 storage/middleware documentation contracts passed after the final text edits"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-volume-modes-qualification-20261020.json",
+  "product_evidence_sha256": "d75e1d8da6abfd808996c456018818b6a7455f6b7e1939bc1da8c0c0f2556bdd",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "1f57ced03f8bb2074bfdacfae74bc269d0a7fbba00652ba5da8f0b48cd7d09c5",
+    "docs/storage/longhorn/technical-whitepaper.md": "26a5509ab545aeb6442516422218a466e0a00682b8283df2f0b16a1be7a67690"
+  }
+}

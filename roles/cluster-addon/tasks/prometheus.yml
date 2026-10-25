@@ -14,7 +14,7 @@
         set -Eeuo pipefail
         KC="{{ cluster_dir }}/kubectl.kubeconfig"
         if ! kubectl --kubeconfig="$KC" -n "{{ prom_namespace }}" get secret grafana-admin >/dev/null 2>&1; then
-          password="$(openssl rand -hex 24)"
+          password="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
           kubectl --kubeconfig="$KC" -n "{{ prom_namespace }}" create secret generic grafana-admin \
             --from-literal=admin-user=admin \
             --from-literal=admin-password="$password" >/dev/null

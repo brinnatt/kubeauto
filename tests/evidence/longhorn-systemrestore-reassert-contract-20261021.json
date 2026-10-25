@@ -1,0 +1,42 @@
+{
+  "status": "private-product-contract-pass",
+  "classification": "product integration defect proven by pinned upstream restore code and existing product reconcile; no live execution",
+  "cases": [
+    "LONGHORN-17"
+  ],
+  "ladder_completed": 2,
+  "next_permitted": "root review/apply private patch and existing product tests, then narrow independent V1 systemrestore fixture after its contracts",
+  "rc": 0,
+  "tests": 10,
+  "failure_markers": 0,
+  "patch": "tests/fixtures/longhorn-systemrestore-reassert.patch",
+  "patch_sha256": "dad3538aca5e8dfed94ae4e35d79f41c1bc8a1f42c5f690a6a5952d8791ca505",
+  "product_original_sha256": "5c907f2966bed67e1bde6441efe89f994bd2cbc9277a5c2da2002e8b83b15e24",
+  "product_candidate_sha256": "bdddb74806ec7fe9ae86a863ffea2cc8689593e6e6a74b93c7e5b335481f98ba",
+  "unit_file": "tests/unit/test_longhorn_restore_reassert.py",
+  "unit_sha256": "d1554aa2e0f45c8eb37e7906fd4b5851e18f105f6f37d2f54d10118fc04d2ea3",
+  "candidate": "logs/longhorn-cases/systemrestore-reassert-contract-20261021/longhorn.py",
+  "contracts": "logs/longhorn-cases/systemrestore-reassert-contract-20261021/contracts.log",
+  "contracts_sha256": "8e8c40f14485e374a450c9c5f2dd65b58e8b74300fa0563f8ed8dfc1b535ec9d",
+  "default_path_impact": "Full-module AST equals original after specializing new checks to no system-restore request; new helper returns before API reads for ordinary requests. No ordinary forced Helm rollout.",
+  "root_cause": "Native SystemRollout overwrites live Settings/DaemonSet/Deployment specs while stored Helm values retain the target profile. Existing reconcile compares only stored values and reaches health wait before it can recreate disabled V2 managers or target CSI topology.",
+  "solution": "Only current config owned immutable completed SystemRestore UID authorizes reassertion. All volumes detached; preflight every chart-managed native Setting UID/RV, patch exact declared scalar/JSON values, same fixed Helm product upgrade restores managed specs, wait target health and raw identity, then UID/RV annotation binds restore UID+namespace UID+exact values SHA. Re-entry repairs before ordinary health; same call repairs immediately after native operation; matching annotation is no-op. Failure has no completion marker and replays; no secret, backup credentials, excluded concurrency settings or unrelated native settings touched. Completed does not guarantee temporary restore attachment retired: wait all native states detached and nodeID empty within operation_timeout before the first setting mutation; check again before Helm. Persistent attached state fails without mutation. No invented distinction between client and native restore attachment.",
+  "upstream": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "files": {
+      "backup-longhorn-system.md": "877a8c9eeef5d73c1240afb044fa8ff3bc0c409bddcb97e2aacd84d69c98a0d2",
+      "restore-longhorn-system.md": "6805b272ea82c334dedfe76870848f2197ef31e09edfb1c513589de68b01e9d0",
+      "system_rollout_controller.go": "30bd2b50c262de285820dddf71799fa7f000e7582a2c3697637184193835c052"
+    },
+    "excluded_settings": [
+      "concurrent-backup-restore-per-node-limit",
+      "concurrent-replica-rebuild-per-node-limit",
+      "concurrent-backing-image-replenish-per-node-limit",
+      "backup-target",
+      "backup-target-credential-secret"
+    ],
+    "findings": "restoreSettings has no customized exemption; it overwrites differing values outside its 5 ignored settings. DS/Deployment restore replaces .Spec while retaining object UID. V1 backup dataEngine remains V1 and numberOfReplicas remains as bundled."
+  },
+  "scope": "Private patch only; roles/longhorn/files/longhorn.py remains unchanged until root accepts. Target helper and full LONGHORN-17 scenario are still in development. No matrix PASS."
+}

@@ -1,0 +1,41 @@
+{
+  "adoption_inputs_changed": false,
+  "change": "Two fixed recovery modes accept only explicit original private journals. Recovery attempts preserve original durable failures, bind original host/disk/config/source identities, use independent logs and release proofs, and reverify scoped cleanup. Remove unowned shared-context restoration; retain dedicated kubeconfigs.",
+  "classification": "test-gate",
+  "contracts": {
+    "cleanup_and_recovery_tests": 32,
+    "failure_markers": 0,
+    "original_cleanup_tests_retained": 15,
+    "python_ast_rc": 0,
+    "rc": 0,
+    "shell_syntax_rc": 0,
+    "tests": 114
+  },
+  "date": "2026-10-21",
+  "frozen_inputs": {
+    "tests/helpers/longhorn-live.sh": "ce5dd16c95bc9d671c685952660ddfa911690dd5a4a102eaf7bd673a696f8fa1",
+    "tests/helpers/longhorn-runner.sh": "35d76240322f12796d10e4084f0c5afcc87a589c97bcad2a6cd681b1d831cc60",
+    "tests/helpers/longhorn-static.sh": "70dc06bf07f155fc1eb8f6a52db770e3ef04c7ccd2523469cd32f9a19e878bcd",
+    "tests/helpers/longhorn-v2-cleanup.py": "c01c81133628c6f1b434659053ed6ce22c7f352fb440df4845c63a528465b142",
+    "tests/helpers/longhorn-v2-cleanup.sh": "ec68d407adea03881a79719f515c9c13766a21c0ff5615b112cea41e5f959066",
+    "tests/unit/test_longhorn_v2_cleanup.py": "ffc7e901d2f261f97f26dbf7107ae4ad96beb4ef267926248419deb36b8b2f26",
+    "tests/unit/test_longhorn_v2_cleanup_recovery.py": "7688f7a2a8e9075944f9e5c9ebc8fa045baef859b5dbd4fc425b4ba384954adf"
+  },
+  "ladder_completed": 2,
+  "live_pass": false,
+  "next_fixed_scope": "Normal target/source retirement after their dependent scenarios, or explicit original-journal recovery only for a real failed attempt. Local contracts do not sign LONGHORN-54.",
+  "next_permitted_level": 3,
+  "overall_delivery_pass": false,
+  "owning_case": "LONGHORN-54",
+  "raw_logs": {
+    "logs/longhorn-cases/parallel-continuation-20261021/retirement-owning-integrated.log": "94f104bc301c9a23095602f5b97603bbeb3046d05fe101d43701e4ae6b7f70e8",
+    "logs/longhorn-cases/parallel-continuation-20261021/retirement-recovery/contracts.log": "e512cafe5b6c251a986d1e1b1def4372d20d949f88ebb161858e367e333787d2",
+    "logs/longhorn-cases/parallel-continuation-20261021/retirement-recovery/handoff.md": "81c931b4fe0438a745114677696f1db2cdd18e0a6c0bc3532b66e13b5d5577b0",
+    "logs/longhorn-cases/parallel-continuation-20261021/retirement-recovery/handoff.patch": "008f2e93166203e3cfdf6a17ff9557824fb196bb83465a178891d9fd39c21ce3",
+    "logs/longhorn-cases/parallel-continuation-20261021/retirement-recovery/review.json": "a2785dedf34c3cc7bbec8e46002c53c1eafedfdb52e961e1c8154da2a2e2db60"
+  },
+  "remote_inputs_changed": false,
+  "root_cause": "The normal retirement runner always created a new journal and lacked a public original-journal recovery path. Native namespace-delete/owner-write, core archive, and host-canary unlink windows lacked durable continuation intent.",
+  "schema": 1,
+  "status": "contract-pass-no-live"
+}

@@ -1,6 +1,12 @@
 # WARNING: This playbook will erase the entire k8s-cluster, include PODs, ETCD data etc.
 # Make sure you know what you are doing.
 
+- name: Refuse cluster teardown while Longhorn storage remains
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - import_tasks: ../roles/longhorn/tasks/removal-guard.yml
+
 - hosts:
   - kube_master
   - kube_node

@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "Only the V2 AIO memory-budget/VMware balloon clarification added this turn; no claim of full manual review or V2 product acceptance.",
+  "document": "docs/storage/longhorn/operations-manual.md",
+  "document_sha256": "39024d66f96bc030c66f21611554f8355da7631d6b4ebb871fff090301f0c67a",
+  "reviewer": "Author self-review; no independent reviewer or customer sign-off.",
+  "checks": [
+    {
+      "requirement": "Mechanism and versioned source",
+      "section": "V2 AIO 的节点与裸盘准入",
+      "evidence": "Linux v7.0 vmw_balloon.c preamble and vmballoon_send_get_target; Longhorn 1.12.1 installation hugepage budget",
+      "result": "Guest page reservation follows the host target; configured MemTotal is not free/available memory. Downstream Ubuntu source identity is not claimed."
+    },
+    {
+      "requirement": "Real measurements and failure classification",
+      "section": "V2 AIO 的节点与裸盘准入",
+      "evidence": "tests/evidence/longhorn-v2-resources-balloon-first-failure-20261020.json and bound read-only meminfo logs",
+      "result": "Converted KiB to GiB independently: 3602256/4011620 KiB balloon -> 3.44/3.83 GiB; 2325040/2790652 KiB available -> 2.22/2.66 GiB. Explicit environment refusal, no storage PASS or production sizing extrapolation."
+    },
+    {
+      "requirement": "New-reader continuous path",
+      "section": "V2 AIO 的节点与裸盘准入",
+      "result": "Same approved host/role and OS tools; read-only memory fields precede page allocation and raw device checks. Budget failure stops before install; administrator resolves host resource guarantee and rechecks."
+    },
+    {
+      "requirement": "Experienced-reader retrieval and result judgment",
+      "section": "V2 AIO 的节点与裸盘准入",
+      "result": "Searchable balloon/MemAvailable fields, absent-field limitation and precise page-plus-headroom budget; avoids guest-driver removal and distinguishes resource diagnosis from acceptance."
+    }
+  ],
+  "static_validation": "Fixed --longhorn-static-only passed: 51 V2 focused tests, 535 main contracts, syntax/templates/links and disabled entry; see longhorn-v2-resource-install-static-20261020.json."
+}

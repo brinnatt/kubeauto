@@ -1,0 +1,4388 @@
+LONGHORN_TRANSPORT_QUALIFICATION_CURRENT
+== verify rocky nodes are clean ==
+--- 192.168.122.135 ---
+time="2026-10-25T09:22:04+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+time="2026-10-25T09:22:04+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+unit_kubelet=inactive
+unit_kube-proxy=inactive
+unit_kube-apiserver=inactive
+unit_kube-controller-manager=inactive
+unit_kube-scheduler=inactive
+unit_kube-lb=inactive
+unit_etcd=inactive
+unit_containerd=inactive
+unit_docker=inactive
+unit_cri-dockerd=inactive
+containerd_shim_count=0
+kubernetes_pod_process_count=0
+--- 192.168.122.40 ---
+time="2026-10-25T09:22:06+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+time="2026-10-25T09:22:06+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+unit_kubelet=inactive
+unit_kube-proxy=inactive
+unit_kube-apiserver=inactive
+unit_kube-controller-manager=inactive
+unit_kube-scheduler=inactive
+unit_kube-lb=inactive
+unit_etcd=inactive
+unit_containerd=inactive
+unit_docker=inactive
+unit_cri-dockerd=inactive
+containerd_shim_count=0
+kubernetes_pod_process_count=0
+--- 192.168.122.72 ---
+time="2026-10-25T09:22:07+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+time="2026-10-25T09:22:08+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+unit_kubelet=inactive
+unit_kube-proxy=inactive
+unit_kube-apiserver=inactive
+unit_kube-controller-manager=inactive
+unit_kube-scheduler=inactive
+unit_kube-lb=inactive
+unit_etcd=inactive
+unit_containerd=inactive
+unit_docker=inactive
+unit_cri-dockerd=inactive
+containerd_shim_count=0
+kubernetes_pod_process_count=0
+--- 192.168.122.212 ---
+time="2026-10-25T09:22:10+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+time="2026-10-25T09:22:10+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+unit_kubelet=inactive
+unit_kube-proxy=inactive
+unit_kube-apiserver=inactive
+unit_kube-controller-manager=inactive
+unit_kube-scheduler=inactive
+unit_kube-lb=inactive
+unit_etcd=inactive
+unit_containerd=inactive
+unit_docker=inactive
+unit_cri-dockerd=inactive
+containerd_shim_count=0
+kubernetes_pod_process_count=0
+--- 192.168.122.165 ---
+time="2026-10-25T09:22:12+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+time="2026-10-25T09:22:12+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+unit_kubelet=inactive
+unit_kube-proxy=inactive
+unit_kube-apiserver=inactive
+unit_kube-controller-manager=inactive
+unit_kube-scheduler=inactive
+unit_kube-lb=inactive
+unit_etcd=inactive
+unit_containerd=inactive
+unit_docker=inactive
+unit_cri-dockerd=inactive
+containerd_shim_count=0
+kubernetes_pod_process_count=0
+--- 192.168.122.238 ---
+time="2026-10-25T09:22:14+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+time="2026-10-25T09:22:14+08:00" level=warning msg="Config \"/etc/crictl.yaml\" does not exist, trying next: \"/usr/local/bin/crictl.yaml\""
+unit_kubelet=inactive
+unit_kube-proxy=inactive
+unit_kube-apiserver=inactive
+unit_kube-controller-manager=inactive
+unit_kube-scheduler=inactive
+unit_kube-lb=inactive
+unit_etcd=inactive
+unit_containerd=inactive
+unit_docker=inactive
+unit_cri-dockerd=inactive
+containerd_shim_count=0
+kubernetes_pod_process_count=0
+LAB_CLEAN_VERIFY_PASS
+LONGHORN_CORE_HOST_INPUTS_CLEAN_PASS nodes=6
+[2026-10-25 09:22:23] [INFO] [service.cluster.manager] Cluster longhorn-gate created. Next: edit /usr/local/kubeauto/clusters/longhorn-gate/hosts and /usr/local/kubeauto/clusters/longhorn-gate/config.yml, then run setup.
+LONGHORN_LAB_CONFIGURED
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+[2026-10-25 09:23:41] [INFO] [service.cluster.downloader] ansible-core 2.16 already installed; skipping.
+[2026-10-25 09:23:41] [INFO] [service.cluster.downloader] [DOWNLOAD] Preparing conditional Ansible execution image brinnatt/ansible:2.18.6.
+[2026-10-25 09:23:41] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:41] [WARNING] [service.cluster.downloader] Kubeauto already installed; skipping.
+[2026-10-25 09:23:41] [WARNING] [service.cluster.downloader] Kubernetes binaries already installed; skipping.
+[2026-10-25 09:23:41] [WARNING] [service.cluster.downloader] Extra binaries already installed; skipping.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] docker-compose plugin has been installed successfully!
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] docker-buildx plugin has been installed successfully!
+[2026-10-25 09:23:42] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-10-25 09:23:42] [INFO] [service.cluster.downloader] [DOWNLOAD] Default images: uploading 7 image(s) to local registry.
+[2026-10-25 09:23:42] [WARNING] [service.cluster.registry] [REGISTRY] Local registry already running; skipping.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] Uploading 7 image(s) to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] [1/7] Image: brinnatt/calico-cni:v3.28.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: 127.0.0.1:5000/brinnatt/calico-cni:v3.28.4
+The push refers to repository [127.0.0.1:5000/brinnatt/calico-cni]
+5f70bf18a086: Preparing
+4de9eb0e9294: Preparing
+86065ae9ccaa: Preparing
+5f70bf18a086: Layer already exists
+4de9eb0e9294: Layer already exists
+86065ae9ccaa: Layer already exists
+v3.28.4: digest: sha256:459e7a4396dcf46dc0c412bc49a36fac822fcd6663a1bbaaeb02685e7cf87772 size: 946
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: 127.0.0.1:5000/brinnatt/calico-cni:v3.28.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/calico-cni:v3.28.4.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] [2/7] Image: brinnatt/calico-kube-controllers:v3.28.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: 127.0.0.1:5000/brinnatt/calico-kube-controllers:v3.28.4
+The push refers to repository [127.0.0.1:5000/brinnatt/calico-kube-controllers]
+eeda6dac98fd: Preparing
+86065ae9ccaa: Preparing
+86065ae9ccaa: Layer already exists
+eeda6dac98fd: Layer already exists
+v3.28.4: digest: sha256:539c4b84fe0151ae16327cfc13b36b1d4df949f453e6bf368599fad59d9f3dcd size: 740
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: 127.0.0.1:5000/brinnatt/calico-kube-controllers:v3.28.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/calico-kube-controllers:v3.28.4.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] [3/7] Image: brinnatt/calico-node:v3.28.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: 127.0.0.1:5000/brinnatt/calico-node:v3.28.4
+The push refers to repository [127.0.0.1:5000/brinnatt/calico-node]
+c679b3382fdd: Preparing
+c679b3382fdd: Layer already exists
+v3.28.4: digest: sha256:1180a086d87c5b91bebdf4277a02591e947a8b59223dcbea10dd8b860140e3c2 size: 530
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: 127.0.0.1:5000/brinnatt/calico-node:v3.28.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/calico-node:v3.28.4.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] [4/7] Image: brinnatt/coredns:1.12.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: 127.0.0.1:5000/brinnatt/coredns:1.12.4
+The push refers to repository [127.0.0.1:5000/brinnatt/coredns]
+44925e5e2cc9: Preparing
+54559abf8a8c: Preparing
+bfe9137a1b04: Preparing
+f4aee9e53c42: Preparing
+1a73b54f556b: Preparing
+2a92d6ac9e4f: Preparing
+bbb6cacb8c82: Preparing
+6f1cdceb6a31: Preparing
+af5aa97ebe6c: Preparing
+4d049f83d9cf: Preparing
+114dde0fefeb: Preparing
+4840c7c54023: Preparing
+8fa10c0194df: Preparing
+bff7f7a9d443: Preparing
+2a92d6ac9e4f: Waiting
+bbb6cacb8c82: Waiting
+6f1cdceb6a31: Waiting
+af5aa97ebe6c: Waiting
+4d049f83d9cf: Waiting
+114dde0fefeb: Waiting
+8fa10c0194df: Waiting
+bff7f7a9d443: Waiting
+4840c7c54023: Waiting
+f4aee9e53c42: Layer already exists
+44925e5e2cc9: Layer already exists
+2a92d6ac9e4f: Layer already exists
+54559abf8a8c: Layer already exists
+bfe9137a1b04: Layer already exists
+1a73b54f556b: Layer already exists
+6f1cdceb6a31: Layer already exists
+bbb6cacb8c82: Layer already exists
+8fa10c0194df: Layer already exists
+bff7f7a9d443: Layer already exists
+4d049f83d9cf: Layer already exists
+4840c7c54023: Layer already exists
+114dde0fefeb: Layer already exists
+af5aa97ebe6c: Layer already exists
+1.12.4: digest: sha256:38c58ccb24820804ace9646afcb3e6e216f70f8ee4f712432730002240db6dc9 size: 3233
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: 127.0.0.1:5000/brinnatt/coredns:1.12.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/coredns:1.12.4.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] [5/7] Image: brinnatt/k8s-dns-node-cache:1.26.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: 127.0.0.1:5000/brinnatt/k8s-dns-node-cache:1.26.4
+The push refers to repository [127.0.0.1:5000/brinnatt/k8s-dns-node-cache]
+bcbd50e29d07: Preparing
+d23ed4180a23: Preparing
+d23ed4180a23: Layer already exists
+bcbd50e29d07: Layer already exists
+1.26.4: digest: sha256:50d30da2e90221d5d8fda03594adbbdfef8a6eda596bb66c464d7165bf9ab549 size: 741
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: 127.0.0.1:5000/brinnatt/k8s-dns-node-cache:1.26.4
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/k8s-dns-node-cache:1.26.4.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] [6/7] Image: brinnatt/metrics-server:v0.8.0
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: 127.0.0.1:5000/brinnatt/metrics-server:v0.8.0
+The push refers to repository [127.0.0.1:5000/brinnatt/metrics-server]
+90c3da41cc55: Preparing
+bfe9137a1b04: Preparing
+f4aee9e53c42: Preparing
+1a73b54f556b: Preparing
+2a92d6ac9e4f: Preparing
+bbb6cacb8c82: Preparing
+6f1cdceb6a31: Preparing
+af5aa97ebe6c: Preparing
+4d049f83d9cf: Preparing
+48c0fb67386e: Preparing
+8fa10c0194df: Preparing
+f464af4b9b25: Preparing
+bbb6cacb8c82: Waiting
+6f1cdceb6a31: Waiting
+af5aa97ebe6c: Waiting
+4d049f83d9cf: Waiting
+48c0fb67386e: Waiting
+8fa10c0194df: Waiting
+f464af4b9b25: Waiting
+90c3da41cc55: Layer already exists
+2a92d6ac9e4f: Layer already exists
+1a73b54f556b: Layer already exists
+f4aee9e53c42: Layer already exists
+bfe9137a1b04: Layer already exists
+6f1cdceb6a31: Layer already exists
+bbb6cacb8c82: Layer already exists
+48c0fb67386e: Layer already exists
+4d049f83d9cf: Layer already exists
+8fa10c0194df: Layer already exists
+af5aa97ebe6c: Layer already exists
+f464af4b9b25: Layer already exists
+v0.8.0: digest: sha256:8cb1aaf9e90534e68db953bb2b76cdaceb2b1e70c60db65bde718635491e0ac7 size: 2814
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: 127.0.0.1:5000/brinnatt/metrics-server:v0.8.0
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/metrics-server:v0.8.0.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] [7/7] Image: brinnatt/pause:3.10
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Image exists locally; skipping pull.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Tagging and pushing to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushing image: 127.0.0.1:5000/brinnatt/pause:3.10
+The push refers to repository [127.0.0.1:5000/brinnatt/pause]
+d8bdedd33a4e: Preparing
+d8bdedd33a4e: Layer already exists
+3.10: digest: sha256:0363d950c6445ab7ade529e6c10fdddea4f519c1c095950c4edc4c1cf4662980 size: 527
+[2026-10-25 09:23:42] [INFO] [service.cluster.docker] [UPLOAD] Pushed successfully: 127.0.0.1:5000/brinnatt/pause:3.10
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY]   -> Done: brinnatt/pause:3.10.
+[2026-10-25 09:23:42] [INFO] [service.cluster.registry] [REGISTRY] All 7 image(s) uploaded to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.downloader] [DOWNLOAD] Default images: 7 image(s) uploaded to local registry.
+[2026-10-25 09:23:42] [INFO] [service.cluster.downloader] Cluster config directory ready: /usr/local/kubeauto/clusters
+[2026-10-25 09:23:44] [INFO] [service.cluster.manager] Ansible Python policy (ansible-core 2.16): control node managed by distribution RPM/deb, target module runtime Python >=3.8
+[2026-10-25 09:23:44] [INFO] [service.cluster.manager] Setting up cluster with playbook 90.setup.yml.
+[2026-10-25 09:23:44] [INFO] [service.cluster.manager] Component versions (kubernetes / etcd / network):
+[2026-10-25 09:23:44] [INFO] [service.cluster.manager]   kubernetes: v1.33.6, etcd: v3.6.4, calico: v3.28.4
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+[WARNING]: Could not match supplied host pattern, ignoring: ex_lb
+[WARNING]: Could not match supplied host pattern, ignoring: chrony
+
+PLAY [kube_master,kube_node,etcd,ex_lb,chrony] *********************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=15
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=30
+ok: [192.168.122.165]
+ok: [192.168.122.212]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=45
+ok: [192.168.122.238]
+
+TASK [chrony : check if chronyd running, break the role] ***********************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.212]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [chrony : terminate the play if chronyd running] **************************
+skipping: [192.168.122.135]
+
+TASK [chrony : uninstall residual ntp chrony] **********************************
+skipping: [192.168.122.135] => (item=ntp) 
+skipping: [192.168.122.135] => (item=chrony) 
+skipping: [192.168.122.40] => (item=ntp) 
+skipping: [192.168.122.40] => (item=chrony) 
+skipping: [192.168.122.72] => (item=ntp) 
+skipping: [192.168.122.72] => (item=chrony) 
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212] => (item=ntp) 
+skipping: [192.168.122.238] => (item=ntp) 
+skipping: [192.168.122.212] => (item=chrony) 
+skipping: [192.168.122.212]
+skipping: [192.168.122.165] => (item=ntp) 
+skipping: [192.168.122.238] => (item=chrony) 
+skipping: [192.168.122.165] => (item=chrony) 
+skipping: [192.168.122.238]
+skipping: [192.168.122.165]
+
+TASK [chrony : prepare some dirs] **********************************************
+skipping: [192.168.122.135] => (item=/etc/chrony) 
+skipping: [192.168.122.135] => (item=/var/lib/chrony) 
+skipping: [192.168.122.135] => (item=/var/log/chrony) 
+skipping: [192.168.122.72] => (item=/etc/chrony) 
+skipping: [192.168.122.72] => (item=/var/lib/chrony) 
+skipping: [192.168.122.72] => (item=/var/log/chrony) 
+skipping: [192.168.122.40] => (item=/etc/chrony) 
+skipping: [192.168.122.135]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212] => (item=/etc/chrony) 
+skipping: [192.168.122.212] => (item=/var/lib/chrony) 
+skipping: [192.168.122.212] => (item=/var/log/chrony) 
+skipping: [192.168.122.40] => (item=/var/lib/chrony) 
+skipping: [192.168.122.40] => (item=/var/log/chrony) 
+skipping: [192.168.122.212]
+skipping: [192.168.122.40]
+skipping: [192.168.122.165] => (item=/etc/chrony) 
+skipping: [192.168.122.238] => (item=/etc/chrony) 
+skipping: [192.168.122.165] => (item=/var/lib/chrony) 
+skipping: [192.168.122.238] => (item=/var/lib/chrony) 
+skipping: [192.168.122.165] => (item=/var/log/chrony) 
+skipping: [192.168.122.238] => (item=/var/log/chrony) 
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [chrony : distribute chronyd binary] **************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [chrony : create chronyd systemd unit file] *******************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [chrony : configure chrony server] ****************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.238]
+skipping: [192.168.122.165]
+
+TASK [chrony : configure chrony client] ****************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [chrony : enable chronyd service on startup] ******************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [chrony : start chronyd service] ******************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [chrony : wait for chronyd running] ***************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+PLAY [localhost] ***************************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [localhost]
+
+TASK [deploy : prepare some dirs] **********************************************
+changed: [localhost] => (item=/usr/local/kubeauto/clusters/longhorn-gate/ssl)
+changed: [localhost] => (item=/usr/local/kubeauto/clusters/longhorn-gate/backup)
+changed: [localhost] => (item=/usr/local/kubeauto/clusters/longhorn-gate/yml)
+ok: [localhost] => (item=~/.kube)
+
+TASK [deploy : set extra-bin directory permission] *****************************
+ok: [localhost]
+
+TASK [deploy : read ca cert stat information into p] ***************************
+ok: [localhost]
+
+TASK [deploy : prepare ca configuration and cert request] **********************
+changed: [localhost] => (item=ca-config.json)
+changed: [localhost] => (item=ca-csr.json)
+
+TASK [deploy : generate CA cert and private key] *******************************
+changed: [localhost]
+
+TASK [deploy : prepare admin csr for kubectl usage] ****************************
+changed: [localhost]
+
+TASK [deploy : create admin cert and private key] ******************************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+TASK [deploy : install kubeconfig] *********************************************
+changed: [localhost]
+
+TASK [deploy : create self-defined user certs directory] ***********************
+skipping: [localhost]
+
+TASK [deploy : prepare CA configuration] ***************************************
+skipping: [localhost]
+
+TASK [deploy : prepare {{ USER_NAME }} cert request for kubectl] ***************
+skipping: [localhost]
+
+TASK [deploy : create {{ USER_NAME }} cert and private key] ********************
+skipping: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+skipping: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+skipping: [localhost]
+
+TASK [deploy : set context params] *********************************************
+skipping: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+skipping: [localhost]
+
+TASK [deploy : generate clusterrolebind configuration] *************************
+skipping: [localhost]
+
+TASK [deploy : create clusterrolebind] *****************************************
+skipping: [localhost]
+
+TASK [deploy : debug] **********************************************************
+skipping: [localhost]
+
+TASK [deploy : prepare kube-proxy csr] *****************************************
+changed: [localhost]
+
+TASK [deploy : create kube-proxy cert and private key] *************************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=60
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+TASK [deploy : prepare kube-controller-manager csr] ****************************
+changed: [localhost]
+
+TASK [deploy : create kube-controller-manager cert and private key] ************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+TASK [deploy : prepare kube-scheduler csr] *************************************
+changed: [localhost]
+
+TASK [deploy : create kube-scheduler cert and private key] *********************
+changed: [localhost]
+
+TASK [deploy : set cluster params] *********************************************
+changed: [localhost]
+
+TASK [deploy : set client credential params] ***********************************
+changed: [localhost]
+
+TASK [deploy : set context params] *********************************************
+changed: [localhost]
+
+TASK [deploy : choose default context] *****************************************
+changed: [localhost]
+
+PLAY [kube_master,kube_node,etcd] **********************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=75
+ok: [192.168.122.165]
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=90
+ok: [192.168.122.238]
+
+TASK [prepare : read the prepare tasks file] ***********************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=105
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.238]
+
+TASK [prepare : indicates the prepare tasks finished already] ******************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : copy huawei cloud apt mirror script] ***************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : apply huawei cloud apt mirror] *********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : update apt cache] **********************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.212]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : delete ubuntu default software] ********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.212]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : install ubuntu/debian basic software] **************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165]
+skipping: [192.168.122.212]
+skipping: [192.168.122.238]
+
+TASK [prepare : create journal relative directory] *****************************
+skipping: [192.168.122.135] => (item=/etc/systemd/journald.conf.d) 
+skipping: [192.168.122.135] => (item=/var/log/journal) 
+skipping: [192.168.122.135]
+skipping: [192.168.122.40] => (item=/etc/systemd/journald.conf.d) 
+skipping: [192.168.122.40] => (item=/var/log/journal) 
+skipping: [192.168.122.212] => (item=/etc/systemd/journald.conf.d) 
+skipping: [192.168.122.212] => (item=/var/log/journal) 
+skipping: [192.168.122.72] => (item=/etc/systemd/journald.conf.d) 
+skipping: [192.168.122.72] => (item=/var/log/journal) 
+skipping: [192.168.122.40]
+skipping: [192.168.122.212]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165] => (item=/etc/systemd/journald.conf.d) 
+skipping: [192.168.122.165] => (item=/var/log/journal) 
+skipping: [192.168.122.165]
+skipping: [192.168.122.238] => (item=/etc/systemd/journald.conf.d) 
+skipping: [192.168.122.238] => (item=/var/log/journal) 
+skipping: [192.168.122.238]
+
+TASK [prepare : optimize journal params] ***************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : restart journald service] **************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : copy huawei cloud yum/dnf mirror script] ***********************
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=120
+ok: [192.168.122.238]
+
+TASK [prepare : apply huawei cloud yum/dnf mirror] *****************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=135
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.165]
+ok: [192.168.122.40]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=150
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=165
+ok: [192.168.122.238]
+
+TASK [prepare : detect ansible-compatible python on target] ********************
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+ok: [192.168.122.40]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+
+TASK [prepare : install python39 for ansible (RHEL8 family, only when no compatible python)] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : delete centos/redhat default software] *************************
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+ok: [192.168.122.165]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=180
+ok: [192.168.122.40]
+ok: [192.168.122.238]
+
+TASK [prepare : install basic system software] *********************************
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.165]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+
+TASK [prepare : disable selinux right now] *************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=195
+changed: [192.168.122.40]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.238]
+
+TASK [prepare : check if /etc/selinux/config exists] ***************************
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [prepare : disable selinux forever] ***************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+ok: [192.168.122.135]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=210
+ok: [192.168.122.238]
+
+TASK [prepare : disable selinux forever] ***************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : forbidden rsyslog fetch journald 1, avoid double handling logs and wasting disk space] ***
+ok: [192.168.122.40]
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [prepare : forbidden rsyslog fetch journald 2, avoid double handling logs and wasting disk space] ***
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.165]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=225
+ok: [192.168.122.238]
+
+TASK [prepare : restart rsyslog service] ***************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=240
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72]
+changed: [192.168.122.135]
+changed: [192.168.122.40]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=255
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+
+TASK [prepare : copy huawei cloud zypper mirror script] ************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.238]
+skipping: [192.168.122.165]
+
+TASK [prepare : apply huawei cloud zypper mirror] ******************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : install basic system software] *********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : copy huawei cloud yum/dnf mirror script] ***********************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.212]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : apply huawei cloud yum/dnf mirror] *****************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : detect ansible-compatible python on target] ********************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : install python39 for ansible (RHEL8 family, only when no compatible python)] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : delete centos/redhat default software] *************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165]
+skipping: [192.168.122.212]
+skipping: [192.168.122.238]
+
+TASK [prepare : install basic system software] *********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : disable selinux right now] *************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : check if /etc/selinux/config exists] ***************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.238]
+skipping: [192.168.122.165]
+skipping: [192.168.122.212]
+
+TASK [prepare : disable selinux forever] ***************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : disable selinux forever] ***************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : forbidden rsyslog fetch journald 1, avoid double handling logs and wasting disk space] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : forbidden rsyslog fetch journald 2, avoid double handling logs and wasting disk space] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : restart rsyslog service] ***************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.238]
+skipping: [192.168.122.165]
+
+TASK [prepare : disable swap] **************************************************
+changed: [192.168.122.212]
+changed: [192.168.122.135]
+changed: [192.168.122.40]
+changed: [192.168.122.165]
+changed: [192.168.122.72]
+changed: [192.168.122.238]
+
+TASK [prepare : delete fstab swap configuration] *******************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=270
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+
+TASK [prepare : load kernel module] ********************************************
+ok: [192.168.122.212] => (item=br_netfilter)
+ok: [192.168.122.135] => (item=br_netfilter)
+ok: [192.168.122.40] => (item=br_netfilter)
+ok: [192.168.122.72] => (item=br_netfilter)
+ok: [192.168.122.165] => (item=br_netfilter)
+ok: [192.168.122.212] => (item=dm_snapshot)
+ok: [192.168.122.40] => (item=dm_snapshot)
+ok: [192.168.122.135] => (item=dm_snapshot)
+ok: [192.168.122.165] => (item=dm_snapshot)
+ok: [192.168.122.72] => (item=dm_snapshot)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=285
+ok: [192.168.122.212] => (item=dm_thin_pool)
+ok: [192.168.122.40] => (item=dm_thin_pool)
+ok: [192.168.122.135] => (item=dm_thin_pool)
+ok: [192.168.122.165] => (item=dm_thin_pool)
+ok: [192.168.122.72] => (item=dm_thin_pool)
+ok: [192.168.122.212] => (item=ip_vs)
+ok: [192.168.122.40] => (item=ip_vs)
+ok: [192.168.122.135] => (item=ip_vs)
+ok: [192.168.122.165] => (item=ip_vs)
+ok: [192.168.122.72] => (item=ip_vs)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212] => (item=ip_vs_rr)
+ok: [192.168.122.40] => (item=ip_vs_rr)
+ok: [192.168.122.165] => (item=ip_vs_rr)
+ok: [192.168.122.135] => (item=ip_vs_rr)
+ok: [192.168.122.72] => (item=ip_vs_rr)
+ok: [192.168.122.212] => (item=ip_vs_wrr)
+ok: [192.168.122.165] => (item=ip_vs_wrr)
+ok: [192.168.122.40] => (item=ip_vs_wrr)
+ok: [192.168.122.135] => (item=ip_vs_wrr)
+ok: [192.168.122.72] => (item=ip_vs_wrr)
+ok: [192.168.122.212] => (item=ip_vs_sh)
+ok: [192.168.122.165] => (item=ip_vs_sh)
+ok: [192.168.122.40] => (item=ip_vs_sh)
+ok: [192.168.122.135] => (item=ip_vs_sh)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=300
+ok: [192.168.122.72] => (item=ip_vs_sh)
+ok: [192.168.122.212] => (item=nf_conntrack)
+ok: [192.168.122.165] => (item=nf_conntrack)
+ok: [192.168.122.40] => (item=nf_conntrack)
+ok: [192.168.122.135] => (item=nf_conntrack)
+ok: [192.168.122.72] => (item=nf_conntrack)
+ok: [192.168.122.238] => (item=br_netfilter)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=dm_snapshot)
+ok: [192.168.122.238] => (item=dm_thin_pool)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=315
+ok: [192.168.122.238] => (item=ip_vs)
+ok: [192.168.122.238] => (item=ip_vs_rr)
+ok: [192.168.122.238] => (item=ip_vs_wrr)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=ip_vs_sh)
+ok: [192.168.122.238] => (item=nf_conntrack)
+
+TASK [prepare : try to load nf_conntrack_ipv4] *********************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=330
+changed: [192.168.122.212]
+changed: [192.168.122.40]
+changed: [192.168.122.135]
+changed: [192.168.122.165]
+changed: [192.168.122.72]
+changed: [192.168.122.238]
+
+TASK [prepare : enable systemd loading module automatically] *******************
+ok: [192.168.122.165]
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+
+TASK [prepare : load kernel module on startup] *********************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=345
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [prepare : set system params] *********************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=360
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [prepare : check if fs.may_detach_mounts needs to be set] *****************
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [prepare : if needed, set fs.may_detach_mounts as 1] **********************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : check if net.ipv4.tcp_tw_recycle needs to be set] **************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=375
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.72]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.238]
+
+TASK [prepare : if needed, set tcp_tw_recycle] *********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : take effect on system] *****************************************
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+changed: [192.168.122.40]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.238]
+
+TASK [prepare : create systemd configuration directory] ************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=390
+ok: [192.168.122.165]
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+
+TASK [prepare : set system param ulimits] **************************************
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=405
+ok: [192.168.122.238]
+
+TASK [prepare : take SCTP to kernel module blacklist] **************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+ok: [192.168.122.135]
+ok: [192.168.122.238]
+
+TASK [prepare : install podruntime.slice unit for kubeReserved] ****************
+skipping: [192.168.122.40]
+skipping: [192.168.122.135]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : enable and start podruntime.slice] *****************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [prepare : prepare some dirs] *********************************************
+ok: [192.168.122.212] => (item=/usr/local/bin)
+ok: [192.168.122.165] => (item=/usr/local/bin)
+ok: [192.168.122.72] => (item=/usr/local/bin)
+ok: [192.168.122.135] => (item=/usr/local/bin)
+ok: [192.168.122.40] => (item=/usr/local/bin)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=420
+changed: [192.168.122.212] => (item=/etc/kubernetes/ssl)
+changed: [192.168.122.40] => (item=/etc/kubernetes/ssl)
+changed: [192.168.122.165] => (item=/etc/kubernetes/ssl)
+changed: [192.168.122.72] => (item=/etc/kubernetes/ssl)
+changed: [192.168.122.135] => (item=/etc/kubernetes/ssl)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212] => (item=/root/.kube)
+ok: [192.168.122.165] => (item=/root/.kube)
+ok: [192.168.122.40] => (item=/root/.kube)
+ok: [192.168.122.72] => (item=/root/.kube)
+ok: [192.168.122.135] => (item=/root/.kube)
+ok: [192.168.122.238] => (item=/usr/local/bin)
+changed: [192.168.122.238] => (item=/etc/kubernetes/ssl)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=435
+ok: [192.168.122.238] => (item=/root/.kube)
+
+TASK [prepare : copy kubectl kubeconfig to home dir] ***************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.212]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.165]
+changed: [192.168.122.40]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=450
+changed: [192.168.122.238]
+
+TASK [prepare : add hosts entry to resolve local registry] *********************
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.135]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [prepare : set node hostname] *********************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+skipping: [192.168.122.212]
+
+TASK [prepare : the master[0] resolves all hosts longhorn-node-135 in /etc/hosts] ***
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135]
+ok: [192.168.122.40 -> 192.168.122.135]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=465
+ok: [192.168.122.72 -> 192.168.122.135]
+ok: [192.168.122.212 -> 192.168.122.135]
+ok: [192.168.122.165 -> 192.168.122.135]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238 -> 192.168.122.135]
+
+TASK [prepare : get /etc/hosts from the master[0]] *****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=480
+changed: [192.168.122.135]
+
+TASK [prepare : delete /etc/hosts in the master[0]] ****************************
+changed: [192.168.122.135]
+
+TASK [prepare : sync /etc/hosts to all hosts] **********************************
+changed: [192.168.122.135] => (item=192.168.122.135)
+ok: [192.168.122.135 -> 192.168.122.40] => (item=192.168.122.40)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=495
+ok: [192.168.122.135 -> 192.168.122.72] => (item=192.168.122.72)
+ok: [192.168.122.135 -> 192.168.122.212] => (item=192.168.122.212)
+ok: [192.168.122.135 -> 192.168.122.165] => (item=192.168.122.165)
+ok: [192.168.122.135 -> 192.168.122.238] => (item=192.168.122.238)
+
+TASK [prepare : set prepare tasks label file] **********************************
+changed: [192.168.122.212]
+changed: [192.168.122.72]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=510
+changed: [192.168.122.165]
+changed: [192.168.122.40]
+changed: [192.168.122.135]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+
+PLAY [etcd] ********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=525
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+ok: [192.168.122.135]
+
+TASK [etcd : prepare some dirs] ************************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=540
+changed: [192.168.122.40]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+
+TASK [etcd : download etcd binary] *********************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=etcd)
+ok: [192.168.122.72] => (item=etcd)
+ok: [192.168.122.135] => (item=etcd)
+ok: [192.168.122.40] => (item=etcdctl)
+ok: [192.168.122.135] => (item=etcdctl)
+ok: [192.168.122.72] => (item=etcdctl)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=555
+ok: [192.168.122.40] => (item=etcdutl)
+ok: [192.168.122.72] => (item=etcdutl)
+ok: [192.168.122.135] => (item=etcdutl)
+
+TASK [etcd : create etcd CSR] **************************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [etcd : create etcd certs and private key] ********************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [etcd : distribute etcd cert-related files] *******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=ca.pem)
+changed: [192.168.122.40] => (item=ca.pem)
+changed: [192.168.122.72] => (item=ca.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=570
+changed: [192.168.122.72] => (item=etcd.pem)
+changed: [192.168.122.40] => (item=etcd.pem)
+changed: [192.168.122.135] => (item=etcd.pem)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=etcd-key.pem)
+changed: [192.168.122.72] => (item=etcd-key.pem)
+changed: [192.168.122.40] => (item=etcd-key.pem)
+
+TASK [etcd : create etcd systemd unit file] ************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=585
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.40]
+
+TASK [etcd : enable etcd service on startup] ***********************************
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.40]
+
+TASK [etcd : start etcd service] ***********************************************
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.40]
+
+TASK [etcd : wait for etcd service running] ************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.40]
+
+PLAY [kube_master,kube_node] ***************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=600
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=615
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+ok: [192.168.122.40]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=630
+ok: [192.168.122.238]
+
+TASK [docker : install podruntime.slice unit for kubeReserved] *****************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : enable and start podruntime.slice] ******************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : check if docker was installed] **********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : get docker version information] *********************************
+skipping: [192.168.122.135]
+
+TASK [docker : debug info] *****************************************************
+skipping: [192.168.122.135]
+
+TASK [docker : revise docker version with float type] **************************
+skipping: [192.168.122.135]
+
+TASK [docker : prepare docker managed runtime directory] ***********************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : isolate docker managed runtime binaries from kubernetes containerd] ***
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.135]
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.72]
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.40]
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.212]
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.238]
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.165]
+
+TASK [docker : infer docker installed] *****************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : prepare docker-related directories] *****************************
+skipping: [192.168.122.135] => (item=/usr/local/bin) 
+skipping: [192.168.122.135] => (item=/etc/docker) 
+skipping: [192.168.122.40] => (item=/usr/local/bin) 
+skipping: [192.168.122.40] => (item=/etc/docker) 
+skipping: [192.168.122.212] => (item=/usr/local/bin) 
+skipping: [192.168.122.212] => (item=/etc/docker) 
+skipping: [192.168.122.165] => (item=/usr/local/bin) 
+skipping: [192.168.122.165] => (item=/etc/docker) 
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.72] => (item=/usr/local/bin) 
+skipping: [192.168.122.72] => (item=/etc/docker) 
+skipping: [192.168.122.72]
+skipping: [192.168.122.238] => (item=/usr/local/bin) 
+skipping: [192.168.122.238] => (item=/etc/docker) 
+skipping: [192.168.122.238]
+
+TASK [docker : download public docker binaries] ********************************
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.135] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.72] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.135]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.40] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.212] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.40]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.165] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.165]
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/containerd) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/containerd-shim-runc-v2) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/ctr) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-init) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-proxy) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/dockerd) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/runc) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-compose) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-buildx) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/cri-dockerd) 
+skipping: [192.168.122.238] => (item=/usr/local/kubeauto/docker-bin/docker-runtime-artifacts.sha256) 
+skipping: [192.168.122.238]
+
+TASK [docker : configure docker daemon] ****************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : create docker systemd unit file] ********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : enable docker service on startup] *******************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : start docker service] *******************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : wait for docker running] ****************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : configure docker symlink] ***************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : read staged kubernetes containerd checksum on controller] *******
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.238]
+skipping: [192.168.122.165]
+
+TASK [docker : read installed kubernetes containerd checksum after docker install] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : require docker install to preserve kubernetes containerd] *******
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : require verified cri-dockerd from kubecli download -D] **********
+skipping: [192.168.122.135]
+
+TASK [docker : fail when the ext-bin cri-dockerd artifact is unavailable] ******
+skipping: [192.168.122.135]
+
+TASK [docker : install cri-dockerd binary on node] *****************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : refresh docker.service for reserved cgroup placement] ***********
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : restart docker after reserved slice placement] ******************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : create cri-dockerd systemd unit] ********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : enable and start cri-dockerd] ***********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [docker : wait for cri-dockerd running] ***********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [containerd : prepare containerd-related directories] *********************
+changed: [192.168.122.212] => (item=/etc/containerd)
+changed: [192.168.122.40] => (item=/etc/containerd)
+changed: [192.168.122.135] => (item=/etc/containerd)
+changed: [192.168.122.165] => (item=/etc/containerd)
+changed: [192.168.122.72] => (item=/etc/containerd)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=645
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.212] => (item=/etc/containerd/certs.d/docker.io)
+changed: [192.168.122.135] => (item=/etc/containerd/certs.d/docker.io)
+changed: [192.168.122.40] => (item=/etc/containerd/certs.d/docker.io)
+changed: [192.168.122.165] => (item=/etc/containerd/certs.d/docker.io)
+changed: [192.168.122.72] => (item=/etc/containerd/certs.d/docker.io)
+changed: [192.168.122.212] => (item=/etc/containerd/certs.d/registry.talkschool.cn:5000)
+changed: [192.168.122.135] => (item=/etc/containerd/certs.d/registry.talkschool.cn:5000)
+changed: [192.168.122.165] => (item=/etc/containerd/certs.d/registry.talkschool.cn:5000)
+changed: [192.168.122.40] => (item=/etc/containerd/certs.d/registry.talkschool.cn:5000)
+changed: [192.168.122.72] => (item=/etc/containerd/certs.d/registry.talkschool.cn:5000)
+changed: [192.168.122.212] => (item=/etc/containerd/certs.d/harbor.brinnatt.io.local:8443)
+changed: [192.168.122.135] => (item=/etc/containerd/certs.d/harbor.brinnatt.io.local:8443)
+changed: [192.168.122.40] => (item=/etc/containerd/certs.d/harbor.brinnatt.io.local:8443)
+changed: [192.168.122.165] => (item=/etc/containerd/certs.d/harbor.brinnatt.io.local:8443)
+changed: [192.168.122.72] => (item=/etc/containerd/certs.d/harbor.brinnatt.io.local:8443)
+changed: [192.168.122.238] => (item=/etc/containerd)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=660
+changed: [192.168.122.238] => (item=/etc/containerd/certs.d/docker.io)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238] => (item=/etc/containerd/certs.d/registry.talkschool.cn:5000)
+changed: [192.168.122.238] => (item=/etc/containerd/certs.d/harbor.brinnatt.io.local:8443)
+
+TASK [containerd : prepare INSECURE REGISTRY dirs] *****************************
+skipping: [192.168.122.135] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.40] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.212] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.72] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.165] => (item=http://registry.talkschool.cn:5000) 
+changed: [192.168.122.135] => (item=https://reg.yourcompany.com)
+skipping: [192.168.122.238] => (item=http://registry.talkschool.cn:5000) 
+changed: [192.168.122.212] => (item=https://reg.yourcompany.com)
+changed: [192.168.122.165] => (item=https://reg.yourcompany.com)
+changed: [192.168.122.40] => (item=https://reg.yourcompany.com)
+changed: [192.168.122.72] => (item=https://reg.yourcompany.com)
+changed: [192.168.122.238] => (item=https://reg.yourcompany.com)
+
+TASK [containerd : load kernel module overlay] *********************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=675
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.135]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+
+TASK [containerd : download containerd binary] *********************************
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=690
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-shim-runc-v2)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-shim-runc-v2)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-shim-runc-v2)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-shim-runc-v2)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-shim-runc-v2)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-stress)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-stress)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-stress)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-stress)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=705
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-stress)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/ctr)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/ctr)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/ctr)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/ctr)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/ctr)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/runc)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/runc)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/runc)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=720
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/runc)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/runc)
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-shim-runc-v2)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=735
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/containerd-stress)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/ctr)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=750
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/containerd-bin/runc)
+
+TASK [containerd : read staged containerd checksum on controller] **************
+ok: [192.168.122.72 -> localhost]
+ok: [192.168.122.165 -> localhost]
+ok: [192.168.122.135 -> localhost]
+ok: [192.168.122.40 -> localhost]
+ok: [192.168.122.212 -> localhost]
+ok: [192.168.122.238 -> localhost]
+
+TASK [containerd : read installed containerd checksum] *************************
+ok: [192.168.122.40]
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=765
+ok: [192.168.122.238]
+
+TASK [containerd : require the exact ext-bin containerd artifact] **************
+ok: [192.168.122.135] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.40] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.72] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.212] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.165] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.238] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [containerd : download crictl] ********************************************
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.238]
+
+TASK [containerd : download nerdctl] *******************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=780
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+ok: [192.168.122.40]
+ok: [192.168.122.135]
+ok: [192.168.122.238]
+
+TASK [containerd : crictl bash completion] *************************************
+ok: [192.168.122.40]
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.165]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [containerd : nerdctl bash completion] ************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=795
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.40]
+ok: [192.168.122.72]
+ok: [192.168.122.165]
+ok: [192.168.122.238]
+
+TASK [containerd : create containerd configuration file] ***********************
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+changed: [192.168.122.135]
+changed: [192.168.122.40]
+changed: [192.168.122.72]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=810
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+
+TASK [containerd : configure docker.io accelerator] ****************************
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.40]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=825
+changed: [192.168.122.238]
+
+TASK [containerd : configure local_registry] ***********************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+changed: [192.168.122.40]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=840
+changed: [192.168.122.238]
+
+TASK [containerd : configure trusted INSECURE REGISTRY registry] ***************
+skipping: [192.168.122.135] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.72] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.40] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.212] => (item=http://registry.talkschool.cn:5000) 
+skipping: [192.168.122.165] => (item=http://registry.talkschool.cn:5000) 
+changed: [192.168.122.212] => (item=https://reg.yourcompany.com)
+skipping: [192.168.122.238] => (item=http://registry.talkschool.cn:5000) 
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=https://reg.yourcompany.com)
+changed: [192.168.122.135] => (item=https://reg.yourcompany.com)
+changed: [192.168.122.165] => (item=https://reg.yourcompany.com)
+changed: [192.168.122.72] => (item=https://reg.yourcompany.com)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=855
+changed: [192.168.122.238] => (item=https://reg.yourcompany.com)
+
+TASK [containerd : configure harbor registry] **********************************
+changed: [192.168.122.212]
+changed: [192.168.122.135]
+changed: [192.168.122.40]
+changed: [192.168.122.165]
+changed: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+
+TASK [containerd : install podruntime.slice unit for kubeReserved] *************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [containerd : enable and start podruntime.slice] **************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [containerd : create systemd unit file] ***********************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=870
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+changed: [192.168.122.40]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+
+TASK [containerd : create crictl configuration] ********************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=885
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+changed: [192.168.122.135]
+changed: [192.168.122.72]
+changed: [192.168.122.40]
+changed: [192.168.122.238]
+
+TASK [containerd : enable containerd service on startup] ***********************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=900
+changed: [192.168.122.212]
+changed: [192.168.122.40]
+changed: [192.168.122.72]
+changed: [192.168.122.165]
+changed: [192.168.122.135]
+changed: [192.168.122.238]
+
+TASK [containerd : start containerd service] ***********************************
+changed: [192.168.122.212]
+changed: [192.168.122.72]
+changed: [192.168.122.40]
+changed: [192.168.122.135]
+changed: [192.168.122.165]
+changed: [192.168.122.238]
+
+TASK [containerd : wait for containerd service running] ************************
+changed: [192.168.122.212]
+changed: [192.168.122.40]
+changed: [192.168.122.165]
+changed: [192.168.122.72]
+changed: [192.168.122.135]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=915
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+
+TASK [containerd : dump effective containerd configuration] ********************
+ok: [192.168.122.212]
+ok: [192.168.122.40]
+ok: [192.168.122.165]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+ok: [192.168.122.238]
+
+TASK [containerd : require the configured sandbox image] ***********************
+ok: [192.168.122.135] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.40] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.72] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.212] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.165] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+ok: [192.168.122.238] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+PLAY [kube_master] *************************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=930
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=945
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135]
+
+TASK [kube-lb : prepare some dirs] *********************************************
+changed: [192.168.122.135] => (item=/etc/kube-lb/sbin)
+changed: [192.168.122.135] => (item=/etc/kube-lb/logs)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=960
+changed: [192.168.122.135] => (item=/etc/kube-lb/conf)
+
+TASK [kube-lb : download kube-lb(nginx)] ***************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-lb : create kube-lb configuration file] *****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=975
+changed: [192.168.122.135]
+
+TASK [kube-lb : create kube-lb systemd unit file] ******************************
+changed: [192.168.122.135]
+
+TASK [kube-lb : enable kube-lb service on startup] *****************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-lb : start kube-lb service] *****************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=990
+changed: [192.168.122.135]
+
+TASK [kube-lb : wait for kube-lb service running] ******************************
+changed: [192.168.122.135]
+
+TASK [kube-master : assure k8s bin can be executable] **************************
+ok: [192.168.122.135] => (item=kube-apiserver)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1005
+ok: [192.168.122.135] => (item=kube-controller-manager)
+ok: [192.168.122.135] => (item=kube-scheduler)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=kubectl)
+
+TASK [kube-master : distribute controller/scheduler kubeconfig] ****************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1020
+changed: [192.168.122.135] => (item=kube-controller-manager.kubeconfig)
+changed: [192.168.122.135] => (item=kube-scheduler.kubeconfig)
+
+TASK [kube-master : create cluster audit related directories] ******************
+skipping: [192.168.122.135] => (item=/etc/kubernetes/audit) 
+skipping: [192.168.122.135] => (item=/var/log/kubernetes/audit) 
+skipping: [192.168.122.135]
+
+TASK [kube-master : distribute cluster audit configuration file] ***************
+skipping: [192.168.122.135]
+
+TASK [kube-master : create kubernetes CSR] *************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-master : create kubernetes cert and private key] ********************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-master : create aggregator proxy CSR] *******************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-master : create aggregator-proxy cert and private key] **************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-master : distribute kubernetes cert-related files] ******************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1035
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=ca.pem)
+changed: [192.168.122.135] => (item=ca-key.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1050
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=kubernetes.pem)
+changed: [192.168.122.135] => (item=kubernetes-key.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1065
+changed: [192.168.122.135] => (item=aggregator-proxy.pem)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=aggregator-proxy-key.pem)
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+changed: [192.168.122.135] => (item=/etc/kubernetes/kube-controller-manager.kubeconfig)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1080
+changed: [192.168.122.135] => (item=/etc/kubernetes/kube-scheduler.kubeconfig)
+
+TASK [kube-master : create master systemd unit file] ***************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=kube-apiserver.service)
+changed: [192.168.122.135] => (item=kube-controller-manager.service)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1095
+changed: [192.168.122.135] => (item=kube-scheduler.service)
+
+TASK [kube-master : enable master service on startup] **************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-master : reload systemd and restart kube-apiserver] *****************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1110
+changed: [192.168.122.135]
+
+TASK [kube-master : wait for kube-apiserver running] ***************************
+changed: [192.168.122.135]
+
+TASK [kube-master : restart kube-controller-manager and kube-scheduler] ********
+changed: [192.168.122.135]
+
+TASK [kube-master : wait for kube-controller-manager running] ******************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-master : wait for kube-scheduler running] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1125
+changed: [192.168.122.135]
+
+TASK [kube-master : copy kubectl.kubeconfig] ***********************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+ok: [192.168.122.135 -> localhost]
+
+TASK [kube-master : wait for master service running] ***************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-master : check if user:kubernetes was bond to related role] *********
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-master : create user:kubernetes role binding] ***********************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : create kube_node related directories] ************************
+changed: [192.168.122.135] => (item=/var/lib/kubelet)
+changed: [192.168.122.135] => (item=/var/lib/kube-proxy)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=/etc/cni/net.d)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1140
+ok: [192.168.122.135] => (item=/opt/cni/bin)
+
+TASK [kube-node : download kubelet,kube-proxy binaries] ************************
+ok: [192.168.122.135] => (item=kubectl)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=kubelet)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1155
+ok: [192.168.122.135] => (item=kube-proxy)
+
+TASK [kube-node : download cni plugins binaries] *******************************
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1170
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md)
+changed: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1185
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1200
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1215
+changed: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan)
+changed: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1230
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1245
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1260
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1275
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan)
+ok: [192.168.122.135] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf)
+
+TASK [kube-node : kubectl bash completion] *************************************
+ok: [192.168.122.135]
+
+TASK [kube-node : prepare kubelet CSR] *****************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : create kubelet cert and private key] *************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : set cluster params] ******************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : set client credential params] ********************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : set context params] ******************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : choose default context] **************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : distribute ca cert] ******************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1290
+ok: [192.168.122.135]
+
+TASK [kube-node : distribute kubelet cert] *************************************
+changed: [192.168.122.135] => (item=kubelet.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1305
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135] => (item=kubelet-key.pem)
+
+TASK [kube-node : distribute kubeconfig] ***************************************
+changed: [192.168.122.135]
+
+TASK [kube-node : prepare cni configuration file] ******************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1320
+changed: [192.168.122.135]
+
+TASK [kube-node : install podruntime.slice unit for kubeReserved] **************
+skipping: [192.168.122.135]
+
+TASK [kube-node : enable and start podruntime.slice] ***************************
+skipping: [192.168.122.135]
+
+TASK [kube-node : create kubelet configuration file] ***************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-node : check if /run/systemd/resolve/resolv.conf exists] ************
+ok: [192.168.122.135]
+
+TASK [kube-node : replace resolvConf param] ************************************
+skipping: [192.168.122.135]
+
+TASK [kube-node : create kubelet systemd unit file] ****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1335
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-node : enable kubelet service on startup] ***************************
+changed: [192.168.122.135]
+
+TASK [kube-node : start kubelet service] ***************************************
+changed: [192.168.122.135]
+
+TASK [kube-node : distribute kube-proxy.kubeconfig configuration file] *********
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1350
+changed: [192.168.122.135]
+
+TASK [kube-node : correct apiserver socket in kube-proxy.kubeconfig] ***********
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-node : create kube-proxy configuration] *****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1365
+changed: [192.168.122.135]
+
+TASK [kube-node : create kube-proxy service file] ******************************
+changed: [192.168.122.135]
+
+TASK [kube-node : enable kube-proxy service on startup] ************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.135]
+
+TASK [kube-node : start kube-proxy service] ************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1380
+changed: [192.168.122.135]
+
+TASK [kube-node : wait for kube-proxy running] *********************************
+changed: [192.168.122.135]
+
+TASK [kube-node : wait for kubelet running] ************************************
+changed: [192.168.122.135]
+
+TASK [kube-node : wait for node Ready] *****************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : Setting worker role name] ************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : Setting master role name] ************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [kube-node : Making master nodes SchedulingDisabled] **********************
+changed: [192.168.122.135 -> localhost]
+
+PLAY [kube_master] *************************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1395
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1410
+ok: [192.168.122.40]
+
+TASK [kube-lb : prepare some dirs] *********************************************
+changed: [192.168.122.40] => (item=/etc/kube-lb/sbin)
+changed: [192.168.122.40] => (item=/etc/kube-lb/logs)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1425
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=/etc/kube-lb/conf)
+
+TASK [kube-lb : download kube-lb(nginx)] ***************************************
+changed: [192.168.122.40]
+
+TASK [kube-lb : create kube-lb configuration file] *****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1440
+changed: [192.168.122.40]
+
+TASK [kube-lb : create kube-lb systemd unit file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40]
+
+TASK [kube-lb : enable kube-lb service on startup] *****************************
+changed: [192.168.122.40]
+
+TASK [kube-lb : start kube-lb service] *****************************************
+changed: [192.168.122.40]
+
+TASK [kube-lb : wait for kube-lb service running] ******************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1455
+changed: [192.168.122.40]
+
+TASK [kube-master : assure k8s bin can be executable] **************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=kube-apiserver)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1470
+ok: [192.168.122.40] => (item=kube-controller-manager)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=kube-scheduler)
+ok: [192.168.122.40] => (item=kubectl)
+
+TASK [kube-master : distribute controller/scheduler kubeconfig] ****************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1485
+changed: [192.168.122.40] => (item=kube-controller-manager.kubeconfig)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=kube-scheduler.kubeconfig)
+
+TASK [kube-master : create cluster audit related directories] ******************
+skipping: [192.168.122.40] => (item=/etc/kubernetes/audit) 
+skipping: [192.168.122.40] => (item=/var/log/kubernetes/audit) 
+skipping: [192.168.122.40]
+
+TASK [kube-master : distribute cluster audit configuration file] ***************
+skipping: [192.168.122.40]
+
+TASK [kube-master : create kubernetes CSR] *************************************
+ok: [192.168.122.40 -> localhost]
+
+TASK [kube-master : create kubernetes cert and private key] ********************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-master : create aggregator proxy CSR] *******************************
+ok: [192.168.122.40 -> localhost]
+
+TASK [kube-master : create aggregator-proxy cert and private key] **************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-master : distribute kubernetes cert-related files] ******************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1500
+ok: [192.168.122.40] => (item=ca.pem)
+changed: [192.168.122.40] => (item=ca-key.pem)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1515
+changed: [192.168.122.40] => (item=kubernetes.pem)
+changed: [192.168.122.40] => (item=kubernetes-key.pem)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1530
+changed: [192.168.122.40] => (item=aggregator-proxy.pem)
+changed: [192.168.122.40] => (item=aggregator-proxy-key.pem)
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+changed: [192.168.122.40] => (item=/etc/kubernetes/kube-controller-manager.kubeconfig)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=/etc/kubernetes/kube-scheduler.kubeconfig)
+
+TASK [kube-master : create master systemd unit file] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1545
+changed: [192.168.122.40] => (item=kube-apiserver.service)
+changed: [192.168.122.40] => (item=kube-controller-manager.service)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1560
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=kube-scheduler.service)
+
+TASK [kube-master : enable master service on startup] **************************
+changed: [192.168.122.40]
+
+TASK [kube-master : reload systemd and restart kube-apiserver] *****************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1575
+changed: [192.168.122.40]
+
+TASK [kube-master : wait for kube-apiserver running] ***************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40]
+
+TASK [kube-master : restart kube-controller-manager and kube-scheduler] ********
+changed: [192.168.122.40]
+
+TASK [kube-master : wait for kube-controller-manager running] ******************
+changed: [192.168.122.40]
+
+TASK [kube-master : wait for kube-scheduler running] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1590
+changed: [192.168.122.40]
+
+TASK [kube-master : copy kubectl.kubeconfig] ***********************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-master : wait for master service running] ***************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-master : check if user:kubernetes was bond to related role] *********
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-master : create user:kubernetes role binding] ***********************
+skipping: [192.168.122.40]
+
+TASK [kube-node : create kube_node related directories] ************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=/var/lib/kubelet)
+changed: [192.168.122.40] => (item=/var/lib/kube-proxy)
+ok: [192.168.122.40] => (item=/etc/cni/net.d)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1605
+ok: [192.168.122.40] => (item=/opt/cni/bin)
+
+TASK [kube-node : download kubelet,kube-proxy binaries] ************************
+ok: [192.168.122.40] => (item=kubectl)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=kubelet)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1620
+ok: [192.168.122.40] => (item=kube-proxy)
+
+TASK [kube-node : download cni plugins binaries] *******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1635
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md)
+changed: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1650
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1665
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device)
+changed: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1681
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan)
+changed: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1696
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1711
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1726
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning)
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1741
+ok: [192.168.122.40] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf)
+
+TASK [kube-node : kubectl bash completion] *************************************
+ok: [192.168.122.40]
+
+TASK [kube-node : prepare kubelet CSR] *****************************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : create kubelet cert and private key] *************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : set cluster params] ******************************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : set client credential params] ********************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : set context params] ******************************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : choose default context] **************************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : distribute ca cert] ******************************************
+ok: [192.168.122.40]
+
+TASK [kube-node : distribute kubelet cert] *************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1756
+changed: [192.168.122.40] => (item=kubelet.pem)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40] => (item=kubelet-key.pem)
+
+TASK [kube-node : distribute kubeconfig] ***************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1771
+changed: [192.168.122.40]
+
+TASK [kube-node : prepare cni configuration file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40]
+
+TASK [kube-node : install podruntime.slice unit for kubeReserved] **************
+skipping: [192.168.122.40]
+
+TASK [kube-node : enable and start podruntime.slice] ***************************
+skipping: [192.168.122.40]
+
+TASK [kube-node : create kubelet configuration file] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1786
+changed: [192.168.122.40]
+
+TASK [kube-node : check if /run/systemd/resolve/resolv.conf exists] ************
+ok: [192.168.122.40]
+
+TASK [kube-node : replace resolvConf param] ************************************
+skipping: [192.168.122.40]
+
+TASK [kube-node : create kubelet systemd unit file] ****************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40]
+
+TASK [kube-node : enable kubelet service on startup] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1801
+changed: [192.168.122.40]
+
+TASK [kube-node : start kubelet service] ***************************************
+changed: [192.168.122.40]
+
+TASK [kube-node : distribute kube-proxy.kubeconfig configuration file] *********
+changed: [192.168.122.40]
+
+TASK [kube-node : correct apiserver socket in kube-proxy.kubeconfig] ***********
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1816
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40]
+
+TASK [kube-node : create kube-proxy configuration] *****************************
+changed: [192.168.122.40]
+
+TASK [kube-node : create kube-proxy service file] ******************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1831
+changed: [192.168.122.40]
+
+TASK [kube-node : enable kube-proxy service on startup] ************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.40]
+
+TASK [kube-node : start kube-proxy service] ************************************
+changed: [192.168.122.40]
+
+TASK [kube-node : wait for kube-proxy running] *********************************
+changed: [192.168.122.40]
+
+TASK [kube-node : wait for kubelet running] ************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1846
+changed: [192.168.122.40]
+
+TASK [kube-node : wait for node Ready] *****************************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : Setting worker role name] ************************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : Setting master role name] ************************************
+changed: [192.168.122.40 -> localhost]
+
+TASK [kube-node : Making master nodes SchedulingDisabled] **********************
+changed: [192.168.122.40 -> localhost]
+
+PLAY [kube_master] *************************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1861
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72]
+
+TASK [kube-lb : prepare some dirs] *********************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1876
+changed: [192.168.122.72] => (item=/etc/kube-lb/sbin)
+changed: [192.168.122.72] => (item=/etc/kube-lb/logs)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=/etc/kube-lb/conf)
+
+TASK [kube-lb : download kube-lb(nginx)] ***************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1891
+changed: [192.168.122.72]
+
+TASK [kube-lb : create kube-lb configuration file] *****************************
+changed: [192.168.122.72]
+
+TASK [kube-lb : create kube-lb systemd unit file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1906
+changed: [192.168.122.72]
+
+TASK [kube-lb : enable kube-lb service on startup] *****************************
+changed: [192.168.122.72]
+
+TASK [kube-lb : start kube-lb service] *****************************************
+changed: [192.168.122.72]
+
+TASK [kube-lb : wait for kube-lb service running] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72]
+
+TASK [kube-master : assure k8s bin can be executable] **************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1921
+ok: [192.168.122.72] => (item=kube-apiserver)
+ok: [192.168.122.72] => (item=kube-controller-manager)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1936
+ok: [192.168.122.72] => (item=kube-scheduler)
+ok: [192.168.122.72] => (item=kubectl)
+
+TASK [kube-master : distribute controller/scheduler kubeconfig] ****************
+changed: [192.168.122.72] => (item=kube-controller-manager.kubeconfig)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1951
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=kube-scheduler.kubeconfig)
+
+TASK [kube-master : create cluster audit related directories] ******************
+skipping: [192.168.122.72] => (item=/etc/kubernetes/audit) 
+skipping: [192.168.122.72] => (item=/var/log/kubernetes/audit) 
+skipping: [192.168.122.72]
+
+TASK [kube-master : distribute cluster audit configuration file] ***************
+skipping: [192.168.122.72]
+
+TASK [kube-master : create kubernetes CSR] *************************************
+ok: [192.168.122.72 -> localhost]
+
+TASK [kube-master : create kubernetes cert and private key] ********************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-master : create aggregator proxy CSR] *******************************
+ok: [192.168.122.72 -> localhost]
+
+TASK [kube-master : create aggregator-proxy cert and private key] **************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-master : distribute kubernetes cert-related files] ******************
+ok: [192.168.122.72] => (item=ca.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1966
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=ca-key.pem)
+changed: [192.168.122.72] => (item=kubernetes.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1981
+changed: [192.168.122.72] => (item=kubernetes-key.pem)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=aggregator-proxy.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=1996
+changed: [192.168.122.72] => (item=aggregator-proxy-key.pem)
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+changed: [192.168.122.72] => (item=/etc/kubernetes/kube-controller-manager.kubeconfig)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=/etc/kubernetes/kube-scheduler.kubeconfig)
+
+TASK [kube-master : create master systemd unit file] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2011
+changed: [192.168.122.72] => (item=kube-apiserver.service)
+changed: [192.168.122.72] => (item=kube-controller-manager.service)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=kube-scheduler.service)
+
+TASK [kube-master : enable master service on startup] **************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2026
+changed: [192.168.122.72]
+
+TASK [kube-master : reload systemd and restart kube-apiserver] *****************
+changed: [192.168.122.72]
+
+TASK [kube-master : wait for kube-apiserver running] ***************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72]
+
+TASK [kube-master : restart kube-controller-manager and kube-scheduler] ********
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2041
+changed: [192.168.122.72]
+
+TASK [kube-master : wait for kube-controller-manager running] ******************
+changed: [192.168.122.72]
+
+TASK [kube-master : wait for kube-scheduler running] ***************************
+changed: [192.168.122.72]
+
+TASK [kube-master : copy kubectl.kubeconfig] ***********************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-master : correct apiserver socket in kubeconfig] ********************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-master : wait for master service running] ***************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-master : check if user:kubernetes was bond to related role] *********
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-master : create user:kubernetes role binding] ***********************
+skipping: [192.168.122.72]
+
+TASK [kube-node : create kube_node related directories] ************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=/var/lib/kubelet)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2056
+changed: [192.168.122.72] => (item=/var/lib/kube-proxy)
+ok: [192.168.122.72] => (item=/etc/cni/net.d)
+ok: [192.168.122.72] => (item=/opt/cni/bin)
+
+TASK [kube-node : download kubelet,kube-proxy binaries] ************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2071
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72] => (item=kubectl)
+ok: [192.168.122.72] => (item=kubelet)
+ok: [192.168.122.72] => (item=kube-proxy)
+
+TASK [kube-node : download cni plugins binaries] *******************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2086
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2101
+changed: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2116
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2131
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device)
+changed: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2146
+changed: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2161
+changed: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2176
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2191
+changed: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning)
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2206
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf)
+
+TASK [kube-node : kubectl bash completion] *************************************
+ok: [192.168.122.72]
+
+TASK [kube-node : prepare kubelet CSR] *****************************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : create kubelet cert and private key] *************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : set cluster params] ******************************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : set client credential params] ********************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : set context params] ******************************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : choose default context] **************************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : distribute ca cert] ******************************************
+ok: [192.168.122.72]
+
+TASK [kube-node : distribute kubelet cert] *************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2221
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72] => (item=kubelet.pem)
+changed: [192.168.122.72] => (item=kubelet-key.pem)
+
+TASK [kube-node : distribute kubeconfig] ***************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2236
+changed: [192.168.122.72]
+
+TASK [kube-node : prepare cni configuration file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72]
+
+TASK [kube-node : install podruntime.slice unit for kubeReserved] **************
+skipping: [192.168.122.72]
+
+TASK [kube-node : enable and start podruntime.slice] ***************************
+skipping: [192.168.122.72]
+
+TASK [kube-node : create kubelet configuration file] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2251
+changed: [192.168.122.72]
+
+TASK [kube-node : check if /run/systemd/resolve/resolv.conf exists] ************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.72]
+
+TASK [kube-node : replace resolvConf param] ************************************
+skipping: [192.168.122.72]
+
+TASK [kube-node : create kubelet systemd unit file] ****************************
+changed: [192.168.122.72]
+
+TASK [kube-node : enable kubelet service on startup] ***************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2266
+changed: [192.168.122.72]
+
+TASK [kube-node : start kubelet service] ***************************************
+changed: [192.168.122.72]
+
+TASK [kube-node : distribute kube-proxy.kubeconfig configuration file] *********
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2281
+changed: [192.168.122.72]
+
+TASK [kube-node : correct apiserver socket in kube-proxy.kubeconfig] ***********
+changed: [192.168.122.72]
+
+TASK [kube-node : create kube-proxy configuration] *****************************
+changed: [192.168.122.72]
+
+TASK [kube-node : create kube-proxy service file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2296
+changed: [192.168.122.72]
+
+TASK [kube-node : enable kube-proxy service on startup] ************************
+changed: [192.168.122.72]
+
+TASK [kube-node : start kube-proxy service] ************************************
+changed: [192.168.122.72]
+
+TASK [kube-node : wait for kube-proxy running] *********************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.72]
+
+TASK [kube-node : wait for kubelet running] ************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2311
+changed: [192.168.122.72]
+
+TASK [kube-node : wait for node Ready] *****************************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : Setting worker role name] ************************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : Setting master role name] ************************************
+changed: [192.168.122.72 -> localhost]
+
+TASK [kube-node : Making master nodes SchedulingDisabled] **********************
+changed: [192.168.122.72 -> localhost]
+
+PLAY [kube_node] ***************************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2326
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+
+TASK [kube-lb : prepare some dirs] *********************************************
+changed: [192.168.122.238] => (item=/etc/kube-lb/sbin)
+changed: [192.168.122.212] => (item=/etc/kube-lb/sbin)
+changed: [192.168.122.165] => (item=/etc/kube-lb/sbin)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2341
+changed: [192.168.122.238] => (item=/etc/kube-lb/logs)
+changed: [192.168.122.212] => (item=/etc/kube-lb/logs)
+changed: [192.168.122.165] => (item=/etc/kube-lb/logs)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238] => (item=/etc/kube-lb/conf)
+changed: [192.168.122.212] => (item=/etc/kube-lb/conf)
+changed: [192.168.122.165] => (item=/etc/kube-lb/conf)
+
+TASK [kube-lb : download kube-lb(nginx)] ***************************************
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-lb : create kube-lb configuration file] *****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2356
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-lb : create kube-lb systemd unit file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-lb : enable kube-lb service on startup] *****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2371
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+
+TASK [kube-lb : start kube-lb service] *****************************************
+changed: [192.168.122.165]
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+
+TASK [kube-lb : wait for kube-lb service running] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-node : create kube_node related directories] ************************
+changed: [192.168.122.212] => (item=/var/lib/kubelet)
+changed: [192.168.122.238] => (item=/var/lib/kubelet)
+changed: [192.168.122.165] => (item=/var/lib/kubelet)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2386
+changed: [192.168.122.212] => (item=/var/lib/kube-proxy)
+changed: [192.168.122.238] => (item=/var/lib/kube-proxy)
+changed: [192.168.122.165] => (item=/var/lib/kube-proxy)
+ok: [192.168.122.238] => (item=/etc/cni/net.d)
+ok: [192.168.122.212] => (item=/etc/cni/net.d)
+ok: [192.168.122.165] => (item=/etc/cni/net.d)
+ok: [192.168.122.238] => (item=/opt/cni/bin)
+ok: [192.168.122.165] => (item=/opt/cni/bin)
+ok: [192.168.122.212] => (item=/opt/cni/bin)
+
+TASK [kube-node : download kubelet,kube-proxy binaries] ************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=kubectl)
+ok: [192.168.122.212] => (item=kubectl)
+ok: [192.168.122.165] => (item=kubectl)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2401
+ok: [192.168.122.238] => (item=kubelet)
+ok: [192.168.122.165] => (item=kubelet)
+ok: [192.168.122.212] => (item=kubelet)
+ok: [192.168.122.238] => (item=kube-proxy)
+ok: [192.168.122.212] => (item=kube-proxy)
+ok: [192.168.122.165] => (item=kube-proxy)
+
+TASK [kube-node : download cni plugins binaries] *******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/LICENSE)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2416
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/README.md)
+changed: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth)
+changed: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth)
+changed: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bandwidth)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2431
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/bridge)
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dhcp)
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/dummy)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2446
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/firewall)
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-device)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2461
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local)
+changed: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local)
+changed: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/host-local)
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ipvlan)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2476
+changed: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback)
+changed: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback)
+changed: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/loopback)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/macvlan)
+changed: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap)
+changed: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap)
+changed: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/portmap)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2491
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/ptp)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/sbr)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2506
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/static)
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tap)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning)
+changed: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning)
+changed: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/tuning)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2521
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan)
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vlan)
+ok: [192.168.122.238] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf)
+ok: [192.168.122.165] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212] => (item=/usr/local/kubeauto/extra-bin/cni-bin/vrf)
+
+TASK [kube-node : kubectl bash completion] *************************************
+ok: [192.168.122.238]
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+
+TASK [kube-node : prepare kubelet CSR] *****************************************
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.165 -> localhost]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2536
+changed: [192.168.122.238 -> localhost]
+
+TASK [kube-node : create kubelet cert and private key] *************************
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.238 -> localhost]
+changed: [192.168.122.212 -> localhost]
+
+TASK [kube-node : set cluster params] ******************************************
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.238 -> localhost]
+
+TASK [kube-node : set client credential params] ********************************
+changed: [192.168.122.238 -> localhost]
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.212 -> localhost]
+
+TASK [kube-node : set context params] ******************************************
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.238 -> localhost]
+
+TASK [kube-node : choose default context] **************************************
+changed: [192.168.122.238 -> localhost]
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.165 -> localhost]
+
+TASK [kube-node : distribute ca cert] ******************************************
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-node : distribute kubelet cert] *************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2551
+changed: [192.168.122.238] => (item=kubelet.pem)
+changed: [192.168.122.212] => (item=kubelet.pem)
+changed: [192.168.122.165] => (item=kubelet.pem)
+changed: [192.168.122.238] => (item=kubelet-key.pem)
+changed: [192.168.122.165] => (item=kubelet-key.pem)
+changed: [192.168.122.212] => (item=kubelet-key.pem)
+
+TASK [kube-node : distribute kubeconfig] ***************************************
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+
+TASK [kube-node : prepare cni configuration file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2566
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+
+TASK [kube-node : install podruntime.slice unit for kubeReserved] **************
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-node : enable and start podruntime.slice] ***************************
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-node : create kubelet configuration file] ***************************
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-node : check if /run/systemd/resolve/resolv.conf exists] ************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2581
+ok: [192.168.122.238]
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+
+TASK [kube-node : replace resolvConf param] ************************************
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-node : create kubelet systemd unit file] ****************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-node : enable kubelet service on startup] ***************************
+changed: [192.168.122.212]
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+
+TASK [kube-node : start kubelet service] ***************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2596
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-node : distribute kube-proxy.kubeconfig configuration file] *********
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-node : correct apiserver socket in kube-proxy.kubeconfig] ***********
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+
+TASK [kube-node : create kube-proxy configuration] *****************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2611
+changed: [192.168.122.212]
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+
+TASK [kube-node : create kube-proxy service file] ******************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+
+TASK [kube-node : enable kube-proxy service on startup] ************************
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+
+TASK [kube-node : start kube-proxy service] ************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2626
+changed: [192.168.122.238]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+
+TASK [kube-node : wait for kube-proxy running] *********************************
+changed: [192.168.122.165]
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+
+TASK [kube-node : wait for kubelet running] ************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.165]
+changed: [192.168.122.238]
+changed: [192.168.122.212]
+
+TASK [kube-node : wait for node Ready] *****************************************
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.238 -> localhost]
+
+TASK [kube-node : Setting worker role name] ************************************
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.238 -> localhost]
+
+TASK [kube-node : Setting master role name] ************************************
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-node : Making master nodes SchedulingDisabled] **********************
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+PLAY [kube_master,kube_node] ***************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2641
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2656
+ok: [192.168.122.165]
+ok: [192.168.122.212]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+ok: [192.168.122.40]
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2671
+ok: [192.168.122.238]
+
+TASK [calico : create calico CSR] **********************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [calico : create calico cert and private key] *****************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [calico : delete old calico-etcd-secrets] *********************************
+skipping: [192.168.122.135]
+
+TASK [calico : create calico-etcd-secrets] *************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [calico : configure calico DaemonSet yaml file] ***************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [calico : delete calico network] ******************************************
+skipping: [192.168.122.135]
+
+TASK [calico : apply calico network] *******************************************
+changed: [192.168.122.135 -> localhost]
+
+TASK [calico : prepare some dirs] **********************************************
+changed: [192.168.122.212] => (item=/etc/calico/ssl)
+changed: [192.168.122.165] => (item=/etc/calico/ssl)
+changed: [192.168.122.135] => (item=/etc/calico/ssl)
+changed: [192.168.122.40] => (item=/etc/calico/ssl)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2686
+changed: [192.168.122.72] => (item=/etc/calico/ssl)
+changed: [192.168.122.238] => (item=/etc/calico/ssl)
+
+TASK [calico : distribute calico cert-related files] ***************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.212] => (item=ca.pem)
+changed: [192.168.122.40] => (item=ca.pem)
+changed: [192.168.122.72] => (item=ca.pem)
+changed: [192.168.122.165] => (item=ca.pem)
+changed: [192.168.122.135] => (item=ca.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2701
+changed: [192.168.122.212] => (item=calico.pem)
+changed: [192.168.122.40] => (item=calico.pem)
+changed: [192.168.122.165] => (item=calico.pem)
+changed: [192.168.122.135] => (item=calico.pem)
+changed: [192.168.122.72] => (item=calico.pem)
+changed: [192.168.122.212] => (item=calico-key.pem)
+changed: [192.168.122.40] => (item=calico-key.pem)
+changed: [192.168.122.165] => (item=calico-key.pem)
+changed: [192.168.122.135] => (item=calico-key.pem)
+changed: [192.168.122.72] => (item=calico-key.pem)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2716
+changed: [192.168.122.238] => (item=ca.pem)
+changed: [192.168.122.238] => (item=calico.pem)
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [192.168.122.238] => (item=calico-key.pem)
+
+TASK [calico : delete default cni configuration] *******************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2731
+changed: [192.168.122.212]
+changed: [192.168.122.165]
+changed: [192.168.122.135]
+changed: [192.168.122.40]
+changed: [192.168.122.72]
+changed: [192.168.122.238]
+
+TASK [calico : download calicoctl client command] ******************************
+ok: [192.168.122.165] => (item=calicoctl)
+ok: [192.168.122.212] => (item=calicoctl)
+ok: [192.168.122.40] => (item=calicoctl)
+ok: [192.168.122.135] => (item=calicoctl)
+ok: [192.168.122.72] => (item=calicoctl)
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2746
+ok: [192.168.122.238] => (item=calicoctl)
+
+TASK [calico : prepare calicoctl configuration file] ***************************
+changed: [192.168.122.135]
+changed: [192.168.122.165]
+changed: [192.168.122.212]
+changed: [192.168.122.40]
+changed: [192.168.122.72]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2761
+changed: [192.168.122.238]
+
+TASK [calico : wait for calico-node running in a polling manner] ***************
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (15 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (15 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (15 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (15 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (15 retries left).
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2776
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (14 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (14 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (14 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (14 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (14 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2791
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (13 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (13 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (13 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (13 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (13 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2806
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (12 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (12 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (12 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (12 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (12 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2821
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (11 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (11 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (11 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (11 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (11 retries left).
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2836
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (10 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (10 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (10 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (10 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (10 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2851
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (9 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (9 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (9 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (9 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (9 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2866
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (8 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (8 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (8 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (8 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (8 retries left).
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2881
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (7 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (7 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (7 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (7 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (7 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2896
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (6 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (6 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (6 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (6 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (6 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2911
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (5 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (5 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (5 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (5 retries left).
+FAILED - RETRYING: [192.168.122.72 -> localhost]: wait for calico-node running in a polling manner (5 retries left).
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2926
+FAILED - RETRYING: [192.168.122.40 -> localhost]: wait for calico-node running in a polling manner (4 retries left).
+FAILED - RETRYING: [192.168.122.135 -> localhost]: wait for calico-node running in a polling manner (4 retries left).
+FAILED - RETRYING: [192.168.122.212 -> localhost]: wait for calico-node running in a polling manner (4 retries left).
+FAILED - RETRYING: [192.168.122.165 -> localhost]: wait for calico-node running in a polling manner (4 retries left).
+changed: [192.168.122.72 -> localhost]
+FAILED - RETRYING: [192.168.122.238 -> localhost]: wait for calico-node running in a polling manner (15 retries left).
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2941
+changed: [192.168.122.40 -> localhost]
+changed: [192.168.122.135 -> localhost]
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.238 -> localhost]
+
+TASK [calico : choose default rr nodes(master nodes by default)] ***************
+skipping: [192.168.122.135]
+
+TASK [calico : choose user-defined rr nodes] ***********************************
+skipping: [192.168.122.135]
+
+TASK [calico : show rr nodes] **************************************************
+skipping: [192.168.122.135]
+
+TASK [calico : configure routeReflectorClusterID] ******************************
+skipping: [192.168.122.135]
+
+TASK [calico : node label] *****************************************************
+skipping: [192.168.122.135]
+
+TASK [calico : configure calico bgp yaml file] *********************************
+skipping: [192.168.122.135] => (item=bgp-default.yaml) 
+skipping: [192.168.122.135] => (item=bgp-rr.yaml) 
+skipping: [192.168.122.135]
+
+TASK [calico : apply calico bgp configuration] *********************************
+skipping: [192.168.122.135]
+
+TASK [calico : check bgp connection] *******************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [calico : debug] **********************************************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [cilium : revise kernel version with float type] **************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [cilium : check if kernel version > 4.9] **********************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [cilium : clear stale cilium vxlan/bpf before install] ********************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [cilium : create cilium chart setting] ************************************
+skipping: [192.168.122.135]
+
+TASK [cilium : helm delete cilium v1.19.5] *************************************
+skipping: [192.168.122.135]
+
+TASK [cilium : helm create cilium v1.19.5] *************************************
+skipping: [192.168.122.135]
+
+TASK [cilium : download client tools] ******************************************
+skipping: [192.168.122.135] => (item=cilium) 
+skipping: [192.168.122.135] => (item=hubble) 
+skipping: [192.168.122.40] => (item=cilium) 
+skipping: [192.168.122.40] => (item=hubble) 
+skipping: [192.168.122.72] => (item=cilium) 
+skipping: [192.168.122.72] => (item=hubble) 
+skipping: [192.168.122.212] => (item=cilium) 
+skipping: [192.168.122.212] => (item=hubble) 
+skipping: [192.168.122.165] => (item=cilium) 
+skipping: [192.168.122.238] => (item=cilium) 
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165] => (item=hubble) 
+skipping: [192.168.122.238] => (item=hubble) 
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [cilium : delete default cni configurations] ******************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [cilium : wait for cilium-node running in a polling manner] ***************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [cilium : restart hubble-ui after CNI is up (avoids frontend probe failure during bootstrap)] ***
+skipping: [192.168.122.135]
+
+TASK [cilium : restart hubble-relay pod] ***************************************
+skipping: [192.168.122.135]
+
+TASK [flannel : configure flannel DaemonSet yaml file] *************************
+skipping: [192.168.122.135]
+
+TASK [flannel : delete flannel network before applying] ************************
+skipping: [192.168.122.135]
+
+TASK [flannel : apply flannel network] *****************************************
+skipping: [192.168.122.135]
+
+TASK [flannel : delete default cni configuration] ******************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [flannel : wait for flannel running in a polling manner] ******************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-router : prepare to configure kube-router DaemonSet] ****************
+skipping: [192.168.122.135]
+
+TASK [kube-router : delete kube-router DaemonSet] ******************************
+skipping: [192.168.122.135]
+
+TASK [kube-router : apply kube-router DaemonSet] *******************************
+skipping: [192.168.122.135]
+
+TASK [kube-router : delete default cni configurations] *************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-router : wait for kube-router running in a polling manner] **********
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-ovn : delete default cni configurations] ****************************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [kube-ovn : prepare kube-ovn-related files] *******************************
+skipping: [192.168.122.135] => (item=install.sh) 
+skipping: [192.168.122.135] => (item=coredns.yaml) 
+skipping: [192.168.122.135]
+
+TASK [kube-ovn : prepare dnscache deployment file with ipvs] *******************
+skipping: [192.168.122.135]
+
+TASK [kube-ovn : prepare dnscache deployment file with iptables] ***************
+skipping: [192.168.122.135]
+
+TASK [kube-ovn : apply coredns, dnscache yaml] *********************************
+skipping: [192.168.122.135]
+
+TASK [kube-ovn : install kube-ovn network] *************************************
+skipping: [192.168.122.135]
+
+TASK [kube-ovn : wait for kube-ovn running in a polling manner] ****************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+PLAY [kube_master,kube_node] ***************************************************
+
+TASK [Gathering Facts] *********************************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2956
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2971
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.212]
+ok: [192.168.122.165]
+ok: [192.168.122.40]
+ok: [192.168.122.135]
+ok: [192.168.122.72]
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=2986
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+ok: [192.168.122.238]
+
+TASK [wait for node Ready] *****************************************************
+changed: [192.168.122.135 -> localhost]
+changed: [192.168.122.40 -> localhost]
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.72 -> localhost]
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.238 -> localhost]
+
+TASK [Setting worker role name] ************************************************
+changed: [192.168.122.40 -> localhost]
+changed: [192.168.122.72 -> localhost]
+changed: [192.168.122.135 -> localhost]
+changed: [192.168.122.212 -> localhost]
+changed: [192.168.122.165 -> localhost]
+changed: [192.168.122.238 -> localhost]
+
+TASK [Setting master role name] ************************************************
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+changed: [192.168.122.135 -> localhost]
+changed: [192.168.122.72 -> localhost]
+changed: [192.168.122.40 -> localhost]
+
+TASK [Making master nodes SchedulingDisabled] **********************************
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+changed: [192.168.122.40 -> localhost]
+changed: [192.168.122.135 -> localhost]
+changed: [192.168.122.72 -> localhost]
+
+PLAY [Validate Longhorn configuration and ownership before host changes] *******
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+included: /usr/local/kubeauto/roles/longhorn/tasks/control.yml for localhost
+
+TASK [longhorn : Create private Longhorn declaration directory] ****************
+changed: [localhost]
+
+TASK [longhorn : Bind Kubernetes inventory identities to Longhorn] *************
+ok: [localhost]
+
+TASK [longhorn : Collect current allowlisted filesystem receipts] **************
+skipping: [localhost] => (item=192.168.122.212) 
+skipping: [localhost] => (item=192.168.122.165) 
+skipping: [localhost] => (item=192.168.122.238) 
+skipping: [localhost]
+
+TASK [longhorn : Collect current V2 platform and raw disk receipts] ************
+skipping: [localhost]
+
+TASK [longhorn : Collect full-scope V2 block retirement host checks] ***********
+skipping: [localhost]
+
+TASK [longhorn : Save secret-free Longhorn configuration] **********************
+changed: [localhost]
+
+TASK [longhorn : Validate Longhorn inputs without accessing hosts or Kubernetes] ***
+ok: [localhost]
+
+TASK [longhorn : Check or reconcile the Longhorn product] **********************
+skipping: [localhost]
+
+TASK [longhorn : Bind approved host filesystems to current cluster and node identities] ***
+skipping: [localhost]
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+skipping: [localhost]
+
+PLAY [Prepare every Longhorn client and verify allowlisted filesystem mounts] ***
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+PLAY [Verify every explicitly approved V2 disk before native retirement] *******
+
+TASK [Inspect exact host ownership and stable hardware for approved AIO disks] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+PLAY [Reconcile Longhorn storage and immutable operations] *********************
+
+TASK [longhorn : Require a known Longhorn execution phase] *********************
+skipping: [localhost]
+
+TASK [longhorn : Validate Longhorn configuration and cluster ownership] ********
+skipping: [localhost]
+
+TASK [longhorn : Prepare Longhorn host dependencies and disk identity] *********
+skipping: [localhost]
+
+PLAY [Release exact V2 host receipts after independently observed native SPDK absence] ***
+
+TASK [Release only the approved host disk identities while preserving media] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+PLAY [Release native V2 disk receipts only after every host confirms exact retirement] ***
+
+TASK [Start the full-scope host release receipt set] ***************************
+skipping: [localhost]
+
+TASK [Bind every actual host release result to the control operation] **********
+skipping: [localhost]
+
+TASK [Save the secret-free completed host release proofs] **********************
+skipping: [localhost]
+
+TASK [Release exact control identities and retain the completed retirement journal] ***
+skipping: [localhost]
+
+PLAY [Release owned host mount guards only after native uninstall completes] ***
+
+TASK [Verify every host receipt before releasing the first mount guard] ********
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [Bind V2 receipt release to the original cluster node and disk declarations] ***
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [Verify every V2 receipt before releasing host ownership] *****************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [Release exact owned receipts and guards while retaining mounted data] ****
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [Reload systemd after releasing the owned kubelet mount guard] ************
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+TASK [Release exact V2 ownership receipts while preserving raw media] **********
+skipping: [192.168.122.135]
+skipping: [192.168.122.40]
+skipping: [192.168.122.72]
+skipping: [192.168.122.212]
+skipping: [192.168.122.165]
+skipping: [192.168.122.238]
+
+PLAY [localhost] ***************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [localhost]
+
+TASK [cluster-addon : 获取所有已经创建的POD信息] *******************************
+LONGHORN_PRODUCT_HEARTBEAT step=setup elapsed=3001
+changed: [localhost]
+
+TASK [cluster-addon : 准备 DNS的部署文件] **************************************
+changed: [localhost]
+
+TASK [cluster-addon : 删除coredns部署] *****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建coredns部署] *****************************************
+changed: [localhost]
+
+TASK [cluster-addon : 准备dnscache的部署文件] **********************************
+changed: [localhost]
+
+TASK [cluster-addon : 准备dnscache的部署文件] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除dnscache部署] ****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建dnscache部署] ****************************************
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+changed: [localhost]
+
+TASK [cluster-addon : wait for hubble-relay Ready (needs cluster DNS)] *********
+skipping: [localhost]
+
+TASK [cluster-addon : wait for hubble-ui Ready] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 metrics-server的部署文件] ***************************
+changed: [localhost]
+
+TASK [cluster-addon : 删除 metrics-server部署] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 metrics-server部署] *********************************
+changed: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 dashboard的部署文件] ********************************
+skipping: [localhost] => (item=dashboard-values.yaml) 
+skipping: [localhost] => (item=admin-user-sa-rbac.yaml) 
+skipping: [localhost] => (item=read-user-sa-rbac.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 dashboard部署] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建用户admin,read] **************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 local-storage 配置目录] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 local-storage部署文件] ******************************
+skipping: [localhost] => (item=local-path-storage.yaml) 
+skipping: [localhost] => (item=test-pod.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 local-storage部署] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nfs-provisioner 配置目录] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nfs-provisioner部署文件] ****************************
+skipping: [localhost] => (item=nfs-provisioner.yaml) 
+skipping: [localhost] => (item=test-pod.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 nfs-provisioner部署] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 清理 snapshot-controller crd] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 确保命名空间openebs Ready] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=values.yaml) 
+skipping: [localhost] => (item=sc.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 openebs operator] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 openebs] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待lvm-localpv-controller 运行] *********************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建lvm storageclass] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间ingress-nginx] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : label nodes for ingress-nginx controller] ****************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=values.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 ingress-nginx] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 ingress-nginx] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 ingress-nginx controller 就绪后再允许 admission 资源] ***
+skipping: [localhost]
+
+TASK [cluster-addon : 提示 WARNNING] *******************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 拒绝未启用核心栈时单独启用 Prometheus 扩展] **************
+skipping: [localhost]
+
+TASK [cluster-addon : 获取是否已创建命名空间monitor] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间monitor] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 Grafana 管理员 Secret（仅首次安装生成随机口令）] ****
+skipping: [localhost]
+
+TASK [cluster-addon : get etcd-client-cert info] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建etcd-client 证书请求] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 etcd-client证书和私钥] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 删除 etcd-client-cert] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 etcd-client-cert] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 prom chart 个性化设置] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 删除 kube-prometheus-stack 88.0.0] ******************
+skipping: [localhost]
+
+TASK [cluster-addon : 清理卡住的 prometheus helm pending release] **************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 创建 kube-prometheus-stack 88.0.0] ******************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Prometheus 可选扩展配置] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Blackbox Probe 目标] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 显式卸载 Prometheus 可选扩展] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级 Thanos Querier] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级 Prometheus Adapter] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 Prometheus Adapter Custom Metrics API] **************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级 Blackbox Exporter] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 应用显式 Blackbox Probe 目标] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 提交 Blackbox Probe 目标] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : prepare some dirs] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间minio] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : get minio-global-cert info] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 minio-global-cert] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建chart 个性化设置] ************************************
+skipping: [localhost] => (item=operator-values.yaml) 
+skipping: [localhost] => (item=tenant-values.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 minio operator] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待部署 minio operator] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 minio tenant] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 nacos的部署文件] ************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建命名空间nacos] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 nacos部署] ******************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 确保命名空间rocketmq Ready] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : helm 部署 rocketmq operator] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待 rocketmq operator 运行] *************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 rocketmq 部署文件] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 部署 rocketmq cluster] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Percona PXC 配置] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 Percona PXC 渲染目录] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Percona Operator Chart SHA256] **********************
+skipping: [localhost]
+
+TASK [cluster-addon : 渲染 Percona Operator 和 PXC 配置] ***********************
+skipping: [localhost] => (item={'src': 'operator-values.yaml.j2', 'dest': 'operator-values.yaml'}) 
+skipping: [localhost] => (item={'src': 'cluster.yaml.j2', 'dest': 'cluster.yaml'}) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建并确认 PXC 命名空间] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级 Percona Operator] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 Percona Operator 和 CRD 就绪] ***********************
+skipping: [localhost]
+
+TASK [cluster-addon : 在 API Server 校验 PXC 清单] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 发布 Percona XtraDB Cluster] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 PXC、HAProxy、PVC 和 CR 状态就绪] *******************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Kafka 配置] *****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 Kafka 渲染目录] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Strimzi Chart SHA256] *******************************
+skipping: [localhost] => (item=strimzi-kafka-operator-1.2.0.tgz.sha256) 
+skipping: [localhost] => (item=strimzi-drain-cleaner-1.6.1.tgz.sha256) 
+skipping: [localhost]
+
+TASK [cluster-addon : 渲染 Strimzi Operator 和 Kafka 配置] *********************
+skipping: [localhost] => (item={'src': 'operator-values.yaml.j2', 'dest': 'operator-values.yaml'}) 
+skipping: [localhost] => (item={'src': 'cluster.yaml.j2', 'dest': 'cluster.yaml'}) 
+skipping: [localhost] => (item={'src': 'monitoring.yaml.j2', 'dest': 'monitoring.yaml'}) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建并标记 Kafka 命名空间] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 应用或升级 Strimzi CRD] **********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 Strimzi CRD 建立] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级 Strimzi Cluster Operator] *********************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 Strimzi Cluster Operator 就绪] **********************
+skipping: [localhost]
+
+TASK [cluster-addon : 收敛 Drain Cleaner webhook 证书] *************************
+skipping: [localhost]
+
+TASK [cluster-addon : 保存 Drain Cleaner CA 公钥包] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 渲染 Drain Cleaner 配置] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级 Strimzi Drain Cleaner] ************************
+skipping: [localhost]
+
+TASK [cluster-addon : 验证 Drain Cleaner webhook] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 在 API Server 校验 Kafka 清单] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验外部 Kafka 用户密码 Secret] **************************
+skipping: [localhost]
+
+TASK [cluster-addon : 发布 Kafka KRaft 集群] ***********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 Kafka 控制面和数据面就绪] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 检测 Prometheus Operator 监控 CRD] ***********************
+skipping: [localhost]
+
+TASK [cluster-addon : 发布 Kafka 采集和告警规则] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Redis 配置] *****************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 Redis 渲染目录] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Redis Operator Chart SHA256] ************************
+skipping: [localhost]
+
+TASK [cluster-addon : 渲染 Redis Operator 与实例资源] **************************
+skipping: [localhost] => (item={'src': 'operator-values.yaml.j2', 'dest': 'operator-values.yaml'}) 
+skipping: [localhost] => (item={'src': 'instances.yaml.j2', 'dest': 'instances.yaml'}) 
+skipping: [localhost] => (item={'src': 'config.yaml.j2', 'dest': 'config.yaml'}) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建并标记 Redis 命名空间] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Redis 外部 Secret 已存在且包含所需键] ***************
+skipping: [localhost]
+
+TASK [cluster-addon : 显式受控更新已有 Redis CRD] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 输出 Redis CRD 更新验收结果] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级 Redis Operator] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 拒绝 Redis 模式切换造成的遗留资源] ***********************
+skipping: [localhost]
+
+TASK [cluster-addon : 应用 Redis 持久化启动配置] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 Redis Operator 就绪] ********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 先声明 Sentinel DNS 与复制关联] **************************
+skipping: [localhost]
+
+TASK [cluster-addon : 应用 Redis 实例声明] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 Redis 控制面和数据面收敛] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 输出 Redis 就绪验收结果] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验 Redis 快照请求] *************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 导出并验证 Redis RDB 制品] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 输出 Redis 快照导出结果] *********************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建 MongoDB 私有渲染目录] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 保存 MongoDB 非敏感声明参数] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 在任何集群变更前校验 MongoDB 参数] ***********************
+skipping: [localhost]
+
+TASK [cluster-addon : 校验固定 MongoDB Operator Chart SHA256] ******************
+skipping: [localhost]
+
+TASK [cluster-addon : 核验 MongoDB 资源所有权、凭据及故障域] *******************
+skipping: [localhost]
+
+TASK [cluster-addon : 固定 MongoDB 凭据与数据加密身份] *************************
+skipping: [localhost]
+
+TASK [cluster-addon : 渲染 MongoDB Operator、数据库及监控声明] *****************
+skipping: [localhost] => (item=operator-values) 
+skipping: [localhost] => (item=cluster) 
+skipping: [localhost] => (item=monitoring) 
+skipping: [localhost] => (item=network-policy) 
+skipping: [localhost]
+
+TASK [cluster-addon : 核验共享 MongoDB CRD 并执行显式受控升级] *****************
+skipping: [localhost]
+
+TASK [cluster-addon : 安装或升级限定命名空间的 MongoDB Operator] ***************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 MongoDB Operator 与 CRD 就绪] ***********************
+skipping: [localhost]
+
+TASK [cluster-addon : API Server 校验 MongoDB 声明] ****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 发布 MongoDB 入口网络隔离规则] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : 按显式配置移除 MongoDB 自有入口隔离规则] *****************
+skipping: [localhost]
+
+TASK [cluster-addon : 首次启用 MongoDB 计划前等待备份代理就绪] *****************
+skipping: [localhost]
+
+TASK [cluster-addon : 发布 MongoDB 声明] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 等待 MongoDB 当前代次、副本仲裁、PVC 与加密状态] *********
+skipping: [localhost]
+
+TASK [cluster-addon : 发布 MongoDB 指标采集入口] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 执行不可变 MongoDB 备份及显式恢复请求] *******************
+skipping: [localhost]
+
+TASK [cluster-addon : 复验 MongoDB 操作后的集群一致性状态] *********************
+skipping: [localhost]
+
+TASK [cluster-addon : Validate logging route and production prerequisites] *****
+skipping: [localhost]
+
+TASK [cluster-addon : Discover existing kubeauto logging ownership before mutation] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Create and mark the logging namespace after ownership preflight] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Mark Kafka-buffer logging namespace as a Kafka client] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Verify EFK target nodes, storage and secret references] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Verify Loki secret references] ***************************
+skipping: [localhost]
+
+TASK [cluster-addon : Create logging render directory] *************************
+skipping: [localhost]
+
+TASK [cluster-addon : Enforce Elasticsearch virtual-memory baseline on selected nodes] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Render EFK resources] ************************************
+skipping: [localhost] => (item=efk.yaml.j2) 
+skipping: [localhost]
+
+TASK [cluster-addon : Render direct Fluent Bit resources] **********************
+skipping: [localhost]
+
+TASK [cluster-addon : Render Kafka-buffer Fluent Bit resources] ****************
+skipping: [localhost]
+
+TASK [cluster-addon : Render Loki and Alloy values] ****************************
+skipping: [localhost] => (item=loki-values.yaml.j2) 
+skipping: [localhost] => (item=alloy-values.yaml.j2) 
+skipping: [localhost]
+
+TASK [cluster-addon : Apply ECK CRDs and operator with fixed official manifests] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Server validate and apply EFK selected delivery resources] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Bootstrap least-privilege Elasticsearch writer before Fluent Bit] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Apply EFK collector resources after writer bootstrap] ****
+skipping: [localhost]
+
+TASK [cluster-addon : Derive Kafka logging client Secret after Strimzi user reconciliation] ***
+skipping: [localhost]
+
+TASK [cluster-addon : Check fixed Loki and Alloy chart checksums before Helm rendering] ***
+skipping: [localhost] => (item=loki-18.9.0.tgz.sha256) 
+skipping: [localhost] => (item=alloy-1.11.1.tgz.sha256) 
+skipping: [localhost]
+
+TASK [cluster-addon : Install Loki chart and Alloy collector for the selected Loki route] ***
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 cilium-check 配置目录] ******************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备部署文件] ********************************************
+skipping: [localhost] => (item=connectivity-check.yaml) 
+skipping: [localhost] => (item=check-part1.yaml) 
+skipping: [localhost] => (item=namespace.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试namespace] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试part1] *******************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 轮询等待echo pod运行，视下载镜像速度而定] ****************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建完整测试connectivity-check] **************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备 network-check 配置目录] *****************************
+skipping: [localhost]
+
+TASK [cluster-addon : 准备部署文件] ********************************************
+skipping: [localhost] => (item=network-check.yaml) 
+skipping: [localhost] => (item=namespace.yaml) 
+skipping: [localhost]
+
+TASK [cluster-addon : 创建测试namespace] ***************************************
+skipping: [localhost]
+
+TASK [cluster-addon : 创建完整测试network-check] *******************************
+skipping: [localhost]
+
+TASK [cluster-addon : debug] ***************************************************
+skipping: [localhost]
+[WARNING]: Could not match supplied host pattern, ignoring: ceph
+
+PLAY [Validate and prepare Ceph hosts] *****************************************
+skipping: no hosts matched
+[WARNING]: Could not match supplied host pattern, ignoring: ceph_bootstrap
+
+PLAY [Bootstrap and reconcile the cephadm cluster] *****************************
+skipping: no hosts matched
+
+PLAY [Reconcile external Ceph-CSI on Kubernetes] *******************************
+
+TASK [ceph : Validate Ceph role phase] *****************************************
+skipping: [localhost]
+
+TASK [ceph : Run Ceph host preparation] ****************************************
+skipping: [localhost]
+
+TASK [ceph : Run cephadm cluster reconciliation] *******************************
+skipping: [localhost]
+
+TASK [ceph : Run external Ceph-CSI reconciliation] *****************************
+skipping: [localhost]
+
+PLAY RECAP *********************************************************************
+192.168.122.135            : ok=145  changed=97   unreachable=0    failed=0    skipped=127  rescued=0    ignored=0   
+192.168.122.165            : ok=103  changed=60   unreachable=0    failed=0    skipped=99   rescued=0    ignored=0   
+192.168.122.212            : ok=103  changed=60   unreachable=0    failed=0    skipped=99   rescued=0    ignored=0   
+192.168.122.238            : ok=103  changed=60   unreachable=0    failed=0    skipped=99   rescued=0    ignored=0   
+192.168.122.40             : ok=134  changed=85   unreachable=0    failed=0    skipped=98   rescued=0    ignored=0   
+192.168.122.72             : ok=134  changed=85   unreachable=0    failed=0    skipped=98   rescued=0    ignored=0   
+localhost                  : ok=45   changed=37   unreachable=0    failed=0    skipped=198  rescued=0    ignored=0   
+[2026-10-25 10:13:57] [INFO] [service.cluster.manager] Cluster setup completed (playbook 90.setup.yml).
+node/longhorn-node-135 condition met
+node/longhorn-node-165 condition met
+node/longhorn-node-212 condition met
+node/longhorn-node-238 condition met
+node/longhorn-node-40 condition met
+node/longhorn-node-72 condition met
+LONGHORN_CORE_HOST_INPUTS_CLEAN_PASS nodes=6
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_CACHE_VERIFIED image=brinnatt/json-mock:v1.3.1 digest=sha256:9a67eb8fe38a6a484841c01477381ebe03172b30e6903de3de5b286dce515a77
+LONGHORN_CACHE_PASS images=1
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+namespace/longhorn-core-smoke-b837bf9e9395ea39 created
+deployment.apps/production-server created
+service/production-server created
+Waiting for deployment "production-server" rollout to finish: 0 of 1 updated replicas are available...
+deployment "production-server" successfully rolled out
+PRODUCTION_SMOKE_ENDPOINT_READY endpoint=172.30.52.66 server_node=longhorn-node-212
+job.batch/production-client created
+job.batch/production-client condition met
+PRODUCTION_SMOKE_HTTP_RW_OK
+KUBERNETES_PRODUCTION_SMOKE_PASS server_node=longhorn-node-212 client_node=longhorn-node-165
+LONGHORN_CORE_SMOKE_BUSINESS_PASS
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_CORE_SCOPED_CLEAN_PASS
+LONGHORN_CORE_PASS
+LONGHORN_FULL_CHILD_EXIT rc=0

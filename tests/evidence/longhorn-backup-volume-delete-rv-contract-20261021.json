@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "case": "LONGHORN-15",
+  "ladder_completed": 2,
+  "next_permitted": "Fixed-runner backup-refusal module on the verified healthy empty owned baseline; no direct cleanup mutation.",
+  "tests": 115,
+  "rc": 0,
+  "root_cause_evidence": "tests/evidence/longhorn-backup-refusal-delete-first-failure-20261021.json",
+  "scope": "Only native BackupVolume cleanup retries the exact pinned API ResourceVersion precondition conflict, for at most 60s. Each attempt GETs and checks original UID, source volume and target before the unchanged raw UID/RV DELETE. Replacement/source/target drift, Forbidden, UID conflict and other errors stop immediately. Product API and unrelated cleanup paths remain unchanged.",
+  "raw_evidence": {
+    "logs/longhorn-cases/backup-volume-delete-rv-contract-20261021/backup-volume-controller.go": "0472a71fdbc1526fb92142980a6a3ad22604958af47b2b482f1569c3c9bea600",
+    "logs/longhorn-cases/backup-volume-delete-rv-contract-20261021/contracts.log": "aa8079f87aa055afb42b8c1c6022e248d2bfab6a395bb39c7c8b204c31fc6ad8",
+    "logs/longhorn-cases/backup-volume-delete-rv-contract-20261021/kubernetes-storage-preconditions.go": "38a5faf5d400fc9c6795373a4561f4da4d716ee455ea327ce05dc1d330832f3a"
+  },
+  "files": {
+    "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+    "tests/unit/test_longhorn_lab.py": "4eddd61c89d892e456da8c822f395a3bf7e13164bc11e5986ae28c8618e4ccda"
+  },
+  "official": {
+    "longhorn_manager": "8320238242e8c804325d9588ec1db10feb9f36b8/controller/backup_volume_controller.go, status updates at 205/260",
+    "kubernetes": "https://github.com/kubernetes/kubernetes/blob/v1.33.6/staging/src/k8s.io/apiserver/pkg/storage/interfaces.go, Preconditions.Check"
+  },
+  "reuse_boundary": "Successful unchanged modules retain their real captured evidence. This static fix does not turn the failed backup-refusal into PASS or invalidate unrelated business assertions."
+}

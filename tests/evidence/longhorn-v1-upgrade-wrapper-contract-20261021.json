@@ -1,0 +1,37 @@
+{
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "cases": [
+    "LONGHORN-35",
+    "LONGHORN-36"
+  ],
+  "ladder_completed": 2,
+  "next_permitted": "root fixed-runner narrow combined v1-upgrade-lifecycle after current source identity-dependent cases; no remote sync or launch by child",
+  "rc": 0,
+  "tests": 22,
+  "tests_new": 12,
+  "failure_markers": 0,
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09; native empty-store uninstall before clean 1.12.0 setup",
+  "command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-v1-upgrade-lifecycle.sh v1-upgrade-lifecycle",
+  "cleanup_command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-v1-upgrade-lifecycle.sh v1-upgrade-cleanup",
+  "success_markers": [
+    "LONGHORN_UPGRADE_PASS",
+    "LONGHORN_UPGRADE_RECOVERY_PASS",
+    "LONGHORN_V1_UPGRADE_GATE_PASS"
+  ],
+  "files": {
+    "tests/helpers/longhorn-v1-upgrade-prepare.py": "b44739e444d239e25838e86ff870fadd2bcd8e7dd6351c9fcececc56a3045739",
+    "tests/helpers/longhorn-v1-upgrade-lifecycle.sh": "a5f4e390b8a399297d2d6498722c6c81724562461446f0920d004e27127342f0",
+    "tests/unit/test_longhorn_v1_upgrade_prepare.py": "4ca08e9889419ce6c44608c3e44878311c2b2d77d3316f866816f4478504a048",
+    "tests/unit/test_longhorn_v1_upgrade_shell.py": "0850b590de21ab23a5f7a034509d330b65804c731bfdbb041fe6d8f5f3fd5142"
+  },
+  "contracts": "logs/longhorn-cases/v1-upgrade-wrapper-contract-20261021/contracts.log",
+  "contracts_sha256": "6ac5039548e7354e112b21ecced88db5ab0b08784c367c4682792895aad4ee20",
+  "official_sources": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "old_manager_commit": "fcba150e04d609c944b53cb92f7cd8adf32d7585"
+  },
+  "reused_design_evidence": "tests/evidence/longhorn-v1-upgrade-lifecycle-contract-20261021.json",
+  "scope": "Preserve original six core Node UIDs and independent .149 raw/V2 target; no current source identity-dependent work may follow empty-store transition. Both old/new image pins cached and qualified before native uninstall. Restore original host state, blank original qualified disks, then journal reprepare and clean old installation; no in-place downgrade. Four true CSI V1-to-V2 plain/encrypted restores remain required live assertions, not inferred PASS. Partial transition retains exact intent and materials, no speculative rollback. Durable shell preserves first failure and blocks PASS on missing marker/count, dead relay, cleanup or finalization failure. Original /root/.kube/config restored before final checks. No live execution performed."
+}

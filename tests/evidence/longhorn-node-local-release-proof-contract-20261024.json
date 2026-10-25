@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "status": "contract-pass",
+  "classification": "test fixture dependency and runtime environment isolation",
+  "first_failure": {
+    "path": "logs/longhorn-cases/manager-uninstall-current-docs-handoff-ready-owning-20261024/launch.log",
+    "sha256": "228354e45ed1f77ca925664970b254ff38cb0dc59f2eb82e5964a1e45f79b1b8"
+  },
+  "test": {
+    "path": "tests/unit/test_longhorn_v2_cleanup_recovery.py",
+    "sha256": "23ec819159aeea5195e1a4ace8c8db44c3aba5b44c79e0c7748908740bf1795a"
+  },
+  "contracts": {
+    "log": {
+      "path": "logs/longhorn-cases/node-local-release-proof-contract-first-failure-20261024/contracts.log",
+      "sha256": "366ccbee74599fb6defd0d56885c636f6ad86371888860d2976e31fb29e25894"
+    },
+    "exit": {
+      "path": "logs/longhorn-cases/node-local-release-proof-contract-first-failure-20261024/contracts.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/node-local-release-proof-contract-first-failure-20261024/contracts.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "tests": 35,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_cleanup_recovery.RecoveryLauncher -v",
+  "boundary": "Fixture consumes actual source+target proof stdin order and checks missing/malformed peer refusal without inheriting runtime proof variables. No product guard changed, no remote mutation, no business PASS."
+}

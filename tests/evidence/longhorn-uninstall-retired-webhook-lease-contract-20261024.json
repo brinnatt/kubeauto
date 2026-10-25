@@ -1,0 +1,54 @@
+{
+  "changed_files": {
+    "tests/helpers/longhorn-uninstall.py": "9b4ee5abcd49ad96af644a90ac1c8943abae8d8ee3632f0b90a27c781dda6688",
+    "tests/unit/test_longhorn_uninstall.py": "3823795b3075a75c52618e6c0501f2cff0a2aa03d68506c68f293dac887f9173"
+  },
+  "classification": "test-gate",
+  "contracts": {
+    "exit": {
+      "path": "logs/longhorn-cases/uninstall-webhook-lease-first-failure-20261024/green.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/uninstall-webhook-lease-first-failure-20261024/green.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/uninstall-webhook-lease-first-failure-20261024/green.log",
+      "sha256": "e722624262e3c438e6af564d18e9a568ea2d9ec62ade74e5fbd13f6d15380f6a"
+    }
+  },
+  "expected_markers": [
+    "LONGHORN_NATIVE_UNINSTALL_RECOVERY_VERIFIED",
+    "LONGHORN_RECOVER_SCOPED_CLEAN_PASS",
+    "LONGHORN_RECOVER_PASS"
+  ],
+  "failed_parent": "logs/longhorn-cases/manager-uninstall-backup-snapshot-wait-fixed-owning-20261024",
+  "first_failure": "Native startup Webhook Lease retains a removed node identity; current-node-membership assumption is not an upstream Lease ownership contract.",
+  "focused_live_status": "pending",
+  "impact": "Only validation of native Lease holder names changes; original namespace, exact native factories, shape, duration, UID binding, replacement refusal and unknown resource refusal remain. Historical creation/adoption paths do not execute this function; completed backup success prefix and prior complete39 remain intact; final fresh uninstall repeats the full current path.",
+  "matrix_item": "LONGHORN-39",
+  "native_readback": {
+    "path": "logs/longhorn-cases/uninstall-webhook-lease-first-failure-20261024/leases.json",
+    "sha256": "97ee3065b5205fcd780155399f8ac432d91803520d7c5618d3e27a025e09da73"
+  },
+  "official_manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_sources": {
+    "app/daemon.go": {
+      "path": "logs/longhorn-cases/uninstall-webhook-lease-first-failure-20261024/official-source/app/daemon.go",
+      "sha256": "84f182fe654d34de48ba2ac96ffec97431f01c5ed34cadbbbe86d4b1291ef6a7"
+    },
+    "vendor/k8s.io/client-go/tools/leaderelection/leaderelection.go": {
+      "path": "logs/longhorn-cases/uninstall-webhook-lease-first-failure-20261024/official-source/vendor/k8s.io/client-go/tools/leaderelection/leaderelection.go",
+      "sha256": "d755f72c0a5bb1a37720cac798e1ad6b6908bfb6b1cb4aa80abe5ca065ae048d"
+    },
+    "webhook/cert/rotate.go": {
+      "path": "logs/longhorn-cases/uninstall-webhook-lease-first-failure-20261024/official-source/webhook/cert/rotate.go",
+      "sha256": "8909534028e16c431a21217790bf178d8cbffac3f3d6981eb32c380657c04b9a"
+    }
+  },
+  "overall_delivery_pass": false,
+  "product_entry": "config.yml + kubecli setup 09 via bash tests/run_enterprise_regression.sh --longhorn-install-recover",
+  "schema": 1,
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-install-recover"
+}

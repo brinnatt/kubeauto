@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-19",
+  "date": "2026-10-19",
+  "status": "failed",
+  "classification": "test-gate; pinned native replica process container path assertion omitted /host prefix",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-replica-failure </dev/null",
+  "durable_pid": 2321570,
+  "rc": 1,
+  "failure_markers": 2,
+  "first_failure": "native replica process differs from the original data identity",
+  "fault_injected": false,
+  "source_basis": {
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "functions": [
+      "engineapi/instance_manager.go:getBinaryAndArgsForReplicaProcessCreation",
+      "types/types.go:GetReplicaMountedDataPath"
+    ]
+  },
+  "recovery": "Business fixtures and registry transport cleaned; original core and storage identity/health verified by durable wrapper. Private ledger retained for diagnosis. No speculative product changes.",
+  "regression": "Exact source-shaped /host path fails prior helper; corrected assertion and nine fault contracts pass, rejecting unprefixed or foreign paths.",
+  "files": {
+    "logs/longhorn-cases/replica-failure-20261019-115304/business-diagnostics.txt": "7b4ab856f10f95968464e0bca072e32ab56dea6d24134f5f3c6b3d12335d0978",
+    "logs/longhorn-cases/replica-failure-20261019-115304/durable-status.txt": "2302e3a88ae4b9a3f35549ac3407d251b8f95fd55b40a47cb20b2ad0ee7cef67",
+    "logs/longhorn-cases/replica-failure-20261019-115304/first-traceback.txt": "d75457cf109b0532e1efe017f519156eb4d99fad96a30019ab1bba59c24dbdd4",
+    "logs/longhorn-cases/replica-failure-20261019-115304/frozen-source.txt": "c30c2869e7d8e91eeea21fe7f72ccbeda01cf746cf4417ffa3b384d2986247a9",
+    "logs/longhorn-cases/replica-failure-20261019-115304/gate.log": "6a94c87cd5d383f6be6cc723e8ca84bbbba71a2179811211e0f556e72b7698ef",
+    "logs/longhorn-cases/replica-failure-20261019-115304/storage-diagnostics.txt": "833b5df3ef3fe5e9de280f9de95ea90432fe15debfcd4fb8afe853abf3e8fbd7"
+  }
+}

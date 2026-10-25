@@ -1,0 +1,29 @@
+{
+  "classification": "test-gate-fixture",
+  "date": "2026-10-21",
+  "first_failure": {
+    "failures": 1,
+    "observed_rc": 86,
+    "tests": 81
+  },
+  "focused_result": {
+    "rc": 0,
+    "tests": 81
+  },
+  "frozen_inputs": {
+    "tests/helpers/longhorn-runner.sh": "35d76240322f12796d10e4084f0c5afcc87a589c97bcad2a6cd681b1d831cc60",
+    "tests/unit/test_longhorn_cleanup.py": "663c97c77c9f31a445bd904b451b43f1e40101c71feb7765956342271ec8dae3"
+  },
+  "live_mutation": false,
+  "next_command": "bash tests/run_enterprise_regression.sh --longhorn-static-only",
+  "overall_delivery_pass": false,
+  "product_behavior_changed": false,
+  "raw_logs": {
+    "logs/longhorn-cases/parallel-continuation-20261021/current-static/cleanup-wiring-fixture-repair.log": "d345ff9f78f0ecafac5ac43c6ef913980ab698138a86b4c7389f5f9ac903305f",
+    "logs/longhorn-cases/static-20261021-200551/gate.log": "36d057a2fc29945bd5b4feb46bfc668c7ea050a43e88bf24c347a59ab01b6a00",
+    "logs/longhorn-cases/static-20261021-200551/status.json": "fbb7a2b2a734200999dff7126825ed08b14c0530d118788593683a2f51c89ef5"
+  },
+  "root_cause": "Cleanup launch fixture accepted only the live-log read; current runner additionally archives the actual durable exit/finalized files. The fixture returned 86 on those required reads. It now returns their exact expected zero records and asserts both files were collected.",
+  "schema": 1,
+  "status": "focused-contract-pass-no-live"
+}

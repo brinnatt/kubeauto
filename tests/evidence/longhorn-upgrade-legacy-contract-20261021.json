@@ -1,0 +1,148 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "classification": [
+    "product",
+    "test-gate"
+  ],
+  "cases": [
+    "LONGHORN-52",
+    "LONGHORN-49"
+  ],
+  "ladder_level_completed": 2,
+  "next_permitted_level": "root-owned narrowest 52 upgrade wrapper after accepted .2 adoption and completed dependent source/target modules; only actual durable 0/0 plus independent readback may create the new accepted baseline for 45/51",
+  "rc": 0,
+  "tests": 97,
+  "product_entry": "config.yml + supervised kubecli setup longhorn-v2-gate 09",
+  "expected_markers": [
+    "LONGHORN_V2_UPGRADE_LEGACY_VERIFIED",
+    "LONGHORN_V2_LEGACY_LINKED_REFUSALS_PASS",
+    "LONGHORN_V2_UPGRADE_PASS"
+  ],
+  "cleanup_marker": "LONGHORN_V2_UPGRADE_SCOPED_CLEAN_PASS",
+  "inputs": {
+    "roles/longhorn/files/longhorn.py": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+    "tests/helpers/longhorn-upgrade-lifecycle.py": "53a4481f92cd6ff19ab98ef94a6bbb1e0a95b347ea3a94e009480b98688b625e",
+    "tests/unit/test_longhorn_delivery.py": "111b7a25dfcbb74bf400e3b3e2132e3fe6c0e03766236e33164205ab13207b6b",
+    "tests/unit/test_longhorn_upgrade_lifecycle.py": "344c38f188b44e36201f32d03aa1123ff8e3d79ced41293b9dd5c990b631a715",
+    "tests/helpers/longhorn-v2-linked-lifecycle.py": "65a880c6acadc60f1daa809fea57ff020765913d361cf4ea9b242488f92a1f0c",
+    "tests/unit/test_longhorn_v2_linked_lifecycle.py": "7b4afadbdd3d2735103e17be304d08390d3ca6bed7e70a8d042c795c37df76eb",
+    "tests/helpers/longhorn-v1-upgrade-lifecycle.py": "b7ae03cdf8b7ee6e9fca5715467abe45f5797d3b2271e42bd3f484c8fb1c6507",
+    "tests/unit/test_longhorn_v1_upgrade_lifecycle.py": "1a52f9d8fe3caf097bbac9c8c3354440e26f2c3989a2d344d47bd1692c636fd3",
+    "tests/helpers/longhorn-v2-upgrade-prepare.py": "ca0092abe44498ce2ea4db98db7efc86f29f45878d863ea8996afeb9b221f752",
+    "tests/helpers/longhorn-v2-upgrade-lifecycle.sh": "f94954b7c7f8d0a66bd6f8269335ad4d097a37649ff993e4801727d1d447bba3",
+    "tests/unit/test_longhorn_v2_upgrade_prepare.py": "4878da3200b60cc12a501529aeb0a77a14c8a62733e92e5f1ea20f10b7fc0d33",
+    "tests/unit/test_longhorn_v2_upgrade_shell.py": "87d588798a5cf3355fcf71963ba17dcc39b630ac570eb88ba62d132e0c72a064",
+    "tests/helpers/longhorn-v2-upgrade-baseline.py": "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87",
+    "tests/unit/test_longhorn_v2_upgrade_baseline.py": "a581920e4f559eb43404ce90361e45cefa4c465eefd4befed86a3b1fc31094f4",
+    "tests/helpers/longhorn-v2-install.py": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4",
+    "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+    "roles/longhorn/files/block-check.py": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+    "roles/longhorn/files/images.json": "b6d0fb3ce3084f704ad0429267d41df3b63d97167a524690f6dca52f2fc543d7"
+  },
+  "official_sources": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "old_manager_commit": "fcba150e04d609c944b53cb92f7cd8adf32d7585",
+    "new_manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "old_instance_manager_commit": "dc1f1290ce059525564c3a9f0238c69f06d6f7cc",
+    "versions": [
+      "1.12.0",
+      "1.12.1"
+    ],
+    "urls": [
+      "https://longhorn.io/docs/1.12.1/important-notes/",
+      "https://longhorn.io/docs/1.12.0/snapshots-and-backups/csi-volume-clone/",
+      "https://github.com/longhorn/longhorn-manager/blob/8320238242e8c804325d9588ec1db10feb9f36b8/upgrade/v1120to1121/upgrade.go",
+      "https://github.com/longhorn/longhorn-manager/blob/fcba150e04d609c944b53cb92f7cd8adf32d7585/webhook/resources/volume/validator.go",
+      "https://github.com/longhorn/longhorn-instance-manager/blob/dc1f1290ce059525564c3a9f0238c69f06d6f7cc/app/cmd/start.go"
+    ]
+  },
+  "root_causes": [
+    "The product blanket-refused all old V2 linked clones, although the pinned upstream upgrade natively marks them legacy and retains detach/delete semantics.",
+    "The old fixture used three replicas, which pinned 1.12.0 admission forbids for linked clones, and retired its fixture before upgrade, so real upgrade provenance never reached the existing four native refusal assertions."
+  ],
+  "scope": [
+    "Remove only blanket legacy preflight refusal; preserve version/SystemBackup/data-engine/backingImage/healthy/detached/stopped-instance protections.",
+    "Create and read a real one-replica old linked clone; verify original PVC/PV/CSI/native-parent identities and healthy RW replica before retaining it across the product upgrade.",
+    "Require every owned native volume, including old clone, to exist unchanged with all instances stopped.",
+    "Consume upstream-generated legacy and clone-source labels on the same old native UID, then reuse LONGHORN-49 four server dry-run admission refusals without reattach or label mutation.",
+    "Delete old clone normally only after all four refusals, keeping original sources and backups on incomplete upgrade.",
+    "Reuse the already-published immutable 1.12.0 official image set; old internal SPDK service was plaintext by upstream design, so no old derived image or security override is required.",
+    "Fixed V2 wrapper owns durable status, first failure, both exact Registry supervisor lifetimes, diagnostics, original control kubeconfig and normal/failed/SIGTERM/cleanup exits.",
+    "Preparation uses original product empty-storage uninstall and owned host/credential operations; raw hardware paths, stable identities and original lvstore UUIDs survive the source storage reinstall; independent target and Kubernetes core stay unchanged.",
+    "Scoped cleanup requires original preparation ownership and a complete real-upgrade/legacy-result receipt, restores only reversible upgrade ID/SystemBackup inputs at version 1.12.1 and refuses data/version rollback on an incomplete attempt.",
+    "Unified accepted(lab) baseline reader consumes only independently accepted real 52 evidence with exact old .2 proof SHA, archived preparation/result bytes, current frozen inputs and case-owned raw log/zero exit/zero finalized receipts.",
+    "Require same source core and hardware, different old/new namespace and all native Longhorn node/IM/Pod UIDs, identical original raw lvstore UUID/declaration, new actual .2 IM runtime image IDs and exact final configuration.",
+    "Require four raw restore markers to match completed restore identities/digests, native legacy-origin/refusal markers and zero raw failure markers; current healthy empty runtime must match independently accepted after snapshot.",
+    "install.volume_baseline retains all old qualification/adoption guards, adds the independently accepted 52 identity edge, then still verifies native UIDs/disk UUIDs, health and empty business. An invalid new edge cannot fall back to historical PASS."
+  ],
+  "supersedes_contract_scope": "tests/evidence/longhorn-upgrade-lifecycle-contract-20261021.json legacy blanket-refusal/retire-before-upgrade portion only; no historical live PASS is reused as current product PASS.",
+  "boundary": "Deterministic local contracts and finite official source review only. No SSH, live mutation, source transition, image publication, matrix PASS or GA assertion. Existing V1 flow remains independently tested. Official GA is not project PASS.",
+  "files": {
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/contracts.log": "23d010043b0dcc5c996f8fa23cc6fe8acd6896390cbecd439b2435a38fbeba05",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/contracts.status.json": "0c19fa13661ab9ec540eb87c35864a04f6462a6ac84ceafe88978b310b0cdb5f",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/first-failure.txt": "aa6161df0d5f634408e17d9c26e10494289eec854f2e8ce742e028c5e1f4b482",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/help.log": "00958c5d787c392781d06f02b0adde5df7ef9c194d4ab020d5373542fffc0e1e",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/longhorn-v2-upgrade-baseline-help.log": "8dd966a514ae6e58348d774753d6995919621037e9faa6468f5f85d4c5ee8793",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/longhorn-v2-upgrade-prepare-help.log": "9527c0745263c611d9a8f863c8093c0a4c5c8ba447cd59427261e0f281b0e6fa",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/new-upgrade.go": "23f8839eaa2c10c70313081c0ba60510d0cf4080c0625ab118156e87ad41625f",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/old-clone-doc.md": "ef1a4787690f7f94add70e5f994d16eaeab6df4831e089ad241f092a62c095c4",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/old-im-replica.go": "557675fdb9034ad536750f2b1ed9c5cf7f0b8049c89dfd0b10537dfe469844d5",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/old-im-start.go": "f37dce8db22d7b790647b453b70436c0af8d94f457636e79adb892bffde17893",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/old-volume-validator.go": "51496c8e8aa792f218277aa4a8592254fc1a4af8b8e1656515355945fb289073",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/prepare-help.log": "9527c0745263c611d9a8f863c8093c0a4c5c8ba447cd59427261e0f281b0e6fa",
+    "logs/longhorn-cases/upgrade-legacy-contract-20261021/six-repo-audit.json": "cb056b15770aa81c1b3b28e404349390afa6b9ff4126d9c7a1f7f1c55a7333e8"
+  },
+  "public_modes": {
+    "v2-upgrade-lifecycle": {
+      "wrapper": "tests/helpers/longhorn-v2-upgrade-lifecycle.sh",
+      "terminal_marker": "LONGHORN_V2_UPGRADE_GATE_PASS",
+      "cleanup_marker": "LONGHORN_V2_UPGRADE_GATE_SCOPED_CLEAN_PASS"
+    },
+    "v2-upgrade-cleanup": {
+      "wrapper": "tests/helpers/longhorn-v2-upgrade-lifecycle.sh",
+      "terminal_marker": "LONGHORN_V2_UPGRADE_CLEANUP_PASS",
+      "cleanup_marker": "LONGHORN_V2_UPGRADE_CLEANUP_SCOPED_CLEAN_PASS"
+    }
+  },
+  "shell_contracts": [
+    "normal",
+    "preflight failure before transport",
+    "prepare failure without business cleanup",
+    "primary failure survives cleanup failure",
+    "SIGTERM 143 survives cleanup failure",
+    "missing markers and wrong isolated-restore count",
+    "dead relay and relay-clean failure",
+    "finalize failure",
+    "cleanup requires own preparation, never repeats transition or business"
+  ],
+  "acceptance_schema": {
+    "path": "tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json",
+    "status": "pass",
+    "signed_scope": "v2-upgrade-lifecycle",
+    "version": "1.12.1",
+    "rc": 0,
+    "failure_markers": 0,
+    "durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "remote_input_verification": {
+      "mismatches": 0
+    },
+    "frozen_inputs": "current SHA256 for every longhorn-v2-upgrade-baseline.py INPUTS entry",
+    "transition": "exact LONGHORN_V2_UPGRADE_BASELINE_TRANSITION JSON from completed preparation finalization",
+    "receipt_refs": {
+      "log": "{path: case-owned product-relative immutable raw full-52 log, sha256}",
+      "exit": "{path: case-owned original durable exit copy, sha256}; content 0",
+      "finalized": "{path: case-owned original durable finalized copy, sha256}; content 0"
+    },
+    "independent_readback": {
+      "installation_healthy": true,
+      "empty_business": true,
+      "transition_journal_absent": true,
+      "baseline": "capture(lab) actual readback matching transition.after"
+    }
+  }
+}

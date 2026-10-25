@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-44 prerequisite only",
+  "status": "pending",
+  "classification": "Read-only environment inventory; no cluster use, source synchronization or host mutation",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-host-inputs </dev/null",
+  "rc": 0,
+  "hosts_read": 26,
+  "kernel_ge_6_7_hosts": [
+    "brinnatt@192.168.47.128",
+    "root@192.168.47.143"
+  ],
+  "disk_query_failed_hosts": [
+    "root@192.168.47.130",
+    "root@192.168.47.131",
+    "root@192.168.47.132",
+    "root@192.168.47.133",
+    "root@192.168.47.134",
+    "root@192.168.47.135",
+    "root@192.168.47.136",
+    "root@192.168.47.137"
+  ],
+  "finding": "Only Debian128 and openSUSE143 meet the kernel criterion; both have2CPU and partitioned system disks only. No qualified three-node raw-disk V2 combination in generally authorized candidates. Eight Rocky8 disk queries failed despite successful SSH/Python; their4.18 kernels already fail the production kernel prerequisite. Query failure does not establish disk absence.",
+  "boundary": "No V2 product acceptance. Listing cannot prove blankness, module availability, stable unique identity or ownership;145-147 remain Ceph-only and129/122.1 are excluded.",
+  "previous_evidence": "tests/evidence/longhorn-v2-host-inventory-20261020.json",
+  "static_evidence": "tests/evidence/longhorn-v2-host-expanded-static-20261020.json",
+  "source_sha256": {
+    "tests/helpers/longhorn-runner.sh": "f5d397b4a05571d2c0a156acd0c6718a01fa2186e8fc2ce5cb700b746d1b883f",
+    "tests/unit/test_longhorn_gate.py": "8d344000618f23a7320bb090a1ab3758b3fb7bc79073ed5fc78cbb827841af75"
+  },
+  "files": {
+    "logs/longhorn-cases/v2-host-inventory-expanded-20261020/inventory.log": "48a66cee97c92b647b7321f9dc954c64863641c7d8b59e1ff309d567777c7e65"
+  }
+}

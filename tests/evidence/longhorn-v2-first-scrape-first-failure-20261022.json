@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-53",
+  "status": "pending",
+  "classification": "test-gate: missing initial scrape convergence",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-remaining-v2-monitoring",
+  "owning_command": "bash tests/run_enterprise_regression.sh --longhorn-v2-observability-performance",
+  "rc": 1,
+  "first_failure": {
+    "phase": "sustained-business/rules",
+    "exception": "ValueError: Prometheus samples are missing; absence is not zero",
+    "expression": "longhorn_volume_actual_size_bytes{volume=<owning-volume-name>}",
+    "cause": "The first strict new-volume query runs before any bounded initial scrape wait; actual ServiceMonitor/Prometheus scrape interval is 30s. Official pinned collector emits actual-size for owner volumes without a V1/V2 condition.",
+    "product_fault_proven": false,
+    "sustained_writer_started": false,
+    "thirty_minute_ledger_completed": false
+  },
+  "durable": {
+    "sustained_business": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "parallel_v2": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "observability_wrapper": {
+      "exit": 1,
+      "finalized": 0
+    }
+  },
+  "cleanup": {
+    "business_scoped_clean": true,
+    "monitoring_scoped_clean": true,
+    "backup_transport_and_store_scoped_clean": true,
+    "registry_transport_scoped_clean": true,
+    "monitoring_journal_absent": true,
+    "install_business_journal_absent": true
+  },
+  "remote_input_verification": {
+    "count": 835,
+    "mismatches": 0,
+    "manifest": "logs/longhorn-cases/node-events-compatible-continuation-20261022/frozen-inputs.json",
+    "manifest_sha256": "f108df5d6ab969a79381612481900d2e8e03791ece73552e3c16b4412431b3f6"
+  },
+  "official_source": {
+    "url": "https://api.github.com/repos/longhorn/longhorn-manager/contents/metrics_collector/volume_collector.go?ref=8320238242e8c804325d9588ec1db10feb9f36b8",
+    "sha256": "52850be6555932f48a99031ffc7006e8b91f6e85b70641260f5795f56fb53d49",
+    "blob_sha": "b01cc929874f7c29881e519009d52f5f47d4941d"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/00-sustained-business.log": "f6c2c9b075c88c65684460284ac95d1c16fab91b71451b61408075ca6bd66ca3",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/01-sustained-business.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/02-sustained-business.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/03-first-failure.status": "f59e268c940576ae5712b0b7de3fdd3627a4df71a8baad3d395df95a6486e61f",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/04-longhorn-v2-observability-failure-0eueldke.txt": "4089bbe9ac5aa3920cdb000c7055557044bf57f279227926b363fff8f53eb539",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/05-v2.log": "2fe70ca229aedd6495a94a61bcd00afba915e4fd3595518af3e7001591222f03",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/06-events.txt": "05462e14f76b19874b8635efffe23b72ed29e8621de60569d994bc1640356ee6",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure/07-pods.txt": "dd0388a235d738c72fcb1eb330a80d8ce9b88516d4bf162fba8394a423b62d7a",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/first-business-failure-capture.json": "3030fd812157e79c99171fe11ea8289b473a813d6ed64cf5ba7d0fe8457264e4",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/00-v2.log": "d85964d9067cdd777e698f054d0baf649c696b0f3c2de147c58d9e81817e9935",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/01-v2.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/02-v2.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/03-exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/04-finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/05-first-failure.status": "f59e268c940576ae5712b0b7de3fdd3627a4df71a8baad3d395df95a6486e61f",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/06-events.txt": "05462e14f76b19874b8635efffe23b72ed29e8621de60569d994bc1640356ee6",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal/07-pods.txt": "dd0388a235d738c72fcb1eb330a80d8ce9b88516d4bf162fba8394a423b62d7a",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/terminal-capture.json": "2e84709bed22815d35ff7352cc169a5900fdfa79abddbfb4e72c72e38b81e1e1",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/official-volume-collector.go": "52850be6555932f48a99031ffc7006e8b91f6e85b70641260f5795f56fb53d49",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/official-volume-collector-source.json": "2a37694a68b081542497dea72880fe855869aa814eaee9d5cb65630f191a02d6",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/scrape-interval-observation.json": "a6af8cbf5f8c4eb3c1927550138f7ec0151c1d1486f48260a968418ee8964557",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/remote-frozen-verification.json": "bdf79c37a216b36ac6368c55650d4212c11ca405662c595604c167606cac3dd7",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/post-failure-readonly-baseline.json": "c07517a3e959336bca15d84fa409982709524a5f6ebefd648290127d916af373",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-v2-first-scrape/post-failure-readonly-baseline.log": "5049fed88ab45cc1428462876e0885bbc0954d9a46640d3ca38730f1a1f6e27f"
+  },
+  "next": "Preserve strict API/vector/finite/fresh/identity checks; add bounded first-sample convergence and exact RED/GREEN contracts, then rerun owning focused branch after unchanged running V1 scope finalizes.",
+  "boundary": "Only pre-business failure and original cleanup are recorded; no LONGHORN-53, failed parent, full regression or GA PASS. Previously completed setup and CPU reuse scopes remain separately bounded evidence.",
+  "post_failure_independent_readback": {
+    "rc": 0,
+    "native_disk_and_core_identity": true,
+    "installation_healthy": true,
+    "v2_instance_managers": 3,
+    "business_objects": 0,
+    "scope": "Original unchanged 835 installation verifier, read-only; no business PASS"
+  },
+  "accepted_repair_candidate": {
+    "classification": "test-gate only",
+    "patch_sha256": "b58dd767ad31c2597832a3ac06711b7e6c4337027b9bbcbeff77975e148b2815",
+    "source_change": "Bound first actual-size sample convergence to 180s with original V2 UID checks; preserve strict default metrics and invalid sample refusal",
+    "red": {
+      "methods": 5,
+      "errors": 3,
+      "failures": 1,
+      "rc": 1
+    },
+    "green": {
+      "methods": 51,
+      "rc": 0
+    },
+    "state": "Reviewed private candidate; not yet applied or live qualified"
+  }
+}

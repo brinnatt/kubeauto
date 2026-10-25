@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "case": "LONGHORN-16 test-gate disproof only",
+  "status": "pass",
+  "classification": "test-gate; pinned mc local flag controls progress reader",
+  "rc": 0,
+  "success_marker": "LONGHORN_ACCOUNT_PIPE_JSON_NATIVE_DISPROOF_PASS",
+  "binary_sha256": "43d44d801a936e48390c8d2dc02c1c1cc1e973becbe71897f28ca06a9f456489",
+  "official_source": "mc e929f89ceeedc48a45611382be9882db0bf1921d cmd/pipe-main.go,cmd/globals.go,cmd/print.go,cmd/progress-bar.go",
+  "checks": {
+    "cases": 2,
+    "bytes_per_case": 491520,
+    "both_commands_rc0_and_same_actual_file_hash": true,
+    "global_only_reproduces_non_object_json_failure": true,
+    "local_json_parses_exact_success_and_size": true,
+    "temporary_local_files_removed": true
+  },
+  "boundary": "Developer-local filesystem only; no credentials, service or lab mutations. Does not infer historical stdout bytes or sign off account qualification.",
+  "files": {
+    "logs/longhorn-cases/mc-pipe-contract-20261019-195854/accounts-pipe-json-native.json": "1314081f238351c9767c11fe2d62f72790148c88f5317638a5dacf449e1006b0",
+    "logs/longhorn-cases/mc-pipe-contract-20261019-195854/accounts-pipe-json-native.log": "97480ce7d0d464c8804e6bc52dfcbaa9f2e323658084c32c3b255f7bb39b4cf4",
+    "logs/longhorn-cases/mc-pipe-contract-20261019-195854/reproduce-mc-pipe-json.py": "a8b59e58e698c2b97b337205354d756736e22b654dd1ef2d01cfc921cffd9878"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "changed_files": {
+    "tests/helpers/longhorn-lab.py": "4a608bb6822439335f26b1ed63d676ca9f5638147d5ae823414f37cd80b0ddae",
+    "tests/unit/test_longhorn_lab.py": "0bc99ed58fffdd375fcf7318ab30528e909de426d67da5271c3c256be5e56ea9"
+  },
+  "classification": "test-gate",
+  "contracts": {
+    "binding": {
+      "exit": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/binding.exit",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "finalized": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/binding.finalized",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "log": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/binding.log",
+        "sha256": "04661f3329cd7a1fc526cf6bd7c4956aa6aa5c616ffebf04f994367e939df278"
+      }
+    },
+    "green": {
+      "exit": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/green.exit",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "finalized": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/green.finalized",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "log": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/green.log",
+        "sha256": "a6aae094109c5495d4ea5492fb173da91821cb120ac249f0bf27d17cbd77ed5e"
+      }
+    },
+    "reader-contracts": {
+      "exit": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/reader-contracts.exit",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "finalized": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/reader-contracts.finalized",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "log": {
+        "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/reader-contracts.log",
+        "sha256": "a1629b8c9305192b4b2c38290bc15465023d4faeee9c3a16e269db6ec6ac27d7"
+      }
+    }
+  },
+  "expected_marker": "LONGHORN_UNINSTALL_PASS",
+  "first_failure": "CSI pre-provisioned VolumeSnapshotContent informer cache miss treated as terminal",
+  "focused_live_status": "pending",
+  "matrix_item": "LONGHORN-39",
+  "official_source": {
+    "path": "logs/longhorn-cases/uninstall-backup-snapshot-first-failure-20261024/official-snapshot-controller-v8.6.0.go",
+    "sha256": "150335c4af597e663ca504b84d7252532b1da9c7c9364434beca6e2c35f8da32"
+  },
+  "original_failed_parent_retained": "logs/longhorn-cases/manager-uninstall-release-proof-fixture-fixed-owning-20261024",
+  "overall_delivery_pass": false,
+  "product_entry": "config.yml + kubecli setup 09 via --longhorn-uninstall",
+  "schema": 1,
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-uninstall",
+  "source_reference": "https://github.com/kubernetes-csi/external-snapshotter/blob/v8.6.0/pkg/common-controller/snapshot_controller.go#L495"
+}

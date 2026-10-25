@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-06",
+  "status": "pass",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-install </dev/null",
+  "product_entry": "config.yml + kubecli download -E longhorn + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_INSTALL_PASS",
+  "scoped_clean_marker": "LONGHORN_INSTALL_SCOPED_CLEAN_PASS",
+  "version": "1.12.1",
+  "data_engine": "v1",
+  "checks": {
+    "client_nodes": 6,
+    "storage_nodes": 3,
+    "independent_filesystem_disks": 3,
+    "fsync_bytes": 9437184,
+    "sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+    "replica_nodes": [
+      "longhorn-node-165",
+      "longhorn-node-212",
+      "longhorn-node-238"
+    ],
+    "write_node": "longhorn-node-212",
+    "read_node": "longhorn-node-165",
+    "cross_worker_remount_hash_equal": true,
+    "business_objects_removed": true,
+    "healthy_installation_retained": true,
+    "registry_transport_removed": true
+  },
+  "scope": "Installation and fsync/remount on three independent filesystem disks. No backup, fault recovery, performance, complete uninstall or full-delivery sign-off.",
+  "input_revision_boundary": "This run used source synchronized at launch before the subsequent recurring-job integration. The later change affects recurring declarations/UID receipts; the installation config had an empty recurring-job list. Full clean delivery remains pending.",
+  "frozen_source_sha256": {
+    "roles/longhorn/files/longhorn.py": "55789daadd765fa5d5585b370095c5ea6acd121454c7de767d2b1b5956d23843",
+    "tests/helpers/longhorn-lab.py": "e9ff8ff3254736072efe76dcc80d5b0f5ac13545d834087dbf84c94649fed158"
+  },
+  "files": {
+    "logs/longhorn-cases/install-20261019-052519/gate.log": "cc74424bbe777e3ccc09337acd60b16f233ebf3c03d10362bbe422a558bfac10",
+    "logs/longhorn-cases/install-20261019-052519/durable-status.txt": "1d28b822454029fdc793ec5b721dd2993ec0835f3b57b6f0ba5fe1b6e2eb0c7b",
+    "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "roles/longhorn/files/images.json": "7b88ed7707911baf1af25604d32d9c426a45759383aa992d14d4f934bc88d74c"
+  }
+}

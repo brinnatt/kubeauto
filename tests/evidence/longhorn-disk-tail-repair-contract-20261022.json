@@ -1,0 +1,63 @@
+{
+  "boundary": "Local contracts only. No middleware module, final clean regression, GA or customer acceptance inferred. Six accepted independent V2 fault scopes remain unchanged. Product code/images and the 79 adoption inputs are unchanged.",
+  "classification": "test-gate",
+  "completed_ladder_level": 2,
+  "contract_log": {
+    "path": "logs/longhorn-cases/disk-tail-repair-contract-20261022/contracts.log",
+    "sha256": "3d97a73ba180ece4621a6ba4ab5f04513b650ec215fc868b23353ac9b064c170"
+  },
+  "contract_tests": 69,
+  "date": "2026-10-22",
+  "expected_marker": "LONGHORN_V1_OPERATIONS_V2_DISK_TAIL_PASS",
+  "failure_markers": 0,
+  "inputs": {
+    "tests/README.md": "bca7387e6cb4782830d8041ce73f152b8dec37c219e8c2b07fbc3302c6929c0a",
+    "tests/helpers/longhorn-live.sh": "bba343ba7d54967d34649910e82a9c241e32b61478e3eace18dad412fe3ee0f1",
+    "tests/helpers/longhorn-maintenance.py": "2baa13e9640ec2ff23cc6c4f57746036d2ca009727cfbf34832af7c097618142",
+    "tests/helpers/longhorn-parallel.py": "2f2ccf1555b5c808d17b37af4233efb32d16d5d6c2f387828e72e96e4233153a",
+    "tests/helpers/longhorn-parallel.sh": "229d6588558e20eae72837e2dfd667169ae3f87e1c5a2b3f45110f2ca5f1661d",
+    "tests/helpers/longhorn-runner.sh": "4e032ce4cdfe5fbcfa7a916f8d7d1a5aeb935f8c121cf457274c5f4f735b2723",
+    "tests/helpers/longhorn-v2-disk-faults.py": "0b0eaecf4b56ec2d4805c47575b0b9908f5c4a677c5eb80adfd8991bc2ff85d8",
+    "tests/unit/test_longhorn_maintenance.py": "32bf7cf2e1a65a5d4c3feeb578bbb7a55bd61a14bb0c826b45e88715a7f5ffa8",
+    "tests/unit/test_longhorn_parallel.py": "6c51e5f45cb1985e432e35526e8fa0e9c3c8205877877337693e85e00c18782d",
+    "tests/unit/test_longhorn_v2_disk_faults.py": "521976cdaceae0f41f93b64e655140b0166b3481409da9acb6a5cd43b91cc70f"
+  },
+  "live_entry": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-v2-disk-tail </dev/null",
+  "matrix_gaps": [
+    "LONGHORN-24",
+    "LONGHORN-50 last three fault scopes"
+  ],
+  "next_permitted_level": 3,
+  "prior_batch": {
+    "archive": "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/capture.json",
+    "inputs": 803,
+    "mismatches": 0,
+    "original_delete_http_response": "unknown",
+    "parent_durable": {
+      "exit": 1,
+      "finalized": 1
+    }
+  },
+  "rc": 0,
+  "review_inputs": {
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/disk-tail-20261022/compat-contract.log": "24526f375c7012fa9897903b250938f93b130db4fff6042058074bae8156c908",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/disk-tail-20261022/contract.log": "1dc306308061eb32cb08e52f1e38e4fd4d73026ba648f4c50b96b8e5d02ffc91",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/disk-tail-20261022/files.json": "da60537bc702df7be86795f5bbfc0a0dd1e2c57a13e76c48f1ec8fe7c5493bbc",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/disk-tail-20261022/integration.patch": "ab3a457b9cc131b2908839098d3d4ba50bdece539089004caa4ffd77350fa218",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/disk-tail-20261022/static.json": "e1ad5953af01d6d85cb95e5afd0a3bf0388ec966919709fb4b2370ac34397d34",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/maintenance-gc-repair-20261022/contracts.log": "8151ceb06f734d4702b11d3cf08ba9ec2bac3e6a0833c44f1353316bf1fde598",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/maintenance-gc-repair-20261022/files.json": "16865a5793867462b2d2f73778196c936c71a01add776c49af53ecf360b695e2",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/maintenance-gc-repair-20261022/maintenance-gc.patch": "a3b6ab9a05ae01d4aba9e1d34ff748b3705e34262bc984a4690f67829c8759f6",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/maintenance-gc-repair-20261022/official/sources.json": "fe69f73ecee8dc9320d74793d6caca9af5b96a6988f80535333a5eac9ef77c2e",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/contracts.log": "745a23bfac194cd19d19e186f07449bcc9227decd81916254c04c8d54afc4a4d",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/disk-worker-source.patch": "56c557bf0e0bfde95014908282e38509a328add548df7b917f48e3c855cf7da3",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/exact-red.log": "82f97c146ec1aede482109666655f1e9814957c69cacf022c59eed60aed91a31",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/files.json": "ad843a52eb98ada94d70a9ff1fe9256b44ce49ff1cd515b8ddf54198232cd2a2",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/first-failure-capture.json": "3d779f3aaf07458fd28e3f3e9967ce01e5001475bf6cc3070b3fd00b81c8919f",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/official-source.json": "abc553c2e557fc29ba546dd9bac9c853600a287672279e82b93e7ff4855c5d3c",
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/single-disk-first-failure-classification.json": "4d79c929a865f6e37d9238b39bb0d013f5029a8eb80b4620a527af1165792679"
+  },
+  "schema": 1,
+  "signed_scope": "maintenance owning GC recovery; V2 worker checker transfer; disk-tail fixed recipe contracts",
+  "status": "pass"
+}

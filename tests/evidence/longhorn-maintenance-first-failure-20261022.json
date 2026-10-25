@@ -1,0 +1,152 @@
+{
+  "acceptance": {
+    "boundary": "Failure preservation and classification only; migration/ledger observations do not sign maintenance or final delivery.",
+    "matrix_24_pass": false,
+    "module_pass": false,
+    "overall_delivery_pass": false
+  },
+  "business_observations_not_module_pass": {
+    "acknowledged_fsync_ledger": {
+      "confirmed": 12,
+      "sha256": "6f0ef876ca0b131d96c5dd47066deb832f8b52a0e9ab96564a5a23cdac487f05",
+      "verified_bytes": 786432
+    },
+    "actual_pdb_refusal": true,
+    "business_pass_marker": false,
+    "module_pass_marker": false,
+    "original_payload_digest": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+    "scoped_clean_marker": false,
+    "successful_drain_and_pod_migration": {
+      "after": {
+        "node": "longhorn-node-165",
+        "uid": "045ea9cb-5a8e-46fb-9c65-3f2d5ac7d3a8"
+      },
+      "before": {
+        "node": "longhorn-node-212",
+        "uid": "7839fc26-50d0-4b35-98bb-c3f5165811a4"
+      },
+      "node": "longhorn-node-212"
+    }
+  },
+  "case": "LONGHORN-24",
+  "classification": "test-gate",
+  "cleanup": {
+    "controller_counts": {
+      "deployment": 0,
+      "pod": 0,
+      "replicaset": 0
+    },
+    "core_identity_pass_marker": true,
+    "journal_sha256": {
+      "longhorn-maintenance-business.json": "8bb00b04267558430b573005cb134e2fa17ea24baee399b526f9f882f0a1def0",
+      "longhorn-maintenance.json": "3122f51b9b14be40cbe26442402ca2a12c2c95034362669227165367f9f5b676"
+    },
+    "namespace": "longhorn-business-37b9ac70becf4f1e",
+    "namespace_uid": "7aec41b8-a291-400e-a792-31583bdbcd13",
+    "original_fixture_removed": false,
+    "recovery_requirement": "Use original owning maintenance-cleanup with identity checks; recover an owned reader, verify original digest and fsync ledger, and restore healthy three replicas/original policy before fixture deletion.",
+    "registry_transport_clean_marker": true,
+    "replicas": {
+      "pvc-82c380db-9991-4ba1-b86e-d5356d541e1a-r-0a5fba41": {
+        "failed_at": "",
+        "healthy_at": "2026-10-21T16:05:41Z",
+        "node": "longhorn-node-238",
+        "state": "stopped",
+        "uid": "bdd8ceff-f16e-4f93-93fd-507f1250cae3"
+      },
+      "pvc-82c380db-9991-4ba1-b86e-d5356d541e1a-r-2f96f977": {
+        "failed_at": "",
+        "healthy_at": "2026-10-21T16:10:14Z",
+        "node": "longhorn-node-212",
+        "state": "stopped",
+        "uid": "677a4fac-0a4b-445e-bd84-3a691e9ad211"
+      },
+      "pvc-82c380db-9991-4ba1-b86e-d5356d541e1a-r-a7fa6597": {
+        "failed_at": "",
+        "healthy_at": "2026-10-21T16:06:11Z",
+        "node": "longhorn-node-165",
+        "state": "stopped",
+        "uid": "93ba6623-ce64-49f0-a122-496cfd50da9d"
+      }
+    },
+    "resource_snapshot_time": 1792599414.3309793,
+    "status": "failed-journal-retained",
+    "volume": {
+      "name": "pvc-82c380db-9991-4ba1-b86e-d5356d541e1a",
+      "number_of_replicas": 3,
+      "replica_auto_balance": "ignored",
+      "state": "detached",
+      "uid": "e9759b9b-dbb6-4fe1-babb-77cdaa308670"
+    }
+  },
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-v2-worker-tail",
+  "date": "2026-10-22",
+  "durable": {
+    "first_failure_status": "rc=1 phase=maintenance-product-path",
+    "module_exit": 1,
+    "module_finalized": 1,
+    "parent_v1_exit": 1,
+    "parent_v1_finalized": 1,
+    "root_exit": 1,
+    "root_finalized": 1
+  },
+  "first_failure": {
+    "api_delete_response": "unknown",
+    "exact_pod_delete_uri": "unknown",
+    "mechanism_gap": "Original controller retirement waits only Deployment/ReplicaSet disappearance, not generated Pods. Kubernetes background GC and subsequent generic Pod DELETE can overlap. This race is proven possible from the owning source and upstream mechanism; its exact API response in this execution remains unknown.",
+    "owning_call": "longhorn-maintenance.clean -> longhorn-lab.cleanup_business -> journal Pod guarded API.delete",
+    "phase": "maintenance-product-path",
+    "proven_observation": "Original business migration verification completed; generic cleanup Pod DELETE raised CommandError kubectl rc=1. Original stderr was not durably captured and cannot establish HTTP 404/409.",
+    "rc": 1
+  },
+  "frozen_inputs": {
+    "before_after_mismatches": 0,
+    "count": 803,
+    "manifest_sha256": "fb26e38b80660140b0551f0bbfaaca862496f8c2a4fe79fd85c3e5c83ef5a43c",
+    "remote_original_dependencies_verified": {
+      "roles/longhorn/files/longhorn.py": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+      "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+      "tests/helpers/longhorn-maintenance.py": "7523a924356a043f1609d920f84ebc93f4d589972968a409c6fbe8009ede0d0b",
+      "tests/helpers/longhorn-maintenance.sh": "fc16b918a0de7220df44b265ca4b5e0643072343b62868cc19e7b51f76babfa7"
+    }
+  },
+  "official_source": {
+    "commit": "1e09fec02ac194c1044224e45e60d249e98cd092",
+    "component": "Kubernetes garbage collector",
+    "documentation": "https://v1-33.docs.kubernetes.io/docs/concepts/architecture/garbage-collection/",
+    "garbagecollector_source_sha256": "5a964e6db4b758b08c3ddf57bf61c45aa8c389e91a17d684f8992a4aef793df0",
+    "mechanism": "Background deletion removes owner before asynchronously reclaiming dependent objects. Owner disappearance is not a dependent-Pod completion barrier.",
+    "source": "https://github.com/kubernetes/kubernetes/blob/v1.33.6/pkg/controller/garbagecollector/garbagecollector.go#L498",
+    "version": "v1.33.6"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/capture.json": "c504909cb31ece85e8955b028cd71c479ce259fdb0bc10b50ba43cd9b88aca5b",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/tmp/kubeauto-longhorn-gate.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/tmp/kubeauto-longhorn-gate.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/var/tmp/kubeauto-longhorn-maintenance.pYrTEJ/business.log": "83baff553c8ddd1d41861faa03efb7301e525907c19d6395770f1965312ec119",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/var/tmp/kubeauto-longhorn-maintenance.pYrTEJ/first-failure.status": "996c0e81e1aa43c12485dc8698dcb9872dcad001997d25a973a5516b0c080581",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/var/tmp/kubeauto-longhorn-parallel-v1.kE4pgA/maintenance.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/var/tmp/kubeauto-longhorn-parallel-v1.kE4pgA/maintenance.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/var/tmp/kubeauto-longhorn-parallel-v1.kE4pgA/maintenance.log": "78f5ccf102fabd69b404a530b0c238b11752d3c1a9d9684fa5f446805da72b28",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/raw/var/tmp/kubeauto-longhorn-parallel-v1.kE4pgA/maintenance.pid": "95b87a131cca5b863032011a9a01e39a614759237a03d9c9ccbabae9caf291a4",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/frozen-inputs.json": "fb26e38b80660140b0551f0bbfaaca862496f8c2a4fe79fd85c3e5c83ef5a43c",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/maintenance-first-failure-20261022/api-diagnostics/capture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/maintenance-first-failure-20261022/api-diagnostics/control-diagnostics.json": "5799933c84087915faf1f5552067103d00f8c5dc2d1e6f94096088a1913db4c8",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/maintenance-first-failure-20261022/snapshot-1792599407980421439/capture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/maintenance-first-failure-20261022/snapshot-1792599407980421439/first-traceback.txt": "0153fe111e1cab97ee2a3fde1e0246dbea321310b4df819f4b58e7f9bd68dfcb",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/maintenance-first-failure-20261022/snapshot-1792599407980421439/state.json": "a78ed50a36fe79ca2fa6c0b08834ee337adb404dcce60f7243cf4acc77571250"
+  },
+  "schema": 1,
+  "scope": "Original frozen803 maintenance business cleanup failure and original failed recovery only",
+  "secondary_cleanup_failure": {
+    "call": "maintenance.clean -> maintenance-recovery-application wait",
+    "exception": "TimeoutError: fixture wait: maintenance-recovery-application",
+    "intervention": "None; the original clean naturally timed out and original wrapper recorded the failure.",
+    "proven_cause": "Journal still has original Deployment/application UID, but actual Deployment, ReplicaSet and Pod counts are all zero. The original recovery path waits for an application that no controller can recreate.",
+    "timeout_seconds": 600
+  },
+  "status": "failed",
+  "version": "1.12.1"
+}

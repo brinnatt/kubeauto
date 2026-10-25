@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "scope": "Official results versus project integration assertions; V2 operational boundaries and V1 recurring observations",
+  "review": {
+    "classification": "Author scoped content and two-reader path review; not independent review or full-document/field sign-off",
+    "scope": [
+      "V2 QoS input guards and version-specific interfaces",
+      "V2 retirement requires runtime release beyond diskStatus/RPC",
+      "Completed recurring credential rotation result and asynchronous failure drain",
+      "Official-guided assertions for pending system restore, DR, maintenance, upgrade recovery and uninstall"
+    ],
+    "novice_path": "V1 install/business → backup/recurring task → new identity, revocation and repaired point → independent restored data versus later source writes → explicit V1-only/one-volume boundary. V2 follows separate raw-disk qualification and cannot reuse V1 filesystem lifecycle steps.",
+    "experienced_path": "Task and parameter indexes → QoS null/zero/override and dynamic-change distinction; namespace/PVC inputs nonempty; V2 drive eviction distinct from retirement; maintenance last-replica PDB protection and degraded redundancy; restore watermarks, source fencing and upgrade/uninstall stop conditions remain explicit.",
+    "evidence_interpretation": "Case16 full module has durable rc0, zero failures, all stage and scoped-clean markers, actual68 source fingerprints identical. Official mechanisms guide pending-case assertions without assigning project PASS. Static459 and hardware inventory26 are separately scoped.",
+    "specific_review_correction": "Removed an unselected-canary clause from the rotation description: canaries belong to the separate snapshot/backup stages, not to the rotation stage. Kept earlier focused-qualification figures distinct from complete-module data.",
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 123,
+        "yaml_blocks": 20,
+        "bash_blocks": 34
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "db19736afd01d55d61fa536d8c591e95eae12bc24ca73eb4c20d17c22618103b",
+        "docs/storage/longhorn/technical-whitepaper.md": "6289a5ee7833e928eb6161b92fd8e48d284f8507db9863ad7eb798029f41d05c",
+        "docs/storage/longhorn/development-manual.md": "1c5e054284b49c1ff02a6753d3a6cf2a6d99ab6ebc8f558abca0065c318398f3"
+      },
+      "additional_checks": {
+        "heredocs": 3,
+        "inline_c": 5,
+        "unchanged_rendered_diagrams": 7
+      },
+      "boundary": "Static document checks; diagrams reuse existing rendering and visual review by source identity. No new field test or independent content review."
+    },
+    "remaining": "V2 live/PCI retirement support, other pending module gates and final full-document acceptance remain outstanding; this is not LONGHORN-42 or full delivery PASS."
+  },
+  "field_evidence": "tests/evidence/longhorn-recurring-20261020.json",
+  "static_evidence": "tests/evidence/longhorn-v2-host-expanded-static-20261020.json",
+  "inventory_evidence": "tests/evidence/longhorn-v2-host-inventory-expanded-20261020.json",
+  "previous_evidence": "tests/evidence/longhorn-v2-retirement-source-20261020.json",
+  "files": {
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/current-longhorn-doc-check-20261020.json": "4a808f490783da91fa79dfd3312d9058b69fdf1afbde357ff99f51bef256a30e",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/reading-map.json": "b27c641cd6bccdb5d89a75ac1de4ab5efbec56640314cef02668808647025c0a",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/longhorn-final-matrix-contract-20261020.log": "fd0cfb0d20451a50673a6cf64e37b2ec27b66755f75d179e115798ec00348cbf",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/sixrepo-longhorn-followup-20261020.json": "ba83424d20b10914516d3d04aaf89118ce555fcff8cb2352ef3e5164995260b5",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/review.json": "094277cb904ff154cb8132a058db4ce04bdba5fd4ad5160d22c5c05832dc58da",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/snapshot/tests/longhorn-test-matrix.yaml": "e4d75a911886187af9c3f5c97089ba4d9d6f2ec370c1b58ddde127d7920e116c",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/snapshot/docs/storage/longhorn/operations-manual.md": "db19736afd01d55d61fa536d8c591e95eae12bc24ca73eb4c20d17c22618103b",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/snapshot/docs/storage/longhorn/technical-whitepaper.md": "6289a5ee7833e928eb6161b92fd8e48d284f8507db9863ad7eb798029f41d05c",
+    "logs/longhorn-cases/official-guidance-followup-document-review-20261020/snapshot/docs/storage/longhorn/development-manual.md": "1c5e054284b49c1ff02a6753d3a6cf2a6d99ab6ebc8f558abca0065c318398f3"
+  }
+}

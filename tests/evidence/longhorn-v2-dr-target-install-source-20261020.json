@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "source-and-design-only",
+  "classification": "product and target-owned test gate",
+  "case": "LONGHORN-48 independent single-node V2 AIO target installation prerequisite",
+  "product_entry": "Existing longhorn-v2-dr-target config.yml + kubecli download -E longhorn + kubecli setup longhorn-v2-dr-target 09",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-install-qualification",
+  "expected_markers": [
+    "LONGHORN_V2_DR_TARGET_INSTALL_QUALIFICATION_PASS",
+    "LONGHORN_V2_DR_TARGET_INSTALL_QUALIFICATION_SCOPED_CLEAN_PASS",
+    "LONGHORN_V2_DR_TARGET_FSYNC_REMOUNT_VERIFIED",
+    "LONGHORN_GATE_EXIT rc=0"
+  ],
+  "official_commits": {
+    "documentation": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "chart": "f349c091c50700cb6cb8a4df8aaa29ea214bdd48"
+  },
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/deploy/install/#v2-data-engine-requirements",
+    "https://longhorn.io/docs/1.12.1/references/settings/#default-replica-count",
+    "https://longhorn.io/docs/1.12.1/references/helm-values/"
+  ],
+  "prerequisites": "Current separate core UID/smoke evidence, approved .149 machine and unused WWN disk, runner shared lease, published 30-image pins and static contracts",
+  "profile": {
+    "nodes": 1,
+    "replicas": 1,
+    "engine": "v2",
+    "disk_driver": "aio",
+    "hugepages_2mi": 1024,
+    "cpu_mask": "0x1",
+    "cpu_reservation_percent": 25,
+    "memory_mib": 2048
+  },
+  "cleanup": "UID-bound business/PVC/PV/native volume first; preserve healthy target on success. On failure use native empty-store uninstall and journaled host/page restoration while relay is alive; ambiguous writes retain records. Remove only target relay and restore control kubeconfig. Compare healthy source boundary before/after.",
+  "scope": "No DR standby/synchronization/activation/failback, cross-node or target-site HA acceptance; no image, version, publication or sibling repository changes",
+  "smallest_disproof": "Corresponding fixed target-install qualification after current static contract gate",
+  "product_impact": "tests/evidence/longhorn-single-replica-impact-20261020.json"
+}

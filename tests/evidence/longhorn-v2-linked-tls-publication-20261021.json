@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "signed_scope": "single-derived-instance-manager-image-publication",
+  "overall_longhorn_delivery_pass": false,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/39526955784",
+  "run_id": 39526955784,
+  "attempt": 2,
+  "head": "ae9e41c676f1536b255d68a7f03c0e676e4dcea2",
+  "release_mode": "changed",
+  "selected_image_count": 1,
+  "image": "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.1",
+  "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-instance-manager:v1.12.1-kubeauto.1",
+  "input_fingerprint": "ec64b316aee7ce254d7e9d19da7dc96fe80d5b27a1c2faa3b911935e9a7d43b9",
+  "publication_record": {
+    "digest": "sha256:5f628d7ffcf5317ac4446282554c4d03f5951bd4f72f01e15f53a7259372f6de",
+    "fingerprint": "ec64b316aee7ce254d7e9d19da7dc96fe80d5b27a1c2faa3b911935e9a7d43b9",
+    "head": "ae9e41c676f1536b255d68a7f03c0e676e4dcea2",
+    "key": "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.1",
+    "platforms": {
+      "linux/amd64": "sha256:994bba206b1ec58940bd745eefba604732fec66d974a671c380a4ad240869b03",
+      "linux/arm64": "sha256:e7a06a077565e032adad4ba475c2b9d42824490148260448f32839d4755f0bdb"
+    },
+    "schema": 1,
+    "source_digest": "sha256:b255f3279dd9d830ea153e9369928646dee519fd853036388926dddb5c66094b",
+    "source_ref": "docker.io/longhornio/longhorn-instance-manager:v1.12.1@sha256:b255f3279dd9d830ea153e9369928646dee519fd853036388926dddb5c66094b"
+  },
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "real_tls_factory_tests_per_architecture": 2,
+  "approved_file_sha256": {
+    "catalog.json": "8d1870ebd3723e23d5bf7844dd8a5e8cf05fa2c8acfb3d90be36f5855ebb6bd5",
+    "tests/test_longhorn_linked_tls_artifact.py": "db1758ff63975d1a24f32af7e912b3d7b8bea13372ca8ac674c3d967a267a2cd",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/Dockerfile": "dbfcb2a91abd22eaa980df299c00416530dadb69baf952114176cd57e85a3849",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/engine_linked_tls_test.go": "512ae63ae7eff5b5324497c9efb19fa416c192ed04d3eaa5f53c7e526a62ae62",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/engine_linked_tls_transport_test.go": "233ad4af61f3330aec184a0e0d1e121ee3a88469159b3c0441788846330dd862",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/linked-tls.patch": "1cae3c251062c0890b4beadefba887f85f0a98c37372b6940b817ff5f2f08bba",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/source-provenance.json": "0edade77c7eb7d6fb614dde107efb747c86cad1a50fbbcedcbfb310d63f50ecc"
+  },
+  "archives": {
+    "release-evidence-0-2": {
+      "id": 12316428079,
+      "sha256": "sha256:445ba1e842d702995ef9bb4d5ff844d742a7d9ef8fd8297a08b0d4955d99c088",
+      "size": 48731,
+      "github_reported_digest": "sha256:445ba1e842d702995ef9bb4d5ff844d742a7d9ef8fd8297a08b0d4955d99c088"
+    },
+    "release-evidence-0-1": {
+      "id": 12313627904,
+      "sha256": "sha256:e762962efc1a276e021d3c85fa566186aeecbb80ee5a5baaa84281a6fce3a236",
+      "size": 9070,
+      "github_reported_digest": "sha256:e762962efc1a276e021d3c85fa566186aeecbb80ee5a5baaa84281a6fce3a236"
+    },
+    "plan-evidence-1": {
+      "id": 12313032932,
+      "sha256": "sha256:4909ba05681a6bc79dba0ab21984ce43e6f5efc22071a110d8cc19a6331cbba0",
+      "size": 299,
+      "github_reported_digest": "sha256:4909ba05681a6bc79dba0ab21984ce43e6f5efc22071a110d8cc19a6331cbba0"
+    },
+    "image-plan": {
+      "id": 12312798704,
+      "sha256": "sha256:9489aa4c4c322ceba427befd2b16466acc710ea0e84f020a0da094247070b11b",
+      "size": 447,
+      "github_reported_digest": "sha256:9489aa4c4c322ceba427befd2b16466acc710ea0e84f020a0da094247070b11b"
+    },
+    "logs-attempt2": {
+      "sha256": "sha256:81b7225b02c4f108c712546329562ef6472e7415bada0151a7b76983061280f9",
+      "size": 87322
+    }
+  },
+  "independent_manifest_readback": {
+    "talkedu": {
+      "status": "pass",
+      "digest": "sha256:5f628d7ffcf5317ac4446282554c4d03f5951bd4f72f01e15f53a7259372f6de",
+      "platforms": {
+        "linux/amd64": "sha256:994bba206b1ec58940bd745eefba604732fec66d974a671c380a4ad240869b03",
+        "linux/arm64": "sha256:e7a06a077565e032adad4ba475c2b9d42824490148260448f32839d4755f0bdb"
+      },
+      "raw_manifest_sha256": "5f628d7ffcf5317ac4446282554c4d03f5951bd4f72f01e15f53a7259372f6de"
+    },
+    "dockerhub": {
+      "status": "unavailable",
+      "exception": "URLError",
+      "http_status": null
+    }
+  },
+  "dockerhub_verification_boundary": "Both staged and formal Docker Hub indexes and AMD64/ARM64 digests were independently fetched by the bound Actions publish(); final record saved only after exact dual-registry equality. The development host cannot reach registry-1.docker.io; no local Docker Hub raw manifest is claimed.",
+  "first_failure": {
+    "attempt": 1,
+    "classification": "upstream SUSE ARM64 package-repository metadata/signature mismatch",
+    "boundary": "No formal promotion; same-SHA failed-job rerun after official detached signature verification; no code/verification change"
+  },
+  "artifact_boundary": "Only one derived image; consumer not yet adopted; no live storage qualification claimed.",
+  "release_log_sha256": "61156ba8914426d19c407ff609740a7ce91caf587b14ff3e34b1ecedf3516303",
+  "completed_at": "2026-10-21T02:42:54Z"
+}

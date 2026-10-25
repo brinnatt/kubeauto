@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "V2 comprehensive-volume results, second RWX measurements and current delivery boundary only; no command or diagram changed",
+  "checks": {
+    "sources": "Pinned official 1.12.1 access modes, share-manager, expansion, reclaim, encryption and TRIM conclusions reused; only measured result paragraphs changed",
+    "content": "Second independent RWX client counts, errors, max latency, Ready/observation times and eleven data remounts match full current-input evidence; results from separate runs are not combined and no SLA/remaining-operation PASS inferred",
+    "novice_path": "Existing explicit V2 class, install, application use and approved selected-volume UI TRIM path preserve inputs, waits, failure stop and recovery exits",
+    "experienced_path": "TRIM task distinguishes guest, V1 sparse-file, V2 lvstore and physical allocation; whitepaper table explains valid-snapshot retention, native merge, remount and sample convergence",
+    "operation_evidence": "Five module terminals, eleven remounts, 117 matching remote inputs, durable rc0, no failure marker, scoped clean and independently verified original empty-business baseline",
+    "diagrams": "No Mermaid changed; existing render evidence reused",
+    "static": "44 storage/middleware documentation contracts and 54-item matrix validator passed"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-volumes-20261020.json",
+  "product_evidence_sha256": "1f5a3cb9f2e9000c68bf605b3dc723bda3f888b6504355460606067a7a8b955a",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "ea2821eff7b00992b73f7a911839154896fa795259a708568e7765923708f48d",
+    "docs/storage/longhorn/technical-whitepaper.md": "2b91eb53d9d2efed42361fe268e17462fc72da52037c86d8496c0fc020f63db8"
+  }
+}

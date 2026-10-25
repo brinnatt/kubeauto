@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-19",
+  "status": "recovery-pass-business-pending",
+  "matrix_item_complete": false,
+  "classification": "test-gate recovery precondition cycle repaired",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-disk-failure-cleanup",
+  "product_entry": "Original config.yml + kubecli installed V1 fixture; no new direct storage path",
+  "ladder_completed": 3,
+  "next_permitted": "Full owning --longhorn-disk-failure; final clean full regression only after affected modules pass",
+  "durable": {
+    "local_exit": 0,
+    "local_finalized": 0,
+    "remote_exit": 0,
+    "remote_finalized": 0
+  },
+  "failure_markers": 0,
+  "markers": [
+    "LONGHORN_DISK_FAILURE_CLEANUP_SCOPED_CLEAN_PASS",
+    "LONGHORN_DISK_FAILURE_CLEANUP_PASS",
+    "LONGHORN_V1_STORAGE_DISK_SCOPED_CLEAN_PASS",
+    "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+    "LONGHORN_V1_STORAGE_FAULT_EMPTY_HEALTHY_BASELINE_PASS",
+    "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+    "LONGHORN_GATE_EXIT rc=0"
+  ],
+  "input_count": 869,
+  "source_unchanged_during_run": true,
+  "input_manifest": {
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/frozen-inputs.json": "032c01e828f13feb514552dfb75d5c7699ab24d1580ce277aa5724fa7878cb72"
+  },
+  "terminal_capture": {
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/remote-archive/capture-0023.json": "5059c82b6e0dfabf6f24f21f3e70eac76cc3a219e3579fec904723bf174e1b2a"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/launch.log": "4a9da3abeecf54b66ba6af9472d5dc9caf14ee6204d7ac37f6f8ee2487593bb9",
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/launch.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/launch.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/disk-recovery-preflight-20261022/owning-recovery.log": "7aadb1fdd36f04b9de5142191b3454d710af92922e2e7aed897fcc1850761730"
+  },
+  "original_volume_uid": "22f099cd-e37a-4926-81bc-544b1f9b9bc0",
+  "boot_check": {
+    "boot_id": "ee653a28-46b6-4854-a4b4-c9fb4e707b9f",
+    "checker_end_us": 9124045,
+    "invocation_id": "5a933e12524c48968d11a3b2dd8bd80e",
+    "journal_sha256": "ab83d8499fc1077aa472ad5ea93651e04511eb8f3d5a7cb1081eb8cded6320e3",
+    "mount_enter_us": 11022092,
+    "terminal": "kca-longhorn: clean, 17/6553600 files, 590886/26214400 blocks",
+    "unit": "systemd-fsck@dev-disk-by\\x2duuid-d31da1e2\\x2d7485\\x2d5ad1\\x2d9d49\\x2de22140997aea.service"
+  },
+  "original_survivors_preserved": true,
+  "recovered_replicas": {
+    "pvc-d008d9ff-ca0b-4d7c-8e77-ed0dd2171a74-r-a93bc9ab": {
+      "node": "longhorn-node-212",
+      "uid": "6530d49a-0c5c-47ed-a27a-f0a6114ad959"
+    },
+    "pvc-d008d9ff-ca0b-4d7c-8e77-ed0dd2171a74-r-b616a890": {
+      "node": "longhorn-node-238",
+      "uid": "a0e9128c-b8e6-49e2-ab3e-3deea266cc79"
+    },
+    "pvc-d008d9ff-ca0b-4d7c-8e77-ed0dd2171a74-r-f0a8dc29": {
+      "node": "longhorn-node-165",
+      "uid": "2e1760da-2385-4276-bf33-60967ea426ac"
+    }
+  },
+  "empty_healthy_baseline": true,
+  "prior_failure_evidence": "tests/evidence/longhorn-v1-disk-recovery-preflight-20261022.json",
+  "boundary": "Restores original fault, boot/fsck, native replicas, installation health and scoped cleanup only. Does not revalidate confirmed-write ledgers/remount or accept complete LONGHORN-19."
+}

@@ -1,0 +1,28 @@
+{
+  "cases": [
+    "LONGHORN-30",
+    "LONGHORN-53"
+  ],
+  "classification": "one shared product portability fix and two owning test-gate cleanup fixes",
+  "complete_matrix_item": false,
+  "created_at": "2026-10-21T20:40:19.497402+00:00",
+  "focused_tests": 46,
+  "next": "Original fixed parallel remaining runner; conditional original integrity-cleanup before integrity, concurrent V2 monitoring; no cache reconciliation override",
+  "overall_longhorn_delivery_pass": false,
+  "previous_durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "previous_failed_parent": "/var/tmp/kubeauto-longhorn-parallel.vUs4oM",
+  "reviewed_packages": {
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/grafana-secret-python-rng-20261022/review.json": "52f2f04d39d55b1eeec18a914f47614e9245307f8e1364b9fb79638ec973269e",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/v1-conditional-integrity-cleanup-20261022/verification.json": "dd7aa32e40b6462a9210686bab29ee1863b4cefe1f622482c2442ed6f213e8ce",
+    "/home/brinnatt/.local/share/kubeauto-longhorn-release/v1-integrity-counter-retirement-20261022/manifest.json": "343f4fccc41d0c2b9fde82c8d93abce19730019efd36a384e4fb894aa45408cc"
+  },
+  "root_contracts": {
+    "logs/longhorn-cases/integrity-monitoring-compatible-20261022/conditional-cleanup-contracts-after-apply.log": "e91bebe4b3b5b67a8ba80091789a3758b070a535f7c20494e032992c13f3216f",
+    "logs/longhorn-cases/integrity-monitoring-compatible-20261022/counter-contracts-after-apply.log": "8568010eaf274c53041cbdfa2022d0989a4170661f9c8a338aa935137763eba8",
+    "logs/longhorn-cases/integrity-monitoring-compatible-20261022/prometheus-contracts-after-apply.log": "9ab1ac83cd19df484ec71195035cf237fdf097bde951c33b5e764dffd36d64e9"
+  },
+  "status": "contracts-pass-live-pending"
+}

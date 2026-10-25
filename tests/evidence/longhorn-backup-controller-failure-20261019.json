@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-14",
+  "status": "failed",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null",
+  "rc": 1,
+  "failure_markers": 2,
+  "classification": "Product integration topology; Longhorn V1 backup owner can be a permanently cordoned dedicated control-plane Manager without a running local instance-manager",
+  "first_stall": {
+    "backup": "backup-full-be6fca855ecae33747428225",
+    "backup_uid": "c2b81767-0157-463d-8dcf-f3ab22a9d15e",
+    "owner": "longhorn-node-40",
+    "error": "failed to find a running instance manager for node longhorn-node-40",
+    "instance_manager_uid": "4c7fb113-e6e4-47d5-8604-501a9d5cf686",
+    "condition": "NodeReady=False Unschedulable"
+  },
+  "official_source": {
+    "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "functions": [
+      "controller/instance_manager_controller.go handlePod",
+      "controller/backup_controller.go isResponsibleFor, checkMonitor",
+      "controller/backup_target_controller.go getBackupTarget",
+      "datastore/longhorn.go IsNodeSupportingDataEngine"
+    ]
+  },
+  "stop": "Fixed cancellation entry-point terminated only the unique owned setup09 subtree; wrapper and scoped cleanup completed normally",
+  "cleanup": [
+    "LONGHORN_BACKUP_NATIVE_FIXTURES_CLEAN_PASS",
+    "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+    "LONGHORN_BACKUP_PRODUCT_FIXTURE_RESTORED",
+    "LONGHORN_BACKUP_TRANSPORT_CLEAN_PASS",
+    "LONGHORN_BACKUP_STORE_CLEAN_PASS",
+    "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+    "LONGHORN_LAB_INSTALLATION_HEALTHY"
+  ],
+  "boundary": "No completed full backup or restore; no LONGHORN-14 PASS. Dedicated control-plane cordon preserved; no owner status patch, forced finalizer or disk cleanup.",
+  "files": {
+    "logs/longhorn-cases/backup-20261019-072618/cancel-product.txt": "33e67d1f1dec589110581933403f0fe0de646d076312f28bfac9f8a7d150d9ad",
+    "logs/longhorn-cases/backup-20261019-072618/durable-status.txt": "7eda600e054589304afd73cb6e44304f3c5e2af52641f9b475c7c400b5e649a0",
+    "logs/longhorn-cases/backup-20261019-072618/frozen-source.txt": "4dd3b1a3f314360872f0359973d1041b58106693d275d1a597e59d3c3542ef3e",
+    "logs/longhorn-cases/backup-20261019-072618/gate.log": "ed83afaf2f49e86e394f5880bcbb761d0fca344e22991bb8737dc6a47164202a",
+    "logs/longhorn-cases/backup-20261019-072618/instance-manager-state.txt": "e6f0b76b5048c2b3f83d2d7925f7d892cf34d3ca1fdffe22cb0fbd6459ebe4f7",
+    "logs/longhorn-cases/backup-20261019-072618/storage-diagnostics.txt": "5a6646765e6935f411d5022c85b4349b00bb070a13c098abdcd351a66cc6e1fb"
+  }
+}

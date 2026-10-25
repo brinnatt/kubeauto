@@ -67,6 +67,9 @@
   tasks:
   - import_tasks: ../roles/kube-node/tasks/wait-node-ready.yml
 
+# Storage converges before optional middleware creates its PVCs.
+- import_playbook: 09.longhorn.yml
+
 # to install cluster-addons
 - hosts: localhost
   roles:

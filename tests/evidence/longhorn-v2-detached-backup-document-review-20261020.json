@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "reviewed-scoped-sections",
+  "scope": "Only new detached scheduled-backup sections in three Longhorn manuals; no whole-document or customer acceptance claim. Existing official-guidance/prompt standard unchanged.",
+  "product_evidence": "tests/evidence/longhorn-v2-detached-backup-qualification-20261020.json",
+  "official_source_evidence": "tests/evidence/longhorn-v2-detached-backup-source-20261020.json",
+  "content_checks": [
+    "Global Setting scope, native UI/API ownership, original UID/value, workload waiting during temporary attachment and finite approved observation deadline are explicit.",
+    "Stop and drain owned schedule before restoring Setting and removing backup dependencies; unknown ownership or unreadable restore material retains recovery inputs.",
+    "Fresh count 2/3 metrics copied from current successful evidence: full reupload 219685 bytes, incremental 0 new bytes, 15 complete referenced objects per backup. Prior interrupted-run 285795-byte metric is not reused.",
+    "Independent latest-backup restore excludes later source writes; write isolation and source cross-node 13369344-byte SHA256 are stated. No claim of restoring every recovery point, corruption repair, site DR, transactional consistency or RPO/RTO."
+  ],
+  "reader_path_checks": {
+    "newcomer": "Existing planning/context and config schedule example lead to native Setting change, actual job/backup evidence, stop/recovery and original business readback. New scope explains global impact before enabling.",
+    "experienced": "Task subsection and whitepaper link expose Setting ownership, exact executionCount evidence, upload units and failure/stop boundaries without lab addresses or internal fixture commands."
+  },
+  "static": {
+    "command": ".venv/bin/python -m unittest tests.unit.test_storage_documentation tests.unit.test_middleware_documentation -q",
+    "tests": 44,
+    "rc": 0,
+    "mermaid": "No diagrams changed in this scoped addition"
+  },
+  "files": {
+    "docs/storage/longhorn/operations-manual.md": "8d8a08239510ebaf2e7231e3ca957defb7f784aa2daa74860a09304796d59990",
+    "docs/storage/longhorn/technical-whitepaper.md": "6f87c8001760fca833d64f9e1cf6cf2101ad2e678c6aeb9ba693d3b6c707fba0",
+    "docs/storage/longhorn/development-manual.md": "dc441bff8752b2a526e199c13fc11d08d638448d88dc1d90336bd9d8ce188760",
+    "logs/longhorn-cases/v2-detached-backup-document-review-20261020/v2-detached-backup-document-contract-20261020.log": "e0b557f51ccb2c8238bd608810fc06cfc7b3a4b541703954e58b47e9b4602cfc"
+  }
+}

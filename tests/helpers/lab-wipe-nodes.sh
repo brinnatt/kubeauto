@@ -88,6 +88,10 @@ if test -e /run/calico; then echo "residue=/run/calico"; bad=1; fi
 shim_count=$(ps -eo comm= | awk "\$1 == \"containerd-shim-runc-v2\" {count++} END {print count+0}")
 echo "containerd_shim_count=$shim_count"
 test "$shim_count" -eq 0 || bad=1
+# Pod scopes are separate from runtime services and can outlive their shims.
+pod_count=$(ps -eww -o cgroup= | grep -Ec "(^|[,:/])(kubepods|podruntime)([.]slice|/|$)" || true)
+echo "kubernetes_pod_process_count=$pod_count"
+test "$pod_count" -eq 0 || bad=1
 if hostname -I 2>/dev/null | tr " " "\\n" | grep -qx "192.168.47.137"; then
   for path in /var/data /var/log/harbor; do
     if test -e "$path"; then echo "residue=$path"; bad=1; fi
@@ -161,6 +165,8 @@ systemctl disable kubelet kube-proxy kube-apiserver kube-controller-manager kube
 # different: every shim is test residue and must be terminated before deleting
 # its state, otherwise orphaned shims consume the host PID cgroup across runs.
 systemctl kill --kill-who=all --signal=SIGKILL containerd docker cri-dockerd 2>/dev/null
+# Stop the owned Kubernetes slices, including their separate container scopes.
+systemctl stop kubepods.slice podruntime.slice 2>/dev/null
 # Cilium auto-mounts cgroup2 on the host at /run/cilium/cgroupv2. Detach
 # nested targets deepest-first before rm -rf reaches cgroup control files.
 findmnt -rn -o TARGET | grep -E "^/run/(cilium|calico)(/|$)" | sort -r | xargs -r -n1 umount -l 2>/dev/null
@@ -197,6 +203,9 @@ if findmnt -rn -o TARGET | grep -E "^/run/(cilium|calico)(/|$)" | grep -q . || t
   echo "WIPE_FAILED CNI mount residue on $(hostname)" >&2
   exit 1
 fi
+pod_count=$(ps -eww -o cgroup= | grep -Ec "(^|[,:/])(kubepods|podruntime)([.]slice|/|$)" || true)
+echo "kubernetes_pod_process_count=$pod_count"
+test "$pod_count" -eq 0 || { echo "WIPE_FAILED Kubernetes pod process residue" >&2; exit 1; }
 echo WIPE_OK $(hostname)
 '
 

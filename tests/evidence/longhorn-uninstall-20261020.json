@@ -1,0 +1,554 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-40",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-uninstall </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09, and kubecli destroy longhorn-gate refusal; actual native Helm pre-delete hook through product",
+  "durable_pid": 3006762,
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_UNINSTALL_PASS",
+  "scoped_clean_marker": "LONGHORN_UNINSTALL_SCOPED_CLEAN_PASS",
+  "checks": {
+    "required_markers": [
+      "LONGHORN_UNINSTALL_REFUSAL_BOUND_PASS",
+      "LONGHORN_UNINSTALL_REFUSAL_RELEASED_PASS",
+      "LONGHORN_UNINSTALL_REFUSAL_BUSINESS_PASS",
+      "LONGHORN_UNINSTALL_BACKUP_TARGET_DISCONNECTED_PASS",
+      "LONGHORN_UNINSTALL_BACKUP_RETENTION_BUSINESS_PASS",
+      "LONGHORN_UNINSTALL_BACKUP_BUSINESS_PASS",
+      "LONGHORN_UNINSTALL_EXTERNAL_BACKUP_PRESERVED_PASS",
+      "LONGHORN_UNINSTALL_BUSINESS_PASS",
+      "LONGHORN_UNINSTALL_SCOPED_CLEAN_PASS",
+      "LONGHORN_UNINSTALL_PASS",
+      "LONGHORN_DISK_FIXTURES_CLEAN_PASS",
+      "LONGHORN_BACKUP_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_BACKUP_STORE_CLEAN_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_GATE_EXIT rc=0"
+    ],
+    "refusals": [
+      "LONGHORN_UNINSTALL_REFUSAL_OBSERVED phase=bound operation=uninstall",
+      "LONGHORN_UNINSTALL_REFUSAL_OBSERVED phase=bound operation=destroy",
+      "LONGHORN_UNINSTALL_REFUSAL_OBSERVED phase=released operation=uninstall",
+      "LONGHORN_UNINSTALL_REFUSAL_OBSERVED phase=released operation=destroy"
+    ],
+    "retained_volume_rebind": "LONGHORN_RETAIN_REBIND_VERIFIED pv=pvc-bf7066b0-25f4-4e61-9928-c252d787cf13 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+    "independent_restore": "LONGHORN_BACKUP_RESTORE_BOUNDARY_VERIFIED mode=full backup_sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a source_sha256=f584692f11aea9c12bbb1978e41d29a2d683e332d5bdae7f3c7778936ff5e59c independent_volume=pvc-0e813741-bfcb-4943-989a-9d1dd6a8f0b4",
+    "source_remount": [
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=12320768 sha256=f584692f11aea9c12bbb1978e41d29a2d683e332d5bdae7f3c7778936ff5e59c replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238"
+    ],
+    "host_state_restored": "LONGHORN_HOST_STATE_RESTORED nodes=6 packages=retained modules=retained",
+    "node_bootstrap_cleanup": "LONGHORN_NODE_BOOTSTRAP_CLEAN_VERIFIED nodes=6",
+    "native_uninstall": "LONGHORN_NATIVE_UNINSTALL_RECOVERY_VERIFIED shared_snapshot_resources=9",
+    "frozen_inputs_unchanged": 69,
+    "external_backup_object_count": 16,
+    "additional_volume_configuration": "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/volume.cfg"
+  },
+  "observed": {
+    "connected": {
+      "backup_uid": "eacfe1f3-4352-4fb5-aaef-06f41bd3a3ba",
+      "bucket": "longhorn-backup-21c85906532349a5",
+      "cluster_uid": "f9dc77f2-9fc3-443a-b004-5b5f998d1142",
+      "object_receipt": {
+        "backup": "backup-full-3069a8a978dca3fb95506fc9",
+        "incremental": false,
+        "newly_uploaded_bytes": 137186,
+        "objects": {
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/backups/backup_backup-full-3069a8a978dca3fb95506fc9.cfg": {
+            "sha256": "638b60c85df47adc10daebeb1e179ea06f77c1a8ed5d73485783de69c579d303",
+            "size": 6928
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/09/e2/09e2a69fc512ca6981654b330146e44010010ed8d92d29988e91497911565bf9.blk": {
+            "sha256": "ae14bebbbc4a1dfcf38438f879e4c0a042d7550208d200314dedd7241e5e8d67",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/1c/be/1cbed3e2742cf6659b70b6851ff3d5a1a4a3d02e1b3c02c944d57023bf8379dc.blk": {
+            "sha256": "cd2b82b26788dbbbee3c8fbcb0bf03f8dcd718b67bca25398de9fc3e4abb3625",
+            "size": 10378
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/42/bb/42bbf6145bf94ca9d31ef9d5f682ce879e6881127ae7111ed9fd815621f484fa.blk": {
+            "sha256": "4289f832f2a3d3f11f20489cb0cac93d8d843d9b8a30ad6efe288915939888c3",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/4a/c5/4ac50efe52072752ff834bf6da2cd982fb637a5c6eeddeac51cbeef21235497c.blk": {
+            "sha256": "757290434fed926f6029f9b7b0c0d558498fc6c90564c0dc3c7544810c69863c",
+            "size": 8437
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/52/e9/52e9d08b95fbcaa566954201833ae3ef7810efbbd21ad794a4dc604a3c1c7ad6.blk": {
+            "sha256": "8ed19f1b7a0555d827e7cd06001d08d734a94dc249bbff2a1d99b15abe7f8eac",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/57/aa/57aa6aed29586083578453226a8e19c7f5fd26cf02d073dc0f4dd8f2a46e01fb.blk": {
+            "sha256": "c8846da342d2f257a0cd581f12a0f4fbaedc8f0d6fc439c58491b212d231cb22",
+            "size": 14697
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/7c/53/7c5346eb8c56cb3baefc3ef5b884ad482a8e7f21d0092bd4c2887e42e60d1d4b.blk": {
+            "sha256": "31057f8deb6ba9064147712943d5da870365dfa6e6b8d2cbb6d3feb86c75e84b",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/af/00/af00bd16f1358fd0f4bfe46fa662375189ed15695839524cfac2d7bc2b89990d.blk": {
+            "sha256": "6c644eee5cac75351ef537973dcbd94fb82a05b98dca4dc326e6699df60c0f47",
+            "size": 9400
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/bc/be/bcbe00d775b54147190e12250c2903f6080a73cc837667776eccb63f30650412.blk": {
+            "sha256": "689bf45529bc332386467d5781e2d1b605bf696fe2abb34f650bfe3e154724bb",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          }
+        },
+        "reuploaded_bytes": 33060,
+        "size": 2147483648,
+        "volume": "pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b"
+      },
+      "run_id": "21c85906-5323-49a5-9405-82fd5f14be08",
+      "source_volume_uid": "cb11e8e4-7e9b-46f8-89d9-d21dd3618b1a",
+      "target_uid": "af80a0e1-fec2-4820-bcbd-69fa73c5ddd9",
+      "volume_config_digest": {
+        "sha256": "d1087a5f32b2cdaeae3ac8a45b70372397fc26d10a5e50712d60a370f2d270d4",
+        "size": 442
+      },
+      "volume_config_key": "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/volume.cfg"
+    },
+    "disconnected": {
+      "backup_uid": "eacfe1f3-4352-4fb5-aaef-06f41bd3a3ba",
+      "bucket": "longhorn-backup-21c85906532349a5",
+      "cluster_uid": "f9dc77f2-9fc3-443a-b004-5b5f998d1142",
+      "object_receipt": {
+        "backup": "backup-full-3069a8a978dca3fb95506fc9",
+        "incremental": false,
+        "newly_uploaded_bytes": 137186,
+        "objects": {
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/backups/backup_backup-full-3069a8a978dca3fb95506fc9.cfg": {
+            "sha256": "638b60c85df47adc10daebeb1e179ea06f77c1a8ed5d73485783de69c579d303",
+            "size": 6928
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/09/e2/09e2a69fc512ca6981654b330146e44010010ed8d92d29988e91497911565bf9.blk": {
+            "sha256": "ae14bebbbc4a1dfcf38438f879e4c0a042d7550208d200314dedd7241e5e8d67",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/1c/be/1cbed3e2742cf6659b70b6851ff3d5a1a4a3d02e1b3c02c944d57023bf8379dc.blk": {
+            "sha256": "cd2b82b26788dbbbee3c8fbcb0bf03f8dcd718b67bca25398de9fc3e4abb3625",
+            "size": 10378
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/42/bb/42bbf6145bf94ca9d31ef9d5f682ce879e6881127ae7111ed9fd815621f484fa.blk": {
+            "sha256": "4289f832f2a3d3f11f20489cb0cac93d8d843d9b8a30ad6efe288915939888c3",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/4a/c5/4ac50efe52072752ff834bf6da2cd982fb637a5c6eeddeac51cbeef21235497c.blk": {
+            "sha256": "757290434fed926f6029f9b7b0c0d558498fc6c90564c0dc3c7544810c69863c",
+            "size": 8437
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/52/e9/52e9d08b95fbcaa566954201833ae3ef7810efbbd21ad794a4dc604a3c1c7ad6.blk": {
+            "sha256": "8ed19f1b7a0555d827e7cd06001d08d734a94dc249bbff2a1d99b15abe7f8eac",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/57/aa/57aa6aed29586083578453226a8e19c7f5fd26cf02d073dc0f4dd8f2a46e01fb.blk": {
+            "sha256": "c8846da342d2f257a0cd581f12a0f4fbaedc8f0d6fc439c58491b212d231cb22",
+            "size": 14697
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/7c/53/7c5346eb8c56cb3baefc3ef5b884ad482a8e7f21d0092bd4c2887e42e60d1d4b.blk": {
+            "sha256": "31057f8deb6ba9064147712943d5da870365dfa6e6b8d2cbb6d3feb86c75e84b",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/af/00/af00bd16f1358fd0f4bfe46fa662375189ed15695839524cfac2d7bc2b89990d.blk": {
+            "sha256": "6c644eee5cac75351ef537973dcbd94fb82a05b98dca4dc326e6699df60c0f47",
+            "size": 9400
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/bc/be/bcbe00d775b54147190e12250c2903f6080a73cc837667776eccb63f30650412.blk": {
+            "sha256": "689bf45529bc332386467d5781e2d1b605bf696fe2abb34f650bfe3e154724bb",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          }
+        },
+        "reuploaded_bytes": 33060,
+        "size": 2147483648,
+        "volume": "pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b"
+      },
+      "run_id": "21c85906-5323-49a5-9405-82fd5f14be08",
+      "source_volume_uid": "cb11e8e4-7e9b-46f8-89d9-d21dd3618b1a",
+      "target_uid": "af80a0e1-fec2-4820-bcbd-69fa73c5ddd9",
+      "volume_config_digest": {
+        "sha256": "d1087a5f32b2cdaeae3ac8a45b70372397fc26d10a5e50712d60a370f2d270d4",
+        "size": 442
+      },
+      "volume_config_key": "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/volume.cfg"
+    },
+    "source-removed": {
+      "backup_uid": "eacfe1f3-4352-4fb5-aaef-06f41bd3a3ba",
+      "bucket": "longhorn-backup-21c85906532349a5",
+      "cluster_uid": "f9dc77f2-9fc3-443a-b004-5b5f998d1142",
+      "object_receipt": {
+        "backup": "backup-full-3069a8a978dca3fb95506fc9",
+        "incremental": false,
+        "newly_uploaded_bytes": 137186,
+        "objects": {
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/backups/backup_backup-full-3069a8a978dca3fb95506fc9.cfg": {
+            "sha256": "638b60c85df47adc10daebeb1e179ea06f77c1a8ed5d73485783de69c579d303",
+            "size": 6928
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/09/e2/09e2a69fc512ca6981654b330146e44010010ed8d92d29988e91497911565bf9.blk": {
+            "sha256": "ae14bebbbc4a1dfcf38438f879e4c0a042d7550208d200314dedd7241e5e8d67",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/1c/be/1cbed3e2742cf6659b70b6851ff3d5a1a4a3d02e1b3c02c944d57023bf8379dc.blk": {
+            "sha256": "cd2b82b26788dbbbee3c8fbcb0bf03f8dcd718b67bca25398de9fc3e4abb3625",
+            "size": 10378
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/42/bb/42bbf6145bf94ca9d31ef9d5f682ce879e6881127ae7111ed9fd815621f484fa.blk": {
+            "sha256": "4289f832f2a3d3f11f20489cb0cac93d8d843d9b8a30ad6efe288915939888c3",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/4a/c5/4ac50efe52072752ff834bf6da2cd982fb637a5c6eeddeac51cbeef21235497c.blk": {
+            "sha256": "757290434fed926f6029f9b7b0c0d558498fc6c90564c0dc3c7544810c69863c",
+            "size": 8437
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/52/e9/52e9d08b95fbcaa566954201833ae3ef7810efbbd21ad794a4dc604a3c1c7ad6.blk": {
+            "sha256": "8ed19f1b7a0555d827e7cd06001d08d734a94dc249bbff2a1d99b15abe7f8eac",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/57/aa/57aa6aed29586083578453226a8e19c7f5fd26cf02d073dc0f4dd8f2a46e01fb.blk": {
+            "sha256": "c8846da342d2f257a0cd581f12a0f4fbaedc8f0d6fc439c58491b212d231cb22",
+            "size": 14697
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/7c/53/7c5346eb8c56cb3baefc3ef5b884ad482a8e7f21d0092bd4c2887e42e60d1d4b.blk": {
+            "sha256": "31057f8deb6ba9064147712943d5da870365dfa6e6b8d2cbb6d3feb86c75e84b",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/af/00/af00bd16f1358fd0f4bfe46fa662375189ed15695839524cfac2d7bc2b89990d.blk": {
+            "sha256": "6c644eee5cac75351ef537973dcbd94fb82a05b98dca4dc326e6699df60c0f47",
+            "size": 9400
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/bc/be/bcbe00d775b54147190e12250c2903f6080a73cc837667776eccb63f30650412.blk": {
+            "sha256": "689bf45529bc332386467d5781e2d1b605bf696fe2abb34f650bfe3e154724bb",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          }
+        },
+        "reuploaded_bytes": 33060,
+        "size": 2147483648,
+        "volume": "pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b"
+      },
+      "run_id": "21c85906-5323-49a5-9405-82fd5f14be08",
+      "source_volume_uid": "cb11e8e4-7e9b-46f8-89d9-d21dd3618b1a",
+      "target_uid": "af80a0e1-fec2-4820-bcbd-69fa73c5ddd9",
+      "volume_config_digest": {
+        "sha256": "d1087a5f32b2cdaeae3ac8a45b70372397fc26d10a5e50712d60a370f2d270d4",
+        "size": 442
+      },
+      "volume_config_key": "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/volume.cfg"
+    },
+    "uninstalled": {
+      "backup_uid": "eacfe1f3-4352-4fb5-aaef-06f41bd3a3ba",
+      "bucket": "longhorn-backup-21c85906532349a5",
+      "cluster_uid": "f9dc77f2-9fc3-443a-b004-5b5f998d1142",
+      "object_receipt": {
+        "backup": "backup-full-3069a8a978dca3fb95506fc9",
+        "incremental": false,
+        "newly_uploaded_bytes": 137186,
+        "objects": {
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/backups/backup_backup-full-3069a8a978dca3fb95506fc9.cfg": {
+            "sha256": "638b60c85df47adc10daebeb1e179ea06f77c1a8ed5d73485783de69c579d303",
+            "size": 6928
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/09/e2/09e2a69fc512ca6981654b330146e44010010ed8d92d29988e91497911565bf9.blk": {
+            "sha256": "ae14bebbbc4a1dfcf38438f879e4c0a042d7550208d200314dedd7241e5e8d67",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/1c/be/1cbed3e2742cf6659b70b6851ff3d5a1a4a3d02e1b3c02c944d57023bf8379dc.blk": {
+            "sha256": "cd2b82b26788dbbbee3c8fbcb0bf03f8dcd718b67bca25398de9fc3e4abb3625",
+            "size": 10378
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/42/bb/42bbf6145bf94ca9d31ef9d5f682ce879e6881127ae7111ed9fd815621f484fa.blk": {
+            "sha256": "4289f832f2a3d3f11f20489cb0cac93d8d843d9b8a30ad6efe288915939888c3",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/4a/c5/4ac50efe52072752ff834bf6da2cd982fb637a5c6eeddeac51cbeef21235497c.blk": {
+            "sha256": "757290434fed926f6029f9b7b0c0d558498fc6c90564c0dc3c7544810c69863c",
+            "size": 8437
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/52/e9/52e9d08b95fbcaa566954201833ae3ef7810efbbd21ad794a4dc604a3c1c7ad6.blk": {
+            "sha256": "8ed19f1b7a0555d827e7cd06001d08d734a94dc249bbff2a1d99b15abe7f8eac",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/57/aa/57aa6aed29586083578453226a8e19c7f5fd26cf02d073dc0f4dd8f2a46e01fb.blk": {
+            "sha256": "c8846da342d2f257a0cd581f12a0f4fbaedc8f0d6fc439c58491b212d231cb22",
+            "size": 14697
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/7c/53/7c5346eb8c56cb3baefc3ef5b884ad482a8e7f21d0092bd4c2887e42e60d1d4b.blk": {
+            "sha256": "31057f8deb6ba9064147712943d5da870365dfa6e6b8d2cbb6d3feb86c75e84b",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/af/00/af00bd16f1358fd0f4bfe46fa662375189ed15695839524cfac2d7bc2b89990d.blk": {
+            "sha256": "6c644eee5cac75351ef537973dcbd94fb82a05b98dca4dc326e6699df60c0f47",
+            "size": 9400
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/bc/be/bcbe00d775b54147190e12250c2903f6080a73cc837667776eccb63f30650412.blk": {
+            "sha256": "689bf45529bc332386467d5781e2d1b605bf696fe2abb34f650bfe3e154724bb",
+            "size": 8900
+          },
+          "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          }
+        },
+        "reuploaded_bytes": 33060,
+        "size": 2147483648,
+        "volume": "pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b"
+      },
+      "run_id": "21c85906-5323-49a5-9405-82fd5f14be08",
+      "source_volume_uid": "cb11e8e4-7e9b-46f8-89d9-d21dd3618b1a",
+      "target_uid": "af80a0e1-fec2-4820-bcbd-69fa73c5ddd9",
+      "volume_config_digest": {
+        "sha256": "d1087a5f32b2cdaeae3ac8a45b70372397fc26d10a5e50712d60a370f2d270d4",
+        "size": 442
+      },
+      "volume_config_key": "backupstore/volumes/bc/29/pvc-ef8e9b97-3d15-4b68-bbcc-ce56c1196f8b/volume.cfg"
+    }
+  },
+  "frozen_inputs": {
+    "common/constants.py": "6e24da41869b4d8e9b12f84f6003848047021247229cc81619277c5f0c4da2a9",
+    "conf/config.yml": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+    "controller/cluster/cli.py": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+    "playbooks/01.prepare.yml": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+    "playbooks/02.etcd.yml": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+    "playbooks/03.runtime.yml": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+    "playbooks/04.kube-master.yml": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+    "playbooks/05.kube-node.yml": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+    "playbooks/06.network.yml": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+    "playbooks/07.cluster-addon.yml": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+    "playbooks/08.ceph.yml": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+    "playbooks/09.longhorn.yml": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+    "playbooks/10.ex-lb.yml": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+    "playbooks/11.harbor.yml": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+    "playbooks/21.addetcd.yml": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+    "playbooks/22.addnode.yml": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+    "playbooks/23.addmaster.yml": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+    "playbooks/31.deletcd.yml": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+    "playbooks/32.delnode.yml": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+    "playbooks/33.delmaster.yml": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+    "playbooks/90.setup.yml": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+    "playbooks/91.start.yml": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+    "playbooks/92.stop.yml": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+    "playbooks/93.upgrade.yml": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+    "playbooks/94.backup.yml": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+    "playbooks/95.restore.yml": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+    "playbooks/96.update-certs.yml": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+    "playbooks/99.clean.yml": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+    "roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+    "roles/longhorn/files/block-check.py": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+    "roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "roles/longhorn/files/images.json": "7b88ed7707911baf1af25604d32d9c426a45759383aa992d14d4f934bc88d74c",
+    "roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+    "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+    "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "roles/longhorn/files/longhorn.py": "a957f79f4cbc6e6027b0ab7db879070326b21039910c3ab1116877ccf7c0a1ac",
+    "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "roles/longhorn/tasks/control.yml": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+    "roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "service/cluster/downloader.py": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+    "service/cluster/manager.py": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+    "tests/helpers/longhorn-accounts.py": "3647198a2e473b353045d59288a4d15f858b1ff70d5317eff83e6420c0d5e83b",
+    "tests/helpers/longhorn-artifacts.py": "20128fc1a8c02af70e71b588ced5fb9698c797ca11f11af348876cb178b067da",
+    "tests/helpers/longhorn-backups.py": "b2dc409eb7b23ad6e5b22cb5676393ffa56a474aa0054547f39e2894591be8d2",
+    "tests/helpers/longhorn-control-faults.py": "24dd18e80a946d2d94c2180b323186bff32311843d40c5536ef3e7d7ac105c08",
+    "tests/helpers/longhorn-encryption.py": "c20b15821b477a342dd9a35cf14c9c3a67a08bd3b4457334a07427b020e2636b",
+    "tests/helpers/longhorn-faults.py": "7467dc8c8e547b436b070c8d22505120522733cee85b46bf0f642c5b005adf7e",
+    "tests/helpers/longhorn-lab.py": "55b26f9ea8450d1b52d4bcf459b8b5c5da02807f6256a0349e8484b18a38e18e",
+    "tests/helpers/longhorn-live.sh": "fc5e1bdaafee87395b7dbd43e0828daf2a282f5b351b299b8889122d7cf0dfc9",
+    "tests/helpers/longhorn-network.py": "00a09ab173e54a430523bede4e7b42fd6427f4e43af43d52fb03d7232548c97a",
+    "tests/helpers/longhorn-performance.py": "352989226e1a2909b6eea43741bc6bba74bcbfe4f3cf09e4b414d2e24322e564",
+    "tests/helpers/longhorn-recurring-backup.py": "d5156c8c7d7ad4deba279d11024b52c8fb2d72df4e5c9581ad5e523e2b45be27",
+    "tests/helpers/longhorn-recurring-rotation.py": "dbb3f0f8bcbcebf290a260e0eb801f3315a3a5dda9a742ee394c8120f0ae82d0",
+    "tests/helpers/longhorn-recurring.py": "ed866f4925896c272dc7e4154ea6b417495efdfbb3d030fd1630f58d900c79c1",
+    "tests/helpers/longhorn-runner.sh": "8de5e9ba9b05d7b4669b36e6ed517a7ce119b2c122cabcf41b860e4127ddd376",
+    "tests/helpers/longhorn-security.py": "0604fff266a4d85fc682ecbcf188a2e61bdc6a3d948e652a204b6d94c3bd91ce",
+    "tests/helpers/longhorn-static.sh": "e2bad30eb003c17cd63da4b7bcc4ba27d0c70572cd136762bea13d9804f18a02",
+    "tests/helpers/longhorn-trim.py": "6544f860c0529a1e4606a09c7bd4542defef03d23f22af4303d4e0420d7bfe36",
+    "tests/helpers/longhorn-uninstall.py": "c2116dd574626dc82f1e31d8c956d1fbfd20f96fc365a5151eb24270b437f264",
+    "tests/helpers/validate_longhorn_matrix.py": "b6fa02088a454c3c9ed65f304774b0a2b15f81ccf4a0ad9c925b0a1a18029acd",
+    "tests/run_enterprise_regression.sh": "d4493af2180d619306ed684728c8bd1f4ae9758b9d721e8bcd222575b9aa99c3"
+  },
+  "boundary": "V1 1.12.1 owned installation removed through actual native hook. External backup survives target fixture retirement, source removal and uninstall, with full readback after namespace/CRDs disappear. Target is explicitly disconnected before source fixture cleanup; does not independently test connected-target uninstall safeguard. Shared snapshot identities/core preserved, own disk/host/store/transport fixtures cleaned. Does not sign off interruption cleanup, V2, other pending modules or final clean full regression.",
+  "prerequisite_evidence": [
+    "tests/evidence/longhorn-uninstall-refusal-qualification-20261020.json",
+    "tests/evidence/longhorn-uninstall-backup-qualification-20261020.json",
+    "tests/evidence/longhorn-uninstall-host-journal-static-20261020.json",
+    "tests/evidence/longhorn-uninstall-host-recovery-20261020.json"
+  ],
+  "files": {
+    "logs/longhorn-cases/uninstall-20261020-044216/durable-status.txt": "3c219161607e90108b8c90f31046cdd1974d15b8e05ff18a9896a57bda1205fc",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/common/constants.py": "6e24da41869b4d8e9b12f84f6003848047021247229cc81619277c5f0c4da2a9",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/conf/config.yml": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/controller/cluster/cli.py": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/01.prepare.yml": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/02.etcd.yml": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/03.runtime.yml": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/04.kube-master.yml": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/05.kube-node.yml": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/06.network.yml": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/07.cluster-addon.yml": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/08.ceph.yml": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/09.longhorn.yml": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/10.ex-lb.yml": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/11.harbor.yml": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/21.addetcd.yml": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/22.addnode.yml": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/23.addmaster.yml": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/31.deletcd.yml": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/32.delnode.yml": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/33.delmaster.yml": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/90.setup.yml": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/91.start.yml": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/92.stop.yml": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/93.upgrade.yml": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/94.backup.yml": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/95.restore.yml": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/96.update-certs.yml": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/playbooks/99.clean.yml": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/block-check.py": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/images.json": "7b88ed7707911baf1af25604d32d9c426a45759383aa992d14d4f934bc88d74c",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/longhorn.py": "a957f79f4cbc6e6027b0ab7db879070326b21039910c3ab1116877ccf7c0a1ac",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/tasks/control.yml": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/service/cluster/downloader.py": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/service/cluster/manager.py": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-accounts.py": "3647198a2e473b353045d59288a4d15f858b1ff70d5317eff83e6420c0d5e83b",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-artifacts.py": "20128fc1a8c02af70e71b588ced5fb9698c797ca11f11af348876cb178b067da",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-backups.py": "b2dc409eb7b23ad6e5b22cb5676393ffa56a474aa0054547f39e2894591be8d2",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-control-faults.py": "24dd18e80a946d2d94c2180b323186bff32311843d40c5536ef3e7d7ac105c08",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-encryption.py": "c20b15821b477a342dd9a35cf14c9c3a67a08bd3b4457334a07427b020e2636b",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-faults.py": "7467dc8c8e547b436b070c8d22505120522733cee85b46bf0f642c5b005adf7e",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-lab.py": "55b26f9ea8450d1b52d4bcf459b8b5c5da02807f6256a0349e8484b18a38e18e",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-live.sh": "fc5e1bdaafee87395b7dbd43e0828daf2a282f5b351b299b8889122d7cf0dfc9",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-network.py": "00a09ab173e54a430523bede4e7b42fd6427f4e43af43d52fb03d7232548c97a",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-performance.py": "352989226e1a2909b6eea43741bc6bba74bcbfe4f3cf09e4b414d2e24322e564",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-recurring-backup.py": "d5156c8c7d7ad4deba279d11024b52c8fb2d72df4e5c9581ad5e523e2b45be27",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-recurring-rotation.py": "dbb3f0f8bcbcebf290a260e0eb801f3315a3a5dda9a742ee394c8120f0ae82d0",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-recurring.py": "ed866f4925896c272dc7e4154ea6b417495efdfbb3d030fd1630f58d900c79c1",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-runner.sh": "8de5e9ba9b05d7b4669b36e6ed517a7ce119b2c122cabcf41b860e4127ddd376",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-security.py": "0604fff266a4d85fc682ecbcf188a2e61bdc6a3d948e652a204b6d94c3bd91ce",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-static.sh": "e2bad30eb003c17cd63da4b7bcc4ba27d0c70572cd136762bea13d9804f18a02",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-trim.py": "6544f860c0529a1e4606a09c7bd4542defef03d23f22af4303d4e0420d7bfe36",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/longhorn-uninstall.py": "c2116dd574626dc82f1e31d8c956d1fbfd20f96fc365a5151eb24270b437f264",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/helpers/validate_longhorn_matrix.py": "b6fa02088a454c3c9ed65f304774b0a2b15f81ccf4a0ad9c925b0a1a18029acd",
+    "logs/longhorn-cases/uninstall-20261020-044216/frozen-source/tests/run_enterprise_regression.sh": "d4493af2180d619306ed684728c8bd1f4ae9758b9d721e8bcd222575b9aa99c3",
+    "logs/longhorn-cases/uninstall-20261020-044216/gate.log": "4b8adc70e910a3b87db689925bf4f470b932d80089a544ae993cb0a3d6199ce0",
+    "logs/longhorn-cases/uninstall-20261020-044216/uninstall-native-fixed-before-diagnostic-20261020.log": "677795eaecefab3626da1536037c2e5fcd3eb10c454f5beba9b9c859591ca1d3",
+    "logs/longhorn-cases/uninstall-20261020-044216/uninstall-native-fixed-final-fingerprint.log": "842a4409818db6732601435da4c2442e13b88ddf047aca4b255b979e2315ccdd",
+    "logs/longhorn-cases/uninstall-20261020-044216/uninstall-native-fixed-start-fingerprint.json": "5df8d26da343cc77556fb720634ae50e44f3a279e1ad2b8325fd76c92d3abc04",
+    "logs/longhorn-cases/uninstall-20261020-044216/uninstall-retention-design-20261020.json": "b4df00e0dae1ab504eeadc293e7ff67d103ff7e449babc85fc73d81921ed19ce"
+  }
+}

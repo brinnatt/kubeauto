@@ -1,0 +1,33 @@
+{
+  "boundary": "Original three parent locks, one source sync, original owning gates and durable supervision. V1 owns 149. V2 first performs original cleanup then four remaining faults on 146-148. Five accepted fault scopes and six accepted ownership scopes are not repeated. Original failed parents retain nonzero states.",
+  "changed_files": {
+    "tests/README.md": "61c6f7adf2da1f9adc6484748287101052b13ed01925909750c87c16fa89f833",
+    "tests/helpers/longhorn-live.sh": "d970db4b1534384b549af5fab9d54edecfdf1c67d3e1af25daf49fa14a425945",
+    "tests/helpers/longhorn-parallel.py": "d9281fbed01a20172ca5b8d22467c609fc0a167ad5e54c2496da52a4bff444a7",
+    "tests/helpers/longhorn-parallel.sh": "dd42d988db8449866a6064c786f9a7cab011e48e39a4fa1df9ea22d5ef0f9298",
+    "tests/helpers/longhorn-runner.sh": "4f6c2a178c39899990b764df871cfe38776757d9f6b3f9155bde5602dcb4cb6b",
+    "tests/unit/test_longhorn_parallel.py": "370de93385a13f8436a2367eeed037453c144293c57f7f92563435be4decb45e"
+  },
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-v2-worker-tail </dev/null",
+  "contracts": {
+    "ast": "pass",
+    "log": "logs/longhorn-cases/operations-worker-tail-recipe-20261021/shared-contract.log",
+    "log_sha256": "cd36bedae60ffc6a891e642aea3bcfab4dc6f2145e6d7f7c4a40ce30eb289ecb",
+    "rc": 0,
+    "shell_syntax": "pass",
+    "tests": 9
+  },
+  "date": "2026-10-21",
+  "ladder_completed": 2,
+  "matrix_gaps": [
+    "LONGHORN-24",
+    "LONGHORN-50 remaining worker-reboot/single-disk/rebuild-qos/all-replicas and dependent operations"
+  ],
+  "next_permitted_level": 3,
+  "overall_longhorn_delivery_pass": false,
+  "product_entry": "config.yml + documented kubecli workflow through original owning scopes",
+  "schema": 1,
+  "status": "contract-pass",
+  "success_marker": "LONGHORN_V1_OPERATIONS_V2_WORKER_TAIL_PASS"
+}

@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "Product read-only preflight and actual bootstrap_node server dry-run prerequisite; no installation or business acceptance",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-preflight-qualification",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_PREFLIGHT_QUALIFICATION_PASS",
+  "scoped_clean_marker": "LONGHORN_PREFLIGHT_QUALIFICATION_SCOPED_CLEAN_PASS",
+  "first_failure": {
+    "classification": [
+      "product",
+      "test-gate"
+    ],
+    "product_entry": "kubecli setup longhorn-gate 09",
+    "failed_command": "kubectl --kubeconfig=<owning cluster file> --request-timeout=30s -A get deployments -o json",
+    "stderr": "Error: flags cannot be placed before plugin name: --kubeconfig=<owning cluster file>",
+    "cause": "The all-namespaces flag belongs to get, not the root/plugin command. Product and fixture both placed it before get.",
+    "repair": "Place namespace flags after get resource in product API.get and fixture get; deterministic regressions cover all-namespaces, named namespace and cluster scope.",
+    "official_source": "Kubernetes v1.33.6 staging/src/k8s.io/kubectl/pkg/cmd/get/get.go blob d84ed3d3ec73e63b72ac9dcf075db7d55fed180a; cmd.go blob ed3772c5adf3db8f7072ee4372b9ddf94f12888d",
+    "first_cleanup": "Original core preserved; three owned disk fixtures removed; host service/file state restored; relays cleaned. Original credential namespace retained for explicit native recovery."
+  },
+  "checks": {
+    "static_contracts": 184,
+    "exact_product_preflight_pass": true,
+    "core_identity_preserved": true,
+    "node_bootstrap_server_dry_run_nodes": 6,
+    "node_bootstrap_server_dry_run_patches": 6,
+    "node_metadata_identity_unchanged": true
+  },
+  "files": {
+    "logs/longhorn-cases/install-20261019-043027/gate.log": "41ec86a704a73233951144e4838497102abba3e7fe0b0070beba2b78c5b0108e",
+    "logs/longhorn-cases/install-20261019-043027/durable-status.txt": "da5dbd53ade3964cddd9bd468efccc84389d8333913e5c4cead88644d0331723",
+    "logs/longhorn-cases/preflight-qualification-20261019-044150/gate.log": "597503acedefa4f247145dd0e6ee0e041e984553593aaa4bd6e59324875a8443",
+    "logs/longhorn-cases/preflight-qualification-20261019-044150/durable-status.txt": "b0a52bd735c72d50f903b28ba0e7ce697a30c9c9ff608ad12a4d0eeb4739773a",
+    "roles/longhorn/files/longhorn.py": "553e0d0e4b570add541be07fa47c993992908064ba8c9fbd6893fe00f67f5e4a",
+    "tests/helpers/longhorn-lab.py": "a50e2a3bf7436e80602015b1cf646c55fbf964fd2839b42afcb7d5fb5fbcec35",
+    "tests/unit/test_longhorn_delivery.py": "7f9ff1190406c85b9dab843640d2f83df8e30c209515f10923f08c87d11f4ca6",
+    "tests/unit/test_longhorn_lab.py": "77e48e6485741a38e2dd9d2553ad522a9290cfaf898cb6d8e8bb76f369285982",
+    "logs/longhorn-cases/install-20261019-043027/preflight-diagnostic.log": "c464702e64f59da8d7ddf65c5135b2389c54fd28f2655e814c6af1ebce08ba1c",
+    "logs/longhorn-cases/preflight-qualification-20261019-051803/gate.log": "0859f719d429f99285bf5f6d08fe5aa9cf90208fc557142ae6d5d7240df22ea3",
+    "logs/longhorn-cases/preflight-qualification-20261019-051803/durable-status.txt": "5eb2be7a22c2c20a5803b915b0186aacd3edc9068928ea18d2738baaa8399953"
+  },
+  "node_update_repair": {
+    "cause": "Normal Node heartbeats invalidated the preflight resourceVersion; API server rejected the stale merge patch with Conflict.",
+    "repair": "Read each Node immediately before metadata patch; verify original UID and ownership on each attempt; retry only native API Conflict at most three times.",
+    "official_reference": "https://kubernetes.io/docs/reference/using-api/api-concepts/#updates-to-existing-resources",
+    "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-preflight-qualification",
+    "boundary": "Server dry-run executes admission but never persists Node changes; receipt capacity is a prior input, not a current disk qualification."
+  },
+  "bootstrap_source_sha256": "fd9f8f79001b16a95d0c8c6fe557c9b6456a37ba94e0fd7348f94d8bc6ea00ff"
+}

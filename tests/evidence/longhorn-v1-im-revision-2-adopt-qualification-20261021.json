@@ -1,0 +1,1658 @@
+{
+  "baseline_identity": {
+    "cluster_uid": "f9dc77f2-9fc3-443a-b004-5b5f998d1142",
+    "namespace_uid": "a4b23413-27c0-41b0-bab1-a18d811f4902",
+    "node_uids": {
+      "longhorn-node-135": "86c42521-8ddf-478f-bba6-44412e2ffb98",
+      "longhorn-node-165": "a3ff1680-78da-49bf-a8d8-377622d12709",
+      "longhorn-node-212": "5140b19f-d89f-4443-8bdb-29dc18f41f81",
+      "longhorn-node-238": "8cd4b598-7e6b-4876-9b80-b9a4e9be9636",
+      "longhorn-node-40": "50e38334-4ae4-4083-b19b-e34ff6fad839",
+      "longhorn-node-72": "b3b79d65-9ea9-472a-84a3-d2637a52aa1a"
+    },
+    "run_id": "21c85906-5323-49a5-9405-82fd5f14be08"
+  },
+  "branch_command": "bash tests/run_enterprise_regression.sh --longhorn-v1-im-revision-2-adopt-qualification",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-post-revision-backups-v2-failure-acceptance",
+  "date": "2026-10-21",
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "durable_pid": 170194,
+  "failure_markers": 0,
+  "frozen_inputs": {
+    "common/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "common/ansible_python.py": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+    "common/constants.py": "facc38557a1b89dc11d8c5c3a3a9da061e6a14fa42020b354b40c694286df204",
+    "common/docker_jsonmessage.py": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+    "common/exceptions.py": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+    "common/logger.py": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+    "common/mirrors.py": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+    "common/os.py": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+    "common/utils.py": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+    "conf/config.yml": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+    "controller/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controller/cluster/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controller/cluster/cli.py": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+    "kubecli.py": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+    "model/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model/cluster/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "model/cluster/models.py": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+    "playbooks/01.prepare.yml": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+    "playbooks/02.etcd.yml": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+    "playbooks/03.runtime.yml": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+    "playbooks/04.kube-master.yml": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+    "playbooks/05.kube-node.yml": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+    "playbooks/06.network.yml": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+    "playbooks/07.cluster-addon.yml": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+    "playbooks/08.ceph.yml": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+    "playbooks/09.longhorn.yml": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1",
+    "playbooks/10.ex-lb.yml": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+    "playbooks/11.harbor.yml": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+    "playbooks/21.addetcd.yml": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+    "playbooks/22.addnode.yml": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+    "playbooks/23.addmaster.yml": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+    "playbooks/31.deletcd.yml": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+    "playbooks/32.delnode.yml": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+    "playbooks/33.delmaster.yml": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+    "playbooks/90.setup.yml": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+    "playbooks/91.start.yml": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+    "playbooks/92.stop.yml": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+    "playbooks/93.upgrade.yml": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+    "playbooks/94.backup.yml": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+    "playbooks/95.restore.yml": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+    "playbooks/96.update-certs.yml": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+    "playbooks/99.clean.yml": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+    "roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+    "roles/longhorn/files/block-check.py": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+    "roles/longhorn/files/block-retire.py": "0b74d4eef783c5bc352e1941562c5f96321a1d3c1473c04f31df71aa2a6ed4f6",
+    "roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "roles/longhorn/files/images.json": "7b6e0291d14ca3c868236b40d3c04e640a868f0bc3095b63a6542a4fd53aa2a7",
+    "roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+    "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+    "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "roles/longhorn/files/longhorn.py": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+    "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "roles/longhorn/tasks/control.yml": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+    "roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "runtime_hook.py": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+    "service/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "service/cluster/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "service/cluster/docker.py": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+    "service/cluster/downloader.py": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+    "service/cluster/manager.py": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+    "service/cluster/registry.py": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+    "tests/helpers/longhorn-im-revision-adopt.py": "722881e91b5d00f4394e1d7d8a664eccedb1cf5033c9ac02d023119e23a1a724",
+    "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+    "tests/helpers/longhorn-v2-core.py": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+    "tests/helpers/longhorn-v2-dr-target-install.py": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+    "tests/helpers/longhorn-v2-dr-target.py": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+    "tests/helpers/longhorn-v2-im-adopt.py": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+    "tests/helpers/longhorn-v2-im-adopt.sh": "9c995c8276d138de6060acd45d40ec423a80b1492adac1151e42ea76e57c1e5d",
+    "tests/helpers/longhorn-v2-install.py": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4",
+    "tests/helpers/longhorn-v2-lab.py": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+    "tests/helpers/longhorn-v2-upgrade-baseline.py": "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87"
+  },
+  "independent_readback": {
+    "adoption_journal_absent": true,
+    "baseline": {
+      "baseline_identity": {
+        "cluster_uid": "f9dc77f2-9fc3-443a-b004-5b5f998d1142",
+        "namespace_uid": "a4b23413-27c0-41b0-bab1-a18d811f4902",
+        "node_uids": {
+          "longhorn-node-135": "86c42521-8ddf-478f-bba6-44412e2ffb98",
+          "longhorn-node-165": "a3ff1680-78da-49bf-a8d8-377622d12709",
+          "longhorn-node-212": "5140b19f-d89f-4443-8bdb-29dc18f41f81",
+          "longhorn-node-238": "8cd4b598-7e6b-4876-9b80-b9a4e9be9636",
+          "longhorn-node-40": "50e38334-4ae4-4083-b19b-e34ff6fad839",
+          "longhorn-node-72": "b3b79d65-9ea9-472a-84a3-d2637a52aa1a"
+        },
+        "run_id": "21c85906-5323-49a5-9405-82fd5f14be08"
+      },
+      "config_sha256": "fc6a3e206c7a906aab1f2bdef422b3ea54f3470a641f9dd87ac8020ee6e38f94",
+      "filesystem_disks": {
+        "host_receipts": {
+          "192.168.122.165": {
+            "mount": {
+              "fstype": "ext4",
+              "options": "rw,relatime",
+              "target": "/data/kubeauto-longhorn",
+              "uuid": "9725d377-bd3b-5861-ac0b-a5dbedc8a27e"
+            },
+            "receipt_sha256": "a2950073d0b224ca516912b8f1a48b9f10f03c455502c143c57a8e2ba0e340e7"
+          },
+          "192.168.122.212": {
+            "mount": {
+              "fstype": "ext4",
+              "options": "rw,relatime",
+              "target": "/data/kubeauto-longhorn",
+              "uuid": "1205083b-7a65-5ca6-ae8e-076c1202e68a"
+            },
+            "receipt_sha256": "1f6a154464ea40b177b3812eefe8543a1a751a4fb259e5f394892f22c275b36d"
+          },
+          "192.168.122.238": {
+            "mount": {
+              "fstype": "ext4",
+              "options": "rw,relatime",
+              "target": "/data/kubeauto-longhorn",
+              "uuid": "d31da1e2-7485-5ad1-9d49-e22140997aea"
+            },
+            "receipt_sha256": "18511751a3e2e2c58e9f4d7fe8f86d6dd27b05d2b8907dc85d94033f1022e10d"
+          }
+        },
+        "native_nodes": {
+          "longhorn-node-165": {
+            "disks": {
+              "kubeauto-data": {
+                "spec": {
+                  "allowScheduling": true,
+                  "diskDriver": "",
+                  "diskType": "filesystem",
+                  "evictionRequested": false,
+                  "path": "/data/kubeauto-longhorn",
+                  "storageReserved": 10508926156,
+                  "tags": []
+                },
+                "uuid": "668bcb95-8093-45ae-90b8-5dbb3f9511cb"
+              }
+            },
+            "uid": "fef1354d-6959-4d74-bbfe-2706bc8462e0"
+          },
+          "longhorn-node-212": {
+            "disks": {
+              "kubeauto-data": {
+                "spec": {
+                  "allowScheduling": true,
+                  "diskDriver": "",
+                  "diskType": "filesystem",
+                  "evictionRequested": false,
+                  "path": "/data/kubeauto-longhorn",
+                  "storageReserved": 10508926156,
+                  "tags": []
+                },
+                "uuid": "438121f4-d1a1-4053-850a-652564da97a0"
+              }
+            },
+            "uid": "aae37247-a149-49c4-9e1f-0eeaabd4294e"
+          },
+          "longhorn-node-238": {
+            "disks": {
+              "kubeauto-data": {
+                "spec": {
+                  "allowScheduling": true,
+                  "diskDriver": "",
+                  "diskType": "filesystem",
+                  "evictionRequested": false,
+                  "path": "/data/kubeauto-longhorn",
+                  "storageReserved": 10508926156,
+                  "tags": []
+                },
+                "uuid": "45cd5e8b-ceab-4222-8f08-9be0c2e4cb86"
+              }
+            },
+            "uid": "de5e9cf3-50e2-44f6-a155-d59c7490ce3b"
+          }
+        }
+      },
+      "required_manager_nodes": [
+        "longhorn-node-165",
+        "longhorn-node-212",
+        "longhorn-node-238"
+      ],
+      "snapshot_identity": {
+        "ClusterRole//kubeauto-snapshot-controller-runner": {
+          "roleRef": null,
+          "rules": [
+            {
+              "apiGroups": [
+                ""
+              ],
+              "resources": [
+                "persistentvolumes"
+              ],
+              "verbs": [
+                "get",
+                "list",
+                "watch"
+              ]
+            },
+            {
+              "apiGroups": [
+                ""
+              ],
+              "resources": [
+                "persistentvolumeclaims"
+              ],
+              "verbs": [
+                "get",
+                "list",
+                "watch",
+                "update"
+              ]
+            },
+            {
+              "apiGroups": [
+                ""
+              ],
+              "resources": [
+                "events"
+              ],
+              "verbs": [
+                "list",
+                "watch",
+                "create",
+                "update",
+                "patch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "snapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumesnapshotclasses"
+              ],
+              "verbs": [
+                "get",
+                "list",
+                "watch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "snapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumesnapshotcontents"
+              ],
+              "verbs": [
+                "create",
+                "get",
+                "list",
+                "watch",
+                "update",
+                "delete",
+                "patch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "snapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumesnapshotcontents/status"
+              ],
+              "verbs": [
+                "patch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "snapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumesnapshots"
+              ],
+              "verbs": [
+                "create",
+                "get",
+                "list",
+                "watch",
+                "update",
+                "patch",
+                "delete"
+              ]
+            },
+            {
+              "apiGroups": [
+                "snapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumesnapshots/status"
+              ],
+              "verbs": [
+                "update",
+                "patch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "groupsnapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumegroupsnapshotclasses"
+              ],
+              "verbs": [
+                "get",
+                "list",
+                "watch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "groupsnapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumegroupsnapshotcontents"
+              ],
+              "verbs": [
+                "create",
+                "get",
+                "list",
+                "watch",
+                "update",
+                "delete",
+                "patch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "groupsnapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumegroupsnapshotcontents/status"
+              ],
+              "verbs": [
+                "patch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "groupsnapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumegroupsnapshots"
+              ],
+              "verbs": [
+                "get",
+                "list",
+                "watch",
+                "update",
+                "patch"
+              ]
+            },
+            {
+              "apiGroups": [
+                "groupsnapshot.storage.k8s.io"
+              ],
+              "resources": [
+                "volumegroupsnapshots/status"
+              ],
+              "verbs": [
+                "update",
+                "patch"
+              ]
+            }
+          ],
+          "spec": null,
+          "subjects": null,
+          "uid": "42d58083-2c50-4cfb-8fff-dcf36b817838"
+        },
+        "ClusterRoleBinding//kubeauto-snapshot-controller-role": {
+          "roleRef": {
+            "apiGroup": "rbac.authorization.k8s.io",
+            "kind": "ClusterRole",
+            "name": "kubeauto-snapshot-controller-runner"
+          },
+          "rules": null,
+          "spec": null,
+          "subjects": [
+            {
+              "kind": "ServiceAccount",
+              "name": "kubeauto-snapshot-controller",
+              "namespace": "kube-system"
+            }
+          ],
+          "uid": "8a8b446a-6d8a-4631-b4d2-8acf5529efd4"
+        },
+        "CustomResourceDefinition//volumesnapshotclasses.snapshot.storage.k8s.io": {
+          "roleRef": null,
+          "rules": null,
+          "spec": {
+            "conversion": {
+              "strategy": "None"
+            },
+            "group": "snapshot.storage.k8s.io",
+            "names": {
+              "kind": "VolumeSnapshotClass",
+              "listKind": "VolumeSnapshotClassList",
+              "plural": "volumesnapshotclasses",
+              "shortNames": [
+                "vsclass",
+                "vsclasses"
+              ],
+              "singular": "volumesnapshotclass"
+            },
+            "scope": "Cluster",
+            "versions": [
+              {
+                "additionalPrinterColumns": [
+                  {
+                    "jsonPath": ".driver",
+                    "name": "Driver",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Determines whether a VolumeSnapshotContent created through the VolumeSnapshotClass should be deleted when its bound VolumeSnapshot is deleted.",
+                    "jsonPath": ".deletionPolicy",
+                    "name": "DeletionPolicy",
+                    "type": "string"
+                  },
+                  {
+                    "jsonPath": ".metadata.creationTimestamp",
+                    "name": "Age",
+                    "type": "date"
+                  }
+                ],
+                "name": "v1",
+                "schema": {
+                  "openAPIV3Schema": {
+                    "description": "VolumeSnapshotClass specifies parameters that a underlying storage system uses when\ncreating a volume snapshot. A specific VolumeSnapshotClass is used by specifying its\nname in a VolumeSnapshot object.\nVolumeSnapshotClasses are non-namespaced",
+                    "properties": {
+                      "apiVersion": {
+                        "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                        "type": "string"
+                      },
+                      "deletionPolicy": {
+                        "description": "deletionPolicy determines whether a VolumeSnapshotContent created through\nthe VolumeSnapshotClass should be deleted when its bound VolumeSnapshot is deleted.\nSupported values are \"Retain\" and \"Delete\".\n\"Retain\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are kept.\n\"Delete\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are deleted.\nRequired.",
+                        "enum": [
+                          "Delete",
+                          "Retain"
+                        ],
+                        "type": "string"
+                      },
+                      "driver": {
+                        "description": "driver is the name of the storage driver that handles this VolumeSnapshotClass.\nRequired.",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object"
+                      },
+                      "parameters": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "parameters is a key-value map with storage driver specific parameters for creating snapshots.\nThese values are opaque to Kubernetes.",
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "deletionPolicy",
+                      "driver"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "served": true,
+                "storage": true,
+                "subresources": {}
+              },
+              {
+                "additionalPrinterColumns": [
+                  {
+                    "jsonPath": ".driver",
+                    "name": "Driver",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Determines whether a VolumeSnapshotContent created through the VolumeSnapshotClass should be deleted when its bound VolumeSnapshot is deleted.",
+                    "jsonPath": ".deletionPolicy",
+                    "name": "DeletionPolicy",
+                    "type": "string"
+                  },
+                  {
+                    "jsonPath": ".metadata.creationTimestamp",
+                    "name": "Age",
+                    "type": "date"
+                  }
+                ],
+                "deprecated": true,
+                "deprecationWarning": "snapshot.storage.k8s.io/v1beta1 VolumeSnapshotClass is deprecated; use snapshot.storage.k8s.io/v1 VolumeSnapshotClass",
+                "name": "v1beta1",
+                "schema": {
+                  "openAPIV3Schema": {
+                    "description": "VolumeSnapshotClass specifies parameters that a underlying storage system uses when creating a volume snapshot. A specific VolumeSnapshotClass is used by specifying its name in a VolumeSnapshot object. VolumeSnapshotClasses are non-namespaced",
+                    "properties": {
+                      "apiVersion": {
+                        "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                        "type": "string"
+                      },
+                      "deletionPolicy": {
+                        "description": "deletionPolicy determines whether a VolumeSnapshotContent created through the VolumeSnapshotClass should be deleted when its bound VolumeSnapshot is deleted. Supported values are \"Retain\" and \"Delete\". \"Retain\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are kept. \"Delete\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are deleted. Required.",
+                        "enum": [
+                          "Delete",
+                          "Retain"
+                        ],
+                        "type": "string"
+                      },
+                      "driver": {
+                        "description": "driver is the name of the storage driver that handles this VolumeSnapshotClass. Required.",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                        "type": "string"
+                      },
+                      "parameters": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "parameters is a key-value map with storage driver specific parameters for creating snapshots. These values are opaque to Kubernetes.",
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "deletionPolicy",
+                      "driver"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "served": false,
+                "storage": false,
+                "subresources": {}
+              }
+            ]
+          },
+          "subjects": null,
+          "uid": "3e6cebb7-d078-40d4-8b8a-66a89d0c0a93"
+        },
+        "CustomResourceDefinition//volumesnapshotcontents.snapshot.storage.k8s.io": {
+          "roleRef": null,
+          "rules": null,
+          "spec": {
+            "conversion": {
+              "strategy": "None"
+            },
+            "group": "snapshot.storage.k8s.io",
+            "names": {
+              "kind": "VolumeSnapshotContent",
+              "listKind": "VolumeSnapshotContentList",
+              "plural": "volumesnapshotcontents",
+              "shortNames": [
+                "vsc",
+                "vscs"
+              ],
+              "singular": "volumesnapshotcontent"
+            },
+            "scope": "Cluster",
+            "versions": [
+              {
+                "additionalPrinterColumns": [
+                  {
+                    "description": "Indicates if the snapshot is ready to be used to restore a volume.",
+                    "jsonPath": ".status.readyToUse",
+                    "name": "ReadyToUse",
+                    "type": "boolean"
+                  },
+                  {
+                    "description": "Represents the complete size of the snapshot in bytes",
+                    "jsonPath": ".status.restoreSize",
+                    "name": "RestoreSize",
+                    "type": "integer"
+                  },
+                  {
+                    "description": "Determines whether this VolumeSnapshotContent and its physical snapshot on the underlying storage system should be deleted when its bound VolumeSnapshot is deleted.",
+                    "jsonPath": ".spec.deletionPolicy",
+                    "name": "DeletionPolicy",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the CSI driver used to create the physical snapshot on the underlying storage system.",
+                    "jsonPath": ".spec.driver",
+                    "name": "Driver",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the VolumeSnapshotClass to which this snapshot belongs.",
+                    "jsonPath": ".spec.volumeSnapshotClassName",
+                    "name": "VolumeSnapshotClass",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the VolumeSnapshot object to which this VolumeSnapshotContent object is bound.",
+                    "jsonPath": ".spec.volumeSnapshotRef.name",
+                    "name": "VolumeSnapshot",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Namespace of the VolumeSnapshot object to which this VolumeSnapshotContent object is bound.",
+                    "jsonPath": ".spec.volumeSnapshotRef.namespace",
+                    "name": "VolumeSnapshotNamespace",
+                    "type": "string"
+                  },
+                  {
+                    "jsonPath": ".metadata.creationTimestamp",
+                    "name": "Age",
+                    "type": "date"
+                  }
+                ],
+                "name": "v1",
+                "schema": {
+                  "openAPIV3Schema": {
+                    "description": "VolumeSnapshotContent represents the actual \"on-disk\" snapshot object in the\nunderlying storage system",
+                    "properties": {
+                      "apiVersion": {
+                        "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object"
+                      },
+                      "spec": {
+                        "description": "spec defines properties of a VolumeSnapshotContent created by the underlying storage system.\nRequired.",
+                        "properties": {
+                          "deletionPolicy": {
+                            "description": "deletionPolicy determines whether this VolumeSnapshotContent and its physical snapshot on\nthe underlying storage system should be deleted when its bound VolumeSnapshot is deleted.\nSupported values are \"Retain\" and \"Delete\".\n\"Retain\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are kept.\n\"Delete\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are deleted.\nFor dynamically provisioned snapshots, this field will automatically be filled in by the\nCSI snapshotter sidecar with the \"DeletionPolicy\" field defined in the corresponding\nVolumeSnapshotClass.\nFor pre-existing snapshots, users MUST specify this field when creating the\n VolumeSnapshotContent object.\nRequired.",
+                            "enum": [
+                              "Delete",
+                              "Retain"
+                            ],
+                            "type": "string"
+                          },
+                          "driver": {
+                            "description": "driver is the name of the CSI driver used to create the physical snapshot on\nthe underlying storage system.\nThis MUST be the same as the name returned by the CSI GetPluginName() call for\nthat driver.\nRequired.",
+                            "type": "string"
+                          },
+                          "source": {
+                            "description": "source specifies whether the snapshot is (or should be) dynamically provisioned\nor already exists, and just requires a Kubernetes object representation.\nThis field is immutable after creation.\nRequired.",
+                            "properties": {
+                              "snapshotHandle": {
+                                "description": "snapshotHandle specifies the CSI \"snapshot_id\" of a pre-existing snapshot on\nthe underlying storage system for which a Kubernetes object representation\nwas (or should be) created.\nThis field is immutable.",
+                                "type": "string",
+                                "x-kubernetes-validations": [
+                                  {
+                                    "message": "snapshotHandle is immutable",
+                                    "rule": "self == oldSelf"
+                                  }
+                                ]
+                              },
+                              "volumeHandle": {
+                                "description": "volumeHandle specifies the CSI \"volume_id\" of the volume from which a snapshot\nshould be dynamically taken from.\nThis field is immutable.",
+                                "type": "string",
+                                "x-kubernetes-validations": [
+                                  {
+                                    "message": "volumeHandle is immutable",
+                                    "rule": "self == oldSelf"
+                                  }
+                                ]
+                              }
+                            },
+                            "type": "object",
+                            "x-kubernetes-validations": [
+                              {
+                                "message": "volumeHandle is required once set",
+                                "rule": "!has(oldSelf.volumeHandle) || has(self.volumeHandle)"
+                              },
+                              {
+                                "message": "snapshotHandle is required once set",
+                                "rule": "!has(oldSelf.snapshotHandle) || has(self.snapshotHandle)"
+                              },
+                              {
+                                "message": "exactly one of volumeHandle and snapshotHandle must be set",
+                                "rule": "(has(self.volumeHandle) && !has(self.snapshotHandle)) || (!has(self.volumeHandle) && has(self.snapshotHandle))"
+                              }
+                            ]
+                          },
+                          "sourceVolumeMode": {
+                            "description": "SourceVolumeMode is the mode of the volume whose snapshot is taken.\nCan be either \u201cFilesystem\u201d or \u201cBlock\u201d.\nIf not specified, it indicates the source volume's mode is unknown.\nThis field is immutable.\nThis field is an alpha field.",
+                            "type": "string",
+                            "x-kubernetes-validations": [
+                              {
+                                "message": "sourceVolumeMode is immutable",
+                                "rule": "self == oldSelf"
+                              }
+                            ]
+                          },
+                          "volumeSnapshotClassName": {
+                            "description": "name of the VolumeSnapshotClass from which this snapshot was (or will be)\ncreated.\nNote that after provisioning, the VolumeSnapshotClass may be deleted or\nrecreated with different set of values, and as such, should not be referenced\npost-snapshot creation.",
+                            "type": "string"
+                          },
+                          "volumeSnapshotRef": {
+                            "description": "volumeSnapshotRef specifies the VolumeSnapshot object to which this\nVolumeSnapshotContent object is bound.\nVolumeSnapshot.Spec.VolumeSnapshotContentName field must reference to\nthis VolumeSnapshotContent's name for the bidirectional binding to be valid.\nFor a pre-existing VolumeSnapshotContent object, name and namespace of the\nVolumeSnapshot object MUST be provided for binding to happen.\nThis field is immutable after creation.\nRequired.",
+                            "properties": {
+                              "apiVersion": {
+                                "description": "API version of the referent.",
+                                "type": "string"
+                              },
+                              "fieldPath": {
+                                "description": "If referring to a piece of an object instead of an entire object, this string\nshould contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].\nFor example, if the object reference is to a container within a pod, this would take on a value like:\n\"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered\nthe event) or if no container name is specified \"spec.containers[2]\" (container with\nindex 2 in this pod). This syntax is chosen only to have some well-defined way of\nreferencing a part of an object.\nTODO: this design is not final and this field is subject to change in the future.",
+                                "type": "string"
+                              },
+                              "kind": {
+                                "description": "Kind of the referent.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                                "type": "string"
+                              },
+                              "name": {
+                                "description": "Name of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                "type": "string"
+                              },
+                              "namespace": {
+                                "description": "Namespace of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+                                "type": "string"
+                              },
+                              "resourceVersion": {
+                                "description": "Specific resourceVersion to which this reference is made, if any.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+                                "type": "string"
+                              },
+                              "uid": {
+                                "description": "UID of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object",
+                            "x-kubernetes-map-type": "atomic",
+                            "x-kubernetes-validations": [
+                              {
+                                "message": "both spec.volumeSnapshotRef.name and spec.volumeSnapshotRef.namespace must be set",
+                                "rule": "has(self.name) && has(self.__namespace__)"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "deletionPolicy",
+                          "driver",
+                          "source",
+                          "volumeSnapshotRef"
+                        ],
+                        "type": "object",
+                        "x-kubernetes-validations": [
+                          {
+                            "message": "sourceVolumeMode is required once set",
+                            "rule": "!has(oldSelf.sourceVolumeMode) || has(self.sourceVolumeMode)"
+                          }
+                        ]
+                      },
+                      "status": {
+                        "description": "status represents the current information of a snapshot.",
+                        "properties": {
+                          "creationTime": {
+                            "description": "creationTime is the timestamp when the point-in-time snapshot is taken\nby the underlying storage system.\nIn dynamic snapshot creation case, this field will be filled in by the\nCSI snapshotter sidecar with the \"creation_time\" value returned from CSI\n\"CreateSnapshot\" gRPC call.\nFor a pre-existing snapshot, this field will be filled with the \"creation_time\"\nvalue returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it.\nIf not specified, it indicates the creation time is unknown.\nThe format of this field is a Unix nanoseconds time encoded as an int64.\nOn Unix, the command `date +%s%N` returns the current time in nanoseconds\nsince 1970-01-01 00:00:00 UTC.",
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "error": {
+                            "description": "error is the last observed error during snapshot creation, if any.\nUpon success after retry, this error field will be cleared.",
+                            "properties": {
+                              "message": {
+                                "description": "message is a string detailing the encountered error during snapshot\ncreation if specified.\nNOTE: message may be logged, and it should not contain sensitive\ninformation.",
+                                "type": "string"
+                              },
+                              "time": {
+                                "description": "time is the timestamp when the error was encountered.",
+                                "format": "date-time",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "readyToUse": {
+                            "description": "readyToUse indicates if a snapshot is ready to be used to restore a volume.\nIn dynamic snapshot creation case, this field will be filled in by the\nCSI snapshotter sidecar with the \"ready_to_use\" value returned from CSI\n\"CreateSnapshot\" gRPC call.\nFor a pre-existing snapshot, this field will be filled with the \"ready_to_use\"\nvalue returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it,\notherwise, this field will be set to \"True\".\nIf not specified, it means the readiness of a snapshot is unknown.",
+                            "type": "boolean"
+                          },
+                          "restoreSize": {
+                            "description": "restoreSize represents the complete size of the snapshot in bytes.\nIn dynamic snapshot creation case, this field will be filled in by the\nCSI snapshotter sidecar with the \"size_bytes\" value returned from CSI\n\"CreateSnapshot\" gRPC call.\nFor a pre-existing snapshot, this field will be filled with the \"size_bytes\"\nvalue returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it.\nWhen restoring a volume from this snapshot, the size of the volume MUST NOT\nbe smaller than the restoreSize if it is specified, otherwise the restoration will fail.\nIf not specified, it indicates that the size is unknown.",
+                            "format": "int64",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "snapshotHandle": {
+                            "description": "snapshotHandle is the CSI \"snapshot_id\" of a snapshot on the underlying storage system.\nIf not specified, it indicates that dynamic snapshot creation has either failed\nor it is still in progress.",
+                            "type": "string"
+                          },
+                          "volumeGroupSnapshotHandle": {
+                            "description": "VolumeGroupSnapshotHandle is the CSI \"group_snapshot_id\" of a group snapshot\non the underlying storage system.",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "spec"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "served": true,
+                "storage": true,
+                "subresources": {
+                  "status": {}
+                }
+              },
+              {
+                "additionalPrinterColumns": [
+                  {
+                    "description": "Indicates if the snapshot is ready to be used to restore a volume.",
+                    "jsonPath": ".status.readyToUse",
+                    "name": "ReadyToUse",
+                    "type": "boolean"
+                  },
+                  {
+                    "description": "Represents the complete size of the snapshot in bytes",
+                    "jsonPath": ".status.restoreSize",
+                    "name": "RestoreSize",
+                    "type": "integer"
+                  },
+                  {
+                    "description": "Determines whether this VolumeSnapshotContent and its physical snapshot on the underlying storage system should be deleted when its bound VolumeSnapshot is deleted.",
+                    "jsonPath": ".spec.deletionPolicy",
+                    "name": "DeletionPolicy",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the CSI driver used to create the physical snapshot on the underlying storage system.",
+                    "jsonPath": ".spec.driver",
+                    "name": "Driver",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the VolumeSnapshotClass to which this snapshot belongs.",
+                    "jsonPath": ".spec.volumeSnapshotClassName",
+                    "name": "VolumeSnapshotClass",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the VolumeSnapshot object to which this VolumeSnapshotContent object is bound.",
+                    "jsonPath": ".spec.volumeSnapshotRef.name",
+                    "name": "VolumeSnapshot",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Namespace of the VolumeSnapshot object to which this VolumeSnapshotContent object is bound.",
+                    "jsonPath": ".spec.volumeSnapshotRef.namespace",
+                    "name": "VolumeSnapshotNamespace",
+                    "type": "string"
+                  },
+                  {
+                    "jsonPath": ".metadata.creationTimestamp",
+                    "name": "Age",
+                    "type": "date"
+                  }
+                ],
+                "deprecated": true,
+                "deprecationWarning": "snapshot.storage.k8s.io/v1beta1 VolumeSnapshotContent is deprecated; use snapshot.storage.k8s.io/v1 VolumeSnapshotContent",
+                "name": "v1beta1",
+                "schema": {
+                  "openAPIV3Schema": {
+                    "description": "VolumeSnapshotContent represents the actual \"on-disk\" snapshot object in the underlying storage system",
+                    "properties": {
+                      "apiVersion": {
+                        "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                        "type": "string"
+                      },
+                      "spec": {
+                        "description": "spec defines properties of a VolumeSnapshotContent created by the underlying storage system. Required.",
+                        "properties": {
+                          "deletionPolicy": {
+                            "description": "deletionPolicy determines whether this VolumeSnapshotContent and its physical snapshot on the underlying storage system should be deleted when its bound VolumeSnapshot is deleted. Supported values are \"Retain\" and \"Delete\". \"Retain\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are kept. \"Delete\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are deleted. For dynamically provisioned snapshots, this field will automatically be filled in by the CSI snapshotter sidecar with the \"DeletionPolicy\" field defined in the corresponding VolumeSnapshotClass. For pre-existing snapshots, users MUST specify this field when creating the  VolumeSnapshotContent object. Required.",
+                            "enum": [
+                              "Delete",
+                              "Retain"
+                            ],
+                            "type": "string"
+                          },
+                          "driver": {
+                            "description": "driver is the name of the CSI driver used to create the physical snapshot on the underlying storage system. This MUST be the same as the name returned by the CSI GetPluginName() call for that driver. Required.",
+                            "type": "string"
+                          },
+                          "source": {
+                            "description": "source specifies whether the snapshot is (or should be) dynamically provisioned or already exists, and just requires a Kubernetes object representation. This field is immutable after creation. Required.",
+                            "properties": {
+                              "snapshotHandle": {
+                                "description": "snapshotHandle specifies the CSI \"snapshot_id\" of a pre-existing snapshot on the underlying storage system for which a Kubernetes object representation was (or should be) created. This field is immutable.",
+                                "type": "string"
+                              },
+                              "volumeHandle": {
+                                "description": "volumeHandle specifies the CSI \"volume_id\" of the volume from which a snapshot should be dynamically taken from. This field is immutable.",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "volumeSnapshotClassName": {
+                            "description": "name of the VolumeSnapshotClass from which this snapshot was (or will be) created. Note that after provisioning, the VolumeSnapshotClass may be deleted or recreated with different set of values, and as such, should not be referenced post-snapshot creation.",
+                            "type": "string"
+                          },
+                          "volumeSnapshotRef": {
+                            "description": "volumeSnapshotRef specifies the VolumeSnapshot object to which this VolumeSnapshotContent object is bound. VolumeSnapshot.Spec.VolumeSnapshotContentName field must reference to this VolumeSnapshotContent's name for the bidirectional binding to be valid. For a pre-existing VolumeSnapshotContent object, name and namespace of the VolumeSnapshot object MUST be provided for binding to happen. This field is immutable after creation. Required.",
+                            "properties": {
+                              "apiVersion": {
+                                "description": "API version of the referent.",
+                                "type": "string"
+                              },
+                              "fieldPath": {
+                                "description": "If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: \"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered the event) or if no container name is specified \"spec.containers[2]\" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object. TODO: this design is not final and this field is subject to change in the future.",
+                                "type": "string"
+                              },
+                              "kind": {
+                                "description": "Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                                "type": "string"
+                              },
+                              "name": {
+                                "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                                "type": "string"
+                              },
+                              "namespace": {
+                                "description": "Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+                                "type": "string"
+                              },
+                              "resourceVersion": {
+                                "description": "Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+                                "type": "string"
+                              },
+                              "uid": {
+                                "description": "UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "deletionPolicy",
+                          "driver",
+                          "source",
+                          "volumeSnapshotRef"
+                        ],
+                        "type": "object"
+                      },
+                      "status": {
+                        "description": "status represents the current information of a snapshot.",
+                        "properties": {
+                          "creationTime": {
+                            "description": "creationTime is the timestamp when the point-in-time snapshot is taken by the underlying storage system. In dynamic snapshot creation case, this field will be filled in by the CSI snapshotter sidecar with the \"creation_time\" value returned from CSI \"CreateSnapshot\" gRPC call. For a pre-existing snapshot, this field will be filled with the \"creation_time\" value returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it. If not specified, it indicates the creation time is unknown. The format of this field is a Unix nanoseconds time encoded as an int64. On Unix, the command `date +%s%N` returns the current time in nanoseconds since 1970-01-01 00:00:00 UTC.",
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "error": {
+                            "description": "error is the last observed error during snapshot creation, if any. Upon success after retry, this error field will be cleared.",
+                            "properties": {
+                              "message": {
+                                "description": "message is a string detailing the encountered error during snapshot creation if specified. NOTE: message may be logged, and it should not contain sensitive information.",
+                                "type": "string"
+                              },
+                              "time": {
+                                "description": "time is the timestamp when the error was encountered.",
+                                "format": "date-time",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "readyToUse": {
+                            "description": "readyToUse indicates if a snapshot is ready to be used to restore a volume. In dynamic snapshot creation case, this field will be filled in by the CSI snapshotter sidecar with the \"ready_to_use\" value returned from CSI \"CreateSnapshot\" gRPC call. For a pre-existing snapshot, this field will be filled with the \"ready_to_use\" value returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it, otherwise, this field will be set to \"True\". If not specified, it means the readiness of a snapshot is unknown.",
+                            "type": "boolean"
+                          },
+                          "restoreSize": {
+                            "description": "restoreSize represents the complete size of the snapshot in bytes. In dynamic snapshot creation case, this field will be filled in by the CSI snapshotter sidecar with the \"size_bytes\" value returned from CSI \"CreateSnapshot\" gRPC call. For a pre-existing snapshot, this field will be filled with the \"size_bytes\" value returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it. When restoring a volume from this snapshot, the size of the volume MUST NOT be smaller than the restoreSize if it is specified, otherwise the restoration will fail. If not specified, it indicates that the size is unknown.",
+                            "format": "int64",
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "snapshotHandle": {
+                            "description": "snapshotHandle is the CSI \"snapshot_id\" of a snapshot on the underlying storage system. If not specified, it indicates that dynamic snapshot creation has either failed or it is still in progress.",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "spec"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "served": false,
+                "storage": false,
+                "subresources": {
+                  "status": {}
+                }
+              }
+            ]
+          },
+          "subjects": null,
+          "uid": "bf597027-227e-486b-aaa2-5d9c71c9d2ba"
+        },
+        "CustomResourceDefinition//volumesnapshots.snapshot.storage.k8s.io": {
+          "roleRef": null,
+          "rules": null,
+          "spec": {
+            "conversion": {
+              "strategy": "None"
+            },
+            "group": "snapshot.storage.k8s.io",
+            "names": {
+              "kind": "VolumeSnapshot",
+              "listKind": "VolumeSnapshotList",
+              "plural": "volumesnapshots",
+              "shortNames": [
+                "vs"
+              ],
+              "singular": "volumesnapshot"
+            },
+            "scope": "Namespaced",
+            "versions": [
+              {
+                "additionalPrinterColumns": [
+                  {
+                    "description": "Indicates if the snapshot is ready to be used to restore a volume.",
+                    "jsonPath": ".status.readyToUse",
+                    "name": "ReadyToUse",
+                    "type": "boolean"
+                  },
+                  {
+                    "description": "If a new snapshot needs to be created, this contains the name of the source PVC from which this snapshot was (or will be) created.",
+                    "jsonPath": ".spec.source.persistentVolumeClaimName",
+                    "name": "SourcePVC",
+                    "type": "string"
+                  },
+                  {
+                    "description": "If a snapshot already exists, this contains the name of the existing VolumeSnapshotContent object representing the existing snapshot.",
+                    "jsonPath": ".spec.source.volumeSnapshotContentName",
+                    "name": "SourceSnapshotContent",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Represents the minimum size of volume required to rehydrate from this snapshot.",
+                    "jsonPath": ".status.restoreSize",
+                    "name": "RestoreSize",
+                    "type": "string"
+                  },
+                  {
+                    "description": "The name of the VolumeSnapshotClass requested by the VolumeSnapshot.",
+                    "jsonPath": ".spec.volumeSnapshotClassName",
+                    "name": "SnapshotClass",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the VolumeSnapshotContent object to which the VolumeSnapshot object intends to bind to. Please note that verification of binding actually requires checking both VolumeSnapshot and VolumeSnapshotContent to ensure both are pointing at each other. Binding MUST be verified prior to usage of this object.",
+                    "jsonPath": ".status.boundVolumeSnapshotContentName",
+                    "name": "SnapshotContent",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Timestamp when the point-in-time snapshot was taken by the underlying storage system.",
+                    "jsonPath": ".status.creationTime",
+                    "name": "CreationTime",
+                    "type": "date"
+                  },
+                  {
+                    "jsonPath": ".metadata.creationTimestamp",
+                    "name": "Age",
+                    "type": "date"
+                  }
+                ],
+                "name": "v1",
+                "schema": {
+                  "openAPIV3Schema": {
+                    "description": "VolumeSnapshot is a user's request for either creating a point-in-time\nsnapshot of a persistent volume, or binding to a pre-existing snapshot.",
+                    "properties": {
+                      "apiVersion": {
+                        "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object"
+                      },
+                      "spec": {
+                        "description": "spec defines the desired characteristics of a snapshot requested by a user.\nMore info: https://kubernetes.io/docs/concepts/storage/volume-snapshots#volumesnapshots\nRequired.",
+                        "properties": {
+                          "source": {
+                            "description": "source specifies where a snapshot will be created from.\nThis field is immutable after creation.\nRequired.",
+                            "properties": {
+                              "persistentVolumeClaimName": {
+                                "description": "persistentVolumeClaimName specifies the name of the PersistentVolumeClaim\nobject representing the volume from which a snapshot should be created.\nThis PVC is assumed to be in the same namespace as the VolumeSnapshot\nobject.\nThis field should be set if the snapshot does not exists, and needs to be\ncreated.\nThis field is immutable.",
+                                "type": "string",
+                                "x-kubernetes-validations": [
+                                  {
+                                    "message": "persistentVolumeClaimName is immutable",
+                                    "rule": "self == oldSelf"
+                                  }
+                                ]
+                              },
+                              "volumeSnapshotContentName": {
+                                "description": "volumeSnapshotContentName specifies the name of a pre-existing VolumeSnapshotContent\nobject representing an existing volume snapshot.\nThis field should be set if the snapshot already exists and only needs a representation in Kubernetes.\nThis field is immutable.",
+                                "type": "string",
+                                "x-kubernetes-validations": [
+                                  {
+                                    "message": "volumeSnapshotContentName is immutable",
+                                    "rule": "self == oldSelf"
+                                  }
+                                ]
+                              }
+                            },
+                            "type": "object",
+                            "x-kubernetes-validations": [
+                              {
+                                "message": "persistentVolumeClaimName is required once set",
+                                "rule": "!has(oldSelf.persistentVolumeClaimName) || has(self.persistentVolumeClaimName)"
+                              },
+                              {
+                                "message": "volumeSnapshotContentName is required once set",
+                                "rule": "!has(oldSelf.volumeSnapshotContentName) || has(self.volumeSnapshotContentName)"
+                              },
+                              {
+                                "message": "exactly one of volumeSnapshotContentName and persistentVolumeClaimName must be set",
+                                "rule": "(has(self.volumeSnapshotContentName) && !has(self.persistentVolumeClaimName)) || (!has(self.volumeSnapshotContentName) && has(self.persistentVolumeClaimName))"
+                              }
+                            ]
+                          },
+                          "volumeSnapshotClassName": {
+                            "description": "VolumeSnapshotClassName is the name of the VolumeSnapshotClass\nrequested by the VolumeSnapshot.\nVolumeSnapshotClassName may be left nil to indicate that the default\nSnapshotClass should be used.\nA given cluster may have multiple default Volume SnapshotClasses: one\ndefault per CSI Driver. If a VolumeSnapshot does not specify a SnapshotClass,\nVolumeSnapshotSource will be checked to figure out what the associated\nCSI Driver is, and the default VolumeSnapshotClass associated with that\nCSI Driver will be used. If more than one VolumeSnapshotClass exist for\na given CSI Driver and more than one have been marked as default,\nCreateSnapshot will fail and generate an event.\nEmpty string is not allowed for this field.",
+                            "type": "string",
+                            "x-kubernetes-validations": [
+                              {
+                                "message": "volumeSnapshotClassName must not be the empty string when set",
+                                "rule": "size(self) > 0"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "source"
+                        ],
+                        "type": "object"
+                      },
+                      "status": {
+                        "description": "status represents the current information of a snapshot.\nConsumers must verify binding between VolumeSnapshot and\nVolumeSnapshotContent objects is successful (by validating that both\nVolumeSnapshot and VolumeSnapshotContent point at each other) before\nusing this object.",
+                        "properties": {
+                          "boundVolumeSnapshotContentName": {
+                            "description": "boundVolumeSnapshotContentName is the name of the VolumeSnapshotContent\nobject to which this VolumeSnapshot object intends to bind to.\nIf not specified, it indicates that the VolumeSnapshot object has not been\nsuccessfully bound to a VolumeSnapshotContent object yet.\nNOTE: To avoid possible security issues, consumers must verify binding between\nVolumeSnapshot and VolumeSnapshotContent objects is successful (by validating that\nboth VolumeSnapshot and VolumeSnapshotContent point at each other) before using\nthis object.",
+                            "type": "string"
+                          },
+                          "creationTime": {
+                            "description": "creationTime is the timestamp when the point-in-time snapshot is taken\nby the underlying storage system.\nIn dynamic snapshot creation case, this field will be filled in by the\nsnapshot controller with the \"creation_time\" value returned from CSI\n\"CreateSnapshot\" gRPC call.\nFor a pre-existing snapshot, this field will be filled with the \"creation_time\"\nvalue returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it.\nIf not specified, it may indicate that the creation time of the snapshot is unknown.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "error": {
+                            "description": "error is the last observed error during snapshot creation, if any.\nThis field could be helpful to upper level controllers(i.e., application controller)\nto decide whether they should continue on waiting for the snapshot to be created\nbased on the type of error reported.\nThe snapshot controller will keep retrying when an error occurs during the\nsnapshot creation. Upon success, this error field will be cleared.",
+                            "properties": {
+                              "message": {
+                                "description": "message is a string detailing the encountered error during snapshot\ncreation if specified.\nNOTE: message may be logged, and it should not contain sensitive\ninformation.",
+                                "type": "string"
+                              },
+                              "time": {
+                                "description": "time is the timestamp when the error was encountered.",
+                                "format": "date-time",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "readyToUse": {
+                            "description": "readyToUse indicates if the snapshot is ready to be used to restore a volume.\nIn dynamic snapshot creation case, this field will be filled in by the\nsnapshot controller with the \"ready_to_use\" value returned from CSI\n\"CreateSnapshot\" gRPC call.\nFor a pre-existing snapshot, this field will be filled with the \"ready_to_use\"\nvalue returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it,\notherwise, this field will be set to \"True\".\nIf not specified, it means the readiness of a snapshot is unknown.",
+                            "type": "boolean"
+                          },
+                          "restoreSize": {
+                            "description": "restoreSize represents the minimum size of volume required to create a volume\nfrom this snapshot.\nIn dynamic snapshot creation case, this field will be filled in by the\nsnapshot controller with the \"size_bytes\" value returned from CSI\n\"CreateSnapshot\" gRPC call.\nFor a pre-existing snapshot, this field will be filled with the \"size_bytes\"\nvalue returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it.\nWhen restoring a volume from this snapshot, the size of the volume MUST NOT\nbe smaller than the restoreSize if it is specified, otherwise the restoration will fail.\nIf not specified, it indicates that the size is unknown.",
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "type": "string",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "volumeGroupSnapshotName": {
+                            "description": "VolumeGroupSnapshotName is the name of the VolumeGroupSnapshot of which this\nVolumeSnapshot is a part of.",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "spec"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "served": true,
+                "storage": true,
+                "subresources": {
+                  "status": {}
+                }
+              },
+              {
+                "additionalPrinterColumns": [
+                  {
+                    "description": "Indicates if the snapshot is ready to be used to restore a volume.",
+                    "jsonPath": ".status.readyToUse",
+                    "name": "ReadyToUse",
+                    "type": "boolean"
+                  },
+                  {
+                    "description": "If a new snapshot needs to be created, this contains the name of the source PVC from which this snapshot was (or will be) created.",
+                    "jsonPath": ".spec.source.persistentVolumeClaimName",
+                    "name": "SourcePVC",
+                    "type": "string"
+                  },
+                  {
+                    "description": "If a snapshot already exists, this contains the name of the existing VolumeSnapshotContent object representing the existing snapshot.",
+                    "jsonPath": ".spec.source.volumeSnapshotContentName",
+                    "name": "SourceSnapshotContent",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Represents the minimum size of volume required to rehydrate from this snapshot.",
+                    "jsonPath": ".status.restoreSize",
+                    "name": "RestoreSize",
+                    "type": "string"
+                  },
+                  {
+                    "description": "The name of the VolumeSnapshotClass requested by the VolumeSnapshot.",
+                    "jsonPath": ".spec.volumeSnapshotClassName",
+                    "name": "SnapshotClass",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Name of the VolumeSnapshotContent object to which the VolumeSnapshot object intends to bind to. Please note that verification of binding actually requires checking both VolumeSnapshot and VolumeSnapshotContent to ensure both are pointing at each other. Binding MUST be verified prior to usage of this object.",
+                    "jsonPath": ".status.boundVolumeSnapshotContentName",
+                    "name": "SnapshotContent",
+                    "type": "string"
+                  },
+                  {
+                    "description": "Timestamp when the point-in-time snapshot was taken by the underlying storage system.",
+                    "jsonPath": ".status.creationTime",
+                    "name": "CreationTime",
+                    "type": "date"
+                  },
+                  {
+                    "jsonPath": ".metadata.creationTimestamp",
+                    "name": "Age",
+                    "type": "date"
+                  }
+                ],
+                "deprecated": true,
+                "deprecationWarning": "snapshot.storage.k8s.io/v1beta1 VolumeSnapshot is deprecated; use snapshot.storage.k8s.io/v1 VolumeSnapshot",
+                "name": "v1beta1",
+                "schema": {
+                  "openAPIV3Schema": {
+                    "description": "VolumeSnapshot is a user's request for either creating a point-in-time snapshot of a persistent volume, or binding to a pre-existing snapshot.",
+                    "properties": {
+                      "apiVersion": {
+                        "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                        "type": "string"
+                      },
+                      "spec": {
+                        "description": "spec defines the desired characteristics of a snapshot requested by a user. More info: https://kubernetes.io/docs/concepts/storage/volume-snapshots#volumesnapshots Required.",
+                        "properties": {
+                          "source": {
+                            "description": "source specifies where a snapshot will be created from. This field is immutable after creation. Required.",
+                            "properties": {
+                              "persistentVolumeClaimName": {
+                                "description": "persistentVolumeClaimName specifies the name of the PersistentVolumeClaim object representing the volume from which a snapshot should be created. This PVC is assumed to be in the same namespace as the VolumeSnapshot object. This field should be set if the snapshot does not exists, and needs to be created. This field is immutable.",
+                                "type": "string"
+                              },
+                              "volumeSnapshotContentName": {
+                                "description": "volumeSnapshotContentName specifies the name of a pre-existing VolumeSnapshotContent object representing an existing volume snapshot. This field should be set if the snapshot already exists and only needs a representation in Kubernetes. This field is immutable.",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "volumeSnapshotClassName": {
+                            "description": "VolumeSnapshotClassName is the name of the VolumeSnapshotClass requested by the VolumeSnapshot. VolumeSnapshotClassName may be left nil to indicate that the default SnapshotClass should be used. A given cluster may have multiple default Volume SnapshotClasses: one default per CSI Driver. If a VolumeSnapshot does not specify a SnapshotClass, VolumeSnapshotSource will be checked to figure out what the associated CSI Driver is, and the default VolumeSnapshotClass associated with that CSI Driver will be used. If more than one VolumeSnapshotClass exist for a given CSI Driver and more than one have been marked as default, CreateSnapshot will fail and generate an event. Empty string is not allowed for this field.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "source"
+                        ],
+                        "type": "object"
+                      },
+                      "status": {
+                        "description": "status represents the current information of a snapshot. Consumers must verify binding between VolumeSnapshot and VolumeSnapshotContent objects is successful (by validating that both VolumeSnapshot and VolumeSnapshotContent point at each other) before using this object.",
+                        "properties": {
+                          "boundVolumeSnapshotContentName": {
+                            "description": "boundVolumeSnapshotContentName is the name of the VolumeSnapshotContent object to which this VolumeSnapshot object intends to bind to. If not specified, it indicates that the VolumeSnapshot object has not been successfully bound to a VolumeSnapshotContent object yet. NOTE: To avoid possible security issues, consumers must verify binding between VolumeSnapshot and VolumeSnapshotContent objects is successful (by validating that both VolumeSnapshot and VolumeSnapshotContent point at each other) before using this object.",
+                            "type": "string"
+                          },
+                          "creationTime": {
+                            "description": "creationTime is the timestamp when the point-in-time snapshot is taken by the underlying storage system. In dynamic snapshot creation case, this field will be filled in by the snapshot controller with the \"creation_time\" value returned from CSI \"CreateSnapshot\" gRPC call. For a pre-existing snapshot, this field will be filled with the \"creation_time\" value returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it. If not specified, it may indicate that the creation time of the snapshot is unknown.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "error": {
+                            "description": "error is the last observed error during snapshot creation, if any. This field could be helpful to upper level controllers(i.e., application controller) to decide whether they should continue on waiting for the snapshot to be created based on the type of error reported. The snapshot controller will keep retrying when an error occurs during the snapshot creation. Upon success, this error field will be cleared.",
+                            "properties": {
+                              "message": {
+                                "description": "message is a string detailing the encountered error during snapshot creation if specified. NOTE: message may be logged, and it should not contain sensitive information.",
+                                "type": "string"
+                              },
+                              "time": {
+                                "description": "time is the timestamp when the error was encountered.",
+                                "format": "date-time",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "readyToUse": {
+                            "description": "readyToUse indicates if the snapshot is ready to be used to restore a volume. In dynamic snapshot creation case, this field will be filled in by the snapshot controller with the \"ready_to_use\" value returned from CSI \"CreateSnapshot\" gRPC call. For a pre-existing snapshot, this field will be filled with the \"ready_to_use\" value returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it, otherwise, this field will be set to \"True\". If not specified, it means the readiness of a snapshot is unknown.",
+                            "type": "boolean"
+                          },
+                          "restoreSize": {
+                            "description": "restoreSize represents the minimum size of volume required to create a volume from this snapshot. In dynamic snapshot creation case, this field will be filled in by the snapshot controller with the \"size_bytes\" value returned from CSI \"CreateSnapshot\" gRPC call. For a pre-existing snapshot, this field will be filled with the \"size_bytes\" value returned from the CSI \"ListSnapshots\" gRPC call if the driver supports it. When restoring a volume from this snapshot, the size of the volume MUST NOT be smaller than the restoreSize if it is specified, otherwise the restoration will fail. If not specified, it indicates that the size is unknown.",
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "type": "string",
+                            "x-kubernetes-int-or-string": true
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "spec"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "served": false,
+                "storage": false,
+                "subresources": {
+                  "status": {}
+                }
+              }
+            ]
+          },
+          "subjects": null,
+          "uid": "6915e949-0914-495d-80a5-b54b56b96df3"
+        },
+        "Deployment/kube-system/kubeauto-snapshot-controller": {
+          "roleRef": null,
+          "rules": null,
+          "spec": {
+            "minReadySeconds": 35,
+            "progressDeadlineSeconds": 600,
+            "replicas": 2,
+            "revisionHistoryLimit": 10,
+            "selector": {
+              "matchLabels": {
+                "app.kubernetes.io/name": "kubeauto-snapshot-controller"
+              }
+            },
+            "strategy": {
+              "rollingUpdate": {
+                "maxSurge": 0,
+                "maxUnavailable": 1
+              },
+              "type": "RollingUpdate"
+            },
+            "template": {
+              "metadata": {
+                "creationTimestamp": null,
+                "labels": {
+                  "app.kubernetes.io/name": "kubeauto-snapshot-controller"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "args": [
+                      "--v=5",
+                      "--leader-election=true",
+                      "--prevent-volume-mode-conversion=true"
+                    ],
+                    "image": "registry.talkschool.cn:5000/brinnatt/snapshot-controller:v8.6.0",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "kubeauto-snapshot-controller",
+                    "resources": {
+                      "limits": {
+                        "cpu": "1",
+                        "memory": "512Mi"
+                      },
+                      "requests": {
+                        "cpu": "100m",
+                        "memory": "128Mi"
+                      }
+                    },
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File"
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "kubeauto-snapshot-controller",
+                "serviceAccountName": "kubeauto-snapshot-controller",
+                "terminationGracePeriodSeconds": 30
+              }
+            }
+          },
+          "subjects": null,
+          "uid": "c1162bba-df27-43f3-a101-a7fb1954994c"
+        },
+        "Role/kube-system/kubeauto-snapshot-controller-leaderelection": {
+          "roleRef": null,
+          "rules": [
+            {
+              "apiGroups": [
+                "coordination.k8s.io"
+              ],
+              "resources": [
+                "leases"
+              ],
+              "verbs": [
+                "get",
+                "watch",
+                "list",
+                "delete",
+                "update",
+                "create"
+              ]
+            }
+          ],
+          "spec": null,
+          "subjects": null,
+          "uid": "74e830d5-705f-4840-9e07-a59c759f9a4a"
+        },
+        "RoleBinding/kube-system/kubeauto-snapshot-controller-leaderelection": {
+          "roleRef": {
+            "apiGroup": "rbac.authorization.k8s.io",
+            "kind": "Role",
+            "name": "kubeauto-snapshot-controller-leaderelection"
+          },
+          "rules": null,
+          "spec": null,
+          "subjects": [
+            {
+              "kind": "ServiceAccount",
+              "name": "kubeauto-snapshot-controller"
+            }
+          ],
+          "uid": "f4b064eb-c1e2-40f1-961a-fc261af6f1b1"
+        },
+        "ServiceAccount/kube-system/kubeauto-snapshot-controller": {
+          "roleRef": null,
+          "rules": null,
+          "spec": null,
+          "subjects": null,
+          "uid": "5abcbed0-df8c-4906-b1ad-bc1a0984fcb1"
+        }
+      }
+    },
+    "business_log_sha256": "4a03223c0d0aa1df0f7964cafe7f964184de5b2ef8046d92c7e378efc03de0c1",
+    "empty_business": true,
+    "frozen_inputs": {
+      "common/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "common/ansible_python.py": "0bb6a6592ca5b9e29810647afde9b2081b1f4601a02954c0a1eaaf08ac406478",
+      "common/constants.py": "facc38557a1b89dc11d8c5c3a3a9da061e6a14fa42020b354b40c694286df204",
+      "common/docker_jsonmessage.py": "d6460a67ba2729d3d35426419e7da0bd4ce3b8f4fa6209b7323f33d77de19f53",
+      "common/exceptions.py": "36b05998ab7ad839b6ca5de8939db8641998a0672798aafba34945bb874c64da",
+      "common/logger.py": "f6c32b179120b41f73eb32d897acba181bfd23795f58fbc4527fd3e723cac8d8",
+      "common/mirrors.py": "4df4b4f74d46ef0e8d9921e6709aad576040e9d2099687724ee2be0b4a7860f1",
+      "common/os.py": "5d41a7760cd4cde6a3b6abeba80f2e14fd96b13583610df71249007a99a591ac",
+      "common/utils.py": "7ffe847d70c6ce7d1edec83a27853147271b3e0e254ecc61b42b9678766d9580",
+      "conf/config.yml": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+      "controller/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "controller/cluster/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "controller/cluster/cli.py": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+      "kubecli.py": "1312d5d4a8a22fd7bf32c67975b4839f69e755986d862ef1587aed53c637ec98",
+      "model/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "model/cluster/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "model/cluster/models.py": "d66f520a8ed43c8800550827147f9b699c2d7624102d1813ac8613859e7d97ff",
+      "playbooks/01.prepare.yml": "6464f88cd4be12300d77b3c6a26747dacb77c5e7dca78ecd4a7fa8fee0a9264d",
+      "playbooks/02.etcd.yml": "d5c0741b025a5765b2aebe8906148f324b3144daaa0241be3d7e07965bed04f6",
+      "playbooks/03.runtime.yml": "0a87930403f03ecfeaa48b5cf89e8caa22f4650fd3204361cd9a77096a30b36a",
+      "playbooks/04.kube-master.yml": "b172e9260d029129b56b7b1ebe45d556cbba1df32792c0fb9e23a8eb0059598c",
+      "playbooks/05.kube-node.yml": "f2d5f39cb19eae7815c21a69558d112bce0833a98cd7c32b5d1c50804c8f2518",
+      "playbooks/06.network.yml": "7ab7fa6d201e029e840211350be5fe80d54ec8d2d865414fb2d757775cffc943",
+      "playbooks/07.cluster-addon.yml": "53ba5d2e2cb4830deee3927d4825a49b80402514d753f827e649ebe675a2562f",
+      "playbooks/08.ceph.yml": "46428b0c0157f81a20be0a6f8ba2ff5f5cb7437cdbe00e8ed0e808ceae58a32f",
+      "playbooks/09.longhorn.yml": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1",
+      "playbooks/10.ex-lb.yml": "ee3a060f2af2c9d348eec15be5f1718df69c5c2dc7c260930561729477101b75",
+      "playbooks/11.harbor.yml": "75bb47c2ef0c29e590da0b28344df691ca21a368f8499590ca00b05351c5964d",
+      "playbooks/21.addetcd.yml": "56fb5208a5045a8064869c7db378bd3eb246d8a88d103ef938fd0f92a2d36af7",
+      "playbooks/22.addnode.yml": "165bcb76bfc459d88c9ecd8d0651382a43d8faf79c602eb19f967dca2365a4cd",
+      "playbooks/23.addmaster.yml": "c1fb9cdf8c7433ef99c40dc449d7c69261dbc27ce2ee246bb9aea067ec53a954",
+      "playbooks/31.deletcd.yml": "b8a8f03183490ccc7d70cc208da68d8df6865a885d6273985fab98fa840466ef",
+      "playbooks/32.delnode.yml": "85c8ba1a75c7506b4c3059e76108eaa951510a7f26ecece752bb086f03f3b60d",
+      "playbooks/33.delmaster.yml": "440bd8bc053cbf1d2b8c61b1ff562fed7188a7b11a67d9e828d6065c26d29182",
+      "playbooks/90.setup.yml": "26b7f16b2069a9909e7efc0ba1950cd12fe98b759eee5dfda427164cde447635",
+      "playbooks/91.start.yml": "bc31b1754272200a16c1e01b0272e6463b798be8505304cbe4668f2d96c2d50c",
+      "playbooks/92.stop.yml": "2eff1a2dd8e306f6a8deb7c5b3d6aef77ca436eb9852490574e2ccf36025ae6a",
+      "playbooks/93.upgrade.yml": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c",
+      "playbooks/94.backup.yml": "5dec3854649b14735442231a9e6deef53e84e21ac753d337922999f244dcf9e4",
+      "playbooks/95.restore.yml": "e3084f5bb76a6bd53fc739b3223fe84be6b9a6463b6fb2e0a97f5dfbd3e2cd4f",
+      "playbooks/96.update-certs.yml": "3fcf6be46393898aed33650a24873864b240100bc3a756579caa347be6d0d179",
+      "playbooks/99.clean.yml": "cde1c77bf9f2ed52ecefd4ac0e7e63979d3960cb6f0a01d3a82eabed6079eb87",
+      "roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+      "roles/longhorn/files/block-check.py": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+      "roles/longhorn/files/block-retire.py": "0b74d4eef783c5bc352e1941562c5f96321a1d3c1473c04f31df71aa2a6ed4f6",
+      "roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+      "roles/longhorn/files/images.json": "7b6e0291d14ca3c868236b40d3c04e640a868f0bc3095b63a6542a4fd53aa2a7",
+      "roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+      "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+      "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+      "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+      "roles/longhorn/files/longhorn.py": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+      "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+      "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+      "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+      "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+      "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+      "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+      "roles/longhorn/tasks/control.yml": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+      "roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+      "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+      "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+      "runtime_hook.py": "d0afd41d907d87283228b2942f57f5bc9b7a8a054e0f14e366e452b2398d5e2d",
+      "service/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "service/cluster/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "service/cluster/docker.py": "cbb881906da54d3eefd2b3554c97513599e006cc60dd0ddf6a0ccbd529bbd396",
+      "service/cluster/downloader.py": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+      "service/cluster/manager.py": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+      "service/cluster/registry.py": "89f06daf4a56025bbaf37121802ea56f219382ad4873a39e52025dff1569b664",
+      "tests/helpers/longhorn-im-revision-adopt.py": "722881e91b5d00f4394e1d7d8a664eccedb1cf5033c9ac02d023119e23a1a724",
+      "tests/helpers/longhorn-lab.py": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c",
+      "tests/helpers/longhorn-v2-core.py": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+      "tests/helpers/longhorn-v2-dr-target-install.py": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+      "tests/helpers/longhorn-v2-dr-target.py": "e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f",
+      "tests/helpers/longhorn-v2-im-adopt.py": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+      "tests/helpers/longhorn-v2-im-adopt.sh": "9c995c8276d138de6060acd45d40ec423a80b1492adac1151e42ea76e57c1e5d",
+      "tests/helpers/longhorn-v2-install.py": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4",
+      "tests/helpers/longhorn-v2-lab.py": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+      "tests/helpers/longhorn-v2-upgrade-baseline.py": "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87"
+    },
+    "installation_healthy": true,
+    "managers": {
+      "instance-manager-9c9793167eeeab594be21836b14ec88d": {
+        "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.2",
+        "node": "longhorn-node-212",
+        "uid": "e6f1e99d-d625-4092-9264-e15853b48176"
+      },
+      "instance-manager-bdb014c2b5d62d1b54b0260d54396da3": {
+        "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.2",
+        "node": "longhorn-node-165",
+        "uid": "aad5dc92-f785-4fd2-9ea0-1f5d8704ab2f"
+      },
+      "instance-manager-f1e0757c0d9a969c37b4585afcf5ae13": {
+        "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.2",
+        "node": "longhorn-node-238",
+        "uid": "d32ca96c-cf20-4a7c-9f66-b7c54994081f"
+      }
+    },
+    "plan_sha256": "f953daa0490a77e2559f9f228421c03b60b92fe348b11848d06a1d6339876a89"
+  },
+  "instance_manager_version": "v1.12.1-kubeauto.2",
+  "overall_longhorn_delivery_pass": false,
+  "parent_status": {
+    "exit": null,
+    "failure_markers": 0,
+    "finalized": null,
+    "identity_verified": true
+  },
+  "plan_sha256": "f953daa0490a77e2559f9f228421c03b60b92fe348b11848d06a1d6339876a89",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "raw_evidence": {
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/archive-readback.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/archive-readback.stdout": "d19b6a893946c28a0de766679a5237d6fcac43cbffcf85059915d9c37652d0d8",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/frozen-inputs.json": "82eb6bd679e80971d2a838b9e4dbddbe5e1877ad1e75d4dfc07b5ff26eb6b446",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/tmp/kubeauto-longhorn-gate.pid": "63ac50f49d47295c58649ebac85e14fe79114371cf356a5f1a6ff251382ac757",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/tmp/kubeauto-longhorn-live.log": "699cec660a6405fc74ac0bac64c42b101987c2e98290e56bec52535091a9def4",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-parallel-v1.kxYVxh/v1-im-revision-2-adopt-qualification.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-parallel-v1.kxYVxh/v1-im-revision-2-adopt-qualification.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-parallel-v1.kxYVxh/v1-im-revision-2-adopt-qualification.log": "27058cc34b9f72df7814ec7f3fbf3deb54e5e6c3c2e94eec222dce0146b0a664",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-parallel-v1.kxYVxh/v1-im-revision-2-adopt-qualification.pid": "f4c625a928281071d042e07f1f7598a3611529fc7c97bd6a14338b8673e470b1",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-v2-im-adopt.z0NDV2/business.log": "4a03223c0d0aa1df0f7964cafe7f964184de5b2ef8046d92c7e378efc03de0c1",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-v2-im-adopt.z0NDV2/exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-v2-im-adopt.z0NDV2/independent-readback.json": "68bdcb853c2376461fa43de5de307a6a267a65d7cc6cd2e9520f2ba586af2a74",
+    "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/v1-adoption/raw/var/tmp/kubeauto-longhorn-v2-im-adopt.z0NDV2/independent-readback.log": "780b61ba32de5708b3da3191f8225b927f84c01f7146a6d60a8685cc147acdea"
+  },
+  "rc": 0,
+  "remote_input_verification": {
+    "count": 79,
+    "mismatches": 0
+  },
+  "schema": 1,
+  "signed_scope": "v1-im-revision-2-adopt-qualification",
+  "status": "pass",
+  "transition": {
+    "new_tag": "v1.12.1-kubeauto.2",
+    "old_tag": "v1.12.1-kubeauto.1",
+    "plan": {
+      "path": "tests/fixtures/longhorn-im-revision-2-plan.json",
+      "sha256": "f953daa0490a77e2559f9f228421c03b60b92fe348b11848d06a1d6339876a89"
+    },
+    "previous_evidence": {
+      "path": "tests/evidence/longhorn-v1-im-adopt-qualification-20261021.json",
+      "sha256": "39f2a8b85270f6932e2cd5f36eec396c85a0bdd4b7c2dedfa4de15798be687ca"
+    },
+    "publication_evidence": {
+      "path": "tests/evidence/longhorn-v2-linked-tls-rebuild-publication-20261021.json",
+      "sha256": "939012d360ebfa845769803edc0951c8f43bda1bebb8d23643dbd997275988b7"
+    }
+  },
+  "version": "1.12.1"
+}

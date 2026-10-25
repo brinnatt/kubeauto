@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-31",
+  "date": "2026-10-19",
+  "status": "failed",
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-encryption </dev/null",
+  "durable_pid": 2447138,
+  "rc": 1,
+  "first_failure": "TimeoutError: fixture wait: encryption-refused-wrong (raw Block)",
+  "cause": "refusal_event accepted FailedMount only; raw Block produces FailedMapVolume and already rejected the incorrect passphrase. Match native reason by volume mode.",
+  "cleanup": {
+    "original_key_restored": true,
+    "business_fixtures": true,
+    "transport": true,
+    "original_installation_healthy": true
+  },
+  "official_source": "Kubernetes v1.33.6 pkg/volume/util/operationexecutor/operation_generator.go GenerateMountVolumeFunc vs GenerateMapVolumeFunc",
+  "event": {
+    "pod_uid": "a39a9ae3-ebfd-41de-9deb-6ec9e7e958c7",
+    "event_uid": "0bc50929-facc-42bc-a98f-7625d3ee1756",
+    "reason": "FailedMapVolume",
+    "native_error": "No key available with this passphrase."
+  },
+  "repair": {
+    "scope": "test-gate only; no product change",
+    "red_contract": "mode-specific reason, original Pod UID and native wrong/missing key error; reject other mode and unrelated errors",
+    "next": "level2 static preflight, then block-only level3, then backup-only; all-phase LONGHORN-31 and final clean full run remain mandatory"
+  },
+  "files": {
+    "logs/longhorn-cases/encryption-20261019-152655/classification.json": "961851188c3f4769cd0f7618e62b94327872d249f05f6470609c786fa4152fb0",
+    "logs/longhorn-cases/encryption-20261019-152655/durable-status.txt": "89361a5755faaa36305e6fb2d6ff9e68b384f1f803e8ad23725673431c80357c",
+    "logs/longhorn-cases/encryption-20261019-152655/event-red.log": "e54bb6bfce33b4ac73466fad4373914965d345ac43ce632b55d9e77461aee896",
+    "logs/longhorn-cases/encryption-20261019-152655/exit-status.txt": "2aac08f350faa66a73aad574c9c8b4b60a76a782e30ac69715efcfcbf650c57d",
+    "logs/longhorn-cases/encryption-20261019-152655/first-failure.txt": "1f4b7c380775a17213baf4ddbe1dfa04fdef5c6ccbbc9e53faa5e773af417c79",
+    "logs/longhorn-cases/encryption-20261019-152655/frozen-source.txt": "0e9ed500774057b3dfa1fc7a8e91b07e7c0267da34694042547a83bc32b7e1e8",
+    "logs/longhorn-cases/encryption-20261019-152655/gate.log": "7d8022926df01e1739b99012478141c89475ac91bb12418d422e65ac32cd94c6",
+    "logs/longhorn-cases/encryption-20261019-152655/k8s-1.33.6-operation-generator.go": "b58e287840f33b0e50acc702956d0925cc634ed30b3f56e37fe6d5bffe280b5f",
+    "logs/longhorn-cases/encryption-20261019-152655/native-event.json": "65a787480c72170c0529a932f1879ce14f1d4ba83c455d55adf8bb1469aeb30d",
+    "logs/longhorn-cases/encryption-20261019-152655/owned-diagnostics.txt": "f87826a7e4680efc129bdfa485e10ac029ba467b3582ffb9d59b4267e7dc9517",
+    "logs/longhorn-cases/encryption-20261019-152655/phase-red.log": "143d58cb81f54176ec02e397a2f4ffe696485e10eee96a6a3dd3990cfacfdd52"
+  }
+}

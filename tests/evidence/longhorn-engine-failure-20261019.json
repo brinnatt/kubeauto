@@ -1,0 +1,773 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-21",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-engine-failure </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2427452,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_ENGINE_FAILURE_PASS",
+  "scoped_clean_marker": "LONGHORN_ENGINE_FAILURE_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CONTROL_FAULT_RESULT {\"client_rc\": 137, \"confirmed\": {\"confirmed\": 52, \"sha256\": \"7e5d14da4eb822c2a8c542df60ad58cdcf9b020fac921f1038174af7b390ed4f\", \"verified_bytes\": 3407872}, \"fresh_confirmed\": {\"confirmed\": 20, \"sha256\": \"68e949dcc45ab46b2f24eba0bdda83f5fc159c7e070df11298787e1dfc0304dd\", \"verified_bytes\": 1310720}, \"recovery_mode\": \"documented-bare-pod-recreation\", \"recovery_s\": 63.702, \"retries\": [{\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}, {\"errno\": \"EIO\", \"sequence\": 52, \"type\": \"retry\"}], \"variant\": \"engine\"}",
+      "LONGHORN_CONTROL_FAULT_REMOUNT_VERIFIED {\"original\": {\"confirmed\": 52, \"sha256\": \"7e5d14da4eb822c2a8c542df60ad58cdcf9b020fac921f1038174af7b390ed4f\", \"verified_bytes\": 3407872}, \"recovered\": {\"confirmed\": 20, \"sha256\": \"68e949dcc45ab46b2f24eba0bdda83f5fc159c7e070df11298787e1dfc0304dd\", \"verified_bytes\": 1310720}}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CONTROL_FAILURE_BUSINESS_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CONTROL_FAULT_RESULT {\"client_rc\": 0, \"confirmed\": {\"confirmed\": 308, \"sha256\": \"8f492ac7601e0dca4df8363847c14151b426deb90edac25f3a66f6be684ef42f\", \"verified_bytes\": 20185088}, \"fresh_confirmed\": {\"confirmed\": 20, \"sha256\": \"86daa93b95137dca0d7b8ace4eddc13f94c22f660d494bb6260e3ba2420db2f9\", \"verified_bytes\": 1310720}, \"recovery_mode\": \"native-component-recreation-original-client\", \"recovery_s\": 69.248, \"retries\": [], \"variant\": \"instance-manager\"}",
+      "LONGHORN_CONTROL_FAULT_REMOUNT_VERIFIED {\"original\": {\"confirmed\": 308, \"sha256\": \"8f492ac7601e0dca4df8363847c14151b426deb90edac25f3a66f6be684ef42f\", \"verified_bytes\": 20185088}, \"recovered\": {\"confirmed\": 20, \"sha256\": \"86daa93b95137dca0d7b8ace4eddc13f94c22f660d494bb6260e3ba2420db2f9\", \"verified_bytes\": 1310720}}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CONTROL_FAILURE_BUSINESS_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CONTROL_FAULT_RESULT {\"client_rc\": 0, \"confirmed\": {\"confirmed\": 215, \"sha256\": \"a1121c286d918795c0a0238b168ae785a8aac5c35870c61d0e5ff0de154a7a93\", \"verified_bytes\": 14090240}, \"fresh_confirmed\": {\"confirmed\": 20, \"sha256\": \"8c1f4cbdd8ada69059fca1ab4aa74ab352a92b6cc123c6687b5c7bacf36d921e\", \"verified_bytes\": 1310720}, \"recovery_mode\": \"native-component-recreation-original-client\", \"recovery_s\": 45.581, \"retries\": [], \"variant\": \"manager\"}",
+      "LONGHORN_CONTROL_FAULT_REMOUNT_VERIFIED {\"original\": {\"confirmed\": 215, \"sha256\": \"a1121c286d918795c0a0238b168ae785a8aac5c35870c61d0e5ff0de154a7a93\", \"verified_bytes\": 14090240}, \"recovered\": {\"confirmed\": 20, \"sha256\": \"8c1f4cbdd8ada69059fca1ab4aa74ab352a92b6cc123c6687b5c7bacf36d921e\", \"verified_bytes\": 1310720}}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CONTROL_FAILURE_BUSINESS_PASS",
+      "LONGHORN_ENGINE_FAILURE_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_ENGINE_FAILURE_SCOPED_CLEAN_PASS",
+      "LONGHORN_ENGINE_FAILURE_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "control_faults": {
+      "results": [
+        {
+          "client_rc": 137,
+          "confirmed": {
+            "confirmed": 52,
+            "sha256": "7e5d14da4eb822c2a8c542df60ad58cdcf9b020fac921f1038174af7b390ed4f",
+            "verified_bytes": 3407872
+          },
+          "fresh_confirmed": {
+            "confirmed": 20,
+            "sha256": "68e949dcc45ab46b2f24eba0bdda83f5fc159c7e070df11298787e1dfc0304dd",
+            "verified_bytes": 1310720
+          },
+          "recovery_mode": "documented-bare-pod-recreation",
+          "recovery_s": 63.702,
+          "retries": [
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            },
+            {
+              "errno": "EIO",
+              "sequence": 52,
+              "type": "retry"
+            }
+          ],
+          "variant": "engine",
+          "retry_count": 123,
+          "retry_errno_counts": {
+            "EIO": 123
+          }
+        },
+        {
+          "client_rc": 0,
+          "confirmed": {
+            "confirmed": 308,
+            "sha256": "8f492ac7601e0dca4df8363847c14151b426deb90edac25f3a66f6be684ef42f",
+            "verified_bytes": 20185088
+          },
+          "fresh_confirmed": {
+            "confirmed": 20,
+            "sha256": "86daa93b95137dca0d7b8ace4eddc13f94c22f660d494bb6260e3ba2420db2f9",
+            "verified_bytes": 1310720
+          },
+          "recovery_mode": "native-component-recreation-original-client",
+          "recovery_s": 69.248,
+          "retries": [],
+          "variant": "instance-manager",
+          "retry_count": 0,
+          "retry_errno_counts": {}
+        },
+        {
+          "client_rc": 0,
+          "confirmed": {
+            "confirmed": 215,
+            "sha256": "a1121c286d918795c0a0238b168ae785a8aac5c35870c61d0e5ff0de154a7a93",
+            "verified_bytes": 14090240
+          },
+          "fresh_confirmed": {
+            "confirmed": 20,
+            "sha256": "8c1f4cbdd8ada69059fca1ab4aa74ab352a92b6cc123c6687b5c7bacf36d921e",
+            "verified_bytes": 1310720
+          },
+          "recovery_mode": "native-component-recreation-original-client",
+          "recovery_s": 45.581,
+          "retries": [],
+          "variant": "manager",
+          "retry_count": 0,
+          "retry_errno_counts": {}
+        }
+      ],
+      "cross_worker_remount": [
+        {
+          "original": {
+            "confirmed": 52,
+            "sha256": "7e5d14da4eb822c2a8c542df60ad58cdcf9b020fac921f1038174af7b390ed4f",
+            "verified_bytes": 3407872
+          },
+          "recovered": {
+            "confirmed": 20,
+            "sha256": "68e949dcc45ab46b2f24eba0bdda83f5fc159c7e070df11298787e1dfc0304dd",
+            "verified_bytes": 1310720
+          }
+        },
+        {
+          "original": {
+            "confirmed": 308,
+            "sha256": "8f492ac7601e0dca4df8363847c14151b426deb90edac25f3a66f6be684ef42f",
+            "verified_bytes": 20185088
+          },
+          "recovered": {
+            "confirmed": 20,
+            "sha256": "86daa93b95137dca0d7b8ace4eddc13f94c22f660d494bb6260e3ba2420db2f9",
+            "verified_bytes": 1310720
+          }
+        },
+        {
+          "original": {
+            "confirmed": 215,
+            "sha256": "a1121c286d918795c0a0238b168ae785a8aac5c35870c61d0e5ff0de154a7a93",
+            "verified_bytes": 14090240
+          },
+          "recovered": {
+            "confirmed": 20,
+            "sha256": "8c1f4cbdd8ada69059fca1ab4aa74ab352a92b6cc123c6687b5c7bacf36d921e",
+            "verified_bytes": 1310720
+          }
+        }
+      ],
+      "total_confirmed_records": 635,
+      "original_payload_bytes_per_volume": 9437184,
+      "original_payload_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+      "boundary": "Engine uses documented manual bare-Pod recreation; does not prove managed controller automatic recovery, uninterrupted original engine client, node/network fault tolerance or production RTO."
+    }
+  },
+  "boundary": "Focused engine-failure acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/engine-failure-20261019-145012/durable-status.txt": "723316fd2c1e6699ccf5664a7d6ac486073795242c6850431ca77bca16d320e6",
+    "logs/longhorn-cases/engine-failure-20261019-145012/frozen-source.txt": "a9125a318d4037c39e12e005765822f6efbe6f33f12087adf7a519de49224df4",
+    "logs/longhorn-cases/engine-failure-20261019-145012/gate.log": "eab2c5c768966d2ffcc078674cec906bae9ea289dea06f0892e5b9f03c33214c",
+    "logs/longhorn-cases/engine-failure-20261019-145012/control-results.json": "815df6b033da58290b4b1a7bde9a243c3239691d6f1c06b47aedc01106753d6b"
+  }
+}

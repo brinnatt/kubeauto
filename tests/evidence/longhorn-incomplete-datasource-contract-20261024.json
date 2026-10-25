@@ -1,0 +1,62 @@
+{
+  "changed": {
+    "tests/helpers/longhorn-v2-incomplete-clone.py": {
+      "original": {
+        "path": "logs/longhorn-cases/incomplete-datasource-contract-20261024/original/tests/helpers/longhorn-v2-incomplete-clone.py",
+        "sha256": "f222b7e3a1a4eacfb527425a3b4f8cedb6a02ef362b1dda48773de7c004a0b46"
+      },
+      "sha256": "c3d09a22bd8b7719fe754b89a9eacadae13446ee361d63f1f567b9ae21cb75d2"
+    },
+    "tests/unit/test_longhorn_v2_incomplete_clone.py": {
+      "original": {
+        "path": "logs/longhorn-cases/incomplete-datasource-contract-20261024/original/tests/unit/test_longhorn_v2_incomplete_clone.py",
+        "sha256": "11689fddaaf5c57d9609b4d33dc24c4952f7b9b1155b9a06e51f272fd0aa5a66"
+      },
+      "sha256": "c36615b90922d8b901b6ecac1a2221a89cc85cc8740210d046f5b70a09f2a497"
+    }
+  },
+  "classification": "test-gate",
+  "completion": "Fixed owning qualification must reach real native incomplete-source refusal, same-clone completed positive control, data readback and scoped cleanup with durable rc=0. No coverage removed.",
+  "contracts": {
+    "exit": {
+      "path": "logs/longhorn-cases/incomplete-datasource-contract-20261024/gate.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/incomplete-datasource-contract-20261024/gate.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/incomplete-datasource-contract-20261024/gate.log",
+      "sha256": "6f6c2f6ea322071ca7a468133ffd57a9ea1fd9522983089289be9025845438f9"
+    }
+  },
+  "failure_cleanup": "Native disk recovery, exact fixture cleanup, healthy empty business baseline and transport cleanup verified by original failed owning log. Parent rc=1 preserved.",
+  "first_failed_log": {
+    "path": "logs/longhorn-cases/manager-v2-incomplete-clone-qualification-precheck-repair-owning-20261024/raw/tmp/kubeauto-longhorn-live.log",
+    "sha256": "87da1ad9627ec6cebeaa58cb28925cc2d798e98481decefb8fbb9cf7f9780554"
+  },
+  "first_failed_owner": {
+    "path": "logs/longhorn-cases/manager-v2-incomplete-clone-qualification-precheck-repair-owning-20261024/terminal.json",
+    "sha256": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3"
+  },
+  "matrix_item": "LONGHORN-49",
+  "official_source": {
+    "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "file": "types/data_source.go",
+    "functions": [
+      "NewVolumeDataSourceTypeVolume",
+      "IsValidVolumeDataSource"
+    ],
+    "repository": "longhorn/longhorn-manager",
+    "sha256": "7fb63948dcea6cbf8d739541f51bd7984e7acb5188f4cebf2cf8897d9c1e2bdf"
+  },
+  "product_behavior_changed": false,
+  "red": {
+    "path": "logs/longhorn-cases/incomplete-datasource-contract-20261024/red.log",
+    "sha256": "8fd6096c85369cfc90bf308fe94d129611ab2f6f884971dfe21698de3283603a"
+  },
+  "root_cause": "Gate constructs volume://, but pinned Manager accepts vol:// or snap://. Mock had repeated the same invalid fixture rather than checking the native protocol.",
+  "schema": 1,
+  "status": "contract-pass-owning-live-pending"
+}

@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-15",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-backup-refusal </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2354585,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_BACKUP_REFUSAL_PASS",
+  "scoped_clean_marker": "LONGHORN_BACKUP_REFUSAL_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CACHE_VERIFIED image=brinnatt/minio:RELEASE.2025-04-08T15-41-24Z digest=sha256:47824d8720d3b6bd38d843f0029d1a7ac2e3ee7bcd7d235af11a3faf13a465b2",
+      "LONGHORN_CACHE_PASS images=1",
+      "LONGHORN_CACHE_VERIFIED image=brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2 digest=sha256:afc39321d08850657de3376009c03ee4857b5ebd67850a251957fcf67281ab72",
+      "LONGHORN_CACHE_PASS images=1",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED",
+      "LONGHORN_BACKUP_REFUSAL_VERIFIED kind=credential available=false request_created=false backup_objects=0",
+      "LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED",
+      "LONGHORN_BACKUP_REFUSAL_VERIFIED kind=ca available=false request_created=false backup_objects=0",
+      "LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED",
+      "LONGHORN_BACKUP_REFUSAL_VERIFIED kind=endpoint available=false request_created=false backup_objects=0",
+      "LONGHORN_BACKUP_RESTORE_BOUNDARY_VERIFIED mode=full backup_sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a source_sha256=f584692f11aea9c12bbb1978e41d29a2d683e332d5bdae7f3c7778936ff5e59c independent_volume=pvc-6421e33a-cbf4-415b-a5d9-2188dfc31e73",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=12320768 sha256=f584692f11aea9c12bbb1978e41d29a2d683e332d5bdae7f3c7778936ff5e59c replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BACKUP_NATIVE_FIXTURES_CLEAN_PASS",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_BACKUP_REFUSAL_BUSINESS_PASS",
+      "LONGHORN_BACKUP_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_BACKUP_STORE_CLEAN_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_BACKUP_REFUSAL_SCOPED_CLEAN_PASS",
+      "LONGHORN_BACKUP_REFUSAL_PASS"
+    ],
+    "healthy_core_and_storage_retained": true
+  },
+  "boundary": "Focused backup-refusal acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/backup-refusal-20261019-125010/durable-status.txt": "8d6cbcaa47510f26f8e77ee5ade6e688d82ae7d74798c9a10c69d705ad627d4a",
+    "logs/longhorn-cases/backup-refusal-20261019-125010/frozen-source.txt": "e7eac9e7dbe3970ef1b817e79bc469f246e57f3915c1336e4e49f499d00b22f4",
+    "logs/longhorn-cases/backup-refusal-20261019-125010/gate.log": "c7d139aa80a1f66a214a3533c96c091e44b4daa4c6b1a4fffbbc7e22b1fd4047"
+  }
+}

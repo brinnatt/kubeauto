@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "case": "LONGHORN-41",
+  "classification": "test-gate",
+  "status": "focused-static-contract-pass",
+  "ladder_level_completed": 2,
+  "next_permitted_level": 3,
+  "tests": 131,
+  "cleanup_tests": 81,
+  "rc": 0,
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-cleanup-qualification",
+  "expected_marker": "LONGHORN_CLEANUP_QUALIFICATION_PASS",
+  "product_entry": "Existing owner recovery entry points through fixed durable/live cleanup; no direct product/controller wipe.",
+  "live_preconditions": "V1 reinstall completed; source V2 healthy and installed before54; no active foreign/unknown/conflicting journals.",
+  "fixture_boundary": "Three cases per V1/V2: normal, failure86, interrupted fixture child. Original owner CRD journal plus foreign namespace/ConfigMap UID+payload SHA. Child-only fault, no controller process fault.",
+  "files": {
+    "tests/helpers/longhorn-cleanup.py": "761de177d44f7da587ffede2644aef86e39742ff140d7093eb60bfc89c6bb4e3",
+    "tests/helpers/longhorn-cleanup.sh": "e200d087a4289e22da2f85c8c30c283ba93adb8bd84e340318f1e2460069e94b",
+    "tests/unit/test_longhorn_cleanup.py": "dc9563808f8e94c0f0ec2a2835ba602c1ec22a9c488b0643e03c38be80570d7f",
+    "tests/helpers/longhorn-runner.sh": "d38823b99d0283609992becbbf87e47c7e1b493fc8a6e0821a11debfe5ea8274",
+    "tests/helpers/longhorn-live.sh": "35b2e7f6c11dc7bd02e9653dd2aaf1cd0de76dde83be1041df952e151d081f04",
+    "tests/helpers/longhorn-static.sh": "1a9a8633e6b2da5a675e674f626cf6d3a1d2fb7b469ee0d4ff563f1604666b46",
+    "logs/longhorn-cases/cleanup41-integrated-contract-20261021/contracts.log": "1bb6728691e89de2f99f34a9d7d0eb8f3a159df8a01f5013ee1599790012e1a2"
+  },
+  "boundary": "131 local contracts including81 cleanup; zero SSH/live mutations; not41 PASS."
+}

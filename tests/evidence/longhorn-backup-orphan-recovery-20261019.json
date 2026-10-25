@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-business-recover </dev/null",
+  "rc": 0,
+  "durable_pid": 2231870,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_BUSINESS_CLEAN_PASS",
+  "scoped_clean_marker": "LONGHORN_BUSINESS_CLEAN_SCOPED_CLEAN_PASS",
+  "checks": {
+    "backup_store_removed": true,
+    "original_orphan_listener_removed": true,
+    "registry_transport_removed": true,
+    "core_and_storage_healthy": true
+  },
+  "boundary": "Scoped recovery only; no LONGHORN-14 acceptance and no full cleanup acceptance. Original failed backup remains independently recorded.",
+  "files": {
+    "logs/longhorn-cases/business-clean-20261019-085016/frozen-source.txt": "c8acfef66fd04923fe1be6969c075e691fec21bbbe06770f81b50b5f69847b9d",
+    "logs/longhorn-cases/business-clean-20261019-085016/durable-status.txt": "3cd8e816b451cd946a87dd61373cfca9316eb5e964ae78158fae95cebe6d8da7",
+    "logs/longhorn-cases/business-clean-20261019-085016/gate.log": "42a32db4a7cbac0fed275bba3a26d510e2ad6a8dd08a912a42127558696f3e4a"
+  }
+}

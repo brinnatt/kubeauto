@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-12",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-snapshot </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2269773,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_SNAPSHOT_PASS",
+  "scoped_clean_marker": "LONGHORN_SNAPSHOT_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED",
+      "LONGHORN_SNAPSHOT_BOUNDARY_VERIFIED type=csi snapshot_sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a source_sha256=db6aa22261bafdd33f8a603dc0f3415d3c9347034b2f3ea831ef0102cdd1c4ce",
+      "LONGHORN_SNAPSHOT_BOUNDARY_VERIFIED type=native snapshot_sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a source_sha256=db6aa22261bafdd33f8a603dc0f3415d3c9347034b2f3ea831ef0102cdd1c4ce",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=13369344 sha256=db6aa22261bafdd33f8a603dc0f3415d3c9347034b2f3ea831ef0102cdd1c4ce replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_SNAPSHOT_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_SNAPSHOT_SCOPED_CLEAN_PASS",
+      "LONGHORN_SNAPSHOT_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "native_request_reentry_uid_preserved": true,
+    "same_name_changed_volume_refused_without_mutation": true,
+    "restored_actual_pvc_pv_native_capacity_bytes": 2147483648,
+    "restored_three_healthy_independent_replicas": true,
+    "snapshot_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+    "source_post_snapshot_and_remount_sha256": "db6aa22261bafdd33f8a603dc0f3415d3c9347034b2f3ea831ef0102cdd1c4ce",
+    "restore_paths": [
+      "dynamic CSI snapshot",
+      "native Snapshot imported through static CSI content"
+    ],
+    "restore_write_isolation": true
+  },
+  "boundary": "Focused snapshot acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/snapshot-20261019-103206/durable-status.txt": "91e18136264f0fb41637cb613b21bf68cac10b7d7569af600fd02f9ce7346581",
+    "logs/longhorn-cases/snapshot-20261019-103206/frozen-source.txt": "7cbb299f3654ab216d9d0106c1ae1dc6a5ac801475ad76d131ca44a5114b706b",
+    "logs/longhorn-cases/snapshot-20261019-103206/gate.log": "a16fd64275ab971b553d48b46b0eb21f8bb2d3673c5836347035ea847b4d14fb",
+    "logs/longhorn-cases/snapshot-20261019-103206/native-state.txt": "7ccd349875e333642a4d9a60ce8af41ef2801c09d613cda144b3b622f6ac07c4"
+  }
+}

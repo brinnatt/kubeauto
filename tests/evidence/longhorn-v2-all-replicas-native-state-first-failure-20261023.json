@@ -1,0 +1,78 @@
+{
+  "classification": "test-gate",
+  "cleanup": {
+    "empty_business": true,
+    "source_installation_healthy": true,
+    "transport_clean": true
+  },
+  "date": "2026-10-23",
+  "first_failure": "240-second predicate required all original failedAt timestamps, which engine-outage controller branch does not guarantee",
+  "instance_manager_version": "v1.12.1-kubeauto.3",
+  "matrix_item": "LONGHORN-50",
+  "observed": {
+    "all_original_failedAt_empty": true,
+    "direct_read_errno": [
+      95,
+      5,
+      5
+    ],
+    "engine_raid_missing": true,
+    "salvageExecuted": false,
+    "salvageRequested": false,
+    "volume_robustness": "faulted"
+  },
+  "official_source": {
+    "behavior": "Engine non-running marks a replica FailedAt only for its own error or ENODATA backend condition; unexpected engine error separately faults the volume and can remount usable replicas.",
+    "file": "controller/volume_controller.go",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8"
+  },
+  "overall_delivery_pass": false,
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/during-controller.json": "b59629f2c6802ea1917127e7e0f529a58bfd80ca286f3022fb688b6d3add9eea",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/io-errno-api-sources.json": "2923295fd6e01ebe75d6f5ef6847b381852d7c48c8ccf55648a1769b9029f875",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/linux-block-blk-core.c": "6216a401e42b9be2e5d3eb9a04c4c9cd6ed367742a29a6e6486c084cb3966c46",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/linux-nvme-host-core.c": "11a918e7ddacde7f3644375d2f34f2795a4ff1e459dfd73e8fc469e5797f497e",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/manager-volume-controller-source.json": "5637cb81c6e39a43cfe2c5b40888456242b7415a0e474ede296bdf544f534885",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/manager-volume_controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/native-fault.jsonl": "7044f7bbd16058d7c626c20576d51c0d55ba915e7990ef71ed4ddc7c171c07f5",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/native-fault.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/longhorn-cases/revision3-all-replicas-native-state-first-failure-20261023/status.json": "328255278461b3b7b76baae7d0d276d35fe17e994cf58dba25e74be0211ca97c",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/tmp/kubeauto-longhorn-gate.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/tmp/kubeauto-longhorn-gate.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/tmp/kubeauto-longhorn-gate.pid": "c14d4107c8b10d8fa5fbdf95d7097a8ddb16aa7ec5cb64d38d0858cc6e621b09",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/tmp/kubeauto-longhorn-live.log": "c235434129e5e24e805e10cba831413d4275f3f1c6a22cb8991b23c6ce915e51",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-lab-owner.json": "ebe8f888330baf09aeae82cf35d543f3132a13e072301e16a01db4d884f57e94",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-dr-target/longhorn-lab-owner.json": "8027c9b96c2aac6644d928ae6c3116618ea4e7b1a42ecec0add2e6a3f3d2d88e",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-dr-target/longhorn-v2-host-state-pre-reboot-785eaaedbaf734f3.json": "785eaaedbaf734f36f85db95fb5b3531c6d96e7eb12a4e317d4a4eabe7278655",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-dr-target/longhorn-v2-post-reboot-environment.json": "8d804ef22b4581291ee953028ef340f77a06551154f0ed384455a053d73287ae",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-dr-target/longhorn-v2-resources-reboot.json": "a00520c79abf6e4eb39aa504b4db670633ae76c961eba45fe845774b9dcb431a",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-dr-target/longhorn-v2-resources.json": "0263eaddd10132a57370c80476817f82f76b3d1f57c1577580ca71ba4654bb54",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-lab-owner.json": "caa3b01b839afd7367b636f4c7bdba49809f7f47b591c6e3eeff4010c70dbe5e",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-cpu-isolation-completed-2ad69886b8ff0989.json": "cad760cdc322d7aebad1afe416f18cce4723fae56edb7274b656ee27d96cdb16",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-host-state-pre-reboot-7bbc6e9be43051fc.json": "7bbc6e9be43051fc761424a94b93501b378406a421b088d5a31dd6b083da4791",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-host-state-pre-reboot-86f067f30c3edab2.json": "86f067f30c3edab2182ae9b8da2b7c47d9f945ac48ff7f5aafa3e48385a29c05",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-installed-post-reboot-environment.json": "661cd301ff9cdf49193c973aa0a1b8e868de1f2f317a64a3b352e232433d5555",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-post-reboot-environment.json": "6dfa10cd529ee5c96eefb8c572a30278737b4a46e4d2adeff1a0a5bb60e670d5",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-resources-reboot.json": "0054e79baae126a287eb44b05607561830c017a8e0882489aac588638c68ec87",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-resources.json": "9fe3571ea7b90bed08be16329e5c0355b42a757212547a6f9591c7db400acbc6",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/var/tmp/kubeauto-longhorn-v2-failure.65z1AV/all-replicas.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/var/tmp/kubeauto-longhorn-v2-failure.65z1AV/all-replicas.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/var/tmp/kubeauto-longhorn-v2-failure.65z1AV/all-replicas.log": "54074db9cff7f9f0e4c7815c834249b93ec8d2df6fa2e1ba1cac09b6d234ed00",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/var/tmp/kubeauto-longhorn-v2-failure.65z1AV/events.txt": "d43c93ccb66846c60fd78d0cfe830019764298abda8cd907165104b405b726ff",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/var/tmp/kubeauto-longhorn-v2-failure.65z1AV/first-failure.status": "11f4b5bcc990cb573402153c1ba3642c0054560912ea8fc1506ca67cd287b6d1",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/var/tmp/kubeauto-longhorn-v2-failure.65z1AV/nodes.yaml": "0adf5c832789484b669491fb04597acd6ae9da9c7887d01c1fe6977841d302d5",
+    "logs/longhorn-cases/revision3-v2-failure-all-replicas-mixed-errno-repaired-20261023/raw/var/tmp/kubeauto-longhorn-v2-failure.65z1AV/pods.txt": "c0f19d812789423630ddd96d1781503b8f953d3e02962e2b59eb3d17f82535c3"
+  },
+  "repair": "Prove native refusal during physical three-disk outage; fence original bare writer and await native source detach before restoring hardware. Recover through independent CSI backup volume and cross-node checksum. Do not invent failedAt or require permanent fault after hardware recovery.",
+  "schema": 1,
+  "scope": "v2-failure/all-replicas",
+  "status": "first-failure-preserved",
+  "terminal": {
+    "native_rc": null,
+    "observer_rc": 0,
+    "remote_inputs_equal": true,
+    "runner_rc": 1,
+    "terminal": true
+  },
+  "version": "1.12.1"
+}

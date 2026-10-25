@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "scope": "AIO V2 per-disk scheduling, native eviction, cancellation and remaining retirement boundary",
+  "review": {
+    "classification": "Author content and two-reader task-path review; no independent review or field qualification",
+    "scope": "AIO V2 per-disk scheduling, native eviction, cancellation and remaining retirement boundary",
+    "novice_path": "Healthy managed AIO disk → change-record identities, independent restore point, receiver fault domains/capacity and live confirmed I/O → paired false/true flags with original disk declaration → config+kubecli09 → bounded native convergence → original UUID, empty native accounting and zero referencing Replica CR → healthy relocated replicas and original/new business data. Failure stops retirement and preserves diagnostic state.",
+    "experienced_path": "Paired optional flags, omitted-field ownership, two-stage false/false cancellation then true/false scheduling, UID/resourceVersion conflict handling, Ready vs Schedulable distinction, native accounting plus actual deleting CRs, bounded wait, and retained disk receipt are explicit. No direct deletion or unsupported retirement shortcut.",
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 111,
+        "yaml_blocks": 18,
+        "bash_blocks": 31
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "17ad1e792871fd13f1fc654cabad9781cede0c36952503b7fb209f9a1e19c918",
+        "docs/storage/longhorn/technical-whitepaper.md": "ce49579fb1dd282744860de12991404bf71af487b3a286a8b399f4a598dcf73d",
+        "docs/storage/longhorn/development-manual.md": "f183d6d9c1401758e796387cf2f05a8e6a536d24dac5c945c42449c276216e5e"
+      }
+    },
+    "inline_python_ast": {
+      "blocks": 5,
+      "status": "pass"
+    },
+    "diagrams": "All seven Mermaid sources unchanged; content-identity render mapping reused.",
+    "specific_correction": "Removed stale development-manual claim that exclusive CPU product interface was still unimplemented. Its field verification remains pending.",
+    "remaining": "V2 cases44-54 field gates, native PCI lifecycle and per-disk retirement/replacement remain pending; no full-document final sign-off."
+  },
+  "files": {
+    "logs/longhorn-cases/v2-eviction-document-review-20261020/reading-map.json": "dcb9632478b6ad41537ba0e2d52a519c50059606984fdabe8a5580dcea63d2dd",
+    "logs/longhorn-cases/v2-eviction-document-review-20261020/static.json": "d7f3636dc2ebc1cd769df22c38489aab5714dfe89327917d3a835d17c18cd9c4",
+    "logs/longhorn-cases/v2-eviction-document-review-20261020/review.json": "3a1f9274f80df6a79f8c2963128a7b12ced630157b92d14989df2db53e02760d",
+    "logs/longhorn-cases/v2-eviction-document-review-20261020/current-diagram-render-map.json": "0e7df79e75d1848eff7dad004845436559f6aabb63e984736af76816bc819e0c"
+  },
+  "previous_evidence": "tests/evidence/longhorn-v2-exclusive-document-review-20261020.json"
+}

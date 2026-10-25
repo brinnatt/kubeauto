@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "V2 Retain/Delete result paragraphs and matrix child evidence only; no customer command or diagram changed",
+  "checks": {
+    "sources": "Pinned official 1.12.1 volume-deletion semantics reused; Delete controller path distinguished from privileged Longhorn UI deletion",
+    "content": "Original Retain PV/Volume and claimRef, new-claim cross-node 9437184-byte digest, Delete automatic reclamation and both class refusals match current frozen evidence; rollback and backup boundaries explicit",
+    "novice_path": "Existing explicit class selection and product install path preserve inputs, context, success checks and stop/recovery exits",
+    "experienced_path": "Reclaim-policy explanation gives actual V2 outcomes and links existing approved retained-volume disposal procedure; no lab command introduced",
+    "operation_evidence": "117 frozen inputs match remote, rc0, zero failure markers, scoped clean and independent empty-business/original-disk readback",
+    "diagrams": "No Mermaid changed; existing render evidence reused",
+    "static": "44 storage/middleware documentation contracts passed"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-reclaim-qualification-20261020.json",
+  "product_evidence_sha256": "254678546a15cf3f98e7e23aef08e6a7ddbf4262c5da57120250db342b89e8bc",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "2363b7307ee8127d8f238b5fddedfe8e619a537ff9c51d301a7ab63f17550474",
+    "docs/storage/longhorn/technical-whitepaper.md": "346d806fc8bc931580640f0ac83cc32a6e9fc64e82067902cde91ae9cbf2abbe"
+  }
+}

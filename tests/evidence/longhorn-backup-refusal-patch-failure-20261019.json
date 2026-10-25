@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-15",
+  "date": "2026-10-19",
+  "status": "pending",
+  "classification": "test-gate optimistic concurrency during empty-target disconnect",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-backup-refusal </dev/null",
+  "durable_pid": 2345953,
+  "rc": 1,
+  "failure_markers": 2,
+  "first_failed_operation": "Refusals.disconnect JSON Patch tests on original BackupTarget resourceVersion",
+  "completed_subcase": "credential refusal verified; CA/endpoint and recovered backup/restore not executed",
+  "evidence_boundary": "Original failing patch payload was not persisted. Current-version and stale-version server dry-run distinguish valid patch shape from JSON Patch precondition refusal; stale-version stderr equals original87-byte SHA256. Deterministic race reproduction required before repair.",
+  "stderr_sha256": "186d2f5fe61c5367496b7705f9686f0c281e131a7a3cc127b4365260d08d0b71",
+  "cleanup": "Owned business, backup CRs, target/Secret, independent object store, passthrough and Registry transport removed; healthy core/storage retained. No full-delivery or module PASS.",
+  "files": {
+    "logs/longhorn-cases/backup-refusal-20261019-123203/business-diagnostics.txt": "71ff675d5586e5f4de215b2b8f9b9d0568373b49a0408a990e3000b6b1a44009",
+    "logs/longhorn-cases/backup-refusal-20261019-123203/durable-status.txt": "70109464d0c0b7e047011737839613c062ff5f0f18c28ff569cf0f799c6d3e67",
+    "logs/longhorn-cases/backup-refusal-20261019-123203/first-command-classification.txt": "bcf9a11c74ce561dc68d72f525a10ad55ad7d804a6bc9edce3a4ec170f1be3a6",
+    "logs/longhorn-cases/backup-refusal-20261019-123203/first-traceback.txt": "0491793aafa541da9c88cfa59f1574766e34fd7685a89710f6b2e9f20073b914",
+    "logs/longhorn-cases/backup-refusal-20261019-123203/frozen-source.txt": "68db9d7a1437760f0c4c60152ea39a9d23d7fee07d360cac06131e6b81882978",
+    "logs/longhorn-cases/backup-refusal-20261019-123203/gate.log": "bcd6fb6425062da34b1d8f5ded2b6c33f6096a9b74c1037c29a4ea3f38564d12",
+    "logs/longhorn-cases/backup-refusal-20261019-123203/patch-dry-run.txt": "526cec9b47d3ea3083e13dc098f4bf541db6bd8914be2d252626785cd7361d8b",
+    "logs/longhorn-cases/backup-refusal-20261019-123203/storage-diagnostics.txt": "850151c3050a19c132423360c75cb921e2f97afbb197184c45c2e9cb81bcb495"
+  }
+}

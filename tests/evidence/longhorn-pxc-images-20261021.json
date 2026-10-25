@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-37",
+  "verification_boundary": "Existing verified dual-push publication with exact five PXC images. No new image publication or Longhorn/PXC live PASS. Digest-pinned China-first materialization is reverified by the fixed runner before use.",
+  "workflow_conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582",
+  "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+  "images": [
+    {
+      "digest": "sha256:1c0803af660101384d14310ab31bca30bbd82680194db1459089e339b91c3459",
+      "fingerprint": "3463858ea0617238f99bba36252fe02403b0a1a00ccec69b20e3d10dd7a8db0e",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/percona-xtradb-cluster-operator:1.20.0",
+      "platforms": {
+        "linux/amd64": "sha256:bdb073b5c64f7ce82b01bfbf95cc58046cf70aa2c60526c8ee082f706f9d20d9",
+        "linux/arm64": "sha256:ac159ea315ba0f37b59feea78428acb824726b6163f3e34dfa585ee9739f93eb"
+      },
+      "schema": 1,
+      "source_digest": "sha256:ac4d0995c71ebc31e4bb19dc17127e48365a4ba25127d70c535d2082e7feed05",
+      "source_ref": "docker.io/percona/percona-xtradb-cluster-operator:1.20.0",
+      "dockerhub_ref": "brinnatt/percona-xtradb-cluster-operator:1.20.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-xtradb-cluster-operator:1.20.0",
+      "catalog_row": {
+        "dockerfile": "./middleware/percona-pxc/percona-xtradb-cluster-operator/Dockerfile",
+        "image": "brinnatt/percona-xtradb-cluster-operator",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-xtradb-cluster-operator",
+        "tag": "1.20.0",
+        "ctx": "./middleware/percona-pxc/percona-xtradb-cluster-operator/"
+      },
+      "publication_provenance": {
+        "archive": "logs/ext-images-delivery/2026-10-08/37753406582-release-evidence-4-1.zip",
+        "archive_sha256": "581ad2858215cf805fb3ef7aa7210421069b654349b1505a4cfdda925a89a01d",
+        "record_member": "records/6f3f4466e369c8802a659a74c64ff2794ef5141bdcf16cc9e4f648683a6838a1.json",
+        "record_sha256": "0637045e409dca3a6d4bea1de820975469eb07bbb6be7a47586157a1a18d2ee3",
+        "source_run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582"
+      }
+    },
+    {
+      "digest": "sha256:a02dd7a56cb01a2917033c9821f5a7af3a9200ddcc1ddd32e4771f9061966a39",
+      "fingerprint": "94e989ba6d7f56a5cbde58e15e77084d52aedc220bb2e92ae0210a4b8d7a7778",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/percona-haproxy:2.8.18-1",
+      "platforms": {
+        "linux/amd64": "sha256:abeba37c8fda6a8bb87238fbfe2f4f493972047545dd02c926bb81f224db8791",
+        "linux/arm64": "sha256:4e187084df6a9fe4d246ac3816bc0f9f0acea18cd2c52bdc244dc5257d9c0086"
+      },
+      "schema": 1,
+      "source_digest": "sha256:726b65930d86f7342eb6bce97a38b9af934c935345e4524afda6b65c2b3213b3",
+      "source_ref": "docker.io/percona/haproxy:2.8.18-1",
+      "dockerhub_ref": "brinnatt/percona-haproxy:2.8.18-1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-haproxy:2.8.18-1",
+      "catalog_row": {
+        "dockerfile": "./middleware/percona-pxc/percona-haproxy/Dockerfile",
+        "image": "brinnatt/percona-haproxy",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-haproxy",
+        "tag": "2.8.18-1",
+        "ctx": "./middleware/percona-pxc/percona-haproxy/"
+      },
+      "publication_provenance": {
+        "archive": "logs/ext-images-delivery/2026-10-08/37753406582-release-evidence-4-1.zip",
+        "archive_sha256": "581ad2858215cf805fb3ef7aa7210421069b654349b1505a4cfdda925a89a01d",
+        "record_member": "records/7b0fcad619c526a49cee3c1a3cc34d46451b6f2558ac66b925f21917f98602d0.json",
+        "record_sha256": "cd2d9ae40b2275f83253f31cd05d6cbc28f16a2bcd1d0d34a95c9afabe5f6e4d",
+        "source_run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582"
+      }
+    },
+    {
+      "digest": "sha256:178f874e83e984ccf2bdf2aec0acd9754f032e9edd6cd204b72906419b84d982",
+      "fingerprint": "6363fbc5af3364e78648d4992a43d8eb51829feb7bb57c40f2c727f423264c68",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/percona-xtrabackup:8.4.0-5.1",
+      "platforms": {
+        "linux/amd64": "sha256:d81da23d76f86fa5b0de5dd54ac86f0effea2c3267637483ade66a2c69160ab2",
+        "linux/arm64": "sha256:4e93c9dba3deec0d9717fec79b744cb5915f68167cc5483d2ab8e99fb0910fab"
+      },
+      "schema": 1,
+      "source_digest": "sha256:77c2d913f93d3b1ff62813ed4d79131223a60941a7265cdb2051228a28de7f1d",
+      "source_ref": "docker.io/percona/percona-xtrabackup:8.4.0-5.1",
+      "dockerhub_ref": "brinnatt/percona-xtrabackup:8.4.0-5.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-xtrabackup:8.4.0-5.1",
+      "catalog_row": {
+        "dockerfile": "./middleware/percona-pxc/percona-xtrabackup/Dockerfile",
+        "image": "brinnatt/percona-xtrabackup",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-xtrabackup",
+        "tag": "8.4.0-5.1",
+        "ctx": "./middleware/percona-pxc/percona-xtrabackup/"
+      },
+      "publication_provenance": {
+        "archive": "logs/ext-images-delivery/2026-10-08/37753406582-release-evidence-4-1.zip",
+        "archive_sha256": "581ad2858215cf805fb3ef7aa7210421069b654349b1505a4cfdda925a89a01d",
+        "record_member": "records/8f54e98ab003b595920865761e32c8af39108f985d856f968bb66bf0d3cb5804.json",
+        "record_sha256": "dc1624d54df7a14f5ac1f821fe70a74bc23521d0b468636582c4e78bbc71844f",
+        "source_run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582"
+      }
+    },
+    {
+      "digest": "sha256:9a60750a4444c7e9cb374040c9a7707583945ba87e207cdce88db3c0cba32222",
+      "fingerprint": "7ecd004cd42e5fdd4e631d01bfae7de3cb70dd6e95e507801e21b5d02dc51155",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/percona-xtradb-cluster:8.4.8-8.1",
+      "platforms": {
+        "linux/amd64": "sha256:67677b57d4fe363805e3f881985c999c133e513f14bdfe4b9e0ebb6c166d763e",
+        "linux/arm64": "sha256:e02e43e4e197e1aad93e4a4968482a455c84fdedc569346ce7eb2bfcceeced76"
+      },
+      "schema": 1,
+      "source_digest": "sha256:32d718956ba1b6ff83af0639f0a564b3f6adbafbbb69d66c5266a64fb626e2c1",
+      "source_ref": "docker.io/percona/percona-xtradb-cluster:8.4.8-8.1",
+      "dockerhub_ref": "brinnatt/percona-xtradb-cluster:8.4.8-8.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-xtradb-cluster:8.4.8-8.1",
+      "catalog_row": {
+        "dockerfile": "./middleware/percona-pxc/percona-xtradb-cluster/Dockerfile",
+        "image": "brinnatt/percona-xtradb-cluster",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-xtradb-cluster",
+        "tag": "8.4.8-8.1",
+        "ctx": "./middleware/percona-pxc/percona-xtradb-cluster/"
+      },
+      "publication_provenance": {
+        "archive": "logs/ext-images-delivery/2026-10-08/37753406582-release-evidence-4-1.zip",
+        "archive_sha256": "581ad2858215cf805fb3ef7aa7210421069b654349b1505a4cfdda925a89a01d",
+        "record_member": "records/958d1c4009b432f6e4d4699f3a016616da9aae3cbc3519a943c53083eadf07e7.json",
+        "record_sha256": "21f5810af79b8f2f291345c266062fea259eb673e1c7a6945c221c5fa77d8f48",
+        "source_run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582"
+      }
+    },
+    {
+      "digest": "sha256:bfd824f42b1a133e1eac363623486e7cf5aa5c45fb5ff2b11d9f66257a880aa8",
+      "fingerprint": "214220bd1362c1485eabcaf16798195424d122df302d21d91d2fdc5d1d2e548e",
+      "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+      "key": "brinnatt/percona-fluentbit:5.0.6-1",
+      "platforms": {
+        "linux/amd64": "sha256:51744ec16b4d1a282375630a6f138cb497a7c319c9f2549124ac01bab253c930",
+        "linux/arm64": "sha256:9b8a5b09ec5264c05a52a89290adbe1e8e95f14c58a205b30ea9372f02a2e91f"
+      },
+      "schema": 1,
+      "source_digest": "sha256:a2d027a1bf1b9c84ca5131116115478987335d834102463b873ec60a3f70746f",
+      "source_ref": "docker.io/percona/fluentbit:5.0.6-1",
+      "dockerhub_ref": "brinnatt/percona-fluentbit:5.0.6-1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/percona-fluentbit:5.0.6-1",
+      "catalog_row": {
+        "dockerfile": "./middleware/percona-pxc/percona-fluentbit/Dockerfile",
+        "image": "brinnatt/percona-fluentbit",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-fluentbit",
+        "tag": "5.0.6-1",
+        "ctx": "./middleware/percona-pxc/percona-fluentbit/"
+      },
+      "publication_provenance": {
+        "archive": "logs/ext-images-delivery/2026-10-08/37753406582-release-evidence-4-1.zip",
+        "archive_sha256": "581ad2858215cf805fb3ef7aa7210421069b654349b1505a4cfdda925a89a01d",
+        "record_member": "records/a693a87c6db5a807dcc09e609ca0bf34d4a2d043e5ee938c2289ea3956b29aa5.json",
+        "record_sha256": "aff70ead717785089088f423a6fb53ca37e44de5025df26bbca12e4a85434498",
+        "source_run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582"
+      }
+    }
+  ]
+}

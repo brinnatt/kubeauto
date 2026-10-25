@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "date": "2026-10-23",
+  "status": "first-failure-preserved",
+  "classification": "test-gate",
+  "matrix_item": "LONGHORN-52 continuation prerequisite",
+  "remote_mutation": false,
+  "first_failure": "runtime-only LONGHORN_V2_CONTINUATION_REQUEST leaked into static unit launcher fixtures for non-upgrade modules; three refusals were correct for those inherited inputs",
+  "owning_entry": "bash tests/run_enterprise_regression.sh --longhorn-v2-upgrade-lifecycle",
+  "repair_scope": "static subprocess environment only; preserve parent launch request and strict module refusal",
+  "smallest_disproof": "actual longhorn_local_gate static with inherited request, plus unchanged request-transfer handshake",
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-upgrade-owning-20261023/launch.log": "b21e32aa5393180bf5729e53e1b9babbc106385dd3c7cdc9dd66226146251d47",
+    "logs/longhorn-cases/revision3-v2-upgrade-owning-20261023/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-owning-20261023/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-owning-20261023/terminal.json": "0340a0d79d55b5a401a6c4521738bb1d70794be4b6b967cfe03f34b73f87f36e",
+    "logs/longhorn-cases/revision3-v2-upgrade-owning-20261023/remote-archive/watch.log": "b8e379aa728f76c1a55833474a6ae5596bec87ad2aac3c93bc194cf67e46a282"
+  },
+  "durable": {
+    "exit": "1",
+    "finalized": "1"
+  }
+}

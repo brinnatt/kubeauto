@@ -1,6 +1,10 @@
 import hashlib
 import json
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import tarfile
 import unittest
 from pathlib import Path
@@ -41,6 +45,80 @@ class PrometheusDeliveryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.constants = KubeConstant()
+
+    def test_grafana_secret_task_needs_no_openssl_and_preserves_existing_credentials(self):
+        task = next(task for task in yaml.safe_load(TASKS)[0]["block"]
+                    if task.get("name", "").startswith("创建 Grafana 管理员 Secret"))
+        command = jinja2.Environment(undefined=jinja2.StrictUndefined).from_string(
+            task["shell"]
+        ).render(cluster_dir="/test-cluster", prom_namespace="monitor")
+        shells = [[shutil.which("bash"), "-c"]]
+        if busybox := shutil.which("busybox"):
+            shells.append([busybox, "sh", "-c"])
+        for shell in shells:
+            for scenario in ("create-and-preserve", "rng-failure", "create-failure"):
+                with self.subTest(shell=shell, scenario=scenario), \
+                        tempfile.TemporaryDirectory() as directory:
+                    work = Path(directory)
+                    state = work / "secret.json"
+                    trace = work / "actions.json"
+                    bindir = work / "bin"
+                    bindir.mkdir()
+                    python = bindir / "python3"
+                    python.symlink_to(sys.executable)
+                    kubectl = bindir / "kubectl"
+                    kubectl.write_text(
+                        f"#!{sys.executable}\n"
+                        "import json, sys\n"
+                        "from pathlib import Path\n"
+                        f"state = Path({str(state)!r})\n"
+                        f"trace = Path({str(trace)!r})\n"
+                        "args = sys.argv[1:]\n"
+                        "action = 'get' if 'get' in args else 'create'\n"
+                        "with trace.open('a') as stream: stream.write(action + '\\n')\n"
+                        "if action == 'get': sys.exit(0 if state.exists() else 1)\n"
+                        f"if {scenario == 'create-failure'!r}: sys.exit(31)\n"
+                        "user = next(arg.split('=', 2)[2] for arg in args "
+                        "if arg.startswith('--from-literal=admin-user='))\n"
+                        "password = next(arg.split('=', 2)[2] for arg in args "
+                        "if arg.startswith('--from-literal=admin-password='))\n"
+                        "state.write_text(json.dumps({'user': user, 'password': password}))\n"
+                    )
+                    kubectl.chmod(0o700)
+                    env = {"PATH": str(bindir), "PYTHONDONTWRITEBYTECODE": "1"}
+                    self.assertIsNone(shutil.which("openssl", path=env["PATH"]))
+                    if scenario == "rng-failure":
+                        python.unlink()
+                        python.write_text("#!/bin/sh\nexit 23\n")
+                        python.chmod(0o700)
+                    result = subprocess.run(shell + [command], env=env, text=True,
+                                            capture_output=True, timeout=10)
+                    if scenario != "create-and-preserve":
+                        self.assertEqual(result.returncode,
+                                         23 if scenario == "rng-failure" else 31,
+                                         result.stderr)
+                        self.assertFalse(state.exists())
+                        self.assertEqual(trace.read_text().splitlines(),
+                                         ["get"] if scenario == "rng-failure"
+                                         else ["get", "create"])
+                        continue
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    original = state.read_bytes()
+                    secret = json.loads(original)
+                    self.assertEqual(secret["user"], "admin")
+                    self.assertRegex(secret["password"], r"^[0-9a-f]{48}$")
+                    self.assertNotIn(secret["password"], result.stdout + result.stderr)
+                    self.assertEqual(result.stdout + result.stderr, "")
+                    # An existing Secret must skip generation entirely, even if RNG fails.
+                    python.unlink()
+                    python.write_text("#!/bin/sh\nexit 23\n")
+                    python.chmod(0o700)
+                    preserved = subprocess.run(shell + [command], env=env, text=True,
+                                               capture_output=True, timeout=10)
+                    self.assertEqual(preserved.returncode, 0, preserved.stderr)
+                    self.assertEqual(state.read_bytes(), original)
+                    self.assertEqual(trace.read_text().splitlines(), ["get", "create", "get"])
+                    self.assertEqual(preserved.stdout + preserved.stderr, "")
 
     def test_prometheus_versions_are_locked(self):
         self.assertEqual(self.constants.v_promchart, "88.0.0")
@@ -293,7 +371,7 @@ class PrometheusDeliveryTests(unittest.TestCase):
             ["volumeClaimTemplate"]["spec"]["storageClassName"],
             "local-path",
         )
-        self.assertIn("openssl rand -hex 24", TASKS)
+        self.assertIn("secrets.token_hex(24)", TASKS)
         self.assertNotIn("Admin1234!", VALUES)
         self.assertNotIn("insecureSkipVerify: true", VALUES)
         self.assertGreaterEqual(VALUES.count("caFile: /etc/prometheus/secrets/etcd-client-cert/etcd-ca"), 3)

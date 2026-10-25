@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "pass",
+  "classification": "test-gate only",
+  "scope": "Deterministic contracts for scheduled backup provenance and recovery sequencing; live retention/restore and active-recovery acceptance remain independent",
+  "owning_case": "LONGHORN-16 / recovery prerequisite",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "focused_command": ".venv/bin/python -m unittest tests.unit.test_longhorn_recurring tests.unit.test_longhorn_lab tests.unit.test_longhorn_recurring_credentials tests.unit.test_longhorn_gate -v",
+  "focused_tests": 174,
+  "rc": 0,
+  "checks": [
+    "Original failure reproduced before fix",
+    "Preserve source/target/Backup UID/spec and observed Snapshot UID guards",
+    "Exact direct Snapshot GET binds real UID across list/get race",
+    "Collected snapshot requires Completed/100/no error/matching status plus native backup config name/volume/snapshot/RecurringJob/completion/blocks",
+    "Store SHA256 separately from Snapshot ownership ledger",
+    "Restore stops active schedule and native children before any orphan-selector inspection",
+    "Foreign/replaced/unconfirmed identities continue to refuse recovery"
+  ],
+  "official_source": {
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "manager_paths": [
+      "app/recurringjob/volume.go:filterExpiredSnapshotsOfCurrentRecurringJob",
+      "app/recurringjob/volume.go:doRecurringBackup"
+    ],
+    "backupstore_commit": "e5f4ddc47e4d372169fb4efcfbae5848e7bc1739",
+    "backupstore_path": "backupstore.go:Backup"
+  },
+  "files": {
+    "tests/helpers/longhorn-recurring.py": "1afc03f997d5043c46e06c4ce33c6baf025915554a0b7b44a75b7fb766873088",
+    "tests/helpers/longhorn-backups.py": "10d9e280d3c5f7eca522800ca0af0edfe0f1c9b3b8143853083eb9e2f538288a",
+    "tests/helpers/longhorn-recurring-backup.py": "d5156c8c7d7ad4deba279d11024b52c8fb2d72df4e5c9581ad5e523e2b45be27",
+    "tests/helpers/longhorn-lab.py": "a2ba10d9d21edf456883745d9314928d941dfffdad02120753ab87474a991d20",
+    "tests/unit/test_longhorn_recurring.py": "122907e252d6f06cd155e860906debfec0e9da951e832548c4c5f452c0ca0e72",
+    "tests/unit/test_longhorn_lab.py": "2633ba972feffbfcdfb79d06ccf895c40ec6c4d9abfdefe43d3564a6ea923f2a",
+    "logs/longhorn-cases/recurring-provenance-contract-20261019/recurring-active-recovery-red.log": "c85c6dc0f136a7719adc031776fd9022b862de0a92fc1dbd655d7c0b34e01264",
+    "logs/longhorn-cases/recurring-provenance-contract-20261019/recurring-active-recovery-contract-red.log": "747e6e074b3b2b92302fbbd6cd1d2a3b6cc9ab1c829b5a429fce231249e52adf",
+    "logs/longhorn-cases/recurring-provenance-contract-20261019/recurring-backup-provenance-green.log": "302eda88c9ccf0b0f1b4748689f6613ea615c9c211ef91c4681c18a10736387c",
+    "logs/longhorn-cases/recurring-provenance-contract-20261019/recurring-active-recovery-contract-green.log": "6bfffc932feba19d378e96d38048d119f29ded75f03ce5389a7614073151a49e",
+    "logs/longhorn-cases/recurring-provenance-contract-20261019/recurring-backup-provenance-red.log": "76fbc17aaf6dfe5829d98eb3bfd6252dab879ef16a1f5b6b29931bcfc4696e96"
+  }
+}

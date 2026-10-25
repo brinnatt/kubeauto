@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "Disk fixture qualification only; does not sign off LONGHORN-05 host platform or production storage",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-disk-qualification",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_DISK_QUALIFICATION_PASS",
+  "scoped_clean_marker": "LONGHORN_DISK_QUALIFICATION_SCOPED_CLEAN_PASS",
+  "disk_fingerprint": "ad11bc50e3954fd157ad1afd53bc14935da09af2350a9a222f0bc57d34d7722d",
+  "formatted_disks": 3,
+  "bytes_per_disk": 107374182400,
+  "root_cause": {
+    "class": "test-gate",
+    "first_rc": 1,
+    "reason": "check_blank_disk required /data to preexist; six verified clean hosts had no /data. Failure preceded any format intent or disk mutation.",
+    "repair": "Fixture may create an absent parent after all preflights; records device/inode, refuses replacement/symlink/foreign children, and removes only its empty created parent.",
+    "verification": "75 focused contracts plus complete static preflight; same healthy core reused; three owned filesystems mounted and completely reclaimed; 18-disk post-probe and original core identity passed."
+  },
+  "files": {
+    "logs/longhorn-cases/disk-qualification-20261019-040011/gate.log": "431d4dbd219661ac5d0488e484272f4dd0be982d0e2c391196d35de19ee756d6",
+    "logs/longhorn-cases/disk-qualification-20261019-040011/durable-status.txt": "3327c5f10ba9c50f5e9e170f95146069e91947e5be331357ae8550dfec7eebf3",
+    "logs/longhorn-cases/disk-qualification-20261019-040551/gate.log": "20dcdace4e7d5af7486b962ddccdab1d71cba014268a79268bd066668a3ee148",
+    "logs/longhorn-cases/disk-qualification-20261019-040551/durable-status.txt": "a626aa87eef270097f33a23505aee03671190073e679358a2e357a85de936ef9",
+    "logs/longhorn-cases/disk-qualification-20261019-040011/host-inputs.log": "5ac8339cc316a462611f0e5b6325dd523df1c3f00413b25bce480ef37a22626f",
+    "logs/longhorn-cases/disk-qualification-20261019-040551/contract.log": "d6ad9d09f003db936e16e29458f8aab88915a1f81412f605c8d6673ca15edbca"
+  }
+}

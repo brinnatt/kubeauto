@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-21",
+  "date": "2026-10-19",
+  "status": "failed",
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-engine-failure </dev/null",
+  "durable_pid": 2421245,
+  "rc": 1,
+  "first_failure": "ValueError: control fault native engine differs from its volume",
+  "cause": "Pinned Manager prepends --engine-instance-name <Engine.name> for CLI API >=9; probe incorrectly required controller <Volume.name> at argv[0:2].",
+  "fault_injected": false,
+  "cleanup": {
+    "business_fixtures": true,
+    "transport": true,
+    "original_installation_healthy": true
+  },
+  "official_source": "Manager8320238242e8c804325d9588ec1db10feb9f36b8 engineapi/instance_manager.go getBinaryAndArgsForEngineProcessCreation",
+  "files": {
+    "logs/longhorn-cases/engine-failure-20261019-143855/control-engine-identity-green.log": "cf774ead4a11b22819fb269f5dfc0f7ce0d531f835d851a00a2d1e6d1912b31a",
+    "logs/longhorn-cases/engine-failure-20261019-143855/control-engine-identity-red.log": "a54b01a58286e0097f22beebfe3f9c358bc30509f32cda9ae10890ca7cd2b871",
+    "logs/longhorn-cases/engine-failure-20261019-143855/durable-status.txt": "4cf7577ea1a47a4679d9b281d1220f1bf3aa41f39d4a27f8ecf72fba573cc76a",
+    "logs/longhorn-cases/engine-failure-20261019-143855/engine-meta-version.go": "abd9ee22a29b70ae88fc9bb6409a52e3d190c11c1380cfa52a6f05594957bea7",
+    "logs/longhorn-cases/engine-failure-20261019-143855/first-failure.txt": "69fd1023739b9eb36233a8ca7183e82ede46064fdaddf43b1033f11a4287873e",
+    "logs/longhorn-cases/engine-failure-20261019-143855/frozen-source.txt": "b9eb6f423deb766e6397d9035ba238a2707d473028f1ae2b4634be42ee00e4dc",
+    "logs/longhorn-cases/engine-failure-20261019-143855/gate.log": "375993d7082f81687af9c10510bad768d4c0b898d7c9f3849142a84f201cb164"
+  },
+  "repair": {
+    "class": "test-gate only",
+    "engine_cli_api_version": 12,
+    "expected_prefix": [
+      "--engine-instance-name",
+      "<original Engine name>",
+      "controller",
+      "<original Volume name>"
+    ],
+    "red_contract": "5 tests: 1 failure and 4 errors with complete official argv; legacy unsupported argv unexpectedly accepted",
+    "green_contract": "5 tests passed after exact four-field prefix validation; wrong engine/volume and legacy prefix still refused",
+    "next_level": "Complete level2 static before same focused level3; no full middleware regression"
+  }
+}

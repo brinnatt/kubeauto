@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass-contract-only",
+  "classification": "test-gate first-failure diagnostics before recovery/cleanup",
+  "owning_scenario": "LONGHORN-50 Manager Pod loss (unexecuted locally added branch)",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_manager_loss -v",
+  "rc": 0,
+  "tests": 11,
+  "root_cause": "Code inspection found no per-scenario collection of native state, Pod descriptions, events, manager logs and rendered inputs before the generic business cleanup. A red contract proves the missing pre-recovery call; no live test was consumed.",
+  "fix": "Capture bounded private diagnostics from both Longhorn and the owned business namespace while the original exception is active, before recovery or deletion. Preserve the original failure on collection errors; never query Secret resources.",
+  "evidence": {
+    "v2-manager-loss-diagnostics-red-20261021.log": "e8286ccfe125b6ae727ce65b6993b698c66206af09fce08d12095c9874608318",
+    "v2-manager-loss-diagnostics-green-20261021.log": "1a45b688259e263e21199d8d48c5657f39d5c315f4eb67df5a1860ee25bb52fe"
+  },
+  "changed_input_sha256": {
+    "tests/helpers/longhorn-v2-manager-loss.py": "d55bf82c3661999acc8aa227bec4570bb6baf5b9d8e27d6d7c9e86b11574e816",
+    "tests/unit/test_longhorn_v2_manager_loss.py": "553113f4b9bfdc3a6660c973a4472e3fc13ef23033a7cc0584077e41a32d648b"
+  },
+  "scope": "Local tests only; no remote mutation, live qualification or complete LONGHORN-50 PASS."
+}

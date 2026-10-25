@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "classification": "test-gate",
+  "owning_case": "LONGHORN-48",
+  "first_failure": "tests/evidence/longhorn-v2-broken-restore-first-failure-20261021.json",
+  "root_cause": "Initial Volume status contains zero-value booleans. checkAndInitVolumeRestore sets restoreInitiated=true and restoreRequired=true together. Initial false is not completion.",
+  "change": "Require restoreInitiated=true before judging restoreRequired or accepting identity-bound native missing-block failure. Initialized restoreRequired=false still fails, as do wrong UID/backup/key/error and lastRestoredBackup success.",
+  "product_entry": "config.yml + kubecli setup 09 backup, official native negative restore, then independent CSI restores",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-broken-restore-qualification",
+  "expected_marker": "LONGHORN_V2_BROKEN_RESTORE_QUALIFICATION_PASS",
+  "focused_command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_broken_restore tests.unit.test_longhorn_v2_backups -v",
+  "focused_tests": 22,
+  "upstream": {
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "file": "controller/volume_controller.go",
+    "sha256": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "functions": [
+      "checkAndInitVolumeRestore",
+      "checkAndFinishVolumeRestore"
+    ]
+  },
+  "inputs": {
+    "tests/helpers/longhorn-v2-broken-restore.py": "8544340230ac9064d69563a132c246b95d911df957138d8a147c0c8711232c73",
+    "tests/unit/test_longhorn_v2_broken_restore.py": "38880a3e02be26f198561b0c608cb573f8107d51459a757d387ca1436b7f8a1c"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/broken-restore-initialization-contract-20261021/broken-restore-initialization-red.log": "3b912391a0792530aadc80d97cf7e103f7c18ba084e40f887565eb9bd1e971b8",
+    "logs/longhorn-cases/broken-restore-initialization-contract-20261021/broken-restore-initialization-green.log": "390ed30140a0fbd7da3584f1c97fd59288e65d5df55589632f4ceef38d106cb1"
+  },
+  "scope": "Deterministic regression only; live narrow gate and complete module remain pending."
+}

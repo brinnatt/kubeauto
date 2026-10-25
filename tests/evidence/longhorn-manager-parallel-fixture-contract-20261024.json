@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "status": "pass",
+  "signed_scope": "manager-adoption-parallel-test-fixture",
+  "classification": "test-gate fixture; no product or lab mutation",
+  "owning_scenario": "LONGHORN-49 linked aggregate handoff; independent V1 parent behavior",
+  "product_entry": "config.yml + kubecli setup <deployment> 09 via real Manager adoption; cluster side effects are local fixtures only in this contract",
+  "first_failure": "Real aggregate now invokes longhorn-manager-adopt.py, omitted from both isolated parallel fixtures; exact original static log preserves missing-file error and rc1. First repair then exposed fixture barrier incorrectly treating clone start as V2 start.",
+  "fix": "Only tests/unit/test_longhorn_parallel.py: adapter fixture verifies lease/no prior readiness, marks adoption as branch start, supplies healthy idle v2 state consumed by snapshot fixture. Failed adoption prevents snapshot and all linked children while independent V1 completes. Real aggregate, durable writer and branch verifier remain executed.",
+  "focused_tests": 82,
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_parallel.ParallelContracts.test_standalone_linked_aggregate_keeps_real_durable_handoff_private_under_022 tests.unit.test_longhorn_parallel.ParallelContracts.test_manager_adoption_refusal_stops_linked_before_capture_while_v1_finishes -v",
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "failure_markers": 0,
+  "inputs": {
+    "tests/unit/test_longhorn_parallel.py": "75fab285b1083630067b1196c9c1db583c7d54fe3e14d4a902cae69053e65852"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/current-static.log": "a457b44465ef607931580d74895b2fa977f9d4bf9b3ccb9c4543e7ea233e9947",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/current-static.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/current-static.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-focused.log": "b5114e43a9481cc2a0d5513a7b6897fbb384432f51b851e2e2cc28fd213eff0f",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-focused.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-focused.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-refusal.log": "283b259dbe0be1dc3adc72b3ca6d29d7d117862e08682e25b633ffcb84d87cf0",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-refusal.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-refusal.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-current.log": "8bcdeca37989130e4d849712611ca565a057334c476243db47628c95de9117f8",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-current.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/parallel-fixture-current.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/original-test_longhorn_parallel.py": "6f4be9dd71e48c58ec193d1d6e7fefa1278904d799ed8a211a4622fcc0b5ee54",
+    "logs/longhorn-cases/manager-parallel-fixture-contract-20261024/current-test_longhorn_parallel.py": "75fab285b1083630067b1196c9c1db583c7d54fe3e14d4a902cae69053e65852"
+  },
+  "overall_longhorn_delivery_pass": false,
+  "boundary": "Changed fixture contracts only; initial static failure preserved. Current full static and owning live acceptance remain required."
+}

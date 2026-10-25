@@ -80,14 +80,8 @@ Inspect all six sibling repositories under `/home/brinnatt/projects` before and 
 - Use the smallest readable, maintainable, Pythonic change consistent with upstream design.
 - Reproduce from a verified clean lab before calling a failure a product bug. Separate test-gate, environment, supply-chain, runtime, Kubernetes, controller, and product failures with evidence.
 - A failed attempted fix is not a new baseline. Remove its speculative code and lab residue before continuing.
-- Track acceptance per matrix item. Mark a module pass as soon as its product
-  gate has current success markers, durable module rc=0, zero failure markers
-  and verified cleanup of its owned fixtures; do not wait for unrelated modules
-  or the final full run. On a proven related change, return only affected items
-  to pending and record the dependency and disproof command. Evidence for
-  unchanged dependencies remains valid; unknown dependencies require impact
-  analysis, not automatic reuse or blanket invalidation. Module progress does
-  not substitute for final clean full-run sign-off.
+- Track acceptance and schedule work through the matrix and evidence rules in
+  [the execution-efficiency contract](#test-engineering-and-execution-efficiency-contract).
 - Customer-facing middleware documentation covers exactly four content types: user manual, operations manual, technical whitepaper and development manual. Keep the technical whitepaper and development manual separate; combine the user and operations content into one `operations-manual.md` when the component follows the established PXC style. Integrate official references into the applicable whitepaper or development manual. Do not deliver proposal/review drafts, retrospectives, project-status narratives, internal test chronology, standalone source indexes or an extra README as customer documentation. Write from the customer's product, task and operational perspective with formal terminology, continuous executable main paths and clearly quoted exception/rollback/risk branches.
 - Ceph is an explicitly approved exception: preserve the nine modular documents
   in `docs/storage/ceph/`. Fix proven documentation bugs only; do not restructure
@@ -97,9 +91,27 @@ Inspect all six sibling repositories under `/home/brinnatt/projects` before and 
 
 Test helpers, runners, templates, matrix validators and diagnostics are production
 delivery code. A test-gate bug that consumes a clean lab run is a delivery defect,
-not an acceptable testing cost. Preserve 100% acceptance coverage; reduce waste by
-ordering evidence correctly, never by skipping scenarios.
+not an acceptable testing cost. Complete the designed matrix and production
+delivery requirements to reach GA readiness; preserve 100% acceptance coverage.
+GA readiness, document acceptance and actual customer sign-off are separate
+claims: submit reviewable evidence and never sign on the customer's behalf.
 
+- Plan execution from the matrix capabilities and remaining evidence gaps.
+  Use existing matrix/evidence records to identify prerequisites, owning product
+  entry points, host/disk leases, shared mutable resources, capacity budgets and
+  success/cleanup exits. Serialize actual dependencies and conflicting mutations;
+  run ready independent branches concurrently through fixed runners when their
+  ownership, supervision and cleanup boundaries are proven. Bound concurrency
+  by CPU, memory, disk, network and shared-control capacity. Do not leave an
+  available authorized pool idle merely to follow matrix row order. This does
+  not require a new scheduler, framework or additional agents.
+- Reuse applicable official and project evidence under the delivery playbook's
+  official-evidence rules. Check pinned inputs, dependency identities, scenario
+  coverage and raw/durable evidence before reuse. Return only proven affected
+  items to pending and record the dependency and smallest disproof command;
+  unchanged dependencies retain valid evidence. Unknown dependencies require
+  impact analysis, not automatic reuse or blanket invalidation. Official GA
+  results establish upstream conditions, not a project PASS.
 - Before any stateful or full-chain run, every changed test artifact must pass its
   cheapest relevant contract checks: shell syntax, YAML/JSON parsing, template
   rendering, resource name/namespace/ownership assertions, marker/exit-state
@@ -128,6 +140,19 @@ ordering evidence correctly, never by skipping scenarios.
   A complete clean regression remains mandatory after accepted changes, with its
   terminal marker, durable `rc=0`, zero failure markers, current matrix evidence
   and final `LAB_CLEAN_VERIFY_PASS`.
+- Isolate a failure to branches whose prerequisites or shared state it invalidates.
+  Continue independent ready work after proving its boundary remains healthy.
+  Mark each completed module pass promptly when its current product success
+  markers, durable module `rc=0`, zero failure markers and scoped cleanup are
+  verified. Preserve a failed parent's real status; bind independently accepted
+  child evidence to its own inputs, logs and cleanup. A passing subcase signs
+  only its declared scope, not an incomplete matrix item or the final delivery.
+- Give every focused qualification or repair a matrix gap, minimal disproof
+  and completion condition. Once satisfied, consume that evidence and advance
+  the owning acceptance path; do not keep adding qualifications, repeat accepted
+  audits or rebuild unrelated prerequisites without a proven gap or change.
+  Continue authorized work toward the remaining matrix and final clean run,
+  reporting completed scopes, active branches, blockers and the next exit.
 - Never optimize by downgrading coverage, accepting incomplete module evidence
   or treating a running Pod as a business result.
 
@@ -147,7 +172,10 @@ new middleware and maintenance of delivered branches.
    focused unit tests; YAML/JSON parsing; Ansible syntax; Helm/template render;
    resource name, namespace, selector, port, image, ownership, marker and exit
    contracts.  Add or update a deterministic unit/contract test for the exact
-   defect before its next live execution.
+   defect before its next live execution. For continuation or composed runners,
+   that contract must also check the invoked modules' real preconditions,
+   postconditions and refusal rules against the actual call order;
+   success-marker stubs alone do not prove the handoff.
 3. Run the narrowest fixed-runner branch that reaches the changed assertion.
    Its setup, module-scoped cleanup and diagnostics remain runner-owned. A failed preflight
    or focused gate blocks a full middleware run; fix the single proven causal
@@ -159,9 +187,9 @@ new middleware and maintenance of delivered branches.
    The final full run still requires its normal clean setup and final cleanup.
 5. After a full-chain failure, collect the first failing command, durable exit
    state, rendered inputs, owned-resource state, Pod descriptions/events and
-   relevant controller logs before editing.  Stop the scenario at a failed
-   prerequisite: never spend the remaining stages of an invalid run merely to
-   collect secondary failures.
+   relevant controller logs before editing. Stop the dependent scenario at a failed
+   prerequisite: never spend the remaining stages of that invalid path collecting
+   secondary failures. Independent work follows the branch-isolation rule above.
 
 Every live-launch update must state the completed ladder level, the evidence
 that unlocked it, and the next permitted level.  No test-only shortcut may
@@ -200,10 +228,26 @@ ladder removes invalid executions, not customer coverage.
 - Additional Ceph OS-qualification controls supplied by the delivery owner:
   Rocky Linux 10.2 `192.168.47.145` (`root`), Ubuntu 24.04
   `192.168.47.146` (`ly`, authorized root via sudo), and Ubuntu 26.04
-  `192.168.47.147` (`ly`, authorized root via sudo). Use only for the
-  Ceph qualification branch after BatchMode key bootstrap; do not persist
+  `192.168.47.147` (`ly`, authorized root via sudo). `192.168.47.145` remains
+  Ceph-only. The delivery owner additionally authorized `.146` and `.147`
+  for the shared Longhorn V2 pool below. Use BatchMode key authentication; do not persist
   their passwords. A qualification result requires the actual host OS and
   kernel to pass the secure msgr2 plus `aes256k` client probe.
+- Longhorn V2 shared pool, explicitly authorized on 2026-10-20:
+  `192.168.47.146` and `192.168.47.148` (Ubuntu 24.04.3), and
+  `192.168.47.147` (Ubuntu 26.04), each with one additional 100 GiB raw disk.
+  The supplied account is `ly` with administrative authority; existing root
+  BatchMode keys are verified and preferred. Never persist supplied passwords.
+  These hosts must be leased against overlapping Ceph qualification before
+  mutation. Admit each disk by verified stable hardware identity, never merely
+  its kernel device name. Read-only inventory is not a disk lease or V2 PASS.
+- Independent Longhorn V2 DR target, explicitly authorized on 2026-10-20:
+  `192.168.47.149` (Ubuntu 24.04, supplied account `ubuntu24` with sudo authority).
+  Use the fixed runtime-only SSH/sudo bootstrap helpers and BatchMode keys;
+  never persist the supplied password. Keep its cluster and lease independent
+  from the `.146`–`.148` source. Verify actual memory, kernel >=6.7, an unused
+  raw disk and stable hardware identity before admission; provisioning alone
+  is not qualification or permission to wipe an unverified disk.
 - `192.168.122.1` is permanently forbidden. Any address not explicitly listed
   in this section is forbidden as a test machine, inventory host, SSH target,
   Registry endpoint or fallback. Historical fixtures containing other

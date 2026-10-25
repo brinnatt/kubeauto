@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "classification": "test-gate",
+  "scenario": "LONGHORN-48 independent V2 standby two-point synchronization",
+  "product_entry": "Source and target config.yml + kubecli setup 09; native Volume CR as documented upstream DR interface",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-standby-qualification",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-standby-qualification",
+  "expected_marker": "LONGHORN_V2_DR_STANDBY_QUALIFICATION_PASS",
+  "official_sources": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "topics": [
+      "https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-disaster-recovery-volumes/",
+      "https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/set-backup-target/"
+    ],
+    "specific_ambiguities": [
+      "volume_controller.go updateRequestedBackupForVolumeRestore: lastBackup is discovered point, Engine lastRestoredBackup is actual restored point",
+      "volume mutator defaults dataEngine to v1 and reads backup block size for Standby, so discover Backup first and set V2 explicitly",
+      "v1beta2/enginefrontend.go: V2 business frontend is separate from Engine export endpoint",
+      "uninstall retention path: restoring original empty BackupTarget causes native cache retirement without deleting off-cluster backups"
+    ]
+  },
+  "fixture_boundary": "New source namespace/PVC/Pod/PV/native volume and exactly two product backups, one target native standby, exact UID-bound backup discovery cache, original external TLS server and independently bound consumer. Never take over unknown create outcomes.",
+  "cleanup_scope": "Delete only original target standby with no PV; disconnect target then source native cache by UID/resourceVersion/spec, verify every external receipt unchanged, retire own source business, restore target references/credentials, then source-owned backend and transports; preserve both healthy Kubernetes and Longhorn installations.",
+  "qualification_boundary": "Two restored backup points in one read-only standby, no activation/failback or target-site HA; no entire LONGHORN-48 PASS.",
+  "checks_before_live": [
+    "Source namespace creation crash window recovered only with original UID, full graph check and ordinary business cleanup",
+    "Unknown Backup response keeps backend and journal",
+    "Unscheduled replicas wait; foreign assigned node/disk rejected",
+    "Engine restore ongoing/error/previous point cannot pass",
+    "Business EngineFrontend or PV before activation rejected",
+    "Only one source transport lifetime: target direct TLS qualification precedes source Store.qualify; original exclusive transport.log retained until ordinary Store teardown"
+  ],
+  "first_failure": "tests/evidence/longhorn-v2-dr-standby-transport-first-failure-20261021.json"
+}

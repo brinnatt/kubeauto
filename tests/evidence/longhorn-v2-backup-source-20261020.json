@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-20",
+  "status": "source-only",
+  "scope": "LONGHORN-48 V2 external S3/TLS full/incremental fixture and independent restore integration; not project PASS",
+  "version": "Longhorn 1.12.1 replicated V2",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "conclusions": [
+    "Off-cluster S3 objects survive local-volume loss; cluster-local TLS passthrough is a temporary lab transport, so its endpoint is not a production disaster-independent path.",
+    "Secret in the installation namespace provides AWS_ENDPOINTS, AWS_CERT PEM CA chain and VIRTUAL_HOSTED_STYLE; fixture uses path style, verifies CA/host and changes no customer defaults.",
+    "Full backup uploads all data blocks and overwrites existing ones; incremental transfers changed blocks, so upstream GA does not prove this project requested the intended mode or can recover either time boundary.",
+    "Validate actual backup configuration and every referenced object, then independent restored PVC/PV/Volume and source write isolation through existing config+kubecli integration; target readiness alone is insufficient.",
+    "Backup lifecycle remains Longhorn-owned: no backend retention/deletion policy. Cleanup restores original target references only after native backup and consumer cleanup.",
+    "Official restore CR sample uses V1; this gate explicitly uses V2 StorageClass through CSI, backed by existing snapshot/CSI pinned source research; no claim for encrypted recovery, scheduling, SystemRestore or DR.",
+    "RFC 5280 4.2.1.1/2/3 require leaf AuthorityKeyIdentifier, CA SubjectKeyIdentifier and CA KeyUsage; Python 3.13+ strict SSL verification exposes missing fixture extensions. Use a backup-only compliant chain, retaining CA/host verification and independently qualified gRPC identities.",
+    "BackupTarget availability comes from ListSystemBackup using Secret-derived credentials; it is distinct from per-volume object/readback and restore proof.",
+    "backupstore saveBlock compresses data before getTransferDataSize, then tracks newly uploaded or overwritten existing content-addressed objects. Reported transfer byte counts are compressed streams, not logical volume or application sizes."
+  ],
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/set-backup-target/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/create-a-backup/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/restore-from-a-backup/",
+    "https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.1",
+    "https://docs.python.org/3.14/library/ssl.html#ssl.create_default_context"
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/backup-and-restore/set-backup-target.md": "df307cdf65858d334645608d52e3ca5f4afb521d4226579eaddd30ff81fa5e7b",
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/backup-and-restore/create-a-backup.md": "7186a58ad08a0808a0a27a44da257b144a4178c31a19d70b1508d4112173e9aa",
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/backup-and-restore/restore-from-a-backup.md": "24f3b73b439e30c8093ae9b91d0e4485005c061aa742146da2525fe6b6a284c1",
+    "manager-1.12.1/types/types.go": "203e22a4598c8d20889d290bb9827ec64ba0d8bed16ebdb27c28545ab701f0c0",
+    "rfc5280.txt": "a2f2628c0a83b873fc4786abd921f9b2c02395954b655d190bf16b831633345d",
+    "python-3.14-ssl.html": "c16663636ae0efd9440439cdeed68eaf13dfcb3c0a52151331a1a88628fa31fa",
+    "python-3.14-installed-default-context.txt": "264886c4e5d859248506f610bc413adfe073d76477bfeabc27d0a24b111f95c9",
+    "manager-1.12.1/controller/backup_target_controller.go": "fd79b316ddde5f9edb8b44b51c8a46d35cb26d9909c5dc8ae2ec8abaef2da59b",
+    "instance-manager-1.12.1/vendor/github.com/longhorn/backupstore/deltablock.go": "eb6e080ef371ae3fb1cbf51f6613786a69a6bf2f316fa96039ecf6e2b6caf58e"
+  },
+  "source_download_notes": {
+    "python-3.14-ssl.html": "Transfer timed out after first 65536 of 344501 bytes; only complete create_default_context section in this prefix was read. Not a complete-page research claim or downloaded product artifact. Installed Python 3.14 function source independently read on 147."
+  },
+  "instance_manager_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c"
+}

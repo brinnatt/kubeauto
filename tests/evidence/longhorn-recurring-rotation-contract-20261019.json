@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "pass",
+  "classification": "test-gate implementation and deterministic contracts only",
+  "owning_case": "LONGHORN-16",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-recurring-rotation-qualification </dev/null",
+  "success_marker": "LONGHORN_RECURRING_ROTATION_QUALIFICATION_PASS",
+  "rc": 0,
+  "checks": [
+    "Explicit native error validator; default errors still reject",
+    "Source, target, Backup UID/spec and Snapshot provenance guards precede expected-error acceptance",
+    "Active source deselection checks original schedule UID/spec and source UID/resourceVersion/old value; no schedule deletion or foreign-label changes",
+    "A/B/C selected through product; require new completed Backup UID and signed exact backend configuration",
+    "Before current-key revocation, observe an unselected full native cycle and drain in-flight jobs; fail on fresh false completion or wrong native error",
+    "Freeze failed UID/spec set before repair; new or changed errors and a frozen error becoming Completed reject",
+    "Failed configuration absence requires exact native NoSuchKey plus existing-object positive controls",
+    "Stop schedule, restore root reference and retire owned credentials before independent CSI restore; cleanup restores valid root first on failure",
+    "Executable shell contracts cover every stage failure, missing business/stop/clean/credential markers, transport cleanup failure and composite fail-fast"
+  ],
+  "static_contracts": 399,
+  "live_qualification": "pending; no credential rotation live PASS claimed",
+  "official_sources": {
+    "manager": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "manager_paths": [
+      "app/recurringjob/volume.go:StartVolumeJobs and doRecurringBackup",
+      "api/snapshot.go:SnapshotBackup",
+      "manager/engine.go:BackupSnapshot",
+      "controller/backup_controller.go:checkMonitor and backupInFinalState"
+    ],
+    "documentation": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "documentation_path": "content/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots.md",
+    "backupstore": "e5f4ddc47e4d372169fb4efcfbae5848e7bc1739",
+    "backupstore_path": "s3/s3_service.go:parseAwsError"
+  },
+  "files": {
+    "logs/longhorn-cases/recurring-rotation-contract-20261019/rotation-current-static.log": "081837d1dd491381acf394e62ed096259f02e74e236afc3651d609ccff8a55fe",
+    "logs/longhorn-cases/recurring-rotation-contract-20261019/rotation-frozen-failure-green.log": "9fba5bc49e5f263e2c0cceb44732c0576ca7b8d5f91832ac16e5ea656605a142",
+    "logs/longhorn-cases/recurring-rotation-contract-20261019/rotation-frozen-failure-red.log": "f5f2708c4fc80d05262aa899dc96d4efadb2cd3ea34e77966ebc1b30389723a8",
+    "logs/longhorn-cases/recurring-rotation-contract-20261019/rotation-integrated-all-contracts.log": "6cb16554e61026ac36c29a96bb97810032a6202301698e8fd269d20a2f5eebe6",
+    "logs/longhorn-cases/recurring-rotation-contract-20261019/rotation-revoked-contract-green.log": "407025646498b9111129de875a742255b81377325a39fbb39de4b826a11363b8",
+    "logs/longhorn-cases/recurring-rotation-contract-20261019/rotation-revoked-contract-red.log": "5555db1d281c2d9376605686094b453a83c7b3202aaba3ab20e442958048aa5b",
+    "tests/helpers/longhorn-lab.py": "67a847c2c173c34beda851a102ea52a821df9059b9190a3de49b7577ec13b2b0",
+    "tests/helpers/longhorn-live.sh": "4e254c7c91d64e65d6bde05f116537e6b55fac360a4722180493940b2aecf08b",
+    "tests/helpers/longhorn-recurring-rotation.py": "3abafe71ffe01e731e626dd7dcff2dde3acf5c7c4c3dd7430b56237518c5b13f",
+    "tests/helpers/longhorn-recurring.py": "529b689cfdda63f6a74367306954ce1382a6ec305a68656041b2c150075820a9",
+    "tests/helpers/longhorn-runner.sh": "2de615d4bc0ac5df1f759247ac16f74aeb65e98f6ab4f517796d9a7926354bee",
+    "tests/helpers/longhorn-static.sh": "f3f700c74506281232420390a573eb4e1bb1763f156c4bcd9128e224fc7898aa",
+    "tests/unit/test_longhorn_gate.py": "98c2df2f7e73208c62255e6a1abb749d00966807fb017ba02c0f9dd97a2052c4",
+    "tests/unit/test_longhorn_recurring_rotation.py": "03a12f58efc727260c413323e5717b2d6694285131c2357ae215d8bfa8126f90",
+    "tests/unit/test_longhorn_recurring_rotation_business.py": "c98b90705f6edd6346a5f320cb7743ea282e9483bdf9c93d9290a410160eea92"
+  }
+}

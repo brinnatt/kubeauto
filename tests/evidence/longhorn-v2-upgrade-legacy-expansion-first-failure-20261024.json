@@ -1,0 +1,32 @@
+{
+  "classification": "test-gate",
+  "date": "2026-10-24",
+  "durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "expected": "cannot expand legacy linked-clone volumes",
+  "first_failing_call": "legacy_refusals: server dry-run Volume size increase",
+  "matrix_item": "LONGHORN-52",
+  "observed": "PVC legacy size should be expanded from 2147483648 to 3221225472 first",
+  "official_source": "https://github.com/longhorn/longhorn-manager/blob/8320238242e8c804325d9588ec1db10feb9f36b8/webhook/resources/volume/validator.go",
+  "owning_scenario": "real legacy linked-clone expansion refusal after 1.12.0 -> 1.12.1 upgrade",
+  "product_entry": "config.yml + kubecli setup longhorn-v2-gate 09",
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-upgrade-refusal-order-retry-20261023/first-failure-readback/longhorn-upgrade-failure-2g1pwymd.txt": "1bd2e0cdef014d7930bace24723e7a6d62a29c73794425f72685c2397afb8d0a",
+    "logs/longhorn-cases/revision3-v2-upgrade-refusal-order-retry-20261023/first-failure-readback/longhorn-upgrade-failure-t8rs124v.txt": "93eb7716acf4cc124c134bcce2009982f8b5b5a674232e115288bac0e5857f8a",
+    "logs/longhorn-cases/revision3-v2-upgrade-refusal-order-retry-20261023/first-failure-readback/longhorn-upgrade-lifecycle.json": "98731e536abd8a9ddaf76087602c1c72aa858c870cb9a9aa3303a0f5dd2325b2",
+    "logs/longhorn-cases/revision3-v2-upgrade-refusal-order-retry-20261023/first-failure-readback/longhorn-v2-upgrade-preparation.json": "2ad6ad781125074b33266897bb2a7442fe203d4e49d4f44a0d8ca0191b6d705e"
+  },
+  "repair_boundary": "Raise only the owned legacy PVC request before native refusal; preserve the current upgraded healthy installation and bind any continuation to original durable failure and journal. No image or product change.",
+  "root_cause": "Pinned volumeValidator.Update calls validateExpansionSize before its legacy-specific size guard; the fixture left its original PVC request at 2 GiB.",
+  "schema": 1,
+  "status": "first-failure-preserved",
+  "terminal": {
+    "native_rc": null,
+    "observer_rc": 0,
+    "remote_inputs_equal": true,
+    "runner_rc": 1,
+    "terminal": true
+  }
+}

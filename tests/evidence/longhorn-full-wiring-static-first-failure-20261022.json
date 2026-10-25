@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-01",
+  "status": "pending",
+  "classification": "test-gate contract fixtures after composed full-entry wiring",
+  "rc": 1,
+  "durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "gate": "bash tests/run_enterprise_regression.sh --longhorn-static-only",
+  "first_failure": {
+    "suite": "test_longhorn_parallel + test_longhorn_v2_im_adopt + test_longhorn_ownership_aggregate",
+    "tests": 81,
+    "failures": 1,
+    "errors": 2,
+    "causes": [
+      "Exact supported parallel route set omits newly added v1-backup-v2-data-protection",
+      "Legacy target-adoption positive fixture freezes original target-install helper while actual source adds strict full-current material seam; original verifier rejects mismatch"
+    ]
+  },
+  "remote_mutation": false,
+  "active_remote_input_count": 835,
+  "active_remote_sources_unchanged": true,
+  "raw_evidence": {
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/new-source-static.log": "a00f9c19bf7b6f5c0eae145407950afbd1d849f8d086c693f0ea5333b9281576",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/new-source-static.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/new-source-static.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/repaired-source-static.log": "3274f245ae0ec198ba60cddaceac6f2030311062c1a921fa7101da9022f25b6d",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/repaired-source-static.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/repaired-source-static.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/final-repaired-source-static.log": "de96f23841edcd35116421f300b3ba5cd770837eb56a1f06f3f55a1ff8e3a10b",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/final-repaired-source-static.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/final-repaired-source-static.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+  },
+  "next": "Exact finite callee suites are green. Compose the independently proven disk journalctl input fix, then complete one current local static before focused owned recovery.",
+  "focused_repair": {
+    "scope": "First two route/target-adoption contract fixtures only",
+    "test_files": 2,
+    "tests": 75,
+    "exit": 0,
+    "finalized": 0,
+    "patch_sha256": "5376cdb7aa8b279aafb3a15e5a78bf3a708e1b83110839770388ccde1773e763",
+    "verifiers_changed": false
+  },
+  "followup_failure": {
+    "classification": "test-gate: historical .2 positive fixtures require original source context",
+    "tests": 128,
+    "failures": 0,
+    "errors": 3,
+    "exception": "completed installation compatibility input changed: tests/helpers/longhorn-v2-install.py",
+    "correct_guard_behavior": true,
+    "scopes": [
+      "test_actual_completed_plan_uses_only_two_exact_reviewed_transitions v2 and v2-dr-target",
+      "test_real_read_plan_to_volume_baseline_failure_and_compatibility_success"
+    ],
+    "durable": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "remote_mutation": false
+  },
+  "historical_context_fixture_repair": {
+    "scope": "one unit suite and three immutable historical source fixtures; current source rejection retained",
+    "patch_sha256": "e585dd9fa04dc8e051768fc7baeb35fe3b2fb3522a3fbfe5e03af0aac157a5f4",
+    "manifest_sha256": "828711c0d0c2253eccd810783bffb68b0491cd96509b81451554b634b5833db8",
+    "exact_red_tests": 2,
+    "exact_red_errors": 3,
+    "exact_green_tests": 2,
+    "owning_suite_tests": 10,
+    "durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "verifiers_changed": false,
+    "historical_evidence_changed": false,
+    "raw_evidence": {
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/red.log": "61b5c5569585d67db28841c72e4fd573e5ad9032b5b7b364917811d38b9f336b",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/red.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/red.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/green.log": "a13bd50f90aef69b7103ee5ae74c4cda3df75ab4b13e168e2722178e8bee72c6",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/green.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/green.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/focused.log": "887784eec2dfa10a301f5362230f010bc97dedde61d7a187511c4b051160a73f",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/focused.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/focused.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/suite-red.log": "28434fed199b08899a70cb833babef6b10fc83a0b78b293dbb32c08d04a3c666",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/suite-red.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/revision-evidence-fixture-contract/suite-red.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    }
+  },
+  "composed_static_followup": {
+    "classification": "test-gate fixture: temporary DR activation BASE misses newly consumed full-material callee",
+    "scope": "test_longhorn_v2_dr_failover.ActivationPrerequisiteContracts.test_real_guard_rejects_missing_incomplete_changed_or_unclean_activation",
+    "fault": "healthy positive context",
+    "exception": "FileNotFoundError: tests/helpers/longhorn-full-material.py",
+    "suite_tests": 23,
+    "suite_failures": 1,
+    "executed_tests_through_failure": 1091,
+    "durable": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "remote_mutation": false,
+    "snapshot_count": 316,
+    "snapshot": "logs/longhorn-cases/node-events-compatible-continuation-20261022/final-repaired-source-static-inputs.json",
+    "snapshot_sha256": "bd10ee80eacacab77840bfa1df18c819988823d811253b8084fc4a662135a3ac",
+    "source_unchanged_during_run": true
+  },
+  "frozen_input_repair": {
+    "patch_sha256": "5cd41485259410666bcfd7ea347f7d91107f3e112fbaeae9158612490ba4990e",
+    "files": 2,
+    "owning_tests": 24,
+    "durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "raw_evidence": {
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/red.log": "24d365f940c06c4c1b7b5f9e8b1ec53fc8f8aaeed1b88cca6ae8f86d21437d80",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/red.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/red.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/green.log": "2f0b10d46799c65dc348db558bbae1e63da042b906b53edf62b339f7fd58f8c3",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/green.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/green.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/focused.log": "cc5a1c058a6792cc015518d8735958699481d36c6f694705289dc6db288b6ea8",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/focused.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-input-freeze-contract/focused.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "finite_callee_fixture_repair": {
+    "patch_sha256": "13a9b6626ce6c8a5dda38113e6de55c036f29945f69f7e9d903ab3d00181a4a6",
+    "seams": 10,
+    "affected_pending_suites": 12,
+    "dr_suite_tests": 23,
+    "dr_durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "install_suite_tests": 28,
+    "install_durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "other_11_suites_passed_methods": 161,
+    "failed_batch_status_preserved": 1,
+    "product_helpers_changed": false,
+    "raw_evidence": {
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/red.log": "005f26df954b09f7915c6dfa0ed56b6ef72586af60e23e043bd5b8d2d84e2efa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/red.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/red.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/green.log": "858eb23fda9aa17adbecbcb839edafb6f119a3fb5378e9987e5fe7cb2917bd64",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/green.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/green.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/owning.log": "db58a9bdc98375ef0bcf9529e4e747dc106d70a4577cc861438cc2afd612fa99",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/owning.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/owning.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/pending.log": "e027fc8f57c92979eb98a093114940d047b263079dae6b0d6a70b789ab75ad06",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/pending.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/pending.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-red.log": "7c7a34ee643860c95696370d9a94c11f03ca23f096a0300e35f1c18562c1546c",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-red.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-red.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-green.log": "6f539934d151605b38d240c356e646045f2d91997b20e79926bb592e14ba8dae",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-green.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-green.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-owning.log": "c3043b1357fc2c09301f0d7a05389e7e1b5f327bf7d1541555cca3da9c6e7e3d",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-owning.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/node-events-compatible-continuation-20261022/full-callee-contracts/install-owning.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  }
+}

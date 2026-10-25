@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-19",
+  "status": "pass",
+  "complete_matrix_item": true,
+  "version": "1.12.1",
+  "instance_manager_version": "v1.12.1-kubeauto.2",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "completed_subcases": {
+    "native_replica_process": {
+      "evidence": "tests/evidence/longhorn-replica-failure-20261022.json",
+      "sha256": "b80b54954379e8440dbbd9df376af41ff4e8b680290d4926589c733edf8a2c74",
+      "reuse_review": {
+        "logs/longhorn-cases/disk-business-retry-20261022/process-reuse-review/reuse.json": "baab9791c411c138aa912965278ad30dde556120951e4792441b705cc29d57f5"
+      },
+      "durable": {
+        "exit": 0,
+        "finalized": 0
+      },
+      "failure_markers": 0
+    },
+    "physical_filesystem_disk": {
+      "evidence": "tests/evidence/longhorn-disk-failure-20261022.json",
+      "sha256": "4a8298da7ac5296f95f2b5ba49986278325dd27d915f0096d80692e506885f7e",
+      "durable": {
+        "local_exit": 0,
+        "local_finalized": 0,
+        "remote_exit": 0,
+        "remote_finalized": 0
+      },
+      "failure_markers": 0
+    }
+  },
+  "acceptance": "Both designed LONGHORN-19 subcases complete with confirmed writes, rebuild, remount and scoped cleanup. Historical failed parent runs remain failed.",
+  "boundary": "LONGHORN-19 only. Does not imply complete middleware delivery, final clean run, GA readiness or customer sign-off."
+}

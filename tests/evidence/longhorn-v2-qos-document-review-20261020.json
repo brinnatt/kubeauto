@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "scope": "V2 rebuild QoS operational config/native override, stale official tutorial fields, dynamic versus startup changes",
+  "review": {
+    "classification": "Author scoped content and two-reader path review; no independent review or field acceptance",
+    "scope": "V2 rebuild QoS operational config/native override, stale official tutorial fields, dynamic versus startup changes",
+    "novice_path": "Healthy V2 and approved business/recovery budget → original values/UIDs and I/O baseline → explicit config+kubecli09 → native Setting → actual active-rebuild state and business checks when applicable; stop and restore original explicit values before releasing management.",
+    "experienced_path": "Task index and parameter reference link to QoS; null differs from zero, positive per-volume override differs from inheritance; exact1.12.x fields/MB/s and missing-inactive status explained. Native per-volume editing resolves PVC→PV→Volume and preserves resourceVersion. No fabricated CSI parameter or API success-as-throughput claim.",
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 120,
+        "yaml_blocks": 20,
+        "bash_blocks": 34
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "f42346cf6882408bb62f220dbca8b8a20000b650f136d3b9d19356233c8cc608",
+        "docs/storage/longhorn/technical-whitepaper.md": "da6e6081e61a37a4213937418386fc7b1fded7267db86d287b40ae73f1d773a7",
+        "docs/storage/longhorn/development-manual.md": "1c5e054284b49c1ff02a6753d3a6cf2a6d99ab6ebc8f558abca0065c318398f3"
+      }
+    },
+    "inline_python_ast": {
+      "heredocs": 3,
+      "inline_c": 5,
+      "status": "pass"
+    },
+    "diagrams": {
+      "count": 7,
+      "identity": "All unchanged canonical source bodies match existing rendered/visually checked artifacts; reused by content identity."
+    },
+    "specific_correction": "Whitepaper previously repeated stale rebuildingMbytesPerSecond/appliedRebuildingMbps tutorial names; corrected to fixed1.12.1 Volume replicaRebuildingBandwidthLimit/engine appliedRebuildingMBps. Lifecycle chapter now explicitly separates V1 filesystem/mount tasks from V2 raw-disk admission and prevents copying V1 removal around V2 receipts.",
+    "remaining": "V2 hardware qualification and runtime rebuild/dynamic adjustment/performance still pending; no full-document final sign-off."
+  },
+  "files": {
+    "logs/longhorn-cases/v2-qos-document-review-20261020/v2-qos-doc-check.json": "86da8a35860dbb7980f38b6d0891b282d232c9f6f5252727f973f6832fc6314e",
+    "logs/longhorn-cases/v2-qos-document-review-20261020/sixrepo-v2-qos-audit.json": "5f369a3b3a83b3307dbd04b6692a8b9a59bead04064cf46f32edc4f2cc4f0525",
+    "logs/longhorn-cases/v2-qos-document-review-20261020/reading-map.json": "981722308d15f75e1e8bcf4f9eb142d4344e9b33310b6a2c28c2d4670e5bd736",
+    "logs/longhorn-cases/v2-qos-document-review-20261020/review.json": "e85e194bcf3f7f610758d8ea78abc163ab4e285e23da863ffcb8fcab2eab7ca5"
+  },
+  "previous_evidence": "tests/evidence/longhorn-v2-iobuf-document-review-20261020.json"
+}

@@ -1,0 +1,63 @@
+{
+  "status": "pass",
+  "scope": "LONGHORN-26 local deterministic contracts only; no remote mutation or live PASS",
+  "classification": "test-gate",
+  "ladder_completed": 2,
+  "next_permitted": "wire fixed-runner focused disk lifecycle branch after parent static checks",
+  "tests": 19,
+  "rc": 0,
+  "failure_markers": 0,
+  "product_entry": "config.yml + supervised kubecli setup longhorn-gate 09 before/after native administrator disk changes",
+  "success_marker": "LONGHORN_DISK_LIFECYCLE_PASS",
+  "cleanup_marker": "LONGHORN_DISK_LIFECYCLE_SCOPED_CLEAN_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-disk-lifecycle </dev/null (parent wiring pending)",
+  "files": {
+    "tests/helpers/longhorn-disk-lifecycle.py": "1876bcb31feaff6ea6fe3233a5cb48478aee1708075b986f4cec1912ba560142",
+    "tests/unit/test_longhorn_disk_lifecycle.py": "9b6b16b08920d8c4db83e0be368a9268dc5a4326b8c1b53ed6e275c8f1d9b352"
+  },
+  "official": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "topics": [
+      "1.12.1/nodes-and-volumes/nodes/multidisk/",
+      "1.12.1/nodes-and-volumes/nodes/default-disk-and-node-config/",
+      "1.12.1/nodes-and-volumes/nodes/disks-or-nodes-eviction/",
+      "1.12.1/advanced-resources/backing-image/backing-image/"
+    ],
+    "conclusions": [
+      "Extra V1 disks use independent ext4/xfs filesystems and administrator native Node spec, preserved by product reconciliation.",
+      "Duplicate filesystem ID is a controller Ready=False DiskFilesystemChanged condition, distinct from duplicate-path webhook admission.",
+      "Eviction preserves redundancy by rebuilding before removing old replicas; backing-image last copy duplicates before eviction.",
+      "Completed BackingImageDataSource retains historical diskUUID after fileTransferred=true. Recognize only own export with no Pod for migration proof; delete the owned image/BIDS before strict disk removal and physical unmount."
+    ]
+  },
+  "execution": {
+    "source_pool": [
+      "192.168.122.135",
+      "192.168.122.40",
+      "192.168.122.72",
+      "192.168.122.212",
+      "192.168.122.165",
+      "192.168.122.238"
+    ],
+    "extra_disk_host": "192.168.122.212",
+    "stable_identity_source": "same accepted 18-disk allowlist; immediately recheck selected devices, signatures, mounts and PCI/WWN identity before formatting",
+    "disk_path": "/data/kubeauto-longhorn-extra26",
+    "source_volume": "owned CSI 2Gi V1, three independent replicas; source is created before extra disk admission so migration requires real replica UID replacement",
+    "replacement": "second distinct qualified physical disk; filesystem UUID and native diskUUID differ",
+    "no_new_images": true,
+    "no_topology_change": true,
+    "cleanup": "restore primary flags in order; own original BackingImage/BIDS retire; native extra evacuation+zero references; remove exact disk spec; normal umount; remove own fstab/guard; wipe only original UUID; verify blank and baseline healthy"
+  },
+  "contracts": "logs/longhorn-cases/disk-lifecycle-contract-20261021/contracts.log",
+  "source_files": {
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/longhorn-manager-backing_image_controller.go": "2f4f05d53432a07dff2f918c1f0644378b7ef600c69dd72cd1f5cbfd8ab8f95e",
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/longhorn-manager-backingimage.go": "0ba11f5389b778a65dbb70a7eb65cc180b1bd95ac02ea27e15dc083f5723f620",
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/longhorn-manager-node_controller.go": "08de384d8dbc0ef21f327b80c15f59e30013ace0237156fb74ac6ce5ce25c7a1",
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/longhorn-manager-validator.go": "eba31a4670b2a17f16fd6367c8d45e6dd991abb0a90ed24cb2a00de3cdb0e66f",
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/website-backing-image.md": "d80b2a3a4cd7bf3499ad8ab374bf34df827b9d13d5474f896c320c63d3ec4923",
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/website-default-disk-and-node-config.md": "0bff59f714251301bf54c937c7df43e4b124d88ef25606163ec5de63e3f6cd86",
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/website-disks-or-nodes-eviction.md": "22ac589d02894ffe94640aae0e505b8729509dac37fb6b32e39b60e7224c32fe",
+    "logs/longhorn-cases/disk-lifecycle-contract-20261021/website-multidisk.md": "454f5ffa6812aa1f193d44c5bcc41f10c176ca66b781de6ae53b52a33943ac33"
+  }
+}

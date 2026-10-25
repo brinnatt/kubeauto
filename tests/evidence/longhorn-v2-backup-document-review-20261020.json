@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "Author content and two reader-path check of V2 full/incremental result paragraphs/table and current capability boundary only; no customer command or diagram changed; not whole-document sign-off",
+  "checks": {
+    "source": "Pinned 1.12.1 target/create/restore topics and backupstore saveBlock/getTransferDataSize source; compression-stream byte counters distinguished from logical size and application bytes",
+    "content": "Operations V2 two external recovery points section and whitepaper Two recovery points section reproduce 15/21 object sets, 129016/75584 new and 165300/0 repeated upload bytes, independent full/incremental hashes and latest 17039360-byte source remount; same run and exclusions stated",
+    "novice_path": "Recommended backup task retains credential/CA input source, product target/request workflow, static CSI size check and independent restore; result section supplies concrete time-boundary/readback criteria",
+    "experienced_path": "Whitepaper explains full versus incremental, content-addressed reuse, compressed byte counters and independent recovery; object count is not new-block count and temporary cluster-local transport is not disaster-independent reachability",
+    "operation_evidence": "Reused newly completed 122-input V2 qualification, durable rc0/zero failure/scoped clean and independent original empty backup/business/raw-disk baseline; no new live run for prose",
+    "static": "44 storage/middleware documentation contracts and 54-item matrix validator passed",
+    "diagrams": "No diagram changed; existing rendering reused",
+    "open_scope": "Integrity, refusal/recovery, schedules, SystemRestore, DR, encrypted backup and full module/final delivery remain separate"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-backup-qualification-20261020.json",
+  "product_evidence_sha256": "23f5f943d1904251fd6798241a02ce48092122a20508edcc21178756494c70bf",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "ba600107328fd294389b5cabbb51fbd4dd1462e38cfe80095f5af2f0d7d1d247",
+    "docs/storage/longhorn/technical-whitepaper.md": "591cb36fbe723ce379c6fd9992cec9f3fe359ac923e73227ad19636aa095705b"
+  }
+}

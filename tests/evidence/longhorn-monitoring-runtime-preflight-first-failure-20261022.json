@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "cases": [
+    "LONGHORN-01",
+    "LONGHORN-53"
+  ],
+  "status": "failed-local-preflight",
+  "classification": "test-gate",
+  "cause": "Local runtime cache-reconcile SHA environment was inherited by static unittest observability wrappers without a remote payload, causing early rejection before any simulated action.",
+  "durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "remote_sync": false,
+  "remote_mutation": false,
+  "local_frozen_inputs": {
+    "count": 821,
+    "mismatches": 0,
+    "sha256": "a3786c45d08a789539cfde92629445f95c508b8124cd8a107fe3e7f7eb732d10"
+  },
+  "first_failure_log": {
+    "path": "logs/longhorn-cases/integrity-monitoring-resume-20261022/launch.log",
+    "sha256": "70d956b99fe2bd138b309ac118e0ddcb9fa6bac51b7942044e71baefd6b1ee2c"
+  },
+  "acceptance_downgrade": false,
+  "matrix_status": "29 PASS / 25 pending unchanged",
+  "next": "Capture runtime inputs locally then remove local-only environment before static child processes; prove environment isolation through real wrapper contract; preserve remote original healthy baseline."
+}

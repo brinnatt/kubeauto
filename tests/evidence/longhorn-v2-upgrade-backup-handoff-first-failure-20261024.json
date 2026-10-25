@@ -1,0 +1,25 @@
+{
+  "business_journal_unchanged_except_handoff": true,
+  "classification": "test-gate",
+  "durable": {
+    "exit": 1,
+    "finalized": 1
+  },
+  "first_failure_batch": "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-guards-20261024",
+  "matrix_item": "LONGHORN-52",
+  "original_handoff_sha256": "98731e536abd8a9ddaf76087602c1c72aa858c870cb9a9aa3303a0f5dd2325b2",
+  "product_or_image_changed": false,
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-guards-20261024/first-failure-readback/longhorn-upgrade-failure-x1glptg5.txt": "c32a5557b2a6a0375313a9fac7a3b63b3f9e13fcf353f6bf803758162964e002",
+    "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-guards-20261024/first-failure-readback/longhorn-upgrade-lifecycle.json": "f5a02d790ef113c344f12484ce629aacf1b4918b5dd027dff95cc9e43c37bbb9",
+    "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-guards-20261024/frozen-inputs.json": "d2083c3e77a509bec0384aa9b8dfab7447c1c6f58da6af76ca804a0cdc905ad2",
+    "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-guards-20261024/raw/tmp/kubeauto-longhorn-gate.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-guards-20261024/raw/tmp/kubeauto-longhorn-gate.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-post-rollout-resume-guards-20261024/raw/tmp/kubeauto-longhorn-live.log": "185281723e9b006c98b2e5b68615d1f62b374d4b629d5b26cbe2ac85f8c3cf93"
+  },
+  "repair": "Pass original configuration in fresh business; read UID-bound active target/Secret in resume; permit reentry only when journal differs from original solely by the original handoff hash.",
+  "root_cause": "Extracted finish_business called one-shot Store.product_configuration a second time. Existing product_binding correctly refused before any legacy/tail business mutation.",
+  "schema": 1,
+  "smallest_disproof": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_upgrade_recovery -v",
+  "success_marker": "LONGHORN_V2_UPGRADE_GATE_PASS"
+}

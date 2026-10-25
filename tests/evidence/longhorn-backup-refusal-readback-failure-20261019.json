@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-15",
+  "status": "preflight-blocked",
+  "classification": "supply-chain/readback transport",
+  "date": "2026-10-19",
+  "rc": 1,
+  "failure_markers": 1,
+  "live_started": false,
+  "source_sync_performed": false,
+  "remote_mutations": false,
+  "first_failure": "URLError during one of 30 current TalkEdu manifest reads; exception reason was not persisted by original gate",
+  "missing_image": "brinnatt/longhorn-csi-snapshotter:v8.5.0-20260514",
+  "targeted_retry": {
+    "digest": "sha256:3a32c640a1aac268e954f45f4bf3857256283b4290288cd5aaa6912eef16c802",
+    "matches_published_digest_and_both_architectures": true,
+    "rc": 0
+  },
+  "action": "Original gate retained; no code or artifact changed; retry same focused runner after successful targeted readback.",
+  "files": {
+    "logs/longhorn-cases/artifacts-20261019-124834/gate.log": "c509a65cfb6fc48275ea211ebd730e644da99e2c1f8e5c4226ad57075af600e1",
+    "logs/longhorn-cases/artifacts-20261019-124834/status.json": "50ada8b23377e588f957661852e907fec37030b294d1fd36fe26b8809f4663cc",
+    "logs/longhorn-cases/artifacts-20261019-124834/invocation.log": "1e3bac2131132e6ee49fde75fa33e2ac06e17472a24cf97727ef8e1f1ad2a71e"
+  }
+}

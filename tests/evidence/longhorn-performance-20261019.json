@@ -1,0 +1,444 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-38",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-performance </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2285794,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_PERFORMANCE_PASS",
+  "scoped_clean_marker": "LONGHORN_PERFORMANCE_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_PERFORMANCE_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_PERFORMANCE_SCOPED_CLEAN_PASS",
+      "LONGHORN_PERFORMANCE_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "workload": {
+      "block_bytes": 4096,
+      "boundary": "Warm page cache; single client; throughput includes generation/verification overhead; latency covers only pread or pwrite+fsync. Not a raw-device, cold-cache or production limit.",
+      "buffered_io": true,
+      "concurrency": 1,
+      "dataset_bytes": 67108864,
+      "errors": 0,
+      "results": [
+        {
+          "elapsed_s": 7.428348293,
+          "io_size_bytes": 1048576,
+          "iops": 34.462573630431145,
+          "latency_ms": {
+            "50": 23.354099,
+            "95": 27.816001,
+            "99": 30.581866
+          },
+          "mode": "sequential-write",
+          "operations": 256,
+          "throughput_bytes_s": 36136627.60710297,
+          "transferred_bytes": 268435456
+        },
+        {
+          "elapsed_s": 20.018231964,
+          "io_size_bytes": 4096,
+          "iops": 204.61347472474515,
+          "latency_ms": {
+            "50": 4.616971,
+            "95": 6.052354,
+            "99": 8.186622
+          },
+          "mode": "random-write",
+          "operations": 4096,
+          "throughput_bytes_s": 838096.7924725561,
+          "transferred_bytes": 16777216
+        },
+        {
+          "elapsed_s": 0.396799297,
+          "io_size_bytes": 1048576,
+          "iops": 645.1624333396942,
+          "latency_ms": {
+            "50": 0.259872,
+            "95": 1.39962,
+            "99": 2.730274
+          },
+          "mode": "sequential-read",
+          "operations": 256,
+          "throughput_bytes_s": 676501843.7016032,
+          "transferred_bytes": 268435456
+        },
+        {
+          "elapsed_s": 0.024005102,
+          "io_size_bytes": 4096,
+          "iops": 170630.39348885082,
+          "latency_ms": {
+            "50": 0.001364,
+            "95": 0.001702,
+            "99": 0.001946
+          },
+          "mode": "random-read",
+          "operations": 4096,
+          "throughput_bytes_s": 698902091.730333,
+          "transferred_bytes": 16777216
+        }
+      ],
+      "verified_blocks": 16384,
+      "write_fsync_per_operation": true
+    },
+    "resource_profile": {
+      "after": {
+        "longhorn-business-a9e8ec6cf3980c4d/writer": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/longhorn-lab/brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2",
+              "name": "client",
+              "resources": {
+                "limits": {
+                  "cpu": "1",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "50m",
+                  "memory": "64Mi"
+                }
+              },
+              "usage": {
+                "cpu": "108645578n",
+                "memory": "14272Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-212",
+          "timestamp": "2026-10-19T03:01:25Z",
+          "uid": "ee65051d-c1ee-409e-bba8-aac8727e503b",
+          "window": "13.467s"
+        },
+        "longhorn-system/instance-manager-32690fae3eaba4cf99c7546ea166790a": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+              "name": "instance-manager",
+              "resources": {
+                "requests": {
+                  "cpu": "1920m"
+                }
+              },
+              "usage": {
+                "cpu": "215063568n",
+                "memory": "67864Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-165",
+          "timestamp": "2026-10-19T03:01:24Z",
+          "uid": "62862378-eaf3-489c-8e38-65f7513a0944",
+          "window": "19.428s"
+        },
+        "longhorn-system/instance-manager-a189ba17fdf394a65b6df3c20683a882": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+              "name": "instance-manager",
+              "resources": {
+                "requests": {
+                  "cpu": "1920m"
+                }
+              },
+              "usage": {
+                "cpu": "938594889n",
+                "memory": "84584Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-212",
+          "timestamp": "2026-10-19T03:01:31Z",
+          "uid": "8c95f55e-e4f7-4263-bca6-6b59d3bb58c9",
+          "window": "13.816s"
+        },
+        "longhorn-system/instance-manager-fac6e4b60bcd97a23974d93d25d1d4c2": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+              "name": "instance-manager",
+              "resources": {
+                "requests": {
+                  "cpu": "1920m"
+                }
+              },
+              "usage": {
+                "cpu": "228890740n",
+                "memory": "57492Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-238",
+          "timestamp": "2026-10-19T03:01:30Z",
+          "uid": "60a50dbe-f1b6-48b6-8988-2917609c8b44",
+          "window": "15.184s"
+        },
+        "longhorn-system/longhorn-manager-hflbs": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-manager:v1.12.1",
+              "name": "longhorn-manager",
+              "resources": {},
+              "usage": {
+                "cpu": "26290797n",
+                "memory": "79376Ki"
+              }
+            },
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-share-manager:v1.12.1",
+              "name": "pre-pull-share-manager-image",
+              "resources": {},
+              "usage": {
+                "cpu": "0",
+                "memory": "340Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-165",
+          "timestamp": "2026-10-19T03:01:19Z",
+          "uid": "c3d2a0ec-5549-46c7-8f42-7145d398e6e2",
+          "window": "21.479s"
+        },
+        "longhorn-system/longhorn-manager-lvq8h": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-manager:v1.12.1",
+              "name": "longhorn-manager",
+              "resources": {},
+              "usage": {
+                "cpu": "22254806n",
+                "memory": "79752Ki"
+              }
+            },
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-share-manager:v1.12.1",
+              "name": "pre-pull-share-manager-image",
+              "resources": {},
+              "usage": {
+                "cpu": "0",
+                "memory": "344Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-212",
+          "timestamp": "2026-10-19T03:01:29Z",
+          "uid": "295e0a1b-6ebd-46f2-88c4-aa2c2c0e8df6",
+          "window": "29.866s"
+        },
+        "longhorn-system/longhorn-manager-vpt96": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-manager:v1.12.1",
+              "name": "longhorn-manager",
+              "resources": {},
+              "usage": {
+                "cpu": "12474189n",
+                "memory": "76460Ki"
+              }
+            },
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-share-manager:v1.12.1",
+              "name": "pre-pull-share-manager-image",
+              "resources": {},
+              "usage": {
+                "cpu": "0",
+                "memory": "340Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-238",
+          "timestamp": "2026-10-19T03:01:30Z",
+          "uid": "9828bd44-04b7-4132-ba04-ed7cb671d98e",
+          "window": "11.755s"
+        }
+      },
+      "before": {
+        "longhorn-business-a9e8ec6cf3980c4d/writer": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/longhorn-lab/brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2",
+              "name": "client",
+              "resources": {
+                "limits": {
+                  "cpu": "1",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "50m",
+                  "memory": "64Mi"
+                }
+              },
+              "usage": {
+                "cpu": "18954542n",
+                "memory": "3396Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-212",
+          "timestamp": "2026-10-19T03:01:04Z",
+          "uid": "ee65051d-c1ee-409e-bba8-aac8727e503b",
+          "window": "10.260706688s"
+        },
+        "longhorn-system/instance-manager-32690fae3eaba4cf99c7546ea166790a": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+              "name": "instance-manager",
+              "resources": {
+                "requests": {
+                  "cpu": "1920m"
+                }
+              },
+              "usage": {
+                "cpu": "41453341n",
+                "memory": "60036Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-165",
+          "timestamp": "2026-10-19T03:00:50Z",
+          "uid": "62862378-eaf3-489c-8e38-65f7513a0944",
+          "window": "11.327s"
+        },
+        "longhorn-system/instance-manager-a189ba17fdf394a65b6df3c20683a882": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+              "name": "instance-manager",
+              "resources": {
+                "requests": {
+                  "cpu": "1920m"
+                }
+              },
+              "usage": {
+                "cpu": "150045315n",
+                "memory": "99368Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-212",
+          "timestamp": "2026-10-19T03:01:01Z",
+          "uid": "8c95f55e-e4f7-4263-bca6-6b59d3bb58c9",
+          "window": "16.043s"
+        },
+        "longhorn-system/instance-manager-fac6e4b60bcd97a23974d93d25d1d4c2": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+              "name": "instance-manager",
+              "resources": {
+                "requests": {
+                  "cpu": "1920m"
+                }
+              },
+              "usage": {
+                "cpu": "43180281n",
+                "memory": "59556Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-238",
+          "timestamp": "2026-10-19T03:01:04Z",
+          "uid": "60a50dbe-f1b6-48b6-8988-2917609c8b44",
+          "window": "29.748s"
+        },
+        "longhorn-system/longhorn-manager-hflbs": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-manager:v1.12.1",
+              "name": "longhorn-manager",
+              "resources": {},
+              "usage": {
+                "cpu": "34930542n",
+                "memory": "79132Ki"
+              }
+            },
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-share-manager:v1.12.1",
+              "name": "pre-pull-share-manager-image",
+              "resources": {},
+              "usage": {
+                "cpu": "0",
+                "memory": "340Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-165",
+          "timestamp": "2026-10-19T03:00:58Z",
+          "uid": "c3d2a0ec-5549-46c7-8f42-7145d398e6e2",
+          "window": "14.03s"
+        },
+        "longhorn-system/longhorn-manager-lvq8h": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-manager:v1.12.1",
+              "name": "longhorn-manager",
+              "resources": {},
+              "usage": {
+                "cpu": "30704487n",
+                "memory": "79420Ki"
+              }
+            },
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-share-manager:v1.12.1",
+              "name": "pre-pull-share-manager-image",
+              "resources": {},
+              "usage": {
+                "cpu": "0",
+                "memory": "344Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-212",
+          "timestamp": "2026-10-19T03:00:59Z",
+          "uid": "295e0a1b-6ebd-46f2-88c4-aa2c2c0e8df6",
+          "window": "17.257s"
+        },
+        "longhorn-system/longhorn-manager-vpt96": {
+          "containers": [
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-manager:v1.12.1",
+              "name": "longhorn-manager",
+              "resources": {},
+              "usage": {
+                "cpu": "25898775n",
+                "memory": "78428Ki"
+              }
+            },
+            {
+              "image": "registry.talkschool.cn:5000/brinnatt/longhorn-share-manager:v1.12.1",
+              "name": "pre-pull-share-manager-image",
+              "resources": {},
+              "usage": {
+                "cpu": "0",
+                "memory": "340Ki"
+              }
+            }
+          ],
+          "node": "longhorn-node-238",
+          "timestamp": "2026-10-19T03:01:00Z",
+          "uid": "9828bd44-04b7-4132-ba04-ed7cb671d98e",
+          "window": "18.97s"
+        }
+      },
+      "boundary": "Two metrics-server observations and their native windows; not measured resource peaks.",
+      "observation_s": 32.99826868501259
+    }
+  },
+  "boundary": "Focused performance acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs. This run used the frozen host checker before the subsequent open-iscsi version-refusal change; no installation/platform qualification for that change is inferred. Warm-cache single-client buffered filesystem baseline only; no production limit or 30-minute stability/fault evidence.",
+  "files": {
+    "logs/longhorn-cases/performance-20261019-105500/durable-status.txt": "e6804c380550f83bcafc03d3eb3bcb7296d95915efbf3e9d05680a4fab7047f2",
+    "logs/longhorn-cases/performance-20261019-105500/frozen-source.txt": "7cbb299f3654ab216d9d0106c1ae1dc6a5ac801475ad76d131ca44a5114b706b",
+    "logs/longhorn-cases/performance-20261019-105500/gate.log": "3f89ff5a0902afd2c1fc58ce960fc672b552c9eac22b37eb618ae58386b68840"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "case": "LONGHORN-53",
+  "classification": "test-gate ownership graph omitted official controller/hook-generated resources; product09/07 completed, no Longhorn data-plane defect established",
+  "date": "2026-10-22",
+  "durable": {
+    "cpu": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "monitoring_setup": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "v2": {
+      "exit": 1,
+      "finalized": 1
+    }
+  },
+  "first_failure": {
+    "cause": "namespace_graph omitted pinned upstream Endpoints, deleted hook Job/Pod Events and certgen-created admission Secret",
+    "cleanup": "same ownership refusal; original journal and monitoring preserved",
+    "phase": "monitoring-product-setup"
+  },
+  "frozen_manifest": {
+    "count": 828,
+    "path": "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/frozen-inputs.json",
+    "sha256": "b3762c606b05a8864d09944c7bca40bf763caf3b6566bb49d78eae6c65b3c138"
+  },
+  "overall_longhorn_delivery_pass": false,
+  "raw_evidence": {
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/capture.json": "d9359f18d21e7cc91ff2159ee52309ec6c96010868df327813f1bb433c62ba14",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/observations.json": "cc56d60c0d54d56e9f7570d6ebdc3e610fd831bc6657aa07cc03436a83284f92",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/00-cpu-evidence-reuse.log": "67f1bcbec548d77e3437a62dc8eff009674b485626bd19971d53aef4c353c048",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/01-cpu-evidence-reuse.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/02-cpu-evidence-reuse.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/03-monitoring-product-setup.log": "d1456a3291bc5e699ef08e00f4507525276d369155f8975eebb6e7ef29fddc91",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/04-monitoring-product-setup.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/05-monitoring-product-setup.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/06-first-failure.status": "7869172c967604e271b2470f80be68bd99e61ebede81f9e453875887ca394adb",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/07-exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/08-finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/09-events.txt": "71343818f7bb77199a7c54764291cd3879643192841c12ee2b16a399fba5b5f1",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/10-pods.txt": "2eceda59d394ed5c5738273800ba2b73745f55e16f835711b58651603998526b",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/11-v2.log": "1067fab6bad7fdd3a3e3d17d42f720b0782c839b9b39c449cb388884ba19fcde",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/12-v2.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/13-v2.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/14-v2.pid": "65ac410aadff7dd0acba087e63a860097fc2a02b2200e3042d4339bb2a8eb65b",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/15-longhorn-v2-monitoring.json": "3d50c917e1e8008b5ce0a012469f03f02e47ccfff67d03cd163d4101cc983054",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/16-config.yml": "1dc836563ce857346d1960ad298a5d753191c8449f0000fc3d36d6682f3d3544",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/17-prom-values.yaml": "e359c5ea4ae2edb8f406df0736e294d88191852b99ea863074e5c5aabe9e7cfe",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/18-metadata-only-namespace-graph.json": "12171f69ae9c7b84b142e943993cb79a48fc0a2c68b788eea8780829c0aa70c9",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/19-operator-kube-prometheus-stack.log": "3318663cbbe177277d6ebc22be182720fa99f706cd265160a87818a4f4cf7796",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/20-operator-prometheus-operator-admission-webhook.log": "9b00a5d77b244ee8e30f65302abf27996f14b1cef2c71632d1b990d5d04f78cd",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/21-operator-prometheus-operator-admission-webhook.log": "d60f8cde3fb2592be027508b0d43fda608e01fc2987756182c945862561c5169",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/22-helm-hooks-and-admission-metadata.json": "c63f11f5cdfada7dcc52d537a95274762719d9451be5b43d1076c81e36cb318d",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-v2-namespace-graph/raw/23-poddisruptionbudgets-metadata.json": "5663670a60098ba23891b796c400d51d09b588124163314b610f8bbf4ed73065"
+  },
+  "repair": {
+    "contract_log": "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/namespace-graph-contracts-after-apply.log",
+    "contract_log_sha256": "9321505725173c0982033467161f92f1f1abde41399c8a9a2f8d35ae91334a09",
+    "files": [
+      {
+        "before_sha256": "1bad5d7fdb28a18d73b5395f74f49a1d8cc5f8529f034c2642f1a9f351c9f15c",
+        "candidate_sha256": "cdc8132e550c2cbab0d6b973429863acedf6ecdb559e12e6c572fdb16776deea",
+        "path": "tests/helpers/longhorn-v2-monitoring.py"
+      },
+      {
+        "before_sha256": "71d0dced5803b0f5626c36a76c9037c8b37f8192531698555ae5c6e7e6a41152",
+        "candidate_sha256": "cc42db848af589431d3e2457b1061d21fd055eede5879be620ce26942a7ed7b0",
+        "path": "tests/unit/test_longhorn_v2_monitoring.py"
+      }
+    ],
+    "live_requalification": "pending; local repair not synchronized to running remote source",
+    "negative_variants": 32,
+    "offline_replay_objects": 345,
+    "patch_sha256": "96f5a35bdd4be57b55d40edfaad77e5982041b9715b74476dd6b85ac89bb3233",
+    "review_path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/monitoring-namespace-graph-20261022/review.json",
+    "review_sha256": "3a3c8b2fb7e3d8b0cedeef552ccd7ada2202da6e3e4936e01367adf8bb59a261",
+    "test_methods": 30
+  },
+  "schema": 1,
+  "scope": "V1 integrity accepted independently; V1 disk and later scopes continue on unchanged remote inputs. No monitoring-business or overall delivery PASS.",
+  "status": "pending"
+}

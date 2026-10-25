@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-20",
+  "status": "source-only",
+  "version": "Longhorn 1.12.1 replicated V2",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "scope": "LONGHORN-49 full-copy CSI clone qualification only; not linked/nested clones or complete acceptance",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/"
+  ],
+  "conclusions": [
+    "Full-copy creates independent copies; linked-clone shares source blocks through SPDK lvol copy-on-write. Their dependency, placement and cleanup conditions differ.",
+    "Pinned CSI CreateVolume compares requested clone size with source size before creating either V1 or V2 clones. Require exact UID-bound ProvisioningFailed size mismatch, then qualify equal-sized V2 full-copy through the product-deployed class.",
+    "Clone copy completion is distinct from healthy completion. Reject copy-completed-awaiting-healthy as final acceptance; require Volume cloneStatus.completed, three healthy RW replicas and original raw-disk placement.",
+    "A linked clone can be marked completed after some error/rebuild retry boundaries while degraded. The full-copy qualifier must independently require all three healthy replicas; it cannot reuse a state word as redundancy proof.",
+    "Reuse the existing CSI clone routine for size refusal, initial bytes and clone-to-source write isolation. A V2 wrapper verifies native mode/source/replica independence and the reverse direction with a separate fsynced source file so original source data still has cross-node readback.",
+    "Product entry remains config.yml plus kubecli setup 09. Reenter product configuration before application PVC cloning; cleanup uses the existing exact business UID journal. No new image or mutation of installation prerequisites is required."
+  ],
+  "classification": "test-gate reuse with V2 native identity and bidirectional data assertions; production clone configuration already exists",
+  "expected_marker": "LONGHORN_V2_FULL_COPY_CLONE_QUALIFICATION_PASS",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-full-copy-clone-qualification",
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/csi-volume-clone.md": "63ef0190e451a7a39a8fb09ea66075311bd042e2bb9cb4038d7b6f45cdfac774",
+    "manager-1.12.1/csi/controller_server.go": "f95cc34a9e73cfa732463eacba9db8c033b8a959242fcf801908be7a8f489635",
+    "manager-1.12.1/controller/volume_controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "manager-1.12.1/k8s/pkg/apis/longhorn/v1beta2/volume.go": "619b740463ce758358e8e7a273c5d85498aacdb6cfea46dfa05426d3f1e8f671",
+    "manager-1.12.1/k8s/pkg/apis/longhorn/v1beta2/replica.go": "eb1469973dcecea06f36e76e420da19dcd3c6cbbc480b7de436cec70ae786645"
+  },
+  "coverage_boundary": "No source deletion/failure, nested/linked lifecycle, expansion, eviction/rebuild dependency, independent backup restoration, complete LONGHORN-49 or final delivery PASS."
+}

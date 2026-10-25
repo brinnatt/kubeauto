@@ -1,0 +1,16 @@
+{
+  "case": "LONGHORN-37 prerequisites",
+  "classification": "test-gate fixture startup race",
+  "durable_rc": 1,
+  "raw_evidence": {
+    "logs/longhorn-cases/middleware-reentry-cleanup-20261022/frozen-inputs.json": "d921c949c5d2bdd743c32444131751bed09fb05b313e3b3c2f6a7d076f0675db",
+    "logs/longhorn-cases/middleware-reentry-cleanup-20261022/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/middleware-reentry-cleanup-20261022/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/middleware-reentry-cleanup-20261022/launch.log": "9675200a64d969dfaa57858779b414cb97a6b5b253b81a30dc69188226e8f0d7"
+  },
+  "remote_mutation": false,
+  "root_cause": "Parallel local fixtures wait only 100 x 10ms for the peer started file. The requested nonzero single-disk fault never starts when that fixture barrier expires; its absent v2-order file then masks the barrier failure. Delaying the peer 1.25 seconds reproduces this exact pre-fault refusal with old fixture. Increase only the bounded fixture handshake to 500 x 10ms; keep all durable/fault and branch-isolation assertions.",
+  "schema": 1,
+  "scope": "No product, remote cluster, image, matrix PASS or published evidence changed by the aborted preflight.",
+  "status": "first-failure"
+}

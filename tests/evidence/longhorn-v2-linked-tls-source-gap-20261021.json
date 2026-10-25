@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "observed-upstream-gap",
+  "classification": "Upstream Longhorn 1.12.1 instance-manager/SPDK linked-clone TLS integration defect; live qualifier has not yet exited. Separate runner-ordering defect is independently recorded.",
+  "versions": {
+    "instance_manager_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+    "vendored_spdk_engine_commit": "d19dbb3abcea",
+    "longhorn": "1.12.1"
+  },
+  "frozen_launch": "/tmp/kubeauto-longhorn-research/v2-linked-live-launch-inputs-20261021.json",
+  "finding": "snapshotCloneLinkedN and checkLinkedCloneSrcReplicaMode call global GetServiceClient, which creates NewSPDKClient with nil TLS. Other engine operations call e.newServiceClient injected by startSPDK/NewServiceClientFactory(clientTLSConfig). All three source SPDK services accept authenticated TLS health checks and reject plaintext; native clone fails on each destination with error reading server preface EOF/reset, while source remains healthy.",
+  "official_source": "https://github.com/longhorn/longhorn-instance-manager/blob/cfd63a673e3047ca176185619565d5a81d33ec1c/vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/engine.go#L2141",
+  "source_sha256": {
+    "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/engine.go": "7dd6c59f19a3e543e6f03f189b10528ee64cfee901520558a27a1ab3d5e86b1e",
+    "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/types.go": "e39b85d081b20d259e7d13a72ee8527dccb11a8e442249f7eaf6185a158c211f",
+    "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/client/client.go": "6eba3914b7814cda08c1df5f6c0aa27dfd338643f6ca44f612d1c587ec6fee32",
+    "app/cmd/start.go": "96b77d1a5a8d2607520d28bc4a956254eb4534af42b25b5b9853e7cb13fec53f",
+    "go.mod": "da62f9326ef168a7b57a93f5570b57346127ec45c474cc24dc05e893e589b910"
+  },
+  "health_readback": [
+    {
+      "pod": "instance-manager-0fd810e20f26419f51a252319be21cc4",
+      "uid": "483d67d9-b70c-49bc-9508-a832d5bf484b",
+      "node": "longhorn-node-147",
+      "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager@sha256:40afd8f309aad2565e04ea4cb801295ac54ad319d72f6ac2e5db2f3bcfba451c",
+      "plaintext_rc": 2,
+      "plaintext_result": "timeout: failed to connect service \"127.0.0.1:8504\" within 3s\ncommand terminated with exit code 2\n",
+      "tls_rc": 0,
+      "tls_result": "status: SERVING\n"
+    },
+    {
+      "pod": "instance-manager-11f3d6fce5054732fc9702401927b0aa",
+      "uid": "627aa9d4-eb98-447b-a1a7-97f2f5c34e02",
+      "node": "longhorn-node-148",
+      "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager@sha256:40afd8f309aad2565e04ea4cb801295ac54ad319d72f6ac2e5db2f3bcfba451c",
+      "plaintext_rc": 2,
+      "plaintext_result": "timeout: failed to connect service \"127.0.0.1:8504\" within 3s\ncommand terminated with exit code 2\n",
+      "tls_rc": 0,
+      "tls_result": "status: SERVING\n"
+    },
+    {
+      "pod": "instance-manager-603a03e02de51efca2ff4a5b58855628",
+      "uid": "9a3f4ede-4f33-4234-825d-aaed925b7bd1",
+      "node": "longhorn-node-146",
+      "image": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager:v1.12.1",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/longhorn-instance-manager@sha256:40afd8f309aad2565e04ea4cb801295ac54ad319d72f6ac2e5db2f3bcfba451c",
+      "plaintext_rc": 2,
+      "plaintext_result": "timeout: failed to connect service \"127.0.0.1:8504\" within 3s\ncommand terminated with exit code 2\n",
+      "tls_rc": 0,
+      "tls_result": "status: SERVING\n"
+    }
+  ],
+  "proposal": {
+    "path": "/tmp/kubeauto-longhorn-research/longhorn-spdk-linked-tls-factory.patch",
+    "sha256": "1cae3c251062c0890b4beadefba887f85f0a98c37372b6940b817ff5f2f08bba",
+    "scope": "Two existing Engine methods reuse their configured client factory; no plaintext fallback or changes to non-linked operations. Source patch only; not compiled, built, published, installed or live-validated."
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/linked-native-first-observation-20261021/diagnostic.log": "aee7c17e4ca16505f9ddd2df4dec8157ba006265f24500d559c22329c8427230",
+    "logs/longhorn-cases/linked-native-first-observation-20261021/tls-health-readback.jsonl": "4f2ca88244527e8d84dc9c2efb315bbc6b0529a62b5c99f625930855c68a16e3"
+  },
+  "boundary": "No linked clone PASS, no product fallback accepted and no delivery PASS. Keep original source/three-node AIO health and original image identities; failed fixture cleanup and durable exit still pending. No permission to substitute a locally patched or unverified image into the normal live gate."
+}

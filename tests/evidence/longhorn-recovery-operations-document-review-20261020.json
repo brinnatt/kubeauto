@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "classification": "author task-path and content review; local static checks only",
+  "scope": "system backup/restore, DR, upgrade, monitoring; no live or whole-document sign-off",
+  "checks": {
+    "scope": "Author review of system backup/restore, DR, upgrade and monitoring task paths; documentation only, no independent review or live reenactment.",
+    "novice_path": "Shared context → source prerequisites and config request → product09 → native state and external restore materials → separate target context/identity → recovery → isolated application verification. Inputs, timeouts, stop and recovery branches checked.",
+    "experienced_path": "Direct task reentry supplies cluster identity, actual backup/engine identity, Prometheus selectors, source upgrade version and retained inputs; recovery and failover require fencing and application watermarks.",
+    "closed_previous_gaps": [
+      "Continuous system recovery, DR, monitoring and upgrade procedures now present; corresponding live evidence remains pending."
+    ],
+    "specific_corrections": [
+      "DR lastBackup is backup-store freshness, not actual restore completion; check Engine requested/lastRestoredBackup and restoreStatus.",
+      "Official alert examples contain old robustness numeric semantics; use pinned1.12.1 state-labelled one-hot metrics.",
+      "Upgrade recovery point is created on source1.12.0 before target1.12.1 setup."
+    ],
+    "static": {
+      "status": "pass",
+      "checks": {
+        "local_links": 108,
+        "yaml_blocks": 17,
+        "bash_blocks": 28
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "8b292c950bea84241e13817071ae6d700b8cb1003e736bc612077c0accab4006",
+        "docs/storage/longhorn/technical-whitepaper.md": "dc1a73d96485538c3e531ebc1061a3c872bd89b73fdc0fdb91b7e3c480d23466",
+        "docs/storage/longhorn/development-manual.md": "afd8a1567ab1493b83ceb035fa755036fa619d6d65e31ea0801972a8ecffbb05"
+      }
+    },
+    "inline_python_ast": 3,
+    "documentation_contracts": 44,
+    "remaining": [
+      "V2 PCI, retirement/replacement and CPU isolation product paths and field gates44-54 remain pending.",
+      "Pending scenario product evidence and final three-manual overall content/source/evidence/path sign-off remain open."
+    ]
+  },
+  "files": {
+    "logs/longhorn-cases/recovery-operations-document-review-20261020/document-review.json": "36652a4d8ac8977dc86ca3d00d8cad75f34998d549ba4e37da7f18d584501dfc",
+    "logs/longhorn-cases/recovery-operations-document-review-20261020/contracts.log": "4cd16153d1fc78682b3a4998caed258a1191f89ff1bc4eabdb876d1925a68a7d",
+    "logs/longhorn-cases/recovery-operations-document-review-20261020/static.json": "24498d2376b524da5739e165eb9faa3daa6341e0b707041f1d728b87d798397b"
+  },
+  "previous_evidence": "tests/evidence/longhorn-native-identity-document-review-20261019.json"
+}

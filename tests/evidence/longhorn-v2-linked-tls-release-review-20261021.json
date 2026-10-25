@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "ready-for-publication-review",
+  "publication_started": false,
+  "source_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+  "upstream_gap": "tests/evidence/longhorn-v2-linked-tls-source-gap-20261021.json",
+  "local_go_proof": "tests/evidence/longhorn-v2-linked-tls-local-proof-20261021.json",
+  "artifact_repo": "kubeauto-ext-images-dockerfile",
+  "artifact_repo_base": "ffab9ca0cedb11987923abe02bf151c4fc833c08",
+  "image": "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.1",
+  "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-instance-manager:v1.12.1-kubeauto.1",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "release_mode": "changed from one reviewed catalog addition; exactly one image expected",
+  "artifact_files": {
+    "catalog.json": "8d1870ebd3723e23d5bf7844dd8a5e8cf05fa2c8acfb3d90be36f5855ebb6bd5",
+    "tests/test_longhorn_linked_tls_artifact.py": "db1758ff63975d1a24f32af7e912b3d7b8bea13372ca8ac674c3d967a267a2cd",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/Dockerfile": "dbfcb2a91abd22eaa980df299c00416530dadb69baf952114176cd57e85a3849",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/engine_linked_tls_test.go": "512ae63ae7eff5b5324497c9efb19fa416c192ed04d3eaa5f53c7e526a62ae62",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/engine_linked_tls_transport_test.go": "233ad4af61f3330aec184a0e0d1e121ee3a88469159b3c0441788846330dd862",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/linked-tls.patch": "1cae3c251062c0890b4beadefba887f85f0a98c37372b6940b817ff5f2f08bba",
+    "platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/source-provenance.json": "0edade77c7eb7d6fb614dde107efb747c86cad1a50fbbcedcbfb310d63f50ecc"
+  },
+  "consumer_patch": "/tmp/kubeauto-longhorn-research/linked-tls-image-review-package/kubeauto-consumer-pin.patch",
+  "consumer_patch_sha256": "5d015641b89f1182bea9afe088db52e0ada36034784529db03ca4ceb03b07e8a",
+  "consumer_applied": false,
+  "local_checks": {
+    "artifact_catalog": 165,
+    "artifact_offline_contracts": 44,
+    "isolated_consumer_contracts": 3,
+    "upstream_factory_regressions": "original red / fixed green",
+    "authenticated_rpc_fixture": "both source mode and clone destination calls passed using actual TLS-aware factory and verified client certificates",
+    "native_binary": "Complete AMD64 static build and --version success; not an image build or live storage qualification"
+  },
+  "native_binary": {
+    "path": "/tmp/kubeauto-longhorn-research/longhorn-instance-manager-linked-tls-proof",
+    "sha256": "608842e3aaea5cc37516d2acbed0e95a988525220e4619014dca9f11fe9cda61"
+  },
+  "native_build_dependencies": {
+    "libqcow_commit": "be16287a2b9691347936be43fcffe93b8f74cf54",
+    "zlib_dev": "Deepin zlib1g-dev 1:1.3.dfsg+really1.3.2-1deepin2 downloaded/extracted under /tmp only, no system package installation; production Dockerfile uses pinned official SUSE builder dependencies"
+  },
+  "remaining": [
+    "Owner authorization for source push and publishing the new derived artifact",
+    "Actual dual-architecture container build/startup and equal dual-registry digests",
+    "Publication evidence import and current artifact prerequisite",
+    "Product entry-point installation and linked/nested storage acceptance; no TLS disabling or live binary injection"
+  ],
+  "cleanup_boundary": "Local temporary sources/Go fixtures/compiler only; no build daemon or artifact installed on the lab nodes; source/target cluster changes remain owned by the independent active restore gate.",
+  "raw_logs": {
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-fixed-focused.log": "d3cacec9e8fb66d957d2d7dece58146abc6d990b8eaaad393b89df98fdbfabcf",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/engine_linked_tls_test.go": "512ae63ae7eff5b5324497c9efb19fa416c192ed04d3eaa5f53c7e526a62ae62",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/engine_linked_tls_transport_test.go": "233ad4af61f3330aec184a0e0d1e121ee3a88469159b3c0441788846330dd862",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/longhorn-spdk-linked-tls-factory.patch": "1cae3c251062c0890b4beadefba887f85f0a98c37372b6940b817ff5f2f08bba",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-fixed-transport.log": "eb0f6f8c1df4361d76376bbccbc5a6a1a12d3ebd6da79017c159d0fc0de1152b",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-original-focused.log": "b2590d241f9543d2c9ab2c5f72be037f1bf1dfbb62c376029bd24dfdfacc2898",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/binary-version.log": "63e0726e71155cb561f20aace44f552fbd4bb5b96f90c98e5518cc9dffe8faa1",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-ext-images-contracts.log": "acdee678b11fcc1bb47177775932baf494d7d1c39a3a8d2a60d22960beb81338",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-consumer-proof.log": "c2bf7c942c27b3f05c6c7e3e240530173e7ab0324e2c2050e3dc0cfde1d79078",
+    "logs/longhorn-cases/linked-tls-local-proof-20261021/linked-tls-native-build.log": "677c868e84a1e334f65aaea3f77bb209549bdcc4c1de11fe16206b8065cf5196"
+  }
+}

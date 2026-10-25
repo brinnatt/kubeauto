@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "classification": "test-gate",
+  "scope": "offline52-ast-preservation",
+  "owning_case": "LONGHORN-01",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "tests": 60,
+  "unchanged_original_guard_ast": "ced0fb579de5564595abc38e171a4fb57bbafb4b36e4c949b1ec8fca2f471720",
+  "change": "Restore the original AST after removing only exact reviewed adapter load/BASE binding and mismatched-input fallback; real accepted_evidence rejects unreviewed mismatch and pending evidence. Product and gate helpers unchanged.",
+  "sources": [
+    {
+      "path": "tests/unit/test_longhorn_full_material.py",
+      "sha256": "3c02aaff44732271b7e68038eb7429231866e6f68996e486fcdabf523bc6c8ac"
+    },
+    {
+      "path": "tests/helpers/longhorn-v2-upgrade-baseline.py",
+      "sha256": "0c190422f280748ae96dc5ce954e12cef8aed82a7f8aa274fd52fbaad98c2a9d"
+    }
+  ],
+  "receipts": {
+    "log": {
+      "path": "logs/longhorn-cases/manager-offline52-ast-contract-20261024/gate.log",
+      "sha256": "b0e08d3de9d68a0d60ce8c4fc1498e7c18107b7564cb4c6c562bfae56532a798"
+    },
+    "exit": {
+      "path": "logs/longhorn-cases/manager-offline52-ast-contract-20261024/gate.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/manager-offline52-ast-contract-20261024/gate.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "first_failure": {
+    "path": "logs/longhorn-cases/manager-offline52-ast-contract-20261024/first-launch.log",
+    "sha256": "260692a6ec06547dd2de9b22d49c408b9997072f9dc6b228814ff692e0037582"
+  },
+  "classification_record": {
+    "path": "logs/longhorn-cases/manager-offline52-ast-contract-20261024/classification.json",
+    "sha256": "6c54ec1f0b9029968c305f9a447ccb8e5e6849b9c3c0e7565b31eb016b635075"
+  }
+}

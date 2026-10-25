@@ -1,0 +1,73 @@
+{
+  "accepted_scope_impact": {
+    "adoption_transport_inputs": "Neither original 79-file adoption inputs nor V2 lab transport fingerprint changed.",
+    "previously_accepted_v2_fault_scopes": "No worker boot path is executed by the five accepted scopes; their original evidence remains bound to frozen sources.",
+    "product_dependencies": "No product code changed."
+  },
+  "changed_files": {
+    "tests/helpers/longhorn-maintenance.py": {
+      "after": "7523a924356a043f1609d920f84ebc93f4d589972968a409c6fbe8009ede0d0b",
+      "before": "6df03e84d589eee585de8ebe85f935d47610caeb2eb29d92f9359051a8c09b59"
+    },
+    "tests/helpers/longhorn-v2-boot-fixture.py": {
+      "after": "fba89b21c2ed2d39db1f7a8a21dfcc42bfba5c58779d90ddb0f45f58790bd583",
+      "before": "bd4e5215497d4eccbb6cbff29ac37cba46bc9157526810b56fa9f7df5dbf2a94"
+    },
+    "tests/helpers/longhorn-v2-runtime-faults.py": {
+      "after": "6ec517544b9bef8b13d93c66f7a119e63e7584da40f2ab3fb33bce064f1bd2c3",
+      "before": "8175b32a33b9d40404380e11928d585ee64fffcf8f9ba325a0f6e091fb0280eb"
+    },
+    "tests/unit/test_longhorn_maintenance.py": {
+      "after": "a20af8dd63a15d1f2f33d209ee11b22bcf40d74d7d60d1450a3cd006729de93f",
+      "before": "8d10dd97791c6ccb6d3044bea345a0f79784bb5384408c2d8504d66f35789662"
+    },
+    "tests/unit/test_longhorn_v2_boot_fixture.py": {
+      "after": "61bf0a3dddade0ae892118ddd17a04bde5d5cd4ebc50cce44da37ec10dc4ded3",
+      "before": "a6f76a1312a69ad49709a75cb8af3c95e856305ebb4019d61620419080d25813"
+    },
+    "tests/unit/test_longhorn_v2_runtime_faults.py": {
+      "after": "3734bb5b6cde4e155939bf6f792f7ef14ac60c81bf76f50b92dd4e942e98929d",
+      "before": "4cdc60f37657d27db3998ec0726e005db11250aaf682f2f29e544a0fe9ebf52e"
+    }
+  },
+  "classification": "test-gate",
+  "contracts": {
+    "ast": "pass",
+    "log": "logs/longhorn-cases/boot-maintenance-repair-contract-20261021.log",
+    "log_sha256": "9c947c4d81b58a0fc0a1652693457470bda20e2364087efd988cfce5a61c5980",
+    "rc": 0,
+    "tests": 60
+  },
+  "date": "2026-10-21",
+  "ladder_completed": 2,
+  "matrix_gaps": [
+    "LONGHORN-24",
+    "LONGHORN-50 (worker-reboot)"
+  ],
+  "next_permitted_level": 3,
+  "official_sources": {
+    "longhorn": {
+      "behavior": "cleanupAutoBalancedReplicas does not remove healthy excess replicas when resolved replicaAutoBalance is disabled.",
+      "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+      "path": "controller/volume_controller.go",
+      "source_sha256": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+      "version": "1.12.1"
+    },
+    "systemd": {
+      "decoded_sha256": "9b929083b230fa796daeb124253d83143731682206cd85594c20aee7a3abdcd5",
+      "official_url": "https://www.freedesktop.org/software/systemd/man/255/systemd.unit.html#Requires=",
+      "rule": "with or without specifying After, this unit will be stopped (or restarted) if one of the other units is explicitly stopped (or restarted).",
+      "sha256": "3e90b2126d4e03a69cb881e22812eff08e0d436977c26743b5d095296eb4b1a8",
+      "source": "/usr/share/man/man5/systemd.unit.5.gz",
+      "version": "systemd 255"
+    }
+  },
+  "overall_longhorn_delivery_pass": false,
+  "remaining": "Expected-outage Registry supervisor handling remains under focused repair before the new worker business run. Contracts do not sign live module acceptance.",
+  "repairs": {
+    "maintenance": "Only the dedicated V1 maintenance volume receives UID-guarded temporary least-effort, then its original policy is restored after three replicas recover. Existing shared scale function and V2 consumers unchanged.",
+    "worker_reboot": "Retire the exact temporary kubelet Requires edge and reload before stopping the allocator. Preserve kubelet active state. Fixed cleanup can repair only the verified legacy complete/inactive receipt before native recovery and business cleanup."
+  },
+  "schema": 1,
+  "status": "contract-pass"
+}

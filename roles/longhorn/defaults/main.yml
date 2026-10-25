@@ -1,0 +1,47 @@
+longhorn_install: 'no'
+longhorn_action: present
+longhorn_version: 1.12.1
+longhorn_namespace: longhorn-system
+longhorn_image_prefix: registry.talkschool.cn:5000/brinnatt
+longhorn_storage_nodes: []
+longhorn_data_engines: [v1]
+longhorn_allow_engine_coexistence: false
+longhorn_v2_nodes: []
+longhorn_block_disks: {}
+longhorn_v2_cpu_mask: '0x3'
+longhorn_v2_cpu_cores: 0
+longhorn_v2_cpu_reservation_percentage: 25
+longhorn_v2_memory_mib: 2048
+longhorn_v2_hugepages: true
+longhorn_v2_interrupt_mode: false
+longhorn_v2_iobuf_large_pool_size: 1024
+longhorn_v2_iobuf_small_pool_size: 8192
+longhorn_v2_rebuild_bandwidth_limit: null
+longhorn_data_path: /data/longhorn
+longhorn_min_disk_gib: 20
+longhorn_default_replica_count: 3
+longhorn_grpc_tls_required: true
+longhorn_snapshot_controller: managed
+longhorn_storage_classes:
+- name: longhorn
+  replicas: 3
+  fs_type: ext4
+  reclaim_policy: Retain
+  default: false
+  encrypted: false
+  encryption_secret: ''
+  recurring_jobs: []
+longhorn_backup_target: ''
+longhorn_backup_secret: ''
+longhorn_recurring_jobs: []
+longhorn_monitoring_enabled: false
+longhorn_monitoring_namespace: monitor
+longhorn_monitoring_selector:
+  app.kubernetes.io/name: prometheus
+longhorn_monitoring_release: prometheus
+longhorn_requests: []
+longhorn_ready_timeout: 1800
+longhorn_operation_timeout: 7200
+longhorn_upgrade_id: ''
+longhorn_upgrade_system_backup: ''
+longhorn_uninstall_id: ''

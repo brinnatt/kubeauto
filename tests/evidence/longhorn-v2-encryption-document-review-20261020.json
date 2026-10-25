@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "scope": "V2 encrypted Filesystem/Block key-refusal and original-key recovery result paragraphs only; no command or diagram changed",
+  "checks": {
+    "sources": "Pinned official 1.12.1 encryption and Manager VolumeMapper/NodeStageVolume conclusions reused; explicit V2 encrypted mapper suffix checked",
+    "content": "Four native key-refusal events, original Secret and LUKS identities, two-layer byte capacities and remount digest match current evidence; original-key availability, backup/keyslot/FIPS limits explicit",
+    "novice_path": "Existing Secret, explicit V2 class, product setup and normal application usage remain continuous with no added lab command or credential input",
+    "experienced_path": "Encryption task and device-identity explanation distinguish native failure layer, mapper suffix and recovery condition; V1 backup table remains separately scoped",
+    "operation_evidence": "Current 114-input frozen evidence, four refusal/restoration branches, two cross-node remounts, durable rc0, no failure markers and original empty-business/native-disk readback",
+    "diagrams": "No Mermaid changed; previous render evidence reused",
+    "static": "44 documentation contracts passed"
+  },
+  "product_evidence": "tests/evidence/longhorn-v2-encryption-qualification-20261020.json",
+  "product_evidence_sha256": "32b58ed73d40c40c80a59664f64f9974f9fef6ac72cff993055f3cb75c5d9fce",
+  "input_sha256": {
+    "docs/storage/longhorn/operations-manual.md": "77977a491f7b0c782de5cb7830aa7a3fcbc8bda267f2b5dd340f6738f387f901",
+    "docs/storage/longhorn/technical-whitepaper.md": "eed8474be55dfde22f4cf91710deb114d688963d20e51640015cc0197d5fc688"
+  }
+}

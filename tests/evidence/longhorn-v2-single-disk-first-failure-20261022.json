@@ -1,0 +1,153 @@
+{
+  "candidate": {
+    "behavior": "embed exact frozen product block-check.py as memory-only source with non-main namespace; use same inspect_disk(initial=False); no worker install or host file",
+    "contract_rc": 0,
+    "contract_total": 19,
+    "exact_red": "same new isolated -I test with original helper fails at exact missing worker source path",
+    "live_run_performed": false,
+    "product_source_unchanged": true,
+    "scope": [
+      "tests/helpers/longhorn-v2-disk-faults.py",
+      "tests/unit/test_longhorn_v2_disk_faults.py"
+    ],
+    "success_markers": [
+      "LONGHORN_V2_DISK_HOST_SOURCE_CONTRACT_PASS",
+      "LONGHORN_V2_DISK_HOST_ISOLATED_CONTRACT_PASS"
+    ]
+  },
+  "case": "single-disk",
+  "category": "test-gate",
+  "cleanup": {
+    "completed": true,
+    "delivery_pass": false,
+    "failed_status_retained": true,
+    "journal_exists": false,
+    "markers": [
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_V2_CORE_IDENTITY_PASS"
+    ],
+    "remaining_replicas": 0,
+    "remaining_volumes": 0
+  },
+  "current_disk_states": {
+    "192.168.47.146": {
+      "kubeauto-block": {
+        "device": "/dev/sdb",
+        "state": "running",
+        "state_path": "/sys/devices/pci0000:00/0000:00:10.0/host32/target32:0:1/32:0:1:0/state"
+      }
+    },
+    "192.168.47.147": {
+      "kubeauto-block": {
+        "device": "/dev/sdb",
+        "state": "running",
+        "state_path": "/sys/devices/pci0000:00/0000:00:10.0/host2/target2:0:1/2:0:1:0/state"
+      }
+    },
+    "192.168.47.148": {
+      "kubeauto-block": {
+        "device": "/dev/sdb",
+        "state": "running",
+        "state_path": "/sys/devices/pci0000:00/0000:00:10.0/host32/target32:0:1/32:0:1:0/state"
+      }
+    }
+  },
+  "date": "2026-10-22",
+  "durable": {
+    "first-failure.status": "rc=1 phase=single-disk",
+    "single-disk.exit": 1,
+    "single-disk.finalized": 1
+  },
+  "first_failure": {
+    "causal_command": "boundary -> host_call(probe) -> runner-owned SSH python3 -c host_script()",
+    "exception": "FileNotFoundError: /usr/local/kubeauto/roles/longhorn/files/block-check.py",
+    "failure_position": "first boundary host probe, before proof persist and before offline_intent/sysfs write",
+    "original_command_limit": "execute preserves stderr but not the failing SSH argv/stdin; selected worker and original business volume/replica UID cannot be recovered uniquely from this preserved stderr after completed owned cleanup. No reconstruction is claimed.",
+    "product_entry": "clusters/longhorn-v2-gate/config.yml -> .venv/bin/python kubecli.py setup longhorn-v2-gate 09; product setup and three-node health completed",
+    "reason": "gate assumes a control-host repository file exists persistently on a worker; production uses ansible.builtin.script temporary transfer",
+    "remote_status": 1,
+    "stderr_file": "/usr/local/kubeauto/clusters/longhorn-v2-gate/fixture-failure-c759068fc4434523865443ca4e0dd2b3.stderr",
+    "test_command": "longhorn-v2-disk-faults.py business --relay-pid <original-runner-pid> --case single-disk"
+  },
+  "fixture_identity": {
+    "cluster_uid": "421f4a73-8c31-4a06-aa22-7fcf708e220f",
+    "node_uids": {
+      "longhorn-node-146": "cfa0210c-181c-4b36-9417-e9f61d6fe790",
+      "longhorn-node-147": "98bede3a-af3c-4e3d-b152-b757add8f8f5",
+      "longhorn-node-148": "b542e085-a057-4d60-848c-cca7f1f8f26c"
+    },
+    "raw_disks": {
+      "192.168.47.146": {
+        "identity": "0x6000c292b1dff02d87d8ecfff129b68f",
+        "machine_id": "270ecc032d084267b6cb8679f57f8648",
+        "original_hostname": "ly",
+        "path": "/dev/disk/by-id/wwn-0x6000c292b1dff02d87d8ecfff129b68f",
+        "size_bytes": 107374182400
+      },
+      "192.168.47.147": {
+        "identity": "0x6000c29477cd8bc575db9909d5e68523",
+        "machine_id": "8662aa2722c5488bad627298b2e7caa5",
+        "original_hostname": "ly-VMware-Virtual-Platform",
+        "path": "/dev/disk/by-id/wwn-0x6000c29477cd8bc575db9909d5e68523",
+        "size_bytes": 107374182400
+      },
+      "192.168.47.148": {
+        "identity": "0x6000c291151ae8bf1378c3493902d84e",
+        "machine_id": "46248a8062e04431866a3baeb6382335",
+        "original_hostname": "ly",
+        "path": "/dev/disk/by-id/wwn-0x6000c291151ae8bf1378c3493902d84e",
+        "size_bytes": 107374182400
+      }
+    },
+    "run_id": "67125100-c9da-4acd-ae31-f081ae18f9e7"
+  },
+  "frozen_batch": 803,
+  "mutation": {
+    "disk_fault_injected": false,
+    "evidence": [
+      "traceback boundary host_call(probe) before inject persistence",
+      "no DISK_FAULT_INJECTED marker",
+      "all three SCSI states running in read-only capture"
+    ],
+    "proof_persisted": false
+  },
+  "next_permitted": "root review/apply plus shared static level 2, then focused fixed-runner --longhorn-v2-failure-single-disk on verified clean baseline; only after green proceed remaining affected cases; original prior cases retain scoped evidence",
+  "official_mechanism": {
+    "lines": [
+      {
+        "line": 116,
+        "text": "tmp_src = self._connection._shell.join_path(self._connection._shell.tmpdir,"
+      },
+      {
+        "line": 120,
+        "text": "# parts and tmp_src are both unicode strings and raw_params will be different"
+      },
+      {
+        "line": 126,
+        "text": "target_command = to_text(raw_params).strip().replace(parts[0], tmp_src)"
+      },
+      {
+        "line": 128,
+        "text": "self._transfer_file(source, tmp_src)"
+      },
+      {
+        "line": 131,
+        "text": "self._fixup_perms2((self._connection._shell.tmpdir, tmp_src), execute=True)"
+      }
+    ],
+    "sha256": "f765a0cf2d8545149711c7f38525a1892595fdab429c21008321c3373c6ec662",
+    "url": "https://raw.githubusercontent.com/ansible/ansible/v2.19.3/lib/ansible/plugins/action/script.py",
+    "version": "v2.19.3"
+  },
+  "overall_longhorn_delivery_pass": false,
+  "product_failure_proven": false,
+  "raw_evidence": {
+    "logs/longhorn-cases/disk-tail-repair-contract-20261022/review-inputs/v2-disk-source-20261022/first-failure-capture.json": "3d779f3aaf07458fd28e3f3e9967ce01e5001475bf6cc3070b3fd00b81c8919f",
+    "logs/longhorn-cases/operations-worker-tail-live-20261021-r1/final-batch-closed/capture.json": "c504909cb31ece85e8955b028cd71c479ce259fdb0bc10b50ba43cd9b88aca5b"
+  },
+  "rc": 1,
+  "schema": 1,
+  "status": "first-failure-classified"
+}

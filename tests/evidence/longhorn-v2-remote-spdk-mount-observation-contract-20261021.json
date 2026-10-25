@@ -1,0 +1,359 @@
+{
+  "accepted_scope_impact": [
+    {
+      "affected_by_this_delta": false,
+      "boundary": "Only the ST_RDONLY-flag repair delta is assessed. Existing intermediate changes and previously accepted evidence are not re-audited; this does not upgrade the old parent or sign complete LONGHORN-50.",
+      "durable": {
+        "exit": 0,
+        "finalized": 0
+      },
+      "existing_evidence": {
+        "path": "tests/evidence/longhorn-v2-failure-replica-im-20261021.json",
+        "sha256": "7bfc5bd41253081b83c68925c889efbe0071883de3b3cb38a5562b1563afbaa6"
+      },
+      "existing_scope_pass_retained": true,
+      "new_live_run_required_for_this_delta": false,
+      "owning_helper": "tests/helpers/longhorn-v2-control-faults.py",
+      "owning_helper_unchanged_since_accepted_evidence": true,
+      "path_analysis": "The case selects longhorn-v2-control-faults.py. Its business() replaces injection/recovered only; it does not install runtime.read_only_recovery or call runtime.verify_log. The original client resumes with retries=[] and client_rc=0. Both changed runtime functions are outside this owning path.",
+      "raw_scope": {
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-replica-im/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/replica-im.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-replica-im/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/replica-im.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-replica-im/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/replica-im.log": "0a54b20fc85ca2c1896a42ab944ad75a40f5667898add55af0a9c38ec3e4af47"
+      },
+      "raw_sha_verified": true,
+      "recovery": {
+        "client_rc": 0,
+        "confirmed": {
+          "confirmed": 257,
+          "sha256": "a43664feab4f72216eae4ec0ada9bbd6d11a735c472682fa6f7c028a4425763f",
+          "verified_bytes": 16842752
+        },
+        "fresh_confirmed": {
+          "confirmed": 20,
+          "sha256": "c319528c67f6888dc3668a5f4c01c1f70c4b01d865158403a0a3697831edc1eb",
+          "verified_bytes": 1310720
+        },
+        "mode": "native-component-recreation-original-client",
+        "read_only_recovery": null,
+        "retries": [],
+        "variant": "instance-manager"
+      },
+      "runtime_at_acceptance": "9c29270b404e7eb48bab31ad6a11a9c683d9dfe8beb47fb0488689f837c59231",
+      "scope": "replica-im",
+      "this_delta_after": "8175b32a33b9d40404380e11928d585ee64fffcf8f9ba325a0f6e091fb0280eb",
+      "this_delta_before": "2cb9e40b58749ecf9e288846f255aa9c91a2447c929b6848831551c9ac017c1a"
+    },
+    {
+      "affected_by_this_delta": false,
+      "boundary": "Only the ST_RDONLY-flag repair delta is assessed. Existing intermediate changes and previously accepted evidence are not re-audited; this does not upgrade the old parent or sign complete LONGHORN-50.",
+      "durable": {
+        "exit": 0,
+        "finalized": 0
+      },
+      "existing_evidence": {
+        "path": "tests/evidence/longhorn-v2-failure-manager-20261021.json",
+        "sha256": "a635f720ac4094ecee1b98027948a4ffeeee18888aa99dea2ecf1522a46cc791"
+      },
+      "existing_scope_pass_retained": true,
+      "new_live_run_required_for_this_delta": false,
+      "owning_helper": "tests/helpers/longhorn-v2-manager-loss.py",
+      "owning_helper_unchanged_since_accepted_evidence": true,
+      "path_analysis": "The case selects longhorn-v2-manager-loss.py. Its business() replaces injection/recovered only; it does not install runtime.read_only_recovery or call runtime.verify_log. The original client resumes with retries=[] and client_rc=0. Both changed runtime functions are outside this owning path.",
+      "raw_scope": {
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-manager/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/manager.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-manager/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/manager.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-manager/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/manager.log": "7f029d80da6fa03420ab4edf444b04697dc2bf2efc676111483c577a88607e03"
+      },
+      "raw_sha_verified": true,
+      "recovery": {
+        "client_rc": 0,
+        "confirmed": {
+          "confirmed": 210,
+          "sha256": "ddac794f2be0c0cf4bea99fcade2e66f0e4bc9f424104b73968ead95efc4931d",
+          "verified_bytes": 13762560
+        },
+        "fresh_confirmed": {
+          "confirmed": 20,
+          "sha256": "6e4a871dbb11e6d83088e66aecd760411f2c434c659c49fdbeb9f2ca08d3e58b",
+          "verified_bytes": 1310720
+        },
+        "mode": "native-component-recreation-original-client",
+        "read_only_recovery": null,
+        "retries": [],
+        "variant": "manager"
+      },
+      "runtime_at_acceptance": "9c29270b404e7eb48bab31ad6a11a9c683d9dfe8beb47fb0488689f837c59231",
+      "scope": "manager",
+      "this_delta_after": "8175b32a33b9d40404380e11928d585ee64fffcf8f9ba325a0f6e091fb0280eb",
+      "this_delta_before": "2cb9e40b58749ecf9e288846f255aa9c91a2447c929b6848831551c9ac017c1a"
+    },
+    {
+      "affected_by_this_delta": false,
+      "boundary": "Only the ST_RDONLY-flag repair delta is assessed. Existing intermediate changes and previously accepted evidence are not re-audited; this does not upgrade the old parent or sign complete LONGHORN-50.",
+      "durable": {
+        "exit": 0,
+        "finalized": 0
+      },
+      "existing_evidence": {
+        "path": "tests/evidence/longhorn-v2-failure-attached-spdk-20261021.json",
+        "sha256": "561682e869b3b1401380e383a8eaa2ff29ada692ebe3e2ddb1ac305169c34a54"
+      },
+      "existing_scope_pass_retained": true,
+      "new_live_run_required_for_this_delta": false,
+      "owning_helper": "tests/helpers/longhorn-v2-runtime-faults.py",
+      "owning_helper_unchanged_since_accepted_evidence": null,
+      "path_analysis": "The case selects runtime business(case=attached-spdk), which chooses native_variant=engine. control.verify recreates/fences the bare client before native recovery; client is recovered-writer, so the if client==writer block and read_only_recovery callback cannot execute. Its accepted result has documented-bare-pod-recreation, client_rc=137, retries=[], and no read_only_recovery. runtime.verify_log only enters its changed flag assertion when result.read_only_recovery is present, which is false here. Unchanged engine/native recovery, both ledger checks and cleanup paths remain the owning proof.",
+      "raw_scope": {
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-attached-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/attached-spdk.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-attached-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/attached-spdk.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/longhorn-cases/v1-post-revision-backups-v2-failure-ready-20261021/stage-attached-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.LOK1hc/attached-spdk.log": "686ad7f72db9e83acf3ea5f2dc33774d9529b847cba44fdbe6ced474fad19cab"
+      },
+      "raw_sha_verified": true,
+      "recovery": {
+        "client_rc": 137,
+        "confirmed": {
+          "confirmed": 48,
+          "sha256": "57444c4d20b0ed487153b77ecb746d25dc2c497328f7d442fcbb05f4a75463b3",
+          "verified_bytes": 3145728
+        },
+        "fresh_confirmed": {
+          "confirmed": 20,
+          "sha256": "506baa30b4714b8a8fe8130b355fc80ed66b192fbc83c7aa45fdf42ac9f76728",
+          "verified_bytes": 1310720
+        },
+        "mode": "documented-bare-pod-recreation",
+        "read_only_recovery": null,
+        "retries": [],
+        "variant": "engine"
+      },
+      "runtime_at_acceptance": "9c29270b404e7eb48bab31ad6a11a9c683d9dfe8beb47fb0488689f837c59231",
+      "scope": "attached-spdk",
+      "this_delta_after": "8175b32a33b9d40404380e11928d585ee64fffcf8f9ba325a0f6e091fb0280eb",
+      "this_delta_before": "2cb9e40b58749ecf9e288846f255aa9c91a2447c929b6848831551c9ac017c1a"
+    }
+  ],
+  "change": {
+    "changed_files": {
+      "tests/helpers/longhorn-v2-runtime-faults.py": {
+        "before_sha256": "2cb9e40b58749ecf9e288846f255aa9c91a2447c929b6848831551c9ac017c1a",
+        "candidate_sha256": "8175b32a33b9d40404380e11928d585ee64fffcf8f9ba325a0f6e091fb0280eb"
+      },
+      "tests/unit/test_longhorn_control_faults.py": {
+        "before_sha256": "43919913e5092bedec84bc03e90c7f5589ee1520d12d5683497c3717c70e80a1",
+        "candidate_sha256": "8a56ee0e6f36e475504526a6abb4d8135e38519cd6f781d8b260b15997f42734"
+      },
+      "tests/unit/test_longhorn_v2_runtime_faults.py": {
+        "before_sha256": "ae9c1b3ae1731409f6fc563ed3e1a49a647b3351e768c9864624a1131150dfd0",
+        "candidate_sha256": "4cdc60f37657d27db3998ec0726e005db11250aaf682f2f29e544a0fe9ebf52e"
+      }
+    },
+    "preserved": [
+      "original writer EROFS; same volume UID/dataEngine; new remountRequestedAt; original bare Pod UID/PVC/node",
+      "exact old UID fencing; actual old exec exit before replacement",
+      "original fsync ACK prefix; fresh fsync ledger; both ledgers checked after cross-node remount",
+      "new native SPDK/Pod identity; healthy 3-node replicas; scoped cleanup"
+    ],
+    "product_code_changed": false,
+    "runtime_change": "Retain actual boolean statvfs observation; do not require True when the original writer has EROFS and the original bare client + V2 volume + fresh native remount are proven. Offline verifier requires boolean flag and keeps all other fencing/data checks.",
+    "runtime_changed_functions": [
+      "read_only_recovery",
+      "verify_log"
+    ],
+    "test_change": "Precise True/False flag and rejection contracts plus real subprocess writer EROFS with reported RW mount flag; no new live probes."
+  },
+  "classification": "test-gate",
+  "closed_failed_parent": {
+    "child_rc": {
+      "v1": 1,
+      "v2": 1
+    },
+    "durable_rc": 1,
+    "finalized": 1,
+    "frozen_inputs_verified": 777,
+    "path": "logs/longhorn-cases/next-parallel-ready-20261021/final-batch-closed/capture.json",
+    "sha256": "6457a02a5e1e3a7b486fee283e0dd6529bb2439d71f9185e20e425eb3ac3dd1a",
+    "verified_stopped_pids": 5
+  },
+  "complete_longhorn_50_pass": false,
+  "contracts": {
+    "candidate_shared_sha_match": true,
+    "count": 36,
+    "finalized": 0,
+    "first_disproof_before_fix": "Original code fails both the False-flag unit and real Popen/pwrite/fsync test with the exact live ValueError; original before exits remain 1.",
+    "integrated_static": {
+      "command": "bash tests/run_enterprise_regression.sh --longhorn-static-only",
+      "failure_markers": 0,
+      "finalized": 0,
+      "rc": 0,
+      "scoped_clean_marker": "LONGHORN_STATIC_SCOPED_CLEAN_PASS",
+      "success_marker": "LONGHORN_STATIC_PASS",
+      "suites": 31,
+      "tests": 1766
+    },
+    "negative_contract": [
+      "foreign identity, wrong engine/PVC/node/controller, deleting Pod",
+      "absent or unchanged remount; no original-writer EROFS",
+      "invalid mount observation type",
+      "old exec alive; final UID fence race; corrupt prefix; native component unrecovered"
+    ],
+    "raw": {
+      "before-check.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "before-check.log": "c70ab6ec9166364252b5a8706fd1792ca8617ae7831214b42950bdbc74d51e46",
+      "process-before-check.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "process-before-check.log": "89ec611ab25d83740d5c250a24039061b65b191684aa8224a47b718b08e4f640",
+      "runtime-control-contract.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "runtime-control-contract.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "runtime-control-contract.log": "c285302418dcc0b2475ff9e6bb1cc1044feb4a8865a15104019e4065ddf411d9"
+    },
+    "rc": 0,
+    "shared_contracts": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest -v tests.unit.test_longhorn_v2_runtime_faults tests.unit.test_longhorn_control_faults",
+      "finalized": 0,
+      "rc": 0,
+      "tests": 36
+    },
+    "shared_raw_evidence": {
+      "logs/longhorn-cases/remote-spdk-erofs-shared-contract-20261021/static.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/remote-spdk-erofs-shared-contract-20261021/static.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/remote-spdk-erofs-shared-contract-20261021/static.log": "2bdfdb8d2cb421424e66d0e8dc3cc330240fb8b95f66b4a13e2d42965284777b",
+      "logs/longhorn-cases/remote-spdk-erofs-shared-contract-20261021/unit.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/remote-spdk-erofs-shared-contract-20261021/unit.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "logs/longhorn-cases/remote-spdk-erofs-shared-contract-20261021/unit.log": "c8d9788f56f145ff3d3d586b8f05e043c44f0b8b004b327d57ed3f6597521a36"
+    },
+    "static_preflight": "Three changed Python ASTs passed; root owns integrated static currently, not signed by this draft."
+  },
+  "date": "2026-10-21",
+  "documentation": {
+    "paths": [
+      "docs/storage/longhorn",
+      "tests/README.md",
+      "tests/longhorn-test-matrix.yaml"
+    ],
+    "result": "No ST_RDONLY=True requirement found; documents unchanged."
+  },
+  "draft_work_boundary": "Root verified and applied exact three-file candidate; integrated local contracts and fixed static passed. No replacement live scope or GA claimed.",
+  "evidence_kind": "preserved-live-first-failure-plus-local-test-gate-repair",
+  "first_failure": {
+    "capture": {
+      "path": "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/capture.json",
+      "sha256": "5fd0140a226306dfc916360910d88e025c642732e6e11cc9c241676070971be7"
+    },
+    "captured_remote_input_count": 777,
+    "cleanup": {
+      "after_failure_baseline": "LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0",
+      "after_failure_core": "LONGHORN_V2_CORE_IDENTITY_PASS nodes=3",
+      "business": "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "failure_preserved": true,
+      "fault_restore": "LONGHORN_V2_RUNTIME_FAULT_RESTORED_BEFORE_CLEANUP",
+      "native_component": "Recovered new SPDK/IM child under original host/parent and healthy original three-node replicas",
+      "relay": "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "scope_success_marker_present": false
+    },
+    "diagnostics": {
+      "files": 10,
+      "manifest": {
+        "path": "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/diagnostics/manifest.json",
+        "sha256": "b6a09a8101178e10e6e12bbdaec036a8e7f98f3a027f1f04ace38e855edccdf2"
+      },
+      "permissions": "private directory; 0600 raw files, including config; do not commit private raw or print credential-bearing content"
+    },
+    "exception": "ValueError: EROFS recovery requires the actual original filesystem to be read-only",
+    "outer_parallel_parent": {
+      "boundary": "V2 failed branch remains failed. V1 was independently running at capture; neither parent success nor its later state is inferred from this snapshot.",
+      "directory": "/var/tmp/kubeauto-longhorn-parallel.u8XaCb",
+      "exit_at_capture": null,
+      "finalized_at_capture": null,
+      "running_at_capture": true
+    },
+    "phase": "remote-spdk",
+    "raw": {
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/tmp/kubeauto-longhorn-gate.pid": "4a8a8120a0263573829a6285f3fb7e45dd5bf333a039dc7a9592dbb7fceba9a3",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/tmp/kubeauto-longhorn-live.log": "62db02d1ceb6006834ec8cf73109fb3989098502c68e5c347a54f4ed95e412e6",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-parallel.u8XaCb/v1.log": "4a4e89811cfbf4dfd7b020727d0e96456ca2af35d8bea3951427c92b61103310",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-parallel.u8XaCb/v1.pid": "e19c15fb46929af9d2be362a89617204bd4372dd3ffbf5a6fd11c94b8f92c447",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-parallel.u8XaCb/v2.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-parallel.u8XaCb/v2.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-parallel.u8XaCb/v2.log": "c46680df52b571dcdfd2fb5dc3a41d80abeb9703e238794b5ee401a595b84cff",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-parallel.u8XaCb/v2.pid": "cc6068b782ba6b5bd8a4d01acba3c88e1c0771f2af8a79031280ddd5a6e41a52",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.gsp2e9/remote-spdk.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.gsp2e9/remote-spdk.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.gsp2e9/remote-spdk.log": "81de4c40c889e69d65ee45b289137eccc8706a2c01f1f4d6f3a43b2b10f4f34f",
+      "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.gsp2e9/remote-spdk.pid": "c145ab6d2536ddeb06b1b3b8123437279157d11e293d9616100fc0c4791b0998"
+    },
+    "raw_observations": {
+      "acknowledgements": 184,
+      "cleanup_markers": {
+        "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS": 1,
+        "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS": 1,
+        "LONGHORN_V2_RUNTIME_FAULT_RESTORED_BEFORE_CLEANUP": 1
+      },
+      "diagnostics_manifest": {
+        "path": "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/diagnostics/manifest.json",
+        "sha256": "b6a09a8101178e10e6e12bbdaec036a8e7f98f3a027f1f04ace38e855edccdf2"
+      },
+      "final_after_first_failure": [
+        "LONGHORN_V2_VOLUME_BASELINE_VERIFIED business_objects=0",
+        "LONGHORN_V2_CORE_IDENTITY_PASS nodes=3"
+      ],
+      "last_retry": {
+        "errno": "EROFS",
+        "sequence": 184,
+        "type": "retry"
+      },
+      "new_native_remount": "2026-10-21T14:18:03Z",
+      "original_pod_uid": "3fb81d5d-79e8-41e4-824d-10900494f4d7",
+      "parent_v2_log": {
+        "path": "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-parallel.u8XaCb/v2.log",
+        "sha256": "c46680df52b571dcdfd2fb5dc3a41d80abeb9703e238794b5ee401a595b84cff"
+      },
+      "retries": 402,
+      "scope_finalized": 1,
+      "scope_rc": 1,
+      "stage_log": {
+        "path": "logs/longhorn-cases/next-parallel-ready-20261021/first-failure-remote-spdk/raw/var/tmp/kubeauto-longhorn-v2-failure.gsp2e9/remote-spdk.log",
+        "sha256": "81de4c40c889e69d65ee45b289137eccc8706a2c01f1f4d6f3a43b2b10f4f34f"
+      },
+      "volume_uid": "a52575dd-4617-4a6e-ace6-8306b4e73784"
+    },
+    "raw_sha_verified": true,
+    "stage": "/var/tmp/kubeauto-longhorn-v2-failure.gsp2e9/remote-spdk.log",
+    "v2_outer_branch_durable": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "v2_stage_durable": {
+      "exit": 1,
+      "finalized": 1
+    }
+  },
+  "kernel_or_upstream_bug_claim": false,
+  "kernel_reason_not_proven": "Retained diagnostics do not establish the underlying filesystem/kernel reason for the differing errno and mount flag; no such claim is made.",
+  "ladder_completed": 2,
+  "live_repair_pass": false,
+  "matrix_items": [
+    "LONGHORN-50"
+  ],
+  "next_permitted_level": "Root integrated static success -> exact remote-spdk focused owning runner -> consume accepted scope evidence and advance the remaining independent V2 chain; final clean full run remains required.",
+  "official_source": {
+    "rule": "To recover volumes that are unexpectedly detached, you must manually delete and restart the pods without a controller.",
+    "sha256": "8449b1cae95d444362da5e3ab0884c8e79d6c18435ae58ba20a7e5bbb526b00a",
+    "url": "https://raw.githubusercontent.com/longhorn/website/6f1c5dd3768ba12b047d582108858d693cc37fe9/content/docs/1.12.1/high-availability/recover-volume.md"
+  },
+  "overall_delivery_pass": false,
+  "owning_fixed_command": "bash tests/run_enterprise_regression.sh --longhorn-v2-failure-remote-spdk </dev/null",
+  "owning_product_entry": "config.yml + kubecli setup longhorn-v2-gate 09; existing product-created V2 business volume",
+  "remaining_affected_scopes": {
+    "all-replicas": "not run in this failed chain; preserve pending",
+    "downstream": "Do not infer platform/middleware/interrupt or full maintenance/full chain PASS from local contracts.",
+    "rebuild-qos": "not run in this failed chain; preserve pending",
+    "remote-spdk": "focused live owning proof pending for this repair",
+    "replica-network": "not run in this failed chain; preserve pending",
+    "single-disk": "not run in this failed chain; preserve pending",
+    "worker-reboot": "not run in this failed chain; preserve pending"
+  },
+  "root_cause": "The additional ST_RDONLY=True prerequisite rejects the documented restart path despite actual original-writer EROFS plus same-volume unexpected detach/new remount. Current mount flags remain an exact boolean observation.",
+  "schema": 1,
+  "signed_scope": "local repair contracts and bounded impact analysis only",
+  "status": "contract-pass-live-pending"
+}

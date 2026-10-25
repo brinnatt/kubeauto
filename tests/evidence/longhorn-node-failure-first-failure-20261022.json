@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-20",
+  "status": "pending",
+  "classification": "test-gate",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-remaining-v2-monitoring",
+  "owning_command": "bash tests/run_enterprise_regression.sh --longhorn-node-failure",
+  "rc": 1,
+  "first_failure": {
+    "phase": "attached-worker-loss",
+    "product_fault_proven": false,
+    "operation": "force_old_pod raw Kubernetes Pod DELETE with exact original UID/resourceVersion",
+    "observed_error": "Conflict: requested resourceVersion 984382 differs from current 984486",
+    "boundary": "Actual request stdin was not persisted; operation shape is bound to frozen source and exact stderr, not claimed as a captured API payload."
+  },
+  "cleanup_failure": {
+    "type": "TimeoutError",
+    "label": "node20-ready-before-scheduling",
+    "cause": "wait expects original empty taints before restoring owned cordon; original worker Ready and services restored",
+    "manual_recovery": false
+  },
+  "durable": {
+    "outer_local": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "outer_remote": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "parallel_v1": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "parallel_v2": {
+      "exit": 1,
+      "finalized": 1
+    },
+    "node_failure_module": {
+      "exit": 1,
+      "finalized": 1
+    }
+  },
+  "remote_input_verification": {
+    "count": 828,
+    "mismatches": 0
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/tmp/kubeauto-longhorn-gate.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/tmp/kubeauto-longhorn-gate.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/tmp/kubeauto-longhorn-gate.pid": "2de347ef1366c2683e0a0d5d54fb9132cfee6a967fe1dfe12db0b99163ef9163",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/tmp/kubeauto-longhorn-live.log": "dabf09e675303ccca7c9de34e11482b583487127fda89ee0c2aeeec50baf0fd1",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/usr/local/kubeauto/clusters/longhorn-gate/fixture-failure-e162d045a4ab42a3b4ba6dc40b89a80d.stderr": "6a64f0e9fee3ed96855e2ba8733385e951e3d3dd8b088fc929c9cb5dd90736da",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-lab-owner.json": "51ca6cdd89d10fe81f7f74cbccb248bb7070e741ded59d572382cb7a37e207f6",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-node-failure-business.json": "a324da1b4c7c45758e7342b8c86eb95589b8bf7b90e7c961f062ffda04ef5e46",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-node-failure.json": "06ec3c2f588acefc553da4d9c13aad9a17c8b50e6fcaee21735689c5eaefa83f",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/business.log": "c8d6ab6c25cc7c5a01f1c76ecc66a4cea505f6872b88463129d2691bf010002a",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/cleanup.log": "665ee16ec2645f006398339c0d07d94d6f36169345fb4b5efeb9d4f6c8fd98c6",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/events.txt": "7901f0999db49276988b5cbafac2119024906e2ff996c2b1b2730470872d28ab",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/first-failure.status": "d42d512352835a3c4d66aa491eca40fc3f690a51640547941ceecc3f4b09afce",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/pods.txt": "1f066820e3dfe1bf4db550a92b749c1e47b1f358bad11d7d81e41c91a05024bf",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/relay.log": "1f14e1ff096ac821d31c11216f7ad160e3a82609c990f05d6de9adde6ee386f6",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/status": "33252abf994b390216d7830d734d705d8f2d8eb3cc2dd513dde1abad1b968941",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-sequence.RVOYKe/control-context.json": "5e6c3dfc08dc24291d8612fbe143703bfe6b023b35ac05b8bf3ec954b09f545e",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-sequence.RVOYKe/v1-operations-remaining/v1.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-sequence.RVOYKe/v1-operations-remaining/v1.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-sequence.RVOYKe/v1-operations-remaining/v1.log": "81d812989e19558f6030be14b7ae7edce6a0e16ece68fdb8df230d6bcf78f27d",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-sequence.RVOYKe/v1-operations-remaining/v1.pid": "f8a4cd10ba70051d05ca80ec0e7a4759447275b6957ed39d477725c382a68fe8",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/disk-lifecycle.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/disk-lifecycle.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/disk-lifecycle.log": "40a5466de3ac35ab63e42b49ab14b16a2b6065748abb06ddefcc202fa894abda",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/disk-lifecycle.pid": "2c53706eaaaeb9ddca8fd751829c41a80fc80fc69c6441955f80cc91aaf0be42",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity-cleanup.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity-cleanup.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity-cleanup.log": "df6ea425896abcbf8160fa7fdf33e18a45e4f1c0e7b71a001bf71bf4586f7640",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity-cleanup.pid": "3473d8fd0135d1784dfd019819aa24825383ed2ea57a50f13c8aa503e612b094",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity.log": "ce1395610889ee20038d7cbca2c1345dfbca11a69cd24f609e48e503ef0716d7",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/integrity.pid": "7631f74d552ba71b5dc147a07b4e4018bc15b3302441e65f79053d511349b3e8",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/node-failure.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/node-failure.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/node-failure.log": "47f65edcd0ff1cd81df2daf55822521294184eb89a5baa768749053ae1411bf1",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/node-failure.pid": "7691c534445be5721adde19b9ebc6a95b39f2f02a35bb635ddae68c47f815cb8",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/control-context.json": "5e6c3dfc08dc24291d8612fbe143703bfe6b023b35ac05b8bf3ec954b09f545e",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/first-failure.status": "91d957f8f2748a950526d4d21e0d5cd3bf5518e6c60b1beb470a13be1f978b1d",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v1.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v1.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v1.log": "bf2b48018758dc77c4e3d4084c62f6636701eea3a6edff714e04741885ad7fef",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v1.pid": "2820a2273558446873c8a98d6056ec1a2d20fb488424a45fff3ef4564b27e036",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v2.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v2.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v2.log": "1067fab6bad7fdd3a3e3d17d42f720b0782c839b9b39c449cb388884ba19fcde",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/raw/var/tmp/kubeauto-longhorn-parallel.bsIr0j/v2.pid": "65ac410aadff7dd0acba087e63a860097fc2a02b2200e3042d4339bb2a8eb65b",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-terminal/capture.json": "dad136e9cc3fa42f9c0c94bf90bce7841e4932a2b0fbebd619590f975a9d8db2",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/events-current.json": "1e1345f3c2e7ada278392b3ea7916229961ad947f0e3c37e9e6e79583341e8ab",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/native-storage-current.json": "def2538c452f393a0b503d955f2ea5d630a5679ee17f5e30c1e1741c840c7cfb",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/nodes-current.json": "f6afa5a38d16adbf6b2dc2543195774aa86aee1b5fa48021f12c90aeb83c7b5f",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/pods-current.json": "3728ac302836c673748de8bc7fccb1dde58bee40281ff44141be93f37e208c6f",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/usr/local/kubeauto/clusters/longhorn-gate/fixture-failure-e162d045a4ab42a3b4ba6dc40b89a80d.stderr": "6a64f0e9fee3ed96855e2ba8733385e951e3d3dd8b088fc929c9cb5dd90736da",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-node-failure-business.json": "a324da1b4c7c45758e7342b8c86eb95589b8bf7b90e7c961f062ffda04ef5e46",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/usr/local/kubeauto/clusters/longhorn-gate/longhorn-node-failure.json": "06ec3c2f588acefc553da4d9c13aad9a17c8b50e6fcaee21735689c5eaefa83f",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/business.log": "a431ddaabae66ef77405383051d315f9d9044bdfeb35d2f5ba0bc9528f5e2dc5",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/cleanup.log": "fe096129070f6ecd5e12e3dc5ab6b234a11582dbb58739fd9d833d9f52b365a5",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/events.txt": "7901f0999db49276988b5cbafac2119024906e2ff996c2b1b2730470872d28ab",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/first-failure.status": "d42d512352835a3c4d66aa491eca40fc3f690a51640547941ceecc3f4b09afce",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/var/tmp/kubeauto-longhorn-node-failure.vn086E/pods.txt": "1f066820e3dfe1bf4db550a92b749c1e47b1f358bad11d7d81e41c91a05024bf",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/raw/var/tmp/kubeauto-longhorn-parallel-v1.aDdBqj/node-failure.log": "601c9e8a5896524b85829daa3adacad11b64171ef46e8d23f03cc62763dcaff7",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-failure-first-failure/capture.json": "c75a547aae3ddd9bcd04d4c41aadc65dbcc38e546565412ed4315f80de4afb38",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/launch.log": "e0fecaef42189cbf727cb4c04713ed81d820c3f976373357e7f47ae6a65fd598",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-final-boundary/capture.json": "a1c1034b4c7afa2e69fbe685e62b8ad4d8cb118a1c773e31ce5b45f1855cdd55",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-final-boundary/nodes.json": "3470ea38dcc878722cc9e0146217be9a70bae587168723b50e49f472f4c52c80",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-final-boundary/business.json": "c4047370bb664f46205537ffe2a8a590310bc597c219c0f872297de262afed23",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-final-boundary/pv.json": "f6092b4bf77d2d5cd6244d886fb7f5823d6bcf7688ef258412432b5da7a10e12",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-final-boundary/volume.json": "b6d4769d72f8570e670653f93b5b4d2e98e168f57a844078da6ed1ce14094c43",
+    "logs/longhorn-cases/integrity-retirement-monitoring-ready-20261022/archive-node-final-boundary/host.json": "a28c49fe1932fe7d97646fd3ea9435f5bea535b3dd9860ca6de5b3c352997b3f"
+  },
+  "independent_accepted_items": [
+    "LONGHORN-30",
+    "LONGHORN-26"
+  ],
+  "boundary": "Preserved first failure and real failed parent/module terminal states. No product fault, node failure acceptance or GA claimed. Healthy independently accepted modules retain their own current evidence. Candidate recovery must pass contracts then original guarded cleanup before node scenario.",
+  "final_readonly_boundary": {
+    "worker_uid_preserved": true,
+    "worker_ready": true,
+    "runner_cordon_retained": true,
+    "services_restored": true,
+    "guest_fence_guards_retired": true,
+    "old_application_replaced_by_controller": true,
+    "binding_uids_preserved": true,
+    "volume_robustness": "degraded",
+    "business_readback": false,
+    "reusable_healthy_baseline": false,
+    "next": "Original guarded node-failure-cleanup, original healthy/data proof, then owning complete node-failure."
+  }
+}

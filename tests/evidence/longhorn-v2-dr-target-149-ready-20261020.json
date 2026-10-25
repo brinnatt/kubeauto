@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "read-only-hardware-admission-ready",
+  "classification": "environment/hardware-identity-resolved",
+  "host": "192.168.47.149",
+  "scope": "Read-only verified hardware inputs; no cluster, packages, hugepages or disk mutation. Independent single-node DR target; does not qualify target-site node HA.",
+  "previous_blocked_evidence": "tests/evidence/longhorn-v2-dr-target-149-inputs-20261020.json",
+  "observed": {
+    "inventory": {
+      "architecture": "x86_64",
+      "by_id": {
+        "/dev/disk/by-id/ata-VMware_Virtual_SATA_CDRW_Drive_01000000000000000001": "/dev/sr0",
+        "/dev/disk/by-id/dm-name-ubuntu--vg-ubuntu--lv": "/dev/dm-0",
+        "/dev/disk/by-id/dm-uuid-LVM-Tk0ZuGtyO43O3LoPUHVYyTmuNrjaBsOnVH6uNlQpDFPR2ey7x7b0qxYYqM4Zhqi0": "/dev/dm-0",
+        "/dev/disk/by-id/lvm-pv-uuid-wfzQcf-TAHG-wfBk-WxGT-Xe8B-mszV-tWaCcZ": "/dev/sda3",
+        "/dev/disk/by-id/scsi-36000c2931d31bfda34940c763911a3ba": "/dev/sdb",
+        "/dev/disk/by-id/scsi-36000c29494c174bfaf86a609f495291f": "/dev/sda",
+        "/dev/disk/by-id/scsi-36000c29494c174bfaf86a609f495291f-part1": "/dev/sda1",
+        "/dev/disk/by-id/scsi-36000c29494c174bfaf86a609f495291f-part2": "/dev/sda2",
+        "/dev/disk/by-id/scsi-36000c29494c174bfaf86a609f495291f-part3": "/dev/sda3",
+        "/dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c2931d31bfda34940c763911a3ba": "/dev/sdb",
+        "/dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c29494c174bfaf86a609f495291f": "/dev/sda",
+        "/dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c29494c174bfaf86a609f495291f-part1": "/dev/sda1",
+        "/dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c29494c174bfaf86a609f495291f-part2": "/dev/sda2",
+        "/dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c29494c174bfaf86a609f495291f-part3": "/dev/sda3",
+        "/dev/disk/by-id/wwn-0x6000c2931d31bfda34940c763911a3ba": "/dev/sdb",
+        "/dev/disk/by-id/wwn-0x6000c29494c174bfaf86a609f495291f": "/dev/sda",
+        "/dev/disk/by-id/wwn-0x6000c29494c174bfaf86a609f495291f-part1": "/dev/sda1",
+        "/dev/disk/by-id/wwn-0x6000c29494c174bfaf86a609f495291f-part2": "/dev/sda2",
+        "/dev/disk/by-id/wwn-0x6000c29494c174bfaf86a609f495291f-part3": "/dev/sda3"
+      },
+      "ceph_files": [],
+      "disk_details": {
+        "sda": {
+          "holders": [],
+          "signatures": {
+            "signatures": [
+              {
+                "device": "sda",
+                "label": null,
+                "offset": "0x200",
+                "type": "gpt",
+                "uuid": null
+              },
+              {
+                "device": "sda",
+                "label": null,
+                "offset": "0x18fffffe00",
+                "type": "gpt",
+                "uuid": null
+              },
+              {
+                "device": "sda",
+                "label": null,
+                "offset": "0x1fe",
+                "type": "PMBR",
+                "uuid": null
+              }
+            ]
+          },
+          "sysfs_path": "/sys/devices/pci0000:00/0000:00:10.0/host32/target32:0:0/32:0:0:0/block/sda",
+          "udev": {
+            "rc": 0,
+            "stdout": "DEVPATH=/devices/pci0000:00/0000:00:10.0/host32/target32:0:0/32:0:0:0/block/sda\nDEVNAME=/dev/sda\nDEVTYPE=disk\nDISKSEQ=9\nMAJOR=8\nMINOR=0\nSUBSYSTEM=block\nUSEC_INITIALIZED=2047697\nSCSI_TPGS=0\nSCSI_TYPE=disk\nSCSI_VENDOR=VMware,\nSCSI_VENDOR_ENC=VMware,\\x20\nSCSI_MODEL=VMware_Virtual_S\nSCSI_MODEL_ENC=VMware\\x20Virtual\\x20S\nSCSI_REVISION=1.0\nID_SCSI=1\nSCSI_IDENT_SERIAL=6000c29494c174bfaf86a609f495291f\nSCSI_IDENT_LUN_NAA_REGEXT=6000c29494c174bfaf86a609f495291f\nID_VENDOR=VMware,\nID_VENDOR_ENC=VMware,\\x20\nID_MODEL=VMware_Virtual_S\nID_MODEL_ENC=VMware\\x20Virtual\\x20S\nID_REVISION=1.0\nID_TYPE=disk\nID_WWN_WITH_EXTENSION=0x6000c29494c174bfaf86a609f495291f\nID_WWN=0x6000c29494c174bf\nID_BUS=scsi\nID_SERIAL=36000c29494c174bfaf86a609f495291f\nID_SERIAL_SHORT=6000c29494c174bfaf86a609f495291f\nID_SCSI_SERIAL=6000c29494c174bfaf86a609f495291f\nMPATH_SBIN_PATH=/sbin\nDM_MULTIPATH_DEVICE_PATH=0\nID_PATH=pci-0000:00:10.0-scsi-0:0:0:0\nID_PATH_TAG=pci-0000_00_10_0-scsi-0_0_0_0\nID_PART_TABLE_UUID=1210b87f-3fdb-448b-b7ba-0af654b989ea\nID_PART_TABLE_TYPE=gpt\nDEVLINKS=/dev/disk/by-diskseq/9 /dev/disk/by-path/pci-0000:00:10.0-scsi-0:0:0:0 /dev/disk/by-id/scsi-36000c29494c174bfaf86a609f495291f /dev/disk/by-id/wwn-0x6000c29494c174bfaf86a609f495291f /dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c29494c174bfaf86a609f495291f\nTAGS=:systemd:\nCURRENT_TAGS=:systemd:"
+          },
+          "wwid": {
+            "errno": 6
+          }
+        },
+        "sdb": {
+          "holders": [],
+          "signatures": {
+            "signatures": []
+          },
+          "sysfs_path": "/sys/devices/pci0000:00/0000:00:10.0/host32/target32:0:1/32:0:1:0/block/sdb",
+          "udev": {
+            "rc": 0,
+            "stdout": "DEVPATH=/devices/pci0000:00/0000:00:10.0/host32/target32:0:1/32:0:1:0/block/sdb\nDEVNAME=/dev/sdb\nDEVTYPE=disk\nDISKSEQ=10\nMAJOR=8\nMINOR=16\nSUBSYSTEM=block\nUSEC_INITIALIZED=2047089\nSCSI_TPGS=0\nSCSI_TYPE=disk\nSCSI_VENDOR=VMware,\nSCSI_VENDOR_ENC=VMware,\\x20\nSCSI_MODEL=VMware_Virtual_S\nSCSI_MODEL_ENC=VMware\\x20Virtual\\x20S\nSCSI_REVISION=1.0\nID_SCSI=1\nSCSI_IDENT_SERIAL=6000c2931d31bfda34940c763911a3ba\nSCSI_IDENT_LUN_NAA_REGEXT=6000c2931d31bfda34940c763911a3ba\nID_VENDOR=VMware,\nID_VENDOR_ENC=VMware,\\x20\nID_MODEL=VMware_Virtual_S\nID_MODEL_ENC=VMware\\x20Virtual\\x20S\nID_REVISION=1.0\nID_TYPE=disk\nID_WWN_WITH_EXTENSION=0x6000c2931d31bfda34940c763911a3ba\nID_WWN=0x6000c2931d31bfda\nID_BUS=scsi\nID_SERIAL=36000c2931d31bfda34940c763911a3ba\nID_SERIAL_SHORT=6000c2931d31bfda34940c763911a3ba\nID_SCSI_SERIAL=6000c2931d31bfda34940c763911a3ba\nMPATH_SBIN_PATH=/sbin\nDM_MULTIPATH_DEVICE_PATH=0\nID_PATH=pci-0000:00:10.0-scsi-0:0:1:0\nID_PATH_TAG=pci-0000_00_10_0-scsi-0_0_1_0\nDEVLINKS=/dev/disk/by-id/wwn-0x6000c2931d31bfda34940c763911a3ba /dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c2931d31bfda34940c763911a3ba /dev/disk/by-path/pci-0000:00:10.0-scsi-0:0:1:0 /dev/disk/by-id/scsi-36000c2931d31bfda34940c763911a3ba /dev/disk/by-diskseq/10\nTAGS=:systemd:\nCURRENT_TAGS=:systemd:"
+          },
+          "wwid": {
+            "errno": 6
+          }
+        }
+      },
+      "disks": {
+        "blockdevices": [
+          {
+            "children": [
+              {
+                "fstype": null,
+                "model": null,
+                "mountpoints": [
+                  null
+                ],
+                "name": "sda1",
+                "pkname": "sda",
+                "ro": false,
+                "serial": null,
+                "size": 1048576,
+                "type": "part",
+                "wwn": "0x6000c29494c174bfaf86a609f495291f"
+              },
+              {
+                "fstype": "ext4",
+                "model": null,
+                "mountpoints": [
+                  "/boot"
+                ],
+                "name": "sda2",
+                "pkname": "sda",
+                "ro": false,
+                "serial": null,
+                "size": 2147483648,
+                "type": "part",
+                "wwn": "0x6000c29494c174bfaf86a609f495291f"
+              },
+              {
+                "children": [
+                  {
+                    "fstype": "ext4",
+                    "model": null,
+                    "mountpoints": [
+                      "/"
+                    ],
+                    "name": "ubuntu--vg-ubuntu--lv",
+                    "pkname": "sda3",
+                    "ro": false,
+                    "serial": null,
+                    "size": 52609155072,
+                    "type": "lvm",
+                    "wwn": null
+                  }
+                ],
+                "fstype": "LVM2_member",
+                "model": null,
+                "mountpoints": [
+                  null
+                ],
+                "name": "sda3",
+                "pkname": "sda",
+                "ro": false,
+                "serial": null,
+                "size": 105223553024,
+                "type": "part",
+                "wwn": "0x6000c29494c174bfaf86a609f495291f"
+              }
+            ],
+            "fstype": null,
+            "model": "VMware Virtual S",
+            "mountpoints": [
+              null
+            ],
+            "name": "sda",
+            "pkname": null,
+            "ro": false,
+            "serial": "6000c29494c174bfaf86a609f495291f",
+            "size": 107374182400,
+            "type": "disk",
+            "wwn": "0x6000c29494c174bfaf86a609f495291f"
+          },
+          {
+            "fstype": null,
+            "model": "VMware Virtual S",
+            "mountpoints": [
+              null
+            ],
+            "name": "sdb",
+            "pkname": null,
+            "ro": false,
+            "serial": "6000c2931d31bfda34940c763911a3ba",
+            "size": 107374182400,
+            "type": "disk",
+            "wwn": "0x6000c2931d31bfda34940c763911a3ba"
+          },
+          {
+            "fstype": "iso9660",
+            "model": "VMware Virtual SATA CDRW Drive",
+            "mountpoints": [
+              null
+            ],
+            "name": "sr0",
+            "pkname": null,
+            "ro": false,
+            "serial": "01000000000000000001",
+            "size": 3303444480,
+            "type": "rom",
+            "wwn": null
+          }
+        ]
+      },
+      "existing_paths": {
+        "/etc/kubernetes": false,
+        "/usr/local/kubeauto": false,
+        "/var/lib/kubelet": false
+      },
+      "hostname": "ubuntu24",
+      "hugepages_2mi": "0",
+      "kernel": "6.8.0-71-generic",
+      "kernel_ge_6_7": true,
+      "machine_id": "0a5300ff1b9e468081b267f4ba23f54b",
+      "memory_kib": {
+        "MemAvailable": 7525640,
+        "MemTotal": 8083616
+      },
+      "modules": {
+        "nvme_tcp": {
+          "available": {
+            "rc": 0,
+            "stdout": "/lib/modules/6.8.0-71-generic/kernel/drivers/nvme/host/nvme-tcp.ko.zst"
+          },
+          "loaded": false
+        },
+        "uio_pci_generic": {
+          "available": {
+            "rc": 0,
+            "stdout": "/lib/modules/6.8.0-71-generic/kernel/drivers/uio/uio_pci_generic.ko.zst"
+          },
+          "loaded": false
+        },
+        "vfio_pci": {
+          "available": {
+            "rc": 0,
+            "stdout": "/lib/modules/6.8.0-71-generic/kernel/drivers/vfio/pci/vfio-pci.ko.zst"
+          },
+          "loaded": false
+        }
+      },
+      "online_cpus": "0-7",
+      "os": {
+        "BUG_REPORT_URL": "https://bugs.launchpad.net/ubuntu/",
+        "HOME_URL": "https://www.ubuntu.com/",
+        "ID": "ubuntu",
+        "ID_LIKE": "debian",
+        "LOGO": "ubuntu-logo",
+        "NAME": "Ubuntu",
+        "PRETTY_NAME": "Ubuntu 24.04.3 LTS",
+        "PRIVACY_POLICY_URL": "https://www.ubuntu.com/legal/terms-and-policies/privacy-policy",
+        "SUPPORT_URL": "https://help.ubuntu.com/",
+        "UBUNTU_CODENAME": "noble",
+        "VERSION": "24.04.3 LTS (Noble Numbat)",
+        "VERSION_CODENAME": "noble",
+        "VERSION_ID": "24.04"
+      },
+      "services": {
+        "ceph.target": {
+          "rc": 4,
+          "stdout": "inactive"
+        },
+        "containerd": {
+          "rc": 4,
+          "stdout": "inactive"
+        },
+        "docker": {
+          "rc": 4,
+          "stdout": "inactive"
+        },
+        "kubelet": {
+          "rc": 4,
+          "stdout": "inactive"
+        }
+      },
+      "sse42_all_cpus": true
+    },
+    "assessment": {
+      "blockers": [],
+      "candidates": [
+        {
+          "name": "sdb",
+          "size_bytes": 107374182400,
+          "by_id": [
+            "/dev/disk/by-id/scsi-36000c2931d31bfda34940c763911a3ba",
+            "/dev/disk/by-id/scsi-SVMware__VMware_Virtual_S_6000c2931d31bfda34940c763911a3ba",
+            "/dev/disk/by-id/wwn-0x6000c2931d31bfda34940c763911a3ba"
+          ],
+          "identity": "0x6000c2931d31bfda34940c763911a3ba"
+        }
+      ],
+      "requires_leased_product_admission": true
+    }
+  },
+  "files": {
+    "logs/longhorn-cases/dr-target-149-configured-inputs-20261020/v2-dr-target-149-configured-inputs-20261020.json": "cd861bc5099ed798b5f25638723c46657a9b95449ce474469eedb4c9091d37e2"
+  }
+}

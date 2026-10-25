@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-34",
+  "status": "failed",
+  "matrix_status": "pending",
+  "classification": "test-gate: bounded V1 network-degradation precondition omitted in-flight I/O",
+  "first_failure": "TimeoutError: fixture wait: v1-network-native-replica-failure",
+  "owning_phase": "bounded-business",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-observability",
+  "version": "1.12.1",
+  "instance_manager_version": "v1.12.1-kubeauto.2",
+  "pid": "1003212",
+  "durable": {
+    "local_exit": 1,
+    "remote_exit": 1,
+    "module_exit": 1,
+    "business_exit": 1,
+    "local_finalized": 1,
+    "remote_finalized": 1,
+    "module_finalized": 0,
+    "business_finalized": 1
+  },
+  "frozen_input_count": 887,
+  "remote_before_after_equal": true,
+  "terminal_capture_sha256": "9c1bfdbf311054a43f4d1eb5f095eabc6b35b0f1a052835b8aca0158185825aa",
+  "scope_completed": [
+    "product monitoring setup and real three-manager/filesystem scrape",
+    "owned rules initialized; backup alert fired",
+    "exact source/destination/data port network rule install and removal",
+    "original three replica UIDs recovered unchanged",
+    "business, store and monitoring cleanup; original empty filesystem baseline"
+  ],
+  "scope_not_completed": [
+    "native degraded state",
+    "Degraded alert lifecycle",
+    "capacity, backup recovery and missing-sample lifecycles",
+    "support bundle and cross-node remount",
+    "LONGHORN-34 acceptance"
+  ],
+  "root_cause_evidence": {
+    "official_remote_monitor_sha256": "9ef755e364d08ef447731266a8c6621ecde9bb928a362ab71a22ddd42415795d",
+    "mechanism": "Pinned dataconn client skips R/W timeout when ioInflight==0; TypePing is excluded from ioInflight. The observability path had only a static confirmed file, unlike the accepted V1 network gate confirmed fsync writer.",
+    "limitation": "Rule packet counters were not collected during isolation. Retry must still disprove endpoint/rule effectiveness using real native degradation; no timeout increase, host tuning, relaxed assertion or product PASS inferred."
+  },
+  "cleanup": {
+    "module_finalized": 0,
+    "network_rules_removed": true,
+    "original_replica_uids_unchanged": true,
+    "baseline": {
+      "longhorn-node-165": {
+        "available": 105067315200,
+        "disk": "kubeauto-data",
+        "disk_uuid": "8fc73bdb-07f6-4b37-926c-ea169ad08d07",
+        "maximum": 105089261568,
+        "node_uid": "a642e2e5-2a91-4644-9b30-cb62d041f94e",
+        "reserved": 10508926156,
+        "scheduled": 0
+      },
+      "longhorn-node-212": {
+        "available": 105067315200,
+        "disk": "kubeauto-data",
+        "disk_uuid": "673d17b9-d1c5-4383-bab3-c562e6ef3187",
+        "maximum": 105089261568,
+        "node_uid": "45402ae8-cba5-4daa-a286-9ecc414e6b98",
+        "reserved": 10508926156,
+        "scheduled": 0
+      },
+      "longhorn-node-238": {
+        "available": 105067315200,
+        "disk": "kubeauto-data",
+        "disk_uuid": "0d5eb5c4-d4c5-407f-b82b-5d8bf7f93278",
+        "maximum": 105089261568,
+        "node_uid": "77535cdb-725e-4063-a89b-e77daab3cc63",
+        "reserved": 10508926156,
+        "scheduled": 0
+      }
+    }
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/b2485b84416004c07f9e7ac5ff3df50a2c2af094524fadc368a77982392d629e": "b2485b84416004c07f9e7ac5ff3df50a2c2af094524fadc368a77982392d629e",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/3367fee23f2d6360d61858c288f2362296dabedb012fb9faf6f87b790d2b9d37": "3367fee23f2d6360d61858c288f2362296dabedb012fb9faf6f87b790d2b9d37",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/51ca6cdd89d10fe81f7f74cbccb248bb7070e741ded59d572382cb7a37e207f6": "51ca6cdd89d10fe81f7f74cbccb248bb7070e741ded59d572382cb7a37e207f6",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/4c16e9b0e1b65bbe5977f0e9b3dfc3cdb419120762f72de5a2e9abb918d0e391": "4c16e9b0e1b65bbe5977f0e9b3dfc3cdb419120762f72de5a2e9abb918d0e391",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/6fd168409e2a6043858ca12c08223be46caad9af14ec3b966e2ba736158f9155": "6fd168409e2a6043858ca12c08223be46caad9af14ec3b966e2ba736158f9155",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/0b7cf55e729472eb528d91112386f90c4ff79ec99af8a936b7818f81b0ed5399": "0b7cf55e729472eb528d91112386f90c4ff79ec99af8a936b7818f81b0ed5399",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/b6e633e07d43492effda2789831e9a16d7180ba36cc9a0594a645b74e83b96a9": "b6e633e07d43492effda2789831e9a16d7180ba36cc9a0594a645b74e83b96a9",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/eab0aa37ba96fe588264fa636b30fa55963794094688dcbec8fef9ab414bfc12": "eab0aa37ba96fe588264fa636b30fa55963794094688dcbec8fef9ab414bfc12",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/c5741bc2cc19bad13562b5727873551bcca7e5b1fbcbb9d51b3c9ae68b3a8888": "c5741bc2cc19bad13562b5727873551bcca7e5b1fbcbb9d51b3c9ae68b3a8888",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/bf64d13fab5592f27058221968fd3b48c1d9c889853b294a440f211a18781479": "bf64d13fab5592f27058221968fd3b48c1d9c889853b294a440f211a18781479",
+    "logs/longhorn-cases/observability-34-business-20261022/launch.pid": "1b9da7dfbbb2bd82b025b604ffbe20def54e5f7620122abf222875843f9712f1",
+    "logs/longhorn-cases/observability-34-business-20261022/launch.log": "79b282a811045958839f55f8fee8fb3cb1b2770bcb06632eae374a1c2422be59",
+    "logs/longhorn-cases/observability-34-business-20261022/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-business-20261022/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/capture-0105.json": "9c1bfdbf311054a43f4d1eb5f095eabc6b35b0f1a052835b8aca0158185825aa",
+    "logs/longhorn-cases/observability-34-business-20261022/frozen-inputs.json": "7fa660a0299ab687ac7d751cb3a204d7878dfe202651983a72505d835c8535f2",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/capture-0073.json": "10a8089c109941228109dc711ed46ad165753eeec61a0d5799dc65250b9dc961",
+    "logs/longhorn-cases/observability-34-business-20261022/remote-archive/objects/13c0f04ef279d03b5ff1ae2ca1fd92daa418c9e9de6096d3e1529f9db6ebbd15": "13c0f04ef279d03b5ff1ae2ca1fd92daa418c9e9de6096d3e1529f9db6ebbd15",
+    "logs/longhorn-cases/observability-34-business-20261022/diagnostics/instance-manager-9c9793167eeeab594be21836b14ec88d.json": "aa19b350cf9843ff787f5965690cda6505010132511451d9bb04f7cdc2f554b0",
+    "logs/longhorn-cases/observability-34-business-20261022/diagnostics/instance-manager-f1e0757c0d9a969c37b4585afcf5ae13.json": "6c469bb984c24b9cbe969629b2caeb47945585da0bdad7a61e1b4975faf38e8f"
+  },
+  "boundary": "Preserves first failure and clean restoration only. Does not accept any incomplete matrix item, final GA or customer sign-off."
+}

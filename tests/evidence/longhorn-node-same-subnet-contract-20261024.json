@@ -1,0 +1,86 @@
+{
+  "classification": "test-gate and environment topology",
+  "completion": [
+    "three original replicas and acknowledged data",
+    "fourth replica after product add-node",
+    "data-bound del-node and del-master refusals",
+    "evacuated empty receiving-node product retirement",
+    "readback on original source nodes",
+    "native base uninstall and all four hosts clean"
+  ],
+  "contracts": {
+    "log": {
+      "path": "logs/longhorn-cases/node25-same-subnet-contract-20261024/contract.log",
+      "sha256": "19fd92f1020a429bd6efffad29d53e1c58a6a6004e8c7962737be1e972adf63e"
+    },
+    "python_syntax": "pass",
+    "rc": 0,
+    "shell_syntax": "pass",
+    "tests": 74
+  },
+  "date": "2026-10-24",
+  "fixture": {
+    "engine": "v1",
+    "original_v1_six_node_topology": "unchanged",
+    "receiver": "192.168.47.149",
+    "source": [
+      "192.168.47.146",
+      "192.168.47.147",
+      "192.168.47.148"
+    ],
+    "underlay": "real independently mounted ext4 on stable-identity released 100 GiB disks"
+  },
+  "frozen_inputs": {
+    "tests/fixtures/longhorn-full-cli.py": "766c7083c67a04d32e86295ed230556ffe000d20370fba91e1d8388960a8f59e",
+    "tests/helpers/longhorn-full.sh": "a73f40f39e35b27a2c391811e8da436867bba97b9f39720f03f80910ff11c82d",
+    "tests/helpers/longhorn-live.sh": "a6bf1f8210b983cdd9da769d34e6e44c58a739a631e52e60972c227cc8b96ae0",
+    "tests/helpers/longhorn-node-lifecycle.py": "eb59d6bc1cdb669bafbe166c1b3fa44855964687d10b89a2c868ab27878cb132",
+    "tests/helpers/longhorn-node-lifecycle.sh": "75b75472a68895a74a4fb37db6796640dc84008525de5bd62f51968fbb5d1dca",
+    "tests/helpers/longhorn-node-local.py": "f0d3cc17f26359b38ac6f3fa70ee381192b6c4b9f43bfdc2bb64d9d94aa0f015",
+    "tests/helpers/longhorn-node-local.sh": "a08670e820f19f086a7bda3e0c66c67855bcf87e22ff9f4a2c60e0ff3496b0cb",
+    "tests/helpers/longhorn-runner.sh": "12952a7c97305aee3f5f88e2c70c27561199c50a7bc06ec3d5e061af1b5b1bf7",
+    "tests/helpers/longhorn-static.sh": "f642a58fd4bd26551ed3996a6e520568624e115a12cc16fca227659c0ca48953",
+    "tests/unit/test_longhorn_full_shell.py": "7ef19f3cd33ba620c0f8134e45923badfd8f21251a50d8f013e23535f39dddc3",
+    "tests/unit/test_longhorn_node_lifecycle.py": "c70745a1574837c66fa8ec4f4467985dea92e3e8cd7e28a6eb56eb387dbfb3d4",
+    "tests/unit/test_longhorn_node_lifecycle_shell.py": "43cb72ce94595cd5abc49a10e50d3dbcdf705d254293825975589f501e62630d",
+    "tests/unit/test_longhorn_node_local.py": "66a086c2b94d89d811333efb6b43e9c210b366c52417e5633ba8a4f37d985a14",
+    "tests/unit/test_longhorn_node_local_shell.py": "9ca791d87d429e64e6121d7fd4344ba7178be1fd485024e57eacc7ac6301c95f"
+  },
+  "impact": {
+    "affected": [
+      "01 static wiring",
+      "25 node lifecycle",
+      "43 final clean full"
+    ],
+    "unchanged": [
+      "V1 six-node product behavior and accepted module evidence",
+      "V2 disk lifecycle target-only transfer path",
+      "IM .3 and Manager .1 artifact pins"
+    ]
+  },
+  "matrix_gap": "LONGHORN-25; original cross-subnet node traffic unavailable; no upstream mechanism retest",
+  "minimal_disproof": "bash tests/run_enterprise_regression.sh --longhorn-node-lifecycle",
+  "overall_delivery_pass": false,
+  "preconditions": [
+    "three original source release receipts and original target release receipt with hashed logs",
+    "both V2 owners retired",
+    "fresh four-host blank disk, machine and page pool checks",
+    "inherited three fixed runner leases"
+  ],
+  "product_entry": [
+    "config.yml",
+    "kubecli new longhorn-node-gate",
+    "kubecli setup longhorn-node-gate 90",
+    "kubecli setup longhorn-node-gate 09",
+    "kubecli add-node longhorn-node-gate 192.168.47.149 longhorn-node-149",
+    "kubecli del-node longhorn-node-gate 192.168.47.149"
+  ],
+  "reused_official_source": {
+    "basis": "disable scheduling, evacuate replicas, detach volumes before node removal; no always-allow or PDB bypass",
+    "cached_path": "/home/brinnatt/.local/share/kubeauto-longhorn-release/canonical51-20261021/sources/maintenance.html",
+    "sha256": "e135c4ff56ffe16c4e480887ba0cdd1f113c2205e5e055ad4ff55ef11565ed81",
+    "url": "https://longhorn.io/docs/1.12.1/maintenance/maintenance/"
+  },
+  "schema": 1,
+  "status": "pass"
+}

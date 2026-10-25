@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-01",
+  "status": "pass",
+  "evidence_kind": "local-static-only",
+  "signed_scope": "static",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-remaining-v2-monitoring (original fixed static prerequisite)",
+  "owning_command": "bash tests/run_enterprise_regression.sh --longhorn-static-only",
+  "rc": 0,
+  "failure_markers": 0,
+  "marker": "LONGHORN_STATIC_PASS",
+  "scoped_clean": "LONGHORN_STATIC_SCOPED_CLEAN_PASS",
+  "durable": {
+    "status_file": "logs/longhorn-cases/static-20261022-063330/status.json",
+    "rc": 0,
+    "completion_boundary": "Fixed longhorn_local_gate writes status only after static child pipeline returned; no separate per-static exit/finalized files claimed."
+  },
+  "frozen_input_binding": {
+    "path": "logs/longhorn-cases/node-events-compatible-continuation-20261022/frozen-inputs.json",
+    "sha256": "f108df5d6ab969a79381612481900d2e8e03791ece73552e3c16b4412431b3f6",
+    "count": 835,
+    "current_source_verified": true
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/static-20261022-063330/gate.log": "a5146c014cd361698a02a0865e5db463a296e5f27002308da9cae4e5b6e3bcdc",
+    "logs/longhorn-cases/static-20261022-063330/status.json": "88f64b5a472f4c1abb13c3b4a06a7610d0d2e21c76fda33beb4277ed17e91c5b"
+  },
+  "consumed_repairs": [
+    "Exact Event graph and official UID-less taint eviction contracts",
+    "Actual monitor cleanup before strict CPU verifier",
+    "Completed installation exact helper/Event proof compatibility"
+  ],
+  "prior_failure": "tests/evidence/longhorn-node-events-compatibility-static-first-failure-20261022.json",
+  "classification": "test-gate only; product/image .2 unchanged",
+  "boundary": "Only current local static accepted. Parallel live parent is running and is not signed; no node failure, monitoring business, final full or GA PASS implied."
+}

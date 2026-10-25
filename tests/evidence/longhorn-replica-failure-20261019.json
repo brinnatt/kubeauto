@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-19",
+  "date": "2026-10-19",
+  "status": "partial",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-replica-failure </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2328397,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_REPLICA_FAILURE_PASS",
+  "scoped_clean_marker": "LONGHORN_REPLICA_FAILURE_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_REPLICA_FAULT_LEDGER_VERIFIED {\"acknowledgements_sha256\": \"f75f0bd173380ad6a4ea884abd72500fab0da0cbf089a8c924657ead3daec9df\", \"confirmed\": 212, \"confirmed_at_rebuild\": 192, \"confirmed_before_fault\": 17, \"errors\": {}, \"max_latency_s\": 0.020809339999686927, \"rebuild_s\": 45.836, \"retries\": 0, \"sha256\": \"566452b6bd32821040767460db3c46942b193287b9ed3d4504a56feffa903e48\", \"type\": \"complete\", \"verified_bytes\": 13893632}",
+      "LONGHORN_REPLICA_FAULT_REMOUNT_LEDGER_VERIFIED {\"confirmed\": 212, \"sha256\": \"566452b6bd32821040767460db3c46942b193287b9ed3d4504a56feffa903e48\", \"verified_bytes\": 13893632}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_REPLICA_FAILURE_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_REPLICA_FAILURE_SCOPED_CLEAN_PASS",
+      "LONGHORN_REPLICA_FAILURE_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "ledger": {
+      "acknowledgements_sha256": "f75f0bd173380ad6a4ea884abd72500fab0da0cbf089a8c924657ead3daec9df",
+      "confirmed": 212,
+      "confirmed_at_rebuild": 192,
+      "confirmed_before_fault": 17,
+      "errors": {},
+      "max_latency_s": 0.020809339999686927,
+      "rebuild_s": 45.836,
+      "retries": 0,
+      "sha256": "566452b6bd32821040767460db3c46942b193287b9ed3d4504a56feffa903e48",
+      "type": "complete",
+      "verified_bytes": 13893632
+    },
+    "remount": {
+      "confirmed": 212,
+      "sha256": "566452b6bd32821040767460db3c46942b193287b9ed3d4504a56feffa903e48",
+      "verified_bytes": 13893632
+    },
+    "placement": {
+      "after": {
+        "pvc-a9ddff1a-05a0-4d73-9b9e-f47fdfe62dfd-r-0ffa88b3": {
+          "node": "longhorn-node-238",
+          "uid": "82353e73-0e24-40e7-9196-b64e68ccd227"
+        },
+        "pvc-a9ddff1a-05a0-4d73-9b9e-f47fdfe62dfd-r-63715d25": {
+          "node": "longhorn-node-212",
+          "uid": "adca36c6-ae53-4a17-9541-e9f58645ec7e"
+        },
+        "pvc-a9ddff1a-05a0-4d73-9b9e-f47fdfe62dfd-r-bd18a4f7": {
+          "node": "longhorn-node-165",
+          "uid": "770341d0-06e3-48ab-9fd5-9e26d7abe077"
+        }
+      },
+      "before": {
+        "pvc-a9ddff1a-05a0-4d73-9b9e-f47fdfe62dfd-r-0ffa88b3": {
+          "node": "longhorn-node-238",
+          "uid": "82353e73-0e24-40e7-9196-b64e68ccd227"
+        },
+        "pvc-a9ddff1a-05a0-4d73-9b9e-f47fdfe62dfd-r-63715d25": {
+          "node": "longhorn-node-212",
+          "uid": "adca36c6-ae53-4a17-9541-e9f58645ec7e"
+        },
+        "pvc-a9ddff1a-05a0-4d73-9b9e-f47fdfe62dfd-r-bd18a4f7": {
+          "node": "longhorn-node-165",
+          "uid": "770341d0-06e3-48ab-9fd5-9e26d7abe077"
+        }
+      }
+    },
+    "fault": {
+      "manager": "instance-manager-fac6e4b60bcd97a23974d93d25d1d4c2",
+      "manager_uid": "02876178-b5ff-4c4d-99f5-77f60eecc9f0",
+      "name": "pvc-a9ddff1a-05a0-4d73-9b9e-f47fdfe62dfd-r-0ffa88b3",
+      "node": "longhorn-node-238",
+      "pod_uid": "60a50dbe-f1b6-48b6-8988-2917609c8b44",
+      "replica_uid": "82353e73-0e24-40e7-9196-b64e68ccd227",
+      "uuid": "2ae30eee-d667-4012-8ddf-6758bb9fa9a3"
+    },
+    "full_acknowledgement_array_present_and_digest_verified": true
+  },
+  "boundary": "Single replica process-fault subcase only. Physical disk failure and full LONGHORN-19 acceptance remain pending; no fault RTO, power-loss or full delivery guarantee. Frozen inputs record the corrected58file source.",
+  "files": {
+    "logs/longhorn-cases/replica-failure-20261019-120431/durable-status.txt": "458f71b262cddb70943d7bf97875d84b17ec8e224e341eb13c23686bcfcad5ab",
+    "logs/longhorn-cases/replica-failure-20261019-120431/frozen-source.txt": "e83f2a5d9f2c8b34982644a638ec642f5192aa5fbc55dee11f2546031dd0718e",
+    "logs/longhorn-cases/replica-failure-20261019-120431/gate.log": "6574f53df5faf752b7eff9a0cd70242bb4b72562c6d84abbfd30e09ea333f9d4"
+  },
+  "completed_subcase": "single native replica process fault: pass",
+  "remaining_subcase": "physical disk failure not yet implemented or exercised; LONGHORN-19 remains pending"
+}

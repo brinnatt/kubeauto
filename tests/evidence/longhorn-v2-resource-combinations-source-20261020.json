@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-44",
+  "status": "partial",
+  "classification": "Official fixed-source combination review; no field operation",
+  "sources": [
+    {
+      "repository": "manager-1.12.1",
+      "commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+      "path": "controller/instance_manager_controller.go",
+      "sha256": "1fee262c9f7eba35b0ced04ddf37e3b705e3f389fd0d9f184db13d80eb290653"
+    },
+    {
+      "repository": "instance-manager-1.12.1",
+      "commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+      "path": "package/instance-manager",
+      "sha256": "de6b3f1c4a62ad286621350fd7295e867b70068ad9a84ef24b7cda76a38ab0f5"
+    },
+    {
+      "repository": "instance-manager-1.12.1",
+      "commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+      "path": "package/start-spdk-tgt",
+      "sha256": "f9d31703603b8d6681384293e8ad5d6132afa7178a50f49d5246f35f6465da14"
+    },
+    {
+      "repository": "website-ssh",
+      "commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+      "path": "content/docs/1.12.1/advanced-resources/v2-data-engine/hugepage-configuration.md",
+      "sha256": "65bb2a425d81227aa63966bf5d7c89cea6ae1da5b252801fc02606df00b16b36"
+    }
+  ],
+  "conclusion": "Exclusive CPU mode uses ordinary memory requests=limits128Mi. Anonymous mode forwards configured --mem-size plus --no-huge to child spdk_tgt. Independent GA option descriptions do not constitute qualification of the combined resource configuration.",
+  "required_project_qualification": "Through config+kubecli, verify native IM/Pod identity, actual cgroup memory limits and SPDK allocation, sustained fsync/data verification, absence of OOM/restart and resource-safe rollback. V2 platform environment prerequisites still unmet.",
+  "boundary": "No reproduced runtime failure or proven upstream/product bug; no product resource rewrite, feature rejection or matrix PASS inferred.",
+  "matrix_sha256": "72759d485e3efa64c9f6ccd70ebc7ed933868d2efee0555e1e2a0c1988963356",
+  "files": {
+    "logs/longhorn-cases/v2-resource-combinations-source-20261020/reading-map.json": "8126af9e1cab5756c4c6405b6442e3321e1d888b7a189e819f222d4935ac44ec",
+    "logs/longhorn-cases/v2-resource-combinations-source-20261020/official-source/manager-1.12.1/controller/instance_manager_controller.go": "1fee262c9f7eba35b0ced04ddf37e3b705e3f389fd0d9f184db13d80eb290653",
+    "logs/longhorn-cases/v2-resource-combinations-source-20261020/official-source/website-ssh/content/docs/1.12.1/advanced-resources/v2-data-engine/hugepage-configuration.md": "65bb2a425d81227aa63966bf5d7c89cea6ae1da5b252801fc02606df00b16b36",
+    "logs/longhorn-cases/v2-resource-combinations-source-20261020/official-source/instance-manager-1.12.1/package/start-spdk-tgt": "f9d31703603b8d6681384293e8ad5d6132afa7178a50f49d5246f35f6465da14",
+    "logs/longhorn-cases/v2-resource-combinations-source-20261020/official-source/instance-manager-1.12.1/package/instance-manager": "de6b3f1c4a62ad286621350fd7295e867b70068ad9a84ef24b7cda76a38ab0f5"
+  }
+}

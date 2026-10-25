@@ -1,0 +1,120 @@
+--- a/roles/longhorn/files/longhorn.py
++++ b/roles/longhorn/files/longhorn.py
+@@ -1352,6 +1352,100 @@
+     return changed
+ 
+ 
++RESTORE_REASSERTION = 'kubeauto.io/system-restore-reassertion'
++
++
++def completed_restore_reassertions(c, api, values):
++    """Only this configuration's UID-bound completed restores authorize repair."""
++    requests = [r for r in c['longhorn_requests'] if r['kind'] == 'system-restore']
++    if not requests:
++        return []
++    namespace = api.get('namespace', NAMESPACE)
++    values_sha = hashlib.sha256(Path(values).read_bytes()).hexdigest()
++    result = []
++    for request in requests:
++        obj = api.get('systemrestores.longhorn.io', request['name'], NAMESPACE)
++        if not obj:
++            continue
++        check_request(obj, request_object(request))
++        status = obj.get('status', {})
++        if status.get('state') != 'Completed':
++            continue
++        if (obj['metadata'].get('deletionTimestamp') or not obj['metadata'].get('uid') or
++                not namespace or not namespace['metadata'].get('uid') or status.get('error') or
++                any(x.get('type') == 'Error' and x.get('status') == 'True' for x in (status.get('conditions') or []))):
++            raise ValueError('completed SystemRestore identity or terminal state differs')
++        identity = {'restore_uid': obj['metadata']['uid'], 'namespace_uid': namespace['metadata']['uid'],
++                    'values_sha256': values_sha}
++        fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
++        if obj['metadata'].get('annotations', {}).get(RESTORE_REASSERTION) != fingerprint:
++            result.append((request, obj['metadata']['uid'], fingerprint))
++    return result
++
++
++def reassert_completed_restores(c, api, helm, values, nodes):
++    """Native restore changes live settings/spec without changing Helm's values.
++
++    Reapply the customer's target profile before its ordinary health wait. The
++    same completed request also enters here immediately after its operation.
++    A final UID-bound annotation makes replay and interrupted replay idempotent.
++    """
++    requests = completed_restore_reassertions(c, api, values)
++    if not requests:
++        return
++    def detached():
++        return all(v.get('status', {}).get('state') == 'detached' and not v.get('spec', {}).get('nodeID')
++                   for v in api.get('volumes.longhorn.io', namespace=NAMESPACE)['items'])
++    # Completed means PVC creation has finished, not that the restore engine's
++    # temporary attachment has already retired. Wait without changing settings.
++    wait('system-restore-all-volumes-detached', int(c['longhorn_operation_timeout']), detached)
++    # The finite keys are exactly chart_values' explicitly managed settings;
++    # credentials, excluded concurrency settings and unrelated settings stay native.
++    settings = []
++    for key, value in chart_values(c)['defaultSettings'].items():
++        native = re.sub(r'([a-z0-9])([A-Z])', r'\1-\2',
++                        re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1-\2', key)).lower()
++        obj = api.get('settings.longhorn.io', native, NAMESPACE)
++        if (not obj or obj.get('kind') != 'Setting' or obj.get('apiVersion') != 'longhorn.io/v1beta2' or
++                obj['metadata'].get('name') != native or not obj['metadata'].get('uid') or
++                not obj['metadata'].get('resourceVersion')):
++            raise ValueError('managed restore setting identity missing: ' + native)
++        desired = (json.dumps(value, sort_keys=True, separators=(',', ':')) if isinstance(value, (dict, list)) else
++                   str(value).lower() if isinstance(value, bool) else str(value))
++        if isinstance(value, (dict, list)):
++            try: same = json.loads(obj.get('value', '')) == value
++            except (ValueError, TypeError): same = False
++        else:
++            same = obj.get('value') == desired
++        settings.append((obj, desired, same))
++    for obj, value, same in settings:
++        if not same:
++            api.patch('settings.longhorn.io', obj['metadata']['name'], {'metadata': {
++                'uid': obj['metadata']['uid'], 'resourceVersion': obj['metadata']['resourceVersion']},
++                'value': value}, NAMESPACE)
++    if not detached():
++        raise ValueError('system restore reassertion requires all volumes detached')
++    timeout = int(c['longhorn_ready_timeout'])
++    chart = FILES / ('longhorn-' + c['longhorn_version'] + '.tgz')
++    print('LONGHORN_STAGE_BEGIN action=system-restore-reassert', flush=True)
++    run([helm, 'upgrade', '--install', 'longhorn', chart, '-n', NAMESPACE, '-f', values,
++         '--post-renderer', sys.executable, '--post-renderer-args=' + str(Path(__file__).resolve()),
++         '--post-renderer-args=post-render', '--wait', '--timeout', str(timeout) + 's', '--history-max', '10'], timeout=timeout + 60)
++    def ready():
++        check_block_identity(c, api, nodes, values)
++        return reconcile_block_disks(c, api, nodes) and healthy(c, api, nodes)
++    wait('system-restore-target-profile-ready', max(timeout, int(c['longhorn_operation_timeout'])), ready)
++    for request, uid, fingerprint in requests:
++        current = api.get('systemrestores.longhorn.io', request['name'], NAMESPACE)
++        check_request(current, request_object(request))
++        if (not current or current['metadata']['uid'] != uid or current.get('status', {}).get('state') != 'Completed' or
++                current['metadata'].get('deletionTimestamp') or current.get('status', {}).get('error')):
++            raise ValueError('SystemRestore identity changed before reassertion completion')
++        api.patch('systemrestores.longhorn.io', request['name'], {'metadata': {'uid': uid,
++            'resourceVersion': current['metadata']['resourceVersion'], 'annotations': {RESTORE_REASSERTION: fingerprint}}}, NAMESPACE)
++    print('LONGHORN_SYSTEM_RESTORE_REASSERT_PASS requests=' + str(len(requests)), flush=True)
++
++
+ def reconcile(c, api, helm, values, nodes, release):
+     timeout = int(c['longhorn_ready_timeout'])
+     if c['longhorn_action'] == 'uninstall':
+@@ -1392,6 +1486,7 @@
+         raise ValueError('host filesystem receipt belongs to another or unknown cluster/node')
+     check_block_receipts(c, context)
+     check_block_identity(c, api, nodes, values)
++    reassert_completed_restores(c, api, helm, values, nodes)
+     # All read-only ownership checks, including the shared CSI boundary, finish first.
+     if not api.get('namespace', NAMESPACE):
+         api.apply(resource('Namespace', NAMESPACE, api='v1', namespace=''), create=True)
+@@ -1437,6 +1532,8 @@
+             api.delete(current)
+     for request in c['longhorn_requests']:
+         operation(c, api, request)
++        if request['kind'] == 'system-restore':
++            reassert_completed_restores(c, api, helm, values, nodes)
+     print('LONGHORN_RECONCILE_PASS changed=' + str(int(changed)), flush=True)
+ 
+ 

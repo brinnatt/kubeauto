@@ -1,0 +1,54 @@
+{
+  "status": "static-contract-pass",
+  "classification": "test-gate consuming separately tested product reassertion",
+  "cases": [
+    "LONGHORN-17"
+  ],
+  "ladder_completed": 2,
+  "next_permitted": "root fixed-runner narrow system-restore gate after original six V1 and independent .149 pure V2 healthy empty baseline; no remote sync or live launch by child",
+  "rc": 0,
+  "tests": 28,
+  "tests_new": 17,
+  "failure_markers": 0,
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09 on source and independent target; native API only existing-volume fixture/discovery/diagnostics",
+  "command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-system-recovery.sh system-restore",
+  "cleanup_command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-system-recovery.sh system-restore-cleanup",
+  "success_markers": [
+    "LONGHORN_SYSTEM_RESTORE_ATTACHED_REFUSAL_PASS",
+    "LONGHORN_SYSTEM_RESTORE_INDEPENDENT_OBSERVED",
+    "LONGHORN_SYSTEM_RESTORE_SCOPED_CLEAN_PASS",
+    "LONGHORN_SYSTEM_RESTORE_PASS",
+    "LONGHORN_SYSTEM_RESTORE_GATE_PASS"
+  ],
+  "files": {
+    "tests/helpers/longhorn-system-recovery.py": "9cbe3b48ed99289998d91560ea1af94b6669ffb60d473def5084a5fb29d4bee6",
+    "tests/helpers/longhorn-system-recovery.sh": "859e583b80750743cebe6789860b0f42b155d781d95bc508453e7b8ea287f204",
+    "tests/unit/test_longhorn_system_recovery.py": "960ecc31b8fc1293e7da54a09ab320ba5ae59935fd7c9502c7effabbe4fd47dc",
+    "tests/unit/test_longhorn_system_recovery_shell.py": "8cac3243671b6284b6ad608d349b281aa8892f0605fcca13a4617887eb9e4bcb"
+  },
+  "contracts": "logs/longhorn-cases/system-recovery-contract-20261021/contracts.log",
+  "contracts_sha256": "de2df35438e8f5c555c9b6c6885cf3b71f75055dbcb73d1015426f9b8eef87fe",
+  "reused_dependencies": [
+    "tests/evidence/longhorn-v1-recovery-target-contract-20261021.json",
+    "tests/evidence/longhorn-system-engine-parameter-impact-20261021.json",
+    "tests/evidence/longhorn-systemrestore-reassert-contract-20261021.json"
+  ],
+  "upstream": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "files": {
+      "backup-longhorn-system.md": "877a8c9eeef5d73c1240afb044fa8ff3bc0c409bddcb97e2aacd84d69c98a0d2",
+      "restore-longhorn-system.md": "6805b272ea82c334dedfe76870848f2197ef31e09edfb1c513589de68b01e9d0",
+      "system_rollout_controller.go": "30bd2b50c262de285820dddf71799fa7f000e7582a2c3697637184193835c052"
+    },
+    "excluded_settings": [
+      "concurrent-backup-restore-per-node-limit",
+      "concurrent-replica-rebuild-per-node-limit",
+      "concurrent-backing-image-replenish-per-node-limit",
+      "backup-target",
+      "backup-target-credential-secret"
+    ],
+    "findings": "restoreSettings has no customized exemption; it overwrites differing values outside its 5 ignored settings. DS/Deployment restore replaces .Spec while retaining object UID. V1 backup dataEngine remains V1 and numberOfReplicas remains as bundled."
+  },
+  "scope": "Independent V1 native system recovery on the original six-node source and .149 dual-engine recovery target. One-replica dedicated V1 class for source/target and 24 GiB owned loop fixture qualify recovery semantics, not target HA or physical-media performance. Product-created disabled-policy SystemBackup, independently read bundle and referenced external backup blocks, source post-backup watermarks, prepared target credentials/disks. Attached existing target volume rejects product request before creation. Missing target Volume/PV/PVC reconstruct under new independent UIDs from verified last backup; existing same-name target graph keeps different target bytes/UIDs/spec with current skip provenance. Product restores target engine/CSI profile after native rollout; remount both recovered/skipped data and read latest source bytes. Final external readback compares original bundle and backup receipts. Verified-only exact UID cleanup preserves source/target core/namespace/CRD/credential/raw disk identities and original config bytes; unverified recovery retains all materials. Durable strict-mode wrapper proves first failure, two supervised relays, exact markers, cleanup, late health and control kubeconfig restoration. No live execution or matrix PASS."
+}

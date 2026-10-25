@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "partial",
+  "scope": "V2 iobuf operational path, shared-memory model,1.12.0 interface boundary and source-derived host CPU isolation cleanup limitation",
+  "review": {
+    "classification": "Author scoped content and two-reader task-path review; no independent review or field qualification",
+    "scope": "V2 iobuf operational path, shared-memory model,1.12.0 interface boundary and source-derived host CPU isolation cleanup limitation",
+    "novice_path": "Healthy1.12.1 V2 and observed exhaustion → recorded values, consumer counts/UIDs/data and restore point → stop consumers and verify all volumes detached, no CPU policy change required → approved pool/memory budget → config+kubecli09 → native settings and each identified IM Pod args/owner → original consumers, original/new data and workload/resource comparison. Failure retains stopped state; rollback re-detaches and restores original config.",
+    "experienced_path": "Pool units/minimums, necessary versus sufficient budget, default-omitted flags, startup-only JSON, shared target and1.12.0 absent settings have direct entries. Host IRQ/workqueue/RPS isolation differs from CPU Manager exclusivity; native clear uses all-online, exact custom-mask restoration remains separately pending.",
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 114,
+        "yaml_blocks": 19,
+        "bash_blocks": 32
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "9aa21a15e759a5c9e027e9066abaf0dd1c0976dc5b0f69d815c935c4d0679b6b",
+        "docs/storage/longhorn/technical-whitepaper.md": "861ce6f7ba9ce45ae02c0dca383964d7066add72595d4b10109daf9c45648fe8",
+        "docs/storage/longhorn/development-manual.md": "c96db0e30818ac36e1d55d21a4cd203cc854a148b197cb80ff4527e9740ac8fb"
+      }
+    },
+    "inline_python_ast": {
+      "blocks": 5,
+      "status": "pass"
+    },
+    "diagrams": {
+      "count": 7,
+      "identity": "Current Mermaid text equals rendered source files; canonical hashes use strip() as in original mapping. All seven unchanged, render and visual evidence reused."
+    },
+    "actual_source_evidence": "Manager1.12.0 fcba150e04d609c944b53cb92f7cd8adf32d7585 types/setting.go and both official Chart archives confirm absent new interfaces; exact old-product red/current green bound to static evidence.",
+    "remaining": "No V2 field PASS; native PCI, retirement/replacement, host isolation automation and cases44-54 pending. No full-document final sign-off.",
+    "specific_correction": "Host CPU isolation can skip unwritable IRQs/RX queues; actual masks must be observed in addition to startup flags. Source setting/clear behavior remains separate from field acceptance."
+  },
+  "files": {
+    "logs/longhorn-cases/v2-iobuf-document-review-20261020/reading-map.json": "a38a659dbae29a2e89834c62476101defefad7c2bc49084b39c8f812ec7716fd",
+    "logs/longhorn-cases/v2-iobuf-document-review-20261020/sixrepo-audit.json": "00d38e1a3a3ee7f17818d1d7b9c6bf8befbb79b6748b2e1cbc5a25398bb849a8",
+    "logs/longhorn-cases/v2-iobuf-document-review-20261020/static.json": "aefe830a54d78b4e7d2ca1610554072e8cb49799a0f577ff64abc07f4c90a0c6",
+    "logs/longhorn-cases/v2-iobuf-document-review-20261020/review.json": "f918ec0d097e70fd90d44383a90d48de01b913447fab53f7c045d8f19d01c6e8",
+    "logs/longhorn-cases/v2-iobuf-document-review-20261020/current-diagram-render-map.json": "0e7df79e75d1848eff7dad004845436559f6aabb63e984736af76816bc819e0c"
+  },
+  "previous_evidence": "tests/evidence/longhorn-v2-eviction-document-review-20261020.json"
+}

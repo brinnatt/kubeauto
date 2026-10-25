@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-42",
+  "status": "pass",
+  "complete_matrix_item": true,
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-documentation",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "local_exit": 0,
+    "local_finalized": 0
+  },
+  "success_marker": "LONGHORN_DOCUMENTATION_PASS",
+  "scoped_clean_marker": "LONGHORN_DOCUMENTATION_SCOPED_CLEAN_PASS",
+  "content_review_evidence": "tests/evidence/longhorn-documentation-revision2-content-review-20261021.json",
+  "content_review_sha256": "2fb6d04c6b721b8d177eeef8e4af259acd0dc03082c1f985cfa1e1f0b953e500",
+  "document_sha256": {
+    "docs/storage/longhorn/development-manual.md": "91d43767a55ad19afb2d04215d8a360108e3668660dbf58695572eabaecbae3c",
+    "docs/storage/longhorn/operations-manual.md": "994bf5d18cde815479f7c9a9cca9804f7f28aa5f4bb7cb6162f8654b06ee3b43",
+    "docs/storage/longhorn/technical-whitepaper.md": "72b2b4ea428cf37aaefb14ddeb63be08a9a931daef374fc4ea7a5177c903ef2d"
+  },
+  "rendered_diagrams": 8,
+  "previous_evidence": "tests/evidence/longhorn-documentation-middleware-practice-20261022.json",
+  "changes": "Accepted V1 sustained-write/fault and support-bundle observations explained in two manuals; executable paths, code blocks, diagrams and previous source scope unchanged.",
+  "files": {
+    "logs/longhorn-cases/delivery-doc-practice-20261022/launch.log": "6a0dcbda85f72ba1407a10deb1dd863d46d0aa4c4ff90fbd70ee18d3f3482450",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/launch.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/launch.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/review.json": "7aba747e1aa5ab9ac37581123f8e76a94490750fd4e0a4c597a7543b115895dd",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/previous-content-review.json": "da364abd8cee808816dd1530b98a7a0401c9a81bd10a9f6c17d225fb4b4cb8d3",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/prepare.py": "ab9d3d3582563ed8be4b1167fc08a22605adf1ee4746a0d7805d7b46a33fda55",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/apply_verified_practice.py": "fe2fedc1b7b36362632a9a8021aaf571f7c62bff362ebb224b33851e7b60a114",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/accept_verified_practice.py": "251b52164c6138361156cb82f2db8efdf41c099db9748d79f4129bb793dc3f85",
+    "logs/longhorn-cases/delivery-doc-practice-20261022/continuation-content-review.json": "ebf10e86993988cbe8996b64e32bfb954495cd6ed51848bc56970b13cd24413c",
+    "logs/longhorn-cases/documentation-20261022-233642/status.json": "bfedb73a2dc469a1ba6cc67a1bba1ba43d037eaf25a966c5c1df040029fd1e8e",
+    "logs/longhorn-cases/documentation-20261022-233642/gate.log": "d1916efbd8e9c419e1c67f1b1512d2c245b7b8602c1a183019aee418831cbb1d"
+  },
+  "boundary": "Author source/content/reader-path acceptance and fixed local documentation gate. No independent review, customer signature, new runtime operation or overall GA claim."
+}

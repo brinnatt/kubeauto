@@ -1,0 +1,13 @@
+# This guard is deliberately independent of longhorn_install. Turning off
+# reconciliation cannot authorize destroying existing storage.
+- name: Prove the Longhorn data boundary before destructive Kubernetes work
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ base_dir }}/roles/longhorn/files/longhorn.py"
+      - guard
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+      - --node-ip
+      - "{{ longhorn_removal_node_ip | default('') }}"
+  changed_when: false

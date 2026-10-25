@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-41 ownership interruption recovery contract subset",
+  "status": "contract-pass",
+  "classification": "test-gate recovery defect; not a product failure or failed live gate",
+  "baseline_reproduction": "3 local tests,6 assertions fail on old code. SIGTERM returns -15 without finally, ownership journals ignored by fixed business cleanup, four regular/broken-symlink preflight cases call absent storage health.",
+  "fixed_checks": {
+    "ownership": 24,
+    "fixed_shell_gate": 36,
+    "rc": 0
+  },
+  "frozen_inputs": {
+    "tests/helpers/longhorn-lab.py": "36cc0ed09aa91f260bb7cf22599819bbef836196747fe90684025551da340711",
+    "tests/helpers/longhorn-ownership.py": "080f8225258dd89ef69733502d9ed5ef213fbc495b36885df9a4f31bb61a7192",
+    "tests/helpers/longhorn-live.sh": "2b63373f39c2f9ad8d10e52bde223c4a3ae9fc8f3edd0310832a46aad2bb7210",
+    "tests/helpers/longhorn-runner.sh": "3e7cd0821302e2535e758eed90da78e31c7f161356c473973ae5a6f640855d62",
+    "tests/unit/test_longhorn_ownership.py": "c056325ff2658aab7a17232f7443b5006b47f0eff537a0d1db06646968dd1ec6",
+    "tests/unit/test_longhorn_gate.py": "c8cfd5f589a2eb4a67ede30c8e0cd6affe387595d6c456912c090e5b55a3cf6f"
+  },
+  "boundary": "Deterministic/local contract only. No remote fixture or product mutation, no full LONGHORN-41 or live qualification PASS. Existing normal-install/refusal evidence remains valid for unchanged normal paths.",
+  "files": {
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/frozen-source/tests/helpers/longhorn-lab.py": "36cc0ed09aa91f260bb7cf22599819bbef836196747fe90684025551da340711",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/frozen-source/tests/helpers/longhorn-live.sh": "2b63373f39c2f9ad8d10e52bde223c4a3ae9fc8f3edd0310832a46aad2bb7210",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/frozen-source/tests/helpers/longhorn-ownership.py": "080f8225258dd89ef69733502d9ed5ef213fbc495b36885df9a4f31bb61a7192",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/frozen-source/tests/helpers/longhorn-runner.sh": "3e7cd0821302e2535e758eed90da78e31c7f161356c473973ae5a6f640855d62",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/frozen-source/tests/unit/test_longhorn_gate.py": "c8cfd5f589a2eb4a67ede30c8e0cd6affe387595d6c456912c090e5b55a3cf6f",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/frozen-source/tests/unit/test_longhorn_ownership.py": "c056325ff2658aab7a17232f7443b5006b47f0eff537a0d1db06646968dd1ec6",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/ownership-interruption-official-source.json": "a3cb8887b258112d44102c8212698f289612058ad3fc120d24083d651a4e7cdb",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/ownership-recovery-before-fix-20261020.log": "b67e64d92d8f2e2e5f85fbcd9f5bf6c10c1f5739d00c58d035f0f788af344f94",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/ownership-recovery-design-20261020.json": "831cfd6743868c6b6831966da8dc4616afdfac46bae789875a869ae52755e4bd",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/ownership-recovery-fixed-unit-20261020.log": "5e995d56eca6047f453ccc406a1582eb1a6908697838207ab39201d4d6541667",
+    "logs/longhorn-cases/ownership-recovery-contract-20261020/ownership-recovery-gate-unit-20261020.log": "a8c78a0f688493d6f7a8311f90def82b2f258a2e1d88a94f34e99bcb95eb10f5"
+  }
+}

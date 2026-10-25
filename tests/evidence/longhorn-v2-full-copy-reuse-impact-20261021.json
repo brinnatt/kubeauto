@@ -1,0 +1,462 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "classification": "finite dependency impact analysis; no live PASS",
+  "matrix_item": "LONGHORN-49",
+  "historical_scopes": [
+    {
+      "evidence": "tests/evidence/longhorn-v2-full-copy-clone-qualification-20261020.json",
+      "sha256": "61b80a074e4cdd79d2afb02e05e8be7dfc9a7a030b56ea391a86795b46152ba7",
+      "status": "historical-scope-verified",
+      "raw_files_verified": 137,
+      "frozen_files": 133,
+      "unchanged_owning_functions_ast_sha256": {
+        "roles/longhorn/files/longhorn.py:storage_class": "100468c1e713fd00172025c2aa6affc128869bb0f93d125ccdebfe035716de68",
+        "roles/longhorn/files/longhorn.py:resource": "9c397302639d024b749b45368db5299f98c72ce09b649fe0a62f9bbed226f5d1",
+        "roles/longhorn/files/longhorn.py:check_classes": "098d5c1c83040128caf0b75ec62c6c2625e7f0d22375dcc72f6cdb10042b18ad",
+        "roles/longhorn/files/longhorn.py:check_block_identity": "b09f7c4dd9282d388bbba4a9f1d4b36d7b73413c796dabf4c941e06805ee80f2",
+        "roles/longhorn/files/longhorn.py:check_request": "a22ac4985c7ef59dd3ec9958deb5e60899674998c09701cb2440009a3946ea93",
+        "roles/longhorn/files/longhorn.py:request_object": "696193e4dee6e404cca944958ca4679db81ad547ebc03bea43cfec6efe28a96d",
+        "tests/helpers/longhorn-v2-clones.py:full_copy": "10a93f80f3a30eba748c59f059ae2cdd3dfed2bf7cefbb361394787b9681564c",
+        "tests/helpers/longhorn-v2-clones.py:business": "39ebae3b62851a030ae6b82e49b78eb9555d57256333e15b1de515719ba21e8c",
+        "tests/helpers/longhorn-v2-clones.py:verify_log": "9e79a294ff7e03f66e3fd32339d3bae5f84a28e4450ac6e01d3012919c2daf1f",
+        "tests/helpers/longhorn-lab.py:clone_claim": "1f34b552c0e011d19f125ffe95e4a4b61c764d1070d8ea375924bd0e21b3a667",
+        "tests/helpers/longhorn-lab.py:verify_clone": "7691063cb92e331823f1c822d8ce73d29e55b6105b65fd6a10e3b92454d382be",
+        "tests/helpers/longhorn-lab.py:create_business_object": "50bed89283961ed9b75276e05c5d60193e5468765b7cba7652f481018fea9853",
+        "tests/helpers/longhorn-lab.py:run_requests": "01e7b6dfb847c10c65bb668789ffc8728bbcf29b90c1e2cb968ca31f63fb2048",
+        "tests/helpers/longhorn-lab.py:cleanup_business": "e2e790f497b925d74b22d8b448c53f068b8e030e71df3557764f7d0ac270f6cb"
+      },
+      "changed_inputs": [
+        {
+          "path": "common/constants.py",
+          "before": "6e24da41869b4d8e9b12f84f6003848047021247229cc81619277c5f0c4da2a9",
+          "current": "facc38557a1b89dc11d8c5c3a3a9da061e6a14fa42020b354b40c694286df204"
+        },
+        {
+          "path": "docs/storage/longhorn/development-manual.md",
+          "before": "c926630ec2b570121d6ae29f31dd0989a9309de4d08464040e0a32c47e442533",
+          "current": "ed6d882a1cd8e0065fb47ddcdc09c40c01578b7a0bcdabb4b5b4afaa8358b506"
+        },
+        {
+          "path": "docs/storage/longhorn/operations-manual.md",
+          "before": "b7568683ae820ae8f8a61f65037c3af2aa3d3b3fbaaedebe114028af0cd8fe67",
+          "current": "afc4555701e320a237bc79edd911c3c6a2f4675a9c91daf51688d828fed24010"
+        },
+        {
+          "path": "docs/storage/longhorn/technical-whitepaper.md",
+          "before": "8a6e6509b31b9c757e982ad769f17a2a5a282fa54dca455b28ecd651fdb3650b",
+          "current": "db096612cc87dd93123ed748a05e7bf7f4c93b572e98a66c5608111b88692f60"
+        },
+        {
+          "path": "playbooks/09.longhorn.yml",
+          "before": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+          "current": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1"
+        },
+        {
+          "path": "roles/longhorn/files/block-check.py",
+          "before": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+          "current": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259"
+        },
+        {
+          "path": "roles/longhorn/files/images.json",
+          "before": "7b88ed7707911baf1af25604d32d9c426a45759383aa992d14d4f934bc88d74c",
+          "current": "7b6e0291d14ca3c868236b40d3c04e640a868f0bc3095b63a6542a4fd53aa2a7"
+        },
+        {
+          "path": "roles/longhorn/files/longhorn.py",
+          "before": "6cc209d27a6cfab1817bfd2579c4925ce115420c6da68ef2f18ba1fb9d4fcbe5",
+          "current": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282"
+        },
+        {
+          "path": "roles/longhorn/tasks/control.yml",
+          "before": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+          "current": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19"
+        },
+        {
+          "path": "tests/README.md",
+          "before": "f28fe7abbc69cb6e5f96561a195cdf7d9fd36b2f11ddaf3ae60bb0910d060e15",
+          "current": "f48d07569aafacb5eb648a2566b544bf1853cb52840d929bbacdbfa897ae20cb"
+        },
+        {
+          "path": "tests/evidence/longhorn-v2-aio-install-qualification-20261020.json",
+          "before": "ab43cb0b09fe745f9652f920653268003269b73cc07f4606126e29aefad3a534",
+          "current": "98e84e53cf1be8c150d375f1b98bc123656b7f636f8f2db3f97e133930efb41c"
+        },
+        {
+          "path": "tests/evidence/longhorn-v2-backup-store-qualification-20261020.json",
+          "before": "a7114c1c9a6693b112ec03bf55f22ff807170e7d5196999915436576c97d36c2",
+          "current": "3d4db0d49cb591ef3ccdca61274c2112f4b22b432869f521d95d97dae2258832"
+        },
+        {
+          "path": "tests/helpers/longhorn-artifacts.py",
+          "before": "20128fc1a8c02af70e71b588ced5fb9698c797ca11f11af348876cb178b067da",
+          "current": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306"
+        },
+        {
+          "path": "tests/helpers/longhorn-control-faults.py",
+          "before": "24dd18e80a946d2d94c2180b323186bff32311843d40c5536ef3e7d7ac105c08",
+          "current": "4c9f9f0c48cf80475465078ea4b6d3327fe0aba07eb649e2549c8bbc51ad37da"
+        },
+        {
+          "path": "tests/helpers/longhorn-faults.py",
+          "before": "7467dc8c8e547b436b070c8d22505120522733cee85b46bf0f642c5b005adf7e",
+          "current": "bf7298d8c0186dfe8fabf51838b8e09290122f3ff8c074dc4bfc4a4dc52ca38c"
+        },
+        {
+          "path": "tests/helpers/longhorn-lab.py",
+          "before": "fab2e3015ad1575e46588c1f5256edb9aacf7dc1e8446c4fa6cbf3b7a0ff2887",
+          "current": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c"
+        },
+        {
+          "path": "tests/helpers/longhorn-live.sh",
+          "before": "2a8957dc2c0d6670085327ceb8583435bd92ef70740f795d074aec2c94b99b30",
+          "current": "9e3cdb27bb515964d75b3fdd08ee70f0fc4ba127bb7a9ae6f2023cdb09ec9a93"
+        },
+        {
+          "path": "tests/helpers/longhorn-runner.sh",
+          "before": "cde85830232ad3b2dc5eec899db07a35e0b67d4f2bbe3b0e0cf1ac0181bf2dbd",
+          "current": "a388679e46c656f9cf7b81900f9bc95e3d6b7e96434d584f212e37bdc1a385c9"
+        },
+        {
+          "path": "tests/helpers/longhorn-security.py",
+          "before": "0604fff266a4d85fc682ecbcf188a2e61bdc6a3d948e652a204b6d94c3bd91ce",
+          "current": "8e385d7d5f1798c854ebeab7ab05232912806777ca534e30e4a96dd8776afb1a"
+        },
+        {
+          "path": "tests/helpers/longhorn-static.sh",
+          "before": "f0b943e5c10dd8f7b2a3fbf2b04f01905d2d0d4a37c08d9734934a3a88fb5f6a",
+          "current": "7267bad7d777766a4357c46a32d0a52c39a0c9e36bc8e6e91d0b8f7c3a6ecbb7"
+        },
+        {
+          "path": "tests/helpers/longhorn-v2-clones.py",
+          "before": "fb2b3ede7bad123bb15c034eb4383523f07a3ade71f157799a75479b64b34cc3",
+          "current": "c988ad605ea26c9760f228e1eb7256942992e156d40fcb35c38377fb12226969"
+        },
+        {
+          "path": "tests/helpers/longhorn-v2-install.py",
+          "before": "7e483e09653809f675d5391ba40d6dd9cae394570342d810f1ee67375c38a996",
+          "current": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4"
+        },
+        {
+          "path": "tests/helpers/longhorn-v2-volumes.sh",
+          "before": "25c8ff394d4e562254433758b0ad5bf4e12f0179bee94db164209a5ad0ec2124",
+          "current": "9635cb281309a0b71f541f02f0a6f1bddc6ca9732d76dd0edb892b1ab982664d"
+        },
+        {
+          "path": "tests/longhorn-test-matrix.yaml",
+          "before": "c875bbaf6336c10295ae193f552c6dbc037c4f207bd9394be2566cb6c13d878a",
+          "current": "660709cf3ca1baa314aed3f949d136880f95f8ca751749f6a8d0bbf04f876146"
+        },
+        {
+          "path": "tests/unit/test_longhorn_control_faults.py",
+          "before": "b4e6d6ae8063391d10d9a2432e6f617c85069286e1a2d6f77ff6047fccd83125",
+          "current": "38a1be33130a0045180b4c7c45841976bb0667e79bac3e4c5fd6568b753ba039"
+        },
+        {
+          "path": "tests/unit/test_longhorn_delivery.py",
+          "before": "b90ae55524ace02c0d483b3d891ac80d49d65d825978889d13da57d3c70dd1ad",
+          "current": "7661db4cdfedc407239af1b491f4abbcb5fe681be98a4dbc1f58d00b28c4372e"
+        },
+        {
+          "path": "tests/unit/test_longhorn_faults.py",
+          "before": "97fbd4281f40a7acac80bce83764d13d9eaa384a329fe554ff6355b52e09a13e",
+          "current": "45a0beb5ce41cff61681ac95adb45a3447371e70192c00822a3f5775bc17feaf"
+        },
+        {
+          "path": "tests/unit/test_longhorn_lab.py",
+          "before": "1dbbd8be8990da4184af0709bc4e0931234e2cebdf27c247db329837d4ba244d",
+          "current": "4eddd61c89d892e456da8c822f395a3bf7e13164bc11e5986ae28c8618e4ccda"
+        },
+        {
+          "path": "tests/unit/test_longhorn_security.py",
+          "before": "0784e46ba432ea9695c858d405bf7cd26409b3362415848cb0bb077b24a803d2",
+          "current": "9d6c7946cf0294d83c516de20c5e34427f07b640267472420867f5acfa444653"
+        },
+        {
+          "path": "tests/unit/test_longhorn_v2_clones.py",
+          "before": "9f180cadb4d4fe6ed9d7d41c32cd27bfa26362efeb23e4a67a1a0c3bedf6c5f8",
+          "current": "8acec5c9a593393b4e5970961be4cc53a93fd11d1dc86faab3911d5a729b6854"
+        },
+        {
+          "path": "tests/unit/test_longhorn_v2_install.py",
+          "before": "784e0f56c57ac3d5858a8eb10da6f3f768087e3484e1bdf4eff8a38ee0b539d6",
+          "current": "3c96b2f77eb53cf49a7fd3876c69ad6b27d74f8aff1c65dc17710239509976a5"
+        }
+      ]
+    },
+    {
+      "evidence": "tests/evidence/longhorn-v2-full-copy-lifecycle-qualification-20261021.json",
+      "sha256": "2ff9a3379429aa1af4c5c63193192989194fcd85c7721e0968b6352abbe26003",
+      "status": "historical-scope-verified",
+      "raw_files_verified": 235,
+      "frozen_files": 230,
+      "unchanged_owning_functions_ast_sha256": {
+        "roles/longhorn/files/longhorn.py:storage_class": "100468c1e713fd00172025c2aa6affc128869bb0f93d125ccdebfe035716de68",
+        "roles/longhorn/files/longhorn.py:resource": "9c397302639d024b749b45368db5299f98c72ce09b649fe0a62f9bbed226f5d1",
+        "roles/longhorn/files/longhorn.py:check_classes": "098d5c1c83040128caf0b75ec62c6c2625e7f0d22375dcc72f6cdb10042b18ad",
+        "roles/longhorn/files/longhorn.py:check_block_identity": "b09f7c4dd9282d388bbba4a9f1d4b36d7b73413c796dabf4c941e06805ee80f2",
+        "roles/longhorn/files/longhorn.py:check_request": "a22ac4985c7ef59dd3ec9958deb5e60899674998c09701cb2440009a3946ea93",
+        "roles/longhorn/files/longhorn.py:request_object": "696193e4dee6e404cca944958ca4679db81ad547ebc03bea43cfec6efe28a96d",
+        "tests/helpers/longhorn-v2-clones.py:full_copy": "10a93f80f3a30eba748c59f059ae2cdd3dfed2bf7cefbb361394787b9681564c",
+        "tests/helpers/longhorn-v2-clones.py:business": "39ebae3b62851a030ae6b82e49b78eb9555d57256333e15b1de515719ba21e8c",
+        "tests/helpers/longhorn-v2-clones.py:verify_log": "9e79a294ff7e03f66e3fd32339d3bae5f84a28e4450ac6e01d3012919c2daf1f",
+        "tests/helpers/longhorn-v2-clone-lifecycle.py:business": "1b8bdda24bb4c4e6e8d09bfe00a1eb1ab14dd4f17f175db7dc89f4a2472a0fdd",
+        "tests/helpers/longhorn-v2-clone-lifecycle.py:verify_log": "91027ba3e6a33ff1643d3ac1115b831c92f927bfe0ef16fd0dfe6807052deebc",
+        "tests/helpers/longhorn-lab.py:clone_claim": "1f34b552c0e011d19f125ffe95e4a4b61c764d1070d8ea375924bd0e21b3a667",
+        "tests/helpers/longhorn-lab.py:verify_clone": "7691063cb92e331823f1c822d8ce73d29e55b6105b65fd6a10e3b92454d382be",
+        "tests/helpers/longhorn-lab.py:create_business_object": "50bed89283961ed9b75276e05c5d60193e5468765b7cba7652f481018fea9853",
+        "tests/helpers/longhorn-lab.py:run_requests": "01e7b6dfb847c10c65bb668789ffc8728bbcf29b90c1e2cb968ca31f63fb2048",
+        "tests/helpers/longhorn-lab.py:cleanup_business": "e2e790f497b925d74b22d8b448c53f068b8e030e71df3557764f7d0ac270f6cb"
+      },
+      "changed_inputs": [
+        {
+          "path": "AGENTS.md",
+          "before": "831160621ddcf906257a89fc84a43b5088a3ff4f3dfd021d488ed4e165906b09",
+          "current": "ce82ef7d2eaeb6d1cd8ac7bd790e87053b84967281a3b5aed7bbe0dc631ed905"
+        },
+        {
+          "path": "common/constants.py",
+          "before": "6e24da41869b4d8e9b12f84f6003848047021247229cc81619277c5f0c4da2a9",
+          "current": "facc38557a1b89dc11d8c5c3a3a9da061e6a14fa42020b354b40c694286df204"
+        },
+        {
+          "path": "docs/storage/longhorn/development-manual.md",
+          "before": "864c52e4f4ff457bfd66498af3996d3ec3c0338bb17d80544e49f2931f4c3fb2",
+          "current": "ed6d882a1cd8e0065fb47ddcdc09c40c01578b7a0bcdabb4b5b4afaa8358b506"
+        },
+        {
+          "path": "docs/storage/longhorn/operations-manual.md",
+          "before": "3b7fdfcb1c79f192bc859352904d3eedbcb90f5ac55f890574b26d3a4292846a",
+          "current": "afc4555701e320a237bc79edd911c3c6a2f4675a9c91daf51688d828fed24010"
+        },
+        {
+          "path": "docs/storage/longhorn/technical-whitepaper.md",
+          "before": "0ab91d8a809c49d73f842f9d96739b73154004a35ce9cad246a1f7123f20e80b",
+          "current": "db096612cc87dd93123ed748a05e7bf7f4c93b572e98a66c5608111b88692f60"
+        },
+        {
+          "path": "playbooks/09.longhorn.yml",
+          "before": "61510a9c8475964cc24acbb7c48aca065bee35468800c1e820dc05ddfb783920",
+          "current": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1"
+        },
+        {
+          "path": "roles/longhorn/files/block-check.py",
+          "before": "a629922ec69075a483d24b07f987da897cfe62394b1e4e6d2f789cb63ae02ea9",
+          "current": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259"
+        },
+        {
+          "path": "roles/longhorn/files/images.json",
+          "before": "7b88ed7707911baf1af25604d32d9c426a45759383aa992d14d4f934bc88d74c",
+          "current": "7b6e0291d14ca3c868236b40d3c04e640a868f0bc3095b63a6542a4fd53aa2a7"
+        },
+        {
+          "path": "roles/longhorn/files/longhorn.py",
+          "before": "bf43924a9f1227076b2739959473deb29cf7dd44add332c041c47edfbeaef0c3",
+          "current": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282"
+        },
+        {
+          "path": "roles/longhorn/tasks/control.yml",
+          "before": "2f5d5b49579dfa48cd149ec612935512c826fe52a891ebc7f738fbbe9346dcbe",
+          "current": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19"
+        },
+        {
+          "path": "tests/README.md",
+          "before": "6f9a96846aa5de3d7c196cb9338ce91655bca3bd10f0acfe8621572fcaa535ee",
+          "current": "f48d07569aafacb5eb648a2566b544bf1853cb52840d929bbacdbfa897ae20cb"
+        },
+        {
+          "path": "tests/helpers/longhorn-artifacts.py",
+          "before": "20128fc1a8c02af70e71b588ced5fb9698c797ca11f11af348876cb178b067da",
+          "current": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306"
+        },
+        {
+          "path": "tests/helpers/longhorn-control-faults.py",
+          "before": "24dd18e80a946d2d94c2180b323186bff32311843d40c5536ef3e7d7ac105c08",
+          "current": "4c9f9f0c48cf80475465078ea4b6d3327fe0aba07eb649e2549c8bbc51ad37da"
+        },
+        {
+          "path": "tests/helpers/longhorn-faults.py",
+          "before": "7467dc8c8e547b436b070c8d22505120522733cee85b46bf0f642c5b005adf7e",
+          "current": "bf7298d8c0186dfe8fabf51838b8e09290122f3ff8c074dc4bfc4a4dc52ca38c"
+        },
+        {
+          "path": "tests/helpers/longhorn-lab.py",
+          "before": "fab2e3015ad1575e46588c1f5256edb9aacf7dc1e8446c4fa6cbf3b7a0ff2887",
+          "current": "ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c"
+        },
+        {
+          "path": "tests/helpers/longhorn-live.sh",
+          "before": "25bcd76e2fecc3daa8d794588f61a99bacff29d289e02963a83f7b49bd251891",
+          "current": "9e3cdb27bb515964d75b3fdd08ee70f0fc4ba127bb7a9ae6f2023cdb09ec9a93"
+        },
+        {
+          "path": "tests/helpers/longhorn-runner.sh",
+          "before": "116857b512283c77cc4801dda3626dbc632001f3d8bd6354bde3d203a852260c",
+          "current": "a388679e46c656f9cf7b81900f9bc95e3d6b7e96434d584f212e37bdc1a385c9"
+        },
+        {
+          "path": "tests/helpers/longhorn-security.py",
+          "before": "0604fff266a4d85fc682ecbcf188a2e61bdc6a3d948e652a204b6d94c3bd91ce",
+          "current": "8e385d7d5f1798c854ebeab7ab05232912806777ca534e30e4a96dd8776afb1a"
+        },
+        {
+          "path": "tests/helpers/longhorn-static.sh",
+          "before": "415e5b30b178d39141591761462ace95260276a5b76cd552678ecfcc8b9f6832",
+          "current": "7267bad7d777766a4357c46a32d0a52c39a0c9e36bc8e6e91d0b8f7c3a6ecbb7"
+        },
+        {
+          "path": "tests/helpers/longhorn-v2-install.py",
+          "before": "8a80b390ba0ea48e811cf990ab096c3974e4d426b46d7f0c930eb0372cde5d0c",
+          "current": "ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4"
+        },
+        {
+          "path": "tests/helpers/longhorn-v2-linked-clones.py",
+          "before": "58c4747713e5282963faf60007187a0aac21737388d7ad947861a9774d19f2f8",
+          "current": "28d6045cb5473dd9595594c2a1ebede35ef534dfe2ad3b49f3e102fdf19d4408"
+        },
+        {
+          "path": "tests/helpers/longhorn-v2-systembackup.py",
+          "before": "8015b808effc180b32faa9e316fd50e7f49fe2db59311a8dc0c2d175e2fe44a2",
+          "current": "e72ea455a3229c4a696163861e6ae1fcceba516e228b47292b09384d93dc206f"
+        },
+        {
+          "path": "tests/helpers/longhorn-v2-systemrestore.py",
+          "before": "694efaf5fd6ee53cdbb6491b8c5728c1245a1cfb93c65561195d5e6b26bebd76",
+          "current": "9efe79a628f8d02af65f02087f5fbf7bf0237fbc295f21e527ee50c857c9a62a"
+        },
+        {
+          "path": "tests/longhorn-test-matrix.yaml",
+          "before": "f79189dbc99afd723f403870310e6e363bb622b6fdcf8262966196fda80291f1",
+          "current": "660709cf3ca1baa314aed3f949d136880f95f8ca751749f6a8d0bbf04f876146"
+        },
+        {
+          "path": "tests/unit/test_longhorn_control_faults.py",
+          "before": "b4e6d6ae8063391d10d9a2432e6f617c85069286e1a2d6f77ff6047fccd83125",
+          "current": "38a1be33130a0045180b4c7c45841976bb0667e79bac3e4c5fd6568b753ba039"
+        },
+        {
+          "path": "tests/unit/test_longhorn_delivery.py",
+          "before": "48f7845b6ac39b36b7c5e2b1d9811caea4de8acf01c90cf02d831504e80e99eb",
+          "current": "7661db4cdfedc407239af1b491f4abbcb5fe681be98a4dbc1f58d00b28c4372e"
+        },
+        {
+          "path": "tests/unit/test_longhorn_faults.py",
+          "before": "97fbd4281f40a7acac80bce83764d13d9eaa384a329fe554ff6355b52e09a13e",
+          "current": "45a0beb5ce41cff61681ac95adb45a3447371e70192c00822a3f5775bc17feaf"
+        },
+        {
+          "path": "tests/unit/test_longhorn_lab.py",
+          "before": "1dbbd8be8990da4184af0709bc4e0931234e2cebdf27c247db329837d4ba244d",
+          "current": "4eddd61c89d892e456da8c822f395a3bf7e13164bc11e5986ae28c8618e4ccda"
+        },
+        {
+          "path": "tests/unit/test_longhorn_security.py",
+          "before": "0784e46ba432ea9695c858d405bf7cd26409b3362415848cb0bb077b24a803d2",
+          "current": "9d6c7946cf0294d83c516de20c5e34427f07b640267472420867f5acfa444653"
+        },
+        {
+          "path": "tests/unit/test_longhorn_v2_install.py",
+          "before": "13734095b234665da3324ee112fbb9a6d4dc705553d2dcaed78c4995cd3c69f6",
+          "current": "3c96b2f77eb53cf49a7fd3876c69ad6b27d74f8aff1c65dc17710239509976a5"
+        },
+        {
+          "path": "tests/unit/test_longhorn_v2_linked_clones.py",
+          "before": "fef3002d8d97480d07f50975c740d09b41f990b827a9a1efb8be9995bf5c2e60",
+          "current": "9b7c08ba031cfa33eea2476ccc91179eac92812158e87b52a77950923bec1ba0"
+        },
+        {
+          "path": "tests/unit/test_longhorn_v2_systembackup.py",
+          "before": "1d77189ef8bdc295427b7fb0e8fd4f376d399c29dcc66f71b4b90d17d47a6d12",
+          "current": "62e89eed67688649bfeb94a67ebd621337c5b33a20e655cde3572186b9384da0"
+        },
+        {
+          "path": "tests/unit/test_longhorn_v2_systemrestore.py",
+          "before": "2dcc20670c1b36e1070ff612cbdeae40cc2ac85943777967a680b862e22806fe",
+          "current": "bf86610dfa044202802d7f5b2bc408b0905a577ea9cd60c3cdd7f4cf9888ea1c"
+        }
+      ]
+    }
+  ],
+  "conclusion": "Reuse the two historically accepted full-copy independence and source-retirement scopes. Current .2 adoption has durable 0/0, exact79 current inputs, independent healthy empty-business readback and unchanged original physical/native disk and cluster identity. Four TLS changes are guarded linked-only calls not consumed by full-copy. No additional full-copy live assertion is required for this change. This is evidence reuse, not a fresh full-copy execution or complete49 PASS.",
+  "consumed_interface_analysis": {
+    "validation": "Current same-version action=present, V2, hugepages=true, exclusive cores=0 follows original validation. Added anonymous+exclusive refusal and optional CPU isolation/retire-block-disks guards are inactive. No legacy or patch upgrade is performed by these full-copy scopes.",
+    "storage_class": "storage_class/resource/check_classes AST unchanged. V2 full-copy, 2Gi,3 replicas,Retain,RWO,driver.longhorn.io and exact PV binding remain unchanged; no selector/exclusive/isolation/retirement option is introduced.",
+    "product_request": "Both scopes use product setup with empty longhorn_requests; CSI full-copy source/clone behavior and owning business/assertion functions are AST identical. SystemRestore reassertion immediately returns when no system-restore request; backup cleanup mutation is not consumed.",
+    "healthy": "Image selection now consumes reviewed images.json .2 pin. Additional isolation assertion consumes omitted-native policy false with no irq/workqueue/rps flags; this changed current runtime identity/health path is covered by the one current .2 adoption business and independent readback, not historical full-copy PASS.",
+    "identity": "Original physical disk UUIDs, host/core UIDs and empty business checked by current adoption; no presumed namespace equivalence after52. Future consumers must call unified install.volume_baseline and accepted52 validator if a real transition exists.",
+    "other_diffs": "Docs/test metadata/unit additions do not execute in the native clone path. Shared runner dispatch additions do not alter full-copy business functions; lifecycle CLI extension preserves original business/verify dispatch. Retirement-only playbook/tasks are guarded by action=retire-block-disks."
+  },
+  "tls_callsite_reachability": [
+    {
+      "file": "engine.go",
+      "function": "Engine.SnapshotClone",
+      "lines": [
+        2006,
+        2013
+      ],
+      "proof": "Only LINKED_CLONE returns snapshotCloneLinkedN; full-copy uses distinct deep-copy path and existing e.newServiceClient."
+    },
+    {
+      "file": "engine.go",
+      "function": "Engine.ReplicaAdd",
+      "lines": [
+        851,
+        865
+      ],
+      "proof": "checkLinkedCloneSrcReplicaMode executes only when all three linked source fields are nonempty. Full-copy replicas have no linked ancestry."
+    },
+    {
+      "file": "replica.go",
+      "function": "Replica.RebuildingDstFinish",
+      "lines": [
+        4046,
+        4059
+      ],
+      "proof": "All three linked source cache fields empty => return nil before revised TLS client call; normal full-copy replica rebuilding stops at this guard."
+    },
+    {
+      "file": "replica.go",
+      "function": "Replica.syncCloneReplicaInfo / repairCloneEntrypoint",
+      "lines": [
+        604,
+        648,
+        2458,
+        2497
+      ],
+      "proof": "recoverCloneReplicaInfo identifies only real linked entrypoint lvols; !isCloneReplica returns before repair. SnapshotCloneDstStart sets linked flags only under LINKED_CLONE. Full-copy deep copy has no such entrypoint/ancestry."
+    }
+  ],
+  "upstream_commit": "cfd63a673e3047ca176185619565d5a81d33ec1c",
+  "upstream_source_sha256": {
+    "engine.go": "7dd6c59f19a3e543e6f03f189b10528ee64cfee901520558a27a1ab3d5e86b1e",
+    "replica.go": "94760b83b74a57f8d451a8cbfe90f4e360f579bce828eab8734312b247c7f73a"
+  },
+  "artifact_publication_evidence": {
+    "path": "tests/evidence/longhorn-v2-linked-tls-rebuild-publication-20261021.json",
+    "sha256": "939012d360ebfa845769803edc0951c8f43bda1bebb8d23643dbd997275988b7"
+  },
+  "required_current_boundary": "Satisfied by bound current_adoption_dependency; after a future52 epoch transition, all live consumers still use unified install.volume_baseline rather than assuming this old namespace identity.",
+  "smallest_disproof": "Current .2 adoption business/readback fails image/health/identity OR any owning function AST hash differs OR native full-copy replica gains linked ancestry. Return only that proven affected scope to pending; do not repeat accepted source-retirement/data assertions.",
+  "no_external_action": true,
+  "current_adoption_dependency": {
+    "path": "tests/evidence/longhorn-v2-im-revision-2-adopt-qualification-20261021.json",
+    "sha256": "af1f5ba5fa39f8d7b5b1493e480b447c44bef3bae8258de86603dc632f942478",
+    "durable": {
+      "exit": 0,
+      "finalized": 0
+    },
+    "frozen_inputs_verified": 79,
+    "raw_files_verified": 15,
+    "same_historical_cluster_namespace_node_identities": true,
+    "source_config_sha256": "99062f7fde31be257664fc144c5888726d289c200263c728c3cf3425e9518b75",
+    "same_historical_native_disk_uuids": {
+      "longhorn-node-146/kubeauto-block": "7b23d33c-3d90-41ae-9723-f53a9f018901",
+      "longhorn-node-147/kubeauto-block": "b9be10bd-23b4-4a62-885c-ba634ac74469",
+      "longhorn-node-148/kubeauto-block": "473a8278-cd66-4e94-bc47-4eca3982dd4a"
+    },
+    "installation_healthy": true,
+    "empty_business": true,
+    "adoption_journal_absent": true,
+    "historical_disk_receipt_and_all3_uuids_compared": true
+  }
+}

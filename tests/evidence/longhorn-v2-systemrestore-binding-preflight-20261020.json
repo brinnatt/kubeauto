@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "stopped-before-live",
+  "classification": "local test-gate preflight review",
+  "scope": "Initial SystemRestore candidate; no source sync, lease or remote launch occurred",
+  "reason": "Fixed source returns after PVC creation; Completed does not guarantee PVC/PV controller binding has converged. Replaced immediate assertion with bounded convergence wait before strict immutable checks.",
+  "exact_contract": "tests.unit.test_longhorn_v2_systemrestore.ReconstructionContracts.test_completed_rollout_waits_for_absence_pending_binding_and_restore_convergence",
+  "focused_contracts": 15,
+  "contract_log": {
+    "path": "/tmp/kubeauto-longhorn-research/systemrestore-focused-contracts-20261020.log",
+    "sha256": "1a0d2abe10d44616545ea50e9a430366769fb2c3da8d90a0a89498ec49105a94"
+  },
+  "no_scenario_mutation": true,
+  "no_delivery_pass_claimed": true
+}

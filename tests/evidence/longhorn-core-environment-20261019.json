@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "classification": [
+    "environment",
+    "test-gate"
+  ],
+  "scope": "Longhorn clean-core prerequisite; no Longhorn installation or data disk formatting took place",
+  "root_cause": "A historical kube-apiserver systemd drop-in survived the shared lab wipe, replacing ExecStart with a single-etcd endpoint and Service CIDR 10.79.0.0/16 although the new inventory and base unit specify 10.86.0.0/16. The old clean verifier checked service/data state but omitted drop-in configuration.",
+  "affected_host": "192.168.122.72",
+  "override_path": "/etc/systemd/system/kube-apiserver.service.d/90-drafts-skywalking-proxy-cn.conf",
+  "override_sha256": "99dcd3f9f6440548d5c2e4867e7dc4357df1b180dd0a55f9f8c45c3bc1db9e45",
+  "first_run": "/var/tmp/kubeauto-longhorn-history/core-f51ca7d3-a850-4c67-a77d-6e78e5101d3b",
+  "first_run_result": "Cancelled the owned product subtree after proving configuration contamination; durable rc=1; original diagnostics and complete six-node cleanup retained. Not a Longhorn product failure.",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-core-host-preflight",
+  "recovery_command": "bash tests/run_enterprise_regression.sh --longhorn-core-host-recover",
+  "recovery_result": "Exact original override archived; clean host-input checks passed for all six hosts; durable rc=0, zero failure markers and scoped cleanup passed.",
+  "archive": "/var/tmp/kubeauto-longhorn-history/host-unit-99dcd3f9f6440548d5c2e4867e7dc4357df1b180dd0a55f9f8c45c3bc1db9e45",
+  "official_references": [
+    "https://www.freedesktop.org/software/systemd/man/252/systemd.unit.html",
+    "https://www.freedesktop.org/software/systemd/man/252/systemd.service.html"
+  ],
+  "behavior": "Drop-ins are parsed after a base unit; an empty ExecStart resets the original list. Core preflight now checks exact, dash-prefix and service-wide overrides. Unknown files are retained and block execution.",
+  "acceptance_boundary": "This closes only the observed laboratory prerequisite defect. No core, storage business or final delivery PASS is inferred.",
+  "files": {
+    "logs/longhorn-cases/core-host-preflight-20261019-025020/gate.log": "634fe775ed866bb228f15c5c1a1f910f3dccad201f3c630845e66f719d7a39af",
+    "logs/longhorn-cases/core-host-preflight-20261019-025020/durable-status.txt": "70af3fbe511f5cd41985862d408fffa4ae91d9281ca7f5c0b322d3442f6d49b9",
+    "logs/longhorn-cases/core-host-recover-20261019-025123/gate.log": "a0d030d3e32dda18fc243401d2ef232a9035511aed248e3c5bd62290c3670a59",
+    "logs/longhorn-cases/core-host-recover-20261019-025123/durable-status.txt": "0551c72624c54756c7ac801130318a5fbeed1fff29143206bc48493b1c372e8a",
+    "logs/longhorn-cases/core-20261019-015405/gate.log": "ef46ca02e679f715b749b17f5d3d41ad58ee2d14d082faa252d1380116464b16",
+    "logs/longhorn-cases/core-20261019-015405/durable-status.txt": "6ae705b64aea52a80601b656e79f5f943d151f9a34dcced6568048f34e1bd84c"
+  }
+}

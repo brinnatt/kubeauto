@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "classification": "test-gate",
+  "matrix_item": "LONGHORN-52",
+  "owning_entry": "config.yml + kubecli setup longhorn-v2-gate 09; --longhorn-v2-upgrade-lifecycle",
+  "cause": "Missing-SystemBackup refusal was tested while V2 volumes were attached. Earlier resource-setting guard observed target-only data-engine-number-of-cpu-cores and correctly refused before dedicated upgrade checks. No source upgrade occurred.",
+  "first_failure": "V2 product did not return the exact expected refusal",
+  "actual_product_refusal": "V2 resource-setting changes require all V2 volumes detached: data-engine-number-of-cpu-cores",
+  "source_version": "1.12.0",
+  "source_stage": "source-1.12.0",
+  "preparation_stage": "old-ready",
+  "verified_restore_points": [
+    "plain-before",
+    "encrypted-before"
+  ],
+  "business_module_pass": false,
+  "host_endpoint_recovery": "Exact prior all-replicas orphan removed; original multipath host restore passed; no raw disk write",
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/raw/var/tmp/longhorn-upgrade-failure-j1vh_zjn.txt": "91dfcf26b21b5e83d167006afbe024ab3b928fcc652a108ecb1f957359d2cffb",
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/raw/var/tmp/longhorn-upgrade-failure-nr1rkp1t.txt": "cf520870503e8a5f734daa16c1e852849f2d8493f94f17a5493fcaec6cffc994",
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/v2-unexpected-refusal-dbdbb1e2fef04d4bbe0badfb135d26e5.json": "c0e5ca9cf33947cb1dcfef8902316399016f0b78aef537d3bfb380672b4dc8f0",
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-upgrade-lifecycle.json": "04c33b270c21ad54bd604f2995ef2830b51753ef9b48c77cf90eeb66363584ea",
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/longhorn-v2-upgrade-preparation.json": "2ad6ad781125074b33266897bb2a7442fe203d4e49d4f44a0d8ca0191b6d705e",
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/terminal.json": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3",
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-endpoint-retry-20261023/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+  },
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-upgrade-lifecycle",
+  "repair_scope": "Test refusal sequencing, strictly pre-upgrade owned fixture cleanup and reuse of healthy empty old installation; no product/image change"
+}

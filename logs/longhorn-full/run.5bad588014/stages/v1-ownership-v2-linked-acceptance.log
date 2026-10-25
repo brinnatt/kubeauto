@@ -1,0 +1,89 @@
+LONGHORN_PARALLEL_STARTED v1_pid=3513142 v2_pid=3513143 directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+[longhorn-v1] LONGHORN_OWNERSHIP_STAGE_START stage=ownership-csi-refusal-qualification
+[longhorn-v1] LONGHORN_CORE_IDENTITY_PASS nodes=6
+[longhorn-v2] LONGHORN_V2_LINKED_ACCEPTANCE_DURABLE_DIRECTORY path=/var/tmp/kubeauto-longhorn-linked-acceptance.iVrBsD
+[longhorn-v2] LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+[longhorn-v2] LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+[longhorn-v2] LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+[longhorn-v2] LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+[longhorn-v2] LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+[longhorn-v2] LONGHORN_LAB_INSTALLATION_HEALTHY
+[longhorn-v2] LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+[longhorn-v2] LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+[longhorn-v2] LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+[longhorn-v2] Traceback (most recent call last):
+[longhorn-v2]   File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 152, in <module>
+[longhorn-v2]     main()
+[longhorn-v2]   File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 139, in main
+[longhorn-v2]     adopt(lab, process.pid)
+[longhorn-v2]   File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 115, in adopt
+[longhorn-v2]     prior = runtime(lab, record, old=old)
+[longhorn-v2]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[longhorn-v2]   File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 98, in runtime
+[longhorn-v2]     raise ValueError('Manager running digest differs from the published artifact')
+[longhorn-v2] ValueError: Manager running digest differs from the published artifact
+[longhorn-v2] LONGHORN_PARALLEL_V2_EXIT rc=1
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+[longhorn-v1] LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+[longhorn-v1] LONGHORN_PRIVATE_DIAGNOSTIC file=/var/tmp/kubeauto-longhorn-failure-hcx0dkf5.txt
+[longhorn-v1] LONGHORN_LAB_FAIL reason=ValueError
+[longhorn-v1] LONGHORN_CORE_IDENTITY_PASS nodes=6
+[longhorn-v1] LONGHORN_FIRST_FAILURE phase=ownership-csi-product-refusal rc=1 diagnostics=/var/tmp/kubeauto-longhorn-operation.1no0tA
+[longhorn-v1] LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_PARALLEL_HEARTBEAT directory=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+[longhorn-v1] LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+[longhorn-v1] LONGHORN_CORE_IDENTITY_PASS nodes=6
+[longhorn-v1] LONGHORN_OWNERSHIP_CSI_REFUSAL_QUALIFICATION_EXIT rc=1
+[longhorn-v1] LONGHORN_FIRST_FAILURE phase=ownership-ownership-csi-refusal-qualification rc=1 diagnostics=/var/tmp/kubeauto-longhorn-ownership.9UTxOe
+[longhorn-v1] LONGHORN_OWNERSHIP_DURABLE_DIRECTORY path=/var/tmp/kubeauto-longhorn-ownership.9UTxOe
+[longhorn-v1] LONGHORN_PARALLEL_V1_EXIT rc=1
+LONGHORN_PARALLEL_BRANCH_LOG_BEGIN branch=v1
+LONGHORN_OWNERSHIP_STAGE_START stage=ownership-csi-refusal-qualification
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_PRIVATE_DIAGNOSTIC file=/var/tmp/kubeauto-longhorn-failure-hcx0dkf5.txt
+LONGHORN_LAB_FAIL reason=ValueError
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_FIRST_FAILURE phase=ownership-csi-product-refusal rc=1 diagnostics=/var/tmp/kubeauto-longhorn-operation.1no0tA
+LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_CORE_IDENTITY_PASS nodes=6
+LONGHORN_OWNERSHIP_CSI_REFUSAL_QUALIFICATION_EXIT rc=1
+LONGHORN_FIRST_FAILURE phase=ownership-ownership-csi-refusal-qualification rc=1 diagnostics=/var/tmp/kubeauto-longhorn-ownership.9UTxOe
+LONGHORN_OWNERSHIP_DURABLE_DIRECTORY path=/var/tmp/kubeauto-longhorn-ownership.9UTxOe
+LONGHORN_PARALLEL_V1_EXIT rc=1
+LONGHORN_PARALLEL_BRANCH_LOG_END branch=v1
+LONGHORN_PARALLEL_BRANCH_LOG_BEGIN branch=v2
+LONGHORN_V2_LINKED_ACCEPTANCE_DURABLE_DIRECTORY path=/var/tmp/kubeauto-longhorn-linked-acceptance.iVrBsD
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_LAB_INSTALLATION_HEALTHY
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+Traceback (most recent call last):
+  File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 152, in <module>
+    main()
+  File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 139, in main
+    adopt(lab, process.pid)
+  File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 115, in adopt
+    prior = runtime(lab, record, old=old)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/kubeauto/tests/helpers/longhorn-manager-adopt.py", line 98, in runtime
+    raise ValueError('Manager running digest differs from the published artifact')
+ValueError: Manager running digest differs from the published artifact
+LONGHORN_PARALLEL_V2_EXIT rc=1
+LONGHORN_PARALLEL_BRANCH_LOG_END branch=v2
+LONGHORN_PARALLEL_CHILD_RESULTS v1_rc=1 v2_rc=1
+LONGHORN_FIRST_FAILURE phase=LONGHORN_V1_OWNERSHIP_V2_LINKED_ACCEPTANCE rc=1 diagnostics=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_PARALLEL_DURABLE_DIRECTORY path=/var/tmp/kubeauto-longhorn-parallel.l6t95W
+LONGHORN_FULL_CHILD_EXIT rc=1

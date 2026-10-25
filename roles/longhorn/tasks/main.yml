@@ -1,0 +1,11 @@
+- name: Require a known Longhorn execution phase
+  ansible.builtin.assert:
+    that: longhorn_phase in ['preflight', 'host', 'reconcile']
+
+- name: Validate Longhorn configuration and cluster ownership
+  ansible.builtin.include_tasks: control.yml
+  when: longhorn_phase in ['preflight', 'reconcile']
+
+- name: Prepare Longhorn host dependencies and disk identity
+  ansible.builtin.include_tasks: host.yml
+  when: longhorn_phase == 'host'

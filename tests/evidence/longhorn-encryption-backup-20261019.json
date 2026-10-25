@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-31",
+  "status": "pending",
+  "focused_status": "pass",
+  "phase": "backup",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-encryption-backup </dev/null",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable_pid": 2465853,
+  "success_marker": "LONGHORN_ENCRYPTION_BACKUP_PASS",
+  "scoped_clean_marker": "LONGHORN_ENCRYPTION_BACKUP_SCOPED_CLEAN_PASS",
+  "backup_receipts": {
+    "full": {
+      "backup": "backup-full-76a0f6ae14b815a39541d5ea",
+      "encrypted": true,
+      "incremental": false,
+      "newly_uploaded_bytes": 128131802,
+      "reuploaded_bytes": 0,
+      "size": 2147483648,
+      "stored_size": 2164260864,
+      "volume": "pvc-108442d0-5d1c-4a06-96f4-075892ec34dd",
+      "object_count": 70
+    },
+    "incremental": {
+      "backup": "backup-incremental-198fd5d4dafe30fc3a897a88",
+      "encrypted": true,
+      "incremental": true,
+      "newly_uploaded_bytes": 16424448,
+      "reuploaded_bytes": 0,
+      "size": 2147483648,
+      "stored_size": 2164260864,
+      "volume": "pvc-108442d0-5d1c-4a06-96f4-075892ec34dd",
+      "object_count": 76
+    }
+  },
+  "restored_devices": [
+    {
+      "client": "full-restore",
+      "independent_volume": "pvc-c00ea04c-a965-4138-b82a-0aa5c085e5fe",
+      "luks_uuid": "07fb92c4-8ef7-4e18-b7b5-13d11674965b",
+      "mapped_bytes": 2147483648,
+      "raw_bytes": 2164260864
+    },
+    {
+      "client": "incremental-restore",
+      "independent_volume": "pvc-1ef46fa8-e455-46a2-bf1c-b18e6bb523ed",
+      "luks_uuid": "07fb92c4-8ef7-4e18-b7b5-13d11674965b",
+      "mapped_bytes": 2147483648,
+      "raw_bytes": 2164260864
+    }
+  ],
+  "restore_boundaries": [
+    {
+      "mode": "full",
+      "backup_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+      "source_sha256": "312a2d8442b10f882c34fe0902b0d92c22f5736a5667ab60a69a07ddc4b0b3ad",
+      "independent_volume": "pvc-c00ea04c-a965-4138-b82a-0aa5c085e5fe"
+    },
+    {
+      "mode": "incremental",
+      "backup_sha256": "f584692f11aea9c12bbb1978e41d29a2d683e332d5bdae7f3c7778936ff5e59c",
+      "source_sha256": "312a2d8442b10f882c34fe0902b0d92c22f5736a5667ab60a69a07ddc4b0b3ad",
+      "independent_volume": "pvc-1ef46fa8-e455-46a2-bf1c-b18e6bb523ed"
+    }
+  ],
+  "cross_worker_verified_bytes": 17039360,
+  "cleanup": {
+    "business": true,
+    "backup_resources": true,
+    "original_target_and_credentials": true,
+    "off_cluster_object_store": true,
+    "transport": true,
+    "storage_healthy": true
+  },
+  "boundary": "Backup-only focused gate passed; original all-phase encryption gate and final clean full regression remain mandatory. Native restoration completed inside the existing 900-second client readiness window; no product or timeout change.",
+  "files": {
+    "logs/longhorn-cases/encryption-backup-20261019-160516/durable-status.txt": "b471f5fa3a90770b2bd53bf31ecf1fa18a287efd10952a6a74f7564b975bd7bd",
+    "logs/longhorn-cases/encryption-backup-20261019-160516/frozen-source.txt": "c07f22a38012b45418ca3af026ee5a5521cc52286f93211f316b97d6357ffd8c",
+    "logs/longhorn-cases/encryption-backup-20261019-160516/gate.log": "cf522d02d7a40344da467e3fed7621cde4363db184bee9193e661ac5ab041067"
+  }
+}

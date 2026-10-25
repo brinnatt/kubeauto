@@ -30,7 +30,7 @@ if [[ -z "$PASSWORD" ]]; then
 fi
 
 case "$USER_NAME" in
-  ubuntu|brinnatt) ;;
+  ubuntu|ubuntu24|brinnatt) ;;
   *) echo "ERROR: unsupported sudo bootstrap account: $USER_NAME" >&2; exit 2 ;;
 esac
 

@@ -1,0 +1,92 @@
+{
+  "boundary": "Uncalled evidence consumer changes plus independently qualified incomplete driver. Preserve all original live/raw/durable receipts and failed parent status; run canonical consumer only.",
+  "classification": "test-gate-consumer",
+  "completed_scope_impacts": {
+    "incomplete-clone": {
+      "changes": {
+        "tests/evidence/longhorn-linked-legacy-dependency-impact-20261024.json": {
+          "old_sha256": "31a904a161c86a960f53fd0a73389dbc20367a993e81ee068a530704f6110084",
+          "sha256": "d327f24e914a8da3b3e5bc567d5e1f8b9b6b07a7033b7640c4d2b8e5bca65bb5"
+        },
+        "tests/helpers/longhorn-v2-clone.py": {
+          "old_sha256": "9137b8202012cfdea574de7b658ece66e497e5d7b2dc3ef09722619c1c7ba78a",
+          "sha256": "0e244bebb919870a4b705f8591e0222d05376ccb176357b2b8b7c99271c3613f"
+        },
+        "tests/unit/test_longhorn_v2_clone.py": {
+          "old_sha256": "00ca721cd9172ffd0661ace9ebf810f560273464472bb871a0542f156dfa61e1",
+          "sha256": "e172e07afbebcac17878523f3be0a5907143b495a2bc9bf4ae3f0e1609ab04b1"
+        }
+      },
+      "execution": {
+        "path": "logs/longhorn-cases/manager-v2-incomplete-clone-qualification-datasource-repair-owning-20261024/terminal.json",
+        "sha256": "7fd79eecc98844458e44430997f5c9e083b19975a014e46e50eacbc57b7a5a02"
+      },
+      "inputs": {
+        "path": "logs/longhorn-cases/manager-v2-incomplete-clone-qualification-datasource-repair-owning-20261024/frozen-inputs.json",
+        "sha256": "933f61ce769a7f7b99370fbafa8fe99519978b85308c0f177bad607728607bad"
+      }
+    },
+    "linked-lifecycle": {
+      "changes": {
+        "tests/evidence/longhorn-linked-legacy-dependency-impact-20261024.json": {
+          "old_sha256": "7c2181b3aa4246633499d83a534f7dc95771ec277d05a75fad3c152db050303f",
+          "sha256": "d327f24e914a8da3b3e5bc567d5e1f8b9b6b07a7033b7640c4d2b8e5bca65bb5"
+        },
+        "tests/helpers/longhorn-v2-clone.py": {
+          "old_sha256": "b2d0faf147abc9230448aac04645439535f7daeca073f49d5117e3fea74d0f06",
+          "sha256": "0e244bebb919870a4b705f8591e0222d05376ccb176357b2b8b7c99271c3613f"
+        },
+        "tests/helpers/longhorn-v2-incomplete-clone.py": {
+          "old_sha256": "750501e22a599a7f34fa5160b1ad7d583d35efff694f5eec72e275536e0330ac",
+          "sha256": "c3d09a22bd8b7719fe754b89a9eacadae13446ee361d63f1f567b9ae21cb75d2"
+        },
+        "tests/unit/test_longhorn_v2_clone.py": {
+          "old_sha256": "5c5ec91fab704b5a3e14467b8c5ee2d26a0e6c36f7211db44435d7ef17d56bfa",
+          "sha256": "e172e07afbebcac17878523f3be0a5907143b495a2bc9bf4ae3f0e1609ab04b1"
+        },
+        "tests/unit/test_longhorn_v2_incomplete_clone.py": {
+          "old_sha256": "e91a4f39cd97ba6a53c81995c3812fbfd2037f84e54a666bddd837616ed5f2f1",
+          "sha256": "c36615b90922d8b901b6ecac1a2221a89cc85cc8740210d046f5b70a09f2a497"
+        }
+      },
+      "execution": {
+        "path": "logs/longhorn-cases/manager-v2-linked-lifecycle-qualification-linked-current-owning-20261024/terminal.json",
+        "sha256": "7fd79eecc98844458e44430997f5c9e083b19975a014e46e50eacbc57b7a5a02"
+      },
+      "inputs": {
+        "path": "logs/longhorn-cases/manager-v2-linked-lifecycle-qualification-linked-current-owning-20261024/frozen-inputs.json",
+        "sha256": "b12c9150545f9b83433c4bc3edc505654eabef96247bfb2800b9cc355bc4b0a5"
+      }
+    }
+  },
+  "contracts": {
+    "exit": {
+      "path": "logs/longhorn-cases/clone-reader-adoption-contract-20261024/binding.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/clone-reader-adoption-contract-20261024/binding.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/clone-reader-adoption-contract-20261024/binding.log",
+      "sha256": "f1f418a88cdaf5a51228352da89b2730c80f184b4998c8a0dffbdd657702fa3d"
+    }
+  },
+  "first_failure": {
+    "path": "logs/longhorn-cases/linked-composition-current-20261024/canonical49.log",
+    "sha256": "6533621696f69d8a6a7e05e8dfcfc3b9b39a6557f03e0c79e2a7ce0a246bc9b9"
+  },
+  "matrix_item": "LONGHORN-49",
+  "original_failed_consumer_exit": {
+    "path": "logs/longhorn-cases/linked-composition-current-20261024/canonical49.exit",
+    "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+  },
+  "product_behavior_changed": false,
+  "red": {
+    "path": "logs/longhorn-cases/clone-reader-adoption-contract-20261024/red.log",
+    "sha256": "7226314001d1f1175818f227a4c4f33d8f79132b13001a8bedfb0f9d07de3d4a"
+  },
+  "schema": 1,
+  "status": "contract-pass-owning-consumer-pending"
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "classification": "test-gate cleanup gap; upstream teardown cause not yet established",
+  "matrix_items": [
+    "LONGHORN-50 cleanup",
+    "LONGHORN-52 prerequisite"
+  ],
+  "owning_entry": "config.yml + kubecli setup; --longhorn-v2-upgrade-lifecycle",
+  "first_failure": "multipath fixture state changed",
+  "cause": "Retired all-replicas source volume left an unopened linear DM endpoint after CSI Delete and native uninstall; strict host restore correctly refused it",
+  "affected_host": "192.168.47.146",
+  "volume": "pvc-98bd52db-e763-4bfe-99c2-152e71257206",
+  "volume_uid": "e891224b-315e-4487-913c-d92a7847b625",
+  "source_store_empty": true,
+  "host_restore_mutated": false,
+  "preserved_stage": "retiring-empty-new",
+  "terminal": {
+    "runner_rc": 1,
+    "observer_rc": 0,
+    "terminal": true,
+    "remote_inputs_equal": true,
+    "native_rc": null
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-fixture-retry-20261023/terminal.json": "55ec52ec5862d96f53c14349c197379b607e42d39a6358bdd2bc20a9be574cc3",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-fixture-retry-20261023/launch.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-fixture-retry-20261023/launch.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-fixture-retry-20261023/multipath-readonly.json": "45d6bdee7226d92a920af1c89858ae341b6b6dbf292e3933f8291547ae77265f",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-fixture-retry-20261023/raw/usr/local/kubeauto/clusters/longhorn-v2-gate/fixture-failure-ced2bd8c282c46dab1c45b81cd1190d2.stderr": "11c9f5b694fe7bf5b55b45d01ef10b9c14dfe4bb19aa0e7e2f234c0bd69912b5",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-fixture-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.TL51Mt/first-failure.status": "a5a303c3f5ae9d5ae66407a34c43303fac8914c712b81c96a602219e8a653742",
+    "logs/longhorn-cases/revision3-v2-upgrade-gc-fixture-retry-20261023/raw/var/tmp/kubeauto-longhorn-v2-upgrade.TL51Mt/prepare.log": "1323bc20450342fb86148be0d7aa4e4b1db70a59ad45dfbc8b3946404c780b03"
+  },
+  "business_result": "Preserved; original cleanup claim requires supplemental host restoration proof",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-upgrade-lifecycle"
+}

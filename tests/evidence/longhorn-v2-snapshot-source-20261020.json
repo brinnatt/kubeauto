@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-20",
+  "status": "source-only",
+  "scope": "LONGHORN-48 native/dynamic/static CSI snapshot full-copy qualification; official design evidence only, not project PASS",
+  "version": "Longhorn 1.12.1 replicated V2",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "notes": [
+    "Snapshot CR with createSnapshot=true binds native source volume; request reentry and immutable-parameter rejection remain product integration assertions.",
+    "CSI snapshot type snap returns snap://volume/snapshot handle. Dynamic CSI creation and static import both restore through PVC VolumeSnapshot dataSource; source and target sizes must match.",
+    "V2 snapshot restore supports full-copy or linked-clone; StorageClass explicitly emits full-copy for this gate. Manager CSI maps snapshot handle to native dataSource and consumes cloneMode. Full-copy target identities and writes must remain independent.",
+    "V2 deletes the live-head parent snapshot with immediate merge and CR removal; V1 removed-CR persistence is not required.",
+    "Scope excludes integrity scan, external full/incremental backup, recurring jobs, SystemRestore and DR; those remain separate integration boundaries."
+  ],
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-a-snapshot/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-snapshot-support/csi-volume-snapshot-associated-with-longhorn-snapshot/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/"
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/setup-a-snapshot.md": "c9c8141ad473dfc43245c3c4efdd366cceec7837866c9670a4ea4b66c290fbe8",
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/csi-snapshot-support/csi-volume-snapshot-associated-with-longhorn-snapshot.md": "b5e73876c95a45927991024b609073527e3afa57580cda4bfdbc391b434ce02d",
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/csi-volume-clone.md": "63ef0190e451a7a39a8fb09ea66075311bd042e2bb9cb4038d7b6f45cdfac774",
+    "manager-1.12.1/csi/controller_server.go": "f95cc34a9e73cfa732463eacba9db8c033b8a959242fcf801908be7a8f489635",
+    "manager-1.12.1/csi/util.go": "dd1bac56b7a8a75de2b2b2ce858265b7617bf420408bef3990aaadeaeb2af1c5"
+  }
+}

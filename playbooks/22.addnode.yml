@@ -17,3 +17,7 @@
 - hosts: "{{ NODE_TO_ADD }}"
   tasks:
   - import_tasks: ../roles/kube-node/tasks/wait-node-ready.yml
+
+
+# Prepare new clients and reconcile only explicitly allowlisted data nodes.
+- import_playbook: 09.longhorn.yml

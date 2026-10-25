@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "classification": "test-gate",
+  "status": "focused-static-contract-pass",
+  "ladder_level_completed": 2,
+  "next_permitted_level": 3,
+  "matrix_gaps": [
+    "LONGHORN-03 current complete ownership and real reinstall",
+    "LONGHORN-49 linked/nested creation, dependency lifecycle, real incomplete-source negative/positive control"
+  ],
+  "product_entry": "config.yml + kubecli setup <owning deployment> 09; real CSI PVC, native dry-run for the negative boundary only",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v1-ownership-v2-linked-acceptance",
+  "command": "python -m unittest tests.unit.test_longhorn_parallel tests.unit.test_longhorn_v2_incomplete_clone tests.unit.test_longhorn_ownership_aggregate -v",
+  "tests": 56,
+  "rc": 0,
+  "isolation": "Original V1 ownership aggregate includes install; V2 uses only explicit independent kubeconfig. Shared context checked after both. Original supervisor permits other healthy branch completion after failure. All three V2 child stages retain original durable/marker verification.",
+  "files": {
+    "tests/helpers/longhorn-v2-incomplete-clone.py": "750501e22a599a7f34fa5160b1ad7d583d35efff694f5eec72e275536e0330ac",
+    "tests/helpers/longhorn-v2-incomplete-clone.sh": "4693b32a8f824441b68fafb62e147f220b5adc660c1d22e43dfdf77701a44d88",
+    "tests/unit/test_longhorn_v2_incomplete_clone.py": "e91a4f39cd97ba6a53c81995c3812fbfd2037f84e54a666bddd837616ed5f2f1",
+    "tests/helpers/longhorn-parallel.py": "f178fad2cddcf6a450867b63bd0c388f22ed06c0e903630950af190c69065cb8",
+    "tests/helpers/longhorn-parallel.sh": "530e690d3b11f870309af4a91866b819291a19791913e6fbe766a2d80fa68d6f",
+    "tests/helpers/longhorn-v2-linked-acceptance.sh": "b707c96b459f52ac26a6d1a96c02e50278dc44c655ac2bdcd21f6be3efb394b2",
+    "tests/helpers/longhorn-runner.sh": "b9dacbfa7ce3b6318dee6ed64a979bc40ebeb1f32309980d6ad793373c179f62",
+    "tests/helpers/longhorn-live.sh": "7ebb46329d997dc848cc1300535d8c468c8bf24d01731229aa3a1d3307e3f04d",
+    "tests/helpers/longhorn-static.sh": "817619ef74c65866ab1a231c09a819ce2102e8eae1546b635b3a57352e802738",
+    "tests/unit/test_longhorn_parallel.py": "2a0c8e3b4228567c837f649a87c6b5721ce82f1006aed6fa3b7a9468fd9726b3",
+    "logs/longhorn-cases/ownership-linked-ready-contract-20261021/contracts.log": "1efc1dc88f8baa41c31102eff6d1728b3c0caa2bbb1e0b009a7b9b5a7e97a04c",
+    "logs/longhorn-cases/ownership-linked-ready-contract-20261021/incomplete-contracts.log": "cbf618a7a0e388b53987084ec9835db5ac54c79f8fad231919c1cc0cb786c9d6"
+  },
+  "boundary": "Local contract only; full linked49 also needs independently accepted legacy-upgrade refusal scope. No remote mutation or GA PASS."
+}

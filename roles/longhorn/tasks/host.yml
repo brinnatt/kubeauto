@@ -1,0 +1,160 @@
+- name: Require a supported native Linux package family
+  ansible.builtin.assert:
+    that: ansible_os_family in ['RedHat', 'Debian', 'Suse']
+    fail_msg: Longhorn host preparation supports RedHat, Debian and Suse families only
+
+- name: Reject foreign disk receipts before changing host dependencies
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/host-check.py --disk-only --data-path {{ longhorn_data_path }} --minimum-gib {{ longhorn_min_disk_gib }} --cluster-uid {{ hostvars['localhost'].longhorn_host_context.cluster_uid }} --node-uid {{ hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname] }}"
+    executable: python3
+  changed_when: false
+  when: inventory_hostname in longhorn_storage_nodes
+
+- name: Reject an active multipath service before changing packages
+  ansible.builtin.command:
+    argv: [systemctl, is-active, --quiet, multipathd]
+  register: longhorn_multipath
+  failed_when: longhorn_multipath.rc not in [3, 4]
+  changed_when: false
+
+- name: Bind the secret-free V2 host declaration to current API identities
+  ansible.builtin.set_fact:
+    longhorn_v2_declaration: "{{ {'cluster_uid': hostvars['localhost'].longhorn_host_context.cluster_uid, 'node_uid': hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname], 'disks': longhorn_block_disks.get(inventory_hostname, []), 'minimum_gib': longhorn_min_disk_gib, 'cpu_mask': longhorn_v2_cpu_mask, 'cpu_cores': longhorn_v2_cpu_cores, 'memory_mib': longhorn_v2_memory_mib, 'hugepages': longhorn_v2_hugepages | bool} | to_json | b64encode }}"
+  when: inventory_hostname in longhorn_v2_nodes
+
+- name: Verify static CPU policy on every Longhorn client before host mutation
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/block-check.py --phase cpu-policy --declaration {{ {'kubelet_root': KUBELET_ROOT_DIR | default('/var/lib/kubelet')} | to_json | b64encode }}"
+    executable: python3
+  changed_when: false
+  when:
+    - longhorn_v2_cpu_cores | int > 0
+    - inventory_hostname in hostvars['localhost'].longhorn_client_nodes
+
+- name: Qualify V2 kernel resources and raw disk identities before host mutation
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/block-check.py --phase preflight --declaration {{ longhorn_v2_declaration }}"
+    executable: python3
+  changed_when: false
+  when: inventory_hostname in longhorn_v2_nodes
+
+- name: Install native iSCSI, NFS and encryption dependencies on RedHat
+  ansible.builtin.command:
+    argv: [dnf, install, -y, iscsi-initiator-utils, nfs-utils, cryptsetup, device-mapper, util-linux]
+  when: ansible_os_family == 'RedHat'
+  register: longhorn_packages_redhat
+  changed_when: "'Nothing to do.' not in longhorn_packages_redhat.stdout"
+
+- name: Install native iSCSI, NFS and encryption dependencies on Debian
+  ansible.builtin.apt:
+    name: [open-iscsi, nfs-common, cryptsetup, dmsetup, util-linux]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    lock_timeout: 300
+  when: ansible_os_family == 'Debian'
+
+- name: Install native iSCSI, NFS and encryption dependencies on Suse
+  ansible.builtin.command:
+    argv: [zypper, --non-interactive, install, --no-recommends, open-iscsi, nfs-client, cryptsetup, device-mapper, util-linux]
+  when: ansible_os_family == 'Suse'
+  changed_when: false
+
+- name: Load required V1 client modules
+  ansible.builtin.command:
+    argv: [modprobe, "{{ item }}"]
+  loop: [iscsi_tcp, dm_crypt, nfs]
+  changed_when: false
+
+- name: Persist required client modules
+  ansible.builtin.copy:
+    content: "iscsi_tcp\ndm_crypt\nnfs\n"
+    dest: /etc/modules-load.d/kubeauto-longhorn.conf
+    mode: "0644"
+
+- name: Load V2 modules only on explicitly selected qualified nodes
+  ansible.builtin.command:
+    argv: [modprobe, "{{ item }}"]
+  loop: [vfio_pci, uio_pci_generic, nvme_tcp]
+  changed_when: false
+  when: inventory_hostname in longhorn_v2_nodes
+
+- name: Persist V2 modules without changing hugepages or CPU policy
+  ansible.builtin.copy:
+    content: "vfio_pci\nuio_pci_generic\nnvme_tcp\n"
+    dest: /etc/modules-load.d/kubeauto-longhorn-v2.conf
+    mode: "0644"
+  when: inventory_hostname in longhorn_v2_nodes
+
+- name: Enable the iSCSI daemon
+  ansible.builtin.systemd:
+    name: iscsid
+    enabled: true
+    state: started
+
+- name: Copy the read-only Longhorn host checker
+  ansible.builtin.copy:
+    src: host-check.py
+    dest: /usr/local/sbin/kubeauto-longhorn-host-check
+    mode: "0755"
+
+- name: Verify client prerequisites and current filesystem identity
+  ansible.builtin.command:
+    argv: "{{ [ansible_facts.python.executable, '/usr/local/sbin/kubeauto-longhorn-host-check'] + (['--data-path', longhorn_data_path, '--minimum-gib', longhorn_min_disk_gib | string, '--cluster-uid', hostvars['localhost'].longhorn_host_context.cluster_uid, '--node-uid', hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname]] if inventory_hostname in longhorn_storage_nodes else []) }}"
+  register: longhorn_host_check
+  changed_when: false
+
+- name: Record ownership of an approved filesystem without touching data
+  when: inventory_hostname in longhorn_storage_nodes
+  block:
+    - name: Create host ownership directory
+      ansible.builtin.file:
+        path: /etc/kubeauto
+        state: directory
+        mode: "0700"
+    - name: Preserve the current filesystem receipt
+      ansible.builtin.copy:
+        content: "{{ longhorn_host_check.stdout }}\n"
+        dest: /etc/kubeauto/longhorn-disk.json
+        mode: "0600"
+    - name: Create the kubelet mount guard directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/kubelet.service.d
+        state: directory
+        mode: "0755"
+    - name: Require the actual data mount before kubelet starts
+      ansible.builtin.copy:
+        content: |
+          [Unit]
+          RequiresMountsFor={{ longhorn_data_path }}
+          [Service]
+          ExecStartPre=/usr/bin/mountpoint -q -- {{ longhorn_data_path }}
+        dest: /etc/systemd/system/kubelet.service.d/kubeauto-longhorn.conf
+        mode: "0644"
+      register: longhorn_kubelet_guard
+    - name: Reload systemd after the mount guard changes
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: longhorn_kubelet_guard.changed
+
+- name: Verify loaded V2 prerequisites and raw device identities
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/block-check.py --phase verify --declaration {{ longhorn_v2_declaration }}"
+    executable: python3
+  register: longhorn_block_host_check
+  changed_when: false
+  when: inventory_hostname in longhorn_v2_nodes
+
+- name: Preserve qualified V2 device ownership without touching media
+  when: inventory_hostname in longhorn_v2_nodes
+  block:
+    - name: Create private V2 ownership directory
+      ansible.builtin.file:
+        path: /etc/kubeauto
+        state: directory
+        mode: "0700"
+    - name: Save the cluster node and hardware bound V2 receipt
+      ansible.builtin.copy:
+        content: "{{ longhorn_block_host_check.stdout }}\n"
+        dest: /etc/kubeauto/longhorn-block-disks.json
+        mode: "0600"

@@ -1,0 +1,62 @@
+LONGHORN_V2_TRANSPORT_QUALIFICATION_CURRENT
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_CORE_SMOKE_CURRENT
+LONGHORN_V2_RESOURCE_INPUT node=192.168.47.146 total_pages=0 available_kib=10591452 required_available_kib=3145728
+LONGHORN_V2_RESOURCE_INPUT node=192.168.47.147 total_pages=0 available_kib=10074888 required_available_kib=3145728
+LONGHORN_V2_RESOURCE_INPUT node=192.168.47.148 total_pages=0 available_kib=10674472 required_available_kib=3145728
+LONGHORN_V2_RESOURCE_WAIT node=192.168.47.146 target_pages=1024 timeout_seconds=600
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=v2-kubelet-hugepage-capacity-192.168.47.146 elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_HUGEPAGES_READY node=192.168.47.146 pages=1024 capacity_bytes=2147483648
+LONGHORN_V2_RESOURCE_WAIT node=192.168.47.147 target_pages=1024 timeout_seconds=600
+LONGHORN_LAB_WAIT stage=v2-kubelet-hugepage-capacity-192.168.47.147 elapsed=0
+LONGHORN_V2_HUGEPAGES_READY node=192.168.47.147 pages=1024 capacity_bytes=2147483648
+LONGHORN_V2_RESOURCE_WAIT node=192.168.47.148 target_pages=1024 timeout_seconds=600
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_WAIT stage=v2-kubelet-hugepage-capacity-192.168.47.148 elapsed=0
+LONGHORN_V2_HUGEPAGES_READY node=192.168.47.148 pages=1024 capacity_bytes=2147483648
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_HUGEPAGE_RESOURCE_ADMISSION_PASS nodes=3 mask=0x1 reservation_percent=25
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_RESOURCE_WAIT node=192.168.47.146 target_pages=0 timeout_seconds=600
+LONGHORN_LAB_WAIT stage=v2-kubelet-hugepage-capacity-192.168.47.146 elapsed=0
+LONGHORN_V2_RESOURCE_WAIT node=192.168.47.147 target_pages=0 timeout_seconds=600
+LONGHORN_LAB_WAIT stage=v2-kubelet-hugepage-capacity-192.168.47.147 elapsed=0
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_V2_RESOURCE_WAIT node=192.168.47.148 target_pages=0 timeout_seconds=600
+LONGHORN_LAB_WAIT stage=v2-kubelet-hugepage-capacity-192.168.47.148 elapsed=0
+LONGHORN_V2_RESOURCES_SCOPED_CLEAN_PASS pages=original kubelet_capacity=original nodes=3
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_CACHE_VERIFIED image=brinnatt/json-mock:v1.3.1 digest=sha256:9a67eb8fe38a6a484841c01477381ebe03172b30e6903de3de5b286dce515a77
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_CACHE_PASS images=1
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+LONGHORN_V2_REGISTRY_TRANSPORT_READY nodes=3 endpoint=unchanged
+LONGHORN_LAB_HEARTBEAT command=env
+namespace/longhorn-core-smoke-5398efa828492fda created
+deployment.apps/production-server created
+service/production-server created
+Waiting for deployment "production-server" rollout to finish: 0 of 1 updated replicas are available...
+deployment "production-server" successfully rolled out
+PRODUCTION_SMOKE_ENDPOINT_READY endpoint=172.31.10.196 server_node=longhorn-node-146
+job.batch/production-client created
+job.batch/production-client condition met
+PRODUCTION_SMOKE_HTTP_RW_OK
+KUBERNETES_PRODUCTION_SMOKE_PASS server_node=longhorn-node-146 client_node=longhorn-node-147
+LONGHORN_CORE_SMOKE_BUSINESS_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_RESOURCES_SCOPED_CLEAN_PASS state=unchanged
+LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS
+LONGHORN_V2_CORE_IDENTITY_PASS nodes=3
+LONGHORN_V2_RESOURCES_QUALIFICATION_SCOPED_CLEAN_PASS
+LONGHORN_V2_RESOURCES_QUALIFICATION_PASS
+LONGHORN_FULL_CHILD_EXIT rc=0

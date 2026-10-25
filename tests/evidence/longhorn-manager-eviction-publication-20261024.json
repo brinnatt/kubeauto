@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "status": "pass",
+  "signed_scope": "single-derived-manager-image-publication",
+  "overall_longhorn_delivery_pass": false,
+  "image": "brinnatt/longhorn-manager:v1.12.1-kubeauto.1",
+  "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.1-kubeauto.1",
+  "run_id": 40046558765,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/40046558765",
+  "attempt": 1,
+  "head": "228ba89aabb610a847e309673b430e96608032e7",
+  "release_mode": "selected",
+  "selected_image_count": 1,
+  "publication_record": {
+    "digest": "sha256:bda2f0cc5ff46226eeb3e1cd9b35604fc4a970c839eebf15581c2f6eac1938fc",
+    "fingerprint": "d6b3ae9340e98e6f55a5ee63a0dc709703a4f6e609aecd33274cfd957e569fb1",
+    "head": "228ba89aabb610a847e309673b430e96608032e7",
+    "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.1",
+    "platforms": {
+      "linux/amd64": "sha256:e1d6aee262c8fee0bc1b49cc4de550519a05040bd34d9783a2dfeda9d2d4181c",
+      "linux/arm64": "sha256:47edbb2cf64487487e71727ef2b326e00fd8a48be49af058204cb3b90acd781a"
+    },
+    "schema": 1,
+    "source_digest": "sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
+    "source_ref": "docker.io/longhornio/longhorn-manager:v1.12.1@sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801"
+  },
+  "input_fingerprint": "d6b3ae9340e98e6f55a5ee63a0dc709703a4f6e609aecd33274cfd957e569fb1",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "go_safety_subcases_per_architecture": 10,
+  "approved_file_sha256": {
+    "catalog.json": "6d07cbaa74e58ea9eea17d96d49c3288ab414102e56d7f3d009f276bd24f9098",
+    "platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.1/Dockerfile": "d3f9e53911535f2f81b61c9351700cd67f9d4e299affc5d018cda948f747ae67",
+    "platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.1/linked-eviction.patch": "9275735a33fef8606d16223eb413b3717507ffb1d8286695a922e8f72fc20724",
+    "platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.1/source-provenance.json": "d5158ead963e60d0e7a681e21b3db51be619026bd83db09a020a4b0df662d638",
+    "platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.1/volume_eviction_linked_test.go": "edfa4ec22f515067c8f9945ca41dfa0cbafbc9d036b7efd0cfdd1fe940e7fd1e",
+    "tests/test_longhorn_manager_linked_eviction_artifact.py": "e22b17639598cc8df7356281a61b99b5a3636b551efcf7d067f084e6e7cb8678"
+  },
+  "archives": {
+    "release-evidence-0-1": "5688252e46485e2567c6f61ae45d9ead0d8b0e791de59b7c5e48d7ddf9636655",
+    "image-plan": "7540030b2ee3289f2f31745bec78662f496e784af875905bfd40d5a8122d50b0",
+    "plan-evidence-1": "f2166ab82e188326e87537b5cdedf96efa0d6f5abb08cdeeafa3bff21f7f8f55"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/manager-image-publication-20261024/release.log": "b8f0831876e7b268ac43e43d7c76218fcb6953940bb674b37829b9036116b775",
+    "logs/longhorn-cases/manager-image-publication-20261024/release.status": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494",
+    "logs/longhorn-cases/manager-image-publication-20261024/run.json": "cae4c7762b456b044521c8fcd3bb134240fe93a97e8ee497bea8ee9f4ef73a4d",
+    "logs/longhorn-cases/manager-image-publication-20261024/jobs.json": "56d64145281607a00afd50bc1caf929d8139a31f8e3146cd54c5e7b60bbb5c3f",
+    "logs/longhorn-cases/manager-image-publication-20261024/image-plan.json": "12262744fbe7fefffdddebe3edcfe006d7442285c8315d9d32831cc55d32bd1d",
+    "logs/longhorn-cases/manager-image-publication-20261024/record.json": "bc4722f2dbbc66f97c6edafd71501f9002d0871e8244acd8182ef91c85248cca"
+  },
+  "independent_manifest_readback": {
+    "talkedu": {
+      "status": "pass",
+      "digest": "sha256:bda2f0cc5ff46226eeb3e1cd9b35604fc4a970c839eebf15581c2f6eac1938fc",
+      "platforms": {
+        "linux/amd64": "sha256:e1d6aee262c8fee0bc1b49cc4de550519a05040bd34d9783a2dfeda9d2d4181c",
+        "linux/arm64": "sha256:47edbb2cf64487487e71727ef2b326e00fd8a48be49af058204cb3b90acd781a"
+      }
+    }
+  },
+  "dockerhub_verification_boundary": "Original fixed Actions publish verifies both registries and both architecture manifests before recording DUAL_PUSH_MANIFEST_PASS. Local independent readback covers TalkEdu; no unavailable local Docker Hub result claimed.",
+  "boundary": "One derived Manager image only; no storage adoption or GA claim. Upstream API version remains v1.12.1."
+}

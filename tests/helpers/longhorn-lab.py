@@ -1,0 +1,3280 @@
+#!/usr/bin/env python3
+"""Longhorn's leased six-node fixtures; never adopt another cluster or disk."""
+import argparse
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
+import hashlib
+import gzip
+import fcntl
+import importlib.util
+import inspect
+import ipaddress
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import shlex
+import signal
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+import uuid
+from urllib.parse import parse_qs, urlsplit
+
+import yaml
+
+BASE = Path('/usr/local/kubeauto')
+CLUSTER = 'longhorn-gate'
+NODES = ('192.168.122.135', '192.168.122.40', '192.168.122.72',
+         '192.168.122.212', '192.168.122.165', '192.168.122.238')
+WORKERS = NODES[3:]
+DIRECTORY = BASE / 'clusters' / CLUSTER
+STATE = DIRECTORY / 'longhorn-lab-owner.json'
+DATA = '/data/kubeauto-longhorn'
+PORT = 23520
+SSH = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'ConnectionAttempts=3',
+       '-o', 'ServerAliveInterval=5', '-o', 'ServerAliveCountMax=2']
+
+
+def transport_fingerprint():
+    functions = (execute, remote, write_private, owner, inventory, scoped_cleanup,
+                 relay_rule, relay_probe, relay_rows, relay_connect, bind_listener, relay_ensure, relay_cleanup,
+                 listener_script, validate_recovery_listener)
+    payload = json.dumps({'base': str(BASE), 'directory': str(DIRECTORY), 'nodes': NODES, 'port': PORT, 'ssh': SSH}, sort_keys=True)
+    return hashlib.sha256((payload + ''.join(inspect.getsource(f) for f in functions)).encode()).hexdigest()
+
+
+def verify_transport_qualification():
+    root = Path(__file__).resolve().parents[2]
+    evidence = json.loads((root / 'tests/evidence/longhorn-registry-qualification-20261019.json').read_text())
+    if (evidence['status'] != 'pass' or evidence['rc'] or evidence['failure_markers'] or
+            evidence['transport_fingerprint'] != transport_fingerprint()):
+        raise ValueError('Registry transport inputs require a new focused qualification')
+    print('LONGHORN_TRANSPORT_QUALIFICATION_CURRENT')
+
+
+def require_lease():
+    for descriptor, filename in ((9, 'kubeauto-ceph-priority.lock'), (7, 'kubeauto-ceph-compute.lock'),
+                                 (8, 'kubeauto-redis-core-pool.lock')):
+        expected = Path('/var/lock') / filename
+        if not os.path.samefile('/proc/self/fd/' + str(descriptor), expected):
+            raise ValueError('fixture must inherit the fixed runner leases')
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def load_helper(filename):
+    spec = importlib.util.spec_from_file_location(filename.replace('-', '_'), BASE / 'tests/helpers' / filename)
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    return module
+
+
+def execute(argv, *, stdin=None, timeout=120, check=True):
+    # Long-running commands have bounded, observable waits without leaking output.
+    with tempfile.TemporaryFile(mode='w+') as out, tempfile.TemporaryFile(mode='w+') as err, tempfile.TemporaryFile(mode='w+') as inp:
+        if stdin is not None: inp.write(stdin)
+        inp.seek(0)
+        process = subprocess.Popen([str(x) for x in argv], stdin=inp, stdout=out, stderr=err)
+        start = time.monotonic()
+        try:
+            while True:
+                try:
+                    rc = process.wait(timeout=min(10, max(0.01, timeout - (time.monotonic() - start))))
+                    break
+                except subprocess.TimeoutExpired:
+                    if time.monotonic() - start >= timeout: raise TimeoutError('fixture command timed out: ' + Path(argv[0]).name)
+                    print('LONGHORN_LAB_HEARTBEAT command=' + Path(argv[0]).name, flush=True)
+            out.seek(0); err.seek(0)
+            result = subprocess.CompletedProcess(argv, rc, out.read(), err.read())
+            if check and rc:
+                if DIRECTORY.is_dir():
+                    diagnostic = DIRECTORY / ('fixture-failure-' + uuid.uuid4().hex + '.stderr')
+                    descriptor = os.open(diagnostic, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    with os.fdopen(descriptor, 'w') as stream: stream.write(result.stderr)
+                    print('LONGHORN_PRIVATE_DIAGNOSTIC file=' + str(diagnostic), flush=True)
+                raise ValueError('fixture command failed: ' + Path(argv[0]).name + ' rc=' + str(rc))
+            return result
+        finally:
+            if process.poll() is None: process.kill(); process.wait()
+
+
+def remote(node, argv=None, script=None, *, stdin=None, check=True, timeout=120):
+    if node not in NODES: raise ValueError('foreign fixture host')
+    if (argv is None) == (script is None): raise ValueError('provide one remote command representation')
+    return execute(SSH + ['root@' + node, shlex.join(argv) if argv is not None else 'set -eu\n' + script],
+                   stdin=stdin, timeout=timeout, check=check)
+
+
+def write_private(path, data):
+    if path.is_symlink(): raise ValueError('symlink fixture state')
+    with tempfile.NamedTemporaryFile('w', dir=path.parent, delete=False) as stream:
+        json.dump(data, stream, sort_keys=True); stream.flush(); os.fsync(stream.fileno())
+        temporary = Path(stream.name)
+    temporary.chmod(0o600); temporary.replace(path)
+
+
+@contextmanager
+def scoped_cleanup(cleanup):
+    """Attempt recovery on every exit without replacing the first failure."""
+    primary = None
+    try:
+        yield
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        try:
+            cleanup()
+        except BaseException as error:
+            if primary is None:
+                raise
+            print('LONGHORN_CLEANUP_FAIL reason=' + type(error).__name__ +
+                  ' primary=' + type(primary).__name__, file=sys.stderr, flush=True)
+
+
+def owner():
+    if DIRECTORY.is_symlink() or STATE.is_symlink(): raise ValueError('symlink fixture directory')
+    state = json.loads(STATE.read_text())
+    if state['cluster'] != CLUSTER or tuple(state['nodes']) != NODES or state['clean_start_verified'] is not True:
+        raise ValueError('fixture does not have the exact leased clean-start identity')
+    uuid.UUID(state['run_id'])
+    if (DIRECTORY / 'hosts').read_text() != inventory(): raise ValueError('fixture inventory changed')
+    return state
+
+
+def inventory():
+    lines = []
+    for group, nodes in (('etcd', NODES[:3]), ('kube_master', NODES[:3]), ('kube_node', WORKERS)):
+        lines += ['[' + group + ']']
+        lines += [ip + " k8s_nodename='longhorn-node-" + ip.rsplit('.', 1)[1] + "'" for ip in nodes]
+    lines += ['[all:vars]', 'SECURE_PORT="6443"', 'CONTAINER_RUNTIME="containerd"',
+              'CLUSTER_NETWORK="calico"', 'PROXY_MODE="ipvs"', 'SERVICE_CIDR="10.86.0.0/16"',
+              'CLUSTER_CIDR="172.30.0.0/16"', 'NODE_PORT_RANGE="30000-32767"',
+              'CLUSTER_DNS_DOMAIN="cluster.local"', 'bin_dir="/usr/local/bin"',
+              'base_dir="/usr/local/kubeauto"', 'cluster_dir="{{ base_dir }}/clusters/longhorn-gate"',
+              'ca_dir="/etc/kubernetes/ssl"', "k8s_nodename=''", 'ansible_user=root']
+    return '\n'.join(lines) + '\n'
+
+
+def configure():
+    if STATE.exists() or DIRECTORY.is_symlink(): raise ValueError('new fixture requires no prior owner')
+    c = yaml.safe_load((DIRECTORY / 'config.yml').read_text())
+    if c['longhorn_version'] != '1.12.1': raise ValueError('kubecli new must resolve the fixed product version')
+    c.update(K8S_VER='1.33.6', CLUSTER_NAME=CLUSTER, ENABLE_SETTING_HOSTNAME=False,
+             KUBE_RESERVED_ENABLED='no', SYS_RESERVED_ENABLED='no', longhorn_install='no',
+             longhorn_storage_nodes=list(WORKERS), longhorn_data_path=DATA,
+             longhorn_image_prefix='registry.talkschool.cn:5000/brinnatt')
+    (DIRECTORY / 'config.yml').write_text(yaml.safe_dump(c, sort_keys=False))
+    (DIRECTORY / 'hosts').write_text(inventory())
+    write_private(STATE, {'cluster': CLUSTER, 'nodes': list(NODES), 'run_id': str(uuid.uuid4()),
+                          'clean_start_verified': True, 'disks': {}, 'healthy': False})
+    print('LONGHORN_LAB_CONFIGURED')
+
+
+def qualification_clean():
+    state = owner()
+    if state.get('cluster_uid') or state['disks'] or state.get('namespace_uid') or state.get('relays'):
+        raise ValueError('qualification cleanup cannot remove an initialized lab')
+    expected = {'hosts', 'config.yml', STATE.name}
+    logs = {'longhorn-registry-' + node + '.log' for node in NODES}
+    present = {p.name for p in DIRECTORY.iterdir()}
+    if not expected <= present or present - expected - logs or any(p.is_symlink() for p in DIRECTORY.iterdir()):
+        raise ValueError('foreign file in qualification directory; retain diagnostics')
+    for filename in present & logs: (DIRECTORY / filename).unlink()
+    for filename in ('hosts', 'config.yml', STATE.name): (DIRECTORY / filename).unlink()
+    DIRECTORY.rmdir()
+    print('LONGHORN_QUALIFICATION_FIXTURES_CLEAN_PASS')
+
+
+def unit_override_script():
+    """Detect configuration that survives removal of a systemd base unit."""
+    return '''import hashlib,json,os,stat,subprocess,sys
+from pathlib import Path
+request=json.load(sys.stdin)
+units=('kubelet','kube-proxy','kube-apiserver','kube-controller-manager','kube-scheduler','kube-lb','etcd','containerd')
+roots=tuple(Path(p) for p in ('/etc/systemd/system','/run/systemd/system','/usr/lib/systemd/system'))
+directories={'service.d'}
+for unit in units:
+ directories.add(unit+'.service.d')
+ parts=unit.split('-')
+ for count in range(1,len(parts)): directories.add('-'.join(parts[:count])+'-.service.d')
+files=[]
+for root in roots:
+ for directory in sorted(directories):
+  parent=root/directory
+  if parent.is_symlink(): raise ValueError('symlink systemd override directory')
+  if not parent.exists(): continue
+  for path in sorted(parent.glob('*.conf')):
+   info=path.lstat()
+   if not stat.S_ISREG(info.st_mode): raise ValueError('non-regular systemd override')
+   files.append({'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
+if request['action']=='recover':
+ # One observed historical fixture only. Unknown overrides are never removed.
+ expected={'path':'/etc/systemd/system/kube-apiserver.service.d/90-drafts-skywalking-proxy-cn.conf',
+           'sha256':'99dcd3f9f6440548d5c2e4867e7dc4357df1b180dd0a55f9f8c45c3bc1db9e45'}
+ if files and files != [expected]: raise ValueError('unrecognized systemd override; preserve it')
+ for unit in units:
+  result=subprocess.run(['systemctl','is-active',unit],text=True,capture_output=True,check=False)
+  if result.stdout.strip() not in ('inactive','unknown'): raise ValueError('host services must be clean before override recovery')
+ archive=Path('/var/tmp/kubeauto-longhorn-history/host-unit-'+expected['sha256'])
+ if archive.is_symlink() or archive.parent.is_symlink(): raise ValueError('symlink override archive')
+ if files:
+  if archive.exists(): raise ValueError('override archive already exists')
+  archive.mkdir(mode=0o700,parents=True)
+  target=archive/'override.conf'
+  source=Path(expected['path'])
+  if hashlib.sha256(source.read_bytes()).hexdigest()!=expected['sha256']: raise ValueError('override changed before recovery')
+  os.rename(source,target)
+  (archive/'origin.json').write_text(json.dumps(expected,sort_keys=True)+'\\n')
+  subprocess.run(['systemctl','daemon-reload'],check=True)
+ elif not (archive/'override.conf').is_file() or hashlib.sha256((archive/'override.conf').read_bytes()).hexdigest()!=expected['sha256']:
+  raise ValueError('missing original override and recovery archive')
+ print(json.dumps({'recovered':expected,'archive':str(archive)}))
+else:
+ print(json.dumps({'overrides':files},sort_keys=True))
+ if files: raise ValueError('foreign systemd overrides invalidate a clean core')
+'''
+
+
+def core_host_preflight():
+    for node in NODES:
+        remote(node, ['python3', '-c', unit_override_script()], stdin=json.dumps({'action': 'check'}))
+    print('LONGHORN_CORE_HOST_INPUTS_CLEAN_PASS nodes=6')
+
+
+def recover_core_override():
+    result = remote('192.168.122.72', ['python3', '-c', unit_override_script()],
+                    stdin=json.dumps({'action': 'recover'}))
+    print(result.stdout, end='')
+    core_host_preflight()
+    print('LONGHORN_CORE_OVERRIDE_RECOVERY_PASS')
+
+
+def archive_core():
+    state = owner()
+    if state.get('namespace_uid') or state['disks'] or state.get('relays'):
+        raise ValueError('core archive requires no storage or transport fixtures')
+    target = Path('/var/tmp/kubeauto-longhorn-history') / ('core-' + state['run_id'])
+    if target.exists() or target.is_symlink(): raise ValueError('core archive already exists')
+    target.parent.mkdir(mode=0o700, exist_ok=True)
+    shutil.move(str(DIRECTORY), target)
+    target.chmod(0o700)
+    print('LONGHORN_CORE_ARCHIVED path=' + str(target), flush=True)
+
+
+def kubectl(*args, stdin=None, check=True, timeout=120):
+    return execute([BASE / 'kube-bin/kubectl', '--kubeconfig=' + str(DIRECTORY / 'kubectl.kubeconfig'),
+                    '--request-timeout=30s', *args], stdin=stdin, check=check, timeout=timeout)
+
+
+def get(kind, object_name='', namespace=''):
+    args = ['get', kind] + (['-A'] if namespace == '*' else ['-n', namespace] if namespace else [])
+    if object_name: args += [object_name, '--ignore-not-found']
+    raw = kubectl(*args, '-o', 'json').stdout
+    return json.loads(raw) if raw.strip() else None
+
+
+def core_identity():
+    state = owner()
+    system = get('namespace', 'kube-system')['metadata']['uid']
+    nodes = get('nodes')['items']
+    expected = {'longhorn-node-' + ip.rsplit('.', 1)[1]: ip for ip in NODES}
+    if {n['metadata']['name'] for n in nodes} != set(expected): raise ValueError('foreign or missing cluster node')
+    for n in nodes:
+        ip = expected[n['metadata']['name']]
+        if [a['address'] for a in n['status']['addresses'] if a['type'] == 'InternalIP'] != [ip]:
+            raise ValueError('node address identity changed')
+        if not any(x['type'] == 'Ready' and x['status'] == 'True' for x in n['status']['conditions']):
+            raise ValueError('core node is not Ready')
+    uids = {n['metadata']['name']: n['metadata']['uid'] for n in nodes}
+    if state.get('cluster_uid') and (state['cluster_uid'] != system or state['node_uids'] != uids):
+        raise ValueError('runner-owned core identity changed')
+    if not state.get('cluster_uid'):
+        state.update(cluster_uid=system, node_uids=uids); write_private(STATE, state)
+    print('LONGHORN_CORE_IDENTITY_PASS nodes=6')
+
+
+def disk_plan(raw, run_id):
+    uuid.UUID(run_id)
+    rows = [line.split('|') for line in raw.splitlines() if line]
+    if len(rows) != 18 or any(len(r) != 7 or r[0] not in NODES for r in rows):
+        raise ValueError('disk allowlist requires the exact qualified 18-disk set')
+    result = {}
+    for node in NODES:
+        candidates = [r for r in rows if r[0] == node]
+        if len(candidates) != 3 or len({r[2] for r in candidates}) != 3:
+            raise ValueError('duplicate or missing qualified host disk')
+        if node not in WORKERS: continue
+        row = sorted(candidates, key=lambda r: r[2])[0]
+        if not row[2].startswith('/dev/disk/by-') or not (row[5].startswith('path:pci-') or row[3] or row[4]):
+            raise ValueError('disk lacks a stable qualification identity')
+        if int(row[6]) < 20 * 1024**3: raise ValueError('qualified disk is too small')
+        result[node] = {'kernel': row[1], 'device': row[2], 'identity': row[5], 'size': int(row[6]),
+                        'uuid': str(uuid.uuid5(uuid.UUID(run_id), node)), 'path': DATA, 'phase': 'planned'}
+        result[node]['fstab_line'] = ('UUID=' + result[node]['uuid'] + ' ' + DATA +
+                                      ' ext4 defaults 0 2 # kubeauto-longhorn-lab:' + run_id)
+    return result
+
+
+def verify_device(row, probe):
+    if (probe.get('path') != row['kernel'] or probe.get('type') != 'disk' or probe.get('children') or
+            int(probe.get('size', 0)) != row['size'] or probe.get('ro')):
+        raise ValueError('qualified disk device identity changed')
+    identity = probe.get('wwn') or probe.get('serial')
+    if not row['identity'].startswith('path:') and identity != row['identity']:
+        raise ValueError('qualified disk serial/WWN changed')
+
+
+def disk_fingerprint():
+    functions = (disk_plan, verify_device, disk_parent_script, check_blank_disk, prepare_disks, disk_cleanup_script, cleanup_disks)
+    return hashlib.sha256((DATA + repr(WORKERS) + ''.join(inspect.getsource(f) for f in functions)).encode()).hexdigest()
+
+
+def disk_qualification(record=False):
+    core_identity(); state = owner()
+    if state['disks'] or state.get('namespace_uid'):
+        raise ValueError('disk qualification requires no storage or disk fixtures')
+    if record:
+        state['disk_qualification'] = disk_fingerprint(); write_private(STATE, state)
+    elif state.get('disk_qualification') != disk_fingerprint():
+        raise ValueError('current disk fixtures require their focused qualification')
+    print('LONGHORN_DISK_QUALIFICATION_CURRENT fingerprint=' + disk_fingerprint())
+
+
+def disk_parent_script():
+    return r'''import json,pathlib,sys
+row=json.load(sys.stdin);path=pathlib.Path(row['path']).parent;action=sys.argv[1]
+assert not path.is_symlink(), 'symlink disk parent'
+def identity():
+ if not path.exists(): return None
+ assert path.is_dir(), 'disk parent is not a directory'
+ info=path.stat();return [info.st_dev,info.st_ino]
+current=identity()
+if action=='probe': print(json.dumps(current));sys.exit(0)
+assert action in ('create','check','clean')
+if action=='create':
+ assert row['parent_created'] and current is None, 'disk parent appeared before owned create'
+ path.mkdir(mode=0o755);print(json.dumps(identity()));sys.exit(0)
+if current is None:
+ assert row['parent_created'], 'preexisting disk parent disappeared'
+ sys.exit(0)
+assert current==row.get('parent_identity'), 'disk parent identity changed or create response was lost'
+if row['parent_created']:
+ assert set(path.iterdir()) <= {pathlib.Path(row['path'])}, 'foreign files in owned disk parent'
+if action=='clean' and row['parent_created']: path.rmdir()
+'''
+
+
+def check_blank_disk(node, row):
+    probe = json.loads(remote(node, ['lsblk', '-J', '-b', '-O', row['device']]).stdout)['blockdevices']
+    if len(probe) != 1: raise ValueError('ambiguous qualified device')
+    verify_device(row, probe[0])
+    if probe[0].get('fstype') or any(probe[0].get('mountpoints') or []): raise ValueError('disk is not blank')
+    signatures = json.loads(remote(node, ['wipefs', '--no-act', '--json', row['device']]).stdout)
+    if signatures.get('signatures'): raise ValueError('disk has an unknown signature')
+    path_id = remote(node, ['udevadm', 'info', '--query=property', '--name=' + row['device']]).stdout
+    if row['identity'].startswith('path:') and 'ID_PATH=' + row['identity'][5:] not in path_id.splitlines():
+        raise ValueError('qualified PCI device identity changed')
+    remote(node, script='test ! -L ' + shlex.quote(DATA) + '; test ! -e ' + shlex.quote(DATA) + '; test ! -e /etc/kubeauto/longhorn-disk.json; test ! -e /etc/systemd/system/kubelet.service.d/kubeauto-longhorn.conf')
+    return json.loads(remote(node, ['python3', '-c', disk_parent_script(), 'probe'], stdin=json.dumps(row)).stdout)
+
+
+def prepare_disks(allowlist):
+    core_identity(); state = owner()
+    if state['disks']: raise ValueError('disk preparation is not a resume/adoption path')
+    plan = disk_plan(Path(allowlist).read_text(), state['run_id'])
+    # All hosts must pass before journaling any destructive intent. Recheck
+    # each immediately before formatting, under the same exclusive leases.
+    for node, row in plan.items():
+        parent = check_blank_disk(node, row)
+        row.update(parent_identity=parent, parent_created=parent is None)
+    state['disks'] = plan; write_private(STATE, state)
+    for node, row in state['disks'].items():
+        if check_blank_disk(node, row) != row['parent_identity']:
+            raise ValueError('disk parent changed after clean preflight')
+        if row['parent_created']:
+            row['parent_identity'] = json.loads(remote(node, ['python3', '-c', disk_parent_script(), 'create'], stdin=json.dumps(row)).stdout)
+            write_private(STATE, state)
+        row['phase'] = 'formatting'; write_private(STATE, state)
+        remote(node, ['mkfs.ext4', '-F', '-U', row['uuid'], '-L', 'kca-longhorn', row['device']], timeout=180)
+        remote(node, ['mkdir', '-m', '0755', DATA])
+        remote(node, script='(set -C; cat > ' + shlex.quote(DATA + '/.kubeauto-longhorn-lab-owner') + ')', stdin=row['uuid'] + '\n')
+        remote(node, script='cat >> /etc/fstab', stdin=row['fstab_line'] + '\n')
+        remote(node, ['mount', DATA])
+        mounted = json.loads(remote(node, ['findmnt', '-J', '--mountpoint', DATA, '-o', 'TARGET,UUID,FSTYPE']).stdout)['filesystems']
+        if mounted != [{'target': DATA, 'uuid': row['uuid'], 'fstype': 'ext4'}]: raise ValueError('mounted fixture identity differs')
+        row['phase'] = 'mounted'; write_private(STATE, state)
+        print('LONGHORN_LAB_DISK_READY node=' + node + ' uuid=' + row['uuid'] + ' size=' + str(row['size']), flush=True)
+
+
+def disk_cleanup_script():
+    return r"""import json,os,pathlib,sys
+row=json.load(sys.stdin);data=row['path']
+marker=pathlib.Path('/etc/kubeauto/longhorn-disk.json')
+guard=pathlib.Path('/etc/systemd/system/kubelet.service.d/kubeauto-longhorn.conf')
+fstab=pathlib.Path('/etc/fstab')
+for path in (marker,guard,fstab): assert not path.is_symlink(), 'symlink cleanup input'
+if marker.exists():
+ old=json.loads(marker.read_text())
+ assert old['path']==data and old['uuid']==row['uuid'], 'foreign host receipt'
+expected='[Unit]\nRequiresMountsFor='+data+'\n[Service]\nExecStartPre=/usr/bin/mountpoint -q -- '+data+'\n'
+if guard.exists(): assert guard.read_text()==expected, 'foreign kubelet guard'
+lines=fstab.read_text().splitlines(True)
+owned=row.get('fstab_line','')+'\n'
+assert owned.strip(), 'missing fstab ownership'
+assert sum(line==owned for line in lines)<=1, 'duplicate owned fstab entry'
+assert not any(data in line and not line.lstrip().startswith('#') and line!=owned for line in lines), 'foreign fstab entry'
+if sys.argv[1]=='check': sys.exit(0)
+assert sys.argv[1]=='clean'
+for path in (marker,guard):
+ if path.exists(): path.unlink()
+temporary=fstab.with_name('.fstab.kubeauto-longhorn.part')
+with temporary.open('x') as stream:
+ stream.writelines(line for line in lines if line!=owned);stream.flush();os.fsync(stream.fileno())
+os.chmod(temporary,fstab.stat().st_mode & 0o777);os.chown(temporary,fstab.stat().st_uid,fstab.stat().st_gid);temporary.replace(fstab)
+"""
+
+
+def cleanup_disks():
+    state = owner()
+    if state['disks']:
+        core_identity()
+        execute([sys.executable, BASE / 'roles/longhorn/files/longhorn.py', 'guard',
+                 '--kubeconfig', DIRECTORY / 'kubectl.kubeconfig'])
+    # Check EVERY journaled identity before changing the first host.
+    for node, row in state['disks'].items():
+        if node not in WORKERS or row['path'] != DATA or row['uuid'] != str(uuid.uuid5(uuid.UUID(state['run_id']), node)):
+            raise ValueError('foreign disk cleanup journal')
+        probe = json.loads(remote(node, ['lsblk', '-J', '-b', '-O', row['device']]).stdout)['blockdevices']
+        if len(probe) != 1: raise ValueError('ambiguous cleanup device')
+        verify_device(row, probe[0])
+        if probe[0].get('uuid') not in (None, '', row['uuid']): raise ValueError('cleanup filesystem UUID changed')
+        if row['identity'].startswith('path:'):
+            properties = remote(node, ['udevadm', 'info', '--query=property', '--name=' + row['device']]).stdout
+            if 'ID_PATH=' + row['identity'][5:] not in properties.splitlines(): raise ValueError('cleanup PCI identity changed')
+        mounts = [x for x in probe[0].get('mountpoints', []) or [] if x]
+        if mounts and mounts != [DATA]: raise ValueError('disk is mounted by a foreign consumer')
+        if row['phase'] == 'planned':
+            remote(node, ['test', '!', '-e', DATA])
+        remote(node, ['python3', '-c', disk_parent_script(), 'check'], stdin=json.dumps(row))
+        remote(node, ['python3', '-c', disk_cleanup_script(), 'check'], stdin=json.dumps(row))
+    for node, row in state['disks'].items():
+        # Repeat the same preconditions immediately before each mutation.
+        remote(node, ['python3', '-c', disk_cleanup_script(), 'clean'], stdin=json.dumps(row))
+        remote(node, ['systemctl', 'daemon-reload'])
+        mounted = remote(node, ['mountpoint', '-q', DATA], check=False)
+        if mounted.returncode == 0: remote(node, ['umount', DATA])
+        elif mounted.returncode != 32 and remote(node, ['test', '-e', DATA], check=False).returncode != 1:
+            raise ValueError('cannot inspect cleanup mountpoint')
+        remote(node, ['python3', '-c', r'''import json,pathlib,sys
+row=json.load(sys.stdin);path=pathlib.Path(row['path'])
+assert not path.is_symlink(), 'symlink fixture mount directory'
+if path.exists():
+ marker=path/'.kubeauto-longhorn-lab-owner'
+ assert not marker.is_symlink() and marker.read_text()==row['uuid']+'\n', 'foreign fixture mount directory'
+ assert {p.name for p in path.iterdir()}=={marker.name}, 'foreign underlay data'
+ marker.unlink();path.rmdir()
+'''], stdin=json.dumps(row))
+        disk_uuid = remote(node, ['blkid', '-p', '-s', 'UUID', '-o', 'value', row['device']], check=False)
+        if disk_uuid.returncode == 0:
+            if disk_uuid.stdout.strip() != row['uuid']: raise ValueError('cleanup UUID changed immediately before wipe')
+            remote(node, ['wipefs', '--all', '--force', row['device']])
+        elif disk_uuid.returncode != 2: raise ValueError('cannot inspect cleanup disk signature')
+        remote(node, ['python3', '-c', disk_parent_script(), 'clean'], stdin=json.dumps(row))
+        row['phase'] = 'clean'; write_private(STATE, state)
+    state['disks'] = {}; write_private(STATE, state)
+    print('LONGHORN_DISK_FIXTURES_CLEAN_PASS')
+
+
+def host_files():
+    """Only public product files; never collect arbitrary host configuration."""
+    return {'/etc/modules-load.d/kubeauto-longhorn.conf': b'iscsi_tcp\ndm_crypt\nnfs\n',
+            '/usr/local/sbin/kubeauto-longhorn-host-check':
+                (BASE / 'roles/longhorn/files/host-check.py').read_bytes()}
+
+
+def host_state_script():
+    return r'''import hashlib,json,os,pathlib,subprocess,sys
+request=json.load(sys.stdin)
+def unit(name):
+ p=subprocess.run(['systemctl','show',name,'--property=LoadState,ActiveState,UnitFileState'],text=True,capture_output=True,check=True)
+ values=dict(line.split('=',1) for line in p.stdout.splitlines() if '=' in line)
+ assert values['ActiveState'] in ('active','inactive'), 'unstable iSCSI service'
+ assert values['LoadState'] in ('loaded','not-found'), 'unsupported iSCSI load state'
+ assert values.get('UnitFileState','') in ('','enabled','disabled','static','indirect'), 'unsupported iSCSI enable state'
+ return values
+def file_state(filename):
+ p=pathlib.Path(filename)
+ assert not p.is_symlink(), 'symlink host fixture'
+ if not p.exists(): return None
+ assert p.is_file(), 'non-file host fixture'
+ s=p.stat()
+ return {'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'mode':s.st_mode & 0o777,'uid':s.st_uid,'gid':s.st_gid}
+files={name:file_state(name) for name in request['expected']}
+installed=request.get('installed',request['expected'])
+assert set(installed)==set(files), 'host journal file set changed'
+for name,current in files.items():
+ accepted={request['expected'][name]}
+ # Product re-entry may update a file created by this fixture. Files that
+ # existed before the test must still match their original content.
+ if request['action'] in ('check','restore') and request['before']['files'].get(name) is None:
+  accepted.add(installed[name])
+ assert current is None or current['sha256'] in accepted, 'foreign host file'
+if request['action']=='capture':
+ print(json.dumps({'files':files,'units':{name:unit(name) for name in ('iscsid.service','iscsid.socket')}}));sys.exit(0)
+assert request['action'] in ('check','restore')
+before=request['before']
+assert set(before['files'])==set(files), 'host journal file set changed'
+for name,previous in before['files'].items():
+ if previous is not None:
+  assert previous['sha256']==request['expected'][name] and files[name] is not None and files[name]['sha256']==previous['sha256'], 'original host file disappeared'
+for name,previous in before['units'].items():
+ unit(name)
+ if previous['ActiveState']=='inactive':
+  sessions=subprocess.run(['iscsiadm','-m','session'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL) if pathlib.Path('/usr/sbin/iscsiadm').exists() else None
+  assert sessions is None or sessions.returncode==21, 'iSCSI session prevents service restore'
+if request['action']=='check': sys.exit(0)
+# Stop sockets first: an incoming connection must not reactivate a daemon
+# whose pre-test state was inactive. Keep shared packages and loaded modules.
+for name in ('iscsid.socket','iscsid.service'):
+ previous=before['units'][name];current=unit(name)
+ if current['LoadState']=='not-found':
+  assert previous['LoadState']=='not-found';continue
+ if previous['ActiveState']=='inactive': subprocess.run(['systemctl','stop',name],check=True)
+ desired=previous.get('UnitFileState') or 'disabled'
+ if desired in ('enabled','disabled') and current.get('UnitFileState')!=desired:
+  subprocess.run(['systemctl','enable' if desired=='enabled' else 'disable',name],check=True)
+ if previous['ActiveState']=='active': subprocess.run(['systemctl','start',name],check=True)
+ current=unit(name)
+ assert current['ActiveState']==previous['ActiveState'], 'iSCSI active state not restored'
+ assert current.get('UnitFileState','')==desired, 'iSCSI enable state not restored'
+for name,previous in before['files'].items():
+ p=pathlib.Path(name)
+ assert file_state(name)==files[name], 'host file changed during restore'
+ if previous is None:
+  if p.exists(): p.unlink()
+ else:
+  os.chmod(p,previous['mode']);os.chown(p,previous['uid'],previous['gid'])
+ assert file_state(name)==previous, 'host file restoration differs'
+'''
+
+
+def capture_hosts():
+    core_identity(); state = owner()
+    if state.get('host_state'): raise ValueError('host preparation already journaled')
+    expected = {name: hashlib.sha256(data).hexdigest() for name, data in host_files().items()}
+    snapshots = {}
+    for node in NODES:
+        snapshots[node] = json.loads(remote(node, ['python3', '-c', host_state_script()],
+                                      stdin=json.dumps({'action': 'capture', 'expected': expected})).stdout)
+    state['host_state'] = {'expected': expected, 'nodes': snapshots}
+    write_private(STATE, state)
+    print('LONGHORN_HOST_STATE_JOURNALED nodes=6 packages=retained modules=retained')
+
+
+def restore_hosts():
+    core_identity(); state = owner(); journal = state.get('host_state')
+    if not journal: raise ValueError('missing original host state')
+    if set(journal['nodes']) != set(NODES): raise ValueError('host restoration requires all six identities')
+    execute([sys.executable, BASE / 'roles/longhorn/files/longhorn.py', 'guard',
+             '--kubeconfig', DIRECTORY / 'kubectl.kubeconfig'])
+    # A foreign change on the sixth host must block changes on the first five.
+    installed = {name: hashlib.sha256(data).hexdigest() for name, data in host_files().items()}
+    for action in ('check', 'restore'):
+        for node, before in journal['nodes'].items():
+            remote(node, ['python3', '-c', host_state_script()], stdin=json.dumps(
+                {'action': action, 'expected': journal['expected'], 'installed': installed, 'before': before}))
+    state['host_state'] = None; write_private(STATE, state)
+    print('LONGHORN_HOST_STATE_RESTORED nodes=6 packages=retained modules=retained')
+
+
+def tls_fixture(*, extra_ips=()):
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+    now = datetime.now(timezone.utc)
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'Longhorn gate ' + secrets.token_hex(8))])
+    ca = (x509.CertificateBuilder().subject_name(issuer).issuer_name(issuer).public_key(ca_key.public_key())
+          .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(minutes=5))
+          .not_valid_after(now + timedelta(days=7)).add_extension(x509.BasicConstraints(ca=True, path_length=0), True)
+          .sign(ca_key, hashes.SHA256()))
+    dns = ['localhost']
+    for service in ('longhorn-backend', 'longhorn-frontend', 'longhorn-engine-manager', 'longhorn-replica-manager', 'longhorn-csi'):
+        dns += [service + suffix for suffix in ('', '.longhorn-system', '.longhorn-system.svc', '.longhorn-system.svc.cluster.local')]
+    cert = (x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'longhorn-backend')]))
+            .issuer_name(issuer).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(minutes=5))
+            .not_valid_after(now + timedelta(days=7)).add_extension(x509.BasicConstraints(ca=False, path_length=None), True)
+            .add_extension(x509.SubjectAlternativeName([x509.DNSName(s) for s in dns] +
+                [x509.IPAddress(ipaddress.ip_address(ip)) for ip in ('127.0.0.1', *extra_ips)]), False)
+            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), False)
+            .sign(ca_key, hashes.SHA256()))
+    return {'ca.crt': ca.public_bytes(serialization.Encoding.PEM).decode(),
+            'tls.crt': cert.public_bytes(serialization.Encoding.PEM).decode(),
+            'tls.key': key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()}
+
+
+def prepare_credentials():
+    core_identity(); state = owner()
+    if state.get('namespace_uid'): raise ValueError('credential preparation requires no previous namespace')
+    if get('namespace', 'longhorn-system'): raise ValueError('foreign Longhorn namespace')
+    ns = {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': 'longhorn-system', 'labels': {
+        'app.kubernetes.io/managed-by': 'kubeauto', 'kubeauto.io/component': 'longhorn'}}}
+    created = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(ns)).stdout)
+    state['namespace_uid'] = created['metadata']['uid']; write_private(STATE, state)
+    state['namespace_defaults'] = wait('longhorn-namespace-defaults', 60, lambda: namespace_defaults('longhorn-system'))
+    write_private(STATE, state)
+    secret = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'longhorn-grpc-tls', 'namespace': 'longhorn-system'},
+              'type': 'kubernetes.io/tls', 'stringData': tls_fixture()}
+    created = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(secret)).stdout)
+    state['tls_uid'] = created['metadata']['uid']; write_private(STATE, state)
+    key = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'longhorn-volume-key', 'namespace': 'longhorn-system'},
+           'type': 'Opaque', 'stringData': {'CRYPTO_KEY_PROVIDER': 'secret', 'CRYPTO_KEY_VALUE': secrets.token_urlsafe(48)}}
+    created = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(key)).stdout)
+    state['encryption_uid'] = created['metadata']['uid']; write_private(STATE, state)
+    path = DIRECTORY / 'config.yml'; c = yaml.safe_load(path.read_text()); c['longhorn_install'] = 'yes'
+    baseline = c['longhorn_storage_classes']
+    if len(baseline) != 1 or baseline[0]['name'] != 'longhorn':
+        raise ValueError('unexpected lab storage declarations')
+    c['longhorn_storage_classes'] += [dict(baseline[0], name='longhorn-encrypted', encrypted=True,
+                                           encryption_secret='longhorn-volume-key'),
+                                      dict(baseline[0], name='longhorn-delete', reclaim_policy='Delete')]
+    path.write_text(yaml.safe_dump(c, sort_keys=False))
+    print('LONGHORN_LAB_CREDENTIALS_READY')
+
+
+def relay_rule(operation):
+    if operation not in ('-C', '-A', '-D'): raise ValueError('invalid relay operation')
+    return ['iptables', '-w', '5', '-t', 'nat', operation, 'OUTPUT', '-p', 'tcp', '-d', '192.168.47.130/32',
+            '--dport', '5000', '-m', 'comment', '--comment', 'kubeauto-longhorn-registry',
+            '-j', 'REDIRECT', '--to-ports', str(PORT)]
+
+
+def relay_probe(node):
+    return remote(node, ['curl', '--fail', '--silent', '--show-error', '--noproxy', '*',
+                         '--connect-timeout', '5', '--max-time', '30',
+                         'http://192.168.47.130:5000/v2/'], check=False).returncode == 0
+
+
+def relay_rows(state):
+    rows = state.get('relays', [])
+    if len(rows) > len(NODES) or len({r['node'] for r in rows}) != len(rows): raise ValueError('invalid relay journal')
+    for row in rows:
+        if row['node'] not in NODES or row['socket'] != str(DIRECTORY / ('longhorn-registry-' + row['node'] + '.sock')):
+            raise ValueError('foreign relay journal entry')
+    return rows
+
+
+def relay_connect(row):
+    if Path(row['socket']).is_symlink(): raise ValueError('symlink relay socket')
+    log = DIRECTORY / ('longhorn-registry-' + row['node'] + '.log')
+    descriptor = os.open(log, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    os.close(descriptor)
+    execute(SSH + ['-E', str(log), '-M', '-S', row['socket'], '-o', 'ExitOnForwardFailure=yes', '-f', '-N',
+                   '-R', '127.0.0.1:' + str(PORT) + ':127.0.0.1:5000', 'root@' + row['node']], timeout=40)
+
+
+def bind_listener(row, state):
+    listener = json.loads(remote(row['node'], ['python3', '-c', listener_script()],
+                                 stdin=json.dumps({'port': PORT, 'action': 'probe'})).stdout)
+    if listener is None: raise ValueError('new relay did not establish its exclusive listener')
+    validate_recovery_listener(listener, time.time() - 60, time.time() + 5)
+    row['listener'] = listener
+    write_private(STATE, state)
+
+
+def relay_ensure(force=False):
+    state = owner(); rows = relay_rows(state)
+    for node in NODES:
+        row = next((r for r in rows if r['node'] == node), None)
+        if row:
+            live = execute(SSH + ['-S', row['socket'], '-O', 'check', 'root@' + node], check=False)
+            if live.returncode:
+                remote(node, relay_rule('-C'))
+                remote(node, script='test -z "$(ss -H -lnt ' + shlex.quote('sport = :' + str(PORT)) + ')"')
+                socket = Path(row['socket'])
+                if socket.exists(): socket.unlink()
+                relay_connect(row); bind_listener(row, state)
+        elif force or not relay_probe(node):
+            row = {'node': node, 'socket': str(DIRECTORY / ('longhorn-registry-' + node + '.sock'))}
+            if Path(row['socket']).exists() or remote(node, relay_rule('-C'), check=False).returncode != 1:
+                raise ValueError('foreign relay socket/rule')
+            remote(node, script='test -z "$(ss -H -lnt ' + shlex.quote('sport = :' + str(PORT)) + ')"')
+            rows.append(row); state['relays'] = rows; write_private(STATE, state)
+            relay_connect(row); bind_listener(row, state); remote(node, relay_rule('-A'))
+        if not relay_probe(node): raise ValueError('Registry transport did not return HTTP success node=' + node)
+    print('LONGHORN_REGISTRY_TRANSPORT_READY nodes=6 endpoint=unchanged', flush=True)
+
+
+def relay_cleanup():
+    state = owner(); rows = relay_rows(state)
+    for row in rows:
+        node = row['node']; result = remote(node, relay_rule('-C'), check=False)
+        if result.returncode == 0: remote(node, relay_rule('-D'))
+        elif result.returncode != 1: raise ValueError('cannot inspect relay rule')
+        if remote(node, relay_rule('-C'), check=False).returncode != 1: raise ValueError('relay rule remains')
+        execute(SSH + ['-S', row['socket'], '-O', 'exit', 'root@' + node], check=False)
+        if row.get('listener'):
+            current = json.loads(remote(node, ['python3', '-c', listener_script()],
+                                        stdin=json.dumps({'port': PORT, 'action': 'probe'})).stdout)
+            if current:
+                if current != row['listener']: raise ValueError('replacement relay listener refuses cleanup')
+                remote(node, ['python3', '-c', listener_script()],
+                       stdin=json.dumps({'port': PORT, 'action': 'stop', 'expected': current}))
+        deadline = time.monotonic() + 5
+        while Path(row['socket']).exists() and time.monotonic() < deadline: time.sleep(.1)
+        if Path(row['socket']).exists(): raise ValueError('relay socket remains')
+        wait('relay-listener-clean-' + node, 30, lambda: remote(node,
+             script='test -z "$(ss -H -lnt ' + shlex.quote('sport = :' + str(PORT)) + ')"', check=False).returncode == 0)
+    state['relays'] = []; write_private(STATE, state)
+    print('LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS')
+
+
+def listener_script():
+    # No broad process matching: bind the listening socket, boot and process
+    # start tick again in the same interpreter immediately before SIGTERM.
+    return r'''import json,os,pathlib,re,signal,subprocess,sys
+request=json.load(sys.stdin);port=request['port']
+assert port==23520
+for attempt in range(3):
+ raw=subprocess.check_output(['ss','-H','-lntp','sport = :'+str(port)],text=True)
+ result=None
+ if not raw.strip(): break
+ rows=raw.splitlines();assert len(rows)==1 and rows[0].split()[3]=='127.0.0.1:'+str(port), 'foreign listener binding'
+ matches=re.findall(r'pid=(\d+)',raw);assert len(matches)==1, 'ambiguous listener owner'
+ pid=int(matches[0]);path=pathlib.Path('/proc')/str(pid)
+ try:
+  command=(path/'cmdline').read_bytes().split(b'\0',1)[0].decode().strip()
+  stat=(path/'stat').read_text().rsplit(')',1)[1].split()
+  btime=int(next(s.split()[1] for s in pathlib.Path('/proc/stat').read_text().splitlines() if s.startswith('btime ')))
+  result={'pid':pid,'start_ticks':int(stat[19]),'start_time':btime+int(stat[19])/os.sysconf('SC_CLK_TCK'),
+          'boot_id':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+          'uid':path.stat().st_uid,'command':command,'binding':'127.0.0.1:'+str(port)}
+  break
+ except FileNotFoundError:
+  if attempt==2: raise
+if request['action']=='stop':
+ assert result==request['expected'] and result is not None, 'listener identity changed'
+ assert result['uid']==0 and result['command'] in ('sshd-session: root','sshd: root'), 'foreign listener process'
+ os.kill(result['pid'],signal.SIGTERM)
+elif request['action']!='probe': raise ValueError('invalid listener action')
+print(json.dumps(result))
+'''
+
+
+def validate_recovery_listener(listener, lower, upper):
+    if listener is None: return
+    if (listener['binding'] != '127.0.0.1:' + str(PORT) or listener['uid'] != 0 or
+            listener['command'] not in ('sshd-session: root', 'sshd: root') or
+            not lower <= listener['start_time'] <= upper or listener['pid'] <= 1 or listener['start_ticks'] <= 0):
+        raise ValueError('listener is outside this run ownership window')
+    uuid.UUID(listener['boot_id'])
+
+
+def relay_recover():
+    state = owner(); rows = relay_rows(state)
+    if state.get('cluster_uid') or state['disks'] or state.get('namespace_uid') or state['healthy']:
+        raise ValueError('legacy relay recovery is limited to the failed pre-core fixture')
+    # This format was journaled after a clean host/empty-port check and before
+    # each listener creation. Narrow its lifetime to this configuration/run.
+    lower = (DIRECTORY / 'config.yml').stat().st_mtime - 5
+    upper = STATE.stat().st_mtime + 60
+    listeners = []
+    for row in rows:
+        raw = remote(row['node'], ['python3', '-c', listener_script()],
+                     stdin=json.dumps({'port': PORT, 'action': 'probe'})).stdout
+        listener = json.loads(raw); validate_recovery_listener(listener, lower, upper)
+        listeners.append({'node': row['node'], 'listener': listener})
+    receipt = DIRECTORY / 'longhorn-relay-recovery.json'
+    if receipt.exists():
+        previous = json.loads(receipt.read_text())
+        if previous['run_id'] != state['run_id']: raise ValueError('foreign relay recovery receipt')
+        for item in listeners:
+            if item['listener'] and item not in previous['listeners']: raise ValueError('replacement relay listener')
+    else:
+        write_private(receipt, {'run_id': state['run_id'], 'listeners': listeners})
+    for item in listeners:
+        if item['listener']:
+            remote(item['node'], ['python3', '-c', listener_script()],
+                   stdin=json.dumps({'port': PORT, 'action': 'stop', 'expected': item['listener']}))
+            wait('retired-relay-listener-' + item['node'], 30, lambda: not json.loads(remote(
+                item['node'], ['python3', '-c', listener_script()], stdin=json.dumps({'port': PORT, 'action': 'probe'})).stdout))
+    relay_cleanup()
+    print('LONGHORN_RELAY_RECOVERY_PASS')
+
+
+def relay_qualification():
+    with scoped_cleanup(relay_cleanup):
+        relay_ensure(force=True)
+        for row in relay_rows(owner()):
+            execute(SSH + ['-S', row['socket'], '-O', 'exit', 'root@' + row['node']])
+            deadline = time.monotonic() + 5
+            while Path(row['socket']).exists() and time.monotonic() < deadline: time.sleep(.1)
+        relay_ensure()
+        print('LONGHORN_REGISTRY_RECONNECT_PASS')
+    print('LONGHORN_REGISTRY_TRANSPORT_QUALIFIED')
+    print('LONGHORN_TRANSPORT_FINGERPRINT ' + transport_fingerprint(), flush=True)
+
+
+def relay_maintain():
+    stopped = False
+    def stop(*_):
+        nonlocal stopped
+        stopped = True
+    signal.signal(signal.SIGINT, stop); signal.signal(signal.SIGTERM, stop)
+    while not stopped:
+        for attempt in range(3):
+            try:
+                relay_ensure()
+                break
+            except ValueError as error:
+                transient = {
+                    'Registry transport did not return HTTP success node=' + node
+                    for node in NODES
+                }
+                if str(error) not in transient or attempt == 2:
+                    raise
+                print('LONGHORN_REGISTRY_PROBE_RETRY attempt=' + str(attempt + 1), flush=True)
+                for _ in range(5):
+                    if stopped: return
+                    time.sleep(1)
+        for _ in range(10):
+            if stopped: break
+            time.sleep(1)
+
+
+def process_identity(pid):
+    try:
+        root = Path('/proc') / str(pid)
+        fields = (root / 'stat').read_text().rsplit(')', 1)[1].split()
+        if fields[0] in ('Z', 'X'): return None
+        return ((root / 'cmdline').read_bytes().split(b'\0')[:-1], fields[19])
+    except FileNotFoundError:
+        return None
+
+
+def stop_product(process, expected):
+    if process.poll() is not None: return
+    identity = process_identity(process.pid)
+    if not identity or identity[0] != [str(arg).encode() for arg in expected]:
+        raise ValueError('product process identity changed; refuse broad cancellation')
+    parents = {}
+    for entry in Path('/proc').iterdir():
+        if entry.name.isdigit():
+            try: parents[int(entry.name)] = int((entry / 'stat').read_text().rsplit(')', 1)[1].split()[1])
+            except (OSError, ValueError): pass
+    owned = {process.pid}
+    while True:
+        expanded = owned | {pid for pid, parent in parents.items() if parent in owned}
+        if expanded == owned: break
+        owned = expanded
+    identities = {pid: process_identity(pid) for pid in owned}
+    for pid in sorted(owned - {process.pid}, reverse=True) + [process.pid]:
+        if identities[pid] and identities[pid] == process_identity(pid):
+            try: os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError: pass
+    process.wait(timeout=30)
+
+
+def supervise_core(relay_pid, step, *, expected_refusal=None):
+    owner()
+    relay_identity = process_identity(relay_pid)
+    required = [str(Path(__file__).resolve()).encode(), b'relay-maintain']
+    if not relay_identity or relay_identity[0][-2:] != required:
+        raise ValueError('live Registry supervisor is a product prerequisite')
+    command = [sys.executable, str(BASE / 'kubecli.py')]
+    commands = {'download': ['download', '-D'], 'setup': ['setup', CLUSTER, '90'],
+                'longhorn-download': ['download', '-E', 'longhorn'],
+                'longhorn-setup': ['setup', CLUSTER, '09'],
+                'longhorn-destroy': ['destroy', CLUSTER]}
+    command += commands[step]
+    with tempfile.TemporaryFile(mode='w+') as observation:
+        process = subprocess.Popen(command, stdin=subprocess.DEVNULL, start_new_session=True,
+                               stdout=observation if expected_refusal else None,
+                               stderr=subprocess.STDOUT if expected_refusal else None)
+        started = time.monotonic(); heartbeat = started
+        with scoped_cleanup(lambda: stop_product(process, command)):
+            while process.poll() is None:
+                if process_identity(relay_pid) != relay_identity:
+                    raise ValueError('Registry supervisor exited; stopping the dependent product step')
+                now = time.monotonic()
+                if now - started >= 7200: raise TimeoutError('core product step exceeded two hours')
+                if now - heartbeat >= 15:
+                    print('LONGHORN_PRODUCT_HEARTBEAT step=' + step + ' elapsed=' + str(int(now - started)), flush=True)
+                    heartbeat = now
+                time.sleep(1)
+            if expected_refusal:
+                observation.seek(0); output = observation.read()
+                if not process.returncode or ('LONGHORN_PRODUCT_FAIL reason=' + expected_refusal) not in output:
+                    diagnostic = DIRECTORY / ('unexpected-refusal-' + uuid.uuid4().hex + '.json')
+                    write_private(diagnostic, {'rc': process.returncode, 'output': output})
+                    raise ValueError('product did not return the owning expected refusal; private diagnostic=' + str(diagnostic))
+                print('LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED', flush=True)
+            elif process.returncode: raise ValueError('core product step failed rc=' + str(process.returncode))
+
+def publication_records():
+    production = json.loads((BASE / 'tests/evidence/longhorn-images-20261021.json').read_text())['images']
+    support = json.loads((BASE / 'tests/evidence/mongodb-support-images-20261015.json').read_text())['images']
+    support += json.loads((BASE / 'tests/evidence/redis-documentation-client-images-20261014.json').read_text())['images']
+    if len(production) != 24 or len(support) != 6: raise ValueError('incomplete fixed artifact inventory')
+    return production, support
+
+
+def equivalent_manifest(actual, expected):
+    """Docker may translate OCI descriptors; config and ordered layers must match."""
+    media = {'application/vnd.oci.image.manifest.v1+json', 'application/vnd.docker.distribution.manifest.v2+json'}
+    if any(m.get('schemaVersion') != 2 or m.get('mediaType') not in media for m in (actual, expected)):
+        return False
+    def content(manifest):
+        return [(d['digest'], d['size']) for d in [manifest['config'], *manifest['layers']]]
+    return content(actual) == content(expected)
+
+
+def verify_recompressed_manifest(actual, expected, repository, verified):
+    """Verify gzip bytes against the immutable config's ordered DiffIDs.
+
+    OCI image-spec v1.1.1, commit 147f9c13cedb47a0c4d9a11a222961073d585877:
+    config.md (DiffID/ImageID), manifest.md (layer order), layer.md (+gzip).
+    Docker's push can reuse a differently compressed copy of an existing layer.
+    A matching config alone is insufficient: hash the actual compressed blob
+    and its uncompressed tar, without extracting any filesystem content.
+    """
+    media = {'application/vnd.oci.image.manifest.v1+json', 'application/vnd.docker.distribution.manifest.v2+json'}
+    configs = {'application/vnd.oci.image.config.v1+json', 'application/vnd.docker.container.image.v1+json'}
+    layers = {'application/vnd.oci.image.layer.v1.tar+gzip', 'application/vnd.docker.image.rootfs.diff.tar.gzip'}
+    if (any(m.get('schemaVersion') != 2 or m.get('mediaType') not in media or
+            m['config'].get('mediaType') not in configs for m in (actual, expected)) or
+            any(actual['config'][k] != expected['config'][k] for k in ('digest', 'size')) or
+            len(actual['layers']) != len(expected['layers']) or
+            any(d.get('mediaType') not in layers for m in (actual, expected) for d in m['layers'])):
+        raise ValueError('local cache changed pinned config, layer count or supported representation')
+    if not re.fullmatch(r'[a-z0-9._/-]+', repository): raise ValueError('invalid local cache repository')
+
+    def checksum(stream):
+        digest = hashlib.sha256()
+        for block in iter(lambda: stream.read(1024 * 1024), b''): digest.update(block)
+        return 'sha256:' + digest.hexdigest()
+
+    def blob(descriptor, path):
+        digest = descriptor['digest']
+        if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest): raise ValueError('invalid pinned blob digest')
+        execute(['curl', '--fail', '--silent', '--show-error', '--noproxy', '*', '--max-time', '120',
+                 '--output', path, 'http://127.0.0.1:5000/v2/' + repository + '/blobs/' + digest], timeout=130)
+        with path.open('rb') as stream:
+            actual_digest = checksum(stream)
+        if path.stat().st_size != descriptor['size'] or actual_digest != digest:
+            raise ValueError('local Registry returned bytes differing from the blob descriptor')
+
+    with tempfile.TemporaryDirectory(prefix='kubeauto-longhorn-content-') as directory:
+        path = Path(directory) / 'blob'
+        blob(actual['config'], path)
+        config = json.loads(path.read_bytes())
+        rootfs = config.get('rootfs', {})
+        diffids = rootfs.get('diff_ids', [])
+        if (config.get('architecture') != 'amd64' or config.get('os') != 'linux' or
+                rootfs.get('type') != 'layers' or len(diffids) != len(actual['layers']) or
+                any(not re.fullmatch(r'sha256:[0-9a-f]{64}', d) for d in diffids)):
+            raise ValueError('pinned config lacks the required ordered Linux AMD64 filesystem identity')
+        for actual_layer, expected_layer, diffid in zip(actual['layers'], expected['layers'], diffids):
+            if all(actual_layer[k] == expected_layer[k] for k in ('digest', 'size')): continue
+            key = (actual_layer['digest'], actual_layer['size'], diffid)
+            if key in verified: continue
+            blob(actual_layer, path)
+            with gzip.open(path, 'rb') as stream:
+                actual_diffid = checksum(stream)
+            if actual_diffid != diffid:
+                raise ValueError('recompressed local layer differs from the pinned filesystem changeset')
+            verified.add(key)
+    return True
+
+
+def published_manifest(row, digest):
+    """Cache immutable descriptor bytes, not a mutable registry tag or trust flag."""
+    if not re.fullmatch(r'sha256:[0-9a-f]{64}', digest): raise ValueError('invalid published manifest pin')
+    directory = DIRECTORY / 'longhorn-image-manifests'
+    if directory.is_symlink(): raise ValueError('manifest cache directory is a symlink')
+    directory.mkdir(mode=0o700, exist_ok=True)
+    path = directory / (digest.removeprefix('sha256:') + '.json')
+    if path.is_symlink(): raise ValueError('manifest cache file is a symlink')
+    if path.exists():
+        raw = path.read_bytes()
+    else:
+        for ref in (row['talkedu_ref'], 'docker.io/' + row['dockerhub_ref']):
+            source = 'docker://' + ref.rsplit(':', 1)[0] + '@' + digest
+            response = execute(['skopeo', 'inspect', '--raw', source], timeout=90, check=False)
+            if response.returncode:
+                print('LONGHORN_MANIFEST_SOURCE_UNAVAILABLE image=' + row['key'] +
+                      ' registry=' + ref.split('/')[0], flush=True)
+                continue
+            raw = response.stdout.encode()
+            break
+        else: raise ValueError('fixed published manifest unavailable from both registries: ' + row['key'])
+        if 'sha256:' + hashlib.sha256(raw).hexdigest() != digest:
+            raise ValueError('published manifest differs from its immutable child pin')
+        # Same-filesystem atomic publication; interrupted writes never become a
+        # trusted cache entry. Every reuse still verifies the complete raw bytes.
+        with tempfile.NamedTemporaryFile(dir=directory, delete=False) as stream:
+            temporary = Path(stream.name)
+            try:
+                stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+                os.replace(temporary, path)
+            finally: temporary.unlink(missing_ok=True)
+    if 'sha256:' + hashlib.sha256(raw).hexdigest() != digest:
+        raise ValueError('cached manifest differs from its immutable child pin')
+    return json.loads(raw)
+
+
+def reconcile_cache_image(row, proof, *, restore=False):
+    """Repair one reviewed stale BusyBox fixture under the fixed parent lease.
+
+    The proof binds observed product-registry facts and historical catalog
+    bytes; it is not an ownership boolean. The caller must first audit those
+    facts. No owner proof is invented here. Registry V2 has no conditional tag
+    PUT: compare-before-copy is serialized by the existing exclusive leases.
+    """
+    require_lease()
+    state = owner()
+    key = 'brinnatt/busybox:1.37'
+    if (not isinstance(proof, dict) or row['key'] != key or proof.get('key') != key or
+            proof.get('run_id') != state['run_id'] or
+            proof.get('expected_child') != row['platforms']['linux/amd64']):
+        raise ValueError('single-key cache repair lacks its current owner and publication proof')
+    for relative, digest in proof['product_sources'].items():
+        if relative not in ('service/cluster/registry.py', 'common/constants.py'):
+            raise ValueError('foreign RegistryManager provenance path')
+        if hashlib.sha256((BASE/relative).read_bytes()).hexdigest() != digest:
+            raise ValueError('RegistryManager provenance changed')
+    if set(proof['product_sources']) != {'service/cluster/registry.py', 'common/constants.py'}:
+        raise ValueError('incomplete RegistryManager provenance')
+    previous = proof['previous_manifest']
+    previous_digest = 'sha256:'+hashlib.sha256(previous.encode()).hexdigest()
+    config_raw = proof['previous_config']
+    config = json.loads(config_raw)
+    manifest = json.loads(previous)
+    labels = config.get('config', {}).get('Labels', {})
+    history = proof['historical_build']
+    if (previous_digest != proof['previous_digest'] or
+            'sha256:'+hashlib.sha256(config_raw.encode()).hexdigest() != manifest['config']['digest'] or
+            len(config_raw.encode()) != manifest['config']['size'] or
+            config.get('architecture') != 'amd64' or config.get('os') != 'linux' or
+            labels.get('org.opencontainers.image.source') !=
+                'https://github.com/brinnatt/kubeauto-ext-images-dockerfile' or
+            labels.get('org.opencontainers.image.revision') != history['revision'] or
+            not re.fullmatch('[0-9a-f]{40}', history['revision']) or
+            history['path'] != 'platform/observability/prometheus/busybox/Dockerfile' or
+            history['dockerfile'] != '# brinnatt/busybox\nFROM busybox:1.37\n' or
+            hashlib.sha256(history['dockerfile'].encode()).hexdigest() != history['dockerfile_sha256']):
+        raise ValueError('old cache is not the reviewed historical catalog build')
+    parent = proof['completed_parent']
+    directory = Path(parent['directory'])
+    failure = directory/'first-failure.status'
+    if (directory.parent != Path('/var/tmp') or
+            not directory.name.startswith('kubeauto-longhorn-parallel.') or
+            directory.is_symlink() or not isinstance(parent['pid'], int) or parent['pid'] <= 1 or
+            process_identity(parent['pid']) is not None or
+            not isinstance(parent['rc'], int) or not 1 <= parent['rc'] <= 255 or
+            failure.is_symlink() or not failure.is_file() or
+            failure.read_text().strip() != 'rc='+str(parent['rc'])):
+        raise ValueError('shared parent is active or has no matching durable terminal state')
+    # parallel_exit has no parent /exit. Its immutable per-branch durable
+    # files survive the next launch, unlike the reused /tmp gate prefix.
+    if set(parent['branches']) != {'v1', 'v2'}:
+        raise ValueError('shared parent lacks both actual branch terminal proofs')
+    for branch in ('v1', 'v2'):
+        child = parent['branches'][branch]
+        files = {suffix: directory/(branch+suffix) for suffix in ('.pid', '.exit', '.finalized', '.log')}
+        if (not isinstance(child['pid'], int) or child['pid'] <= 1 or
+                process_identity(child['pid']) is not None or
+                not isinstance(child['rc'], int) or not 0 <= child['rc'] <= 255 or
+                any(path.is_symlink() or not path.is_file() for path in files.values()) or
+                files['.pid'].read_text().strip() != str(child['pid']) or
+                any(files[suffix].read_text().strip() != str(child['rc']) for suffix in ('.exit', '.finalized'))):
+            raise ValueError('shared parent branch is active or has no actual durable terminal state')
+        raw = files['.log'].read_bytes()
+        lines = raw.decode().splitlines()
+        marker = 'LONGHORN_PARALLEL_'+branch.upper()+'_EXIT rc='+str(child['rc'])
+        if (hashlib.sha256(raw).hexdigest() != child['log_sha256'] or
+                not lines or lines[-1] != marker):
+            raise ValueError('shared parent branch log identity or terminal marker differs')
+    destination = 'docker://127.0.0.1:5000/'+key
+    repository = destination.rsplit(':', 1)[0]
+    inspect = ['skopeo', 'inspect', '--raw', '--tls-verify=false']
+    expected = row['platforms']['linux/amd64']
+    old_or_new, target = (expected, previous_digest) if restore else (previous_digest, expected)
+    def digest_at(ref):
+        raw = execute(inspect+[ref], timeout=60).stdout
+        return 'sha256:'+hashlib.sha256(raw.encode()).hexdigest(), raw
+    def guard():
+        # Read only selected inspect fields; never print Docker environment.
+        template = '{"id":{{json .Id}},"created":{{json .Created}},"running":{{json .State.Running}},' \
+                   '"mounts":{{json .Mounts}},"ports":{{json .HostConfig.PortBindings}},"image":{{json .Config.Image}}}'
+        registry = json.loads(execute(['docker', 'inspect', '--format', template, 'local_registry']).stdout)
+        expected_registry = proof['registry']
+        mounts = [m for m in registry['mounts'] if m['Destination'] == '/var/lib/registry']
+        if (registry['id'] != expected_registry['id'] or registry['created'] != expected_registry['created'] or
+                registry['running'] is not True or registry['image'] != 'brinnatt/registry:2' or
+                len(mounts) != 1 or mounts[0]['Type'] != 'bind' or mounts[0]['RW'] is not True or
+                mounts[0]['Source'] != expected_registry['mount_source'] or
+                mounts[0]['Source'] not in ('/data/registry', '/var/snap/docker/common/kubeauto-registry') or
+                registry['ports'].get('5000/tcp') != [{'HostIp': '', 'HostPort': '5000'}]):
+            raise ValueError('local RegistryManager fixture identity differs')
+        if digest_at(destination)[0] != old_or_new:
+            raise ValueError('single-key cache compare-before-copy identity changed')
+        # Bound the shared control to all existing Longhorn consumers. Each
+        # kubeconfig must still point at the fixture recorded by its owner.
+        contexts = ('longhorn-gate', 'longhorn-v2-gate', 'longhorn-v2-dr-target')
+        if set(proof['consumer_clusters']) != set(contexts):
+            raise ValueError('shared Registry consumer boundary is incomplete')
+        for cluster in contexts:
+            root = BASE/'clusters'/cluster
+            owned = json.loads((root/'longhorn-lab-owner.json').read_text())
+            if owned['run_id'] != proof['consumer_clusters'][cluster]['run_id']:
+                raise ValueError('shared Registry consumer owner changed')
+            command = ['kubectl', '--kubeconfig='+str(root/'kubectl.kubeconfig')]
+            system = json.loads(execute(command+['get', 'namespace', 'kube-system', '-o', 'json']).stdout)
+            if system['metadata']['uid'] != owned['cluster_uid']:
+                raise ValueError('shared Registry consumer kubeconfig changed')
+            workloads = json.loads(execute(command+['get', 'pods,deployments,statefulsets,daemonsets,jobs,cronjobs',
+                                                       '-A', '-o', 'json']).stdout)
+            def consumer(obj):
+                if isinstance(obj, dict):
+                    return any((k == 'image' and isinstance(v, str) and
+                                ('busybox' in v or manifest['config']['digest'] in v)) or consumer(v)
+                               for k, v in obj.items())
+                return isinstance(obj, list) and any(consumer(v) for v in obj)
+            if consumer(workloads):
+                raise ValueError('shared Registry BusyBox workload consumer conflict')
+        if any('busybox' in image or manifest['config']['digest'] in image for image in
+               execute(['docker', 'ps', '--no-trunc', '--format', '{{.Image}}']).stdout.splitlines()):
+            raise ValueError('shared Registry BusyBox Docker consumer conflict')
+        if digest_at(destination)[0] != old_or_new:
+            raise ValueError('single-key cache compare-before-copy identity changed')
+    guard()
+    if digest_at(repository+'@'+previous_digest)[1] != previous:
+        raise ValueError('old immutable manifest is unavailable for exact rollback')
+    if not restore:
+        published_manifest(row, expected)  # Validates immutable upstream bytes.
+    receipt_path = DIRECTORY/'longhorn-busybox-cache-reconcile.json'
+    prior = json.loads(receipt_path.read_text()) if receipt_path.exists() else None
+    if prior is not None:
+        phases = ('prepared', 'copy-returned', 'verified') if restore else ('prepared', 'copy-returned')
+        if prior.get('proof') != proof or prior.get('phase') not in phases:
+            raise ValueError('prior single-key cache repair requires explicit matching recovery')
+    elif restore:
+        raise ValueError('cache rollback requires its matching forward receipt')
+    receipt = {'proof': proof, 'phase': 'prepared', 'restore': restore,
+               'rollback_source': repository+'@'+previous_digest, 'destination': destination,
+               'attempts': prior.get('attempts', []) if prior else []}
+    write_private(receipt_path, receipt)  # Old raw/config are durable before copy.
+    sources = [repository+'@'+previous_digest] if restore else [
+        'docker://'+ref.rsplit(':', 1)[0]+'@'+expected
+        for ref in (row['talkedu_ref'], 'docker.io/'+row['dockerhub_ref'])]
+    for source in sources:
+        guard()  # Recheck old identity and consumers immediately before copy.
+        command = ['skopeo', 'copy', '--preserve-digests', '--dest-tls-verify=false']
+        if restore: command.append('--src-tls-verify=false')
+        result = execute(command+[source, destination], timeout=900, check=False)
+        receipt['attempts'].append({'source': source, 'rc': result.returncode, 'stderr': result.stderr})
+        receipt.update(phase='copy-returned', copy_rc=result.returncode,
+                       copy_stderr_sha256=hashlib.sha256(result.stderr.encode()).hexdigest())
+        write_private(receipt_path, receipt)
+        actual, _ = digest_at(destination)
+        if result.returncode == 0 and actual == target:
+            if digest_at(repository+'@'+previous_digest)[1] != previous:
+                raise ValueError('old immutable rollback manifest disappeared')
+            receipt['phase'] = 'restored' if restore else 'verified'
+            write_private(receipt_path, receipt)
+            print('LONGHORN_CACHE_RECONCILE_'+('ROLLBACK' if restore else 'VERIFY')+'_PASS image='+key+
+                  ' digest='+target, flush=True)
+            return
+        if actual != old_or_new:
+            raise ValueError('cache copy failed or changed tag; preserve receipt for explicit recovery')
+    raise ValueError('single fixed BusyBox child cannot be staged; old identity retained')
+
+
+def cache_artifacts(keys=None, *, reconcile=None):
+    owner(); production, support = publication_records()
+    rows = production + support
+    if keys is not None:
+        if not keys or not set(keys) <= {row['key'] for row in rows}: raise ValueError('unknown selected immutable cache image')
+        rows = [row for row in rows if row['key'] in keys]
+    if reconcile is not None:
+        if keys != {'brinnatt/busybox:1.37'} or len(rows) != 1:
+            raise ValueError('cache reconcile is restricted to the reviewed single BusyBox key')
+        reconcile_cache_image(rows[0], reconcile)
+    verified = set()
+    for row in rows:
+        expected = row['platforms']['linux/amd64']
+        prefix = 'longhorn-lab/' if row in support else ''
+        destination = 'docker://127.0.0.1:5000/' + prefix + row['key']
+        probe = execute(['skopeo', 'inspect', '--raw', '--tls-verify=false', destination], check=False, timeout=60)
+        if probe.returncode:
+            if not any(x in probe.stderr.lower() for x in ('manifest unknown', 'name unknown')):
+                raise ValueError('local immutable image cache is unavailable')
+            for ref in (row['talkedu_ref'], 'docker.io/' + row['dockerhub_ref']):
+                source = 'docker://' + ref.rsplit(':', 1)[0] + '@' + expected
+                copy = execute(['skopeo', 'copy', '--preserve-digests', '--dest-tls-verify=false', source, destination],
+                               timeout=900, check=False)
+                if copy.returncode == 0: break
+            else: raise ValueError('fixed published image cannot be staged: ' + row['key'])
+            probe = execute(['skopeo', 'inspect', '--raw', '--tls-verify=false', destination], timeout=60)
+        if 'sha256:' + hashlib.sha256(probe.stdout.encode()).hexdigest() != expected:
+            actual_manifest, expected_manifest = json.loads(probe.stdout), published_manifest(row, expected)
+            representation = 'media-translation'
+            if not equivalent_manifest(actual_manifest, expected_manifest):
+                verify_recompressed_manifest(actual_manifest, expected_manifest, prefix + row['key'].rsplit(':', 1)[0], verified)
+                representation = 'verified-gzip-recompression'
+            print('LONGHORN_CACHE_REPRESENTATION image=' + row['key'] + ' type=' + representation +
+                  ' actual_manifest=sha256:' + hashlib.sha256(probe.stdout.encode()).hexdigest(), flush=True)
+        print('LONGHORN_CACHE_VERIFIED image=' + row['key'] + ' digest=' + expected, flush=True)
+    print('LONGHORN_CACHE_PASS images=' + str(len(rows)))
+
+
+def wait(label, timeout, check):
+    started = time.monotonic()
+    while True:
+        result = check()
+        if result: return result
+        elapsed = int(time.monotonic() - started)
+        if elapsed >= timeout: raise TimeoutError('fixture wait: ' + label)
+        print('LONGHORN_LAB_WAIT stage=' + label + ' elapsed=' + str(elapsed), flush=True)
+        time.sleep(5)
+
+
+def core_smoke_fingerprint():
+    _, support = publication_records()
+    image = next(row for row in support if row['key'] == 'brinnatt/json-mock:v1.3.1')
+    script = (BASE / 'tests/helpers/kubernetes-production-smoke.sh').read_bytes()
+    return hashlib.sha256(script + json.dumps(image, sort_keys=True).encode() + inspect.getsource(core_smoke).encode()).hexdigest()
+
+
+def verify_core_smoke():
+    core_identity()
+    if owner().get('core_smoke_fingerprint') != core_smoke_fingerprint():
+        raise ValueError('core requires current cross-node DNS/ClusterIP HTTP write/read smoke')
+    print('LONGHORN_CORE_SMOKE_CURRENT')
+
+
+def core_smoke():
+    core_identity(); state = owner()
+    state.pop('core_smoke_fingerprint', None); write_private(STATE, state)
+    namespace = 'longhorn-core-smoke-' + secrets.token_hex(8)
+    if get('namespace', namespace): raise ValueError('production smoke namespace already exists')
+    cache_artifacts({'brinnatt/json-mock:v1.3.1'})
+    environment = ['env', 'PRODUCTION_SMOKE_NAMESPACE=' + namespace,
+                   'PRODUCTION_SMOKE_IMAGE=registry.talkschool.cn:5000/longhorn-lab/brinnatt/json-mock:v1.3.1',
+                   'PRODUCTION_SMOKE_SERVER_NODE=longhorn-node-' + WORKERS[0].rsplit('.', 1)[1],
+                   'PRODUCTION_SMOKE_CLIENT_NODE=longhorn-node-' + WORKERS[1].rsplit('.', 1)[1]]
+    result = execute(environment + ['bash', BASE / 'tests/helpers/kubernetes-production-smoke.sh'], check=False, timeout=1200)
+    write_private(DIRECTORY / 'core-smoke-result.json', {'rc': result.returncode, 'namespace': namespace,
+                  'stdout': result.stdout, 'stderr': result.stderr})
+    if (result.returncode or not re.search(r'^KUBERNETES_PRODUCTION_SMOKE_PASS ', result.stdout, re.M) or
+            'PRODUCTION_SMOKE_HTTP_RW_OK' not in result.stdout.splitlines()):
+        raise ValueError('canonical Kubernetes production smoke failed; preserve its first diagnostics')
+    if get('namespace', namespace): raise ValueError('canonical production smoke left its namespace')
+    state['core_smoke_fingerprint'] = core_smoke_fingerprint(); write_private(STATE, state)
+    print(result.stdout, end='', flush=True)
+    print('LONGHORN_CORE_SMOKE_BUSINESS_PASS')
+
+
+def remove(obj):
+    # Product API helper uses raw DELETE preconditions; fixture labels alone
+    # never authorize deleting a replacement object with the same name.
+    spec = importlib.util.spec_from_file_location('longhorn_product', BASE / 'roles/longhorn/files/longhorn.py')
+    product = importlib.util.module_from_spec(spec); spec.loader.exec_module(product)
+    product.API(str(DIRECTORY / 'kubectl.kubeconfig')).delete(obj)
+
+
+def node_bootstrap_dry_run():
+    """Exercise the product metadata update against admission, without persistence."""
+    core_identity()
+    spec = importlib.util.spec_from_file_location('longhorn_product', BASE / 'roles/longhorn/files/longhorn.py')
+    product = importlib.util.module_from_spec(spec); spec.loader.exec_module(product)
+    c = json.loads((DIRECTORY / 'yml/longhorn/input.json').read_text())
+    product.validate(c)
+    api = product.API(str(DIRECTORY / 'kubectl.kubeconfig'))
+    nodes = product.node_map(c, api)
+    def identity(node):
+        meta = node['metadata']
+        return {key: meta.get(key, {}) for key in ('uid', 'labels', 'annotations')}
+    before = {address: identity(node) for address, node in nodes.items()}
+    patched = []
+    def dry_patch(kind, name, desired):
+        if kind != 'node' or name not in {n['metadata']['name'] for n in nodes.values()}:
+            raise ValueError('dry-run patch outside declared nodes')
+        product.run(api.prefix + ['patch', kind, name, '--type=merge', '--patch-file=/dev/stdin',
+                                  '--dry-run=server', '-o', 'name'], stdin=json.dumps(desired))
+        patched.append(name)
+    api.patch = dry_patch
+    for address, node in nodes.items():
+        product.bootstrap_node(c, api, address, node, c.get('longhorn_disk_receipts', {}).get(address))
+    after = {address: identity(api.get('node', node['metadata']['name'])) for address, node in nodes.items()}
+    if before != after:
+        raise ValueError('node identity or metadata changed during bootstrap dry-run')
+    print('LONGHORN_NODE_BOOTSTRAP_DRY_RUN_PASS nodes=' + str(len(nodes)) + ' patches=' + str(len(patched)), flush=True)
+
+
+def installation_health():
+    core_identity(); state = owner()
+    ns = get('namespace', 'longhorn-system')
+    secret = get('secret', 'longhorn-grpc-tls', 'longhorn-system')
+    key = get('secret', 'longhorn-volume-key', 'longhorn-system')
+    if (not ns or ns['metadata']['uid'] != state['namespace_uid'] or not secret or secret['metadata']['uid'] != state['tls_uid'] or
+            not key or key['metadata']['uid'] != state['encryption_uid']):
+        raise ValueError('Longhorn fixture namespace or credentials changed')
+    spec = importlib.util.spec_from_file_location('longhorn_product', BASE / 'roles/longhorn/files/longhorn.py')
+    product = importlib.util.module_from_spec(spec); spec.loader.exec_module(product)
+    c = json.loads((DIRECTORY / 'yml/longhorn/input.json').read_text())
+    # owner() verifies the exact fixed inventory bytes. The original installed
+    # baseline predates this derived Ansible fact; reconstruct it read-only so
+    # its identity/runtime health can be checked before product reconciliation.
+    if c.setdefault('longhorn_client_nodes', list(WORKERS)) != list(WORKERS):
+        raise ValueError('Longhorn client inventory differs from the owned baseline')
+    api = product.API(str(DIRECTORY / 'kubectl.kubeconfig'))
+    if not product.healthy(c, api, product.node_map(c, api)): raise ValueError('Longhorn control or disk health failed')
+    state['healthy'] = True; write_private(STATE, state)
+    print('LONGHORN_LAB_INSTALLATION_HEALTHY')
+
+
+def client_pod(namespace, object_name, pvc, node, *, block=False):
+    pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': object_name, 'namespace': namespace},
+            'spec': {'nodeSelector': {'kubernetes.io/hostname': node}, 'restartPolicy': 'Never',
+                     'containers': [{'name': 'client', 'image': 'registry.talkschool.cn:5000/longhorn-lab/brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2',
+                        'command': ['python3', '-c', 'import time; time.sleep(7200)'],
+                        'resources': {'requests': {'cpu': '50m', 'memory': '64Mi'}, 'limits': {'cpu': '1', 'memory': '256Mi'}},
+                        'volumeMounts': [{'name': 'data', 'mountPath': '/data'}]}],
+                     'volumes': [{'name': 'data', 'persistentVolumeClaim': {'claimName': pvc}}]}}
+    if block:
+        container = pod['spec']['containers'][0]
+        del container['volumeMounts']
+        container['volumeDevices'] = [{'name': 'data', 'devicePath': '/data-device'}]
+    return pod
+
+
+def payload_program(payload, *, block=False, read_only=False):
+    path = '/data-device' if block else '/data/confirmed'
+    size = len(payload.encode()) * 262144
+    offset = 1024**2 if block else 0
+    if read_only:
+        return ("import hashlib; f=open(" + repr(path) + ",'rb',buffering=0); f.seek(" + str(offset) +
+                "); data=f.read(" + str(size) + "); assert len(data)==" + str(size) +
+                "; print(hashlib.sha256(data).hexdigest())")
+    code = ("import hashlib,os; data=" + repr(payload) + ".encode()*262144; f=open(" + repr(path) +
+            "," + repr('r+b' if block else 'wb') + ",buffering=0); f.seek(" + str(offset) +
+            "); assert f.write(data)==len(data); os.fsync(f.fileno()); f.close(); ")
+    if not block:
+        code += "d=os.open('/data',os.O_RDONLY); os.fsync(d); os.close(d); "
+    return code + "print(hashlib.sha256(data).hexdigest())"
+
+
+def exclusive_attachment(journal, access_mode, payload, digest, *, block=False):
+    namespace = journal['namespace']
+    # RWOP must refuse even on the writer's node; RWO refuses another node.
+    address = WORKERS[0] if access_mode == 'ReadWriteOncePod' else WORKERS[1]
+    competitor = client_pod(namespace, 'reader', 'data', 'longhorn-node-' + address.rsplit('.', 1)[1], block=block)
+    created = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(competitor)).stdout)
+    journal['objects']['Pod/reader'] = created['metadata']['uid']
+    write_private(DIRECTORY / 'longhorn-install-business.json', journal)
+    reason = 'FailedScheduling' if access_mode == 'ReadWriteOncePod' else 'FailedAttachVolume'
+    keyword = 'readwriteoncepod' if access_mode == 'ReadWriteOncePod' else 'multi-attach'
+    def refused():
+        pod = get('pod', 'reader', namespace)
+        if not pod or pod['metadata']['uid'] != created['metadata']['uid']:
+            raise ValueError('attachment competitor identity changed')
+        if any(x['type'] == 'Ready' and x['status'] == 'True' for x in pod.get('status', {}).get('conditions', [])):
+            raise ValueError('exclusive volume was exposed to a conflicting writer')
+        return any(e.get('involvedObject', {}).get('uid') == created['metadata']['uid'] and
+                   e.get('reason') == reason and keyword in e.get('message', '').lower()
+                   for e in get('events', namespace=namespace)['items'])
+    wait('exclusive-attachment-refused', 180, refused)
+    actual = kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c',
+                     payload_program(payload, block=block, read_only=True)).stdout.strip()
+    if actual != digest:
+        raise ValueError('attachment refusal damaged the active writer')
+    current = get('pod', 'reader', namespace)
+    if not current or current['metadata']['uid'] != created['metadata']['uid']:
+        raise ValueError('attachment competitor was replaced before removal')
+    remove(current)
+    wait('attachment-competitor-clean', 180, lambda: get('pod', 'reader', namespace) is None)
+    print('LONGHORN_EXCLUSIVE_ATTACHMENT_VERIFIED access=' + access_mode + ' mode=' + ('Block' if block else 'Filesystem'), flush=True)
+
+
+def idempotence_snapshot(namespace):
+    releases = json.loads(execute([BASE / 'extra-bin/helm', 'list', '--all', '-n', 'longhorn-system', '-o', 'json']).stdout)
+    if len(releases) != 1 or releases[0]['name'] != 'longhorn' or releases[0]['status'] != 'deployed':
+        raise ValueError('idempotence requires the unique deployed Longhorn release')
+    result = {'helm': {k: releases[0][k] for k in ('revision', 'chart', 'app_version', 'status')}, 'objects': {}}
+    for ns in ('longhorn-system', namespace):
+        for kind in ('deployment', 'daemonset', 'statefulset', 'pod', 'pvc', 'secret'):
+            for obj in get(kind, namespace=ns)['items']:
+                metadata = obj['metadata']
+                identity = {'uid': metadata['uid'], 'generation': metadata.get('generation'), 'spec': obj.get('spec')}
+                if kind == 'secret':
+                    identity['data_sha256'] = hashlib.sha256(json.dumps(obj.get('data', {}), sort_keys=True).encode()).hexdigest()
+                result['objects'][kind + '/' + ns + '/' + metadata['name']] = identity
+    if not result['objects']:
+        raise ValueError('empty idempotence observation')
+    return result
+
+
+def verify_idempotence(relay_pid, journal, digest):
+    before = idempotence_snapshot(journal['namespace'])
+    config = (DIRECTORY / 'config.yml').read_bytes()
+    write_private(DIRECTORY / 'longhorn-idempotence-observation.json', before)
+    supervise_core(relay_pid, 'longhorn-setup')
+    installation_health()
+    if (DIRECTORY / 'config.yml').read_bytes() != config or idempotence_snapshot(journal['namespace']) != before:
+        raise ValueError('identical product input replaced or changed a release, workload, PVC or Secret')
+    actual = kubectl('-n', journal['namespace'], 'exec', 'writer', '--', 'python3', '-c',
+                     "import hashlib;print(hashlib.sha256(open('/data/confirmed','rb').read()).hexdigest())").stdout.strip()
+    if actual != digest:
+        raise ValueError('idempotent product run changed confirmed bytes')
+    print('LONGHORN_IDEMPOTENCE_IDENTITIES_PASS revision=' + str(before['helm']['revision']) +
+          ' objects=' + str(len(before['objects'])) + ' sha256=' + digest, flush=True)
+
+
+def rwx_probe_program(client, duration=180):
+    """Acknowledge only fsynced writes; report actual stalls/errors and retries."""
+    if client not in ('writer', 'reader') or not 1 <= duration <= 300:
+        raise ValueError('invalid RWX probe inputs')
+    return '''import errno,hashlib,json,os,time
+client=%r
+deadline=time.monotonic()+%d
+count=errors=0;worst=0
+print('RWX_PROBE_STARTED',flush=True)
+while time.monotonic()<deadline:
+ started=time.monotonic()
+ try:
+  data=(client+':'+str(count)).encode()*4096
+  with open('/data/probe-'+client,'wb',buffering=0) as f:
+   assert f.write(data)==len(data);os.fsync(f.fileno())
+  d=os.open('/data',os.O_RDONLY);os.fsync(d);os.close(d)
+  with open('/data/probe-'+client,'rb',buffering=0) as f: assert f.read()==data
+  count+=1
+ except OSError as e:
+  if e.errno not in (errno.EIO,errno.ETIMEDOUT,errno.ESTALE): raise
+  errors+=1
+ worst=max(worst,time.monotonic()-started)
+ print(json.dumps({'client':client,'confirmed':count,'errors':errors,'max_latency_s':worst}),flush=True)
+ time.sleep(0.5)
+assert count>=2
+''' % (client, duration)
+
+
+def rwx_lock_program(action):
+    """Bounded advisory-lock client; EOF releases the holder's descriptor."""
+    if action not in ('hold', 'refused', 'acquire'):
+        raise ValueError('invalid RWX lock action')
+    return '''import fcntl,select,sys
+action=%r
+with open('/data/advisory-lock','a+b') as f:
+ if action=='hold':
+  fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  print('RWX_LOCK_HELD',flush=True)
+  if not select.select([sys.stdin],[],[],120)[0]: raise TimeoutError('lock release input')
+  if sys.stdin.readline()!='release\\n': raise RuntimeError('missing lock release input')
+  fcntl.flock(f,fcntl.LOCK_UN)
+  print('RWX_LOCK_RELEASED',flush=True)
+ else:
+  try: fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  except BlockingIOError:
+   if action!='refused': raise
+   print('RWX_LOCK_REFUSED',flush=True)
+  else:
+   if action!='acquire': raise RuntimeError('competing lock unexpectedly acquired')
+   print('RWX_LOCK_ACQUIRED',flush=True)
+''' % action
+
+
+def verify_rwx_locks(journal):
+    """Prove cross-client exclusion and release before injecting server faults."""
+    with tempfile.TemporaryDirectory(prefix='kubeauto-longhorn-rwx-lock-') as directory:
+        log = Path(directory) / 'holder.log'
+        with log.open('w') as stream:
+            process = subprocess.Popen([str(BASE / 'kube-bin/kubectl'),
+                '--kubeconfig=' + str(DIRECTORY / 'kubectl.kubeconfig'), '-n', journal['namespace'],
+                'exec', '-i', 'writer', '--', 'python3', '-u', '-c', rwx_lock_program('hold')],
+                stdin=subprocess.PIPE, stdout=stream, stderr=stream, text=True)
+            try:
+                def held():
+                    if process.poll() is not None:
+                        raise ValueError('RWX lock holder exited before exclusion proof')
+                    return 'RWX_LOCK_HELD' in log.read_text().splitlines()
+                wait('rwx-lock-held', 60, held)
+                result = kubectl('-n', journal['namespace'], 'exec', 'reader', '--', 'python3', '-c',
+                                 rwx_lock_program('refused'), timeout=30)
+                if result.stdout.strip() != 'RWX_LOCK_REFUSED':
+                    raise ValueError('RWX competing lock refusal was not observed')
+                process.stdin.write('release\n'); process.stdin.flush()
+                if process.wait(timeout=30) != 0 or 'RWX_LOCK_RELEASED' not in log.read_text().splitlines():
+                    raise ValueError('RWX lock holder did not release its lock')
+                result = kubectl('-n', journal['namespace'], 'exec', 'reader', '--', 'python3', '-c',
+                                 rwx_lock_program('acquire'), timeout=30)
+                if result.stdout.strip() != 'RWX_LOCK_ACQUIRED':
+                    raise ValueError('RWX released lock could not be acquired')
+            finally:
+                process.stdin.close()
+                if process.poll() is None:
+                    process.terminate()
+                    try: process.wait(timeout=10)
+                    except subprocess.TimeoutExpired: process.kill(); process.wait(timeout=10)
+    print('LONGHORN_RWX_LOCKS_VERIFIED exclusion=two-clients release=verified', flush=True)
+
+
+def share_manager_identity(journal, *, previous_uid=None):
+    name = journal['volume']
+    volume = get('volumes.longhorn.io', name, 'longhorn-system')
+    if not volume or volume['metadata']['uid'] != journal['volume_uid'] or volume['spec'].get('accessMode') != 'rwx':
+        raise ValueError('RWX native volume identity changed')
+    manager = get('sharemanagers.longhorn.io', name, 'longhorn-system')
+    if not manager: return None
+    if not any(r.get('kind') == 'Volume' and r.get('uid') == journal['volume_uid']
+               for r in manager['metadata'].get('ownerReferences', [])):
+        raise ValueError('share-manager is not owned by the original business volume')
+    pod = get('pod', 'share-manager-' + name, 'longhorn-system')
+    if not pod: return None
+    if not any(r.get('kind') == 'ShareManager' and r.get('uid') == manager['metadata']['uid'] and r.get('controller')
+               for r in pod['metadata'].get('ownerReferences', [])):
+        raise ValueError('share-manager Pod ownership differs')
+    if previous_uid and pod['metadata']['uid'] == previous_uid: return None
+    if manager.get('status', {}).get('state') != 'running' or not any(
+            x['type'] == 'Ready' and x['status'] == 'True' for x in pod.get('status', {}).get('conditions', [])):
+        return None
+    return pod
+
+
+def verify_rwx(journal, create, payload, digest):
+    namespace = journal['namespace']
+    reader = create(client_pod(namespace, 'reader', 'data', 'longhorn-node-' + WORKERS[1].rsplit('.', 1)[1]))
+    wait('rwx-second-client-ready', 600, lambda: any(x['type'] == 'Ready' and x['status'] == 'True'
+         for x in get('pod', 'reader', namespace).get('status', {}).get('conditions', [])))
+    for client in ('writer', 'reader'):
+        mount = kubectl('-n', namespace, 'exec', client, '--', 'python3', '-c',
+                        "s=[l for l in open('/proc/self/mountinfo') if l.split()[4]=='/data'];assert len(s)==1 and ' - nfs4 ' in s[0] and 'vers=4.1' in s[0];print('NFS41_VERIFIED')").stdout.strip()
+        if mount != 'NFS41_VERIFIED': raise ValueError('RWX client is not using NFSv4.1')
+        actual = kubectl('-n', namespace, 'exec', client, '--', 'python3', '-c',
+                         payload_program(payload, read_only=True)).stdout.strip()
+        if actual != digest: raise ValueError('concurrent RWX client cannot read confirmed bytes')
+    # POSIX mode denial must be real, not inferred from mount availability.
+    kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c',
+            "import os;open('/data/permission-canary','wb').write(b'private');os.chmod('/data/permission-canary',0o600)")
+    denied = kubectl('-n', namespace, 'exec', 'reader', '--', 'python3', '-c',
+                    "import os;os.setgroups([]);os.setgid(10001);os.setuid(10001)\ntry: open('/data/permission-canary','rb').read()\nexcept PermissionError: print('RWX_PERMISSION_DENIED')\nelse: raise RuntimeError('unauthorized RWX read succeeded')").stdout.strip()
+    if denied != 'RWX_PERMISSION_DENIED': raise ValueError('RWX permission denial was not observed')
+    verify_rwx_locks(journal)
+    original = wait('rwx-share-manager-ready', 180, lambda: share_manager_identity(journal))
+    observations = Path(tempfile.mkdtemp(prefix='kubeauto-longhorn-rwx-', dir='/var/tmp'))
+    processes = []; streams = []; succeeded = False
+    try:
+        for client in ('writer', 'reader'):
+            stream = (observations / (client + '.log')).open('w'); streams.append(stream)
+            process = subprocess.Popen([str(BASE / 'kube-bin/kubectl'), '--kubeconfig=' + str(DIRECTORY / 'kubectl.kubeconfig'),
+                                        '-n', namespace, 'exec', client, '--', 'python3', '-u', '-c', rwx_probe_program(client)],
+                                       stdin=subprocess.DEVNULL, stdout=stream, stderr=stream)
+            processes.append(process)
+        wait('rwx-probes-started', 60, lambda: all('"confirmed":' in (observations / (c + '.log')).read_text()
+                                                for c in ('writer', 'reader')))
+        # UID/resourceVersion DELETE prevents targeting a replacement Pod.
+        current = share_manager_identity(journal)
+        if not current or current['metadata']['uid'] != original['metadata']['uid']:
+            raise ValueError('share-manager changed before the owned fault')
+        started = time.monotonic(); remove(current)
+        replacement = wait('rwx-share-manager-replacement', 150,
+                           lambda: share_manager_identity(journal, previous_uid=original['metadata']['uid']))
+        ready_seconds = round(time.monotonic() - started, 3)
+        # A Ready replacement is only a control-plane result. Exercise each
+        # original client mount after that result, including directory fsync.
+        for client in ('writer', 'reader'):
+            kubectl('-n', namespace, 'exec', client, '--', 'python3', '-c',
+                    "import os;f=open('/data/recovered-" + client + "','wb');f.write(b'recovered');f.flush();os.fsync(f.fileno());f.close();d=os.open('/data',os.O_RDONLY);os.fsync(d);os.close(d)", timeout=240)
+        for process in processes:
+            wait('rwx-probe-completion', 240, lambda: process.poll() is not None)
+            if process.returncode != 0: raise ValueError('RWX client probe failed; retain its first diagnostic')
+        for client in ('writer', 'reader'):
+            rows = [json.loads(line) for line in (observations / (client + '.log')).read_text().splitlines() if line.startswith('{')]
+            if not rows or rows[-1]['confirmed'] <= rows[0]['confirmed']:
+                raise ValueError('RWX client did not resume confirmed writes after replacement')
+            actual = kubectl('-n', namespace, 'exec', client, '--', 'python3', '-c', payload_program(payload, read_only=True)).stdout.strip()
+            if actual != digest: raise ValueError('share-manager replacement changed acknowledged bytes')
+            print('LONGHORN_RWX_CLIENT_RESULT ' + json.dumps(rows[-1], sort_keys=True), flush=True)
+        print('LONGHORN_RWX_RECOVERY_VERIFIED old_uid=' + original['metadata']['uid'] +
+              ' new_uid=' + replacement['metadata']['uid'] + ' share_manager_ready_s=' + str(ready_seconds) +
+              ' observation_s=' + str(round(time.monotonic() - started, 3)), flush=True)
+        succeeded = True
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.terminate()
+                try: process.wait(timeout=10)
+                except subprocess.TimeoutExpired: process.kill(); process.wait()
+        for stream in streams: stream.close()
+        if succeeded: shutil.rmtree(observations)
+        else: print('LONGHORN_PRIVATE_DIAGNOSTIC directory=' + str(observations), flush=True)
+    current = get('pod', 'reader', namespace)
+    if not current or current['metadata']['uid'] != reader['metadata']['uid']:
+        raise ValueError('RWX reader identity changed before removal')
+    remove(current)
+    wait('rwx-reader-clean', 180, lambda: get('pod', 'reader', namespace) is None)
+
+
+def clone_claim(namespace, object_name, size):
+    return {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {'name': object_name, 'namespace': namespace},
+            'spec': {'accessModes': ['ReadWriteOnce'], 'storageClassName': 'longhorn',
+                     'volumeMode': 'Filesystem', 'resources': {'requests': {'storage': size}},
+                     'dataSource': {'kind': 'PersistentVolumeClaim', 'name': 'data'}}}
+
+
+def verify_clone(journal, create, payload, digest):
+    namespace = journal['namespace']; record = DIRECTORY / 'longhorn-install-business.json'
+    refused = create(clone_claim(namespace, 'wrong-size', '3Gi'))
+    def size_refused():
+        claim = get('pvc', 'wrong-size', namespace)
+        if not claim or claim['metadata']['uid'] != refused['metadata']['uid']:
+            raise ValueError('wrong-size clone claim identity changed')
+        if claim.get('status', {}).get('phase') == 'Bound':
+            raise ValueError('V1 clone incorrectly accepted a different source size')
+        return any(e.get('involvedObject', {}).get('uid') == refused['metadata']['uid'] and
+                   e.get('reason') == 'ProvisioningFailed' and 'requested size' in e.get('message', '').lower() and
+                   'different' in e.get('message', '').lower() for e in get('events', namespace=namespace)['items'])
+    wait('clone-source-size-refusal', 180, size_refused)
+    current = get('pvc', 'wrong-size', namespace)
+    if not current or current['metadata']['uid'] != refused['metadata']['uid']:
+        raise ValueError('wrong-size clone claim changed before removal')
+    remove(current)
+    wait('wrong-size-clone-claim-clean', 180, lambda: get('pvc', 'wrong-size', namespace) is None)
+    cloned = create(clone_claim(namespace, 'clone', '2Gi'))
+    bound = wait('clone-pvc-bound', 600, lambda: (o if o and o.get('status', {}).get('phase') == 'Bound' else None)
+                 if (o := get('pvc', 'clone', namespace)) else None)
+    if bound['metadata']['uid'] != cloned['metadata']['uid']:
+        raise ValueError('clone claim identity changed')
+    native = wait('clone-native-created', 120, lambda: get('volumes.longhorn.io',
+                  get('pv', bound['spec']['volumeName'])['spec']['csi']['volumeHandle'], 'longhorn-system'))
+    bind_business_volume(journal, record, 'clone')
+    clone = journal['claims']['clone']
+    if clone.get('volume_uid') != native['metadata']['uid']:
+        raise ValueError('clone native identity changed while recording it')
+    if clone['volume'] == journal['volume'] or clone['pv'] == journal['pv']:
+        raise ValueError('clone reused the source data identity')
+    create(client_pod(namespace, 'clone-reader', 'clone', 'longhorn-node-' + WORKERS[1].rsplit('.', 1)[1]))
+    wait('clone-reader-ready', 600, lambda: any(x['type'] == 'Ready' and x['status'] == 'True'
+         for x in get('pod', 'clone-reader', namespace).get('status', {}).get('conditions', [])))
+    wait('clone-three-replicas', 600, lambda: healthy_replicas(clone['volume']))
+    actual = kubectl('-n', namespace, 'exec', 'clone-reader', '--', 'python3', '-c', payload_program(payload, read_only=True)).stdout.strip()
+    if actual != digest: raise ValueError('cloned bytes differ from confirmed source')
+    changed_payload = payload + '-clone'
+    changed = kubectl('-n', namespace, 'exec', 'clone-reader', '--', 'python3', '-c', payload_program(changed_payload)).stdout.strip()
+    if changed != hashlib.sha256(changed_payload.encode() * 262144).hexdigest():
+        raise ValueError('clone write was not confirmed')
+    source = kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c', payload_program(payload, read_only=True)).stdout.strip()
+    if source != digest: raise ValueError('clone write changed the source volume')
+    print('LONGHORN_CLONE_ISOLATION_VERIFIED source_sha256=' + digest + ' clone_sha256=' + changed, flush=True)
+
+
+def capacity_bytes(value):
+    """Read Kubernetes' canonical integer/binary quantities used by this fixture."""
+    match = re.fullmatch(r'(\d+)(Ki|Mi|Gi|Ti)?', str(value))
+    if not match: raise ValueError('unexpected storage capacity quantity')
+    return int(match[1]) * {'Ki': 1024, 'Mi': 1024**2, 'Gi': 1024**3, 'Ti': 1024**4, None: 1}[match[2]]
+
+
+def resize_claim(claim, size, *, check=True):
+    metadata = claim['metadata']
+    patch = [{'op': 'test', 'path': '/metadata/uid', 'value': metadata['uid']},
+             {'op': 'test', 'path': '/metadata/resourceVersion', 'value': metadata['resourceVersion']},
+             {'op': 'replace', 'path': '/spec/resources/requests/storage', 'value': size}]
+    return kubectl('-n', metadata['namespace'], 'patch', 'pvc', metadata['name'], '--type=json',
+                   '-p', json.dumps(patch), check=check)
+
+
+def expansion_probe_program(*, block=False):
+    # Touch bytes beyond the original 2 GiB boundary, with actual fsync/readback.
+    # A sparse file alone would not prove usable newly allocated data blocks.
+    path = '/data-device' if block else '/data/expanded'
+    return ("import hashlib,json,os; path=" + repr(path) + "; "
+            "f=open(path," + repr('r+b' if block else 'w+b') + ",buffering=0); "
+            "capacity=os.lseek(f.fileno(),0,os.SEEK_END) if " + repr(block) +
+            " else os.statvfs('/data').f_blocks*os.statvfs('/data').f_frsize; "
+            "assert capacity>3*1024**3; data=os.urandom(1024**2); "
+            "f.seek(2*1024**3+1024**2); assert f.write(data)==len(data); os.fsync(f.fileno()); "
+            "f.seek(2*1024**3+1024**2); assert f.read(len(data))==data; f.close(); "
+            "d=os.open('/data',os.O_RDONLY) if not " + repr(block) + " else None; "
+            "os.fsync(d) if d is not None else None; os.close(d) if d is not None else None; "
+            "print(json.dumps({'capacity_bytes':capacity,'offset':2*1024**3+1024**2,"
+            "'sha256':hashlib.sha256(data).hexdigest()}))")
+
+
+def verify_expansion(journal, payload, digest, *, block=False):
+    namespace = journal['namespace']
+    before = {kind: get(kind, name, ns) for kind, name, ns in (
+        ('pvc', 'data', namespace), ('pv', journal['pv'], ''),
+        ('volumes.longhorn.io', journal['volume'], 'longhorn-system'), ('pod', 'writer', namespace))}
+    if any(not obj for obj in before.values()): raise ValueError('expansion baseline object missing')
+    expected_uids = {'pvc': journal['objects']['PersistentVolumeClaim/data'], 'pv': journal['pv_uid'],
+                     'volumes.longhorn.io': journal['volume_uid'], 'pod': journal['objects']['Pod/writer']}
+    if any(before[kind]['metadata']['uid'] != uid for kind, uid in expected_uids.items()):
+        raise ValueError('expansion baseline object was replaced')
+    if (capacity_bytes(before['pvc']['status']['capacity']['storage']) != 2*1024**3 or
+            capacity_bytes(before['pvc']['spec']['resources']['requests']['storage']) != 2*1024**3):
+        raise ValueError('expansion requires the original 2 GiB baseline')
+    encrypted = journal['storage_class'] == 'longhorn-encrypted'
+    if bool(before['volumes.longhorn.io']['spec'].get('encrypted')) != encrypted:
+        raise ValueError('expansion encryption state differs from requested class')
+    if encrypted:
+        # The PV must carry the CSI expansion credential reference; never read
+        # its contents into observations, diagnostic commands or output.
+        reference = before['pv']['spec']['csi'].get('nodeExpandSecretRef')
+        if reference != {'name': 'longhorn-volume-key', 'namespace': 'longhorn-system'}:
+            raise ValueError('encrypted expansion credential reference missing')
+    resize_claim(before['pvc'], '4Gi')
+    def expanded():
+        current = {kind: get(kind, obj['metadata']['name'], obj['metadata'].get('namespace', ''))
+                   for kind, obj in before.items()}
+        if any(not current[k] or current[k]['metadata']['uid'] != obj['metadata']['uid'] for k, obj in before.items()):
+            raise ValueError('online expansion replaced an original object')
+        if (current['pvc']['spec'].get('volumeName') != journal['pv'] or
+                current['pv']['spec']['csi']['volumeHandle'] != journal['volume']):
+            raise ValueError('online expansion changed original volume binding')
+        return (capacity_bytes(current['pvc'].get('status', {}).get('capacity', {}).get('storage', '0')) == 4*1024**3 and
+                capacity_bytes(current['pv']['spec']['capacity']['storage']) == 4*1024**3 and
+                int(current['volumes.longhorn.io']['spec']['size']) == 4*1024**3 and
+                not any(c.get('status') == 'True' and c.get('type') in ('Resizing', 'FileSystemResizePending')
+                        for c in current['pvc'].get('status', {}).get('conditions', [])))
+    wait('online-expansion-capacity', 600, expanded)
+    # The client Pod must stay mounted throughout, including encrypted volumes.
+    measured = json.loads(kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c',
+                                expansion_probe_program(block=block)).stdout)
+    if measured.get('capacity_bytes', 0) <= 3*1024**3 or not re.fullmatch('[0-9a-f]{64}', measured.get('sha256', '')):
+        raise ValueError('expanded capacity has no confirmed data-plane proof')
+    original = kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c',
+                       payload_program(payload, block=block, read_only=True)).stdout.strip()
+    if original != digest: raise ValueError('online expansion changed original confirmed bytes')
+    claim = get('pvc', 'data', namespace)
+    refused = resize_claim(claim, '1Gi', check=False)
+    if refused.returncode == 0 or 'Forbidden' not in refused.stderr or 'less than' not in refused.stderr:
+        raise ValueError('shrink did not return the owning Kubernetes validation error')
+    current = get('pvc', 'data', namespace)
+    if current['metadata']['uid'] != claim['metadata']['uid'] or current['spec']['resources']['requests']['storage'] != '4Gi':
+        raise ValueError('refused shrink changed original PVC')
+    wait('expanded-three-independent-replicas', 600, lambda: healthy_replicas(journal['volume']))
+    print('LONGHORN_ONLINE_EXPANSION_VERIFIED mode=' + ('Block' if block else 'Filesystem') +
+          ' encrypted=' + str(encrypted).lower() + ' measurement=' + json.dumps(measured, sort_keys=True), flush=True)
+
+
+def expansion_suite():
+    for block, storage_class in ((False, 'longhorn'), (True, 'longhorn'), (False, 'longhorn-encrypted')):
+        business('expansion', block=block, storage_class=storage_class)
+    print('LONGHORN_EXPANSION_BUSINESS_PASS')
+
+
+def verify_retained_rebind(journal, create, payload, digest, *, before_rebind=None):
+    namespace = journal['namespace']; record = DIRECTORY / 'longhorn-install-business.json'
+    writer = get('pod', 'writer', namespace)
+    if writer['metadata']['uid'] != journal['objects']['Pod/writer']:
+        raise ValueError('retained source writer identity changed')
+    remove(writer)
+    wait('retained-writer-removed', 180, lambda: get('pod', 'writer', namespace) is None)
+    claim = get('pvc', 'data', namespace)
+    if claim['metadata']['uid'] != journal['objects']['PersistentVolumeClaim/data']:
+        raise ValueError('retained source claim identity changed')
+    remove(claim)
+    wait('retained-claim-removed', 180, lambda: get('pvc', 'data', namespace) is None)
+    pv = wait('retained-pv-released', 180, lambda: p if (p := get('pv', journal['pv'])) and p.get('status', {}).get('phase') == 'Released' else None)
+    volume = get('volumes.longhorn.io', journal['volume'], 'longhorn-system')
+    if (pv['metadata']['uid'] != journal['pv_uid'] or pv['spec']['persistentVolumeReclaimPolicy'] != 'Retain' or
+            pv['spec']['claimRef']['uid'] != claim['metadata']['uid'] or
+            pv['spec']['csi']['volumeHandle'] != journal['volume'] or
+            not volume or volume['metadata']['uid'] != journal['volume_uid']):
+        raise ValueError('Retain did not preserve original PV and native volume')
+    if before_rebind is not None:
+        before_rebind()
+    # Pre-bind the new claim while the old claimRef still protects the PV.
+    # There is no interval in which an unrelated pending claim can steal it.
+    journal['rebind'] = {'claim': 'rebound', 'pv': journal['pv'], 'pv_uid': journal['pv_uid'],
+                         'volume': journal['volume'], 'volume_uid': journal['volume_uid']}
+    write_private(record, journal)
+    rebound = create({'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim',
+                      'metadata': {'name': 'rebound', 'namespace': namespace},
+                      'spec': {'accessModes': ['ReadWriteOnce'], 'storageClassName': 'longhorn',
+                               'volumeName': journal['pv'], 'resources': {'requests': {'storage': '2Gi'}}}})
+    reference = {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'name': 'rebound',
+                 'namespace': namespace, 'uid': rebound['metadata']['uid']}
+    operations = [{'op': 'test', 'path': '/metadata/uid', 'value': journal['pv_uid']},
+                  {'op': 'test', 'path': '/spec/claimRef/uid', 'value': claim['metadata']['uid']},
+                  {'op': 'replace', 'path': '/spec/claimRef', 'value': reference}]
+    kubectl('patch', 'pv', journal['pv'], '--type=json', '-p', json.dumps(operations))
+    bound = wait('retained-pv-rebound', 180, lambda: p if (p := get('pvc', 'rebound', namespace)) and p.get('status', {}).get('phase') == 'Bound' else None)
+    if bound['metadata']['uid'] != rebound['metadata']['uid'] or bound['spec']['volumeName'] != journal['pv']:
+        raise ValueError('retained claim was replaced or bound to another volume')
+    bind_business_volume(journal, record, 'rebound')
+    create(client_pod(namespace, 'rebound-reader', 'rebound', 'longhorn-node-' + WORKERS[1].rsplit('.', 1)[1]))
+    wait('retained-reader-ready', 600, lambda: any(c['type'] == 'Ready' and c['status'] == 'True'
+         for c in get('pod', 'rebound-reader', namespace).get('status', {}).get('conditions', [])))
+    actual = kubectl('-n', namespace, 'exec', 'rebound-reader', '--', 'python3', '-c', payload_program(payload, read_only=True)).stdout.strip()
+    if actual != digest: raise ValueError('retained bytes changed after PVC deletion and rebinding')
+    wait('retained-three-replicas', 600, lambda: healthy_replicas(journal['volume']))
+    print('LONGHORN_RETAIN_REBIND_VERIFIED pv=' + journal['pv'] + ' sha256=' + digest, flush=True)
+
+
+def class_identity():
+    return {c['metadata']['name']: {'uid': c['metadata']['uid'],
+            'annotations': c['metadata'].get('annotations', {}),
+            **{k: c.get(k) for k in ('provisioner', 'parameters', 'reclaimPolicy', 'volumeBindingMode', 'allowVolumeExpansion')}}
+            for c in get('storageclasses')['items']}
+
+
+def cleanup_reclaim_class():
+    receipt = DIRECTORY / 'longhorn-reclaim-class.json'
+    if not receipt.exists(): return
+    if receipt.is_symlink(): raise ValueError('symlink reclaim class receipt')
+    row = json.loads(receipt.read_text())
+    if row['run_id'] != owner()['run_id'] or not row['name'].startswith('longhorn-default-'):
+        raise ValueError('foreign reclaim class receipt')
+    current = get('storageclass', row['name'])
+    if current:
+        if class_identity().get(row['name']) != row['identity']:
+            raise ValueError('default class canary was replaced or modified')
+        remove(current)
+        wait('default-class-canary-clean', 60, lambda: get('storageclass', row['name']) is None)
+    receipt.unlink()
+
+
+def reclaim_suite(relay_pid):
+    business('reclaim')
+    business('install', storage_class='longhorn-delete')
+    original = class_identity()
+    config = yaml.safe_load((DIRECTORY / 'config.yml').read_text())
+    classes = config['longhorn_storage_classes']
+    changed = [dict(sc, reclaim_policy='Delete') if sc['name'] == 'longhorn' else dict(sc) for sc in classes]
+    run_requests(relay_pid, [], storage_classes=changed,
+                 expected_refusal='immutable StorageClass change requires a new class name: longhorn')
+    if class_identity() != original: raise ValueError('immutable class refusal mutated storage classes')
+    receipt = DIRECTORY / 'longhorn-reclaim-class.json'
+    if receipt.exists(): raise ValueError('previous default class canary needs recovery')
+    with scoped_cleanup(cleanup_reclaim_class):
+        if not any(c['annotations'].get('storageclass.kubernetes.io/is-default-class') == 'true' for c in original.values()):
+            canary = 'longhorn-default-' + secrets.token_hex(8)
+            obj = {'apiVersion': 'storage.k8s.io/v1', 'kind': 'StorageClass',
+                   'metadata': {'name': canary, 'annotations': {'storageclass.kubernetes.io/is-default-class': 'true'}},
+                   'provisioner': 'kubeauto.invalid/no-provisioner', 'reclaimPolicy': 'Retain', 'volumeBindingMode': 'WaitForFirstConsumer'}
+            # Record create intent first. A lost API response cannot authorize
+            # adopting or deleting an object whose UID was never observed.
+            write_private(receipt, {'run_id': owner()['run_id'], 'name': canary, 'identity': None})
+            created = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(obj)).stdout)
+            identity = class_identity().get(canary)
+            if not identity or identity['uid'] != created['metadata']['uid']:
+                raise ValueError('default class canary identity changed')
+            write_private(receipt, {'run_id': owner()['run_id'], 'name': canary, 'identity': identity})
+        protected = class_identity()
+        changed = [dict(sc, default=sc['name'] == 'longhorn') for sc in classes]
+        run_requests(relay_pid, [], storage_classes=changed, expected_refusal='refusing to replace another default StorageClass')
+        if class_identity() != protected: raise ValueError('default class refusal mutated storage classes')
+    if class_identity() != original: raise ValueError('class baseline differs after reclaim scenario')
+    installation_health()
+    print('LONGHORN_RECLAIM_BUSINESS_PASS')
+
+
+def restore_request_input():
+    receipt = DIRECTORY / 'longhorn-request-input.json'
+    if not receipt.exists(): return
+    if receipt.is_symlink(): raise ValueError('symlink request input receipt')
+    state = owner(); row = json.loads(receipt.read_text()); path = DIRECTORY / 'config.yml'
+    if row['run_id'] != state['run_id'] or path.is_symlink(): raise ValueError('foreign request input receipt')
+    current = path.read_text()
+    if current not in (row['original'], row['desired']): raise ValueError('request input changed outside its owning operation')
+    if current != row['original']:
+        with tempfile.NamedTemporaryFile('w', dir=DIRECTORY, delete=False) as stream:
+            stream.write(row['original']); stream.flush(); os.fsync(stream.fileno())
+            temporary = Path(stream.name)
+        temporary.replace(path)
+    receipt.unlink()
+    print('LONGHORN_REQUEST_INPUT_RESTORED')
+
+
+def run_requests(relay_pid, requests, *, expected_refusal=None, uninstall_id=None, storage_classes=None,
+                 recurring_jobs=None, backup_configuration=None, ready_timeout=None):
+    """Use config+kubecli for native operations; journal the reversible input."""
+    receipt = DIRECTORY / 'longhorn-request-input.json'; path = DIRECTORY / 'config.yml'
+    if receipt.exists() or path.is_symlink(): raise ValueError('previous product request needs input recovery')
+    original = path.read_text(); config = yaml.safe_load(original)
+    if config['longhorn_requests']: raise ValueError('cannot overwrite existing product operation declarations')
+    config['longhorn_requests'] = requests
+    if ready_timeout is not None:
+        if ready_timeout != 60 or expected_refusal != 'Longhorn timeout: backup-target-ready':
+            raise ValueError('short readiness timeout is restricted to the owning backup-target refusal')
+        config['longhorn_ready_timeout'] = ready_timeout
+    if storage_classes is not None:
+        config['longhorn_storage_classes'] = storage_classes
+    if recurring_jobs is not None:
+        config['longhorn_recurring_jobs'] = recurring_jobs
+    if backup_configuration is not None:
+        if (set(backup_configuration) != {'longhorn_backup_target', 'longhorn_backup_secret'} or
+                any(config[key] for key in backup_configuration) or not all(backup_configuration.values())):
+            raise ValueError('backup fixture cannot overwrite an existing product target declaration')
+        config.update(backup_configuration)
+    if uninstall_id:
+        if requests: raise ValueError('uninstall cannot introduce data-protection operations')
+        config.update(longhorn_action='uninstall', longhorn_uninstall_id=uninstall_id)
+    desired = yaml.safe_dump(config, sort_keys=False)
+    write_private(receipt, {'run_id': owner()['run_id'], 'original': original, 'desired': desired})
+    with scoped_cleanup(restore_request_input):
+        with tempfile.NamedTemporaryFile('w', dir=DIRECTORY, delete=False) as stream:
+            stream.write(desired); stream.flush(); os.fsync(stream.fileno()); temporary = Path(stream.name)
+        temporary.replace(path)
+        supervise_core(relay_pid, 'longhorn-setup', expected_refusal=expected_refusal)
+
+
+def shared_snapshot_identity():
+    product = load_helper('../../roles/longhorn/files/longhorn.py')
+    path = DIRECTORY / 'yml/longhorn/input.json'
+    config = json.loads(path.read_text()) if path.exists() else yaml.safe_load((DIRECTORY / 'config.yml').read_text())
+    result = {}
+    for desired in product.snapshot_objects(config):
+        metadata = desired['metadata']; namespace = metadata.get('namespace', '')
+        current = get(desired['kind'], metadata['name'], namespace)
+        if current:
+            product.require_owned(current, product.SNAPSHOT_OWNER)
+            key = desired['kind'] + '/' + namespace + '/' + metadata['name']
+            result[key] = {'uid': current['metadata']['uid'], 'spec': current.get('spec'),
+                           'rules': current.get('rules'), 'roleRef': current.get('roleRef'), 'subjects': current.get('subjects')}
+    return result
+
+
+def recover_installation(relay_pid):
+    """Native empty-store uninstall and exact fixture recovery; never force CRs."""
+    core_identity(); cleanup_business(); state = owner()
+    namespace = get('namespace', 'longhorn-system')
+    if not namespace or namespace['metadata']['uid'] != state.get('namespace_uid'):
+        raise ValueError('installation recovery needs its original namespace identity')
+    if not state.get('namespace_defaults'):
+        raise ValueError('installation recovery lacks original namespace-default identities')
+    journal = {'namespace': 'longhorn-system', 'namespace_uid': state['namespace_uid'],
+               'defaults': state['namespace_defaults'], 'objects': {}}
+    for name, key in (('longhorn-grpc-tls', 'tls_uid'), ('longhorn-volume-key', 'encryption_uid')):
+        current = get('secret', name, 'longhorn-system')
+        if current and current['metadata']['uid'] != state.get(key): raise ValueError('recovery credential identity changed')
+        if state.get(key): journal['objects']['Secret/' + name] = state[key]
+    before = shared_snapshot_identity()
+    native_metadata = load_helper('longhorn-uninstall.py').native_leases(sys.modules[__name__])
+    bootstrap_nodes = {n['metadata']['name']: n['metadata']['uid'] for n in get('nodes')['items']
+                       if n['metadata'].get('labels', {}).get('kubeauto.io/component') == 'longhorn'}
+    run_requests(relay_pid, [], uninstall_id='recovery-' + secrets.token_hex(12))
+    execute([sys.executable, BASE / 'roles/longhorn/files/longhorn.py', 'guard',
+             '--kubeconfig', DIRECTORY / 'kubectl.kubeconfig'])
+    releases = json.loads(execute([BASE / 'extra-bin/helm', 'list', '--all', '-n', 'longhorn-system', '-o', 'json']).stdout)
+    if any(row['name'] == 'longhorn' for row in releases): raise ValueError('native uninstall left its Helm release')
+    if shared_snapshot_identity() != before: raise ValueError('native uninstall changed shared snapshot APIs/controller')
+    nodes = {n['metadata']['name']: n for n in get('nodes')['items']}
+    for name, uid in bootstrap_nodes.items():
+        meta = nodes.get(name, {}).get('metadata', {})
+        labels = meta.get('labels', {})
+        if (meta.get('uid') != uid or labels.get('kubeauto.io/component') == 'longhorn' or
+                'node.longhorn.io/create-default-disk' in labels or
+                'kubeauto.io/longhorn-client' in labels or
+                'node.longhorn.io/default-disks-config' in meta.get('annotations', {})):
+            raise ValueError('native uninstall left or replaced bootstrap node metadata')
+    print('LONGHORN_NODE_BOOTSTRAP_CLEAN_VERIFIED nodes=' + str(len(bootstrap_nodes)), flush=True)
+    remaining = load_helper('longhorn-uninstall.py').native_leases(sys.modules[__name__])
+    if any(native_metadata.get(key) != uid for key, uid in remaining.items()):
+        raise ValueError('native webhook lease was replaced or appeared during uninstall')
+    journal['objects'].update(remaining)
+    print('LONGHORN_NATIVE_LEASE_IDENTITIES_VERIFIED remaining=' + str(len(remaining)), flush=True)
+    # Helm waits for rendered resources; background GC of their dependent Pods
+    # may finish later. Wait without deleting or admitting unknown objects.
+    wait('native-uninstall-dependent-pods-clean', 180,
+         lambda: not get('pods', namespace='longhorn-system')['items'])
+    # Retain uninstall Events as private diagnostics before removing the owned
+    # namespace. They can refer to deleted hook Pods and are not data consumers.
+    events = get('events', namespace='longhorn-system')['items']
+    write_private(DIRECTORY / 'longhorn-uninstall-events.json', events)
+    journal['defaults'] = list(journal['defaults']) + [event['metadata']['uid'] for event in events]
+    # Detect foreign namespace contents BEFORE deleting fixture mounts/services.
+    check_business_graph(journal)
+    if state.get('disks'): cleanup_disks()
+    if state.get('host_state'): restore_hosts()
+    receipt = DIRECTORY / 'yml/longhorn/installation.json'
+    if receipt.exists():
+        if receipt.is_symlink() or json.loads(receipt.read_text()) != {
+                'cluster_uid': state['cluster_uid'], 'namespace_uid': state['namespace_uid']}:
+            raise ValueError('recovery installation receipt identity changed')
+        archived = receipt.with_name('installation-uninstalled-' + state['namespace_uid'] + '.json')
+        if archived.exists(): raise ValueError('installation recovery archive already exists')
+        receipt.rename(archived)
+    remove(namespace)
+    wait('recovered-longhorn-namespace-clean', 180, lambda: get('namespace', 'longhorn-system') is None)
+    state = owner()
+    for key in ('namespace_uid', 'namespace_defaults', 'tls_uid', 'encryption_uid'):
+        state.pop(key, None)
+    state.update(healthy=False, native_uninstalled=True); write_private(STATE, state)
+    path = DIRECTORY / 'config.yml'; config = yaml.safe_load(path.read_text())
+    config.update(longhorn_install='no', longhorn_action='present', longhorn_uninstall_id='', longhorn_requests=[])
+    # New credentials are created on the next install; do not append fixture
+    # classes a second time or silently reuse the removed key reference.
+    config['longhorn_storage_classes'] = [row for row in config['longhorn_storage_classes'] if row['name'] == 'longhorn']
+    write_private(path, config)
+    core_identity()
+    print('LONGHORN_NATIVE_UNINSTALL_RECOVERY_VERIFIED shared_snapshot_resources=' + str(len(before)), flush=True)
+
+
+def bind_snapshots(journal):
+    """Bind retained content and native snapshots before any cleanup mutation."""
+    record = DIRECTORY / 'longhorn-install-business.json'
+    for name, row in journal.get('snapshots', {}).items():
+        snap = get('volumesnapshots.snapshot.storage.k8s.io', name, journal['namespace'])
+        uid = journal['objects'].get('VolumeSnapshot/' + name)
+        if snap and snap['metadata']['uid'] != uid:
+            raise ValueError('business CSI snapshot was replaced')
+        if not uid:
+            if row.get('content'): raise ValueError('snapshot content has no recorded owning snapshot UID')
+            continue
+        if row.get('dynamic'):
+            # Fixed external-snapshotter 8.6.0 uses the complete VS UID with
+            # prefix "snapshot"; Longhorn passes this name through unchanged.
+            # Record it even if CreateSnapshot failed before returning a handle.
+            native_name = 'snapshot-' + uid
+            if row.get('native', native_name) != native_name: raise ValueError('dynamic CSI native snapshot name changed')
+            row['native'] = native_name
+            journal.setdefault('native_snapshots', {}).setdefault(native_name, {})
+        contents = [c for c in get('volumesnapshotcontents.snapshot.storage.k8s.io')['items']
+                    if c.get('spec', {}).get('volumeSnapshotRef', {}).get('uid') == uid]
+        if len(contents) > 1: raise ValueError('multiple contents refer to the same business snapshot')
+        if row.get('content'):
+            recorded = get('volumesnapshotcontents.snapshot.storage.k8s.io', row['content'])
+            if recorded and (not contents or recorded['metadata']['uid'] != row['content_uid'] or
+                             recorded['metadata']['name'] != contents[0]['metadata']['name']):
+                raise ValueError('recorded snapshot content binding was replaced')
+        if contents:
+            content = contents[0]; spec = content['spec']; ref = spec['volumeSnapshotRef']
+            if (spec.get('driver') != 'driver.longhorn.io' or spec.get('deletionPolicy') != 'Retain' or
+                    ref.get('namespace') != journal['namespace'] or ref.get('name') != name):
+                raise ValueError('business snapshot content binding differs')
+            identity = {'content': content['metadata']['name'], 'content_uid': content['metadata']['uid']}
+            if any(k in row and row[k] != v for k, v in identity.items()): raise ValueError('snapshot content was replaced')
+            row.update(identity)
+            handle = content.get('status', {}).get('snapshotHandle') or spec.get('source', {}).get('snapshotHandle')
+            if not handle and spec.get('source', {}).get('volumeHandle') != journal['volume']:
+                raise ValueError('foreign pending CSI snapshot source')
+            if handle:
+                if row.get('backup'):
+                    if (row['backup'] not in journal.get('backups', {}) or
+                            handle != 'bak://' + journal['volume'] + '/' + row['backup']):
+                        raise ValueError('foreign CSI backup handle')
+                    continue
+                prefix = 'snap://' + journal['volume'] + '/'
+                if not handle.startswith(prefix) or '/' in handle[len(prefix):]: raise ValueError('foreign CSI snapshot handle')
+                native_name = handle[len(prefix):]
+                if row.get('native', native_name) != native_name: raise ValueError('snapshot native handle changed')
+                row['native'] = native_name
+                journal.setdefault('native_snapshots', {}).setdefault(native_name, {})
+    for name, row in journal.get('native_snapshots', {}).items():
+        native = get('snapshots.longhorn.io', name, 'longhorn-system')
+        if not native: continue
+        if native.get('spec', {}).get('volume') != journal['volume']: raise ValueError('foreign native snapshot volume')
+        if row.get('uid', native['metadata']['uid']) != native['metadata']['uid']: raise ValueError('native snapshot was replaced')
+        if 'request' in row:
+            product = load_helper('../../roles/longhorn/files/longhorn.py')
+            product.check_request(native, product.request_object(row['request']))
+        row['uid'] = native['metadata']['uid']
+    write_private(record, journal)
+
+
+def bind_backups(journal):
+    """Bind product requests and native BackupVolume to this unique source UID."""
+    record = DIRECTORY / 'longhorn-install-business.json'
+    product = load_helper('../../roles/longhorn/files/longhorn.py')
+    for name, row in journal.get('backups', {}).items():
+        obj = get('backups.longhorn.io', name, 'longhorn-system')
+        if not obj:
+            continue
+        if row.get('recurring_job'):
+            observed = {key: value for key, value in obj['spec'].items() if key != 'syncRequestedAt'}
+            if (obj['metadata']['uid'] != row['uid'] or observed != row['spec'] or
+                    obj['spec'].get('labels', {}).get('RecurringJob') != row['recurring_job']):
+                raise ValueError('recurring backup fixture identity or specification changed')
+        else:
+            product.check_request(obj, product.request_object(row['request']))
+        if (obj['metadata']['labels'].get('backup-target') != 'default' or
+                obj['metadata']['labels'].get('backup-volume') != journal['volume'] or
+                obj['metadata']['uid'] != row.get('uid', obj['metadata']['uid'])):
+            raise ValueError('backup fixture request identity or source changed')
+        row['uid'] = obj['metadata']['uid']
+    candidates = [obj for obj in get('backupvolumes.longhorn.io', namespace='longhorn-system')['items']
+                  if obj['spec'].get('volumeName') == journal['volume']]
+    if len(candidates) > 1:
+        raise ValueError('multiple native backup volumes for the fixture source')
+    if candidates:
+        obj = candidates[0]
+        if obj['spec'].get('backupTargetName') != 'default':
+            raise ValueError('native backup volume belongs to a different target')
+        identity = {'name': obj['metadata']['name'], 'uid': obj['metadata']['uid']}
+        if journal.get('backup_volume', identity) != identity:
+            raise ValueError('native backup volume identity changed')
+        journal['backup_volume'] = identity
+    write_private(record, journal)
+
+
+def remove_backup_volume(journal, row):
+    """Retry status-only RV races; every DELETE keeps fresh UID/RV guards."""
+    def retire():
+        current = get('backupvolumes.longhorn.io', row['name'], 'longhorn-system')
+        if not current:
+            return True
+        if (current['metadata']['uid'] != row['uid'] or current['spec'].get('volumeName') != journal['volume'] or
+                current['spec'].get('backupTargetName') != 'default'):
+            raise ValueError('backup volume replaced before scoped cleanup')
+        try:
+            remove(current)
+        except RuntimeError as error:
+            # Pinned API Server rejects stale resourceVersion even when only
+            # the Longhorn controller's status changed during discovery.
+            native = getattr(error, 'stderr', '')
+            prefix = 'Error from server (Conflict): Operation cannot be fulfilled on BackupVolume.longhorn.io "'+row['name']+'": '
+            if (not native.startswith(prefix) or 'the ResourceVersion in the precondition (' not in native or
+                    ') does not match the ResourceVersion in record (' not in native):
+                raise
+            return False
+        return True
+    wait('business-native-backup-volume-guarded-delete', 60, retire)
+
+
+def cleanup_backups(journal):
+    if not journal.get('backups'):
+        return
+    bind_backups(journal)
+    for name, row in journal['backups'].items():
+        obj = get('backups.longhorn.io', name, 'longhorn-system')
+        if obj:
+            if obj['metadata']['uid'] != row.get('uid'):
+                raise ValueError('backup replaced before scoped cleanup')
+            remove(obj)
+        def retired():
+            current = get('backups.longhorn.io', name, 'longhorn-system')
+            if current and current['metadata']['uid'] != row.get('uid'):
+                raise ValueError('backup replaced during scoped cleanup')
+            return current is None
+        wait('business-native-backup-clean-' + name, 600, retired)
+    row = journal.get('backup_volume')
+    if row:
+        current = get('backupvolumes.longhorn.io', row['name'], 'longhorn-system')
+        if current:
+            if (current['metadata']['uid'] != row['uid'] or current['spec'].get('volumeName') != journal['volume'] or
+                    current['spec'].get('backupTargetName') != 'default'):
+                raise ValueError('backup volume replaced before scoped cleanup')
+            # Native deletion retires volume.cfg and remaining unreferenced blocks.
+            remove_backup_volume(journal, row)
+        def volume_retired():
+            current = get('backupvolumes.longhorn.io', row['name'], 'longhorn-system')
+            if current and current['metadata']['uid'] != row['uid']:
+                raise ValueError('backup volume replaced during scoped cleanup')
+            return current is None
+        wait('business-native-backup-volume-clean', 600, volume_retired)
+    print('LONGHORN_BACKUP_NATIVE_FIXTURES_CLEAN_PASS', flush=True)
+
+
+def verify_restore_capacity(journal, claim_name, size):
+    """Check the actual restored objects, including their recorded identities."""
+    row = journal['claims'][claim_name]
+    claim = get('pvc', claim_name, journal['namespace'])
+    pv = get('pv', row['pv'])
+    volume = get('volumes.longhorn.io', row['volume'], 'longhorn-system')
+    if (not claim or not pv or not volume or
+            claim['metadata']['uid'] != journal['objects']['PersistentVolumeClaim/' + claim_name] or
+            pv['metadata']['uid'] != row['pv_uid'] or volume['metadata']['uid'] != row['volume_uid'] or
+            claim['spec'].get('volumeName') != row['pv'] or
+            pv['spec'].get('csi', {}).get('volumeHandle') != row['volume']):
+        raise ValueError('restore capacity objects changed identity or binding')
+    values = (claim['spec']['resources']['requests']['storage'],
+              claim.get('status', {}).get('capacity', {}).get('storage', '0'),
+              pv['spec'].get('capacity', {}).get('storage', '0'), volume['spec'].get('size', '0'))
+    if any(capacity_bytes(value) != size for value in values):
+        raise ValueError('restored PVC/PV/native volume capacity differs')
+
+
+def verify_snapshot(journal, create, relay_pid, payload, digest):
+    namespace = journal['namespace']; record = DIRECTORY / 'longhorn-install-business.json'
+    if capacity_bytes(get('volumes.longhorn.io', journal['volume'], 'longhorn-system')['spec']['size']) != 2*1024**3:
+        raise ValueError('snapshot source capacity differs')
+    native_name = 'native-' + secrets.token_hex(12)
+    request = {'kind': 'snapshot', 'name': native_name, 'volume': journal['volume']}
+    journal['native_snapshots'] = {native_name: {'request': request}}
+    journal['snapshots'] = {}; write_private(record, journal)
+    run_requests(relay_pid, [request]); bind_snapshots(journal)
+    native = get('snapshots.longhorn.io', native_name, 'longhorn-system')
+    if not native or not native.get('status', {}).get('readyToUse'): raise ValueError('native product snapshot not ready')
+    native_uid = native['metadata']['uid']
+    # Re-entry must observe the original immutable request rather than take a
+    # second snapshot under a different identity.
+    run_requests(relay_pid, [request])
+    if get('snapshots.longhorn.io', native_name, 'longhorn-system')['metadata']['uid'] != native_uid:
+        raise ValueError('native snapshot re-entry replaced the operation')
+    before = idempotence_snapshot(namespace)
+    run_requests(relay_pid, [dict(request, volume='missing-' + secrets.token_hex(12))],
+                 expected_refusal='immutable Longhorn request differs; use a new name')
+    current = get('snapshots.longhorn.io', native_name, 'longhorn-system')
+    if (idempotence_snapshot(namespace) != before or not current or current['metadata']['uid'] != native_uid or
+            current['spec'] != native['spec']):
+        raise ValueError('rejected snapshot request changed original resources')
+    for name, source in (('csi', {'persistentVolumeClaimName': 'data'}),
+                         ('native', {'volumeSnapshotContentName': 'longhorn-' + namespace})):
+        # Pre-provisioned CSI content exposes the native product snapshot for
+        # an independent restore using the same supported CSI restore path.
+        journal['snapshots'][name] = {'native': native_name} if name == 'native' else {'dynamic': True}
+        write_private(record, journal)
+        snapshot = create({'apiVersion': 'snapshot.storage.k8s.io/v1', 'kind': 'VolumeSnapshot',
+                           'metadata': {'name': name, 'namespace': namespace},
+                           'spec': {'volumeSnapshotClassName': 'longhorn-snapshot', 'source': source}})
+        if name == 'native':
+            content = {'apiVersion': 'snapshot.storage.k8s.io/v1', 'kind': 'VolumeSnapshotContent',
+                       'metadata': {'name': source['volumeSnapshotContentName']}, 'spec': {
+                           'driver': 'driver.longhorn.io', 'deletionPolicy': 'Retain',
+                           'volumeSnapshotClassName': 'longhorn-snapshot',
+                           'volumeSnapshotRef': {'name': name, 'namespace': namespace, 'uid': snapshot['metadata']['uid']},
+                           'source': {'snapshotHandle': 'snap://' + journal['volume'] + '/' + native_name}}}
+            created = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(content)).stdout)
+            journal['snapshots'][name].update(content=created['metadata']['name'], content_uid=created['metadata']['uid'])
+            write_private(record, journal)
+        def ready():
+            obj = get('volumesnapshots.snapshot.storage.k8s.io', name, namespace)
+            if not obj or obj['metadata']['uid'] != snapshot['metadata']['uid']: raise ValueError('CSI snapshot identity changed')
+            status = obj.get('status', {})
+            if status.get('error'): raise ValueError('CSI snapshot returned an error')
+            return status if status.get('readyToUse') else None
+        status = wait('snapshot-ready-' + name, 600, ready)
+        # Static imports may remain ready without restoreSize: Longhorn does
+        # not implement ListSnapshots. Dynamic CreateSnapshot supplies size.
+        if ('restoreSize' in status or name == 'csi') and capacity_bytes(status.get('restoreSize', '0')) != 2*1024**3:
+            raise ValueError('snapshot restore size differs')
+        bind_snapshots(journal); row = journal['snapshots'][name]
+        if status.get('boundVolumeSnapshotContentName') != row.get('content') or not row.get('native'):
+            raise ValueError('CSI snapshot ready without original content/native binding')
+    post_payload = payload + '-after-snapshot'
+    post_digest = kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c', payload_program(post_payload)).stdout.strip()
+    if post_digest != hashlib.sha256(post_payload.encode()*262144).hexdigest() or post_digest == digest:
+        raise ValueError('post-snapshot source write was not confirmed')
+    identities = {journal['pv'], journal['volume']}
+    for name in ('csi', 'native'):
+        claim_name = 'restore-' + name
+        claim = clone_claim(namespace, claim_name, '2Gi')
+        claim['spec']['dataSource'] = {'kind': 'VolumeSnapshot', 'apiGroup': 'snapshot.storage.k8s.io', 'name': name}
+        created = create(claim)
+        bound = wait('snapshot-restore-bound-' + name, 600, lambda: (obj if obj and obj.get('status', {}).get('phase') == 'Bound' else None)
+                     if (obj := get('pvc', claim_name, namespace)) else None)
+        if bound['metadata']['uid'] != created['metadata']['uid']: raise ValueError('snapshot restore claim replaced')
+        wait('snapshot-restore-native-' + name, 120, lambda: get('volumes.longhorn.io', get('pv', bound['spec']['volumeName'])['spec']['csi']['volumeHandle'], 'longhorn-system'))
+        bind_business_volume(journal, record, claim_name); restored = journal['claims'][claim_name]
+        if restored['pv'] in identities or restored['volume'] in identities: raise ValueError('snapshot restore reused a source identity')
+        identities.update((restored['pv'], restored['volume']))
+        pod_name = claim_name
+        create(client_pod(namespace, pod_name, claim_name, 'longhorn-node-' + WORKERS[1].rsplit('.', 1)[1]))
+        wait('snapshot-restore-client-' + name, 600, lambda: any(x['type'] == 'Ready' and x['status'] == 'True'
+             for x in get('pod', pod_name, namespace).get('status', {}).get('conditions', [])))
+        wait('snapshot-restore-three-replicas-' + name, 600, lambda: healthy_replicas(restored['volume']))
+        verify_restore_capacity(journal, claim_name, 2*1024**3)
+        actual = kubectl('-n', namespace, 'exec', pod_name, '--', 'python3', '-c', payload_program(payload, read_only=True)).stdout.strip()
+        if actual != digest: raise ValueError('snapshot restore crossed its confirmed data boundary')
+        changed = payload + '-restore-' + name
+        result = kubectl('-n', namespace, 'exec', pod_name, '--', 'python3', '-c', payload_program(changed)).stdout.strip()
+        if result != hashlib.sha256(changed.encode()*262144).hexdigest(): raise ValueError('snapshot restore isolation write failed')
+        source = kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c', payload_program(post_payload, read_only=True)).stdout.strip()
+        if source != post_digest: raise ValueError('snapshot restore write modified source')
+        print('LONGHORN_SNAPSHOT_BOUNDARY_VERIFIED type=' + name + ' snapshot_sha256=' + digest + ' source_sha256=' + post_digest, flush=True)
+    return post_payload, post_digest
+
+
+def verify_backup_restore(journal, create, name, backup, payload, digest, source_payload, source_digest, *, source_client='writer'):
+    namespace = journal['namespace']; record = DIRECTORY / 'longhorn-install-business.json'
+    receipt = journal['backups'][backup]['object_receipt']
+    if (receipt.get('volume') != journal['volume'] or receipt.get('backup') != backup or
+            receipt.get('size') != 2*1024**3 or not receipt.get('objects')):
+        raise ValueError('backup restore requires verified source identity and capacity')
+    content_name = 'longhorn-backup-' + secrets.token_hex(12)
+    journal.setdefault('snapshots', {})[name] = {'backup': backup}
+    write_private(record, journal)
+    snapshot = create({'apiVersion': 'snapshot.storage.k8s.io/v1', 'kind': 'VolumeSnapshot',
+                       'metadata': {'name': name, 'namespace': namespace},
+                       'spec': {'volumeSnapshotClassName': 'longhorn-snapshot',
+                                'source': {'volumeSnapshotContentName': content_name}}})
+    content = create({'apiVersion': 'snapshot.storage.k8s.io/v1', 'kind': 'VolumeSnapshotContent',
+        'metadata': {'name': content_name}, 'spec': {'driver': 'driver.longhorn.io', 'deletionPolicy': 'Retain',
+        'volumeSnapshotClassName': 'longhorn-snapshot',
+        'volumeSnapshotRef': {'name': name, 'namespace': namespace, 'uid': snapshot['metadata']['uid']},
+        'source': {'snapshotHandle': 'bak://' + journal['volume'] + '/' + backup}}})
+    journal['snapshots'][name].update(content=content_name, content_uid=content['metadata']['uid'])
+    write_private(record, journal)
+    def ready():
+        current = get('volumesnapshots.snapshot.storage.k8s.io', name, namespace)
+        if not current or current['metadata']['uid'] != snapshot['metadata']['uid']:
+            raise ValueError('backup CSI snapshot identity changed')
+        status = current.get('status', {})
+        if status.get('error'):
+            # v8.6.0 retries this precise pre-provisioned-content cache miss.
+            if status['error'].get('message') == 'VolumeSnapshotContent is missing': return None
+            raise ValueError('backup CSI snapshot returned an error')
+        return status if status.get('readyToUse') else None
+    status = wait('backup-csi-snapshot-ready-' + name, 600, ready)
+    # GetSnapshotStatus returns ready=true,size=0 when ListSnapshots is not
+    # supported; the sidecar omits restoreSize. The object receipt above and
+    # restored PVC/PV/native capacities below provide independent size checks.
+    if 'restoreSize' in status and capacity_bytes(status['restoreSize']) != receipt['size']:
+        raise ValueError('backup CSI snapshot capacity differs')
+    bind_snapshots(journal)
+    if status.get('boundVolumeSnapshotContentName') != content_name:
+        raise ValueError('backup CSI snapshot ready without original content binding')
+    claim_name = name + '-restore'
+    claim = create({'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim',
+        'metadata': {'name': claim_name, 'namespace': namespace}, 'spec': {'storageClassName': journal.get('storage_class', 'longhorn'),
+        'accessModes': ['ReadWriteOnce'], 'resources': {'requests': {'storage': '2Gi'}},
+        'dataSource': {'kind': 'VolumeSnapshot', 'apiGroup': 'snapshot.storage.k8s.io', 'name': name}}})
+    bound = wait('backup-restore-bound-' + name, 900, lambda: (obj if obj and obj.get('status', {}).get('phase') == 'Bound' else None)
+                 if (obj := get('pvc', claim_name, namespace)) else None)
+    if bound['metadata']['uid'] != claim['metadata']['uid']:
+        raise ValueError('backup restore claim replaced')
+    wait('backup-restore-native-' + name, 120, lambda: get('volumes.longhorn.io', get('pv', bound['spec']['volumeName'])['spec']['csi']['volumeHandle'], 'longhorn-system'))
+    bind_business_volume(journal, record, claim_name); restored = journal['claims'][claim_name]
+    others = [journal, *(value for key, value in journal['claims'].items() if key != claim_name)]
+    if any(restored['pv'] == row['pv'] or restored['volume'] == row['volume'] for row in others):
+        raise ValueError('backup restore reused a source or restore identity')
+    create(client_pod(namespace, claim_name, claim_name, 'longhorn-node-' + WORKERS[1].rsplit('.', 1)[1]))
+    wait('backup-restore-client-' + name, 900, lambda: any(x['type'] == 'Ready' and x['status'] == 'True'
+         for x in get('pod', claim_name, namespace).get('status', {}).get('conditions', [])))
+    wait('backup-restore-three-replicas-' + name, 600, lambda: healthy_replicas(restored['volume']))
+    verify_restore_capacity(journal, claim_name, receipt['size'])
+    if journal.get('storage_class') == 'longhorn-encrypted':
+        load_helper('longhorn-encryption.py').verify_restored(sys.modules[__name__], journal, restored, claim_name)
+    actual = kubectl('-n', namespace, 'exec', claim_name, '--', 'python3', '-c', payload_program(payload, read_only=True)).stdout.strip()
+    if actual != digest:
+        raise ValueError('backup restore crossed its confirmed data boundary')
+    changed = payload + '-restored-' + name
+    actual = kubectl('-n', namespace, 'exec', claim_name, '--', 'python3', '-c', payload_program(changed)).stdout.strip()
+    if actual != hashlib.sha256(changed.encode()*262144).hexdigest():
+        raise ValueError('backup restore isolation write failed')
+    actual = kubectl('-n', namespace, 'exec', source_client, '--', 'python3', '-c', payload_program(source_payload, read_only=True)).stdout.strip()
+    if actual != source_digest:
+        raise ValueError('backup restore write modified source')
+    print('LONGHORN_BACKUP_RESTORE_BOUNDARY_VERIFIED mode=' + name + ' backup_sha256=' + digest +
+          ' source_sha256=' + source_digest + ' independent_volume=' + restored['volume'], flush=True)
+
+
+def verify_backup(journal, create, relay_pid, payload, digest, backup_configuration, *, modes=('full', 'incremental')):
+    if modes not in (('full',), ('full', 'incremental')):
+        raise ValueError('backup validation requires a full starting point')
+    store = backup_store(); record = DIRECTORY / 'longhorn-install-business.json'
+    journal['backups'] = {}; points = {}
+    encryption = None
+    if journal.get('storage_class') == 'longhorn-encrypted':
+        encryption = load_helper('longhorn-encryption.py')
+        journal['encrypted_backup_device'] = encryption.Probe(sys.modules[__name__]).host_probe(WORKERS[0], journal, True)
+        write_private(record, journal)
+    for mode in modes:
+        snapshot_name = 'backup-snapshot-' + secrets.token_hex(12)
+        backup_name = 'backup-' + mode + '-' + secrets.token_hex(12)
+        snapshot = {'kind': 'snapshot', 'name': snapshot_name, 'volume': journal['volume']}
+        backup = {'kind': 'backup', 'name': backup_name, 'snapshot': snapshot_name, 'mode': mode}
+        journal.setdefault('native_snapshots', {})[snapshot_name] = {'request': snapshot}
+        journal['backups'][backup_name] = {'request': backup}
+        write_private(record, journal)
+        run_requests(relay_pid, [snapshot, backup], backup_configuration=backup_configuration)
+        bind_snapshots(journal); bind_backups(journal)
+        obj = get('backups.longhorn.io', backup_name, 'longhorn-system'); status = obj.get('status', {})
+        url = urlsplit(status.get('url', '')); query = parse_qs(url.query)
+        if (status.get('state') != 'Completed' or status.get('progress') != 100 or status.get('error') or
+                query.get('volume') != [journal['volume']] or query.get('backup') != [backup_name] or
+                url.scheme != 's3' or url.netloc != urlsplit(backup_configuration['longhorn_backup_target']).netloc):
+            raise ValueError('completed backup has a different target or source identity')
+        receipt = (encryption.backup_receipt(sys.modules[__name__], store, journal, backup_name, 2*1024**3)
+                   if encryption else store.backup_receipt(journal['volume'], backup_name, 2*1024**3))
+        if receipt['incremental'] is not (mode == 'incremental'):
+            raise ValueError('backup metadata does not prove requested full/incremental mode')
+        journal['backups'][backup_name]['object_receipt'] = receipt
+        write_private(record, journal)
+        points[mode] = (backup_name, payload, digest)
+        print('LONGHORN_BACKUP_OBJECT_RECEIPT mode=' + mode + ' ' + json.dumps(receipt, sort_keys=True), flush=True)
+        payload += '-after-' + mode
+        digest = kubectl('-n', journal['namespace'], 'exec', 'writer', '--', 'python3', '-c', payload_program(payload)).stdout.strip()
+        if digest != hashlib.sha256(payload.encode()*262144).hexdigest():
+            raise ValueError('post-backup source write was not confirmed')
+    for mode, (backup_name, point_payload, point_digest) in points.items():
+        verify_backup_restore(journal, create, mode, backup_name, point_payload, point_digest, payload, digest)
+    return payload, digest
+
+
+def replica_topology(journal, count, policy=None):
+    volume = get('volumes.longhorn.io', journal['volume'], 'longhorn-system')
+    if not volume or volume['metadata']['uid'] != journal['volume_uid']:
+        raise ValueError('replica-scale source volume identity changed')
+    if volume['spec'].get('numberOfReplicas') != count or volume.get('status', {}).get('robustness') != 'healthy':
+        return None
+    if policy is not None and volume['spec'].get('replicaAutoBalance') != policy:
+        return None
+    replicas = [r for r in get('replicas.longhorn.io', namespace='longhorn-system')['items']
+                if r['spec'].get('volumeName') == journal['volume']]
+    nodes = {r['spec'].get('nodeID') for r in replicas}
+    allowed = {'longhorn-node-' + ip.rsplit('.', 1)[1] for ip in WORKERS}
+    if (len(replicas) != count or len(nodes) != count or not nodes <= allowed or
+            any(r['metadata'].get('deletionTimestamp') or r.get('status', {}).get('currentState') != 'running' or
+                not r['spec'].get('healthyAt') or r['spec'].get('failedAt') for r in replicas)):
+        return None
+    engines = [e for e in get('engines.longhorn.io', namespace='longhorn-system')['items']
+               if e['spec'].get('volumeName') == journal['volume'] and
+               e['spec'].get('nodeID') == volume['status'].get('currentNodeID') and
+               e.get('status', {}).get('currentState') == 'running']
+    names = {r['metadata']['name'] for r in replicas}
+    if len(engines) != 1 or engines[0]['status'].get('replicaModeMap') != {name: 'RW' for name in names}:
+        return None
+    return {r['metadata']['name']: {'uid': r['metadata']['uid'], 'node': r['spec']['nodeID']} for r in replicas}
+
+
+def verify_replica_scale(journal, relay_pid, payload, digest):
+    original = get('volumes.longhorn.io', journal['volume'], 'longhorn-system')
+    before = wait('replica-scale-original', 600, lambda: replica_topology(journal, 3))
+    balance = original['spec']['replicaAutoBalance']
+    previous = before
+    for count, policy in ((2, 'least-effort'), (3, 'best-effort'), (3, balance)):
+        current = get('volumes.longhorn.io', journal['volume'], 'longhorn-system')
+        if not current or current['metadata']['uid'] != journal['volume_uid']:
+            raise ValueError('replica-scale source replaced before change')
+        patch = [{'op': 'test', 'path': '/metadata/uid', 'value': journal['volume_uid']}]
+        for field, value in (('numberOfReplicas', count), ('replicaAutoBalance', policy)):
+            patch += [{'op': 'test', 'path': '/spec/' + field, 'value': current['spec'][field]},
+                      {'op': 'replace', 'path': '/spec/' + field, 'value': value}]
+        kubectl('-n', 'longhorn-system', 'patch', 'volumes.longhorn.io', journal['volume'],
+                '--type=json', '--patch-file=/dev/stdin', stdin=json.dumps(patch))
+        placement = wait('replica-scale-' + str(count) + '-' + policy, 900, lambda: replica_topology(journal, count, policy))
+        if (count == 2 and any(before.get(name) != row for name, row in placement.items())) or (
+                count == 3 and any(placement.get(name) != row for name, row in previous.items())):
+            raise ValueError('replica scale replaced a healthy retained replica')
+        actual = kubectl('-n', journal['namespace'], 'exec', 'writer', '--', 'python3', '-c',
+                         payload_program(payload, read_only=True)).stdout.strip()
+        if actual != digest:
+            raise ValueError('replica scaling changed confirmed bytes')
+        print('LONGHORN_REPLICA_SCALE_OBSERVED count=' + str(count) + ' policy=' + policy +
+              ' sha256=' + digest + ' placement=' + json.dumps(placement, sort_keys=True), flush=True)
+        previous = placement
+    config = yaml.safe_load((DIRECTORY / 'config.yml').read_text())
+    classes = config['longhorn_storage_classes']
+    classes[0]['replicas'] = len(WORKERS) + 1
+    run_requests(relay_pid, [], storage_classes=classes,
+                 expected_refusal='duplicate StorageClass or insufficient independent storage nodes')
+    if replica_topology(journal, 3) != previous:
+        raise ValueError('rejected replica configuration changed the source topology')
+    print('LONGHORN_REPLICA_SCALE_REFUSAL_VERIFIED fault_domains=3 requested=4', flush=True)
+
+
+def performance_profile(journal, *, allow_missing=False):
+    """Keep observed CPU/memory windows and declared resources, without secrets."""
+    result = {}
+    for namespace in ('longhorn-system', journal['namespace']):
+        pods = get('pods', namespace=namespace)['items']
+        selected = [p for p in pods if p['metadata']['name'] == 'writer' or
+                    p['metadata']['name'].startswith(('longhorn-manager-', 'instance-manager-'))]
+        if not selected:
+            raise ValueError('performance resource profile has no running components')
+        metrics = {p['metadata']['name']: p for p in get('pods.metrics.k8s.io', namespace=namespace)['items']}
+        for pod in selected:
+            name = pod['metadata']['name']; metric = metrics.get(name)
+            if not metric:
+                if allow_missing:
+                    return None
+                raise ValueError('performance resource sample is missing')
+            timestamp = datetime.fromisoformat(metric['timestamp'].replace('Z', '+00:00'))
+            age = (datetime.now(timezone.utc) - timestamp).total_seconds()
+            if not 0 <= age <= 90 or not metric.get('window'):
+                raise ValueError('performance resource sample is stale or from the future')
+            usage = {c['name']: c['usage'] for c in metric['containers']}
+            if set(usage) != {c['name'] for c in pod['spec']['containers']} or any(
+                    set(value) != {'cpu', 'memory'} for value in usage.values()):
+                raise ValueError('performance resource sample has incomplete container usage')
+            result[namespace + '/' + name] = {'uid': pod['metadata']['uid'], 'node': pod['spec']['nodeName'],
+                'timestamp': metric['timestamp'], 'window': metric['window'],
+                'containers': [{'name': c['name'], 'image': c['image'], 'resources': c.get('resources', {}),
+                                'usage': usage[c['name']]} for c in pod['spec']['containers']]}
+    return result
+
+
+def verify_performance(journal, payload, digest):
+    helper = load_helper('longhorn-performance.py')
+    code = ('import hashlib,json,math,os,random,time\nfrom pathlib import Path\n' +
+            inspect.getsource(helper.benchmark) + '\nprint(json.dumps(benchmark("/data",%r),sort_keys=True))\n' % owner()['run_id'])
+    # metrics-server needs two scrapes to calculate a new Pod's CPU usage.
+    # Only its initial absent sample is pending; stale/malformed data still
+    # fails, and disappearance after the benchmark remains an error.
+    before = wait('performance-initial-metrics', 90, lambda: performance_profile(journal, allow_missing=True))
+    started = time.monotonic()
+    result = kubectl('-n', journal['namespace'], 'exec', 'writer', '--', 'python3', '-c', code, timeout=600)
+    row = json.loads(result.stdout)
+    after = performance_profile(journal)
+    if {k: v['uid'] for k, v in before.items()} != {k: v['uid'] for k, v in after.items()}:
+        raise ValueError('performance components changed during the baseline')
+    if (row.get('errors') != 0 or row.get('verified_blocks') != 16384 or row.get('dataset_bytes') != 64 * 1024**2 or
+            [r['mode'] for r in row.get('results', [])] != ['sequential-write', 'random-write', 'sequential-read', 'random-read']):
+        raise ValueError('performance workload result is incomplete')
+    actual = kubectl('-n', journal['namespace'], 'exec', 'writer', '--', 'python3', '-c',
+                     payload_program(payload, read_only=True)).stdout.strip()
+    if actual != digest:
+        raise ValueError('performance workload changed acknowledged business data')
+    if not replica_topology(journal, 3):
+        raise ValueError('performance baseline lost three healthy independent replicas')
+    print('LONGHORN_PERFORMANCE_RESULT ' + json.dumps(row, sort_keys=True), flush=True)
+    print('LONGHORN_PERFORMANCE_RESOURCE_PROFILE ' + json.dumps({'before': before, 'after': after,
+        'observation_s': time.monotonic() - started,
+        'boundary': 'Two metrics-server observations and their native windows; not measured resource peaks.'}, sort_keys=True), flush=True)
+
+
+def create_business_object(journal, record, obj):
+    key = obj['kind'] + '/' + obj['metadata']['name']
+    # Events can outlive deleted Pods. Never overwrite the original UID ledger.
+    if key in journal['objects']:
+        raise ValueError('business object name was already journaled; use a new name')
+    result = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(obj)).stdout)
+    journal['objects'][key] = result['metadata']['uid']
+    write_private(record, journal)
+    return result
+
+
+def business(scenario='install', relay_pid=None, *, access_mode='ReadWriteOnce', block=False, storage_class='longhorn',
+             backup_configuration=None, fault_variant=None):
+    if scenario not in ('ownership_request', 'install', 'idempotence', 'uninstall_refusal', 'uninstall_backup', 'rwo', 'rwx', 'clone', 'expansion', 'snapshot', 'reclaim', 'backup', 'backup_refusal', 'replica_scale', 'replica_failure', 'performance', 'trim', 'control_failure', 'encryption', 'network_policy', 'security', 'recurring_snapshot', 'recurring_backup', 'recurring_selector', 'recurring_rotation'):
+        raise ValueError('unknown business scenario')
+    installation_health(); state = owner()
+    if scenario == 'uninstall_refusal':
+        load_helper('longhorn-uninstall.py').confirmation_state(sys.modules[__name__])
+    if storage_class not in ('longhorn', 'longhorn-encrypted', 'longhorn-delete'):
+        raise ValueError('unexpected business storage class')
+    sc = get('storageclass', storage_class)
+    if (not sc or sc.get('provisioner') != 'driver.longhorn.io' or sc.get('reclaimPolicy') not in ('Retain', 'Delete') or
+            sc.get('metadata', {}).get('labels', {}).get('kubeauto.io/component') != 'longhorn'):
+        raise ValueError('unexpected business storage class')
+    namespace = 'longhorn-business-' + secrets.token_hex(8)
+    record = DIRECTORY / 'longhorn-install-business.json'
+    if record.exists(): raise ValueError('previous business fixture needs scoped recovery')
+    if get('namespace', namespace): raise ValueError('business namespace already exists')
+    ns = {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': namespace}}
+    ns = json.loads(kubectl('create', '-f', '-', '-o', 'json', stdin=json.dumps(ns)).stdout)
+    journal = {'namespace': namespace, 'namespace_uid': ns['metadata']['uid'], 'objects': {},
+               'storage_class': storage_class, 'reclaim_policy': sc['reclaimPolicy']}
+    write_private(record, journal)
+    def create(obj):
+        return create_business_object(journal, record, obj)
+    with scoped_cleanup(lambda: cleanup_business(record, relay_pid=relay_pid)):
+        defaults = wait('business-namespace-defaults', 60, lambda:
+                        namespace_defaults(namespace))
+        journal['defaults'] = defaults; write_private(record, journal)
+        check_business_graph(journal)
+        claim = create({'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim', 'metadata': {'name': 'data', 'namespace': namespace},
+                        'spec': {'accessModes': [access_mode], 'storageClassName': storage_class,
+                                 'volumeMode': 'Block' if block else 'Filesystem',
+                                 'resources': {'requests': {'storage': '2Gi'}}}})
+        bound = wait('business-pvc-bound', 600, lambda: (o if o and o.get('status', {}).get('phase') == 'Bound' else None)
+                     if (o := get('pvc', 'data', namespace)) else None)
+        pv = get('pv', bound['spec']['volumeName'])
+        if pv['spec']['claimRef']['uid'] != claim['metadata']['uid'] or pv['spec']['csi']['driver'] != 'driver.longhorn.io':
+            raise ValueError('business volume binding differs')
+        volume = wait('business-native-volume-created', 120, lambda: get('volumes.longhorn.io', pv['spec']['csi']['volumeHandle'], 'longhorn-system'))
+        journal.update(pv=pv['metadata']['name'], pv_uid=pv['metadata']['uid'], volume=pv['spec']['csi']['volumeHandle'], volume_uid=volume['metadata']['uid'])
+        write_private(record, journal)
+        first = create(client_pod(namespace, 'writer', 'data', 'longhorn-node-' + WORKERS[0].rsplit('.', 1)[1], block=block))
+        wait('business-writer-ready', 600, lambda: any(x['type'] == 'Ready' and x['status'] == 'True'
+             for x in get('pod', 'writer', namespace).get('status', {}).get('conditions', [])))
+        payload = state['run_id']
+        code = payload_program(payload, block=block)
+        digest = kubectl('-n', namespace, 'exec', 'writer', '--', 'python3', '-c', code).stdout.strip()
+        expected = hashlib.sha256(payload.encode() * 262144).hexdigest()
+        if digest != expected: raise ValueError('fsync confirmation digest differs')
+        replicas = wait('three-independent-replicas', 600, lambda: healthy_replicas(journal['volume']))
+        if scenario == 'ownership_request':
+            load_helper('longhorn-ownership.py').InstalledRequestProbe(sys.modules[__name__]).verify(journal, relay_pid)
+        elif scenario == 'idempotence':
+            verify_idempotence(relay_pid, journal, digest)
+        elif scenario == 'uninstall_refusal':
+            load_helper('longhorn-uninstall.py').verify_refusal(sys.modules[__name__], journal, relay_pid, 'bound')
+        elif scenario == 'rwo':
+            exclusive_attachment(journal, access_mode, payload, digest, block=block)
+        elif scenario == 'rwx':
+            verify_rwx(journal, create, payload, digest)
+        elif scenario == 'clone':
+            verify_clone(journal, create, payload, digest)
+        elif scenario == 'expansion':
+            verify_expansion(journal, payload, digest, block=block)
+        elif scenario == 'snapshot':
+            payload, digest = verify_snapshot(journal, create, relay_pid, payload, digest)
+        elif scenario == 'backup':
+            payload, digest = verify_backup(journal, create, relay_pid, payload, digest, backup_configuration)
+        elif scenario == 'uninstall_backup':
+            payload, digest = verify_backup(journal, create, relay_pid, payload, digest, backup_configuration, modes=('full',))
+        elif scenario == 'backup_refusal':
+            load_helper('longhorn-backups.py').Refusals(sys.modules[__name__], backup_store()).verify(
+                journal, relay_pid, backup_configuration)
+            payload, digest = verify_backup(journal, create, relay_pid, payload, digest, backup_configuration, modes=('full',))
+        elif scenario == 'replica_scale':
+            verify_replica_scale(journal, relay_pid, payload, digest)
+        elif scenario == 'replica_failure':
+            faults = load_helper('longhorn-faults.py')
+            fault_proof = faults.verify_replica_failure(sys.modules[__name__], journal)
+        elif scenario == 'performance':
+            verify_performance(journal, payload, digest)
+        elif scenario == 'control_failure':
+            control_faults = load_helper('longhorn-control-faults.py')
+            control_proof = control_faults.verify(sys.modules[__name__], journal, create, fault_variant)
+            first = get('pod', control_proof['client'], namespace)
+        elif scenario == 'encryption':
+            encryption_client = load_helper('longhorn-encryption.py').Probe(sys.modules[__name__]).verify(
+                journal, create, payload, digest, block=block)
+            first = get('pod', encryption_client, namespace)
+        elif scenario == 'network_policy':
+            load_helper('longhorn-network.py').Probe(sys.modules[__name__]).verify(journal, create)
+        elif scenario == 'security':
+            security_client = load_helper('longhorn-security.py').Rotation(sys.modules[__name__]).verify(
+                journal, create, payload, digest)
+            first = get('pod', security_client, namespace)
+        elif scenario == 'recurring_selector':
+            load_helper('longhorn-recurring.py').Schedule(sys.modules[__name__]).verify_selector(journal, relay_pid)
+            recurring_client = 'writer'
+        elif scenario == 'recurring_snapshot':
+            recurring_client = load_helper('longhorn-recurring.py').Schedule(sys.modules[__name__]).verify_snapshot(
+                journal, create, relay_pid, payload, digest)
+            first = get('pod', recurring_client, namespace)
+        elif scenario in ('recurring_backup', 'recurring_rotation'):
+            helper = 'longhorn-recurring-rotation.py' if scenario == 'recurring_rotation' else 'longhorn-recurring-backup.py'
+            payload, digest, recurring_client = load_helper(helper).verify(
+                sys.modules[__name__], journal, create, relay_pid, payload, digest, backup_configuration)
+            first = get('pod', recurring_client, namespace)
+        elif scenario == 'trim':
+            trim = load_helper('longhorn-trim.py')
+            trim_proof = trim.prepare(sys.modules[__name__], journal, relay_pid)
+        if scenario == 'reclaim':
+            verify_retained_rebind(journal, create, payload, digest)
+        elif scenario == 'uninstall_refusal':
+            verify_retained_rebind(journal, create, payload, digest, before_rebind=lambda:
+                load_helper('longhorn-uninstall.py').verify_refusal(sys.modules[__name__], journal, relay_pid, 'released'))
+        else:
+            writer_name = control_proof['client'] if scenario == 'control_failure' else 'writer'
+            if scenario == 'encryption':
+                writer_name = encryption_client
+            elif scenario == 'security':
+                writer_name = security_client
+            elif scenario in ('recurring_snapshot', 'recurring_backup', 'recurring_selector', 'recurring_rotation'):
+                writer_name = recurring_client
+            current = get('pod', writer_name, namespace)
+            if not current or current['metadata']['uid'] != first['metadata']['uid']:
+                raise ValueError('business writer was replaced before remount')
+            remove(current); first = None
+            wait('writer-deleted', 180, lambda: get('pod', writer_name, namespace) is None)
+            second = create(client_pod(namespace, 'remount-reader', 'data', 'longhorn-node-' + WORKERS[1].rsplit('.', 1)[1], block=block))
+            wait('business-reader-ready', 600, lambda: any(x['type'] == 'Ready' and x['status'] == 'True'
+                 for x in get('pod', 'remount-reader', namespace).get('status', {}).get('conditions', [])))
+            actual = kubectl('-n', namespace, 'exec', 'remount-reader', '--', 'python3', '-c',
+                             payload_program(payload, block=block, read_only=True)).stdout.strip()
+            if actual != digest: raise ValueError('confirmed bytes changed after cross-node remount')
+            if get('pvc', 'data', namespace)['metadata']['uid'] != claim['metadata']['uid']: raise ValueError('business PVC changed')
+            if scenario == 'replica_failure':
+                faults.verify_client_ledger(sys.modules[__name__], journal, 'remount-reader', fault_proof)
+                print('LONGHORN_REPLICA_FAULT_REMOUNT_LEDGER_VERIFIED ' + json.dumps(fault_proof['summary'], sort_keys=True), flush=True)
+            elif scenario == 'control_failure':
+                control_faults.verify_remount(sys.modules[__name__], journal, 'remount-reader', control_proof)
+            elif scenario == 'trim':
+                trim.finish(sys.modules[__name__], journal, trim_proof, payload, digest)
+            print('LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=' + str(len(payload) * 262144) + ' sha256=' + digest + ' replica_nodes=' + ','.join(replicas), flush=True)
+        if scenario == 'uninstall_backup':
+            load_helper('longhorn-uninstall.py').retain_backup(sys.modules[__name__], journal)
+    installation_health()
+    if scenario in ('recurring_snapshot', 'recurring_backup', 'recurring_selector', 'recurring_rotation'):
+        print('LONGHORN_' + scenario.upper() + '_CLEAN_PASS', flush=True)
+    print('LONGHORN_' + scenario.upper() + ('_VARIANT_PASS' if scenario in ('rwo', 'expansion', 'encryption') else '_BUSINESS_PASS'))
+
+
+def control_failure_suite():
+    for variant in ('engine', 'instance-manager', 'manager'):
+        business('control_failure', fault_variant=variant)
+    print('LONGHORN_ENGINE_FAILURE_BUSINESS_PASS')
+
+
+def encryption_suite(relay_pid, *, phase='all'):
+    modes = {'all': (False, True), 'block': (True,), 'backup': ()}
+    if phase not in modes:
+        raise ValueError('unknown encryption phase')
+    for block in modes[phase]:
+        business('encryption', block=block, storage_class='longhorn-encrypted')
+    if phase in ('all', 'backup'):
+        store = backup_store()
+        with scoped_cleanup(store.cleanup):
+            store.prepare(); store.qualify()
+            configuration = store.product_configuration()
+            business('backup', relay_pid, storage_class='longhorn-encrypted', backup_configuration=configuration)
+    marker = 'LONGHORN_ENCRYPTION' + ('' if phase == 'all' else '_' + phase.upper())
+    print(marker + '_BUSINESS_PASS')
+
+
+def rwo_suite():
+    for access_mode, block in (('ReadWriteOnce', False), ('ReadWriteOncePod', False), ('ReadWriteOnce', True)):
+        business('rwo', access_mode=access_mode, block=block)
+    print('LONGHORN_RWO_BUSINESS_PASS')
+
+
+def healthy_replicas(volume_name):
+    volume = get('volumes.longhorn.io', volume_name, 'longhorn-system')
+    if not volume or volume.get('status', {}).get('robustness') != 'healthy': return None
+    replicas = [r for r in get('replicas.longhorn.io', namespace='longhorn-system')['items'] if r['spec']['volumeName'] == volume_name]
+    nodes = {r['spec']['nodeID'] for r in replicas if r.get('status', {}).get('currentState') == 'running' and r['spec'].get('healthyAt') and not r['spec'].get('failedAt')}
+    expected = {'longhorn-node-' + ip.rsplit('.', 1)[1] for ip in WORKERS}
+    return sorted(nodes) if len(replicas) == 3 and nodes == expected else None
+
+
+def namespace_defaults(namespace):
+    result = []
+    for kind, object_name in (('serviceaccount', 'default'), ('configmap', 'kube-root-ca.crt')):
+        obj = get(kind, object_name, namespace)
+        if not obj: return None
+        result.append(obj['metadata']['uid'])
+    return result
+
+
+def proven_business_events(journal):
+    """Recover exact archived Events without granting workload ownership."""
+    evidence = Path(__file__).resolve().parents[1] / 'evidence'
+    for name in ('longhorn-rwo-first-failure-20261019.json',
+                 'longhorn-node-failure-cleanup-first-failure-20261022.json'):
+        proof = json.loads((evidence / name).read_text())['event_recovery']
+        if all(journal.get(key) == proof[key] for key in ('namespace', 'namespace_uid', 'objects')):
+            return proof['events']
+    return []
+
+
+def owned_taint_eviction_event(resource_name, obj, journal):
+    """Upstream taint eviction emits a Pod reference without its UID."""
+    if resource_name not in ('events', 'events.events.k8s.io') or obj.get('kind') != 'Event':
+        return False
+    modern = obj.get('apiVersion') == 'events.k8s.io/v1'
+    if not modern and obj.get('apiVersion') != 'v1': return False
+    reference = obj.get('regarding' if modern else 'involvedObject', {})
+    name = reference.get('name')
+    if (not name or 'Pod/' + name not in journal['objects'] or reference != {
+            'apiVersion': 'v1', 'kind': 'Pod', 'name': name, 'namespace': journal['namespace']}):
+        return False
+    source = obj.get('deprecatedSource' if modern else 'source', {})
+    controller = obj.get('reportingController' if modern else 'reportingComponent')
+    text = obj.get('note' if modern else 'message')
+    target = journal['namespace'] + '/' + name
+    return (obj.get('metadata', {}).get('namespace') == journal['namespace']
+            and obj.get('reason') == 'TaintManagerEviction' and obj.get('type') == 'Normal'
+            and source == {'component': 'taint-eviction-controller'}
+            and controller == 'taint-eviction-controller'
+            and text in ('Marking for deletion Pod ' + target, 'Cancelling deletion of Pod ' + target))
+
+
+def check_business_graph(journal):
+    namespace = journal['namespace']
+    ns = get('namespace', namespace)
+    if not ns or ns['metadata']['uid'] != journal['namespace_uid']:
+        raise ValueError('business namespace identity changed')
+    allowed = set(journal['objects'].values()) | set(journal.get('defaults', []))
+    recovered_events = proven_business_events(journal)
+    resources = kubectl('api-resources', '--verbs=list', '--namespaced=true', '-o', 'name').stdout.split()
+    if not resources: raise ValueError('namespace resource discovery is empty')
+    # Query every discoverable listable resource, including CRs. "get all"
+    # excludes Secrets, PVCs and most CRs and is not a deletion boundary.
+    for resource_name in sorted(set(resources)):
+        for obj in get(resource_name, namespace=namespace)['items']:
+            # metrics-server v0.8.0 builds PodMetrics from samples, with no
+            # persisted UID. The underlying Pods are checked independently.
+            if (resource_name == 'pods.metrics.k8s.io' and obj.get('apiVersion') == 'metrics.k8s.io/v1beta1'
+                    and obj.get('kind') == 'PodMetrics'):
+                continue
+            if not obj.get('metadata', {}).get('uid'):
+                raise ValueError('namespace resource has no ownership UID: ' + resource_name)
+            if obj['metadata']['uid'] in allowed: continue
+            if owned_taint_eviction_event(resource_name, obj, journal): continue
+            reference = obj.get('involvedObject', obj.get('regarding', {}))
+            if obj['kind'] == 'Event' and reference.get('uid') in allowed | {journal['namespace_uid']}:
+                continue
+            if resource_name in ('events', 'events.events.k8s.io') and obj['kind'] == 'Event' and any(
+                    obj['metadata']['uid'] == event['metadata']['uid'] and
+                    obj['metadata']['name'] == event['metadata']['name'] and reference == event['reference']
+                    and ('details' not in event or event['details'] == {
+                        'namespace': obj['metadata'].get('namespace'),
+                        'creationTimestamp': obj['metadata'].get('creationTimestamp'),
+                        'reason': obj.get('reason'), 'type': obj.get('type'),
+                        'source': obj.get('source', obj.get('deprecatedSource', {})),
+                        'controller': obj.get('reportingComponent', obj.get('reportingController')),
+                        'text': obj.get('message', obj.get('note'))})
+                    for event in recovered_events):
+                continue
+            raise ValueError('foreign resource in business namespace: ' + resource_name)
+
+
+def bind_business_volume(journal, record, claim_name='data'):
+    """Find dynamic Retain PVs by the recorded claim UID, even before Bound."""
+    claim_uid = journal['objects'].get('PersistentVolumeClaim/' + claim_name)
+    if not claim_uid: return
+    matches = [pv for pv in get('pv')['items'] if pv.get('spec', {}).get('claimRef', {}).get('uid') == claim_uid]
+    if len(matches) > 1: raise ValueError('multiple PVs refer to business claim')
+    if not matches: return
+    pv = matches[0]; spec = pv['spec']; ref = spec['claimRef']
+    if (ref.get('namespace') != journal['namespace'] or ref.get('name') != claim_name or
+            spec.get('storageClassName') != journal.get('storage_class', 'longhorn') or
+            spec.get('persistentVolumeReclaimPolicy') != journal.get('reclaim_policy', 'Retain') or
+            spec.get('csi', {}).get('driver') != 'driver.longhorn.io'):
+        raise ValueError('business dynamic PV binding differs')
+    identity = {'pv': pv['metadata']['name'], 'pv_uid': pv['metadata']['uid'], 'volume': spec['csi']['volumeHandle']}
+    rebind = journal.get('rebind', {})
+    if claim_name == rebind.get('claim') and any(identity[k] != rebind[k] for k in ('pv', 'pv_uid', 'volume')):
+        raise ValueError('retained rebinding points to a different PV or native volume')
+    receipt = journal if claim_name == 'data' else journal.setdefault('claims', {}).setdefault(claim_name, {})
+    if any(key in receipt and receipt[key] != value for key, value in identity.items()):
+        raise ValueError('business retained PV identity changed')
+    volume = get('volumes.longhorn.io', identity['volume'], 'longhorn-system')
+    if volume:
+        if receipt.get('volume_uid', volume['metadata']['uid']) != volume['metadata']['uid']:
+            raise ValueError('business native volume identity changed')
+        identity['volume_uid'] = volume['metadata']['uid']
+        if claim_name == rebind.get('claim') and identity['volume_uid'] != rebind['volume_uid']:
+            raise ValueError('retained rebinding native volume was replaced')
+    receipt.update(identity); write_private(record, journal)
+
+
+def retired_v2_endpoint_host(request, *, root='/'):
+    """Remove only an idle owned linear endpoint whose lower device is gone.
+
+    This is fixture recovery after native CSI/volume retirement, never a way
+    to detach a live volume. Use ordinary dmsetup remove, without force/defer.
+    """
+    import json
+    from pathlib import Path
+    import re
+    import subprocess
+    import uuid
+    root = Path(root)
+    name = request['volume']
+    if not re.fullmatch(r'pvc-[0-9a-f-]{36}', name):
+        raise ValueError('retired endpoint requires its original CSI volume name')
+    uuid.UUID(name[4:])
+    if (root/'etc/machine-id').read_text().strip() != request['machine_id']:
+        raise ValueError('retired endpoint machine identity differs')
+    def maps():
+        return {p.name: ((p/'dm/name').read_text().strip(), (p/'dm/uuid').read_text().strip())
+                for p in (root/'sys/class/block').glob('dm-*')}
+    before = maps()
+    matched = [key for key, row in before.items() if row[0] == name]
+    if not matched: return {'volume': name, 'absent': True, 'removed': False}
+    if len(matched) != 1: raise ValueError('retired endpoint has ambiguous DM identity')
+    key = matched[0]; device = root/'sys/class/block'/key
+    if before[key][1] or any((device/'holders').iterdir()):
+        raise ValueError('retired endpoint has a foreign UUID or holders')
+    dev = (device/'dev').read_text().strip()
+    def run(args):
+        return subprocess.run(args, check=True, capture_output=True, text=True, timeout=30).stdout.strip()
+    def idle():
+        row = run(['dmsetup', 'info', '--columns', '--noheadings', '--separator', '|',
+                   '--options', 'name,uuid,major,minor,open,segments', name]).split('|')
+        row = [part.strip() for part in row]
+        if len(row) != 6 or row != [name, '', *dev.split(':'), '0', '1']:
+            raise ValueError('retired endpoint is open or its DM identity changed')
+        table = run(['dmsetup', 'table', name]).split()
+        if (len(table) != 5 or table[:3] != ['0', str(request['size_bytes']//512), 'linear'] or
+                table[4] != '0' or not re.fullmatch(r'[0-9]+:[0-9]+', table[3]) or
+                (root/'sys/dev/block'/table[3]).exists()):
+            raise ValueError('retired endpoint table differs or lower device is still present')
+        for process in (root/'proc').iterdir():
+            if not process.name.isdigit(): continue
+            try: mounts = (process/'mountinfo').read_text().splitlines()
+            except (FileNotFoundError, ProcessLookupError): continue
+            if any(len(line.split()) > 2 and line.split()[2] == dev for line in mounts):
+                raise ValueError('retired endpoint is still mounted in a process namespace')
+        if maps() != before or any((device/'holders').iterdir()):
+            raise ValueError('retired endpoint changed during consumer verification')
+        return table
+    table = idle()
+    # Repeat identity/open checks immediately before the non-forced removal.
+    if idle() != table: raise ValueError('retired endpoint table changed')
+    run(['dmsetup', 'remove', name])
+    after = maps()
+    if after != {k: v for k, v in before.items() if k != key}:
+        raise ValueError('retired endpoint removal changed unrelated DM maps')
+    return {'volume': name, 'device': dev, 'table': table, 'absent': True, 'removed': True}
+
+
+def cleanup_retired_v2_endpoint(volume, volume_uid, size_bytes):
+    """Caller must first prove original UID ownership and native retirement."""
+    uuid.UUID(volume_uid)
+    if size_bytes <= 0 or size_bytes % 512:
+        raise ValueError('retired endpoint capacity is invalid')
+    state = owner()
+    if set(state.get('raw_disks', {})) != set(NODES):
+        raise ValueError('retired V2 endpoint requires its complete raw hardware lease')
+    code = inspect.getsource(retired_v2_endpoint_host)+"\nimport json,sys\nprint(json.dumps(retired_v2_endpoint_host(json.load(sys.stdin)),sort_keys=True))\n"
+    result = {}
+    for node in NODES:
+        request = {'volume': volume, 'machine_id': state['raw_disks'][node]['machine_id'], 'size_bytes': size_bytes}
+        result[node] = json.loads(remote(node, ['python3', '-c', code], stdin=json.dumps(request), timeout=180).stdout)
+    print('LONGHORN_V2_RETIRED_ENDPOINTS_CLEAN '+json.dumps(
+        {'volume': volume, 'volume_uid': volume_uid, 'hosts': result}, sort_keys=True), flush=True)
+    return result
+
+
+def cleanup_business(record=None, *, relay_pid=None, recover_recurring_selector=False):
+    record = record or DIRECTORY / 'longhorn-install-business.json'
+    state = owner()
+    credential_record = DIRECTORY / 'longhorn-recurring-credentials.json'
+    if credential_record.exists() or credential_record.is_symlink():
+        if not relay_pid:
+            raise ValueError('recurring credential recovery requires the runner-owned relay')
+        load_helper('longhorn-recurring-rotation.py').Credentials(sys.modules[__name__], backup_store()).restore_root(relay_pid)
+    recurring_record = DIRECTORY / 'longhorn-recurring-runtime.json'
+    if recurring_record.exists() or recurring_record.is_symlink():
+        if not relay_pid:
+            raise ValueError('recurring recovery requires the runner-owned relay before business cleanup')
+        schedule = load_helper('longhorn-recurring.py').Schedule(sys.modules[__name__])
+        if recover_recurring_selector:
+            schedule.cleanup(relay_pid, recover_selector=True)
+        else:
+            schedule.cleanup(relay_pid)
+    if credential_record.exists() or credential_record.is_symlink():
+        load_helper('longhorn-recurring-rotation.py').Credentials(sys.modules[__name__], backup_store()).cleanup()
+    encryption_record = DIRECTORY / 'longhorn-encryption-key.json'
+    if encryption_record.exists() or encryption_record.is_symlink():
+        load_helper('longhorn-encryption.py').Probe(sys.modules[__name__]).restore()
+    security_record = DIRECTORY / 'longhorn-security-tls.json'
+    if security_record.exists() or security_record.is_symlink():
+        load_helper('longhorn-security.py').Rotation(sys.modules[__name__]).restore()
+    network_record = DIRECTORY / 'longhorn-network-probes.json'
+    if network_record.exists() or network_record.is_symlink():
+        load_helper('longhorn-network.py').Probe(sys.modules[__name__]).cleanup()
+    restore_request_input()
+    if any((DIRECTORY / name).exists() or (DIRECTORY / name).is_symlink() for name in
+           ('longhorn-ownership-csi.json', 'longhorn-ownership-preinstall.json', 'longhorn-ownership-class.json',
+            'longhorn-ownership-controller.json', 'longhorn-ownership-request.json')):
+        load_helper('longhorn-ownership.py').cleanup(sys.modules[__name__])
+    cleanup_reclaim_class()
+    refusal_record = DIRECTORY / 'longhorn-backup-refusal.json'
+    if refusal_record.exists() or refusal_record.is_symlink():
+        load_helper('longhorn-backups.py').Refusals(sys.modules[__name__], backup_store()).restore()
+    if not record.exists(): return
+    journal = json.loads(record.read_text()); namespace = journal['namespace']
+    if not namespace.startswith('longhorn-business-'): raise ValueError('foreign business fixture namespace')
+    ns = get('namespace', namespace)
+    if not ns or ns['metadata']['uid'] != journal['namespace_uid']: raise ValueError('business namespace identity changed')
+    check_business_graph(journal)
+    pods = sorted(key.split('/', 1)[1] for key in journal['objects'] if key.startswith('Pod/'))
+    # Clones/restores are retired before their source. Discover only names
+    # recorded at create time, never all PVCs returned by a namespace query.
+    claims = sorted((key.split('/', 1)[1] for key in journal['objects'] if key.startswith('PersistentVolumeClaim/')),
+                    key=lambda value: (value == 'data', value))
+    if set(journal.get('claims', {})) - set(claims): raise ValueError('unjournaled business claim receipt')
+    for kind, names in (('pod', pods), ('pvc', claims)):
+        for object_name in names:
+            obj = get(kind, object_name, namespace)
+            key = ('Pod' if kind == 'pod' else 'PersistentVolumeClaim') + '/' + object_name
+            if obj and obj['metadata']['uid'] != journal['objects'].get(key): raise ValueError('business fixture object was replaced')
+    for claim_name in claims:
+        bind_business_volume(journal, record, claim_name)
+    if journal.get('snapshots') or journal.get('native_snapshots'):
+        bind_snapshots(journal)
+    if journal.get('backups'):
+        bind_backups(journal)
+    for object_name in pods:
+        obj = get('pod', object_name, namespace)
+        if obj: remove(obj)
+    wait('business-pods-clean', 180, lambda: not get('pod', namespace=namespace)['items'])
+    for name, row in journal.get('snapshots', {}).items():
+        snapshot = get('volumesnapshots.snapshot.storage.k8s.io', name, namespace)
+        if snapshot: remove(snapshot)
+        wait('business-csi-snapshot-clean-' + name, 180, lambda: get('volumesnapshots.snapshot.storage.k8s.io', name, namespace) is None)
+        if row.get('content'):
+            content = get('volumesnapshotcontents.snapshot.storage.k8s.io', row['content'])
+            if content:
+                if content['metadata']['uid'] != row['content_uid']: raise ValueError('snapshot content replaced during cleanup')
+                remove(content)
+            wait('business-snapshot-content-clean', 180, lambda: get('volumesnapshotcontents.snapshot.storage.k8s.io', row['content']) is None)
+    cleanup_backups(journal)
+    for name, row in journal.get('native_snapshots', {}).items():
+        native = get('snapshots.longhorn.io', name, 'longhorn-system')
+        if native:
+            if native['metadata']['uid'] != row.get('uid'): raise ValueError('native snapshot replaced during cleanup')
+            remove(native)
+        # A snapshot directly parenting volume-head can remain marked removed
+        # until source-volume deletion. Never force its finalizer.
+    for claim_name in claims:
+        claim = get('pvc', claim_name, namespace)
+        if claim: remove(claim)
+        wait('business-pvc-clean-' + claim_name, 180, lambda: get('pvc', claim_name, namespace) is None)
+        # A provisioner may have returned a PV while the claim was terminating.
+        bind_business_volume(journal, record, claim_name)
+        receipt = journal if claim_name == 'data' else journal.get('claims', {}).get(claim_name, {})
+        if not receipt.get('pv'): continue
+        if journal.get('reclaim_policy') == 'Delete':
+            # Dynamic deletion must be observed; an explicit fixture DELETE
+            # here would hide a broken reclaim controller.
+            wait('delete-policy-pv-reclaimed', 180, lambda: get('pv', receipt['pv']) is None)
+            wait('delete-policy-volume-reclaimed', 180, lambda: get('volumes.longhorn.io', receipt['volume'], 'longhorn-system') is None)
+            print('LONGHORN_DELETE_POLICY_RECLAIM_VERIFIED volume=' + receipt['volume'], flush=True)
+            continue
+        pv = get('pv', receipt['pv'])
+        if pv:
+            if pv['metadata']['uid'] != receipt['pv_uid'] or pv['spec']['claimRef']['uid'] != journal['objects']['PersistentVolumeClaim/' + claim_name]:
+                raise ValueError('business retained PV identity changed')
+            remove(pv)
+        wait('business-pv-clean', 180, lambda: get('pv', receipt['pv']) is None)
+        volume = get('volumes.longhorn.io', receipt['volume'], 'longhorn-system')
+        if volume:
+            if volume['metadata']['uid'] != receipt.get('volume_uid'):
+                raise ValueError('business native volume identity changed')
+            if any(p.get('spec', {}).get('csi', {}).get('volumeHandle') == receipt['volume'] for p in get('pv')['items']):
+                raise ValueError('another PV still refers to the business volume')
+            if volume.get('status', {}).get('state') != 'detached':
+                def detached():
+                    current = get('volumes.longhorn.io', receipt['volume'], 'longhorn-system')
+                    if not current or current['metadata']['uid'] != receipt['volume_uid']:
+                        raise ValueError('business volume identity changed while detaching')
+                    return current if current.get('status', {}).get('state') == 'detached' else None
+                # Status convergence changes resourceVersion. Delete with the
+                # observed detached object, keeping the native UID/RV guard.
+                volume = wait('business-volume-detached', 180, detached)
+            # Bind the native volume UID before explicit data deletion. All
+            # referring PVs have already been proven removed.
+            receipt['volume_uid'] = volume['metadata']['uid']; write_private(record, journal)
+            remove(volume)
+        wait('business-native-volume-clean', 180, lambda: get('volumes.longhorn.io', receipt['volume'], 'longhorn-system') is None)
+    for name in journal.get('native_snapshots', {}):
+        wait('business-native-snapshot-clean-' + name, 180, lambda: get('snapshots.longhorn.io', name, 'longhorn-system') is None)
+    check_business_graph(journal)
+    remove(get('namespace', namespace))
+    wait('business-namespace-clean', 180, lambda: get('namespace', namespace) is None)
+    if journal.get('v2_all_replicas_fault'):
+        # The owning fault scenario uses a 2 GiB source. Its original UID has
+        # been checked above and native CSI Delete has completed on every claim.
+        cleanup_retired_v2_endpoint(journal['volume'], journal['volume_uid'], 2*1024**3)
+    record.unlink()
+    print('LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS')
+
+
+def backup_store():
+    return load_helper('longhorn-backups.py').Store(sys.modules[__name__])
+
+
+def recurring_identity():
+    return {obj['metadata']['name']: {'uid': obj['metadata']['uid'], 'spec': obj['spec'],
+                                    'labels': obj['metadata'].get('labels', {})}
+            for obj in get('recurringjobs.longhorn.io', namespace='longhorn-system')['items']}
+
+
+def cleanup_recurring_qualification(relay_pid):
+    receipt = DIRECTORY / 'longhorn-recurring-qualification.json'
+    if not receipt.exists():
+        return
+    if receipt.is_symlink():
+        raise ValueError('symlink recurring qualification receipt')
+    row = json.loads(receipt.read_text()); state = owner()
+    if row['run_id'] != state['run_id'] or row['cluster_uid'] != state['cluster_uid']:
+        raise ValueError('foreign recurring qualification receipt')
+    restore_request_input()
+    current = get('recurringjobs.longhorn.io', row['name'], 'longhorn-system')
+    if current and current['metadata']['uid'] != row.get('uid'):
+        raise ValueError('unconfirmed or replaced recurring qualification job')
+    if {key: value for key, value in recurring_identity().items() if key != row['name']} != row['baseline']:
+        raise ValueError('recurring baseline changed before cleanup')
+    if not yaml.safe_load((DIRECTORY/'config.yml').read_text())['longhorn_recurring_jobs'] == []:
+        raise ValueError('recurring baseline input changed')
+    run_requests(relay_pid, [], recurring_jobs=[])
+    if recurring_identity() != row['baseline']:
+        raise ValueError('recurring baseline identities differ after cleanup')
+    receipt.unlink()
+    print('LONGHORN_RECURRING_DECLARATIONS_CLEAN_PASS', flush=True)
+
+
+def qualify_recurring_declarations(relay_pid):
+    installation_health()
+    config = yaml.safe_load((DIRECTORY/'config.yml').read_text())
+    if config['longhorn_recurring_jobs']:
+        raise ValueError('recurring qualification requires an empty product schedule')
+    baseline = recurring_identity()
+    # Existing kubeauto schedules would be pruned by the empty desired set.
+    if any(obj.get('metadata', {}).get('labels', {}).get('app.kubernetes.io/managed-by') == 'kubeauto'
+           for obj in get('recurringjobs.longhorn.io', namespace='longhorn-system')['items']):
+        raise ValueError('existing managed recurring schedule needs its own configuration')
+    receipt = DIRECTORY / 'longhorn-recurring-qualification.json'
+    if receipt.exists() or receipt.is_symlink():
+        raise ValueError('previous recurring qualification needs recovery')
+    state = owner(); name = 'qualification-' + secrets.token_hex(10)
+    row = {'run_id': state['run_id'], 'cluster_uid': state['cluster_uid'], 'name': name, 'baseline': baseline}
+    write_private(receipt, row)
+    with scoped_cleanup(lambda: cleanup_recurring_qualification(relay_pid)):
+        job = {'name': name, 'task': 'snapshot', 'cron': '0 0 1 1 *', 'retain': 2, 'concurrency': 1, 'groups': []}
+        for cron in ('0 0 1 1 *', '0 1 1 1 *'):
+            if row.get('uid'):
+                recurring_update_dry_run(row, cron)
+            job['cron'] = cron
+            run_requests(relay_pid, [], recurring_jobs=[job])
+            current = get('recurringjobs.longhorn.io', name, 'longhorn-system')
+            if not current or current['metadata']['uid'] != row.get('uid', current['metadata']['uid']):
+                raise ValueError('recurring declaration identity changed')
+            row['uid'] = current['metadata']['uid']; write_private(receipt, row)
+            def converged():
+                jobs = [obj for obj in get('cronjobs', namespace='longhorn-system')['items']
+                        if any(ref.get('uid') == row['uid'] for ref in obj['metadata'].get('ownerReferences', []))]
+                return len(jobs) == 1 and jobs[0]['spec']['schedule'] == cron
+            wait('recurring-declaration-schedule', 120, converged)
+        if {key: value for key, value in recurring_identity().items() if key != name} != baseline:
+            raise ValueError('recurring declaration changed a foreign baseline')
+    installation_health()
+    print('LONGHORN_RECURRING_DECLARATIONS_QUALIFIED identity=preserved schedule=updated removal=native', flush=True)
+
+
+def recurring_update_dry_run(row, cron):
+    """Exercise the actual product PUT against admission before the update gate."""
+    product = load_helper('../../roles/longhorn/files/longhorn.py')
+    current = get('recurringjobs.longhorn.io', row['name'], 'longhorn-system')
+    if not current or current['metadata']['uid'] != row['uid']:
+        raise ValueError('recurring identity changed before native update dry-run')
+    desired = {key: current[key] for key in ('apiVersion', 'kind', 'metadata')}
+    desired['spec'] = dict(current['spec'], cron=cron)
+    original_run = product.run
+    def dry_run(argv, **kwargs):
+        if 'replace' not in argv or any(arg in argv for arg in ('apply', 'create', 'delete', 'patch')):
+            raise ValueError('unexpected command in recurring update dry-run')
+        return original_run([*argv, '--dry-run=server'], **kwargs)
+    product.run = dry_run
+    result = product.API(str(DIRECTORY/'kubectl.kubeconfig')).replace(desired)
+    if result['metadata']['uid'] != row['uid'] or result['spec']['cron'] != cron:
+        raise ValueError('recurring native update dry-run returned different identity or schedule')
+    after = get('recurringjobs.longhorn.io', row['name'], 'longhorn-system')
+    if not after or after['metadata']['uid'] != row['uid'] or after['spec'] != current['spec']:
+        raise ValueError('recurring native update dry-run changed persisted state')
+    print('LONGHORN_RECURRING_REPLACE_DRY_RUN_VERIFIED persisted_change=false', flush=True)
+
+
+def qualify_backup_store():
+    store = backup_store()
+    with scoped_cleanup(store.cleanup):
+        store.prepare()
+        store.qualify()
+
+
+def qualify_backup_accounts():
+    store = backup_store()
+    with scoped_cleanup(store.cleanup):
+        store.prepare()
+        accounts = load_helper('longhorn-accounts.py').Accounts(sys.modules[__name__], store)
+        accounts.initialize()
+        with scoped_cleanup(accounts.cleanup):
+            accounts.qualify()
+
+
+def backup_suite(relay_pid, scenario='backup', *, uninstall=False):
+    if scenario not in ('backup', 'backup_refusal', 'recurring_backup', 'recurring_rotation', 'uninstall_backup'):
+        raise ValueError('unknown backup suite')
+    if type(uninstall) is not bool or uninstall and scenario != 'uninstall_backup':
+        raise ValueError('native uninstall is restricted to its explicit backup-retention suite')
+    store = backup_store()
+    uninstalled = False
+    with scoped_cleanup(lambda: store.cleanup(after_uninstall=True) if uninstalled else store.cleanup()):
+        store.prepare(); store.qualify()
+        configuration = store.product_configuration()
+        business(scenario, relay_pid, backup_configuration=configuration)
+        if scenario == 'uninstall_backup':
+            store.restore_product()
+            load_helper('longhorn-uninstall.py').verify_retained_backup(sys.modules[__name__], phase='source-removed')
+            print('LONGHORN_UNINSTALL_BACKUP_RETENTION_BUSINESS_PASS', flush=True)
+            if uninstall:
+                store.cleanup_transport()
+                recover_installation(relay_pid)
+                uninstalled = True
+                load_helper('longhorn-uninstall.py').verify_retained_backup(sys.modules[__name__], phase='uninstalled')
+                print('LONGHORN_UNINSTALL_EXTERNAL_BACKUP_PRESERVED_PASS', flush=True)
+
+
+def record_failure(error):
+    with tempfile.NamedTemporaryFile('w', prefix='kubeauto-longhorn-failure-', suffix='.txt',
+                                     dir='/var/tmp', delete=False) as diagnostic:
+        traceback.print_exc(file=diagnostic)
+        print('LONGHORN_PRIVATE_DIAGNOSTIC file=' + diagnostic.name, file=sys.stderr)
+    native = getattr(error, 'stderr', None)
+    if isinstance(native, str):
+        # Native CLI text may contain credentials. Preserve it separately with
+        # mkstemp's 0600 mode; the existing traceback reader never prints it.
+        with tempfile.NamedTemporaryFile('w', prefix='kubeauto-longhorn-command-', suffix='.json',
+                                         dir='/var/tmp', delete=False) as diagnostic:
+            json.dump({'returncode': getattr(error, 'returncode', None), 'stderr': native}, diagnostic)
+            print('LONGHORN_PRIVATE_COMMAND_DIAGNOSTIC file=' + diagnostic.name, file=sys.stderr)
+        print('LONGHORN_COMMAND_FAILURE_SUMMARY ' + json.dumps({
+            'returncode': getattr(error, 'returncode', None),
+            'stderr_sha256': hashlib.sha256(native.encode()).hexdigest(),
+            'conflict': 'Error from server (Conflict)' in native,
+            'precondition': 'Precondition failed:' in native}, sort_keys=True), file=sys.stderr)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('mode', choices=('business-ownership-request', 'ownership-controller-refusal-qualification', 'ownership-class-refusal-qualification', 'ownership-interruption-canary', 'ownership-interruption-qualification', 'ownership-preinstall-refusal-qualification', 'ownership-csi-refusal-qualification', 'ownership-csi-probe', 'business-uninstall', 'business-uninstall-backup-qualification', 'business-uninstall-refusal-qualification', 'business-recurring-rotation', 'business-recurring-selector', 'business-recurring-backup', 'business-recurring-snapshot', 'business-backup', 'business-backup-refusal', 'recurring-declarations-qualify', 'recurring-declarations-clean', 'backup-store-qualify', 'backup-accounts-qualify', 'backup-store-clean', 'node-bootstrap-dry-run', 'configure', 'qualification-clean', 'core-host-preflight', 'core-host-recover', 'archive-core', 'transport-fingerprint', 'verify-transport', 'verify-core', 'verify-core-smoke', 'business-core-smoke', 'prepare-disks', 'cleanup-disks', 'record-disk-qualification', 'verify-disk-qualification', 'capture-hosts', 'restore-hosts', 'credentials', 'relay-ensure', 'relay-clean', 'relay-recover', 'relay-qualification', 'relay-maintain', 'supervise-core', 'cache', 'health', 'business', 'business-idempotence', 'business-rwo', 'business-rwx', 'business-performance', 'business-replica-scale', 'business-replica-failure', 'business-clone', 'business-expansion', 'business-snapshot', 'business-reclaim', 'business-trim', 'business-engine-failure', 'business-encryption', 'business-encryption-block', 'business-encryption-backup', 'business-network-policy', 'business-security', 'business-recover', 'business-clean'))
+    parser.add_argument('--allowlist')
+    parser.add_argument('--relay-pid', type=int)
+    parser.add_argument('--recover-recurring-selector', action='store_true')
+    parser.add_argument('--step', choices=('download', 'setup', 'longhorn-download', 'longhorn-setup', 'longhorn-destroy'))
+    args = parser.parse_args()
+    if args.recover_recurring_selector and args.mode != 'business-clean':
+        parser.error('orphan selector recovery is restricted to explicit business cleanup')
+    if args.mode not in ('transport-fingerprint', 'verify-transport'): require_lease()
+    {'business-ownership-request': lambda: business('ownership_request', args.relay_pid),
+     'ownership-controller-refusal-qualification': lambda: load_helper('longhorn-ownership.py').InstalledControllerProbe(sys.modules[__name__]).qualify(args.relay_pid),
+     'ownership-class-refusal-qualification': lambda: load_helper('longhorn-ownership.py').InstalledClassProbe(sys.modules[__name__]).qualify(args.relay_pid),
+     'ownership-interruption-canary': lambda: load_helper('longhorn-ownership.py').interruption_canary(sys.modules[__name__]),
+     'ownership-interruption-qualification': lambda: load_helper('longhorn-ownership.py').qualify_interruption(sys.modules[__name__]),
+     'ownership-preinstall-refusal-qualification': lambda: load_helper('longhorn-ownership.py').PreinstallProbe(sys.modules[__name__]).qualify(args.relay_pid),
+     'ownership-csi-refusal-qualification': lambda: load_helper('longhorn-ownership.py').CSIProbe(sys.modules[__name__]).qualify(args.relay_pid),
+     'ownership-csi-probe': lambda: load_helper('longhorn-ownership.py').CSIProbe(sys.modules[__name__]).run(),
+     'business-uninstall': lambda: load_helper('longhorn-uninstall.py').uninstall(sys.modules[__name__], args.relay_pid),
+     'business-uninstall-backup-qualification': lambda: backup_suite(args.relay_pid, 'uninstall_backup'),
+     'business-uninstall-refusal-qualification': lambda: business('uninstall_refusal', args.relay_pid),
+     'recurring-declarations-qualify': lambda: qualify_recurring_declarations(args.relay_pid),
+     'recurring-declarations-clean': lambda: cleanup_recurring_qualification(args.relay_pid),
+     'backup-accounts-qualify': qualify_backup_accounts,
+     'backup-store-qualify': qualify_backup_store, 'backup-store-clean': lambda: backup_store().cleanup(),
+     'node-bootstrap-dry-run': node_bootstrap_dry_run, 'configure': configure, 'qualification-clean': qualification_clean, 'archive-core': archive_core,
+     'core-host-preflight': core_host_preflight, 'core-host-recover': recover_core_override,
+     'transport-fingerprint': lambda: print(transport_fingerprint()), 'verify-transport': verify_transport_qualification,
+     'verify-core': core_identity, 'verify-core-smoke': verify_core_smoke, 'business-core-smoke': core_smoke, 'prepare-disks': lambda: prepare_disks(args.allowlist),
+     'cleanup-disks': cleanup_disks, 'credentials': prepare_credentials, 'relay-ensure': relay_ensure,
+     'capture-hosts': capture_hosts, 'restore-hosts': restore_hosts,
+     'record-disk-qualification': lambda: disk_qualification(record=True), 'verify-disk-qualification': disk_qualification,
+     'relay-clean': relay_cleanup, 'relay-recover': relay_recover, 'relay-qualification': relay_qualification, 'relay-maintain': relay_maintain,
+     'supervise-core': lambda: supervise_core(args.relay_pid, args.step),
+     'cache': cache_artifacts, 'health': installation_health, 'business': business,
+     'business-idempotence': lambda: business('idempotence', args.relay_pid),
+     'business-rwx': lambda: business('rwx', access_mode='ReadWriteMany'),
+     'business-replica-scale': lambda: business('replica_scale', args.relay_pid),
+     'business-replica-failure': lambda: business('replica_failure'),
+     'business-performance': lambda: business('performance'),
+     'business-clone': lambda: business('clone'),
+     'business-expansion': expansion_suite,
+     'business-reclaim': lambda: reclaim_suite(args.relay_pid),
+     'business-trim': lambda: business('trim', args.relay_pid),
+     'business-engine-failure': control_failure_suite,
+     'business-encryption': lambda: encryption_suite(args.relay_pid),
+     'business-encryption-block': lambda: encryption_suite(args.relay_pid, phase='block'),
+     'business-encryption-backup': lambda: encryption_suite(args.relay_pid, phase='backup'),
+     'business-network-policy': lambda: business('network_policy'),
+     'business-security': lambda: business('security'),
+     'business-recurring-rotation': lambda: backup_suite(args.relay_pid, 'recurring_rotation'),
+     'business-recurring-backup': lambda: backup_suite(args.relay_pid, 'recurring_backup'),
+     'business-recurring-selector': lambda: business('recurring_selector', args.relay_pid),
+     'business-recurring-snapshot': lambda: business('recurring_snapshot', args.relay_pid),
+     'business-snapshot': lambda: business('snapshot', args.relay_pid),
+     'business-backup': lambda: backup_suite(args.relay_pid),
+     'business-backup-refusal': lambda: backup_suite(args.relay_pid, 'backup_refusal'),
+     'business-recover': lambda: load_helper('longhorn-uninstall.py').recover(sys.modules[__name__], args.relay_pid),
+     'business-rwo': rwo_suite, 'business-clean': lambda: cleanup_business(
+         relay_pid=args.relay_pid, recover_recurring_selector=args.recover_recurring_selector)}[args.mode]()
+
+
+if __name__ == '__main__':
+    # TERM must unwind the owned product/canary scopes. relay-maintain
+    # installs its own graceful-stop handler after entering main.
+    signal.signal(signal.SIGTERM, lambda number, frame: sys.exit(128 + number))
+    try: main()
+    except Exception as error:
+        record_failure(error)
+        print('LONGHORN_LAB_FAIL reason=' + type(error).__name__, file=sys.stderr)
+        sys.exit(1)

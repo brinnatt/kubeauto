@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "classification": "test-gate; pre-live deterministic defect",
+  "owning_scenario": "LONGHORN-49 linked/nested clone cleanup",
+  "scope": "Keep the original mixed-class ownership journal and fixture class when an unidentified native object or Longhorn PV remains after graph cleanup. Never infer native deletion authority from a CSI-generated name. No product change or live execution.",
+  "first_failure": {
+    "rc": 1,
+    "test": "LinkedCloneContracts.test_unidentified_native_after_scope_cleanup_retains_journal",
+    "observation": "Old cleanup unlinked its journal when a native CSI object existed without a discoverable PV; expected ValueError was absent.",
+    "raw_log": "logs/longhorn-cases/linked-orphan-receipt-contract-20261021/first-failure.log"
+  },
+  "fixed_verification": {
+    "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_linked_clones tests.unit.test_longhorn_v2_clones tests.unit.test_longhorn_v2_data_protection -v",
+    "rc": 0,
+    "tests": 25,
+    "failures": 0,
+    "errors": 0
+  },
+  "next_permitted_level": "Complete fixed-runner static preflight, then the isolated linked-clone qualifier; no full clone or final delivery PASS.",
+  "source_sha256": {
+    "tests/helpers/longhorn-v2-linked-clones.py": "251eec47182526f95057b3e08d0ddb2b3ed218595a722a84f9431ba776061e61",
+    "tests/unit/test_longhorn_v2_linked_clones.py": "599d24348cb186ae87e246719f13b77df09638e05697e10b6f69717b3996d950"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/linked-orphan-receipt-contract-20261021/fixed-focused.log": "6bb2c96f421d49e859cbcd159d2d602a79fa9d3c69a3bc75bf2ceb7ed03c4154",
+    "logs/longhorn-cases/linked-orphan-receipt-contract-20261021/first-failure.log": "5644017ad0b65d7ff08f6e6ae22064206aea7042ca2545ba56f2555013368d1d"
+  }
+}

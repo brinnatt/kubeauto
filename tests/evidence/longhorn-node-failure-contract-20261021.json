@@ -1,0 +1,53 @@
+{
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "cases": [
+    "LONGHORN-20"
+  ],
+  "ladder_completed": 2,
+  "next_permitted": "root fixed-runner narrow node-failure on original six V1 healthy runner-owned empty baseline; no remote mutation by child",
+  "rc": 0,
+  "tests": 29,
+  "tests_new": 15,
+  "failure_markers": 0,
+  "command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-node-failure.sh node-failure",
+  "cleanup_command": "LONGHORN_PARENT_LEASE_HELD=yes bash tests/helpers/longhorn-node-failure.sh node-failure-cleanup",
+  "product_entry": "config.yml + kubecli longhorn setup; owned Deployment/PVC use real product StorageClass; official native forced Pod deletion only after positive guest fencing",
+  "success_markers": [
+    "LONGHORN_NODE_FAILURE_OBSERVED",
+    "LONGHORN_NODE_FAILURE_SCOPED_CLEAN_PASS",
+    "LONGHORN_NODE_FAILURE_PASS",
+    "LONGHORN_NODE_FAILURE_GATE_PASS"
+  ],
+  "files": {
+    "tests/helpers/longhorn-node-failure.py": "fd95704251771879e83c036e42841a943cc3215b5f37320144b4b6b03c53d5cd",
+    "tests/helpers/longhorn-node-failure.sh": "83ad51001a58fc70f4ac27467b322650b8234148d092d31f770a851823267346",
+    "tests/unit/test_longhorn_node_failure.py": "bcf54164fc3f48299ac1e505877db8907ff47957d3add5760aec96daa0eae3c5",
+    "tests/unit/test_longhorn_node_failure_shell.py": "bf34eac0db06fcfe6ed5ba8e99fcf9bd61ada9917ea2e32ea4e19eceb7eb09da"
+  },
+  "contracts": "logs/longhorn-cases/node-failure-contract-20261021/contracts.log",
+  "contracts_sha256": "501487a8f685ad4c9bf1e824a41d56244a9fc66d39884b9a659b15779ab5752c",
+  "official": {
+    "website_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "crictl": "v1.34.0 fixed ext-bin consumer",
+    "sources": {
+      "node-failure.md": "a3350ff56564bd37ab277e86c09b1ca8c583a7d6b8723e22b767dd91075cda0b",
+      "recover-volume.md": "8449b1cae95d444362da5e3ab0884c8e79d6c18435ae58ba20a7e5bbb526b00a",
+      "crictl-sandbox.go": "ddb6eba1916922b53677d8fa7fba647a92ee6ae11609a6dffc6b11fb904c8a22",
+      "crictl-container.go": "4f662e40c437c194f20e2c8813a890ab6c2fb87fcfe9557cef22189a435c6271"
+    },
+    "references": [
+      "https://longhorn.io/docs/1.12.1/high-availability/node-failure/",
+      "https://longhorn.io/docs/1.12.1/high-availability/recover-volume/",
+      "https://github.com/kubernetes-sigs/cri-tools/tree/v1.34.0/cmd/crictl"
+    ]
+  },
+  "reuse": [
+    "longhorn-maintenance.py: prepare, generated Deployment controller chain, immutable finite fsync acknowledgements, original scheduling and cleanup",
+    "longhorn-control-faults.py: actual original V1 engine/IM identity via V1 stability source",
+    "longhorn-v1-stability.py: original node/machine/boot identity",
+    "longhorn-v1-storage-faults.py: unique active CSI attachment",
+    "longhorn-v2-runtime-faults.py: unchanged identity-guarded real reboot primitive"
+  ],
+  "scope": "Original attached worker only. Reversible guest runtime fence journals exact machine/boot, allowed live Pod UIDs and original kubelet/containerd service state before mutation. Owned /run dropins prevent manual start and restart; stop kubelet, exact CRI containers/sandboxes, stop containerd, then require both services inactive and zero non-zombie kubepods processes. SSH outage or NodeNotReady is insufficient. After positive fresh fence proof, UID/RV-preconditioned force delete only the original Deployment Pod; Kubernetes/Longhorn detach and reschedule to another admitted host. Verify same PVC/PV/volume UIDs, two independent healthy RW peers, unique receiving CSI attachment, full immutable ACK prefix, fresh fsync data. Restore guest services then real reboot with same machine/new boot, original scheduling/taints and three replicas; read latest data and ACKs before deleting fixture. Target tolerationSeconds=15 accelerates this disposable scenario; no production RTO or hypervisor power-fence claim. Cleanup restores fault before healthy data verification/removal; failed recovery retains journal. Strict-mode wrapper preserves first failure, rejects missing markers/dead relay/late cleanup or health failure, restores control kubeconfig. No live execution or matrix PASS."
+}

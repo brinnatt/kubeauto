@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-16 prerequisite only",
+  "date": "2026-10-20",
+  "status": "pending",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-recurring-rotation-qualification </dev/null",
+  "durable_pid": 2782745,
+  "rc": 1,
+  "failure_markers": 5,
+  "classification": "test-gate: unobserved retained native Backup in Deleting state has already lost its snapshot; Completed-only provenance assertion incorrectly rejects normal asynchronous retention GC",
+  "first_failure": "ValueError: unobserved recurring snapshot requires a completed native backup at Credentials.select(second) -> observe -> Schedule.observe_backup_origin",
+  "observed": {
+    "first_scheduled_backup_uid": "8833537a-7abd-46a9-a838-0beeeec905b6",
+    "unobserved_deleting_backup_uid": "381ebd43-5c2b-4e9f-89e4-30f38c87e423",
+    "unobserved_deleting_backup": "backup-2240000b3bd64bbb",
+    "native_state": "Deleting; error absent; snapshot absent; source/target match",
+    "replacement_stage": "not reached",
+    "drain_600s_fix": "not reached in this failed run"
+  },
+  "cleanup": "After the first cleanup attempts hit the same assertion, the runner retry stopped the schedule and restored original credential reference; exact owned accounts/Secrets, business/native backups, object store/transport and registry transport were cleaned; original core identity and installation healthy. Overall rc remains1.",
+  "official_source": "longhorn-manager v1.12.1 8320238242e8c804325d9588ec1db10feb9f36b8 app/recurringjob/volume.go doBackupCleanup and controller/backup_controller.go handleBackupDeletionInBackupStore",
+  "repair_contract": "Exact-identity bounded wait for unobserved native GC, exclude retiring point from success/restore candidates; no invented snapshot UID or backend receipt. Two new tests; old implementation red;42 focused contracts green. Static and live repair still required.",
+  "boundary": "68 remote product/gate inputs equal start fingerprint; local CPU-online and GC fixes were not synced to this failed run.",
+  "files": {
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-235817/durable-status.txt": "983db9a2b120993a294b42b929632baa607086e972eaf6fd41a4562481a5e264",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-235817/repair-red.log": "3a87a0b134208dfb392b5c0a499cdae0c15d4ccd21c68978944ad48848fb19a4",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-235817/first-failure-diagnostics.txt": "1538d7d77f0d4aa51309b1568ce2d3a87ff44121c6428f435c1e3983ac2a990c",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-235817/recurring-diagnostics.txt": "d5d5b88e828cb8858c45adbc98e0b778e8923825546594a06df6acac0ce28435",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-235817/gate.log": "2df6fc20f253d1756ace6e2093d289d1d625ada7e0cc5ed75b493bf1da585442",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-235817/final-frozen-source.json": "212c6a4c789d3ba74431b979a786fec44bd7184ada61f4c10527aefcc5d6180a",
+    "logs/longhorn-cases/recurring-rotation-qualification-20261019-235817/repair-green.log": "f6c1338e339b55cd4ef17cf306e2f9341deffc423993800f23f311c8b1e4132e"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "status": "pass",
+  "classification": "full repository deterministic unit suite",
+  "command": "bash tests/run_unit_tests.sh",
+  "rc": 0,
+  "tests": 1682,
+  "duration_seconds": 133.374,
+  "boundary": "Product and test sources frozen for the run. Subsequent customer-document prose fixes have separate44-test documentation check; no field delivery claim.",
+  "files": {
+    "logs/longhorn-cases/v2-rotation-unit-20261019/frozen-inputs.json": "ae5b55a100f86b5a1e6e2f155a45ebfa027fb8f1d4884ed207f4e979c06095ff",
+    "logs/longhorn-cases/v2-rotation-unit-20261019/gate.log": "8419750dc80fa6b7b027b778a6a890622635aaa8dd11b62ce3b9a8e60437e90a",
+    "logs/longhorn-cases/v2-rotation-unit-20261019/status.json": "302c9c7d837648d9e64aeff5e8277365fcb222f95cc376d63a2604e5d14d5ab4"
+  }
+}

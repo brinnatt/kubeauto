@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "case": "LONGHORN-20",
+  "status": "pass",
+  "signed_scope": "node-failure-cleanup only",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v1-operations-remaining-v2-monitoring",
+  "owning_module": "original node-failure-cleanup",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "remote_parent": "/var/tmp/kubeauto-longhorn-parallel.EgmqkL",
+  "remote_inner": "/var/tmp/kubeauto-longhorn-parallel-v1.3v4Hcz",
+  "remote_input_verification": {
+    "count": 835,
+    "mismatches": 0,
+    "frozen_manifest": "logs/longhorn-cases/node-events-compatible-continuation-20261022/frozen-inputs.json",
+    "sha256": "f108df5d6ab969a79381612481900d2e8e03791ece73552e3c16b4412431b3f6"
+  },
+  "verified_scope": [
+    "Original fenced worker service/scheduling identity restoration",
+    "Original payload and acknowledged-write ledger readback through original cleanup",
+    "Three healthy replica topology before data fixture retirement",
+    "Original owned controllers, namespace, PVC/PV/Longhorn volume cleanup",
+    "Healthy Longhorn/core and registry relay cleanup"
+  ],
+  "raw_evidence": {
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-node-failure.souC2u/cleanup.log": "ae8ba022e88ab812051eab257ab2795ae898570dead752a28f36f4d039387bcf",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-node-failure.souC2u/status": "7238107beeb431e38a61836f575d06752070fdd19073707fe53e26c26a22873d",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel-sequence.vXxn0c/control-context.json": "5e6c3dfc08dc24291d8612fbe143703bfe6b023b35ac05b8bf3ec954b09f545e",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel-sequence.vXxn0c/v1-operations-remaining/v1.log": "b7f7510f6332dd05a669ee37dbce688a853e1da83838782237d865b90be965e2",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel-v1.3v4Hcz/node-failure-cleanup.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel-v1.3v4Hcz/node-failure-cleanup.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel-v1.3v4Hcz/node-failure-cleanup.log": "df54a63ae8853c99b7b48cd2c2ba2537bb82ed14c676281587b78821c8d7dab1",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel-v1.3v4Hcz/node-failure-cleanup.pid": "ad1c0b3e6774c5df9e545529049fd4a9ec86e12538d9171f4446b0e98d661a00",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel.EgmqkL/control-context.json": "5e6c3dfc08dc24291d8612fbe143703bfe6b023b35ac05b8bf3ec954b09f545e",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel.EgmqkL/v1.log": "7f41af3db7f29f4ae97ce87151bae405b0e53a30a40434724a23ffef43d553be",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/raw/var/tmp/kubeauto-longhorn-parallel.EgmqkL/v1.pid": "f86b991e968c9292674edc34603a1a1a5c3258a264ec03427ba6a4398f23ac0b",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/capture.json": "ea24f3adc49bafd682a5c0c167b572c96154e069ea707cc92abaaac90ba9e5df",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/recovered-node-journal.json": "dcf9ddd1db11bfe42f672a138bf276c5534cef46e8bda3a159cc150608623639",
+    "logs/longhorn-cases/node-events-compatible-continuation-20261022/archive-node-cleanup/recovered-journal-capture.json": "c776bb7cdd2bd5a221edb0cedb63e6c8de0e97bd95dc09247669cdc185d727d1"
+  },
+  "prior_failures_preserved": [
+    "tests/evidence/longhorn-node-failure-first-failure-20261022.json",
+    "tests/evidence/longhorn-node-failure-cleanup-first-failure-20261022.json"
+  ],
+  "boundary": "Recovery only. LONGHORN-20 remains pending until current complete attached-worker loss/reboot business and cleanup pass. Parent still running; no GA or full delivery PASS."
+}

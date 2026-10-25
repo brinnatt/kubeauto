@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "case": "LONGHORN-42 content/source/reader-path review only",
+  "status": "author-content-review-pass",
+  "review": {
+    "classification": "Author full-manual content and two-reader-path check, reusing fixed official readings and previous scoped reviews; no independent reviewer or customer sign-off",
+    "source_coverage": {
+      "total": 168,
+      "read": 146,
+      "excluded_with_reason": 22,
+      "unclassified": 0
+    },
+    "review_items": [
+      {
+        "requirement": "正式范围、导航及两种磁盘",
+        "sections": "全部三份手册导言及运维手册#数据引擎与磁盘选择",
+        "finding": "区分 host diskType 与 PVC volumeMode；V2 自 1.12.0 GA，experimental UBLK/sharded 单列；AIO/PCI/现场缺口保留",
+        "result": "pass"
+      },
+      {
+        "requirement": "V2 机制、资源与设备归属",
+        "sections": "technical-whitepaper.md#v1-与-v2-的数据面选择；operations-manual.md#数据引擎与磁盘选择；development-manual.md#v2-集成契约",
+        "finding": "SPDK RAID1/lvol 与共享 IM、mask 与独占 CPU、hugepages 与 anonymous 调度差别、iobuf 与 QoS、AIO 与 PCI 接管和 runtime 退役判据有机制、例子及停止恢复；不承诺未验收路径",
+        "result": "pass"
+      },
+      {
+        "requirement": "首次生产路径",
+        "sections": "operations-manual.md#规划与操作上下文 至 #独立-pvc-与确认写入",
+        "finding": "角色、位置、kubeconfig、inventory、主机与 PKI 输入、产品入口、1800/600 秒等待、PVC/副本/确认文件与重挂及幂等检查连续；V2 不覆盖为 V1 模板",
+        "result": "pass"
+      },
+      {
+        "requirement": "权限、访问模式与消费者迁移",
+        "sections": "operations-manual.md#访问模式和文件权限、#中间件消费与存储迁移；白皮书 PVC/RWX 机制与实践",
+        "finding": "RWO/RWOP/Block/RWX 区分；十类消费者字段与代码相符；按各应用入口新建或迁移，数据库冗余叠加及共同故障域说明；已测 RWX 权限/锁与无持锁故障范围分开",
+        "result": "pass"
+      },
+      {
+        "requirement": "副本确认、重建与故障",
+        "sections": "technical-whitepaper.md#副本与故障恢复；operations-manual.md#故障恢复",
+        "finding": "不称多数派协议，不把 write 成功等同事务持久；WO/RW、revision counter、重建方式和资源因果解释；进程故障、engine/IM/Manager 样本保留 I/O 错误、重试、人工重建和未测断电/节点/网络边界",
+        "result": "pass"
+      },
+      {
+        "requirement": "容量、副本变更与扩容",
+        "sections": "两份用户文档的容量章节、#加盘换盘与副本均衡",
+        "finding": "调度公式区分 reserved 与 minimum available 的分母，Bfree/Bavail 和配额边界；副本期望与实际回收分开；扩容三层容量/新区间数据，不能缩容，V2 分支及静态/实测范围明确",
+        "result": "pass"
+      },
+      {
+        "requirement": "TRIM、快照链与物理空间",
+        "sections": "白皮书快照链、TRIM 同卷测量；operations-manual.md#保留删除和-trim",
+        "finding": "解释稀疏链读索引、removed/CR 保留、有效快照与 unmap；实测区分应用空闲与宿主分配，禁止直接删副本文件或用 V1 CR 断言验 V2",
+        "result": "pass"
+      },
+      {
+        "requirement": "性能、官方成果与外推",
+        "sections": "technical-whitepaper.md#当前文件系统基线如何解释、#如何使用官方规模与性能报告；operations-manual.md#性能与稳定性验证",
+        "finding": "本项目热缓存/小数据/单客户端与历史官方 1.6.x EC2 规模数据分别列硬件、版本、负载和缺失条件；分位与吞吐分母、窗口非峰值、重建碎片影响解释清楚，不外推 SLA 或 V2 阈值",
+        "result": "pass"
+      },
+      {
+        "requirement": "快照、克隆与恢复隔离",
+        "sections": "operations-manual.md#创建与恢复快照、#从现有-pvc-克隆隔离工作副本；白皮书对应机制实践",
+        "finding": "原生/动态/静态 CSI 接口与容量未知语义分开；新目标身份、容量、副本、时间边界及双向隔离，V1 克隆等容量和中间单副本状态明确；源卷保留",
+        "result": "pass"
+      },
+      {
+        "requirement": "备份目标、保护与恢复",
+        "sections": "operations-manual.md#备份与恢复；白皮书对应全量/增量、拒绝与恢复实践",
+        "finding": "外部故障域、稳定密钥、CA 去首尾空白、URL/轮询和最小权限；目标 available、Completed、引用块可读与新卷恢复分层；凭据/TLS/网络分类，禁止对象库直接过期块",
+        "result": "pass"
+      },
+      {
+        "requirement": "周期计划、保留及轮换",
+        "sections": "operations-manual.md#计划保留与凭据轮换；白皮书三项周期实践；开发手册计划语义",
+        "finding": "UTC/时区、选择、detached 跳过、retain 与本地快照数量、任务计数的 full 间隔、卷级错误不保证 Job 失败、在途排空及 Foreground 删除说明；实际账户撤销、失败点与恢复数据分开，396秒不是承诺",
+        "result": "pass"
+      },
+      {
+        "requirement": "系统恢复、DR 与回切",
+        "sections": "operations-manual.md#系统恢复与站点灾备；technical-whitepaper.md#恢复系统恢复与-dr-的区别",
+        "finding": "源/目标重新建立上下文、源版本包、跳过已有卷与最新卷备份、缺失设置/Secret、部分 rollout 停止、DR Engine 实际恢复水位、fencing/激活/新增写入回切闭环；明确现场待验",
+        "result": "pass"
+      },
+      {
+        "requirement": "节点磁盘维护、救援及孤儿",
+        "sections": "operations-manual.md#节点与磁盘生命周期、#故障恢复；白皮书相关机制",
+        "finding": "V1 挂载和 V2 裸盘操作分支，禁调度不搬数据、驱逐/取消顺序、最终空盘/实例与附着检查、额外盘开机挂载保护；孤儿类型/不可逆删除、全部副本故障保留、隔离拷贝救援未交付边界明确",
+        "result": "pass"
+      },
+      {
+        "requirement": "密钥、证书、网络与监控",
+        "sections": "operations-manual.md#安全维护；technical-whitepaper.md#安全与运维边界",
+        "finding": "LUKS头/容量与 Secret 替换不重加密、keyslot/派生边界；mTLS 启动加载和分阶段 CA 撤回；9500同时暴露 API 信任边界，HA webhook、真实允许拒绝和指标过时/缺失分开；监控任务当前待验",
+        "result": "pass"
+      },
+      {
+        "requirement": "升级及退出",
+        "sections": "operations-manual.md#升级与恢复出口、#下线与保留；白皮书对应章节",
+        "finding": "1.12.0 源版本恢复点、pre-upgrade 与已迁移状态、V1在线/V2停卷、不可降级、新备份复验；Bound/Retain/Released 非空拒绝、原生 hook、外部备份与共享快照保留、guard/receipt 身份和主机保留边界",
+        "result": "pass"
+      },
+      {
+        "requirement": "开发维护、接口及证据",
+        "sections": "development-manual.md 全文；operations-manual.md#参数速查；白皮书#依据与验证范围",
+        "finding": "配置/控制器/主机职责，固定制品集合、只在歧义查源码、节点并发、request UID与摘要、计划ledger、原生CSI无标签、54项独立验收；官方旧默认/指标/字段逐项校正而不修改无关消费者",
+        "result": "pass"
+      }
+    ],
+    "reader_paths": {
+      "novice": "由规划显式选择 V1 或 V2 → 独立盘或裸盘资格 → 稳定 PKI → config+download+setup09 → 实际选类的应用 PVC/Pod → fsync、原卷重挂和相同输入重入 → 外部目标、备份与新目标恢复；各阶段保留输入、等待、出口、失败停止及源数据。V2未验收边界在进入主线前可见。",
+      "experienced": "任务索引进入扩容/快照克隆/轮换/系统恢复DR/节点磁盘/故障/监控/升级退出；链接公共会话与该任务前置，参数速查区分默认/省略/0及动态或停卷；检查原 UID/声明与确认账本，按单因果层恢复并收回临时变更。"
+    },
+    "closed_defects": [
+      {
+        "problem": "DR及升级 JSON 检查依赖开发用 .venv/bin/python，交付管理主机并无此目录契约",
+        "fix": "公共会话检查 python3 并说明标准库依赖，两处统一 python3；AST/Bash静态通过"
+      },
+      {
+        "problem": "加密 StorageClass 示例省略 data_engine，V2-only 按代码默认 v1，不能直接消费",
+        "fix": "V1示例显式 data_engine:v1，给出 V2新类名/data_engine:v2/调度要求；用既有配置分别经过真实validate/storage_class验证两引擎及四项密钥引用"
+      },
+      {
+        "problem": "卸载后 Helm 检查依赖未声明的 PATH",
+        "fix": "统一为控制任务实际消费的 ./extra-bin/helm，保留公共工作目录"
+      }
+    ],
+    "checks": {
+      "status": "pass",
+      "checks": {
+        "local_links": 130,
+        "yaml_blocks": 20,
+        "bash_blocks": 34
+      },
+      "document_sha256": {
+        "docs/storage/longhorn/operations-manual.md": "b97284dbeee980fceb5cd2bd0cf3bd62426e1b86b6a7c0f571c4cbf2a4b5e70f",
+        "docs/storage/longhorn/technical-whitepaper.md": "e55129ad21688594b0fb6879d370b7b52bb81a33f28effd878d544000f86c89c",
+        "docs/storage/longhorn/development-manual.md": "6817f0a66d9540a964b5683a4d9f33e7d43e8de3f8c2924b831b6430d62d194d"
+      },
+      "additional_checks": {
+        "heredocs": 3,
+        "inline_c": 7,
+        "unchanged_rendered_diagrams": 7
+      },
+      "boundary": "Static document checks; diagrams reuse existing rendering and visual review by source identity. No new field test or independent content review."
+    },
+    "existing_document_contracts": {
+      "tests": 44,
+      "result": "pass"
+    },
+    "evidence_readback": {
+      "cited_records": 24,
+      "sha256_bound_raw_files_verified": 365
+    },
+    "boundaries": [
+      "No new live operation, GA replay or test runner was added for writing.",
+      "Current diagrams match all seven previously rendered and visually reviewed sources; renders reused by identity.",
+      "Documentation content is reviewed separately from outstanding product/operation acceptance: system restore, DR, physical-disk/node/network faults, monitoring, upgrade, V2 lifecycle/live gates and final clean full regression remain pending.",
+      "LONGHORN-42 remains pending under its fixed-runner contract: this author review and existing document tests do not fabricate a LONGHORN_DOCUMENTATION_PASS/durable gate."
+    ]
+  },
+  "files": {
+    "logs/longhorn-cases/full-content-document-review-20261020/full-content-document-contracts-20261020.log": "7a553dc3083868e4389de19651f3d6b44a8ba1c2687a7d724b863ea61edfa57f",
+    "logs/longhorn-cases/full-content-document-review-20261020/full-content-class-render-20261020.json": "74e0d734819be452be7879babf31cda959d37efb13417ed4bcfc32490691726b",
+    "logs/longhorn-cases/full-content-document-review-20261020/reading-map.json": "b14c1fab0608ab8a504d757203a7d3f33d0d4aad74b002d17fafd86e8e06a6c1",
+    "logs/longhorn-cases/full-content-document-review-20261020/sixrepo-document-review-start-20261020.json": "acf95534cac5fec3892f0e508a8e5628696841f4e81a1007315e98f1851761d1",
+    "logs/longhorn-cases/full-content-document-review-20261020/full-content-document-static-20261020.json": "1e636b79734b3e30b8164b00bb7e05345e6f24b6ad9241f8f04b466366de404a",
+    "logs/longhorn-cases/full-content-document-review-20261020/review.json": "694c01f17d4599138c82d78536309bfc6ba65dd4a4836670bd0bb15d5d087d2b",
+    "logs/longhorn-cases/full-content-document-review-20261020/full-content-evidence-readback-20261020.json": "8c6407ce4030f3a121638fbaf5bd13846dd64488a113d8571ca0a059d464f9b4",
+    "logs/longhorn-cases/full-content-document-review-20261020/current-diagram-render-map.json": "0e7df79e75d1848eff7dad004845436559f6aabb63e984736af76816bc819e0c",
+    "logs/longhorn-cases/full-content-document-review-20261020/snapshot/tests/longhorn-test-matrix.yaml": "437fedaa8a4bf43c9c1f21aaae287a7884b081077775833b4254040ee8c8b92e",
+    "logs/longhorn-cases/full-content-document-review-20261020/snapshot/docs/documentation-quality-standard.md": "a17ef188697d9d89788be976f494cd318aeead487fb179afc91ca8de069f02fc",
+    "logs/longhorn-cases/full-content-document-review-20261020/snapshot/docs/middleware/delivery-playbook.md": "d6916a5dfae530e5f3a16e862c942407d76f0facf110e75368339236919317a9",
+    "logs/longhorn-cases/full-content-document-review-20261020/snapshot/docs/storage/longhorn/operations-manual.md": "b97284dbeee980fceb5cd2bd0cf3bd62426e1b86b6a7c0f571c4cbf2a4b5e70f",
+    "logs/longhorn-cases/full-content-document-review-20261020/snapshot/docs/storage/longhorn/technical-whitepaper.md": "e55129ad21688594b0fb6879d370b7b52bb81a33f28effd878d544000f86c89c",
+    "logs/longhorn-cases/full-content-document-review-20261020/snapshot/docs/storage/longhorn/development-manual.md": "6817f0a66d9540a964b5683a4d9f33e7d43e8de3f8c2924b831b6430d62d194d"
+  }
+}

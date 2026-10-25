@@ -20,3 +20,7 @@
   serial: 1
   roles:
   - { role: kube-master, tags: ['change_cert', 'force_change_certs', 'restart_master'] }
+
+
+# Prepare new clients and reconcile only explicitly allowlisted data nodes.
+- import_playbook: 09.longhorn.yml

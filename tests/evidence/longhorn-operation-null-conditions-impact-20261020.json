@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-20",
+  "classification": "product and test-gate dependency impact",
+  "status": "compatibility-proven",
+  "scope": "Unchanged V2 installation baseline only; operation completion behavior requires its own current focused acceptance.",
+  "product_input": "roles/longhorn/files/longhorn.py",
+  "original_sha256": "6cc209d27a6cfab1817bfd2579c4925ce115420c6da68ef2f18ba1fb9d4fcbe5",
+  "sha256": "f013c6716cc461d5184d570ff6c75f8f48dd9f755f5ad5935777bb4919161db5",
+  "exact_diff": "--- qualified-source\n+++ current-source\n@@ -1559,7 +1559,7 @@\n         if not state or state['metadata']['uid'] != uid:\n             raise ValueError('Longhorn request identity changed while waiting')\n         status = state.get('status', {})\n-        if status.get('error') or status.get('state') in ('Error', 'Unknown') or any(x.get('type') == 'Error' and x.get('status') == 'True' for x in status.get('conditions', [])):\n+        if status.get('error') or status.get('state') in ('Error', 'Unknown') or any(x.get('type') == 'Error' and x.get('status') == 'True' for x in (status.get('conditions') or [])):\n             raise ValueError('Longhorn request reached an error state')\n         expected = {'snapshot': None, 'backup': 'Completed', 'system-backup': 'Ready', 'system-restore': 'Completed'}[request['kind']]\n         return bool(status.get('readyToUse')) if expected is None else status.get('state') == expected and (request['kind'] != 'backup' or bool(status.get('url')))\n",
+  "proof": "Entire production file is byte-identical except treating a nullable condition list as empty. The qualified initial installation had empty longhorn_requests and its business install scenario did not invoke operation. Host, raw identity, ownership, install convergence, engine and disk code are unchanged. Preserve installation evidence for this exact input pair, with original frozen inputs intact; do not relabel old operation evidence as new.",
+  "regression": {
+    "old_source": "Four request variants reproduce NoneType errors on the frozen original source",
+    "current_source": "Nullable/empty/non-error conditions wait and complete for snapshot, backup, SystemBackup and SystemRestore; errors, Unknown and replaced UID continue to stop",
+    "contracts": "tests.unit.test_longhorn_delivery.RequestCompletionContracts"
+  },
+  "raw_contracts": {
+    "/tmp/kubeauto-longhorn-research/systembackup-null-red-proven-20261020.log": "27a116e6976a6218c6651ed4779c2a2a2d930d4c6b7babebd47235776f177470",
+    "/tmp/kubeauto-longhorn-research/systembackup-recovery-contracts-20261020.log": "6cea890d2e552ae17135b6e7a5b8317f9e9cdfacb4453bbade17b8a59477088a"
+  },
+  "affected_cases": {
+    "LONGHORN-01": "Current complete static gate required",
+    "LONGHORN-12": "Return to pending; product snapshot request completion changed; smallest disproof --longhorn-snapshot",
+    "LONGHORN-14": "Already pending; --longhorn-backup",
+    "LONGHORN-15": "Already pending; --longhorn-backup-refusal",
+    "LONGHORN-16": "Already pending; --longhorn-recurring",
+    "LONGHORN-48": "Already pending; original UID replay/recovery then --longhorn-v2-systembackup-qualification"
+  },
+  "unchanged": "Other accepted volume/access/expansion/clone/fault/performance cases do not consume operation completion. Prior measurements remain valid for their original sources. Store qualifier must be refreshed because installation-baseline helper input changed; resource qualifier is not consumed by the preserved installation boundary."
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-02",
+  "status": "pass",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-disabled </dev/null",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_DISABLED_PASS",
+  "scoped_clean_marker": "LONGHORN_DISABLED_SCOPED_CLEAN_PASS",
+  "boundary": "Disabled CLI spies plus unchanged input/disabled-playbook contracts passed by static gate. No host or Kubernetes access; no live product acceptance.",
+  "supporting_static": "logs/longhorn-cases/static-20261019-032947/status.json",
+  "files": {
+    "logs/longhorn-cases/disabled-20261019-033048/gate.log": "dd4d0b1989a568f4c5b221a6835f5d2bece99c411706351d78009eea52e010f4",
+    "logs/longhorn-cases/disabled-20261019-033048/status.json": "06d9fa1c9c0fc3680b3c18f7305d4f51117d6091b332c07b2c86a1443d871bf1",
+    "logs/longhorn-cases/static-20261019-032947/status.json": "eafcb84aab9634c19578498be7e3b2081a8205eec2230e90fabafe2c0bcbcee6",
+    "playbooks/09.longhorn.yml": "09a66276ca3d6e9f0474f1a3adfad52fe9f38a06c7af6bdd8cf902972ab2d8a1",
+    "roles/longhorn/defaults/main.yml": "8b8c5304fbb3d8f1ef77ab7320094a72f4ffc06647237311807d4fa89d315620",
+    "roles/longhorn/files/longhorn.py": "142671591d28c2f5fde805f8612087de95698ef3976218cb828959a8bfcfbbd8",
+    "roles/longhorn/tasks/control.yml": "06228d8a876888673249e258b46a207cb46185de0669805fb3da4540dbe1ecea",
+    "roles/longhorn/tasks/host.yml": "76f43de1406811f8d61c1fe58e46f75e3d04bb36504b2cfe19d5e29bc77cca21",
+    "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "tests/helpers/longhorn-static.sh": "f87a95bfa7ef0c04f39833e700c6bcc2bd41a64b22e862396207e25271ac0e25",
+    "tests/unit/test_longhorn_delivery.py": "cda6ae32f13b24baba12061c158f1154746052b630570e50b3fb73a0fcfc72f5"
+  }
+}

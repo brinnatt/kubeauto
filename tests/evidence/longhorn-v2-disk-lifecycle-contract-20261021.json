@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-contract-pass",
+  "classification": "test-gate",
+  "cases": [
+    "LONGHORN-45",
+    "LONGHORN-51 expansion/selective-activation scope only"
+  ],
+  "ladder_level_completed": 2,
+  "next_permitted_level": "fixed runner focused v2-disk-lifecycle after accepted LONGHORN-52 transition and independent target54 release",
+  "rc": 0,
+  "tests": 33,
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_disk_lifecycle tests.unit.test_longhorn_node_lifecycle_shell tests.unit.test_longhorn_remaining_public_routes -v",
+  "product_entries": [
+    "kubecli add-node longhorn-v2-gate 192.168.47.149 longhorn-node-149",
+    "config.yml longhorn_v2_nodes/block_disks + kubecli setup longhorn-v2-gate 09",
+    "config.yml longhorn_action=retire-block-disks with exact UUID approvals + kubecli setup longhorn-v2-gate 09",
+    "kubecli del-node longhorn-v2-gate 192.168.47.149"
+  ],
+  "expected_marker": "LONGHORN_V2_DISK_LIFECYCLE_PASS",
+  "cleanup_marker": "LONGHORN_V2_DISK_LIFECYCLE_SCOPED_CLEAN_PASS",
+  "inputs": {
+    "tests/helpers/longhorn-v2-disk-lifecycle.py": "020d7202e4c8a5e038e32a6b135a58490a62d9331634340d874e48d624f94e20",
+    "tests/helpers/longhorn-v2-disk-lifecycle.sh": "a73710a4f2a38d240fec31daf5e9f967ce9ba014e0191eace2148908e1acdee0",
+    "tests/unit/test_longhorn_v2_disk_lifecycle.py": "f4e51fce02149b346b5e091f86db07ace7d16ddeb0096830571c02a7312c24b0",
+    "tests/helpers/longhorn-runner.sh": "a388679e46c656f9cf7b81900f9bc95e3d6b7e96434d584f212e37bdc1a385c9",
+    "tests/helpers/longhorn-live.sh": "9e3cdb27bb515964d75b3fdd08ee70f0fc4ba127bb7a9ae6f2023cdb09ec9a93",
+    "tests/helpers/longhorn-static.sh": "7267bad7d777766a4357c46a32d0a52c39a0c9e36bc8e6e91d0b8f7c3a6ecbb7",
+    "tests/unit/test_longhorn_remaining_public_routes.py": "6e2407bb8f1d6e8a2676065782123c82ebb03fe6782ec087fd8a88e6018c8aa6",
+    "tests/unit/test_longhorn_node_lifecycle_shell.py": "af17bad2ad67a959fccb8b2723a1be8b2a8f6640816f900aef7c08cb19a8a7e3"
+  },
+  "files": {
+    "logs/longhorn-cases/v2-disk-lifecycle-contract-20261021/contracts.log": "9ea55ff76e9826de15bab675cc675b9341acfb7687602ae58909fca1472ce906"
+  },
+  "sources": {
+    "disk.go": {
+      "url": "https://raw.githubusercontent.com/longhorn/longhorn-instance-manager/cfd63a673e3047ca176185619565d5a81d33ec1c/vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/disk.go",
+      "sha256": "62215fd23d99d9af38268af63472c4462588393ed9cb2f8edac3ca6c0a69e053",
+      "bytes": 15065
+    },
+    "aio.go": {
+      "url": "https://raw.githubusercontent.com/longhorn/longhorn-instance-manager/cfd63a673e3047ca176185619565d5a81d33ec1c/vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/disk/aio/aio.go",
+      "sha256": "0b80369372f95f7998adf5fb471aec90c6e7e2e9200c282d35615e90c157b032",
+      "bytes": 2733
+    },
+    "multidisk.html": {
+      "url": "https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/multidisk/",
+      "sha256": "bb66d9b88b4fa25f38130b32d4272bccefe7085e6633b803644c091d7be572bb",
+      "bytes": 82080
+    },
+    "eviction.html": {
+      "url": "https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/disks-or-nodes-eviction/",
+      "sha256": "5dbf750ecde07447d83043dfb912f27b2399e0121653a47b6a0454cb5023e39c",
+      "bytes": 60001
+    },
+    "selective.html": {
+      "url": "https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/selective-v2-data-engine-activation/",
+      "sha256": "8274f7a7346ad86e18a8db5a710cada25a6b4648aaf7801c7352d6f33b183e55",
+      "bytes": 58427
+    }
+  },
+  "scope": "one 2Gi Retain V2 PVC with 8Mi fsynced payload; receiver .149 only after independent target release; exact original source148 eviction/retire/import by same UUID; original healthy peer replica UIDs preserved; receiver page pool/multipath/public host files/hostname/config/inventory/global kubeconfig restored",
+  "boundaries": [
+    "AIO only; no raw-device writes, formatting, whole-device zeroing or PCI rebinding",
+    "same original lvstore UUID must survive source reimport",
+    "busy retirement refuses because native disk is still serving and has not been evicted; unchanged actual three-replica placement/data required",
+    "no four-replica scaling: four domains require a fifth domain to evict while retaining four replicas",
+    "LONGHORN-51 consumes accepted expansion/selective-activation observations; does not rerun LONGHORN-45 or sign other 51 runtime/drain scope",
+    "no live or full-clean GA claim"
+  ],
+  "release_proof_transport": "exact target149 release path validated before static/sync; separate stdin record; no eval, raw interpolation or fallback; source148 proof, missing proof, embedded newline and shell substitution rejected",
+  "live_performed": false,
+  "matrix_pass": false
+}

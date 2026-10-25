@@ -1,0 +1,153 @@
+- name: Validate Longhorn configuration and ownership before host changes
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+    - role: longhorn
+      longhorn_phase: preflight
+
+- name: Prepare every Longhorn client and verify allowlisted filesystem mounts
+  hosts: kube_master:kube_node
+  gather_facts: "{{ longhorn_install | default('no') | string | lower in ['yes', 'true'] and longhorn_action | default('present') == 'present' }}"
+  become: true
+  any_errors_fatal: true
+  roles:
+    - role: longhorn
+      longhorn_phase: host
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'present'
+
+- name: Verify every explicitly approved V2 disk before native retirement
+  hosts: kube_master:kube_node
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Inspect exact host ownership and stable hardware for approved AIO disks
+      ansible.builtin.script:
+        cmd: "{{ base_dir }}/roles/longhorn/files/block-check.py --phase retire-check --declaration {{ {'id': longhorn_block_retirement_id, 'node': inventory_hostname, 'cluster_uid': hostvars['localhost'].longhorn_host_context.cluster_uid, 'node_uid': hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname], 'disks': longhorn_block_disks[inventory_hostname], 'minimum_gib': longhorn_min_disk_gib, 'targets': longhorn_retire_block_disks | selectattr('node', 'equalto', inventory_hostname) | list} | to_json | b64encode }}"
+        executable: python3
+      register: longhorn_block_retirement_check
+      changed_when: false
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'retire-block-disks'
+        - inventory_hostname in (longhorn_retire_block_disks | default([]) | map(attribute='node') | list)
+
+- name: Reconcile Longhorn storage and immutable operations
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+    - role: longhorn
+      longhorn_phase: reconcile
+      when: longhorn_install | default('no') | string | lower in ['yes', 'true']
+
+- name: Release exact V2 host receipts after independently observed native SPDK absence
+  hosts: kube_master:kube_node
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Release only the approved host disk identities while preserving media
+      ansible.builtin.script:
+        cmd: "{{ base_dir }}/roles/longhorn/files/block-check.py --phase retire --declaration {{ {'id': longhorn_block_retirement_id, 'node': inventory_hostname, 'cluster_uid': hostvars['localhost'].longhorn_host_context.cluster_uid, 'node_uid': hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname], 'disks': longhorn_block_disks[inventory_hostname], 'minimum_gib': longhorn_min_disk_gib, 'targets': longhorn_retire_block_disks | selectattr('node', 'equalto', inventory_hostname) | list, 'proof': (lookup('file', cluster_dir + '/yml/longhorn/block-retirement-release.json') | from_json)[inventory_hostname]} | to_json | b64encode }}"
+        executable: python3
+      register: longhorn_block_retirement_release
+      changed_when: true
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'retire-block-disks'
+        - inventory_hostname in (longhorn_retire_block_disks | default([]) | map(attribute='node') | list)
+
+- name: Release native V2 disk receipts only after every host confirms exact retirement
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Finalize the explicitly approved block retirement
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'retire-block-disks'
+      block:
+        - name: Start the full-scope host release receipt set
+          ansible.builtin.set_fact:
+            longhorn_block_retirement_release_receipts: {}
+        - name: Bind every actual host release result to the control operation
+          ansible.builtin.set_fact:
+            longhorn_block_retirement_release_receipts: "{{ longhorn_block_retirement_release_receipts | combine({item: hostvars[item].longhorn_block_retirement_release.stdout | from_json}) }}"
+          loop: "{{ longhorn_retire_block_disks | map(attribute='node') | unique | list }}"
+        - name: Save the secret-free completed host release proofs
+          ansible.builtin.copy:
+            content: "{{ vars | dict2items | selectattr('key', 'match', '^longhorn_') | rejectattr('key', 'equalto', 'longhorn_host_check') | items2dict | to_nice_json }}"
+            dest: "{{ cluster_dir }}/yml/longhorn/input.json"
+            mode: "0600"
+        - name: Release exact control identities and retain the completed retirement journal
+          ansible.builtin.command:
+            argv:
+              - "{{ ansible_playbook_python }}"
+              - "{{ base_dir }}/roles/longhorn/files/longhorn.py"
+              - retire-finalize
+              - --config
+              - "{{ cluster_dir }}/yml/longhorn/input.json"
+              - --kubeconfig
+              - "{{ cluster_dir }}/kubectl.kubeconfig"
+          register: longhorn_block_retirement_final
+          changed_when: "'changed=1' in longhorn_block_retirement_final.stdout"
+
+- name: Release owned host mount guards only after native uninstall completes
+  hosts: kube_master:kube_node
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Verify every host receipt before releasing the first mount guard
+      ansible.builtin.script:
+        cmd: "{{ base_dir }}/roles/longhorn/files/host-check.py --release check --data-path {{ longhorn_data_path }} --cluster-uid {{ hostvars['localhost'].longhorn_host_context.cluster_uid }} --node-uid {{ hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname] }}"
+        executable: python3
+      changed_when: false
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'uninstall'
+        - inventory_hostname in longhorn_storage_nodes
+    - name: Bind V2 receipt release to the original cluster node and disk declarations
+      ansible.builtin.set_fact:
+        longhorn_v2_release_declaration: "{{ {'cluster_uid': hostvars['localhost'].longhorn_host_context.cluster_uid, 'node_uid': hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname], 'disks': longhorn_block_disks.get(inventory_hostname, []), 'minimum_gib': longhorn_min_disk_gib} | to_json | b64encode }}"
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'uninstall'
+        - inventory_hostname in longhorn_v2_nodes | default([])
+    - name: Verify every V2 receipt before releasing host ownership
+      ansible.builtin.script:
+        cmd: "{{ base_dir }}/roles/longhorn/files/block-check.py --phase release-check --declaration {{ longhorn_v2_release_declaration }}"
+        executable: python3
+      changed_when: false
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'uninstall'
+        - inventory_hostname in longhorn_v2_nodes | default([])
+    - name: Release exact owned receipts and guards while retaining mounted data
+      ansible.builtin.script:
+        cmd: "{{ base_dir }}/roles/longhorn/files/host-check.py --release apply --data-path {{ longhorn_data_path }} --cluster-uid {{ hostvars['localhost'].longhorn_host_context.cluster_uid }} --node-uid {{ hostvars['localhost'].longhorn_host_context.node_uids[inventory_hostname] }}"
+        executable: python3
+      register: longhorn_host_release
+      changed_when: (longhorn_host_release.stdout | from_json).changed | bool
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'uninstall'
+        - inventory_hostname in longhorn_storage_nodes
+    - name: Reload systemd after releasing the owned kubelet mount guard
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: longhorn_host_release is changed
+    - name: Release exact V2 ownership receipts while preserving raw media
+      ansible.builtin.script:
+        cmd: "{{ base_dir }}/roles/longhorn/files/block-check.py --phase release --declaration {{ longhorn_v2_release_declaration }}"
+        executable: python3
+      register: longhorn_block_release
+      changed_when: (longhorn_block_release.stdout | from_json).changed | bool
+      when:
+        - longhorn_install | default('no') | string | lower in ['yes', 'true']
+        - longhorn_action | default('present') == 'uninstall'
+        - inventory_hostname in longhorn_v2_nodes | default([])

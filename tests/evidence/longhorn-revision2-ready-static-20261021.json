@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "static-artifact-contract-pass",
+  "ladder_level_completed": 2,
+  "next_permitted_level": 3,
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-v2-source-target-im-revision-2-adopt-qualification (mandatory preflight portion)",
+  "rc": 0,
+  "failure_markers": 0,
+  "unit_tests": 1575,
+  "suites": 26,
+  "artifact_images": 30,
+  "plan": {
+    "path": "tests/fixtures/longhorn-im-revision-2-plan.json",
+    "sha256": "f953daa0490a77e2559f9f228421c03b60b92fe348b11848d06a1d6339876a89"
+  },
+  "frozen_inputs_manifest": {
+    "path": "logs/longhorn-cases/v2-source-target-im-revision2-20261021/frozen-inputs.json",
+    "sha256": "d4132b365bd2a49cead32d8aeaf87045386a7c71b302ca3232235d751ec879cd"
+  },
+  "files": {
+    "logs/longhorn-cases/revision2-ready-static-20261021/artifacts-status.json": "5f9e6bf19d98594cc6953ed23c5cf4f61a327b82eabe9d7ab0cfe5f81dd87a62",
+    "logs/longhorn-cases/revision2-ready-static-20261021/artifacts-gate.log": "8b7d2e07d0c56f0be7a726822be7042277111815e1eb312ec507459b26066e04",
+    "logs/longhorn-cases/revision2-ready-static-20261021/static-status.json": "20a8c7fc2d4997f19dec3a2362dcca7711d1b07e309117a36673daa08daaa638",
+    "logs/longhorn-cases/revision2-ready-static-20261021/static-gate.log": "0a15d3dc704710bffb27ef2d0fab0db711bbd152ad6e6b7c0597e9aafdf9c0a3"
+  },
+  "boundary": "Current mandatory level2 only, no live scenario/matrix/GA PASS. 676 frozen inputs, exact79 per-profile .2 adoption plan, independently verified publication and current 30-image China registry readback."
+}

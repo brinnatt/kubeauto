@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "Focused immutable-cache prerequisite only; no Longhorn installation or data-volume acceptance",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-cache-qualification",
+  "rc": 0,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_CACHE_QUALIFICATION_PASS",
+  "scoped_clean_marker": "LONGHORN_CACHE_QUALIFICATION_SCOPED_CLEAN_PASS",
+  "images": 30,
+  "product_entry": "kubecli download -E longhorn",
+  "verification": "All 30 images verified before and after the real product download. For changed gzip representations, actual compressed bytes/size and uncompressed ordered DiffIDs match the immutable config. Core/node identity preserved; six Registry relays cleaned. No disks, credentials or Longhorn resources created.",
+  "first_failure": {
+    "class": "test-gate",
+    "reason": "Docker push reused differently compressed copies of existing layers; original gate incorrectly required compressed blob identity despite identical immutable config and uncompressed changesets.",
+    "official_source": "https://github.com/opencontainers/image-spec/tree/147f9c13cedb47a0c4d9a11a222961073d585877",
+    "contracts": "174 complete static contracts; deterministic recompression and corruption/reordering/config rejection tests before focused execution."
+  },
+  "files": {
+    "tests/helpers/longhorn-lab.py": "2f15b8d0679d107226fa53cb4f8dc7b7179c928c88e4b0f6ee5d206d2871e5ef",
+    "tests/helpers/longhorn-live.sh": "ab820bc4b2cc2f092e06df0906cab60ba81a07baa70fa045fb482adba7969f32",
+    "tests/helpers/longhorn-runner.sh": "e874616ac418ab20b18f809f080ee17938c40691fc55f47efab264d9b374d4ad",
+    "tests/unit/test_longhorn_lab.py": "edbe9c984ce6aca0ebd979c968f26d601119e093f8892837973f511b5f62cc04",
+    "tests/unit/test_longhorn_gate.py": "2f110911e43f363a90fb9d1d492bfa22793ba70a05280d809d7dd2ff3bdf9ba9",
+    "logs/longhorn-cases/cache-qualification-20261019-045708/gate.log": "87dbf21f687a722b9572c688ee8825b6fad8daefcbae6a2da2dc2baef64d494e",
+    "logs/longhorn-cases/cache-qualification-20261019-045708/durable-status.txt": "9a9794105e90d58deaa73fe8ee5f59c733a5fa4d86dc83c1bb47a04984015909"
+  },
+  "previous_qualification_files": {
+    "logs/longhorn-cases/cache-qualification-20261019-042641/gate.log": "673893c27886d3790f9bdee6e8444affda0567432847fb255a0a2a42d6a47c27",
+    "logs/longhorn-cases/cache-qualification-20261019-042641/durable-status.txt": "9370dc91f5c972b5c62ed6e0f5b583e57093f992953abededb766aff4e51c612"
+  },
+  "manifest_reuse": {
+    "verification": "Digest-addressed published manifest is atomically cached and SHA256 checked on every reuse; missing bytes use TalkEdu then the already-published Docker Hub reference. Content mismatch stops rather than failing over.",
+    "first_failure": "logs/longhorn-cases/install-20261019-045105/gate.log: jumper TalkEdu TCP connection refused during redundant published-manifest read, before disk/host/credential preparation. Class environment plus missing test-gate fallback.",
+    "contracts": "179 static contracts; deterministic first-registry refusal, both registries unavailable, wrong manifest bytes, corrupt and symlink cache rejection. Live qualification verifies real config+kubecli download and both 30-item checks; no forced public-registry outage was injected."
+  }
+}

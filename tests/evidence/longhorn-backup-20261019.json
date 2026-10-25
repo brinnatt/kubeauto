@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-14",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2250506,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_BACKUP_PASS",
+  "scoped_clean_marker": "LONGHORN_BACKUP_SCOPED_CLEAN_PASS",
+  "checks": {
+    "object_receipts": {
+      "full": {
+        "backup": "backup-full-7ee9ce28c9de5bcc2a24f276",
+        "incremental": false,
+        "newly_uploaded_bytes": 137275,
+        "objects": {
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/backups/backup_backup-full-7ee9ce28c9de5bcc2a24f276.cfg": {
+            "sha256": "e8856af6b6eeed0ef388b95f2293e799676c6dcd1c004288ef2a2ebfb7db7471",
+            "size": 6928
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/35/86/35864f37501554464f90eedbb189de35f01e8833a55745a955c94c04aafb3ed0.blk": {
+            "sha256": "597184a62517366e1d03a88fed35aa09dcd5d4397456e3c35f4993a844456798",
+            "size": 14697
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/4a/65/4a658a8a7f0b6a148865179296b51097bad299327f083b2b1260714576cbb908.blk": {
+            "sha256": "732c67a5387fae326e867606ac801d7fada45a10224e17db44ef9757bc154476",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/9b/56/9b56597b76ff1273b41f844fa9e4fb3dbdbd3fb61fb5391267ab0128b63a19f5.blk": {
+            "sha256": "da58b725057dc1ac4d926577639b4a83bc9e751c6fc3a06581ae280ccaba35a2",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/b1/2b/b12bdb909fbc9f582d8ca683f33bf64ebb21da80237ecb388e662f80e338bfc0.blk": {
+            "sha256": "8e467c7d6f908c784aa112887bf977aa53db5c6874f70663799a5ad506b11fff",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/c6/f2/c6f20cac44b01e430abdd2cf24d3ba3e443be6695ccd7e2930e9d7603decdc21.blk": {
+            "sha256": "bcf66c063cefdd223ebb1f3cb3db945d66b7ec711194920ad2a841e29e258dcb",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/ca/ac/caacaa3d12ef40b58b2bdd97ba3a22d87df8a193e08c554548745314ad011797.blk": {
+            "sha256": "8977caf08ef14c3a3e13d0fae90d5dec82d1deefcb2acc9514c5b5113a197bfc",
+            "size": 9400
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/cb/ea/cbea1ab3b2abbaa1825649b81e77e042bfb5c42be90af70e38f9e57c66882c9e.blk": {
+            "sha256": "db10b3dabc527a84f58f3fcafc5d9f94ce1653fbf7aa3c77ec51286d0583b714",
+            "size": 10467
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/e3/af/e3af3ba0610802a2a88cc31369f99da14f8b7921b688bc4bd9eaebd68ec9fa03.blk": {
+            "sha256": "1fc846cf3b1c4465a1b3713dfb2e8293dea6ab1e57fb28107e0ccdcbca97b628",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/f2/7a/f27acf41bbcb7c930410c71853affd737a1e2539bc9ec32cc705d642f41e6e26.blk": {
+            "sha256": "59118637fa0aa87fec6db9b26b6767b7e25b06b6e23259fd8c241002a2bf2733",
+            "size": 8437
+          }
+        },
+        "reuploaded_bytes": 49590,
+        "size": 2147483648,
+        "volume": "pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661"
+      },
+      "incremental": {
+        "backup": "backup-incremental-c5fe1ee7a6b70494906b3f0b",
+        "incremental": true,
+        "newly_uploaded_bytes": 75484,
+        "objects": {
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/backups/backup_backup-incremental-c5fe1ee7a6b70494906b3f0b.cfg": {
+            "sha256": "1dc985fc87ecd3d725eda53b80a95cde129064787a59a92095a78d47226c29a7",
+            "size": 7562
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/06/90/06909868712d0d7646f15fe3b23ef9d960ded2c1f806a4a76a127bd2eafb5411.blk": {
+            "sha256": "adb3b2a2a183ba0e2f920d335a750d1b2058a1879e98c05a555e6070d4ad6929",
+            "size": 10875
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/24/8d/248dba0304f6b277bddd676e98e7ef230eb35dab7bfb3e70b13a4dec280e0670.blk": {
+            "sha256": "48925dbb06d367f58aebd5b455530cd7d64b5c94505893317ea044424b5b3b67",
+            "size": 8316
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/2d/3d/2d3d753c794088246bc46c42e5f3828b4e29784db1cdad883e2b810e8d7b4a5d.blk": {
+            "sha256": "5f5323540bb98038ffaab1e7466bab528ae3f27e619e0439ee7efad38e065cf1",
+            "size": 14713
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/31/de/31ded3311ee31b8fdb9d17ae189b7000a8f3d8aae6975d10b728ba3c59b915bb.blk": {
+            "sha256": "cb9c30b98708159df4120c271e507ce479ee619ee239dc806512b00cf7a02301",
+            "size": 8316
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/3e/78/3e7804c2f351651733cc4912073ab0e2a07075fa510c31fad8a995a5ae390abe.blk": {
+            "sha256": "5b11beb682f2dbe7ac15f29be43612575c7979c103c1c4e916b5264f7abd6457",
+            "size": 8316
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/4a/65/4a658a8a7f0b6a148865179296b51097bad299327f083b2b1260714576cbb908.blk": {
+            "sha256": "732c67a5387fae326e867606ac801d7fada45a10224e17db44ef9757bc154476",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/5e/3f/5e3f988057858dbca2e24680f877a44d00100711c30b074f0bcf1cccc765b77a.blk": {
+            "sha256": "74260334f2f04138400a5658b321d2b2078ad3a01aa8ed8fec9a934ce2ed645f",
+            "size": 8316
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/6a/b3/6ab38f87d1831dc47d4894a59f22b054d14f909455b1e53a10165be6090f446e.blk": {
+            "sha256": "fa12b459bff9476262a156d6f902e0974363986089326d82a1b8d26b3e1d7864",
+            "size": 8316
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/9b/56/9b56597b76ff1273b41f844fa9e4fb3dbdbd3fb61fb5391267ab0128b63a19f5.blk": {
+            "sha256": "da58b725057dc1ac4d926577639b4a83bc9e751c6fc3a06581ae280ccaba35a2",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/b1/2b/b12bdb909fbc9f582d8ca683f33bf64ebb21da80237ecb388e662f80e338bfc0.blk": {
+            "sha256": "8e467c7d6f908c784aa112887bf977aa53db5c6874f70663799a5ad506b11fff",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/c6/f2/c6f20cac44b01e430abdd2cf24d3ba3e443be6695ccd7e2930e9d7603decdc21.blk": {
+            "sha256": "bcf66c063cefdd223ebb1f3cb3db945d66b7ec711194920ad2a841e29e258dcb",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/ca/ac/caacaa3d12ef40b58b2bdd97ba3a22d87df8a193e08c554548745314ad011797.blk": {
+            "sha256": "8977caf08ef14c3a3e13d0fae90d5dec82d1deefcb2acc9514c5b5113a197bfc",
+            "size": 9400
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/e3/af/e3af3ba0610802a2a88cc31369f99da14f8b7921b688bc4bd9eaebd68ec9fa03.blk": {
+            "sha256": "1fc846cf3b1c4465a1b3713dfb2e8293dea6ab1e57fb28107e0ccdcbca97b628",
+            "size": 8900
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/f2/7a/f27acf41bbcb7c930410c71853affd737a1e2539bc9ec32cc705d642f41e6e26.blk": {
+            "sha256": "59118637fa0aa87fec6db9b26b6767b7e25b06b6e23259fd8c241002a2bf2733",
+            "size": 8437
+          },
+          "backupstore/volumes/b4/89/pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661/blocks/f7/ac/f7acbb3bc23030e8d180123dd7aa0e314cc906bc32795d7adf605f615d99503b.blk": {
+            "sha256": "f5fb4e634be0b4a286909223a46fecbe080a70655d444222fd07bc22c33b0605",
+            "size": 8316
+          }
+        },
+        "reuploaded_bytes": 0,
+        "size": 2147483648,
+        "volume": "pvc-2ab3b282-266f-4225-8fcd-b7e7f9989661"
+      }
+    },
+    "restores": [
+      {
+        "mode": "full",
+        "backup_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+        "source_sha256": "312a2d8442b10f882c34fe0902b0d92c22f5736a5667ab60a69a07ddc4b0b3ad",
+        "independent_volume": "pvc-71c1279c-cfa2-4dcb-b88b-2f11ca8fcc4e"
+      },
+      {
+        "mode": "incremental",
+        "backup_sha256": "f584692f11aea9c12bbb1978e41d29a2d683e332d5bdae7f3c7778936ff5e59c",
+        "source_sha256": "312a2d8442b10f882c34fe0902b0d92c22f5736a5667ab60a69a07ddc4b0b3ad",
+        "independent_volume": "pvc-50e81c34-63ae-4616-9beb-31465b7b58c6"
+      }
+    ],
+    "actual_pvc_pv_native_capacity_bytes": 2147483648,
+    "three_healthy_replica_nodes": [
+      "longhorn-node-165",
+      "longhorn-node-212",
+      "longhorn-node-238"
+    ],
+    "source_cross_worker_remount_sha256": "312a2d8442b10f882c34fe0902b0d92c22f5736a5667ab60a69a07ddc4b0b3ad",
+    "clean_markers": [
+      "LONGHORN_BACKUP_PASS",
+      "LONGHORN_BACKUP_SCOPED_CLEAN_PASS",
+      "LONGHORN_BACKUP_BUSINESS_PASS",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_BACKUP_NATIVE_FIXTURES_CLEAN_PASS",
+      "LONGHORN_BACKUP_PRODUCT_FIXTURE_RESTORED",
+      "LONGHORN_BACKUP_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_BACKUP_STORE_CLEAN_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_GATE_EXIT rc=0"
+    ],
+    "healthy_core_and_storage_retained": true
+  },
+  "boundary": "Full/incremental external S3-compatible TLS backup and independent new-volume restores only; no scheduled retention, credential refusal, DR, system restore, disaster durability or full delivery acceptance. Prior failures are retained separately. Frozen source records actual remote inputs before subsequent local performance changes.",
+  "files": {
+    "logs/longhorn-cases/backup-20261019-101054/durable-status.txt": "aad27359ec0cdcd08a3e80a7c1bf90b8719fb3e92578f95f88793d9e7aef4c1b",
+    "logs/longhorn-cases/backup-20261019-101054/frozen-source.txt": "32878f638380897782ec2771d6b1c34403bc711f15b0539fd7de1ca476d83f76",
+    "logs/longhorn-cases/backup-20261019-101054/gate.log": "dbdf1fe2033532d0c08ce9c7838b797b0f4b30531079005e57296a116660fa01",
+    "logs/longhorn-cases/backup-20261019-101054/native-state.txt": "24de0a932744b5c66b3302b86b6972010b96e37ea1008dd77d43c247c92befa3"
+  }
+}

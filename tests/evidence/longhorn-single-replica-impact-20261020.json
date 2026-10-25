@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "classification": "product-and-test-gate compatibility analysis; not single-node live installation acceptance",
+  "problem": "An explicit one-replica independent target was refused by kubeauto range 2..5; hard CSI node anti-affinity also made upstream three controller replicas unschedulable on one node. V2 UI replica default was hardcoded to 3 instead of following the explicit setting.",
+  "official": {
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "chart_commit": "f349c091c50700cb6cb8a4df8aaa29ea214bdd48",
+    "references": [
+      "https://longhorn.io/docs/1.12.1/references/settings/#default-replica-count",
+      "https://longhorn.io/docs/1.12.1/references/helm-values/"
+    ],
+    "sources": {
+      "manager-1.12.1/types/setting.go": "DefaultReplicaCount data-engine-specific range 1..20; UI default distinct from StorageClass numberOfReplicas",
+      "source-1.12.1/chart/templates/deployment-driver.yaml": "Four csi.*ReplicaCount keys become CSI_*_REPLICA_COUNT environment values"
+    }
+  },
+  "original_sha256": "f013c6716cc461d5184d570ff6c75f8f48dd9f755f5ad5935777bb4919161db5",
+  "sha256": "bf43924a9f1227076b2739959473deb29cf7dd44add332c041c47edfbeaef0c3",
+  "changed_functions": [
+    "chart_values",
+    "validate"
+  ],
+  "other_top_level_ast_equal": true,
+  "existing_installed_profiles": {
+    "longhorn-gate": {
+      "default_replica_count": 3,
+      "clients": [
+        "192.168.122.212",
+        "192.168.122.165",
+        "192.168.122.238"
+      ],
+      "public_longhorn_input_sha256": "2cb34e01749a7d9fb15072ecb72c4bb7c9d534f29e84bfb8a917cb5776f78e35",
+      "chart_values_sha256": "3e4f57ba7061cb99ea2763c30684eddde3454e799791e39b10996624439126be",
+      "validation_unchanged": true,
+      "chart_values_equal": true,
+      "storageclasses_equal": true
+    },
+    "longhorn-v2-gate": {
+      "default_replica_count": 3,
+      "clients": [
+        "192.168.47.146",
+        "192.168.47.147",
+        "192.168.47.148"
+      ],
+      "public_longhorn_input_sha256": "99735acbb2b919e2ffbc29d591f85f944b00e0716715685d7468fb6beca69e92",
+      "chart_values_sha256": "3fdb83cf99bc6bbc66bd6f56c0dcb75786b1287a7c301776777751854d4b369d",
+      "validation_unchanged": true,
+      "chart_values_equal": true,
+      "storageclasses_equal": true
+    }
+  },
+  "unit_contract_log": "/tmp/kubeauto-longhorn-research/v2-dr-target-install-focused-contract-20261020.log",
+  "unit_contract_log_sha256": "1f3a92a5675f3a2a846399187fd9252b31ebe6a5c32a613d41385b8451110cf5",
+  "prior_compatibility": {
+    "path": "tests/evidence/longhorn-operation-null-conditions-impact-20261020.json",
+    "sha256": "662cfc05d9e903d0167a33a92e816cb1cd62f23e37b4fdfc7336f086057e0c3e"
+  },
+  "preserved": "Unchanged 3-replica V1/V2 baseline inputs, generated values and classes; data path, operations, ownership and cleanup implementations unchanged. Existing baseline evidence remains scoped to its original topology.",
+  "affected": "Explicit single-replica or fewer-than-three-client profiles and nondefault V2 UI default replica count need their own integration evidence. Full installation/HA/general delivery still pending.",
+  "smallest_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-install-qualification"
+}

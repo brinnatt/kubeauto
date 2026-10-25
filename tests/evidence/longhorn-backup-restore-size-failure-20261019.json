@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-14",
+  "status": "failed",
+  "date": "2026-10-19",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null",
+  "rc": 1,
+  "durable_pid": 2233384,
+  "failure_markers": 2,
+  "classification": "test-gate: KeyError indexing optional VolumeSnapshot.status.restoreSize on a ready pre-provisioned CSI snapshot; no restore PVC had been created.",
+  "official_basis": {
+    "external_snapshotter_commit": "78e32cd84e0abec2621924a30e38c755f93e180a",
+    "paths": [
+      "pkg/snapshotter/snapshotter.go:GetSnapshotStatus returns ready=true,size=0 if ListSnapshots unsupported",
+      "pkg/sidecar-controller/snapshot_controller.go:updateSnapshotContentStatus omits RestoreSize when size=0",
+      "pkg/common-controller/snapshot_controller.go:updateSnapshotStatus copies RestoreSize only when present"
+    ],
+    "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+    "manager_path": "csi/controller_server.go:ListSnapshots is Unimplemented"
+  },
+  "observed": {
+    "object_receipts": {
+      "full": {
+        "backup": "backup-full-b7ad9fbb35b59b808b96f2dd",
+        "incremental": false,
+        "newly_uploaded_bytes": 137335,
+        "objects": {
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/backups/backup_backup-full-b7ad9fbb35b59b808b96f2dd.cfg": {
+            "sha256": "92c420784bbe21bd731fdd1246eed8e4cb6b24bda3fdf851544e9ffb8ce5fd5e",
+            "size": 6928
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/1b/c0/1bc060deba1032f7a76e7187e13f3a5ef5a382c1f43496b49c34a33b95e6b55c.blk": {
+            "sha256": "9664317b75ac2c350afd81ab12425191f39078d09cec9a648b4abed4f2123ab6",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/50/f2/50f2d1e6618439a7c936daf4a408bcce1eaf041a950ba7046585e7364d7b05e4.blk": {
+            "sha256": "f5fa0a41b741808704a2bc78f2a8e95749df9755311967e56d4b8a7d142069de",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/72/06/72060478cf86c89957f614c057c0491f87385863110ef8bf3db301bcd9312cd7.blk": {
+            "sha256": "7a1e8c4cbbc2a34e43d9b200900824e14f39b7f7f8a9dc6c14afc4c3ecfbe293",
+            "size": 8437
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/73/7b/737b26017a69f2bac374f03bf7a351e2f66743413536107779531260efae6dc9.blk": {
+            "sha256": "dc910a3f4093b6ed9f14540287d7ca3a4609f0940f3f63a5b1ee4ff835d74803",
+            "size": 10488
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/a7/32/a7321718550f31f25393e668b818b4d1de0b4bfa45269f819cfc3e97342ea244.blk": {
+            "sha256": "f7aec2331bb806385d43446818c989b87c75d6b0ad296bb37d771ae2a229b344",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/b0/72/b0721f3f7cec7601d8d73f1176d1b2bbd9853a1426d18842823190ce91cabc14.blk": {
+            "sha256": "012834c80fa3033f40ff79778bf9b841c47fe7948905e49bc88a949da627022e",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/b4/e8/b4e8c4d3b84b8df4b76c5891913758181ee596b64a732b0968dc25cd3c1b36a0.blk": {
+            "sha256": "f9ba16f134502ea4ae2870c720e6371d8d402834c1f06e2c51efb1358aadcfff",
+            "size": 9400
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/be/f9/bef9fa7266cc4a87a5e1290ade9cceea5892829a9e0ad7b794f0366e55d34ed3.blk": {
+            "sha256": "e749e038aa70c49bc82b2b047de80ae8c55900146200e25ae49a985887b4946a",
+            "size": 14716
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/fc/6e/fc6e66b06c0564d8b67d0e8e2024e2bae9dc7d1f05f456d546cd04839abd9890.blk": {
+            "sha256": "2a258defaf8638f48fd498b6060a90810a035ae4a0f07556d16c9266e87697fa",
+            "size": 8904
+          }
+        },
+        "reuploaded_bytes": 57855,
+        "size": 2147483648,
+        "volume": "pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d"
+      },
+      "incremental": {
+        "backup": "backup-incremental-ccb0ca52b076f40766e9ed9f",
+        "incremental": true,
+        "newly_uploaded_bytes": 75534,
+        "objects": {
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/backups/backup_backup-incremental-ccb0ca52b076f40766e9ed9f.cfg": {
+            "sha256": "76a3a0f50ed2a7b636f6b842bf01077f7e08b66db43c4daca0a88760a01ec3f2",
+            "size": 7562
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/1b/c0/1bc060deba1032f7a76e7187e13f3a5ef5a382c1f43496b49c34a33b95e6b55c.blk": {
+            "sha256": "9664317b75ac2c350afd81ab12425191f39078d09cec9a648b4abed4f2123ab6",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/24/8d/248dba0304f6b277bddd676e98e7ef230eb35dab7bfb3e70b13a4dec280e0670.blk": {
+            "sha256": "48925dbb06d367f58aebd5b455530cd7d64b5c94505893317ea044424b5b3b67",
+            "size": 8316
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/31/de/31ded3311ee31b8fdb9d17ae189b7000a8f3d8aae6975d10b728ba3c59b915bb.blk": {
+            "sha256": "cb9c30b98708159df4120c271e507ce479ee619ee239dc806512b00cf7a02301",
+            "size": 8316
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/3e/78/3e7804c2f351651733cc4912073ab0e2a07075fa510c31fad8a995a5ae390abe.blk": {
+            "sha256": "5b11beb682f2dbe7ac15f29be43612575c7979c103c1c4e916b5264f7abd6457",
+            "size": 8316
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/50/f2/50f2d1e6618439a7c936daf4a408bcce1eaf041a950ba7046585e7364d7b05e4.blk": {
+            "sha256": "f5fa0a41b741808704a2bc78f2a8e95749df9755311967e56d4b8a7d142069de",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/5e/3f/5e3f988057858dbca2e24680f877a44d00100711c30b074f0bcf1cccc765b77a.blk": {
+            "sha256": "74260334f2f04138400a5658b321d2b2078ad3a01aa8ed8fec9a934ce2ed645f",
+            "size": 8316
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/6a/b3/6ab38f87d1831dc47d4894a59f22b054d14f909455b1e53a10165be6090f446e.blk": {
+            "sha256": "fa12b459bff9476262a156d6f902e0974363986089326d82a1b8d26b3e1d7864",
+            "size": 8316
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/72/06/72060478cf86c89957f614c057c0491f87385863110ef8bf3db301bcd9312cd7.blk": {
+            "sha256": "7a1e8c4cbbc2a34e43d9b200900824e14f39b7f7f8a9dc6c14afc4c3ecfbe293",
+            "size": 8437
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/73/18/731859029215873fdac1c9f2f8bd25a334abf0f3a9e1b057cf2cacc2826d86b0.blk": {
+            "sha256": "6144317ebb729ae78235743dcae0ea3aab4326651b059c341f48c45e3482c75b",
+            "size": 8265
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/82/45/82459639b29e7684e581335638d904a20b90c1a61e8fed0cbd6fccb8950361e2.blk": {
+            "sha256": "a23fa58b908a352ce8b92a3d7f34d24b2ba61320e866845f18a480c834742d72",
+            "size": 10907
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/84/5b/845b31fcd78b58381b44a1c733555a9e6b59cf9691bb53b6d019d1324acc93db.blk": {
+            "sha256": "476db0e45b38908f753be9f7ff11fcf652bb3daddc671178b975bd0d3df0c98e",
+            "size": 14731
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/8a/6f/8a6f79538698049eb3e11c2fcbe4907a74cef45643e378683222064418b1c197.blk": {
+            "sha256": "a5789544bf08e8234a246f375c6c00d7dee568c8ba04607888094f7547043741",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/8e/65/8e65c631c60b692f5a079f5d3c71a556dd88a7b54231aaaed8d16ce38158a3a5.blk": {
+            "sha256": "553ef86961ac2308ce028d16136bd6f387f7773e189bca34fd74591809755ad7",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/9c/10/9c102b13f0ee4927609600a8d985f35bba903c206e15774b8f904b0088a81fd2.blk": {
+            "sha256": "186505031ccf176d106b2755d709fdb742f7b85662dc772bd8e0e082b2495638",
+            "size": 8305
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/a0/dd/a0dda3b0c3e78c3db44c60cb504200d40cd7aa72e5c766a5ce9f1ddec492af04.blk": {
+            "sha256": "008906fb82b96390db7fe4f99fc4ea48a1bc09e29d89a8c77aa86dfd6a53d1cb",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/a7/32/a7321718550f31f25393e668b818b4d1de0b4bfa45269f819cfc3e97342ea244.blk": {
+            "sha256": "f7aec2331bb806385d43446818c989b87c75d6b0ad296bb37d771ae2a229b344",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/b0/72/b0721f3f7cec7601d8d73f1176d1b2bbd9853a1426d18842823190ce91cabc14.blk": {
+            "sha256": "012834c80fa3033f40ff79778bf9b841c47fe7948905e49bc88a949da627022e",
+            "size": 8904
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/b4/e8/b4e8c4d3b84b8df4b76c5891913758181ee596b64a732b0968dc25cd3c1b36a0.blk": {
+            "sha256": "f9ba16f134502ea4ae2870c720e6371d8d402834c1f06e2c51efb1358aadcfff",
+            "size": 9400
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/cf/57/cf576584fb0ba2b19df2a7ebfd8931fbe68f6da30de52d17354299c900e30ced.blk": {
+            "sha256": "2cb433e168209ebf8608e50624dd7903e70e3f457acd557d5d1e46fc3be79688",
+            "size": 8301
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/f7/ac/f7acbb3bc23030e8d180123dd7aa0e314cc906bc32795d7adf605f615d99503b.blk": {
+            "sha256": "f5fb4e634be0b4a286909223a46fecbe080a70655d444222fd07bc22c33b0605",
+            "size": 8316
+          },
+          "backupstore/volumes/20/cf/pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d/blocks/fc/6e/fc6e66b06c0564d8b67d0e8e2024e2bae9dc7d1f05f456d546cd04839abd9890.blk": {
+            "sha256": "2a258defaf8638f48fd498b6060a90810a035ae4a0f07556d16c9266e87697fa",
+            "size": 8904
+          }
+        },
+        "reuploaded_bytes": 0,
+        "size": 2147483648,
+        "volume": "pvc-b5081ded-fcb9-4d69-8233-0bd7b10add6d"
+      }
+    },
+    "restore_points_completed": 0,
+    "cleanup_and_health_markers": [
+      "LONGHORN_LAB_INSTALLATION_HEALTHY",
+      "LONGHORN_LAB_INSTALLATION_HEALTHY",
+      "LONGHORN_BACKUP_NATIVE_FIXTURES_CLEAN_PASS",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_BACKUP_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_BACKUP_STORE_CLEAN_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_LAB_INSTALLATION_HEALTHY"
+    ]
+  },
+  "boundary": "Both backup receipts establish real object readback, not complete backup recovery acceptance. Matrix remains pending. Native backup/CSI/business/store/transports cleanup succeeded and healthy core/storage retained.",
+  "files": {
+    "logs/longhorn-cases/backup-20261019-085458/durable-status.txt": "18825f7f7f30e47778f556ccd34c353c335307c1b8a5342ea2dca1ee78667870",
+    "logs/longhorn-cases/backup-20261019-085458/first-failure.txt": "febcd8a38112ee02a3a2d143a0bf36672462a7b60bd9d0d4e3e9d2621bff9323",
+    "logs/longhorn-cases/backup-20261019-085458/frozen-source.txt": "c8acfef66fd04923fe1be6969c075e691fec21bbbe06770f81b50b5f69847b9d",
+    "logs/longhorn-cases/backup-20261019-085458/gate.log": "b8826ce7d2a9d3004efaece7a515a5faf852ce99299c4cd95735ae2f677a51a5",
+    "logs/longhorn-cases/backup-20261019-085458/native-state.txt": "c0c5e657cbd94b53400b89cdf5edef9d5674e7d392ffac0eac6deb23a615dcdd"
+  }
+}

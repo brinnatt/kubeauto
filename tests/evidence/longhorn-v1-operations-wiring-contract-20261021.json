@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "pass",
+  "classification": "test-gate",
+  "scope": "Fixed dispatch, lease allowlists and recovery-only shells; no live module PASS",
+  "ladder_completed": 2,
+  "next": 3,
+  "matrix_items": [
+    "LONGHORN-24",
+    "LONGHORN-26",
+    "LONGHORN-28",
+    "LONGHORN-30"
+  ],
+  "inputs": {
+    "tests/helpers/longhorn-runner.sh": "d68cc2846ca01baad005caec51e505b1d000a32ed40f88e7a05ca9cb232769bb",
+    "tests/helpers/longhorn-live.sh": "9935cd4ad03b23364c14b7c613f81696e16310359d328e70cb8baf53a172116b",
+    "tests/helpers/longhorn-static.sh": "2cb336eb7dc45197515ede7563528a20f6cf2a693669226569e4ac57812bdfbb",
+    "tests/helpers/longhorn-maintenance.sh": "fc16b918a0de7220df44b265ca4b5e0643072343b62868cc19e7b51f76babfa7",
+    "tests/helpers/longhorn-capacity.sh": "d82423967d48afd2a10a09bc068c23e715d46181da763fcba5fb04137b7f80a7",
+    "tests/helpers/longhorn-integrity.sh": "20b346bf3feaf73a8b96de985e246d389c8e10a4005338f293c2fb75f18a73c7",
+    "tests/helpers/longhorn-disk-lifecycle.sh": "b562722e820ac04a921872900f52a3d3db04984c833de7947e3bbbeb99a44f7d",
+    "tests/unit/test_longhorn_v1_operations_wiring.py": "b247959f0a9f01a0f45922283c311df9e81012e7b0325f1833b12f79ad5c4e99"
+  },
+  "contract_tests": 68,
+  "logs": {
+    "logs/longhorn-cases/v1-operations-wiring-contract-20261021/longhorn-v1-operations-wiring-contract.log": "69d6557ef372a853f178b3b7cc28886b246bc9a294ea58f5c87ad4f964ab7a51",
+    "logs/longhorn-cases/v1-operations-wiring-contract-20261021/longhorn-v1-operations-dispatch-regression.log": "b08f9a133dda674215ad65f6cc44b1cd045f69cbe9dc44cbcdad18024a13e382"
+  }
+}

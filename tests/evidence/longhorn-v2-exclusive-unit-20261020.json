@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "pass",
+  "classification": "full repository deterministic unit suite",
+  "command": "bash tests/run_unit_tests.sh",
+  "rc": 0,
+  "tests": 1706,
+  "duration_seconds": 131.336,
+  "failure_markers": 0,
+  "source_inputs_compared": 133,
+  "boundary": "Local unit evidence only; declared133 product/unit inputs checked before/after; no V2 field or full delivery PASS.",
+  "previous_evidence": "tests/evidence/longhorn-v2-online-cpu-unit-20261020.json",
+  "files": {
+    "logs/longhorn-cases/v2-exclusive-unit-20261020/frozen-inputs.json": "13d92580718d4bb9d9ce7a592d3e6813afcae356c77ee53151d92f4eae327034",
+    "logs/longhorn-cases/v2-exclusive-unit-20261020/gate.log": "3a5d4e7f78224b1ac008863efa1e0251e17d8a4925489610553daff373be3979",
+    "logs/longhorn-cases/v2-exclusive-unit-20261020/status.json": "b457bcc2fa89d75eac1936d46811e4ae65e831d39a63fa2253e0ad5e9b68cc34"
+  }
+}

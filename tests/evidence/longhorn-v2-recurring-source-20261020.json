@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-20",
+  "status": "source-only",
+  "scope": "LONGHORN-48 V2 recurring selector, snapshot/backup retention and credential refusal/recovery integration; not project PASS",
+  "version": "Longhorn 1.12.1 replicated V2",
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots/",
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/set-backup-target/"
+  ],
+  "conclusions": [
+    "RecurringJob produces an owned Kubernetes CronJob with Forbid concurrency and OnFailure restart; Pod or Job success alone proves no volume recovery point.",
+    "PVC recurring labels override Volume labels only when recurring-job.longhorn.io/source=enabled. StorageClass selectors apply to newly created volumes; product group selection and native source selectors must remain separate assertions.",
+    "Normal snapshot/backup jobs skip unchanged data; snapshot qualification changes a separate fsynced file and backup-force-create qualification explicitly forces recovery points. Retention requires real native artifact and backend configuration sets.",
+    "Detached recurring work is disabled in this qualified production baseline. Observe at least two completed skipped cycles with unchanged native artifacts and source still detached; do not toggle the setting merely for test convenience.",
+    "Reuse unchanged V1 schedule/account/rotation mechanisms through the existing V2-qualified fixture. New evidence must prove source V2 disk placement, credential selection, native failure and independent restore; V1 results do not imply V2 PASS.",
+    "Keep both transports available while restoring original credential references and stopping owned schedules, then clean exact business/backup consumers and object-store fixture. Compare original target, foreign schedule/CronJob and detached setting identities after cleanup."
+  ],
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots.md": "6dffd2015e7b320287f1392ddf59511fd6ce3b4fb8e2e369588e1071db04b41b",
+    "manager-1.12.1/controller/recurring_job_controller.go": "8f611255a44c43c918695e63a719742daddaa2f31ab79082beb651584509b7db"
+  },
+  "reused_source_records": [
+    "tests/evidence/longhorn-v2-backup-source-20261020.json",
+    "tests/evidence/longhorn-v2-snapshot-source-20261020.json"
+  ],
+  "coverage_boundary": "These qualifications do not cover enabled detached scheduling, periodic full-backup intervals, SystemRestore, DR or complete LONGHORN-48/final delivery."
+}

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "status": "failed",
+  "classification": "test-gate",
+  "rc": 1,
+  "defect": "helm-release-bookkeeping",
+  "owning_case": "LONGHORN-43",
+  "journals_sha256": {
+    "longhorn-systembackup-qualification.json": "a6586380300f5ff9feedb38dca2b47d6b2c60dfd6fcaa514ad86ee09a65fc8bf",
+    "longhorn-systemrestore-business.json": "0bba5af65f15875945cfe79bc885fcee523691da8046355ced733590949f9b87",
+    "longhorn-systemrestore-qualification.json": "aafa5a2a04ed447beacbdb033373ab0e5be8ce16dea18f9d7e03ab99c1784e84"
+  },
+  "shared_sha256": "ff829f652988b13632b9e5f0af20b5a4fbdbbcb8040f7bd223d0744102e0a442",
+  "helm_profile_sha256": "65f314cfbf9d27fd6a4f1b8f70dd2dc83a2d6422dfcf7a537586a05cffe01222",
+  "original_backup_baseline": "LONGHORN_V2_BACKUP_BASELINE_VERIFIED target_sha256=cb56c30535236268e6b10c1bf38000486f6b24ec46e2db031e4c88bb23108a25 backup_objects=0 fixture_objects=0",
+  "root_cause": "Product completed restore reassertion correctly creates Helm revision 7; the gate incorrectly compared mutable Helm storage bytes as live credentials. Existing profile semantics and all non-Helm resources are identical.",
+  "original_diagnostics": "logs/longhorn-cases/systembackup-manager-commit-first-failure-20261025/systemrestore-first-failure",
+  "scope": "Only the exact reconstructed failure journals; no new source, no new restore request, no general retry or blanket Secret exclusion."
+}

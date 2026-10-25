@@ -1,0 +1,50 @@
+{
+  "adoption_inputs_unchanged": {
+    "v1": 79,
+    "v2": 79,
+    "v2-dr-target": 79
+  },
+  "change": "Opt-in V2 recovery requires actual EROFS, exact original Volume/Pod identities, changed native remount request and actual statvfs read-only state after native recovery. It fences the original client before recreation and retains full acknowledged-prefix, fresh fsync and cross-node verification. Default V1 original-client behavior remains exercised.",
+  "classification": "test-gate",
+  "completion_condition": "Remote-SPDK owning business/verification/durable/scoped cleanup must pass before the remaining five fault cases may continue. Prior three accepted cases are retained; this batch alone cannot sign complete LONGHORN-50.",
+  "contracts": {
+    "failure_markers": 0,
+    "rc": 0,
+    "real_process_tests": 7,
+    "tests": 77
+  },
+  "date": "2026-10-21",
+  "first_failure": "tests/evidence/longhorn-v2-failure-remote-spdk-first-failure-20261021.json",
+  "frozen_inputs": {
+    "tests/helpers/longhorn-control-faults.py": "8dd54250c87dc222e6edffa3551e226cfffcbe819242cbf680567f1b950935b9",
+    "tests/helpers/longhorn-live.sh": "9785dbc4df2f674b072c4dbda1554541408fefc4db8f5c8061f2e4ff57e4dba5",
+    "tests/helpers/longhorn-parallel.py": "eb94fbac2b678370f424130a8bd1f30abac33255bbbba2e9daa9b7552b412ce7",
+    "tests/helpers/longhorn-parallel.sh": "464c83107df24f035a54f6a174f179adf1fd115512b3e525c33d9beb93cf8858",
+    "tests/helpers/longhorn-runner.sh": "f67762bfa1eb7811ccd2ca8427e9e74cf1417e0d6c0deb85d965e24453d4b700",
+    "tests/helpers/longhorn-v2-failure.sh": "7ef1787f263856191c00c231903cba9a3767dcfda782a623bd0616b6cb626fef",
+    "tests/helpers/longhorn-v2-runtime-faults.py": "2cb9e40b58749ecf9e288846f255aa9c91a2447c929b6848831551c9ac017c1a",
+    "tests/unit/test_longhorn_control_faults.py": "43919913e5092bedec84bc03e90c7f5589ee1520d12d5683497c3717c70e80a1",
+    "tests/unit/test_longhorn_parallel.py": "fd534f14b0a4797213bd2abb26a8fe1b53f41627b8df1f35b3979279e55268e4",
+    "tests/unit/test_longhorn_v2_failure_runner.py": "70913f328bf029c8ac2e71232a7ce1e55b88722cf66b88c4f5788c21821cbd07",
+    "tests/unit/test_longhorn_v2_runtime_faults.py": "ae9c1b3ae1731409f6fc563ed3e1a49a647b3351e768c9864624a1131150dfd0"
+  },
+  "ladder_completed": 2,
+  "live_pass": false,
+  "minimal_disproof": "bash tests/run_enterprise_regression.sh --longhorn-v2-failure-remote-spdk",
+  "next_fixed_command": "bash tests/run_enterprise_regression.sh --longhorn-v1-ownership-v2-failure-remaining",
+  "next_permitted_level": 3,
+  "official_source": {
+    "commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+    "path": "content/docs/1.12.1/high-availability/recover-volume.md",
+    "url": "https://longhorn.io/docs/1.12.1/high-availability/recover-volume/"
+  },
+  "overall_delivery_pass": false,
+  "owning_case": "LONGHORN-50",
+  "raw_logs": {
+    "logs/longhorn-cases/readonly-remaining-contract-20261021/longhorn-canonical44-46-integrated-contract-20261021.log": "111567df4b318cc72f6d69c98f767d6eb7763af9ffb641ff5cb53955cee22b1d",
+    "logs/longhorn-cases/readonly-remaining-contract-20261021/longhorn-operations-platform-parallel-contract-20261021.log": "392e5ccf0a1f80d6c1b5e0dae23351328310f91873bc61701a8a2c5510c8f08c",
+    "logs/longhorn-cases/readonly-remaining-contract-20261021/longhorn-readonly-remaining-integrated-contract-20261021.log": "0ff96ea049afc877dde24762eb493c2169d8eb5d818b5c682afc9ca60776cea8"
+  },
+  "root_cause": "The gate required the original bare client to resume after every remote SPDK loss; the observed controller engine detach made its ext4 journal read-only. Official recovery requires recreating a bare Pod when the device stays write-protected.",
+  "status": "contract-pass-no-live"
+}

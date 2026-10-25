@@ -1,0 +1,42 @@
+{
+  "boundary": {
+    "boundary": "Only add the existing target release-proof record to node-lifecycle stdin validation, transmission and export. Other modes, products and all immutable historical receipts remain unchanged. LONGHORN-25 and final full pending.",
+    "classification": "test-gate evidence binding",
+    "previous_impact": {
+      "path": "logs/longhorn-cases/node25-retirement-transfer-contract-20261024/previous-impact.json",
+      "sha256": "d327f24e914a8da3b3e5bc567d5e1f8b9b6b07a7033b7640c4d2b8e5bca65bb5"
+    }
+  },
+  "classification": "test-gate evidence binding",
+  "contracts": {
+    "exit": {
+      "path": "logs/longhorn-cases/node25-retirement-transfer-contract-20261024/binding.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/node25-retirement-transfer-contract-20261024/binding.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/node25-retirement-transfer-contract-20261024/contracts.out",
+      "sha256": "565c9502f6c00b4d5a96af7707c7a699703865aff64904d3331f8ae6a6bd9ff9"
+    }
+  },
+  "failed_terminal": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-owning-20261024/terminal.json",
+    "sha256": "0340a0d79d55b5a401a6c4521738bb1d70794be4b6b967cfe03f34b73f87f36e"
+  },
+  "first_failure": {
+    "path": "logs/longhorn-cases/manager-node-lifecycle-same-subnet-owning-20261024/launch.log",
+    "sha256": "158948328e41cb46a977a8aedd767bb3dafedb2a51bf4139e8704db1bf42ed20"
+  },
+  "matrix_gap": "LONGHORN-25",
+  "overall_delivery_pass": false,
+  "product_behavior_changed": false,
+  "red": {
+    "path": "logs/longhorn-cases/node25-retirement-transfer-contract-20261024/red.log",
+    "sha256": "7c3fbb5b146334c1c9a67d5910d8fbf32be06bad24bf371cfddedb6cf85238c0"
+  },
+  "schema": 1,
+  "status": "contract-pass-owning-pending"
+}

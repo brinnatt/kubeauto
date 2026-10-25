@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "source-and-design-only",
+  "case": "LONGHORN-48 independent single-node DR target prerequisites",
+  "classification": "test-gate/environment fixture; existing product core entry, no product or image changes",
+  "product_entry": "kubecli new longhorn-v2-dr-target; config.yml/hosts; kubecli download -D; kubecli setup longhorn-v2-dr-target 90",
+  "commands": [
+    "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-registry-qualification",
+    "bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-core"
+  ],
+  "expected_markers": [
+    "LONGHORN_V2_DR_TARGET_REGISTRY_QUALIFICATION_PASS",
+    "LONGHORN_V2_DR_TARGET_CORE_PASS"
+  ],
+  "smallest_disproof": "corresponding focused fixed command after static contracts; core is blocked until target transport qualification",
+  "official_references": [
+    "https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-disaster-recovery-volumes/",
+    "https://longhorn.io/docs/1.12.1/deploy/install/",
+    "https://longhorn.io/docs/1.12.1/deploy/install/#v2-data-engine-requirements"
+  ],
+  "documentation_commit": "6f1c5dd3768ba12b047d582108858d693cc37fe9",
+  "manager_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
+  "source_sha256": {
+    "website-ssh/content/docs/1.12.1/snapshots-and-backups/setup-disaster-recovery-volumes.md": "314586e89ee81855a23e0c93e782f6a326c8a639aa982920ac62f52abb56a95b",
+    "manager-1.12.1/controller/volume_controller.go": "ce2e942d2c1678d4aeb788ccbc7045b096a86bb518742668c79951edb8c18a06",
+    "website-ssh/content/docs/1.12.1/deploy/install/_index.md": "1ef4abbc8abb69873e374d2d5a8d5184b5cb66f3194f3c66d059993cb2b6125c"
+  },
+  "conclusions": [
+    "DR requires two independent clusters and the same external backup target; current three-node source is retained and cannot serve as its own target.",
+    "Official Standby is an asynchronous backup restore consumer; target core qualification proves only separate UID/context and same-node DNS/HTTP functionality. Standby, fencing, activation and controlled failback remain separate pending assertions.",
+    "A one-node target uses one replica in the later storage profile and cannot qualify target-site node HA.",
+    "Reuse the published exact pinned infrastructure images and product core workflow. Own only .149, its stable allowlisted blank disk and independent cluster directory/network; this core stage never prepares hugepages or raw disk.",
+    "Bootstrap appends only public keys over preexisting authenticated user/sudo access under the runner lease, binds the approved machine/disk and installs the authenticated host key on the control host. No password transfer or host-key bypass.",
+    "Preserve source cluster/namespace/node/raw disk identity and config digest before/after. Stop on unknown target state; core failure cleanup is machine-bound and source nodes are excluded."
+  ],
+  "artifact_dependencies": "Existing published Longhorn artifact set and Kubernetes 1.33.6/core artifacts; no new Dockerfile, tag, workflow or registry publication",
+  "cross_repo_impact": "kubeauto test fixture/runner only; five sibling repositories unchanged",
+  "cleanup_scope": "Target-only relay/rule/socket/probes; preserve healthy target core on success; failure may clean only its owned core and restore original hostname. Preserve root public key bootstrap as lab access infrastructure. Source and developer host never wiped.",
+  "scope": "No Longhorn/DR business PASS, final module acceptance or target-site HA claim"
+}

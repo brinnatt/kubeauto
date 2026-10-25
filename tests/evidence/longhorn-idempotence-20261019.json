@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-07",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-idempotence </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2293043,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_IDEMPOTENCE_PASS",
+  "scoped_clean_marker": "LONGHORN_IDEMPOTENCE_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_IDEMPOTENCE_IDENTITIES_PASS revision=2 objects=50 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_IDEMPOTENCE_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_IDEMPOTENCE_SCOPED_CLEAN_PASS",
+      "LONGHORN_IDEMPOTENCE_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "helm_revision": 2,
+    "unchanged_identity_and_spec_objects": 50,
+    "confirmed_bytes": 9437184,
+    "confirmed_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+    "clients_host_check": "Current checker including open-iscsi 2.1.12 refusal completed on six actual nodes; installed allowed versions only. Rejection variants remain deterministic contracts.",
+    "cross_worker_remount": true
+  },
+  "boundary": "Focused idempotence acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/idempotence-20261019-110625/durable-status.txt": "406eb712ca1564b72d73bd99e602d345db69585b8753d095c9ccee0f0f979fa4",
+    "logs/longhorn-cases/idempotence-20261019-110625/frozen-source.txt": "cefe618f230a215a20dd091f652cabbfc868415692ceaab32523a3fb3aeb1c5c",
+    "logs/longhorn-cases/idempotence-20261019-110625/gate.log": "b73cbf7fd197cad3f9bb2a4eac92c7b667ae4a27d09ff988035e3e344e34ab56"
+  }
+}

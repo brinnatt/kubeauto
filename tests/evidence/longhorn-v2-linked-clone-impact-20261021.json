@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "classification": "impact analysis; no live acceptance",
+  "scope": "Independent linked clone modes and local contracts added while the original complete V2 data-protection run remains on its frozen 199 inputs. No remote synchronization or product/business helper change.",
+  "exact_inverse_diff_checks": {
+    "tests/helpers/longhorn-runner.sh": true,
+    "tests/helpers/longhorn-live.sh": true,
+    "tests/helpers/longhorn-static.sh": true,
+    "tests/README.md": true
+  },
+  "unchanged_runtime": "All roles/longhorn product files and all previously frozen business/DR/data-protection helpers retain their original SHA256. After removing only new linked-only dispatch/whitelist/static-test entries, existing dispatcher/live/static/README bytes are exact. Matrix metadata and linked qualifiers are evaluated separately.",
+  "changed_files": {
+    "tests/helpers/longhorn-runner.sh": {
+      "original_sha256": "15f52d35a674e92cb45dfff26f613090505d4b88e6b6c8b2c97ef07f2f1ac86d",
+      "current_sha256": "78092d86b63c08c809d26eaaed0a549fefa952f6dfcb3c21af771b4feea71217"
+    },
+    "tests/helpers/longhorn-live.sh": {
+      "original_sha256": "51f6b50c740189904ca409a40512d8b05299ef53be176138d5c97f3a275a63f5",
+      "current_sha256": "604ab01e1758444ac4f141ca60e6f5d90d99237ed5b63e19b0278b576d17e98a"
+    },
+    "tests/helpers/longhorn-static.sh": {
+      "original_sha256": "aef60198078da6ab6f0fd35c3cf20b8bcc1b4cd38d3e255de4c558ed88b7b284",
+      "current_sha256": "846d97067b0f408d29a2a8bbe997b1b09c6399b97888a3035ac7b556d087e87a"
+    },
+    "tests/README.md": {
+      "original_sha256": "eac5ba968efd12decb5c8914e9e242c491e726c65af41e83f3b15d1fb2cbee3f",
+      "current_sha256": "ff62abbeb2983b66cd727b83c96a4c74e703b265bf173b99366cf7db893036ad"
+    }
+  },
+  "acceptance_boundary": "This does not grant a linked-clone PASS or a data-protection PASS before current durable completion and independent cleanup readback. Existing unchanged data-protection paths need no invalidation solely for these separate entry points.",
+  "frozen_input_comparison": {
+    "unchanged_files": 194,
+    "changed_files": [
+      "tests/README.md",
+      "tests/helpers/longhorn-live.sh",
+      "tests/helpers/longhorn-runner.sh",
+      "tests/helpers/longhorn-static.sh",
+      "tests/longhorn-test-matrix.yaml"
+    ],
+    "unexpected_differences": 0
+  },
+  "data_protection_matrix_case_unchanged": true
+}

@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "date": "2026-10-20",
+  "status": "blocked-at-read-only-admission",
+  "classification": "environment/hardware-identity",
+  "host": "192.168.47.149",
+  "authorization": "Delivery owner supplied independent Ubuntu 24 DR target in this session; recorded in AGENTS.md",
+  "scope": "SSH key and fixed sudo bootstrap succeeded; read-only platform/disk input collection only, no cluster/packages/pages/disk signatures modified",
+  "observed": {
+    "kernel": "6.8.0-71-generic",
+    "online_cpus": "0-7",
+    "memory_kib": {
+      "MemAvailable": 3676320,
+      "MemTotal": 8083596
+    },
+    "candidates": [
+      {
+        "name": "sdb",
+        "size_bytes": 107374182400,
+        "by_id": [],
+        "identity": null
+      }
+    ],
+    "blockers": [
+      "raw-disk-missing-stable-hardware-identity"
+    ],
+    "scsi_id": {
+      "rc": 1,
+      "stdout": ""
+    }
+  },
+  "bootstrap_change": {
+    "classification": "test-gate",
+    "scope": "Admit explicitly supplied ubuntu24 account in existing runtime-only sudo bootstrap; existing semantics preserved",
+    "contract_tests": 41,
+    "rc": 0,
+    "initial_contract_failure": "Existing retired-address assertion still treated explicitly authorized .147 Longhorn branch as forbidden. Scoped allowance corrected; .140 remains forbidden, Ceph allowlist preserved. Initial log retained.",
+    "boundary": "Bootstrap and read-only inputs are not V2 platform admission, DR PASS or final acceptance"
+  },
+  "files": {
+    "logs/longhorn-cases/dr-target-149-inputs-20261020/ubuntu24-bootstrap-contract-20261020.log": "a329efc88497b3f3eb9b20df4a0b67604eaac31d2bc88a7fcbe0654693610bf4",
+    "logs/longhorn-cases/dr-target-149-inputs-20261020/ubuntu24-bootstrap-authority-contract-20261020.log": "9208ab3ec06ac2e56453af9968eed73a4ee9ce8aa0eeacddb32c6dc549bd560b",
+    "logs/longhorn-cases/dr-target-149-inputs-20261020/v2-dr-target-149-inputs-20261020.json": "4a86b8cdd1d1d77737c54274bff36223c5bb15856048e2b7b4720b97b694c059"
+  },
+  "source_inputs": {
+    "tests/helpers/lab-ssh-bootstrap.sh": "8ecb3e75a335f8c9c5991534ba8790e57b69ff14b8377f9d3d1917d253c72875",
+    "tests/helpers/lab-sudo-bootstrap.sh": "4e690b5827992cf6f6574d0d6e2564e66eb4dfe7175f86b83b68d1e5881562cb",
+    "tests/helpers/longhorn-v2-pool.py": "e0218335083a2cfac76a1f0f1e7a21439f719b311bbc0cf34af191fd0fa0e680",
+    "tests/unit/test_delivery_process_contract.py": "29f42878ce6a01c1fa1f13ecccec4e78bf15a318010fc09583224757e42f4bfe",
+    "AGENTS.md": "831160621ddcf906257a89fc84a43b5088a3ff4f3dfd021d488ed4e165906b09"
+  }
+}

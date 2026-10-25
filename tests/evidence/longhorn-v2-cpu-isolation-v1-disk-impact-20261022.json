@@ -1,0 +1,12 @@
+{
+  "classification": "Evidence applicability only; original CPU business stage is preserved, no new live PASS claimed",
+  "prior_evidence": "tests/evidence/longhorn-v2-cpu-isolation-20261022.json",
+  "prior_evidence_sha256": "a12b4a495ad92e5e6e435c578bef5ddbaa7afac4b6e94aa9a9de4c523f45cb3b",
+  "original_product_sha256": "685ce68c2240c931d06b9b8d608a0dcfaae09e1f67866f1941393669c6670282",
+  "current_product_sha256": "8a842e6260e307cb41d40154f8e0d2b96bd172efcf1be3a20c99116338cb92c1",
+  "exact_source_delta": "One reconcile_filesystem_disks function and its two short-circuit calls; removing exactly these reproduces prior entire product file byte-for-byte",
+  "empty_v1_allowlist_result": "True with API and node-map spies refusing all access",
+  "cpu_and_v2_code": "All existing functions except two no-op-in-V2 call sites remain byte-identical",
+  "precondition": "CPU evidence continues to require original config SHA, cluster/raw-disk ownership, original IM identities/arguments, durable evidence and host-policy restoration; its original V2-only config has no filesystem storage nodes",
+  "scope": "Original CPU isolation stage only; no LONGHORN-44/53 or final GA acceptance"
+}

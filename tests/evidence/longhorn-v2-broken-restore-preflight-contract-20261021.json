@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "date": "2026-10-21",
+  "status": "contract-pass",
+  "classification": "test-gate preflight",
+  "scope": "Qualification refuses an unrecovered fault journal before relay/setup/store mutation. Explicit recovery still reaches its own journal before demanding an empty-volume baseline. Source-copy/delete ambiguity and downstream cleanup guards retained.",
+  "command": ".venv/bin/python -m unittest tests.unit.test_longhorn_v2_broken_restore tests.unit.test_longhorn_v2_linked_clones tests.unit.test_longhorn_v2_data_protection -v",
+  "rc": 0,
+  "tests": 27,
+  "checks": [
+    "Real Bash pending-journal refusal invokes only read-only verify-transport and leaves the journal intact",
+    "Normal/failed shell completion, missing business marker, baseline drift, unresolved escrow and explicit recovery behavior",
+    "bash -n tests/helpers/longhorn-v2-broken-restore.sh"
+  ],
+  "frozen_inputs": {
+    "tests/helpers/longhorn-v2-broken-restore.sh": "701a468ebfa4407baada353ec9407e438f0dc03228566d2d0111f108083899c2",
+    "tests/unit/test_longhorn_v2_broken_restore.py": "2648ae564262bb2d1e673b87ddb5b1bedf5360ca2386ea488bc7b11a033b751c"
+  },
+  "raw_logs": {
+    "logs/longhorn-cases/broken-restore-contract-20261021/pending-fault-focused.log": "1b00c113600154625a3022f65dcdb396b5462d1b245c39042f5250d07c4a89f5"
+  },
+  "boundary": "No live missing-block qualification or complete module PASS; fixed-runner full static still required."
+}
