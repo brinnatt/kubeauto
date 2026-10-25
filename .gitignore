@@ -5,17 +5,8 @@
 /dist/
 **/__pycache__/
 *.pyc
-logs/*.log
-logs/*.out
-logs/*.pid
-logs/ceph-focused-green
-logs/ceph-os-qualification/
-logs/ceph-cases/
-logs/mongodb-cases/
-logs/mongodb-failures/
-logs/mongodb-static/
-logs/mongodb-documentation/
-logs/longhorn-cases/
-logs/ext-images-delivery/
-logs/ceph-rocky9-inflight-dependencies.json
-!logs/README.md
+# Generated cluster configuration, credentials and recovery journals.
+/clusters/
+# Local test output and evidence archives; keep only the directory policy.
+/logs/*
+!/logs/README.md

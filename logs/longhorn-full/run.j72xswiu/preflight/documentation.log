@@ -1,4 +1,0 @@
-LONGHORN_DOCUMENTATION_REVIEW_VERIFIED {"boundary": "Author content/source/reader-path acceptance; no customer signature or live delivery PASS", "diagrams": 8, "document_sha256": {"docs/storage/longhorn/development-manual.md": "dff8e85002e979eaf082634302a926faba030aadac6bf04c6017fbbd72955f3e", "docs/storage/longhorn/operations-manual.md": "1d395016c83bebd1c4c8bdc7d549a6178c16920ac451e2187c54a74e28aa58a5", "docs/storage/longhorn/technical-whitepaper.md": "ca20791b6af73fbbd99717f6df73e383a244aa3cbe098d929daedd824cfb53c1"}, "report_sha256": "8ac989666adf4c39c541cc2c902c96afd9f3327deb87b7a532ba725e6c8a4d57"}
-LONGHORN_DOCUMENTATION_SCOPED_CLEAN_PASS
-LONGHORN_DOCUMENTATION_PASS
-LONGHORN_FULL_CHILD_EXIT rc=0

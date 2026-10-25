@@ -1,1 +1,0 @@
-state=exited rc=0 failure_markers=0

@@ -1,9 +1,0 @@
-test_disabled_cli_never_uses_cluster_or_helm (tests.unit.test_longhorn_delivery.InputContracts.test_disabled_cli_never_uses_cluster_or_helm) ... ok
-
-----------------------------------------------------------------------
-Ran 1 test in 0.001s
-
-OK
-LONGHORN_DISABLED_SCOPED_CLEAN_PASS
-LONGHORN_DISABLED_PASS
-LONGHORN_FULL_CHILD_EXIT rc=0
