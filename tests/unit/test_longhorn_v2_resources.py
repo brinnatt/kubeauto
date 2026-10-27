@@ -57,6 +57,49 @@ class ResourceContracts(unittest.TestCase):
                     else:
                         with self.assertRaises(ValueError): RES.qualification_current()
 
+    def test_current_focused_restore_receipt_can_replace_stale_dated_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            names = ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
+                     'roles/longhorn/files/longhorn.py')
+            for name in names:
+                path = base/name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(name)
+            historical = {'status': 'pass', 'rc': 0, 'failure_markers': 0,
+                          'frozen_inputs': {name: 'stale-' + name for name in names}}
+            evidence = base/'tests/evidence/longhorn-v2-resources-qualification-20261020.json'
+            evidence.parent.mkdir(parents=True); evidence.write_text(json.dumps(historical))
+            cluster = base/'clusters/longhorn-v2-gate'; cluster.mkdir(parents=True)
+            (cluster/'longhorn-lab-owner.json').write_text(json.dumps({'cluster_uid': 'current-cluster'}))
+            current = {name: hashlib.sha256((base/name).read_bytes()).hexdigest() for name in names}
+            (cluster/'longhorn-v2-resources-restored-current.json').write_text(json.dumps({
+                'cluster_uid': 'current-cluster', 'qualification_inputs': current,
+                'hosts': {node: {'phase': 'restored'} for node in NODES}}))
+            with patch.object(RES, 'BASE', base):
+                RES.qualification_current()
+
+    def test_restore_persists_current_input_fingerprint_before_archiving(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            names = ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
+                     'roles/longhorn/files/longhorn.py')
+            for name in names:
+                path = base/name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(name)
+            record = {'id': 'run', 'hosts': {}, 'cluster_uid': 'cluster'}
+            journal = base/'clusters/longhorn-v2-gate/longhorn-v2-resources.json'
+            journal.parent.mkdir(parents=True); journal.write_text(json.dumps(record))
+            class Lab:
+                def owner(self): return {'cluster_uid': 'cluster'}
+                def write_private(self, path, value): path.write_text(json.dumps(value))
+            with patch.object(RES, 'BASE', base), patch.object(RES, 'no_storage'), \
+                 patch.object(RES, 'record_path', return_value=journal), \
+                 patch.object(RES, 'read_record', return_value=record), patch.object(RES, 'probe'), \
+                 patch.object(RES, 'validate_host'), patch.object(RES, 'refresh_kubelet'):
+                RES.restore(Lab())
+            archive = base/'clusters/longhorn-v2-gate/longhorn-v2-resources-restored-run.json'
+            saved = json.loads(archive.read_text())
+            self.assertEqual(saved['qualification_inputs'], {
+                name: hashlib.sha256((base/name).read_bytes()).hexdigest() for name in names})
+
     def failed_write(self, lab, base):
         with patch.object(RES, 'probe', side_effect=[host()]*3+[OSError('lost')]):
             with self.assertRaises(OSError): RES.prepare(lab)

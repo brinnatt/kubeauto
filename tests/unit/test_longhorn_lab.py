@@ -614,7 +614,10 @@ class LonghornLabContracts(unittest.TestCase):
         for fault in ('none', 'foreign-pod', 'foreign-listener', 'failed-create'):
             with self.subTest(fault=fault), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory); objects = {}
-                client = SimpleNamespace(DIRECTORY=root, SSH=lab.SSH, remote=Mock(), cache_artifacts=Mock(),
+                client = SimpleNamespace(DIRECTORY=root, SSH=lab.SSH, remote=Mock(return_value=SimpleNamespace(
+                    returncode=0, stdout='Target: sha256:' + 'a' * 64)), cache_artifacts=Mock(),
+                    publication_records=Mock(return_value=([], [{'key': backups.TRANSPORT_IMAGE,
+                        'platforms': {'linux/amd64': 'sha256:' + 'a' * 64}}])),
                     write_private=lab.write_private, remove=Mock())
                 store = backups.Store(client); store.directory.mkdir()
                 store.record.write_text(json.dumps({'name': 'owned', 'run_id': 'run'}))
@@ -660,6 +663,33 @@ class LonghornLabContracts(unittest.TestCase):
                         else:
                             self.assertNotIn('pod_uid', json.loads(store.record.read_text())['transport'])
                             self.assertIn('listener', json.loads(store.record.read_text())['transport'])
+
+    def test_backup_transport_stages_node_image_only_when_missing_and_binds_digest(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        expected = 'sha256:' + 'b' * 64
+        for case in ('cached', 'missing', 'mismatch'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                first = SimpleNamespace(returncode=0 if case != 'missing' else 1,
+                                        stdout=('Target: ' + (expected if case != 'mismatch' else 'sha256:' + 'c' * 64)))
+                pulled = SimpleNamespace(returncode=0, stdout='')
+                verified = SimpleNamespace(returncode=0, stdout='Target: ' + expected)
+                remote = Mock(side_effect=[first] if case != 'missing' else [first, pulled, verified])
+                client = SimpleNamespace(DIRECTORY=root, remote=remote,
+                    publication_records=Mock(return_value=([], [{'key': backups.TRANSPORT_IMAGE,
+                        'platforms': {'linux/amd64': expected}}])))
+                store = backups.Store(client)
+                if case == 'mismatch':
+                    with self.assertRaisesRegex(ValueError, 'digest mismatch'): store.stage_transport_image()
+                    self.assertEqual(remote.call_count, 1)
+                else:
+                    store.stage_transport_image()
+                    self.assertEqual(remote.call_count, 1 if case == 'cached' else 3)
+                    if case == 'cached':
+                        self.assertNotIn('pull', remote.call_args.args[1])
+                    else:
+                        self.assertIn('pull', remote.call_args_list[1].args[1])
 
     def test_backup_uses_full_then_incremental_product_requests_and_distinct_restore_points(self):
         from unittest.mock import Mock
@@ -2841,6 +2871,96 @@ class LonghornLabContracts(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError,'foreign resource'):lab.check_business_graph(journal)
                     resource='events';obj['metadata'].pop('uid')
                     with self.assertRaisesRegex(ValueError,'no ownership UID'):lab.check_business_graph(journal)
+
+
+class BackupTransportRecoveryContracts(unittest.TestCase):
+
+    def test_dead_transport_is_retired_before_recreation_and_disconnect_log_is_preserved(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        for failure in ('none', 'cleanup', 'prepare'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                client = SimpleNamespace(DIRECTORY=Path(directory), SSH=lab.SSH,
+                                         execute=Mock(return_value=SimpleNamespace(returncode=255)))
+                store = backups.Store(client); store.directory.mkdir()
+                log = store.directory/'transport.log'; log.write_text('Timeout, server not responding.\n')
+                binding = {'socket': str(store.directory/'transport.sock'), 'node': backups.TRANSPORT_NODE}
+                calls = []
+                def cleanup():
+                    calls.append('cleanup')
+                    self.assertTrue(log.is_file())
+                    if failure == 'cleanup': raise ValueError('cleanup refused')
+                def prepare():
+                    calls.append('prepare')
+                    self.assertFalse(log.exists())
+                    archives = list(store.directory.glob('transport-interrupted-*.log'))
+                    self.assertEqual(len(archives), 1)
+                    self.assertEqual(archives[0].read_text(), 'Timeout, server not responding.\n')
+                    if failure == 'prepare': raise ValueError('prepare refused')
+                with patch.object(store, 'receipt', return_value={}), \
+                        patch.object(store, 'transport_receipt', return_value=binding), \
+                        patch.object(store, 'cleanup_transport', side_effect=cleanup), \
+                        patch.object(store, 'prepare_transport', side_effect=prepare), redirect_stdout(io.StringIO()):
+                    if failure == 'none': store.recover_transport()
+                    else:
+                        with self.assertRaisesRegex(ValueError, failure+' refused'): store.recover_transport()
+                self.assertEqual(calls, ['cleanup'] if failure == 'cleanup' else ['cleanup', 'prepare'])
+                client.execute.assert_called_once_with(lab.SSH + ['-S', binding['socket'], '-O', 'check',
+                    'root@'+binding['node']], check=False)
+
+    def test_healthy_absent_foreign_or_unproven_transport_is_never_recreated(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        for case in ('healthy', 'absent', 'foreign', 'missing-log', 'symlink-log'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                client = SimpleNamespace(DIRECTORY=Path(directory), SSH=lab.SSH,
+                    execute=Mock(return_value=SimpleNamespace(returncode=0 if case == 'healthy' else 255)))
+                store = backups.Store(client); store.directory.mkdir()
+                if case == 'symlink-log':
+                    target = Path(directory)/'foreign'; target.write_text('preserve')
+                    (store.directory/'transport.log').symlink_to(target)
+                binding = {'socket': str(store.directory/'transport.sock'), 'node': backups.TRANSPORT_NODE}
+                with patch.object(store, 'receipt', return_value={}), \
+                        patch.object(store, 'transport_receipt', return_value=None if case == 'absent' else binding,
+                                     side_effect=ValueError('foreign identity') if case == 'foreign' else None), \
+                        patch.object(store, 'cleanup_transport') as cleanup, patch.object(store, 'prepare_transport') as prepare:
+                    if case in ('healthy', 'absent'): store.recover_transport()
+                    else:
+                        with self.assertRaises(ValueError): store.recover_transport()
+                cleanup.assert_not_called(); prepare.assert_not_called()
+                if case in ('foreign', 'absent'): client.execute.assert_not_called()
+                if case == 'symlink-log': self.assertEqual(target.read_text(), 'preserve')
+
+    def test_credential_recovery_waits_for_original_backup_transport_before_product_requests(self):
+        from unittest.mock import Mock
+        spec = importlib.util.spec_from_file_location('rotation_recovery', ROOT/'tests/helpers/longhorn-recurring-rotation.py')
+        rotation = importlib.util.module_from_spec(spec); spec.loader.exec_module(rotation)
+        for failure in (False, True):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); record = root/'longhorn-recurring-credentials.json'; record.write_text('{}')
+                calls = []; store = Mock(); client = Mock(DIRECTORY=root)
+                target = {'spec': {'credentialSecret': 'original'}, 'status': {'available': False}}
+                client.get.return_value = target
+                client.load_helper.return_value.Schedule.return_value.record = root/'absent-schedule'
+                def recover():
+                    calls.append('transport')
+                    if failure: raise ValueError('transport identity')
+                def product(relay, requests, **options):
+                    calls.append(('product', relay))
+                    self.assertEqual(requests, [])
+                    self.assertEqual(options['backup_configuration'], {'longhorn_backup_secret': 'original'})
+                    target['status']['available'] = True
+                store.recover_transport.side_effect = recover
+                client.run_requests.side_effect = product
+                credentials = object.__new__(rotation.Credentials)
+                credentials.lab, credentials.store, credentials.record = client, store, record
+                credentials.read = Mock(); credentials.configuration = Mock(return_value={'longhorn_backup_secret': 'original'})
+                with redirect_stdout(io.StringIO()):
+                    if failure:
+                        with self.assertRaisesRegex(ValueError, 'transport identity'): credentials.restore_root(123)
+                    else: credentials.restore_root(123)
+                self.assertEqual(calls, ['transport'] if failure else ['transport', ('product', 123)])
+                if failure: client.run_requests.assert_not_called()
 
 
 class RegistryMaintenanceContracts(unittest.TestCase):

@@ -14,6 +14,7 @@ import uuid
 from importlib.util import module_from_spec, spec_from_file_location
 
 BASE = Path('/usr/local/kubeauto')
+NODES = ('192.168.47.146', '192.168.47.147', '192.168.47.148')
 PAGES = 1024
 
 
@@ -97,11 +98,40 @@ def qualification_current():
     evidence = json.loads(path.read_text())
     if evidence['status'] != 'pass' or evidence['rc'] or evidence['failure_markers']:
         raise ValueError('V2 installation requires successful resource qualification')
-    for name in ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
-                 'roles/longhorn/files/longhorn.py'):
-        if evidence['frozen_inputs'].get(name) != hashlib.sha256((BASE/name).read_bytes()).hexdigest():
+    names = ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
+             'roles/longhorn/files/longhorn.py')
+    if all(evidence['frozen_inputs'].get(name) == hashlib.sha256((BASE/name).read_bytes()).hexdigest()
+           for name in names):
+        print('LONGHORN_V2_RESOURCE_QUALIFICATION_CURRENT', flush=True)
+        return
+    # A focused qualification may be newer than the dated historical receipt.
+    # Consume it only when the runner-owned restored journal records the exact
+    # current inputs and belongs to the current cluster; never infer freshness
+    # from a filename or from a successful process exit alone.
+    owner_path = BASE/'clusters/longhorn-v2-gate/longhorn-lab-owner.json'
+    if not owner_path.is_file() or owner_path.is_symlink():
+        raise ValueError('V2 resource qualification input changed: current core owner is absent')
+    owner = json.loads(owner_path.read_text())
+    try:
+        current = {name: hashlib.sha256((BASE/name).read_bytes()).hexdigest() for name in names}
+    except OSError as error:
+        raise ValueError('V2 resource qualification input changed: ' + str(error)) from error
+    archives = sorted((BASE/'clusters/longhorn-v2-gate').glob('longhorn-v2-resources-restored-*.json'))
+    for archive in reversed(archives):
+        if archive.is_symlink():
+            continue
+        try:
+            row = json.loads(archive.read_text())
+        except (OSError, ValueError):
+            continue
+        if (row.get('cluster_uid') == owner.get('cluster_uid') and
+                row.get('qualification_inputs') == current and
+                all(row.get('hosts', {}).get(node, {}).get('phase') == 'restored' for node in NODES)):
+            print('LONGHORN_V2_RESOURCE_QUALIFICATION_CURRENT focused=true', flush=True)
+            return
+    for name in names:
+        if evidence['frozen_inputs'].get(name) != current[name]:
             raise ValueError('V2 resource qualification input changed: ' + name)
-    print('LONGHORN_V2_RESOURCE_QUALIFICATION_CURRENT', flush=True)
 
 
 def validate_host(state, node, row):
@@ -233,6 +263,15 @@ def restore(lab):
             refresh_kubelet(lab, node, row['original']['total'])
             row['phase'] = 'restored'
             lab.write_private(path, record)
+    record['cluster_uid'] = lab.owner()['cluster_uid']
+    inputs = ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
+              'roles/longhorn/files/longhorn.py')
+    if all((BASE/name).is_file() for name in inputs):
+        record['qualification_inputs'] = {
+            name: hashlib.sha256((BASE/name).read_bytes()).hexdigest() for name in inputs}
+    # Persist the completed receipt before archiving it.  The next V2 stage
+    # consumes this exact archive to bind the qualification to current inputs.
+    lab.write_private(path, record)
     archive = path.with_name('longhorn-v2-resources-restored-' + record['id'] + '.json')
     if archive.exists() or archive.is_symlink():
         raise ValueError('V2 resource recovery archive already exists')

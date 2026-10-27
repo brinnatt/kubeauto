@@ -151,8 +151,21 @@ claims: submit reviewable evidence and never sign on the customer's behalf.
   and completion condition. Once satisfied, consume that evidence and advance
   the owning acceptance path; do not keep adding qualifications, repeat accepted
   audits or rebuild unrelated prerequisites without a proven gap or change.
-  Continue authorized work toward the remaining matrix and final clean run,
-  reporting completed scopes, active branches, blockers and the next exit.
+  Continue authorized work toward the remaining matrix and final clean run.
+- Report two levels of fractional progress for every new middleware or feature
+  delivery: accepted matrix
+  items / applicable matrix items, and accepted stages / planned stages in the
+  current run. Use the matrix and fixed runner as the counting sources; count
+  acceptance only under the evidence rules above. Explain any denominator or
+  scope change; never silently reduce it or present stage progress as GA.
+  At launch, stage changes and exceptions, report both fractions, active parallel
+  branches, failures/blockers and the next exit, for example:
+  `整体验收 53/54；本轮全量 14/56，零失败；当前：…；下一出口：…`.
+  During long waits, provide a heartbeat at least every 60 seconds, even when
+  counts are unchanged. Estimate remaining time from comparable measured stage
+  durations, the critical path and elapsed time; state uncertainty and do not
+  extrapolate linearly from stage counts. This reporting rule does not require
+  extra tests, remote polling or a new progress framework.
 - Never optimize by downgrading coverage, accepting incomplete module evidence
   or treating a running Pod as a business result.
 

@@ -97,7 +97,7 @@ class RecurringCredentialContracts(unittest.TestCase):
             kubectl=Mock(side_effect=create_secret),remove=Mock(side_effect=remove),
             run_requests=Mock(side_effect=product),restore_request_input=Mock(),
             wait=Mock(side_effect=lambda _label,_timeout,check:self.assertTrue(check())))
-        fixture=rotation.Credentials(lab,SimpleNamespace(receipt=Mock(return_value=store_row)))
+        fixture=rotation.Credentials(lab,SimpleNamespace(receipt=Mock(return_value=store_row), recover_transport=Mock()))
         fixture.initialize()
         return fixture,lab,clients,objects,schedule,schedule_row
 
@@ -178,6 +178,7 @@ class RecurringCredentialContracts(unittest.TestCase):
             row['pending_spec']={'cron':'0 0 1 1 *'}
             with self.assertRaisesRegex(ValueError,'original recovery'):fixture.restore_root(123)
             lab.run_requests.assert_not_called()
+            fixture.store.recover_transport.assert_not_called()
 
     def test_generic_account_and_store_cleanup_cannot_bypass_credential_reference_recovery(self):
         with tempfile.TemporaryDirectory() as directory:

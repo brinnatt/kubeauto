@@ -68,14 +68,44 @@ class DiskLifecycleContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'18 disks'):MODULE.plan(self.lab,'incomplete')
         self.lab.remote.assert_not_called()
 
-    def test_native_patch_binds_uid_resourceversion_and_complete_original_spec(self):
+    def test_native_patch_binds_uid_and_complete_original_spec_without_status_version(self):
         desired=copy.deepcopy(self.node['spec']);desired['disks']['extra']={'path':MODULE.EXTRA}
         MODULE.patch(self.lab,self.node,desired)
         args,kwargs=self.lab.kubectl.call_args;body=json.loads(kwargs['stdin'])
         self.assertEqual('node.longhorn.io',args[3]);self.assertNotIn('--dry-run=server',args)
-        self.assertEqual(['/metadata/uid','/metadata/resourceVersion','/spec','/spec'],[p['path'] for p in body])
-        self.assertEqual(self.node['spec'],body[2]['value']);self.assertEqual(desired,body[3]['value'])
+        self.assertEqual(['/metadata/uid','/spec','/spec'],[p['path'] for p in body])
+        self.assertEqual(self.node['spec'],body[1]['value']);self.assertEqual(desired,body[2]['value'])
         self.assertTrue(kwargs['check'])
+
+    def test_native_patch_accepts_status_churn_but_refuses_replaced_uid_or_changed_declaration(self):
+        original=copy.deepcopy(self.node)
+        desired=copy.deepcopy(original['spec']);desired['disks']['main']['allowScheduling']=False
+        for change in ('status','uid','spec'):
+            current=copy.deepcopy(original);current['metadata']['resourceVersion']='8'
+            current['status']['diskStatus']={'main':{'storageAvailable':1024}}
+            if change=='uid':current['metadata']['uid']='replacement'
+            if change=='spec':current['spec']['disks']['foreign']={'path':'/foreign'}
+            before=copy.deepcopy(current)
+            def server(*args,stdin,**kwargs):
+                candidate=copy.deepcopy(current)
+                for operation in json.loads(stdin):
+                    parts=operation['path'].strip('/').split('/');parent=candidate
+                    for part in parts[:-1]:parent=parent[part]
+                    if operation['op']=='test':
+                        if parent[parts[-1]]!=operation['value']:raise ValueError('conditional patch rejected')
+                    else:parent[parts[-1]]=operation['value']
+                current.clear();current.update(candidate)
+            self.lab.kubectl.side_effect=server
+            with self.subTest(change=change):
+                if change=='status':
+                    MODULE.patch(self.lab,original,desired)
+                    self.assertEqual(desired,current['spec'])
+                    self.assertEqual(before['status'],current['status'])
+                    self.assertEqual('8',current['metadata']['resourceVersion'])
+                else:
+                    with self.assertRaisesRegex(ValueError,'conditional patch rejected'):
+                        MODULE.patch(self.lab,original,desired)
+                    self.assertEqual(before,current)
 
     def test_same_name_node_replacement_blocks_native_mutation(self):
         self.node['metadata']['uid']='replacement'

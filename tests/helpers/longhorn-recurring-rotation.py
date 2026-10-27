@@ -239,7 +239,8 @@ class Credentials:
     def restore_root(self, relay_pid):
         if not self.record.exists() and not self.record.is_symlink():
             return
-        self.read(); self.lab.restore_request_input()
+        self.read()
+        self.lab.restore_request_input()
         schedule = self.lab.load_helper('longhorn-recurring.py').Schedule(self.lab)
         configuration = self.configuration()
         declarations = []
@@ -249,6 +250,7 @@ class Credentials:
                 raise ValueError('unconfirmed recurring schedule needs its original recovery')
             row['backup_configuration'] = configuration; schedule.save(row)
             declarations = [schedule.declaration(row, row['spec']['cron'])]
+        self.store.recover_transport()
         target = self.lab.get('backuptargets.longhorn.io', 'default', NAMESPACE)
         if (target['spec'].get('credentialSecret') != configuration['longhorn_backup_secret'] or
                 not target.get('status', {}).get('available')):

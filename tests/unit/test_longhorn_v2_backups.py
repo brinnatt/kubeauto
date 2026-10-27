@@ -122,8 +122,12 @@ class V2BackupContracts(unittest.TestCase):
     def test_prepare_v2_transport_uses_its_node_ports_and_admitted_spec(self):
         with tempfile.TemporaryDirectory() as directory:
             objects = {}; root = Path(directory)
-            lab = SimpleNamespace(DIRECTORY=root, NODES=NODES, SSH=LAB.SSH, remote=Mock(),
-                cache_artifacts=Mock(), write_private=LAB.write_private)
+            expected_digest = 'sha256:' + 'a' * 64
+            lab = SimpleNamespace(DIRECTORY=root, NODES=NODES, SSH=LAB.SSH,
+                remote=Mock(return_value=SimpleNamespace(returncode=0,
+                    stdout='Target: ' + expected_digest)), cache_artifacts=Mock(),
+                publication_records=Mock(return_value=([], [{'key': BACKUPS.TRANSPORT_IMAGE,
+                    'platforms': {'linux/amd64': expected_digest}}])), write_private=LAB.write_private)
             store = BACKUPS.Store(lab, endpoints=BACKUPS.V2_ENDPOINTS); store.directory.mkdir()
             row = {'name': 'owned', 'run_id': 'run'}
             def get(kind, name, namespace=''):
@@ -154,7 +158,8 @@ class V2BackupContracts(unittest.TestCase):
             self.assertEqual(row['transport']['pod_uid'], 'admitted')
             self.assertEqual(row['transport']['pod_spec'], objects['owned-transport']['spec'])
             self.assertEqual(lab.remote.call_args.args[0], NODES[0])
-            self.assertIn("s.bind(('192.168.47.146',23623))", lab.remote.call_args.args[1][-1])
+            self.assertTrue(any("s.bind(('192.168.47.146',23623))" in call.args[1][-1]
+                                for call in lab.remote.call_args_list if call.args[1]))
 
     def test_v2_listener_probe_keeps_original_process_guard_and_uses_own_port(self):
         with tempfile.TemporaryDirectory() as directory:

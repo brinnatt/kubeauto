@@ -126,8 +126,9 @@ def patch(lab, obj, spec, *, dry=False):
     args = ['-n', NS, 'patch', obj['kind'].lower()+'.longhorn.io', obj['metadata']['name'],
         '--type=json', '--patch-file=/dev/stdin', '-o', 'json']
     if dry: args.append('--dry-run=server')
+    # Controller status updates may advance resourceVersion. Atomically bind
+    # object identity and the complete declaration without fencing status.
     body = [{'op': 'test', 'path': '/metadata/uid', 'value': obj['metadata']['uid']},
-            {'op': 'test', 'path': '/metadata/resourceVersion', 'value': obj['metadata']['resourceVersion']},
             {'op': 'test', 'path': '/spec', 'value': obj['spec']},
             {'op': 'replace', 'path': '/spec', 'value': spec}]
     return lab.kubectl(*args, stdin=json.dumps(body), check=not dry)

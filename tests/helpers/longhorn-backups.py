@@ -29,6 +29,8 @@ TRANSPORT_NODE = '192.168.122.135'
 TRANSPORT_PORT = 23523
 TUNNEL_PORT = 23524
 IMAGE = 'brinnatt/minio:RELEASE.2025-04-08T15-41-24Z'
+TRANSPORT_IMAGE = 'brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2'
+TRANSPORT_IMAGE_REF = 'registry.talkschool.cn:5000/longhorn-lab/' + TRANSPORT_IMAGE
 BACKUP_RESOURCES = ('backups.longhorn.io', 'backupvolumes.longhorn.io',
                     'backupbackingimages.longhorn.io', 'systembackups.longhorn.io')
 
@@ -402,14 +404,14 @@ class Store:
             raise ValueError('backup tunnel listener outside this creation window')
         info = path.stat(); binding.update(listener=listener, socket_identity=[info.st_dev, info.st_ino])
         self.lab.write_private(self.record, row)
-        image = 'brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2'
-        self.lab.cache_artifacts(keys=[image])
+        self.lab.cache_artifacts(keys=[TRANSPORT_IMAGE])
+        self.stage_transport_image()
         pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': pod_name, 'namespace': 'longhorn-system',
                'labels': {'kubeauto.io/longhorn-backup-run': row['run_id']}}, 'spec': {
                'nodeName': self.endpoints.node_name, 'hostNetwork': True, 'dnsPolicy': 'Default',
                'automountServiceAccountToken': False, 'restartPolicy': 'Never',
                'tolerations': [{'operator': 'Exists'}], 'containers': [{'name': 'transport',
-               'image': 'registry.talkschool.cn:5000/longhorn-lab/' + image,
+               'image': TRANSPORT_IMAGE_REF,
                'command': ['python3', '-u', '-c', transport_program(self.endpoints)],
                'securityContext': {'runAsUser': 1000, 'runAsNonRoot': True, 'allowPrivilegeEscalation': False,
                                    'capabilities': {'drop': ['ALL']}},
@@ -427,6 +429,41 @@ class Store:
                                    for c in current.get('status', {}).get('conditions', []))
         self.lab.wait('backup-tls-passthrough-ready', 180, ready)
         print('LONGHORN_BACKUP_TRANSPORT_READY tls=passthrough data=off-cluster', flush=True)
+
+    @staticmethod
+    def _node_image_digest(output):
+        target = re.search(r'(?m)^\s*Target:\s*(sha256:[0-9a-f]{64})\s*$', output)
+        if target:
+            return target.group(1)
+        reference = re.search(r'@(sha256:[0-9a-f]{64})', output)
+        return reference.group(1) if reference else None
+
+    def stage_transport_image(self):
+        """Admit the reviewed immutable transport image on its actual node."""
+        _, support = self.lab.publication_records()
+        row = next((item for item in support if item.get('key') == TRANSPORT_IMAGE), None)
+        expected = row.get('platforms', {}).get('linux/amd64') if row else None
+        if not re.fullmatch(r'sha256:[0-9a-f]{64}', expected or ''):
+            raise ValueError('transport image lacks the reviewed linux/amd64 digest')
+        inspect = self.lab.remote(self.endpoints.node, ['ctr', '-n', 'k8s.io', 'images', 'inspect',
+                                                         TRANSPORT_IMAGE_REF], check=False, timeout=60)
+        if inspect.returncode == 0:
+            actual = self._node_image_digest(inspect.stdout)
+            if actual != expected:
+                raise ValueError('transport node image digest mismatch: expected ' + expected + ' got ' + str(actual))
+        else:
+            pull = self.lab.remote(self.endpoints.node,
+                ['ctr', '-n', 'k8s.io', 'images', 'pull', '--platform', 'linux/amd64', TRANSPORT_IMAGE_REF],
+                check=False, timeout=900)
+            if pull.returncode:
+                raise ValueError('transport node image pull failed rc=' + str(pull.returncode))
+            inspect = self.lab.remote(self.endpoints.node, ['ctr', '-n', 'k8s.io', 'images', 'inspect',
+                                                             TRANSPORT_IMAGE_REF], check=False, timeout=60)
+            actual = self._node_image_digest(inspect.stdout) if inspect.returncode == 0 else None
+            if actual != expected:
+                raise ValueError('transport node image digest mismatch after pull: expected ' + expected +
+                                 ' got ' + str(actual))
+        print('LONGHORN_TRANSPORT_IMAGE_READY node=' + self.endpoints.node + ' digest=' + expected, flush=True)
 
     def cleanup_transport(self):
         row = self.receipt(); binding = self.transport_receipt(row)
@@ -457,6 +494,24 @@ class Store:
         self.lab.wait('backup-tunnel-listener-clean', 30, lambda: self.transport_listener() is None and not path.exists())
         del row['transport']; self.lab.write_private(self.record, row)
         print('LONGHORN_BACKUP_TRANSPORT_CLEAN_PASS', flush=True)
+
+    def recover_transport(self):
+        binding = self.transport_receipt(self.receipt())
+        if not binding:
+            return
+        live = self.lab.execute(self.lab.SSH + ['-S', binding['socket'], '-O', 'check',
+                                'root@' + binding['node']], check=False)
+        if live.returncode == 0:
+            return
+        log = self.directory / 'transport.log'
+        if log.is_symlink() or not log.is_file():
+            raise ValueError('backup transport recovery requires its original log')
+        # Reuse the exact Pod/socket/listener ownership checks and preserve the
+        # first disconnect log before recreating this run's transport only.
+        self.cleanup_transport()
+        log.rename(self.directory / ('transport-interrupted-' + secrets.token_hex(16) + '.log'))
+        self.prepare_transport()
+        print('LONGHORN_BACKUP_TRANSPORT_RECOVERED', flush=True)
 
     def receipt(self):
         if self.record.is_symlink() or self.directory.is_symlink():
