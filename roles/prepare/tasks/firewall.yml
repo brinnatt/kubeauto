@@ -1,0 +1,35 @@
+# Kubernetes requires component/CNI connectivity. Calico 3.28 explicitly asks
+# that other iptables managers be disabled; never remove distribution packages.
+# https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements
+# firewalld recommends masking to prevent D-Bus/dependency reactivation:
+# https://firewalld.org/documentation/howto/enable-and-disable-firewalld.html
+- name: discover installed firewall services
+  service_facts:
+
+- name: stop and disable firewalld
+  systemd:
+    name: firewalld.service
+    state: stopped
+    enabled: false
+  when:
+    - "'firewalld.service' in ansible_facts.services"
+    - "ansible_facts.services['firewalld.service'].status | default('') != 'not-found'"
+
+# Ansible masks before processing enabled in a combined task. Disable first
+# so the enabled symlinks are removed before is-enabled starts reporting masked.
+- name: mask firewalld against dependency and D-Bus activation
+  systemd:
+    name: firewalld.service
+    masked: true
+  when:
+    - "'firewalld.service' in ansible_facts.services"
+    - "ansible_facts.services['firewalld.service'].status | default('') != 'not-found'"
+
+- name: stop and disable ufw
+  systemd:
+    name: ufw.service
+    state: stopped
+    enabled: false
+  when:
+    - "'ufw.service' in ansible_facts.services"
+    - "ansible_facts.services['ufw.service'].status | default('') != 'not-found'"

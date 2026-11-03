@@ -1,0 +1,130 @@
+{
+  "date": "2026-11-03",
+  "branch": "dev",
+  "baseline_commit": "748178807af8dead9b403ca4c81d90630da8876e",
+  "matrix_scope": [
+    "T2-OS-07",
+    "T2-AD-11"
+  ],
+  "status": "pass",
+  "entry": "KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --rocky9-nfs-only",
+  "versions": {
+    "kubernetes": "1.33.6",
+    "containerd": "2.1.4",
+    "calico": "3.28.4",
+    "proxy": "IPVS",
+    "nfs_provisioner": "4.0.2",
+    "external_provisioner": "6.0.0",
+    "OS": "Rocky Linux 9.8",
+    "kernel": "5.14.0-687.10.1.el9_8.0.1.x86_64"
+  },
+  "hosts": {
+    "control": "192.168.47.130",
+    "master": "192.168.122.212",
+    "workers": [
+      "192.168.122.165",
+      "192.168.122.238"
+    ],
+    "lease_locks": [
+      "kubeauto-ceph-priority.lock",
+      "kubeauto-ceph-compute.lock"
+    ],
+    "extra_disks": "not touched"
+  },
+  "inputs_sha256": {
+    "conf/config.yml": "24ebecaec847661c860bc101abad5f70a26be40dc2a71cd7228bb93fc49552c2",
+    "service/cluster/manager.py": "a6944952b1acd5cc46d223f33814cea62e95f2325025f13946feb50507af65af",
+    "roles/prepare/files/huawei-mirror-debian.sh": "782c4d831e8f98435a313a46d67b3492ec5027f019d352e945495c665cdcabd4",
+    "roles/prepare/files/huawei-mirror-rhel.sh": "dfd1146ca90256302b8bd649c599f9b3c939de394cd33c1b732848ac4199dc8c",
+    "roles/prepare/files/huawei-mirror-suse.sh": "3d17d06ec56cb3f6d5eb7ca435f8cf8edf9db02b21ba84bd28df7513fa212d04",
+    "roles/prepare/files/sctp.conf": "472c4c5f6d431e9d4fdff8d4a202d0e9804fbae021b6cf9502bef8081378d5bb",
+    "roles/prepare/tasks/common.yml": "3050b7007d281a0e31c8f2dbcef0316b721b08f9e9534f398ca8859800d01302",
+    "roles/prepare/tasks/debian.yml": "4f772f1d2e0a5fd07b1464c6545d7715329de0a334c7c9c9df6853c5707701a8",
+    "roles/prepare/tasks/main.yml": "5afadfa01fa3b0ed9e0036ba62c2ee7121502996457b5380790bd00f8cbafc32",
+    "roles/prepare/tasks/podruntime-slice.yml": "3412e46ec34107a9eb7fdd7921a8db463a079e0e70b320da2303a9f277edd34f",
+    "roles/prepare/tasks/redhat.yml": "d1e1a4c01289428d66a24565bffc226e56147a6a5eb343ec27d6adf5b62301e3",
+    "roles/prepare/tasks/suse.yml": "f41d02cb85b209db27219f35c3d4798a53c4dc984b04a61426bf080c5db7f579",
+    "roles/prepare/tasks/firewall.yml": "43ccd2de2afb18f1e2c0cdb9ab9aa342e6b781e7ae8b7697cf4de60b8eb93886",
+    "roles/prepare/tasks/network-tools.yml": "21fc39a4a0330f8c35a04451780a1decda67e1013412c59801ce02a4be69231c",
+    "roles/prepare/templates/10-k8s-modules.conf.j2": "8e577f82490898a043044614ee726b0f618c50fa4d1efbc6893f04a438bae9f6",
+    "roles/prepare/templates/30-k8s-ulimits.conf.j2": "faa64b5e013655f048af92de0e12ce3fcebaebec2d6a242e40d19234011576d4",
+    "roles/prepare/templates/95-k8s-journald.conf.j2": "f2eeefc081e01a809525d50d71c38fcc0a52a63975f40479ecf32f3555da2a04",
+    "roles/prepare/templates/95-k8s-sysctl.conf.j2": "187432cf9ee63705d2fb142cc7b184ea8e801f8f6e877533dbe598aa128b4bb0",
+    "roles/prepare/vars/main.yml": "f71032e45c396430df99596fcd7be1d2ee0831000b5f7c736c4f4c09d07bd9ff",
+    "tests/helpers/delivery-gap-retest.sh": "094c4dc9bdbf861aec2edef013b4acb3dd4bfdf11ac5ed6fe70fcfb11345affd",
+    "roles/containerd/tasks/main.yml": "68a0b7cb5f03cf729b7b2689ab9f8dad6e95abb03e11f57544b98f81da6420f2",
+    "roles/containerd/templates/HARBOR_REGISTRY/hosts.toml.j2": "8c0fb4870142b845c8b637c2e99f3b86b2b4a113ef4d0fb3de1fe5e6e57dc9c7",
+    "roles/containerd/templates/docker.io/hosts.toml.j2": "db96098d98f536544b666bbec1cdb148394a94d2e1f7dce379c6a675a7c15fb5",
+    "roles/containerd/templates/registry.talkschool.cn_5000/hosts.toml.j2": "63841e252a9d68f08a7057f3990d6d8068434b4cbc62d894f60b20a46a1fd33c",
+    "roles/containerd/templates/config.toml.j2": "5129c4fa1be0b23cedd8ae4093ef8e95a630f5b6869e34285324d3b9e657b95a",
+    "roles/containerd/templates/containerd.service.j2": "6ba3135387f20e864b631af6105991bd5a0d53f036babd4e0d8b2102d0182ef2",
+    "roles/containerd/templates/crictl.yaml.j2": "af76d2c716878de610bc4de9aaf55cc7cc6b4f922e7d83c53e695c2abf044a34",
+    "roles/containerd/templates/hosts.toml.j2": "446f7c22bdca9abd48f37ff968de8c71ff6660b971bd99b08f3c3165f10ff5eb",
+    "roles/kube-node/tasks/create-kubelet-kubeconfig.yml": "dc16ab2fa0f1ca7ab1abb267d6377761c965ab3ad05783e5fb06bede6bc6cebf",
+    "roles/kube-node/tasks/main.yml": "75ed2cfddd038f5e387cef9610609ade75d58dfc8eecd76a0e6b10314ab4d2aa",
+    "roles/kube-node/tasks/wait-node-ready.yml": "16b2de3bd5111178e28a4c61f2a177596e212d59e42509bb057f5d27ed32aa15",
+    "roles/kube-node/templates/cni-default.conf.j2": "716609b7efea78c2d067ffde21d54d341fc946f5da0f986a4142b8ecd4ebc47a",
+    "roles/kube-node/templates/kube-proxy-config.yaml.j2": "7c0897206669e4aee251292c825d8c9a7aa50d639216ab9b275842872eac7b09",
+    "roles/kube-node/templates/kube-proxy.service.j2": "c98f01c5cd877ccdd8e9914f4398fd4edd3d6b1017ec0bf321fc6b91597d13e6",
+    "roles/kube-node/templates/kubelet-config.yaml.j2": "7f3bc2f5bf9b9d229d4429881d2c80517a99ee69a513a19a4dc7c2fa5f3ed458",
+    "roles/kube-node/templates/kubelet-csr.json.j2": "e31f884374820bb51d1e2a72ce835733f567eb5744668e1d5645e15d8cd6328f",
+    "roles/kube-node/templates/kubelet.service.j2": "f5b004471a78f1cc26f39bb3eef692d81fdb82a1f16e42a8aade3e07ce13dc03",
+    "roles/kube-node/vars/main.yml": "2868d911b2efc4245d8f2c9a197b16d1d30dd4458e5a135e6b6523501c909030",
+    "roles/cluster-addon/tasks/main.yml": "bf2de674656ebf05e12464208a63e0b33c75fac1de92b1de13027aacac74e9b8",
+    "roles/cluster-addon/tasks/nfs-provisioner.yml": "ba6a99dc47c7ee5835a2c6475b2249d5b69ee9f29a50e6e491bc8f8bd10a1822",
+    "roles/cluster-addon/templates/nfs-provisioner/nfs-provisioner.yaml.j2": "2d9f150fac42a531cb524eccc447b32d25fd9854c5b41019e6be5dade9d8854e",
+    "roles/cluster-addon/templates/nfs-provisioner/test-pod.yaml.j2": "f6207ddb538f60deabff8e8f0e26375f068c1d191a497f4961f375b7c001d34f",
+    "tests/helpers/rocky9-production-gate.sh": "e4495065d80994f446c899290b354097fdf86e1913a34b8a20ed3fc115eb4f6c",
+    "tests/helpers/nfs-production-gate.sh": "f93504d3a2ee6bc4447b74fdc5199d7c70e48cb8d35cd4bba9b7f3a0e9d3f406",
+    "tests/helpers/nfs-production-fixture.py": "0e9a3de0dbac9ab1f897fabbd1609a8a64ba92d3a42df6df35e93d3d82d6b88c",
+    "tests/helpers/ceph_ssh_fixture.py": "b6b02828c7349937fbc534beeca002e18d2a816e968fab5ba490fd769e7d1187",
+    "tests/helpers/kubernetes-production-smoke.sh": "c4014cdafd47af4b9128c012a291d6009dc0a3876e7fe340ab4ba63e2c9f93c0"
+  },
+  "raw_archive": {
+    "path": "logs/dev-production-fixes-20261103/rocky9-accepted/accepted-raw.tar",
+    "sha256": "d83e9685cde33611def73594edb620b802d7c8d50f7c87f6f75ef646296dbbd3",
+    "mode": "0600; private runtime evidence, never commit archive"
+  },
+  "remote_log_sha256": "a61bb0d245298d1474281578648829a800f9cd1dce51f4ea1179aa5d9547ed57",
+  "local_supervisor_log": "logs/dev-production-fixes-20261103/rocky9-nfs-relay-live.log",
+  "local_supervisor_log_sha256": "5caa8f499ca07d9315fb7aaf02d7b2e39122a3d0bf502f442618ae6d845a4d7a",
+  "durable": {
+    "exit": 0,
+    "finalized": 0,
+    "failure_markers": 0
+  },
+  "required_markers": [
+    "ROCKY9_NODE_REGISTRY_PREFLIGHT_PASS",
+    "KUBERNETES_PRODUCTION_SMOKE_PASS",
+    "NFS_LEADER_REPLACEMENT_BUSINESS_PASS",
+    "NFS_PRODUCTION_FOCUSED_PASS",
+    "NFS_PRODUCTION_SCOPED_CLEAN_PASS",
+    "CEPH_QUALIFICATION_SSH_CLEAN_PASS",
+    "ROCKY9_PRODUCTION_FOCUSED_PASS",
+    "ROCKY9_PRODUCTION_SCOPED_CLEAN_PASS"
+  ],
+  "business": {
+    "prepare": "all original RPM identities retained; firewalld restored/reenabled as fixture then stopped/disabled/masked by actual prepare, including marker reentry; eight network commands execute on all three nodes",
+    "network": "three Ready nodes; worker1 server to worker2 DNS/ClusterIP HTTP write/read",
+    "NFS": "original RWX cross-node write/fsync/read; original leader Pod replaced and new UID asserted; new PVC supplied and cross-node write/fsync/read; original data reread without reseeding; three readbacks",
+    "reservations": "all three switches no"
+  },
+  "cleanup": {
+    "NFS": "namespace and owned PVs absent before deleting Deployment; only admitted exports removed, original service states restored, fixture directories/journal removed",
+    "cluster": "product destroy succeeded; owned directory removed",
+    "registry_relay": "qualified runtime-only reverse SSH fixture; exact NAT rules, socket and listeners removed",
+    "final": "three nodes no active runtime/Kubernetes/Pod/shim residue; LAB_CLEAN_VERIFY_PASS; leases released"
+  },
+  "official_basis": [
+    "https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements",
+    "https://firewalld.org/documentation/howto/enable-and-disable-firewalld.html",
+    "https://github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/blob/v6.0.0/controller/controller.go"
+  ],
+  "limits": [
+    "Rocky 9.8 same-major evidence does not claim exact Rocky 9.7 testing.",
+    "NFS upstream lease-renewal loss semantics reused from pinned official code and production read-only evidence; no API outage or election-timeout change.",
+    "Does not resolve customer etcd/storage infrastructure latency or claim long-term availability.",
+    "Previous locale/network prerequisite failures remain failed runs; clean/current run alone is accepted.",
+    "No unrelated middleware, tools or storage regression."
+  ]
+}

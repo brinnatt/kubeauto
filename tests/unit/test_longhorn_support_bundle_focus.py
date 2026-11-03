@@ -19,7 +19,7 @@ spec.loader.exec_module(GATE)
 
 class SupportMetadataContracts(unittest.TestCase):
     def test_rejected_native_metadata_is_durable_before_cleanup_without_download(self):
-        for changes in ({'filesize': 0}, {'filesize': 512*1024**2+1}, {'ownerID': 'foreign-node'}):
+        for changes in ({'filesize': 0}, {'filesize': GATE.SHARED.SUPPORT_COMPRESSED_BYTES+1}, {'ownerID': 'foreign-node'}):
             with self.subTest(changes=changes):
                 status = {'state': 'ReadyForDownload', 'ownerID': 'longhorn-node-238', 'filesize': 1024}
                 status.update(changes)

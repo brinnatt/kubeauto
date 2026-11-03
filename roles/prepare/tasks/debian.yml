@@ -16,18 +16,10 @@
   register: apt_update
   failed_when: apt_update.rc != 0
 
-- name: delete ubuntu default software
-  shell: >-
-    DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq
-    ufw lxd lxcfs lxc-common 2>/dev/null || true
-  become: true
-  changed_when: false
-  failed_when: false
-
 - name: install ubuntu/debian basic software
   shell: >-
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq
-    bash-completion conntrack ipset ipvsadm jq libseccomp2 lvm2 nfs-common psmisc rsync socat
+    bash-completion conntrack ipset nftables iptables ipvsadm jq libseccomp2 lvm2 nfs-common psmisc rsync socat
   become: true
   register: apt_install
   changed_when: apt_install.stdout | regex_search('[1-9][0-9]* newly installed') != ''

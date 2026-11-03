@@ -336,10 +336,16 @@ nacos_mysql_db: "nacos"
 nacos_mysql_port: "3306"
 nacos_mysql_user: "__dbuser__"
 nacos_mysql_password: "__yourpassword__"
+# Existing Secret in nacos_namespace: token, identity-key, identity-value.
+# Use customer-generated keys shared by all replicas; never a public default.
+nacos_auth_secret: "nacos-auth"
 # Passed through to the official nacos-docker MYSQL_SERVICE_DB_PARAM setting.
-# Append allowPublicKeyRetrieval=true when using MySQL 8 caching_sha2_password
-# without TLS, or configure the equivalent parameters required by your server.
-nacos_mysql_db_param: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC"
+# Require encryption, a trusted CA and a certificate matching nacos_mysql_host.
+# Private CA: create a Secret in nacos_namespace with one PEM root in ca.crt.
+# Empty uses the image JVM's system trust store. No dynamic RSA key retrieval.
+nacos_mysql_db_param: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&sslMode=VERIFY_IDENTITY&serverTimezone=UTC"
+nacos_mysql_ca_secret: ""
+nacos_ready_timeout: 900
 nacos_storage_class: "{{ openebs_lvm_storage_class }}"
 # PVC size per nacos pod (official samples often 5–20Gi; keep configurable for lab VGs)
 nacos_storage_size: "5Gi"

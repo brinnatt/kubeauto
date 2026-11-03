@@ -1,3 +1,7 @@
+- import_tasks: firewall.yml
+
+- import_tasks: network-tools.yml
+
 - name: disable swap
   shell: "source /etc/profile; swapoff -a && sysctl -w vm.swappiness=0"
   ignore_errors: true

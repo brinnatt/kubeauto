@@ -9,6 +9,7 @@ import os
 import platform
 import pwd
 import re
+import shlex
 import shutil
 import ansible_runner
 import yaml
@@ -158,6 +159,31 @@ def _inventory_ansible_user(hosts_file: Path) -> str:
         if line.startswith("ansible_user="):
             return line.split("=", 1)[1].strip().strip('"').strip("'")
     return "root"
+
+
+def _inventory_host_users(hosts_file: Path) -> dict[str, str]:
+    """Read inline users from the product's IP-based INI inventory.
+
+    Ansible merges a host's variables across its group entries; an inline
+    ansible_user overrides the [all:vars] default even on a later entry.
+    """
+    users: dict[str, str] = {}
+    for raw in hosts_file.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line == "[all:vars]":
+            break
+        if not line or line.startswith(("#", "[")):
+            continue
+        tokens = shlex.split(line, comments=True)
+        try:
+            ipaddress.ip_address(tokens[0])
+        except (ValueError, IndexError):
+            continue
+        for token in tokens[1:]:
+            name, separator, value = token.partition("=")
+            if separator and name == "ansible_user":
+                users[tokens[0]] = value
+    return users
 
 
 def _host_uses_local_connection(host_line: str) -> bool:
@@ -326,6 +352,7 @@ def _prepare_inventory_with_python(
 
     probe = SystemProbe()
     user = _inventory_ansible_user(hosts_file)
+    host_users = _inventory_host_users(hosts_file)
     local_user = _effective_user_name()
     interpreters: dict[str, str] = {}
     incompatible_hosts: List[str] = []
@@ -346,7 +373,7 @@ def _prepare_inventory_with_python(
         processed_hosts.add(token)
         if token in local_hosts and not execution_environment:
             continue
-        target_user = local_user if token in local_hosts else user
+        target_user = local_user if token in local_hosts else host_users.get(token, user)
         py = _ensure_ansible_python(probe, token, target_user, policy)
         if py:
             interpreters[token] = py

@@ -1,0 +1,14 @@
+# RPM/dpkg registration alone cannot prove that the dynamic loader and shared
+# libraries work. Fail before marking prepare complete if a runtime is broken.
+- name: verify network executables
+  command: "{{ item }} --version"
+  loop:
+    - ipset
+    - nft
+    - iptables
+    - iptables-save
+    - iptables-restore
+    - ip6tables
+    - ip6tables-save
+    - ip6tables-restore
+  changed_when: false

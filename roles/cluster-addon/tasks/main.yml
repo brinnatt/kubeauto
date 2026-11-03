@@ -64,7 +64,9 @@
   when: 'minio_install == "yes" and "minio-operator" not in pod_info.stdout'
 
 - import_tasks: nacos.yml
-  when: '"nacos-0" not in pod_info.stdout and nacos_install == "yes"'
+  # A Pod name in any namespace does not identify the requested deployment or
+  # prove that its configuration, Secrets and readiness have converged.
+  when: 'nacos_install == "yes"'
 
 - import_tasks: rocketmq.yml
   when: '"broker-0-master" not in pod_info.stdout and rocketmq_install == "yes"'

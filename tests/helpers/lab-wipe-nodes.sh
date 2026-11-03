@@ -10,6 +10,7 @@ CONTROL=192.168.47.138
 WIPE_DEBIAN=true
 WIPE_CONTROL=true
 MODE=wipe
+STARTUP_SCOPE=false
 
 # A topology may reuse Rocky nodes in the same regression (for example,
 # dedicated-etcd followed by HA).  Etcd data is cluster-specific and must not
@@ -18,7 +19,16 @@ MODE=wipe
 if [[ "${1:-}" == "--verify" ]]; then
   MODE=verify
   shift
-  if [[ "${1:-}" == "--rocky-only" ]]; then
+  if [[ "${1:-}" == "--rocky9-only" && "$#" -eq 1 ]]; then
+    STARTUP_SCOPE=true
+    ROCKY_IPS=(192.168.122.212 192.168.122.165 192.168.122.238)
+    WIPE_DEBIAN=false
+    WIPE_CONTROL=false
+  elif [[ "${1:-}" == "--startup-only" && "$#" -eq 1 ]]; then
+    STARTUP_SCOPE=true
+    ROCKY_IPS=(192.168.47.137 192.168.47.142 192.168.47.143)
+    WIPE_CONTROL=false
+  elif [[ "${1:-}" == "--rocky-only" ]]; then
     shift
     [[ "$#" -gt 0 ]] || {
       echo "Usage: $0 --verify --rocky-only <rocky-ip> ..." >&2
@@ -31,6 +41,17 @@ if [[ "${1:-}" == "--verify" ]]; then
     echo "Usage: $0 [--verify [--rocky-only <rocky-ip> ...] | --rocky-only <rocky-ip> ...]" >&2
     exit 2
   fi
+elif [[ "${1:-}" == "--rocky9-only" ]]; then
+  [[ "$#" -eq 1 ]] || { echo 'ERROR: --rocky9-only takes no host arguments' >&2; exit 2; }
+  STARTUP_SCOPE=true
+  ROCKY_IPS=(192.168.122.212 192.168.122.165 192.168.122.238)
+  WIPE_DEBIAN=false
+  WIPE_CONTROL=false
+elif [[ "${1:-}" == "--startup-only" ]]; then
+  [[ "$#" -eq 1 ]] || { echo 'ERROR: --startup-only takes no host arguments' >&2; exit 2; }
+  STARTUP_SCOPE=true
+  ROCKY_IPS=(192.168.47.137 192.168.47.142 192.168.47.143)
+  WIPE_CONTROL=false
 elif [[ "${1:-}" == "--rocky-only" ]]; then
   shift
   [[ "$#" -gt 0 ]] || {
@@ -154,6 +175,33 @@ if [[ "$MODE" == verify ]]; then
   fi
   echo "LAB_CLEAN_VERIFY_PASS"
   exit 0
+fi
+
+# Compatibility controls can retain stopped package defaults. Refuse baseline
+# cleanup if a selected host has a running cluster or another active gate.
+if [[ "$MODE" == wipe && "$STARTUP_SCOPE" == true ]]; then
+  startup_idle_cmd='
+set -eu
+for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-scheduler kube-lb etcd containerd docker cri-dockerd; do
+  state=$(systemctl is-active "$unit" 2>/dev/null || true)
+  case "$state" in inactive|unknown|failed) ;; *) echo "STARTUP_CLEAN_REFUSED active_unit=$unit state=$state" >&2; exit 1;; esac
+done
+for file in /tmp/kubeauto-*.pid; do
+  test -f "$file" || continue
+  pid=$(cat "$file")
+  case "$pid" in ""|*[!0-9]*) exit 1;; esac
+  if kill -0 "$pid" 2>/dev/null; then echo "STARTUP_CLEAN_REFUSED active_job=$file" >&2; exit 1; fi
+done
+ps -eww -o cgroup= | awk '\''/(^|[,:\/])(kubepods|podruntime)([.]slice|\/|$)/ {busy=1} END {exit busy}'\''
+'
+  for ip in "${ROCKY_IPS[@]}"; do
+    rocky_ssh "$ip" "bash -lc $(printf '%q' "$startup_idle_cmd")"
+  done
+  if [[ "$WIPE_DEBIAN" == true ]]; then
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 \
+      "brinnatt@$DEBIAN_IP" "sudo -n bash -lc $(printf '%q' "$startup_idle_cmd")"
+  fi
+  echo STARTUP_IDLE_POOL_VERIFIED
 fi
 
 wipe_cmd='

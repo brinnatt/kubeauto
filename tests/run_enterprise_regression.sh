@@ -274,6 +274,7 @@ echo '[CANCEL] label=${label} state=stopped pid='\"\$pid\"
 matrix_counts() {
   local matrix="$ROOT/tests/enterprise-test-matrix.yaml"
   local surface="${1:-$MODE}"
+  local item_pattern='^[[:space:]]*-[[:space:]]*\{id:'
   [[ "$surface" == --mysql-* || "$surface" == mysql-* ]] && matrix="$ROOT/tests/mysql-test-matrix.yaml"
   [[ "$surface" == --kafka-* || "$surface" == kafka-* ]] && matrix="$ROOT/tests/kafka-test-matrix.yaml"
   [[ "$surface" == --logging-* || "$surface" == logging-* || "$surface" == logging ]] && matrix="$ROOT/tests/logging-test-matrix.yaml"
@@ -281,6 +282,10 @@ matrix_counts() {
   [[ "$surface" == --ceph-* || "$surface" == ceph-* || "$surface" == ceph ]] && matrix="$ROOT/tests/ceph-test-matrix.yaml"
   [[ "$surface" == --mongodb-* || "$surface" == mongodb-* || "$surface" == mongodb ]] && matrix="$ROOT/tests/mongodb-test-matrix.yaml"
   [[ "$surface" == --longhorn-* || "$surface" == longhorn-* || "$surface" == longhorn ]] && matrix="$ROOT/tests/longhorn-test-matrix.yaml"
+  if [[ "$matrix" == "$ROOT/tests/enterprise-test-matrix.yaml" ]]; then
+    # Acceptance IDs include T*, X-* and PROM-*; run-stage IDs are lowercase.
+    item_pattern+='[[:space:]]*[A-Z][A-Z0-9]*-'
+  fi
   if [[ "$matrix" == "$ROOT/tests/longhorn-test-matrix.yaml" || "$matrix" == "$ROOT/tests/ceph-test-matrix.yaml" || "$matrix" == "$ROOT/tests/mongodb-test-matrix.yaml" ]]; then
     printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
       "$(grep -Ec '^[[:space:]]+status: pass$' "$matrix" || true)" \
@@ -289,9 +294,9 @@ matrix_counts() {
     return
   fi
   printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
-    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pass' "$matrix" || true)" \
-    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: pending' "$matrix" || true)" \
-    "$(grep -Ec '^[[:space:]]*-[[:space:]]*\{id:.*status: fail' "$matrix" || true)"
+    "$(grep -Ec "${item_pattern}.*status: pass" "$matrix" || true)" \
+    "$(grep -Ec "${item_pattern}.*status: pending" "$matrix" || true)" \
+    "$(grep -Ec "${item_pattern}.*status: fail" "$matrix" || true)"
 }
 
 if [[ "$MODE" == "--redis-static-only" ]]; then
@@ -1665,7 +1670,6 @@ if [[ "$MODE" == "--all-delivery" ]]; then
     --ansible-os-only
     --ansible-ee-debian-probe
     --ansible-anolis-container-probe
-    --tier3-tools-only
   )
   for delivery_mode in "${delivery_modes[@]}"; do
     echo "========== DELIVERY SIGNOFF mode=$delivery_mode =========="
@@ -1678,6 +1682,9 @@ if [[ "$MODE" == "--all-delivery" ]]; then
 fi
 
 if [[ "$MODE" == "--status" ]]; then
+  echo "========== Nacos current-dev startup qualification =========="
+  remote_job_summary ssh138 sudo /tmp/kubeauto-nacos-startup-gate /tmp/kubeauto-nacos-startup-live.log || true
+  remote_log_tail ssh138 sudo /tmp/kubeauto-nacos-startup-live.log 60
   echo "========== Prometheus delivery gate =========="
   remote_job_summary ssh_prom '' /tmp/kubeauto-prometheus-gate /tmp/kubeauto-prometheus-live.log || true
   remote_log_tail ssh_prom '' /tmp/kubeauto-prometheus-live.log 120
@@ -2220,6 +2227,158 @@ if [[ "$MODE" == "--cancel-gaps" ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == "--anolis-cgroup-prereq-only" ]]; then
+  "$middleware_doc_python" -m unittest tests.unit.test_anolis_cgroup_fixture -v
+  bash -n "$ROOT/tests/helpers/anolis-cgroup-qualification.sh"
+  echo 'ANOLIS_CPU_LADDER completed=2 next=3 evidence=RT-migration-and-reboot-contracts'
+  bash "$ROOT/tests/helpers/run-durable-gate.sh" /tmp/kubeauto-anolis-cpu-qualification \
+    ANOLIS_CPU_QUALIFICATION_EXIT bash "$ROOT/tests/helpers/anolis-cgroup-qualification.sh"
+  exit $?
+fi
+
+if [[ "$MODE" == "--rocky9-registry-qualification" ]]; then
+  "$middleware_doc_python" -m unittest \
+    tests.unit.test_ceph_delivery.TestCephDelivery.test_qualification_registry_relay_journals_before_mutation_and_only_targets_compute \
+    tests.unit.test_ceph_delivery.TestCephDelivery.test_qualification_registry_relay_skips_direct_paths_and_removes_exact_owned_rules -v
+  echo 'ROCKY9_REGISTRY_LADDER completed=2 next=3 evidence=existing-rocky9-relay-ownership-contracts'
+  ssh130 'bash -s' <<'QUALIFY'
+set -euo pipefail
+install -d -m 0700 /var/lib/kubeauto-ceph-test
+python3 /usr/local/kubeauto/tests/helpers/ceph_ssh_fixture.py probe \
+  --path /var/lib/kubeauto-ceph-test/ssh-relay.json --profile rocky9
+QUALIFY
+  exit $?
+fi
+
+if [[ "$MODE" == "--rocky9-production-diagnostics" ]]; then
+  ssh130 'bash -s' <<'DIAG'
+set -uo pipefail
+export KUBECONFIG=/usr/local/kubeauto/clusters/dev-rocky9-production/kubectl.kubeconfig
+kubectl --request-timeout=10s get nodes -o wide
+kubectl --request-timeout=10s -n kube-system get pods -o wide
+kubectl --request-timeout=10s -n kube-system describe pods -l k8s-app=calico-node
+kubectl --request-timeout=10s -n kube-system get events --sort-by=.lastTimestamp
+for pod in $(kubectl --request-timeout=10s -n kube-system get pods -l k8s-app=calico-node -o name); do
+  timeout 20s kubectl -n kube-system logs "$pod" --all-containers --tail=100 || true
+done
+DIAG
+  exit $?
+fi
+
+if [[ "$MODE" == "--prepare-os-evidence" || "$MODE" == "--rocky9-production-evidence" ]]; then
+  # Read-only collection: no source sync, new gate, cleanup or lab mutation.
+  umask 077
+  evidence_profile=prepare
+  evidence_ssh=ssh138
+  evidence_sudo='sudo -n'
+  if [[ "$MODE" == "--rocky9-production-evidence" ]]; then
+    evidence_profile=rocky9
+    evidence_ssh=ssh130
+    evidence_sudo=''
+  fi
+  evidence_directory="$ROOT/logs/dev-production-fixes-20261103/$evidence_profile-accepted"
+  mkdir -p "$evidence_directory"
+  "$evidence_ssh" "$evidence_sudo /usr/local/kubeauto/.venv/bin/python - $evidence_profile" \
+    >"$evidence_directory/accepted-raw.tar" <<'PY'
+from pathlib import Path
+import re, subprocess, sys
+profile=sys.argv[1]
+assert profile in ('prepare','rocky9')
+name='prepare-os' if profile=='prepare' else 'rocky9-production'
+prefix=Path('/tmp/kubeauto-'+name+'-gate')
+for extension in ('.exit','.finalized'):
+    assert prefix.with_suffix(extension).read_text().strip()=='0'
+log_name='kubeauto-'+name+'-live.log'
+log=Path('/tmp',log_name).read_text()
+marker='PREPARE_OS' if profile=='prepare' else 'ROCKY9_PRODUCTION'
+assert marker+'_FOCUSED_PASS' in log and marker+'_SCOPED_CLEAN_PASS' in log
+assert not re.search(r'\[FAIL\]|(?:^|\s)fatal:|(?:^|\s)[A-Z0-9_]+_FAIL(?:\s|$)',log)
+directories=[]
+for pattern in (r'PREPARE_OS_SCOPED_CLEAN_PASS evidence=(/var/tmp/kubeauto-prepare-compat\.[A-Za-z0-9]+)',
+                r'ROCKY9_PRODUCTION_EVIDENCE directory=(/var/tmp/kubeauto-rocky9-production\.[A-Za-z0-9]+)',
+                r'NFS_PRODUCTION_SCOPED_CLEAN_PASS evidence=(/var/tmp/kubeauto-nfs-production\.[A-Za-z0-9]+)'):
+    directories += [Path(p).name for p in re.findall(pattern,log)]
+assert directories
+sources=['conf/config.yml','service/cluster/manager.py','roles/prepare',
+         'tests/helpers/delivery-gap-retest.sh']
+if profile=='prepare':
+    sources += ['tests/helpers/prepare-os-production-gate.sh']
+if profile=='rocky9':
+    assert 'NFS_PRODUCTION_FOCUSED_PASS' in log and 'NFS_PRODUCTION_SCOPED_CLEAN_PASS' in log
+    sources += ['roles/containerd','roles/kube-node','roles/cluster-addon/tasks/main.yml',
+                'roles/cluster-addon/tasks/nfs-provisioner.yml','roles/cluster-addon/templates/nfs-provisioner',
+                'tests/helpers/rocky9-production-gate.sh','tests/helpers/nfs-production-gate.sh',
+                'tests/helpers/nfs-production-fixture.py','tests/helpers/ceph_ssh_fixture.py',
+                'tests/helpers/kubernetes-production-smoke.sh']
+subprocess.run(['tar','-c','-f','-','-C','/usr/local/kubeauto',*sources,'-C','/tmp',
+                prefix.name+'.exit',prefix.name+'.finalized',log_name,'-C','/var/tmp',*directories],check=True)
+PY
+  sha256sum "$evidence_directory/accepted-raw.tar"
+  echo PRODUCTION_FIXES_ACCEPTED_EVIDENCE_ARCHIVED
+  exit 0
+fi
+
+if [[ "$MODE" == "--nacos-startup-evidence" ]]; then
+  umask 077
+  nacos_evidence_dir="$ROOT/logs/dev-production-fixes-20261103/nacos-accepted"
+  mkdir -p "$nacos_evidence_dir"
+  ssh138 'sudo -n /usr/local/kubeauto/.venv/bin/python -' >"$nacos_evidence_dir/accepted-raw.tar" <<'PY'
+from pathlib import Path
+import re,subprocess,sys
+prefix=Path('/tmp/kubeauto-nacos-startup-gate')
+assert prefix.with_suffix('.exit').read_text().strip()=='0'
+assert prefix.with_suffix('.finalized').read_text().strip()=='0'
+log=Path('/tmp/kubeauto-nacos-startup-live.log').read_text()
+assert 'NACOS_STARTUP_SCOPED_CLEAN_PASS' in log and 'NACOS_STARTUP_FOCUSED_PASS' in log
+assert '[FAIL]' not in log
+directory=re.search(r'NACOS_TLS_REFUSALS_SCOPED_CLEAN_PASS evidence=(/var/tmp/kubeauto-nacos-tls-refusal\.[A-Za-z0-9]+)',log)[1]
+sources=['conf/config.yml','service/cluster/manager.py','roles/cluster-addon/tasks/main.yml',
+         'roles/cluster-addon/tasks/nacos.yml','roles/cluster-addon/templates/nacos/nacos-sts.yaml.j2',
+         'tests/helpers/nacos-startup-gate.sh','tests/helpers/nacos-tls-refusal-gate.sh',
+         'tests/helpers/delivery-gap-retest.sh']
+subprocess.run(['tar','-c','-f','-','-C','/usr/local/kubeauto',*sources,
+                '-C','/tmp','kubeauto-nacos-startup-gate.exit','kubeauto-nacos-startup-gate.finalized',
+                'kubeauto-nacos-startup-live.log','-C','/var/tmp',Path(directory).name],check=True)
+PY
+  sha256sum "$nacos_evidence_dir/accepted-raw.tar"
+  echo NACOS_ACCEPTED_EVIDENCE_ARCHIVED
+  exit 0
+fi
+
+if [[ "$MODE" == "--nacos-startup-diagnostics" ]]; then
+  # Read only a private, already captured failure; never print credentials/log bodies.
+  ssh138 'sudo -n /usr/local/kubeauto/.venv/bin/python -' <<'PY'
+from pathlib import Path
+import hashlib,json,re,yaml
+directories=sorted(Path('/var/tmp').glob('kubeauto-nacos-tls-refusal.*'), key=lambda p:p.stat().st_mtime)
+if not directories:raise SystemExit('no captured Nacos TLS failure')
+directory=directories[-1]
+print('NACOS_CAPTURED_DIAGNOSTICS directory='+str(directory))
+for path in sorted(directory.iterdir()):
+    if path.suffix not in ('.log','.yaml','.sha256'):continue
+    payload=path.read_bytes()
+    print(json.dumps({'file':path.name,'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()}))
+    if path.name.endswith('.rendered.yaml'):
+        for item in yaml.safe_load_all(payload):
+            if isinstance(item,dict):print('RENDERED_OBJECT',item.get('kind'),item.get('metadata',{}).get('namespace'),item.get('metadata',{}).get('name'))
+    if path.name.endswith('.setup.log'):
+        text=payload.decode(errors='replace')
+        for phrase in ('require customer-managed Nacos authentication Secret','wait for Nacos application readiness','skipping: [localhost]','failed=1','Cluster setup completed'):
+            print('SETUP_MARKER',phrase,'count='+str(text.count(phrase)))
+        for line in text.splitlines():
+            if re.match(r'\s*(?:fatal:|ERROR!|TASK \[cluster-addon : (?:require|read Nacos|wait for Nacos))',line):
+                print('SETUP_TASK',line.split('=>')[0][:180])
+PY
+  exit $?
+fi
+
+if [[ "$MODE" == "--startup-pool-inventory" || "$MODE" == "--startup-ceph-pool-inventory" ]]; then
+  inventory_args=()
+  [[ "$MODE" != "--startup-ceph-pool-inventory" ]] || inventory_args+=(--ceph-only)
+  bash "$ROOT/tests/helpers/startup-pool-inventory.sh" "${inventory_args[@]}"
+  exit $?
+fi
+
 if [[ "$MODE" == "--diagnose-gaps-last" ]]; then
   # Read the durable full-chain evidence after cleanup without reconstructing
   # state from an already wiped cluster. Capacity is read separately because
@@ -2469,6 +2628,246 @@ if [[ "$MODE" == "--upgrade-only" ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == "--prepare-os-diagnostics" ]]; then
+  ssh138 'sudo -n bash -s' <<'DIAG'
+set -eu
+printf 'PREPARE_OS_INVENTORY_HOSTS='
+sed -n '/^192[.]/{s/ .*//;p}' /usr/local/kubeauto/clusters/dev-prepare-compat/hosts | sort -u | tr '\n' ' '
+printf '\n'
+sha256sum /usr/local/kubeauto/clusters/dev-prepare-compat/kubectl.kubeconfig
+for evidence in /var/tmp/kubeauto-prepare-compat.*; do
+  test -d "$evidence" || continue
+  echo "PREPARE_OS_DIAGNOSTICS directory=$evidence"
+  for file in "$evidence"/*.runtime "$evidence"/*.removed; do
+    test ! -f "$file" || { echo "FILE=$file"; cat "$file"; }
+  done
+done
+for target in ubuntu@192.168.47.138 root@192.168.47.141; do
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$target" 'sudo -n bash -s' <<'HOST'
+set -eu
+hostname
+for service in firewalld ufw; do
+  rc=0
+  state=$(systemctl show "$service.service" --property=LoadState --value) || rc=$?
+  printf 'unit=%s load=%s rc=%s\n' "$service" "$state" "$rc"
+  systemctl is-active "$service.service" || true
+  systemctl is-enabled "$service.service" || true
+done
+sha256sum /root/.kube/config || true
+for unit in kubelet etcd containerd kube-apiserver kube-proxy; do
+  state=$(systemctl is-active "$unit" 2>/dev/null || true)
+  printf 'idle_unit=%s state=%s\n' "$unit" "$state"
+done
+for path in /etc/kubernetes /etc/containerd /var/lib/kubelet /var/lib/containerd /var/lib/etcd /opt/kubeauto_prepare_tasks; do
+  test ! -e "$path" || echo "idle_residue=$path"
+done
+ps -eww -o cgroup= | awk '/(^|[,:\/])(kubepods|podruntime)([.]slice|\/|$)/ {busy++} END {print "pod_process_count=" busy+0}'
+for path in /etc/kubernetes /root/.kube; do
+  test ! -d "$path" || find "$path" -maxdepth 2 -type f -printf '%p\n'
+done
+HOST
+done
+DIAG
+  exit $?
+fi
+
+if [[ "$MODE" == "--prepare-os-only" || "$MODE" == "--prepare-os-clean-only" ]]; then
+  "$middleware_doc_python" -m unittest tests.unit.test_prepare_os_production_gate -v
+  bash -n "$ROOT/tests/helpers/prepare-os-production-gate.sh"
+  echo 'PREPARE_OS_LADDER completed=2 next=3 evidence=prepare-only-refusal-cleanup-contracts'
+  prepare_lease_script='
+set -euo pipefail
+exec 9>/var/lock/kubeauto-core-pool.lock
+flock -n 9
+for file in /tmp/kubeauto-*.pid; do
+  [[ -f "$file" ]] || continue
+  pid=$(cat "$file")
+  [[ "$pid" =~ ^[0-9]+$ ]] || exit 1
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "PREPARE_OS_LEASE_REFUSED active_state=$file" >&2
+    exit 1
+  fi
+done
+echo PREPARE_OS_LEASE_READY
+IFS= read -r release
+[[ "$release" == release ]]
+'
+  coproc PREPARE_OS_LEASE { ssh138 "sudo -n bash -c $(printf '%q' "$prepare_lease_script")"; }
+  prepare_lease_pid=$PREPARE_OS_LEASE_PID
+  prepare_lease_input=${PREPARE_OS_LEASE[1]}
+  release_prepare_lease() {
+    printf 'release\n' >&"$prepare_lease_input" || true
+    exec {prepare_lease_input}>&-
+    wait "$prepare_lease_pid" || true
+  }
+  trap release_prepare_lease EXIT
+  read -r prepare_lease_marker <&"${PREPARE_OS_LEASE[0]}"
+  [[ "$prepare_lease_marker" == PREPARE_OS_LEASE_READY ]]
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control "$HOST138" \
+    ubuntu@192.168.47.138 root@192.168.47.141
+  bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
+  prepare_clean=0
+  prepare_prefix=/tmp/kubeauto-prepare-os-gate
+  prepare_marker=PREPARE_OS_FOCUSED_PASS
+  if [[ "$MODE" == "--prepare-os-clean-only" ]]; then
+    prepare_clean=1
+    prepare_prefix=/tmp/kubeauto-prepare-os-clean-gate
+    prepare_marker=PREPARE_OS_CLEAN_RECOVERY_PASS
+  fi
+  ssh138 "sudo -n env PREPARE_OS_CLEAN_ONLY=$prepare_clean PREPARE_PREFIX=$prepare_prefix bash -s" <<'LAUNCH'
+set -euo pipefail
+rm -f "$PREPARE_PREFIX".{pid,exit,finalized}
+nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh \
+  "$PREPARE_PREFIX" PREPARE_OS_EXIT \
+  bash /usr/local/kubeauto/tests/helpers/prepare-os-production-gate.sh \
+  >/tmp/kubeauto-prepare-os-live.log 2>&1 </dev/null &
+LAUNCH
+  prepare_rc=0
+  monitor_remote_job prepare-os-138 ssh138 sudo "$prepare_prefix" \
+    /tmp/kubeauto-prepare-os-live.log "$prepare_marker" || prepare_rc=$?
+  (( prepare_rc == 0 )) || exit "$prepare_rc"
+  release_prepare_lease
+  trap - EXIT
+  if (( prepare_clean )); then echo PREPARE_OS_CLEAN_ACCEPTED; else echo PREPARE_OS_ACCEPTED; fi
+  exit 0
+fi
+
+if [[ "$MODE" == "--rocky9-production-only" || "$MODE" == "--rocky9-nfs-only" ]]; then
+  # T2-OS-07 / T2-PM-01: prepare and cross-node data path only, no middleware.
+  "$middleware_doc_python" -m unittest tests.unit.test_rocky9_production_gate -v
+  bash -n "$ROOT/tests/helpers/rocky9-production-gate.sh"
+  bash -n "$ROOT/tests/helpers/lab-wipe-nodes.sh"
+  rocky9_gate_mode=network
+  if [[ "$MODE" == "--rocky9-nfs-only" ]]; then
+    "$middleware_doc_python" -m unittest tests.unit.test_nfs_production_fixture tests.unit.test_nfs_production_gate -v
+    bash -n "$ROOT/tests/helpers/nfs-production-gate.sh"
+    rocky9_gate_mode=nfs
+  fi
+  echo 'ROCKY9_PRODUCTION_LADDER completed=2 next=3 evidence=lease-cleanup-product-handoff-contracts'
+  rocky9_lease_script='
+set -euo pipefail
+exec 9>/var/lock/kubeauto-ceph-priority.lock
+flock -n 9
+exec 7>/var/lock/kubeauto-ceph-compute.lock
+flock -n 7
+for file in /tmp/kubeauto-*.pid; do
+  [[ -f "$file" ]] || continue
+  pid=$(cat "$file")
+  [[ "$pid" =~ ^[0-9]+$ ]] || exit 1
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "ROCKY9_LEASE_REFUSED active_state=$file" >&2
+    exit 1
+  fi
+done
+echo ROCKY9_LEASE_READY
+IFS= read -r release
+[[ "$release" == release ]]
+'
+  coproc ROCKY9_LEASE { ssh130 "bash -c $(printf '%q' "$rocky9_lease_script")"; }
+  rocky9_lease_pid=$ROCKY9_LEASE_PID
+  rocky9_lease_input=${ROCKY9_LEASE[1]}
+  release_rocky9_lease() {
+    printf 'release\n' >&"$rocky9_lease_input" || true
+    exec {rocky9_lease_input}>&-
+    wait "$rocky9_lease_pid" || true
+  }
+  trap release_rocky9_lease EXIT
+  read -r rocky9_lease_marker <&"${ROCKY9_LEASE[0]}"
+  [[ "$rocky9_lease_marker" == ROCKY9_LEASE_READY ]]
+  if ! bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --rocky9-only; then
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --rocky9-only
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --rocky9-only
+  fi
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$HOST130" \
+    root@192.168.122.212 root@192.168.122.165 root@192.168.122.238
+  bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST130"
+  ssh130 "env ROCKY9_GATE_MODE=$rocky9_gate_mode bash -s" <<'LAUNCH'
+set -euo pipefail
+rm -f /tmp/kubeauto-rocky9-production-gate.{pid,exit,finalized}
+nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh \
+  /tmp/kubeauto-rocky9-production-gate ROCKY9_PRODUCTION_EXIT \
+  bash /usr/local/kubeauto/tests/helpers/rocky9-production-gate.sh \
+  >/tmp/kubeauto-rocky9-production-live.log 2>&1 </dev/null &
+LAUNCH
+  rocky9_rc=0
+  monitor_remote_job rocky9-production-130 ssh130 '' /tmp/kubeauto-rocky9-production-gate \
+    /tmp/kubeauto-rocky9-production-live.log ROCKY9_PRODUCTION_FOCUSED_PASS || rocky9_rc=$?
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --rocky9-only
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --rocky9-only
+  (( rocky9_rc == 0 )) || exit "$rocky9_rc"
+  release_rocky9_lease
+  trap - EXIT
+  echo ROCKY9_PRODUCTION_ACCEPTED
+  exit 0
+fi
+
+if [[ "$MODE" == "--nacos-startup-only" ]]; then
+  # Owning gap: T2-AD-13. No broad topology or unrelated addon gates.
+  "$middleware_doc_python" -m unittest tests.unit.test_production_startup_regressions \
+    tests.unit.test_delivery_gaps_gate tests.unit.test_nacos_startup_gate -v
+  bash -n "$ROOT/tests/helpers/nacos-startup-gate.sh"
+  bash -n "$ROOT/tests/helpers/nacos-tls-refusal-gate.sh"
+  bash -n "$ROOT/tests/helpers/delivery-gap-retest.sh"
+  echo 'NACOS_STARTUP_LADDER completed=2 next=3 evidence=focused-contracts-and-render'
+  startup_lease_script='
+set -euo pipefail
+exec 9>/var/lock/kubeauto-core-pool.lock
+flock -n 9
+for file in /tmp/kubeauto-*.pid; do
+  [[ -f "$file" ]] || continue
+  pid=$(cat "$file")
+  [[ "$pid" =~ ^[0-9]+$ ]] || exit 1
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "NACOS_STARTUP_LEASE_REFUSED active_state=$file" >&2
+    exit 1
+  fi
+done
+echo NACOS_STARTUP_LEASE_READY
+IFS= read -r release
+[[ "$release" == release ]]
+'
+  coproc NACOS_STARTUP_LEASE {
+    ssh138 "sudo -n bash -c $(printf '%q' "$startup_lease_script")"
+  }
+  startup_lease_pid=$NACOS_STARTUP_LEASE_PID
+  startup_lease_input=${NACOS_STARTUP_LEASE[1]}
+  release_startup_lease() {
+    printf 'release\n' >&"$startup_lease_input" || true
+    exec {startup_lease_input}>&-
+    wait "$startup_lease_pid" || true
+  }
+  trap release_startup_lease EXIT
+  read -r startup_lease_marker <&"${NACOS_STARTUP_LEASE[0]}"
+  [[ "$startup_lease_marker" == NACOS_STARTUP_LEASE_READY ]]
+  if ! bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --startup-only; then
+    # The cleanup helper independently refuses active units/jobs/Pod processes
+    # on all four selected hosts before removing any stopped runtime residue.
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --startup-only
+    bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --startup-only
+  fi
+  bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" --sudo-control "$HOST138" \
+    root@192.168.47.137 brinnatt@192.168.47.128 root@192.168.47.142 root@192.168.47.143
+  bash "$ROOT/tests/helpers/sync-kubeauto.sh" "$HOST138"
+  ssh138 'sudo -n bash -s' <<'LAUNCH'
+set -euo pipefail
+rm -f /tmp/kubeauto-nacos-startup-gate.{pid,exit,finalized}
+nohup bash /usr/local/kubeauto/tests/helpers/run-durable-gate.sh \
+  /tmp/kubeauto-nacos-startup-gate NACOS_STARTUP_EXIT \
+  bash /usr/local/kubeauto/tests/helpers/nacos-startup-gate.sh \
+  >/tmp/kubeauto-nacos-startup-live.log 2>&1 </dev/null &
+LAUNCH
+  startup_rc=0
+  monitor_remote_job nacos-startup-138 ssh138 sudo /tmp/kubeauto-nacos-startup-gate \
+    /tmp/kubeauto-nacos-startup-live.log NACOS_STARTUP_FOCUSED_PASS || startup_rc=$?
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --startup-only
+  bash "$ROOT/tests/helpers/lab-wipe-nodes.sh" --verify --startup-only
+  (( startup_rc == 0 )) || exit "$startup_rc"
+  release_startup_lease
+  trap - EXIT
+  echo NACOS_STARTUP_ACCEPTED
+  exit 0
+fi
+
 if [[ "$MODE" == "--gaps-only" ]]; then
   echo "========== Remaining G5/G10 delivery gates =========="
   cancel_remote_job gaps-138 ssh138 sudo /tmp/kubeauto-gaps-gate
@@ -2500,7 +2899,7 @@ if [[ "$MODE" == "--gaps-only" ]]; then
 fi
 
 if [[ "$MODE" != "run" && "$MODE" != "--aio-only" && "$MODE" != "--jumper-only" ]]; then
-  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--prometheus-only|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--kafka-only|--kafka-clean-only|--kafka-status|--kafka-follow|--kafka-cancel|--redis-static-only|--redis-artifacts|--redis-storage-artifacts|--redis-install-only|--redis-install-repair|--redis-install-watch|--redis-install-diagnostics|--redis-node-probe|--redis-health-probe|--redis-probe|--redis-only|--redis-clean-only|--redis-status|--redis-follow|--redis-cancel|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
+  echo "Usage: $0 [--all-delivery|--all-delivery-daemon|--status|--follow|--prometheus-only|--mysql-only|--mysql-clean-only|--mysql-status|--mysql-follow|--kafka-only|--kafka-clean-only|--kafka-status|--kafka-follow|--kafka-cancel|--redis-static-only|--redis-artifacts|--redis-storage-artifacts|--redis-install-only|--redis-install-repair|--redis-install-watch|--redis-install-diagnostics|--redis-node-probe|--redis-health-probe|--redis-probe|--redis-only|--redis-clean-only|--redis-status|--redis-follow|--redis-cancel|--follow-jumper|--follow-ansible-ee|--cancel-jumper|--cancel-gaps|--aio-only|--jumper-only|--nerdctl-only|--docker-only|--registry-reboot-only|--upgrade-only|--gaps-only|--nacos-startup-only|--nacos-startup-diagnostics|--prepare-os-only|--prepare-os-clean-only|--prepare-os-diagnostics|--rocky9-production-only|--rocky9-nfs-only|--rocky9-registry-qualification|--rocky9-production-diagnostics|--nacos-startup-evidence|--prepare-os-evidence|--rocky9-production-evidence|--startup-pool-inventory|--startup-ceph-pool-inventory|--build-rocky8-kubecli|--tier3-tools-only|--cancel-rocky8-build|--rocky8-image-probe|--diagnose-docker-bootstrap|--follow-docker-bootstrap|--cancel-docker-bootstrap|--ansible-os-probe|--ansible-anolis-probe|--ansible-anolis-container-probe|--ansible-ee-debian-probe|--ansible-os-only|--diagnose-gaps-last|--diagnose-test137|--diagnose-debian128|--diagnose-ded-etcd|--verify-ded-etcd-access|--diagnose-harbor137|--diagnose-rocketmq-image|--diagnose-nacos-last|--diagnose-nacos-images|--repair-lab-access]" >&2
   exit 2
 fi
 

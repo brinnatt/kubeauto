@@ -110,3 +110,11 @@
       shell: "echo done > /opt/kubeauto_prepare_tasks"
 
   when: p.stat.isreg is not defined
+
+# A prepare marker does not establish current service or executable health.
+# Reconcile these prerequisites even when the expensive bootstrap is skipped.
+- import_tasks: firewall.yml
+  when: p.stat.isreg | default(false)
+
+- import_tasks: network-tools.yml
+  when: p.stat.isreg | default(false)

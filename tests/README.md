@@ -1,5 +1,122 @@
 # Enterprise regression handbook
 
+## 当前 dev 的生产启动故障聚焦回归
+
+`KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --nacos-startup-only`
+对应主矩阵 `T2-AD-13`，先运行聚焦合同与模板检查，再在 138 上持有
+`/var/lock/kubeauto-core-pool.lock`，拒绝已有活动门禁，并验证 137、128、142–143
+无运行时/集群残留。固定入口负责源码同步、控制机密钥、durable 状态和日志监控。
+它创建独占的 `dev-nacos-startup` 集群（137 控制面，Debian 128、openEuler 142、openSUSE 143 工作节点），
+在任何 setup 前将测试配置的 `KUBE_RESERVED_ENABLED`、`SYS_RESERVED_ENABLED`
+及 `SYS_RESERVED_ENFORCE` 设为 `"no"`，Nacos 堆为 512 MiB；不改产品容量默认值。
+
+该分支先通过 config + kubecli setup 01 验证基础依赖，成功后才进入 setup 90、再次 setup 01、setup 07，验证 prepare
+重入和 Nacos 2.4.3 的 MySQL TLS、逐实例配置/注册发现业务、Pod 重建及重复安装。
+配置和持久实例仅在首次初始化时写入；重建与重复安装直接读回原配置和原实例地址，
+不会先重新写入来掩盖丢失。2.4.3 开启鉴权缓存后存在官方说明的 15 秒更新延迟；
+仅首次创建管理员后的 HTTP 500 且响应恰为 `caused: User nacos not found;`
+允许最多 7 次检查、间隔 5 秒。其它状态、错误内容、无效 token 或现有管理员登录失败立即停止。
+失败响应、Pod 事件和应用日志在删除命名空间前以私有权限保存，只向主日志输出路径，
+不流式输出凭据或原始应用日志。
+MySQL 8.0.46、测试 CA/证书、schema 和管理员仅属于新建集群的 nacos 命名空间；
+命名空间已存在或不足三个可调度 Ready 节点时拒绝进入夹具。成功和失败均销毁
+本次创建的集群，随后通过 `lab-wipe-nodes.sh --startup-only` 清理并复验这四台节点；不借用其它集群，不重跑完整 G10。
+本地 Registry 与已下载制品可作为健康公共前置保留；本次最终验收仅汇总受影响范围的干净证据。
+
+验收要求 `NACOS_RESTART_REPEAT_BUSINESS_PASS`、`NACOS_STARTUP_FOCUSED_PASS`、
+`NACOS_TLS_REFUSALS_PASS`、`NACOS_TLS_REFUSALS_SCOPED_CLEAN_PASS`、
+`NACOS_STARTUP_SCOPED_CLEAN_PASS`、durable exit/finalized 双 0、零非预期失败标志及
+末尾清理复验通过。错误 CA 与主机名场景使用独立命名空间，通过原产品 setup 07
+要求拒绝连接，同时从应用日志核对对应的证书链／主机名错误；仅非零退出不能通过。
+预期失败原日志私有保存，场景结束恢复原配置、回收限定资源并读回原业务。
+当前 Secret、TLS 拒绝和真实重复收敛已通过，精确输入、归档摘要和 durable 状态见
+`tests/evidence/dev-nacos-startup-20261103.json`；`--nacos-startup-evidence` 仅收取已完成门禁的私有原始证据，
+不重新执行现场操作。该聚焦分支不签署 NFS 故障恢复、
+全发行版兼容或整个项目 GA。当前差距和五个阶段由主矩阵
+`dev_production_requalification` 跟踪，历史 PASS 不替代改变后的集成证据。
+
+`KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --startup-ceph-pool-inventory`
+只读盘点 Ceph 共享池六台 Rocky Linux 9.8 主机的实际系统、内存、运行服务、活动任务、
+锁、集群清单及磁盘挂载；不取得租约，不清理集群或操作附加测试盘。
+本次核心缺陷回归须先核对占用并取得与原 Ceph runner 相同的共享池锁，
+仅重测受影响的 prepare／网络工具和 NFS 业务恢复；Rocky 9.8 不代替 Rocky 9.7 的精确版本证据。
+
+`--rocky9-production-only` 使用 130 控制端和 `.212/.165/.238` 三节点，
+持有 130 上的 `kubeauto-ceph-priority.lock`、`kubeauto-ceph-compute.lock`，
+从干净边界建立 `dev-rocky9-production`。它先恢复 firewalld 包作为客户故障前置，
+仅启用而不启动服务；记录完整 RPM 身份清单，经产品 setup 01/90 后再次启用服务，
+以已有 prepare 标记重入 setup 01。要求无原有 RPM 被删除、八项网络工具可执行、
+firewalld inactive/masked、三节点 Ready，以及两 worker 间 DNS/ClusterIP HTTP 写入读回。
+部署前复用已交付的 `ceph_ssh_fixture.py --profile rocky9`：仅对不能直达 130 Registry 的
+这三台节点建立 loopback SSH 中继和精确目标/端口 REDIRECT，保持原产品镜像源。
+`--rocky9-registry-qualification` 先证明实际连通、断线恢复和清理，完成后才消费其结果；
+本分支在同一租约内设置、维护和回收中继，setup 前逐节点检查 pause 与业务镜像 manifest。
+外来 journal 拒绝接管，成功、失败和中断均回收本轮规则、socket 和监听。
+`--rocky9-production-diagnostics` 只读采集当前独占集群的节点、Pod、事件和 Calico 日志。
+三项资源预留开关均关闭。包身份排序和比较仅为对应命令设置 C locale，
+不能覆盖 Ansible 所需的 UTF-8 运行 locale。
+
+`--rocky9-nfs-only` 在同样干净的三节点路径上增加 NFS 聚焦分支，对应 `T2-AD-11`：
+经 config+kubecli setup 07 安装固定 v4.0.2，两个 worker 共享同一 RWX PVC，
+真实写入并 fsync 后跨节点读回；删除原 leader Pod，核对新 UID，要求新 PVC 可供给、
+新卷跨节点读写成功且原数据保持。NFS 服务端位于 `.238` 的专有临时目录，
+只向三台租用节点导出，拒绝已有 NFS 服务／导出或外来 journal。
+回收先等待业务 namespace/PV，再删除本轮 provisioner Deployment，最后逐项撤销导出、
+恢复原服务状态并移除本轮目录；失败未能证明卸载完成时保留导出，外层销毁自有集群后再按原 run ID 恢复。
+附加盘不在操作范围。预期 `NFS_LEADER_REPLACEMENT_BUSINESS_PASS`、
+`NFS_PRODUCTION_FOCUSED_PASS`、`NFS_PRODUCTION_SCOPED_CLEAN_PASS`、
+外层 `ROCKY9_PRODUCTION_ACCEPTED`、durable 双 0 与 `LAB_CLEAN_VERIFY_PASS`。
+这些入口仍须当前真实日志，存在入口或合同通过均不是现场 PASS。
+`--rocky9-production-evidence` 与 `--prepare-os-evidence` 只读收取对应已完成门禁的
+源码、durable exit/finalized、canonical 日志及限定诊断目录，要求双 0、成功和清理标志、
+零失败后才归档；私有 tar 为 0600，不提交。可提交 JSON 仅保存输入/归档摘要与验收范围。
+
+NFS 此次生产退出的证据与固定上游源码对应：external-provisioner v6.0.0 默认
+lease/renew/retry 为 15/10/2 秒，失去续约会主动退出；现场同一 Endpoints 锁读取超时
+与 etcd WAL 长尾吻合。该机制复用官方与已采集只读证据，不通过停 API 重测上游机制，
+不扩大本次 bug 回归到其它存储，也不调整选主超时掩盖环境问题。
+
+`--nacos-startup-diagnostics` 只读取已保存的 TLS 首失败诊断，输出文件摘要、
+渲染对象身份和限定任务统计，不打印私有 Secret、原始应用日志或配置备份。
+任意命名空间中的 `nacos-0` 不能作为跳过声明式收敛的依据；启用 Nacos 时必须执行其
+Secret 前置、渲染、apply 和 rollout，重复安装与 TLS 拒绝合同均覆盖该入口。
+
+`--prepare-os-only` 仅补验 Ubuntu 22.04（138）和 Anolis 23.3（141）改变的 prepare，
+复用两系统未变的控制端/运行时证据。先通过真实 helper 的调用顺序及拒绝/清理合同，
+再持有 138 的 `kubeauto-core-pool.lock` 并拒绝活动任务；逐节点要求无 Kubernetes/runtime
+服务、数据目录、prepare 标记或 Pod 进程，允许控制端健康的 Docker/Registry 公共前置。
+以独占 `dev-prepare-compat` 的 config+kubecli 连续执行两次 setup 01，不执行 setup 90，
+校验软件包保留、防火墙收敛和八项工具；测试资源预留均为 no。
+138 使用行内 ubuntu+sudo，141 使用 root，不把混合用户 inventory 变成 root 自连接。
+成功、失败、中断仅回收本轮 prepare 标记、空证书目录和与本轮摘要匹配的 kubeconfig，
+再删除本轮控制端 cluster 目录并核对两节点的限定干净边界。此处没有 API，
+不调用需要 API 保护检查的完整集群 destroy；活动 runtime、数据目录、外来文件或 kubeconfig
+摘要不符均拒绝清理。`--prepare-os-clean-only` 仅恢复固定两节点的本轮 prepare 失败残留，
+仍需租约、限定 inventory 和上述拒绝条件；`--prepare-os-diagnostics` 只读检查首失败。
+验收要求 `PREPARE_OS_HOST_PASS` 两条、`PREPARE_OS_FOCUSED_PASS`、
+`PREPARE_OS_SCOPED_CLEAN_PASS`、durable 双 0、零失败以及 `LAB_CLEAN_VERIFY_PASS`。
+本入口不签署 Anolis 新的运行时或全拓扑 PASS。
+
+Anolis 141 的发行版验收仍为 pending，不从验收分母移除。2026-11-03 现场发现该主机的
+6.6.88-4.an23 内核启用 `CONFIG_RT_GROUP_SCHED`，桌面音频及 multipath 实时进程位于
+非根 cgroup，根 `cgroup.subtree_control` 无 CPU 控制器，导致 runc 创建 Pod 时缺少
+`cpu.weight`。这属于节点前置环境失败，不能通过关闭 CPU 资源管理绕过；处理依据为
+[Linux cgroup v2 CPU controller 限制](https://docs.kernel.org/admin-guide/cgroup-v2.html#cpu)。
+先独立完成服务器节点前置资格和恢复验证，再重新进入 Anolis 产品验收；Nacos 使用其余
+健康节点继续验证独立业务范围。原五节点失败日志与清理证据保留，不签署其完整安装 PASS。
+
+`KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --anolis-cgroup-prereq-only`
+仅在 141 的清洁节点上验证上述内核前置条件。固定夹具用私有 journal 绑定本轮、原 boot ID、
+实时进程 PID/starttime/cgroup，按官方接口把实时进程移到根 cgroup 后启用 CPU 控制器。
+成功、部分失败和中断均要求先确认节点无 Kubernetes/运行时/Pod，再重启恢复服务进程树，
+核对新 boot ID 后回收本轮 journal；外来 journal、活动服务或身份变化会拒绝接管。
+须同时取得 `ANOLIS_CPU_PREREQUISITE_PASS`、`ANOLIS_CPU_RESTORE_PASS`、
+`ANOLIS_CPU_QUALIFICATION_PASS` 和 durable rc=0。它不修改持久服务配置、不安装集群，
+不签署 Anolis 产品兼容或 Nacos 验收；恢复失败保留 journal 并停止后续现场工作。
+策略识别须去除 `SCHED_RESET_ON_FORK` 标志后再判断 FIFO/RR；Linux 6.6
+`sched_getscheduler()` 源码明确将此标志与策略按位合并，漏识别 rtkit/音频实时线程会使
+启用 CPU 控制器返回 EINVAL。对应多线程及标志合同必须先通过，不能调整调度策略绕过。
+
 ## Longhorn 独立存储分路
 
 Longhorn 位于 `docs/storage/longhorn/` 和 `roles/longhorn/`，固定为

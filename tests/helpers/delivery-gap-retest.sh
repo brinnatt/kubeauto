@@ -2,7 +2,6 @@
 # Focused retest after OpenEBS ns-race / hubble timeout / prom timeout fixes.
 set -uo pipefail
 LOG=/var/log/kubeauto-delivery-retest-$(date +%Y%m%d-%H%M).log
-exec > >(tee -a "$LOG") 2>&1
 BASE=/usr/local/kubeauto
 export PYTHONPATH="$BASE" PATH=/usr/local/bin:/usr/bin:$PATH
 K=kubecli
@@ -19,8 +18,26 @@ abort(){
 }
 abort_after_namespace_cleanup(){
   local message="$1" namespace="$2"
+  if [[ "$namespace" == nacos ]]; then capture_nacos_failure || true; fi
   wait_namespace_deleted "$namespace" 120 || true
   abort "$message"
+}
+capture_nacos_failure(){
+  local directory pod namespace="${1:-nacos}"
+  directory=$(umask 077; mktemp -d /var/tmp/kubeauto-nacos-failure.XXXXXX) || return 1
+  kubectl -n "$namespace" get pods,events -o json >"$directory/state.json" 2>&1 || true
+  for pod in nacos-0 nacos-1 nacos-2; do
+    kubectl -n "$namespace" describe pod "$pod" >"$directory/$pod.describe" 2>&1 || true
+    kubectl -n "$namespace" logs "$pod" --all-containers --tail=200 >"$directory/$pod.log" 2>&1 || true
+    kubectl -n "$namespace" logs "$pod" -c nacos --previous --tail=100 >"$directory/$pod.previous.log" 2>&1 || true
+    kubectl -n "$namespace" exec "$pod" -c nacos -- sh -c \
+      'for file in /home/nacos/logs/nacos.log /home/nacos/logs/nacos-persistence.log /home/nacos/logs/nacos-auth.log; do test ! -f "$file" || tail -n 200 "$file"; done' \
+      >"$directory/$pod.application.log" 2>&1 || true
+  done
+  # Raw application/HTTP diagnostics stay private; never stream credentials.
+  chmod 0600 "$directory"/*
+  (umask 077; sha256sum "$directory"/* >"$directory/SHA256SUMS")
+  echo "NACOS_FAILURE_DIAGNOSTICS directory=$directory"
 }
 capture_etcd_timeout_diagnostics(){
   local cluster="$1" cluster_dir="$BASE/clusters/$1" etcd_ip metrics
@@ -244,7 +261,7 @@ schedulable_ready_count(){
 }
 
 wait_nacos_external_mysql(){
-  local tries="${1:-60}" attempt nacos_ready nacos_platform mysql_pod mysql_connections
+  local tries="${1:-60}" attempt nacos_ready nacos_platform mysql_pod mysql_connections pod health healthy
   for attempt in $(seq 1 "$tries"); do
     nacos_ready=$(kubectl -n nacos get pods -l app=nacos --no-headers 2>/dev/null \
       | awk '$2=="1/1" && $3=="Running" {count++} END {print count+0}')
@@ -263,7 +280,14 @@ wait_nacos_external_mysql(){
     echo "[WAIT] nacos_ready=$nacos_ready/3 datasource_platform=${nacos_platform:-missing} mysql_connections=${mysql_connections:-0} attempt=$attempt/$tries next_check=10s"
     if [ "$nacos_ready" -ge 3 ] && [ "$nacos_platform" = mysql ] \
       && [ "${mysql_connections:-0}" -ge 1 ]; then
-      return 0
+      healthy=0
+      for pod in nacos-0 nacos-1 nacos-2; do
+        health=$(kubectl -n nacos exec "$pod" -c nacos -- \
+          curl -fsS --max-time 5 http://127.0.0.1:8848/nacos/v1/console/health/readiness 2>/dev/null || true)
+        [ "$health" != OK ] || healthy=$((healthy+1))
+      done
+      echo "[WAIT] nacos_application_healthy=$healthy/3"
+      [ "$healthy" -ne 3 ] || return 0
     fi
     [ "$attempt" -lt "$tries" ] && sleep 10
   done
@@ -293,6 +317,123 @@ wait_nacos_external_mysql(){
   done < <(kubectl -n nacos get pods -l app=nacos \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null)
   return 1
+}
+
+# Fixture-only CA and server identity. No production files or trust settings
+# are changed; private material exists only in this subshell and owned Secret.
+stage_nacos_mysql_tls() (
+  set -euo pipefail
+  umask 077
+  local directory
+  directory=$(mktemp -d /tmp/kubeauto-nacos-tls.XXXXXX) || exit 1
+  trap 'rm -rf "$directory"' EXIT
+  openssl req -x509 -newkey rsa:2048 -nodes -days 2 -sha256 \
+    -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign \
+    -subj /CN=kubeauto-nacos-test-ca -keyout "$directory/ca.key" -out "$directory/ca.crt" >/dev/null 2>&1 || exit 1
+  openssl req -newkey rsa:2048 -nodes -sha256 \
+    -subj /CN=nacos-mysql.nacos.svc.cluster.local \
+    -keyout "$directory/server.key" -out "$directory/server.csr" >/dev/null 2>&1 || exit 1
+  printf '%s\n' 'subjectAltName=DNS:nacos-mysql.nacos.svc.cluster.local' \
+    'basicConstraints=critical,CA:FALSE' 'extendedKeyUsage=serverAuth' >"$directory/server.ext" || exit 1
+  openssl x509 -req -in "$directory/server.csr" -CA "$directory/ca.crt" -CAkey "$directory/ca.key" \
+    -CAcreateserial -days 2 -sha256 -extfile "$directory/server.ext" -out "$directory/server.crt" >/dev/null 2>&1 || exit 1
+  kubectl -n nacos create secret generic nacos-mysql-tls \
+    --from-file=ca.crt="$directory/ca.crt" --from-file=server.crt="$directory/server.crt" \
+    --from-file=server.key="$directory/server.key" --dry-run=client -o yaml | kubectl apply -f -
+)
+
+stage_nacos_auth_secret() (
+  set -euo pipefail
+  umask 077
+  local directory namespace="${1:-nacos}"
+  directory=$(mktemp -d /var/tmp/kubeauto-nacos-auth.XXXXXX) || exit 1
+  trap 'rm -rf "$directory"' EXIT
+  openssl rand -base64 48 | tr -d '\n' >"$directory/token" || exit 1
+  openssl rand -hex 16 | tr -d '\n' >"$directory/identity-key" || exit 1
+  openssl rand -hex 32 | tr -d '\n' >"$directory/identity-value" || exit 1
+  kubectl -n "$namespace" create secret generic nacos-auth \
+    --from-file=token="$directory/token" --from-file=identity-key="$directory/identity-key" \
+    --from-file=identity-value="$directory/identity-value" --dry-run=client -o yaml \
+    | kubectl apply -f - || exit 1
+)
+
+verify_nacos_business(){
+  # This namespace contains a fresh, disposable MySQL schema owned by G10.
+  # Never print the initialization response, password or login token.
+  local mode="${1:-initialize}" password='NacosGate!2026' token='' initialized result pod ip found attempt login_response response_file http_status
+  if [[ "${1:-initialize}" == initialize ]]; then
+    initialized=$(kubectl -n nacos exec nacos-0 -c nacos -- curl -fsS --max-time 10 \
+    -X POST http://127.0.0.1:8848/nacos/v1/auth/users/admin \
+    --data-urlencode "password=$password") || return 1
+    printf '%s' "$initialized" | python3 -c 'import json,sys; assert json.load(sys.stdin).get("username") == "nacos"' || return 1
+  fi
+  # Nacos 2.4.3 caches users on a 15-second reload. Only the documented
+  # post-initialization cache miss may wait; other errors remain fatal.
+  # https://github.com/alibaba/nacos/blob/2.4.3/plugin-default-impl/nacos-default-auth-plugin/src/main/java/com/alibaba/nacos/plugin/auth/impl/users/NacosUserDetailsServiceImpl.java
+  for attempt in $(seq 1 7); do
+    login_response=$(kubectl -n nacos exec nacos-0 -c nacos -- curl -sS --max-time 10 \
+      -w '\n%{http_code}' -X POST http://127.0.0.1:8848/nacos/v1/auth/users/login \
+      --data-urlencode username=nacos --data-urlencode "password=$password") || return 1
+    http_status=${login_response##*$'\n'}
+    login_response=${login_response%$'\n'*}
+    if [[ "$http_status" == 200 ]] && token=$(printf '%s' "$login_response" | python3 -c \
+      'import json,sys; value=json.load(sys.stdin).get("accessToken"); assert isinstance(value,str) and value; print(value)' 2>/dev/null); then
+      break
+    fi
+    response_file=$(umask 077; mktemp /var/tmp/kubeauto-nacos-login.XXXXXX.response) || return 1
+    printf '%s' "$login_response" >"$response_file"
+    if [[ "$mode" == initialize && "$http_status" == 500 && "$login_response" == 'caused: User nacos not found;' && "$attempt" -lt 7 ]]; then
+      echo "[WAIT] Nacos initialized-user cache attempt=$attempt/7 next_check=5s private_response=$response_file"
+      sleep 5
+      continue
+    fi
+    echo "NACOS_LOGIN_FAIL private_response=$response_file"
+    return 1
+  done
+  [ -n "$token" ] || return 1
+  if [[ "$mode" == initialize ]]; then
+    result=$(kubectl -n nacos exec nacos-0 -c nacos -- curl -fsS --max-time 10 \
+      -X POST http://127.0.0.1:8848/nacos/v1/cs/configs \
+      --data-urlencode "accessToken=$token" --data-urlencode dataId=kubeauto-dev-gate \
+      --data-urlencode group=KUBEAUTO_GATE --data-urlencode content=nacos-dev-business-ok) || return 1
+    [ "$result" = true ] || return 1
+    ip=$(kubectl -n nacos get pod nacos-0 -o jsonpath='{.status.podIP}') || return 1
+    [ -n "$ip" ] || return 1
+    result=$(kubectl -n nacos exec nacos-0 -c nacos -- curl -fsS --max-time 10 \
+      -X POST http://127.0.0.1:8848/nacos/v1/ns/instance \
+      --data-urlencode "accessToken=$token" --data-urlencode serviceName=kubeauto-dev-gate \
+      --data-urlencode "ip=$ip" --data-urlencode port=8848 --data-urlencode ephemeral=false) || return 1
+    [ "$result" = ok ] || return 1
+    NACOS_GATE_INSTANCE_IP=$ip
+  else
+    # Read the original registration after Pod replacement. A new Pod IP must
+    # not silently replace the persistent instance being qualified.
+    ip=${NACOS_GATE_INSTANCE_IP:?missing original Nacos business identity}
+  fi
+  for pod in nacos-0 nacos-1 nacos-2; do
+    found=0
+    for attempt in $(seq 1 30); do
+      result=$(kubectl -n nacos exec "$pod" -c nacos -- curl -fsS --max-time 5 --get \
+        http://127.0.0.1:8848/nacos/v1/cs/configs --data-urlencode "accessToken=$token" \
+        --data-urlencode dataId=kubeauto-dev-gate --data-urlencode group=KUBEAUTO_GATE 2>/dev/null) || result=''
+      if [ "$result" = nacos-dev-business-ok ]; then found=1; break; fi
+      [ "$attempt" -eq 30 ] || sleep 1
+    done
+    [ "$found" -eq 1 ] || return 1
+    found=0
+    for attempt in $(seq 1 30); do
+      result=$(kubectl -n nacos exec "$pod" -c nacos -- curl -fsS --max-time 5 --get \
+        http://127.0.0.1:8848/nacos/v1/ns/instance/list --data-urlencode "accessToken=$token" \
+        --data-urlencode serviceName=kubeauto-dev-gate --data-urlencode healthyOnly=false 2>/dev/null) || result=''
+      if printf '%s' "$result" | python3 -c 'import json,sys; assert any(h["ip"] == sys.argv[1] and h["port"] == 8848 for h in json.load(sys.stdin)["hosts"])' "$ip" 2>/dev/null; then
+        found=1; break
+      fi
+      [ "$attempt" -eq 30 ] || sleep 1
+    done
+    [ "$found" -eq 1 ] || return 1
+    echo "NACOS_INSTANCE_BUSINESS_PASS pod=$pod config_readback=ok persistent_instance=ok"
+  done
+  # The owning namespace cleanup removes fixtures after all restart/readbacks.
 }
 ensure_test_ha_worker(){
   local ip="$1" name="$2" attempt ready unschedulable
@@ -384,6 +525,166 @@ set_ha_addons_disabled(){
   set_cfg "$cfg" dashboard_install '"no"'
   set_cfg "$cfg" network_check_enabled 'false'
 }
+
+run_nacos_gate(){
+  local cluster="${1:?owned cluster required}" qualification="${2:-baseline}" CFG MYSQL_POD nacos_tables
+[[ "$(schedulable_ready_count)" -ge 3 ]] || abort "Nacos requires three schedulable Ready nodes"
+if kubectl get namespace nacos >/dev/null 2>&1; then
+  abort "Nacos fixture namespace must be absent"
+fi
+kubectl create ns nacos || abort "Nacos fixture namespace creation"
+materialize_registry_image brinnatt/mysql 8.0.46 900 \
+  docker.sparkcr.cn/mysql:8.0.46 \
+  hub.talkedu.cn/kubeauto/mysql:8.0.46 \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/mysql:8.0.46 \
+  mysql:8.0.46 \
+  || abort_after_namespace_cleanup "P0 Nacos MySQL registry seed" nacos
+stage_nacos_mysql_tls || abort_after_namespace_cleanup "P0 Nacos MySQL TLS fixture" nacos
+stage_nacos_auth_secret || abort_after_namespace_cleanup "P0 Nacos private authentication fixture" nacos
+cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata: { name: nacos-mysql, namespace: nacos }
+type: Opaque
+stringData: { MYSQL_ROOT_PASSWORD: "NacosRoot!23", MYSQL_DATABASE: "nacos", MYSQL_USER: "nacos", MYSQL_PASSWORD: "NacosUser!23" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: nacos-mysql, namespace: nacos }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: nacos-mysql } }
+  template:
+    metadata: { labels: { app: nacos-mysql } }
+    spec:
+      containers:
+      - name: mysql
+        image: registry.talkschool.cn:5000/brinnatt/mysql:8.0.46
+        env:
+        - { name: MYSQL_ROOT_PASSWORD, value: "NacosRoot!23" }
+        - { name: MYSQL_DATABASE, value: nacos }
+        - { name: MYSQL_USER, value: nacos }
+        - { name: MYSQL_PASSWORD, value: "NacosUser!23" }
+        ports: [{ containerPort: 3306 }]
+        args: ["--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci","--explicit_defaults_for_timestamp=true","--ssl-ca=/mysql-tls/ca.crt","--ssl-cert=/mysql-tls/server.crt","--ssl-key=/mysql-tls/server.key","--require-secure-transport=ON"]
+        volumeMounts:
+        - { name: mysql-tls, mountPath: /mysql-tls, readOnly: true }
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -ec
+            - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 60
+      volumes:
+      - name: mysql-tls
+        secret: { secretName: nacos-mysql-tls }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: nacos-mysql, namespace: nacos }
+spec: { selector: { app: nacos-mysql }, ports: [{ port: 3306, targetPort: 3306 }] }
+EOF
+if wait_pods_ns nacos 48; then
+  MYSQL_POD=$(kubectl -n nacos get pod -l app=nacos-mysql -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+  kubectl -n nacos delete pod nacos-schema-source --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n nacos run nacos-schema-source \
+    --image=registry.talkschool.cn:5000/brinnatt/nacos-server:v2.4.3 \
+    --restart=Never --command -- sh -c 'sleep 600'
+  if [ -n "$MYSQL_POD" ] \
+    && kubectl -n nacos wait --for=condition=Ready pod/nacos-schema-source --timeout=300s \
+    && kubectl -n nacos exec nacos-schema-source -- test -s /home/nacos/conf/mysql-schema.sql \
+    && kubectl -n nacos exec nacos-schema-source -- cat /home/nacos/conf/mysql-schema.sql \
+      | kubectl -n nacos exec -i "$MYSQL_POD" -- mysql -h127.0.0.1 -uroot -p'NacosRoot!23' nacos; then
+    nacos_tables=$(kubectl -n nacos exec "$MYSQL_POD" -- mysql -h127.0.0.1 -uroot -p'NacosRoot!23' -Nse \
+      "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nacos';" 2>/dev/null || echo 0)
+    echo "nacos_schema_tables=$nacos_tables source=/home/nacos/conf/mysql-schema.sql"
+    if [ "${nacos_tables:-0}" -ge 10 ]; then
+      pass "P0 Nacos official mysql-schema.sql"
+    else
+      abort_after_namespace_cleanup "P0 Nacos schema table count=$nacos_tables" nacos
+    fi
+  else
+    abort_after_namespace_cleanup "P0 Nacos official mysql-schema.sql import" nacos
+  fi
+  kubectl -n nacos delete pod nacos-schema-source --wait=false >/dev/null 2>&1 || true
+else
+  abort_after_namespace_cleanup "P0 Nacos MySQL not Ready" nacos
+fi
+
+CFG="$BASE/clusters/$cluster/config.yml"
+set_cfg "$CFG" local_path_provisioner_install '"yes"'
+if [[ "$qualification" == startup ]]; then
+  set_cfg "$CFG" openebs_install '"no"'
+else
+  set_cfg "$CFG" openebs_install '"yes"'
+fi
+set_cfg "$CFG" openebs_lvm_enabled '"no"'
+set_cfg "$CFG" nacos_mysql_host '"nacos-mysql.nacos.svc.cluster.local"'
+set_cfg "$CFG" nacos_mysql_db '"nacos"'; set_cfg "$CFG" nacos_mysql_port '"3306"'
+set_cfg "$CFG" nacos_mysql_user '"nacos"'; set_cfg "$CFG" nacos_mysql_password '"NacosUser!23"'
+set_cfg "$CFG" nacos_auth_secret '"nacos-auth"'
+# Exercise the actual current product default; never append a test-only RSA
+# bypass that can hide a broken customer authentication path.
+set_cfg "$CFG" nacos_mysql_db_param "$(sed -n 's/^nacos_mysql_db_param: //p' "$BASE/conf/config.yml")"
+set_cfg "$CFG" nacos_mysql_ca_secret '"nacos-mysql-tls"'
+set_cfg "$CFG" nacos_storage_class '"local-path"'
+# The lab workers have 3.5Gi each.  Nacos' official container defaults to a
+# 1Gi heap plus a 512Mi young generation; size only this delivery topology down
+# through the upstream-supported JVM variables, without changing product defaults.
+set_cfg "$CFG" nacos_jvm_xms '"512m"'; set_cfg "$CFG" nacos_jvm_xmx '"512m"'
+set_cfg "$CFG" nacos_jvm_xmn '"256m"'
+set_cfg "$CFG" minio_pool_servers '4'
+set_cfg "$CFG" minio_storage_class '"openebs-hostpath"'
+set_cfg "$CFG" rocketmq_storage_class '"openebs-hostpath"'
+set_cfg "$CFG" rocketmq_nameservice_size '2'; set_cfg "$CFG" rocketmq_replica_per_group '0'
+set_ha_addons_disabled "$CFG"
+
+$K download -E nacos </dev/null || abort "download nacos images"
+
+
+# These official charts together request more memory than the delivery lab's
+# three small workers can sustain.  Validate one heavy addon at a time, remove
+# it completely, and require API/node recovery before starting the next gate.
+setup_with_transient_retry "$cluster" 07 1 || abort "test-ha base addon setup"
+
+section "P0 Nacos HA with external MySQL"
+set_cfg "$CFG" nacos_install '"yes"'
+setup_with_transient_retry "$cluster" 07 1 || abort "P0 Nacos setup"
+if wait_pods_ns nacos 72 && wait_nacos_external_mysql 60 && verify_nacos_business; then
+  pass "P0 Nacos Ready replicas=3 external-MySQL TLS config-and-naming-business"
+else
+  abort_after_namespace_cleanup "P0 Nacos replicas/external-MySQL" nacos
+fi
+if [[ "$qualification" == startup ]]; then
+  # Delete only this fixture's StatefulSet Pods. PVCs and the external MySQL
+  # fixture remain; the product must converge again without reinitialization.
+  kubectl -n nacos delete pod nacos-0 nacos-1 nacos-2 --wait=true --timeout=120s \
+    || abort_after_namespace_cleanup "Nacos Pod recreation" nacos
+  kubectl -n nacos rollout status statefulset/nacos --timeout=900s \
+    || abort_after_namespace_cleanup "Nacos restart readiness" nacos
+  wait_nacos_external_mysql 60 && verify_nacos_business existing \
+    || abort_after_namespace_cleanup "Nacos restart business" nacos
+  setup_with_transient_retry "$cluster" 07 1 \
+    || abort_after_namespace_cleanup "Nacos repeat product convergence" nacos
+  verify_nacos_business existing \
+    || abort_after_namespace_cleanup "Nacos repeat business" nacos
+  echo NACOS_RESTART_REPEAT_BUSINESS_PASS
+  verify_nacos_tls_refusals "$cluster" "$CFG" \
+    || abort_after_namespace_cleanup "Nacos TLS refusal/recovery" nacos
+fi
+set_cfg "$CFG" nacos_install '"no"'
+wait_namespace_deleted nacos 120 || abort "P0 Nacos cleanup"
+nodes_ready "$cluster" 18 || abort "cluster recovery after Nacos"
+
+}
+
+# Fixed focused runners reuse these exact assertions without executing G10.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then return 0; fi
+exec > >(tee -a "$LOG") 2>&1
 
 echo "LOG=$LOG"
 section "0 prep"
@@ -602,126 +903,12 @@ for ns in nacos minio minio-operator rocketmq monitor openebs ingress-nginx netw
 done
 recover_ha_control_plane || abort "test-ha recovery after preflight cleanup"
 
-kubectl create ns nacos 2>/dev/null || true
-materialize_registry_image brinnatt/mysql 8.0.46 900 \
-  docker.sparkcr.cn/mysql:8.0.46 \
-  hub.talkedu.cn/kubeauto/mysql:8.0.46 \
-  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/mysql:8.0.46 \
-  mysql:8.0.46 \
-  || abort_after_namespace_cleanup "P0 Nacos MySQL registry seed" nacos
-cat <<'EOF' | kubectl apply -f -
-apiVersion: v1
-kind: Secret
-metadata: { name: nacos-mysql, namespace: nacos }
-type: Opaque
-stringData: { MYSQL_ROOT_PASSWORD: "NacosRoot!23", MYSQL_DATABASE: "nacos", MYSQL_USER: "nacos", MYSQL_PASSWORD: "NacosUser!23" }
----
-apiVersion: apps/v1
-kind: Deployment
-metadata: { name: nacos-mysql, namespace: nacos }
-spec:
-  replicas: 1
-  selector: { matchLabels: { app: nacos-mysql } }
-  template:
-    metadata: { labels: { app: nacos-mysql } }
-    spec:
-      containers:
-      - name: mysql
-        image: registry.talkschool.cn:5000/brinnatt/mysql:8.0.46
-        env:
-        - { name: MYSQL_ROOT_PASSWORD, value: "NacosRoot!23" }
-        - { name: MYSQL_DATABASE, value: nacos }
-        - { name: MYSQL_USER, value: nacos }
-        - { name: MYSQL_PASSWORD, value: "NacosUser!23" }
-        ports: [{ containerPort: 3306 }]
-        args: ["--character-set-server=utf8mb4","--collation-server=utf8mb4_unicode_ci","--explicit_defaults_for_timestamp=true"]
-        readinessProbe:
-          exec:
-            command:
-            - sh
-            - -ec
-            - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 60
----
-apiVersion: v1
-kind: Service
-metadata: { name: nacos-mysql, namespace: nacos }
-spec: { selector: { app: nacos-mysql }, ports: [{ port: 3306, targetPort: 3306 }] }
-EOF
-if wait_pods_ns nacos 48; then
-  MYSQL_POD=$(kubectl -n nacos get pod -l app=nacos-mysql -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-  kubectl -n nacos delete pod nacos-schema-source --ignore-not-found >/dev/null 2>&1 || true
-  kubectl -n nacos run nacos-schema-source \
-    --image=registry.talkschool.cn:5000/brinnatt/nacos-server:v2.4.3 \
-    --restart=Never --command -- sh -c 'sleep 600'
-  if [ -n "$MYSQL_POD" ] \
-    && kubectl -n nacos wait --for=condition=Ready pod/nacos-schema-source --timeout=300s \
-    && kubectl -n nacos exec nacos-schema-source -- test -s /home/nacos/conf/mysql-schema.sql \
-    && kubectl -n nacos exec nacos-schema-source -- cat /home/nacos/conf/mysql-schema.sql \
-      | kubectl -n nacos exec -i "$MYSQL_POD" -- mysql -h127.0.0.1 -uroot -p'NacosRoot!23' nacos; then
-    nacos_tables=$(kubectl -n nacos exec "$MYSQL_POD" -- mysql -h127.0.0.1 -uroot -p'NacosRoot!23' -Nse \
-      "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='nacos';" 2>/dev/null || echo 0)
-    echo "nacos_schema_tables=$nacos_tables source=/home/nacos/conf/mysql-schema.sql"
-    if [ "${nacos_tables:-0}" -ge 10 ]; then
-      pass "P0 Nacos official mysql-schema.sql"
-    else
-      abort_after_namespace_cleanup "P0 Nacos schema table count=$nacos_tables" nacos
-    fi
-  else
-    abort_after_namespace_cleanup "P0 Nacos official mysql-schema.sql import" nacos
-  fi
-  kubectl -n nacos delete pod nacos-schema-source --wait=false >/dev/null 2>&1 || true
-else
-  abort_after_namespace_cleanup "P0 Nacos MySQL not Ready" nacos
-fi
-
-CFG="$BASE/clusters/test-ha/config.yml"
-set_cfg "$CFG" local_path_provisioner_install '"yes"'
-set_cfg "$CFG" openebs_install '"yes"'; set_cfg "$CFG" openebs_lvm_enabled '"no"'
-set_cfg "$CFG" nacos_mysql_host '"nacos-mysql.nacos.svc.cluster.local"'
-set_cfg "$CFG" nacos_mysql_db '"nacos"'; set_cfg "$CFG" nacos_mysql_port '"3306"'
-set_cfg "$CFG" nacos_mysql_user '"nacos"'; set_cfg "$CFG" nacos_mysql_password '"NacosUser!23"'
-set_cfg "$CFG" nacos_mysql_db_param '"characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"'
-set_cfg "$CFG" nacos_storage_class '"local-path"'
-# The lab workers have 3.5Gi each.  Nacos' official container defaults to a
-# 1Gi heap plus a 512Mi young generation; size only this delivery topology down
-# through the upstream-supported JVM variables, without changing product defaults.
-set_cfg "$CFG" nacos_jvm_xms '"512m"'; set_cfg "$CFG" nacos_jvm_xmx '"512m"'
-set_cfg "$CFG" nacos_jvm_xmn '"256m"'
-set_cfg "$CFG" minio_pool_servers '4'
-set_cfg "$CFG" minio_storage_class '"openebs-hostpath"'
-set_cfg "$CFG" rocketmq_storage_class '"openebs-hostpath"'
-set_cfg "$CFG" rocketmq_nameservice_size '2'; set_cfg "$CFG" rocketmq_replica_per_group '0'
-set_ha_addons_disabled "$CFG"
-
-$K download -E nacos </dev/null || abort "download nacos images"
+run_nacos_gate test-ha
 $K download -E minio </dev/null || abort "download minio images"
 $K download -E prometheus </dev/null || abort "download prometheus images"
 $K download -E dashboard </dev/null || abort "download dashboard images"
 $K download -E ingress-nginx </dev/null || abort "download ingress-nginx images"
 $K download -E rocketmq </dev/null || abort "download rocketmq images"
-
-[ "$topology_ok" -eq 1 ] || abort "test-ha topology precondition"
-
-# These official charts together request more memory than the delivery lab's
-# three small workers can sustain.  Validate one heavy addon at a time, remove
-# it completely, and require API/node recovery before starting the next gate.
-setup_with_transient_retry test-ha 07 3 || abort "test-ha base addon setup"
-
-section "P0 Nacos HA with external MySQL"
-set_cfg "$CFG" nacos_install '"yes"'
-setup_with_transient_retry test-ha 07 3 || abort "P0 Nacos setup"
-if wait_pods_ns nacos 72 && wait_nacos_external_mysql 60; then
-  pass "P0 Nacos Ready replicas=3 external-MySQL"
-else
-  abort_after_namespace_cleanup "P0 Nacos replicas/external-MySQL" nacos
-fi
-set_cfg "$CFG" nacos_install '"no"'
-wait_namespace_deleted nacos 120 || abort "P0 Nacos cleanup"
-recover_ha_control_plane || abort "test-ha recovery after Nacos"
 
 section "P1 MinIO official four-server Tenant"
 set_cfg "$CFG" minio_install '"yes"'

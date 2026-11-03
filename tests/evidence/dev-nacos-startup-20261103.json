@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-03",
+  "branch": "dev",
+  "baseline_commit": "748178807af8dead9b403ca4c81d90630da8876e",
+  "matrix_scope": [
+    "T2-AD-13"
+  ],
+  "status": "pass",
+  "entry": "KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --nacos-startup-only",
+  "versions": {
+    "kubernetes": "1.33.6",
+    "nacos": "2.4.3",
+    "mysql": "8.0.46",
+    "connector_j": "8.2.0"
+  },
+  "hosts": {
+    "control": "192.168.47.138",
+    "master": "192.168.47.137",
+    "workers": [
+      "192.168.47.128",
+      "192.168.47.142",
+      "192.168.47.143"
+    ]
+  },
+  "inputs_sha256": {
+    "conf/config.yml": "24ebecaec847661c860bc101abad5f70a26be40dc2a71cd7228bb93fc49552c2",
+    "service/cluster/manager.py": "a6944952b1acd5cc46d223f33814cea62e95f2325025f13946feb50507af65af",
+    "roles/cluster-addon/tasks/main.yml": "bf2de674656ebf05e12464208a63e0b33c75fac1de92b1de13027aacac74e9b8",
+    "roles/cluster-addon/tasks/nacos.yml": "95582cbf1e75e04f6113221d214c30322da59b7e1ce17dfd81cb2e0aab6345c4",
+    "roles/cluster-addon/templates/nacos/nacos-sts.yaml.j2": "dfaceee57aa346e47fb30b4a1a270df44ca2931cf8dfb44f311e221b4866e280",
+    "tests/helpers/nacos-startup-gate.sh": "9baaf3e5ca25321f0d223d2cc7e2bfd043e7f3b6f3bc108df799c38611c39d70",
+    "tests/helpers/nacos-tls-refusal-gate.sh": "db9c991d41764e01fa4fe9d29825ad309f0cd228b47564e5f777d47049b4fdab",
+    "tests/helpers/delivery-gap-retest.sh": "094c4dc9bdbf861aec2edef013b4acb3dd4bfdf11ac5ed6fe70fcfb11345affd"
+  },
+  "raw_archive": {
+    "path": "logs/dev-production-fixes-20261103/nacos-accepted/accepted-raw.tar",
+    "sha256": "6cce0db0ed7497ae9e55fc56407faed57673d82a75d83a115fc320b5eda1110f",
+    "mode": "0600; private runtime evidence, never commit archive"
+  },
+  "remote_log_sha256": "b99f2922557b460a9e0f240852cbdc346dc034a3c5b841ba183efdd8db8ee44a",
+  "local_supervisor_log": "logs/dev-production-fixes-20261103/nacos-reconcile-tls-live.log",
+  "durable": {
+    "exit": 0,
+    "finalized": 0,
+    "failure_markers": 0
+  },
+  "required_markers": [
+    "NACOS_RESTART_REPEAT_BUSINESS_PASS",
+    "NACOS_TLS_REFUSALS_PASS",
+    "NACOS_TLS_REFUSALS_SCOPED_CLEAN_PASS",
+    "NACOS_STARTUP_FOCUSED_PASS",
+    "NACOS_STARTUP_SCOPED_CLEAN_PASS"
+  ],
+  "business": {
+    "per_instance_readbacks": 12,
+    "replicas": 3,
+    "phases": [
+      "initialize",
+      "Pod replacement without reseeding",
+      "actual repeated product convergence without reseeding",
+      "post-TLS-fault original-data readback"
+    ]
+  },
+  "tls_refusals": {
+    "untrusted_ca": "nonzero product exit plus certificate-chain application error",
+    "wrong_hostname": "nonzero product exit plus identity verification application error"
+  },
+  "cleanup": {
+    "namespace_and_PV": "both fault namespaces removed; original config restored before business recheck",
+    "cluster": "product destroy completed",
+    "node_scope": "137/128/142/143 only; final LAB_CLEAN_VERIFY_PASS",
+    "supervisor_terminal": "NACOS_STARTUP_ACCEPTED"
+  },
+  "limits": [
+    "Does not sign NFS, remaining OS profiles, entire project GA or customer acceptance.",
+    "Previous nacos-secret-tls-live.log remains a failed run; its repeat command skipped reconciliation and is not accepted.",
+    "No historical v0.1.7 backport."
+  ]
+}

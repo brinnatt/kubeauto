@@ -11,6 +11,8 @@
       - bash-completion     # bash completion
       - conntrack-tools     # ipvs requires
       - ipset               # ipvs requires
+      - nftables            # kube-proxy cleans stale nftables rules
+      - iptables            # IPVS still uses iptables for filtering and SNAT
       - ipvsadm             # ipvs requires
       - libseccomp2         # containerd requires
       - lvm2                # Local PV LVM requires

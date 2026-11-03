@@ -57,7 +57,15 @@ data:
   mysql.db.name: "{{ nacos_mysql_db }}"
   mysql.port: "{{ nacos_mysql_port }}"
   mysql.user: "{{ nacos_mysql_user }}"
-  mysql.password: "{{ nacos_mysql_password }}"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nacos-mysql-client
+  namespace: {{ nacos_namespace }}
+type: Opaque
+stringData:
+  mysql.password: {{ nacos_mysql_password | to_json }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -89,6 +97,25 @@ spec:
                       - nacos
               topologyKey: "kubernetes.io/hostname"
       initContainers:
+{% if nacos_mysql_ca_secret | default('') %}
+        # Import only the public CA into an ephemeral trust store. The password
+        # protects its format, not a private key or an authentication credential.
+        - name: mysql-truststore
+          image: registry.talkschool.cn:5000/brinnatt/nacos-server:v2.4.3
+          command: ["/bin/sh", "-ec"]
+          args:
+            - >-
+              rm -f /mysql-tls/truststore.p12 &&
+              keytool -importcert -noprompt -alias mysql-ca
+              -file /mysql-ca/ca.crt -keystore /mysql-tls/truststore.p12
+              -storetype PKCS12 -storepass changeit
+          volumeMounts:
+            - name: mysql-ca
+              mountPath: /mysql-ca
+              readOnly: true
+            - name: mysql-truststore
+              mountPath: /mysql-tls
+{% endif %}
         - name: peer-finder-plugin-install
           image: registry.talkschool.cn:5000/brinnatt/nacos-peer-finder-plugin:1.1
           volumeMounts:
@@ -111,6 +138,20 @@ spec:
               name: raft-rpc
             - containerPort: 7848
               name: old-raft-rpc
+          startupProbe:
+            httpGet:
+              path: /nacos/v1/console/health/readiness
+              port: client-port
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /nacos/v1/console/health/readiness
+              port: client-port
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
           env:
             # nacos-docker exposes these variables in docker-startup.sh.
             # Keep its upstream defaults unless an installation explicitly
@@ -132,6 +173,11 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
             - name: MYSQL_SERVICE_HOST
               valueFrom:
                 configMapKeyRef:
@@ -154,11 +200,11 @@ spec:
                   key: mysql.user
             - name: MYSQL_SERVICE_PASSWORD
               valueFrom:
-                configMapKeyRef:
-                  name: nacos-cm
+                secretKeyRef:
+                  name: nacos-mysql-client
                   key: mysql.password
             - name: MYSQL_SERVICE_DB_PARAM
-              value: "{{ nacos_mysql_db_param | default('characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC') }}"
+              value: "{{ nacos_mysql_db_param | default('characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&sslMode=VERIFY_IDENTITY&serverTimezone=UTC') }}{% if nacos_mysql_ca_secret | default('') %}&trustCertificateKeyStoreUrl=file:/home/nacos/mysql-tls/truststore.p12&trustCertificateKeyStoreType=PKCS12&trustCertificateKeyStorePassword=changeit{% endif %}"
             - name: SPRING_DATASOURCE_PLATFORM
               value: "mysql"
             - name: NACOS_SERVER_PORT
@@ -174,12 +220,26 @@ spec:
             - name: NACOS_AUTH_CACHE_ENABLE
               value: "true"
             - name: NACOS_AUTH_TOKEN
-              value: "YWNjNDU4ODAxYWRiMTgzMGYzYjE5ZTQ2ZGQzYWVhNjFjYTk0MTc3ZGFmOWU2MW0w"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ nacos_auth_secret }}
+                  key: token
             - name: NACOS_AUTH_IDENTITY_KEY
-              value: "7acc458801adb183"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ nacos_auth_secret }}
+                  key: identity-key
             - name: NACOS_AUTH_IDENTITY_VALUE
-              value: "0f3b19e46dd3aea61ca94177daf9e609"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ nacos_auth_secret }}
+                  key: identity-value
           volumeMounts:
+{% if nacos_mysql_ca_secret | default('') %}
+            - name: mysql-truststore
+              mountPath: /home/nacos/mysql-tls
+              readOnly: true
+{% endif %}
             - name: data
               mountPath: /home/nacos/plugins/peer-finder
               subPath: peer-finder
@@ -189,6 +249,17 @@ spec:
             - name: data
               mountPath: /home/nacos/logs
               subPath: logs
+{% if nacos_mysql_ca_secret | default('') %}
+      volumes:
+        - name: mysql-ca
+          secret:
+            secretName: {{ nacos_mysql_ca_secret }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+        - name: mysql-truststore
+          emptyDir: {}
+{% endif %}
   volumeClaimTemplates:
     - apiVersion: v1
       kind: PersistentVolumeClaim

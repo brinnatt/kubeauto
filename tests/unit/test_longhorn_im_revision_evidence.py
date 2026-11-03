@@ -236,6 +236,17 @@ class RevisionEvidenceContracts(unittest.TestCase):
         for name in names:
             path = base/name; path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT/name, path)
+        # Reconstruct the frozen .2 input, never substitute today's global
+        # configuration or weaken the live evidence reader's hash checks.
+        frozen_product_inputs = {
+            'conf/config.yml': 'longhorn-im-revision-2-config-be4e0410.yml.txt',
+            'service/cluster/manager.py': 'longhorn-im-revision-2-cluster-manager-ee46940e.py.txt',
+        }
+        for name, filename in frozen_product_inputs.items():
+            fixture = ROOT/'tests/fixtures'/filename
+            expected = plan['profiles']['v2']['inputs'][name]['sha256']
+            self.assertEqual(expected, hashlib.sha256(fixture.read_bytes()).hexdigest())
+            shutil.copyfile(fixture, base/name)
         # The immutable .2 cohort predates nullable disk-status handling. Its
         # exact populated-state source remains an isolated historical fixture.
         path = base/REVISION.SOURCE
@@ -297,6 +308,15 @@ class RevisionEvidenceContracts(unittest.TestCase):
             with patch.object(REVISION, 'BASE', base), patch.object(COMPATIBILITY, 'BASE', base):
                 COMPATIBILITY.read_completed_plan(REVISION, 'v2')
         return original
+
+    def test_historical_fixture_rejects_configuration_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); self.actual_inputs(base)
+            path = base/'conf/config.yml'
+            path.write_bytes(path.read_bytes()+b'\n# unrelated configuration change\n')
+            with patch.object(REVISION, 'BASE', base), patch.object(COMPATIBILITY, 'BASE', base):
+                with self.assertRaisesRegex(ValueError, 'conf/config.yml'):
+                    COMPATIBILITY.read_completed_plan(REVISION, 'v2')
 
     def test_historical_fixture_keeps_old_retirement_rpc_and_refuses_current_product(self):
         with tempfile.TemporaryDirectory() as directory:

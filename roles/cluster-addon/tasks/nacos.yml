@@ -1,10 +1,53 @@
 - block:
+    - name: require customer-managed Nacos authentication Secret
+      assert:
+        that: nacos_auth_secret | default('') | length > 0
+        fail_msg: "Set nacos_auth_secret to an existing Secret containing token, identity-key and identity-value."
+
+    - name: read Nacos authentication Secret privately
+      command:
+        argv:
+          - kubectl
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - -n
+          - "{{ nacos_namespace }}"
+          - get
+          - secret
+          - "{{ nacos_auth_secret }}"
+          - -o
+          - json
+      register: nacos_auth_secret_read
+      changed_when: false
+      no_log: true
+
+    - name: require nonempty Nacos authentication keys
+      assert:
+        that:
+          - item in nacos_auth_data
+          - nacos_auth_data[item] | length > 0
+      vars:
+        nacos_auth_data: "{{ (nacos_auth_secret_read.stdout | from_json).data | default({}) }}"
+      loop: [token, identity-key, identity-value]
+      no_log: true
+
     - name: 准备 nacos的部署文件
-      template: src=nacos/nacos-sts.yaml.j2 dest={{ cluster_dir }}/yml/nacos-sts.yaml
+      template:
+        src: nacos/nacos-sts.yaml.j2
+        dest: "{{ cluster_dir }}/yml/nacos-sts.yaml"
+        mode: '0600'
+      no_log: true
+      diff: false
 
     - name: 创建命名空间{{ nacos_namespace }}
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig create ns {{ nacos_namespace }} || echo true"
 
     - name: 创建 nacos部署
       shell: "kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig -n {{ nacos_namespace }} apply -f {{ cluster_dir }}/yml/nacos-sts.yaml"
+
+    - name: wait for Nacos application readiness
+      command: >-
+        kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig
+        -n {{ nacos_namespace }} rollout status statefulset/nacos
+        --timeout={{ nacos_ready_timeout | default(900) }}s
+      changed_when: false
   when: 'nacos_install == "yes"'

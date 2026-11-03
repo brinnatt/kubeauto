@@ -1,0 +1,90 @@
+{
+  "date": "2026-11-03",
+  "branch": "dev",
+  "baseline_commit": "748178807af8dead9b403ca4c81d90630da8876e",
+  "source_state": "local dev worktree candidate; not committed, pushed or published",
+  "status": "pass",
+  "claim": "Current bug-fix impact boundary qualified using current clean module evidence and applicable unchanged evidence; not a new all-delivery execution or customer sign-off.",
+  "matrix": {
+    "path": "tests/enterprise-test-matrix.yaml",
+    "sha256": "fbb30c1a0c57c5e34d0c38b24661f4e74ad2f4e67a160709f68e433cffd47ed1",
+    "accepted": 128,
+    "applicable": 128,
+    "current_run_stages_accepted": 5,
+    "current_run_stages_planned": 5,
+    "affected_ids": [
+      "T0-01",
+      "T0-10",
+      "T1-G2-02",
+      "T2-NW-01",
+      "T2-PM-01",
+      "T2-OS-01",
+      "T2-OS-02",
+      "T2-OS-03",
+      "T2-OS-04",
+      "T2-OS-05",
+      "T2-OS-06",
+      "T2-OS-07",
+      "T2-MR-01",
+      "T2-MR-02",
+      "T2-MR-05",
+      "T2-AD-11",
+      "T2-AD-13"
+    ],
+    "unchanged_boundary": [
+      "T0-11",
+      "T1-G2-01",
+      "T1-G2-03",
+      "T1-G2-04",
+      "T1-G2-05",
+      "T1-G7-02",
+      "T2-TO-01",
+      "T2-TO-02",
+      "T2-TO-03",
+      "T2-NW-02",
+      "T2-NW-03",
+      "T2-NW-04",
+      "T2-NW-05",
+      "T2-PM-02"
+    ]
+  },
+  "evidence_records": {
+    "dev-nacos-startup-20261103.json": "b041a80c2200f006aab82f43d9f24f3fd87337619de9b9dca474e310f3bc6f2d",
+    "dev-prepare-os-20261103.json": "9e0ac0435531d2af55676036f02679530d3e013ad7ef307594e7b21822dfc2af",
+    "dev-rocky9-nfs-20261103.json": "e1a0048c12116eedfcc3dfeb8c9354666b77482da644ce2056538a7f216ecbc3",
+    "dev-production-static-20261103.json": "bca370c1f345e5bb799b591d996930c912d07aa10e8de90ff3274429ca2c9002"
+  },
+  "composition": {
+    "log": "logs/dev-production-fixes-20261103/affected-acceptance.log",
+    "log_sha256": "38106c675649ae08dab8cfc32a07feb850f204bdf125cf25c3c0a044ee7a5d01",
+    "durable_exit": 0,
+    "durable_finalized": 0,
+    "marker": "DEV_PRODUCTION_AFFECTED_ACCEPTANCE_PASS",
+    "cleanup_marker": "LAB_CLEAN_VERIFY_PASS; sourced from current accepted module clean evidence"
+  },
+  "verification": {
+    "complete_unit_tests": 3812,
+    "current_runner_contracts": 54,
+    "documentation_contracts": 12,
+    "Ansible_syntax": "pass",
+    "changed_YAML_and_shell_syntax": "pass",
+    "reader_paths": "first deployment and operations checked; no independent review claim",
+    "six_repositories": "only kubeauto changed; other five clean; no artifact pin/build/workflow change"
+  },
+  "product_outcomes": {
+    "prepare": "preserve OS packages; stop/disable firewalld and ufw, mask firewalld; eight actual network executables; marker reentry validates current state",
+    "Nacos": "POD_IP, verified MySQL TLS, external authentication Secret, protected database password, application readiness and real repeated reconciliation; 12 instance readbacks and two verified TLS refusals",
+    "NFS": "upstream exits on lost API/etcd lease as designed; healthy integration has three cross-node fsync/data readbacks through leader replacement and new-PVC supply; no election changes"
+  },
+  "lab": {
+    "Rocky9": "Ceph shared high-memory .212/.165/.238 pool actually leased and used; no extra disk mutation",
+    "resource_reservations": "all three lab switches no; product defaults unchanged",
+    "scope": "Nacos 137/128/142/143 via138; prepare138/141; Rocky9/NFS .212/.165/.238 via130; occupied 131-136 and other clusters untouched"
+  },
+  "limits": [
+    "Rocky 9.8 same-major regression does not claim exact Rocky 9.7 testing.",
+    "Customer NFS incident correlates with etcd WAL/API latency; underlying infrastructure cause still requires its owner, and no production changes were made.",
+    "Previous failed gate runs remain failures; none is relabeled PASS.",
+    "Unchanged matrix capabilities retain their proven input/dependency scope; 128/128 is evidence coverage, not 128 fresh live runs."
+  ]
+}

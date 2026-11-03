@@ -17,6 +17,35 @@ from service.cluster.manager import (
 
 
 class TestInventoryCompatibilityGate(unittest.TestCase):
+    def test_python_probe_honors_inline_user_across_repeated_host_entries(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            inventory = Path(tmp_dir) / "hosts"
+            inventory.write_text(
+                "[etcd]\n192.168.47.137\n192.168.47.128\n"
+                "[kube_master]\n192.168.47.137\n"
+                "[kube_node]\n192.168.47.128 ansible_user='brinnatt' "
+                "ansible_become=true # Debian login\n"
+                "192.168.47.141\n[all:vars]\nansible_user=root\n",
+                encoding="utf-8",
+            )
+            with patch(
+                "service.cluster.manager._ensure_ansible_python",
+                return_value="/usr/bin/python3",
+            ) as remote_probe:
+                prepared = _prepare_inventory_with_python(
+                    inventory, ansible_python_policy_for_core((2, 10))
+                )
+            try:
+                self.assertEqual(
+                    [(call.args[1], call.args[2]) for call in remote_probe.call_args_list],
+                    [("192.168.47.137", "root"), ("192.168.47.128", "brinnatt"),
+                     ("192.168.47.141", "root")],
+                )
+                self.assertIn("ansible_user='brinnatt'", prepared.read_text())
+                self.assertIn("ansible_become=true", prepared.read_text())
+            finally:
+                prepared.unlink(missing_ok=True)
+
     def test_local_connection_uses_native_distribution_controller_contract(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             inventory = Path(tmp_dir) / "hosts"

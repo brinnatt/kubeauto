@@ -362,7 +362,10 @@ fi
         self.assertIn("name: MYSQL_SERVICE_DB_PARAM", template)
         self.assertIn("nacos_mysql_db_param", template)
         self.assertIn("nacos_mysql_db_param:", config)
-        self.assertIn("allowPublicKeyRetrieval=true", RETEST)
+        self.assertNotIn("allowPublicKeyRetrieval=true", RETEST)
+        self.assertIn('sed -n \'s/^nacos_mysql_db_param: //p\' "$BASE/conf/config.yml"', RETEST)
+        self.assertIn("--require-secure-transport=ON", RETEST)
+        self.assertIn("stage_nacos_mysql_tls", RETEST)
 
     def test_fullchain_builds_topology_before_gaps(self):
         self.assertLess(

@@ -22,6 +22,7 @@
 - name: kubectl bash completion
   lineinfile:
     dest: ~/.bashrc
+    create: true
     state: present
     regexp: 'kubectl completion'
     line: 'source <(kubectl completion bash) # flag by kubeauto'

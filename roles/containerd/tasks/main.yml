@@ -58,6 +58,7 @@
 - name: crictl bash completion
   lineinfile:
     dest: ~/.bashrc
+    create: true
     state: present
     regexp: 'crictl completion'
     line: 'source <(crictl completion bash) # flag by kubeauto'
@@ -65,6 +66,7 @@
 - name: nerdctl bash completion
   lineinfile:
     dest: ~/.bashrc
+    create: true
     state: present
     regexp: 'nerdctl completion'
     line: 'source <(nerdctl completion bash) # flag by kubeauto'

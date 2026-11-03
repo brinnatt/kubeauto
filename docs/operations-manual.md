@@ -597,12 +597,12 @@ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
 
 ##### 1.3.3.1.2、prepare 角色
 
-实现：`roles/prepare/tasks/main.yml`。节点上若存在标记文件 `/opt/kubeauto_prepare_tasks`，则跳过本角色（幂等）。
+实现：`roles/prepare/tasks/main.yml`。节点上若存在标记文件 `/opt/kubeauto_prepare_tasks`，则跳过首次初始化部分，但仍重新收敛防火墙服务并检查 ipset、nft，以及 IPv4/IPv6 iptables、save/restore 命令的版本。标记文件不能证明服务状态或动态库当前仍然完整。
 
 主要动作：
 
 1. 按发行版执行 `debian.yml` / `redhat.yml` / `suse.yml` 等，安装基础软件包。
-2. `common.yml`：关闭 swap、加载 `br_netfilter` / IPVS 等相关模块、写入 `sysctl` 与 systemd 限制等。
+2. `common.yml`：停止并禁用已安装的 firewalld，再 mask 其 systemd unit；停止并禁用已安装的 ufw；检查上述网络工具可执行性，然后关闭 swap、加载 `br_netfilter` / IPVS 等相关模块、写入 `sysctl` 与 systemd 限制等。IPVS 仍依赖 iptables 完成过滤和 SNAT，不能用仅安装 nftables 代替该依赖。
 3. 创建 `{{ bin_dir }}`、`{{ ca_dir }}`、`/root/.kube`。
 4. 将部署节点上的 `kubectl.kubeconfig` 复制到 **kube_master 与 kube_node** 的 `/root/.kube/config`（etcd 专用节点不复制）。
 5. 向 `/etc/hosts` 写入本地镜像仓库 `registry.talkschool.cn` 解析（`REGISTRY_HOST_IP`）。
@@ -610,6 +610,10 @@ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
 7. 写入 `/opt/kubeauto_prepare_tasks` 标记完成。
 
 本角色**不**安装 `kubectl` / `kubelet` 二进制（由后续 `kube-master` / `kube-node` 从 `kube-bin/` 下发），也**不**分发 `ca.pem` / `ca-key.pem`（分别在 etcd、kube-master、kube-node 等角色中按矩阵下发）。
+
+防火墙处理保留发行版的软件包及其依赖。Kubernetes 的要求是组件和 CNI 所需端口连通；本项目的 Calico 3.28 路径同时遵守其要求，禁用会竞争 iptables 规则的防火墙管理器。firewalld 官方建议 mask，以阻止 D-Bus 或依赖关系再次拉起服务；这与卸载软件包的行为不同。缺少相应服务时安全跳过，停止、禁用或运行时检查失败时停止该节点的 prepare，不写首次完成标记，也不继续依赖它的安装步骤。依据见 [Calico 3.28 要求](https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements)与 [firewalld 服务管理](https://firewalld.org/documentation/howto/enable-and-disable-firewalld.html)。
+
+实施人员应在节点管理员已批准该网络策略、外部网络边界和必要端口的前提下，由部署机执行集群的 `setup 01`；重入仍使用同一产品入口。随后在各目标节点核对 firewalld 为 inactive/masked、ufw（若安装）为 inactive/disabled，且上述八项工具的版本命令均返回 0。不要在 Calico 运行期间自行启动 firewalld/ufw 或刷新规则。发现缺库时保留首错误及发行版包校验结果，在对应发行版受信任的软件源修复所属包后重新执行 `setup 01`；已有标记不会触发全套软件包重装。退回节点原防火墙策略应在业务迁出、产品销毁及网络清理完成之后，按变更前记录恢复服务的 enable/mask 状态，并复验管理和业务网络。
 
 #### 1.3.3.2、安装 etcd 集群
 
@@ -1837,6 +1841,80 @@ kubectl -n rocketmq logs deploy/rocketmq-operator --tail=200
 ```
 
 Nacos `nacos_replicas: 3` 使用跨主机强反亲和，需要至少 3 个合格节点；RocketMQ 默认 `rocketmq_replica_per_group: 0` 只有 master，不能写成消息副本 HA。NFS provisioner 不会安装 NFS server，安装前必须先从每个工作节点验证 export 可挂载和可写。
+
+Nacos 2.4.3 的外部数据库推荐路径为 MySQL TLS。部署人员先向 DBA 取得数据库地址、官方 schema、业务账号和签发 CA；数据库地址必须与服务器证书 SAN 匹配，且各 Pod 能解析并访问。保留产品默认 JDBC 中的 `sslMode=VERIFY_IDENTITY`，它同时验证 CA 信任和服务器身份，不通过动态获取 RSA 公钥绕过数据库身份校验。已有不支持 TLS 的数据库需要先完成数据库侧变更，不能只打开 Nacos 开关后等待成功。
+
+| 参数 | 配置与操作条件 |
+|------|----------------|
+| `nacos_mysql_host/db/port/user/password` | 由 DBA 提供；在目标集群 `config.yml` 的受控副本中配置，文件仅限部署账号读取，不把密码写入工单或诊断输出 |
+| `nacos_auth_secret` | 同命名空间预建的鉴权 Secret，默认名称 `nacos-auth`；包含 `token`、`identity-key`、`identity-value`，三个副本引用同一份值。产品不生成公共初值，缺失或空键时停止安装 |
+| `nacos_mysql_db_param` | 默认包含 `sslMode=VERIFY_IDENTITY`；显式自定义会替代默认值，需自行保留身份验证及所需连接参数 |
+| `nacos_mysql_ca_secret` | 私有 CA 时填入同一 Nacos 命名空间的 Secret 名，必须含 PEM 格式 `ca.crt`；仅放公开签发 CA，不放数据库服务器私钥 |
+| `nacos_ready_timeout` | 产品等待 StatefulSet 应用就绪的秒数，默认 900；超时即安装失败，需要保留诊断，不表示对象已回滚 |
+
+若数据库证书由 JVM 已信任的 CA 签发，CA Secret 可以留空。私有 CA 路径则先由集群管理员在目标 kubeconfig 和 `nacos_namespace` 下创建命名空间及上述 Secret，再通过 `kubecli download -E nacos` 与 `kubecli setup` 的 `07` 步骤收敛。initContainer 使用同一个固定版本 Nacos 镜像的 keytool，把公开 CA 导入 Pod 内临时 PKCS12 truststore，主容器只读挂载；更新 CA Secret 不会重新执行已完成的 initContainer，需要在维护窗口按 StatefulSet 滚动重建 Pod，并等待再次全部 Ready。
+
+无论数据库采用公共还是私有 CA，部署前都须由安全管理员从客户密码系统提供鉴权材料：`token` 文件保存原始长度至少 32 字节的随机密钥的 Base64 文本；`identity-key`、`identity-value` 文件保存非空且非公开默认值的服务端身份。三份文件不要包含尾部换行，目录及文件仅允许部署账号读取。各副本必须使用同一份材料，否则节点间认证会失败。产品通过 Secret 引用消费这些值；数据库密码写入独立 Secret `nacos-mysql-client`，渲染文件权限为 0600。Secret 的 Base64 编码不等于静态加密，仍须遵守集群的最小权限和 etcd 加密要求。依据为 [Nacos 2.x 鉴权说明](https://nacos.io/docs/v2/guide/user/auth/)与 [Kubernetes Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)。
+
+以下命令由集群管理员在运行 kubecli 的控制机执行，适用于 Nacos 2.4.3 的首次私有 CA 部署。输入现有集群名称、与配置一致的命名空间和 Secret 名、鉴权材料目录，以及 DBA 交付的公开 CA 文件路径；不要输入数据库私钥路径。先完成外部 MySQL schema 导入、账号授权及证书 SAN 核对，并将连接参数写入该集群的 `config.yml`。任一步失败均停止，不继续安装。
+
+```bash
+set -euo pipefail
+read -r -p '现有 kubecli 集群名称: ' CLUSTER
+read -r -p 'config.yml 中的 nacos_namespace: ' NACOS_NAMESPACE
+read -r -p 'config.yml 中的 nacos_auth_secret: ' NACOS_AUTH_SECRET
+read -r -p '密码系统导出的鉴权材料目录绝对路径: ' NACOS_AUTH_DIR
+read -r -p 'config.yml 中的 nacos_mysql_ca_secret: ' MYSQL_CA_SECRET
+read -r -p 'DBA 交付的公开 CA PEM 文件绝对路径: ' MYSQL_CA_FILE
+test -n "$CLUSTER" && test -n "$NACOS_NAMESPACE" && test -n "$MYSQL_CA_SECRET" && test -n "$NACOS_AUTH_SECRET"
+KUBECONFIG="/usr/local/kubeauto/clusters/$CLUSTER/kubectl.kubeconfig"
+export KUBECONFIG
+test -r "$KUBECONFIG" && test -r "$MYSQL_CA_FILE"
+python3 - "$NACOS_AUTH_DIR" <<'PY'
+import base64, os, pathlib, sys
+directory = pathlib.Path(sys.argv[1])
+assert directory.is_absolute() and directory.is_dir()
+assert directory.stat().st_mode & 0o077 == 0
+values = {}
+for key in ('token', 'identity-key', 'identity-value'):
+    path = directory / key
+    assert path.is_file() and not path.is_symlink() and os.access(path, os.R_OK)
+    assert path.stat().st_mode & 0o077 == 0
+    values[key] = path.read_bytes()
+    assert values[key] and b'\n' not in values[key] and b'\r' not in values[key]
+assert len(base64.b64decode(values['token'], validate=True)) >= 32
+print('Authentication input format verified; values are not displayed.')
+PY
+openssl x509 -in "$MYSQL_CA_FILE" -noout -subject -issuer -dates
+# 将此指纹与 DBA 通过可信渠道提供的指纹核对；不一致时停止。
+openssl x509 -in "$MYSQL_CA_FILE" -noout -fingerprint -sha256
+kubectl config view --minify
+kubectl get --raw=/readyz
+# 确认上述上下文和 CA 指纹后，再单独执行以下部署命令。
+```
+
+核对 CA 确实为签发链中的 CA，尚未过期且文件仅包含公开证书。在相同 shell 会话继续；`ca.crt` 使用单个受信任的 PEM CA，模板不会自动导入多证书 bundle 中的每张证书。
+
+```bash
+kubectl create namespace "$NACOS_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+# 首次创建；已存在时停止，进入维护变更流程，不覆盖现有鉴权材料。
+kubectl -n "$NACOS_NAMESPACE" create secret generic "$NACOS_AUTH_SECRET" \
+  --from-file=token="$NACOS_AUTH_DIR/token" \
+  --from-file=identity-key="$NACOS_AUTH_DIR/identity-key" \
+  --from-file=identity-value="$NACOS_AUTH_DIR/identity-value"
+kubectl -n "$NACOS_NAMESPACE" create secret generic "$MYSQL_CA_SECRET" \
+  --from-file=ca.crt="$MYSQL_CA_FILE" --dry-run=client -o yaml | kubectl apply -f -
+kubecli download -E nacos
+kubecli setup "$CLUSTER" 07
+kubectl -n "$NACOS_NAMESPACE" get statefulset nacos
+kubectl -n "$NACOS_NAMESPACE" get pods,pvc -o wide
+```
+
+`setup 07` 默认最多等待 900 秒；期望 StatefulSet 的 Ready 数等于配置副本数且 PVC 全部 Bound。该结果证明应用启动条件满足，业务验收仍按下段执行。已有实例变更 CA 时，先保存旧公开 CA 和配置，确认数据库新证书链，再更新 Secret 并执行 `kubectl -n "$NACOS_NAMESPACE" rollout restart statefulset/nacos` 和 `kubectl -n "$NACOS_NAMESPACE" rollout status statefulset/nacos --timeout=900s`。先在批准的维护窗口评估逐实例重启与可用副本预算；失败时恢复匹配数据库当前证书链的 CA/配置并重新收敛，不能仅恢复已不受数据库使用的旧 CA。不要删除数据 PVC 或数据库来处理证书错误。
+
+鉴权 Secret 通过环境变量消费，修改 Secret 不会更新现有进程。轮换前将旧材料保存在客户密码系统，批准维护窗口及客户端重新登录方案；所有副本需最终使用相同新值，混合密钥期间可能发生认证失败，旧 token 也可能失效。由集群管理员更新原 Secret 后滚动重建 StatefulSet，等待 900 秒内恢复，再逐实例验证登录、配置和发现业务。失败时恢复旧 Secret、重建并重新登录复验，不删除 PVC 或数据库。数据库密码与连接 ConfigMap 的变更同样需要重建 Pod，并先与 DBA 保留可回退的账号授权；`setup 07` 的幂等 apply 不会自动重启仅因外部 Secret 数据改变的 Pod。
+
+启动探针和就绪探针均请求 `/nacos/v1/console/health/readiness`，启动预算为 90 次、间隔 10 秒，每次超时 3 秒。Pod IP 通过 Kubernetes Downward API 提供给 peer-finder。应用就绪及 MySQL 连接成立后，仍须按白皮书第 17.4.2 节完成跨实例配置/发现、重建后的读回和数据库恢复验收。证书不受信任、主机名不符、schema 或账号错误时，应停在首个失败步骤，保留 Pod 事件、initContainer 与应用日志；恢复经过核验的 CA、数据库地址及账号配置，再从产品 `setup 07` 重入。不得通过 `useSSL=false`、`allowPublicKeyRetrieval=true` 或删除就绪探针掩盖错误。
 
 ### 1.3.4、OpenEBS 生产运维
 

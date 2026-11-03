@@ -47,9 +47,14 @@ class TestDeliveryProcessContract(unittest.TestCase):
         self.assertIn("trap 'rm -rf", UNIT_RUNNER)
 
     def test_runtime_logs_are_ignored_but_policy_is_tracked(self):
-        for pattern in ("logs/*.log", "logs/*.out", "logs/*.pid"):
-            self.assertIn(pattern, GITIGNORE)
-        self.assertIn("!logs/README.md", GITIGNORE)
+        for name in ("logs/runtime.log", "logs/runtime.out", "logs/runtime.pid",
+                     "logs/run/evidence.json", "logs/README.md"):
+            result = subprocess.run(
+                ["git", "check-ignore", "--no-index", "--quiet", name],
+                cwd=ROOT, capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(1 if name == "logs/README.md" else 0,
+                             result.returncode, result.stderr)
 
     def test_supervisor_contract_is_visible_and_durable(self):
         for required in (
@@ -254,12 +259,35 @@ remote_process_tree local_ssh '' '{prefix}'
             "--ansible-os-only",
             "--ansible-ee-debian-probe",
             "--ansible-anolis-container-probe",
-            "--tier3-tools-only",
         )
         positions = [all_delivery.index(mode) for mode in expected_modes]
         self.assertEqual(sorted(positions), positions)
         self.assertIn('bash "$0" "$delivery_mode"', all_delivery)
         self.assertIn("ENTERPRISE_DELIVERY_ALL_PASS", all_delivery)
+        self.assertNotIn("--tier3-tools-only", all_delivery)
+        self.assertNotIn("run_tools_regression.sh", all_delivery)
+
+    def test_core_progress_excludes_requalification_stage_ids(self):
+        function = "matrix_counts()" + RUNNER.split("matrix_counts()", 1)[1].split("\n}\n", 1)[0] + "\n}\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "tests").mkdir()
+            (root / "tests/enterprise-test-matrix.yaml").write_text(
+                "items:\n"
+                "  - {id: T0-01, status: pass}\n"
+                "  - {id: PROM-01, status: pass}\n"
+                "  - {id: X-G6-01, status: pass}\n"
+                "  - {id: T1-G2-01, status: pending}\n"
+                "  - {id: T2-AD-13, status: fail}\n"
+                "stages:\n  - {id: static, status: pass}\n"
+                "  - {id: nacos, status: pending}\n"
+            )
+            result = subprocess.run(
+                ["bash", "-c", 'ROOT="$1"; MODE=--nacos-startup-only\n' + function + "matrix_counts", "test", str(root)],
+                text=True, capture_output=True, check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "matrix_pass=3 matrix_pending=1 matrix_fail=1")
 
     def test_all_delivery_daemon_keeps_local_durable_state(self):
         daemon = RUNNER.split(

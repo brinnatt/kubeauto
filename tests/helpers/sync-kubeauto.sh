@@ -36,7 +36,7 @@ RSYNC_SSH+="$SSH_OPTIONS_QUOTED"
 ssh "${SSH_OPTIONS[@]}" "$TARGET" \
   'if [ "$(id -u)" -eq 0 ]; then install -d /usr/local/kubeauto; else sudo -n install -d -o "$(id -un)" -g "$(id -gn)" /usr/local/kubeauto; fi'
 rsync -az \
-  --delete --exclude '.git/' --exclude '.venv/' --exclude '.idea/' --exclude 'logs/' \
+  --delete --exclude '.git/' --exclude '.venv/' --exclude '.cache/' --exclude '.idea/' --exclude 'logs/' \
   --exclude 'dist/' --exclude 'build/' --exclude '__pycache__/' --exclude '*.pyc' \
   --exclude 'kube-bin/' --exclude 'extra-bin/' --exclude 'docker-bin/' --exclude 'down/' \
   --exclude 'clusters/' \
