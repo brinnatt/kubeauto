@@ -22,6 +22,9 @@ fi
 marker="LONGHORN_${mode^^}"
 marker="${marker//-/_}"
 "$PY" "$CORE" verify-transport
+if [[ "$mode" == v2-integrity-qualification ]]; then
+  "$PY" "$BASE/tests/helpers/longhorn-manager-adopt.py" --pending
+fi
 if [[ "$mode" != v2-manager-loss-cleanup && "$mode" != v2-replica-im-loss-cleanup && "$mode" != v2-interrupt-cleanup ]]; then "$PY" "$INSTALL" volume-baseline; fi
 work="$(mktemp -d /var/tmp/kubeauto-longhorn-v2-volumes.XXXXXX)"
 chmod 0700 "$work"

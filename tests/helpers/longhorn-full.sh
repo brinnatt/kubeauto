@@ -13,6 +13,19 @@ stage() {
   local mode="$1" rc=0 tee_rc=0
   local prefix="$work/stages/$mode"
   "$PY" "$EVIDENCE" check-inputs
+  if [[ "${LONGHORN_FULL_RESUME:-no}" == yes && -f "$work/accepted/$mode.json" ]]; then
+    "$PY" "$BASE/tests/helpers/longhorn-full-stage-verify.py" "$mode" >/dev/null
+    echo "LONGHORN_FULL_STAGE_REUSED stage=$mode"
+    return 0
+  fi
+  if [[ -e "$prefix.log" || -e "$prefix.exit" || -e "$prefix.finalized" ]]; then
+    local previous
+    mkdir -p "$work/failed-attempts"
+    previous="$(mktemp -d "$work/failed-attempts/$mode.XXXXXXXX")"
+    for suffix in log exit finalized pid; do
+      [[ ! -e "$prefix.$suffix" ]] || mv -- "$prefix.$suffix" "$previous/"
+    done
+  fi
   echo "LONGHORN_FULL_STAGE_START stage=$mode"
   set +e
   bash "$BASE/tests/helpers/run-durable-gate.sh" "$prefix" LONGHORN_FULL_CHILD_EXIT \
@@ -54,7 +67,14 @@ case "$MODE" in
     ;;
   child)
     [[ "${LONGHORN_PARENT_LEASE_HELD:-no}" == yes ]]
-    if [[ "${2:?stage required}" == v2-clone ]]; then
+    if [[ "${2:?stage required}" == v2-cleanup-target && "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      journal="$("$PY" "$EVIDENCE" retirement-resume)"
+      if [[ -n "$journal" ]]; then
+        export LONGHORN_V2_RETIREMENT_JOURNAL="$journal"
+        exec bash "$BASE/tests/helpers/longhorn-live.sh" v2-cleanup-target-recovery
+      fi
+      exec bash "$BASE/tests/helpers/longhorn-live.sh" "$2"
+    elif [[ "$2" == v2-clone ]]; then
       exec "$PY" "$EVIDENCE" clone-accept
     elif [[ "$2" == final-clean ]]; then
       # Product retirement already released both V2 scopes and V1 uninstall
@@ -87,13 +107,20 @@ case "$MODE" in
     done
     work="${LONGHORN_FULL_EVIDENCE_DIR:?}/.."
     work="$(cd "$work" && pwd)"
-    "$PY" "$EVIDENCE" init
+    if [[ "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      [[ -d "$work/stages" && -d "$work/accepted" && -f "$work/frozen-inputs.json" ]]
+      "$PY" "$EVIDENCE" verify-preflight --directory "$work"
+    else
+      "$PY" "$EVIDENCE" init
+    fi
     phase=preflight
     full_exit() {
       local rc=$?
       trap - EXIT INT TERM
       if [[ "$rc" != 0 ]]; then
-        printf 'rc=%s phase=%s\n' "$rc" "$phase" > "$work/first-failure.status"
+        if [[ ! -e "$work/first-failure.status" ]]; then
+          printf 'rc=%s phase=%s\n' "$rc" "$phase" > "$work/first-failure.status"
+        fi
         echo "LONGHORN_FIRST_FAILURE phase=$phase rc=$rc diagnostics=$work"
       fi
       echo "LONGHORN_FULL_DURABLE_DIRECTORY path=$work"
@@ -102,16 +129,48 @@ case "$MODE" in
     trap full_exit EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
-    "$PY" "$BASE/tests/helpers/longhorn-parallel.py" context-fingerprint > "$work/control-context.json"
-    for name in longhorn-gate longhorn-v2-gate longhorn-v2-dr-target longhorn-node-gate; do
-      [[ ! -e "$BASE/clusters/$name" && ! -L "$BASE/clusters/$name" ]]
-    done
-    bash "$BASE/tests/helpers/lab-wipe-nodes.sh" --verify --rocky-only \
-      192.168.122.135 192.168.122.40 192.168.122.72 \
-      192.168.122.212 192.168.122.165 192.168.122.238 \
-      192.168.47.146 192.168.47.147 192.168.47.148 192.168.47.149
+    if [[ "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      "$PY" "$BASE/tests/helpers/longhorn-parallel.py" context-verify --record "$work/control-context.json"
+    else
+      "$PY" "$BASE/tests/helpers/longhorn-parallel.py" context-fingerprint > "$work/control-context.json"
+    fi
+    if [[ "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      # A resumed run may retain runner-owned cluster inputs from the accepted
+      # core/recovery stages.  Later stage readers bind their owner journals,
+      # identities and cleanup receipts; rejecting the directories here would
+      # discard a valid continuation before those checks can run.
+      for name in longhorn-gate longhorn-v2-gate longhorn-v2-dr-target longhorn-node-gate; do
+        if [[ -e "$BASE/clusters/$name" || -L "$BASE/clusters/$name" ]]; then
+          [[ -d "$BASE/clusters/$name" && ! -L "$BASE/clusters/$name" ]]
+        fi
+      done
+    else
+      for name in longhorn-gate longhorn-v2-gate longhorn-v2-dr-target longhorn-node-gate; do
+        [[ ! -e "$BASE/clusters/$name" && ! -L "$BASE/clusters/$name" ]]
+      done
+    fi
+    if [[ "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      if [[ -f "$work/accepted/core.json" ]]; then
+        "$PY" "$EVIDENCE" resume-baseline
+      else
+        # Before V1 core installation, the independent V1 pool must be clean.
+        bash "$BASE/tests/helpers/lab-wipe-nodes.sh" --verify --rocky-only \
+          192.168.122.135 192.168.122.40 192.168.122.72 \
+          192.168.122.212 192.168.122.165 192.168.122.238
+      fi
+    else
+      bash "$BASE/tests/helpers/lab-wipe-nodes.sh" --verify --rocky-only \
+        192.168.122.135 192.168.122.40 192.168.122.72 \
+        192.168.122.212 192.168.122.165 192.168.122.238 \
+        192.168.47.146 192.168.47.147 192.168.47.148 192.168.47.149
+    fi
     for mode in static disabled artifacts documentation; do
-      "$PY" "$EVIDENCE" accept "$mode" --prefix "$work/preflight/$mode"
+      if [[ "${LONGHORN_FULL_RESUME:-no}" == yes && -f "$work/accepted/$mode.json" ]]; then
+        "$PY" "$BASE/tests/helpers/longhorn-full-stage-verify.py" "$mode" >/dev/null
+        echo "LONGHORN_FULL_STAGE_REUSED stage=$mode"
+      else
+        "$PY" "$EVIDENCE" accept "$mode" --prefix "$work/preflight/$mode"
+      fi
     done
     # Fixed dependencies only. Original parallel parents supervise disjoint
     # V1/V2 scopes. Restore/upgrade borrowing .149 wait for V2 protection;

@@ -453,7 +453,8 @@ class Store:
                 raise ValueError('transport node image digest mismatch: expected ' + expected + ' got ' + str(actual))
         else:
             pull = self.lab.remote(self.endpoints.node,
-                ['ctr', '-n', 'k8s.io', 'images', 'pull', '--platform', 'linux/amd64', TRANSPORT_IMAGE_REF],
+                ['ctr', '-n', 'k8s.io', 'images', 'pull', '--hosts-dir', '/etc/containerd/certs.d',
+                 '--platform', 'linux/amd64', TRANSPORT_IMAGE_REF],
                 check=False, timeout=900)
             if pull.returncode:
                 raise ValueError('transport node image pull failed rc=' + str(pull.returncode))

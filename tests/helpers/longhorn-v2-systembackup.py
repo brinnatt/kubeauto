@@ -19,11 +19,13 @@ MAX_CONTENT = 128 * 1024**2
 
 
 def manager_commit(image):
-    """Expected build identity for the two qualified 1.12.1 Manager artifacts."""
+    """Expected build identity for the qualified 1.12.1 Manager artifacts."""
     commits = {
         'longhorn-manager:v1.12.1': '8320238242e8c804325d9588ec1db10feb9f36b8',
         'longhorn-manager:v1.12.1-kubeauto.1':
             '8320238242e8c804325d9588ec1db10feb9f36b8-kubeauto.9275735a33fe',
+        'longhorn-manager:v1.12.1-kubeauto.2':
+            '8320238242e8c804325d9588ec1db10feb9f36b8-kubeauto.07485cfc14e1',
     }
     # Installation verifies the registry/digest. SystemBackup records the
     # mirrored tag and the binary's meta.GitCommit, including its patch identity.

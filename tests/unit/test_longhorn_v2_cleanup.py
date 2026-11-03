@@ -9,7 +9,7 @@ import tempfile
 import stat
 import subprocess
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import uuid
 
 spec=importlib.util.spec_from_file_location('v2_retirement',Path(__file__).resolve().parents[1]/'helpers/longhorn-v2-cleanup.py')
@@ -104,7 +104,7 @@ class RetirementSequence(unittest.TestCase):
         self.lab=SimpleNamespace(NODES=gate.HOSTS['source'],owner=lambda:dict(self.row,namespace_uid='ns'),
             DIRECTORY=self.root,get=lambda *a:{'items':[]},shared_snapshot_identity=lambda:{'snapshot':'unchanged'},
             write_private=lambda p,r:p.write_text(json.dumps(r)),recover_installation=lambda pid:self.events.append('native'),
-            restore_hosts=lambda:self.events.append('hosts'))
+            restore_hosts=lambda:self.events.append('hosts'),remote=lambda *a,**k:self.events.append('reload'))
         self.resources=SimpleNamespace(restore=lambda lab:self.events.append('resources'),
             probe=lambda lab,node:{'total':0,'free':0,'reserved':0})
         self.remote=lambda *a,**k:({'driver':'sd'} if not self.events.append('host-check') else None)
@@ -114,7 +114,8 @@ class RetirementSequence(unittest.TestCase):
                 patch.object(gate,'remote',side_effect=self.remote),patch.object(gate,'load',return_value=self.resources):
             gate.storage(self.lab,SimpleNamespace(), 'source',self.journal,123)
         self.assertLess(self.events.index('guards'),self.events.index('native'))
-        self.assertLess(self.events.index('native'),self.events.index('resources'))
+        self.assertLess(self.events.index('native'),self.events.index('reload'))
+        self.assertLess(self.events.index('reload'),self.events.index('resources'))
         self.assertEqual(gate.read(self.journal)['phase'],'storage-clean')
 
     def test_failed_native_uninstall_never_restores_resources_or_declares_clean(self):
@@ -338,3 +339,73 @@ class CompletedRecovery(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+
+class InterruptedFixtureKubelet(unittest.TestCase):
+    def setUp(self):
+        self.current = dict(machine_id='machine', boot_id='boot', total=0, free=0, reserved=0, kubelet_active='active')
+        self.saved = dict(phase='restore-confirmed', original=dict(self.current), current=dict(self.current))
+        self.actual = dict(self.current, kubelet_active='inactive')
+        self.lab = SimpleNamespace(remote=Mock(),NODES=('192.168.47.149',),owner=lambda:{'cluster_uid':'cluster','node_uids':{'node':'uid'}},
+            get=lambda kind,*a:{'items':[{'metadata':{'name':'node','uid':'uid'},'status':{'addresses':[{'type':'InternalIP','address':'192.168.47.149'}]}}]} if kind=='nodes' else ({'metadata':{'uid':'cluster'}} if a==('kube-system',) else None))
+        self.resources = SimpleNamespace(read_record=lambda lab: {'hosts': {'192.168.47.149': self.saved}},
+            probe=Mock(side_effect=lambda *a: dict(self.actual)),refresh_kubelet=Mock())
+
+    def test_only_exact_restore_confirmed_boundary_can_restore_original_active_kubelet(self):
+        def recover(*a, **kw): self.actual['kubelet_active'] = 'active'
+        self.lab.remote.side_effect = recover
+        gate.recover_fixture_kubelet(self.lab, self.resources)
+        self.lab.remote.assert_called_once()
+        self.assertEqual(json.loads(self.lab.remote.call_args.kwargs['stdin']), self.current)
+
+    def test_changed_identity_pages_phase_or_prior_state_refuses_before_any_mutation(self):
+        for field, value in [('boot_id','other'), ('machine_id','other'), ('total',1024), ('reserved',1), ('kubelet_active','failed')]:
+            with self.subTest(field=field):
+                self.actual = dict(self.current, kubelet_active='inactive'); self.actual[field] = value
+                with self.assertRaises(ValueError): gate.recover_fixture_kubelet(self.lab,self.resources)
+                self.lab.remote.assert_not_called()
+        self.actual = dict(self.current, kubelet_active='inactive'); self.saved['phase']='ready'
+        with self.assertRaises(ValueError): gate.recover_fixture_kubelet(self.lab,self.resources)
+        self.lab.remote.assert_not_called()
+
+    def test_remote_recovery_executes_real_cached_unit_guards_before_start(self):
+        script = []
+        self.lab.remote.side_effect = lambda node,argv,**kw: script.append(argv[2]) or self.actual.update(kubelet_active='active')
+        gate.recover_fixture_kubelet(self.lab,self.resources)
+        with tempfile.TemporaryDirectory() as value:
+            root=Path(value); (root/'etc').mkdir(); (root/'proc/sys/kernel/random').mkdir(parents=True)
+            (root/'etc/machine-id').write_text('machine'); (root/'proc/sys/kernel/random/boot_id').write_text('boot')
+            (root/'etc/fstab').write_text('# original\n')
+            for defect in ('', 'fstab', 'cache', 'reload', 'receipt', 'empty-mount', 'mount-data'):
+                with self.subTest(defect=defect):
+                    calls=[]; reloaded=[]
+                    mount=root/'data/kubeauto-longhorn-coexist46'
+                    __import__('shutil').rmtree(root/'data',ignore_errors=True)
+                    if defect in ('empty-mount','mount-data'):
+                        mount.mkdir(parents=True)
+                        if defect=='mount-data':(mount/'foreign').write_text('keep')
+                    (root/'etc/fstab').write_text('/data/kubeauto-longhorn-coexist46' if defect=='fstab' else '# original\n')
+                    receipt=root/'etc/kubeauto/longhorn-disk.json'
+                    receipt.parent.mkdir(exist_ok=True);receipt.unlink(missing_ok=True)
+                    if defect=='receipt':receipt.write_text('{}')
+                    def run(argv,**kwargs):
+                        calls.append(argv)
+                        if argv[0]=='findmnt':return subprocess.CompletedProcess(argv,1,'','')
+                        if argv[1]=='show':
+                            after=bool(reloaded)
+                            data='ActiveState='+('active' if any(c[1]=='start' for c in calls) else 'inactive')+'\n'
+                            data+='NeedDaemonReload='+('no' if after or defect=='reload' else 'yes')+'\n'
+                            data+='DropInPaths='+('' if after else '/etc/systemd/system/kubelet.service.d/kubeauto-longhorn.conf')+'\n'
+                            data+='ExecStartPre='+('' if after or defect=='cache' else '/usr/bin/mountpoint -q -- /data/kubeauto-longhorn-coexist46')+'\n'
+                            return subprocess.CompletedProcess(argv,0,data,'')
+                        if argv[1]=='daemon-reload':reloaded.append(True)
+                        return subprocess.CompletedProcess(argv,0,'','')
+                    with patch('sys.stdin', __import__('io').StringIO(json.dumps(self.current))), \
+                            patch('pathlib.Path', side_effect=lambda p:root/str(p).lstrip('/')),patch('subprocess.run',side_effect=run):
+                        if defect not in ('','empty-mount'):
+                            with self.assertRaises(AssertionError):exec(script[0],{})
+                            self.assertFalse(any(c[1] in ('daemon-reload','start') for c in calls))
+                        else:
+                            exec(script[0],{})
+                            self.assertLess(calls.index(['systemctl','daemon-reload']),calls.index(['systemctl','start','kubelet']))
+                            self.assertFalse(mount.exists())

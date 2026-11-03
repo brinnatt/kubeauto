@@ -1,10 +1,13 @@
 meta:
   version: 1
-  updated: '2026-10-24'
+  updated: '2026-11-03'
   component: longhorn
   scope: Independent storage branch; Longhorn 1.12.1 V1 filesystem and GA V2 replicated block disks, Kubernetes
     1.33.6, Helm-managed; no automatic migration of existing middleware PVCs
-  result: 53/54 PASS; pending
+  result: 54/54 PASS; full regression 56/56 PASS
+  regression_result: PASS
+  regression_evidence: tests/evidence/longhorn-full-ga-20261103.json
+  regression_log: logs/longhorn-cases/full-20261103-102832/gate.log
   execution_state: Designed acceptance contract; live modes must refuse execution until their implementation
     and prerequisites pass
   runner: bash tests/run_enterprise_regression.sh --longhorn-only
@@ -1102,7 +1105,8 @@ cases:
   group: delivery
   desc: One final clean full V1 and V2 Longhorn regression, current evidence per case, durable rc=0, zero
     failure markers and LAB_CLEAN_VERIFY_PASS
-  status: pending
+  status: pass
+  evidence: tests/evidence/longhorn-full-ga-20261103.json
   command: bash tests/run_enterprise_regression.sh --longhorn-only </dev/null
   smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-only </dev/null
   success_marker: LONGHORN_DELIVERY_BRANCH_PASS
@@ -1294,7 +1298,8 @@ cases:
   group: v2-data-protection
   desc: V2 snapshots, integrity, external backup, schedules, system recovery and DR
   status: pass
-  evidence: tests/evidence/longhorn-v2-data-protection-complete-20261021.json
+  evidence: tests/evidence/longhorn-full-ga-20261103.json
+  previous_module_evidence: tests/evidence/longhorn-v2-data-protection-complete-20261021.json
   broken_restore_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-broken-restore-qualification
   broken_restore_qualification_evidence: tests/evidence/longhorn-v2-broken-restore-qualification-20261021.json
   broken_restore_cleanup: bash tests/run_enterprise_regression.sh --longhorn-v2-broken-restore-cleanup

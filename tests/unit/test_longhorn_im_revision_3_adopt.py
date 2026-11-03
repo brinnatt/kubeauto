@@ -22,7 +22,29 @@ PUBLICATION = 'tests/evidence/longhorn-v2-raid-status-publication-20261022.json'
 
 
 class Revision3Contracts(unittest.TestCase):
-    def test_historical_full_reader_allows_only_exact_retry_classification(self):
+    def test_historical_dr_guard_accepts_only_exact_manager_pin_reader(self):
+        name='tests/helpers/longhorn-v2-dr-failover.sh'
+        historical='18de9f0d2db54d7387f55c2dd41d1b45df8f7d00c8dadd6a4394d7a2126fff9b'
+        source=(ROOT/name).read_text()
+        with tempfile.TemporaryDirectory() as directory, patch.object(REVISION,'BASE',Path(directory)):
+            path=Path(directory)/name;path.parent.mkdir(parents=True);path.write_text(source)
+            self.assertTrue(REVISION.gate_input_current(name,historical))
+            self.assertFalse(REVISION.gate_input_current(name,'0'*64))
+            path.write_text(source+'\n# unrelated change\n')
+            self.assertFalse(REVISION.gate_input_current(name,historical))
+
+    def test_historical_parallel_shell_accepts_only_exact_reviewed_continuation(self):
+        name='tests/helpers/longhorn-parallel.sh'
+        historical='eac989999fa5c07a89d1a03eaff7ecce7b2cf471db667b9c1ec336ebc43e1447'
+        with tempfile.TemporaryDirectory() as directory, patch.object(REVISION,'BASE',Path(directory)):
+            path=Path(directory)/name;path.parent.mkdir(parents=True)
+            source=(ROOT/name).read_text();path.write_text(source)
+            self.assertTrue(REVISION.gate_input_current(name,historical))
+            self.assertFalse(REVISION.gate_input_current(name,'0'*64))
+            path.write_text(source+'\n# unreviewed\n')
+            self.assertFalse(REVISION.gate_input_current(name,historical))
+
+    def test_historical_full_reader_allows_only_exact_reviewed_repair(self):
         name='tests/helpers/longhorn-full-evidence.py'
         source=(ROOT/name).read_text()
         expected='907ce9c5697e37df7a487667ee76f341ebb81a3fde253b99cf1a4e6b342f9e43'
@@ -37,6 +59,23 @@ class Revision3Contracts(unittest.TestCase):
                 self.assertNotEqual(changed,source)
                 path.write_text(changed)
                 self.assertFalse(REVISION.gate_input_current(name,expected))
+
+    def test_historical_reuse_accepts_only_reviewed_target_install_and_compatibility_edges(self):
+        edges = (
+            ('tests/helpers/longhorn-install-input-compatibility.py',
+             '0a5e05accae60ddd5d6152ead17deb80f15bed1a0fb70b45ba94760eeadda2b5'),
+            ('tests/helpers/longhorn-v2-dr-target-install.py',
+             '2c3e9c9b4ab6fcd79d34002f1e58c0fd0492e32d79c2d74323abc6afc0383d33'),
+        )
+        for name, historical in edges:
+            with self.subTest(name=name), patch.object(REVISION, 'BASE', ROOT):
+                self.assertTrue(REVISION.gate_input_current(name, historical))
+                self.assertFalse(REVISION.gate_input_current(name, '0' * 64))
+                with tempfile.TemporaryDirectory() as directory, patch.object(REVISION, 'BASE', Path(directory)):
+                    path = Path(directory) / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text((ROOT / name).read_text() + '\n# unrelated change\n')
+                    self.assertFalse(REVISION.gate_input_current(name, historical))
 
     def test_nullable_disk_status_reuse_requires_exact_complete_original_product(self):
         source = (ROOT/REVISION.SOURCE).read_text()
@@ -715,6 +754,17 @@ raise SystemExit(subprocess.call(['/usr/bin/rsync',*args]))
         self.assertLess(start,source.index('if ! longhorn_sync_retirement_evidence;',start))
         self.assertLess(source.index('if ! longhorn_sync_retirement_evidence;',start),
                         source.index('printf \'%s\\n\' "$module"',start))
+
+    def test_core_host_recovery_does_not_consume_unrelated_retirement_evidence(self):
+        source=(ROOT/'tests/helpers/longhorn-runner.sh').read_text()
+        self.assertIn('core-host-preflight|core-host-recover|registry-recover|registry-qualification|pool-probe|maintenance|maintenance-cleanup|install)', source)
+        branch=source[source.index('case "$module" in', source.index('longhorn_sync_retirement_evidence')):]
+        self.assertIn('core-host-recover', branch)
+        self.assertIn('if ! longhorn_sync_retirement_evidence;', branch)
+
+    def test_maintenance_does_not_consume_upgrade_retirement_evidence(self):
+        source=(ROOT/'tests/helpers/longhorn-runner.sh').read_text()
+        self.assertIn('pool-probe|maintenance|maintenance-cleanup|install)', source)
 
     def test_final_full_seams_are_frozen_before_real_plan_and_runtime_request_readers(self):
         # All publication/adoption/scope records below are owned temporary

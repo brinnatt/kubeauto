@@ -107,6 +107,13 @@ PY
 longhorn_launch() {
   local module="$1" marker="$2" ready launcher_pid out_fd in_fd rc=0 directory
   local cache_payload= cache_sha=
+  local focused_work= focused_remote=
+  if [[ "$module" == v2-integrity-qualification && -n "${LONGHORN_FULL_RESUME_DIRECTORY:-}" ]]; then
+    focused_work="$(cd "$LONGHORN_FULL_RESUME_DIRECTORY" && pwd)" || return
+    "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-full-evidence.py" focused-material \
+      --directory "$focused_work" || return
+    focused_remote="/usr/local/kubeauto/${focused_work#"$ROOT"/}"
+  fi
   if [[ -n "${LONGHORN_MONITORING_CACHE_RECONCILE_PROOF:-}" || -n "${LONGHORN_MONITORING_CACHE_RECONCILE_SHA256:-}" ]]; then
     [[ ( "$module" == v2-observability-monitoring || "$module" == v1-operations-remaining-v2-monitoring ) && -f "${LONGHORN_MONITORING_CACHE_RECONCILE_PROOF:-}" &&
        ! -L "${LONGHORN_MONITORING_CACHE_RECONCILE_PROOF:-}" &&
@@ -177,7 +184,7 @@ PYPROOF
       "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-im-revision-3-adopt.py" preflight --engine "${module%-im-revision-3-adopt-qualification}" --base "$ROOT" || return
       ;;
   esac
-  case "$module" in full|v2-linked-acceptance|v1-backup-v2-data-protection|v1-operations-v2-disk-tail|v1-operations-v2-worker-tail|v1-ownership-tail-v2-failure-tail|cleanup|cleanup-qualification|v1-ownership-operations-v2-failure-platform|v1-ownership-v2-failure-remaining|v2-failure-remaining|v1-operations-v2-platform-install|v1-ownership-v2-linked-acceptance|v2-incomplete-clone-qualification|v2-incomplete-clone-cleanup|v2-disk-lifecycle|v2-disk-lifecycle-cleanup|v1-post-revision-backups-v2-failure-acceptance|v2-upgrade-lifecycle|v2-upgrade-cleanup|v1-operations-remaining-v2-monitoring|v1-system-restore-v2-runtime-resources|v1-recovery-tail-v2-install-tail|v1-dr-tail-v2-install-tail|v1-upgrade-tail-v2-install-tail|v1-monitoring-v2-resource-tail|v1-upgrade-tail-v2-maintenance-tail|v1-stability-v2-observability|v2-runtime-resources|v2-runtime-resources-cleanup|v2-source-target-im-revision-3-adopt-qualification|v2-source-target-im-revision-2-adopt-qualification|v1-im-revision-2-adopt-qualification|v1-im-revision-3-adopt-qualification|v2-im-revision-2-adopt-qualification|v2-im-revision-3-adopt-qualification|v2-dr-target-im-revision-2-adopt-qualification|v2-dr-target-im-revision-3-adopt-qualification|v2-maintenance-drain-qualification|v2-maintenance-drain-cleanup|v2-coexist-qualification|v2-coexist-cleanup|v2-observability|v2-observability-monitoring|v2-observability-business|v2-middleware|v2-middleware-cleanup|v2-cleanup|v2-cleanup-target|v2-cleanup-recovery|v2-cleanup-target-recovery|v1-backups-v2-linked-failure-acceptance|v1-backups-v2-linked-acceptance|v1-platform-propagation-v2-im-adopt-qualification|platform-propagation-qualification|v2-failure|v2-failure-cleanup|v2-failure-replica-im|v2-failure-manager|v2-failure-attached-spdk|v2-failure-remote-spdk|v2-failure-replica-network|v2-failure-worker-reboot|v2-failure-single-disk|v2-failure-rebuild-qos|v2-failure-all-replicas|v1-remaining-v2-linked-acceptance|v1-backups-remaining|v2-linked-lifecycle-qualification|v2-linked-lifecycle-cleanup|v1-platform-v2-environment-recovery|v2-source-target-environment-recovery|v2-post-reboot-environment-recovery|v2-dr-target-post-reboot-environment-recovery|v1-backups|v2-source-target-reboot-recovery|v2-source-target-im-adopt-qualification|v2-resources-reboot-recovery|v2-dr-target-resources-reboot-recovery|v2-dr-target-im-adopt-qualification|ownership|v1-v2-im-adopt-qualification|v1-im-adopt-qualification|v2-im-adopt-qualification|v1-backups-v2-linked-qualification|v1-v2-control-qualification|v2-dr-target-registry-qualification|v2-dr-target-core|v2-dr-target-install-qualification|v2-dr-target-install-recovery|v2-dr-store-qualification|v2-dr-standby-qualification|v2-data-protection|v2-dr-activation-qualification|v2-dr-failback-qualification|v2-detached-backup-recovery|v2-detached-backup-qualification|v2-systemrestore-recovery|v2-systemrestore-qualification|v2-systembackup-cleanup|v2-systembackup-recovery|v2-systembackup-qualification|v2-broken-restore-cleanup|v2-broken-restore-qualification|v2-linked-clone-cleanup|v2-linked-clone-qualification|v2-interrupt-manager-qualification|v2-manager-loss-cleanup|v2-manager-loss-qualification|v2-interrupt-cleanup|v2-interrupt-qualification|v2-replica-im-loss-cleanup|v2-replica-im-loss-qualification|v2-full-copy-lifecycle-qualification|v2-full-copy-clone-qualification|v2-integrity-qualification|v2-recurring-selector-qualification|v2-recurring-snapshot-qualification|v2-recurring-backup-qualification|v2-recurring-rotation-qualification|v2-backup-refusal-qualification|v2-backup-store-qualification|v2-backup-qualification|v2-snapshot-qualification|v2-volumes|v2-trim-qualification|v2-encryption-qualification|v2-reclaim-qualification|v2-expansion-qualification|v2-volume-modes-qualification|v2-host-recovery|v2-host-qualification|v2-aio-install-qualification|v2-resources-recovery|v2-resources-qualification|v2-core|v2-registry-qualification|pool-probe|registry-qualification|registry-recover|core-host-preflight|core-host-recover) ;;
+  case "$module" in full|v2-linked-acceptance|v1-backup-v2-data-protection|v1-operations-v2-disk-tail|v1-operations-v2-worker-tail|v1-ownership-tail-v2-failure-tail|cleanup|cleanup-qualification|v1-ownership-operations-v2-failure-platform|v1-ownership-v2-failure-remaining|v2-failure-remaining|v1-operations-v2-platform-install|v1-ownership-v2-linked-acceptance|v2-incomplete-clone-qualification|v2-incomplete-clone-cleanup|v2-disk-lifecycle|v2-disk-lifecycle-cleanup|v1-post-revision-backups-v2-failure-acceptance|v2-upgrade-lifecycle|v2-upgrade-cleanup|v1-operations-remaining-v2-monitoring|v1-system-restore-v2-runtime-resources|v1-recovery-tail-v2-install-tail|v1-dr-tail-v2-install-tail|v1-upgrade-tail-v2-install-tail|v1-monitoring-v2-resource-tail|v1-upgrade-tail-v2-maintenance-tail|v1-stability-v2-observability|v2-runtime-resources|v2-runtime-resources-cleanup|v2-source-target-im-revision-3-adopt-qualification|v2-source-target-im-revision-2-adopt-qualification|v1-im-revision-2-adopt-qualification|v1-im-revision-3-adopt-qualification|v2-im-revision-2-adopt-qualification|v2-im-revision-3-adopt-qualification|v2-dr-target-im-revision-2-adopt-qualification|v2-dr-target-im-revision-3-adopt-qualification|v2-maintenance-drain-qualification|v2-maintenance-drain-cleanup|v2-coexist-qualification|v2-coexist-cleanup|v2-observability|v2-observability-monitoring|v2-observability-business|v2-middleware|v2-middleware-cleanup|v2-cleanup|v2-cleanup-target|v2-cleanup-recovery|v2-cleanup-target-recovery|v1-backups-v2-linked-failure-acceptance|v1-backups-v2-linked-acceptance|v1-platform-propagation-v2-im-adopt-qualification|platform-propagation-qualification|v2-failure|v2-failure-cleanup|v2-failure-replica-im|v2-failure-manager|v2-failure-attached-spdk|v2-failure-remote-spdk|v2-failure-replica-network|v2-failure-worker-reboot|v2-failure-single-disk|v2-failure-rebuild-qos|v2-failure-all-replicas|v1-remaining-v2-linked-acceptance|v1-backups-remaining|v2-linked-lifecycle-qualification|v2-linked-lifecycle-cleanup|v1-platform-v2-environment-recovery|v2-source-target-environment-recovery|v2-post-reboot-environment-recovery|v2-dr-target-post-reboot-environment-recovery|v1-backups|v2-source-target-reboot-recovery|v2-source-target-im-adopt-qualification|v2-resources-reboot-recovery|v2-dr-target-resources-reboot-recovery|v2-dr-target-im-adopt-qualification|ownership|v1-v2-im-adopt-qualification|v1-im-adopt-qualification|v2-im-adopt-qualification|v1-backups-v2-linked-qualification|v1-v2-control-qualification|v2-dr-target-registry-qualification|v2-dr-target-core|v2-dr-target-core-recovery|v2-dr-target-install-qualification|v2-dr-target-install-recovery|v2-dr-store-qualification|v2-dr-standby-qualification|v2-data-protection|v2-dr-activation-qualification|v2-dr-failback-qualification|v2-detached-backup-recovery|v2-detached-backup-qualification|v2-systemrestore-recovery|v2-systemrestore-qualification|v2-systembackup-cleanup|v2-systembackup-recovery|v2-systembackup-qualification|v2-broken-restore-cleanup|v2-broken-restore-qualification|v2-linked-clone-cleanup|v2-linked-clone-qualification|v2-interrupt-manager-qualification|v2-manager-loss-cleanup|v2-manager-loss-qualification|v2-interrupt-cleanup|v2-interrupt-qualification|v2-replica-im-loss-cleanup|v2-replica-im-loss-qualification|v2-full-copy-lifecycle-qualification|v2-full-copy-clone-qualification|v2-integrity-qualification|v2-recurring-selector-qualification|v2-recurring-snapshot-qualification|v2-recurring-backup-qualification|v2-recurring-rotation-qualification|v2-backup-refusal-qualification|v2-backup-store-qualification|v2-backup-qualification|v2-snapshot-qualification|v2-volumes|v2-trim-qualification|v2-encryption-qualification|v2-reclaim-qualification|v2-expansion-qualification|v2-volume-modes-qualification|v2-host-recovery|v2-host-qualification|v2-aio-install-qualification|v2-resources-recovery|v2-resources-qualification|v2-core|v2-registry-qualification|pool-probe|registry-qualification|registry-recover|core-host-preflight|core-host-recover) ;;
     middleware|middleware-business|middleware-cleanup|middleware-reentry-cleanup|last-replica|last-replica-cleanup|disk-failure|disk-failure-cleanup|network-failure|network-failure-cleanup|system-restore|system-restore-cleanup|system-restore-prepared-recovery|disaster-recovery|disaster-recovery-cleanup|node-failure|node-failure-cleanup|observability|observability-business|observability-support|observability-image-cache|observability-cleanup|v1-upgrade-lifecycle|v1-upgrade-cleanup|stability|stability-cleanup|node-lifecycle|node-lifecycle-cleanup|maintenance|maintenance-cleanup|capacity|capacity-cleanup|integrity|integrity-cleanup|disk-lifecycle|disk-lifecycle-cleanup|platform|core|disk-qualification|ownership-request-refusal-qualification|ownership-controller-refusal-qualification|ownership-class-refusal-qualification|ownership-interruption-qualification|ownership-preinstall-refusal-qualification|ownership-csi-refusal-qualification|ownership-csi-probe|install|business-clean|idempotence|rwo|rwx|performance|replica-scale|replica-failure|engine-failure|encryption|encryption-block|encryption-backup|network-policy|security|clone|expansion|snapshot|reclaim|trim|backup|backup-refusal|core-smoke|cache-qualification|preflight-qualification|backup-store-qualification|backup-accounts-qualification|recurring-declarations-qualification|recurring-snapshot-qualification|recurring-selector-qualification|recurring-backup-qualification|recurring-rotation-qualification|recurring|uninstall-refusal-qualification|uninstall-backup-qualification|uninstall|recover) "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-lab.py" verify-transport || return ;;
     *) return 2;; esac
   if [[ "$module" == v1-monitoring-v2-resource-tail || "$module" == v1-upgrade-tail-v2-maintenance-tail || "$module" == v1-upgrade-tail-v2-install-tail || "$module" == v1-dr-tail-v2-install-tail || "$module" == v1-system-restore-v2-runtime-resources || "$module" == full || "$module" == v1-backup-v2-data-protection || "$module" == v1-operations-remaining-v2-monitoring || "$module" == v1-operations-v2-disk-tail || "$module" == v1-operations-v2-worker-tail || "$module" == v1-ownership-tail-v2-failure-tail || "$module" == v1-ownership-operations-v2-failure-platform || "$module" == v1-ownership-v2-failure-remaining || "$module" == v1-operations-v2-platform-install || "$module" == v1-ownership-v2-linked-acceptance || "$module" == v1-im-revision-2-adopt-qualification || "$module" == v1-im-revision-3-adopt-qualification || "$module" == v1-backups-v2-linked-failure-acceptance || "$module" == v1-backups-v2-linked-acceptance || "$module" == v1-platform-propagation-v2-im-adopt-qualification || "$module" == platform-propagation-qualification || "$module" == v1-remaining-v2-linked-acceptance || "$module" == v1-backups-remaining || "$module" == v1-platform-v2-environment-recovery || "$module" == v1-backups || "$module" == v1-v2-control-qualification || "$module" == v1-backups-v2-linked-qualification || "$module" == v1-v2-im-adopt-qualification || "$module" == v1-im-adopt-qualification || "$module" == ownership ]]; then
@@ -200,18 +207,30 @@ for file in /tmp/kubeauto-*.pid; do
 done
 printf "LONGHORN_LEASE_READY\n"
 IFS= read -r mode
-case "$mode" in full|v2-linked-acceptance|v1-backup-v2-data-protection|v1-operations-v2-disk-tail|v1-operations-v2-worker-tail|v1-ownership-tail-v2-failure-tail|cleanup|cleanup-qualification|v1-ownership-operations-v2-failure-platform|v1-ownership-v2-failure-remaining|v2-failure-remaining|v1-operations-v2-platform-install|v1-ownership-v2-linked-acceptance|v2-incomplete-clone-qualification|v2-incomplete-clone-cleanup|v2-disk-lifecycle|v2-disk-lifecycle-cleanup|v1-post-revision-backups-v2-failure-acceptance|v2-upgrade-lifecycle|v2-upgrade-cleanup|v1-operations-remaining-v2-monitoring|v1-system-restore-v2-runtime-resources|v1-recovery-tail-v2-install-tail|v1-dr-tail-v2-install-tail|v1-upgrade-tail-v2-install-tail|v1-monitoring-v2-resource-tail|v1-upgrade-tail-v2-maintenance-tail|v1-stability-v2-observability|v2-runtime-resources|v2-runtime-resources-cleanup|v2-source-target-im-revision-3-adopt-qualification|v2-source-target-im-revision-2-adopt-qualification|middleware|middleware-business|middleware-cleanup|middleware-reentry-cleanup|last-replica|last-replica-cleanup|disk-failure|disk-failure-cleanup|network-failure|network-failure-cleanup|system-restore|system-restore-cleanup|system-restore-prepared-recovery|disaster-recovery|disaster-recovery-cleanup|node-failure|node-failure-cleanup|observability|observability-business|observability-support|observability-image-cache|observability-cleanup|v1-im-revision-2-adopt-qualification|v1-im-revision-3-adopt-qualification|v2-im-revision-2-adopt-qualification|v2-im-revision-3-adopt-qualification|v2-dr-target-im-revision-2-adopt-qualification|v2-dr-target-im-revision-3-adopt-qualification|v2-maintenance-drain-qualification|v2-maintenance-drain-cleanup|v1-upgrade-lifecycle|v1-upgrade-cleanup|stability-cleanup|v2-coexist-qualification|v2-coexist-cleanup|v2-observability|v2-observability-monitoring|v2-observability-business|v2-middleware|v2-middleware-cleanup|v2-cleanup|v2-cleanup-target|v2-cleanup-recovery|v2-cleanup-target-recovery|stability|node-lifecycle|node-lifecycle-cleanup|v1-backups-v2-linked-failure-acceptance|v1-backups-v2-linked-acceptance|v1-platform-propagation-v2-im-adopt-qualification|platform-propagation-qualification|v2-failure|v2-failure-cleanup|v2-failure-replica-im|v2-failure-manager|v2-failure-attached-spdk|v2-failure-remote-spdk|v2-failure-replica-network|v2-failure-worker-reboot|v2-failure-single-disk|v2-failure-rebuild-qos|v2-failure-all-replicas|v1-remaining-v2-linked-acceptance|v1-backups-remaining|v2-linked-lifecycle-qualification|v2-linked-lifecycle-cleanup|v1-platform-v2-environment-recovery|v2-source-target-environment-recovery|v2-post-reboot-environment-recovery|v2-dr-target-post-reboot-environment-recovery|v1-backups|v2-source-target-reboot-recovery|v2-source-target-im-adopt-qualification|v2-resources-reboot-recovery|v2-dr-target-resources-reboot-recovery|v2-dr-target-im-adopt-qualification|ownership|v1-v2-im-adopt-qualification|v1-im-adopt-qualification|v2-im-adopt-qualification|v1-backups-v2-linked-qualification|v1-v2-control-qualification|v2-dr-target-registry-qualification|v2-dr-target-core|v2-dr-target-install-qualification|v2-dr-target-install-recovery|v2-dr-store-qualification|v2-dr-standby-qualification|v2-data-protection|v2-dr-activation-qualification|v2-dr-failback-qualification|v2-detached-backup-recovery|v2-detached-backup-qualification|v2-systemrestore-recovery|v2-systemrestore-qualification|v2-systembackup-cleanup|v2-systembackup-recovery|v2-systembackup-qualification|v2-broken-restore-cleanup|v2-broken-restore-qualification|v2-linked-clone-cleanup|v2-linked-clone-qualification|v2-interrupt-manager-qualification|v2-manager-loss-cleanup|v2-manager-loss-qualification|v2-interrupt-cleanup|v2-interrupt-qualification|v2-replica-im-loss-cleanup|v2-replica-im-loss-qualification|v2-full-copy-lifecycle-qualification|v2-full-copy-clone-qualification|v2-integrity-qualification|v2-recurring-selector-qualification|v2-recurring-snapshot-qualification|v2-recurring-backup-qualification|v2-recurring-rotation-qualification|v2-backup-refusal-qualification|v2-backup-store-qualification|v2-backup-qualification|v2-snapshot-qualification|v2-volumes|v2-trim-qualification|v2-encryption-qualification|v2-reclaim-qualification|v2-expansion-qualification|v2-volume-modes-qualification|v2-host-recovery|v2-host-qualification|v2-aio-install-qualification|v2-resources-recovery|v2-resources-qualification|v2-core|v2-registry-qualification|pool-probe|registry-qualification|registry-recover|core-host-preflight|core-host-recover|maintenance|maintenance-cleanup|capacity|capacity-cleanup|integrity|integrity-cleanup|disk-lifecycle|disk-lifecycle-cleanup|platform|core|disk-qualification|ownership-request-refusal-qualification|ownership-controller-refusal-qualification|ownership-class-refusal-qualification|ownership-interruption-qualification|ownership-preinstall-refusal-qualification|ownership-csi-refusal-qualification|ownership-csi-probe|install|business-clean|idempotence|rwo|rwx|performance|replica-scale|replica-failure|engine-failure|encryption|encryption-block|encryption-backup|network-policy|security|clone|expansion|snapshot|reclaim|trim|backup|backup-refusal|core-smoke|cache-qualification|preflight-qualification|backup-store-qualification|backup-accounts-qualification|recurring-declarations-qualification|recurring-snapshot-qualification|recurring-selector-qualification|recurring-backup-qualification|recurring-rotation-qualification|recurring|uninstall-refusal-qualification|uninstall-backup-qualification|uninstall|recover) ;; *) exit 2;; esac
+case "$mode" in full|v2-linked-acceptance|v1-backup-v2-data-protection|v1-operations-v2-disk-tail|v1-operations-v2-worker-tail|v1-ownership-tail-v2-failure-tail|cleanup|cleanup-qualification|v1-ownership-operations-v2-failure-platform|v1-ownership-v2-failure-remaining|v2-failure-remaining|v1-operations-v2-platform-install|v1-ownership-v2-linked-acceptance|v2-incomplete-clone-qualification|v2-incomplete-clone-cleanup|v2-disk-lifecycle|v2-disk-lifecycle-cleanup|v1-post-revision-backups-v2-failure-acceptance|v2-upgrade-lifecycle|v2-upgrade-cleanup|v1-operations-remaining-v2-monitoring|v1-system-restore-v2-runtime-resources|v1-recovery-tail-v2-install-tail|v1-dr-tail-v2-install-tail|v1-upgrade-tail-v2-install-tail|v1-monitoring-v2-resource-tail|v1-upgrade-tail-v2-maintenance-tail|v1-stability-v2-observability|v2-runtime-resources|v2-runtime-resources-cleanup|v2-source-target-im-revision-3-adopt-qualification|v2-source-target-im-revision-2-adopt-qualification|middleware|middleware-business|middleware-cleanup|middleware-reentry-cleanup|last-replica|last-replica-cleanup|disk-failure|disk-failure-cleanup|network-failure|network-failure-cleanup|system-restore|system-restore-cleanup|system-restore-prepared-recovery|disaster-recovery|disaster-recovery-cleanup|node-failure|node-failure-cleanup|observability|observability-business|observability-support|observability-image-cache|observability-cleanup|v1-im-revision-2-adopt-qualification|v1-im-revision-3-adopt-qualification|v2-im-revision-2-adopt-qualification|v2-im-revision-3-adopt-qualification|v2-dr-target-im-revision-2-adopt-qualification|v2-dr-target-im-revision-3-adopt-qualification|v2-maintenance-drain-qualification|v2-maintenance-drain-cleanup|v1-upgrade-lifecycle|v1-upgrade-cleanup|stability-cleanup|v2-coexist-qualification|v2-coexist-cleanup|v2-observability|v2-observability-monitoring|v2-observability-business|v2-middleware|v2-middleware-cleanup|v2-cleanup|v2-cleanup-target|v2-cleanup-recovery|v2-cleanup-target-recovery|stability|node-lifecycle|node-lifecycle-cleanup|v1-backups-v2-linked-failure-acceptance|v1-backups-v2-linked-acceptance|v1-platform-propagation-v2-im-adopt-qualification|platform-propagation-qualification|v2-failure|v2-failure-cleanup|v2-failure-replica-im|v2-failure-manager|v2-failure-attached-spdk|v2-failure-remote-spdk|v2-failure-replica-network|v2-failure-worker-reboot|v2-failure-single-disk|v2-failure-rebuild-qos|v2-failure-all-replicas|v1-remaining-v2-linked-acceptance|v1-backups-remaining|v2-linked-lifecycle-qualification|v2-linked-lifecycle-cleanup|v1-platform-v2-environment-recovery|v2-source-target-environment-recovery|v2-post-reboot-environment-recovery|v2-dr-target-post-reboot-environment-recovery|v1-backups|v2-source-target-reboot-recovery|v2-source-target-im-adopt-qualification|v2-resources-reboot-recovery|v2-dr-target-resources-reboot-recovery|v2-dr-target-im-adopt-qualification|ownership|v1-v2-im-adopt-qualification|v1-im-adopt-qualification|v2-im-adopt-qualification|v1-backups-v2-linked-qualification|v1-v2-control-qualification|v2-dr-target-registry-qualification|v2-dr-target-core|v2-dr-target-core-recovery|v2-dr-target-install-qualification|v2-dr-target-install-recovery|v2-dr-store-qualification|v2-dr-standby-qualification|v2-data-protection|v2-dr-activation-qualification|v2-dr-failback-qualification|v2-detached-backup-recovery|v2-detached-backup-qualification|v2-systemrestore-recovery|v2-systemrestore-qualification|v2-systembackup-cleanup|v2-systembackup-recovery|v2-systembackup-qualification|v2-broken-restore-cleanup|v2-broken-restore-qualification|v2-linked-clone-cleanup|v2-linked-clone-qualification|v2-interrupt-manager-qualification|v2-manager-loss-cleanup|v2-manager-loss-qualification|v2-interrupt-cleanup|v2-interrupt-qualification|v2-replica-im-loss-cleanup|v2-replica-im-loss-qualification|v2-full-copy-lifecycle-qualification|v2-full-copy-clone-qualification|v2-integrity-qualification|v2-recurring-selector-qualification|v2-recurring-snapshot-qualification|v2-recurring-backup-qualification|v2-recurring-rotation-qualification|v2-backup-refusal-qualification|v2-backup-store-qualification|v2-backup-qualification|v2-snapshot-qualification|v2-volumes|v2-trim-qualification|v2-encryption-qualification|v2-reclaim-qualification|v2-expansion-qualification|v2-volume-modes-qualification|v2-host-recovery|v2-host-qualification|v2-aio-install-qualification|v2-resources-recovery|v2-resources-qualification|v2-core|v2-registry-qualification|pool-probe|registry-qualification|registry-recover|core-host-preflight|core-host-recover|maintenance|maintenance-cleanup|capacity|capacity-cleanup|integrity|integrity-cleanup|disk-lifecycle|disk-lifecycle-cleanup|platform|core|disk-qualification|ownership-request-refusal-qualification|ownership-controller-refusal-qualification|ownership-class-refusal-qualification|ownership-interruption-qualification|ownership-preinstall-refusal-qualification|ownership-csi-refusal-qualification|ownership-csi-probe|install|business-clean|idempotence|rwo|rwx|performance|replica-scale|replica-failure|engine-failure|encryption|encryption-block|encryption-backup|network-policy|security|clone|expansion|snapshot|reclaim|trim|backup|backup-refusal|core-smoke|cache-qualification|preflight-qualification|backup-store-qualification|backup-accounts-qualification|recurring-declarations-qualification|recurring-snapshot-qualification|recurring-selector-qualification|recurring-backup-qualification|recurring-rotation-qualification|recurring|uninstall-refusal-qualification|uninstall-backup-qualification|uninstall|recover) ;; *) exit 2;; esac
 if test "$mode" = v2-observability-monitoring || test "$mode" = v1-operations-remaining-v2-monitoring; then
   IFS= read -r LONGHORN_MONITORING_CACHE_RECONCILE_PAYLOAD
   IFS= read -r LONGHORN_MONITORING_CACHE_RECONCILE_SHA256
   export LONGHORN_MONITORING_CACHE_RECONCILE_PAYLOAD LONGHORN_MONITORING_CACHE_RECONCILE_SHA256
+fi
+if test "$mode" = v2-integrity-qualification; then
+  IFS= read -r focused_work
+  if test -n "$focused_work"; then
+    /usr/local/kubeauto/.venv/bin/python /usr/local/kubeauto/tests/helpers/longhorn-full-evidence.py focused-material --directory "$focused_work" >&2
+    export LONGHORN_FULL_EVIDENCE_DIR="$focused_work/evidence"
+  fi
 fi
 if test "$mode" = full; then
   IFS= read -r full_work
   case "$full_work" in /usr/local/kubeauto/logs/longhorn-full/run.*) ;; *) exit 2;; esac
   case "$full_work" in *[!a-zA-Z0-9/_.-]*|*/../*) exit 2;; esac
   test -d "$full_work/evidence" && test ! -L "$full_work"
-  test ! -e "$full_work/stages"
+  IFS= read -r full_resume
+  case "$full_resume" in
+    yes) export LONGHORN_FULL_RESUME=yes ;;
+    no) test ! -e "$full_work/stages" ;;
+    *) exit 2 ;;
+  esac
   export LONGHORN_FULL_EVIDENCE_DIR="$full_work/evidence"
 fi
 if test "$mode" = v2-upgrade-lifecycle || test "$mode" = v2-upgrade-cleanup; then
@@ -259,7 +278,14 @@ printf "LONGHORN_DURABLE_LAUNCHED\n"'
     wait "$launcher_pid" || true
     return 1
   fi
-  if [[ "$module" == full || "$module" == v2-dr-target-registry-qualification || "$module" == v2-dr-target-core ]]; then
+  # A resumed full run may continue from a runner-owned target recovery.  Its
+  # target core intentionally remains installed, so the initial empty-host
+  # admission/bootstrap must not be replayed against that owned state.  The
+  # resumed stages still verify root access, core identity and scoped cleanup;
+  # fresh full runs and standalone target gates retain the strict bootstrap.
+  if [[ ("$module" == full && "${LONGHORN_FULL_RESUME:-no}" != yes) ||
+        "$module" == v2-dr-target-registry-qualification ||
+        "$module" == v2-dr-target-core ]]; then
     if ! LONGHORN_TARGET_PARENT_LEASE_HELD=yes "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-v2-dr-target.py" bootstrap; then
       printf 'CANCEL\n' >&"$in_fd"
       wait "$launcher_pid" || true
@@ -271,11 +297,21 @@ printf "LONGHORN_DURABLE_LAUNCHED\n"'
     wait "$launcher_pid" || true
     return 1
   fi
-  if ! longhorn_sync_retirement_evidence; then
-    printf 'CANCEL\n' >&"$in_fd"
-    wait "$launcher_pid" || true
-    return 1
-  fi
+  # The finite retirement evidence transfer belongs only to upgrade/adoption
+  # paths that consume that reviewed repair. Host residue recovery and registry
+  # probes have independent inputs and must not be blocked by an unrelated
+  # historical SHA map.
+  case "$module" in
+    core-host-preflight|core-host-recover|registry-recover|registry-qualification|pool-probe|maintenance|maintenance-cleanup|install)
+      ;;
+    *)
+      if ! longhorn_sync_retirement_evidence; then
+        printf 'CANCEL\n' >&"$in_fd"
+        wait "$launcher_pid" || true
+        return 1
+      fi
+      ;;
+  esac
   if [[ -n "$continuation_request" ]]; then
     if ! rsync -rt --chmod=D700,F600 --files-from="$continuation_files" \
       -e 'ssh -o BatchMode=yes -o ConnectTimeout=10' "$ROOT/" root@192.168.47.130:/usr/local/kubeauto/; then
@@ -290,17 +326,33 @@ printf "LONGHORN_DURABLE_LAUNCHED\n"'
     remote="/usr/local/kubeauto/$relative"
     "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-full-evidence.py" verify-preflight \
       --directory "$LONGHORN_FULL_LOCAL_DIRECTORY" || return
-    ssh_longhorn "umask 077; mkdir -p /usr/local/kubeauto/logs/longhorn-full; test ! -e '$remote' && mkdir '$remote'" || return
+    if [[ "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      ssh_longhorn "umask 077; mkdir -p '$remote'" || return
+    else
+      ssh_longhorn "umask 077; mkdir -p /usr/local/kubeauto/logs/longhorn-full; test ! -e '$remote' && mkdir '$remote'" || return
+    fi
     rsync -rt --chmod=D700,F600 -e 'ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2' \
       "$LONGHORN_FULL_LOCAL_DIRECTORY/" "root@192.168.47.130:$remote/" || return
     # Transport only the immutable refs returned by canonical49, never scan logs.
-    rsync -rt --ignore-existing --chmod=D700,F600 --files-from="$LONGHORN_FULL_LOCAL_DIRECTORY/full-copy-files.txt" \
+    # Existing remote paths may be stale from an earlier run; checksum-based
+    # replacement is required so the remote verifier reads the exact current
+    # frozen bytes. The file list remains finite and runner-owned.
+    rsync -rt --checksum --chmod=D700,F600 --files-from="$LONGHORN_FULL_LOCAL_DIRECTORY/full-copy-files.txt" \
       -e 'ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=5 -o ServerAliveCountMax=2' \
       "$ROOT/" root@192.168.47.130:/usr/local/kubeauto/ || return
     ssh_longhorn "cd /usr/local/kubeauto && .venv/bin/python tests/helpers/longhorn-full-evidence.py verify-preflight --directory '$remote'" || return
   fi
+  if [[ -n "$focused_work" ]]; then
+    ssh_longhorn "umask 077; mkdir -p '$focused_remote'" || return
+    rsync -rt --checksum --chmod=D700,F600 \
+      -e 'ssh -o BatchMode=yes -o ConnectTimeout=10' \
+      "$focused_work/" "root@192.168.47.130:$focused_remote/" || return
+  fi
   printf '%s\n' "$module" >&"$in_fd"
-  if [[ "$module" == full ]]; then printf '%s\n' "$remote" >&"$in_fd"; fi
+  if [[ "$module" == v2-integrity-qualification ]]; then printf '%s\n' "$focused_remote" >&"$in_fd"; fi
+  if [[ "$module" == full ]]; then
+    printf '%s\n%s\n' "$remote" "${LONGHORN_FULL_RESUME:-no}" >&"$in_fd"
+  fi
   if [[ "$module" == v2-observability-monitoring || "$module" == v1-operations-remaining-v2-monitoring ]]; then
     printf '%s\n%s\n' "$cache_payload" "$cache_sha" >&"$in_fd"
   fi
@@ -397,9 +449,17 @@ longhorn_full_launch() (
   umask 077
   mkdir -p "$ROOT/logs/longhorn-full"
   export LONGHORN_FULL_LOCAL_DIRECTORY
-  LONGHORN_FULL_LOCAL_DIRECTORY="$(mktemp -d "$ROOT/logs/longhorn-full/run.XXXXXXXX")"
-  "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-full-evidence.py" ready
-  bash "$ROOT/tests/helpers/longhorn-full.sh" local "$LONGHORN_FULL_LOCAL_DIRECTORY"
+  if [[ -n "${LONGHORN_FULL_RESUME_DIRECTORY:-}" ]]; then
+    LONGHORN_FULL_LOCAL_DIRECTORY="$(cd "$LONGHORN_FULL_RESUME_DIRECTORY" && pwd)"
+    [[ "$LONGHORN_FULL_LOCAL_DIRECTORY" =~ ^$ROOT/logs/longhorn-full/run\.[A-Za-z0-9-]+$ && -d "$LONGHORN_FULL_LOCAL_DIRECTORY" ]]
+    export LONGHORN_FULL_RESUME=yes
+    "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-full-evidence.py" verify-preflight \
+      --directory "$LONGHORN_FULL_LOCAL_DIRECTORY"
+  else
+    LONGHORN_FULL_LOCAL_DIRECTORY="$(mktemp -d "$ROOT/logs/longhorn-full/run.XXXXXXXX")"
+    "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-full-evidence.py" ready
+    bash "$ROOT/tests/helpers/longhorn-full.sh" local "$LONGHORN_FULL_LOCAL_DIRECTORY"
+  fi
   "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/longhorn-lab.py" verify-transport
   echo 'LONGHORN_LADDER completed=3 evidence=all-affected-focused-gates next=4 full=clean-v1-v2'
   longhorn_launch full LONGHORN_DELIVERY_BRANCH_PASS
@@ -529,6 +589,7 @@ longhorn_dispatch() {
     --longhorn-v2-backup-qualification) longhorn_launch v2-backup-qualification LONGHORN_V2_BACKUP_QUALIFICATION_PASS ;;
     --longhorn-v2-dr-target-registry-qualification) longhorn_launch v2-dr-target-registry-qualification LONGHORN_V2_DR_TARGET_REGISTRY_QUALIFICATION_PASS ;;
     --longhorn-v2-dr-target-core) longhorn_launch v2-dr-target-core LONGHORN_V2_DR_TARGET_CORE_PASS ;;
+    --longhorn-v2-dr-target-core-recovery) longhorn_launch v2-dr-target-core-recovery LONGHORN_V2_DR_TARGET_CORE_RECOVERY_PASS ;;
     --longhorn-v2-data-protection) longhorn_launch v2-data-protection LONGHORN_V2_DATA_PROTECTION_PASS ;;
     --longhorn-v2-dr-activation-qualification) longhorn_launch v2-dr-activation-qualification LONGHORN_V2_DR_ACTIVATION_QUALIFICATION_PASS ;;
     --longhorn-v2-dr-failback-qualification) longhorn_launch v2-dr-failback-qualification LONGHORN_V2_DR_FAILBACK_QUALIFICATION_PASS ;;

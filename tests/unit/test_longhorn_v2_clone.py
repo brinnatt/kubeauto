@@ -138,6 +138,44 @@ class CloneEvidenceContracts(unittest.TestCase):
         first=lines.pop(0);lines.insert(6,first);path.write_text('\n'.join(lines)+'\n')
         with self.assertRaisesRegex(ValueError, 'out of order'): gate.linked_execution(self.base, directory)
 
+    def test_full_continuation_requires_reviewed_inputs_and_original_owner_receipts(self):
+        for defect in (None, 'review', 'owner', 'receipt', 'current', 'foreign-run'):
+            with self.subTest(defect=defect):
+                self.write(self.base/'roles/longhorn/files/images.json', 'fixture\n')
+                directory = self.full_fixture()
+                captured = gate.observation((directory/'v2.log').read_text().splitlines(),
+                                            'LONGHORN_V2_CLONE_BASELINE_BEFORE ')
+                owner = {'frozen_inputs': captured['inputs'].copy(), 'nested_receipts': [
+                    {'copy': gate.reference(self.base, directory/name)}
+                    for name in ('v2.log', 'v2.exit', 'v2.finalized')]}
+                self.write(self.base/'roles/longhorn/files/images.json', 'reviewed manager pin\n')
+                current = {name: gate.digest(self.base/name) for name in gate.INPUTS}
+                reader = SimpleNamespace(work_directory=Mock(return_value=directory.parent.parent.parent),
+                    check_inputs=Mock(return_value=current),
+                    accepted_stage=Mock(return_value=(None, owner, None)))
+                if defect == 'review': reader.check_inputs.side_effect = ValueError('unreviewed')
+                if defect == 'owner': owner['frozen_inputs']['roles/longhorn/files/images.json'] = 'foreign'
+                if defect == 'receipt': owner['nested_receipts'][0]['copy']['sha256'] = 'foreign'
+                if defect == 'current': current['roles/longhorn/files/images.json'] = 'foreign'
+                if defect == 'foreign-run': reader.work_directory.return_value = self.base/'logs/other'
+                with patch.object(gate, 'load', return_value=reader):
+                    if defect:
+                        with self.assertRaises(ValueError): gate.linked_execution(self.base, directory)
+                    else:
+                        baseline, _ = gate.linked_execution(self.base, directory)
+                        self.assertEqual(baseline, self.baseline)
+                        reader.check_inputs.assert_called_once()
+                        reader.accepted_stage.assert_called_once_with('v1-ownership-v2-linked-acceptance')
+
+    def test_continuation_cannot_accept_changed_business_or_canonical_inputs(self):
+        for full in (False, True):
+            directory = self.full_fixture() if full else self.fixture()
+            name = 'roles/longhorn/files/longhorn.py' if full else 'roles/longhorn/files/images.json'
+            self.write(self.base/name, 'unreviewed product behavior\n')
+            with patch.object(gate, 'load', side_effect=AssertionError('reject before review')):
+                with self.assertRaisesRegex(ValueError, 'owning frozen inputs'):
+                    gate.linked_execution(self.base, directory)
+
     def test_foreign_directory_and_symlink_refused(self):
         directory=self.fixture();alias=self.base/'logs/longhorn-cases/alias';alias.symlink_to(directory,target_is_directory=True)
         with self.assertRaises(ValueError):gate.linked_execution(self.base,alias)

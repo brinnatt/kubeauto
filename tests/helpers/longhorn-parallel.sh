@@ -12,6 +12,21 @@ for entry in '9 kubeauto-ceph-priority.lock' '7 kubeauto-ceph-compute.lock' '8 k
 done
 PY="$BASE/.venv/bin/python"
 case "${1:-}" in
+  resume-stability)
+    [[ "${LONGHORN_FULL_RESUME:-no}" == yes && -n "${LONGHORN_FULL_EVIDENCE_DIR:-}" ]] || exit 2
+    export KUBECONFIG="$BASE/clusters/longhorn-gate/kubectl.kubeconfig"
+    rc=0
+    "$PY" "$BASE/tests/helpers/longhorn-full-evidence.py" resume-child v1-stability || rc=$?
+    if [[ "$rc" == 3 ]]; then exec bash "$BASE/tests/helpers/longhorn-v1-stability.sh" stability; fi
+    exit "$rc"
+    ;;
+  resume-operation)
+    [[ "${LONGHORN_FULL_RESUME:-no}" == yes && -n "${LONGHORN_FULL_EVIDENCE_DIR:-}" ]] || exit 2
+    rc=0
+    "$PY" "$BASE/tests/helpers/longhorn-full-evidence.py" resume-child "${2:?operation required}" || rc=$?
+    if [[ "$rc" == 3 ]]; then exec bash "$BASE/tests/helpers/longhorn-live.sh" "$2"; fi
+    exit "$rc"
+    ;;
   v1-ownership-operations|v2-failure-platform|v1-ownership-tail-operations|v2-failure-tail-platform|v1-operations-recovery|v2-worker-tail-platform|v1-operations-cleanup-recovery|v2-disk-tail-platform|v1-operations-remaining-recovery|v1-recovery-tail|v1-dr-tail|v1-upgrade-tail|v2-ready-tail|v2-install-ready-tail|v2-maintenance-tail|v1-monitoring-tail|v2-resource-tail)
     # Each pool advances through its existing owning gates independently.
     # Only V1 owns temporary writes to the shared control kubeconfig.
@@ -206,6 +221,12 @@ case "${1:-}" in
     # Insert in the existing longhorn-parallel.sh case. The parent retains its
     # existing lease and V1 branch; this owns only the V2 source cluster.
     export KUBECONFIG="$BASE/clusters/longhorn-v2-gate/kubectl.kubeconfig"
+    if [[ "$1" == v2-platform-install && "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      rc=0
+      "$PY" "$BASE/tests/helpers/longhorn-full-evidence.py" resume-child v2-platform-install || rc=$?
+      [[ "$rc" != 0 ]] || exit 0
+      [[ "$rc" == 3 ]] || exit "$rc"
+    fi
     work="$(mktemp -d /var/tmp/kubeauto-longhorn-v2-platform-install.XXXXXX)"
     chmod 0700 "$work"
     echo "LONGHORN_V2_PLATFORM_INSTALL_DURABLE_DIRECTORY path=$work"
@@ -281,8 +302,12 @@ case "${1:-}" in
       marker="LONGHORN_${mode^^}"
       marker="${marker//-/_}"
       echo "${batch_marker}_STAGE_START stage=$mode"
+      command=(bash "$BASE/tests/helpers/longhorn-live.sh" "$mode")
+      if [[ ( "$1" == v1-operations || "$1" == v1-data-protection ) && "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+        command=(bash "$BASE/tests/helpers/longhorn-parallel.sh" resume-operation "$mode")
+      fi
       bash "$BASE/tests/helpers/run-durable-gate.sh" "$work/$mode" "${marker}_EXIT" \
-        bash "$BASE/tests/helpers/longhorn-live.sh" "$mode" 2>&1 | tee "$work/$mode.log"
+        "${command[@]}" 2>&1 | tee "$work/$mode.log"
       "$PY" "$BASE/tests/helpers/longhorn-parallel.py" verify-branch --directory "$work" --branch "$mode"
       echo "${batch_marker}_STAGE_PASS stage=$mode durable_rc=0 finalized=0"
     done
@@ -393,6 +418,10 @@ case "${1:-}" in
   v1-stability-v2-observability)
     v1_script=longhorn-v1-stability.sh
     v1_mode=stability
+    if [[ "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+      v1_script=longhorn-parallel.sh
+      v1_mode=resume-stability
+    fi
     v2_script=longhorn-v2-observability.sh
     v2_mode=v2-observability
     v1_evidence=v1-stability v2_evidence=v2-observability

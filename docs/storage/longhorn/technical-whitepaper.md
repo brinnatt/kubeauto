@@ -115,7 +115,7 @@ V2 不维护 V1 revision counter，也不支持 strict-local、offline fast rebu
 
 1.12.1 的新 linked clone 支持快照、备份、扩容、重建和嵌套克隆。其副本与源副本同节点同盘，共享源的入口快照；克隆副本数不能超过源，入口快照和源缩副本受依赖保护。因此删除、迁出与容量预算必须沿依赖图处理，不能按独立全拷贝卷操作。旧版 linked clone 的限制另按升级说明判断。V2 backing image 已移除，旧数据必须在升级前按官方路径迁移；不能继续交付一个不会工作的开关。
 
-V2 在 1.12 补丁版本间不支持 engine live upgrade，升级前必须分离全部 V2 卷。1.12.1 新建加密 V2 卷额外预留 16 MiB LUKS 头，旧加密 V2 卷不会因升级自动补足；升级和容量断言必须记录创建版本。完整功能差异来自官方 [Data Engine Comparison](https://longhorn.io/docs/1.12.1/data-engine-comparison/)、[重要说明](https://longhorn.io/docs/1.12.1/important-notes/)及[CSI 克隆](https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/)。这些是设计与选型依据；项目 V2 已取得的业务与数据保护结果见下文，完整运维验收尚未完成。
+V2 在 1.12 补丁版本间不支持 engine live upgrade，升级前必须分离全部 V2 卷。1.12.1 新建加密 V2 卷额外预留 16 MiB LUKS 头，旧加密 V2 卷不会因升级自动补足；升级和容量断言必须记录创建版本。完整功能差异来自官方 [Data Engine Comparison](https://longhorn.io/docs/1.12.1/data-engine-comparison/)、[重要说明](https://longhorn.io/docs/1.12.1/important-notes/)及[CSI 克隆](https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/)。这些是设计与选型依据；项目 V2 已取得的业务与数据保护结果见下文，完整运维验收结果见[专项矩阵](../../../tests/longhorn-test-matrix.yaml)及[当前交付证据](../../../tests/evidence/longhorn-full-ga-20261103.json)，各场景的适用条件与边界保持独立。
 
 项目 V2 AIO 验证采用三台各 8 vCPU、8 GiB 的 Ubuntu 虚拟机，内核 7.0.0-38-generic，每台一块 100 GiB SCSI 裸盘；使用稳定 WWN、AIO 驱动、单 reactor mask `0x1`、25% CPU 预留及 2 GiB hugepages。三个 V2 Instance Manager 与三个原生盘 UUID 健康，消费端通过 RWO＋Filesystem PVC 写入 9,437,184 字节并 fsync，再由另一节点重挂。确认数据 SHA256 为 `b91f4dd1142d3b7fc242490c7f7e65add767b9091f3a128b9efb59211201fc40`，重挂后保持一致，副本分别位于三台已绑定裸盘。
 

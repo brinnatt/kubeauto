@@ -45,6 +45,11 @@ for name in ('common/constants.py','controller/cluster/cli.py','service/cluster/
              'tests/helpers/longhorn-v2-disaster.py','tests/helpers/longhorn-v2-disaster.sh',
              'tests/helpers/longhorn-v2-dr-failover.py'):
     if e['frozen_inputs'].get(name)!=hashlib.sha256((root/name).read_bytes()).hexdigest():
+        if name == 'common/constants.py':
+            spec=importlib.util.spec_from_file_location('manager_transition',root/'tests/helpers/longhorn-manager-adopt.py')
+            manager=importlib.util.module_from_spec(spec);spec.loader.exec_module(manager);manager.BASE=root
+            if manager.input_current(name,e['frozen_inputs'].get(name)):
+                continue
         raise ValueError('DR activation dependency changed: '+name)
 if not all(e['independent_readback'].get(key) is True for key in
         ('backend_container_removed','server_directory_removed','api_console_tunnel_not_listening','target_consumer_removed')):

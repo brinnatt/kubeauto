@@ -184,6 +184,9 @@ class Target:
                     '--data-path','/data/kubeauto-longhorn-coexist46','--cluster-uid',state['cluster_uid'],
                     '--node-uid',state['node_uids'][NAME]])
         self.host(row,'remove')
+        # Both the released kubelet drop-in and removed fstab mount must leave
+        # systemd's loaded dependency graph before this fixture is retired.
+        lab.remote(HOST,['systemctl','daemon-reload'])
         if self.coexist.native_disks(lab)!=row['native_disks'] or self.upgrade.retained_identity(lab,{})!=row['identity']:
             raise ValueError('recovery target did not return to its original raw/shared identities')
         self.install.health(lab);self.path.unlink()

@@ -305,6 +305,55 @@ class ObservabilityContracts(unittest.TestCase):
         with zipfile.ZipFile(stream, 'w') as archive: archive.writestr(info, b'target')
         with self.assertRaises(ValueError): GATE.support_archive(stream.getvalue())
 
+    def test_support_bundle_accepts_measured_size_and_keeps_owner_and_size_refusals(self):
+        for size, owner, allowed in ((539961501, 'longhorn-node-146', True),
+                                     (1024**3+1, 'longhorn-node-146', False),
+                                     (539961501, 'foreign-node', False)):
+            with self.subTest(size=size, owner=owner):
+                state = {'created': False, 'retired': False}
+                obj = {'metadata': {'name': 'support-bundle-owned', 'uid': 'bundle-uid'},
+                       'spec': {'description': 'kubeauto-observability-run', 'issueURL': ''},
+                       'status': {'state': 'ReadyForDownload', 'ownerID': owner, 'filesize': size}}
+                def get(kind, name=None, namespace=None):
+                    if name: return None if state['retired'] else obj
+                    return {'items': [obj] if state['created'] else []}
+                lab = SimpleNamespace(NODES=('192.168.47.146',), DIRECTORY=Path('/unused'),
+                    owner=lambda: {'run_id': 'run'}, get=get, write_private=Mock(),
+                    kubectl=Mock(side_effect=lambda *a, **k: state.update(created=True)),
+                    wait=lambda name, timeout, condition: condition())
+                probe = GATE.Probe(lab, 1, None, None, observe=False)
+                probe.journal = {GATE.KEY: {}}
+                probe.manager = Mock(return_value=({'metadata': {'name': 'manager'}}, 'http://manager'))
+                probe.bundle_dependents = Mock(return_value=[])
+                def download(*args):
+                    state['retired'] = True
+                    return {'compressed_bytes': size, 'crc_verified': True}
+                with patch.object(GATE, 'download_support', side_effect=download) as transfer:
+                    if allowed:
+                        probe.support_bundle()
+                        self.assertEqual(transfer.call_args.args[2], size)
+                        self.assertTrue(probe.journal[GATE.KEY]['support_bundle']['retired_after_download'])
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'owner or private download size'):
+                            probe.support_bundle()
+                        transfer.assert_not_called()
+
+    def test_support_download_reserves_headroom_and_refuses_oversized_input_before_transport(self):
+        size = 539961501
+        with patch.object(GATE.shutil, 'disk_usage', return_value=SimpleNamespace(free=size+1024**3-1)), \
+                patch.object(GATE.subprocess, 'Popen') as process:
+            with self.assertRaisesRegex(ValueError, 'reserved disk headroom'):
+                GATE.download_support(None, '/unused', size)
+            process.assert_not_called()
+        with patch.object(GATE.shutil, 'disk_usage') as disk, patch.object(GATE.subprocess, 'Popen') as process:
+            with self.assertRaisesRegex(ValueError, 'private fixture budget'):
+                GATE.download_support(None, '/unused', 1024**3+1)
+            disk.assert_not_called(); process.assert_not_called()
+        stream = Mock()
+        stream.tell.return_value = 1024**3+1
+        with self.assertRaisesRegex(ValueError, 'private fixture budget'): GATE.support_archive(stream)
+        stream.read.assert_not_called()
+
     def test_missing_monitor_requires_uid_and_current_spec_before_journaled_patch(self):
         journal = {'namespace': 'business', GATE.KEY: {'metric_probe': 'owned', 'sample_monitor': {
             'name': 'monitor', 'uid': 'uid', 'original_spec': {'selector': {'matchLabels': {'app': 'longhorn-manager'}}},
@@ -347,6 +396,7 @@ class ObservabilityContracts(unittest.TestCase):
                 'instanceManagerName': 'im-'+n, 'ip': '172.31.1.'+str(int(n)-145)}} for n in ('147', '148')]
         def get(kind, name=None, namespace=None):
             if kind == 'replicas.longhorn.io': return {'items': replicas}
+            if kind == 'events': return {'items': []}
             n = name.split('-')[1]
             if kind == 'instancemanagers.longhorn.io':
                 return {'metadata': {'uid': 'parent-'+n}, 'spec': {'nodeID': 'longhorn-node-'+n},
@@ -394,6 +444,40 @@ class ObservabilityContracts(unittest.TestCase):
                 with self.assertRaises(ValueError): probe.restore_network()
                 mutation.assert_not_called()
             probe.journal[GATE.KEY]['network'] = original
+
+    def test_native_degraded_accepts_separate_reconciles_but_refuses_unrelated_events(self):
+        # Execute the actual nested assertion, including the original Engine
+        # identity guard. The transport contract above covers its owning setup.
+        tree = ast.parse((ROOT/'tests/helpers/longhorn-v2-observability.py').read_text())
+        method = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'network_fault')
+        assertion = next(n for n in method.body if isinstance(n, ast.FunctionDef) and n.name == 'degraded')
+        engine = {'metadata': {'uid': 'engine'}, 'status': {'replicaModeMap': {}}}
+        volume = {'status': {'robustness': 'degraded'}}
+        event = {'metadata': {'uid': 'new-event'}, 'involvedObject': {'kind': 'Engine', 'uid': 'engine'},
+                 'reason': 'Faulted', 'type': 'Warning',
+                 'message': 'Detected replica owned-replica (172.31.1.2:12345) in error'}
+        events = [event]
+        lab = SimpleNamespace(get=Mock(side_effect=lambda *a, **kw: {'items': events}))
+        probe = SimpleNamespace(lab=lab, engine=lambda: engine, volume=lambda: volume)
+        scope = {'self': probe, 'proof': {'engine_uid': 'engine', 'prior_events': ['old-event']},
+                 'name': 'owned-replica', 'parsed': SimpleNamespace(hostname='172.31.1.2', port=12345), 'NS': GATE.NS}
+        exec(compile(ast.Module(body=[assertion], type_ignores=[]), '<actual-degraded-assertion>', 'exec'), scope)
+        check = scope['degraded']
+        self.assertTrue(check())  # ERR has already left the map.
+        for key, value in (('uid', 'old-event'), ('engine_uid', 'replacement'), ('kind', 'Volume'),
+                           ('reason', 'Rebuilt'), ('type', 'Normal'), ('message', 'other replica/endpoint')):
+            with self.subTest(defect=key):
+                events = [copy.deepcopy(event)]
+                if key == 'uid': events[0]['metadata']['uid'] = value
+                elif key in ('engine_uid', 'kind'): events[0]['involvedObject']['uid' if key == 'engine_uid' else key] = value
+                else: events[0][key] = value
+                self.assertFalse(check())
+        events = []; self.assertFalse(check())
+        engine['status']['replicaModeMap']['owned-replica'] = 'ERR'
+        self.assertTrue(check())
+        volume['status']['robustness'] = 'healthy'; self.assertFalse(check())
+        engine['metadata']['uid'] = 'replacement'
+        with self.assertRaisesRegex(ValueError, 'engine changed'): check()
 
     def test_completed_threshold_rule_retirement_refuses_replacement(self):
         lab = SimpleNamespace(get=Mock(return_value={'metadata': {'uid': 'replacement'}}), remove=Mock(), wait=Mock())

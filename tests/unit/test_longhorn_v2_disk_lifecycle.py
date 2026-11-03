@@ -532,7 +532,7 @@ class DiskContracts(unittest.TestCase):
 
 
 class ShellContracts(unittest.TestCase):
-    def run_shell(self,mode='v2-disk-lifecycle',fail='',terminate=False):
+    def run_shell(self,mode='v2-disk-lifecycle',fail='',terminate=False,resume=False):
         with tempfile.TemporaryDirectory() as directory:
             base=Path(directory)
             for name in ('.venv/bin','kube-bin','tests/helpers','control','clusters/longhorn-v2-gate'):(base/name).mkdir(parents=True)
@@ -541,11 +541,13 @@ class ShellContracts(unittest.TestCase):
             script=script.replace('/var/tmp/kubeauto-longhorn-v2-disk-lifecycle.',str(base/'run.')).replace('/root/.kube/config',str(context))
             (base/'runner.sh').write_text(script)
             (base/'proof').write_text('{}')
-            if mode.endswith('-cleanup'):(base/'clusters/longhorn-v2-gate'/M.RECORD).write_text('{}')
+            if mode.endswith('-cleanup') or resume:(base/'clusters/longhorn-v2-gate'/M.RECORD).write_text('{}')
+            (base/'business.log').write_text('LONGHORN_V2_DISK_LIFECYCLE_BUSINESS_PASS\n')
             fake=base/'.venv/bin/python';fake.write_text('''#!/usr/bin/env bash
 set -eu
 name="${1##*/}"; action="${2:-}"
 echo "$name $action" >> "$D45_TRACE"
+if [[ "$action" == disk-resume ]]; then echo "$D45_BUSINESS"; exit 0; fi
 if [[ "$action" == relay-maintain ]]; then
  exec "$D45_PY" -c 'import os,signal,time; from pathlib import Path; signal.signal(signal.SIGTERM,lambda *a:exit(0)); Path(os.environ["D45_RELAY_READY"]).touch(); time.sleep(60)'
 fi
@@ -569,6 +571,7 @@ if [[ "$action" == clean ]]; then echo LONGHORN_V2_DISK_LIFECYCLE_SCOPED_CLEAN_P
 ''');fake.chmod(0o755)
             kubectl=base/'kube-bin/kubectl';kubectl.write_text('#!/bin/sh\nexit 0\n');kubectl.chmod(0o755)
             env=dict(os.environ,LONGHORN_PARENT_LEASE_HELD='yes',LONGHORN_V2_TARGET_RELEASE_PROOF=str(base/'proof'),
+                LONGHORN_FULL_RESUME='yes' if resume else 'no',D45_BUSINESS=str(base/'business.log'),
                 D45_TRACE=str(base/'trace'),D45_FAIL=fail,D45_PY=sys.executable,D45_RELAY_READY=str(base/'relay'),
                 D45_READY=str(base/'ready'),D45_CONTEXT=str(context),D45_TERMINATE='yes' if terminate else 'no')
             process=subprocess.Popen(['bash',str(base/'runner.sh'),mode],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
@@ -582,6 +585,13 @@ if [[ "$action" == clean ]]; then echo LONGHORN_V2_DISK_LIFECYCLE_SCOPED_CLEAN_P
             runs=list(base.glob('run.*'));durable={p.name:p.read_text().strip() for p in runs[0].iterdir() if p.name in ('exit','finalized')} if runs else {}
             trace=(base/'trace').read_text() if (base/'trace').exists() else ''
             return process.returncode,stdout,stderr,trace,durable,context.read_text()
+
+    def test_completed_business_resume_runs_only_owned_cleanup_without_admission_or_business(self):
+        rc,out,err,trace,durable,context=self.run_shell(resume=True)
+        self.assertEqual(0,rc,out+err);self.assertEqual({'exit':'0','finalized':'0'},durable)
+        self.assertIn('disk-resume',trace);self.assertNotIn(' admit',trace);self.assertNotIn(' business',trace)
+        self.assertIn(' clean',trace);self.assertIn(' finalize',trace)
+        self.assertEqual(1,out.splitlines().count('LONGHORN_V2_DISK_LIFECYCLE_BUSINESS_PASS'))
 
     def test_full_success_requires_business_cleanup_durable_zero_and_context_restore(self):
         rc,out,err,trace,durable,context=self.run_shell()
@@ -619,3 +629,22 @@ if [[ "$action" == clean ]]; then echo LONGHORN_V2_DISK_LIFECYCLE_SCOPED_CLEAN_P
 
 
 if __name__ == '__main__': unittest.main()
+
+
+class ProductNodeRetirement(unittest.TestCase):
+    def test_exact_product_task_stops_only_pod_slices_and_blocks_destructive_steps_on_failure(self):
+        tasks=yaml.safe_load((ROOT/'roles/clean/tasks/clean_node.yml').read_text())[0]['block']
+        index=next(i for i,t in enumerate(tasks) if t.get('name')=='Stop Kubernetes pod slices before removing node state')
+        self.assertEqual(1,index);task=tasks[index];self.assertFalse(task.get('ignore_errors',False))
+        self.assertLess(index,next(i for i,t in enumerate(tasks) if 'remove files and dirs' in t.get('name','')))
+        for defect in ('','remaining','stop','missing','unknown'):
+            with self.subTest(defect=defect),tempfile.TemporaryDirectory() as value:
+                root=Path(value);commands=root/'commands';bin=root/'bin';bin.mkdir()
+                (bin/'systemctl').write_text('#!/bin/sh\necho "$*" >> "$COMMANDS"\nif test "$1" = show; then\n case "$DEFECT" in missing) echo not-found;; unknown) echo error;; *) echo loaded;; esac\nelif test "$DEFECT" = stop; then exit 1; fi\n')
+                (bin/'ps').write_text('#!/bin/sh\nif test "$DEFECT" = remaining; then echo "0::/kubepods.slice/pod-owned.scope"; else echo "0::/system.slice/foreign.service"; fi\n')
+                for p in bin.iterdir():p.chmod(0o700)
+                result=subprocess.run(['bash','-c',task['ansible.builtin.shell']],env=dict(os.environ,PATH=str(bin)+':'+os.environ['PATH'],COMMANDS=str(commands),DEFECT=defect),capture_output=True,text=True)
+                self.assertEqual(result.returncode==0,defect in ('','missing'),result.stdout+result.stderr)
+                calls=commands.read_text().splitlines()
+                self.assertFalse(any('containerd' in c or 'docker' in c or 'foreign' in c for c in calls))
+                if defect=='':self.assertEqual(['stop kubepods.slice','stop podruntime.slice'],[c for c in calls if c.startswith('stop ')])

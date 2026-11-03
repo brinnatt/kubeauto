@@ -200,7 +200,7 @@ class IntegrityContracts(unittest.TestCase):
 
     def test_shell_uses_own_business_and_real_log_verifier_then_scoped_cleanup(self):
         source = (ROOT/'tests/helpers/longhorn-v2-volumes.sh').read_text()
-        for failure in ('none', 'business', 'result', 'cleanup', 'core'):
+        for failure in ('none', 'adopt', 'business', 'result', 'cleanup', 'core'):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
                 base = Path(directory)
                 (base/'.venv/bin').mkdir(parents=True); (base/'tests/helpers').mkdir(parents=True)
@@ -218,6 +218,11 @@ if (failure=='cleanup' and mode=='business-clean') or (failure=='core' and mode=
 '''
                 for name in ('core', 'install'):
                     (base/'tests/helpers'/('longhorn-v2-'+name+'.py')).write_text(helper)
+                (base/'tests/helpers/longhorn-manager-adopt.py').write_text('''import os,sys
+assert sys.argv[1:]==['--pending'] and os.environ['LONGHORN_PARENT_LEASE_HELD']=='yes'
+with open('calls.txt','a') as stream:stream.write('manager-adopt\\n')
+if os.environ['FAIL_MODE']=='adopt':sys.exit(17)
+''')
                 integrity = '''import json,os,runpy,sys
 mode=sys.argv[1];failure=os.environ['FAIL_MODE']
 with open('calls.txt','a') as stream:stream.write('integrity-'+mode+'\\n')
@@ -243,6 +248,13 @@ elif mode=='business':
                 for name in re.findall(r'private_diagnostic=(/var/tmp/longhorn-v2-integrity-failure-\S+)', result.stderr):
                     Path(name).unlink()
                 calls = (base/'calls.txt').read_text().splitlines()
+                self.assertLess(calls.index('verify-transport'), calls.index('manager-adopt'))
+                if failure == 'adopt':
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(calls, ['verify-transport', 'manager-adopt'])
+                    self.assertNotIn('LONGHORN_V2_INTEGRITY_QUALIFICATION_PASS', result.stdout)
+                    continue
+                self.assertLess(calls.index('manager-adopt'), calls.index('volume-baseline'))
                 self.assertIn('integrity-business', calls)
                 self.assertIn('business-clean', calls)
                 self.assertIn('relay-clean', calls)

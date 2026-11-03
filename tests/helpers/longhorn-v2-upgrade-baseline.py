@@ -81,6 +81,16 @@ def referenced(row):
 
 def fresh_previous():
     """Accept this run's real pinned initial install; never invent an adoption."""
+    def initial_input_current(name, original):
+        if digest(BASE/name) == original: return True
+        if name == 'roles/longhorn/files/images.json':
+            manager = load('longhorn-manager-adopt.py'); manager.BASE = BASE
+            return manager.input_current(name, original)
+        if name == 'tests/helpers/longhorn-v2-upgrade-baseline.py':
+            revision = load('longhorn-im-revision-3-adopt.py'); revision.BASE = BASE
+            return revision.gate_input_current(name, original)
+        return False
+
     tag = full_tag()
     path = evidence_path('tests/evidence/longhorn-v2-aio-install-qualification-20261020.json')
     digest(path); row = json.loads(path.read_text())
@@ -92,7 +102,7 @@ def fresh_previous():
             row.get('signed_scope') != 'v2-aio-install-qualification' or
             row.get('version') != '1.12.1' or row.get('instance_manager_version') != tag or
             row.get('remote_input_verification', {}).get('mismatches') != 0 or
-            any(row.get('frozen_inputs', {}).get(name) != digest(BASE/name) for name in INPUTS) or
+            any(not initial_input_current(name, row.get('frozen_inputs', {}).get(name)) for name in INPUTS) or
             not all(readback.get(key) is True for key in
                 ('installation_healthy', 'empty_business', 'install_business_journal_absent')) or
             baseline.get('baseline_identity') != row.get('baseline_identity') or

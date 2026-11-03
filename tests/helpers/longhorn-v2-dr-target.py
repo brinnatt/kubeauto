@@ -315,6 +315,14 @@ def smoke(lab):
 
 def source_boundary():
     backup=load('longhorn-v2-backups.py');install,lab,store=backup.fixture()
+    # DR target qualification only needs the current source core identity and
+    # an empty backup/relay consumer baseline.  Do not make this read-only
+    # boundary depend on LONGHORN-52's historical upgrade preparation receipt:
+    # that receipt is owned by the upgrade gate and may be retired after its
+    # accepted evidence is consumed.  The original backup baseline checks are
+    # retained; only its unrelated volume-baseline reader is replaced by the
+    # current core identity check.
+    install.volume_baseline = lambda current_lab: current_lab.core_identity()
     backup.baseline(install,lab,store)
     if lab.owner().get('relays'):raise ValueError('source retains a Registry relay')
     state=lab.owner();identity={key:state[key] for key in ('run_id','cluster_uid','namespace_uid','node_uids','raw_disks')}

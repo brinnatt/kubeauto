@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 class ModuleContracts(unittest.TestCase):
-    def run_module(self,directory,fault='',stage='v2-recurring-snapshot-qualification'):
+    def run_module(self,directory,fault='',stage='v2-recurring-snapshot-qualification',resume=False):
         root=Path(directory)
         for folder in ('.venv/bin','tests/helpers','kube-bin'):(root/folder).mkdir(parents=True,exist_ok=True)
         driver=root/'.venv/bin/python'
@@ -16,6 +16,12 @@ class ModuleContracts(unittest.TestCase):
 import os,sys
 from pathlib import Path
 root=Path(__file__).resolve().parents[2];mode=sys.argv[2]
+if mode=='resume-protection':
+ if os.environ.get('MODULE_FAULT')=='reuse-refused':sys.exit(7)
+ branch=sys.argv[3]
+ if branch=='v2-dr-failback-qualification':sys.exit(3)
+ marker='LONGHORN_'+branch.upper().replace('-','_')
+ print(marker+'_SCOPED_CLEAN_PASS');print(marker+'_PASS');sys.exit(0)
 p=root/'boundary-calls';calls=p.read_text().splitlines() if p.exists() else []
 calls.append(mode);p.write_text('\\n'.join(calls)+'\\n')
 marker='LONGHORN_V2_DR_SOURCE_BOUNDARY' if mode=='source-boundary' else 'LONGHORN_V2_DR_TARGET_STORE_BASELINE'
@@ -45,9 +51,22 @@ echo "${marker}_PASS"
         script=(ROOT/'tests/helpers/longhorn-v2-data-protection.sh').read_text().replace('BASE=/usr/local/kubeauto','BASE='+str(root))
         path=root/'run.sh';path.write_text(script)
         result=subprocess.run(['bash',str(path),'v2-data-protection'],text=True,capture_output=True,timeout=10,
-            env=dict(os.environ,LONGHORN_PARENT_LEASE_HELD='yes',MODULE_ROOT=str(root),MODULE_FAULT=fault,MODULE_FAULT_STAGE=stage))
+            env=dict(os.environ,LONGHORN_FULL_RESUME='yes' if resume else 'no',LONGHORN_FULL_EVIDENCE_DIR=str(root/'evidence'),LONGHORN_PARENT_LEASE_HELD='yes',MODULE_ROOT=str(root),MODULE_FAULT=fault,MODULE_FAULT_STAGE=stage))
         stages=(root/'stages').read_text().splitlines() if (root/'stages').exists() else []
         return result,stages
+
+    def test_resume_reuses_ten_completed_scopes_and_runs_only_failback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result,stages=self.run_module(directory,resume=True)
+            self.assertEqual(0,result.returncode,result.stderr)
+            self.assertEqual(['v2-dr-failback-qualification'],stages)
+            self.assertEqual(11,result.stdout.count('LONGHORN_V2_DATA_PROTECTION_STAGE_PASS '))
+            self.assertIn('LONGHORN_V2_DATA_PROTECTION_SCOPED_CLEAN_PASS',result.stdout)
+        with tempfile.TemporaryDirectory() as directory:
+            result,stages=self.run_module(directory,'reuse-refused',resume=True)
+            self.assertEqual(7,result.returncode,result.stdout+result.stderr)
+            self.assertEqual([],stages)
+            self.assertNotIn('LONGHORN_V2_DATA_PROTECTION_PASS',result.stdout)
 
     def test_full_module_runs_each_owning_product_workflow_once(self):
         with tempfile.TemporaryDirectory() as directory:

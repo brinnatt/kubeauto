@@ -549,7 +549,9 @@ def clean(lab, pid):
             declaration = ['--release', phase, '--data-path', MOUNT, '--cluster-uid', state['cluster_uid'],
                 '--node-uid', state['node_uids']['longhorn-node-'+address.rsplit('.', 1)[1]]]
             lab.remote(address, ['python3', '/usr/local/sbin/kubeauto-longhorn-host-check', *declaration])
-    for address in row.get('host_intents', []): host(lab, row, address, 'remove')
+    for address in row.get('host_intents', []):
+        host(lab, row, address, 'remove')
+        lab.remote(address, ['systemctl', 'daemon-reload'])
     if native_disks(lab) != row['native_disks']:
         raise ValueError('coexistence changed original raw disk declarations')
     load('longhorn-v2-install.py').health(lab)

@@ -65,7 +65,7 @@ class RecoveryTarget(unittest.TestCase):
         self.lab=SimpleNamespace(DIRECTORY=self.path,NODES=(MODULE.HOST,),owner=Mock(return_value=self.state),
             core_identity=Mock(),installation_health=Mock(),get=Mock(side_effect=get),kubectl=Mock(side_effect=native_patch),remove=Mock(side_effect=remove),
             write_private=lambda p,r:p.write_text(json.dumps(r)),supervise_core=Mock(side_effect=lambda *a:self.events.append('product')),
-            remote=Mock(side_effect=lambda *a,**k:self.events.append('host-release')),wait=Mock(side_effect=lambda label,timeout,check:check()),
+            remote=Mock(side_effect=lambda node,argv,**k:self.events.append('daemon-reload' if argv==['systemctl','daemon-reload'] else 'host-release')),wait=Mock(side_effect=lambda label,timeout,check:check()),
             load_helper=Mock(return_value=SimpleNamespace(require_owned=Mock())))
         self.install=SimpleNamespace(health=Mock())
         self.target=MODULE.Target(self.lab,self.install)
@@ -142,8 +142,17 @@ class RecoveryTarget(unittest.TestCase):
         self.assertLess(self.events.index('native-remove'),self.events.index('product'))
         self.assertLess(self.events.index('product'),self.events.index('host-release'))
         self.assertLess(self.events.index('host-release'),self.events.index('host-remove'))
+        self.assertLess(self.events.index('host-remove'),self.events.index('daemon-reload'))
         self.assertEqual(self.original,(self.path/'config.yml').read_bytes());self.assertFalse(self.target.path.exists())
         self.assertEqual({'raw':self.raw},self.node['spec']['disks']);self.install.health.assert_called_once_with(self.lab)
+
+    def test_reload_failure_retains_recovery_journal_and_cannot_report_cleanup(self):
+        def failed(node, argv, **kwargs):
+            if argv == ['systemctl', 'daemon-reload']:
+                raise OSError('reload failed')
+        self.lab.remote.side_effect = failed
+        with self.assertRaisesRegex(OSError, 'reload failed'): self.target.clean(12)
+        self.assertTrue(self.target.path.exists()); self.install.health.assert_not_called()
 
     def test_cleanup_resumes_after_disable_without_changing_original_disk_receipt(self):
         self.node['spec']['disks']['kubeauto-data']['allowScheduling']=False

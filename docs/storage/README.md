@@ -10,7 +10,7 @@
 | 技术白皮书 | [technical-whitepaper.md](./longhorn/technical-whitepaper.md) |
 | 开发与维护 | [development-manual.md](./longhorn/development-manual.md) |
 
-Longhorn 1.12.1 面向动态持久卷及中间件存储，范围包括 V1 文件系统盘与 V2 裸块盘。当前处于开发与验证阶段，[54 项专项矩阵](../../tests/longhorn-test-matrix.yaml)逐项记录结果；既有 V1 业务证据不覆盖 V2，V2 现场验收尚未完成，不能据此声明交付。已有中间件的 1.10.1 存储夹具不替代本分路验收。
+Longhorn 1.12.1 面向动态持久卷及中间件存储，范围包括 V1 文件系统盘与 V2 裸块盘。[54 项专项矩阵](../../tests/longhorn-test-matrix.yaml)已全部通过，完整回归 56/56 阶段通过，达到项目 GA 技术验收标准；[验收证据](../../tests/evidence/longhorn-full-ga-20261103.json)覆盖两种引擎及最终清理，客户签收另行确认。已有中间件的 1.10.1 存储夹具不替代本分路验收。
 
 ## Ceph 九模块
 

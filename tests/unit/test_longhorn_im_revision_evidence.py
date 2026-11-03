@@ -253,7 +253,17 @@ class RevisionEvidenceContracts(unittest.TestCase):
         # Restore only the IM and Manager pins and prove the complete old bytes.
         for name in ('common/constants.py', REVISION.CATALOG):
             path = base/name
-            historical = path.read_bytes().replace(b'v1.12.1-kubeauto.3', b'v1.12.1-kubeauto.2')
+            historical = path.read_bytes()
+            manager_pin = (b'tags["longhorn-manager"] = "v1.12.1-kubeauto.2"' if name == 'common/constants.py'
+                           else b'"longhorn-manager": "v1.12.1-kubeauto.2"')
+            if manager_pin in historical:
+                transition = json.loads((ROOT/'tests/fixtures/longhorn-manager-pending-pin-transition.json').read_text())
+                edge = transition['inputs'][name]
+                self.assertEqual(edge['sha256'], hashlib.sha256(historical).hexdigest())
+                self.assertEqual(1, historical.count(manager_pin))
+                historical = historical.replace(manager_pin, manager_pin.replace(b'kubeauto.2', b'kubeauto.1'), 1)
+                self.assertEqual(edge['old_sha256'], hashlib.sha256(historical).hexdigest())
+            historical = historical.replace(b'v1.12.1-kubeauto.3', b'v1.12.1-kubeauto.2')
             if name == 'common/constants.py':
                 historical = historical.replace(b'            tags["longhorn-manager"] = "v1.12.1-kubeauto.1"\n', b'', 1)
             else:

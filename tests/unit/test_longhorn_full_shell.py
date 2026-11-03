@@ -17,6 +17,31 @@ SPEC=importlib.util.spec_from_file_location('full_shell_evidence',HELPERS/'longh
 MODULE=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(MODULE)
 
 class FullShellContracts(unittest.TestCase):
+    def test_target_retirement_child_uses_only_explicit_reviewed_recovery_journal(self):
+        for journal in ('', '/var/tmp/kubeauto-longhorn-v2-retirement.original/retirement.json'):
+            with self.subTest(journal=journal), tempfile.TemporaryDirectory() as value:
+                base=Path(value); helpers=base/'tests/helpers';helpers.mkdir(parents=True)
+                (base/'.venv/bin').mkdir(parents=True);(base/'.venv/bin/python').symlink_to(sys.executable)
+                shutil.copyfile(HELPERS/'longhorn-full.sh',helpers/'longhorn-full.sh')
+                (helpers/'longhorn-full-evidence.py').write_text('import sys\nassert sys.argv[1]=="retirement-resume"\nprint('+repr(journal)+')\n')
+                (helpers/'longhorn-live.sh').write_text('printf "%s|%s" "$1" "${LONGHORN_V2_RETIREMENT_JOURNAL:-}"\n')
+                result=subprocess.run(['bash',str(helpers/'longhorn-full.sh'),'child','v2-cleanup-target'],
+                    env=dict(os.environ,LONGHORN_PARENT_LEASE_HELD='yes',LONGHORN_FULL_RESUME='yes'),text=True,capture_output=True)
+                self.assertEqual(0,result.returncode,result.stderr)
+                expected='v2-cleanup-target-recovery' if journal else 'v2-cleanup-target'
+                self.assertEqual(expected+'|'+journal,result.stdout)
+
+    def test_resume_allows_owned_cluster_inputs_until_stage_identity_checks(self):
+        source = (HELPERS/'longhorn-full.sh').read_text()
+        self.assertIn('if [[ "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then', source)
+        self.assertIn('Later stage readers bind their owner journals', source)
+        self.assertIn('[[ ! -e "$BASE/clusters/$name" && ! -L "$BASE/clusters/$name" ]]', source)
+        self.assertIn('if [[ -f "$work/accepted/core.json" ]]; then', source)
+        self.assertIn('"$EVIDENCE" resume-baseline', source)
+        self.assertIn('Before V1 core installation, the independent V1 pool must be clean.', source)
+        self.assertIn('LONGHORN_FULL_STAGE_REUSED stage=$mode', source)
+        self.assertIn('longhorn-full-stage-verify.py" "$mode"', source)
+
     def run_full(self,fail=''):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);base=Path(temp.name)
         proof=base/'release-proofs';proof.mkdir()

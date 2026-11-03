@@ -202,7 +202,7 @@ longhorn_dispatch "$2"
 
     def run_supervisor(self, directory, fail=False, mode='v1-v2-control-qualification',
                        missing_marker=None, v2_fail=False, cache_fail=False, sequence_defect=None, startup_delay=0,
-                       launch_delay=0):
+                       launch_delay=0, resume_stability=None):
         root = Path(directory)
         helpers = root/'tests/helpers'
         helpers.mkdir(parents=True)
@@ -586,7 +586,21 @@ for fd,name in [(9,'kubeauto-ceph-priority.lock'),(7,'kubeauto-ceph-compute.lock
 os.environ['LONGHORN_PARENT_LEASE_HELD']='yes'
 os.execv('/bin/bash',['bash',str(root/'tests/helpers/longhorn-parallel.sh'),sys.argv[2]])
 """
-        return subprocess.run([sys.executable, '-c', launcher, str(root), mode], capture_output=True, text=True, timeout=10)
+        env = dict(os.environ)
+        if resume_stability is not None:
+            env.update(LONGHORN_FULL_RESUME='yes', LONGHORN_FULL_EVIDENCE_DIR=str(root/'evidence'))
+            original = helpers/'longhorn-v1-stability.sh'
+            original.write_text(original.read_text().replace('set -euo pipefail',
+                'set -euo pipefail\ntouch '+str(root/'stability-fresh'), 1))
+            fixture = ('import pathlib,sys\nroot=pathlib.Path(__file__).resolve().parents[2]\n'
+                'assert sys.argv[1:]==["resume-child","v1-stability"]\n'
+                '(root/"v1.started").touch()\n(root/"stability-reuse-called").touch()\n')
+            if resume_stability == 'reuse':
+                fixture += '\n'.join('print('+repr(marker)+')' for marker in parallel.MARKERS['v1-stability'][:-1])+'\n'
+            else:
+                fixture += 'raise SystemExit('+('3' if resume_stability == 'absent' else '1')+')\n'
+            (helpers/'longhorn-full-evidence.py').write_text(fixture)
+        return subprocess.run([sys.executable, '-c', launcher, str(root), mode], capture_output=True, text=True, timeout=10, env=env)
 
     def test_continuation_rejects_missing_original_cleanup_and_changed_context_before_next_scope(self):
         for defect in ('ownership-clean', 'failure-clean', 'context'):
@@ -793,7 +807,7 @@ if action=='cleanup':print('LONGHORN_V2_RUNTIME_RESOURCES_SCOPED_CLEAN_PASS')
                     self.assertEqual(parallel.verify_branch(parent, 'v1-post-revision-backups')['rc'], 0)
 
     def test_operations_batch_stops_at_first_unaccepted_module_and_uses_real_terminals(self):
-        for defect in ('none', 'nonzero', 'missing-clean'):
+        for defect in ('none', 'nonzero', 'missing-clean', 'reused', 'reuse-rejected'):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory); helpers = root/'tests/helpers'; helpers.mkdir(parents=True)
                 (root/'.venv/bin').mkdir(parents=True)
@@ -817,6 +831,18 @@ if action=='cleanup':print('LONGHORN_V2_RUNTIME_RESOURCES_SCOPED_CLEAN_PASS')
                     fixture.append(mode+')\n'+action+'\n;;')
                 fixture.append('*) exit 2;;\nesac\n')
                 (helpers/'longhorn-live.sh').write_text('\n'.join(fixture))
+                if defect in ('reused','reuse-rejected'):
+                    (helpers/'longhorn-full-evidence.py').write_text('''import pathlib,sys
+root=pathlib.Path(__file__).resolve().parents[2]
+assert sys.argv[1]=='resume-child'
+mode=sys.argv[2]
+if mode not in ('maintenance','capacity'): raise SystemExit(3)
+if (root/'reject-reuse').exists(): raise SystemExit(1)
+markers={'maintenance':('LONGHORN_MAINTENANCE_SCOPED_CLEAN_PASS','LONGHORN_MAINTENANCE_PASS'),
+ 'capacity':('LONGHORN_CAPACITY_SCOPED_CLEAN_PASS','LONGHORN_CAPACITY_PASS')}
+for marker in markers[mode]: print(marker)
+''')
+                    if defect=='reuse-rejected':(root/'reject-reuse').touch()
                 launcher = '''
 import fcntl,os,pathlib,sys
 root=pathlib.Path(sys.argv[1])
@@ -827,12 +853,20 @@ for fd,name in [(9,'kubeauto-ceph-priority.lock'),(7,'kubeauto-ceph-compute.lock
 os.environ['LONGHORN_PARENT_LEASE_HELD']='yes'
 os.execv('/bin/bash',['bash',str(root/'tests/helpers/longhorn-parallel.sh'),'v1-operations'])
 '''
-                result = subprocess.run([sys.executable, '-c', launcher, str(root)],
+                env=dict(os.environ)
+                if defect in ('reused','reuse-rejected'):
+                    env.update(LONGHORN_FULL_RESUME='yes',LONGHORN_FULL_EVIDENCE_DIR=str(root/'evidence'))
+                result = subprocess.run([sys.executable, '-c', launcher, str(root)],env=env,
                                         capture_output=True, text=True, timeout=10)
-                self.assertEqual(result.returncode == 0, defect == 'none', result.stdout+result.stderr)
-                expected = list(parallel.V1_OPERATION_MODULES) if defect == 'none' else list(parallel.V1_OPERATION_MODULES[:3])
+                self.assertEqual(result.returncode == 0, defect in ('none','reused'), result.stdout+result.stderr)
+                if defect=='reuse-rejected':
+                    self.assertFalse((root/'order').exists())
+                    self.assertNotIn('LONGHORN_PARALLEL_V1_OPERATIONS_PASS',result.stdout)
+                    continue
+                expected = list(parallel.V1_OPERATION_MODULES) if defect in ('none','reused') else list(parallel.V1_OPERATION_MODULES[:3])
+                if defect=='reused':expected=expected[2:]
                 self.assertEqual((root/'order').read_text().splitlines(), expected)
-                self.assertEqual('LONGHORN_PARALLEL_V1_OPERATIONS_PASS' in result.stdout, defect == 'none')
+                self.assertEqual('LONGHORN_PARALLEL_V1_OPERATIONS_PASS' in result.stdout, defect in ('none','reused'))
 
     def test_remaining_operations_resume_only_unaccepted_original_scopes(self):
         expected = ['node-failure', 'network-failure', 'disk-failure', 'last-replica', 'middleware',
@@ -1025,6 +1059,20 @@ os.execv('/bin/bash',['bash',str(root/'tests/helpers/longhorn-parallel.sh'),'v1-
                 else:
                     self.assertEqual(parallel.verify_branch(parent, 'v2-observability')['rc'], 0)
                     self.assertIn('LONGHORN_V1_STABILITY_V2_OBSERVABILITY_PASS', result.stdout)
+
+    def test_stability_continuation_reuses_or_refuses_before_starting_fresh_work(self):
+        for disposition in ('reuse', 'absent', 'rejected'):
+            with self.subTest(disposition=disposition), tempfile.TemporaryDirectory() as directory:
+                result = self.run_supervisor(directory, mode='v1-stability-v2-observability',
+                                             resume_stability=disposition)
+                root = Path(directory)
+                self.assertTrue((root/'stability-reuse-called').exists())
+                self.assertEqual((root/'stability-fresh').exists(), disposition == 'absent')
+                self.assertEqual(result.returncode == 0, disposition != 'rejected', result.stdout+result.stderr)
+                parent = next(root.glob('parallel.*'))
+                self.assertEqual(parallel.verify_branch(parent, 'v2-observability')['rc'], 0)
+                if disposition != 'rejected':
+                    self.assertEqual(parallel.verify_branch(parent, 'v1-stability')['rc'], 0)
 
     def test_source_and_target_recovery_and_adoption_actually_overlap(self):
         for operation in ('reboot', 'adopt', 'revision-2-adopt', 'revision-3-adopt'):

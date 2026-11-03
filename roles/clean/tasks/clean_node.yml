@@ -9,6 +9,24 @@
     - kube-proxy
     ignore_errors: true
 
+  # Runtime KillMode=process deliberately preserves containers on an ordinary
+  # daemon restart. Node retirement must also stop their independent scopes.
+  - name: Stop Kubernetes pod slices before removing node state
+    ansible.builtin.shell: |
+      set -eu
+      for unit in kubepods.slice podruntime.slice; do
+        state=$(systemctl show "$unit" --property=LoadState --value)
+        case "$state" in
+          loaded) systemctl stop "$unit" ;;
+          not-found) ;;
+          *) echo "Cannot determine Kubernetes slice ownership: $unit" >&2; exit 1 ;;
+        esac
+      done
+      ps -eww -o cgroup= | awk '
+        /(^|[,:\/])(kubepods|podruntime)([.]slice|\/|$)/ { remaining=1 }
+        END { exit remaining }
+      '
+
   - name: umount kubelet filesystems
     shell: "mount | grep '/var/lib/kubelet'| awk '{print $3}'|xargs umount || exit 0"
     ignore_errors: true

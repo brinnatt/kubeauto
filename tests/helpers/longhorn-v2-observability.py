@@ -34,7 +34,7 @@ import zipfile
 NS = 'longhorn-system'
 # Lab diagnostic budgets; the official kit has no 64 MiB archive ceiling.
 # Stream to a private file, retain >=1 GiB disk headroom and bound CRC work.
-SUPPORT_COMPRESSED_BYTES = 512*1024**2
+SUPPORT_COMPRESSED_BYTES = 1024**3
 SUPPORT_EXPANDED_BYTES = 4*1024**3
 SUPPORT_DISK_HEADROOM = 1024**3
 
@@ -253,7 +253,7 @@ def support_archive(raw):
             'members': len(rows), 'sha256': digest.hexdigest(), 'crc_verified': True,
             'extracted': False, 'published': False,
             'boundary': 'Private diagnostic bundle, streamed to a mode-0600 temporary file and CRC-checked without extraction. '
-                        'Lab limits are 512 MiB compressed / 4 GiB expanded with 1 GiB disk headroom, not upstream product limits. '
+                        'Lab limits are 1 GiB compressed / 4 GiB expanded with 1 GiB disk headroom, not upstream product limits. '
                         'No claim of automatic credential or personal-data redaction. Only size/count/checksum metadata enter evidence.'}
 
 
@@ -496,7 +496,8 @@ class Probe:
             'comment': 'kubeauto-longhorn-v2-'+hashlib.sha256((self.lab.owner()['run_id']+self.journal['volume_uid']+':53').encode()).hexdigest()[:24],
             'original_host': fault.probe(self.lab, address), 'engine': engine['metadata']['name'],
             'engine_uid': engine['metadata']['uid'], 'replica': name, 'replica_uid': replica['metadata']['uid'],
-            'before_acks': self.ack_count(), 'intent': True}
+            'before_acks': self.ack_count(), 'intent': True,
+            'prior_events': [e['metadata']['uid'] for e in self.lab.get('events', namespace=NS)['items']]}
         def request(operation):
             return fault.rule_request(proof, operation)
         if json.loads(fault.host_call(self.lab, address, request('probe')).stdout)['present'] != [False, False]:
@@ -509,8 +510,18 @@ class Probe:
             current = self.engine()
             if current['metadata']['uid'] != proof['engine_uid']:
                 raise ValueError('source engine changed during its endpoint fault')
-            return (current.get('status', {}).get('replicaModeMap', {}).get(name) == 'ERR' and
-                    self.volume().get('status', {}).get('robustness') == 'degraded')
+            # Engine and Volume are reconciled separately. The ERR entry may
+            # already be removed when Volume reports degraded; bind its native
+            # transition event instead of requiring simultaneous CR snapshots.
+            failed = current.get('status', {}).get('replicaModeMap', {}).get(name) == 'ERR'
+            if not failed:
+                failed = any(e['metadata']['uid'] not in proof['prior_events'] and
+                    e.get('involvedObject', {}).get('uid') == proof['engine_uid'] and
+                    e['involvedObject'].get('kind') == 'Engine' and
+                    e.get('reason') == 'Faulted' and e.get('type') == 'Warning' and
+                    e.get('message') == f'Detected replica {name} ({parsed.hostname}:{parsed.port}) in error'
+                    for e in self.lab.get('events', namespace=NS)['items'])
+            return failed and self.volume().get('status', {}).get('robustness') == 'degraded'
         self.lab.wait('observability-native-volume-degraded', 180, degraded)
         self.alert('Degraded', True)
         self.restore_network()

@@ -322,7 +322,33 @@ def linked_execution(base, directory):
     if not before or before != after or set(before) != {'baseline', 'inputs'}:
         raise ValueError('clone original before/after independent capture differs')
     if before['inputs'] != {name: digest(referenced(base, name)) for name in INPUTS}:
-        raise ValueError('clone owning frozen inputs differ from the current consumer')
+        # A full continuation already binds its immutable owner receipt and
+        # reviewed current inputs. Consume that same proof; do not rewrite the
+        # original capture or rerun successful linked business for a reader fix.
+        allowed = {'roles/longhorn/files/images.json',
+                   'tests/helpers/longhorn-v2-upgrade-baseline.py',
+                   'tests/helpers/longhorn-im-revision-3-adopt.py',
+                   'tests/helpers/longhorn-v2-clone.py'}
+        changed = {name for name in set(before['inputs']) | set(INPUTS)
+                   if before['inputs'].get(name) != digest(referenced(base, name))}
+        if not full or not changed <= allowed or set(before['inputs']) != set(INPUTS):
+            raise ValueError('clone owning frozen inputs differ from the current consumer')
+        reader = load(base, 'longhorn-full-evidence.py')
+        work = reader.work_directory()
+        if directory.parent.parent.parent != work:
+            raise ValueError('clone continuation belongs to another full run')
+        current = reader.check_inputs(work)
+        _, owner, _ = reader.accepted_stage('v1-ownership-v2-linked-acceptance')
+        if before['inputs'] != {name: owner['frozen_inputs'].get(name) for name in INPUTS}:
+            raise ValueError('clone capture differs from its accepted owning inputs')
+        copies = {item['copy']['path']: item['copy']['sha256']
+                  for item in owner['nested_receipts']}
+        for name in names:
+            ref = reference(base, directory/name)
+            if copies.get(ref['path']) != ref['sha256']:
+                raise ValueError('clone continuation changed an original owning receipt')
+        if any(current.get(name) != digest(referenced(base, name)) for name in INPUTS):
+            raise ValueError('clone continuation current inputs changed during readback')
     return before['baseline'], {'receipts': {name: reference(base, directory/name) for name in names},
         'stages': nested}
 

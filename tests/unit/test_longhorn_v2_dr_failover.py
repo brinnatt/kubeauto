@@ -416,7 +416,7 @@ class ActivationPrerequisiteContracts(unittest.TestCase):
         names=next(ast.literal_eval(n.iter) for n in ast.parse(program).body if isinstance(n,ast.For))
         self.assertIn('tests/helpers/longhorn-v2-dr-failover.py',names)
         self.assertIn('roles/longhorn/files/longhorn.py',names)
-        for fault in ('','missing','status','rc','failure','identity','business','unverified','inputs','dependency','cleanup','residue','missing-cluster'):
+        for fault in ('','missing','status','rc','failure','identity','business','unverified','inputs','dependency','cleanup','residue','missing-cluster','manager-pin','manager-unrelated','manager-unpublished'):
             with self.subTest(fault=fault),tempfile.TemporaryDirectory() as directory:
                 root=Path(directory);inputs={}
                 for name in names:
@@ -433,7 +433,23 @@ class ActivationPrerequisiteContracts(unittest.TestCase):
                         api_console_tunnel_not_listening=True,target_consumer_removed=True,
                         clusters={'source':dict(volumes=0,backup_resources=0,backup_fixture_credentials=0,relays=0),
                                   'target':dict(volumes=0,backup_resources=0,backup_fixture_credentials=0,relays=0)})}
-                folder=root/'tests/evidence';folder.mkdir()
+                if fault.startswith('manager-'):
+                    for name in ('common/constants.py', 'roles/longhorn/files/images.json',
+                            'tests/helpers/longhorn-manager-adopt.py',
+                            'tests/fixtures/longhorn-manager-pin-transition.json',
+                            'tests/fixtures/longhorn-manager-pending-pin-transition.json',
+                            'tests/evidence/longhorn-manager-eviction-publication-20261024.json',
+                            'tests/evidence/longhorn-manager-pending-publication-20261102.json'):
+                        target=root/name;target.parent.mkdir(parents=True,exist_ok=True)
+                        target.write_bytes((ROOT/name).read_bytes())
+                    transition=json.loads((root/'tests/fixtures/longhorn-manager-pending-pin-transition.json').read_text())
+                    inputs['common/constants.py']=transition['inputs']['common/constants.py']['old_sha256']
+                    if fault=='manager-unrelated':
+                        with (root/'common/constants.py').open('a') as stream:stream.write('\n# unrelated change\n')
+                    if fault=='manager-unpublished':
+                        path=root/'tests/evidence/longhorn-manager-pending-publication-20261102.json'
+                        path.write_text('{}')
+                folder=root/'tests/evidence';folder.mkdir(exist_ok=True)
                 (folder/'longhorn-v2-dr-standby-qualification-20261021.json').write_text(json.dumps({'baseline_identity':evidence['baseline_identity']}))
                 if fault=='status':evidence['status']='pending'
                 elif fault=='rc':evidence['rc']=1
@@ -448,14 +464,16 @@ class ActivationPrerequisiteContracts(unittest.TestCase):
                 elif fault=='missing-cluster':evidence['independent_readback']['clusters'].pop('target')
                 if fault!='missing':(folder/'longhorn-v2-dr-activation-qualification-20261021.json').write_text(json.dumps(evidence))
                 result=subprocess.run([sys.executable,'-c',program,str(root)],text=True,capture_output=True,timeout=5)
-                if fault:
+                if fault not in ('','manager-pin'):
                     self.assertNotEqual(0,result.returncode)
                     self.assertNotIn('LONGHORN_V2_DR_ACTIVATION_QUALIFICATION_CURRENT',result.stdout)
                     expected={'missing':'longhorn-v2-dr-activation-qualification-20261021.json',
                         'dependency':'DR activation dependency changed:',
                         'cleanup':'DR activation cleanup was not independently verified',
                         'residue':'DR activation left consumers or transport residue',
-                        'missing-cluster':'DR activation lacks independent readback for both clusters'}
+                        'missing-cluster':'DR activation lacks independent readback for both clusters',
+                        'manager-unrelated':'DR activation dependency changed:',
+                        'manager-unpublished':'Manager transition publication bytes changed'}
                     self.assertIn(expected.get(fault,'DR failback requires current completed activation qualification'),result.stderr)
                 else:
                     self.assertEqual(0,result.returncode,result.stderr)

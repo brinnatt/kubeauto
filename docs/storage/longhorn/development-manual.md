@@ -150,7 +150,7 @@ Manager 派生制品 `v1.12.1-kubeauto.1` 的[双仓发布核验](../../../tests
 
 ## 版本集合与制品维护
 
-生产版本的 Chart 和镜像必须作为一个集合维护。Engine、UI、Share Manager、Backing Image Manager 固定 v1.12.1；Manager 固定派生版本 `v1.12.1-kubeauto.1`，只修正 linked 源副本参与健康冗余判断的范围；Instance Manager 固定派生版本 `v1.12.1-kubeauto.3`，包含上述四处 TLS 客户端修复及 RAID 成员状态同步修复。两种组件的派生标签分别维护，不能把 Instance Manager 的修复范围套用于 Manager。辅助组件采用该版本 Chart 的精确 pin，不能统一替换为“最新 CSI”。升级源 1.12.0 的 support-bundle、provisioner、resizer、snapshotter 与目标不同，须独立保留。
+生产版本的 Chart 和镜像必须作为一个集合维护。Engine、UI、Share Manager、Backing Image Manager 固定 v1.12.1；Manager 固定派生版本 `v1.12.1-kubeauto.2`，保留 linked 源副本参与健康冗余判断的修复，并在实例 API 边界将 V2 创建中的 `pending` 归一为 `starting`，避免卷或快照恢复副本尚在创建时被永久标记为故障；V1 和实际错误状态保持原有语义；Instance Manager 固定派生版本 `v1.12.1-kubeauto.3`，包含上述四处 TLS 客户端修复及 RAID 成员状态同步修复。两种组件的派生标签分别维护，不能把 Instance Manager 的修复范围套用于 Manager。辅助组件采用该版本 Chart 的精确 pin，不能统一替换为“最新 CSI”。升级源 1.12.0 的 support-bundle、provisioner、resizer、snapshotter 与目标不同，须独立保留。
 
 | 制品 | 固定版本或 SHA256 |
 | --- | --- |

@@ -290,6 +290,32 @@ class DiskRetirementConcurrencyContracts(unittest.TestCase):
 
 
 class CleanupCliContracts(unittest.TestCase):
+    def test_removed_host_fixture_is_reloaded_before_health_and_cleanup_receipt(self):
+        import base64, hashlib
+        for fail in (False, True):
+            with self.subTest(fail=fail), tempfile.TemporaryDirectory() as value:
+                root=Path(value); (root/MODULE.RECORD).write_text('{}')
+                raw=b'original'; events=[]
+                row={'original_b64':base64.b64encode(raw).decode(), 'original_sha256':hashlib.sha256(raw).hexdigest(),
+                     'native_disks':{}, 'host_intents':['192.168.47.146']}
+                def remote(node,argv):
+                    if argv==['systemctl','daemon-reload']:
+                        events.append('reload')
+                        if fail:raise OSError('reload failed')
+                lab=SimpleNamespace(DIRECTORY=root,get=lambda *a,**kw:None if a[0]=='storageclass' else {'items':[]},
+                    owner=lambda:{'cluster_uid':'cluster','node_uids':{'longhorn-node-146':'node'}},remote=remote)
+                install=SimpleNamespace(health=lambda lab:events.append('healthy'))
+                with patch.object(MODULE,'record',return_value=row),patch.object(MODULE,'restore_business'), \
+                        patch.object(MODULE,'capture'),patch.object(MODULE,'native_disks',return_value={}), \
+                        patch.object(MODULE,'host',side_effect=lambda *a:events.append('remove')), \
+                        patch.object(MODULE,'load',return_value=install),patch.object(MODULE,'persist') as persist:
+                    if fail:
+                        with self.assertRaisesRegex(OSError,'reload failed'):MODULE.clean(lab,42)
+                        persist.assert_not_called();self.assertNotIn('healthy',events)
+                    else:
+                        MODULE.clean(lab,42);self.assertTrue(row['clean'])
+                        self.assertEqual(['remove','reload','healthy'],events)
+
     def test_cleanup_cli_retires_journal_only_after_owning_cleanup_succeeds(self):
         for fail in (False, True):
             with self.subTest(fail=fail), tempfile.TemporaryDirectory() as value:

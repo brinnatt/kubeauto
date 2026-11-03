@@ -17,6 +17,8 @@ BASE = Path('/usr/local/kubeauto')
 PLAN = 'tests/fixtures/longhorn-manager-pin-transition.json'
 OLD = 'v1.12.1'
 NEW = 'v1.12.1-kubeauto.1'
+PENDING_NEW = 'v1.12.1-kubeauto.2'
+PENDING_PLAN = 'tests/fixtures/longhorn-manager-pending-pin-transition.json'
 CATALOG = 'roles/longhorn/files/images.json'
 CONSTANTS = 'common/constants.py'
 NS = 'longhorn-system'
@@ -35,22 +37,27 @@ def load(name):
     return module
 
 
-def plan():
-    digest(BASE/PLAN)
-    row = json.loads((BASE/PLAN).read_text())
-    if (row.get('scope') != 'manager-linked-eviction-pin-only' or
-            row.get('old_tag') != OLD or row.get('new_tag') != NEW or
+def plan(*, pending=False):
+    path = PENDING_PLAN if pending else PLAN
+    old, new = (NEW, PENDING_NEW) if pending else (OLD, NEW)
+    scope = 'manager-v2-pending-pin-only' if pending else 'manager-linked-eviction-pin-only'
+    publication_path = ('tests/evidence/longhorn-manager-pending-publication-20261102.json' if pending
+                        else 'tests/evidence/longhorn-manager-eviction-publication-20261024.json')
+    digest(BASE/path)
+    row = json.loads((BASE/path).read_text())
+    if (row.get('scope') != scope or
+            row.get('old_tag') != old or row.get('new_tag') != new or
             set(row.get('inputs', {})) != {CATALOG, CONSTANTS}):
         raise ValueError('Manager transition exceeds its two product pin inputs')
     ref = row['publication']
-    if (ref['path'] != 'tests/evidence/longhorn-manager-eviction-publication-20261024.json' or
+    if (ref['path'] != publication_path or
             digest(BASE/ref['path']) != ref['sha256']):
         raise ValueError('Manager transition publication bytes changed')
     publication = json.loads((BASE/ref['path']).read_text())
     record = publication.get('publication_record', {})
     if (publication.get('status') != 'pass' or publication.get('durable_rc') != 0 or
             publication.get('failure_markers') != 0 or publication.get('selected_image_count') != 1 or
-            publication.get('image') != 'brinnatt/longhorn-manager:'+NEW or
+            publication.get('image') != 'brinnatt/longhorn-manager:'+new or
             record.get('key') != publication['image'] or
             set(record.get('platforms', {})) != {'linux/amd64', 'linux/arm64'} or
             any(not re.fullmatch(r'sha256:[0-9a-f]{64}', value or '') for value in
@@ -61,10 +68,23 @@ def plan():
 
 def input_current(name, original):
     if name not in (CATALOG, CONSTANTS): return False
+    source = (BASE/name).read_text()
+    current_sha = digest(BASE/name)
+    if (BASE/PENDING_PLAN).exists():
+        pending, _ = plan(pending=True)
+        edge = pending['inputs'][name]
+        if current_sha == edge['sha256']:
+            current = ('"longhorn-manager": "'+PENDING_NEW+'"' if name == CATALOG
+                       else 'tags["longhorn-manager"] = "'+PENDING_NEW+'"')
+            previous = current.replace(PENDING_NEW, NEW)
+            if source.count(current) != 1: return False
+            source = source.replace(current, previous, 1)
+            current_sha = hashlib.sha256(source.encode()).hexdigest()
+            if current_sha != edge['old_sha256']: return False
+            if original == current_sha: return True
     row, _ = plan()
     edge = row['inputs'][name]
-    if edge['old_sha256'] != original or digest(BASE/name) != edge['sha256']: return False
-    source = (BASE/name).read_text()
+    if edge['old_sha256'] != original or current_sha != edge['sha256']: return False
     if name == CATALOG:
         current = '"longhorn-manager": "'+NEW+'"'
         previous = '"longhorn-manager": "'+OLD+'"'
@@ -75,13 +95,13 @@ def input_current(name, original):
             hashlib.sha256(source.replace(current, previous, 1).encode()).hexdigest() == original)
 
 
-def equivalent_runtime_manifest(lab, record, image_id):
+def equivalent_runtime_manifest(lab, record, image_id, *, tag=NEW):
     """Bind a Docker/OCI representation change to the actual running digest."""
     actual_digest = image_id.rsplit('@', 1)[-1]
     if not re.fullmatch(r'sha256:[0-9a-f]{64}', actual_digest):
         return False
     production, _ = lab.publication_records()
-    rows = [row for row in production if row['key'] == 'brinnatt/longhorn-manager:'+NEW]
+    rows = [row for row in production if row['key'] == 'brinnatt/longhorn-manager:'+tag]
     if len(rows) != 1 or rows[0]['platforms'] != record['platforms'] or rows[0]['digest'] != record['digest']:
         return False
     row = rows[0]
@@ -93,9 +113,9 @@ def equivalent_runtime_manifest(lab, record, image_id):
             lab.equivalent_manifest(json.loads(response.stdout), expected))
 
 
-def runtime(lab, record, *, old=False):
+def runtime(lab, record, *, old=False, old_tag=OLD, new_tag=NEW):
     config = json.loads((lab.DIRECTORY/'yml/longhorn/input.json').read_text())
-    image = config['longhorn_image_prefix']+'/longhorn-manager:'+(OLD if old else NEW)
+    image = config['longhorn_image_prefix']+'/longhorn-manager:'+(old_tag if old else new_tag)
     targets = {'longhorn-node-'+a.rsplit('.', 1)[1] for a in lab.WORKERS}
     rows = {}
     verified = set()
@@ -114,7 +134,7 @@ def runtime(lab, record, *, old=False):
             raise ValueError('Manager Pods do not match the exact healthy owned DaemonSet')
         image_id = states[0].get('imageID', '')
         if not old and image_id.rsplit('@', 1)[-1] not in (record['digest'], *record['platforms'].values()):
-            if image_id not in verified and not equivalent_runtime_manifest(lab, record, image_id):
+            if image_id not in verified and not equivalent_runtime_manifest(lab, record, image_id, tag=new_tag):
                 raise ValueError('Manager running digest differs from the published artifact')
             verified.add(image_id)
         rows[node] = {'uid': pod['metadata']['uid'], 'image': image, 'image_id': image_id}
@@ -122,23 +142,25 @@ def runtime(lab, record, *, old=False):
     return {'daemonset_uid': ds['metadata']['uid'], 'pods': rows}
 
 
-def adopt(lab, relay_pid):
-    _, record = plan()
+def adopt(lab, relay_pid, *, pending=False):
+    _, record = plan(pending=True) if pending else plan()
+    old_tag, new_tag = (NEW, PENDING_NEW) if pending else (OLD, NEW)
+    runtime_tags = {'old_tag': old_tag, 'new_tag': new_tag} if pending else {}
     baseline = load('longhorn-v2-upgrade-baseline.py')
     # Capture owns the current empty-business, hardware, credential and IM checks.
     before = baseline.capture(lab)
     ds = lab.get('daemonset', 'longhorn-manager', NS)
     images = [c['image'] for c in ds['spec']['template']['spec']['containers'] if c['name'] == 'longhorn-manager']
     if len(images) != 1: raise ValueError('Manager DaemonSet has ambiguous containers')
-    old = images[0].endswith(':'+OLD)
-    if not old and not images[0].endswith(':'+NEW):
+    old = images[0].endswith(':'+old_tag)
+    if not old and not images[0].endswith(':'+new_tag):
         raise ValueError('Manager adoption refuses an unknown prior image')
-    prior = runtime(lab, record, old=old)
+    prior = runtime(lab, record, old=old, **runtime_tags)
     if old:
-        lab.cache_artifacts({'brinnatt/longhorn-manager:'+NEW})
+        lab.cache_artifacts({'brinnatt/longhorn-manager:'+new_tag})
         lab.run_requests(relay_pid, [])
     lab.installation_health()
-    current = runtime(lab, record)
+    current = runtime(lab, record, **runtime_tags)
     if (current['daemonset_uid'] != prior['daemonset_uid'] or
             (old and {p['uid'] for p in prior['pods'].values()} & {p['uid'] for p in current['pods'].values()})):
         raise ValueError('Manager rollout replaced its DaemonSet or retained old Pod identities')
@@ -149,7 +171,7 @@ def adopt(lab, relay_pid):
     print('LONGHORN_MANAGER_ADOPT_RESULT '+json.dumps(result, sort_keys=True), flush=True)
 
 
-def main():
+def main(*, pending=False):
     install = load('longhorn-v2-install.py'); _, lab = install.fixture(); lab.require_lease()
     core = load('longhorn-v2-core.py'); core.verify_transport(lab)
     process = None
@@ -157,7 +179,10 @@ def main():
         lab.relay_ensure()
         process = subprocess.Popen([str(BASE/'.venv/bin/python'), str(BASE/'tests/helpers/longhorn-v2-install.py'), 'relay-maintain'],
             pass_fds=(7, 8, 9))
-        adopt(lab, process.pid)
+        if pending:
+            adopt(lab, process.pid, pending=True)
+        else:
+            adopt(lab, process.pid)
     finally:
         if process is not None:
             process.terminate()
@@ -170,4 +195,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if sys.argv[1:] not in ([], ['--pending']):
+        raise SystemExit('usage: longhorn-manager-adopt.py [--pending]')
+    pending = bool(sys.argv[1:]) or ((BASE/PENDING_PLAN).exists() and
+        json.loads((BASE/CATALOG).read_text())['1.12.1']['longhorn-manager'] == PENDING_NEW)
+    main(pending=pending)

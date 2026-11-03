@@ -849,7 +849,7 @@ class PinnedSourceContracts(unittest.TestCase):
             self.assertEqual(tags[version], constants.longhorn_image_tags(version))
         evidence = json.loads((ROOT / 'tests/evidence/longhorn-images-20261021.json').read_text())
         self.assertEqual(tags['1.12.1']['longhorn-instance-manager'], 'v1.12.1-kubeauto.3')
-        self.assertEqual(tags['1.12.1']['longhorn-manager'], 'v1.12.1-kubeauto.1')
+        self.assertEqual(tags['1.12.1']['longhorn-manager'], 'v1.12.1-kubeauto.2')
         self.assertEqual(tags['1.12.0']['longhorn-manager'], 'v1.12.0')
         self.assertEqual(tags['1.12.0']['longhorn-instance-manager'], 'v1.12.0')
         self.assertEqual(len(evidence['images']), 24)

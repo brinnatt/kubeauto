@@ -36,6 +36,26 @@ class BaselineConfigContracts(unittest.TestCase):
                 else:
                     with self.assertRaisesRegex(ValueError, 'idle V1'): PLATFORM.empty(lab)
 
+    def test_empty_accepts_absent_longhorn_crds_but_propagates_other_api_errors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root/'config.yml').write_text(yaml.safe_dump({'longhorn_requests': []}))
+
+            def missing(kind, allow_missing_resource=False, **kwargs):
+                if kind in ('volumes.longhorn.io', 'engines.longhorn.io', 'replicas.longhorn.io'):
+                    self.assertTrue(allow_missing_resource)
+                    return {'items': []}
+                return {'items': []}
+
+            lab = SimpleNamespace(DIRECTORY=root, get=missing)
+            PLATFORM.empty(lab)
+
+            def unavailable(kind, **kwargs):
+                raise ValueError('fixture command failed: kubectl rc=1; connection refused')
+
+            lab.get = unavailable
+            with self.assertRaisesRegex(ValueError, 'connection refused'):
+                PLATFORM.empty(lab)
+
 
 class ServiceContracts(unittest.TestCase):
     def setUp(self):

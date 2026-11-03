@@ -1,0 +1,20 @@
+{
+  "evidence_boundary": "Exact Manager pin transition only. Historical unchanged behavior retains its original evidence; current native/CSI integrity restore, actual Manager adoption and final full completion remain mandatory.",
+  "inputs": {
+    "common/constants.py": {
+      "old_sha256": "e4a637967452f3560e43af794eedde30ad57c398a898da98ee0501d1d05dd5f0",
+      "sha256": "fd9ae3d998b72fc981570829531faaaee1a5c1a02420f3479ee6744e63246bd5"
+    },
+    "roles/longhorn/files/images.json": {
+      "old_sha256": "af5bf33eac62d7c4a379a50627b41c7a4983a6cf57761e2573eb9d058d024ca1",
+      "sha256": "9879b430f8caab2d0ccb6ab72741b36dad073252de674c76d98ea8aad4107305"
+    }
+  },
+  "new_tag": "v1.12.1-kubeauto.2",
+  "old_tag": "v1.12.1-kubeauto.1",
+  "publication": {
+    "path": "tests/evidence/longhorn-manager-pending-publication-20261102.json",
+    "sha256": "1314d68e6824198788c40f7b8f5b21862fa6def776d886a7652e5cc0c5649b3e"
+  },
+  "scope": "manager-v2-pending-pin-only"
+}

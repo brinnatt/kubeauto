@@ -156,6 +156,9 @@ case "$MODE" in
   v2-dr-target-registry-qualification|v2-dr-target-core)
     exec bash "$BASE/tests/helpers/longhorn-v2-dr-target.sh" "$MODE"
     ;;
+  v2-dr-target-core-recovery)
+    exec bash "$BASE/tests/helpers/longhorn-v2-dr-target-core-recovery.sh" "$MODE"
+    ;;
   v2-detached-backup-qualification|v2-detached-backup-recovery)
     exec bash "$BASE/tests/helpers/longhorn-v2-detached-backup.sh" "$MODE"
     ;;
@@ -283,6 +286,7 @@ case "$MODE" in
     cd "$BASE"
     PY="$BASE/.venv/bin/python"
     "$PY" "$BASE/tests/helpers/longhorn-lab.py" verify-core
+    "$PY" "$BASE/tests/helpers/longhorn-lab.py" recover-owned-disk-residue
     work="$(mktemp -d /var/tmp/kubeauto-longhorn-disks.XXXXXX)"
     phase=qualify
     disk_exit() {

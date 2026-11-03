@@ -17,6 +17,7 @@ INPUTS = {
         'ce0dc7f776169f8bbf646ea86ff39d9f37e64c8b6261749e5aa6f1888e06742c',
         'ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b'),
     'tests/helpers/longhorn-v2-install.py': ('ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4', '7afb928fe787e6df4e18ccf41b7e1107febb1e2f4c8df4acc0ebe153bd75b84d'),
+    'tests/helpers/longhorn-v2-dr-target.py': ('e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f', '5a8112f03c9b7e5abca1a112441ccecc422b7130772954be546cc9048e84fe1a'),
 }
 
 
@@ -26,9 +27,12 @@ CURRENT_INPUTS = {'tests/helpers/longhorn-lab.py': ('ce0dc7f776169f8bbf646ea86ff
  'tests/helpers/longhorn-v2-install.py': ('ae963a6f8eb4688e8c2a2d820c8fefb1f32593b1cb8698dfa8036de06cff13f4',
                                           'c6a9bf7a0755aad74ae2ed30381845fcfb1cf1f5364eb5d67307e017609feb2d'),
  'tests/helpers/longhorn-v2-dr-target-install.py': ('af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3',
-                                                    '2c3e9c9b4ab6fcd79d34002f1e58c0fd0492e32d79c2d74323abc6afc0383d33'),
+                                                    '90647ef395f9b4be858f409c8fc5c1d76abfb3f157536a312cbd5f98d174b4b4'),
  'tests/helpers/longhorn-v2-upgrade-baseline.py': ('59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87',
                                                    'dcaef1fbd558cb9de9aedf8e0635ccf6a439a7151ca4f3541b9c9469023cfcdd')}
+CURRENT_INPUTS['tests/helpers/longhorn-v2-dr-target.py'] = (
+    'e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f',
+    '5a8112f03c9b7e5abca1a112441ccecc422b7130772954be546cc9048e84fe1a')
 CURRENT_REVIEW = ('tests/evidence/longhorn-completed-default-reader-reuse-20261022.json', '7cb5eb5f79640cf05fac92631e677f5435040e3ed35c70a07a484c1009235396')
 
 

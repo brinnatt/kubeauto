@@ -1,0 +1,58 @@
+{
+  "archives": {
+    "image-plan": "3d109fe9b13c966c570e5c35924e4ec8f29ef23323908d51b0b8595bdca3037b",
+    "plan-evidence-1": "8b59365ff9b474f715516142be6b93ea5cef0b8fc55cc4398116fcf6f2efd804",
+    "release-evidence-0-1": "4eaa8cd1ad1befcd2a3be615ddc267e79a5bb487b7323b5cefad089db59a94b1"
+  },
+  "attempt": 1,
+  "boundary": "Only V2 pending-to-starting correction at Manager API boundary; preserves linked-eviction patch. Publication does not sign live adoption or GA.",
+  "date": "2026-11-02",
+  "dockerhub_verification_boundary": "Fixed Actions publisher reads both formal registry tags and both architecture manifests before DUAL_PUSH_MANIFEST_PASS; local independent readback covers TalkEdu.",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "head": "adfbcc16e43d9da443b5072f4aa3b0a768449074",
+  "image": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+  "independent_manifest_readback": {
+    "talkedu": {
+      "digest": "sha256:71c1e558b136ae302c3ac4a258eb00f20fd52c409fe6f89fb0ce612429e32191",
+      "platforms": {
+        "linux/amd64": "sha256:8f099964dc25baed1001857b8a7fc9ab2d56cf2ead328ad9bb26e813374a8882",
+        "linux/arm64": "sha256:1546b9b59bba14ccbf621a470d58a69ecc98d60f4abec2108ae168a206712745"
+      },
+      "status": "pass"
+    }
+  },
+  "input_fingerprint": "ca3f7a71bf4ffdd2a30d8698288174ac7c341874f3aa47e715a0e0fec1f69d8f",
+  "overall_longhorn_delivery_pass": false,
+  "publication_record": {
+    "digest": "sha256:71c1e558b136ae302c3ac4a258eb00f20fd52c409fe6f89fb0ce612429e32191",
+    "fingerprint": "ca3f7a71bf4ffdd2a30d8698288174ac7c341874f3aa47e715a0e0fec1f69d8f",
+    "head": "adfbcc16e43d9da443b5072f4aa3b0a768449074",
+    "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+    "platforms": {
+      "linux/amd64": "sha256:8f099964dc25baed1001857b8a7fc9ab2d56cf2ead328ad9bb26e813374a8882",
+      "linux/arm64": "sha256:1546b9b59bba14ccbf621a470d58a69ecc98d60f4abec2108ae168a206712745"
+    },
+    "schema": 1,
+    "source_digest": "sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
+    "source_ref": "docker.io/longhornio/longhorn-manager:v1.12.1@sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801"
+  },
+  "raw_evidence": {
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/authorization.json": "ae71fc8848019b239c7eb2c38ae52b62ae7a51444ff066c033c399e1f3fb96b6",
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/image-plan/image-plan.json": "b96c8b4f593af13a86d30d3c11cddbe5e76af2fade918b24a36c772267ce4249",
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/jobs.json": "b5648ef296b0beedb0c1853bfa57ba2a56bb5cf04a5fe714112756edb65585f8",
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/plan-fingerprint-reconciliation.json": "ad7aabdb46679e4adc578e39ff37f3b5d10cc5b1dcb31fe7404a47d064a2de73",
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/release-evidence-0-1/records/8853d0f910382f55817239b0933df7a171db64744cb10c137c51feb7fcbabc4c.json": "0c08bfe29482952b3e52f6a1c2054eb72875beadc32b6b3e82ad0b6e9d0adf0b",
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/release-evidence-0-1/runs/41373290910-1/release-0.log": "b4a5fa71bc73304c8d4a6fab980601a5f1f45c4dcd6fceb9f7e3b5de8320c676",
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/release-evidence-0-1/runs/41373290910-1/release-0.status": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494",
+    "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/run.json": "b355f1ec743e437f36d5507ba6b79d32a8ccf2ab168d765e28a38719b8b9c3ec"
+  },
+  "release_mode": "selected",
+  "run_id": 41373290910,
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41373290910",
+  "schema": 1,
+  "selected_image_count": 1,
+  "signed_scope": "single-derived-manager-image-publication",
+  "status": "pass",
+  "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.1-kubeauto.2"
+}

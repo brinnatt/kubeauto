@@ -11,6 +11,8 @@ import re
 import stat
 import tempfile
 
+import yaml
+
 BASE = Path(__file__).resolve().parents[2]
 NS = 'longhorn-system'
 # Ansible's retry callback is a progress event, not a terminal task failure.
@@ -241,17 +243,108 @@ def canonical_readback(mode, lines, *, current=None):
 def accepted_stage(mode, *, inputs=None):
     work=work_directory();path=work/'accepted'/(mode+'.json');private(path)
     row=json.loads(path.read_text());refs,lines=execution(mode,work/('preflight' if mode in LOCAL else 'stages')/mode)
+    current = check_inputs(work) if inputs is None else inputs
+    expected = current
+    if row.get('frozen_inputs') != current:
+        review = resume_review(work, current)
+        if review.get('accepted', {}).get(mode) != reference(path):
+            raise ValueError('resumed child is not in the reviewed unchanged acceptance set')
+        expected = json.loads((work/'frozen-inputs.json').read_text())
+        if review.get('scope') == 'full-resume-v2-manager-pending':
+            previous = json.loads(referenced(review['previous_review']).read_text())
+            if row.get('frozen_inputs') == previous['current_inputs']:
+                expected = previous['current_inputs']
+        cohorts = [review.get('completed_reader_cohort'), *review.get('completed_reader_cohorts', [])]
+        budget_repair = support_budget_repair(review, current)
+        if budget_repair:
+            cohorts.append(review['completed_support_cohort'])
+        mount_repair = mount_cleanup_repair(review, current)
+        if mount_repair:
+            cohorts.append(review['completed_mount_cohort'])
+        node_repair = node_retirement_repair(review, current)
+        if node_repair:
+            cohorts.append(review['completed_node_cohort'])
+        for cohort in cohorts:
+            if not cohort or row.get('frozen_inputs') != cohort['inputs']:
+                continue
+            # Stages completed after the Manager repair retain their own exact
+            # contracts. Only this read-only consumer repair may follow them.
+            allowed = {'tests/helpers/longhorn-full-evidence.py',
+                'tests/helpers/longhorn-im-revision-3-adopt.py',
+                'tests/helpers/longhorn-v2-clone.py',
+                'tests/unit/test_longhorn_full_evidence.py',
+                'tests/unit/test_longhorn_v2_clone.py',
+                'tests/helpers/longhorn-v2-maintenance.py',
+                'tests/unit/test_longhorn_v2_maintenance.py'}
+            if budget_repair:
+                allowed |= {'tests/helpers/longhorn-v2-observability.py',
+                    'tests/unit/test_longhorn_v2_observability.py',
+                    'tests/helpers/longhorn-parallel.sh', 'tests/unit/test_longhorn_parallel.py'}
+            if mount_repair:
+                allowed |= MOUNT_REPAIRS | {'tests/helpers/longhorn-full.sh', 'tests/unit/test_longhorn_full_shell.py'}
+            if node_repair:
+                allowed |= NODE_RETIREMENT_REPAIRS
+            changed = {name for name in set(current) | set(cohort['inputs'])
+                       if current.get(name) != cohort['inputs'].get(name)}
+            cohort_refs = cohort['contracts']
+            if changed - allowed or any(referenced(cohort_refs[key]).read_text().strip() != '0'
+                                       for key in ('exit', 'finalized')):
+                raise ValueError('completed cohort changed behavior or lacks durable contracts')
+            contract_lines = referenced(cohort_refs['log']).read_text().splitlines()
+            stamp = hashlib.sha256(json.dumps(cohort['inputs'], sort_keys=True).encode()).hexdigest()
+            require_unique(contract_lines, 'LONGHORN_FULL_RESUME_CONTRACT_PASS inputs='+stamp)
+            if any(FAILURE.match(line) for line in contract_lines):
+                raise ValueError('completed cohort contracts contain a failure')
+            expected = cohort['inputs']
     if (row.get('status')!='pass' or row.get('rc')!=0 or row.get('failure_markers')!=0 or
             row.get('durable')!={'exit':0,'finalized':0} or row.get('signed_scope')!=mode or
-            row.get('receipt_refs')!=refs or row.get('frozen_inputs')!=(check_inputs(work) if inputs is None else inputs)):
+            row.get('receipt_refs')!=refs or row.get('frozen_inputs')!=expected):
         raise ValueError('accepted full child no longer binds its original completed execution')
     owning_scope(mode,lines)
     for nested in row.get('nested_receipts',[]):referenced(nested['copy'])
-    if mode=='v2-clone' and row.get('clone_acceptance')!=clone_acceptance():
-        raise ValueError('accepted full clone no longer binds the unique canonical49 receipt')
+    if mode=='v2-clone':
+        verify_completed_clone(row, lines, work, current)
     for proof in row.get('retirement_release_proofs',{}).values():
         for copy in proof['copies'].values():referenced(copy)
     return path,row,lines
+
+
+def clone_receipt_matches(previous, current, work, inputs):
+    if previous == current:
+        return True
+    review = resume_review(work, inputs)
+    if not support_budget_repair(review, inputs):
+        return False
+    original = json.loads(referenced(review['support_budget_repair']['previous_review']).read_text())
+    if (previous.get('full_copy_reuse') != original['full_copy_transition']['current'] or
+            current.get('full_copy_reuse') != review['full_copy_transition']['current']):
+        return False
+    verify_full_copy_transport(work)
+    # Only current reader provenance changes; all original business, baseline,
+    # linked captures and upgrade receipt references must remain byte-bound.
+    return dict(current, full_copy_reuse=previous['full_copy_reuse']) == previous
+
+
+def verify_completed_clone(row, lines, work, inputs):
+    """Recheck archived owners after retirement; do not reopen live journals."""
+    proof = observation(lines, 'LONGHORN_FULL_CLONE_ACCEPTANCE ')
+    if row.get('clone_acceptance') != proof or any(proof.get(key) != expected for key, expected in
+            (('status', 'pass'), ('matrix_item', 'LONGHORN-49'), ('signed_scope', 'v2-clone'),
+             ('rc', 0), ('failure_markers', 0), ('durable', {'exit': 0, 'finalized': 0}))):
+        raise ValueError('completed clone differs from its original owning result')
+    _, upgrade, _ = accepted_stage('v2-upgrade-lifecycle')
+    if (proof.get('upgrade_evidence') != reference(work/'evidence/v2-upgrade.json') or
+            proof.get('accepted_upgrade_baseline') != upgrade['transition']['after'] or
+            proof.get('linked_upgrade_side') not in ('before', 'after')):
+        raise ValueError('completed clone differs from its original accepted upgrade')
+    baseline, linked = load('longhorn-v2-clone.py').linked_execution(BASE, clone_directory())
+    if proof.get('baseline') != baseline or proof.get('linked') != linked:
+        raise ValueError('completed clone differs from its original linked business')
+    load('longhorn-v2-runtime-continuation.py').stable(
+        baseline, upgrade['transition'][proof['linked_upgrade_side']])
+    current = dict(proof, full_copy_reuse=full_copy_material())
+    if not clone_receipt_matches(proof, current, work, inputs):
+        raise ValueError('completed clone changed an unreviewed full-copy dependency')
 
 
 def retirement_readback(mode,lines):
@@ -262,7 +355,7 @@ def retirement_readback(mode,lines):
         prefix='LONGHORN_V2_RELEASE_PROOF path='
         if not line.startswith(prefix):continue
         source=Path(line[len(prefix):]);private(source)
-        pattern=r'/var/tmp/kubeauto-longhorn-v2-retirement\.[A-Za-z0-9]+/release-proofs/longhorn-v2-'+scope+r'-released-192\.168\.47\.\d+\.json'
+        pattern=r'/var/tmp/kubeauto-longhorn-v2-retirement\.[A-Za-z0-9]+/(?:recovery\.[A-Za-z0-9]+/)?release-proofs/longhorn-v2-'+scope+r'-released-192\.168\.47\.\d+\.json'
         if not re.fullmatch(pattern,str(source)):raise ValueError('retirement readback path differs from original owning scope')
         row=json.loads(source.read_text());host=row.get('host')
         if (host not in expected or host in result or row.get('status')!='pass' or
@@ -290,7 +383,7 @@ def retirement_readback(mode,lines):
 def release_proof(scope,host):
     mode='v2-cleanup' if scope=='source' else 'v2-cleanup-target'
     _,_,lines=accepted_stage(mode)
-    pattern=r'/var/tmp/kubeauto-longhorn-v2-retirement\.[A-Za-z0-9]+/release-proofs/longhorn-v2-'+scope+'-released-'+re.escape(host)+r'\.json'
+    pattern=r'/var/tmp/kubeauto-longhorn-v2-retirement\.[A-Za-z0-9]+/(?:recovery\.[A-Za-z0-9]+/)?release-proofs/longhorn-v2-'+scope+'-released-'+re.escape(host)+r'\.json'
     matches=[line.removeprefix('LONGHORN_V2_RELEASE_PROOF path=') for line in lines
         if line.startswith('LONGHORN_V2_RELEASE_PROOF path=') and re.fullmatch(pattern,line.removeprefix('LONGHORN_V2_RELEASE_PROOF path='))]
     if len(matches)!=1:raise ValueError('missing unique actual finalized host release proof')
@@ -300,13 +393,16 @@ def release_proof(scope,host):
     print(str(path),flush=True)
 
 
-def clone_acceptance():
+def clone_directory():
     _,row,_=accepted_stage('v1-ownership-v2-linked-acceptance')
     originals=[reference for reference in row['nested_receipts']
         if re.fullmatch(r'/var/tmp/kubeauto-longhorn-parallel\.[A-Za-z0-9]+/v2\.log',reference['original'])]
     if len(originals)!=1:raise ValueError('full clone lacks unique original linked branch receipt')
-    directory=referenced(originals[0]['copy']).parent
-    return load('longhorn-v2-clone.py').validate_clone49(BASE,directory)
+    return referenced(originals[0]['copy']).parent
+
+
+def clone_acceptance():
+    return load('longhorn-v2-clone.py').validate_clone49(BASE,clone_directory())
 
 
 def clone_accept():
@@ -354,7 +450,15 @@ def maintenance51():
             if json.loads(path.read_text()) != row: raise ValueError('full maintenance projection changed')
         else: write(path,row)
         materials[scope] = {'evidence':reference(path), **execution, 'artifacts':artifacts}
-    return gate.validate_maintenance51(BASE,materials)
+    return gate.validate_maintenance51(BASE,materials,input_current=maintenance_input_current)
+
+
+def maintenance_input_current(name, original):
+    # Preserve execution inputs; admit only the exact reviewed daemon reload.
+    if name != 'tests/helpers/longhorn-v2-coexist.py': return False
+    work = work_directory(); current = check_inputs(work); review = resume_review(work, current)
+    return (mount_cleanup_repair(review, current) and
+            review['mount_cleanup_repair']['files'][name]['original']['sha256'] == original)
 
 
 def complete_result():
@@ -379,7 +483,11 @@ def complete_result():
     for number,case in enumerate(cases,1):
         modes=tuple(sorted(required)) if number==43 else CASE_STAGES[number]
         if number not in AGGREGATE_CASES:
-            originals=[line for mode in modes for line in stages[mode][2]]
+            # Cleanup qualification invokes the same command repeatedly for
+            # normal/failure/interruption fixtures; its own acceptance above
+            # verifies that scope. Bind the row's command marker to its owner.
+            marker_modes = ('cleanup',) if number == 41 else modes
+            originals=[line for mode in marker_modes for line in stages[mode][2]]
             require_unique(originals,case['success_marker'])
         rows[case['id']]={'status':'pass','scope':case['group'],'marker':case['success_marker'],
             'stages':{mode:reference(stages[mode][0]) for mode in modes}}
@@ -387,6 +495,9 @@ def complete_result():
         'rc':0,'failure_markers':0,'durable':{'exit':0,'finalized':0},
         'frozen_inputs':inputs,'materials':materials,'maintenance_acceptance':maintenance,'cases':rows,
         'final_clean':reference(stages['final-clean'][0]),'durable_scope':'completed-child-stages','outer_durable_required':True}
+    if (work/'resume-review.json').exists():
+        resume_review(work,inputs)
+        result['continuation_review']=reference(work/'resume-review.json')
     return result
 
 
@@ -451,6 +562,7 @@ def frozen_inputs():
     paths=set(BASE/name for name in explicit)
     paths.add(BASE/'tests/helpers/run-durable-gate.sh')
     paths.add(BASE/'tests/helpers/lab-wipe-nodes.sh')
+    paths.add(BASE/'roles/clean/tasks/clean_node.yml')
     paths.add(BASE/'tests/helpers/kubernetes-production-smoke.sh')
     for pattern in ('tests/helpers/longhorn*','tests/unit/test_longhorn*','tests/fixtures/longhorn*','roles/longhorn/**/*',
             'docs/storage/longhorn/*.md'):
@@ -468,8 +580,491 @@ def work_directory():
 def check_inputs(work):
     path=work/'frozen-inputs.json';private(path)
     row=json.loads(path.read_text())
-    if row!=frozen_inputs():raise ValueError('full frozen source inputs changed; stop current run')
-    return row
+    current=frozen_inputs()
+    if row!=current:resume_review(work,current)
+    return current
+
+
+# Only the reviewed continuation handoff and the transport-fixture pull may
+# change. Product configuration, assertions and all other helpers stay frozen.
+RESUME_REPAIRS = {
+    'tests/helpers/longhorn-v2-maintenance.py', 'tests/unit/test_longhorn_v2_maintenance.py',
+    'tests/helpers/longhorn-full.sh', 'tests/helpers/longhorn-full-evidence.py',
+    'tests/helpers/longhorn-parallel.sh', 'tests/helpers/longhorn-backups.py',
+    'tests/unit/test_longhorn_full_evidence.py', 'tests/unit/test_longhorn_full_shell.py',
+    'tests/unit/test_longhorn_lab.py',
+    'tests/unit/test_longhorn_parallel.py',
+    'tests/helpers/longhorn-im-revision-3-adopt.py',
+    'tests/unit/test_longhorn_im_revision_3_adopt.py',
+}
+
+PENDING_REPAIRS = {
+    'common/constants.py', 'roles/longhorn/files/images.json',
+    'tests/fixtures/longhorn-manager-pending-pin-transition.json',
+    'tests/helpers/longhorn-manager-adopt.py', 'tests/helpers/longhorn-v2-systembackup.py',
+    'tests/helpers/longhorn-v2-volumes.sh',
+    'tests/helpers/longhorn-runner.sh',
+    'tests/helpers/longhorn-v2-upgrade-baseline.py',
+    'tests/helpers/longhorn-v2-clone.py', 'tests/unit/test_longhorn_v2_clone.py',
+    'tests/helpers/longhorn-v2-observability.py', 'tests/unit/test_longhorn_v2_observability.py',
+    'tests/unit/test_longhorn_full_material.py',
+    'tests/unit/test_longhorn_gate.py',
+    'tests/unit/test_longhorn_manager_adopt.py', 'tests/unit/test_longhorn_v2_systembackup.py',
+    'tests/unit/test_longhorn_v2_integrity.py',
+    'tests/unit/test_longhorn_im_revision_evidence.py',
+    'tests/helpers/longhorn-v2-dr-failover.sh',
+    'tests/helpers/longhorn-v2-data-protection.sh',
+    'tests/unit/test_longhorn_v2_dr_failover.py',
+    'tests/unit/test_longhorn_v2_data_protection.py',
+    'tests/unit/test_longhorn_delivery.py',
+    'tests/longhorn-test-matrix.yaml',
+    'docs/storage/longhorn/development-manual.md', 'docs/storage/longhorn/operations-manual.md',
+}
+
+MOUNT_REPAIRS = {
+    'tests/helpers/longhorn-v1-recovery-target.py',
+    'tests/helpers/longhorn-v2-coexist.py',
+    'tests/helpers/longhorn-v2-cleanup.py',
+    'tests/unit/test_longhorn_v1_recovery_target.py',
+    'tests/unit/test_longhorn_v2_coexist.py',
+    'tests/unit/test_longhorn_v2_cleanup.py',
+}
+
+NODE_RETIREMENT_REPAIRS = {
+    'roles/clean/tasks/clean_node.yml',
+    'tests/helpers/longhorn-v2-disk-lifecycle.py',
+    'tests/helpers/longhorn-v2-disk-lifecycle.sh',
+    'tests/unit/test_longhorn_v2_disk_lifecycle.py',
+}
+
+
+def node_retirement_repair(review, current):
+    proof = review.get('node_retirement_repair')
+    if proof is None: return False
+    if (proof.get('classification') != 'product-node-cleanup' or
+            set(proof.get('files', {})) != NODE_RETIREMENT_REPAIRS):
+        raise ValueError('node retirement repair exceeds its explicit cleanup boundary')
+    for name, edge in proof['files'].items():
+        referenced(edge['original'])
+        if (edge['current'] != {'path': name, 'sha256': digest(BASE/name)} or
+                current.get(name) != edge['current']['sha256']):
+            raise ValueError('node retirement repair changed its reviewed source')
+    before = json.loads(referenced(proof['first_journal']).read_text())
+    if (before.get('phase') != 'deleting' or before.get('business_passed') is not True or
+            before.get('host') != '192.168.47.149'):
+        raise ValueError('node retirement recovery lacks completed original disk business')
+    lines = referenced(proof['business']).read_text().splitlines()
+    require_unique(lines, 'LONGHORN_V2_DISK_LIFECYCLE_BUSINESS_PASS')
+    if any(FAILURE.match(line) for line in lines):
+        raise ValueError('node retirement recovery business contains a failure')
+    return True
+
+
+def disk_resume():
+    work=work_directory(); current=check_inputs(work); review=resume_review(work,current)
+    if not node_retirement_repair(review,current):
+        raise ValueError('disk continuation requires its explicit cleanup repair review')
+    proof=review['node_retirement_repair']
+    original=json.loads(referenced(proof['first_journal']).read_text())
+    disk=load('longhorn-v2-disk-lifecycle.py'); lab=disk.fixture(); row=disk.journal(lab)
+    if (row.get('phase')!='deleting' or row.get('business_passed') is not True or
+            any(row[k]!=original[k] for k in ('id','run_id','cluster_uid','raw_disks','binding','payload','disk_uuids'))):
+        raise ValueError('disk continuation changed the original completed business identities')
+    return str(referenced(proof['business']))
+
+
+def disk_cleanup_readback():
+    """Check the recorded post-del-node boundary without reconciling its inputs."""
+    work = work_directory(); current = check_inputs(work)
+    review = resume_review(work, current)
+    if ('v2-disk-lifecycle' in review['accepted'] or
+            not node_retirement_repair(review, current)):
+        return False
+    disk_resume()  # Original completed business and exact live journal identities.
+    disk = load('longhorn-v2-disk-lifecycle.py'); lab = disk.fixture()
+    lab.require_lease(); state = lab.owner(); row = disk.journal(lab)
+    disk.Lifecycle(lab, None).current()  # Only the journal's admitted config bytes.
+    if ((lab.DIRECTORY/'hosts').read_text() != row['inventory'] or
+            lab.get('node', disk.NAME) or lab.get('nodes.longhorn.io', disk.NAME, NS)):
+        raise ValueError('disk cleanup continuation requires the completed node removal')
+    lab.core_identity()
+    for kind, name, key in (('namespace', NS, 'namespace_uid'),
+                            ('secret', 'longhorn-grpc-tls', 'tls_uid'),
+                            ('secret', 'longhorn-volume-key', 'encryption_uid')):
+        obj = lab.get(kind, name, NS if kind == 'secret' else None)
+        if not obj or obj['metadata']['uid'] != state[key]:
+            raise ValueError('disk cleanup installation identity changed')
+    path = lab.DIRECTORY/'yml/longhorn/input.json'
+    c = json.loads(path.read_text())
+    for key in ('longhorn_inventory_nodes', 'longhorn_client_nodes'):
+        if c[key] != list(disk.SOURCE+(disk.HOST,)):
+            raise ValueError('disk cleanup rendered input is not the original four-node boundary')
+        c[key] = list(disk.SOURCE)  # Read-only projection after proven product del-node.
+    if (c['longhorn_v2_nodes'] != list(disk.SOURCE) or
+            set(c['longhorn_block_disks']) != set(disk.SOURCE) or c['longhorn_action'] != 'present'):
+        raise ValueError('disk cleanup source storage declarations changed')
+    spec = importlib.util.spec_from_file_location('disk_cleanup_product', BASE/'roles/longhorn/files/longhorn.py')
+    product = importlib.util.module_from_spec(spec); spec.loader.exec_module(product)
+    api = product.API(str(lab.DIRECTORY/'kubectl.kubeconfig'))
+    if not product.healthy(c, api, product.node_map(c, api)):
+        raise ValueError('disk cleanup source installation is unhealthy')
+    load('longhorn-v2-im-adopt.py').empty(lab)
+    lifecycle = disk.Lifecycle(lab, None)
+    for address in disk.SOURCE: lifecycle.disk(address)
+    print('LONGHORN_FULL_DISK_CLEANUP_READBACK_PASS source_nodes=3 removed_nodes=1', flush=True)
+    return True
+
+
+def mount_cleanup_repair(review, current):
+    """Bind only the reviewed fixture cleanup/recovery; preserve business inputs."""
+    proof = review.get('mount_cleanup_repair')
+    if proof is None:
+        return False
+    if (proof.get('classification') != 'test-gate' or proof.get('product_behavior_changed') is not False or
+            set(proof.get('files', {})) != MOUNT_REPAIRS):
+        raise ValueError('mount cleanup repair exceeds its fixture boundary')
+    for name, edge in proof['files'].items():
+        before = referenced(edge['original'])
+        after = BASE/name
+        if (current.get(name) != digest(after) or
+                edge['current'] != {'path': name, 'sha256': digest(after)}):
+            raise ValueError('mount cleanup repair does not bind current fixture bytes')
+        if name in ('tests/helpers/longhorn-v1-recovery-target.py', 'tests/helpers/longhorn-v2-coexist.py'):
+            source = before.read_text()
+            if name.endswith('longhorn-v1-recovery-target.py'):
+                old = "        self.host(row,'remove')\n"
+                new = old + "        # Both the released kubelet drop-in and removed fstab mount must leave\n        # systemd's loaded dependency graph before this fixture is retired.\n        lab.remote(HOST,['systemctl','daemon-reload'])\n"
+            else:
+                old = "    for address in row.get('host_intents', []): host(lab, row, address, 'remove')\n"
+                new = "    for address in row.get('host_intents', []):\n        host(lab, row, address, 'remove')\n        lab.remote(address, ['systemctl', 'daemon-reload'])\n"
+            if source.count(old) != 1 or source.replace(old, new, 1) != after.read_text():
+                raise ValueError('mount cleanup repair changes fixture business behavior')
+    failure = json.loads(referenced(proof['failure_journal']).read_text())
+    if (failure.get('scope') != 'target' or failure.get('phase') != 'native-uninstall' or
+            failure.get('guards_passed') is not True):
+        raise ValueError('mount cleanup recovery lacks original native retirement guards')
+    return True
+
+
+def retirement_resume():
+    work = work_directory(); current = check_inputs(work)
+    review = resume_review(work, current)
+    if not mount_cleanup_repair(review, current):
+        return ''
+    proof = review['mount_cleanup_repair']
+    journal = Path(proof['target_journal'])
+    cleanup = load('longhorn-v2-cleanup.py')
+    cleanup.recovery_plan(journal, 'target')
+    original = json.loads(referenced(proof['failure_journal']).read_text())
+    row = cleanup.read(journal, 'target')
+    if any(row[key] != original[key] for key in ('id', 'run_id', 'cluster_uid', 'raw_disks')):
+        raise ValueError('mount cleanup recovery target journal was replaced')
+    return str(journal)
+
+PROTECTION_PREFIX = tuple('v2-'+name+'-qualification' for name in (
+    'broken-restore', 'integrity', 'backup-refusal', 'recurring-selector',
+    'recurring-snapshot', 'recurring-backup', 'recurring-rotation',
+    'detached-backup', 'systembackup', 'systemrestore'))
+
+
+def resume_protection(mode):
+    """Reuse the completed prefix of the one pre-business DR reader refusal."""
+    work = work_directory(); current = check_inputs(work)
+    review = resume_review(work, current)
+    proof = review.get('protection_continuation')
+    if proof is None or mode not in PROTECTION_PREFIX:
+        return False
+    previous_path = referenced(proof['source_review'])
+    previous = json.loads(previous_path.read_text())
+    resume_review(work, previous['current_inputs'], path=previous_path)
+    allowed = {'tests/helpers/longhorn-full-evidence.py',
+        'tests/helpers/longhorn-im-revision-3-adopt.py',
+        'tests/helpers/longhorn-v2-dr-failover.sh',
+        'tests/helpers/longhorn-v2-data-protection.sh',
+        'tests/unit/test_longhorn_full_evidence.py',
+        'tests/unit/test_longhorn_full_material.py',
+        'tests/unit/test_longhorn_im_revision_3_adopt.py',
+        'tests/unit/test_longhorn_v2_dr_failover.py',
+        'tests/unit/test_longhorn_v2_data_protection.py'}
+    if ({name for name in set(current) | set(previous['current_inputs'])
+            if current.get(name) != previous['current_inputs'].get(name)} - allowed):
+        raise ValueError('protection continuation changed product or unrelated inputs')
+    refs = proof['parent']
+    if any(referenced(refs[key]).read_text().strip() != '1' for key in ('exit', 'finalized')):
+        raise ValueError('protection continuation must preserve its failed parent')
+    raw = referenced(refs['log']).read_text(); lines = raw.splitlines()
+    failures = [line for line in lines if FAILURE.match(line)]
+    if (len(failures) != 1 or not re.fullmatch(
+            r'LONGHORN_FIRST_FAILURE phase=v2-dr-failback-qualification rc=1 diagnostics=/var/tmp/kubeauto-longhorn-v2-data-protection\.[A-Za-z0-9]+', failures[0]) or
+            'ValueError: DR activation dependency changed: common/constants.py' not in lines or
+            [line.removeprefix('LONGHORN_V2_DATA_PROTECTION_STAGE_PASS stage=')
+             for line in lines if line.startswith('LONGHORN_V2_DATA_PROTECTION_STAGE_PASS stage=')] != list(PROTECTION_PREFIX) or
+            set(proof['children']) != set(PROTECTION_PREFIX)):
+        raise ValueError('protection continuation lacks the exact completed prefix and DR refusal')
+    child = referenced(proof['children'][mode]).read_text(); child_lines = child.splitlines()
+    marker = 'LONGHORN_'+mode.upper().replace('-', '_')
+    for expected in (marker+'_PASS', marker+'_SCOPED_CLEAN_PASS'):
+        require_unique(child_lines, expected)
+    if any(FAILURE.match(line) for line in child_lines) or raw.count(child) != 1:
+        raise ValueError('protection child differs from the original completed parent span')
+    print('LONGHORN_FULL_PROTECTION_CHILD_REUSED scope='+mode, flush=True)
+    print(child, end='' if child.endswith('\n') else '\n', flush=True)
+    return True
+
+
+def pending_resume_review(work, review, current):
+    """Bind the one published state correction and its real native-restore proof."""
+    manager = load('longhorn-manager-adopt.py'); manager.BASE = BASE
+    transition, _ = manager.plan(pending=True)
+    original = json.loads((work/'frozen-inputs.json').read_text())
+    for name, edge in transition['inputs'].items():
+        if (edge['old_sha256'] != original.get(name) or edge['sha256'] != current.get(name) or
+                not manager.input_current(name, original[name])):
+            raise ValueError('pending transition changes more than the exact Manager pin')
+    name = 'tests/longhorn-test-matrix.yaml'
+    if original.get(name) != current.get(name):
+        before = yaml.safe_load(referenced(review['changes'][name]['original']).read_text())
+        after = yaml.safe_load((BASE/name).read_text())
+        rows = [row for row in after['cases'] if row['id'] == 'LONGHORN-48']
+        if len(rows) != 1 or rows[0]['status'] != 'pending':
+            raise ValueError('pending transition must reopen only the failed data-protection case')
+        rows[0]['status'] = 'pass'
+        if before != after:
+            raise ValueError('pending transition changes unrelated matrix coverage')
+    previous_path = referenced(review['previous_review'])
+    previous = json.loads(previous_path.read_text())
+    if previous.get('scope') != 'full-resume-handoff-and-transport-hosts':
+        raise ValueError('pending transition requires the original reviewed gate-only cohort')
+    resume_review(work, previous['current_inputs'], path=previous_path)
+    refs = review['pending_focused']
+    if any(referenced(refs[key]).read_text().strip() != '0' for key in ('exit', 'finalized')):
+        raise ValueError('pending transition lacks durable native snapshot restore success')
+    lines = referenced(refs['log']).read_text().splitlines()
+    for marker in ('LONGHORN_MANAGER_ADOPT_PASS', 'LONGHORN_V2_INTEGRITY_QUALIFICATION_PASS',
+                   'LONGHORN_V2_INTEGRITY_QUALIFICATION_SCOPED_CLEAN_PASS'):
+        require_unique(lines, marker)
+    if any(FAILURE.match(line) for line in lines):
+        raise ValueError('pending transition focused proof contains a failure')
+    load('longhorn-v2-integrity.py').verify_log('\n'.join(lines))
+    result = observation(lines, 'LONGHORN_MANAGER_ADOPT_RESULT ')
+    pods = result.get('after', {}).get('pods', {})
+    if (len(pods) != 3 or any(not p.get('image', '').endswith(':'+manager.PENDING_NEW) for p in pods.values()) or
+            result.get('before', {}).get('daemonset_uid') != result.get('after', {}).get('daemonset_uid')):
+        raise ValueError('pending transition does not bind the actual source Manager rollout')
+
+
+def support_budget_repair(review, current):
+    """Accept only the measured archive-budget correction; keep all assertions."""
+    proof = review.get('support_budget_repair')
+    if proof is None:
+        return False
+    name = 'tests/helpers/longhorn-v2-observability.py'
+    original = referenced(proof['original_helper'])
+    cohort = review['completed_support_cohort']
+    before = original.read_text()
+    old = 'SUPPORT_COMPRESSED_BYTES = 512*1024**2'
+    old_boundary = 'Lab limits are 512 MiB compressed / 4 GiB expanded with 1 GiB disk headroom'
+    if (cohort['inputs'].get(name) != digest(original) or before.count(old) != 1 or
+            before.count(old_boundary) != 1):
+        raise ValueError('support budget repair lacks its exact original helper')
+    expected = before.replace(old, 'SUPPORT_COMPRESSED_BYTES = 1024**3', 1).replace(
+        old_boundary, 'Lab limits are 1 GiB compressed / 4 GiB expanded with 1 GiB disk headroom', 1)
+    transition = proof.get('native_degraded_repair')
+    if transition is not None:
+        # Only the reviewed asynchronous-CR assertion follows the measured
+        # budget repair. Product inputs and all completed receipts stay frozen.
+        if (referenced(transition['original_helper']).read_text() != expected or
+                digest(BASE/name) != '9844a72b7270a5aff62595736e1061131fc32369e2b53c270e6ce42745311907'):
+            raise ValueError('native degraded transition differs from its exact reviewed assertion')
+        expected = (BASE/name).read_text()
+    if (current.get(name) != digest(BASE/name) or (BASE/name).read_text() != expected):
+        raise ValueError('support budget repair changes behavior beyond the private archive limit')
+    return True
+
+
+def resume_review(work, current, *, path=None):
+    path=work/'resume-review.json' if path is None else path
+    if not path.exists():raise ValueError('full frozen source inputs changed without a reviewed repair')
+    private(path)
+    review=json.loads(path.read_text());original=json.loads((work/'frozen-inputs.json').read_text())
+    changed={name for name in set(original)|set(current) if original.get(name)!=current.get(name)}
+    pending = review.get('scope') == 'full-resume-v2-manager-pending'
+    allowed = RESUME_REPAIRS | PENDING_REPAIRS if pending else RESUME_REPAIRS
+    if mount_cleanup_repair(review, current):
+        allowed |= MOUNT_REPAIRS
+    if node_retirement_repair(review, current):
+        allowed |= NODE_RETIREMENT_REPAIRS
+    if (review.get('scope') not in ('full-resume-handoff-and-transport-hosts', 'full-resume-v2-manager-pending') or
+            review.get('current_inputs')!=current or not changed or not changed<=allowed or
+            set(review.get('changes',{}))!=changed or
+            review.get('original_inputs')!=reference(work/'frozen-inputs.json')):
+        raise ValueError('full frozen source inputs changed outside the reviewed repair')
+    for name in changed:
+        edge=review['changes'][name]
+        if (edge.get('old')!=original.get(name) or edge.get('current')!=current.get(name)):
+            raise ValueError('resume repair does not bind the exact original and current source')
+        if name not in original:
+            if name == 'roles/clean/tasks/clean_node.yml' and node_retirement_repair(review,current):
+                referenced(edge['original'])
+            elif not pending or name != 'tests/fixtures/longhorn-manager-pending-pin-transition.json' or edge.get('original') is not None:
+                raise ValueError('resume repair added an unreviewed source')
+        else:
+            if edge.get('original',{}).get('sha256') != original[name]:
+                raise ValueError('resume repair original source hash differs')
+            referenced(edge['original'])
+    refs=review['contracts']
+    if any(referenced(refs[key]).read_text().strip()!='0' for key in ('exit','finalized')):
+        raise ValueError('resume repair contracts did not finalize successfully')
+    lines=referenced(refs['log']).read_text().splitlines()
+    stamp=hashlib.sha256(json.dumps(current,sort_keys=True).encode()).hexdigest()
+    require_unique(lines,'LONGHORN_FULL_RESUME_CONTRACT_PASS inputs='+stamp)
+    if any(FAILURE.match(line) for line in lines):raise ValueError('resume contracts contain a failure')
+    if 'tests/helpers/longhorn-v2-observability.py' in changed and not support_budget_repair(review, current):
+        raise ValueError('support budget repair requires an exact reviewed transition')
+    if pending: pending_resume_review(work, review, current)
+    return review
+
+
+def node_join_readback():
+    """Admit only the existing runner's data-verified partial add for retry."""
+    node = load('longhorn-node-local.py').lifecycle_module(); lab = node.fixture()
+    lab.require_lease(); row = node.journal(lab)
+    lifecycle = node.Lifecycle(lab, None)
+    lifecycle.partial_add_identity()  # Original adding intent, host/boot, certs and core UIDs.
+    nodes = lab.get('nodes')['items']
+    if any(not any(c['type'] == 'Ready' and c['status'] == 'True'
+                   for c in obj['status']['conditions']) for obj in nodes):
+        raise ValueError('partial node add has an unhealthy original or receiving node')
+    lifecycle.workload.identities(); lifecycle.workload.data(row['payload'], read=True)
+    replicas = lab.replica_topology(lifecycle.workload.journal(), 3)
+    if not replicas or any(r['node'] == node.NAME for r in replicas.values()):
+        raise ValueError('partial node add lost its original healthy three-replica baseline')
+    # The unchanged resume-business entry additionally verifies disk UUID,
+    # native ownership, exact expanded config and release proof before writing.
+    print('LONGHORN_FULL_PARTIAL_NODE_JOIN_READBACK_PASS replicas=3', flush=True)
+
+
+def resume_baseline():
+    """Prove the retained installed V1 boundary instead of demanding empty hosts."""
+    work=work_directory();check_inputs(work)
+    if (work/'accepted/final-clean.json').exists():
+        accepted_stage('final-clean')
+        absent(BASE/'clusters'/name for name in ('longhorn-gate', 'longhorn-v2-gate',
+                                                'longhorn-v2-dr-target', 'longhorn-node-gate'))
+        clean = load('longhorn-lab.py').execute(['bash', BASE/'tests/helpers/lab-wipe-nodes.sh',
+            '--verify', '--rocky-only', '192.168.122.135', '192.168.122.40', '192.168.122.72',
+            '192.168.122.212', '192.168.122.165', '192.168.122.238',
+            '192.168.47.146', '192.168.47.147', '192.168.47.148', '192.168.47.149'], timeout=180)
+        require_unique(clean.stdout.splitlines(), 'LAB_CLEAN_VERIFY_PASS')
+        print(clean.stdout, end='', flush=True)
+        print('LONGHORN_FULL_RESUME_BASELINE_PASS final-clean=verified', flush=True)
+        return
+    for mode in ('core','core-smoke','disk-qualification','v1-ownership-v2-linked-acceptance'):
+        accepted_stage(mode)
+    lab=load('longhorn-lab.py');lab.require_lease()
+    load('longhorn-v1-storage-faults.py').baseline(lab)
+    load('longhorn-v2-im-adopt.py').filesystem_disks(lab)
+    if (work/'accepted/v2-cleanup.json').exists():
+        accepted_stage('v2-cleanup')
+        absent(BASE/'clusters'/name for name in ('longhorn-v2-gate', 'longhorn-v2-dr-target'))
+        # Source retirement is irreversible within this run. Later node-module
+        # recovery starts from its proven empty pool, never an installed V2 lab.
+        node_path = BASE/'clusters/longhorn-node-gate'
+        if node_path.is_symlink(): raise ValueError('partial node fixture is a symlink')
+        if node_path.exists():
+            node_join_readback()
+        else:
+            lab.execute(['bash', BASE/'tests/helpers/lab-wipe-nodes.sh', '--verify', '--rocky-only',
+                         '192.168.47.146', '192.168.47.147', '192.168.47.148', '192.168.47.149'], timeout=180)
+    elif not disk_cleanup_readback():
+        source_readback()
+    retired = work/'accepted/v2-cleanup-target.json'
+    journal = retirement_resume() if not retired.exists() else ''
+    if journal:
+        _, target = load('longhorn-v2-dr-target-install.py').fixture()
+        state = target.owner()
+        row = load('longhorn-v2-cleanup.py').read(Path(journal), 'target')
+        if (any(state[k] != row[k] for k in ('run_id', 'cluster_uid', 'raw_disks')) or
+                not state.get('native_uninstalled') or state.get('host_state') or
+                target.get('namespace', NS) or target.get('crd', 'volumes.longhorn.io')):
+            raise ValueError('target interrupted native retirement boundary differs')
+        cleanup = load('longhorn-v2-cleanup.py')
+        cleanup.recover_fixture_kubelet(target, load('longhorn-v2-resources.py'))
+        target.core_identity()
+    elif retired.exists():
+        accepted_stage('v2-cleanup-target')
+    else:
+        target_readback()
+    source_state = 'released-empty' if (work/'accepted/v2-cleanup.json').exists() else 'healthy-empty'
+    target_state = 'released-empty' if retired.exists() else 'healthy-empty'
+    print('LONGHORN_FULL_RESUME_BASELINE_PASS v1=healthy-empty v2='+source_state+' target='+target_state,flush=True)
+
+
+def resume_child(mode):
+    """Consume only explicit immutable raw child receipts; absent work still runs."""
+    work=work_directory();current=check_inputs(work);review=resume_review(work,current)
+    row=review.get('children',{}).get(mode)
+    if row is None:return False
+    refs=row['receipts']
+    if any(referenced(refs[key]).read_text().strip()!='0' for key in ('exit','finalized')):
+        raise ValueError('reused child did not finalize successfully')
+    raw=referenced(refs['log']).read_text();lines=raw.splitlines()
+    if any(FAILURE.match(line) for line in lines):raise ValueError('reused child retains a failure')
+    if mode=='middleware' and 'stages' in row:
+        lines=middleware_continuation(row,lines)
+    parallel=load('longhorn-parallel.py')
+    if mode not in (*parallel.V1_OPERATION_MODULES,'v2-platform-install','backup','backup-refusal','recurring','v1-stability'):
+        raise ValueError('resume child exceeds the operations handoff')
+    for marker in parallel.MARKERS[mode][:-1]:require_unique(lines,marker)
+    if mode == 'v1-stability':
+        if (not support_budget_repair(review, current) or
+                row.get('frozen_inputs') != review['completed_support_cohort']['inputs']):
+            raise ValueError('stability continuation differs from the original completed inputs')
+        stability = load('longhorn-v1-stability.py')
+        stability.verify_log(raw, 'stability')
+        lab = load('longhorn-lab.py'); lab.require_lease()
+        stability.baseline(lab)
+    if mode=='v2-platform-install':
+        for name in ('v2-runtime-resources','v2-coexist-qualification'):
+            canonical_readback(name,lines)
+    print('LONGHORN_FULL_CHILD_REUSED scope='+mode+' source_sha256='+refs['log']['sha256'],flush=True)
+    # The original fence remains in the referenced file. The current durable
+    # wrapper emits its own fence after this read-only consumption succeeds.
+    if lines and lines[-1]==parallel.MARKERS[mode][-1]:lines.pop()
+    print('\n'.join(lines),flush=True)
+    return True
+
+
+def middleware_continuation(row,cleanup):
+    """Accept original complete business stages after a separately proven cleanup."""
+    source=json.loads(referenced(row['source_review']).read_text())['current_inputs']
+    current=frozen_inputs()
+    if (set(source)!=set(current) or
+            not {name for name in source if source[name]!=current[name]}<=(RESUME_REPAIRS | PENDING_REPAIRS)):
+        raise ValueError('middleware continuation changed an owning business input')
+    specs={'monitoring-product-setup':'LONGHORN_V1_MONITORING_SETUP_PASS',
+        'database-product-setup':'LONGHORN_MIDDLEWARE_SETUP_PASS',
+        'database-native-recovery':'LONGHORN_MIDDLEWARE_BUSINESS_PASS'}
+    if set(row['stages'])!=set(specs):raise ValueError('middleware continuation omits an original stage')
+    lines=[]
+    for name,marker in specs.items():
+        refs=row['stages'][name]
+        if any(referenced(refs[key]).read_text().strip()!='0' for key in ('exit','finalized')):
+            raise ValueError('middleware original stage lacks durable zero exits')
+        text=referenced(refs['log']).read_text();stage=text.splitlines()
+        if any(FAILURE.match(line) for line in stage):raise ValueError('middleware original stage failed')
+        require_unique(stage,marker);require_unique(stage,'LONGHORN_MIDDLEWARE_STAGE_EXIT rc=0')
+        if name=='database-native-recovery':load('longhorn-v1-middleware.py').verify_log(text)
+        lines.extend(stage)
+    for marker in ('LONGHORN_MIDDLEWARE_CONSUMERS_SCOPED_CLEAN_PASS',
+            'LONGHORN_MIDDLEWARE_SCOPED_CLEAN_PASS','LONGHORN_MIDDLEWARE_CLEANUP_PASS','LONGHORN_GATE_EXIT rc=0'):
+        require_unique(cleanup,marker)
+    lab=load('longhorn-lab.py');lab.require_lease()
+    load('longhorn-v1-storage-faults.py').baseline(lab)
+    absent(lab.DIRECTORY/name for name in ('longhorn-v1-middleware.json','longhorn-v1-monitoring.json'))
+    lines.extend(cleanup)
+    lines.append('LONGHORN_MIDDLEWARE_PASS')
+    return lines
 
 
 def markers(mode):
@@ -746,6 +1341,26 @@ def local_work(path):
     return path
 
 
+def focused_material(path):
+    """Reuse only this run's completed install for the pending-state repair."""
+    work = local_work(path)
+    prior = os.environ.get('LONGHORN_FULL_EVIDENCE_DIR')
+    os.environ['LONGHORN_FULL_EVIDENCE_DIR'] = str(work/'evidence')
+    try:
+        baseline = load('longhorn-v2-upgrade-baseline.py'); baseline.BASE = BASE
+        row = baseline.previous()
+        accepted = work/'accepted/v2-aio-install-qualification.json'
+        if json.loads(accepted.read_text()) != row:
+            raise ValueError('focused material differs from this full run installation')
+        refs, _ = execution('v2-aio-install-qualification', work/'stages/v2-aio-install-qualification')
+        if row['receipt_refs'] != refs:
+            raise ValueError('focused material does not bind its original install receipts')
+    finally:
+        if prior is None: os.environ.pop('LONGHORN_FULL_EVIDENCE_DIR', None)
+        else: os.environ['LONGHORN_FULL_EVIDENCE_DIR'] = prior
+    print('LONGHORN_FULL_FOCUSED_MATERIAL_PASS scope=v2-integrity-qualification', flush=True)
+
+
 def full_copy_material():
     # One owning reader supplies the complete verified finite transport closure.
     material=load('longhorn-v2-clone.py').preflight_full_copy(BASE)
@@ -759,12 +1374,31 @@ def full_copy_material():
 
 def verify_full_copy_transport(work):
     path=work/'full-copy-reuse.json';private(path)
+    original=json.loads(path.read_text())
     material=full_copy_material()
-    if json.loads(path.read_text())!=material:
-        raise ValueError('full49 reviewed reuse closure changed during transport')
     names=work/'full-copy-files.txt';private(names)
-    if names.read_text()!=''.join(name+'\n' for name in sorted(material['transport_refs'])):
+    if names.read_text()!=''.join(name+'\n' for name in sorted(original['transport_refs'])):
         raise ValueError('full49 transport file list differs from its canonical exact refs')
+    if original==material:return
+    review=resume_review(work,frozen_inputs())
+    transition=review.get('full_copy_transition',{})
+    allowed = RESUME_REPAIRS | PENDING_REPAIRS if review.get('scope') == 'full-resume-v2-manager-pending' else RESUME_REPAIRS
+    if (transition.get('original')!=reference(path) or transition.get('current')!=material or
+            any(original.get(key)!=material.get(key) for key in ('full_copy','reuse_impact','revision3_reuse')) or
+            set(original['inputs'])!=set(material['inputs']) or
+            not {name for name in original['inputs'] if original['inputs'][name]!=material['inputs'][name]}<=allowed):
+        raise ValueError('full49 continuation changes an unreviewed owning dependency')
+    repair='tests/evidence/longhorn-linked-legacy-dependency-impact-20261024.json'
+    prior=transition.get('original_retirement_impact',{})
+    if prior.get('sha256')!=original['transport_refs'].get(repair):
+        raise ValueError('full49 continuation lacks the original repair record')
+    previous=json.loads(referenced(prior).read_text())
+    removed=set(original['transport_refs'])-set(material['transport_refs'])
+    changed={name for name in original['transport_refs'].keys()&material['transport_refs'].keys()
+             if original['transport_refs'][name]!=material['transport_refs'][name]}
+    if (changed!={repair} or
+            not removed<={ref['path'] for ref in previous['contract_receipts'].values()}):
+        raise ValueError('full49 continuation changed original business evidence')
 
 
 def freeze_preflight(path):
@@ -782,7 +1416,7 @@ def verify_preflight(path):
     work=local_work(path);private(work/'preflight-inputs.json')
     verify_full_copy_transport(work)
     if json.loads((work/'preflight-inputs.json').read_text())!=frozen_inputs():
-        raise ValueError('source changed during local full preflight')
+        check_inputs(work)
     # The same finite raw/durable reader will be used after transferring bytes.
     prior=os.environ.get('LONGHORN_FULL_EVIDENCE_DIR')
     os.environ['LONGHORN_FULL_EVIDENCE_DIR']=str(work/'evidence')
@@ -874,17 +1508,32 @@ def main():
     sub=parser.add_subparsers(dest='command',required=True);sub.add_parser('init');sub.add_parser('check-inputs');sub.add_parser('finalize');sub.add_parser('ready');sub.add_parser('clone-accept')
     proof=sub.add_parser('release-proof');proof.add_argument('scope',choices=('source','target'));proof.add_argument('host',choices=('192.168.47.148','192.168.47.149'))
     stage=sub.add_parser('accept');stage.add_argument('mode',choices=MODES);stage.add_argument('--prefix',type=Path,required=True)
-    for command in ('freeze','verify-preflight'):
+    sub.add_parser('resume-baseline')
+    sub.add_parser('retirement-resume')
+    sub.add_parser('disk-resume')
+    child=sub.add_parser('resume-child');child.add_argument('mode')
+    protection=sub.add_parser('resume-protection');protection.add_argument('mode')
+    for command in ('freeze','verify-preflight','focused-material'):
         local=sub.add_parser(command);local.add_argument('--directory',type=Path,required=True)
     imported=sub.add_parser('import-result');imported.add_argument('--directory',type=Path,required=True);imported.add_argument('--outer-directory',type=Path,required=True)
     args=parser.parse_args()
     if args.command=='ready':ready();return
     if args.command=='freeze':freeze_preflight(args.directory);return
     if args.command=='verify-preflight':verify_preflight(args.directory);return
+    if args.command=='focused-material':focused_material(args.directory);return
     if args.command=='import-result':import_result(args.directory,args.outer_directory);return
     load('longhorn-lab.py').require_lease()
     if args.command=='init':initialize()
     elif args.command=='check-inputs':check_inputs(work_directory())
+    elif args.command=='resume-baseline':resume_baseline()
+    elif args.command=='retirement-resume':
+        journal = retirement_resume()
+        if journal: print(journal, flush=True)
+    elif args.command=='disk-resume':print(disk_resume(),flush=True)
+    elif args.command=='resume-child':
+        if not resume_child(args.mode):raise SystemExit(3)
+    elif args.command=='resume-protection':
+        if not resume_protection(args.mode):raise SystemExit(3)
     elif args.command=='finalize':finalize()
     elif args.command=='clone-accept':clone_accept()
     elif args.command=='release-proof':release_proof(args.scope,args.host)

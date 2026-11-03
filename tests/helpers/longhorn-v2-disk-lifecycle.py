@@ -666,6 +666,12 @@ class Lifecycle:
         self.save(row)
         certificates.retire_worker_certificates(lab, HOST, NAME, row['raw_disks'][HOST]['machine_id'],
                                                row['multipath']['original']['boot_id'], expected)
+        if row.get('phase') == 'deleting' and row.get('business_passed'):
+            # Reconcile the already removed, still leased node using the same
+            # product cleanup task. No node/disk/volume is recreated for repair.
+            tasks = yaml.safe_load((lab.BASE/'roles/clean/tasks/clean_node.yml').read_text())[0]['block']
+            task = next(t for t in tasks if t['name'] == 'Stop Kubernetes pod slices before removing node state')
+            lab.remote(HOST, ['bash', '-c', task['ansible.builtin.shell']], timeout=180)
         lab.execute(['bash', lab.BASE/'tests/helpers/lab-wipe-nodes.sh', '--verify', '--rocky-only', HOST], timeout=180)
         # Product hostname changes are restored only after core removal.
         lab.remote(HOST, ['python3', '-c', 'import pathlib,socket,subprocess,sys\n'

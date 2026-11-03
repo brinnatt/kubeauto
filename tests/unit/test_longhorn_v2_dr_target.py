@@ -26,6 +26,11 @@ def public_key(value=1):
 
 
 class TargetContracts(unittest.TestCase):
+    def test_source_boundary_uses_current_core_without_upgrade_receipt_dependency(self):
+        source = CANDIDATE.read_text()
+        self.assertIn('install.volume_baseline = lambda current_lab: current_lab.core_identity()', source)
+        self.assertIn('backup.baseline(install,lab,store)', source)
+
     def test_disk_admission_binds_hardware_identity_and_stable_path_across_kernel_rename(self):
         assessment = {'blockers': [], 'candidates': [{'name': 'sdb', 'identity': 'original',
             'size_bytes': 100*1024**3, 'by_id': ['/dev/disk/by-id/scsi-original', '/dev/disk/by-id/wwn-original']}]}
@@ -51,6 +56,11 @@ class TargetContracts(unittest.TestCase):
         for command in ('--longhorn-v2-detached-backup-qualification)', '--longhorn-v2-backup-qualification)',
                         '--longhorn-backup)', '--longhorn-snapshot)'):
             self.assertIn(command, runner)
+
+    def test_resumed_full_skips_empty_host_bootstrap_after_owned_target_recovery(self):
+        runner = (ROOT/'tests/helpers/longhorn-runner.sh').read_text()
+        self.assertIn('"$module" == full && "${LONGHORN_FULL_RESUME:-no}" != yes', runner)
+        self.assertIn('fresh full runs and standalone target gates retain the strict bootstrap', runner)
 
     def run_script(self, script, row):
         return subprocess.run([sys.executable, '-c', script], input=json.dumps(row), text=True,

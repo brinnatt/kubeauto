@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -15,6 +16,53 @@ matrix = importlib.util.module_from_spec(spec); spec.loader.exec_module(matrix)
 
 
 class LonghornGateContracts(unittest.TestCase):
+    def test_integrity_full_material_refuses_foreign_path_before_sync_or_launch(self):
+        script = '''source "$1"
+ROOT="$2"
+longhorn_local_gate() { exit 91; }
+ssh_longhorn() { exit 92; }
+export LONGHORN_FULL_RESUME_DIRECTORY="$3"
+longhorn_launch v2-integrity-qualification LONGHORN_V2_INTEGRITY_QUALIFICATION_PASS
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            result=subprocess.run(['bash','-c',script,'contract',str(ROOT/'tests/helpers/longhorn-runner.sh'),
+                                   str(ROOT),directory],text=True,capture_output=True)
+        self.assertEqual(1,result.returncode,result.stdout+result.stderr)
+        self.assertIn('LONGHORN_FULL_EVIDENCE_FAIL',result.stdout)
+        source=(ROOT/'tests/helpers/longhorn-runner.sh').read_text()
+        transfer=source.index('"$focused_work/" "root@192.168.47.130:$focused_remote/"')
+        self.assertLess(transfer,source.index('printf \'%s\\n\' "$module" >&"$in_fd"',transfer))
+        remote=source[source.index('if test "$mode" = v2-integrity-qualification; then'):]
+        self.assertLess(remote.index('focused-material --directory "$focused_work"'),
+                        remote.index('export LONGHORN_FULL_EVIDENCE_DIR="$focused_work/evidence"'))
+
+    def test_integrity_remote_material_runs_outside_project_and_stops_on_refusal(self):
+        source = (ROOT/'tests/helpers/longhorn-runner.sh').read_text()
+        remote = source.split('if test "$mode" = v2-integrity-qualification; then', 1)[1].split('if test "$mode" = full; then', 1)[0]
+        remote = 'if test "$mode" = v2-integrity-qualification; then'+remote
+        for accepted in (True, False):
+            with self.subTest(accepted=accepted), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory)/'product'; outside = Path(directory)/'unrelated'
+                outside.mkdir(); (base/'.venv/bin').mkdir(parents=True)
+                (base/'.venv/bin/python').symlink_to(sys.executable)
+                helper = base/'tests/helpers/longhorn-full-evidence.py'
+                helper.parent.mkdir(parents=True)
+                # Exercise executable and script resolution from the actual SSH
+                # snippet; the owning reader's receipt semantics have separate tests.
+                helper.write_text('import sys\nfrom pathlib import Path\n'
+                                  'assert sys.argv[1:3] == ["focused-material", "--directory"]\n'
+                                  'print("LONGHORN_FULL_FOCUSED_MATERIAL_PASS scope=v2-integrity-qualification", flush=True)\n'
+                                  'sys.exit(0 if (Path(sys.argv[3])/"accepted").exists() else 7)\n')
+                work = base/'logs/longhorn-full/run.contract'; (work/'evidence').mkdir(parents=True)
+                if accepted: (work/'accepted').touch()
+                script = 'set -eu\nmode=v2-integrity-qualification\n'+remote.replace('/usr/local/kubeauto', str(base))
+                script += '\nprintf "%s\\n" "$LONGHORN_FULL_EVIDENCE_DIR"\n'
+                result = subprocess.run(['bash', '-c', script], cwd=outside, input=str(work)+'\n',
+                                        text=True, capture_output=True)
+                self.assertEqual(0 if accepted else 7, result.returncode, result.stdout+result.stderr)
+                self.assertEqual(str(work/'evidence')+'\n' if accepted else '', result.stdout)
+                self.assertIn('LONGHORN_FULL_FOCUSED_MATERIAL_PASS', result.stderr)
+
     def test_uninstall_diagnostics_read_original_namespace_without_secret_payloads_or_sync(self):
         script = 'source "$1"\nssh_longhorn() { printf "%s" "$1"; }\nlonghorn_dispatch --longhorn-uninstall-diagnostics\n'
         result = subprocess.run(['bash', '-c', script, 'contract', str(ROOT/'tests/helpers/longhorn-runner.sh')],
@@ -647,6 +695,7 @@ if mode=='archive-core':pathlib.Path('clusters/longhorn-gate').rmdir()
 mode=sys.argv[1];p=pathlib.Path('calls.json')
 calls=json.loads(p.read_text()) if p.exists() else []
 calls.append(mode);p.write_text(json.dumps(calls))
+if mode=='recover-owned-disk-residue': print('{"recovered": false}')
 if mode==os.environ.get('FAIL_MODE'):sys.exit(17)
 ''')
             branch = branch.replace('/var/tmp/kubeauto-longhorn-disks.', str(base / 'work.'))
@@ -655,7 +704,7 @@ if mode==os.environ.get('FAIL_MODE'):sys.exit(17)
                                          'contract', str(base)], text=True, capture_output=True,
                                         env=dict(os.environ, FAIL_MODE=failure), timeout=10)
                 calls = json.loads((base / 'calls.json').read_text())
-                self.assertEqual(calls, ['verify-core', 'prepare-disks', 'cleanup-disks', 'verify-core'] +
+                self.assertEqual(calls, ['verify-core', 'recover-owned-disk-residue', 'prepare-disks', 'cleanup-disks', 'verify-core'] +
                                  ([] if failure else ['record-disk-qualification']))
                 self.assertNotIn('lab-wipe-nodes', branch)
                 if failure:

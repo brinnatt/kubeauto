@@ -35,7 +35,7 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 | 存储技术栈 | 文档入口 | 当前范围 |
 |---|---|---|
 | **Ceph Tentacle** | [九模块文档](./docs/storage/README.md) | Cephadm 独立集群与外置 Ceph-CSI 实现已进入验证；专项矩阵 28 项仍为 pending，尚未声明交付 |
-| **Longhorn** | [用户与运维](./docs/storage/longhorn/operations-manual.md) · [技术白皮书](./docs/storage/longhorn/technical-whitepaper.md) · [开发手册](./docs/storage/longhorn/development-manual.md) | 1.12.1 / V1 文件系统盘与 V2 裸块盘；54 项专项矩阵，V2 现场验收待完成，尚未声明交付 |
+| **Longhorn** | [用户与运维](./docs/storage/longhorn/operations-manual.md) · [技术白皮书](./docs/storage/longhorn/technical-whitepaper.md) · [开发手册](./docs/storage/longhorn/development-manual.md) | 1.12.1 / V1 文件系统盘与 V2 裸块盘；[专项 54/54、全量 56/56](./tests/evidence/longhorn-full-ga-20261103.json)，GA 技术验收通过，客户签收另行确认 |
 
 Ceph 文档继续按官方九个模块组织，不改造成中间件三文件结构；产品实现使用独立专项矩阵与回归分路管理验证状态。
 

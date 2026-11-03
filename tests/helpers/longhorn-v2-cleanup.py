@@ -369,6 +369,70 @@ def guard_business(lab,pid,fault=None):
     print('LONGHORN_V2_CLEANUP_PROTECTED_DATA_PASS',flush=True)
 
 
+def recover_fixture_kubelet(lab, resources):
+    """Recover the interrupted zero-page restore after a removed V1 fixture.
+
+    This is not permission to adopt a stopped or rebooted host. Only the exact
+    journaled restore-confirmed host with the deleted fixture still cached in
+    systemd may have its original active kubelet restored.
+    """
+    state = lab.owner()
+    nodes = lab.get('nodes')['items']
+    if (lab.get('namespace', 'kube-system')['metadata']['uid'] != state['cluster_uid'] or
+            {n['metadata']['name']: n['metadata']['uid'] for n in nodes} != state['node_uids'] or
+            {a['address'] for n in nodes for a in n['status']['addresses'] if a['type'] == 'InternalIP'} != set(lab.NODES) or
+            lab.get('namespace', NS) or lab.get('crd', 'volumes.longhorn.io')):
+        raise ValueError('retirement kubelet recovery requires its original uninstalled core identities')
+    record = resources.read_record(lab)
+    for node, saved in record['hosts'].items():
+        actual = resources.probe(lab, node)
+        if actual['kubelet_active'] == saved['current']['kubelet_active']:
+            continue
+        keys = ('machine_id', 'boot_id', 'total', 'free', 'reserved')
+        if (saved['phase'] != 'restore-confirmed' or saved['original']['total'] != 0 or
+                saved['current']['kubelet_active'] != 'active' or actual['kubelet_active'] != 'inactive' or
+                any(actual[k] != saved['current'][k] for k in keys) or
+                any(actual[k] for k in ('total', 'free', 'reserved'))):
+            raise ValueError('retirement kubelet recovery differs from the interrupted empty page-pool restore')
+        script = '''import json,os,stat,subprocess,sys
+from pathlib import Path
+r=json.load(sys.stdin)
+assert Path('/etc/machine-id').read_text().strip()==r['machine_id']
+assert Path('/proc/sys/kernel/random/boot_id').read_text().strip()==r['boot_id']
+mount='/data/kubeauto-longhorn-coexist46'
+drop='/etc/systemd/system/kubelet.service.d/kubeauto-longhorn.conf'
+for name in (drop,'/etc/kubeauto/longhorn-disk.json'):
+ p=Path(name);assert not p.exists() and not p.is_symlink(),'fixture host ownership remains'
+point=Path(mount);assert not point.is_symlink(),'fixture mountpoint replaced'
+if point.exists():
+ info=point.lstat()
+ assert stat.S_ISDIR(info.st_mode) and info.st_uid==os.geteuid() and not any(point.iterdir()),'fixture mountpoint has foreign contents'
+ assert subprocess.run(['findmnt','--mountpoint',mount],capture_output=True,timeout=20).returncode==1,'fixture mount is still active'
+assert mount not in Path('/etc/fstab').read_text(),'fixture fstab entry remains'
+def show():
+ raw=subprocess.run(['systemctl','show','kubelet','-p','NeedDaemonReload','-p','DropInPaths','-p','ExecStartPre','-p','ActiveState'],check=True,text=True,capture_output=True,timeout=20).stdout
+ return dict(line.split('=',1) for line in raw.splitlines())
+before=show()
+assert before['ActiveState']=='inactive' and before['NeedDaemonReload']=='yes'
+assert before['DropInPaths']==drop and mount in before['ExecStartPre'],'not the removed V1 fixture dependency'
+subprocess.run(['systemctl','daemon-reload'],check=True,timeout=30)
+after=show()
+assert after['NeedDaemonReload']=='no' and mount not in after['ExecStartPre'] and drop not in after['DropInPaths']
+if point.exists():
+ now=point.lstat()
+ assert not point.is_symlink() and (now.st_dev,now.st_ino)==(info.st_dev,info.st_ino),'fixture mountpoint changed during reload'
+ point.rmdir()
+subprocess.run(['systemctl','start','kubelet'],check=True,timeout=120)
+assert show()['ActiveState']=='active'
+print('LONGHORN_V2_RETIRED_FIXTURE_KUBELET_RECOVERED')
+'''
+        lab.remote(node, ['python3', '-c', script], stdin=json.dumps(saved['current']), timeout=180)
+        after = resources.probe(lab, node)
+        if any(after[k] != saved['current'][k] for k in (*keys, 'kubelet_active')):
+            raise ValueError('retirement kubelet recovery did not restore its exact journaled boundary')
+        resources.refresh_kubelet(lab, node, saved['original']['total'])
+
+
 def storage(lab,install,scope,journal,pid,recover=False):
     row=read(journal,scope);state=lab.owner()
     if any(row[k]!=state[k] for k in ('run_id','cluster_uid','raw_disks')): raise ValueError('retirement baseline replaced')
@@ -396,6 +460,12 @@ def storage(lab,install,scope,journal,pid,recover=False):
                 'node.longhorn.io/create-default-disk','node.longhorn.io/disable-v2-data-engine','kubeauto.io/longhorn-client'))):
             raise ValueError('native uninstall left owned bootstrap labels')
     resources=load('longhorn-v2-resources.py')
+    # Product host restoration can remove unit drop-ins. Flush their loaded
+    # graph before the page-pool owner refreshes kubelet capacity.
+    if recover and resources.record_path(lab).exists():
+        recover_fixture_kubelet(lab, resources)
+    for node in lab.NODES:
+        lab.remote(node, ['systemctl', 'daemon-reload'])
     (resources.restore if scope=='source' else install.restore_resources)(lab)
     for node in lab.NODES:
         after=remote(lab,row,node,'check',True)

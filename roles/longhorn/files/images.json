@@ -16,7 +16,7 @@
   },
   "1.12.1": {
     "longhorn-engine": "v1.12.1",
-    "longhorn-manager": "v1.12.1-kubeauto.1",
+    "longhorn-manager": "v1.12.1-kubeauto.2",
     "longhorn-ui": "v1.12.1",
     "longhorn-instance-manager": "v1.12.1-kubeauto.3",
     "longhorn-share-manager": "v1.12.1",

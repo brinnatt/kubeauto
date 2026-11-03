@@ -48,7 +48,20 @@ while read -r helper branch; do
   phase="$branch"
   marker="LONGHORN_${branch^^}";marker="${marker//-/_}"
   echo "LONGHORN_V2_DATA_PROTECTION_STAGE_START stage=$branch"
-  bash "$BASE/tests/helpers/$helper.sh" "$branch" 2>&1 | tee "$work/$branch.log"
+  reused=3
+  if [[ "${LONGHORN_FULL_RESUME:-no}" == yes && -n "${LONGHORN_FULL_EVIDENCE_DIR:-}" ]]; then
+    reused=0
+    "$PY" "$BASE/tests/helpers/longhorn-full-evidence.py" resume-protection "$branch" > "$work/$branch.log" 2>&1 || reused=$?
+    if [[ "$reused" == 0 ]]; then
+      cat "$work/$branch.log"
+    elif [[ "$reused" != 3 ]]; then
+      cat "$work/$branch.log" >&2
+      exit "$reused"
+    fi
+  fi
+  if [[ "$reused" == 3 ]]; then
+    bash "$BASE/tests/helpers/$helper.sh" "$branch" 2>&1 | tee "$work/$branch.log"
+  fi
   grep -Fxq "${marker}_SCOPED_CLEAN_PASS" "$work/$branch.log"
   grep -Fxq "${marker}_PASS" "$work/$branch.log"
   if grep -Eq '^LONGHORN_[A-Z0-9_]*(FAIL|FIRST_FAILURE)( |$)' "$work/$branch.log"; then exit 1; fi

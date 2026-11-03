@@ -117,6 +117,40 @@ class FullMaterialContracts(unittest.TestCase):
                 self.assertEqual(ref(path),UPGRADE.bind_previous(before))
             self.assertEqual('v2-aio-install-qualification',prior['signed_scope'])
 
+    def test_fresh_install_reuses_only_the_published_exact_manager_pin_change(self):
+        from tests.unit.test_longhorn_manager_adopt import ManagerAdoptionContracts
+        with tempfile.TemporaryDirectory() as temporary:
+            base,directory,path,prior,before,ref=self.fixture(temporary)
+            _, transition, _, _ = ManagerAdoptionContracts().pending_pins(base)
+            name='roles/longhorn/files/images.json'
+            current=json.dumps({'1.12.1':{'longhorn-instance-manager':UPGRADE.TAG,
+                                        'longhorn-manager':'v1.12.1-kubeauto.2'}})
+            (base/name).write_text(current)
+            transition['inputs'][name]={'old_sha256':hashlib.sha256(current.replace(
+                '"longhorn-manager": "v1.12.1-kubeauto.2"',
+                '"longhorn-manager": "v1.12.1-kubeauto.1"').encode()).hexdigest(),
+                'sha256':hashlib.sha256(current.encode()).hexdigest()}
+            (base/'tests/fixtures/longhorn-manager-pending-pin-transition.json').write_text(json.dumps(transition))
+            prior['frozen_inputs'][name]=transition['inputs'][name]['old_sha256']
+            private(path,json.dumps(prior))
+            with patch.object(UPGRADE,'BASE',base):
+                self.assertEqual(prior,UPGRADE.previous())
+                (base/name).write_text((base/name).read_text()+'\n')
+                with self.assertRaises(ValueError): UPGRADE.previous()
+
+    def test_fresh_install_reader_change_requires_its_exact_existing_provenance(self):
+        for allowed in (False,True):
+            with self.subTest(allowed=allowed),tempfile.TemporaryDirectory() as temporary:
+                base,directory,path,prior,before,ref=self.fixture(temporary)
+                name='tests/helpers/longhorn-v2-upgrade-baseline.py'
+                (base/name).write_text('changed read-only evidence consumer\n')
+                revision=SimpleNamespace(gate_input_current=unittest.mock.Mock(return_value=allowed))
+                with patch.object(UPGRADE,'BASE',base),patch.object(UPGRADE,'load',return_value=revision):
+                    if allowed:self.assertEqual(prior,UPGRADE.previous())
+                    else:
+                        with self.assertRaises(ValueError):UPGRADE.previous()
+                revision.gate_input_current.assert_called_once_with(name,prior['frozen_inputs'][name])
+
     def test_fresh_previous_refuses_adoption_scope_durable_drift_input_drift_and_unproven_readback(self):
         for defect in ('scope','exit','finalized','input','health','empty','journal','manager','receipt','remote'):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as temporary:
@@ -254,7 +288,10 @@ class FullMaterialContracts(unittest.TestCase):
             for name in names:private(base/name,name)
             smoke=hashlib.sha256((base/names[1]).read_bytes()).hexdigest()
             owner={'run_id':'run','cluster_uid':'target','node_uids':{'node':'uid'},'raw_disks':{'node':{'identity':'stable'}},'target_core_smoke_sha256':smoke}
-            lab=SimpleNamespace(DIRECTORY=base/'clusters/target',core_identity=lambda:None,require_lease=lambda:None,
+            def core_identity():
+                if owner['cluster_uid'] == 'foreign':
+                    raise ValueError('foreign target core')
+            lab=SimpleNamespace(DIRECTORY=base/'clusters/target',core_identity=core_identity,require_lease=lambda:None,
                 owner=lambda:owner,get=lambda *a,**k:None)
             lab.DIRECTORY.mkdir(parents=True)
             row={'status':'pass','rc':0,'failure_markers':0,
@@ -262,10 +299,11 @@ class FullMaterialContracts(unittest.TestCase):
             with patch.object(producer,'BASE',base),patch.object(consumer,'BASE',base),patch.object(install,'BASE',base), \
                     patch.object(producer,'load',return_value=SimpleNamespace(fixture=lambda:lab)), \
                     patch.object(consumer,'load',return_value=install),redirect_stdout(io.StringIO()):
-                # A committed historical PASS cannot satisfy this run before production.
+                # A committed core PASS remains reusable when immutable inputs
+                # and the smoke program match; ephemeral cluster identities are
+                # intentionally different across clean installations.
                 historical={**row,'baseline_identity':{key:owner[key] for key in ('run_id','cluster_uid','node_uids','raw_disks')}}
                 private(base/'tests/evidence/longhorn-v2-dr-target-core-20261020.json',json.dumps(historical))
-                with self.assertRaises(FileNotFoundError):consumer.core_current(lab)
                 produced=producer.material('v2-dr-target-core',copy.deepcopy(row),[])
                 self.assertFalse(produced['independent_readback']['longhorn_installed'])
                 path=private(directory/'target-core.json',json.dumps(produced))
@@ -295,6 +333,11 @@ class FullMaterialContracts(unittest.TestCase):
     def test_shell_activation_assertions_are_unchanged_after_path_selection(self):
         def inline(path):return path.read_text().split("<<'PY_ACTIVATION'\n",1)[1].split('\nPY_ACTIVATION',1)[0]
         expected='32ee6b5f50122c12c987259628acfeb5d0c69d6eb97c6e78cc2845ea82b86165';new=inline(HELPERS/'longhorn-v2-dr-failover.sh')
+        # Reverse only the separately tested exact Manager pin reader seam;
+        # all original activation, fencing and cleanup assertions stay frozen.
+        seam="        if name == 'common/constants.py':\n            spec=importlib.util.spec_from_file_location('manager_transition',root/'tests/helpers/longhorn-manager-adopt.py')\n            manager=importlib.util.module_from_spec(spec);spec.loader.exec_module(manager);manager.BASE=root\n            if manager.input_current(name,e['frozen_inputs'].get(name)):\n                continue\n"
+        self.assertEqual(1,new.count(seam))
+        new=new.replace(seam,'',1)
         new='\n'.join(line for line in new.splitlines() if not line.startswith(('import importlib.util','spec=','material=')))
         for historical in ('tests/evidence/longhorn-v2-dr-activation-qualification-20261021.json','tests/evidence/longhorn-v2-dr-standby-qualification-20261021.json'):
             new=new.replace("material.path(root,'"+historical+"')","root/'"+historical+"'")
@@ -330,7 +373,7 @@ class FullMaterialContracts(unittest.TestCase):
                 if isinstance(node.func,ast.Name) and node.func.id=='evidence_path':
                     return ast.BinOp(left=ast.Name(id='BASE',ctx=ast.Load()),op=ast.Div(),right=node.args[0])
                 return self.generic_visit(node)
-        expected={'longhorn-v2-install.py': 'e2918c6bd8601ef46cb8e87c160809466f09d3fba4394bdbcb53e53ef24aa7fe', 'longhorn-v2-dr-store.py': '1864bc92eef21815f0e0e85f072401f369ca6a51bdc2c91d43be0b02158d3512', 'longhorn-v2-recurring.py': '5ed7fa32173bb28d4c94204b847c955205adcb6748848a3de4c7fcaeeb4467d3', 'longhorn-v2-dr-target-install.py': 'c12a0d5a12ec9b9c543d4ab3b3241b6a47a554a1ce27eefe8325965f5187d9f9', 'longhorn-v2-dr-failover.py': 'df926d7e3831e4a984c74d32763bd51d686770b439adb84ff0926794cb085d6f', 'longhorn-v2-disaster.py': '6ffef780eecdea80f1246f899d755ff56309fdd5b7f68ffa90390279fde90478', 'longhorn-v2-backups.py': '07c77cfe27fd6ae411059cce121b230822666a0f42a10a8e70383d15c25e76bc', 'longhorn-v2-resources.py': '2d33110acde73a06ade2a29571d0dd419e9d576cefae5508b91d36f06c16ce53'}
+        expected={'longhorn-v2-install.py': 'e2918c6bd8601ef46cb8e87c160809466f09d3fba4394bdbcb53e53ef24aa7fe', 'longhorn-v2-dr-store.py': '1864bc92eef21815f0e0e85f072401f369ca6a51bdc2c91d43be0b02158d3512', 'longhorn-v2-recurring.py': '5ed7fa32173bb28d4c94204b847c955205adcb6748848a3de4c7fcaeeb4467d3', 'longhorn-v2-dr-target-install.py': '3879286c96abfbe243bc4eda6e1355d18e4bd30866d9e0e3f9282886ecb8dcb3', 'longhorn-v2-dr-failover.py': 'df926d7e3831e4a984c74d32763bd51d686770b439adb84ff0926794cb085d6f', 'longhorn-v2-disaster.py': '6ffef780eecdea80f1246f899d755ff56309fdd5b7f68ffa90390279fde90478', 'longhorn-v2-backups.py': '07c77cfe27fd6ae411059cce121b230822666a0f42a10a8e70383d15c25e76bc', 'longhorn-v2-resources.py': '2d33110acde73a06ade2a29571d0dd419e9d576cefae5508b91d36f06c16ce53'}
         for name,digest in expected.items():
             updated=Undo().visit(ast.parse((HELPERS/name).read_text()))
             self.assertEqual(hashlib.sha256(ast.dump(updated,include_attributes=False).encode()).hexdigest(),digest,name)

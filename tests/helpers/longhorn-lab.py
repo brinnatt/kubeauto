@@ -245,7 +245,93 @@ def core_host_preflight():
     print('LONGHORN_CORE_HOST_INPUTS_CLEAN_PASS nodes=6')
 
 
+def legacy_longhorn_release_script():
+    """Release one precisely identified pre-revision Longhorn test fixture."""
+    return r'''import hashlib,json,os,pathlib,shutil,subprocess,sys
+request=json.load(sys.stdin)
+node=request['node']; cluster='eb738d46-b74a-409e-8ea1-0d30f976a1cf'
+run_marker='2a0a770a-c0e1-444a-b35f-b35a1625f362'
+path=pathlib.Path('/data/kubeauto-longhorn')
+marker=pathlib.Path('/etc/kubeauto/longhorn-disk.json')
+guard=pathlib.Path('/etc/systemd/system/kubelet.service.d/kubeauto-longhorn.conf')
+fstab=pathlib.Path('/etc/fstab')
+archive=pathlib.Path('/var/tmp/kubeauto-longhorn-history/orphan-'+cluster+'/'+node)
+if request.get('cluster_uid')!=cluster or request.get('run_marker')!=run_marker:
+ raise ValueError('legacy Longhorn recovery identity differs')
+if any(p.is_symlink() for p in (marker,guard,path,fstab)):
+ raise ValueError('legacy Longhorn recovery refuses symlink inputs')
+for unit in ('kubelet','containerd','kube-proxy','kube-apiserver','kube-controller-manager','kube-scheduler','kube-lb','etcd'):
+ state=subprocess.run(['systemctl','is-active',unit],text=True,capture_output=True).stdout.strip()
+ if state not in ('inactive','unknown'): raise ValueError('legacy Longhorn recovery requires inactive services')
+def mounted():
+ result=subprocess.run(['findmnt','--json','--mountpoint',str(path),'-o','TARGET,SOURCE,FSTYPE,UUID'],text=True,capture_output=True)
+ if result.returncode: return None
+ rows=json.loads(result.stdout).get('filesystems',[])
+ if len(rows)!=1 or rows[0].get('target')!=str(path): raise ValueError('legacy Longhorn mount identity is ambiguous')
+ return rows[0]
+raw=marker.read_bytes() if marker.exists() else None; g=guard.read_bytes() if guard.exists() else None
+if raw is None and g is None:
+ if mounted() is not None: raise ValueError('legacy Longhorn mount remains without its receipt and guard')
+ if any('kubeauto-longhorn-lab:'+run_marker in line for line in fstab.read_text().splitlines()):
+  raise ValueError('legacy Longhorn fstab entry remains without its receipt and guard')
+ print(json.dumps({'node':node,'released':False,'already_clean':True},sort_keys=True)); raise SystemExit(0)
+if raw is None or g is None: raise ValueError('legacy Longhorn receipt and guard must be released together')
+receipt=json.loads(raw)
+if (receipt.get('cluster_uid')!=cluster or receipt.get('path')!=str(path) or not receipt.get('uuid') or
+        not receipt.get('node_uid') or receipt.get('total_bytes',0)<=0): raise ValueError('legacy Longhorn receipt identity differs')
+expected='[Unit]\nRequiresMountsFor='+str(path)+'\n[Service]\nExecStartPre=/usr/bin/mountpoint -q -- '+str(path)+'\n'
+if g.decode()!=expected: raise ValueError('legacy Longhorn guard content differs')
+mount=mounted()
+if not mount or mount.get('uuid')!=receipt['uuid'] or mount.get('fstype')!='ext4': raise ValueError('legacy Longhorn filesystem identity differs')
+lines=fstab.read_text().splitlines(True)
+owned='UUID='+receipt['uuid']+' '+str(path)+' ext4 defaults 0 2 # kubeauto-longhorn-lab:'+run_marker+'\n'
+if lines.count(owned)!=1 or any(str(path) in line and line!=owned and not line.lstrip().startswith('#') for line in lines):
+ raise ValueError('legacy Longhorn fstab ownership differs')
+if shutil.which('fuser') is None or subprocess.run(['fuser','-m',str(path)],capture_output=True).returncode==0:
+ raise ValueError('legacy Longhorn filesystem has active consumers')
+config=path/'longhorn-disk.cfg'
+if not config.is_file() or config.is_symlink(): raise ValueError('legacy Longhorn fixture data receipt is missing')
+disk=json.loads(config.read_text())
+if disk.get('diskName')!='kubeauto-data' or disk.get('state')!='ready' or not disk.get('diskUUID'):
+ raise ValueError('legacy Longhorn fixture data identity differs')
+if any(item.name not in {'lost+found','replicas','backing-images','longhorn-disk.cfg'} for item in path.iterdir()):
+ raise ValueError('legacy Longhorn fixture contains unknown data')
+if request.get('action')=='check':
+ print(json.dumps({'node':node,'released':True,'cluster_uid':cluster,'uuid':receipt['uuid'],'data_preserved':True},sort_keys=True)); raise SystemExit(0)
+if request.get('action')!='apply': raise ValueError('invalid legacy Longhorn recovery action')
+if archive.is_symlink() or (archive.exists() and not archive.is_dir()): raise ValueError('legacy Longhorn recovery archive is not a directory')
+archive.mkdir(mode=0o700,parents=True,exist_ok=False)
+(archive/'receipt.json').write_bytes(raw); (archive/'guard.conf').write_bytes(g); (archive/'fstab.line').write_text(owned)
+(archive/'origin.json').write_text(json.dumps({'node':node,'cluster_uid':cluster,'run_marker':run_marker,'uuid':receipt['uuid'],
+ 'receipt_sha256':hashlib.sha256(raw).hexdigest(),'guard_sha256':hashlib.sha256(g).hexdigest(),'data_preserved':True},sort_keys=True)+'\n')
+for name in ('receipt.json','guard.conf','fstab.line','origin.json'): (archive/name).chmod(0o600)
+subprocess.run(['umount',str(path)],check=True)
+temporary=fstab.with_name('.fstab.kubeauto-longhorn-orphan.part')
+with temporary.open('x') as stream:
+ stream.writelines(line for line in lines if line!=owned); stream.flush(); os.fsync(stream.fileno())
+os.chmod(temporary,fstab.stat().st_mode & 0o777); os.chown(temporary,fstab.stat().st_uid,fstab.stat().st_gid); temporary.replace(fstab)
+marker.unlink(); guard.unlink(); subprocess.run(['systemctl','daemon-reload'],check=True)
+if path.exists() and not any(path.iterdir()): path.rmdir()
+if mounted() is not None or marker.exists() or guard.exists() or owned in fstab.read_text().splitlines(True): raise ValueError('legacy Longhorn recovery postcondition failed')
+print(json.dumps({'node':node,'released':True,'cluster_uid':cluster,'uuid':receipt['uuid'],'data_preserved':True,'archive':str(archive)},sort_keys=True))
+'''
+
+
+def recover_legacy_longhorn_hosts():
+    request_base = {'cluster_uid': 'eb738d46-b74a-409e-8ea1-0d30f976a1cf',
+                    'run_marker': '2a0a770a-c0e1-444a-b35f-b35a1625f362'}
+    for node in WORKERS:
+        request = dict(request_base, action='check', node=node)
+        remote(node, ['python3', '-c', legacy_longhorn_release_script()], stdin=json.dumps(request))
+    for node in WORKERS:
+        request = dict(request_base, action='apply', node=node)
+        result = remote(node, ['python3', '-c', legacy_longhorn_release_script()], stdin=json.dumps(request), timeout=180)
+        print(result.stdout, end='')
+    print('LONGHORN_LEGACY_HOST_RELEASE_PASS nodes=3 data_preserved=true')
+
+
 def recover_core_override():
+    recover_legacy_longhorn_hosts()
     result = remote('192.168.122.72', ['python3', '-c', unit_override_script()],
                     stdin=json.dumps({'action': 'recover'}))
     print(result.stdout, end='')
@@ -270,10 +356,21 @@ def kubectl(*args, stdin=None, check=True, timeout=120):
                     '--request-timeout=30s', *args], stdin=stdin, check=check, timeout=timeout)
 
 
-def get(kind, object_name='', namespace=''):
+def get(kind, object_name='', namespace='', *, allow_missing_resource=False):
     args = ['get', kind] + (['-A'] if namespace == '*' else ['-n', namespace] if namespace else [])
     if object_name: args += [object_name, '--ignore-not-found']
-    raw = kubectl(*args, '-o', 'json').stdout
+    if allow_missing_resource:
+        result = kubectl(*args, '-o', 'json', check=False)
+        if result.returncode:
+            # A clean cluster legitimately has no Longhorn CRDs.  Preserve
+            # every other API failure, including timeout and authentication
+            # errors, through the normal diagnostic path.
+            if "doesn't have a resource type" in result.stderr:
+                return {'items': []}
+            return kubectl(*args, '-o', 'json').stdout
+        raw = result.stdout
+    else:
+        raw = kubectl(*args, '-o', 'json').stdout
     return json.loads(raw) if raw.strip() else None
 
 
@@ -487,6 +584,59 @@ if path.exists():
         row['phase'] = 'clean'; write_private(STATE, state)
     state['disks'] = {}; write_private(STATE, state)
     print('LONGHORN_DISK_FIXTURES_CLEAN_PASS')
+
+
+def recover_owned_disk_residue():
+    """Remove only an unmounted, byte-exact fixture left by an interrupted run."""
+    script = r'''import json,pathlib,subprocess,sys,uuid
+data=pathlib.Path('/data/kubeauto-longhorn')
+marker=data/'.kubeauto-longhorn-lab-owner'
+fstab=pathlib.Path('/etc/fstab')
+if marker.is_symlink() or data.is_symlink() or fstab.is_symlink():
+    raise ValueError('disk residue identity uses a symlink')
+if not marker.exists():
+    if data.exists() and any(data.iterdir()):
+        raise ValueError('unowned Longhorn data directory remains')
+    print(json.dumps({'recovered':False,'reason':'absent'},sort_keys=True)); raise SystemExit(0)
+if not marker.is_file() or marker.stat().st_size != 37:
+    raise ValueError('disk residue owner marker is not exact')
+disk_uuid=marker.read_text()
+try: uuid.UUID(disk_uuid.strip())
+except ValueError: raise ValueError('disk residue owner UUID is invalid')
+if not disk_uuid.endswith('\n'): raise ValueError('disk residue owner marker is not newline terminated')
+inventory=json.loads(subprocess.run(['lsblk','-J','-b','-O'],check=True,text=True,capture_output=True).stdout)
+matches=[]
+def walk(rows):
+    for row in rows:
+        if row.get('uuid')==disk_uuid.strip() and row.get('fstype')=='ext4': matches.append(row)
+        walk(row.get('children') or [])
+walk(inventory.get('blockdevices') or [])
+if len(matches)!=1: raise ValueError('disk residue UUID is missing or ambiguous')
+row=matches[0]
+if row.get('label')!='kca-longhorn' or row.get('type')!='disk' or row.get('size',0)<100*1024**3:
+    raise ValueError('disk residue filesystem identity differs')
+if row.get('mountpoints') and any(row['mountpoints']): raise ValueError('disk residue is mounted')
+if row.get('holders'): raise ValueError('disk residue has active holders')
+if any(line.strip() and not line.lstrip().startswith('#') and '/data/kubeauto-longhorn' in line for line in fstab.read_text().splitlines()):
+    raise ValueError('disk residue has a foreign fstab owner')
+if {p.name for p in data.iterdir()} != {marker.name}: raise ValueError('disk residue contains unknown data')
+device='/dev/'+row['name']
+if sys.argv[1]=='check':
+    print(json.dumps({'recovered':False,'device':device,'uuid':disk_uuid.strip()},sort_keys=True)); raise SystemExit(0)
+if sys.argv[1]!='apply': raise ValueError('invalid residue recovery action')
+subprocess.run(['wipefs','--all','--force',device],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True)
+marker.unlink(); data.rmdir()
+print(json.dumps({'recovered':True,'device':device,'uuid':disk_uuid.strip()},sort_keys=True))
+'''
+    for node in WORKERS:
+        remote(node, ['python3', '-c', script, 'check'])
+    recovered = 0
+    for node in WORKERS:
+        result = remote(node, ['python3', '-c', script, 'apply'])
+        if json.loads(result.stdout).get('recovered'):
+            recovered += 1
+        print(result.stdout, end='')
+    print('LONGHORN_OWNED_DISK_RESIDUE_RECOVERY_PASS recovered=' + str(recovered))
 
 
 def host_files():
@@ -3208,7 +3358,7 @@ def record_failure(error):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('business-ownership-request', 'ownership-controller-refusal-qualification', 'ownership-class-refusal-qualification', 'ownership-interruption-canary', 'ownership-interruption-qualification', 'ownership-preinstall-refusal-qualification', 'ownership-csi-refusal-qualification', 'ownership-csi-probe', 'business-uninstall', 'business-uninstall-backup-qualification', 'business-uninstall-refusal-qualification', 'business-recurring-rotation', 'business-recurring-selector', 'business-recurring-backup', 'business-recurring-snapshot', 'business-backup', 'business-backup-refusal', 'recurring-declarations-qualify', 'recurring-declarations-clean', 'backup-store-qualify', 'backup-accounts-qualify', 'backup-store-clean', 'node-bootstrap-dry-run', 'configure', 'qualification-clean', 'core-host-preflight', 'core-host-recover', 'archive-core', 'transport-fingerprint', 'verify-transport', 'verify-core', 'verify-core-smoke', 'business-core-smoke', 'prepare-disks', 'cleanup-disks', 'record-disk-qualification', 'verify-disk-qualification', 'capture-hosts', 'restore-hosts', 'credentials', 'relay-ensure', 'relay-clean', 'relay-recover', 'relay-qualification', 'relay-maintain', 'supervise-core', 'cache', 'health', 'business', 'business-idempotence', 'business-rwo', 'business-rwx', 'business-performance', 'business-replica-scale', 'business-replica-failure', 'business-clone', 'business-expansion', 'business-snapshot', 'business-reclaim', 'business-trim', 'business-engine-failure', 'business-encryption', 'business-encryption-block', 'business-encryption-backup', 'business-network-policy', 'business-security', 'business-recover', 'business-clean'))
+    parser.add_argument('mode', choices=('business-ownership-request', 'ownership-controller-refusal-qualification', 'ownership-class-refusal-qualification', 'ownership-interruption-canary', 'ownership-interruption-qualification', 'ownership-preinstall-refusal-qualification', 'ownership-csi-refusal-qualification', 'ownership-csi-probe', 'business-uninstall', 'business-uninstall-backup-qualification', 'business-uninstall-refusal-qualification', 'business-recurring-rotation', 'business-recurring-selector', 'business-recurring-backup', 'business-recurring-snapshot', 'business-backup', 'business-backup-refusal', 'recurring-declarations-qualify', 'recurring-declarations-clean', 'backup-store-qualify', 'backup-accounts-qualify', 'backup-store-clean', 'node-bootstrap-dry-run', 'configure', 'qualification-clean', 'core-host-preflight', 'core-host-recover', 'archive-core', 'transport-fingerprint', 'verify-transport', 'verify-core', 'verify-core-smoke', 'business-core-smoke', 'prepare-disks', 'cleanup-disks', 'recover-owned-disk-residue', 'record-disk-qualification', 'verify-disk-qualification', 'capture-hosts', 'restore-hosts', 'credentials', 'relay-ensure', 'relay-clean', 'relay-recover', 'relay-qualification', 'relay-maintain', 'supervise-core', 'cache', 'health', 'business', 'business-idempotence', 'business-rwo', 'business-rwx', 'business-performance', 'business-replica-scale', 'business-replica-failure', 'business-clone', 'business-expansion', 'business-snapshot', 'business-reclaim', 'business-trim', 'business-engine-failure', 'business-encryption', 'business-encryption-block', 'business-encryption-backup', 'business-network-policy', 'business-security', 'business-recover', 'business-clean'))
     parser.add_argument('--allowlist')
     parser.add_argument('--relay-pid', type=int)
     parser.add_argument('--recover-recurring-selector', action='store_true')
@@ -3236,7 +3386,7 @@ def main():
      'core-host-preflight': core_host_preflight, 'core-host-recover': recover_core_override,
      'transport-fingerprint': lambda: print(transport_fingerprint()), 'verify-transport': verify_transport_qualification,
      'verify-core': core_identity, 'verify-core-smoke': verify_core_smoke, 'business-core-smoke': core_smoke, 'prepare-disks': lambda: prepare_disks(args.allowlist),
-     'cleanup-disks': cleanup_disks, 'credentials': prepare_credentials, 'relay-ensure': relay_ensure,
+     'cleanup-disks': cleanup_disks, 'recover-owned-disk-residue': recover_owned_disk_residue, 'credentials': prepare_credentials, 'relay-ensure': relay_ensure,
      'capture-hosts': capture_hosts, 'restore-hosts': restore_hosts,
      'record-disk-qualification': lambda: disk_qualification(record=True), 'verify-disk-qualification': disk_qualification,
      'relay-clean': relay_cleanup, 'relay-recover': relay_recover, 'relay-qualification': relay_qualification, 'relay-maintain': relay_maintain,

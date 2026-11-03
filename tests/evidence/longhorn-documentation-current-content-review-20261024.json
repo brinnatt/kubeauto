@@ -166,147 +166,147 @@
   "content_review": {
     "closed_defects": [
       {
-        "defect": "新实践后白皮书导言仍只称两个克隆/故障子场景，生命周期总述笼统称V2业务恢复尚未验收",
-        "fix": "按完整数据保护、克隆/故障/中断的不同范围表述，保留完整运维和最终交付pending；正文末验证范围同步",
+        "defect": "\u65b0\u5b9e\u8df5\u540e\u767d\u76ae\u4e66\u5bfc\u8a00\u4ecd\u53ea\u79f0\u4e24\u4e2a\u514b\u9686/\u6545\u969c\u5b50\u573a\u666f\uff0c\u751f\u547d\u5468\u671f\u603b\u8ff0\u7b3c\u7edf\u79f0V2\u4e1a\u52a1\u6062\u590d\u5c1a\u672a\u9a8c\u6536",
+        "fix": "\u6309\u5b8c\u6574\u6570\u636e\u4fdd\u62a4\u3001\u514b\u9686/\u6545\u969c/\u4e2d\u65ad\u7684\u4e0d\u540c\u8303\u56f4\u8868\u8ff0\uff0c\u4fdd\u7559\u5b8c\u6574\u8fd0\u7ef4\u548c\u6700\u7ec8\u4ea4\u4ed8pending\uff1b\u6b63\u6587\u672b\u9a8c\u8bc1\u8303\u56f4\u540c\u6b65",
         "verification": "Current whole-document content and scope check; evidence51 scopes remain distinct."
       },
       {
-        "defect": "开发手册仍称TLS修复仅为未构建提案；完成评审期间又取得正式发布结果",
-        "fix": "按双架构双仓receipt写明固定派生标签、相同索引digest与真实TLS测试；保持产品采用和linked资格pending，不将制品成功写作项目通过",
-        "verification": "正式receipt核验status=pass,durable_rc=0,zero failure,single image；同SHA Actions attempt2及双仓digest；root已固定源码消费者新pin，现场采用及linked资格仍pending。"
+        "defect": "\u5f00\u53d1\u624b\u518c\u4ecd\u79f0TLS\u4fee\u590d\u4ec5\u4e3a\u672a\u6784\u5efa\u63d0\u6848\uff1b\u5b8c\u6210\u8bc4\u5ba1\u671f\u95f4\u53c8\u53d6\u5f97\u6b63\u5f0f\u53d1\u5e03\u7ed3\u679c",
+        "fix": "\u6309\u53cc\u67b6\u6784\u53cc\u4ed3receipt\u5199\u660e\u56fa\u5b9a\u6d3e\u751f\u6807\u7b7e\u3001\u76f8\u540c\u7d22\u5f15digest\u4e0e\u771f\u5b9eTLS\u6d4b\u8bd5\uff1b\u4fdd\u6301\u4ea7\u54c1\u91c7\u7528\u548clinked\u8d44\u683cpending\uff0c\u4e0d\u5c06\u5236\u54c1\u6210\u529f\u5199\u4f5c\u9879\u76ee\u901a\u8fc7",
+        "verification": "\u6b63\u5f0freceipt\u6838\u9a8cstatus=pass,durable_rc=0,zero failure,single image\uff1b\u540cSHA Actions attempt2\u53ca\u53cc\u4ed3digest\uff1broot\u5df2\u56fa\u5b9a\u6e90\u7801\u6d88\u8d39\u8005\u65b0pin\uff0c\u73b0\u573a\u91c7\u7528\u53calinked\u8d44\u683c\u4ecdpending\u3002"
       },
       {
-        "defect": "既有渲染映射只有7图，而linked依赖解释使当前正文实际有8图",
-        "fix": "验证原7图源摘要保持，使用已缓存Mermaid11.12.0与Chrome渲染第8图并查看PNG；所有8图逐一登记",
+        "defect": "\u65e2\u6709\u6e32\u67d3\u6620\u5c04\u53ea\u67097\u56fe\uff0c\u800clinked\u4f9d\u8d56\u89e3\u91ca\u4f7f\u5f53\u524d\u6b63\u6587\u5b9e\u9645\u67098\u56fe",
+        "fix": "\u9a8c\u8bc1\u539f7\u56fe\u6e90\u6458\u8981\u4fdd\u6301\uff0c\u4f7f\u7528\u5df2\u7f13\u5b58Mermaid11.12.0\u4e0eChrome\u6e32\u67d3\u7b2c8\u56fe\u5e76\u67e5\u770bPNG\uff1b\u6240\u67098\u56fe\u9010\u4e00\u767b\u8bb0",
         "verification": "New SVG/PNG archived; visual directions, labels, layout and current source matched."
       }
     ],
     "coverage": [
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "区分 host diskType 与 PVC volumeMode；V2 自 1.12.0 GA，experimental UBLK/sharded 单列；AIO/PCI/现场缺口保留",
-        "requirement": "正式范围、导航及两种磁盘",
+        "finding": "\u533a\u5206 host diskType \u4e0e PVC volumeMode\uff1bV2 \u81ea 1.12.0 GA\uff0cexperimental UBLK/sharded \u5355\u5217\uff1bAIO/PCI/\u73b0\u573a\u7f3a\u53e3\u4fdd\u7559",
+        "requirement": "\u6b63\u5f0f\u8303\u56f4\u3001\u5bfc\u822a\u53ca\u4e24\u79cd\u78c1\u76d8",
         "result": "pass",
-        "sections": "全部三份手册导言及运维手册#数据引擎与磁盘选择"
+        "sections": "\u5168\u90e8\u4e09\u4efd\u624b\u518c\u5bfc\u8a00\u53ca\u8fd0\u7ef4\u624b\u518c#\u6570\u636e\u5f15\u64ce\u4e0e\u78c1\u76d8\u9009\u62e9"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "SPDK RAID1/lvol 与共享 IM、mask 与独占 CPU、hugepages 与 anonymous 调度差别、iobuf 与 QoS、AIO 与 PCI 接管和 runtime 退役判据有机制、例子及停止恢复；不承诺未验收路径",
-        "requirement": "V2 机制、资源与设备归属",
+        "finding": "SPDK RAID1/lvol \u4e0e\u5171\u4eab IM\u3001mask \u4e0e\u72ec\u5360 CPU\u3001hugepages \u4e0e anonymous \u8c03\u5ea6\u5dee\u522b\u3001iobuf \u4e0e QoS\u3001AIO \u4e0e PCI \u63a5\u7ba1\u548c runtime \u9000\u5f79\u5224\u636e\u6709\u673a\u5236\u3001\u4f8b\u5b50\u53ca\u505c\u6b62\u6062\u590d\uff1b\u4e0d\u627f\u8bfa\u672a\u9a8c\u6536\u8def\u5f84",
+        "requirement": "V2 \u673a\u5236\u3001\u8d44\u6e90\u4e0e\u8bbe\u5907\u5f52\u5c5e",
         "result": "pass",
-        "sections": "technical-whitepaper.md#v1-与-v2-的数据面选择；operations-manual.md#数据引擎与磁盘选择；development-manual.md#v2-集成契约"
+        "sections": "technical-whitepaper.md#v1-\u4e0e-v2-\u7684\u6570\u636e\u9762\u9009\u62e9\uff1boperations-manual.md#\u6570\u636e\u5f15\u64ce\u4e0e\u78c1\u76d8\u9009\u62e9\uff1bdevelopment-manual.md#v2-\u96c6\u6210\u5951\u7ea6"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "角色、位置、kubeconfig、inventory、主机与 PKI 输入、产品入口、1800/600 秒等待、PVC/副本/确认文件与重挂及幂等检查连续；V2 不覆盖为 V1 模板",
-        "requirement": "首次生产路径",
+        "finding": "\u89d2\u8272\u3001\u4f4d\u7f6e\u3001kubeconfig\u3001inventory\u3001\u4e3b\u673a\u4e0e PKI \u8f93\u5165\u3001\u4ea7\u54c1\u5165\u53e3\u30011800/600 \u79d2\u7b49\u5f85\u3001PVC/\u526f\u672c/\u786e\u8ba4\u6587\u4ef6\u4e0e\u91cd\u6302\u53ca\u5e42\u7b49\u68c0\u67e5\u8fde\u7eed\uff1bV2 \u4e0d\u8986\u76d6\u4e3a V1 \u6a21\u677f",
+        "requirement": "\u9996\u6b21\u751f\u4ea7\u8def\u5f84",
         "result": "pass",
-        "sections": "operations-manual.md#规划与操作上下文 至 #独立-pvc-与确认写入"
+        "sections": "operations-manual.md#\u89c4\u5212\u4e0e\u64cd\u4f5c\u4e0a\u4e0b\u6587 \u81f3 #\u72ec\u7acb-pvc-\u4e0e\u786e\u8ba4\u5199\u5165"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "RWO/RWOP/Block/RWX 区分；十类消费者字段与代码相符；按各应用入口新建或迁移，数据库冗余叠加及共同故障域说明；已测 RWX 权限/锁与无持锁故障范围分开",
-        "requirement": "权限、访问模式与消费者迁移",
+        "finding": "RWO/RWOP/Block/RWX \u533a\u5206\uff1b\u5341\u7c7b\u6d88\u8d39\u8005\u5b57\u6bb5\u4e0e\u4ee3\u7801\u76f8\u7b26\uff1b\u6309\u5404\u5e94\u7528\u5165\u53e3\u65b0\u5efa\u6216\u8fc1\u79fb\uff0c\u6570\u636e\u5e93\u5197\u4f59\u53e0\u52a0\u53ca\u5171\u540c\u6545\u969c\u57df\u8bf4\u660e\uff1b\u5df2\u6d4b RWX \u6743\u9650/\u9501\u4e0e\u65e0\u6301\u9501\u6545\u969c\u8303\u56f4\u5206\u5f00",
+        "requirement": "\u6743\u9650\u3001\u8bbf\u95ee\u6a21\u5f0f\u4e0e\u6d88\u8d39\u8005\u8fc1\u79fb",
         "result": "pass",
-        "sections": "operations-manual.md#访问模式和文件权限、#中间件消费与存储迁移；白皮书 PVC/RWX 机制与实践"
+        "sections": "operations-manual.md#\u8bbf\u95ee\u6a21\u5f0f\u548c\u6587\u4ef6\u6743\u9650\u3001#\u4e2d\u95f4\u4ef6\u6d88\u8d39\u4e0e\u5b58\u50a8\u8fc1\u79fb\uff1b\u767d\u76ae\u4e66 PVC/RWX \u673a\u5236\u4e0e\u5b9e\u8df5"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "不称多数派协议，不把 write 成功等同事务持久；WO/RW、revision counter、重建方式和资源因果解释；进程故障、engine/IM/Manager 样本保留 I/O 错误、重试、人工重建和未测断电/节点/网络边界；新增V2远端IM和Manager正常DELETE分别解释84.87/44.243秒的计时边界、319+20/205+19确认条数、原客户端rc=0/零重试与跨节点读回，不能推导附着端或断电。",
-        "requirement": "副本确认、重建与故障",
+        "finding": "\u4e0d\u79f0\u591a\u6570\u6d3e\u534f\u8bae\uff0c\u4e0d\u628a write \u6210\u529f\u7b49\u540c\u4e8b\u52a1\u6301\u4e45\uff1bWO/RW\u3001revision counter\u3001\u91cd\u5efa\u65b9\u5f0f\u548c\u8d44\u6e90\u56e0\u679c\u89e3\u91ca\uff1b\u8fdb\u7a0b\u6545\u969c\u3001engine/IM/Manager \u6837\u672c\u4fdd\u7559 I/O \u9519\u8bef\u3001\u91cd\u8bd5\u3001\u4eba\u5de5\u91cd\u5efa\u548c\u672a\u6d4b\u65ad\u7535/\u8282\u70b9/\u7f51\u7edc\u8fb9\u754c\uff1b\u65b0\u589eV2\u8fdc\u7aefIM\u548cManager\u6b63\u5e38DELETE\u5206\u522b\u89e3\u91ca84.87/44.243\u79d2\u7684\u8ba1\u65f6\u8fb9\u754c\u3001319+20/205+19\u786e\u8ba4\u6761\u6570\u3001\u539f\u5ba2\u6237\u7aefrc=0/\u96f6\u91cd\u8bd5\u4e0e\u8de8\u8282\u70b9\u8bfb\u56de\uff0c\u4e0d\u80fd\u63a8\u5bfc\u9644\u7740\u7aef\u6216\u65ad\u7535\u3002",
+        "requirement": "\u526f\u672c\u786e\u8ba4\u3001\u91cd\u5efa\u4e0e\u6545\u969c",
         "result": "pass",
-        "sections": "technical-whitepaper.md#副本与故障恢复；operations-manual.md#故障恢复"
+        "sections": "technical-whitepaper.md#\u526f\u672c\u4e0e\u6545\u969c\u6062\u590d\uff1boperations-manual.md#\u6545\u969c\u6062\u590d"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "调度公式区分 reserved 与 minimum available 的分母，Bfree/Bavail 和配额边界；副本期望与实际回收分开；扩容三层容量/新区间数据，不能缩容，V2 分支及静态/实测范围明确",
-        "requirement": "容量、副本变更与扩容",
+        "finding": "\u8c03\u5ea6\u516c\u5f0f\u533a\u5206 reserved \u4e0e minimum available \u7684\u5206\u6bcd\uff0cBfree/Bavail \u548c\u914d\u989d\u8fb9\u754c\uff1b\u526f\u672c\u671f\u671b\u4e0e\u5b9e\u9645\u56de\u6536\u5206\u5f00\uff1b\u6269\u5bb9\u4e09\u5c42\u5bb9\u91cf/\u65b0\u533a\u95f4\u6570\u636e\uff0c\u4e0d\u80fd\u7f29\u5bb9\uff0cV2 \u5206\u652f\u53ca\u9759\u6001/\u5b9e\u6d4b\u8303\u56f4\u660e\u786e",
+        "requirement": "\u5bb9\u91cf\u3001\u526f\u672c\u53d8\u66f4\u4e0e\u6269\u5bb9",
         "result": "pass",
-        "sections": "两份用户文档的容量章节、#加盘换盘与副本均衡"
+        "sections": "\u4e24\u4efd\u7528\u6237\u6587\u6863\u7684\u5bb9\u91cf\u7ae0\u8282\u3001#\u52a0\u76d8\u6362\u76d8\u4e0e\u526f\u672c\u5747\u8861"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "解释稀疏链读索引、removed/CR 保留、有效快照与 unmap；实测区分应用空闲与宿主分配，禁止直接删副本文件或用 V1 CR 断言验 V2",
-        "requirement": "TRIM、快照链与物理空间",
+        "finding": "\u89e3\u91ca\u7a00\u758f\u94fe\u8bfb\u7d22\u5f15\u3001removed/CR \u4fdd\u7559\u3001\u6709\u6548\u5feb\u7167\u4e0e unmap\uff1b\u5b9e\u6d4b\u533a\u5206\u5e94\u7528\u7a7a\u95f2\u4e0e\u5bbf\u4e3b\u5206\u914d\uff0c\u7981\u6b62\u76f4\u63a5\u5220\u526f\u672c\u6587\u4ef6\u6216\u7528 V1 CR \u65ad\u8a00\u9a8c V2",
+        "requirement": "TRIM\u3001\u5feb\u7167\u94fe\u4e0e\u7269\u7406\u7a7a\u95f4",
         "result": "pass",
-        "sections": "白皮书快照链、TRIM 同卷测量；operations-manual.md#保留删除和-trim"
+        "sections": "\u767d\u76ae\u4e66\u5feb\u7167\u94fe\u3001TRIM \u540c\u5377\u6d4b\u91cf\uff1boperations-manual.md#\u4fdd\u7559\u5220\u9664\u548c-trim"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "本项目热缓存/小数据/单客户端与历史官方 1.6.x EC2 规模数据分别列硬件、版本、负载和缺失条件；分位与吞吐分母、窗口非峰值、重建碎片影响解释清楚，不外推 SLA 或 V2 阈值",
-        "requirement": "性能、官方成果与外推",
+        "finding": "\u672c\u9879\u76ee\u70ed\u7f13\u5b58/\u5c0f\u6570\u636e/\u5355\u5ba2\u6237\u7aef\u4e0e\u5386\u53f2\u5b98\u65b9 1.6.x EC2 \u89c4\u6a21\u6570\u636e\u5206\u522b\u5217\u786c\u4ef6\u3001\u7248\u672c\u3001\u8d1f\u8f7d\u548c\u7f3a\u5931\u6761\u4ef6\uff1b\u5206\u4f4d\u4e0e\u541e\u5410\u5206\u6bcd\u3001\u7a97\u53e3\u975e\u5cf0\u503c\u3001\u91cd\u5efa\u788e\u7247\u5f71\u54cd\u89e3\u91ca\u6e05\u695a\uff0c\u4e0d\u5916\u63a8 SLA \u6216 V2 \u9608\u503c",
+        "requirement": "\u6027\u80fd\u3001\u5b98\u65b9\u6210\u679c\u4e0e\u5916\u63a8",
         "result": "pass",
-        "sections": "technical-whitepaper.md#当前文件系统基线如何解释、#如何使用官方规模与性能报告；operations-manual.md#性能与稳定性验证"
+        "sections": "technical-whitepaper.md#\u5f53\u524d\u6587\u4ef6\u7cfb\u7edf\u57fa\u7ebf\u5982\u4f55\u89e3\u91ca\u3001#\u5982\u4f55\u4f7f\u7528\u5b98\u65b9\u89c4\u6a21\u4e0e\u6027\u80fd\u62a5\u544a\uff1boperations-manual.md#\u6027\u80fd\u4e0e\u7a33\u5b9a\u6027\u9a8c\u8bc1"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "三副本创建/扩容与两副本加接收域迁出分开；两个外部全量点逐对象校验，恢复普通卷无父引用，原图退役后重挂；未完成源拒绝和真实legacy四限制分别有边界。压缩/稀疏/字节数不外推容量节省率。",
-        "requirement": "快照、克隆与恢复隔离",
+        "finding": "\u4e09\u526f\u672c\u521b\u5efa/\u6269\u5bb9\u4e0e\u4e24\u526f\u672c\u52a0\u63a5\u6536\u57df\u8fc1\u51fa\u5206\u5f00\uff1b\u4e24\u4e2a\u5916\u90e8\u5168\u91cf\u70b9\u9010\u5bf9\u8c61\u6821\u9a8c\uff0c\u6062\u590d\u666e\u901a\u5377\u65e0\u7236\u5f15\u7528\uff0c\u539f\u56fe\u9000\u5f79\u540e\u91cd\u6302\uff1b\u672a\u5b8c\u6210\u6e90\u62d2\u7edd\u548c\u771f\u5b9elegacy\u56db\u9650\u5236\u5206\u522b\u6709\u8fb9\u754c\u3002\u538b\u7f29/\u7a00\u758f/\u5b57\u8282\u6570\u4e0d\u5916\u63a8\u5bb9\u91cf\u8282\u7701\u7387\u3002",
+        "requirement": "\u5feb\u7167\u3001\u514b\u9686\u4e0e\u6062\u590d\u9694\u79bb",
         "result": "pass",
-        "sections": "operations-manual.md#创建与恢复快照、#从现有-pvc-克隆隔离工作副本；白皮书对应机制实践"
+        "sections": "operations-manual.md#\u521b\u5efa\u4e0e\u6062\u590d\u5feb\u7167\u3001#\u4ece\u73b0\u6709-pvc-\u514b\u9686\u9694\u79bb\u5de5\u4f5c\u526f\u672c\uff1b\u767d\u76ae\u4e66\u5bf9\u5e94\u673a\u5236\u5b9e\u8df5"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "外部故障域、稳定密钥、CA 去首尾空白、URL/轮询和最小权限；目标 available、Completed、引用块可读与新卷恢复分层；凭据/TLS/网络分类，禁止对象库直接过期块",
-        "requirement": "备份目标、保护与恢复",
+        "finding": "\u5916\u90e8\u6545\u969c\u57df\u3001\u7a33\u5b9a\u5bc6\u94a5\u3001CA \u53bb\u9996\u5c3e\u7a7a\u767d\u3001URL/\u8f6e\u8be2\u548c\u6700\u5c0f\u6743\u9650\uff1b\u76ee\u6807 available\u3001Completed\u3001\u5f15\u7528\u5757\u53ef\u8bfb\u4e0e\u65b0\u5377\u6062\u590d\u5206\u5c42\uff1b\u51ed\u636e/TLS/\u7f51\u7edc\u5206\u7c7b\uff0c\u7981\u6b62\u5bf9\u8c61\u5e93\u76f4\u63a5\u8fc7\u671f\u5757",
+        "requirement": "\u5907\u4efd\u76ee\u6807\u3001\u4fdd\u62a4\u4e0e\u6062\u590d",
         "result": "pass",
-        "sections": "operations-manual.md#备份与恢复；白皮书对应全量/增量、拒绝与恢复实践"
+        "sections": "operations-manual.md#\u5907\u4efd\u4e0e\u6062\u590d\uff1b\u767d\u76ae\u4e66\u5bf9\u5e94\u5168\u91cf/\u589e\u91cf\u3001\u62d2\u7edd\u4e0e\u6062\u590d\u5b9e\u8df5"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "UTC/时区、选择、detached 跳过、retain 与本地快照数量、任务计数的 full 间隔、卷级错误不保证 Job 失败、在途排空及 Foreground 删除说明；实际账户撤销、失败点与恢复数据分开，396秒不是承诺",
-        "requirement": "周期计划、保留及轮换",
+        "finding": "UTC/\u65f6\u533a\u3001\u9009\u62e9\u3001detached \u8df3\u8fc7\u3001retain \u4e0e\u672c\u5730\u5feb\u7167\u6570\u91cf\u3001\u4efb\u52a1\u8ba1\u6570\u7684 full \u95f4\u9694\u3001\u5377\u7ea7\u9519\u8bef\u4e0d\u4fdd\u8bc1 Job \u5931\u8d25\u3001\u5728\u9014\u6392\u7a7a\u53ca Foreground \u5220\u9664\u8bf4\u660e\uff1b\u5b9e\u9645\u8d26\u6237\u64a4\u9500\u3001\u5931\u8d25\u70b9\u4e0e\u6062\u590d\u6570\u636e\u5206\u5f00\uff0c396\u79d2\u4e0d\u662f\u627f\u8bfa",
+        "requirement": "\u5468\u671f\u8ba1\u5212\u3001\u4fdd\u7559\u53ca\u8f6e\u6362",
         "result": "pass",
-        "sections": "operations-manual.md#计划保留与凭据轮换；白皮书三项周期实践；开发手册计划语义"
+        "sections": "operations-manual.md#\u8ba1\u5212\u4fdd\u7559\u4e0e\u51ed\u636e\u8f6e\u6362\uff1b\u767d\u76ae\u4e66\u4e09\u9879\u5468\u671f\u5b9e\u8df5\uff1b\u5f00\u53d1\u624b\u518c\u8ba1\u5212\u8bed\u4e49"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "完整数据保护现有十一项组合已形成真实业务结果；正文区分资源包、同集群缺失卷恢复和独立DR，明确应用Namespace/Secret另备，Completed后等待Bound、双向软件隔离和目标新数据回主站新卷；不外推独立SystemRestore或基础设施fencing。",
-        "requirement": "系统恢复、DR 与回切",
+        "finding": "\u5b8c\u6574\u6570\u636e\u4fdd\u62a4\u73b0\u6709\u5341\u4e00\u9879\u7ec4\u5408\u5df2\u5f62\u6210\u771f\u5b9e\u4e1a\u52a1\u7ed3\u679c\uff1b\u6b63\u6587\u533a\u5206\u8d44\u6e90\u5305\u3001\u540c\u96c6\u7fa4\u7f3a\u5931\u5377\u6062\u590d\u548c\u72ec\u7acbDR\uff0c\u660e\u786e\u5e94\u7528Namespace/Secret\u53e6\u5907\uff0cCompleted\u540e\u7b49\u5f85Bound\u3001\u53cc\u5411\u8f6f\u4ef6\u9694\u79bb\u548c\u76ee\u6807\u65b0\u6570\u636e\u56de\u4e3b\u7ad9\u65b0\u5377\uff1b\u4e0d\u5916\u63a8\u72ec\u7acbSystemRestore\u6216\u57fa\u7840\u8bbe\u65bdfencing\u3002",
+        "requirement": "\u7cfb\u7edf\u6062\u590d\u3001DR \u4e0e\u56de\u5207",
         "result": "pass",
-        "sections": "operations-manual.md#系统恢复与站点灾备；technical-whitepaper.md#恢复系统恢复与-dr-的区别"
+        "sections": "operations-manual.md#\u7cfb\u7edf\u6062\u590d\u4e0e\u7ad9\u70b9\u707e\u5907\uff1btechnical-whitepaper.md#\u6062\u590d\u7cfb\u7edf\u6062\u590d\u4e0e-dr-\u7684\u533a\u522b"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "V1 挂载和 V2 裸盘操作分支，禁调度不搬数据、驱逐/取消顺序、最终空盘/实例与附着检查、额外盘开机挂载保护；孤儿类型/不可逆删除、全部副本故障保留、隔离拷贝救援未交付边界明确",
-        "requirement": "节点磁盘维护、救援及孤儿",
+        "finding": "V1 \u6302\u8f7d\u548c V2 \u88f8\u76d8\u64cd\u4f5c\u5206\u652f\uff0c\u7981\u8c03\u5ea6\u4e0d\u642c\u6570\u636e\u3001\u9a71\u9010/\u53d6\u6d88\u987a\u5e8f\u3001\u6700\u7ec8\u7a7a\u76d8/\u5b9e\u4f8b\u4e0e\u9644\u7740\u68c0\u67e5\u3001\u989d\u5916\u76d8\u5f00\u673a\u6302\u8f7d\u4fdd\u62a4\uff1b\u5b64\u513f\u7c7b\u578b/\u4e0d\u53ef\u9006\u5220\u9664\u3001\u5168\u90e8\u526f\u672c\u6545\u969c\u4fdd\u7559\u3001\u9694\u79bb\u62f7\u8d1d\u6551\u63f4\u672a\u4ea4\u4ed8\u8fb9\u754c\u660e\u786e",
+        "requirement": "\u8282\u70b9\u78c1\u76d8\u7ef4\u62a4\u3001\u6551\u63f4\u53ca\u5b64\u513f",
         "result": "pass",
-        "sections": "operations-manual.md#节点与磁盘生命周期、#故障恢复；白皮书相关机制"
+        "sections": "operations-manual.md#\u8282\u70b9\u4e0e\u78c1\u76d8\u751f\u547d\u5468\u671f\u3001#\u6545\u969c\u6062\u590d\uff1b\u767d\u76ae\u4e66\u76f8\u5173\u673a\u5236"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "原密钥/证书/网络机制保持，V1四类监控已验证实际触发及解除；计数、条件、业务读回与未测通知通道边界正文明确。",
-        "requirement": "密钥、证书、网络与监控",
+        "finding": "\u539f\u5bc6\u94a5/\u8bc1\u4e66/\u7f51\u7edc\u673a\u5236\u4fdd\u6301\uff0cV1\u56db\u7c7b\u76d1\u63a7\u5df2\u9a8c\u8bc1\u5b9e\u9645\u89e6\u53d1\u53ca\u89e3\u9664\uff1b\u8ba1\u6570\u3001\u6761\u4ef6\u3001\u4e1a\u52a1\u8bfb\u56de\u4e0e\u672a\u6d4b\u901a\u77e5\u901a\u9053\u8fb9\u754c\u6b63\u6587\u660e\u786e\u3002",
+        "requirement": "\u5bc6\u94a5\u3001\u8bc1\u4e66\u3001\u7f51\u7edc\u4e0e\u76d1\u63a7",
         "result": "pass",
-        "sections": "operations-manual.md#安全维护；technical-whitepaper.md#安全与运维边界"
+        "sections": "operations-manual.md#\u5b89\u5168\u7ef4\u62a4\uff1btechnical-whitepaper.md#\u5b89\u5168\u4e0e\u8fd0\u7ef4\u8fb9\u754c"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "1.12.0 源版本恢复点、pre-upgrade 与已迁移状态、V1在线/V2停卷、不可降级、新备份复验；Bound/Retain/Released 非空拒绝、原生 hook、外部备份与共享快照保留、guard/receipt 身份和主机保留边界",
-        "requirement": "升级及退出",
+        "finding": "1.12.0 \u6e90\u7248\u672c\u6062\u590d\u70b9\u3001pre-upgrade \u4e0e\u5df2\u8fc1\u79fb\u72b6\u6001\u3001V1\u5728\u7ebf/V2\u505c\u5377\u3001\u4e0d\u53ef\u964d\u7ea7\u3001\u65b0\u5907\u4efd\u590d\u9a8c\uff1bBound/Retain/Released \u975e\u7a7a\u62d2\u7edd\u3001\u539f\u751f hook\u3001\u5916\u90e8\u5907\u4efd\u4e0e\u5171\u4eab\u5feb\u7167\u4fdd\u7559\u3001guard/receipt \u8eab\u4efd\u548c\u4e3b\u673a\u4fdd\u7559\u8fb9\u754c",
+        "requirement": "\u5347\u7ea7\u53ca\u9000\u51fa",
         "result": "pass",
-        "sections": "operations-manual.md#升级与恢复出口、#下线与保留；白皮书对应章节"
+        "sections": "operations-manual.md#\u5347\u7ea7\u4e0e\u6062\u590d\u51fa\u53e3\u3001#\u4e0b\u7ebf\u4e0e\u4fdd\u7559\uff1b\u767d\u76ae\u4e66\u5bf9\u5e94\u7ae0\u8282"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "配置/控制器/主机职责，固定制品集合、只在歧义查源码、节点并发、request UID与摘要、计划ledger、原生CSI无标签、54项独立验收；官方旧默认/指标/字段逐项校正而不修改无关消费者",
-        "requirement": "开发维护、接口及证据",
+        "finding": "\u914d\u7f6e/\u63a7\u5236\u5668/\u4e3b\u673a\u804c\u8d23\uff0c\u56fa\u5b9a\u5236\u54c1\u96c6\u5408\u3001\u53ea\u5728\u6b67\u4e49\u67e5\u6e90\u7801\u3001\u8282\u70b9\u5e76\u53d1\u3001request UID\u4e0e\u6458\u8981\u3001\u8ba1\u5212ledger\u3001\u539f\u751fCSI\u65e0\u6807\u7b7e\u300154\u9879\u72ec\u7acb\u9a8c\u6536\uff1b\u5b98\u65b9\u65e7\u9ed8\u8ba4/\u6307\u6807/\u5b57\u6bb5\u9010\u9879\u6821\u6b63\u800c\u4e0d\u4fee\u6539\u65e0\u5173\u6d88\u8d39\u8005",
+        "requirement": "\u5f00\u53d1\u7ef4\u62a4\u3001\u63a5\u53e3\u53ca\u8bc1\u636e",
         "result": "pass",
-        "sections": "development-manual.md 全文；operations-manual.md#参数速查；白皮书#依据与验证范围"
+        "sections": "development-manual.md \u5168\u6587\uff1boperations-manual.md#\u53c2\u6570\u901f\u67e5\uff1b\u767d\u76ae\u4e66#\u4f9d\u636e\u4e0e\u9a8c\u8bc1\u8303\u56f4"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "附着时拒绝；分离后polling→interrupt→polling，原Setting/3 IM UID保持、每次3 Pod UID替换；原9 MiB和新19条账本跨节点读回。正文有true/false产品操作、600/1800秒观察、失败停步、恢复原值与消费者，不声称CPU节约或性能等价。",
-        "requirement": "中断模式变更与进程生命周期",
+        "finding": "\u9644\u7740\u65f6\u62d2\u7edd\uff1b\u5206\u79bb\u540epolling\u2192interrupt\u2192polling\uff0c\u539fSetting/3 IM UID\u4fdd\u6301\u3001\u6bcf\u6b213 Pod UID\u66ff\u6362\uff1b\u539f9 MiB\u548c\u65b019\u6761\u8d26\u672c\u8de8\u8282\u70b9\u8bfb\u56de\u3002\u6b63\u6587\u6709true/false\u4ea7\u54c1\u64cd\u4f5c\u3001600/1800\u79d2\u89c2\u5bdf\u3001\u5931\u8d25\u505c\u6b65\u3001\u6062\u590d\u539f\u503c\u4e0e\u6d88\u8d39\u8005\uff0c\u4e0d\u58f0\u79f0CPU\u8282\u7ea6\u6216\u6027\u80fd\u7b49\u4ef7\u3002",
+        "requirement": "\u4e2d\u65ad\u6a21\u5f0f\u53d8\u66f4\u4e0e\u8fdb\u7a0b\u751f\u547d\u5468\u671f",
         "result": "pass",
-        "sections": "operations-manual.md#v2-运维分支与停止条件；technical-whitepaper.md#spdk-的性能收益依赖资源保障；development-manual.md#验证与交付"
+        "sections": "operations-manual.md#v2-\u8fd0\u7ef4\u5206\u652f\u4e0e\u505c\u6b62\u6761\u4ef6\uff1btechnical-whitepaper.md#spdk-\u7684\u6027\u80fd\u6536\u76ca\u4f9d\u8d56\u8d44\u6e90\u4fdd\u969c\uff1bdevelopment-manual.md#\u9a8c\u8bc1\u4e0e\u4ea4\u4ed8"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
-        "finding": "Instance Manager .3 的四处 TLS 与 RAID 修复、Manager .1 的健康集合/删除候选边界分别说明；双仓双架构与真实采用分开，已验证的完整克隆结果引用当前49。",
-        "requirement": "派生IM .3与Manager .1的来源、采用和业务边界",
+        "finding": "Instance Manager .3 \u7684\u56db\u5904 TLS \u4e0e RAID \u4fee\u590d\u3001Manager .1 \u7684\u5065\u5eb7\u96c6\u5408/\u5220\u9664\u5019\u9009\u8fb9\u754c\u5206\u522b\u8bf4\u660e\uff1b\u53cc\u4ed3\u53cc\u67b6\u6784\u4e0e\u771f\u5b9e\u91c7\u7528\u5206\u5f00\uff0c\u5df2\u9a8c\u8bc1\u7684\u5b8c\u6574\u514b\u9686\u7ed3\u679c\u5f15\u7528\u5f53\u524d49\u3002",
+        "requirement": "\u6d3e\u751fIM .3\u4e0eManager .1\u7684\u6765\u6e90\u3001\u91c7\u7528\u548c\u4e1a\u52a1\u8fb9\u754c",
         "result": "pass",
-        "sections": "development-manual.md#linked-clone-图的产品入口与验收边界、#版本集合与制品维护"
+        "sections": "development-manual.md#linked-clone-\u56fe\u7684\u4ea7\u54c1\u5165\u53e3\u4e0e\u9a8c\u6536\u8fb9\u754c\u3001#\u7248\u672c\u96c6\u5408\u4e0e\u5236\u54c1\u7ef4\u62a4"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
@@ -319,7 +319,7 @@
         ],
         "requirement": "V1 isolated replica export and integrity evidence",
         "result": "pass",
-        "sections": "operations-manual.md#最后副本全部错误与数据损坏; development-manual.md#验证与交付"
+        "sections": "operations-manual.md#\u6700\u540e\u526f\u672c\u5168\u90e8\u9519\u8bef\u4e0e\u6570\u636e\u635f\u574f; development-manual.md#\u9a8c\u8bc1\u4e0e\u4ea4\u4ed8"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
@@ -331,7 +331,7 @@
         ],
         "requirement": "Current middleware evidence and linked TLS publication wording",
         "result": "pass",
-        "sections": "operations-manual.md#中间件接入; operations-manual.md#v2-linked-clone-与嵌套工作副本; technical-whitepaper.md#数据库一致性为何要单独设计"
+        "sections": "operations-manual.md#\u4e2d\u95f4\u4ef6\u63a5\u5165; operations-manual.md#v2-linked-clone-\u4e0e\u5d4c\u5957\u5de5\u4f5c\u526f\u672c; technical-whitepaper.md#\u6570\u636e\u5e93\u4e00\u81f4\u6027\u4e3a\u4f55\u8981\u5355\u72ec\u8bbe\u8ba1"
       },
       {
         "basis": "Reuse unchanged prior SHA-bound official/content review; changed task paths and evidence reviewed in this author continuation.",
@@ -342,91 +342,91 @@
         ],
         "requirement": "Explain accepted V1 faulted sustained writes and actual support-bundle size.",
         "result": "pass",
-        "sections": "technical-whitepaper.md#持续确认写入与三类故障的实际边界; operations-manual.md#生成与回收支持包; operations-manual.md#性能与稳定性验证"
+        "sections": "technical-whitepaper.md#\u6301\u7eed\u786e\u8ba4\u5199\u5165\u4e0e\u4e09\u7c7b\u6545\u969c\u7684\u5b9e\u9645\u8fb9\u754c; operations-manual.md#\u751f\u6210\u4e0e\u56de\u6536\u652f\u6301\u5305; operations-manual.md#\u6027\u80fd\u4e0e\u7a33\u5b9a\u6027\u9a8c\u8bc1"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "Instance Manager .3 的四处 TLS 与 RAID 修复、Manager .1 的健康集合/删除候选边界分别说明；双仓双架构与真实采用分开，已验证的完整克隆结果引用当前49。",
-        "requirement": "固定制品与健康副本集合",
+        "finding": "Instance Manager .3 \u7684\u56db\u5904 TLS \u4e0e RAID \u4fee\u590d\u3001Manager .1 \u7684\u5065\u5eb7\u96c6\u5408/\u5220\u9664\u5019\u9009\u8fb9\u754c\u5206\u522b\u8bf4\u660e\uff1b\u53cc\u4ed3\u53cc\u67b6\u6784\u4e0e\u771f\u5b9e\u91c7\u7528\u5206\u5f00\uff0c\u5df2\u9a8c\u8bc1\u7684\u5b8c\u6574\u514b\u9686\u7ed3\u679c\u5f15\u7528\u5f53\u524d49\u3002",
+        "requirement": "\u56fa\u5b9a\u5236\u54c1\u4e0e\u5065\u5eb7\u526f\u672c\u96c6\u5408",
         "result": "pass",
-        "sections": "development-manual.md#v2-副本可写状态与-raid-成员关系、#linked-源副本保护与安全驱逐"
+        "sections": "development-manual.md#v2-\u526f\u672c\u53ef\u5199\u72b6\u6001\u4e0e-raid-\u6210\u5458\u5173\u7cfb\u3001#linked-\u6e90\u526f\u672c\u4fdd\u62a4\u4e0e\u5b89\u5168\u9a71\u9010"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "匿名/iobuf、exclusive/original 三档实际 cpuset/参数及59条账本闭环；同次重建 1/2/2→1/0/1→3/0/3 是应用值，不冒充吞吐或SLA。",
-        "requirement": "资源与重建调优",
+        "finding": "\u533f\u540d/iobuf\u3001exclusive/original \u4e09\u6863\u5b9e\u9645 cpuset/\u53c2\u6570\u53ca59\u6761\u8d26\u672c\u95ed\u73af\uff1b\u540c\u6b21\u91cd\u5efa 1/2/2\u21921/0/1\u21923/0/3 \u662f\u5e94\u7528\u503c\uff0c\u4e0d\u5192\u5145\u541e\u5410\u6216SLA\u3002",
+        "requirement": "\u8d44\u6e90\u4e0e\u91cd\u5efa\u8c03\u4f18",
         "result": "pass",
-        "sections": "operations-manual.md#v2-独占-cpu-与部署策略、#v2-重建带宽维护；technical-whitepaper.md#生命周期断言必须按引擎区分"
+        "sections": "operations-manual.md#v2-\u72ec\u5360-cpu-\u4e0e\u90e8\u7f72\u7b56\u7565\u3001#v2-\u91cd\u5efa\u5e26\u5bbd\u7ef4\u62a4\uff1btechnical-whitepaper.md#\u751f\u547d\u5468\u671f\u65ad\u8a00\u5fc5\u987b\u6309\u5f15\u64ce\u533a\u5206"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "纯客户端跳过裸盘段；大页申请须读回实际页数；稳定身份、先驱逐后原生释放再回执释放、同ID重入及原盘导入有连续输入/超时/停止恢复。V1文件系统步骤不套用V2。",
-        "requirement": "V2节点与AIO盘维护",
+        "finding": "\u7eaf\u5ba2\u6237\u7aef\u8df3\u8fc7\u88f8\u76d8\u6bb5\uff1b\u5927\u9875\u7533\u8bf7\u987b\u8bfb\u56de\u5b9e\u9645\u9875\u6570\uff1b\u7a33\u5b9a\u8eab\u4efd\u3001\u5148\u9a71\u9010\u540e\u539f\u751f\u91ca\u653e\u518d\u56de\u6267\u91ca\u653e\u3001\u540cID\u91cd\u5165\u53ca\u539f\u76d8\u5bfc\u5165\u6709\u8fde\u7eed\u8f93\u5165/\u8d85\u65f6/\u505c\u6b62\u6062\u590d\u3002V1\u6587\u4ef6\u7cfb\u7edf\u6b65\u9aa4\u4e0d\u5957\u7528V2\u3002",
+        "requirement": "V2\u8282\u70b9\u4e0eAIO\u76d8\u7ef4\u62a4",
         "result": "pass",
-        "sections": "operations-manual.md#v2-aio-的节点与裸盘准入、#v2-aio-逐盘退役与替换、#增加与退役节点"
+        "sections": "operations-manual.md#v2-aio-\u7684\u8282\u70b9\u4e0e\u88f8\u76d8\u51c6\u5165\u3001#v2-aio-\u9010\u76d8\u9000\u5f79\u4e0e\u66ff\u6362\u3001#\u589e\u52a0\u4e0e\u9000\u5f79\u8282\u70b9"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "三副本创建/扩容与两副本加接收域迁出分开；两个外部全量点逐对象校验，恢复普通卷无父引用，原图退役后重挂；未完成源拒绝和真实legacy四限制分别有边界。压缩/稀疏/字节数不外推容量节省率。",
-        "requirement": "新linked依赖图与独立恢复",
+        "finding": "\u4e09\u526f\u672c\u521b\u5efa/\u6269\u5bb9\u4e0e\u4e24\u526f\u672c\u52a0\u63a5\u6536\u57df\u8fc1\u51fa\u5206\u5f00\uff1b\u4e24\u4e2a\u5916\u90e8\u5168\u91cf\u70b9\u9010\u5bf9\u8c61\u6821\u9a8c\uff0c\u6062\u590d\u666e\u901a\u5377\u65e0\u7236\u5f15\u7528\uff0c\u539f\u56fe\u9000\u5f79\u540e\u91cd\u6302\uff1b\u672a\u5b8c\u6210\u6e90\u62d2\u7edd\u548c\u771f\u5b9elegacy\u56db\u9650\u5236\u5206\u522b\u6709\u8fb9\u754c\u3002\u538b\u7f29/\u7a00\u758f/\u5b57\u8282\u6570\u4e0d\u5916\u63a8\u5bb9\u91cf\u8282\u7701\u7387\u3002",
+        "requirement": "\u65b0linked\u4f9d\u8d56\u56fe\u4e0e\u72ec\u7acb\u6062\u590d",
         "result": "pass",
-        "sections": "operations-manual.md#v2-linked-clone-与嵌套工作副本；technical-whitepaper.md#v2-linked-clone-的视图隔离与源依赖"
+        "sections": "operations-manual.md#v2-linked-clone-\u4e0e\u5d4c\u5957\u5de5\u4f5c\u526f\u672c\uff1btechnical-whitepaper.md#v2-linked-clone-\u7684\u89c6\u56fe\u9694\u79bb\u4e0e\u6e90\u4f9d\u8d56"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "faulted→unknown 不等于salvage；保留实际EOPNOTSUPP/EIO和已确认账本，先隔离分离再恢复硬件与独立备份；残留DM阻断宿主交还，不从卷CR消失推导完成。",
-        "requirement": "故障现象与实际拒绝",
+        "finding": "faulted\u2192unknown \u4e0d\u7b49\u4e8esalvage\uff1b\u4fdd\u7559\u5b9e\u9645EOPNOTSUPP/EIO\u548c\u5df2\u786e\u8ba4\u8d26\u672c\uff0c\u5148\u9694\u79bb\u5206\u79bb\u518d\u6062\u590d\u786c\u4ef6\u4e0e\u72ec\u7acb\u5907\u4efd\uff1b\u6b8b\u7559DM\u963b\u65ad\u5bbf\u4e3b\u4ea4\u8fd8\uff0c\u4e0d\u4ece\u5377CR\u6d88\u5931\u63a8\u5bfc\u5b8c\u6210\u3002",
+        "requirement": "\u6545\u969c\u73b0\u8c61\u4e0e\u5b9e\u9645\u62d2\u7edd",
         "result": "pass",
-        "sections": "operations-manual.md#最后副本全部错误与数据损坏；technical-whitepaper.md#副本与故障恢复"
+        "sections": "operations-manual.md#\u6700\u540e\u526f\u672c\u5168\u90e8\u9519\u8bef\u4e0e\u6570\u636e\u635f\u574f\uff1btechnical-whitepaper.md#\u526f\u672c\u4e0e\u6545\u969c\u6062\u590d"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "独立盘故障确认条数、361.341秒观察窗口非RTO；四种真实告警触发/解除与数据读回，512MiB文件非宿主满盘，备份新鲜度非对象库故障；不承诺所有通知通道。",
-        "requirement": "V1物理盘故障与监控",
+        "finding": "\u72ec\u7acb\u76d8\u6545\u969c\u786e\u8ba4\u6761\u6570\u3001361.341\u79d2\u89c2\u5bdf\u7a97\u53e3\u975eRTO\uff1b\u56db\u79cd\u771f\u5b9e\u544a\u8b66\u89e6\u53d1/\u89e3\u9664\u4e0e\u6570\u636e\u8bfb\u56de\uff0c512MiB\u6587\u4ef6\u975e\u5bbf\u4e3b\u6ee1\u76d8\uff0c\u5907\u4efd\u65b0\u9c9c\u5ea6\u975e\u5bf9\u8c61\u5e93\u6545\u969c\uff1b\u4e0d\u627f\u8bfa\u6240\u6709\u901a\u77e5\u901a\u9053\u3002",
+        "requirement": "V1\u7269\u7406\u76d8\u6545\u969c\u4e0e\u76d1\u63a7",
         "result": "pass",
-        "sections": "technical-whitepaper.md#副本与故障恢复；operations-manual.md#监控与告警"
+        "sections": "technical-whitepaper.md#\u526f\u672c\u4e0e\u6545\u969c\u6062\u590d\uff1boperations-manual.md#\u76d1\u63a7\u4e0e\u544a\u8b66"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "普通/加密、升级前/后四个恢复新身份、独立写入和重挂均有实测摘要；旧LUKS UUID及16MiB差异保持，不从新Manager推断旧卷容量。",
-        "requirement": "停卷升级及四个独立恢复点",
+        "finding": "\u666e\u901a/\u52a0\u5bc6\u3001\u5347\u7ea7\u524d/\u540e\u56db\u4e2a\u6062\u590d\u65b0\u8eab\u4efd\u3001\u72ec\u7acb\u5199\u5165\u548c\u91cd\u6302\u5747\u6709\u5b9e\u6d4b\u6458\u8981\uff1b\u65e7LUKS UUID\u53ca16MiB\u5dee\u5f02\u4fdd\u6301\uff0c\u4e0d\u4ece\u65b0Manager\u63a8\u65ad\u65e7\u5377\u5bb9\u91cf\u3002",
+        "requirement": "\u505c\u5377\u5347\u7ea7\u53ca\u56db\u4e2a\u72ec\u7acb\u6062\u590d\u70b9",
         "result": "pass",
-        "sections": "operations-manual.md#v2-停卷升级与四个独立恢复点的实践"
+        "sections": "operations-manual.md#v2-\u505c\u5377\u5347\u7ea7\u4e0e\u56db\u4e2a\u72ec\u7acb\u6062\u590d\u70b9\u7684\u5b9e\u8df5"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "同Snapshot/Content UID、精确bak句柄和完整引用才允许在原等待窗口内重试；ready、错误消失后才创建PVC；其它错误或替换停止，未增加新产品行为。",
-        "requirement": "CSI绑定缓存暂态",
+        "finding": "\u540cSnapshot/Content UID\u3001\u7cbe\u786ebak\u53e5\u67c4\u548c\u5b8c\u6574\u5f15\u7528\u624d\u5141\u8bb8\u5728\u539f\u7b49\u5f85\u7a97\u53e3\u5185\u91cd\u8bd5\uff1bready\u3001\u9519\u8bef\u6d88\u5931\u540e\u624d\u521b\u5efaPVC\uff1b\u5176\u5b83\u9519\u8bef\u6216\u66ff\u6362\u505c\u6b62\uff0c\u672a\u589e\u52a0\u65b0\u4ea7\u54c1\u884c\u4e3a\u3002",
+        "requirement": "CSI\u7ed1\u5b9a\u7f13\u5b58\u6682\u6001",
         "result": "pass",
-        "sections": "operations-manual.md#从备份恢复至新卷"
+        "sections": "operations-manual.md#\u4ece\u5907\u4efd\u6062\u590d\u81f3\u65b0\u5377"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "原生空数据护栏和Bound/Retain拒绝、失败/SIGTERM恢复、control/host身份归档、保留介质分别解释；源三机/目标独立释放，hugepages/CPU由管理员按原记录恢复，不称产品自动回退。",
-        "requirement": "产品卸载与环境归还",
+        "finding": "\u539f\u751f\u7a7a\u6570\u636e\u62a4\u680f\u548cBound/Retain\u62d2\u7edd\u3001\u5931\u8d25/SIGTERM\u6062\u590d\u3001control/host\u8eab\u4efd\u5f52\u6863\u3001\u4fdd\u7559\u4ecb\u8d28\u5206\u522b\u89e3\u91ca\uff1b\u6e90\u4e09\u673a/\u76ee\u6807\u72ec\u7acb\u91ca\u653e\uff0chugepages/CPU\u7531\u7ba1\u7406\u5458\u6309\u539f\u8bb0\u5f55\u6062\u590d\uff0c\u4e0d\u79f0\u4ea7\u54c1\u81ea\u52a8\u56de\u9000\u3002",
+        "requirement": "\u4ea7\u54c1\u5378\u8f7d\u4e0e\u73af\u5883\u5f52\u8fd8",
         "result": "pass",
-        "sections": "operations-manual.md#下线与保留；technical-whitepaper.md#安全与运维边界"
+        "sections": "operations-manual.md#\u4e0b\u7ebf\u4e0e\u4fdd\u7559\uff1btechnical-whitepaper.md#\u5b89\u5168\u4e0e\u8fd0\u7ef4\u8fb9\u754c"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "三个控制面兼数据节点加一个新增worker；100 GiB独立ext4、2 GiB卷、8 MiB fsync数据、3到4副本、带数据del-node/master拒绝、迁出退役及四宿主清理分别说明。V2先退役再准入介质，不称卷原地引擎转换；不声明跨站点组网或控制面扩展。",
-        "requirement": "V1同网段新增数据节点",
+        "finding": "\u4e09\u4e2a\u63a7\u5236\u9762\u517c\u6570\u636e\u8282\u70b9\u52a0\u4e00\u4e2a\u65b0\u589eworker\uff1b100 GiB\u72ec\u7acbext4\u30012 GiB\u5377\u30018 MiB fsync\u6570\u636e\u30013\u52304\u526f\u672c\u3001\u5e26\u6570\u636edel-node/master\u62d2\u7edd\u3001\u8fc1\u51fa\u9000\u5f79\u53ca\u56db\u5bbf\u4e3b\u6e05\u7406\u5206\u522b\u8bf4\u660e\u3002V2\u5148\u9000\u5f79\u518d\u51c6\u5165\u4ecb\u8d28\uff0c\u4e0d\u79f0\u5377\u539f\u5730\u5f15\u64ce\u8f6c\u6362\uff1b\u4e0d\u58f0\u660e\u8de8\u7ad9\u70b9\u7ec4\u7f51\u6216\u63a7\u5236\u9762\u6269\u5c55\u3002",
+        "requirement": "V1\u540c\u7f51\u6bb5\u65b0\u589e\u6570\u636e\u8282\u70b9",
         "result": "pass",
-        "sections": "operations-manual.md#增加与退役节点"
+        "sections": "operations-manual.md#\u589e\u52a0\u4e0e\u9000\u5f79\u8282\u70b9"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "固定官方NodeStatus允许null，控制器异步初始化；两引擎空状态继续等待，已有块盘回执缺观测仍拒绝。新增失败保留原config、inventory、UID和数据，核验原身份后恢复原产品阶段，不通过格式化或手工补inventory绕过。",
-        "requirement": "新节点初始空状态与部分加入恢复",
+        "finding": "\u56fa\u5b9a\u5b98\u65b9NodeStatus\u5141\u8bb8null\uff0c\u63a7\u5236\u5668\u5f02\u6b65\u521d\u59cb\u5316\uff1b\u4e24\u5f15\u64ce\u7a7a\u72b6\u6001\u7ee7\u7eed\u7b49\u5f85\uff0c\u5df2\u6709\u5757\u76d8\u56de\u6267\u7f3a\u89c2\u6d4b\u4ecd\u62d2\u7edd\u3002\u65b0\u589e\u5931\u8d25\u4fdd\u7559\u539fconfig\u3001inventory\u3001UID\u548c\u6570\u636e\uff0c\u6838\u9a8c\u539f\u8eab\u4efd\u540e\u6062\u590d\u539f\u4ea7\u54c1\u9636\u6bb5\uff0c\u4e0d\u901a\u8fc7\u683c\u5f0f\u5316\u6216\u624b\u5de5\u8865inventory\u7ed5\u8fc7\u3002",
+        "requirement": "\u65b0\u8282\u70b9\u521d\u59cb\u7a7a\u72b6\u6001\u4e0e\u90e8\u5206\u52a0\u5165\u6062\u590d",
         "result": "pass",
-        "sections": "development-manual.md#配置与资源控制边界；operations-manual.md#增加与退役节点"
+        "sections": "development-manual.md#\u914d\u7f6e\u4e0e\u8d44\u6e90\u63a7\u5236\u8fb9\u754c\uff1boperations-manual.md#\u589e\u52a0\u4e0e\u9000\u5f79\u8282\u70b9"
       },
       {
         "basis": "Current changed passage/task handoff author review; operation evidence below.",
-        "finding": "先逐盘禁调度并确认storageScheduled=0，再关闭原Node默认盘标签，避免控制器重建；保持产品空盘删除护栏。部分add重试可重新签发leaf/key，须验证原CA、节点CN及当前产品签发源，不能把leaf字节未变当作成功条件。",
-        "requirement": "V1默认盘与证书续跑边界",
+        "finding": "\u5148\u9010\u76d8\u7981\u8c03\u5ea6\u5e76\u786e\u8ba4storageScheduled=0\uff0c\u518d\u5173\u95ed\u539fNode\u9ed8\u8ba4\u76d8\u6807\u7b7e\uff0c\u907f\u514d\u63a7\u5236\u5668\u91cd\u5efa\uff1b\u4fdd\u6301\u4ea7\u54c1\u7a7a\u76d8\u5220\u9664\u62a4\u680f\u3002\u90e8\u5206add\u91cd\u8bd5\u53ef\u91cd\u65b0\u7b7e\u53d1leaf/key\uff0c\u987b\u9a8c\u8bc1\u539fCA\u3001\u8282\u70b9CN\u53ca\u5f53\u524d\u4ea7\u54c1\u7b7e\u53d1\u6e90\uff0c\u4e0d\u80fd\u628aleaf\u5b57\u8282\u672a\u53d8\u5f53\u4f5c\u6210\u529f\u6761\u4ef6\u3002",
+        "requirement": "V1\u9ed8\u8ba4\u76d8\u4e0e\u8bc1\u4e66\u7eed\u8dd1\u8fb9\u754c",
         "result": "pass",
-        "sections": "operations-manual.md#增加与退役节点；development-manual.md#配置与资源控制边界"
+        "sections": "operations-manual.md#\u589e\u52a0\u4e0e\u9000\u5f79\u8282\u70b9\uff1bdevelopment-manual.md#\u914d\u7f6e\u4e0e\u8d44\u6e90\u63a7\u5236\u8fb9\u754c"
       }
     ],
     "open_blocking_document_defects": [],
@@ -434,9 +434,9 @@
   },
   "date": "2026-10-24",
   "document_sha256": {
-    "docs/storage/longhorn/development-manual.md": "dff8e85002e979eaf082634302a926faba030aadac6bf04c6017fbbd72955f3e",
-    "docs/storage/longhorn/operations-manual.md": "1d395016c83bebd1c4c8bdc7d549a6178c16920ac451e2187c54a74e28aa58a5",
-    "docs/storage/longhorn/technical-whitepaper.md": "ca20791b6af73fbbd99717f6df73e383a244aa3cbe098d929daedd824cfb53c1"
+    "docs/storage/longhorn/development-manual.md": "b1a0a23d4e7d2f9b61a1b214eb486f9a4def99ea726d6dfbd1a8d58817820073",
+    "docs/storage/longhorn/operations-manual.md": "9f41c1d6fa06ed3dffa82309d2fbd88c5d98e7142eeeeef32b89e86f4b390eaf",
+    "docs/storage/longhorn/technical-whitepaper.md": "7db06a7f5d54178ff1ac65ad0be6c420ec353772bb712e7a4187dea1ef1e6d6f"
   },
   "files": {
     "logs/longhorn-cases/delivery-doc-practice-20261022/previous-content-review.json": "da364abd8cee808816dd1530b98a7a0401c9a81bd10a9f6c17d225fb4b4cb8d3",
@@ -602,6 +602,57 @@
     "tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json": "e9f52afaa6ecb491ca80d9f110871ba5aab5cea09b4d7bf443a3ef86c0edc7ad",
     "tests/evidence/longhorn-v2-volume-modes-qualification-20261020.json": "d75e1d8da6abfd808996c456018818b6a7455f6b7e1939bc1da8c0c0f2556bdd",
     "tests/evidence/longhorn-v2-volumes-20261020.json": "1f5a3cb9f2e9000c68bf605b3dc723bda3f888b6504355460606067a7a8b955a"
+  },
+  "manager_revision_2_document_review": {
+    "artifact_evidence": {
+      "path": "tests/evidence/longhorn-manager-pending-publication-20261102.json",
+      "sha256": "1314d68e6824198788c40f7b8f5b21862fa6def776d886a7652e5cc0c5649b3e"
+    },
+    "changes": {
+      "docs/storage/longhorn/development-manual.md": {
+        "changed_paragraphs": 1,
+        "commands_and_steps_changed": false,
+        "current": {
+          "path": "docs/storage/longhorn/development-manual.md",
+          "sha256": "b1a0a23d4e7d2f9b61a1b214eb486f9a4def99ea726d6dfbd1a8d58817820073"
+        },
+        "diagrams_changed": false,
+        "original": {
+          "path": "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/node-api-transient/reboot-recovery/registration/document-pin-review/docs/storage/longhorn/development-manual.md",
+          "sha256": "dff8e85002e979eaf082634302a926faba030aadac6bf04c6017fbbd72955f3e"
+        }
+      },
+      "docs/storage/longhorn/operations-manual.md": {
+        "changed_paragraphs": 1,
+        "commands_and_steps_changed": false,
+        "current": {
+          "path": "docs/storage/longhorn/operations-manual.md",
+          "sha256": "9f41c1d6fa06ed3dffa82309d2fbd88c5d98e7142eeeeef32b89e86f4b390eaf"
+        },
+        "diagrams_changed": false,
+        "original": {
+          "path": "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/node-api-transient/reboot-recovery/registration/document-pin-review/docs/storage/longhorn/operations-manual.md",
+          "sha256": "1d395016c83bebd1c4c8bdc7d549a6178c16920ac451e2187c54a74e28aa58a5"
+        }
+      }
+    },
+    "date": "2026-11-03",
+    "live_adoption_and_full_acceptance": {
+      "path": "tests/evidence/longhorn-full-ga-20261103.json",
+      "sha256": "fa2b6b07e9213ffbd1e93b61ae75524f63daa6c8fc5cf09f72ddb326897a7a40"
+    },
+    "new_live_tests": false,
+    "previous_review": {
+      "path": "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/node-api-transient/reboot-recovery/registration/document-pin-review/previous-review.json",
+      "sha256": "c77d1f6a0e5b3fca14a809a987c9e72d3490f8bf6984571d33663a1f8cfdf411"
+    },
+    "reader_paths": {
+      "experienced": "pass: fixed version and new API state mapping agree with artifact and adoption evidence",
+      "novice": "pass: image prerequisite remains supplied by the product; no new input or step"
+    },
+    "scope": "Two existing paragraphs only: Manager immutable pin .1 to .2 and V2 pending-to-starting API normalization. Existing operation commands, configuration, conditions, recovery paths and diagrams unchanged.",
+    "source_review": "Compared published v1.12.1-kubeauto.2/v2-pending.patch: V2 and pending only; V1, error fields and linked-eviction patch preserved.",
+    "status": "pass"
   },
   "operation_evidence": [
     {
@@ -1615,9 +1666,9 @@
   },
   "reader_paths": {
     "experienced": {
-      "checks": "扩容、checksum、full-copy/linked、计划、SystemRestore/DR、节点盘、故障、安全、升级与退出均有对应入口；参数速查区分默认/省略/0及动态或停卷；两份故障账本、外部引用块与新目标业务是结果判据，Pod Ready不代签；原生保护拒绝不强拆finalizer。",
+      "checks": "\u6269\u5bb9\u3001checksum\u3001full-copy/linked\u3001\u8ba1\u5212\u3001SystemRestore/DR\u3001\u8282\u70b9\u76d8\u3001\u6545\u969c\u3001\u5b89\u5168\u3001\u5347\u7ea7\u4e0e\u9000\u51fa\u5747\u6709\u5bf9\u5e94\u5165\u53e3\uff1b\u53c2\u6570\u901f\u67e5\u533a\u5206\u9ed8\u8ba4/\u7701\u7565/0\u53ca\u52a8\u6001\u6216\u505c\u5377\uff1b\u4e24\u4efd\u6545\u969c\u8d26\u672c\u3001\u5916\u90e8\u5f15\u7528\u5757\u4e0e\u65b0\u76ee\u6807\u4e1a\u52a1\u662f\u7ed3\u679c\u5224\u636e\uff0cPod Ready\u4e0d\u4ee3\u7b7e\uff1b\u539f\u751f\u4fdd\u62a4\u62d2\u7edd\u4e0d\u5f3a\u62c6finalizer\u3002",
       "current_review": {
-        "finding": "按任务索引进入禁调度/驱逐/取消→AIO原生退役→同ID恢复或新硬件准入；linked源/子/嵌套保护、迁出接收域、独立恢复和叶到根退出衔接；升级四恢复点、三盘故障隔离、监控、卸载/宿主归还各自有上下文、原身份和不可逆点。",
+        "finding": "\u6309\u4efb\u52a1\u7d22\u5f15\u8fdb\u5165\u7981\u8c03\u5ea6/\u9a71\u9010/\u53d6\u6d88\u2192AIO\u539f\u751f\u9000\u5f79\u2192\u540cID\u6062\u590d\u6216\u65b0\u786c\u4ef6\u51c6\u5165\uff1blinked\u6e90/\u5b50/\u5d4c\u5957\u4fdd\u62a4\u3001\u8fc1\u51fa\u63a5\u6536\u57df\u3001\u72ec\u7acb\u6062\u590d\u548c\u53f6\u5230\u6839\u9000\u51fa\u8854\u63a5\uff1b\u5347\u7ea7\u56db\u6062\u590d\u70b9\u3001\u4e09\u76d8\u6545\u969c\u9694\u79bb\u3001\u76d1\u63a7\u3001\u5378\u8f7d/\u5bbf\u4e3b\u5f52\u8fd8\u5404\u81ea\u6709\u4e0a\u4e0b\u6587\u3001\u539f\u8eab\u4efd\u548c\u4e0d\u53ef\u9006\u70b9\u3002",
         "scope": "Author document path check; no live execution or independent reader claimed.",
         "status": "pass"
       },
@@ -1630,12 +1681,12 @@
         "status": "pass"
       },
       "path": [
-        "任务索引定位任务",
-        "公共上下文和任务专用前置",
-        "读取原UID/config/容量与备份",
-        "单项产品或明确原生操作",
-        "等待原生终态和业务结果",
-        "按原值/原身份恢复并限定回收"
+        "\u4efb\u52a1\u7d22\u5f15\u5b9a\u4f4d\u4efb\u52a1",
+        "\u516c\u5171\u4e0a\u4e0b\u6587\u548c\u4efb\u52a1\u4e13\u7528\u524d\u7f6e",
+        "\u8bfb\u53d6\u539fUID/config/\u5bb9\u91cf\u4e0e\u5907\u4efd",
+        "\u5355\u9879\u4ea7\u54c1\u6216\u660e\u786e\u539f\u751f\u64cd\u4f5c",
+        "\u7b49\u5f85\u539f\u751f\u7ec8\u6001\u548c\u4e1a\u52a1\u7ed3\u679c",
+        "\u6309\u539f\u503c/\u539f\u8eab\u4efd\u6062\u590d\u5e76\u9650\u5b9a\u56de\u6536"
       ],
       "scope": "Author task/index/parameter/incident path check; no independent reviewer claimed",
       "stability_support_addendum": {
@@ -1645,9 +1696,9 @@
       "status": "pass"
     },
     "novice": {
-      "checks": "版本、角色、管理位置、DEPLOYMENT/KUBECONFIG和凭据来源在进入命令前确定；V2跳过V1格式化；应用示例保留节点约束、等待与业务判据；输入未知、超时和数据不符均停止。无默认context或作者隐藏环境。",
+      "checks": "\u7248\u672c\u3001\u89d2\u8272\u3001\u7ba1\u7406\u4f4d\u7f6e\u3001DEPLOYMENT/KUBECONFIG\u548c\u51ed\u636e\u6765\u6e90\u5728\u8fdb\u5165\u547d\u4ee4\u524d\u786e\u5b9a\uff1bV2\u8df3\u8fc7V1\u683c\u5f0f\u5316\uff1b\u5e94\u7528\u793a\u4f8b\u4fdd\u7559\u8282\u70b9\u7ea6\u675f\u3001\u7b49\u5f85\u4e0e\u4e1a\u52a1\u5224\u636e\uff1b\u8f93\u5165\u672a\u77e5\u3001\u8d85\u65f6\u548c\u6570\u636e\u4e0d\u7b26\u5747\u505c\u6b62\u3002\u65e0\u9ed8\u8ba4context\u6216\u4f5c\u8005\u9690\u85cf\u73af\u5883\u3002",
       "current_review": {
-        "finding": "在公共上下文确认版本/角色/PKI/deployment后选择V1挂载或V2稳定裸盘；V2纯客户端不被要求配置盘，页池必须实际足额；config下载及09→显式StorageClass/PVC→fsync→保留PVC重建Pod→跨节点摘要→独立恢复，条件、等待、失败停止与恢复连续。",
+        "finding": "\u5728\u516c\u5171\u4e0a\u4e0b\u6587\u786e\u8ba4\u7248\u672c/\u89d2\u8272/PKI/deployment\u540e\u9009\u62e9V1\u6302\u8f7d\u6216V2\u7a33\u5b9a\u88f8\u76d8\uff1bV2\u7eaf\u5ba2\u6237\u7aef\u4e0d\u88ab\u8981\u6c42\u914d\u7f6e\u76d8\uff0c\u9875\u6c60\u5fc5\u987b\u5b9e\u9645\u8db3\u989d\uff1bconfig\u4e0b\u8f7d\u53ca09\u2192\u663e\u5f0fStorageClass/PVC\u2192fsync\u2192\u4fdd\u7559PVC\u91cd\u5efaPod\u2192\u8de8\u8282\u70b9\u6458\u8981\u2192\u72ec\u7acb\u6062\u590d\uff0c\u6761\u4ef6\u3001\u7b49\u5f85\u3001\u5931\u8d25\u505c\u6b62\u4e0e\u6062\u590d\u8fde\u7eed\u3002",
         "scope": "Author document path check; no live execution or independent reader claimed.",
         "status": "pass"
       },
@@ -1660,13 +1711,13 @@
         "status": "pass"
       },
       "path": [
-        "规划与公共会话",
-        "选择V1文件系统盘或V2稳定身份裸盘",
-        "主机/页池/CPU预算与PKI",
+        "\u89c4\u5212\u4e0e\u516c\u5171\u4f1a\u8bdd",
+        "\u9009\u62e9V1\u6587\u4ef6\u7cfb\u7edf\u76d8\u6216V2\u7a33\u5b9a\u8eab\u4efd\u88f8\u76d8",
+        "\u4e3b\u673a/\u9875\u6c60/CPU\u9884\u7b97\u4e0ePKI",
         "config+download+setup09",
-        "显式引擎StorageClass与PVC/应用Pod",
-        "fsync确认、跨节点重挂摘要",
-        "外部备份与新目标恢复"
+        "\u663e\u5f0f\u5f15\u64ceStorageClass\u4e0ePVC/\u5e94\u7528Pod",
+        "fsync\u786e\u8ba4\u3001\u8de8\u8282\u70b9\u91cd\u6302\u6458\u8981",
+        "\u5916\u90e8\u5907\u4efd\u4e0e\u65b0\u76ee\u6807\u6062\u590d"
       ],
       "scope": "Author document walk-through; no reader/field execution claimed",
       "stability_support_addendum": {
@@ -1675,6 +1726,21 @@
       },
       "status": "pass"
     }
+  },
+  "release_status_refresh": {
+    "acceptance": {
+      "path": "tests/evidence/longhorn-full-ga-20261103.json",
+      "sha256": "fa2b6b07e9213ffbd1e93b61ae75524f63daa6c8fc5cf09f72ddb326897a7a40"
+    },
+    "current_sha256": "7db06a7f5d54178ff1ac65ad0be6c420ec353772bb712e7a4187dea1ef1e6d6f",
+    "date": "2026-11-03",
+    "document": "docs/storage/longhorn/technical-whitepaper.md",
+    "previous_review": {
+      "path": "logs/longhorn-cases/v2-native-snapshot-20261102/candidate/node-api-transient/reboot-recovery/registration/before/tests/evidence/longhorn-documentation-current-content-review-20261024.json",
+      "sha256": "8ac989666adf4c39c541cc2c902c96afd9f3327deb87b7a532ba725e6c8a4d57"
+    },
+    "previous_sha256": "ca20791b6af73fbbd99717f6df73e383a244aa3cbe098d929daedd824cfb53c1",
+    "scope": "Release-status sentence and acceptance links only; mechanisms, operations, diagrams and prior reader-path review unchanged."
   },
   "schema": 1,
   "source_coverage": {

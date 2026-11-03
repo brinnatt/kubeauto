@@ -32,6 +32,45 @@ def allowlist():
 
 
 class LonghornLabContracts(unittest.TestCase):
+    def test_owned_disk_residue_recovery_is_two_phase_and_exactly_scoped(self):
+        calls = []
+        def remote(node, argv=None, **kwargs):
+            calls.append((node, argv, kwargs))
+            action = argv[-1]
+            payload = {'recovered': action == 'apply', 'device': '/dev/vdb',
+                       'uuid': 'e70793e5-4a13-532a-985b-2d6a908f5207'}
+            return subprocess.CompletedProcess(argv, 0, json.dumps(payload) + '\n', '')
+        with patch.object(lab, 'remote', side_effect=remote):
+            lab.recover_owned_disk_residue()
+        self.assertEqual([item[1][-1] for item in calls], ['check'] * 3 + ['apply'] * 3)
+        self.assertEqual({item[0] for item in calls}, set(lab.WORKERS))
+        source = (ROOT / 'tests/helpers/longhorn-lab.py').read_text()
+        for required in ('kca-longhorn', 'wipefs', 'holders', 'foreign fstab owner',
+                         'unmounted, byte-exact fixture'):
+            self.assertIn(required, source)
+
+    def test_get_can_treat_only_absent_resource_type_as_empty(self):
+        calls = []
+
+        def fake_kubectl(*args, **kwargs):
+            calls.append(kwargs.get('check', True))
+            if kwargs.get('check', True):
+                raise AssertionError('non-missing API failure must remain visible')
+            return subprocess.CompletedProcess(args, 1, '', "server doesn't have a resource type \\\"volumes.longhorn.io\\\"")
+
+        with patch.object(lab, 'kubectl', side_effect=fake_kubectl):
+            self.assertEqual(lab.get('volumes.longhorn.io', namespace='longhorn-system',
+                                     allow_missing_resource=True), {'items': []})
+        self.assertEqual(calls, [False])
+
+        def unavailable(*args, **kwargs):
+            if not kwargs.get('check', True):
+                return subprocess.CompletedProcess(args, 1, '', 'connection refused')
+            raise ValueError('fixture command failed: kubectl rc=1')
+
+        with patch.object(lab, 'kubectl', side_effect=unavailable), self.assertRaisesRegex(ValueError, 'kubectl rc=1'):
+            lab.get('volumes.longhorn.io', namespace='longhorn-system', allow_missing_resource=True)
+
     def test_recurring_selector_recovery_is_explicit_and_delegated_to_schedule_stop(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
@@ -690,6 +729,8 @@ class LonghornLabContracts(unittest.TestCase):
                         self.assertNotIn('pull', remote.call_args.args[1])
                     else:
                         self.assertIn('pull', remote.call_args_list[1].args[1])
+                        command = remote.call_args_list[1].args[1]
+                        self.assertEqual(command[command.index('--hosts-dir') + 1], '/etc/containerd/certs.d')
 
     def test_backup_uses_full_then_incremental_product_requests_and_distinct_restore_points(self):
         from unittest.mock import Mock
@@ -2164,6 +2205,20 @@ class LonghornLabContracts(unittest.TestCase):
             self.assertFalse(path.exists())
             self.assertEqual((root / ('history/host-unit-' + digest) / 'override.conf').read_bytes(), content)
             invoke()  # Idempotent recovery verifies the original archive.
+
+    def test_legacy_longhorn_recovery_is_identity_bound_and_never_wipes_media(self):
+        script = lab.legacy_longhorn_release_script()
+        for value in ('eb738d46-b74a-409e-8ea1-0d30f976a1cf',
+                      '2a0a770a-c0e1-444a-b35f-b35a1625f362',
+                      '/data/kubeauto-longhorn', 'longhorn-disk.cfg'):
+            self.assertIn(value, script)
+        self.assertIn("request.get('cluster_uid')!=cluster", script)
+        self.assertIn("request.get('run_marker')!=run_marker", script)
+        self.assertIn("subprocess.run(['fuser','-m',str(path)]", script)
+        self.assertIn("subprocess.run(['umount',str(path)],check=True)", script)
+        self.assertNotIn('wipefs', script)
+        self.assertNotIn("shutil.rmtree", script)
+        self.assertIn("'data_preserved':True", script)
 
     def test_confirmed_payload_program_reads_exact_filesystem_and_raw_block_bytes(self):
         payload = str(uuid.uuid4())

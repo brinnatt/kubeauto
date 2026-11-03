@@ -183,7 +183,7 @@ class KubeConstant:
         })
         if target:
             tags["longhorn-instance-manager"] = "v1.12.1-kubeauto.3"
-            tags["longhorn-manager"] = "v1.12.1-kubeauto.1"
+            tags["longhorn-manager"] = "v1.12.1-kubeauto.2"
         return tags
 
     @property

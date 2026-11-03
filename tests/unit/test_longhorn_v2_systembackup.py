@@ -31,8 +31,10 @@ class BundleContracts(unittest.TestCase):
             self.assertEqual(gate.manager_commit(repository+'/longhorn-manager:v1.12.1'), upstream)
             self.assertEqual(gate.manager_commit(repository+'/longhorn-manager:v1.12.1-kubeauto.1'),
                              upstream+'-kubeauto.9275735a33fe')
+            self.assertEqual(gate.manager_commit(repository+'/longhorn-manager:v1.12.1-kubeauto.2'),
+                             upstream+'-kubeauto.07485cfc14e1')
         for image in ('fixed-manager:v1.12.1', 'longhorn-manager:latest',
-                      'longhorn-manager:v1.12.0', 'longhorn-manager:v1.12.1-kubeauto.2',
+                      'longhorn-manager:v1.12.0', 'longhorn-manager:v1.12.1-kubeauto.3',
                       'longhorn-manager:v1.12.1-kubeauto.1-extra',
                       'longhorn-manager:v1.12.1-kubeauto.1@sha256:'+'a'*64):
             with self.subTest(image=image), self.assertRaisesRegex(ValueError, 'unqualified'):

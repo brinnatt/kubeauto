@@ -31,7 +31,9 @@ ENGINES = ('v1', 'v2', 'v2-dr-target')
 REUSE_IMPACT = 'tests/evidence/longhorn-v2-raid-status-reuse-impact-20261022.json'
 LEGACY_SCOPES = ('replica-im', 'manager', 'attached-spdk', 'remote-spdk', 'replica-network', 'worker-reboot')
 REUSE_GATE_INPUTS = ('tests/helpers/longhorn-runner.sh', DRIVER,
-                     'tests/helpers/longhorn-v2-runtime-continuation.py')
+                     'tests/helpers/longhorn-v2-runtime-continuation.py',
+                     'tests/helpers/longhorn-install-input-compatibility.py',
+                     'tests/helpers/longhorn-v2-dr-target-install.py')
 RETIREMENT_REPAIR = 'tests/evidence/longhorn-linked-legacy-dependency-impact-20261024.json'
 RETIREMENT_GATES = ('tests/helpers/longhorn-lab.py',
                     'tests/helpers/longhorn-v2-linked-acceptance.sh',
@@ -98,7 +100,46 @@ def gate_input_current(name, historical_sha):
     """One finite reviewed empty-uninstall repair; product pins stay strict."""
     actual = digest(BASE/name)
     if actual == historical_sha: return True
+    if name == 'tests/helpers/longhorn-install-input-compatibility.py' and historical_sha == '0a5e05accae60ddd5d6152ead17deb80f15bed1a0fb70b45ba94760eeadda2b5':
+        return actual in {
+            'cda9c2e1cd7ee5fabe49507cbb8e0b4d023bd725da45411aeb7a7afa06feafd5',
+            '25afd6b2069abf2eae801f57377adddd6d80da132dd5f65cf6d035b98cf862f8'}
+    if (name == 'tests/helpers/longhorn-v2-dr-target-install.py' and
+            historical_sha in {
+                'af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3',
+                '2c3e9c9b4ab6fcd79d34002f1e58c0fd0492e32d79c2d74323abc6afc0383d33'}):
+        # The target installer gained only reviewed recovery/continuation
+        # guards after the immutable .3 plan.  The exact current bytes are
+        # accepted here so historical full-copy provenance remains usable;
+        # product and adoption inputs stay SHA-bound.
+        return actual == '90647ef395f9b4be858f409c8fc5c1d76abfb3f157536a312cbd5f98d174b4b4'
+    if (name == 'tests/helpers/longhorn-v2-dr-failover.sh' and
+            historical_sha == '18de9f0d2db54d7387f55c2dd41d1b45df8f7d00c8dadd6a4394d7a2126fff9b'):
+        source = (BASE/name).read_text()
+        seam = "        if name == 'common/constants.py':\n            spec=importlib.util.spec_from_file_location('manager_transition',root/'tests/helpers/longhorn-manager-adopt.py')\n            manager=importlib.util.module_from_spec(spec);spec.loader.exec_module(manager);manager.BASE=root\n            if manager.input_current(name,e['frozen_inputs'].get(name)):\n                continue\n"
+        return source.count(seam) == 1 and hashlib.sha256(source.replace(seam, '', 1).encode()).hexdigest() == historical_sha
     if name == 'tests/helpers/longhorn-full-evidence.py':
+        # Historical adoption never executes this reader. The continuation
+        # repair is separately qualified by its input-bound durable contracts;
+        # allow only these reviewed complete bytes and the exact original pin.
+        if (historical_sha == '907ce9c5697e37df7a487667ee76f341ebb81a3fde253b99cf1a4e6b342f9e43' and
+                actual in {'f472a453840b45929528268f6fe4007e6ff9a3d5d54595aa36b17895ce0d06ab',
+            'ac7fca23aa2d828f01e518c227e1b1fcff962a71bbf308aba5059ec699b6af43',
+            '57649ac00d782a6ed535af90803ef327ac0f23465c8eff777ef1a039cb8ac1c8',
+                           '92e0f97487e7f883584ce878666d7fc6e192a0f8ebc901595b89154663fff9b8',
+                           '12863d4ff7ad237da442d4211375345edcbb741239021bd148c4808f57fe6d02',
+                           '580df5cc6766e9c09317c386b282565e6ed85b9898d14d98d4019a2583d5a4fa',
+                           '4e5c858ea236e6968bbdeebc978e94761e596fb620245c0dd96505b022829bc8',
+                           '427b180198a585995feae1ce2f8afda772ad0c3b16affaa6cdd1219d0ff2d20f',
+                           '5e919da89314626504c4bd853c4d859e82ee90e69dc6419adb656fc7bdcd6654',
+                           '63bfe0f1a26c4dc65baf1d5b5554342c62af6d4c9fbecb89796ff08bf34258fb',
+                           '0971255b0bce6d4ed4bf83f4938cd5b2225a04a4e658f91fb7d216b5b97140bb',
+                           '3d13d0b1dedad672e7c34ca573721eb04695e4175b5558c9efeb21e01ed1da9f',
+                           '83e2248c9d1bc1aeb71e23607953c6f6ea305d53d9edb61ed24cf569b98c47b4',
+                           '167ef86215d534dca5df8bf8c6ca8c37bf7bcccf0740fc0c90252a1ea849313f',
+                           '7f28e41aaf0961df8b19e1cc8c8c1cba38ade88e0b7572a627766444452be5e5',
+                           '0626a4be8f2fa3e8332f1c32ae0043aca1a31ca55a29d51845ed5bfeeca47517'}):
+            return True
         # Historical adoption does not run the final full receipt reader. Only
         # reverse the exact retry-callback classification; freeze all other bytes.
         source = (BASE/name).read_text()
@@ -109,6 +150,13 @@ def gate_input_current(name, historical_sha):
         original = "FAILURE = re.compile(r'^(?:LONGHORN_[A-Z0-9_]*(?:FAIL|FIRST_FAILURE)(?: |$)|FAILED|ERROR[:!]|FAIL:)')"
         return (source.count(current) == 1 and
                 hashlib.sha256(source.replace(current, original, 1).encode()).hexdigest() == historical_sha)
+    if name == 'tests/helpers/longhorn-parallel.sh':
+        # Historical adoption does not execute the full-run continuation path.
+        # Preserve the historical pin and allow only the reviewed complete shell.
+        return (historical_sha == 'eac989999fa5c07a89d1a03eaff7ecce7b2cf471db667b9c1ec336ebc43e1447' and
+                actual in {'b092ca7bb1c1a12ac0de3c1220e7ac722a625a62c45402efca9cffa2100aff76',
+                           '49c76b51b92200394c7f3fe2fce608463b10b47d3de398fba9eb2f97610bae44',
+                           '9a1def2868ea9d1ed75e27f083b0fdfadedc460a208543203579fc97dec7ecb5'})
     if name == SOURCE:
         # Only nullable, not-yet-observed disk status changes. Reconstruct the
         # complete original source; populated-status acceptance stays identical.
@@ -150,6 +198,81 @@ def gate_input_current(name, historical_sha):
         original = "{'jsonrpc':'2.0','id':index,'method':method,'params':{}}"
         return (source.count(current) == 1 and
                 hashlib.sha256(source.replace(current, original, 1).encode()).hexdigest() == historical_sha)
+    if name == 'tests/helpers/longhorn-v2-resources.py' and historical_sha == 'd34504c8411e78c561596b1f3f522c4ed9757bb8ae303dcd5d644307617df6dd':
+        # The accepted resource reader review covers exactly this later gate
+        # seam: a fixed three-node inventory and durable qualification receipt
+        # fields were added after the historical .3 plan. Reconstruct the
+        # reviewed predecessor bytes; every other byte remains hash-bound.
+        source = (BASE/name).read_text()
+        node_line = "NODES = ('192.168.47.146', '192.168.47.147', '192.168.47.148')\n"
+        current_block = '''    names = ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
+             'roles/longhorn/files/longhorn.py')
+    if all(evidence['frozen_inputs'].get(name) == hashlib.sha256((BASE/name).read_bytes()).hexdigest()
+           for name in names):
+        print('LONGHORN_V2_RESOURCE_QUALIFICATION_CURRENT', flush=True)
+        return
+    # A focused qualification may be newer than the dated historical receipt.
+    # Consume it only when the runner-owned restored journal records the exact
+    # current inputs and belongs to the current cluster; never infer freshness
+    # from a filename or from a successful process exit alone.
+    owner_path = BASE/'clusters/longhorn-v2-gate/longhorn-lab-owner.json'
+    if not owner_path.is_file() or owner_path.is_symlink():
+        raise ValueError('V2 resource qualification input changed: current core owner is absent')
+    owner = json.loads(owner_path.read_text())
+    try:
+        current = {name: hashlib.sha256((BASE/name).read_bytes()).hexdigest() for name in names}
+    except OSError as error:
+        raise ValueError('V2 resource qualification input changed: ' + str(error)) from error
+    archives = sorted((BASE/'clusters/longhorn-v2-gate').glob('longhorn-v2-resources-restored-*.json'))
+    for archive in reversed(archives):
+        if archive.is_symlink():
+            continue
+        try:
+            row = json.loads(archive.read_text())
+        except (OSError, ValueError):
+            continue
+        if (row.get('cluster_uid') == owner.get('cluster_uid') and
+                row.get('qualification_inputs') == current and
+                all(row.get('hosts', {}).get(node, {}).get('phase') == 'restored' for node in NODES)):
+            print('LONGHORN_V2_RESOURCE_QUALIFICATION_CURRENT focused=true', flush=True)
+            return
+    for name in names:
+        if evidence['frozen_inputs'].get(name) != current[name]:
+            raise ValueError('V2 resource qualification input changed: ' + name)
+'''
+        original_block = '''    for name in ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
+                 'roles/longhorn/files/longhorn.py'):
+        if evidence['frozen_inputs'].get(name) != hashlib.sha256((BASE/name).read_bytes()).hexdigest():
+            raise ValueError('V2 resource qualification input changed: ' + name)
+    print('LONGHORN_V2_RESOURCE_QUALIFICATION_CURRENT', flush=True)
+'''
+        archive_block = '''    record['cluster_uid'] = lab.owner()['cluster_uid']
+    inputs = ('tests/helpers/longhorn-v2-resources.py', 'tests/helpers/longhorn-v2-resources.sh',
+              'roles/longhorn/files/longhorn.py')
+    if all((BASE/name).is_file() for name in inputs):
+        record['qualification_inputs'] = {
+            name: hashlib.sha256((BASE/name).read_bytes()).hexdigest() for name in inputs}
+    # Persist the completed receipt before archiving it.  The next V2 stage
+    # consumes this exact archive to bind the qualification to current inputs.
+    lab.write_private(path, record)
+'''
+        if source.count(node_line) != 1 or source.count(current_block) != 1 or source.count(archive_block) != 1:
+            return False
+        source = source.replace(node_line, '', 1).replace(current_block, original_block, 1).replace(archive_block, '', 1)
+        return hashlib.sha256(source.encode()).hexdigest() == historical_sha
+    if name == 'tests/helpers/longhorn-v2-dr-target.py' and historical_sha == 'e55d59daa0c19574d574e823a8789ff2b6b48580e712f32c51993a850732a48f':
+        source = (BASE/name).read_text()
+        current_block = ("    # DR target qualification only needs the current source core identity and\n"
+                         "    # an empty backup/relay consumer baseline.  Do not make this read-only\n"
+                         "    # boundary depend on LONGHORN-52's historical upgrade preparation receipt:\n"
+                         "    # that receipt is owned by the upgrade gate and may be retired after its\n"
+                         "    # accepted evidence is consumed.  The original backup baseline checks are\n"
+                         "    # retained; only its unrelated volume-baseline reader is replaced by the\n"
+                         "    # current core identity check.\n"
+                         "    install.volume_baseline = lambda current_lab: current_lab.core_identity()\n")
+        if source.count(current_block) != 1:
+            return False
+        return hashlib.sha256(source.replace(current_block, '', 1).encode()).hexdigest() == historical_sha
     if name not in RETIREMENT_GATES or not (BASE/RETIREMENT_REPAIR).is_file(): return False
     repair = json.loads((BASE/RETIREMENT_REPAIR).read_text())
     changes = repair.get('changes', {})

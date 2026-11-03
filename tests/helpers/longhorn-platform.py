@@ -169,11 +169,15 @@ def remote_service(lab, request, action):
 
 
 def empty(lab):
+    def items(kind, **kwargs):
+        value = lab.get(kind, allow_missing_resource=True, **kwargs)
+        return (value or {}).get('items', [])
+
     for kind in ('volumes.longhorn.io', 'engines.longhorn.io', 'replicas.longhorn.io'):
-        if lab.get(kind, namespace=NS)['items']:
+        if items(kind, namespace=NS):
             raise ValueError('platform host refusal requires no native volumes or processes')
     if any(p.get('spec', {}).get('csi', {}).get('driver') == 'driver.longhorn.io'
-           for p in lab.get('pv')['items']):
+           for p in items('pv')):
         raise ValueError('platform host refusal refuses retained Longhorn PVs')
     for name in ('longhorn-request-input.json', 'longhorn-install-business.json',
                  'longhorn-security-tls.json', 'longhorn-encryption-key.json'):

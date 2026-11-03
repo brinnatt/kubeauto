@@ -80,6 +80,23 @@ class CompositionContracts(unittest.TestCase):
             base,scopes,_,_=self.fixture(d)
             with patch.object(M,'verify_business',side_effect=ValueError('actual ACK changed')),self.assertRaisesRegex(ValueError,'ACK'):M.validate_maintenance51(base,scopes)
 
+    def test_reviewed_reader_transition_keeps_original_inputs_and_default_strictness(self):
+        with tempfile.TemporaryDirectory() as d:
+            base, scopes, write, _ = self.fixture(d)
+            name = 'tests/helpers/'+M.SPECS['install'][1]
+            original = M.digest(base/name); write(name, 'cleanup daemon reload only')
+            before = (base/scopes['install']['evidence']['path']).read_bytes()
+            with patch.object(M, 'verify_business', return_value={}):
+                with self.assertRaisesRegex(ValueError, 'implementation changed'):
+                    M.validate_maintenance51(base, scopes)
+                result = M.validate_maintenance51(base, scopes,
+                    input_current=lambda path, old: path == name and old == original)
+            self.assertEqual('pass', result['status'])
+            self.assertEqual(before, (base/scopes['install']['evidence']['path']).read_bytes())
+            write(M.PRODUCT, 'foreign product')
+            with patch.object(M, 'verify_business', return_value={}), self.assertRaisesRegex(ValueError, 'implementation changed'):
+                M.validate_maintenance51(base, scopes, input_current=lambda *args: True)
+
     def test_public_route_requires_explicit_input_and_never_launches_live(self):
         helper=ROOT/'tests/helpers/longhorn-runner.sh';source=helper.read_text();a=source.index('longhorn_v2_maintenance() {');b=source.index('\n}\n',a)+3
         with tempfile.TemporaryDirectory() as d:

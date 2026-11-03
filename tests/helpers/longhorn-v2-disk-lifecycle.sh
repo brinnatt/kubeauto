@@ -18,7 +18,7 @@ echo "LONGHORN_V2_DISK_DURABLE_DIRECTORY path=$work"
 control_config=/root/.kube/config
 [[ ! -L "$control_config" ]] || exit 1
 [[ ! -f "$control_config" ]] || cp -a "$control_config" "$work/control-kubeconfig"
-phase=preflight relay_pid= admitted=no transport=no
+phase=preflight relay_pid= admitted=no transport=no resume_business=
 finish() {
   local rc=$? cleanup_rc=0
   trap - EXIT INT TERM
@@ -74,18 +74,29 @@ if [[ "$mode" == v2-disk-lifecycle-cleanup ]]; then
   [[ -f "$JOURNAL" && ! -L "$JOURNAL" ]] || exit 1
   admitted=yes
 else
+  if [[ -f "$JOURNAL" && ! -L "$JOURNAL" && "${LONGHORN_FULL_RESUME:-no}" == yes ]]; then
+    resume_business="$("$PY" "$BASE/tests/helpers/longhorn-full-evidence.py" disk-resume)"
+    [[ -n "$resume_business" && -f "$resume_business" && ! -L "$resume_business" ]] || exit 1
+    admitted=yes
+  else
   [[ ! -e "$JOURNAL" && ! -L "$JOURNAL" ]] || exit 1
   proof="${LONGHORN_V2_TARGET_RELEASE_PROOF:-}"
   [[ "$proof" == /* && -f "$proof" && ! -L "$proof" ]] || { echo LONGHORN_V2_DISK_REQUIRES_TARGET_RELEASE >&2; exit 1; }
   phase=target-release-admission
   "$PY" "$DRIVER" admit --released-target-proof "$proof" | tee "$work/admission.log"
   admitted=yes
+  fi
 fi
 transport=yes
 "$PY" "$DRIVER" relay-ensure
 "$PY" "$DRIVER" relay-maintain > "$work/relay.log" 2>&1 &
 relay_pid=$!
 if [[ "$mode" == v2-disk-lifecycle-cleanup ]]; then phase=owned-disk-recovery; exit 0; fi
+if [[ -n "$resume_business" ]]; then
+  phase=owned-disk-recovery
+  cat -- "$resume_business" | tee "$work/business.log"
+  exit 0
+fi
 phase=product-expansion-evacuation-retirement
 "$PY" "$DRIVER" business --relay-pid "$relay_pid" | tee "$work/business.log"
 grep -q '^LONGHORN_V2_DISK_CLIENT_EXPANSION_PASS host=192.168.47.149 ' "$work/business.log"

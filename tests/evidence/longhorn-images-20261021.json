@@ -485,6 +485,31 @@
           "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.1-kubeauto.1"
         }
       ]
+    },
+    {
+      "run_id": 41373290910,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41373290910",
+      "head": "adfbcc16e43d9da443b5072f4aa3b0a768449074",
+      "workflow_conclusion": "success",
+      "durable_rc": 0,
+      "failure_markers": 0,
+      "images": [
+        {
+          "digest": "sha256:71c1e558b136ae302c3ac4a258eb00f20fd52c409fe6f89fb0ce612429e32191",
+          "fingerprint": "ca3f7a71bf4ffdd2a30d8698288174ac7c341874f3aa47e715a0e0fec1f69d8f",
+          "head": "adfbcc16e43d9da443b5072f4aa3b0a768449074",
+          "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+          "platforms": {
+            "linux/amd64": "sha256:8f099964dc25baed1001857b8a7fc9ab2d56cf2ead328ad9bb26e813374a8882",
+            "linux/arm64": "sha256:1546b9b59bba14ccbf621a470d58a69ecc98d60f4abec2108ae168a206712745"
+          },
+          "schema": 1,
+          "source_digest": "sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
+          "source_ref": "docker.io/longhornio/longhorn-manager:v1.12.1@sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
+          "dockerhub_ref": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+          "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.1-kubeauto.2"
+        }
+      ]
     }
   ],
   "artifact_sha256": {
@@ -501,7 +526,10 @@
     "raid-status-3-image-plan.zip": "0d9b552ad4cf30c861cd9de80d90eaa15134c222e94471c94140b9d96cb0e4f7",
     "raid-status-3-release-evidence-0-1.zip": "cdac2a0817ff7a58e25dfa42b1b9df499a6a2a611de6f78cc61c0217045482ac",
     "raid-status-3-plan-evidence-1.zip": "96bc641e4c27db5fcf003fe798ad8c19c52988d92c969fc16fbd57c10da5bc16",
-    "raid-status-3-logs-attempt1.zip": "ca643f17efb18038abc4901d49f9c9026e4d8025894fb68430e8313722e84ff1"
+    "raid-status-3-logs-attempt1.zip": "ca643f17efb18038abc4901d49f9c9026e4d8025894fb68430e8313722e84ff1",
+    "manager-pending-release-evidence-0-1.zip": "4eaa8cd1ad1befcd2a3be615ddc267e79a5bb487b7323b5cefad089db59a94b1",
+    "manager-pending-plan-evidence-1.zip": "8b59365ff9b474f715516142be6b93ea5cef0b8fc55cc4398116fcf6f2efd804",
+    "manager-pending-image-plan.zip": "3d109fe9b13c966c570e5c35924e4ec8f29ef23323908d51b0b8595bdca3037b"
   },
   "images": [
     {
@@ -715,19 +743,19 @@
       "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter:v8.6.0"
     },
     {
-      "digest": "sha256:bda2f0cc5ff46226eeb3e1cd9b35604fc4a970c839eebf15581c2f6eac1938fc",
-      "fingerprint": "d6b3ae9340e98e6f55a5ee63a0dc709703a4f6e609aecd33274cfd957e569fb1",
-      "head": "228ba89aabb610a847e309673b430e96608032e7",
-      "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.1",
+      "digest": "sha256:71c1e558b136ae302c3ac4a258eb00f20fd52c409fe6f89fb0ce612429e32191",
+      "fingerprint": "ca3f7a71bf4ffdd2a30d8698288174ac7c341874f3aa47e715a0e0fec1f69d8f",
+      "head": "adfbcc16e43d9da443b5072f4aa3b0a768449074",
+      "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
       "platforms": {
-        "linux/amd64": "sha256:e1d6aee262c8fee0bc1b49cc4de550519a05040bd34d9783a2dfeda9d2d4181c",
-        "linux/arm64": "sha256:47edbb2cf64487487e71727ef2b326e00fd8a48be49af058204cb3b90acd781a"
+        "linux/amd64": "sha256:8f099964dc25baed1001857b8a7fc9ab2d56cf2ead328ad9bb26e813374a8882",
+        "linux/arm64": "sha256:1546b9b59bba14ccbf621a470d58a69ecc98d60f4abec2108ae168a206712745"
       },
       "schema": 1,
       "source_digest": "sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
       "source_ref": "docker.io/longhornio/longhorn-manager:v1.12.1@sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
-      "dockerhub_ref": "brinnatt/longhorn-manager:v1.12.1-kubeauto.1",
-      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.1-kubeauto.1"
+      "dockerhub_ref": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.1-kubeauto.2"
     },
     {
       "digest": "sha256:589b42d35a055cb2c4cc000c118f2fb181908c0f2cb83704144a6e0db4530a38",
@@ -881,5 +909,9 @@
     "source_commit": "8320238242e8c804325d9588ec1db10feb9f36b8",
     "patch_sha256": "9275735a33fef8606d16223eb413b3717507ffb1d8286695a922e8f72fc20724",
     "boundary": "Exactly target1.12.1 Manager replaced; previous runs and other23 current records unchanged. Upstream API version preserved; product adoption remains separate."
+  },
+  "derived_manager_pending_provenance": {
+    "path": "tests/evidence/longhorn-manager-pending-publication-20261102.json",
+    "sha256": "1314d68e6824198788c40f7b8f5b21862fa6def776d886a7652e5cc0c5649b3e"
   }
 }

@@ -20,6 +20,86 @@ MODULE = importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(MODULE)
 
 
 class ManagerAdoptionContracts(unittest.TestCase):
+    def pending_pins(self, base):
+        prior, publication, write = self.pins(base)
+        inputs = {}
+        for name in prior['inputs']:
+            path = base/name
+            old = path.read_text()
+            new = old.replace(MODULE.NEW, MODULE.PENDING_NEW)
+            inputs[name] = {'old_sha256': hashlib.sha256(old.encode()).hexdigest(),
+                            'sha256': write(name, new)}
+        publication = copy.deepcopy(publication)
+        publication['image'] = publication['publication_record']['key'] = 'brinnatt/longhorn-manager:'+MODULE.PENDING_NEW
+        path = 'tests/evidence/longhorn-manager-pending-publication-20261102.json'
+        row = {'scope': 'manager-v2-pending-pin-only', 'old_tag': MODULE.NEW,
+               'new_tag': MODULE.PENDING_NEW, 'inputs': inputs,
+               'publication': {'path': path, 'sha256': write(path, publication)}}
+        write(MODULE.PENDING_PLAN, row)
+        return prior, row, publication, write
+
+    def test_pending_transition_preserves_both_exact_historical_pin_boundaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); prior, row, _, _ = self.pending_pins(base)
+            with patch.object(MODULE, 'BASE', base):
+                for name, edge in row['inputs'].items():
+                    self.assertTrue(MODULE.input_current(name, edge['old_sha256']))
+                    self.assertTrue(MODULE.input_current(name, prior['inputs'][name]['old_sha256']))
+                    self.assertFalse(MODULE.input_current(name, '0'*64))
+                    saved = (base/name).read_bytes()
+                    (base/name).write_bytes(saved+b'unrelated change\n')
+                    self.assertFalse(MODULE.input_current(name, edge['old_sha256']))
+                    (base/name).write_bytes(saved)
+
+    def test_pending_transition_refuses_wrong_plan_or_unpublished_artifact(self):
+        for defect in ('scope', 'old', 'new', 'publication-path', 'publication-sha', 'failed', 'component', 'architecture'):
+            with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory); _, row, publication, write = self.pending_pins(base)
+                if defect == 'scope': row['scope'] = 'unrelated'
+                if defect == 'old': row['old_tag'] = MODULE.OLD
+                if defect == 'new': row['new_tag'] = 'v1.12.1-kubeauto.3'
+                if defect == 'publication-path': row['publication']['path'] = MODULE.PLAN
+                if defect == 'publication-sha': row['publication']['sha256'] = '0'*64
+                if defect == 'failed': publication['durable_rc'] = 1
+                if defect == 'component': publication['image'] = 'brinnatt/longhorn-instance-manager:'+MODULE.PENDING_NEW
+                if defect == 'architecture': publication['publication_record']['platforms'].pop('linux/arm64')
+                if defect in ('failed', 'component', 'architecture'):
+                    row['publication']['sha256'] = write(row['publication']['path'], publication)
+                write(MODULE.PENDING_PLAN, row)
+                with patch.object(MODULE, 'BASE', base), self.assertRaises(ValueError): MODULE.plan(pending=True)
+
+    def test_pending_rollout_uses_product_once_and_preserves_old_adoption_contract(self):
+        for already_current in (False, True):
+            with self.subTest(already_current=already_current), tempfile.TemporaryDirectory() as directory:
+                lab, ds, pods, record = self.runtime_fixture(Path(directory))
+                before = {'identity': 'baseline'}
+                baseline = SimpleNamespace(capture=Mock(return_value=before), stable_installation=Mock())
+                def rollout(pid, requests):
+                    self.assertEqual((17, []), (pid, requests))
+                    ds['spec']['template']['spec']['containers'][0]['image'] = 'registry/longhorn-manager:'+MODULE.PENDING_NEW
+                    for pod in pods:
+                        pod['metadata']['uid'] += '-new'
+                        pod['spec']['containers'][0]['image'] = ds['spec']['template']['spec']['containers'][0]['image']
+                if already_current: rollout(17, [])
+                lab.run_requests.side_effect = rollout
+                with patch.object(MODULE, 'plan', return_value=({}, record)) as plan, patch.object(MODULE, 'load', return_value=baseline), redirect_stdout(io.StringIO()):
+                    MODULE.adopt(lab, 17, pending=True)
+                plan.assert_called_once_with(pending=True)
+                if already_current:
+                    lab.run_requests.assert_not_called(); lab.cache_artifacts.assert_not_called()
+                else:
+                    lab.run_requests.assert_called_once_with(17, [])
+                    lab.cache_artifacts.assert_called_once_with({'brinnatt/longhorn-manager:'+MODULE.PENDING_NEW})
+                baseline.stable_installation.assert_called_once_with(before, before)
+
+    def test_integrity_handoff_adopts_before_baseline_and_native_restore(self):
+        shell = (ROOT/'tests/helpers/longhorn-v2-volumes.sh').read_text()
+        adoption = shell.index('"$BASE/tests/helpers/longhorn-manager-adopt.py" --pending')
+        self.assertLess(shell.index('"$PY" "$CORE" verify-transport'), adoption)
+        self.assertLess(adoption, shell.index('"$PY" "$INSTALL" volume-baseline'))
+        self.assertLess(adoption, shell.index('longhorn-v2-integrity.py" business'))
+        self.assertIn('if [[ "$mode" == v2-integrity-qualification ]]; then\n  "$PY" "$BASE/tests/helpers/longhorn-manager-adopt.py" --pending\nfi', shell)
+
     def pins(self, base):
         def write(name, data):
             path = base/name; path.parent.mkdir(parents=True, exist_ok=True)

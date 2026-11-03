@@ -1,5 +1,6 @@
 import copy
 from contextlib import nullcontext
+import hashlib
 import importlib.util
 import json
 import os
@@ -78,6 +79,29 @@ class SingleReplicaProductContracts(unittest.TestCase):
 
 
 class TargetInstallationContracts(unittest.TestCase):
+    def test_core_current_accepts_fresh_ephemeral_cluster_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            evidence = Path(directory) / 'core.json'
+            smoke = hashlib.sha256((ROOT / 'tests/helpers/kubernetes-production-smoke.sh').read_bytes()).hexdigest()
+            evidence.write_text(json.dumps({
+                'status': 'pass', 'rc': 0, 'failure_markers': 0,
+                'baseline_identity': {'run_id': 'historical', 'cluster_uid': 'old',
+                                      'node_uids': {NODE: 'old-node'}},
+                'frozen_inputs': {},
+            }))
+            lab = SimpleNamespace(
+                core_identity=Mock(),
+                owner=lambda: {'run_id': 'current', 'cluster_uid': 'new',
+                               'node_uids': {NODE: 'new-node'},
+                               'target_core_smoke_sha256': smoke},
+            )
+            install = SimpleNamespace(qualification_input_current=Mock(return_value=True))
+            with patch.object(gate, 'BASE', ROOT), \
+                    patch.object(gate, 'evidence_path', return_value=evidence), \
+                    patch.object(gate, 'load', return_value=install):
+                gate.core_current(lab)
+            install.qualification_input_current.assert_not_called()
+
     def test_remount_deletion_refreshes_resource_version_and_refuses_a_replaced_writer(self):
         for replaced in (False, True):
             with self.subTest(replaced=replaced), tempfile.TemporaryDirectory() as directory:
@@ -196,6 +220,22 @@ class TargetInstallationContracts(unittest.TestCase):
                 gate.restore_resources(lab)
             resources.probe.assert_not_called();resources.refresh_kubelet.assert_not_called();lab.write_private.assert_not_called()
 
+    def test_recovery_accepts_absent_empty_namespace_only_after_native_absence_proof(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = {'namespace_uid': 'old', 'host_state': {'nodes': {NODE: {}}}, 'healthy': False}
+            Path(directory, 'config.yml').write_text(yaml.safe_dump({'longhorn_storage_classes': [{'name': 'longhorn'}]}))
+            lab = SimpleNamespace(
+                DIRECTORY=Path(directory), STATE=Path(directory)/'state.json', NODES=(NODE,), owner=lambda: state,
+                core_identity=Mock(), get=lambda kind, *args, **kwargs: None if kind == 'namespace' else {'items': []},
+                execute=Mock(return_value=SimpleNamespace(stdout='[]')),
+                write_private=Mock())
+            with patch.object(gate, 'restore_resources') as resources, \
+                    patch.object(gate, 'restore_hosts') as hosts:
+                gate.recover(lab, 0)
+            resources.assert_called_once_with(lab); hosts.assert_called_once_with(lab)
+            self.assertNotIn('namespace_uid', state)
+            self.assertTrue(state['native_uninstalled'])
+
     def test_target_factory_preserves_target_supervision_and_recovery_context(self):
         lab=SimpleNamespace();target=SimpleNamespace(fixture=lambda:lab,supervise=Mock())
         with patch.object(gate,'load',return_value=target),patch.object(gate,'core_current') as core,patch.object(gate,'restore_hosts') as hosts:
@@ -212,6 +252,17 @@ class TargetInstallationContracts(unittest.TestCase):
         live=(ROOT/'tests/helpers/longhorn-live.sh').read_text()
         self.assertIn('exec bash "$BASE/tests/helpers/longhorn-v2-dr-target-install.sh" "$MODE"',live)
         self.assertIn('--longhorn-v2-aio-install-qualification)',runner)
+
+    def test_core_recovery_has_a_fixed_exit_after_native_install_recovery(self):
+        helper=(ROOT/'tests/helpers/longhorn-v2-dr-target-core-recovery.sh').read_text()
+        runner=(ROOT/'tests/helpers/longhorn-runner.sh').read_text()
+        live=(ROOT/'tests/helpers/longhorn-live.sh').read_text()
+        self.assertIn("not state.get('native_uninstalled')",helper)
+        self.assertIn('lab=target.fixture(); state=lab.owner()',helper)
+        self.assertNotIn('_, lab=target.fixture()',helper)
+        self.assertIn('core-cleanup',helper)
+        self.assertIn('--longhorn-v2-dr-target-core-recovery) longhorn_launch v2-dr-target-core-recovery LONGHORN_V2_DR_TARGET_CORE_RECOVERY_PASS',runner)
+        self.assertIn('exec bash "$BASE/tests/helpers/longhorn-v2-dr-target-core-recovery.sh" "$MODE"',live)
 
 
 class TargetInstallShellContracts(unittest.TestCase):

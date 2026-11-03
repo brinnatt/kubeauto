@@ -157,7 +157,7 @@ def verify_business(base, scope, log, artifacts):
     return result
 
 
-def validate_maintenance51(base, evidences):
+def validate_maintenance51(base, evidences, *, input_current=None):
     """Validate the same finite seven scopes for focused and full-run consumers."""
     base = Path(base).resolve()
     if set(evidences) != set(SCOPES): raise ValueError('maintenance requires all seven explicit completed scopes')
@@ -177,7 +177,8 @@ def validate_maintenance51(base, evidences):
             if digest(relative(base,name)) != expected: raise ValueError('maintenance original raw bytes changed: '+name)
         frozen = row.get('frozen_inputs', row.get('prerequisites',{}).get('inputs',{}))
         for name in (PRODUCT, 'tests/helpers/'+SPECS[scope][1]):
-            if frozen.get(name) != digest(relative(base,name)):
+            if (frozen.get(name) != digest(relative(base,name)) and
+                    not (name != PRODUCT and input_current is not None and input_current(name, frozen.get(name)))):
                 raise ValueError('maintenance owning implementation changed: '+name)
         bound = {}
         for name in ('log', 'exit', 'finalized'):
