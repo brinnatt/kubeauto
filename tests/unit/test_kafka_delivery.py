@@ -3,6 +3,9 @@ import json
 import re
 import tarfile
 import unittest
+import os
+import subprocess
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -92,6 +95,43 @@ def render_monitoring(**overrides):
 
 
 class KafkaDeliveryTests(unittest.TestCase):
+    def test_registry_cleanup_checks_only_owned_tags_and_retains_failed_ownership(self):
+        for owned, leaves_repository, mode in ((False,True,'clean'),(True,False,'clean'),
+                                               (True,True,'clean'),(True,True,'--verify')):
+            with self.subTest(owned=owned,leftover=leaves_repository,mode=mode),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);tags=root/'kubeauto-kafka-tags-owned'
+                if owned:tags.touch()
+                (root/'repository').touch()
+                script=CLEANUP.replace('/var/tmp/',str(root)+'/').replace(
+                    '/var/lib/kubeauto-kafka-registry',str(root/'registry')).replace(
+                    '/tmp/kubeauto-kafka-playbook.yml',str(root/'playbook.yml')).replace(
+                    'BASE="${KUBEAUTO_BASE:-/usr/local/kubeauto}"','BASE="$FIXTURE_ROOT/base"')
+                stubs='''
+kubectl() { [[ "$*" != *namespace* && "$*" != *validatingwebhookconfiguration* ]]; }
+helm() { return 1; }
+docker() {
+  printf '%s\\n' "$*" >> "$FIXTURE_ROOT/docker-calls"
+  case "$1" in
+    ps) printf 'local_registry\\n' ;;
+    exec) [[ "$FIXTURE_LEAVES_REPOSITORY" == yes ]] || /bin/rm -f "$FIXTURE_ROOT/repository" ;;
+  esac
+  return 0
+}
+curl() {
+  if [[ "$*" == *'_catalog'* && -e "$FIXTURE_ROOT/repository" ]]; then
+    printf '{"repositories":["brinnatt/strimzi-kafka"]}\\n'
+  else printf '{"repositories":[]}\\n'; fi
+}
+'''
+                result=subprocess.run(['bash','-c',stubs+'\n'+script,'cleanup',mode],capture_output=True,text=True,
+                    env=dict(os.environ,FIXTURE_ROOT=str(root),FIXTURE_LEAVES_REPOSITORY='yes' if leaves_repository else 'no'),timeout=5)
+                succeeds=not owned or not leaves_repository
+                self.assertEqual(0 if succeeds else 1,result.returncode,result.stdout+result.stderr)
+                self.assertEqual(succeeds,'KAFKA_CLEAN_VERIFY_PASS' in result.stdout)
+                self.assertEqual(owned and not succeeds,tags.exists())
+                self.assertEqual(leaves_repository,(root/'repository').exists())
+                if not owned:self.assertNotIn('exec ',(root/'docker-calls').read_text())
+
     def test_customer_documentation_has_combined_user_operations_manual(self):
         expected = {
             "operations-manual.md",

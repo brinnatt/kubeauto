@@ -4,6 +4,8 @@ KC="kubectl ${KUBECONFIG:+--kubeconfig=$KUBECONFIG}"
 NS="${LOGGING_NAMESPACE:-logging}"
 SMOKE_NS="logging-smoke"
 VERIFY_ONLY=0
+BASE="${KUBEAUTO_BASE:-/usr/local/kubeauto}"
+ECK_PYTHON="$BASE/.venv/bin/python"
 CLEAN_CLUSTER_SCOPED=0
 [[ "$NS" == logging ]] && CLEAN_CLUSTER_SCOPED=1
 RUNTIME_REGISTRY_NAME="kubeauto-logging-registry"
@@ -31,9 +33,15 @@ else
     fi
   fi
 fi
-# ECK is vendored for this isolated branch. Remove its operator only after all
-# logging CRs are gone; CRDs are retained as cluster prerequisites for a
-# possible second route test and are verified instead of blanket-deleted.
+# Discover every Elastic consumer cluster-wide before considering removal.
+# A discovery/authorization error stops cleanup rather than meaning zero users.
+SHARED_ECK_IN_USE=0
+if (( CLEAN_CLUSTER_SCOPED == 1 )); then
+  eck_consumers="$("$ECK_PYTHON" "$BASE/roles/cluster-addon/files/eck.py" consumers \
+    --kubeconfig "${KUBECONFIG:-$HOME/.kube/config}")"
+  [[ "$eck_consumers" == '[]' ]] || SHARED_ECK_IN_USE=1
+fi
+# CRDs remain prerequisites. A business consumer protects the shared Operator.
 if (( VERIFY_ONLY == 0 && CLEAN_CLUSTER_SCOPED == 1 )); then
   if [[ -e /var/tmp/kubeauto-logging-storage-default.before ]]; then
     previous_default="$(cat /var/tmp/kubeauto-logging-storage-default.before)"
@@ -74,12 +82,20 @@ NODE_CLEAN
     nerdctl rm -f "$RUNTIME_REGISTRY_NAME" >/dev/null 2>&1 || true
   fi
   rm -rf -- "$RUNTIME_REGISTRY_DATA"
-  $KC -n elastic-system delete statefulset elastic-operator --ignore-not-found --wait=true 2>/dev/null || true
-  $KC delete namespace elastic-system --ignore-not-found --wait=true 2>/dev/null || true
+  if (( SHARED_ECK_IN_USE == 0 )); then
+    "$ECK_PYTHON" "$BASE/roles/cluster-addon/files/eck.py" can-remove \
+      --kubeconfig "${KUBECONFIG:-$HOME/.kube/config}"
+    $KC -n elastic-system delete statefulset elastic-operator --ignore-not-found --wait=true
+    # Keep the namespace, CRDs and RBAC; they may contain independent objects.
+  fi
 fi
 ! $KC get namespace "$NS" >/dev/null 2>&1
 if (( CLEAN_CLUSTER_SCOPED == 1 )); then
   ! $KC get namespace "$SMOKE_NS" >/dev/null 2>&1
-  ! $KC get namespace elastic-system >/dev/null 2>&1 || ! $KC -n elastic-system get statefulset elastic-operator >/dev/null 2>&1
+  if (( SHARED_ECK_IN_USE == 0 )); then
+    ! $KC get namespace elastic-system >/dev/null 2>&1 || ! $KC -n elastic-system get statefulset elastic-operator >/dev/null 2>&1
+  else
+    $KC -n elastic-system rollout status statefulset/elastic-operator --timeout=120s
+  fi
 fi
 echo LOGGING_CLEAN_VERIFY_PASS

@@ -1,0 +1,367 @@
+{
+  "status": "pass",
+  "blocking_defects": [],
+  "versions": {
+    "elasticsearch": "9.5.6",
+    "eck": "3.5.0",
+    "kubernetes": "1.33.6"
+  },
+  "files": {
+    "docs/middleware/elasticsearch/operations-manual.md": "66e3da462dde9f48802612ae5cd580ac096e91fa54fae532e15450d7176ae21e",
+    "docs/middleware/elasticsearch/technical-whitepaper.md": "193de683fe00af7cd9e827d03bb1552f95b7a76d9e1b570bf0f8fa79014e076e",
+    "docs/middleware/elasticsearch/development-manual.md": "4c0267c15844f151eb69631d93a3646e8c61ecb7c30b75a591732647d974ba1e"
+  },
+  "review": {
+    "sources": "pass",
+    "content": "pass",
+    "novice_path": "pass",
+    "operator_path": "pass",
+    "diagrams": "pass"
+  },
+  "reviewer": "author",
+  "customer_signoff": false,
+  "independent_review": false,
+  "reviewed_at": "2026-11-06T20:13:26+08:00",
+  "source_baseline": {
+    "repository": "https://github.com/elastic/docs-content",
+    "commit": "435c60e5a8e5af1085678ceb3a7765eac949b731",
+    "implementation_versions": "pinned commits in development-manual section 1"
+  },
+  "coverage": [
+    {
+      "topic": "版本、许可与产品边界",
+      "section": "docs/middleware/elasticsearch/technical-whitepaper.md#1-产品边界与技术体系",
+      "sources": [
+        {
+          "cached_source": "es-license.txt",
+          "sha256": "09979a6b0701e166ea7bfa4bdf524a431c7ca4a94b16ac2c645bbed9fb7ec2e1"
+        },
+        {
+          "cached_source": "licensing-plain.txt",
+          "sha256": "f14010bd452601ca64d9d13387c3dd994cd60f9ca471a7fbe9d11e3f13f29760"
+        },
+        {
+          "cached_source": "es-known-issues.txt",
+          "sha256": "427064b987d5aba7e5626db987be6cd10a8826fe8fa0807828021099fdd43c29"
+        },
+        {
+          "cached_source": "eck-release.txt",
+          "sha256": "c8bf6d594f9f4d29e7c91a150db9a7bfb540a4b1b812bc8dbb934eceac852a11"
+        },
+        {
+          "cached_source": "client-compatibility.txt",
+          "sha256": "77a38b018d3dbb3860dd6305ae8aa386bbbbb99f408cb131a618d73da619a22b"
+        }
+      ],
+      "conclusion": "发行版许可与 Basic 分开，9.5.6 业务与 EFK 9.5.1 分开，兼容声明不替代项目验收",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "数据建模、查询与并发",
+      "section": "docs/middleware/elasticsearch/technical-whitepaper.md#2-文档分析器与检索",
+      "sources": [
+        {
+          "cached_source": "query-execution.txt",
+          "sha256": "941a0cadabea938c583d7180ab3beb2f051e81ba2e2a9f6a41f7f2d14d47f91e"
+        },
+        {
+          "cached_source": "query-pagination.txt",
+          "sha256": "dca50ee8c4f979840927c85e47d2e2c9dd48ced3d2e7c2360a0ab3e8197ff084"
+        },
+        {
+          "cached_source": "optimistic-concurrency-official.txt",
+          "sha256": "df0589846fe6935d894392208d8ddf8fac6e67cca895f84fea8bc8ba1a4fd6eb"
+        }
+      ],
+      "conclusion": "mapping、分析、倒排/列式索引、分布查询、稳定 ID、并发控制与结果未知",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "复制、持久化与故障域",
+      "section": "docs/middleware/elasticsearch/technical-whitepaper.md#3-写入复制与四个时间边界",
+      "sources": [
+        {
+          "cached_source": "es-replication.txt",
+          "sha256": "03f68fdb962fb686d7780eaee1fd79b3db841d4d5f59d8ef90bd12d785526202"
+        },
+        {
+          "cached_source": "es-index-api.txt",
+          "sha256": "b625dade81f17212a246a02ae1e9e854aed97cf746c5fc659ba016a32fa0b932"
+        },
+        {
+          "cached_source": "orchestration.txt",
+          "sha256": "928b47adbf20b99b365215c384859e44d7b0e7433e57b87693668cff53186825"
+        }
+      ],
+      "conclusion": "区分准入、响应副本确认、translog、refresh 和恢复点；不承诺任意故障零丢失",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "容量、存储与维护",
+      "section": "docs/middleware/elasticsearch/operations-manual.md#7-日常运维容量与性能",
+      "sources": [
+        {
+          "cached_source": "capacity.txt",
+          "sha256": "9b41d7b47793895e46777d50567f65fcf9eff0e4464e65859a1009f1abc67359"
+        },
+        {
+          "cached_source": "planning.txt",
+          "sha256": "5b93840b06d3a5dff3809b3c8b473e48be06da07656b6e576040059983b72aaf"
+        },
+        {
+          "cached_source": "volumes.txt",
+          "sha256": "eada72caf01153e3d28d79c356f7bfdb9d344082a1d6e63dbd86caca7e0d56e8"
+        },
+        {
+          "cached_source": "mmap.txt",
+          "sha256": "97f67f98a61a2f898e6dc44665a454b73cd4c2a52e18c3878ce60fad891e25fe"
+        }
+      ],
+      "conclusion": "拓扑与 N−1 预算、段合并、磁盘水位、扩容和 drain 的顺序、停止及复验",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "安全与观测",
+      "section": "docs/middleware/elasticsearch/operations-manual.md#8-证书与凭据轮换",
+      "sources": [
+        {
+          "cached_source": "security-native-users.txt",
+          "sha256": "c43cfeb908509f4112d4702039c6f49dc43feca698543e4c51baa7e6782f998e"
+        },
+        {
+          "cached_source": "security-privileges.txt",
+          "sha256": "f822afe2a9ebcbee76af3dfa9285e35919894443153d761fa042ea853e1ff0c2"
+        },
+        {
+          "cached_source": "es-invalidate-api-key.txt",
+          "sha256": "ba5eb1f6c541813b74a3e931ceb72496854260891a97a991ebd17be6fbb82f66"
+        },
+        {
+          "cached_source": "exporter-readme.txt",
+          "sha256": "3e2afffa9423417f9a47ef9b20c3e0997e2c5d7ff8622401123f24bed8f8ecf4"
+        }
+      ],
+      "conclusion": "最小权限、TLS 名称/CA、轮换允许拒绝路径、采集缺失与 ES 不可达分开",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "快照与灾备",
+      "section": "docs/middleware/elasticsearch/operations-manual.md#9-快照恢复与灾备",
+      "sources": [
+        {
+          "cached_source": "snapshot.txt",
+          "sha256": "0b89ef5859e9410fec69561b6e5eef87dabc2579670db093613cb7599319ceb8"
+        },
+        {
+          "cached_source": "s3.txt",
+          "sha256": "61441efd146299cc00759620af0849bed55836c983381a899d868a2d652ae9c5"
+        },
+        {
+          "cached_source": "eck-snapshot.txt",
+          "sha256": "c3edb3c73c7f1bf13e66ea060de3665857f46335ec03b13638c8355bdffafdca"
+        },
+        {
+          "cached_source": "slm.txt",
+          "sha256": "45a38f7e9b4e6a09f818f6593f25e795c0f7982c006a37c93c08cc7b0dee268e"
+        }
+      ],
+      "conclusion": "独立 HTTPS S3、JVM 信任、verify/analysis、空目标与逐条核对、单写入口、feature states 应急管理",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "业务生命周期",
+      "section": "docs/middleware/elasticsearch/operations-manual.md#6-业务建模与客户端",
+      "sources": [
+        {
+          "cached_source": "aliases-official.txt",
+          "sha256": "69024dd793bf2a265d092047f86944b0d15da3cf8efa0ddf414e5258ff1579bb"
+        },
+        {
+          "cached_source": "reindex-official.txt",
+          "sha256": "37d0b4122cfd19a6ddb26807f31406ddfee0a3dc162af136f088ee7c1a57c5bd"
+        },
+        {
+          "cached_source": "data-stream-setup-official.txt",
+          "sha256": "ae531c00d0126e2976da2f00ee036249bf234520a4eec5fc2478102b6154f005"
+        },
+        {
+          "cached_source": "ilm-setup-official.txt",
+          "sha256": "cf0036c89c204b42cbb2be97ef1dd3131930eeabc93491a01ff5ded79baf8066"
+        }
+      ],
+      "conclusion": "reindex 先建目标并停写/补齐，alias 逐动作核对，ILM 不保证逐文档定时删除",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "升级与回旧版",
+      "section": "docs/middleware/elasticsearch/operations-manual.md#10-升级回旧版与卸载",
+      "sources": [
+        {
+          "cached_source": "upgrade.txt",
+          "sha256": "aca113f80988a75f52995829687048550c77e5013d8b705df26d10165dc1fe9d"
+        },
+        {
+          "cached_source": "upgrade-eck.txt",
+          "sha256": "1c6ed2129ef792d345a3a17d83e2f55d5d706140e0069d5a1aeaec4aeb752c05"
+        },
+        {
+          "cached_source": "eck-update-strategy.txt",
+          "sha256": "ff72c0f93edb5761c0ced3b9cd409ea9ffd49d115f07b67914ccd8a516334d98"
+        }
+      ],
+      "conclusion": "共享 ECK 先于业务升级，拒绝原地降级，独立旧版空目标实际恢复；既有快照来源边界",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "性能与稳定性",
+      "section": "docs/middleware/elasticsearch/technical-whitepaper.md#8-生命周期与性能判断",
+      "sources": [
+        {
+          "cached_source": "rally-offline.txt",
+          "sha256": "ac69f48685f59d255dc43774f3142f46bb3acb4504757a6cf899dccc3b571830"
+        },
+        {
+          "cached_source": "rally-docker.txt",
+          "sha256": "4e756b99ac2d5a12d37c64327b783aeefc3b9cce8332dcceaf6b0dd7110f551d"
+        },
+        {
+          "cached_source": "rally-reporter.py",
+          "sha256": "c7adf23fdb0fa9ba0b90f0078e752295d98a118e0cc15cda699846d99fd9f6ac"
+        }
+      ],
+      "conclusion": "短基准和1800秒限速故障负载分开；实际错误、重试、分位及未测峰值如实说明",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "项目集成与门禁",
+      "section": "docs/middleware/elasticsearch/development-manual.md#5-专项验证与证据",
+      "sources": [
+        {
+          "cached_source": "kubernetes-1.33.6-json_yaml_flags.go",
+          "sha256": "736ca7a6d2d15b3fa32aa19486f5a71ac14bbe69b6cd4f8be5bbdf57d4002d08"
+        },
+        {
+          "cached_source": "kubernetes-1.33.6-core-types.go",
+          "sha256": "6425cfd4ccdcb80118304db1798cf0f81c88500bae3cd07a5a184cd3da2b62d7"
+        },
+        {
+          "cached_source": "TransportClusterStateAction.java",
+          "sha256": "1bb2cbe0442a0d9ab9ba69607d77f3b3a0020c240b4737eef350f16cfc645931"
+        },
+        {
+          "cached_source": "IndexNameExpressionResolver.java",
+          "sha256": "28d5f53de5ecd5f52e142c145bdf98e4e18952c663c45ec11146cc83d6e23097"
+        }
+      ],
+      "conclusion": "显式 managedFields、完整 EFK 交接、容器 running 前置、模块限定修复与失败父运行保留",
+      "result": "pass",
+      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+    },
+    {
+      "topic": "MinIO 上传未完成时复制的分析限制与显式兼容配置",
+      "section": "docs/middleware/elasticsearch/operations-manual.md#9-快照恢复与灾备",
+      "sources": [
+        {
+          "cached_source": "BlobAnalyzeAction.java",
+          "sha256": "a4da93f2a56884fc7827097e7552f828af2d3dd56765b613235efc3dda26cb80"
+        },
+        {
+          "cached_source": "RepositoryAnalyzeAction.java",
+          "sha256": "372225a68f5e7233c047b4336fe55af52ec440348f5f3c00ca2b86020cf3891f"
+        },
+        {
+          "cached_source": "pr-135565-files.json",
+          "sha256": "859979dc7987610b3d0d6526b049a0dcc32561ff98d74447f09aeff20e53d7ea"
+        },
+        {
+          "cached_source": "issue-134853.json",
+          "sha256": "61cdb28684e21e9e7ec6541d84d7277950520a381a56655c7dbe54fdf2cf152d"
+        }
+      ],
+      "conclusion": "默认保留完整争用探针；已证明的 MinIO 限制使用官方相同条件，仍要求其余分析及真实快照/恢复；节点设置弃用和滚动、失败停止及回退边界已说明。兼容分支的 ES-39 聚焦现场验证已通过：standard 七成员和 compact 三成员均读回原生设置 false，产品 verify/analysis、真实快照及 SLM 保留检查成功，主与 guardian durable 均为零。该结果不替代独立恢复或最终完整回归。",
+      "operational_evidence": "tests/evidence/elasticsearch-backup-source-20261106-203516-e131c20ce68547838931365d0c522d5a.json",
+      "result": "pass",
+      "basis": "pinned v9.5.6 official source and official MinIO integration fix; changed paragraphs checked for source, content, novice/operator paths; no diagram change"
+    }
+  ],
+  "reader_paths": [
+    {
+      "reader": "首次实施者",
+      "sections": "operations 2→3→4→5→6",
+      "checked": "输入来源、CFG/KUBECONFIG 与身份文件、连续产品路径、HTTPS业务结果、停止和恢复；作者文档检查，不新增现场操作",
+      "result": "pass"
+    },
+    {
+      "reader": "熟练运维",
+      "sections": "operations 7.1/7.2→11；7.3–7.5、8、9、10",
+      "checked": "按现象和任务检索，恢复原配置、等待超时、UID/数据复验、失败保留及不可逆边界",
+      "result": "pass"
+    }
+  ],
+  "closed_findings": [
+    {
+      "finding": "升级实测应区分既有快照与本轮新建",
+      "fixed": "whitepaper 8; operations 10.1",
+      "recheck": "实际恢复32条及摘要与原始升级证据相符；快照历史源UUID未记录，未编造"
+    },
+    {
+      "finding": "共存分段修复不能冒充完整PASS",
+      "fixed": "whitepaper 1; operations 10.2; development 5",
+      "recheck": "父失败保留，窄修复源和guardian均0；正文只声明已完成操作范围"
+    },
+    {
+      "finding": "客户端中断应等待真实容器启动",
+      "fixed": "development 5",
+      "recheck": "固定Kubernetes源码与ContainerCreating首失败；精确红绿合同通过"
+    }
+  ],
+  "static": {
+    "bash_blocks": 31,
+    "yaml_blocks": 8,
+    "python_blocks": 1,
+    "local_links": 45,
+    "mermaid": 5,
+    "result": "pass",
+    "diagram_review": "previous actual render and visual inspection reused; all current diagram source bodies identical"
+  },
+  "operational_evidence": [
+    {
+      "path": "tests/evidence/elasticsearch-images-20261103.json",
+      "sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+      "use": "historical declared scenario facts only; current product applicability governed independently by matrix"
+    }
+  ],
+  "coexistence_raw_evidence": [
+    {
+      "path": "logs/elasticsearch-cases/coexistence-20261105-063553-54b826e3212f447d98f039b300b4c359/raw.log",
+      "sha256": "054d80db6c97f225c63aad57dfdae5830e3b69a96846ace5555351b6047baed1",
+      "scope": "first two failed parents; third narrow reverse/reentry/cleanup success, zero matrix cases"
+    },
+    {
+      "path": "logs/elasticsearch-cases/coexistence-20261105-070648-e01f2c1776364643b589701d9b84f432/raw.log",
+      "sha256": "1028be41e5dbf4b760b2108c011999d43151dc8e019a08ff524acd5f023b69c2",
+      "scope": "first two failed parents; third narrow reverse/reentry/cleanup success, zero matrix cases"
+    },
+    {
+      "path": "logs/elasticsearch-cases/coexistence-20261105-071325-a10134f60a844636b3231cfd08579e8a/raw.log",
+      "sha256": "07f4b7613b7ccf4d8889b4e3e57f9df82f819bbfe0677c03c99a0101ede2547f",
+      "scope": "first two failed parents; third narrow reverse/reentry/cleanup success, zero matrix cases"
+    }
+  ],
+  "limits": [
+    "author review is not customer sign-off",
+    "historical facts do not set current matrix PASS",
+    "Rally has no P95 or distinct retry count; no continuous resource peak measurements",
+    "full clean middleware regression remains required"
+  ],
+  "review_scope": "Author checked current content and novice/operator input-context-step-result paths; reused version-pinned official research and existing operation evidence. Current product GA remains independently pending. No lab run was added for this documentation review."
+}

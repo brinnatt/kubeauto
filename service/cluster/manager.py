@@ -642,6 +642,7 @@ class ClusterManager:
             "__redis__": kc.v_redis,
             "__redis_cluster_image__": kc.v_redis_cluster_image,
             "__redis_exporter__": kc.v_redis_exporter,
+            "__business_elasticsearch__": kc.v_business_elasticsearch,
             "__ceph__": kc.v_ceph,
             "__longhorn__": kc.v_longhorn,
             "__ceph_upgrade_source__": kc.v_ceph_upgrade_source,

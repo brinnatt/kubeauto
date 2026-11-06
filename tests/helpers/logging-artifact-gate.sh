@@ -33,7 +33,25 @@ declare -a IMAGE_DIGESTS=(
   'brinnatt/prometheus-config-reloader:v0.91.0=7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1'
   'brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z=4c10447e70b1f288414f29b2a899c99b2865f44a7fcb9e56ba2aa1e2b1f59121'
 )
-if command -v docker >/dev/null 2>&1; then
+if [[ -n "${ELASTICSEARCH_IMAGE_RECEIPT:-}" ]]; then
+  # The ES release rebuilds the unchanged catalog into new formal manifests.
+  # Consume its verified publication instead of comparing wrapper digests to
+  # historical upstream images. The normal standalone logging path is intact.
+  "$BASE/.venv/bin/python" - "$BASE" "$ELASTICSEARCH_IMAGE_RECEIPT" "${IMAGE_DIGESTS[@]}" <<'PY'
+import importlib.util,json,subprocess,sys
+from pathlib import Path
+base=Path(sys.argv[1])
+spec=importlib.util.spec_from_file_location('es_publication',base/'tests/helpers/elasticsearch-artifacts.py')
+module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+records=module.records(json.loads(Path(sys.argv[2]).read_text()))
+for expected in sys.argv[3:]:
+    key=expected.split('=',1)[0];row=records[key]
+    raw=subprocess.run(['docker','image','inspect',key,'--format','{{json .RepoDigests}}'],text=True,capture_output=True,check=True).stdout
+    ref=row['talkedu_ref'].rsplit(':',1)[0]+'@'+row['digest']
+    if ref not in json.loads(raw):raise SystemExit('frozen logging image identity differs: '+key)
+    print('LOGGING_FROZEN_ARTIFACT_VERIFIED image='+key+' digest='+row['digest'])
+PY
+elif command -v docker >/dev/null 2>&1; then
   for entry in "${IMAGE_DIGESTS[@]}"; do
     image="${entry%%=*}"; digest="${entry##*=}"
     docker image inspect "$image" --format '{{json .RepoDigests}}' | grep -q "$digest"

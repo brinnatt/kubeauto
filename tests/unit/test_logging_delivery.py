@@ -359,13 +359,16 @@ class LoggingDeliveryContracts(unittest.TestCase):
         self.assertIn('encoded_restore_index="${restore_index//%/%25}"', REGRESSION)
         self.assertNotIn('expand_wildcards=all&allow_no_indices=true', REGRESSION)
         self.assertIn('LOGGING_RESTORE_DELETE_RESPONSE=', REGRESSION)
-        self.assertIn('REGISTRY_HOST_IP: "192.168.122.243"', REGRESSION)
+        self.assertIn('LOGGING_REGISTRY_HOST_IP="${LOGGING_REGISTRY_HOST_IP:-192.168.122.243}"', REGRESSION)
+        self.assertIn('logging_registry_input', REGRESSION)
         self.assertIn('if [[ "${LOGGING_EFK_DELIVERY:-direct}" == kafka-buffer ]]; then\n  : > /var/tmp/kubeauto-kafka-crds-owned', REGRESSION)
         self.assertNotIn('\\\\\\$1', REGRESSION)
         self.assertIn('/pods/${prom_pod}:9090/proxy/api/v1/targets', REGRESSION)
         self.assertIn('/pods/${prom_pod}:9090/proxy/api/v1/rules', REGRESSION)
         self.assertNotIn('port-forward "svc/$prom_svc"', REGRESSION)
-        self.assertIn('apply --server-side --force-conflicts --field-manager=kubeauto-eck-operator', TASKS)
+        self.assertIn('files/eck.py', TASKS)
+        self.assertIn('Verify shared ECK ownership before logging mutation', TASKS)
+        self.assertNotIn('set image statefulset/elastic-operator', TASKS)
         self.assertIn('apply --server-side --force-conflicts --field-manager=kubeauto-logging-efk', TASKS)
 
     def test_loki_fixture_cleanup_removes_unlabelled_minio(self) -> None:
@@ -568,7 +571,7 @@ class LoggingDeliveryContracts(unittest.TestCase):
         }
         for name, digest in expected.items():
             self.assertEqual(hashlib.sha256((ROOT / "roles/cluster-addon/files" / name).read_bytes()).hexdigest(), digest)
-            self.assertIn(digest, TASKS)
+            self.assertIn(digest, (ROOT / "roles/cluster-addon/files/eck.py").read_text())
 
     def test_eck_has_three_nodes_tls_and_recovery_safe_pvc_policy(self) -> None:
         for value in ("count: 3", "requiredDuringSchedulingIgnoredDuringExecution", "volumeClaimDeletePolicy: DeleteOnScaledownOnly", "xpack.security.http.ssl.enabled: true"):

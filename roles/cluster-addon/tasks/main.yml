@@ -85,8 +85,16 @@
   when: 'mongodb_install | default("no") | string | lower == "yes"'
   tags: [mongodb]
 
+- import_tasks: eck-platform.yml
+  tags: [never, eck-platform]
+
 - import_tasks: logging.yml
   when: 'logging_install | default("no") | string | lower == "yes"'
+  tags: [logging]
+
+- import_tasks: elasticsearch.yml
+  when: 'elasticsearch_install | default("no") | string | lower == "yes"'
+  tags: [elasticsearch]
 
 - import_tasks: cilium_connectivity_check.yml
   when: 'CLUSTER_NETWORK == "cilium" and cilium_connectivity_check|bool'

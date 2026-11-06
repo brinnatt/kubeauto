@@ -1,0 +1,1389 @@
+{
+  "artifact_sha256": {
+    "logs/elasticsearch-artifacts/20261104/41670245576-release-evidence-0-1.zip": "1124e2f7bd156dd3e46f67010d1660b44b48fe0dc4b2934d9ac26838b30d5423",
+    "logs/elasticsearch-artifacts/20261104/41673063867-release-evidence-0-1.zip": "76e06d07cc46e3fe80e99bc2fec514d1ed176d6957825a67a2be797d8a02381f",
+    "logs/elasticsearch-artifacts/20261104/41674326497-release-evidence-0-1.zip": "8255fcd955482265b7bc868d8f36e94abe2c89bca231af1fc5d179c1912bd5bc",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-0-1.zip": "13b2bc8dd62500f062ba9b20199591e126953da9fddb476fe13afbd761674912",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-1-1.zip": "4830376ad36e7d51c52770f05c1c7c626959cdf09817e307a39d6fe48d139a6c",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-2-1.zip": "9a6b311bab32817b33d2def60df44aaf2888132a077767fdb53aba3babb28634",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip": "b32027a8fd9a2bba0af6b6e7d5e0ce41c683d7f47b0a14e84ab5522cc5a4e332",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-4-1.zip": "7506f2d966eb4dfde91452660a21d76266a853d6e5a2a11a66c2591fbc5787a0",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip": "59ff68f91e1081a280cdad4415df774f73e866bb71e585ce2bd3a0a10083e1d7",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-6-2.zip": "08670320ed484fdab7aed4aace9f26f44056ac0febc044deb847b7bda017399d",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip": "6a2a5958ad951bdaf1a051a5e0b3e941d39ff0b11fb5794a9a0f1ecdce4539f3",
+    "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip": "d911cafa81cddd12972458abf8044c4b9f0c1a4f0ecb7b0a2ce23f7d532c4c3c",
+    "logs/elasticsearch-artifacts/20261104/41768548120-release-evidence-0-1.zip": "0b6928c0ecc7d6f18563b2d8bb5ce01d389afb15c6c191bdbfb25b667e74a46a",
+    "logs/elasticsearch-artifacts/20261104/41781453150-release-evidence-0-1.zip": "b0aa129bb50776dab1679f7f4eba0dc36ed79b814e62e794afd9c70fd6e10f58",
+    "logs/elasticsearch-artifacts/20261104/41784003193-image-plan.zip": "f0ae0cc13d2994892490f0bcc438d8202a5009b4a7970d754034419764e1662d",
+    "logs/elasticsearch-artifacts/20261104/41784003193-plan-evidence-1.zip": "dd6ded0c48ad19dfe5a8ee751c994a2270a2a1031c46eb16a11c1e48628f932f",
+    "logs/elasticsearch-artifacts/20261104/dual-registry-verification.json": "46da334addad4fb68b71c94e5aef92eb64aca21b211be193e7cdca611544d950",
+    "logs/elasticsearch-artifacts/20261104/elasticsearch-images-before-20261104-1414.json": "c61b975f89d8b8917d02cceb68adef355078089ab8e713d00ab3bfea3872b684",
+    "logs/elasticsearch-artifacts/20261104/verify-plan-evidence.zip": "24471d7427fe1af2fa606cc70889a8d80278b1e1ab8019de01c3c59d9a52c583",
+    "logs/elasticsearch-artifacts/20261104/verify-plan.log": "e0aea4f05e600aca93262ff9e0505fff47ad51b546f709910155cd488ac12d57",
+    "logs/elasticsearch-artifacts/20261104/verify-plan.status": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494",
+    "tests/evidence/longhorn-images-20261021.json": "5eb01056dbf0066efa1f23f8fb108aa59efbcfa01898c8d3e7958a21dce5c67d"
+  },
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "images": [
+    {
+      "digest": "sha256:0ffd7eb40af2df14daecb3bdb8302aa6d1d3d6b3bbfa9475effcb0a93e181ba8",
+      "dockerhub_ref": "brinnatt/access-log-exporter:0.4.11",
+      "fingerprint": "073d6ac48bd98738649ab3fa9e54e7118c7181cedb8c606c30c467dfa95007cd",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/access-log-exporter:0.4.11",
+      "platforms": {
+        "linux/amd64": "sha256:249b47c4ca3e9b411721cc6dd59ac0d135efd687f9f5ca74a49936577bdf040f",
+        "linux/arm64": "sha256:9d78e41789bcb65f0473fc324c4c10df3af841ac27c5b050700fe4795f01c103"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:371463b58e7947c0769480186d915792d57809536f2b3539b9154ec6d2a2ba11",
+      "source_ref": "ghcr.io/jkroepke/access-log-exporter:0.4.11",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/access-log-exporter:0.4.11"
+    },
+    {
+      "digest": "sha256:7ddb3cd4e951b370232f42b93568a15a848550b6633cb86dbbed40b7576bcbbb",
+      "dockerhub_ref": "brinnatt/alertmanager:v0.33.1",
+      "fingerprint": "394cc6244935322673af0162850613742918f4b58d02fda3183ab91ac0ce0b05",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/alertmanager:v0.33.1",
+      "platforms": {
+        "linux/amd64": "sha256:3d13b6a35fe96888bb626872ac05ee90ce776dafdf1561601943131c8c4852a6",
+        "linux/arm64": "sha256:65761e66ced89c39b0d0d4d0197db0ef850b0db8475f105b0f9273d3b6af52df"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d",
+      "source_ref": "quay.io/prometheus/alertmanager:v0.33.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/alertmanager:v0.33.1"
+    },
+    {
+      "digest": "sha256:543b75c841ddb419b6db943c8d8c5d77bc2b1d27b8c8380f4b7cc2441085226b",
+      "dockerhub_ref": "brinnatt/alloy:1.18.1",
+      "fingerprint": "abdc45420bd0b8627967adb1260229b518edd89c5778b7b34c78567312f46abc",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/alloy:1.18.1",
+      "platforms": {
+        "linux/amd64": "sha256:d77b1a7d54fc23636156a6b95865e8a9190f4d88571e07d648ee4a7c45efca86",
+        "linux/arm64": "sha256:ac21cd6555185cde84c3e68a5a7d49c1a1656c044dc73c2919715c91cf37b0f3"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33",
+      "source_ref": "docker.io/grafana/alloy:v1.18.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/alloy:1.18.1"
+    },
+    {
+      "digest": "sha256:ad08eef1128e8d287f0e4150f740bcf74175b7826597cd9244e2dc6a42779508",
+      "dockerhub_ref": "brinnatt/ansible:2.18.6",
+      "fingerprint": "4d5133b52e6affb052d1c9e02581c1abbc284ab593575acb541192b4ceae54ad",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/ansible:2.18.6",
+      "platforms": {
+        "linux/amd64": "sha256:4664338906d8529a0d8d3dabb9ed605a38bd6c9616a05f2f31ef1b127b43d554",
+        "linux/arm64": "sha256:e84cd890b79ae9e3c1cb8417e314fc803f4309a2905bd86cbeaf90158a814f51"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-0-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:4044a1d6d33bc00e9b198eca3de61d8f8c431da5a2294deccae579674830d10d",
+      "source_ref": "alpine/ansible:2.18.6",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/ansible:2.18.6"
+    },
+    {
+      "digest": "sha256:bf223bcfd477154f8616aa956e1cd1b62f72dcf8d6ef426c745b9bcabbe9043a",
+      "dockerhub_ref": "brinnatt/busybox:1.37",
+      "fingerprint": "0406f7f7f27884927166e4fab5adc06e221de07cdcb00724293aebf9ee3c921a",
+      "head": "0c0d7b568737618650857be2e8ef0f6001435c3a",
+      "key": "brinnatt/busybox:1.37",
+      "platforms": {
+        "linux/amd64": "sha256:91f1e8e9dd461f16a9a7625de0ea9568e6054f27896961234766bf36c0399f71",
+        "linux/arm64": "sha256:78b95a36a0de69bd1ba934493fa293442a7d0d8b468e1bc85ac1d87df6207bb7"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41781453150-release-evidence-0-1.zip",
+      "publication_run_id": 41781453150,
+      "run_id": "41781453150",
+      "schema": 1,
+      "source_digest": "sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec",
+      "source_ref": "busybox:1.37",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/busybox:1.37"
+    },
+    {
+      "digest": "sha256:d01c71e702bc906860d95ccb4c44e6a44ff8f8782113efed59b02f2e50e3a6ac",
+      "dockerhub_ref": "brinnatt/calico-cni:v3.28.4",
+      "fingerprint": "90d5a58db59365e4925f102ed04b47c5e885afa095f14745cfd69a30ee97211b",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/calico-cni:v3.28.4",
+      "platforms": {
+        "linux/amd64": "sha256:79940dce90b5dd3e69914f77e1239bf4aac43977499266a55bd3576800f1b029",
+        "linux/arm64": "sha256:91580d5530529447b93a77c4f070be6676196c3d0e1094ed216941c272d13a9d"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-1-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:f918594378cd13afa910744a56ff1e196134f863fda8b4fdd5346b46643ec6ce",
+      "source_ref": "docker.io/calico/cni:v3.28.4",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/calico-cni:v3.28.4"
+    },
+    {
+      "digest": "sha256:02fee7204f96a3fbd49622a2dc9b91876796235314315eae89925d1ad1f5dbe9",
+      "dockerhub_ref": "brinnatt/calico-kube-controllers:v3.28.4",
+      "fingerprint": "1538a5f73aca57928cc1db9ff63bfb7c9a984726c1337a4724b5595fa9956297",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/calico-kube-controllers:v3.28.4",
+      "platforms": {
+        "linux/amd64": "sha256:86f353f7975c5c270bea9554866494132769164014415a02103903476b08add7",
+        "linux/arm64": "sha256:0657b7e7afb45ed31014f0ede04fb13b1b41a4db8b14d43970119749d7125ab3"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-1-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:539d1e3985426cc39426a3cc769c69646e043790a7ee920c8c0edfe9987d0772",
+      "source_ref": "docker.io/calico/kube-controllers:v3.28.4",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/calico-kube-controllers:v3.28.4"
+    },
+    {
+      "digest": "sha256:e5e6dbeed2e5aad6d0069995ae1279920855ecb63f1878e6c111230ef600cc28",
+      "dockerhub_ref": "brinnatt/calico-node:v3.28.4",
+      "fingerprint": "b57628f3d4741c8d41e53058a89098886b006d71c039e3efad4eb2db26b7f86b",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/calico-node:v3.28.4",
+      "platforms": {
+        "linux/amd64": "sha256:c54b9ebcd4c4504fb3d3916060bb326312103c9ab145403a6d2fe3a69074d8f2",
+        "linux/arm64": "sha256:3baf93522913689a80174e3ec24b56a648737abdb924d7ae24fa795eaef3cc25"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-1-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:77f4e494343f41763bb7438e1ab61d07094abe07584b56c01ab5c3fb0b9bb4de",
+      "source_ref": "docker.io/calico/node:v3.28.4",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/calico-node:v3.28.4"
+    },
+    {
+      "digest": "sha256:c186cdfc3cab2cf6152defb37bde4fd60639560294dbac0c5c9225ee7d6ec07b",
+      "dockerhub_ref": "brinnatt/coredns:1.12.4",
+      "fingerprint": "efe221317c6c1aadc998abee60ba6b810e8db0be52ac611a6bbfbf5f63fc1bec",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/coredns:1.12.4",
+      "platforms": {
+        "linux/amd64": "sha256:a1d9a81ba706cd4e3821d377c02d756d55241d42e9803b4a5ff43d90b6c6d8a9",
+        "linux/arm64": "sha256:86d964c2971601353a9c30a0d69196cc7c273f0b83c555cb1895dbb851f32c42"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-2-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:986f04c2e15e147d00bdd51e8c51bcef3644b13ff806be7d2ff1b261d6dfbae1",
+      "source_ref": "docker.io/coredns/coredns:1.12.4",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/coredns:1.12.4"
+    },
+    {
+      "digest": "sha256:b458177594ae6012ed875c248f44b7a97697901e5de0a8a7ac86d61e4ec42d2e",
+      "dockerhub_ref": "brinnatt/eck-operator:3.4.1",
+      "fingerprint": "ecb01261c6dd70bb4d76f6f1b61f7f3aaf91530d4f0cf3d2a07e7cf088ee4571",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/eck-operator:3.4.1",
+      "platforms": {
+        "linux/amd64": "sha256:19f3dde0e2f45d5f62ed75d51c14a07acb8c74a46389f6b76d1933ccd4252e30",
+        "linux/arm64": "sha256:5db0e6a7cd599233ccc7d4f5b5ecefece47b87df34439082c6becb61ceb658bc"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41670245576-release-evidence-0-1.zip",
+      "publication_run_id": 41670245576,
+      "schema": 1,
+      "source_digest": "sha256:8190b4c57156a3f7a8da86db9d474c238a517738368fe18c4762100d73af5d01",
+      "source_ref": "docker.elastic.co/eck/eck-operator:3.4.1@sha256:8190b4c57156a3f7a8da86db9d474c238a517738368fe18c4762100d73af5d01",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/eck-operator:3.4.1"
+    },
+    {
+      "digest": "sha256:a7e6d6bb828d03da071d4b730acee7eca05a39e47be14961ee895e4d589f6485",
+      "dockerhub_ref": "brinnatt/eck-operator:3.5.0",
+      "fingerprint": "ca6394692229a4da2688e3af222038ab98ecb90fa1a0e668519b8dc539c641bf",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/eck-operator:3.5.0",
+      "platforms": {
+        "linux/amd64": "sha256:ac2e09db514c9c47c15d10d83255522e146802a648d82fbf8857c979c5773322",
+        "linux/arm64": "sha256:c1b0b9161e32a95f5ea7d18ef62f0b1d3f4611bbfa0a5d117a60f7f704fd483d"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:b6f261372d9d9af7b00aab03efea25263314d16063c4d440ac322e52c2fdf314",
+      "source_ref": "docker.elastic.co/eck/eck-operator:3.5.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/eck-operator:3.5.0"
+    },
+    {
+      "digest": "sha256:af4dbcb877b291ff57acd04a9857d8dd44970c94f97ae802c58a0bfc60cb4f78",
+      "dockerhub_ref": "brinnatt/elasticsearch-client:9.5.1-kubeauto.1",
+      "fingerprint": "15db16686f310bc45c11aa3f40bc67695008bde55392ec5aaa19f458b92c25b9",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/elasticsearch-client:9.5.1-kubeauto.1",
+      "platforms": {
+        "linux/amd64": "sha256:32e40339aaf43805feab0441ff05a6e24a9eecfb798f64a26a3538ec8b438721",
+        "linux/arm64": "sha256:4b31b05c342e722426c7a61d0cf4850d438799515bcdfb4c606ac4946c89050e"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41673063867-release-evidence-0-1.zip",
+      "publication_run_id": 41673063867,
+      "schema": 1,
+      "source_digest": "sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c",
+      "source_ref": "python:3.12.12-slim-bookworm",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/elasticsearch-client:9.5.1-kubeauto.1"
+    },
+    {
+      "digest": "sha256:e8a3587735e33814969807f6dc13fdc2485ed522416e39f47e897325413c9c7c",
+      "dockerhub_ref": "brinnatt/elasticsearch-exporter:v1.11.0",
+      "fingerprint": "59638924a06d6da749712b1659c8353c757f6cea5a16e30700e2a1a3163b1c1d",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/elasticsearch-exporter:v1.11.0",
+      "platforms": {
+        "linux/amd64": "sha256:6d299539d0f759e5bd8ddf364cadefcbc2eff56bd487de42aca4f3f6b6587638",
+        "linux/arm64": "sha256:ffc1d985ce073b7ac0752f613158ce6451c0c1068fe7462b0ff95d667dd9f4da"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41673063867-release-evidence-0-1.zip",
+      "publication_run_id": 41673063867,
+      "schema": 1,
+      "source_digest": "sha256:a056739b095df4baaa076f0b31321394233da9a240eeada2623d1b028b7ee7a6",
+      "source_ref": "quay.io/prometheuscommunity/elasticsearch-exporter:v1.11.0@sha256:a056739b095df4baaa076f0b31321394233da9a240eeada2623d1b028b7ee7a6",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/elasticsearch-exporter:v1.11.0"
+    },
+    {
+      "digest": "sha256:f3dc499ecb35f0131b5611300771ff3d5795d2c7bbb2fd0cdacddcfcbccb7684",
+      "dockerhub_ref": "brinnatt/elasticsearch-rally:2.13.0-kubeauto.1",
+      "fingerprint": "a2a8c627fc4a294f2b3505ccf6fab85bdbe24e867ebc6b1db3eafb53498d222a",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/elasticsearch-rally:2.13.0-kubeauto.1",
+      "platforms": {
+        "linux/amd64": "sha256:10ab2868e5f55877446bffbc52cd9b42f3e627f7ff926770985358cb68db89f8",
+        "linux/arm64": "sha256:5fb6aedf9bf7e03f1ab9870532f575cb593cec4d2a4c9a2e7a8c9f786f9c3198"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41674326497-release-evidence-0-1.zip",
+      "publication_run_id": 41674326497,
+      "schema": 1,
+      "source_digest": "sha256:0bc1a3e5ccbb7784dcb3426b8aa821f936b939b09eac35f5a337ad03e2aa1dd6",
+      "source_ref": "elastic/rally:2.13.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/elasticsearch-rally:2.13.0-kubeauto.1"
+    },
+    {
+      "digest": "sha256:44b564c387afc73824350c37bbc5d964a4cee246a7be3ea0bb372dc6fe7b3920",
+      "dockerhub_ref": "brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1",
+      "fingerprint": "8c82b08ac1222b0a2c107a0c942e209615afd67d9c6ac7dac4a3c9d7b7dc50cf",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1",
+      "platforms": {
+        "linux/amd64": "sha256:76048a9ce3ba84666ab1382cbe160cda01c03ba872cd24afed7ca94690b09be9",
+        "linux/arm64": "sha256:4637f23e0a4204f40b62af9f8f4db2bc1568aa9f920d48f5904afa905209a5ef"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41674326497-release-evidence-0-1.zip",
+      "publication_run_id": 41674326497,
+      "schema": 1,
+      "source_digest": "sha256:79b4f1de4c15e6eca824723086a51e5934406d614d410cc11be77748cafac537",
+      "source_ref": "docker.elastic.co/elasticsearch/elasticsearch:9.5.6@sha256:79b4f1de4c15e6eca824723086a51e5934406d614d410cc11be77748cafac537",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/elasticsearch-smartcn:9.5.6-kubeauto.1"
+    },
+    {
+      "digest": "sha256:7e3c5d4133ab93758a3036c350b25f312f9d25062a1f94c01842780c9b4ea067",
+      "dockerhub_ref": "brinnatt/elasticsearch:9.5.1",
+      "fingerprint": "0eb420bfeb2deeeb5257d4b68b0a9a725d5de5dfcb9f71d83a028d1c956fd960",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/elasticsearch:9.5.1",
+      "platforms": {
+        "linux/amd64": "sha256:50fe888d18821430857d123b7722a1f9a6b5add5e27c1acf7b88f5bb071aeb15",
+        "linux/arm64": "sha256:7defe378c22d4fea41b67b06e9baceb2e34abb2d85590d4f9338422442d648c7"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:b70b3017fbd35310bc57e7e3f8c0ca42ca0b94df3331f747b7cdcfddae430a5a",
+      "source_ref": "docker.elastic.co/elasticsearch/elasticsearch:9.5.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/elasticsearch:9.5.1"
+    },
+    {
+      "digest": "sha256:04f408e30225a3af40d591a856d010def14b47d3b5e0f610482f66b78b8e2b22",
+      "dockerhub_ref": "brinnatt/elasticsearch:9.5.5",
+      "fingerprint": "f0ef972743cfec2f8a0fa3aacffa7d3922f07b58bc8c90cf72fecfa58afae8f1",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/elasticsearch:9.5.5",
+      "platforms": {
+        "linux/amd64": "sha256:a18eaf5e634bb910d8016481b5f9304d1b18001ac3b3995192407157878a8a0f",
+        "linux/arm64": "sha256:ae0635722eb9749b55ca6ebb7c7e562e3b9bff379ff0fc606a195da5720600ac"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41674326497-release-evidence-0-1.zip",
+      "publication_run_id": 41674326497,
+      "schema": 1,
+      "source_digest": "sha256:13b4a40bb095774f5fda635e45fd5677cc6a26565e42b24997b0c72b88e75984",
+      "source_ref": "docker.elastic.co/elasticsearch/elasticsearch:9.5.5@sha256:13b4a40bb095774f5fda635e45fd5677cc6a26565e42b24997b0c72b88e75984",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/elasticsearch:9.5.5"
+    },
+    {
+      "digest": "sha256:359668f3d4456ad7e88376fdb1f1ce5ab96249b8a4e7bea14969bd7408a104f6",
+      "dockerhub_ref": "brinnatt/elasticsearch:9.5.6",
+      "fingerprint": "1299248412089013aabcb635d483f925bf6f0fcddff1a47026a91988b8bdd61b",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/elasticsearch:9.5.6",
+      "platforms": {
+        "linux/amd64": "sha256:73399658fb9f889cb67f142a0a0a69e6d8081cddb248081d6407f0e90c029607",
+        "linux/arm64": "sha256:afd5bb8c8bb12bb5ef0ec43e70b6673badbd057659690893c23c296ad323b2c2"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41673063867-release-evidence-0-1.zip",
+      "publication_run_id": 41673063867,
+      "schema": 1,
+      "source_digest": "sha256:79b4f1de4c15e6eca824723086a51e5934406d614d410cc11be77748cafac537",
+      "source_ref": "docker.elastic.co/elasticsearch/elasticsearch:9.5.6@sha256:79b4f1de4c15e6eca824723086a51e5934406d614d410cc11be77748cafac537",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/elasticsearch:9.5.6"
+    },
+    {
+      "digest": "sha256:5b5e543a4965d75c1aadeaa05f069e1e0abde97edccdfb0b73d10a17968ed8c2",
+      "dockerhub_ref": "brinnatt/fluent-bit:5.1.1",
+      "fingerprint": "c80b5743f779aeab21890ab74ba2908cc51a454900765fa4af075339cef8a281",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/fluent-bit:5.1.1",
+      "platforms": {
+        "linux/amd64": "sha256:092a37fa354bf2736f88b8f3981fce5e53d3e2904d671ea120062a4d9e305a25",
+        "linux/arm64": "sha256:224f5dac0e768fc962e017e226b66ebfc042fe710a906359981eb0a2ee8f1b57"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:a941bdd5ca552b2c6597fc7b3bccf2e61d30873939bab5700963de0e94ac6169",
+      "source_ref": "cr.fluentbit.io/fluent/fluent-bit:5.1.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/fluent-bit:5.1.1"
+    },
+    {
+      "digest": "sha256:20bfb365aceab6fa8018ec1a61e85056ef51dfc3f17d84ba4089d1ea0b08d24e",
+      "dockerhub_ref": "brinnatt/grafana:13.1.1",
+      "fingerprint": "0fd6020cf230b2adc75450cd42fcc87f479bf17892993d6a49a77161798d0a76",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/grafana:13.1.1",
+      "platforms": {
+        "linux/amd64": "sha256:d3d502b388d1cdd3cb1fd1053e32f31c2844ee04587307e6392c986495356ee3",
+        "linux/arm64": "sha256:82d4677867423a913ee5360a431918c573d55bd43e61b22f13d1e0dcd0201490"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:7cb8c64c4d57a57e734073f3cc94620adb24a0acb929bd80ba9f14017e3a975b",
+      "source_ref": "docker.io/grafana/grafana:13.1.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/grafana:13.1.1"
+    },
+    {
+      "digest": "sha256:a0c01878c55e64da469ed2a4f5714a1974dfb1544d1274165267c81c86f0196e",
+      "dockerhub_ref": "brinnatt/ingress-nginx-controller:v1.13.0",
+      "fingerprint": "a802d2237643937ccd7f810048bb9cd9d1a242587f597f30bd30a05f1b3d60d7",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/ingress-nginx-controller:v1.13.0",
+      "platforms": {
+        "linux/amd64": "sha256:75fc70e7386331ff5a8822e2e1f0b191a9c29b4654f40c94f44698a9c6823d52",
+        "linux/arm64": "sha256:6a7808bd37a189a557f9aaeddc7c3a4c532051070b57978db4ed86248ae7b593"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-1-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:dc75a7baec7a3b827a5d7ab0acd10ab507904c7dad692365b3e3b596eca1afd2",
+      "source_ref": "registry.k8s.io/ingress-nginx/controller:v1.13.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/ingress-nginx-controller:v1.13.0"
+    },
+    {
+      "digest": "sha256:490d3d35f60056bb25048b04e62c22b0d5cfe7b5ce18b1f8cf82a7e0e81f0e49",
+      "dockerhub_ref": "brinnatt/k8s-dns-node-cache:1.26.4",
+      "fingerprint": "2ad66ea031977178820af4638540ba2415113877859061441fd09507c513114f",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/k8s-dns-node-cache:1.26.4",
+      "platforms": {
+        "linux/amd64": "sha256:781f21cf30abdddcefb70b78de643f57f89fc55fa4c9a3ad17194f2ef9019134",
+        "linux/arm64": "sha256:33e5963f607475cc53262eb2a6915ca2984439dde4d8e6cb4c69954aa6387cf1"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-0-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:ab52729d7292fbdf764f21daa7b8ba89fd985ac43cec0a13d035a6942d4c1be8",
+      "source_ref": "registry.k8s.io/dns/k8s-dns-node-cache:1.26.4",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/k8s-dns-node-cache:1.26.4"
+    },
+    {
+      "digest": "sha256:dc208c96c5a03e578fbf29a732da941df969f884236d382967ba5c732d207d4e",
+      "dockerhub_ref": "brinnatt/k8s-sidecar:1.30.5",
+      "fingerprint": "978aaec2455b08548e1ea28f19848e7968f8d6ac72c546519dd30cd4cccc3aa9",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/k8s-sidecar:1.30.5",
+      "platforms": {
+        "linux/amd64": "sha256:3c7a6e15cefac338a73729d1228770ca02a46f90b7996117fbde67fc26808481",
+        "linux/arm64": "sha256:37877481e9c8534602972d86bcb8fc9a3aade7c080e80f2683c4e84927629ef1"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:b50fb46b5b3291fb82e85429781a27a5c36fe97f330908afe00652ee6c425459",
+      "source_ref": "quay.io/kiwigrid/k8s-sidecar:1.30.5",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/k8s-sidecar:1.30.5"
+    },
+    {
+      "digest": "sha256:21120058e0f253b6362855fb3dcc60b14172308d3818fad472a52638c3e03ad0",
+      "dockerhub_ref": "brinnatt/k8s-sidecar:2.10.1",
+      "fingerprint": "3b28c68232cbacd1a6b1ea6fcaac3bdc3d4aed17776c25c56330885abea9319e",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/k8s-sidecar:2.10.1",
+      "platforms": {
+        "linux/amd64": "sha256:45314008ded502ca84c0142802897b6774da1e5600aed3f4214869413ba0571e",
+        "linux/arm64": "sha256:bd24207b36e08eb331ea3007c71cf2365a23a8ded65b82b8f46bcf9855c0c8c7"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-6-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:7eac5c4fed714a18d038fc9fea57d8744d113367935dac0ea4eb6a87cef704a3",
+      "source_ref": "quay.io/kiwigrid/k8s-sidecar:2.10.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/k8s-sidecar:2.10.1"
+    },
+    {
+      "digest": "sha256:bbdfd6026aa35737c49df84c493da879d611f2095af3ee9a1ae403db780bf5c8",
+      "dockerhub_ref": "brinnatt/kibana:9.5.1",
+      "fingerprint": "3d788067648b51fefa6c702a3748b3a31c7b3da6e757383a3bc0d410eecbbcb4",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/kibana:9.5.1",
+      "platforms": {
+        "linux/amd64": "sha256:86654cfa3c0f117814879c088dabc38d1aad25f0713eb02a6c0d1a3a2d0884f8",
+        "linux/arm64": "sha256:0310be7ec382b585b1182c4cdd8a9aedd18405d3dd5e6503f0ebe8f40f025989"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:f1e3cb03928b2c88590579445cd3ea3fad750a1b1ced653193ce4211051d2206",
+      "source_ref": "docker.elastic.co/kibana/kibana:9.5.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/kibana:9.5.1"
+    },
+    {
+      "digest": "sha256:6cd3fd87afb4e935afb3c0051b5acb190957a08a716bdfae70f3cee3bd0ddf11",
+      "dockerhub_ref": "brinnatt/kibana:9.5.5",
+      "fingerprint": "7362a89617424fec950e88343484c4539418e30503b056dfe180b759003293c8",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/kibana:9.5.5",
+      "platforms": {
+        "linux/amd64": "sha256:7fb2752b911223be060a9c0b6d0d30fc2cbfcd0ee3dd41b0103db1c9095b04c9",
+        "linux/arm64": "sha256:45f54e3da0bd690ab2d37b3dbf12a4bf21456612a67a7e081ac08afa7e9673f6"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41674326497-release-evidence-0-1.zip",
+      "publication_run_id": 41674326497,
+      "schema": 1,
+      "source_digest": "sha256:13b72ce7222c36e4213229004ae62a87aeb32fd372ebfa6fb38f7a3285fdbb78",
+      "source_ref": "docker.elastic.co/kibana/kibana:9.5.5@sha256:13b72ce7222c36e4213229004ae62a87aeb32fd372ebfa6fb38f7a3285fdbb78",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/kibana:9.5.5"
+    },
+    {
+      "digest": "sha256:c96dbcfaf63c4bd7bf1c0272f456b002bbbe1360aec50b39e1091979be132298",
+      "dockerhub_ref": "brinnatt/kibana:9.5.6",
+      "fingerprint": "8f9c872896795f2feef89fff8dd9505fe1f086da8604c051d0e998c0e83ddaae",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/kibana:9.5.6",
+      "platforms": {
+        "linux/amd64": "sha256:5c3088870267362b0a81e72bb2f96cf92cb28404a00d8ec3a9d67a6cec802d8d",
+        "linux/arm64": "sha256:7a760c770e02bdeb55b7fdf02d2a772319140ba915d1d3fcb527407fb0be517d"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41673063867-release-evidence-0-1.zip",
+      "publication_run_id": 41673063867,
+      "schema": 1,
+      "source_digest": "sha256:c7ed45da5c3cfea020fc6c99ce027f4d21d19dab330379c5115d5eb95f6ecebc",
+      "source_ref": "docker.elastic.co/kibana/kibana:9.5.6@sha256:c7ed45da5c3cfea020fc6c99ce027f4d21d19dab330379c5115d5eb95f6ecebc",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/kibana:9.5.6"
+    },
+    {
+      "digest": "sha256:6c6adc1cabe4f147e4a3c2db7b7f835b26c1a59e20e913424f47f585ddda4463",
+      "dockerhub_ref": "brinnatt/kube-state-metrics:v2.18.0",
+      "fingerprint": "b022691af23fdb92f05389b90bbe18fa934de5c539aa2d613edd9438064c337b",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/kube-state-metrics:v2.18.0",
+      "platforms": {
+        "linux/amd64": "sha256:42ba035a2a78608ba797797e8e78394877fe769ef3adfca2176ab32fc1932ba6",
+        "linux/arm64": "sha256:5f67c00936e9951c696d694ea0f6731f147ecf527692ad8689913012f43c000c"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-1-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:1545919b72e3ae035454fc054131e8d0f14b42ef6fc5b2ad5c751cafa6b2130e",
+      "source_ref": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/kube-state-metrics:v2.18.0"
+    },
+    {
+      "digest": "sha256:760e80268a70e3a207c6d5b8fe20c839102fa782167335e09d80eb1534a8e89f",
+      "dockerhub_ref": "brinnatt/kube-webhook-certgen:v1.6.0",
+      "fingerprint": "d08e63ce1a09b345f3ffd0fec8177943a3e47cfdeaf43145dd8a7b0c6702e211",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/kube-webhook-certgen:v1.6.0",
+      "platforms": {
+        "linux/amd64": "sha256:3f258e31e0de1ca44a8108cc2b4ba4004e30c7453bd606106cd6a53831ccfdd2",
+        "linux/arm64": "sha256:73fe048d777753be46068ce8ce3e97c905ff57eda5bed3221a0c1a23af824c9b"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-1-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:c9f76a75fd00e975416ea1b73300efd413116de0de8570346ed90766c5b5cefb",
+      "source_ref": "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/kube-webhook-certgen:v1.6.0"
+    },
+    {
+      "digest": "sha256:db039b2e03cae60c8563ac9be81811a6ef9b4a3155b32f99cb16ccf62fe7f378",
+      "dockerhub_ref": "brinnatt/local-path-provisioner:v0.0.31",
+      "fingerprint": "e1f12cba885e93898a499d62fc9d7c284ddaf3d3926ca9fed70dd2d429b40c6e",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/local-path-provisioner:v0.0.31",
+      "platforms": {
+        "linux/amd64": "sha256:f8555a0c28ec9ab136087cdcc051d7048ad581ed089e40c5b50cc3fea9a0bc8b",
+        "linux/arm64": "sha256:1ff741f04244610037c2a3d5ac20fb1254f956c27871b0ff956e65d60eec0d1a"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:80496fdeb307541007621959aa13aed41d31db9cd2dc4167c19833e0bfa3878c",
+      "source_ref": "docker.io/rancher/local-path-provisioner:v0.0.31",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/local-path-provisioner:v0.0.31"
+    },
+    {
+      "digest": "sha256:a4827c0bd9ce58b670a5aa3958533f44352376774db733f75b7dad7e7761bfc5",
+      "dockerhub_ref": "brinnatt/logstash:9.5.1",
+      "fingerprint": "d0cd5b17124383dede9d7896dcb9a5cfb6e8d3902fa39956b3cc34f96d8b5e5d",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/logstash:9.5.1",
+      "platforms": {
+        "linux/amd64": "sha256:c48cb19e8267bdf4604f624415223695d39a39f8f12b576500c18bd335c743ee",
+        "linux/arm64": "sha256:ba88b70522ee58be863716dfd8352f8d5d0bdec75f15364ab9f0ae571a3ddcf8"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:1e1bc5efbe6b29047e6054cfd938407981dbd522708e934dd050ba7967703a44",
+      "source_ref": "docker.elastic.co/logstash/logstash:9.5.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/logstash:9.5.1"
+    },
+    {
+      "digest": "sha256:dacc98598d631567612067e5398acb13fcfc296dcd4a2036c2b4433860730d46",
+      "dockerhub_ref": "brinnatt/loki-canary:3.7.6",
+      "fingerprint": "5bd24baa1d4b3bd400909205e73af390c5c5a57b0ee183b62fea6c76d317a629",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/loki-canary:3.7.6",
+      "platforms": {
+        "linux/amd64": "sha256:0815a61e793b58c075abd2eba05931c31e88ac3ff8252a230b074868800847b5",
+        "linux/arm64": "sha256:b0768aa0a815f99b16f0bc13ab19c3c29fdca9cd12539589d1cff52afd29d2da"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:09d2b772c65b5495645cc7cba49e13f06fa2ec104786669e154f176625309e97",
+      "source_ref": "docker.io/grafana/loki-canary:3.7.6",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/loki-canary:3.7.6"
+    },
+    {
+      "digest": "sha256:8a60ecb1ebc17008cb0e55422a75d51f66ab1a9dc768700a7feb917125c8e032",
+      "dockerhub_ref": "brinnatt/loki-gateway:1.31-alpine",
+      "fingerprint": "7998f23f62fd7199f3f2029a171262f2df4af8422c8e19c40be6e6a3b9e1f23f",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/loki-gateway:1.31-alpine",
+      "platforms": {
+        "linux/amd64": "sha256:7f44dd94b79fee4d8d3988aaf3a6a309edda633106d1de54d94d18f2b48779c3",
+        "linux/arm64": "sha256:157892558159ec36a9318c5ed187d18453397b2dc9a1cb365319609ea5f716b7"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e",
+      "source_ref": "docker.io/nginxinc/nginx-unprivileged:1.31-alpine",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/loki-gateway:1.31-alpine"
+    },
+    {
+      "digest": "sha256:fb1c0fccc45d39aefc3017ed6311e39be9488ca585b8621903adbdc3ce29a941",
+      "dockerhub_ref": "brinnatt/loki:3.7.6",
+      "fingerprint": "90d4330034a2717022b65d1325f74282ae6bc36425b170a19dfd6abae0e954cb",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/loki:3.7.6",
+      "platforms": {
+        "linux/amd64": "sha256:e2de1ab057e04e802b7a010dfb2fd1fa98c7052b47859219907904b8ba09902c",
+        "linux/arm64": "sha256:4d243c95ec76705ffe9561f5c6db3460ed1fa07ed4bcf7840a33999a13a519e6"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-5-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:efd47c67f9bac88ca29bcf8cb997d9ab29d1848bd0aff579282295542a745952",
+      "source_ref": "docker.io/grafana/loki:3.7.6",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/loki:3.7.6"
+    },
+    {
+      "digest": "sha256:b0e9be832acfa2657f2ca9e763d08bc6e385defab3316c499b96d3e2d010a7ff",
+      "dockerhub_ref": "brinnatt/longhorn-backing-image-manager:v1.12.0",
+      "fingerprint": "e41846d42fde13778c80736342c4016958f0674d468f4d4cc4cb067fffb75907",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-backing-image-manager:v1.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:3479edd2e0bdb06b9497706930882c8cc68ca97a287708a4b94a693e883e1ae8",
+        "linux/arm64": "sha256:452086d0a4f073973724dbfb271803cbae76d1d88257391bc6546e25cb722393"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:c480c397045e6a02bb1470cef759e2c3e2ff7fff4400bc3730dfd64446507d7e",
+      "source_ref": "docker.io/longhornio/backing-image-manager:v1.12.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-backing-image-manager:v1.12.0"
+    },
+    {
+      "digest": "sha256:a5aa9ac7d1e9d77b16c08b93902897a337d6fa90e71fb8aabe7287408f688ad3",
+      "dockerhub_ref": "brinnatt/longhorn-backing-image-manager:v1.12.1",
+      "fingerprint": "c01e6a8eed6191922e8776fc1c09c3dad26dd9485d8b314a16c05594ca8239f7",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-backing-image-manager:v1.12.1",
+      "platforms": {
+        "linux/amd64": "sha256:c32e91ba9d6a9bd11b3c0ce0607bfa387240136c0042d3317ab14672d2322997",
+        "linux/arm64": "sha256:ae90b358d29b76cd1b4b6fc1849d590a43d327b2c1ecec04911988f98c054244"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:dfb9452e4190fb80e39c7976a0036ac0ca314c05328b67952f8c165cbb4dabf3",
+      "source_ref": "docker.io/longhornio/backing-image-manager:v1.12.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-backing-image-manager:v1.12.1"
+    },
+    {
+      "digest": "sha256:3a43d643591575394b8e3f0ef2c495d5a602970022f12469af294ed2dbae96b7",
+      "dockerhub_ref": "brinnatt/longhorn-csi-attacher:v4.12.0",
+      "fingerprint": "3def492754b55679d473c4730b9189a38c1dc34d995852008070724e38774efb",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-attacher:v4.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:9f747e6664437a88fc0a3b682b3819baa9e6da35cf5025ea59d8e3c48239b124",
+        "linux/arm64": "sha256:8e429cb82b796576e176c87e589b3ea72a2e4b3c1f51c9eb7c9b6fefe275470c"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:a814aa4784197116983ea13e376fc691e000a390de9d0b9fca2bc4a2fb7c4a1f",
+      "source_ref": "docker.io/longhornio/csi-attacher:v4.12.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-attacher:v4.12.0"
+    },
+    {
+      "digest": "sha256:e47e158c99093d3dc11c26a9e7fdf5ba8a183ecafbd8de817e0e58ea2a1d086e",
+      "dockerhub_ref": "brinnatt/longhorn-csi-node-driver-registrar:v2.17.0",
+      "fingerprint": "5493df88f2c103953a63ff92b7126f7ab41eaaf059adfd11158ba6ffb47e93c0",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-node-driver-registrar:v2.17.0",
+      "platforms": {
+        "linux/amd64": "sha256:aefca6f4908976545e8e34348e07f885aeeb6eb5e940d142a085818114732379",
+        "linux/arm64": "sha256:9f3c5d7aa3732291eaf0f3b2327ade29ba25ed33fce7e3c41f62f6ef3d48315e"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:29f7cfd519008fe8f8dff5e79db43f70d65c43a89c08f1bafbb199ca90df79f0",
+      "source_ref": "docker.io/longhornio/csi-node-driver-registrar:v2.17.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-node-driver-registrar:v2.17.0"
+    },
+    {
+      "digest": "sha256:47c6f9f3eb024b8b2429aa8d460f93ac5b9b402603e24452bc3f1bddb011d7b4",
+      "dockerhub_ref": "brinnatt/longhorn-csi-provisioner:v5.3.0",
+      "fingerprint": "40cfd7e9c8bc18a75eb33d88ef504a8086b38eb7aa1c1d8e925a46815f06c7de",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-provisioner:v5.3.0",
+      "platforms": {
+        "linux/amd64": "sha256:2a6a4809a301558f7b63782c1a6fd1196f56e3370965cedf2797ea64254a5760",
+        "linux/arm64": "sha256:6dad370bed0b4959fbacc856a962fdae722c611dca36c42e71a6f705c6492ac2"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:1bbb7b11d8087130e722e3249f364d0ab49ee3545e847c2f299e87b7e1ce5c4f",
+      "source_ref": "docker.io/longhornio/csi-provisioner:v5.3.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-provisioner:v5.3.0"
+    },
+    {
+      "digest": "sha256:55cd8bd7b9d74654d76665ef95ac7c61de5d1d5f2cd2fd83479879b0990031fa",
+      "dockerhub_ref": "brinnatt/longhorn-csi-provisioner:v5.3.0-20260514",
+      "fingerprint": "8ee9653f2350ad04a22d9bcf6edce1cbf055610c3060ca6ef653fef3efe62181",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-provisioner:v5.3.0-20260514",
+      "platforms": {
+        "linux/amd64": "sha256:50294ee4a2f853d76a4c6f9e1a7d94ee1631a25c6de8c604028c1ee450d246e2",
+        "linux/arm64": "sha256:7311d90ecbc0123e8d38063866a2111bc849ec06c48cc8ea3ad2c05261c9b326"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:05c4017e4df7f8f690d6578f975f1eba94624d1b6a675d88c5f508ab6a27152b",
+      "source_ref": "docker.io/longhornio/csi-provisioner:v5.3.0-20260514",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-provisioner:v5.3.0-20260514"
+    },
+    {
+      "digest": "sha256:ec3e67ae5d819fa90a3ac9c867ff567388984c9a3b0616e9e8775c7b80b9ec52",
+      "dockerhub_ref": "brinnatt/longhorn-csi-resizer:v2.1.0-20260514",
+      "fingerprint": "490601a70bf8cc978e2c33eed295a7c17ab532f8c3c6d7760388d5dbdf660447",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-resizer:v2.1.0-20260514",
+      "platforms": {
+        "linux/amd64": "sha256:7b75fb1fd7d3cfec9c055c31bd23fe26e9c5c47d740a1aa73372c40efe99f586",
+        "linux/arm64": "sha256:54daa661711fc27d9483ddde7cf6e85eef89384bfda4cf2a9641f3b2709ae3ad"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:7f203c1f195445e8ca8be258cd6179c284885a6c1b5287e6c0e33870e9083f8a",
+      "source_ref": "docker.io/longhornio/csi-resizer:v2.1.0-20260514",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-resizer:v2.1.0-20260514"
+    },
+    {
+      "digest": "sha256:30b561a1656989ce14ae27fbe82eabaa0a4a37ea0124894c618f1c5ed92da684",
+      "dockerhub_ref": "brinnatt/longhorn-csi-resizer:v2.2.1",
+      "fingerprint": "48d37688d6d4647849759ce07677c462dbc58730a56a0ebd46cd4b705040db67",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-resizer:v2.2.1",
+      "platforms": {
+        "linux/amd64": "sha256:245662f1f971f8075ebf792b579189522ff40f4b87d12036b60b5c16549c352a",
+        "linux/arm64": "sha256:7183af64f7199fe5a81a177ec0b7e7b95afaffed9d88c701eca4f6eb458ef8e9"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:63d0aef25114d4a682b25afa6d9623a3cfcc19aca910269124408476bbe2c6fd",
+      "source_ref": "docker.io/longhornio/csi-resizer:v2.2.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-resizer:v2.2.1"
+    },
+    {
+      "digest": "sha256:46468239b5d2a802aa9276a9fa1fd3d773086e33fe627d457a66b79ad3a04411",
+      "dockerhub_ref": "brinnatt/longhorn-csi-snapshotter:v8.5.0-20260514",
+      "fingerprint": "d3852b59854bd75cb3d5bf389a489bc48482b44dc5b85772071e6d5b63efb0ba",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-snapshotter:v8.5.0-20260514",
+      "platforms": {
+        "linux/amd64": "sha256:5ab3388132f25ac3c590c42665be9b3e02cd308cf60f177580650a1cc61aedc3",
+        "linux/arm64": "sha256:a88069aabcb779231bbbb8cbd1cbae8f45c6e227e11c66ea879cf1960be2c8c6"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:df4ba2075c00c5193821d43caf11c6f6556310247723365e9916e409799ce029",
+      "source_ref": "docker.io/longhornio/csi-snapshotter:v8.5.0-20260514",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter:v8.5.0-20260514"
+    },
+    {
+      "digest": "sha256:13ab903b2f0c5643e4672e6fa33c5b129459ce3dcb6cda08f62eb731240662a6",
+      "dockerhub_ref": "brinnatt/longhorn-csi-snapshotter:v8.6.0",
+      "fingerprint": "2031c263402becdcb7fa6df2b63a43c56a4ec75499cd10584306f172cd55868d",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-csi-snapshotter:v8.6.0",
+      "platforms": {
+        "linux/amd64": "sha256:017e70cdc17190e86d8b4a07987bc1aa281cd407866833f10fbaa08897b222f5",
+        "linux/arm64": "sha256:9396caa721d6c777373ab966cb22e99a4191e38682e4fd17348f72249f7f35e0"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:2bca9ac55170efa61dc50e5cc8d9550373db2e3e5161d82d3fdaac5c25150360",
+      "source_ref": "docker.io/longhornio/csi-snapshotter:v8.6.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter:v8.6.0"
+    },
+    {
+      "digest": "sha256:af8f1b3171e5e9ac4ec31f5372b4d886002bf3add243049bf868ba1f95834dd3",
+      "dockerhub_ref": "brinnatt/longhorn-engine:v1.12.0",
+      "fingerprint": "dd1adab9f34adee8a0d79511ab9de661fbee4e3ae480057787c033e4879a995c",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-engine:v1.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:c690b8b4a75f50b70b165438fefdbe4938443b0f62aef5b176985973004c905e",
+        "linux/arm64": "sha256:7f9151628a424c79e89fe02a6ada12a7b589cc5db5669aef4fa523d99dafb78f"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:bc4a49e8f2b6b4bcdde0f6e465c0b0ac94acf6198840f9db039bedbbae67e905",
+      "source_ref": "docker.io/longhornio/longhorn-engine:v1.12.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-engine:v1.12.0"
+    },
+    {
+      "digest": "sha256:2b4904c5c0f6c3c3d575880794cb1450d31baa4bb76076b1a3085a9f178c0bf1",
+      "dockerhub_ref": "brinnatt/longhorn-engine:v1.12.1",
+      "fingerprint": "60f66c6778efeced9dc562ab794f969296494c30f1deecdbf35806b0ee45053f",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-engine:v1.12.1",
+      "platforms": {
+        "linux/amd64": "sha256:59ee2b433fae7c388c8a60327a63aa3456c5456e0e6ad44d6542f8316794c90f",
+        "linux/arm64": "sha256:005ce4035a293cacf3e4c104ee078729c1a44e4eb439a80604e1feee3d7154c1"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:9b1b720b56df6612c9589cbc156acbca6419fa61de818d05db7226b0722f2868",
+      "source_ref": "docker.io/longhornio/longhorn-engine:v1.12.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-engine:v1.12.1"
+    },
+    {
+      "digest": "sha256:571ac20cada355f37cd291cb3a7a7f950399a38a39fe0186aac3ae04bcb7fa33",
+      "dockerhub_ref": "brinnatt/longhorn-instance-manager:v1.12.0",
+      "fingerprint": "6384f61735e130c4be51e5510caa3efa5d3b20aa0f358f243a44a1d69d4eb98a",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-instance-manager:v1.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:799c9675c0e4a5a03c15d18525d723d103f59452fa9c32ba1419f3c89f1c745f",
+        "linux/arm64": "sha256:4f4d23154d21fb2588104dab40b417a7bbcc54e4ef58f1b3e33ea48fd8bd7cc4"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:7dc270841c8a8855b9c7b192b53db05b6268318648108cea4b00c2e88eb85cbb",
+      "source_ref": "docker.io/longhornio/longhorn-instance-manager:v1.12.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-instance-manager:v1.12.0"
+    },
+    {
+      "digest": "sha256:24e9f0e2f4ac5576e957749833cc98b604dd10902b4d7c1e34a71db8605c524e",
+      "dockerhub_ref": "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+      "fingerprint": "51eaa536d349850055d351cfc3d84df061cbbc71559b6e5e7c592e76c0eae3d3",
+      "head": "e3dab38e0f95ae3215221363d09406e1b5971f66",
+      "key": "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+      "platforms": {
+        "linux/amd64": "sha256:f45c1ffe607799dd4119b2127ead6a729fb1475314b0d9f1f4ec20e18417e51b",
+        "linux/arm64": "sha256:7afe0518b33502edbf030dda547d39a0f6f9c7c1e052e35c8c3e50a9fa1b3ad9"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41768548120-release-evidence-0-1.zip",
+      "publication_run_id": 41768548120,
+      "schema": 1,
+      "source_digest": "sha256:b255f3279dd9d830ea153e9369928646dee519fd853036388926dddb5c66094b",
+      "source_ref": "docker.io/longhornio/longhorn-instance-manager:v1.12.1@sha256:b255f3279dd9d830ea153e9369928646dee519fd853036388926dddb5c66094b",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-instance-manager:v1.12.1-kubeauto.3"
+    },
+    {
+      "digest": "sha256:642dbaa050672e0240ba690431fc75af5a3cb1b9dab0f636b7d9b403d4b6cc16",
+      "dockerhub_ref": "brinnatt/longhorn-livenessprobe:v2.19.0",
+      "fingerprint": "cd311a0f6a79d924280ccdb0c53d9c893fa913644c8b4a1fd9d0eab3a9df8784",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-livenessprobe:v2.19.0",
+      "platforms": {
+        "linux/amd64": "sha256:3f9dc26352eb386266ae93f234eb3b536af6cc1b37835d85fb4e07f0bfbeb7d8",
+        "linux/arm64": "sha256:ce0f70bc146782634027cc0c85c62a32f7838e5a6edd53866572758552a379c8"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:d0cb76b565ba9d36da0dc2b38e2b6a49a0ae4fe067b03086110682f32c600318",
+      "source_ref": "docker.io/longhornio/livenessprobe:v2.19.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-livenessprobe:v2.19.0"
+    },
+    {
+      "digest": "sha256:7ffead3385c8880c6ddb577bf452ac4a0d0edbfc95185e24165e20b6cf4a7422",
+      "dockerhub_ref": "brinnatt/longhorn-manager:v1.12.0",
+      "fingerprint": "df45764fa2670ff185626be0764ab63068d539f6e11496ab366c614dc18d9d5c",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-manager:v1.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:1352e5147e8f88c897cbe5837c3056d331a434d00e23742ba58cf09c3618a852",
+        "linux/arm64": "sha256:815a30e9152e0a24bbc87b827b4d601c9be5aadf4f5cfc6eabb92e84daf8c66f"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:fd245bae2e8254ed475073410f8462e95fab8783dd12d1c084777b5ab53bfb86",
+      "source_ref": "docker.io/longhornio/longhorn-manager:v1.12.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.0"
+    },
+    {
+      "digest": "sha256:71c1e558b136ae302c3ac4a258eb00f20fd52c409fe6f89fb0ce612429e32191",
+      "dockerhub_ref": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+      "fingerprint": "ca3f7a71bf4ffdd2a30d8698288174ac7c341874f3aa47e715a0e0fec1f69d8f",
+      "head": "adfbcc16e43d9da443b5072f4aa3b0a768449074",
+      "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+      "platforms": {
+        "linux/amd64": "sha256:8f099964dc25baed1001857b8a7fc9ab2d56cf2ead328ad9bb26e813374a8882",
+        "linux/arm64": "sha256:1546b9b59bba14ccbf621a470d58a69ecc98d60f4abec2108ae168a206712745"
+      },
+      "previous_publication_evidence": "tests/evidence/longhorn-images-20261021.json",
+      "schema": 1,
+      "source_digest": "sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
+      "source_ref": "docker.io/longhornio/longhorn-manager:v1.12.1@sha256:83b79f57043fe1405e68bc0d4c7987accbc6bb512def3e0db12b31966c070801",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.1-kubeauto.2"
+    },
+    {
+      "digest": "sha256:acd2faa3b3ae0b4e58b04e1f7b868d0500fdd001619d8a55ee833229066e60c4",
+      "dockerhub_ref": "brinnatt/longhorn-share-manager:v1.12.0",
+      "fingerprint": "c1562a5c2749ea4a47e03df97c32dca01ce6fd667dfaae0818f19be524a9626c",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-share-manager:v1.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:b47b5972e91a8bc9a6144bca27b3923ff90fc788b15f4f07dfbd3f76cb2aaf07",
+        "linux/arm64": "sha256:f9b4c54a1a2adc1b9b635d7aa98c31bcd98ab5483338f298e2775387a2fad5ad"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:cb9d6863e4c694d82ab35f91184d9555c536ed292dad0c7dec94cb655e05787e",
+      "source_ref": "docker.io/longhornio/longhorn-share-manager:v1.12.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-share-manager:v1.12.0"
+    },
+    {
+      "digest": "sha256:26fbfc88b69583913986c72d959b60ed4fb014d4f12e433a48ebf4c4c9aaed8e",
+      "dockerhub_ref": "brinnatt/longhorn-share-manager:v1.12.1",
+      "fingerprint": "c4194cee3db62a149e1381fea677dbb78cc7b6f6240768a1315e49ee648cae95",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-share-manager:v1.12.1",
+      "platforms": {
+        "linux/amd64": "sha256:f46b02e685b1cab08a8793248fedb2c53d8c6063955f8163f8ed5501a3930362",
+        "linux/arm64": "sha256:965486e6c0ed9d5166f7b0a84f8bf5c19ff6319987356203143ec780e752470c"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:efaf47aeb4e8615e312f0880df860bf2e5b9fa53006fe075f057c6dd4089f47d",
+      "source_ref": "docker.io/longhornio/longhorn-share-manager:v1.12.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-share-manager:v1.12.1"
+    },
+    {
+      "digest": "sha256:fcb3d808a6e30f82e3939ea78be0b5a4fd20996b706618ebf49c940e7bdb481e",
+      "dockerhub_ref": "brinnatt/longhorn-support-bundle-kit:v0.0.86",
+      "fingerprint": "ed9fa266e7d43c470fc1435b1b18916bd94c7ee798b61237a8164856ff2e9374",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-support-bundle-kit:v0.0.86",
+      "platforms": {
+        "linux/amd64": "sha256:7973eec133043a63d5a6a140d2fba78b92e72bf226a7ed9971b0f49a8f8337ff",
+        "linux/arm64": "sha256:235b1129ea77a18762bb4d54108bcf7b1260c2388c8b629d7a3d247c62fabefe"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:1342641f02ee00203998bb7afc00066e821197a7cf22fc43b7e02b6ab148f86d",
+      "source_ref": "docker.io/longhornio/support-bundle-kit:v0.0.86",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit:v0.0.86"
+    },
+    {
+      "digest": "sha256:a9ed81f600883c98d0ecd20cf26c29f55211e2f77f454212e81ba22bad63d6b1",
+      "dockerhub_ref": "brinnatt/longhorn-support-bundle-kit:v0.0.92",
+      "fingerprint": "49fca6f4af7c8b5063810197319116dd2fa497af56d7851fc0e8688d1d68711d",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-support-bundle-kit:v0.0.92",
+      "platforms": {
+        "linux/amd64": "sha256:cece8bdb5a6489efbd5085543253bdf9b8aadf1bad23f7790032c5e032ab679c",
+        "linux/arm64": "sha256:a5b742f7c30ee5411478ed5a679991c4dbaa790c0ba94bf73ab5f7f5865a1665"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:02baa824d9a4174747ab9db2635ae000b1198d2d5ed3a4c69caf28724224e783",
+      "source_ref": "docker.io/longhornio/support-bundle-kit:v0.0.92",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit:v0.0.92"
+    },
+    {
+      "digest": "sha256:694d5dda898c36230ce7ed717044997340e4a404e8862762326a566ac78f9c9f",
+      "dockerhub_ref": "brinnatt/longhorn-ui:v1.12.0",
+      "fingerprint": "ddef97a55e07dc3c54823e7b0fa8ce628150d04fcdeef1eb89cde514bec9088f",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-ui:v1.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:bc346b84463fb6a151f5a35da0cc6e94b33341265e3165ea7152327733d01197",
+        "linux/arm64": "sha256:283282cfa2ad79fc47955e88e9b85a4ca9539e5b13951bfaf506c9277fce88ef"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:3870d52a2b0aa44e7f8a30d744cfe38a1a0bd130226d3f5d08795e76361ff0b7",
+      "source_ref": "docker.io/longhornio/longhorn-ui:v1.12.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-ui:v1.12.0"
+    },
+    {
+      "digest": "sha256:db56930e529affde2af853c07e2cb2f66427bb3eda0b5da8799a38d83eb698a0",
+      "dockerhub_ref": "brinnatt/longhorn-ui:v1.12.1",
+      "fingerprint": "0d68bd8a311e27ceb884b830f2f69af8f014d4d035bd2f41cfd68f21d2a9599f",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/longhorn-ui:v1.12.1",
+      "platforms": {
+        "linux/amd64": "sha256:ae470116e88ff48028dc3e62ba14516632d4204be5b829e6ad2becef97cd5197",
+        "linux/arm64": "sha256:2081299660695b20de6837cd3caea9889bea6adeec673cfc24a0fb728e182cd2"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-7-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:03a3ce6673df6e948c261fe978a695adaa8fb190d68bfe5c358af8ee3d3fbef5",
+      "source_ref": "docker.io/longhornio/longhorn-ui:v1.12.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/longhorn-ui:v1.12.1"
+    },
+    {
+      "digest": "sha256:74eb2876b915249c84e16ea242a40164cac7d2b9fc6d2f7f55eea12f99e2dd1f",
+      "dockerhub_ref": "brinnatt/memcached-exporter:v0.17.0",
+      "fingerprint": "3424d205d2d8e31d37bfba6d93d79f9889f452d96934fe1088d01097cf73b52b",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/memcached-exporter:v0.17.0",
+      "platforms": {
+        "linux/amd64": "sha256:0a255c46a512f912ad6df691a88abb169d7d8ac87c5ddaae0bbc6b541dc7b4c1",
+        "linux/arm64": "sha256:9e3f7747e23971ce331f3a354d4869c7d8a1792dc5ab7122bb1ee24583ba80da"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-6-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:995c80e3ffbe6bc1a8e6a917c3a9f2075ad04dd16b86fac63c7eeb04e7c38f9b",
+      "source_ref": "docker.io/prom/memcached-exporter:v0.17.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/memcached-exporter:v0.17.0"
+    },
+    {
+      "digest": "sha256:0a637aa695323980ab474d1060dab5e8a2c810d81f042e706eccf7aa30569e42",
+      "dockerhub_ref": "brinnatt/memcached:1.6.45-alpine",
+      "fingerprint": "49af776a14db9d07cdd1b826c7635a3b16146490fa44bae4c9f555febc320459",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/memcached:1.6.45-alpine",
+      "platforms": {
+        "linux/amd64": "sha256:3eb94410452b1afc2e0b1a645da70a162584026c695b89b4f63e2f0651cd9165",
+        "linux/arm64": "sha256:b73c56e7f22fb2fcfc334b53cc3a3aa4e751151159bbee1b71e60d68e4707021"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-6-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:6a089e37cbb8acd75c80c6c0667fe57ec54db68782fb1b3afb1d0eb265e50070",
+      "source_ref": "docker.io/memcached:1.6.45-alpine",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/memcached:1.6.45-alpine"
+    },
+    {
+      "digest": "sha256:ace9f6765c0188467cb4bb793e28bf946be4de85dd9a2c2ce416e30ce0b94458",
+      "dockerhub_ref": "brinnatt/metrics-server:v0.8.0",
+      "fingerprint": "67f2057875e8ece2cb87fb1a630b481478375f55b3554065d4f72e342adf7adf",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/metrics-server:v0.8.0",
+      "platforms": {
+        "linux/amd64": "sha256:d1d9381387647d22f0842ed7a24940e752b6204c82c550beacf3dfdeea62106f",
+        "linux/arm64": "sha256:9218ce6b50c53d4f61cfc6f9d0c4d7097486da5cbd7be19b0d410bc5db3cbd41"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-0-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:89258156d0e9af60403eafd44da9676fd66f600c7934d468ccc17e42b199aee2",
+      "source_ref": "registry.k8s.io/metrics-server/metrics-server:v0.8.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/metrics-server:v0.8.0"
+    },
+    {
+      "digest": "sha256:2cf00b96c5fc0db453a1d507b5e5d7b4c428a592a8dafcb2b1202a17dfabbed2",
+      "dockerhub_ref": "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z",
+      "fingerprint": "b9475a4b2038d960e350ce700d70fe6f4b02b2ccfc9071e3564cfe338def37a1",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z",
+      "platforms": {
+        "linux/amd64": "sha256:1f8b1ca149a1306bf595dec77b6f96f0160c176ec8a2d903b04a95004fe68906",
+        "linux/arm64": "sha256:d5dc9b52c2bd2b3170d4d49a21a0210703d6d5106fe0139b9d2602edb4ad5643"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-4-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "source_ref": "registry.access.redhat.com/ubi9/ubi-minimal:9.6@sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/minio-mc:RELEASE.2025-04-08T15-39-49Z"
+    },
+    {
+      "digest": "sha256:dfb7435e6cba55c2910f3ae878f2b8711bb592630ba2e70db7820b91357e8225",
+      "dockerhub_ref": "brinnatt/minio:RELEASE.2025-04-08T15-41-24Z",
+      "fingerprint": "8818d2a12020595391b5510d327d97223e33e72ede5747f1caf8e88d3bb65ad7",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/minio:RELEASE.2025-04-08T15-41-24Z",
+      "platforms": {
+        "linux/amd64": "sha256:ecbba50336c71d80497ce5838c2469f2405f0635baa341a3b63d4bd849578c39",
+        "linux/arm64": "sha256:9bcd420cb87fc7feb67ad367a98e8c257d7a8753f5f2cd74bfb2ec51fd81c23a"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-2-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "source_ref": "registry.access.redhat.com/ubi9/ubi-minimal:9.6@sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/minio:RELEASE.2025-04-08T15-41-24Z"
+    },
+    {
+      "digest": "sha256:d5b20d154d27657922facb92fdeb617111ea36dca881d91437c7961edeb31f64",
+      "dockerhub_ref": "brinnatt/node-exporter:v1.12.1",
+      "fingerprint": "187f9bf096c1665d7e466c05ad266d7d652c9dd2a656d01772989e9590d732f2",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/node-exporter:v1.12.1",
+      "platforms": {
+        "linux/amd64": "sha256:0d4ae7b34c48be2d2f3db6f3b22693b9fac4b6991fa5f6ba4da7be645c0da6f4",
+        "linux/arm64": "sha256:aaa5c3c8f1606b352678b5ef64aca64e3823aa016e7d3f4bce589b3f7483bf7a"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-4-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
+      "source_ref": "quay.io/prometheus/node-exporter:v1.12.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/node-exporter:v1.12.1"
+    },
+    {
+      "digest": "sha256:c35583532664662690154b66a89193c2deca5085e3735c1bb9296593eb3030b9",
+      "dockerhub_ref": "brinnatt/pause:3.10",
+      "fingerprint": "7530d5a033059d2b2e23ffa2def1b8aaa5dd83bbd8a9433b53ae49e9f91129b4",
+      "head": "0c0d7b568737618650857be2e8ef0f6001435c3a",
+      "key": "brinnatt/pause:3.10",
+      "platforms": {
+        "linux/amd64": "sha256:94b743db8a7016837cf705713fa31e9b9eed90c7cf2f8279470a597672d242b8",
+        "linux/arm64": "sha256:b80de409cd65ae18dbbcd80db117c2af31500206a1c0fdb81e1dbe17e312ee2d"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41781453150-release-evidence-0-1.zip",
+      "publication_run_id": 41781453150,
+      "run_id": "41781453150",
+      "schema": 1,
+      "source_digest": "sha256:ee6521f290b2168b6e0935a181d4cff9be1ac3f505666ef0e3c98fae8199917a",
+      "source_ref": "registry.k8s.io/pause:3.10",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/pause:3.10"
+    },
+    {
+      "digest": "sha256:15dfd553012137742c284a01cfcc052083d73298c3ba8e2cb061b02791f70d03",
+      "dockerhub_ref": "brinnatt/prometheus-admission-webhook:v0.93.0",
+      "fingerprint": "1ecc9ea81e85682e96b0b0d8e3108ca490c76d3315060fbb5209ad4d24a4a0e6",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/prometheus-admission-webhook:v0.93.0",
+      "platforms": {
+        "linux/amd64": "sha256:d6b486421349e75232b1becac79b855753692c0eccd078bdfd5b77a5c9cb99e0",
+        "linux/arm64": "sha256:e6d0df7ce8f499d1dbf3f206203c1eb439e9f90fcaf8db893e1c9a972adb6ea9"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:c529e952a9b37c0d7fe6dc7f9ca1bbdb293711f2a0c7d491508fdbd70dc834a7",
+      "source_ref": "quay.io/prometheus-operator/admission-webhook:v0.93.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus-admission-webhook:v0.93.0"
+    },
+    {
+      "digest": "sha256:318cf324d952b11b6d92a728a9b57283ee7158757a80218414cd119f832b9204",
+      "dockerhub_ref": "brinnatt/prometheus-config-reloader:v0.91.0",
+      "fingerprint": "c6eb6c52b86737e279484f3732077812694e8ae7fa2a38ad8ed4860a6ac6a82c",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/prometheus-config-reloader:v0.91.0",
+      "platforms": {
+        "linux/amd64": "sha256:09a3ab55a0cf4795cdd186a017b2835d04465972f5ce392c5451e18f17a58659",
+        "linux/arm64": "sha256:f6b7083bd249856da5a8f0eb93d524f1d142a015982e0bb9d0a3f0f157732b67"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-6-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1",
+      "source_ref": "quay.io/prometheus-operator/prometheus-config-reloader:v0.91.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus-config-reloader:v0.91.0"
+    },
+    {
+      "digest": "sha256:26970df2e82b2397ca668730084246754ca1dc08610fb1a97bbdd8250c42bb3a",
+      "dockerhub_ref": "brinnatt/prometheus-config-reloader:v0.93.0",
+      "fingerprint": "00b701773b92a9d7659d45c2b5e4fecbab1799c187f82f7c20c24409b0fc8edd",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/prometheus-config-reloader:v0.93.0",
+      "platforms": {
+        "linux/amd64": "sha256:d47211642c13366d01b9eb32447f41896927599a0a6db879c3c770df04b29554",
+        "linux/arm64": "sha256:075f762a401465faef35f27b7fdddfd58a29592d6c39a4d85693b200520027ca"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:0ccb22ca9f3f6fd9f76ce95585d18bd2e363d421c534dde710be4bd13caa551d",
+      "source_ref": "quay.io/prometheus-operator/prometheus-config-reloader:v0.93.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus-config-reloader:v0.93.0"
+    },
+    {
+      "digest": "sha256:46a55ebe9aa8e5b3c34dcdefcc98bb13f511802837c257ca1004ab729649e31b",
+      "dockerhub_ref": "brinnatt/prometheus-operator:v0.93.0",
+      "fingerprint": "ca5462876b93f5b5f23f83b637d001357f6e5ecd9adfc5f6b57439eb8a436853",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/prometheus-operator:v0.93.0",
+      "platforms": {
+        "linux/amd64": "sha256:4be67dfa8a79f21486c109b314ea58a1d259ae7d98dfb47de6c9b3acd971d775",
+        "linux/arm64": "sha256:e2705391a83ea045e550bfe118bfafc372fdefff715e7255632f96272ac18943"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:a001ed10a3823bbf2410ea347796d0e35ff8decd24fb98acbe7ab9e98d431c39",
+      "source_ref": "quay.io/prometheus-operator/prometheus-operator:v0.93.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus-operator:v0.93.0"
+    },
+    {
+      "digest": "sha256:63578cbf34dcb0b63cd4db151263556a27ab05a35aa298854f59b436f7870241",
+      "dockerhub_ref": "brinnatt/prometheus-webhook-certgen:1.8.5",
+      "fingerprint": "e2ec671c83d6542f48737cfafcd1a05a2ed5b23d6adb04da377420330f804dcc",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/prometheus-webhook-certgen:1.8.5",
+      "platforms": {
+        "linux/amd64": "sha256:1fec653ccddac48ccc7d47270c324775bb20f995a66034682fbcd4a9844a58fb",
+        "linux/arm64": "sha256:9c00a8e6dd6f274984cc804025d5b727d4cb84e26fba99d1308a58066944cc0e"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-3-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:d0e80b2f62fe43bb5e1b96adc692132fb4522e802f4cf673c09b1f94722b8cb6",
+      "source_ref": "ghcr.io/jkroepke/kube-webhook-certgen:1.8.5",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus-webhook-certgen:1.8.5"
+    },
+    {
+      "digest": "sha256:a881ea82204fdfe5e08c2b4e4d5993a8b3a3a5a8bf191072c08796c64a479423",
+      "dockerhub_ref": "brinnatt/prometheus:v3.13.1-distroless",
+      "fingerprint": "d7e496c8615700a460781fef65b49dde1ee8ac063f05a09a8c3b2bf216120b3b",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/prometheus:v3.13.1-distroless",
+      "platforms": {
+        "linux/amd64": "sha256:e48495ae114d2af8bd59173919c57898db1234a44532b7b43b5615bb234fd19e",
+        "linux/arm64": "sha256:e36a6f65ae732014888259b232f3db1afdb6a61ecc0893de3d132551906dbb2f"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-4-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:214f8427c8fba80c327bb94a75feb802ae12f2d6ca30812aa6e7d22f09bbea80",
+      "source_ref": "quay.io/prometheus/prometheus:v3.13.1-distroless",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/prometheus:v3.13.1-distroless"
+    },
+    {
+      "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+      "dockerhub_ref": "brinnatt/registry:2",
+      "fingerprint": "a5ebf62b479fb9960769ea7db614036cf4b9923788d0d222e82009df5adb1da3",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/registry:2",
+      "platforms": {
+        "linux/amd64": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+        "linux/arm64": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-2-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373",
+      "source_ref": "docker.io/library/registry:2",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/registry:2"
+    },
+    {
+      "digest": "sha256:bf28ae9ca9662e0d98acbddf9bd14c2ae6aa7c824ea04e397cac738f0c33141b",
+      "dockerhub_ref": "brinnatt/snapshot-controller:v8.6.0",
+      "fingerprint": "146e35a482e2c099d89095c82811aed44e46f40add1d0ef025dbbde3ecfc6f9d",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/snapshot-controller:v8.6.0",
+      "platforms": {
+        "linux/amd64": "sha256:90bcd8afa54dadb016789f93867fc8e82e025af0e2a4b5d1dc4f2ad10e1f3486",
+        "linux/arm64": "sha256:9bc3a8f3134aeae11d3dcf3e52dc2c582b5d451fc6527a377da783890be441a3"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-8-2.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:81e79f205083f105e573ba2ebfe5964ede7f69a154e8627f53ebbbccd3ed9f70",
+      "source_ref": "registry.k8s.io/sig-storage/snapshot-controller:v8.6.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/snapshot-controller:v8.6.0"
+    },
+    {
+      "digest": "sha256:548644953ae21b87a78adf10f563cdb3c02d34d879aee2f59be0b2e5c0046b3b",
+      "dockerhub_ref": "brinnatt/strimzi-drain-cleaner:1.6.1",
+      "fingerprint": "f501e4da19a1ce37dc32c604c5b5bb371f5881a39ede7eb5b26acee2b008db24",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/strimzi-drain-cleaner:1.6.1",
+      "platforms": {
+        "linux/amd64": "sha256:009639f9f8f4c3323f17d2b7b83460d984a63030c5405df5e3a90f5e13d5cbe0",
+        "linux/arm64": "sha256:6eeb48e184cfc15ad2f2dc7736892669d387039f885fe96dc31668ac5c9c45bc"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-4-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:5fb28e9f30d0497bfbf41e782b9746b054dc0dca5638cd0fc4710f7e1abda8a3",
+      "source_ref": "quay.io/strimzi/drain-cleaner:1.6.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/strimzi-drain-cleaner:1.6.1"
+    },
+    {
+      "digest": "sha256:db47f58ad0ed712ad2ac43aad6b89f4d3360ed6e7804cf9ebb2a5782f2292736",
+      "dockerhub_ref": "brinnatt/strimzi-kafka:1.2.0-kafka-4.3.1",
+      "fingerprint": "8d5f65e75ed110a8bbdd115a23419ff0606d91a4c41bb049fccc5b95ed20c473",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/strimzi-kafka:1.2.0-kafka-4.3.1",
+      "platforms": {
+        "linux/amd64": "sha256:6b1eb0116a75dc23b6b462e6f2a8db4289f862023c6226e4c89fe8cba3bbb86d",
+        "linux/arm64": "sha256:ecd91247287f4bf314a2502b2642a3311ca86a02fe72f3b6b54a0bf65cbad351"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-4-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:fef34b5438e8556cc08c01f3e254e47346f061b53a4e38d4289853777e0ea7f1",
+      "source_ref": "quay.io/strimzi/kafka:1.2.0-kafka-4.3.1",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/strimzi-kafka:1.2.0-kafka-4.3.1"
+    },
+    {
+      "digest": "sha256:829cb1112c14f946947a541ef45642fa30c9f25de4e44a647de171eb7f9809d9",
+      "dockerhub_ref": "brinnatt/strimzi-operator:1.2.0",
+      "fingerprint": "b466d9caf4f16113480052203e4f069d78c61b363a79e8df59076ae3e2aedd28",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "key": "brinnatt/strimzi-operator:1.2.0",
+      "platforms": {
+        "linux/amd64": "sha256:ef9e8b38a2221dec7f727b36a27fb10034c8e5a1917a3e0e8eea8ae6ec3ca11f",
+        "linux/arm64": "sha256:8656549c398de33967ec14fd8df8f3bfe8fa72e5bec3ae18f9aea2a415def0ed"
+      },
+      "publication_archive": "logs/elasticsearch-artifacts/20261104/41678041850-release-evidence-4-1.zip",
+      "publication_run_id": 41678041850,
+      "schema": 1,
+      "source_digest": "sha256:77f8fa8121a67561c3418de985783d197f51b8931e9a47f793dc0437dc6bb21f",
+      "source_ref": "quay.io/strimzi/operator:1.2.0",
+      "talkedu_ref": "hub.talkedu.cn/kubeauto/strimzi-operator:1.2.0"
+    }
+  ],
+  "kind": "existing-artifact-qualification",
+  "runs": [
+    {
+      "build_count": 0,
+      "durable_rc": 0,
+      "failure_markers": 0,
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "mode": "verify",
+      "publication_count": 0,
+      "run_id": 41757594049,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41757594049",
+      "workflow_conclusion": "success"
+    },
+    {
+      "build_count": 0,
+      "durable_rc": 0,
+      "failure_markers": 0,
+      "head": "da9e91b66e03b87262c2968466a342ce127c631a",
+      "mode": "verify",
+      "publication_count": 0,
+      "run_id": 41784003193,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41784003193",
+      "scope": [
+        "brinnatt/busybox:1.37",
+        "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+        "brinnatt/pause:3.10"
+      ],
+      "workflow_conclusion": "success"
+    }
+  ],
+  "scope": "exact 75 Elasticsearch lifecycle consumers; current qualification reuses 72 unchanged records and 3 later publication records; no new publication by this qualification",
+  "source_publication_runs": [
+    {
+      "acceptance_scope": "completed per-image publication record and dual-push marker, independently confirmed by current successful read-only verification; parent conclusion is preserved",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "run_id": 41678041850,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41678041850",
+      "workflow_conclusion": null
+    },
+    {
+      "acceptance_scope": "completed per-image publication record and dual-push marker, independently confirmed by current successful read-only verification; parent conclusion is preserved",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "run_id": 41670245576,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41670245576",
+      "workflow_conclusion": "success"
+    },
+    {
+      "acceptance_scope": "completed per-image publication record and dual-push marker, independently confirmed by current successful read-only verification; parent conclusion is preserved",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "run_id": 41673063867,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41673063867",
+      "workflow_conclusion": "success"
+    },
+    {
+      "acceptance_scope": "completed per-image publication record and dual-push marker, independently confirmed by current successful read-only verification; parent conclusion is preserved",
+      "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+      "run_id": 41674326497,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41674326497",
+      "workflow_conclusion": "success"
+    },
+    {
+      "acceptance_scope": "completed per-image publication record and dual-push marker; current successful scoped verify confirms both registries; parent conclusion preserved",
+      "head": "0c0d7b568737618650857be2e8ef0f6001435c3a",
+      "run_id": 41781453150,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41781453150",
+      "workflow_conclusion": "success"
+    },
+    {
+      "acceptance_scope": "completed per-image publication record and dual-push marker; current successful scoped verify confirms both registries; parent conclusion preserved",
+      "head": "0c0d7b568737618650857be2e8ef0f6001435c3a",
+      "run_id": 41781453150,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41781453150",
+      "workflow_conclusion": "success"
+    },
+    {
+      "acceptance_scope": "completed per-image publication record and dual-push marker; current successful scoped verify confirms both registries; parent conclusion preserved",
+      "head": "e3dab38e0f95ae3215221363d09406e1b5971f66",
+      "run_id": 41768548120,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41768548120",
+      "workflow_conclusion": "cancelled"
+    }
+  ],
+  "status": "pass"
+}

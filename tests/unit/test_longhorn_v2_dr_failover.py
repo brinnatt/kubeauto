@@ -442,6 +442,8 @@ class ActivationPrerequisiteContracts(unittest.TestCase):
                             'tests/evidence/longhorn-manager-pending-publication-20261102.json'):
                         target=root/name;target.parent.mkdir(parents=True,exist_ok=True)
                         target.write_bytes((ROOT/name).read_bytes())
+                    historical = ROOT/'tests/fixtures/longhorn-im-revision-2-constants-fd9ae3d9.py.txt'
+                    (root/'common/constants.py').write_bytes(historical.read_bytes())
                     transition=json.loads((root/'tests/fixtures/longhorn-manager-pending-pin-transition.json').read_text())
                     inputs['common/constants.py']=transition['inputs']['common/constants.py']['old_sha256']
                     if fault=='manager-unrelated':

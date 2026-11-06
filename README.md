@@ -27,6 +27,7 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 | **EFK / Loki 日志平台** | [用户与运维手册](./docs/middleware/efk/operations-manual.md) · [技术白皮书](./docs/middleware/efk/technical-whitepaper.md) · [开发手册](./docs/middleware/efk/development-manual.md) | 已交付 |
 | **Redis 高可用与分片** | [用户与运维手册](./docs/middleware/redis/operations-manual.md) · [技术白皮书](./docs/middleware/redis/technical-whitepaper.md) · [开发手册](./docs/middleware/redis/development-manual.md) | 已交付 |
 | **Percona MongoDB** | [用户与运维手册](./docs/middleware/mongodb/operations-manual.md) · [技术白皮书](./docs/middleware/mongodb/technical-whitepaper.md) · [开发手册](./docs/middleware/mongodb/development-manual.md) | 已交付 |
+| **Elasticsearch 业务检索** | [用户与运维手册](./docs/middleware/elasticsearch/operations-manual.md) · [技术白皮书](./docs/middleware/elasticsearch/technical-whitepaper.md) · [开发手册](./docs/middleware/elasticsearch/development-manual.md) | 已实现 |
 
 全部中间件的统一交付要求、状态定义和组件导航见[中间件文档入口](./docs/middleware/README.md)。组件“已交付”表示当前专项矩阵、供应链、幂等、清理和企业文档门禁均已通过；具体版本和适用边界以各组件手册及其专项矩阵为准。
 

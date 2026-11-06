@@ -44,6 +44,20 @@
       Prometheus。EFK 固定三节点、8Gi/4Gi ES 基线、Kibana 双副本、TLS 与快照引用；Kafka
       缓冲仅允许复用已启用的 Kafka 分路，禁止创建第二个 Strimzi Operator。
 
+- name: Refuse an unqualified EFK Stack version before shared platform mutation
+  ansible.builtin.assert:
+    that:
+      - logging_elasticsearch_ver == '9.5.1'
+      - logging_kibana_ver == '9.5.1'
+    fail_msg: 'ECK_SHARED_REFUSED: EFK version is outside shared ECK qualification'
+  when: logging_solution == 'efk'
+
+- name: Verify shared ECK ownership before logging mutation
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/eck.py", preflight, --namespace, "{{ logging_namespace }}", --consumer-component, logging-efk, --s3-secret, "{{ logging_efk_snapshot_secret }}", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: logging_solution == 'efk'
+  changed_when: false
+
 - name: Discover existing kubeauto logging ownership before mutation
   ansible.builtin.shell: |
     set -Eeuo pipefail
@@ -166,25 +180,17 @@
   when: logging_solution == 'loki'
 
 - name: Apply ECK CRDs and operator with fixed official manifests
-  ansible.builtin.shell: |
-    set -Eeuo pipefail
-    KC="kubectl --kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
-    cd {{ base_dir }}/roles/cluster-addon/files
-    printf '%s  %s\n' \
-      0e126dbd003f8f98c9b84f2af6263b5ac8a00b52cd9a6d6da225aa3af66cc13c eck-3.5.0-crds.yaml \
-      | sha256sum --check
-    printf '%s  %s\n' \
-      450f59d5026341226c54bbd3fafb68adcf99de8c674b47e32c22fae8aa183bf7 eck-3.5.0-operator.yaml \
-      | sha256sum --check
-    $KC apply --server-side --field-manager=kubeauto-eck-crd -f eck-3.5.0-crds.yaml
-    # Reclaim the operator image field previously touched by kubectl set image;
-    # this keeps repeated setup 07 runs idempotent without changing the image.
-    $KC apply --server-side --force-conflicts --field-manager=kubeauto-eck-operator -f eck-3.5.0-operator.yaml
-    $KC -n elastic-system set image statefulset/elastic-operator \
-      manager=registry.talkschool.cn:5000/brinnatt/eck-operator:{{ logging_eck_ver }}
-    $KC -n elastic-system rollout status statefulset/elastic-operator --timeout=10m
-  args:
-    executable: /bin/bash
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ base_dir }}/roles/cluster-addon/files/eck.py"
+      - ensure
+      - --namespace
+      - "{{ logging_namespace }}"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"
+  register: logging_eck_result
+  changed_when: "'reused=false' in logging_eck_result.stdout"
   when: logging_solution == 'efk'
 
 - name: Server validate and apply EFK selected delivery resources

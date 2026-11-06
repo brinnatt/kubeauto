@@ -14,5 +14,6 @@
 | EFK / Loki 日志平台 | 已交付 | [用户与运维手册](efk/operations-manual.md) · [技术白皮书](efk/technical-whitepaper.md) · [开发手册](efk/development-manual.md) | [日志矩阵](../../tests/logging-test-matrix.yaml) |
 | Redis 高可用与分片 | 已交付 | [用户与运维手册](redis/operations-manual.md) · [技术白皮书](redis/technical-whitepaper.md) · [开发手册](redis/development-manual.md) | [Redis 矩阵](../../tests/redis-test-matrix.yaml) |
 | Percona MongoDB | 已交付 | [用户与运维手册](mongodb/operations-manual.md) · [技术白皮书](mongodb/technical-whitepaper.md) · [开发手册](mongodb/development-manual.md) | [MongoDB 矩阵](../../tests/mongodb-test-matrix.yaml) |
+| Elasticsearch 业务检索 | 已实现 | [用户与运维手册](elasticsearch/operations-manual.md) · [技术白皮书](elasticsearch/technical-whitepaper.md) · [开发手册](elasticsearch/development-manual.md) | [Elasticsearch 矩阵](../../tests/elasticsearch-test-matrix.yaml) |
 
 组件状态以当前专项矩阵为准。只有完整现场证据达到 100% PASS，并同时通过供应链、幂等、清理和文档门禁，组件状态才能标记为“已交付”。

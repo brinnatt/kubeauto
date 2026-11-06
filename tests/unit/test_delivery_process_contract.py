@@ -41,6 +41,38 @@ DURABLE_GATE = ROOT / "tests" / "helpers" / "run-durable-gate.sh"
 
 
 class TestDeliveryProcessContract(unittest.TestCase):
+    def test_lab_cleanup_removes_owned_dropins_and_verifier_refuses_them(self):
+        # Execute the actual shell fragments against a temporary systemd tree.
+        for wipe_name, verify_name, docker_owned in (
+                ('wipe_cmd', 'verify_cmd', True),
+                ('CTRL_WIPE', 'verify_control_cmd', False)):
+            with self.subTest(scope=wipe_name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fragments = {}
+                for name in (wipe_name, verify_name):
+                    block = LAB_WIPE.split(name + "='\n", 1)[1].split("\n'\n", 1)[0]
+                    start = block.index('for unit in ', block.index('# Remove only overrides' if name == wipe_name else '# A removed main unit'))
+                    end = block.index('\ndone', start) + len('\ndone')
+                    fragments[name] = block[start:end].replace('/etc/systemd/system', str(root/'etc')).replace('/run/systemd/system', str(root/'run'))
+                for base in ('etc', 'run'):
+                    for unit in ('kube-apiserver', 'kubelet', 'docker', 'sshd'):
+                        directory = root/base/(unit+'.service.d')
+                        directory.mkdir(parents=True)
+                        (directory/'90-stale.conf').write_text('[Service]\nExecStart=\nExecStart=/old/server\n')
+                    (root/base/'etcd.service.d').symlink_to(root/'missing')
+                def verify():
+                    return subprocess.run(['bash', '-eu', '-c', 'bad=0\n'+fragments[verify_name]+'\nexit "$bad"'], capture_output=True, text=True, timeout=5)
+                self.assertEqual(1, verify().returncode)
+                result = subprocess.run(['bash', '-eu', '-c', fragments[wipe_name]], capture_output=True, text=True, timeout=5)
+                self.assertEqual(0, result.returncode, result.stderr)
+                result = verify()
+                self.assertEqual(0, result.returncode, result.stdout+result.stderr)
+                for base in ('etc', 'run'):
+                    self.assertTrue((root/base/'sshd.service.d/90-stale.conf').is_file())
+                    self.assertEqual(not docker_owned, (root/base/'docker.service.d').exists())
+                    self.assertFalse((root/base/'etcd.service.d').is_symlink())
+                    self.assertFalse((root/base/'kube-apiserver.service.d').exists())
+
     def test_unit_tests_do_not_dirty_the_tracked_deploy_log(self):
         self.assertIn("mktemp -d /tmp/kubeauto-unit-logs.", UNIT_RUNNER)
         self.assertIn('export KUBEAUTO_LOG_DIR="$UNIT_LOG_DIR"', UNIT_RUNNER)
@@ -610,17 +642,29 @@ fi
     def test_repository_has_root_agent_contract(self):
         self.assertIn("tests/enterprise-test-matrix.yaml", AGENTS)
         self.assertIn("LAB_CLEAN_VERIFY_PASS", AGENTS)
-        self.assertIn("six sibling repositories", AGENTS)
+        self.assertIn("完成一次六仓信息审计", AGENTS)
 
-    def test_ext_images_rule_has_examples_without_a_duplicate_tools_policy(self):
+    def test_ext_images_rule_preserves_incremental_scope_and_artifact_admission(self):
         self.assertNotIn("### Tools fixture and external-artifact supply chain", AGENTS)
+        scope = AGENTS.split("### 增量交付与范围判定", 1)[1].split("### 企业文档质量契约", 1)[0]
+        for required in (
+            "六仓是兼容性审计单元",
+            "不能将本组件消费的全部镜像直接当成重建集合",
+            "网络、认证或证据读取失败先定位原因",
+            "实际发布集合包含于允许集合",
+            "仅在用户明确授权本次整仓全量范围后使用",
+            "新增中间件仍须一次最终干净完整回归",
+        ):
+            self.assertIn(required, scope)
         rules = AGENTS.split("## Non-negotiable delivery rules", 1)[1]
-        example = rules.split("Example (illustrative", 1)[1]
-        self.assertIn("mysql:8.0.46", example)
-        self.assertIn("StarRocks-3.5.12-centos-amd64.tar.gz", example)
-        self.assertIn("kafka_2.13-4.3.1.tgz", example)
-        self.assertIn("GitHub Actions", example)
-        self.assertIn("hub.talkedu.cn", example)
+        artifacts = rules.split("- Prefer `hub.talkedu.cn`", 1)[0]
+        for required in (
+            "inventory its production, upgrade, rollback, backup, performance and test-infrastructure dependencies",
+            "Follow the scope and reuse rules above",
+            "official-source, version-pinned Dockerfiles",
+            "Reused and newly published artifacts must both have verified TalkEdu and Docker Hub manifests/digests",
+        ):
+            self.assertIn(required, artifacts)
 
     def test_test_gate_change_ladder_is_a_permanent_delivery_contract(self):
         for required in (

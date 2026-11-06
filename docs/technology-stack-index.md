@@ -39,6 +39,7 @@ flowchart LR
 | 指标 | metrics-server | 即时资源指标，不做历史存储 | [第 12 章](./whitepaper/12-addons-observability.md#123-metrics-server) | [插件安装](./operations-manual.md#1337集成插件) | 架构 + SOP |
 | 监控 | Prometheus Operator、Prometheus、Alertmanager、Grafana | 可选；本地镜像；etcd TLS 抓取 | [Prometheus 白皮书](./middleware/prometheus/technical-whitepaper.md) | [Prometheus 用户与运维手册](./middleware/prometheus/operations-manual.md) | 已交付；完整开发与专项验收入口见[中间件文档](./middleware/README.md) |
 | 日志 | ECK/Elasticsearch/Kibana/Fluent Bit 或 Loki/Alloy | 两条路线互斥；默认关闭；依赖 Prometheus | [EFK/Loki 白皮书](./middleware/efk/technical-whitepaper.md) | [EFK/Loki 运维手册](./middleware/efk/operations-manual.md) | 已交付；完整开发与专项验收入口见[中间件文档](./middleware/README.md) |
+| 业务检索 | Elasticsearch 9.5.6 / ECK 3.5.0 | standard 与 compact；默认关闭；与 EFK 数据及凭据隔离 | [Elasticsearch 白皮书](./middleware/elasticsearch/technical-whitepaper.md) | [Elasticsearch 用户与运维手册](./middleware/elasticsearch/operations-manual.md) | 已实现；现场验收待完成；[开发与专项入口](./middleware/README.md) |
 | 入口 | ingress-nginx | NodePort + 节点标签；可接 ex-lb | [第 12 章](./whitepaper/12-addons-observability.md#126-ingress-nginx) | [Ingress](./operations-manual.md#13375ingress-nginx) | 架构 + SOP |
 | UI | Kubernetes Dashboard + Kong | 可选；高权限账号必须治理 | [第 12 章](./whitepaper/12-addons-observability.md#124-kubernetes-dashboard) | [Dashboard](./operations-manual.md#13373dashboard) | 架构 + SOP |
 | 本地存储 | OpenEBS Hostpath / LVM | 两条独立本地卷链路，不自带副本/RWX | [第 16 章](./whitepaper/16-storage-openebs.md) | [§1.3.4](./operations-manual.md#134openebs-生产运维) | 专章 + 完整 SOP |

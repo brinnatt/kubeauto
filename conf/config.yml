@@ -566,6 +566,55 @@ ceph_csi_resizer_ver: "__ceph_csi_resizer__"
 ceph_csi_snapshotter_ver: "__ceph_csi_snapshotter__"
 
 
+# Business Elasticsearch is independent from the logging data plane. The
+# cluster shares one verified ECK 3.5.0 installation with EFK, never its data.
+elasticsearch_install: "no"
+elasticsearch_state: "present"
+elasticsearch_namespace: "elasticsearch"
+elasticsearch_name: "search"
+elasticsearch_ver: "__business_elasticsearch__"
+elasticsearch_eck_ver: "3.5.0"
+# Legacy consumer upgrade fields must remain empty; nonempty values are refused.
+elasticsearch_eck_upgrade_from: ""
+elasticsearch_eck_upgrade_change_id: ""
+# Shared ECK maintenance is executed only with setup 07 --tags eck-platform.
+eck_platform_upgrade_from: ""
+eck_platform_change_id: ""
+elasticsearch_topology: "standard"
+elasticsearch_master_nodes: []
+elasticsearch_data_nodes: []
+# Eligible hosts may include spares; 0 creates one member per eligible host.
+# A positive count is >=3; compact always has exactly three mixed members.
+elasticsearch_data_count: 0
+elasticsearch_storage_class: ""
+elasticsearch_master_pvc_size: "20Gi"
+elasticsearch_data_pvc_size: "200Gi"
+elasticsearch_master_cpu: "2"
+elasticsearch_master_memory: "4Gi"
+elasticsearch_data_cpu: "4"
+elasticsearch_data_memory: "16Gi"
+elasticsearch_data_heap: "8g"
+elasticsearch_manage_sysctl: true
+elasticsearch_tolerate_control_plane: false
+elasticsearch_node_ssh_user: "root"
+elasticsearch_http_tls_secret: ""
+elasticsearch_file_realm_secret: ""
+elasticsearch_admin_secret: ""
+elasticsearch_s3_secret: ""
+elasticsearch_s3_ca_configmap: ""
+elasticsearch_repository_role: "writer"
+elasticsearch_kibana_enabled: false
+elasticsearch_smartcn_enabled: false
+elasticsearch_network_policy_enabled: true
+elasticsearch_exporter_enabled: true
+elasticsearch_exporter_secret: ""
+elasticsearch_monitoring_namespace: "monitor"
+elasticsearch_monitoring_release: "prometheus"
+elasticsearch_wait_seconds: 1800
+# Immutable one-shot requests carry stable change IDs. Credentials are Secret
+# references; restore targets must use a readonly repository and empty indices.
+elasticsearch_requests: []
+
 # Logging is an independent production branch.  It remains inert until both
 # logging_install=yes and exactly one logging_solution are selected.  The
 # role never accepts plaintext credentials: create the referenced Secrets and

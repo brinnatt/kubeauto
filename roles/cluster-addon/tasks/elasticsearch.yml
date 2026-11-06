@@ -1,0 +1,98 @@
+---
+- name: 创建 Elasticsearch 私有渲染目录
+  ansible.builtin.file:
+    path: "{{ cluster_dir }}/yml/elasticsearch"
+    state: directory
+    mode: "0700"
+
+- name: 保存 Elasticsearch 非敏感配置及 Secret 引用
+  ansible.builtin.copy:
+    content: "{{ vars | dict2items | selectattr('key', 'match', '^elasticsearch_') | items2dict | to_nice_json }}"
+    dest: "{{ cluster_dir }}/yml/elasticsearch/input.json"
+    mode: "0600"
+
+- name: 在任何集群变更前验证 Elasticsearch 配置
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", validate, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json"]
+  changed_when: false
+
+- name: 在任何集群变更前核验 Elasticsearch 所有权与平台输入
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", preflight, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  changed_when: false
+
+- name: 核验共享 ECK 的唯一性、版本和管理范围
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/eck.py", preflight, --namespace, "{{ elasticsearch_namespace }}", --consumer-component, elasticsearch, --s3-secret, "{{ elasticsearch_s3_secret }}", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present'
+  changed_when: false
+
+- name: 按显式状态卸载业务资源并保留 PVC、客户凭据及共享 ECK
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", absent, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'absent'
+
+- name: 收敛 Elasticsearch 主机 mmap 前置
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", sysctl, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present'
+  changed_when: false
+
+- name: 安装或复用同一共享 ECK
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/eck.py", ensure, --namespace, "{{ elasticsearch_namespace }}", --consumer-component, elasticsearch, --s3-secret, "{{ elasticsearch_s3_secret }}", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present'
+  register: elasticsearch_eck_result
+  changed_when: "'reused=false' in elasticsearch_eck_result.stdout"
+
+- name: 生成固定 Elasticsearch 声明
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", render, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  register: elasticsearch_render
+  when: elasticsearch_state == 'present'
+  changed_when: false
+
+- name: 创建已通过所有权校验的业务命名空间
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", namespace, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present'
+
+- name: 写入 Elasticsearch 声明
+  ansible.builtin.copy:
+    content: "{{ elasticsearch_render.stdout }}"
+    dest: "{{ cluster_dir }}/yml/elasticsearch/cluster.json"
+    mode: "0600"
+  when: elasticsearch_state == 'present'
+
+- name: 服务端校验 Elasticsearch 声明
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", apply, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig", --dry-run=server, --manifest, "{{ cluster_dir }}/yml/elasticsearch/cluster.json"]
+  when: elasticsearch_state == 'present'
+  changed_when: false
+
+- name: 收敛已通过服务端校验的 Elasticsearch 声明
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", apply, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig", --dry-run=none, --manifest, "{{ cluster_dir }}/yml/elasticsearch/cluster.json"]
+  when: elasticsearch_state == 'present'
+  register: elasticsearch_apply
+
+- name: 等待当前代次、数据面、业务 TLS 及版本就绪
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", health, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present'
+  changed_when: false
+
+- name: 执行具备稳定变更身份的 Elasticsearch 运维请求
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", operations, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present' and elasticsearch_requests | length > 0
+
+- name: 收敛 Elasticsearch 指标身份及采集声明
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", enable-monitoring, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present'
+
+- name: 收敛 Elasticsearch 客户端入口网络策略
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ base_dir }}/roles/cluster-addon/files/elasticsearch.py", network, --config, "{{ cluster_dir }}/yml/elasticsearch/input.json", --kubeconfig, "{{ cluster_dir }}/kubectl.kubeconfig"]
+  when: elasticsearch_state == 'present'

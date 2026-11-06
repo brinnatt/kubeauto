@@ -13,6 +13,16 @@ Before changing code or running a lab test, read:
 
 For a new middleware branch, also read and follow `docs/middleware/delivery-playbook.md`.
 
+### 增量交付与范围判定
+
+本节统一规定六仓的任务范围、制品复用和发布准入。各仓验收阶梯、交付规范及临时脚本均在本次用户授权范围内适用，不得自行增加全量构建或无关回归前置条件。
+
+1. 六仓是兼容性审计单元。实际修改、构建、发布和回归按本次变更及已证明的依赖影响确定；“发布单元”“制品前置”“完整验收”均不授权重建全部镜像或回归无关功能。
+2. 执行前区分本次新增、变化、已证明缺失或失效、可复用的制品，确定允许发布集合。核对精确版本、目录映射、构建策略/context fingerprint、目标架构、发布记录及当前双端 digest 后复用；只有前三类进入构建集合，不能将本组件消费的全部镜像直接当成重建集合。依赖未知先做影响分析；网络、认证或证据读取失败先定位原因，不得据此默认重建。
+3. 任何可能触发发布的入口（含自动 push 和失败重跑）执行前，在对话中列明仓库、分支、SHA、实际 mode、镜像名单与数量及必要性，并核对实际发布集合包含于允许集合。集合无法确定或越界时停止触发；`changed` 也须核对真实计划，不能只凭模式名判断。增量任务使用 `changed/selected`；`full` 或其他会重建整仓的入口，仅在用户明确授权本次整仓全量范围后使用，不从“开始实现和回归”推定授权。
+4. 完整验收覆盖本次交付的全部适用矩阵项；新增中间件仍须一次最终干净完整回归。既有有效依赖证据按执行效率契约复用，共享契约变化只补受影响场景，不降低验收覆盖，也不扩大到无关产品。仅修改文档或提示词时按文档契约检查。
+5. 范围解释、选型和评审建议默认在对话中给出，不新建 `internal/`、方案稿或状态报告。正式矩阵、必要验收证据和最终客户文档仍按各自契约维护。已授权范围内自主推进；确需扩大范围时，先完成可独立完成的工作，再说明具体增量及依据，取得对应授权。
+
 ### 企业文档质量契约
 
 编写、修订或评审技术文档前，必须读取并执行 `docs/documentation-quality-standard.md`；中间件同时遵守交付规范第九章。该标准是六仓文档质量的单一权威来源，适用于客户内容、操作步骤、原理解释、参考及文档相关提示词。
@@ -68,13 +78,9 @@ CLI and must remain independently buildable, runnable and supportable.
   `TOOLS_CLEAN_VERIFY_PASS`. Historical Tier3 `--help` evidence is not a tools
   delivery sign-off.
 
-Inspect all six sibling repositories under `/home/brinnatt/projects` before and after a change. Preserve unrelated user changes.
-
 ## Non-negotiable delivery rules
 
-- Treat the six repositories as one release unit. Audit constants, image tags, Dockerfiles, GitHub Actions, TalkEdu private-registry push, Docker Hub push, and fallback order after every relevant change.
-- For every future feature branch that depends on external images, make `kubeauto-ext-images-dockerfile` an artifact prerequisite rather than discovering images during live testing. Inventory production, upgrade, rollback, backup, performance and test-infrastructure images; reuse an existing exact pin or add an official-source, version-pinned Dockerfile under the owning functional directory; register it in the dual-push CI matrix; pass the catalog validator; and verify the TalkEdu and Docker Hub manifests/digests after publication before starting the normal live gate. Prefer the TalkEdu copy in China. Treat a dynamic public mirror only as a temporary runtime bridge before fixed artifacts are published; never make repeated public downloads the normal test path.
-  Example (illustrative): a MySQL test may reuse published `mysql:8.0.46`, `mysql:8.4.x` and `mysql:9.x` images; a minimal Rocky Linux image may package a large file such as `StarRocks-3.5.12-centos-amd64.tar.gz`; Kafka tests may package `kafka_2.13-4.3.1.tgz` or `apache/kafka:4.3.1`. GitHub Actions, running against international upstream sources, can build and dual-push the same immutable artifact to the TalkEdu Huawei Cloud registry and Docker Hub. After the dual-push succeeds, China test and delivery paths pull `hub.talkedu.cn` first for high-speed access and retain the verified Docker Hub/upstream fallback, so normal testing does not depend on repeated downloads or continued public-network availability.
+- Every feature that consumes external images must inventory its production, upgrade, rollback, backup, performance and test-infrastructure dependencies before live testing. Follow the scope and reuse rules above. For artifacts that need publication, add official-source, version-pinned Dockerfiles under the owning functional directory in `kubeauto-ext-images-dockerfile`, register the dual-push CI entries and pass the catalog validator. Reused and newly published artifacts must both have verified TalkEdu and Docker Hub manifests/digests before the normal live gate; do not discover missing images during live testing.
 - Prefer `hub.talkedu.cn` and Huawei mirrors for the China delivery path; retain Docker Hub/upstream fallbacks. Downloads must be checksum-verified and atomically replaced so partial files cannot be accepted.
 - Preserve the pinned accelerator and fallback configuration in already-delivered code unless a bug is proven with current evidence. For a newly added middleware branch, public accelerators and proxy mirrors are test-time, runtime-only aids because they may disappear or be blocked without notice; never persist a dynamically discovered accelerator in that branch's production code, CI, documentation or default configuration. Inject temporary test sources through non-persisted runtime parameters and verify checksums or manifest digests before use.
 - Use the smallest readable, maintainable, Pythonic change consistent with upstream design.
@@ -96,6 +102,20 @@ delivery requirements to reach GA readiness; preserve 100% acceptance coverage.
 GA readiness, document acceptance and actual customer sign-off are separate
 claims: submit reviewable evidence and never sign on the customer's behalf.
 
+- New middleware must qualify its delivery path before its first live run.
+  Follow [the standard onboarding sequence](docs/middleware/delivery-playbook.md#102-扩展步骤):
+  compare the existing mature runners, reuse applicable supervision and recovery
+  contracts, and declare only this product's differences in its existing matrix
+  and tests. Its local contracts must prove actual launch scope, independent
+  module entry points and handoffs, first-failure stopping, scoped recovery,
+  dependency-based evidence invalidation, and the final complete-run path.
+  A runner that can only restart a broad chain is not ready for live testing.
+  Check the actual command plan against the authorized scope before execution;
+  a mode name or an automated request to rebuild/retest is not authorization.
+  A local change that unexpectedly invalidates unrelated evidence blocks the
+  next launch until its impact is explained or the gate is repaired. Use the
+  existing runners, matrix and focused contracts; this is not a requirement to
+  build a new framework or repeat unrelated delivered branches.
 - Plan execution from the matrix capabilities and remaining evidence gaps.
   Use existing matrix/evidence records to identify prerequisites, owning product
   entry points, host/disk leases, shared mutable resources, capacity budgets and
@@ -137,9 +157,10 @@ claims: submit reviewable evidence and never sign on the customer's behalf.
   identity, shared service health, data integrity and absence of fault residue.
   Rebuild only the smallest dependent environment when these checks fail or
   cannot prove isolation. Do not duplicate setup or repeat unrelated scenarios.
-  A complete clean regression remains mandatory after accepted changes, with its
-  terminal marker, durable `rc=0`, zero failure markers, current matrix evidence
-  and final `LAB_CLEAN_VERIFY_PASS`.
+  Complete the clean regression required by the owning matrix after accepted
+  product or test-gate changes; a new middleware requires its complete clean run.
+  Require its terminal marker, durable `rc=0`, zero failure markers, current
+  matrix evidence and final `LAB_CLEAN_VERIFY_PASS`.
 - Isolate a failure to branches whose prerequisites or shared state it invalidates.
   Continue independent ready work after proving its boundary remains healthy.
   Mark each completed module pass promptly when its current product success
@@ -152,20 +173,47 @@ claims: submit reviewable evidence and never sign on the customer's behalf.
   the owning acceptance path; do not keep adding qualifications, repeat accepted
   audits or rebuild unrelated prerequisites without a proven gap or change.
   Continue authorized work toward the remaining matrix and final clean run.
-- Report two levels of fractional progress for every new middleware or feature
-  delivery: accepted matrix
-  items / applicable matrix items, and accepted stages / planned stages in the
-  current run. Use the matrix and fixed runner as the counting sources; count
-  acceptance only under the evidence rules above. Explain any denominator or
-  scope change; never silently reduce it or present stage progress as GA.
-  At launch, stage changes and exceptions, report both fractions, active parallel
-  branches, failures/blockers and the next exit, for example:
-  `整体验收 53/54；本轮全量 14/56，零失败；当前：…；下一出口：…`.
+- 矩阵是验收与汇报的唯一主线。固定汇报为：
+  `矩阵验收 X/N PASS，待验收 Y 项（失败 F 项）；能力阶段 S/T；当前：矩阵 ID、名称、所属子项及执行状态；下一出口：…`。
+  本条是各中间件进度汇报的单一规则；组件手册只补矩阵路径、只读状态命令及产品差异，
+  不复制另一套计数定义。汇报前收取已结束模块的证据，再使用所属矩阵的固定只读入口
+  校验并生成同一份状态快照；总数、分组和明细均取自该快照，不凭记忆、上次回复、
+  摘要或日志 marker 心算。只有已核验的当前完整证据才能支持 PASS。
+  N 是适用父项数，X 是其中 pass 数，Y 是 pending 与 fail 数之和（N=X+Y），
+  F 是 fail 数且包含在 Y 内，不能再加一次。S 是所属父项全部 pass 的能力组数，
+  T 是矩阵能力组总数；对用户解释为“已全部验收的能力组”，不称为本轮完成阶段。
+  校验失败时改报“矩阵校验未通过，当前验收计数待核验”，列出拒绝的 ID、原因及最小
+  修复出口；若引用原计数，必须标成“矩阵登记值，尚未通过当前校验”。不得继续使用
+  正常 PASS 总览、擅自扣减猜测有效数、批量重置状态或为恢复计数修改旧证据。
+  模块结束后立即收取、核验并更新矩阵，不等待父链结束；独立子模块通过不能改签父链结果。
+  启动、阶段切换和异常时，用表格逐组列出已通过及未通过的 ID；能力组保留原 ID 并加中文
+  含义，待验收项保留矩阵原 ID 和名称。表格另列当前子项、实际执行状态及下一出口；
+  较长的已通过清单可压缩为连续 ID 区间，不能隐藏未通过项或用执行模块名替换能力组。
+  子项沿父项原 ID/名称汇报，不增加总分母，未完成父项不能计 PASS；子项独立通过须说明
+  其证据和剩余子项，没有独立记录时只能称“已观察到成功标志，尚待核验”。
+  矩阵状态与最近运行结果分别说明：父项 pending、最近尝试失败时，同时报该 ID 的 pending、
+  失败 run ID/退出码及失败子项；“矩阵失败 F=0”不表示运行从未失败。执行中、未启动、
+  阻塞、子项已完成但父项待验收必须明确区分，不自行向矩阵增加状态字段。
+  最终完整回归仍是矩阵自身的最终项；只有该项运行时，额外标明其 run ID、
+  `最终回归：已完成步骤/本轮计划步骤`，不得以它替换矩阵验收或能力阶段计数。
+  保留旧日志不等于旧证据失效，也不等于当前 PASS；按实际依赖核验后复用。
+  受影响项退回 pending 时，必须列出 ID、变更依赖、最小补测和计数变化；未知依赖先分析，
+  不得整体归零，不以“历史覆盖/当前有效/本轮”三个未解释的总数代替矩阵汇报。
+  每次计数变化同时说明“哪些 ID 从何状态变为何状态、X/S 前后值”；仅换 run ID、
+  续跑或启动最终回归不改变已接受状态。计数未变时说明当前子项的实际进展，不制造增量。
+  每轮执行进度绑定 run ID 和范围，从已接受的 ID 推导；拒绝混用运行或丢失同轮已完成项，
+  保留原状态。实际并行分支、阻塞与下一出口必须据现场说明，尚未启动的分支不得称为并行中。
   During long waits, provide a heartbeat at least every 60 seconds, even when
-  counts are unchanged. Estimate remaining time from comparable measured stage
-  durations, the critical path and elapsed time; state uncertainty and do not
-  extrapolate linearly from stage counts. This reporting rule does not require
-  extra tests, remote polling or a new progress framework.
+  counts are unchanged. Identify the actual image/scenario, build/compile/test
+  step, elapsed time, recent observable progress and next exit; shard counts or
+  repeated "still running" messages alone are insufficient. Estimate remaining
+  time from comparable measured stage durations, the critical path and elapsed
+  time; state uncertainty and do not extrapolate linearly from stage counts.
+  At a configured timeout, a material overrun against comparable measurements,
+  or loss of observable progress, diagnose the first slow/stalled step and state
+  the evidence for continuing, cancelling or repairing it. Do not shorten a
+  required test window or bypass acceptance to meet an estimate. This reporting
+  rule does not require extra tests, remote polling or a new progress framework.
 - Never optimize by downgrading coverage, accepting incomplete module evidence
   or treating a running Pod as a business result.
 
@@ -194,7 +242,11 @@ new middleware and maintenance of delivered branches.
    or focused gate blocks a full middleware run; fix the single proven causal
    layer, re-run its contract, then re-run only that focused branch.
 4. Finish the affected module gates before starting one final clean full
-   middleware regression. A healthy runner-owned baseline is reusable for
+   middleware regression. The fixed final launcher must verify current PASS
+   evidence for every applicable prerequisite matrix item, including documentation;
+   exclude only the final regression item itself. Missing, pending, failed or
+   stale evidence refuses launch before any lab mutation. A contract must prove
+   this refusal through the real launcher. A healthy runner-owned baseline is reusable for
    focused gates; an existing cluster alone is not residue. The runner must
    prove no stale fault, foreign resource or failed-module fixture remains.
    The final full run still requires its normal clean setup and final cleanup.
@@ -293,9 +345,9 @@ Do not commit runtime logs, PID files, Python caches, remote cluster directories
 
 ## 六仓协作与安全边界
 
-请使用中文协作。先读适用的父目录及本仓 AGENTS.md，再读测试矩阵、运行手册和所涉及固定版本的官方文档、源码。不得用历史 PASS 或猜测替代当前证据。
+请使用中文协作。先读适用的父目录及本仓 AGENTS.md，再读测试矩阵、运行手册和所涉及固定版本的官方文档、源码。不得用未经适用性核对的历史 PASS 或猜测替代当前证据。
 
-每次进入六仓中的任一仓，先完成一次六仓信息审计：读取以下六份 AGENTS.md，检查各仓 `git status --short`、当前分支及 HEAD，并阅读本次依赖所涉及的 Dockerfile、有效 workflow 和版本定义；交付前再次检查。读取不等于授权修改，保护已有用户改动和正在运行的其它任务。
+本次任务首次进入六仓时，完成一次六仓信息审计：读取以下六份 AGENTS.md，检查各仓 `git status --short`、当前分支及 HEAD，并阅读本次依赖所涉及的 Dockerfile、有效 workflow 和版本定义；后续按相关输入变化补查，交付前再次核对六仓状态。读取不等于授权修改，保护已有用户改动和正在运行的其它任务。
 
 | 仓库（均位于 `/home/brinnatt/projects`） | 权威职责与依赖 |
 | --- | --- |
@@ -306,7 +358,7 @@ Do not commit runtime logs, PID files, Python caches, remote cluster directories
 | `kubeauto-ext-bin-sp1-dockerfile` | `/ext-bin` 中 nginx、chrony、keepalived 编译制品；Dockerfile、workflow；由 ext-bin 消费 |
 | `kubeauto-ext-images-dockerfile` | 外部组件及其运维、升级、测试镜像目录；Dockerfile、CI matrix、catalog validator、发布证据 |
 
-各仓可以独立开发。独立变更只修改所属产品；跨仓变更先列出实际依赖映射、受影响版本/消费者、验证入口及清理边界，再按依赖顺序推进。六仓是兼容性审计单元，不意味着每次都重建全部镜像或回归无关功能。缺少某仓、指引或依赖证据时先定位本地路径和现有文档，明确缺口，不自行假定兼容。
+各仓可以独立开发。跨仓变更先列出实际依赖映射、受影响版本/消费者、验证入口及清理边界，再按依赖顺序推进。范围、制品复用及发布准入统一遵守[主仓增量交付规则](#增量交付与范围判定)，不在各仓另设全量前置条件。缺少某仓、指引或依赖证据时先定位本地路径和现有文档，明确缺口，不自行假定兼容。
 
 涉及制品时核对消费者常量/模板、Dockerfile 固定版本、有效 Actions 触发条件、AMD64/ARM64、TalkEdu 与 Docker Hub tag/digest、下载校验和回退顺序。国内路径优先 `hub.talkedu.cn/kubeauto`，保留已验证的 Docker Hub/上游回退；禁止把临时发现的公共代理固化到新功能。新增中间件须先读 `kubeauto/docs/middleware/delivery-playbook.md`，制品通过后才能进入现场门禁。
 
@@ -320,4 +372,4 @@ Do not commit runtime logs, PID files, Python caches, remote cluster directories
 
 Git 源码传输和 Actions API 使用不同认证边界。现有 `origin` 使用 GitHub SSH；先通过 `GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=10' git ls-remote origin refs/heads/dev` 核验读取、目标分支和 SHA，再使用同一固定 Git 入口提交已验证的所属仓变更。Actions token 的仓库元数据即使显示 `push/admin`，也不能证明 token 获得 `contents=read/write`；遇到 `Resource not accessible by personal access token` 时检查 `X-Accepted-GitHub-Permissions`，并复用现有 SSH Git 认证，不索取重复凭据或扩大 token 权限。源码推送前审查明确文件列表，保留无关用户改动；推送后由 Actions 凭据读取并核验真实 run、SHA 和制品。
 
-发布/触发前核对仓库、分支、SHA、workflow mode 与所选镜像数量。记录 run URL、结论、输入 fingerprint、两端双架构 digest、artifact SHA256 和 durable rc；失败先按所属仓阶梯定位，不全量重跑。凭据读取方法依照官方认证说明：https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api 。本地路径仅为认证入口，客户文档和镜像中不得包含它或任何秘密。
+发布证据保留 run URL、结论、输入 fingerprint、两端双架构 digest、artifact SHA256 和 durable rc；失败先按所属仓阶梯定位，再按范围判定规则选择修复或重跑集合。凭据读取方法依照官方认证说明：https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api 。本地路径仅为认证入口，客户文档和镜像中不得包含它或任何秘密。

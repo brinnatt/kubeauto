@@ -1,0 +1,22 @@
+---
+- name: 校验平台 ECK 维护输入
+  ansible.builtin.assert:
+    that:
+      - eck_platform_upgrade_from | default('') == '3.4.1'
+      - eck_platform_change_id | default('') is match('^[a-z0-9][a-z0-9-]{0,39}$')
+    fail_msg: 平台 ECK 升级仅支持已验收的 3.4.1→3.5.0 路径，必须提供稳定变更 ID。
+
+- name: 经平台入口升级共享 ECK 并核对所有消费者身份
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ base_dir }}/roles/cluster-addon/files/eck.py"
+      - upgrade
+      - --namespace
+      - elastic-system
+      - --upgrade-from
+      - "{{ eck_platform_upgrade_from }}"
+      - --change-id
+      - "{{ eck_platform_change_id }}"
+      - --kubeconfig
+      - "{{ cluster_dir }}/kubectl.kubeconfig"

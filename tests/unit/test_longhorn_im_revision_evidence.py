@@ -241,12 +241,22 @@ class RevisionEvidenceContracts(unittest.TestCase):
         frozen_product_inputs = {
             'conf/config.yml': 'longhorn-im-revision-2-config-be4e0410.yml.txt',
             'service/cluster/manager.py': 'longhorn-im-revision-2-cluster-manager-ee46940e.py.txt',
+            'service/cluster/downloader.py': 'longhorn-im-revision-2-downloader-b66cf3de.py.txt',
+            'service/cluster/registry.py': 'longhorn-im-revision-2-registry-89f06daf.py.txt',
         }
         for name, filename in frozen_product_inputs.items():
             fixture = ROOT/'tests/fixtures'/filename
             expected = plan['profiles']['v2']['inputs'][name]['sha256']
             self.assertEqual(expected, hashlib.sha256(fixture.read_bytes()).hexdigest())
             shutil.copyfile(fixture, base/name)
+        # This immutable cohort must not reconstruct old bytes from today's
+        # constants: adding a default-disabled middleware is unrelated to its
+        # historical receipt. Keep the exact already-bound transition input.
+        fixture = ROOT/'tests/fixtures/longhorn-im-revision-2-constants-fd9ae3d9.py.txt'
+        transition = json.loads((ROOT/'tests/fixtures/longhorn-manager-pending-pin-transition.json').read_text())
+        self.assertEqual(transition['inputs']['common/constants.py']['sha256'],
+                         hashlib.sha256(fixture.read_bytes()).hexdigest())
+        shutil.copyfile(fixture, base/'common/constants.py')
         # The immutable .2 cohort predates nullable disk-status handling. Its
         # exact populated-state source remains an isolated historical fixture.
         path = base/REVISION.SOURCE

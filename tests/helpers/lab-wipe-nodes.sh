@@ -94,6 +94,13 @@ for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-sched
   printf "unit_%s=%s\\n" "$unit" "${state:-unknown}"
   case "$state" in inactive|unknown) ;; *) bad=1 ;; esac
 done
+# A removed main unit does not remove its local systemd overrides.
+for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-scheduler kube-lb etcd containerd docker cri-dockerd; do
+  for directory in /etc/systemd/system /run/systemd/system; do
+    path="$directory/$unit.service.d"
+    if test -e "$path" || test -L "$path"; then echo "residue=$path"; bad=1; fi
+  done
+done
 for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/docker /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/docker /etc/crictl.yaml /etc/kube-lb /opt/local-path-provisioner; do
   if test -e "$path"; then echo "residue=$path"; bad=1; fi
 done
@@ -127,6 +134,13 @@ for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-sched
   state=$(systemctl is-active "$unit" 2>/dev/null || true)
   printf "unit_%s=%s\\n" "$unit" "${state:-unknown}"
   case "$state" in inactive|unknown) ;; *) bad=1 ;; esac
+done
+# A removed main unit does not remove its local systemd overrides.
+for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-scheduler kube-lb etcd containerd cri-dockerd; do
+  for directory in /etc/systemd/system /run/systemd/system; do
+    path="$directory/$unit.service.d"
+    if test -e "$path" || test -L "$path"; then echo "residue=$path"; bad=1; fi
+  done
 done
 for path in /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/etcd /etc/kubernetes /etc/cni /etc/containerd /etc/crictl.yaml /etc/kube-lb /opt/local-path-provisioner /data/registry /var/snap/docker/common/kubeauto-registry /var/tmp/kubeauto-registry-reboot.expected; do
   if test -e "$path"; then echo "residue=$path"; bad=1; fi
@@ -243,6 +257,10 @@ rm -rf /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/docker 
 if hostname -I 2>/dev/null | tr " " "\\n" | grep -qx "192.168.47.137"; then
   rm -rf /var/data /var/log/harbor
 fi
+# Remove only overrides belonging to the units reset above; preserve OS units.
+for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-scheduler kube-lb etcd containerd docker cri-dockerd; do
+  rm -rf "/etc/systemd/system/$unit.service.d" "/run/systemd/system/$unit.service.d"
+done
 systemctl daemon-reload 2>/dev/null
 # Some unit files have just been removed.  Reset all failed records so systemd
 # also drops historical failures whose units no longer exist (not-found).
@@ -308,6 +326,10 @@ rm -rf /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /var/lib/etcd \
   /etc/systemd/system/podruntime.slice /etc/kube-lb
 # DO NOT remove docker.service /var/lib/docker; the registry container/data is
 # reset explicitly by the outer cleanup command after Kubernetes teardown.
+# Remove only overrides belonging to the units reset above; preserve OS units.
+for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-scheduler kube-lb etcd containerd cri-dockerd; do
+  rm -rf "/etc/systemd/system/$unit.service.d" "/run/systemd/system/$unit.service.d"
+done
 systemctl daemon-reload 2>/dev/null
 systemctl reset-failed 2>/dev/null
 if findmnt -rn -o TARGET | grep -E "^/run/(cilium|calico)(/|$)" | grep -q . || test -e /run/cilium || test -e /run/calico; then

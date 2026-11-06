@@ -138,7 +138,9 @@ verify_clean() {
       residue=1
     fi
   done
-  if curl -fsS --max-time 3 http://127.0.0.1:5000/v2/_catalog 2>/dev/null \
+  # Logging can consume pre-existing images from the shared lab registry.
+  # Only the standalone Kafka gate creates TAG_OWNERSHIP before its uploads.
+  if [[ -f "$TAG_OWNERSHIP" ]] && curl -fsS --max-time 3 http://127.0.0.1:5000/v2/_catalog 2>/dev/null \
     | grep -Eq '"brinnatt/strimzi-(operator|kafka|drain-cleaner)"'; then
     echo "KAFKA_CLEAN_RESIDUE registry-repository" >&2
     residue=1
@@ -148,6 +150,8 @@ verify_clean() {
     residue=1
   fi
   [[ "$residue" -eq 0 ]] || fail "Kafka scoped cleanup verification failed"
+  # Retain ownership through verification, including failed/interrupted cleanup.
+  if [[ "${1:-}" == retire-tags ]]; then rm -f -- "$TAG_OWNERSHIP"; fi
   echo KAFKA_CLEAN_VERIFY_PASS
 }
 
@@ -365,10 +369,9 @@ if [[ -e /var/tmp/kubeauto-kafka-registry-image-owned ]]; then
 fi
 rm -f -- /var/tmp/kubeauto-kafka-crds-owned \
   /var/tmp/kubeauto-kafka-registry-image-owned \
-  "$TAG_OWNERSHIP" \
   /var/tmp/kubeauto-kafka-cordoned-nodes \
   /tmp/kubeauto-kafka-playbook.yml
 rm -rf -- "$BASE/clusters/kafka-gate"
 
 pass "Kafka scoped resources removed"
-verify_clean
+verify_clean retire-tags

@@ -446,6 +446,123 @@ Cluster 进程故障必须从所属白名单节点的宿主 PID namespace 发信
 取得 `REDIS_CLEAN_VERIFY_PASS` 与 `LAB_CLEAN_VERIFY_PASS`。若完整场景实现不齐，
 运行器必须明确拒绝交付，不将已完成模块的合集包装为完整回归。
 
+## Elasticsearch 独立交付分路
+
+验收权威为 `elasticsearch-test-matrix.yaml`：59 项、18 个逻辑阶段。业务基线为
+ECK 3.5.0、ES/Kibana 9.5.6、Kubernetes 1.33.6，保留 EFK 9.5.1。
+产品行为必须经过部署目录的 `config.yml` 与
+`kubecli setup elasticsearch-gate 07 --tags elasticsearch`，不能用直接创建 CR
+代替产品安装证据。以下命令由交付操作人在开发机仓库根目录执行，使用现有
+`.venv`、固定 Helm/Node 工具及 BatchMode 密钥；不直接启动远端 helper。
+
+```bash
+set -euo pipefail
+bash tests/run_enterprise_regression.sh --elasticsearch-contract
+bash tests/run_enterprise_regression.sh --elasticsearch-artifacts
+```
+
+合同入口只做本地静态检查；制品入口只读核验当前消费镜像与发布证据、双架构
+摘要、构建输入及离线 ECK 清单。正式发布 receipt 缺失、发布尚未成功或 manifest
+身份变化即停止，禁止在现场临时发现镜像、覆盖正式 tag 或绕过此门禁。
+
+现场启动由运行器持有 `.122.2` 的源池和控制源码租约，以及 `.47.130` 的
+Ceph 优先池/控制租约；同一 run ID 的源 durable 结束与 guardian 结束均确认后
+才释放。源为 `.122.243/.246/.217/.210/.216/.193/.212` 七台，前三台承担
+实验室专用 ES master 故障域；DR 仅用 `.122.135/.40/.72`。bootstrap 只接受
+已绑定 UID、版本与空业务边界的旧六节点集群，或经清洁验证的七台空主机；
+拒绝外来 namespace、PV/PVC、身份变化及活动任务。控制机 `.122.2` 的 AIO、
+Registry 与无关制品受保护，不能对控制机执行 wipe/prune。存储夹具每机仅创建
+自有 32 GiB root loop 文件系统，不格式化裸盘；创建前要求 backing 文件系统
+至少空闲 40 GiB，挂载后容量至少 30 GiB。两拓扑共存、standard 扩至四个 data、
+全部 data 卷扩至 6 GiB 时，三副本调度需求为 144 GiB；按产品固定的 10% 预留、
+100% 超配，六块 30 GiB 文件系统仍提供 162 GiB 调度容量。该预算用于 N−1
+容量准入，不宣称所有卷写满后仍有相同余量；实际数据与 snapshot 占用仍受
+25% 最低可用空间门禁约束。loop 结果不代表物理盘性能。
+
+| 固定入口（均带 `--elasticsearch-` 前缀） | 前置与证据边界 |
+| --- | --- |
+| `inventory` / `inventory-secondary` | 只读发现容量和归属，不取得租约、不构成准入或 PASS |
+| `admission` / `bootstrap` | 前者只检查源准入；后者在租约下退役已证明空业务的旧源，经产品入口新建固定 K8s，保留自有健康基线 |
+| `registry-recover` / `bootstrap-resume` | 仅修复已证明缺失的控制机 Docker 网桥：拒绝其它运行容器或不完整目录清单，保留 Registry 容器/镜像/数据目录、目录清单与 AIO 身份；续跑仅接受原准入账本、硬件、配置/清单及仍为空的节点，跳过重复 wipe，从产品 download/setup 继续 |
+| `storage` → `csi-probe` | 产品安装 Longhorn 1.12.1 V1；在 ES 放数据前验证 fsync/hash、同卷跨节点重挂与 1→2 GiB 在线扩容，回收探针 namespace/PV |
+| `standard` / `compact` | 先完成 CSI；分别验证六成员专用角色与三成员混合角色、TLS、业务、幂等和身份保留 |
+| `business` / `lifecycle` | 已验收两拓扑；数据模型、查询、索引迁移、ILM 和同版本 SmartCN |
+| `security-identity` / `security-certificates` / `security-network` / `security-s3` | 分别接受 ES-24/25/27、ES-26、ES-29、ES-28；复用已核验两拓扑，每个入口独立完成业务与限定清理。`security` 顺序组合四项，前置失败立即停止，不作为局部修复的默认入口 |
+| `security-certificate-restore` | 先核对源集群、两命名空间、当前证书引用、精确测试 Secret 及原业务账本，再经产品入口恢复原证书；恢复验证通过后才清理对应 UID 的测试 Secret。允许正常 Pod 滚动，保护 CR/PVC/凭据及确认数据；不重跑身份模块，不签署完整证书轮换 PASS |
+| `faults` / `maintenance` | 已验收业务；确认账本下的故障/恢复、扩容、drain、卷扩容与磁盘水位，首失败停止依赖路径 |
+| `backup-source` → `backup-refusal` → `backup-restore` → `backup-features` | HTTPS S3、真实 JVM CA、verify/analysis、拒绝路径、独立恢复和 feature states；四个入口分别对应最窄验收范围，`backup` 顺序执行完整链 |
+| `dr-bootstrap` / `dr` | 源 `bootstrap`、`storage` 完成后，前者并行执行源 CSI 探针和独立目标的准入／平台／存储准备，两支分别保留日志与 durable 状态，成功保留健康前置；后者验证 readonly repository、切换/回切及业务对账，不能借用源 PVC/管理身份 |
+| `observability` / `rally` / `soak` | 真实采样/告警、离线固定基准、两拓扑各至少 1800 秒含故障负载；`performance` 组合后两项 |
+| `upgrade` / `coexistence` | 固定旧版经产品入口升级、拒绝降级、兼容恢复；唯一 ECK 下业务与 EFK/其它消费者隔离。保留共存夹具时先核对原 namespace、卷、凭据、哨兵/快照及两套业务账本，仅补反向退役与重入，不签署矩阵项或失败父运行 |
+| `coexistence-restores` | 从已冻结失败输入核对并接续独立恢复探针，持久记录恢复、单边升级、业务退役重入及 EFK 退役重入的完成位置；核验原归属、哨兵、快照与账本后只补未完成场景，不重做已验证的仓库拒绝及共享控制器故障，不签矩阵项或失败父运行 |
+| `coexistence-isolation` | 仅在原共存哨兵/快照及两套业务仍健康、namespace 归属匹配且无故障残留时，补仓库别名/请求重放拒绝、共享控制器恢复、独立恢复及单边升级/退役重入；限定清理，不重装已完成的前置、不补签失败父运行或完整矩阵项，最终完整共存仍由干净全量验收 |
+| `cleanup-probes` / `logging` | 正常/失败/中断的客户端限定回收；共享 ECK 改动影响的三条 logging 路线使用其真实原门禁与清理，不消费历史 PASS |
+| `restore-faults` / `logging-cleanup` / `cleanup` | 原 journal 的归属与身份校验后恢复故障/日志边界；最终 cleanup 原生退役产品、CSI、源/DR 和自有 loop/sysctl，拒绝未知残留 |
+| `status` / `follow` | durable 状态、实时日志和矩阵计数；连接失败或进程仍在不构成成功 |
+| `documentation` | 本地只读核对三份正式手册的既有作者检查、版本、内容摘要和无阻塞缺陷，独立接受 ES-58；不操作现场、不补签客户验收 |
+| `only` | ES-01～58 全部具备当前 PASS 证据后，执行 ES-59 的一次干净完整回归；19 个验收子模块与独立 DR 准备旁路映射 18 个内部步骤 |
+
+例如完成静态与制品门禁后，依次执行
+`bash tests/run_enterprise_regression.sh --elasticsearch-bootstrap </dev/null`、
+`--elasticsearch-storage`、`--elasticsearch-csi-probe`，再推进两拓扑和其依赖模块。
+运行器负责同步、监督、心跳、首失败诊断与证据冻结；原始日志、退出文件和
+finalized 文件归档在 `logs/elasticsearch-cases/`。模块只有业务 marker、限定
+清理边界、durable 双 0 及零失败同时成立才能签收声明范围。失败先分类，
+修门禁先补精确合同，仅重跑所属最窄分支；保留原失败和健康独立前置，不直接
+删除 journal 或改矩阵为 pass。`cleanup` 也须经固定入口取得租约，拒绝时保留
+现场诊断，不使用手工删 namespace、卷或 loop 绕过归属判断。
+
+并行编排先以 `dr-bootstrap` 聚焦资格验证：源与目标主机集合必须不相交，
+各进程显式消费所属集群 kubeconfig，外层运行器恢复原控制端上下文。两支均
+使用现有产品入口和独立 durable 文件；一支失败停止自身后继，另一支完成
+独立工作并保留真实结果。资格通过后，完整回归在源核心就绪时立即准备 DR，
+同时推进源存储、CSI、两拓扑及后续源侧模块；进入备份恢复前必须等 DR 成功。
+共享 `config.yml`、ECK、卷和故障状态的源侧变更保持串行，两个 SOAK 拓扑
+沿已有隔离合同并行；不为提高并发数重复有效测试或借用外来集群。逻辑阶段
+仍为 18，DR 准备不额外签收业务项，任一分支失败都不能签署完整交付。
+
+新证据按矩阵项绑定实际模块依赖。共享 Python helper 的绑定包含选定入口、
+本文件调用闭包、模块初始化和 CLI 分派；动态跨文件消费者由组件显式映射，
+未知边界不自动缩减。原始字节来源与源码快照另存于本次日志目录，保留历史身份，
+不因无关函数或单元测试改动而作废现场业务证据。全量记录也按各项的模块依赖
+判断适用性；合同检查自身仍覆盖全部相关测试。旧记录缺少可验证的原始源码时，
+先分析其证据缺口，不能猜测等价、修改旧 receipt 或为恢复计数重签 PASS。
+运行中可执行 `bash tests/run_enterprise_regression.sh --elasticsearch-evidence-recover`
+只读收取已结束子模块的原始日志、冻结输入和 durable 文件并逐项更新矩阵；
+它不等待父运行结束，不修改现场或父退出状态，也不接受未结束、失败或缺失子项的模块。
+
+`bash tests/run_enterprise_regression.sh --elasticsearch-upgrade-platform </dev/null`
+只验证 ES-50：在独立 DR 目标准备已声明的旧版本、经过真实平台入口完成准入拒绝、
+ECK 升级及并发 Operator 故障恢复，核对两边数据与身份并回收自有 EFK 夹具。
+它复用健康源集群及 DR 的 Kubernetes/存储前置，不执行 Stack 升级和旧版恢复，
+也不签 ES-51/52。平台完成判定须看到目标 Operator 进程对所有消费者的协调完成
+记录及当前健康状态；仅 Pod Ready 或旧绿色状态不能完成平台账本。
+
+进度格式、计数定义、校验失败及最近运行结果的表达，统一遵守
+[主仓执行效率契约的矩阵汇报条款](../AGENTS.md#test-engineering-and-execution-efficiency-contract)。
+ES 的矩阵是 `tests/elasticsearch-test-matrix.yaml`，分母为 59 项、18 个能力组。
+汇报前执行下列只读入口，成功后使用其总数和逐组 ID；需要结构化数据时追加 `--json`：
+
+```bash
+.venv/bin/python tests/helpers/validate_elasticsearch_matrix.py tests/elasticsearch-test-matrix.yaml --status
+```
+
+该入口会先核验矩阵和绑定证据，失败时只输出拒绝原因并返回非零，不生成有效进度总览。
+它不收取新证据、不修改矩阵，也不提供现场子项的运行状态；后者须从对应固定 runner 的
+durable 状态、原始日志或独立路线收据核对后补充。尤其 ES-55 的三条日志路线属于同一父项，
+其入口是 `logging`，能力组仍是矩阵中的 `coexistence`；部分路线通过不等于 ES-55 PASS。
+
+ES-01～58 全部具备当前 PASS 证据后，才执行 ES-59：
+`bash tests/run_enterprise_regression.sh --elasticsearch-only </dev/null`。
+固定入口在任何现场变更前逐项核验前 58 项；缺项、pending、失败或失效证据均拒绝。
+ES-59 运行期间另报其 run ID 和内部步骤进度，矩阵原有 PASS 不因开始新运行而清零；
+最终回归失败保留其真实结果，仅按实际影响处理相关矩阵项。
+ES-58 用 `bash tests/run_enterprise_regression.sh --elasticsearch-documentation`
+独立验收既有文档检查；文档未变时不重新研究、重审正文或搭建现场。
+必须当前 59/59、18/18、durable 双 0、零失败、`ELASTICSEARCH_FULL_GATE_PASS`
+和 `LAB_CLEAN_VERIFY_PASS` 同时成立；完整阶段进度、官方 GA、已完成聚焦证据
+及文档作者检查都不能代替这一出口，也不能代替客户签收。
+
 `tests/` is the executable delivery knowledge base for kubeauto. It captures the reusable lessons from the Cursor-era regression work and the 2026-07-25 through 2026-07-29 Codex full-chain run. The source of truth is executable evidence, not a narrative claim or an old log.
 
 ## Acceptance contract
@@ -873,6 +990,11 @@ clean lab. Preserve every acceptance scenario. Plan dependency/resource
 concurrency, evidence reuse and independent module
 closure under the single authority in [AGENTS.md's execution-efficiency
 contract](../AGENTS.md#test-engineering-and-execution-efficiency-contract).
+For a new middleware branch, first complete the
+[standard onboarding sequence](../docs/middleware/delivery-playbook.md#102-扩展步骤)
+and its [module delivery-path contracts](../docs/middleware/delivery-playbook.md#71-独立测试分路).
+Qualify scope, failure recovery and evidence reuse locally before the first live
+launch; an existing fixed entry point alone does not prove those boundaries.
 Execute the following evidence ladder in order:
 
 1. Classify the failure and change as product, test gate, environment,

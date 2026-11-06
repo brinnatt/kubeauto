@@ -122,6 +122,13 @@ class KubeConstant:
         "refer_docs": "https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/elasticsearch-deployment-quickstart",
     })
     v_kibana: str = field(default="9.5.1")
+    # Business Elasticsearch is an independent consumer of the shared ECK.
+    # Do not upgrade the delivered logging stack through these pins.
+    v_business_elasticsearch: str = field(default="9.5.6")
+    v_elasticsearch_upgrade_source: str = field(default="9.5.5")
+    v_elasticsearch_exporter: str = field(default="v1.11.0")
+    v_elasticsearch_client: str = field(default="9.5.1-kubeauto.1")
+    v_elasticsearch_rally: str = field(default="2.13.0-kubeauto.1")
     v_fluent_bit: str = field(default="5.1.1", metadata={
         "refer_docs": "https://docs.fluentbit.io/manual",
     })
@@ -530,6 +537,20 @@ class KubeConstant:
                 f"brinnatt/thanos:{self.v_thanos}",
                 f"brinnatt/prometheus-adapter:{self.v_prometheus_adapter}",
                 f"brinnatt/blackbox-exporter:{self.v_blackbox_exporter}",
+            ],
+            "elasticsearch": [
+                f"brinnatt/eck-operator:{self.v_eck_operator}",
+                f"brinnatt/elasticsearch:{self.v_business_elasticsearch}",
+                f"brinnatt/kibana:{self.v_business_elasticsearch}",
+                f"brinnatt/elasticsearch-exporter:{self.v_elasticsearch_exporter}",
+                f"brinnatt/elasticsearch-client:{self.v_elasticsearch_client}",
+            ],
+            "elasticsearch-smartcn": ["brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1"],
+            "elasticsearch-qualification": [
+                "brinnatt/eck-operator:3.4.1",
+                f"brinnatt/elasticsearch:{self.v_elasticsearch_upgrade_source}",
+                f"brinnatt/kibana:{self.v_elasticsearch_upgrade_source}",
+                f"brinnatt/elasticsearch-rally:{self.v_elasticsearch_rally}",
             ],
             "logging-efk": [
                 f"brinnatt/eck-operator:{self.v_eck_operator}",

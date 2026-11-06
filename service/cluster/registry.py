@@ -24,6 +24,7 @@ _GHCR_PULL_FALLBACKS = {
 # Used only when talkedu + Docker Hub brinnatt miss (before CI dual-push publishes).
 # Remove entries once the corresponding ext-images CI tags are live everywhere.
 _BRINATT_UPSTREAM_FALLBACKS = {
+    "brinnatt/elasticsearch-exporter": "quay.io/prometheuscommunity/elasticsearch-exporter",
     "brinnatt/calico-cni": "calico/cni",
     "brinnatt/calico-node": "calico/node",
     "brinnatt/calico-kube-controllers": "calico/kube-controllers",

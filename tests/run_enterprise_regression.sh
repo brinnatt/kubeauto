@@ -65,7 +65,7 @@ middleware_doc_python="$ROOT/.venv/bin/python"
 # The coverage summary is a delivery claim, so validate it from the YAML
 # details before any gate can run or emit a PASS marker. Independent middleware
 # branches own separate matrix schemas and are validated by their own gates.
-if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* && "$MODE" != --redis-* && "$MODE" != --ceph-* && "$MODE" != --mongodb-* && "$MODE" != --longhorn-* ]]; then
+if [[ "$MODE" != --mysql-* && "$MODE" != --kafka-* && "$MODE" != --logging-* && "$MODE" != --redis-* && "$MODE" != --ceph-* && "$MODE" != --mongodb-* && "$MODE" != --longhorn-* && "$MODE" != --elasticsearch-* ]]; then
   matrix_python="$ROOT/.venv/bin/python"
   [[ -x "$matrix_python" ]] || matrix_python="$(command -v python3.12 || command -v python3)"
   matrix_validation_args=("$ROOT/tests/enterprise-test-matrix.yaml")
@@ -281,12 +281,13 @@ matrix_counts() {
   [[ "$surface" == --redis-* || "$surface" == redis-* || "$surface" == redis ]] && matrix="$ROOT/tests/redis-test-matrix.yaml"
   [[ "$surface" == --ceph-* || "$surface" == ceph-* || "$surface" == ceph ]] && matrix="$ROOT/tests/ceph-test-matrix.yaml"
   [[ "$surface" == --mongodb-* || "$surface" == mongodb-* || "$surface" == mongodb ]] && matrix="$ROOT/tests/mongodb-test-matrix.yaml"
+  [[ "$surface" == --elasticsearch-* || "$surface" == elasticsearch-* || "$surface" == elasticsearch ]] && matrix="$ROOT/tests/elasticsearch-test-matrix.yaml"
   [[ "$surface" == --longhorn-* || "$surface" == longhorn-* || "$surface" == longhorn ]] && matrix="$ROOT/tests/longhorn-test-matrix.yaml"
   if [[ "$matrix" == "$ROOT/tests/enterprise-test-matrix.yaml" ]]; then
     # Acceptance IDs include T*, X-* and PROM-*; run-stage IDs are lowercase.
     item_pattern+='[[:space:]]*[A-Z][A-Z0-9]*-'
   fi
-  if [[ "$matrix" == "$ROOT/tests/longhorn-test-matrix.yaml" || "$matrix" == "$ROOT/tests/ceph-test-matrix.yaml" || "$matrix" == "$ROOT/tests/mongodb-test-matrix.yaml" ]]; then
+  if [[ "$matrix" == "$ROOT/tests/longhorn-test-matrix.yaml" || "$matrix" == "$ROOT/tests/ceph-test-matrix.yaml" || "$matrix" == "$ROOT/tests/mongodb-test-matrix.yaml" || "$matrix" == "$ROOT/tests/elasticsearch-test-matrix.yaml" ]]; then
     printf 'matrix_pass=%s matrix_pending=%s matrix_fail=%s' \
       "$(grep -Ec '^[[:space:]]+status: pass$' "$matrix" || true)" \
       "$(grep -Ec '^[[:space:]]+status: pending$' "$matrix" || true)" \
@@ -1221,6 +1222,12 @@ if [[ "$MODE" == "--ceph-only" ]]; then
   matrix_counts ceph
   echo
   exit 0
+fi
+
+if [[ "$MODE" == --elasticsearch-* ]]; then
+  source "$ROOT/tests/helpers/elasticsearch-runner.sh"
+  elasticsearch_dispatch "$MODE"
+  exit $?
 fi
 
 if [[ "$MODE" == "--logging-status" ]]; then

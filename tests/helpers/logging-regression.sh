@@ -18,6 +18,81 @@ LOGGING_FOCUS_CASE="${LOGGING_FOCUS_CASE:-}"
 mkdir -p "$EVIDENCE_DIR"
 rm -f "$EVIDENCE_FILE"
 fail() { echo "[FAIL] $*" >&2; exit 1; }
+LOGGING_REGISTRY_HOST_IP="${LOGGING_REGISTRY_HOST_IP:-192.168.122.243}"
+case "$LOGGING_REGISTRY_HOST_IP" in
+  192.168.122.2|192.168.122.243) ;;
+  *) fail 'logging registry endpoint is outside the fixed lab' ;;
+esac
+logging_registry_input() {
+  python3 - "$CFG" "$LOGGING_REGISTRY_HOST_IP" <<'PY'
+from pathlib import Path
+import re,sys
+path=Path(sys.argv[1]);text=path.read_text()
+line='REGISTRY_HOST_IP: "'+sys.argv[2]+'"'
+text=re.sub(r'(?m)^REGISTRY_HOST_IP:.*$',line,text) if re.search(r'(?m)^REGISTRY_HOST_IP:',text) else text+'\n'+line+'\n'
+path.write_text(text)
+PY
+}
+logging_platform_inputs() {
+  logging_registry_input
+  python3 - "$CFG" <<'PY'
+from pathlib import Path
+import re,sys
+path=Path(sys.argv[1]);text=path.read_text()
+for key,value in {'local_path_provisioner_install':'yes','prom_install':'yes','prom_storage_class':'local-path','logging_install':'no'}.items():
+    line=key+': "'+value+'"'
+    text=re.sub(r'(?m)^'+key+r':.*$',line,text) if re.search(r'(?m)^'+key+':',text) else text+'\n'+line+'\n'
+path.write_text(text)
+PY
+}
+logging_registry_preflight() {
+  curl --noproxy '*' --connect-timeout 5 --max-time 10 -fsS \
+    "http://$LOGGING_REGISTRY_HOST_IP:5000/v2/" >/dev/null
+}
+logging_upload_fixtures() {
+  for fixture in minio:RELEASE.2025-04-08T15-41-24Z minio-mc:RELEASE.2025-04-08T15-39-49Z; do
+    docker image inspect "brinnatt/$fixture" >/dev/null
+    docker tag "brinnatt/$fixture" "127.0.0.1:5000/brinnatt/$fixture"
+    docker push "127.0.0.1:5000/brinnatt/$fixture" >/dev/null
+  done
+}
+logging_registry_recover() {
+  [[ -n "${ELASTICSEARCH_IMAGE_RECEIPT:-}" && "$LOGGING_REGISTRY_HOST_IP" == 192.168.122.2 ]] || return 1
+  # The ES parent has checked hardware, Kubernetes UID, the exact six nodes,
+  # empty business/storage and the failed bootstrap boundary before admission.
+  # This corrects the declared platform input, rather than a temporary bridge.
+  # Do not restore the proven bad address during subsequent route cleanup.
+  for ip in 192.168.122.243 192.168.122.246 192.168.122.217 192.168.122.210 192.168.122.216 192.168.122.193; do
+    ssh -o BatchMode=yes -o ConnectTimeout=10 "root@$ip" python3 - "$LOGGING_REGISTRY_HOST_IP" <<'PY'
+from pathlib import Path
+import sys
+path=Path('/etc/hosts');text=path.read_text();lines=text.splitlines()
+found=[line.split()[0] for line in lines if 'registry.talkschool.cn' in line.split()[1:]]
+if len(found)!=1 or found[0] not in ('192.168.122.243',sys.argv[1]):raise SystemExit('foreign logging registry resolution')
+backup=Path('/var/tmp/kubeauto-logging-hosts.before')
+if backup.exists():
+    original=backup.read_text().splitlines()
+    rest=lambda rows:[line for line in rows if 'registry.talkschool.cn' not in line.split()[1:]]
+    addresses=[line.split()[0] for line in original if 'registry.talkschool.cn' in line.split()[1:]]
+    if rest(original)!=rest(lines) or addresses!=['192.168.122.243']:
+        raise SystemExit('foreign logging registry recovery backup')
+lines=[line for line in lines if 'registry.talkschool.cn' not in line.split()[1:]]
+lines.append(sys.argv[1]+' registry.talkschool.cn # kubeauto-logging-runtime')
+path.write_text('\n'.join(lines)+'\n')
+backup.unlink(missing_ok=True)
+PY
+  done
+}
+logging_platform_resume() {
+  [[ "${LOGGING_PLATFORM_RESUME:-no}" == yes && -n "${ELASTICSEARCH_IMAGE_RECEIPT:-}" ]] || return 1
+  logging_registry_preflight
+  logging_platform_inputs
+  logging_registry_recover
+  "$K" download -E prometheus </dev/null
+  "$K" setup "$CLUSTER" 06 </dev/null
+  "$K" setup "$CLUSTER" 07 </dev/null
+  echo LOGGING_PLATFORM_RESUME_PASS boundary=network-and-addons core=preserved
+}
 case_pass() {
   local id="$1" detail="${2:-verified}"
   printf '%s\t%s\t%s\t%s\n' "$id" "$ROUTE_KEY" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$detail" >> "$EVIDENCE_FILE"
@@ -547,6 +622,7 @@ CLUSTER="${LOGGING_CLUSTER:-logging-gate}"
 KC="$BASE/clusters/$CLUSTER/kubectl.kubeconfig"
 K="$BASE/.venv/bin/kubecli"; [[ -x "$K" ]] || K="$(command -v kubecli)"
 if [[ ! -s "$KC" ]]; then
+  logging_registry_preflight
   echo LOGGING_STAGE_BEGIN cluster-build
   mkdir -p "$BASE/clusters"
   cat > "$BASE/clusters/$CLUSTER.hosts" <<'HOSTS'
@@ -582,15 +658,17 @@ HOSTS
   cp "$BASE/clusters/$CLUSTER.hosts" "$BASE/clusters/$CLUSTER/hosts"
   CFG="$BASE/clusters/$CLUSTER/config.yml"
   sed -i 's/__k8s_ver__/1.33.6/g; s/^KUBE_RESERVED_ENABLED: "yes"/KUBE_RESERVED_ENABLED: "no"/; s/^SYS_RESERVED_ENABLED: "yes"/SYS_RESERVED_ENABLED: "no"/' "$CFG"
-  if grep -q '^REGISTRY_HOST_IP:' "$CFG"; then
-    sed -i 's|^REGISTRY_HOST_IP:.*|REGISTRY_HOST_IP: "192.168.122.243"|' "$CFG"
-  else
-    printf '\nREGISTRY_HOST_IP: "192.168.122.243"\n' >> "$CFG"
-  fi
-  sed -i 's|^local_path_provisioner_install:.*|local_path_provisioner_install: "yes"|' "$CFG"
+  logging_platform_inputs
   "$K" download -D </dev/null
   "$K" download -E local-path-provisioner </dev/null
+  "$K" download -E prometheus </dev/null
   "$K" setup "$CLUSTER" 90 </dev/null
+elif [[ "${LOGGING_PLATFORM_RESUME:-no}" == yes ]]; then
+  CFG="$BASE/clusters/$CLUSTER/config.yml"
+  logging_platform_resume
+fi
+if [[ -n "${ELASTICSEARCH_IMAGE_RECEIPT:-}" && "$LOGGING_REGISTRY_HOST_IP" == 192.168.122.2 ]]; then
+  logging_registry_recover
 fi
 export KUBECONFIG="$KC"
 kubectl version --output=yaml >/dev/null
@@ -671,6 +749,7 @@ if command -v docker >/dev/null 2>&1; then
   fi
   "$K" download -E prometheus </dev/null
   "$K" download -E ingress-nginx </dev/null
+  logging_upload_fixtures
   for image_tag in eck-operator:3.5.0 elasticsearch:9.5.1 kibana:9.5.1 fluent-bit:5.1.1; do
     image="${image_tag%%:*}"; tag="${image_tag##*:}"
     digest="$(curl -fsSI -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
@@ -681,7 +760,7 @@ if command -v docker >/dev/null 2>&1; then
   for image_tag in \
     loki:3.7.6 alloy:1.18.1 loki-gateway:1.31-alpine access-log-exporter:0.4.11 \
     loki-canary:3.7.6 memcached:1.6.45-alpine memcached-exporter:v0.17.0 k8s-sidecar:2.10.1 \
-    prometheus-config-reloader:v0.91.0 minio-mc:RELEASE.2025-04-08T15-39-49Z; do
+    prometheus-config-reloader:v0.91.0 minio:RELEASE.2025-04-08T15-41-24Z minio-mc:RELEASE.2025-04-08T15-39-49Z; do
     image="${image_tag%%:*}"; tag="${image_tag##*:}"
     digest="$(curl -fsSI -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
       "http://127.0.0.1:5000/v2/brinnatt/$image/manifests/$tag" \
@@ -756,11 +835,7 @@ echo LOGGING_STAGE_BEGIN product-entrypoint
 # are test-cluster inputs only and are written to the generated cluster config
 # before setup 07; production defaults remain disabled in conf/config.yml.
 CFG="$BASE/clusters/$CLUSTER/config.yml"
-if grep -q '^REGISTRY_HOST_IP:' "$CFG"; then
-  sed -i 's|^REGISTRY_HOST_IP:.*|REGISTRY_HOST_IP: "192.168.122.243"|' "$CFG"
-else
-  printf '\nREGISTRY_HOST_IP: "192.168.122.243"\n' >> "$CFG"
-fi
+logging_registry_input
 python3 - "$CFG" "$LOGGING_SOLUTION" <<'PY'
 import re
 import sys
@@ -833,6 +908,8 @@ PY
 # Fixtures are generated in the disposable logging namespace.  No credential
 # is committed or printed; ECK and the product task consume Secret references.
 kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+kubectl label namespace logging app.kubernetes.io/managed-by=kubeauto \
+  kubeauto.io/component=logging kubeauto.io/logging-solution="$LOGGING_SOLUTION" >/dev/null
 if [[ "$LOGGING_SOLUTION" == efk ]]; then
   kubectl -n logging delete deployment/minio service/minio service/minio-console pod/logging-minio-mc \
     --ignore-not-found --wait=true >/dev/null 2>&1 || true
