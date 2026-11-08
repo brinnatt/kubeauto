@@ -1,0 +1,58 @@
+{
+  "case_dependencies": {
+    "ES-58": {
+      "docs/middleware/elasticsearch/development-manual.md": "4c0267c15844f151eb69631d93a3646e8c61ecb7c30b75a591732647d974ba1e",
+      "docs/middleware/elasticsearch/operations-manual.md": "fb2f702a9ca7e698f9969860af824ee89afd769d0bbbc4e140a4fd9395a344e5",
+      "docs/middleware/elasticsearch/technical-whitepaper.md": "193de683fe00af7cd9e827d03bb1552f95b7a76d9e1b570bf0f8fa79014e076e",
+      "tests/evidence/elasticsearch-documentation.json": "ca5313201cffec2453b351268f751eaf00de7c8ae0469f1080e9fe3e9b92307f",
+      "tests/helpers/elasticsearch-evidence.py": "7a9f81ee11bd4d6b18d538a2a6cd03634a964347b07f906ff2aac77472bae1a1",
+      "tests/helpers/elasticsearch-full.py": "62d8cff7018ff30cc006609545ec4760cd67230cd5fe5cc0a15687af7475680d",
+      "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+      "tests/helpers/validate_elasticsearch_matrix.py": "4139fd4d67e831b2056338c8e05718ddd0ab7565815f8a237eb1e2f2ee7bb4f9"
+    }
+  },
+  "case_ids": [
+    "ES-58"
+  ],
+  "dependencies": {
+    "docs/middleware/elasticsearch/development-manual.md": "4c0267c15844f151eb69631d93a3646e8c61ecb7c30b75a591732647d974ba1e",
+    "docs/middleware/elasticsearch/operations-manual.md": "fb2f702a9ca7e698f9969860af824ee89afd769d0bbbc4e140a4fd9395a344e5",
+    "docs/middleware/elasticsearch/technical-whitepaper.md": "193de683fe00af7cd9e827d03bb1552f95b7a76d9e1b570bf0f8fa79014e076e",
+    "tests/evidence/elasticsearch-documentation.json": "ca5313201cffec2453b351268f751eaf00de7c8ae0469f1080e9fe3e9b92307f",
+    "tests/helpers/elasticsearch-evidence.py": "7a9f81ee11bd4d6b18d538a2a6cd03634a964347b07f906ff2aac77472bae1a1",
+    "tests/helpers/elasticsearch-full.py": "62d8cff7018ff30cc006609545ec4760cd67230cd5fe5cc0a15687af7475680d",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/helpers/validate_elasticsearch_matrix.py": "4139fd4d67e831b2056338c8e05718ddd0ab7565815f8a237eb1e2f2ee7bb4f9"
+  },
+  "durable": {
+    "exit": {
+      "path": "logs/elasticsearch-cases/documentation-20261107-001209-22054/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/elasticsearch-cases/documentation-20261107-001209-22054/finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "product_entry": "\u4e09\u4efd\u6b63\u5f0f\u624b\u518c\u53ca\u4f5c\u8005\u68c0\u67e5 receipt\uff1bbash tests/run_enterprise_regression.sh --elasticsearch-documentation",
+  "provenance": [
+    {
+      "path": "logs/elasticsearch-cases/documentation-20261107-001209-22054/launch-provenance.json",
+      "sha256": "154ec15364613677e67f118da9bc92945f9f14d771f456af43dadfdbd32c865f"
+    },
+    {
+      "path": "logs/elasticsearch-cases/documentation-20261107-001209-22054/launch-sources.tar.gz",
+      "sha256": "591f15c82fa6db81d03b72e75807ed01817bd6443bce0e6ed6eb94947b0d7a67"
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": "logs/elasticsearch-cases/documentation-20261107-001209-22054/raw.log",
+      "sha256": "bd60424146ef59ffe49252c89cfe92c7a924cb92640ca38aefd491f98a5fea97"
+    }
+  ],
+  "scoped_cleanup": true,
+  "scoped_cleanup_marker": "ELASTICSEARCH_DOCUMENTATION_SCOPED_CLEAN_PASS"
+}

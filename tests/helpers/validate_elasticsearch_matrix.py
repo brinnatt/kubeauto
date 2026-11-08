@@ -134,6 +134,10 @@ def dependency_matches(root, record, case, source, checksum):
                    'security-certificates', 'security-network', 'security-identity',
                    'standard', 'compact', 'business', 'lifecycle', 'faults',
                    'observability', 'rally', 'soak', 'coexistence', 'cleanup-probes'}
+    restore_free = (non_restore - {'coexistence'}) | {'csi-probe', 'performance', 'logging', 'cleanup'}
+    # ES-50 signs platform maintenance, ES-53 signs installation/refusal and
+    # controller recovery. The successful restore belongs to ES-51/52/54.
+    consumes_restore = owner not in restore_free and case['id'] not in ('ES-50', 'ES-53')
     dr_entries = {'backup-source': '', 'backup-refusal': '',
                   'backup-restore': 'target_lab,baseline,install,restore,retire_business',
                   'backup-features': 'features', 'dr': 'disaster,fence_target_writer,routed_connection',
@@ -191,10 +195,13 @@ def dependency_matches(root, record, case, source, checksum):
         return True
     current = (root/source).read_bytes()
     if source == runner:
-        # Only this added local documentation arm is outside every existing
-        # live launch. Every byte of launch, lease, sync and supervision stays bound.
+        # Authenticate the original bytes above. Only the local documentation
+        # arm and regular-file permission correction leave live execution intact;
+        # every byte of launch, lease, sync and supervision stays bound.
         arm=b'    --elasticsearch-documentation)\n      elasticsearch_local_gate documentation ELASTICSEARCH_DOCUMENTATION_SCOPED_CLEAN_PASS "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/elasticsearch-full.py" --documentation "$ROOT" ;;\n'
-        return original.replace(arm,b'') == current.replace(arm,b'')
+        old=b'chmod 0600 "$directory"/*'
+        fixed=b'find "$directory" -maxdepth 1 -type f -exec chmod 0600 {} +'
+        return original.replace(arm,b'').replace(old,fixed) == current.replace(arm,b'').replace(old,fixed)
     if source == dr:
         return python_dependency_digest(original, dr_entries[owner], shadow_aware=True) == python_dependency_digest(current, dr_entries[owner], shadow_aware=True)
     if source == client:
@@ -210,6 +217,50 @@ def dependency_matches(root, record, case, source, checksum):
     # all callers, the enable gate and every other resource field stay bound.
     def product_ast(raw):
         tree = ast.parse(raw)
+        if not consumes_restore:
+            # These declared consumers never submit a restore. Keep shared
+            # dispatch, snapshot and transport behavior bound; exclude only
+            # the restore arm and the optional timeout's unchanged default.
+            for function in tree.body:
+                if isinstance(function, ast.FunctionDef) and function.name == 'operation':
+                    for node in ast.walk(function):
+                        if (isinstance(node, ast.If) and
+                                ast.dump(node.test) == ast.dump(ast.parse('kind == "snapshot"', mode='eval').body)):
+                            node.orelse = []
+            signature = ast.parse('def request(method, path, body=None, *, timeout=60): pass').body[0].args
+            transport = ast.parse('TunnelHTTPS(f"{name}-client.{ns}.svc", port, timeout=timeout, context=context)', mode='eval').body
+            for function in tree.body:
+                if not isinstance(function, ast.FunctionDef) or function.name != 'connection':
+                    continue
+                for node in ast.walk(function):
+                    if not isinstance(node, ast.FunctionDef) or node.name != 'request' or ast.dump(node.args) != ast.dump(signature):
+                        continue
+                    uses = [value for value in ast.walk(node) if isinstance(value, ast.Name) and value.id == 'timeout']
+                    calls = [value for value in ast.walk(node) if isinstance(value, ast.Call) and ast.dump(value) == ast.dump(transport)]
+                    if len(uses) == len(calls) == 1:
+                        node.args.kwonlyargs = []; node.args.kw_defaults = []
+                        next(value for value in calls[0].keywords if value.arg == 'timeout').value = ast.Constant(value=60)
+        # Accepted successful paths never raised a TLS verification error.
+        # Preserve only that unchanged path; certificate rotation (ES-26)
+        # must qualify the newly added bounded wait with current evidence.
+        if owner != 'security-certificates':
+            handler = ast.parse(
+                'try:\n    pass\n'
+                'except ssl.SSLCertVerificationError:\n'
+                '    print("ELASTICSEARCH_WAIT_HEARTBEAT source=TLS reason=certificate-convergence", flush=True)\n'
+                '    time.sleep(5)\n'
+                '    continue'
+            ).body[0].handlers[0]
+            for function in tree.body:
+                if isinstance(function, ast.FunctionDef) and function.name == 'health':
+                    for node in ast.walk(function):
+                        if not (isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == 'ready'):
+                            continue
+                        retry = node.body[0]
+                        if (isinstance(retry, ast.Try) and not retry.orelse and not retry.finalbody and
+                                len(retry.handlers) == 1 and
+                                ast.dump(retry.handlers[0], include_attributes=False) == ast.dump(handler, include_attributes=False)):
+                            node.body[:1] = retry.body
         # Old receipts exercise the unchanged default (full contention probe).
         # The opt-in MinIO branch is qualified separately. Strip only its exact
         # default-inert statements; a changed default, body or any other API
@@ -228,7 +279,7 @@ def dependency_matches(root, record, case, source, checksum):
                     for parent in ast.walk(function):
                         if isinstance(getattr(parent, 'body', None), list):
                             parent.body = [node for node in parent.body if ast.dump(node, include_attributes=False) != excluded]
-        if owner in non_restore:
+        if not consumes_restore:
             tree.body = [node for node in tree.body if not isinstance(node, ast.FunctionDef) or node.name != 'index_uuids']
         if owner != 'observability':
             for function in tree.body:

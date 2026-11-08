@@ -1,0 +1,113 @@
+{
+  "case_ids": [
+    "ES-55"
+  ],
+  "dependencies": {
+    "common/constants.py": "b9c5c7914d4a29ebd4d9e5e1eb05ceed35223696617317d0f09bd2493c7f436f",
+    "conf/config.yml": "cb417b4ff0fdaea868c6b166f0eeaceb24ccb28321a9458b3aa4c78ba6a1884e",
+    "playbooks/09.longhorn.yml": "2a4950fb6236bf2b4966dee724bd254ceb4626a597a21c9328ec4905566c75e1",
+    "roles/cluster-addon/files/alloy-1.11.1.tgz": "cc4cd48a885c070fe8b2929971552852375c11e92d95fc6337d0c3fa277ac575",
+    "roles/cluster-addon/files/alloy-1.11.1.tgz.sha256": "aaa5c4b7266fa37361828c00d0e50e4c204e42ffd2ba187e876a2db1231ef2e0",
+    "roles/cluster-addon/files/eck-3.5.0-crds.yaml": "0e126dbd003f8f98c9b84f2af6263b5ac8a00b52cd9a6d6da225aa3af66cc13c",
+    "roles/cluster-addon/files/eck-3.5.0-crds.yaml.sha256": "de83567f0bed1c4bd455f70713871a0734de0c731ec2e4cb813365dd85792d0d",
+    "roles/cluster-addon/files/eck-3.5.0-operator.yaml": "450f59d5026341226c54bbd3fafb68adcf99de8c674b47e32c22fae8aa183bf7",
+    "roles/cluster-addon/files/eck-3.5.0-operator.yaml.sha256": "e5bdc3b2bacbb2b8838b6be8f402aa6423a3136ae3a82c776795ce47d31e9405",
+    "roles/cluster-addon/files/eck.py": "ba1c4429b736aac3f21e1b3a73747e3bbd773ff57ade139e6a4284eccd60abdb",
+    "roles/cluster-addon/files/elasticsearch.py": "ab417880aa2dfafb4fdf11bcbd595a49aa0ddf60b292438df27c7dc632975838",
+    "roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32",
+    "roles/cluster-addon/files/loki-18.9.0.tgz": "633a1a223fd5b58aeceff648a586816383903f090b332f4b460b3ebdfcc053fa",
+    "roles/cluster-addon/files/loki-18.9.0.tgz.sha256": "5dd392d3785f607a01ffa49644a34823386b81305056b250ad5ff9a7144423b2",
+    "roles/cluster-addon/tasks/eck-platform.yml": "3fa177180da5e47f1b6b9c06f574a17b4934889e3166654a3c27b1f7417e0fc9",
+    "roles/cluster-addon/tasks/elasticsearch.yml": "f8823289344454b458ec4dfb7441ce9300e3e4a134e81b5c2e6c407f03a1044b",
+    "roles/cluster-addon/tasks/logging.yml": "f09047fda32e3215a93a4a2a64c13d04e17872e092bf409ceab69eed2acf4335",
+    "roles/cluster-addon/tasks/main.yml": "abfdf9ea8f3ec5da1b4f6dd16f87c755f50abd0f7e7d3d142869a7b070acb1ed",
+    "roles/cluster-addon/tasks/prometheus.yml": "8cac794e3b123d16dfbb373ae2122af86ef0194782f59a258a86510fa143a7bb",
+    "roles/cluster-addon/templates/logging/alloy-values.yaml.j2": "94c1bf307cc7f5a759a31d370a5aa7eb442d79fd15dc24967f97e11038e3a84e",
+    "roles/cluster-addon/templates/logging/efk.yaml.j2": "a8e84bde2528d518efa6c2dcf8b51f92313ebeef78ecc2a227635406a1354f3d",
+    "roles/cluster-addon/templates/logging/fluent-bit-direct.yaml.j2": "b3af35ed351570c6aaf22e9283a5a7201a1b2ddc53adb141538014b0bc7a3beb",
+    "roles/cluster-addon/templates/logging/fluent-bit-kafka.yaml.j2": "4f306dbc23236b488fb5f9ae90b96485f72196806ca3fc22751011ca9f0450fb",
+    "roles/cluster-addon/templates/logging/loki-values.yaml.j2": "2dafa28e7d67a77637b96c396aa5f333684699d18b1aadef5257e9f02a30d698",
+    "roles/cluster-addon/templates/prometheus/blackbox-probe.yaml.j2": "e468792bdfdf63f445d7984fe109d63feef45960014beef79aa9829a4419b935",
+    "roles/cluster-addon/templates/prometheus/dingtalk-webhook.yaml": "66cf9347f4772904a503ae5a9345aa6f8a425e750a2092eb2d762294f172eb25",
+    "roles/cluster-addon/templates/prometheus/etcd-client-csr.json.j2": "995a21e7485a68ccdf6da367701ef8840044c4a7cec385a4ed02444d88268683",
+    "roles/cluster-addon/templates/prometheus/example-config-alertsmanager.yaml": "e71b379d6631979c8a587fa16a7d968b7abb79d6cd36d518199aa610ffb02d55",
+    "roles/cluster-addon/templates/prometheus/values.yaml.j2": "5fa82d469fd06853eac596b7da4fffad30a56977990d3d75b0cc19299bd6171e",
+    "roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+    "roles/longhorn/files/block-check.py": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+    "roles/longhorn/files/block-retire.py": "f76d9a2f6fc03569d79bf9b693ccf0a71234f3c0c0b6a3d847656687426cbca1",
+    "roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "roles/longhorn/files/images.json": "9879b430f8caab2d0ccb6ab72741b36dad073252de674c76d98ea8aad4107305",
+    "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "roles/longhorn/files/longhorn.py": "246651e1773dcf6bdcf5972f81a4b0aaee2dab9999997bfb11d5549fd166b578",
+    "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "roles/longhorn/tasks/control.yml": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+    "roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "service/cluster/downloader.py": "a15efb6d27984f5a37559309f4603e88b70a86ab03e7b13a69079ef4d8a4785d",
+    "service/cluster/manager.py": "6411d4a3fba0de58372960db92f61c1727009a30a26b3d3bbffa0f89b80805f2",
+    "service/cluster/registry.py": "1431b2ef6972391d2c3b2c63b835e20305c8bba7a387923a90e04d29e1d54a56",
+    "tests/evidence/elasticsearch-images-20261103.json": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+    "tests/fixtures/elasticsearch/eck-3.4.1-crds.yaml": "488f2eda4b0d21637d0a2764f0fced6eafbb7279d1a1fb9c35a9ebaac28e393a",
+    "tests/fixtures/elasticsearch/eck-3.4.1-operator.yaml": "acb8a565a3ad932e10091da32f9d5652de390ade105e8b6028314d3140576b8a",
+    "tests/helpers/elasticsearch-artifacts.py": "b2402b1477ac5c307020d3b516554cb144c3b8a0b382360c5cd0a9ab77d1399d",
+    "tests/helpers/elasticsearch-business.py": "262cb8f67758c4bcb7468be89ffedfbe48adf44cfbf6a1a7e48d33d40a2673c5",
+    "tests/helpers/elasticsearch-evidence.py": "7a9f81ee11bd4d6b18d538a2a6cd03634a964347b07f906ff2aac77472bae1a1",
+    "tests/helpers/elasticsearch-gate.sh": "b731bb8921ea75eb27b267779cfeeb5ab0dd0adf87233b0585125c8d2a8f50a8",
+    "tests/helpers/elasticsearch-lab.py#logging": "e45e769097df44c2c8dceb4b9f2f2ff818d4a3ef71efffef505bb516ab357819",
+    "tests/helpers/elasticsearch-runner.sh": "ba6d7abacc1cc5bf91f2d854d6a133ac1d2e591538c21a86ef7be37a80d41c5c",
+    "tests/helpers/elasticsearch-secondary-lease.sh": "14b088bfe82597de6add702687a6b25cf0d71dfc6d10aef75a1c521d364a377d",
+    "tests/helpers/kafka-cleanup.sh": "a17cc54d109c714a91c6904e12ebe12ce05a120869f175f42d0db5f9c6f321ab",
+    "tests/helpers/lab-wipe-nodes.sh": "267f8c1fb08d369932d46ef8bd59507243c69936960e965c53c3e331ed12cd6f",
+    "tests/helpers/logging-artifact-gate.sh": "a42b255f04d1aa2963d6dfe69ecdf04b23329159775f686b62a08667629992b0",
+    "tests/helpers/logging-cleanup.sh": "0a63f2708f2eb55de6184e6bf9d1b0e08012daf7f39a009c01448af52da8dd84",
+    "tests/helpers/logging-regression.sh": "8052cec9c2b49d08ab8b51ee8f9fc1307b24c86fef99e79aae2cdc93ff7807e9",
+    "tests/helpers/longhorn-artifacts.py": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306",
+    "tests/helpers/longhorn-lab.py": "57caf5f4ae6873490b277ec615839776a39c5d1ece2069a2d97de12c05080615",
+    "tests/helpers/longhorn-node-failure.py": "eeecf18c07f37c7f99d6508ee9f2a5e7563508eb6c2463f4b468a1389351e6c7",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/helpers/validate_elasticsearch_matrix.py": "ab043f6f98ad78c0407c551e1209e4517c7405a5f31834ced57670ea495aabe1",
+    "tests/run_enterprise_regression.sh": "c41b5756c12b3c24d3fbef5667f63d569f0d7ce6eeb0bbdaa374bfc483294509"
+  },
+  "durable": {
+    "exit": {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/logging.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/logging.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "product_entry": "config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER} 07 --tags elasticsearch",
+  "provenance": [
+    {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/checkpoints/logging/launch-inputs.json",
+      "sha256": "1b506ba3d0281c9646b00e9a6771e299b2f0ada1e65db36e44612ea7cdb7ef75"
+    },
+    {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/checkpoints/logging/launch-provenance.json",
+      "sha256": "7ec52a6aa122b5c2c859ca10bd58cb6d59373f54ac9e26a3fcffd3b3b4c2d37e"
+    },
+    {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/checkpoints/logging/launch-sources.tar.gz",
+      "sha256": "b40aff61f4b06595cf9b9cc6dac5158c8114b4c03dcf1a81334408cfda839107"
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/logging.log",
+      "sha256": "a9c0b68c04a3f4f6b1ec53af9fa5de9f0c88ea0b50fcd0f4ed39e8550598cfdd"
+    }
+  ],
+  "scoped_cleanup": true,
+  "scoped_cleanup_marker": "ELASTICSEARCH_MODULE_PASS module=logging"
+}

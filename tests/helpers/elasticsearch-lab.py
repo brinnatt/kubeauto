@@ -2597,6 +2597,11 @@ def prometheus_es_ready(pod, namespace, service):
     return len(targets)==1 and targets[0]['health']=='up' and len(values)==1 and float(values[0]['value'][1])==1
 
 
+def prometheus_es_rules_ready(pod, required):
+    rules=[rule for group in prometheus_read(pod,'rules')['groups'] for rule in group['rules'] if rule.get('name') in required]
+    return {rule['name'] for rule in rules}==required and all(rule['health']=='ok' and not rule.get('lastError') for rule in rules)
+
+
 def observability():
     baseline()
     # Use the existing production Prometheus and local-path entry points.
@@ -2645,10 +2650,9 @@ def observability():
                 if 'status=403' not in str(error) or 'security_exception' not in str(error):raise
             else:raise ValueError('monitoring identity can read business documents')
         required={'ElasticsearchClusterRed','ElasticsearchUnassignedShards','ElasticsearchMetricsUnavailable'}
-        for pod in pods:
-            rules=[r for group in prometheus_read(pod,'rules')['groups'] for r in group['rules'] if r.get('name') in required]
-            if {r['name'] for r in rules}!=required or any(r['health']!='ok' or r.get('lastError') for r in rules):
-                raise ValueError('Prometheus did not load every product alert rule')
+        # Rule-file projection, reload and first evaluation are asynchronous
+        # with target discovery. Keep the same rule assertions on both replicas.
+        wait_prometheus(pods,'actual-alert-rules',lambda pod:prometheus_es_rules_ready(pod,required))
         print('ELASTICSEARCH_CASE_PASS id=ES-46',flush=True)
         monitor=k.get('servicemonitor',ns+'-'+name+'-metrics',c['elasticsearch_monitoring_namespace'])
         deployment=k.get('deployment',name+'-metrics',ns)

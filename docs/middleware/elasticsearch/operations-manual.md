@@ -623,6 +623,8 @@ kubectl -n elasticsearch create secret generic search-http-next \
 
 证书至少还有两天有效期是本次操作的前置下限，不是生产推荐生命周期。上述检查不输出私钥；私钥与证书是否匹配由后续产品前置检查验证。`search-http-next` 已存在时停止核对，不覆盖。随后在 `$CFG` 把 `elasticsearch_http_tls_secret` 改为 `search-http-next`，执行 `kubecli setup "$CLUSTER" 07 --tags elasticsearch`。产品检查证书链、有效期、私钥和 SAN，ECK 协调新证书，数据面等待最长 1800 秒；产品同时刷新 exporter 的信任引用。
 
+ECK 更新证书 Secret、Kubernetes 将文件投射到成员和 ES 重载证书是异步步骤，`Ready` 不能代替新连接验证。产品健康检查遇到证书验证失败时，会在同一等待期限内每隔 5 秒重新读取当前 CA 并建立严格 TLS 连接，输出 `source=TLS reason=certificate-convergence` 心跳；不会关闭 CA 或主机名校验，也不会无限等待。持续出现该心跳或超时失败时停止后续变更，核对证书链、Secret 引用和各成员证书加载情况，再按本节失败恢复路径处理。机制依据为官方[证书更新与自动重载](https://www.elastic.co/docs/deploy-manage/security/updating-certificates)；实际收敛时间还包含 Kubernetes Secret 文件更新延迟，不能把 ES 的五秒监测间隔当成整个变更的完成时间。
+
 完成后用新 CA 单独验证管理连接，并在应用侧创建新连接完成原查询、写入对账及错误 CA/SAN 拒绝测试：
 
 ```bash
@@ -806,7 +808,7 @@ kubectl -n elasticsearch get configmap search-request-restore-before-change-v1 \
   -o jsonpath='{.data.phase}{"\n"}{.data.receipt}{"\n"}'
 ```
 
-目标 Kubernetes UID 和 ES `cluster_uuid` 必须分别不同于源；产品等待目标索引绿色及 primary 从指定 repository/snapshot 完成恢复，最长 1800 秒。成功账本包含 snapshot UUID、目标索引 UUID。随后在目标重建第 5.1 节管理连接。普通索引快照不恢复原生用户域（native realm）中的用户/角色；按第 6 节的身份准备步骤，仅创建目标独立应用密码 Secret、追加 role/user 请求，并在目标执行同一 setup。不要运行该节演示程序的首次建索引和写入动作，也不要为恢复普通数据而启用 security feature state。
+目标 Kubernetes UID 和 ES `cluster_uuid` 必须分别不同于源；产品通过指定 repository/snapshot 的同步恢复响应核对索引集合、全部主分片成功且零失败，再等待目标索引绿色，总等待受 `elasticsearch_wait_seconds` 限制，默认 1800 秒。成功账本包含 snapshot UUID、目标索引 UUID。分片恢复后可能正常迁移，`_recovery` 此时显示最近的 PEER 恢复，不能要求它永久保留原 SNAPSHOT 记录，也不能仅凭 green 判断本次恢复成功。请求超时或完成响应丢失时，保留 `running` 账本和目标数据，停止并核对结果，不自动重放、删除索引或改签完成。随后在目标重建第 5.1 节管理连接。普通索引快照不恢复原生用户域（native realm）中的用户/角色；按第 6 节的身份准备步骤，仅创建目标独立应用密码 Secret、追加 role/user 请求，并在目标执行同一 setup。不要运行该节演示程序的首次建索引和写入动作，也不要为恢复普通数据而启用 security feature state。
 
 给目标应用挂载目标 CA/凭据，使用恢复后的现存索引核对数量、逐条内容摘要、查询/聚合及越权拒绝；源端演示数据若未修改，恢复后仍应命中 `item-1001`，价格为 79.0。此时只运行读取验证，暂不启动目标业务写入者，待第 9.3 节确认单一写入入口后再启用新写入。仅索引 UUID、节点健康或快照状态正确，均不能代替这些业务结果。
 
@@ -876,7 +878,7 @@ PY
 esread '/_security/_authenticate'
 ```
 
-认证响应必须是 `username=search_recovery`、`authentication_realm.type=file` 且 roles 包含 `superuser`。只有此出口通过，才把 9.2 节 restore 请求改为新的 ID、已核验的 feature 快照名及 `feature_states: [security, kibana]`，索引列表与快照一致，经产品 setup 执行；保持 Kibana 关闭。产品等待各业务/feature primary 来自指定 snapshot 的恢复完成、绿色和完成账本，最长 1800 秒。随后先核对业务数据，再用源备份中已知的 native 用户新建连接，验证认证域、原角色、允许查询及越权拒绝。
+认证响应必须是 `username=search_recovery`、`authentication_realm.type=file` 且 roles 包含 `superuser`。只有此出口通过，才把 9.2 节 restore 请求改为新的 ID、已核验的 feature 快照名及 `feature_states: [security, kibana]`，索引列表与快照一致，经产品 setup 执行；保持 Kibana 关闭。产品按 9.2 节的同一完成判据核对业务和全部 feature 索引的恢复响应、绿色及完成账本，默认总等待最长 1800 秒。随后先核对业务数据，再用源备份中已知的 native 用户新建连接，验证认证域、原角色、允许查询及越权拒绝。
 
 恢复通过后，从配置中移除已完成的一次性 restore 请求，保留其完成账本，再设 `elasticsearch_kibana_enabled: true` 并执行 setup。预期两个 Kibana 实例就绪、状态绿色，再用恢复后的业务身份进入同一 space，读取此前保存的精确对象 ID，核对类型与属性；出现迁移失败时停止开放业务，保存 Kibana 状态和首个迁移错误，不手工删除系统索引。单纯登录成功不能证明保存对象恢复，普通 dashboard 成功也不代表加密连接器已恢复。
 

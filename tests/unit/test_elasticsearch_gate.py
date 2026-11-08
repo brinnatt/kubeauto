@@ -1119,7 +1119,7 @@ class CoexistenceContracts(unittest.TestCase):
                     obj=json.loads(body);obj['metadata'].update(uid='ledger',resourceVersion='1')
                     ledger['configmap',obj['metadata']['name'],'elastic-system']=obj
                 api=SimpleNamespace(get=get,run=run)
-                def request(namespace,method,path,body=None):
+                def request(namespace,method,path,body=None,*,timeout=60):
                     events.append((namespace,method,path))
                     parts=path.split('?',1)[0].strip('/').split('/')
                     if path=='/':return {'cluster_uuid':'cluster-'+namespace}
@@ -1139,7 +1139,8 @@ class CoexistenceContracts(unittest.TestCase):
                                 return {'snapshot':{'shards':{'failed':0,'successful':1}}}
                             if failed is True:raise ValueError('restore execution failed')
                             data[namespace].update(copy.deepcopy(snapshots[parts[2]]['data']))
-                            return {'accepted':True}
+                            return {'snapshot':{'snapshot':parts[2],'indices':body['indices'].split(','),
+                                'shards':{'total':1,'successful':1,'failed':0}}}
                         name=parts[2]
                         if method=='GET':return {'snapshots':[snapshots[name]] if name in snapshots else []}
                         if method=='DELETE':del snapshots[name];return {}
@@ -1173,7 +1174,7 @@ class CoexistenceContracts(unittest.TestCase):
                 def product(*args,**kwargs):
                     c=config();es.validate(c)
                     for req in c['elasticsearch_requests']:
-                        es.operation(c,api,lambda *values:request(c['elasticsearch_namespace'],*values),req)
+                        es.operation(c,api,lambda *values,**options:request(c['elasticsearch_namespace'],*values,**options),req)
                 lab=SimpleNamespace(STATE=state,NAME='cluster',api=lambda:api,load_es=lambda:es,configuration=config,
                     selected_config=select,repository_request=LAB.repository_request,product=product,atomic=LAB.atomic,
                     topology_state=lambda _: {'identity':'unchanged'},verify_topology=Mock(),data_ledger=Mock())
@@ -3593,6 +3594,36 @@ class ConcurrentConfigurationContracts(unittest.TestCase):
 
 
 class ObservabilityContracts(unittest.TestCase):
+    def test_alert_rules_wait_for_both_replicas_first_evaluation_without_accepting_errors(self):
+        required={'ElasticsearchClusterRed','ElasticsearchUnassignedShards','ElasticsearchMetricsUnavailable'}
+        healthy=[{'name':name,'health':'ok'} for name in sorted(required)]
+        for defect in ('healthy','missing','unknown','error','last-error'):
+            rules=copy.deepcopy(healthy)
+            if defect=='missing':rules.pop()
+            elif defect=='unknown':rules[0]['health']='unknown'
+            elif defect=='error':rules[0]['health']='err'
+            elif defect=='last-error':rules[0]['lastError']='evaluation failed'
+            with self.subTest(defect=defect),patch.object(LAB,'prometheus_read',return_value={'groups':[{'rules':rules}]}):
+                self.assertEqual(defect=='healthy',LAB.prometheus_es_rules_ready('prom-a',required))
+        observed=[];attempts={'prom-a':0,'prom-b':0}
+        def read(pod,endpoint):
+            self.assertEqual('rules',endpoint);observed.append(pod);attempts[pod]+=1
+            rules=copy.deepcopy(healthy)
+            if pod=='prom-b' and attempts[pod]==1:
+                for rule in rules:rule['health']='unknown'
+            return {'groups':[{'rules':rules}]}
+        with patch.object(LAB,'prometheus_read',side_effect=read),patch.object(LAB.time,'sleep'):
+            LAB.wait_prometheus(['prom-a','prom-b'],'actual-alert-rules',lambda pod:LAB.prometheus_es_rules_ready(pod,required))
+        self.assertEqual(['prom-a','prom-b','prom-a','prom-b'],observed)
+        for defect in ('missing','unknown','error'):
+            rules=copy.deepcopy(healthy)
+            if defect=='missing':rules.pop()
+            else:rules[0]['health']='unknown' if defect=='unknown' else 'err'
+            with self.subTest(timeout=defect),patch.object(LAB,'prometheus_read',return_value={'groups':[{'rules':rules}]}),\
+                    patch.object(LAB.time,'monotonic',side_effect=[0,0,601]),patch.object(LAB.time,'sleep'):
+                with self.assertRaisesRegex(ValueError,'actual-alert-rules'):
+                    LAB.wait_prometheus(['prom-a','prom-b'],'actual-alert-rules',lambda pod:LAB.prometheus_es_rules_ready(pod,required))
+
     def test_health_readiness_requires_real_pinned_health_series_and_healthy_target(self):
         target={'labels':{'namespace':'es','service':'metrics'},'health':'up'}
         for defect in ('healthy','missing','zero','duplicate','target-down'):
@@ -4253,6 +4284,44 @@ class IsolationMatrixContracts(unittest.TestCase):
 
 
 class EvidenceRetentionContracts(unittest.TestCase):
+    def test_tls_wait_reuses_only_authenticated_unchanged_success_paths(self):
+        import ast
+        name = 'roles/cluster-addon/files/elasticsearch.py'
+        current = (ROOT/name).read_text()
+        tree = ast.parse(current)
+        health = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'health')
+        ready = next(node for node in ast.walk(health) if isinstance(node, ast.If) and
+                     isinstance(node.test, ast.Name) and node.test.id == 'ready')
+        self.assertIsInstance(ready.body[0], ast.Try)
+        ready.body[:1] = ready.body[0].body
+        legacy = ast.unparse(tree)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); product = root/name; product.parent.mkdir(parents=True)
+            product.write_text(legacy)
+            inputs = {name:EVIDENCE.digest(product)}
+            directory = root/'logs/original'
+            with patch.object(EVIDENCE, 'launch_dependencies', return_value=inputs):
+                EVIDENCE.freeze(root, directory, 'standard')
+            receipt = {'provenance':[EVIDENCE.binding(root, directory/'launch-sources.tar.gz')]}
+            product.write_text(current)
+            for cid in ('ES-10', 'ES-24', 'ES-28', 'ES-39'):
+                self.assertTrue(MATRIX.dependency_matches(root, receipt, {'id':cid}, name, inputs[name]))
+            for cid in ('ES-26', 'ES-59'):
+                self.assertFalse(MATRIX.dependency_matches(root, receipt, {'id':cid}, name, inputs[name]))
+            self.assertFalse(MATRIX.dependency_matches(root, {}, {'id':'ES-10'}, name, inputs[name]))
+            self.assertFalse(MATRIX.dependency_matches(root, receipt, {'id':'ES-10'}, name, '0'*64))
+            for changed in (
+                    current.replace('except ssl.SSLCertVerificationError:', 'except ssl.SSLError:'),
+                    current.replace('reason=certificate-convergence', 'reason=ignored'),
+                    current.replace('deadline = time.monotonic() + c["elasticsearch_wait_seconds"]',
+                                    'deadline = time.monotonic() + 999999'),
+                    current.replace('SSLContext(ssl.PROTOCOL_TLS_SERVER)', 'SSLContext(ssl.PROTOCOL_TLS_CLIENT)'),
+                    current.replace('cluster UUID differs from the retained data identity', 'changed identity check')):
+                with self.subTest(change=changed):
+                    self.assertNotEqual(current, changed)
+                    product.write_text(changed)
+                    self.assertFalse(MATRIX.dependency_matches(root, receipt, {'id':'ES-10'}, name, inputs[name]))
+
     def test_reverted_dependencies_restore_only_accepted_immutable_current_receipts(self):
         import yaml
         for defect in ('none','dependency','log','exit','finalized','never-accepted','failed'):
@@ -5026,6 +5095,55 @@ class SecondaryLeaseContracts(unittest.TestCase):
 
 
 class ScopedDeliveryPathContracts(unittest.TestCase):
+    def test_real_launch_collection_preserves_private_child_directories_and_failed_parent(self):
+        import os,shlex
+        runner=(ROOT/'tests/helpers/elasticsearch-runner.sh').read_text()
+        launch=runner.split('elasticsearch_launch() {',1)[1].split('\nelasticsearch_local_gate() {',1)[0]
+        tail=launch[launch.index('  monitor_remote_job elasticsearch ssh_elasticsearch '):]
+        for parent_rc in (0,1):
+            with self.subTest(parent_rc=parent_rc),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);directory=root/'evidence';directory.mkdir(mode=0o700)
+                children=directory/'children';children.mkdir(mode=0o700)
+                checkpoint=children/'checkpoints';checkpoint.mkdir(mode=0o700)
+                receipt=checkpoint/'receipt.json';receipt.write_text('immutable receipt\n');receipt.chmod(0o600)
+                binary=root/'.venv/bin/python';binary.parent.mkdir(parents=True)
+                binary.write_text('#!/bin/bash\nset -eu\n'
+                    'test "$(stat -c %a "$3/children")" = 700\n'
+                    'test "$(stat -c %a "$3/children/checkpoints")" = 700\n'
+                    'printf "%s\\n" "$2" >> '+shlex.quote(str(root/'calls'))+'\n')
+                binary.chmod(0o700)
+                script='set -eu\nROOT="$1"\ndirectory="$ROOT/evidence"\nmodule=only\nmarker=full-pass\nrc=0\n'
+                script+='monitor_remote_job() { if [[ "$1" == elasticsearch ]]; then return "$2"; fi; }\n'.replace('return "$2"','return '+str(parent_rc))
+                script+='remote_job_summary() { printf summary; }\nssh_elasticsearch() { printf "0\\n"; }\nssh_elasticsearch_secondary() { printf "0\\n"; }\n'
+                script+='finish_launch() {\n'+tail+'\nfinish_launch\n'
+                result=subprocess.run(['bash','-c',script,'contract',str(root)],capture_output=True,text=True,timeout=10)
+                self.assertEqual(parent_rc,result.returncode,result.stdout+result.stderr)
+                self.assertEqual(0o700,children.stat().st_mode&0o777)
+                self.assertEqual(0o700,checkpoint.stat().st_mode&0o777)
+                self.assertEqual('immutable receipt\n',receipt.read_text())
+                self.assertEqual(['recover-children']+(['publish'] if parent_rc==0 else []),(root/'calls').read_text().splitlines())
+                for path in directory.iterdir():
+                    if path.is_file():self.assertEqual(0o600,path.stat().st_mode&0o777)
+
+    def test_collection_permission_fix_preserves_only_authenticated_unchanged_launch_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);name='tests/helpers/elasticsearch-runner.sh';path=root/name;path.parent.mkdir(parents=True)
+            current=(ROOT/name).read_text()
+            old='chmod 0600 "$directory"/*'
+            fixed='find "$directory" -maxdepth 1 -type f -exec chmod 0600 {} +'
+            original=current.replace(fixed,old);updated=current.replace(old,fixed)
+            path.write_text(original);checksum=EVIDENCE.digest(path);directory=root/'logs/original'
+            with patch.object(EVIDENCE,'launch_dependencies',return_value={name:checksum}):EVIDENCE.freeze(root,directory,'compact')
+            receipt={'provenance':[EVIDENCE.binding(root,directory/'launch-sources.tar.gz')]}
+            path.write_text(updated)
+            self.assertTrue(MATRIX.dependency_matches(root,receipt,{'id':'ES-13'},name,checksum))
+            for cid in ('ES-01','ES-59'):
+                self.assertFalse(MATRIX.dependency_matches(root,receipt,{'id':cid},name,checksum))
+            self.assertFalse(MATRIX.dependency_matches(root,{}, {'id':'ES-13'},name,checksum))
+            self.assertFalse(MATRIX.dependency_matches(root,receipt,{'id':'ES-13'},name,'0'*64))
+            path.write_text(updated.replace('monitor_remote_job elasticsearch ssh_elasticsearch','monitor_remote_job changed ssh_elasticsearch'))
+            self.assertFalse(MATRIX.dependency_matches(root,receipt,{'id':'ES-13'},name,checksum))
+
     def test_documentation_dispatch_addition_preserves_live_launches_but_other_runner_changes_do_not(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);name='tests/helpers/elasticsearch-runner.sh';path=root/name;path.parent.mkdir(parents=True)
@@ -5133,6 +5251,44 @@ class ScopedDeliveryPathContracts(unittest.TestCase):
             archive=directory/'launch-sources.tar.gz';archive.write_bytes(archive.read_bytes()+b'corruption')
             with self.assertRaisesRegex(ValueError,'bytes differ'):
                 MATRIX.dependency_matches(root,receipt,{'id':'ES-41'},names[1],inputs[names[1]])
+
+    def test_restore_completion_change_preserves_only_authenticated_restore_free_consumers(self):
+        name = 'roles/cluster-addon/files/elasticsearch.py'
+        current = (ROOT/name).read_text()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); path = root/name; path.parent.mkdir(parents=True)
+            # A synthetic earlier restore implementation with the original
+            # fixed 60-second transport. All unrelated product bytes match.
+            previous = current.replace('def request(method, path, body=None, *, timeout=60):',
+                                       'def request(method, path, body=None):').replace('port, timeout=timeout, context=context)',
+                                                                                  'port, timeout=60, context=context)')
+            previous = previous.replace('restoring = set(indices) | feature_indices',
+                                        'raise ValueError("old restore completion")\n            restoring = set(indices) | feature_indices')
+            path.write_text(previous); checksum = EVIDENCE.digest(path)
+            directory = root/'logs/original'
+            with patch.object(EVIDENCE, 'launch_dependencies', return_value={name:checksum}):
+                EVIDENCE.freeze(root, directory, 'backup-source')
+            receipt = {'provenance':[EVIDENCE.binding(root, directory/'launch-sources.tar.gz')]}
+            path.write_text(current)
+            for number in (7,8,9,10,13,15,21,24,26,28,29,30,35,39,40,46,47,48,49,50,53,55,56,57):
+                with self.subTest(case=number):
+                    self.assertTrue(MATRIX.dependency_matches(root, receipt, {'id':f'ES-{number:02}'}, name, checksum))
+            for number in (1,41,42,43,44,45,51,52,54,59):
+                with self.subTest(case=number):
+                    self.assertFalse(MATRIX.dependency_matches(root, receipt, {'id':f'ES-{number:02}'}, name, checksum))
+            for changed in (
+                current.replace('*, timeout=60):', '*, timeout=61):'),
+                current.replace('port, timeout=timeout, context=context)', 'port, timeout=timeout + 1, context=context)'),
+                current.replace('if kind == "snapshot":', 'if kind != "restore":'),
+                current.replace('def operation(c, api, request, req):', 'def operation(c, api, request, req):\n    raise ValueError("changed shared operation")'),
+                current.replace('def connection(c, api):', 'def connection(c, api):\n    raise ValueError("changed shared transport")')):
+                path.write_text(changed)
+                self.assertFalse(MATRIX.dependency_matches(root, receipt, {'id':'ES-39'}, name, checksum))
+            self.assertFalse(MATRIX.dependency_matches(root, {}, {'id':'ES-39'}, name, checksum))
+            path.write_text(current.replace('def index_uuids(request, indices):',
+                                            'def index_uuids(request, indices):\n    raise ValueError("changed restore identity")'))
+            for number in (41,42,43,51,54):
+                self.assertFalse(MATRIX.dependency_matches(root, receipt, {'id':f'ES-{number}'}, name, checksum))
 
     def test_feature_retry_does_not_reuse_a_snapshot_with_replaced_native_credentials(self):
         with tempfile.TemporaryDirectory() as temporary:

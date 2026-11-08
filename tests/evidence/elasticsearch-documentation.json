@@ -7,9 +7,9 @@
     "kubernetes": "1.33.6"
   },
   "files": {
-    "docs/middleware/elasticsearch/operations-manual.md": "66e3da462dde9f48802612ae5cd580ac096e91fa54fae532e15450d7176ae21e",
+    "docs/middleware/elasticsearch/operations-manual.md": "376e3b976e10a4fcaa4f9158732335ce5f891c1c28b85a9f06e9c824f25b6fa2",
     "docs/middleware/elasticsearch/technical-whitepaper.md": "193de683fe00af7cd9e827d03bb1552f95b7a76d9e1b570bf0f8fa79014e076e",
-    "docs/middleware/elasticsearch/development-manual.md": "4c0267c15844f151eb69631d93a3646e8c61ecb7c30b75a591732647d974ba1e"
+    "docs/middleware/elasticsearch/development-manual.md": "9491277eb758e66eae76395b5e5e4fecc5c5d5f32bdfeb8d374923b19c371c7b"
   },
   "review": {
     "sources": "pass",
@@ -21,7 +21,7 @@
   "reviewer": "author",
   "customer_signoff": false,
   "independent_review": false,
-  "reviewed_at": "2026-11-06T20:13:26+08:00",
+  "reviewed_at": "2026-11-07T11:48:09+08:00",
   "source_baseline": {
     "repository": "https://github.com/elastic/docs-content",
     "commit": "435c60e5a8e5af1085678ceb3a7765eac949b731",
@@ -168,9 +168,37 @@
         {
           "cached_source": "slm.txt",
           "sha256": "45a38f7e9b4e6a09f818f6593f25e795c0f7982c006a37c93c08cc7b0dee268e"
+        },
+        {
+          "cached_source": "logs/elasticsearch-cases/only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506/official-restore-api.html",
+          "sha256": "e80cd4955c8d51916dd885e221c55f96b510284b88b06cbdd09b0d2de4bb4703"
+        },
+        {
+          "cached_source": "logs/elasticsearch-cases/only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506/official-recovery-api.html",
+          "sha256": "8a8c83303bd1de4960e046404550df2ec1df5fc4551d5fa30c635747d52a0202"
+        },
+        {
+          "cached_source": "logs/elasticsearch-cases/only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506/official-RestoreInfo.java",
+          "sha256": "f44e786a5d19f13f13a5a4a4c476a34c8a0315e87932133ead72e45e2404b23d"
+        },
+        {
+          "cached_source": "logs/elasticsearch-cases/only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506/official-TransportRestoreSnapshotAction.java",
+          "sha256": "cb79910b6c39ec0580bb9b3c4e3ac5557e14303be90e6d016b59e0da27e917db"
+        },
+        {
+          "cached_source": "logs/elasticsearch-cases/only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506/official-RestoreClusterStateListener.java",
+          "sha256": "fe162ee7cbba0e3fa41834a102880d135b9f7b03a033bc708e275145ae87c799"
+        },
+        {
+          "cached_source": "logs/elasticsearch-cases/only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506/official-RestoreSnapshotResponse.java",
+          "sha256": "215e3c8ab3cb663dd1fe0b636df2cd1cfe3c39c4a82e287872c6eb71adb8053b"
+        },
+        {
+          "cached_source": "logs/elasticsearch-cases/only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506/official-es-tag.json",
+          "sha256": "9b84f81da8e9b5578e8fbdc61bb71c7826ba0fa4f6e9d53cf3f56324ce55a6bf"
         }
       ],
-      "conclusion": "独立 HTTPS S3、JVM 信任、verify/analysis、空目标与逐条核对、单写入口、feature states 应急管理",
+      "conclusion": "独立 HTTPS S3、JVM 信任、verify/analysis、空目标与逐条核对、单写入口、feature states 应急管理；同步完成响应绑定本次恢复，分片迁移后不依赖旧SNAPSHOT记录，超时保留未知结果",
       "result": "pass",
       "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
     },
@@ -291,6 +319,28 @@
       "operational_evidence": "tests/evidence/elasticsearch-backup-source-20261106-203516-e131c20ce68547838931365d0c522d5a.json",
       "result": "pass",
       "basis": "pinned v9.5.6 official source and official MinIO integration fix; changed paragraphs checked for source, content, novice/operator paths; no diagram change"
+    },
+    {
+      "topic": "HTTP 证书异步重载与严格 TLS 健康等待",
+      "section": "docs/middleware/elasticsearch/operations-manual.md#81-更换客户-http-证书或-ca",
+      "sources": [
+        {
+          "url": "https://www.elastic.co/docs/deploy-manage/security/updating-certificates",
+          "sha256": "d15076c4c2f86c14fd995e92ce2f739ce23ea0ede10d7a91d53e0e6015491bc9"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/elastic/cloud-on-k8s/386c7b14f2d1bbb7f2af1e7da997e64875f16e47/pkg/controller/common/certificates/http_reconcile.go",
+          "sha256": "46bb3334ccd132363f3531233d297ecf4b112a47946788ae7599405d3985fd90"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/elastic/elasticsearch/fd1e8011342a0988e432b999cea4bf884ca120ed/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ssl/SSLConfigurationReloader.java",
+          "sha256": "930a5dccf679c0c90e144ca8290672a7c7ee6a2da050523345f1daa9db6694e0"
+        }
+      ],
+      "conclusion": "Secret 更新、文件投射与证书重载异步；原期限内重建严格 TLS 连接，持续错误仍拒绝。精确反例已通过；ES-26 固定证书分支已通过 standard/compact 的信任重叠、新连接、旧 CA 拒绝、错误 SAN 拒绝、恢复默认信任与各 32 条数据复核，源端和监督端 durable 均为零。该结果不代替最终完整回归。",
+      "result": "pass",
+      "basis": "已读官方文档及固定版本源码；仅复核新增解释段落的机制、等待/停止、原有恢复链接及两类读者路径，无新增操作或图表；不冒充现场 PASS",
+      "operational_evidence": "tests/evidence/elasticsearch-security-certificates-20261107-001403-0378780e13304faaa1b893f555bd259c.json"
     }
   ],
   "reader_paths": [
@@ -322,6 +372,11 @@
       "finding": "客户端中断应等待真实容器启动",
       "fixed": "development 5",
       "recheck": "固定Kubernetes源码与ContainerCreating首失败；精确红绿合同通过"
+    },
+    {
+      "finding": "分片迁移会替换原恢复记录，不能将恢复API历史当作本次恢复完成收据",
+      "fixed": "operations 9.2/9.4; development 3",
+      "recheck": "官方恢复与恢复记录API及ES9.5.6固定源码核对；正文明确完成响应、零失败、green和UUID共同成立，超时或响应丢失保留running；不声称修复版现场已通过"
     }
   ],
   "static": {
@@ -363,5 +418,5 @@
     "Rally has no P95 or distinct retry count; no continuous resource peak measurements",
     "full clean middleware regression remains required"
   ],
-  "review_scope": "Author checked current content and novice/operator input-context-step-result paths; reused version-pinned official research and existing operation evidence. Current product GA remains independently pending. No lab run was added for this documentation review."
+  "review_scope": "复用既有来源、正文及两类读者路径检查；本次只复核operations 9.2/9.4与development恢复完成语义的改动：源/目标身份、恢复响应、超时、结果未知与业务复验衔接。产品修复的现场证据仍由矩阵独立验收；图形和代码块未改。作者检查，不代表客户签收。"
 }

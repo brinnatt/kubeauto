@@ -216,14 +216,14 @@ printf "ELASTICSEARCH_DURABLE_LAUNCHED\n"'
   ssh_elasticsearch 'cat /tmp/kubeauto-elasticsearch-live.log' > "$directory/raw.log" || return
   ssh_elasticsearch 'cat /tmp/kubeauto-elasticsearch-gate.exit' > "$directory/exit" || return
   ssh_elasticsearch 'cat /tmp/kubeauto-elasticsearch-gate.finalized' > "$directory/finalized" || return
-  chmod 0600 "$directory"/*
+  find "$directory" -maxdepth 1 -type f -exec chmod 0600 {} +
   # The guardian consumes the source durable exit, then releases .47.130.
   # A running/unreachable guardian remains a real delivery failure/lease.
   monitor_remote_job elasticsearch-secondary ssh_elasticsearch_secondary '' /tmp/kubeauto-elasticsearch-secondary \
     /tmp/kubeauto-elasticsearch-secondary.log 'ELASTICSEARCH_SECONDARY_EXIT rc=0' || { (( rc != 0 )) || rc=1; }
   remote_job_summary ssh_elasticsearch_secondary '' /tmp/kubeauto-elasticsearch-secondary /tmp/kubeauto-elasticsearch-secondary.log > "$directory/secondary-durable-status.txt"
   ssh_elasticsearch_secondary 'cat /tmp/kubeauto-elasticsearch-secondary.log' > "$directory/secondary-raw.log" || return
-  chmod 0600 "$directory"/*
+  find "$directory" -maxdepth 1 -type f -exec chmod 0600 {} +
   if [[ "$module" == only ]]; then
     "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/elasticsearch-evidence.py" recover-children "$directory" || return
   fi
@@ -242,7 +242,7 @@ elasticsearch_local_gate() {
   bash "$ROOT/tests/helpers/run-durable-gate.sh" "$directory/run" ELASTICSEARCH_LOCAL_GATE_EXIT "$@" 2>&1 | tee "$directory/raw.log" || rc=$?
   cp "$directory/run.exit" "$directory/exit"
   cp "$directory/run.finalized" "$directory/finalized"
-  chmod 0600 "$directory"/*
+  find "$directory" -maxdepth 1 -type f -exec chmod 0600 {} +
   (( rc == 0 )) || return "$rc"
   "$ROOT/.venv/bin/python" "$ROOT/tests/helpers/elasticsearch-evidence.py" publish "$directory" --marker "$marker" --scope "$module"
 }

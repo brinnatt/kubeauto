@@ -719,6 +719,56 @@ class ElasticsearchDeliveryTests(unittest.TestCase):
         api.apply.assert_called_once()
         self.assertEqual('cluster-a', api.apply.call_args.args[0][0]['data']['cluster_uuid'])
 
+    def test_health_reopens_verified_tls_after_certificate_reload_race(self):
+        import ssl
+        from contextlib import contextmanager
+        from unittest.mock import Mock
+        c = configuration('compact') | {'elasticsearch_exporter_enabled': False}
+        api = BusinessAPI()
+        api.cluster['status'] = {'observedGeneration': 1, 'health': 'green', 'availableNodes': 3,
+            'phase': 'Ready', 'conditions': [{'type': 'ReconciliationComplete', 'status': 'True'}]}
+        api.apply = Mock()
+        attempts = []
+        @contextmanager
+        def connection(*args):
+            attempts.append(len(attempts))
+            def request(method, path):
+                if len(attempts) == 1:
+                    raise ssl.SSLCertVerificationError('unable to get local issuer certificate')
+                if path.startswith('/_cluster/health'):
+                    return {'status': 'green', 'number_of_nodes': 3}
+                if path == '/': return {'version': {'number': '9.5.6'}, 'cluster_uuid': 'cluster-a'}
+                if path == '/_nodes': return {'nodes': {str(i): {'version': '9.5.6'} for i in range(3)}}
+                raise AssertionError(path)
+            yield request
+        with patch.object(es, 'connection', connection), patch.object(es.time, 'sleep') as sleep:
+            es.health(c, api)
+        self.assertEqual(2, len(attempts))
+        sleep.assert_called_once_with(5)
+        api.apply.assert_called_once()
+
+    def test_health_certificate_wait_is_bounded_and_other_failures_propagate(self):
+        import ssl
+        from unittest.mock import Mock
+        c = configuration('compact') | {'elasticsearch_wait_seconds': 10}
+        for failure in (ssl.SSLCertVerificationError('wrong CA'), ssl.SSLCertVerificationError('wrong SAN'),
+                        ssl.SSLError('TLS protocol failure'), ValueError('Elasticsearch API refused status=401')):
+            with self.subTest(failure=failure):
+                api = BusinessAPI()
+                api.cluster['status'] = {'observedGeneration': 1, 'health': 'green', 'availableNodes': 3,
+                    'phase': 'Ready', 'conditions': [{'type': 'ReconciliationComplete', 'status': 'True'}]}
+                api.apply = Mock()
+                certificate = isinstance(failure, ssl.SSLCertVerificationError)
+                expected = ValueError if certificate else type(failure)
+                with patch.object(es, 'connection', side_effect=failure) as connect, \
+                        patch.object(es.time, 'monotonic', side_effect=[0, 0, 5, 10]), \
+                        patch.object(es.time, 'sleep') as sleep, \
+                        self.assertRaisesRegex(expected, 'timed out' if certificate else str(failure)):
+                    es.health(c, api)
+                self.assertEqual(2 if certificate else 1, connect.call_count)
+                self.assertEqual(2 if certificate else 0, sleep.call_count)
+                api.apply.assert_not_called()
+
     def test_empty_kubectl_list_output_has_list_semantics_but_missing_names_stay_absent(self):
         # Actual first admission failure: kubectl emits no JSON for an empty
         # list with --ignore-not-found. Authorization errors still propagate.
@@ -855,36 +905,113 @@ class ElasticsearchDeliveryTests(unittest.TestCase):
         self.assertFalse(calls[1][2]["include_global_state"])
         self.assertNotIn("_all", calls[0][1])
 
-    def test_restore_waits_for_snapshot_recovery_and_records_index_identity(self):
+    def test_restore_uses_its_completion_response_after_primary_relocation(self):
         c = configuration() | {"elasticsearch_repository_role": "reader"}
         req = {"id": "restore-1", "type": "restore", "repository": "archive", "snapshot": "backup", "indices": ["orders"]}
         calls = []
-        def request(method, path, body=None):
-            calls.append((method, path))
+        def request(method, path, body=None, *, timeout=60):
+            calls.append((method, path, timeout))
             if path.startswith("/_cat/"): return []
-            if method == "POST": return {"accepted": True}
+            if method == "POST": return {"snapshot": {"snapshot": "backup", "indices": ["orders"], "shards": {"total": 3, "successful": 3, "failed": 0}}}
             if path.startswith("/_snapshot/"): return {"snapshots": [{"uuid": "backup-uuid", "state": "SUCCESS", "indices": ["orders"]}]}
-            if "/_recovery" in path: return {"orders": {"shards": [{"primary": True, "stage": "DONE", "source": {"repository": "archive", "snapshot": "backup"}}]}}
+            # A completed snapshot recovery may already have been replaced by
+            # PEER relocation. Recovery history is not a restore receipt.
+            if "/_recovery" in path: raise AssertionError("relocation replaced snapshot recovery history")
             if "/_settings" in path: return {"orders": {"settings": {"index": {"uuid": "index-uuid"}}}}
             return {"status": "green", "timed_out": False}
         self.assertEqual(es.operation(c, None, request, req), {"snapshot_uuid": "backup-uuid", "index_uuids": {"orders": "index-uuid"}})
-        self.assertTrue(any("wait_for_completion=false" in p for _, p in calls))
+        posts = [(path, timeout) for method, path, timeout in calls if method == "POST"]
+        self.assertEqual(1, len(posts))
+        self.assertEqual("/_snapshot/archive/backup/_restore?wait_for_completion=true", posts[0][0])
+        self.assertGreater(posts[0][1], 60)
+        self.assertLessEqual(posts[0][1], c["elasticsearch_wait_seconds"])
         with self.assertRaisesRegex(ValueError, "index identity changed"):
             es.verify_receipt(request, req, {"snapshot_uuid": "backup-uuid", "index_uuids": {"orders": "replaced"}})
+
+    def test_restore_refuses_incomplete_or_wrong_completion_and_never_retries_submission(self):
+        c = configuration() | {"elasticsearch_repository_role": "reader"}
+        req = {"id": "restore-1", "type": "restore", "repository": "archive", "snapshot": "backup", "indices": ["orders"]}
+        complete = {"snapshot": "backup", "indices": ["orders"], "shards": {"total": 3, "successful": 3, "failed": 0}}
+        replies = [{"accepted": True}, {}, {"snapshot": complete | {"snapshot": "another"}},
+                  {"snapshot": complete | {"indices": []}}, {"snapshot": complete | {"indices": ["orders", "foreign"]}}]
+        replies += [{"snapshot": complete | {"shards": shards}} for shards in (
+            {}, {"total": 0, "successful": 0, "failed": 0}, {"total": 3, "successful": 2, "failed": 1},
+            {"total": 3, "successful": 2, "failed": 0}, {"total": 3, "successful": 3},
+            {"total": True, "successful": True, "failed": 0})]
+        for reply in replies + [TimeoutError("uncertain restore submission")]:
+            calls = []
+            def request(method, path, body=None, *, timeout=60):
+                calls.append((method, path))
+                if path.startswith("/_cat/"): return []
+                if method == "POST":
+                    if isinstance(reply, Exception): raise reply
+                    return reply
+                if path.startswith("/_snapshot/"):
+                    return {"snapshots": [{"uuid": "backup-uuid", "state": "SUCCESS", "indices": ["orders"]}]}
+                raise AssertionError("invalid completion must refuse before health or target reads")
+            with self.subTest(reply=reply), self.assertRaises((ValueError, TimeoutError)):
+                es.operation(c, None, request, req)
+            self.assertEqual(1, sum(method == "POST" for method, _ in calls))
+
+    def test_restore_timeout_preserves_running_journal_and_refuses_replay(self):
+        from contextlib import nullcontext
+        from unittest.mock import Mock
+        req = {"id": "restore-1", "type": "restore", "repository": "archive", "snapshot": "backup", "indices": ["orders"]}
+        c = configuration() | {"elasticsearch_repository_role": "reader", "elasticsearch_requests": [req]}
+        api = Mock(); records = []; posts = []
+        api.get.side_effect = lambda *args: copy.deepcopy(records[-1]) if records else None
+        api.apply.side_effect = lambda objects: records.extend(copy.deepcopy(objects))
+        def request(method, path, body=None, *, timeout=60):
+            if path == "/": return {"cluster_uuid": "target-cluster"}
+            if path.startswith("/_cat/"): return []
+            if method == "POST":
+                posts.append(path)
+                raise TimeoutError("restore response was lost")
+            return {"snapshots": [{"uuid": "backup-uuid", "state": "SUCCESS", "indices": ["orders"]}]}
+        with patch.object(es, "connection", return_value=nullcontext(request)), patch.object(es, "verify_restore_repository"):
+            with self.assertRaises(TimeoutError): es.operations(c, api)
+            self.assertEqual("running", records[-1]["data"]["phase"])
+            self.assertNotIn("receipt", records[-1]["data"])
+            with self.assertRaisesRegex(ValueError, "unknown result"): es.operations(c, api)
+        self.assertEqual(1, len(posts)); self.assertEqual(1, len(records))
+
+    def test_api_transport_preserves_default_timeout_and_uses_explicit_restore_budget_once(self):
+        import base64
+        from unittest.mock import Mock
+        api = Mock(); api.command = ["kubectl"]
+        api.get.side_effect = [{"data": {"tls.crt": base64.b64encode(b"test trust").decode()}},
+                               {"data": {"elastic": base64.b64encode(b"test password").decode()}}]
+        process = Mock(); process.poll.return_value = None
+        def launch(*args, **kwargs):
+            kwargs["stdout"].write("Forwarding from 127.0.0.1:12345 -> 9200\n")
+            kwargs["stdout"].flush()
+            return process
+        transport = Mock(); transport.getresponse.return_value.status = 200
+        transport.getresponse.return_value.read.return_value = b"{}"
+        with patch.object(es.ssl, "create_default_context"), patch.object(es.subprocess, "Popen", side_effect=launch), patch.object(es, "TunnelHTTPS", return_value=transport) as factory:
+            with es.connection(configuration(), api) as request:
+                request("GET", "/")
+                request("POST", "/_snapshot/archive/backup/_restore?wait_for_completion=true", {}, timeout=1800)
+                transport.getresponse.side_effect = TimeoutError("unknown response")
+                with self.assertRaises(TimeoutError): request("POST", "/_snapshot/archive/backup/_restore?wait_for_completion=true", {}, timeout=1800)
+        self.assertEqual([60, 1800, 1800], [call.kwargs["timeout"] for call in factory.call_args_list])
+        self.assertEqual(3, transport.request.call_count)
+        self.assertEqual(3, transport.close.call_count)
+        process.terminate.assert_called_once()
 
     def test_security_feature_restore_requires_real_file_realm_and_waits_for_every_feature_index(self):
         c = configuration() | {'elasticsearch_repository_role': 'reader', 'elasticsearch_file_realm_secret': 'file-admin', 'elasticsearch_admin_secret': 'recovery-admin'}
         req = {'id': 'features-1', 'type': 'restore', 'repository': 'archive', 'snapshot': 'backup', 'indices': ['orders'], 'feature_states': ['security', 'kibana']}
         state = {'realm': 'file', 'business': False, 'missing_feature': False, 'feature_uid': 'system-id'}
         calls = []
-        def request(method, path, body=None):
+        def request(method, path, body=None, *, timeout=60):
             calls.append((method, path, body))
             if path == '/_security/_authenticate': return {'authentication_realm': {'type': state['realm']}, 'roles': ['superuser']}
             if path.startswith('/_cat/'): return [{'index': 'another-business'}] if state['business'] else []
             if path.startswith('/_snapshot/') and method == 'GET':
                 return {'snapshots': [{'uuid': 'backup-id', 'state': 'SUCCESS', 'indices': ['orders'], 'feature_states':
                     [{'feature_name': 'security', 'indices': ['.security-7']}] + ([] if state['missing_feature'] else [{'feature_name': 'kibana', 'indices': ['.kibana_1', '.ds-.workflows-events-000001']}])}]}
-            if method == 'POST': return {'accepted': True}
+            if method == 'POST': return {'snapshot': {'snapshot': 'backup', 'indices': ['orders', '.security-7', '.kibana_1', '.ds-.workflows-events-000001'], 'shards': {'total': 6, 'successful': 6, 'failed': 0}}}
             if '_cluster/health' in path: return {'status': 'green', 'timed_out': False}
             if '_recovery' in path: return {name: {'shards': [{'primary': True, 'stage': 'DONE', 'source': {'repository': 'archive', 'snapshot': 'backup'}}]} for name in ('.security-7', '.kibana_1', '.ds-.workflows-events-000001', 'orders')}
             if path == '/_cluster/state/metadata?filter_path=metadata.indices.*.settings.index.uuid':
@@ -901,7 +1028,7 @@ class ElasticsearchDeliveryTests(unittest.TestCase):
             state[defect] = 'file' if defect == 'realm' else False
         receipt = es.operation(c, None, request, req)
         self.assertEqual({'.security-7', '.kibana_1', '.ds-.workflows-events-000001'}, set(receipt['feature_index_uuids']))
-        self.assertTrue(any('/.ds-.workflows-events-000001,.kibana_1,.security-7,orders/_recovery' in path for _, path, _ in calls))
+        self.assertTrue(any('/_cluster/health/.ds-.workflows-events-000001,.kibana_1,.security-7,orders?' in path for _, path, _ in calls))
         es.verify_receipt(request, req, receipt)
         state['feature_uid'] = 'replacement'
         with self.assertRaisesRegex(ValueError, 'feature-state index identity'): es.verify_receipt(request, req, receipt)

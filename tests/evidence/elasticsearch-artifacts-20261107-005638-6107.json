@@ -1,0 +1,84 @@
+{
+  "case_dependencies": {
+    "ES-05": {
+      "common/constants.py": "b9c5c7914d4a29ebd4d9e5e1eb05ceed35223696617317d0f09bd2493c7f436f",
+      "roles/cluster-addon/files/eck-3.5.0-crds.yaml": "0e126dbd003f8f98c9b84f2af6263b5ac8a00b52cd9a6d6da225aa3af66cc13c",
+      "roles/cluster-addon/files/eck-3.5.0-crds.yaml.sha256": "de83567f0bed1c4bd455f70713871a0734de0c731ec2e4cb813365dd85792d0d",
+      "roles/cluster-addon/files/eck-3.5.0-operator.yaml": "450f59d5026341226c54bbd3fafb68adcf99de8c674b47e32c22fae8aa183bf7",
+      "roles/cluster-addon/files/eck-3.5.0-operator.yaml.sha256": "e5bdc3b2bacbb2b8838b6be8f402aa6423a3136ae3a82c776795ce47d31e9405",
+      "roles/cluster-addon/files/eck.py": "ba1c4429b736aac3f21e1b3a73747e3bbd773ff57ade139e6a4284eccd60abdb",
+      "tests/evidence/elasticsearch-images-20261103.json": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+      "tests/helpers/elasticsearch-artifacts.py": "b2402b1477ac5c307020d3b516554cb144c3b8a0b382360c5cd0a9ab77d1399d",
+      "tests/helpers/elasticsearch-evidence.py": "7a9f81ee11bd4d6b18d538a2a6cd03634a964347b07f906ff2aac77472bae1a1",
+      "tests/helpers/elasticsearch-runner.sh": "03be73ac0ec3a2345901b2d932abc2a149c0989927d4b63334868df627091e4b",
+      "tests/helpers/longhorn-artifacts.py": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306",
+      "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+      "tests/helpers/validate_elasticsearch_matrix.py": "4139fd4d67e831b2056338c8e05718ddd0ab7565815f8a237eb1e2f2ee7bb4f9"
+    },
+    "ES-06": {
+      "common/constants.py": "b9c5c7914d4a29ebd4d9e5e1eb05ceed35223696617317d0f09bd2493c7f436f",
+      "roles/cluster-addon/files/eck-3.5.0-crds.yaml": "0e126dbd003f8f98c9b84f2af6263b5ac8a00b52cd9a6d6da225aa3af66cc13c",
+      "roles/cluster-addon/files/eck-3.5.0-crds.yaml.sha256": "de83567f0bed1c4bd455f70713871a0734de0c731ec2e4cb813365dd85792d0d",
+      "roles/cluster-addon/files/eck-3.5.0-operator.yaml": "450f59d5026341226c54bbd3fafb68adcf99de8c674b47e32c22fae8aa183bf7",
+      "roles/cluster-addon/files/eck-3.5.0-operator.yaml.sha256": "e5bdc3b2bacbb2b8838b6be8f402aa6423a3136ae3a82c776795ce47d31e9405",
+      "roles/cluster-addon/files/eck.py": "ba1c4429b736aac3f21e1b3a73747e3bbd773ff57ade139e6a4284eccd60abdb",
+      "tests/evidence/elasticsearch-images-20261103.json": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+      "tests/helpers/elasticsearch-artifacts.py": "b2402b1477ac5c307020d3b516554cb144c3b8a0b382360c5cd0a9ab77d1399d",
+      "tests/helpers/elasticsearch-evidence.py": "7a9f81ee11bd4d6b18d538a2a6cd03634a964347b07f906ff2aac77472bae1a1",
+      "tests/helpers/elasticsearch-runner.sh": "03be73ac0ec3a2345901b2d932abc2a149c0989927d4b63334868df627091e4b",
+      "tests/helpers/longhorn-artifacts.py": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306",
+      "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+      "tests/helpers/validate_elasticsearch_matrix.py": "4139fd4d67e831b2056338c8e05718ddd0ab7565815f8a237eb1e2f2ee7bb4f9"
+    }
+  },
+  "case_ids": [
+    "ES-05",
+    "ES-06"
+  ],
+  "dependencies": {
+    "common/constants.py": "b9c5c7914d4a29ebd4d9e5e1eb05ceed35223696617317d0f09bd2493c7f436f",
+    "roles/cluster-addon/files/eck-3.5.0-crds.yaml": "0e126dbd003f8f98c9b84f2af6263b5ac8a00b52cd9a6d6da225aa3af66cc13c",
+    "roles/cluster-addon/files/eck-3.5.0-crds.yaml.sha256": "de83567f0bed1c4bd455f70713871a0734de0c731ec2e4cb813365dd85792d0d",
+    "roles/cluster-addon/files/eck-3.5.0-operator.yaml": "450f59d5026341226c54bbd3fafb68adcf99de8c674b47e32c22fae8aa183bf7",
+    "roles/cluster-addon/files/eck-3.5.0-operator.yaml.sha256": "e5bdc3b2bacbb2b8838b6be8f402aa6423a3136ae3a82c776795ce47d31e9405",
+    "roles/cluster-addon/files/eck.py": "ba1c4429b736aac3f21e1b3a73747e3bbd773ff57ade139e6a4284eccd60abdb",
+    "tests/evidence/elasticsearch-images-20261103.json": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+    "tests/helpers/elasticsearch-artifacts.py": "b2402b1477ac5c307020d3b516554cb144c3b8a0b382360c5cd0a9ab77d1399d",
+    "tests/helpers/elasticsearch-evidence.py": "7a9f81ee11bd4d6b18d538a2a6cd03634a964347b07f906ff2aac77472bae1a1",
+    "tests/helpers/elasticsearch-runner.sh": "03be73ac0ec3a2345901b2d932abc2a149c0989927d4b63334868df627091e4b",
+    "tests/helpers/longhorn-artifacts.py": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/helpers/validate_elasticsearch_matrix.py": "4139fd4d67e831b2056338c8e05718ddd0ab7565815f8a237eb1e2f2ee7bb4f9"
+  },
+  "durable": {
+    "exit": {
+      "path": "logs/elasticsearch-cases/artifacts-20261107-005638-6107/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/elasticsearch-cases/artifacts-20261107-005638-6107/finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "product_entry": "config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER} 07 --tags elasticsearch",
+  "provenance": [
+    {
+      "path": "logs/elasticsearch-cases/artifacts-20261107-005638-6107/launch-provenance.json",
+      "sha256": "da6fe0c6600cbf9b752703cf850480efcc09894b4295b22d5d7818ca06551924"
+    },
+    {
+      "path": "logs/elasticsearch-cases/artifacts-20261107-005638-6107/launch-sources.tar.gz",
+      "sha256": "1cfeae2be2bd891ff298b88322edf39d8a2d356c801b252149c62114378d0049"
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": "logs/elasticsearch-cases/artifacts-20261107-005638-6107/raw.log",
+      "sha256": "68f73d75f227feeb24cb142fe19631435f9c2ee22e9d0dada2d81f8f97d55b7d"
+    }
+  ],
+  "scoped_cleanup": true,
+  "scoped_cleanup_marker": "ELASTICSEARCH_ARTIFACTS_SCOPED_CLEAN_PASS registry_mutation=false offline_manifests=verified"
+}

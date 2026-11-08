@@ -752,8 +752,8 @@ def connection(c, api):
             if not port:
                 raise ValueError("business Service port-forward did not become ready")
 
-            def request(method, path, body=None):
-                conn = TunnelHTTPS(f"{name}-client.{ns}.svc", port, timeout=60, context=context)
+            def request(method, path, body=None, *, timeout=60):
+                conn = TunnelHTTPS(f"{name}-client.{ns}.svc", port, timeout=timeout, context=context)
                 try:
                     conn.request(method, path, body=json.dumps(body) if body is not None else None,
                                  headers={"Authorization": "Basic " + auth, "Content-Type": "application/json"})
@@ -786,19 +786,26 @@ def health(c, api):
             for condition in status.get("conditions", []))
         ready = obj and observed == obj["metadata"]["generation"] and reconciled and status.get("health") == "green" and status.get("availableNodes") == expected
         if ready:
-            with connection(c, api) as request:
-                data = request("GET", "/_cluster/health?wait_for_status=green&timeout=30s")
-                if data.get("timed_out") or data["status"] != "green" or data["number_of_nodes"] != expected:
-                    print("ELASTICSEARCH_WAIT_HEARTBEAT source=API health=" + str(data.get("status")) + " nodes=" + str(data.get("number_of_nodes")), flush=True)
-                    time.sleep(5)
-                    continue
-                info = request("GET", "/")
-                members = request("GET", "/_nodes")['nodes']
-                if (info["version"]["number"] != c["elasticsearch_ver"] or len(members) != expected or
-                        any(node['version'] != c["elasticsearch_ver"] for node in members.values())):
-                    print("ELASTICSEARCH_WAIT_HEARTBEAT source=API reason=member-version-convergence", flush=True)
-                    time.sleep(5)
-                    continue
+            try:
+                with connection(c, api) as request:
+                    data = request("GET", "/_cluster/health?wait_for_status=green&timeout=30s")
+                    if data.get("timed_out") or data["status"] != "green" or data["number_of_nodes"] != expected:
+                        print("ELASTICSEARCH_WAIT_HEARTBEAT source=API health=" + str(data.get("status")) + " nodes=" + str(data.get("number_of_nodes")), flush=True)
+                        time.sleep(5)
+                        continue
+                    info = request("GET", "/")
+                    members = request("GET", "/_nodes")['nodes']
+                    if (info["version"]["number"] != c["elasticsearch_ver"] or len(members) != expected or
+                            any(node['version'] != c["elasticsearch_ver"] for node in members.values())):
+                        print("ELASTICSEARCH_WAIT_HEARTBEAT source=API reason=member-version-convergence", flush=True)
+                        time.sleep(5)
+                        continue
+            except ssl.SSLCertVerificationError:
+                # ECK can be Ready before mounted HTTP certificates reload.
+                # Reopen with the current CA; keep strict TLS and the deadline.
+                print("ELASTICSEARCH_WAIT_HEARTBEAT source=TLS reason=certificate-convergence", flush=True)
+                time.sleep(5)
+                continue
             ledger = api.get("configmap", c["elasticsearch_name"] + "-identity", c["elasticsearch_namespace"])
             if ledger and ledger.get("data", {}).get("cluster_uuid") and ledger["data"]["cluster_uuid"] != info["cluster_uuid"]:
                 raise ValueError("cluster UUID differs from the retained data identity")
@@ -1003,20 +1010,24 @@ def operation(c, api, request, req):
                     raise ValueError("feature-state recovery requires an isolated target without existing business indices")
                 feature_indices = {name for feature in features for name in feature_states[feature]}
             restoring = set(indices) | feature_indices
-            response = request("POST", path + "/_restore?wait_for_completion=false", {
-                "indices": ",".join(indices), "include_global_state": False, "feature_states": features})
-            if not response.get("accepted"):
-                raise ValueError("restore was not accepted")
             deadline = time.monotonic() + c["elasticsearch_wait_seconds"]
+            # Recovery API retains only each current shard copy's latest
+            # recovery. A subsequent PEER relocation erases SNAPSHOT provenance.
+            # Bind success to this restore's own completion response instead.
+            # Submit once; a transport failure retains the running journal.
+            response = request("POST", path + "/_restore?wait_for_completion=true", {
+                "indices": ",".join(indices), "include_global_state": False, "feature_states": features},
+                timeout=max(1, deadline - time.monotonic()))
+            restored = response.get("snapshot", {})
+            shards = restored.get("shards", {})
+            if (restored.get("snapshot") != req["snapshot"] or set(restored.get("indices", [])) != restoring or
+                    any(type(shards.get(key)) is not int for key in ("total", "successful", "failed")) or
+                    shards["total"] <= 0 or shards["successful"] != shards["total"] or shards["failed"] != 0):
+                raise ValueError("restore completion is absent, incomplete or differs from the requested snapshot")
             target = ",".join(quote(i, safe="") for i in sorted(restoring))
             while time.monotonic() < deadline:
                 state = request("GET", "/_cluster/health/" + target + "?wait_for_status=green&timeout=10s")
-                recovery = request("GET", "/" + target + "/_recovery?active_only=false")
-                completed = set(recovery) == restoring and all(index.get("shards") and any(shard.get("primary") for shard in index["shards"]) for index in recovery.values()) and all(
-                    shard.get("stage") == "DONE" and shard.get("source", {}).get("repository") == req["repository"] and
-                    shard.get("source", {}).get("snapshot") == req["snapshot"]
-                    for index in recovery.values() for shard in index.get("shards", []) if shard.get("primary"))
-                if completed and not state.get("timed_out") and state.get("status") == "green":
+                if not state.get("timed_out") and state.get("status") == "green":
                     receipt = {"snapshot_uuid": source["uuid"], "index_uuids": index_uuids(request, indices)}
                     if feature_indices:
                         receipt["feature_index_uuids"] = index_uuids(request, sorted(feature_indices))

@@ -4,7 +4,7 @@ meta:
   component: elasticsearch
   scope: 独立业务 Elasticsearch；默认关闭；与 EFK 共用唯一 ECK 而数据及凭据隔离
   runner: bash tests/run_enterprise_regression.sh --elasticsearch-only
-  result: PENDING
+  result: PASS
   official:
     eck: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
     es: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
@@ -26,7 +26,7 @@ versions:
   rally: 2.13.0
   kubernetes: 1.33.6
 acceptance:
-  accepted: 58
+  accepted: 59
   applicable: 59
   planned_stages: 18
   evidence_policy: 官方 GA 只证明上游条件；项目 PASS 必须绑定当前产品入口、输入身份、原始日志、durable rc=0、业务 marker
@@ -177,7 +177,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
   - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
@@ -197,6 +197,11 @@ cases:
   - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
   - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
   - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
 - id: ES-02
   group: contract
   scenario: disabled
@@ -210,7 +215,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
   - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
@@ -230,6 +235,11 @@ cases:
   - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
   - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
   - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
 - id: ES-03
   group: contract
   scenario: validation
@@ -243,7 +253,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
   - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
@@ -263,6 +273,11 @@ cases:
   - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
   - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
   - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
 - id: ES-04
   group: contract
   scenario: ownership
@@ -276,7 +291,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
   - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
@@ -296,6 +311,11 @@ cases:
   - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
   - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
   - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
 - id: ES-05
   group: artifacts
   scenario: manifests
@@ -309,11 +329,15 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-artifacts-20261106-225328-11494.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-artifacts-20261105-113947-10808.json
   - tests/evidence/elasticsearch-artifacts-20261105-221643-3216.json
   - tests/evidence/elasticsearch-artifacts-20261106-121528-24308.json
+  - tests/evidence/elasticsearch-artifacts-20261106-225328-11494.json
+  - tests/evidence/elasticsearch-artifacts-20261107-005638-6107.json
+  - tests/evidence/elasticsearch-artifacts-20261107-052301-31298.json
+  - tests/evidence/elasticsearch-artifacts-20261108-003514-4803.json
 - id: ES-06
   group: artifacts
   scenario: offline
@@ -327,11 +351,15 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-artifacts-20261106-225328-11494.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-artifacts-20261105-113947-10808.json
   - tests/evidence/elasticsearch-artifacts-20261105-221643-3216.json
   - tests/evidence/elasticsearch-artifacts-20261106-121528-24308.json
+  - tests/evidence/elasticsearch-artifacts-20261106-225328-11494.json
+  - tests/evidence/elasticsearch-artifacts-20261107-005638-6107.json
+  - tests/evidence/elasticsearch-artifacts-20261107-052301-31298.json
+  - tests/evidence/elasticsearch-artifacts-20261108-003514-4803.json
 - id: ES-07
   group: platform
   scenario: capacity
@@ -345,11 +373,15 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-csi-probe-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-csi-probe.json
   - tests/evidence/elasticsearch-only-20261105-221703-435870c51bf749209902d2e2a7ce1bc0-child-csi-probe.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-csi-probe.json
 - id: ES-08
   group: platform
   scenario: mmap
@@ -363,7 +395,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-standard-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
 - id: ES-09
@@ -379,11 +411,15 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-csi-probe-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-csi-probe.json
   - tests/evidence/elasticsearch-only-20261105-221703-435870c51bf749209902d2e2a7ce1bc0-child-csi-probe.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-csi-probe.json
 - id: ES-10
   group: standard
   scenario: install
@@ -397,7 +433,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-standard-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
 - id: ES-11
@@ -413,7 +449,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-standard-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
 - id: ES-12
@@ -429,7 +465,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-standard-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
 - id: ES-13
@@ -445,10 +481,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-compact-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-compact.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-compact.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-compact.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-compact.json
 - id: ES-14
   group: compact
   scenario: idempotence
@@ -462,10 +502,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-compact-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-compact.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-compact.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-compact.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-compact.json
 - id: ES-15
   group: business
   scenario: crud
@@ -479,10 +523,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
 - id: ES-16
   group: business
   scenario: visibility
@@ -496,10 +544,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
 - id: ES-17
   group: business
   scenario: search
@@ -513,10 +565,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
 - id: ES-18
   group: business
   scenario: reindex
@@ -530,10 +586,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
 - id: ES-19
   group: business
   scenario: occ
@@ -547,10 +607,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
 - id: ES-20
   group: business
   scenario: retry
@@ -564,10 +628,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
 - id: ES-21
   group: lifecycle
   scenario: templates
@@ -581,10 +649,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-lifecycle.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-lifecycle.json
 - id: ES-22
   group: lifecycle
   scenario: ilm
@@ -598,10 +670,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-lifecycle.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-lifecycle.json
 - id: ES-23
   group: lifecycle
   scenario: smartcn
@@ -615,10 +691,14 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-lifecycle.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-lifecycle.json
 - id: ES-24
   group: security
   scenario: tls
@@ -632,7 +712,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-security.json
   - tests/evidence/elasticsearch-security-identity-20261105-234012-491183a33cd14a3c82ab51711e9f37d1.json
@@ -649,7 +729,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-security.json
   - tests/evidence/elasticsearch-security-identity-20261105-234012-491183a33cd14a3c82ab51711e9f37d1.json
@@ -666,10 +746,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
   - tests/evidence/elasticsearch-security-certificates-20261104-184540-b119024474df482ebf69b01f839ec8fb.json
   - tests/evidence/elasticsearch-security-certificates-20261105-234633-e5a222e7eb2a481fbcdd835d860d56b8.json
+  - tests/evidence/elasticsearch-security-certificates-20261107-001403-0378780e13304faaa1b893f555bd259c.json
 - id: ES-27
   group: security
   scenario: credential-rotation
@@ -683,7 +765,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-security.json
   - tests/evidence/elasticsearch-security-identity-20261105-234012-491183a33cd14a3c82ab51711e9f37d1.json
@@ -700,11 +782,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-security-s3-20261106-210508-50ba1ea59d83439a999944681dbce4a1.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
   - tests/evidence/elasticsearch-security-s3-20261104-191647-2d13b6b55b4c43b9ae8148020954e07c.json
   - tests/evidence/elasticsearch-security-s3-20261106-000440-0f35053aab9342f5bb36fa6c9b689a3d.json
+  - tests/evidence/elasticsearch-security-s3-20261106-210508-50ba1ea59d83439a999944681dbce4a1.json
 - id: ES-29
   group: security
   scenario: network
@@ -718,7 +801,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-security-network-20261104-185936-418b93d9a5004303addd0a85dbb3fabc.json
   - tests/evidence/elasticsearch-security-network-20261106-000153-a2e71f30d6db4f8d8333715615adc31d.json
@@ -735,10 +818,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
 - id: ES-31
   group: faults
   scenario: worker
@@ -752,10 +838,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
 - id: ES-32
   group: faults
   scenario: operator
@@ -769,10 +858,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
 - id: ES-33
   group: faults
   scenario: quorum
@@ -786,10 +878,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
 - id: ES-34
   group: faults
   scenario: shard-loss
@@ -803,10 +898,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
 - id: ES-35
   group: maintenance
   scenario: drain
@@ -820,10 +918,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
 - id: ES-36
   group: maintenance
   scenario: scale
@@ -837,10 +938,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
 - id: ES-37
   group: maintenance
   scenario: expansion
@@ -854,10 +958,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
 - id: ES-38
   group: maintenance
   scenario: watermarks
@@ -871,10 +978,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
 - id: ES-39
   group: backup
   scenario: repository
@@ -888,11 +998,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-backup-source-20261106-203516-e131c20ce68547838931365d0c522d5a.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-backup-source-20261104-220408-6f48daf57cb945dcaceafbc554021d85.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
 - id: ES-40
   group: backup
   scenario: refusal
@@ -906,10 +1017,11 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-backup-refusal-20261104-220828-f48e04421233408c8e853cf1877ddf55.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
 - id: ES-41
   group: backup
   scenario: snapshot
@@ -923,10 +1035,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-backup-restore-20261105-013339-23ac6e224c1f427ea2d870a3313ca0cd.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
 - id: ES-42
   group: backup
   scenario: feature-states
@@ -940,10 +1054,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-backup-features-20261105-011335-4c427bb6f488486bb942580891f202b6.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
 - id: ES-43
   group: dr
   scenario: isolation
@@ -957,10 +1073,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-dr-20261105-021409-b752d811ae0f459c81b8d58b92f0ae3c.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-dr.json
 - id: ES-44
   group: dr
   scenario: cutover
@@ -974,10 +1092,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-dr-20261105-021409-b752d811ae0f459c81b8d58b92f0ae3c.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-dr.json
 - id: ES-45
   group: dr
   scenario: failback
@@ -991,10 +1111,12 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-dr-20261105-021409-b752d811ae0f459c81b8d58b92f0ae3c.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-dr.json
 - id: ES-46
   group: observability
   scenario: metrics
@@ -1008,10 +1130,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-observability.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-observability.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-observability.json
 - id: ES-47
   group: observability
   scenario: alerts
@@ -1025,10 +1150,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-observability.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability-scoped.json
   - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-observability.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-observability.json
 - id: ES-48
   group: performance
   scenario: rally
@@ -1042,7 +1170,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-performance-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-performance.json
   - tests/evidence/elasticsearch-performance-20261106-022238-c8aa5df891d84ab08f6799ea05cd9516.json
@@ -1059,7 +1187,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-performance-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-soak-20261105-041458-4acb8797860843268ff6ab5208938a7f.json
 - id: ES-50
@@ -1075,7 +1203,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-upgrade-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   subcases:
   - id: ES-50-platform-admission
     preconditions: 双方已有确认写入；平台维护尚未开始；保留旧版 ECK 3.4.1 身份
@@ -1119,11 +1247,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-upgrade-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-upgrade-scoped.json
   - tests/evidence/elasticsearch-upgrade-20261105-055359-527858c2428943c9b49ed1a9fff0ed1d.json
   - tests/evidence/elasticsearch-upgrade-20261105-202421-3cfc9d43898340d882cf2e754004eaae.json
   - tests/evidence/elasticsearch-upgrade-20261106-054522-2f4e3b4f6fe54b4fb598183d4eac0799.json
+  - tests/evidence/elasticsearch-upgrade-20261107-222310-a84ee87098934fe0937a60cd1eee7172.json
 - id: ES-52
   group: upgrade
   scenario: rollback
@@ -1137,11 +1267,13 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-upgrade-scoped.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-upgrade-scoped.json
   - tests/evidence/elasticsearch-upgrade-20261105-055359-527858c2428943c9b49ed1a9fff0ed1d.json
   - tests/evidence/elasticsearch-upgrade-20261105-202421-3cfc9d43898340d882cf2e754004eaae.json
   - tests/evidence/elasticsearch-upgrade-20261106-054522-2f4e3b4f6fe54b4fb598183d4eac0799.json
+  - tests/evidence/elasticsearch-upgrade-20261107-222310-a84ee87098934fe0937a60cd1eee7172.json
 - id: ES-53
   group: coexistence
   scenario: ordering
@@ -1155,7 +1287,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-coexistence-20261106-062617-477372750fa84602b70a179bfce41546.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   subcases:
   - id: ES-53-es-then-efk
     preconditions: standard、compact 业务均健康，有持久化账本与凭据/PVC 身份
@@ -1214,6 +1346,8 @@ cases:
     success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-53-eck-recovery
   retained_evidence:
   - tests/evidence/elasticsearch-coexistence-20261106-062617-477372750fa84602b70a179bfce41546.json
+  - tests/evidence/elasticsearch-coexistence-20261107-230502-25665066eefd46fd89a0f4a929de0f71.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-coexistence.json
 - id: ES-54
   group: coexistence
   scenario: uninstall
@@ -1227,7 +1361,7 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-coexistence-20261106-062617-477372750fa84602b70a179bfce41546.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   subcases:
   - id: ES-54-business-upgrade
     preconditions: EFK 9.5.1 与既有业务均健康，独立业务升级夹具为 9.5.5 并有副本确认哨兵
@@ -1282,6 +1416,8 @@ cases:
     success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-54-efk-uninstall
   retained_evidence:
   - tests/evidence/elasticsearch-coexistence-20261106-062617-477372750fa84602b70a179bfce41546.json
+  - tests/evidence/elasticsearch-coexistence-20261107-230502-25665066eefd46fd89a0f4a929de0f71.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-coexistence.json
 - id: ES-55
   group: coexistence
   scenario: logging
@@ -1295,10 +1431,11 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-logging-20261106-114216-e3955c8670f348a6af7f1e473086fc00.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-logging-20261105-095259-66aa8f3012bd4d36bedb1c97fba4b240.json
   - tests/evidence/elasticsearch-logging-20261106-114216-e3955c8670f348a6af7f1e473086fc00.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-logging.json
 - id: ES-56
   group: cleanup
   scenario: scoped
@@ -1312,10 +1449,11 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-cleanup-probes-20261106-072251-6650a4c92f3a4996a96ae4b086634f0e.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-cleanup-probes-20261105-072517-580ce3f3f5bc4730ac476ebef79719c1.json
   - tests/evidence/elasticsearch-cleanup-probes-20261106-072251-6650a4c92f3a4996a96ae4b086634f0e.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-cleanup-probes.json
 - id: ES-57
   group: cleanup
   scenario: retention
@@ -1329,10 +1467,15 @@ cases:
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
   evidence:
-  - tests/evidence/elasticsearch-cleanup-20261106-220223-aaaa6ef6b84f48d7b8ca5ec28c04390e.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   retained_evidence:
   - tests/evidence/elasticsearch-cleanup-20261105-112120-81d0c5266e364f38bfa20e67ae57f1fa.json
   - tests/evidence/elasticsearch-cleanup-20261105-214535-903c07a5469d4134ba8e38f9858d1a6d.json
+  - tests/evidence/elasticsearch-cleanup-20261106-220223-aaaa6ef6b84f48d7b8ca5ec28c04390e.json
+  - tests/evidence/elasticsearch-cleanup-20261107-003019-760fe57eee1e4ffeaf6a10b1d72e04d4.json
+  - tests/evidence/elasticsearch-cleanup-20261107-045619-9267e5bb88104eaea79fba3d0be27251.json
+  - tests/evidence/elasticsearch-cleanup-20261108-000217-0ba33901c442430f94a4f9054bb696f3.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-cleanup.json
 - id: ES-58
   group: delivery
   scenario: documentation
@@ -1345,16 +1488,22 @@ cases:
   fixture_boundary: 开发机本地只读核验三份正式手册及已完成作者检查的固定版本、摘要和结论；不操作实验室
   cleanup_scope: 只读文档验收，无现场资源或凭据变更
   evidence:
-  - tests/evidence/elasticsearch-documentation-20261106-220047-27691-documentation.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-documentation.json
   retained_evidence:
   - tests/evidence/elasticsearch-documentation-20261105-232057-654-documentation.json
   - tests/evidence/elasticsearch-documentation-20261105-232057-654.json
   - tests/evidence/elasticsearch-documentation-20261106-201910-19583-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261106-220047-27691-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261106-220047-27691.json
+  - tests/evidence/elasticsearch-documentation-20261107-001209-22054-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261107-002946-17826-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261107-002946-17826.json
+  - tests/evidence/elasticsearch-documentation-20261107-114828-15407.json
 - id: ES-59
   group: delivery
   scenario: complete
   desc: 一次完整干净专项回归 durable rc=0、零失败和最终清理
-  status: pending
+  status: pass
   official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
   product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
     07 --tags elasticsearch
@@ -1362,4 +1511,5 @@ cases:
   success_marker: ELASTICSEARCH_CASE_PASS id=ES-59
   fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
   cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
-  evidence: []
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
