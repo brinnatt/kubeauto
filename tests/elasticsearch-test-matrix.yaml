@@ -1488,7 +1488,7 @@ cases:
   fixture_boundary: 开发机本地只读核验三份正式手册及已完成作者检查的固定版本、摘要和结论；不操作实验室
   cleanup_scope: 只读文档验收，无现场资源或凭据变更
   evidence:
-  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261108-162202-19758-documentation.json
   retained_evidence:
   - tests/evidence/elasticsearch-documentation-20261105-232057-654-documentation.json
   - tests/evidence/elasticsearch-documentation-20261105-232057-654.json
@@ -1499,6 +1499,7 @@ cases:
   - tests/evidence/elasticsearch-documentation-20261107-002946-17826-documentation.json
   - tests/evidence/elasticsearch-documentation-20261107-002946-17826.json
   - tests/evidence/elasticsearch-documentation-20261107-114828-15407.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-documentation.json
 - id: ES-59
   group: delivery
   scenario: complete

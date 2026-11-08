@@ -1,286 +1,434 @@
 # Elasticsearch 技术白皮书
 
-面向架构师、业务开发者与平台运维人员；读者应了解 Kubernetes、HTTPS 和基本索引概念。阅读后应能区分查询、确认写入、可搜索与可恢复的条件，并据此选择拓扑、容量与保护方式。
+本白皮书面向架构师、搜索业务开发者和平台运维人员。适用版本为 Elasticsearch/Kibana **9.5.6**、ECK **3.5.0**、Kubernetes **1.33.6**，运行默认发行版，以 Basic 为许可基线。阅读后应能解释一条商品记录如何成为搜索结果、写入何时算确认、故障后哪些数据可以恢复，并据此选择拓扑、容量和保护方式。
 
-规划按[产品边界](#1-产品边界与技术体系)→[故障域](#4-仲裁拓扑与故障域)→[存储容量](#5-存储段合并与容量)阅读；解释业务行为从[检索](#2-文档分析器与检索)和[写入复制](#3-写入复制与四个时间边界)进入；安全、备份和变更分别见[信任与观测](#6-安全信任与观测链)、[快照灾备](#7-快照恢复与灾备)及[生命周期与性能](#8-生命周期与性能判断)。实际执行使用[用户与运维手册](operations-manual.md)，维护实现使用[开发手册](development-manual.md)。
+建议先沿第 1–3 章理解对象、检索和写入，再读第 4–5 章决定部署与容量，第 6–8 章用于安全、灾备和生命周期决策。安装、业务示例和生产任务见[用户与运维手册](operations-manual.md)；实现与扩展见[开发手册](development-manual.md)。图中数据如未标为实测，均用于解释机制。
 
 ## 1. 产品边界与技术体系
 
-本分支提供独立业务检索集群，采用 Elasticsearch 9.5.6、ECK 3.5.0 和可选 Kibana 9.5.6，平台基线为 Kubernetes 1.33.6。运行默认发行版，遵循 Elastic License 2.0；Basic 是本分支许可基线，不自动启用 Enterprise trial。源码中部分目录的多许可选择不等同于整个发行镜像采用 Apache 2.0。商业支持、跨集群复制、企业身份集成和其他付费功能应另行确认许可与支持合同。
+### 1.1 从业务记录到搜索服务
 
-Elasticsearch 将 JSON 文档组织为索引，把索引拆为 primary shard，并为每个 primary 配置 replica。每个 shard 是一个 Lucene 索引，具有自己的段文件、刷新、合并和恢复过程。Kubernetes 提供调度与卷挂载，ECK 根据 CR 协调成员、证书和滚动变更；它们不能代替 Elasticsearch 的选主、复制和索引恢复。健康 Pod、绿色集群和业务结果正确分别对应不同判据。
+商品库可以用业务数据库保存交易事实，用 Elasticsearch 保存面向检索的数据投影。例如商品 `item-1001` 的标题是“可靠的全文检索”，类别为 `books`，价格为 `79.0`。业务希望按标题找相关商品、限制类别、按价格排序并统计类别分布。这些访问方式需要不同的数据结构，不能把 ES 理解成一个只保存 JSON 的远程文件夹。
 
-下面的关系图用于区分控制路径与业务路径。实线表示调用或协调方向，不表示同步复制承诺。
+| 对象 | 商品检索中的含义 | 它决定什么 |
+| --- | --- | --- |
+| document（文档） | 一条 JSON 商品记录，`_id=item-1001` | 单文档读写身份；不是跨文档事务 |
+| mapping（字段模型） | `title:text`、`category:keyword`、`price:double` | 分析、检索、排序和聚合所需结构 |
+| index（索引） | `catalog-demo-v1` 这一组同模型文档 | 设置、分片、授权与生命周期边界 |
+| primary shard（主分片） | 索引的一部分数据及其写入权威副本 | 路由、写入、恢复和并行度 |
+| replica shard（副本分片） | 某个 primary 的另一份完整副本 | 数据冗余及可选读取位置 |
+| node（节点） | 一个 ES 进程，本项目由一个 Pod 承载 | 承载分片、协调请求或维护集群状态 |
+| cluster（集群） | 具有独立 UUID、状态和选主过程的 ES 成员集合 | 一套数据与管理权威；不是 Kubernetes 集群的同义词 |
+
+一个索引声明三个 primary、一个 replica 时，共有六份分片副本；不是六个 primary，也不要求恰好六个 ES 进程。一个数据节点可以承载多个不同分片，但同一分片的 primary 与 replica 不应放在同一节点。增加 data 节点会提供放置和执行资源，已有索引的 primary 数不会因此自动增加。
+
+```mermaid
+flowchart TB
+    APP[商品业务与同步程序] --> DOC[JSON 商品文档]
+    DOC --> MAP[字段模型与分析]
+    MAP --> IDX[索引 catalog-demo-v1]
+    IDX --> P0[主分片 0<br/>独立 Lucene 索引]
+    IDX --> P1[主分片 1<br/>独立 Lucene 索引]
+    IDX --> P2[主分片 2<br/>独立 Lucene 索引]
+    P0 --> R0[分片 0 的副本<br/>独立 Lucene 索引]
+    P1 --> R1[分片 1 的副本<br/>独立 Lucene 索引]
+    P2 --> R2[分片 2 的副本<br/>独立 Lucene 索引]
+```
+
+图中的每个主分片分别处理自己的操作；索引没有把三组写入包成一个事务。业务数据库与 ES 的双写也不是一个事务。需要可靠投影时，应由应用采用可追踪的事件或变更记录，以稳定业务 ID、顺序控制、重试及对账推进；本项目交付 ES 平台，不提供通用 CDC、跨库事务或自动业务同步服务。删除、重放和更新顺序必须纳入应用设计。
+
+### 1.2 哪一层负责什么
+
+理解一次失败，先区分数据服务与承载它的平台：
 
 ```mermaid
 flowchart LR
-    C[config.yml 与 kubecli] --> A[Kubernetes API]
-    O[唯一共享 ECK] --> A
-    A --> M[3 个 master]
-    A --> D[至少 3 个 data 与 ingest]
-    B[业务客户端] --> S[HTTPS 业务 Service]
-    S --> D
-    D --> V[每个 data 的独立 RWO PVC]
-    M --> MV[每个 master 的元数据 PVC]
-    D --> R[独立 HTTPS S3 repository]
-    P[Prometheus] --> X[专用 exporter]
-    X --> S
+    CFG[config.yml 与 kubecli] --> API[Kubernetes API]
+    ECK[共享 ECK 控制器] --> API
+    API --> POD[ES Pod 与独立 PVC]
+    APP[应用 HTTPS 请求] --> SVC[业务 Service]
+    SVC --> DATA[data 与 ingest 节点]
+    POD -.包含数据成员.-> DATA
+    DATA --> SHARD[分片与 Lucene]
+    MASTER[master 集群状态] -.路由与分配.-> DATA
+    SHARD --> VOL[CSI 文件系统卷]
+    SHARD --> S3[外部快照仓库]
 ```
 
-master 保存并发布集群元数据，data 持有分片并执行检索和聚合，ingest 在索引前执行 pipeline。节点收到业务请求后也承担协调工作；本项目业务 Service 只选择具有 data 角色的 Pod，避免把普通业务入口指向专用 master。ECK 是集群内共享控制器，但 EFK 与本业务的 CR、namespace、PVC、凭据、索引和 repository base_path 分开。
+Kubernetes 负责调度、网络、Secret 与卷挂载；CSI 负责存储生命周期；ECK 根据 ES/Kibana CR 协调节点、证书和滚动变更；Elasticsearch 自己完成选主、复制、检索和分片恢复。正常业务请求经过 Service 到 ES，不经过 ECK 转发。Operator 暂停时，已经运行的集群可能仍可读写，但节点重建、证书变更和完整协调会受阻。
 
-共享控制器的隔离实践使用业务 ES 9.5.6 与 EFK 9.5.1：先建立 EFK 哨兵及独立快照，再分别经产品入口卸载、重入 standard 和 compact。两套业务原确认数据分别为 32、34 条，重入后逐条内容摘要保持；期间 EFK 哨兵、快照、卷、客户凭据及共享 ECK 身份保持。反向退役 EFK CR 后，保留原卷、凭据和外部快照，经产品配置重入仍读回原哨兵，两个业务集群保持健康。这说明隔离依赖消费者对象及数据身份，而非为每个业务再安装一个 Operator；共享 ECK 的升级与故障仍是共同控制面风险，不能据此承诺控制面故障完全隔离。项目将共享控制器升级限定在显式平台入口，普通消费者配置不能触发；平台对全部已验收消费者绑定身份和配置摘要，恢复健康后才完成升级账本。备份边界由产品拒绝 EFK 保留路径、双向比较实际 S3 账号及业务仓库写入归属共同约束，卸载保留备份归属，不能把命名空间隔离当作对象存储权限隔离。这些自动化保护不能消除共享 ECK 故障，也不替代底层 RBAC、IAM 和资源容量隔离。
+本项目的业务 Service 只选择 data 成员，专用 master 不承接普通业务流量。任一收到请求的 ES 节点都可以承担该请求的协调角色；专用 coordinating 节点不是使用协调过程的前提，本分支也没有单独交付这种拓扑。
 
-上述实践由 2026-11-05 的共存运行与限定修复共同提供：首轮在退役所有权取证处停止，修复只完成反向退役、重入及清理，源与监督端均退出 0。它们分别证明实际完成的操作范围，不能合称一次完整共存 PASS；正式验收仍以当前矩阵及最终干净完整回归为准。维护者可从[共存入口及证据边界](../../../tests/README.md#elasticsearch-独立交付分路)定位原始记录。
+### 1.3 交付范围与官方能力的关系
 
-版本依据是 [ECK 3.5 发布说明](https://www.elastic.co/docs/release-notes/cloud-on-k8s)、[Elasticsearch 发布说明](https://www.elastic.co/docs/release-notes/elasticsearch) 和 [9.5.6 源码](https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed)。本分支固定的 Kubernetes 1.33.6 和 Elasticsearch 9 系列处于 [ECK 3.5.0 固定源码声明的支持范围](https://github.com/elastic/cloud-on-k8s/blob/386c7b14f2d1bbb7f2af1e7da997e64875f16e47/README.md)内；其他平台版本不由本专项矩阵验收，上游兼容声明也不替代本项目安装和恢复验收。9.5.0–9.5.2 存在官方披露的 indexing pressure 副本分歧问题，业务基线选择包含相关修复的 9.5.6。现有 EFK 版本不会通过本分支的版本常量自动升级。
+本分支交付两种拓扑、HTTPS 与独立身份、业务索引/API 使用、监控、安全轮换、扩容、显式快照/SLM、普通索引及 security/Kibana 状态恢复、固定版本升级和 EFK 共存。最终干净完整回归已覆盖这些项目集成，结果与条件见各章及[专项矩阵](../../../tests/elasticsearch-test-matrix.yaml)。这不等于所有上游功能、所有 CSI 或任意规模已验收。
+
+默认发行版遵循 Elastic License 2.0，Basic 不等于全部功能免费或整个镜像采用 Apache 2.0。Enterprise trial 不会自动启用。商业身份集成、CCR、searchable snapshots、自动冷热分层、自动扩缩容及向量/推理平台均不因上游存在而成为本项目已交付能力；采用它们须另核对许可、实现和验收范围。EFK 保持其既有独立版本，不被业务 ES 的版本字段联动升级。
+
+依据：[节点与分片](https://www.elastic.co/docs/deploy-manage/distributed-architecture/clusters-nodes-shards)、[生产指导](https://www.elastic.co/docs/deploy-manage/production-guidance)、[许可说明](https://www.elastic.co/pricing/faq)。版本及源码基点集中在[开发手册第 1 章](development-manual.md#1-版本源码与维护边界)。
 
 ## 2. 文档、分析器与检索
 
-文档 ID 确定文档身份；routing 确定 primary shard。默认 routing 使用 ID 的哈希，因此同一 ID 的重试到达同一分片，不能由此推导请求天然幂等：`index` 会替换已有文档，而 `create` 在 ID 已存在时返回冲突。业务重放应固定 ID，并明确重复是拒绝、覆盖还是条件更新。
+### 2.1 同一份 JSON 为什么要多种索引结构
 
-mapping 定义字段如何索引。`text` 经 analyzer 形成倒排索引，适合分词匹配；`keyword` 保留精确值，适合过滤、分组与排序。数值、日期等字段具有各自的编码和查询路径。多数可排序、可聚合字段使用 doc values，以列式访问支持聚合；把分析后的 text 当作精确分类字段会导致语义和内存使用问题。本项目示例显式 mapping，并用独立 keyword 字段承担分类和业务 ID。
+`_source` 保存文档的来源内容，供返回内容、更新或 reindex 等任务使用；搜索通常不逐条扫描 `_source`。全文倒排结构沿“词项 → 含词文档”寻找候选；doc values 沿“文档 → 字段值”支持排序和聚合。数值与日期还具有适合范围检索的索引结构。保存源内容与建立检索结构是不同成本。
 
-全文查询通常计算相关性分数，过滤条件只判断是否匹配。在商品检索中，标题匹配用于评分，租户、类别、上下架状态和价格区间应进入 filter。排序必须有稳定的次级键；分页结果会随索引内容变化，深分页应结合 PIT 与 `search_after`，而不是不断增大 `from`。PIT 是搜索视图，不是灾备恢复点，不能替代 snapshot。
+| 字段与示例 | 推荐模型及用途 | 常见误用及后果 |
+| --- | --- | --- |
+| `product_id=item-1001` | keyword；精确标识、过滤、稳定次级排序 | 把业务 ID 分词会改变精确匹配语义；`_id` 不直接代替可排序字段 |
+| `title=可靠的全文检索` | text；经 analyzer 做全文匹配 | term 查询不分析输入，直接查询整句通常不是预期全文效果 |
+| `category=books` | keyword；term 过滤、terms 聚合 | 使用已分词 text 分组会得到词项语义；开启 fielddata 还会增加堆压力 |
+| `price=79.0` | 本例 double；数值过滤与排序 | 字符串按字典序排序；真实金额宜评估整数最小货币单位或 scaled_float |
 
-一次跨分片搜索由接收请求的节点协调。它为每个相关分片选择一个可用副本，汇总局部候选和聚合结果，再获取最终命中文档。默认 adaptive replica selection 根据此前响应时间、执行时间与 search 队列选择副本；因此增加 replica 可提供更多可选读取位置，但一次普通检索不会把同一分片的全部副本都算一遍。`routing` 可以减少访问分片，但只有写入与读取采用相同 routing 规则才成立；丢失租户 routing 的读取可能遗漏文档，单个大租户也可能形成热点。
+若一个标题既要全文检索又要按完整标题分组，可设计 text 与 keyword multi-field。同一源值由两种模型分别建立结构，不是查询时临时转换；后来才增加 multi-field，旧文档不会自动得到该子字段的历史索引内容，需要更新或 reindex 补齐。字段类型和索引分析器的实质变化通常走新索引迁移，不能把 mapping 当成能随时任意改写的关系表定义。
 
-以下图示解释请求 fan-out 和部分失败的关系；这是官方机制示意，不是项目延迟测量。
+本例采用 `dynamic: strict`，新字段拼写错误会被拒绝，避免在数据量增长时悄悄产生大量字段。它不等于 JSON Schema：缺少业务必填字段、跨字段规则和金额精度仍须由应用检查。动态 mapping 可减少探索成本，但大量不受控 key 会扩大集群状态和内存负担，不能把每个业务 ID 作为字段名。
+
+数组也影响正确性。若商品规格是 `[{color:red,size:S},{color:blue,size:L}]`，普通 object 数组会丢失同一数组元素内的关联，查询 `red AND L` 可能误命中。确需保留组合关联时可评估 nested，它把子对象作为隐藏 Lucene 文档索引，并要求 nested 查询/聚合；代价是更多文档和计算。该例解释官方建模机制，不代表项目对复杂 nested 工作负载已有性能验收。
+
+### 2.2 分词不是模糊匹配开关
+
+分析器由零到多个字符过滤器、一个 tokenizer、零到多个 token filter 组成。字符过滤器先处理原字符，tokenizer 产生词项和位置等信息，token filter 再归一化或处理词项。索引时产生什么词、搜索时如何分析输入，决定能否相遇。
 
 ```mermaid
-flowchart TD
-    A[客户端搜索请求] --> C[接收节点协调]
-    C --> S1[分片 1 的一个可用副本]
-    C --> S2[分片 2 的一个可用副本]
-    C --> S3[分片 3 的一个可用副本]
-    S1 --> M[汇总局部候选与聚合]
-    S2 --> M
-    S3 --> M
-    M --> F[获取最终命中文档]
-    F --> V{所有分片成功且未超时?}
-    V -->|是| R[完整结果]
-    V -->|否| E[按调用选项失败或返回部分结果]
+flowchart LR
+    T[标题 Quick Search] --> A[standard 分析器]
+    A --> Q[词项 quick 与 search]
+    Q --> I[倒排表<br/>search 对应文档集合]
+    U[用户输入 SEARCH] --> B[查询时分析]
+    B --> V[词项 search]
+    V --> I
+    I --> H[候选商品]
 ```
 
-查询越宽，协调节点需要汇总的候选越多；`from=10000,size=20` 并非只让各分片保留 20 条，而会保留前面页所需候选，增加堆与 CPU 压力。PIT 固定读取视图，`search_after` 使用上一页末条的完整 sort 数组继续，保持相同 query/sort、采用响应中最新 PIT ID，并在完成或失败时关闭 PIT。PIT 会让旧段继续保留，长时间不关闭会增加磁盘、文件句柄与堆压力；它也不能在节点数据丢失后重建视图。业务若要求完整结果，应设置 `allow_partial_search_results=false` 并检查 `timed_out=false`、`_shards.failed=0`；HTTP 200 和 hits 非空都可能来自部分成功，不足以支持完整对账。
+这是英文机制示意：大小写归一后能匹配，并不表示任意同义词、拼写错误或中文词语都自动理解。`match` 使用字段分析器处理查询；`term` 查精确索引词项，适合本例 category。中文应先观察 `_analyze` 的 token，再用真实业务标注的查询判断召回率和排序；“包含中文”不等于已经获得符合领域语义的分词。
 
-这些选择分别对应业务成本：精确过滤缩小候选，doc values 支持排序/聚合，PIT 保持分页视图，分片数量决定 fan-out。遇到高尾延迟时先核对访问分片数、热点与队列，再决定调整查询、分片或副本；扩大线程池或最大结果窗口可能把过载转移为堆耗尽。依据：[搜索路由](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/search-shard-routing)、[分页与 PIT](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/paginate-search-results)。
+本项目默认使用内置分析器，SmartCN 是同版固定镜像中的可选官方插件。选择插件应基于词项和搜索质量，而不是仅看安装成功；切换插件镜像还会滚动成员。已有 title 字段不会因插件可用而自动重建，要以新模型 reindex 并对账后切换。IK 等第三方插件不属于默认交付。
 
-默认中文示例使用内置 analyzer，用 `_analyze` 查看实际 token 后判断召回效果。SmartCN 是可选官方插件，使用与 9.5.6 同版构建的固定镜像；插件改变分词结果，已有字段的索引内容不会自动重建，变更 analyzer 通常需要新索引与 reindex。IK 等第三方插件不属于默认交付。完整向量、推理、GPU 与 AI 平台也不在本分支首期承诺范围。
+### 2.3 从匹配到排序：每个查询条件承担不同职责
 
-相关机制见 [mapping](https://www.elastic.co/docs/manage-data/data-store/mapping)、[文本分析](https://www.elastic.co/docs/manage-data/data-store/text-analysis) 与 [Smart Chinese 插件](https://www.elastic.co/docs/reference/elasticsearch/plugins/analysis-smartcn)。
+商品查询把标题 `match` 放在 `bool.must`，类别 `term` 放在 `bool.filter`。前者回答“有多相关”，后者回答“是否符合必须条件”。默认 BM25 评分综合词项稀有程度、出现频次及字段长度：罕见且匹配的词通常更有区分力，重复次数的收益会饱和，长文本也不会仅凭堆词无限获利。分数是这次查询下的相对相关性，不是跨查询通用的置信度。
 
-当前两种拓扑的相同业务语料各含 100 条文档，采用三个 primary、一个 replica、显式 strict mapping。Bulk 的 100 个 create item 均返回预期成功且包含至少两份成功分片；刷新后逐条内容和总数一致。全文匹配叠加偶数类别过滤、按价格与业务 ID 排序，均返回预期的 50 条；类别聚合为偶数/奇数各 50，价格总和为 4950。reindex 到预建目标后，内容摘要与源一致，alias 切换后的读取仍为 100 条。它说明这些查询与迁移在当前集成中的具体输入输出，不代表任意查询的性能或在线迁移期间增量写入已被捕获，见[业务验收证据](../../../tests/evidence/elasticsearch-business-20261104-153037-96ea5c9af1e4430c8644573de51f83e1.json)。
+运维手册的示例显式按 `price`、`product_id` 排序，因此展示的是满足全文条件的价格顺序，不是相关性从高到低。需要相关性排序时应明确排序策略及并列键，并用真实用户查询评估；不要只改 boost 就宣布搜索质量改善。filter 不参与评分，适合状态、类别、时间和授权范围的硬条件；它可能受益于缓存，但不能承诺任意过滤都命中缓存。
 
-## 3. 写入、复制与四个时间边界
+类别 terms 聚合统计的是本次查询范围中的桶。小而固定的测试类别可以精确核对；大量分布式高基数字段的 top terms 可能带截断或误差，不能把默认少量桶当成全量精确分类账。需要完整桶遍历时另评估 composite 等官方接口及其游标语义。金额对账还要考虑浮点精度；搜索聚合不承担交易数据库的跨文档事务职责。
 
-一次写入先由协调节点定位 primary，由 primary 校验并执行，再复制给当前 in-sync 副本集合。primary term 用来区分主分片任期，sequence number 标记操作顺序，in-sync allocation IDs 帮助控制可安全提升的副本。失去安全条件时应拒绝写入或等待恢复，不能强制分配空 primary 来制造绿色状态。
-
-复制的确认边界由当前 in-sync 集合决定。某个副本在写入中失败时，primary 需要先让 master 确认将它移出该集合，才能在不违反“所有 in-sync 副本含已确认写入”的条件下返回成功。隔离后的旧 primary 发来的复制请求会被已知新任期的副本拒绝；primary 也不能自行宣布其他副本失效来绕过集群协调。如果所有 replica 都已失效、只有 primary 保持有效，仍可能继续写入，但此时仅存的一份数据受到物理故障破坏就无法靠复制恢复。副本数、投票仲裁与外部快照分别防护不同问题。
+### 2.4 跨分片搜索与稳定分页
 
 ```mermaid
 sequenceDiagram
     participant C as 客户端
-    participant P as primary
-    participant R as in-sync replica
-    participant L as Lucene 搜索视图
-    participant G as Lucene 已提交段
-    participant S as S3 snapshot
-    C->>P: 固定 ID 与写入条件
-    P->>P: 校验并执行，记录及持久化 translog
-    par 复制与确认路径
-        P->>R: 复制操作
-        R-->>P: 执行及 request 持久化确认
-        P-->>C: 写入响应与分片结果
-    and 独立的可见性与保护过程
-        P->>L: refresh 打开新的搜索视图
-        P->>G: flush / Lucene commit 固化段
-        G->>S: snapshot 捕获并上传引用段
-    end
+    participant N as 请求协调节点
+    participant S as 每个相关分片的一个副本
+    C->>N: 查询、过滤和排序
+    N->>S: 分发 query 阶段
+    S-->>N: 局部候选及聚合结果
+    N->>N: 合并候选与排序
+    N->>S: fetch 最终命中文档
+    S-->>N: 返回命中内容
+    N-->>C: hits、分片状态和超时状态
 ```
 
-图中四个边界不能合并理解。第一，客户端收到成功响应意味着本次操作按当时复制组状态完成，仍应检查响应以及 `_shards`。第二，默认 `index.translog.durability=request` 在确认前进行相应 translog 持久化；这依赖真实存储兑现 fsync，不能外推为底层硬件绝不丢数据。第三，refresh 使新内容可被搜索，写入成功后立即搜索可能还看不到；需要同步可见性时使用 `refresh=wait_for`，避免把每条写入都强制 refresh。第四，snapshot 是另一条独立保护链，确认写入不会自动立即进入外部备份。
+一次普通搜索从每组相关分片选一个活跃副本执行，默认会依据历史响应、执行时间与队列自适应选择。replica 增加可选读取位置，但不会把同一分片的所有副本结果重复累加。没有 routing 的索引搜索通常要访问该索引全部相关分片；自定义 routing 能缩小范围，但读写规则必须一致，大租户仍可能造成热点。
 
-图中的并行分支表示这些周期不构成统一事务，不能读成“refresh 必定晚于写入响应”。并发读取可能看到尚未确认的操作，隔离 primary 上这种可见内容甚至可能最终未被确认；业务应以自己的成功响应和确认账本判断提交，而非用一次搜索命中替代写入确认。`refresh=wait_for` 显式把本次请求的返回与搜索可见性联系起来，也不会因此生成外部恢复点。
+深分页 `from=10000,size=20` 会让各分片保留前面页面所需候选，协调和堆开销随之增长。持续遍历宜使用 PIT（point in time，固定搜索视图）与 `search_after`：保持相同 query/sort，把上页末条完整 sort 数组传给下一页，并使用响应中的最新 PIT ID。完成或失败后关闭 PIT，避免旧段长期保留。PIT 不是外部备份，也不是节点数据丢失后仍可重建的恢复点。
 
-`wait_for_active_shards` 是操作开始前的活跃分片检查。例如设置 `all` 会在开始前要求全部配置副本活跃，但不能把它解释为一个固定副本数的分布式事务承诺。复制组可能在执行期间变化，调用方仍须处理每项结果、失败和结果未知。Bulk 的 HTTP 200 只表示请求被处理；`errors=true` 和各 item 的状态决定哪些文档应重试。
+HTTP 200 不保证完整结果。要求完整对账时，调用设置 `allow_partial_search_results=false`，并检查 `timed_out=false`、`_shards.failed=0`；大量命中的 total 还须检查 `relation=eq` 或显式要求精确统计。局部 shard 失败、任务超时和无命中是三种不同结果，不能统一展示为“没有商品”。
 
-对外部调用超时，服务端可能已提交写入。客户端应按固定 ID 查询、使用 `create` 检查重放，或携带 `if_seq_no` 与 `if_primary_term` 进行条件更新。429 必须结合错误类型判断：线程池过载的 `es_rejected_execution_exception` 可按上限指数退避并加抖动，flood-stage 的 `cluster_block_exception` 则须先恢复磁盘余量并核验写保护解除；只重试不能修复容量不足。认证或权限错误必须进入凭据/权限诊断，不能无限重试。业务确认账本应区分成功、重试、结果未知和最终失败，故障演练恢复后逐项核对确认记录。
+**项目验证。** 两拓扑分别用 100 条固定 ID、strict mapping、三个 primary 和一个 replica 验证 Bulk create、全文叠加过滤、排序和聚合：过滤结果 50 条，两类别各 50 条，价格总和 4950；reindex 后 100 条内容一致，alias 切换仍可读。这说明上述基础接口在本项目路径中成立，不证明任意分词质量、nested 性能或迁移中的增量已自动捕获。完整操作见[业务建模与客户端](operations-manual.md#6-业务建模与客户端)。
 
-依据：[读写复制模型](https://www.elastic.co/docs/deploy-manage/distributed-architecture/reading-and-writing-documents)、[translog](https://www.elastic.co/docs/reference/elasticsearch/index-settings/translog)、[近实时搜索](https://www.elastic.co/docs/manage-data/data-store/near-real-time-search)。
+依据：[mapping](https://www.elastic.co/docs/manage-data/data-store/mapping)、[分析器组成](https://www.elastic.co/docs/manage-data/data-store/text-analysis/anatomy-of-an-analyzer)、[doc values](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/doc-values)、[BM25](https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity)、[nested](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/nested)、[查询与过滤](https://www.elastic.co/docs/reference/query-languages/query-dsl/query-filter-context)、[分页](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/paginate-search-results)。仅采用适用的稳定机制，不采用滚动资料中的 Planned/Preview 配置。
 
-在上述固定语料验证中，关闭自动 refresh 后，已确认文档能按 ID 实时读取，但搜索命中为 0；显式 refresh 后计数才为 1。条件更新完成后，再用原 sequence number/primary term 更新和重复 create 均返回 409。客户端边界还分别注入两次 429、一次已提交但丢弃响应：前者第三次请求写入成功，后者按稳定 ID 读回原内容并确认，没有盲目重放。这两项注入验证重试逻辑；429 没有发到 ES，丢响应由夹具在真实 create 成功后制造，因此不能据此声称实测过服务端过载或真实网络故障。两拓扑最终业务数据一致，测试索引及客户端已回收。
+## 3. 写入、复制与四个时间边界
+
+### 3.1 一条写入如何得到确认
+
+协调节点根据 `_id` 或显式 routing 确定复制组，把操作交给当前 primary。primary 检查模型、执行索引操作，再向当前 in-sync 副本复制。in-sync 集合由 master 维护，表示应包含所有已确认操作的安全副本；它不是静态地等于配置中的 replica 数。
+
+```mermaid
+sequenceDiagram
+    participant C as 商品同步程序
+    participant N as 协调节点
+    participant P as 当前 primary
+    participant R as in-sync replica
+    participant M as master
+    C->>N: create item-1001
+    N->>P: 按路由找到复制组
+    P->>P: 校验、执行及记录 translog
+    P->>R: 复制操作
+    alt in-sync 副本完成
+        R-->>P: 执行与持久化确认
+    else 副本无法完成
+        P->>M: 请求移出失效副本
+        M-->>P: 安全集合变更已确认
+    end
+    P-->>N: 当前复制组的完成结果
+    N-->>C: result 与分片结果
+```
+
+图中正常副本确认与失效副本移除是两种路径。某个副本失联时，primary 不能自行忽略它返回成功，必须先让 master 确认安全集合的变更。primary term 区分任期，sequence number 标记操作；被替换的旧 primary 的复制会被新任期副本拒绝。客户端仍须检查结果、分片确认和错误，不能从一次成功响应推导永远有固定数量的物理副本。
+
+`wait_for_active_shards=all` 是开始操作前要求全部配置副本活跃的准入条件；运行中副本仍可能变化。只剩唯一有效 primary 时，系统可能继续写入，但唯一数据副本的物理损坏仍会丢数据。master 的多数派、副本复制、卷持久化和外部快照防护的是不同故障。
+
+### 3.2 确认、搜索可见、Lucene 提交与外部备份
+
+| 边界 | 发生了什么 | 可以据此判断什么 | 仍不能保证什么 |
+| --- | --- | --- | --- |
+| 写入确认 | 操作按当时复制组处理；默认 request durability 完成相应 translog fsync | 收到且核验响应的这次操作已确认 | 立即被搜索命中、进入外部备份或底层硬件绝不丢写 |
+| refresh | 打开包含新操作的 Lucene 搜索视图 | 搜索可以看到这些操作 | 完成 Lucene commit 或形成独立备份 |
+| flush | 完成 Lucene commit 并开始新的 translog 代次 | 崩溃恢复所需重放范围推进 | 异地可恢复或跨分片事务一致 |
+| snapshot | 保存可恢复段及所选元数据到仓库 | 指定恢复点可进入独立恢复验证 | 包含之后写入、任意时间点恢复或跨 shard 同一瞬间 |
+
+Lucene commit 比每条操作的 translog 记录昂贵，因此 ES 在提交之间依靠 translog 重放恢复；refresh 可以先打开文件系统缓存中的新段，使其可搜索，而不要求每次完整 commit。默认 `index.translog.durability=request` 保留持久化确认；改为 async 会改变崩溃丢写窗口，不能作为无代价提速。
+
+按 ID 的 GET 默认可实时读取，而 search/count 依赖 refresh。因而“写入成功、GET 找到、count 暂为零”可以是正常近实时行为。需要写后搜索的任务使用 `refresh=wait_for`，不要对每条写入强制 refresh 制造大量小段。并发读取甚至可能看到尚未确认的操作；业务提交账本应记录成功响应，不能用搜索命中补造确认。
+
+### 3.3 超时与重试必须保持业务身份
+
+Bulk 请求的 HTTP 200 不代表每项成功；必须逐 item 检查状态、错误与分片，保留原 ID，只重试允许重试的失败项。`create` 拒绝已存在 ID，`index` 可覆盖，`update` 中脚本累加等动作可能重复生效，三者不能采用同一个盲重试规则。
+
+连接超时可能发生在服务端已提交之后，此时是“结果未知”。固定 ID 读回并核对内容可以判断是否已执行；同 ID 内容不同不能当作成功去重。需要并发更新时，先读取 `_seq_no`、`_primary_term`，再携带二者条件写入；409 表示期间已有变化，应按业务规则重新读取、合并或拒绝，并非应该无限重试的暂时故障。ES 不提供跨多文档的通用 ACID 事务。
+
+429 也须分类：过载拒绝应限流、指数退避并加抖动；flood-stage 的 `cluster_block_exception` 应先恢复真实磁盘余量。认证、权限和模型错误应修输入，不交给无限重试。应用需要操作截止时间、最大尝试次数、结果未知队列和可对账的业务记录。
+
+**项目验证。** 关闭自动 refresh 后，已确认文档 GET 可读、搜索计数为 0，显式 refresh 后为 1；旧条件更新和重复 create 返回 409。客户端夹具还验证两次注入 429 后成功、真实 create 成功后丢弃响应再按 ID 确认；前者不是服务端过载实测，后者不是物理断网实测。实际 primary 故障负载的响应与重试统计另见第 8 章。
+
+依据：[复制模型](https://www.elastic.co/docs/deploy-manage/distributed-architecture/reading-and-writing-documents)、[translog](https://www.elastic.co/docs/reference/elasticsearch/index-settings/translog)、[近实时搜索](https://www.elastic.co/docs/manage-data/data-store/near-real-time-search)、[乐观并发](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/optimistic-concurrency-control)。
 
 ## 4. 仲裁、拓扑与故障域
 
-`standard` 推荐三个专用 master，以及至少三个 data/ingest。master 数固定为三个，避免选主预算随数据扩容变化；数据层独立扩展，减少业务 GC、聚合和合并压力侵占选主资源。本分支要求两组宿主节点分开。`compact` 为三个混合角色成员，适合已评估规模的小型业务；同一进程承受选主和数据工作，资源故障更容易相关。两种拓扑均需三个独立节点故障域，不交付单节点、双节点生产形态。
+### 4.1 选主与数据可用性分别判断
 
-Elasticsearch 的集群协调使用投票配置多数派选主和提交集群状态。三个有投票资格的 master 通常可容忍一个不可用；失去多数派后无法安全完成需要新集群状态的动作。数据分片可用性还取决于分片放置与副本存活，不能从 master 仲裁正常直接推导所有数据可读写。
+master 保存集群元数据、投票配置和分片分配状态，不保存所有业务文档。多数派用于选主和提交集群状态；三个投票成员通常可以容忍一个不可用，失去多数派时不能安全完成依赖新状态的动作。某组数据分片是否可读写，还要看有效分片副本，不能从 master 正常直接推断业务数据齐全。
 
-节点已经加入、集群 green 与节点就绪也有不同的边界。ECK 的 pre-stop hook 在退出前登记节点重启；节点重新使用原数据身份加入后，Elasticsearch 仍可能保留该 `RESTART` 标记。固定 9.5.6 的[就绪服务](https://github.com/elastic/elasticsearch/blob/fd1e8011342a0988e432b999cea4bf884ca120ed/server/src/main/java/org/elasticsearch/readiness/ReadinessService.java)在本节点仍属于退出集合时关闭就绪端口；ECK 3.5.0 的[重启完成协调](https://github.com/elastic/cloud-on-k8s/blob/386c7b14f2d1bbb7f2af1e7da997e64875f16e47/pkg/controller/elasticsearch/driver/stateful/upgrade.go)负责清理已完成、已归队且不再终止的重启记录。因此暂停 Operator 后恢复进程，并不等于恢复了完整的控制闭环；等待所有节点 Ready 前必须让原控制器恢复协调。这个条件不意味着数据已经丢失，也不能据此删除 PVC、替换节点身份或手工绕过就绪探针。
+| 形态 | 本项目结构 | 适合条件 | 成本与边界 |
+| --- | --- | --- | --- |
+| standard | 3 专用 master，至少 3 data/ingest，宿主集合分开 | 需要数据层独立扩展、降低业务负载对选主的干扰 | 更多实例与资源；数据层仍需副本及 N−1 预算 |
+| compact | 3 master/data/ingest 混合成员 | 已评估规模的小型业务 | 业务 GC、合并和选主共用进程；成员数固定为 3 |
 
-一个数据节点失效后，replica 可提升，恢复和迁移会使用剩余节点的 CPU、内存、磁盘及网络。规划必须按 N−1 保留可承载的业务与恢复预算；三个节点在日常接近满载时，副本存在也不能保证故障后达到原吞吐。网络分区、多个副本同时丢失、底层共享存储故障是不同风险，需分别观察未分配分片、分片恢复和确认账本。
+两种形态均要求三个独立节点故障域，不交付单、双节点生产形态。节点名不同不等于机架、电源和可用区独立。客户应将实际基础设施故障域与调度、存储副本设计对齐，不跨高延迟链路随意拼接一个集群。
 
-Kubernetes PDB 约束自愿驱逐，不阻止断电或内核故障；Pod anti-affinity 分散 Pod，不保证机架、电源或可用区独立。客户应把节点标签与真实故障域对应，并避免跨高延迟链路拼接单个集群。机制依据见 [集群协调](https://www.elastic.co/docs/deploy-manage/distributed-architecture/discovery-cluster-formation) 与 [节点角色](https://www.elastic.co/docs/deploy-manage/distributed-architecture/clusters-nodes-shards/node-roles)。
+### 4.2 额外候选宿主为何必要
 
-成员数量与允许调度的主机数量是两个维度。ECK `nodeSets[].count` 决定 ES 成员和卷的数量，node affinity 限定候选主机，required pod anti-affinity 阻止同组成员在同一主机叠放。本分支用 `elasticsearch_data_count` 和 `elasticsearch_data_nodes` 分别表达这两个维度。例如三个数据成员、四个合格候选主机保留一个重调度故障域；三个成员只有三个候选主机时，故障后的另外两台不会自动多接一个成员。CSI 的跨节点卷重挂还要求旧节点安全隔离、卷已解挂、目标可访问存储且调度容量充足，不能用“有副本”或“有 CSI”代替这些条件。依据：[ECK 节点编排](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/nodes-orchestration)。
+`elasticsearch_data_count` 决定实际 ES 数据成员数，`elasticsearch_data_nodes` 决定可调度的候选宿主。三个成员、三个候选宿主时，严格反亲和不允许故障成员挤到另外两台；三个成员、四个合格候选宿主才能保留一个迁移位置。备用宿主必须有真实 allocatable、存储连接、内核和污点资格，不只是名单中多一个名称。
 
-在当前 standard 实践中，四个数据候选宿主仅创建三个 data/ingest 成员，另有三个专用 master；数据端点不包含专用 master。对三个 primary、一个 replica 的索引写入 32 条固定 ID 文档，并重复相同产品配置后，成员与卷、凭据和索引身份均保持，内容摘要一致。这把“成员数量独立于候选宿主数量”和“相同声明可重入”落实到本次集成结果，见[标准拓扑证据](../../../tests/evidence/elasticsearch-standard-20261104-151049-9a935e0dbcd84156be09a2e27a4ded3a.json)。该小数据集用于身份与内容核对，不是吞吐或故障恢复测量；备用宿主是否能接管仍取决于实际资源、CSI 与旧实例隔离状态。
+CSI 跨节点重挂要求旧实例已安全停止写入、原附件释放、目标可访问存储并有容量。NotReady、SSH 不通或控制机看不到旧节点，都不是旧实例停止写入的证明。没有 fencing 证明时不能强删旧 Pod、强拆附件或强制空 primary。PDB 只控制自愿驱逐，不能阻止断电；反亲和也不能代替存储隔离。
 
-相同平台上的 compact 实践创建三个 master/data/ingest 混合角色成员和三个 4 GiB PVC，三个成员分散到不同宿主。相同配置二次执行后，成员、卷、凭据与索引身份保持，32 条确认文档的摘要与数量一致，见[混合拓扑证据](../../../tests/evidence/elasticsearch-compact-20261104-152333-0b87f40d76e3456ba43ecd85854a8859.json)。两种拓扑证明各自的声明和重入路径；本次小数据验证没有衡量混合角色下的资源争用差异，不能据此推导两种拓扑在高负载下等效。
+### 4.3 健康状态如何解释
 
-在同一 Kubernetes 1.33.6、Longhorn 1.12.1 V1 平台，两拓扑的故障实践以三个 primary、一个 replica 的 32 条确认数据为恢复基线，结果如下。
-
-| 故障条件 | 实际观察与恢复结果 | 说明 |
+| 观察 | 能说明什么 | 仍需核对 |
 | --- | --- | --- |
-| 删除持有 primary 的 Pod | 两拓扑均产生新的 Pod UID；恢复后的确认数据数量、内容摘要与索引身份保持 | 验证进程重建与副本恢复，不代表整台主机断电 |
-| 暂停共享 Operator | 两拓扑各自的 100 条业务验证仍通过；恢复控制器后确认账本一致 | 已运行的数据面不要求每次业务请求经过 Operator；配置变更与完整恢复仍依赖控制器 |
-| 同时承载两拓扑成员的一个数据宿主失效 | 在证明旧 kubepods 进程全部停止后退役旧 Pod；两个成员各在另一候选宿主恢复，原 PVC、PV 和原生卷 UID 均保持，业务及确认账本一致 | 使用 guest runtime 隔离，未做断电隔离；CSI 重挂依赖旧实例隔离、附件释放与可用候选宿主 |
-| 任一拓扑只保留一个投票成员 | 真实写入返回 503、`cluster_block_exception`；恢复后被拒绝的 ID 不存在，原 32 条确认数据保持 | 多数派丢失时验证拒绝行为，未将无响应当作已拒绝 |
-| standard 保留 master、停止全部 data | 真实写入返回 503、`unavailable_shards_exception`；恢复后被拒绝的 ID 不存在，原确认数据保持 | 仲裁可用与数据分片可用分别判断 |
+| Pod Running/Ready | 进程与探针达到相应条件 | 当前配置、成员身份、分片与业务 |
+| green | 全部配置 primary/replica 已分配 | 当前代次、真实数据、查询、外部恢复点 |
+| yellow | primary 全部分配，存在未分配 replica | 恢复中还是长期容量/故障域不足 |
+| red | 至少一个 primary 未分配 | 受影响索引、有效副本和恢复路径；停止依赖完整数据的变更 |
+| observedGeneration 已更新 | ECK 已观察输入 | `phase=Ready`、`ReconciliationComplete=True` 与实际成员状态 |
 
-完整结果与限定恢复绑定[故障验收证据](../../../tests/evidence/elasticsearch-faults-20261104-163016-e9549ddac3484fc7b7f652189831b752.json)。迁移结束后原节点恢复 Ready、原调度状态及全部卷健康；故障 journal 已回收。这里证明所列输入和故障边界中的集成行为，没有测量任意负载下的恢复 SLA，也不覆盖物理断电、共享存储整体损坏或未隔离旧实例的安全接管。客户端仍须区分明确失败与结果未知，并按业务确认记录恢复。
+ECK 退出钩子会登记节点重启，原节点重新加入后仍可能存在 RESTART 记录。固定 ES 的 readiness 服务会据此关闭就绪端口，ECK 负责清理已完成的重启记录。因此暂停 Operator 后不能先要求所有节点 Ready，再恢复 Operator。看到 green 但个别成员不 Ready，应检查退出记录及控制器协调，不能改探针掩盖问题。
+
+**项目验证。** 最终回归覆盖两拓扑的 primary Pod 重建、Operator 暂停恢复、数据宿主隔离迁移、多数派丢失和 standard 全部 data 不可用。各拓扑以 32 条确认数据作故障前后对账；多数派丢失返回明确 503/cluster block，数据层丢失返回 unavailable shards，恢复后被拒绝的 ID 未出现，原账本保持。宿主迁移使用 guest runtime 隔离，核对旧进程停止后才退役旧 Pod，原 PVC/PV/原生卷身份保持；不代表物理断电实测或生产迁移时限承诺。
+
+依据：[集群协调](https://www.elastic.co/docs/deploy-manage/distributed-architecture/discovery-cluster-formation)、[ECK 节点编排](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/nodes-orchestration)。维护步骤见[单宿主维护](operations-manual.md#75-维护一个数据宿主)，实现限制见[开发手册](development-manual.md#3-配置与幂等语义)。
 
 ## 5. 存储、段合并与容量
 
-每个 ES 成员具有独立 RWO 文件系统 PVC。生产必须使用已验证能兑现 fsync、重挂与扩容的 CSI，不能把 local-path 或 emptyDir 当作本分支的持久化基线。mmap 会映射大量段文件，选定主机要求 `vm.max_map_count >= 1048576`。本分支保持 mmap 开启，提供显式主机前置收敛；不要复制开发 quickstart 的禁用 mmap 配置。
+### 5.1 为什么删除文档后磁盘不立即下降
 
-CSI 的可移植性需要同时观察数据、绑定身份和容量层级。当前 Kubernetes 1.33.6／Longhorn 1.12.1 V1 集成验证使用三个存储副本、ext4 与 RWO 卷，结果如下。
+Lucene 把索引组织为多个段。更新通常产生新版本并使旧版本不可见；删除首先标记旧内容，真正回收磁盘由后续 merge 完成。refresh 频繁会增加小段，merge 需要读旧段、写新段，在替换前同时占用空间和 I/O。正在进行的 PIT 或快照还可能使旧段继续被引用。
 
-| 检查边界 | 实际结果 | 能得出的结论 |
-| --- | --- | --- |
-| 数据与重挂 | 1 MiB 数据完成文件及目录 fsync，同卷从首节点移至另一节点后 SHA256 一致；PVC、PV、原生卷 UID 保持 | 本次重挂复用了原数据卷，没有用一个新空卷替代 |
-| 在线扩容 | 请求从 1 GiB 到 2 GiB；PVC、PV、原生卷和文件系统均达到目标，文件系统从 1,020,702,720 到 2,077,073,408 字节，原数据摘要保持 | 容量声明已落实到应用实际可见的文件系统，不只是在 API 中改了数值 |
+```mermaid
+flowchart LR
+    W[持续索引与更新] --> B[内存缓冲]
+    B --> R[refresh 打开新段]
+    R --> S[多个不可变段]
+    S --> M[后台 merge 写新段]
+    M --> C[旧段无引用后回收]
+    S --> P[PIT 与进行中的快照可能保留引用]
+    P -.延迟回收.-> C
+```
 
-结果绑定[CSI 验收证据](../../../tests/evidence/elasticsearch-csi-probe-20261104-151821-3ac2b904a51f4d4ab0c42321c8bf22e5.json)及原始日志，限定探针与 PV 已回收。文件系统容量小于声明块容量，是格式化元数据等开销的结果；生产水位应以实际文件系统统计为准。该验证的底层是实验室专用 loop 文件系统，且重挂发生在正常删除首个 Pod 后；它不证明物理盘吞吐、突发断电持久性或失联节点已经安全隔离。节点故障迁移仍须单独证明旧实例停止写入，避免双挂载风险。
+所以磁盘紧张时反复删除文档不一定马上获得预期空间，强制合并也可能加剧临时空间压力。先查实际占用、段与恢复任务、保留策略和最满节点，再决定扩容或迁移。low/high/flood 水位是最后的分配与写入保护，不能长期关闭来掩盖预算不足。
 
-写入产生内存缓冲和新段，refresh 发布可搜索段，后台 merge 合并段并回收删除文档占据的空间。删除文档不会立即释放等量磁盘；merge、snapshot 和恢复可能同时增加 I/O 与临时空间压力。分片过多会增加元数据、文件句柄、堆和调度成本；分片过大则延长恢复并放大热点。应根据固定数据模型、目标分片大小、恢复时间和实际负载共同选择 primary 数，不把每个租户机械拆成一个小索引。
+### 5.2 分片数、堆和文件系统缓存共同影响成本
 
-初始业务示例采用一个 replica。容量计算先估计实际索引膨胀，再乘 Elasticsearch 副本数，并留出 merge、迁移与恢复余量。若底层存储也做多副本，底层占用还会进一步增加；这两层复制对应不同故障路径，不能任意删除其中一层或简单相加成“容灾等级”。
+分片是并行与恢复单元，也有固定元数据、segment、文件句柄和执行开销。过多小分片使轻负载也占堆与调度资源；过大分片则拉长恢复、放大热点。先按真实 mapping、保留数据和恢复窗口选择 primary 数，数据增长再通过索引生命周期或迁移改变布局，不把每个租户机械拆成独立小索引。
 
-可以用下列容量关系做第一轮预算，再用客户 mapping 和样本修正：`ES 活跃索引总量 = 原始数据保留量 × 实测 primary 索引系数 × (1 + replica 数)`。这里的原始量与索引量均使用 GiB，系数来自相同字段、分析器、`_source` 和 doc values 配置的样本。每个 data 节点的可用文件系统还要在 N−1 时承载迁移，不能用全群平均占用替代最满节点。
+本项目显式配置 data heap，校验不超过 Pod 内存的一半，为文件系统缓存和堆外结构留空间。扩大 heap 会挤压缓存，不必然加快搜索；堆高、GC 频繁、磁盘读忙和线程池拒绝应分别定位。mmap 会映射段文件，选定宿主要求 `vm.max_map_count >= 1048576`；项目保留 mmap，不采用开发 quickstart 的关闭方式。
 
-例如仅作预算示意，原始保留量 100 GiB、假定实测系数为 1.2、一个 replica，会产生约 240 GiB 的 ES 分片数据。三个 data 节点、假定故障时仍要求各存活节点不超过 70% 占用，则每节点至少需要 `240 / (2 × 0.70) ≈ 171.4 GiB` 可用于 ES 的空间，随后还要追加 merge、translog、增长和恢复峰值的测量余量。70% 是此例的容量目标，不是官方磁盘水位默认值；`1.2` 也不是本项目实测系数。底层若有三个完整存储副本，这部分已写入块的物理占用还可能约为三倍，并另有底层元数据、快照及重建余量。压缩、稀疏、存储分配策略和副本拓扑会改变实际物理量，最终以底层测量为准。
+每个成员使用独立 RWO 文件系统 PVC。`ReadWriteOnce` 描述挂载访问模式，不等于后端自动具备副本、fsync 兑现、故障 fencing 或备份。生产 CSI 必须有与版本和 StorageClass 相符的资格，local-path、emptyDir 和未经验证共享目录不属于本分支持久化基线。
 
-默认规划建议为 master 每 Pod 2 CPU/4Gi，data 每 Pod 4 CPU/16Gi、heap 8g。它们是项目起步建议，不是上游最低要求或吞吐保证。heap 占 Pod 内存的一部分，余量支持文件缓存和进程其他分配；把 heap 调至全部内存会压缩这些空间并增加 OOM 风险。实验室缩小资源的结果必须单列，不能代表客户 16 CPU/32Gi 主机规划基线。
+### 5.3 用有单位的预算代替“够大即可”
 
-磁盘 low/high/flood-stage 水位控制分片分配和写保护。flood-stage 的 `read_only_allow_delete` 用于防止磁盘耗尽后扩大故障；优先恢复真实空间或扩容，等待恢复条件成立再核验解除，不能永久关闭水位保护。`DeleteOnScaledownOnly` 只在整个 CR 删除时保留 PVC；缩减 nodeSet 数量仍可删除对应 PVC，因此产品入口默认拒绝自动缩容。
+先通过代表性样本测量 primary 存储系数 `k=primary实际占用/源JSON大小`，保持 mapping、分析器、压缩、`_source` 和 doc values 条件一致。初步预算为：
 
-当前[维护验证](../../../tests/evidence/elasticsearch-maintenance-20261104-220030-5a694a47444c45998faa196c20342b44.json)在同一固定平台完成 standard 数据成员从三个到四个的扩容，新成员接收了确认索引的真实分片，原 CR/PVC 身份和各 32 条确认数据保持。随后 standard 四个、compact 三个 data 卷均从 4 GiB 扩至 6 GiB；每卷实际文件系统总容量从 4,143,677,440 增至 6,257,475,584 字节，PVC、PV、Longhorn 原生卷及文件系统四层均达到目标，缩卷与缩减成员被产品拒绝。前后差值包含文件系统元数据开销，不把声明容量直接当作可用业务容量；该 loop 存储验证不代表客户物理盘扩容时延或性能。
+`ES 活跃分片量 = 源数据保留量 × k × (1 + replica 数)`
 
-水位实践没有填满物理磁盘，而是把 free-byte 阈值设在测得空闲空间以上，触发相同的原生保护机制。standard 测得最大空闲 6,238,224,384 字节，compact 为 6,240,075,776 字节；两拓扑的确认索引均自动出现 `read_only_allow_delete`，真实写入返回 429 `cluster_block_exception`。恢复原阈值后 block 自动解除，被拒绝 ID 不存在，原确认数据与业务验证通过，测试客户端及故障设置已回收。该结果验证阈值、拒绝和恢复的集成闭环，不证明文件系统写满、底层 I/O 失败或物理磁盘损坏时仍具备相同恢复条件；遇到保护时必须先恢复真实容量，不能把提高生产阈值当作扩容替代品。
+若 N 个等容量 data 节点需要在失去一个节点后仍保留这些副本，单节点实际文件系统容量的初步下界可写成：
 
-依据：[生产建议](https://www.elastic.co/docs/deploy-manage/production-guidance)、[虚拟内存](https://www.elastic.co/docs/deploy-manage/deploy/self-managed/vm-max-map-count)、[ECK 卷声明](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/volume-claim-templates)。
+`C ≥ ES活跃分片量 / ((N − 1) × u)`
+
+`u` 是客户选择的故障后最高使用率，须低于实际水位并留 merge、恢复、增长余量；公式假设可均匀放置，不能代替最满节点与分配约束检查。例如保留 100 GiB 源数据、样本系数 1.2、一个 replica，共 240 GiB；三个节点、故障后使用率预算 70%，每节点需至少约 171.4 GiB 实际文件系统。这是计算示例，未计业务增长和不均衡，不能直接当成 200Gi PVC 的生产准入证明。
+
+若底层对全部卷做三份存储副本，上述 240 GiB 的逻辑活跃数据还可能产生约三倍底层副本占用，并叠加存储自己的快照与恢复开销；不能把 ES 与 CSI 副本数相加称为保护等级。master 元数据卷、Kibana、监控和外部快照仓库另行预算。
+
+**项目验证。** Kubernetes 1.33.6／Longhorn 1.12.1 V1／ext4／三个存储副本下，探针卷完成 fsync、同卷跨节点重挂、1→2 GiB 在线扩容，原内容 SHA256 和卷身份保持。维护场景又将 standard 四个、compact 三个 data 卷从 4→6 GiB 扩容，核对 PVC、PV、原生卷和实际文件系统；standard 文件系统总容量由 4,143,677,440 增至 6,257,475,584 字节，缩卷被拒绝。实验使用专用 loop 后端，说明接口与身份闭环，不说明客户物理盘性能或断电可靠性。
+
+容量操作见[增加成员](operations-manual.md#73-增加-standard-数据成员)和[扩大数据卷](operations-manual.md#74-在线扩大数据卷)。依据：[容量规划](https://www.elastic.co/docs/deploy-manage/production-guidance/optimize-performance/size-shards)、[ECK 卷管理](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/volume-claim-templates)。
 
 ## 6. 安全、信任与观测链
 
-HTTP TLS 保护客户端连接，transport TLS 保护成员通信。校验 CA 只解决证书是否可信，还必须校验主机名与 SAN；通过 port-forward 诊断时，TCP 可连接本地端口，但 TLS server name 仍是证书中的 Service DNS。本分支辅助入口保留这一差异，不使用 `-k` 绕过校验。外部域名与 LB 需要客户提供覆盖真实访问名的证书，业务客户端在 Service/LB 后应禁用可能返回不可达 Pod 地址的 sniffing。
+### 6.1 身份、网络与证书各解决一个问题
 
-应用使用索引范围受限的角色或 API key。exporter 只获取集群监控和索引监控权限；它是 prometheus-community 的社区组件，不是 Elastic Operator 的内置指标。ECK `/metrics` 反映控制器行为，不能替代分片、恢复、磁盘和业务检索指标。Prometheus 采集失败、ES 不可达、指标缺失或陈旧必须分别判断，不能因 `up=1` 就认定 ES 业务正常。
+TLS 证明访问端点的身份并保护传输；用户、角色/API key 限定能操作哪些资源；NetworkPolicy 限定哪些网络来源可到达。这些控制互相补充：网络可达不意味着有权读索引，证书正确不意味着密码正确，应用权限也不能阻止有集群管理权的人直接改 Secret 或 CR。
 
-证书和 CA 轮换先建立新旧信任重叠，再更新服务端和客户端，确认新连接成功后撤销旧信任。密码/API key 轮换同样先验证新身份，再撤销旧身份。S3 Secret 经 ECK secureSettings 注入；凭据 reload 与 JVM truststore 是两条机制，更新 CA 后还需保证各 ES JVM 采用新的信任库。security feature state 恢复会覆盖原安全状态，应准备不依赖该索引的 file realm 应急管理员，保护其 Secret，避免恢复过程中把管理入口一起锁死。
+本项目为业务 ES 与 EFK 使用不同 namespace、CR、PVC、凭据和索引。应用经带授权标签的 namespace 访问业务 Service，采用独立最小权限身份。监控账户只读需要的状态，不能读取业务文档；`elastic` 超级管理员不分发给普通应用。密码在受控 Secret/文件中引用，不写入配置明文、命令行或证据。
 
-当前 standard 六成员、compact 三成员的[HTTP 证书验收](../../../tests/evidence/elasticsearch-security-certificates-20261104-184540-b119024474df482ebf69b01f839ec8fb.json)分别经过两次独立 CA 切换：先提供旧、新 CA 重叠信任，验证新连接与业务，再撤销旧 CA，并确认只信任旧 CA 的连接被拒绝。缺少正确 Service SAN 的候选证书由产品前置拒绝，CR、Pod、PVC 与凭据身份保持；恢复 ECK 默认证书后，两拓扑原确认索引仍各有 32 条相同内容，索引身份保持，测试证书 Secret 已回收。该结果证明当前产品入口的证书检查、切换及恢复闭环；测试 CA 不是客户 PKI，未覆盖外部 LB、全部应用连接池的信任分发或任意证书有效期内的自动续期。
+HTTP 自定义证书必须覆盖业务 Service、ECK 内部 HTTP Service 及实际外部访问域名；HTTP 与 transport 是不同连接面。轮换 CA 先分发新旧重叠信任，再切服务端、证明新连接，最后撤销旧 CA。Secret 更新、文件投射、进程采用新证书不是同一时刻，Ready 不代替新连接验证。exporter 环境变量中的密码需要受控滚动；S3 secureSettings 更新在固定 ECK 中也会引发滚动，不能把“无需手删 Pod”理解成没有维护窗口。
 
-在同一 Kubernetes 1.33.6/Calico 环境的[网络策略验证](../../../tests/evidence/elasticsearch-security-network-20261104-185936-418b93d9a5004303addd0a85dbb3fabc.json)中，两拓扑各使用独立客户端 namespace，依次验证未授权、添加授权标签、移除标签三种状态。拒绝必须先能解析产品 Service DNS，再观察至少两次连接超时；DNS 故障或连接拒绝不能冒充策略丢弃。授权后以正确 CA 和 Service 主机名完成 TLS，未携带凭据的 HTTP 请求返回 401，说明流量已经到达仍启用认证的 ES。测试 namespace 与客户端均已回收，原业务账本保持。这验证了当前 CNI 的 namespace 标签准入和撤销，不覆盖其他 CNI、外部防火墙或应用角色权限；客户仍需同时管理网络授权与业务身份。
+### 6.2 共享 ECK 的边界由代码和权限共同维持
 
-当前两拓扑的 [S3 凭据轮换验证](../../../tests/evidence/elasticsearch-security-s3-20261104-191647-2d13b6b55b4c43b9ae8148020954e07c.json)使用独立 HTTPS 对象存储和私有 CA：ES JVM 采用包含发行版默认根及客户 CA 的工作信任库，经产品入口切换新凭据并 reload，停用旧对象存储账户后，两拓扑仍各自完成真实快照，状态为 SUCCESS、成功分片非空且失败为零。恢复原账户及 Secret 后，repository verify 与各 32 条原确认数据通过，测试快照已删除。固定 ECK 3.5.0 将 secureSettings 内容摘要纳入 Pod 配置 hash，因此凭据更新和恢复都触发受控滚动；无需人工重启不等于没有滚动，reload 成功也不代替成员就绪。该实践证明当前私有 CA 和凭据切换的集成闭环，不代表所有 S3 兼容后端已通过语义验证，也未验证外部凭据平台或客户密钥轮换周期。
+EFK 的日志检索与业务商品检索不共用数据集群；共享的是唯一 ECK 和全局 CRD。这样能避免两个控制器争抢同一 CRD，但 ECK 的故障或不兼容升级仍是共同控制面风险。独立数据面不能被表述为所有层次绝不互相影响。
 
-当前[可观测性实践](../../../tests/evidence/elasticsearch-observability-20261105-030611-e3383c1ebf3749e4905c7b23fb7b810a.json)使用一个 v1.11.0 exporter 和产品双副本 Prometheus。两份 Prometheus 各自发现唯一 `search-metrics` target，抓取为 up 且真实 `elasticsearch_cluster_health_status{color="green"}` 为 1；专用账户能读取 cluster health，读取业务索引则收到明确的 403/security_exception。随后对独立探针索引设置无法满足的节点分配约束，两份 Prometheus 均经历 red 告警 firing 和未分配分片 warning 的完整 5 分钟持续窗口；回收探针后两类告警均恢复。再移除实际 ServiceMonitor target，确认两侧 `up` 样本消失、缺失采样告警由 pending 转为 firing，恢复原选择器后采样及全部告警再次恢复。源 standard 的 32 条确认记录及 SHA256 保持，故障、临时账户与 Secret 已回收。
+| 边界 | 产品自动控制 | 平台仍须提供 |
+| --- | --- | --- |
+| ECK 管理权 | 固定实例、版本、所有权与 watch 校验；消费者不能触发共享升级；升级仅走显式平台入口 | 最小 Kubernetes RBAC、变更权限和所有消费者资源预算 |
+| 业务资源 | namespace/对象归属与身份校验；单边卸载保留 PVC、Secret 和共享控制器 | 不把 cluster-admin 或全局删除权限交给业务账户 |
+| 备份身份 | 双向核对实际 S3 access key，不接受同凭据换 Secret 名 | 独立 IAM 身份及 bucket/前缀授权 |
+| 仓库数据 | EFK 保留路径与业务隔离；单写归属账本拒绝相同或祖先/子路径冲突，卸载不释放旧备份归属 | 对象存储权限、保留和最终数据销毁审批 |
 
-这一结果分别证明了发现/采集、ES 权限及规则状态迁移，不能外推为 Alertmanager 外部通知、客户值班链或全部集群规模的采样负载已合格。采样间隔、评估间隔和规则 `for` 窗口共同决定告警时间；本次没有把窗口参数当成端到端通知延迟。固定 exporter 的 cluster-health collector 在访问 ES 失败时不输出状态序列，因而规则同时检查 target down、target 缺失和健康状态序列缺失；HTTP 抓取为 up 本身不足以说明 ES 可达。
+最终回归覆盖两种安装顺序、共享控制器越权拒绝、凭据/路径/仓库冲突拒绝、ECK 故障恢复、业务升级、双方分别恢复、双向卸载和重入。每个变更后核对双方哨兵数据、卷、凭据和仓库身份；日志分路另覆盖 EFK 直连、Kafka 缓冲与 Loki。它证明这些路径中的保护行为，不能豁免底层容量、IAM 或直接管理员操作边界。
 
-依据：[ECK TLS](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)、[访问控制](https://www.elastic.co/docs/deploy-manage/users-roles)、[exporter v1.11.0](https://github.com/prometheus-community/elasticsearch_exporter/tree/v1.11.0)。
+### 6.3 监控必须贯通采集与业务
+
+```mermaid
+flowchart LR
+    ES[ES 状态 API] -->|最小权限与严格 TLS| X[专用 exporter]
+    X -->|指标 Service| SM[ServiceMonitor]
+    SM --> P[Prometheus 两副本]
+    P --> R[规则评估与告警]
+    APP[业务写入与读取探针] --> B[业务结果及确认账本]
+    R --> OPS[关联判断与处置]
+    B --> OPS
+```
+
+`up=1` 只证明 Prometheus 能抓到指标端点；还要确认 exporter 成功读取 ES、健康样本存在且新鲜，以及真实业务可用。空结果不同于零，累计 rejected/GC 时间不同于当前速率，集群平均磁盘低也可能掩盖最满节点。
+
+项目默认每 60 秒抓取、scrape 最长 30 秒、ES 请求最长 20 秒；red 持续 1 分钟为 critical，未分配 shard 持续 5 分钟为 warning，采样不可用持续 2 分钟为 critical。它们是项目默认抑制窗口，须按客户 SLO 与实际评估/通知延迟调整。最终实测已覆盖两份 Prometheus 真实采样、red/未分配 shard、target 消失与恢复，指标身份读业务被 403 拒绝；不包含客户外部通知最终到达的保证。
+
+生产步骤见[安全轮换](operations-manual.md#8-证书与凭据轮换)及[监控判读](operations-manual.md#72-判断监控链与告警)。依据：[安全权限](https://www.elastic.co/docs/reference/elasticsearch/security-privileges)、[ECK HTTP TLS](https://www.elastic.co/docs/deploy-manage/security/k8s-https-settings)、[exporter v1.11.0](https://github.com/prometheus-community/elasticsearch_exporter/tree/v1.11.0)。
 
 ## 7. 快照、恢复与灾备
 
-Elasticsearch 原生 snapshot 把可恢复的索引段及选定集群状态写入 repository，并通过元数据引用复用已上传段。它是逻辑恢复机制，复制数据目录、CSI 卷快照或文件备份不能替代它。一次 snapshot 不是跨全部 shard 的严格同一瞬时视图；若业务需要跨索引一致边界，应先设计写入隔离、业务 checkpoint 与恢复后的对账。
+### 7.1 副本不能替代备份
 
-S3 repository 在 9.x 发行版内置。生产接客户已有独立 HTTPS 对象存储；本分支不会顺便安装 MinIO。信任库进入 ES JVM，`_verify` 检查节点访问，`_analyze` 进一步检查存储操作语义；对象能列出、bucket 存在或任务显示 SUCCESS 均不足以证明可恢复。应读取快照元数据，并在独立空目标恢复索引，再核对数量、内容 hash 与查询结果。
+replica 会跟随正常删除和错误更新，不能让用户回到误操作之前。snapshot 将选定索引及元数据保护到外部仓库，按不可变段复用已经上传的内容；多个快照共享段，删除快照必须通过 ES API，由其判断哪些内容已无引用。手工删除对象存储文件可能破坏其他快照。
 
-项目注册入口的 analysis 使用 10 个 blob、单个至多 1 MiB、总量至多 10 MiB，目的是在生产收敛时提供有界的初步反证。该探测既不是容量压测，也不保证后端完全符合 S3 语义；正式接入仍需结合后端官方支持范围、并发/一致性条件及独立恢复证据。9.3 起 S3 线性化寄存器优先使用条件写入，缺少条件写入的后端可能依赖强一致 multipart 兼容路径；不能把“上传一个对象成功”推导为并发 repository 元数据安全。升级后端或 Elasticsearch 版本后，应重验相应兼容边界。
+snapshot 不复制节点配置文件、Kubernetes Secret、CA、repository 注册定义或全部应用外部依赖。普通业务索引、security feature state、Kibana feature state、客户配置/凭据分别制定保护与复验。Kibana 普通 dashboard 与加密连接器也不同，后者还依赖原加密密钥和外部服务凭据。
 
-分析探针也有版本和后端条件。固定 9.5.6 的[官方源码](https://github.com/elastic/elasticsearch/blob/fd1e8011342a0988e432b999cea4bf884ca120ed/x-pack/plugin/snapshot-repo-test-kit/src/main/java/org/elasticsearch/repositories/blobstore/testkit/analyze/BlobAnalyzeAction.java)明确记录：MinIO 的上传与提前复制可能互相等待，导致分析超时；[官方 MinIO 集成测试](https://github.com/elastic/elasticsearch/pull/135565)为此禁用 `copy_during_write_contention`，仍执行其它对象分析。本项目默认保留该探针，只有操作者显式声明这一后端限制才采用相同条件，见[运维手册第 9 节](operations-manual.md#9-快照恢复与灾备)。这是一项缩小了上游分析适用范围的兼容条件，不是“完整 S3 语义已通过”的证明，更不豁免真实快照及独立恢复。
+每个 shard 在快照开始与结束之间取得自己的数据视图，整个 snapshot 不是跨 shard 同一瞬间的事务。需要跨索引业务一致性时，应用先建立停写或 checkpoint 与对账边界。PIT、复制目录、CSI 卷快照都不能替代官方 ES snapshot 恢复路径。
 
-当前[仓库拒绝验证](../../../tests/evidence/elasticsearch-backup-refusal-20261104-220828-f48e04421233408c8e853cf1877ddf55.json)在 standard 的四个 data 与三个 master 上，分别通过错误访问身份、不信任实际后端的有效 CA，以及已正向核验读写能力但缺少删除权限的专用身份发起产品 repository 请求，三种情况均返回预期的 `repository_verification_exception`。每次恢复原 Secret/CA 后都重新验证仓库与原 32 条数据，最终内容 SHA256 与测试前一致，受限身份已回收。该实践说明 CA、身份和后端操作权限是独立的准入条件；尤其快照仓库需要删除临时对象及执行保留清理，只有上传能力不够。验证使用本项目独立 HTTPS S3 夹具，不证明任意对象存储的全部权限组合或并发一致性已合格。
+### 7.2 仓库为何要单写、多读及独立身份
 
-同一个 repository base_path 只能有一个写入集群。灾备目标以 readonly 注册，避免多个集群并发改写 repository 元数据。S3 兼容服务对 SDK/checksum、原子性和并发语义的实现可能不同，不能仅凭“S3 compatible”判断通过，也不默认开启 `legacy_content_md5` 绕过兼容问题。
+源 writer 注册 HTTPS S3 repository，凭据进入 keystore，私有 CA 进入 ES JVM truststore。`_verify` 检查节点访问，`_analyze` 进一步反证并发存储语义；本项目注册时采用 10 个 blob、单个至多 1 MiB、总量至多 10 MiB 的有界分析。这不是完整后端认证或容量压测，仍须真实快照与独立恢复。
 
-SLM 将快照创建与保留分开调度：创建计划决定何时产生恢复点，retention 任务按策略归属、年龄和数量删除候选快照，不负责清理手工快照。仅保存策略定义不能证明创建或删除真的发生。本项目的[源端备份实践](../../../tests/evidence/elasticsearch-backup-source-20261104-220408-6f48daf57cb945dcaceafbc554021d85.json)在 standard 与 compact 上分别通过产品入口注册 HTTPS S3 writer、执行 verify/有界 analysis，完成含非零成功分片且零失败的确认索引快照；两拓扑的原账本各为 32 条。随后各显式执行同一 SLM 策略三次，等待三个快照 SUCCESS，再触发 retention，实际只保留较新的两个，最旧的一个消失，与 `max_count: 2` 一致；配置同时为 `min_count: 1`、`expire_after: 1d`。本次没有等待一天或下一次定时调度，不能据此声称已验证按日过期；源端成功也不替代独立恢复和 feature states 验收。
+同一 bucket/base_path 只能有一个写入集群，恢复目标以 readonly 注册，避免两个集群同时改写仓库元数据。readonly 是 ES 仓库属性，不会替对象存储配置只读 IAM，也不会禁止恢复后的业务索引写入。两种权限须分别落实。
 
-这两份普通索引快照随后分别在独立的三节点 Kubernetes/CSI 平台上，通过产品入口恢复到新的三成员 ES 目标。两次均核对源快照 UUID、目标的独立 ES UUID、仓库 `readonly=true`，并读回 32 条文档、逐条内容及代表性查询；内容 SHA256 均为 `974de9b07057a9af2099e1e8da06334bdcf37494e13d04106b548c47e04b0223`，与各自源账本一致，源数据未改变，见[独立恢复证据](../../../tests/evidence/elasticsearch-backup-restore-20261105-013339-23ac6e224c1f427ea2d870a3313ca0cd.json)。目标依次创建，复用已准入平台，不复用源 PVC；这证明该固定版本下的普通索引恢复路径，不覆盖安全/Kibana 状态、对象存储侧独立只读 IAM 策略或任意规模的恢复时限。仓库只读是 ES 注册属性，生产仍应另配受限读取凭据，避免将其误解为后端已经收紧权限。
+S3 兼容不是接口名称一致即可：需要真实读写、列举、删除、multipart 与元数据一致性。固定版本在 MinIO 测试中记录了上传尚未结束时提前复制可能相互等待的限制。项目默认保留争用探针；只有明确符合该限制时，才由显式配置缩小这一子探针，其他 verify/analysis 与独立恢复照常执行。该例外不是完整 S3 兼容结论，也不允许绕过校验或无限加超时。操作条件见[仓库接入](operations-manual.md#9-快照恢复与灾备)，实现依据见[开发手册](development-manual.md#3-配置与幂等语义)。
 
-系统 feature 的保护边界也已单独验证。在 ES/Kibana 9.5.6 的源端，通过产品请求创建只读业务角色、native 用户和一个具有已知 ID/属性的 dashboard，再创建显式包含 `security`、`kibana` 非空状态的快照。独立三成员目标先保持 Kibana 关闭，以 file realm superuser 完成恢复；目标 cluster UUID 为 `58rRjcHBQK-KQN88j5mjZg`，与源不同，32 条业务文档的上述 SHA256 保持。随后恢复的 native 用户以原密码、原角色完成认证及业务计数，启用同版 Kibana 后读回原 dashboard 的精确 ID/属性，源配置及 Secret/CA 身份、内容和原数据均未改变，源临时身份与 dashboard 已回收，见[feature 恢复证据](../../../tests/evidence/elasticsearch-backup-features-20261105-011335-4c427bb6f488486bb942580891f202b6.json)。
+### 7.3 从“快照成功”到“恢复可用”
 
-这说明恢复业务文档、恢复安全索引和恢复 Kibana 保存对象是相互关联但须分别核对的任务。系统 data stream 的 backing index 不接受普通 `_settings` 访问，产品用只含 UUID 的集群元数据核验其身份，而非扩大管理员角色或直接修改系统索引。这里的保存对象是普通 dashboard，未验证加密连接器、外部服务凭据或全部 Kibana 插件状态；这些对象仍需原加密密钥和相应服务恢复流程。独立配置/Secret 保护也不代表客户凭据管理平台已经完成灾备，客户须保管原配置输入并实际验证其恢复出口。
+```mermaid
+flowchart TD
+    A[源端 snapshot] --> B{SUCCESS 且分片完整?}
+    B -->|否| STOP[保留错误并停止切换]
+    B -->|是| C[独立空目标与 readonly 仓库]
+    C --> D[只提交一次显式 restore]
+    D --> E{收到完整恢复响应?}
+    E -->|未知或超时| U[保留 running 账本与目标<br/>禁止盲重放]
+    E -->|是| F{精确索引集合且全部 primary 成功?}
+    F -->|否| STOP
+    F -->|是| G[green 与目标索引 UUID]
+    G --> H[数量 内容 查询及权限对账]
+    H --> I[才可进入业务切换]
+```
+
+目标必须独立、为空且版本兼容，禁止用恢复覆盖现存同名索引。产品同步恢复响应要求精确索引集合、总 primary 数大于零、全部成功和零失败，再在同一截止时间内等 green、保存 snapshot/目标 UUID。`_recovery` 仅保留当前副本最近的恢复过程，后续 PEER 迁移会替换 SNAPSHOT 记录，因此它是诊断视图，不是永久完成收据。
+
+security 恢复会覆盖 native 用户和 API key，不能依赖即将被覆盖的安全状态管理恢复。先建立独立 file realm 应急管理员并验证新连接，再恢复；Kibana 保持关闭直到系统状态与业务数据核对完成，随后同版启动并核对具体保存对象。普通索引恢复默认 `feature_states: [none]`，不为省事扩大到全部系统状态。
+
+**项目验证。** 两拓扑各自的普通索引快照在独立三成员目标恢复，32 条文档逐条一致，SHA256 为 `974de9b07057a9af2099e1e8da06334bdcf37494e13d04106b548c47e04b0223`；feature 场景另外验证 native 用户原角色/密码、允许与越权查询、Kibana 具体 dashboard 的 ID/属性。错误 CA、错误身份和缺少删除权限的仓库均被拒绝，恢复原输入后业务保持。SLM 还实测连续三次执行后按 `max_count=2` 保留最新两个；未等待自然的一天或三十天，不声称测过完整日历过期周期。
+
+### 7.4 灾备必须保持单一业务写入端
 
 ```mermaid
 stateDiagram-v2
-    [*] --> 正常源集群
-    正常源集群 --> 备份可恢复: snapshot 与独立恢复校验
-    备份可恢复 --> 源写隔离: 灾难或受控切换
-    源写隔离 --> 目标恢复: readonly repository
-    目标恢复 --> 业务入口切换: 对账与健康通过
-    业务入口切换 --> 目标产生新写入
-    目标产生新写入 --> 回切准备: 保护并重放目标新增数据
-    回切准备 --> 正常源集群: 重新对账与入口验证
+    [*] --> 源端服务
+    源端服务 --> 已有可恢复点: 外部快照与独立恢复验证
+    已有可恢复点 --> 隔离源写入: 宣布切换
+    隔离源写入 --> 目标恢复对账
+    目标恢复对账 --> 目标服务: 稳定入口切换
+    目标服务 --> 回切准备: 停目标写入并保护增量
+    回切准备 --> 源端服务: 重放 冲突处置 对账与入口复验
 ```
 
-本次独立三节点目标的[切换与回切实践](../../../tests/evidence/elasticsearch-dr-20261105-021409-b752d811ae0f459c81b8d58b92f0ae3c.json)先将源 compact 的三个 ES 成员及其控制器停到零，并确认客户端端点无就绪地址，再通过产品入口恢复只读仓库中的 32 条快照文档。目标原有独立 UUID 保持，文档 SHA256 与快照账本一致；源快照之后的 1 条已确认写入在目标不存在，说明恢复点边界真实生效。切换后目标新增 1 条记录，回切前对目标索引设置写阻断并读回确认，再恢复源、按稳定 ID 显式重放。源最终保留原 32 条、源快照外 1 条及目标新增 1 条，共 34 条；应用路由读回这两条新增记录，目标继续保持写阻断。
+源不可达不证明源已停止写入。切换需要平台 fencing 或应用入口隔离证据，再开放目标。回切时目标的新记录不会因共用快照自动回到源，必须保存、按业务 ID 重放并处理同 ID 不同内容。没有隔离证明或增量处置方案时，保持当前已确认的唯一写入端。
 
-本次测得 RTO 为 163.04 秒，从源故障声明到目标完成恢复、查询及副本确认的新写入；独立 Kubernetes、CSI 和健康空目标已经预备，平台建设及回切时间不计入该值。RPO 为 14864.99 秒（约 4.13 小时），是本次保留的旧快照结束时间到源快照外探针确认时间的间隔，只有 1 条确认写入位于该恢复点之外；它不是测试时长，也不是定时备份可承诺的固定 RPO。客户须按实际备份频率、数据量、资源及隔离方式重新测量。演练采用受控停成员和私有客户端路由，不证明突然断电、网络分区时的外部 fencing 或客户 DNS/LB 的切换时限。
+最终受控 DR 演练在已准备独立 Kubernetes、CSI 与健康空目标的条件下，测得 **RTO 179.21 秒**：从故障声明到目标恢复、查询及带副本确认的新写入。该值不含平台建设、客户 DNS/LB 传播和回切时间。恢复点到源确认尾部的间隔为 **RPO 9074.25 秒，约 2.52 小时**，其中有一条快照外源写入；这是所用旧快照的年龄与确认间隔，不是测试持续时间或定时策略保证。
 
-RPO 由已验证的恢复点与最后确认写入之间的差距决定，RTO 应覆盖隔离、恢复、对账及入口切换时间。本分支不提供任意时间点 PITR。回切时不能把旧源直接重新开放为第二个写入端；应确定目标新写入的权威记录、重放方式和冲突处置，再恢复单一写入入口。config、Secret、CA、repository 定义及 security/Kibana feature states 也需要独立保护，它们不都会自动随普通索引恢复。
+回切后原 32 条、源快照外 1 条、目标新增 1 条，共 34 条完整对账，目标继续写阻断。演练使用受控停成员，不代表网络分区时外部 fencing 已验证。本分支不提供任意时间点 PITR，客户应按备份周期、数据规模、隔离和恢复能力制定并测量自己的 RPO/RTO。
 
-依据：[snapshot 与恢复限制](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore)、[S3 repository](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/s3-repository)、[ECK 快照配置](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/cloud-on-k8s)。
+依据：[快照内容与兼容限制](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore)、[S3](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/s3-repository)、[ECK 快照](https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/cloud-on-k8s)、[恢复 API](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-snapshot-restore)。执行见[恢复与灾备任务](operations-manual.md#92-在独立空目标恢复)。
 
 ## 8. 生命周期与性能判断
 
-alias 将业务名称与物理索引分开，reindex 将文档重新写入目标索引，因此可以改变 mapping/analyzer；切换前须对账并处理迁移期间新增写入。data stream 把带时间戳的追加数据组织为 backing indices，rollover 建立新的写入索引，ILM 根据策略推进生命周期。它们不自动提供跨系统事务；删除阶段必须与备份保留和客户合规期限一致。
+### 8.1 模型迁移与时间序列分别管理
 
-reindex 不会自动复制源索引的 mapping、分片配置或模板，也不会持续捕获源端后续写入。应先按目标模型建索引，选择停写窗口或可靠的增量补齐机制，再复制、核对和切换。异步响应中的 task ID 只是任务身份；完成时还需检查任务错误、逐项 failures、冲突、创建/更新数量和目标数据。alias 切换应在一个 `_aliases` 请求中完成 remove/add，并对必要的 remove 设置 `must_exist: true`；只检查 `acknowledged` 可能漏掉允许部分动作成功时的 `errors` 与 `action_results`。切换前后都要读回 alias 的精确目标，不能以“原子”推导错误动作也会整体拒绝。alias filter 也不是安全隔离机制：按 ID 获取文档时不应用该查询过滤器，授权仍由安全角色控制。
+商品字段类型或 analyzer 变化，通常先建立明确 mapping 的新索引，再 reindex、对账、切 alias。reindex 不复制完整 mapping/settings，不持续追赶新增写入；切换必须有停写窗口或可靠增量补齐。一条 `_aliases` 请求可以集中 remove/add，但仍需检查 `acknowledged`、`errors`、逐项结果并读回精确目标；必要的 remove 用 `must_exist` 防止旧目标猜错。alias filter 不限制按 ID 读取，不能用于替代授权。
 
-data stream 的逻辑名称不变，写入仅进入当前 write index，旧 backing indices 仍参与检索。匹配的 index template 必须启用 `data_stream`，文档含 `@timestamp`，写入使用 `create`；索引模板引用的 component template 负责复用 mapping 和 settings。ILM 则是独立的异步状态机，不是每次写入同步检查并立即删除。发生 rollover 后，后续阶段的 `min_age` 按 rollover 时间计算；例如 `delete.min_age: 30d` 不能解释成每条文档在其业务时间满 30 天时立即删除。模板变更主要影响新建索引，也不能反向修正旧 backing index 中已建立的字段类型。需要保留精确到文档的期限、频繁覆盖同一 ID 或跨索引事务的业务，应先评估这些语义是否适用。
+追加事件适合 data stream：逻辑名称不变，写入进入当前 write backing index，旧索引继续参与搜索。index template 声明 mapping、pipeline 和生命周期，ILM 异步推进 rollover/delete。模板变更不重写旧数据，rollover 后 `min_age` 以 rollover 时间计算，不是每条文档业务时间满 30 天立即删除。固定 ID 的 create 去重也不跨 backing index 自动全局生效。
 
-上述边界依据官方[reindex](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reindex-indices)、[alias](https://www.elastic.co/docs/manage-data/data-store/aliases)、[data stream 建立过程](https://www.elastic.co/docs/manage-data/data-store/data-streams/set-up-data-stream)和[ILM 策略](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/configure-lifecycle-policy)。本分支使用本地 reindex、索引 alias 和基础 hot/delete 策略；远程 reindex、自动冷热分层与 searchable snapshot 不由这些示例自动扩展为交付能力。
+项目已验证 pipeline 归一、非法字段类型拒绝、显式 rollover 和 `_ilm/explain` 管理状态，没有等待多天自然删除。普通索引的产品恢复入口不等于 data stream/模板/ILM 全套恢复能力。需要这种生产路径时须先补齐相应数据保护方案，不能把演示流直接当作已具备灾备的生产日志服务。
 
-当前两种拓扑的生命周期实践通过 pipeline 将类别归一，写入两条有效事件，拒绝非法整数且有效计数仍为 2；显式 rollover 后产生两个 backing index、原两条事件仍可检索，`_ilm/explain` 确认它们由声明的策略管理。策略的删除期限读回为 7 天，本轮没有等待 7 天，也没有测量自动轮询何时触发 rollover，不能把这些结果描述为已实测定时删除。在 compact 上另经产品入口切换同版 SmartCN，逐成员核对插件和 analyzer、重复配置核对幂等，最后恢复默认镜像并复验原确认数据，见[生命周期证据](../../../tests/evidence/elasticsearch-lifecycle-20261104-153237-4bcc3eab119046b1ad72007540139e5e.json)。
+### 8.2 升级预算与回旧版本的真实含义
 
-升级按 ECK/CRD 与 ES/Kibana 两条边界管理。固定夹具为 ECK 3.4.1→3.5.0、ES/Kibana 9.5.5→9.5.6；CRD 是集群全局资源，必须盘点包括 EFK 在内的所有消费者。数据格式升级后，不能把 `spec.version` 或镜像 tag 改回去完成降级。回旧版的路径是旧版空集群恢复升级前兼容快照，或按官方支持路径前滚；新增业务写入需要额外重放与对账。
+ECK/CRD 是平台变更，ES/Kibana 是业务版本变更。固定升级对为 ECK 3.4.1→3.5.0、ES/Kibana 9.5.5→9.5.6；先盘点全部 ECK 消费者、备份和资源，再分开执行。不把业务 ES 版本变化变成 EFK 自动升级。
 
-当前[升级与兼容恢复实践](../../../tests/evidence/elasticsearch-upgrade-20261105-055359-527858c2428943c9b49ed1a9fff0ed1d.json)在独立三成员目标上先升级共享 ECK，再升级 ES/Kibana；期间删除一次 Operator Pod，恢复后以相同配置重入，原 CR、PVC、凭据和 32 条确认记录保持，最终三个 ES 成员均为 9.5.6 且绿色。原地改回 9.5.5 被拒绝；原生退役并回收该目标的 namespace/PV 后，另建独立空 9.5.5 目标实际恢复了兼容快照，32 条记录逐条一致，SHA256 为 `974de9b07057a9af2099e1e8da06334bdcf37494e13d04106b548c47e04b0223`。该过程说明“回旧版”需要恢复到新空目标，不能依赖复用升级后的数据卷。
+本项目 ECK changeBudget 为 `maxSurge=1,maxUnavailable=1`。surge 限制可额外创建的 Pod；同一个 nodeSet 内重启稳定身份 Pod 时，不会凭该值自动先创建替身。控制器同时检查分片、仲裁与健康预算，外部故障仍可能叠加。受控滚动不等于零延迟或零业务错误。
 
-本次聚焦验证复用的是 2026-11-05 05:03:47.802（UTC+8）开始的既有 `pre-upgrade` 恢复点，快照 UUID 为 `nR166Rn3TxGkwe58AjeupA`，并非本轮新建；它覆盖本轮全部 32 条确认数据。快照未记录原始来源集群 UUID，不能把本轮升级来源的 UUID 当成它的历史来源身份。实际旧版恢复与完整内容对账证明这个恢复点在本次条件下可用，不证明升级后新增写入也受保护，不提供任意版本回退或连续可写保证。
+数据格式升级后，改回旧 tag 不是回滚。项目拒绝原地降级；实际验证是在独立空 9.5.5 目标恢复升级前兼容快照，并核对 32 条数据。客户仍须保护升级后的增量，或按支持路径前滚。升级前没有可恢复点与增量处置能力，就没有完整回旧版方案。
 
-本分支把 ECK `changeBudget` 固定为 `maxSurge: 1`、`maxUnavailable: 1`，限制额外资源并允许单成员滚动重启。原 nodeSet 内变更会重启稳定身份的 Pod，不会因 `maxSurge` 为 1 就自动创建一个替代成员；把 `maxUnavailable` 设为 0 会阻止健康成员进入这条重启路径。一个成员正在恢复时，预算不允许再主动重启另一个健康成员，ECK 仍需检查分片安全、集群状态和 master 仲裁。该预算约束控制器主动操作，不保证外部故障不会同时发生，也不承诺零请求错误。依据：[ECK 更新策略](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/update-strategy)及固定 3.5.0 的[升级预算计算](https://github.com/elastic/cloud-on-k8s/blob/386c7b14f2d1bbb7f2af1e7da997e64875f16e47/pkg/controller/elasticsearch/driver/stateful/upgrade_pods_deletion.go)。
+### 8.3 短基准与故障负载回答不同问题
 
-Rally 2.13.0 使用 `benchmark-only` 和固定离线合成语料衡量本项目路径。语料为 10000 条、约 11.6 MB 原始 JSON，主要用于可重放的集成基准，不代表真实生产分布。当前短基准在 Kubernetes 1.33.6、Longhorn 1.12.1 V1、实验室专有 loop 文件系统上运行，使用三个 primary、一个 replica；四个 bulk 客户端每批 500 条，四个 search 客户端各预热 100 次、正式执行 1000 次。启用 HTTPS、认证与副本，主机缓存和共享负载未作隔离。
+以下数据均来自 **2026-11-08 最终完整回归**，原始日志、退出状态和输入绑定见[最终验收证据](../../../tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json)。使用 Kubernetes 1.33.6、Longhorn 1.12.1 V1、ext4、三个底层存储副本和实验室 loop 后端，启用 HTTPS、认证、三个 primary 与一个 replica。数据宿主多数为 8 vCPU/约 16 GiB，一台为 16 vCPU/约 16 GiB，共享负载和缓存未隔离。
 
-| 测量条件或结果 | standard | compact |
+Rally 2.13.0 以 benchmark-only 执行固定 10000 条、约 11.6 MB 原始 JSON 语料，4 个 bulk 客户端、每批 500 条；4 个 search 客户端各预热 100 次、正式 1000 次。standard 此时已维护扩为 3 master＋4 data，compact 为 3 混合成员；各 data 请求 1 CPU/4 GiB、heap 2 GiB、PVC 6 GiB，standard master 各请求 1 CPU/2 GiB。这些是缩小的测试资源，不是生产默认。
+
+| Rally 结果 | standard | compact |
 | --- | ---: | ---: |
-| 成员 | 3 个专用 master、4 个 data/ingest | 3 个混合成员 |
-| 每个数据成员请求 / heap / PVC | 1 CPU、4 GiB / 2 GiB / 6 GiB | 1 CPU、4 GiB / 2 GiB / 6 GiB |
-| bulk 吞吐中位数（docs/s） | 4315.57 | 2505.31 |
-| search 吞吐中位数（ops/s） | 192.56 | 137.82 |
-| search P50 / P99（ms） | 13.21 / 39.57 | 15.37 / 63.91 |
+| bulk 吞吐中位数（docs/s） | 6451.67 | 3485.91 |
+| search 吞吐中位数（ops/s） | 186.68 | 143.08 |
+| search latency P50 / P99（ms） | 14.26 / 32.70 | 15.66 / 57.24 |
 | bulk / search 错误率 | 0% / 0% | 0% / 0% |
 
-这些数据来自固定场景 `rally-20261105-034911-11da246bfa504fd3b39cecf5158a90b5` 的两个独立 race；吞吐是 Rally 报告的样本中位数，延迟是 search 请求的 latency。数据宿主多数为 8 vCPU、约 16 GiB 内存，其中一台为 16 vCPU、约 16 GiB；standard 的专用 master 各请求 1 CPU、2 GiB。两拓扑的成员总量和资源总量不同，因此不能把表中差异解释为等资源架构优劣。每个 race 结束后读回全部 10000 条，规范化内容 SHA256 均为 `572c88638ae1d75a097fa43f0e8c2f45120960482d642016cccf870f9edc93cf`，原业务账本保持，压测索引及临时客户端和凭据已回收。
+每种拓扑结束后读回全部 10000 条，内容 SHA256 为 `572c88638ae1d75a097fa43f0e8c2f45120960482d642016cccf870f9edc93cf`，原确认数据保持。两拓扑资源总量不同，不能据差异宣布等资源条件下架构优劣。Rally 未输出 P95 或独立重试数，不能用其他负载的 P95 补成同一分布，也不能从零错误率推出从无重试。
 
-Rally 当前报告未提供 P95，也未单列客户端重试次数，不能从错误率为零推断没有重试；P95 由另一条至少 1800 秒、含 primary Pod 故障的稳态客户端负载独立计算，不能与本表拼成同一分布。短基准与故障负载解决不同问题。生产测量还须保存真实业务分布、窗口、资源峰值和恢复期表现；上述小数据、共享实验室及 loop 存储结果只用于集成基准，不能外推客户容量或 SLA。
+另一条故障负载对两拓扑并行各观察至少 1800 秒，每秒尝试一条稳定 ID create 与一次搜索。约第 600 秒分别注入一次 primary Pod 故障，故障注入串行互斥，负载持续运行；写入准入使用 `wait_for_active_shards=all`，允许有界重试。延迟从单次业务操作开始到确认完成，含该操作的重试等待；这是主动限速的小文档验证，不是最大吞吐压测。
 
-同一版本、成员资源与存储条件下，另一条客户端负载在两拓扑并行运行，每秒尝试一条稳定 ID 的 create 和一次搜索；每条文档只有业务 ID、标题、类别和价格。它用于观察故障与对账，约一条每秒的主动限速不代表最大吞吐。观察期间各删除一次持有 primary 的 Pod，两次故障串行注入，客户端独立持续运行。写入使用 `wait_for_active_shards=all`，副本恢复期间允许有界重试，写入延迟从该业务操作开始计至确认完成，包含该操作的重试等待；搜索延迟单独采样。
-
-| 故障负载测量 | standard | compact |
+| 故障负载结果 | standard | compact |
 | --- | ---: | ---: |
-| 实际观察窗口（秒） | 1800.75 | 1800.59 |
-| 最终完整对账文档数 | 1714 | 1714 |
-| 两份成功分片确认的写入数 | 1714 | 1714 |
-| 写入 P50 / P95 / P99（ms） | 30.67 / 40.77 / 52.80 | 35.95 / 53.45 / 69.22 |
-| 搜索 P50 / P95 / P99（ms） | 13.70 / 22.38 / 30.24 | 19.81 / 29.07 / 38.27 |
-| 写入拒绝或冲突响应 / 重试次数 | 11 / 11 | 11 / 11 |
-| 结果未知 / 不完整分片响应 / 读回确认 | 0 / 0 / 0 | 0 / 0 / 0 |
+| 实际窗口（秒） | 1800.80 | 1800.70 |
+| 最终逐条对账 / 两份成功分片确认文档数 | 1718 / 1718 | 1718 / 1718 |
+| 写入 P50 / P95 / P99（ms） | 32.41 / 45.18 / 61.34 | 34.16 / 49.68 / 62.76 |
+| 搜索 P50 / P95 / P99（ms） | 15.56 / 22.05 / 28.31 | 17.25 / 27.33 / 34.04 |
+| 写入拒绝或冲突响应 / 重试次数 | 10 / 10 | 10 / 10 |
+| 结果未知 / 不完整分片响应 / 搜索重试 | 0 / 0 / 0 | 0 / 0 / 0 |
 
-结果来自 `soak-20261105-041458-4acb8797860843268ff6ab5208938a7f`，见[故障负载证据](../../../tests/evidence/elasticsearch-soak-20261105-041458-4acb8797860843268ff6ab5208938a7f.json)。两拓扑恢复绿色后执行 refresh，再核对全部 ID、逐条内容及数量，规范化内容 SHA256 均为 `9fa2c404baf45e3dfd7465d243f017ef2d377ac53108f900decdf653e8f39a2d`；原业务索引分别保持 32、34 条，测试索引、客户端和临时凭据已回收。两条负载均无最终未完成操作或对账失败，搜索没有重试，但写入发生了实际重试，不能称为零扰动。故障等待集中在少量操作中，P99 不显示最慢的不足 1% 样本，因此这些分位不能替代恢复时序或保证连续可写。本次资源只记录窗口前后快照，没有连续资源峰值测量；也没有模拟主机断电、并发主节点故障或生产流量峰值。
+两拓扑最终内容摘要均为 `379ea9da85801d8f785942d322770656471559892dfdfa3a4bf2c4cdec00dea8`，全部 ID 和内容对账、原账本及清理通过。故障导致实际写入等待和重试，不能称为零扰动；少量最长等待可能落在 P99 之外，因此低分位也不能证明故障期间连续可写。资源只取窗口前后快照，没有连续峰值曲线。这些数据说明当前故障与客户端语义闭环，不构成生产容量、物理断电恢复或可用性 SLA。
 
-正式操作见[用户与运维手册](operations-manual.md)，实现边界与版本依据见[开发手册](development-manual.md)。
+### 8.4 如何把结果用于客户决策
+
+客户应以自己的文档大小、字段与分析器、保留周期、读写比例、查询/聚合复杂度、并发及冷热缓存建立基线。在相同负载下关联 p95/p99、错误与重试、GC、CPU、磁盘、最满节点水位及恢复速度；发现瓶颈后只改变一个因素并复测。短基准测当前负载成本，N−1 和恢复负载测剩余预算，两者都不能仅凭 Pod 健康推导。
+
+若磁盘读忙而堆并不紧张，先看缓存、查询与段；若 GC 和堆上升，先看高基数聚合、深分页和过多 shard；若写入拒绝上升，先看负载、merge 与恢复竞争，再决定限流或扩容。增大队列和结果窗口可能仅把快速拒绝变成长等待与 OOM。调优接受标准应包含业务收益、资源成本与撤回出口。
+
+依据：[ECK 更新策略](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/update-strategy)、[reindex](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reindex-indices)、[alias](https://www.elastic.co/docs/manage-data/data-store/aliases)、[data stream](https://www.elastic.co/docs/manage-data/data-store/data-streams/set-up-data-stream)、[ILM](https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/configure-lifecycle-policy)。生产变更从[运维任务](operations-manual.md#7-日常运维容量与性能)进入，不直接套用测试负载或缩小资源。

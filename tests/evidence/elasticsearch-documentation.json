@@ -7,9 +7,9 @@
     "kubernetes": "1.33.6"
   },
   "files": {
-    "docs/middleware/elasticsearch/operations-manual.md": "376e3b976e10a4fcaa4f9158732335ce5f891c1c28b85a9f06e9c824f25b6fa2",
-    "docs/middleware/elasticsearch/technical-whitepaper.md": "193de683fe00af7cd9e827d03bb1552f95b7a76d9e1b570bf0f8fa79014e076e",
-    "docs/middleware/elasticsearch/development-manual.md": "9491277eb758e66eae76395b5e5e4fecc5c5d5f32bdfeb8d374923b19c371c7b"
+    "docs/middleware/elasticsearch/operations-manual.md": "99db1164c6e94534ff407c93e37cfb1a96d89eeb824a2a304075bebc05fd279c",
+    "docs/middleware/elasticsearch/technical-whitepaper.md": "0f930f21ef6d6a288dfca0dff2e70dcc83f9df5c68623aef5372e79f8dafa3a6",
+    "docs/middleware/elasticsearch/development-manual.md": "4b13de577d79c77e64035cbbf5b84e28cc20f0c1e32fdba4044e31fd5cce39b1"
   },
   "review": {
     "sources": "pass",
@@ -21,11 +21,13 @@
   "reviewer": "author",
   "customer_signoff": false,
   "independent_review": false,
-  "reviewed_at": "2026-11-07T11:48:09+08:00",
+  "reviewed_at": "2026-11-08T16:21:35+08:00",
   "source_baseline": {
     "repository": "https://github.com/elastic/docs-content",
     "commit": "435c60e5a8e5af1085678ceb3a7765eac949b731",
-    "implementation_versions": "pinned commits in development-manual section 1"
+    "implementation_versions": "pinned commits in development-manual section 1",
+    "supplemented_at": "2026-11-08",
+    "reuse_check": "48 existing cached-source bindings verified with SHA256; 8 additional official topic files verified; no full-site reading claim"
   },
   "coverage": [
     {
@@ -51,11 +53,16 @@
         {
           "cached_source": "client-compatibility.txt",
           "sha256": "77a38b018d3dbb3860dd6305ae8aa386bbbbb99f408cb131a618d73da619a22b"
+        },
+        {
+          "cached_source": "es-release-notes.txt",
+          "sha256": "ac2f0b8e29905c67a8b1eab97afa479a8a18156cf149710b26453fd1ce96af85",
+          "scope": "reused pinned-version release research"
         }
       ],
-      "conclusion": "发行版许可与 Basic 分开，9.5.6 业务与 EFK 9.5.1 分开，兼容声明不替代项目验收",
+      "conclusion": "白皮书1.1用item-1001解释文档、mapping、索引、主副本与节点，图示六个独立Lucene索引；1.2分开控制/数据路径；1.3及开发1明确固定版本、Basic/发行版许可、项目能力与未交付范围，EFK版本独立。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "数据建模、查询与并发",
@@ -72,11 +79,53 @@
         {
           "cached_source": "optimistic-concurrency-official.txt",
           "sha256": "df0589846fe6935d894392208d8ddf8fac6e67cca895f84fea8bc8ba1a4fd6eb"
+        },
+        {
+          "url": "https://www.elastic.co/docs/manage-data/data-store/text-analysis/anatomy-of-an-analyzer.md",
+          "cached_source": "ga-analyzer-anatomy.md",
+          "sha256": "8ab2d48c503a094c92bc0493002e1e15804b5768667731f9331e2f7d935a21bc",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
+        },
+        {
+          "url": "https://www.elastic.co/docs/manage-data/data-store/mapping.md",
+          "cached_source": "ga-mapping.md",
+          "sha256": "2dae15e1361d7d2f4cfb8d8ce667943b4ccf8cb31d87ca707f26ee745b21d365",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
+        },
+        {
+          "url": "https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/doc-values.md",
+          "cached_source": "ga-doc-values.md",
+          "sha256": "6a8bd3fda30c99633c0f6157d7d996b798c859831759145fd73c1145f492a92e",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
+        },
+        {
+          "url": "https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity.md",
+          "cached_source": "ga-similarity.md",
+          "sha256": "2cd83faca64b86848db8c120ad73e33fe3a0cfcda28f1d5eb9a28fe48f328c9b",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
+        },
+        {
+          "url": "https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/nested.md",
+          "cached_source": "ga-nested.md",
+          "sha256": "df69fb86e47233bfbf5b69f60c46ec778bbbdb1094a6d8d91abb5f6339e84eb3",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
+        },
+        {
+          "url": "https://www.elastic.co/docs/reference/query-languages/query-dsl/query-filter-context.md",
+          "cached_source": "ga-query-filter.md",
+          "sha256": "7183d4b24db5f40c04a9b555a763351b82992fcf94ef22bb3ec3b75524ed7055",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
         }
       ],
-      "conclusion": "mapping、分析、倒排/列式索引、分布查询、稳定 ID、并发控制与结果未知",
+      "conclusion": "白皮书2.1从商品字段推导_source、倒排与doc values、strict/multi-field/nested取舍；2.2图解分析管道；2.3解释BM25、query/filter、价格排序和聚合误差；2.4串起query/fetch与PIT分页。运维6用相同字段逐步解释输入和预期hits=1；官方机制与项目100条基础业务验收分别标注。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "复制、持久化与故障域",
@@ -93,15 +142,29 @@
         {
           "cached_source": "orchestration.txt",
           "sha256": "928b47adbf20b99b365215c384859e44d7b0e7433e57b87693668cff53186825"
+        },
+        {
+          "url": "https://www.elastic.co/docs/manage-data/data-store/near-real-time-search.md",
+          "cached_source": "ga-near-real-time.md",
+          "sha256": "b74bf185a95fdb527e610ace89775afc756e59b29d1105be874f603c5190a298",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
+        },
+        {
+          "url": "https://www.elastic.co/docs/reference/elasticsearch/index-settings/translog.md",
+          "cached_source": "ga-translog.md",
+          "sha256": "e320697dc501f4e9ef5dc54d9e30311f438bd502264d55e9b91b45346606c9bb",
+          "accessed_at": "2026-11-08",
+          "scope": "applicable stable mechanisms only; rolling Planned/Preview configuration excluded"
         }
       ],
-      "conclusion": "区分准入、响应副本确认、translog、refresh 和恢复点；不承诺任意故障零丢失",
+      "conclusion": "白皮书3.1时序明确正常副本确认与失效移除的两条路径；3.2逐项比较确认/refresh/flush/snapshot，推导GET与search差异；3.3区分Bulk逐项错误、稳定ID、OCC及结果未知。项目refresh前0/后1、409及夹具注错边界已明示。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "容量、存储与维护",
-      "section": "docs/middleware/elasticsearch/operations-manual.md#7-日常运维容量与性能",
+      "section": "docs/middleware/elasticsearch/technical-whitepaper.md#5-存储段合并与容量",
       "sources": [
         {
           "cached_source": "capacity.txt",
@@ -120,13 +183,13 @@
           "sha256": "97f67f98a61a2f898e6dc44665a454b73cd4c2a52e18c3878ce60fad891e25fe"
         }
       ],
-      "conclusion": "拓扑与 N−1 预算、段合并、磁盘水位、扩容和 drain 的顺序、停止及复验",
+      "conclusion": "白皮书4区分多数派与分片可用性、count与候选宿主、fencing和ECK退出记录；5解释更新删除与merge、PIT/进行中快照的段引用、heap/cache与CSI职责。5.3提供带单位N−1公式与171.4GiB示意算例，并写入固定CSI扩容前后字节数；运维7.3–7.5保留产品任务、停止和复验。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "安全与观测",
-      "section": "docs/middleware/elasticsearch/operations-manual.md#8-证书与凭据轮换",
+      "section": "docs/middleware/elasticsearch/technical-whitepaper.md#6-安全信任与观测链",
       "sources": [
         {
           "cached_source": "security-native-users.txt",
@@ -145,13 +208,13 @@
           "sha256": "3e2afffa9423417f9a47ef9b20c3e0997e2c5d7ff8622401123f24bed8f8ecf4"
         }
       ],
-      "conclusion": "最小权限、TLS 名称/CA、轮换允许拒绝路径、采集缺失与 ES 不可达分开",
+      "conclusion": "白皮书6.1分开TLS、权限与网络，6.2用表定位共享ECK平台管理、独立凭据/路径、写入归属账本及直接管理员权限边界；6.3从exporter到双Prometheus和业务探针解释采样/告警。运维7.2和8含实际入口、等待、新连接、旧信任撤销与失败恢复；无外部通知到达承诺。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "快照与灾备",
-      "section": "docs/middleware/elasticsearch/operations-manual.md#9-快照恢复与灾备",
+      "section": "docs/middleware/elasticsearch/technical-whitepaper.md#7-快照恢复与灾备",
       "sources": [
         {
           "cached_source": "snapshot.txt",
@@ -198,9 +261,9 @@
           "sha256": "9b84f81da8e9b5578e8fbdc61bb71c7826ba0fa4f6e9d53cf3f56324ce55a6bf"
         }
       ],
-      "conclusion": "独立 HTTPS S3、JVM 信任、verify/analysis、空目标与逐条核对、单写入口、feature states 应急管理；同步完成响应绑定本次恢复，分片迁移后不依赖旧SNAPSHOT记录，超时保留未知结果",
+      "conclusion": "白皮书7解释段共享、单写多读、快照非跨分片同瞬间、缺少配置/Secret备份及feature/file realm依赖；恢复流程含完整同步响应、精确索引、全部primary成功、green/UUID与内容权限对账。7.4用最终回归179.21s RTO、9074.25s恢复点间隔及34条回切数据解释测量起止与单写切换边界。运维9保留源/独立空目标完整操作，超时不重放。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "业务生命周期",
@@ -223,9 +286,9 @@
           "sha256": "cf0036c89c204b42cbb2be97ef1dd3131930eeabc93491a01ff5ded79baf8066"
         }
       ],
-      "conclusion": "reindex 先建目标并停写/补齐，alias 逐动作核对，ILM 不保证逐文档定时删除",
+      "conclusion": "运维6基础示例分模型/身份、应用环境、结果解释三步；6.1明确同mapping复制和alias切换仅是模型迁移的基础流程，模型转换另按目标语义对账；6.2独立事件例展示pipeline/data stream/ILM，说明无自然日历等待与完整data stream灾备资格。白皮书8.1解释alias/reindex不是持续增量复制，ILM按索引阶段处理保留。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "升级与回旧版",
@@ -244,9 +307,9 @@
           "sha256": "ff72c0f93edb5761c0ced3b9cd409ea9ffd49d115f07b67914ccd8a516334d98"
         }
       ],
-      "conclusion": "共享 ECK 先于业务升级，拒绝原地降级，独立旧版空目标实际恢复；既有快照来源边界",
+      "conclusion": "运维10和白皮书8.2区分平台ECK与业务ES/Kibana升级，固定3.4.1→3.5.0、9.5.5→9.5.6；说明changeBudget及不可原地降级、兼容快照和独立旧版空目标；单边卸载只删除自有资源，保留PVC/Secret/共享ECK和备份归属，实际双向重入结果与最终回归对应。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "性能与稳定性",
@@ -265,13 +328,13 @@
           "sha256": "c7adf23fdb0fa9ba0b90f0078e752295d98a118e0cc15cda699846d99fd9f6ac"
         }
       ],
-      "conclusion": "短基准和1800秒限速故障负载分开；实际错误、重试、分位及未测峰值如实说明",
+      "conclusion": "白皮书8.3只使用最终完整运行：两拓扑Rally bulk6451.67/3485.91docs/s、search186.68/143.08ops/s、P50/P99；独立故障负载各≥1800s、各1718条完整对账、各10次写入重试，并给出原始P50/P95/P99、数据hash、资源/并发/CSI/loop和统计口径。8.4从测量推导调优判断；不补造Rally P95或资源峰值，不外推容量/SLA。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "项目集成与门禁",
-      "section": "docs/middleware/elasticsearch/development-manual.md#5-专项验证与证据",
+      "section": "docs/middleware/elasticsearch/development-manual.md#2-产品入口与文件职责",
       "sources": [
         {
           "cached_source": "kubernetes-1.33.6-json_yaml_flags.go",
@@ -290,9 +353,9 @@
           "sha256": "28d5f53de5ecd5f52e142c145bdf98e4e18952c663c45ec11146cc83d6e23097"
         }
       ],
-      "conclusion": "显式 managedFields、完整 EFK 交接、容器 running 前置、模块限定修复与失败父运行保留",
+      "conclusion": "开发2.1按配置→校验→渲染→ECK→真实健康→显式请求映射文件和前后条件；3.1–3.6解释当前代次、SSA并发、候选与count、请求账本和恢复、S3信任与共享边界；5按能力映射确定性合同与产品验证，5.4保留最终运行来源，6区分纯文档入口与产品门禁。内部失败流水改写为稳定维护契约。",
       "result": "pass",
-      "basis": "reuse completed official research and author content/path checks; current changed paragraphs rechecked"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "MinIO 上传未完成时复制的分析限制与显式兼容配置",
@@ -315,10 +378,9 @@
           "sha256": "61cdb28684e21e9e7ec6541d84d7277950520a381a56655c7dbe54fdf2cf152d"
         }
       ],
-      "conclusion": "默认保留完整争用探针；已证明的 MinIO 限制使用官方相同条件，仍要求其余分析及真实快照/恢复；节点设置弃用和滚动、失败停止及回退边界已说明。兼容分支的 ES-39 聚焦现场验证已通过：standard 七成员和 compact 三成员均读回原生设置 false，产品 verify/analysis、真实快照及 SLM 保留检查成功，主与 guardian durable 均为零。该结果不替代独立恢复或最终完整回归。",
-      "operational_evidence": "tests/evidence/elasticsearch-backup-source-20261106-203516-e131c20ce68547838931365d0c522d5a.json",
+      "conclusion": "运维9解释默认保留争用分析，仅已证明的MinIO上传未结束复制限制允许显式false；配置会滚动，仍要求其余verify/analysis和真实独立恢复。白皮书7.2只保留理解所需机制，开发3.5定位固定9.5.6官方源码和版本复核条件；没有把兼容例外解释为全部S3认证。",
       "result": "pass",
-      "basis": "pinned v9.5.6 official source and official MinIO integration fix; changed paragraphs checked for source, content, novice/operator paths; no diagram change"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     },
     {
       "topic": "HTTP 证书异步重载与严格 TLS 健康等待",
@@ -337,86 +399,146 @@
           "sha256": "930a5dccf679c0c90e144ca8290672a7c7ee6a2da050523345f1daa9db6694e0"
         }
       ],
-      "conclusion": "Secret 更新、文件投射与证书重载异步；原期限内重建严格 TLS 连接，持续错误仍拒绝。精确反例已通过；ES-26 固定证书分支已通过 standard/compact 的信任重叠、新连接、旧 CA 拒绝、错误 SAN 拒绝、恢复默认信任与各 32 条数据复核，源端和监督端 durable 均为零。该结果不代替最终完整回归。",
+      "conclusion": "运维8.1及白皮书6.1解释Secret更新、投射、重载异步，要求原期限内新建严格TLS连接、新旧CA重叠/撤销、错误SAN拒绝和业务复验；开发3.6补充固定实现与异常原因链。复用最终回归证书分路，不把旧聚焦待回归状态写入客户正文。",
       "result": "pass",
-      "basis": "已读官方文档及固定版本源码；仅复核新增解释段落的机制、等待/停止、原有恢复链接及两类读者路径，无新增操作或图表；不冒充现场 PASS",
-      "operational_evidence": "tests/evidence/elasticsearch-security-certificates-20261107-001403-0378780e13304faaa1b893f555bd259c.json"
+      "basis": "作者逐节内容与读者路径检查；官方来源按固定版本复用并补充适用稳定机制；产品事实来自已完成最终回归，未新增现场操作"
     }
   ],
   "reader_paths": [
     {
-      "reader": "首次实施者",
-      "sections": "operations 2→3→4→5→6",
-      "checked": "输入来源、CFG/KUBECONFIG 与身份文件、连续产品路径、HTTPS业务结果、停止和恢复；作者文档检查，不新增现场操作",
+      "reader": "首次实施者及业务开发者",
+      "sections": "operations 1→2→3→4→5/5.1→6；whitepaper 1→2→3",
+      "checked": "客户控制机与root权限、CLUSTER/CFG/KUBECONFIG、节点/CSI/故障域预算→同namespace Secret及引用→config.yml+kubecli→严格TLS管理连接→独立应用Pod网络、锁定SDK、CA/密码只读文件→create/query的hits=1及403拒绝。模型、角色、服务名、后续迁移对象一致；断言失败和重复create停止，不删生产数据重试。",
+      "method": "作者按正文检查输入、上下文、步骤衔接、输出和恢复；复用现有产品证据，无现场重演或外部读者参与",
       "result": "pass"
     },
     {
       "reader": "熟练运维",
       "sections": "operations 7.1/7.2→11；7.3–7.5、8、9、10",
-      "checked": "按现象和任务检索，恢复原配置、等待超时、UID/数据复验、失败保留及不可逆边界",
+      "checked": "从任务索引/故障表进入，链接回2/5.1建立同CFG和管理连接；分别核对N−1/容量身份、证书新连接与旧信任拒绝、S3真实操作、restore单次响应及UUID、未知结果保留、file realm先于security恢复、单写切换及增量对账、兼容回旧版、单边卸载后另一方复验。白皮书同主题给机制、实测条件与不可外推边界。",
+      "method": "作者按正文检查输入、上下文、步骤衔接、输出和恢复；不模拟客户签收",
       "result": "pass"
     }
   ],
   "closed_findings": [
     {
-      "finding": "升级实测应区分既有快照与本轮新建",
-      "fixed": "whitepaper 8; operations 10.1",
-      "recheck": "实际恢复32条及摘要与原始升级证据相符；快照历史源UUID未记录，未编造"
+      "finding": "机制原先偏摘要、主题割裂，难以从对象推导行为",
+      "fixed": "whitepaper 1–5；operations 1/6；development 2.1/3",
+      "recheck": "沿同一商品字段、请求和状态逐节核对；补对象关系、倒排/列式结构、分析与评分、复制确认及merge容量推导"
     },
     {
-      "finding": "共存分段修复不能冒充完整PASS",
-      "fixed": "whitepaper 1; operations 10.2; development 5",
-      "recheck": "父失败保留，窄修复源和guardian均0；正文只声明已完成操作范围"
+      "finding": "不同手册重复测量表且数值来自旧运行",
+      "fixed": "whitepaper 7.4/8.3；operations 7/9交叉引用",
+      "recheck": "按最终运行performance/dr子日志核对拓扑、负载、数字、hash和RTO/RPO起止，删除旧表与旧状态"
     },
     {
-      "finding": "客户端中断应等待真实容器启动",
-      "fixed": "development 5",
-      "recheck": "固定Kubernetes源码与ContainerCreating首失败；精确红绿合同通过"
+      "finding": "客户正文混入补丁发现、失败重跑与待验收时间线",
+      "fixed": "三份手册对应章节",
+      "recheck": "保留有效限制、停止与恢复条件，开发内容改为稳定维护契约；当前最终回归来源独立保留"
     },
     {
-      "finding": "分片迁移会替换原恢复记录，不能将恢复API历史当作本次恢复完成收据",
-      "fixed": "operations 9.2/9.4; development 3",
-      "recheck": "官方恢复与恢复记录API及ES9.5.6固定源码核对；正文明确完成响应、零失败、green和UUID共同成立，超时或响应丢失保留running；不声称修复版现场已通过"
+      "finding": "副本先确认再失败的时序歧义、已完成快照本地段引用歧义，以及恢复响应缺成功判断",
+      "fixed": "whitepaper 1.1/1.2/3.1/5.1/7.3图形",
+      "recheck": "12图全部真实渲染并逐图目视；五张具体修正图重渲染复核，正常/失败出口与正文一致"
+    },
+    {
+      "finding": "新索引例标题涉及模型迁移但示例mapping相同",
+      "fixed": "operations 6.1",
+      "recheck": "明确本例先教相同模型复制/对账与alias切换，真实模型转换另按新语义检查；未改变已验收命令行为"
+    },
+    {
+      "finding": "标准约束偏抽象、模板重复条款，检查只写覆盖不能证明消化",
+      "fixed": "documentation-quality-standard 1/2.1/11/12",
+      "recheck": "范围以版本/任务/能力界定；补贯穿实例与主要归属；模板引用权威章节，记录具体因果、输入输出和缺口；未在AGENTS或playbook复制规则"
     }
   ],
   "static": {
-    "bash_blocks": 31,
-    "yaml_blocks": 8,
-    "python_blocks": 1,
-    "local_links": 45,
-    "mermaid": 5,
+    "blocks": {
+      "operations-manual.md": {
+        "mermaid": 1,
+        "bash": 30,
+        "yaml": 8,
+        "python": 1,
+        "json": 1
+      },
+      "technical-whitepaper.md": {
+        "mermaid": 9
+      },
+      "development-manual.md": {
+        "mermaid": 2,
+        "bash": 1
+      }
+    },
+    "local_links_and_anchors": 51,
+    "mermaid": 12,
     "result": "pass",
-    "diagram_review": "previous actual render and visual inspection reused; all current diagram source bodies identical"
+    "checks": [
+      "bash -n for bash fences",
+      "Python ast.parse",
+      "YAML/JSON parsing",
+      "local link target and Markdown anchor resolution",
+      "git diff --check",
+      "focused documentation unit/contract tests"
+    ],
+    "diagram_review": "12 current Mermaid diagrams actually rendered with Mermaid CLI; individually visually checked for readability, arrows and meaning; corrected five diagrams re-rendered and rechecked",
+    "diagram_sources": {
+      "operations-manual-1.mmd": "25a85ed3ab339b2aa265f9adb3e53790876d644fc0819bf30837885e419e7a0c",
+      "technical-whitepaper-1.mmd": "f6d4d3751bd46cc9914455e97ed9e94f0c7f272908fef37a29b9cbd8f3d4abbb",
+      "technical-whitepaper-2.mmd": "d79060bed045b1fb57357fbdbc3fcf1a4975d782e82b9ca40ffa268923358d9c",
+      "technical-whitepaper-3.mmd": "f9124e8a3ca41b7019ca9f9dbee54b3af994f6b261a7beab9e12f023746db36a",
+      "technical-whitepaper-4.mmd": "6f7e85446b18f10ce48c2e828e9a67c9fbe78cff0c5032c4f6347efbbd1af22b",
+      "technical-whitepaper-5.mmd": "8cd2589299dd16a6f403c55cd70f78b418d25c98e3033a4fcd6167cace93044b",
+      "technical-whitepaper-6.mmd": "024d01c49c43bf39dc1c6725df44feb2b989aaaf301a23865202da740f587f28",
+      "technical-whitepaper-7.mmd": "5f065ee3b0e6028567bf1c07c90a2bce2dd1a1024ec8690f14725c9c8e85f4af",
+      "technical-whitepaper-8.mmd": "7706228f2b58090b12d5d8a34ed175d46ecda0a991ebb6f2bf5de3b33bcaea10",
+      "technical-whitepaper-9.mmd": "22ee0b152feaf0d54bb5c98e82a0b80210256b61631a59128b6eff1d586d5031",
+      "development-manual-1.mmd": "6a6e17fe3eb0478d64ca9d8ddd0638d6a510720f69c8d0d78a6c13f61fbba4b9",
+      "development-manual-2.mmd": "fc43ff210e1a3263ff0f3099ae247ed528dfff3cc43479406873b415d14badaa"
+    }
   },
   "operational_evidence": [
     {
-      "path": "tests/evidence/elasticsearch-images-20261103.json",
-      "sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
-      "use": "historical declared scenario facts only; current product applicability governed independently by matrix"
-    }
-  ],
-  "coexistence_raw_evidence": [
-    {
-      "path": "logs/elasticsearch-cases/coexistence-20261105-063553-54b826e3212f447d98f039b300b4c359/raw.log",
-      "sha256": "054d80db6c97f225c63aad57dfdae5830e3b69a96846ace5555351b6047baed1",
-      "scope": "first two failed parents; third narrow reverse/reentry/cleanup success, zero matrix cases"
+      "path": "tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json",
+      "sha256": "8799519d44ed3ee8d5e0a868d1f594f8e1e29230c8c9c71411047633457f667d",
+      "use": "复用最终完整运行相应产品事实与原始测量，适用性及退出/清理独立由产品矩阵判定；本次不重跑"
     },
     {
-      "path": "logs/elasticsearch-cases/coexistence-20261105-070648-e01f2c1776364643b589701d9b84f432/raw.log",
-      "sha256": "1028be41e5dbf4b760b2108c011999d43151dc8e019a08ff524acd5f023b69c2",
-      "scope": "first two failed parents; third narrow reverse/reentry/cleanup success, zero matrix cases"
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/raw.log",
+      "sha256": "589a6a5e98644148c1f41834243f71616b3d2347db8d79a0379bf5ee7013f940",
+      "use": "复用最终完整运行相应产品事实与原始测量，适用性及退出/清理独立由产品矩阵判定；本次不重跑"
     },
     {
-      "path": "logs/elasticsearch-cases/coexistence-20261105-071325-a10134f60a844636b3231cfd08579e8a/raw.log",
-      "sha256": "07f4b7613b7ccf4d8889b4e3e57f9df82f819bbfe0677c03c99a0101ede2547f",
-      "scope": "first two failed parents; third narrow reverse/reentry/cleanup success, zero matrix cases"
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/business.log",
+      "sha256": "9aa97692b157cc93ccbbf32e1965ab16f71d92841c3e5ea3eec0609838c6bf13",
+      "use": "复用最终完整运行相应产品事实与原始测量，适用性及退出/清理独立由产品矩阵判定；本次不重跑"
+    },
+    {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/performance.log",
+      "sha256": "5c38b6c0ff3afbee575fe1f394d506b658f524f07bf74b86d260c41dc62f8ca3",
+      "use": "复用最终完整运行相应产品事实与原始测量，适用性及退出/清理独立由产品矩阵判定；本次不重跑"
+    },
+    {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/dr.log",
+      "sha256": "01afe6626851da68af0620b2e4f76fc0bc79e05d483e3ab93106da6e8cf17ebe",
+      "use": "复用最终完整运行相应产品事实与原始测量，适用性及退出/清理独立由产品矩阵判定；本次不重跑"
+    },
+    {
+      "path": "logs/elasticsearch-cases/only-20261108-003544-4c218128b104420895c34370a975c0a5/children/coexistence.log",
+      "sha256": "88f7b4e16a90d7651ad8bf8769a62b81d8ab2d15f1d257b89f5627d01005595f",
+      "use": "复用最终完整运行相应产品事实与原始测量，适用性及退出/清理独立由产品矩阵判定；本次不重跑"
     }
   ],
   "limits": [
-    "author review is not customer sign-off",
-    "historical facts do not set current matrix PASS",
-    "Rally has no P95 or distinct retry count; no continuous resource peak measurements",
-    "full clean middleware regression remains required"
+    "作者来源/内容/两类读者路径与静态检查，不是独立评审、外部读者试用或客户签收",
+    "官方研究限于交付版本、能力和客户任务的适用主题；滚动资料Planned/Preview/Experimental配置不纳入项目承诺",
+    "nested/PIT/BM25等官方机制解释不代表新增项目复杂负载专项PASS",
+    "Rally无P95或独立重试计数；独立故障客户端有P50/P95/P99，两种统计序列不能拼接；无连续资源峰值曲线",
+    "实验室loop后端、缩小资源与受控故障不外推客户物理盘、fencing、容量、零中断或SLA",
+    "未重跑产品回归、现场读者路径或发布镜像；最终产品运行记录保持原状，本次仅更新文档证据"
   ],
-  "review_scope": "复用既有来源、正文及两类读者路径检查；本次只复核operations 9.2/9.4与development恢复完成语义的改动：源/目标身份、恢复响应、超时、结果未知与业务复验衔接。产品修复的现场证据仍由矩阵独立验收；图形和代码块未改。作者检查，不代表客户签收。"
+  "review_scope": "三份正式手册完整的作者内容及两类读者路径检查，包含官方主题复用与补充、贯穿示例、机制因果、最终回归取材、操作衔接、交叉引用和12图实际渲染/目视。修正已定位的图文与表达缺陷；未改产品操作行为，未新增实验室测试。标准修改与文档事实分别核验，不冒领历史产品验收或客户签收。",
+  "standard": {
+    "path": "docs/documentation-quality-standard.md",
+    "sha256": "f3439a762954830655b7a9479a5683abcb1be53b8beadfbece8822a44bea9aab"
+  }
 }
