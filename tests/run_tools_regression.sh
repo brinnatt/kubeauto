@@ -10,6 +10,10 @@ BUILD_OUTPUT="/tmp/kubeauto-rocky8-tools-output"
 BUILD_GATE="/tmp/kubeauto-tools-build-gate"
 BUILD_LOG="/tmp/kubeauto-tools-build-live.log"
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
+if [[ -n "${TOOLS_SELECTED:-}" ]]; then
+  [[ ( "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli ) && "${1:---preflight}" == --build-only ]] || { echo TOOLS_SELECTED_SCOPE_REFUSED >&2; exit 2; }
+  IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
+fi
 BUILD_SUDO="sudo"
 [[ "$BUILD_HOST" == root@* ]] && BUILD_SUDO=""
 BUILD_USER="${BUILD_HOST%%@*}"
@@ -23,7 +27,7 @@ fi
 
 usage() {
   cat <<'EOF'
-用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--star-artifact-prepare|--cross-live|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--migration-live|--mybackup-live|--mylogi-backup-live|--star-live|--full]
+用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--star-artifact-prepare|--cross-live|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--migration-live|--mybackup-live|--mylogi-backup-live|--mysql-backup-live|--star-live|--full]
 
   --preflight  校验 tools 矩阵、脚本语法和独立导入边界（无远程变更）
   --status     输出当前 tools 矩阵状态
@@ -38,6 +42,7 @@ usage() {
   --mybackup-live 在授权 122.2 控制机运行 MyBackupCli XtraBackup 全功能回归
   --mylogi-backup-live 在 131-134 并行运行 MySQL 8.0.46/8.4.4/9.2.0 逻辑备份回归
   --star-live    在授权 122.2 控制机使用已登记 StarRocks 固定归档运行 StarCli 全功能回归
+  --mysql-backup-live  两个备份工具的聚焦/最终干净回归；MYSQL_BACKUP_STAGE=physical/logical/full
   --full       显式批准后依次执行构建、cross-tool 和全部工具 live 门禁
 EOF
 }
@@ -49,11 +54,20 @@ case "${1:---preflight}" in
     echo TOOLS_PREFLIGHT_PASS
     ;;
   --status)
-    "$PY" - <<'PY' "$MATRIX"
-import sys, yaml
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    "$PY" - <<'PY_STATUS' "$MATRIX"
+import collections, sys, yaml
 data = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
-print("TOOLS_MATRIX_STATUS", data["meta"]["status"], data["coverage_summary"]["overall_assessment"])
-PY
+groups = collections.defaultdict(list)
+for case in data["test_cases"]:
+    groups[case["tool"]].append(case)
+applicable = [c for c in data["test_cases"] if c["status"] != "na"]
+counts = collections.Counter(c["status"] for c in applicable)
+complete = sum(all(c["status"] in ("pass", "na") for c in cases) for cases in groups.values())
+print("矩阵验收 {}/{} PASS，待验收 {} 项（失败 {} 项）；能力阶段 {}/{}".format(counts["pass"], len(applicable), counts["pending"]+counts["fail"], counts["fail"], complete, len(groups)))
+for tool, cases in groups.items():
+    print(tool + ": " + ", ".join(c["id"] + "=" + c["status"] for c in cases))
+PY_STATUS
     ;;
   --build-only)
     command -v rsync >/dev/null 2>&1 || { echo "TOOLS_BUILD_PREFLIGHT_FAIL: rsync missing" >&2; exit 127; }
@@ -72,12 +86,12 @@ PY
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$BUILD_HOST" \
       "$BUILD_SUDO rm -rf '$BUILD_SOURCE' '$BUILD_OUTPUT'; $BUILD_SUDO mkdir -p '$BUILD_SOURCE'; $BUILD_SUDO chown -R '$BUILD_USER':'$BUILD_USER' '$BUILD_SOURCE'"
     rsync -a --delete --exclude .git --exclude .venv --exclude build --exclude dist \
-      --exclude logs --exclude __pycache__ --exclude '*.pyc' -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=no" \
+      --exclude logs --exclude .cache --exclude __pycache__ --exclude '*.pyc' -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=no" \
       "$ROOT/" "$BUILD_HOST:$BUILD_SOURCE/"
     scp -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tests/helpers/build-tools-rocky8.sh" \
       "$ROOT/tests/helpers/run-durable-gate.sh" "$BUILD_HOST:/tmp/"
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$BUILD_HOST" \
-      "$BUILD_SUDO chmod 0755 /tmp/build-tools-rocky8.sh /tmp/run-durable-gate.sh; $BUILD_SUDO rm -f '$BUILD_LOG' '${BUILD_GATE}.pid' '${BUILD_GATE}.exit' '${BUILD_GATE}.finalized'; $BUILD_SUDO nohup bash /tmp/run-durable-gate.sh '$BUILD_GATE' TOOLS_BUILD_EXIT bash /tmp/build-tools-rocky8.sh '$BUILD_SOURCE' '$BUILD_OUTPUT' >'$BUILD_LOG' 2>&1 </dev/null &"
+      "$BUILD_SUDO chmod 0755 /tmp/build-tools-rocky8.sh /tmp/run-durable-gate.sh; $BUILD_SUDO rm -f '$BUILD_LOG' '${BUILD_GATE}.pid' '${BUILD_GATE}.exit' '${BUILD_GATE}.finalized'; $BUILD_SUDO nohup bash /tmp/run-durable-gate.sh '$BUILD_GATE' TOOLS_BUILD_EXIT env TOOLS_SELECTED='${TOOLS_SELECTED:-}' bash /tmp/build-tools-rocky8.sh '$BUILD_SOURCE' '$BUILD_OUTPUT' >'$BUILD_LOG' 2>&1 </dev/null &"
     build_deadline=$((SECONDS + 1800))
     while ! ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$BUILD_HOST" "$BUILD_SUDO test -s '${BUILD_GATE}.exit'" >/dev/null 2>&1; do
       if [[ "$SECONDS" -ge "$build_deadline" ]]; then
@@ -112,7 +126,118 @@ PY
       install -m 0755 "$stage/$tool" "$ROOT/dist/${tool}-rocky8"
     done
     sha256sum "$stage"/*
+    "$PY" - "$ROOT" "${TOOLS_SELECTED:-MyBackupCli,MyLogiBackupCli}" <<'PY_BUILD_PROOF'
+import hashlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+selected = set(sys.argv[2].split(','))
+previous_path = root/'dist/mysql-backup-build.json'
+previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
+for name in {'MyBackupCli', 'MyLogiBackupCli'} - selected:
+    source = 'tools/mysqltools/'+name+'.py'
+    if previous.get('inputs', {}).get(source) != hashlib.sha256((root/source).read_bytes()).hexdigest() or previous.get('artifacts', {}).get(name) != hashlib.sha256((root/'dist'/(name+'-rocky8')).read_bytes()).hexdigest():
+        raise SystemExit('TOOLS_BUILD_REUSE_REFUSED '+name)
+files = ['tools/mysqltools/MyBackupCli.py', 'tools/mysqltools/MyLogiBackupCli.py', 'tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh']
+proof = {'inputs': {name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files},
+         'artifacts': {name: hashlib.sha256((root/'dist'/(name+'-rocky8')).read_bytes()).hexdigest() for name in ('MyBackupCli', 'MyLogiBackupCli')},
+         'runtime': 'Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0'}
+(root/'dist/mysql-backup-build.json').write_text(json.dumps(proof, indent=2)+'\n')
+PY_BUILD_PROOF
     echo "TOOLS_BUILD_PASS count=${#TOOLS[@]} glibc=2.28 starcli=$ROOT/dist/StarCli-rocky8 mylogi=$ROOT/dist/MyLogiBackupCli-rocky8"
+    ;;
+  --mysql-backup-live)
+    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    stage="${MYSQL_BACKUP_STAGE:-full}"
+    [[ "$stage" == physical || "$stage" == logical || "$stage" == portability || "$stage" == full ]] || exit 2
+    bash -n "$ROOT/tests/helpers/mysql-backups-regression.sh"
+    "$PY" -m unittest tests.unit.test_mybackup_cli_contract tests.unit.test_mylogi_backup_cli_contract tests.unit.test_mysql_backup_gate_contract tests.unit.test_tools_matrix_contract -q
+    if [[ "$stage" == full ]]; then
+      "$PY" - "$MATRIX" <<'PYGATE'
+import sys, yaml
+matrix = yaml.safe_load(open(sys.argv[1]))
+required = [c for c in matrix['test_cases'] if c['tool'] in ('MyBackupCli', 'MyLogiBackupCli') or (c['id'].startswith('TL-X-') and c['id'] != 'TL-X-09')]
+refused = [c['id'] for c in required if c['status'] != 'pass']
+if refused:
+    raise SystemExit('MYSQL_BACKUP_FINAL_PREREQUISITES_REFUSED ' + ','.join(refused))
+import hashlib, json, pathlib
+root = pathlib.Path(sys.argv[1]).resolve().parents[1]
+evidence = root/matrix['mysql_backup_requalification']['evidence']
+if not evidence.is_file():
+    raise SystemExit('MYSQL_BACKUP_FINAL_QUALIFICATION_MISSING')
+proof = json.loads(evidence.read_text())
+required_inputs = {
+    'tools/mysqltools/MyBackupCli.py', 'tools/mysqltools/MyLogiBackupCli.py',
+    'tools-onefile.spec', 'tests/run_tools_regression.sh',
+    'tests/helpers/build-tools-rocky8.sh', 'tests/helpers/mybackup-cli-live-regression.sh',
+    'tests/helpers/mylogi-backup-live-regression.sh', 'tests/helpers/mysql-backups-regression.sh',
+    'tests/helpers/supervise-mysql-backups.py',
+}
+if not required_inputs <= proof.get('inputs', {}).keys() or not {'physical','logical','portability'} <= proof.get('stages', {}).keys():
+    raise SystemExit('MYSQL_BACKUP_FINAL_QUALIFICATION_INCOMPLETE')
+for name, expected in proof['inputs'].items():
+    if not (root/name).is_file() or hashlib.sha256((root/name).read_bytes()).hexdigest() != expected:
+        raise SystemExit('MYSQL_BACKUP_FINAL_INPUT_STALE '+name)
+for stage in ('physical', 'logical', 'portability'):
+    record = proof['stages'][stage]
+    raw = root/record['log']
+    if hashlib.sha256(raw.read_bytes()).hexdigest() != record['sha256']:
+        raise SystemExit('MYSQL_BACKUP_FINAL_LOG_STALE '+stage)
+    if (root/record['remote_status']).read_text().split() != ['0', '0'] or raw.with_suffix('.exit').read_text().strip() != '0' or raw.with_suffix('.finalized').read_text().strip() != '0':
+        raise SystemExit('MYSQL_BACKUP_FINAL_DURABLE_REFUSED '+stage)
+    archive = root/record['archive']
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != record['archive_sha256']:
+        raise SystemExit('MYSQL_BACKUP_FINAL_ARCHIVE_STALE '+stage)
+    text = raw.read_text()
+    markers = ['MYSQL_BACKUP_RELEASE_PASS stage='+stage, 'TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release']
+    if stage == 'physical':
+        markers += ['MYBACKUP_NATIVE_BACKUP_PASS','MYBACKUP_NATIVE_PREPARE_PASS','MYBACKUP_RESTORE_READBACK_PASS']
+    elif stage == 'logical':
+        for version in ('8.0.46','8.4.4','9.2.0'):
+            markers += ['MYLOGI_RESTORE_READBACK_PASS version='+version, 'MYLOGI_REAL_TIMER_EXECUTION_PASS version='+version, 'MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version='+version]
+    else:
+        markers += ['MYSQL_BACKUP_PORTABILITY_PASS runtime='+runtime+' tools=2' for runtime in ('rocky8','debian12','ubuntu24')]
+    for marker in markers:
+        if marker not in text:
+            raise SystemExit('MYSQL_BACKUP_FINAL_MARKER_MISSING '+marker)
+    import re
+    if re.search(r'FATAL ERROR|Traceback|_FAILED|_FAIL\b|MYSQL_BACKUP_RELEASE_EXIT rc=[^0]', text):
+        raise SystemExit('MYSQL_BACKUP_FINAL_FAILURE_MARKER '+stage)
+
+PYGATE
+    fi
+    "$PY" - "$ROOT" <<'PY_ARTIFACT_PROOF'
+import hashlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+proof = json.loads((root/'dist/mysql-backup-build.json').read_text())
+for name, expected in proof['inputs'].items():
+    if hashlib.sha256((root/name).read_bytes()).hexdigest() != expected:
+        raise SystemExit('MYSQL_BACKUP_BUILD_INPUT_STALE '+name)
+for name, expected in proof['artifacts'].items():
+    if hashlib.sha256((root/'dist'/(name+'-rocky8')).read_bytes()).hexdigest() != expected:
+        raise SystemExit('MYSQL_BACKUP_BUILD_ARTIFACT_STALE '+name)
+PY_ARTIFACT_PROOF
+    for tool in MyBackupCli MyLogiBackupCli; do
+      test -x "$ROOT/dist/$tool-rocky8"
+    done
+    host=ubuntu@192.168.47.138
+    remote=/tmp/kubeauto-mysql-backup-release
+    state="$ROOT/logs/mysql-backups-$stage-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$ROOT/logs"
+    # The remote helper acquires the host lease before touching any fixture.
+    # Never delete a pre-existing staging directory owned by another run.
+    ssh -o BatchMode=yes -o ConnectTimeout=8 "$host" "mkdir '$remote'"
+    scp -q -o BatchMode=yes "$ROOT/dist/MyBackupCli-rocky8" "$ROOT/dist/MyLogiBackupCli-rocky8" \
+      "$ROOT/tests/helpers/mybackup-cli-live-regression.sh" "$ROOT/tests/helpers/mylogi-backup-live-regression.sh" \
+      "$ROOT/tests/helpers/mysql-backups-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$host:$remote/"
+    ssh -o BatchMode=yes "$host" \
+      "sudo -n nohup bash '$remote/run-durable-gate.sh' '$remote/state' MYSQL_BACKUP_RELEASE_EXIT bash '$remote/mysql-backups-regression.sh' '$stage' >'$remote/console.log' 2>&1 </dev/null &"
+    set +e
+    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$state" MYSQL_BACKUP_LOCAL_EXIT \
+      "$PY" "$ROOT/tests/helpers/supervise-mysql-backups.py" "$host" "$remote" "$state.log"
+    rc=$?
+    set -e
+    test "$rc" -eq 0
+    grep -q "^MYSQL_BACKUP_RELEASE_PASS stage=$stage$" "$state.log"
+    grep -q '^TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release' "$state.log"
     ;;
   --star-artifact-prepare)
     star_host=root@192.168.122.2

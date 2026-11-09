@@ -21,7 +21,7 @@ Compatibility:
 Best Practices Implemented:
   - Percona XtraBackup official recommendations
   - Compressed backup decompression before prepare
-  - Version-aware --lock-ddl parameter (REDUCED for 8.0+, OFF/ON for 5.7)
+  - Capability-aware --lock-ddl parameter from the actual XtraBackup binary
   - --use-memory for optimized performance
   - Proper incremental backup prepare sequence
   - Enhanced error handling and validation
@@ -138,10 +138,62 @@ def setup_logger(
     return logger
 
 
+NATIVE_TARGETS = frozenset(("mysql", "mysqlbinlog", "xtrabackup-backup", "xtrabackup-prepare", "xtrabackup-decompress", "xtrabackup-copy-back"))
+
+# Native options stay local to each standalone CLI. Values are argv, never shell.
+NATIVE_PROTECTED = frozenset("""
+help version print-defaults defaults-file defaults-extra-file defaults-group-suffix
+no-defaults login-path no-login-paths user password password1 password2 password3
+host port socket protocol execute init-command init-command-add database databases
+all-databases tables result-file tab xml json force opt compact compatible
+single-transaction lock-tables lock-all-tables source-data master-data
+set-gtid-purged comments dump-date quick no-data no-create-info ignore-table
+ignore-table-data where delete-source-logs delete-master-logs flush-logs flush-privileges
+backup prepare copy-back move-back decompress decrypt export stats target-dir datadir
+incremental incremental-basedir incremental-dir incremental-lsn incremental-history-name
+incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
+no-backup-locks no-server-version-check start-position stop-position start-datetime
+stop-datetime read-from-remote-server raw to-last-log stop-never
+""".split())
+
+
+def native_arguments(target, *args, **kwargs):
+    """Accept --long-option[=value] tokens and keyword options (lists repeat)."""
+    if target not in NATIVE_TARGETS:
+        raise ValueError("Unknown native target: " + str(target))
+    tokens = list(args)
+    for name, value in kwargs.items():
+        option = "--" + name.replace("_", "-")
+        for item in value if isinstance(value, (list, tuple)) else [value]:
+            tokens.append(option if item is None or item is True else option + "=" + ("OFF" if item is False else str(item)))
+    for token in tokens:
+        if not isinstance(token, str) or not re.fullmatch(r"--[a-zA-Z0-9][a-zA-Z0-9_-]*(?:=[^\x00-\x1f\x7f]*)?", token):
+            raise ValueError("Native options require --long-option[=value]; short/positional/control tokens are refused")
+        name = token[2:].split("=", 1)[0].replace("_", "-").lower()
+        # MySQL accepts prefixes, underscores and loose/skip/disable/enable forms.
+        while name.startswith(("loose-", "skip-", "disable-", "enable-", "maximum-")):
+            name = name.split("-", 1)[1]
+        if any(protected.startswith(name) for protected in NATIVE_PROTECTED) or any(
+            secret in name for secret in ("password", "secret", "token", "encryption-key", "encrypt-key", "transition-key", "passphrase")
+        ):
+            raise ValueError("Native option is owned by the wrapper or contains credentials: --" + name)
+    return tokens
+
+
+def parse_native_options(entries):
+    result = {}
+    for entry in entries:
+        target, separator, token = entry.partition("=")
+        if not separator:
+            raise ValueError("--native-option requires TARGET=--long-option[=value]")
+        result.setdefault(target, []).extend(native_arguments(target, token))
+    return result
+
+
 class Config:
     """配置类 - 管理所有配置项"""
     
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None, native_options=None):
         # 初始化logger（在配置加载前使用）
         self.logger = setup_logger("mysqlbackup.config")
         """
@@ -215,6 +267,16 @@ class Config:
         self.lock_file = self.backup_base / "lock/mysqlbackup.lock"
         self.audit_base = self.backup_base / "restore_audit"
         
+        self.native_options = defaults.get("native_options", {})
+        if not isinstance(self.native_options, dict):
+            self._fail("native_options must map targets to argv lists")
+        for target, tokens in self.native_options.items():
+            if not isinstance(tokens, list):
+                self._fail("native_options values must be argv lists")
+            native_arguments(target, *tokens)
+        for target, tokens in (native_options or {}).items():
+            self.native_options.setdefault(target, []).extend(native_arguments(target, *tokens))
+
         # 检测MySQL版本
         self.mysql_version = self._detect_mysql_version()
         if self.mysql_version[0] >= 9:
@@ -225,13 +287,10 @@ class Config:
         
         # 设置lock-ddl参数
         lock_ddl_config = defaults.get("xtrabackup_lock_ddl", "AUTO")
-        if lock_ddl_config == "AUTO":
-            self.xtrabackup_lock_ddl = self._get_lock_ddl_option(self.mysql_version[0])
-        else:
-            self.xtrabackup_lock_ddl = lock_ddl_config
-        if self.xtrabackup_lock_ddl not in {"REDUCED", "ON", "OFF"}:
+        self.xtrabackup_lock_ddl = lock_ddl_config
+        if lock_ddl_config not in {"AUTO", "REDUCED", "ON", "OFF"}:
             self._fail("xtrabackup_lock_ddl must be AUTO, REDUCED, ON or OFF")
-        
+
         self.logger.info("Configuration loaded: MySQL {0}.{1}, lock-ddl={2}".format(
             self.mysql_version[0], self.mysql_version[1], self.xtrabackup_lock_ddl))
     
@@ -259,11 +318,9 @@ class Config:
                 self.logger.info("Detected MySQL version: {0}.{1}".format(major, minor))
                 return major, minor
             else:
-                self.logger.warning("Could not parse MySQL version, assuming 8.0")
-                return 8, 0
+                self._fail("Could not parse MySQL version; refusing to assume compatibility")
         except Exception as e:
-            self.logger.warning("Could not detect MySQL version: {0}, assuming 8.0".format(e))
-            return 8, 0
+            self._fail("Could not detect MySQL version; refusing to assume compatibility")
     
     def _mysql_cmd(self, sql):
         """执行MySQL命令（用于版本检测）"""
@@ -273,7 +330,7 @@ class Config:
             "--password={0}".format(self.mysql_password),
             "--socket={0}".format(self.mysql_socket),
             "-e", sql
-        ]
+        ] + self.native_options.get("mysql", [])
         p = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -285,15 +342,6 @@ class Config:
             raise RuntimeError("MySQL command failed")
         return p.stdout.strip()
     
-    def _get_lock_ddl_option(self, major):
-        """
-        根据MySQL版本返回合适的--lock-ddl参数
-        Reference: https://www.percona.com/blog/percona-xtrabackup-8-enables-lock-ddl-by-default/
-        """
-        if major >= 8:
-            return "REDUCED"
-        else:
-            return "ON"
 
 
 class BackupManager:
@@ -311,8 +359,43 @@ class BackupManager:
         self.logger.error(msg)
         sys.exit(1)
     
+    def backup_lock_ddl(self):
+        requested = self.config.xtrabackup_lock_ddl
+        if requested in {"ON", "OFF"}:
+            return requested
+        probe = subprocess.run(
+            ["xtrabackup", "--no-defaults", "--help"], stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, timeout=30, env=_env_for_system_subprocess(),
+        )
+        help_text = probe.stdout + "\n" + probe.stderr
+        option = re.search(r"(?m)^\s*--lock-ddl(?:[=\[ \t].*|$)(?:\n(?!\s*--)[^\n]*)*", help_text)
+        # PXB 8.4.0-5 prints usage with EXIT_FAILURE when no operation is
+        # selected, even for --help. Accept that documented source path only
+        # when a complete usage/lock-ddl section is present.
+        if probe.returncode not in (0, 1) or not option or (probe.returncode == 1 and "Usage:" not in help_text):
+            detail = probe.stderr.strip().replace(self.config.mysql_password, "***")
+            raise RuntimeError("Unable to inspect XtraBackup lock-ddl capability rc={0}: {1}".format(probe.returncode, detail))
+        reduced = bool(re.search(r"\bREDUCED\b", option.group()))
+        if requested == "REDUCED" and not reduced:
+            raise RuntimeError("Actual XtraBackup does not advertise lock-ddl=REDUCED; use ON")
+        selected = "REDUCED" if reduced else "ON"
+        self.logger.info("XtraBackup lock-ddl=%s requested=%s", selected, requested)
+        return selected
+
+    def command_options(self, target, *args, **kwargs):
+        options = getattr(self.config, "native_options", {})
+        configured = options.get(target, []) if isinstance(options, dict) else []
+        return native_arguments(target, *configured, *args, **kwargs)
+
     def run_cmd(self, cmd, check=True):
         """执行系统命令"""
+        if cmd[0] == "mysql":
+            cmd = cmd + self.command_options("mysql")
+        elif cmd[0] == "xtrabackup":
+            for mode in ("backup", "prepare", "decompress", "copy-back"):
+                if "--" + mode in cmd:
+                    cmd = cmd + self.command_options("xtrabackup-" + mode)
+                    break
         self.logger.info("RUN: {0}".format(self._redact_command(cmd)))
         p = subprocess.run(
             cmd,
@@ -321,13 +404,16 @@ class BackupManager:
             text=True,
             env=_env_for_system_subprocess(),
         )
+        if p.returncode == 0 and p.stderr.strip():
+            self.logger.info(p.stderr.strip().replace(self.config.mysql_password, "***"))
         if p.returncode != 0:
             if p.stderr.strip():
-                self.logger.error(p.stderr.strip())
+                detail = p.stderr.strip().replace(self.config.mysql_password, "***")
+                self.logger.error(detail)
                 # Keep durable CLI runners and operators able to diagnose the
                 # first failing external command even when file logging is
                 # unavailable or not collected.
-                print(p.stderr.strip(), file=sys.stderr)
+                print(detail, file=sys.stderr)
             if check:
                 raise RuntimeError("COMMAND FAILED {0}".format(self._redact_command(cmd)))
         return p.stdout.strip()
@@ -343,7 +429,7 @@ class BackupManager:
                 redacted.append(arg)
         return " ".join(redacted)
     
-    def mysql_cmd(self, sql):
+    def mysql_cmd(self, sql, *args, **kwargs):
         """执行MySQL命令"""
         return self.run_cmd([
             "mysql",
@@ -351,7 +437,7 @@ class BackupManager:
             "--password={0}".format(self.config.mysql_password),
             "--socket={0}".format(self.config.mysql_socket),
             "-e", sql
-        ])
+        ] + native_arguments("mysql", *args, **kwargs))
     
     def ensure_dirs(self):
         """确保必要的目录存在"""
@@ -391,6 +477,7 @@ class BackupManager:
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
         self.logger.info("START FULL BACKUP ...")
+        lock_ddl = self.backup_lock_ddl()
         target = self.config.backup_base / "full" / self.today / self.now / "backup"
         target.mkdir(parents=True)
         
@@ -404,7 +491,7 @@ class BackupManager:
             "--compress",
             "--compress-threads={0}".format(self.config.xtrabackup_compress_threads),
             "--use-memory={0}".format(self.config.xtrabackup_use_memory),
-            "--lock-ddl={0}".format(self.config.xtrabackup_lock_ddl)
+            "--lock-ddl={0}".format(lock_ddl)
         ]
         
         try:
@@ -472,6 +559,7 @@ class BackupManager:
                 self.logger.warning("Failed to resolve latest_incr symlink: {0}, using latest_full".format(e))
                 # base 保持为 latest_full.resolve() 的值
         
+        lock_ddl = self.backup_lock_ddl()
         target = self.config.backup_base / "incr" / self.today / self.now
         target.mkdir(parents=True)
         
@@ -486,7 +574,7 @@ class BackupManager:
             "--compress",
             "--compress-threads={0}".format(self.config.xtrabackup_compress_threads),
             "--use-memory={0}".format(self.config.xtrabackup_use_memory),
-            "--lock-ddl={0}".format(self.config.xtrabackup_lock_ddl)
+            "--lock-ddl={0}".format(lock_ddl)
         ]
         
         try:
@@ -1014,7 +1102,7 @@ class BackupManager:
             return
         
         # 构建mysqlbinlog命令
-        mysqlbinlog_cmd = ["mysqlbinlog"]
+        mysqlbinlog_cmd = ["mysqlbinlog"] + self.command_options("mysqlbinlog")
         mysqlbinlog_cmd.extend(["--start-datetime", binlog_start_time])
         
         if binlog_stop_time:
@@ -1037,7 +1125,7 @@ class BackupManager:
                     "--user={0}".format(self.config.mysql_user),
                     "--password={0}".format(self.config.mysql_password),
                     "--socket={0}".format(self.config.mysql_socket)
-                ],
+                ] + self.command_options("mysql"),
                 stdin=p1.stdout,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -1156,6 +1244,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(
         description='MySQL Enterprise Backup Script - Production Ready',
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        allow_abbrev=False,
         epilog="""
 示例用法:
 
@@ -1266,7 +1355,14 @@ def parse_arguments():
         help='Binlog保留天数（purge命令），默认: 30'
     )
     
-    return parser.parse_args()
+    parser.add_argument("--native-option", action="append", default=[], metavar="TARGET=--OPTION[=VALUE]",
+                        help="重复传入原生长参数；目标 mysql/mysqlbinlog/xtrabackup-backup/prepare/decompress/copy-back（后三者也须 xtrabackup- 前缀）；拒绝覆盖受保护参数")
+    args = parser.parse_args()
+    try:
+        args.native_options = parse_native_options(args.native_option)
+    except ValueError as exc:
+        parser.error(str(exc))
+    return args
 
 
 def main():
@@ -1275,7 +1371,7 @@ def main():
         args = parse_arguments()
         
         # 加载配置
-        config = Config(args.config)
+        config = Config(args.config, native_options=args.native_options)
         manager = BackupManager(config)
         
         # 确保目录存在并获取锁

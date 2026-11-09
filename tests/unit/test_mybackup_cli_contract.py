@@ -51,6 +51,7 @@ class MyBackupCliContractTest(unittest.TestCase):
     def test_failed_external_command_stderr_is_visible(self):
         manager = MOD.BackupManager.__new__(MOD.BackupManager)
         manager.config = mock.Mock()
+        manager.config.mysql_password = "secret"
         manager.logger = mock.Mock()
         proc = mock.Mock(returncode=1, stdout="", stderr="denied")
         with mock.patch.object(MOD.subprocess, "run", return_value=proc), mock.patch("sys.stderr") as err:
@@ -261,6 +262,101 @@ class MyBackupCliContractTest(unittest.TestCase):
             self.assertNotIn("--apply-log-only", calls[2])
             self.assertEqual(calls[1][calls[1].index("--incremental-dir") + 1], "/backup/inc1")
             self.assertEqual(calls[2][calls[2].index("--incremental-dir") + 1], "/backup/inc2")
+
+
+class NativeAndCapabilityTests(unittest.TestCase):
+    def test_capability_uses_actual_help_and_not_mysql_version(self):
+        manager = manager_for('/tmp')
+        manager.config.mysql_version = (8, 0)
+        for help_text, expected in (
+            ('  --lock-ddl Issue LOCK INSTANCE FOR BACKUP\n  --lock-ddl-timeout=# timeout\n', 'ON'),
+            ('  --lock-ddl[=name] Possible options:\n ON OFF REDUCED\n  --lock-ddl-timeout=# timeout\n', 'REDUCED'),
+        ):
+            manager.config.xtrabackup_lock_ddl = 'AUTO'
+            proc = mock.Mock(returncode=0, stdout=help_text, stderr='')
+            with mock.patch.object(MOD.subprocess, 'run', return_value=proc):
+                self.assertEqual(manager.backup_lock_ddl(), expected)
+        manager.config.xtrabackup_lock_ddl = 'REDUCED'
+        with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='--lock-ddl boolean', stderr='')):
+            with self.assertRaisesRegex(RuntimeError, 'does not advertise'):
+                manager.backup_lock_ddl()
+
+    def test_success_stderr_is_logged_and_secret_is_redacted(self):
+        manager = manager_for('/tmp')
+        manager.config.mysql_password = 's3cret'
+        manager.logger = mock.Mock()
+        with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='', stderr='warning s3cret ignored')):
+            manager.run_cmd(['xtrabackup', '--backup'])
+        manager.logger.info.assert_any_call('warning *** ignored')
+
+    def test_native_args_kwargs_repeat_and_target_isolation(self):
+        self.assertEqual(MOD.native_arguments('mysql', '--ssl-mode=VERIFY_IDENTITY', connect_timeout=15),
+                         ['--ssl-mode=VERIFY_IDENTITY', '--connect-timeout=15'])
+        self.assertEqual(MOD.native_arguments('xtrabackup-backup', throttle=20, debug_sync=['a', 'b']),
+                         ['--throttle=20', '--debug-sync=a', '--debug-sync=b'])
+        manager = manager_for('/tmp')
+        manager.config.mysql_password = 'secret'
+        manager.config.native_options = {'xtrabackup-backup': ['--throttle=20'], 'xtrabackup-prepare': ['--use-memory=128M']}
+        with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='', stderr='')) as run:
+            manager.run_cmd(['xtrabackup', '--prepare'])
+        command = run.call_args.args[0]
+        self.assertIn('--use-memory=128M', command)
+        self.assertNotIn('--throttle=20', command)
+
+    def test_native_protection_includes_mysql_parser_aliases(self):
+        for token in ('--target-dir=/tmp', '--target=/tmp', '--target_dir=/tmp', '--loose-skip-target-dir=/tmp',
+                      '--lock-ddl=OFF', '--disable-lock-ddl', '--password=secret', '-psecret', '--stream=xbstream',
+                      '--no-server-version-check', '--defaults-extra-file=/tmp/x', '--incremental-lsn=0', '--force', 'table'):
+            with self.subTest(token=token), self.assertRaises(ValueError):
+                MOD.native_arguments('xtrabackup-backup', token)
+
+    def test_version_detection_failure_does_not_assume_compatibility(self):
+        config = MOD.Config.__new__(MOD.Config)
+        config.logger = mock.Mock()
+        with mock.patch.object(config, '_mysql_cmd', side_effect=RuntimeError('connection refused')):
+            with self.assertRaises(SystemExit):
+                config._detect_mysql_version()
+
+    def test_real_cli_legacy_boolean_selection_and_native_option(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); binary=root/'bin'; binary.mkdir()
+            mysql=binary/'mysql'; mysql.write_text('#!/bin/sh\nprintf "8.0.33\\n"\n'); mysql.chmod(0o755)
+            xb=binary/'xtrabackup'
+            xb.write_text('#!'+sys.executable+'\nimport json,os,pathlib,sys\n'
+                          'if "--help" in sys.argv: print("  --lock-ddl Boolean option\\n  --lock-ddl-timeout=# Timeout"); sys.exit(0)\n'
+                          'pathlib.Path(os.environ["ARGV_RECORD"]).write_text(json.dumps(sys.argv[1:]))\n'
+                          'target=pathlib.Path(next(x.split("=",1)[1] for x in sys.argv if x.startswith("--target-dir=")))\n'
+                          'for name in ("xtrabackup_checkpoints","xtrabackup_info"): (target/name).write_text("fixture")\n'
+                          'print("warning: observable-success-warning",file=sys.stderr)\n')
+            xb.chmod(0o755)
+            config=root/'config.json'; config.write_text(json.dumps({'backup_base':str(root/'backup'),'mysql_password':'secret'})); config.chmod(0o600)
+            env=dict(os.environ, PATH=str(binary)+':'+os.environ['PATH'], ARGV_RECORD=str(root/'argv.json'), MYSQLBACKUP_LOG_FILE=str(root/'product.log'))
+            script=ROOT/'tools/mysqltools/MyBackupCli.py'
+            result=subprocess.run([sys.executable,str(script),'full','-c',str(config),'--native-option','xtrabackup-backup=--throttle=20'],env=env,capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            command=json.loads((root/'argv.json').read_text())
+            self.assertIn('--lock-ddl=ON',command)
+            self.assertNotIn('--lock-ddl=REDUCED',command)
+            self.assertIn('--throttle=20',command)
+            self.assertIn('observable-success-warning',(root/'product.log').read_text())
+
+    def test_usage_exit_one_is_supported_only_with_real_option_section(self):
+        manager = manager_for('/tmp')
+        manager.config.xtrabackup_lock_ddl = 'AUTO'
+        manager.config.mysql_password = 'secret'
+        for returncode, text, expected in (
+            (1, 'Usage: xtrabackup --backup [OPTIONS]\n  --lock-ddl[=name] ON OFF REDUCED\n', 'REDUCED'),
+            (1, '  --lock-ddl[=name] ON OFF REDUCED\n', None),
+            (2, 'Usage: xtrabackup\n  --lock-ddl bool\n', None),
+        ):
+            with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=returncode, stdout=text, stderr='')):
+                if expected:
+                    self.assertEqual(manager.backup_lock_ddl(), expected)
+                else:
+                    with self.assertRaisesRegex(RuntimeError, 'Unable to inspect'):
+                        manager.backup_lock_ddl()
 
 
 if __name__ == "__main__":

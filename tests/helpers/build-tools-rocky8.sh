@@ -10,6 +10,11 @@ FALLBACK_IMAGE="rockylinux/rockylinux:8.10"
 CONTAINER=kubeauto-rocky8-tools-build
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 
+if [[ -n "${TOOLS_SELECTED:-}" ]]; then
+  [[ "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli ]] || { echo TOOLS_BUILD_SCOPE_REFUSED >&2; exit 2; }
+  IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
+fi
+
 [[ "$SOURCE" == /tmp/kubeauto-rocky8-build-source ]]
 [[ "$OUTPUT" == /tmp/kubeauto-rocky8-tools-output ]]
 test -f "$SOURCE/tools-onefile.spec"
@@ -44,7 +49,7 @@ tool_list="${TOOLS[*]}"
 docker run --rm --name "$CONTAINER" \
   -e PIP_INDEX_URL=https://repo.huaweicloud.com/repository/pypi/simple \
   -e PIP_TRUSTED_HOST=repo.huaweicloud.com \
-  -e TOOL_LIST="$tool_list" \
+  -e TOOL_LIST="$tool_list" -e TOOLS_SELECTED="${TOOLS_SELECTED:-}" \
   -v "$SOURCE:/src:ro" -v "$OUTPUT:/output" \
   "$IMAGE" bash -lc '
     set -euo pipefail
@@ -59,7 +64,12 @@ docker run --rm --name "$CONTAINER" \
     dnf upgrade -y expat expat-devel
     alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
     python3.12 -c "import pyexpat"
-    python3 build.py --tools-only
+    if [[ -n "$TOOLS_SELECTED" ]]; then
+      python3.12 -m pip install pyinstaller==6.16.0
+      python3.12 -m PyInstaller --clean tools-onefile.spec
+    else
+      python3 build.py --tools-only
+    fi
     test "$(getconf GNU_LIBC_VERSION)" = "glibc 2.28"
     for tool in $TOOL_LIST; do
       test -x "dist/$tool"

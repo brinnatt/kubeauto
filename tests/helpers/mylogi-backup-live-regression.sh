@@ -12,13 +12,24 @@ DB_CTN="mylogi-${VERSION//./-}-db"
 TOOL_CTN="mylogi-${VERSION//./-}-tool"
 RESTORE_CTN="mylogi-${VERSION//./-}-restore"
 SIGNAL_CTN="mylogi-${VERSION//./-}-signal"
+timer_owned=0
+timer_stamp_existed=0
+[[ ! -e /var/lib/systemd/timers/stamp-mysql-logi-backup.timer ]] || timer_stamp_existed=1
 PASSWORD='MyLogiFixture_9f6e2a'
 BACKUP_PASSWORD='MyLogiBackup_7c2d1b'
 
 cleanup() {
   set +e
+  if [[ -n "${MYLOGI_EVIDENCE_DIR:-}" ]]; then
+    docker cp "$TOOL_CTN:/tmp/mysql_backup.log" "$MYLOGI_EVIDENCE_DIR/logical-$VERSION-product.log" 2>/dev/null || true
+  fi
+  if [[ "$timer_owned" -eq 1 ]]; then
+    env MYLOGI_LOG_FILE="$RUN_ROOT/timer-host.log" "$TOOL" timer remove >/dev/null 2>&1
+    [[ "$timer_stamp_existed" -eq 1 ]] || rm -f /var/lib/systemd/timers/stamp-mysql-logi-backup.timer
+  fi
   docker rm -f "$SIGNAL_CTN" "$RESTORE_CTN" "$TOOL_CTN" "$DB_CTN" >/dev/null 2>&1 || true
-  rm -rf "$RUN_ROOT" "$HOST_DATA"
+  rm -rf "$RUN_ROOT"
+  [[ "${MYLOGI_OWNED_MOUNT:-no}" == yes ]] || rm -rf "$HOST_DATA"
 }
 trap cleanup EXIT INT TERM
 trap 'rc=$?; echo "MYLOGI_LIVE_COMMAND_FAILED line=$LINENO rc=$rc command=$BASH_COMMAND" >&2; exit "$rc"' ERR
@@ -35,7 +46,8 @@ fail_expected() {
 }
 
 docker rm -f "$SIGNAL_CTN" "$RESTORE_CTN" "$TOOL_CTN" "$DB_CTN" >/dev/null 2>&1 || true
-rm -rf "$RUN_ROOT" "$HOST_DATA"
+rm -rf "$RUN_ROOT"
+[[ "${MYLOGI_OWNED_MOUNT:-no}" == yes ]] || rm -rf "$HOST_DATA"
 mkdir -p "$RUN_ROOT/backup" "$RUN_ROOT/locks"
 mount_target="$(findmnt -T "$HOST_DATA" -rn -o TARGET 2>/dev/null || true)"
 [[ -n "$mount_target" && "$mount_target" != "/" ]] || {
@@ -124,7 +136,7 @@ latest_archive() {
 }
 
 archive_contains() {
-  tar -xOf "$1" '*.sql' | awk -v pattern="$2" '$0 ~ pattern { found=1 } END { exit !found }'
+  tar --wildcards -xOf "$1" '*.sql' | awk -v pattern="$2" '$0 ~ pattern { found=1 } END { exit !found }'
 }
 
 printf '%s\n' "$BACKUP_PASSWORD" | tool setup-login --host 127.0.0.1 --port 3306 --user mysql_backup
@@ -135,7 +147,7 @@ docker exec "$TOOL_CTN" grep -Fq \
 echo "MYLOGI_NON_INNODB_WARNING_PASS version=$VERSION"
 echo "MYLOGI_PREFLIGHT_OK version=$VERSION"
 
-tool backup --database app audit --compression "$COMPRESSION"
+tool backup --database app audit --compression "$COMPRESSION" --native-option mysqldump=--extended-insert --native-option mysql=--connect-timeout=12
 archive="$(latest_archive "mysql-selected-*.tar.${COMPRESSION}")"
 test -s "$archive"
 tar -tf "$archive" | grep -Eq '\.sql$'
@@ -186,7 +198,7 @@ for _ in $(seq 1 90); do
   sleep 2
 done
 [[ "$restore_ready" -eq 1 ]] || { docker logs "$RESTORE_CTN" >&2; exit 1; }
-tar -xOf "$archive" '*.sql' |
+tar --wildcards -xOf "$archive" '*.sql' |
   docker exec -i "$RESTORE_CTN" env MYSQL_PWD="$PASSWORD" mysql -uroot
 docker exec "$RESTORE_CTN" env MYSQL_PWD="$PASSWORD" mysql -uroot -N -e \
   "SELECT HEX(payload),note FROM app.blob_data WHERE id=1" | grep -Fxq $'00010203FEFF\tblob fixture'
@@ -197,6 +209,10 @@ docker exec "$RESTORE_CTN" env MYSQL_PWD="$PASSWORD" mysql -uroot -N -e \
 docker exec "$RESTORE_CTN" env MYSQL_PWD="$PASSWORD" mysql -uroot -N -e \
   "SELECT COUNT(*) FROM information_schema.events WHERE event_schema='app' AND event_name='fixture_event'" | grep -Fxq 1
 echo "MYLOGI_RESTORE_READBACK_PASS version=$VERSION"
+docker exec "$TOOL_CTN" grep -q 'MYSQL_BACKUP_PHASE_DONE phase=compress' /tmp/mysql_backup.log
+docker exec "$TOOL_CTN" grep -q 'MYSQL_BACKUP_PHASE_DONE phase=verify' /tmp/mysql_backup.log
+docker exec "$TOOL_CTN" grep -q 'mysqldump interval_seconds=' /tmp/mysql_backup.log
+echo "MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version=$VERSION"
 
 docker exec "$TOOL_CTN" sh -c 'cat > /tmp/fail-mysqldump <<"EOF"
 #!/bin/sh
@@ -306,6 +322,30 @@ docker exec "$TOOL_CTN" env HOME=/root MYLOGI_SYSTEMCTL=/tmp/fake-systemctl \
   MYLOGI_SYSTEMD_UNIT_DIR=/tmp/systemd /tmp/MyLogiBackupCli timer remove
 docker exec "$TOOL_CTN" test ! -e /tmp/systemd/mysql-logi-backup.timer
 echo "MYLOGI_TIMER_PASS version=$VERSION"
+if [[ "${MYLOGI_REAL_TIMER:-no}" == yes ]]; then
+  test ! -e /etc/systemd/system/mysql-logi-backup.service
+  test ! -e /etc/systemd/system/mysql-logi-backup.timer
+  ! systemctl is-active --quiet mysql-logi-backup.service
+  cat >"$RUN_ROOT/timer-exec" <<EOF
+#!/usr/bin/env bash
+exec docker exec -i '$TOOL_CTN' env HOME=/root MYLOGI_MYSQL_BIN='$MYSQL_BIN' MYLOGI_MYSQLDUMP_BIN='$MYSQLDUMP_BIN' MYLOGI_MYSQL_CONFIG_EDITOR='$EDITOR_BIN' MYLOGI_BACKUP_MOUNT=/backups MYLOGI_LOGIN_FILE=/root/.mylogin.cnf MYLOGI_LOCK_FILE=/tmp/mysql_backup.lock MYLOGI_LOG_FILE=/tmp/mysql_backup.log /tmp/MyLogiBackupCli "\$@"
+EOF
+  chmod 0755 "$RUN_ROOT/timer-exec"
+  timer_owned=1
+  env MYLOGI_LOG_FILE="$RUN_ROOT/timer-host.log" "$TOOL" timer install --at 23:59 --exec-path "$RUN_ROOT/timer-exec" --database app --native-option mysqldump=--extended-insert
+  env MYLOGI_LOG_FILE="$RUN_ROOT/timer-host.log" "$TOOL" timer status
+  systemctl start mysql-logi-backup.service
+  test "$(systemctl show mysql-logi-backup.service -p Result --value)" = success
+  test "$(systemctl show mysql-logi-backup.service -p ExecMainStatus --value)" = 0
+  journalctl -u mysql-logi-backup.service --no-pager -n 30 | grep -q MYSQL_BACKUP_OK
+  grep -q -- '--native-option' /etc/systemd/system/mysql-logi-backup.service
+  env MYLOGI_LOG_FILE="$RUN_ROOT/timer-host.log" "$TOOL" timer remove
+  test ! -e /etc/systemd/system/mysql-logi-backup.service
+  test ! -e /etc/systemd/system/mysql-logi-backup.timer
+  [[ "$timer_stamp_existed" -eq 1 ]] || rm -f /var/lib/systemd/timers/stamp-mysql-logi-backup.timer
+  timer_owned=0
+  echo "MYLOGI_REAL_TIMER_EXECUTION_PASS version=$VERSION"
+fi
 
 docker exec "$TOOL_CTN" grep -q 'MYSQL_BACKUP_OK' /tmp/mysql_backup.log
 echo "MYLOGI_LIVE_REGRESSION_PASS version=$VERSION compression=all restore=readback failure=cleanup timer=ok"

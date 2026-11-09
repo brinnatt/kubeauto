@@ -9,5 +9,13 @@
     "xtrabackup_parallel": 4,
     "xtrabackup_compress_threads": 4,
     "xtrabackup_use_memory": "1G",
-    "xtrabackup_lock_ddl": "AUTO"
+    "xtrabackup_lock_ddl": "AUTO",
+    "native_options": {
+        "mysql": [],
+        "mysqlbinlog": [],
+        "xtrabackup-backup": [],
+        "xtrabackup-prepare": [],
+        "xtrabackup-decompress": [],
+        "xtrabackup-copy-back": []
+    }
 }

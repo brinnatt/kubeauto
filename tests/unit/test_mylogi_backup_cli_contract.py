@@ -224,5 +224,87 @@ class MyLogiBackupCliContractTests(unittest.TestCase):
             parser.parse_args(["timer", "install", "--at", "25:99"])
 
 
+class NativeArchiveTests(unittest.TestCase):
+    def setUp(self):
+        self.module = load_module()
+
+    def test_native_options_reach_dump_before_database_names(self):
+        command = self.module.build_dump_command({'databases': ['app']}, Path('/tmp/a.sql'), 'backup',
+                                                 '--extended-insert', net_buffer_length=16384)
+        self.assertIn('--verbose', command)
+        self.assertLess(command.index('--extended-insert'), command.index('--databases'))
+        self.assertIn('--net-buffer-length=16384', command)
+        # Shell punctuation in a value is a single argv element, not executable text.
+        self.assertEqual(self.module.native_arguments('mysql', ssl_ca='/tmp/ca $(touch x);.pem'),
+                         ['--ssl-ca=/tmp/ca $(touch x);.pem'])
+
+    def test_native_protection_refuses_macro_and_abbreviated_overrides(self):
+        for token in ('--result=/tmp/x', '--skip-comments', '--loose_disable_single_transaction',
+                      '--force', '--compact', '--skip-opt', '--no-data', '--where=id>0',
+                      '--login-path=other', '--password=secret', '--init-command=DROP TABLE t', '--source-data=0'):
+            with self.subTest(token=token), self.assertRaises(ValueError):
+                self.module.native_arguments('mysqldump', token)
+
+    def test_invalid_native_cli_fails_before_logs_or_database_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory)/'never.log'
+            env = dict(os.environ, MYLOGI_LOG_FILE=str(log))
+            result = subprocess.run([sys.executable, str(SCRIPT), 'backup', '--native-option', 'mysqldump=--force'],
+                                    env=env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(log.exists())
+            self.assertNotIn('Traceback', result.stderr)
+
+    def test_archive_hashes_sql_only_once_and_preserves_full_verification(self):
+        for compression in ('gz', 'bz2', 'xz'):
+            with self.subTest(compression=compression), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory)/'data.sql'
+                path.write_bytes(b'INSERT INTO t VALUES(1);\n' * 10000)
+                target = Path(directory)/('data.tar.'+compression)
+                with mock.patch.object(self.module, 'file_sha256', side_effect=AssertionError('extra pass')):
+                    digest = self.module.write_archive(path, target, path.name, None, compression)
+                self.assertEqual(digest, self.module.hashlib.sha256(path.read_bytes()).hexdigest())
+                with tarfile.open(target) as archive:
+                    self.assertEqual(archive.extractfile(path.name).read(), path.read_bytes())
+                    self.assertEqual(archive.extractfile(path.name+'.sha256').read().decode(), digest+'  '+path.name+'\n')
+
+    def test_archive_readback_detects_changed_sql(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'data.sql'; path.write_bytes(b'original')
+            with self.assertRaisesRegex(self.module.BackupError, '压缩时变化'):
+                self.module.write_archive(path, Path(directory)/'a.tar.gz', path.name, '0'*64, 'gz')
+
+    def test_previous_size_reads_first_header_without_scanning_sql(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); path = root/'data.sql'; path.write_bytes(b'x'*1024)
+            self.module.write_archive(path, root/'mysql-all-20261108.tar.gz', path.name, None, 'gz')
+            with mock.patch.object(tarfile.TarFile, 'getmembers', side_effect=AssertionError('full scan')):
+                self.assertEqual(self.module.previous_sql_size(root, 'all'), 1024)
+
+    def test_timer_keeps_native_argv_and_escapes_systemd_expansion(self):
+        args = SimpleNamespace(login_path='backup', compression='gz', database=[['app']], exclude_database=[],
+                               native_option=['mysqldump=--extended-insert', 'mysql=--ssl-ca=/ca/$test%a.pem'])
+        import shlex
+        tokens = shlex.split(self.module.timer_backup_arguments(args))
+        self.assertIn('mysqldump=--extended-insert', tokens)
+        self.assertEqual(self.module.systemd_quote('$test%a'), '"$$test%%a"')
+
+    def test_full_compression_trailer_is_verified_not_only_sql_digest(self):
+        for damage in ('crc', 'truncated'):
+            with self.subTest(damage=damage), tempfile.TemporaryDirectory() as directory:
+                root=Path(directory); sql=root/'data.sql'; sql.write_bytes(b'INSERT INTO t VALUES(1);\n'*1000)
+                archive=root/'data.tar.gz'; original=self.module.tarfile.open
+                def open_archive(*args, **kwargs):
+                    if kwargs.get('mode') == 'r|':
+                        data=bytearray(archive.read_bytes())
+                        if damage=='crc': data[-8] ^= 1
+                        else: data=data[:-4]
+                        archive.write_bytes(data)
+                    return original(*args, **kwargs)
+                with mock.patch.object(self.module.tarfile, 'open', side_effect=open_archive):
+                    with self.assertRaises((OSError, EOFError)):
+                        self.module.write_archive(sql, archive, sql.name, None, 'gz')
+
+
 if __name__ == "__main__":
     unittest.main()

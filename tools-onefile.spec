@@ -1,6 +1,7 @@
 # https://pyinstaller.org/en/stable/spec-files.html
 # Each .py under tools/ is built as a separate onefile executable. Independent of kubecli (see kubecli-onefile.spec).
 
+import os
 from pathlib import Path
 
 block_cipher = None
@@ -10,6 +11,13 @@ tools_dir = project_root / "tools"
 
 # Collect all .py scripts under tools/ (including subdirs, e.g. tools/xtrabackup/mysqlbackup.py).
 tool_scripts = sorted(tools_dir.rglob("*.py"))
+
+selected = os.environ.get("TOOLS_SELECTED", "")
+if selected:
+    names = selected.split(",")
+    if len(names) != len(set(names)) or not set(names) <= {p.stem for p in tool_scripts}:
+        raise ValueError("Invalid TOOLS_SELECTED")
+    tool_scripts = [p for p in tool_scripts if p.stem in names]
 
 # Per-script Analysis/PYZ/EXE with unique names so PyInstaller builds every target (spec is executable Python; doc recommends unique names per program).
 for script_path in tool_scripts:

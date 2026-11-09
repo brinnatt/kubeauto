@@ -907,7 +907,7 @@ bash tests/run_tools_regression.sh --preflight
 bash tests/run_tools_regression.sh --status
 ```
 
-The tools matrix contains 68 executable scenarios plus a 101-item
+The tools matrix contains 71 scenarios (70 applicable and one not applicable) plus a 101-item
 `functional_inventory`. The inventory is the public-function checklist for all
 ten CLIs: every command/role/data path/configuration mode/remote path and
 failure-recovery behavior must point to a CLI, functional, security or recovery
@@ -921,6 +921,37 @@ credentials, external-service versions and live cleanup scope. The current
 matrix is approved, and `--full` still requires the explicit
 `TOOLS_MATRIX_APPROVED=yes` gate; Tier3 `--help` results in the enterprise
 matrix are not tools delivery evidence.
+
+### MySQL 备份工具增量回归
+
+两个备份 CLI 的变化使用原工具场景与固定镜像，独立于 core/middleware：
+
+```bash
+bash tests/run_tools_regression.sh --preflight
+TOOLS_SELECTED=MyBackupCli,MyLogiBackupCli TOOLS_BUILD_HOST=ubuntu@192.168.47.138 bash tests/run_tools_regression.sh --build-only
+MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=logical bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=portability bash tests/run_tools_regression.sh --mysql-backup-live
+# 聚焦证据核验、对应矩阵项 PASS 且输入未变化后，才允许最终干净完整范围：
+bash tests/run_tools_regression.sh --mysql-backup-live
+bash tests/run_tools_regression.sh --status
+```
+
+138 当前实测 Ubuntu 22.04；构建在 Rocky 8.10/glibc 2.28 容器内完成，仅重建上述两个标准库工具。
+现场入口拒绝既存备份 fixture，先持有主机互斥锁，保留现有 registry、集群和缓存镜像。
+逻辑回归顺序运行 MySQL 8.0.46、8.4.4、9.2.0，以控制小内存主机峰值；运行器拥有
+512 MiB loop 文件系统，验证挂载、归档、恢复与失败清理，不触碰主机裸盘，不代表存储性能测试。
+逻辑场景同时验证 gzip/bz2/xz 解码完整性和 SQL SHA256，并通过宿主机真实 systemd service
+执行生成的备份任务，再核验退出码、业务标记及 timer/unit 清理；模拟 systemctl 仅用于隔离合同。
+portability 在固定 Rocky 8、Debian 12、Ubuntu 24 容器内并行启动两份冻结程序，验证 ABI 与独立启动。
+物理回归沿用 MySQL 8.4.4/XtraBackup 8.4.0-5.1。8.0.35-36 的布尔 lock-ddl 与
+8.4.0-5 的 REDUCED 差异来自固定官方源码及确定性合同，不冒称实测了 MySQL 8.0.33 或原生 ARM64。
+
+每轮 `logs/mysql-backups-<stage>-<time>` 保存本地 durable、远端双退出码、原始日志及 SHA256 校验的
+证据归档。未完成远端工作时监控中断保留现场，先查原 durable，禁止覆盖 staging 目录启动另一轮。
+成功需 `MYSQL_BACKUP_RELEASE_PASS`、双退出码 0、业务恢复读回与 `TOOLS_CLEAN_VERIFY_PASS`；
+仅有单测、构建或运行中的容器不得签 GA。新增参数/行为覆盖归入 `TL-MBK-06`、`TL-MLB-13`，
+最终范围归入 `TL-X-09`。无关工具证据核对依赖后复用，不触发整仓镜像构建或核心回归。
 
 ### Tools artifact gate
 

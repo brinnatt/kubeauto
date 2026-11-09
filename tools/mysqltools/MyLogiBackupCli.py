@@ -2,6 +2,10 @@
 """Standalone MySQL 8.0+ logical backup CLI."""
 
 import argparse
+import bz2
+import gzip
+import lzma
+import zlib
 import configparser
 import fcntl
 import hashlib
@@ -44,6 +48,58 @@ VERSION_RE = re.compile(r"(?<!\d)(\d+)\.(\d+)(?:\.(\d+))?")
 ACTIVE_PROCESS = None
 RECEIVED_SIGNAL = None
 LOGGER = logging.getLogger("mylogi_backup")
+
+
+NATIVE_TARGETS = frozenset(("mysql", "mysqldump"))
+
+# Native options stay local to each standalone CLI. Values are argv, never shell.
+NATIVE_PROTECTED = frozenset("""
+help version print-defaults defaults-file defaults-extra-file defaults-group-suffix
+no-defaults login-path no-login-paths user password password1 password2 password3
+host port socket protocol execute init-command init-command-add database databases
+all-databases tables result-file tab xml json force opt compact compatible
+single-transaction lock-tables lock-all-tables source-data master-data
+set-gtid-purged comments dump-date quick no-data no-create-info ignore-table
+ignore-table-data where delete-source-logs delete-master-logs flush-logs flush-privileges
+backup prepare copy-back move-back decompress decrypt export stats target-dir datadir
+incremental incremental-basedir incremental-dir incremental-lsn incremental-history-name
+incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
+no-backup-locks no-server-version-check start-position stop-position start-datetime
+stop-datetime read-from-remote-server raw to-last-log stop-never
+""".split())
+
+
+def native_arguments(target, *args, **kwargs):
+    """Accept --long-option[=value] tokens and keyword options (lists repeat)."""
+    if target not in NATIVE_TARGETS:
+        raise ValueError("Unknown native target: " + str(target))
+    tokens = list(args)
+    for name, value in kwargs.items():
+        option = "--" + name.replace("_", "-")
+        for item in value if isinstance(value, (list, tuple)) else [value]:
+            tokens.append(option if item is None or item is True else option + "=" + ("OFF" if item is False else str(item)))
+    for token in tokens:
+        if not isinstance(token, str) or not re.fullmatch(r"--[a-zA-Z0-9][a-zA-Z0-9_-]*(?:=[^\x00-\x1f\x7f]*)?", token):
+            raise ValueError("Native options require --long-option[=value]; short/positional/control tokens are refused")
+        name = token[2:].split("=", 1)[0].replace("_", "-").lower()
+        # MySQL accepts prefixes, underscores and loose/skip/disable/enable forms.
+        while name.startswith(("loose-", "skip-", "disable-", "enable-", "maximum-")):
+            name = name.split("-", 1)[1]
+        if any(protected.startswith(name) for protected in NATIVE_PROTECTED) or any(
+            secret in name for secret in ("password", "secret", "token", "encryption-key", "encrypt-key", "transition-key", "passphrase")
+        ):
+            raise ValueError("Native option is owned by the wrapper or contains credentials: --" + name)
+    return tokens
+
+
+def parse_native_options(entries):
+    result = {}
+    for entry in entries:
+        target, separator, token = entry.partition("=")
+        if not separator:
+            raise ValueError("--native-option requires TARGET=--long-option[=value]")
+        result.setdefault(target, []).extend(native_arguments(target, token))
+    return result
 
 
 class BackupError(RuntimeError):
@@ -152,11 +208,11 @@ def editor_binary():
     return env_path("MYLOGI_MYSQL_CONFIG_EDITOR", "/usr/local/bin/mysql_config_editor")
 
 
-def mysql_query(login_path, sql):
+def mysql_query(login_path, sql, *args, **kwargs):
     result = run_command([
         mysql_binary(), "--login-path=" + login_path, "--batch", "--skip-column-names",
         "--connect-timeout=10", "--execute=" + sql,
-    ])
+    ] + native_arguments("mysql", *args, **kwargs))
     if result.stderr and result.stderr.strip():
         LOGGER.warning("mysql: %s", result.stderr.strip())
     return result.stdout.strip()
@@ -200,7 +256,7 @@ def resolve_selection(args):
     excluded = flatten(args.exclude_database)
     validate_database_names(requested, "--database")
     validate_database_names(excluded, "--exclude-database")
-    available = [line for line in mysql_query(args.login_path, "SHOW DATABASES;").splitlines() if line]
+    available = [line for line in mysql_query(args.login_path, "SHOW DATABASES;", *native_for(args, "mysql")).splitlines() if line]
     unknown = sorted((set(requested) | set(excluded)) - set(available))
     if unknown:
         raise BackupError("数据库不存在或账号不可见：{}".format(", ".join(unknown)))
@@ -219,13 +275,13 @@ def resolve_selection(args):
     return {"databases": selected, "scope": scope, "compression": args.compression}
 
 
-def selected_non_innodb(databases, login_path):
+def selected_non_innodb(databases, login_path, *options):
     rows = mysql_query(login_path, (
         "SELECT table_schema,table_name,engine FROM information_schema.tables "
         "WHERE table_type='BASE TABLE' AND engine IS NOT NULL AND engine<>'InnoDB' "
         "AND table_schema NOT IN ('information_schema','performance_schema','sys') "
         "AND NOT (table_schema='mysql' AND table_name IN ('general_log','slow_log'));"
-    ))
+    ), *options)
     selected = set(databases)
     found = []
     for row in rows.splitlines():
@@ -235,11 +291,11 @@ def selected_non_innodb(databases, login_path):
     return found
 
 
-def selected_data_size(databases, login_path):
+def selected_data_size(databases, login_path, *options):
     rows = mysql_query(login_path, (
         "SELECT table_schema,COALESCE(SUM(data_length),0),COALESCE(SUM(index_length),0) "
         "FROM information_schema.tables WHERE table_type='BASE TABLE' GROUP BY table_schema;"
-    ))
+    ), *options)
     selected = set(databases)
     total = 0
     for row in rows.splitlines():
@@ -273,8 +329,10 @@ def previous_sql_size(directory, scope):
         return 0
     try:
         with tarfile.open(str(archives[-1]), "r:*") as archive:
-            members = [m for m in archive.getmembers() if m.isfile() and m.name.endswith(".sql")]
-            return members[0].size if len(members) == 1 else 0
+            # SQL is the first member by our writer contract; do not decompress
+            # yesterday's entire multi-GB archive just to estimate today's space.
+            member = archive.next()
+            return member.size if member and member.isfile() and member.name.endswith(".sql") else 0
     except (OSError, tarfile.TarError):
         return 0
 
@@ -292,7 +350,7 @@ def preflight(args):
     directory.mkdir(parents=True, exist_ok=True)
     os.chmod(str(directory), 0o700)
 
-    server_text = mysql_query(args.login_path, "SELECT @@version;")
+    server_text = mysql_query(args.login_path, "SELECT @@version;", *native_for(args, "mysql"))
     mysql_text = run_command([mysql_binary(), "--version"]).stdout.strip()
     dump_text = run_command([mysqldump_binary(), "--version"]).stdout.strip()
     server_version = parse_version(server_text, "服务端")
@@ -306,10 +364,10 @@ def preflight(args):
         ))
 
     selection = resolve_selection(args)
-    warnings = selected_non_innodb(selection["databases"], args.login_path)
+    warnings = selected_non_innodb(selection["databases"], args.login_path, *native_for(args, "mysql"))
     if warnings:
         LOGGER.warning("非 InnoDB 表不受 --single-transaction 一致性保护：%s", ", ".join(warnings))
-    source_size = selected_data_size(selection["databases"], args.login_path)
+    source_size = selected_data_size(selection["databases"], args.login_path, *native_for(args, "mysql"))
     previous_size = previous_sql_size(directory, selection["scope"])
     estimated = max(source_size, previous_size)
     required = int(estimated * SPACE_SAFETY_FACTOR) + SPACE_RESERVE_BYTES
@@ -353,23 +411,26 @@ def ensure_running():
 
 
 def relay_stderr(stream):
+    previous = time.monotonic()
     try:
         for line in iter(stream.readline, ""):
             if line.rstrip():
-                LOGGER.warning("mysqldump: %s", line.rstrip())
+                now = time.monotonic()
+                LOGGER.info("mysqldump interval_seconds=%.3f: %s", now - previous, line.rstrip())
+                previous = now
     finally:
         stream.close()
 
 
-def build_dump_command(selection, sql_path, login_path):
+def build_dump_command(selection, sql_path, login_path, *args, **kwargs):
     command = [
-        mysqldump_binary(), "--login-path=" + login_path, "--comments", "--single-transaction",
+        mysqldump_binary(), "--login-path=" + login_path, "--comments", "--verbose", "--single-transaction",
         "--quick", "--hex-blob", "--routines", "--events", "--triggers", "--source-data=2",
         "--set-gtid-purged=OFF", "--skip-extended-insert", "--default-character-set=utf8mb4",
         "--ignore-table=mysql.general_log", "--ignore-table=mysql.slow_log",
-        "--result-file=" + str(sql_path), "--databases",
+        "--result-file=" + str(sql_path),
     ]
-    return command + selection["databases"]
+    return command + native_arguments("mysqldump", *args, **kwargs) + ["--databases"] + selection["databases"]
 
 
 def file_sha256(path):
@@ -397,30 +458,77 @@ def fsync_directory(path):
         os.close(descriptor)
 
 
+class HashingReader:
+    """Hash the exact bytes consumed by tarfile, with bounded progress logs."""
+    def __init__(self, source, phase):
+        self.source = source
+        self.digest = hashlib.sha256()
+        self.phase = phase
+        self.started = self.last = time.monotonic()
+        self.size = 0
+        LOGGER.info("MYSQL_BACKUP_PHASE_START phase=%s", phase)
+
+    def read(self, size=-1):
+        ensure_running()
+        block = self.source.read(size)
+        self.digest.update(block)
+        self.size += len(block)
+        now = time.monotonic()
+        if now - self.last >= HEARTBEAT_SECONDS:
+            LOGGER.info("MYSQL_BACKUP_HEARTBEAT phase=%s elapsed_seconds=%d bytes=%d", self.phase, int(now - self.started), self.size)
+            self.last = now
+        return block
+
+    def finish(self):
+        elapsed = time.monotonic() - self.started
+        LOGGER.info("MYSQL_BACKUP_PHASE_DONE phase=%s elapsed_seconds=%.3f bytes=%d bytes_per_second=%.0f",
+                    self.phase, elapsed, self.size, self.size / max(elapsed, 0.001))
+        return self.digest.hexdigest()
+
+
 def write_archive(sql_path, archive_path, sql_name, digest, compression):
     mode = {"gz": "w:gz", "bz2": "w:bz2", "xz": "w:xz"}[compression]
-    checksum = "{}  {}\n".format(digest, sql_name).encode("ascii")
-    with tarfile.open(str(archive_path), mode) as archive:
-        archive.add(str(sql_path), arcname=sql_name, recursive=False)
+    with tarfile.open(str(archive_path), mode, copybufsize=1024 ** 2) as archive:
+        info = archive.gettarinfo(str(sql_path), arcname=sql_name)
+        with sql_path.open("rb") as source:
+            reader = HashingReader(source, "compress")
+            archive.addfile(info, reader)
+            calculated = reader.finish()
+        if digest is not None and calculated != digest:
+            raise BackupError("SQL SHA-256 在压缩时变化")
+        digest = calculated
+        checksum = "{}  {}\n".format(digest, sql_name).encode("ascii")
         info = tarfile.TarInfo(sql_name + ".sha256")
         info.size = len(checksum)
         info.mode = 0o600
         archive.addfile(info, io.BytesIO(checksum))
-    with tarfile.open(str(archive_path), "r:*") as archive:
-        if archive.getnames() != [sql_name, sql_name + ".sha256"]:
-            raise BackupError("归档内容不符合 SQL + SQL.sha256 合同")
-        source = archive.extractfile(sql_name)
-        checksum_source = archive.extractfile(sql_name + ".sha256")
-        if source is None or checksum_source is None:
-            raise BackupError("归档缺少 SQL 或 SHA-256")
-        actual = hashlib.sha256()
-        with source:
-            for block in iter(lambda: source.read(8 * 1024 ** 2), b""):
-                ensure_running()
-                actual.update(block)
-        recorded = checksum_source.read().decode("ascii").strip()
-        if actual.hexdigest() != digest or recorded != "{}  {}".format(digest, sql_name):
-            raise BackupError("归档 SHA-256 回读不一致")
+    # Stream once through the complete archive; checking names first would
+    # decompress the SQL an extra time on large backups.
+    opener = {"gz": gzip.open, "bz2": bz2.open, "xz": lzma.open}[compression]
+    with opener(str(archive_path), "rb") as compressed:
+        with tarfile.open(fileobj=compressed, mode="r|") as archive:
+            member = archive.next()
+            if member is None or member.name != sql_name or not member.isfile():
+                raise BackupError("归档缺少 SQL")
+            with archive.extractfile(member) as source:
+                reader = HashingReader(source, "verify")
+                while reader.read(1024 ** 2):
+                    pass
+                actual = reader.finish()
+            member = archive.next()
+            if member is None or member.name != sql_name + ".sha256" or not member.isfile() or member.size != len(checksum):
+                raise BackupError("归档缺少 SHA-256")
+            with archive.extractfile(member) as source:
+                recorded = source.read()
+            if actual != digest or recorded != checksum:
+                raise BackupError("归档 SHA-256 回读不一致")
+            if archive.next() is not None:
+                raise BackupError("归档内容不符合 SQL + SQL.sha256 合同")
+        # Drain the compression decoder, including its trailer/checksum.
+        # tar's end blocks alone do not validate a gzip CRC or truncated trailer.
+        while compressed.read(1024 ** 2):
+            ensure_running()
+    return digest
 
 
 def enforce_retention(directory, scope):
@@ -453,7 +561,7 @@ def backup(args):
         archive_partial = directory / ("." + base + ".tar." + args.compression + ".partial")
         archive_final = directory / (base + ".tar." + args.compression)
         try:
-            command = build_dump_command(selection, sql_path, args.login_path)
+            command = build_dump_command(selection, sql_path, args.login_path, *native_for(args, "mysqldump"))
             LOGGER.info("阶段=mysqldump scope=%s databases=%s", selection["scope"], selection["databases"])
             ACTIVE_PROCESS = subprocess.Popen(
                 command,
@@ -485,8 +593,9 @@ def backup(args):
             if not sql_path.is_file() or sql_path.stat().st_size == 0:
                 raise BackupError("mysqldump 未生成有效备份")
             validate_footer(sql_path)
-            digest = file_sha256(sql_path)
-            write_archive(sql_path, archive_partial, sql_name, digest, args.compression)
+            LOGGER.info("MYSQL_BACKUP_PHASE_DONE phase=mysqldump elapsed_seconds=%.3f bytes=%d",
+                        time.monotonic() - started, sql_path.stat().st_size)
+            digest = write_archive(sql_path, archive_partial, sql_name, None, args.compression)
             os.chmod(str(archive_partial), 0o600)
             with archive_partial.open("rb") as source:
                 os.fsync(source.fileno())
@@ -565,7 +674,19 @@ def timer_backup_arguments(args):
         command.extend(["--database"] + group)
     for group in args.exclude_database:
         command.extend(["--exclude-database"] + group)
+    for item in getattr(args, "native_option", []):
+        command.extend(["--native-option", item])
     return " ".join(shlex.quote(item) for item in command)
+
+
+def systemd_quote(value):
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise BackupError("systemd 参数包含控制字符")
+    return '\"' + value.replace("\\", "\\\\").replace('\"', '\\\"').replace("%", "%%").replace("$", "$$") + '\"'
+
+
+def native_for(args, target):
+    return parse_native_options(getattr(args, "native_option", [])).get(target, [])
 
 
 def timer_install(args):
@@ -575,7 +696,7 @@ def timer_install(args):
     executable = validated_exec_path(args.exec_path)
     unit_dir = Path(env_path("MYLOGI_SYSTEMD_UNIT_DIR", DEFAULT_UNIT_DIR))
     unit_dir.mkdir(parents=True, exist_ok=True)
-    command = "{} {}".format(shlex.quote(str(executable)), timer_backup_arguments(args))
+    command = " ".join(systemd_quote(item) for item in [str(executable)] + shlex.split(timer_backup_arguments(args)))
     service = """[Unit]\nDescription=MySQL logical backup\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nType=oneshot\nUser=root\nGroup=root\nUMask=0077\nEnvironment=HOME=/root\nExecStart={}\nTimeoutStartSec=infinity\nKillMode=control-group\nStandardOutput=journal\nStandardError=journal\n""".format(command)
     timer = """[Unit]\nDescription=Run MySQL logical backup daily\n\n[Timer]\nOnCalendar=*-*-* {}:00\nPersistent=true\nAccuracySec=1min\nUnit={}\n\n[Install]\nWantedBy=timers.target\n""".format(args.at, SERVICE_NAME)
     service_path = unit_dir / SERVICE_NAME
@@ -621,6 +742,8 @@ def timer_remove(_args):
 
 
 def add_scope_arguments(parser):
+    parser.add_argument("--native-option", action="append", default=[], metavar="TARGET=--OPTION[=VALUE]",
+                        help="原生长参数，可重复；目标 mysql 或 mysqldump；值使用 =，不经 shell，受保护参数拒绝覆盖")
     parser.add_argument("--login-path", default=DEFAULT_LOGIN_PATH, help="mysql_config_editor 登录路径；默认 mysql-backup")
     parser.add_argument("--database", action="append", nargs="+", default=[], metavar="NAME", help="只备份指定数据库；可连续指定或重复使用")
     parser.add_argument("--exclude-database", action="append", nargs="+", default=[], metavar="NAME", help="从备份范围排除数据库；可连续指定或重复使用")
@@ -639,6 +762,13 @@ def create_parser():
   sudo MyLogiBackupCli backup
   sudo MyLogiBackupCli backup --database app audit --compression bz2
   sudo MyLogiBackupCli backup --exclude-database test archive --compression xz
+  sudo MyLogiBackupCli backup --database app --native-option mysqldump=--extended-insert
+  sudo MyLogiBackupCli backup --native-option mysql=--ssl-mode=VERIFY_IDENTITY --native-option mysqldump=--ssl-mode=VERIFY_IDENTITY
+
+  原生参数不改变默认值；例如 extended-insert 只改变 INSERT 输出，不消除查询等待或 1412。
+  --single-transaction 不隔离 DDL；备份窗口内应协调 ALTER/DROP/RENAME/TRUNCATE。
+  日志保留 mysqldump 表阶段及相邻事件间隔、导出/压缩/校验耗时与字节数。
+  1412 不能单凭错误文字唯一归因于 TRUNCATE；失败不发布归档，也不自动重试。
 
   # 4. 安装每天 01:01 执行的 timer，查看状态并移除
   sudo MyLogiBackupCli timer install --at 01:01 --exec-path /usr/local/bin/MyLogiBackupCli --compression gz
@@ -702,10 +832,11 @@ def main(argv=None):
         signal.signal(item, handle_signal)
     try:
         args = create_parser().parse_args(argv)
+        parse_native_options(getattr(args, "native_option", []))
         configure_logging()
         args.handler(args)
         return 0
-    except BackupError as exc:
+    except (BackupError, ValueError, OSError, EOFError, tarfile.TarError, lzma.LZMAError, zlib.error) as exc:
         if LOGGER.handlers:
             LOGGER.error("MYSQL_BACKUP_FAILED error=%s", exc)
         print("MYSQL_BACKUP_FAILED error={}".format(exc), file=sys.stderr)

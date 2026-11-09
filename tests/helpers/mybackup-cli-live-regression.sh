@@ -8,12 +8,16 @@ PXB_IMAGE="${MYBACKUP_PXB_IMAGE:-hub.talkedu.cn/kubeauto/percona-xtrabackup:8.4.
 MYSQL_IMAGE="${MYBACKUP_MYSQL_IMAGE:-hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4}"
 PXB_DIGEST="${MYBACKUP_PXB_DIGEST:-sha256:6f3f3735320eb77e7bb00300b37efd9a0cc797c34e2c637a2f687c77504d94b5}"
 MYSQL_DIGEST="${MYBACKUP_MYSQL_DIGEST:-sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83}"
-PASSWORD='ToolPass_8_4'; CONFIG="$ROOT/backup.json"; MARKER='mybackup_fixture'
+# Tags are mutable; pull the accepted immutable manifests, not today's tag.
+PXB_IMAGE="${PXB_IMAGE%@*}@$PXB_DIGEST"
+MYSQL_IMAGE="${MYSQL_IMAGE%@*}@$MYSQL_DIGEST"
+PASSWORD='ToolPass_8_4' ; CONFIG="$ROOT/backup.json"; MARKER='mybackup_fixture'
 cleanup() {
   set +e
   # Preserve only this run's scoped product log for the caller; never merge a
   # host-level /var/log/mysqlbackup.log from an earlier gate into evidence.
   cp -f "$ROOT/mysqlbackup.log" /tmp/tools-mybackup-file.log 2>/dev/null || true
+  docker ps -aq --filter label=kubeauto.mysql-backup=physical | xargs -r docker rm -f >/dev/null 2>&1 || true
   docker rm -f "$MYSQL_CTN" >/dev/null 2>&1 || true
   rm -rf "$ROOT"
 }
@@ -47,7 +51,8 @@ if [[ "\${MYBACKUP_INJECT_SIGINT:-0}" == 1 && " \$* " == *" --prepare "* ]]; the
   exit 130
 fi
 args=(); for arg in "\$@"; do if [[ "\$arg" == --socket=* ]]; then args+=(--host=127.0.0.1 --port=3306); else args+=("\$arg"); fi; done
-exec docker run --rm --user 0 --network container:tools-mbk-mysql -v '$ROOT:$ROOT' -v '$ROOT/mysql:/var/lib/mysql' '$PXB_IMAGE' xtrabackup "\${args[@]}"
+network=(); if [[ " \$* " == *" --backup "* ]]; then network=(--network container:tools-mbk-mysql); fi
+exec docker run --rm --label kubeauto.mysql-backup=physical --user 0 "\${network[@]}" -v '$ROOT:$ROOT' -v '$ROOT/mysql:/var/lib/mysql' '$PXB_IMAGE' xtrabackup "\${args[@]}"
 EOF
 cat >"$ROOT/bin/mysqlbinlog" <<EOF
 #!/usr/bin/env bash
@@ -68,10 +73,16 @@ action="${1:-}"
 case "$action" in
   status) [[ -f "$state" ]] && cat "$state" || echo inactive; exit 0 ;;
   is-active) [[ -f "$state" ]] && cat "$state" || echo inactive; [[ -f "$state" ]] && [[ "$(cat "$state")" == active ]] && exit 0 || exit 3 ;;
-  # Keep the fixture container alive so Docker can execute PXB helper
-  # containers while the product believes the service is stopped.
-  stop) echo inactive >"$state"; exit 0 ;;
-  start|restart) docker start tools-mbk-mysql >/dev/null; echo active >"$state"; exit 0 ;;
+  stop) docker stop --time 30 tools-mbk-mysql >/dev/null; echo inactive >"$state"; exit 0 ;;
+  start|restart)
+    docker start tools-mbk-mysql >/dev/null
+    ready=0
+    for _ in $(seq 1 60); do
+      if docker exec tools-mbk-mysql env MYSQL_PWD=ToolPass_8_4 mysql -uroot -e 'SELECT 1' >/dev/null 2>&1; then ready=1; break; fi
+      sleep 1
+    done
+    [[ "$ready" -eq 1 ]]
+    echo active >"$state"; exit 0 ;;
   *) exit 1 ;;
 esac
 EOF
@@ -87,7 +98,7 @@ INSERT INTO $MARKER.items VALUES (1, 'before-full'), (2, 'before-full-2');
 FLUSH LOGS;
 SQL
 cat >"$CONFIG" <<JSON
-{"backup_base":"$ROOT/backup","mysql_user":"root","mysql_password":"$PASSWORD","mysql_socket":"$ROOT/mysql/mysql.sock","mysql_service":"mysqld","mysql_datadir":"$ROOT/mysql","mysql_binlog_prefix":"mysql-bin","xtrabackup_parallel":1,"xtrabackup_compress_threads":1,"xtrabackup_use_memory":"32M","xtrabackup_lock_ddl":"AUTO"}
+{"backup_base":"$ROOT/backup","mysql_user":"root","mysql_password":"$PASSWORD","mysql_socket":"$ROOT/mysql/mysql.sock","mysql_service":"mysqld","mysql_datadir":"$ROOT/mysql","mysql_binlog_prefix":"mysql-bin","xtrabackup_parallel":1,"xtrabackup_compress_threads":1,"xtrabackup_use_memory":"32M","xtrabackup_lock_ddl":"AUTO","native_options":{"xtrabackup-prepare":["--use-memory=64M"]}}
 JSON
 chmod 0600 "$CONFIG"
 export MYSQLBACKUP_LOG_FILE="$ROOT/mysqlbackup.log"
@@ -105,7 +116,9 @@ if find "$ROOT/backup/full" -type f -name .backup_ok -print -quit | grep -q .; t
 fi
 rm -f /tmp/mybackup-enospc.out
 echo MYBACKUP_ENOSPC_RECOVERY_PASS
-run_tool full -c "$CONFIG"
+run_tool full -c "$CONFIG" --native-option xtrabackup-backup=--throttle=100
+grep -q -- "--throttle=100" "$ROOT/mysqlbackup.log"
+echo MYBACKUP_NATIVE_BACKUP_PASS
 mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -e "INSERT INTO $MARKER.items VALUES (3, 'after-full'); FLUSH LOGS;"
 echo MYBACKUP_STAGE incr; run_tool incr -c "$CONFIG"
 echo MYBACKUP_STAGE binlog; run_tool binlog -c "$CONFIG"
@@ -126,8 +139,14 @@ sleep 5
 [[ "$sig_rc" -ne 0 ]] || { echo MYBACKUP_SIGINT_FALSE_SUCCESS >&2; exit 1; }
 [[ "$(systemctl is-active mysqld 2>/dev/null || true)" == active ]] || { echo MYBACKUP_SIGINT_SERVICE_NOT_RECOVERED >&2; cat "$ROOT/restore.sigint.log" >&2; exit 1; }
 echo MYBACKUP_SIGINT_RECOVERY_PASS
+# A restore must recover snapshot data after an independent destructive fixture
+# change. Reading rows that remained in the original server is not restore proof.
+mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -e "DELETE FROM $MARKER.items"
+mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -N -e "SELECT COUNT(*) FROM $MARKER.items" | grep -Fxq '0'
 echo MYBACKUP_STAGE restore; run_tool restore -c "$CONFIG" --confirm-destructive-restore --binlog-start-time '2099-01-01 00:00:00'
 mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -N -e "SELECT COUNT(*) FROM $MARKER.items" | grep -Fxq '3'; echo MYBACKUP_RESTORE_READBACK_PASS
+grep -q -- "--use-memory=64M" "$ROOT/mysqlbackup.log"
+echo MYBACKUP_NATIVE_PREPARE_PASS
 ( flock -n 9 || exit 1; sleep 5 ) 9>"$ROOT/backup/lock/mysqlbackup.lock" & lock_pid=$!; sleep 1
 if run_tool checksum -c "$CONFIG" >/dev/null 2>&1; then echo MYBACKUP_LOCK_CONFLICT_FALSE_SUCCESS >&2; kill "$lock_pid" 2>/dev/null || true; exit 1; fi
 wait "$lock_pid"; echo MYBACKUP_LOCK_CONFLICT_PASS
