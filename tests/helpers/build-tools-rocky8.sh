@@ -11,7 +11,7 @@ CONTAINER=kubeauto-rocky8-tools-build
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 
 if [[ -n "${TOOLS_SELECTED:-}" ]]; then
-  [[ "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli ]] || { echo TOOLS_BUILD_SCOPE_REFUSED >&2; exit 2; }
+  [[ "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli ]] || { echo TOOLS_BUILD_SCOPE_REFUSED >&2; exit 2; }
   IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
 fi
 
@@ -66,6 +66,9 @@ docker run --rm --name "$CONTAINER" \
     python3.12 -c "import pyexpat"
     if [[ -n "$TOOLS_SELECTED" ]]; then
       python3.12 -m pip install pyinstaller==6.16.0
+      if [[ ",$TOOLS_SELECTED," == *,MigrationCli,* ]]; then
+        python3.12 -m pip install PyMySQL==1.1.2 cryptography==45.0.5
+      fi
       python3.12 -m PyInstaller --clean tools-onefile.spec
     else
       python3 build.py --tools-only

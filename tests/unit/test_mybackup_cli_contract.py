@@ -33,6 +33,39 @@ def manager_for(tmpdir):
 
 
 class MyBackupCliContractTest(unittest.TestCase):
+    def test_ignore_error_cannot_publish_a_partial_dump(self):
+        for target in MOD.NATIVE_TARGETS:
+            for token in ("--ignore-error=1146", "--loose-ignore_error=1146", "--ignore-err=1146"):
+                with self.subTest(target=target, token=token), self.assertRaises(ValueError):
+                    MOD.native_arguments(target, token)
+
+    def test_customer_help_works_without_mysql_credentials_or_writable_log(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory)/'never.log'
+            for arguments in (['--help'], ['full', '--help'], ['--help-native']):
+                result = subprocess.run([sys.executable, str(ROOT/'tools/mysqltools/MyBackupCli.py')] + arguments,
+                    env=dict(os.environ, PATH='/nonexistent', MYSQL_BACKUP_PASSWORD='', MYSQLBACKUP_LOG_FILE=str(log)),
+                    capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stderr, '')
+                self.assertIn('--native-option', result.stdout)
+                self.assertFalse(log.exists())
+            for target in MOD.NATIVE_TARGETS:
+                self.assertIn(target, result.stdout)
+            for option in MOD.NATIVE_PROTECTED:
+                self.assertIn('--' + option, result.stdout)
+            self.assertIn('正常入口', result.stdout)
+
+    def test_native_help_examples_are_accepted_by_real_argument_parser(self):
+        import shlex
+        for line in MOD.native_option_help().splitlines():
+            if line.strip().startswith('MyBackupCli '):
+                with self.subTest(example=line), mock.patch('sys.argv', shlex.split(line)):
+                    args = MOD.parse_arguments()
+                    self.assertTrue(args.native_options)
+
     def test_binlog_index_absolute_entries_are_normalized_to_datadir_names(self):
         manager = MOD.BackupManager.__new__(MOD.BackupManager)
         manager.config = mock.Mock()

@@ -3,7 +3,7 @@
 
 meta:
   version: 1
-  updated: "2026-11-08"
+  updated: "2026-11-09"
   status: approved
   runner: tests/run_tools_regression.sh
   scope: "tools/ 下每个脚本都是独立 CLI；禁止依赖 kubeauto 核心、middleware、其它 tools 或其它工程。"
@@ -27,9 +27,9 @@ meta:
     required_evidence: ["official source", "exact version", "manifest digest or SHA256", "owner", "cleanup scope"]
     mysql_tools:
       migration:
-        - "hub.talkedu.cn/kubeauto/mysql:8.0.46@sha256:0b6938c55ad3ef982d41cfa3ee01a63074cd5c9f3907487badeda53f6feb14da"
-        - "hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4@sha256:0a3e659b9fb960330299e2a1847414f6185c573a3fd2cf1320221066904ea77d"
-        - "hub.talkedu.cn/kubeauto/mysql-9.2:9.2.0@sha256:867954f8c74131e891c2d3501560abbb7548ab8f439245c2feb4648f99b0caeb"
+        - "hub.talkedu.cn/kubeauto/mysql@sha256:2f27838ce14a31d6e434efb442658c4ce19a7cd0ec834e329ca213569faa7d3c"
+        - "hub.talkedu.cn/kubeauto/mysql-8.4@sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83"
+        - "hub.talkedu.cn/kubeauto/mysql-9.2@sha256:308515a860be3b21aa44ced3d39f7f91d800efe7ff3719c249f19a89a8480740"
       physical_backup:
         - "hub.talkedu.cn/kubeauto/mysql-8.4@sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83"
         - "hub.talkedu.cn/kubeauto/percona-xtrabackup@sha256:6f3f3735320eb77e7bb00300b37efd9a0cc797c34e2c637a2f687c77504d94b5"
@@ -119,20 +119,20 @@ test_cases:
   - {id: TL-KAF-04, tool: KafkaCli, category: security, scenario: "TLS/SASL 凭据保护、命令注入和错误 broker 隔离", command: "fake broker + 恶意 config/用户名/密码执行", expected: "凭据不进日志；拒绝注入；连接失败快速明确", status: pass, evidence: "同轮 live 覆盖 SASL_PLAINTEXT、SASL_SSL 自建 PKI、错误认证、恶意 target/group 输入及凭据脱敏；固定 fixture digest 校验通过；TOOLS_KAFKA_EXIT rc=0"}
   - {id: TL-KAF-05, tool: KafkaCli, category: recovery, scenario: "超时、重试、消费中断和临时文件清理", command: "在 produce/consume 各阶段断开 broker", expected: "退出码稳定；无孤儿进程/临时凭据；重试不重复错误副作用", status: pass, evidence: "同轮 live 覆盖 broker down 快速失败与恢复重试、9/10 消费等待中断、无孤儿 consumer/临时凭据；KAFKA_DURABLE_STATUS rc=0 finalized=0；TOOLS_CLEAN_VERIFY_PASS scope=kafka host=root@192.168.122.2 nodes=5"}
 
-  - {id: TL-MIG-01, tool: MigrationCli, category: build, scenario: "MySQL 迁移工具独立构建与 pymysql 版本锁定", command: "python3 -m compileall -q tools/mysqltools/MigrationCli.py && build tools-only", expected: "产物可执行，构建 provenance/SHA256 完整", status: pass, evidence: "2026-09-11 当前源码 tools build-only；Rocky 8.10/glibc 2.28；镜像 sha256:fd4126fd5c456f8127ef4c0efdcee3c1cde4c9a164aceda7b1fbc7b72af8a726；MigrationCli onefile sha256=cac5473b0aa9b4a9a869dfb3de28dab7c510e03d46d24b9e66c478a32dc50789；TOOLS_BUILD_PASS count=9"}
-  - {id: TL-MIG-02, tool: MigrationCli, category: cli, scenario: "源/目标连接、版本探测、升级路径和配置合同", command: "python3 tools/mysqltools/MigrationCli.py --help", expected: "密码不回显；非法版本/连接参数非 0", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；PyMySQL 依赖可加载，参数帮助合同可加载"}
-  - {id: TL-MIG-03, tool: MigrationCli, category: functional, scenario: "MySQL 8.0.46/8.4.x/9.x 隔离实例 schema/data 迁移核验", command: "使用 ext-images 双推且 digest 固定的镜像，按官方 upgrade path 执行 dry-run -> migrate -> checksum/readback", expected: "对象/行数/checksum 一致，官方不支持路径明确阻断", status: pass, evidence: "2026-09-24 logs/tools-migration-live-20260924-114517.log sha256=59e543f4d6506fc45e857125c1c357d51f2ffe6e5d47510ee73f80e9ad1f5502；按 13306/13307/13308 路由至同版本 fixture 容器内 mysql/mysqldump；8.0.46->8.4.4 分表/checksum、8.4.4->9.2.0 整库及 structure-only/readback 通过。"}
-  - {id: TL-MIG-04, tool: MigrationCli, category: security, scenario: "SQL/主机参数注入、最小权限和 destructive 操作确认", command: "恶意 schema/table/host 与无确认 destructive 参数", expected: "参数化/白名单生效；无确认不写目标；凭据不落盘", status: pass, evidence: "2026-09-24 同轮日志 sha256=59e543f4d6506fc45e857125c1c357d51f2ffe6e5d47510ee73f80e9ad1f5502；bad;drop、不可达源、0600 option-file 和目标无副作用合同通过。"}
-  - {id: TL-MIG-05, tool: MigrationCli, category: recovery, scenario: "迁移中断、回滚标记、临时 dump/gzip 回收和重试", command: "在 dump/import/verify 阶段注入断连", expected: "首错可诊断；目标不被伪装为成功；临时文件与锁清理", status: pass, evidence: "2026-09-24 同轮不可达源非0、无假成功；数据库/三客户端容器、报告、脚本、venv 和临时凭据全部回收；MIGRATION_CLI_LIVE_REGRESSION_PASS、TOOLS_MIGRATION_EXIT rc=0、TOOLS_CLEAN_VERIFY_PASS。"}
+  - {id: TL-MIG-01, tool: MigrationCli, category: build, scenario: "MySQL 迁移工具独立构建与 pymysql 版本锁定", command: "python3 -m compileall -q tools/mysqltools/MigrationCli.py && build tools-only", expected: "产物可执行，构建 provenance/SHA256 完整", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-MIG-02, tool: MigrationCli, category: cli, scenario: "源/目标连接、版本探测、升级路径和配置合同", command: "python3 tools/mysqltools/MigrationCli.py --help", expected: "密码不回显；非法版本/连接参数非 0", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-MIG-03, tool: MigrationCli, category: functional, scenario: "MySQL 8.0.46/8.4.x/9.x 隔离实例 schema/data 迁移核验", command: "使用 ext-images 双推且 digest 固定的镜像，按官方 upgrade path 执行 dry-run -> migrate -> checksum/readback", expected: "对象/行数/checksum 一致，官方不支持路径明确阻断", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json#runs.full；当前前置 PASS 和输入绑定后，冻结 MigrationCli 原生/并发/失败/回滚重试及既有三版本全部迁移场景完整干净回归；local rc=0、remote durable 0/0、零未预期失败及 TOOLS_CLEAN_VERIFY_PASS。"}
+  - {id: TL-MIG-04, tool: MigrationCli, category: security, scenario: "SQL/主机参数注入、最小权限和 destructive 操作确认", command: "恶意 schema/table/host 与无确认 destructive 参数", expected: "参数化/白名单生效；无确认不写目标；凭据不落盘", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-MIG-05, tool: MigrationCli, category: recovery, scenario: "迁移中断、回滚标记、临时 dump/gzip 回收和重试", command: "在 dump/import/verify 阶段注入断连", expected: "首错可诊断；目标不被伪装为成功；临时文件与锁清理", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
 
-  - {id: TL-MBK-01, tool: MyBackupCli, category: build, scenario: "XtraBackup 兼容环境 onefile 构建", command: "python3 -m compileall -q tools/mysqltools/MyBackupCli.py && build tools-only", expected: "产物可执行，XtraBackup 官方版本/ SHA256 已记录", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
-  - {id: TL-MBK-02, tool: MyBackupCli, category: cli, scenario: "全量/增量/压缩/恢复参数和配置权限合同", command: "python3 tools/mysqltools/MyBackupCli.py --help", expected: "非法目录/配置/选项非 0；密码文件权限受控", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
+  - {id: TL-MBK-01, tool: MyBackupCli, category: build, scenario: "XtraBackup 兼容环境 onefile 构建", command: "python3 -m compileall -q tools/mysqltools/MyBackupCli.py && build tools-only", expected: "产物可执行，XtraBackup 官方版本/ SHA256 已记录", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-MBK-02, tool: MyBackupCli, category: cli, scenario: "全量/增量/压缩/恢复参数和配置权限合同", command: "python3 tools/mysqltools/MyBackupCli.py --help", expected: "非法目录/配置/选项非 0；密码文件权限受控", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-MBK-03, tool: MyBackupCli, category: functional, scenario: "Percona XtraBackup 官方兼容组合的全量+增量 prepare/restore 数据校验", command: "使用 TalkEdu Hub 已发布且 digest 固定的 MySQL/XtraBackup 镜像执行 full -> incremental -> prepare -> restore -> readback", expected: "按官方文档 prepare 成功，数据 checksum 一致；未获官方支持的 9.x 组合不伪报 PASS", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；physical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-MBK-04, tool: MyBackupCli, category: security, scenario: "备份目录穿越、锁竞争、敏感配置和 destructive restore 保护", command: "恶意路径/并发执行/无确认 restore", expected: "路径限制、单实例锁、敏感信息脱敏、无确认不覆盖", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；physical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
+  - {id: TL-MBK-04, tool: MyBackupCli, category: security, scenario: "备份目录穿越、锁竞争、敏感配置和 destructive restore 保护", command: "恶意路径/并发执行/无确认 restore", expected: "路径限制、单实例锁、敏感信息脱敏、无确认不覆盖", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-MBK-05, tool: MyBackupCli, category: recovery, scenario: "磁盘满/进程中断后的临时文件和锁回收", command: "在 copy/prepare/restore 阶段注入 ENOSPC/SIGINT", expected: "半成品不冒充备份；锁释放；可从干净边界重试", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；physical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
 
-  - {id: TL-MLB-01, tool: MyLogiBackupCli, category: build, scenario: "Rocky 8.10/glibc 2.28 独立 onefile 构建", command: "bash tests/run_tools_regression.sh --build-only", expected: "MyLogiBackupCli-rocky8 可执行；SHA256、构建镜像与 glibc 来源可追溯", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
-  - {id: TL-MLB-02, tool: MyLogiBackupCli, category: cli, scenario: "完整 help、版本、非法参数与 MySQL 8.0+ 边界", command: "python3 -m unittest tests.unit.test_mylogi_backup_cli_contract", expected: "help 覆盖全部命令和示例；8.0 以下版本、master-data、ZIP/ZIP64 不进入运行合同；非法参数非0", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
+  - {id: TL-MLB-01, tool: MyLogiBackupCli, category: build, scenario: "Rocky 8.10/glibc 2.28 独立 onefile 构建", command: "bash tests/run_tools_regression.sh --build-only", expected: "MyLogiBackupCli-rocky8 可执行；SHA256、构建镜像与 glibc 来源可追溯", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-MLB-02, tool: MyLogiBackupCli, category: cli, scenario: "完整 help、版本、非法参数与 MySQL 8.0+ 边界", command: "python3 -m unittest tests.unit.test_mylogi_backup_cli_contract", expected: "help 覆盖全部命令和示例；8.0 以下版本、master-data、ZIP/ZIP64 不进入运行合同；非法参数非0", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-MLB-03, tool: MyLogiBackupCli, category: security, scenario: "setup-login 交互创建加密登录路径", command: "MyLogiBackupCli setup-login --host 127.0.0.1 --port 3306 --user mysql_backup", expected: "密码不进入 argv/日志；登录文件 root:root 0600；非法 IPv4 在副作用前拒绝", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
   - {id: TL-MLB-04, tool: MyLogiBackupCli, category: functional, scenario: "preflight 依赖、挂载、权限、连接、版本、范围与空间检查", command: "MyLogiBackupCli preflight", expected: "8.0+ 同主次版本、独立挂载和足够空间时 MYSQL_BACKUP_PREFLIGHT_OK；任一前置不满足立即失败", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
   - {id: TL-MLB-05, tool: MyLogiBackupCli, category: functional, scenario: "全库、指定库和排除库逻辑备份", command: "MyLogiBackupCli backup [--database ...|--exclude-database ...]", expected: "范围精确；系统库不误入；空范围、重复或未知库失败", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
@@ -140,7 +140,7 @@ test_cases:
   - {id: TL-MLB-07, tool: MyLogiBackupCli, category: functional, scenario: "routine/event/trigger/BLOB 及非 InnoDB 边界", command: "现场创建混合对象后通过 CLI 备份并隔离恢复读回", expected: "对象与二进制数据读回一致；非 InnoDB 明确告警且不伪称事务一致", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
   - {id: TL-MLB-08, tool: MyLogiBackupCli, category: functional, scenario: "gz/bz2/xz、SQL SHA256、归档回读、原子发布与保留三份", command: "依次执行三种 compression 并重复同 scope 备份", expected: "每个归档仅含 SQL 和校验文件且回读一致；无 partial；每 scope 最多三份", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
   - {id: TL-MLB-09, tool: MyLogiBackupCli, category: functional, scenario: "隔离实例恢复读回", command: "主机解压 CLI 归档并通过 stdin 导入独立 MySQL 容器", expected: "表、BLOB、procedure、trigger、event 精确读回；不依赖镜像内 tar", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-MLB-10, tool: MyLogiBackupCli, category: security, scenario: "单实例锁、凭据权限、数据库参数与日志脱敏", command: "并发 backup、0644 登录文件、恶意/异常数据库参数", expected: "锁竞争和弱权限失败；参数无命令注入；密码不出现在输出或日志", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
+  - {id: TL-MLB-10, tool: MyLogiBackupCli, category: security, scenario: "单实例锁、凭据权限、数据库参数与日志脱敏", command: "并发 backup、0644 登录文件、恶意/异常数据库参数", expected: "锁竞争和弱权限失败；参数无命令注入；密码不出现在输出或日志", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-MLB-11, tool: MyLogiBackupCli, category: recovery, scenario: "dump 失败、footer 缺失、未挂载、SIGINT/SIGTERM 清理", command: "tests/helpers/mylogi-backup-live-regression.sh 注入各阶段故障", expected: "首错明确且退出非0；进程组、partial 和锁回收；重试从干净状态成功", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
   - {id: TL-MLB-12, tool: MyLogiBackupCli, category: functional, scenario: "systemd timer install/status/remove 生命周期", command: "MyLogiBackupCli timer install/status/remove", expected: "unit 原子生成并验证；timer enabled/active；remove 后无工具 unit 残留", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
 
@@ -150,14 +150,14 @@ test_cases:
   - {id: TL-SR-04, tool: StarCli, category: security, scenario: "SSH/路径/SQL 参数注入与 root password 保护", command: "tests/helpers/starcli-contract-test.py", expected: "无命令注入；凭据不进日志/临时文件；失败非 0", status: pass, evidence: "2026-09-12 STARCLI_CONTRACT_PASS cases=37；host/target/路径遍历、远程命令参数隔离、JSON 类型边界、status 错误传播、清理端口和密码不回显均通过"}
   - {id: TL-SR-05, tool: StarCli, category: recovery, scenario: "部署失败清理、重复 deploy 幂等和 setup 超时", command: "tests/helpers/starcli-live-regression.sh", expected: "失败资源可识别并回收；不误报成功；重试从干净状态开始", status: pass, evidence: "2026-09-24 同轮日志 sha256=bd812f503b5cfdb23707b5b174a3d124ace5b3054f2ac92a2fd2690f248b2cc8：BE/CN 重复 deploy 幂等、force FE 重部署、非法存储路径及 BE/CN 冲突非0、按 StarCli clean 回收服务/配置/PID/日志；临时 mysql 客户端容器和远端工作目录零残留"}
 
-  - {id: TL-X-01, tool: cross-tool, category: independence, scenario: "工具脚本 AST 导入边界与清单一一对应", command: "python3 tests/helpers/validate_tools_test_matrix.py tests/tools-test-matrix.yaml", expected: "10 个脚本全部发现；无 common/controller/model/service/kubecli/runtime_hook 或 tools 互相导入", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
-  - {id: TL-X-02, tool: cross-tool, category: independence, scenario: "onefile 产物互不共享解压目录、配置和临时文件", command: "并行启动两个工具并扫描 /tmp 与工作目录", expected: "临时目录/锁/日志命名隔离；一个工具退出不删除另一个工具数据", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；portability 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-X-03, tool: cross-tool, category: portability, scenario: "Rocky 8.10 glibc 2.28 与 Ubuntu/Debian 运行兼容", command: "固定构建后分别执行每个产物 --help/版本", expected: "无 GLIBC/openssl/LD_LIBRARY_PATH ABI 错误", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；portability 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-X-04, tool: cross-tool, category: security, scenario: "统一敏感信息、shell 注入、路径和权限审计", command: "静态扫描 subprocess 调用 + 每工具恶意 fixture", expected: "参数列表调用或安全 quoting；secret 脱敏；输出权限最小化", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
-  - {id: TL-X-05, tool: cross-tool, category: observability, scenario: "统一退出码、成功/失败 marker、日志和诊断", command: "runner 收集每工具 stdout/stderr/rc/耗时/版本", expected: "首错可定位；零失败 marker 才能 PASS；日志不含凭据", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；portability 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-X-06, tool: cross-tool, category: supply_chain, scenario: "构建输入、依赖、官方来源和产物 digest 可复核", command: "记录 Python/依赖 lock、基础镜像 digest、产物 SHA256", expected: "无动态未审计下载；来源失败按固定顺序回退并留证", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
-  - {id: TL-X-07, tool: cross-tool, category: cleanup, scenario: "成功、失败、SIGINT、SSH 断连后的 scoped cleanup", command: "tests/run_tools_regression.sh --cleanup/--verify", expected: "无孤儿进程、容器、端口、临时目录、凭据；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；full 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-X-08, tool: cross-tool, category: delivery, scenario: "独立分路不改变核心/middleware 矩阵和 runner", command: "检查 git diff、矩阵引用和 runner 调用图", expected: "tools runner 可单独执行；核心与 middleware 不反向依赖 tools；六仓无非必要变更", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；80 项确定性/门禁/矩阵合同与独立构建通过"}
+  - {id: TL-X-01, tool: cross-tool, category: independence, scenario: "工具脚本 AST 导入边界与清单一一对应", command: "python3 tests/helpers/validate_tools_test_matrix.py tests/tools-test-matrix.yaml", expected: "10 个脚本全部发现；无 common/controller/model/service/kubecli/runtime_hook 或 tools 互相导入", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-02, tool: cross-tool, category: independence, scenario: "onefile 产物互不共享解压目录、配置和临时文件", command: "并行启动两个工具并扫描 /tmp 与工作目录", expected: "临时目录/锁/日志命名隔离；一个工具退出不删除另一个工具数据", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-03, tool: cross-tool, category: portability, scenario: "Rocky 8.10 glibc 2.28 与 Ubuntu/Debian 运行兼容", command: "固定构建后分别执行每个产物 --help/版本", expected: "无 GLIBC/openssl/LD_LIBRARY_PATH ABI 错误", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-04, tool: cross-tool, category: security, scenario: "统一敏感信息、shell 注入、路径和权限审计", command: "静态扫描 subprocess 调用 + 每工具恶意 fixture", expected: "参数列表调用或安全 quoting；secret 脱敏；输出权限最小化", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-05, tool: cross-tool, category: observability, scenario: "统一退出码、成功/失败 marker、日志和诊断", command: "runner 收集每工具 stdout/stderr/rc/耗时/版本", expected: "首错可定位；零失败 marker 才能 PASS；日志不含凭据", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-06, tool: cross-tool, category: supply_chain, scenario: "构建输入、依赖、官方来源和产物 digest 可复核", command: "记录 Python/依赖 lock、基础镜像 digest、产物 SHA256", expected: "无动态未审计下载；来源失败按固定顺序回退并留证", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-07, tool: cross-tool, category: cleanup, scenario: "成功、失败、SIGINT、SSH 断连后的 scoped cleanup", command: "tests/run_tools_regression.sh --cleanup/--verify", expected: "无孤儿进程、容器、端口、临时目录、凭据；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-08, tool: cross-tool, category: delivery, scenario: "独立分路不改变核心/middleware 矩阵和 runner", command: "检查 git diff、矩阵引用和 runner 调用图", expected: "tools runner 可单独执行；核心与 middleware 不反向依赖 tools；六仓无非必要变更", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
 
 # 对外功能清单：每一项都必须由 case_ids 指向可执行的功能/安全/恢复场景。
 # build/--help 只能证明交付物可启动，不能单独覆盖本清单中的生产功能。
@@ -232,6 +232,7 @@ functional_inventory:
     - {id: KAF-F-13, operation: "broker produce/consume、offset 和消息核验", case_ids: [TL-KAF-03]}
     - {id: KAF-F-14, operation: "错误 broker/认证失败、凭据脱敏和无孤儿进程", case_ids: [TL-KAF-04, TL-KAF-05]}
   MigrationCli:
+    - {id: MIG-F-11, operation: "原生参数 CLI/全局与任务配置、help-native、Python args/kwargs、并发隔离和拒绝规则", case_ids: [TL-MIG-02, TL-MIG-03, TL-MIG-04, TL-MIG-05]}
     - {id: MIG-F-01, operation: "单库 --source/--target 与 JSON 多任务配置", case_ids: [TL-MIG-03]}
     - {id: MIG-F-02, operation: "dry-run、structure-only、per-table/whole-db", case_ids: [TL-MIG-03]}
     - {id: MIG-F-03, operation: "mysqldump 导出、gzip、mysql 导入", case_ids: [TL-MIG-03]}
@@ -287,7 +288,7 @@ coverage_summary:
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "两个 MySQL 备份工具的当前增量验收见 tests/evidence/mysql-backup-20261108.json；未完成项保持 pending，无关工具复用未变范围证据；不冒称生产或 ARM64 实测"
+  overall_assessment: "2026-11-09 mysql-migration-20261109.json 记录三个 mysqltools 的当前原生参数/帮助/构建与 Migration 回归；备份恢复按等价范围复用既有证据；不代替客户签收"
 
 mysql_backup_requalification:
   evidence: tests/evidence/mysql-backup-20261108.json
@@ -311,3 +312,38 @@ mysql_backup_requalification:
     - "https://github.com/mysql/mysql-server/blob/mysql-8.0.33/client/mysqldump.cc"
     - "https://docs.python.org/3/library/tarfile.html"
   validation_boundary: "无生产连接、无生产亿级数据压测、无原生 ARM64 主机；8.0.33/PXB8.0.35-36.1 的参数规则由固定源码及确定性 CLI 合同证明，不冒称此组合已实测恢复"
+
+mysql_migration_requalification:
+  evidence: tests/evidence/mysql-migration-20261109.json
+  date: "2026-11-09"
+  classification: "product native-option/task-context change + scoped test-gate maintenance"
+  authorization: "用户要求 MigrationCli 与两个备份工具一致并回归；无生产访问或镜像发布"
+  host: "ubuntu@192.168.47.138; BatchMode + sudo -n; 与 MySQL 备份场景互斥租约"
+  fixtures: "仅本矩阵 migration 三份 immutable digest；数据库与三个版本客户端均 runner-owned；端口 13306/13307/13308 仅监听 loopback；已有同名资源拒绝启动"
+  cleanup: "tools-mig-{src,tgt,tgt9,client80,client84,client92,portability-*}、/tmp/kubeauto-migration-{live,release}、本轮 migration 配置/报告/日志与 mysql_migration_* 临时凭据；保留其它服务、镜像和目录；诊断先打包，再回收"
+  official:
+    - "https://github.com/mysql/mysql-server/blob/mysql-8.0.33/client/mysqldump.cc"
+    - "https://github.com/mysql/mysql-server/blob/mysql-8.4.4/client/mysql.cc"
+    - "https://github.com/PyMySQL/PyMySQL/blob/v1.1.2/pymysql/connections.py"
+    - "https://docs.python.org/3.12/library/threading.html#thread-local-data"
+  cases:
+    TL-MIG-01:
+      command: "TOOLS_BUILD_HOST=ubuntu@192.168.47.138 TOOLS_SELECTED=MigrationCli bash tests/run_tools_regression.sh --build-only"
+      expected: "TOOLS_BUILD_PASS count=1；独立制品及 mysql-migration-build.json SHA256/input 绑定"
+      smallest_disproof: "python -m unittest tests.unit.test_migration_cli_contract.MigrationCliContractTests.test_selected_build_keeps_backup_branch_and_migration_provenance_separate"
+    TL-MIG-02:
+      command: "MigrationCli --help-native; MigrationCli -c /tmp/migration-live.json --native-option mysql=--connect-timeout=45"
+      expected: "help 无连接/文件副作用；MIGRATION_NATIVE_ARGV_READBACK_PASS；JSON 任务覆盖全局，CLI 追加；Python args/kwargs 与 CLI 同一校验"
+      smallest_disproof: "python -m unittest tests.unit.test_migration_cli_contract.MigrationCliContractTests.test_native_config_inheritance_override_clear_and_cli_append"
+    TL-MIG-03:
+      command: "MIGRATION_TEST_HOST=ubuntu@192.168.47.138 MIGRATION_STAGE=full bash tests/run_tools_regression.sh --migration-live"
+      expected: "当前前置与输入绑定后启动；三版本既有迁移与新增原生/并发场景完整执行；MIGRATION_CLI_LIVE_REGRESSION_PASS、durable 0/0、TOOLS_CLEAN_VERIFY_PASS"
+      smallest_disproof: "MIGRATION_TEST_HOST=ubuntu@192.168.47.138 MIGRATION_STAGE=native bash tests/run_tools_regression.sh --migration-live"
+    TL-MIG-04:
+      command: "MigrationCli --native-option mysql=--force; MigrationCli --native-option mysqldump=--ignore-error=1146"
+      expected: "连接前 rc=2；保护清单与帮助一致；argv 无密码且无 shell 执行；既有主机/schema/凭据边界合同保留"
+      smallest_disproof: "python -m unittest tests.unit.test_migration_cli_contract.MigrationCliContractTests.test_native_protected_aliases_and_bad_config_are_rejected"
+    TL-MIG-05:
+      command: "MigrationCli -c /tmp/migration-live.json --native-option mysqldump=--kubeauto-invalid-option; MigrationCli -c /tmp/migration-live.json --native-option mysql=--kubeauto-invalid-option"
+      expected: "导出/导入真实失败非0；可选回滚仅删除专用目标；恢复重试读回；并发上下文独立；MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS、MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS、TOOLS_CLEAN_VERIFY_PASS"
+      smallest_disproof: "MIGRATION_TEST_HOST=ubuntu@192.168.47.138 MIGRATION_STAGE=native bash tests/run_tools_regression.sh --migration-live"

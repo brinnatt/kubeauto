@@ -64,15 +64,68 @@ ignore-table-data where delete-source-logs delete-master-logs flush-logs flush-p
 backup prepare copy-back move-back decompress decrypt export stats target-dir datadir
 incremental incremental-basedir incremental-dir incremental-lsn incremental-history-name
 incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
-no-backup-locks no-server-version-check start-position stop-position start-datetime
+ignore-error no-backup-locks no-server-version-check start-position stop-position start-datetime
 stop-datetime read-from-remote-server raw to-last-log stop-never
 """.split())
+
+
+def native_option_help():
+    """Customer reference, available without credentials or database access."""
+    protected = sorted(NATIVE_PROTECTED)
+    listing = "\n".join("  " + "  ".join("--" + name for name in protected[index:index + 4])
+                        for index in range(0, len(protected), 4))
+    return """原生参数帮助：MyLogiBackupCli
+
+参数交给哪个命令（等号左侧必须完整填写）：
+  mysql       前置检查和信息查询客户端，不负责导出 SQL
+  mysqldump   真正导出 SQL 的命令，不作用于前置 mysql 查询
+  同一个选项需要作用于两者时，分别指定；不会自动复制给另一命令。
+
+示例（先配置登录路径、独立 /backups 挂载和匹配版本的客户端）：
+  MyLogiBackupCli preflight --database app --native-option mysql=--connect-timeout=15
+  MyLogiBackupCli backup --database app --native-option mysqldump=--extended-insert
+  MyLogiBackupCli backup --database app --native-option mysql=--connect-timeout=15 --native-option mysqldump=--max-allowed-packet=256M
+  MyLogiBackupCli backup --database app --native-option 'mysqldump=--ssl-ca=/etc/mysql/backup CA.pem'
+  CA 文件必须真实存在、可读且符合当前 TLS 配置；以上示例不代替 TLS 信任与身份配置。
+  --extended-insert 只改变 INSERT 输出，不消除查询等待或 1412；默认仍为逐行 INSERT。
+
+定时任务保存参数（仅影响此后新启动的任务）：
+  MyLogiBackupCli timer install --at 01:01 --exec-path /usr/local/bin/MyLogiBackupCli --database app --native-option mysqldump=--extended-insert
+  MyLogiBackupCli timer status
+  安装时须把本次需要的全部范围、压缩和原生参数一并写入；不会继承以前一次 backup 的参数。
+  已安装任务须重新 timer install 后生效；timer remove 停用任务，不删除备份归档。
+
+受保护选项的正常入口：
+  --password/--user/--host/--port：使用 setup-login 和 --login-path 管理凭据与连接。
+  --databases/--all-databases/--ignore-table：使用 --database/--exclude-database 选择库范围。
+  --result-file：由工具在备份挂载目录生成临时文件，校验后原子发布。
+  --single-transaction/--source-data/--set-gtid-purged：由工具统一管理，无覆盖入口。
+  --force：不允许跳过导出错误继续生成不完整备份；应移除该参数并排查首个错误。
+
+原生参数使用规则：
+  日常备份继续使用原有命令；只有需要额外的 MySQL/XtraBackup 选项时才添加 --native-option。
+  格式：--native-option '命令或阶段=--完整长参数名=值'
+  无值开关：--native-option '命令或阶段=--完整长参数名'
+  每次只传一个参数；多个参数重复写 --native-option。值必须用 = 连接。
+  路径含空格时，用引号包住整个“命令或阶段=--参数=值”。引号由终端处理，不传给原生命令。
+  不接受短参数、位置参数或命令字符串；不通过 shell 执行，也不展开 $变量、通配符或命令替换。
+  不添加原生参数时保留既有默认值；添加后按顺序传入，是否支持由实际安装的命令决定。
+
+为何部分参数会被拒绝：
+  备份范围、输出文件、凭据、一致性和恢复流程由工具统一管理，不能从扩展入口绕过。
+  拒绝清单不是“允许参数大全”；未列出的完整长参数仍需符合该命令版本的官方说明。
+  下列名称的缩写、下划线写法及 loose-/skip-/disable-/enable-/maximum- 变体也会检查。
+  名称含 password/secret/token/encryption-key/encrypt-key/transition-key/passphrase 的参数不接受。
+  即使某参数不属于所选命令，命中以下共用保护清单仍会拒绝。
+
+完整保护清单：
+""" + listing + "\n\n若被拒绝，先按上面的正常入口设置；仍无法满足时保留报错并联系维护人员，不要修改脚本绕过。\n"
 
 
 def native_arguments(target, *args, **kwargs):
     """Accept --long-option[=value] tokens and keyword options (lists repeat)."""
     if target not in NATIVE_TARGETS:
-        raise ValueError("Unknown native target: " + str(target))
+        raise ValueError("不支持的原生命令或阶段：" + str(target) + "；可选值：" + ", ".join(sorted(NATIVE_TARGETS)) + "。用 --help-native 查看示例。")
     tokens = list(args)
     for name, value in kwargs.items():
         option = "--" + name.replace("_", "-")
@@ -80,7 +133,7 @@ def native_arguments(target, *args, **kwargs):
             tokens.append(option if item is None or item is True else option + "=" + ("OFF" if item is False else str(item)))
     for token in tokens:
         if not isinstance(token, str) or not re.fullmatch(r"--[a-zA-Z0-9][a-zA-Z0-9_-]*(?:=[^\x00-\x1f\x7f]*)?", token):
-            raise ValueError("Native options require --long-option[=value]; short/positional/control tokens are refused")
+            raise ValueError("原生参数须写为 --完整长参数名[=值]；不接受短参数、位置参数或控制字符。用 --help-native 查看示例。")
         name = token[2:].split("=", 1)[0].replace("_", "-").lower()
         # MySQL accepts prefixes, underscores and loose/skip/disable/enable forms.
         while name.startswith(("loose-", "skip-", "disable-", "enable-", "maximum-")):
@@ -88,7 +141,7 @@ def native_arguments(target, *args, **kwargs):
         if any(protected.startswith(name) for protected in NATIVE_PROTECTED) or any(
             secret in name for secret in ("password", "secret", "token", "encryption-key", "encrypt-key", "transition-key", "passphrase")
         ):
-            raise ValueError("Native option is owned by the wrapper or contains credentials: --" + name)
+            raise ValueError("原生参数 --" + name + " 被拒绝：该选项由工具管理或可能包含凭据。用 --help-native 查找正常配置入口。")
     return tokens
 
 
@@ -97,7 +150,7 @@ def parse_native_options(entries):
     for entry in entries:
         target, separator, token = entry.partition("=")
         if not separator:
-            raise ValueError("--native-option requires TARGET=--long-option[=value]")
+            raise ValueError("--native-option 格式错误：须写为 命令或阶段=--完整长参数名[=值]。用 --help-native 查看示例。")
         result.setdefault(target, []).extend(native_arguments(target, token))
     return result
 
@@ -742,8 +795,10 @@ def timer_remove(_args):
 
 
 def add_scope_arguments(parser):
+    parser.add_argument("--help-native", action="version", version=native_option_help(),
+                        help="查看原生参数的命令说明、完整示例、定时保存及拒绝清单；无需连接数据库")
     parser.add_argument("--native-option", action="append", default=[], metavar="TARGET=--OPTION[=VALUE]",
-                        help="原生长参数，可重复；目标 mysql 或 mysqldump；值使用 =，不经 shell，受保护参数拒绝覆盖")
+                        help="给 mysql 查询或 mysqldump 导出追加一个原生长参数；可重复。示例和限制见 --help-native")
     parser.add_argument("--login-path", default=DEFAULT_LOGIN_PATH, help="mysql_config_editor 登录路径；默认 mysql-backup")
     parser.add_argument("--database", action="append", nargs="+", default=[], metavar="NAME", help="只备份指定数据库；可连续指定或重复使用")
     parser.add_argument("--exclude-database", action="append", nargs="+", default=[], metavar="NAME", help="从备份范围排除数据库；可连续指定或重复使用")
@@ -765,7 +820,10 @@ def create_parser():
   sudo MyLogiBackupCli backup --database app --native-option mysqldump=--extended-insert
   sudo MyLogiBackupCli backup --native-option mysql=--ssl-mode=VERIFY_IDENTITY --native-option mysqldump=--ssl-mode=VERIFY_IDENTITY
 
-  原生参数不改变默认值；例如 extended-insert 只改变 INSERT 输出，不消除查询等待或 1412。
+  原生参数可选：mysql=... 只作用于前置查询，mysqldump=... 只作用于导出。
+  每个参数重复写 --native-option；值用 = 连接；含空格时给整个值加引号。
+  不填写时保留默认值；extended-insert 只改变 INSERT 输出，不消除查询等待或 1412。
+  拒绝清单、正常配置入口和定时任务保存示例：MyLogiBackupCli --help-native。
   --single-transaction 不隔离 DDL；备份窗口内应协调 ALTER/DROP/RENAME/TRUNCATE。
   日志保留 mysqldump 表阶段及相邻事件间隔、导出/压缩/校验耗时与字节数。
   1412 不能单凭错误文字唯一归因于 TRUNCATE；失败不发布归档，也不自动重试。
@@ -784,6 +842,15 @@ def create_parser():
   成功标记：MYSQL_BACKUP_LOGIN_PATH_OK、MYSQL_BACKUP_PREFLIGHT_OK、MYSQL_BACKUP_LOCK_ACQUIRED、MYSQL_BACKUP_OK、
   MYSQL_BACKUP_TIMER_INSTALLED、MYSQL_BACKUP_TIMER_OK、MYSQL_BACKUP_TIMER_REMOVED。
 """
+    native_examples = """原生参数示例与判断：
+  MyLogiBackupCli preflight --database app --native-option mysql=--connect-timeout=15
+  MyLogiBackupCli backup --database app --native-option mysqldump=--extended-insert
+  mysql 只作用于检查查询；mysqldump 只作用于导出；不会互相复制参数。
+  多个参数重复写 --native-option；带值选项用 =，含空格时给整个值加引号。
+  凭据用 setup-login，库范围用 --database/--exclude-database；禁止从原生参数覆盖。
+  timer install 须重新声明全部备份选项和原生参数，不继承上次 backup 参数。
+  完整命令说明、定时保存、拒绝清单及替代入口：MyLogiBackupCli --help-native
+"""
     parser = StrictArgumentParser(
         prog="MyLogiBackupCli",
         description="MySQL 8.0+ 生产级逻辑备份：凭据、前置校验、原子归档、轮换和 systemd timer。",
@@ -791,6 +858,8 @@ def create_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         allow_abbrev=False,
     )
+    parser.add_argument("--help-native", action="version", version=native_option_help(),
+                        help="查看原生参数命令、示例、定时保存及拒绝清单；无需连接数据库")
     parser.add_argument("--version", action="version", version="%(prog)s " + VERSION)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -801,17 +870,20 @@ def create_parser():
     setup.add_argument("--login-path", default=DEFAULT_LOGIN_PATH)
     setup.set_defaults(handler=setup_login)
 
-    preflight_parser = subparsers.add_parser("preflight", help="执行全部只读前置检查", allow_abbrev=False)
+    preflight_parser = subparsers.add_parser("preflight", help="执行全部只读前置检查", allow_abbrev=False,
+        formatter_class=argparse.RawDescriptionHelpFormatter, epilog=native_examples)
     add_scope_arguments(preflight_parser)
     preflight_parser.set_defaults(handler=lambda args: preflight(args))
 
-    backup_parser = subparsers.add_parser("backup", help="执行逻辑备份并原子发布归档", allow_abbrev=False)
+    backup_parser = subparsers.add_parser("backup", help="执行逻辑备份并原子发布归档", allow_abbrev=False,
+        formatter_class=argparse.RawDescriptionHelpFormatter, epilog=native_examples)
     add_scope_arguments(backup_parser)
     backup_parser.set_defaults(handler=backup)
 
     timer = subparsers.add_parser("timer", help="管理 systemd service/timer", allow_abbrev=False)
     timer_subparsers = timer.add_subparsers(dest="timer_command", required=True)
-    install = timer_subparsers.add_parser("install", help="安装并启动每日 timer", allow_abbrev=False)
+    install = timer_subparsers.add_parser("install", help="安装并启动每日 timer", allow_abbrev=False,
+        formatter_class=argparse.RawDescriptionHelpFormatter, epilog=native_examples)
     install.add_argument("--at", default="01:01", help="每日执行时间 HH:MM；默认 01:01")
     install.add_argument("--exec-path", required=True, help="MyLogiBackupCli 可执行文件绝对路径")
     add_scope_arguments(install)

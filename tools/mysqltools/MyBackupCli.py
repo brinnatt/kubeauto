@@ -152,15 +152,69 @@ ignore-table-data where delete-source-logs delete-master-logs flush-logs flush-p
 backup prepare copy-back move-back decompress decrypt export stats target-dir datadir
 incremental incremental-basedir incremental-dir incremental-lsn incremental-history-name
 incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
-no-backup-locks no-server-version-check start-position stop-position start-datetime
+ignore-error no-backup-locks no-server-version-check start-position stop-position start-datetime
 stop-datetime read-from-remote-server raw to-last-log stop-never
 """.split())
+
+
+def native_option_help():
+    """Customer reference, available without credentials or database access."""
+    protected = sorted(NATIVE_PROTECTED)
+    listing = "\n".join("  " + "  ".join("--" + name for name in protected[index:index + 4])
+                        for index in range(0, len(protected), 4))
+    return """原生参数帮助：MyBackupCli
+
+参数交给哪个命令（等号左侧必须完整填写）：
+  mysql                   MySQL 查询与 binlog 恢复写入客户端；不配置 XtraBackup 的连接
+  mysqlbinlog             恢复时的 binlog 解析命令；不作用于 binlog 文件复制
+  xtrabackup-backup       full/incr 的备份阶段
+  xtrabackup-prepare      restore 的全量与增量 prepare 阶段
+  xtrabackup-decompress   restore 的解压阶段
+  xtrabackup-copy-back    restore 的数据复制回目录阶段
+
+示例（先使用已验证且权限为 0600 的配置文件）：
+  MyBackupCli full -c /etc/mysql/backup.conf --native-option xtrabackup-backup=--throttle=100
+  MyBackupCli full -c /etc/mysql/backup.conf --native-option mysql=--connect-timeout=15 --native-option xtrabackup-backup=--throttle=100
+  以上 100 是语法示例，不是生产限速建议；只影响备份阶段，不影响 prepare。
+
+长期保存：编辑现有 JSON 的 native_options，值为原生参数字符串数组。例如：
+  "native_options": {"mysql": ["--connect-timeout=15"], "xtrabackup-prepare": ["--use-memory=64M"]}
+  这是配置片段，须合并进现有 JSON；其它阶段可省略或填 []。
+  配置参数先传入，CLI 参数追加在后；同一选项的重复解释由原生命令决定，避免重复设置。
+  64M 是小测试数据示例；生产 prepare 内存优先使用既有 xtrabackup_use_memory 配置。
+
+受保护选项的正常入口：
+  --password/--user/--socket：使用配置 mysql_password/mysql_user/mysql_socket。
+  --datadir/--target-dir：使用 mysql_datadir/backup_base，工具维护备份链目录。
+  --lock-ddl：使用 xtrabackup_lock_ddl=AUTO/ON/OFF/REDUCED；AUTO 检查实际能力。
+  --start-datetime/--stop-datetime：使用 --binlog-start-time/--binlog-stop-time。
+  --backup/--prepare/--copy-back：使用 full/incr/restore；恢复须先审计并明确确认覆盖。
+  --force、关闭保护或更改输出格式没有绕过入口；应移除这些原生参数。
+
+原生参数使用规则：
+  日常备份继续使用原有命令；只有需要额外的 MySQL/XtraBackup 选项时才添加 --native-option。
+  格式：--native-option '命令或阶段=--完整长参数名=值'
+  无值开关：--native-option '命令或阶段=--完整长参数名'
+  每次只传一个参数；多个参数重复写 --native-option。值必须用 = 连接。
+  路径含空格时，用引号包住整个“命令或阶段=--参数=值”。引号由终端处理，不传给原生命令。
+  不接受短参数、位置参数或命令字符串；不通过 shell 执行，也不展开 $变量、通配符或命令替换。
+  不添加原生参数时保留既有默认值；添加后按顺序传入，是否支持由实际安装的命令决定。
+
+为何部分参数会被拒绝：
+  备份范围、输出文件、凭据、一致性和恢复流程由工具统一管理，不能从扩展入口绕过。
+  拒绝清单不是“允许参数大全”；未列出的完整长参数仍需符合该命令版本的官方说明。
+  下列名称的缩写、下划线写法及 loose-/skip-/disable-/enable-/maximum- 变体也会检查。
+  名称含 password/secret/token/encryption-key/encrypt-key/transition-key/passphrase 的参数不接受。
+  即使某参数不属于所选命令，命中以下共用保护清单仍会拒绝。
+
+完整保护清单：
+""" + listing + "\n\n若被拒绝，先按上面的正常入口设置；仍无法满足时保留报错并联系维护人员，不要修改脚本绕过。\n"
 
 
 def native_arguments(target, *args, **kwargs):
     """Accept --long-option[=value] tokens and keyword options (lists repeat)."""
     if target not in NATIVE_TARGETS:
-        raise ValueError("Unknown native target: " + str(target))
+        raise ValueError("不支持的原生命令或阶段：" + str(target) + "；可选值：" + ", ".join(sorted(NATIVE_TARGETS)) + "。用 --help-native 查看示例。")
     tokens = list(args)
     for name, value in kwargs.items():
         option = "--" + name.replace("_", "-")
@@ -168,7 +222,7 @@ def native_arguments(target, *args, **kwargs):
             tokens.append(option if item is None or item is True else option + "=" + ("OFF" if item is False else str(item)))
     for token in tokens:
         if not isinstance(token, str) or not re.fullmatch(r"--[a-zA-Z0-9][a-zA-Z0-9_-]*(?:=[^\x00-\x1f\x7f]*)?", token):
-            raise ValueError("Native options require --long-option[=value]; short/positional/control tokens are refused")
+            raise ValueError("原生参数须写为 --完整长参数名[=值]；不接受短参数、位置参数或控制字符。用 --help-native 查看示例。")
         name = token[2:].split("=", 1)[0].replace("_", "-").lower()
         # MySQL accepts prefixes, underscores and loose/skip/disable/enable forms.
         while name.startswith(("loose-", "skip-", "disable-", "enable-", "maximum-")):
@@ -176,7 +230,7 @@ def native_arguments(target, *args, **kwargs):
         if any(protected.startswith(name) for protected in NATIVE_PROTECTED) or any(
             secret in name for secret in ("password", "secret", "token", "encryption-key", "encrypt-key", "transition-key", "passphrase")
         ):
-            raise ValueError("Native option is owned by the wrapper or contains credentials: --" + name)
+            raise ValueError("原生参数 --" + name + " 被拒绝：该选项由工具管理或可能包含凭据。用 --help-native 查找正常配置入口。")
     return tokens
 
 
@@ -185,7 +239,7 @@ def parse_native_options(entries):
     for entry in entries:
         target, separator, token = entry.partition("=")
         if not separator:
-            raise ValueError("--native-option requires TARGET=--long-option[=value]")
+            raise ValueError("--native-option 格式错误：须写为 命令或阶段=--完整长参数名[=值]。用 --help-native 查看示例。")
         result.setdefault(target, []).extend(native_arguments(target, token))
     return result
 
@@ -1266,8 +1320,8 @@ def parse_arguments():
      %(prog)s restore-dry-run -c /etc/mysql/backup.conf --date 2025-01-20
 
   6. 执行恢复:
-     %(prog)s restore -c /etc/mysql/backup.conf --binlog-start-time '2025-01-20 10:00:00'
-     %(prog)s restore -c /etc/mysql/backup.conf --date 2025-01-20 --binlog-start-time '2025-01-20 10:00:00' --binlog-stop-time '2025-01-20 12:00:00'
+     %(prog)s restore -c /etc/mysql/backup.conf --confirm-destructive-restore --binlog-start-time '2025-01-20 10:00:00'
+     %(prog)s restore -c /etc/mysql/backup.conf --confirm-destructive-restore --date 2025-01-20 --binlog-start-time '2025-01-20 10:00:00' --binlog-stop-time '2025-01-20 12:00:00'
 
   7. 清理旧备份:
      %(prog)s purge -c /etc/mysql/backup.conf
@@ -1288,7 +1342,7 @@ def parse_arguments():
     "xtrabackup_lock_ddl": "AUTO"
 }
 
-环境变量（可选，会覆盖配置文件）:
+环境变量（配置文件密码为空时使用）:
   MYSQL_BACKUP_PASSWORD  - MySQL备份密码
 
 兼容性:
@@ -1297,6 +1351,14 @@ def parse_arguments():
   - MySQL 8.4 + matching Percona XtraBackup 8.4
   - MySQL 9.x physical backup is unsupported; use MigrationCli logical migration
   - Python 3.6+
+
+原生参数（普通备份不必填写）：
+  例如限制备份阶段 I/O：
+    %(prog)s full -c /etc/mysql/backup.conf --native-option xtrabackup-backup=--throttle=100
+  xtrabackup-backup 表示备份阶段；参数不会同时应用到 prepare 或解压阶段。
+  多个参数重复写 --native-option；带值选项用 =，路径含空格时给整个值加引号。
+  凭据、输出路径、一致性和恢复范围由工具管理，不能从此入口覆盖。
+  完整阶段映射、JSON 配置示例和拒绝参数的替代入口：%(prog)s --help-native
 
 官方文档参考:
   - https://docs.percona.com/percona-xtrabackup/8.4/
@@ -1355,8 +1417,10 @@ def parse_arguments():
         help='Binlog保留天数（purge命令），默认: 30'
     )
     
+    parser.add_argument("--help-native", action="version", version=native_option_help(),
+                        help="查看原生参数的阶段说明、完整示例、配置保存及拒绝清单；无需连接数据库")
     parser.add_argument("--native-option", action="append", default=[], metavar="TARGET=--OPTION[=VALUE]",
-                        help="重复传入原生长参数；目标 mysql/mysqlbinlog/xtrabackup-backup/prepare/decompress/copy-back（后三者也须 xtrabackup- 前缀）；拒绝覆盖受保护参数")
+                        help="给指定命令或阶段追加一个原生长参数；可重复。完整阶段名和示例见 --help-native")
     args = parser.parse_args()
     try:
         args.native_options = parse_native_options(args.native_option)

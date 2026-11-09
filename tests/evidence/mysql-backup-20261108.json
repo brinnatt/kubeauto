@@ -46,17 +46,17 @@
       "unexpected_failure_markers": 0
     },
     "portability": {
-      "log": "logs/mysql-backups-portability-20261108-232148.log",
-      "sha256": "4a0e2e9e81d2cdf60a69dff5de58b28eff1b51872ed2f9ecb9d9a854614cf5f8",
-      "archive": "logs/mysql-backups-portability-20261108-232148.evidence.tar.gz",
-      "archive_sha256": "8fd0ac0c0cf6446b8da29eed9561435208abc3370bd7de980d4a1ef91b93b0f2",
-      "remote_status": "logs/mysql-backups-portability-20261108-232148.remote-status",
+      "log": "logs/mysql-backups-portability-20261109-125543.log",
+      "sha256": "3e946a33f4c86b8081202640245c30cdae482ae3c951edce60e014ab6c5c900d",
+      "archive": "logs/mysql-backups-portability-20261109-125543.evidence.tar.gz",
+      "archive_sha256": "710a12aabdabde29be75db86db12f3a15f3673a84a41a4b3926ac2e4694f88ac",
+      "remote_status": "logs/mysql-backups-portability-20261109-125543.remote-status",
       "required_markers": [
-        "MYSQL_BACKUP_RELEASE_PASS stage=portability",
-        "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
         "MYSQL_BACKUP_PORTABILITY_PASS runtime=rocky8 tools=2",
         "MYSQL_BACKUP_PORTABILITY_PASS runtime=debian12 tools=2",
-        "MYSQL_BACKUP_PORTABILITY_PASS runtime=ubuntu24 tools=2"
+        "MYSQL_BACKUP_PORTABILITY_PASS runtime=ubuntu24 tools=2",
+        "MYSQL_BACKUP_RELEASE_PASS stage=portability",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release"
       ],
       "local_exit": 0,
       "remote_exit": 0,
@@ -141,30 +141,32 @@
     }
   ],
   "inputs": {
-    "tools/mysqltools/MyBackupCli.py": "9ec6ac9a951ed5af17a06582edec34dd7668c1cc2f82f2eaf139f5a0ea2b99b3",
-    "tools/mysqltools/MyLogiBackupCli.py": "83f9bf1cc82dc1a6b22a9c5745cdd6f6d730fa1e8a15738814dd347b6e9a48e2",
+    "tools/mysqltools/MyBackupCli.py": "1eebf17d054d463a751d24e9c1fcb27bc242bc8063b93c82c08693e50159dfa7",
+    "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
     "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
-    "tests/run_tools_regression.sh": "0abd457642492e5373080aba635818f0565228dd24dda93ea0f41eb0bac3cd42",
-    "tests/helpers/build-tools-rocky8.sh": "a49800c4a844d084ed4f0b9a0937793b8b3791b6cf429f79829accd941f0d19a",
+    "tests/run_tools_regression.sh": "280a9ffab7dbe80eddba4428ac73c65a18e953a901de1ae80bd2cdae3ea5b7ce",
+    "tests/helpers/build-tools-rocky8.sh": "9f65b9c380cb241bbf9d3933eef9500851ddb9a1eb6e548d1deaf102e636a95b",
     "tests/helpers/mybackup-cli-live-regression.sh": "3942c2e4620e20242dd9b09302f480a0d4c2d0ee53e9d2f6c97524f009122b58",
     "tests/helpers/mylogi-backup-live-regression.sh": "b28f0f84dc7ec531bd8a8b7bc75990f236a7310abc914d81389b77cb7477194d",
     "tests/helpers/mysql-backups-regression.sh": "751eb191f276d405fd6452a0d508d2ab367042ff113f7e4636b0a3a9feaa6d18",
     "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
-    "tests/unit/test_mybackup_cli_contract.py": "7108707238c492f02cc1dd6666f7364aed75f8758d9161e78f8d142ae62e595a",
-    "tests/unit/test_mylogi_backup_cli_contract.py": "570660226f51756c6f282d9662f3ba5fdf0006dabc5ae7eb952645e5673ce196",
+    "tests/unit/test_mybackup_cli_contract.py": "1c44e73fef56441b0c723021e73f0e80f3f4a12df4dee17de5260d1b64b28c68",
+    "tests/unit/test_mylogi_backup_cli_contract.py": "bbdef335d11271b422da241b912a38f6055cd840f210579341d2497f6951c28a",
     "tests/unit/test_mysql_backup_gate_contract.py": "dc9a8a4a6a8c83c16b4e05388b7889f646deb956bbc2aad4892939ca7b72c0d4",
-    "tests/unit/test_tools_matrix_contract.py": "94199bf42b85b4fc323e7ea022b275d91ae866bf95eea014876911b908f9c01e"
+    "tests/unit/test_tools_matrix_contract.py": "582c1ab49a23a0157d858a8a3233c023bc1ccfb4535039b4f764d22f1c6e0e97",
+    "README.md": "8634549300bf59824051365fadee3ac22a9efbf8fb7dfb92acb4195d95d21a6c",
+    "tools/mysqltools/operations-manual.md": "ab74d84419072a0943e6b8d04064be8b0ad974a26a1024cd26ad249c57636933"
   },
   "build": {
     "inputs": {
-      "tools/mysqltools/MyBackupCli.py": "9ec6ac9a951ed5af17a06582edec34dd7668c1cc2f82f2eaf139f5a0ea2b99b3",
-      "tools/mysqltools/MyLogiBackupCli.py": "83f9bf1cc82dc1a6b22a9c5745cdd6f6d730fa1e8a15738814dd347b6e9a48e2",
+      "tools/mysqltools/MyBackupCli.py": "1eebf17d054d463a751d24e9c1fcb27bc242bc8063b93c82c08693e50159dfa7",
+      "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
       "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
-      "tests/helpers/build-tools-rocky8.sh": "a49800c4a844d084ed4f0b9a0937793b8b3791b6cf429f79829accd941f0d19a"
+      "tests/helpers/build-tools-rocky8.sh": "9f65b9c380cb241bbf9d3933eef9500851ddb9a1eb6e548d1deaf102e636a95b"
     },
     "artifacts": {
-      "MyBackupCli": "eeb86f5c35cc370f5b5c9ed11851918d159111fed85a5f93151a99958c7fd920",
-      "MyLogiBackupCli": "1fe8150397fcf3a1b62142be59fc0bfb6d63ec950e4c6e007998ca53d4fa77eb"
+      "MyBackupCli": "62a78acac634cef7b487e20b1c43a08c2db56d65200dfb250915039b57f06ee0",
+      "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
     },
     "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
   },
@@ -212,5 +214,192 @@
     "tests": 80,
     "result": "OK",
     "log": "logs/mysql-backup-portability-final-fixed-20261108.log"
+  },
+  "help_revision": {
+    "date": "2026-11-09",
+    "classification": "help-and-documentation-only",
+    "base_commit": "9c0b72d11be8ce42e6a6fb9066b55303cfba6c15",
+    "prior_qualification_inputs": {
+      "tools/mysqltools/MyBackupCli.py": "0efce48a5c7a91b2b072a301fc336a9210d8d1ffd6316f05c902ce40775bc40d",
+      "tools/mysqltools/MyLogiBackupCli.py": "0373be7960dbc853afd5c9ea2557cf1e539c5b82a52f5f96c7ffdea34da9bb6d",
+      "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+      "tests/run_tools_regression.sh": "0abd457642492e5373080aba635818f0565228dd24dda93ea0f41eb0bac3cd42",
+      "tests/helpers/build-tools-rocky8.sh": "a49800c4a844d084ed4f0b9a0937793b8b3791b6cf429f79829accd941f0d19a",
+      "tests/helpers/mybackup-cli-live-regression.sh": "3942c2e4620e20242dd9b09302f480a0d4c2d0ee53e9d2f6c97524f009122b58",
+      "tests/helpers/mylogi-backup-live-regression.sh": "b28f0f84dc7ec531bd8a8b7bc75990f236a7310abc914d81389b77cb7477194d",
+      "tests/helpers/mysql-backups-regression.sh": "751eb191f276d405fd6452a0d508d2ab367042ff113f7e4636b0a3a9feaa6d18",
+      "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
+      "tests/unit/test_mybackup_cli_contract.py": "61c8fb57ccb942abec1480d039fd9437f4c51f5e745667190c86e56dea6f7a1f",
+      "tests/unit/test_mylogi_backup_cli_contract.py": "0095328549ab2002dfcc038a5a88f1ffb497f975e94dda49ed14c53b51f34ff5",
+      "tests/unit/test_mysql_backup_gate_contract.py": "dc9a8a4a6a8c83c16b4e05388b7889f646deb956bbc2aad4892939ca7b72c0d4",
+      "tests/unit/test_tools_matrix_contract.py": "94199bf42b85b4fc323e7ea022b275d91ae866bf95eea014876911b908f9c01e",
+      "README.md": "9f4fbc37c55265f2b52687f14d4fe37924f13b3e47da79071d9099c01844a62d",
+      "tools/mysqltools/operations-manual.md": "eec47a31e67bfef4f99554191c162e0315918e280c0d7161a6d26bbf2dd18884"
+    },
+    "prior_build": {
+      "inputs": {
+        "tools/mysqltools/MyBackupCli.py": "9ec6ac9a951ed5af17a06582edec34dd7668c1cc2f82f2eaf139f5a0ea2b99b3",
+        "tools/mysqltools/MyLogiBackupCli.py": "83f9bf1cc82dc1a6b22a9c5745cdd6f6d730fa1e8a15738814dd347b6e9a48e2",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "a49800c4a844d084ed4f0b9a0937793b8b3791b6cf429f79829accd941f0d19a"
+      },
+      "artifacts": {
+        "MyBackupCli": "eeb86f5c35cc370f5b5c9ed11851918d159111fed85a5f93151a99958c7fd920",
+        "MyLogiBackupCli": "1fe8150397fcf3a1b62142be59fc0bfb6d63ec950e4c6e007998ca53d4fa77eb"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
+    },
+    "prior_portability": {
+      "log": "logs/mysql-backups-portability-20261108-232148.log",
+      "sha256": "4a0e2e9e81d2cdf60a69dff5de58b28eff1b51872ed2f9ecb9d9a854614cf5f8",
+      "archive": "logs/mysql-backups-portability-20261108-232148.evidence.tar.gz",
+      "archive_sha256": "8fd0ac0c0cf6446b8da29eed9561435208abc3370bd7de980d4a1ef91b93b0f2",
+      "remote_status": "logs/mysql-backups-portability-20261108-232148.remote-status",
+      "required_markers": [
+        "MYSQL_BACKUP_RELEASE_PASS stage=portability",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
+        "MYSQL_BACKUP_PORTABILITY_PASS runtime=rocky8 tools=2",
+        "MYSQL_BACKUP_PORTABILITY_PASS runtime=debian12 tools=2",
+        "MYSQL_BACKUP_PORTABILITY_PASS runtime=ubuntu24 tools=2"
+      ],
+      "local_exit": 0,
+      "remote_exit": 0,
+      "remote_finalized": 0,
+      "unexpected_failure_markers": 0
+    },
+    "scope_identity": {
+      "MyBackupCli": {
+        "base_source_sha256": "9ec6ac9a951ed5af17a06582edec34dd7668c1cc2f82f2eaf139f5a0ea2b99b3",
+        "source_sha256": "0efce48a5c7a91b2b072a301fc336a9210d8d1ffd6316f05c902ce40775bc40d",
+        "business_ast_sha256": "98951de74b59819afc763092874e8188ce61e6a334b8207c6a52d42692727025",
+        "business_ast_equal": true,
+        "existing_cli_signature_equal": true,
+        "existing_cli_signature_sha256": "a91606a19d3973ff7ddce899fa17fec287e29770fe16194ffe256248c5626287"
+      },
+      "MyLogiBackupCli": {
+        "base_source_sha256": "83f9bf1cc82dc1a6b22a9c5745cdd6f6d730fa1e8a15738814dd347b6e9a48e2",
+        "source_sha256": "0373be7960dbc853afd5c9ea2557cf1e539c5b82a52f5f96c7ffdea34da9bb6d",
+        "business_ast_sha256": "3d3943b1ce720c7a013f9d56a13f8d8b5804fb9cd23b3f92964d2ab0f2850bd6",
+        "business_ast_equal": true,
+        "existing_cli_signature_equal": true,
+        "existing_cli_signature_sha256": "e924c14585de7922ceafc14bd9f99626d7a2d197c5c6872abc4da4697a7adda2"
+      }
+    },
+    "unit": {
+      "cases": 84,
+      "log": "logs/mysql-backup-help-contract-20261109.log",
+      "sha256": "9b275f7137ce2f686f885bf193fab077acfafb59d94708eac3dc65987740359f"
+    },
+    "build_log": {
+      "path": "logs/mysql-backup-help-build-20261109.log",
+      "sha256": "bf7a9125f0b0a38a02578024fabcffbf462f4f5cb0cef1f728ebf3569c7639a1"
+    },
+    "frozen_cli": {
+      "path": "logs/mysql-backup-help-artifacts-20261109.json",
+      "sha256": "6529559af4f010a684d172761a966b6709689a96c9c0f869a80118523d7f618e",
+      "cases": 18
+    },
+    "behavior_reuse": "Business AST unchanged after excluding help construction and ValueError diagnostic text; all existing parser options/types/defaults/choices/requirements match. Physical/logical/full business evidence retains its original run and artifact identities in prior_build. No business-path, permission, ordering, image or version changes; no redundant stateful regression for this help revision.",
+    "document_review": [
+      {
+        "requirement": "客户无需代码即可选命令、传值、判断拒绝和回退",
+        "locations": [
+          "tools/mysqltools/operations-manual.md#先选择参数要交给谁",
+          "tools/mysqltools/operations-manual.md#命令行使用",
+          "tools/mysqltools/operations-manual.md#失败判断与恢复"
+        ],
+        "basis": "Existing native validation/routing and pinned official MySQL/PXB sources recorded in official_sources; no upstream version/semantics change.",
+        "review": "作者按新手和运维检索路径检查；命令表对应全部支持值，示例由真实解析器接受；明确配置前置、成功判据、拒绝的正常入口和回退；非客户签收。"
+      },
+      {
+        "requirement": "参数持久化、无副作用帮助和制品一致",
+        "locations": [
+          "tools/mysqltools/operations-manual.md#配置与定时任务",
+          "MyBackupCli --help-native",
+          "MyLogiBackupCli backup --help",
+          "MyLogiBackupCli timer install --help-native"
+        ],
+        "basis": "84 deterministic contracts and frozen CLI smoke; real timer behavior reused from prior accepted three-version logical/full runs.",
+        "review": "JSON 字符串数组、CLI 追加顺序、timer 不继承上次 backup、重新安装生效均与既有实现对应；源码与冻结程序均可在无客户端/PATH/凭据情况下显示帮助。"
+      }
+    ]
+  },
+  "guard_revision": {
+    "date": "2026-11-09",
+    "classification": "protected-option tightening only; help carries actual set",
+    "prior_qualification_inputs": {
+      "tools/mysqltools/MyBackupCli.py": "0efce48a5c7a91b2b072a301fc336a9210d8d1ffd6316f05c902ce40775bc40d",
+      "tools/mysqltools/MyLogiBackupCli.py": "0373be7960dbc853afd5c9ea2557cf1e539c5b82a52f5f96c7ffdea34da9bb6d",
+      "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+      "tests/run_tools_regression.sh": "0abd457642492e5373080aba635818f0565228dd24dda93ea0f41eb0bac3cd42",
+      "tests/helpers/build-tools-rocky8.sh": "a49800c4a844d084ed4f0b9a0937793b8b3791b6cf429f79829accd941f0d19a",
+      "tests/helpers/mybackup-cli-live-regression.sh": "3942c2e4620e20242dd9b09302f480a0d4c2d0ee53e9d2f6c97524f009122b58",
+      "tests/helpers/mylogi-backup-live-regression.sh": "b28f0f84dc7ec531bd8a8b7bc75990f236a7310abc914d81389b77cb7477194d",
+      "tests/helpers/mysql-backups-regression.sh": "751eb191f276d405fd6452a0d508d2ab367042ff113f7e4636b0a3a9feaa6d18",
+      "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
+      "tests/unit/test_mybackup_cli_contract.py": "61c8fb57ccb942abec1480d039fd9437f4c51f5e745667190c86e56dea6f7a1f",
+      "tests/unit/test_mylogi_backup_cli_contract.py": "0095328549ab2002dfcc038a5a88f1ffb497f975e94dda49ed14c53b51f34ff5",
+      "tests/unit/test_mysql_backup_gate_contract.py": "dc9a8a4a6a8c83c16b4e05388b7889f646deb956bbc2aad4892939ca7b72c0d4",
+      "tests/unit/test_tools_matrix_contract.py": "94199bf42b85b4fc323e7ea022b275d91ae866bf95eea014876911b908f9c01e",
+      "README.md": "9f4fbc37c55265f2b52687f14d4fe37924f13b3e47da79071d9099c01844a62d",
+      "tools/mysqltools/operations-manual.md": "eec47a31e67bfef4f99554191c162e0315918e280c0d7161a6d26bbf2dd18884"
+    },
+    "prior_build": {
+      "inputs": {
+        "tools/mysqltools/MyBackupCli.py": "0efce48a5c7a91b2b072a301fc336a9210d8d1ffd6316f05c902ce40775bc40d",
+        "tools/mysqltools/MyLogiBackupCli.py": "0373be7960dbc853afd5c9ea2557cf1e539c5b82a52f5f96c7ffdea34da9bb6d",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "a49800c4a844d084ed4f0b9a0937793b8b3791b6cf429f79829accd941f0d19a"
+      },
+      "artifacts": {
+        "MyBackupCli": "d9d35a67dad68ad6b3bd19df84ef2455f1cfc02b31b2683d27377b3239bd0a2a",
+        "MyLogiBackupCli": "2e3d505a93c7baf60d6e5696b7492c5b42a090aaf4bfd59b6e6f8d6c320298f1"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
+    },
+    "current_evidence": "tests/evidence/mysql-migration-20261109.json",
+    "scope_equivalence": {
+      "log": "logs/mysqltools-native-scope-20261109.json",
+      "sha256": "d27b43bc1e83828eed7c1f88f9b7598b2735ea3fd71fe6b4ffdda4a13e05a582",
+      "meaning": "保护常量新增 ignore-error，其余业务 AST 与既有 CLI 语义不变；复用已验收备份/恢复业务证据，不冒称本轮重跑备份恢复。"
+    },
+    "portability_and_rejection": {
+      "log": "logs/tools-migration-native-20261109-132148.log",
+      "sha256": "580679c96d9851d89219eebbdda8a3afe245ac9c776dc85159d1b5cad9a07918",
+      "archive": "logs/tools-migration-native-20261109-132148.evidence.tar.gz",
+      "remote_status": "logs/tools-migration-native-20261109-132148.remote-status",
+      "status": [
+        0,
+        0
+      ],
+      "local_exit": 0,
+      "archive_sha256": "a997c87ace76866a1298131f78452ef6202445eea4c5076413ec395600676370",
+      "required_markers": [
+        "MIGRATION_NATIVE_ARGV_READBACK_PASS",
+        "MIGRATION_NATIVE_FAILURE_RECOVERY_PASS",
+        "MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS",
+        "MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS",
+        "MIGRATION_CLI_LIVE_REGRESSION_PASS",
+        "TOOLS_CLEAN_VERIFY_PASS scope=migration",
+        "TOOLS_MIGRATION_EXIT rc=0",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=rocky8 tools=3",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=debian12 tools=3",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=ubuntu24 tools=3"
+      ],
+      "unexpected_failure_markers": 0
+    },
+    "build": {
+      "inputs": {
+        "tools/mysqltools/MyBackupCli.py": "1eebf17d054d463a751d24e9c1fcb27bc242bc8063b93c82c08693e50159dfa7",
+        "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "9f65b9c380cb241bbf9d3933eef9500851ddb9a1eb6e548d1deaf102e636a95b"
+      },
+      "artifacts": {
+        "MyBackupCli": "62a78acac634cef7b487e20b1c43a08c2db56d65200dfb250915039b57f06ee0",
+        "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
+    }
   }
 }

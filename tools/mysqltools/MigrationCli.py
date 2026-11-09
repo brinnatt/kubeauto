@@ -94,8 +94,108 @@ KNOWN_OPTION_KEYS = frozenset({
     "row_count_tolerance_pct", "rollback_on_failure", "report_dir",
     "net_read_timeout", "net_write_timeout", "disk_space_margin",
     "skip_version_check", "complete_insert",
-    "table_checksum",
+    "table_checksum", "native_options",
 })
+
+
+NATIVE_TARGETS = frozenset(("mysql", "mysqldump"))
+
+# Native options stay local to each standalone CLI. Values are argv, never shell.
+NATIVE_PROTECTED = frozenset("""
+help version print-defaults defaults-file defaults-extra-file defaults-group-suffix
+no-defaults login-path no-login-paths user password password1 password2 password3
+host port socket protocol execute init-command init-command-add database databases
+all-databases tables result-file tab xml json force opt compact compatible
+single-transaction lock-tables lock-all-tables source-data master-data
+set-gtid-purged comments dump-date quick no-data no-create-info ignore-table
+ignore-table-data where delete-source-logs delete-master-logs flush-logs flush-privileges
+backup prepare copy-back move-back decompress decrypt export stats target-dir datadir
+incremental incremental-basedir incremental-dir incremental-lsn incremental-history-name
+incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
+ignore-error no-backup-locks no-server-version-check start-position stop-position start-datetime
+stop-datetime read-from-remote-server raw to-last-log stop-never
+add-drop-table add-drop-database complete-insert routines events triggers
+column-statistics default-character-set character-sets-dir init-connect
+reconnect binary-mode local-infile delimiter
+""".split())
+
+
+def native_option_help():
+    """无需读取配置、连接数据库即可查看完整扩展规则。"""
+    protected = sorted(NATIVE_PROTECTED)
+    listing = "\n".join("  " + "  ".join("--" + name for name in protected[i:i + 4])
+                        for i in range(0, len(protected), 4))
+    return """原生参数帮助：MigrationCli
+
+参数交给哪个命令（等号左侧必须完整填写）：
+  mysqldump   源库 SQL 导出，包含结构导出和逐表数据导出
+  mysql       目标库 SQL 导入，不作用于源库或 PyMySQL 预检连接
+  预检、建库和迁移后校验使用 PyMySQL；不接受 MySQL CLI 参数。
+
+先按 --guide 配置迁移账号、空目标库及匹配版本的客户端，然后预演：
+  MigrationCli -c migration_config.json --dry-run --native-option mysqldump=--net-buffer-length=32768 --native-option mysql=--connect-timeout=45
+  MigrationCli -c migration_config.json --native-option mysqldump=--net-buffer-length=32768 --native-option mysql=--connect-timeout=45
+  MigrationCli -c migration_config.json --native-option 'mysqldump=--ssl-ca=/etc/mysql/source CA.pem'
+  CA 文件必须真实存在且符合 TLS 配置；此项不会配置 PyMySQL 的连接。
+  dry-run 会连接数据库预检并打印命令，但不会执行 SQL 导出和导入。
+  正式迁移须退出 0、报告 failed=0、各任务 completed 且校验通过。
+
+原生参数使用规则（与 MyBackupCli、MyLogiBackupCli 相同）：
+  --native-option '命令或阶段=--完整长参数名=值'；无值开关写 --完整长参数名。
+  每次只传一个参数；多个参数重复写；路径含空格时引用整个参数。
+  不接受短参数、位置参数、控制字符或整串命令；以 argv 调用，不经过 shell。
+  未设置时保留原有默认；参数是否受支持由实际安装的客户端决定。
+
+JSON 配置（合并到现有 options，不要替换完整迁移配置）：
+  "options": {"native_options": {"mysqldump": ["--net-buffer-length=32768"], "mysql": ["--connect-timeout=45"]}}
+  migrations[].options.native_options 可按命令覆盖全局数组；空数组清除该命令继承值。
+  未声明的命令继续继承全局；CLI 参数按顺序追加，作用于所有任务。
+  重复选项由原生命令解释；不要假定所有选项都是最后一个覆盖前面。
+
+受保护选项的正常入口：
+  凭据和连接：JSON source/target；密码推荐 ${ENV_VAR}，配置权限 0600。
+  库和表范围、输出文件：source/target.database、mode、per_table；临时文件由工具管理。
+  GTID、TLS 模式、覆盖和 INSERT 格式：--gtid-mode、--ssl-mode、--add-drop-table、--complete-insert。
+  routines/events/triggers、字符集、兼容策略和一致性由工具管理，没有原生覆盖入口。
+  --force 不允许忽略导出或导入错误；保留首错，不能把部分迁移当成功。
+
+以下是完整保护清单，并非允许参数大全；缩写、下划线和
+loose-/skip-/disable-/enable-/maximum- 变体同样检查。
+名称含 password/secret/token/encryption-key/encrypt-key/transition-key/passphrase 的参数也会拒绝。
+""" + listing + "\n\n被拒绝时使用正常配置入口；不修改脚本绕过。详细迁移与失败恢复见 --guide。\n"
+
+
+def native_arguments(target, *args, **kwargs):
+    """Accept --long-option[=value] tokens and keyword options (lists repeat)."""
+    if target not in NATIVE_TARGETS:
+        raise ValueError("不支持的原生命令或阶段：" + str(target) + "；可选值：" + ", ".join(sorted(NATIVE_TARGETS)) + "。用 --help-native 查看示例。")
+    tokens = list(args)
+    for name, value in kwargs.items():
+        option = "--" + name.replace("_", "-")
+        for item in value if isinstance(value, (list, tuple)) else [value]:
+            tokens.append(option if item is None or item is True else option + "=" + ("OFF" if item is False else str(item)))
+    for token in tokens:
+        if not isinstance(token, str) or not re.fullmatch(r"--[a-zA-Z0-9][a-zA-Z0-9_-]*(?:=[^\x00-\x1f\x7f]*)?", token):
+            raise ValueError("原生参数须写为 --完整长参数名[=值]；不接受短参数、位置参数或控制字符。用 --help-native 查看示例。")
+        name = token[2:].split("=", 1)[0].replace("_", "-").lower()
+        # MySQL accepts prefixes, underscores and loose/skip/disable/enable forms.
+        while name.startswith(("loose-", "skip-", "disable-", "enable-", "maximum-")):
+            name = name.split("-", 1)[1]
+        if any(protected.startswith(name) for protected in NATIVE_PROTECTED) or any(
+            secret in name for secret in ("password", "secret", "token", "encryption-key", "encrypt-key", "transition-key", "passphrase")
+        ):
+            raise ValueError("原生参数 --" + name + " 被拒绝：该选项由工具管理或可能包含凭据。用 --help-native 查找正常配置入口。")
+    return tokens
+
+
+def parse_native_options(entries):
+    result = {}
+    for entry in entries:
+        target, separator, token = entry.partition("=")
+        if not separator:
+            raise ValueError("--native-option 格式错误：须写为 命令或阶段=--完整长参数名[=值]。用 --help-native 查看示例。")
+        result.setdefault(target, []).extend(native_arguments(target, token))
+    return result
 
 
 def _env_for_system_subprocess() -> Optional[Dict[str, str]]:
@@ -171,6 +271,7 @@ class MigrationOptions:
     skip_version_check: bool = False
     complete_insert: bool = False
     table_checksum: bool = False
+    native_options: Dict[str, List[str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -834,7 +935,24 @@ def merge_options_dict(
         merged.update(global_opts)
     if task_opts:
         merged.update(task_opts)
+    # Per-command task arrays replace the inherited array, including [].
+    if "native_options" in merged:
+        native = {}
+        for options in (global_opts or {}, task_opts or {}):
+            value = options.get("native_options", {})
+            validate_native_config(value)
+            native.update({target: list(tokens) for target, tokens in value.items()})
+        merged["native_options"] = native
     return merged
+
+
+def validate_native_config(value):
+    if not isinstance(value, dict):
+        raise ValueError("native_options 必须是命令到字符串数组的对象。用 --help-native 查看示例。")
+    for target, tokens in value.items():
+        if not isinstance(tokens, list):
+            raise ValueError("native_options 的每个命令必须对应字符串数组。用 --help-native 查看示例。")
+        native_arguments(target, *tokens)
 
 
 def require_known_option_keys(options: dict, label: str):
@@ -849,6 +967,8 @@ def require_known_option_keys(options: dict, label: str):
 def validate_options_dict(options: dict, label: str):
     if not options:
         return
+    if "native_options" in options:
+        validate_native_config(options["native_options"])
     max_workers = options.get("max_workers")
     if max_workers is not None:
         mw = int(max_workers)
@@ -969,6 +1089,9 @@ def build_migration_options(
     opts.table_checksum = _cli_or_cfg_bool(
         args, "table_checksum", cfg, "table_checksum"
     )
+    opts.native_options = {target: list(tokens) for target, tokens in cfg.get("native_options", {}).items()}
+    for target, tokens in parse_native_options(getattr(args, "native_option", [])).items():
+        opts.native_options.setdefault(target, []).extend(tokens)
     return opts
 
 
@@ -1294,6 +1417,14 @@ class DumpPostProcessor:
 # ---------------------------------------------------------------------------
 # mysqldump / mysql 管理
 # ---------------------------------------------------------------------------
+class _DumpTaskState(threading.local):
+    def __init__(self, options):
+        self.options = options
+        self.gtid_purged = "OFF"
+        self.skip_lock_tables = False
+        self.path_context = DumpContext()
+
+
 class MySQLDumpManager:
     def __init__(
         self,
@@ -1303,16 +1434,45 @@ class MySQLDumpManager:
         keep_dump_files: bool = False,
     ):
         self.logger = logger
-        self.options = options
+        self._task_state = _DumpTaskState(options)
         self.process_registry = process_registry
         self.keep_dump_files = keep_dump_files
         self.temp_dir = tempfile.mkdtemp(prefix="mysql_migration_")
         self._lock = threading.Lock()
         self._active_files: set = set()
-        self._gtid_purged = "OFF"
-        self._skip_lock_tables = False
-        self._path_context = DumpContext()
         atexit.register(self._atexit_cleanup)
+
+    @property
+    def options(self):
+        return self._task_state.options
+
+    @options.setter
+    def options(self, value):
+        self._task_state.options = value
+
+    @property
+    def _gtid_purged(self):
+        return self._task_state.gtid_purged
+
+    @_gtid_purged.setter
+    def _gtid_purged(self, value):
+        self._task_state.gtid_purged = value
+
+    @property
+    def _skip_lock_tables(self):
+        return self._task_state.skip_lock_tables
+
+    @_skip_lock_tables.setter
+    def _skip_lock_tables(self, value):
+        self._task_state.skip_lock_tables = value
+
+    @property
+    def _path_context(self):
+        return self._task_state.path_context
+
+    @_path_context.setter
+    def _path_context(self, value):
+        self._task_state.path_context = value
 
     def set_dump_context(self, gtid_purged: str, skip_lock_tables: bool):
         self._gtid_purged = gtid_purged
@@ -1378,6 +1538,7 @@ class MySQLDumpManager:
         no_data: bool = False,
         no_create_info: bool = False,
         include_schema_objects: bool = True,
+        *args, **kwargs,
     ) -> List[str]:
         host = self._validate_command_arg(config.host, "host")
         self._validate_command_arg(config.user, "user")
@@ -1421,13 +1582,14 @@ class MySQLDumpManager:
                 cmd.append("--complete-insert")
         if no_create_info:
             cmd.append("--no-create-info")
+        cmd.extend(native_arguments("mysqldump", *self.options.native_options.get("mysqldump", []), *args, **kwargs))
         cmd.append(config.database)
         if tables:
             cmd.extend(tables)
         cmd.append(f"--result-file={output_file}")
         return cmd
 
-    def build_mysql_command(self, config: DatabaseConfig, cnf_path: str) -> List[str]:
+    def build_mysql_command(self, config: DatabaseConfig, cnf_path: str, *args, **kwargs) -> List[str]:
         host = self._validate_command_arg(config.host, "host")
         self._validate_command_arg(config.database, "database")
         cmd = [
@@ -1443,6 +1605,7 @@ class MySQLDumpManager:
         if self._path_context.extra_mysql_args:
             insert_at = len(cmd) - 1
             cmd[insert_at:insert_at] = self._path_context.extra_mysql_args
+        cmd[-1:-1] = native_arguments("mysql", *self.options.native_options.get("mysql", []), *args, **kwargs)
         return cmd
 
     def _run_subprocess(
@@ -2287,14 +2450,22 @@ def parse_arguments():
             "完整说明请运行: %(prog)s --guide"
         ),
         formatter_class=_HelpFormatter,
+        allow_abbrev=False,
         epilog=(
             f"快速示例:\n"
             f"  {prog} --guide                              # 完整用户手册\n"
             f"  {prog} -c migration_config.json --dry-run   # 预演\n"
             f"  {prog} -c migration_config.json             # 正式迁移\n"
+            f"  {prog} --help-native                        # 原生参数、限制与完整示例\n"
+            f"  {prog} -c migration_config.json --native-option mysql=--connect-timeout=45\n"
             f"配置模板: migration_config.json.example"
         ),
     )
+
+    parser.add_argument("--help-native", action="version", version=native_option_help(),
+                        help="查看原生参数的命令选择、配置继承、完整保护清单和示例并退出")
+    parser.add_argument("--native-option", action="append", default=[], metavar="命令=--长参数[=值]",
+                        help="追加一个原生参数，可重复；mysql=目标导入，mysqldump=源库导出；详见 --help-native")
 
     # ---- 手册 ----
     parser.add_argument(
@@ -2513,7 +2684,15 @@ def parse_arguments():
         help=f"JSON 审计报告输出目录。默认 {LOG_DIR}",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    try:
+        parse_native_options(args.native_option)
+    except ValueError as exc:
+        parser.error(str(exc))
+    return args
+
+
+USER_GUIDE += "\n" + native_option_help()
 
 
 def print_user_guide():

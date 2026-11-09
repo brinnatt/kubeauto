@@ -1,0 +1,173 @@
+{
+  "date": "2026-11-09",
+  "scope": "三个独立 MySQL 工具的原生参数与客户帮助；Migration 任务状态隔离；未连接生产，未发布镜像。",
+  "runs": {
+    "native": {
+      "log": "logs/tools-migration-native-20261109-132148.log",
+      "sha256": "580679c96d9851d89219eebbdda8a3afe245ac9c776dc85159d1b5cad9a07918",
+      "archive": "logs/tools-migration-native-20261109-132148.evidence.tar.gz",
+      "remote_status": "logs/tools-migration-native-20261109-132148.remote-status",
+      "status": [
+        0,
+        0
+      ],
+      "local_exit": 0,
+      "archive_sha256": "a997c87ace76866a1298131f78452ef6202445eea4c5076413ec395600676370",
+      "required_markers": [
+        "MIGRATION_NATIVE_ARGV_READBACK_PASS",
+        "MIGRATION_NATIVE_FAILURE_RECOVERY_PASS",
+        "MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS",
+        "MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS",
+        "MIGRATION_CLI_LIVE_REGRESSION_PASS",
+        "TOOLS_CLEAN_VERIFY_PASS scope=migration",
+        "TOOLS_MIGRATION_EXIT rc=0",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=rocky8 tools=3",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=debian12 tools=3",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=ubuntu24 tools=3"
+      ],
+      "unexpected_failure_markers": 0
+    },
+    "full": {
+      "log": "logs/tools-migration-full-20261109-132519.log",
+      "sha256": "db0c048b491097d439bbb963664479b70e221fa5a234fd4458e4b7e1c2142ecb",
+      "archive": "logs/tools-migration-full-20261109-132519.evidence.tar.gz",
+      "remote_status": "logs/tools-migration-full-20261109-132519.remote-status",
+      "status": [
+        0,
+        0
+      ],
+      "local_exit": 0,
+      "archive_sha256": "0b665f7ab96a5575d76b86e1914b3b4a5be0162081f7c4016a0adc96b854fe89",
+      "local_durable": {
+        ".exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        ".finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      "local_launcher_log": "logs/migration-final-20261109-01.log",
+      "local_launcher_sha256": "fe82392f061cc16d607371ad51b7c2cc9e38a56856568779bf72891d9b6d91bd",
+      "required_markers": [
+        "MIGRATION_NATIVE_ARGV_READBACK_PASS",
+        "MIGRATION_NATIVE_FAILURE_RECOVERY_PASS",
+        "MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS",
+        "MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS",
+        "MIGRATION_CLI_LIVE_REGRESSION_PASS",
+        "TOOLS_CLEAN_VERIFY_PASS scope=migration",
+        "TOOLS_MIGRATION_EXIT rc=0",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=rocky8 tools=3",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=debian12 tools=3",
+        "MYSQLTOOLS_NATIVE_PORTABILITY_PASS runtime=ubuntu24 tools=3"
+      ],
+      "unexpected_failure_markers": 0
+    }
+  },
+  "build": {
+    "dist/mysql-migration-build.json": {
+      "inputs": {
+        "tools/mysqltools/MigrationCli.py": "6d3eb79e3dafea2aecb9ad6ee7eb00797cc2e3f9ca6687ffa139cb0a32053ca2",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "9f65b9c380cb241bbf9d3933eef9500851ddb9a1eb6e548d1deaf102e636a95b"
+      },
+      "artifacts": {
+        "MigrationCli": "809d4a156cc3603dc4481bdbed6b8f478d2ea445deb8657a1e6d4bce37697a63"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0; PyMySQL 1.1.2; cryptography 45.0.5"
+    },
+    "dist/mysql-backup-build.json": {
+      "inputs": {
+        "tools/mysqltools/MyBackupCli.py": "1eebf17d054d463a751d24e9c1fcb27bc242bc8063b93c82c08693e50159dfa7",
+        "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "9f65b9c380cb241bbf9d3933eef9500851ddb9a1eb6e548d1deaf102e636a95b"
+      },
+      "artifacts": {
+        "MyBackupCli": "62a78acac634cef7b487e20b1c43a08c2db56d65200dfb250915039b57f06ee0",
+        "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
+    }
+  },
+  "build_run": {
+    "log": "logs/mysqltools-native-clean-build-20261109.log",
+    "sha256": "4988cc08820a4d8a1c5a970c8d838fa5d6b598952ffea26729d534baed726931",
+    "runner_exit": 0,
+    "scope": "selected=MyBackupCli,MyLogiBackupCli,MigrationCli; no push"
+  },
+  "inputs": {
+    "tools/mysqltools/MyBackupCli.py": "1eebf17d054d463a751d24e9c1fcb27bc242bc8063b93c82c08693e50159dfa7",
+    "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+    "tools/mysqltools/MigrationCli.py": "6d3eb79e3dafea2aecb9ad6ee7eb00797cc2e3f9ca6687ffa139cb0a32053ca2",
+    "tools/mysqltools/migration_config.json.example": "5f93f9d62e5f26707288f4f559c30bd5fbdbe8b4087ceea5ce7d5d8bde1460e1",
+    "tools/mysqltools/operations-manual.md": "ab74d84419072a0943e6b8d04064be8b0ad974a26a1024cd26ad249c57636933",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/run_tools_regression.sh": "280a9ffab7dbe80eddba4428ac73c65a18e953a901de1ae80bd2cdae3ea5b7ce",
+    "tests/helpers/build-tools-rocky8.sh": "9f65b9c380cb241bbf9d3933eef9500851ddb9a1eb6e548d1deaf102e636a95b",
+    "tests/helpers/migration-live-regression.sh": "19c5971c91044c13546fcda159d0d3c415a3232840d9b81bcad4972887ec13e1",
+    "tests/helpers/supervise-migration.py": "bfddf47bd597cd0996330d87a16441ac47da324f9415ab6c094622ed0f841ab9",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/unit/test_migration_cli_contract.py": "6451b76ed5170a5c6f00359f0b71fb86978f4ad7db4f61f0a83c0d3ab0f3279c",
+    "tests/unit/test_tools_matrix_contract.py": "582c1ab49a23a0157d858a8a3233c023bc1ccfb4535039b4f764d22f1c6e0e97",
+    "dist/MyBackupCli-rocky8": "62a78acac634cef7b487e20b1c43a08c2db56d65200dfb250915039b57f06ee0",
+    "dist/MyLogiBackupCli-rocky8": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a",
+    "dist/MigrationCli-rocky8": "809d4a156cc3603dc4481bdbed6b8f478d2ea445deb8657a1e6d4bce37697a63"
+  },
+  "static": {
+    "tests": 106,
+    "result": "OK",
+    "log": "logs/mysqltools-native-contract-20261109.log",
+    "sha256": "dc0936e881c9ebfc466d4a48f4d1604365efbc19359be59d5040efe0d9b428d6"
+  },
+  "backup_scope": {
+    "log": "logs/mysqltools-native-scope-20261109.json",
+    "sha256": "d27b43bc1e83828eed7c1f88f9b7598b2735ea3fd71fe6b4ffdda4a13e05a582",
+    "meaning": "保护常量新增 ignore-error，其余业务 AST 与既有 CLI 语义不变；复用已验收备份/恢复业务证据，不冒称本轮重跑备份恢复。"
+  },
+  "official_sources": [
+    {
+      "url": "https://github.com/mysql/mysql-server/blob/mysql-8.0.33/client/mysqldump.cc",
+      "version": "MySQL 8.0.33",
+      "local_source_sha256": "43866f39de1ce627481ac0d4b54576620974ea09af01a1e511c09f8d95d80777",
+      "conclusion": "long options、net-buffer-length、ignore-error 语义；不能允许跳过 SQL 错误签完整备份或迁移"
+    },
+    {
+      "url": "https://github.com/mysql/mysql-server/blob/mysql-8.4.4/client/mysql.cc",
+      "version": "MySQL 8.4.4",
+      "local_source_sha256": "228dbddb8a3f45b989d8b9c30b092d01c2a14742d07d3a64709164bab5812382",
+      "conclusion": "mysql 导入长参数、force/error 行为；参数数组直接交客户端解析"
+    },
+    {
+      "url": "https://github.com/PyMySQL/PyMySQL/blob/v1.1.2/pymysql/connections.py",
+      "version": "PyMySQL 1.1.2",
+      "local_source_sha256": "06cf0f1b651a732405e21ac9ecdebc99da627e6eede40b74bd31ef6451d91bc9",
+      "conclusion": "Python 连接关键字与 mysql CLI 参数独立；CLI 扩展不配置 SDK 连接"
+    },
+    {
+      "url": "https://docs.python.org/3.12/library/threading.html#thread-local-data",
+      "version": "Python 3.12",
+      "local_source_sha256": "8e7a474c28723e5a0e8a65135a6aa09b86143c63a8509115f0aaaabf1e97bf20",
+      "conclusion": "threading.local 每个线程独立字段；实例 __init__ 在各线程初始化上下文"
+    }
+  ],
+  "source_coverage": {
+    "boundary": "本轮为既有客户端封装接口增量；复用已有版本/兼容/恢复资料。上游 MySQL 服务端其余功能未变化，不扩大为新增数据库产品审计。",
+    "用户手册": "mysql/mysqldump 长参数、参数文件、选项语法和错误；映射原生参数指南的命令路由、正常步骤及拒绝说明。",
+    "运维手册": "复用既有迁移/备份版本和恢复资料；增量覆盖 native 参数预演、验证、失败保留与撤回。",
+    "技术白皮书": "未新增数据库架构；argv 路由与 Python SDK 连接的边界在客户指南解释。",
+    "开发手册": "官方 client 选项表、PyMySQL 连接源码与 Python thread-local 文档映射 *args/**kwargs、校验和并发任务隔离。"
+  },
+  "known_failed_attempts": [
+    {
+      "classification": "environment",
+      "action": "只读连接 root@192.168.122.2",
+      "result": "SSH ConnectTimeout rc=255，无现场修改；改用授权 .138。"
+    },
+    {
+      "classification": "test-gate execution",
+      "log": "logs/mysqltools-native-build-20261109.log",
+      "result": "构建子项已产出后，运行中改写 launcher 导致尾部解析 rc=2；不作为交付 PASS。固定输入后以 clean-build 重跑并 rc=0，制品和 native 现场重新验收。"
+    }
+  ],
+  "limitations": [
+    "现场为 AMD64；未获得原生 ARM64 回归证据。",
+    "实际迁移验证 MySQL 8.0.46、8.4.4、9.2.0；不替代 8.0.33 及其它生产组合的实例验证。",
+    "GA readiness、文档验收和客户签收分别判断；本记录不代表客户签收。"
+  ]
+}

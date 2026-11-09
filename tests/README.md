@@ -907,7 +907,7 @@ bash tests/run_tools_regression.sh --preflight
 bash tests/run_tools_regression.sh --status
 ```
 
-The tools matrix contains 71 scenarios (70 applicable and one not applicable) plus a 101-item
+The tools matrix contains 71 scenarios (70 applicable and one not applicable) plus a 102-item
 `functional_inventory`. The inventory is the public-function checklist for all
 ten CLIs: every command/role/data path/configuration mode/remote path and
 failure-recovery behavior must point to a CLI, functional, security or recovery
@@ -965,6 +965,33 @@ Record the official source, exact version, manifest digest or file SHA256,
 owner and cleanup scope in the tools matrix. The runner pulls the TalkEdu
 copy first and verifies the digest before handing a fixture to a test host;
 dynamic mirror discovery and repeated public downloads are prohibited.
+
+Migration 原生参数增量使用同一个固定入口，先聚焦、再完整验收；客户用法见
+[`operations-manual.md`](../tools/mysqltools/operations-manual.md#迁移任务中的使用)：
+
+```bash
+# 仅构建三个 mysqltools；不触发镜像发布或其它工具构建。
+TOOLS_BUILD_HOST=ubuntu@192.168.47.138 \
+TOOLS_SELECTED=MyBackupCli,MyLogiBackupCli,MigrationCli \
+bash tests/run_tools_regression.sh --build-only
+
+MIGRATION_TEST_HOST=ubuntu@192.168.47.138 MIGRATION_STAGE=native \
+bash tests/run_tools_regression.sh --migration-live
+# 收取并核验 native 证据，更新适用前置项后才运行 full。
+MIGRATION_TEST_HOST=ubuntu@192.168.47.138 MIGRATION_STAGE=full \
+bash tests/run_tools_regression.sh --migration-live
+```
+
+`native` 同时验证三工具在 Rocky/Debian/Ubuntu 的冻结程序入口，及 Migration 的
+实际 argv、配置继承、并发隔离、导出/导入失败、回滚重试与 SQL 读回。
+`full` 拒绝缺失、pending 或输入/日志/归档 SHA256 失配的前置证据；通过后从干净夹具
+执行上述场景及既有三版本迁移全链。两者独占主机租约，仅使用固定 digest，拒绝已有夹具，
+回收本轮容器、报告、临时凭据和目录；保留其它服务与镜像。
+验收必须同时具备 `MIGRATION_CLI_LIVE_REGRESSION_PASS`、
+`TOOLS_CLEAN_VERIFY_PASS scope=migration`、`TOOLS_MIGRATION_EXIT rc=0`、
+本地 runner rc=0 及 `.remote-status` 的 `0 0`。
+`logs/tools-migration-<stage>-<run>.evidence.tar.gz` 保存实际参数和业务报告；
+`tests/evidence/mysql-migration-20261109.json` 绑定源码、构建、依赖、失败分类和适用矩阵。
 
 For `MigrationCli`, the live matrix requires fixed MySQL `8.0.46`, one pinned
 `8.4.x` and one pinned `9.x` logical-migration fixture. For `MyBackupCli`, use

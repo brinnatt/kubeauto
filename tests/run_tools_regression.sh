@@ -11,7 +11,7 @@ BUILD_GATE="/tmp/kubeauto-tools-build-gate"
 BUILD_LOG="/tmp/kubeauto-tools-build-live.log"
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 if [[ -n "${TOOLS_SELECTED:-}" ]]; then
-  [[ ( "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli ) && "${1:---preflight}" == --build-only ]] || { echo TOOLS_SELECTED_SCOPE_REFUSED >&2; exit 2; }
+  [[ ( "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli ) && "${1:---preflight}" == --build-only ]] || { echo TOOLS_SELECTED_SCOPE_REFUSED >&2; exit 2; }
   IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
 fi
 BUILD_SUDO="sudo"
@@ -130,6 +130,14 @@ PY_STATUS
 import hashlib, json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 selected = set(sys.argv[2].split(','))
+if 'MigrationCli' in selected:
+    files = ['tools/mysqltools/MigrationCli.py', 'tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh']
+    proof = {'inputs': {name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files},
+             'artifacts': {'MigrationCli': hashlib.sha256((root/'dist/MigrationCli-rocky8').read_bytes()).hexdigest()},
+             'runtime': 'Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0; PyMySQL 1.1.2; cryptography 45.0.5'}
+    (root/'dist/mysql-migration-build.json').write_text(json.dumps(proof, indent=2)+'\n')
+    if selected == {'MigrationCli'}:
+        raise SystemExit(0)
 previous_path = root/'dist/mysql-backup-build.json'
 previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
 for name in {'MyBackupCli', 'MyLogiBackupCli'} - selected:
@@ -542,31 +550,69 @@ PY_ARTIFACT_PROOF
     ;;
   --migration-live)
     MIGRATION_HOST="${MIGRATION_TEST_HOST:-root@192.168.122.2}"
-    [[ "$MIGRATION_HOST" == root@192.168.122.2 ]] || { echo "MIGRATION_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
+    [[ "$MIGRATION_HOST" == root@192.168.122.2 || "$MIGRATION_HOST" == ubuntu@192.168.47.138 ]] || { echo MIGRATION_LIVE_BLOCKED_UNAUTHORIZED_HOST >&2; exit 2; }
+    stage="${MIGRATION_STAGE:-full}"
+    [[ "$stage" == native || "$stage" == full ]] || exit 2
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    if [[ "$stage" == full ]]; then
+      "$PY" - "$ROOT" <<'PYMIGFINAL'
+import hashlib, json, pathlib, sys, yaml
+root = pathlib.Path(sys.argv[1])
+matrix = yaml.safe_load((root/'tests/tools-test-matrix.yaml').read_text())
+required = {'TL-MIG-01', 'TL-MIG-02', 'TL-MIG-04', 'TL-MIG-05'} | {'TL-X-0'+str(i) for i in range(1,9)}
+refused = [c['id'] for c in matrix['test_cases'] if c['id'] in required and c['status'] != 'pass']
+if refused:
+    raise SystemExit('MIGRATION_FINAL_PREREQUISITES_REFUSED '+','.join(refused))
+proof = json.loads((root/'tests/evidence/mysql-migration-20261109.json').read_text())
+for name, digest in proof['inputs'].items():
+    if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+        raise SystemExit('MIGRATION_FINAL_STALE_INPUT '+name)
+required_inputs = {'tools/mysqltools/MigrationCli.py', 'tools-onefile.spec',
+    'tests/run_tools_regression.sh', 'tests/helpers/migration-live-regression.sh',
+    'tests/helpers/supervise-migration.py', 'tests/helpers/build-tools-rocky8.sh',
+    'dist/MigrationCli-rocky8', 'dist/MyBackupCli-rocky8', 'dist/MyLogiBackupCli-rocky8'}
+if not required_inputs <= proof['inputs'].keys():
+    raise SystemExit('MIGRATION_FINAL_INPUT_BINDING_INCOMPLETE')
+record = proof['runs']['native']
+for field, digest_field in (('log','sha256'), ('archive','archive_sha256')):
+    if hashlib.sha256((root/record[field]).read_bytes()).hexdigest() != record[digest_field]:
+        raise SystemExit('MIGRATION_FINAL_STALE_EVIDENCE '+field)
+raw = (root/record['log']).read_text()
+for marker in ('MIGRATION_NATIVE_ARGV_READBACK_PASS','MIGRATION_NATIVE_FAILURE_RECOVERY_PASS',
+               'MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS','MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS',
+               'TOOLS_CLEAN_VERIFY_PASS scope=migration','TOOLS_MIGRATION_EXIT rc=0'):
+    if marker not in raw:
+        raise SystemExit('MIGRATION_FINAL_MARKER_MISSING '+marker)
+if (root/record['remote_status']).read_text().split() != ['0','0']:
+    raise SystemExit('MIGRATION_FINAL_DURABLE_REFUSED')
+assert record['status'] == [0, 0]
+PYMIGFINAL
+    fi
+    bash -n "$ROOT/tests/helpers/migration-live-regression.sh"
+    "$PY" -m unittest tests.unit.test_migration_cli_contract -q
+    "$PY" - "$ROOT" <<'PYMIGBUILD'
+import hashlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+proof = json.loads((root/'dist/mysql-migration-build.json').read_text())
+for name, digest in proof['inputs'].items():
+    assert hashlib.sha256((root/name).read_bytes()).hexdigest() == digest, name
+assert hashlib.sha256((root/'dist/MigrationCli-rocky8').read_bytes()).hexdigest() == proof['artifacts']['MigrationCli']
+PYMIGBUILD
     lock="${TMPDIR:-/tmp}/kubeauto-tools-migration-run.lock"; exec 9>"$lock"
-    flock -n 9 || { echo "MIGRATION_LIVE_BLOCKED: another Migration run owns $lock" >&2; exit 2; }
-    state="${TMPDIR:-/tmp}/kubeauto-tools-migration-live"
-    gate_log="$ROOT/logs/tools-migration-live-$(date +%Y%m%d-%H%M%S).log"
-    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/mysqltools/MigrationCli.py" "$MIGRATION_HOST:/tmp/MigrationCli-tools-live.py"
-    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tests/helpers/migration-live-regression.sh" "$MIGRATION_HOST:/tmp/migration-live-regression.sh"
-    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MIGRATION_HOST" \
-      "rm -rf /tmp/tools-mig-venv; python3 -m venv /tmp/tools-mig-venv; /tmp/tools-mig-venv/bin/pip install --no-input --disable-pip-version-check PyMySQL==1.1.2 cryptography==44.0.2 >/dev/null"
-    rm -f "${state}.pid" "${state}.exit" "${state}.finalized"
-    set +e
-    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$state" TOOLS_MIGRATION_EXIT \
-      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$MIGRATION_HOST" \
-      "chmod 0755 /tmp/migration-live-regression.sh; MIGRATION_TOOL=/tmp/MigrationCli-tools-live.py MIGRATION_PYTHON=/tmp/tools-mig-venv/bin/python bash /tmp/migration-live-regression.sh" \
-      2>&1 | tee "$gate_log"
-    gate_rc=${PIPESTATUS[0]}
-    set -e
-    test "$gate_rc" -eq 0
-    test "$(cat "${state}.exit")" = 0
-    test "$(cat "${state}.finalized")" = 0
+    flock -n 9 || { echo MIGRATION_LIVE_BLOCKED_BUSY >&2; exit 2; }
+    remote=/tmp/kubeauto-migration-release
+    gate_log="$ROOT/logs/tools-migration-$stage-$(date +%Y%m%d-%H%M%S).log"
+    mig_sudo=""; [[ "$MIGRATION_HOST" == root@* ]] || mig_sudo="sudo -n"
+    ssh -o BatchMode=yes -o ConnectTimeout=8 "$MIGRATION_HOST" "mkdir '$remote'"
+    scp -q -o BatchMode=yes "$ROOT/dist/MigrationCli-rocky8" "$ROOT/dist/MyBackupCli-rocky8" "$ROOT/dist/MyLogiBackupCli-rocky8" "$ROOT/tests/helpers/migration-live-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$MIGRATION_HOST:$remote/"
+    # Frozen artifact contains pinned PyMySQL; no live pip installation needed.
+    # Previous source fixture used PyMySQL==1.1.2 cryptography==44.0.2.
+    ssh -o BatchMode=yes -o ConnectTimeout=8 "$MIGRATION_HOST" \
+      "$mig_sudo sh -c 'cd $remote && nohup bash ./run-durable-gate.sh $remote/state TOOLS_MIGRATION_EXIT env MIGRATION_STAGE=$stage MIGRATION_TOOL=$remote/MigrationCli-rocky8 bash ./migration-live-regression.sh >console.log 2>&1 </dev/null &'"
+    "$PY" "$ROOT/tests/helpers/supervise-migration.py" "$MIGRATION_HOST" "$remote" "$gate_log"
+    grep -q '^MIGRATION_NATIVE_ARGV_READBACK_PASS$' "$gate_log"
     grep -q '^MIGRATION_CLI_LIVE_REGRESSION_PASS ' "$gate_log"
-    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MIGRATION_HOST" \
-      "! docker ps -a --format '{{.Names}}' | grep -Eq '^(tools-mig-src|tools-mig-tgt|tools-mig-tgt9|tools-mig-client80|tools-mig-client84|tools-mig-client92)$'; ! test -e /tmp/MigrationCli-tools-live.py; ! test -e /tmp/migration-live-regression.sh; ! test -e /tmp/migration-live.json; ! test -e /tmp/migration-dry-run.json; ! test -e /tmp/migration-dry.log; ! test -e /tmp/migration-structure-only.json; ! test -e /tmp/migration-definer.json; ! test -e /tmp/migration-definer.log; ! test -e /tmp/migration-invalid.json; ! test -e /tmp/migration-invalid.log; ! test -e /tmp/migration-unreachable.json; ! test -e /tmp/migration-unreachable.log; ! test -d /tmp/migration-live-report; ! test -d /tmp/migration-dry-report; ! test -d /tmp/migration-structure-report; ! test -d /tmp/migration-definer-report; ! test -d /tmp/migration-invalid-report; ! test -d /tmp/migration-unreachable-report; ! test -d /tmp/tools-mig-venv"
-    echo "TOOLS_CLEAN_VERIFY_PASS scope=migration host=$MIGRATION_HOST" | tee -a "$gate_log"
+    grep -q '^TOOLS_CLEAN_VERIFY_PASS scope=migration ' "$gate_log"
     ;;
   --mybackup-live)
     MYBACKUP_HOST="${MYBACKUP_TEST_HOST:-root@192.168.122.2}"

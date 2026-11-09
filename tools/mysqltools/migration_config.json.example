@@ -32,7 +32,8 @@
       "row_count_tolerance_pct": "估算行数允许偏差%",
       "rollback_on_failure": "失败时 DROP 目标库",
       "report_dir": "JSON 审计报告目录",
-      "skip_version_check": "跳过客户端版本与策略提示"
+      "skip_version_check": "跳过客户端版本与策略提示",
+      "native_options": "原生参数扩展：mysql 为目标导入，mysqldump 为源导出；每项为完整长参数数组。任务按命令覆盖全局，[] 清除继承；CLI 追加到所有任务；详见 --help-native。"
     },
     "scenarios": {
       "8.0到8.4": "8.0.41 -> 8.4.4，自动 lts_to_lts",
@@ -60,7 +61,11 @@
     "report_dir": "./logs",
     "net_read_timeout": 3600,
     "net_write_timeout": 3600,
-    "disk_space_margin": 1.3
+    "disk_space_margin": 1.3,
+    "native_options": {
+      "mysqldump": [],
+      "mysql": []
+    }
   },
   "migrations": [
     {

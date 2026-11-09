@@ -75,11 +75,14 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertEqual(
             artifacts["mysql_tools"]["migration"],
             [
-                "hub.talkedu.cn/kubeauto/mysql:8.0.46@sha256:0b6938c55ad3ef982d41cfa3ee01a63074cd5c9f3907487badeda53f6feb14da",
-                "hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4@sha256:0a3e659b9fb960330299e2a1847414f6185c573a3fd2cf1320221066904ea77d",
-                "hub.talkedu.cn/kubeauto/mysql-9.2:9.2.0@sha256:867954f8c74131e891c2d3501560abbb7548ab8f439245c2feb4648f99b0caeb",
+                "hub.talkedu.cn/kubeauto/mysql@sha256:2f27838ce14a31d6e434efb442658c4ce19a7cd0ec834e329ca213569faa7d3c",
+                "hub.talkedu.cn/kubeauto/mysql-8.4@sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83",
+                "hub.talkedu.cn/kubeauto/mysql-9.2@sha256:308515a860be3b21aa44ced3d39f7f91d800efe7ff3719c249f19a89a8480740",
             ],
         )
+        migration_helper = (ROOT / "tests/helpers/migration-live-regression.sh").read_text()
+        for reference in artifacts["mysql_tools"]["migration"]:
+            self.assertIn(reference, migration_helper)
         prerequisites = "\n".join(data["meta"]["live_prerequisites"])
         logical = artifacts["mysql_tools"]["logical_backup"]
         self.assertEqual(logical["owner"], "TalkEdu Hub existing published artifacts")

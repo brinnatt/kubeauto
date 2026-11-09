@@ -32,6 +32,12 @@ class MyLogiBackupCliContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.module = load_module()
 
+    def test_ignore_error_cannot_publish_a_partial_dump(self):
+        for target in self.module.NATIVE_TARGETS:
+            for token in ("--ignore-error=1146", "--loose-ignore_error=1146", "--ignore-err=1146"):
+                with self.subTest(target=target, token=token), self.assertRaises(ValueError):
+                    self.module.native_arguments(target, token)
+
     def test_help_is_complete_and_excludes_retired_formats_and_versions(self):
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--help"],
@@ -52,6 +58,34 @@ class MyLogiBackupCliContractTests(unittest.TestCase):
         self.assertNotIn("master-data", lowered)
         self.assertNotIn("zip64", lowered)
         self.assertNotIn(".zip", lowered)
+
+    def test_customer_help_is_available_from_each_native_parameter_entry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory)/'never.log'
+            for prefix in ([], ['backup'], ['preflight'], ['timer', 'install']):
+                for option in ('--help', '--help-native'):
+                    with self.subTest(prefix=prefix, option=option):
+                        result = subprocess.run([sys.executable, str(SCRIPT)] + prefix + [option],
+                            env=dict(os.environ, PATH='/nonexistent', MYLOGI_LOG_FILE=str(log)),
+                            capture_output=True, text=True, timeout=10)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stderr, '')
+                        self.assertIn('--native-option', result.stdout)
+                        self.assertIn('mysqldump', result.stdout)
+                        self.assertFalse(log.exists())
+            for protected in self.module.NATIVE_PROTECTED:
+                self.assertIn('--' + protected, result.stdout)
+            self.assertIn('正常入口', result.stdout)
+
+    def test_native_help_examples_are_accepted_and_keep_quoted_values(self):
+        import shlex
+        for line in self.module.native_option_help().splitlines():
+            if line.strip().startswith('MyLogiBackupCli '):
+                with self.subTest(example=line):
+                    args = self.module.create_parser().parse_args(shlex.split(line)[1:])
+                    self.module.parse_native_options(getattr(args, 'native_option', []))
+                    if 'backup CA.pem' in line:
+                        self.assertEqual(args.native_option, ['mysqldump=--ssl-ca=/etc/mysql/backup CA.pem'])
 
     def test_version_command(self):
         result = subprocess.run(
